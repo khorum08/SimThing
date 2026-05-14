@@ -9,7 +9,7 @@
 
 use crate::ids::SimPropertyId;
 use crate::overlay::{OverlayLifecycle, PropertyTransformDelta};
-use crate::property::{PropertyValue, AMOUNT_IDX, VELOCITY_IDX};
+use crate::property::{PropertyLayout, PropertyValue};
 use crate::registry::DimensionRegistry;
 use crate::simthing::SimThing;
 use serde::{Deserialize, Serialize};
@@ -18,11 +18,9 @@ use std::collections::HashMap;
 // ── Transform stack ───────────────────────────────────────────────────────────
 
 /// The composed ancestor-transform context passed downward during tree traversal.
-/// Each entry is (property_id, sub_field_offset, new_value_after_op).
-/// We accumulate a list of deltas; the leaf applies them all in order.
+/// Accumulates deltas from root to current node; the leaf applies them all in order.
 #[derive(Clone, Debug, Default)]
 pub struct TransformStack {
-    /// Ordered list of (transform) from root → current node.
     deltas: Vec<PropertyTransformDelta>,
 }
 
@@ -34,11 +32,16 @@ impl TransformStack {
     }
 
     /// Apply all accumulated transforms to a mutable property value.
-    /// Transforms are applied in ancestral order (root first).
-    pub fn apply_to(&self, prop_id: SimPropertyId, value: &mut PropertyValue) {
+    /// Delegates offset arithmetic to layout — no hardcoded indices here.
+    pub fn apply_to(
+        &self,
+        prop_id: SimPropertyId,
+        value:   &mut PropertyValue,
+        layout:  &PropertyLayout,
+    ) {
         for delta in &self.deltas {
             if delta.property_id == prop_id {
-                delta.apply_to_data(&mut value.data);
+                delta.apply_to_data(&mut value.data, layout);
             }
         }
     }
@@ -46,7 +49,7 @@ impl TransformStack {
 
 // ── FieldSnapshot ─────────────────────────────────────────────────────────────
 
-/// Post-evaluation snapshot of one SimThing: the fully-resolved property values
+/// Post-evaluation snapshot of one SimThing: fully-resolved property values
 /// after ancestor transforms, velocity integration, and local overlay application.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EntitySnapshot {
@@ -62,7 +65,6 @@ pub struct FieldSnapshot {
 }
 
 impl FieldSnapshot {
-    /// Find a snapshot by SimThingId.
     pub fn get(&self, id: crate::ids::SimThingId) -> Option<&EntitySnapshot> {
         self.entities.iter().find(|e| e.id == id)
     }
@@ -80,8 +82,6 @@ impl<'r> Evaluator<'r> {
         Self { registry, delta_time }
     }
 
-    /// Evaluate the full SimThing tree and return a deterministic FieldSnapshot.
-    /// `day` is the current sim day — used to tag the snapshot.
     pub fn evaluate(&self, root: &SimThing, day: u32) -> FieldSnapshot {
         let mut entities = Vec::new();
         self.evaluate_node(root, &TransformStack::default(), &mut entities);
@@ -95,38 +95,38 @@ impl<'r> Evaluator<'r> {
         out:       &mut Vec<EntitySnapshot>,
     ) {
         // 1. Compose this node's overlay transforms into the stack.
-        //    Only permanent and active transient overlays contribute.
         let local_stack = node.overlays.iter().fold(ancestors.clone(), |stack, overlay| {
             match &overlay.lifecycle {
-                OverlayLifecycle::Permanent => stack.push(&overlay.transform),
+                OverlayLifecycle::Permanent       => stack.push(&overlay.transform),
                 OverlayLifecycle::Transient { .. } => stack.push(&overlay.transform),
             }
         });
 
-        // 2. Clone and evolve this node's properties.
+        // 2. Clone this node's properties.
         let mut resolved: HashMap<SimPropertyId, PropertyValue> = node
             .properties
             .iter()
             .map(|(id, pv)| (*id, pv.clone()))
             .collect();
 
-        // 3. Velocity integration (amount += velocity * dt).
+        // 3. Velocity integration — layout-aware, no hardcoded indices.
         for (id, pv) in &mut resolved {
             let prop = self.registry.property(*id);
-            pv.integrate(self.delta_time, prop.valid_range);
+            pv.integrate(&prop.layout, self.delta_time);
         }
 
         // 4. Intensity update.
         for (id, pv) in &mut resolved {
             let prop = self.registry.property(*id);
             if let Some(ib) = &prop.intensity_behavior {
-                pv.update_intensity(ib, self.delta_time);
+                pv.update_intensity(ib, &prop.layout, self.delta_time);
             }
         }
 
         // 5. Apply the full ancestor + local transform stack to each property.
         for (id, pv) in &mut resolved {
-            local_stack.apply_to(*id, pv);
+            let layout = &self.registry.property(*id).layout;
+            local_stack.apply_to(*id, pv, layout);
         }
 
         out.push(EntitySnapshot { id: node.id, properties: resolved });
@@ -141,29 +141,25 @@ impl<'r> Evaluator<'r> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ids::SimPropertyId;
     use crate::ids::OverlayId;
     use crate::overlay::{Overlay, OverlayKind, OverlayLifecycle, OverlaySource};
-    use crate::property::{SimProperty, TransformOp, SubFieldRole};
+    use crate::property::{SimProperty, SubFieldRole, TransformOp};
     use crate::registry::DimensionRegistry;
     use crate::simthing::{SimThing, SimThingKind};
 
     fn bootstrap() -> (DimensionRegistry, SimPropertyId) {
         let mut reg = DimensionRegistry::new();
-        let loyalty = {
-            let mut p = SimProperty::simple("core", "loyalty", 3);
-            p.valid_range = (0.0, 1.0);
-            p.default_velocity = 0.0;
-            p
-        };
-        let lid = reg.register(loyalty);
+        let lid = reg.register(SimProperty::simple("core", "loyalty", 3));
         (reg, lid)
     }
 
     fn make_cohort(reg: &DimensionRegistry, lid: SimPropertyId, amount: f32) -> SimThing {
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
-        let mut pv = reg.property(lid).default_value();
-        pv.data[AMOUNT_IDX] = amount;
+        let prop   = reg.property(lid);
+        let layout = &prop.layout;
+        let mut pv = prop.default_value();
+        let a_off  = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        pv.data[a_off] = amount;
         cohort.add_property(lid, pv);
         cohort
     }
@@ -171,18 +167,19 @@ mod tests {
     /// Velocity integration: amount changes at `velocity * dt`
     #[test]
     fn velocity_integration() {
-        let (mut reg, lid) = bootstrap();
-        // set velocity to 0.1 per day
-        reg.properties[lid.index()].default_velocity = 0.1;
+        let (reg, lid) = bootstrap();
+        let layout = &reg.property(lid).layout;
+        let v_off  = layout.offset_of(&SubFieldRole::Velocity).unwrap();
 
         let mut cohort = make_cohort(&reg, lid, 0.5);
-        cohort.property_mut(lid).unwrap().data[VELOCITY_IDX] = 0.1;
+        cohort.property_mut(lid).unwrap().data[v_off] = 0.1;
 
         let eval = Evaluator::new(&reg, 1.0);
         let snap = eval.evaluate(&cohort, 1);
 
-        let e = snap.get(cohort.id).unwrap();
-        let amount = e.properties[&lid].amount();
+        let e     = snap.get(cohort.id).unwrap();
+        let a_off = reg.property(lid).layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let amount = e.properties[&lid].data[a_off];
         // 0.5 + 0.1 * 1.0 = 0.6
         assert!((amount - 0.6).abs() < 1e-5, "amount was {amount}");
     }
@@ -193,7 +190,6 @@ mod tests {
     fn ancestor_transform_propagates() {
         let (reg, lid) = bootstrap();
 
-        // World overlay: multiply loyalty amount by 0.9
         let world_overlay = Overlay {
             id:        OverlayId::new(),
             kind:      OverlayKind::Policy,
@@ -220,9 +216,10 @@ mod tests {
         let eval = Evaluator::new(&reg, 1.0);
         let snap = eval.evaluate(&world, 1);
 
-        let e = snap.get(cohort_id).unwrap();
-        let amount = e.properties[&lid].amount();
-        // 1.0 * 0.9 = 0.9 (velocity=0 so no integration change)
+        let e     = snap.get(cohort_id).unwrap();
+        let a_off = reg.property(lid).layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let amount = e.properties[&lid].data[a_off];
+        // 1.0 * 0.9 = 0.9  (velocity=0, no integration change)
         assert!((amount - 0.9).abs() < 1e-5, "amount was {amount}");
     }
 
@@ -230,15 +227,17 @@ mod tests {
     #[test]
     fn deterministic() {
         let (reg, lid) = bootstrap();
+        let v_off = reg.property(lid).layout
+            .offset_of(&SubFieldRole::Velocity).unwrap();
 
         let mut loc = SimThing::new(SimThingKind::Location, 0);
         for _ in 0..4 {
             let mut c = make_cohort(&reg, lid, 0.7);
-            c.property_mut(lid).unwrap().data[VELOCITY_IDX] = -0.02;
+            c.property_mut(lid).unwrap().data[v_off] = -0.02;
             loc.add_child(c);
         }
 
-        let eval = Evaluator::new(&reg, 1.0);
+        let eval   = Evaluator::new(&reg, 1.0);
         let snap_a = eval.evaluate(&loc, 1);
         let snap_b = eval.evaluate(&loc, 1);
 
@@ -256,9 +255,10 @@ mod tests {
     #[test]
     fn snapshot_round_trip() {
         let (reg, lid) = bootstrap();
+        let a_off  = reg.property(lid).layout.offset_of(&SubFieldRole::Amount).unwrap();
         let cohort = make_cohort(&reg, lid, 0.42);
-        let eval = Evaluator::new(&reg, 1.0);
-        let snap = eval.evaluate(&cohort, 5);
+        let eval   = Evaluator::new(&reg, 1.0);
+        let snap   = eval.evaluate(&cohort, 5);
 
         let json = serde_json::to_string(&snap).expect("serialize");
         let back: FieldSnapshot = serde_json::from_str(&json).expect("deserialize");
@@ -266,8 +266,8 @@ mod tests {
         let original = snap.get(cohort.id).unwrap();
         let restored = back.get(cohort.id).unwrap();
         assert_eq!(
-            original.properties[&lid].amount(),
-            restored.properties[&lid].amount()
+            original.properties[&lid].data[a_off],
+            restored.properties[&lid].data[a_off]
         );
     }
 }

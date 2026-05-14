@@ -1,123 +1,61 @@
 use crate::ids::SimPropertyId;
 use serde::{Deserialize, Serialize};
 
-// ── Sub-field layout constants ────────────────────────────────────────────────
-// Every PropertyValue flat vector is laid out as:
-//   [amount, velocity, intensity, vec_0, vec_1, ..., vec_N]
-pub const AMOUNT_IDX: usize = 0;
-pub const VELOCITY_IDX: usize = 1;
-pub const INTENSITY_IDX: usize = 2;
-pub const VECTOR_START_IDX: usize = 3;
+// ── ClampBehavior ─────────────────────────────────────────────────────────────
 
-// ── PropertyValue ─────────────────────────────────────────────────────────────
-
-/// Flat float vector for a single property instance on a single SimThing.
-/// Layout is defined by the corresponding `SimProperty::layout` in the registry.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct PropertyValue {
-    pub data: Vec<f32>,
+pub enum ClampBehavior {
+    /// Hard floor and ceiling. For normalized 0–1 state properties.
+    Bounded { min: f32, max: f32 },
+    /// Floor only. For population, capacity, output — unbounded upward.
+    Floored { min: f32 },
+    /// No clamping. For signed pressures, vector components, aggregates.
+    Unbounded,
 }
 
-impl PropertyValue {
-    pub fn zeroed(stride: usize) -> Self {
-        Self { data: vec![0.0; stride] }
-    }
-
-    pub fn amount(&self) -> f32 {
-        self.data[AMOUNT_IDX]
-    }
-
-    pub fn velocity(&self) -> f32 {
-        self.data[VELOCITY_IDX]
-    }
-
-    pub fn intensity(&self) -> f32 {
-        self.data[INTENSITY_IDX]
-    }
-
-    pub fn vector(&self) -> &[f32] {
-        &self.data[VECTOR_START_IDX..]
-    }
-
-    pub fn vector_mut(&mut self) -> &mut [f32] {
-        &mut self.data[VECTOR_START_IDX..]
-    }
-
-    pub fn vector_magnitude(&self) -> f32 {
-        let v = self.vector();
-        v.iter().map(|x| x * x).sum::<f32>().sqrt()
-    }
-
-    /// Integrate velocity into amount for `delta_time` days.
-    ///
-    /// Velocity is zeroed in the direction of a saturated boundary: a cohort pinned
-    /// at the loyalty floor cannot accumulate negative velocity while suppressed and
-    /// then resist recovery when conditions improve. That kind of inertia belongs in
-    /// the vector components (e.g. grievance_inertia), where it is observable to the
-    /// player and attributable by the AI. Hidden velocity debt is not the same thing.
-    pub fn integrate(&mut self, delta_time: f32, valid_range: (f32, f32)) {
-        let new_amount = self.data[AMOUNT_IDX] + self.data[VELOCITY_IDX] * delta_time;
-        self.data[AMOUNT_IDX] = new_amount.clamp(valid_range.0, valid_range.1);
-
-        // If we hit the floor, don't let velocity keep going negative.
-        // If we hit the ceiling, don't let velocity keep going positive.
-        // Recovery-direction velocity is always permitted through.
-        if self.data[AMOUNT_IDX] <= valid_range.0 {
-            self.data[VELOCITY_IDX] = self.data[VELOCITY_IDX].max(0.0);
-        } else if self.data[AMOUNT_IDX] >= valid_range.1 {
-            self.data[VELOCITY_IDX] = self.data[VELOCITY_IDX].min(0.0);
+impl ClampBehavior {
+    pub fn apply(&self, value: f32) -> f32 {
+        match self {
+            Self::Bounded { min, max } => value.clamp(*min, *max),
+            Self::Floored { min }      => value.max(*min),
+            Self::Unbounded            => value,
         }
     }
 
-    /// Apply intensity build/decay based on current velocity magnitude.
-    pub fn update_intensity(&mut self, behavior: &IntensityBehavior, delta_time: f32) {
-        let vel_abs = self.data[VELOCITY_IDX].abs();
-        let current = self.data[INTENSITY_IDX];
-        let target = if vel_abs > behavior.velocity_threshold {
-            current + behavior.build_coefficient * vel_abs * delta_time
-        } else {
-            current - behavior.decay_coefficient * current * delta_time
-        };
-        self.data[INTENSITY_IDX] = target.clamp(0.0, 1.0);
+    pub fn at_floor(&self, value: f32) -> bool {
+        match self {
+            Self::Bounded { min, .. } => value <= *min,
+            Self::Floored { min }     => value <= *min,
+            Self::Unbounded           => false,
+        }
+    }
+
+    pub fn at_ceiling(&self, value: f32) -> bool {
+        match self {
+            Self::Bounded { max, .. } => value >= *max,
+            _ => false,
+        }
     }
 }
 
-// ── PropertyLayout ────────────────────────────────────────────────────────────
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct PropertyLayout {
-    /// Total floats per instance = 3 (amount/velocity/intensity) + vector_len
-    pub stride: usize,
-    /// Number of directional vector components
-    pub vector_len: usize,
-}
-
-impl PropertyLayout {
-    pub fn new(vector_len: usize) -> Self {
-        Self { stride: 3 + vector_len, vector_len }
-    }
-}
-
-// ── Sub-field roles and transform semantics ───────────────────────────────────
+// ── SubFieldRole ──────────────────────────────────────────────────────────────
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SubFieldRole {
+    /// The primary scalar value on the property's spectrum.
     Amount,
+    /// Rate of change per tick for a governed sub-field.
     Velocity,
+    /// Expression strength (0–1). Drives fission secondary conditions.
     Intensity,
-    VectorComponent(usize),
+    /// Designer-named sub-field. Used for everything beyond the standard three:
+    /// vector components, bonus vectors, population proportions, etc.
+    Named(String),
+    /// Mod-defined role. Evaluator treats as generic float.
     Custom(String),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum TransformSemantics {
-    Additive,
-    Multiplicative,
-    Affine,
-    VelocityBias,
-    IntensityScale,
-    Clamped(f32, f32),
-}
+// ── TransformOp ───────────────────────────────────────────────────────────────
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum TransformOp {
@@ -134,15 +72,259 @@ impl TransformOp {
             Self::Set(v)      => *v,
         }
     }
+}
 
-    /// Returns the identity for composition: no-op.
-    pub fn identity(semantics: &TransformSemantics) -> Self {
-        match semantics {
-            TransformSemantics::Multiplicative
-            | TransformSemantics::IntensityScale
-            | TransformSemantics::Affine    => Self::Multiply(1.0),
-            _ => Self::Add(0.0),
+// ── SubFieldSpec ──────────────────────────────────────────────────────────────
+
+/// Declares the semantics, clamping, and integration behavior of one
+/// contiguous block of floats within a PropertyValue data vec.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SubFieldSpec {
+    /// Semantic role. Used by overlay transforms and the semantic layer to
+    /// reference this sub-field by name rather than by index.
+    pub role: SubFieldRole,
+
+    /// Number of consecutive floats this sub-field occupies in the data vec.
+    /// 1 = scalar, N > 1 = vector of N components.
+    pub width: usize,
+
+    /// Clamping applied after integration and after transform application.
+    pub clamp: ClampBehavior,
+
+    /// Optional cap on |velocity| before integration. None = uncapped.
+    pub velocity_max: Option<f32>,
+
+    /// Default value for each float in this sub-field at creation.
+    pub default: f32,
+
+    /// Human-readable name for UI display and observability tooling.
+    pub display_name: String,
+
+    /// Optional range hint for UI scaling. Does not affect simulation.
+    pub display_range: Option<(f32, f32)>,
+
+    /// Which sub-field role governs this one's rate of change.
+    /// None  = this sub-field is not evolved by integration.
+    /// Some  = integrate this sub-field using the named role's value as velocity.
+    ///
+    /// Example: Named("axis_position") governed_by Some(Named("axis_drift"))
+    /// means axis_position advances by axis_drift * delta_time each tick.
+    pub governed_by: Option<SubFieldRole>,
+}
+
+// ── PropertyLayout ────────────────────────────────────────────────────────────
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PropertyLayout {
+    pub sub_fields: Vec<SubFieldSpec>,
+}
+
+impl PropertyLayout {
+    /// Total GPU columns required = sum of all sub-field widths.
+    pub fn stride(&self) -> usize {
+        self.sub_fields.iter().map(|sf| sf.width).sum()
+    }
+
+    /// Local byte offset (index into data vec) of the first float in a
+    /// sub-field with the given role. Returns None if role not present.
+    pub fn offset_of(&self, role: &SubFieldRole) -> Option<usize> {
+        let mut offset = 0;
+        for sf in &self.sub_fields {
+            if &sf.role == role {
+                return Some(offset);
+            }
+            offset += sf.width;
         }
+        None
+    }
+
+    /// Width of a sub-field with the given role.
+    pub fn width_of(&self, role: &SubFieldRole) -> Option<usize> {
+        self.sub_fields.iter()
+            .find(|sf| &sf.role == role)
+            .map(|sf| sf.width)
+    }
+
+    /// Default data vec for a fresh PropertyValue of this layout.
+    /// Each sub-field's floats are initialized to SubFieldSpec::default.
+    pub fn default_data(&self) -> Vec<f32> {
+        self.sub_fields.iter()
+            .flat_map(|sf| std::iter::repeat(sf.default).take(sf.width))
+            .collect()
+    }
+
+    /// Build the standard amount + velocity + intensity + N named vec layout.
+    ///
+    /// Clamping: amount and intensity Bounded(0,1), velocity Bounded(-1,1),
+    /// vec components Unbounded.
+    /// Integration: amount governed by velocity; intensity updated by
+    /// IntensityBehavior separately (governed_by: None here).
+    pub fn standard(vector_len: usize) -> Self {
+        let mut sub_fields = vec![
+            SubFieldSpec {
+                role:          SubFieldRole::Amount,
+                width:         1,
+                clamp:         ClampBehavior::Bounded { min: 0.0, max: 1.0 },
+                velocity_max:  None,
+                default:       0.0,
+                display_name:  "amount".into(),
+                display_range: Some((0.0, 1.0)),
+                governed_by:   Some(SubFieldRole::Velocity),
+            },
+            SubFieldSpec {
+                role:          SubFieldRole::Velocity,
+                width:         1,
+                clamp:         ClampBehavior::Bounded { min: -1.0, max: 1.0 },
+                velocity_max:  None,
+                default:       0.0,
+                display_name:  "velocity".into(),
+                display_range: None,
+                governed_by:   None,
+            },
+            SubFieldSpec {
+                role:          SubFieldRole::Intensity,
+                width:         1,
+                clamp:         ClampBehavior::Bounded { min: 0.0, max: 1.0 },
+                velocity_max:  None,
+                default:       0.0,
+                display_name:  "intensity".into(),
+                display_range: Some((0.0, 1.0)),
+                governed_by:   None, // updated by IntensityBehavior, not integration
+            },
+        ];
+        for i in 0..vector_len {
+            sub_fields.push(SubFieldSpec {
+                role:          SubFieldRole::Named(format!("vec_{i}")),
+                width:         1,
+                clamp:         ClampBehavior::Unbounded,
+                velocity_max:  None,
+                default:       0.0,
+                display_name:  format!("vec_{i}"),
+                display_range: None,
+                governed_by:   None,
+            });
+        }
+        Self { sub_fields }
+    }
+}
+
+// ── PropertyValue ─────────────────────────────────────────────────────────────
+
+/// Flat float vector for a single property instance on a single SimThing.
+/// Layout is defined by the corresponding `SimProperty::layout` in the registry.
+/// Indices are never hardcoded outside of `PropertyLayout`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PropertyValue {
+    pub data: Vec<f32>,
+}
+
+impl PropertyValue {
+    pub fn from_layout(layout: &PropertyLayout) -> Self {
+        Self { data: layout.default_data() }
+    }
+
+    /// Read a scalar sub-field value by role. Panics if role not found.
+    pub fn get_role(&self, role: &SubFieldRole, layout: &PropertyLayout) -> f32 {
+        let offset = layout.offset_of(role)
+            .unwrap_or_else(|| panic!("role {role:?} not in layout"));
+        self.data[offset]
+    }
+
+    /// Read a multi-float sub-field as a slice.
+    pub fn get_role_slice<'a>(
+        &'a self,
+        role: &SubFieldRole,
+        layout: &PropertyLayout,
+    ) -> &'a [f32] {
+        let offset = layout.offset_of(role)
+            .unwrap_or_else(|| panic!("role {role:?} not in layout"));
+        let width = layout.width_of(role).unwrap();
+        &self.data[offset..offset + width]
+    }
+
+    /// Integrate all sub-fields that have a `governed_by` relationship.
+    ///
+    /// For each governed sub-field:
+    ///   1. Read the governing sub-field's current value as velocity.
+    ///   2. Optionally clamp it to velocity_max.
+    ///   3. Advance: new = current + velocity * dt.
+    ///   4. Apply the governed sub-field's ClampBehavior.
+    ///   5. Pin the governing velocity to zero in the saturated direction.
+    ///      Prevents hidden velocity debt at floor/ceiling — inertia that
+    ///      should persist after conditions improve belongs in Named vector
+    ///      components (e.g. grievance_inertia), where it is observable.
+    pub fn integrate(&mut self, layout: &PropertyLayout, delta_time: f32) {
+        // Collect (governed_offset, governing_offset, spec) before mutating data.
+        let pairs: Vec<(usize, usize, SubFieldSpec)> = {
+            let mut out = Vec::new();
+            let mut offset = 0usize;
+            for sf in &layout.sub_fields {
+                if let Some(ref gov_role) = sf.governed_by {
+                    if let Some(gov_offset) = layout.offset_of(gov_role) {
+                        out.push((offset, gov_offset, sf.clone()));
+                    }
+                }
+                offset += sf.width;
+            }
+            out
+        };
+
+        for (governed_off, governing_off, spec) in pairs {
+            let raw_vel = self.data[governing_off];
+            let effective_vel = match spec.velocity_max {
+                Some(max) => raw_vel.clamp(-max, max),
+                None      => raw_vel,
+            };
+            let new_val = self.data[governed_off] + effective_vel * delta_time;
+            let clamped = spec.clamp.apply(new_val);
+            self.data[governed_off] = clamped;
+
+            if spec.clamp.at_floor(clamped) {
+                self.data[governing_off] = self.data[governing_off].max(0.0);
+            } else if spec.clamp.at_ceiling(clamped) {
+                self.data[governing_off] = self.data[governing_off].min(0.0);
+            }
+        }
+    }
+
+    /// Update intensity sub-field using IntensityBehavior. No-op if layout
+    /// has no Intensity or Velocity role.
+    pub fn update_intensity(
+        &mut self,
+        behavior: &IntensityBehavior,
+        layout: &PropertyLayout,
+        delta_time: f32,
+    ) {
+        let vel_offset = match layout.offset_of(&SubFieldRole::Velocity) {
+            Some(o) => o,
+            None    => return,
+        };
+        let int_offset = match layout.offset_of(&SubFieldRole::Intensity) {
+            Some(o) => o,
+            None    => return,
+        };
+        let vel_abs = self.data[vel_offset].abs();
+        let current = self.data[int_offset];
+        let target = if vel_abs > behavior.velocity_threshold {
+            current + behavior.build_coefficient * vel_abs * delta_time
+        } else {
+            current - behavior.decay_coefficient * current * delta_time
+        };
+        self.data[int_offset] = target.clamp(0.0, 1.0);
+    }
+
+    /// Magnitude of the first Named sub-field in this value's layout.
+    /// Returns 0.0 if no Named sub-fields are present.
+    pub fn vector_magnitude(&self, layout: &PropertyLayout) -> f32 {
+        let mut offset = 0usize;
+        for sf in &layout.sub_fields {
+            if matches!(&sf.role, SubFieldRole::Named(_)) {
+                let slice = &self.data[offset..offset + sf.width];
+                return slice.iter().map(|x| x * x).sum::<f32>().sqrt();
+            }
+            offset += sf.width;
+        }
+        0.0
     }
 }
 
@@ -156,24 +338,20 @@ pub enum Direction {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum DecayBehavior {
-    TowardZero        { rate: f32 },
-    OnThreshold       { threshold: f32, direction: Direction },
-    AfterTicks        { remaining: u32 },
-    WhenProperty      { other: SimPropertyId, threshold: f32 },
-    /// Intensity-driven: when intensity falls below a floor after being active.
-    IntensityGated    { intensity_floor: f32 },
+    TowardZero     { rate: f32 },
+    OnThreshold    { threshold: f32, direction: Direction },
+    AfterTicks     { remaining: u32 },
+    WhenProperty   { other: SimPropertyId, threshold: f32 },
+    IntensityGated { intensity_floor: f32 },
 }
 
 /// Controls how intensity builds on rapid change and decays on stability.
 /// Linear model: gain = build_coefficient * |velocity|, decay = decay_coefficient * intensity.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IntensityBehavior {
-    /// Velocity magnitude below which intensity starts decaying.
-    pub velocity_threshold:  f32,
-    /// Multiplier on |velocity| → intensity gain per day.
-    pub build_coefficient:   f32,
-    /// Fraction of current intensity shed per day when velocity is below threshold.
-    pub decay_coefficient:   f32,
+    pub velocity_threshold: f32,
+    pub build_coefficient:  f32,
+    pub decay_coefficient:  f32,
 }
 
 impl Default for IntensityBehavior {
@@ -188,7 +366,6 @@ impl Default for IntensityBehavior {
 
 // ── Fission / Fusion thresholds ───────────────────────────────────────────────
 
-/// Registered on a SimThing; GPU threshold scanner watches it.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FissionThreshold {
     pub dimension:  SimPropertyId,
@@ -196,7 +373,6 @@ pub struct FissionThreshold {
     pub threshold:  f32,
     pub direction:  Direction,
     pub template:   FissionTemplate,
-    /// Optional secondary condition on a second sub-field.
     pub secondary:  Option<SecondaryCondition>,
 }
 
@@ -210,12 +386,10 @@ pub enum SecondaryCondition {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FissionTemplate {
-    pub child_kind:                SimThingKindTag,
-    /// Intensity below which the child fuses back into the parent.
+    pub child_kind:                 SimThingKindTag,
     pub fusion_intensity_threshold: f32,
-    /// Added to the parent's activating property vector[0] on fusion (scar).
     pub fusion_scar_coefficient:    f32,
-    pub resolution_label:          String,
+    pub resolution_label:           String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -226,7 +400,6 @@ pub struct FusionThreshold {
     pub direction:  Direction,
 }
 
-/// Lightweight kind tag used inside FissionTemplate to avoid circular deps.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SimThingKindTag {
     World,
@@ -273,18 +446,15 @@ impl IntensityRange {
 
 // ── SimProperty ───────────────────────────────────────────────────────────────
 
-/// The schema for a property dimension. This is the HashMap key type used at
-/// registration time. After registration, callers use `SimPropertyId` exclusively.
-///
-/// Equality and hashing are defined on `namespace + name` only — metadata fields
-/// do not participate. See `impl PartialEq` below.
+/// The schema for a property dimension. Equality and hashing are defined on
+/// `namespace + name` only — metadata fields do not participate.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SimProperty {
     // identity
     pub namespace: String,
     pub name:      String,
 
-    // layout
+    // layout — fully declarative, designer-controlled
     pub layout: PropertyLayout,
 
     // behavior — all optional
@@ -295,42 +465,31 @@ pub struct SimProperty {
     pub on_expire:          Option<ExpireHandler>,
 
     // metadata
-    pub description:       String,
-    pub valid_range:       (f32, f32),
-    pub default_velocity:  f32,
-    pub default_intensity: f32,
-    pub intensity_labels:  Vec<IntensityRange>,
+    pub description:     String,
+    pub intensity_labels: Vec<IntensityRange>,
 }
 
 impl SimProperty {
-    /// Construct a minimal property for tests / bootstrap.
+    /// Minimal property for tests. Uses PropertyLayout::standard(vector_len).
     pub fn simple(namespace: &str, name: &str, vector_len: usize) -> Self {
         Self {
             namespace:          namespace.into(),
             name:               name.into(),
-            layout:             PropertyLayout::new(vector_len),
+            layout:             PropertyLayout::standard(vector_len),
             decay:              None,
             intensity_behavior: None,
             fission_templates:  vec![],
             fusion_templates:   vec![],
             on_expire:          None,
             description:        String::new(),
-            valid_range:        (0.0, 1.0),
-            default_velocity:   0.0,
-            default_intensity:  0.0,
             intensity_labels:   vec![],
         }
     }
 
-    /// Return a fresh zero-initialized PropertyValue sized to this property's layout.
     pub fn default_value(&self) -> PropertyValue {
-        let mut pv = PropertyValue::zeroed(self.layout.stride);
-        pv.data[VELOCITY_IDX]  = self.default_velocity;
-        pv.data[INTENSITY_IDX] = self.default_intensity;
-        pv
+        PropertyValue::from_layout(&self.layout)
     }
 
-    /// Look up the semantic label for a given (amount, intensity) pair.
     pub fn interpret_intensity(&self, amount: f32, intensity: f32) -> Option<&str> {
         self.intensity_labels
             .iter()
@@ -358,55 +517,120 @@ impl std::hash::Hash for SimProperty {
 mod tests {
     use super::*;
 
-    fn loyalty(amount: f32, velocity: f32) -> PropertyValue {
-        let mut pv = PropertyValue::zeroed(6); // stride 6: amount/vel/intensity + 3 vec
-        pv.data[AMOUNT_IDX]   = amount;
-        pv.data[VELOCITY_IDX] = velocity;
+    fn standard_layout() -> PropertyLayout {
+        PropertyLayout::standard(3)
+    }
+
+    fn loyalty(layout: &PropertyLayout, amount: f32, velocity: f32) -> PropertyValue {
+        let mut pv = PropertyValue::from_layout(layout);
+        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+        pv.data[a_off] = amount;
+        pv.data[v_off] = velocity;
         pv
     }
 
-    /// Velocity pinned at floor must not go further negative; recovering velocity passes.
     #[test]
     fn velocity_clamped_at_floor() {
-        let range = (0.0_f32, 1.0_f32);
+        let layout = standard_layout();
+        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
 
-        let mut suppressed = loyalty(0.0, -0.03);
-        suppressed.integrate(1.0, range);
-        // amount stays at floor
-        assert_eq!(suppressed.amount(), 0.0);
-        // velocity must not remain negative — it would resist recovery
-        assert!(suppressed.velocity() >= 0.0, "velocity was {}", suppressed.velocity());
+        let mut suppressed = loyalty(&layout, 0.0, -0.03);
+        suppressed.integrate(&layout, 1.0);
+        assert_eq!(suppressed.data[a_off], 0.0);
+        assert!(suppressed.data[v_off] >= 0.0,
+            "velocity was {}", suppressed.data[v_off]);
 
-        let mut recovering = loyalty(0.0, 0.05);
-        recovering.integrate(1.0, range);
-        // amount climbs off the floor
-        assert!((recovering.amount() - 0.05).abs() < 1e-5);
-        // positive velocity is untouched
-        assert!(recovering.velocity() > 0.0);
+        let mut recovering = loyalty(&layout, 0.0, 0.05);
+        recovering.integrate(&layout, 1.0);
+        assert!((recovering.data[a_off] - 0.05).abs() < 1e-5);
+        assert!(recovering.data[v_off] > 0.0);
     }
 
-    /// Velocity pinned at ceiling must not go further positive; falling velocity passes.
     #[test]
     fn velocity_clamped_at_ceiling() {
-        let range = (0.0_f32, 1.0_f32);
+        let layout = standard_layout();
+        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
 
-        let mut maxed = loyalty(1.0, 0.05);
-        maxed.integrate(1.0, range);
-        assert_eq!(maxed.amount(), 1.0);
-        assert!(maxed.velocity() <= 0.0, "velocity was {}", maxed.velocity());
+        let mut maxed = loyalty(&layout, 1.0, 0.05);
+        maxed.integrate(&layout, 1.0);
+        assert_eq!(maxed.data[a_off], 1.0);
+        assert!(maxed.data[v_off] <= 0.0, "velocity was {}", maxed.data[v_off]);
 
-        let mut declining = loyalty(1.0, -0.02);
-        declining.integrate(1.0, range);
-        assert!((declining.amount() - 0.98).abs() < 1e-5);
-        assert!(declining.velocity() < 0.0);
+        let mut declining = loyalty(&layout, 1.0, -0.02);
+        declining.integrate(&layout, 1.0);
+        assert!((declining.data[a_off] - 0.98).abs() < 1e-5);
+        assert!(declining.data[v_off] < 0.0);
     }
 
-    /// Mid-range: velocity and amount both change normally, no clamping.
     #[test]
     fn integrate_mid_range_unchanged() {
-        let mut pv = loyalty(0.5, -0.03);
-        pv.integrate(1.0, (0.0, 1.0));
-        assert!((pv.amount() - 0.47).abs() < 1e-5);
-        assert!((pv.velocity() - (-0.03)).abs() < 1e-5);
+        let layout = standard_layout();
+        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+
+        let mut pv = loyalty(&layout, 0.5, -0.03);
+        pv.integrate(&layout, 1.0);
+        assert!((pv.data[a_off] - 0.47).abs() < 1e-5);
+        assert!((pv.data[v_off] - (-0.03)).abs() < 1e-5);
+    }
+
+    /// Custom layout: ethics axis with signed position, drift governor, and
+    /// a 3-wide bonus vector. Verifies stride, offsets, defaults, integration.
+    #[test]
+    fn custom_layout_ethics_axis() {
+        let layout = PropertyLayout {
+            sub_fields: vec![
+                SubFieldSpec {
+                    role:          SubFieldRole::Named("axis_position".into()),
+                    width:         1,
+                    clamp:         ClampBehavior::Bounded { min: -10.0, max: 10.0 },
+                    velocity_max:  Some(0.5),
+                    default:       0.0,
+                    display_name:  "axis_position".into(),
+                    display_range: Some((-10.0, 10.0)),
+                    governed_by:   Some(SubFieldRole::Named("axis_drift".into())),
+                },
+                SubFieldSpec {
+                    role:          SubFieldRole::Named("axis_drift".into()),
+                    width:         1,
+                    clamp:         ClampBehavior::Bounded { min: -1.0, max: 1.0 },
+                    velocity_max:  None,
+                    default:       0.0,
+                    display_name:  "axis_drift".into(),
+                    display_range: None,
+                    governed_by:   None,
+                },
+                SubFieldSpec {
+                    role:          SubFieldRole::Named("ethics_bonus".into()),
+                    width:         3, // [research, stability, unity]
+                    clamp:         ClampBehavior::Bounded { min: 0.0, max: 2.0 },
+                    velocity_max:  None,
+                    default:       1.0, // neutral
+                    display_name:  "ethics_bonus".into(),
+                    display_range: Some((0.0, 2.0)),
+                    governed_by:   None,
+                },
+            ],
+        };
+
+        assert_eq!(layout.stride(), 5);
+        assert_eq!(layout.offset_of(&SubFieldRole::Named("axis_position".into())), Some(0));
+        assert_eq!(layout.offset_of(&SubFieldRole::Named("axis_drift".into())),    Some(1));
+        assert_eq!(layout.offset_of(&SubFieldRole::Named("ethics_bonus".into())),  Some(2));
+        assert_eq!(layout.width_of(&SubFieldRole::Named("ethics_bonus".into())),   Some(3));
+
+        let defaults = layout.default_data();
+        assert_eq!(defaults, vec![0.0, 0.0, 1.0, 1.0, 1.0]);
+
+        // axis_position governed by axis_drift
+        let mut pv = PropertyValue::from_layout(&layout);
+        pv.data[1] = 0.2; // axis_drift = +0.2/day (drifting materialist)
+        pv.integrate(&layout, 1.0);
+        assert!((pv.data[0] - 0.2).abs() < 1e-5, "position was {}", pv.data[0]);
+        assert!((pv.data[1] - 0.2).abs() < 1e-5, "drift unchanged");
+        assert_eq!(&pv.data[2..5], &[1.0, 1.0, 1.0], "bonus vector unchanged");
     }
 }

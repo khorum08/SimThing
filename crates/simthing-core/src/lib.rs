@@ -8,8 +8,9 @@ pub mod simthing;
 pub use ids::{OverlayId, SimPropertyId, SimThingId};
 pub use overlay::{Overlay, OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta};
 pub use property::{
-    DecayBehavior, Direction, ExpireHandler, FissionTemplate, FissionThreshold, FusionThreshold, IntensityBehavior, IntensityRange, PropertyLayout, PropertyValue, SimProperty,
-    SubFieldRole, TransformOp, TransformSemantics,
+    ClampBehavior, DecayBehavior, Direction, ExpireHandler, FissionTemplate, FissionThreshold,
+    FusionThreshold, IntensityBehavior, IntensityRange, PropertyLayout, PropertyValue, SimProperty,
+    SimThingKindTag, SubFieldRole, SubFieldSpec, TransformOp,
 };
-pub use registry::{DimensionRegistry, PropertyColumnRange, SubFieldDef};
+pub use registry::{DimensionRegistry, PropertyColumnRange};
 pub use simthing::{SimThing, SimThingKind};

@@ -1,5 +1,5 @@
 use crate::ids::{OverlayId, SimPropertyId, SimThingId};
-use crate::property::{SubFieldRole, TransformOp};
+use crate::property::{PropertyLayout, SubFieldRole, TransformOp};
 use serde::{Deserialize, Serialize};
 
 // ── PropertyTransformDelta ────────────────────────────────────────────────────
@@ -16,18 +16,13 @@ pub struct PropertyTransformDelta {
 impl PropertyTransformDelta {
     /// Apply this delta directly to a `PropertyValue::data` slice.
     /// Used by the CPU reference evaluator only — GPU uses resolved column indices.
-    pub fn apply_to_data(&self, data: &mut [f32]) {
-        use crate::property::{AMOUNT_IDX, INTENSITY_IDX, VECTOR_START_IDX, VELOCITY_IDX};
+    /// Roles not present in the layout are silently skipped.
+    pub fn apply_to_data(&self, data: &mut [f32], layout: &PropertyLayout) {
         for (role, op) in &self.sub_field_deltas {
-            let idx = match role {
-                SubFieldRole::Amount             => AMOUNT_IDX,
-                SubFieldRole::Velocity           => VELOCITY_IDX,
-                SubFieldRole::Intensity          => INTENSITY_IDX,
-                SubFieldRole::VectorComponent(i) => VECTOR_START_IDX + i,
-                SubFieldRole::Custom(_)          => continue, // CPU evaluator skips customs
-            };
-            if idx < data.len() {
-                data[idx] = op.apply(data[idx]);
+            if let Some(idx) = layout.offset_of(role) {
+                if idx < data.len() {
+                    data[idx] = op.apply(data[idx]);
+                }
             }
         }
     }

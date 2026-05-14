@@ -4,15 +4,14 @@
 //! `slot * N_DIMS + dim`. The registry translates semantic intent → column index.
 
 use crate::ids::SimPropertyId;
-use crate::property::{
-    SimProperty, SubFieldRole, TransformSemantics,
-};
+use crate::property::{PropertyLayout, SimProperty, SubFieldRole};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 // ── Column range ──────────────────────────────────────────────────────────────
 
 /// The contiguous GPU column range assigned to a registered property.
+/// Column arithmetic: global_col = range.start + layout.offset_of(role)
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PropertyColumnRange {
     pub start:  usize,
@@ -20,31 +19,26 @@ pub struct PropertyColumnRange {
 }
 
 impl PropertyColumnRange {
-    pub fn amount_col(&self)    -> usize { self.start + 0 }
-    pub fn velocity_col(&self)  -> usize { self.start + 1 }
-    pub fn intensity_col(&self) -> usize { self.start + 2 }
-    pub fn vector_col(&self, component: usize) -> usize { self.start + 3 + component }
-
-    pub fn col_for_role(&self, role: &SubFieldRole) -> usize {
-        match role {
-            SubFieldRole::Amount              => self.amount_col(),
-            SubFieldRole::Velocity            => self.velocity_col(),
-            SubFieldRole::Intensity           => self.intensity_col(),
-            SubFieldRole::VectorComponent(i)  => self.vector_col(*i),
-            SubFieldRole::Custom(_)           => {
-                panic!("Custom sub-field roles require explicit column arithmetic");
-            }
-        }
+    /// Global GPU column index for a given sub-field role.
+    /// Delegates to PropertyLayout for offset arithmetic.
+    pub fn col_for_role(
+        &self,
+        role: &SubFieldRole,
+        layout: &PropertyLayout,
+    ) -> Option<usize> {
+        layout.offset_of(role).map(|local| self.start + local)
     }
-}
 
-// ── SubFieldDef ───────────────────────────────────────────────────────────────
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SubFieldDef {
-    pub offset:              usize,
-    pub role:                SubFieldRole,
-    pub transform_semantics: TransformSemantics,
+    /// Global GPU column range (start, len) for a multi-width sub-field.
+    pub fn col_range_for_role(
+        &self,
+        role: &SubFieldRole,
+        layout: &PropertyLayout,
+    ) -> Option<(usize, usize)> {
+        let local = layout.offset_of(role)?;
+        let width = layout.width_of(role)?;
+        Some((self.start + local, width))
+    }
 }
 
 // ── DimensionRegistry ─────────────────────────────────────────────────────────
@@ -90,9 +84,8 @@ impl DimensionRegistry {
 
         let id     = SimPropertyId(self.properties.len() as u32);
         let start  = self.total_columns;
-        let stride = prop.layout.stride;
+        let stride = prop.layout.stride();
 
-        // record column owners
         for offset in 0..stride {
             self.column_owners.push((id, offset));
         }
@@ -108,7 +101,6 @@ impl DimensionRegistry {
         id
     }
 
-    /// Look up id by namespace + name.
     pub fn id_of(&self, namespace: &str, name: &str) -> Option<SimPropertyId> {
         self.by_name.get(&(namespace.to_owned(), name.to_owned())).copied()
     }
@@ -121,7 +113,6 @@ impl DimensionRegistry {
         &self.column_ranges[id.index()]
     }
 
-    /// Interpret (amount, intensity) → semantic label string using registry metadata.
     pub fn interpret_intensity(
         &self,
         id: SimPropertyId,
@@ -137,7 +128,6 @@ impl DimensionRegistry {
         self.active[id.index()] = false;
     }
 
-    /// Restore a tombstoned property (e.g. re-acquired after DLC re-enable).
     pub fn restore(&mut self, id: SimPropertyId) {
         self.active[id.index()] = true;
     }
@@ -156,33 +146,50 @@ impl Default for DimensionRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::property::SubFieldRole;
 
     #[test]
     fn column_assignment_is_contiguous() {
         let mut reg = DimensionRegistry::new();
-
         let loyalty = SimProperty::simple("core", "loyalty", 3);
         let food    = SimProperty::simple("core", "food_security", 2);
-
         let lid = reg.register(loyalty);
         let fid = reg.register(food);
 
-        // loyalty: stride 6, cols 0-5
         let lr = reg.column_range(lid);
+        let ll = &reg.property(lid).layout;
+        // standard(3): amount=0, velocity=1, intensity=2, vec_0=3, vec_1=4, vec_2=5
         assert_eq!(lr.start, 0);
         assert_eq!(lr.stride, 6);
-        assert_eq!(lr.amount_col(),   0);
-        assert_eq!(lr.velocity_col(), 1);
-        assert_eq!(lr.intensity_col(), 2);
-        assert_eq!(lr.vector_col(0), 3);
-        assert_eq!(lr.vector_col(2), 5);
+        assert_eq!(lr.col_for_role(&SubFieldRole::Amount,   ll), Some(0));
+        assert_eq!(lr.col_for_role(&SubFieldRole::Velocity, ll), Some(1));
+        assert_eq!(lr.col_for_role(&SubFieldRole::Intensity,ll), Some(2));
+        assert_eq!(lr.col_for_role(&SubFieldRole::Named("vec_0".into()), ll), Some(3));
+        assert_eq!(lr.col_for_role(&SubFieldRole::Named("vec_2".into()), ll), Some(5));
 
-        // food_security: stride 5, cols 6-10
+        // food_security standard(2): stride 5, cols 6–10
         let fr = reg.column_range(fid);
         assert_eq!(fr.start, 6);
         assert_eq!(fr.stride, 5);
 
         assert_eq!(reg.total_columns, 11);
+    }
+
+    #[test]
+    fn col_for_role_multi_property() {
+        let mut reg = DimensionRegistry::new();
+        let lid = reg.register(SimProperty::simple("core", "loyalty", 3));
+        let fid = reg.register(SimProperty::simple("core", "food_security", 2));
+
+        let lr = reg.column_range(lid);
+        let ll = &reg.property(lid).layout;
+        let fr = reg.column_range(fid);
+        let fl = &reg.property(fid).layout;
+
+        // loyalty intensity: local offset 2, global col 2
+        assert_eq!(lr.col_for_role(&SubFieldRole::Intensity, ll), Some(2));
+        // food_security intensity: local offset 2, global col 6+2=8
+        assert_eq!(fr.col_for_role(&SubFieldRole::Intensity, fl), Some(8));
     }
 
     #[test]
@@ -209,6 +216,6 @@ mod tests {
     fn duplicate_registration_panics() {
         let mut reg = DimensionRegistry::new();
         reg.register(SimProperty::simple("core", "loyalty", 3));
-        reg.register(SimProperty::simple("core", "loyalty", 3)); // panic
+        reg.register(SimProperty::simple("core", "loyalty", 3));
     }
 }
