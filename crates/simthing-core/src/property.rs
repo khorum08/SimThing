@@ -48,10 +48,25 @@ impl PropertyValue {
         v.iter().map(|x| x * x).sum::<f32>().sqrt()
     }
 
-    /// Integrate velocity into amount for `delta_time` days. Clamps to `valid_range`.
+    /// Integrate velocity into amount for `delta_time` days.
+    ///
+    /// Velocity is zeroed in the direction of a saturated boundary: a cohort pinned
+    /// at the loyalty floor cannot accumulate negative velocity while suppressed and
+    /// then resist recovery when conditions improve. That kind of inertia belongs in
+    /// the vector components (e.g. grievance_inertia), where it is observable to the
+    /// player and attributable by the AI. Hidden velocity debt is not the same thing.
     pub fn integrate(&mut self, delta_time: f32, valid_range: (f32, f32)) {
         let new_amount = self.data[AMOUNT_IDX] + self.data[VELOCITY_IDX] * delta_time;
         self.data[AMOUNT_IDX] = new_amount.clamp(valid_range.0, valid_range.1);
+
+        // If we hit the floor, don't let velocity keep going negative.
+        // If we hit the ceiling, don't let velocity keep going positive.
+        // Recovery-direction velocity is always permitted through.
+        if self.data[AMOUNT_IDX] <= valid_range.0 {
+            self.data[VELOCITY_IDX] = self.data[VELOCITY_IDX].max(0.0);
+        } else if self.data[AMOUNT_IDX] >= valid_range.1 {
+            self.data[VELOCITY_IDX] = self.data[VELOCITY_IDX].min(0.0);
+        }
     }
 
     /// Apply intensity build/decay based on current velocity magnitude.
@@ -336,5 +351,62 @@ impl std::hash::Hash for SimProperty {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.namespace.hash(state);
         self.name.hash(state);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn loyalty(amount: f32, velocity: f32) -> PropertyValue {
+        let mut pv = PropertyValue::zeroed(6); // stride 6: amount/vel/intensity + 3 vec
+        pv.data[AMOUNT_IDX]   = amount;
+        pv.data[VELOCITY_IDX] = velocity;
+        pv
+    }
+
+    /// Velocity pinned at floor must not go further negative; recovering velocity passes.
+    #[test]
+    fn velocity_clamped_at_floor() {
+        let range = (0.0_f32, 1.0_f32);
+
+        let mut suppressed = loyalty(0.0, -0.03);
+        suppressed.integrate(1.0, range);
+        // amount stays at floor
+        assert_eq!(suppressed.amount(), 0.0);
+        // velocity must not remain negative — it would resist recovery
+        assert!(suppressed.velocity() >= 0.0, "velocity was {}", suppressed.velocity());
+
+        let mut recovering = loyalty(0.0, 0.05);
+        recovering.integrate(1.0, range);
+        // amount climbs off the floor
+        assert!((recovering.amount() - 0.05).abs() < 1e-5);
+        // positive velocity is untouched
+        assert!(recovering.velocity() > 0.0);
+    }
+
+    /// Velocity pinned at ceiling must not go further positive; falling velocity passes.
+    #[test]
+    fn velocity_clamped_at_ceiling() {
+        let range = (0.0_f32, 1.0_f32);
+
+        let mut maxed = loyalty(1.0, 0.05);
+        maxed.integrate(1.0, range);
+        assert_eq!(maxed.amount(), 1.0);
+        assert!(maxed.velocity() <= 0.0, "velocity was {}", maxed.velocity());
+
+        let mut declining = loyalty(1.0, -0.02);
+        declining.integrate(1.0, range);
+        assert!((declining.amount() - 0.98).abs() < 1e-5);
+        assert!(declining.velocity() < 0.0);
+    }
+
+    /// Mid-range: velocity and amount both change normally, no clamping.
+    #[test]
+    fn integrate_mid_range_unchanged() {
+        let mut pv = loyalty(0.5, -0.03);
+        pv.integrate(1.0, (0.0, 1.0));
+        assert!((pv.amount() - 0.47).abs() < 1e-5);
+        assert!((pv.velocity() - (-0.03)).abs() < 1e-5);
     }
 }
