@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/simthing-core",
+]
+
+[workspace.package]
+version    = "0.1.0"
+edition    = "2021"
+authors    = ["khorum08"]
+
+[workspace.dependencies]
+serde       = { version = "1",   features = ["derive"] }
+serde_json  = { version = "1" }
+smallvec    = { version = "1",   features = ["serde"] }
+rayon       = { version = "1" }
+thiserror   = { version = "2" }
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+lto       = "thin"

@@ -1,0 +1,15 @@
+[package]
+name        = "simthing-core"
+description = "SimThing semantic foundation: types, registry, CPU reference evaluator"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+
+[dependencies]
+serde      = { workspace = true }
+serde_json = { workspace = true }
+smallvec   = { workspace = true }
+thiserror  = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
