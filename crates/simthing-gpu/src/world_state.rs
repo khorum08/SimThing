@@ -2,9 +2,13 @@
 //!
 //! Buffer layout follows agents.md:
 //!   values, previous_values, output_vectors  : [N_slots × N_dims]      (row-major)
-//!   local_transforms, ancestor_transforms    : [N_slots × N_dims × N_dims]
 //!   governed_pairs                           : [N_pairs × GovernedPair]      (property-level)
 //!   intensity_params                         : [N_int_params × IntensityParams]  (property-level)
+//!   overlay_deltas                           : [N_deltas × OverlayDelta]     (per-tick upload)
+//!   slot_delta_ranges                        : [N_slots × SlotDeltaRange]    (per-tick upload)
+//!
+//! Pass 3 reads overlay_deltas via slot_delta_ranges and applies each op
+//! iteratively per slot. See agents.md "Transform application — iterative on GPU".
 //!
 //! Threshold registry / event_candidates buffers are deferred to Pass 7 work.
 
@@ -116,6 +120,33 @@ pub fn build_intensity_params(registry: &DimensionRegistry) -> Vec<IntensityPara
     params
 }
 
+// ── OverlayDelta — one applied op, in evaluation order ──────────────────────
+
+pub const OP_MULTIPLY: u32 = 0;
+pub const OP_ADD:      u32 = 1;
+pub const OP_SET:      u32 = 2;
+
+/// A single column-targeted overlay op, ready to apply on the GPU.
+/// `col` is the global column index (already resolved through `col_for_role`
+/// during the CPU prep pass). `op_kind` is one of OP_MULTIPLY / OP_ADD / OP_SET.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+pub struct OverlayDelta {
+    pub col:     u32,
+    pub op_kind: u32,
+    pub value:   f32,
+    pub _pad:    u32,
+}
+
+/// Per-slot index range into the flat `overlay_deltas` buffer. A slot with
+/// no overlays has `length == 0` and Pass 3 is a no-op for it.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub struct SlotDeltaRange {
+    pub offset: u32,
+    pub length: u32,
+}
+
 // ── WorldGpuState ─────────────────────────────────────────────────────────────
 
 pub struct WorldGpuState {
@@ -124,6 +155,7 @@ pub struct WorldGpuState {
     pub n_dims:             u32,
     pub n_governed_pairs:   u32,
     pub n_intensity_params: u32,
+    pub n_overlay_deltas:   u32,
 
     /// Current property values, row-major: index = slot * n_dims + col.
     pub values:           Buffer,
@@ -132,11 +164,6 @@ pub struct WorldGpuState {
     /// Per-slot post-reduction output (Pass 4–6 destination).
     pub output_vectors:   Buffer,
 
-    /// Per-slot local transform matrices [n_slots × n_dims × n_dims].
-    pub local_transforms:    Buffer,
-    /// Per-slot composed ancestor transform matrices.
-    pub ancestor_transforms: Buffer,
-
     /// Property-level flat buffer of GovernedPair structs. Same pairs apply
     /// to every slot — Pass 1 dispatches `(n_pairs × n_slots)` threads.
     pub governed_pairs: Buffer,
@@ -144,6 +171,13 @@ pub struct WorldGpuState {
     /// Property-level flat buffer of IntensityParams structs. Pass 2 dispatches
     /// `(n_intensity_params × n_slots)` threads.
     pub intensity_params: Buffer,
+
+    /// Flat per-tick array of overlay deltas, ancestor stack then local, in
+    /// evaluation order. Grows as needed via `upload_overlay_deltas`.
+    pub overlay_deltas: Buffer,
+
+    /// Per-slot (offset, length) into `overlay_deltas`. Size: `n_slots × 8B`.
+    pub slot_delta_ranges: Buffer,
 }
 
 impl WorldGpuState {
@@ -156,7 +190,6 @@ impl WorldGpuState {
         let iparams = build_intensity_params(registry);
 
         let per_slot_per_col_bytes = (n_slots as u64) * (n_dims as u64) * 4;
-        let per_slot_per_mat_bytes = (n_slots as u64) * (n_dims as u64) * (n_dims as u64) * 4;
 
         let mk = |label: &'static str, size: u64| -> Buffer {
             ctx.device.create_buffer(&BufferDescriptor {
@@ -167,11 +200,20 @@ impl WorldGpuState {
             })
         };
 
-        let values              = mk("values",              per_slot_per_col_bytes);
-        let previous_values     = mk("previous_values",     per_slot_per_col_bytes);
-        let output_vectors      = mk("output_vectors",      per_slot_per_col_bytes);
-        let local_transforms    = mk("local_transforms",    per_slot_per_mat_bytes);
-        let ancestor_transforms = mk("ancestor_transforms", per_slot_per_mat_bytes);
+        let values          = mk("values",          per_slot_per_col_bytes);
+        let previous_values = mk("previous_values", per_slot_per_col_bytes);
+        let output_vectors  = mk("output_vectors",  per_slot_per_col_bytes);
+
+        // Pass 3 buffers — overlay_deltas grows on demand via upload_overlay_deltas.
+        // Initial size is one placeholder OverlayDelta so the binding is valid.
+        let overlay_deltas = mk(
+            "overlay_deltas",
+            std::mem::size_of::<OverlayDelta>() as u64,
+        );
+        let slot_delta_ranges = mk(
+            "slot_delta_ranges",
+            (n_slots as u64) * std::mem::size_of::<SlotDeltaRange>() as u64,
+        );
 
         // Always allocate at least one pair's worth so the buffer is bindable
         // even when no governed sub-fields exist. The shader iterates n_governed_pairs,
@@ -209,14 +251,53 @@ impl WorldGpuState {
             n_dims,
             n_governed_pairs,
             n_intensity_params,
+            n_overlay_deltas: 0,
             values,
             previous_values,
             output_vectors,
-            local_transforms,
-            ancestor_transforms,
             governed_pairs,
             intensity_params,
+            overlay_deltas,
+            slot_delta_ranges,
         }
+    }
+
+    /// Upload a fresh batch of per-tick overlay deltas + per-slot ranges.
+    /// Reallocates `overlay_deltas` if larger than the current buffer.
+    /// `ranges.len()` must equal `n_slots`.
+    pub fn upload_overlay_deltas(
+        &mut self,
+        deltas: &[OverlayDelta],
+        ranges: &[SlotDeltaRange],
+    ) {
+        assert_eq!(
+            ranges.len(),
+            self.n_slots as usize,
+            "ranges length {} != n_slots {}",
+            ranges.len(),
+            self.n_slots,
+        );
+
+        let needed_count = deltas.len().max(1);
+        let needed_bytes = (needed_count * std::mem::size_of::<OverlayDelta>()) as u64;
+        if needed_bytes > self.overlay_deltas.size() {
+            self.overlay_deltas = self.ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("overlay_deltas"),
+                size:  needed_bytes,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+
+        self.n_overlay_deltas = deltas.len() as u32;
+        if !deltas.is_empty() {
+            self.ctx.queue.write_buffer(&self.overlay_deltas, 0, bytemuck::cast_slice(deltas));
+        }
+        self.ctx.queue.write_buffer(
+            &self.slot_delta_ranges,
+            0,
+            bytemuck::cast_slice(ranges),
+        );
     }
 
     pub fn values_len(&self) -> usize {

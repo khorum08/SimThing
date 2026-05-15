@@ -15,6 +15,7 @@ pub use passes::Pipelines;
 pub use projection::project_tree_to_values;
 pub use slot::SlotAllocator;
 pub use world_state::{
-    build_governed_pairs, build_intensity_params, GovernedPair, IntensityParams, WorldGpuState,
-    CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED,
+    build_governed_pairs, build_intensity_params, GovernedPair, IntensityParams, OverlayDelta,
+    SlotDeltaRange, WorldGpuState, CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED, OP_ADD,
+    OP_MULTIPLY, OP_SET,
 };
