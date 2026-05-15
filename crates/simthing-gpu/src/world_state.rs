@@ -3,12 +3,13 @@
 //! Buffer layout follows agents.md:
 //!   values, previous_values, output_vectors  : [N_slots × N_dims]      (row-major)
 //!   local_transforms, ancestor_transforms    : [N_slots × N_dims × N_dims]
-//!   governed_pairs                           : [N_pairs × GovernedPair]  (property-level)
+//!   governed_pairs                           : [N_pairs × GovernedPair]      (property-level)
+//!   intensity_params                         : [N_int_params × IntensityParams]  (property-level)
 //!
 //! Threshold registry / event_candidates buffers are deferred to Pass 7 work.
 
 use bytemuck::{Pod, Zeroable};
-use simthing_core::{ClampBehavior, DimensionRegistry, SimPropertyId};
+use simthing_core::{ClampBehavior, DimensionRegistry, SimPropertyId, SubFieldRole};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Maintain,
            MapMode};
 
@@ -71,13 +72,58 @@ pub fn build_governed_pairs(registry: &DimensionRegistry) -> Vec<GovernedPair> {
     pairs
 }
 
+// ── IntensityParams — per-property coefficients for Pass 2 ───────────────────
+
+/// One entry per active property that has both `IntensityBehavior` and the
+/// required Velocity + Intensity sub-fields in its layout. Pass 2 dispatches
+/// one thread per `(slot, intensity_param_idx)`.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+pub struct IntensityParams {
+    pub velocity_col:        u32,
+    pub intensity_col:       u32,
+    pub velocity_threshold:  f32,
+    pub build_coefficient:   f32,
+    pub decay_coefficient:   f32,
+    /// Pad to 24 bytes so storage-buffer array stride is unambiguous and
+    /// matches the WGSL struct layout.
+    pub _pad:                u32,
+}
+
+/// Walk every active property in the registry and emit one IntensityParams per
+/// property whose `intensity_behavior` is `Some` AND whose layout contains both
+/// Velocity and Intensity roles. Mirrors the CPU `PropertyValue::update_intensity`
+/// short-circuit logic — a property missing either role is silently skipped.
+pub fn build_intensity_params(registry: &DimensionRegistry) -> Vec<IntensityParams> {
+    let mut params = Vec::new();
+    for (idx, prop) in registry.properties.iter().enumerate() {
+        let id = SimPropertyId(idx as u32);
+        if !registry.is_active(id) { continue; }
+        let Some(behavior) = &prop.intensity_behavior            else { continue };
+        let range  = registry.column_range(id);
+        let layout = &prop.layout;
+        let Some(velocity_col)  = range.col_for_role(&SubFieldRole::Velocity,  layout) else { continue };
+        let Some(intensity_col) = range.col_for_role(&SubFieldRole::Intensity, layout) else { continue };
+        params.push(IntensityParams {
+            velocity_col:       velocity_col  as u32,
+            intensity_col:      intensity_col as u32,
+            velocity_threshold: behavior.velocity_threshold,
+            build_coefficient:  behavior.build_coefficient,
+            decay_coefficient:  behavior.decay_coefficient,
+            _pad:               0,
+        });
+    }
+    params
+}
+
 // ── WorldGpuState ─────────────────────────────────────────────────────────────
 
 pub struct WorldGpuState {
-    pub ctx:              GpuContext,
-    pub n_slots:          u32,
-    pub n_dims:           u32,
-    pub n_governed_pairs: u32,
+    pub ctx:                GpuContext,
+    pub n_slots:            u32,
+    pub n_dims:             u32,
+    pub n_governed_pairs:   u32,
+    pub n_intensity_params: u32,
 
     /// Current property values, row-major: index = slot * n_dims + col.
     pub values:           Buffer,
@@ -94,6 +140,10 @@ pub struct WorldGpuState {
     /// Property-level flat buffer of GovernedPair structs. Same pairs apply
     /// to every slot — Pass 1 dispatches `(n_pairs × n_slots)` threads.
     pub governed_pairs: Buffer,
+
+    /// Property-level flat buffer of IntensityParams structs. Pass 2 dispatches
+    /// `(n_intensity_params × n_slots)` threads.
+    pub intensity_params: Buffer,
 }
 
 impl WorldGpuState {
@@ -103,6 +153,7 @@ impl WorldGpuState {
 
         let n_dims = registry.total_columns as u32;
         let pairs  = build_governed_pairs(registry);
+        let iparams = build_intensity_params(registry);
 
         let per_slot_per_col_bytes = (n_slots as u64) * (n_dims as u64) * 4;
         let per_slot_per_mat_bytes = (n_slots as u64) * (n_dims as u64) * (n_dims as u64) * 4;
@@ -138,17 +189,33 @@ impl WorldGpuState {
             ctx.queue.write_buffer(&governed_pairs, 0, bytemuck::cast_slice(&pairs));
         }
 
+        // intensity_params: same placeholder-allocation strategy as governed_pairs.
+        let n_intensity_params = iparams.len() as u32;
+        let iparams_bytes      = std::mem::size_of::<IntensityParams>() as u64
+                               * iparams.len().max(1) as u64;
+        let intensity_params = ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("intensity_params"),
+            size:  iparams_bytes,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        if !iparams.is_empty() {
+            ctx.queue.write_buffer(&intensity_params, 0, bytemuck::cast_slice(&iparams));
+        }
+
         Self {
             ctx,
             n_slots,
             n_dims,
             n_governed_pairs,
+            n_intensity_params,
             values,
             previous_values,
             output_vectors,
             local_transforms,
             ancestor_transforms,
             governed_pairs,
+            intensity_params,
         }
     }
 
@@ -183,6 +250,16 @@ impl WorldGpuState {
         }
         let pair_size = std::mem::size_of::<GovernedPair>();
         let used = pair_size * self.n_governed_pairs as usize;
+        bytemuck::cast_slice(&bytes[..used]).to_vec()
+    }
+
+    pub fn read_intensity_params(&self) -> Vec<IntensityParams> {
+        let bytes = self.read_buffer_bytes(&self.intensity_params);
+        if self.n_intensity_params == 0 {
+            return Vec::new();
+        }
+        let p_size = std::mem::size_of::<IntensityParams>();
+        let used = p_size * self.n_intensity_params as usize;
         bytemuck::cast_slice(&bytes[..used]).to_vec()
     }
 
@@ -223,10 +300,16 @@ impl WorldGpuState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simthing_core::{DimensionRegistry, SimProperty};
+    use simthing_core::{DimensionRegistry, IntensityBehavior, SimProperty};
 
     fn try_gpu() -> Option<GpuContext> {
         GpuContext::new_blocking().ok()
+    }
+
+    fn property_with_intensity(name: &str) -> SimProperty {
+        let mut p = SimProperty::simple("core", name, 0);
+        p.intensity_behavior = Some(IntensityBehavior::default());
+        p
     }
 
     #[test]
@@ -305,6 +388,50 @@ mod tests {
         let expected = build_governed_pairs(&reg);
         let state    = WorldGpuState::new(ctx, &reg, 1);
         let got      = state.read_governed_pairs();
+        assert_eq!(got, expected);
+    }
+
+    #[test]
+    fn intensity_params_only_for_properties_with_behavior() {
+        // Two properties: only the second has intensity_behavior set.
+        let mut reg = DimensionRegistry::new();
+        reg.register(SimProperty::simple("core", "plain",        0)); // no behavior → skipped
+        reg.register(property_with_intensity("loyalty"));             // has behavior → included
+
+        let params = build_intensity_params(&reg);
+        assert_eq!(params.len(), 1);
+
+        let p = params[0];
+        // "loyalty" is the second property: stride 3 each, so its range starts at col 3.
+        // Within the standard layout: amount=+0, velocity=+1, intensity=+2.
+        assert_eq!(p.velocity_col,  4);
+        assert_eq!(p.intensity_col, 5);
+        let default = IntensityBehavior::default();
+        assert_eq!(p.velocity_threshold, default.velocity_threshold);
+        assert_eq!(p.build_coefficient,  default.build_coefficient);
+        assert_eq!(p.decay_coefficient,  default.decay_coefficient);
+    }
+
+    #[test]
+    fn intensity_params_skip_tombstoned_properties() {
+        let mut reg = DimensionRegistry::new();
+        let id = reg.register(property_with_intensity("loyalty"));
+        assert_eq!(build_intensity_params(&reg).len(), 1);
+        reg.tombstone(id);
+        assert_eq!(build_intensity_params(&reg).len(), 0);
+    }
+
+    #[test]
+    fn intensity_params_upload_roundtrip() {
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+
+        let mut reg = DimensionRegistry::new();
+        reg.register(property_with_intensity("a"));
+        reg.register(property_with_intensity("b"));
+
+        let expected = build_intensity_params(&reg);
+        let state    = WorldGpuState::new(ctx, &reg, 1);
+        let got      = state.read_intensity_params();
         assert_eq!(got, expected);
     }
 

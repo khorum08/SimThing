@@ -5,10 +5,12 @@
 //! sequencer build on top of `WorldGpuState`.
 
 pub mod context;
+pub mod passes;
 pub mod world_state;
 
 pub use context::{GpuContext, GpuInitError};
+pub use passes::Pipelines;
 pub use world_state::{
-    build_governed_pairs, GovernedPair, WorldGpuState,
+    build_governed_pairs, build_intensity_params, GovernedPair, IntensityParams, WorldGpuState,
     CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED,
 };
