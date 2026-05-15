@@ -210,10 +210,12 @@ Reason: their shape depends on threshold registration (fission thresholds, veloc
 decay conditions) which doesn't exist yet. Adding empty placeholder buffers now produces
 untestable dead code. Add them when threshold registration API is designed.
 
-**`intensity_params` buffer not yet in `WorldGpuState`.**
-Reason: Pass 2 needs per-property `velocity_threshold`, `build_coefficient`, `decay_coefficient`
-from `IntensityBehavior`. This is a property-level buffer, not slot-level. Build it alongside
-the Pass 2 shader. Do not add it to `WorldGpuState` before the shader exists.
+**`intensity_params` buffer is in `WorldGpuState`.**
+Per-property entry: `(velocity_col, intensity_col, velocity_threshold, build_coefficient,
+decay_coefficient)` plus padding. Built from the registry by iterating active properties
+with `intensity_behavior: Some(_)` and both Velocity and Intensity sub-fields in their
+layout. Property-level (one entry per property), not slot-level. Pass 2 dispatches one
+thread per `(slot, intensity_param)`.
 
 ---
 
@@ -242,6 +244,105 @@ Con: marginally slower on FMA-capable hardware (negligible at this workload scal
 is a one-line auditable shader decision. Changing the CPU oracle to use `mul_add` silently
 alters the behavior of the authoritative reference path and may mask future precision bugs.
 
+**Outcome (Week 2):** Option B implemented and bit-exact verified on naga + DX12. The
+`velocity_integration_matches_cpu_oracle_fractional_dt` test stresses the case with
+`dt = 0.5` and non-power-of-2 inputs; `to_bits()` parity holds. If a future driver
+fuses despite the `let` bindings, that test will fail loudly and the fallback is
+`f32::mul_add` on the CPU side + WGSL `fma()` in the shader.
+
+---
+
+## Transform encoding — affine (decided)
+
+`TransformOp::{Add, Multiply, Set}` is not a linear operation. `Multiply(k)` on
+column `c` is linear (diagonal matrix entry `k`), but `Add(k)` is a translation
+(needs a bias term), and `Set(k)` is neither linear nor affine in the standard
+sense — it discards the input value entirely.
+
+The transform pipeline therefore uses **affine** representation, not pure
+N×N matrix multiplication. Each transform is a pair:
+
+```rust
+struct AffineTransform {
+    matrix: GpuMatrix,  // M : [N_dims × N_dims]
+    bias:   GpuVector,  // b : [N_dims]
+}
+```
+
+Applied as `output = M · x + b`. Composition is:
+
+```
+(M2, b2) ∘ (M1, b1)  =  (M2 · M1, M2 · b1 + b2)
+```
+
+This is what `EvaluationBatch::ancestor_xforms` / `ancestor_bias` accumulate as
+the tree walk descends from root to leaf.
+
+### Encoding `TransformOp` per column
+
+For a sub-field's column `c`, with previous value `x[c]`:
+
+| `TransformOp`        | `M[c, c]` | `b[c]` | Effect: `M[c,c] * x[c] + b[c]` |
+|----------------------|-----------|--------|--------------------------------|
+| identity (no-op)     | 1         | 0      | `x[c]`                         |
+| `Multiply(k)`        | `k`       | 0      | `k * x[c]`                     |
+| `Add(k)`             | 1         | `k`    | `x[c] + k`                     |
+| `Set(k)`             | 0         | `k`    | `k`                            |
+
+Off-diagonal `M` entries stay zero — `TransformOp` is per-column, so transforms
+never mix columns. (If a future op needs to mix columns — e.g., a vector
+rotation or a cross-property pressure — it writes off-diagonal entries
+directly and the same composition formula applies.)
+
+### Why not the alternatives
+
+- **Homogeneous coordinates** `(N+1)×(N+1)` with extended vector: single matmul,
+  bias in the last column. But WGSL indexing for `(N+1)`-sized matrices is
+  awkward, and at endgame scale the extra row+column costs ~6 MB per transform
+  matrix. Affine pays a smaller fixed cost (one `[N_slots × N_dims]` bias
+  buffer per transform, ~2.8 MB at endgame) with clearer arithmetic.
+- **Iterative (apply each overlay's delta sequentially on GPU)**: contradicts
+  the design doc's single-matmul Pass 3 promise, can't pre-compose the ancestor
+  stack on the CPU prep pass, and complicates the reduction passes.
+
+### `WorldGpuState` buffer additions (Pass 3 work)
+
+Two new buffers will be added alongside `local_transforms` and
+`ancestor_transforms`:
+
+```
+local_bias    : [N_slots × N_dims]
+ancestor_bias : [N_slots × N_dims]
+```
+
+Each pairs with its matrix buffer. Memory budget at endgame (64 dims, 11,520
+slots): adds ~5.6 MB total — negligible against the ~728 MB matrix budget.
+
+### Pass 3 dispatch
+
+```wgsl
+// For each slot, for each output column j:
+//   tmp[j] = sum over k of local_M[slot, j, k] * (
+//              sum over m of ancestor_M[slot, k, m] * base_x[slot, m]
+//              + ancestor_b[slot, k]
+//            ) + local_b[slot, j]
+//
+// Equivalent to applying composed affine (M_local · M_ancestor,
+// M_local · b_ancestor + b_local) to base_x. CPU prep pass composes once;
+// shader applies the composed affine.
+```
+
+Composition happens during CPU prep — one `EvaluationBatch` carries the
+already-composed `(M, b)` per slot for both ancestor and local. The shader
+just applies the composed affine.
+
+### Identity / no-overlay slot
+
+An overlay slot with no overlay applied holds `(M = I, b = 0)`. Affine
+composition with identity is a no-op: `I · x + 0 = x`. This preserves the
+"transient overlay slot costs zero CPU writes when unused" invariant from
+the design doc (§5: Instruction Overlays As Standing Registers).
+
 ---
 
 ## Week 2 scope (what to build next)
@@ -259,11 +360,17 @@ and produce double-application on the same tick.
 struct EvaluationBatch {
     base_vectors:    GpuMatrix,  // [N_slots × N_dims]
     ancestor_xforms: GpuMatrix,  // [N_slots × N_dims × N_dims]
+    ancestor_bias:   GpuBuffer,  // [N_slots × N_dims]            (affine bias)
     local_xforms:    GpuMatrix,  // [N_slots × N_dims × N_dims]
+    local_bias:      GpuBuffer,  // [N_slots × N_dims]            (affine bias)
     governed_pairs:  GpuBuffer,  // [(governed_col, governing_col, clamp_min, clamp_max, vel_max)]
     reduction_map:   GpuBuffer,
 }
 ```
+
+Note: each transform is the affine pair `(M, b)` — see the "Transform
+encoding — affine" section above. The CPU prep pass composes overlays into
+`(M, b)` before upload; Pass 3 applies the composed affine.
 
 `governed_pairs` is built from the `DimensionRegistry` during the CPU preparation pass by
 iterating all active properties, finding sub-fields where `governed_by` is `Some`, and calling
@@ -277,7 +384,7 @@ The pass ordering is therefore:
 Pass 0: snapshot
 Pass 1: velocity integration     ← reads governed_pairs, writes values[]
 Pass 2: intensity update          ← reads values[] (post-integration velocity)
-Pass 3: transform application     ← reads ancestor_xforms × local_xforms, writes output_vectors
+Pass 3: transform application     ← reads composed affine (M, b), writes output_vectors
 Pass 4–6: reduction
 Pass 7: threshold scan
 ```
@@ -292,11 +399,14 @@ Create `crates/simthing-gpu/` with:
    - `values`: `[slot * N_DIMS + col]` — current property values
    - `previous_values`: snapshot from Pass 0
    - `local_transforms`: per-slot transform matrices `[slot * N_DIMS * N_DIMS + ...]`
-   - `ancestor_transforms`: same layout
+   - `local_bias`: per-slot affine bias `[slot * N_DIMS + ...]` — pairs with `local_transforms`
+   - `ancestor_transforms`: same layout as `local_transforms`
+   - `ancestor_bias`: same layout as `local_bias`
    - `output_vectors`: per-slot output after reduction
    - `governed_pairs`: flat array of `(governed_col, governing_col, clamp_min, clamp_max, vel_max)`
-   - `threshold_registry`: flat array of threshold registrations
-   - `event_candidates`: sparse output from Pass 7
+   - `intensity_params`: flat array of per-property IntensityBehavior coefficients
+   - `threshold_registry`: flat array of threshold registrations *(deferred — see Pass 7)*
+   - `event_candidates`: sparse output from Pass 7 *(deferred)*
 
 2. **`EvaluationBatch` builder** — CPU preparation pass:
    - Walk the SimThing tree
