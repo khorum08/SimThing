@@ -33,21 +33,30 @@ SimThing/
 │   ├── invariants.md                  non-negotiable code rules (read this too)
 │   └── agents.md                      this file
 └── crates/
-    └── simthing-core/
+    ├── simthing-core/
+    │   └── src/
+    │       ├── lib.rs                 public re-exports
+    │       ├── ids.rs                 SimThingId, SimPropertyId, OverlayId
+    │       ├── property.rs            PropertyValue, PropertyLayout, SubFieldSpec,
+    │       │                          ClampBehavior, SubFieldRole, SimProperty,
+    │       │                          IntensityBehavior, DecayBehavior, fission types
+    │       ├── registry.rs            DimensionRegistry, PropertyColumnRange
+    │       ├── overlay.rs             Overlay, PropertyTransformDelta, TransformOp
+    │       ├── simthing.rs            SimThing, SimThingKind
+    │       └── evaluate.rs            Evaluator, TransformStack, FieldSnapshot (CPU oracle)
+    └── simthing-gpu/
         └── src/
             ├── lib.rs                 public re-exports
-            ├── ids.rs                 SimThingId, SimPropertyId, OverlayId
-            ├── property.rs            PropertyValue, PropertyLayout, SubFieldSpec,
-            │                          ClampBehavior, SubFieldRole, SimProperty,
-            │                          IntensityBehavior, DecayBehavior, fission types
-            ├── registry.rs            DimensionRegistry, PropertyColumnRange
-            ├── overlay.rs             Overlay, PropertyTransformDelta, TransformOp
-            ├── simthing.rs            SimThing, SimThingKind
-            └── evaluate.rs            Evaluator, TransformStack, FieldSnapshot (CPU oracle)
+            ├── context.rs             GpuContext — device/queue/adapter init
+            │                          new_blocking() and async new() entry points
+            │                          primary backends (DX12 on Windows)
+            └── world_state.rs         GovernedPair (#[repr(C)] Pod, 24 bytes)
+                                       build_governed_pairs(&DimensionRegistry)
+                                       WorldGpuState — owns GpuContext + 6 buffers
+                                       upload/download helpers
 ```
 
 Future crates (not yet created):
-- `simthing-gpu` — wgpu buffers, GPU passes, EvaluationBatch builder (Week 2)
 - `simthing-feeder` — feeder thread, work queue (Week 3)
 - `simthing-sim` — day boundary orchestration, fission/fusion execution (Week 3)
 
@@ -55,22 +64,56 @@ Future crates (not yet created):
 
 ## Current implementation state
 
-**All of Week 1 is complete, including the property generalization refactor.**
+**Week 1 complete. Week 2 in progress — WorldGpuState built, shaders not yet written.**
 
-What's in the code right now:
-- `PropertyLayout` is fully declarative: `Vec<SubFieldSpec>` with computed stride
-- `SubFieldSpec` has role, width, ClampBehavior, velocity_max, default, governed_by
-- All index arithmetic lives in `PropertyLayout::offset_of` and `PropertyColumnRange::col_for_role`
-- No global index constants (`AMOUNT_IDX` etc.) — they were removed
-- `PropertyValue::integrate` uses `governed_by` to know what evolves what
-- Velocity is pinned at saturated boundaries (see Invariant I3)
+### simthing-core (complete)
+- `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
+- `SubFieldSpec`: role, width, ClampBehavior, velocity_max, default, governed_by
+- All index arithmetic in `PropertyLayout::offset_of` and `PropertyColumnRange::col_for_role`
+- No global index constants — removed
+- `PropertyValue::integrate` — governed_by driven, velocity pinning at boundaries (I3)
 - `TransformStack::apply_to` and `PropertyTransformDelta::apply_to_data` take `&layout`
 - 14 tests passing, zero warnings
 
-The `evaluate.rs` `Evaluator` is the CPU reference oracle for Week 2 GPU verification.
+`evaluate.rs::Evaluator` is the CPU reference oracle. GPU output must match it to the float bit.
 
-**What is NOT yet built:**
-- GPU buffers and compute shaders (Week 2)
+### simthing-gpu (partial — WorldGpuState built, shaders pending)
+
+**`context.rs` — `GpuContext`:**
+- Device/queue/adapter init with `new_blocking()` and `async new()` entry points
+- Primary backends (DX12 on Windows), default limits, no special features
+
+**`world_state.rs`:**
+- `GovernedPair` — `#[repr(C)]` Pod struct, 24 bytes:
+  `(governed_col, governing_col, clamp_min, clamp_max, vel_max, clamp_kind)`
+  Encodes `ClampBehavior` as u32 tag with sentinel `±INFINITY` for Floored/Unbounded
+- `build_governed_pairs(&DimensionRegistry)` — walks active properties, skips tombstoned,
+  emits one pair per sub-field with `governed_by: Some(_)`. Column resolution via `col_for_role` only (I1)
+- `WorldGpuState` — owns `GpuContext` + 6 buffers:
+  - `values`, `previous_values`, `output_vectors`: `n_slots × n_dims × 4B` each
+  - `local_transforms`, `ancestor_transforms`: `n_slots × n_dims² × 4B` each
+  - `governed_pairs`: `n_pairs × 24B`
+  - All buffers: `STORAGE | COPY_SRC | COPY_DST`
+  - Empty governed-pair set allocates one zeroed slot (bindable even with zero properties)
+- Upload/download helpers: `write_values`, `read_values`, `read_previous_values`,
+  `read_governed_pairs`. Read uses staging buffer + `map_async` + `device.poll(Maintain::Wait)`
+
+**6 new tests, 20/20 total passing, zero warnings:**
+- `governed_pairs_from_standard_layout` — amount↔velocity pair encoding
+- `governed_pairs_skip_tombstoned_properties` — tombstoned props contribute zero pairs
+- `governed_pairs_offset_across_multiple_properties` — multi-property column offsets
+- `write_read_values_roundtrip` — values buffer bit-exact roundtrip
+- `governed_pairs_upload_roundtrip` — pair buffer bit-exact roundtrip
+- `empty_governed_pairs_buffer_is_bindable` — placeholder allocation works
+
+**Not yet built in simthing-gpu:**
+- `intensity_params` buffer (Pass 2 needs per-property velocity_threshold/build_coefficient/decay_coefficient)
+- `EvaluationBatch` builder (CPU tree-walk → local_transforms/ancestor_transforms upload)
+- WGSL shaders for Passes 0, 1, 2
+- CPU-oracle parity harness
+- `threshold_registry` + `event_candidates` (deferred to Pass 7)
+
+**Not yet built in any crate:**
 - Feeder thread (Week 3)
 - Day boundary protocol execution (Week 3)
 - Fission/fusion execution (Week 3)
@@ -85,7 +128,9 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 14 tests must pass with zero warnings before any commit. The test suite includes:
+All 20 tests must pass with zero warnings before any commit.
+
+**simthing-core tests:**
 - `registry::column_assignment_is_contiguous` — column layout correctness
 - `registry::col_for_role_multi_property` — global column arithmetic across properties
 - `evaluate::velocity_integration` — amount evolves at velocity * dt
@@ -95,6 +140,14 @@ All 14 tests must pass with zero warnings before any commit. The test suite incl
 - `property::velocity_clamped_at_floor/ceiling` — velocity pinning at boundaries
 - `property::integrate_mid_range_unchanged` — no spurious clamping mid-range
 - `property::custom_layout_ethics_axis` — designer-defined layout, drift governor, width-3 vector
+
+**simthing-gpu tests:**
+- `world_state::governed_pairs_from_standard_layout`
+- `world_state::governed_pairs_skip_tombstoned_properties`
+- `world_state::governed_pairs_offset_across_multiple_properties`
+- `world_state::write_read_values_roundtrip`
+- `world_state::governed_pairs_upload_roundtrip`
+- `world_state::empty_governed_pairs_buffer_is_bindable`
 
 The `custom_layout_ethics_axis` test is the proof that the generalization works beyond the
 standard amount/velocity/intensity layout. If you add a new layout capability, add a test in
@@ -145,6 +198,49 @@ Reason: eliminates the class of bugs where stored stride diverges from actual su
 **Velocity pinning at floor/ceiling, not velocity clamping.**
 Reason: velocity that pushes in the recovery direction must always be permitted through.
 Only velocity that would push further into the already-saturated direction is zeroed.
+
+**`GovernedPair` encodes `ClampBehavior` as a u32 tag with sentinel float values.**
+Reason: WGSL structs must be `#[repr(C)]` with fixed-size fields. `ClampBehavior` is a Rust
+enum which cannot be sent to the GPU directly. Encoding uses `clamp_kind: u32`
+(0=Bounded, 1=Floored, 2=Unbounded) with `±INFINITY` sentinels in `clamp_min`/`clamp_max`
+for the cases where bounds are not meaningful. The WGSL shader reads `clamp_kind` and branches.
+
+**`threshold_registry` and `event_candidates` deferred to Pass 7.**
+Reason: their shape depends on threshold registration (fission thresholds, velocity thresholds,
+decay conditions) which doesn't exist yet. Adding empty placeholder buffers now produces
+untestable dead code. Add them when threshold registration API is designed.
+
+**`intensity_params` buffer not yet in `WorldGpuState`.**
+Reason: Pass 2 needs per-property `velocity_threshold`, `build_coefficient`, `decay_coefficient`
+from `IntensityBehavior`. This is a property-level buffer, not slot-level. Build it alongside
+the Pass 2 shader. Do not add it to `WorldGpuState` before the shader exists.
+
+---
+
+## FMA divergence — decision required before writing Pass 1
+
+WGSL allows `mul`+`add` fusion into FMA (fused multiply-add) at the compiler's discretion.
+The Pass 1 integration expression `position + velocity * dt` may FMA-fuse on GPU but will
+not on the CPU oracle (which uses standard sequential `f32` arithmetic). On some hardware
+this produces 1-ULP divergence, which fails the `to_bits()` parity test (Invariant I8).
+
+**Choose one approach before writing the Pass 1 shader. Do not defer this.**
+
+**Option A — CPU uses `f32::mul_add` to match GPU FMA:**
+Update `PropertyValue::integrate` to use `f32::mul_add(velocity, dt, current_value)`.
+CPU oracle now produces FMA-equivalent results. GPU can fuse freely.
+Pro: GPU runs at full hardware speed.
+Con: CPU oracle no longer matches naive f32 arithmetic; may surprise future contributors.
+
+**Option B — WGSL shader explicitly prevents FMA fusion:**
+Write integration as two separate assignments: `let scaled = velocity * dt; position = position + scaled;`
+WGSL spec: intermediate `let` bindings prevent FMA. GPU matches naive CPU f32.
+Pro: CPU oracle needs no changes.
+Con: marginally slower on FMA-capable hardware (negligible at this workload scale).
+
+**Recommendation: Option B.** The performance difference is negligible. Explicit FMA prevention
+is a one-line auditable shader decision. Changing the CPU oracle to use `mul_add` silently
+alters the behavior of the authoritative reference path and may mask future precision bugs.
 
 ---
 
