@@ -242,6 +242,129 @@ Con: marginally slower on FMA-capable hardware (negligible at this workload scal
 is a one-line auditable shader decision. Changing the CPU oracle to use `mul_add` silently
 alters the behavior of the authoritative reference path and may mask future precision bugs.
 
+**Outcome (Week 2):** Option B implemented and bit-exact verified on naga + DX12.
+The `velocity_integration_matches_cpu_oracle_fractional_dt` test stresses `dt = 0.5`
+with non-power-of-2 inputs; `to_bits()` parity holds. If a future driver fuses despite
+the `let` bindings, that test fails loudly and the fallback is `f32::mul_add` on the
+CPU side + WGSL `fma()` in the shader.
+
+---
+
+## Transform application — iterative on GPU (decided)
+
+`TransformOp::{Add, Multiply, Set}` is not a closed group under N×N matrix
+multiplication. `Multiply(k)` is linear (diagonal entry `k`); `Add(k)` is a
+translation (needs a bias term); `Set(k)` discards the input. An earlier draft
+proposed affine `(M, b)` composition on the CPU prep pass with a single matmul
+on the GPU. **That approach was considered and rejected.** Pass 3 instead
+applies overlays **iteratively on the GPU**.
+
+### Why iterative
+
+- **Bit-exact parity is trivial.** Both `Evaluator::apply_to_data` and the
+  Pass 3 shader walk a list of `(col, op, value)` deltas in stack order and
+  apply each op the same way. No composition step means no rounding-order
+  divergence. The `Evaluator` stays as-is.
+- **Per-tick GPU work is proportional to active overlays, not `n_dims²`.**
+  At realistic overlay loads (~10–20 deltas per slot's stack), iterative is
+  ~10 ops/slot; the affine matmul would have been ~4096 ops/slot at `n_dims = 64`.
+- **GPU memory plummets.** The affine path would have needed two
+  `n_slots × n_dims²` matrix buffers and two `n_slots × n_dims` bias buffers
+  — ~370 MB at endgame scale. Iterative replaces all of that with a flat
+  delta array (~4 MB) and a per-slot range table (~90 KB).
+- **Cross-property / cross-column transforms still work.** A future op
+  variant that mixes columns (e.g. rotation, cross-property pressure) is a
+  new `TransformOp` variant the shader branches on. Same flexibility as
+  affine, less infrastructure.
+
+The trade-off is variable per-thread work — slots with longer overlay stacks
+run more iterations than others. At our scale this is fine; if it ever
+matters, batch by stack length or pad to a fixed max.
+
+### Data shape
+
+```rust
+#[repr(C)] #[derive(Pod, Zeroable)]
+struct OverlayDelta {
+    col:     u32,   // global column index (resolved via col_for_role at prep time)
+    op_kind: u32,   // 0=Multiply, 1=Add, 2=Set
+    value:   f32,
+    _pad:    u32,   // align stride to 16 bytes
+}
+
+#[repr(C)] #[derive(Pod, Zeroable)]
+struct SlotDeltaRange {
+    offset: u32,   // index into overlay_deltas
+    length: u32,   // number of deltas to apply for this slot
+}
+```
+
+`overlay_deltas` is the flat concatenation of every slot's ancestor + local
+stack, in evaluation order. `slot_delta_ranges` is indexed by `slot_idx`.
+A slot with no overlays has `length = 0` and the shader is a no-op for it.
+
+### CPU prep pass
+
+```
+fn build_overlay_deltas(root, registry, allocator) -> (Vec<OverlayDelta>, Vec<SlotDeltaRange>):
+    walk tree depth-first carrying an ancestor stack of overlays
+    for each node:
+        slot = allocator.slot_of(node.id)
+        record offset = deltas.len()
+        for overlay in ancestor_stack:
+            for (role, op) in overlay.transform.sub_field_deltas:
+                col = registry.col_for_role(overlay.transform.property_id, role)
+                deltas.push(OverlayDelta { col, op_kind, value })
+        for overlay in node.overlays:
+            ...same emission...
+        record length = deltas.len() - offset
+    return (deltas, ranges)
+```
+
+Mirrors `TransformStack` semantics exactly: ancestor overlays apply first, in
+push order; then local overlays in registration order.
+
+### Pass 3 shader (sketch)
+
+```wgsl
+@compute @workgroup_size(64)
+fn pass_3(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let slot = gid.x;
+    if (slot >= n_slots) { return; }
+    let range = slot_delta_ranges[slot];
+    let base = slot * n_dims;
+
+    for (var i = 0u; i < range.length; i = i + 1u) {
+        let d = overlay_deltas[range.offset + i];
+        let addr = base + d.col;
+        switch (d.op_kind) {
+            case 0u: { values[addr] = values[addr] * d.value; }    // Multiply
+            case 1u: { values[addr] = values[addr] + d.value; }    // Add
+            case 2u: { values[addr] = d.value; }                    // Set
+            default: { /* unreachable */ }
+        }
+    }
+}
+```
+
+One thread per slot. Each thread walks its slot's delta range and applies
+ops in place to `values`. Pass 3 reads from and writes to `values` —
+`output_vectors` is unused for now and is a Pass 4–6 (reduction) concern.
+
+### Buffer changes in `WorldGpuState`
+
+The earlier matrix-based plan reserved `local_transforms` /
+`ancestor_transforms` (each `n_slots × n_dims² × 4B`). Those buffers are
+**removed** in favor of:
+
+```
+overlay_deltas      : Vec<OverlayDelta>          uploaded each tick
+slot_delta_ranges   : Vec<SlotDeltaRange>        uploaded each tick
+```
+
+Both are `STORAGE | COPY_SRC | COPY_DST`. Empty cases get a placeholder
+allocation so the buffers remain bindable.
+
 ---
 
 ## Week 2 scope (what to build next)
@@ -257,13 +380,17 @@ and produce double-application on the same tick.
 
 ```rust
 struct EvaluationBatch {
-    base_vectors:    GpuMatrix,  // [N_slots × N_dims]
-    ancestor_xforms: GpuMatrix,  // [N_slots × N_dims × N_dims]
-    local_xforms:    GpuMatrix,  // [N_slots × N_dims × N_dims]
-    governed_pairs:  GpuBuffer,  // [(governed_col, governing_col, clamp_min, clamp_max, vel_max)]
-    reduction_map:   GpuBuffer,
+    base_vectors:      GpuMatrix,  // [N_slots × N_dims]
+    overlay_deltas:    GpuBuffer,  // flat [OverlayDelta], ancestor stack then local, in evaluation order
+    slot_delta_ranges: GpuBuffer,  // [N_slots × SlotDeltaRange { offset, length }]
+    governed_pairs:    GpuBuffer,  // [(governed_col, governing_col, clamp_min, clamp_max, vel_max)]
+    reduction_map:     GpuBuffer,
 }
 ```
+
+`overlay_deltas` and `slot_delta_ranges` replace the earlier matrix-based
+`ancestor_xforms` / `local_xforms` plan. See "Transform application —
+iterative on GPU" above for the reasoning.
 
 `governed_pairs` is built from the `DimensionRegistry` during the CPU preparation pass by
 iterating all active properties, finding sub-fields where `governed_by` is `Some`, and calling
@@ -277,7 +404,7 @@ The pass ordering is therefore:
 Pass 0: snapshot
 Pass 1: velocity integration     ← reads governed_pairs, writes values[]
 Pass 2: intensity update          ← reads values[] (post-integration velocity)
-Pass 3: transform application     ← reads ancestor_xforms × local_xforms, writes output_vectors
+Pass 3: transform application     ← reads overlay_deltas + slot_delta_ranges, writes values[] (in place)
 Pass 4–6: reduction
 Pass 7: threshold scan
 ```
@@ -291,12 +418,13 @@ Create `crates/simthing-gpu/` with:
 1. **`WorldGpuState`** — owns the wgpu device/queue and all GPU buffers:
    - `values`: `[slot * N_DIMS + col]` — current property values
    - `previous_values`: snapshot from Pass 0
-   - `local_transforms`: per-slot transform matrices `[slot * N_DIMS * N_DIMS + ...]`
-   - `ancestor_transforms`: same layout
-   - `output_vectors`: per-slot output after reduction
+   - `output_vectors`: per-slot output after reduction (Pass 4–6 destination)
    - `governed_pairs`: flat array of `(governed_col, governing_col, clamp_min, clamp_max, vel_max)`
-   - `threshold_registry`: flat array of threshold registrations
-   - `event_candidates`: sparse output from Pass 7
+   - `intensity_params`: flat array of per-property IntensityBehavior coefficients
+   - `overlay_deltas`: flat `[OverlayDelta]` — ancestor stack then local, in evaluation order
+   - `slot_delta_ranges`: `[N_slots × SlotDeltaRange]` — `(offset, length)` per slot
+   - `threshold_registry`: flat array of threshold registrations *(deferred — Pass 7)*
+   - `event_candidates`: sparse output from Pass 7 *(deferred)*
 
 2. **`EvaluationBatch` builder** — CPU preparation pass:
    - Walk the SimThing tree
