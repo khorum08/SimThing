@@ -1,0 +1,14 @@
+//! GPU foundation for SimThing.
+//!
+//! Owns the wgpu device/queue and every persistent GPU buffer the simulation
+//! reads or writes. CPU-side preparation, compute pipelines, and the GPU pass
+//! sequencer build on top of `WorldGpuState`.
+
+pub mod context;
+pub mod world_state;
+
+pub use context::{GpuContext, GpuInitError};
+pub use world_state::{
+    build_governed_pairs, GovernedPair, WorldGpuState,
+    CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED,
+};
