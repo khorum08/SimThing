@@ -150,6 +150,44 @@ Only velocity that would push further into the already-saturated direction is ze
 
 ## Week 2 scope (what to build next)
 
+### Architecture note — governed_pairs is a separate buffer, not part of the transform matrices
+
+Pass 1 (velocity integration) is a **pre-transform step**. It advances governed sub-fields
+*before* the transform matrices in Pass 3 are applied. Do not fold `governed_by` pairs into
+the transform matrix representation — that would conflict with Pass 3's transform application
+and produce double-application on the same tick.
+
+`EvaluationBatch` must carry a distinct `governed_pairs` buffer:
+
+```rust
+struct EvaluationBatch {
+    base_vectors:    GpuMatrix,  // [N_slots × N_dims]
+    ancestor_xforms: GpuMatrix,  // [N_slots × N_dims × N_dims]
+    local_xforms:    GpuMatrix,  // [N_slots × N_dims × N_dims]
+    governed_pairs:  GpuBuffer,  // [(governed_col, governing_col, clamp_min, clamp_max, vel_max)]
+    reduction_map:   GpuBuffer,
+}
+```
+
+`governed_pairs` is built from the `DimensionRegistry` during the CPU preparation pass by
+iterating all active properties, finding sub-fields where `governed_by` is `Some`, and calling
+`col_for_role` on both the governed and governing roles. It is a property-level buffer (same
+pairs apply to every slot) — not a per-slot buffer. Pass 1 dispatches one thread per pair,
+not one thread per (slot × pair); each thread handles all slots for its pair in a loop, or
+alternatively dispatch is `(N_pairs × N_slots)` with the pair index in the workgroup.
+
+The pass ordering is therefore:
+```
+Pass 0: snapshot
+Pass 1: velocity integration     ← reads governed_pairs, writes values[]
+Pass 2: intensity update          ← reads values[] (post-integration velocity)
+Pass 3: transform application     ← reads ancestor_xforms × local_xforms, writes output_vectors
+Pass 4–6: reduction
+Pass 7: threshold scan
+```
+
+---
+
 Add `wgpu = "22"` and `rayon = "1"` to `[workspace.dependencies]` in `Cargo.toml`.
 
 Create `crates/simthing-gpu/` with:
@@ -160,6 +198,7 @@ Create `crates/simthing-gpu/` with:
    - `local_transforms`: per-slot transform matrices `[slot * N_DIMS * N_DIMS + ...]`
    - `ancestor_transforms`: same layout
    - `output_vectors`: per-slot output after reduction
+   - `governed_pairs`: flat array of `(governed_col, governing_col, clamp_min, clamp_max, vel_max)`
    - `threshold_registry`: flat array of threshold registrations
    - `event_candidates`: sparse output from Pass 7
 
@@ -167,11 +206,12 @@ Create `crates/simthing-gpu/` with:
    - Walk the SimThing tree
    - For each node, compose ancestor transforms using `TransformStack`
    - Resolve `PropertyTransformDelta` sub-field roles → column indices via `col_for_role`
-   - Encode `governed_by` pairs as `(governed_col, governing_col, clamp_params)` for Pass 1
+   - Build `governed_pairs` from registry: for each active property, for each sub-field with
+     `governed_by: Some(role)`, emit `(col_for_role(governed), col_for_role(governing), clamp_params)`
    - Write to `WorldGpuState` buffers (delta upload only)
 
 3. **GPU Pass 1** (velocity integration) — WGSL compute shader:
-   - One thread per `(slot, governed_col)` pair
+   - One thread per `(slot, governed_pair_index)`
    - Read governing col value, apply velocity_max clamp, integrate, apply ClampBehavior
    - Write velocity pin if at boundary
 
