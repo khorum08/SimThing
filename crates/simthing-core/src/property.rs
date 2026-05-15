@@ -255,19 +255,15 @@ impl PropertyValue {
     ///      components (e.g. grievance_inertia), where it is observable.
     pub fn integrate(&mut self, layout: &PropertyLayout, delta_time: f32) {
         // Collect (governed_offset, governing_offset, spec) before mutating data.
-        let pairs: Vec<(usize, usize, SubFieldSpec)> = {
-            let mut out = Vec::new();
-            let mut offset = 0usize;
-            for sf in &layout.sub_fields {
-                if let Some(ref gov_role) = sf.governed_by {
-                    if let Some(gov_offset) = layout.offset_of(gov_role) {
-                        out.push((offset, gov_offset, sf.clone()));
-                    }
-                }
-                offset += sf.width;
-            }
-            out
-        };
+        // Both offsets go through layout.offset_of — no raw index arithmetic here. (I1)
+        let pairs: Vec<(usize, usize, SubFieldSpec)> = layout.sub_fields.iter()
+            .filter_map(|sf| {
+                let gov_role      = sf.governed_by.as_ref()?;
+                let governed_off  = layout.offset_of(&sf.role)?;
+                let governing_off = layout.offset_of(gov_role)?;
+                Some((governed_off, governing_off, sf.clone()))
+            })
+            .collect();
 
         for (governed_off, governing_off, spec) in pairs {
             let raw_vel = self.data[governing_off];
@@ -316,13 +312,13 @@ impl PropertyValue {
     /// Magnitude of the first Named sub-field in this value's layout.
     /// Returns 0.0 if no Named sub-fields are present.
     pub fn vector_magnitude(&self, layout: &PropertyLayout) -> f32 {
-        let mut offset = 0usize;
         for sf in &layout.sub_fields {
             if matches!(&sf.role, SubFieldRole::Named(_)) {
-                let slice = &self.data[offset..offset + sf.width];
+                // offset_of is the one place local index arithmetic lives. (I1)
+                let offset = layout.offset_of(&sf.role).unwrap();
+                let slice  = &self.data[offset..offset + sf.width];
                 return slice.iter().map(|x| x * x).sum::<f32>().sqrt();
             }
-            offset += sf.width;
         }
         0.0
     }
@@ -626,11 +622,16 @@ mod tests {
         assert_eq!(defaults, vec![0.0, 0.0, 1.0, 1.0, 1.0]);
 
         // axis_position governed by axis_drift
+        let pos_off   = layout.offset_of(&SubFieldRole::Named("axis_position".into())).unwrap();
+        let drift_off = layout.offset_of(&SubFieldRole::Named("axis_drift".into())).unwrap();
+        let bonus_off = layout.offset_of(&SubFieldRole::Named("ethics_bonus".into())).unwrap();
+        let bonus_w   = layout.width_of(&SubFieldRole::Named("ethics_bonus".into())).unwrap();
+
         let mut pv = PropertyValue::from_layout(&layout);
-        pv.data[1] = 0.2; // axis_drift = +0.2/day (drifting materialist)
+        pv.data[drift_off] = 0.2; // axis_drift = +0.2/day (drifting materialist)
         pv.integrate(&layout, 1.0);
-        assert!((pv.data[0] - 0.2).abs() < 1e-5, "position was {}", pv.data[0]);
-        assert!((pv.data[1] - 0.2).abs() < 1e-5, "drift unchanged");
-        assert_eq!(&pv.data[2..5], &[1.0, 1.0, 1.0], "bonus vector unchanged");
+        assert!((pv.data[pos_off]   - 0.2).abs() < 1e-5, "position was {}", pv.data[pos_off]);
+        assert!((pv.data[drift_off] - 0.2).abs() < 1e-5, "drift unchanged");
+        assert_eq!(&pv.data[bonus_off..bonus_off + bonus_w], &[1.0, 1.0, 1.0], "bonus vector unchanged");
     }
 }
