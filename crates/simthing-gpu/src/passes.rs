@@ -450,6 +450,118 @@ mod tests {
         }
     }
 
+    /// End-to-end parity: SlotAllocator + tree projection + Pass 0/1/2
+    /// against simthing-core's `Evaluator` on a multi-node tree with multiple
+    /// properties (one with intensity_behavior, one without). Verifies that
+    /// the GPU pipeline driven from a real SimThing tree matches the CPU
+    /// oracle bit-exactly across every (slot, property, column).
+    #[test]
+    fn tree_driven_pipeline_matches_evaluator() {
+        use crate::projection::project_tree_to_values;
+        use crate::slot::SlotAllocator;
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+
+        let mut reg = DimensionRegistry::new();
+        let loyalty_id = reg.register(loyalty_property());
+        let food_id    = reg.register(SimProperty::simple("core", "food_security", 0));
+
+        let l_layout = reg.property(loyalty_id).layout.clone();
+        let f_layout = reg.property(food_id).layout.clone();
+
+        let la = l_layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let lv = l_layout.offset_of(&SubFieldRole::Velocity).unwrap();
+        let li = l_layout.offset_of(&SubFieldRole::Intensity).unwrap();
+        let fa = f_layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let fv = f_layout.offset_of(&SubFieldRole::Velocity).unwrap();
+
+        // Build tree: World → 2 Locations → 2 Cohorts each. 7 nodes total.
+        // Each cohort carries loyalty; only first cohort of each location
+        // carries food_security too. Velocities span build/decay branches
+        // and one cohort starts at the loyalty floor (pinning case).
+        let cohort_specs: [(f32, f32, f32); 4] = [
+            // (loyalty_amount, loyalty_velocity, loyalty_intensity)
+            (0.40,  0.07,  0.20),  // mid-range, building intensity
+            (0.85, -0.001, 0.60),  // near ceiling, decay branch
+            (0.00, -0.05,  0.30),  // at floor, negative vel → pinning
+            (0.50,  0.09,  0.10),  // mid-range, building
+        ];
+
+        let mut world = SimThing::new(SimThingKind::World, 0);
+        let mut cohort_ids = Vec::new();
+        let mut loc_food_owners = Vec::new();
+        for loc_i in 0..2 {
+            let mut loc = SimThing::new(SimThingKind::Location, 0);
+            for cj in 0..2 {
+                let (la_v, lv_v, li_v) = cohort_specs[loc_i * 2 + cj];
+                let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+
+                let mut pv_l = PropertyValue::from_layout(&l_layout);
+                pv_l.data[la] = la_v;
+                pv_l.data[lv] = lv_v;
+                pv_l.data[li] = li_v;
+                cohort.add_property(loyalty_id, pv_l);
+
+                if cj == 0 {
+                    let mut pv_f = PropertyValue::from_layout(&f_layout);
+                    pv_f.data[fa] = 0.7 + 0.05 * (loc_i as f32);
+                    pv_f.data[fv] = 0.02;
+                    cohort.add_property(food_id, pv_f);
+                    loc_food_owners.push(cohort.id);
+                }
+                cohort_ids.push(cohort.id);
+                loc.add_child(cohort);
+            }
+            world.add_child(loc);
+        }
+
+        let dt = 0.5;
+
+        // CPU oracle.
+        let cpu_snap = Evaluator::new(&reg, dt).evaluate(&world, 1);
+
+        // Allocate slots for every node in the tree, then project.
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&world);
+
+        let state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
+        let n_dims = state.n_dims as usize;
+        let mut flat = vec![0.0f32; state.values_len()];
+        project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
+        state.write_values(&flat);
+
+        let pipelines = Pipelines::new(&state.ctx);
+        pipelines.run_snapshot(&state);
+        pipelines.run_velocity_integration(&state, dt);
+        pipelines.run_intensity_update(&state, dt);
+
+        let gpu_flat = state.read_values();
+
+        // Compare every CPU-snapshot entity's properties against the
+        // corresponding slot row in the GPU buffer.
+        for entity in &cpu_snap.entities {
+            let slot = alloc.slot_of(entity.id)
+                .unwrap_or_else(|| panic!("entity {:?} not allocated", entity.id));
+            let slot_base = slot as usize * n_dims;
+
+            for (prop_id, cpu_pv) in &entity.properties {
+                let range = reg.column_range(*prop_id);
+                let start = slot_base + range.start;
+                let end   = start + cpu_pv.data.len();
+                let gpu_data = &gpu_flat[start..end];
+                let label = format!(
+                    "entity {:?} slot {} prop {:?}",
+                    entity.id, slot, prop_id,
+                );
+                assert_bits_eq(&label, &cpu_pv.data, gpu_data);
+            }
+        }
+
+        // Pass 0 invariant: previous_values still matches the initial flat
+        // buffer (snapshot ran before integration mutated values).
+        let prev = state.read_previous_values();
+        assert_bits_eq("Pass 0 (tree) snapshot", &flat, &prev);
+    }
+
     /// Full Pass 0+1+2 pipeline matches simthing-core's `Evaluator` (the
     /// authoritative CPU oracle) on a single SimThing with one property
     /// and no overlays. Pass 0 result is verified via previous_values readback.
