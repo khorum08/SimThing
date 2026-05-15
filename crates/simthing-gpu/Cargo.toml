@@ -1,0 +1,12 @@
+[package]
+name    = "simthing-gpu"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+simthing-core = { path = "../simthing-core" }
+wgpu          = { workspace = true }
+bytemuck      = { workspace = true }
+pollster      = { workspace = true }
+thiserror     = { workspace = true }

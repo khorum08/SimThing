@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/simthing-core",
+    "crates/simthing-gpu",
 ]
 
 [workspace.package]
@@ -15,6 +16,9 @@ serde_json  = { version = "1" }
 smallvec    = { version = "1",   features = ["serde"] }
 rayon       = { version = "1" }
 thiserror   = { version = "2" }
+wgpu        = { version = "22" }
+bytemuck    = { version = "1",   features = ["derive"] }
+pollster    = { version = "0.3" }
 
 [profile.dev]
 opt-level = 1
