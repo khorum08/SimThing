@@ -304,6 +304,20 @@ impl WorldGpuState {
         (self.n_slots * self.n_dims) as usize
     }
 
+    /// Sum of every persistent GPU buffer's size in bytes. Used by VRAM budget
+    /// checks and as a sanity signal that buffer sizing matches the design
+    /// (agents.md "Transform application — iterative on GPU"). Excludes
+    /// short-lived staging buffers and the per-pass uniform buffer.
+    pub fn total_buffer_bytes(&self) -> u64 {
+        self.values.size()
+            + self.previous_values.size()
+            + self.output_vectors.size()
+            + self.governed_pairs.size()
+            + self.intensity_params.size()
+            + self.overlay_deltas.size()
+            + self.slot_delta_ranges.size()
+    }
+
     pub fn write_values(&self, data: &[f32]) {
         assert_eq!(data.len(), self.values_len(),
             "values write length {} != n_slots * n_dims = {}",
@@ -514,6 +528,39 @@ mod tests {
         let state    = WorldGpuState::new(ctx, &reg, 1);
         let got      = state.read_intensity_params();
         assert_eq!(got, expected);
+    }
+
+    /// Week 2 success criterion: VRAM usage at 100 SimThings, 8 dimensions must
+    /// be within 5% of the projected budget. Verifies that buffer sizing matches
+    /// the iterative-on-GPU buffer plan (no matrix buffers, deltas + ranges only).
+    #[test]
+    fn vram_budget_at_100_slots_8_dims() {
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+
+        // standard(5): stride = 3 + 5 = 8 → exactly 8 dims with one property.
+        let mut reg = DimensionRegistry::new();
+        reg.register(SimProperty::simple("core", "loyalty", 5));
+
+        let state = WorldGpuState::new(ctx, &reg, 100);
+        assert_eq!(state.n_dims,  8);
+        assert_eq!(state.n_slots, 100);
+
+        // Projected layout (bytes):
+        //   values + previous + output     = 3 × (100 × 8 × 4) = 9600
+        //   governed_pairs                 = 1 pair × 24       =   24
+        //   intensity_params (placeholder) = 1 × 24            =   24
+        //   overlay_deltas (placeholder)   = 1 × 16            =   16
+        //   slot_delta_ranges              = 100 × 8           =  800
+        let projected: u64 = 9600 + 24 + 24 + 16 + 800;
+        let actual = state.total_buffer_bytes();
+
+        let diff = actual as i64 - projected as i64;
+        let pct  = (diff.unsigned_abs() as f64) / (projected as f64);
+        assert!(
+            pct < 0.05,
+            "VRAM {actual} B diverges from projection {projected} B by {:.1}% (>5%)",
+            pct * 100.0,
+        );
     }
 
     #[test]
