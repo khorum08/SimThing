@@ -4,6 +4,26 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-16 — Pass 3 complete
+
+**Status:** Pass 3 (iterative overlay transform application) fully built, tested, and pushed on `claude/pass3-iterative-deltas`.
+
+**Landed in this session:**
+- `crates/simthing-gpu/src/overlay_prep.rs` — CPU prep pass. `build_overlay_deltas(root, registry, allocator)` walks the tree depth-first mirroring `Evaluator::evaluate_node` step 5: ancestor overlays first, local overlays after, only emitting deltas for properties the node actually has. 5 unit tests cover the empty case, single local overlay, ancestor-before-local ordering, absent-property skipping, and all three op kinds.
+- `crates/simthing-gpu/src/shaders/transform_application.wgsl` — Pass 3 shader. One thread per slot. Walks `slot_delta_ranges[slot]` and applies each `OverlayDelta` in place to `values[]` via `switch (op_kind)`. n_slots/n_dims derived from `arrayLength()` so no uniform buffer is needed.
+- `crates/simthing-gpu/src/passes.rs` — Pass 3 pipeline (3-binding layout: `values` rw, `overlay_deltas` r, `slot_delta_ranges` r). `run_apply_overlays()` early-returns when `n_overlay_deltas == 0`. New test `pass3_overlay_matches_evaluator` covers Multiply + Add + Set at ancestor and local levels; bit-exact parity confirmed.
+- `crates/simthing-gpu/src/lib.rs` — exports `build_overlay_deltas`.
+- 30/30 tests passing, zero warnings.
+
+**Branch state:** `claude/pass3-iterative-deltas` — ready to merge (PR #4 open).
+
+**What's left after merge:**
+- Passes 4–6 (reduction) and Pass 7 (threshold scan) — deferred. Threshold registration API doesn't exist yet.
+- `EvaluationBatch` struct (wrapper around WorldGpuState + per-tick upload) — Week 3 work.
+- Feeder thread + day boundary protocol — Week 3.
+
+---
+
 ## 2026-05-15 — Pass 3 scaffolding (rate-limited; not finished)
 
 **Status:** session interrupted by rate limits before Pass 3 shader work could land. Scaffolding (decision + types + buffers + upload API) is in this branch and ready to merge.
