@@ -364,6 +364,12 @@ mod tests {
         p
     }
 
+    fn loyalty_property_wide(extra: usize) -> SimProperty {
+        let mut p = SimProperty::simple("core", "loyalty", extra);
+        p.intensity_behavior = Some(IntensityBehavior::default());
+        p
+    }
+
     fn assert_bits_eq(label: &str, cpu: &[f32], gpu: &[f32]) {
         assert_eq!(cpu.len(), gpu.len(), "{label}: length mismatch");
         for (i, (a, b)) in cpu.iter().zip(gpu.iter()).enumerate() {
@@ -685,6 +691,102 @@ mod tests {
         let gpu_flat = state.read_values();
         let gpu_data = &gpu_flat[range.start..range.start + stride];
         assert_bits_eq("Evaluator vs GPU pipeline", cpu_data, gpu_data);
+    }
+
+    /// Week 2 success criterion: full Pass 0+1+2+3 pipeline at 1000 slots, 64 dims
+    /// must complete within the 50 ms day-boundary budget. Marked `#[ignore]`
+    /// because it's a wall-clock diagnostic, not a correctness test — run with
+    /// `cargo test -- --ignored pipeline_timing`.
+    ///
+    /// One property with a 61-wide named vector: stride = 3 + 61 = 64 dims.
+    /// Each of 1000 slots gets one local overlay (`Multiply` on amount), so the
+    /// overlay batch has 1000 deltas — a realistic per-tick churn.
+    #[test]
+    #[ignore]
+    fn pipeline_timing_1000_slots_64_dims() {
+        use crate::overlay_prep::build_overlay_deltas;
+        use crate::projection::project_tree_to_values;
+        use crate::slot::SlotAllocator;
+        use simthing_core::ids::OverlayId;
+        use simthing_core::overlay::{Overlay, OverlayKind, OverlayLifecycle, OverlaySource,
+                                     PropertyTransformDelta};
+        use simthing_core::property::TransformOp;
+        use std::time::Instant;
+
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+
+        let mut reg = DimensionRegistry::new();
+        // standard(61): stride = 3 amount/velocity/intensity + 61 named = 64.
+        let lid = reg.register(loyalty_property_wide(61));
+        let layout = reg.property(lid).layout.clone();
+        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+        let i_off = layout.offset_of(&SubFieldRole::Intensity).unwrap();
+
+        let mut world = SimThing::new(SimThingKind::World, 0);
+        for k in 0..1000u32 {
+            let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+            let mut pv = PropertyValue::from_layout(&layout);
+            pv.data[a_off] = 0.5 + (k as f32) * 1e-4;
+            pv.data[v_off] = 0.05;
+            pv.data[i_off] = 0.3;
+            cohort.add_property(lid, pv);
+            cohort.add_overlay(Overlay {
+                id:        OverlayId::new(),
+                kind:      OverlayKind::Policy,
+                source:    OverlaySource::Player,
+                affects:   vec![],
+                transform: PropertyTransformDelta {
+                    property_id:      lid,
+                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(0.99))],
+                },
+                lifecycle: OverlayLifecycle::Permanent,
+            });
+            world.add_child(cohort);
+        }
+
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&world);
+
+        let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
+        assert_eq!(state.n_dims,  64);
+        assert!(state.n_slots >= 1000);
+
+        let n_dims = state.n_dims as usize;
+        let mut flat = vec![0.0f32; state.values_len()];
+        project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
+        state.write_values(&flat);
+
+        let (od, ranges) = build_overlay_deltas(&world, &reg, &alloc);
+        state.upload_overlay_deltas(&od, &ranges);
+
+        let pipelines = Pipelines::new(&state.ctx);
+
+        // Warm-up tick — first dispatch incurs pipeline cache + driver init.
+        pipelines.run_snapshot(&state);
+        pipelines.run_velocity_integration(&state, 0.5);
+        pipelines.run_intensity_update(&state, 0.5);
+        pipelines.run_apply_overlays(&state);
+        let _ = state.read_values(); // force flush
+
+        let t0 = Instant::now();
+        pipelines.run_snapshot(&state);
+        pipelines.run_velocity_integration(&state, 0.5);
+        pipelines.run_intensity_update(&state, 0.5);
+        pipelines.run_apply_overlays(&state);
+        // Force the submitted work to complete before stopping the clock.
+        let _ = state.read_values();
+        let elapsed = t0.elapsed();
+
+        eprintln!(
+            "pipeline_timing_1000x64: {} slots × {} dims, {} overlay deltas → {:.2} ms",
+            state.n_slots, state.n_dims, od.len(), elapsed.as_secs_f64() * 1000.0,
+        );
+        assert!(
+            elapsed.as_millis() < 50,
+            "Pass 0+1+2+3 took {} ms, exceeds 50 ms day-boundary budget",
+            elapsed.as_millis(),
+        );
     }
 
     /// Pass 0+1+2+3 against Evaluator on a tree with overlays at multiple levels.

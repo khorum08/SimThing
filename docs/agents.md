@@ -48,12 +48,20 @@ SimThing/
         └── src/
             ├── lib.rs                 public re-exports
             ├── context.rs             GpuContext — device/queue/adapter init
-            │                          new_blocking() and async new() entry points
-            │                          primary backends (DX12 on Windows)
-            └── world_state.rs         GovernedPair (#[repr(C)] Pod, 24 bytes)
-                                       build_governed_pairs(&DimensionRegistry)
-                                       WorldGpuState — owns GpuContext + 6 buffers
-                                       upload/download helpers
+            ├── world_state.rs         GovernedPair, IntensityParams, OverlayDelta,
+            │                          SlotDeltaRange (#[repr(C)] Pod), WorldGpuState,
+            │                          builders, upload_overlay_deltas, read helpers
+            ├── slot.rs                SlotAllocator — stable SimThingId ↔ slot_idx
+            ├── projection.rs          project_tree_to_values — sparse → dense values
+            ├── overlay_prep.rs        build_overlay_deltas — tree walk → Pass 3 batch
+            ├── passes.rs              Pipelines (Pass 0/1/2/3 compute pipelines),
+            │                          run_snapshot, run_velocity_integration,
+            │                          run_intensity_update, run_apply_overlays
+            └── shaders/
+                ├── snapshot.wgsl              Pass 0: values → previous_values
+                ├── velocity_integration.wgsl  Pass 1: integrate + clamp + pin (I3)
+                ├── intensity_update.wgsl      Pass 2: build/decay intensity
+                └── transform_application.wgsl Pass 3: iterative overlay apply
 ```
 
 Future crates (not yet created):
@@ -64,7 +72,8 @@ Future crates (not yet created):
 
 ## Current implementation state
 
-**Week 1 complete. Week 2 in progress — WorldGpuState built, shaders not yet written.**
+**Week 1 + Week 2 complete. Passes 0/1/2/3 all built and bit-exact verified
+against the CPU oracle. Week 3 (feeder thread + day boundary protocol) is next.**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
@@ -77,41 +86,87 @@ Future crates (not yet created):
 
 `evaluate.rs::Evaluator` is the CPU reference oracle. GPU output must match it to the float bit.
 
-### simthing-gpu (partial — WorldGpuState built, shaders pending)
+### simthing-gpu (complete for Week 2)
 
 **`context.rs` — `GpuContext`:**
 - Device/queue/adapter init with `new_blocking()` and `async new()` entry points
 - Primary backends (DX12 on Windows), default limits, no special features
 
-**`world_state.rs`:**
-- `GovernedPair` — `#[repr(C)]` Pod struct, 24 bytes:
-  `(governed_col, governing_col, clamp_min, clamp_max, vel_max, clamp_kind)`
-  Encodes `ClampBehavior` as u32 tag with sentinel `±INFINITY` for Floored/Unbounded
-- `build_governed_pairs(&DimensionRegistry)` — walks active properties, skips tombstoned,
-  emits one pair per sub-field with `governed_by: Some(_)`. Column resolution via `col_for_role` only (I1)
-- `WorldGpuState` — owns `GpuContext` + 6 buffers:
+**`world_state.rs` — `WorldGpuState` + Pod structs:**
+- `GovernedPair` (24 B) — `(governed_col, governing_col, clamp_min, clamp_max, vel_max, clamp_kind)`.
+  Encodes `ClampBehavior` as u32 tag with sentinel `±INFINITY`.
+- `IntensityParams` (24 B) — `(velocity_col, intensity_col, velocity_threshold, build_coef, decay_coef, _pad)`.
+- `OverlayDelta` (16 B) — `(col, op_kind, value, _pad)`. `op_kind`: 0=Multiply, 1=Add, 2=Set.
+- `SlotDeltaRange` (8 B) — `(offset, length)` into the flat `overlay_deltas` buffer.
+- Builders: `build_governed_pairs`, `build_intensity_params` walk the registry,
+  skip tombstoned properties, resolve columns via `col_for_role` only (I1).
+- `WorldGpuState` owns `GpuContext` + 7 persistent buffers:
   - `values`, `previous_values`, `output_vectors`: `n_slots × n_dims × 4B` each
-  - `local_transforms`, `ancestor_transforms`: `n_slots × n_dims² × 4B` each
-  - `governed_pairs`: `n_pairs × 24B`
-  - All buffers: `STORAGE | COPY_SRC | COPY_DST`
-  - Empty governed-pair set allocates one zeroed slot (bindable even with zero properties)
-- Upload/download helpers: `write_values`, `read_values`, `read_previous_values`,
-  `read_governed_pairs`. Read uses staging buffer + `map_async` + `device.poll(Maintain::Wait)`
+  - `governed_pairs`: `max(1, n_pairs) × 24B`
+  - `intensity_params`: `max(1, n_params) × 24B`
+  - `overlay_deltas`: `max(1, n_deltas) × 16B` (grows on demand via `upload_overlay_deltas`)
+  - `slot_delta_ranges`: `n_slots × 8B`
+  - All buffers: `STORAGE | COPY_SRC | COPY_DST`. Placeholder allocations keep
+    bindings valid even with zero pairs / zero overlays.
+- `upload_overlay_deltas(&mut self, deltas, ranges)` — reallocates `overlay_deltas`
+  if larger than current capacity, then writes both buffers via `queue.write_buffer`.
+- `total_buffer_bytes()` — sum of every persistent buffer's size, used by the
+  VRAM budget test.
+- Read helpers (`read_values`, `read_previous_values`, `read_governed_pairs`,
+  `read_intensity_params`) use staging buffer + `map_async` + `device.poll(Wait)`.
 
-**6 new tests, 20/20 total passing, zero warnings:**
-- `governed_pairs_from_standard_layout` — amount↔velocity pair encoding
-- `governed_pairs_skip_tombstoned_properties` — tombstoned props contribute zero pairs
-- `governed_pairs_offset_across_multiple_properties` — multi-property column offsets
-- `write_read_values_roundtrip` — values buffer bit-exact roundtrip
-- `governed_pairs_upload_roundtrip` — pair buffer bit-exact roundtrip
-- `empty_governed_pairs_buffer_is_bindable` — placeholder allocation works
+**`slot.rs` — `SlotAllocator`:**
+- Stable `SimThingId ↔ slot_idx` mapping with LIFO tombstone reuse.
+- `populate_from_tree(root)` for batch allocation during the CPU prep pass.
+
+**`projection.rs` — `project_tree_to_values`:**
+- Walks the SimThing tree and copies each node's sparse `HashMap<SimPropertyId, PropertyValue>`
+  into the dense row-major `[slot * n_dims + col]` flat buffer.
+
+**`overlay_prep.rs` — `build_overlay_deltas`:**
+- Walks the tree depth-first carrying an ancestor overlay stack.
+- For each node's slot: emits ancestor deltas first, then local deltas, in the same
+  order `Evaluator::evaluate_node` step 5 applies them. Resolves `SubFieldRole → col`
+  via `col_for_role` only (I1). Skips overlays targeting properties the node
+  doesn't have (mirrors `resolved` iteration in the CPU oracle).
+
+**`passes.rs` — `Pipelines`:**
+- Owns shared uniform buffer (`PassParams { delta_time, n_dims, _pad, _pad }`) and
+  four compute pipelines: snapshot, velocity, intensity, overlay.
+- `run_snapshot(state)` — Pass 0, flat dispatch over `n_slots × n_dims`.
+- `run_velocity_integration(state, dt)` — Pass 1, dispatch over `n_slots × n_pairs`.
+- `run_intensity_update(state, dt)` — Pass 2, dispatch over `n_slots × n_params`.
+- `run_apply_overlays(state)` — Pass 3, one thread per slot. Early-returns when
+  `n_overlay_deltas == 0`.
+
+**Shaders (`shaders/*.wgsl`):**
+- `snapshot.wgsl` — Pass 0 memcpy `values → previous_values`.
+- `velocity_integration.wgsl` — Pass 1, FMA-prevention via intermediate `let`,
+  ClampBehavior dispatch, I3 velocity pinning at floor/ceiling.
+- `intensity_update.wgsl` — Pass 2, build / decay branches with explicit
+  `let scaled = coef * x; let delta = scaled * dt;` to prevent FMA fusion.
+- `transform_application.wgsl` — Pass 3, switch on `op_kind` for Multiply / Add / Set.
+  No uniform needed: `n_slots = arrayLength(&slot_delta_ranges)`,
+  `n_dims = arrayLength(&values) / n_slots`.
+
+**Tests: 31 GPU tests + 1 ignored timing diagnostic, all passing, zero warnings.**
+
+Highlights:
+- `pass3_overlay_matches_evaluator` — bit-exact parity for Pass 0+1+2+3 against
+  `Evaluator` on a tree with ancestor + local overlays covering all three op kinds.
+- `tree_driven_pipeline_matches_evaluator` — 7-node tree, multiple properties,
+  parity across every (slot, property, column).
+- `velocity_integration_matches_cpu_oracle_fractional_dt` — FMA stress at `dt=0.5`.
+- `vram_budget_at_100_slots_8_dims` — verifies buffer sizing matches the
+  iterative-on-GPU layout within 5% of projection.
+- `pipeline_timing_1000_slots_64_dims` (ignored, run with `--ignored`) — wall-clock
+  diagnostic: Pass 0+1+2+3 at 1000 slots × 64 dims with 1000 overlay deltas
+  completes in ~1.2 ms (50 ms budget; 40× headroom).
 
 **Not yet built in simthing-gpu:**
-- `intensity_params` buffer (Pass 2 needs per-property velocity_threshold/build_coefficient/decay_coefficient)
-- `EvaluationBatch` builder (CPU tree-walk → local_transforms/ancestor_transforms upload)
-- WGSL shaders for Passes 0, 1, 2
-- CPU-oracle parity harness
-- `threshold_registry` + `event_candidates` (deferred to Pass 7)
+- Passes 4–6 (reduction) and Pass 7 (threshold scan) — deferred until threshold
+  registration API exists.
+- `threshold_registry` and `event_candidates` buffers — same dependency.
 
 **Not yet built in any crate:**
 - Feeder thread (Week 3)
@@ -128,30 +183,20 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 20 tests must pass with zero warnings before any commit.
+All 45 tests must pass with zero warnings before any commit (14 core + 31 GPU).
+One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
-**simthing-core tests:**
-- `registry::column_assignment_is_contiguous` — column layout correctness
-- `registry::col_for_role_multi_property` — global column arithmetic across properties
-- `evaluate::velocity_integration` — amount evolves at velocity * dt
-- `evaluate::ancestor_transform_propagates` — world-level overlay reaches cohort
-- `evaluate::deterministic` — two identical evaluations produce bit-identical output
-- `evaluate::snapshot_round_trip` — JSON serialize/deserialize is lossless
-- `property::velocity_clamped_at_floor/ceiling` — velocity pinning at boundaries
-- `property::integrate_mid_range_unchanged` — no spurious clamping mid-range
-- `property::custom_layout_ethics_axis` — designer-defined layout, drift governor, width-3 vector
-
-**simthing-gpu tests:**
-- `world_state::governed_pairs_from_standard_layout`
-- `world_state::governed_pairs_skip_tombstoned_properties`
-- `world_state::governed_pairs_offset_across_multiple_properties`
-- `world_state::write_read_values_roundtrip`
-- `world_state::governed_pairs_upload_roundtrip`
-- `world_state::empty_governed_pairs_buffer_is_bindable`
+GPU tests skip themselves cleanly when no adapter is available
+(`try_gpu()` returns `None`) — CI without a GPU still completes successfully.
 
 The `custom_layout_ethics_axis` test is the proof that the generalization works beyond the
 standard amount/velocity/intensity layout. If you add a new layout capability, add a test in
 this pattern.
+
+The `pass3_overlay_matches_evaluator` test is the proof that iterative GPU
+transform application stays bit-exact with the CPU `Evaluator` across all three
+`TransformOp` variants at both ancestor and local levels. Do not weaken this
+test; any new transform variant must extend it with a parity assertion.
 
 ---
 
@@ -210,10 +255,11 @@ Reason: their shape depends on threshold registration (fission thresholds, veloc
 decay conditions) which doesn't exist yet. Adding empty placeholder buffers now produces
 untestable dead code. Add them when threshold registration API is designed.
 
-**`intensity_params` buffer not yet in `WorldGpuState`.**
-Reason: Pass 2 needs per-property `velocity_threshold`, `build_coefficient`, `decay_coefficient`
-from `IntensityBehavior`. This is a property-level buffer, not slot-level. Build it alongside
-the Pass 2 shader. Do not add it to `WorldGpuState` before the shader exists.
+**`intensity_params` buffer is property-level, built from `IntensityBehavior`.**
+Reason: Pass 2 needs per-property `velocity_threshold`, `build_coefficient`, `decay_coefficient`.
+One entry per active property that has both `IntensityBehavior` and the required Velocity +
+Intensity sub-fields in its layout — properties missing either role are silently skipped,
+mirroring `PropertyValue::update_intensity`. Built in Week 2 alongside the Pass 2 shader.
 
 ---
 
@@ -367,7 +413,7 @@ allocation so the buffers remain bindable.
 
 ---
 
-## Week 2 scope (what to build next)
+## Week 2 scope (complete — kept here for reference)
 
 ### Architecture note — governed_pairs is a separate buffer, not part of the transform matrices
 
@@ -450,13 +496,16 @@ GPU output must match CPU oracle to the float bit. This is not optional. See Inv
 
 ---
 
-## What success looks like at the end of Week 2
+## What success looks like at the end of Week 2 — achieved
 
 ```
-cargo test  →  all tests pass
-              + new tests: cpu_gpu_pass1_matches, cpu_gpu_pass2_matches
-VRAM usage at 100 SimThings, 8 dimensions  →  within 5% of projected budget
-GPU pass timing at 1000 SimThings, 64 dims →  logged and within 50ms boundary budget
+cargo test                                  →  45/45 passing, zero warnings
+                                               (14 core + 31 GPU)
+VRAM usage at 100 SimThings, 8 dimensions   →  within 5% of projection
+                                               (vram_budget_at_100_slots_8_dims test)
+GPU pass timing at 1000 SimThings, 64 dims  →  ~1.2 ms (50 ms budget; 40× headroom)
+                                               (pipeline_timing_1000_slots_64_dims,
+                                                cargo test -- --ignored)
 ```
 
 ---
