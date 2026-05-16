@@ -729,6 +729,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "simthing-feeder"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "simthing-core",
+ "simthing-gpu",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "simthing-gpu"
 version = "0.1.0"
 dependencies = [

@@ -4,6 +4,72 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-16 — simthing-feeder crate scaffolding
+
+**Status:** `simthing-feeder` crate landed on `claude/feeder-scaffolding`.
+Three sub-roles from design_v4.md §11 wired together with a full
+GPU-integration test proving the end-to-end chain.
+
+**Landed in this session:**
+- New workspace member `crates/simthing-feeder/` (added to root `Cargo.toml`).
+- `src/work.rs` — `PatchTransform`, `BoundaryRequest`, `FeederWork`,
+  `FeederSender` (Clone) + `FeederReceiver` over `std::sync::mpsc`,
+  `feeder_channel()`. `FeederError::Disconnected` surfaces dropped-receiver
+  failures cleanly. 5 unit tests.
+- `src/patcher.rs` — `TransformPatcher`. `drain(receiver, registry,
+  allocator, n_dims, &mut shadow) -> PatcherStats` resolves
+  `SubFieldRole → col` via `col_for_role` only (I1, I5), mutates the CPU
+  shadow, parks boundary requests, tracks dirty rows for coalesced GPU
+  uploads. 8 unit tests covering all op kinds, all skip paths, and
+  dirty-row bitmap semantics.
+- `src/dispatcher.rs` — `DispatchCoordinator`. Owns the CPU shadow.
+  `tick(...)` runs drain → dirty-row upload → Pass 0 → 1 → 2 → 3 → 7 →
+  event readback → counter advance. Upload-before-snapshot ordering
+  prevents phantom threshold crossings on patched cells.
+- `src/maintainer.rs` — `TreeMaintainer` scaffold. `execute(Vec<BoundaryRequest>)
+  -> MaintainerOutcome` classifies and counts each request; execution body
+  lands in `simthing-sim`. The dispatch surface is final.
+- `src/lib.rs` — public re-exports + topology diagram.
+- `tests/integration.rs` — 4 GPU-required end-to-end tests:
+  patch-through-channel-lands-on-GPU, day-boundary-fires-on-ticks-per-day,
+  boundary-requests-reach-maintainer, many-patches-coalesce-to-one-upload.
+- `docs/agents.md` updated: file layout includes the new crate, current
+  state reflects Week 3 progress, "Not yet built" focuses on `simthing-sim`,
+  test count bumped to 71.
+
+**71/71 tests passing (14 core + 36 GPU + 17 feeder unit + 4 feeder integration),
+zero warnings.**
+
+**Design decisions made this session:**
+- *CPU shadow over direct GPU writes.* The Patcher mutates a `Vec<f32>`,
+  not GPU memory. Read-modify-write for `Multiply`/`Add` would otherwise
+  need a per-patch GPU readback. The shadow also enables coalesced
+  uploads (10 patches to the same row → 1 `queue.write_buffer`).
+- *Upload before Pass 0.* Pass 0 snapshots `values → previous_values`.
+  Uploading patches after the snapshot would make every threshold
+  registered on a patched cell fire spuriously. Uploading first absorbs
+  the patch into the previous-state reference frame, matching how the
+  CPU evaluator already treats continuous overlays.
+- *Tree Maintainer is a scaffold, not a stub.* The dispatch surface,
+  outcome type, and request-routing are real and tested. Only the
+  mutation execution body is deferred to `simthing-sim`. This keeps
+  Invariant I7 ("structural mutations only at the day boundary")
+  enforceable today: the Maintainer never sees the channel directly, and
+  the within-day Patcher physically cannot touch the tree.
+- *No OS threads in this crate.* The struct names match the design doc's
+  "feeder thread architecture" terminology, but `tick()` is a method, not
+  a loop. Thread placement is a top-level policy decision the eventual
+  `simthing-sim` driver makes.
+
+**Branch state:** `claude/feeder-scaffolding` — ready to push and PR.
+
+**Next session:** `simthing-sim` crate. Day-boundary protocol orchestration
+(design_v4.md §10), Tree Maintainer execution body, fission/fusion. The
+`build_overlay_deltas` + `upload_overlay_deltas` + `upload_thresholds`
+sequence at boundary time also lives there.
+
+---
+
 ## 2026-05-16 — Week 3 begins: Pass 7 (threshold scan)
 
 **Status:** Pass 7 fully built and parity-tested on `claude/week3-threshold-scan`.

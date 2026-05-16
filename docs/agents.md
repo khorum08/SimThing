@@ -44,39 +44,53 @@ SimThing/
     │       ├── overlay.rs             Overlay, PropertyTransformDelta, TransformOp
     │       ├── simthing.rs            SimThing, SimThingKind
     │       └── evaluate.rs            Evaluator, TransformStack, FieldSnapshot (CPU oracle)
-    └── simthing-gpu/
+    ├── simthing-gpu/
+    │   └── src/
+    │       ├── lib.rs                 public re-exports
+    │       ├── context.rs             GpuContext — device/queue/adapter init
+    │       ├── world_state.rs         GovernedPair, IntensityParams, OverlayDelta,
+    │       │                          SlotDeltaRange (#[repr(C)] Pod), WorldGpuState,
+    │       │                          builders, upload_overlay_deltas, read helpers
+    │       ├── slot.rs                SlotAllocator — stable SimThingId ↔ slot_idx
+    │       ├── projection.rs          project_tree_to_values — sparse → dense values
+    │       ├── overlay_prep.rs        build_overlay_deltas — tree walk → Pass 3 batch
+    │       ├── passes.rs              Pipelines (Pass 0/1/2/3 compute pipelines),
+    │       │                          run_snapshot, run_velocity_integration,
+    │       │                          run_intensity_update, run_apply_overlays
+    │       └── shaders/
+    │           ├── snapshot.wgsl              Pass 0: values → previous_values
+    │           ├── velocity_integration.wgsl  Pass 1: integrate + clamp + pin (I3)
+    │           ├── intensity_update.wgsl      Pass 2: build/decay intensity
+    │           ├── transform_application.wgsl Pass 3: iterative overlay apply
+    │           └── threshold_scan.wgsl        Pass 7: sparse crossing events
+    └── simthing-feeder/
         └── src/
-            ├── lib.rs                 public re-exports
-            ├── context.rs             GpuContext — device/queue/adapter init
-            ├── world_state.rs         GovernedPair, IntensityParams, OverlayDelta,
-            │                          SlotDeltaRange (#[repr(C)] Pod), WorldGpuState,
-            │                          builders, upload_overlay_deltas, read helpers
-            ├── slot.rs                SlotAllocator — stable SimThingId ↔ slot_idx
-            ├── projection.rs          project_tree_to_values — sparse → dense values
-            ├── overlay_prep.rs        build_overlay_deltas — tree walk → Pass 3 batch
-            ├── passes.rs              Pipelines (Pass 0/1/2/3 compute pipelines),
-            │                          run_snapshot, run_velocity_integration,
-            │                          run_intensity_update, run_apply_overlays
-            └── shaders/
-                ├── snapshot.wgsl              Pass 0: values → previous_values
-                ├── velocity_integration.wgsl  Pass 1: integrate + clamp + pin (I3)
-                ├── intensity_update.wgsl      Pass 2: build/decay intensity
-                ├── transform_application.wgsl Pass 3: iterative overlay apply
-                └── threshold_scan.wgsl        Pass 7: sparse crossing events
+            ├── lib.rs                 public re-exports + topology doc
+            ├── work.rs                PatchTransform, BoundaryRequest, FeederWork,
+            │                          FeederSender (Clone) + FeederReceiver (mpsc)
+            ├── patcher.rs             TransformPatcher — drains queue, resolves
+            │                          SubFieldRole → col via registry, mutates CPU
+            │                          shadow, tracks dirty rows + boundary parking
+            ├── dispatcher.rs          DispatchCoordinator — uploads dirty rows,
+            │                          sequences Pass 0/1/2/3/7, advances tick/day,
+            │                          surfaces threshold events
+            └── maintainer.rs          TreeMaintainer — boundary-only structural ops
+                                       (scaffold; execution lands in simthing-sim)
 ```
 
 Future crates (not yet created):
-- `simthing-feeder` — feeder thread, work queue (Week 3)
 - `simthing-sim` — day boundary orchestration, fission/fusion execution (Week 3)
 
 ---
 
 ## Current implementation state
 
-**Week 1 + Week 2 complete. Week 3 in progress — Pass 7 (threshold scan) landed.
-Passes 0/1/2/3/7 are all built and parity-tested against CPU oracles.
-Passes 4–6 (reduction) remain deferred until the presentation layer needs them.
-Next Week 3 work: simthing-feeder crate, day boundary protocol, fission/fusion.**
+**Week 1 + Week 2 complete. Week 3 in progress — Pass 7 (threshold scan) landed,
+plus the `simthing-feeder` crate (Transform Patcher + Dispatch Coordinator
++ Tree Maintainer scaffold). Passes 0/1/2/3/7 are all built and parity-tested
+against CPU oracles. Passes 4–6 (reduction) remain deferred until the
+presentation layer needs them. Next Week 3 work: `simthing-sim` crate (day
+boundary protocol orchestration, Tree Maintainer execution, fission/fusion).**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
@@ -197,10 +211,78 @@ Highlights:
   `FissionThreshold` / `DecayBehavior`) — lives in the day-boundary protocol
   code, which is Week 3 work in the upcoming `simthing-sim` crate.
 
+### simthing-feeder (Week 3, scaffolding complete)
+
+**`work.rs` — work queue:**
+- `PatchTransform { target: SimThingId, delta: PropertyTransformDelta }` —
+  the within-day continuous mutation work item. Carries `SubFieldRole`s,
+  not column indices (I5).
+- `BoundaryRequest` — enum covering `AddChild` / `Remove` / `Reparent` /
+  `AttachOverlay` / `AddDimension`. Boundary-only per I7; the channel
+  routes these through to the Tree Maintainer at boundary time.
+- `FeederWork = Patch | Boundary`, transported over `std::sync::mpsc`.
+- `FeederSender` is `Clone` (multiple producers); `FeederReceiver` is
+  single-consumer and drained non-blockingly by `drain_now()`.
+
+**`patcher.rs` — TransformPatcher:**
+- `drain(receiver, registry, allocator, n_dims, &mut shadow) -> PatcherStats`:
+  pulls every queued item; resolves `(target, role) → (slot, col)` via
+  `col_for_role` only; applies `TransformOp::{Multiply, Add, Set}` to the
+  CPU shadow. Boundary requests get parked on `pending_boundary`.
+- `PatcherStats` counts applied writes, missing targets, inactive
+  properties, unresolved roles, and parked boundary requests — diagnostic
+  signal without crashing the sim when gameplay code drifts from registry.
+- `take_dirty_rows() -> Vec<u32>` is the bandwidth optimization: 10
+  patches to slot 0 produce 1 GPU upload.
+
+**`dispatcher.rs` — DispatchCoordinator:**
+- Owns the row-major `[n_slots × n_dims]` CPU shadow of `values`.
+- `tick(receiver, patcher, registry, allocator, pipelines, state, dt) -> TickOutcome`
+  runs: drain → upload dirty rows → Pass 0 → Pass 1 → Pass 2 → Pass 3 → Pass 7 →
+  readback events → advance counters. `boundary_reached = true` on the tick
+  that rolls `tick_in_day` past `ticks_per_day`.
+- Upload-before-snapshot ordering is intentional: Pass 0 captures
+  `previous_values` *after* the patch is in place, so no phantom threshold
+  crossings get attributed to upload work.
+- `upload_full_shadow(state)` is the one-shot path for seeding GPU values
+  with the projection of an initial SimThing tree.
+
+**`maintainer.rs` — TreeMaintainer (scaffold):**
+- `execute(Vec<BoundaryRequest>) -> MaintainerOutcome` — classifies each
+  request, increments the relevant counter, marks it `deferred`. Mutation
+  execution (tree edits, slot alloc/dealloc, `AddDimension` registry
+  expansion, GPU buffer resizing) lands in `simthing-sim`.
+- The dispatch surface is final; only the body of `execute` will change.
+
+**Tests: 17 unit + 4 GPU integration tests, all passing, zero warnings.**
+
+Integration highlights:
+- `patch_through_channel_lands_on_gpu_after_one_tick` — full chain:
+  Sender → Patcher → shadow → dirty-row upload → Pass 0/1/2/3/7 →
+  `read_values` shows the patch landed.
+- `day_boundary_fires_on_ticks_per_day` — `ticks_per_day=4`, only tick 4
+  signals `boundary_reached=true` and bumps `day_index`.
+- `boundary_requests_reach_tree_maintainer` — boundary requests survive
+  the channel + Patcher park + boundary handoff and the Maintainer's
+  classifier counts them correctly.
+- `many_patches_same_row_coalesce_to_one_upload` — 10 patches → 10
+  applied writes → 1 dirty-row upload.
+
+**Not yet built in simthing-feeder:**
+- OS-thread spawning. The structs are designed for a single feeder
+  thread but `tick()` is a method, not a loop. The eventual driver in
+  `simthing-sim` decides cadence and thread placement.
+- `build_overlay_deltas` integration. Today the caller uploads Pass 3
+  deltas separately at day boundaries; the dispatcher doesn't own that.
+- Pass 7 threshold registration helpers (per-property derivation from
+  `FissionThreshold` / `DecayBehavior`) — boundary-protocol work, also
+  destined for `simthing-sim`.
+
 **Not yet built in any crate:**
-- Feeder thread (Week 3)
-- Day boundary protocol execution (Week 3)
-- Fission/fusion execution (Week 3)
+- `simthing-sim` crate itself (Week 3)
+- Day boundary protocol execution — overlay lifecycle, property expiry,
+  fission/fusion (Week 3)
+- Tree Maintainer execution body (Week 3, in `simthing-sim`)
 - Player input handling (Week 4)
 
 ---
@@ -212,7 +294,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 50 tests must pass with zero warnings before any commit (14 core + 36 GPU).
+All 71 tests must pass with zero warnings before any commit
+(14 core + 36 GPU + 17 feeder unit + 4 feeder integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

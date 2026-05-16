@@ -1,0 +1,231 @@
+//! Dispatch Coordinator — sequences GPU passes and reads threshold events.
+//!
+//! Per design_v4.md §11 the Coordinator is one of three feeder sub-threads,
+//! the one that "sequences GPU passes 0–7, reads threshold candidates,
+//! signals boundary completion." This module is scaffolding for that role:
+//! it does not yet spawn its own thread — the eventual top-level driver in
+//! `simthing-sim` will drive `tick()` on whatever cadence the time-control
+//! UI dictates.
+//!
+//! ## What a tick does (in order)
+//!
+//! 1. **Drain the work queue.** Patches mutate the CPU shadow; boundary
+//!    requests get parked on the Patcher.
+//! 2. **Upload dirty rows.** One `queue.write_buffer` per slot whose shadow
+//!    row changed since the last tick.
+//! 3. **Run the GPU passes.** Pass 0 (snapshot) → Pass 1 (velocity) →
+//!    Pass 2 (intensity) → Pass 3 (apply overlays) → Pass 7 (threshold scan).
+//!    Passes 4–6 (reduction) are deferred until the presentation layer
+//!    needs them; per design_v4.md §9 they're orthogonal to the day-boundary
+//!    protocol.
+//! 4. **Read events.** Pull the atomic event counter and the sparse
+//!    `event_candidates` buffer back to the CPU. Per design_v4.md §12 this
+//!    is at most ~3 KB even at endgame scale.
+//! 5. **Advance counters.** Bump `tick_in_day`; on rollover, set
+//!    `boundary_reached = true` in the outcome. The caller (eventually
+//!    `simthing-sim`'s day-boundary protocol) handles the §10 sequence.
+//!
+//! ## Why uploads happen before the snapshot, not after
+//!
+//! Pass 0 copies `values → previous_values`. Velocity / intensity / threshold
+//! all compare current to previous. If we uploaded patches *after* the
+//! snapshot, every threshold registered on a patched cell would fire on the
+//! next tick — a phantom crossing caused by the upload, not by simulation.
+//! Uploading first means the patch is absorbed into the previous-state
+//! reference frame, exactly the way the CPU evaluator already treats
+//! continuous overlays.
+//!
+//! ## What's still TODO (Week 3+)
+//!
+//! - Pass 3 overlay-deltas upload is the caller's responsibility today.
+//!   The Coordinator does *not* call `build_overlay_deltas` itself because
+//!   that requires the live SimThing tree, which is owned by the Tree
+//!   Maintainer's domain. The eventual driver will call
+//!   `build_overlay_deltas` + `state.upload_overlay_deltas` once per day
+//!   boundary (when the tree changes shape) and reuse that buffer across
+//!   ticks until the next boundary.
+//! - Threshold registry uploads (`state.upload_thresholds`) — same pattern.
+//!   Day-boundary work; this module does not own it.
+
+use crate::patcher::{PatcherStats, TransformPatcher};
+use crate::work::FeederReceiver;
+use simthing_core::DimensionRegistry;
+use simthing_gpu::{Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
+
+// ── Outcome ───────────────────────────────────────────────────────────────────
+
+/// One tick's worth of observable result. Stats are diagnostic;
+/// `events` is the authoritative crossings list the simulation must act on.
+#[derive(Debug, Default)]
+pub struct TickOutcome {
+    /// Patcher counters (applied writes, missing targets, etc.).
+    pub patcher_stats:     PatcherStats,
+    /// Slots whose CPU shadow rows were uploaded to the GPU this tick.
+    pub uploaded_rows:     u32,
+    /// Threshold crossings detected by Pass 7. Order is GPU-nondeterministic
+    /// (atomicAdd race). Callers that need a canonical order must sort.
+    pub events:            Vec<ThresholdEvent>,
+    /// True iff this tick's completion rolled the day counter over. The
+    /// caller is responsible for executing the §10 boundary sequence
+    /// (overlay lifecycle, structural mutations, etc.) before the next tick.
+    pub boundary_reached:  bool,
+    /// Monotonic tick id post-increment. Useful for log correlation.
+    pub tick_index:        u64,
+    /// Monotonic day id; bumps once per `ticks_per_day` ticks.
+    pub day_index:         u64,
+}
+
+// ── Coordinator ───────────────────────────────────────────────────────────────
+
+/// Sequences the per-tick GPU work and maintains the CPU shadow of `values`.
+/// Stateless w.r.t. simulation semantics — just orchestration + the shadow.
+pub struct DispatchCoordinator {
+    /// Row-major `[n_slots × n_dims]` shadow of the GPU `values` buffer.
+    /// The Patcher mutates this; `tick()` uploads dirty rows to GPU.
+    pub shadow:    Vec<f32>,
+    n_slots:       u32,
+    n_dims:        u32,
+    ticks_per_day: u32,
+    tick_in_day:   u32,
+    tick_counter:  u64,
+    day_counter:   u64,
+}
+
+impl DispatchCoordinator {
+    /// `shadow` is initialized to zeros. Callers that want to start with a
+    /// non-trivial state should write into `coord.shadow` before the first
+    /// tick — those rows will be uploaded as part of the first dirty-row
+    /// flush (after the caller calls `mark_all_dirty()`).
+    pub fn new(n_slots: u32, n_dims: u32, ticks_per_day: u32) -> Self {
+        assert!(ticks_per_day > 0, "ticks_per_day must be > 0");
+        Self {
+            shadow: vec![0.0; (n_slots as usize) * (n_dims as usize)],
+            n_slots,
+            n_dims,
+            ticks_per_day,
+            tick_in_day:  0,
+            tick_counter: 0,
+            day_counter:  0,
+        }
+    }
+
+    /// Run one tick. See module-level doc for the step order.
+    pub fn tick(
+        &mut self,
+        receiver:  &FeederReceiver,
+        patcher:   &mut TransformPatcher,
+        registry:  &DimensionRegistry,
+        allocator: &SlotAllocator,
+        pipelines: &Pipelines,
+        state:     &mut WorldGpuState,
+        dt:        f32,
+    ) -> TickOutcome {
+        // 1. Drain feeder queue → shadow.
+        let patcher_stats = patcher.drain(
+            receiver,
+            registry,
+            allocator,
+            self.n_dims as usize,
+            &mut self.shadow,
+        );
+
+        // 2. Upload dirty rows (one write per touched row, coalesced).
+        let dirty = patcher.take_dirty_rows();
+        let uploaded_rows = dirty.len() as u32;
+        for slot in dirty {
+            self.upload_row(state, slot);
+        }
+
+        // 3. GPU passes (order matters — see module-level doc).
+        pipelines.run_snapshot(state);
+        pipelines.run_velocity_integration(state, dt);
+        pipelines.run_intensity_update(state, dt);
+        pipelines.run_apply_overlays(state);
+        pipelines.run_threshold_scan(state);
+
+        // 4. Event readback. Cheap even at endgame scale (~3 KB).
+        let count  = state.read_event_count();
+        let events = state.read_event_candidates(count);
+
+        // 5. Advance counters.
+        self.tick_counter += 1;
+        self.tick_in_day  += 1;
+        let boundary_reached = self.tick_in_day >= self.ticks_per_day;
+        if boundary_reached {
+            self.tick_in_day = 0;
+            self.day_counter += 1;
+        }
+
+        TickOutcome {
+            patcher_stats,
+            uploaded_rows,
+            events,
+            boundary_reached,
+            tick_index: self.tick_counter,
+            day_index:  self.day_counter,
+        }
+    }
+
+    /// Write the full shadow to GPU. Use this once after seeding `coord.shadow`
+    /// with the projection of the initial SimThing tree, before the first
+    /// `tick()`. After that, dirty-row tracking handles incremental uploads.
+    pub fn upload_full_shadow(&self, state: &WorldGpuState) {
+        state.ctx.queue.write_buffer(
+            &state.values,
+            0,
+            bytemuck::cast_slice(&self.shadow),
+        );
+    }
+
+    /// Upload one slot's row from the shadow to the GPU. Internal helper.
+    fn upload_row(&self, state: &WorldGpuState, slot: u32) {
+        let n_dims = self.n_dims as usize;
+        let base   = (slot as usize) * n_dims;
+        let row    = &self.shadow[base..base + n_dims];
+        let offset = (slot as u64) * (n_dims as u64) * 4;
+        state.ctx.queue.write_buffer(
+            &state.values,
+            offset,
+            bytemuck::cast_slice(row),
+        );
+    }
+
+    /// Current monotonic tick id (post-last-tick value).
+    pub fn tick_index(&self) -> u64 { self.tick_counter }
+    /// Current day id (post-last-tick value).
+    pub fn day_index(&self) -> u64 { self.day_counter }
+    /// Where we are inside the current day, in ticks.
+    pub fn tick_in_day(&self) -> u32 { self.tick_in_day }
+    pub fn ticks_per_day(&self) -> u32 { self.ticks_per_day }
+
+    pub fn n_slots(&self) -> u32 { self.n_slots }
+    pub fn n_dims(&self) -> u32 { self.n_dims }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tick_counters_roll_at_day_boundary() {
+        // Construct a coordinator independently of the GPU — we only need
+        // counter behavior here. We can't call `tick()` without a real
+        // pipeline + state, so this test exercises the bookkeeping
+        // arithmetic directly.
+        let coord = DispatchCoordinator::new(2, 6, 3);
+        assert_eq!(coord.n_slots(), 2);
+        assert_eq!(coord.n_dims(), 6);
+        assert_eq!(coord.ticks_per_day(), 3);
+        assert_eq!(coord.tick_in_day(), 0);
+        assert_eq!(coord.tick_index(), 0);
+        assert_eq!(coord.day_index(), 0);
+        assert_eq!(coord.shadow.len(), 12);
+        assert!(coord.shadow.iter().all(|v| *v == 0.0));
+    }
+
+    #[test]
+    #[should_panic]
+    fn zero_ticks_per_day_panics() {
+        let _ = DispatchCoordinator::new(1, 1, 0);
+    }
+}
