@@ -147,6 +147,40 @@ pub struct SlotDeltaRange {
     pub length: u32,
 }
 
+// ── ThresholdRegistration / ThresholdEvent — Pass 7 ─────────────────────────
+
+pub const DIR_UPWARD:   u32 = 0;
+pub const DIR_DOWNWARD: u32 = 1;
+pub const DIR_EITHER:   u32 = 2;
+
+/// One GPU threshold registration. Resolved (slot, col) pair plus the trigger
+/// threshold, direction, and an opaque `event_kind` that downstream CPU code
+/// interprets (fission stage / decay expiry / velocity warning / etc.).
+///
+/// `direction`: 0 = `DIR_UPWARD` (prev ≤ t, curr > t), 1 = `DIR_DOWNWARD`
+/// (prev ≥ t, curr < t), 2 = `DIR_EITHER` (either crossing).
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+pub struct ThresholdRegistration {
+    pub slot:       u32,
+    pub col:        u32,
+    pub threshold:  f32,
+    pub direction:  u32,
+    pub event_kind: u32,
+    pub _pad:       u32,
+}
+
+/// One sparse threshold-crossing event emitted by Pass 7. CPU reads these at
+/// the day boundary and maps `event_kind` back to a semantic action.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+pub struct ThresholdEvent {
+    pub slot:       u32,
+    pub col:        u32,
+    pub value:      f32,
+    pub event_kind: u32,
+}
+
 // ── WorldGpuState ─────────────────────────────────────────────────────────────
 
 pub struct WorldGpuState {
@@ -178,6 +212,19 @@ pub struct WorldGpuState {
 
     /// Per-slot (offset, length) into `overlay_deltas`. Size: `n_slots × 8B`.
     pub slot_delta_ranges: Buffer,
+
+    /// Pass 7 inputs: flat array of ThresholdRegistration structs.
+    /// Grows on demand via `upload_thresholds`.
+    pub threshold_registry: Buffer,
+    /// Pass 7 outputs: 4-byte atomic counter (`u32`) reset at each tick.
+    pub event_count: Buffer,
+    /// Pass 7 outputs: flat array of ThresholdEvent slots (sparse).
+    /// Capacity grows to match `n_thresholds` on upload.
+    pub event_candidates: Buffer,
+
+    /// Number of currently-registered thresholds (i.e. valid entries in
+    /// `threshold_registry`). Pass 7 dispatches one thread per registration.
+    pub n_thresholds: u32,
 }
 
 impl WorldGpuState {
@@ -245,6 +292,24 @@ impl WorldGpuState {
             ctx.queue.write_buffer(&intensity_params, 0, bytemuck::cast_slice(&iparams));
         }
 
+        // Pass 7 buffers — both grow on demand via upload_thresholds.
+        // Placeholder allocations keep bindings valid when no thresholds exist.
+        let threshold_registry = mk(
+            "threshold_registry",
+            std::mem::size_of::<ThresholdRegistration>() as u64,
+        );
+        let event_candidates = mk(
+            "event_candidates",
+            std::mem::size_of::<ThresholdEvent>() as u64,
+        );
+        // event_count is always exactly 4 bytes — an atomic<u32> reset per tick.
+        let event_count = ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("event_count"),
+            size:  4,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         Self {
             ctx,
             n_slots,
@@ -259,6 +324,10 @@ impl WorldGpuState {
             intensity_params,
             overlay_deltas,
             slot_delta_ranges,
+            threshold_registry,
+            event_count,
+            event_candidates,
+            n_thresholds: 0,
         }
     }
 
@@ -300,6 +369,64 @@ impl WorldGpuState {
         );
     }
 
+    /// Upload a fresh set of GPU threshold registrations. Reallocates both
+    /// `threshold_registry` and `event_candidates` if larger than the current
+    /// capacity. Pass 7 dispatches one thread per registration, and emits at
+    /// most one event per registration, so `event_candidates` is sized to
+    /// match.
+    ///
+    /// Empty input is allowed: `n_thresholds` becomes 0 and `run_threshold_scan`
+    /// will early-return without dispatching.
+    pub fn upload_thresholds(&mut self, regs: &[ThresholdRegistration]) {
+        let needed_count = regs.len().max(1);
+        let reg_bytes   = (needed_count * std::mem::size_of::<ThresholdRegistration>()) as u64;
+        let event_bytes = (needed_count * std::mem::size_of::<ThresholdEvent>()) as u64;
+
+        if reg_bytes > self.threshold_registry.size() {
+            self.threshold_registry = self.ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("threshold_registry"),
+                size:  reg_bytes,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+        if event_bytes > self.event_candidates.size() {
+            self.event_candidates = self.ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("event_candidates"),
+                size:  event_bytes,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+
+        self.n_thresholds = regs.len() as u32;
+        if !regs.is_empty() {
+            self.ctx.queue.write_buffer(&self.threshold_registry, 0, bytemuck::cast_slice(regs));
+        }
+    }
+
+    /// Reset the per-tick atomic event counter to zero. Call this before each
+    /// `run_threshold_scan`; `Pipelines::run_threshold_scan` does it internally.
+    pub fn reset_event_count(&self) {
+        self.ctx.queue.write_buffer(&self.event_count, 0, &0u32.to_le_bytes());
+    }
+
+    /// Read the atomic event counter back to the CPU.
+    pub fn read_event_count(&self) -> u32 {
+        let bytes = self.read_buffer_bytes(&self.event_count);
+        u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
+    }
+
+    /// Read back exactly `n` `ThresholdEvent`s produced by the most recent
+    /// Pass 7 dispatch. Caller is responsible for passing the count read via
+    /// `read_event_count()` first (or capping at `n_thresholds`).
+    pub fn read_event_candidates(&self, n: u32) -> Vec<ThresholdEvent> {
+        if n == 0 { return Vec::new(); }
+        let bytes = self.read_buffer_bytes(&self.event_candidates);
+        let used  = (n as usize) * std::mem::size_of::<ThresholdEvent>();
+        bytemuck::cast_slice(&bytes[..used]).to_vec()
+    }
+
     pub fn values_len(&self) -> usize {
         (self.n_slots * self.n_dims) as usize
     }
@@ -316,6 +443,9 @@ impl WorldGpuState {
             + self.intensity_params.size()
             + self.overlay_deltas.size()
             + self.slot_delta_ranges.size()
+            + self.threshold_registry.size()
+            + self.event_count.size()
+            + self.event_candidates.size()
     }
 
     pub fn write_values(&self, data: &[f32]) {
@@ -551,7 +681,10 @@ mod tests {
         //   intensity_params (placeholder) = 1 × 24            =   24
         //   overlay_deltas (placeholder)   = 1 × 16            =   16
         //   slot_delta_ranges              = 100 × 8           =  800
-        let projected: u64 = 9600 + 24 + 24 + 16 + 800;
+        //   threshold_registry (placeholder) = 1 × 24          =   24
+        //   event_count                    = 4                 =    4
+        //   event_candidates (placeholder) = 1 × 16            =   16
+        let projected: u64 = 9600 + 24 + 24 + 16 + 800 + 24 + 4 + 16;
         let actual = state.total_buffer_bytes();
 
         let diff = actual as i64 - projected as i64;
@@ -561,6 +694,43 @@ mod tests {
             "VRAM {actual} B diverges from projection {projected} B by {:.1}% (>5%)",
             pct * 100.0,
         );
+    }
+
+    #[test]
+    fn upload_thresholds_grows_buffer_and_tracks_count() {
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let mut reg = DimensionRegistry::new();
+        reg.register(SimProperty::simple("core", "loyalty", 0));
+        let mut state = WorldGpuState::new(ctx, &reg, 4);
+
+        // Starts with the placeholder allocation (1 × 24 B).
+        assert_eq!(state.n_thresholds, 0);
+        let initial = state.threshold_registry.size();
+        assert_eq!(initial, std::mem::size_of::<ThresholdRegistration>() as u64);
+
+        // Upload 3 thresholds — buffer must grow.
+        let regs = vec![
+            ThresholdRegistration { slot: 0, col: 0, threshold: 0.3, direction: DIR_DOWNWARD, event_kind: 1, _pad: 0 },
+            ThresholdRegistration { slot: 1, col: 0, threshold: 0.7, direction: DIR_UPWARD,   event_kind: 2, _pad: 0 },
+            ThresholdRegistration { slot: 2, col: 1, threshold: 0.0, direction: DIR_EITHER,   event_kind: 3, _pad: 0 },
+        ];
+        state.upload_thresholds(&regs);
+        assert_eq!(state.n_thresholds, 3);
+        assert!(state.threshold_registry.size() >= 3 * std::mem::size_of::<ThresholdRegistration>() as u64);
+        assert!(state.event_candidates.size()   >= 3 * std::mem::size_of::<ThresholdEvent>() as u64);
+    }
+
+    #[test]
+    fn reset_event_count_writes_zero() {
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let mut reg = DimensionRegistry::new();
+        reg.register(SimProperty::simple("core", "loyalty", 0));
+        let state = WorldGpuState::new(ctx, &reg, 1);
+
+        // Write a sentinel non-zero value first, then reset, then read back.
+        state.ctx.queue.write_buffer(&state.event_count, 0, &42u32.to_le_bytes());
+        state.reset_event_count();
+        assert_eq!(state.read_event_count(), 0);
     }
 
     #[test]
