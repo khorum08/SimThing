@@ -5,12 +5,14 @@
 //! sequencer build on top of `WorldGpuState`.
 
 pub mod context;
+pub mod overlay_prep;
 pub mod passes;
 pub mod projection;
 pub mod slot;
 pub mod world_state;
 
 pub use context::{GpuContext, GpuInitError};
+pub use overlay_prep::build_overlay_deltas;
 pub use passes::Pipelines;
 pub use projection::project_tree_to_values;
 pub use slot::SlotAllocator;

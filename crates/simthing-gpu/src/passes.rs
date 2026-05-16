@@ -42,6 +42,9 @@ pub struct Pipelines {
 
     intensity_layout:   BindGroupLayout,
     intensity_pipeline: ComputePipeline,
+
+    overlay_layout:   BindGroupLayout,
+    overlay_pipeline: ComputePipeline,
 }
 
 impl Pipelines {
@@ -136,11 +139,42 @@ impl Pipelines {
             cache: None,
         });
 
+        // ── Pass 3: overlay transform application ───────────────────────────
+        // No uniform buffer: n_slots / n_dims derived from buffer lengths in shader.
+        let overlay_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("overlay_bgl"),
+            entries: &[
+                storage_entry(0, /*read_only*/ false), // values (rw)
+                storage_entry(1, /*read_only*/ true),  // overlay_deltas
+                storage_entry(2, /*read_only*/ true),  // slot_delta_ranges
+            ],
+        });
+        let overlay_module = device.create_shader_module(ShaderModuleDescriptor {
+            label:  Some("overlay_shader"),
+            source: ShaderSource::Wgsl(
+                include_str!("shaders/transform_application.wgsl").into(),
+            ),
+        });
+        let overlay_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("overlay_pl_layout"),
+            bind_group_layouts: &[&overlay_layout],
+            push_constant_ranges: &[],
+        });
+        let overlay_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("overlay_pipeline"),
+            layout: Some(&overlay_pl_layout),
+            module: &overlay_module,
+            entry_point: "main",
+            compilation_options: Default::default(),
+            cache: None,
+        });
+
         Self {
             uniform_buffer,
             snapshot_layout, snapshot_pipeline,
             velocity_layout, velocity_pipeline,
             intensity_layout, intensity_pipeline,
+            overlay_layout, overlay_pipeline,
         }
     }
 
@@ -242,6 +276,42 @@ impl Pipelines {
                 timestamp_writes: None,
             });
             pass.set_pipeline(&self.intensity_pipeline);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.dispatch_workgroups(groups, 1, 1);
+        }
+        ctx.queue.submit(Some(encoder.finish()));
+    }
+
+    /// Pass 3: apply overlay deltas iteratively per slot.
+    ///
+    /// Reads from `state.overlay_deltas` (pre-uploaded by `upload_overlay_deltas`) and
+    /// applies each op in place to `values`. No-ops if `state.n_overlay_deltas == 0`.
+    pub fn run_apply_overlays(&self, state: &WorldGpuState) {
+        if state.n_overlay_deltas == 0 { return; }
+        let ctx = &state.ctx;
+
+        let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("overlay_bg"),
+            layout: &self.overlay_layout,
+            entries: &[
+                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                BindGroupEntry { binding: 1, resource: state.overlay_deltas.as_entire_binding() },
+                BindGroupEntry { binding: 2, resource: state.slot_delta_ranges.as_entire_binding() },
+            ],
+        });
+
+        // One thread per slot: dispatch ceil(n_slots / 64) workgroups.
+        let groups = state.n_slots.div_ceil(WORKGROUP_SIZE);
+
+        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("overlay_encoder"),
+        });
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("overlay_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.overlay_pipeline);
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(groups, 1, 1);
         }
@@ -615,6 +685,126 @@ mod tests {
         let gpu_flat = state.read_values();
         let gpu_data = &gpu_flat[range.start..range.start + stride];
         assert_bits_eq("Evaluator vs GPU pipeline", cpu_data, gpu_data);
+    }
+
+    /// Pass 0+1+2+3 against Evaluator on a tree with overlays at multiple levels.
+    ///
+    /// Tree: World (Multiply loyalty amount by 0.8)
+    ///         └─ Location (Add -0.1 to loyalty velocity)
+    ///               ├─ Cohort A (has loyalty; Set intensity to 0.5 locally)
+    ///               └─ Cohort B (has loyalty; no local overlays)
+    ///
+    /// Covers all three op kinds, ancestor + local ordering, and the case where
+    /// the ancestor overlay of the Location doesn't affect a node that lacks
+    /// the property (World itself has no loyalty property).
+    #[test]
+    fn pass3_overlay_matches_evaluator() {
+        use crate::overlay_prep::build_overlay_deltas;
+        use crate::projection::project_tree_to_values;
+        use crate::slot::SlotAllocator;
+        use simthing_core::ids::OverlayId;
+        use simthing_core::overlay::{Overlay, OverlayKind, OverlayLifecycle, OverlaySource,
+                                     PropertyTransformDelta};
+        use simthing_core::property::TransformOp;
+
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+
+        let mut reg = DimensionRegistry::new();
+        let lid = reg.register(loyalty_property());
+        let layout = reg.property(lid).layout.clone();
+
+        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+        let i_off = layout.offset_of(&SubFieldRole::Intensity).unwrap();
+
+        let make_overlay = |deltas: Vec<(SubFieldRole, TransformOp)>| -> Overlay {
+            Overlay {
+                id:        OverlayId::new(),
+                kind:      OverlayKind::Policy,
+                source:    OverlaySource::Player,
+                affects:   vec![],
+                transform: PropertyTransformDelta {
+                    property_id:      lid,
+                    sub_field_deltas: deltas,
+                },
+                lifecycle: OverlayLifecycle::Permanent,
+            }
+        };
+
+        // World: Multiply(0.8) on loyalty amount.
+        let mut world = SimThing::new(SimThingKind::World, 0);
+        world.add_overlay(make_overlay(vec![
+            (SubFieldRole::Amount, TransformOp::Multiply(0.8)),
+        ]));
+
+        // Location: Add(-0.1) on loyalty velocity.
+        let mut location = SimThing::new(SimThingKind::Location, 0);
+        location.add_overlay(make_overlay(vec![
+            (SubFieldRole::Velocity, TransformOp::Add(-0.1)),
+        ]));
+
+        // Cohort A: loyalty mid-range, building; local Set(0.5) on intensity.
+        let mut cohort_a = SimThing::new(SimThingKind::Cohort, 0);
+        let mut pv_a = PropertyValue::from_layout(&layout);
+        pv_a.data[a_off] = 0.60;
+        pv_a.data[v_off] = 0.08;
+        pv_a.data[i_off] = 0.20;
+        cohort_a.add_property(lid, pv_a);
+        cohort_a.add_overlay(make_overlay(vec![
+            (SubFieldRole::Intensity, TransformOp::Set(0.5)),
+        ]));
+        let cohort_a_id = cohort_a.id;
+
+        // Cohort B: loyalty near floor, negative velocity (exercises pinning + overlays).
+        let mut cohort_b = SimThing::new(SimThingKind::Cohort, 0);
+        let mut pv_b = PropertyValue::from_layout(&layout);
+        pv_b.data[a_off] = 0.05;
+        pv_b.data[v_off] = -0.03;
+        pv_b.data[i_off] = 0.40;
+        cohort_b.add_property(lid, pv_b);
+        let cohort_b_id = cohort_b.id;
+
+        location.add_child(cohort_a);
+        location.add_child(cohort_b);
+        world.add_child(location);
+
+        let dt = 0.5;
+
+        // CPU oracle.
+        let cpu_snap = Evaluator::new(&reg, dt).evaluate(&world, 1);
+
+        // GPU: allocate slots, project initial values, upload overlay deltas, run passes.
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&world);
+
+        let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
+        let n_dims = state.n_dims as usize;
+        let mut flat = vec![0.0f32; state.values_len()];
+        project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
+        state.write_values(&flat);
+
+        // Build and upload the overlay delta batch for this tick.
+        let (od, ranges) = build_overlay_deltas(&world, &reg, &alloc);
+        state.upload_overlay_deltas(&od, &ranges);
+
+        let pipelines = Pipelines::new(&state.ctx);
+        pipelines.run_snapshot(&state);
+        pipelines.run_velocity_integration(&state, dt);
+        pipelines.run_intensity_update(&state, dt);
+        pipelines.run_apply_overlays(&state);
+
+        let gpu_flat = state.read_values();
+
+        // Compare Cohort A.
+        for &(entity_id, label) in &[(cohort_a_id, "cohort_a"), (cohort_b_id, "cohort_b")] {
+            let entity = cpu_snap.get(entity_id).unwrap();
+            let slot = alloc.slot_of(entity_id).unwrap();
+            let slot_base = slot as usize * n_dims;
+            let range = reg.column_range(lid);
+            let start = slot_base + range.start;
+            let end   = start + entity.properties[&lid].data.len();
+            assert_bits_eq(label, &entity.properties[&lid].data, &gpu_flat[start..end]);
+        }
     }
 }
 
