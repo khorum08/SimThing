@@ -45,6 +45,9 @@ pub struct Pipelines {
 
     overlay_layout:   BindGroupLayout,
     overlay_pipeline: ComputePipeline,
+
+    threshold_layout:   BindGroupLayout,
+    threshold_pipeline: ComputePipeline,
 }
 
 impl Pipelines {
@@ -169,12 +172,43 @@ impl Pipelines {
             cache: None,
         });
 
+        // ── Pass 7: threshold scan ───────────────────────────────────────────
+        let threshold_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("threshold_bgl"),
+            entries: &[
+                storage_entry(0, /*read_only*/ true),  // values
+                storage_entry(1, /*read_only*/ true),  // previous_values
+                storage_entry(2, /*read_only*/ true),  // registry
+                storage_entry(3, /*read_only*/ false), // event_count (atomic u32)
+                storage_entry(4, /*read_only*/ false), // event_candidates
+                uniform_entry(5),                       // params
+            ],
+        });
+        let threshold_module = device.create_shader_module(ShaderModuleDescriptor {
+            label:  Some("threshold_shader"),
+            source: ShaderSource::Wgsl(include_str!("shaders/threshold_scan.wgsl").into()),
+        });
+        let threshold_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("threshold_pl_layout"),
+            bind_group_layouts: &[&threshold_layout],
+            push_constant_ranges: &[],
+        });
+        let threshold_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("threshold_pipeline"),
+            layout: Some(&threshold_pl_layout),
+            module: &threshold_module,
+            entry_point: "main",
+            compilation_options: Default::default(),
+            cache: None,
+        });
+
         Self {
             uniform_buffer,
             snapshot_layout, snapshot_pipeline,
             velocity_layout, velocity_pipeline,
             intensity_layout, intensity_pipeline,
             overlay_layout, overlay_pipeline,
+            threshold_layout, threshold_pipeline,
         }
     }
 
@@ -312,6 +346,53 @@ impl Pipelines {
                 timestamp_writes: None,
             });
             pass.set_pipeline(&self.overlay_pipeline);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.dispatch_workgroups(groups, 1, 1);
+        }
+        ctx.queue.submit(Some(encoder.finish()));
+    }
+
+    /// Pass 7: scan registered thresholds for crossings between `previous_values`
+    /// and `values`. Resets the event counter to zero, dispatches one thread per
+    /// registration, and atomically appends `ThresholdEvent`s to
+    /// `state.event_candidates`.
+    ///
+    /// Early-returns if no thresholds are registered. Caller is responsible for
+    /// reading the result via `state.read_event_count()` + `state.read_event_candidates(n)`.
+    pub fn run_threshold_scan(&self, state: &WorldGpuState) {
+        if state.n_thresholds == 0 { return; }
+        let ctx = &state.ctx;
+
+        // Reset the atomic counter before this tick's scan.
+        state.reset_event_count();
+
+        // n_dims is the only field Pass 7 reads from the uniform; dt is ignored.
+        self.write_params(ctx, state, 0.0);
+
+        let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("threshold_bg"),
+            layout: &self.threshold_layout,
+            entries: &[
+                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                BindGroupEntry { binding: 1, resource: state.previous_values.as_entire_binding() },
+                BindGroupEntry { binding: 2, resource: state.threshold_registry.as_entire_binding() },
+                BindGroupEntry { binding: 3, resource: state.event_count.as_entire_binding() },
+                BindGroupEntry { binding: 4, resource: state.event_candidates.as_entire_binding() },
+                BindGroupEntry { binding: 5, resource: self.uniform_buffer.as_entire_binding() },
+            ],
+        });
+
+        let groups = state.n_thresholds.div_ceil(WORKGROUP_SIZE);
+
+        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("threshold_encoder"),
+        });
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("threshold_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.threshold_pipeline);
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(groups, 1, 1);
         }
@@ -691,6 +772,167 @@ mod tests {
         let gpu_flat = state.read_values();
         let gpu_data = &gpu_flat[range.start..range.start + stride];
         assert_bits_eq("Evaluator vs GPU pipeline", cpu_data, gpu_data);
+    }
+
+    /// CPU oracle for Pass 7. Same crossing logic as the WGSL shader; used to
+    /// produce reference events for the parity test below.
+    fn cpu_threshold_scan(
+        previous: &[f32],
+        values:   &[f32],
+        n_dims:   u32,
+        regs:     &[crate::world_state::ThresholdRegistration],
+    ) -> Vec<crate::world_state::ThresholdEvent> {
+        use crate::world_state::{DIR_DOWNWARD, DIR_UPWARD, ThresholdEvent};
+        let mut events = Vec::new();
+        for r in regs {
+            let addr = (r.slot * n_dims + r.col) as usize;
+            let prev = previous[addr];
+            let curr = values[addr];
+            let up   = prev <= r.threshold && curr > r.threshold;
+            let down = prev >= r.threshold && curr < r.threshold;
+            let crossed = match r.direction {
+                DIR_UPWARD   => up,
+                DIR_DOWNWARD => down,
+                _            => up || down,
+            };
+            if crossed {
+                events.push(ThresholdEvent {
+                    slot:       r.slot,
+                    col:        r.col,
+                    value:      curr,
+                    event_kind: r.event_kind,
+                });
+            }
+        }
+        events
+    }
+
+    /// Pass 7 directly: set up `previous_values` and `values` so that each
+    /// crossing direction fires exactly when expected, and a stationary-on-threshold
+    /// case does NOT fire (strict crossing rule).
+    #[test]
+    fn threshold_scan_matches_cpu_oracle() {
+        use crate::world_state::{DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD,
+                                  ThresholdEvent, ThresholdRegistration};
+
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let mut reg = DimensionRegistry::new();
+        reg.register(SimProperty::simple("core", "loyalty", 0));
+        let mut state = WorldGpuState::new(ctx, &reg, 4);
+        let n_dims = state.n_dims as usize;
+
+        // 4 slots, exercising all three direction modes:
+        //   slot 0: DOWN crossing 0.40 → 0.10, threshold 0.30 → fires
+        //   slot 1: UP   crossing 0.10 → 0.50, threshold 0.30 → fires
+        //   slot 2: STATIONARY at 0.50, EITHER threshold 0.50 → does NOT fire
+        //   slot 3: DOWN crossing 0.60 → 0.40, EITHER threshold 0.50 → fires
+        let mut previous = vec![0.0_f32; state.values_len()];
+        let mut current  = vec![0.0_f32; state.values_len()];
+        previous[0 * n_dims] = 0.40;  current[0 * n_dims] = 0.10;
+        previous[1 * n_dims] = 0.10;  current[1 * n_dims] = 0.50;
+        previous[2 * n_dims] = 0.50;  current[2 * n_dims] = 0.50;
+        previous[3 * n_dims] = 0.60;  current[3 * n_dims] = 0.40;
+
+        state.write_previous_values(&previous);
+        state.write_values(&current);
+
+        let regs = vec![
+            ThresholdRegistration { slot: 0, col: 0, threshold: 0.30, direction: DIR_DOWNWARD, event_kind: 100, _pad: 0 },
+            ThresholdRegistration { slot: 1, col: 0, threshold: 0.30, direction: DIR_UPWARD,   event_kind: 101, _pad: 0 },
+            ThresholdRegistration { slot: 2, col: 0, threshold: 0.50, direction: DIR_EITHER,   event_kind: 102, _pad: 0 },
+            ThresholdRegistration { slot: 3, col: 0, threshold: 0.50, direction: DIR_EITHER,   event_kind: 103, _pad: 0 },
+        ];
+        state.upload_thresholds(&regs);
+
+        let cpu = cpu_threshold_scan(&previous, &current, n_dims as u32, &regs);
+        assert_eq!(cpu.len(), 3, "oracle should produce exactly 3 events");
+
+        let pipelines = Pipelines::new(&state.ctx);
+        pipelines.run_threshold_scan(&state);
+
+        let count = state.read_event_count();
+        let mut gpu: Vec<ThresholdEvent> = state.read_event_candidates(count);
+
+        // GPU event order is nondeterministic (atomicAdd race). Sort both sides.
+        let key = |e: &ThresholdEvent| (e.event_kind, e.slot, e.col);
+        let mut cpu_sorted = cpu;
+        cpu_sorted.sort_by_key(key);
+        gpu.sort_by_key(key);
+
+        assert_eq!(cpu_sorted.len(), gpu.len(),
+            "event count mismatch: cpu={} gpu={}", cpu_sorted.len(), gpu.len());
+
+        for (i, (c, g)) in cpu_sorted.iter().zip(gpu.iter()).enumerate() {
+            assert_eq!(c.slot,       g.slot,       "event {i} slot");
+            assert_eq!(c.col,        g.col,        "event {i} col");
+            assert_eq!(c.event_kind, g.event_kind, "event {i} event_kind");
+            assert_eq!(c.value.to_bits(), g.value.to_bits(),
+                "event {i} value: cpu={} gpu={}", c.value, g.value);
+        }
+    }
+
+    /// Pass 7 with no registered thresholds: must be a no-op, no panic.
+    #[test]
+    fn threshold_scan_no_registrations_is_noop() {
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let mut reg = DimensionRegistry::new();
+        reg.register(SimProperty::simple("core", "loyalty", 0));
+        let state = WorldGpuState::new(ctx, &reg, 2);
+        let pipelines = Pipelines::new(&state.ctx);
+        pipelines.run_threshold_scan(&state); // n_thresholds == 0 → no-op
+        // event_count was never reset (early return), so we don't read it here.
+        // The test passes as long as no panic / no validation error occurs.
+    }
+
+    /// End-to-end Pass 0+1+2+3+7: a velocity-integration tick crosses a threshold
+    /// registered on the amount sub-field, and Pass 7 detects the crossing using
+    /// the post-Pass-0 snapshot vs. post-integration values.
+    #[test]
+    fn threshold_scan_after_full_pipeline() {
+        use crate::world_state::{DIR_DOWNWARD, ThresholdRegistration};
+
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let mut reg = DimensionRegistry::new();
+        let id = reg.register(loyalty_property());
+        let layout = reg.property(id).layout.clone();
+        let stride = layout.stride();
+        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+
+        let mut state = WorldGpuState::new(ctx, &reg, 1);
+        let mut flat = vec![0.0_f32; state.values_len()];
+        flat[a_off] = 0.35; // starts above threshold 0.30
+        flat[v_off] = -0.10; // dt = 1.0 → ends at 0.25, crossing 0.30 downward
+        state.write_values(&flat);
+        let _ = stride;
+
+        let regs = vec![
+            ThresholdRegistration {
+                slot: 0, col: a_off as u32,
+                threshold:  0.30,
+                direction:  DIR_DOWNWARD,
+                event_kind: 7,
+                _pad:       0,
+            },
+        ];
+        state.upload_thresholds(&regs);
+
+        let pipelines = Pipelines::new(&state.ctx);
+        pipelines.run_snapshot(&state);                  // previous_values <- 0.35
+        pipelines.run_velocity_integration(&state, 1.0); // values amount: 0.35 - 0.10 = 0.25
+        pipelines.run_intensity_update(&state, 1.0);
+        pipelines.run_apply_overlays(&state);
+        pipelines.run_threshold_scan(&state);
+
+        let count = state.read_event_count();
+        assert_eq!(count, 1, "expected exactly one downward crossing");
+
+        let events = state.read_event_candidates(count);
+        assert_eq!(events[0].slot, 0);
+        assert_eq!(events[0].col, a_off as u32);
+        assert_eq!(events[0].event_kind, 7);
+        // Post-integration value should be 0.25 bit-exact.
+        assert_eq!(events[0].value.to_bits(), 0.25_f32.to_bits());
     }
 
     /// Week 2 success criterion: full Pass 0+1+2+3 pipeline at 1000 slots, 64 dims

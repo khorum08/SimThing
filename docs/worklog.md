@@ -4,6 +4,45 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-16 — Week 3 begins: Pass 7 (threshold scan)
+
+**Status:** Pass 7 fully built and parity-tested on `claude/week3-threshold-scan`.
+
+**Landed in this session:**
+- `crates/simthing-gpu/src/world_state.rs`:
+  - New Pod types: `ThresholdRegistration` (24 B) and `ThresholdEvent` (16 B).
+  - Direction constants: `DIR_UPWARD`, `DIR_DOWNWARD`, `DIR_EITHER`.
+  - Three new buffers on `WorldGpuState`: `threshold_registry`, `event_count`
+    (4 B atomic `u32`), `event_candidates`. Placeholder allocations keep them
+    bindable when no thresholds are registered.
+  - New methods: `upload_thresholds`, `reset_event_count`, `read_event_count`,
+    `read_event_candidates(n)`. `total_buffer_bytes()` updated.
+- `crates/simthing-gpu/src/shaders/threshold_scan.wgsl` — Pass 7. One thread per
+  registration; strict crossing detection in three direction modes; `atomicAdd`
+  into `event_count` for sparse output indexing.
+- `crates/simthing-gpu/src/passes.rs` — Pass 7 pipeline (6-binding layout).
+  `run_threshold_scan(state)` resets the counter internally, then dispatches
+  `ceil(n_thresholds / 64)` workgroups. New CPU oracle helper in tests.
+- `crates/simthing-gpu/src/lib.rs` — exports new types + direction constants.
+
+**Tests added:**
+- `upload_thresholds_grows_buffer_and_tracks_count` — buffer reallocates correctly.
+- `reset_event_count_writes_zero` — counter reset works.
+- `threshold_scan_matches_cpu_oracle` — bit-exact GPU/CPU parity across all
+  three direction modes; covers stationary-on-threshold non-event case.
+- `threshold_scan_no_registrations_is_noop` — empty registry doesn't panic.
+- `threshold_scan_after_full_pipeline` — end-to-end Pass 0+1+2+3+7 with a
+  velocity-driven crossing.
+
+**50/50 tests passing (14 core + 36 GPU), zero warnings.**
+
+**Branch state:** `claude/week3-threshold-scan` — ready to merge.
+
+**Next session:** `simthing-feeder` crate scaffolding. Work queue + Transform
+Patcher + Dispatch Coordinator per design_v4.md section 11.
+
+---
+
 ## 2026-05-16 — Pass 3 complete
 
 **Status:** Pass 3 (iterative overlay transform application) fully built, tested, and pushed on `claude/pass3-iterative-deltas`.

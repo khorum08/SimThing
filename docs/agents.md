@@ -61,7 +61,8 @@ SimThing/
                 ├── snapshot.wgsl              Pass 0: values → previous_values
                 ├── velocity_integration.wgsl  Pass 1: integrate + clamp + pin (I3)
                 ├── intensity_update.wgsl      Pass 2: build/decay intensity
-                └── transform_application.wgsl Pass 3: iterative overlay apply
+                ├── transform_application.wgsl Pass 3: iterative overlay apply
+                └── threshold_scan.wgsl        Pass 7: sparse crossing events
 ```
 
 Future crates (not yet created):
@@ -72,8 +73,10 @@ Future crates (not yet created):
 
 ## Current implementation state
 
-**Week 1 + Week 2 complete. Passes 0/1/2/3 all built and bit-exact verified
-against the CPU oracle. Week 3 (feeder thread + day boundary protocol) is next.**
+**Week 1 + Week 2 complete. Week 3 in progress — Pass 7 (threshold scan) landed.
+Passes 0/1/2/3/7 are all built and parity-tested against CPU oracles.
+Passes 4–6 (reduction) remain deferred until the presentation layer needs them.
+Next Week 3 work: simthing-feeder crate, day boundary protocol, fission/fusion.**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
@@ -98,18 +101,32 @@ against the CPU oracle. Week 3 (feeder thread + day boundary protocol) is next.*
 - `IntensityParams` (24 B) — `(velocity_col, intensity_col, velocity_threshold, build_coef, decay_coef, _pad)`.
 - `OverlayDelta` (16 B) — `(col, op_kind, value, _pad)`. `op_kind`: 0=Multiply, 1=Add, 2=Set.
 - `SlotDeltaRange` (8 B) — `(offset, length)` into the flat `overlay_deltas` buffer.
+- `ThresholdRegistration` (24 B) — `(slot, col, threshold, direction, event_kind, _pad)`.
+  `direction`: 0=Upward, 1=Downward, 2=Either. `event_kind` is an opaque u32 the CPU
+  side maps back to fission stage / decay expiry / velocity warning / etc.
+- `ThresholdEvent` (16 B) — `(slot, col, value, event_kind)`. Sparse output of Pass 7.
 - Builders: `build_governed_pairs`, `build_intensity_params` walk the registry,
   skip tombstoned properties, resolve columns via `col_for_role` only (I1).
-- `WorldGpuState` owns `GpuContext` + 7 persistent buffers:
+- `WorldGpuState` owns `GpuContext` + 10 persistent buffers:
   - `values`, `previous_values`, `output_vectors`: `n_slots × n_dims × 4B` each
   - `governed_pairs`: `max(1, n_pairs) × 24B`
   - `intensity_params`: `max(1, n_params) × 24B`
   - `overlay_deltas`: `max(1, n_deltas) × 16B` (grows on demand via `upload_overlay_deltas`)
   - `slot_delta_ranges`: `n_slots × 8B`
+  - `threshold_registry`: `max(1, n_thresholds) × 24B` (grows on demand via `upload_thresholds`)
+  - `event_count`: 4B (atomic `u32`, reset per tick)
+  - `event_candidates`: `max(1, n_thresholds) × 16B` (sparse Pass 7 output)
   - All buffers: `STORAGE | COPY_SRC | COPY_DST`. Placeholder allocations keep
-    bindings valid even with zero pairs / zero overlays.
+    bindings valid even with zero pairs / zero overlays / zero thresholds.
 - `upload_overlay_deltas(&mut self, deltas, ranges)` — reallocates `overlay_deltas`
   if larger than current capacity, then writes both buffers via `queue.write_buffer`.
+- `upload_thresholds(&mut self, regs)` — analogous to `upload_overlay_deltas`;
+  grows `threshold_registry` and `event_candidates` together so capacity always
+  covers the worst-case "every registration fires" case.
+- `reset_event_count()` / `read_event_count()` / `read_event_candidates(n)` —
+  Pass 7 result readback. `run_threshold_scan` resets the counter internally,
+  so callers only call `read_event_count` + `read_event_candidates` at the
+  day boundary.
 - `total_buffer_bytes()` — sum of every persistent buffer's size, used by the
   VRAM budget test.
 - Read helpers (`read_values`, `read_previous_values`, `read_governed_pairs`,
@@ -132,12 +149,15 @@ against the CPU oracle. Week 3 (feeder thread + day boundary protocol) is next.*
 
 **`passes.rs` — `Pipelines`:**
 - Owns shared uniform buffer (`PassParams { delta_time, n_dims, _pad, _pad }`) and
-  four compute pipelines: snapshot, velocity, intensity, overlay.
+  five compute pipelines: snapshot, velocity, intensity, overlay, threshold.
 - `run_snapshot(state)` — Pass 0, flat dispatch over `n_slots × n_dims`.
 - `run_velocity_integration(state, dt)` — Pass 1, dispatch over `n_slots × n_pairs`.
 - `run_intensity_update(state, dt)` — Pass 2, dispatch over `n_slots × n_params`.
 - `run_apply_overlays(state)` — Pass 3, one thread per slot. Early-returns when
   `n_overlay_deltas == 0`.
+- `run_threshold_scan(state)` — Pass 7, one thread per registration. Resets the
+  event counter, then atomically appends events to `state.event_candidates`.
+  Early-returns when `n_thresholds == 0`.
 
 **Shaders (`shaders/*.wgsl`):**
 - `snapshot.wgsl` — Pass 0 memcpy `values → previous_values`.
@@ -148,8 +168,12 @@ against the CPU oracle. Week 3 (feeder thread + day boundary protocol) is next.*
 - `transform_application.wgsl` — Pass 3, switch on `op_kind` for Multiply / Add / Set.
   No uniform needed: `n_slots = arrayLength(&slot_delta_ranges)`,
   `n_dims = arrayLength(&values) / n_slots`.
+- `threshold_scan.wgsl` — Pass 7, strict crossing detection in three direction
+  modes. Atomic counter (`atomic<u32>`) bound directly as `event_count`; output
+  index allocated via `atomicAdd`. Event order is therefore nondeterministic —
+  callers sort by (slot, col, event_kind) for parity tests.
 
-**Tests: 31 GPU tests + 1 ignored timing diagnostic, all passing, zero warnings.**
+**Tests: 36 GPU tests + 1 ignored timing diagnostic, all passing, zero warnings.**
 
 Highlights:
 - `pass3_overlay_matches_evaluator` — bit-exact parity for Pass 0+1+2+3 against
@@ -162,11 +186,16 @@ Highlights:
 - `pipeline_timing_1000_slots_64_dims` (ignored, run with `--ignored`) — wall-clock
   diagnostic: Pass 0+1+2+3 at 1000 slots × 64 dims with 1000 overlay deltas
   completes in ~1.2 ms (50 ms budget; 40× headroom).
+- `threshold_scan_matches_cpu_oracle` — Pass 7 parity test covering all three
+  direction modes plus the stationary-on-threshold non-event case.
+- `threshold_scan_after_full_pipeline` — end-to-end Pass 0+1+2+3+7 with a
+  threshold crossed by velocity integration.
 
 **Not yet built in simthing-gpu:**
-- Passes 4–6 (reduction) and Pass 7 (threshold scan) — deferred until threshold
-  registration API exists.
-- `threshold_registry` and `event_candidates` buffers — same dependency.
+- Passes 4–6 (reduction) — deferred until the presentation layer needs them.
+- High-level threshold registration helpers (per-property derivation from
+  `FissionThreshold` / `DecayBehavior`) — lives in the day-boundary protocol
+  code, which is Week 3 work in the upcoming `simthing-sim` crate.
 
 **Not yet built in any crate:**
 - Feeder thread (Week 3)
@@ -183,7 +212,7 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 45 tests must pass with zero warnings before any commit (14 core + 31 GPU).
+All 50 tests must pass with zero warnings before any commit (14 core + 36 GPU).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available
