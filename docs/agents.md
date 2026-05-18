@@ -63,34 +63,53 @@ SimThing/
     │           ├── intensity_update.wgsl      Pass 2: build/decay intensity
     │           ├── transform_application.wgsl Pass 3: iterative overlay apply
     │           └── threshold_scan.wgsl        Pass 7: sparse crossing events
-    └── simthing-feeder/
+    ├── simthing-feeder/
+    │   └── src/
+    │       ├── lib.rs                 public re-exports + topology doc
+    │       ├── work.rs                PatchTransform, BoundaryRequest, FeederWork,
+    │       │                          FeederSender (Clone) + FeederReceiver (mpsc)
+    │       ├── patcher.rs             TransformPatcher — drains queue, resolves
+    │       │                          SubFieldRole → col via registry, mutates CPU
+    │       │                          shadow, tracks dirty rows + boundary parking
+    │       ├── dispatcher.rs          DispatchCoordinator — uploads dirty rows,
+    │       │                          sequences Pass 0/1/2/3/7, advances tick/day,
+    │       │                          surfaces threshold events
+    │       └── maintainer.rs          TreeMaintainer — diagnostic seam
+    │                                  (real execution lives in simthing-sim)
+    └── simthing-sim/
         └── src/
-            ├── lib.rs                 public re-exports + topology doc
-            ├── work.rs                PatchTransform, BoundaryRequest, FeederWork,
-            │                          FeederSender (Clone) + FeederReceiver (mpsc)
-            ├── patcher.rs             TransformPatcher — drains queue, resolves
-            │                          SubFieldRole → col via registry, mutates CPU
-            │                          shadow, tracks dirty rows + boundary parking
-            ├── dispatcher.rs          DispatchCoordinator — uploads dirty rows,
-            │                          sequences Pass 0/1/2/3/7, advances tick/day,
-            │                          surfaces threshold events
-            └── maintainer.rs          TreeMaintainer — boundary-only structural ops
-                                       (scaffold; execution lands in simthing-sim)
+            ├── lib.rs                 public re-exports + module map
+            ├── threshold_registry.rs  ThresholdSemantic + ThresholdRegistry +
+            │                          ThresholdBuilder — derives GPU registrations
+            │                          and parallel CPU semantic lookup
+            ├── overlay_lifecycle.rs   step 4: dissolve conditions, AfterTicks
+            │                          decrement, expire writeback
+            ├── property_expiry.rs     step 5: threshold-driven property removal +
+            │                          column tombstone; CPU TowardZero sweep
+            ├── fission.rs             step 6: fission spawn, fusion merge
+            │                          (with secondary-condition guard, dedup)
+            ├── tree_mutation.rs       steps 7+8: apply_structural_mutations —
+            │                          AddChild / Remove / Reparent / AttachOverlay /
+            │                          (AddDimension deferred)
+            ├── gpu_sync.rs            step 9: build_overlay_deltas + upload,
+            │                          ThresholdBuilder + upload, upload_full_shadow
+            └── boundary.rs            BoundaryProtocol — owns root + registry +
+                                       allocator + cpu ThresholdRegistry; execute()
+                                       sequences steps 4-9
 ```
-
-Future crates (not yet created):
-- `simthing-sim` — day boundary orchestration, fission/fusion execution (Week 3)
 
 ---
 
 ## Current implementation state
 
-**Week 1 + Week 2 complete. Week 3 in progress — Pass 7 (threshold scan) landed,
-plus the `simthing-feeder` crate (Transform Patcher + Dispatch Coordinator
-+ Tree Maintainer scaffold). Passes 0/1/2/3/7 are all built and parity-tested
-against CPU oracles. Passes 4–6 (reduction) remain deferred until the
-presentation layer needs them. Next Week 3 work: `simthing-sim` crate (day
-boundary protocol orchestration, Tree Maintainer execution, fission/fusion).**
+**Week 1, 2, and 3 complete. The full vertical slice is operational:
+GPU passes 0/1/2/3/7, feeder layer with mpsc work queue, day-boundary
+protocol orchestration with real fission/fusion + tree mutation + GPU
+buffer rebuild. End-to-end integration test proves fission threshold
+fires → boundary executes → SimThing spawned + slot allocated → day N+1
+tick runs clean. Passes 4–6 (reduction) remain deferred until the
+presentation layer needs them. Next: Week 4 — player input handling
+and AI intent overlays.**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
@@ -278,12 +297,105 @@ Integration highlights:
   `FissionThreshold` / `DecayBehavior`) — boundary-protocol work, also
   destined for `simthing-sim`.
 
+### simthing-sim (Week 3, complete)
+
+**`threshold_registry.rs` — CPU-side event_kind ↔ semantic action mapping:**
+- `ThresholdSemantic` enum: `FissionTrigger`, `FusionTrigger`, `PropertyExpiry`,
+  `VelocityAlert` — each variant carries the ids and indices needed to
+  reconstruct the meaning of a GPU `ThresholdEvent`.
+- `ThresholdRegistry` — `Vec<ThresholdSemantic>` indexed by `event_kind: u32`.
+  Rebuilt from scratch at each boundary.
+- `ThresholdBuilder::build(root, registry, allocator) -> (Vec<ThresholdRegistration>, ThresholdRegistry)` —
+  walks the tree once, emits both the GPU registration vec (for `state.upload_thresholds`)
+  and the parallel CPU semantic lookup. Sources: `FissionThreshold` list per
+  property, plus `DecayBehavior::{OnThreshold, IntensityGated, WhenProperty}`
+  mapped to `PropertyExpiry`. `TowardZero`/`AfterTicks` are CPU-side only.
+
+**`overlay_lifecycle.rs` — step 4 + 7:**
+- `resolve_overlay_lifecycle(root, registry, allocator, shadow, n_dims, day)`
+  walks the tree; for each transient overlay it evaluates every
+  `DissolveCondition` (PropertyReaches, PropertyBelow, AfterTicks, OverrideReceived,
+  Never), decrements `AfterTicks::remaining`, removes overlays whose conditions
+  are all met, and applies `on_expire` `ExpireEffect`s (AddVelocity / SetIntensity)
+  to the CPU shadow.
+- `attach_overlay(root, target, overlay) -> bool` — depth-first attach (helper,
+  superseded by `tree_mutation::AttachOverlay` in the boundary protocol).
+
+**`property_expiry.rs` — step 5:**
+- `resolve_property_expiry(root, registry, events, cpu_reg)`:
+  - For each `ThresholdEvent` with `event_kind` → `PropertyExpiry`:
+    HashMap remove + registry tombstone if last live instance.
+  - CPU-side sweep for `DecayBehavior::AfterTicks { remaining: 0 }` and
+    `DecayBehavior::TowardZero` (|amount| < 1e-4).
+
+**`fission.rs` — step 6:**
+- `resolve_fission_fusion(root, registry, allocator, events, cpu_reg, shadow, n_dims, day)`.
+- Deduplicates by `(sim_thing_id, template_idx)` to prevent multiple events
+  from firing the same fission twice in one boundary.
+- Checks `SecondaryCondition` (IntensityAbove/Below, AmountAbove/Below) against
+  the shadow before mutating the tree.
+- Fission: spawn `SimThing { kind: template.child_kind }`, alloc its slot,
+  attach as child of trigger SimThing.
+- Fusion: locate child by id, remove from parent, tombstone slot.
+
+**`tree_mutation.rs` — steps 7 + 8 (Tree Maintainer execution):**
+- `apply_structural_mutations(requests, root, allocator, registry, shadow, n_dims) -> MaintainerOutcome`.
+- `AddChild`: walk to parent, attach child, `populate_from_subtree` allocs slots
+  for the entire attached subtree, zeroes the new rows in the shadow.
+- `Remove`: detach subtree, walk it to tombstone every descendant's slot
+  (otherwise descendant rows stay GPU-live but tree-unreachable).
+- `Reparent`: detach + re-attach. Slots preserved — the whole point of slot
+  stability. Cycle detection rejects `child → ancestor(child)`.
+- `AttachOverlay`: depth-first find + push into target's overlay vec.
+- `AddDimension`: deferred (requires `WorldGpuState` rebuild with new `n_dims`).
+
+**`gpu_sync.rs` — step 9:**
+- `sync_gpu_buffers(root, registry, allocator, coord, state)`:
+  1. `build_overlay_deltas` + pad ranges to `state.n_slots` + `upload_overlay_deltas`.
+  2. `ThresholdBuilder::build` + `upload_thresholds`. Returns the new CPU registry.
+  3. `coord.upload_full_shadow(state)` — every row, fresh.
+
+**`boundary.rs` — `BoundaryProtocol`:**
+- Owns the authoritative `SimThing` root, `DimensionRegistry`, `SlotAllocator`,
+  and CPU `ThresholdRegistry`.
+- `execute(events, patcher, coord, state, day) -> BoundaryOutcome` runs steps 4–9
+  in order:
+  1. **Reads GPU values back into `coord.shadow`** (critical: integration
+     output lives only on GPU; otherwise the eventual `upload_full_shadow`
+     would wipe out a day's worth of Pass 1/2 work).
+  2. Overlay lifecycle (step 4).
+  3. Property expiry (step 5).
+  4. Fission/fusion (step 6).
+  5. Resize shadow for any new slots from step 6.
+  6. Drain patcher boundary requests, call `apply_structural_mutations` (steps 7+8).
+  7. Resize shadow again if step 7 added slots.
+  8. Assertion: `allocator.capacity() <= state.n_slots` (no GPU buffer overflow).
+  9. `sync_gpu_buffers` (step 9).
+  10. Adopt the new CPU `ThresholdRegistry`.
+
+**Tests: 19 unit + 2 GPU integration tests, all passing, zero warnings.**
+
+Integration highlights:
+- `fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean` — full end-to-end:
+  cohort with Amount=0.5, Velocity=-0.21 integrates across the 0.3 threshold;
+  Pass 7 fires; `BoundaryProtocol::execute` spawns a child Cohort + allocates
+  its slot; the subsequent tick runs without panic and the original cohort's
+  amount continues integrating downward.
+- `boundary_requests_apply_structural_mutations` — `AddChild` request submitted
+  via the channel survives the patcher's boundary park, lands at the maintainer,
+  attaches a new SimThing under the cohort, and allocates its slot.
+
+**Not yet built in simthing-sim:**
+- `AddDimension` execution (requires `WorldGpuState` rebuild with new `n_dims`).
+- Property seeding for newly-spawned SimThings (fission today produces an empty
+  `SimThing`; populating its `properties` from the parent's row is a follow-up).
+- Velocity-alert handling (`ThresholdSemantic::VelocityAlert`) — AI layer
+  consumes these; no-op in boundary today.
+
 **Not yet built in any crate:**
-- `simthing-sim` crate itself (Week 3)
-- Day boundary protocol execution — overlay lifecycle, property expiry,
-  fission/fusion (Week 3)
-- Tree Maintainer execution body (Week 3, in `simthing-sim`)
 - Player input handling (Week 4)
+- AI intent overlays (Week 4)
+- Presentation layer with reduction passes 4–6 (Week 4+)
 
 ---
 
@@ -294,8 +406,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 71 tests must pass with zero warnings before any commit
-(14 core + 36 GPU + 17 feeder unit + 4 feeder integration).
+All 92 tests must pass with zero warnings before any commit
+(14 core + 36 GPU + 17 feeder unit + 4 feeder integration + 19 sim unit + 2 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

@@ -1,0 +1,526 @@
+//! Structural tree mutation — step 8 of the day boundary.
+//!
+//! Implements the real execution of every `BoundaryRequest` variant. The
+//! feeder's `TreeMaintainer::execute` was scaffolded as a counter/seam;
+//! this module is where the actual mutations happen at boundary time.
+//!
+//! ## Why this lives in `simthing-sim` and not in the feeder
+//!
+//! The feeder crate's job is data-plane work — drain channels, mutate the
+//! values shadow, run GPU passes. The SimThing tree is the authoritative
+//! semantic state, and the day-boundary protocol is the only place that
+//! ever mutates it structurally. That protocol lives here; so does this
+//! function. The feeder's `MaintainerOutcome` type is reused as the result
+//! shape — the scaffold's fields anticipated real execution.
+//!
+//! ## Per-variant behavior
+//!
+//! ### `AddChild { parent, child }`
+//! - Walks the tree to find `parent`.
+//! - Allocates a slot for the new child (and recursively for its subtree,
+//!   though typical use is a fresh leaf).
+//! - Attaches the child as a child of `parent`.
+//! - Zeros the new child's row in the CPU shadow so Pass 0's snapshot
+//!   sees a clean slate.
+//! - Records the new id in `MaintainerOutcome::allocated`.
+//!
+//! Unknown parent → `rejected_unknown_target` increment, no slot churn.
+//!
+//! ### `Remove { target }`
+//! - Walks the tree to find `target`.
+//! - Tombstones the target's slot AND every descendant slot. This is
+//!   crucial: a subtree removal must release every slot it owned, or the
+//!   shadow rows for descendants stay live but unreachable.
+//! - Removes the subtree from its parent's children list.
+//! - Records all tombstoned ids in `MaintainerOutcome::tombstoned`.
+//!
+//! Unknown target → `rejected_unknown_target` increment.
+//!
+//! ### `Reparent { child, new_parent }`
+//! - Walks the tree to find both nodes.
+//! - Detaches the child subtree from its current parent.
+//! - Attaches it under `new_parent`. Slots are NOT churned — the entire
+//!   subtree keeps its existing slot assignments. This is the whole point
+//!   of slot stability: reparenting is free in GPU terms.
+//! - Records the reparent count in `MaintainerOutcome::reparents`.
+//!
+//! Either unknown → `rejected_unknown_target` increment; tree unchanged.
+//!
+//! ### `AttachOverlay { target, overlay }`
+//! - Walks the tree to find `target` and pushes the overlay into its
+//!   `overlays` Vec. Records the overlay id in `overlays_attached`.
+//!
+//! Note: this overlaps with `overlay_lifecycle::attach_overlay` from step 7.
+//! The boundary protocol routes AttachOverlay through THIS function for
+//! consistency — all structural mutations land in one place.
+//!
+//! ### `AddDimension { property }`
+//! - **Deferred.** Fully expanding the registry mid-session requires
+//!   rebuilding `WorldGpuState` (new `n_dims` → reallocate every per-slot
+//!   buffer). That's a follow-up: it's a rare, mods/DLC-only operation
+//!   and demands its own dedicated PR with a GPU-context handoff test.
+//!   For now: increment `dimensions` counter and `deferred`, no mutation.
+
+use simthing_core::{DimensionRegistry, SimThing, SimThingId};
+use simthing_feeder::{BoundaryRequest, MaintainerOutcome};
+use simthing_gpu::SlotAllocator;
+
+/// Apply every `BoundaryRequest` to the authoritative tree + slot table.
+///
+/// `values_shadow` must be sized `n_slots × n_dims` where `n_slots`
+/// matches the capacity the `WorldGpuState` was built with. If `AddChild`
+/// pushes the allocator past that capacity, the new slot's row is written
+/// to a position outside `values_shadow` — the caller must catch this
+/// before flushing. For Week 3 testing the fixture pre-allocates headroom.
+pub fn apply_structural_mutations(
+    requests:      Vec<BoundaryRequest>,
+    root:          &mut SimThing,
+    allocator:     &mut SlotAllocator,
+    _registry:     &mut DimensionRegistry,
+    values_shadow: &mut [f32],
+    n_dims:        usize,
+) -> MaintainerOutcome {
+    let mut out = MaintainerOutcome::default();
+
+    for req in requests {
+        match req {
+            BoundaryRequest::AddChild { parent, child } => {
+                apply_add_child(root, allocator, values_shadow, n_dims, parent, child, &mut out);
+            }
+            BoundaryRequest::Remove { target } => {
+                apply_remove(root, allocator, target, &mut out);
+            }
+            BoundaryRequest::Reparent { child, new_parent } => {
+                apply_reparent(root, child, new_parent, &mut out);
+            }
+            BoundaryRequest::AttachOverlay { target, overlay } => {
+                let oid = overlay.id;
+                if attach_overlay_to_node(root, target, overlay) {
+                    out.overlays += 1;
+                    out.overlays_attached.push(oid);
+                } else {
+                    out.rejected_unknown_target += 1;
+                }
+            }
+            BoundaryRequest::AddDimension { property } => {
+                // Deferred — see module-level doc. WorldGpuState resize is
+                // a follow-up PR.
+                out.dimensions += 1;
+                out.deferred   += 1;
+                out.dimensions_added.push(property);
+            }
+        }
+    }
+
+    out
+}
+
+// ── AddChild ──────────────────────────────────────────────────────────────────
+
+fn apply_add_child(
+    root:          &mut SimThing,
+    allocator:     &mut SlotAllocator,
+    values_shadow: &mut [f32],
+    n_dims:        usize,
+    parent_id:     SimThingId,
+    child:         SimThing,
+    out:           &mut MaintainerOutcome,
+) {
+    // Collect every id in the subtree being added (typically just the
+    // child itself, but supports importing pre-built subtrees).
+    let mut new_ids = Vec::new();
+    collect_subtree_ids(&child, &mut new_ids);
+
+    // Find parent first; if missing, do nothing.
+    let Some(parent) = find_node_mut(root, parent_id) else {
+        out.rejected_unknown_target += 1;
+        return;
+    };
+
+    // Attach subtree.
+    parent.add_child(child);
+
+    // Allocate slots for every new id. Re-walk the attached subtree to
+    // get a stable order (root before children); the SimThing we just
+    // pushed is at the end of parent's children list.
+    let attached = parent.children.last().expect("just pushed");
+    populate_from_subtree(allocator, attached);
+
+    // Zero the shadow row for each newly-allocated slot.
+    for nid in &new_ids {
+        if let Some(slot) = allocator.slot_of(*nid) {
+            let base = (slot as usize) * n_dims;
+            let end  = base + n_dims;
+            if end <= values_shadow.len() {
+                for v in &mut values_shadow[base..end] {
+                    *v = 0.0;
+                }
+            }
+            out.allocated.push(*nid);
+        }
+    }
+    out.adds += 1;
+}
+
+fn collect_subtree_ids(node: &SimThing, out: &mut Vec<SimThingId>) {
+    out.push(node.id);
+    for c in &node.children {
+        collect_subtree_ids(c, out);
+    }
+}
+
+fn populate_from_subtree(allocator: &mut SlotAllocator, node: &SimThing) {
+    allocator.alloc(node.id);
+    for c in &node.children {
+        populate_from_subtree(allocator, c);
+    }
+}
+
+// ── Remove ────────────────────────────────────────────────────────────────────
+
+fn apply_remove(
+    root:      &mut SimThing,
+    allocator: &mut SlotAllocator,
+    target:    SimThingId,
+    out:       &mut MaintainerOutcome,
+) {
+    // Cannot remove the root via this path; it would orphan the tree.
+    if root.id == target {
+        out.rejected_unknown_target += 1;
+        return;
+    }
+
+    // Find the subtree, collect its ids, then detach + tombstone.
+    let Some(subtree) = detach_subtree(root, target) else {
+        out.rejected_unknown_target += 1;
+        return;
+    };
+
+    let mut subtree_ids = Vec::new();
+    collect_subtree_ids(&subtree, &mut subtree_ids);
+
+    for sid in subtree_ids {
+        if allocator.tombstone(sid).is_some() {
+            out.tombstoned.push(sid);
+        }
+    }
+    out.removes += 1;
+}
+
+/// Walk the tree, find a child with the given id, remove it from its parent's
+/// children list, and return the detached subtree.
+fn detach_subtree(node: &mut SimThing, target: SimThingId) -> Option<SimThing> {
+    if let Some(idx) = node.children.iter().position(|c| c.id == target) {
+        return Some(node.children.remove(idx));
+    }
+    for c in &mut node.children {
+        if let Some(s) = detach_subtree(c, target) { return Some(s); }
+    }
+    None
+}
+
+// ── Reparent ──────────────────────────────────────────────────────────────────
+
+fn apply_reparent(
+    root:       &mut SimThing,
+    child:      SimThingId,
+    new_parent: SimThingId,
+    out:        &mut MaintainerOutcome,
+) {
+    if child == new_parent || child == root.id {
+        // Self-parenting and root-reparenting are no-ops; flag as rejected.
+        out.rejected_unknown_target += 1;
+        return;
+    }
+
+    // Verify the new parent exists *before* detaching. Otherwise a missing
+    // new parent would leave us with an orphaned subtree to dispose of.
+    if find_node(root, new_parent).is_none() {
+        out.rejected_unknown_target += 1;
+        return;
+    }
+
+    // Cannot reparent a node under its own descendant — would create a cycle.
+    if let Some(child_node) = find_node(root, child) {
+        if subtree_contains(child_node, new_parent) {
+            out.rejected_unknown_target += 1;
+            return;
+        }
+    } else {
+        out.rejected_unknown_target += 1;
+        return;
+    }
+
+    let Some(subtree) = detach_subtree(root, child) else {
+        out.rejected_unknown_target += 1;
+        return;
+    };
+    let Some(parent) = find_node_mut(root, new_parent) else {
+        // Race window: someone removed new_parent between check and detach.
+        // We checked first to make this practically impossible in single-
+        // threaded code; defensive log + reattach to root as fallback.
+        out.rejected_unknown_target += 1;
+        root.add_child(subtree);
+        return;
+    };
+    parent.add_child(subtree);
+    out.reparents += 1;
+}
+
+fn subtree_contains(node: &SimThing, target: SimThingId) -> bool {
+    if node.id == target { return true; }
+    node.children.iter().any(|c| subtree_contains(c, target))
+}
+
+// ── AttachOverlay ─────────────────────────────────────────────────────────────
+
+fn attach_overlay_to_node(
+    node:    &mut SimThing,
+    target:  SimThingId,
+    overlay: simthing_core::Overlay,
+) -> bool {
+    if node.id == target {
+        node.add_overlay(overlay);
+        return true;
+    }
+    for c in &mut node.children {
+        if attach_overlay_to_node(c, target, overlay.clone()) {
+            return true;
+        }
+    }
+    false
+}
+
+// ── Tree helpers ──────────────────────────────────────────────────────────────
+
+fn find_node<'a>(node: &'a SimThing, id: SimThingId) -> Option<&'a SimThing> {
+    if node.id == id { return Some(node); }
+    for c in &node.children {
+        if let Some(n) = find_node(c, id) { return Some(n); }
+    }
+    None
+}
+
+fn find_node_mut<'a>(node: &'a mut SimThing, id: SimThingId) -> Option<&'a mut SimThing> {
+    if node.id == id { return Some(node); }
+    for c in &mut node.children {
+        if let Some(n) = find_node_mut(c, id) { return Some(n); }
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use simthing_core::{
+        DimensionRegistry, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
+        PropertyTransformDelta, SimProperty, SimPropertyId, SimThing, SimThingKind, SubFieldRole,
+        TransformOp,
+    };
+    use simthing_feeder::BoundaryRequest;
+    use simthing_gpu::SlotAllocator;
+
+    fn fixture() -> (DimensionRegistry, SlotAllocator, SimThing) {
+        let mut reg = DimensionRegistry::new();
+        reg.register(SimProperty::simple("core", "loyalty", 0));
+        let mut root = SimThing::new(SimThingKind::World, 0);
+        let mut alloc = SlotAllocator::new();
+        alloc.alloc(root.id);
+        let loc = SimThing::new(SimThingKind::Location, 0);
+        alloc.alloc(loc.id);
+        root.add_child(loc);
+        (reg, alloc, root)
+    }
+
+    #[test]
+    fn add_child_allocates_slot_and_attaches() {
+        let (mut reg, mut alloc, mut root) = fixture();
+        let n_dims = reg.total_columns;
+        let parent_id = root.children[0].id;
+        let cohort    = SimThing::new(SimThingKind::Cohort, 1);
+        let cohort_id = cohort.id;
+
+        // Pre-size shadow with headroom for one new slot.
+        let mut shadow = vec![0.5f32; (alloc.capacity() + 2) * n_dims];
+
+        let out = apply_structural_mutations(
+            vec![BoundaryRequest::AddChild { parent: parent_id, child: cohort }],
+            &mut root, &mut alloc, &mut reg, &mut shadow, n_dims,
+        );
+
+        assert_eq!(out.adds, 1);
+        assert_eq!(out.allocated, vec![cohort_id]);
+        assert_eq!(root.children[0].children.len(), 1);
+        assert_eq!(root.children[0].children[0].id, cohort_id);
+        // New slot's row was zeroed.
+        let new_slot = alloc.slot_of(cohort_id).unwrap();
+        let base = (new_slot as usize) * n_dims;
+        assert!(shadow[base..base + n_dims].iter().all(|v| *v == 0.0));
+    }
+
+    #[test]
+    fn add_child_to_unknown_parent_is_rejected() {
+        let (mut reg, mut alloc, mut root) = fixture();
+        let n_dims = reg.total_columns;
+        let ghost = SimThing::new(SimThingKind::Cohort, 0).id;
+        let child = SimThing::new(SimThingKind::Cohort, 1);
+        let mut shadow = vec![0.0f32; (alloc.capacity() + 2) * n_dims];
+
+        let out = apply_structural_mutations(
+            vec![BoundaryRequest::AddChild { parent: ghost, child }],
+            &mut root, &mut alloc, &mut reg, &mut shadow, n_dims,
+        );
+
+        assert_eq!(out.rejected_unknown_target, 1);
+        assert_eq!(out.adds, 0);
+        assert!(out.allocated.is_empty());
+    }
+
+    #[test]
+    fn remove_tombstones_target_and_all_descendants() {
+        let (mut reg, mut alloc, mut root) = fixture();
+        let n_dims = reg.total_columns;
+        let loc_id = root.children[0].id;
+        let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+        let cohort_id  = cohort.id;
+        let leaf = SimThing::new(SimThingKind::Cohort, 0);
+        let leaf_id = leaf.id;
+        cohort.add_child(leaf);
+        alloc.alloc(cohort_id);
+        alloc.alloc(leaf_id);
+        root.children[0].add_child(cohort);
+
+        let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
+
+        let out = apply_structural_mutations(
+            vec![BoundaryRequest::Remove { target: loc_id }],
+            &mut root, &mut alloc, &mut reg, &mut shadow, n_dims,
+        );
+
+        assert_eq!(out.removes, 1);
+        assert_eq!(out.tombstoned.len(), 3);
+        assert!(out.tombstoned.contains(&loc_id));
+        assert!(out.tombstoned.contains(&cohort_id));
+        assert!(out.tombstoned.contains(&leaf_id));
+        assert!(root.children.is_empty());
+        assert!(!alloc.is_live(alloc.capacity() as u32 - 1));
+    }
+
+    #[test]
+    fn remove_root_is_rejected() {
+        let (mut reg, mut alloc, mut root) = fixture();
+        let n_dims = reg.total_columns;
+        let root_id = root.id;
+        let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
+
+        let out = apply_structural_mutations(
+            vec![BoundaryRequest::Remove { target: root_id }],
+            &mut root, &mut alloc, &mut reg, &mut shadow, n_dims,
+        );
+
+        assert_eq!(out.rejected_unknown_target, 1);
+        assert_eq!(out.removes, 0);
+    }
+
+    #[test]
+    fn reparent_moves_subtree_without_slot_churn() {
+        let (mut reg, mut alloc, mut root) = fixture();
+        let n_dims = reg.total_columns;
+        let loc_id = root.children[0].id;
+        let new_loc = SimThing::new(SimThingKind::Location, 0);
+        let new_loc_id = new_loc.id;
+        alloc.alloc(new_loc_id);
+        root.add_child(new_loc);
+
+        // Add a cohort under the original location.
+        let cohort = SimThing::new(SimThingKind::Cohort, 0);
+        let cohort_id = cohort.id;
+        alloc.alloc(cohort_id);
+        root.children[0].add_child(cohort);
+
+        let original_cohort_slot = alloc.slot_of(cohort_id).unwrap();
+        let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
+
+        let out = apply_structural_mutations(
+            vec![BoundaryRequest::Reparent { child: cohort_id, new_parent: new_loc_id }],
+            &mut root, &mut alloc, &mut reg, &mut shadow, n_dims,
+        );
+
+        assert_eq!(out.reparents, 1);
+        assert_eq!(out.rejected_unknown_target, 0);
+        // Cohort moved.
+        assert!(root.children[0].children.is_empty());
+        let new_loc_node = root.children.iter().find(|c| c.id == new_loc_id).unwrap();
+        assert_eq!(new_loc_node.children.len(), 1);
+        assert_eq!(new_loc_node.children[0].id, cohort_id);
+        // Slot is preserved.
+        assert_eq!(alloc.slot_of(cohort_id), Some(original_cohort_slot));
+        // Suppress unused warning.
+        let _ = loc_id;
+    }
+
+    #[test]
+    fn reparent_cycle_is_rejected() {
+        let (mut reg, mut alloc, mut root) = fixture();
+        let n_dims = reg.total_columns;
+        let loc_id  = root.children[0].id;
+        let root_id = root.id;
+        let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
+
+        // Trying to reparent root under its own child would create a cycle.
+        let out = apply_structural_mutations(
+            vec![BoundaryRequest::Reparent { child: root_id, new_parent: loc_id }],
+            &mut root, &mut alloc, &mut reg, &mut shadow, n_dims,
+        );
+
+        // Root reparenting is caught by the root-id check before cycle detection.
+        assert_eq!(out.rejected_unknown_target, 1);
+    }
+
+    #[test]
+    fn attach_overlay_appends_to_target() {
+        let (mut reg, mut alloc, mut root) = fixture();
+        let n_dims = reg.total_columns;
+        let loc_id = root.children[0].id;
+        let pid = SimPropertyId(0);
+        let overlay = Overlay {
+            id:        OverlayId::new(),
+            kind:      OverlayKind::Policy,
+            source:    OverlaySource::Player,
+            affects:   vec![],
+            transform: PropertyTransformDelta {
+                property_id:      pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.5))],
+            },
+            lifecycle: OverlayLifecycle::Permanent,
+        };
+        let oid = overlay.id;
+        let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
+
+        let out = apply_structural_mutations(
+            vec![BoundaryRequest::AttachOverlay { target: loc_id, overlay }],
+            &mut root, &mut alloc, &mut reg, &mut shadow, n_dims,
+        );
+
+        assert_eq!(out.overlays, 1);
+        assert_eq!(out.overlays_attached, vec![oid]);
+        assert_eq!(root.children[0].overlays.len(), 1);
+    }
+
+    #[test]
+    fn add_dimension_is_deferred() {
+        let (mut reg, mut alloc, mut root) = fixture();
+        let n_dims = reg.total_columns;
+        let pid = SimPropertyId(0);
+        let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
+
+        let out = apply_structural_mutations(
+            vec![BoundaryRequest::AddDimension { property: pid }],
+            &mut root, &mut alloc, &mut reg, &mut shadow, n_dims,
+        );
+
+        assert_eq!(out.dimensions, 1);
+        assert_eq!(out.deferred, 1);
+        assert_eq!(out.dimensions_added, vec![pid]);
+    }
+}

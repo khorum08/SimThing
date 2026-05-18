@@ -6,11 +6,15 @@ pub mod registry;
 pub mod simthing;
 
 pub use ids::{OverlayId, SimPropertyId, SimThingId};
-pub use overlay::{Overlay, OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta};
+pub use overlay::{
+    DissolveCondition, Overlay, OverlayKind, OverlayLifecycle, OverlaySource,
+    PropertyTransformDelta,
+};
 pub use property::{
-    ClampBehavior, DecayBehavior, Direction, ExpireHandler, FissionTemplate, FissionThreshold,
-    FusionThreshold, IntensityBehavior, IntensityRange, PropertyLayout, PropertyValue, SimProperty,
-    SimThingKindTag, SubFieldRole, SubFieldSpec, TransformOp,
+    ClampBehavior, DecayBehavior, Direction, ExpireEffect, ExpireHandler, FissionTemplate,
+    FissionThreshold, FusionThreshold, IntensityBehavior, IntensityRange, PropertyLayout,
+    PropertyValue, SecondaryCondition, SimProperty, SimThingKindTag, SubFieldRole, SubFieldSpec,
+    TransformOp,
 };
 pub use registry::{DimensionRegistry, PropertyColumnRange};
 pub use simthing::{SimThing, SimThingKind};
