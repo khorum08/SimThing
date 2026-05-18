@@ -750,6 +750,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "simthing-sim"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "simthing-core",
+ "simthing-feeder",
+ "simthing-gpu",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "slab"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
