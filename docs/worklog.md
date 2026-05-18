@@ -75,7 +75,7 @@ scaffold and reported it "merged" — actually closed without merging. This
 session recovered the scaffold via `git fetch refs/pull/8/head` + `cherry-pick`
 and completed the execution work in one PR.
 
-**Branch state:** `claude/boundary-execution` — ready to push and PR.
+**Branch state:** `claude/boundary-execution` — merged as PR #9.
 
 **Next session:** Week 4. Either player input handling (overlay submission
 from a UI/script interface) or AI intent overlays (velocity-threshold
