@@ -62,7 +62,16 @@ pub fn sync_gpu_buffers(
     let mut out = GpuSyncOutcome::default();
 
     // 1. Overlay deltas — always rebuild at boundary.
-    let (deltas, ranges) = simthing_gpu::build_overlay_deltas(root, registry, allocator);
+    //
+    // `build_overlay_deltas` returns one range per allocated slot, so
+    // `ranges.len() == allocator.capacity()`. `state.upload_overlay_deltas`
+    // requires `ranges.len() == state.n_slots` (the static GPU buffer size).
+    // Pad with zero-length ranges for slots that don't exist yet; Pass 3's
+    // shader skips those naturally because `range.length == 0`.
+    let (deltas, mut ranges) = simthing_gpu::build_overlay_deltas(root, registry, allocator);
+    if (ranges.len() as u32) < state.n_slots {
+        ranges.resize(state.n_slots as usize, simthing_gpu::SlotDeltaRange::default());
+    }
     let n_deltas = deltas.len() as u32;
     state.upload_overlay_deltas(&deltas, &ranges);
     out.overlay_deltas_uploaded = n_deltas;

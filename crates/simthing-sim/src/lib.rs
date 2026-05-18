@@ -29,18 +29,18 @@
 //!   Fusion: applies the scar coefficient to the parent, removes the child,
 //!   tombstones its slot.
 //!
+//! - `tree_mutation` — steps 7 + 8. Executes every `BoundaryRequest` variant:
+//!   `AddChild` (alloc slot, attach), `Remove` (tombstone subtree, detach),
+//!   `Reparent` (move subtree, slots preserved — the whole point of slot
+//!   stability), `AttachOverlay` (append to target's overlay vec),
+//!   `AddDimension` (deferred — requires WorldGpuState reallocation).
+//!
 //! - `gpu_sync` — step 9. After all structural mutations are done, rebuilds the
 //!   GPU buffer state: `build_overlay_deltas` → upload, threshold registration
 //!   rebuild → upload, dirty-row flush via the `DispatchCoordinator` shadow.
 //!
 //! - `boundary` — top-level `BoundaryProtocol` struct that owns the SimThing
 //!   tree root and orchestrates the full §10 sequence in one call.
-//!
-//! # TODO — this is a stub crate
-//!
-//! All modules below are stubs. The type signatures and module structure are
-//! the final design; only the function bodies are left unimplemented.
-//! See docs/worklog.md for the implementation plan.
 
 pub mod boundary;
 pub mod fission;
@@ -48,6 +48,8 @@ pub mod gpu_sync;
 pub mod overlay_lifecycle;
 pub mod property_expiry;
 pub mod threshold_registry;
+pub mod tree_mutation;
 
 pub use boundary::{BoundaryOutcome, BoundaryProtocol};
 pub use threshold_registry::{ThresholdBuilder, ThresholdRegistry, ThresholdSemantic};
+pub use tree_mutation::apply_structural_mutations;

@@ -4,6 +4,88 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-18 — simthing-sim crate complete (Week 3 closeout)
+
+**Status:** Full vertical slice operational on `claude/boundary-execution`.
+Day-boundary protocol is real, integration-tested end-to-end against GPU.
+
+**Landed in this session:**
+- Cherry-picked the `simthing-sim` scaffold (from the closed PR #8) onto a
+  fresh branch and brought it to full execution.
+- New module `crates/simthing-sim/src/tree_mutation.rs`:
+  - `apply_structural_mutations(requests, root, allocator, registry, shadow, n_dims) -> MaintainerOutcome`.
+  - Real bodies for every `BoundaryRequest` variant: `AddChild` (alloc subtree
+    slots + zero shadow rows), `Remove` (recursive tombstone of detached subtree),
+    `Reparent` (subtree move with cycle detection + slot preservation),
+    `AttachOverlay` (depth-first attach), `AddDimension` (deferred).
+  - 8 unit tests covering happy paths, unknown-target rejection, cycle
+    rejection, and slot-preservation invariants.
+- `BoundaryProtocol::execute` reworked:
+  - Now takes `&mut DispatchCoordinator` so it can resize shadow + write back.
+  - **Reads GPU `values` back into `coord.shadow` at the start** — critical:
+    integration output (Pass 1/2) lives only on the GPU; otherwise the
+    eventual `upload_full_shadow` would wipe a day's worth of work.
+  - Routes all `BoundaryRequest` variants through `apply_structural_mutations`
+    instead of the old separate step-7 attach loop + step-8 maintainer stub.
+  - Resizes shadow after fission (step 6) AND after structural mutations
+    (step 7/8) to cover newly-allocated slots.
+  - Asserts `allocator.capacity() <= state.n_slots` before GPU upload —
+    catches buffer-overflow misuse loudly.
+- `gpu_sync::sync_gpu_buffers` now pads `slot_delta_ranges` to `state.n_slots`
+  before upload (Pass 3 expects exactly n_slots ranges; `build_overlay_deltas`
+  returns one per allocated slot, which can be less).
+- `BoundaryOutcome` carries a real `MaintainerOutcome` with allocated /
+  tombstoned ids, replacing the previous diagnostic-only counter field.
+- `crates/simthing-sim/tests/boundary_integration.rs` — 2 GPU integration
+  tests:
+  - `fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean` — cohort
+    with Amount=0.5 / Velocity=-0.21 integrates across the 0.3 fission
+    threshold; Pass 7 fires; boundary executes; new SimThing spawned + slot
+    allocated; next-day tick runs cleanly; amount continues falling.
+  - `boundary_requests_apply_structural_mutations` — `AddChild` request via
+    channel reaches the maintainer at boundary time and attaches a fleet under
+    the cohort.
+
+**92/92 tests passing (14 core + 36 GPU + 17 feeder unit + 4 feeder integration
++ 19 sim unit + 2 sim integration), zero warnings.**
+
+**Key design calls made this session:**
+- *GPU-read at boundary start.* Reading `state.read_values()` into the shadow
+  costs one full readback per day (~3 MB at endgame scale). Without it, any
+  `upload_full_shadow` at boundary end wipes Pass 1/2 integration output.
+  This is the right tradeoff — daily readback is cheap, lost integration is
+  not recoverable.
+- *Pad slot_delta_ranges in gpu_sync.* `build_overlay_deltas` returns
+  `Vec<SlotDeltaRange>` of length `allocator.capacity()` (correct: one per
+  live slot). But `WorldGpuState::upload_overlay_deltas` requires
+  `n_slots`-long. The pad is a zero-length range that Pass 3 naturally skips.
+  Alternative (allocator phantom slots up to n_slots) would have polluted the
+  semantic slot table.
+- *Shadow resize at multiple points in `execute`.* After fission (step 6) AND
+  after `apply_structural_mutations` (step 7/8). Both can grow the allocator.
+  Single resize at end isn't enough because step 7/8 reads from shadow and
+  needs it sized to current capacity.
+- *All BoundaryRequest variants through one function.* The original scaffold
+  had step 7 (AttachOverlay loop) separate from step 8 (TreeMaintainer stub).
+  Unified through `apply_structural_mutations` for one clean call site;
+  diagnostic counts come from the real `MaintainerOutcome` now.
+
+**Note on the closed PR:** The previous Sonnet session opened PR #8 with the
+scaffold and reported it "merged" — actually closed without merging. This
+session recovered the scaffold via `git fetch refs/pull/8/head` + `cherry-pick`
+and completed the execution work in one PR.
+
+**Branch state:** `claude/boundary-execution` — ready to push and PR.
+
+**Next session:** Week 4. Either player input handling (overlay submission
+from a UI/script interface) or AI intent overlays (velocity-threshold
+registrations + AI consumer of `ThresholdSemantic::VelocityAlert`).
+Property seeding for newly-spawned fission children is a smaller follow-up
+that should land soon — today fission creates an empty SimThing without
+the inherited loyalty property.
+
+---
+
 ## 2026-05-16 — simthing-feeder crate scaffolding
 
 **Status:** `simthing-feeder` crate landed on `claude/feeder-scaffolding`.

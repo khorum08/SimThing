@@ -21,15 +21,16 @@
 
 use simthing_core::{DimensionRegistry, SimThing};
 use simthing_feeder::{
-    BoundaryRequest, DispatchCoordinator, TransformPatcher, TreeMaintainer,
+    DispatchCoordinator, MaintainerOutcome, TransformPatcher,
 };
 use simthing_gpu::{SlotAllocator, ThresholdEvent, WorldGpuState};
 
 use crate::fission::{resolve_fission_fusion, FissionOutcome};
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
-use crate::overlay_lifecycle::{attach_overlay, resolve_overlay_lifecycle, LifecycleOutcome};
+use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
 use crate::threshold_registry::ThresholdRegistry;
+use crate::tree_mutation::apply_structural_mutations;
 
 /// Everything that happened during a boundary. Useful for logging,
 /// observability, replay, and tests.
@@ -39,8 +40,8 @@ pub struct BoundaryOutcome {
     pub lifecycle:          LifecycleOutcome,
     pub expiry:             ExpiryOutcome,
     pub fission:            FissionOutcome,
+    pub maintainer:         MaintainerOutcome,
     pub gpu_sync:           GpuSyncOutcome,
-    pub overlays_attached:  u32,
     pub boundary_requests:  u32,
 }
 
@@ -60,7 +61,6 @@ pub struct BoundaryProtocol {
     pub registry:  DimensionRegistry,
     pub allocator: SlotAllocator,
     cpu_threshold_registry: ThresholdRegistry,
-    maintainer:    TreeMaintainer,
 }
 
 impl BoundaryProtocol {
@@ -74,7 +74,6 @@ impl BoundaryProtocol {
             registry,
             allocator,
             cpu_threshold_registry: ThresholdRegistry::new(),
-            maintainer:             TreeMaintainer::new(),
         }
     }
 
@@ -89,23 +88,33 @@ impl BoundaryProtocol {
         &mut self,
         events:  Vec<ThresholdEvent>,
         patcher: &mut TransformPatcher,
-        coord:   &DispatchCoordinator,
+        coord:   &mut DispatchCoordinator,
         state:   &mut WorldGpuState,
         day:     u64,
     ) -> BoundaryOutcome {
         let mut out = BoundaryOutcome { day, ..Default::default() };
         let n_dims  = coord.n_dims() as usize;
 
-        // We need a mutable shadow to apply expire effects. Take a temporary
-        // copy since coord owns the canonical shadow; we'll re-upload in step 9.
-        let mut shadow = coord.shadow.clone();
+        // The CPU shadow reflects only CPU-side patches; integration output
+        // from Pass 1/2 lives only on the GPU. Before mutating the shadow
+        // at the boundary, pull the canonical GPU values back so our
+        // structural mutations (zeroing new rows, expire writebacks, etc.)
+        // operate on the correct base — otherwise the eventual
+        // `upload_full_shadow` would wipe out a day's worth of integration.
+        // Endgame cost: ~3 MB once per boundary; negligible.
+        coord.shadow = state.read_values();
+        let needed = coord.n_slots() as usize * n_dims;
+        if coord.shadow.len() < needed {
+            coord.shadow.resize(needed, 0.0);
+        }
 
         // Step 4: Overlay lifecycle — dissolve + expire effects.
+        // Mutates coord.shadow directly (apply_expire_effects writes into it).
         out.lifecycle = resolve_overlay_lifecycle(
             &mut self.root,
             &self.registry,
             &self.allocator,
-            &mut shadow,
+            &mut coord.shadow,
             n_dims,
             day as u32,
         );
@@ -118,34 +127,64 @@ impl BoundaryProtocol {
             &self.cpu_threshold_registry,
         );
 
-        // Step 6: Fission and fusion.
+        // Step 6: Fission and fusion. Spawns new SimThings + allocates slots.
+        // Reads from shadow for secondary-condition checks; doesn't write.
         out.fission = resolve_fission_fusion(
             &mut self.root,
             &self.registry,
             &mut self.allocator,
             &events,
             &self.cpu_threshold_registry,
-            &shadow,
+            &coord.shadow,
             n_dims,
             day as u32,
         );
 
-        // Step 7: Attach new instruction overlays.
+        // Steps 7 + 8: Structural mutations (AddChild, Remove, Reparent,
+        // AttachOverlay, AddDimension). One pass through `apply_structural_mutations`
+        // handles every BoundaryRequest variant.
         let requests = patcher.take_boundary_requests();
         out.boundary_requests = requests.len() as u32;
-        for req in &requests {
-            if let BoundaryRequest::AttachOverlay { target, overlay } = req {
-                if attach_overlay(&mut self.root, *target, overlay.clone()) {
-                    out.overlays_attached += 1;
-                }
-            }
+
+        // Grow shadow to cover any new slots allocated during fission (step 6)
+        // before applying structural mutations. apply_structural_mutations
+        // expects values_shadow to be sized for the current allocator capacity.
+        let needed = self.allocator.capacity() * n_dims;
+        if coord.shadow.len() < needed {
+            coord.shadow.resize(needed, 0.0);
         }
 
-        // Step 8: Structural mutations via Tree Maintainer.
-        // (Execution body is a stub today; counts get recorded.)
-        self.maintainer.execute(requests);
+        out.maintainer = apply_structural_mutations(
+            requests,
+            &mut self.root,
+            &mut self.allocator,
+            &mut self.registry,
+            &mut coord.shadow,
+            n_dims,
+        );
+
+        // After structural mutations the allocator may have grown again
+        // (AddChild). Resize shadow once more so step 9 uploads the full
+        // capacity.
+        let final_capacity = self.allocator.capacity() * n_dims;
+        if coord.shadow.len() < final_capacity {
+            coord.shadow.resize(final_capacity, 0.0);
+        }
 
         // Step 9: Rebuild GPU buffers from current tree + upload shadow.
+        //
+        // Pre-condition: allocator.capacity() must not exceed the
+        // WorldGpuState's n_slots, otherwise upload_full_shadow writes past
+        // the GPU buffer end. Pre-sizing WorldGpuState with growth headroom
+        // is the caller's responsibility today. AddDimension-style buffer
+        // reallocation is a follow-up.
+        assert!(
+            self.allocator.capacity() as u32 <= coord.n_slots(),
+            "allocator capacity {} exceeds shadow n_slots {}; \
+             WorldGpuState was built without enough headroom",
+            self.allocator.capacity(), coord.n_slots(),
+        );
+
         let gpu_out = sync_gpu_buffers(
             &self.root,
             &self.registry,
