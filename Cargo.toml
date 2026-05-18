@@ -4,6 +4,7 @@ members = [
     "crates/simthing-core",
     "crates/simthing-gpu",
     "crates/simthing-feeder",
+    "crates/simthing-sim",
 ]
 
 [workspace.package]
