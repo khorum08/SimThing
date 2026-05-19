@@ -20,7 +20,7 @@
 //! ```
 
 use simthing_core::{DimensionRegistry, SimPropertyId, SimThing};
-use simthing_feeder::{DispatchCoordinator, MaintainerOutcome, TransformPatcher};
+use simthing_feeder::{BoundaryRequest, DispatchCoordinator, MaintainerOutcome, TransformPatcher};
 use simthing_gpu::{SlotAllocator, ThresholdEvent, WorldGpuState};
 
 use crate::fission::{resolve_fission_fusion, FissionOutcome};
@@ -43,6 +43,7 @@ pub struct BoundaryOutcome {
     pub maintainer: MaintainerOutcome,
     pub gpu_sync: GpuSyncOutcome,
     pub boundary_requests: u32,
+    pub player_intents_attached: u32,
     pub velocity_alerts: Vec<VelocityAlertEvent>,
 }
 
@@ -148,8 +149,21 @@ impl BoundaryProtocol {
         // Steps 7 + 8: Structural mutations (AddChild, Remove, Reparent,
         // AttachOverlay, AddDimension). One pass through `apply_structural_mutations`
         // handles every BoundaryRequest variant.
-        let requests = patcher.take_boundary_requests();
+        //
+        // Player intent overlays route through the same path: each is converted
+        // to `BoundaryRequest::AttachOverlay` and appended to the request list
+        // so attachment and slot-table updates happen in one consistent pass.
+        let mut requests = patcher.take_boundary_requests();
         out.boundary_requests = requests.len() as u32;
+
+        let player_intents = patcher.take_player_intents();
+        out.player_intents_attached = player_intents.len() as u32;
+        for pi in player_intents {
+            requests.push(BoundaryRequest::AttachOverlay {
+                target:  pi.target,
+                overlay: pi.overlay,
+            });
+        }
 
         // Grow shadow to cover any new slots allocated during fission (step 6)
         // before applying structural mutations. apply_structural_mutations

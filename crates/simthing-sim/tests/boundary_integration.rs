@@ -14,6 +14,7 @@ use simthing_core::{
 };
 use simthing_feeder::{
     feeder_channel, BoundaryRequest, DispatchCoordinator, FeederWork, TransformPatcher,
+    PlayerIntentOverlay,
 };
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
 use simthing_sim::{BoundaryProtocol, VelocityAlertRegistration};
@@ -408,6 +409,81 @@ fn velocity_alert_registration_surfaces_at_boundary() {
     assert_eq!(alert.property_id, pid);
     assert_eq!(alert.sub_field, SubFieldRole::Velocity);
     assert_eq!(alert.value.to_bits(), (-0.21f32).to_bits());
+}
+
+/// A player submits a `PlayerIntentOverlay` via `FeederSender::submit_player_intent`.
+/// The patcher parks it; `BoundaryProtocol::execute` attaches it to the target
+/// node at boundary time.
+#[test]
+fn player_intent_overlay_arrives_attached_at_boundary() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    // ── Setup ─────────────────────────────────────────────────────────
+    let mut reg = DimensionRegistry::new();
+    reg.register(SimProperty::simple("core", "loyalty", 0));
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let n_dims = reg.total_columns as u32;
+
+    let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+    let cohort_id = cohort.id;
+    cohort.add_property(pid, PropertyValue::from_layout(&reg.property(pid).layout));
+
+    let mut world = SimThing::new(SimThingKind::World, 0);
+    world.add_child(cohort);
+
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&world);
+
+    const N_SLOTS: u32 = 8;
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    // ticks_per_day=1 so the very first tick signals boundary_reached.
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (tx, rx) = feeder_channel();
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    // ── Player submits an overlay before the boundary tick ────────────
+    let intent_overlay = Overlay {
+        id:        OverlayId::new(),
+        kind:      OverlayKind::Policy,
+        source:    OverlaySource::Player,
+        affects:   vec![cohort_id],
+        transform: PropertyTransformDelta {
+            property_id:      pid,
+            sub_field_deltas: vec![(SubFieldRole::Velocity, TransformOp::Add(-0.1))],
+        },
+        lifecycle: OverlayLifecycle::Permanent,
+    };
+    let overlay_id = intent_overlay.id;
+    tx.submit_player_intent(cohort_id, intent_overlay).unwrap();
+
+    // ── Single tick (boundary_reached = true at tick 1 of 1) ─────────
+    let tick_out = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        1.0,
+    );
+    assert!(tick_out.boundary_reached, "expected boundary on tick 1 of 1");
+
+    // ── Boundary: player intent should be attached to cohort ──────────
+    let outcome = proto.execute(tick_out.events, &mut patcher, &mut coord, &mut state, 1);
+    assert_eq!(outcome.player_intents_attached, 1);
+
+    let cohort_node = find_node(&proto.root, cohort_id).expect("cohort in tree");
+    assert!(
+        cohort_node.overlays.iter().any(|o| o.id == overlay_id),
+        "player intent overlay must be attached to the cohort"
+    );
 }
 
 /// Helper: depth-first find a node by id.
