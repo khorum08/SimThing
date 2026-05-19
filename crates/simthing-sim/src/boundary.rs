@@ -27,7 +27,9 @@ use crate::fission::{resolve_fission_fusion, FissionOutcome};
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
-use crate::threshold_registry::ThresholdRegistry;
+use crate::threshold_registry::{
+    ThresholdRegistry, ThresholdSemantic, VelocityAlertEvent, VelocityAlertRegistration,
+};
 use crate::tree_mutation::apply_structural_mutations;
 
 /// Everything that happened during a boundary. Useful for logging,
@@ -41,6 +43,7 @@ pub struct BoundaryOutcome {
     pub maintainer: MaintainerOutcome,
     pub gpu_sync: GpuSyncOutcome,
     pub boundary_requests: u32,
+    pub velocity_alerts: Vec<VelocityAlertEvent>,
 }
 
 /// Top-level boundary orchestrator.
@@ -59,6 +62,7 @@ pub struct BoundaryProtocol {
     pub registry: DimensionRegistry,
     pub allocator: SlotAllocator,
     cpu_threshold_registry: ThresholdRegistry,
+    velocity_alerts: Vec<VelocityAlertRegistration>,
 }
 
 impl BoundaryProtocol {
@@ -68,6 +72,7 @@ impl BoundaryProtocol {
             registry,
             allocator,
             cpu_threshold_registry: ThresholdRegistry::new(),
+            velocity_alerts: Vec::new(),
         }
     }
 
@@ -104,6 +109,8 @@ impl BoundaryProtocol {
         if coord.shadow.len() < needed {
             coord.shadow.resize(needed, 0.0);
         }
+
+        out.velocity_alerts = collect_velocity_alerts(&events, &self.cpu_threshold_registry);
 
         // Step 4: Overlay lifecycle — dissolve + expire effects.
         // Mutates coord.shadow directly (apply_expire_effects writes into it).
@@ -203,7 +210,14 @@ impl BoundaryProtocol {
             coord.n_slots(),
         );
 
-        let gpu_out = sync_gpu_buffers(&self.root, &self.registry, &self.allocator, coord, state);
+        let gpu_out = sync_gpu_buffers(
+            &self.root,
+            &self.registry,
+            &self.allocator,
+            coord,
+            state,
+            &self.velocity_alerts,
+        );
         // Adopt the new threshold registry for the next day.
         if let Some(new_reg) = gpu_out.new_threshold_registry {
             self.cpu_threshold_registry = new_reg;
@@ -222,15 +236,59 @@ impl BoundaryProtocol {
         &self.cpu_threshold_registry
     }
 
+    pub fn register_velocity_alert(&mut self, alert: VelocityAlertRegistration) {
+        self.velocity_alerts.push(alert);
+    }
+
+    pub fn clear_velocity_alerts(&mut self) {
+        self.velocity_alerts.clear();
+    }
+
+    pub fn velocity_alerts(&self) -> &[VelocityAlertRegistration] {
+        &self.velocity_alerts
+    }
+
     /// Manually seed the GPU threshold registry at session start (before any
     /// ticks). Normally called once after constructing the protocol, so that
     /// Pass 7 has registrations from tick 1 onward.
     pub fn initial_gpu_sync(&mut self, coord: &DispatchCoordinator, state: &mut WorldGpuState) {
-        let out = sync_gpu_buffers(&self.root, &self.registry, &self.allocator, coord, state);
+        let out = sync_gpu_buffers(
+            &self.root,
+            &self.registry,
+            &self.allocator,
+            coord,
+            state,
+            &self.velocity_alerts,
+        );
         if let Some(new_reg) = out.new_threshold_registry {
             self.cpu_threshold_registry = new_reg;
         }
     }
+}
+
+fn collect_velocity_alerts(
+    events: &[ThresholdEvent],
+    registry: &ThresholdRegistry,
+) -> Vec<VelocityAlertEvent> {
+    events
+        .iter()
+        .filter_map(|event| {
+            let ThresholdSemantic::VelocityAlert {
+                sim_thing_id,
+                property_id,
+                sub_field,
+            } = registry.get(event.event_kind)?
+            else {
+                return None;
+            };
+            Some(VelocityAlertEvent {
+                sim_thing_id: *sim_thing_id,
+                property_id: *property_id,
+                sub_field: sub_field.clone(),
+                value: event.value,
+            })
+        })
+        .collect()
 }
 
 fn seed_dimension_values(

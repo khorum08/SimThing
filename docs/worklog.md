@@ -4,6 +4,32 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — velocity alert registration
+
+**Status:** Step 3 landed locally. AI-facing velocity alerts can now be
+registered, uploaded to Pass 7, and surfaced through the boundary outcome.
+
+**Landed in this session:**
+- `VelocityAlertRegistration` describes the SimThing/property/sub-field
+  trajectory an AI layer wants to watch.
+- `ThresholdBuilder::build_with_velocity_alerts` appends those registrations
+  to the ordinary fission/fusion/expiry threshold buffer and records matching
+  `ThresholdSemantic::VelocityAlert` entries in the CPU lookup.
+- `BoundaryProtocol` owns alert registrations, includes them during initial
+  and boundary GPU sync, and reports fired alerts as
+  `BoundaryOutcome::velocity_alerts`.
+- Tests added:
+  - `velocity_alert_registration_targets_requested_sub_field`
+  - `velocity_alert_registration_surfaces_at_boundary`
+
+**Focused verification:** targeted threshold-registry and boundary integration
+tests for the new velocity-alert path pass.
+
+**Next session:** Continue Week 4 with player input handling or AI intent
+overlays.
+
+---
+
 ## 2026-05-19 — AddDimension execution
 
 **Status:** Step 2 landed locally. Boundary-time dimension expansion now
@@ -31,8 +57,7 @@ widens the CPU shadow and rebuilds GPU buffers instead of deferring.
 **Focused verification:** targeted feeder/GPU/sim tests for the new paths pass.
 
 **Next session:** Continue Week 4 with player input handling or AI intent
-overlays. Velocity-alert handling remains the main unimplemented sim-side
-semantic path.
+overlays. Velocity-alert handling landed later on 2026-05-19.
 
 ---
 

@@ -51,5 +51,8 @@ pub mod threshold_registry;
 pub mod tree_mutation;
 
 pub use boundary::{BoundaryOutcome, BoundaryProtocol};
-pub use threshold_registry::{ThresholdBuilder, ThresholdRegistry, ThresholdSemantic};
+pub use threshold_registry::{
+    ThresholdBuilder, ThresholdRegistry, ThresholdSemantic, VelocityAlertEvent,
+    VelocityAlertRegistration,
+};
 pub use tree_mutation::apply_structural_mutations;

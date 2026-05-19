@@ -310,6 +310,9 @@ Integration highlights:
   and the parallel CPU semantic lookup. Sources: `FissionThreshold` list per
   property, plus `DecayBehavior::{OnThreshold, IntensityGated, WhenProperty}`
   mapped to `PropertyExpiry`. `TowardZero`/`AfterTicks` are CPU-side only.
+- `ThresholdBuilder::build_with_velocity_alerts(...)` extends the same upload
+  with AI-facing `VelocityAlertRegistration` rows for a specific
+  SimThing/property/sub-field trajectory.
 
 **`overlay_lifecycle.rs` — step 4 + 7:**
 - `resolve_overlay_lifecycle(root, registry, allocator, shadow, n_dims, day)`
@@ -352,35 +355,37 @@ Integration highlights:
   the CPU shadow + rebuild `WorldGpuState` before step 9.
 
 **`gpu_sync.rs` — step 9:**
-- `sync_gpu_buffers(root, registry, allocator, coord, state)`:
+- `sync_gpu_buffers(root, registry, allocator, coord, state, velocity_alerts)`:
   1. `build_overlay_deltas` + pad ranges to `state.n_slots` + `upload_overlay_deltas`.
-  2. `ThresholdBuilder::build` + `upload_thresholds`. Returns the new CPU registry.
+  2. `ThresholdBuilder::build_with_velocity_alerts` + `upload_thresholds`.
+     Returns the new CPU registry.
   3. `coord.upload_full_shadow(state)` — every row, fresh.
 
 **`boundary.rs` — `BoundaryProtocol`:**
 - Owns the authoritative `SimThing` root, `DimensionRegistry`, `SlotAllocator`,
-  and CPU `ThresholdRegistry`.
+  CPU `ThresholdRegistry`, and registered velocity alerts.
 - `execute(events, patcher, coord, state, day) -> BoundaryOutcome` runs steps 4–9
   in order:
   1. **Reads GPU values back into `coord.shadow`** (critical: integration
      output lives only on GPU; otherwise the eventual `upload_full_shadow`
      would wipe out a day's worth of Pass 1/2 work).
-  2. Overlay lifecycle (step 4).
-  3. Property expiry (step 5).
-  4. Fission/fusion (step 6). Fission-spawned children inherit active
+  2. Collects fired `VelocityAlert` events into `BoundaryOutcome::velocity_alerts`.
+  3. Overlay lifecycle (step 4).
+  4. Property expiry (step 5).
+  5. Fission/fusion (step 6). Fission-spawned children inherit active
      parent properties from the boundary GPU readback row; the activating
      property's Amount is reset to 0.0 on the child.
-  5. Resize shadow for any new slots from step 6.
-  6. Drain patcher boundary requests, call `apply_structural_mutations` (steps 7+8).
-  7. If `AddDimension` expanded `registry.total_columns`, widen
+  6. Resize shadow for any new slots from step 6.
+  7. Drain patcher boundary requests, call `apply_structural_mutations` (steps 7+8).
+  8. If `AddDimension` expanded `registry.total_columns`, widen
      `coord.shadow`, project any newly-present sparse property values into
      the new columns, and rebuild `WorldGpuState` buffers.
-  8. Resize shadow again if step 7 added slots.
-  9. Assertion: `allocator.capacity() <= state.n_slots` (no GPU buffer overflow).
-  10. `sync_gpu_buffers` (step 9).
-  11. Adopt the new CPU `ThresholdRegistry`.
+  9. Resize shadow again if step 7 added slots.
+  10. Assertion: `allocator.capacity() <= state.n_slots` (no GPU buffer overflow).
+  11. `sync_gpu_buffers` (step 9).
+  12. Adopt the new CPU `ThresholdRegistry`.
 
-**Tests: 21 unit + 3 GPU integration tests, all passing, zero warnings.**
+**Tests: 21 unit + 4 GPU integration tests, all passing, zero warnings.**
 
 Integration highlights:
 - `fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean` — full end-to-end:
@@ -395,10 +400,9 @@ Integration highlights:
 - `add_dimension_request_rebuilds_gpu_layout` — property registered after GPU
   state creation is admitted at boundary time; CPU shadow and GPU buffers widen,
   and a sparse property value on the cohort appears in the new GPU columns.
-
-**Not yet built in simthing-sim:**
-- Velocity-alert handling (`ThresholdSemantic::VelocityAlert`) — AI layer
-  consumes these; no-op in boundary today.
+- `velocity_alert_registration_surfaces_at_boundary` — an AI-facing velocity
+  alert registered on a cohort's Velocity sub-field is uploaded to Pass 7 and
+  returned through `BoundaryOutcome::velocity_alerts` after it fires.
 
 **Not yet built in any crate:**
 - Player input handling (Week 4)
@@ -414,8 +418,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 97 tests must pass with zero warnings before any commit
-(14 core + 37 GPU + 18 feeder unit + 4 feeder integration + 21 sim unit + 3 sim integration).
+All 98 tests must pass with zero warnings before any commit
+(14 core + 37 GPU + 18 feeder unit + 4 feeder integration + 21 sim unit + 4 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available
