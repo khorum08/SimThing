@@ -486,6 +486,99 @@ fn player_intent_overlay_arrives_attached_at_boundary() {
     );
 }
 
+/// Player intent transform effect is visible on the GPU within the same tick
+/// it is submitted (mid-day fast path), and the overlay is structurally
+/// attached to the tree after the subsequent boundary.
+#[test]
+fn player_intent_mid_day_effect_lands_on_gpu_before_boundary() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    // ── Setup: cohort with loyalty, Amount starts at 0.0 ─────────────
+    let mut reg = DimensionRegistry::new();
+    reg.register(SimProperty::simple("core", "loyalty", 0));
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let n_dims = reg.total_columns as u32;
+
+    let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+    let cohort_id = cohort.id;
+    cohort.add_property(pid, PropertyValue::from_layout(&layout));
+    let mut world = SimThing::new(SimThingKind::World, 0);
+    world.add_child(cohort);
+
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&world);
+    let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
+
+    const N_SLOTS: u32 = 8;
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    // ticks_per_day=2 so tick 1 is mid-day and tick 2 is the boundary.
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 2);
+    let (tx, rx) = feeder_channel();
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    // ── Submit player intent: Set Amount = 0.6 ────────────────────────
+    let intent_overlay = Overlay {
+        id:        OverlayId::new(),
+        kind:      OverlayKind::Policy,
+        source:    OverlaySource::Player,
+        affects:   vec![cohort_id],
+        transform: PropertyTransformDelta {
+            property_id:      pid,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.6))],
+        },
+        lifecycle: OverlayLifecycle::Permanent,
+    };
+    let overlay_id = intent_overlay.id;
+    tx.submit_player_intent(cohort_id, intent_overlay).unwrap();
+
+    // ── Tick 1: mid-day, boundary NOT yet reached ─────────────────────
+    let tick1 = coord.tick(
+        &rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0,
+    );
+    assert!(!tick1.boundary_reached, "tick 1 of 2 must not signal boundary");
+
+    // The transform was applied to the shadow during drain and uploaded to
+    // the GPU as a dirty row. Read back and confirm Amount = 0.6.
+    let gpu_values = state.read_values();
+    let base = cohort_slot * n_dims as usize;
+    assert_eq!(
+        gpu_values[base + amount_off].to_bits(),
+        0.6f32.to_bits(),
+        "player intent Set(0.6) must be visible on GPU after tick 1"
+    );
+    // Overlay not yet structurally attached — boundary hasn't run.
+    let cohort_node = find_node(&proto.root, cohort_id).unwrap();
+    assert!(
+        cohort_node.overlays.iter().all(|o| o.id != overlay_id),
+        "overlay must not be in tree before boundary"
+    );
+
+    // ── Tick 2: boundary reached ──────────────────────────────────────
+    let tick2 = coord.tick(
+        &rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0,
+    );
+    assert!(tick2.boundary_reached, "tick 2 of 2 must signal boundary");
+
+    let outcome = proto.execute(tick2.events, &mut patcher, &mut coord, &mut state, 1);
+    assert_eq!(outcome.player_intents_attached, 1);
+
+    // Now structurally attached.
+    let cohort_node = find_node(&proto.root, cohort_id).unwrap();
+    assert!(
+        cohort_node.overlays.iter().any(|o| o.id == overlay_id),
+        "overlay must be attached after boundary"
+    );
+}
+
 /// Helper: depth-first find a node by id.
 fn find_node(node: &SimThing, id: simthing_core::SimThingId) -> Option<&SimThing> {
     if node.id == id {

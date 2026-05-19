@@ -120,6 +120,12 @@ impl TransformPatcher {
                     stats.boundary_parked += 1;
                 }
                 FeederWork::PlayerIntent(pi) => {
+                    // Apply transform delta to shadow immediately so the
+                    // effect is visible within the current tick — same
+                    // col_for_role path as a regular patch. Structural
+                    // attach_overlay still happens at the day boundary.
+                    let patch = PatchTransform { target: pi.target, delta: pi.overlay.transform.clone() };
+                    self.apply_one(&patch, registry, allocator, n_dims, values, &mut stats);
                     self.pending_player_intents.push(pi);
                     stats.player_intents_parked += 1;
                 }
@@ -465,6 +471,44 @@ mod tests {
         assert_eq!(intents[0].overlay.id, overlay_id);
         // take empties the Vec
         assert!(p.take_player_intents().is_empty());
+    }
+
+    #[test]
+    fn player_intent_applies_transform_to_shadow_and_marks_row_dirty() {
+        use simthing_core::{
+            Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
+            PropertyTransformDelta,
+        };
+        let (reg, alloc, pid, [a, _b], n_dims) = fixture();
+        let (tx, rx) = feeder_channel();
+
+        let overlay = Overlay {
+            id:        OverlayId::new(),
+            kind:      OverlayKind::Policy,
+            source:    OverlaySource::Player,
+            affects:   vec![a],
+            transform: PropertyTransformDelta {
+                property_id:      pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.75))],
+            },
+            lifecycle: OverlayLifecycle::Permanent,
+        };
+        tx.send(FeederWork::PlayerIntent(
+            crate::work::PlayerIntentOverlay { target: a, overlay },
+        )).unwrap();
+
+        let mut values = vec![0.0f32; 2 * n_dims];
+        let mut p = TransformPatcher::new(2);
+        let stats = p.drain(&rx, &reg, &alloc, n_dims, &mut values);
+
+        // Transform applied: slot 0, Amount col 0 = 0.75.
+        assert_eq!(values[0], 0.75, "mid-day shadow mutation must fire immediately");
+        assert_eq!(stats.applied_writes, 1);
+        assert_eq!(stats.player_intents_parked, 1);
+        // Row marked dirty so the Dispatch Coordinator uploads it this tick.
+        assert_eq!(p.take_dirty_rows(), vec![0]);
+        // Intent still parked for boundary attach.
+        assert_eq!(p.take_player_intents().len(), 1);
     }
 
     #[test]

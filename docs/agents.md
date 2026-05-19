@@ -102,15 +102,16 @@ SimThing/
 
 ## Current implementation state
 
-**Weeks 1–3 complete plus Week 4 Step 1 (PlayerIntent overlay API). The
-full vertical slice is operational: GPU passes 0/1/2/3/7, feeder layer
-with mpsc work queue, day-boundary protocol orchestration with real
-fission/fusion + tree mutation + GPU buffer rebuild. Player-authored
-overlays can now be submitted via `FeederSender::submit_player_intent`;
-the patcher parks them separately and the boundary protocol attaches them
-during step 7/8. Passes 4–6 (reduction) remain deferred. Next: Week 4
-Step 2 — player overlay mid-day shadow effect (apply transform delta to
-CPU shadow on receipt, structural attach still at boundary).**
+**Weeks 1–3 complete plus Week 4 Steps 1–2 (PlayerIntent overlay API +
+mid-day fast path). The full vertical slice is operational: GPU passes
+0/1/2/3/7, feeder layer with mpsc work queue, day-boundary protocol
+orchestration with real fission/fusion + tree mutation + GPU buffer
+rebuild. Player-authored overlays submitted via
+`FeederSender::submit_player_intent` have their transform delta applied to
+the CPU shadow immediately (visible within the current tick on the GPU),
+and the structural `attach_overlay` fires at the next day boundary. Passes
+4–6 (reduction) remain deferred. Next: Week 4 Step 3 — AI intent overlay
+API (`AiIntentOverlay` + separate `AiSender` channel).**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
@@ -429,8 +430,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 100 tests must pass with zero warnings before any commit
-(14 core + 37 GPU + 19 feeder unit + 4 feeder integration + 21 sim unit + 5 sim integration).
+All 102 tests must pass with zero warnings before any commit
+(14 core + 37 GPU + 20 feeder unit + 4 feeder integration + 21 sim unit + 6 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available
