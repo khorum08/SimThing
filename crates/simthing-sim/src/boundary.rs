@@ -23,6 +23,7 @@ use simthing_core::{DimensionRegistry, SimPropertyId, SimThing, SimThingId};
 use simthing_feeder::{BoundaryRequest, DispatchCoordinator, MaintainerOutcome, TransformPatcher};
 use simthing_gpu::{SlotAllocator, ThresholdEvent, WorldGpuState};
 
+use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 use crate::fission::{resolve_fission_fusion, FissionOutcome};
 use crate::observability::{observe, ObservabilityReport};
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
@@ -66,6 +67,10 @@ pub struct BoundaryProtocol {
     pub allocator: SlotAllocator,
     cpu_threshold_registry: ThresholdRegistry,
     velocity_alerts: Vec<VelocityAlertRegistration>,
+    /// Append-only log of semantic state changes. Each boundary appends its
+    /// entries; callers drain with `take_delta_log()`. The serialization
+    /// format and playback logic are deferred to the replay system (Week 5).
+    delta_log: Vec<BoundaryDeltaEntry>,
 }
 
 impl BoundaryProtocol {
@@ -76,6 +81,7 @@ impl BoundaryProtocol {
             allocator,
             cpu_threshold_registry: ThresholdRegistry::new(),
             velocity_alerts: Vec::new(),
+            delta_log: Vec::new(),
         }
     }
 
@@ -253,6 +259,8 @@ impl BoundaryProtocol {
             new_threshold_registry: None, // moved into self above
         };
 
+        self.delta_log.extend(entries_from_outcome(&out));
+
         out
     }
 
@@ -296,6 +304,20 @@ impl BoundaryProtocol {
             coord.n_dims() as usize,
             target,
         )
+    }
+
+    /// All delta entries accumulated since the last `take_delta_log` call.
+    /// Entries are in boundary step order within each day, and days are
+    /// appended in chronological order.
+    pub fn delta_log(&self) -> &[BoundaryDeltaEntry] {
+        &self.delta_log
+    }
+
+    /// Drain the accumulated delta log. Returns all entries since the last
+    /// call and empties the internal buffer. The caller (replay writer) is
+    /// responsible for associating entries with the correct day number.
+    pub fn take_delta_log(&mut self) -> Vec<BoundaryDeltaEntry> {
+        std::mem::take(&mut self.delta_log)
     }
 
     /// Manually seed the GPU threshold registry at session start (before any

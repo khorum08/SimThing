@@ -4,6 +4,42 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — Replay delta capture (Opus prep)
+
+**Status:** Merged. `BoundaryProtocol` now accumulates a per-boundary
+delta log; callers drain it with `take_delta_log()`.
+
+**Landed in this session:**
+- `crates/simthing-sim/src/delta_log.rs` — new module:
+  - `BoundaryDeltaEntry` enum covering: `OverlayAttached`, `SimThingAdded`,
+    `SimThingRemoved`, `DimensionAdded`, `FissionOccurred`, `FusionOccurred`,
+    `PropertyExpired`, `SimThingReparented`, `VelocityAlert`.
+  - `entries_from_outcome(outcome: &BoundaryOutcome) -> Vec<BoundaryDeltaEntry>` —
+    derives entries from the existing outcome fields. Id-bearing fields
+    (`MaintainerOutcome::allocated/tombstoned/overlays_attached/dimensions_added`,
+    `velocity_alerts`) produce per-entry variants; `FissionOutcome` and expiry
+    produce count-only entries (see module doc for Opus extension points).
+  - 6 unit tests covering empty, counts, ids, combined expiry, alert
+    structure, and step ordering.
+- `BoundaryProtocol`:
+  - `delta_log: Vec<BoundaryDeltaEntry>` field.
+  - `execute()` calls `entries_from_outcome` and appends at the end.
+  - `delta_log() -> &[BoundaryDeltaEntry]` and `take_delta_log()` accessors.
+
+**What Opus needs to extend for full replay:**
+- `FissionOutcome`: add `Vec<(SimThingId, SimThingId)>` (parent, child) pairs.
+- `MaintainerOutcome`: add (child, new_parent) pairs to reparent records.
+- `ExpiryOutcome`: add `Vec<(SimThingId, SimPropertyId)>` for per-entity expiry.
+- `OverlayAttached`: embed full `Overlay` data (not just id) for deterministic playback.
+- Serialization format, file I/O, determinism guarantees, playback driver.
+
+**116/116 tests passing, zero warnings.**
+
+**Sonnet work complete.** Next: Opus for Step 5 (Passes 4–6 reduction
+semantics) and Step 6 (replay serialization + playback).
+
+---
+
 ## 2026-05-19 — Observability query (Week 4 complete)
 
 **Status:** Week 4 Step 4 merged. `BoundaryProtocol::observe` answers
