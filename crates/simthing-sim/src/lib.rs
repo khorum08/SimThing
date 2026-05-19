@@ -49,6 +49,7 @@ pub mod gpu_sync;
 pub mod observability;
 pub mod overlay_lifecycle;
 pub mod property_expiry;
+pub mod reduced_field;
 pub mod threshold_registry;
 pub mod tree_mutation;
 
@@ -57,6 +58,7 @@ pub use delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 pub use observability::{
     ObservabilityReport, OverlayContribution, PropertyObservation, SubFieldObservation,
 };
+pub use reduced_field::ReducedField;
 pub use threshold_registry::{
     ThresholdBuilder, ThresholdRegistry, ThresholdSemantic, VelocityAlertEvent,
     VelocityAlertRegistration,

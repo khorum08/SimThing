@@ -1,4 +1,5 @@
 use crate::ids::SimPropertyId;
+use crate::reduction::ReductionRule;
 use serde::{Deserialize, Serialize};
 
 // ── ClampBehavior ─────────────────────────────────────────────────────────────
@@ -110,6 +111,21 @@ pub struct SubFieldSpec {
     /// Example: Named("axis_position") governed_by Some(Named("axis_drift"))
     /// means axis_position advances by axis_drift * delta_time each tick.
     pub governed_by: Option<SubFieldRole>,
+
+    /// Override the default reduction rule for this sub-field. When `None`,
+    /// the rule is derived from `role` via `ReductionRule::default_for_role`.
+    /// Reduction aggregates children's column values into the parent at the
+    /// presentation tier (GPU Passes 4–6 / CPU reduction oracle).
+    pub reduction_override: Option<ReductionRule>,
+}
+
+impl SubFieldSpec {
+    /// Resolve the reduction rule for this sub-field: override if set,
+    /// otherwise the role's default.
+    pub fn resolved_reduction(&self) -> ReductionRule {
+        self.reduction_override
+            .unwrap_or_else(|| ReductionRule::default_for_role(&self.role))
+    }
 }
 
 // ── PropertyLayout ────────────────────────────────────────────────────────────
@@ -170,6 +186,7 @@ impl PropertyLayout {
                 display_name:  "amount".into(),
                 display_range: Some((0.0, 1.0)),
                 governed_by:   Some(SubFieldRole::Velocity),
+                reduction_override: None,
             },
             SubFieldSpec {
                 role:          SubFieldRole::Velocity,
@@ -180,6 +197,7 @@ impl PropertyLayout {
                 display_name:  "velocity".into(),
                 display_range: None,
                 governed_by:   None,
+                reduction_override: None,
             },
             SubFieldSpec {
                 role:          SubFieldRole::Intensity,
@@ -190,6 +208,7 @@ impl PropertyLayout {
                 display_name:  "intensity".into(),
                 display_range: Some((0.0, 1.0)),
                 governed_by:   None, // updated by IntensityBehavior, not integration
+                reduction_override: None,
             },
         ];
         for i in 0..vector_len {
@@ -202,6 +221,7 @@ impl PropertyLayout {
                 display_name:  format!("vec_{i}"),
                 display_range: None,
                 governed_by:   None,
+                reduction_override: None,
             });
         }
         Self { sub_fields }
@@ -588,6 +608,7 @@ mod tests {
                     display_name:  "axis_position".into(),
                     display_range: Some((-10.0, 10.0)),
                     governed_by:   Some(SubFieldRole::Named("axis_drift".into())),
+                    reduction_override: None,
                 },
                 SubFieldSpec {
                     role:          SubFieldRole::Named("axis_drift".into()),
@@ -598,6 +619,7 @@ mod tests {
                     display_name:  "axis_drift".into(),
                     display_range: None,
                     governed_by:   None,
+                    reduction_override: None,
                 },
                 SubFieldSpec {
                     role:          SubFieldRole::Named("ethics_bonus".into()),
@@ -608,6 +630,7 @@ mod tests {
                     display_name:  "ethics_bonus".into(),
                     display_range: Some((0.0, 2.0)),
                     governed_by:   None,
+                    reduction_override: None,
                 },
             ],
         };

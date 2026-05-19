@@ -102,14 +102,17 @@ SimThing/
 
 ## Current implementation state
 
-**Weeks 1–4 complete plus replay delta capture prep. Both player and AI
-can submit overlays; `BoundaryProtocol::observe` decomposes sub-field
-values and overlay contributions; `BoundaryProtocol::take_delta_log()`
-drains a `Vec<BoundaryDeltaEntry>` capturing every semantic state change
-per boundary (overlay attached, SimThing added/removed, fission/fusion,
-property expiry, velocity alerts). Passes 4–6 (reduction) and replay
-serialization remain deferred — both require Opus-tier architectural
-decisions.**
+**Weeks 1–4 complete plus replay delta capture prep plus Passes 4–6
+(presentation reduction). Both player and AI can submit overlays;
+`BoundaryProtocol::observe` decomposes sub-field values and overlay
+contributions; `BoundaryProtocol::take_delta_log()` drains a
+`Vec<BoundaryDeltaEntry>` capturing every semantic state change per
+boundary. GPU Passes 4–6 reduce children into parents bottom-up using
+per-sub-field `ReductionRule` (default per role: Amount/Velocity/Named →
+Mean, Intensity → Max). `BoundaryProtocol::read_reduced_field(state)`
+returns the aggregated `output_vectors` for presentation. CPU oracle
+matches GPU shader bit-exactly. Replay serialization remains deferred —
+requires Opus-tier architectural decisions.**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride

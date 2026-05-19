@@ -196,6 +196,36 @@ pub struct ThresholdEvent {
     pub event_kind: u32,
 }
 
+// ── Reduction (Passes 4–6) ────────────────────────────────────────────────────
+
+pub const RULE_MEAN:  u32 = 0;
+pub const RULE_SUM:   u32 = 1;
+pub const RULE_MAX:   u32 = 2;
+pub const RULE_MIN:   u32 = 3;
+pub const RULE_FIRST: u32 = 4;
+
+pub fn encode_rule(rule: simthing_core::ReductionRule) -> u32 {
+    use simthing_core::ReductionRule::*;
+    match rule {
+        Mean  => RULE_MEAN,
+        Sum   => RULE_SUM,
+        Max   => RULE_MAX,
+        Min   => RULE_MIN,
+        First => RULE_FIRST,
+    }
+}
+
+/// Uniform for one reduction dispatch. Drives the depth-bucket pass: each
+/// thread processes one slot from `depth_slots[depth_offset .. depth_offset + bucket_size]`.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+pub struct ReduceParams {
+    pub n_dims:       u32,
+    pub depth_offset: u32,
+    pub bucket_size:  u32,
+    pub _pad:         u32,
+}
+
 // ── WorldGpuState ─────────────────────────────────────────────────────────────
 
 pub struct WorldGpuState {
@@ -240,6 +270,22 @@ pub struct WorldGpuState {
     /// Number of currently-registered thresholds (i.e. valid entries in
     /// `threshold_registry`). Pass 7 dispatches one thread per registration.
     pub n_thresholds: u32,
+
+    // ── Reduction (Passes 4–6) ───────────────────────────────────────────────
+    /// CSR child topology: `child_starts[i]..child_starts[i+1]` indexes
+    /// children of parent slot `i`. Length `n_slots + 1` u32s.
+    pub child_starts:  Buffer,
+    /// Concatenated child slot indices, in canonical (ascending slot) order.
+    pub child_indices: Buffer,
+    /// Per-column reduction rule (u32), length `n_dims`.
+    pub column_rules:  Buffer,
+    /// Concatenated depth buckets — slot indices grouped by tree depth.
+    /// `depth_bucket_ranges` tells `Pipelines::run_reduction_passes` how to
+    /// slice this. Empty when no topology has been uploaded yet.
+    pub depth_slots:   Buffer,
+    /// (offset, size) into `depth_slots` per depth. The dispatcher iterates
+    /// these from the last entry (deepest) to the first (root depth).
+    pub depth_bucket_ranges: Vec<(u32, u32)>,
 }
 
 impl WorldGpuState {
@@ -323,6 +369,15 @@ impl WorldGpuState {
             mapped_at_creation: false,
         });
 
+        // Reduction buffers — placeholder allocations, filled by upload_reduction_topology.
+        let child_starts = mk(
+            "child_starts",
+            ((n_slots as u64) + 1) * 4,
+        );
+        let child_indices = mk("child_indices", 4); // placeholder 1 u32
+        let column_rules = mk("column_rules", (n_dims as u64) * 4);
+        let depth_slots  = mk("depth_slots", 4);    // placeholder 1 u32
+
         Self {
             ctx,
             n_slots,
@@ -341,6 +396,11 @@ impl WorldGpuState {
             event_count,
             event_candidates,
             n_thresholds: 0,
+            child_starts,
+            child_indices,
+            column_rules,
+            depth_slots,
+            depth_bucket_ranges: Vec::new(),
         }
     }
 
@@ -386,6 +446,14 @@ impl WorldGpuState {
         );
         self.event_count = self.mk_storage_buffer("event_count", 4);
         self.n_thresholds = 0;
+
+        // Reduction: column_rules grows with n_dims; child_starts grows with n_slots.
+        self.column_rules = self.mk_storage_buffer("column_rules", (self.n_dims as u64) * 4);
+        self.child_starts =
+            self.mk_storage_buffer("child_starts", ((self.n_slots as u64) + 1) * 4);
+        self.child_indices = self.mk_storage_buffer("child_indices", 4);
+        self.depth_slots   = self.mk_storage_buffer("depth_slots", 4);
+        self.depth_bucket_ranges.clear();
     }
 
     fn mk_storage_buffer(&self, label: &'static str, size: u64) -> Buffer {
@@ -492,6 +560,70 @@ impl WorldGpuState {
         }
     }
 
+    /// Upload reduction topology + per-column rule table. Called once per
+    /// boundary after the tree shape changes (or once at session start).
+    ///
+    /// - `child_starts.len()` must equal `n_slots + 1`.
+    /// - `column_rules.len()` must equal `n_dims`.
+    /// - `depth_bucket_ranges` is stored CPU-side; the dispatcher walks it
+    ///   from the last entry (deepest) up to the first (root depth).
+    pub fn upload_reduction_topology(
+        &mut self,
+        child_starts:  &[u32],
+        child_indices: &[u32],
+        column_rules:  &[u32],
+        depth_slots:   &[u32],
+        depth_bucket_ranges: Vec<(u32, u32)>,
+    ) {
+        assert_eq!(
+            child_starts.len(),
+            self.n_slots as usize + 1,
+            "child_starts length {} != n_slots + 1 = {}",
+            child_starts.len(),
+            self.n_slots as usize + 1,
+        );
+        assert_eq!(
+            column_rules.len(),
+            self.n_dims as usize,
+            "column_rules length {} != n_dims {}",
+            column_rules.len(),
+            self.n_dims,
+        );
+
+        // child_indices grows on demand.
+        let ci_needed = (child_indices.len().max(1) * 4) as u64;
+        if ci_needed > self.child_indices.size() {
+            self.child_indices = self.mk_storage_buffer("child_indices", ci_needed);
+        }
+        // depth_slots grows on demand.
+        let ds_needed = (depth_slots.len().max(1) * 4) as u64;
+        if ds_needed > self.depth_slots.size() {
+            self.depth_slots = self.mk_storage_buffer("depth_slots", ds_needed);
+        }
+
+        self.ctx
+            .queue
+            .write_buffer(&self.child_starts, 0, bytemuck::cast_slice(child_starts));
+        if !child_indices.is_empty() {
+            self.ctx
+                .queue
+                .write_buffer(&self.child_indices, 0, bytemuck::cast_slice(child_indices));
+        }
+        self.ctx
+            .queue
+            .write_buffer(&self.column_rules, 0, bytemuck::cast_slice(column_rules));
+        if !depth_slots.is_empty() {
+            self.ctx
+                .queue
+                .write_buffer(&self.depth_slots, 0, bytemuck::cast_slice(depth_slots));
+        }
+        self.depth_bucket_ranges = depth_bucket_ranges;
+    }
+
+    pub fn read_output_vectors(&self) -> Vec<f32> {
+        self.read_buffer_f32(&self.output_vectors)
+    }
+
     /// Reset the per-tick atomic event counter to zero. Call this before each
     /// `run_threshold_scan`; `Pipelines::run_threshold_scan` does it internally.
     pub fn reset_event_count(&self) {
@@ -537,6 +669,10 @@ impl WorldGpuState {
             + self.threshold_registry.size()
             + self.event_count.size()
             + self.event_candidates.size()
+            + self.child_starts.size()
+            + self.child_indices.size()
+            + self.column_rules.size()
+            + self.depth_slots.size()
     }
 
     pub fn write_values(&self, data: &[f32]) {

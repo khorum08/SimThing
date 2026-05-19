@@ -18,7 +18,7 @@ use wgpu::{
 };
 
 use crate::context::GpuContext;
-use crate::world_state::WorldGpuState;
+use crate::world_state::{ReduceParams, WorldGpuState};
 
 const WORKGROUP_SIZE: u32 = 64;
 
@@ -48,6 +48,12 @@ pub struct Pipelines {
 
     threshold_layout:   BindGroupLayout,
     threshold_pipeline: ComputePipeline,
+
+    reduction_layout:   BindGroupLayout,
+    reduction_pipeline: ComputePipeline,
+    /// Dedicated uniform buffer for reduction (separate from shared pass uniform
+    /// so per-depth dispatches can be queued without race risk).
+    reduction_uniform:  Buffer,
 }
 
 impl Pipelines {
@@ -202,6 +208,43 @@ impl Pipelines {
             cache: None,
         });
 
+        // ── Passes 4–6: bottom-up reduction ─────────────────────────────────
+        let reduction_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("reduction_bgl"),
+            entries: &[
+                storage_entry(0, /*read_only*/ true),  // values
+                storage_entry(1, /*read_only*/ false), // output_vectors (rw)
+                storage_entry(2, /*read_only*/ true),  // child_starts
+                storage_entry(3, /*read_only*/ true),  // child_indices
+                storage_entry(4, /*read_only*/ true),  // column_rules
+                storage_entry(5, /*read_only*/ true),  // depth_slots
+                uniform_entry(6),                       // ReduceParams
+            ],
+        });
+        let reduction_module = device.create_shader_module(ShaderModuleDescriptor {
+            label:  Some("reduction_shader"),
+            source: ShaderSource::Wgsl(include_str!("shaders/reduction.wgsl").into()),
+        });
+        let reduction_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("reduction_pl_layout"),
+            bind_group_layouts: &[&reduction_layout],
+            push_constant_ranges: &[],
+        });
+        let reduction_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("reduction_pipeline"),
+            layout: Some(&reduction_pl_layout),
+            module: &reduction_module,
+            entry_point: "main",
+            compilation_options: Default::default(),
+            cache: None,
+        });
+        let reduction_uniform = device.create_buffer(&BufferDescriptor {
+            label: Some("reduction_uniform"),
+            size:  std::mem::size_of::<ReduceParams>() as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         Self {
             uniform_buffer,
             snapshot_layout, snapshot_pipeline,
@@ -209,6 +252,7 @@ impl Pipelines {
             intensity_layout, intensity_pipeline,
             overlay_layout, overlay_pipeline,
             threshold_layout, threshold_pipeline,
+            reduction_layout, reduction_pipeline, reduction_uniform,
         }
     }
 
@@ -350,6 +394,64 @@ impl Pipelines {
             pass.dispatch_workgroups(groups, 1, 1);
         }
         ctx.queue.submit(Some(encoder.finish()));
+    }
+
+    /// Passes 4–6: bottom-up reduction. Walks `state.depth_bucket_ranges` from
+    /// deepest depth to root depth, dispatching one compute pass per depth.
+    ///
+    /// Pre-condition: `WorldGpuState::upload_reduction_topology` has been called
+    /// and the topology matches the current tree shape. No-op if no buckets
+    /// are present.
+    pub fn run_reduction_passes(&self, state: &WorldGpuState) {
+        if state.depth_bucket_ranges.is_empty() {
+            return;
+        }
+        let ctx = &state.ctx;
+
+        let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("reduction_bg"),
+            layout: &self.reduction_layout,
+            entries: &[
+                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                BindGroupEntry { binding: 1, resource: state.output_vectors.as_entire_binding() },
+                BindGroupEntry { binding: 2, resource: state.child_starts.as_entire_binding() },
+                BindGroupEntry { binding: 3, resource: state.child_indices.as_entire_binding() },
+                BindGroupEntry { binding: 4, resource: state.column_rules.as_entire_binding() },
+                BindGroupEntry { binding: 5, resource: state.depth_slots.as_entire_binding() },
+                BindGroupEntry { binding: 6, resource: self.reduction_uniform.as_entire_binding() },
+            ],
+        });
+
+        // Iterate buckets deepest-first so children's output_vectors rows are
+        // written before parents read them.
+        for &(depth_offset, bucket_size) in state.depth_bucket_ranges.iter().rev() {
+            if bucket_size == 0 {
+                continue;
+            }
+            let p = ReduceParams {
+                n_dims:       state.n_dims,
+                depth_offset,
+                bucket_size,
+                _pad:         0,
+            };
+            ctx.queue
+                .write_buffer(&self.reduction_uniform, 0, bytemuck::bytes_of(&p));
+
+            let groups = bucket_size.div_ceil(WORKGROUP_SIZE);
+            let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("reduction_encoder"),
+            });
+            {
+                let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                    label: Some("reduction_pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.reduction_pipeline);
+                pass.set_bind_group(0, &bg, &[]);
+                pass.dispatch_workgroups(groups, 1, 1);
+            }
+            ctx.queue.submit(Some(encoder.finish()));
+        }
     }
 
     /// Pass 7: scan registered thresholds for crossings between `previous_values`
@@ -1149,6 +1251,95 @@ mod tests {
             let end   = start + entity.properties[&lid].data.len();
             assert_bits_eq(label, &entity.properties[&lid].data, &gpu_flat[start..end]);
         }
+    }
+
+    /// Passes 4–6 parity: GPU output_vectors must match the CPU oracle
+    /// bit-exactly on a 3-tier tree (World → Locations → Cohorts).
+    ///
+    /// Exercises Mean (amount, velocity, named cols), Max (intensity), and the
+    /// canonical child iteration order on multiple parents at the same depth.
+    #[test]
+    fn reduction_matches_cpu_oracle() {
+        use crate::projection::project_tree_to_values;
+        use crate::reduction::{build_column_rules, build_topology, cpu_reduce_oracle};
+        use crate::slot::SlotAllocator;
+        use crate::world_state::encode_rule;
+
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+
+        let mut reg = DimensionRegistry::new();
+        let lid = reg.register(loyalty_property());
+        let layout = reg.property(lid).layout.clone();
+        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+        let i_off = layout.offset_of(&SubFieldRole::Intensity).unwrap();
+
+        // Build: World → 2 Locations → 3, 2 cohorts respectively. 8 nodes.
+        let cohort_data: [&[(f32, f32, f32)]; 2] = [
+            &[(0.40, 0.07, 0.20), (0.85, -0.001, 0.60), (0.10, 0.05, 0.30)],
+            &[(0.55, 0.03, 0.45), (0.20, -0.02, 0.10)],
+        ];
+
+        let mut world = SimThing::new(SimThingKind::World, 0);
+        for cohorts in &cohort_data {
+            let mut loc = SimThing::new(SimThingKind::Location, 0);
+            for &(a, v, i) in *cohorts {
+                let mut c = SimThing::new(SimThingKind::Cohort, 0);
+                let mut pv = PropertyValue::from_layout(&layout);
+                pv.data[a_off] = a;
+                pv.data[v_off] = v;
+                pv.data[i_off] = i;
+                c.add_property(lid, pv);
+                loc.add_child(c);
+            }
+            world.add_child(loc);
+        }
+
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&world);
+
+        let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
+        let n_dims = state.n_dims as usize;
+
+        // Project leaf values into the `values` buffer. Inner-node rows are zero;
+        // the shader overwrites them via reduction.
+        let mut flat = vec![0.0_f32; state.values_len()];
+        project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
+        state.write_values(&flat);
+
+        // Build + upload topology + rules.
+        let topo = build_topology(&world, &alloc);
+        let rules = build_column_rules(&reg, n_dims);
+        let rules_u32: Vec<u32> = rules.iter().copied().map(encode_rule).collect();
+
+        let mut depth_slots: Vec<u32> = Vec::new();
+        let mut depth_ranges: Vec<(u32, u32)> = Vec::new();
+        for bucket in &topo.depth_buckets {
+            let offset = depth_slots.len() as u32;
+            depth_slots.extend_from_slice(bucket);
+            depth_ranges.push((offset, bucket.len() as u32));
+        }
+        state.upload_reduction_topology(
+            &topo.child_starts,
+            &topo.child_indices,
+            &rules_u32,
+            &depth_slots,
+            depth_ranges,
+        );
+
+        // CPU oracle.
+        let mut cpu_output = vec![0.0_f32; flat.len()];
+        cpu_reduce_oracle(&topo, &rules, n_dims, &flat, &mut cpu_output);
+
+        // GPU.
+        let pipelines = Pipelines::new(&state.ctx);
+        pipelines.run_reduction_passes(&state);
+
+        let gpu_output = state.read_output_vectors();
+
+        // Inner-node rows must match (cohorts are leaves — already covered by
+        // the leaf branch which copies values → output_vectors, also bit-exact).
+        assert_bits_eq("reduction full buffer", &cpu_output, &gpu_output);
     }
 }
 

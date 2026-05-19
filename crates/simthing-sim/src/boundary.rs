@@ -29,6 +29,7 @@ use crate::observability::{observe, ObservabilityReport};
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
+use crate::reduced_field::ReducedField;
 use crate::threshold_registry::{
     ThresholdRegistry, ThresholdSemantic, VelocityAlertEvent, VelocityAlertRegistration,
 };
@@ -257,6 +258,7 @@ impl BoundaryProtocol {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
             threshold_regs_uploaded: gpu_out.threshold_regs_uploaded,
             new_threshold_registry: None, // moved into self above
+            reduction_depths:       gpu_out.reduction_depths,
         };
 
         self.delta_log.extend(entries_from_outcome(&out));
@@ -279,6 +281,18 @@ impl BoundaryProtocol {
 
     pub fn velocity_alerts(&self) -> &[VelocityAlertRegistration] {
         &self.velocity_alerts
+    }
+
+    /// Read the GPU `output_vectors` buffer back to the CPU as a
+    /// `ReducedField` — the post-reduction view of the world at presentation
+    /// cadence. Safe to call any time the GPU is idle (typically after
+    /// `execute` or between ticks). Leaf rows mirror the post-Pass-3 `values`;
+    /// inner-node rows carry per-column reductions over their children.
+    pub fn read_reduced_field(&self, state: &WorldGpuState) -> ReducedField {
+        ReducedField {
+            n_dims: state.n_dims as usize,
+            values: state.read_output_vectors(),
+        }
     }
 
     /// Build a read-only observability report for `target`.

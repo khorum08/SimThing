@@ -2,6 +2,7 @@ pub mod evaluate;
 pub mod ids;
 pub mod overlay;
 pub mod property;
+pub mod reduction;
 pub mod registry;
 pub mod simthing;
 
@@ -16,5 +17,6 @@ pub use property::{
     PropertyValue, SecondaryCondition, SimProperty, SimThingKindTag, SubFieldRole, SubFieldSpec,
     TransformOp,
 };
+pub use reduction::ReductionRule;
 pub use registry::{DimensionRegistry, PropertyColumnRange};
 pub use simthing::{SimThing, SimThingKind};
