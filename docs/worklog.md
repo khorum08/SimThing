@@ -26,7 +26,10 @@ registered, uploaded to Pass 7, and surfaced through the boundary outcome.
 tests for the new velocity-alert path pass.
 
 **Next session:** Continue Week 4 with player input handling or AI intent
-overlays.
+overlays. Session intentionally cut off here with `master` synced to
+`origin/master` and only `.claude/worktrees/` untracked/untouched; start next
+time with player input handling as intent overlays, plus any small doc cleanup
+found during that patch.
 
 ---
 
