@@ -33,7 +33,7 @@
 //!   `AddChild` (alloc slot, attach), `Remove` (tombstone subtree, detach),
 //!   `Reparent` (move subtree, slots preserved — the whole point of slot
 //!   stability), `AttachOverlay` (append to target's overlay vec),
-//!   `AddDimension` (deferred — requires WorldGpuState reallocation).
+//!   `AddDimension` (boundary-time registry activation + GPU layout rebuild).
 //!
 //! - `gpu_sync` — step 9. After all structural mutations are done, rebuilds the
 //!   GPU buffer state: `build_overlay_deltas` → upload, threshold registration

@@ -89,8 +89,8 @@ SimThing/
             ├── fission.rs             step 6: fission spawn, fusion merge
             │                          (with secondary-condition guard, dedup)
             ├── tree_mutation.rs       steps 7+8: apply_structural_mutations —
-            │                          AddChild / Remove / Reparent / AttachOverlay /
-            │                          (AddDimension deferred)
+            │                          AddChild / Remove / Reparent /
+            │                          AttachOverlay / AddDimension
             ├── gpu_sync.rs            step 9: build_overlay_deltas + upload,
             │                          ThresholdBuilder + upload, upload_full_shadow
             └── boundary.rs            BoundaryProtocol — owns root + registry +
@@ -206,7 +206,7 @@ and AI intent overlays.**
   index allocated via `atomicAdd`. Event order is therefore nondeterministic —
   callers sort by (slot, col, event_kind) for parity tests.
 
-**Tests: 36 GPU tests + 1 ignored timing diagnostic, all passing, zero warnings.**
+**Tests: 37 GPU tests + 1 ignored timing diagnostic, all passing, zero warnings.**
 
 Highlights:
 - `pass3_overlay_matches_evaluator` — bit-exact parity for Pass 0+1+2+3 against
@@ -273,7 +273,7 @@ Highlights:
   expansion, GPU buffer resizing) lands in `simthing-sim`.
 - The dispatch surface is final; only the body of `execute` will change.
 
-**Tests: 17 unit + 4 GPU integration tests, all passing, zero warnings.**
+**Tests: 18 unit + 4 GPU integration tests, all passing, zero warnings.**
 
 Integration highlights:
 - `patch_through_channel_lands_on_gpu_after_one_tick` — full chain:
@@ -347,7 +347,9 @@ Integration highlights:
 - `Reparent`: detach + re-attach. Slots preserved — the whole point of slot
   stability. Cycle detection rejects `child → ancestor(child)`.
 - `AttachOverlay`: depth-first find + push into target's overlay vec.
-- `AddDimension`: deferred (requires `WorldGpuState` rebuild with new `n_dims`).
+- `AddDimension`: restores/adopts a registered property id, records it in
+  `MaintainerOutcome::dimensions_added`, and lets `BoundaryProtocol` widen
+  the CPU shadow + rebuild `WorldGpuState` before step 9.
 
 **`gpu_sync.rs` — step 9:**
 - `sync_gpu_buffers(root, registry, allocator, coord, state)`:
@@ -370,12 +372,15 @@ Integration highlights:
      property's Amount is reset to 0.0 on the child.
   5. Resize shadow for any new slots from step 6.
   6. Drain patcher boundary requests, call `apply_structural_mutations` (steps 7+8).
-  7. Resize shadow again if step 7 added slots.
-  8. Assertion: `allocator.capacity() <= state.n_slots` (no GPU buffer overflow).
-  9. `sync_gpu_buffers` (step 9).
-  10. Adopt the new CPU `ThresholdRegistry`.
+  7. If `AddDimension` expanded `registry.total_columns`, widen
+     `coord.shadow`, project any newly-present sparse property values into
+     the new columns, and rebuild `WorldGpuState` buffers.
+  8. Resize shadow again if step 7 added slots.
+  9. Assertion: `allocator.capacity() <= state.n_slots` (no GPU buffer overflow).
+  10. `sync_gpu_buffers` (step 9).
+  11. Adopt the new CPU `ThresholdRegistry`.
 
-**Tests: 20 unit + 2 GPU integration tests, all passing, zero warnings.**
+**Tests: 21 unit + 3 GPU integration tests, all passing, zero warnings.**
 
 Integration highlights:
 - `fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean` — full end-to-end:
@@ -387,9 +392,11 @@ Integration highlights:
 - `boundary_requests_apply_structural_mutations` — `AddChild` request submitted
   via the channel survives the patcher's boundary park, lands at the maintainer,
   attaches a new SimThing under the cohort, and allocates its slot.
+- `add_dimension_request_rebuilds_gpu_layout` — property registered after GPU
+  state creation is admitted at boundary time; CPU shadow and GPU buffers widen,
+  and a sparse property value on the cohort appears in the new GPU columns.
 
 **Not yet built in simthing-sim:**
-- `AddDimension` execution (requires `WorldGpuState` rebuild with new `n_dims`).
 - Velocity-alert handling (`ThresholdSemantic::VelocityAlert`) — AI layer
   consumes these; no-op in boundary today.
 
@@ -407,8 +414,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 93 tests must pass with zero warnings before any commit
-(14 core + 36 GPU + 17 feeder unit + 4 feeder integration + 20 sim unit + 2 sim integration).
+All 97 tests must pass with zero warnings before any commit
+(14 core + 37 GPU + 18 feeder unit + 4 feeder integration + 21 sim unit + 3 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

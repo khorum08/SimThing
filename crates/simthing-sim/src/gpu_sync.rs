@@ -27,37 +27,34 @@
 //! ## AddDimension (registry expansion)
 //!
 //! When `BoundaryRequest::AddDimension` is processed:
-//! 1. Register the new `SimProperty` in the `DimensionRegistry`.
-//! 2. Rebuild `WorldGpuState` with the new `total_columns` as `n_dims`.
-//!    This is a full GPU buffer reallocation. Expensive, but rare (only on
-//!    mid-session DLC/mod content).
-//! 3. Re-upload the entire values shadow to the new buffer.
+//! 1. The boundary protocol widens `DispatchCoordinator::shadow`.
+//! 2. It calls `WorldGpuState::rebuild_for_registry` with the new
+//!    `registry.total_columns`.
+//! 3. This step re-uploads overlay deltas, threshold registrations, and the
+//!    full widened shadow into the rebuilt GPU buffers.
 //!
-//! `AddDimension` handling is intentionally left as a TODO in this stub —
-//! it requires rebuilding `WorldGpuState` which requires moving the
-//! `GpuContext` out of the old state and into the new one.
 
+use crate::threshold_registry::{ThresholdBuilder, ThresholdRegistry};
 use simthing_core::{DimensionRegistry, SimThing};
 use simthing_feeder::DispatchCoordinator;
 use simthing_gpu::{SlotAllocator, WorldGpuState};
-use crate::threshold_registry::{ThresholdBuilder, ThresholdRegistry};
 
 /// Outcome of the GPU sync step.
 #[derive(Clone, Debug, Default)]
 pub struct GpuSyncOutcome {
-    pub overlay_deltas_uploaded:  u32,
-    pub threshold_regs_uploaded:  u32,
-    pub new_threshold_registry:   Option<ThresholdRegistry>,
+    pub overlay_deltas_uploaded: u32,
+    pub threshold_regs_uploaded: u32,
+    pub new_threshold_registry: Option<ThresholdRegistry>,
 }
 
 /// Rebuild Pass 3 and Pass 7 GPU buffers from the current tree state.
 /// Returns the new CPU-side `ThresholdRegistry` to replace the old one.
 pub fn sync_gpu_buffers(
-    root:       &SimThing,
-    registry:   &DimensionRegistry,
-    allocator:  &SlotAllocator,
-    coord:      &DispatchCoordinator,
-    state:      &mut WorldGpuState,
+    root: &SimThing,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
+    coord: &DispatchCoordinator,
+    state: &mut WorldGpuState,
 ) -> GpuSyncOutcome {
     let mut out = GpuSyncOutcome::default();
 
@@ -70,7 +67,10 @@ pub fn sync_gpu_buffers(
     // shader skips those naturally because `range.length == 0`.
     let (deltas, mut ranges) = simthing_gpu::build_overlay_deltas(root, registry, allocator);
     if (ranges.len() as u32) < state.n_slots {
-        ranges.resize(state.n_slots as usize, simthing_gpu::SlotDeltaRange::default());
+        ranges.resize(
+            state.n_slots as usize,
+            simthing_gpu::SlotDeltaRange::default(),
+        );
     }
     let n_deltas = deltas.len() as u32;
     state.upload_overlay_deltas(&deltas, &ranges);
@@ -81,7 +81,7 @@ pub fn sync_gpu_buffers(
     let n_regs = gpu_regs.len() as u32;
     state.upload_thresholds(&gpu_regs);
     out.threshold_regs_uploaded = n_regs;
-    out.new_threshold_registry  = Some(cpu_reg);
+    out.new_threshold_registry = Some(cpu_reg);
 
     // 3. Values shadow flush — upload everything after structural changes.
     //    Callers that only had dirty-row patches can call upload_row individually;

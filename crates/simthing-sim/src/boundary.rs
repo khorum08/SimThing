@@ -19,10 +19,8 @@
 //! 10. Day N+1 dispatch ready      -- (caller resumes tick loop)
 //! ```
 
-use simthing_core::{DimensionRegistry, SimThing};
-use simthing_feeder::{
-    DispatchCoordinator, MaintainerOutcome, TransformPatcher,
-};
+use simthing_core::{DimensionRegistry, SimPropertyId, SimThing};
+use simthing_feeder::{DispatchCoordinator, MaintainerOutcome, TransformPatcher};
 use simthing_gpu::{SlotAllocator, ThresholdEvent, WorldGpuState};
 
 use crate::fission::{resolve_fission_fusion, FissionOutcome};
@@ -36,13 +34,13 @@ use crate::tree_mutation::apply_structural_mutations;
 /// observability, replay, and tests.
 #[derive(Debug, Default)]
 pub struct BoundaryOutcome {
-    pub day:                u64,
-    pub lifecycle:          LifecycleOutcome,
-    pub expiry:             ExpiryOutcome,
-    pub fission:            FissionOutcome,
-    pub maintainer:         MaintainerOutcome,
-    pub gpu_sync:           GpuSyncOutcome,
-    pub boundary_requests:  u32,
+    pub day: u64,
+    pub lifecycle: LifecycleOutcome,
+    pub expiry: ExpiryOutcome,
+    pub fission: FissionOutcome,
+    pub maintainer: MaintainerOutcome,
+    pub gpu_sync: GpuSyncOutcome,
+    pub boundary_requests: u32,
 }
 
 /// Top-level boundary orchestrator.
@@ -57,18 +55,14 @@ pub struct BoundaryOutcome {
 /// Does NOT own the GPU state or the feeder layer — those are passed in
 /// by the top-level driver (the eventual `simthing-sim` binary / thread).
 pub struct BoundaryProtocol {
-    pub root:      SimThing,
-    pub registry:  DimensionRegistry,
+    pub root: SimThing,
+    pub registry: DimensionRegistry,
     pub allocator: SlotAllocator,
     cpu_threshold_registry: ThresholdRegistry,
 }
 
 impl BoundaryProtocol {
-    pub fn new(
-        root:      SimThing,
-        registry:  DimensionRegistry,
-        allocator: SlotAllocator,
-    ) -> Self {
+    pub fn new(root: SimThing, registry: DimensionRegistry, allocator: SlotAllocator) -> Self {
         Self {
             root,
             registry,
@@ -86,14 +80,17 @@ impl BoundaryProtocol {
     /// `day`      — current day index (for logging + AfterTicks tracking).
     pub fn execute(
         &mut self,
-        events:  Vec<ThresholdEvent>,
+        events: Vec<ThresholdEvent>,
         patcher: &mut TransformPatcher,
-        coord:   &mut DispatchCoordinator,
-        state:   &mut WorldGpuState,
-        day:     u64,
+        coord: &mut DispatchCoordinator,
+        state: &mut WorldGpuState,
+        day: u64,
     ) -> BoundaryOutcome {
-        let mut out = BoundaryOutcome { day, ..Default::default() };
-        let n_dims  = coord.n_dims() as usize;
+        let mut out = BoundaryOutcome {
+            day,
+            ..Default::default()
+        };
+        let n_dims = coord.n_dims() as usize;
 
         // The CPU shadow reflects only CPU-side patches; integration output
         // from Pass 1/2 lives only on the GPU. Before mutating the shadow
@@ -164,10 +161,29 @@ impl BoundaryProtocol {
             n_dims,
         );
 
+        if self.registry.total_columns as u32 != coord.n_dims() {
+            let old_n_dims = coord.n_dims() as usize;
+            coord.resize_dimensions(self.registry.total_columns as u32);
+            let new_n_dims = coord.n_dims() as usize;
+            seed_dimension_values(
+                &self.root,
+                &self.registry,
+                &self.allocator,
+                &out.maintainer.dimensions_added,
+                &mut coord.shadow,
+                old_n_dims,
+                new_n_dims,
+            );
+            state.rebuild_for_registry(&self.registry);
+        } else if !out.maintainer.dimensions_added.is_empty() {
+            state.rebuild_for_registry(&self.registry);
+        }
+
         // After structural mutations the allocator may have grown again
         // (AddChild). Resize shadow once more so step 9 uploads the full
         // capacity.
-        let final_capacity = self.allocator.capacity() * n_dims;
+        let final_n_dims = coord.n_dims() as usize;
+        let final_capacity = self.allocator.capacity() * final_n_dims;
         if coord.shadow.len() < final_capacity {
             coord.shadow.resize(final_capacity, 0.0);
         }
@@ -183,16 +199,11 @@ impl BoundaryProtocol {
             self.allocator.capacity() as u32 <= coord.n_slots(),
             "allocator capacity {} exceeds shadow n_slots {}; \
              WorldGpuState was built without enough headroom",
-            self.allocator.capacity(), coord.n_slots(),
+            self.allocator.capacity(),
+            coord.n_slots(),
         );
 
-        let gpu_out = sync_gpu_buffers(
-            &self.root,
-            &self.registry,
-            &self.allocator,
-            coord,
-            state,
-        );
+        let gpu_out = sync_gpu_buffers(&self.root, &self.registry, &self.allocator, coord, state);
         // Adopt the new threshold registry for the next day.
         if let Some(new_reg) = gpu_out.new_threshold_registry {
             self.cpu_threshold_registry = new_reg;
@@ -214,21 +225,48 @@ impl BoundaryProtocol {
     /// Manually seed the GPU threshold registry at session start (before any
     /// ticks). Normally called once after constructing the protocol, so that
     /// Pass 7 has registrations from tick 1 onward.
-    pub fn initial_gpu_sync(
-        &mut self,
-        coord: &DispatchCoordinator,
-        state: &mut WorldGpuState,
-    ) {
-        let out = sync_gpu_buffers(
-            &self.root,
-            &self.registry,
-            &self.allocator,
-            coord,
-            state,
-        );
+    pub fn initial_gpu_sync(&mut self, coord: &DispatchCoordinator, state: &mut WorldGpuState) {
+        let out = sync_gpu_buffers(&self.root, &self.registry, &self.allocator, coord, state);
         if let Some(new_reg) = out.new_threshold_registry {
             self.cpu_threshold_registry = new_reg;
         }
+    }
+}
+
+fn seed_dimension_values(
+    node: &SimThing,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
+    properties: &[SimPropertyId],
+    shadow: &mut [f32],
+    old_n_dims: usize,
+    new_n_dims: usize,
+) {
+    if let Some(slot) = allocator.slot_of(node.id) {
+        let base = slot as usize * new_n_dims;
+        for &pid in properties {
+            if pid.index() >= registry.properties.len() {
+                continue;
+            }
+            let Some(value) = node.property(pid) else {
+                continue;
+            };
+            let range = registry.column_range(pid);
+            if range.start < old_n_dims {
+                continue;
+            }
+            let start = base + range.start;
+            let end = start + value.data.len();
+            if end <= shadow.len() {
+                shadow[start..end].copy_from_slice(&value.data);
+            }
+        }
+    }
+
+    for child in &node.children {
+        seed_dimension_values(
+            child, registry, allocator, properties, shadow, old_n_dims, new_n_dims,
+        );
     }
 }
 
@@ -240,9 +278,9 @@ mod tests {
 
     #[test]
     fn boundary_protocol_constructs_cleanly() {
-        let mut reg   = DimensionRegistry::new();
+        let mut reg = DimensionRegistry::new();
         reg.register(SimProperty::simple("core", "loyalty", 0));
-        let root  = SimThing::new(SimThingKind::World, 0);
+        let root = SimThing::new(SimThingKind::World, 0);
         let alloc = SlotAllocator::new();
         let proto = BoundaryProtocol::new(root, reg, alloc);
         assert!(proto.threshold_registry().is_empty());

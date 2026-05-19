@@ -59,20 +59,20 @@ use simthing_gpu::{Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
 #[derive(Debug, Default)]
 pub struct TickOutcome {
     /// Patcher counters (applied writes, missing targets, etc.).
-    pub patcher_stats:     PatcherStats,
+    pub patcher_stats: PatcherStats,
     /// Slots whose CPU shadow rows were uploaded to the GPU this tick.
-    pub uploaded_rows:     u32,
+    pub uploaded_rows: u32,
     /// Threshold crossings detected by Pass 7. Order is GPU-nondeterministic
     /// (atomicAdd race). Callers that need a canonical order must sort.
-    pub events:            Vec<ThresholdEvent>,
+    pub events: Vec<ThresholdEvent>,
     /// True iff this tick's completion rolled the day counter over. The
     /// caller is responsible for executing the §10 boundary sequence
     /// (overlay lifecycle, structural mutations, etc.) before the next tick.
-    pub boundary_reached:  bool,
+    pub boundary_reached: bool,
     /// Monotonic tick id post-increment. Useful for log correlation.
-    pub tick_index:        u64,
+    pub tick_index: u64,
     /// Monotonic day id; bumps once per `ticks_per_day` ticks.
-    pub day_index:         u64,
+    pub day_index: u64,
 }
 
 // ── Coordinator ───────────────────────────────────────────────────────────────
@@ -82,13 +82,13 @@ pub struct TickOutcome {
 pub struct DispatchCoordinator {
     /// Row-major `[n_slots × n_dims]` shadow of the GPU `values` buffer.
     /// The Patcher mutates this; `tick()` uploads dirty rows to GPU.
-    pub shadow:    Vec<f32>,
-    n_slots:       u32,
-    n_dims:        u32,
+    pub shadow: Vec<f32>,
+    n_slots: u32,
+    n_dims: u32,
     ticks_per_day: u32,
-    tick_in_day:   u32,
-    tick_counter:  u64,
-    day_counter:   u64,
+    tick_in_day: u32,
+    tick_counter: u64,
+    day_counter: u64,
 }
 
 impl DispatchCoordinator {
@@ -103,22 +103,22 @@ impl DispatchCoordinator {
             n_slots,
             n_dims,
             ticks_per_day,
-            tick_in_day:  0,
+            tick_in_day: 0,
             tick_counter: 0,
-            day_counter:  0,
+            day_counter: 0,
         }
     }
 
     /// Run one tick. See module-level doc for the step order.
     pub fn tick(
         &mut self,
-        receiver:  &FeederReceiver,
-        patcher:   &mut TransformPatcher,
-        registry:  &DimensionRegistry,
+        receiver: &FeederReceiver,
+        patcher: &mut TransformPatcher,
+        registry: &DimensionRegistry,
         allocator: &SlotAllocator,
         pipelines: &Pipelines,
-        state:     &mut WorldGpuState,
-        dt:        f32,
+        state: &mut WorldGpuState,
+        dt: f32,
     ) -> TickOutcome {
         // 1. Drain feeder queue → shadow.
         let patcher_stats = patcher.drain(
@@ -144,12 +144,12 @@ impl DispatchCoordinator {
         pipelines.run_threshold_scan(state);
 
         // 4. Event readback. Cheap even at endgame scale (~3 KB).
-        let count  = state.read_event_count();
+        let count = state.read_event_count();
         let events = state.read_event_candidates(count);
 
         // 5. Advance counters.
         self.tick_counter += 1;
-        self.tick_in_day  += 1;
+        self.tick_in_day += 1;
         let boundary_reached = self.tick_in_day >= self.ticks_per_day;
         if boundary_reached {
             self.tick_in_day = 0;
@@ -162,7 +162,7 @@ impl DispatchCoordinator {
             events,
             boundary_reached,
             tick_index: self.tick_counter,
-            day_index:  self.day_counter,
+            day_index: self.day_counter,
         }
     }
 
@@ -170,36 +170,81 @@ impl DispatchCoordinator {
     /// with the projection of the initial SimThing tree, before the first
     /// `tick()`. After that, dirty-row tracking handles incremental uploads.
     pub fn upload_full_shadow(&self, state: &WorldGpuState) {
-        state.ctx.queue.write_buffer(
-            &state.values,
-            0,
-            bytemuck::cast_slice(&self.shadow),
+        assert_eq!(
+            self.shadow.len(),
+            state.values_len(),
+            "shadow length {} != state values length {}",
+            self.shadow.len(),
+            state.values_len(),
         );
+        state
+            .ctx
+            .queue
+            .write_buffer(&state.values, 0, bytemuck::cast_slice(&self.shadow));
     }
 
     /// Upload one slot's row from the shadow to the GPU. Internal helper.
     fn upload_row(&self, state: &WorldGpuState, slot: u32) {
         let n_dims = self.n_dims as usize;
-        let base   = (slot as usize) * n_dims;
-        let row    = &self.shadow[base..base + n_dims];
+        let base = (slot as usize) * n_dims;
+        let row = &self.shadow[base..base + n_dims];
         let offset = (slot as u64) * (n_dims as u64) * 4;
-        state.ctx.queue.write_buffer(
-            &state.values,
-            offset,
-            bytemuck::cast_slice(row),
-        );
+        state
+            .ctx
+            .queue
+            .write_buffer(&state.values, offset, bytemuck::cast_slice(row));
     }
 
     /// Current monotonic tick id (post-last-tick value).
-    pub fn tick_index(&self) -> u64 { self.tick_counter }
+    pub fn tick_index(&self) -> u64 {
+        self.tick_counter
+    }
     /// Current day id (post-last-tick value).
-    pub fn day_index(&self) -> u64 { self.day_counter }
+    pub fn day_index(&self) -> u64 {
+        self.day_counter
+    }
     /// Where we are inside the current day, in ticks.
-    pub fn tick_in_day(&self) -> u32 { self.tick_in_day }
-    pub fn ticks_per_day(&self) -> u32 { self.ticks_per_day }
+    pub fn tick_in_day(&self) -> u32 {
+        self.tick_in_day
+    }
+    pub fn ticks_per_day(&self) -> u32 {
+        self.ticks_per_day
+    }
 
-    pub fn n_slots(&self) -> u32 { self.n_slots }
-    pub fn n_dims(&self) -> u32 { self.n_dims }
+    pub fn n_slots(&self) -> u32 {
+        self.n_slots
+    }
+    pub fn n_dims(&self) -> u32 {
+        self.n_dims
+    }
+
+    /// Widen the row-major shadow after a registry dimension expansion.
+    /// Existing columns keep their positions because registry columns are
+    /// append-only within a session.
+    pub fn resize_dimensions(&mut self, new_n_dims: u32) {
+        if new_n_dims == self.n_dims {
+            return;
+        }
+        assert!(
+            new_n_dims > self.n_dims,
+            "dimension shrink is not supported: {} -> {}",
+            self.n_dims,
+            new_n_dims,
+        );
+
+        let old_n_dims = self.n_dims as usize;
+        let new_n_dims_usize = new_n_dims as usize;
+        let mut next = vec![0.0; (self.n_slots as usize) * new_n_dims_usize];
+        for slot in 0..self.n_slots as usize {
+            let old_base = slot * old_n_dims;
+            let new_base = slot * new_n_dims_usize;
+            next[new_base..new_base + old_n_dims]
+                .copy_from_slice(&self.shadow[old_base..old_base + old_n_dims]);
+        }
+
+        self.shadow = next;
+        self.n_dims = new_n_dims;
+    }
 }
 
 #[cfg(test)]
@@ -227,5 +272,19 @@ mod tests {
     #[should_panic]
     fn zero_ticks_per_day_panics() {
         let _ = DispatchCoordinator::new(1, 1, 0);
+    }
+
+    #[test]
+    fn resize_dimensions_preserves_existing_columns() {
+        let mut coord = DispatchCoordinator::new(2, 3, 1);
+        coord.shadow = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+
+        coord.resize_dimensions(5);
+
+        assert_eq!(coord.n_dims(), 5);
+        assert_eq!(
+            coord.shadow,
+            vec![1.0, 2.0, 3.0, 0.0, 0.0, 4.0, 5.0, 6.0, 0.0, 0.0,]
+        );
     }
 }
