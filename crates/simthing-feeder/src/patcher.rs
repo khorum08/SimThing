@@ -553,7 +553,7 @@ mod tests {
             Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
             PropertyTransformDelta,
         };
-        use crate::work::{ai_channel, AiIntentOverlay};
+        use crate::work::ai_channel;
 
         let (reg, alloc, pid, [_a, b], n_dims) = fixture();
 

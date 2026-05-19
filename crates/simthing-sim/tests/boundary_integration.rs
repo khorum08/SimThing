@@ -13,8 +13,7 @@ use simthing_core::{
     SimProperty, SimThing, SimThingKind, SimThingKindTag, SubFieldRole, TransformOp,
 };
 use simthing_feeder::{
-    ai_channel, feeder_channel, BoundaryRequest, DispatchCoordinator, FeederWork,
-    PlayerIntentOverlay, TransformPatcher,
+    ai_channel, feeder_channel, BoundaryRequest, DispatchCoordinator, FeederWork, TransformPatcher,
 };
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
 use simthing_sim::{BoundaryProtocol, VelocityAlertRegistration};
@@ -666,6 +665,120 @@ fn ai_intent_mid_day_effect_and_boundary_attach() {
         find_node(&proto.root, cohort_id).unwrap().overlays.iter().any(|o| o.id == overlay_id),
         "AI intent overlay must be in tree after boundary"
     );
+}
+
+/// After `initial_gpu_sync` + one tick, the GPU `output_vectors` buffer must
+/// reflect the bottom-up reduction over the tree: leaves carry their post-Pass-3
+/// values, inner nodes carry per-column reductions of their children.
+///
+/// Tree: World → Location → 2 Cohorts. Amount uses Mean, Intensity uses Max
+/// (the role defaults).
+#[test]
+fn reduction_pipeline_produces_aggregated_output_vectors() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    let pid = reg.register(SimProperty::simple("core", "loyalty", 0));
+    let layout = reg.property(pid).layout.clone();
+    let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let i_off = layout.offset_of(&SubFieldRole::Intensity).unwrap();
+
+    // Build tree: World → Location → 2 Cohorts (no velocity to avoid drift).
+    let mut c1 = SimThing::new(SimThingKind::Cohort, 0);
+    let mut pv1 = PropertyValue::from_layout(&layout);
+    pv1.data[a_off] = 0.40;
+    pv1.data[i_off] = 0.20;
+    c1.add_property(pid, pv1);
+    let c1_id = c1.id;
+
+    let mut c2 = SimThing::new(SimThingKind::Cohort, 0);
+    let mut pv2 = PropertyValue::from_layout(&layout);
+    pv2.data[a_off] = 0.60;
+    pv2.data[i_off] = 0.80;
+    c2.add_property(pid, pv2);
+    let c2_id = c2.id;
+
+    let mut loc = SimThing::new(SimThingKind::Location, 0);
+    let loc_id = loc.id;
+    loc.add_child(c1);
+    loc.add_child(c2);
+    let mut world = SimThing::new(SimThingKind::World, 0);
+    world.add_child(loc);
+
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&world);
+
+    const N_SLOTS: u32 = 8;
+    let n_dims = reg.total_columns as u32;
+
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (_tx, rx) = feeder_channel();
+
+    // Seed shadow with cohort values; inner-node rows stay zero (reduction fills them).
+    let n_dims_us = n_dims as usize;
+    let c1_slot = alloc.slot_of(c1_id).unwrap() as usize;
+    let c2_slot = alloc.slot_of(c2_id).unwrap() as usize;
+    coord.shadow[c1_slot * n_dims_us + a_off] = 0.40;
+    coord.shadow[c1_slot * n_dims_us + i_off] = 0.20;
+    coord.shadow[c2_slot * n_dims_us + a_off] = 0.60;
+    coord.shadow[c2_slot * n_dims_us + i_off] = 0.80;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    // One tick — exercises the full pipeline including Passes 4–6.
+    let _ = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.5,
+    );
+
+    let out = state.read_output_vectors();
+    let loc_slot = proto.allocator.slot_of(loc_id).unwrap() as usize;
+
+    // Mean of (0.40, 0.60) = 0.50 — Amount uses Mean by role default.
+    assert_eq!(
+        out[loc_slot * n_dims_us + a_off].to_bits(),
+        0.50_f32.to_bits(),
+        "location amount must be mean of cohorts",
+    );
+    // Max of (0.20, 0.80) = 0.80 — Intensity uses Max by role default.
+    assert_eq!(
+        out[loc_slot * n_dims_us + i_off].to_bits(),
+        0.80_f32.to_bits(),
+        "location intensity must be max of cohorts",
+    );
+
+    // BoundaryProtocol::read_reduced_field returns the same data wrapped in
+    // a presentation-friendly accessor.
+    let field = proto.read_reduced_field(&state);
+    let loc_loyalty = field
+        .property_value(loc_slot as u32, &proto.registry, pid)
+        .expect("reduced loyalty for location");
+    assert_eq!(loc_loyalty.data[a_off].to_bits(), 0.50_f32.to_bits());
+    assert_eq!(loc_loyalty.data[i_off].to_bits(), 0.80_f32.to_bits());
+
+    // Leaves: output mirrors values bit-exactly.
+    let vals = state.read_values();
+    for slot in [c1_slot, c2_slot] {
+        for col in 0..n_dims_us {
+            assert_eq!(
+                out[slot * n_dims_us + col].to_bits(),
+                vals[slot * n_dims_us + col].to_bits(),
+                "leaf slot {slot} col {col}",
+            );
+        }
+    }
 }
 
 /// Helper: depth-first find a node by id.

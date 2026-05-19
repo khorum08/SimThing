@@ -4,6 +4,77 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — GPU Passes 4–6: presentation reduction
+
+**Status:** Implementation complete on `master` working tree, awaiting PR.
+The full GPU reduction pipeline lands: per-sub-field `ReductionRule`,
+bottom-up tree reduction with a bit-exact CPU oracle, GPU shader, boundary
+topology sync, and a `ReducedField` accessor on `BoundaryProtocol`.
+
+**Landed in this session:**
+
+- `simthing-core`:
+  - `crates/simthing-core/src/reduction.rs` — new module. `ReductionRule`
+    enum (`Mean`, `Sum`, `Max`, `Min`, `First`), `default_for_role()`.
+    Role defaults: Amount/Velocity/Named/Custom → Mean, Intensity → Max.
+  - `SubFieldSpec.reduction_override: Option<ReductionRule>` field +
+    `resolved_reduction()` helper.
+- `simthing-gpu`:
+  - `crates/simthing-gpu/src/reduction.rs` — CPU oracle + helpers:
+    `Topology` (CSR child layout + depth buckets), `build_topology`,
+    `build_column_rules`, `cpu_reduce_oracle`. Children iterated in
+    canonical (ascending slot) order so CPU and GPU sum/mean accumulate
+    in identical sequence.
+  - `WorldGpuState` gains `child_starts`, `child_indices`, `column_rules`,
+    `depth_slots` buffers + `depth_bucket_ranges` CPU-side. Constants:
+    `RULE_MEAN`/`SUM`/`MAX`/`MIN`/`FIRST`. `ReduceParams` uniform.
+  - `upload_reduction_topology()` uploads all four buffers in one call.
+  - `read_output_vectors()` readback helper.
+  - `shaders/reduction.wgsl` — single shader, one dispatch per depth
+    (deepest first). Leaf branch copies `values → output_vectors`; inner
+    branch loops children, accumulates per-rule. Mean uses explicit
+    division (not reciprocal multiply) to match CPU bit-for-bit.
+  - `Pipelines::run_reduction_passes` walks `depth_bucket_ranges` in
+    reverse, writing the uniform + dispatching once per depth.
+- `simthing-feeder`:
+  - `DispatchCoordinator::tick` calls `run_reduction_passes` between
+    Pass 3 and Pass 7. No-op until boundary uploads topology.
+- `simthing-sim`:
+  - `gpu_sync.rs` step 9 now also builds + uploads topology + column
+    rules at every boundary (cheap, tree-shape changes are boundary-only).
+    `GpuSyncOutcome.reduction_depths` reports bucket count.
+  - `crates/simthing-sim/src/reduced_field.rs` — new module.
+    `ReducedField { n_dims, values: Vec<f32> }` with `row(slot)` and
+    `property_value(slot, registry, prop_id)` accessors.
+  - `BoundaryProtocol::read_reduced_field(state)` returns a fresh
+    `ReducedField` from GPU `output_vectors`.
+
+**Tests (124 passing, zero warnings — up from 116):**
+- core: 2 new (`role_defaults`, `override_resolves_via_subfield_spec`).
+- gpu: 4 new unit (`topology_csr_and_depth_buckets`,
+  `cpu_oracle_mean_intensity_max`, `column_rules_respect_override`,
+  `sum_rule_sums_children`); 1 new parity (`reduction_matches_cpu_oracle`)
+  — GPU output matches CPU oracle bit-exactly on a 3-tier tree.
+- sim integration: 1 new (`reduction_pipeline_produces_aggregated_output_vectors`)
+  — full BoundaryProtocol + tick path, verifies Mean on Amount and Max on
+  Intensity at the Location row.
+
+**Determinism contract:**
+Both CPU oracle and GPU shader iterate children in
+`Topology::child_indices` order (ascending slot), accumulate left-to-right,
+and divide by `f32(n_children)` for Mean. Float sums are not associative,
+so reorder = divergence; this contract is the only thing keeping parity.
+
+**Still deferred (Opus):**
+- Replay serialization + playback (delta log → on-disk format + driver).
+- `WeightedMean { by: SimPropertyId }` reduction variant — population-
+  weighted aggregates require extending the shader's per-column rule
+  encoding to carry a second column reference.
+- Thresholds on reduced (`output_vectors`) values, not just `values` —
+  e.g. world-level `instability` thresholds for AI early warning.
+
+---
+
 ## 2026-05-19 — Replay delta capture (Opus prep)
 
 **Status:** Merged. `BoundaryProtocol` now accumulates a per-boundary

@@ -14,10 +14,9 @@
 //! 2. **Upload dirty rows.** One `queue.write_buffer` per slot whose shadow
 //!    row changed since the last tick.
 //! 3. **Run the GPU passes.** Pass 0 (snapshot) → Pass 1 (velocity) →
-//!    Pass 2 (intensity) → Pass 3 (apply overlays) → Pass 7 (threshold scan).
-//!    Passes 4–6 (reduction) are deferred until the presentation layer
-//!    needs them; per design_v4.md §9 they're orthogonal to the day-boundary
-//!    protocol.
+//!    Pass 2 (intensity) → Pass 3 (apply overlays) → Passes 4–6 (bottom-up
+//!    reduction) → Pass 7 (threshold scan). Reduction is a no-op until the
+//!    boundary uploads topology + per-column rules.
 //! 4. **Read events.** Pull the atomic event counter and the sparse
 //!    `event_candidates` buffer back to the CPU. Per design_v4.md §12 this
 //!    is at most ~3 KB even at endgame scale.
@@ -141,6 +140,9 @@ impl DispatchCoordinator {
         pipelines.run_velocity_integration(state, dt);
         pipelines.run_intensity_update(state, dt);
         pipelines.run_apply_overlays(state);
+        // Passes 4–6: bottom-up reduction. No-op if topology is empty
+        // (i.e. before the first boundary upload).
+        pipelines.run_reduction_passes(state);
         pipelines.run_threshold_scan(state);
 
         // 4. Event readback. Cheap even at endgame scale (~3 KB).

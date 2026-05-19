@@ -37,7 +37,9 @@
 use crate::threshold_registry::{ThresholdBuilder, ThresholdRegistry, VelocityAlertRegistration};
 use simthing_core::{DimensionRegistry, SimThing};
 use simthing_feeder::DispatchCoordinator;
-use simthing_gpu::{SlotAllocator, WorldGpuState};
+use simthing_gpu::{
+    build_column_rules, build_topology, encode_rule, SlotAllocator, WorldGpuState,
+};
 
 /// Outcome of the GPU sync step.
 #[derive(Clone, Debug, Default)]
@@ -45,6 +47,7 @@ pub struct GpuSyncOutcome {
     pub overlay_deltas_uploaded: u32,
     pub threshold_regs_uploaded: u32,
     pub new_threshold_registry: Option<ThresholdRegistry>,
+    pub reduction_depths:        u32,
 }
 
 /// Rebuild Pass 3 and Pass 7 GPU buffers from the current tree state.
@@ -89,6 +92,43 @@ pub fn sync_gpu_buffers(
     //    Callers that only had dirty-row patches can call upload_row individually;
     //    here we flush the full shadow to keep correctness simple at boundary time.
     coord.upload_full_shadow(state);
+
+    // 4. Reduction topology + per-column rule table (Passes 4–6).
+    //    Topology depends on tree shape and slot assignments; rebuilt every
+    //    boundary. Column rules depend on `DimensionRegistry` and only change
+    //    when properties are added / tombstoned, but rebuilding them is cheap
+    //    (one walk over `registry.properties`).
+    let topo = build_topology(root, allocator);
+    let rules = build_column_rules(registry, state.n_dims as usize);
+    let rules_u32: Vec<u32> = rules.iter().copied().map(encode_rule).collect();
+
+    let mut depth_slots: Vec<u32> = Vec::new();
+    let mut depth_ranges: Vec<(u32, u32)> = Vec::new();
+    for bucket in &topo.depth_buckets {
+        let offset = depth_slots.len() as u32;
+        depth_slots.extend_from_slice(bucket);
+        depth_ranges.push((offset, bucket.len() as u32));
+    }
+    out.reduction_depths = depth_ranges.len() as u32;
+
+    // `upload_reduction_topology` asserts `child_starts.len() == n_slots + 1`.
+    // `build_topology` produces a CSR sized to `allocator.capacity()`, which
+    // can be less than `state.n_slots` when WorldGpuState has growth headroom.
+    // Pad with the sentinel value so unallocated slots have empty child ranges.
+    let n_slots = state.n_slots as usize;
+    let mut child_starts = topo.child_starts.clone();
+    if child_starts.len() < n_slots + 1 {
+        let last = *child_starts.last().unwrap_or(&0);
+        child_starts.resize(n_slots + 1, last);
+    }
+
+    state.upload_reduction_topology(
+        &child_starts,
+        &topo.child_indices,
+        &rules_u32,
+        &depth_slots,
+        depth_ranges,
+    );
 
     out
 }
