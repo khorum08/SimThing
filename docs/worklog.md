@@ -4,6 +4,49 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — Observability query (Week 4 complete)
+
+**Status:** Week 4 Step 4 merged. `BoundaryProtocol::observe` answers
+"why is X high on Y?" without touching the GPU.
+
+**Landed in this session:**
+- `crates/simthing-sim/src/observability.rs` — new module with:
+  - `SubFieldObservation { role, value }` — current shadow value per
+    sub-field.
+  - `OverlayContribution { overlay_id, source, deltas, inherited }` —
+    one overlay's contribution, flagged `inherited` when it lives on an
+    ancestor.
+  - `PropertyObservation { property_id, property_name, sub_fields,
+    overlay_contributions }` — full decomposition per property.
+  - `ObservabilityReport { sim_thing_id, properties }`.
+  - `observe(root, registry, allocator, shadow, n_dims, target)` — free
+    function; depth-first path-finding then one pass over the ancestor
+    chain per property.
+- `BoundaryProtocol::observe(&self, coord, target)` — delegates to the
+  free function using `self.root`, `self.registry`, `self.allocator`, and
+  `coord.shadow`.
+- Unit tests (6):
+  - `observe_returns_none_for_unknown_target`
+  - `observe_reports_sub_field_values_from_shadow`
+  - `local_overlay_is_not_inherited`
+  - `ancestor_overlay_is_marked_inherited`
+  - `inherited_and_local_overlays_both_reported_in_path_order`
+  - `overlays_on_unrelated_properties_are_excluded`
+
+**Design note:** shadow is the right source between boundaries — doing a
+full GPU readback every observe call would be prohibitively expensive.
+After `BoundaryProtocol::execute` the shadow reflects the GPU readback
+(execute pulls GPU values at the start of each boundary), giving accurate
+values when called post-boundary.
+
+**110/110 tests passing, zero warnings. Week 4 complete.**
+
+**Next session:** Week 5 — Passes 4–6 (reduction) for the presentation
+layer, or network-play semantic delta log. Both are Opus-tier architecture
+work per the original proposal.
+
+---
+
 ## 2026-05-19 — AI intent overlay API
 
 **Status:** Week 4 Step 3 merged. AI subsystems can now submit intent

@@ -19,11 +19,12 @@
 //! 10. Day N+1 dispatch ready      -- (caller resumes tick loop)
 //! ```
 
-use simthing_core::{DimensionRegistry, SimPropertyId, SimThing};
+use simthing_core::{DimensionRegistry, SimPropertyId, SimThing, SimThingId};
 use simthing_feeder::{BoundaryRequest, DispatchCoordinator, MaintainerOutcome, TransformPatcher};
 use simthing_gpu::{SlotAllocator, ThresholdEvent, WorldGpuState};
 
 use crate::fission::{resolve_fission_fusion, FissionOutcome};
+use crate::observability::{observe, ObservabilityReport};
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
@@ -270,6 +271,31 @@ impl BoundaryProtocol {
 
     pub fn velocity_alerts(&self) -> &[VelocityAlertRegistration] {
         &self.velocity_alerts
+    }
+
+    /// Build a read-only observability report for `target`.
+    ///
+    /// Reports current sub-field values (from `coord.shadow`) and every
+    /// overlay that contributes to each property, annotated as inherited
+    /// (from an ancestor) or local.
+    ///
+    /// Returns `None` when the target id is not found in the tree or has no
+    /// allocated slot. Calling this right after `execute` gives the most
+    /// current values because `execute` reads GPU values back into the shadow
+    /// at the start of each boundary.
+    pub fn observe(
+        &self,
+        coord:  &DispatchCoordinator,
+        target: SimThingId,
+    ) -> Option<ObservabilityReport> {
+        observe(
+            &self.root,
+            &self.registry,
+            &self.allocator,
+            &coord.shadow,
+            coord.n_dims() as usize,
+            target,
+        )
     }
 
     /// Manually seed the GPU threshold registry at session start (before any
