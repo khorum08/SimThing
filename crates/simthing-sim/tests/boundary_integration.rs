@@ -8,14 +8,15 @@
 //! (SimThing tree mutations) and the GPU side (`state.read_values()`).
 
 use simthing_core::{
-    DimensionRegistry, Direction, FissionTemplate, FissionThreshold, IntensityBehavior,
-    PropertyValue, SimProperty, SimThing, SimThingKind, SimThingKindTag, SubFieldRole,
+    DimensionRegistry, Direction, FissionTemplate, FissionThreshold, IntensityBehavior, Overlay,
+    OverlayId, OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta, PropertyValue,
+    SimProperty, SimThing, SimThingKind, SimThingKindTag, SubFieldRole, TransformOp,
 };
 use simthing_feeder::{
     feeder_channel, BoundaryRequest, DispatchCoordinator, FeederWork, TransformPatcher,
 };
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
-use simthing_sim::BoundaryProtocol;
+use simthing_sim::{BoundaryProtocol, VelocityAlertRegistration};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -331,6 +332,82 @@ fn add_dimension_request_rebuilds_gpu_layout() {
     let gpu = state.read_values();
     let gpu_value = gpu[cohort_slot * new_n_dims as usize + food_col];
     assert_eq!(gpu_value.to_bits(), (0.72f32).to_bits());
+}
+
+#[test]
+fn velocity_alert_registration_surfaces_at_boundary() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    reg.register(loyalty_with_fission());
+    let (world, alloc, cohort_id) = build_initial_world(&mut reg);
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let n_dims = reg.total_columns as u32;
+
+    const N_SLOTS: u32 = 16;
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (_tx, rx) = feeder_channel();
+
+    let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+    let base = cohort_slot * n_dims as usize;
+    coord.shadow[base + amount_off] = 0.5;
+    coord.shadow[base + vel_off] = 0.0;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    find_node_mut(&mut proto.root, cohort_id)
+        .expect("cohort exists")
+        .add_overlay(Overlay {
+            id: OverlayId::new(),
+            kind: OverlayKind::Policy,
+            source: OverlaySource::Ai,
+            affects: vec![],
+            transform: PropertyTransformDelta {
+                property_id: pid,
+                sub_field_deltas: vec![(SubFieldRole::Velocity, TransformOp::Add(-0.21))],
+            },
+            lifecycle: OverlayLifecycle::Permanent,
+        });
+    proto.register_velocity_alert(VelocityAlertRegistration {
+        sim_thing_id: cohort_id,
+        property_id: pid,
+        sub_field: SubFieldRole::Velocity,
+        threshold: -0.10,
+        direction: Direction::Falling,
+    });
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    let out = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
+    );
+    assert!(
+        out.events
+            .iter()
+            .any(|event| event.value.to_bits() == (-0.21f32).to_bits()),
+        "velocity alert threshold never fired"
+    );
+
+    let boundary = proto.execute(out.events, &mut patcher, &mut coord, &mut state, 1);
+    assert_eq!(boundary.velocity_alerts.len(), 1);
+    let alert = &boundary.velocity_alerts[0];
+    assert_eq!(alert.sim_thing_id, cohort_id);
+    assert_eq!(alert.property_id, pid);
+    assert_eq!(alert.sub_field, SubFieldRole::Velocity);
+    assert_eq!(alert.value.to_bits(), (-0.21f32).to_bits());
 }
 
 /// Helper: depth-first find a node by id.
