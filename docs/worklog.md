@@ -4,6 +4,38 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — AddDimension execution
+
+**Status:** Step 2 landed locally. Boundary-time dimension expansion now
+widens the CPU shadow and rebuilds GPU buffers instead of deferring.
+
+**Landed in this session:**
+- `DispatchCoordinator::resize_dimensions(new_n_dims)` preserves each row's
+  existing columns and appends zeroed new columns.
+- `WorldGpuState::rebuild_for_registry(registry)` reallocates layout-dependent
+  buffers after `registry.total_columns` grows and rebuilds governed-pair /
+  intensity-param buffers from the active registry.
+- `apply_structural_mutations` now executes `AddDimension` for a registered
+  property id: it restores/adopts the property, records it in
+  `dimensions_added`, and no longer increments `deferred`.
+- `BoundaryProtocol::execute` detects registry growth after structural
+  mutations, widens `coord.shadow`, projects sparse values for newly-added
+  properties into the new columns, rebuilds `WorldGpuState`, then continues
+  the normal step-9 sync.
+- Tests added:
+  - `resize_dimensions_preserves_existing_columns`
+  - `rebuild_for_registry_expands_layout_buffers`
+  - `add_dimension_restores_property`
+  - `add_dimension_request_rebuilds_gpu_layout`
+
+**Focused verification:** targeted feeder/GPU/sim tests for the new paths pass.
+
+**Next session:** Continue Week 4 with player input handling or AI intent
+overlays. Velocity-alert handling remains the main unimplemented sim-side
+semantic path.
+
+---
+
 ## 2026-05-19 — fission child property seeding
 
 **Status:** Week 4 follow-up landed locally. Fission-spawned children now
@@ -30,7 +62,7 @@ inherit live property state from the parent's current GPU row.
 `cargo test -p simthing-sim --test boundary_integration` pass.
 
 **Next session:** Continue Week 4 with player input handling or AI intent
-overlays. `AddDimension` execution remains the larger structural follow-up.
+overlays. `AddDimension` execution landed later on 2026-05-19.
 
 ---
 
