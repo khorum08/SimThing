@@ -4,6 +4,40 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — PlayerIntent overlay submission API
+
+**Status:** Week 4 Step 1 merged as PR #14. Player-authored overlays can
+now be submitted through the feeder channel and attach at the day boundary.
+
+**Landed in this session:**
+- `PlayerIntentOverlay { target: SimThingId, overlay: Overlay }` — new type
+  in `simthing-feeder::work`.
+- `FeederWork::PlayerIntent` — third channel variant alongside `Patch` and
+  `Boundary`. Keeps player intent distinct from structural boundary work so
+  a future mid-day shadow-effect path can handle it independently.
+- `FeederSender::submit_player_intent(target, overlay)` — convenience method
+  for gameplay/UI code.
+- `TransformPatcher`: `pending_player_intents` vec, drain routing,
+  `take_player_intents()`, `player_intents_parked` stat counter.
+- `BoundaryProtocol::execute`: pulls player intents via
+  `patcher.take_player_intents()`, converts each to
+  `BoundaryRequest::AttachOverlay`, merges into the existing request list
+  before `apply_structural_mutations`. `BoundaryOutcome::player_intents_attached`
+  surfaces the count.
+- Tests added:
+  - `player_intent_parks_in_pending_and_take_drains_it` (patcher unit, no GPU)
+  - `player_intent_overlay_arrives_attached_at_boundary` (GPU integration)
+
+**100/100 tests passing, zero warnings.**
+
+**Next session:** Week 4 Step 2 — player overlay mid-day fast path. Extend
+`TransformPatcher` to apply an intent overlay's transform deltas to the CPU
+shadow on receipt (same `col_for_role` path Patcher already uses), while
+still parking the structural `attach_overlay` for boundary time. Effect
+visible within the tick; tree attachment still at day boundary.
+
+---
+
 ## 2026-05-19 — velocity alert registration
 
 **Status:** Step 3 landed locally. AI-facing velocity alerts can now be
