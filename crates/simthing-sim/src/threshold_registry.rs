@@ -81,7 +81,7 @@ pub enum ThresholdSemantic {
         property_id: SimPropertyId,
     },
 
-    /// Velocity alert (AI-registered). Week 4+; boundary no-ops it today.
+    /// Velocity alert (AI-registered). Surfaced by `BoundaryOutcome`.
     VelocityAlert {
         sim_thing_id: SimThingId,
         property_id: SimPropertyId,

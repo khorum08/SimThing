@@ -109,7 +109,9 @@ buffer rebuild. End-to-end integration test proves fission threshold
 fires → boundary executes → SimThing spawned + slot allocated → day N+1
 tick runs clean. Passes 4–6 (reduction) remain deferred until the
 presentation layer needs them. Next: Week 4 — player input handling
-and AI intent overlays.**
+as intent overlays, then AI intent overlays. Session cutoff on 2026-05-19:
+Step 3 is merged, local `master` is synced to `origin/master`, and only
+`.claude/worktrees/` is untracked/untouched.**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
