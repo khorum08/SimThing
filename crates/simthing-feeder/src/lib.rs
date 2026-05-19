@@ -64,6 +64,6 @@ pub use dispatcher::{DispatchCoordinator, TickOutcome};
 pub use maintainer::{MaintainerOutcome, TreeMaintainer};
 pub use patcher::{PatcherStats, TransformPatcher};
 pub use work::{
-    feeder_channel, BoundaryRequest, FeederError, FeederReceiver, FeederSender, FeederWork,
-    PatchTransform, PlayerIntentOverlay,
+    ai_channel, feeder_channel, AiIntentOverlay, AiReceiver, AiSender, BoundaryRequest,
+    FeederError, FeederReceiver, FeederSender, FeederWork, PatchTransform, PlayerIntentOverlay,
 };

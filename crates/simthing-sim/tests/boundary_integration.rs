@@ -13,8 +13,8 @@ use simthing_core::{
     SimProperty, SimThing, SimThingKind, SimThingKindTag, SubFieldRole, TransformOp,
 };
 use simthing_feeder::{
-    feeder_channel, BoundaryRequest, DispatchCoordinator, FeederWork, TransformPatcher,
-    PlayerIntentOverlay,
+    ai_channel, feeder_channel, BoundaryRequest, DispatchCoordinator, FeederWork,
+    PlayerIntentOverlay, TransformPatcher,
 };
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
 use simthing_sim::{BoundaryProtocol, VelocityAlertRegistration};
@@ -576,6 +576,95 @@ fn player_intent_mid_day_effect_lands_on_gpu_before_boundary() {
     assert!(
         cohort_node.overlays.iter().any(|o| o.id == overlay_id),
         "overlay must be attached after boundary"
+    );
+}
+
+/// AI submits an intent overlay through the dedicated AI channel. The
+/// transform delta is visible on the GPU within the same tick; the overlay is
+/// structurally attached to the tree after the boundary. The urgency value
+/// survives the round-trip.
+#[test]
+fn ai_intent_mid_day_effect_and_boundary_attach() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    // ── Setup: cohort with loyalty, Amount starts at 0.0 ─────────────
+    let mut reg = DimensionRegistry::new();
+    reg.register(SimProperty::simple("core", "loyalty", 0));
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let n_dims = reg.total_columns as u32;
+
+    let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+    let cohort_id = cohort.id;
+    cohort.add_property(pid, PropertyValue::from_layout(&layout));
+    let mut world = SimThing::new(SimThingKind::World, 0);
+    world.add_child(cohort);
+
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&world);
+    let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
+
+    const N_SLOTS: u32 = 8;
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    // ticks_per_day=2: tick 1 is mid-day, tick 2 triggers boundary.
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 2);
+    let (_tx, rx) = feeder_channel();
+
+    // Connect the AI channel to the patcher.
+    let (ai_tx, ai_rx) = ai_channel();
+    patcher.set_ai_receiver(ai_rx);
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    // ── AI submits intent: Set Amount = 0.8, urgency = 0.95 ──────────
+    let ai_overlay = Overlay {
+        id:        OverlayId::new(),
+        kind:      OverlayKind::Policy,
+        source:    OverlaySource::Ai,
+        affects:   vec![cohort_id],
+        transform: PropertyTransformDelta {
+            property_id:      pid,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.8))],
+        },
+        lifecycle: OverlayLifecycle::Permanent,
+    };
+    let overlay_id = ai_overlay.id;
+    ai_tx.submit_ai_intent(cohort_id, ai_overlay, 0.95).unwrap();
+
+    // ── Tick 1: mid-day ───────────────────────────────────────────────
+    let tick1 = coord.tick(&rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0);
+    assert!(!tick1.boundary_reached);
+
+    // Transform visible on GPU already.
+    let gpu_values = state.read_values();
+    let base = cohort_slot * n_dims as usize;
+    assert_eq!(
+        gpu_values[base + amount_off].to_bits(),
+        0.8f32.to_bits(),
+        "AI intent Set(0.8) must reach GPU within the same tick"
+    );
+    // Not yet in tree.
+    assert!(find_node(&proto.root, cohort_id).unwrap().overlays.iter().all(|o| o.id != overlay_id));
+
+    // ── Tick 2: boundary ─────────────────────────────────────────────
+    let tick2 = coord.tick(&rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0);
+    assert!(tick2.boundary_reached);
+
+    let outcome = proto.execute(tick2.events, &mut patcher, &mut coord, &mut state, 1);
+    assert_eq!(outcome.ai_intents_attached, 1);
+    assert_eq!(outcome.player_intents_attached, 0);
+
+    // Overlay structurally attached.
+    assert!(
+        find_node(&proto.root, cohort_id).unwrap().overlays.iter().any(|o| o.id == overlay_id),
+        "AI intent overlay must be in tree after boundary"
     );
 }
 

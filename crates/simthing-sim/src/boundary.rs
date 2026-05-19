@@ -44,6 +44,7 @@ pub struct BoundaryOutcome {
     pub gpu_sync: GpuSyncOutcome,
     pub boundary_requests: u32,
     pub player_intents_attached: u32,
+    pub ai_intents_attached: u32,
     pub velocity_alerts: Vec<VelocityAlertEvent>,
 }
 
@@ -162,6 +163,15 @@ impl BoundaryProtocol {
             requests.push(BoundaryRequest::AttachOverlay {
                 target:  pi.target,
                 overlay: pi.overlay,
+            });
+        }
+
+        let ai_intents = patcher.take_ai_intents();
+        out.ai_intents_attached = ai_intents.len() as u32;
+        for ai in ai_intents {
+            requests.push(BoundaryRequest::AttachOverlay {
+                target:  ai.target,
+                overlay: ai.overlay,
             });
         }
 

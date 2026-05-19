@@ -102,16 +102,16 @@ SimThing/
 
 ## Current implementation state
 
-**Weeks 1–3 complete plus Week 4 Steps 1–2 (PlayerIntent overlay API +
-mid-day fast path). The full vertical slice is operational: GPU passes
-0/1/2/3/7, feeder layer with mpsc work queue, day-boundary protocol
-orchestration with real fission/fusion + tree mutation + GPU buffer
-rebuild. Player-authored overlays submitted via
-`FeederSender::submit_player_intent` have their transform delta applied to
-the CPU shadow immediately (visible within the current tick on the GPU),
-and the structural `attach_overlay` fires at the next day boundary. Passes
-4–6 (reduction) remain deferred. Next: Week 4 Step 3 — AI intent overlay
-API (`AiIntentOverlay` + separate `AiSender` channel).**
+**Weeks 1–3 complete plus Week 4 Steps 1–3 (PlayerIntent + mid-day fast
+path + AI intent overlay API). Both player and AI can submit overlays
+through the feeder layer: player via `FeederSender::submit_player_intent`,
+AI via a dedicated `AiSender::submit_ai_intent` channel (separate mpsc so
+AI and player submissions don't contend). Both paths apply the transform
+delta to the CPU shadow mid-day and structurally attach the overlay at the
+next day boundary. AI intents carry an `urgency: f32` field surfaced in
+`BoundaryOutcome::ai_intents_attached`. Passes 4–6 (reduction) remain
+deferred. Next: Week 4 Step 4 — observability query for a single
+SimThing.**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
@@ -430,8 +430,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 102 tests must pass with zero warnings before any commit
-(14 core + 37 GPU + 20 feeder unit + 4 feeder integration + 21 sim unit + 6 sim integration).
+All 104 tests must pass with zero warnings before any commit
+(14 core + 37 GPU + 21 feeder unit + 4 feeder integration + 21 sim unit + 7 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

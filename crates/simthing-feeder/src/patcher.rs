@@ -40,7 +40,10 @@
 //! Each skip increments a stat counter so callers can detect drift between
 //! gameplay code and registry state without crashing the sim.
 
-use crate::work::{BoundaryRequest, FeederReceiver, FeederWork, PatchTransform, PlayerIntentOverlay};
+use crate::work::{
+    AiIntentOverlay, AiReceiver, BoundaryRequest, FeederReceiver, FeederWork, PatchTransform,
+    PlayerIntentOverlay,
+};
 use simthing_core::{DimensionRegistry, TransformOp};
 use simthing_gpu::SlotAllocator;
 
@@ -62,6 +65,8 @@ pub struct PatcherStats {
     pub boundary_parked:   u32,
     /// Player intent overlays parked for attachment at the next boundary.
     pub player_intents_parked: u32,
+    /// AI intent overlays parked for attachment at the next boundary.
+    pub ai_intents_parked: u32,
 }
 
 // ── Patcher ───────────────────────────────────────────────────────────────────
@@ -76,10 +81,14 @@ pub struct TransformPatcher {
     /// by `take_boundary_requests()` at boundary time.
     pending_boundary: Vec<BoundaryRequest>,
     /// Player intent overlays parked for attachment at the next boundary.
-    /// Kept separate from `pending_boundary` so the boundary protocol can
-    /// count and (in a future step) apply mid-day shadow effects for them
-    /// independently.
     pending_player_intents: Vec<PlayerIntentOverlay>,
+    /// AI intent overlays parked for attachment at the next boundary.
+    pending_ai_intents: Vec<AiIntentOverlay>,
+    /// Optional dedicated AI channel. When set, `drain()` also drains this
+    /// receiver after the feeder queue, applying transform deltas mid-day and
+    /// parking intents for the boundary. Stored here so the `tick()` signature
+    /// needs no changes.
+    ai_receiver: Option<AiReceiver>,
     /// Dirty-row tracking. A bit per slot; `true` means the row was touched
     /// since the last `take_dirty_rows()`. Used by the Dispatch Coordinator
     /// to coalesce GPU uploads.
@@ -91,8 +100,16 @@ impl TransformPatcher {
         Self {
             pending_boundary:       Vec::new(),
             pending_player_intents: Vec::new(),
+            pending_ai_intents:     Vec::new(),
+            ai_receiver:            None,
             dirty:                  vec![false; n_slots],
         }
+    }
+
+    /// Attach a dedicated AI channel. After this call `drain()` will
+    /// automatically drain the AI receiver on every tick.
+    pub fn set_ai_receiver(&mut self, rx: AiReceiver) {
+        self.ai_receiver = Some(rx);
     }
 
     /// Apply every patch currently waiting on the queue. Boundary requests
@@ -131,6 +148,19 @@ impl TransformPatcher {
                 }
             }
         }
+
+        // Drain the AI channel if one is connected. Same mid-day fast path
+        // as player intents: transform delta applied immediately, structural
+        // attach_overlay deferred to boundary.
+        if let Some(ai_rx) = &self.ai_receiver {
+            for ai in ai_rx.drain_now() {
+                let patch = PatchTransform { target: ai.target, delta: ai.overlay.transform.clone() };
+                self.apply_one(&patch, registry, allocator, n_dims, values, &mut stats);
+                self.pending_ai_intents.push(ai);
+                stats.ai_intents_parked += 1;
+            }
+        }
+
         stats
     }
 
@@ -201,6 +231,12 @@ impl TransformPatcher {
     /// internal Vec; the boundary protocol attaches them during step 7/8.
     pub fn take_player_intents(&mut self) -> Vec<PlayerIntentOverlay> {
         std::mem::take(&mut self.pending_player_intents)
+    }
+
+    /// Hand off accumulated AI intent overlays to the caller. Empties the
+    /// internal Vec; the boundary protocol attaches them during step 7/8.
+    pub fn take_ai_intents(&mut self) -> Vec<AiIntentOverlay> {
+        std::mem::take(&mut self.pending_ai_intents)
     }
 
     /// Snapshot + clear the dirty-row bitmap. Returns the indices of every
@@ -509,6 +545,54 @@ mod tests {
         assert_eq!(p.take_dirty_rows(), vec![0]);
         // Intent still parked for boundary attach.
         assert_eq!(p.take_player_intents().len(), 1);
+    }
+
+    #[test]
+    fn ai_intent_applies_transform_to_shadow_and_parks_with_urgency() {
+        use simthing_core::{
+            Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
+            PropertyTransformDelta,
+        };
+        use crate::work::{ai_channel, AiIntentOverlay};
+
+        let (reg, alloc, pid, [_a, b], n_dims) = fixture();
+
+        let (ai_tx, ai_rx) = ai_channel();
+        let mut values = vec![0.0f32; 2 * n_dims];
+        let mut p = TransformPatcher::new(2);
+        p.set_ai_receiver(ai_rx);
+
+        let overlay = Overlay {
+            id:        OverlayId::new(),
+            kind:      OverlayKind::Policy,
+            source:    OverlaySource::Ai,
+            affects:   vec![b],
+            transform: PropertyTransformDelta {
+                property_id:      pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.42))],
+            },
+            lifecycle: OverlayLifecycle::Permanent,
+        };
+        let overlay_id = overlay.id;
+        ai_tx.submit_ai_intent(b, overlay, 0.9).unwrap();
+
+        // Drain the feeder queue (empty) — AI channel drained automatically.
+        let (_, rx) = feeder_channel();
+        let stats = p.drain(&rx, &reg, &alloc, n_dims, &mut values);
+
+        // Transform applied: slot 1 (b), Amount col = 0.42.
+        assert_eq!(values[n_dims + 0], 0.42, "AI intent must mutate shadow mid-day");
+        assert_eq!(stats.applied_writes, 1);
+        assert_eq!(stats.ai_intents_parked, 1);
+        // Row 1 dirty.
+        assert_eq!(p.take_dirty_rows(), vec![1]);
+        // Intent parked with urgency intact.
+        let ai = p.take_ai_intents();
+        assert_eq!(ai.len(), 1);
+        assert_eq!(ai[0].target, b);
+        assert_eq!(ai[0].overlay.id, overlay_id);
+        assert_eq!(ai[0].urgency.to_bits(), 0.9f32.to_bits());
+        assert!(p.take_ai_intents().is_empty());
     }
 
     #[test]
