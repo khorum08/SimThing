@@ -23,6 +23,19 @@
 use simthing_core::{Overlay, PropertyTransformDelta, SimPropertyId, SimThing, SimThingId};
 use std::sync::mpsc::{channel, Receiver, Sender};
 
+// ── Player intent ─────────────────────────────────────────────────────────────
+
+/// A player-issued overlay to be attached at the next day boundary.
+///
+/// Semantically distinct from a structural `BoundaryRequest::AttachOverlay`
+/// so the patcher can route, count, and (in a future step) apply mid-day
+/// shadow effects independently of other boundary work.
+#[derive(Clone, Debug)]
+pub struct PlayerIntentOverlay {
+    pub target:  SimThingId,
+    pub overlay: Overlay,
+}
+
 // ── Work items ────────────────────────────────────────────────────────────────
 
 /// Continuous within-day mutation. Targets exactly one SimThing's row and
@@ -83,12 +96,13 @@ pub enum BoundaryRequest {
 
 /// Outer enum the channel actually carries. The Patcher splits these on
 /// drain: `Patch` items go to the value buffer immediately, `Boundary`
-/// items get parked in a Vec for the Tree Maintainer to process at the
-/// next boundary.
+/// items get parked for the Tree Maintainer, and `PlayerIntent` items get
+/// parked separately for attachment at the next day boundary.
 #[derive(Clone, Debug)]
 pub enum FeederWork {
     Patch(PatchTransform),
     Boundary(BoundaryRequest),
+    PlayerIntent(PlayerIntentOverlay),
 }
 
 // ── Channel wrapper ───────────────────────────────────────────────────────────
@@ -117,6 +131,15 @@ impl FeederSender {
 
     pub fn submit_boundary(&self, req: BoundaryRequest) -> Result<(), FeederError> {
         self.send(FeederWork::Boundary(req))
+    }
+
+    /// Submit a player-authored overlay for attachment at the next day boundary.
+    pub fn submit_player_intent(
+        &self,
+        target:  SimThingId,
+        overlay: Overlay,
+    ) -> Result<(), FeederError> {
+        self.send(FeederWork::PlayerIntent(PlayerIntentOverlay { target, overlay }))
     }
 }
 

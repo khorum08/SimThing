@@ -65,5 +65,5 @@ pub use maintainer::{MaintainerOutcome, TreeMaintainer};
 pub use patcher::{PatcherStats, TransformPatcher};
 pub use work::{
     feeder_channel, BoundaryRequest, FeederError, FeederReceiver, FeederSender, FeederWork,
-    PatchTransform,
+    PatchTransform, PlayerIntentOverlay,
 };

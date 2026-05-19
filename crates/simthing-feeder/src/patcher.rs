@@ -40,7 +40,7 @@
 //! Each skip increments a stat counter so callers can detect drift between
 //! gameplay code and registry state without crashing the sim.
 
-use crate::work::{BoundaryRequest, FeederReceiver, FeederWork, PatchTransform};
+use crate::work::{BoundaryRequest, FeederReceiver, FeederWork, PatchTransform, PlayerIntentOverlay};
 use simthing_core::{DimensionRegistry, TransformOp};
 use simthing_gpu::SlotAllocator;
 
@@ -60,18 +60,26 @@ pub struct PatcherStats {
     pub applied_writes:    u32,
     /// Boundary requests parked for the Tree Maintainer (not applied here).
     pub boundary_parked:   u32,
+    /// Player intent overlays parked for attachment at the next boundary.
+    pub player_intents_parked: u32,
 }
 
 // ── Patcher ───────────────────────────────────────────────────────────────────
 
 /// CPU-side patch executor. Stateless — the only "state" is what's parked in
-/// `pending_boundary` between drains, which the caller is expected to hand
-/// off to the Tree Maintainer at the next boundary.
+/// `pending_boundary` / `pending_player_intents` between drains, which the
+/// caller is expected to hand off to the boundary protocol at the next
+/// boundary.
 #[derive(Debug, Default)]
 pub struct TransformPatcher {
     /// Boundary requests received during the day, in arrival order. Drained
     /// by `take_boundary_requests()` at boundary time.
     pending_boundary: Vec<BoundaryRequest>,
+    /// Player intent overlays parked for attachment at the next boundary.
+    /// Kept separate from `pending_boundary` so the boundary protocol can
+    /// count and (in a future step) apply mid-day shadow effects for them
+    /// independently.
+    pending_player_intents: Vec<PlayerIntentOverlay>,
     /// Dirty-row tracking. A bit per slot; `true` means the row was touched
     /// since the last `take_dirty_rows()`. Used by the Dispatch Coordinator
     /// to coalesce GPU uploads.
@@ -81,8 +89,9 @@ pub struct TransformPatcher {
 impl TransformPatcher {
     pub fn new(n_slots: usize) -> Self {
         Self {
-            pending_boundary: Vec::new(),
-            dirty:            vec![false; n_slots],
+            pending_boundary:       Vec::new(),
+            pending_player_intents: Vec::new(),
+            dirty:                  vec![false; n_slots],
         }
     }
 
@@ -109,6 +118,10 @@ impl TransformPatcher {
                 FeederWork::Boundary(b) => {
                     self.pending_boundary.push(b);
                     stats.boundary_parked += 1;
+                }
+                FeederWork::PlayerIntent(pi) => {
+                    self.pending_player_intents.push(pi);
+                    stats.player_intents_parked += 1;
                 }
             }
         }
@@ -176,6 +189,12 @@ impl TransformPatcher {
     /// internal Vec; the Tree Maintainer takes ownership.
     pub fn take_boundary_requests(&mut self) -> Vec<BoundaryRequest> {
         std::mem::take(&mut self.pending_boundary)
+    }
+
+    /// Hand off accumulated player intent overlays to the caller. Empties the
+    /// internal Vec; the boundary protocol attaches them during step 7/8.
+    pub fn take_player_intents(&mut self) -> Vec<PlayerIntentOverlay> {
+        std::mem::take(&mut self.pending_player_intents)
     }
 
     /// Snapshot + clear the dirty-row bitmap. Returns the indices of every
@@ -406,6 +425,46 @@ mod tests {
         assert_eq!(dirty, vec![0]);
         // Bitmap was cleared by take.
         assert!(p.take_dirty_rows().is_empty());
+    }
+
+    #[test]
+    fn player_intent_parks_in_pending_and_take_drains_it() {
+        use simthing_core::{
+            Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
+            PropertyTransformDelta, SimPropertyId,
+        };
+        let (reg, alloc, _pid, [a, _b], n_dims) = fixture();
+        let (tx, rx) = feeder_channel();
+
+        let overlay = Overlay {
+            id:        OverlayId::new(),
+            kind:      OverlayKind::Policy,
+            source:    OverlaySource::Player,
+            affects:   vec![],
+            transform: PropertyTransformDelta {
+                property_id:      SimPropertyId(0),
+                sub_field_deltas: vec![],
+            },
+            lifecycle: OverlayLifecycle::Permanent,
+        };
+        let overlay_id = overlay.id;
+        tx.send(FeederWork::PlayerIntent(
+            crate::work::PlayerIntentOverlay { target: a, overlay: overlay.clone() },
+        )).unwrap();
+
+        let mut values = vec![0.0f32; 2 * n_dims];
+        let mut p = TransformPatcher::new(2);
+        let stats = p.drain(&rx, &reg, &alloc, n_dims, &mut values);
+
+        assert_eq!(stats.player_intents_parked, 1);
+        assert_eq!(stats.applied_writes, 0);
+
+        let intents = p.take_player_intents();
+        assert_eq!(intents.len(), 1);
+        assert_eq!(intents[0].target, a);
+        assert_eq!(intents[0].overlay.id, overlay_id);
+        // take empties the Vec
+        assert!(p.take_player_intents().is_empty());
     }
 
     #[test]

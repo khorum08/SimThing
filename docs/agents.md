@@ -102,16 +102,15 @@ SimThing/
 
 ## Current implementation state
 
-**Week 1, 2, and 3 complete. The full vertical slice is operational:
-GPU passes 0/1/2/3/7, feeder layer with mpsc work queue, day-boundary
-protocol orchestration with real fission/fusion + tree mutation + GPU
-buffer rebuild. End-to-end integration test proves fission threshold
-fires → boundary executes → SimThing spawned + slot allocated → day N+1
-tick runs clean. Passes 4–6 (reduction) remain deferred until the
-presentation layer needs them. Next: Week 4 — player input handling
-as intent overlays, then AI intent overlays. Session cutoff on 2026-05-19:
-Step 3 is merged, local `master` is synced to `origin/master`, and only
-`.claude/worktrees/` is untracked/untouched.**
+**Weeks 1–3 complete plus Week 4 Step 1 (PlayerIntent overlay API). The
+full vertical slice is operational: GPU passes 0/1/2/3/7, feeder layer
+with mpsc work queue, day-boundary protocol orchestration with real
+fission/fusion + tree mutation + GPU buffer rebuild. Player-authored
+overlays can now be submitted via `FeederSender::submit_player_intent`;
+the patcher parks them separately and the boundary protocol attaches them
+during step 7/8. Passes 4–6 (reduction) remain deferred. Next: Week 4
+Step 2 — player overlay mid-day shadow effect (apply transform delta to
+CPU shadow on receipt, structural attach still at boundary).**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
@@ -245,11 +244,21 @@ Highlights:
 - `FeederSender` is `Clone` (multiple producers); `FeederReceiver` is
   single-consumer and drained non-blockingly by `drain_now()`.
 
+**`work.rs` — work queue (updated):**
+- `PlayerIntentOverlay { target: SimThingId, overlay: Overlay }` — player-authored
+  overlay to be attached at the next day boundary.
+- `FeederWork::PlayerIntent(PlayerIntentOverlay)` — third channel variant alongside
+  `Patch` and `Boundary`.
+- `FeederSender::submit_player_intent(target, overlay)` — convenience send method.
+
 **`patcher.rs` — TransformPatcher:**
 - `drain(receiver, registry, allocator, n_dims, &mut shadow) -> PatcherStats`:
   pulls every queued item; resolves `(target, role) → (slot, col)` via
   `col_for_role` only; applies `TransformOp::{Multiply, Add, Set}` to the
-  CPU shadow. Boundary requests get parked on `pending_boundary`.
+  CPU shadow. Boundary requests park on `pending_boundary`; player intent
+  overlays park on `pending_player_intents`.
+- `take_player_intents() -> Vec<PlayerIntentOverlay>` — drains player intents
+  for the boundary protocol to attach during step 7/8.
 - `PatcherStats` counts applied writes, missing targets, inactive
   properties, unresolved roles, and parked boundary requests — diagnostic
   signal without crashing the sim when gameplay code drifts from registry.
@@ -420,8 +429,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 98 tests must pass with zero warnings before any commit
-(14 core + 37 GPU + 18 feeder unit + 4 feeder integration + 21 sim unit + 4 sim integration).
+All 100 tests must pass with zero warnings before any commit
+(14 core + 37 GPU + 19 feeder unit + 4 feeder integration + 21 sim unit + 5 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available
