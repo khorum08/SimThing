@@ -4,6 +4,52 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## Next session pickup
+
+Master is at `93bbe36` (PR #19, GPU Passes 4–6 merged). 124/124 tests
+passing, zero warnings, no uncommitted work. Bounded options when work
+resumes, in increasing scope:
+
+1. **Per-entity ids in outcome structs** (~30 min, Sonnet-feasible).
+   `delta_log.rs` already documents the extension points:
+   - `FissionOutcome` → add `Vec<(SimThingId /*parent*/, SimThingId /*child*/)>`
+     for both fission spawns and fusion merges. Update
+     `entries_from_outcome` to emit per-event `FissionOccurred` /
+     `FusionOccurred` entries with full ids instead of count-only.
+   - `MaintainerOutcome` → add `Vec<(SimThingId /*child*/, SimThingId /*new_parent*/)>`
+     for reparents.
+   - `ExpiryOutcome` → add `Vec<(SimThingId, SimPropertyId)>` for
+     per-entity property expiries.
+   No new public surface, mostly mechanical. Unblocks real replay logging.
+
+2. **`WeightedMean { by: SimPropertyId }` reduction variant**
+   (~45 min, Sonnet-feasible but shader surgery). Population-weighted
+   aggregates (e.g. location loyalty weighted by cohort population).
+   - Extend `ReductionRule` enum.
+   - Change `column_rules` GPU encoding: 2 u32s per column (rule kind +
+     optional weight column index).
+   - Update `cpu_reduce_oracle` and `reduction.wgsl` to read the weight
+     column per child and accumulate `weighted_sum / total_weight`.
+   - Extend the parity test to cover the new variant.
+
+3. **Thresholds on `output_vectors`** (Opus). Currently Pass 7 scans
+   `values` only. World-level / location-level threshold registrations
+   (e.g. "trigger when aggregated instability crosses 0.7") need a
+   second threshold registry pointing at `output_vectors`. Decision
+   needed: extend the existing `ThresholdRegistration` with a buffer
+   selector, or a parallel registry + parallel Pass 7 dispatch.
+
+4. **Step 6: Replay serialization + playback** (Opus, originally
+   planned). Format choice (binary frame + delta stream, or
+   line-delimited JSON), file I/O, replay driver that consumes
+   `BoundaryDeltaEntry`s and reconstructs GPU state deterministically.
+   Best done *after* option (1) so the delta log carries full ids.
+
+Recommended order: (1) → (2) → (4), with (3) folded in wherever AI early
+warning becomes important.
+
+---
+
 ## 2026-05-19 — GPU Passes 4–6: presentation reduction
 
 **Status:** Implementation complete on `master` working tree, awaiting PR.
