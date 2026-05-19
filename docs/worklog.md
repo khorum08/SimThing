@@ -4,6 +4,37 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — PlayerIntent mid-day fast path
+
+**Status:** Week 4 Step 2 merged. Player intent transform delta is now
+applied to the CPU shadow immediately on receipt (mid-day), making the
+effect visible on the GPU within the same tick. Structural `attach_overlay`
+still fires at the day boundary.
+
+**Landed in this session:**
+- `TransformPatcher::drain`: on `FeederWork::PlayerIntent`, constructs a
+  synthetic `PatchTransform` from `pi.overlay.transform` and calls
+  `apply_one` before parking — reuses the full `col_for_role` resolution
+  path, dirty-row tracking, and skip-stats of a regular patch.
+- Tests added:
+  - `player_intent_applies_transform_to_shadow_and_marks_row_dirty`
+    (patcher unit, no GPU): verifies Set(0.75) lands in shadow at the
+    right slot + col and marks the row dirty.
+  - `player_intent_mid_day_effect_lands_on_gpu_before_boundary`
+    (GPU integration): ticks_per_day=2; after tick 1 (mid-day), GPU
+    values confirm Set(0.6) is present; overlay is not yet in tree; after
+    tick 2 (boundary), overlay is structurally attached.
+
+**102/102 tests passing, zero warnings.**
+
+**Next session:** Week 4 Step 3 — AI intent overlay API. `AiIntentOverlay`
+type, separate `AiSender` channel so AI and player submissions don't
+contend, boundary protocol processes them via the same `AttachOverlay`
+path. Decide whether `urgency: f32` lives on the overlay or as a
+side-channel field.
+
+---
+
 ## 2026-05-19 — PlayerIntent overlay submission API
 
 **Status:** Week 4 Step 1 merged as PR #14. Player-authored overlays can
