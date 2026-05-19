@@ -102,12 +102,14 @@ SimThing/
 
 ## Current implementation state
 
-**Weeks 1–3 complete plus Week 4 Steps 1–4 (PlayerIntent + mid-day fast
-path + AI intent overlay API + observability query). Both player and AI
-can submit overlays; `BoundaryProtocol::observe(coord, target)` returns a
-read-only `ObservabilityReport` decomposing sub-field values and overlay
-contributions (inherited vs local) for any SimThing. Passes 4–6
-(reduction) remain deferred. Week 4 complete.**
+**Weeks 1–4 complete plus replay delta capture prep. Both player and AI
+can submit overlays; `BoundaryProtocol::observe` decomposes sub-field
+values and overlay contributions; `BoundaryProtocol::take_delta_log()`
+drains a `Vec<BoundaryDeltaEntry>` capturing every semantic state change
+per boundary (overlay attached, SimThing added/removed, fission/fusion,
+property expiry, velocity alerts). Passes 4–6 (reduction) and replay
+serialization remain deferred — both require Opus-tier architectural
+decisions.**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
@@ -426,8 +428,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 110 tests must pass with zero warnings before any commit
-(14 core + 37 GPU + 21 feeder unit + 4 feeder integration + 27 sim unit + 7 sim integration).
+All 116 tests must pass with zero warnings before any commit
+(14 core + 37 GPU + 21 feeder unit + 4 feeder integration + 33 sim unit + 7 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

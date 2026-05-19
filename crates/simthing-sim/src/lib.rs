@@ -43,6 +43,7 @@
 //!   tree root and orchestrates the full §10 sequence in one call.
 
 pub mod boundary;
+pub mod delta_log;
 pub mod fission;
 pub mod gpu_sync;
 pub mod observability;
@@ -52,6 +53,7 @@ pub mod threshold_registry;
 pub mod tree_mutation;
 
 pub use boundary::{BoundaryOutcome, BoundaryProtocol};
+pub use delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 pub use observability::{
     ObservabilityReport, OverlayContribution, PropertyObservation, SubFieldObservation,
 };
