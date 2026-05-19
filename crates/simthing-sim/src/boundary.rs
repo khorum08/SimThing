@@ -128,14 +128,15 @@ impl BoundaryProtocol {
         );
 
         // Step 6: Fission and fusion. Spawns new SimThings + allocates slots.
-        // Reads from shadow for secondary-condition checks; doesn't write.
+        // Reads from shadow for secondary-condition checks and seeds newly
+        // fissioned children from the parent's current GPU row.
         out.fission = resolve_fission_fusion(
             &mut self.root,
             &self.registry,
             &mut self.allocator,
             &events,
             &self.cpu_threshold_registry,
-            &coord.shadow,
+            &mut coord.shadow,
             n_dims,
             day as u32,
         );

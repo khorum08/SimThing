@@ -365,7 +365,9 @@ Integration highlights:
      would wipe out a day's worth of Pass 1/2 work).
   2. Overlay lifecycle (step 4).
   3. Property expiry (step 5).
-  4. Fission/fusion (step 6).
+  4. Fission/fusion (step 6). Fission-spawned children inherit active
+     parent properties from the boundary GPU readback row; the activating
+     property's Amount is reset to 0.0 on the child.
   5. Resize shadow for any new slots from step 6.
   6. Drain patcher boundary requests, call `apply_structural_mutations` (steps 7+8).
   7. Resize shadow again if step 7 added slots.
@@ -373,22 +375,21 @@ Integration highlights:
   9. `sync_gpu_buffers` (step 9).
   10. Adopt the new CPU `ThresholdRegistry`.
 
-**Tests: 19 unit + 2 GPU integration tests, all passing, zero warnings.**
+**Tests: 20 unit + 2 GPU integration tests, all passing, zero warnings.**
 
 Integration highlights:
 - `fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean` — full end-to-end:
   cohort with Amount=0.5, Velocity=-0.21 integrates across the 0.3 threshold;
   Pass 7 fires; `BoundaryProtocol::execute` spawns a child Cohort + allocates
-  its slot; the subsequent tick runs without panic and the original cohort's
-  amount continues integrating downward.
+  its slot; the child inherits loyalty from the parent's GPU row with Amount
+  reset to 0.0; the subsequent tick runs without panic and the original
+  cohort's amount continues integrating downward.
 - `boundary_requests_apply_structural_mutations` — `AddChild` request submitted
   via the channel survives the patcher's boundary park, lands at the maintainer,
   attaches a new SimThing under the cohort, and allocates its slot.
 
 **Not yet built in simthing-sim:**
 - `AddDimension` execution (requires `WorldGpuState` rebuild with new `n_dims`).
-- Property seeding for newly-spawned SimThings (fission today produces an empty
-  `SimThing`; populating its `properties` from the parent's row is a follow-up).
 - Velocity-alert handling (`ThresholdSemantic::VelocityAlert`) — AI layer
   consumes these; no-op in boundary today.
 
@@ -406,8 +407,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 92 tests must pass with zero warnings before any commit
-(14 core + 36 GPU + 17 feeder unit + 4 feeder integration + 19 sim unit + 2 sim integration).
+All 93 tests must pass with zero warnings before any commit
+(14 core + 36 GPU + 17 feeder unit + 4 feeder integration + 20 sim unit + 2 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

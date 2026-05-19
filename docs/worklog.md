@@ -4,6 +4,36 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — fission child property seeding
+
+**Status:** Week 4 follow-up landed locally. Fission-spawned children now
+inherit live property state from the parent's current GPU row.
+
+**Landed in this session:**
+- `crates/simthing-sim/src/fission.rs`:
+  - `resolve_fission_fusion` now receives a mutable values shadow.
+  - New fission children copy every active sparse parent property from the
+    boundary GPU readback row into the child's `properties` map.
+  - The activating property's `Amount` sub-field is reset to `0.0` on the
+    child, matching the design note that the child represents a newly
+    expressing force.
+  - The child's GPU shadow row is cleared before seeding, so reused tombstone
+    slots do not retain stale values.
+- `BoundaryProtocol::execute` now passes `coord.shadow` mutably into fission,
+  so step 9's full shadow upload carries seeded child rows to the GPU.
+- Tests updated:
+  - New unit test `fission_child_inherits_parent_properties_from_shadow`.
+  - Boundary integration now asserts the spawned child has loyalty and that
+    parent + child threshold registrations are rebuilt.
+
+**Focused verification:** `cargo test -p simthing-sim` and
+`cargo test -p simthing-sim --test boundary_integration` pass.
+
+**Next session:** Continue Week 4 with player input handling or AI intent
+overlays. `AddDimension` execution remains the larger structural follow-up.
+
+---
+
 ## 2026-05-18 — simthing-sim crate complete (Week 3 closeout)
 
 **Status:** Full vertical slice operational on `claude/boundary-execution`.
@@ -80,9 +110,7 @@ and completed the execution work in one PR.
 **Next session:** Week 4. Either player input handling (overlay submission
 from a UI/script interface) or AI intent overlays (velocity-threshold
 registrations + AI consumer of `ThresholdSemantic::VelocityAlert`).
-Property seeding for newly-spawned fission children is a smaller follow-up
-that should land soon — today fission creates an empty SimThing without
-the inherited loyalty property.
+Property seeding for newly-spawned fission children landed on 2026-05-19.
 
 ---
 

@@ -75,8 +75,9 @@ fn build_initial_world(reg: &mut DimensionRegistry) -> (SimThing, SlotAllocator,
 /// threshold. Calling `BoundaryProtocol::execute` with that event must:
 /// 1. Spawn a new cohort child of the rebelling cohort.
 /// 2. Allocate a slot for it.
-/// 3. Re-upload Pass 7 + Pass 3 buffers to reflect the new tree.
-/// 4. Survive a subsequent tick without panic.
+/// 3. Seed the child's loyalty property from the parent's current GPU row.
+/// 4. Re-upload Pass 7 + Pass 3 buffers to reflect the new tree.
+/// 5. Survive a subsequent tick without panic.
 #[test]
 fn fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean() {
     let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
@@ -144,13 +145,14 @@ fn fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean() {
     assert_eq!(proto.allocator.capacity(), pre_capacity + 1,
                "allocator capacity should grow by 1");
 
-    // GPU sync rebuilt the threshold registry. The new cohort's loyalty
-    // property won't yet be in its `properties` map (fission spawns an
-    // empty SimThing — properties are populated by subsequent overlays
-    // or explicit AddProperty in future work). For now we just verify
-    // the gpu_sync ran without panic.
-    assert_eq!(outcome.gpu_sync.threshold_regs_uploaded,
-               outcome.gpu_sync.threshold_regs_uploaded); // smoke-check
+    // The fission child inherits the activating property from the parent's
+    // current GPU row, with Amount reset to 0.0 for the newly-expressing force.
+    let child = &rebelling.children[0];
+    let child_loyalty = child.property(pid).expect("fission child has loyalty");
+    assert_eq!(child_loyalty.data[amount_off], 0.0);
+    assert_eq!(child_loyalty.data[vel_off].to_bits(), (-0.21f32).to_bits());
+    assert!(outcome.gpu_sync.threshold_regs_uploaded >= 2,
+            "parent and child should both have fission threshold registrations");
 
     // ── Day N+1: another tick must run cleanly ────────────────────────
     let next = coord.tick(
