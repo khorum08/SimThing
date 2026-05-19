@@ -45,12 +45,16 @@
 pub mod boundary;
 pub mod fission;
 pub mod gpu_sync;
+pub mod observability;
 pub mod overlay_lifecycle;
 pub mod property_expiry;
 pub mod threshold_registry;
 pub mod tree_mutation;
 
 pub use boundary::{BoundaryOutcome, BoundaryProtocol};
+pub use observability::{
+    ObservabilityReport, OverlayContribution, PropertyObservation, SubFieldObservation,
+};
 pub use threshold_registry::{
     ThresholdBuilder, ThresholdRegistry, ThresholdSemantic, VelocityAlertEvent,
     VelocityAlertRegistration,
