@@ -28,12 +28,80 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 /// A player-issued overlay to be attached at the next day boundary.
 ///
 /// Semantically distinct from a structural `BoundaryRequest::AttachOverlay`
-/// so the patcher can route, count, and (in a future step) apply mid-day
-/// shadow effects independently of other boundary work.
+/// so the patcher can route, count, and apply mid-day shadow effects
+/// independently of other boundary work.
 #[derive(Clone, Debug)]
 pub struct PlayerIntentOverlay {
     pub target:  SimThingId,
     pub overlay: Overlay,
+}
+
+// ── AI intent ─────────────────────────────────────────────────────────────────
+
+/// An AI-issued overlay plus an urgency signal.
+///
+/// Flows through a dedicated `AiSender`/`AiReceiver` channel — separate from
+/// the player feeder channel so AI submissions don't contend with player and
+/// boundary work. The patcher drains both channels in a single `drain()` call.
+///
+/// `urgency` is a [0.0, 1.0] hint the AI layer attaches to each overlay. It
+/// does not change how the overlay is applied — the transform delta hits the
+/// CPU shadow mid-day and `attach_overlay` fires at the boundary exactly like
+/// a player intent. `urgency` is surfaced in `BoundaryOutcome::ai_intents` so
+/// downstream systems (observability, UI) can prioritise which AI interventions
+/// to surface.
+#[derive(Clone, Debug)]
+pub struct AiIntentOverlay {
+    pub target:  SimThingId,
+    pub overlay: Overlay,
+    /// Urgency hint in [0.0, 1.0]. Higher = AI considers this more time-sensitive.
+    pub urgency: f32,
+}
+
+/// Producer handle for AI intent overlays. `Clone` so multiple AI subsystems
+/// can submit work independently.
+#[derive(Clone, Debug)]
+pub struct AiSender {
+    inner: Sender<AiIntentOverlay>,
+}
+
+impl AiSender {
+    pub fn submit(&self, intent: AiIntentOverlay) -> Result<(), FeederError> {
+        self.inner.send(intent).map_err(|_| FeederError::Disconnected)
+    }
+
+    pub fn submit_ai_intent(
+        &self,
+        target:  SimThingId,
+        overlay: Overlay,
+        urgency: f32,
+    ) -> Result<(), FeederError> {
+        self.submit(AiIntentOverlay { target, overlay, urgency })
+    }
+}
+
+/// Consumer handle for AI intent overlays. Owned by `TransformPatcher`; not
+/// `Clone`.
+#[derive(Debug)]
+pub struct AiReceiver {
+    inner: Receiver<AiIntentOverlay>,
+}
+
+impl AiReceiver {
+    /// Drain all currently queued AI intents without blocking.
+    pub fn drain_now(&self) -> Vec<AiIntentOverlay> {
+        let mut out = Vec::new();
+        while let Ok(item) = self.inner.try_recv() {
+            out.push(item);
+        }
+        out
+    }
+}
+
+/// Build a connected AI sender/receiver pair.
+pub fn ai_channel() -> (AiSender, AiReceiver) {
+    let (tx, rx) = channel();
+    (AiSender { inner: tx }, AiReceiver { inner: rx })
 }
 
 // ── Work items ────────────────────────────────────────────────────────────────

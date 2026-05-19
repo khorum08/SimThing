@@ -4,6 +4,43 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — AI intent overlay API
+
+**Status:** Week 4 Step 3 merged. AI subsystems can now submit intent
+overlays through a dedicated channel that is separate from the player
+feeder queue.
+
+**Landed in this session:**
+- `AiIntentOverlay { target, overlay, urgency: f32 }` — AI-authored overlay
+  with an urgency hint. `urgency` does not change how the overlay is applied;
+  it is metadata for downstream systems (observability, UI prioritisation).
+- `AiSender` (Clone) + `AiReceiver` + `ai_channel()` — separate mpsc channel
+  so AI and player submissions don't contend. `AiSender::submit_ai_intent`.
+- `TransformPatcher::set_ai_receiver(rx)` — attaches the AI channel. `drain()`
+  drains it automatically after the feeder queue with the same mid-day fast
+  path: transform delta applied to CPU shadow immediately, structural
+  `attach_overlay` deferred to boundary. No changes to `tick()` signature.
+- `take_ai_intents() -> Vec<AiIntentOverlay>` and `ai_intents_parked` stat.
+- `BoundaryProtocol::execute`: pulls AI intents alongside player intents,
+  converts each to `BoundaryRequest::AttachOverlay`. `BoundaryOutcome::
+  ai_intents_attached` counter.
+- Tests added:
+  - `ai_intent_applies_transform_to_shadow_and_parks_with_urgency`
+    (patcher unit, no GPU): Set(0.42) on slot 1, urgency=0.9 preserved.
+  - `ai_intent_mid_day_effect_and_boundary_attach` (GPU integration):
+    ticks_per_day=2; GPU shows Set(0.8) after tick 1; overlay attached
+    after tick 2 boundary.
+
+**104/104 tests passing, zero warnings.**
+
+**Next session:** Week 4 Step 4 — observability query. A read-only
+`BoundaryProtocol` method that, for a given `SimThingId`, returns amount /
+velocity / intensity snapshot plus which overlays are contributing and by
+how much (walking the ancestor chain the same way `build_overlay_deltas`
+does but returning an `ObservabilityReport` instead of GPU buffer rows).
+
+---
+
 ## 2026-05-19 — PlayerIntent mid-day fast path
 
 **Status:** Week 4 Step 2 merged. Player intent transform delta is now
