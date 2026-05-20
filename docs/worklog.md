@@ -7,7 +7,7 @@ Running log of what's done and what's next, across sessions.
 ## Next session pickup
 
 **158/158** tests passing plus 1 ignored timing diagnostic, zero warnings.
-Master at `57a3231` (PR #29, simthing-driver + playability path).
+Master at `f1afbf2` (PR #30, driver GPU integration tests).
 
 ### Todo (recommended order)
 
