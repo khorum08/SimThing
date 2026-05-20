@@ -888,6 +888,146 @@ fn reduction_pipeline_produces_aggregated_output_vectors() {
     }
 }
 
+/// Full fission → fusion cycle. Drives the standard cohort across the 0.3
+/// loyalty fission threshold (firing FissionTrigger), then patches the
+/// spawned child's velocity positive so Pass 2 builds its intensity past
+/// the 0.85 fusion threshold over subsequent ticks, then runs another
+/// boundary and asserts:
+///   - `FusionTrigger` semantic resolved from the new event_kind,
+///   - parent's loyalty Amount was scarred by `(1 - 0.05)`,
+///   - child is tombstoned in both the tree and the allocator,
+///   - the persistent lineage record is gone.
+#[test]
+fn fission_then_fusion_applies_scar_and_tombstones_child() {
+    use simthing_core::PropertyTransformDelta;
+    use simthing_feeder::PatchTransform;
+
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    reg.register(loyalty_with_fission());
+
+    let (world, alloc, cohort_id) = build_initial_world(&mut reg);
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let vel_off    = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+    let int_off    = layout.offset_of(&SubFieldRole::Intensity).unwrap();
+    let n_dims = reg.total_columns as u32;
+
+    const N_SLOTS: u32 = 16;
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (tx, rx) = feeder_channel();
+
+    let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
+    let base = cohort_slot * n_dims as usize;
+    coord.shadow[base + amount_off] = 0.5;
+    coord.shadow[base + vel_off]    = -0.21;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    // ── Drive ticks until fission fires ───────────────────────────────
+    let mut events_fired = Vec::new();
+    let mut max_ticks = 8;
+    while events_fired.is_empty() && max_ticks > 0 {
+        let out = coord.tick(
+            &rx, &mut patcher, &proto.registry, &proto.allocator,
+            &pipelines, &mut state, 0.5,
+        );
+        if !out.events.is_empty() {
+            events_fired = out.events;
+            break;
+        }
+        max_ticks -= 1;
+    }
+    assert!(!events_fired.is_empty(), "fission threshold never fired");
+
+    // ── Boundary: fission executes, lineage record appears ───────────
+    let _ = proto.execute(events_fired, &mut patcher, &mut coord, &mut state, 1);
+    let cohort = find_node(&proto.root, cohort_id).expect("cohort still in tree");
+    assert_eq!(cohort.children.len(), 1, "fission produced one child");
+    let child_id   = cohort.children[0].id;
+    let child_slot = proto.allocator.slot_of(child_id).unwrap() as usize;
+    assert_eq!(proto.fission_lineage().len(), 1, "lineage record after fission");
+    assert_eq!(proto.fission_lineage()[0].parent_id, cohort_id);
+    assert_eq!(proto.fission_lineage()[0].child_id,  child_id);
+
+    // ── Patch child velocity positive so Pass 2 builds intensity ─────
+    // Default IntensityBehavior: build_coefficient = 2.0, velocity_threshold
+    // = 0.005. At |v| = 0.21 and dt = 0.5, intensity gains ~0.21/tick → past
+    // 0.85 in five ticks.
+    tx.send(FeederWork::Patch(PatchTransform {
+        target: child_id,
+        delta:  PropertyTransformDelta {
+            property_id:      pid,
+            sub_field_deltas: vec![(SubFieldRole::Velocity, TransformOp::Set(0.21))],
+        },
+    })).unwrap();
+
+    // ── Drive until FusionTrigger fires on the child ─────────────────
+    let mut fusion_events = Vec::new();
+    let mut max_ticks = 12;
+    while fusion_events.is_empty() && max_ticks > 0 {
+        let out = coord.tick(
+            &rx, &mut patcher, &proto.registry, &proto.allocator,
+            &pipelines, &mut state, 0.5,
+        );
+        // Filter to events that resolve to FusionTrigger semantically — the
+        // parent may still have FissionTrigger registrations live, though we
+        // don't expect them to fire (amount has bottomed out).
+        for ev in out.events {
+            let resolved = proto.threshold_registry().get(ev.event_kind);
+            if matches!(resolved, Some(simthing_sim::ThresholdSemantic::FusionTrigger { .. })) {
+                fusion_events.push(ev);
+            }
+        }
+        max_ticks -= 1;
+    }
+    assert!(!fusion_events.is_empty(), "fusion threshold never fired");
+
+    // ── Record parent's pre-fusion amount, then run boundary ────────
+    let pre_fusion_gpu = state.read_values();
+    let parent_amount_before = pre_fusion_gpu[cohort_slot * n_dims as usize + amount_off];
+
+    let outcome = proto.execute(fusion_events, &mut patcher, &mut coord, &mut state, 2);
+
+    assert_eq!(outcome.fission.fusions_executed, 1, "fusion executed");
+    assert_eq!(outcome.fission.fusions_skipped_not_found, 0);
+    assert_eq!(outcome.fission.lineage_removed.len(), 1);
+
+    // Child gone.
+    let cohort = find_node(&proto.root, cohort_id).expect("cohort survives");
+    assert!(cohort.children.is_empty(), "child removed from tree on fusion");
+    assert!(proto.allocator.slot_of(child_id).is_none(), "child slot tombstoned");
+    assert_eq!(proto.fission_lineage().len(), 0, "lineage record pruned on fusion");
+
+    // Scar applied. boundary.rs's `execute` re-reads GPU values into shadow at
+    // the start of each boundary, then fusion's `apply_fusion_scar` multiplied
+    // the parent's amount by (1 - 0.05). The post-boundary GPU upload of the
+    // shadow makes that visible on subsequent reads.
+    let post_gpu = state.read_values();
+    let parent_amount_after = post_gpu[cohort_slot * n_dims as usize + amount_off];
+    let expected = parent_amount_before * 0.95;
+    assert!(
+        (parent_amount_after - expected).abs() < 1e-5,
+        "expected parent amount ≈ {expected} after scar, got {parent_amount_after} \
+         (pre-fusion: {parent_amount_before})",
+    );
+
+    // Sanity: child's slot was zeroed (Remove + tombstone of detached subtree
+    // is handled by apply_structural_mutations; fusion uses a direct path so
+    // we only assert the slot is gone from the allocator).
+    let _ = child_slot;
+    let _ = int_off; // silence unused
+}
+
 /// Replay round-trip: capture a session through `ReplayWriter`, then
 /// reconstruct it via `ReplayDriver` and assert structural reproduction.
 ///

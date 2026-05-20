@@ -20,11 +20,18 @@
 //!
 //! When a `ThresholdSemantic::FusionTrigger` fires:
 //! 1. Locate parent + child by their stored ids.
-//! 2. Remove the child from its parent's children list.
-//! 3. Tombstone the child's slot.
+//! 2. Apply the fusion scar: multiply the parent's activating-property Amount
+//!    by `(1 - fusion_scar_coefficient)` in the values shadow.
+//! 3. Remove the child from its parent's children list.
+//! 4. Tombstone the child's slot.
+//! 5. Append the lineage entry to `lineage_removed` so `BoundaryProtocol`
+//!    can drop it from its persistent lineage vec.
 //!
-//! Fusion scar application and automatic fusion threshold registration are not
-//! wired yet.
+//! Lineage records (`FissionLineageRecord`) are emitted by `execute_fission`
+//! and consumed by `ThresholdBuilder::build_with_lineage` to register the
+//! `FusionTrigger` watching the child's activating-property Intensity. Each
+//! lineage entry is registered every boundary until the child fuses or one
+//! of the two nodes tombstones (Remove).
 //!
 //! ## Idempotency guard
 //!
@@ -41,6 +48,20 @@ use simthing_gpu::{SlotAllocator, ThresholdEvent};
 use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
 use std::collections::HashSet;
 
+/// One spawned child's lineage back to its parent + activating template.
+///
+/// Recorded at fission time and replayed at each subsequent boundary's
+/// threshold-registration step so that the child carries a `FusionTrigger`
+/// registration watching its activating-property Intensity. Once fusion
+/// fires (or either node tombstones), the record is dropped.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FissionLineageRecord {
+    pub parent_id:    SimThingId,
+    pub child_id:     SimThingId,
+    pub property_id:  SimPropertyId,
+    pub template_idx: usize,
+}
+
 /// Outcome of one boundary's fission/fusion pass.
 #[derive(Clone, Debug, Default)]
 pub struct FissionOutcome {
@@ -53,6 +74,12 @@ pub struct FissionOutcome {
     pub fission_pairs: Vec<(SimThingId, SimThingId)>,
     /// Each successful fusion: `(parent_id, child_id)`.
     pub fusion_pairs: Vec<(SimThingId, SimThingId)>,
+    /// Full lineage records for fissions executed this boundary. The
+    /// `BoundaryProtocol` appends these onto its persistent lineage vec.
+    pub lineage_added: Vec<FissionLineageRecord>,
+    /// Lineage records whose child fused this boundary. The
+    /// `BoundaryProtocol` removes these from its persistent lineage vec.
+    pub lineage_removed: Vec<FissionLineageRecord>,
 }
 
 /// Execute all fission and fusion events for one boundary.
@@ -99,7 +126,10 @@ pub fn resolve_fission_fusion(
                 let pid = *property_id;
                 let idx = *template_idx;
 
-                execute_fusion(root, registry, allocator, cid, par, pid, idx, &mut out);
+                execute_fusion(
+                    root, registry, allocator,
+                    cid, par, pid, idx, values_shadow, n_dims, &mut out,
+                );
             }
             _ => {}
         }
@@ -158,6 +188,12 @@ fn execute_fission(
     if let Some(p) = parent {
         p.add_child(new_child);
         out.fission_pairs.push((stid, new_id));
+        out.lineage_added.push(FissionLineageRecord {
+            parent_id:    stid,
+            child_id:     new_id,
+            property_id:  pid,
+            template_idx,
+        });
         true
     } else {
         // Parent disappeared between the check and the mutation — extremely
@@ -210,23 +246,71 @@ fn seed_fission_child(
 }
 
 fn execute_fusion(
-    root:         &mut SimThing,
-    _registry:    &DimensionRegistry,
-    allocator:    &mut SlotAllocator,
-    child_id:     SimThingId,
-    parent_id:    SimThingId,
-    _pid:         SimPropertyId,
-    _template_idx: usize,
-    out:          &mut FissionOutcome,
+    root:          &mut SimThing,
+    registry:      &DimensionRegistry,
+    allocator:     &mut SlotAllocator,
+    child_id:      SimThingId,
+    parent_id:     SimThingId,
+    pid:           SimPropertyId,
+    template_idx:  usize,
+    values_shadow: &mut [f32],
+    n_dims:        usize,
+    out:           &mut FissionOutcome,
 ) {
+    // Apply the scar to the parent before removing the child. The scar is a
+    // permanent multiplicative reduction on the parent's activating-property
+    // Amount: parent.amount *= (1.0 - fusion_scar_coefficient).
+    //
+    // Resolved against the registry so a tombstoned property silently no-ops
+    // (matches the behavior of other shadow-touching steps).
+    let scar_applied = apply_fusion_scar(
+        registry, allocator, parent_id, pid, template_idx, values_shadow, n_dims,
+    );
+
     // Find and remove the child from its parent's children list.
     if remove_child_from_tree(root, child_id) {
         allocator.tombstone(child_id);
         out.fusion_pairs.push((parent_id, child_id));
         out.fusions_executed += 1;
+        // Always record the lineage_removed entry on a successful tree mutation
+        // so BoundaryProtocol can prune its persistent lineage vec, even if
+        // the scar lookup couldn't resolve (defensive: tombstoned property).
+        out.lineage_removed.push(FissionLineageRecord {
+            parent_id, child_id, property_id: pid, template_idx,
+        });
+        let _ = scar_applied;
     } else {
         out.fusions_skipped_not_found += 1;
     }
+}
+
+/// Multiply the parent's activating-property Amount by `(1 - scar_coef)` in
+/// the shadow. Returns true if the write happened, false on any lookup miss.
+fn apply_fusion_scar(
+    registry:      &DimensionRegistry,
+    allocator:     &SlotAllocator,
+    parent_id:     SimThingId,
+    pid:           SimPropertyId,
+    template_idx:  usize,
+    values_shadow: &mut [f32],
+    n_dims:        usize,
+) -> bool {
+    if !registry.is_active(pid) { return false; }
+    let prop = registry.property(pid);
+    if template_idx >= prop.fission_templates.len() { return false; }
+    let ft   = &prop.fission_templates[template_idx];
+    let coef = ft.template.fusion_scar_coefficient.clamp(0.0, 1.0);
+
+    let Some(parent_slot) = allocator.slot_of(parent_id) else { return false };
+    let range  = registry.column_range(pid);
+    let layout = &prop.layout;
+    let Some(amount_col) = range.col_for_role(&SubFieldRole::Amount, layout) else {
+        return false;
+    };
+    let idx = parent_slot as usize * n_dims + amount_col;
+    if idx >= values_shadow.len() { return false; }
+    values_shadow[idx] *= 1.0 - coef;
+    true
 }
 
 fn check_secondary(
@@ -525,5 +609,102 @@ mod tests {
         assert_eq!(out.fissions_executed, 0);
         assert_eq!(out.fissions_skipped_secondary, 1);
         assert!(root.children[0].children.is_empty());
+    }
+
+    #[test]
+    fn fission_emits_lineage_record_per_successful_spawn() {
+        let mut reg   = DimensionRegistry::new();
+        let pid       = reg.register(make_fission_property());
+        let mut alloc = SlotAllocator::new();
+
+        let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+        cohort.add_property(pid, reg.property(pid).default_value());
+        let cid = cohort.id;
+        alloc.alloc(cid);
+        let mut root = SimThing::new(SimThingKind::Location, 0);
+        alloc.alloc(root.id);
+        root.add_child(cohort);
+
+        let mut cpu_reg = ThresholdRegistry::new();
+        let ek = cpu_reg.push(ThresholdSemantic::FissionTrigger {
+            sim_thing_id: cid, property_id: pid, template_idx: 0,
+        });
+
+        let n_dims = reg.total_columns.max(1);
+        let mut shadow = vec![0.0f32; 3 * n_dims];
+        let events = vec![simthing_gpu::ThresholdEvent {
+            slot: 1, col: 0, value: 0.2, event_kind: ek,
+        }];
+
+        let out = resolve_fission_fusion(
+            &mut root, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
+        );
+
+        assert_eq!(out.fissions_executed, 1);
+        assert_eq!(out.lineage_added.len(), 1);
+        let lineage = out.lineage_added[0];
+        assert_eq!(lineage.parent_id, cid);
+        assert_eq!(lineage.property_id, pid);
+        assert_eq!(lineage.template_idx, 0);
+        // child_id is the freshly spawned id; verify it's present in the tree.
+        let spawned = &root.children[0].children[0];
+        assert_eq!(lineage.child_id, spawned.id);
+    }
+
+    #[test]
+    fn fusion_applies_scar_to_parent_amount_and_tombstones_child() {
+        let mut reg   = DimensionRegistry::new();
+        let pid       = reg.register(make_fission_property());
+        // Default scar_coef = 0.05; parent amount goes 1.0 → 0.95.
+
+        let mut parent = SimThing::new(SimThingKind::Cohort, 0);
+        parent.add_property(pid, reg.property(pid).default_value());
+        let parent_id = parent.id;
+        let mut child = SimThing::new(SimThingKind::Cohort, 1);
+        child.add_property(pid, reg.property(pid).default_value());
+        let child_id = child.id;
+        parent.add_child(child);
+        let mut root = SimThing::new(SimThingKind::Location, 0);
+        root.add_child(parent);
+
+        let mut alloc = SlotAllocator::new();
+        let root_slot   = alloc.alloc(root.id);
+        let parent_slot = alloc.alloc(parent_id);
+        let _           = alloc.alloc(child_id);
+        let _ = root_slot;
+
+        let n_dims = reg.total_columns.max(1);
+        let layout = reg.property(pid).layout.clone();
+        let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+
+        let mut shadow = vec![0.0f32; 4 * n_dims];
+        shadow[parent_slot as usize * n_dims + amount_off] = 1.0;
+
+        let mut cpu_reg = ThresholdRegistry::new();
+        let ek = cpu_reg.push(ThresholdSemantic::FusionTrigger {
+            child_id, parent_id, property_id: pid, template_idx: 0,
+        });
+        let events = vec![simthing_gpu::ThresholdEvent {
+            slot: 0, col: 0, value: 0.9, event_kind: ek,
+        }];
+
+        let out = resolve_fission_fusion(
+            &mut root, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
+        );
+
+        assert_eq!(out.fusions_executed, 1);
+        assert_eq!(out.fusions_skipped_not_found, 0);
+        assert_eq!(out.lineage_removed.len(), 1);
+
+        // Scar applied: 1.0 * (1 - 0.05) = 0.95.
+        let scarred = shadow[parent_slot as usize * n_dims + amount_off];
+        assert!(
+            (scarred - 0.95).abs() < 1e-6,
+            "expected scarred amount ≈ 0.95, got {scarred}",
+        );
+
+        // Child gone from tree + allocator.
+        assert!(root.children[0].children.is_empty());
+        assert!(alloc.slot_of(child_id).is_none());
     }
 }

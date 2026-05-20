@@ -6,13 +6,13 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-**140/140** tests passing plus 1 ignored timing diagnostic, zero warnings.
+**145/145** tests passing plus 1 ignored timing diagnostic, zero warnings.
 
-Replay v1 has landed on `claude/replay-serialization`: LDJSON snapshot +
-per-boundary delta frames, `ReplayWriter` / `ReplayReader` / `ReplayDriver`,
-and a GPU-integrated round-trip test. Format is structural-reproduction only
-(tree + registry + allocator); GPU float values are recomputed each session
-by design.
+Fusion lineage + scar semantics have landed on `claude/fusion-lineage`:
+`FissionLineageRecord` persists on `BoundaryProtocol`, `ThresholdBuilder`
+registers `FusionTrigger` thresholds per record, and `execute_fusion`
+multiplies the parent's activating-Amount by `(1 - scar_coefficient)` on
+fire. Lineage is pruned on fusion and on any allocator tombstone.
 
 ### Todo (recommended order)
 
@@ -20,7 +20,9 @@ by design.
 - [x] **`WeightedMean { by: SimPropertyId }` reduction variant** — PR #21.
 - [x] **Thresholds on `output_vectors`** — PR #22 (`6ef455b`).
 - [x] **State authority hardening** — PR #23 (`77357ad`).
-- [x] **Replay serialization + playback v1** — `claude/replay-serialization`.
+- [x] **Replay serialization + playback v1** — PR #25.
+- [x] **Fusion lineage registration + scar semantics** —
+  `claude/fusion-lineage`.
 - [ ] **Replay v2 — payload for spawned-subtree variants.** Today
   `SimThingAdded` and `FissionOccurred` are lossy (id-only); the spawned
   `SimThing` payload cannot be reconstructed from the log alone. Extend
@@ -28,17 +30,93 @@ by design.
   variant (full payload) or attach the spawned subtree to the existing
   `FissionOccurred` / `SimThingAdded` variants. Update `ReplayDriver` to
   re-attach + re-allocate slots; add `MaintainerOutcome` carriers for the
-  spawned subtree (currently only `allocated: Vec<SimThingId>`).
-- [ ] **Fusion lineage registration + scar semantics.** `FusionTrigger` and
-  the event handler shape exist, but `ThresholdBuilder` does not yet register
-  spawned-child fusion thresholds from lineage metadata, and scar application
-  is not wired.
+  spawned subtree (currently only `allocated: Vec<SimThingId>`). With
+  fusion lineage in place this is also where you'd record the lineage in
+  the delta log for replay (currently the lineage vec is in-memory only).
+- [ ] **Fission re-fire suppression on tombstoned thresholds.** A parent
+  that already fissioned still carries a live `FissionTrigger` registration
+  on its Amount column. If Amount re-crosses the threshold in a later day
+  (e.g. after a player intent or event nudges it back up and back down), a
+  second child spawns. May be desired (true rebellions can recur) or not
+  (UI surprise). Currently no suppression; design call needed.
 
-**Next session:** Either replay v2 (lossy-variant closeout, Sonnet-feasible
-once the variant shape is decided) or fusion lineage (Opus — see prior notes
-about lineage persistence).
+**Next session:** Replay v2 (Sonnet-feasible once the variant shape is
+decided). Then the re-fire suppression policy (smaller, design-heavy).
 
 **Tabled (not on this list):** `simthing-studio` designer UI.
+
+---
+
+## 2026-05-20 — Fusion lineage registration + scar semantics
+
+**Status:** Landed on `claude/fusion-lineage`. The fusion path is real:
+fission produces a lineage record, the next boundary's threshold
+registration adds a `FusionTrigger` watching the child's Intensity, and
+on fire the parent's activating-property Amount is scarred multiplicatively.
+
+**Landed:**
+
+- `simthing-sim::fission`:
+  - `FissionLineageRecord { parent_id, child_id, property_id, template_idx }`
+    — one per successful fission, the durable handle that subsequent
+    boundaries use to reconstruct the fusion threshold.
+  - `FissionOutcome.lineage_added` / `.lineage_removed` carriers.
+  - `execute_fission` emits a `lineage_added` entry per spawned child.
+  - `execute_fusion` now takes the values shadow + n_dims and calls
+    `apply_fusion_scar`: `parent.amount *= (1 - fusion_scar_coefficient)`
+    on the activating property's Amount column. Skips silently on any
+    lookup miss (tombstoned property, out-of-range template, missing
+    slot, no Amount sub-field).
+- `simthing-sim::threshold_registry`:
+  - `ThresholdBuilder::build_with_lineage` accepts `&[FissionLineageRecord]`
+    in addition to velocity/aggregate alerts. For each record it emits one
+    `FusionTrigger` registration: child slot + activating property's
+    Intensity column, threshold = `template.fusion_intensity_threshold`,
+    direction = Upward. Tombstoned property / unallocated child silently
+    skipped.
+  - `build_with_alerts` now delegates with an empty lineage slice; old
+    callers keep their behavior.
+- `simthing-sim::boundary`:
+  - `BoundaryProtocol.fission_lineage: Vec<FissionLineageRecord>` —
+    persistent across boundaries.
+  - `execute` appends `lineage_added`, removes `lineage_removed`, then
+    prunes any record whose parent or child no longer has a slot
+    (catches Remove + post-fusion tombstones).
+  - `sync_gpu_buffers` now takes `&fission_lineage` and threads it to
+    `build_with_lineage`.
+  - `BoundaryProtocol::fission_lineage()` read-only accessor.
+
+**Tests (145 passing, up from 140 — zero warnings):**
+
+- `fission::tests::fission_emits_lineage_record_per_successful_spawn` —
+  verifies one record per fission with the right ids + template_idx.
+- `fission::tests::fusion_applies_scar_to_parent_amount_and_tombstones_child`
+  — direct unit: feeds a `FusionTrigger` event, asserts parent Amount goes
+  from 1.0 → 0.95 and child tombstoned.
+- `threshold_registry::tests::fusion_lineage_emits_one_intensity_threshold_per_record`
+  — lineage record produces a registration on the child's Intensity (col 2)
+  at threshold 0.85, direction Upward.
+- `threshold_registry::tests::fusion_lineage_skipped_when_child_has_no_slot`
+  — tombstoned child gets no FusionTrigger registration (no GPU upload of
+  a phantom slot).
+- `tests/boundary_integration.rs::fission_then_fusion_applies_scar_and_tombstones_child`
+  — GPU end-to-end. Drives a cohort across the 0.3 loyalty threshold
+  (fission fires), patches the spawned child's velocity to +0.21 so Pass 2
+  builds its Intensity past 0.85 over five ticks (fusion fires), runs
+  another boundary, asserts parent Amount was scarred to ~95% of its
+  pre-fusion value, child is gone from tree + allocator, lineage record
+  pruned.
+
+**Carry-over (not blocking, documented in Next session pickup):**
+
+- Replay v2 needs to record `FissionLineageRecord`s in the delta log too,
+  otherwise replay reconstructs a tree where fission happened but no fusion
+  threshold gets registered on subsequent boundaries. The lineage vec is
+  in-memory only today.
+- Fission re-fire suppression: a parent that already fissioned still carries
+  a `FissionTrigger` registration on its Amount column. A second crossing
+  spawns another child. May be desired (recurring rebellions); design call
+  needed if not.
 
 ---
 

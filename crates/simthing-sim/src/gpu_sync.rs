@@ -34,6 +34,7 @@
 //!    full widened shadow into the rebuilt GPU buffers.
 //!
 
+use crate::fission::FissionLineageRecord;
 use crate::threshold_registry::{
     AggregateAlertRegistration, ThresholdBuilder, ThresholdRegistry, VelocityAlertRegistration,
 };
@@ -63,6 +64,7 @@ pub fn sync_gpu_buffers(
     state: &mut WorldGpuState,
     velocity_alerts: &[VelocityAlertRegistration],
     aggregate_alerts: &[AggregateAlertRegistration],
+    fission_lineage: &[FissionLineageRecord],
 ) -> GpuSyncOutcome {
     let mut out = GpuSyncOutcome::default();
 
@@ -84,13 +86,14 @@ pub fn sync_gpu_buffers(
     state.upload_overlay_deltas(&deltas, &ranges);
     out.overlay_deltas_uploaded = n_deltas;
 
-    // 2. Threshold registrations.
-    let (gpu_regs, cpu_reg) = ThresholdBuilder::build_with_alerts(
+    // 2. Threshold registrations (incl. fission lineage → FusionTrigger regs).
+    let (gpu_regs, cpu_reg) = ThresholdBuilder::build_with_lineage(
         root,
         registry,
         allocator,
         velocity_alerts,
         aggregate_alerts,
+        fission_lineage,
     );
     let n_regs = gpu_regs.len() as u32;
     state.upload_thresholds(&gpu_regs);
