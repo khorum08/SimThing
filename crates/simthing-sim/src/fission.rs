@@ -13,8 +13,9 @@
 //! 4. Seed the child's initial property values from the parent's GPU row.
 //!    The Amount sub-field of the activating property is split: parent retains
 //!    its Amount, child starts at 0 (it represents the newly-expressing force).
-//! 5. Fusion lineage threshold registration is still a follow-up; fission
-//!    currently mutates and seeds the tree only.
+//! 5. Emit a `FissionLineageRecord` onto `FissionOutcome::lineage_added`.
+//!    `BoundaryProtocol` accumulates it and `ThresholdBuilder::build_with_lineage`
+//!    registers the child's `FusionTrigger` on the next boundary sync.
 //!
 //! ## Fusion
 //!

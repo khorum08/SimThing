@@ -497,6 +497,10 @@ Integration highlights:
 - Format: LDJSON. Non-string-keyed maps (`SimThing.properties`,
   `DimensionRegistry.by_name`) serialize as pair arrays via `serde_with`.
 
+**State authority:** see `docs/state-authority.md` for tick vs boundary numeric
+truth, within-day Set-only patches, player/AI intent two-phase behavior, and
+`SimThing.properties` vs GPU/shadow roles.
+
 ---
 
 ## How to run tests
@@ -506,8 +510,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 151 tests must pass with zero warnings before any commit
-(16 core + 45 GPU + 21 feeder unit + 4 feeder integration + 48 sim unit + 11 sim integration).
+All 153 tests must pass with zero warnings before any commit
+(16 core + 45 GPU + 21 feeder unit + 4 feeder integration + 48 sim unit + 13 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

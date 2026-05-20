@@ -14,6 +14,7 @@
 //!    `TransformOp::Add` need a fresh current value; the within-day shadow can
 //!    lag GPU integration, so those read-modify-write ops are skipped here and
 //!    reported via `PatcherStats::unsafe_rmw_skipped`.
+//!    See `docs/state-authority.md` for the full authority doctrine.
 //! 2. **Coalesced uploads.** Multiple patches hitting the same row in the
 //!    same tick produce a single `queue.write_buffer` per dirty row.
 //! 3. **Testability.** The Patcher has no `wgpu` dependency; unit tests run
@@ -140,10 +141,9 @@ impl TransformPatcher {
                     stats.boundary_parked += 1;
                 }
                 FeederWork::PlayerIntent(pi) => {
-                    // Apply safe Set deltas to shadow immediately so the
-                    // effect is visible within the current tick. Add/Multiply
-                    // are skipped by apply_one unless this path grows an
-                    // explicit GPU-delta/readback authority model.
+                    // Two-phase intent path — see docs/state-authority.md:
+                    // (1) safe Set deltas to shadow now for same-tick visibility;
+                    // (2) park overlay for boundary attach → Pass 3 persistent effect.
                     let patch = PatchTransform { target: pi.target, delta: pi.overlay.transform.clone() };
                     self.apply_one(&patch, registry, allocator, n_dims, values, &mut stats);
                     self.pending_player_intents.push(pi);
@@ -152,9 +152,8 @@ impl TransformPatcher {
             }
         }
 
-        // Drain the AI channel if one is connected. Same mid-day fast path
-        // as player intents: transform delta applied immediately, structural
-        // attach_overlay deferred to boundary.
+        // Drain the AI channel if one is connected. Same two-phase intent path
+        // as player intents — see docs/state-authority.md.
         if let Some(ai_rx) = &self.ai_receiver {
             for ai in ai_rx.drain_now() {
                 let patch = PatchTransform { target: ai.target, delta: ai.overlay.transform.clone() };

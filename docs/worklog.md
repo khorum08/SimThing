@@ -6,16 +6,12 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-**151/151** tests passing plus 1 ignored timing diagnostic, zero warnings.
+**153/153** tests passing plus 1 ignored timing diagnostic, zero warnings.
 
-Replay v2 has landed on PR #27. The delta log is no longer lossy:
-`SimThingAdded` carries `{ parent, node: SimThing }`, `FissionOccurred`
-carries `{ parent, node: SimThing }`. Two new variants —
-`FissionLineageAdded` / `FissionLineageRemoved` — persist lineage records
-across session boundaries. `ReplayDriver` handles all four variants (tree
-attach + slot allocation); `ReplaySnapshot.fission_lineage` seeds the
-driver's lineage vec from a mid-session snapshot. `BoundaryProtocol::snapshot()`
-now includes `fission_lineage`. Six new unit tests, all passing.
+State authority doctrine documented in `docs/state-authority.md` (Set-only
+mid-day patches, intent two-phase path, properties vs GPU/shadow roles).
+Two new integration tests: aggregate alert no-refire while held, Remove-after-
+fission lineage prune.
 
 ### Todo (recommended order)
 
