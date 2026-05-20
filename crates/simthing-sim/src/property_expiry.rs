@@ -30,6 +30,8 @@ pub struct ExpiryOutcome {
     pub columns_tombstoned: u32,
     /// Properties removed via AfterTicks/TowardZero (non-threshold path).
     pub cpu_side_removals:  u32,
+    /// Each property removal: `(sim_thing_id, property_id)`.
+    pub expired: Vec<(SimThingId, SimPropertyId)>,
 }
 
 /// Step 5 main entry point. Process all PropertyExpiry threshold events.
@@ -50,6 +52,7 @@ pub fn resolve_property_expiry(
 
         if remove_property_from_tree(root, stid, pid) {
             out.properties_removed += 1;
+            out.expired.push((stid, pid));
             if !tree_has_property(root, pid) {
                 registry.tombstone(pid);
                 out.columns_tombstoned += 1;
@@ -125,6 +128,7 @@ fn cpu_decay_node(
     for pid in to_remove {
         node.remove_property(&pid);
         out.cpu_side_removals += 1;
+        out.expired.push((node.id, pid));
         if !tree_has_property(node, pid) {
             registry.tombstone(pid);
         }

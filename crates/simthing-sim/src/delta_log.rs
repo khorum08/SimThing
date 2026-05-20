@@ -7,23 +7,14 @@
 //! ## What is captured now
 //!
 //! Entries are derived directly from the existing `BoundaryOutcome` fields.
-//! All id-bearing outcome vecs (`MaintainerOutcome::allocated/tombstoned/
-//! overlays_attached/dimensions_added`) and `VelocityAlertEvent`s translate
-//! one-to-one. Fission and fusion are recorded as count entries because
-//! `FissionOutcome` currently carries only counts, not spawned-child ids.
+//! Structural mutations, fission/fusion, property expiry, and velocity alerts
+//! emit one entry per affected entity (or entity pair).
 //!
-//! ## What Opus will extend for full replay
+//! ## What replay serialization still needs (deferred)
 //!
-//! - `FissionOccurred` / `FusionOccurred`: extend `FissionOutcome` to carry
-//!   `Vec<(SimThingId, SimThingId)>` (parent, child) pairs, then replace the
-//!   count entry with per-event entries carrying full ids.
 //! - `OverlayAttached`: for deterministic playback the full `Overlay` struct
 //!   is needed, not just the id. The serialization pass should join against
 //!   the live tree to embed overlay data before writing to disk.
-//! - `SimThingReparented`: `MaintainerOutcome` has a reparent count but not
-//!   the (child, new_parent) pairs. Extend `MaintainerOutcome` to carry them.
-//! - `PropertyExpired`: `ExpiryOutcome` has a count. For full replay, extend
-//!   to carry `Vec<(SimThingId, SimPropertyId)>`.
 
 use simthing_core::{OverlayId, SimPropertyId, SimThingId, SubFieldRole};
 
@@ -49,20 +40,29 @@ pub enum BoundaryDeltaEntry {
     /// boundary request). Signals that the column layout grew.
     DimensionAdded { property_id: SimPropertyId },
 
-    /// N fission events fired this boundary. Child ids are not yet tracked;
-    /// see module-level doc for the Opus extension path.
-    FissionOccurred { count: u32 },
+    /// A fission event spawned a child under `parent`.
+    FissionOccurred {
+        parent: SimThingId,
+        child:  SimThingId,
+    },
 
-    /// N fusion events fired this boundary.
-    FusionOccurred { count: u32 },
+    /// A fusion event merged `child` back into `parent`'s subtree.
+    FusionOccurred {
+        parent: SimThingId,
+        child:  SimThingId,
+    },
 
-    /// N properties expired from SimThings this boundary (threshold-driven or
-    /// CPU-side AfterTicks/TowardZero).
-    PropertyExpired { count: u32 },
+    /// A property was removed from a SimThing (threshold-driven or CPU decay).
+    PropertyExpired {
+        sim_thing_id: SimThingId,
+        property_id:  SimPropertyId,
+    },
 
-    /// N SimThings were reparented this boundary. Reparent ids are not yet
-    /// tracked; see module-level doc for the Opus extension path.
-    SimThingReparented { count: u32 },
+    /// A SimThing was reparented under `new_parent`.
+    SimThingReparented {
+        child:       SimThingId,
+        new_parent:  SimThingId,
+    },
 
     /// A velocity alert threshold fired on the given SimThing's property
     /// sub-field.
@@ -86,21 +86,19 @@ pub fn entries_from_outcome(outcome: &BoundaryOutcome) -> Vec<BoundaryDeltaEntry
 
     // Step 4: lifecycle — dissolved overlays are not individually id-tracked yet.
     // Step 5: property expiry.
-    let expired = outcome.expiry.properties_removed + outcome.expiry.cpu_side_removals;
-    if expired > 0 {
-        entries.push(BoundaryDeltaEntry::PropertyExpired { count: expired });
+    for &(sim_thing_id, property_id) in &outcome.expiry.expired {
+        entries.push(BoundaryDeltaEntry::PropertyExpired {
+            sim_thing_id,
+            property_id,
+        });
     }
 
     // Step 6: fission / fusion.
-    if outcome.fission.fissions_executed > 0 {
-        entries.push(BoundaryDeltaEntry::FissionOccurred {
-            count: outcome.fission.fissions_executed,
-        });
+    for &(parent, child) in &outcome.fission.fission_pairs {
+        entries.push(BoundaryDeltaEntry::FissionOccurred { parent, child });
     }
-    if outcome.fission.fusions_executed > 0 {
-        entries.push(BoundaryDeltaEntry::FusionOccurred {
-            count: outcome.fission.fusions_executed,
-        });
+    for &(parent, child) in &outcome.fission.fusion_pairs {
+        entries.push(BoundaryDeltaEntry::FusionOccurred { parent, child });
     }
 
     // Steps 7+8: structural mutations from MaintainerOutcome.
@@ -110,10 +108,8 @@ pub fn entries_from_outcome(outcome: &BoundaryOutcome) -> Vec<BoundaryDeltaEntry
     for &id in &outcome.maintainer.tombstoned {
         entries.push(BoundaryDeltaEntry::SimThingRemoved { id });
     }
-    if outcome.maintainer.reparents > 0 {
-        entries.push(BoundaryDeltaEntry::SimThingReparented {
-            count: outcome.maintainer.reparents,
-        });
+    for &(child, new_parent) in &outcome.maintainer.reparented {
+        entries.push(BoundaryDeltaEntry::SimThingReparented { child, new_parent });
     }
     for &oid in &outcome.maintainer.overlays_attached {
         entries.push(BoundaryDeltaEntry::OverlayAttached { overlay_id: oid });
@@ -157,22 +153,40 @@ mod tests {
     }
 
     #[test]
-    fn fission_and_fusion_counts_produce_entries() {
+    fn fission_and_fusion_pairs_produce_per_entry_variants() {
+        let parent = SimThing::new(SimThingKind::Cohort, 0).id;
+        let child_a = SimThing::new(SimThingKind::Cohort, 0).id;
+        let child_b = SimThing::new(SimThingKind::Cohort, 0).id;
+
         let mut out = empty_outcome();
         out.fission = FissionOutcome {
             fissions_executed: 2,
             fusions_executed:  1,
+            fission_pairs:     vec![(parent, child_a), (parent, child_b)],
+            fusion_pairs:      vec![(parent, child_b)],
             ..Default::default()
         };
         let entries = entries_from_outcome(&out);
-        assert!(entries.contains(&BoundaryDeltaEntry::FissionOccurred { count: 2 }));
-        assert!(entries.contains(&BoundaryDeltaEntry::FusionOccurred  { count: 1 }));
+        assert!(entries.contains(&BoundaryDeltaEntry::FissionOccurred {
+            parent,
+            child: child_a,
+        }));
+        assert!(entries.contains(&BoundaryDeltaEntry::FissionOccurred {
+            parent,
+            child: child_b,
+        }));
+        assert!(entries.contains(&BoundaryDeltaEntry::FusionOccurred {
+            parent,
+            child: child_b,
+        }));
     }
 
     #[test]
     fn maintainer_ids_produce_per_entry_variants() {
         let id_a = SimThing::new(SimThingKind::Cohort, 0).id;
         let id_b = SimThing::new(SimThingKind::Cohort, 0).id;
+        let id_c = SimThing::new(SimThingKind::Cohort, 0).id;
+        let id_d = SimThing::new(SimThingKind::Cohort, 0).id;
         let oid  = OverlayId::new();
         let pid  = SimPropertyId(42);
 
@@ -183,6 +197,7 @@ mod tests {
             overlays_attached: vec![oid],
             dimensions_added:  vec![pid],
             reparents:         1,
+            reparented:        vec![(id_c, id_d)],
             ..Default::default()
         };
         let entries = entries_from_outcome(&out);
@@ -191,19 +206,45 @@ mod tests {
         assert!(entries.contains(&BoundaryDeltaEntry::SimThingRemoved  { id: id_b }));
         assert!(entries.contains(&BoundaryDeltaEntry::OverlayAttached  { overlay_id: oid }));
         assert!(entries.contains(&BoundaryDeltaEntry::DimensionAdded   { property_id: pid }));
-        assert!(entries.contains(&BoundaryDeltaEntry::SimThingReparented { count: 1 }));
+        assert!(entries.contains(&BoundaryDeltaEntry::SimThingReparented {
+            child: id_c,
+            new_parent: id_d,
+        }));
     }
 
     #[test]
-    fn property_expiry_combines_threshold_and_cpu_side_removals() {
+    fn property_expiry_emits_one_entry_per_removal() {
+        let id_a = SimThing::new(SimThingKind::Cohort, 0).id;
+        let id_b = SimThing::new(SimThingKind::Cohort, 0).id;
+        let pid1 = SimPropertyId(1);
+        let pid2 = SimPropertyId(2);
+        let pid3 = SimPropertyId(3);
+
         let mut out = empty_outcome();
         out.expiry = ExpiryOutcome {
             properties_removed: 2,
             cpu_side_removals:  1,
+            expired: vec![
+                (id_a, pid1),
+                (id_a, pid2),
+                (id_b, pid3),
+            ],
             ..Default::default()
         };
         let entries = entries_from_outcome(&out);
-        assert!(entries.contains(&BoundaryDeltaEntry::PropertyExpired { count: 3 }));
+        assert_eq!(entries.len(), 3);
+        assert!(entries.contains(&BoundaryDeltaEntry::PropertyExpired {
+            sim_thing_id: id_a,
+            property_id: pid1,
+        }));
+        assert!(entries.contains(&BoundaryDeltaEntry::PropertyExpired {
+            sim_thing_id: id_a,
+            property_id: pid2,
+        }));
+        assert!(entries.contains(&BoundaryDeltaEntry::PropertyExpired {
+            sim_thing_id: id_b,
+            property_id: pid3,
+        }));
     }
 
     #[test]
@@ -233,12 +274,22 @@ mod tests {
     #[test]
     fn step_order_is_expiry_then_fission_then_structural_then_alerts() {
         let id  = SimThing::new(SimThingKind::Cohort, 0).id;
+        let child = SimThing::new(SimThingKind::Cohort, 0).id;
         let pid = SimPropertyId(1);
 
         let mut out = empty_outcome();
-        out.expiry  = ExpiryOutcome { properties_removed: 1, ..Default::default() };
-        out.fission = FissionOutcome { fissions_executed: 1, ..Default::default() };
-        out.maintainer = MaintainerOutcome { allocated: vec![id], ..Default::default() };
+        out.expiry  = ExpiryOutcome {
+            expired: vec![(id, pid)],
+            ..Default::default()
+        };
+        out.fission = FissionOutcome {
+            fission_pairs: vec![(id, child)],
+            ..Default::default()
+        };
+        out.maintainer = MaintainerOutcome {
+            allocated: vec![id],
+            ..Default::default()
+        };
         out.velocity_alerts = vec![VelocityAlertEvent {
             sim_thing_id: id, property_id: pid,
             sub_field: SubFieldRole::Amount, value: 0.1,

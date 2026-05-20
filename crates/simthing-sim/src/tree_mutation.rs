@@ -42,7 +42,8 @@
 //! - Attaches it under `new_parent`. Slots are NOT churned — the entire
 //!   subtree keeps its existing slot assignments. This is the whole point
 //!   of slot stability: reparenting is free in GPU terms.
-//! - Records the reparent count in `MaintainerOutcome::reparents`.
+//! - Records the reparent count and `(child, new_parent)` pairs in
+//!   `MaintainerOutcome::reparents` / `reparented`.
 //!
 //! Either unknown → `rejected_unknown_target` increment; tree unchanged.
 //!
@@ -275,6 +276,7 @@ fn apply_reparent(
     };
     parent.add_child(subtree);
     out.reparents += 1;
+    out.reparented.push((child, new_parent));
 }
 
 fn subtree_contains(node: &SimThing, target: SimThingId) -> bool {
