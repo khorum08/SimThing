@@ -102,17 +102,18 @@ SimThing/
 
 ## Current implementation state
 
-**Weeks 1–4 complete plus replay delta capture prep plus Passes 4–6
-(presentation reduction). Both player and AI can submit overlays;
-`BoundaryProtocol::observe` decomposes sub-field values and overlay
-contributions; `BoundaryProtocol::take_delta_log()` drains a
-`Vec<BoundaryDeltaEntry>` capturing every semantic state change per
-boundary. GPU Passes 4–6 reduce children into parents bottom-up using
-per-sub-field `ReductionRule` (default per role: Amount/Velocity/Named →
-Mean, Intensity → Max). `BoundaryProtocol::read_reduced_field(state)`
-returns the aggregated `output_vectors` for presentation. CPU oracle
-matches GPU shader bit-exactly. Replay serialization remains deferred —
-requires Opus-tier architectural decisions.**
+**Weeks 1–4 complete plus replay delta capture plus Passes 4–6
+(presentation reduction) plus per-entity boundary outcome ids (PR #20).
+Both player and AI can submit overlays; `BoundaryProtocol::observe`
+decomposes sub-field values and overlay contributions;
+`BoundaryProtocol::take_delta_log()` drains a `Vec<BoundaryDeltaEntry>`
+with one entry per fission/fusion/expiry/reparent/structural change (full
+ids; `OverlayAttached` still id-only). GPU Passes 4–6 reduce children
+into parents bottom-up using per-sub-field `ReductionRule` (default per
+role: Amount/Velocity/Named → Mean, Intensity → Max).
+`BoundaryProtocol::read_reduced_field(state)` returns aggregated
+`output_vectors` for presentation. CPU oracle matches GPU shader
+bit-exactly. Replay serialization + playback remain deferred (Opus).**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
@@ -228,7 +229,7 @@ Highlights:
   threshold crossed by velocity integration.
 
 **Not yet built in simthing-gpu:**
-- Passes 4–6 (reduction) — deferred until the presentation layer needs them.
+- `WeightedMean` reduction rule (see worklog).
 - High-level threshold registration helpers (per-property derivation from
   `FissionThreshold` / `DecayBehavior`) — lives in the day-boundary protocol
   code, which is Week 3 work in the upcoming `simthing-sim` crate.
@@ -397,8 +398,13 @@ Integration highlights:
   10. Assertion: `allocator.capacity() <= state.n_slots` (no GPU buffer overflow).
   11. `sync_gpu_buffers` (step 9).
   12. Adopt the new CPU `ThresholdRegistry`.
+  13. Append `entries_from_outcome` to the boundary delta log.
 
-**Tests: 21 unit + 4 GPU integration tests, all passing, zero warnings.**
+**Outcome id vecs (PR #20):** `FissionOutcome::{fission_pairs,fusion_pairs}`,
+`MaintainerOutcome::reparented`, `ExpiryOutcome::expired` — fed to
+`delta_log::entries_from_outcome` for per-event replay entries.
+
+**Tests: 33 unit + 8 GPU integration tests, all passing, zero warnings.**
 
 Integration highlights:
 - `fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean` — full end-to-end:
@@ -417,10 +423,11 @@ Integration highlights:
   alert registered on a cohort's Velocity sub-field is uploaded to Pass 7 and
   returned through `BoundaryOutcome::velocity_alerts` after it fires.
 
-**Not yet built in any crate:**
-- Player input handling (Week 4)
-- AI intent overlays (Week 4)
-- Presentation layer with reduction passes 4–6 (Week 4+)
+**Not yet built (see `docs/worklog.md` Next session pickup):**
+- `WeightedMean` reduction variant (population-weighted aggregates)
+- Thresholds on `output_vectors` (aggregated-field Pass 7)
+- Replay serialization + playback (`Overlay` payload in delta log still TBD)
+- Designer UI (`simthing-studio`) — tabled
 
 ---
 
@@ -431,8 +438,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 116 tests must pass with zero warnings before any commit
-(14 core + 37 GPU + 21 feeder unit + 4 feeder integration + 33 sim unit + 7 sim integration).
+All 124 tests must pass with zero warnings before any commit
+(16 core + 42 GPU + 21 feeder unit + 4 feeder integration + 33 sim unit + 8 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

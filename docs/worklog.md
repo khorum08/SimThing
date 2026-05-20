@@ -6,54 +6,65 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-Master is at `93bbe36` (PR #19, GPU Passes 4–6 merged). 124/124 tests
-passing, zero warnings, no uncommitted work. Bounded options when work
-resumes, in increasing scope:
+Master is at `21c326f` (PR #20, per-entity boundary outcome ids merged).
+124/124 tests passing, zero warnings, no uncommitted work.
 
-1. **Per-entity ids in outcome structs** (~30 min, Sonnet-feasible).
-   `delta_log.rs` already documents the extension points:
-   - `FissionOutcome` → add `Vec<(SimThingId /*parent*/, SimThingId /*child*/)>`
-     for both fission spawns and fusion merges. Update
-     `entries_from_outcome` to emit per-event `FissionOccurred` /
-     `FusionOccurred` entries with full ids instead of count-only.
-   - `MaintainerOutcome` → add `Vec<(SimThingId /*child*/, SimThingId /*new_parent*/)>`
-     for reparents.
-   - `ExpiryOutcome` → add `Vec<(SimThingId, SimPropertyId)>` for
-     per-entity property expiries.
-   No new public surface, mostly mechanical. Unblocks real replay logging.
+### Todo (recommended order)
 
-2. **`WeightedMean { by: SimPropertyId }` reduction variant**
-   (~45 min, Sonnet-feasible but shader surgery). Population-weighted
-   aggregates (e.g. location loyalty weighted by cohort population).
-   - Extend `ReductionRule` enum.
-   - Change `column_rules` GPU encoding: 2 u32s per column (rule kind +
-     optional weight column index).
-   - Update `cpu_reduce_oracle` and `reduction.wgsl` to read the weight
-     column per child and accumulate `weighted_sum / total_weight`.
-   - Extend the parity test to cover the new variant.
+- [x] **Per-entity ids in outcome structs** — PR #20. `FissionOutcome`
+  (`fission_pairs`, `fusion_pairs`), `MaintainerOutcome::reparented`,
+  `ExpiryOutcome::expired`; delta log emits one entry per event.
+- [ ] **`WeightedMean { by: SimPropertyId }` reduction variant**
+  (~45 min, shader surgery). Population-weighted aggregates (e.g. location
+  loyalty weighted by cohort population).
+  - Extend `ReductionRule` enum.
+  - Change `column_rules` GPU encoding: 2 u32s per column (rule kind +
+    optional weight column index).
+  - Update `cpu_reduce_oracle` and `reduction.wgsl` to read the weight
+    column per child and accumulate `weighted_sum / total_weight`.
+  - Extend the parity test to cover the new variant.
+- [ ] **Thresholds on `output_vectors`** (Opus). Pass 7 scans `values` only.
+  World/location-level thresholds on aggregated fields need a buffer selector
+  on `ThresholdRegistration` or a parallel registry + Pass 7 dispatch.
+- [ ] **Replay serialization + playback** (Opus). Format choice (binary frame
+  + delta stream, or line-delimited JSON), file I/O, driver consuming
+  `BoundaryDeltaEntry`s. Still needs full `Overlay` payload in
+  `OverlayAttached` (id-only today). Unblocked on entity ids from PR #20.
 
-3. **Thresholds on `output_vectors`** (Opus). Currently Pass 7 scans
-   `values` only. World-level / location-level threshold registrations
-   (e.g. "trigger when aggregated instability crosses 0.7") need a
-   second threshold registry pointing at `output_vectors`. Decision
-   needed: extend the existing `ThresholdRegistration` with a buffer
-   selector, or a parallel registry + parallel Pass 7 dispatch.
+**Next up:** WeightedMean → replay, with output-vector thresholds when AI
+early warning on aggregates matters.
 
-4. **Step 6: Replay serialization + playback** (Opus, originally
-   planned). Format choice (binary frame + delta stream, or
-   line-delimited JSON), file I/O, replay driver that consumes
-   `BoundaryDeltaEntry`s and reconstructs GPU state deterministically.
-   Best done *after* option (1) so the delta log carries full ids.
+**Tabled (not on this list):** `simthing-studio` designer UI.
 
-Recommended order: (1) → (2) → (4), with (3) folded in wherever AI early
-warning becomes important.
+---
+
+## 2026-05-20 — Per-entity ids in boundary outcomes (PR #20)
+
+**Status:** Merged to `master` as PR #20 (`21c326f`).
+
+**Landed:**
+
+- `FissionOutcome`: `fission_pairs`, `fusion_pairs` — `(parent, child)` per
+  successful fission/fusion; populated in `execute_fission` / `execute_fusion`.
+- `MaintainerOutcome`: `reparented` — `(child, new_parent)` per successful
+  reparent in `tree_mutation`.
+- `ExpiryOutcome`: `expired` — `(sim_thing_id, property_id)` per threshold
+  removal and CPU decay sweep.
+- `delta_log.rs`: `BoundaryDeltaEntry` variants now carry full ids (no
+  count-only `FissionOccurred` / `FusionOccurred` / `PropertyExpired` /
+  `SimThingReparented`). `entries_from_outcome` iterates the new vecs.
+  Diagnostic counters on outcome structs unchanged.
+
+**Still deferred for replay:** embed full `Overlay` in `OverlayAttached`;
+serialization format + playback driver.
+
+**124/124 tests passing, zero warnings.**
 
 ---
 
 ## 2026-05-19 — GPU Passes 4–6: presentation reduction
 
-**Status:** Implementation complete on `master` working tree, awaiting PR.
-The full GPU reduction pipeline lands: per-sub-field `ReductionRule`,
+**Status:** Merged (PR #19, `93bbe36`). The full GPU reduction pipeline lands: per-sub-field `ReductionRule`,
 bottom-up tree reduction with a bit-exact CPU oracle, GPU shader, boundary
 topology sync, and a `ReducedField` accessor on `BoundaryProtocol`.
 
@@ -132,10 +143,9 @@ delta log; callers drain it with `take_delta_log()`.
     `SimThingRemoved`, `DimensionAdded`, `FissionOccurred`, `FusionOccurred`,
     `PropertyExpired`, `SimThingReparented`, `VelocityAlert`.
   - `entries_from_outcome(outcome: &BoundaryOutcome) -> Vec<BoundaryDeltaEntry>` —
-    derives entries from the existing outcome fields. Id-bearing fields
-    (`MaintainerOutcome::allocated/tombstoned/overlays_attached/dimensions_added`,
-    `velocity_alerts`) produce per-entry variants; `FissionOutcome` and expiry
-    produce count-only entries (see module doc for Opus extension points).
+    derives entries from the existing outcome fields. Per-entry ids for
+    structural mutations, fission/fusion, expiry, reparents, and velocity alerts.
+    *(Count-only fission/expiry/reparent entries superseded by PR #20.)*
   - 6 unit tests covering empty, counts, ids, combined expiry, alert
     structure, and step ordering.
 - `BoundaryProtocol`:
@@ -143,12 +153,10 @@ delta log; callers drain it with `take_delta_log()`.
   - `execute()` calls `entries_from_outcome` and appends at the end.
   - `delta_log() -> &[BoundaryDeltaEntry]` and `take_delta_log()` accessors.
 
-**What Opus needs to extend for full replay:**
-- `FissionOutcome`: add `Vec<(SimThingId, SimThingId)>` (parent, child) pairs.
-- `MaintainerOutcome`: add (child, new_parent) pairs to reparent records.
-- `ExpiryOutcome`: add `Vec<(SimThingId, SimPropertyId)>` for per-entity expiry.
+**What remains for full replay (see Next session pickup):**
 - `OverlayAttached`: embed full `Overlay` data (not just id) for deterministic playback.
 - Serialization format, file I/O, determinism guarantees, playback driver.
+- *(Per-entity outcome ids — done in PR #20.)*
 
 **116/116 tests passing, zero warnings.**
 
