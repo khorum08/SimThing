@@ -16,6 +16,9 @@
 //! - `First`— value from the first child in canonical (slot) order. Used when
 //!           aggregation is not semantically meaningful and the first child
 //!           acts as a representative.
+//! - `WeightedMean { by }` — `sum(child_value * weight) / sum(weight)` where
+//!           `weight` is each child's `Amount` sub-field of property `by`.
+//!           Zero total weight → 0.0.
 //!
 //! Floating-point determinism: both the CPU oracle and the GPU shader iterate
 //! children in canonical slot order. Sum/Mean are not associative in float, so
@@ -49,6 +52,8 @@ pub enum ReductionRule {
     Min,
     /// First child's value in canonical slot order.
     First,
+    /// Arithmetic mean weighted by another property's `Amount` on each child.
+    WeightedMean { by: crate::ids::SimPropertyId },
 }
 
 impl ReductionRule {

@@ -229,7 +229,7 @@ Highlights:
   threshold crossed by velocity integration.
 
 **Not yet built in simthing-gpu:**
-- `WeightedMean` reduction rule (see worklog).
+- Thresholds on `output_vectors` (see worklog).
 - High-level threshold registration helpers (per-property derivation from
   `FissionThreshold` / `DecayBehavior`) — lives in the day-boundary protocol
   code, which is Week 3 work in the upcoming `simthing-sim` crate.
@@ -424,7 +424,6 @@ Integration highlights:
   returned through `BoundaryOutcome::velocity_alerts` after it fires.
 
 **Not yet built (see `docs/worklog.md` Next session pickup):**
-- `WeightedMean` reduction variant (population-weighted aggregates)
 - Thresholds on `output_vectors` (aggregated-field Pass 7)
 - Replay serialization + playback (`Overlay` payload in delta log still TBD)
 - Designer UI (`simthing-studio`) — tabled
@@ -438,8 +437,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 124 tests must pass with zero warnings before any commit
-(16 core + 42 GPU + 21 feeder unit + 4 feeder integration + 33 sim unit + 8 sim integration).
+All 126 tests must pass with zero warnings before any commit
+(16 core + 44 GPU + 21 feeder unit + 4 feeder integration + 33 sim unit + 8 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

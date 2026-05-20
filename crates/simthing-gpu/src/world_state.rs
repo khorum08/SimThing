@@ -202,7 +202,11 @@ pub const RULE_MEAN:  u32 = 0;
 pub const RULE_SUM:   u32 = 1;
 pub const RULE_MAX:   u32 = 2;
 pub const RULE_MIN:   u32 = 3;
-pub const RULE_FIRST: u32 = 4;
+pub const RULE_FIRST:         u32 = 4;
+pub const RULE_WEIGHTED_MEAN: u32 = 5;
+
+/// Sentinel in the per-column weight slot when the rule is not `WeightedMean`.
+pub const WEIGHT_COL_NONE: u32 = u32::MAX;
 
 pub fn encode_rule(rule: simthing_core::ReductionRule) -> u32 {
     use simthing_core::ReductionRule::*;
@@ -212,6 +216,7 @@ pub fn encode_rule(rule: simthing_core::ReductionRule) -> u32 {
         Max   => RULE_MAX,
         Min   => RULE_MIN,
         First => RULE_FIRST,
+        WeightedMean { .. } => RULE_WEIGHTED_MEAN,
     }
 }
 
@@ -375,7 +380,7 @@ impl WorldGpuState {
             ((n_slots as u64) + 1) * 4,
         );
         let child_indices = mk("child_indices", 4); // placeholder 1 u32
-        let column_rules = mk("column_rules", (n_dims as u64) * 4);
+        let column_rules = mk("column_rules", (n_dims as u64) * 8);
         let depth_slots  = mk("depth_slots", 4);    // placeholder 1 u32
 
         Self {
@@ -448,7 +453,7 @@ impl WorldGpuState {
         self.n_thresholds = 0;
 
         // Reduction: column_rules grows with n_dims; child_starts grows with n_slots.
-        self.column_rules = self.mk_storage_buffer("column_rules", (self.n_dims as u64) * 4);
+        self.column_rules = self.mk_storage_buffer("column_rules", (self.n_dims as u64) * 8);
         self.child_starts =
             self.mk_storage_buffer("child_starts", ((self.n_slots as u64) + 1) * 4);
         self.child_indices = self.mk_storage_buffer("child_indices", 4);
@@ -564,7 +569,7 @@ impl WorldGpuState {
     /// boundary after the tree shape changes (or once at session start).
     ///
     /// - `child_starts.len()` must equal `n_slots + 1`.
-    /// - `column_rules.len()` must equal `n_dims`.
+    /// - `column_rules.len()` must equal `n_dims * 2` (rule kind + weight col per column).
     /// - `depth_bucket_ranges` is stored CPU-side; the dispatcher walks it
     ///   from the last entry (deepest) up to the first (root depth).
     pub fn upload_reduction_topology(
@@ -584,10 +589,10 @@ impl WorldGpuState {
         );
         assert_eq!(
             column_rules.len(),
-            self.n_dims as usize,
-            "column_rules length {} != n_dims {}",
+            self.n_dims as usize * 2,
+            "column_rules length {} != n_dims * 2 = {}",
             column_rules.len(),
-            self.n_dims,
+            self.n_dims as usize * 2,
         );
 
         // child_indices grows on demand.

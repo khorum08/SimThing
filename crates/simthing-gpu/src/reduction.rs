@@ -18,9 +18,10 @@
 //! depth, deepest first. The CPU oracle uses the same bucket ordering so
 //! intermediate `output_vectors` rows are produced in the same sequence.
 
-use simthing_core::{DimensionRegistry, ReductionRule, SimPropertyId, SimThing};
+use simthing_core::{DimensionRegistry, ReductionRule, SimPropertyId, SimThing, SubFieldRole};
 
 use crate::slot::SlotAllocator;
+use crate::world_state::{encode_rule, WEIGHT_COL_NONE};
 
 // ── Column rule table ─────────────────────────────────────────────────────────
 
@@ -50,6 +51,52 @@ pub fn build_column_rules(registry: &DimensionRegistry, n_dims: usize) -> Vec<Re
         }
     }
     rules
+}
+
+/// Per-column reduction descriptor for CPU oracle and GPU upload.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ColumnRuleDescriptor {
+    pub rule:       ReductionRule,
+    /// Global column of the `Amount` sub-field on the weight property when
+    /// `rule` is `WeightedMean`. `WEIGHT_COL_NONE` otherwise.
+    pub weight_col: u32,
+}
+
+/// Build descriptors with weight columns resolved for `WeightedMean`.
+pub fn build_column_rule_descriptors(
+    registry: &DimensionRegistry,
+    n_dims: usize,
+) -> Vec<ColumnRuleDescriptor> {
+    build_column_rules(registry, n_dims)
+        .into_iter()
+        .map(|rule| {
+            let weight_col = match rule {
+                ReductionRule::WeightedMean { by } => {
+                    weight_col_for_property(registry, by).unwrap_or(WEIGHT_COL_NONE)
+                }
+                _ => WEIGHT_COL_NONE,
+            };
+            ColumnRuleDescriptor { rule, weight_col }
+        })
+        .collect()
+}
+
+/// Flat GPU table: `[rule_kind, weight_col]` per column, length `n_dims * 2`.
+pub fn encode_column_rules(descriptors: &[ColumnRuleDescriptor]) -> Vec<u32> {
+    descriptors
+        .iter()
+        .flat_map(|d| [encode_rule(d.rule), d.weight_col])
+        .collect()
+}
+
+fn weight_col_for_property(registry: &DimensionRegistry, prop_id: SimPropertyId) -> Option<u32> {
+    if !registry.is_active(prop_id) {
+        return None;
+    }
+    let prop = registry.property(prop_id);
+    let local = prop.layout.offset_of(&SubFieldRole::Amount)?;
+    let range = registry.column_range(prop_id);
+    Some((range.start + local) as u32)
 }
 
 // ── Topology ──────────────────────────────────────────────────────────────────
@@ -148,18 +195,18 @@ fn walk(
 /// depth bucket are left untouched in `output`.
 pub fn cpu_reduce_oracle(
     topology: &Topology,
-    rules: &[ReductionRule],
+    descriptors: &[ColumnRuleDescriptor],
     n_dims: usize,
     values: &[f32],
     output: &mut [f32],
 ) {
-    assert_eq!(rules.len(), n_dims);
+    assert_eq!(descriptors.len(), n_dims);
     assert_eq!(values.len(), output.len());
 
     // Process depths from deepest to shallowest. Leaves first.
     for depth_idx in (0..topology.depth_buckets.len()).rev() {
         for &slot in &topology.depth_buckets[depth_idx] {
-            reduce_one_slot(slot, topology, rules, n_dims, values, output);
+            reduce_one_slot(slot, topology, descriptors, n_dims, values, output);
         }
     }
 }
@@ -167,7 +214,7 @@ pub fn cpu_reduce_oracle(
 fn reduce_one_slot(
     slot: u32,
     topology: &Topology,
-    rules: &[ReductionRule],
+    descriptors: &[ColumnRuleDescriptor],
     n_dims: usize,
     values: &[f32],
     output: &mut [f32],
@@ -185,14 +232,14 @@ fn reduce_one_slot(
 
     // Inner: reduce each column independently.
     for col in 0..n_dims {
-        let rule = rules[col];
-        let v = reduce_column(rule, col, n_dims, &topology.child_indices[start..end], output);
+        let desc = descriptors[col];
+        let v = reduce_column(desc, col, n_dims, &topology.child_indices[start..end], output);
         output[base + col] = v;
     }
 }
 
 fn reduce_column(
-    rule: ReductionRule,
+    desc: ColumnRuleDescriptor,
     col: usize,
     n_dims: usize,
     child_slots: &[u32],
@@ -204,40 +251,57 @@ fn reduce_column(
     // Iterate in the order recorded in child_indices — canonical order.
     // For floating-point determinism we accumulate left-to-right with no
     // tree reduction.
-    let read = |s: u32| output[s as usize * n_dims + col];
+    let read = |s: u32, c: usize| output[s as usize * n_dims + c];
 
-    match rule {
+    match desc.rule {
         ReductionRule::Sum => {
             let mut acc = 0.0_f32;
             for &s in child_slots {
-                acc += read(s);
+                acc += read(s, col);
             }
             acc
         }
         ReductionRule::Mean => {
             let mut acc = 0.0_f32;
             for &s in child_slots {
-                acc += read(s);
+                acc += read(s, col);
             }
             acc / child_slots.len() as f32
         }
         ReductionRule::Max => {
-            let mut acc = read(child_slots[0]);
+            let mut acc = read(child_slots[0], col);
             for &s in &child_slots[1..] {
-                let v = read(s);
+                let v = read(s, col);
                 if v > acc { acc = v; }
             }
             acc
         }
         ReductionRule::Min => {
-            let mut acc = read(child_slots[0]);
+            let mut acc = read(child_slots[0], col);
             for &s in &child_slots[1..] {
-                let v = read(s);
+                let v = read(s, col);
                 if v < acc { acc = v; }
             }
             acc
         }
-        ReductionRule::First => read(child_slots[0]),
+        ReductionRule::First => read(child_slots[0], col),
+        ReductionRule::WeightedMean { .. } => {
+            let wcol = desc.weight_col as usize;
+            let mut weighted_sum = 0.0_f32;
+            let mut weight_total = 0.0_f32;
+            for &s in child_slots {
+                let w = read(s, wcol);
+                let v = read(s, col);
+                let scaled = v * w;
+                weighted_sum += scaled;
+                weight_total += w;
+            }
+            if weight_total == 0.0 {
+                0.0
+            } else {
+                weighted_sum / weight_total
+            }
+        }
     }
 }
 
@@ -315,14 +379,14 @@ mod tests {
 
         let n_dims = reg.total_columns;
         let topo = build_topology(&world, &alloc);
-        let rules = build_column_rules(&reg, n_dims);
+        let descriptors = build_column_rule_descriptors(&reg, n_dims);
 
         // Project leaves into flat values (only cohort rows have data).
         let mut values = vec![0.0_f32; alloc.capacity() * n_dims];
         crate::projection::project_tree_to_values(&world, &reg, &alloc, n_dims, &mut values);
 
         let mut output = vec![0.0_f32; values.len()];
-        cpu_reduce_oracle(&topo, &rules, n_dims, &values, &mut output);
+        cpu_reduce_oracle(&topo, &descriptors, n_dims, &values, &mut output);
 
         // Location's reduced row: amount = mean(0.40, 0.60) = 0.50, intensity = max(0.10, 0.80) = 0.80.
         let loc_id  = world.children[0].id;
@@ -422,15 +486,83 @@ mod tests {
 
         let n_dims = reg.total_columns;
         let topo = build_topology(&world, &alloc);
-        let rules = build_column_rules(&reg, n_dims);
+        let descriptors = build_column_rule_descriptors(&reg, n_dims);
         let mut values = vec![0.0_f32; alloc.capacity() * n_dims];
         crate::projection::project_tree_to_values(&world, &reg, &alloc, n_dims, &mut values);
 
         let mut output = vec![0.0_f32; values.len()];
-        cpu_reduce_oracle(&topo, &rules, n_dims, &values, &mut output);
+        cpu_reduce_oracle(&topo, &descriptors, n_dims, &values, &mut output);
 
         let world_slot = alloc.slot_of(world.id).unwrap() as usize;
         // 1.0 + 2.5 + 3.25 = 6.75
         assert_eq!(output[world_slot * n_dims].to_bits(), 6.75_f32.to_bits());
+    }
+
+    fn population_property() -> SimProperty {
+        SimProperty::simple("demo", "population", 0)
+    }
+
+    #[test]
+    fn weighted_mean_uses_child_amount_as_weight() {
+        let mut reg = DimensionRegistry::new();
+        let pop_id = reg.register(population_property());
+        let pop_layout = reg.property(pop_id).layout.clone();
+        let pop_a_off = pop_layout.offset_of(&SubFieldRole::Amount).unwrap();
+
+        let mut loyalty = SimProperty::simple("core", "loyalty", 0);
+        let loyalty_layout = loyalty.layout.clone();
+        let loyalty_a_off = loyalty_layout.offset_of(&SubFieldRole::Amount).unwrap();
+        loyalty.layout.sub_fields[0].reduction_override =
+            Some(ReductionRule::WeightedMean { by: pop_id });
+        let lid = reg.register(loyalty);
+
+        let mut world = SimThing::new(SimThingKind::World, 0);
+        let mut loc = SimThing::new(SimThingKind::Location, 0);
+
+        for (loyalty_amt, pop_amt) in [(0.40f32, 100.0), (0.80, 300.0)] {
+            let mut c = SimThing::new(SimThingKind::Cohort, 0);
+            let mut lpv = PropertyValue::from_layout(&loyalty_layout);
+            lpv.data[loyalty_a_off] = loyalty_amt;
+            c.add_property(lid, lpv);
+
+            let mut ppv = PropertyValue::from_layout(&pop_layout);
+            ppv.data[pop_a_off] = pop_amt;
+            c.add_property(pop_id, ppv);
+
+            loc.add_child(c);
+        }
+        world.add_child(loc);
+
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&world);
+
+        let n_dims = reg.total_columns;
+        let topo = build_topology(&world, &alloc);
+        let descriptors = build_column_rule_descriptors(&reg, n_dims);
+
+        let loyalty_range = reg.column_range(lid);
+        assert_eq!(
+            descriptors[loyalty_range.start + loyalty_a_off].rule,
+            ReductionRule::WeightedMean { by: pop_id },
+        );
+        assert_eq!(
+            descriptors[loyalty_range.start + loyalty_a_off].weight_col as usize,
+            reg.column_range(pop_id).start + pop_a_off,
+        );
+
+        let mut values = vec![0.0_f32; alloc.capacity() * n_dims];
+        crate::projection::project_tree_to_values(&world, &reg, &alloc, n_dims, &mut values);
+
+        let mut output = vec![0.0_f32; values.len()];
+        cpu_reduce_oracle(&topo, &descriptors, n_dims, &values, &mut output);
+
+        // (0.40*100 + 0.80*300) / 400 = 0.70
+        let loc_id = world.children[0].id;
+        let loc_slot = alloc.slot_of(loc_id).unwrap() as usize;
+        let col = loyalty_range.start + loyalty_a_off;
+        assert_eq!(
+            output[loc_slot * n_dims + col].to_bits(),
+            0.70_f32.to_bits(),
+        );
     }
 }
