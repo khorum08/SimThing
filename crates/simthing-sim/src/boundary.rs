@@ -182,13 +182,9 @@ impl BoundaryProtocol {
             let removed = &out.fission.lineage_removed;
             self.fission_lineage.retain(|r| !removed.contains(r));
         }
-        // Prune any records whose endpoints have tombstoned. `slot_of` returns
-        // None for tombstoned ids, so this also catches Remove + post-fusion.
-        let allocator = &self.allocator;
-        self.fission_lineage.retain(|r| {
-            allocator.slot_of(r.parent_id).is_some()
-                && allocator.slot_of(r.child_id).is_some()
-        });
+        // Prune tombstoned endpoints from fission/fusion (step 6). Remove
+        // requests in step 7/8 tombstone later — pruned again below.
+        self.prune_stale_fission_lineage();
 
         // Steps 7 + 8: Structural mutations (AddChild, Remove, Reparent,
         // AttachOverlay, AddDimension). One pass through `apply_structural_mutations`
@@ -234,6 +230,9 @@ impl BoundaryProtocol {
             &mut coord.shadow,
             n_dims,
         );
+
+        // Remove / reparent tombstones may have invalidated lineage endpoints.
+        self.prune_stale_fission_lineage();
 
         if self.registry.total_columns as u32 != coord.n_dims() {
             let old_n_dims = coord.n_dims() as usize;
@@ -423,6 +422,15 @@ impl BoundaryProtocol {
     /// fusion / tombstone removes).
     pub fn fission_lineage(&self) -> &[FissionLineageRecord] {
         &self.fission_lineage
+    }
+
+    /// Drop lineage records whose parent or child no longer has a live slot.
+    fn prune_stale_fission_lineage(&mut self) {
+        let allocator = &self.allocator;
+        self.fission_lineage.retain(|r| {
+            allocator.slot_of(r.parent_id).is_some()
+                && allocator.slot_of(r.child_id).is_some()
+        });
     }
 }
 

@@ -774,6 +774,211 @@ fn aggregate_alert_registration_surfaces_at_boundary() {
     assert_eq!(alert.value.to_bits(), 0.70_f32.to_bits());
 }
 
+/// After an aggregate rising alert fires, a third tick with the same reduced
+/// aggregate must not re-fire (Pass 7 detects crossings, not sustained levels).
+#[test]
+fn aggregate_alert_does_not_refire_while_aggregate_stays_above_threshold() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    let pid = reg.register(SimProperty::simple("core", "loyalty", 0));
+    let layout = reg.property(pid).layout.clone();
+    let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+
+    let mut c1 = SimThing::new(SimThingKind::Cohort, 0);
+    let mut pv1 = PropertyValue::from_layout(&layout);
+    pv1.data[a_off] = 0.40;
+    c1.add_property(pid, pv1);
+    let c1_id = c1.id;
+
+    let mut c2 = SimThing::new(SimThingKind::Cohort, 0);
+    let mut pv2 = PropertyValue::from_layout(&layout);
+    pv2.data[a_off] = 0.40;
+    c2.add_property(pid, pv2);
+    let c2_id = c2.id;
+
+    let mut loc = SimThing::new(SimThingKind::Location, 0);
+    let loc_id = loc.id;
+    loc.add_child(c1);
+    loc.add_child(c2);
+    let mut world = SimThing::new(SimThingKind::World, 0);
+    world.add_child(loc);
+
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&world);
+
+    const N_SLOTS: u32 = 8;
+    let n_dims = reg.total_columns as u32;
+    let n_dims_us = n_dims as usize;
+
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (tx, rx) = feeder_channel();
+
+    let c1_slot = alloc.slot_of(c1_id).unwrap() as usize;
+    let c2_slot = alloc.slot_of(c2_id).unwrap() as usize;
+    coord.shadow[c1_slot * n_dims_us + a_off] = 0.40;
+    coord.shadow[c2_slot * n_dims_us + a_off] = 0.40;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.register_aggregate_alert(AggregateAlertRegistration {
+        sim_thing_id: loc_id,
+        property_id: pid,
+        sub_field: SubFieldRole::Amount,
+        threshold: 0.45,
+        direction: Direction::Rising,
+    });
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    let _ = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
+    );
+
+    tx.submit_patch(
+        c2_id,
+        PropertyTransformDelta {
+            property_id: pid,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(1.0))],
+        },
+    )
+    .unwrap();
+
+    let tick2 = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
+    );
+    assert!(
+        tick2.events.iter().any(|e| e.value.to_bits() == 0.70_f32.to_bits()),
+        "expected initial crossing at loc mean 0.70"
+    );
+
+    let tick3 = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
+    );
+    assert!(
+        tick3.events.is_empty(),
+        "aggregate alert must not re-fire while reduced output stays at 0.70, got {:?}",
+        tick3.events
+    );
+
+    let loc_slot = proto.allocator.slot_of(loc_id).unwrap() as usize;
+    let out = state.read_output_vectors();
+    assert_eq!(
+        out[loc_slot * n_dims_us + a_off].to_bits(),
+        0.70_f32.to_bits(),
+        "sanity: location mean still 0.70"
+    );
+}
+
+/// After fission creates a lineage record, Remove of the spawned child tombstones
+/// its slot and prunes the persistent lineage vec on the next boundary.
+#[test]
+fn remove_after_fission_prunes_lineage() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    reg.register(loyalty_with_fission());
+    let (world, alloc, cohort_id) = build_initial_world(&mut reg);
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+    let n_dims = reg.total_columns as u32;
+
+    const N_SLOTS: u32 = 16;
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (tx, rx) = feeder_channel();
+
+    let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
+    let base = cohort_slot * n_dims as usize;
+    coord.shadow[base + amount_off] = 0.5;
+    coord.shadow[base + vel_off] = -0.21;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    let mut events_fired = Vec::new();
+    let mut max_ticks = 8;
+    while events_fired.is_empty() && max_ticks > 0 {
+        let out = coord.tick(
+            &rx,
+            &mut patcher,
+            &proto.registry,
+            &proto.allocator,
+            &pipelines,
+            &mut state,
+            0.5,
+        );
+        if !out.events.is_empty() {
+            events_fired = out.events;
+            break;
+        }
+        max_ticks -= 1;
+    }
+    assert!(!events_fired.is_empty(), "fission threshold never fired");
+
+    let outcome = proto.execute(events_fired, &mut patcher, &mut coord, &mut state, 1);
+    assert_eq!(outcome.fission.fissions_executed, 1);
+
+    let rebelling = find_node(&proto.root, cohort_id).expect("cohort still in tree");
+    let child_id = rebelling.children[0].id;
+    assert_eq!(proto.fission_lineage().len(), 1);
+    assert_eq!(proto.fission_lineage()[0].child_id, child_id);
+
+    tx.send(FeederWork::Boundary(BoundaryRequest::Remove { target: child_id }))
+        .unwrap();
+
+    let _ = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
+    );
+    let remove_outcome = proto.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 2);
+
+    assert_eq!(remove_outcome.maintainer.removes, 1);
+    assert!(
+        proto.allocator.slot_of(child_id).is_none(),
+        "removed fission child must be tombstoned"
+    );
+    assert_eq!(
+        proto.fission_lineage().len(),
+        0,
+        "lineage must be pruned when child endpoint tombstones"
+    );
+}
+
 /// After `initial_gpu_sync` + one tick, the GPU `output_vectors` buffer must
 /// reflect the bottom-up reduction over the tree: leaves carry their post-Pass-3
 /// values, inner nodes carry per-column reductions of their children.
