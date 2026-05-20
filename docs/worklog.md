@@ -6,23 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-Master is at `21c326f` (PR #20, per-entity boundary outcome ids merged).
-124/124 tests passing, zero warnings, no uncommitted work.
+Master is at `dae2982` (docs) + pending WeightedMean merge. 126/126 tests
+passing, zero warnings.
 
 ### Todo (recommended order)
 
-- [x] **Per-entity ids in outcome structs** — PR #20. `FissionOutcome`
-  (`fission_pairs`, `fusion_pairs`), `MaintainerOutcome::reparented`,
-  `ExpiryOutcome::expired`; delta log emits one entry per event.
-- [ ] **`WeightedMean { by: SimPropertyId }` reduction variant**
-  (~45 min, shader surgery). Population-weighted aggregates (e.g. location
-  loyalty weighted by cohort population).
-  - Extend `ReductionRule` enum.
-  - Change `column_rules` GPU encoding: 2 u32s per column (rule kind +
-    optional weight column index).
-  - Update `cpu_reduce_oracle` and `reduction.wgsl` to read the weight
-    column per child and accumulate `weighted_sum / total_weight`.
-  - Extend the parity test to cover the new variant.
+- [x] **Per-entity ids in outcome structs** — PR #20.
+- [x] **`WeightedMean { by: SimPropertyId }` reduction variant** — local
+  branch. `ReductionRule::WeightedMean`, `column_rules` encoded as
+  `[rule_kind, weight_col]` per column (`RULE_WEIGHTED_MEAN = 5`), CPU/GPU
+  parity tests (`weighted_mean_*`).
 - [ ] **Thresholds on `output_vectors`** (Opus). Pass 7 scans `values` only.
   World/location-level thresholds on aggregated fields need a buffer selector
   on `ThresholdRegistration` or a parallel registry + Pass 7 dispatch.
@@ -31,10 +24,34 @@ Master is at `21c326f` (PR #20, per-entity boundary outcome ids merged).
   `BoundaryDeltaEntry`s. Still needs full `Overlay` payload in
   `OverlayAttached` (id-only today). Unblocked on entity ids from PR #20.
 
-**Next up:** WeightedMean → replay, with output-vector thresholds when AI
-early warning on aggregates matters.
+**Next up:** Replay serialization → output-vector thresholds when AI early
+warning on aggregates matters.
 
 **Tabled (not on this list):** `simthing-studio` designer UI.
+
+---
+
+## 2026-05-20 — WeightedMean reduction variant
+
+**Status:** Implemented on working tree (awaiting PR).
+
+**Landed:**
+
+- `simthing-core`: `ReductionRule::WeightedMean { by: SimPropertyId }`.
+- `simthing-gpu`:
+  - `ColumnRuleDescriptor`, `build_column_rule_descriptors`,
+    `encode_column_rules` — weight column = `Amount` of property `by`.
+  - `column_rules` GPU buffer doubled (`n_dims * 2` u32s).
+  - `reduction.wgsl` — `RULE_WEIGHTED_MEAN = 5`, explicit multiply/add for
+    `weighted_sum / weight_total`; zero total weight → 0.0.
+  - CPU oracle + unit test `weighted_mean_uses_child_amount_as_weight`.
+  - GPU parity `weighted_mean_reduction_matches_cpu_oracle`.
+
+**Usage:** set `SubFieldSpec::reduction_override =
+Some(ReductionRule::WeightedMean { by: pop_property_id })` on the column
+being aggregated (e.g. loyalty `Amount` weighted by cohort population).
+
+**126/126 tests passing, zero warnings.**
 
 ---
 

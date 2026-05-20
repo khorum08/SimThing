@@ -16,11 +16,15 @@ pub use context::{GpuContext, GpuInitError};
 pub use overlay_prep::build_overlay_deltas;
 pub use passes::Pipelines;
 pub use projection::project_tree_to_values;
-pub use reduction::{build_column_rules, build_topology, cpu_reduce_oracle, Topology};
+pub use reduction::{
+    build_column_rule_descriptors, build_column_rules, build_topology, cpu_reduce_oracle,
+    encode_column_rules, ColumnRuleDescriptor, Topology,
+};
 pub use slot::SlotAllocator;
 pub use world_state::{
     build_governed_pairs, build_intensity_params, encode_rule, GovernedPair, IntensityParams,
     OverlayDelta, ReduceParams, SlotDeltaRange, ThresholdEvent, ThresholdRegistration,
     WorldGpuState, CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED, DIR_DOWNWARD, DIR_EITHER,
     DIR_UPWARD, OP_ADD, OP_MULTIPLY, OP_SET, RULE_FIRST, RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM,
+    RULE_WEIGHTED_MEAN, WEIGHT_COL_NONE,
 };

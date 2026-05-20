@@ -9,8 +9,12 @@
 // CPU oracle in `simthing-gpu::reduction::cpu_reduce_oracle` uses the exact
 // same iteration order and accumulation, so the result is bit-exact.
 //
+// `column_rules` is a flat array of length `n_dims * 2`: per column,
+// `[rule_kind, weight_col]`. `weight_col` is only read when `rule_kind == 5`.
+//
 // Rule kinds must match world_state.rs constants:
-//   RULE_MEAN = 0, RULE_SUM = 1, RULE_MAX = 2, RULE_MIN = 3, RULE_FIRST = 4
+//   RULE_MEAN = 0, RULE_SUM = 1, RULE_MAX = 2, RULE_MIN = 3, RULE_FIRST = 4,
+//   RULE_WEIGHTED_MEAN = 5
 
 struct ReduceParams {
     n_dims:       u32,
@@ -49,26 +53,47 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let n_kids_f = f32(n_kids);
 
     for (var col: u32 = 0u; col < n_dims; col = col + 1u) {
-        let rule = column_rules[col];
+        let rule_idx = col * 2u;
+        let rule = column_rules[rule_idx];
+        let weight_col = column_rules[rule_idx + 1u];
         let first_child = child_indices[start];
         var acc: f32 = output_vectors[first_child * n_dims + col];
 
-        for (var i: u32 = 1u; i < n_kids; i = i + 1u) {
-            let child = child_indices[start + i];
-            let v = output_vectors[child * n_dims + col];
-            if (rule == 1u) {            // RULE_SUM
-                acc = acc + v;
-            } else if (rule == 0u) {     // RULE_MEAN — sum first, divide below
-                acc = acc + v;
-            } else if (rule == 2u) {     // RULE_MAX
-                if (v > acc) { acc = v; }
-            } else if (rule == 3u) {     // RULE_MIN
-                if (v < acc) { acc = v; }
+        if (rule == 5u) {
+            // RULE_WEIGHTED_MEAN — explicit `let` per term prevents FMA fusion.
+            var weighted_sum = acc * output_vectors[first_child * n_dims + weight_col];
+            var weight_total = output_vectors[first_child * n_dims + weight_col];
+            for (var i: u32 = 1u; i < n_kids; i = i + 1u) {
+                let child = child_indices[start + i];
+                let w = output_vectors[child * n_dims + weight_col];
+                let v = output_vectors[child * n_dims + col];
+                let scaled = v * w;
+                weighted_sum = weighted_sum + scaled;
+                weight_total = weight_total + w;
             }
-            // RULE_FIRST: keep acc as first_child's value.
-        }
-        if (rule == 0u) {  // RULE_MEAN
-            acc = acc / n_kids_f;
+            if (weight_total == 0.0) {
+                acc = 0.0;
+            } else {
+                acc = weighted_sum / weight_total;
+            }
+        } else {
+            for (var i: u32 = 1u; i < n_kids; i = i + 1u) {
+                let child = child_indices[start + i];
+                let v = output_vectors[child * n_dims + col];
+                if (rule == 1u) {            // RULE_SUM
+                    acc = acc + v;
+                } else if (rule == 0u) {     // RULE_MEAN — sum first, divide below
+                    acc = acc + v;
+                } else if (rule == 2u) {     // RULE_MAX
+                    if (v > acc) { acc = v; }
+                } else if (rule == 3u) {     // RULE_MIN
+                    if (v < acc) { acc = v; }
+                }
+                // RULE_FIRST: keep acc as first_child's value.
+            }
+            if (rule == 0u) {  // RULE_MEAN
+                acc = acc / n_kids_f;
+            }
         }
         output_vectors[base + col] = acc;
     }

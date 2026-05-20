@@ -38,7 +38,8 @@ use crate::threshold_registry::{ThresholdBuilder, ThresholdRegistry, VelocityAle
 use simthing_core::{DimensionRegistry, SimThing};
 use simthing_feeder::DispatchCoordinator;
 use simthing_gpu::{
-    build_column_rules, build_topology, encode_rule, SlotAllocator, WorldGpuState,
+    build_column_rule_descriptors, build_topology, encode_column_rules, SlotAllocator,
+    WorldGpuState,
 };
 
 /// Outcome of the GPU sync step.
@@ -99,8 +100,8 @@ pub fn sync_gpu_buffers(
     //    when properties are added / tombstoned, but rebuilding them is cheap
     //    (one walk over `registry.properties`).
     let topo = build_topology(root, allocator);
-    let rules = build_column_rules(registry, state.n_dims as usize);
-    let rules_u32: Vec<u32> = rules.iter().copied().map(encode_rule).collect();
+    let descriptors = build_column_rule_descriptors(registry, state.n_dims as usize);
+    let rules_u32 = encode_column_rules(&descriptors);
 
     let mut depth_slots: Vec<u32> = Vec::new();
     let mut depth_ranges: Vec<(u32, u32)> = Vec::new();

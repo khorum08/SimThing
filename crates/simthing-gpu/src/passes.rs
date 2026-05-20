@@ -1261,9 +1261,11 @@ mod tests {
     #[test]
     fn reduction_matches_cpu_oracle() {
         use crate::projection::project_tree_to_values;
-        use crate::reduction::{build_column_rules, build_topology, cpu_reduce_oracle};
+        use crate::reduction::{
+            build_column_rule_descriptors, build_topology, cpu_reduce_oracle,
+            encode_column_rules,
+        };
         use crate::slot::SlotAllocator;
-        use crate::world_state::encode_rule;
 
         let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
 
@@ -1309,8 +1311,8 @@ mod tests {
 
         // Build + upload topology + rules.
         let topo = build_topology(&world, &alloc);
-        let rules = build_column_rules(&reg, n_dims);
-        let rules_u32: Vec<u32> = rules.iter().copied().map(encode_rule).collect();
+        let descriptors = build_column_rule_descriptors(&reg, n_dims);
+        let rules_u32 = encode_column_rules(&descriptors);
 
         let mut depth_slots: Vec<u32> = Vec::new();
         let mut depth_ranges: Vec<(u32, u32)> = Vec::new();
@@ -1329,7 +1331,7 @@ mod tests {
 
         // CPU oracle.
         let mut cpu_output = vec![0.0_f32; flat.len()];
-        cpu_reduce_oracle(&topo, &rules, n_dims, &flat, &mut cpu_output);
+        cpu_reduce_oracle(&topo, &descriptors, n_dims, &flat, &mut cpu_output);
 
         // GPU.
         let pipelines = Pipelines::new(&state.ctx);
@@ -1340,6 +1342,84 @@ mod tests {
         // Inner-node rows must match (cohorts are leaves — already covered by
         // the leaf branch which copies values → output_vectors, also bit-exact).
         assert_bits_eq("reduction full buffer", &cpu_output, &gpu_output);
+    }
+
+    /// WeightedMean parity: location loyalty = population-weighted cohort mean.
+    #[test]
+    fn weighted_mean_reduction_matches_cpu_oracle() {
+        use crate::projection::project_tree_to_values;
+        use crate::reduction::{
+            build_column_rule_descriptors, build_topology, cpu_reduce_oracle,
+            encode_column_rules,
+        };
+        use crate::slot::SlotAllocator;
+        use simthing_core::ReductionRule;
+
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+
+        let mut reg = DimensionRegistry::new();
+        let pop_id = reg.register(SimProperty::simple("demo", "population", 0));
+        let pop_layout = reg.property(pop_id).layout.clone();
+        let pop_a_off = pop_layout.offset_of(&SubFieldRole::Amount).unwrap();
+
+        let mut loyalty = SimProperty::simple("core", "loyalty", 0);
+        let loyalty_layout = loyalty.layout.clone();
+        let loyalty_a_off = loyalty_layout.offset_of(&SubFieldRole::Amount).unwrap();
+        loyalty.layout.sub_fields[0].reduction_override =
+            Some(ReductionRule::WeightedMean { by: pop_id });
+        let lid = reg.register(loyalty);
+
+        let mut world = SimThing::new(SimThingKind::World, 0);
+        let mut loc = SimThing::new(SimThingKind::Location, 0);
+        for (loyalty_amt, pop_amt) in [(0.40f32, 100.0), (0.80, 300.0)] {
+            let mut c = SimThing::new(SimThingKind::Cohort, 0);
+            let mut lpv = PropertyValue::from_layout(&loyalty_layout);
+            lpv.data[loyalty_a_off] = loyalty_amt;
+            c.add_property(lid, lpv);
+            let mut ppv = PropertyValue::from_layout(&pop_layout);
+            ppv.data[pop_a_off] = pop_amt;
+            c.add_property(pop_id, ppv);
+            loc.add_child(c);
+        }
+        world.add_child(loc);
+
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&world);
+
+        let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
+        let n_dims = state.n_dims as usize;
+
+        let mut flat = vec![0.0_f32; state.values_len()];
+        project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
+        state.write_values(&flat);
+
+        let topo = build_topology(&world, &alloc);
+        let descriptors = build_column_rule_descriptors(&reg, n_dims);
+        let rules_u32 = encode_column_rules(&descriptors);
+
+        let mut depth_slots: Vec<u32> = Vec::new();
+        let mut depth_ranges: Vec<(u32, u32)> = Vec::new();
+        for bucket in &topo.depth_buckets {
+            let offset = depth_slots.len() as u32;
+            depth_slots.extend_from_slice(bucket);
+            depth_ranges.push((offset, bucket.len() as u32));
+        }
+        state.upload_reduction_topology(
+            &topo.child_starts,
+            &topo.child_indices,
+            &rules_u32,
+            &depth_slots,
+            depth_ranges,
+        );
+
+        let mut cpu_output = vec![0.0_f32; flat.len()];
+        cpu_reduce_oracle(&topo, &descriptors, n_dims, &flat, &mut cpu_output);
+
+        let pipelines = Pipelines::new(&state.ctx);
+        pipelines.run_reduction_passes(&state);
+
+        let gpu_output = state.read_output_vectors();
+        assert_bits_eq("weighted mean reduction", &cpu_output, &gpu_output);
     }
 }
 
