@@ -386,11 +386,16 @@ impl BoundaryProtocol {
     /// Capture an initial-state snapshot for the replay writer. Should be
     /// called once at session start, before any ticks, so that the recording
     /// has a baseline tree + registry to replay deltas against.
+    ///
+    /// Includes the current `fission_lineage` so that `ReplayDriver` can
+    /// re-register `FusionTrigger` thresholds for fissions that occurred
+    /// before recording started.
     pub fn snapshot(&self, day: u32) -> crate::replay::ReplaySnapshot {
         crate::replay::ReplaySnapshot {
             day,
-            root:     self.root.clone(),
-            registry: self.registry.clone(),
+            root:            self.root.clone(),
+            registry:        self.registry.clone(),
+            fission_lineage: self.fission_lineage.clone(),
         }
     }
 

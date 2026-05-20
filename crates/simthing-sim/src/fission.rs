@@ -40,6 +40,7 @@
 //! several columns. `FissionExecutor` deduplicates by (sim_thing_id, template_idx)
 //! before executing, keeping only the first.
 
+use serde::{Deserialize, Serialize};
 use simthing_core::{
     DimensionRegistry, PropertyValue, SecondaryCondition, SimPropertyId, SimThing, SimThingId,
     SimThingKind, SimThingKindTag, SubFieldRole,
@@ -54,7 +55,10 @@ use std::collections::HashSet;
 /// threshold-registration step so that the child carries a `FusionTrigger`
 /// registration watching its activating-property Intensity. Once fusion
 /// fires (or either node tombstones), the record is dropped.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+///
+/// Serializable so it can be embedded in `BoundaryDeltaEntry` and survive
+/// LDJSON round-trips in the replay log.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FissionLineageRecord {
     pub parent_id:    SimThingId,
     pub child_id:     SimThingId,

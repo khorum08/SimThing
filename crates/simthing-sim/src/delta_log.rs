@@ -1,34 +1,33 @@
 //! Boundary delta log — per-day record of semantic state changes.
 //!
 //! Each `BoundaryDeltaEntry` captures one atomic change that occurred during a
-//! day boundary. Together the entries form an append-only semantic log that a
-//! future replay system can consume to reconstruct session history.
+//! day boundary. Together the entries form an append-only semantic log that the
+//! replay system consumes to reconstruct session history.
 //!
-//! ## What is captured now
+//! ## What is captured
 //!
 //! Entries are derived directly from the existing `BoundaryOutcome` fields.
-//! Structural mutations, fission/fusion, property expiry, and velocity alerts
-//! emit one entry per affected entity (or entity pair).
+//! Structural mutations, fission/fusion, property expiry, overlay attachments,
+//! and velocity alerts emit one entry per affected entity (or entity pair).
 //!
-//! ## What replay serialization still needs (deferred)
-//!
-//! - `OverlayAttached`: for deterministic playback the full `Overlay` struct
-//!   is needed, not just the id. The serialization pass should join against
-//!   the live tree to embed overlay data before writing to disk.
+//! Replay v2 additions:
+//! - `SimThingAdded` embeds the full `SimThing` payload + parent id.
+//! - `FissionOccurred` embeds the spawned child as a full `SimThing`.
+//! - `FissionLineageAdded` / `FissionLineageRemoved` persist lineage records so
+//!   `ReplayDriver` can reconstruct `FusionTrigger` thresholds across sessions.
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{Overlay, SimPropertyId, SimThing, SimThingId, SubFieldRole};
 
 use crate::boundary::BoundaryOutcome;
+use crate::fission::FissionLineageRecord;
 
 // ── Entry type ────────────────────────────────────────────────────────────────
 
 /// One semantic state change that occurred during a day boundary.
 ///
 /// Each variant carries enough information to be replayed against a fresh
-/// `SimThing` tree without consulting the original sim — `OverlayAttached`
-/// embeds the full `Overlay` payload so the playback driver can reconstruct
-/// state purely from the log.
+/// `SimThing` tree without consulting the original sim.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum BoundaryDeltaEntry {
     /// An overlay was attached to a SimThing (player intent, AI intent, or
@@ -41,7 +40,14 @@ pub enum BoundaryDeltaEntry {
     },
 
     /// A new SimThing was added to the tree via an `AddChild` boundary request.
-    SimThingAdded { id: SimThingId },
+    /// Carries the full `SimThing` payload and the immediate parent's id so
+    /// replay can re-attach the subtree verbatim. Silently omitted when the
+    /// node cannot be located in the post-boundary tree (e.g. added and
+    /// removed in the same boundary).
+    SimThingAdded {
+        parent: SimThingId,
+        node:   SimThing,
+    },
 
     /// A SimThing was removed from the tree (slot tombstoned).
     SimThingRemoved { id: SimThingId },
@@ -50,10 +56,13 @@ pub enum BoundaryDeltaEntry {
     /// boundary request). Signals that the column layout grew.
     DimensionAdded { property_id: SimPropertyId },
 
-    /// A fission event spawned a child under `parent`.
+    /// A fission event spawned a child under `parent`. Carries the full
+    /// `SimThing` payload so replay can structurally re-spawn the child.
+    /// Silently omitted when the child is not found in the post-boundary tree
+    /// (should not occur in normal operation).
     FissionOccurred {
         parent: SimThingId,
-        child:  SimThingId,
+        node:   SimThing,
     },
 
     /// A fusion event merged `child` back into `parent`'s subtree.
@@ -70,8 +79,8 @@ pub enum BoundaryDeltaEntry {
 
     /// A SimThing was reparented under `new_parent`.
     SimThingReparented {
-        child:       SimThingId,
-        new_parent:  SimThingId,
+        child:      SimThingId,
+        new_parent: SimThingId,
     },
 
     /// A velocity alert threshold fired on the given SimThing's property
@@ -82,17 +91,31 @@ pub enum BoundaryDeltaEntry {
         sub_field:    SubFieldRole,
         value:        f32,
     },
+
+    /// A new fission lineage record was registered (child spawned from parent).
+    /// Persisted in the delta log so `ReplayDriver` can reconstruct the
+    /// `fission_lineage` vec — and thereby re-register `FusionTrigger`
+    /// thresholds — across session boundaries.
+    FissionLineageAdded { record: FissionLineageRecord },
+
+    /// A fission lineage record was retired: the child fused back into the
+    /// parent, or one of the two endpoints was tombstoned.
+    FissionLineageRemoved { record: FissionLineageRecord },
 }
 
 // ── Conversion ────────────────────────────────────────────────────────────────
 
 /// Convert a completed `BoundaryOutcome` into its delta log entries.
 ///
-/// `root` is the post-boundary tree, used to look up the full `Overlay`
-/// payload for each `(target, overlay_id)` pair in
-/// `outcome.maintainer.overlays_attached`. If an overlay is not found in the
-/// tree (e.g. it was attached and then removed in the same boundary), it is
-/// silently skipped from the log.
+/// `root` is the post-boundary tree, used to:
+/// - Look up the full `Overlay` payload for each `(target, overlay_id)` pair in
+///   `outcome.maintainer.overlays_attached`. If an overlay is not found, the
+///   entry is silently skipped.
+/// - Look up the spawned `SimThing` node for `SimThingAdded` entries. If the
+///   node is not found (added and immediately removed in the same boundary),
+///   the entry is silently skipped.
+/// - Look up the fission child node for `FissionOccurred` entries. If not
+///   found (shouldn't happen in normal operation), the entry is silently skipped.
 ///
 /// Entries are emitted in boundary step order (lifecycle → expiry → fission →
 /// structural mutations → velocity alerts) so the log reads chronologically
@@ -114,15 +137,36 @@ pub fn entries_from_outcome(
 
     // Step 6: fission / fusion.
     for &(parent, child) in &outcome.fission.fission_pairs {
-        entries.push(BoundaryDeltaEntry::FissionOccurred { parent, child });
+        if let Some(node) = find_node(root, child) {
+            entries.push(BoundaryDeltaEntry::FissionOccurred {
+                parent,
+                node: node.clone(),
+            });
+        }
+        // If child not found in the post-boundary tree (shouldn't happen in
+        // normal operation): silently skip. Matches OverlayAttached behavior.
     }
     for &(parent, child) in &outcome.fission.fusion_pairs {
         entries.push(BoundaryDeltaEntry::FusionOccurred { parent, child });
     }
+    // Lineage changes — persisted so replay can reconstruct FusionTrigger
+    // thresholds across session boundaries.
+    for &record in &outcome.fission.lineage_added {
+        entries.push(BoundaryDeltaEntry::FissionLineageAdded { record });
+    }
+    for &record in &outcome.fission.lineage_removed {
+        entries.push(BoundaryDeltaEntry::FissionLineageRemoved { record });
+    }
 
     // Steps 7+8: structural mutations from MaintainerOutcome.
     for &id in &outcome.maintainer.allocated {
-        entries.push(BoundaryDeltaEntry::SimThingAdded { id });
+        if let Some((parent_id, node)) = find_node_with_parent(root, id) {
+            entries.push(BoundaryDeltaEntry::SimThingAdded {
+                parent: parent_id,
+                node:   node.clone(),
+            });
+        }
+        // If not found (node was added and removed in same boundary): skip.
     }
     for &id in &outcome.maintainer.tombstoned {
         entries.push(BoundaryDeltaEntry::SimThingRemoved { id });
@@ -168,10 +212,26 @@ fn find_overlay<'a>(
     node.overlays.iter().find(|o| o.id == overlay_id)
 }
 
+/// Walk the tree depth-first and return the node with the given id.
 fn find_node(root: &SimThing, id: SimThingId) -> Option<&SimThing> {
     if root.id == id { return Some(root); }
     for child in &root.children {
         if let Some(n) = find_node(child, id) { return Some(n); }
+    }
+    None
+}
+
+/// Walk the tree depth-first looking for a node with `id`. Returns a tuple of
+/// `(parent_id, &node)` when found. Never returns the root itself — root has
+/// no parent in this tree representation.
+fn find_node_with_parent(root: &SimThing, id: SimThingId) -> Option<(SimThingId, &SimThing)> {
+    for child in &root.children {
+        if child.id == id {
+            return Some((root.id, child));
+        }
+        if let Some(found) = find_node_with_parent(child, id) {
+            return Some(found);
+        }
     }
     None
 }
@@ -226,9 +286,18 @@ mod tests {
 
     #[test]
     fn fission_and_fusion_pairs_produce_per_entry_variants() {
-        let parent = SimThing::new(SimThingKind::Cohort, 0).id;
-        let child_a = SimThing::new(SimThingKind::Cohort, 0).id;
-        let child_b = SimThing::new(SimThingKind::Cohort, 0).id;
+        // Build a tree with a parent carrying both fission children so that
+        // entries_from_outcome can walk the tree and find their full payloads.
+        let mut root = empty_root();
+        let mut parent_node = SimThing::new(SimThingKind::Cohort, 0);
+        let parent = parent_node.id;
+        let child_a_node = SimThing::new(SimThingKind::Cohort, 0);
+        let child_a = child_a_node.id;
+        let child_b_node = SimThing::new(SimThingKind::Cohort, 0);
+        let child_b = child_b_node.id;
+        parent_node.add_child(child_a_node);
+        parent_node.add_child(child_b_node);
+        root.add_child(parent_node);
 
         let mut out = empty_outcome();
         out.fission = FissionOutcome {
@@ -238,29 +307,64 @@ mod tests {
             fusion_pairs:      vec![(parent, child_b)],
             ..Default::default()
         };
-        let entries = entries_from_outcome(&out, &empty_root());
+        let entries = entries_from_outcome(&out, &root);
         assert_eq!(count_matching(&entries, |e| matches!(e,
-            BoundaryDeltaEntry::FissionOccurred { parent: p, child: c }
-                if *p == parent && *c == child_a)), 1);
+            BoundaryDeltaEntry::FissionOccurred { parent: p, node }
+                if *p == parent && node.id == child_a)), 1);
         assert_eq!(count_matching(&entries, |e| matches!(e,
-            BoundaryDeltaEntry::FissionOccurred { parent: p, child: c }
-                if *p == parent && *c == child_b)), 1);
+            BoundaryDeltaEntry::FissionOccurred { parent: p, node }
+                if *p == parent && node.id == child_b)), 1);
         assert_eq!(count_matching(&entries, |e| matches!(e,
             BoundaryDeltaEntry::FusionOccurred { parent: p, child: c }
                 if *p == parent && *c == child_b)), 1);
     }
 
     #[test]
+    fn fission_lineage_changes_produce_entries() {
+        use crate::fission::FissionLineageRecord;
+
+        let parent_id = SimThing::new(SimThingKind::Cohort, 0).id;
+        let child_id  = SimThing::new(SimThingKind::Cohort, 0).id;
+        let rec = FissionLineageRecord {
+            parent_id,
+            child_id,
+            property_id:  SimPropertyId(0),
+            template_idx: 0,
+        };
+
+        let mut out = empty_outcome();
+        out.fission = FissionOutcome {
+            lineage_added:   vec![rec],
+            lineage_removed: vec![rec],
+            ..Default::default()
+        };
+        let entries = entries_from_outcome(&out, &empty_root());
+
+        assert_eq!(count_matching(&entries, |e| matches!(e,
+            BoundaryDeltaEntry::FissionLineageAdded { record: r }
+                if r.parent_id == parent_id && r.child_id == child_id)), 1);
+        assert_eq!(count_matching(&entries, |e| matches!(e,
+            BoundaryDeltaEntry::FissionLineageRemoved { record: r }
+                if r.parent_id == parent_id && r.child_id == child_id)), 1);
+    }
+
+    #[test]
     fn maintainer_ids_produce_per_entry_variants() {
-        let id_a = SimThing::new(SimThingKind::Cohort, 0).id;
-        let id_b = SimThing::new(SimThingKind::Cohort, 0).id;
-        let id_c = SimThing::new(SimThingKind::Cohort, 0).id;
-        let id_d = SimThing::new(SimThingKind::Cohort, 0).id;
+        // Build tree: root → new_node (the "allocated" child), root → target_node.
+        let mut root = empty_root();
+        let root_id = root.id;
+
+        // The "allocated" node — pre-create so we know its id, then add to tree.
+        let new_node = SimThing::new(SimThingKind::Cohort, 0);
+        let id_a = new_node.id;
+        root.add_child(new_node);
+
+        let id_b = SimThing::new(SimThingKind::Cohort, 0).id; // tombstoned (not in tree)
+        let id_c = SimThing::new(SimThingKind::Cohort, 0).id; // reparented child
+        let id_d = SimThing::new(SimThingKind::Cohort, 0).id; // reparented new_parent
         let pid  = SimPropertyId(42);
 
-        // Build a tree that actually carries the overlay so find_overlay
-        // returns Some during entries_from_outcome.
-        let mut root = empty_root();
+        // Build a tree that carries the overlay so find_overlay returns Some.
         let mut target_node = SimThing::new(SimThingKind::Cohort, 0);
         let target_id = target_node.id;
         let overlay = make_overlay();
@@ -281,7 +385,8 @@ mod tests {
         let entries = entries_from_outcome(&out, &root);
 
         assert_eq!(count_matching(&entries,
-            |e| matches!(e, BoundaryDeltaEntry::SimThingAdded { id } if *id == id_a)), 1);
+            |e| matches!(e, BoundaryDeltaEntry::SimThingAdded { parent, node }
+                if *parent == root_id && node.id == id_a)), 1);
         assert_eq!(count_matching(&entries,
             |e| matches!(e, BoundaryDeltaEntry::SimThingRemoved { id } if *id == id_b)), 1);
         assert_eq!(count_matching(&entries,
@@ -308,6 +413,19 @@ mod tests {
         // The overlay was never in the tree → entry skipped.
         assert!(!entries.iter().any(|e|
             matches!(e, BoundaryDeltaEntry::OverlayAttached { .. })));
+    }
+
+    #[test]
+    fn sim_thing_added_skipped_when_id_not_in_tree() {
+        // A node id in `allocated` that was never added to the tree → skipped.
+        let phantom_id = SimThing::new(SimThingKind::Cohort, 0).id;
+        let mut out = empty_outcome();
+        out.maintainer = MaintainerOutcome {
+            allocated: vec![phantom_id],
+            ..Default::default()
+        };
+        let entries = entries_from_outcome(&out, &empty_root());
+        assert!(!entries.iter().any(|e| matches!(e, BoundaryDeltaEntry::SimThingAdded { .. })));
     }
 
     #[test]
@@ -368,29 +486,42 @@ mod tests {
 
     #[test]
     fn step_order_is_expiry_then_fission_then_structural_then_alerts() {
-        let id  = SimThing::new(SimThingKind::Cohort, 0).id;
-        let child = SimThing::new(SimThingKind::Cohort, 0).id;
+        // Build a tree where the fission child and the "allocated" add-child
+        // are actually present, so both entries are emitted (not skipped).
+        let mut root = empty_root();
+        let expiry_id = SimThing::new(SimThingKind::Cohort, 0).id;
         let pid = SimPropertyId(1);
+
+        let mut parent_node = SimThing::new(SimThingKind::Cohort, 0);
+        let parent_id = parent_node.id;
+        let fission_child = SimThing::new(SimThingKind::Cohort, 0);
+        let child = fission_child.id;
+        parent_node.add_child(fission_child);
+        root.add_child(parent_node);
+
+        let added_node = SimThing::new(SimThingKind::Cohort, 0);
+        let added_id = added_node.id;
+        root.add_child(added_node);
 
         let mut out = empty_outcome();
         out.expiry  = ExpiryOutcome {
-            expired: vec![(id, pid)],
+            expired: vec![(expiry_id, pid)],
             ..Default::default()
         };
         out.fission = FissionOutcome {
-            fission_pairs: vec![(id, child)],
+            fission_pairs: vec![(parent_id, child)],
             ..Default::default()
         };
         out.maintainer = MaintainerOutcome {
-            allocated: vec![id],
+            allocated: vec![added_id],
             ..Default::default()
         };
         out.velocity_alerts = vec![VelocityAlertEvent {
-            sim_thing_id: id, property_id: pid,
+            sim_thing_id: expiry_id, property_id: pid,
             sub_field: SubFieldRole::Amount, value: 0.1,
         }];
 
-        let entries = entries_from_outcome(&out, &empty_root());
+        let entries = entries_from_outcome(&out, &root);
         let positions: Vec<&str> = entries.iter().map(|e| match e {
             BoundaryDeltaEntry::PropertyExpired    { .. } => "expiry",
             BoundaryDeltaEntry::FissionOccurred    { .. } => "fission",
