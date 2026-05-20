@@ -6,7 +6,7 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-**163/163** tests passing plus 1 ignored timing diagnostic, zero warnings.
+**164/164** tests passing plus 1 ignored timing diagnostic, zero warnings.
 Master at `6556d6c` (PR #31, design carry-over gaps).
 
 ### Todo (recommended order)

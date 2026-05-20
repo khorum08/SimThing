@@ -64,7 +64,8 @@ created or a property is first attached.
 
 **Not authoritative** for live numeric values after simulation starts. Do not
 inspect `node.properties[..].data` expecting current Amount/Velocity/Intensity;
-use GPU readback, shadow, or `BoundaryProtocol::observe`.
+use GPU readback, shadow, or `BoundaryProtocol::observe` /
+`BoundaryProtocol::observe_live` (one row readback for UI/debug).
 
 AddChild projects initialized semantic property values into shadow at boundary time;
 Remove zeroes tombstoned subtree rows in shadow.

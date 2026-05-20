@@ -670,6 +670,79 @@ fn player_intent_add_mid_day_uses_integrated_gpu_value() {
     );
 }
 
+/// Shadow-based observe may lag integration; observe_live reads one GPU row.
+#[test]
+fn observe_live_reports_integrated_gpu_values_mid_day() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    reg.register(SimProperty::simple("core", "loyalty", 0));
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+    let n_dims = reg.total_columns as u32;
+
+    let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+    let cohort_id = cohort.id;
+    cohort.add_property(pid, PropertyValue::from_layout(&layout));
+    let mut world = SimThing::new(SimThingKind::World, 0);
+    world.add_child(cohort);
+
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&world);
+    let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
+
+    const N_SLOTS: u32 = 8;
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 2);
+    let (_tx, rx) = feeder_channel();
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let base = cohort_slot * n_dims as usize;
+    coord.shadow[base + amount_off] = 0.5;
+    coord.shadow[base + vel_off] = -0.21;
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    let tick = coord.tick(
+        &rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0,
+    );
+    assert!(!tick.boundary_reached);
+
+    let gpu_amount = state.read_values()[base + amount_off];
+    assert!((gpu_amount - 0.29).abs() < 0.001, "expected integrated ~0.29, got {gpu_amount}");
+
+    let shadow_report = proto.observe(&coord, cohort_id).expect("observe");
+    let shadow_amount = shadow_report.properties[0]
+        .sub_fields
+        .iter()
+        .find(|sf| sf.role == SubFieldRole::Amount)
+        .unwrap()
+        .value;
+    assert_eq!(
+        shadow_amount.to_bits(),
+        0.5f32.to_bits(),
+        "shadow observe should still show pre-integration seed"
+    );
+
+    let live_report = proto.observe_live(&coord, &state, cohort_id).expect("observe_live");
+    let live_amount = live_report.properties[0]
+        .sub_fields
+        .iter()
+        .find(|sf| sf.role == SubFieldRole::Amount)
+        .unwrap()
+        .value;
+    assert!(
+        (live_amount - 0.29).abs() < 0.001,
+        "observe_live must match GPU integrated value, got {live_amount}"
+    );
+}
+
 /// AI submits an intent overlay through the dedicated AI channel. The
 /// transform delta is visible on the GPU within the same tick; the overlay is
 /// structurally attached to the tree after the boundary. The urgency value

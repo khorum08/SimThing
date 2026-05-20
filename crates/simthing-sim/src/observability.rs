@@ -1,24 +1,33 @@
 //! Read-only observability query for a single SimThing.
 //!
 //! Answers the §13 design question "why is X high on Y?" by decomposing:
-//! - Current sub-field values (from the CPU values shadow).
+//! - Current sub-field values (from a caller-supplied row slice).
 //! - Which overlays affect each property, attributed to ancestor vs local.
 //!
-//! ## Shadow fidelity
+//! ## Value fidelity
 //!
-//! Between day boundaries the shadow reflects CPU-side patches (after any GPU
-//! row sync for RMW) and the last boundary GPU readback but not mid-tick
-//! velocity integration on untouched rows. At boundary time
-//! `BoundaryProtocol::execute` reads GPU values back before mutating, so calling
-//! `observe` right after a boundary gives fully current values.
-//! Within a day the shadow is still the right source — reading full GPU state
-//! every tick is too expensive for what is fundamentally a diagnostic path.
+//! [`ObserveFidelity::Shadow`] (default via `BoundaryProtocol::observe`) reads
+//! the CPU shadow row — cheap, but may lag mid-tick GPU integration on untouched
+//! rows. [`ObserveFidelity::GpuRow`] (`BoundaryProtocol::observe_live`) reads
+//! one integrated row from the GPU via `read_values_row` — for UI/debug only.
 
 use simthing_core::{
     DimensionRegistry, OverlayId, OverlaySource, SimPropertyId, SimThing, SimThingId,
     SubFieldRole, TransformOp,
 };
 use simthing_gpu::SlotAllocator;
+
+// ── Fidelity ──────────────────────────────────────────────────────────────────
+
+/// Where numeric sub-field values are sourced for an observability query.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ObserveFidelity {
+    /// CPU shadow row (cheap; may lag mid-tick integration).
+    #[default]
+    Shadow,
+    /// One GPU row readback for the target slot (live integrated values).
+    GpuRow,
+}
 
 // ── Report types ──────────────────────────────────────────────────────────────
 
@@ -59,22 +68,23 @@ pub struct ObservabilityReport {
 
 // ── Core query ────────────────────────────────────────────────────────────────
 
-/// Build an observability report for `target` using the CPU values shadow.
+/// Build an observability report for `target`.
+///
+/// `target_row` must hold the target slot's `[n_dims]` values (shadow slice or
+/// GPU readback). Overlay attribution always comes from the tree.
 ///
 /// Returns `None` when `target` is not in the tree or has no allocated slot.
 pub fn observe(
-    root:      &SimThing,
-    registry:  &DimensionRegistry,
-    allocator: &SlotAllocator,
-    shadow:    &[f32],
-    n_dims:    usize,
-    target:    SimThingId,
+    root:       &SimThing,
+    registry:   &DimensionRegistry,
+    allocator:  &SlotAllocator,
+    target_row: &[f32],
+    target:     SimThingId,
 ) -> Option<ObservabilityReport> {
     let path = find_path(root, target)?;
     let node = *path.last()?;
 
-    let slot = allocator.slot_of(node.id)? as usize;
-    let base = slot * n_dims;
+    let _slot = allocator.slot_of(node.id)?;
 
     let mut properties = Vec::new();
 
@@ -86,7 +96,6 @@ pub fn observe(
         let range  = registry.column_range(pid);
         let layout = &prop.layout;
 
-        // Sub-field values from shadow.
         let sub_fields: Vec<SubFieldObservation> = layout
             .sub_fields
             .iter()
@@ -94,7 +103,7 @@ pub fn observe(
                 let col = range.col_for_role(&spec.role, layout)?;
                 Some(SubFieldObservation {
                     role:  spec.role.clone(),
-                    value: shadow.get(base + col).copied().unwrap_or(0.0),
+                    value: target_row.get(col).copied().unwrap_or(0.0),
                 })
             })
             .collect();
@@ -185,11 +194,15 @@ mod tests {
         let root  = SimThing::new(SimThingKind::World, 0);
         let alloc = SlotAllocator::new();
         let ghost = SimThing::new(SimThingKind::Cohort, 0).id;
-        assert!(observe(&root, &reg, &alloc, &[], 0, ghost).is_none());
+        assert!(observe(&root, &reg, &alloc, &[], ghost).is_none());
+    }
+
+    fn cohort_row(shadow: &[f32], slot: usize, n_dims: usize) -> &[f32] {
+        &shadow[slot * n_dims..slot * n_dims + n_dims]
     }
 
     #[test]
-    fn observe_reports_sub_field_values_from_shadow() {
+    fn observe_reports_sub_field_values_from_row() {
         let (reg, pid) = fixture();
         let layout  = reg.property(pid).layout.clone();
         let n_dims  = reg.total_columns;
@@ -211,7 +224,14 @@ mod tests {
         let amount_col = range.col_for_role(&SubFieldRole::Amount, &layout).unwrap();
         shadow[slot * n_dims + amount_col] = 0.5;
 
-        let report = observe(&root, &reg, &alloc, &shadow, n_dims, cohort_id).unwrap();
+        let report = observe(
+            &root,
+            &reg,
+            &alloc,
+            cohort_row(&shadow, slot, n_dims),
+            cohort_id,
+        )
+        .unwrap();
         assert_eq!(report.sim_thing_id, cohort_id);
         assert_eq!(report.properties.len(), 1);
 
@@ -238,9 +258,17 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&root);
+        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
         let shadow = vec![0.0f32; 2 * n_dims];
 
-        let report = observe(&root, &reg, &alloc, &shadow, n_dims, cohort_id).unwrap();
+        let report = observe(
+            &root,
+            &reg,
+            &alloc,
+            cohort_row(&shadow, slot, n_dims),
+            cohort_id,
+        )
+        .unwrap();
         let obs = &report.properties[0];
         assert_eq!(obs.overlay_contributions.len(), 1);
         assert!(!obs.overlay_contributions[0].inherited);
@@ -266,9 +294,17 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&root);
+        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
         let shadow = vec![0.0f32; 2 * n_dims];
 
-        let report = observe(&root, &reg, &alloc, &shadow, n_dims, cohort_id).unwrap();
+        let report = observe(
+            &root,
+            &reg,
+            &alloc,
+            cohort_row(&shadow, slot, n_dims),
+            cohort_id,
+        )
+        .unwrap();
         let obs = &report.properties[0];
         assert_eq!(obs.overlay_contributions.len(), 1);
         assert!(obs.overlay_contributions[0].inherited, "overlay from ancestor must be flagged inherited");
@@ -296,9 +332,17 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&root);
+        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
         let shadow = vec![0.0f32; 2 * n_dims];
 
-        let report = observe(&root, &reg, &alloc, &shadow, n_dims, cohort_id).unwrap();
+        let report = observe(
+            &root,
+            &reg,
+            &alloc,
+            cohort_row(&shadow, slot, n_dims),
+            cohort_id,
+        )
+        .unwrap();
         let contribs = &report.properties[0].overlay_contributions;
         assert_eq!(contribs.len(), 2);
         // Ancestor first (root is earlier in path), then local.
@@ -327,9 +371,17 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&root);
+        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
         let shadow = vec![0.0f32; 2 * n_dims];
 
-        let report = observe(&root, &reg, &alloc, &shadow, n_dims, cohort_id).unwrap();
+        let report = observe(
+            &root,
+            &reg,
+            &alloc,
+            cohort_row(&shadow, slot, n_dims),
+            cohort_id,
+        )
+        .unwrap();
         // Only pid_a is in the report (the node doesn't have pid_b).
         assert_eq!(report.properties.len(), 1);
         assert_eq!(report.properties[0].property_id, pid_a);
