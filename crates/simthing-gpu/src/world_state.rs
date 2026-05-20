@@ -727,6 +727,14 @@ impl WorldGpuState {
         self.read_buffer_f32(&self.values)
     }
 
+    /// Read one slot's row from the GPU `values` buffer (post-integration).
+    pub fn read_values_row(&self, slot: u32) -> Vec<f32> {
+        let row_bytes = (self.n_dims as u64) * 4;
+        let offset = (slot as u64) * row_bytes;
+        let bytes = self.read_buffer_bytes_range(&self.values, offset, row_bytes);
+        bytemuck::cast_slice(&bytes).to_vec()
+    }
+
     pub fn read_previous_values(&self) -> Vec<f32> {
         self.read_buffer_f32(&self.previous_values)
     }
@@ -768,7 +776,10 @@ impl WorldGpuState {
     }
 
     fn read_buffer_bytes(&self, buf: &Buffer) -> Vec<u8> {
-        let size = buf.size();
+        self.read_buffer_bytes_range(buf, 0, buf.size())
+    }
+
+    fn read_buffer_bytes_range(&self, buf: &Buffer, offset: u64, size: u64) -> Vec<u8> {
         let staging = self.ctx.device.create_buffer(&BufferDescriptor {
             label: Some("staging_read"),
             size,
@@ -782,7 +793,7 @@ impl WorldGpuState {
             .create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("read_buffer_encoder"),
             });
-        encoder.copy_buffer_to_buffer(buf, 0, &staging, 0, size);
+        encoder.copy_buffer_to_buffer(buf, offset, &staging, 0, size);
         self.ctx.queue.submit(Some(encoder.finish()));
 
         let slice = staging.slice(..);

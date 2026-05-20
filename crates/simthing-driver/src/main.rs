@@ -160,6 +160,7 @@ fn cmd_replay(args: &[String]) {
 fn entry_kind(entry: &BoundaryDeltaEntry) -> &'static str {
     match entry {
         BoundaryDeltaEntry::OverlayAttached { .. } => "OverlayAttached",
+        BoundaryDeltaEntry::OverlayDissolved { .. } => "OverlayDissolved",
         BoundaryDeltaEntry::SimThingAdded { .. } => "SimThingAdded",
         BoundaryDeltaEntry::SimThingRemoved { .. } => "SimThingRemoved",
         BoundaryDeltaEntry::DimensionAdded { .. } => "DimensionAdded",
@@ -168,6 +169,7 @@ fn entry_kind(entry: &BoundaryDeltaEntry) -> &'static str {
         BoundaryDeltaEntry::PropertyExpired { .. } => "PropertyExpired",
         BoundaryDeltaEntry::SimThingReparented { .. } => "SimThingReparented",
         BoundaryDeltaEntry::VelocityAlert { .. } => "VelocityAlert",
+        BoundaryDeltaEntry::AggregateAlert { .. } => "AggregateAlert",
         BoundaryDeltaEntry::FissionLineageAdded { .. } => "FissionLineageAdded",
         BoundaryDeltaEntry::FissionLineageRemoved { .. } => "FissionLineageRemoved",
     }

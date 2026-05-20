@@ -581,6 +581,95 @@ fn player_intent_mid_day_effect_lands_on_gpu_before_boundary() {
     );
 }
 
+/// Player intent Add mid-day uses the GPU-integrated Amount, not a stale shadow.
+#[test]
+fn player_intent_add_mid_day_uses_integrated_gpu_value() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    reg.register(SimProperty::simple("core", "loyalty", 0));
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+    let n_dims = reg.total_columns as u32;
+
+    let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+    let cohort_id = cohort.id;
+    let mut pv = PropertyValue::from_layout(&layout);
+    pv.data[amount_off] = 0.5;
+    pv.data[vel_off] = -0.21;
+    cohort.add_property(pid, pv);
+    let mut world = SimThing::new(SimThingKind::World, 0);
+    world.add_child(cohort);
+
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&world);
+    let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
+
+    const N_SLOTS: u32 = 8;
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 2);
+    let (tx, rx) = feeder_channel();
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let base = cohort_slot * n_dims as usize;
+    coord.shadow[base + amount_off] = 0.5;
+    coord.shadow[base + vel_off] = -0.21;
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    let tick1 = coord.tick(
+        &rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0,
+    );
+    assert!(!tick1.boundary_reached);
+
+    let after_tick1 = state.read_values();
+    let integrated = after_tick1[cohort_slot * n_dims as usize + amount_off];
+    assert!(
+        (integrated - 0.29).abs() < 0.001,
+        "expected ~0.29 after one integration step, got {integrated}"
+    );
+
+    tx.submit_player_intent(
+        cohort_id,
+        Overlay {
+            id:        OverlayId::new(),
+            kind:      OverlayKind::Policy,
+            source:    OverlaySource::Player,
+            affects:   vec![cohort_id],
+            transform: PropertyTransformDelta {
+                property_id:      pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(-0.05))],
+            },
+            lifecycle: OverlayLifecycle::Permanent,
+        },
+    )
+    .unwrap();
+
+    let tick2 = coord.tick(
+        &rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0,
+    );
+    assert_eq!(tick2.patcher_stats.unsafe_rmw_skipped, 0);
+
+    let after_tick2 = state.read_values();
+    let final_amount = after_tick2[cohort_slot * n_dims as usize + amount_off];
+    // Synced 0.29 + Add(-0.05) = 0.24, then one velocity step -> ~0.03.
+    assert!(
+        (final_amount - 0.03).abs() < 0.001,
+        "Add must use integrated GPU value (expect ~0.03, got {final_amount})"
+    );
+    // Stale shadow (0.5 - 0.05 - 0.21) would land near 0.24 instead.
+    assert!(
+        (final_amount - 0.24).abs() > 0.05,
+        "stale-shadow path would have produced ~0.24"
+    );
+}
+
 /// AI submits an intent overlay through the dedicated AI channel. The
 /// transform delta is visible on the GPU within the same tick; the overlay is
 /// structurally attached to the tree after the boundary. The urgency value
@@ -1405,7 +1494,7 @@ fn replay_round_trip_reconstructs_overlay_and_dimension_changes() {
         &pipelines, &mut state, 0.0,
     );
     let _ = proto.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 1);
-    let frame_1 = ReplayFrame { day: 1, entries: proto.take_delta_log() };
+    let frame_1 = ReplayFrame { day: 1, entries: proto.take_delta_log(), ..Default::default() };
 
     // Sanity: the frame should carry the OverlayAttached entry.
     assert!(frame_1.entries.iter().any(|e| matches!(
@@ -1426,7 +1515,7 @@ fn replay_round_trip_reconstructs_overlay_and_dimension_changes() {
         &pipelines, &mut state, 0.0,
     );
     let _ = proto.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 2);
-    let frame_2 = ReplayFrame { day: 2, entries: proto.take_delta_log() };
+    let frame_2 = ReplayFrame { day: 2, entries: proto.take_delta_log(), ..Default::default() };
 
     assert!(frame_2.entries.iter().any(|e| matches!(
         e,
@@ -1542,6 +1631,7 @@ fn replay_fission_round_trip_reconstructs_spawned_child_and_lineage() {
     let frame = ReplayFrame {
         day: 1,
         entries: proto.take_delta_log(),
+        ..Default::default()
     };
 
     assert!(

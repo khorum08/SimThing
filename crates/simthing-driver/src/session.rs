@@ -153,6 +153,7 @@ impl SimSession {
                 let frame = ReplayFrame {
                     day: day as u32,
                     entries: self.proto.take_delta_log(),
+                    shadow_values: Some(self.coord.shadow.clone()),
                 };
                 writer.write_frame(&frame)?;
                 summary.frames_written += 1;

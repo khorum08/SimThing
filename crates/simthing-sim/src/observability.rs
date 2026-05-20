@@ -6,10 +6,11 @@
 //!
 //! ## Shadow fidelity
 //!
-//! Between day boundaries the shadow reflects CPU-side patches and the last
-//! boundary GPU readback but not mid-tick velocity integration. At boundary
-//! time `BoundaryProtocol::execute` reads GPU values back before mutating, so
-//! calling `observe` right after a boundary gives fully current values.
+//! Between day boundaries the shadow reflects CPU-side patches (after any GPU
+//! row sync for RMW) and the last boundary GPU readback but not mid-tick
+//! velocity integration on untouched rows. At boundary time
+//! `BoundaryProtocol::execute` reads GPU values back before mutating, so calling
+//! `observe` right after a boundary gives fully current values.
 //! Within a day the shadow is still the right source — reading full GPU state
 //! every tick is too expensive for what is fundamentally a diagnostic path.
 
