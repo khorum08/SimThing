@@ -6,25 +6,43 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-Master is at `97959bd` (PR #21, WeightedMean reduction merged). 126/126
-tests passing, zero warnings, no uncommitted work.
+Master is at `97959bd` (PR #21, WeightedMean reduction merged). Step 1
+(output-vector thresholds) is implemented locally; run `cargo test` before
+commit.
 
 ### Todo (recommended order)
 
 - [x] **Per-entity ids in outcome structs** — PR #20.
 - [x] **`WeightedMean { by: SimPropertyId }` reduction variant** — PR #21.
-- [ ] **Thresholds on `output_vectors`** (Opus). Pass 7 scans `values` only.
-  World/location-level thresholds on aggregated fields need a buffer selector
-  on `ThresholdRegistration` or a parallel registry + Pass 7 dispatch.
+- [x] **Thresholds on `output_vectors`** — `ThresholdRegistration.buffer`
+  (`THRESH_BUF_VALUES` / `THRESH_BUF_OUTPUT`), `previous_output_vectors`,
+  Pass 0 snapshot + Pass 7 scan, `AggregateAlertRegistration` /
+  `BoundaryOutcome::aggregate_alerts`.
 - [ ] **Replay serialization + playback** (Opus). Format choice (binary frame
   + delta stream, or line-delimited JSON), file I/O, driver consuming
   `BoundaryDeltaEntry`s. Still needs full `Overlay` payload in
   `OverlayAttached` (id-only today). Unblocked on entity ids from PR #20.
 
-**Next up:** Replay serialization → output-vector thresholds when AI early
-warning on aggregates matters.
+**Next up:** Replay serialization.
 
 **Tabled (not on this list):** `simthing-studio` designer UI.
+
+---
+
+## 2026-05-19 — Thresholds on `output_vectors` (Step 1)
+
+**Status:** Implemented locally; not yet merged.
+
+**Landed:**
+- `ThresholdRegistration.buffer` (`THRESH_BUF_VALUES` / `THRESH_BUF_OUTPUT`).
+- `previous_output_vectors` buffer; Pass 0 snapshots `output_vectors` into it.
+- Pass 7 shader + CPU oracle select values vs output buffer pair.
+- `AggregateAlertRegistration`, `AggregateAlertEvent`, `ThresholdSemantic::AggregateAlert`.
+- `BoundaryOutcome::aggregate_alerts`; `build_with_alerts` in gpu sync.
+- GPU unit test `threshold_scan_on_output_vectors_matches_cpu_oracle`.
+- Integration test `aggregate_alert_registration_surfaces_at_boundary`.
+
+**Tests:** 128 passing (2 new), zero warnings.
 
 ---
 

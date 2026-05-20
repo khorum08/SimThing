@@ -60,7 +60,7 @@ pub use observability::{
 };
 pub use reduced_field::ReducedField;
 pub use threshold_registry::{
-    ThresholdBuilder, ThresholdRegistry, ThresholdSemantic, VelocityAlertEvent,
-    VelocityAlertRegistration,
+    AggregateAlertEvent, AggregateAlertRegistration, ThresholdBuilder, ThresholdRegistry,
+    ThresholdSemantic, VelocityAlertEvent, VelocityAlertRegistration,
 };
 pub use tree_mutation::apply_structural_mutations;

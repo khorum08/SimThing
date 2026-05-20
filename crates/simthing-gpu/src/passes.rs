@@ -72,8 +72,10 @@ impl Pipelines {
         let snapshot_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("snapshot_bgl"),
             entries: &[
-                storage_entry(0, /*read_only*/ true),
-                storage_entry(1, /*read_only*/ false),
+                storage_entry(0, /*read_only*/ true),  // values
+                storage_entry(1, /*read_only*/ false), // previous_values
+                storage_entry(2, /*read_only*/ true),  // output_vectors
+                storage_entry(3, /*read_only*/ false), // previous_output_vectors
             ],
         });
         let snapshot_module = device.create_shader_module(ShaderModuleDescriptor {
@@ -184,10 +186,12 @@ impl Pipelines {
             entries: &[
                 storage_entry(0, /*read_only*/ true),  // values
                 storage_entry(1, /*read_only*/ true),  // previous_values
-                storage_entry(2, /*read_only*/ true),  // registry
-                storage_entry(3, /*read_only*/ false), // event_count (atomic u32)
-                storage_entry(4, /*read_only*/ false), // event_candidates
-                uniform_entry(5),                       // params
+                storage_entry(2, /*read_only*/ true),  // output_vectors
+                storage_entry(3, /*read_only*/ true),  // previous_output_vectors
+                storage_entry(4, /*read_only*/ true),  // registry
+                storage_entry(5, /*read_only*/ false), // event_count (atomic u32)
+                storage_entry(6, /*read_only*/ false), // event_candidates
+                uniform_entry(7),                       // params
             ],
         });
         let threshold_module = device.create_shader_module(ShaderModuleDescriptor {
@@ -273,6 +277,8 @@ impl Pipelines {
             entries: &[
                 BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
                 BindGroupEntry { binding: 1, resource: state.previous_values.as_entire_binding() },
+                BindGroupEntry { binding: 2, resource: state.output_vectors.as_entire_binding() },
+                BindGroupEntry { binding: 3, resource: state.previous_output_vectors.as_entire_binding() },
             ],
         });
 
@@ -477,10 +483,12 @@ impl Pipelines {
             entries: &[
                 BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
                 BindGroupEntry { binding: 1, resource: state.previous_values.as_entire_binding() },
-                BindGroupEntry { binding: 2, resource: state.threshold_registry.as_entire_binding() },
-                BindGroupEntry { binding: 3, resource: state.event_count.as_entire_binding() },
-                BindGroupEntry { binding: 4, resource: state.event_candidates.as_entire_binding() },
-                BindGroupEntry { binding: 5, resource: self.uniform_buffer.as_entire_binding() },
+                BindGroupEntry { binding: 2, resource: state.output_vectors.as_entire_binding() },
+                BindGroupEntry { binding: 3, resource: state.previous_output_vectors.as_entire_binding() },
+                BindGroupEntry { binding: 4, resource: state.threshold_registry.as_entire_binding() },
+                BindGroupEntry { binding: 5, resource: state.event_count.as_entire_binding() },
+                BindGroupEntry { binding: 6, resource: state.event_candidates.as_entire_binding() },
+                BindGroupEntry { binding: 7, resource: self.uniform_buffer.as_entire_binding() },
             ],
         });
 
@@ -879,17 +887,24 @@ mod tests {
     /// CPU oracle for Pass 7. Same crossing logic as the WGSL shader; used to
     /// produce reference events for the parity test below.
     fn cpu_threshold_scan(
-        previous: &[f32],
-        values:   &[f32],
-        n_dims:   u32,
-        regs:     &[crate::world_state::ThresholdRegistration],
+        previous_values: &[f32],
+        values:          &[f32],
+        previous_output: &[f32],
+        output:          &[f32],
+        n_dims:          u32,
+        regs:            &[crate::world_state::ThresholdRegistration],
     ) -> Vec<crate::world_state::ThresholdEvent> {
-        use crate::world_state::{DIR_DOWNWARD, DIR_UPWARD, ThresholdEvent};
+        use crate::world_state::{
+            DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_OUTPUT, ThresholdEvent,
+        };
         let mut events = Vec::new();
         for r in regs {
             let addr = (r.slot * n_dims + r.col) as usize;
-            let prev = previous[addr];
-            let curr = values[addr];
+            let (prev, curr) = if r.buffer == THRESH_BUF_OUTPUT {
+                (previous_output[addr], output[addr])
+            } else {
+                (previous_values[addr], values[addr])
+            };
             let up   = prev <= r.threshold && curr > r.threshold;
             let down = prev >= r.threshold && curr < r.threshold;
             let crossed = match r.direction {
@@ -914,8 +929,10 @@ mod tests {
     /// case does NOT fire (strict crossing rule).
     #[test]
     fn threshold_scan_matches_cpu_oracle() {
-        use crate::world_state::{DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD,
-                                  ThresholdEvent, ThresholdRegistration};
+        use crate::world_state::{
+            DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_VALUES, ThresholdEvent,
+            ThresholdRegistration,
+        };
 
         let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
         let mut reg = DimensionRegistry::new();
@@ -939,14 +956,18 @@ mod tests {
         state.write_values(&current);
 
         let regs = vec![
-            ThresholdRegistration { slot: 0, col: 0, threshold: 0.30, direction: DIR_DOWNWARD, event_kind: 100, _pad: 0 },
-            ThresholdRegistration { slot: 1, col: 0, threshold: 0.30, direction: DIR_UPWARD,   event_kind: 101, _pad: 0 },
-            ThresholdRegistration { slot: 2, col: 0, threshold: 0.50, direction: DIR_EITHER,   event_kind: 102, _pad: 0 },
-            ThresholdRegistration { slot: 3, col: 0, threshold: 0.50, direction: DIR_EITHER,   event_kind: 103, _pad: 0 },
+            ThresholdRegistration { slot: 0, col: 0, threshold: 0.30, direction: DIR_DOWNWARD, event_kind: 100, buffer: THRESH_BUF_VALUES },
+            ThresholdRegistration { slot: 1, col: 0, threshold: 0.30, direction: DIR_UPWARD,   event_kind: 101, buffer: THRESH_BUF_VALUES },
+            ThresholdRegistration { slot: 2, col: 0, threshold: 0.50, direction: DIR_EITHER,   event_kind: 102, buffer: THRESH_BUF_VALUES },
+            ThresholdRegistration { slot: 3, col: 0, threshold: 0.50, direction: DIR_EITHER,   event_kind: 103, buffer: THRESH_BUF_VALUES },
         ];
         state.upload_thresholds(&regs);
 
-        let cpu = cpu_threshold_scan(&previous, &current, n_dims as u32, &regs);
+        let prev_out = vec![0.0_f32; state.values_len()];
+        let out_flat = vec![0.0_f32; state.values_len()];
+        let cpu = cpu_threshold_scan(
+            &previous, &current, &prev_out, &out_flat, n_dims as u32, &regs,
+        );
         assert_eq!(cpu.len(), 3, "oracle should produce exactly 3 events");
 
         let pipelines = Pipelines::new(&state.ctx);
@@ -973,6 +994,60 @@ mod tests {
         }
     }
 
+    /// Pass 7 on `output_vectors`: upward crossing on a parent aggregate row.
+    #[test]
+    fn threshold_scan_on_output_vectors_matches_cpu_oracle() {
+        use crate::world_state::{
+            DIR_UPWARD, THRESH_BUF_OUTPUT, ThresholdRegistration,
+        };
+
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let mut reg = DimensionRegistry::new();
+        reg.register(SimProperty::simple("core", "loyalty", 0));
+        let mut state = WorldGpuState::new(ctx, &reg, 2);
+        let n_dims = state.n_dims as usize;
+
+        let mut prev_out = vec![0.0_f32; state.values_len()];
+        let mut curr_out = vec![0.0_f32; state.values_len()];
+        // Parent slot 0: aggregate loyalty amount crosses 0.30 upward (0.20 -> 0.50).
+        prev_out[0 * n_dims] = 0.20;
+        curr_out[0 * n_dims] = 0.50;
+
+        state.write_previous_output_vectors(&prev_out);
+        state.write_output_vectors(&curr_out);
+
+        let regs = vec![ThresholdRegistration {
+            slot: 0,
+            col: 0,
+            threshold: 0.30,
+            direction: DIR_UPWARD,
+            event_kind: 200,
+            buffer: THRESH_BUF_OUTPUT,
+        }];
+        state.upload_thresholds(&regs);
+
+        let prev_vals = vec![0.0_f32; state.values_len()];
+        let curr_vals = vec![0.0_f32; state.values_len()];
+        let cpu = cpu_threshold_scan(
+            &prev_vals,
+            &curr_vals,
+            &prev_out,
+            &curr_out,
+            n_dims as u32,
+            &regs,
+        );
+        assert_eq!(cpu.len(), 1);
+
+        let pipelines = Pipelines::new(&state.ctx);
+        pipelines.run_threshold_scan(&state);
+
+        let count = state.read_event_count();
+        let gpu = state.read_event_candidates(count);
+        assert_eq!(gpu.len(), 1);
+        assert_eq!(gpu[0].value.to_bits(), 0.50_f32.to_bits());
+        assert_eq!(gpu[0].event_kind, 200);
+    }
+
     /// Pass 7 with no registered thresholds: must be a no-op, no panic.
     #[test]
     fn threshold_scan_no_registrations_is_noop() {
@@ -991,7 +1066,7 @@ mod tests {
     /// the post-Pass-0 snapshot vs. post-integration values.
     #[test]
     fn threshold_scan_after_full_pipeline() {
-        use crate::world_state::{DIR_DOWNWARD, ThresholdRegistration};
+        use crate::world_state::{DIR_DOWNWARD, THRESH_BUF_VALUES, ThresholdRegistration};
 
         let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
         let mut reg = DimensionRegistry::new();
@@ -1014,16 +1089,17 @@ mod tests {
                 threshold:  0.30,
                 direction:  DIR_DOWNWARD,
                 event_kind: 7,
-                _pad:       0,
+                buffer:     THRESH_BUF_VALUES,
             },
         ];
         state.upload_thresholds(&regs);
 
         let pipelines = Pipelines::new(&state.ctx);
-        pipelines.run_snapshot(&state);                  // previous_values <- 0.35
+        pipelines.run_snapshot(&state);                  // previous_* <- current
         pipelines.run_velocity_integration(&state, 1.0); // values amount: 0.35 - 0.10 = 0.25
         pipelines.run_intensity_update(&state, 1.0);
         pipelines.run_apply_overlays(&state);
+        pipelines.run_reduction_passes(&state);
         pipelines.run_threshold_scan(&state);
 
         let count = state.read_event_count();

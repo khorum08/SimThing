@@ -31,7 +31,8 @@ use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
 use crate::reduced_field::ReducedField;
 use crate::threshold_registry::{
-    ThresholdRegistry, ThresholdSemantic, VelocityAlertEvent, VelocityAlertRegistration,
+    AggregateAlertEvent, AggregateAlertRegistration, ThresholdRegistry, ThresholdSemantic,
+    VelocityAlertEvent, VelocityAlertRegistration,
 };
 use crate::tree_mutation::apply_structural_mutations;
 
@@ -49,6 +50,7 @@ pub struct BoundaryOutcome {
     pub player_intents_attached: u32,
     pub ai_intents_attached: u32,
     pub velocity_alerts: Vec<VelocityAlertEvent>,
+    pub aggregate_alerts: Vec<AggregateAlertEvent>,
 }
 
 /// Top-level boundary orchestrator.
@@ -68,6 +70,7 @@ pub struct BoundaryProtocol {
     pub allocator: SlotAllocator,
     cpu_threshold_registry: ThresholdRegistry,
     velocity_alerts: Vec<VelocityAlertRegistration>,
+    aggregate_alerts: Vec<AggregateAlertRegistration>,
     /// Append-only log of semantic state changes. Each boundary appends its
     /// entries; callers drain with `take_delta_log()`. The serialization
     /// format and playback logic are deferred to the replay system (Week 5).
@@ -82,6 +85,7 @@ impl BoundaryProtocol {
             allocator,
             cpu_threshold_registry: ThresholdRegistry::new(),
             velocity_alerts: Vec::new(),
+            aggregate_alerts: Vec::new(),
             delta_log: Vec::new(),
         }
     }
@@ -121,6 +125,7 @@ impl BoundaryProtocol {
         }
 
         out.velocity_alerts = collect_velocity_alerts(&events, &self.cpu_threshold_registry);
+        out.aggregate_alerts = collect_aggregate_alerts(&events, &self.cpu_threshold_registry);
 
         // Step 4: Overlay lifecycle — dissolve + expire effects.
         // Mutates coord.shadow directly (apply_expire_effects writes into it).
@@ -249,6 +254,7 @@ impl BoundaryProtocol {
             coord,
             state,
             &self.velocity_alerts,
+            &self.aggregate_alerts,
         );
         // Adopt the new threshold registry for the next day.
         if let Some(new_reg) = gpu_out.new_threshold_registry {
@@ -275,12 +281,24 @@ impl BoundaryProtocol {
         self.velocity_alerts.push(alert);
     }
 
+    pub fn register_aggregate_alert(&mut self, alert: AggregateAlertRegistration) {
+        self.aggregate_alerts.push(alert);
+    }
+
     pub fn clear_velocity_alerts(&mut self) {
         self.velocity_alerts.clear();
     }
 
+    pub fn clear_aggregate_alerts(&mut self) {
+        self.aggregate_alerts.clear();
+    }
+
     pub fn velocity_alerts(&self) -> &[VelocityAlertRegistration] {
         &self.velocity_alerts
+    }
+
+    pub fn aggregate_alerts(&self) -> &[AggregateAlertRegistration] {
+        &self.aggregate_alerts
     }
 
     /// Read the GPU `output_vectors` buffer back to the CPU as a
@@ -345,6 +363,7 @@ impl BoundaryProtocol {
             coord,
             state,
             &self.velocity_alerts,
+            &self.aggregate_alerts,
         );
         if let Some(new_reg) = out.new_threshold_registry {
             self.cpu_threshold_registry = new_reg;
@@ -368,6 +387,31 @@ fn collect_velocity_alerts(
                 return None;
             };
             Some(VelocityAlertEvent {
+                sim_thing_id: *sim_thing_id,
+                property_id: *property_id,
+                sub_field: sub_field.clone(),
+                value: event.value,
+            })
+        })
+        .collect()
+}
+
+fn collect_aggregate_alerts(
+    events: &[ThresholdEvent],
+    registry: &ThresholdRegistry,
+) -> Vec<AggregateAlertEvent> {
+    events
+        .iter()
+        .filter_map(|event| {
+            let ThresholdSemantic::AggregateAlert {
+                sim_thing_id,
+                property_id,
+                sub_field,
+            } = registry.get(event.event_kind)?
+            else {
+                return None;
+            };
+            Some(AggregateAlertEvent {
                 sim_thing_id: *sim_thing_id,
                 property_id: *property_id,
                 sub_field: sub_field.clone(),
