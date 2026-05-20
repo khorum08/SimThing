@@ -10,9 +10,10 @@
 //! uploads the dirty rows to the GPU before the next tick. Going through a
 //! shadow has three benefits:
 //!
-//! 1. **Read-modify-write is local.** `TransformOp::Multiply` and
-//!    `TransformOp::Add` both need the current value. Doing this directly on
-//!    a GPU buffer would require a read-back round trip per patch.
+//! 1. **Immediate writes are limited to `Set`.** `TransformOp::Multiply` and
+//!    `TransformOp::Add` need a fresh current value; the within-day shadow can
+//!    lag GPU integration, so those read-modify-write ops are skipped here and
+//!    reported via `PatcherStats::unsafe_rmw_skipped`.
 //! 2. **Coalesced uploads.** Multiple patches hitting the same row in the
 //!    same tick produce a single `queue.write_buffer` per dirty row.
 //! 3. **Testability.** The Patcher has no `wgpu` dependency; unit tests run
@@ -61,6 +62,8 @@ pub struct PatcherStats {
     pub unresolved_roles:  u32,
     /// Individual sub-field writes that actually landed in the shadow.
     pub applied_writes:    u32,
+    /// Add/Multiply writes skipped because the shadow may be stale within a day.
+    pub unsafe_rmw_skipped: u32,
     /// Boundary requests parked for the Tree Maintainer (not applied here).
     pub boundary_parked:   u32,
     /// Player intent overlays parked for attachment at the next boundary.
@@ -137,10 +140,10 @@ impl TransformPatcher {
                     stats.boundary_parked += 1;
                 }
                 FeederWork::PlayerIntent(pi) => {
-                    // Apply transform delta to shadow immediately so the
-                    // effect is visible within the current tick — same
-                    // col_for_role path as a regular patch. Structural
-                    // attach_overlay still happens at the day boundary.
+                    // Apply safe Set deltas to shadow immediately so the
+                    // effect is visible within the current tick. Add/Multiply
+                    // are skipped by apply_one unless this path grows an
+                    // explicit GPU-delta/readback authority model.
                     let patch = PatchTransform { target: pi.target, delta: pi.overlay.transform.clone() };
                     self.apply_one(&patch, registry, allocator, n_dims, values, &mut stats);
                     self.pending_player_intents.push(pi);
@@ -206,9 +209,11 @@ impl TransformPatcher {
                 continue;
             }
             values[addr] = match op {
-                TransformOp::Multiply(k) => values[addr] * *k,
-                TransformOp::Add(k)      => values[addr] + *k,
-                TransformOp::Set(k)      => *k,
+                TransformOp::Set(k) => *k,
+                TransformOp::Multiply(_) | TransformOp::Add(_) => {
+                    stats.unsafe_rmw_skipped += 1;
+                    continue;
+                }
             };
             stats.applied_writes += 1;
             wrote_to_row = true;
@@ -291,7 +296,7 @@ mod tests {
     }
 
     #[test]
-    fn add_op_writes_to_amount_column_of_correct_slot() {
+    fn add_op_is_skipped_without_fresh_gpu_readback() {
         let (reg, alloc, pid, [_a, b], n_dims) = fixture();
         let mut values = vec![0.0f32; 2 * n_dims];
         let mut p = TransformPatcher::new(2);
@@ -309,9 +314,10 @@ mod tests {
         );
 
         // slot 1 (b), col 0 (Amount). Slot 0 row untouched.
-        assert_eq!(values[n_dims + 0], 0.25);
+        assert_eq!(values[n_dims + 0], 0.0);
         assert_eq!(values[0], 0.0);
-        assert_eq!(stats.applied_writes, 1);
+        assert_eq!(stats.applied_writes, 0);
+        assert_eq!(stats.unsafe_rmw_skipped, 1);
         assert_eq!(stats.missing_targets, 0);
     }
 
@@ -337,9 +343,10 @@ mod tests {
             &reg, &alloc, n_dims, &mut values, &mut stats,
         );
 
-        // Multiply: 2 → 6, then Set: → 7. Final = 7.
+        // Multiply is skipped as unsafe; Set still lands.
         assert_eq!(values[0], 7.0);
-        assert_eq!(stats.applied_writes, 2);
+        assert_eq!(stats.applied_writes, 1);
+        assert_eq!(stats.unsafe_rmw_skipped, 1);
     }
 
     #[test]
@@ -355,7 +362,7 @@ mod tests {
                 target: ghost,
                 delta: PropertyTransformDelta {
                     property_id:      pid,
-                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
+                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(1.0))],
                 },
             },
             &reg, &alloc, n_dims, &mut values, &mut stats,
@@ -379,7 +386,7 @@ mod tests {
                 target: a,
                 delta: PropertyTransformDelta {
                     property_id:      pid,
-                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
+                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(1.0))],
                 },
             },
             &reg, &alloc, n_dims, &mut values, &mut stats,
@@ -446,7 +453,7 @@ mod tests {
     }
 
     #[test]
-    fn dirty_rows_flips_only_the_touched_slot() {
+    fn dirty_rows_flip_only_for_safe_writes() {
         let (reg, alloc, pid, [a, _b], n_dims) = fixture();
         let mut values = vec![0.0f32; 2 * n_dims];
         let mut p = TransformPatcher::new(2);
@@ -457,7 +464,7 @@ mod tests {
                 target: a,
                 delta: PropertyTransformDelta {
                     property_id:      pid,
-                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
+                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(1.0))],
                 },
             },
             &reg, &alloc, n_dims, &mut values, &mut stats,

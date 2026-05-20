@@ -23,11 +23,11 @@
 //!   SimThing's `properties` HashMap and tombstones the registry column if this
 //!   was its last live instance.
 //!
-//! - `fission` — step 6. Executes fission and fusion events from Pass 7 output.
+//! - `fission` — step 6. Executes fission events from Pass 7 output and
+//!   contains the current placeholder fusion event handler.
 //!   Fission: spawns a new child `SimThing`, allocs a slot, seeds its GPU row
-//!   from the parent's current values, registers its `FusionThreshold`.
-//!   Fusion: applies the scar coefficient to the parent, removes the child,
-//!   tombstones its slot.
+//!   from the parent's current values. Fusion lineage threshold registration
+//!   is not wired yet.
 //!
 //! - `tree_mutation` — steps 7 + 8. Executes every `BoundaryRequest` variant:
 //!   `AddChild` (alloc slot, attach), `Remove` (tombstone subtree, detach),

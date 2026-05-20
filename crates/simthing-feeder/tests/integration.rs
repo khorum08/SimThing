@@ -164,8 +164,11 @@ fn many_patches_same_row_coalesce_to_one_upload() {
         property_id:      pid,
         sub_field_deltas: vec![(SubFieldRole::Amount, op)],
     };
-    for _ in 0..10 {
-        tx.send(FeederWork::Patch(PatchTransform { target: a, delta: mk(TransformOp::Add(0.01)) })).unwrap();
+    for i in 1..=10 {
+        tx.send(FeederWork::Patch(PatchTransform {
+            target: a,
+            delta: mk(TransformOp::Set(i as f32 * 0.01)),
+        })).unwrap();
     }
 
     let out = coord.tick(
@@ -176,8 +179,7 @@ fn many_patches_same_row_coalesce_to_one_upload() {
     assert_eq!(out.patcher_stats.applied_writes, 10);
     assert_eq!(out.uploaded_rows, 1);
 
-    // Cumulative effect on the GPU: 10 × +0.01 = +0.1 (within f32 rounding —
-    // not bit-exact across machines, so check approximately).
+    // Last Set wins on the GPU.
     let values = state.read_values();
     let v = values[0];
     assert!(

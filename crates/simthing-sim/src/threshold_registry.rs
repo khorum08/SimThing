@@ -25,8 +25,9 @@
 //!    crosses the threshold on any live SimThing that has that property.
 //!    One GPU `ThresholdRegistration` per (live sim_thing, fission_template).
 //!
-//! 2. **`FusionThreshold`** on a spawned child — registered at fission time.
-//!    One per live spawned child SimThing.
+//! 2. **Fusion thresholds** are planned but not wired into the builder yet;
+//!    spawned-child lineage metadata is still needed before these can be
+//!    registered automatically.
 //!
 //! 3. **`DecayBehavior::OnThreshold`** — property self-removes when its own
 //!    Amount crosses a threshold. Emits `PropertyExpiry`.

@@ -19,7 +19,7 @@
 
 use simthing_core::{DecayBehavior, DimensionRegistry, SimPropertyId, SimThing, SimThingId};
 use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
-use simthing_gpu::ThresholdEvent;
+use simthing_gpu::{SlotAllocator, ThresholdEvent};
 
 /// Results of one boundary's property expiry pass.
 #[derive(Clone, Debug, Default)]
@@ -39,6 +39,9 @@ pub struct ExpiryOutcome {
 pub fn resolve_property_expiry(
     root:       &mut SimThing,
     registry:   &mut DimensionRegistry,
+    allocator:  &SlotAllocator,
+    values_shadow: &[f32],
+    n_dims:     usize,
     events:     &[ThresholdEvent],
     cpu_reg:    &ThresholdRegistry,
 ) -> ExpiryOutcome {
@@ -61,7 +64,7 @@ pub fn resolve_property_expiry(
     }
 
     // CPU-side sweep: AfterTicks decay and TowardZero decay.
-    cpu_decay_sweep(root, registry, &mut out);
+    cpu_decay_sweep(root, registry, allocator, values_shadow, n_dims, &mut out);
 
     out
 }
@@ -92,32 +95,58 @@ fn tree_has_property(node: &SimThing, pid: SimPropertyId) -> bool {
 fn cpu_decay_sweep(
     root:     &mut SimThing,
     registry: &mut DimensionRegistry,
+    allocator: &SlotAllocator,
+    values_shadow: &[f32],
+    n_dims: usize,
     out:      &mut ExpiryOutcome,
 ) {
-    cpu_decay_node(root, registry, out);
+    let mut removals = Vec::new();
+    cpu_decay_collect(root, registry, allocator, values_shadow, n_dims, &mut removals);
+
+    let mut removed_pids = Vec::new();
+    for (stid, pid) in removals {
+        if remove_property_from_tree(root, stid, pid) {
+            out.cpu_side_removals += 1;
+            out.expired.push((stid, pid));
+            removed_pids.push(pid);
+        }
+    }
+
+    removed_pids.sort_by_key(|pid| pid.index());
+    removed_pids.dedup();
+    for pid in removed_pids {
+        if !tree_has_property(root, pid) {
+            registry.tombstone(pid);
+            out.columns_tombstoned += 1;
+        }
+    }
 }
 
-fn cpu_decay_node(
-    node:     &mut SimThing,
-    registry: &mut DimensionRegistry,
-    out:      &mut ExpiryOutcome,
+fn cpu_decay_collect(
+    node:     &SimThing,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
+    values_shadow: &[f32],
+    n_dims: usize,
+    out:      &mut Vec<(SimThingId, SimPropertyId)>,
 ) {
-    let mut to_remove: Vec<SimPropertyId> = Vec::new();
-
-    for (&pid, pval) in &node.properties {
+    for (&pid, _pval) in &node.properties {
         if !registry.is_active(pid) { continue; }
         let prop = registry.property(pid);
         match &prop.decay {
             Some(DecayBehavior::AfterTicks { remaining: 0 }) => {
-                to_remove.push(pid);
+                out.push((node.id, pid));
             }
             Some(DecayBehavior::TowardZero { .. }) => {
-                // Check amount col.
+                // Check the boundary-synchronized shadow, not stale semantic data.
                 let layout = &prop.layout;
-                let offset = layout.offset_of(&simthing_core::SubFieldRole::Amount);
-                if let Some(off) = offset {
-                    if pval.data.get(off).map(|v| v.abs() < 1e-4).unwrap_or(false) {
-                        to_remove.push(pid);
+                if let Some(slot) = allocator.slot_of(node.id) {
+                    let range = registry.column_range(pid);
+                    if let Some(col) = range.col_for_role(&simthing_core::SubFieldRole::Amount, layout) {
+                        let addr = slot as usize * n_dims + col;
+                        if values_shadow.get(addr).map(|v| v.abs() < 1e-4).unwrap_or(false) {
+                            out.push((node.id, pid));
+                        }
                     }
                 }
             }
@@ -125,17 +154,8 @@ fn cpu_decay_node(
         }
     }
 
-    for pid in to_remove {
-        node.remove_property(&pid);
-        out.cpu_side_removals += 1;
-        out.expired.push((node.id, pid));
-        if !tree_has_property(node, pid) {
-            registry.tombstone(pid);
-        }
-    }
-
-    for child in &mut node.children {
-        cpu_decay_node(child, registry, out);
+    for child in &node.children {
+        cpu_decay_collect(child, registry, allocator, values_shadow, n_dims, out);
     }
 }
 
@@ -143,17 +163,21 @@ fn cpu_decay_node(
 mod tests {
     use super::*;
     use simthing_core::{
-        DimensionRegistry, SimProperty, SimThing, SimThingKind,
+        DecayBehavior, DimensionRegistry, PropertyValue, SimProperty, SimThing, SimThingKind,
+        SubFieldRole,
     };
     use crate::threshold_registry::ThresholdRegistry;
+    use simthing_gpu::SlotAllocator;
 
     #[test]
     fn no_events_no_removals() {
         let mut reg  = DimensionRegistry::new();
         reg.register(SimProperty::simple("core", "loyalty", 0));
         let mut root = SimThing::new(SimThingKind::World, 0);
+        let alloc = SlotAllocator::new();
         let cpu_reg  = ThresholdRegistry::new();
-        let out = resolve_property_expiry(&mut root, &mut reg, &[], &cpu_reg);
+        let n_dims = reg.total_columns;
+        let out = resolve_property_expiry(&mut root, &mut reg, &alloc, &[], n_dims, &[], &cpu_reg);
         assert_eq!(out.properties_removed, 0);
         assert_eq!(out.columns_tombstoned, 0);
     }
@@ -174,15 +198,115 @@ mod tests {
 
         let mut root = SimThing::new(SimThingKind::World, 0);
         root.add_child(cohort);
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
+        let n_dims = reg.total_columns;
+        let shadow = vec![0.0; alloc.capacity() * n_dims];
 
         let events = vec![simthing_gpu::ThresholdEvent {
             slot: 0, col: 0, value: 0.0, event_kind: ek,
         }];
-        let out = resolve_property_expiry(&mut root, &mut reg, &events, &cpu_reg);
+        let out = resolve_property_expiry(
+            &mut root,
+            &mut reg,
+            &alloc,
+            &shadow,
+            n_dims,
+            &events,
+            &cpu_reg,
+        );
 
         assert_eq!(out.properties_removed, 1);
         assert_eq!(out.columns_tombstoned, 1);
         assert!(!reg.is_active(pid));
         assert!(root.children[0].properties.is_empty());
+    }
+
+    #[test]
+    fn toward_zero_uses_shadow_value_not_stale_property_value() {
+        let mut reg = DimensionRegistry::new();
+        let mut prop = SimProperty::simple("core", "loyalty", 0);
+        prop.decay = Some(DecayBehavior::TowardZero { rate: 0.1 });
+        let pid = reg.register(prop);
+        let layout = reg.property(pid).layout.clone();
+        let amount = layout.offset_of(&SubFieldRole::Amount).unwrap();
+
+        let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+        let mut pval = PropertyValue::from_layout(&layout);
+        pval.data[amount] = 0.5;
+        cohort.add_property(pid, pval);
+        let cohort_id = cohort.id;
+
+        let mut root = SimThing::new(SimThingKind::World, 0);
+        root.add_child(cohort);
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
+        let n_dims = reg.total_columns;
+        let mut shadow = vec![0.0; alloc.capacity() * n_dims];
+        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
+        shadow[slot * n_dims + amount] = 0.0;
+
+        let out = resolve_property_expiry(
+            &mut root,
+            &mut reg,
+            &alloc,
+            &shadow,
+            n_dims,
+            &[],
+            &ThresholdRegistry::new(),
+        );
+
+        assert_eq!(out.cpu_side_removals, 1);
+        assert!(root.children[0].properties.is_empty());
+        assert!(!reg.is_active(pid));
+    }
+
+    #[test]
+    fn cpu_decay_keeps_registry_live_when_sibling_still_has_property() {
+        let mut reg = DimensionRegistry::new();
+        let mut prop = SimProperty::simple("core", "loyalty", 0);
+        prop.decay = Some(DecayBehavior::TowardZero { rate: 0.1 });
+        let pid = reg.register(prop);
+        let layout = reg.property(pid).layout.clone();
+        let amount = layout.offset_of(&SubFieldRole::Amount).unwrap();
+
+        let mut a = SimThing::new(SimThingKind::Cohort, 0);
+        a.add_property(pid, reg.property(pid).default_value());
+        let a_id = a.id;
+        let mut b = SimThing::new(SimThingKind::Cohort, 0);
+        b.add_property(pid, reg.property(pid).default_value());
+        let b_id = b.id;
+
+        let mut loc_a = SimThing::new(SimThingKind::Location, 0);
+        let mut loc_b = SimThing::new(SimThingKind::Location, 0);
+        loc_a.add_child(a);
+        loc_b.add_child(b);
+
+        let mut root = SimThing::new(SimThingKind::World, 0);
+        root.add_child(loc_a);
+        root.add_child(loc_b);
+
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
+        let n_dims = reg.total_columns;
+        let mut shadow = vec![0.0; alloc.capacity() * n_dims];
+        let a_slot = alloc.slot_of(a_id).unwrap() as usize;
+        let b_slot = alloc.slot_of(b_id).unwrap() as usize;
+        shadow[a_slot * n_dims + amount] = 0.0;
+        shadow[b_slot * n_dims + amount] = 0.5;
+
+        let out = resolve_property_expiry(
+            &mut root,
+            &mut reg,
+            &alloc,
+            &shadow,
+            n_dims,
+            &[],
+            &ThresholdRegistry::new(),
+        );
+
+        assert_eq!(out.cpu_side_removals, 1);
+        assert_eq!(out.columns_tombstoned, 0);
+        assert!(reg.is_active(pid));
     }
 }

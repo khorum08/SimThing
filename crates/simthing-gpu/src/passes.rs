@@ -468,11 +468,11 @@ impl Pipelines {
     /// Early-returns if no thresholds are registered. Caller is responsible for
     /// reading the result via `state.read_event_count()` + `state.read_event_candidates(n)`.
     pub fn run_threshold_scan(&self, state: &WorldGpuState) {
-        if state.n_thresholds == 0 { return; }
-        let ctx = &state.ctx;
-
         // Reset the atomic counter before this tick's scan.
         state.reset_event_count();
+
+        if state.n_thresholds == 0 { return; }
+        let ctx = &state.ctx;
 
         // n_dims is the only field Pass 7 reads from the uniform; dt is ignored.
         self.write_params(ctx, state, 0.0);
@@ -1056,9 +1056,12 @@ mod tests {
         reg.register(SimProperty::simple("core", "loyalty", 0));
         let state = WorldGpuState::new(ctx, &reg, 2);
         let pipelines = Pipelines::new(&state.ctx);
+        state
+            .ctx
+            .queue
+            .write_buffer(&state.event_count, 0, &42u32.to_le_bytes());
         pipelines.run_threshold_scan(&state); // n_thresholds == 0 → no-op
-        // event_count was never reset (early return), so we don't read it here.
-        // The test passes as long as no panic / no validation error occurs.
+        assert_eq!(state.read_event_count(), 0);
     }
 
     /// End-to-end Pass 0+1+2+3+7: a velocity-integration tick crosses a threshold
