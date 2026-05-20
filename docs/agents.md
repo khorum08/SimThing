@@ -103,17 +103,20 @@ SimThing/
 ## Current implementation state
 
 **Weeks 1–4 complete plus replay delta capture plus Passes 4–6
-(presentation reduction) plus per-entity boundary outcome ids (PR #20).
+(presentation reduction) plus per-entity boundary outcome ids (PR #20)
+plus output-vector thresholds and aggregate alerts (PR #22).
 Both player and AI can submit overlays; `BoundaryProtocol::observe`
 decomposes sub-field values and overlay contributions;
 `BoundaryProtocol::take_delta_log()` drains a `Vec<BoundaryDeltaEntry>`
 with one entry per fission/fusion/expiry/reparent/structural change (full
 ids; `OverlayAttached` still id-only). GPU Passes 4–6 reduce children
 into parents bottom-up using per-sub-field `ReductionRule` (default per
-role: Amount/Velocity/Named → Mean, Intensity → Max).
-`BoundaryProtocol::read_reduced_field(state)` returns aggregated
-`output_vectors` for presentation. CPU oracle matches GPU shader
-bit-exactly. Replay serialization + playback remain deferred (Opus).**
+role: Amount/Velocity/Named → Mean, Intensity → Max, plus
+`WeightedMean`). Pass 7 scans `values` or `output_vectors` via
+`ThresholdRegistration.buffer`; `AggregateAlertRegistration` surfaces
+post-reduction crossings at the boundary. CPU oracle matches GPU shader
+bit-exactly. Replay serialization + playback remain deferred (Opus) —
+the only remaining recommended engine todo.**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
@@ -231,7 +234,6 @@ Highlights:
   threshold crossed by velocity integration.
 
 **Not yet built in simthing-gpu:**
-- Thresholds on `output_vectors` (see worklog).
 - High-level threshold registration helpers (per-property derivation from
   `FissionThreshold` / `DecayBehavior`) — lives in the day-boundary protocol
   code, which is Week 3 work in the upcoming `simthing-sim` crate.
@@ -424,10 +426,12 @@ Integration highlights:
 - `velocity_alert_registration_surfaces_at_boundary` — an AI-facing velocity
   alert registered on a cohort's Velocity sub-field is uploaded to Pass 7 and
   returned through `BoundaryOutcome::velocity_alerts` after it fires.
+- `aggregate_alert_registration_surfaces_at_boundary` — an AI-facing aggregate
+  alert on a Location's reduced Amount column fires after reduction and surfaces
+  through `BoundaryOutcome::aggregate_alerts`.
 
 **Not yet built (see `docs/worklog.md` Next session pickup):**
-- Thresholds on `output_vectors` (aggregated-field Pass 7)
-- Replay serialization + playback (`Overlay` payload in delta log still TBD)
+- Replay serialization + playback (Opus; `Overlay` payload in delta log still TBD)
 - Designer UI (`simthing-studio`) — tabled
 
 ---
@@ -439,8 +443,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 126 tests must pass with zero warnings before any commit
-(16 core + 44 GPU + 21 feeder unit + 4 feeder integration + 33 sim unit + 8 sim integration).
+All 128 tests must pass with zero warnings before any commit
+(16 core + 45 GPU + 21 feeder unit + 4 feeder integration + 33 sim unit + 9 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available
@@ -651,8 +655,9 @@ fn pass_3(@builtin(global_invocation_id) gid: vec3<u32>) {
 ```
 
 One thread per slot. Each thread walks its slot's delta range and applies
-ops in place to `values`. Pass 3 reads from and writes to `values` —
-`output_vectors` is unused for now and is a Pass 4–6 (reduction) concern.
+ops in place to `values`. Pass 3 reads from and writes to `values`; Passes
+4–6 write reduced aggregates into `output_vectors` (Pass 7 can threshold
+either buffer via `ThresholdRegistration.buffer`).
 
 ### Buffer changes in `WorldGpuState`
 

@@ -6,22 +6,39 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-Master is at `6ef455b` (PR #22, output-vector thresholds merged). 128/128
+Master is at `c573363` (PR #22 merged + worklog refresh). **128/128**
 tests passing, zero warnings, no uncommitted work.
+
+**Good stopping point.** All non-Opus items on the recommended pickup list
+are done. The only remaining engine todo is replay (Opus-tier).
 
 ### Todo (recommended order)
 
 - [x] **Per-entity ids in outcome structs** — PR #20.
 - [x] **`WeightedMean { by: SimPropertyId }` reduction variant** — PR #21.
-- [x] **Thresholds on `output_vectors`** — PR #22.
+- [x] **Thresholds on `output_vectors`** — PR #22 (`6ef455b`).
 - [ ] **Replay serialization + playback** (Opus). Format choice (binary frame
-  + delta stream, or line-delimited JSON), file I/O, driver consuming
-  `BoundaryDeltaEntry`s. Still needs full `Overlay` payload in
-  `OverlayAttached` (id-only today). Unblocked on entity ids from PR #20.
+  + delta stream, or line-delimited JSON), file I/O, playback driver
+  consuming `BoundaryDeltaEntry`s. Still needs full `Overlay` payload in
+  `OverlayAttached` (id-only today). Delta capture + per-entity ids are
+  in place (PR #20); serialization and playback are not.
 
-**Next up:** Replay serialization.
+**Next session:** Opus — replay end to end (format → write → read → driver).
 
 **Tabled (not on this list):** `simthing-studio` designer UI.
+
+---
+
+## 2026-05-19 — Session cutoff (after PR #22)
+
+**Status:** Stopping here. Step 1 (output-vector thresholds) shipped as PR #22.
+Sonnet-tier pickup exhausted; replay is the sole remaining recommended todo.
+
+**Handoff for Opus replay:**
+1. Decide on-disk format (binary frames vs line-delimited JSON).
+2. Embed full `Overlay` in `OverlayAttached` (or a parallel replay record).
+3. Implement write path from `take_delta_log()` + optional periodic snapshots.
+4. Implement playback driver that reapplies deltas through `BoundaryProtocol`.
 
 ---
 
