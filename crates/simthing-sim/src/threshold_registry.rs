@@ -43,7 +43,10 @@
 use simthing_core::{
     DecayBehavior, DimensionRegistry, Direction, SimPropertyId, SimThing, SimThingId, SubFieldRole,
 };
-use simthing_gpu::{SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD};
+use simthing_gpu::{
+    SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
+    THRESH_BUF_VALUES,
+};
 
 // ── Semantic action ───────────────────────────────────────────────────────────
 
@@ -81,15 +84,23 @@ pub enum ThresholdSemantic {
         property_id: SimPropertyId,
     },
 
-    /// Velocity alert (AI-registered). Surfaced by `BoundaryOutcome`.
+    /// Velocity alert (AI-registered). Scans per-slot `values`.
     VelocityAlert {
+        sim_thing_id: SimThingId,
+        property_id: SimPropertyId,
+        sub_field: SubFieldRole,
+    },
+
+    /// Aggregate alert (AI-registered). Scans post-reduction `output_vectors`
+    /// on inner nodes (e.g. location instability from cohort children).
+    AggregateAlert {
         sim_thing_id: SimThingId,
         property_id: SimPropertyId,
         sub_field: SubFieldRole,
     },
 }
 
-/// AI-facing threshold registration for a rate/trajectory column.
+/// AI-facing threshold registration for a rate/trajectory column on `values`.
 #[derive(Clone, Debug)]
 pub struct VelocityAlertRegistration {
     pub sim_thing_id: SimThingId,
@@ -97,6 +108,25 @@ pub struct VelocityAlertRegistration {
     pub sub_field: SubFieldRole,
     pub threshold: f32,
     pub direction: Direction,
+}
+
+/// AI-facing threshold on post-reduction `output_vectors` (parent aggregates).
+#[derive(Clone, Debug)]
+pub struct AggregateAlertRegistration {
+    pub sim_thing_id: SimThingId,
+    pub property_id: SimPropertyId,
+    pub sub_field: SubFieldRole,
+    pub threshold: f32,
+    pub direction: Direction,
+}
+
+/// Fired aggregate alert surfaced by the boundary protocol.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AggregateAlertEvent {
+    pub sim_thing_id: SimThingId,
+    pub property_id: SimPropertyId,
+    pub sub_field: SubFieldRole,
+    pub value: f32,
 }
 
 /// Fired velocity alert surfaced by the boundary protocol.
@@ -168,6 +198,16 @@ impl ThresholdBuilder {
         allocator: &SlotAllocator,
         velocity_alerts: &[VelocityAlertRegistration],
     ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
+        Self::build_with_alerts(root, dim_reg, allocator, velocity_alerts, &[])
+    }
+
+    pub fn build_with_alerts(
+        root: &SimThing,
+        dim_reg: &DimensionRegistry,
+        allocator: &SlotAllocator,
+        velocity_alerts: &[VelocityAlertRegistration],
+        aggregate_alerts: &[AggregateAlertRegistration],
+    ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
         let mut gpu_regs = Vec::new();
         let mut cpu_reg = ThresholdRegistry::new();
         Self::walk(root, dim_reg, allocator, &mut gpu_regs, &mut cpu_reg);
@@ -175,6 +215,13 @@ impl ThresholdBuilder {
             dim_reg,
             allocator,
             velocity_alerts,
+            &mut gpu_regs,
+            &mut cpu_reg,
+        );
+        Self::push_aggregate_alerts(
+            dim_reg,
+            allocator,
+            aggregate_alerts,
             &mut gpu_regs,
             &mut cpu_reg,
         );
@@ -211,7 +258,7 @@ impl ThresholdBuilder {
                             threshold: ft.threshold,
                             direction: direction_to_u32(&ft.direction),
                             event_kind,
-                            _pad: 0,
+                            buffer: THRESH_BUF_VALUES,
                         });
                     }
                 }
@@ -266,7 +313,7 @@ impl ThresholdBuilder {
                         threshold: *threshold,
                         direction: direction_to_u32(direction),
                         event_kind,
-                        _pad: 0,
+                        buffer: THRESH_BUF_VALUES,
                     });
                 }
             }
@@ -279,7 +326,7 @@ impl ThresholdBuilder {
                         threshold: *intensity_floor,
                         direction: DIR_DOWNWARD,
                         event_kind,
-                        _pad: 0,
+                        buffer: THRESH_BUF_VALUES,
                     });
                 }
             }
@@ -298,7 +345,7 @@ impl ThresholdBuilder {
                         threshold: *threshold,
                         direction: DIR_EITHER,
                         event_kind,
-                        _pad: 0,
+                        buffer: THRESH_BUF_VALUES,
                     });
                 }
             }
@@ -340,7 +387,43 @@ impl ThresholdBuilder {
                 threshold: alert.threshold,
                 direction: direction_to_u32(&alert.direction),
                 event_kind,
-                _pad: 0,
+                buffer: THRESH_BUF_VALUES,
+            });
+        }
+    }
+
+    fn push_aggregate_alerts(
+        dim_reg: &DimensionRegistry,
+        allocator: &SlotAllocator,
+        aggregate_alerts: &[AggregateAlertRegistration],
+        gpu_regs: &mut Vec<ThresholdRegistration>,
+        cpu_reg: &mut ThresholdRegistry,
+    ) {
+        for alert in aggregate_alerts {
+            if !dim_reg.is_active(alert.property_id) {
+                continue;
+            }
+            let Some(slot) = allocator.slot_of(alert.sim_thing_id) else {
+                continue;
+            };
+            let range = dim_reg.column_range(alert.property_id);
+            let layout = &dim_reg.property(alert.property_id).layout;
+            let Some(col) = range.col_for_role(&alert.sub_field, layout) else {
+                continue;
+            };
+
+            let event_kind = cpu_reg.push(ThresholdSemantic::AggregateAlert {
+                sim_thing_id: alert.sim_thing_id,
+                property_id: alert.property_id,
+                sub_field: alert.sub_field.clone(),
+            });
+            gpu_regs.push(ThresholdRegistration {
+                slot,
+                col: col as u32,
+                threshold: alert.threshold,
+                direction: direction_to_u32(&alert.direction),
+                event_kind,
+                buffer: THRESH_BUF_OUTPUT,
             });
         }
     }

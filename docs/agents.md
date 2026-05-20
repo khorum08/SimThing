@@ -138,7 +138,9 @@ bit-exactly. Replay serialization + playback remain deferred (Opus).**
 - `IntensityParams` (24 B) — `(velocity_col, intensity_col, velocity_threshold, build_coef, decay_coef, _pad)`.
 - `OverlayDelta` (16 B) — `(col, op_kind, value, _pad)`. `op_kind`: 0=Multiply, 1=Add, 2=Set.
 - `SlotDeltaRange` (8 B) — `(offset, length)` into the flat `overlay_deltas` buffer.
-- `ThresholdRegistration` (24 B) — `(slot, col, threshold, direction, event_kind, _pad)`.
+- `ThresholdRegistration` (24 B) — `(slot, col, threshold, direction, event_kind, buffer)`.
+  `buffer`: `THRESH_BUF_VALUES` (0) scans `values`/`previous_values`;
+  `THRESH_BUF_OUTPUT` (1) scans `output_vectors`/`previous_output_vectors`.
   `direction`: 0=Upward, 1=Downward, 2=Either. `event_kind` is an opaque u32 the CPU
   side maps back to fission stage / decay expiry / velocity warning / etc.
 - `ThresholdEvent` (16 B) — `(slot, col, value, event_kind)`. Sparse output of Pass 7.

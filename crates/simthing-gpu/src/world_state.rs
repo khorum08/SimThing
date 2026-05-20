@@ -168,12 +168,19 @@ pub const DIR_UPWARD: u32 = 0;
 pub const DIR_DOWNWARD: u32 = 1;
 pub const DIR_EITHER: u32 = 2;
 
+/// Pass 7 reads crossing state from `values` / `previous_values`.
+pub const THRESH_BUF_VALUES: u32 = 0;
+/// Pass 7 reads crossing state from `output_vectors` / `previous_output_vectors`
+/// (post-reduction aggregates).
+pub const THRESH_BUF_OUTPUT: u32 = 1;
+
 /// One GPU threshold registration. Resolved (slot, col) pair plus the trigger
 /// threshold, direction, and an opaque `event_kind` that downstream CPU code
 /// interprets (fission stage / decay expiry / velocity warning / etc.).
 ///
 /// `direction`: 0 = `DIR_UPWARD` (prev ≤ t, curr > t), 1 = `DIR_DOWNWARD`
 /// (prev ≥ t, curr < t), 2 = `DIR_EITHER` (either crossing).
+/// `buffer`: `THRESH_BUF_VALUES` or `THRESH_BUF_OUTPUT`.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 pub struct ThresholdRegistration {
@@ -182,7 +189,7 @@ pub struct ThresholdRegistration {
     pub threshold: f32,
     pub direction: u32,
     pub event_kind: u32,
-    pub _pad: u32,
+    pub buffer: u32,
 }
 
 /// One sparse threshold-crossing event emitted by Pass 7. CPU reads these at
@@ -247,6 +254,10 @@ pub struct WorldGpuState {
     pub previous_values: Buffer,
     /// Per-slot post-reduction output (Pass 4–6 destination).
     pub output_vectors: Buffer,
+    /// Snapshot of `output_vectors` taken at Pass 0 each tick (before this
+    /// tick's reduction overwrites aggregates). Used by output-buffer Pass 7
+    /// registrations.
+    pub previous_output_vectors: Buffer,
 
     /// Property-level flat buffer of GovernedPair structs. Same pairs apply
     /// to every slot — Pass 1 dispatches `(n_pairs × n_slots)` threads.
@@ -316,6 +327,7 @@ impl WorldGpuState {
         let values = mk("values", per_slot_per_col_bytes);
         let previous_values = mk("previous_values", per_slot_per_col_bytes);
         let output_vectors = mk("output_vectors", per_slot_per_col_bytes);
+        let previous_output_vectors = mk("previous_output_vectors", per_slot_per_col_bytes);
 
         // Pass 3 buffers — overlay_deltas grows on demand via upload_overlay_deltas.
         // Initial size is one placeholder OverlayDelta so the binding is valid.
@@ -393,6 +405,7 @@ impl WorldGpuState {
             values,
             previous_values,
             output_vectors,
+            previous_output_vectors,
             governed_pairs,
             intensity_params,
             overlay_deltas,
@@ -430,6 +443,8 @@ impl WorldGpuState {
         self.values = self.mk_storage_buffer("values", per_slot_per_col_bytes);
         self.previous_values = self.mk_storage_buffer("previous_values", per_slot_per_col_bytes);
         self.output_vectors = self.mk_storage_buffer("output_vectors", per_slot_per_col_bytes);
+        self.previous_output_vectors =
+            self.mk_storage_buffer("previous_output_vectors", per_slot_per_col_bytes);
         self.slot_delta_ranges = self.mk_storage_buffer(
             "slot_delta_ranges",
             (self.n_slots as u64) * std::mem::size_of::<SlotDeltaRange>() as u64,
@@ -629,6 +644,13 @@ impl WorldGpuState {
         self.read_buffer_f32(&self.output_vectors)
     }
 
+    pub fn write_output_vectors(&self, data: &[f32]) {
+        assert_eq!(data.len(), self.values_len());
+        self.ctx
+            .queue
+            .write_buffer(&self.output_vectors, 0, bytemuck::cast_slice(data));
+    }
+
     /// Reset the per-tick atomic event counter to zero. Call this before each
     /// `run_threshold_scan`; `Pipelines::run_threshold_scan` does it internally.
     pub fn reset_event_count(&self) {
@@ -667,6 +689,7 @@ impl WorldGpuState {
         self.values.size()
             + self.previous_values.size()
             + self.output_vectors.size()
+            + self.previous_output_vectors.size()
             + self.governed_pairs.size()
             + self.intensity_params.size()
             + self.overlay_deltas.size()
@@ -706,6 +729,17 @@ impl WorldGpuState {
 
     pub fn read_previous_values(&self) -> Vec<f32> {
         self.read_buffer_f32(&self.previous_values)
+    }
+
+    pub fn write_previous_output_vectors(&self, data: &[f32]) {
+        assert_eq!(data.len(), self.values_len());
+        self.ctx
+            .queue
+            .write_buffer(&self.previous_output_vectors, 0, bytemuck::cast_slice(data));
+    }
+
+    pub fn read_previous_output_vectors(&self) -> Vec<f32> {
+        self.read_buffer_f32(&self.previous_output_vectors)
     }
 
     pub fn read_governed_pairs(&self) -> Vec<GovernedPair> {
@@ -962,7 +996,7 @@ mod tests {
         assert_eq!(state.n_slots, 100);
 
         // Projected layout (bytes):
-        //   values + previous + output     = 3 × (100 × 8 × 4) = 9600
+        //   values + previous + output + previous_output = 4 × (100 × 8 × 4) = 12800
         //   governed_pairs                 = 1 pair × 24       =   24
         //   intensity_params (placeholder) = 1 × 24            =   24
         //   overlay_deltas (placeholder)   = 1 × 16            =   16
@@ -970,7 +1004,11 @@ mod tests {
         //   threshold_registry (placeholder) = 1 × 24          =   24
         //   event_count                    = 4                 =    4
         //   event_candidates (placeholder) = 1 × 16            =   16
-        let projected: u64 = 9600 + 24 + 24 + 16 + 800 + 24 + 4 + 16;
+        //   child_starts                   = 101 × 4           =  404
+        //   child_indices (placeholder)  = 4                 =    4
+        //   column_rules                 = 8 × 8             =   64
+        //   depth_slots (placeholder)    = 4                 =    4
+        let projected: u64 = 12800 + 24 + 24 + 16 + 800 + 24 + 4 + 16 + 404 + 4 + 64 + 4;
         let actual = state.total_buffer_bytes();
 
         let diff = actual as i64 - projected as i64;
@@ -1005,7 +1043,7 @@ mod tests {
                 threshold: 0.3,
                 direction: DIR_DOWNWARD,
                 event_kind: 1,
-                _pad: 0,
+                buffer: THRESH_BUF_VALUES,
             },
             ThresholdRegistration {
                 slot: 1,
@@ -1013,7 +1051,7 @@ mod tests {
                 threshold: 0.7,
                 direction: DIR_UPWARD,
                 event_kind: 2,
-                _pad: 0,
+                buffer: THRESH_BUF_VALUES,
             },
             ThresholdRegistration {
                 slot: 2,
@@ -1021,7 +1059,7 @@ mod tests {
                 threshold: 0.0,
                 direction: DIR_EITHER,
                 event_kind: 3,
-                _pad: 0,
+                buffer: THRESH_BUF_VALUES,
             },
         ];
         state.upload_thresholds(&regs);

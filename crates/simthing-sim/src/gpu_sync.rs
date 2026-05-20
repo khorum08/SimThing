@@ -34,7 +34,9 @@
 //!    full widened shadow into the rebuilt GPU buffers.
 //!
 
-use crate::threshold_registry::{ThresholdBuilder, ThresholdRegistry, VelocityAlertRegistration};
+use crate::threshold_registry::{
+    AggregateAlertRegistration, ThresholdBuilder, ThresholdRegistry, VelocityAlertRegistration,
+};
 use simthing_core::{DimensionRegistry, SimThing};
 use simthing_feeder::DispatchCoordinator;
 use simthing_gpu::{
@@ -60,6 +62,7 @@ pub fn sync_gpu_buffers(
     coord: &DispatchCoordinator,
     state: &mut WorldGpuState,
     velocity_alerts: &[VelocityAlertRegistration],
+    aggregate_alerts: &[AggregateAlertRegistration],
 ) -> GpuSyncOutcome {
     let mut out = GpuSyncOutcome::default();
 
@@ -82,8 +85,13 @@ pub fn sync_gpu_buffers(
     out.overlay_deltas_uploaded = n_deltas;
 
     // 2. Threshold registrations.
-    let (gpu_regs, cpu_reg) =
-        ThresholdBuilder::build_with_velocity_alerts(root, registry, allocator, velocity_alerts);
+    let (gpu_regs, cpu_reg) = ThresholdBuilder::build_with_alerts(
+        root,
+        registry,
+        allocator,
+        velocity_alerts,
+        aggregate_alerts,
+    );
     let n_regs = gpu_regs.len() as u32;
     state.upload_thresholds(&gpu_regs);
     out.threshold_regs_uploaded = n_regs;

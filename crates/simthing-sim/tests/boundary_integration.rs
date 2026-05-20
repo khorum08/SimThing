@@ -16,7 +16,7 @@ use simthing_feeder::{
     ai_channel, feeder_channel, BoundaryRequest, DispatchCoordinator, FeederWork, TransformPatcher,
 };
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
-use simthing_sim::{BoundaryProtocol, VelocityAlertRegistration};
+use simthing_sim::{AggregateAlertRegistration, BoundaryProtocol, VelocityAlertRegistration};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -665,6 +665,113 @@ fn ai_intent_mid_day_effect_and_boundary_attach() {
         find_node(&proto.root, cohort_id).unwrap().overlays.iter().any(|o| o.id == overlay_id),
         "AI intent overlay must be in tree after boundary"
     );
+}
+
+/// Register an aggregate alert on a Location's reduced Amount column; after
+/// a patch raises the child mean across the threshold, Pass 7 fires and the
+/// boundary surfaces `AggregateAlertEvent`.
+#[test]
+fn aggregate_alert_registration_surfaces_at_boundary() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    let pid = reg.register(SimProperty::simple("core", "loyalty", 0));
+    let layout = reg.property(pid).layout.clone();
+    let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+
+    let mut c1 = SimThing::new(SimThingKind::Cohort, 0);
+    let mut pv1 = PropertyValue::from_layout(&layout);
+    pv1.data[a_off] = 0.40;
+    c1.add_property(pid, pv1);
+    let c1_id = c1.id;
+
+    let mut c2 = SimThing::new(SimThingKind::Cohort, 0);
+    let mut pv2 = PropertyValue::from_layout(&layout);
+    pv2.data[a_off] = 0.40;
+    c2.add_property(pid, pv2);
+    let c2_id = c2.id;
+
+    let mut loc = SimThing::new(SimThingKind::Location, 0);
+    let loc_id = loc.id;
+    loc.add_child(c1);
+    loc.add_child(c2);
+    let mut world = SimThing::new(SimThingKind::World, 0);
+    world.add_child(loc);
+
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&world);
+
+    const N_SLOTS: u32 = 8;
+    let n_dims = reg.total_columns as u32;
+    let n_dims_us = n_dims as usize;
+
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (tx, rx) = feeder_channel();
+
+    let c1_slot = alloc.slot_of(c1_id).unwrap() as usize;
+    let c2_slot = alloc.slot_of(c2_id).unwrap() as usize;
+    coord.shadow[c1_slot * n_dims_us + a_off] = 0.40;
+    coord.shadow[c2_slot * n_dims_us + a_off] = 0.40;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.register_aggregate_alert(AggregateAlertRegistration {
+        sim_thing_id: loc_id,
+        property_id: pid,
+        sub_field: SubFieldRole::Amount,
+        threshold: 0.45,
+        direction: Direction::Rising,
+    });
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    let _ = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
+    );
+
+    tx.submit_patch(
+        c2_id,
+        PropertyTransformDelta {
+            property_id: pid,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(1.0))],
+        },
+    )
+    .unwrap();
+
+    let tick2 = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
+    );
+    assert!(
+        tick2
+            .events
+            .iter()
+            .any(|e| e.value.to_bits() == 0.70_f32.to_bits()),
+        "aggregate alert threshold never fired (expected loc mean 0.70)",
+    );
+
+    let boundary = proto.execute(tick2.events, &mut patcher, &mut coord, &mut state, 1);
+    assert_eq!(boundary.aggregate_alerts.len(), 1);
+    let alert = &boundary.aggregate_alerts[0];
+    assert_eq!(alert.sim_thing_id, loc_id);
+    assert_eq!(alert.property_id, pid);
+    assert_eq!(alert.sub_field, SubFieldRole::Amount);
+    assert_eq!(alert.value.to_bits(), 0.70_f32.to_bits());
 }
 
 /// After `initial_gpu_sync` + one tick, the GPU `output_vectors` buffer must
