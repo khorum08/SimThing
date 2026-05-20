@@ -108,14 +108,18 @@ SimThing/
 **Weeks 1–4 complete plus replay delta capture (v1 + v2) plus Passes 4–6
 (presentation reduction), per-entity boundary outcome ids (PR #20),
 output-vector thresholds and aggregate alerts (PR #22), state-authority
-hardening (PR #23), fusion lineage + scar semantics (PR #26), and full
-replay payload (PR #27). Within-day shadow patches apply only `Set`
-immediately; `Add`/`Multiply` are skipped and counted as unsafe RMW unless a
-future GPU-delta/readback path is added. Boundary expiry uses synchronized
-shadow for TowardZero checks, registry tombstoning waits for whole-tree
-liveness, AddChild projects semantic property values into shadow, Remove
-zeroes tombstoned rows, and fission secondary checks use the triggering
-property. Both player and AI can submit overlays; `BoundaryProtocol::observe`
+hardening (PR #23), fusion lineage + scar semantics (PR #26), full replay
+payload (PR #27), and GPU growth/patch-authority hardening (`4b5f1c6`).
+Within-day shadow patches apply `Set` directly; `Add`/`Multiply` require a
+GPU-synced row. The coordinator refreshes affected rows through
+`read_values_row` before applying collected work, while direct `apply_one`
+skips unsafe RMW unless called with `ShadowFreshness::GpuSynced`. Boundary
+expiry uses synchronized shadow for TowardZero checks, registry tombstoning
+waits for whole-tree liveness, AddChild projects semantic property values into
+shadow, Remove zeroes tombstoned rows, fission secondary checks use the
+triggering property, and boundary slot growth rebuilds GPU state with amortized
+doubling instead of panicking when fission/AddChild exceed initial headroom.
+Both player and AI can submit overlays; `BoundaryProtocol::observe`
 (cheap shadow) and `observe_live` (one GPU row readback for UI/debug) decompose
 sub-field values and overlay contributions;
 `BoundaryProtocol::take_delta_log()` drains a `Vec<BoundaryDeltaEntry>` with
@@ -455,10 +459,15 @@ Integration highlights:
   through `BoundaryOutcome::aggregate_alerts`.
 
 **Not yet built (see `docs/worklog.md` Next session pickup):**
+- GPU-side intent delta buffer/pass to eliminate per-slot blocking RMW readbacks.
+- One-encoder tick pipeline / command submission consolidation.
+- Synthetic performance stress scenarios beyond the builtin demo.
 - Full RON scenario files (tree + registry inline; today: `builtin` templates only).
 - Designer UI (`simthing-studio`) — tabled
 
 **Built (playability):**
+- `crates/simthing-driver` exposes `simthing record`, `simthing replay`, and
+  `simthing bench`.
 - `crates/simthing-driver` — `SimSession`, `Scenario`, `simthing record` / `simthing replay` CLI.
 - `scenarios/rebellion_demo.ron` — builtin rebellion demo (World → Location → Cohort).
 

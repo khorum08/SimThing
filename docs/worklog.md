@@ -6,7 +6,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-20 - GPU growth and semantic hardening
 
-**Status:** Implemented locally after re-contextualizing the hardening digest.
+**Status:** Merged to master (`4b5f1c6`).
 
 **Landed:**
 
@@ -39,9 +39,11 @@ interim measurement step.
 ## Next session pickup
 
 **173/173** tests passing plus 1 ignored timing diagnostic, zero warnings.
-Master at local hardening branch after GPU growth/performance pass.
+Master at `4b5f1c6` (GPU growth and patch-authority hardening).
 
 ### Todo (recommended order)
+
+#### Done
 
 - [x] **Per-entity ids in outcome structs** — PR #20.
 - [x] **`WeightedMean { by: SimPropertyId }` reduction variant** — PR #21.
@@ -55,8 +57,26 @@ Master at local hardening branch after GPU growth/performance pass.
 - [x] **Recording harness + sim driver + rebellion demo scenario** — PR #29.
 - [x] **Driver GPU integration tests** — `session_integration.rs` (run + record/replay).
 
-**Next session:** Batch or eliminate mid-day RMW readbacks. Preferred path:
-GPU-side intent delta buffer/pass; batch row readback is an interim fallback.
+- [x] **GPU growth + patch-authority hardening** - `4b5f1c6`.
+
+#### Next
+
+- [ ] **Eliminate per-slot blocking RMW readbacks.** Preferred path:
+      GPU-side intent delta buffer/pass. Batch row readback is acceptable only
+      as an interim measurement step.
+- [ ] **Consolidate GPU command submission.** Add a one-encoder tick pipeline
+      that records snapshot, velocity, intensity, overlays, reduction, and
+      threshold scan before one queue submit; keep individual pass APIs for
+      tests.
+- [ ] **Expand performance harness coverage.** Add synthetic stress scenarios:
+      `map_1m_light`, `pop_heavy`, `intent_stress`, `fission_stress`, and
+      `threshold_stress`, reporting ms/tick, ms/boundary, ms/sim-day, RMW
+      bytes, overlay deltas, thresholds, and reduction depths.
+- [ ] **Document/prototype map-scale representation.** Keep current
+      `SimThing` as semantic authoring state; evaluate arena/topology sidecars
+      only after benchmark data shows tree representation pressure.
+- [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds remains
+      useful, but it is behind the GPU performance path.
 
 **Recent:** GPU growth/performance hardening landed: overlay lifecycle now
 respects semantic property presence, invalid overlay property ids no longer
