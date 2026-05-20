@@ -7,8 +7,7 @@ Running log of what's done and what's next, across sessions.
 ## Next session pickup
 
 **157/157** tests passing plus 1 ignored timing diagnostic, zero warnings.
-Master at `ff8e222` (PR #28). Playability path landed locally: `simthing-driver`
-crate, `scenarios/rebellion_demo.ron`, `simthing record` / `simthing replay` CLI.
+Master at `57a3231` (PR #29, simthing-driver + playability path).
 
 ### Todo (recommended order)
 
