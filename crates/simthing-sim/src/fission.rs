@@ -416,7 +416,6 @@ mod tests {
     fn make_fission_property() -> SimProperty {
         let mut p = SimProperty::simple("core", "loyalty", 0);
         p.fission_templates = vec![FissionThreshold {
-            dimension:  SimPropertyId(0),
             sub_field:  SubFieldRole::Amount,
             threshold:  0.3,
             direction:  Direction::Falling,

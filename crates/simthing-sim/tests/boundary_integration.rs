@@ -31,9 +31,6 @@ fn loyalty_with_fission() -> SimProperty {
     let mut p = SimProperty::simple("core", "loyalty", 0);
     p.intensity_behavior = Some(IntensityBehavior::default());
     p.fission_templates = vec![FissionThreshold {
-        // dimension/sub_field of the threshold itself. The Builder uses
-        // these to pick the right column for the GPU registration.
-        dimension: simthing_core::SimPropertyId(0),
         sub_field: SubFieldRole::Amount,
         threshold: 0.3,
         direction: Direction::Falling,
@@ -206,6 +203,80 @@ fn fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean() {
     assert!(
         amount_now < 0.3,
         "rebelling cohort amount should remain below 0.3, got {amount_now}"
+    );
+}
+
+#[test]
+fn fission_beyond_initial_headroom_grows_gpu_state() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    reg.register(loyalty_with_fission());
+
+    let (world, alloc, cohort_id) = build_initial_world(&mut reg);
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let n_dims = reg.total_columns as u32;
+    let initial_slots = alloc.capacity() as u32;
+
+    let mut state = WorldGpuState::new(ctx, &reg, initial_slots);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(initial_slots as usize);
+    let mut coord = DispatchCoordinator::new(initial_slots, n_dims, 1);
+    let (_tx, rx) = feeder_channel();
+
+    let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+    let base = cohort_slot * n_dims as usize;
+    coord.shadow[base + amount_off] = 0.5;
+    coord.shadow[base + vel_off] = -0.21;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    let mut events_fired = Vec::new();
+    for _ in 0..8 {
+        let out = coord.tick(
+            &rx,
+            &mut patcher,
+            &proto.registry,
+            &proto.allocator,
+            &pipelines,
+            &mut state,
+            0.5,
+        );
+        if !out.events.is_empty() {
+            events_fired = out.events;
+            break;
+        }
+    }
+    assert!(!events_fired.is_empty(), "fission threshold never fired");
+
+    let outcome = proto.execute(events_fired, &mut patcher, &mut coord, &mut state, 1);
+
+    assert_eq!(outcome.fission.fissions_executed, 1);
+    assert!(coord.n_slots() > initial_slots);
+    assert_eq!(state.n_slots, coord.n_slots());
+    assert_eq!(coord.shadow.len(), state.values_len());
+
+    let child_id = find_node(&proto.root, cohort_id)
+        .expect("cohort exists")
+        .children[0]
+        .id;
+    let child_slot = proto.allocator.slot_of(child_id).expect("child slot") as usize;
+    let gpu = state.read_values();
+    assert_eq!(
+        gpu[child_slot * n_dims as usize + amount_off].to_bits(),
+        0.0f32.to_bits(),
+        "grown GPU state should receive seeded fission child row"
+    );
+    assert_eq!(
+        gpu[child_slot * n_dims as usize + vel_off].to_bits(),
+        (-0.21f32).to_bits(),
     );
 }
 

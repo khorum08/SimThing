@@ -4,10 +4,42 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-20 - GPU growth and semantic hardening
+
+**Status:** Implemented locally after re-contextualizing the hardening digest.
+
+**Landed:**
+
+- `overlay_lifecycle` now requires semantic property presence before reading
+  dense shadow values for `PropertyBelow` / `PropertyReaches`, so absent
+  properties no longer dissolve overlays because their column happens to be 0.
+- Overlay expiration uses safe registry accessors; invalid or inactive
+  transform property ids no longer panic lifecycle resolution.
+- `FissionThreshold.dimension` was removed. Fission thresholds now clearly
+  watch the owning property's `sub_field`; future cross-property fission should
+  use explicit `watched_property` / `fission_property` fields.
+- `TransformPatcher::apply_one` now takes `ShadowFreshness`. Add/Multiply skip
+  with `unsafe_rmw_skipped` unless the caller supplies `GpuSynced`; the
+  dispatcher still refreshes RMW rows before applying collected work.
+- Boundary slot growth now resizes `DispatchCoordinator`, `TransformPatcher`,
+  and `WorldGpuState` with amortized doubling. Fission/AddChild can grow past
+  initial headroom without panicking, with shadow as the preservation source.
+- Tick/session outcomes now accumulate RMW row-sync count and readback bytes.
+  `simthing bench --scenario <file.ron> [--days N]` reports timing, slot growth,
+  RMW readback cost, and final GPU buffer bytes.
+
+**Tests:** `cargo test --workspace` => 173 passed, 1 ignored timing diagnostic.
+
+**Next optimization:** Replace per-slot blocking RMW row readbacks with a
+GPU-side intent delta buffer/pass. Batch readback is acceptable only as an
+interim measurement step.
+
+---
+
 ## Next session pickup
 
-**164/164** tests passing plus 1 ignored timing diagnostic, zero warnings.
-Master at `965ebf1` (PR #32, observe_live GPU row readback).
+**173/173** tests passing plus 1 ignored timing diagnostic, zero warnings.
+Master at local hardening branch after GPU growth/performance pass.
 
 ### Todo (recommended order)
 
@@ -23,12 +55,15 @@ Master at `965ebf1` (PR #32, observe_live GPU row readback).
 - [x] **Recording harness + sim driver + rebellion demo scenario** — PR #29.
 - [x] **Driver GPU integration tests** — `session_integration.rs` (run + record/replay).
 
-**Next session:** Expand scenario format (full RON tree/registry), or start
-`simthing-studio` (tabled).
+**Next session:** Batch or eliminate mid-day RMW readbacks. Preferred path:
+GPU-side intent delta buffer/pass; batch row readback is an interim fallback.
 
-**Recent:** Design carry-over gaps closed — mid-day Add/Multiply via GPU row
-sync, replay `OverlayDissolved`/`AggregateAlert`/`shadow_values` checkpoints,
-state authority checklist enforced in docs + tests.
+**Recent:** GPU growth/performance hardening landed: overlay lifecycle now
+respects semantic property presence, invalid overlay property ids no longer
+panic expiration, fission thresholds now watch their owning property, direct
+`apply_one` cannot stale-RMW silently, boundary slot growth rebuilds GPU state
+instead of panicking, and tick/session/CLI benchmark metrics report RMW readback
+cost.
 
 **Tabled:** `simthing-studio` designer UI.
 

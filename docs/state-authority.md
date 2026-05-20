@@ -20,9 +20,10 @@ It is uploaded to the GPU for dirty rows **before** Pass 0 each tick.
 | Op | Allowed mid-day? | Rationale |
 |----|------------------|-----------|
 | `Set` | Yes | Absolute write; safe even if shadow lags integration by one tick. |
-| `Add` / `Multiply` | Yes (with sync) | `DispatchCoordinator::tick` refreshes affected shadow rows from GPU via `read_values_row` before the Patcher applies RMW ops. |
+| `Add` / `Multiply` | Yes (with sync) | `DispatchCoordinator::tick` refreshes affected shadow rows from GPU via `read_values_row` before the Patcher applies RMW ops. Direct `apply_one` skips these ops unless called with `ShadowFreshness::GpuSynced`. |
 
-RMW without GPU sync (direct `apply_one` in tests) still requires a current shadow row.
+RMW without GPU sync is treated as unsafe: direct `apply_one` increments
+`unsafe_rmw_skipped` and leaves the row clean.
 
 ### Player / AI intents (two-phase)
 
@@ -56,6 +57,12 @@ Fusion scar (`apply_fusion_scar`) mutates the parent's row in shadow, not
 `SimThing.properties` — consistent with runtime truth living in GPU/shadow.
 
 ---
+
+If boundary growth allocates beyond the current GPU slot capacity, the boundary
+protocol grows `DispatchCoordinator`, `TransformPatcher`, and `WorldGpuState`
+with amortized doubling before the final sync. The CPU shadow remains the
+authoritative preservation source; GPU buffers are rebuilt and then receive the
+full shadow upload.
 
 ## `SimThing.properties`
 

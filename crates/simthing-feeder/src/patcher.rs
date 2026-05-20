@@ -50,6 +50,14 @@ use simthing_core::{DimensionRegistry, PropertyTransformDelta, TransformOp};
 use simthing_gpu::SlotAllocator;
 use std::collections::HashSet;
 
+/// Whether the shadow rows supplied to the patcher are known to include the
+/// latest GPU-integrated values.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShadowFreshness {
+    Unknown,
+    GpuSynced,
+}
+
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
 /// Diagnostic counters for a single `drain` invocation. Reset to zero at the
@@ -57,17 +65,17 @@ use std::collections::HashSet;
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PatcherStats {
     /// Patches whose target id had no slot in the `SlotAllocator`.
-    pub missing_targets:   u32,
+    pub missing_targets: u32,
     /// Patches referencing a property no longer active in the registry.
     pub inactive_property: u32,
     /// (role, op) pairs whose role had no offset in the property's layout.
-    pub unresolved_roles:  u32,
+    pub unresolved_roles: u32,
     /// Individual sub-field writes that actually landed in the shadow.
-    pub applied_writes:    u32,
+    pub applied_writes: u32,
     /// Add/Multiply writes skipped because no GPU row sync was available.
     pub unsafe_rmw_skipped: u32,
     /// Boundary requests parked for the Tree Maintainer (not applied here).
-    pub boundary_parked:   u32,
+    pub boundary_parked: u32,
     /// Player intent overlays parked for attachment at the next boundary.
     pub player_intents_parked: u32,
     /// AI intent overlays parked for attachment at the next boundary.
@@ -103,11 +111,11 @@ pub struct TransformPatcher {
 impl TransformPatcher {
     pub fn new(n_slots: usize) -> Self {
         Self {
-            pending_boundary:       Vec::new(),
+            pending_boundary: Vec::new(),
             pending_player_intents: Vec::new(),
-            pending_ai_intents:     Vec::new(),
-            ai_receiver:            None,
-            dirty:                  vec![false; n_slots],
+            pending_ai_intents: Vec::new(),
+            ai_receiver: None,
+            dirty: vec![false; n_slots],
         }
     }
 
@@ -124,20 +132,23 @@ impl TransformPatcher {
     /// are refreshed from the GPU before application so RMW uses integrated values.
     pub fn drain(
         &mut self,
-        receiver:  &FeederReceiver,
-        registry:  &DimensionRegistry,
+        receiver: &FeederReceiver,
+        registry: &DimensionRegistry,
         allocator: &SlotAllocator,
-        n_dims:    usize,
-        values:    &mut [f32],
+        n_dims: usize,
+        values: &mut [f32],
         sync_row_from_gpu: Option<&mut dyn FnMut(u32)>,
     ) -> PatcherStats {
         let feeder_items = receiver.drain_now();
         let ai_items = self.drain_ai_now();
-        if let Some(sync) = sync_row_from_gpu {
+        let freshness = if let Some(sync) = sync_row_from_gpu {
             for slot in rmw_slots_from_batch(&feeder_items, &ai_items, allocator) {
                 sync(slot);
             }
-        }
+            ShadowFreshness::GpuSynced
+        } else {
+            ShadowFreshness::Unknown
+        };
         self.apply_collected(
             feeder_items,
             ai_items,
@@ -145,6 +156,7 @@ impl TransformPatcher {
             allocator,
             n_dims,
             values,
+            freshness,
         )
     }
 
@@ -162,25 +174,33 @@ impl TransformPatcher {
     pub fn apply_collected(
         &mut self,
         feeder_items: Vec<FeederWork>,
-        ai_items:     Vec<AiIntentOverlay>,
-        registry:     &DimensionRegistry,
-        allocator:    &SlotAllocator,
-        n_dims:       usize,
-        values:       &mut [f32],
+        ai_items: Vec<AiIntentOverlay>,
+        registry: &DimensionRegistry,
+        allocator: &SlotAllocator,
+        n_dims: usize,
+        values: &mut [f32],
+        freshness: ShadowFreshness,
     ) -> PatcherStats {
         let mut stats = PatcherStats::default();
         for item in feeder_items {
             match item {
                 FeederWork::Patch(p) => {
-                    self.apply_one(&p, registry, allocator, n_dims, values, &mut stats);
+                    self.apply_one(
+                        &p, registry, allocator, n_dims, values, &mut stats, freshness,
+                    );
                 }
                 FeederWork::Boundary(b) => {
                     self.pending_boundary.push(b);
                     stats.boundary_parked += 1;
                 }
                 FeederWork::PlayerIntent(pi) => {
-                    let patch = PatchTransform { target: pi.target, delta: pi.overlay.transform.clone() };
-                    self.apply_one(&patch, registry, allocator, n_dims, values, &mut stats);
+                    let patch = PatchTransform {
+                        target: pi.target,
+                        delta: pi.overlay.transform.clone(),
+                    };
+                    self.apply_one(
+                        &patch, registry, allocator, n_dims, values, &mut stats, freshness,
+                    );
                     self.pending_player_intents.push(pi);
                     stats.player_intents_parked += 1;
                 }
@@ -188,8 +208,13 @@ impl TransformPatcher {
         }
 
         for ai in ai_items {
-            let patch = PatchTransform { target: ai.target, delta: ai.overlay.transform.clone() };
-            self.apply_one(&patch, registry, allocator, n_dims, values, &mut stats);
+            let patch = PatchTransform {
+                target: ai.target,
+                delta: ai.overlay.transform.clone(),
+            };
+            self.apply_one(
+                &patch, registry, allocator, n_dims, values, &mut stats, freshness,
+            );
             self.pending_ai_intents.push(ai);
             stats.ai_intents_parked += 1;
         }
@@ -202,12 +227,13 @@ impl TransformPatcher {
     /// in tests).
     pub fn apply_one(
         &mut self,
-        patch:     &PatchTransform,
-        registry:  &DimensionRegistry,
+        patch: &PatchTransform,
+        registry: &DimensionRegistry,
         allocator: &SlotAllocator,
-        n_dims:    usize,
-        values:    &mut [f32],
-        stats:     &mut PatcherStats,
+        n_dims: usize,
+        values: &mut [f32],
+        stats: &mut PatcherStats,
+        freshness: ShadowFreshness,
     ) {
         let Some(slot) = allocator.slot_of(patch.target) else {
             stats.missing_targets += 1;
@@ -219,9 +245,9 @@ impl TransformPatcher {
             stats.inactive_property += 1;
             return;
         }
-        let range  = registry.column_range(pid);
+        let range = registry.column_range(pid);
         let layout = &registry.property(pid).layout;
-        let base   = (slot as usize) * n_dims;
+        let base = (slot as usize) * n_dims;
 
         let mut wrote_to_row = false;
         for (role, op) in &patch.delta.sub_field_deltas {
@@ -236,6 +262,12 @@ impl TransformPatcher {
             // memory in release builds.
             if addr >= values.len() {
                 stats.unresolved_roles += 1;
+                continue;
+            }
+            if matches!(op, TransformOp::Add(_) | TransformOp::Multiply(_))
+                && !matches!(freshness, ShadowFreshness::GpuSynced)
+            {
+                stats.unsafe_rmw_skipped += 1;
                 continue;
             }
             values[addr] = match op {
@@ -307,10 +339,10 @@ fn delta_has_rmw(delta: &PropertyTransformDelta) -> bool {
 }
 
 fn collect_rmw_slot(
-    target:    simthing_core::SimThingId,
-    delta:     &PropertyTransformDelta,
+    target: simthing_core::SimThingId,
+    delta: &PropertyTransformDelta,
     allocator: &SlotAllocator,
-    slots:     &mut HashSet<u32>,
+    slots: &mut HashSet<u32>,
 ) {
     if delta_has_rmw(delta) {
         if let Some(slot) = allocator.slot_of(target) {
@@ -321,8 +353,8 @@ fn collect_rmw_slot(
 
 pub(crate) fn rmw_slots_from_batch(
     feeder_items: &[FeederWork],
-    ai_items:     &[AiIntentOverlay],
-    allocator:    &SlotAllocator,
+    ai_items: &[AiIntentOverlay],
+    allocator: &SlotAllocator,
 ) -> Vec<u32> {
     let mut slots = HashSet::new();
     for item in feeder_items {
@@ -350,7 +382,13 @@ mod tests {
 
     /// Build a one-property registry (`core::loyalty`, standard layout
     /// stride=6) and a 2-slot allocator with two cohort SimThings.
-    fn fixture() -> (DimensionRegistry, SlotAllocator, simthing_core::SimPropertyId, [simthing_core::SimThingId; 2], usize) {
+    fn fixture() -> (
+        DimensionRegistry,
+        SlotAllocator,
+        simthing_core::SimPropertyId,
+        [simthing_core::SimThingId; 2],
+        usize,
+    ) {
         let mut reg = DimensionRegistry::new();
         let pid = reg.register(SimProperty::simple("core", "loyalty", 3));
 
@@ -375,16 +413,81 @@ mod tests {
             &PatchTransform {
                 target: b,
                 delta: PropertyTransformDelta {
-                    property_id:      pid,
+                    property_id: pid,
                     sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.25))],
                 },
             },
-            &reg, &alloc, n_dims, &mut values, &mut stats,
+            &reg,
+            &alloc,
+            n_dims,
+            &mut values,
+            &mut stats,
+            ShadowFreshness::GpuSynced,
         );
 
         assert_eq!(values[n_dims + 0].to_bits(), 0.75f32.to_bits());
         assert_eq!(stats.applied_writes, 1);
         assert_eq!(stats.unsafe_rmw_skipped, 0);
+    }
+
+    #[test]
+    fn apply_one_add_skips_when_shadow_freshness_unknown() {
+        let (reg, alloc, pid, [_a, b], n_dims) = fixture();
+        let mut values = vec![0.0f32; 2 * n_dims];
+        values[n_dims] = 0.5;
+        let mut p = TransformPatcher::new(2);
+        let mut stats = PatcherStats::default();
+
+        p.apply_one(
+            &PatchTransform {
+                target: b,
+                delta: PropertyTransformDelta {
+                    property_id: pid,
+                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.25))],
+                },
+            },
+            &reg,
+            &alloc,
+            n_dims,
+            &mut values,
+            &mut stats,
+            ShadowFreshness::Unknown,
+        );
+
+        assert_eq!(values[n_dims].to_bits(), 0.5f32.to_bits());
+        assert_eq!(stats.applied_writes, 0);
+        assert_eq!(stats.unsafe_rmw_skipped, 1);
+        assert!(p.take_dirty_rows().is_empty());
+    }
+
+    #[test]
+    fn apply_one_multiply_skips_when_shadow_freshness_unknown() {
+        let (reg, alloc, pid, [a, _b], n_dims) = fixture();
+        let mut values = vec![0.0f32; 2 * n_dims];
+        values[0] = 2.0;
+        let mut p = TransformPatcher::new(2);
+        let mut stats = PatcherStats::default();
+
+        p.apply_one(
+            &PatchTransform {
+                target: a,
+                delta: PropertyTransformDelta {
+                    property_id: pid,
+                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(3.0))],
+                },
+            },
+            &reg,
+            &alloc,
+            n_dims,
+            &mut values,
+            &mut stats,
+            ShadowFreshness::Unknown,
+        );
+
+        assert_eq!(values[0].to_bits(), 2.0f32.to_bits());
+        assert_eq!(stats.applied_writes, 0);
+        assert_eq!(stats.unsafe_rmw_skipped, 1);
+        assert!(p.take_dirty_rows().is_empty());
     }
 
     #[test]
@@ -399,14 +502,19 @@ mod tests {
             &PatchTransform {
                 target: a,
                 delta: PropertyTransformDelta {
-                    property_id:      pid,
+                    property_id: pid,
                     sub_field_deltas: vec![
                         (SubFieldRole::Amount, TransformOp::Multiply(3.0)),
                         (SubFieldRole::Amount, TransformOp::Set(7.0)),
                     ],
                 },
             },
-            &reg, &alloc, n_dims, &mut values, &mut stats,
+            &reg,
+            &alloc,
+            n_dims,
+            &mut values,
+            &mut stats,
+            ShadowFreshness::GpuSynced,
         );
 
         assert_eq!(values[0], 7.0);
@@ -426,11 +534,16 @@ mod tests {
             &PatchTransform {
                 target: ghost,
                 delta: PropertyTransformDelta {
-                    property_id:      pid,
+                    property_id: pid,
                     sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(1.0))],
                 },
             },
-            &reg, &alloc, n_dims, &mut values, &mut stats,
+            &reg,
+            &alloc,
+            n_dims,
+            &mut values,
+            &mut stats,
+            ShadowFreshness::Unknown,
         );
 
         assert_eq!(stats.missing_targets, 1);
@@ -450,11 +563,16 @@ mod tests {
             &PatchTransform {
                 target: a,
                 delta: PropertyTransformDelta {
-                    property_id:      pid,
+                    property_id: pid,
                     sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(1.0))],
                 },
             },
-            &reg, &alloc, n_dims, &mut values, &mut stats,
+            &reg,
+            &alloc,
+            n_dims,
+            &mut values,
+            &mut stats,
+            ShadowFreshness::Unknown,
         );
 
         assert_eq!(stats.inactive_property, 1);
@@ -473,14 +591,19 @@ mod tests {
             &PatchTransform {
                 target: a,
                 delta: PropertyTransformDelta {
-                    property_id:      pid,
+                    property_id: pid,
                     sub_field_deltas: vec![(
                         SubFieldRole::Named("vec_99".into()),
                         TransformOp::Add(1.0),
                     )],
                 },
             },
-            &reg, &alloc, n_dims, &mut values, &mut stats,
+            &reg,
+            &alloc,
+            n_dims,
+            &mut values,
+            &mut stats,
+            ShadowFreshness::GpuSynced,
         );
 
         assert_eq!(stats.unresolved_roles, 1);
@@ -494,11 +617,13 @@ mod tests {
         tx.send(FeederWork::Patch(PatchTransform {
             target: a,
             delta: PropertyTransformDelta {
-                property_id:      pid,
+                property_id: pid,
                 sub_field_deltas: vec![(SubFieldRole::Intensity, TransformOp::Set(0.5))],
             },
-        })).unwrap();
-        tx.send(FeederWork::Boundary(BoundaryRequest::Remove { target: a })).unwrap();
+        }))
+        .unwrap();
+        tx.send(FeederWork::Boundary(BoundaryRequest::Remove { target: a }))
+            .unwrap();
 
         let mut values = vec![0.0f32; 2 * n_dims];
         let mut p = TransformPatcher::new(2);
@@ -528,11 +653,16 @@ mod tests {
             &PatchTransform {
                 target: a,
                 delta: PropertyTransformDelta {
-                    property_id:      pid,
+                    property_id: pid,
                     sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(1.0))],
                 },
             },
-            &reg, &alloc, n_dims, &mut values, &mut stats,
+            &reg,
+            &alloc,
+            n_dims,
+            &mut values,
+            &mut stats,
+            ShadowFreshness::Unknown,
         );
 
         let dirty = p.take_dirty_rows();
@@ -551,20 +681,22 @@ mod tests {
         let (tx, rx) = feeder_channel();
 
         let overlay = Overlay {
-            id:        OverlayId::new(),
-            kind:      OverlayKind::Policy,
-            source:    OverlaySource::Player,
-            affects:   vec![],
+            id: OverlayId::new(),
+            kind: OverlayKind::Policy,
+            source: OverlaySource::Player,
+            affects: vec![],
             transform: PropertyTransformDelta {
-                property_id:      SimPropertyId(0),
+                property_id: SimPropertyId(0),
                 sub_field_deltas: vec![],
             },
             lifecycle: OverlayLifecycle::Permanent,
         };
         let overlay_id = overlay.id;
-        tx.send(FeederWork::PlayerIntent(
-            crate::work::PlayerIntentOverlay { target: a, overlay: overlay.clone() },
-        )).unwrap();
+        tx.send(FeederWork::PlayerIntent(crate::work::PlayerIntentOverlay {
+            target: a,
+            overlay: overlay.clone(),
+        }))
+        .unwrap();
 
         let mut values = vec![0.0f32; 2 * n_dims];
         let mut p = TransformPatcher::new(2);
@@ -591,26 +723,31 @@ mod tests {
         let (tx, rx) = feeder_channel();
 
         let overlay = Overlay {
-            id:        OverlayId::new(),
-            kind:      OverlayKind::Policy,
-            source:    OverlaySource::Player,
-            affects:   vec![a],
+            id: OverlayId::new(),
+            kind: OverlayKind::Policy,
+            source: OverlaySource::Player,
+            affects: vec![a],
             transform: PropertyTransformDelta {
-                property_id:      pid,
+                property_id: pid,
                 sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.75))],
             },
             lifecycle: OverlayLifecycle::Permanent,
         };
-        tx.send(FeederWork::PlayerIntent(
-            crate::work::PlayerIntentOverlay { target: a, overlay },
-        )).unwrap();
+        tx.send(FeederWork::PlayerIntent(crate::work::PlayerIntentOverlay {
+            target: a,
+            overlay,
+        }))
+        .unwrap();
 
         let mut values = vec![0.0f32; 2 * n_dims];
         let mut p = TransformPatcher::new(2);
         let stats = p.drain(&rx, &reg, &alloc, n_dims, &mut values, None);
 
         // Transform applied: slot 0, Amount col 0 = 0.75.
-        assert_eq!(values[0], 0.75, "mid-day shadow mutation must fire immediately");
+        assert_eq!(
+            values[0], 0.75,
+            "mid-day shadow mutation must fire immediately"
+        );
         assert_eq!(stats.applied_writes, 1);
         assert_eq!(stats.player_intents_parked, 1);
         // Row marked dirty so the Dispatch Coordinator uploads it this tick.
@@ -621,11 +758,11 @@ mod tests {
 
     #[test]
     fn ai_intent_applies_transform_to_shadow_and_parks_with_urgency() {
+        use crate::work::ai_channel;
         use simthing_core::{
             Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
             PropertyTransformDelta,
         };
-        use crate::work::ai_channel;
 
         let (reg, alloc, pid, [_a, b], n_dims) = fixture();
 
@@ -635,12 +772,12 @@ mod tests {
         p.set_ai_receiver(ai_rx);
 
         let overlay = Overlay {
-            id:        OverlayId::new(),
-            kind:      OverlayKind::Policy,
-            source:    OverlaySource::Ai,
-            affects:   vec![b],
+            id: OverlayId::new(),
+            kind: OverlayKind::Policy,
+            source: OverlaySource::Ai,
+            affects: vec![b],
             transform: PropertyTransformDelta {
-                property_id:      pid,
+                property_id: pid,
                 sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.42))],
             },
             lifecycle: OverlayLifecycle::Permanent,
@@ -653,7 +790,11 @@ mod tests {
         let stats = p.drain(&rx, &reg, &alloc, n_dims, &mut values, None);
 
         // Transform applied: slot 1 (b), Amount col = 0.42.
-        assert_eq!(values[n_dims + 0], 0.42, "AI intent must mutate shadow mid-day");
+        assert_eq!(
+            values[n_dims + 0],
+            0.42,
+            "AI intent must mutate shadow mid-day"
+        );
         assert_eq!(stats.applied_writes, 1);
         assert_eq!(stats.ai_intents_parked, 1);
         // Row 1 dirty.
@@ -679,14 +820,19 @@ mod tests {
             &PatchTransform {
                 target: a,
                 delta: PropertyTransformDelta {
-                    property_id:      pid,
+                    property_id: pid,
                     sub_field_deltas: vec![(
                         SubFieldRole::Named("vec_99".into()),
                         TransformOp::Add(1.0),
                     )],
                 },
             },
-            &reg, &alloc, n_dims, &mut values, &mut stats,
+            &reg,
+            &alloc,
+            n_dims,
+            &mut values,
+            &mut stats,
+            ShadowFreshness::Unknown,
         );
 
         assert!(p.take_dirty_rows().is_empty());

@@ -205,11 +205,11 @@ pub struct ThresholdEvent {
 
 // ── Reduction (Passes 4–6) ────────────────────────────────────────────────────
 
-pub const RULE_MEAN:  u32 = 0;
-pub const RULE_SUM:   u32 = 1;
-pub const RULE_MAX:   u32 = 2;
-pub const RULE_MIN:   u32 = 3;
-pub const RULE_FIRST:         u32 = 4;
+pub const RULE_MEAN: u32 = 0;
+pub const RULE_SUM: u32 = 1;
+pub const RULE_MAX: u32 = 2;
+pub const RULE_MIN: u32 = 3;
+pub const RULE_FIRST: u32 = 4;
 pub const RULE_WEIGHTED_MEAN: u32 = 5;
 
 /// Sentinel in the per-column weight slot when the rule is not `WeightedMean`.
@@ -218,10 +218,10 @@ pub const WEIGHT_COL_NONE: u32 = u32::MAX;
 pub fn encode_rule(rule: simthing_core::ReductionRule) -> u32 {
     use simthing_core::ReductionRule::*;
     match rule {
-        Mean  => RULE_MEAN,
-        Sum   => RULE_SUM,
-        Max   => RULE_MAX,
-        Min   => RULE_MIN,
+        Mean => RULE_MEAN,
+        Sum => RULE_SUM,
+        Max => RULE_MAX,
+        Min => RULE_MIN,
         First => RULE_FIRST,
         WeightedMean { .. } => RULE_WEIGHTED_MEAN,
     }
@@ -232,10 +232,10 @@ pub fn encode_rule(rule: simthing_core::ReductionRule) -> u32 {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 pub struct ReduceParams {
-    pub n_dims:       u32,
+    pub n_dims: u32,
     pub depth_offset: u32,
-    pub bucket_size:  u32,
-    pub _pad:         u32,
+    pub bucket_size: u32,
+    pub _pad: u32,
 }
 
 // ── WorldGpuState ─────────────────────────────────────────────────────────────
@@ -290,15 +290,15 @@ pub struct WorldGpuState {
     // ── Reduction (Passes 4–6) ───────────────────────────────────────────────
     /// CSR child topology: `child_starts[i]..child_starts[i+1]` indexes
     /// children of parent slot `i`. Length `n_slots + 1` u32s.
-    pub child_starts:  Buffer,
+    pub child_starts: Buffer,
     /// Concatenated child slot indices, in canonical (ascending slot) order.
     pub child_indices: Buffer,
     /// Per-column reduction rule (u32), length `n_dims`.
-    pub column_rules:  Buffer,
+    pub column_rules: Buffer,
     /// Concatenated depth buckets — slot indices grouped by tree depth.
     /// `depth_bucket_ranges` tells `Pipelines::run_reduction_passes` how to
     /// slice this. Empty when no topology has been uploaded yet.
-    pub depth_slots:   Buffer,
+    pub depth_slots: Buffer,
     /// (offset, size) into `depth_slots` per depth. The dispatcher iterates
     /// these from the last entry (deepest) to the first (root depth).
     pub depth_bucket_ranges: Vec<(u32, u32)>,
@@ -387,13 +387,10 @@ impl WorldGpuState {
         });
 
         // Reduction buffers — placeholder allocations, filled by upload_reduction_topology.
-        let child_starts = mk(
-            "child_starts",
-            ((n_slots as u64) + 1) * 4,
-        );
+        let child_starts = mk("child_starts", ((n_slots as u64) + 1) * 4);
         let child_indices = mk("child_indices", 4); // placeholder 1 u32
         let column_rules = mk("column_rules", (n_dims as u64) * 8);
-        let depth_slots  = mk("depth_slots", 4);    // placeholder 1 u32
+        let depth_slots = mk("depth_slots", 4); // placeholder 1 u32
 
         Self {
             ctx,
@@ -469,10 +466,47 @@ impl WorldGpuState {
 
         // Reduction: column_rules grows with n_dims; child_starts grows with n_slots.
         self.column_rules = self.mk_storage_buffer("column_rules", (self.n_dims as u64) * 8);
-        self.child_starts =
-            self.mk_storage_buffer("child_starts", ((self.n_slots as u64) + 1) * 4);
+        self.child_starts = self.mk_storage_buffer("child_starts", ((self.n_slots as u64) + 1) * 4);
         self.child_indices = self.mk_storage_buffer("child_indices", 4);
-        self.depth_slots   = self.mk_storage_buffer("depth_slots", 4);
+        self.depth_slots = self.mk_storage_buffer("depth_slots", 4);
+        self.depth_bucket_ranges.clear();
+    }
+
+    /// Reallocate every slot-capacity-dependent buffer after tree growth.
+    /// The caller should upload the authoritative CPU shadow immediately
+    /// after this call; value buffers are intentionally zero-initialized here.
+    pub fn rebuild_for_slots(&mut self, new_n_slots: u32, registry: &DimensionRegistry) {
+        assert!(new_n_slots > 0, "n_slots must be > 0");
+        if new_n_slots == self.n_slots {
+            self.rebuild_property_buffers(registry);
+            return;
+        }
+        assert!(
+            new_n_slots > self.n_slots,
+            "slot shrink is not supported: {} -> {}",
+            self.n_slots,
+            new_n_slots,
+        );
+
+        self.n_slots = new_n_slots;
+        self.n_dims = registry.total_columns as u32;
+        let per_slot_per_col_bytes = (self.n_slots as u64) * (self.n_dims as u64) * 4;
+        self.values = self.mk_storage_buffer("values", per_slot_per_col_bytes);
+        self.previous_values = self.mk_storage_buffer("previous_values", per_slot_per_col_bytes);
+        self.output_vectors = self.mk_storage_buffer("output_vectors", per_slot_per_col_bytes);
+        self.previous_output_vectors =
+            self.mk_storage_buffer("previous_output_vectors", per_slot_per_col_bytes);
+
+        self.slot_delta_ranges = self.mk_storage_buffer(
+            "slot_delta_ranges",
+            (self.n_slots as u64) * std::mem::size_of::<SlotDeltaRange>() as u64,
+        );
+        self.child_starts = self.mk_storage_buffer("child_starts", ((self.n_slots as u64) + 1) * 4);
+
+        self.rebuild_property_buffers(registry);
+
+        self.n_overlay_deltas = 0;
+        self.n_thresholds = 0;
         self.depth_bucket_ranges.clear();
     }
 
@@ -589,10 +623,10 @@ impl WorldGpuState {
     ///   from the last entry (deepest) up to the first (root depth).
     pub fn upload_reduction_topology(
         &mut self,
-        child_starts:  &[u32],
+        child_starts: &[u32],
         child_indices: &[u32],
-        column_rules:  &[u32],
-        depth_slots:   &[u32],
+        column_rules: &[u32],
+        depth_slots: &[u32],
         depth_bucket_ranges: Vec<(u32, u32)>,
     ) {
         assert_eq!(
@@ -625,9 +659,11 @@ impl WorldGpuState {
             .queue
             .write_buffer(&self.child_starts, 0, bytemuck::cast_slice(child_starts));
         if !child_indices.is_empty() {
-            self.ctx
-                .queue
-                .write_buffer(&self.child_indices, 0, bytemuck::cast_slice(child_indices));
+            self.ctx.queue.write_buffer(
+                &self.child_indices,
+                0,
+                bytemuck::cast_slice(child_indices),
+            );
         }
         self.ctx
             .queue
@@ -922,6 +958,27 @@ mod tests {
         assert_eq!(state.n_governed_pairs, 2);
         assert_eq!(state.n_intensity_params, 1);
         assert_eq!(state.read_values().len(), 12);
+    }
+
+    #[test]
+    fn rebuild_for_slots_expands_slot_dependent_buffers() {
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+
+        let mut reg = DimensionRegistry::new();
+        reg.register(SimProperty::simple("core", "loyalty", 0));
+        let mut state = WorldGpuState::new(ctx, &reg, 2);
+
+        state.rebuild_for_slots(8, &reg);
+
+        assert_eq!(state.n_slots, 8);
+        assert_eq!(state.n_dims, 3);
+        assert_eq!(state.values_len(), 24);
+        assert_eq!(state.read_values().len(), 24);
+        assert!(state.slot_delta_ranges.size() >= 8 * std::mem::size_of::<SlotDeltaRange>() as u64);
+        assert!(state.child_starts.size() >= 9 * 4);
     }
 
     #[test]

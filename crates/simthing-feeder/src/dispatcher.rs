@@ -46,7 +46,7 @@
 //! - Threshold registry uploads (`state.upload_thresholds`) — same pattern.
 //!   Day-boundary work; this module does not own it.
 
-use crate::patcher::{PatcherStats, TransformPatcher};
+use crate::patcher::{PatcherStats, ShadowFreshness, TransformPatcher};
 use crate::work::FeederReceiver;
 use simthing_core::DimensionRegistry;
 use simthing_gpu::{Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
@@ -61,6 +61,10 @@ pub struct TickOutcome {
     pub patcher_stats: PatcherStats,
     /// Slots whose CPU shadow rows were uploaded to the GPU this tick.
     pub uploaded_rows: u32,
+    /// Rows synchronously refreshed from GPU before Add/Multiply patch ops.
+    pub rmw_rows_synced: u32,
+    /// Bytes synchronously read back for RMW row refresh.
+    pub rmw_readback_bytes: u64,
     /// Threshold crossings detected by Pass 7. Order is GPU-nondeterministic
     /// (atomicAdd race). Callers that need a canonical order must sort.
     pub events: Vec<ThresholdEvent>,
@@ -123,7 +127,10 @@ impl DispatchCoordinator {
         let n_dims = self.n_dims as usize;
         let feeder_items = receiver.drain_now();
         let ai_items = patcher.drain_ai_now();
-        for slot in crate::patcher::rmw_slots_from_batch(&feeder_items, &ai_items, allocator) {
+        let rmw_slots = crate::patcher::rmw_slots_from_batch(&feeder_items, &ai_items, allocator);
+        let rmw_rows_synced = rmw_slots.len() as u32;
+        let rmw_readback_bytes = rmw_rows_synced as u64 * self.n_dims as u64 * 4;
+        for slot in rmw_slots {
             let row = state.read_values_row(slot);
             let base = (slot as usize) * n_dims;
             self.shadow[base..base + n_dims].copy_from_slice(&row);
@@ -135,6 +142,7 @@ impl DispatchCoordinator {
             allocator,
             n_dims,
             &mut self.shadow,
+            ShadowFreshness::GpuSynced,
         );
 
         // 2. Upload dirty rows (one write per touched row, coalesced).
@@ -170,6 +178,8 @@ impl DispatchCoordinator {
         TickOutcome {
             patcher_stats,
             uploaded_rows,
+            rmw_rows_synced,
+            rmw_readback_bytes,
             events,
             boundary_reached,
             tick_index: self.tick_counter,
@@ -227,6 +237,32 @@ impl DispatchCoordinator {
     }
     pub fn n_dims(&self) -> u32 {
         self.n_dims
+    }
+
+    /// Grow the row-major shadow after the allocator's slot high-water mark
+    /// exceeds the current GPU/shadow slot capacity. Existing rows keep their
+    /// slot indices; newly-created rows are zero-filled.
+    pub fn resize_slots(&mut self, new_n_slots: u32) {
+        if new_n_slots == self.n_slots {
+            return;
+        }
+        assert!(
+            new_n_slots > self.n_slots,
+            "slot shrink is not supported: {} -> {}",
+            self.n_slots,
+            new_n_slots,
+        );
+
+        let n_dims = self.n_dims as usize;
+        let mut next = vec![0.0; (new_n_slots as usize) * n_dims];
+        let rows_to_copy = (self.shadow.len() / n_dims).min(new_n_slots as usize);
+        for slot in 0..rows_to_copy {
+            let base = slot * n_dims;
+            next[base..base + n_dims].copy_from_slice(&self.shadow[base..base + n_dims]);
+        }
+
+        self.shadow = next;
+        self.n_slots = new_n_slots;
     }
 
     /// Widen the row-major shadow after a registry dimension expansion.
@@ -296,6 +332,20 @@ mod tests {
         assert_eq!(
             coord.shadow,
             vec![1.0, 2.0, 3.0, 0.0, 0.0, 4.0, 5.0, 6.0, 0.0, 0.0,]
+        );
+    }
+
+    #[test]
+    fn resize_slots_preserves_existing_shadow_rows() {
+        let mut coord = DispatchCoordinator::new(2, 3, 1);
+        coord.shadow = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+
+        coord.resize_slots(4);
+
+        assert_eq!(coord.n_slots(), 4);
+        assert_eq!(
+            coord.shadow,
+            vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         );
     }
 }

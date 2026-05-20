@@ -555,7 +555,6 @@ mod tests {
         let mut reg = DimensionRegistry::new();
         let mut prop = SimProperty::simple("core", "loyalty", 0);
         prop.fission_templates = vec![FissionThreshold {
-            dimension: SimPropertyId(0),
             sub_field: SubFieldRole::Amount,
             threshold: 0.3,
             direction: Dir::Falling,
@@ -621,7 +620,6 @@ mod tests {
         let mut reg = DimensionRegistry::new();
         let mut prop = SimProperty::simple("core", "loyalty", 0);
         prop.fission_templates = vec![FissionThreshold {
-            dimension: SimPropertyId(0),
             sub_field: SubFieldRole::Amount,
             threshold: 0.3,
             direction: Dir::Falling,

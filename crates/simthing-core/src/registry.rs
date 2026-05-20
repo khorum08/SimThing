@@ -15,18 +15,14 @@ use std::collections::HashMap;
 /// Column arithmetic: global_col = range.start + layout.offset_of(role)
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PropertyColumnRange {
-    pub start:  usize,
+    pub start: usize,
     pub stride: usize,
 }
 
 impl PropertyColumnRange {
     /// Global GPU column index for a given sub-field role.
     /// Delegates to PropertyLayout for offset arithmetic.
-    pub fn col_for_role(
-        &self,
-        role: &SubFieldRole,
-        layout: &PropertyLayout,
-    ) -> Option<usize> {
+    pub fn col_for_role(&self, role: &SubFieldRole, layout: &PropertyLayout) -> Option<usize> {
         layout.offset_of(role).map(|local| self.start + local)
     }
 
@@ -48,14 +44,14 @@ impl PropertyColumnRange {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DimensionRegistry {
     /// Ordered list of all registered properties (index = SimPropertyId).
-    pub properties:    Vec<SimProperty>,
+    pub properties: Vec<SimProperty>,
     /// Reverse lookup: canonical key → id.
     /// Serialized as a list of pairs since JSON object keys must be strings
     /// and this is keyed by `(String, String)`.
     #[serde_as(as = "Vec<((_, _), _)>")]
-    by_name:           HashMap<(String, String), SimPropertyId>,
+    by_name: HashMap<(String, String), SimPropertyId>,
     /// Whether each property's columns are currently active.
-    pub active:        Vec<bool>,
+    pub active: Vec<bool>,
     /// GPU column range assigned to each property.
     pub column_ranges: Vec<PropertyColumnRange>,
     /// Flat column owners table: GPU column index → (property id, sub_field offset).
@@ -67,9 +63,9 @@ pub struct DimensionRegistry {
 impl DimensionRegistry {
     pub fn new() -> Self {
         Self {
-            properties:    Vec::new(),
-            by_name:       HashMap::new(),
-            active:        Vec::new(),
+            properties: Vec::new(),
+            by_name: HashMap::new(),
+            active: Vec::new(),
             column_ranges: Vec::new(),
             column_owners: Vec::new(),
             total_columns: 0,
@@ -87,8 +83,8 @@ impl DimensionRegistry {
             );
         }
 
-        let id     = SimPropertyId(self.properties.len() as u32);
-        let start  = self.total_columns;
+        let id = SimPropertyId(self.properties.len() as u32);
+        let start = self.total_columns;
         let stride = prop.layout.stride();
 
         for offset in 0..stride {
@@ -107,15 +103,25 @@ impl DimensionRegistry {
     }
 
     pub fn id_of(&self, namespace: &str, name: &str) -> Option<SimPropertyId> {
-        self.by_name.get(&(namespace.to_owned(), name.to_owned())).copied()
+        self.by_name
+            .get(&(namespace.to_owned(), name.to_owned()))
+            .copied()
     }
 
     pub fn property(&self, id: SimPropertyId) -> &SimProperty {
         &self.properties[id.index()]
     }
 
+    pub fn try_property(&self, id: SimPropertyId) -> Option<&SimProperty> {
+        self.properties.get(id.index())
+    }
+
     pub fn column_range(&self, id: SimPropertyId) -> &PropertyColumnRange {
         &self.column_ranges[id.index()]
+    }
+
+    pub fn try_column_range(&self, id: SimPropertyId) -> Option<&PropertyColumnRange> {
+        self.column_ranges.get(id.index())
     }
 
     pub fn interpret_intensity(
@@ -138,7 +144,7 @@ impl DimensionRegistry {
     }
 
     pub fn is_active(&self, id: SimPropertyId) -> bool {
-        self.active[id.index()]
+        self.active.get(id.index()).copied().unwrap_or(false)
     }
 }
 
@@ -157,7 +163,7 @@ mod tests {
     fn column_assignment_is_contiguous() {
         let mut reg = DimensionRegistry::new();
         let loyalty = SimProperty::simple("core", "loyalty", 3);
-        let food    = SimProperty::simple("core", "food_security", 2);
+        let food = SimProperty::simple("core", "food_security", 2);
         let lid = reg.register(loyalty);
         let fid = reg.register(food);
 
@@ -166,11 +172,17 @@ mod tests {
         // standard(3): amount=0, velocity=1, intensity=2, vec_0=3, vec_1=4, vec_2=5
         assert_eq!(lr.start, 0);
         assert_eq!(lr.stride, 6);
-        assert_eq!(lr.col_for_role(&SubFieldRole::Amount,   ll), Some(0));
+        assert_eq!(lr.col_for_role(&SubFieldRole::Amount, ll), Some(0));
         assert_eq!(lr.col_for_role(&SubFieldRole::Velocity, ll), Some(1));
-        assert_eq!(lr.col_for_role(&SubFieldRole::Intensity,ll), Some(2));
-        assert_eq!(lr.col_for_role(&SubFieldRole::Named("vec_0".into()), ll), Some(3));
-        assert_eq!(lr.col_for_role(&SubFieldRole::Named("vec_2".into()), ll), Some(5));
+        assert_eq!(lr.col_for_role(&SubFieldRole::Intensity, ll), Some(2));
+        assert_eq!(
+            lr.col_for_role(&SubFieldRole::Named("vec_0".into()), ll),
+            Some(3)
+        );
+        assert_eq!(
+            lr.col_for_role(&SubFieldRole::Named("vec_2".into()), ll),
+            Some(5)
+        );
 
         // food_security standard(2): stride 5, cols 6–10
         let fr = reg.column_range(fid);

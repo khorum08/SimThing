@@ -4,13 +4,15 @@ use std::env;
 use std::io::BufReader;
 use std::path::PathBuf;
 use std::process;
+use std::time::Instant;
 
 use simthing_driver::{Scenario, SimSession};
 use simthing_sim::{BoundaryDeltaEntry, ReplayDriver, ReplayReader};
 
 fn usage() -> &'static str {
     "simthing record --scenario <file.ron> --out <file.ldjson> [--days N]\n\
-     simthing replay  --in <file.ldjson>"
+     simthing replay  --in <file.ldjson>\n\
+     simthing bench   --scenario <file.ron> [--days N]"
 }
 
 fn main() {
@@ -23,6 +25,7 @@ fn main() {
     match args[1].as_str() {
         "record" => cmd_record(&args[2..]),
         "replay" => cmd_replay(&args[2..]),
+        "bench" => cmd_bench(&args[2..]),
         other => {
             eprintln!("unknown subcommand {other:?}\n{}", usage());
             process::exit(1);
@@ -83,10 +86,12 @@ fn cmd_record(args: &[String]) {
         process::exit(1);
     });
 
-    let summary = session.record_to_path(&out_path, max_days).unwrap_or_else(|e| {
-        eprintln!("recording failed: {e}");
-        process::exit(1);
-    });
+    let summary = session
+        .record_to_path(&out_path, max_days)
+        .unwrap_or_else(|e| {
+            eprintln!("recording failed: {e}");
+            process::exit(1);
+        });
 
     println!(
         "recorded {} → {} frames ({} ticks, {} fission events)",
@@ -94,6 +99,88 @@ fn cmd_record(args: &[String]) {
         summary.frames_written,
         summary.ticks_run,
         summary.fission_events,
+    );
+}
+
+fn cmd_bench(args: &[String]) {
+    let mut scenario_path: Option<PathBuf> = None;
+    let mut days: Option<u32> = None;
+
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--scenario" => {
+                i += 1;
+                scenario_path = Some(PathBuf::from(args.get(i).expect("--scenario needs a path")));
+            }
+            "--days" => {
+                i += 1;
+                days = Some(
+                    args.get(i)
+                        .expect("--days needs a value")
+                        .parse()
+                        .expect("--days must be a u32"),
+                );
+            }
+            flag => {
+                eprintln!("unknown flag {flag:?}\n{}", usage());
+                process::exit(1);
+            }
+        }
+        i += 1;
+    }
+
+    let scenario_path = scenario_path.unwrap_or_else(|| {
+        eprintln!("--scenario is required\n{}", usage());
+        process::exit(1);
+    });
+    let scenario = Scenario::from_ron_path(&scenario_path).unwrap_or_else(|e| {
+        eprintln!("failed to load scenario: {e}");
+        process::exit(1);
+    });
+    let max_days = days.unwrap_or(scenario.max_days);
+    let mut session = SimSession::open(scenario).unwrap_or_else(|e| {
+        eprintln!("failed to open session: {e}");
+        process::exit(1);
+    });
+
+    let n_slots_start = session.coord.n_slots();
+    let n_dims = session.coord.n_dims();
+    let ticks_per_day = session.coord.ticks_per_day();
+    let started = Instant::now();
+    let summary = session.run(max_days).unwrap_or_else(|e| {
+        eprintln!("benchmark failed: {e}");
+        process::exit(1);
+    });
+    let elapsed = started.elapsed();
+    let ms_total = elapsed.as_secs_f64() * 1000.0;
+    let ms_per_tick = if summary.ticks_run == 0 {
+        0.0
+    } else {
+        ms_total / summary.ticks_run as f64
+    };
+    let ms_per_day = if summary.boundaries_run == 0 {
+        0.0
+    } else {
+        ms_total / summary.boundaries_run as f64
+    };
+
+    println!("benchmark {}", session.scenario.name);
+    println!("  n_slots_start: {n_slots_start}");
+    println!("  n_slots_end: {}", session.coord.n_slots());
+    println!("  n_dims: {n_dims}");
+    println!("  ticks_per_day: {ticks_per_day}");
+    println!("  ticks_run: {}", summary.ticks_run);
+    println!("  days_run: {}", summary.boundaries_run);
+    println!("  fission_events: {}", summary.fission_events);
+    println!("  elapsed_ms: {:.3}", ms_total);
+    println!("  ms_per_tick: {:.6}", ms_per_tick);
+    println!("  ms_per_sim_day: {:.6}", ms_per_day);
+    println!("  rmw_rows_synced: {}", summary.rmw_rows_synced);
+    println!("  rmw_readback_bytes: {}", summary.rmw_readback_bytes);
+    println!(
+        "  final_gpu_buffer_bytes: {}",
+        session.state.total_buffer_bytes()
     );
 }
 
@@ -131,7 +218,8 @@ fn cmd_replay(args: &[String]) {
 
     let mut driver = ReplayDriver::from_snapshot(snapshot);
     let mut frame_count = 0u32;
-    let mut entry_counts: std::collections::HashMap<&'static str, u32> = std::collections::HashMap::new();
+    let mut entry_counts: std::collections::HashMap<&'static str, u32> =
+        std::collections::HashMap::new();
 
     while let Some(frame) = reader.next_frame().unwrap_or_else(|e| {
         eprintln!("failed to read frame: {e}");
@@ -148,7 +236,10 @@ fn cmd_replay(args: &[String]) {
     println!("  frames applied: {frame_count}");
     println!("  final day: {}", driver.day);
     println!("  tree nodes: {}", driver.root.subtree_size());
-    println!("  fission lineage records: {}", driver.fission_lineage.len());
+    println!(
+        "  fission lineage records: {}",
+        driver.fission_lineage.len()
+    );
     println!("  entry kinds:");
     let mut kinds: Vec<_> = entry_counts.into_iter().collect();
     kinds.sort_by_key(|(k, _)| *k);

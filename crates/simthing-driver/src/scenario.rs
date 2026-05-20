@@ -4,7 +4,7 @@ use ron::de::from_str;
 use serde::Deserialize;
 use simthing_core::{
     DimensionRegistry, Direction, FissionTemplate, FissionThreshold, IntensityBehavior,
-    PropertyValue, SimProperty, SimPropertyId, SimThing, SimThingId, SimThingKind,
+    PropertyValue, SimProperty, SimThing, SimThingId, SimThingKind,
     SimThingKindTag, SubFieldRole,
 };
 use simthing_gpu::SlotAllocator;
@@ -89,7 +89,6 @@ impl Scenario {
         let mut loyalty = SimProperty::simple("core", "loyalty", 0);
         loyalty.intensity_behavior = Some(IntensityBehavior::default());
         loyalty.fission_templates = vec![FissionThreshold {
-            dimension: SimPropertyId(0),
             sub_field: SubFieldRole::Amount,
             threshold: 0.3,
             direction: Direction::Falling,
@@ -102,8 +101,6 @@ impl Scenario {
             secondary: None,
         }];
         let pid = reg.register(loyalty);
-        // Fix template dimension now that we know the assigned id.
-        reg.properties[pid.index()].fission_templates[0].dimension = pid;
 
         let layout = reg.property(pid).layout.clone();
         let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();

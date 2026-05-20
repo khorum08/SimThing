@@ -384,7 +384,6 @@ impl Default for IntensityBehavior {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FissionThreshold {
-    pub dimension:  SimPropertyId,
     pub sub_field:  SubFieldRole,
     pub threshold:  f32,
     pub direction:  Direction,

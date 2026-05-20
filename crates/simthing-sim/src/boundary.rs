@@ -25,8 +25,8 @@ use simthing_gpu::{SlotAllocator, ThresholdEvent, WorldGpuState};
 
 use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
-use crate::observability::{observe, ObserveFidelity, ObservabilityReport};
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
+use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
 use crate::reduced_field::ReducedField;
@@ -156,6 +156,17 @@ impl BoundaryProtocol {
             &self.cpu_threshold_registry,
         );
 
+        // Pre-grow for possible fission children so seed_fission_child can
+        // write the new rows immediately instead of relying on a later
+        // semantic projection.
+        let fission_headroom = events.len();
+        self.ensure_slot_capacity(
+            self.allocator.capacity() + fission_headroom,
+            patcher,
+            coord,
+            state,
+        );
+
         // Step 6: Fission and fusion. Spawns new SimThings + allocates slots.
         // Reads from shadow for secondary-condition checks and seeds newly
         // fissioned children from the parent's current GPU row.
@@ -200,7 +211,7 @@ impl BoundaryProtocol {
         out.player_intents_attached = player_intents.len() as u32;
         for pi in player_intents {
             requests.push(BoundaryRequest::AttachOverlay {
-                target:  pi.target,
+                target: pi.target,
                 overlay: pi.overlay,
             });
         }
@@ -209,10 +220,19 @@ impl BoundaryProtocol {
         out.ai_intents_attached = ai_intents.len() as u32;
         for ai in ai_intents {
             requests.push(BoundaryRequest::AttachOverlay {
-                target:  ai.target,
+                target: ai.target,
                 overlay: ai.overlay,
             });
         }
+
+        // Pre-grow for AddChild subtrees so apply_structural_mutations can
+        // project initialized semantic properties into the dense shadow.
+        self.ensure_slot_capacity(
+            self.allocator.capacity() + projected_add_child_slots(&requests),
+            patcher,
+            coord,
+            state,
+        );
 
         // Grow shadow to cover any new slots allocated during fission (step 6)
         // before applying structural mutations. apply_structural_mutations
@@ -255,27 +275,9 @@ impl BoundaryProtocol {
         // After structural mutations the allocator may have grown again
         // (AddChild). Resize shadow once more so step 9 uploads the full
         // capacity.
-        let final_n_dims = coord.n_dims() as usize;
-        let final_capacity = self.allocator.capacity() * final_n_dims;
-        if coord.shadow.len() < final_capacity {
-            coord.shadow.resize(final_capacity, 0.0);
-        }
+        self.ensure_slot_capacity(self.allocator.capacity(), patcher, coord, state);
 
         // Step 9: Rebuild GPU buffers from current tree + upload shadow.
-        //
-        // Pre-condition: allocator.capacity() must not exceed the
-        // WorldGpuState's n_slots, otherwise upload_full_shadow writes past
-        // the GPU buffer end. Pre-sizing WorldGpuState with growth headroom
-        // is the caller's responsibility today. AddDimension-style buffer
-        // reallocation is a follow-up.
-        assert!(
-            self.allocator.capacity() as u32 <= coord.n_slots(),
-            "allocator capacity {} exceeds shadow n_slots {}; \
-             WorldGpuState was built without enough headroom",
-            self.allocator.capacity(),
-            coord.n_slots(),
-        );
-
         let gpu_out = sync_gpu_buffers(
             &self.root,
             &self.registry,
@@ -294,10 +296,11 @@ impl BoundaryProtocol {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
             threshold_regs_uploaded: gpu_out.threshold_regs_uploaded,
             new_threshold_registry: None, // moved into self above
-            reduction_depths:       gpu_out.reduction_depths,
+            reduction_depths: gpu_out.reduction_depths,
         };
 
-        self.delta_log.extend(entries_from_outcome(&out, &self.root));
+        self.delta_log
+            .extend(entries_from_outcome(&out, &self.root));
 
         out
     }
@@ -350,7 +353,7 @@ impl BoundaryProtocol {
     /// that were not patched — use [`Self::observe_live`] for UI/debug.
     pub fn observe(
         &self,
-        coord:  &DispatchCoordinator,
+        coord: &DispatchCoordinator,
         target: SimThingId,
     ) -> Option<ObservabilityReport> {
         self.observe_at(coord, None, target, ObserveFidelity::Shadow)
@@ -362,8 +365,8 @@ impl BoundaryProtocol {
     /// batch queries.
     pub fn observe_live(
         &self,
-        coord:  &DispatchCoordinator,
-        state:  &WorldGpuState,
+        coord: &DispatchCoordinator,
+        state: &WorldGpuState,
         target: SimThingId,
     ) -> Option<ObservabilityReport> {
         self.observe_at(coord, Some(state), target, ObserveFidelity::GpuRow)
@@ -371,9 +374,9 @@ impl BoundaryProtocol {
 
     fn observe_at(
         &self,
-        coord:   &DispatchCoordinator,
-        state:   Option<&WorldGpuState>,
-        target:  SimThingId,
+        coord: &DispatchCoordinator,
+        state: Option<&WorldGpuState>,
+        target: SimThingId,
         fidelity: ObserveFidelity,
     ) -> Option<ObservabilityReport> {
         let slot = self.allocator.slot_of(target)?;
@@ -416,8 +419,8 @@ impl BoundaryProtocol {
     pub fn snapshot(&self, day: u32) -> crate::replay::ReplaySnapshot {
         crate::replay::ReplaySnapshot {
             day,
-            root:            self.root.clone(),
-            registry:        self.registry.clone(),
+            root: self.root.clone(),
+            registry: self.registry.clone(),
             fission_lineage: self.fission_lineage.clone(),
         }
     }
@@ -452,10 +455,46 @@ impl BoundaryProtocol {
     fn prune_stale_fission_lineage(&mut self) {
         let allocator = &self.allocator;
         self.fission_lineage.retain(|r| {
-            allocator.slot_of(r.parent_id).is_some()
-                && allocator.slot_of(r.child_id).is_some()
+            allocator.slot_of(r.parent_id).is_some() && allocator.slot_of(r.child_id).is_some()
         });
     }
+
+    fn ensure_slot_capacity(
+        &self,
+        required: usize,
+        patcher: &mut TransformPatcher,
+        coord: &mut DispatchCoordinator,
+        state: &mut WorldGpuState,
+    ) {
+        if required as u32 <= coord.n_slots() {
+            return;
+        }
+
+        let mut new_n_slots = coord.n_slots().max(1);
+        while new_n_slots < required as u32 {
+            new_n_slots = new_n_slots
+                .checked_mul(2)
+                .expect("slot capacity overflow while growing GPU state");
+        }
+
+        coord.resize_slots(new_n_slots);
+        patcher.resize(new_n_slots as usize);
+        state.rebuild_for_slots(new_n_slots, &self.registry);
+    }
+}
+
+fn projected_add_child_slots(requests: &[BoundaryRequest]) -> usize {
+    requests
+        .iter()
+        .map(|req| match req {
+            BoundaryRequest::AddChild { child, .. } => subtree_size(child),
+            _ => 0,
+        })
+        .sum()
+}
+
+fn subtree_size(node: &SimThing) -> usize {
+    1 + node.children.iter().map(subtree_size).sum::<usize>()
 }
 
 fn collect_velocity_alerts(

@@ -414,7 +414,6 @@ Intensity builds when the governed sub-field is changing rapidly. It decays when
 
 ```rust
 struct FissionThreshold {
-    dimension:  SimPropertyId,
     sub_field:  SubFieldRole,
     threshold:  f32,
     direction:  Direction,

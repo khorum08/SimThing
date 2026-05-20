@@ -22,44 +22,44 @@ pub enum SessionError {
 }
 
 pub struct RunSummary {
-    pub ticks_run:      u64,
+    pub ticks_run: u64,
     pub boundaries_run: u64,
     pub frames_written: u32,
     pub fission_events: u32,
+    pub rmw_rows_synced: u64,
+    pub rmw_readback_bytes: u64,
 }
 
 /// Owns the full tick + boundary loop for one scenario.
 pub struct SimSession {
     pub scenario: Scenario,
-    pub proto:    BoundaryProtocol,
-    pub coord:    DispatchCoordinator,
-    pub patcher:  TransformPatcher,
-    pub state:    WorldGpuState,
+    pub proto: BoundaryProtocol,
+    pub coord: DispatchCoordinator,
+    pub patcher: TransformPatcher,
+    pub state: WorldGpuState,
     pub pipelines: Pipelines,
-    pub rx:       simthing_feeder::FeederReceiver,
-    pub tx:       simthing_feeder::FeederSender,
+    pub rx: simthing_feeder::FeederReceiver,
+    pub tx: simthing_feeder::FeederSender,
 }
 
 impl SimSession {
     pub fn open(scenario: Scenario) -> Result<Self, SessionError> {
         let ctx = GpuContext::new_blocking()?;
         let n_dims = scenario.registry.total_columns as u32;
-        let mut state = WorldGpuState::new(ctx, &scenario.registry, scenario.n_slots);
-        let pipelines = Pipelines::new(&state.ctx);
-        let patcher = TransformPatcher::new(scenario.n_slots as usize);
-        let mut coord =
-            DispatchCoordinator::new(scenario.n_slots, n_dims, scenario.ticks_per_day);
-
         let mut allocator = simthing_gpu::SlotAllocator::new();
         allocator.populate_from_tree(&scenario.root);
+        let n_slots = scenario.n_slots.max(allocator.capacity() as u32);
+
+        let mut state = WorldGpuState::new(ctx, &scenario.registry, n_slots);
+        let pipelines = Pipelines::new(&state.ctx);
+        let patcher = TransformPatcher::new(n_slots as usize);
+        let mut coord = DispatchCoordinator::new(n_slots, n_dims, scenario.ticks_per_day);
+
         scenario.apply_shadow_seeds(&allocator, &mut coord.shadow, n_dims as usize)?;
 
         let (tx, rx) = feeder_channel();
-        let mut proto = BoundaryProtocol::new(
-            scenario.root.clone(),
-            scenario.registry.clone(),
-            allocator,
-        );
+        let mut proto =
+            BoundaryProtocol::new(scenario.root.clone(), scenario.registry.clone(), allocator);
         proto.initial_gpu_sync(&coord, &mut state);
 
         Ok(Self {
@@ -82,6 +82,8 @@ impl SimSession {
             boundaries_run: 0,
             frames_written: 0,
             fission_events: 0,
+            rmw_rows_synced: 0,
+            rmw_readback_bytes: 0,
         };
 
         while summary.boundaries_run < cap as u64 {
@@ -95,6 +97,8 @@ impl SimSession {
                 self.scenario.dt,
             );
             summary.ticks_run += 1;
+            summary.rmw_rows_synced += tick.rmw_rows_synced as u64;
+            summary.rmw_readback_bytes += tick.rmw_readback_bytes;
 
             if tick.boundary_reached {
                 let day = tick.day_index;
@@ -114,7 +118,11 @@ impl SimSession {
     }
 
     /// Run a session and write LDJSON replay (snapshot + one frame per boundary).
-    pub fn record_to_path(&mut self, path: &Path, max_days: u32) -> Result<RunSummary, SessionError> {
+    pub fn record_to_path(
+        &mut self,
+        path: &Path,
+        max_days: u32,
+    ) -> Result<RunSummary, SessionError> {
         let mut file = std::fs::File::create(path)?;
         let cap = max_days.min(self.scenario.max_days);
         let mut summary = RunSummary {
@@ -122,6 +130,8 @@ impl SimSession {
             boundaries_run: 0,
             frames_written: 0,
             fission_events: 0,
+            rmw_rows_synced: 0,
+            rmw_readback_bytes: 0,
         };
 
         let mut writer = ReplayWriter::new(&mut file);
@@ -138,6 +148,8 @@ impl SimSession {
                 self.scenario.dt,
             );
             summary.ticks_run += 1;
+            summary.rmw_rows_synced += tick.rmw_rows_synced as u64;
+            summary.rmw_readback_bytes += tick.rmw_readback_bytes;
 
             if tick.boundary_reached {
                 let day = tick.day_index;
