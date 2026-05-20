@@ -25,7 +25,7 @@ use simthing_gpu::{SlotAllocator, ThresholdEvent, WorldGpuState};
 
 use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
-use crate::observability::{observe, ObservabilityReport};
+use crate::observability::{observe, ObserveFidelity, ObservabilityReport};
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
@@ -343,29 +343,53 @@ impl BoundaryProtocol {
         }
     }
 
-    /// Build a read-only observability report for `target`.
+    /// Build a read-only observability report for `target` from the CPU shadow.
     ///
-    /// Reports current sub-field values (from `coord.shadow`) and every
-    /// overlay that contributes to each property, annotated as inherited
-    /// (from an ancestor) or local.
-    ///
-    /// Returns `None` when the target id is not found in the tree or has no
-    /// allocated slot. Calling this right after `execute` gives the most
-    /// current values because `execute` reads GPU values back into the shadow
-    /// at the start of each boundary.
+    /// Cheap and sufficient after a boundary (shadow was GPU-readback at
+    /// `execute` start). Mid-day, numeric values may lag integration on rows
+    /// that were not patched — use [`Self::observe_live`] for UI/debug.
     pub fn observe(
         &self,
         coord:  &DispatchCoordinator,
         target: SimThingId,
     ) -> Option<ObservabilityReport> {
-        observe(
-            &self.root,
-            &self.registry,
-            &self.allocator,
-            &coord.shadow,
-            coord.n_dims() as usize,
-            target,
-        )
+        self.observe_at(coord, None, target, ObserveFidelity::Shadow)
+    }
+
+    /// Like [`Self::observe`], but reads the target's integrated row from GPU.
+    ///
+    /// One `read_values_row` per call — intended for inspector UI, not per-tick
+    /// batch queries.
+    pub fn observe_live(
+        &self,
+        coord:  &DispatchCoordinator,
+        state:  &WorldGpuState,
+        target: SimThingId,
+    ) -> Option<ObservabilityReport> {
+        self.observe_at(coord, Some(state), target, ObserveFidelity::GpuRow)
+    }
+
+    fn observe_at(
+        &self,
+        coord:   &DispatchCoordinator,
+        state:   Option<&WorldGpuState>,
+        target:  SimThingId,
+        fidelity: ObserveFidelity,
+    ) -> Option<ObservabilityReport> {
+        let slot = self.allocator.slot_of(target)?;
+        let n_dims = coord.n_dims() as usize;
+        match fidelity {
+            ObserveFidelity::Shadow => {
+                let base = slot as usize * n_dims;
+                let row = &coord.shadow[base..base + n_dims];
+                observe(&self.root, &self.registry, &self.allocator, row, target)
+            }
+            ObserveFidelity::GpuRow => {
+                let state = state?;
+                let row = state.read_values_row(slot);
+                observe(&self.root, &self.registry, &self.allocator, &row, target)
+            }
+        }
     }
 
     /// All delta entries accumulated since the last `take_delta_log` call.

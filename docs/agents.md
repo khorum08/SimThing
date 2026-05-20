@@ -116,7 +116,8 @@ shadow for TowardZero checks, registry tombstoning waits for whole-tree
 liveness, AddChild projects semantic property values into shadow, Remove
 zeroes tombstoned rows, and fission secondary checks use the triggering
 property. Both player and AI can submit overlays; `BoundaryProtocol::observe`
-decomposes sub-field values and overlay contributions;
+(cheap shadow) and `observe_live` (one GPU row readback for UI/debug) decompose
+sub-field values and overlay contributions;
 `BoundaryProtocol::take_delta_log()` drains a `Vec<BoundaryDeltaEntry>` with
 one entry per fission/fusion/expiry/reparent/structural change — all variants
 carry full payloads: `SimThingAdded { parent, node }`, `FissionOccurred {
@@ -510,8 +511,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 163 tests must pass with zero warnings before any commit
-(16 core + 1 driver unit + 2 driver integration + 45 GPU + 21 feeder unit + 4 feeder integration + 59 sim unit + 16 sim integration).
+All 164 tests must pass with zero warnings before any commit
+(16 core + 1 driver unit + 2 driver integration + 45 GPU + 21 feeder unit + 4 feeder integration + 59 sim unit + 17 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

@@ -58,7 +58,8 @@ pub use boundary::{BoundaryOutcome, BoundaryProtocol};
 pub use delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 pub use fission::{FissionLineageRecord, FissionOutcome};
 pub use observability::{
-    ObservabilityReport, OverlayContribution, PropertyObservation, SubFieldObservation,
+    ObserveFidelity, ObservabilityReport, OverlayContribution, PropertyObservation,
+    SubFieldObservation,
 };
 pub use reduced_field::ReducedField;
 pub use replay::{
