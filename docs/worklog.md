@@ -6,18 +6,14 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-Master is at `97959bd` (PR #21, WeightedMean reduction merged). Step 1
-(output-vector thresholds) is implemented locally; run `cargo test` before
-commit.
+Master is at `6ef455b` (PR #22, output-vector thresholds merged). 128/128
+tests passing, zero warnings, no uncommitted work.
 
 ### Todo (recommended order)
 
 - [x] **Per-entity ids in outcome structs** — PR #20.
 - [x] **`WeightedMean { by: SimPropertyId }` reduction variant** — PR #21.
-- [x] **Thresholds on `output_vectors`** — `ThresholdRegistration.buffer`
-  (`THRESH_BUF_VALUES` / `THRESH_BUF_OUTPUT`), `previous_output_vectors`,
-  Pass 0 snapshot + Pass 7 scan, `AggregateAlertRegistration` /
-  `BoundaryOutcome::aggregate_alerts`.
+- [x] **Thresholds on `output_vectors`** — PR #22.
 - [ ] **Replay serialization + playback** (Opus). Format choice (binary frame
   + delta stream, or line-delimited JSON), file I/O, driver consuming
   `BoundaryDeltaEntry`s. Still needs full `Overlay` payload in
@@ -31,7 +27,7 @@ commit.
 
 ## 2026-05-19 — Thresholds on `output_vectors` (Step 1)
 
-**Status:** Implemented locally; not yet merged.
+**Status:** Merged to `master` as PR #22 (`6ef455b`).
 
 **Landed:**
 - `ThresholdRegistration.buffer` (`THRESH_BUF_VALUES` / `THRESH_BUF_OUTPUT`).
