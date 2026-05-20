@@ -6,13 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-**145/145** tests passing plus 1 ignored timing diagnostic, zero warnings.
+**151/151** tests passing plus 1 ignored timing diagnostic, zero warnings.
 
-Fusion lineage + scar semantics have landed on `claude/fusion-lineage`:
-`FissionLineageRecord` persists on `BoundaryProtocol`, `ThresholdBuilder`
-registers `FusionTrigger` thresholds per record, and `execute_fusion`
-multiplies the parent's activating-Amount by `(1 - scar_coefficient)` on
-fire. Lineage is pruned on fusion and on any allocator tombstone.
+Replay v2 has landed on PR #27. The delta log is no longer lossy:
+`SimThingAdded` carries `{ parent, node: SimThing }`, `FissionOccurred`
+carries `{ parent, node: SimThing }`. Two new variants —
+`FissionLineageAdded` / `FissionLineageRemoved` — persist lineage records
+across session boundaries. `ReplayDriver` handles all four variants (tree
+attach + slot allocation); `ReplaySnapshot.fission_lineage` seeds the
+driver's lineage vec from a mid-session snapshot. `BoundaryProtocol::snapshot()`
+now includes `fission_lineage`. Six new unit tests, all passing.
 
 ### Todo (recommended order)
 
@@ -21,29 +24,70 @@ fire. Lineage is pruned on fusion and on any allocator tombstone.
 - [x] **Thresholds on `output_vectors`** — PR #22 (`6ef455b`).
 - [x] **State authority hardening** — PR #23 (`77357ad`).
 - [x] **Replay serialization + playback v1** — PR #25.
-- [x] **Fusion lineage registration + scar semantics** —
-  `claude/fusion-lineage`.
-- [ ] **Replay v2 — payload for spawned-subtree variants.** Today
-  `SimThingAdded` and `FissionOccurred` are lossy (id-only); the spawned
-  `SimThing` payload cannot be reconstructed from the log alone. Extend
-  `BoundaryDeltaEntry` with either a `SimThingSpawned { parent, node }`
-  variant (full payload) or attach the spawned subtree to the existing
-  `FissionOccurred` / `SimThingAdded` variants. Update `ReplayDriver` to
-  re-attach + re-allocate slots; add `MaintainerOutcome` carriers for the
-  spawned subtree (currently only `allocated: Vec<SimThingId>`). With
-  fusion lineage in place this is also where you'd record the lineage in
-  the delta log for replay (currently the lineage vec is in-memory only).
+- [x] **Fusion lineage registration + scar semantics** — PR #26.
+- [x] **Replay v2 — full payload in spawned-subtree variants + lineage
+  entries** — PR #27.
 - [ ] **Fission re-fire suppression on tombstoned thresholds.** A parent
   that already fissioned still carries a live `FissionTrigger` registration
   on its Amount column. If Amount re-crosses the threshold in a later day
   (e.g. after a player intent or event nudges it back up and back down), a
   second child spawns. May be desired (true rebellions can recur) or not
-  (UI surprise). Currently no suppression; design call needed.
+  (UI surprise). Currently no suppression; **design call needed (Opus)**.
 
-**Next session:** Replay v2 (Sonnet-feasible once the variant shape is
-decided). Then the re-fire suppression policy (smaller, design-heavy).
+**Next session:** Fission re-fire suppression policy. Requires deciding
+whether recurring rebellions are intentional before writing any code.
 
 **Tabled (not on this list):** `simthing-studio` designer UI.
+
+---
+
+## 2026-05-20 — Replay v2: full spawned-subtree payload + lineage entries (PR #27)
+
+**Status:** Merged to master (`c1f9b07`). Delta log is no longer lossy.
+
+**Landed:**
+
+- `simthing-sim::fission`:
+  - `FissionLineageRecord` now derives `Serialize, Deserialize` (required
+    for embedding in delta log entries).
+
+- `simthing-sim::delta_log`:
+  - `BoundaryDeltaEntry::SimThingAdded` changed from `{ id }` to
+    `{ parent: SimThingId, node: SimThing }`. `entries_from_outcome` walks
+    the post-boundary tree via new `find_node_with_parent` helper to embed
+    the full subtree; silently skipped when not found.
+  - `BoundaryDeltaEntry::FissionOccurred` changed from `{ parent, child }`
+    to `{ parent: SimThingId, node: SimThing }`. Tree-walk approach; node.id
+    is the former child.
+  - New `FissionLineageAdded { record: FissionLineageRecord }` — emitted once
+    per entry in `outcome.fission.lineage_added`.
+  - New `FissionLineageRemoved { record: FissionLineageRecord }` — emitted once
+    per entry in `outcome.fission.lineage_removed`.
+  - All delta_log tests updated to build proper trees so fission/add entries
+    are actually emitted (previously fake ids returned None from tree walk).
+  - New test: `fission_lineage_changes_produce_entries`.
+  - New test: `sim_thing_added_skipped_when_id_not_in_tree`.
+
+- `simthing-sim::replay`:
+  - `ReplaySnapshot` gains `fission_lineage: Vec<FissionLineageRecord>`
+    with `#[serde(default)]` for backward compat.
+  - `ReplayDriver` gains `pub fission_lineage: Vec<FissionLineageRecord>`,
+    seeded from the snapshot's lineage vec.
+  - `ReplayDriver::apply_entry` handles all previously-lossy variants:
+    - `SimThingAdded { parent, node }`: `allocator.populate_from_tree(&node)`,
+      then attach under parent.
+    - `FissionOccurred { parent, node }`: same as SimThingAdded.
+    - `FissionLineageAdded { record }`: push to `self.fission_lineage`.
+    - `FissionLineageRemoved { record }`: retain filter.
+  - New tests: `driver_replays_sim_thing_added`,
+    `driver_replays_fission_occurred_with_node`,
+    `driver_replays_fission_lineage_round_trip`,
+    `snapshot_carries_fission_lineage_through_serde`.
+
+- `simthing-sim::boundary`:
+  - `BoundaryProtocol::snapshot()` now includes `fission_lineage` field.
+
+**Test count:** 151/151 passing (was 145), 1 ignored, zero warnings.
 
 ---
 

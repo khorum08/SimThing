@@ -105,27 +105,31 @@ SimThing/
 
 ## Current implementation state
 
-**Weeks 1–4 complete plus replay delta capture plus Passes 4–6
+**Weeks 1–4 complete plus replay delta capture (v1 + v2) plus Passes 4–6
 (presentation reduction), per-entity boundary outcome ids (PR #20),
-output-vector thresholds and aggregate alerts (PR #22), and state-authority
-hardening (PR #23). Within-day shadow patches apply only `Set` immediately;
-`Add`/`Multiply` are skipped and counted as unsafe RMW unless a future
-GPU-delta/readback path is added. Boundary expiry uses synchronized shadow for
-TowardZero checks, registry tombstoning waits for whole-tree liveness, AddChild
-projects semantic property values into shadow, Remove zeroes tombstoned rows,
-and fission secondary checks use the triggering property. Both player and AI
-can submit overlays; `BoundaryProtocol::observe` decomposes sub-field values
-and overlay contributions; `BoundaryProtocol::take_delta_log()` drains a
-`Vec<BoundaryDeltaEntry>` with one entry per fission/fusion/expiry/reparent/
-structural change (full ids; `OverlayAttached` still id-only). GPU Passes 4–6
+output-vector thresholds and aggregate alerts (PR #22), state-authority
+hardening (PR #23), fusion lineage + scar semantics (PR #26), and full
+replay payload (PR #27). Within-day shadow patches apply only `Set`
+immediately; `Add`/`Multiply` are skipped and counted as unsafe RMW unless a
+future GPU-delta/readback path is added. Boundary expiry uses synchronized
+shadow for TowardZero checks, registry tombstoning waits for whole-tree
+liveness, AddChild projects semantic property values into shadow, Remove
+zeroes tombstoned rows, and fission secondary checks use the triggering
+property. Both player and AI can submit overlays; `BoundaryProtocol::observe`
+decomposes sub-field values and overlay contributions;
+`BoundaryProtocol::take_delta_log()` drains a `Vec<BoundaryDeltaEntry>` with
+one entry per fission/fusion/expiry/reparent/structural change — all variants
+carry full payloads: `SimThingAdded { parent, node }`, `FissionOccurred {
+parent, node }`, `FissionLineageAdded / Removed { record }`. GPU Passes 4–6
 reduce children into parents bottom-up using per-sub-field `ReductionRule`
 (default per role: Amount/Velocity/Named → Mean, Intensity → Max, plus
 `WeightedMean`). Pass 7 scans `values` or `output_vectors` via
 `ThresholdRegistration.buffer`; `AggregateAlertRegistration` surfaces
 post-reduction crossings at the boundary. CPU oracle matches GPU shader
-bit-exactly. Replay serialization + playback remain deferred (Opus). Fusion
-lineage threshold registration/scar semantics remain a focused correctness
-todo; do not claim fusion is fully implemented.**
+bit-exactly. Fusion lineage: `FissionLineageRecord` persists on
+`BoundaryProtocol`, `ThresholdBuilder` registers `FusionTrigger` per record,
+`execute_fusion` applies multiplicative scar to parent Amount. `ReplayDriver`
+reconstructs tree, registry, allocator, and fission lineage from LDJSON log.**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
@@ -502,7 +506,7 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 145 tests must pass with zero warnings before any commit
+All 151 tests must pass with zero warnings before any commit
 (16 core + 45 GPU + 21 feeder unit + 4 feeder integration + 48 sim unit + 11 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
