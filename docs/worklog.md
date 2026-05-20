@@ -7,11 +7,11 @@ Running log of what's done and what's next, across sessions.
 ## Next session pickup
 
 **153/153** tests passing plus 1 ignored timing diagnostic, zero warnings.
+Master at `f302b18` (PR #28, state authority doctrine + lineage prune fix).
 
-State authority doctrine documented in `docs/state-authority.md` (Set-only
-mid-day patches, intent two-phase path, properties vs GPU/shadow roles).
-Two new integration tests: aggregate alert no-refire while held, Remove-after-
-fission lineage prune.
+State authority doctrine in `docs/state-authority.md`. Lineage now prunes after
+same-boundary ``Remove``; integration tests cover aggregate no-refire and
+Remove-after-fission lineage prune.
 
 ### Todo (recommended order)
 
