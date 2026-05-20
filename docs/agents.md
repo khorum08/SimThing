@@ -93,9 +93,12 @@ SimThing/
             │                          AttachOverlay / AddDimension
             ├── gpu_sync.rs            step 9: build_overlay_deltas + upload,
             │                          ThresholdBuilder + upload, upload_full_shadow
-            └── boundary.rs            BoundaryProtocol — owns root + registry +
-                                       allocator + cpu ThresholdRegistry; execute()
-                                       sequences steps 4-9
+            ├── boundary.rs            BoundaryProtocol — owns root + registry +
+            │                          allocator + cpu ThresholdRegistry; execute()
+            │                          sequences steps 4-9
+            └── replay.rs              ReplaySnapshot + ReplayFrame + ReplayWriter +
+                                       ReplayReader + ReplayDriver — LDJSON
+                                       structural-reproduction replay
 ```
 
 ---
@@ -448,9 +451,31 @@ Integration highlights:
   through `BoundaryOutcome::aggregate_alerts`.
 
 **Not yet built (see `docs/worklog.md` Next session pickup):**
-- Replay serialization + playback (Opus; `Overlay` payload in delta log still TBD)
+- Replay v2 — `SimThingAdded` / `FissionOccurred` carry only ids today; the
+  spawned subtree payload is lost in the log. `ReplayDriver` skips these
+  variants silently. Closing the gap is Sonnet-feasible once the variant
+  shape is decided.
 - Fusion lineage registration + scar semantics.
 - Designer UI (`simthing-studio`) — tabled
+
+### simthing-sim::replay (LDJSON v1, complete)
+- `ReplaySnapshot { day, root, registry }` — initial state, serialized as
+  the first line. `BoundaryProtocol::snapshot(day)` produces one.
+- `ReplayFrame { day, entries: Vec<BoundaryDeltaEntry> }` — one boundary's
+  deltas; written one per line after the snapshot.
+- `ReplayWriter` enforces snapshot-first ordering; `ReplayReader` enforces
+  snapshot-first read.
+- `ReplayDriver` reconstructs tree + registry + allocator from a snapshot,
+  then applies frames via structural mutations equivalent to the live
+  `BoundaryProtocol`. `OverlayAttached`, `PropertyExpired`,
+  `SimThingReparented`, `DimensionAdded`, `SimThingRemoved`,
+  `FusionOccurred` are lossless; `SimThingAdded` / `FissionOccurred` are
+  lossy (no spawned-subtree payload — see Replay v2 todo).
+- `BoundaryDeltaEntry::OverlayAttached` carries the full `Overlay` payload,
+  resolved by `entries_from_outcome(outcome, root)` at log-build time from
+  `MaintainerOutcome::overlays_attached: Vec<(SimThingId, OverlayId)>`.
+- Format: LDJSON. Non-string-keyed maps (`SimThing.properties`,
+  `DimensionRegistry.by_name`) serialize as pair arrays via `serde_with`.
 
 ---
 
@@ -461,8 +486,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 132 tests must pass with zero warnings before any commit
-(16 core + 45 GPU + 21 feeder unit + 4 feeder integration + 37 sim unit + 9 sim integration).
+All 140 tests must pass with zero warnings before any commit
+(16 core + 45 GPU + 21 feeder unit + 4 feeder integration + 44 sim unit + 10 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

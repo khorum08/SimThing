@@ -6,37 +6,120 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-Master is at `77357ad` (PR #23 merged). **132/132** tests passing
-plus 1 ignored timing diagnostic, zero warnings, no committed-work drift.
+**140/140** tests passing plus 1 ignored timing diagnostic, zero warnings.
 
-**Good stopping point.** The state-authority hardening pass is complete.
-All non-Opus items on the recommended pickup list are done. The remaining
-engine todos are replay (Opus-tier) and real fusion lineage registration.
+Replay v1 has landed on `claude/replay-serialization`: LDJSON snapshot +
+per-boundary delta frames, `ReplayWriter` / `ReplayReader` / `ReplayDriver`,
+and a GPU-integrated round-trip test. Format is structural-reproduction only
+(tree + registry + allocator); GPU float values are recomputed each session
+by design.
 
 ### Todo (recommended order)
 
 - [x] **Per-entity ids in outcome structs** — PR #20.
 - [x] **`WeightedMean { by: SimPropertyId }` reduction variant** — PR #21.
 - [x] **Thresholds on `output_vectors`** — PR #22 (`6ef455b`).
-- [x] **State authority hardening** — PR #23 (`77357ad`): threshold counter
-  reset on zero registrations, unsafe within-day Add/Multiply shadow writes
-  skipped, TowardZero expiry reads synchronized shadow, whole-tree liveness
-  tombstoning, AddChild/Remove shadow hygiene, triggering-property fission
-  secondary checks.
-- [ ] **Replay serialization + playback** (Opus). Format choice (binary frame
-  + delta stream, or line-delimited JSON), file I/O, playback driver
-  consuming `BoundaryDeltaEntry`s. Still needs full `Overlay` payload in
-  `OverlayAttached` (id-only today). Delta capture + per-entity ids are
-  in place (PR #20); serialization and playback are not.
+- [x] **State authority hardening** — PR #23 (`77357ad`).
+- [x] **Replay serialization + playback v1** — `claude/replay-serialization`.
+- [ ] **Replay v2 — payload for spawned-subtree variants.** Today
+  `SimThingAdded` and `FissionOccurred` are lossy (id-only); the spawned
+  `SimThing` payload cannot be reconstructed from the log alone. Extend
+  `BoundaryDeltaEntry` with either a `SimThingSpawned { parent, node }`
+  variant (full payload) or attach the spawned subtree to the existing
+  `FissionOccurred` / `SimThingAdded` variants. Update `ReplayDriver` to
+  re-attach + re-allocate slots; add `MaintainerOutcome` carriers for the
+  spawned subtree (currently only `allocated: Vec<SimThingId>`).
 - [ ] **Fusion lineage registration + scar semantics.** `FusionTrigger` and
   the event handler shape exist, but `ThresholdBuilder` does not yet register
   spawned-child fusion thresholds from lineage metadata, and scar application
   is not wired.
 
-**Next session:** Opus — replay end to end (format → write → read → driver).
-Then wire fusion lineage as a focused correctness pass.
+**Next session:** Either replay v2 (lossy-variant closeout, Sonnet-feasible
+once the variant shape is decided) or fusion lineage (Opus — see prior notes
+about lineage persistence).
 
 **Tabled (not on this list):** `simthing-studio` designer UI.
+
+---
+
+## 2026-05-20 — Replay serialization + playback v1
+
+**Status:** Landed on `claude/replay-serialization`. Replay is real:
+captured-state snapshot + per-boundary delta frames → LDJSON file →
+read back into a `ReplayDriver` that reconstructs the tree, registry,
+and slot allocator.
+
+**Landed:**
+
+- `crates/simthing-sim/src/replay.rs` — new module:
+  - `ReplaySnapshot { day, root, registry }` — initial-state baseline.
+  - `ReplayFrame { day, entries: Vec<BoundaryDeltaEntry> }` — one
+    boundary's structural deltas.
+  - `ReplayRecord` discriminated record (snapshot vs frame) with
+    `#[serde(tag = "kind")]`, written one-per-line.
+  - `ReplayWriter<W: Write>` — `write_snapshot` then any number of
+    `write_frame`s. Refuses frames before snapshot.
+  - `ReplayReader<R: BufRead>` — `read_snapshot` + iterated
+    `next_frame -> Option<...>`. Refuses unexpected snapshots
+    mid-stream.
+  - `ReplayDriver { day, root, registry, allocator }` —
+    `from_snapshot` allocates slots, `apply_frame` walks entries.
+    `OverlayAttached`, `PropertyExpired`, `SimThingReparented`,
+    `DimensionAdded`, `SimThingRemoved`, `FusionOccurred` reconstruct
+    structurally; `SimThingAdded` / `FissionOccurred` are lossy
+    (id-only payload — see "Replay v2" in Next session pickup).
+- `BoundaryDeltaEntry`:
+  - `#[derive(Serialize, Deserialize)]` (PartialEq dropped — `Overlay`
+    carries `f32`s via `PropertyTransformDelta`).
+  - `OverlayAttached` now carries `{ target: SimThingId, overlay:
+    Overlay }`. `entries_from_outcome(outcome, root)` walks the tree
+    to resolve the full `Overlay` payload from the maintainer's
+    `(target, OverlayId)` pair.
+- `MaintainerOutcome::overlays_attached` changed to
+  `Vec<(SimThingId, OverlayId)>` so the delta log can look up the full
+  overlay struct without losing the target.
+- `BoundaryProtocol::snapshot(day)` — returns a `ReplaySnapshot` clone
+  of current state. Cheap; intended for once-per-recording.
+- `simthing-core`:
+  - `DimensionRegistry` now derives `Clone`.
+  - `SimThing.properties` and `DimensionRegistry.by_name` use
+    `#[serde_as(as = "Vec<(_, _)>")]` to serialize non-string-keyed
+    maps as JSON arrays of pairs.
+- `serde_with` added to workspace + simthing-core deps.
+
+**Format chosen:** line-delimited JSON. Trades raw throughput for
+grep/diff debuggability; binary frame format can replace `Write` /
+`Read` impls behind the same trait surface later.
+
+**Scope:** structural reproduction. Float values from velocity
+integration + overlay application are recomputed each session and are
+not part of the replay surface. Verifying bit-exact value
+reproduction across hardware would require capturing GPU readbacks
+alongside the delta log — a separate feature.
+
+**Tests (140 passing, up from 132 — zero warnings):**
+- 1 new delta_log unit (`overlay_attached_skipped_when_not_in_tree`).
+- 6 new replay unit:
+  - `snapshot_round_trips_through_ldjson`
+  - `writer_rejects_frame_before_snapshot`
+  - `reader_returns_none_after_last_frame`
+  - `driver_replays_overlay_attached`
+  - `driver_replays_property_expired`
+  - `driver_replays_reparent`
+- 1 new GPU integration test
+  (`replay_round_trip_reconstructs_overlay_and_dimension_changes`):
+  drives a real `BoundaryProtocol` through `AttachOverlay` and
+  `AddDimension` requests, captures snapshot + 2 frames into an
+  in-memory LDJSON buffer, reads back, replays, asserts the overlay
+  is re-attached on the right SimThing.
+
+**Carry-over for replay v2 (Sonnet-feasible once shape is decided):**
+`SimThingAdded` / `FissionOccurred` lose the spawned subtree payload
+in the log today. Extending `MaintainerOutcome::allocated` and
+`FissionOutcome::fission_pairs` to carry the full spawned `SimThing`
+(or adding a `SimThingSpawned { parent, node }` variant) closes the
+gap. The `ReplayDriver` already has the helpers (`find_node_mut`,
+slot allocation via `populate_from_tree`) to consume it.
 
 ---
 

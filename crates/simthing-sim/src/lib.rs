@@ -50,6 +50,7 @@ pub mod observability;
 pub mod overlay_lifecycle;
 pub mod property_expiry;
 pub mod reduced_field;
+pub mod replay;
 pub mod threshold_registry;
 pub mod tree_mutation;
 
@@ -59,6 +60,10 @@ pub use observability::{
     ObservabilityReport, OverlayContribution, PropertyObservation, SubFieldObservation,
 };
 pub use reduced_field::ReducedField;
+pub use replay::{
+    ReplayDriver, ReplayError, ReplayFrame, ReplayReader, ReplayRecord, ReplaySnapshot,
+    ReplayWriter,
+};
 pub use threshold_registry::{
     AggregateAlertEvent, AggregateAlertRegistration, ThresholdBuilder, ThresholdRegistry,
     ThresholdSemantic, VelocityAlertEvent, VelocityAlertRegistration,

@@ -6,6 +6,7 @@
 use crate::ids::SimPropertyId;
 use crate::property::{PropertyLayout, SimProperty, SubFieldRole};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::collections::HashMap;
 
 // ── Column range ──────────────────────────────────────────────────────────────
@@ -43,11 +44,15 @@ impl PropertyColumnRange {
 
 // ── DimensionRegistry ─────────────────────────────────────────────────────────
 
-#[derive(Debug, Serialize, Deserialize)]
+#[serde_as]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DimensionRegistry {
     /// Ordered list of all registered properties (index = SimPropertyId).
     pub properties:    Vec<SimProperty>,
     /// Reverse lookup: canonical key → id.
+    /// Serialized as a list of pairs since JSON object keys must be strings
+    /// and this is keyed by `(String, String)`.
+    #[serde_as(as = "Vec<((_, _), _)>")]
     by_name:           HashMap<(String, String), SimPropertyId>,
     /// Whether each property's columns are currently active.
     pub active:        Vec<bool>,

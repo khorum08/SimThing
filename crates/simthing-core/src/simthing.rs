@@ -2,6 +2,7 @@ use crate::ids::{SimPropertyId, SimThingId};
 use crate::overlay::Overlay;
 use crate::property::PropertyValue;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -19,12 +20,15 @@ pub enum SimThingKind {
 /// Every entity in the simulation. The spatial tree expresses physical ownership.
 /// Political structures, factions, and all non-physical groupings are overlays,
 /// not nodes in the tree.
+#[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SimThing {
     pub id:         SimThingId,
     pub kind:       SimThingKind,
     /// Sparse map: only properties that are currently meaningful for this entity.
     /// Adding a new property dimension never changes this struct.
+    /// Serialized as a list of pairs since JSON object keys must be strings.
+    #[serde_as(as = "Vec<(_, _)>")]
     pub properties: HashMap<SimPropertyId, PropertyValue>,
     /// All overlays directly owned by this SimThing (policy, governance, instructions, etc.)
     pub overlays:   Vec<Overlay>,

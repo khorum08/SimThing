@@ -270,7 +270,7 @@ impl BoundaryProtocol {
             reduction_depths:       gpu_out.reduction_depths,
         };
 
-        self.delta_log.extend(entries_from_outcome(&out));
+        self.delta_log.extend(entries_from_outcome(&out, &self.root));
 
         out
     }
@@ -353,6 +353,17 @@ impl BoundaryProtocol {
     /// responsible for associating entries with the correct day number.
     pub fn take_delta_log(&mut self) -> Vec<BoundaryDeltaEntry> {
         std::mem::take(&mut self.delta_log)
+    }
+
+    /// Capture an initial-state snapshot for the replay writer. Should be
+    /// called once at session start, before any ticks, so that the recording
+    /// has a baseline tree + registry to replay deltas against.
+    pub fn snapshot(&self, day: u32) -> crate::replay::ReplaySnapshot {
+        crate::replay::ReplaySnapshot {
+            day,
+            root:     self.root.clone(),
+            registry: self.registry.clone(),
+        }
     }
 
     /// Manually seed the GPU threshold registry at session start (before any
