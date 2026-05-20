@@ -105,7 +105,7 @@ pub fn apply_structural_mutations(
                 let oid = overlay.id;
                 if attach_overlay_to_node(root, target, overlay) {
                     out.overlays += 1;
-                    out.overlays_attached.push(oid);
+                    out.overlays_attached.push((target, oid));
                 } else {
                     out.rejected_unknown_target += 1;
                 }
@@ -647,7 +647,7 @@ mod tests {
         );
 
         assert_eq!(out.overlays, 1);
-        assert_eq!(out.overlays_attached, vec![oid]);
+        assert_eq!(out.overlays_attached, vec![(loc_id, oid)]);
         assert_eq!(root.children[0].overlays.len(), 1);
     }
 

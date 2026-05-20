@@ -59,8 +59,10 @@ pub struct MaintainerOutcome {
     pub allocated:   Vec<SimThingId>,
     /// `SimThingId`s tombstoned this cycle.
     pub tombstoned:  Vec<SimThingId>,
-    /// New overlay ids attached this cycle.
-    pub overlays_attached: Vec<OverlayId>,
+    /// Each successful overlay attach: `(target_sim_thing_id, overlay_id)`.
+    /// Used by the delta log to resolve the full `Overlay` from the live tree
+    /// for replay serialization.
+    pub overlays_attached: Vec<(SimThingId, OverlayId)>,
     /// New `SimPropertyId`s admitted this cycle.
     pub dimensions_added: Vec<SimPropertyId>,
     /// Each successful reparent: `(child_id, new_parent_id)`.

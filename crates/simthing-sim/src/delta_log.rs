@@ -16,19 +16,29 @@
 //!   is needed, not just the id. The serialization pass should join against
 //!   the live tree to embed overlay data before writing to disk.
 
-use simthing_core::{OverlayId, SimPropertyId, SimThingId, SubFieldRole};
+use serde::{Deserialize, Serialize};
+use simthing_core::{Overlay, SimPropertyId, SimThing, SimThingId, SubFieldRole};
 
 use crate::boundary::BoundaryOutcome;
 
 // ── Entry type ────────────────────────────────────────────────────────────────
 
 /// One semantic state change that occurred during a day boundary.
-#[derive(Clone, Debug, PartialEq)]
+///
+/// Each variant carries enough information to be replayed against a fresh
+/// `SimThing` tree without consulting the original sim — `OverlayAttached`
+/// embeds the full `Overlay` payload so the playback driver can reconstruct
+/// state purely from the log.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum BoundaryDeltaEntry {
     /// An overlay was attached to a SimThing (player intent, AI intent, or
-    /// structural `AttachOverlay` boundary request). The `overlay_id` can be
-    /// used to look up the full `Overlay` in the live tree.
-    OverlayAttached { overlay_id: OverlayId },
+    /// structural `AttachOverlay` boundary request). Carries the full
+    /// `Overlay` payload so replay can re-attach it without referring back
+    /// to the live tree.
+    OverlayAttached {
+        target:  SimThingId,
+        overlay: Overlay,
+    },
 
     /// A new SimThing was added to the tree via an `AddChild` boundary request.
     SimThingAdded { id: SimThingId },
@@ -78,10 +88,19 @@ pub enum BoundaryDeltaEntry {
 
 /// Convert a completed `BoundaryOutcome` into its delta log entries.
 ///
+/// `root` is the post-boundary tree, used to look up the full `Overlay`
+/// payload for each `(target, overlay_id)` pair in
+/// `outcome.maintainer.overlays_attached`. If an overlay is not found in the
+/// tree (e.g. it was attached and then removed in the same boundary), it is
+/// silently skipped from the log.
+///
 /// Entries are emitted in boundary step order (lifecycle → expiry → fission →
 /// structural mutations → velocity alerts) so the log reads chronologically
 /// within a day.
-pub fn entries_from_outcome(outcome: &BoundaryOutcome) -> Vec<BoundaryDeltaEntry> {
+pub fn entries_from_outcome(
+    outcome: &BoundaryOutcome,
+    root:    &SimThing,
+) -> Vec<BoundaryDeltaEntry> {
     let mut entries = Vec::new();
 
     // Step 4: lifecycle — dissolved overlays are not individually id-tracked yet.
@@ -111,8 +130,13 @@ pub fn entries_from_outcome(outcome: &BoundaryOutcome) -> Vec<BoundaryDeltaEntry
     for &(child, new_parent) in &outcome.maintainer.reparented {
         entries.push(BoundaryDeltaEntry::SimThingReparented { child, new_parent });
     }
-    for &oid in &outcome.maintainer.overlays_attached {
-        entries.push(BoundaryDeltaEntry::OverlayAttached { overlay_id: oid });
+    for &(target, oid) in &outcome.maintainer.overlays_attached {
+        if let Some(overlay) = find_overlay(root, target, oid) {
+            entries.push(BoundaryDeltaEntry::OverlayAttached {
+                target,
+                overlay: overlay.clone(),
+            });
+        }
     }
     for &pid in &outcome.maintainer.dimensions_added {
         entries.push(BoundaryDeltaEntry::DimensionAdded { property_id: pid });
@@ -131,6 +155,27 @@ pub fn entries_from_outcome(outcome: &BoundaryOutcome) -> Vec<BoundaryDeltaEntry
     entries
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/// Walk the tree depth-first looking for `target`, then scan its overlays for
+/// the given `OverlayId`. Returns `None` if either lookup fails.
+fn find_overlay<'a>(
+    root:       &'a SimThing,
+    target:     SimThingId,
+    overlay_id: simthing_core::OverlayId,
+) -> Option<&'a Overlay> {
+    let node = find_node(root, target)?;
+    node.overlays.iter().find(|o| o.id == overlay_id)
+}
+
+fn find_node(root: &SimThing, id: SimThingId) -> Option<&SimThing> {
+    if root.id == id { return Some(root); }
+    for child in &root.children {
+        if let Some(n) = find_node(child, id) { return Some(n); }
+    }
+    None
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -141,15 +186,42 @@ mod tests {
     use crate::property_expiry::ExpiryOutcome;
     use crate::threshold_registry::VelocityAlertEvent;
     use simthing_feeder::MaintainerOutcome;
-    use simthing_core::{OverlayId, SimPropertyId, SimThing, SimThingKind, SubFieldRole};
+    use simthing_core::{
+        OverlayId, OverlayKind, OverlaySource, OverlayLifecycle, PropertyTransformDelta,
+        SimPropertyId, SimThing, SimThingKind, SubFieldRole, TransformOp,
+    };
 
     fn empty_outcome() -> BoundaryOutcome {
         BoundaryOutcome::default()
     }
 
+    fn empty_root() -> SimThing {
+        SimThing::new(SimThingKind::World, 0)
+    }
+
+    fn make_overlay() -> Overlay {
+        Overlay {
+            id:        OverlayId::new(),
+            kind:      OverlayKind::Policy,
+            source:    OverlaySource::System,
+            affects:   Vec::new(),
+            transform: PropertyTransformDelta {
+                property_id:      SimPropertyId(0),
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.5))],
+            },
+            lifecycle: OverlayLifecycle::Permanent,
+        }
+    }
+
+    fn count_matching<F: Fn(&BoundaryDeltaEntry) -> bool>(
+        entries: &[BoundaryDeltaEntry], f: F,
+    ) -> usize {
+        entries.iter().filter(|e| f(e)).count()
+    }
+
     #[test]
     fn empty_outcome_produces_no_entries() {
-        assert!(entries_from_outcome(&empty_outcome()).is_empty());
+        assert!(entries_from_outcome(&empty_outcome(), &empty_root()).is_empty());
     }
 
     #[test]
@@ -166,19 +238,16 @@ mod tests {
             fusion_pairs:      vec![(parent, child_b)],
             ..Default::default()
         };
-        let entries = entries_from_outcome(&out);
-        assert!(entries.contains(&BoundaryDeltaEntry::FissionOccurred {
-            parent,
-            child: child_a,
-        }));
-        assert!(entries.contains(&BoundaryDeltaEntry::FissionOccurred {
-            parent,
-            child: child_b,
-        }));
-        assert!(entries.contains(&BoundaryDeltaEntry::FusionOccurred {
-            parent,
-            child: child_b,
-        }));
+        let entries = entries_from_outcome(&out, &empty_root());
+        assert_eq!(count_matching(&entries, |e| matches!(e,
+            BoundaryDeltaEntry::FissionOccurred { parent: p, child: c }
+                if *p == parent && *c == child_a)), 1);
+        assert_eq!(count_matching(&entries, |e| matches!(e,
+            BoundaryDeltaEntry::FissionOccurred { parent: p, child: c }
+                if *p == parent && *c == child_b)), 1);
+        assert_eq!(count_matching(&entries, |e| matches!(e,
+            BoundaryDeltaEntry::FusionOccurred { parent: p, child: c }
+                if *p == parent && *c == child_b)), 1);
     }
 
     #[test]
@@ -187,29 +256,58 @@ mod tests {
         let id_b = SimThing::new(SimThingKind::Cohort, 0).id;
         let id_c = SimThing::new(SimThingKind::Cohort, 0).id;
         let id_d = SimThing::new(SimThingKind::Cohort, 0).id;
-        let oid  = OverlayId::new();
         let pid  = SimPropertyId(42);
+
+        // Build a tree that actually carries the overlay so find_overlay
+        // returns Some during entries_from_outcome.
+        let mut root = empty_root();
+        let mut target_node = SimThing::new(SimThingKind::Cohort, 0);
+        let target_id = target_node.id;
+        let overlay = make_overlay();
+        let oid = overlay.id;
+        target_node.overlays.push(overlay);
+        root.add_child(target_node);
 
         let mut out = empty_outcome();
         out.maintainer = MaintainerOutcome {
             allocated:         vec![id_a],
             tombstoned:        vec![id_b],
-            overlays_attached: vec![oid],
+            overlays_attached: vec![(target_id, oid)],
             dimensions_added:  vec![pid],
             reparents:         1,
             reparented:        vec![(id_c, id_d)],
             ..Default::default()
         };
-        let entries = entries_from_outcome(&out);
+        let entries = entries_from_outcome(&out, &root);
 
-        assert!(entries.contains(&BoundaryDeltaEntry::SimThingAdded    { id: id_a }));
-        assert!(entries.contains(&BoundaryDeltaEntry::SimThingRemoved  { id: id_b }));
-        assert!(entries.contains(&BoundaryDeltaEntry::OverlayAttached  { overlay_id: oid }));
-        assert!(entries.contains(&BoundaryDeltaEntry::DimensionAdded   { property_id: pid }));
-        assert!(entries.contains(&BoundaryDeltaEntry::SimThingReparented {
-            child: id_c,
-            new_parent: id_d,
-        }));
+        assert_eq!(count_matching(&entries,
+            |e| matches!(e, BoundaryDeltaEntry::SimThingAdded { id } if *id == id_a)), 1);
+        assert_eq!(count_matching(&entries,
+            |e| matches!(e, BoundaryDeltaEntry::SimThingRemoved { id } if *id == id_b)), 1);
+        assert_eq!(count_matching(&entries,
+            |e| matches!(e, BoundaryDeltaEntry::OverlayAttached { target, overlay }
+                if *target == target_id && overlay.id == oid)), 1);
+        assert_eq!(count_matching(&entries,
+            |e| matches!(e, BoundaryDeltaEntry::DimensionAdded { property_id } if *property_id == pid)), 1);
+        assert_eq!(count_matching(&entries,
+            |e| matches!(e, BoundaryDeltaEntry::SimThingReparented { child, new_parent }
+                if *child == id_c && *new_parent == id_d)), 1);
+    }
+
+    #[test]
+    fn overlay_attached_skipped_when_not_in_tree() {
+        let id_a = SimThing::new(SimThingKind::Cohort, 0).id;
+        let oid  = OverlayId::new();
+
+        let mut out = empty_outcome();
+        out.maintainer = MaintainerOutcome {
+            overlays_attached: vec![(id_a, oid)],
+            ..Default::default()
+        };
+        let entries = entries_from_outcome(&out, &empty_root());
+        // The overlay was never in the tree → entry skipped.
+        assert!(!entries.iter().any(|e|
+            matches!(e, BoundaryDeltaEntry::OverlayAttached { .. })));
     }
 
     #[test]
@@ -231,20 +329,17 @@ mod tests {
             ],
             ..Default::default()
         };
-        let entries = entries_from_outcome(&out);
+        let entries = entries_from_outcome(&out, &empty_root());
         assert_eq!(entries.len(), 3);
-        assert!(entries.contains(&BoundaryDeltaEntry::PropertyExpired {
-            sim_thing_id: id_a,
-            property_id: pid1,
-        }));
-        assert!(entries.contains(&BoundaryDeltaEntry::PropertyExpired {
-            sim_thing_id: id_a,
-            property_id: pid2,
-        }));
-        assert!(entries.contains(&BoundaryDeltaEntry::PropertyExpired {
-            sim_thing_id: id_b,
-            property_id: pid3,
-        }));
+        assert_eq!(count_matching(&entries,
+            |e| matches!(e, BoundaryDeltaEntry::PropertyExpired { sim_thing_id, property_id }
+                if *sim_thing_id == id_a && *property_id == pid1)), 1);
+        assert_eq!(count_matching(&entries,
+            |e| matches!(e, BoundaryDeltaEntry::PropertyExpired { sim_thing_id, property_id }
+                if *sim_thing_id == id_a && *property_id == pid2)), 1);
+        assert_eq!(count_matching(&entries,
+            |e| matches!(e, BoundaryDeltaEntry::PropertyExpired { sim_thing_id, property_id }
+                if *sim_thing_id == id_b && *property_id == pid3)), 1);
     }
 
     #[test]
@@ -258,7 +353,7 @@ mod tests {
             sub_field:    SubFieldRole::Velocity,
             value:        -0.21,
         }];
-        let entries = entries_from_outcome(&out);
+        let entries = entries_from_outcome(&out, &empty_root());
         assert_eq!(entries.len(), 1);
         match &entries[0] {
             BoundaryDeltaEntry::VelocityAlert { sim_thing_id, property_id, sub_field, value } => {
@@ -295,7 +390,7 @@ mod tests {
             sub_field: SubFieldRole::Amount, value: 0.1,
         }];
 
-        let entries = entries_from_outcome(&out);
+        let entries = entries_from_outcome(&out, &empty_root());
         let positions: Vec<&str> = entries.iter().map(|e| match e {
             BoundaryDeltaEntry::PropertyExpired    { .. } => "expiry",
             BoundaryDeltaEntry::FissionOccurred    { .. } => "fission",
