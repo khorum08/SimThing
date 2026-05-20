@@ -16,7 +16,10 @@ use simthing_feeder::{
     ai_channel, feeder_channel, BoundaryRequest, DispatchCoordinator, FeederWork, TransformPatcher,
 };
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
-use simthing_sim::{AggregateAlertRegistration, BoundaryProtocol, VelocityAlertRegistration};
+use simthing_sim::{
+    AggregateAlertRegistration, BoundaryDeltaEntry, BoundaryProtocol, ReplayDriver, ReplayFrame,
+    ReplayReader, ReplayWriter, VelocityAlertRegistration,
+};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -771,7 +774,110 @@ fn aggregate_alert_registration_surfaces_at_boundary() {
     assert_eq!(alert.sim_thing_id, loc_id);
     assert_eq!(alert.property_id, pid);
     assert_eq!(alert.sub_field, SubFieldRole::Amount);
-    assert_eq!(alert.value.to_bits(), 0.70_f32.to_bits());
+    assert_eq!(alert.value.to_bits(), 0.70_f32.to_bits()    );
+}
+
+/// Recurring rebellions are intentional: after a first fission, raising Amount
+/// back above the threshold and crossing down again may spawn a second child.
+#[test]
+fn fission_refires_when_amount_re_crosses_threshold() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    reg.register(loyalty_with_fission());
+    let (world, alloc, cohort_id) = build_initial_world(&mut reg);
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+    let n_dims = reg.total_columns as u32;
+
+    const N_SLOTS: u32 = 16;
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (tx, rx) = feeder_channel();
+
+    let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
+    let base = cohort_slot * n_dims as usize;
+    coord.shadow[base + amount_off] = 0.5;
+    coord.shadow[base + vel_off] = -0.21;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    let mut events = Vec::new();
+    for _ in 0..8 {
+        let out = coord.tick(
+            &rx,
+            &mut patcher,
+            &proto.registry,
+            &proto.allocator,
+            &pipelines,
+            &mut state,
+            0.5,
+        );
+        if !out.events.is_empty() {
+            events = out.events;
+            break;
+        }
+    }
+    assert!(!events.is_empty(), "first fission threshold never fired");
+
+    let first = proto.execute(events, &mut patcher, &mut coord, &mut state, 1);
+    assert_eq!(first.fission.fissions_executed, 1);
+    assert_eq!(find_node(&proto.root, cohort_id).unwrap().children.len(), 1);
+    assert_eq!(proto.fission_lineage().len(), 1);
+
+    // Recovery then relapse: Set Amount high, let velocity carry it down again.
+    tx.submit_patch(
+        cohort_id,
+        PropertyTransformDelta {
+            property_id: pid,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.5))],
+        },
+    )
+    .unwrap();
+
+    let mut events2 = Vec::new();
+    for _ in 0..8 {
+        let out = coord.tick(
+            &rx,
+            &mut patcher,
+            &proto.registry,
+            &proto.allocator,
+            &pipelines,
+            &mut state,
+            0.5,
+        );
+        if !out.events.is_empty() {
+            events2 = out.events;
+            break;
+        }
+    }
+    assert!(!events2.is_empty(), "second fission threshold never fired");
+
+    let second = proto.execute(events2, &mut patcher, &mut coord, &mut state, 2);
+    assert_eq!(
+        second.fission.fissions_executed, 1,
+        "second crossing should spawn another child"
+    );
+
+    let cohort = find_node(&proto.root, cohort_id).expect("cohort survives");
+    assert_eq!(
+        cohort.children.len(),
+        2,
+        "recurring rebellion: two fission children under the same parent"
+    );
+    assert_eq!(
+        proto.fission_lineage().len(),
+        2,
+        "each fission adds a lineage record until fusion/remove"
+    );
 }
 
 /// After an aggregate rising alert fires, a third tick with the same reduced
@@ -1250,7 +1356,6 @@ fn fission_then_fusion_applies_scar_and_tombstones_child() {
 ///      replayed registry has the food property restored.
 #[test]
 fn replay_round_trip_reconstructs_overlay_and_dimension_changes() {
-    use simthing_sim::{ReplayDriver, ReplayFrame, ReplayReader, ReplayWriter};
     use std::io::Cursor;
 
     let Some(ctx) = try_gpu() else {
@@ -1306,7 +1411,7 @@ fn replay_round_trip_reconstructs_overlay_and_dimension_changes() {
     assert!(frame_1.entries.iter().any(|e| matches!(
         e,
         simthing_sim::delta_log::BoundaryDeltaEntry::OverlayAttached { target, overlay }
-            if *target == cohort_id && overlay.id == attached_overlay_id
+            if target == &cohort_id && overlay.id == attached_overlay_id
     )));
 
     // ── Day 2: AddDimension ──────────────────────────────────────────
@@ -1326,7 +1431,7 @@ fn replay_round_trip_reconstructs_overlay_and_dimension_changes() {
     assert!(frame_2.entries.iter().any(|e| matches!(
         e,
         simthing_sim::delta_log::BoundaryDeltaEntry::DimensionAdded { property_id }
-            if *property_id == food_id
+            if property_id == &food_id
     )));
 
     // ── Write to LDJSON buffer ───────────────────────────────────────
@@ -1374,6 +1479,103 @@ fn replay_round_trip_reconstructs_overlay_and_dimension_changes() {
     // snapshot — loyalty — and check that no spurious mutation hit it.
     let loyalty_id = driver.registry.id_of("core", "loyalty").unwrap();
     assert!(driver.registry.is_active(loyalty_id));
+}
+
+/// Fission boundary deltas (spawned subtree + lineage) round-trip through LDJSON.
+#[test]
+fn replay_fission_round_trip_reconstructs_spawned_child_and_lineage() {
+    use std::io::Cursor;
+
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    reg.register(loyalty_with_fission());
+    let (world, alloc, cohort_id) = build_initial_world(&mut reg);
+    let n_dims = reg.total_columns as u32;
+
+    const N_SLOTS: u32 = 16;
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (_tx, rx) = feeder_channel();
+
+    let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+    let base = cohort_slot * n_dims as usize;
+    coord.shadow[base + amount_off] = 0.5;
+    coord.shadow[base + vel_off] = -0.21;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    let snapshot = proto.snapshot(0);
+
+    let mut events = Vec::new();
+    for _ in 0..8 {
+        let out = coord.tick(
+            &rx,
+            &mut patcher,
+            &proto.registry,
+            &proto.allocator,
+            &pipelines,
+            &mut state,
+            0.5,
+        );
+        if !out.events.is_empty() {
+            events = out.events;
+            break;
+        }
+    }
+    assert!(!events.is_empty(), "fission threshold never fired");
+
+    let outcome = proto.execute(events, &mut patcher, &mut coord, &mut state, 1);
+    assert_eq!(outcome.fission.fissions_executed, 1);
+
+    let spawned_id = find_node(&proto.root, cohort_id).unwrap().children[0].id;
+    let frame = ReplayFrame {
+        day: 1,
+        entries: proto.take_delta_log(),
+    };
+
+    assert!(
+        frame.entries.iter().any(|e| matches!(
+            e,
+            BoundaryDeltaEntry::FissionOccurred { parent, node }
+                if parent == &cohort_id && node.id == spawned_id
+        )),
+        "frame must carry FissionOccurred with full subtree"
+    );
+    assert!(
+        frame
+            .entries
+            .iter()
+            .any(|e| matches!(e, BoundaryDeltaEntry::FissionLineageAdded { .. })),
+        "frame must carry FissionLineageAdded"
+    );
+
+    let mut buf = Vec::new();
+    {
+        let mut writer = ReplayWriter::new(&mut buf);
+        writer.write_snapshot(&snapshot).unwrap();
+        writer.write_frame(&frame).unwrap();
+    }
+
+    let mut reader = ReplayReader::new(Cursor::new(buf));
+    let mut driver = ReplayDriver::from_snapshot(reader.read_snapshot().unwrap());
+    driver.apply_frame(reader.next_frame().unwrap().unwrap());
+
+    let cohort = find_node(&driver.root, cohort_id).expect("parent survives replay");
+    assert_eq!(cohort.children.len(), 1, "fission child re-attached");
+    assert_eq!(cohort.children[0].id, spawned_id);
+    assert_eq!(driver.fission_lineage.len(), 1);
+    assert_eq!(driver.fission_lineage[0].child_id, spawned_id);
 }
 
 /// Helper: depth-first find a node by id.

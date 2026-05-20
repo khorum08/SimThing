@@ -83,6 +83,19 @@ reduced output. A threshold fires on **crossing**, not while a value remains abo
 
 ---
 
+## Fission re-fire (recurring rebellions)
+
+**Policy (2026-05):** Rebellions and similar fission-causing events **may recur**.
+A parent keeps its `FissionTrigger` registration after spawning; if the activating
+Amount re-crosses the threshold in a later tick/day, a **new child may spawn**.
+
+No one-shot latch or cooldown. Idempotency within a **single boundary tick** only
+(deduplicate duplicate events for the same `(parent, template_idx)`).
+
+Integration coverage: `fission_refires_when_amount_re_crosses_threshold`.
+
+---
+
 ## Fission lineage
 
 `BoundaryProtocol::fission_lineage` persists `FissionLineageRecord`s across boundaries

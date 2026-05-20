@@ -6,34 +6,29 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-**153/153** tests passing plus 1 ignored timing diagnostic, zero warnings.
-Master at `f302b18` (PR #28, state authority doctrine + lineage prune fix).
-
-State authority doctrine in `docs/state-authority.md`. Lineage now prunes after
-same-boundary ``Remove``; integration tests cover aggregate no-refire and
-Remove-after-fission lineage prune.
+**157/157** tests passing plus 1 ignored timing diagnostic, zero warnings.
+Master at `ff8e222` (PR #28). Playability path landed locally: `simthing-driver`
+crate, `scenarios/rebellion_demo.ron`, `simthing record` / `simthing replay` CLI.
 
 ### Todo (recommended order)
 
 - [x] **Per-entity ids in outcome structs** — PR #20.
 - [x] **`WeightedMean { by: SimPropertyId }` reduction variant** — PR #21.
-- [x] **Thresholds on `output_vectors`** — PR #22 (`6ef455b`).
-- [x] **State authority hardening** — PR #23 (`77357ad`).
+- [x] **Thresholds on `output_vectors`** — PR #22.
+- [x] **State authority hardening** — PR #23.
 - [x] **Replay serialization + playback v1** — PR #25.
 - [x] **Fusion lineage registration + scar semantics** — PR #26.
-- [x] **Replay v2 — full payload in spawned-subtree variants + lineage
-  entries** — PR #27.
-- [ ] **Fission re-fire suppression on tombstoned thresholds.** A parent
-  that already fissioned still carries a live `FissionTrigger` registration
-  on its Amount column. If Amount re-crosses the threshold in a later day
-  (e.g. after a player intent or event nudges it back up and back down), a
-  second child spawns. May be desired (true rebellions can recur) or not
-  (UI surprise). Currently no suppression; **design call needed (Opus)**.
+- [x] **Replay v2** — PR #27.
+- [x] **State authority doctrine + lineage prune fix** — PR #28.
+- [x] **Fission re-fire policy** — recurring rebellions intentional (no suppression).
+- [x] **Recording harness + sim driver + rebellion demo scenario** — `simthing-driver`.
+- [x] **Replay fission E2E test** — `replay_fission_round_trip_reconstructs_spawned_child_and_lineage`.
 
-**Next session:** Fission re-fire suppression policy. Requires deciding
-whether recurring rebellions are intentional before writing any code.
+**Next session:** Expand scenario format (full RON tree/registry), or start
+`simthing-studio` (tabled). Optional: driver GPU integration test behind
+`try_gpu()`.
 
-**Tabled (not on this list):** `simthing-studio` designer UI.
+**Tabled:** `simthing-studio` designer UI.
 
 ---
 

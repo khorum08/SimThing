@@ -40,6 +40,10 @@
 //! boundary tick if both threshold and secondary are met simultaneously on
 //! several columns. `FissionExecutor` deduplicates by (sim_thing_id, template_idx)
 //! before executing, keeping only the first.
+//!
+//! **Recurring rebellions:** across days/ticks there is no suppression — if
+//! Amount re-crosses the fission threshold later, a new child may spawn. That
+//! is intentional (see `docs/state-authority.md`).
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
