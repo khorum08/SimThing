@@ -7,7 +7,7 @@ Running log of what's done and what's next, across sessions.
 ## Next session pickup
 
 **164/164** tests passing plus 1 ignored timing diagnostic, zero warnings.
-Master at `6556d6c` (PR #31, design carry-over gaps).
+Master at `965ebf1` (PR #32, observe_live GPU row readback).
 
 ### Todo (recommended order)
 
