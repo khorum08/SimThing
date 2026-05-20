@@ -453,10 +453,26 @@ Integration highlights:
 **Not yet built (see `docs/worklog.md` Next session pickup):**
 - Replay v2 — `SimThingAdded` / `FissionOccurred` carry only ids today; the
   spawned subtree payload is lost in the log. `ReplayDriver` skips these
-  variants silently. Closing the gap is Sonnet-feasible once the variant
-  shape is decided.
-- Fusion lineage registration + scar semantics.
+  variants silently. Also: `FissionLineageRecord`s are in-memory only, so
+  replay reconstructs a tree where fission happened but no fusion threshold
+  gets registered.
+- Fission re-fire suppression — a parent that already fissioned still
+  carries a live `FissionTrigger` registration. Design call needed on
+  whether recurring rebellions are intended.
 - Designer UI (`simthing-studio`) — tabled
+
+### simthing-sim::fission lineage + fusion scar
+- `FissionLineageRecord { parent_id, child_id, property_id, template_idx }`
+  emitted by `execute_fission`, accumulated on `BoundaryProtocol`.
+- `ThresholdBuilder::build_with_lineage` walks the persistent lineage vec
+  and emits one `FusionTrigger` registration per record on the child's
+  activating-property Intensity column, threshold =
+  `template.fusion_intensity_threshold`, direction = Upward.
+- `execute_fusion` applies the scar via `apply_fusion_scar`: parent's
+  activating-property Amount in the shadow is multiplied by `(1 -
+  fusion_scar_coefficient)`.
+- Lineage pruned on fusion (`lineage_removed`) and on any allocator
+  tombstone at boundary start.
 
 ### simthing-sim::replay (LDJSON v1, complete)
 - `ReplaySnapshot { day, root, registry }` — initial state, serialized as
@@ -486,8 +502,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 140 tests must pass with zero warnings before any commit
-(16 core + 45 GPU + 21 feeder unit + 4 feeder integration + 44 sim unit + 10 sim integration).
+All 145 tests must pass with zero warnings before any commit
+(16 core + 45 GPU + 21 feeder unit + 4 feeder integration + 48 sim unit + 11 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

@@ -25,9 +25,14 @@
 //!    crosses the threshold on any live SimThing that has that property.
 //!    One GPU `ThresholdRegistration` per (live sim_thing, fission_template).
 //!
-//! 2. **Fusion thresholds** are planned but not wired into the builder yet;
-//!    spawned-child lineage metadata is still needed before these can be
-//!    registered automatically.
+//! 2. **Fusion thresholds** are registered from `FissionLineageRecord`s held
+//!    by the boundary protocol. Each lineage record produces one
+//!    `FusionTrigger` watching the child's activating-property Intensity
+//!    column, threshold = template.fusion_intensity_threshold, direction =
+//!    Upward (intensity climbs back up as the schism dissolves). When the
+//!    threshold fires, fusion executes: the parent absorbs a scar
+//!    multiplier on its activating-property Amount and the child is
+//!    tombstoned.
 //!
 //! 3. **`DecayBehavior::OnThreshold`** — property self-removes when its own
 //!    Amount crosses a threshold. Emits `PropertyExpiry`.
@@ -48,6 +53,8 @@ use simthing_gpu::{
     SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
     THRESH_BUF_VALUES,
 };
+
+use crate::fission::FissionLineageRecord;
 
 // ── Semantic action ───────────────────────────────────────────────────────────
 
@@ -209,9 +216,38 @@ impl ThresholdBuilder {
         velocity_alerts: &[VelocityAlertRegistration],
         aggregate_alerts: &[AggregateAlertRegistration],
     ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
+        Self::build_with_lineage(
+            root, dim_reg, allocator,
+            velocity_alerts, aggregate_alerts, &[],
+        )
+    }
+
+    /// Build with fusion lineage. Each `FissionLineageRecord` produces one
+    /// `FusionTrigger` registration watching the child's activating-property
+    /// Intensity column, threshold = template.fusion_intensity_threshold,
+    /// direction = Upward (intensity climbs back up as the schism dissolves).
+    ///
+    /// Lineage entries whose property has been tombstoned, whose template
+    /// index is out of range, whose child slot can't be resolved, or whose
+    /// property has no Intensity sub-field are silently skipped.
+    pub fn build_with_lineage(
+        root: &SimThing,
+        dim_reg: &DimensionRegistry,
+        allocator: &SlotAllocator,
+        velocity_alerts: &[VelocityAlertRegistration],
+        aggregate_alerts: &[AggregateAlertRegistration],
+        lineage: &[FissionLineageRecord],
+    ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
         let mut gpu_regs = Vec::new();
         let mut cpu_reg = ThresholdRegistry::new();
         Self::walk(root, dim_reg, allocator, &mut gpu_regs, &mut cpu_reg);
+        Self::push_fusion_lineage(
+            dim_reg,
+            allocator,
+            lineage,
+            &mut gpu_regs,
+            &mut cpu_reg,
+        );
         Self::push_velocity_alerts(
             dim_reg,
             allocator,
@@ -227,6 +263,43 @@ impl ThresholdBuilder {
             &mut cpu_reg,
         );
         (gpu_regs, cpu_reg)
+    }
+
+    fn push_fusion_lineage(
+        dim_reg:   &DimensionRegistry,
+        allocator: &SlotAllocator,
+        lineage:   &[FissionLineageRecord],
+        gpu_regs:  &mut Vec<ThresholdRegistration>,
+        cpu_reg:   &mut ThresholdRegistry,
+    ) {
+        for record in lineage {
+            if !dim_reg.is_active(record.property_id) { continue; }
+            let prop = dim_reg.property(record.property_id);
+            if record.template_idx >= prop.fission_templates.len() { continue; }
+            let ft = &prop.fission_templates[record.template_idx];
+
+            let Some(child_slot) = allocator.slot_of(record.child_id) else { continue };
+            let range  = dim_reg.column_range(record.property_id);
+            let layout = &prop.layout;
+            let Some(col) = range.col_for_role(&SubFieldRole::Intensity, layout) else {
+                continue;
+            };
+
+            let event_kind = cpu_reg.push(ThresholdSemantic::FusionTrigger {
+                child_id:     record.child_id,
+                parent_id:    record.parent_id,
+                property_id:  record.property_id,
+                template_idx: record.template_idx,
+            });
+            gpu_regs.push(ThresholdRegistration {
+                slot:      child_slot,
+                col:       col as u32,
+                threshold: ft.template.fusion_intensity_threshold,
+                direction: DIR_UPWARD,
+                event_kind,
+                buffer:    THRESH_BUF_VALUES,
+            });
+        }
     }
 
     fn walk(
@@ -470,6 +543,119 @@ mod tests {
         assert_eq!(ek1, 1);
         assert!(r.get(0).is_some());
         assert!(r.get(2).is_none());
+    }
+
+    #[test]
+    fn fusion_lineage_emits_one_intensity_threshold_per_record() {
+        use crate::fission::FissionLineageRecord;
+        use simthing_core::{
+            Direction as Dir, FissionTemplate, FissionThreshold, SimThingKindTag,
+        };
+
+        let mut reg = DimensionRegistry::new();
+        let mut prop = SimProperty::simple("core", "loyalty", 0);
+        prop.fission_templates = vec![FissionThreshold {
+            dimension: SimPropertyId(0),
+            sub_field: SubFieldRole::Amount,
+            threshold: 0.3,
+            direction: Dir::Falling,
+            template: FissionTemplate {
+                child_kind: SimThingKindTag::Cohort,
+                fusion_intensity_threshold: 0.85,
+                fusion_scar_coefficient:    0.10,
+                resolution_label:           "settled".into(),
+            },
+            secondary: None,
+        }];
+        let pid = reg.register(prop);
+
+        // Parent + child both in the tree, both slot-allocated.
+        let mut parent = SimThing::new(SimThingKind::Cohort, 0);
+        parent.add_property(pid, reg.property(pid).default_value());
+        let parent_id = parent.id;
+        let mut child = SimThing::new(SimThingKind::Cohort, 1);
+        child.add_property(pid, reg.property(pid).default_value());
+        let child_id = child.id;
+        parent.add_child(child);
+
+        let mut alloc = SlotAllocator::new();
+        let parent_slot = alloc.alloc(parent_id);
+        let child_slot  = alloc.alloc(child_id);
+
+        let lineage = vec![FissionLineageRecord {
+            parent_id, child_id, property_id: pid, template_idx: 0,
+        }];
+
+        let (gpu, cpu) = ThresholdBuilder::build_with_lineage(
+            &parent, &reg, &alloc, &[], &[], &lineage,
+        );
+
+        // Parent + child each contribute one FissionTrigger registration
+        // (from `walk`) plus the one FusionTrigger registration we asked for.
+        let fusion_regs: Vec<_> = gpu
+            .iter()
+            .filter(|r| matches!(
+                cpu.get(r.event_kind),
+                Some(ThresholdSemantic::FusionTrigger { .. })
+            ))
+            .collect();
+        assert_eq!(fusion_regs.len(), 1);
+
+        // The fusion registration watches the child's Intensity (col 2), rising.
+        assert_eq!(fusion_regs[0].slot, child_slot);
+        assert_eq!(fusion_regs[0].col, 2);
+        assert_eq!(fusion_regs[0].threshold, 0.85);
+        assert_eq!(fusion_regs[0].direction, DIR_UPWARD);
+
+        // Sanity: parent slot didn't get a fusion registration.
+        assert!(fusion_regs.iter().all(|r| r.slot != parent_slot));
+    }
+
+    #[test]
+    fn fusion_lineage_skipped_when_child_has_no_slot() {
+        use crate::fission::FissionLineageRecord;
+        use simthing_core::{
+            Direction as Dir, FissionTemplate, FissionThreshold, SimThingKindTag,
+        };
+
+        let mut reg = DimensionRegistry::new();
+        let mut prop = SimProperty::simple("core", "loyalty", 0);
+        prop.fission_templates = vec![FissionThreshold {
+            dimension: SimPropertyId(0),
+            sub_field: SubFieldRole::Amount,
+            threshold: 0.3,
+            direction: Dir::Falling,
+            template: FissionTemplate {
+                child_kind: SimThingKindTag::Cohort,
+                fusion_intensity_threshold: 0.85,
+                fusion_scar_coefficient:    0.10,
+                resolution_label:           "settled".into(),
+            },
+            secondary: None,
+        }];
+        let pid = reg.register(prop);
+
+        // Allocate parent but tombstone the child (simulates Remove or fusion).
+        let parent_id = SimThing::new(SimThingKind::Cohort, 0).id;
+        let child_id  = SimThing::new(SimThingKind::Cohort, 1).id;
+        let mut alloc = SlotAllocator::new();
+        alloc.alloc(parent_id);
+        alloc.alloc(child_id);
+        alloc.tombstone(child_id);
+
+        let root = SimThing::new(SimThingKind::World, 0);
+        let lineage = vec![FissionLineageRecord {
+            parent_id, child_id, property_id: pid, template_idx: 0,
+        }];
+
+        let (gpu, cpu) = ThresholdBuilder::build_with_lineage(
+            &root, &reg, &alloc, &[], &[], &lineage,
+        );
+
+        assert!(gpu.iter().all(|r| !matches!(
+            cpu.get(r.event_kind),
+            Some(ThresholdSemantic::FusionTrigger { .. })
+        )));
     }
 
     #[test]

@@ -24,7 +24,7 @@ use simthing_feeder::{BoundaryRequest, DispatchCoordinator, MaintainerOutcome, T
 use simthing_gpu::{SlotAllocator, ThresholdEvent, WorldGpuState};
 
 use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
-use crate::fission::{resolve_fission_fusion, FissionOutcome};
+use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
 use crate::observability::{observe, ObservabilityReport};
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
@@ -75,6 +75,12 @@ pub struct BoundaryProtocol {
     /// entries; callers drain with `take_delta_log()`. The serialization
     /// format and playback logic are deferred to the replay system (Week 5).
     delta_log: Vec<BoundaryDeltaEntry>,
+    /// Persistent fission lineage records. Each successful fission adds one;
+    /// each successful fusion removes one. Records whose parent or child has
+    /// been tombstoned (e.g. by `BoundaryRequest::Remove`) are pruned at the
+    /// start of each boundary, before any new threshold registrations are
+    /// emitted, so that no `FusionTrigger` ever points at a vanished slot.
+    fission_lineage: Vec<FissionLineageRecord>,
 }
 
 impl BoundaryProtocol {
@@ -87,6 +93,7 @@ impl BoundaryProtocol {
             velocity_alerts: Vec::new(),
             aggregate_alerts: Vec::new(),
             delta_log: Vec::new(),
+            fission_lineage: Vec::new(),
         }
     }
 
@@ -162,6 +169,26 @@ impl BoundaryProtocol {
             n_dims,
             day as u32,
         );
+
+        // Lineage maintenance:
+        //   - New fissions append records; new fusions remove them.
+        //   - Records whose parent or child is no longer in the allocator
+        //     are pruned (e.g. tombstoned via Remove between boundaries, or
+        //     just now via fusion above).
+        for rec in &out.fission.lineage_added {
+            self.fission_lineage.push(*rec);
+        }
+        if !out.fission.lineage_removed.is_empty() {
+            let removed = &out.fission.lineage_removed;
+            self.fission_lineage.retain(|r| !removed.contains(r));
+        }
+        // Prune any records whose endpoints have tombstoned. `slot_of` returns
+        // None for tombstoned ids, so this also catches Remove + post-fusion.
+        let allocator = &self.allocator;
+        self.fission_lineage.retain(|r| {
+            allocator.slot_of(r.parent_id).is_some()
+                && allocator.slot_of(r.child_id).is_some()
+        });
 
         // Steps 7 + 8: Structural mutations (AddChild, Remove, Reparent,
         // AttachOverlay, AddDimension). One pass through `apply_structural_mutations`
@@ -258,6 +285,7 @@ impl BoundaryProtocol {
             state,
             &self.velocity_alerts,
             &self.aggregate_alerts,
+            &self.fission_lineage,
         );
         // Adopt the new threshold registry for the next day.
         if let Some(new_reg) = gpu_out.new_threshold_registry {
@@ -378,10 +406,18 @@ impl BoundaryProtocol {
             state,
             &self.velocity_alerts,
             &self.aggregate_alerts,
+            &self.fission_lineage,
         );
         if let Some(new_reg) = out.new_threshold_registry {
             self.cpu_threshold_registry = new_reg;
         }
+    }
+
+    /// Read-only access to the persistent fission lineage. Useful for tests
+    /// and observability. Mutation goes through `execute` (fission adds,
+    /// fusion / tombstone removes).
+    pub fn fission_lineage(&self) -> &[FissionLineageRecord] {
+        &self.fission_lineage
     }
 }
 
