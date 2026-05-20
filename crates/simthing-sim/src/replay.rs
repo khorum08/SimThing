@@ -43,16 +43,25 @@ use simthing_core::{DimensionRegistry, SimThing, SimThingId};
 use simthing_gpu::SlotAllocator;
 
 use crate::delta_log::BoundaryDeltaEntry;
+use crate::fission::FissionLineageRecord;
 
 // ── Snapshot ──────────────────────────────────────────────────────────────────
 
 /// Initial state captured at the start of a recording. Subsequent frames are
 /// applied on top of this to reconstruct later state.
+///
+/// `fission_lineage` records the persistent lineage vec from
+/// `BoundaryProtocol` at snapshot time so that `ReplayDriver` can re-register
+/// `FusionTrigger` thresholds for any fissions that occurred before recording
+/// started. Old snapshots without this field deserialize cleanly via the
+/// `#[serde(default)]` attribute.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ReplaySnapshot {
-    pub day:      u32,
-    pub root:     SimThing,
-    pub registry: DimensionRegistry,
+    pub day:             u32,
+    pub root:            SimThing,
+    pub registry:        DimensionRegistry,
+    #[serde(default)]
+    pub fission_lineage: Vec<FissionLineageRecord>,
 }
 
 // ── Frame ─────────────────────────────────────────────────────────────────────
@@ -184,24 +193,30 @@ impl<R: BufRead> ReplayReader<R> {
 /// allocator as frames are applied. Equivalent in structural content to what
 /// `BoundaryProtocol` carries at the same point in a live session, but does
 /// not run GPU passes or maintain a shadow.
+///
+/// `fission_lineage` mirrors `BoundaryProtocol::fission_lineage` — it grows
+/// and shrinks as `FissionLineageAdded`/`Removed` entries are applied so that
+/// callers can re-register `FusionTrigger` thresholds after replay if needed.
 #[derive(Debug)]
 pub struct ReplayDriver {
-    pub day:       u32,
-    pub root:      SimThing,
-    pub registry:  DimensionRegistry,
-    pub allocator: SlotAllocator,
+    pub day:             u32,
+    pub root:            SimThing,
+    pub registry:        DimensionRegistry,
+    pub allocator:       SlotAllocator,
+    pub fission_lineage: Vec<FissionLineageRecord>,
 }
 
 impl ReplayDriver {
     /// Initialize a driver from a snapshot. Allocates slots for every node in
-    /// the recorded tree.
+    /// the recorded tree and seeds the fission lineage from the snapshot.
     pub fn from_snapshot(snapshot: ReplaySnapshot) -> Self {
         let mut allocator = SlotAllocator::new();
         allocator.populate_from_tree(&snapshot.root);
         Self {
-            day:       snapshot.day,
-            root:      snapshot.root,
-            registry:  snapshot.registry,
+            day:             snapshot.day,
+            root:            snapshot.root,
+            registry:        snapshot.registry,
+            fission_lineage: snapshot.fission_lineage,
             allocator,
         }
     }
@@ -209,22 +224,19 @@ impl ReplayDriver {
     /// Apply one frame's entries to the in-memory tree. Each entry is replayed
     /// as the equivalent structural mutation:
     ///
-    /// - `SimThingAdded` / `SimThingRemoved`: skipped — we cannot re-derive
-    ///   the spawned subtree from id alone. Use `OverlayAttached`-style full
-    ///   payload variants once they exist for these.
-    /// - `OverlayAttached`: located by `target`, overlay pushed onto its
-    ///   `overlays` vec.
-    /// - `SimThingReparented`: subtree detached and re-attached.
-    /// - `PropertyExpired`: property removed from the target's properties map.
-    /// - `DimensionAdded`: `registry.restore(property_id)`.
-    /// - `FissionOccurred` / `FusionOccurred`: structurally observed but not
-    ///   recreatable from id alone; see structural reproduction caveat in the
-    ///   module doc.
-    ///
-    /// The lossy variants (`SimThingAdded`, `FissionOccurred`) are a known
-    /// limitation — the current delta log records ids without the spawned
-    /// `SimThing` payload. A `SimThingSpawned { node: SimThing }` variant
-    /// would close this gap; see worklog "Next session pickup."
+    /// - `SimThingAdded { parent, node }`: locate parent, push node as child,
+    ///   allocate slots for the entire spawned subtree.
+    /// - `SimThingRemoved`: detach subtree and tombstone its slots.
+    /// - `FissionOccurred { parent, node }`: same as `SimThingAdded` — locate
+    ///   parent, attach node subtree, allocate slots.
+    /// - `FusionOccurred`: detach child subtree and tombstone its slots.
+    /// - `FissionLineageAdded` / `FissionLineageRemoved`: update
+    ///   `self.fission_lineage` in-place.
+    /// - `OverlayAttached`: locate target, push overlay.
+    /// - `SimThingReparented`: detach + re-attach under new parent.
+    /// - `PropertyExpired`: remove property from target.
+    /// - `DimensionAdded`: `registry.restore(property_id)` if in range.
+    /// - `VelocityAlert`: observation only, no structural effect.
     pub fn apply_frame(&mut self, frame: ReplayFrame) {
         for entry in frame.entries {
             self.apply_entry(entry);
@@ -234,6 +246,29 @@ impl ReplayDriver {
 
     fn apply_entry(&mut self, entry: BoundaryDeltaEntry) {
         match entry {
+            BoundaryDeltaEntry::SimThingAdded { parent, node } => {
+                // Allocate slots for every node in the spawned subtree before
+                // attaching it, so allocator state stays consistent.
+                self.allocator.populate_from_tree(&node);
+                if let Some(p) = find_node_mut(&mut self.root, parent) {
+                    p.children.push(node);
+                }
+                // If parent not found: slots were allocated but tree is not
+                // mutated — mirrors live behavior that rejects unknown targets.
+            }
+            BoundaryDeltaEntry::FissionOccurred { parent, node } => {
+                // Same shape as SimThingAdded: locate parent, attach subtree.
+                self.allocator.populate_from_tree(&node);
+                if let Some(p) = find_node_mut(&mut self.root, parent) {
+                    p.children.push(node);
+                }
+            }
+            BoundaryDeltaEntry::FissionLineageAdded { record } => {
+                self.fission_lineage.push(record);
+            }
+            BoundaryDeltaEntry::FissionLineageRemoved { record } => {
+                self.fission_lineage.retain(|r| r != &record);
+            }
             BoundaryDeltaEntry::OverlayAttached { target, overlay } => {
                 if let Some(node) = find_node_mut(&mut self.root, target) {
                     node.overlays.push(overlay);
@@ -257,8 +292,7 @@ impl ReplayDriver {
                 // The recorded property must exist in the snapshot's registry
                 // for restore to succeed. If it was registered live after the
                 // snapshot was taken, the replay can't see it — skip silently
-                // rather than panic. Matches the live `AddDimension` handler's
-                // bounds check.
+                // rather than panic.
                 if property_id.index() < self.registry.properties.len() {
                     self.registry.restore(property_id);
                 }
@@ -268,9 +302,6 @@ impl ReplayDriver {
                     tombstone_subtree(&detached, &mut self.allocator);
                 }
             }
-            // Lossy variants — structural intent observed, payload not reconstructable.
-            BoundaryDeltaEntry::SimThingAdded   { .. } => { /* lossy */ }
-            BoundaryDeltaEntry::FissionOccurred { .. } => { /* lossy */ }
             BoundaryDeltaEntry::FusionOccurred { parent: _, child } => {
                 // Best-effort: if the child still exists structurally, remove it.
                 if let Some(detached) = detach_subtree(&mut self.root, child) {
@@ -331,7 +362,7 @@ mod tests {
         let mut root = SimThing::new(SimThingKind::World, 0);
         let cohort = SimThing::new(SimThingKind::Cohort, 0);
         root.add_child(cohort);
-        ReplaySnapshot { day: 0, root, registry }
+        ReplaySnapshot { day: 0, root, registry, fission_lineage: Vec::new() }
     }
 
     #[test]
@@ -459,5 +490,123 @@ mod tests {
         assert_eq!(sib.children.len(), 1);
         assert_eq!(sib.children[0].id, cohort_id);
         assert!(!driver.root.children.iter().any(|c| c.id == cohort_id));
+    }
+
+    #[test]
+    fn driver_replays_sim_thing_added() {
+        let snap = fixture();
+        let root_id = snap.root.id;
+        let mut driver = ReplayDriver::from_snapshot(snap);
+
+        // Spawn a new fleet node and deliver it as SimThingAdded under root.
+        let fleet = SimThing::new(SimThingKind::Fleet, 0);
+        let fleet_id = fleet.id;
+
+        let frame = ReplayFrame {
+            day:     1,
+            entries: vec![BoundaryDeltaEntry::SimThingAdded {
+                parent: root_id,
+                node:   fleet,
+            }],
+        };
+        driver.apply_frame(frame);
+
+        // Node must appear in the tree under root.
+        assert!(driver.root.children.iter().any(|c| c.id == fleet_id),
+            "fleet must be a direct child of root after SimThingAdded");
+        // Slot must be allocated.
+        assert!(driver.allocator.slot_of(fleet_id).is_some(),
+            "fleet slot must be allocated");
+    }
+
+    #[test]
+    fn driver_replays_fission_occurred_with_node() {
+        let snap = fixture();
+        let cohort_id = snap.root.children[0].id;
+        let mut driver = ReplayDriver::from_snapshot(snap);
+
+        // Simulate a fission child spawned under the cohort.
+        let rebel = SimThing::new(SimThingKind::Cohort, 0);
+        let rebel_id = rebel.id;
+
+        let frame = ReplayFrame {
+            day:     1,
+            entries: vec![BoundaryDeltaEntry::FissionOccurred {
+                parent: cohort_id,
+                node:   rebel,
+            }],
+        };
+        driver.apply_frame(frame);
+
+        // Fission child must appear under the cohort.
+        let cohort = driver.root.children.iter().find(|c| c.id == cohort_id).unwrap();
+        assert_eq!(cohort.children.len(), 1, "one fission child under cohort");
+        assert_eq!(cohort.children[0].id, rebel_id);
+        assert!(driver.allocator.slot_of(rebel_id).is_some(), "rebel slot allocated");
+    }
+
+    #[test]
+    fn driver_replays_fission_lineage_round_trip() {
+        use crate::fission::FissionLineageRecord;
+        use simthing_core::SimPropertyId;
+
+        let snap = fixture();
+        let cohort_id = snap.root.children[0].id;
+        let rebel_id  = SimThing::new(SimThingKind::Cohort, 0).id;
+        let mut driver = ReplayDriver::from_snapshot(snap);
+
+        let record = FissionLineageRecord {
+            parent_id:    cohort_id,
+            child_id:     rebel_id,
+            property_id:  SimPropertyId(0),
+            template_idx: 0,
+        };
+
+        // Add then remove.
+        let frame = ReplayFrame {
+            day: 1,
+            entries: vec![
+                BoundaryDeltaEntry::FissionLineageAdded { record },
+            ],
+        };
+        driver.apply_frame(frame);
+        assert_eq!(driver.fission_lineage.len(), 1);
+        assert_eq!(driver.fission_lineage[0].child_id, rebel_id);
+
+        let frame2 = ReplayFrame {
+            day: 2,
+            entries: vec![
+                BoundaryDeltaEntry::FissionLineageRemoved { record },
+            ],
+        };
+        driver.apply_frame(frame2);
+        assert!(driver.fission_lineage.is_empty(), "lineage removed");
+    }
+
+    #[test]
+    fn snapshot_carries_fission_lineage_through_serde() {
+        use crate::fission::FissionLineageRecord;
+        use simthing_core::SimPropertyId;
+        use std::io::Cursor;
+
+        let mut snap = fixture();
+        let cohort_id = snap.root.children[0].id;
+        let rebel_id  = SimThing::new(SimThingKind::Cohort, 0).id;
+        snap.fission_lineage.push(FissionLineageRecord {
+            parent_id:    cohort_id,
+            child_id:     rebel_id,
+            property_id:  SimPropertyId(0),
+            template_idx: 0,
+        });
+
+        let mut buf: Vec<u8> = Vec::new();
+        let mut writer = ReplayWriter::new(&mut buf);
+        writer.write_snapshot(&snap).unwrap();
+        drop(writer);
+
+        let mut reader = ReplayReader::new(Cursor::new(buf));
+        let restored = reader.read_snapshot().unwrap();
+        assert_eq!(restored.fission_lineage.len(), 1);
+        assert_eq!(restored.fission_lineage[0].child_id, rebel_id);
     }
 }
