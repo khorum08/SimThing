@@ -28,6 +28,8 @@ pub struct RunSummary {
     pub fission_events: u32,
     pub rmw_rows_synced: u64,
     pub rmw_readback_bytes: u64,
+    pub intent_deltas_uploaded: u64,
+    pub intent_delta_bytes: u64,
 }
 
 /// Owns the full tick + boundary loop for one scenario.
@@ -84,6 +86,8 @@ impl SimSession {
             fission_events: 0,
             rmw_rows_synced: 0,
             rmw_readback_bytes: 0,
+            intent_deltas_uploaded: 0,
+            intent_delta_bytes: 0,
         };
 
         while summary.boundaries_run < cap as u64 {
@@ -99,6 +103,8 @@ impl SimSession {
             summary.ticks_run += 1;
             summary.rmw_rows_synced += tick.rmw_rows_synced as u64;
             summary.rmw_readback_bytes += tick.rmw_readback_bytes;
+            summary.intent_deltas_uploaded += tick.intent_deltas_uploaded as u64;
+            summary.intent_delta_bytes += tick.intent_delta_bytes;
 
             if tick.boundary_reached {
                 let day = tick.day_index;
@@ -132,6 +138,8 @@ impl SimSession {
             fission_events: 0,
             rmw_rows_synced: 0,
             rmw_readback_bytes: 0,
+            intent_deltas_uploaded: 0,
+            intent_delta_bytes: 0,
         };
 
         let mut writer = ReplayWriter::new(&mut file);
@@ -150,6 +158,8 @@ impl SimSession {
             summary.ticks_run += 1;
             summary.rmw_rows_synced += tick.rmw_rows_synced as u64;
             summary.rmw_readback_bytes += tick.rmw_readback_bytes;
+            summary.intent_deltas_uploaded += tick.intent_deltas_uploaded as u64;
+            summary.intent_delta_bytes += tick.intent_delta_bytes;
 
             if tick.boundary_reached {
                 let day = tick.day_index;

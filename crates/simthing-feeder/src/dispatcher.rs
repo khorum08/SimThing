@@ -9,10 +9,10 @@
 //!
 //! ## What a tick does (in order)
 //!
-//! 1. **Drain the work queue.** Patches mutate the CPU shadow; boundary
+//! 1. **Drain the work queue.** Patches fold into GPU intent deltas; boundary
 //!    requests get parked on the Patcher.
-//! 2. **Upload dirty rows.** One `queue.write_buffer` per slot whose shadow
-//!    row changed since the last tick.
+//! 2. **Upload dirty rows.** Legacy/direct shadow writes still upload one row
+//!    per dirty slot; normal tick-time transforms avoid row uploads.
 //! 3. **Run the GPU passes.** Pass 0 (snapshot) → Pass 1 (velocity) →
 //!    Pass 2 (intensity) → Pass 3 (apply overlays) → Passes 4–6 (bottom-up
 //!    reduction) → Pass 7 (threshold scan). Reduction is a no-op until the
@@ -24,15 +24,15 @@
 //!    `boundary_reached = true` in the outcome. The caller (eventually
 //!    `simthing-sim`'s day-boundary protocol) handles the §10 sequence.
 //!
-//! ## Why uploads happen before the snapshot, not after
+//! ## Why intent deltas happen before the snapshot, not after
 //!
 //! Pass 0 copies `values → previous_values`. Velocity / intensity / threshold
-//! all compare current to previous. If we uploaded patches *after* the
+//! all compare current to previous. If we applied patches *after* the
 //! snapshot, every threshold registered on a patched cell would fire on the
 //! next tick — a phantom crossing caused by the upload, not by simulation.
-//! Uploading first means the patch is absorbed into the previous-state
-//! reference frame, exactly the way the CPU evaluator already treats
-//! continuous overlays.
+//! Applying intent deltas first means the patch is absorbed into the
+//! previous-state reference frame, exactly the way the CPU evaluator already
+//! treats continuous overlays.
 //!
 //! ## What's still TODO (Week 3+)
 //!
@@ -46,10 +46,10 @@
 //! - Threshold registry uploads (`state.upload_thresholds`) — same pattern.
 //!   Day-boundary work; this module does not own it.
 
-use crate::patcher::{PatcherStats, ShadowFreshness, TransformPatcher};
+use crate::patcher::{PatcherStats, TransformPatcher};
 use crate::work::FeederReceiver;
 use simthing_core::DimensionRegistry;
-use simthing_gpu::{Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
+use simthing_gpu::{IntentDelta, Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
 
 // ── Outcome ───────────────────────────────────────────────────────────────────
 
@@ -65,6 +65,10 @@ pub struct TickOutcome {
     pub rmw_rows_synced: u32,
     /// Bytes synchronously read back for RMW row refresh.
     pub rmw_readback_bytes: u64,
+    /// Folded GPU intent deltas uploaded for this tick.
+    pub intent_deltas_uploaded: u32,
+    /// Bytes uploaded to the per-tick GPU intent delta buffer.
+    pub intent_delta_bytes: u64,
     /// Threshold crossings detected by Pass 7. Order is GPU-nondeterministic
     /// (atomicAdd race). Callers that need a canonical order must sort.
     pub events: Vec<ThresholdEvent>,
@@ -123,27 +127,17 @@ impl DispatchCoordinator {
         state: &mut WorldGpuState,
         dt: f32,
     ) -> TickOutcome {
-        // 1. Drain feeder queue → shadow. Refresh GPU rows before RMW ops.
-        let n_dims = self.n_dims as usize;
+        // 1. Drain feeder queue into folded GPU intent deltas.
         let feeder_items = receiver.drain_now();
         let ai_items = patcher.drain_ai_now();
-        let rmw_slots = crate::patcher::rmw_slots_from_batch(&feeder_items, &ai_items, allocator);
-        let rmw_rows_synced = rmw_slots.len() as u32;
-        let rmw_readback_bytes = rmw_rows_synced as u64 * self.n_dims as u64 * 4;
-        for slot in rmw_slots {
-            let row = state.read_values_row(slot);
-            let base = (slot as usize) * n_dims;
-            self.shadow[base..base + n_dims].copy_from_slice(&row);
-        }
-        let patcher_stats = patcher.apply_collected(
-            feeder_items,
-            ai_items,
-            registry,
-            allocator,
-            n_dims,
-            &mut self.shadow,
-            ShadowFreshness::GpuSynced,
-        );
+        let (patcher_stats, intent_deltas) =
+            patcher.apply_collected_as_intents(feeder_items, ai_items, registry, allocator);
+        let intent_deltas_uploaded = intent_deltas.len() as u32;
+        let intent_delta_bytes =
+            intent_deltas.len() as u64 * std::mem::size_of::<IntentDelta>() as u64;
+        state.upload_intent_deltas(&intent_deltas);
+        let rmw_rows_synced = 0;
+        let rmw_readback_bytes = 0;
 
         // 2. Upload dirty rows (one write per touched row, coalesced).
         let dirty = patcher.take_dirty_rows();
@@ -153,6 +147,7 @@ impl DispatchCoordinator {
         }
 
         // 3. GPU passes (order matters — see module-level doc).
+        pipelines.run_apply_intents(state);
         pipelines.run_snapshot(state);
         pipelines.run_velocity_integration(state, dt);
         pipelines.run_intensity_update(state, dt);
@@ -180,6 +175,8 @@ impl DispatchCoordinator {
             uploaded_rows,
             rmw_rows_synced,
             rmw_readback_bytes,
+            intent_deltas_uploaded,
+            intent_delta_bytes,
             events,
             boundary_reached,
             tick_index: self.tick_counter,

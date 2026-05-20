@@ -47,8 +47,8 @@ use crate::work::{
     PlayerIntentOverlay,
 };
 use simthing_core::{DimensionRegistry, PropertyTransformDelta, TransformOp};
-use simthing_gpu::SlotAllocator;
-use std::collections::HashSet;
+use simthing_gpu::{IntentDelta, SlotAllocator};
+use std::collections::{HashMap, HashSet};
 
 /// Whether the shadow rows supplied to the patcher are known to include the
 /// latest GPU-integrated values.
@@ -222,6 +222,94 @@ impl TransformPatcher {
         stats
     }
 
+    /// Convert collected work into folded GPU intent deltas instead of
+    /// mutating the CPU shadow.
+    ///
+    /// This is the hot tick path: Set/Add/Multiply ops become one affine
+    /// transform per resolved `(slot, col)`, preserving same-cell arrival
+    /// order without a CPU readback. Boundary and overlay-intent parking stays
+    /// identical to `apply_collected`.
+    pub fn apply_collected_as_intents(
+        &mut self,
+        feeder_items: Vec<FeederWork>,
+        ai_items: Vec<AiIntentOverlay>,
+        registry: &DimensionRegistry,
+        allocator: &SlotAllocator,
+    ) -> (PatcherStats, Vec<IntentDelta>) {
+        let mut stats = PatcherStats::default();
+        let mut order: Vec<(u32, u32)> = Vec::new();
+        let mut folded: HashMap<(u32, u32), (f32, f32)> = HashMap::new();
+
+        for item in feeder_items {
+            match item {
+                FeederWork::Patch(p) => {
+                    fold_patch_as_intents(
+                        &p,
+                        registry,
+                        allocator,
+                        &mut stats,
+                        &mut order,
+                        &mut folded,
+                    );
+                }
+                FeederWork::Boundary(b) => {
+                    self.pending_boundary.push(b);
+                    stats.boundary_parked += 1;
+                }
+                FeederWork::PlayerIntent(pi) => {
+                    let patch = PatchTransform {
+                        target: pi.target,
+                        delta: pi.overlay.transform.clone(),
+                    };
+                    fold_patch_as_intents(
+                        &patch,
+                        registry,
+                        allocator,
+                        &mut stats,
+                        &mut order,
+                        &mut folded,
+                    );
+                    self.pending_player_intents.push(pi);
+                    stats.player_intents_parked += 1;
+                }
+            }
+        }
+
+        for ai in ai_items {
+            let patch = PatchTransform {
+                target: ai.target,
+                delta: ai.overlay.transform.clone(),
+            };
+            fold_patch_as_intents(
+                &patch,
+                registry,
+                allocator,
+                &mut stats,
+                &mut order,
+                &mut folded,
+            );
+            self.pending_ai_intents.push(ai);
+            stats.ai_intents_parked += 1;
+        }
+
+        let deltas = order
+            .into_iter()
+            .filter_map(|(slot, col)| {
+                folded
+                    .get(&(slot, col))
+                    .copied()
+                    .map(|(mul, add)| IntentDelta {
+                        slot,
+                        col,
+                        mul,
+                        add,
+                    })
+            })
+            .collect();
+
+        (stats, deltas)
+    }
+
     /// Single-patch path. Public so callers can drive the Patcher without
     /// going through the channel (e.g., for replaying logs deterministically
     /// in tests).
@@ -348,6 +436,55 @@ fn collect_rmw_slot(
         if let Some(slot) = allocator.slot_of(target) {
             slots.insert(slot);
         }
+    }
+}
+
+fn fold_patch_as_intents(
+    patch: &PatchTransform,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
+    stats: &mut PatcherStats,
+    order: &mut Vec<(u32, u32)>,
+    folded: &mut HashMap<(u32, u32), (f32, f32)>,
+) {
+    let Some(slot) = allocator.slot_of(patch.target) else {
+        stats.missing_targets += 1;
+        return;
+    };
+
+    let pid = patch.delta.property_id;
+    if !registry.is_active(pid) {
+        stats.inactive_property += 1;
+        return;
+    }
+
+    let range = registry.column_range(pid);
+    let layout = &registry.property(pid).layout;
+
+    for (role, op) in &patch.delta.sub_field_deltas {
+        let Some(col) = range.col_for_role(role, layout) else {
+            stats.unresolved_roles += 1;
+            continue;
+        };
+        let key = (slot, col as u32);
+        let entry = folded.entry(key).or_insert_with(|| {
+            order.push(key);
+            (1.0, 0.0)
+        });
+        match op {
+            TransformOp::Set(k) => {
+                entry.0 = 0.0;
+                entry.1 = *k;
+            }
+            TransformOp::Add(a) => {
+                entry.1 += *a;
+            }
+            TransformOp::Multiply(m) => {
+                entry.0 *= *m;
+                entry.1 *= *m;
+            }
+        }
+        stats.applied_writes += 1;
     }
 }
 

@@ -13,24 +13,27 @@ See also: `docs/agents.md` (implementation map), `crates/simthing-feeder/src/pat
 **Authoritative runtime numerics:** GPU `values` (and `output_vectors` after Passes 4–6).
 
 The CPU **shadow** (`DispatchCoordinator::shadow`) is a row-major cache of `values`.
-It is uploaded to the GPU for dirty rows **before** Pass 0 each tick.
+During ticks, queued transforms are folded into GPU intent deltas and applied
+directly to `values` before Pass 0. Dirty shadow rows still exist for legacy or
+direct CPU-side mutation paths, but normal tick-time Set/Add/Multiply does not
+read rows back or upload them through the shadow.
 
 ### Within-day patch rules (`TransformPatcher`)
 
 | Op | Allowed mid-day? | Rationale |
 |----|------------------|-----------|
-| `Set` | Yes | Absolute write; safe even if shadow lags integration by one tick. |
-| `Add` / `Multiply` | Yes (with sync) | `DispatchCoordinator::tick` refreshes affected shadow rows from GPU via `read_values_row` before the Patcher applies RMW ops. Direct `apply_one` skips these ops unless called with `ShadowFreshness::GpuSynced`. |
+| `Set` | Yes | Folded into a GPU intent delta and applied before Pass 0. |
+| `Add` / `Multiply` | Yes | Folded into a GPU intent delta and applied before Pass 0, preserving same-cell operation order without CPU readback. Direct `apply_one` remains a shadow-only helper and skips these ops unless called with `ShadowFreshness::GpuSynced`. |
 
-RMW without GPU sync is treated as unsafe: direct `apply_one` increments
-`unsafe_rmw_skipped` and leaves the row clean.
+RMW through the shadow without GPU sync is treated as unsafe: direct `apply_one`
+increments `unsafe_rmw_skipped` and leaves the row clean.
 
 ### Player / AI intents (two-phase)
 
 `PlayerIntent` and `AiIntent` follow the same contract:
 
-1. **Mid-day (same tick):** the intent's `transform` delta is applied to the shadow
-   via `apply_one` after any required GPU row sync (Set, Add, and Multiply all land).
+1. **Mid-day (same tick):** the intent's `transform` delta is folded into the
+   same GPU intent-delta buffer as feeder patches (Set, Add, and Multiply all land).
 2. **Next boundary:** the full `Overlay` is structurally attached to the tree.
 3. **Subsequent ticks:** Pass 3 applies attached overlays every tick (persistent effect).
 
@@ -128,7 +131,7 @@ passes to reconstruct floats.
 
 ## Invariant checklist (for reviewers)
 
-- [x] Mid-day RMW refreshes affected rows from GPU before apply (`DispatchCoordinator::tick`).
+- [x] Mid-day RMW applies through GPU intent deltas without row readback (`DispatchCoordinator::tick`).
 - [x] Boundary mutation reads GPU into shadow first (`BoundaryProtocol::execute` step 1).
 - [x] `SimThing.properties` is not live sim state (shadow/GPU authoritative; see expiry tests).
 - [x] Aggregate thresholds use `THRESH_BUF_OUTPUT` (`aggregate_alert_registration_surfaces_at_boundary`).

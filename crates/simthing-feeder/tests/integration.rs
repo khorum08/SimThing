@@ -16,6 +16,55 @@ fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
 }
 
+#[test]
+fn add_and_multiply_patches_apply_on_gpu_without_rmw_readback() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let (reg, alloc, pid, [a, _b]) = fixture();
+    let n_dims = reg.total_columns as u32;
+    let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(alloc.capacity());
+    let mut coord = DispatchCoordinator::new(alloc.capacity() as u32, n_dims, 8);
+    let (tx, rx) = feeder_channel();
+
+    coord.shadow[0] = 0.5;
+    coord.upload_full_shadow(&state);
+
+    let mk = |op: TransformOp| PropertyTransformDelta {
+        property_id: pid,
+        sub_field_deltas: vec![(SubFieldRole::Amount, op)],
+    };
+    tx.send(FeederWork::Patch(PatchTransform {
+        target: a,
+        delta: mk(TransformOp::Add(0.25)),
+    }))
+    .unwrap();
+    tx.send(FeederWork::Patch(PatchTransform {
+        target: a,
+        delta: mk(TransformOp::Multiply(0.5)),
+    }))
+    .unwrap();
+
+    let out = coord.tick(&rx, &mut patcher, &reg, &alloc, &pipelines, &mut state, 0.0);
+
+    assert_eq!(out.patcher_stats.applied_writes, 2);
+    assert_eq!(out.rmw_rows_synced, 0);
+    assert_eq!(out.rmw_readback_bytes, 0);
+    assert_eq!(out.intent_deltas_uploaded, 1);
+    assert_eq!(out.uploaded_rows, 0);
+
+    let values = state.read_values();
+    assert!(
+        (values[0] - 0.375).abs() < 1e-6,
+        "expected 0.375, got {}",
+        values[0]
+    );
+}
+
 fn loyalty_property() -> SimProperty {
     let mut p = SimProperty::simple("core", "loyalty", 0);
     p.intensity_behavior = Some(IntensityBehavior::default());
@@ -45,37 +94,42 @@ fn fixture() -> (
 /// upload → Pass 0/1/2/3/7 → readback chain works end-to-end.
 #[test]
 fn patch_through_channel_lands_on_gpu_after_one_tick() {
-    let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
 
     let (reg, alloc, pid, [a, _b]) = fixture();
     let n_dims = reg.total_columns as u32;
 
-    let mut state    = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
-    let pipelines    = Pipelines::new(&state.ctx);
-    let mut patcher  = TransformPatcher::new(alloc.capacity());
-    let mut coord    = DispatchCoordinator::new(alloc.capacity() as u32, n_dims, 4);
+    let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(alloc.capacity());
+    let mut coord = DispatchCoordinator::new(alloc.capacity() as u32, n_dims, 4);
 
     let (tx, rx) = feeder_channel();
 
     // Drop an Amount → 0.75 set on slot 0 onto the channel.
     tx.send(FeederWork::Patch(PatchTransform {
         target: a,
-        delta:  PropertyTransformDelta {
-            property_id:      pid,
+        delta: PropertyTransformDelta {
+            property_id: pid,
             sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.75))],
         },
-    })).unwrap();
+    }))
+    .unwrap();
 
     // Run one tick. dt small so velocity integration is a no-op
     // (initial velocity = 0).
-    let outcome = coord.tick(
-        &rx, &mut patcher, &reg, &alloc, &pipelines, &mut state, 0.0,
-    );
+    let outcome = coord.tick(&rx, &mut patcher, &reg, &alloc, &pipelines, &mut state, 0.0);
 
     assert_eq!(outcome.patcher_stats.applied_writes, 1);
-    assert_eq!(outcome.uploaded_rows, 1);
+    assert_eq!(outcome.uploaded_rows, 0);
+    assert_eq!(outcome.rmw_rows_synced, 0);
+    assert_eq!(outcome.rmw_readback_bytes, 0);
+    assert_eq!(outcome.intent_deltas_uploaded, 1);
     assert_eq!(outcome.tick_index, 1);
-    assert_eq!(outcome.day_index,  0);
+    assert_eq!(outcome.day_index, 0);
     assert!(!outcome.boundary_reached);
 
     // GPU `values`: slot 0, col 0 (Amount) = 0.75. Slot 1 untouched.
@@ -90,20 +144,21 @@ fn patch_through_channel_lands_on_gpu_after_one_tick() {
 /// and the day counter advances. Verifies the bookkeeping in tick().
 #[test]
 fn day_boundary_fires_on_ticks_per_day() {
-    let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
 
     let (reg, alloc, _pid, _) = fixture();
-    let n_dims    = reg.total_columns as u32;
+    let n_dims = reg.total_columns as u32;
     let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
     let pipelines = Pipelines::new(&state.ctx);
     let mut patcher = TransformPatcher::new(alloc.capacity());
-    let mut coord   = DispatchCoordinator::new(alloc.capacity() as u32, n_dims, 4);
-    let (_tx, rx)   = feeder_channel();
+    let mut coord = DispatchCoordinator::new(alloc.capacity() as u32, n_dims, 4);
+    let (_tx, rx) = feeder_channel();
 
     for i in 1..=4 {
-        let out = coord.tick(
-            &rx, &mut patcher, &reg, &alloc, &pipelines, &mut state, 0.0,
-        );
+        let out = coord.tick(&rx, &mut patcher, &reg, &alloc, &pipelines, &mut state, 0.0);
         assert_eq!(out.tick_index, i);
         if i < 4 {
             assert!(!out.boundary_reached, "tick {i} should not signal boundary");
@@ -119,65 +174,75 @@ fn day_boundary_fires_on_ticks_per_day() {
 /// the Tree Maintainer at boundary time, in arrival order.
 #[test]
 fn boundary_requests_reach_tree_maintainer() {
-    let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
 
     let (reg, alloc, _pid, [a, b]) = fixture();
-    let n_dims    = reg.total_columns as u32;
+    let n_dims = reg.total_columns as u32;
     let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
     let pipelines = Pipelines::new(&state.ctx);
-    let mut patcher    = TransformPatcher::new(alloc.capacity());
-    let mut coord      = DispatchCoordinator::new(alloc.capacity() as u32, n_dims, 1);
+    let mut patcher = TransformPatcher::new(alloc.capacity());
+    let mut coord = DispatchCoordinator::new(alloc.capacity() as u32, n_dims, 1);
     let mut maintainer = TreeMaintainer::new();
     let (tx, rx) = feeder_channel();
 
-    tx.send(FeederWork::Boundary(BoundaryRequest::Remove { target: a })).unwrap();
-    tx.send(FeederWork::Boundary(BoundaryRequest::Remove { target: b })).unwrap();
+    tx.send(FeederWork::Boundary(BoundaryRequest::Remove { target: a }))
+        .unwrap();
+    tx.send(FeederWork::Boundary(BoundaryRequest::Remove { target: b }))
+        .unwrap();
 
-    let out = coord.tick(
-        &rx, &mut patcher, &reg, &alloc, &pipelines, &mut state, 0.0,
+    let out = coord.tick(&rx, &mut patcher, &reg, &alloc, &pipelines, &mut state, 0.0);
+    assert!(
+        out.boundary_reached,
+        "ticks_per_day=1 → every tick is a boundary"
     );
-    assert!(out.boundary_reached, "ticks_per_day=1 → every tick is a boundary");
     assert_eq!(out.patcher_stats.boundary_parked, 2);
 
     let parked = patcher.take_boundary_requests();
     assert_eq!(parked.len(), 2);
     let outcome = maintainer.execute(parked);
-    assert_eq!(outcome.removes,  2);
+    assert_eq!(outcome.removes, 2);
     assert_eq!(outcome.deferred, 2);
 }
 
-/// Patches that hit the same row in the same tick coalesce into a single
-/// dirty-row upload. Verifies the bandwidth optimization in `take_dirty_rows`.
+/// Patches that hit the same cell in the same tick coalesce into a single
+/// folded GPU intent delta.
 #[test]
-fn many_patches_same_row_coalesce_to_one_upload() {
-    let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+fn many_patches_same_cell_coalesce_to_one_intent_delta() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
 
     let (reg, alloc, pid, [a, _b]) = fixture();
-    let n_dims    = reg.total_columns as u32;
+    let n_dims = reg.total_columns as u32;
     let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
     let pipelines = Pipelines::new(&state.ctx);
     let mut patcher = TransformPatcher::new(alloc.capacity());
-    let mut coord   = DispatchCoordinator::new(alloc.capacity() as u32, n_dims, 8);
-    let (tx, rx)    = feeder_channel();
+    let mut coord = DispatchCoordinator::new(alloc.capacity() as u32, n_dims, 8);
+    let (tx, rx) = feeder_channel();
 
     let mk = |op: TransformOp| PropertyTransformDelta {
-        property_id:      pid,
+        property_id: pid,
         sub_field_deltas: vec![(SubFieldRole::Amount, op)],
     };
     for i in 1..=10 {
         tx.send(FeederWork::Patch(PatchTransform {
             target: a,
             delta: mk(TransformOp::Set(i as f32 * 0.01)),
-        })).unwrap();
+        }))
+        .unwrap();
     }
 
-    let out = coord.tick(
-        &rx, &mut patcher, &reg, &alloc, &pipelines, &mut state, 0.0,
-    );
+    let out = coord.tick(&rx, &mut patcher, &reg, &alloc, &pipelines, &mut state, 0.0);
 
-    // 10 writes, but 1 row upload because they all hit slot 0.
+    // 10 writes, but 1 intent delta because they all hit one slot/column.
     assert_eq!(out.patcher_stats.applied_writes, 10);
-    assert_eq!(out.uploaded_rows, 1);
+    assert_eq!(out.uploaded_rows, 0);
+    assert_eq!(out.intent_deltas_uploaded, 1);
+    assert_eq!(out.intent_delta_bytes, 16);
 
     // Last Set wins on the GPU.
     let values = state.read_values();

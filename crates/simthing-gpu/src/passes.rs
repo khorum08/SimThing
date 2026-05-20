@@ -46,6 +46,9 @@ pub struct Pipelines {
     overlay_layout:   BindGroupLayout,
     overlay_pipeline: ComputePipeline,
 
+    intent_layout:   BindGroupLayout,
+    intent_pipeline: ComputePipeline,
+
     threshold_layout:   BindGroupLayout,
     threshold_pipeline: ComputePipeline,
 
@@ -180,6 +183,33 @@ impl Pipelines {
             cache: None,
         });
 
+        // Per-tick feeder/player/AI intent deltas, applied before snapshot.
+        let intent_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("intent_bgl"),
+            entries: &[
+                storage_entry(0, /*read_only*/ false), // values (rw)
+                storage_entry(1, /*read_only*/ true),  // intent_deltas
+                uniform_entry(2),                       // params
+            ],
+        });
+        let intent_module = device.create_shader_module(ShaderModuleDescriptor {
+            label:  Some("intent_delta_shader"),
+            source: ShaderSource::Wgsl(include_str!("shaders/intent_delta.wgsl").into()),
+        });
+        let intent_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("intent_pl_layout"),
+            bind_group_layouts: &[&intent_layout],
+            push_constant_ranges: &[],
+        });
+        let intent_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("intent_pipeline"),
+            layout: Some(&intent_pl_layout),
+            module: &intent_module,
+            entry_point: "main",
+            compilation_options: Default::default(),
+            cache: None,
+        });
+
         // ── Pass 7: threshold scan ───────────────────────────────────────────
         let threshold_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("threshold_bgl"),
@@ -255,6 +285,7 @@ impl Pipelines {
             velocity_layout, velocity_pipeline,
             intensity_layout, intensity_pipeline,
             overlay_layout, overlay_pipeline,
+            intent_layout, intent_pipeline,
             threshold_layout, threshold_pipeline,
             reduction_layout, reduction_pipeline, reduction_uniform,
         }
@@ -396,6 +427,39 @@ impl Pipelines {
                 timestamp_writes: None,
             });
             pass.set_pipeline(&self.overlay_pipeline);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.dispatch_workgroups(groups, 1, 1);
+        }
+        ctx.queue.submit(Some(encoder.finish()));
+    }
+
+    /// Apply folded per-tick intent deltas directly on the GPU.
+    pub fn run_apply_intents(&self, state: &WorldGpuState) {
+        if state.n_intent_deltas == 0 { return; }
+        let ctx = &state.ctx;
+        self.write_params(ctx, state, 0.0);
+
+        let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("intent_bg"),
+            layout: &self.intent_layout,
+            entries: &[
+                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                BindGroupEntry { binding: 1, resource: state.intent_deltas.as_entire_binding() },
+                BindGroupEntry { binding: 2, resource: self.uniform_buffer.as_entire_binding() },
+            ],
+        });
+
+        let groups = state.n_intent_deltas.div_ceil(WORKGROUP_SIZE);
+
+        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("intent_encoder"),
+        });
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("intent_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.intent_pipeline);
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(groups, 1, 1);
         }

@@ -162,6 +162,21 @@ pub struct SlotDeltaRange {
     pub length: u32,
 }
 
+/// A single per-tick intent transform, folded to affine form for one resolved
+/// `(slot, col)`: `value = value * mul + add`.
+///
+/// Folding on the CPU preserves original arrival order for any sequence of
+/// Set/Add/Multiply ops targeting the same cell, while the numeric
+/// read-modify-write stays on the GPU.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+pub struct IntentDelta {
+    pub slot: u32,
+    pub col: u32,
+    pub mul: f32,
+    pub add: f32,
+}
+
 // ── ThresholdRegistration / ThresholdEvent — Pass 7 ─────────────────────────
 
 pub const DIR_UPWARD: u32 = 0;
@@ -247,6 +262,7 @@ pub struct WorldGpuState {
     pub n_governed_pairs: u32,
     pub n_intensity_params: u32,
     pub n_overlay_deltas: u32,
+    pub n_intent_deltas: u32,
 
     /// Current property values, row-major: index = slot * n_dims + col.
     pub values: Buffer,
@@ -273,6 +289,10 @@ pub struct WorldGpuState {
 
     /// Per-slot (offset, length) into `overlay_deltas`. Size: `n_slots × 8B`.
     pub slot_delta_ranges: Buffer,
+
+    /// Flat per-tick array of folded player/AI/feeder intent deltas. Grows as
+    /// needed via `upload_intent_deltas`.
+    pub intent_deltas: Buffer,
 
     /// Pass 7 inputs: flat array of ThresholdRegistration structs.
     /// Grows on demand via `upload_thresholds`.
@@ -336,6 +356,7 @@ impl WorldGpuState {
             "slot_delta_ranges",
             (n_slots as u64) * std::mem::size_of::<SlotDeltaRange>() as u64,
         );
+        let intent_deltas = mk("intent_deltas", std::mem::size_of::<IntentDelta>() as u64);
 
         // Always allocate at least one pair's worth so the buffer is bindable
         // even when no governed sub-fields exist. The shader iterates n_governed_pairs,
@@ -399,6 +420,7 @@ impl WorldGpuState {
             n_governed_pairs,
             n_intensity_params,
             n_overlay_deltas: 0,
+            n_intent_deltas: 0,
             values,
             previous_values,
             output_vectors,
@@ -407,6 +429,7 @@ impl WorldGpuState {
             intensity_params,
             overlay_deltas,
             slot_delta_ranges,
+            intent_deltas,
             threshold_registry,
             event_count,
             event_candidates,
@@ -450,6 +473,9 @@ impl WorldGpuState {
         self.overlay_deltas =
             self.mk_storage_buffer("overlay_deltas", std::mem::size_of::<OverlayDelta>() as u64);
         self.n_overlay_deltas = 0;
+        self.intent_deltas =
+            self.mk_storage_buffer("intent_deltas", std::mem::size_of::<IntentDelta>() as u64);
+        self.n_intent_deltas = 0;
 
         self.rebuild_property_buffers(registry);
 
@@ -506,6 +532,7 @@ impl WorldGpuState {
         self.rebuild_property_buffers(registry);
 
         self.n_overlay_deltas = 0;
+        self.n_intent_deltas = 0;
         self.n_thresholds = 0;
         self.depth_bucket_ranges.clear();
     }
@@ -574,6 +601,28 @@ impl WorldGpuState {
         self.ctx
             .queue
             .write_buffer(&self.slot_delta_ranges, 0, bytemuck::cast_slice(ranges));
+    }
+
+    /// Upload folded per-tick intent deltas. Empty input clears the active
+    /// count while keeping the placeholder buffer bindable.
+    pub fn upload_intent_deltas(&mut self, deltas: &[IntentDelta]) {
+        let needed_count = deltas.len().max(1);
+        let needed_bytes = (needed_count * std::mem::size_of::<IntentDelta>()) as u64;
+        if needed_bytes > self.intent_deltas.size() {
+            self.intent_deltas = self.ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("intent_deltas"),
+                size: needed_bytes,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+
+        self.n_intent_deltas = deltas.len() as u32;
+        if !deltas.is_empty() {
+            self.ctx
+                .queue
+                .write_buffer(&self.intent_deltas, 0, bytemuck::cast_slice(deltas));
+        }
     }
 
     /// Upload a fresh set of GPU threshold registrations. Reallocates both
@@ -730,6 +779,7 @@ impl WorldGpuState {
             + self.intensity_params.size()
             + self.overlay_deltas.size()
             + self.slot_delta_ranges.size()
+            + self.intent_deltas.size()
             + self.threshold_registry.size()
             + self.event_count.size()
             + self.event_candidates.size()

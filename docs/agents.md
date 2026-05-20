@@ -292,6 +292,11 @@ Highlights:
 - `take_dirty_rows() -> Vec<u32>` is the bandwidth optimization: 10
   patches to slot 0 produce 1 GPU upload.
 
+**Current hot-path note (2026-05-20):** normal tick-time feeder/player/AI
+transforms now fold into GPU-side affine `IntentDelta` records and apply before
+Pass 0. The older shadow mutation path remains for direct/replay-style callers,
+but dispatcher ticks no longer do per-slot RMW row readbacks for Add/Multiply.
+
 **`dispatcher.rs` — DispatchCoordinator:**
 - Owns the row-major `[n_slots × n_dims]` CPU shadow of `values`.
 - `tick(receiver, patcher, registry, allocator, pipelines, state, dt) -> TickOutcome`
@@ -322,8 +327,10 @@ Integration highlights:
 - `boundary_requests_reach_tree_maintainer` — boundary requests survive
   the channel + Patcher park + boundary handoff and the Maintainer's
   classifier counts them correctly.
-- `many_patches_same_row_coalesce_to_one_upload` — 10 Set patches → 10
-  applied writes → 1 dirty-row upload.
+- `many_patches_same_cell_coalesce_to_one_intent_delta` — 10 Set patches → 10
+  applied writes → 1 GPU intent delta and 0 dirty-row uploads.
+- `add_and_multiply_patches_apply_on_gpu_without_rmw_readback` — Add/Multiply
+  compose in order and apply on GPU with 0 RMW row readbacks.
 
 **Not yet built in simthing-feeder:**
 - OS-thread spawning. The structs are designed for a single feeder

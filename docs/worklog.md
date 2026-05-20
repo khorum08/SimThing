@@ -4,6 +4,30 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-20 - GPU intent delta hot path
+
+**Status:** In working tree, tests passing.
+
+**Landed:**
+
+- Tick-time feeder/player/AI transforms now fold into per-cell affine
+  `IntentDelta` records and apply on the GPU before Pass 0.
+- Same-cell operation order is preserved while eliminating blocking
+  `read_values_row` RMW refreshes from the dispatcher hot path.
+- `TickOutcome`, `RunSummary`, and `simthing bench` now report
+  `intent_deltas_uploaded` and `intent_delta_bytes`; RMW row-sync metrics
+  remain and should stay zero for normal tick transforms.
+- Feeder integration coverage now verifies Set folding, Add/Multiply folding,
+  zero RMW readback, and one intent delta for many same-cell patches.
+
+**Tests:** `cargo test --workspace` => 174 passed, 1 ignored timing diagnostic.
+
+**Next optimization:** Consolidate GPU command submission into a one-encoder
+tick pipeline, then expand synthetic stress scenarios to measure ms/tick and
+ms/sim-day under intent, threshold, reduction, and fission pressure.
+
+---
+
 ## 2026-05-20 - GPU growth and semantic hardening
 
 **Status:** Merged to master (`4b5f1c6`).
@@ -38,8 +62,8 @@ interim measurement step.
 
 ## Next session pickup
 
-**173/173** tests passing plus 1 ignored timing diagnostic, zero warnings.
-Master at `4b5f1c6` (GPU growth and patch-authority hardening).
+**174/174** tests passing plus 1 ignored timing diagnostic, zero warnings.
+Working tree includes GPU intent-delta hot path on top of `origin/master`.
 
 ### Todo (recommended order)
 
@@ -61,7 +85,7 @@ Master at `4b5f1c6` (GPU growth and patch-authority hardening).
 
 #### Next
 
-- [ ] **Eliminate per-slot blocking RMW readbacks.** Preferred path:
+- [x] **Eliminate per-slot blocking RMW readbacks.** Preferred path:
       GPU-side intent delta buffer/pass. Batch row readback is acceptable only
       as an interim measurement step.
 - [ ] **Consolidate GPU command submission.** Add a one-encoder tick pipeline
@@ -78,12 +102,10 @@ Master at `4b5f1c6` (GPU growth and patch-authority hardening).
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds remains
       useful, but it is behind the GPU performance path.
 
-**Recent:** GPU growth/performance hardening landed: overlay lifecycle now
-respects semantic property presence, invalid overlay property ids no longer
-panic expiration, fission thresholds now watch their owning property, direct
-`apply_one` cannot stale-RMW silently, boundary slot growth rebuilds GPU state
-instead of panicking, and tick/session/CLI benchmark metrics report RMW readback
-cost.
+**Recent:** GPU intent-delta hot path is implemented: tick-time transforms fold
+to GPU-side affine deltas, dispatcher RMW row readbacks are eliminated for normal
+feeder/player/AI patches, and benchmark summaries report intent delta upload
+counts/bytes alongside RMW metrics.
 
 **Tabled:** `simthing-studio` designer UI.
 

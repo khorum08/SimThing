@@ -179,6 +179,11 @@ fn cmd_bench(args: &[String]) {
     println!("  rmw_rows_synced: {}", summary.rmw_rows_synced);
     println!("  rmw_readback_bytes: {}", summary.rmw_readback_bytes);
     println!(
+        "  intent_deltas_uploaded: {}",
+        summary.intent_deltas_uploaded
+    );
+    println!("  intent_delta_bytes: {}", summary.intent_delta_bytes);
+    println!(
         "  final_gpu_buffer_bytes: {}",
         session.state.total_buffer_bytes()
     );
