@@ -455,15 +455,16 @@ Integration highlights:
   through `BoundaryOutcome::aggregate_alerts`.
 
 **Not yet built (see `docs/worklog.md` Next session pickup):**
-- Replay v2 — `SimThingAdded` / `FissionOccurred` carry only ids today; the
-  spawned subtree payload is lost in the log. `ReplayDriver` skips these
-  variants silently. Also: `FissionLineageRecord`s are in-memory only, so
-  replay reconstructs a tree where fission happened but no fusion threshold
-  gets registered.
-- Fission re-fire suppression — a parent that already fissioned still
-  carries a live `FissionTrigger` registration. Design call needed on
-  whether recurring rebellions are intended.
+- Full RON scenario files (tree + registry inline; today: `builtin` templates only).
 - Designer UI (`simthing-studio`) — tabled
+
+**Built (playability):**
+- `crates/simthing-driver` — `SimSession`, `Scenario`, `simthing record` / `simthing replay` CLI.
+- `scenarios/rebellion_demo.ron` — builtin rebellion demo (World → Location → Cohort).
+
+**Design decisions (closed):**
+- **Fission re-fire:** recurring rebellions are intentional. `FissionTrigger`
+  stays live; no suppression when Amount re-crosses. See `docs/state-authority.md`.
 
 ### simthing-sim::fission lineage + fusion scar
 - `FissionLineageRecord { parent_id, child_id, property_id, template_idx }`
@@ -510,12 +511,21 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 153 tests must pass with zero warnings before any commit
-(16 core + 45 GPU + 21 feeder unit + 4 feeder integration + 48 sim unit + 13 sim integration).
+All 157 tests must pass with zero warnings before any commit
+(16 core + 1 driver + 45 GPU + 21 feeder unit + 4 feeder integration + 54 sim unit + 15 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available
 (`try_gpu()` returns `None`) — CI without a GPU still completes successfully.
+
+### Run a recorded session
+
+```
+cargo run -p simthing-driver -- record --scenario scenarios/rebellion_demo.ron --out demo.replay.ldjson
+cargo run -p simthing-driver -- replay --in demo.replay.ldjson
+```
+
+Requires a GPU adapter for `record`; `replay` is CPU-only structural playback.
 
 The `custom_layout_ethics_axis` test is the proof that the generalization works beyond the
 standard amount/velocity/intensity layout. If you add a new layout capability, add a test in
