@@ -468,6 +468,8 @@ Integration highlights:
 **Still open (see `docs/worklog.md` Next session pickup):**
 - Expanded benchmark attribution: overlay deltas, threshold registrations,
   reduction edges/depths, boundary sync/readback bytes, and per-phase timing.
+- Bottleneck profiling for `map_1m_light` and `fission_stress` after attribution
+  lands, to separate GPU tick cost from CPU boundary/tree growth work.
 - Full RON scenario files (tree + registry inline; today: `builtin` templates only).
 - Designer UI (`simthing-studio`) — tabled
 

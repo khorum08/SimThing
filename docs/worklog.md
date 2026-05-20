@@ -6,7 +6,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-20 - GPU intent delta hot path
 
-**Status:** In working tree, tests passing.
+**Status:** Merged to master (`8fe858b`).
 
 **Landed:**
 
@@ -29,7 +29,7 @@ to upload, tick, boundary, reduction, threshold, and growth work.
 
 ## 2026-05-20 - Consolidated tick command submission
 
-**Status:** In working tree, tests passing.
+**Status:** Merged to master (`8fe858b`).
 
 **Landed:**
 
@@ -47,15 +47,14 @@ to upload, tick, boundary, reduction, threshold, and growth work.
 - Added GPU parity coverage:
   `run_tick_pipeline_matches_manual_pass_sequence`.
 
-**Next optimization:** Expand stress scenarios and benchmark reporting around
-large intent batches, threshold registries, reduction depth counts, and fission
-growth.
+**Next optimization:** Add per-phase benchmark attribution and counters for the
+stress scenarios now on master.
 
 ---
 
 ## 2026-05-20 - Builtin benchmark stress scenarios
 
-**Status:** In working tree, tests passing.
+**Status:** Merged to master (`8fe858b`).
 
 **Landed:**
 
@@ -124,9 +123,9 @@ interim measurement step.
 ## Next session pickup
 
 **177/177** tests passing plus 1 ignored timing diagnostic, zero warnings.
-Working tree includes GPU intent-delta hot path, consolidated tick command
-submission, 2D large-workload dispatch, and synthetic stress scenarios on top of
-`origin/master`.
+`master` and `origin/master` include GPU intent-delta hot path, consolidated tick
+command submission, 2D large-workload dispatch, and synthetic stress scenarios
+through `8fe858b`.
 
 ### Todo (recommended order)
 
@@ -145,6 +144,7 @@ submission, 2D large-workload dispatch, and synthetic stress scenarios on top of
 - [x] **Driver GPU integration tests** — `session_integration.rs` (run + record/replay).
 
 - [x] **GPU growth + patch-authority hardening** - `4b5f1c6`.
+- [x] **GPU intent deltas + stress harness + dispatch scaling** - `8fe858b`.
 
 #### Next
 
@@ -160,6 +160,9 @@ submission, 2D large-workload dispatch, and synthetic stress scenarios on top of
 - [ ] **Expand benchmark metrics.** Report overlay deltas, thresholds,
       reduction edges/depths, boundary sync/readback bytes, and per-phase timing
       where practical.
+- [ ] **Profile benchmark bottlenecks.** Use the expanded metrics to separate
+      GPU tick time from CPU boundary/tree work, especially for `map_1m_light`
+      and `fission_stress`.
 - [ ] **Document/prototype map-scale representation.** Keep current
       `SimThing` as semantic authoring state; evaluate arena/topology sidecars
       only after benchmark data shows tree representation pressure.
