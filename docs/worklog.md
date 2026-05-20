@@ -6,16 +6,13 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-Master is at `dae2982` (docs) + pending WeightedMean merge. 126/126 tests
-passing, zero warnings.
+Master is at `97959bd` (PR #21, WeightedMean reduction merged). 126/126
+tests passing, zero warnings, no uncommitted work.
 
 ### Todo (recommended order)
 
 - [x] **Per-entity ids in outcome structs** — PR #20.
-- [x] **`WeightedMean { by: SimPropertyId }` reduction variant** — local
-  branch. `ReductionRule::WeightedMean`, `column_rules` encoded as
-  `[rule_kind, weight_col]` per column (`RULE_WEIGHTED_MEAN = 5`), CPU/GPU
-  parity tests (`weighted_mean_*`).
+- [x] **`WeightedMean { by: SimPropertyId }` reduction variant** — PR #21.
 - [ ] **Thresholds on `output_vectors`** (Opus). Pass 7 scans `values` only.
   World/location-level thresholds on aggregated fields need a buffer selector
   on `ThresholdRegistration` or a parallel registry + Pass 7 dispatch.
@@ -33,7 +30,7 @@ warning on aggregates matters.
 
 ## 2026-05-20 — WeightedMean reduction variant
 
-**Status:** Implemented on working tree (awaiting PR).
+**Status:** Merged to `master` as PR #21 (`97959bd`).
 
 **Landed:**
 
