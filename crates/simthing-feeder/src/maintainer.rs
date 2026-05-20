@@ -63,6 +63,8 @@ pub struct MaintainerOutcome {
     pub overlays_attached: Vec<OverlayId>,
     /// New `SimPropertyId`s admitted this cycle.
     pub dimensions_added: Vec<SimPropertyId>,
+    /// Each successful reparent: `(child_id, new_parent_id)`.
+    pub reparented: Vec<(SimThingId, SimThingId)>,
 }
 
 // ── Maintainer ────────────────────────────────────────────────────────────────

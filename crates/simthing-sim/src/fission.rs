@@ -48,6 +48,10 @@ pub struct FissionOutcome {
     pub fissions_skipped_duplicate: u32,
     pub fusions_executed: u32,
     pub fusions_skipped_not_found: u32,
+    /// Each successful fission: `(parent_id, child_id)`.
+    pub fission_pairs: Vec<(SimThingId, SimThingId)>,
+    /// Each successful fusion: `(parent_id, child_id)`.
+    pub fusion_pairs: Vec<(SimThingId, SimThingId)>,
 }
 
 /// Execute all fission and fusion events for one boundary.
@@ -152,6 +156,7 @@ fn execute_fission(
     let parent = find_node_mut(root, stid);
     if let Some(p) = parent {
         p.add_child(new_child);
+        out.fission_pairs.push((stid, new_id));
         true
     } else {
         // Parent disappeared between the check and the mutation — extremely
@@ -208,7 +213,7 @@ fn execute_fusion(
     _registry:    &DimensionRegistry,
     allocator:    &mut SlotAllocator,
     child_id:     SimThingId,
-    _parent_id:   SimThingId,
+    parent_id:    SimThingId,
     _pid:         SimPropertyId,
     _template_idx: usize,
     out:          &mut FissionOutcome,
@@ -216,6 +221,7 @@ fn execute_fusion(
     // Find and remove the child from its parent's children list.
     if remove_child_from_tree(root, child_id) {
         allocator.tombstone(child_id);
+        out.fusion_pairs.push((parent_id, child_id));
         out.fusions_executed += 1;
     } else {
         out.fusions_skipped_not_found += 1;
