@@ -37,6 +37,17 @@ working around one of these, stop and reconsider the design.
 | Evaluator does not mutate the SimThing tree | `evaluate_node` takes `&SimThing`, returns snapshot; fission/fusion belong to day-boundary protocol |
 | Determinism is bit-exact | Tests use `f32::to_bits()` comparison, not approximate equality |
 
+## State Authority
+
+| Rule | Enforced by |
+|---|---|
+| Within-day CPU shadow writes do not perform stale read-modify-write | `TransformPatcher` applies only `Set` immediately; `Add`/`Multiply` increment `unsafe_rmw_skipped` |
+| Boundary lifecycle decisions read GPU-integrated values | `BoundaryProtocol::execute` reads `WorldGpuState::values` into `coord.shadow` before expiry/fission/structural work |
+| CPU `TowardZero` expiry reads synchronized shadow | `resolve_property_expiry(root, registry, allocator, shadow, n_dims, ...)` resolves slot+column and reads `shadow` |
+| Registry tombstoning is whole-tree scoped | CPU expiry collects removals first, then checks liveness from the root before `registry.tombstone(pid)` |
+| Structural slot churn scrubs dense state | `AddChild` zeroes and projects initialized subtree properties; `Remove` zeroes rows before tombstoning slots |
+| Fission secondary checks use the triggering property | `check_secondary(..., triggering_pid, ...)` reads Amount/Intensity from that property's shadow columns |
+
 ## SimProperty Identity
 
 | Rule | Enforced by |

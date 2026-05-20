@@ -6,26 +6,64 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-Master is at `c573363` (PR #22 merged + worklog refresh). **128/128**
-tests passing, zero warnings, no uncommitted work.
+Master is at `77357ad` (PR #23 merged). **132/132** tests passing
+plus 1 ignored timing diagnostic, zero warnings, no committed-work drift.
 
-**Good stopping point.** All non-Opus items on the recommended pickup list
-are done. The only remaining engine todo is replay (Opus-tier).
+**Good stopping point.** The state-authority hardening pass is complete.
+All non-Opus items on the recommended pickup list are done. The remaining
+engine todos are replay (Opus-tier) and real fusion lineage registration.
 
 ### Todo (recommended order)
 
 - [x] **Per-entity ids in outcome structs** — PR #20.
 - [x] **`WeightedMean { by: SimPropertyId }` reduction variant** — PR #21.
 - [x] **Thresholds on `output_vectors`** — PR #22 (`6ef455b`).
+- [x] **State authority hardening** — PR #23 (`77357ad`): threshold counter
+  reset on zero registrations, unsafe within-day Add/Multiply shadow writes
+  skipped, TowardZero expiry reads synchronized shadow, whole-tree liveness
+  tombstoning, AddChild/Remove shadow hygiene, triggering-property fission
+  secondary checks.
 - [ ] **Replay serialization + playback** (Opus). Format choice (binary frame
   + delta stream, or line-delimited JSON), file I/O, playback driver
   consuming `BoundaryDeltaEntry`s. Still needs full `Overlay` payload in
   `OverlayAttached` (id-only today). Delta capture + per-entity ids are
   in place (PR #20); serialization and playback are not.
+- [ ] **Fusion lineage registration + scar semantics.** `FusionTrigger` and
+  the event handler shape exist, but `ThresholdBuilder` does not yet register
+  spawned-child fusion thresholds from lineage metadata, and scar application
+  is not wired.
 
 **Next session:** Opus — replay end to end (format → write → read → driver).
+Then wire fusion lineage as a focused correctness pass.
 
 **Tabled (not on this list):** `simthing-studio` designer UI.
+
+---
+
+## 2026-05-20 — State authority hardening (PR #23)
+
+**Status:** Merged to `master` as PR #23 (`77357ad`).
+
+**Why:** Cursor's feature expansion left several authority/lifecycle edges
+ambiguous: stale within-day shadow read-modify-write, stale TowardZero expiry,
+local-subtree tombstoning, AddChild/Remove shadow hygiene, and secondary fission
+checks using the wrong property.
+
+**Landed:**
+- `Pipelines::run_threshold_scan` resets `event_count` before the zero-threshold
+  early return.
+- `TransformPatcher` applies only safe `Set` writes in the within-day shadow
+  path; `Add`/`Multiply` are skipped and counted via `unsafe_rmw_skipped`.
+- `resolve_property_expiry` now receives allocator + synchronized shadow +
+  `n_dims`; TowardZero checks shadow values and tombstones only after a
+  whole-tree liveness pass.
+- `AddChild` projects initialized child/subtree properties into the CPU shadow;
+  `Remove` zeros tombstoned subtree rows.
+- Fission secondary checks read Amount/Intensity from the triggering property.
+- Fusion docs now state the current truth: placeholder handler exists, but
+  automatic fusion threshold registration/scar semantics remain unwired.
+
+**Tests:** 132 passing, 1 ignored timing diagnostic, zero warnings.
 
 ---
 

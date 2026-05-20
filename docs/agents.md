@@ -86,7 +86,7 @@ SimThing/
             │                          decrement, expire writeback
             ├── property_expiry.rs     step 5: threshold-driven property removal +
             │                          column tombstone; CPU TowardZero sweep
-            ├── fission.rs             step 6: fission spawn, fusion merge
+            ├── fission.rs             step 6: fission spawn, placeholder fusion handler
             │                          (with secondary-condition guard, dedup)
             ├── tree_mutation.rs       steps 7+8: apply_structural_mutations —
             │                          AddChild / Remove / Reparent /
@@ -103,20 +103,26 @@ SimThing/
 ## Current implementation state
 
 **Weeks 1–4 complete plus replay delta capture plus Passes 4–6
-(presentation reduction) plus per-entity boundary outcome ids (PR #20)
-plus output-vector thresholds and aggregate alerts (PR #22).
-Both player and AI can submit overlays; `BoundaryProtocol::observe`
-decomposes sub-field values and overlay contributions;
-`BoundaryProtocol::take_delta_log()` drains a `Vec<BoundaryDeltaEntry>`
-with one entry per fission/fusion/expiry/reparent/structural change (full
-ids; `OverlayAttached` still id-only). GPU Passes 4–6 reduce children
-into parents bottom-up using per-sub-field `ReductionRule` (default per
-role: Amount/Velocity/Named → Mean, Intensity → Max, plus
+(presentation reduction), per-entity boundary outcome ids (PR #20),
+output-vector thresholds and aggregate alerts (PR #22), and state-authority
+hardening (PR #23). Within-day shadow patches apply only `Set` immediately;
+`Add`/`Multiply` are skipped and counted as unsafe RMW unless a future
+GPU-delta/readback path is added. Boundary expiry uses synchronized shadow for
+TowardZero checks, registry tombstoning waits for whole-tree liveness, AddChild
+projects semantic property values into shadow, Remove zeroes tombstoned rows,
+and fission secondary checks use the triggering property. Both player and AI
+can submit overlays; `BoundaryProtocol::observe` decomposes sub-field values
+and overlay contributions; `BoundaryProtocol::take_delta_log()` drains a
+`Vec<BoundaryDeltaEntry>` with one entry per fission/fusion/expiry/reparent/
+structural change (full ids; `OverlayAttached` still id-only). GPU Passes 4–6
+reduce children into parents bottom-up using per-sub-field `ReductionRule`
+(default per role: Amount/Velocity/Named → Mean, Intensity → Max, plus
 `WeightedMean`). Pass 7 scans `values` or `output_vectors` via
 `ThresholdRegistration.buffer`; `AggregateAlertRegistration` surfaces
 post-reduction crossings at the boundary. CPU oracle matches GPU shader
-bit-exactly. Replay serialization + playback remain deferred (Opus) —
-the only remaining recommended engine todo.**
+bit-exactly. Replay serialization + playback remain deferred (Opus). Fusion
+lineage threshold registration/scar semantics remain a focused correctness
+todo; do not claim fusion is fully implemented.**
 
 ### simthing-core (complete)
 - `PropertyLayout` fully declarative: `Vec<SubFieldSpec>` with computed stride
@@ -261,14 +267,17 @@ Highlights:
 **`patcher.rs` — TransformPatcher:**
 - `drain(receiver, registry, allocator, n_dims, &mut shadow) -> PatcherStats`:
   pulls every queued item; resolves `(target, role) → (slot, col)` via
-  `col_for_role` only; applies `TransformOp::{Multiply, Add, Set}` to the
-  CPU shadow. Boundary requests park on `pending_boundary`; player intent
-  overlays park on `pending_player_intents`.
+  `col_for_role` only. It applies `TransformOp::Set` immediately to the CPU
+  shadow. `Add`/`Multiply` are skipped in this within-day path because the
+  shadow can lag GPU integration; skipped writes increment
+  `unsafe_rmw_skipped`. Boundary requests park on `pending_boundary`; player
+  intent overlays park on `pending_player_intents`.
 - `take_player_intents() -> Vec<PlayerIntentOverlay>` — drains player intents
   for the boundary protocol to attach during step 7/8.
-- `PatcherStats` counts applied writes, missing targets, inactive
-  properties, unresolved roles, and parked boundary requests — diagnostic
-  signal without crashing the sim when gameplay code drifts from registry.
+- `PatcherStats` counts applied writes, unsafe RMW skips, missing targets,
+  inactive properties, unresolved roles, and parked boundary requests —
+  diagnostic signal without crashing the sim when gameplay code drifts from
+  registry.
 - `take_dirty_rows() -> Vec<u32>` is the bandwidth optimization: 10
   patches to slot 0 produce 1 GPU upload.
 
@@ -302,7 +311,7 @@ Integration highlights:
 - `boundary_requests_reach_tree_maintainer` — boundary requests survive
   the channel + Patcher park + boundary handoff and the Maintainer's
   classifier counts them correctly.
-- `many_patches_same_row_coalesce_to_one_upload` — 10 patches → 10
+- `many_patches_same_row_coalesce_to_one_upload` — 10 Set patches → 10
   applied writes → 1 dirty-row upload.
 
 **Not yet built in simthing-feeder:**
@@ -343,28 +352,36 @@ Integration highlights:
   superseded by `tree_mutation::AttachOverlay` in the boundary protocol).
 
 **`property_expiry.rs` — step 5:**
-- `resolve_property_expiry(root, registry, events, cpu_reg)`:
+- `resolve_property_expiry(root, registry, allocator, shadow, n_dims, events, cpu_reg)`:
   - For each `ThresholdEvent` with `event_kind` → `PropertyExpiry`:
     HashMap remove + registry tombstone if last live instance.
   - CPU-side sweep for `DecayBehavior::AfterTicks { remaining: 0 }` and
-    `DecayBehavior::TowardZero` (|amount| < 1e-4).
+    `DecayBehavior::TowardZero` (|amount| < 1e-4). TowardZero reads the
+    boundary-synchronized CPU shadow, not stale `PropertyValue::data`.
+  - CPU-side tombstoning happens after collecting removals and checking
+    property liveness from the root, so one branch cannot tombstone a property
+    still present in a sibling subtree.
 
 **`fission.rs` — step 6:**
 - `resolve_fission_fusion(root, registry, allocator, events, cpu_reg, shadow, n_dims, day)`.
 - Deduplicates by `(sim_thing_id, template_idx)` to prevent multiple events
   from firing the same fission twice in one boundary.
 - Checks `SecondaryCondition` (IntensityAbove/Below, AmountAbove/Below) against
-  the shadow before mutating the tree.
+  the triggering property's shadow columns before mutating the tree.
 - Fission: spawn `SimThing { kind: template.child_kind }`, alloc its slot,
-  attach as child of trigger SimThing.
-- Fusion: locate child by id, remove from parent, tombstone slot.
+  seed it from the parent's shadow row, zeroing the activating property's
+  Amount, then attach as child of trigger SimThing.
+- Fusion: placeholder event handler can locate child by id, remove from parent,
+  and tombstone its slot. Automatic fusion threshold registration from fission
+  lineage and scar application are not wired yet.
 
 **`tree_mutation.rs` — steps 7 + 8 (Tree Maintainer execution):**
 - `apply_structural_mutations(requests, root, allocator, registry, shadow, n_dims) -> MaintainerOutcome`.
 - `AddChild`: walk to parent, attach child, `populate_from_subtree` allocs slots
-  for the entire attached subtree, zeroes the new rows in the shadow.
-- `Remove`: detach subtree, walk it to tombstone every descendant's slot
-  (otherwise descendant rows stay GPU-live but tree-unreachable).
+  for the entire attached subtree, zeroes each new row, then projects the
+  child's initialized semantic properties into the shadow.
+- `Remove`: detach subtree, zero each row, then tombstone every descendant's
+  slot (otherwise descendant rows stay GPU-live but tree-unreachable).
 - `Reparent`: detach + re-attach. Slots preserved — the whole point of slot
   stability. Cycle detection rejects `child → ancestor(child)`.
 - `AttachOverlay`: depth-first find + push into target's overlay vec.
@@ -408,7 +425,7 @@ Integration highlights:
 `MaintainerOutcome::reparented`, `ExpiryOutcome::expired` — fed to
 `delta_log::entries_from_outcome` for per-event replay entries.
 
-**Tests: 33 unit + 8 GPU integration tests, all passing, zero warnings.**
+**Tests: 37 unit + 9 GPU integration tests, all passing, zero warnings.**
 
 Integration highlights:
 - `fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean` — full end-to-end:
@@ -432,6 +449,7 @@ Integration highlights:
 
 **Not yet built (see `docs/worklog.md` Next session pickup):**
 - Replay serialization + playback (Opus; `Overlay` payload in delta log still TBD)
+- Fusion lineage registration + scar semantics.
 - Designer UI (`simthing-studio`) — tabled
 
 ---
@@ -443,8 +461,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 128 tests must pass with zero warnings before any commit
-(16 core + 45 GPU + 21 feeder unit + 4 feeder integration + 33 sim unit + 9 sim integration).
+All 132 tests must pass with zero warnings before any commit
+(16 core + 45 GPU + 21 feeder unit + 4 feeder integration + 37 sim unit + 9 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available
