@@ -6,7 +6,7 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-**157/157** tests passing plus 1 ignored timing diagnostic, zero warnings.
+**158/158** tests passing plus 1 ignored timing diagnostic, zero warnings.
 Master at `57a3231` (PR #29, simthing-driver + playability path).
 
 ### Todo (recommended order)
@@ -20,12 +20,11 @@ Master at `57a3231` (PR #29, simthing-driver + playability path).
 - [x] **Replay v2** — PR #27.
 - [x] **State authority doctrine + lineage prune fix** — PR #28.
 - [x] **Fission re-fire policy** — recurring rebellions intentional (no suppression).
-- [x] **Recording harness + sim driver + rebellion demo scenario** — `simthing-driver`.
-- [x] **Replay fission E2E test** — `replay_fission_round_trip_reconstructs_spawned_child_and_lineage`.
+- [x] **Recording harness + sim driver + rebellion demo scenario** — PR #29.
+- [x] **Driver GPU integration tests** — `session_integration.rs` (run + record/replay).
 
 **Next session:** Expand scenario format (full RON tree/registry), or start
-`simthing-studio` (tabled). Optional: driver GPU integration test behind
-`try_gpu()`.
+`simthing-studio` (tabled).
 
 **Tabled:** `simthing-studio` designer UI.
 
