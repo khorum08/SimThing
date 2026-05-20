@@ -13,17 +13,18 @@
 //! 4. Seed the child's initial property values from the parent's GPU row.
 //!    The Amount sub-field of the activating property is split: parent retains
 //!    its Amount, child starts at 0 (it represents the newly-expressing force).
-//! 5. Register the child's fusion threshold as a GPU threshold (deferred to
-//!    `ThresholdBuilder::build` at step 9 — fission just mutates the tree).
+//! 5. Fusion lineage threshold registration is still a follow-up; fission
+//!    currently mutates and seeds the tree only.
 //!
 //! ## Fusion
 //!
 //! When a `ThresholdSemantic::FusionTrigger` fires:
 //! 1. Locate parent + child by their stored ids.
-//! 2. Apply the `fusion_scar_coefficient` to the parent's activating property.
-//!    This writes to the CPU shadow (grievance inertia, etc.).
-//! 3. Remove the child from its parent's children list.
-//! 4. Tombstone the child's slot.
+//! 2. Remove the child from its parent's children list.
+//! 3. Tombstone the child's slot.
+//!
+//! Fusion scar application and automatic fusion threshold registration are not
+//! wired yet.
 //!
 //! ## Idempotency guard
 //!
@@ -124,11 +125,11 @@ fn execute_fission(
         let node = find_node(root, stid);
         let slot = node.and_then(|n| allocator.slot_of(n.id));
         match (node, slot) {
-            (Some(n), Some(s)) => {
+            (Some(_n), Some(s)) => {
                 let prop = registry.property(pid);
                 if template_idx >= prop.fission_templates.len() { return false; }
                 let ft = &prop.fission_templates[template_idx];
-                check_secondary(ft.secondary.as_ref(), n, registry, values_shadow, s, n_dims)
+                check_secondary(ft.secondary.as_ref(), pid, registry, values_shadow, s, n_dims)
             }
             _ => false,
         }
@@ -230,7 +231,7 @@ fn execute_fusion(
 
 fn check_secondary(
     secondary:     Option<&SecondaryCondition>,
-    node:          &SimThing,
+    triggering_pid: SimPropertyId,
     registry:      &DimensionRegistry,
     values_shadow: &[f32],
     slot:          u32,
@@ -248,32 +249,24 @@ fn check_secondary(
         values_shadow.get(base + col).copied()
     };
 
-    // Find the activating property to read Amount and Intensity.
-    // Secondary conditions reference the same property as the primary fission
-    // threshold; we need to find it on this node.
-    for (&pid, _) in &node.properties {
-        let prop = registry.property(pid);
-        if prop.fission_templates.is_empty() { continue; }
-        match cond {
-            SecondaryCondition::IntensityAbove(floor) => {
-                return read_role(pid, &SubFieldRole::Intensity)
-                    .map(|v| v > *floor).unwrap_or(false);
-            }
-            SecondaryCondition::IntensityBelow(ceil) => {
-                return read_role(pid, &SubFieldRole::Intensity)
-                    .map(|v| v < *ceil).unwrap_or(false);
-            }
-            SecondaryCondition::AmountAbove(floor) => {
-                return read_role(pid, &SubFieldRole::Amount)
-                    .map(|v| v > *floor).unwrap_or(false);
-            }
-            SecondaryCondition::AmountBelow(ceil) => {
-                return read_role(pid, &SubFieldRole::Amount)
-                    .map(|v| v < *ceil).unwrap_or(false);
-            }
+    match cond {
+        SecondaryCondition::IntensityAbove(floor) => {
+            read_role(triggering_pid, &SubFieldRole::Intensity)
+                .map(|v| v > *floor).unwrap_or(false)
+        }
+        SecondaryCondition::IntensityBelow(ceil) => {
+            read_role(triggering_pid, &SubFieldRole::Intensity)
+                .map(|v| v < *ceil).unwrap_or(false)
+        }
+        SecondaryCondition::AmountAbove(floor) => {
+            read_role(triggering_pid, &SubFieldRole::Amount)
+                .map(|v| v > *floor).unwrap_or(false)
+        }
+        SecondaryCondition::AmountBelow(ceil) => {
+            read_role(triggering_pid, &SubFieldRole::Amount)
+                .map(|v| v < *ceil).unwrap_or(false)
         }
     }
-    false
 }
 
 fn find_node(root: &SimThing, id: SimThingId) -> Option<&SimThing> {
@@ -320,7 +313,7 @@ fn kind_tag_to_kind(tag: &SimThingKindTag) -> SimThingKind {
 mod tests {
     use super::*;
     use simthing_core::{
-        Direction, DimensionRegistry, FissionTemplate, FissionThreshold,
+        Direction, DimensionRegistry, FissionTemplate, FissionThreshold, SecondaryCondition,
         SimProperty, SimThing, SimThingKind,
         SimThingKindTag, SubFieldRole,
     };
@@ -473,5 +466,64 @@ mod tests {
         assert_eq!(shadow[child_base + amount_off], 0.0);
         assert_eq!(shadow[child_base + velocity_off].to_bits(), (-0.12f32).to_bits());
         assert_eq!(shadow[child_base + intensity_off].to_bits(), (0.66f32).to_bits());
+    }
+
+    #[test]
+    fn secondary_condition_reads_triggering_property_only() {
+        let mut reg = DimensionRegistry::new();
+        let mut first = make_fission_property();
+        first.name = "first".into();
+        first.fission_templates[0].secondary = Some(SecondaryCondition::IntensityAbove(0.8));
+        let first_pid = reg.register(first);
+
+        let mut second = make_fission_property();
+        second.name = "second".into();
+        second.fission_templates[0].secondary = Some(SecondaryCondition::IntensityAbove(0.8));
+        let second_pid = reg.register(second);
+
+        let mut alloc = SlotAllocator::new();
+        let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+        cohort.add_property(first_pid, reg.property(first_pid).default_value());
+        cohort.add_property(second_pid, reg.property(second_pid).default_value());
+        let cid = cohort.id;
+        let slot = alloc.alloc(cid) as usize;
+
+        let mut root = SimThing::new(SimThingKind::Location, 0);
+        alloc.alloc(root.id);
+        root.add_child(cohort);
+
+        let n_dims = reg.total_columns;
+        let mut shadow = vec![0.0f32; 4 * n_dims];
+        let first_intensity = reg
+            .column_range(first_pid)
+            .col_for_role(&SubFieldRole::Intensity, &reg.property(first_pid).layout)
+            .unwrap();
+        let second_intensity = reg
+            .column_range(second_pid)
+            .col_for_role(&SubFieldRole::Intensity, &reg.property(second_pid).layout)
+            .unwrap();
+        shadow[slot * n_dims + first_intensity] = 0.9;
+        shadow[slot * n_dims + second_intensity] = 0.1;
+
+        let mut cpu_reg = ThresholdRegistry::new();
+        let ek = cpu_reg.push(ThresholdSemantic::FissionTrigger {
+            sim_thing_id: cid,
+            property_id: second_pid,
+            template_idx: 0,
+        });
+        let events = vec![simthing_gpu::ThresholdEvent {
+            slot: slot as u32,
+            col: 0,
+            value: 0.2,
+            event_kind: ek,
+        }];
+
+        let out = resolve_fission_fusion(
+            &mut root, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
+        );
+
+        assert_eq!(out.fissions_executed, 0);
+        assert_eq!(out.fissions_skipped_secondary, 1);
+        assert!(root.children[0].children.is_empty());
     }
 }

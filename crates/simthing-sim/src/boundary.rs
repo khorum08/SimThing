@@ -142,6 +142,9 @@ impl BoundaryProtocol {
         out.expiry = resolve_property_expiry(
             &mut self.root,
             &mut self.registry,
+            &self.allocator,
+            &coord.shadow,
+            n_dims,
             &events,
             &self.cpu_threshold_registry,
         );

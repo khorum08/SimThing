@@ -20,15 +20,15 @@
 //! - Allocates a slot for the new child (and recursively for its subtree,
 //!   though typical use is a fresh leaf).
 //! - Attaches the child as a child of `parent`.
-//! - Zeros the new child's row in the CPU shadow so Pass 0's snapshot
-//!   sees a clean slate.
+//! - Projects the added subtree's semantic properties into the CPU shadow,
+//!   zeroing each row first so absent properties do not inherit stale data.
 //! - Records the new id in `MaintainerOutcome::allocated`.
 //!
 //! Unknown parent → `rejected_unknown_target` increment, no slot churn.
 //!
 //! ### `Remove { target }`
 //! - Walks the tree to find `target`.
-//! - Tombstones the target's slot AND every descendant slot. This is
+//! - Zeros and tombstones the target's slot AND every descendant slot. This is
 //!   crucial: a subtree removal must release every slot it owned, or the
 //!   shadow rows for descendants stay live but unreachable.
 //! - Removes the subtree from its parent's children list.
@@ -87,6 +87,7 @@ pub fn apply_structural_mutations(
                 apply_add_child(
                     root,
                     allocator,
+                    registry,
                     values_shadow,
                     n_dims,
                     parent,
@@ -95,7 +96,7 @@ pub fn apply_structural_mutations(
                 );
             }
             BoundaryRequest::Remove { target } => {
-                apply_remove(root, allocator, target, &mut out);
+                apply_remove(root, allocator, values_shadow, n_dims, target, &mut out);
             }
             BoundaryRequest::Reparent { child, new_parent } => {
                 apply_reparent(root, child, new_parent, &mut out);
@@ -129,6 +130,7 @@ pub fn apply_structural_mutations(
 fn apply_add_child(
     root: &mut SimThing,
     allocator: &mut SlotAllocator,
+    registry: &DimensionRegistry,
     values_shadow: &mut [f32],
     n_dims: usize,
     parent_id: SimThingId,
@@ -155,18 +157,10 @@ fn apply_add_child(
     let attached = parent.children.last().expect("just pushed");
     populate_from_subtree(allocator, attached);
 
-    // Zero the shadow row for each newly-allocated slot.
-    for nid in &new_ids {
-        if let Some(slot) = allocator.slot_of(*nid) {
-            let base = (slot as usize) * n_dims;
-            let end = base + n_dims;
-            if end <= values_shadow.len() {
-                for v in &mut values_shadow[base..end] {
-                    *v = 0.0;
-                }
-            }
-            out.allocated.push(*nid);
-        }
+    // Project the attached subtree's semantic properties into the shadow.
+    // Rows are zeroed first so absent properties do not inherit stale slot data.
+    if let Some(attached) = find_node(root, new_ids[0]) {
+        project_subtree_to_shadow(attached, allocator, registry, values_shadow, n_dims, out);
     }
     out.adds += 1;
 }
@@ -185,11 +179,45 @@ fn populate_from_subtree(allocator: &mut SlotAllocator, node: &SimThing) {
     }
 }
 
+fn project_subtree_to_shadow(
+    node: &SimThing,
+    allocator: &SlotAllocator,
+    registry: &DimensionRegistry,
+    values_shadow: &mut [f32],
+    n_dims: usize,
+    out: &mut MaintainerOutcome,
+) {
+    if let Some(slot) = allocator.slot_of(node.id) {
+        let base = (slot as usize) * n_dims;
+        let end = base + n_dims;
+        if end <= values_shadow.len() {
+            values_shadow[base..end].fill(0.0);
+            for (&pid, pval) in &node.properties {
+                if !registry.is_active(pid) { continue; }
+                let prop = registry.property(pid);
+                let range = registry.column_range(pid);
+                let src_len = prop.layout.stride().min(pval.data.len());
+                let dst = base + range.start;
+                if dst + src_len <= values_shadow.len() {
+                    values_shadow[dst..dst + src_len].copy_from_slice(&pval.data[..src_len]);
+                }
+            }
+        }
+        out.allocated.push(node.id);
+    }
+
+    for child in &node.children {
+        project_subtree_to_shadow(child, allocator, registry, values_shadow, n_dims, out);
+    }
+}
+
 // ── Remove ────────────────────────────────────────────────────────────────────
 
 fn apply_remove(
     root: &mut SimThing,
     allocator: &mut SlotAllocator,
+    values_shadow: &mut [f32],
+    n_dims: usize,
     target: SimThingId,
     out: &mut MaintainerOutcome,
 ) {
@@ -209,11 +237,22 @@ fn apply_remove(
     collect_subtree_ids(&subtree, &mut subtree_ids);
 
     for sid in subtree_ids {
+        if let Some(slot) = allocator.slot_of(sid) {
+            zero_shadow_row(values_shadow, n_dims, slot);
+        }
         if allocator.tombstone(sid).is_some() {
             out.tombstoned.push(sid);
         }
     }
     out.removes += 1;
+}
+
+fn zero_shadow_row(values_shadow: &mut [f32], n_dims: usize, slot: u32) {
+    let base = (slot as usize) * n_dims;
+    let end = base + n_dims;
+    if end <= values_shadow.len() {
+        values_shadow[base..end].fill(0.0);
+    }
 }
 
 /// Walk the tree, find a child with the given id, remove it from its parent's
@@ -336,8 +375,8 @@ mod tests {
     use super::*;
     use simthing_core::{
         DimensionRegistry, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
-        PropertyTransformDelta, SimProperty, SimPropertyId, SimThing, SimThingKind, SubFieldRole,
-        TransformOp,
+        PropertyTransformDelta, PropertyValue, SimProperty, SimPropertyId, SimThing, SimThingKind,
+        SubFieldRole, TransformOp,
     };
     use simthing_feeder::BoundaryRequest;
     use simthing_gpu::SlotAllocator;
@@ -413,6 +452,40 @@ mod tests {
     }
 
     #[test]
+    fn add_child_projects_initialized_properties_into_shadow() {
+        let (mut reg, mut alloc, mut root) = fixture();
+        let pid = SimPropertyId(0);
+        let layout = reg.property(pid).layout.clone();
+        let amount = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let velocity = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+        let n_dims = reg.total_columns;
+        let parent_id = root.children[0].id;
+
+        let mut child = SimThing::new(SimThingKind::Cohort, 1);
+        let child_id = child.id;
+        let mut pval = PropertyValue::from_layout(&layout);
+        pval.data[amount] = 0.7;
+        pval.data[velocity] = -0.2;
+        child.add_property(pid, pval);
+
+        let mut shadow = vec![9.0f32; (alloc.capacity() + 2) * n_dims];
+        let out = apply_structural_mutations(
+            vec![BoundaryRequest::AddChild { parent: parent_id, child }],
+            &mut root,
+            &mut alloc,
+            &mut reg,
+            &mut shadow,
+            n_dims,
+        );
+
+        assert_eq!(out.adds, 1);
+        let slot = alloc.slot_of(child_id).unwrap() as usize;
+        let base = slot * n_dims;
+        assert_eq!(shadow[base + amount], 0.7);
+        assert_eq!(shadow[base + velocity], -0.2);
+    }
+
+    #[test]
     fn remove_tombstones_target_and_all_descendants() {
         let (mut reg, mut alloc, mut root) = fixture();
         let n_dims = reg.total_columns;
@@ -426,7 +499,10 @@ mod tests {
         alloc.alloc(leaf_id);
         root.children[0].add_child(cohort);
 
-        let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
+        let mut shadow = vec![1.0f32; alloc.capacity() * n_dims];
+        let loc_slot = alloc.slot_of(loc_id).unwrap() as usize;
+        let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
+        let leaf_slot = alloc.slot_of(leaf_id).unwrap() as usize;
 
         let out = apply_structural_mutations(
             vec![BoundaryRequest::Remove { target: loc_id }],
@@ -444,6 +520,9 @@ mod tests {
         assert!(out.tombstoned.contains(&leaf_id));
         assert!(root.children.is_empty());
         assert!(!alloc.is_live(alloc.capacity() as u32 - 1));
+        assert!(shadow[loc_slot * n_dims..loc_slot * n_dims + n_dims].iter().all(|v| *v == 0.0));
+        assert!(shadow[cohort_slot * n_dims..cohort_slot * n_dims + n_dims].iter().all(|v| *v == 0.0));
+        assert!(shadow[leaf_slot * n_dims..leaf_slot * n_dims + n_dims].iter().all(|v| *v == 0.0));
     }
 
     #[test]
