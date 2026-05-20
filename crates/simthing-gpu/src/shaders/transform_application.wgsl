@@ -28,10 +28,17 @@ struct SlotDeltaRange {
 @group(0) @binding(1) var<storage, read>       overlay_deltas:    array<OverlayDelta>;
 @group(0) @binding(2) var<storage, read>       slot_delta_ranges: array<SlotDeltaRange>;
 
+const WORKGROUP_SIZE: u32 = 64u;
+const MAX_DISPATCH_X_GROUPS: u32 = 65535u;
+
+fn linear_index(gid: vec3<u32>) -> u32 {
+    return gid.x + gid.y * MAX_DISPATCH_X_GROUPS * WORKGROUP_SIZE;
+}
+
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let n_slots = arrayLength(&slot_delta_ranges);
-    let slot    = gid.x;
+    let slot    = linear_index(gid);
     if (slot >= n_slots) { return; }
 
     let n_dims = arrayLength(&values) / n_slots;

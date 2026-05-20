@@ -31,11 +31,19 @@ struct ReduceParams {
 @group(0) @binding(5) var<storage, read>       depth_slots:    array<u32>;
 @group(0) @binding(6) var<uniform>             params:         ReduceParams;
 
+const WORKGROUP_SIZE: u32 = 64u;
+const MAX_DISPATCH_X_GROUPS: u32 = 65535u;
+
+fn linear_index(gid: vec3<u32>) -> u32 {
+    return gid.x + gid.y * MAX_DISPATCH_X_GROUPS * WORKGROUP_SIZE;
+}
+
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= params.bucket_size) { return; }
+    let bucket_idx = linear_index(gid);
+    if (bucket_idx >= params.bucket_size) { return; }
 
-    let slot   = depth_slots[params.depth_offset + gid.x];
+    let slot   = depth_slots[params.depth_offset + bucket_idx];
     let n_dims = params.n_dims;
     let base   = slot * n_dims;
     let start  = child_starts[slot];

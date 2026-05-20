@@ -12,15 +12,28 @@ use bytemuck::{Pod, Zeroable};
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor,
-    BufferUsages, CommandEncoderDescriptor, ComputePassDescriptor, ComputePipeline,
+    BufferUsages, CommandEncoderDescriptor, ComputePass, ComputePassDescriptor, ComputePipeline,
     ComputePipelineDescriptor, PipelineLayoutDescriptor, ShaderModuleDescriptor,
     ShaderSource, ShaderStages,
 };
+use wgpu::util::DeviceExt;
 
 use crate::context::GpuContext;
 use crate::world_state::{ReduceParams, WorldGpuState};
 
 const WORKGROUP_SIZE: u32 = 64;
+const MAX_DISPATCH_X_GROUPS: u32 = 65_535;
+
+fn dispatch_linear(pass: &mut ComputePass<'_>, total_invocations: u32) {
+    if total_invocations == 0 {
+        return;
+    }
+
+    let groups = total_invocations.div_ceil(WORKGROUP_SIZE);
+    let x = groups.min(MAX_DISPATCH_X_GROUPS);
+    let y = groups.div_ceil(MAX_DISPATCH_X_GROUPS);
+    pass.dispatch_workgroups(x, y, 1);
+}
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
@@ -314,7 +327,6 @@ impl Pipelines {
         });
 
         let total = state.n_slots * state.n_dims;
-        let groups = total.div_ceil(WORKGROUP_SIZE);
 
         let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("snapshot_encoder"),
@@ -326,7 +338,7 @@ impl Pipelines {
             });
             pass.set_pipeline(&self.snapshot_pipeline);
             pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(groups, 1, 1);
+            dispatch_linear(&mut pass, total);
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
@@ -347,7 +359,6 @@ impl Pipelines {
         });
 
         let total = state.n_slots * state.n_governed_pairs;
-        let groups = total.div_ceil(WORKGROUP_SIZE);
 
         let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("velocity_encoder"),
@@ -359,7 +370,7 @@ impl Pipelines {
             });
             pass.set_pipeline(&self.velocity_pipeline);
             pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(groups, 1, 1);
+            dispatch_linear(&mut pass, total);
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
@@ -380,7 +391,6 @@ impl Pipelines {
         });
 
         let total = state.n_slots * state.n_intensity_params;
-        let groups = total.div_ceil(WORKGROUP_SIZE);
 
         let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("intensity_encoder"),
@@ -392,7 +402,7 @@ impl Pipelines {
             });
             pass.set_pipeline(&self.intensity_pipeline);
             pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(groups, 1, 1);
+            dispatch_linear(&mut pass, total);
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
@@ -415,8 +425,7 @@ impl Pipelines {
             ],
         });
 
-        // One thread per slot: dispatch ceil(n_slots / 64) workgroups.
-        let groups = state.n_slots.div_ceil(WORKGROUP_SIZE);
+        // One thread per slot.
 
         let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("overlay_encoder"),
@@ -428,7 +437,7 @@ impl Pipelines {
             });
             pass.set_pipeline(&self.overlay_pipeline);
             pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(groups, 1, 1);
+            dispatch_linear(&mut pass, state.n_slots);
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
@@ -449,8 +458,6 @@ impl Pipelines {
             ],
         });
 
-        let groups = state.n_intent_deltas.div_ceil(WORKGROUP_SIZE);
-
         let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("intent_encoder"),
         });
@@ -461,7 +468,7 @@ impl Pipelines {
             });
             pass.set_pipeline(&self.intent_pipeline);
             pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(groups, 1, 1);
+            dispatch_linear(&mut pass, state.n_intent_deltas);
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
@@ -472,6 +479,178 @@ impl Pipelines {
     /// Pre-condition: `WorldGpuState::upload_reduction_topology` has been called
     /// and the topology matches the current tree shape. No-op if no buckets
     /// are present.
+    /// Consolidated per-tick pipeline. Records intent deltas, snapshot,
+    /// velocity, intensity, overlays, reduction, and threshold scan into one
+    /// command encoder and submits once.
+    pub fn run_tick_pipeline(&self, state: &WorldGpuState, dt: f32) {
+        let ctx = &state.ctx;
+
+        state.reset_event_count();
+        self.write_params(ctx, state, dt);
+
+        let intent_bg = (state.n_intent_deltas > 0).then(|| {
+            ctx.device.create_bind_group(&BindGroupDescriptor {
+                label: Some("intent_bg"),
+                layout: &self.intent_layout,
+                entries: &[
+                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                    BindGroupEntry { binding: 1, resource: state.intent_deltas.as_entire_binding() },
+                    BindGroupEntry { binding: 2, resource: self.uniform_buffer.as_entire_binding() },
+                ],
+            })
+        });
+
+        let snapshot_bg = ctx.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("snapshot_bg"),
+            layout: &self.snapshot_layout,
+            entries: &[
+                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                BindGroupEntry { binding: 1, resource: state.previous_values.as_entire_binding() },
+                BindGroupEntry { binding: 2, resource: state.output_vectors.as_entire_binding() },
+                BindGroupEntry { binding: 3, resource: state.previous_output_vectors.as_entire_binding() },
+            ],
+        });
+
+        let velocity_bg = (state.n_governed_pairs > 0).then(|| {
+            ctx.device.create_bind_group(&BindGroupDescriptor {
+                label: Some("velocity_bg"),
+                layout: &self.velocity_layout,
+                entries: &[
+                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                    BindGroupEntry { binding: 1, resource: state.governed_pairs.as_entire_binding() },
+                    BindGroupEntry { binding: 2, resource: self.uniform_buffer.as_entire_binding() },
+                ],
+            })
+        });
+
+        let intensity_bg = (state.n_intensity_params > 0).then(|| {
+            ctx.device.create_bind_group(&BindGroupDescriptor {
+                label: Some("intensity_bg"),
+                layout: &self.intensity_layout,
+                entries: &[
+                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                    BindGroupEntry { binding: 1, resource: state.intensity_params.as_entire_binding() },
+                    BindGroupEntry { binding: 2, resource: self.uniform_buffer.as_entire_binding() },
+                ],
+            })
+        });
+
+        let overlay_bg = (state.n_overlay_deltas > 0).then(|| {
+            ctx.device.create_bind_group(&BindGroupDescriptor {
+                label: Some("overlay_bg"),
+                layout: &self.overlay_layout,
+                entries: &[
+                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                    BindGroupEntry { binding: 1, resource: state.overlay_deltas.as_entire_binding() },
+                    BindGroupEntry { binding: 2, resource: state.slot_delta_ranges.as_entire_binding() },
+                ],
+            })
+        });
+
+        let mut reduction_param_buffers = Vec::new();
+        let mut reduction_depth_bgs = Vec::new();
+        for &(depth_offset, bucket_size) in state.depth_bucket_ranges.iter().rev() {
+            if bucket_size == 0 {
+                continue;
+            }
+            let p = ReduceParams {
+                n_dims:       state.n_dims,
+                depth_offset,
+                bucket_size,
+                _pad:         0,
+            };
+            let buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("reduction_depth_uniform"),
+                contents: bytemuck::bytes_of(&p),
+                usage: BufferUsages::UNIFORM,
+            });
+            reduction_param_buffers.push(buf);
+            let buf_ref = reduction_param_buffers.last().unwrap();
+            let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
+                label: Some("reduction_depth_bg"),
+                layout: &self.reduction_layout,
+                entries: &[
+                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                    BindGroupEntry { binding: 1, resource: state.output_vectors.as_entire_binding() },
+                    BindGroupEntry { binding: 2, resource: state.child_starts.as_entire_binding() },
+                    BindGroupEntry { binding: 3, resource: state.child_indices.as_entire_binding() },
+                    BindGroupEntry { binding: 4, resource: state.column_rules.as_entire_binding() },
+                    BindGroupEntry { binding: 5, resource: state.depth_slots.as_entire_binding() },
+                    BindGroupEntry { binding: 6, resource: buf_ref.as_entire_binding() },
+                ],
+            });
+            reduction_depth_bgs.push((bucket_size, bg));
+        }
+
+        let threshold_bg = (state.n_thresholds > 0).then(|| {
+            ctx.device.create_bind_group(&BindGroupDescriptor {
+                label: Some("threshold_bg"),
+                layout: &self.threshold_layout,
+                entries: &[
+                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                    BindGroupEntry { binding: 1, resource: state.previous_values.as_entire_binding() },
+                    BindGroupEntry { binding: 2, resource: state.output_vectors.as_entire_binding() },
+                    BindGroupEntry { binding: 3, resource: state.previous_output_vectors.as_entire_binding() },
+                    BindGroupEntry { binding: 4, resource: state.threshold_registry.as_entire_binding() },
+                    BindGroupEntry { binding: 5, resource: state.event_count.as_entire_binding() },
+                    BindGroupEntry { binding: 6, resource: state.event_candidates.as_entire_binding() },
+                    BindGroupEntry { binding: 7, resource: self.uniform_buffer.as_entire_binding() },
+                ],
+            })
+        });
+
+        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("tick_pipeline_encoder"),
+        });
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("tick_pipeline_pass"),
+                timestamp_writes: None,
+            });
+
+            if let Some(bg) = intent_bg.as_ref() {
+                pass.set_pipeline(&self.intent_pipeline);
+                pass.set_bind_group(0, bg, &[]);
+                dispatch_linear(&mut pass, state.n_intent_deltas);
+            }
+
+            pass.set_pipeline(&self.snapshot_pipeline);
+            pass.set_bind_group(0, &snapshot_bg, &[]);
+            dispatch_linear(&mut pass, state.n_slots * state.n_dims);
+
+            if let Some(bg) = velocity_bg.as_ref() {
+                pass.set_pipeline(&self.velocity_pipeline);
+                pass.set_bind_group(0, bg, &[]);
+                dispatch_linear(&mut pass, state.n_slots * state.n_governed_pairs);
+            }
+
+            if let Some(bg) = intensity_bg.as_ref() {
+                pass.set_pipeline(&self.intensity_pipeline);
+                pass.set_bind_group(0, bg, &[]);
+                dispatch_linear(&mut pass, state.n_slots * state.n_intensity_params);
+            }
+
+            if let Some(bg) = overlay_bg.as_ref() {
+                pass.set_pipeline(&self.overlay_pipeline);
+                pass.set_bind_group(0, bg, &[]);
+                dispatch_linear(&mut pass, state.n_slots);
+            }
+
+            for (bucket_size, bg) in &reduction_depth_bgs {
+                pass.set_pipeline(&self.reduction_pipeline);
+                pass.set_bind_group(0, bg, &[]);
+                dispatch_linear(&mut pass, *bucket_size);
+            }
+
+            if let Some(bg) = threshold_bg.as_ref() {
+                pass.set_pipeline(&self.threshold_pipeline);
+                pass.set_bind_group(0, bg, &[]);
+                dispatch_linear(&mut pass, state.n_thresholds);
+            }
+        }
+        ctx.queue.submit(Some(encoder.finish()));
+    }
+
     pub fn run_reduction_passes(&self, state: &WorldGpuState) {
         if state.depth_bucket_ranges.is_empty() {
             return;
@@ -507,7 +686,6 @@ impl Pipelines {
             ctx.queue
                 .write_buffer(&self.reduction_uniform, 0, bytemuck::bytes_of(&p));
 
-            let groups = bucket_size.div_ceil(WORKGROUP_SIZE);
             let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("reduction_encoder"),
             });
@@ -518,7 +696,7 @@ impl Pipelines {
                 });
                 pass.set_pipeline(&self.reduction_pipeline);
                 pass.set_bind_group(0, &bg, &[]);
-                pass.dispatch_workgroups(groups, 1, 1);
+                dispatch_linear(&mut pass, bucket_size);
             }
             ctx.queue.submit(Some(encoder.finish()));
         }
@@ -556,8 +734,6 @@ impl Pipelines {
             ],
         });
 
-        let groups = state.n_thresholds.div_ceil(WORKGROUP_SIZE);
-
         let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("threshold_encoder"),
         });
@@ -568,7 +744,7 @@ impl Pipelines {
             });
             pass.set_pipeline(&self.threshold_pipeline);
             pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(groups, 1, 1);
+            dispatch_linear(&mut pass, state.n_thresholds);
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
@@ -946,6 +1122,75 @@ mod tests {
         let gpu_flat = state.read_values();
         let gpu_data = &gpu_flat[range.start..range.start + stride];
         assert_bits_eq("Evaluator vs GPU pipeline", cpu_data, gpu_data);
+    }
+
+    #[test]
+    fn run_tick_pipeline_matches_manual_pass_sequence() {
+        use crate::world_state::{
+            IntentDelta, DIR_DOWNWARD, THRESH_BUF_VALUES, ThresholdRegistration,
+        };
+
+        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let mut reg = DimensionRegistry::new();
+        let id = reg.register(loyalty_property());
+        let layout = reg.property(id).layout.clone();
+        let amount_col = layout.offset_of(&SubFieldRole::Amount).unwrap() as u32;
+        let velocity_col = layout.offset_of(&SubFieldRole::Velocity).unwrap() as usize;
+        let intensity_col = layout.offset_of(&SubFieldRole::Intensity).unwrap() as usize;
+
+        let mut initial = vec![0.0_f32; reg.total_columns];
+        initial[amount_col as usize] = 0.35;
+        initial[velocity_col] = -0.20;
+        initial[intensity_col] = 0.10;
+
+        let intent = [IntentDelta {
+            slot: 0,
+            col: amount_col,
+            mul: 1.0,
+            add: 0.05,
+        }];
+        let regs = [ThresholdRegistration {
+            slot: 0,
+            col: amount_col,
+            threshold: 0.30,
+            direction: DIR_DOWNWARD,
+            event_kind: 77,
+            buffer: THRESH_BUF_VALUES,
+        }];
+
+        let mut manual = WorldGpuState::new(ctx, &reg, 1);
+        manual.write_values(&initial);
+        manual.upload_intent_deltas(&intent);
+        manual.upload_thresholds(&regs);
+        let pipelines = Pipelines::new(&manual.ctx);
+
+        pipelines.run_apply_intents(&manual);
+        pipelines.run_snapshot(&manual);
+        pipelines.run_velocity_integration(&manual, 1.0);
+        pipelines.run_intensity_update(&manual, 1.0);
+        pipelines.run_apply_overlays(&manual);
+        pipelines.run_reduction_passes(&manual);
+        pipelines.run_threshold_scan(&manual);
+
+        let ctx2 = GpuContext::new_blocking().expect("second gpu context");
+        let mut piped = WorldGpuState::new(ctx2, &reg, 1);
+        piped.write_values(&initial);
+        piped.upload_intent_deltas(&intent);
+        piped.upload_thresholds(&regs);
+        let pipelines2 = Pipelines::new(&piped.ctx);
+        pipelines2.run_tick_pipeline(&piped, 1.0);
+
+        assert_bits_eq("values", &manual.read_values(), &piped.read_values());
+        assert_bits_eq(
+            "previous_values",
+            &manual.read_previous_values(),
+            &piped.read_previous_values(),
+        );
+        assert_eq!(manual.read_event_count(), piped.read_event_count());
+        assert_eq!(
+            manual.read_event_candidates(1),
+            piped.read_event_candidates(1),
+        );
     }
 
     /// CPU oracle for Pass 7. Same crossing logic as the WGSL shader; used to

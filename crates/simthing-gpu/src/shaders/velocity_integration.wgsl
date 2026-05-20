@@ -34,6 +34,12 @@ struct Params {
 const CLAMP_BOUNDED:   u32 = 0u;
 const CLAMP_FLOORED:   u32 = 1u;
 const CLAMP_UNBOUNDED: u32 = 2u;
+const WORKGROUP_SIZE: u32 = 64u;
+const MAX_DISPATCH_X_GROUPS: u32 = 65535u;
+
+fn linear_index(gid: vec3<u32>) -> u32 {
+    return gid.x + gid.y * MAX_DISPATCH_X_GROUPS * WORKGROUP_SIZE;
+}
 
 fn apply_clamp(kind: u32, lo: f32, hi: f32, x: f32) -> f32 {
     if (kind == CLAMP_BOUNDED) { return clamp(x, lo, hi); }
@@ -56,7 +62,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let n_pairs = arrayLength(&pairs);
     if (n_pairs == 0u) { return; }
 
-    let flat = gid.x;
+    let flat = linear_index(gid);
     let n_slots = arrayLength(&values) / params.n_dims;
     let total   = n_slots * n_pairs;
     if (flat >= total) { return; }

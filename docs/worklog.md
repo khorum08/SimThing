@@ -20,11 +20,72 @@ Running log of what's done and what's next, across sessions.
 - Feeder integration coverage now verifies Set folding, Add/Multiply folding,
   zero RMW readback, and one intent delta for many same-cell patches.
 
-**Tests:** `cargo test --workspace` => 174 passed, 1 ignored timing diagnostic.
+**Tests:** `cargo test --workspace` => 177 passed, 1 ignored timing diagnostic.
 
-**Next optimization:** Consolidate GPU command submission into a one-encoder
-tick pipeline, then expand synthetic stress scenarios to measure ms/tick and
-ms/sim-day under intent, threshold, reduction, and fission pressure.
+**Next optimization:** Expand benchmark metrics so stress runs attribute time
+to upload, tick, boundary, reduction, threshold, and growth work.
+
+---
+
+## 2026-05-20 - Consolidated tick command submission
+
+**Status:** In working tree, tests passing.
+
+**Landed:**
+
+- `Pipelines::run_tick_pipeline(state, dt)` records intent deltas, snapshot,
+  velocity, intensity, overlay application, reduction, and threshold scan into
+  one command encoder and submits once.
+- Dispatcher ticks now call the consolidated pipeline instead of submitting
+  each pass separately.
+- Reduction depths use per-depth uniform buffers in the consolidated path, so
+  queued depth dispatches preserve their individual `(depth_offset, bucket_size)`
+  parameters.
+- Linear GPU workloads now dispatch across 2D workgroup grids when needed,
+  keeping `snapshot`, velocity, intensity, overlays, intents, reduction, and
+  threshold scan inside WebGPU's per-axis dispatch limit at large slot counts.
+- Added GPU parity coverage:
+  `run_tick_pipeline_matches_manual_pass_sequence`.
+
+**Next optimization:** Expand stress scenarios and benchmark reporting around
+large intent batches, threshold registries, reduction depth counts, and fission
+growth.
+
+---
+
+## 2026-05-20 - Builtin benchmark stress scenarios
+
+**Status:** In working tree, tests passing.
+
+**Landed:**
+
+- Added builtin benchmark scenario selectors:
+  - `scenarios/map_1m_light.ron`
+  - `scenarios/pop_heavy.ron`
+  - `scenarios/intent_stress.ron`
+  - `scenarios/fission_stress.ron`
+  - `scenarios/threshold_stress.ron`
+- Scenario construction now projects the semantic tree into the initial shadow
+  before applying explicit shadow seed overrides, so large benchmark trees do
+  not need one seed entry per node.
+- Added `Scenario::tick_patches` and session submission so `intent_stress`
+  exercises the normal feeder/dispatcher GPU intent-delta path every tick.
+- Session startup projects initial semantic trees into the allocated prefix of
+  the shadow and preserves scenario headroom, avoiding seed-time panics when
+  `n_slots` is intentionally larger than the tree's current allocation.
+
+**Smoke measurements:**
+
+- `intent_stress`, 100k slots, 4 ticks/day: ~295 ms/sim-day, 80k intent deltas,
+  0 RMW readback bytes.
+- `pop_heavy`, 250k slots, 32 dims, 4 ticks/day: ~241 ms/sim-day.
+- `map_1m_light`, 1M slots, 3 dims, 8 ticks/day: ~4566 ms/sim-day.
+- `fission_stress`, 20k to 40k slots in one boundary: ~4889 ms/sim-day,
+  19,999 fissions.
+
+**Next optimization:** Extend benchmark output with overlay delta counts,
+threshold registrations, reduction edges/depths, and boundary readback/sync
+bytes so stress runs explain where time is going.
 
 ---
 
@@ -62,8 +123,10 @@ interim measurement step.
 
 ## Next session pickup
 
-**174/174** tests passing plus 1 ignored timing diagnostic, zero warnings.
-Working tree includes GPU intent-delta hot path on top of `origin/master`.
+**177/177** tests passing plus 1 ignored timing diagnostic, zero warnings.
+Working tree includes GPU intent-delta hot path, consolidated tick command
+submission, 2D large-workload dispatch, and synthetic stress scenarios on top of
+`origin/master`.
 
 ### Todo (recommended order)
 
@@ -88,24 +151,26 @@ Working tree includes GPU intent-delta hot path on top of `origin/master`.
 - [x] **Eliminate per-slot blocking RMW readbacks.** Preferred path:
       GPU-side intent delta buffer/pass. Batch row readback is acceptable only
       as an interim measurement step.
-- [ ] **Consolidate GPU command submission.** Add a one-encoder tick pipeline
+- [x] **Consolidate GPU command submission.** Add a one-encoder tick pipeline
       that records snapshot, velocity, intensity, overlays, reduction, and
       threshold scan before one queue submit; keep individual pass APIs for
       tests.
-- [ ] **Expand performance harness coverage.** Add synthetic stress scenarios:
-      `map_1m_light`, `pop_heavy`, `intent_stress`, `fission_stress`, and
-      `threshold_stress`, reporting ms/tick, ms/boundary, ms/sim-day, RMW
-      bytes, overlay deltas, thresholds, and reduction depths.
+- [x] **Add synthetic performance stress scenarios.** `map_1m_light`,
+      `pop_heavy`, `intent_stress`, `fission_stress`, and `threshold_stress`.
+- [ ] **Expand benchmark metrics.** Report overlay deltas, thresholds,
+      reduction edges/depths, boundary sync/readback bytes, and per-phase timing
+      where practical.
 - [ ] **Document/prototype map-scale representation.** Keep current
       `SimThing` as semantic authoring state; evaluate arena/topology sidecars
       only after benchmark data shows tree representation pressure.
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds remains
       useful, but it is behind the GPU performance path.
 
-**Recent:** GPU intent-delta hot path is implemented: tick-time transforms fold
-to GPU-side affine deltas, dispatcher RMW row readbacks are eliminated for normal
-feeder/player/AI patches, and benchmark summaries report intent delta upload
-counts/bytes alongside RMW metrics.
+**Recent:** GPU intent-delta hot path is implemented and dispatcher ticks now
+submit one consolidated command encoder for the full tick pipeline. Large linear
+GPU workloads split across 2D dispatch grids, and benchmark summaries now have
+stress scenarios for intent, reduction-heavy population, 1M light maps, and
+fission growth.
 
 **Tabled:** `simthing-studio` designer UI.
 

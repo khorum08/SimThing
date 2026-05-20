@@ -296,16 +296,19 @@ Highlights:
 transforms now fold into GPU-side affine `IntentDelta` records and apply before
 Pass 0. The older shadow mutation path remains for direct/replay-style callers,
 but dispatcher ticks no longer do per-slot RMW row readbacks for Add/Multiply.
+Dispatcher ticks also use `Pipelines::run_tick_pipeline`, which records the full
+tick pipeline into one command encoder / queue submit while keeping individual
+pass methods available for focused tests.
 
 **`dispatcher.rs` — DispatchCoordinator:**
 - Owns the row-major `[n_slots × n_dims]` CPU shadow of `values`.
 - `tick(receiver, patcher, registry, allocator, pipelines, state, dt) -> TickOutcome`
-  runs: drain → upload dirty rows → Pass 0 → Pass 1 → Pass 2 → Pass 3 → Pass 7 →
-  readback events → advance counters. `boundary_reached = true` on the tick
-  that rolls `tick_in_day` past `ticks_per_day`.
-- Upload-before-snapshot ordering is intentional: Pass 0 captures
-  `previous_values` *after* the patch is in place, so no phantom threshold
-  crossings get attributed to upload work.
+  runs: drain → upload GPU intent deltas / safe dirty rows → consolidated GPU
+  tick pipeline → readback events → advance counters. `boundary_reached = true`
+  on the tick that rolls `tick_in_day` past `ticks_per_day`.
+- Intent-application-before-snapshot ordering is intentional: Pass 0 captures
+  `previous_values` *after* same-tick intent deltas are in place, so no phantom
+  threshold crossings get attributed to command submission work.
 - `upload_full_shadow(state)` is the one-shot path for seeding GPU values
   with the projection of an initial SimThing tree.
 
@@ -338,9 +341,6 @@ Integration highlights:
   `simthing-sim` decides cadence and thread placement.
 - `build_overlay_deltas` integration. Today the caller uploads Pass 3
   deltas separately at day boundaries; the dispatcher doesn't own that.
-- Pass 7 threshold registration helpers (per-property derivation from
-  `FissionThreshold` / `DecayBehavior`) — boundary-protocol work, also
-  destined for `simthing-sim`.
 
 ### simthing-sim (Week 3, complete)
 
@@ -465,10 +465,9 @@ Integration highlights:
   alert on a Location's reduced Amount column fires after reduction and surfaces
   through `BoundaryOutcome::aggregate_alerts`.
 
-**Not yet built (see `docs/worklog.md` Next session pickup):**
-- GPU-side intent delta buffer/pass to eliminate per-slot blocking RMW readbacks.
-- One-encoder tick pipeline / command submission consolidation.
-- Synthetic performance stress scenarios beyond the builtin demo.
+**Still open (see `docs/worklog.md` Next session pickup):**
+- Expanded benchmark attribution: overlay deltas, threshold registrations,
+  reduction edges/depths, boundary sync/readback bytes, and per-phase timing.
 - Full RON scenario files (tree + registry inline; today: `builtin` templates only).
 - Designer UI (`simthing-studio`) — tabled
 

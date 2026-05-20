@@ -56,11 +56,17 @@ const DIR_DOWNWARD: u32 = 1u;
 const DIR_EITHER:   u32 = 2u;
 const THRESH_BUF_VALUES: u32 = 0u;
 const THRESH_BUF_OUTPUT: u32 = 1u;
+const WORKGROUP_SIZE: u32 = 64u;
+const MAX_DISPATCH_X_GROUPS: u32 = 65535u;
+
+fn linear_index(gid: vec3<u32>) -> u32 {
+    return gid.x + gid.y * MAX_DISPATCH_X_GROUPS * WORKGROUP_SIZE;
+}
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let n_regs = arrayLength(&registry);
-    let idx    = gid.x;
+    let idx    = linear_index(gid);
     if (idx >= n_regs) { return; }
 
     let reg  = registry[idx];

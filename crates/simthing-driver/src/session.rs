@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
+use simthing_feeder::FeederWork;
 use simthing_gpu::{GpuContext, Pipelines, WorldGpuState};
 use simthing_sim::{BoundaryProtocol, ReplayFrame, ReplayWriter};
 use thiserror::Error;
@@ -57,6 +58,16 @@ impl SimSession {
         let patcher = TransformPatcher::new(n_slots as usize);
         let mut coord = DispatchCoordinator::new(n_slots, n_dims, scenario.ticks_per_day);
 
+        let projected_len = allocator.capacity() * n_dims as usize;
+        let mut projected = vec![0.0; projected_len];
+        simthing_gpu::project_tree_to_values(
+            &scenario.root,
+            &scenario.registry,
+            &allocator,
+            n_dims as usize,
+            &mut projected,
+        );
+        coord.shadow[..projected_len].copy_from_slice(&projected);
         scenario.apply_shadow_seeds(&allocator, &mut coord.shadow, n_dims as usize)?;
 
         let (tx, rx) = feeder_channel();
@@ -91,6 +102,7 @@ impl SimSession {
         };
 
         while summary.boundaries_run < cap as u64 {
+            self.submit_tick_patches()?;
             let tick = self.coord.tick(
                 &self.rx,
                 &mut self.patcher,
@@ -146,6 +158,7 @@ impl SimSession {
         writer.write_snapshot(&self.proto.snapshot(0))?;
 
         while summary.boundaries_run < cap as u64 {
+            self.submit_tick_patches()?;
             let tick = self.coord.tick(
                 &self.rx,
                 &mut self.patcher,
@@ -184,5 +197,14 @@ impl SimSession {
         }
 
         Ok(summary)
+    }
+
+    fn submit_tick_patches(&self) -> Result<(), SessionError> {
+        for patch in &self.scenario.tick_patches {
+            self.tx
+                .send(FeederWork::Patch(patch.clone()))
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::BrokenPipe, e))?;
+        }
+        Ok(())
     }
 }

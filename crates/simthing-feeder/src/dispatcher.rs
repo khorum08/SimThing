@@ -147,15 +147,7 @@ impl DispatchCoordinator {
         }
 
         // 3. GPU passes (order matters — see module-level doc).
-        pipelines.run_apply_intents(state);
-        pipelines.run_snapshot(state);
-        pipelines.run_velocity_integration(state, dt);
-        pipelines.run_intensity_update(state, dt);
-        pipelines.run_apply_overlays(state);
-        // Passes 4–6: bottom-up reduction. No-op if topology is empty
-        // (i.e. before the first boundary upload).
-        pipelines.run_reduction_passes(state);
-        pipelines.run_threshold_scan(state);
+        pipelines.run_tick_pipeline(state, dt);
 
         // 4. Event readback. Cheap even at endgame scale (~3 KB).
         let count = state.read_event_count();

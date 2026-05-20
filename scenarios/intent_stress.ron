@@ -1,0 +1,8 @@
+(
+    name: "intent_stress",
+    builtin: "intent_stress",
+    ticks_per_day: 4,
+    max_days: 2,
+    dt: 0.25,
+    n_slots: 100000,
+)
