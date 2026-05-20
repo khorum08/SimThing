@@ -6,7 +6,7 @@ Running log of what's done and what's next, across sessions.
 
 ## Next session pickup
 
-**158/158** tests passing plus 1 ignored timing diagnostic, zero warnings.
+**163/163** tests passing plus 1 ignored timing diagnostic, zero warnings.
 Master at `f1afbf2` (PR #30, driver GPU integration tests).
 
 ### Todo (recommended order)
@@ -25,6 +25,10 @@ Master at `f1afbf2` (PR #30, driver GPU integration tests).
 
 **Next session:** Expand scenario format (full RON tree/registry), or start
 `simthing-studio` (tabled).
+
+**Recent:** Design carry-over gaps closed — mid-day Add/Multiply via GPU row
+sync, replay `OverlayDissolved`/`AggregateAlert`/`shadow_values` checkpoints,
+state authority checklist enforced in docs + tests.
 
 **Tabled:** `simthing-studio` designer UI.
 

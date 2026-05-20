@@ -17,7 +17,7 @@
 //!   `ReplayDriver` can reconstruct `FusionTrigger` thresholds across sessions.
 
 use serde::{Deserialize, Serialize};
-use simthing_core::{Overlay, SimPropertyId, SimThing, SimThingId, SubFieldRole};
+use simthing_core::{Overlay, OverlayId, SimPropertyId, SimThing, SimThingId, SubFieldRole};
 
 use crate::boundary::BoundaryOutcome;
 use crate::fission::FissionLineageRecord;
@@ -37,6 +37,12 @@ pub enum BoundaryDeltaEntry {
     OverlayAttached {
         target:  SimThingId,
         overlay: Overlay,
+    },
+
+    /// A transient overlay dissolved at the boundary (lifecycle step 4).
+    OverlayDissolved {
+        target:     SimThingId,
+        overlay_id: OverlayId,
     },
 
     /// A new SimThing was added to the tree via an `AddChild` boundary request.
@@ -92,6 +98,15 @@ pub enum BoundaryDeltaEntry {
         value:        f32,
     },
 
+    /// An aggregate alert threshold fired on a reduced parent column (Pass 7
+    /// on `output_vectors`). Observation-only for replay.
+    AggregateAlert {
+        sim_thing_id: SimThingId,
+        property_id:  SimPropertyId,
+        sub_field:    SubFieldRole,
+        value:        f32,
+    },
+
     /// A new fission lineage record was registered (child spawned from parent).
     /// Persisted in the delta log so `ReplayDriver` can reconstruct the
     /// `fission_lineage` vec — and thereby re-register `FusionTrigger`
@@ -126,7 +141,11 @@ pub fn entries_from_outcome(
 ) -> Vec<BoundaryDeltaEntry> {
     let mut entries = Vec::new();
 
-    // Step 4: lifecycle — dissolved overlays are not individually id-tracked yet.
+    // Step 4: lifecycle — dissolved overlays.
+    for &(target, overlay_id) in &outcome.lifecycle.dissolved_overlays {
+        entries.push(BoundaryDeltaEntry::OverlayDissolved { target, overlay_id });
+    }
+
     // Step 5: property expiry.
     for &(sim_thing_id, property_id) in &outcome.expiry.expired {
         entries.push(BoundaryDeltaEntry::PropertyExpired {
@@ -186,9 +205,17 @@ pub fn entries_from_outcome(
         entries.push(BoundaryDeltaEntry::DimensionAdded { property_id: pid });
     }
 
-    // Velocity alerts.
+    // Velocity and aggregate alerts.
     for alert in &outcome.velocity_alerts {
         entries.push(BoundaryDeltaEntry::VelocityAlert {
+            sim_thing_id: alert.sim_thing_id,
+            property_id:  alert.property_id,
+            sub_field:    alert.sub_field.clone(),
+            value:        alert.value,
+        });
+    }
+    for alert in &outcome.aggregate_alerts {
+        entries.push(BoundaryDeltaEntry::AggregateAlert {
             sim_thing_id: alert.sim_thing_id,
             property_id:  alert.property_id,
             sub_field:    alert.sub_field.clone(),
@@ -245,6 +272,7 @@ mod tests {
     use crate::fission::FissionOutcome;
     use crate::property_expiry::ExpiryOutcome;
     use crate::threshold_registry::VelocityAlertEvent;
+    use crate::threshold_registry::AggregateAlertEvent;
     use simthing_feeder::MaintainerOutcome;
     use simthing_core::{
         OverlayId, OverlayKind, OverlaySource, OverlayLifecycle, PropertyTransformDelta,
@@ -458,6 +486,47 @@ mod tests {
         assert_eq!(count_matching(&entries,
             |e| matches!(e, BoundaryDeltaEntry::PropertyExpired { sim_thing_id, property_id }
                 if *sim_thing_id == id_b && *property_id == pid3)), 1);
+    }
+
+    #[test]
+    fn overlay_dissolved_produces_entry() {
+        let target_id = SimThing::new(SimThingKind::Cohort, 0).id;
+        let oid = OverlayId::new();
+        let mut out = empty_outcome();
+        out.lifecycle.dissolved_overlays = vec![(target_id, oid)];
+        let entries = entries_from_outcome(&out, &empty_root());
+        assert_eq!(entries.len(), 1);
+        match &entries[0] {
+            BoundaryDeltaEntry::OverlayDissolved { target, overlay_id } => {
+                assert_eq!(*target, target_id);
+                assert_eq!(*overlay_id, oid);
+            }
+            _ => panic!("expected OverlayDissolved"),
+        }
+    }
+
+    #[test]
+    fn aggregate_alert_produces_entry() {
+        let id  = SimThing::new(SimThingKind::Cohort, 0).id;
+        let pid = SimPropertyId(7);
+        let mut out = empty_outcome();
+        out.aggregate_alerts = vec![AggregateAlertEvent {
+            sim_thing_id: id,
+            property_id:  pid,
+            sub_field:    SubFieldRole::Amount,
+            value:        0.55,
+        }];
+        let entries = entries_from_outcome(&out, &empty_root());
+        assert_eq!(entries.len(), 1);
+        match &entries[0] {
+            BoundaryDeltaEntry::AggregateAlert { sim_thing_id, property_id, sub_field, value } => {
+                assert_eq!(*sim_thing_id, id);
+                assert_eq!(*property_id, pid);
+                assert_eq!(*sub_field, SubFieldRole::Amount);
+                assert_eq!(value.to_bits(), 0.55f32.to_bits());
+            }
+            _ => panic!("expected AggregateAlert"),
+        }
     }
 
     #[test]

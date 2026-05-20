@@ -17,14 +17,17 @@
 //! grep-able and diff-able as text. A binary frame format can replace the
 //! `Write`/`Read` impls later behind the same trait surface.
 //!
-//! ## Scope: structural reproduction
+//! ## Scope: structural reproduction + optional numeric checkpoints
 //!
 //! `ReplayDriver` reconstructs the **tree structure, dimension registry, and
 //! slot allocator** from a recorded session. It does **not** re-run GPU
 //! passes — float values from velocity integration and overlay application are
-//! not part of the replay surface (they're recomputed each session and would
-//! make the log too large). Threshold-driven events (fission, expiry) survive
-//! as `BoundaryDeltaEntry`s and are replayed at the structural level.
+//! not recomputed during playback.
+//!
+//! When recorded, each `ReplayFrame` may optionally carry a post-boundary
+//! `shadow_values` checkpoint (the CPU shadow after GPU readback). That enables
+//! numeric audit/diff of integrated state at day boundaries without bit-exact
+//! re-simulation.
 //!
 //! What this gets you:
 //! - Verify a session's structural history (which SimThings spawned when, what
@@ -67,10 +70,13 @@ pub struct ReplaySnapshot {
 // ── Frame ─────────────────────────────────────────────────────────────────────
 
 /// One day's worth of structural changes.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ReplayFrame {
     pub day:     u32,
     pub entries: Vec<BoundaryDeltaEntry>,
+    /// Post-boundary CPU shadow (`n_slots × n_dims`), when recording enabled it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shadow_values: Option<Vec<f32>>,
 }
 
 /// Discriminated record written one-per-line to the replay stream.
@@ -204,6 +210,8 @@ pub struct ReplayDriver {
     pub registry:        DimensionRegistry,
     pub allocator:       SlotAllocator,
     pub fission_lineage: Vec<FissionLineageRecord>,
+    /// Latest post-boundary shadow checkpoint from a replay frame, if any.
+    pub shadow_values:   Option<Vec<f32>>,
 }
 
 impl ReplayDriver {
@@ -217,6 +225,7 @@ impl ReplayDriver {
             root:            snapshot.root,
             registry:        snapshot.registry,
             fission_lineage: snapshot.fission_lineage,
+            shadow_values:   None,
             allocator,
         }
     }
@@ -242,6 +251,9 @@ impl ReplayDriver {
             self.apply_entry(entry);
         }
         self.day = frame.day;
+        if frame.shadow_values.is_some() {
+            self.shadow_values = frame.shadow_values;
+        }
     }
 
     fn apply_entry(&mut self, entry: BoundaryDeltaEntry) {
@@ -272,6 +284,11 @@ impl ReplayDriver {
             BoundaryDeltaEntry::OverlayAttached { target, overlay } => {
                 if let Some(node) = find_node_mut(&mut self.root, target) {
                     node.overlays.push(overlay);
+                }
+            }
+            BoundaryDeltaEntry::OverlayDissolved { target, overlay_id } => {
+                if let Some(node) = find_node_mut(&mut self.root, target) {
+                    node.overlays.retain(|o| o.id != overlay_id);
                 }
             }
             BoundaryDeltaEntry::SimThingReparented { child, new_parent } => {
@@ -309,6 +326,7 @@ impl ReplayDriver {
                 }
             }
             BoundaryDeltaEntry::VelocityAlert { .. } => { /* observation only */ }
+            BoundaryDeltaEntry::AggregateAlert { .. } => { /* observation only */ }
         }
     }
 }
@@ -388,7 +406,7 @@ mod tests {
     fn writer_rejects_frame_before_snapshot() {
         let mut buf: Vec<u8> = Vec::new();
         let mut writer = ReplayWriter::new(&mut buf);
-        let frame = ReplayFrame { day: 1, entries: Vec::new() };
+        let frame = ReplayFrame { day: 1, entries: Vec::new(), ..Default::default() };
         let err = writer.write_frame(&frame).unwrap_err();
         assert!(matches!(err, ReplayError::MissingSnapshot));
     }
@@ -399,7 +417,7 @@ mod tests {
         let mut buf: Vec<u8> = Vec::new();
         let mut writer = ReplayWriter::new(&mut buf);
         writer.write_snapshot(&snap).unwrap();
-        writer.write_frame(&ReplayFrame { day: 1, entries: Vec::new() }).unwrap();
+        writer.write_frame(&ReplayFrame { day: 1, entries: Vec::new(), ..Default::default() }).unwrap();
         drop(writer);
 
         let mut reader = ReplayReader::new(Cursor::new(buf));
@@ -436,6 +454,7 @@ mod tests {
             entries: vec![BoundaryDeltaEntry::OverlayAttached {
                 target: cohort_id, overlay,
             }],
+            ..Default::default()
         };
         driver.apply_frame(frame);
 
@@ -460,6 +479,7 @@ mod tests {
             entries: vec![BoundaryDeltaEntry::PropertyExpired {
                 sim_thing_id: cohort_id, property_id: pid,
             }],
+            ..Default::default()
         };
         driver.apply_frame(frame);
         assert!(!driver.root.children[0].properties.contains_key(&pid));
@@ -482,6 +502,7 @@ mod tests {
                 child:     cohort_id,
                 new_parent: sib_id,
             }],
+            ..Default::default()
         };
         driver.apply_frame(frame);
 
@@ -508,6 +529,7 @@ mod tests {
                 parent: root_id,
                 node:   fleet,
             }],
+            ..Default::default()
         };
         driver.apply_frame(frame);
 
@@ -535,6 +557,7 @@ mod tests {
                 parent: cohort_id,
                 node:   rebel,
             }],
+            ..Default::default()
         };
         driver.apply_frame(frame);
 
@@ -568,6 +591,7 @@ mod tests {
             entries: vec![
                 BoundaryDeltaEntry::FissionLineageAdded { record },
             ],
+            ..Default::default()
         };
         driver.apply_frame(frame);
         assert_eq!(driver.fission_lineage.len(), 1);
@@ -578,6 +602,7 @@ mod tests {
             entries: vec![
                 BoundaryDeltaEntry::FissionLineageRemoved { record },
             ],
+            ..Default::default()
         };
         driver.apply_frame(frame2);
         assert!(driver.fission_lineage.is_empty(), "lineage removed");
@@ -608,5 +633,58 @@ mod tests {
         let restored = reader.read_snapshot().unwrap();
         assert_eq!(restored.fission_lineage.len(), 1);
         assert_eq!(restored.fission_lineage[0].child_id, rebel_id);
+    }
+
+    #[test]
+    fn driver_replays_overlay_dissolved() {
+        use simthing_core::{
+            OverlayId, OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta,
+            SubFieldRole, TransformOp,
+        };
+
+        let snap = fixture();
+        let cohort_id = snap.root.children[0].id;
+        let mut driver = ReplayDriver::from_snapshot(snap);
+
+        let overlay = simthing_core::Overlay {
+            id:        OverlayId::new(),
+            kind:      OverlayKind::Transient,
+            source:    OverlaySource::System,
+            affects:   Vec::new(),
+            transform: PropertyTransformDelta {
+                property_id:      SimPropertyId(0),
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.1))],
+            },
+            lifecycle: OverlayLifecycle::Permanent,
+        };
+        let oid = overlay.id;
+        driver.apply_frame(ReplayFrame {
+            day: 1,
+            entries: vec![BoundaryDeltaEntry::OverlayAttached { target: cohort_id, overlay }],
+            ..Default::default()
+        });
+        assert_eq!(driver.root.children[0].overlays.len(), 1);
+
+        driver.apply_frame(ReplayFrame {
+            day: 2,
+            entries: vec![BoundaryDeltaEntry::OverlayDissolved {
+                target: cohort_id,
+                overlay_id: oid,
+            }],
+            ..Default::default()
+        });
+        assert!(driver.root.children[0].overlays.is_empty());
+    }
+
+    #[test]
+    fn frame_carries_shadow_values_checkpoint() {
+        let mut driver = ReplayDriver::from_snapshot(fixture());
+        let checkpoint = vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6];
+        driver.apply_frame(ReplayFrame {
+            day: 1,
+            entries: Vec::new(),
+            shadow_values: Some(checkpoint.clone()),
+        });
+        assert_eq!(driver.shadow_values.as_ref(), Some(&checkpoint));
     }
 }

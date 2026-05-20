@@ -20,26 +20,25 @@ It is uploaded to the GPU for dirty rows **before** Pass 0 each tick.
 | Op | Allowed mid-day? | Rationale |
 |----|------------------|-----------|
 | `Set` | Yes | Absolute write; safe even if shadow lags integration by one tick. |
-| `Add` / `Multiply` | No (skipped) | Read-modify-write needs current GPU-integrated value; shadow may be stale. Counted in `PatcherStats::unsafe_rmw_skipped`. |
+| `Add` / `Multiply` | Yes (with sync) | `DispatchCoordinator::tick` refreshes affected shadow rows from GPU via `read_values_row` before the Patcher applies RMW ops. |
 
-Long-term, Add/Multiply may become GPU-side delta commands with explicit readback
-authority. Until then, use **boundary-only** RMW or **Set** mid-day.
+RMW without GPU sync (direct `apply_one` in tests) still requires a current shadow row.
 
 ### Player / AI intents (two-phase)
 
 `PlayerIntent` and `AiIntent` follow the same contract:
 
 1. **Mid-day (same tick):** the intent's `transform` delta is applied to the shadow
-   via `apply_one` — **Set only** lands; Add/Multiply are skipped like any patch.
+   via `apply_one` after any required GPU row sync (Set, Add, and Multiply all land).
 2. **Next boundary:** the full `Overlay` is structurally attached to the tree.
 3. **Subsequent ticks:** Pass 3 applies attached overlays every tick (persistent effect).
 
 For **Set**, mid-day apply and Pass 3 re-apply are **idempotent** (same constant).
-For **Add/Multiply**, only the attached overlay drives GPU integration after boundary;
-there is no mid-day double-count.
+For **Add/Multiply**, mid-day apply uses integrated GPU values; after boundary attach,
+Pass 3 applies the overlay persistently without double-counting on the attach tick.
 
 Integration coverage: `player_intent_mid_day_effect_lands_on_gpu_before_boundary`,
-`ai_intent_mid_day_effect_and_boundary_attach`.
+`player_intent_add_mid_day_uses_integrated_gpu_value`, `ai_intent_mid_day_effect_and_boundary_attach`.
 
 ---
 
@@ -110,10 +109,20 @@ Pruned when:
 
 ---
 
+## Replay fidelity
+
+Structural history is captured in `BoundaryDeltaEntry` (including `OverlayDissolved`,
+`AggregateAlert`, fission lineage). Optional per-frame `shadow_values` checkpoints
+record post-boundary integrated numerics for audit/diff — replay does not re-run GPU
+passes to reconstruct floats.
+
+---
+
 ## Invariant checklist (for reviewers)
 
-- [ ] Mid-day patch uses only `Set`, or documents why GPU readback was done first.
-- [ ] Boundary mutation that changes numerics updates shadow (or reads GPU first).
-- [ ] New code does not treat `SimThing.properties` as live sim state.
-- [ ] Threshold on aggregates uses `THRESH_BUF_OUTPUT`, not leaf `values`.
-- [ ] Lineage records are pruned when endpoints disappear.
+- [x] Mid-day RMW refreshes affected rows from GPU before apply (`DispatchCoordinator::tick`).
+- [x] Boundary mutation reads GPU into shadow first (`BoundaryProtocol::execute` step 1).
+- [x] `SimThing.properties` is not live sim state (shadow/GPU authoritative; see expiry tests).
+- [x] Aggregate thresholds use `THRESH_BUF_OUTPUT` (`aggregate_alert_registration_surfaces_at_boundary`).
+- [x] Lineage pruned when endpoints disappear (`remove_after_fission_prunes_lineage`).
+- [x] Overlay dissolution recorded in delta log (`OverlayDissolved` + replay driver).

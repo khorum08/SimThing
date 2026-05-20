@@ -272,13 +272,12 @@ Highlights:
 - `FeederSender::submit_player_intent(target, overlay)` — convenience send method.
 
 **`patcher.rs` — TransformPatcher:**
-- `drain(receiver, registry, allocator, n_dims, &mut shadow) -> PatcherStats`:
+- `drain(receiver, registry, allocator, n_dims, &mut shadow, sync_row_from_gpu) -> PatcherStats`:
   pulls every queued item; resolves `(target, role) → (slot, col)` via
-  `col_for_role` only. It applies `TransformOp::Set` immediately to the CPU
-  shadow. `Add`/`Multiply` are skipped in this within-day path because the
-  shadow can lag GPU integration; skipped writes increment
-  `unsafe_rmw_skipped`. Boundary requests park on `pending_boundary`; player
-  intent overlays park on `pending_player_intents`.
+  `col_for_role` only. Before applying Add/Multiply ops, `DispatchCoordinator`
+  passes a callback that refreshes affected rows from GPU (`read_values_row`).
+  Set/Add/Multiply all land on the shadow. Boundary requests park on
+  `pending_boundary`; player intent overlays park on `pending_player_intents`.
 - `take_player_intents() -> Vec<PlayerIntentOverlay>` — drains player intents
   for the boundary protocol to attach during step 7/8.
 - `PatcherStats` counts applied writes, unsafe RMW skips, missing targets,
@@ -482,13 +481,13 @@ Integration highlights:
 ### simthing-sim::replay (LDJSON v1, complete)
 - `ReplaySnapshot { day, root, registry }` — initial state, serialized as
   the first line. `BoundaryProtocol::snapshot(day)` produces one.
-- `ReplayFrame { day, entries: Vec<BoundaryDeltaEntry> }` — one boundary's
-  deltas; written one per line after the snapshot.
+- `ReplayFrame { day, entries, shadow_values? }` — one boundary's deltas plus
+  optional post-boundary shadow checkpoint; written one per line after the snapshot.
 - `ReplayWriter` enforces snapshot-first ordering; `ReplayReader` enforces
   snapshot-first read.
 - `ReplayDriver` reconstructs tree + registry + allocator from a snapshot,
   then applies frames via structural mutations equivalent to the live
-  `BoundaryProtocol`. `OverlayAttached`, `PropertyExpired`,
+  `BoundaryProtocol`. `OverlayAttached`, `OverlayDissolved`, `PropertyExpired`,
   `SimThingReparented`, `DimensionAdded`, `SimThingRemoved`,
   `FusionOccurred` are lossless; `SimThingAdded` / `FissionOccurred` are
   lossy (no spawned-subtree payload — see Replay v2 todo).
@@ -511,8 +510,8 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 158 tests must pass with zero warnings before any commit
-(16 core + 1 driver unit + 2 driver integration + 45 GPU + 21 feeder unit + 4 feeder integration + 54 sim unit + 15 sim integration).
+All 163 tests must pass with zero warnings before any commit
+(16 core + 1 driver unit + 2 driver integration + 45 GPU + 21 feeder unit + 4 feeder integration + 59 sim unit + 16 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

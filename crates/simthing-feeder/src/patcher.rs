@@ -10,10 +10,10 @@
 //! uploads the dirty rows to the GPU before the next tick. Going through a
 //! shadow has three benefits:
 //!
-//! 1. **Immediate writes are limited to `Set`.** `TransformOp::Multiply` and
-//!    `TransformOp::Add` need a fresh current value; the within-day shadow can
-//!    lag GPU integration, so those read-modify-write ops are skipped here and
-//!    reported via `PatcherStats::unsafe_rmw_skipped`.
+//! 1. **Immediate writes use GPU-fresh rows for RMW.** `TransformOp::Set` is
+//!    always safe. `TransformOp::Multiply` and `TransformOp::Add` require the
+//!    current integrated value; the Dispatch Coordinator refreshes affected
+//!    shadow rows from the GPU before the Patcher applies those ops each tick.
 //!    See `docs/state-authority.md` for the full authority doctrine.
 //! 2. **Coalesced uploads.** Multiple patches hitting the same row in the
 //!    same tick produce a single `queue.write_buffer` per dirty row.
@@ -46,8 +46,9 @@ use crate::work::{
     AiIntentOverlay, AiReceiver, BoundaryRequest, FeederReceiver, FeederWork, PatchTransform,
     PlayerIntentOverlay,
 };
-use simthing_core::{DimensionRegistry, TransformOp};
+use simthing_core::{DimensionRegistry, PropertyTransformDelta, TransformOp};
 use simthing_gpu::SlotAllocator;
+use std::collections::HashSet;
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,7 @@ pub struct PatcherStats {
     pub unresolved_roles:  u32,
     /// Individual sub-field writes that actually landed in the shadow.
     pub applied_writes:    u32,
-    /// Add/Multiply writes skipped because the shadow may be stale within a day.
+    /// Add/Multiply writes skipped because no GPU row sync was available.
     pub unsafe_rmw_skipped: u32,
     /// Boundary requests parked for the Tree Maintainer (not applied here).
     pub boundary_parked:   u32,
@@ -119,9 +120,8 @@ impl TransformPatcher {
     /// Apply every patch currently waiting on the queue. Boundary requests
     /// are routed to `pending_boundary`. Returns per-drain diagnostic stats.
     ///
-    /// `values` must be the row-major `[n_slots × n_dims]` shadow buffer
-    /// matching the registry currently used by the GPU. Caller is responsible
-    /// for keeping shadow + GPU buffer in sync.
+    /// When `sync_row_from_gpu` is provided, rows targeted by Add/Multiply ops
+    /// are refreshed from the GPU before application so RMW uses integrated values.
     pub fn drain(
         &mut self,
         receiver:  &FeederReceiver,
@@ -129,9 +129,47 @@ impl TransformPatcher {
         allocator: &SlotAllocator,
         n_dims:    usize,
         values:    &mut [f32],
+        sync_row_from_gpu: Option<&mut dyn FnMut(u32)>,
+    ) -> PatcherStats {
+        let feeder_items = receiver.drain_now();
+        let ai_items = self.drain_ai_now();
+        if let Some(sync) = sync_row_from_gpu {
+            for slot in rmw_slots_from_batch(&feeder_items, &ai_items, allocator) {
+                sync(slot);
+            }
+        }
+        self.apply_collected(
+            feeder_items,
+            ai_items,
+            registry,
+            allocator,
+            n_dims,
+            values,
+        )
+    }
+
+    /// Drain the connected AI channel without applying. Used by the coordinator
+    /// to prefetch GPU rows before `apply_collected`.
+    pub fn drain_ai_now(&mut self) -> Vec<AiIntentOverlay> {
+        if let Some(ai_rx) = &self.ai_receiver {
+            ai_rx.drain_now()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Apply work items already removed from the feeder/AI channels.
+    pub fn apply_collected(
+        &mut self,
+        feeder_items: Vec<FeederWork>,
+        ai_items:     Vec<AiIntentOverlay>,
+        registry:     &DimensionRegistry,
+        allocator:    &SlotAllocator,
+        n_dims:       usize,
+        values:       &mut [f32],
     ) -> PatcherStats {
         let mut stats = PatcherStats::default();
-        for item in receiver.drain_now() {
+        for item in feeder_items {
             match item {
                 FeederWork::Patch(p) => {
                     self.apply_one(&p, registry, allocator, n_dims, values, &mut stats);
@@ -141,9 +179,6 @@ impl TransformPatcher {
                     stats.boundary_parked += 1;
                 }
                 FeederWork::PlayerIntent(pi) => {
-                    // Two-phase intent path — see docs/state-authority.md:
-                    // (1) safe Set deltas to shadow now for same-tick visibility;
-                    // (2) park overlay for boundary attach → Pass 3 persistent effect.
                     let patch = PatchTransform { target: pi.target, delta: pi.overlay.transform.clone() };
                     self.apply_one(&patch, registry, allocator, n_dims, values, &mut stats);
                     self.pending_player_intents.push(pi);
@@ -152,15 +187,11 @@ impl TransformPatcher {
             }
         }
 
-        // Drain the AI channel if one is connected. Same two-phase intent path
-        // as player intents — see docs/state-authority.md.
-        if let Some(ai_rx) = &self.ai_receiver {
-            for ai in ai_rx.drain_now() {
-                let patch = PatchTransform { target: ai.target, delta: ai.overlay.transform.clone() };
-                self.apply_one(&patch, registry, allocator, n_dims, values, &mut stats);
-                self.pending_ai_intents.push(ai);
-                stats.ai_intents_parked += 1;
-            }
+        for ai in ai_items {
+            let patch = PatchTransform { target: ai.target, delta: ai.overlay.transform.clone() };
+            self.apply_one(&patch, registry, allocator, n_dims, values, &mut stats);
+            self.pending_ai_intents.push(ai);
+            stats.ai_intents_parked += 1;
         }
 
         stats
@@ -209,10 +240,7 @@ impl TransformPatcher {
             }
             values[addr] = match op {
                 TransformOp::Set(k) => *k,
-                TransformOp::Multiply(_) | TransformOp::Add(_) => {
-                    stats.unsafe_rmw_skipped += 1;
-                    continue;
-                }
+                TransformOp::Add(_) | TransformOp::Multiply(_) => op.apply(values[addr]),
             };
             stats.applied_writes += 1;
             wrote_to_row = true;
@@ -271,6 +299,47 @@ impl TransformPatcher {
     }
 }
 
+fn delta_has_rmw(delta: &PropertyTransformDelta) -> bool {
+    delta
+        .sub_field_deltas
+        .iter()
+        .any(|(_, op)| matches!(op, TransformOp::Add(_) | TransformOp::Multiply(_)))
+}
+
+fn collect_rmw_slot(
+    target:    simthing_core::SimThingId,
+    delta:     &PropertyTransformDelta,
+    allocator: &SlotAllocator,
+    slots:     &mut HashSet<u32>,
+) {
+    if delta_has_rmw(delta) {
+        if let Some(slot) = allocator.slot_of(target) {
+            slots.insert(slot);
+        }
+    }
+}
+
+pub(crate) fn rmw_slots_from_batch(
+    feeder_items: &[FeederWork],
+    ai_items:     &[AiIntentOverlay],
+    allocator:    &SlotAllocator,
+) -> Vec<u32> {
+    let mut slots = HashSet::new();
+    for item in feeder_items {
+        match item {
+            FeederWork::Patch(p) => collect_rmw_slot(p.target, &p.delta, allocator, &mut slots),
+            FeederWork::PlayerIntent(pi) => {
+                collect_rmw_slot(pi.target, &pi.overlay.transform, allocator, &mut slots);
+            }
+            FeederWork::Boundary(_) => {}
+        }
+    }
+    for ai in ai_items {
+        collect_rmw_slot(ai.target, &ai.overlay.transform, allocator, &mut slots);
+    }
+    slots.into_iter().collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -295,9 +364,10 @@ mod tests {
     }
 
     #[test]
-    fn add_op_is_skipped_without_fresh_gpu_readback() {
+    fn add_op_applies_when_shadow_is_current() {
         let (reg, alloc, pid, [_a, b], n_dims) = fixture();
         let mut values = vec![0.0f32; 2 * n_dims];
+        values[n_dims + 0] = 0.5;
         let mut p = TransformPatcher::new(2);
         let mut stats = PatcherStats::default();
 
@@ -312,12 +382,9 @@ mod tests {
             &reg, &alloc, n_dims, &mut values, &mut stats,
         );
 
-        // slot 1 (b), col 0 (Amount). Slot 0 row untouched.
-        assert_eq!(values[n_dims + 0], 0.0);
-        assert_eq!(values[0], 0.0);
-        assert_eq!(stats.applied_writes, 0);
-        assert_eq!(stats.unsafe_rmw_skipped, 1);
-        assert_eq!(stats.missing_targets, 0);
+        assert_eq!(values[n_dims + 0].to_bits(), 0.75f32.to_bits());
+        assert_eq!(stats.applied_writes, 1);
+        assert_eq!(stats.unsafe_rmw_skipped, 0);
     }
 
     #[test]
@@ -342,10 +409,9 @@ mod tests {
             &reg, &alloc, n_dims, &mut values, &mut stats,
         );
 
-        // Multiply is skipped as unsafe; Set still lands.
         assert_eq!(values[0], 7.0);
-        assert_eq!(stats.applied_writes, 1);
-        assert_eq!(stats.unsafe_rmw_skipped, 1);
+        assert_eq!(stats.applied_writes, 2);
+        assert_eq!(stats.unsafe_rmw_skipped, 0);
     }
 
     #[test]
@@ -436,7 +502,7 @@ mod tests {
 
         let mut values = vec![0.0f32; 2 * n_dims];
         let mut p = TransformPatcher::new(2);
-        let stats = p.drain(&rx, &reg, &alloc, n_dims, &mut values);
+        let stats = p.drain(&rx, &reg, &alloc, n_dims, &mut values, None);
 
         // slot 0 (a), Intensity col = 2. Value = 0.5.
         assert_eq!(values[2], 0.5);
@@ -502,7 +568,7 @@ mod tests {
 
         let mut values = vec![0.0f32; 2 * n_dims];
         let mut p = TransformPatcher::new(2);
-        let stats = p.drain(&rx, &reg, &alloc, n_dims, &mut values);
+        let stats = p.drain(&rx, &reg, &alloc, n_dims, &mut values, None);
 
         assert_eq!(stats.player_intents_parked, 1);
         assert_eq!(stats.applied_writes, 0);
@@ -541,7 +607,7 @@ mod tests {
 
         let mut values = vec![0.0f32; 2 * n_dims];
         let mut p = TransformPatcher::new(2);
-        let stats = p.drain(&rx, &reg, &alloc, n_dims, &mut values);
+        let stats = p.drain(&rx, &reg, &alloc, n_dims, &mut values, None);
 
         // Transform applied: slot 0, Amount col 0 = 0.75.
         assert_eq!(values[0], 0.75, "mid-day shadow mutation must fire immediately");
@@ -584,7 +650,7 @@ mod tests {
 
         // Drain the feeder queue (empty) — AI channel drained automatically.
         let (_, rx) = feeder_channel();
-        let stats = p.drain(&rx, &reg, &alloc, n_dims, &mut values);
+        let stats = p.drain(&rx, &reg, &alloc, n_dims, &mut values, None);
 
         // Transform applied: slot 1 (b), Amount col = 0.42.
         assert_eq!(values[n_dims + 0], 0.42, "AI intent must mutate shadow mid-day");

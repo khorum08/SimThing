@@ -31,7 +31,7 @@
 //! N+1. `gpu_sync` then calls `build_overlay_deltas` to reflect those lists.
 
 use simthing_core::{
-    DissolveCondition, DimensionRegistry, OverlayLifecycle, SimThing, SimThingId,
+    DissolveCondition, DimensionRegistry, OverlayId, OverlayLifecycle, SimThing, SimThingId,
     SubFieldRole,
 };
 use simthing_gpu::SlotAllocator;
@@ -40,6 +40,7 @@ use simthing_gpu::SlotAllocator;
 #[derive(Clone, Debug, Default)]
 pub struct LifecycleOutcome {
     pub dissolved:   u32,
+    pub dissolved_overlays: Vec<(SimThingId, OverlayId)>,
     pub after_ticks_decremented: u32,
     pub overlays_attached: u32,
 }
@@ -116,6 +117,7 @@ fn resolve_node(
     for i in dissolved_indices.into_iter().rev() {
         let overlay = node.overlays.remove(i);
         out.dissolved += 1;
+        out.dissolved_overlays.push((node.id, overlay.id));
 
         // Apply on_expire effects to the CPU shadow if we have a slot.
         if let (Some(base), Some(ref handler)) = (

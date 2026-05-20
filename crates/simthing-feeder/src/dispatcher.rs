@@ -119,12 +119,21 @@ impl DispatchCoordinator {
         state: &mut WorldGpuState,
         dt: f32,
     ) -> TickOutcome {
-        // 1. Drain feeder queue → shadow.
-        let patcher_stats = patcher.drain(
-            receiver,
+        // 1. Drain feeder queue → shadow. Refresh GPU rows before RMW ops.
+        let n_dims = self.n_dims as usize;
+        let feeder_items = receiver.drain_now();
+        let ai_items = patcher.drain_ai_now();
+        for slot in crate::patcher::rmw_slots_from_batch(&feeder_items, &ai_items, allocator) {
+            let row = state.read_values_row(slot);
+            let base = (slot as usize) * n_dims;
+            self.shadow[base..base + n_dims].copy_from_slice(&row);
+        }
+        let patcher_stats = patcher.apply_collected(
+            feeder_items,
+            ai_items,
             registry,
             allocator,
-            self.n_dims as usize,
+            n_dims,
             &mut self.shadow,
         );
 
