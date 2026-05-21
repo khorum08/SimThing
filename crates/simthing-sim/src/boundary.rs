@@ -161,6 +161,8 @@ impl BoundaryProtocol {
         out.aggregate_alerts = collect_aggregate_alerts(&events, &self.cpu_threshold_registry);
         out.timing.alert_collect_ms = alert_collect_started.elapsed().as_secs_f64() * 1000.0;
 
+        let boundary_paths = build_node_paths(&self.root);
+
         // Step 4: Overlay lifecycle — dissolve + expire effects.
         // Mutates coord.shadow directly (apply_expire_effects writes into it).
         let lifecycle_started = Instant::now();
@@ -171,6 +173,7 @@ impl BoundaryProtocol {
             &mut coord.shadow,
             n_dims,
             day as u32,
+            Some(&boundary_paths),
         );
         out.timing.lifecycle_ms = lifecycle_started.elapsed().as_secs_f64() * 1000.0;
 
@@ -184,6 +187,7 @@ impl BoundaryProtocol {
             n_dims,
             &events,
             &self.cpu_threshold_registry,
+            Some(&boundary_paths),
         );
         out.timing.expiry_ms = expiry_started.elapsed().as_secs_f64() * 1000.0;
 
@@ -203,11 +207,11 @@ impl BoundaryProtocol {
         // Step 6: Fission and fusion. Spawns new SimThings + allocates slots.
         // Reads from shadow for secondary-condition checks and seeds newly
         // fissioned children from the parent's current GPU row.
-        let fission_paths = build_node_paths(&self.root);
+        // Lifecycle/expiry do not change tree shape — reuse the same index.
         let fission_started = Instant::now();
         out.fission = resolve_fission_fusion(
             &mut self.root,
-            &fission_paths,
+            &boundary_paths,
             &self.registry,
             &mut self.allocator,
             &events,

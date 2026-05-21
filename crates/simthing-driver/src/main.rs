@@ -12,7 +12,7 @@ use simthing_sim::{BoundaryDeltaEntry, ReplayDriver, ReplayReader};
 fn usage() -> &'static str {
     "simthing record --scenario <file.ron> --out <file.ldjson> [--days N]\n\
      simthing replay  --in <file.ldjson>\n\
-     simthing bench   --scenario <file.ron> [--days N]"
+     simthing bench   --scenario <file.ron> [--days N] [--check]"
 }
 
 fn main() {
@@ -105,6 +105,7 @@ fn cmd_record(args: &[String]) {
 fn cmd_bench(args: &[String]) {
     let mut scenario_path: Option<PathBuf> = None;
     let mut days: Option<u32> = None;
+    let mut check_ceiling = false;
 
     let mut i = 0;
     while i < args.len() {
@@ -121,6 +122,9 @@ fn cmd_bench(args: &[String]) {
                         .parse()
                         .expect("--days must be a u32"),
                 );
+            }
+            "--check" => {
+                check_ceiling = true;
             }
             flag => {
                 eprintln!("unknown flag {flag:?}\n{}", usage());
@@ -306,6 +310,18 @@ fn cmd_bench(args: &[String]) {
         "  final_gpu_buffer_bytes: {}",
         session.state.total_buffer_bytes()
     );
+
+    if check_ceiling {
+        match simthing_driver::check_bench_ceiling(&session.scenario.name, ms_total, &summary) {
+            Ok(ms_per_day) => {
+                println!("  bench_check: pass ({ms_per_day:.3} ms/sim-day)");
+            }
+            Err(err) => {
+                eprintln!("bench check failed: {err}");
+                process::exit(1);
+            }
+        }
+    }
 }
 
 fn cmd_replay(args: &[String]) {

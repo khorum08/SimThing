@@ -35,6 +35,9 @@ use simthing_core::{
     SubFieldRole,
 };
 use simthing_gpu::SlotAllocator;
+use std::collections::HashMap;
+
+use crate::tree_index::{node_at_path_mut, paths_preorder};
 
 /// Counts from one boundary's lifecycle pass.
 #[derive(Clone, Debug, Default)]
@@ -63,13 +66,36 @@ pub fn resolve_overlay_lifecycle(
     values_shadow: &mut [f32],
     n_dims: usize,
     _day: u32,
+    node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
 ) -> LifecycleOutcome {
     let mut out = LifecycleOutcome::default();
-    resolve_node(root, registry, allocator, values_shadow, n_dims, &mut out);
+    if let Some(paths) = node_paths {
+        for path in paths_preorder(paths) {
+            if let Some(node) = node_at_path_mut(root, &path) {
+                process_node(node, registry, allocator, values_shadow, n_dims, &mut out);
+            }
+        }
+    } else {
+        resolve_node(root, registry, allocator, values_shadow, n_dims, &mut out);
+    }
     out
 }
 
 fn resolve_node(
+    node: &mut SimThing,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
+    values_shadow: &mut [f32],
+    n_dims: usize,
+    out: &mut LifecycleOutcome,
+) {
+    process_node(node, registry, allocator, values_shadow, n_dims, out);
+    for child in &mut node.children {
+        resolve_node(child, registry, allocator, values_shadow, n_dims, out);
+    }
+}
+
+fn process_node(
     node: &mut SimThing,
     registry: &DimensionRegistry,
     allocator: &SlotAllocator,
@@ -143,11 +169,6 @@ fn resolve_node(
                 }
             }
         }
-    }
-
-    // Recurse into children.
-    for child in &mut node.children {
-        resolve_node(child, registry, allocator, values_shadow, n_dims, out);
     }
 }
 
@@ -307,7 +328,7 @@ mod tests {
 
         let n_dims = reg.total_columns;
         let mut shadow = vec![0.0f32; n_dims];
-        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0);
+        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0, None);
         assert_eq!(out.dissolved, 0);
         assert_eq!(root.overlays.len(), 1);
     }
@@ -328,7 +349,7 @@ mod tests {
 
         let n_dims = reg.total_columns;
         let mut shadow = vec![0.0f32; n_dims];
-        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0);
+        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0, None);
         assert_eq!(out.dissolved, 1);
         assert!(root.overlays.is_empty());
     }
@@ -349,7 +370,7 @@ mod tests {
 
         let n_dims = reg.total_columns;
         let mut shadow = vec![0.0f32; n_dims];
-        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0);
+        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0, None);
         assert_eq!(out.dissolved, 0);
         assert_eq!(root.overlays.len(), 1);
         // Remaining should have decremented to 1.
@@ -399,7 +420,7 @@ mod tests {
 
         let n_dims = reg.total_columns;
         let mut shadow = vec![0.0f32; n_dims];
-        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0);
+        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0, None);
 
         assert_eq!(out.dissolved, 0);
         assert_eq!(root.overlays.len(), 1);
@@ -425,7 +446,7 @@ mod tests {
 
         let n_dims = reg.total_columns;
         let mut shadow = vec![0.0f32; n_dims];
-        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0);
+        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0, None);
 
         assert_eq!(out.dissolved, 0);
         assert_eq!(root.overlays.len(), 1);
@@ -452,7 +473,7 @@ mod tests {
 
         let n_dims = reg.total_columns;
         let mut shadow = vec![0.0f32; n_dims];
-        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0);
+        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0, None);
 
         assert_eq!(out.dissolved, 1);
         assert!(root.overlays.is_empty());
@@ -474,7 +495,7 @@ mod tests {
 
         let n_dims = reg.total_columns;
         let mut shadow = vec![0.0f32; n_dims];
-        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0);
+        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0, None);
 
         assert_eq!(out.dissolved, 1);
         assert!(root.overlays.is_empty());
