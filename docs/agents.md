@@ -500,11 +500,14 @@ Integration highlights:
   on GPU shows up in `observe_live` but not in shadow-based `observe`.
 
 **Still open (see `docs/worklog.md` Next session pickup):**
-- Remaining fission boundary profiling: parent lookup and delta-log lookup are
-  optimized; split the remaining cost across threshold event readback,
-  threshold/topology rebuild, shadow upload, and fission seeding.
+- **B1:** boundary dirty-row shadow upload (full readback stays; targeted upload).
+- **B2:** retain/batch threshold/reduction topology on fission growth boundaries.
+- **R2 remainder:** share `tree_index` with lifecycle/expiry walks.
 - Full RON scenario files (tree + registry inline; today: `builtin` templates only).
 - Designer UI (`simthing-studio`) — tabled
+
+**Shipped (PR #34):** intent-fold accumulator reuse, mid-tick observability docs,
+`rebellion_demo` record/replay smoke, `tree_index` for fission + structural lookups.
 
 **Built (playability):**
 - `crates/simthing-driver` exposes `simthing record`, `simthing replay`, and
@@ -560,9 +563,9 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All **182** tests must pass with zero warnings before any commit
+All **184** tests must pass with zero warnings before any commit
 (16 core + 3 driver unit + 2 driver integration + 47 GPU + 24 feeder unit +
-5 feeder integration + 67 sim unit + 18 sim integration).
+5 feeder integration + 69 sim unit + 18 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available
