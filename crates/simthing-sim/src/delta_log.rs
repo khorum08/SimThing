@@ -18,6 +18,7 @@
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{Overlay, OverlayId, SimPropertyId, SimThing, SimThingId, SubFieldRole};
+use std::collections::HashMap;
 
 use crate::boundary::BoundaryOutcome;
 use crate::fission::FissionLineageRecord;
@@ -139,7 +140,8 @@ pub fn entries_from_outcome(
     outcome: &BoundaryOutcome,
     root:    &SimThing,
 ) -> Vec<BoundaryDeltaEntry> {
-    let mut entries = Vec::new();
+    let index = DeltaLogTreeIndex::new(root);
+    let mut entries = Vec::with_capacity(estimated_entry_count(outcome));
 
     // Step 4: lifecycle — dissolved overlays.
     for &(target, overlay_id) in &outcome.lifecycle.dissolved_overlays {
@@ -156,7 +158,7 @@ pub fn entries_from_outcome(
 
     // Step 6: fission / fusion.
     for &(parent, child) in &outcome.fission.fission_pairs {
-        if let Some(node) = find_node(root, child) {
+        if let Some(node) = index.node(child) {
             entries.push(BoundaryDeltaEntry::FissionOccurred {
                 parent,
                 node: node.clone(),
@@ -179,7 +181,7 @@ pub fn entries_from_outcome(
 
     // Steps 7+8: structural mutations from MaintainerOutcome.
     for &id in &outcome.maintainer.allocated {
-        if let Some((parent_id, node)) = find_node_with_parent(root, id) {
+        if let Some((parent_id, node)) = index.node_with_parent(id) {
             entries.push(BoundaryDeltaEntry::SimThingAdded {
                 parent: parent_id,
                 node:   node.clone(),
@@ -194,7 +196,7 @@ pub fn entries_from_outcome(
         entries.push(BoundaryDeltaEntry::SimThingReparented { child, new_parent });
     }
     for &(target, oid) in &outcome.maintainer.overlays_attached {
-        if let Some(overlay) = find_overlay(root, target, oid) {
+        if let Some(overlay) = index.overlay(target, oid) {
             entries.push(BoundaryDeltaEntry::OverlayAttached {
                 target,
                 overlay: overlay.clone(),
@@ -228,39 +230,64 @@ pub fn entries_from_outcome(
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/// Walk the tree depth-first looking for `target`, then scan its overlays for
-/// the given `OverlayId`. Returns `None` if either lookup fails.
-fn find_overlay<'a>(
-    root:       &'a SimThing,
-    target:     SimThingId,
-    overlay_id: simthing_core::OverlayId,
-) -> Option<&'a Overlay> {
-    let node = find_node(root, target)?;
-    node.overlays.iter().find(|o| o.id == overlay_id)
+/// Upper-bound the entries so hot fission boundaries don't repeatedly grow the
+/// log vector while preserving the existing skip-if-payload-missing behavior.
+fn estimated_entry_count(outcome: &BoundaryOutcome) -> usize {
+    outcome.lifecycle.dissolved_overlays.len()
+        + outcome.expiry.expired.len()
+        + outcome.fission.fission_pairs.len()
+        + outcome.fission.fusion_pairs.len()
+        + outcome.fission.lineage_added.len()
+        + outcome.fission.lineage_removed.len()
+        + outcome.maintainer.allocated.len()
+        + outcome.maintainer.tombstoned.len()
+        + outcome.maintainer.reparented.len()
+        + outcome.maintainer.overlays_attached.len()
+        + outcome.maintainer.dimensions_added.len()
+        + outcome.velocity_alerts.len()
+        + outcome.aggregate_alerts.len()
 }
 
-/// Walk the tree depth-first and return the node with the given id.
-fn find_node(root: &SimThing, id: SimThingId) -> Option<&SimThing> {
-    if root.id == id { return Some(root); }
-    for child in &root.children {
-        if let Some(n) = find_node(child, id) { return Some(n); }
-    }
-    None
+/// One boundary-local index for payload lookups while building replay deltas.
+struct DeltaLogTreeIndex<'a> {
+    nodes: HashMap<SimThingId, &'a SimThing>,
+    parents: HashMap<SimThingId, SimThingId>,
 }
 
-/// Walk the tree depth-first looking for a node with `id`. Returns a tuple of
-/// `(parent_id, &node)` when found. Never returns the root itself — root has
-/// no parent in this tree representation.
-fn find_node_with_parent(root: &SimThing, id: SimThingId) -> Option<(SimThingId, &SimThing)> {
-    for child in &root.children {
-        if child.id == id {
-            return Some((root.id, child));
+impl<'a> DeltaLogTreeIndex<'a> {
+    fn new(root: &'a SimThing) -> Self {
+        let mut index = Self {
+            nodes: HashMap::new(),
+            parents: HashMap::new(),
+        };
+        index.walk(root, None);
+        index
+    }
+
+    fn walk(&mut self, node: &'a SimThing, parent: Option<SimThingId>) {
+        self.nodes.insert(node.id, node);
+        if let Some(parent) = parent {
+            self.parents.insert(node.id, parent);
         }
-        if let Some(found) = find_node_with_parent(child, id) {
-            return Some(found);
+        for child in &node.children {
+            self.walk(child, Some(node.id));
         }
     }
-    None
+
+    fn node(&self, id: SimThingId) -> Option<&'a SimThing> {
+        self.nodes.get(&id).copied()
+    }
+
+    fn node_with_parent(&self, id: SimThingId) -> Option<(SimThingId, &'a SimThing)> {
+        Some((*self.parents.get(&id)?, self.node(id)?))
+    }
+
+    fn overlay(&self, target: SimThingId, overlay_id: OverlayId) -> Option<&'a Overlay> {
+        self.node(target)?
+            .overlays
+            .iter()
+            .find(|overlay| overlay.id == overlay_id)
+    }
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

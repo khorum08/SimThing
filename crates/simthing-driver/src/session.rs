@@ -3,10 +3,10 @@
 use std::path::Path;
 use std::time::Instant;
 
-use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
 use simthing_feeder::FeederWork;
+use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
 use simthing_gpu::{GpuContext, Pipelines, WorldGpuState};
-use simthing_sim::{BoundaryProtocol, ReplayFrame, ReplayWriter};
+use simthing_sim::{BoundaryProtocol, BoundaryTiming, ReplayFrame, ReplayWriter};
 use thiserror::Error;
 
 use crate::scenario::Scenario;
@@ -40,6 +40,20 @@ pub struct RunSummary {
     pub tick_event_readback_ms: f64,
     pub submit_tick_patches_ms: f64,
     pub boundary_total_ms: f64,
+    pub boundary_value_readback_ms: f64,
+    pub boundary_alert_collect_ms: f64,
+    pub boundary_lifecycle_ms: f64,
+    pub boundary_expiry_ms: f64,
+    pub boundary_pregrow_fission_ms: f64,
+    pub boundary_fission_ms: f64,
+    pub boundary_lineage_ms: f64,
+    pub boundary_request_drain_ms: f64,
+    pub boundary_pregrow_add_child_ms: f64,
+    pub boundary_structural_ms: f64,
+    pub boundary_dimension_rebuild_ms: f64,
+    pub boundary_final_capacity_ms: f64,
+    pub boundary_gpu_sync_ms: f64,
+    pub boundary_delta_log_ms: f64,
     pub boundaries_skipped: u64,
     pub boundary_readback_bytes: u64,
     pub boundary_upload_bytes: u64,
@@ -70,6 +84,20 @@ impl RunSummary {
             tick_event_readback_ms: 0.0,
             submit_tick_patches_ms: 0.0,
             boundary_total_ms: 0.0,
+            boundary_value_readback_ms: 0.0,
+            boundary_alert_collect_ms: 0.0,
+            boundary_lifecycle_ms: 0.0,
+            boundary_expiry_ms: 0.0,
+            boundary_pregrow_fission_ms: 0.0,
+            boundary_fission_ms: 0.0,
+            boundary_lineage_ms: 0.0,
+            boundary_request_drain_ms: 0.0,
+            boundary_pregrow_add_child_ms: 0.0,
+            boundary_structural_ms: 0.0,
+            boundary_dimension_rebuild_ms: 0.0,
+            boundary_final_capacity_ms: 0.0,
+            boundary_gpu_sync_ms: 0.0,
+            boundary_delta_log_ms: 0.0,
             boundaries_skipped: 0,
             boundary_readback_bytes: 0,
             boundary_upload_bytes: 0,
@@ -81,6 +109,23 @@ impl RunSummary {
             reduction_depths_max: 0,
         }
     }
+}
+
+fn accumulate_boundary_timing(summary: &mut RunSummary, timing: BoundaryTiming) {
+    summary.boundary_value_readback_ms += timing.value_readback_ms;
+    summary.boundary_alert_collect_ms += timing.alert_collect_ms;
+    summary.boundary_lifecycle_ms += timing.lifecycle_ms;
+    summary.boundary_expiry_ms += timing.expiry_ms;
+    summary.boundary_pregrow_fission_ms += timing.pregrow_fission_ms;
+    summary.boundary_fission_ms += timing.fission_ms;
+    summary.boundary_lineage_ms += timing.lineage_ms;
+    summary.boundary_request_drain_ms += timing.request_drain_ms;
+    summary.boundary_pregrow_add_child_ms += timing.pregrow_add_child_ms;
+    summary.boundary_structural_ms += timing.structural_ms;
+    summary.boundary_dimension_rebuild_ms += timing.dimension_rebuild_ms;
+    summary.boundary_final_capacity_ms += timing.final_capacity_ms;
+    summary.boundary_gpu_sync_ms += timing.gpu_sync_ms;
+    summary.boundary_delta_log_ms += timing.delta_log_ms;
 }
 
 /// Owns the full tick + boundary loop for one scenario.
@@ -189,14 +234,16 @@ impl SimSession {
                 );
                 summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
                 summary.fission_events += outcome.fission.fissions_executed;
+                accumulate_boundary_timing(&mut summary, outcome.timing);
                 summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
                 summary.overlay_deltas_uploaded += outcome.gpu_sync.overlay_deltas_uploaded as u64;
                 summary.threshold_regs_uploaded += outcome.gpu_sync.threshold_regs_uploaded as u64;
                 summary.reduction_edges_uploaded += outcome.gpu_sync.reduction_edges as u64;
                 summary.reduction_slots_uploaded += outcome.gpu_sync.reduction_slots as u64;
                 summary.reduction_depths_total += outcome.gpu_sync.reduction_depths as u64;
-                summary.reduction_depths_max =
-                    summary.reduction_depths_max.max(outcome.gpu_sync.reduction_depths);
+                summary.reduction_depths_max = summary
+                    .reduction_depths_max
+                    .max(outcome.gpu_sync.reduction_depths);
                 summary.boundaries_run += 1;
             }
         }
@@ -271,14 +318,16 @@ impl SimSession {
                 );
                 summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
                 summary.fission_events += outcome.fission.fissions_executed;
+                accumulate_boundary_timing(&mut summary, outcome.timing);
                 summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
                 summary.overlay_deltas_uploaded += outcome.gpu_sync.overlay_deltas_uploaded as u64;
                 summary.threshold_regs_uploaded += outcome.gpu_sync.threshold_regs_uploaded as u64;
                 summary.reduction_edges_uploaded += outcome.gpu_sync.reduction_edges as u64;
                 summary.reduction_slots_uploaded += outcome.gpu_sync.reduction_slots as u64;
                 summary.reduction_depths_total += outcome.gpu_sync.reduction_depths as u64;
-                summary.reduction_depths_max =
-                    summary.reduction_depths_max.max(outcome.gpu_sync.reduction_depths);
+                summary.reduction_depths_max = summary
+                    .reduction_depths_max
+                    .max(outcome.gpu_sync.reduction_depths);
 
                 let frame = ReplayFrame {
                     day: day as u32,

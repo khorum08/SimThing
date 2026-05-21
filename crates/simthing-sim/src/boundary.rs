@@ -37,6 +37,25 @@ use crate::threshold_registry::{
     VelocityAlertEvent, VelocityAlertRegistration,
 };
 use crate::tree_mutation::apply_structural_mutations;
+use std::time::Instant;
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct BoundaryTiming {
+    pub value_readback_ms: f64,
+    pub alert_collect_ms: f64,
+    pub lifecycle_ms: f64,
+    pub expiry_ms: f64,
+    pub pregrow_fission_ms: f64,
+    pub fission_ms: f64,
+    pub lineage_ms: f64,
+    pub request_drain_ms: f64,
+    pub pregrow_add_child_ms: f64,
+    pub structural_ms: f64,
+    pub dimension_rebuild_ms: f64,
+    pub final_capacity_ms: f64,
+    pub gpu_sync_ms: f64,
+    pub delta_log_ms: f64,
+}
 
 /// Everything that happened during a boundary. Useful for logging,
 /// observability, replay, and tests.
@@ -53,6 +72,7 @@ pub struct BoundaryOutcome {
     pub ai_intents_attached: u32,
     pub velocity_alerts: Vec<VelocityAlertEvent>,
     pub aggregate_alerts: Vec<AggregateAlertEvent>,
+    pub timing: BoundaryTiming,
 }
 
 /// Top-level boundary orchestrator.
@@ -127,17 +147,22 @@ impl BoundaryProtocol {
         // operate on the correct base — otherwise the eventual
         // `upload_full_shadow` would wipe out a day's worth of integration.
         // Endgame cost: ~3 MB once per boundary; negligible.
+        let value_readback_started = Instant::now();
         coord.shadow = state.read_values();
         let needed = coord.n_slots() as usize * n_dims;
         if coord.shadow.len() < needed {
             coord.shadow.resize(needed, 0.0);
         }
+        out.timing.value_readback_ms = value_readback_started.elapsed().as_secs_f64() * 1000.0;
 
+        let alert_collect_started = Instant::now();
         out.velocity_alerts = collect_velocity_alerts(&events, &self.cpu_threshold_registry);
         out.aggregate_alerts = collect_aggregate_alerts(&events, &self.cpu_threshold_registry);
+        out.timing.alert_collect_ms = alert_collect_started.elapsed().as_secs_f64() * 1000.0;
 
         // Step 4: Overlay lifecycle — dissolve + expire effects.
         // Mutates coord.shadow directly (apply_expire_effects writes into it).
+        let lifecycle_started = Instant::now();
         out.lifecycle = resolve_overlay_lifecycle(
             &mut self.root,
             &self.registry,
@@ -146,8 +171,10 @@ impl BoundaryProtocol {
             n_dims,
             day as u32,
         );
+        out.timing.lifecycle_ms = lifecycle_started.elapsed().as_secs_f64() * 1000.0;
 
         // Step 5: Property expiry (threshold-driven + CPU-side TowardZero/AfterTicks).
+        let expiry_started = Instant::now();
         out.expiry = resolve_property_expiry(
             &mut self.root,
             &mut self.registry,
@@ -157,21 +184,25 @@ impl BoundaryProtocol {
             &events,
             &self.cpu_threshold_registry,
         );
+        out.timing.expiry_ms = expiry_started.elapsed().as_secs_f64() * 1000.0;
 
         // Pre-grow for possible fission children so seed_fission_child can
         // write the new rows immediately instead of relying on a later
         // semantic projection.
         let fission_headroom = events.len();
+        let pregrow_fission_started = Instant::now();
         self.ensure_slot_capacity(
             self.allocator.capacity() + fission_headroom,
             patcher,
             coord,
             state,
         );
+        out.timing.pregrow_fission_ms = pregrow_fission_started.elapsed().as_secs_f64() * 1000.0;
 
         // Step 6: Fission and fusion. Spawns new SimThings + allocates slots.
         // Reads from shadow for secondary-condition checks and seeds newly
         // fissioned children from the parent's current GPU row.
+        let fission_started = Instant::now();
         out.fission = resolve_fission_fusion(
             &mut self.root,
             &self.registry,
@@ -182,12 +213,14 @@ impl BoundaryProtocol {
             n_dims,
             day as u32,
         );
+        out.timing.fission_ms = fission_started.elapsed().as_secs_f64() * 1000.0;
 
         // Lineage maintenance:
         //   - New fissions append records; new fusions remove them.
         //   - Records whose parent or child is no longer in the allocator
         //     are pruned (e.g. tombstoned via Remove between boundaries, or
         //     just now via fusion above).
+        let lineage_started = Instant::now();
         for rec in &out.fission.lineage_added {
             self.fission_lineage.push(*rec);
         }
@@ -198,6 +231,7 @@ impl BoundaryProtocol {
         // Prune tombstoned endpoints from fission/fusion (step 6). Remove
         // requests in step 7/8 tombstone later — pruned again below.
         self.prune_stale_fission_lineage();
+        out.timing.lineage_ms = lineage_started.elapsed().as_secs_f64() * 1000.0;
 
         // Steps 7 + 8: Structural mutations (AddChild, Remove, Reparent,
         // AttachOverlay, AddDimension). One pass through `apply_structural_mutations`
@@ -206,6 +240,7 @@ impl BoundaryProtocol {
         // Player intent overlays route through the same path: each is converted
         // to `BoundaryRequest::AttachOverlay` and appended to the request list
         // so attachment and slot-table updates happen in one consistent pass.
+        let request_drain_started = Instant::now();
         let mut requests = patcher.take_boundary_requests();
         out.boundary_requests = requests.len() as u32;
 
@@ -226,15 +261,19 @@ impl BoundaryProtocol {
                 overlay: ai.overlay,
             });
         }
+        out.timing.request_drain_ms = request_drain_started.elapsed().as_secs_f64() * 1000.0;
 
         // Pre-grow for AddChild subtrees so apply_structural_mutations can
         // project initialized semantic properties into the dense shadow.
+        let pregrow_add_child_started = Instant::now();
         self.ensure_slot_capacity(
             self.allocator.capacity() + projected_add_child_slots(&requests),
             patcher,
             coord,
             state,
         );
+        out.timing.pregrow_add_child_ms =
+            pregrow_add_child_started.elapsed().as_secs_f64() * 1000.0;
 
         // Grow shadow to cover any new slots allocated during fission (step 6)
         // before applying structural mutations. apply_structural_mutations
@@ -244,6 +283,7 @@ impl BoundaryProtocol {
             coord.shadow.resize(needed, 0.0);
         }
 
+        let structural_started = Instant::now();
         out.maintainer = apply_structural_mutations(
             requests,
             &mut self.root,
@@ -255,7 +295,9 @@ impl BoundaryProtocol {
 
         // Remove / reparent tombstones may have invalidated lineage endpoints.
         self.prune_stale_fission_lineage();
+        out.timing.structural_ms = structural_started.elapsed().as_secs_f64() * 1000.0;
 
+        let dimension_rebuild_started = Instant::now();
         if self.registry.total_columns as u32 != coord.n_dims() {
             let old_n_dims = coord.n_dims() as usize;
             coord.resize_dimensions(self.registry.total_columns as u32);
@@ -273,13 +315,18 @@ impl BoundaryProtocol {
         } else if !out.maintainer.dimensions_added.is_empty() {
             state.rebuild_for_registry(&self.registry);
         }
+        out.timing.dimension_rebuild_ms =
+            dimension_rebuild_started.elapsed().as_secs_f64() * 1000.0;
 
         // After structural mutations the allocator may have grown again
         // (AddChild). Resize shadow once more so step 9 uploads the full
         // capacity.
+        let final_capacity_started = Instant::now();
         self.ensure_slot_capacity(self.allocator.capacity(), patcher, coord, state);
+        out.timing.final_capacity_ms = final_capacity_started.elapsed().as_secs_f64() * 1000.0;
 
         // Step 9: Rebuild GPU buffers from current tree + upload shadow.
+        let gpu_sync_started = Instant::now();
         let gpu_out = sync_gpu_buffers(
             &self.root,
             &self.registry,
@@ -290,6 +337,7 @@ impl BoundaryProtocol {
             &self.aggregate_alerts,
             &self.fission_lineage,
         );
+        out.timing.gpu_sync_ms = gpu_sync_started.elapsed().as_secs_f64() * 1000.0;
         // Adopt the new threshold registry for the next day.
         if let Some(new_reg) = gpu_out.new_threshold_registry {
             self.cpu_threshold_registry = new_reg;
@@ -304,8 +352,10 @@ impl BoundaryProtocol {
             boundary_upload_bytes: gpu_out.boundary_upload_bytes,
         };
 
+        let delta_log_started = Instant::now();
         self.delta_log
             .extend(entries_from_outcome(&out, &self.root));
+        out.timing.delta_log_ms = delta_log_started.elapsed().as_secs_f64() * 1000.0;
 
         out
     }
@@ -526,10 +576,12 @@ fn tree_has_boundary_lifecycle_work(node: &SimThing, registry: &DimensionRegistr
         registry
             .try_property(*pid)
             .and_then(|prop| prop.decay.as_ref())
-            .is_some_and(|decay| matches!(
-                decay,
-                DecayBehavior::TowardZero { .. } | DecayBehavior::AfterTicks { .. }
-            ))
+            .is_some_and(|decay| {
+                matches!(
+                    decay,
+                    DecayBehavior::TowardZero { .. } | DecayBehavior::AfterTicks { .. }
+                )
+            })
     }) {
         return true;
     }
@@ -685,13 +737,12 @@ mod tests {
     fn boundary_with_pending_request_cannot_skip() {
         let (proto, mut patcher, _) = simple_proto();
         let target = proto.root.children[0].id;
-        patcher
-            .apply_collected_as_intents(
-                vec![FeederWork::Boundary(BoundaryRequest::Remove { target })],
-                Vec::new(),
-                &proto.registry,
-                &proto.allocator,
-            );
+        patcher.apply_collected_as_intents(
+            vec![FeederWork::Boundary(BoundaryRequest::Remove { target })],
+            Vec::new(),
+            &proto.registry,
+            &proto.allocator,
+        );
         assert!(!proto.can_skip_empty_boundary(&[], &patcher));
     }
 
@@ -717,7 +768,8 @@ mod tests {
     #[test]
     fn boundary_with_cpu_decay_cannot_skip() {
         let (mut proto, patcher, pid) = simple_proto();
-        proto.registry.properties[pid.index()].decay = Some(DecayBehavior::TowardZero { rate: 0.1 });
+        proto.registry.properties[pid.index()].decay =
+            Some(DecayBehavior::TowardZero { rate: 0.1 });
         assert!(!proto.can_skip_empty_boundary(&[], &patcher));
     }
 }

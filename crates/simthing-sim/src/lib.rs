@@ -54,11 +54,11 @@ pub mod replay;
 pub mod threshold_registry;
 pub mod tree_mutation;
 
-pub use boundary::{BoundaryOutcome, BoundaryProtocol};
+pub use boundary::{BoundaryOutcome, BoundaryProtocol, BoundaryTiming};
 pub use delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 pub use fission::{FissionLineageRecord, FissionOutcome};
 pub use observability::{
-    ObserveFidelity, ObservabilityReport, OverlayContribution, PropertyObservation,
+    ObservabilityReport, ObserveFidelity, OverlayContribution, PropertyObservation,
     SubFieldObservation,
 };
 pub use reduced_field::ReducedField;

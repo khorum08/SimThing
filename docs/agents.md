@@ -110,6 +110,10 @@ SimThing/
 output-vector thresholds and aggregate alerts (PR #22), state-authority
 hardening (PR #23), fusion lineage + scar semantics (PR #26), full replay
 payload (PR #27), and GPU growth/patch-authority hardening (`4b5f1c6`).
+Hot-path performance now includes GPU-side intent deltas, consolidated tick
+command submission, static-boundary skipping, sparse dirty-row tracking,
+fission tree path indexing, boundary phase attribution, and indexed delta-log
+emission for fission-heavy growth.
 Within-day shadow patches apply `Set` directly; `Add`/`Multiply` require a
 GPU-synced row. The coordinator refreshes affected rows through
 `read_values_row` before applying collected work, while direct `apply_one`
@@ -125,7 +129,9 @@ sub-field values and overlay contributions;
 `BoundaryProtocol::take_delta_log()` drains a `Vec<BoundaryDeltaEntry>` with
 one entry per fission/fusion/expiry/reparent/structural change — all variants
 carry full payloads: `SimThingAdded { parent, node }`, `FissionOccurred {
-parent, node }`, `FissionLineageAdded / Removed { record }`. GPU Passes 4–6
+parent, node }`, `FissionLineageAdded / Removed { record }`. Delta emission
+builds a one-pass tree index before looking up replay payloads, so fission
+stress does not rescan the tree once per spawned child. GPU Passes 4–6
 reduce children into parents bottom-up using per-sub-field `ReductionRule`
 (default per role: Amount/Velocity/Named → Mean, Intensity → Max, plus
 `WeightedMean`). Pass 7 scans `values` or `output_vectors` via
@@ -466,9 +472,9 @@ Integration highlights:
   through `BoundaryOutcome::aggregate_alerts`.
 
 **Still open (see `docs/worklog.md` Next session pickup):**
-- Remaining fission boundary profiling: parent lookup is optimized; split the
-  remaining cost across threshold rebuild, topology rebuild, shadow upload, and
-  delta-log generation.
+- Remaining fission boundary profiling: parent lookup and delta-log lookup are
+  optimized; split the remaining cost across threshold event readback,
+  threshold/topology rebuild, shadow upload, and fission seeding.
 - Full RON scenario files (tree + registry inline; today: `builtin` templates only).
 - Designer UI (`simthing-studio`) — tabled
 
@@ -495,19 +501,18 @@ Integration highlights:
 - Lineage pruned on fusion (`lineage_removed`) and on any allocator
   tombstone at boundary start.
 
-### simthing-sim::replay (LDJSON v1, complete)
-- `ReplaySnapshot { day, root, registry }` — initial state, serialized as
-  the first line. `BoundaryProtocol::snapshot(day)` produces one.
+### simthing-sim::replay (LDJSON v2, complete)
+- `ReplaySnapshot { day, root, registry, fission_lineage }` — initial state,
+  serialized as the first line. `BoundaryProtocol::snapshot(day)` produces one.
 - `ReplayFrame { day, entries, shadow_values? }` — one boundary's deltas plus
   optional post-boundary shadow checkpoint; written one per line after the snapshot.
 - `ReplayWriter` enforces snapshot-first ordering; `ReplayReader` enforces
   snapshot-first read.
 - `ReplayDriver` reconstructs tree + registry + allocator from a snapshot,
   then applies frames via structural mutations equivalent to the live
-  `BoundaryProtocol`. `OverlayAttached`, `OverlayDissolved`, `PropertyExpired`,
-  `SimThingReparented`, `DimensionAdded`, `SimThingRemoved`,
-  `FusionOccurred` are lossless; `SimThingAdded` / `FissionOccurred` are
-  lossy (no spawned-subtree payload — see Replay v2 todo).
+  `BoundaryProtocol`. Structural entries carry the payloads needed for
+  reproduction, including `SimThingAdded { parent, node }`,
+  `FissionOccurred { parent, node }`, and fission-lineage add/remove records.
 - `BoundaryDeltaEntry::OverlayAttached` carries the full `Overlay` payload,
   resolved by `entries_from_outcome(outcome, root)` at log-build time from
   `MaintainerOutcome::overlays_attached: Vec<(SimThingId, OverlayId)>`.

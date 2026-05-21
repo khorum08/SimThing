@@ -165,7 +165,11 @@ fn cmd_bench(args: &[String]) {
         ms_total / summary.boundaries_run as f64
     };
     let avg_tick = |ms: f64| {
-        if summary.ticks_run == 0 { 0.0 } else { ms / summary.ticks_run as f64 }
+        if summary.ticks_run == 0 {
+            0.0
+        } else {
+            ms / summary.ticks_run as f64
+        }
     };
     let avg_boundary = |ms: f64| {
         if summary.boundaries_run == 0 {
@@ -187,15 +191,83 @@ fn cmd_bench(args: &[String]) {
     println!("  ms_per_tick: {:.6}", ms_per_tick);
     println!("  ms_per_sim_day: {:.6}", ms_per_day);
     println!("  tick_measured_ms: {:.3}", summary.tick_total_ms);
-    println!("  tick_measured_ms_per_tick: {:.6}", avg_tick(summary.tick_total_ms));
-    println!("  tick_submit_patches_ms: {:.3}", summary.submit_tick_patches_ms);
+    println!(
+        "  tick_measured_ms_per_tick: {:.6}",
+        avg_tick(summary.tick_total_ms)
+    );
+    println!(
+        "  tick_submit_patches_ms: {:.3}",
+        summary.submit_tick_patches_ms
+    );
     println!("  tick_drain_ms: {:.3}", summary.tick_drain_ms);
-    println!("  tick_intent_upload_ms: {:.3}", summary.tick_intent_upload_ms);
-    println!("  tick_dirty_upload_ms: {:.3}", summary.tick_dirty_upload_ms);
-    println!("  tick_gpu_pipeline_submit_ms: {:.3}", summary.tick_gpu_pipeline_ms);
-    println!("  tick_event_readback_ms: {:.3}", summary.tick_event_readback_ms);
+    println!(
+        "  tick_intent_upload_ms: {:.3}",
+        summary.tick_intent_upload_ms
+    );
+    println!(
+        "  tick_dirty_upload_ms: {:.3}",
+        summary.tick_dirty_upload_ms
+    );
+    println!(
+        "  tick_gpu_pipeline_submit_ms: {:.3}",
+        summary.tick_gpu_pipeline_ms
+    );
+    println!(
+        "  tick_event_readback_ms: {:.3}",
+        summary.tick_event_readback_ms
+    );
     println!("  boundary_ms: {:.3}", summary.boundary_total_ms);
-    println!("  boundary_ms_per_day: {:.6}", avg_boundary(summary.boundary_total_ms));
+    println!(
+        "  boundary_ms_per_day: {:.6}",
+        avg_boundary(summary.boundary_total_ms)
+    );
+    println!(
+        "  boundary_value_readback_ms: {:.3}",
+        summary.boundary_value_readback_ms
+    );
+    println!(
+        "  boundary_alert_collect_ms: {:.3}",
+        summary.boundary_alert_collect_ms
+    );
+    println!(
+        "  boundary_lifecycle_ms: {:.3}",
+        summary.boundary_lifecycle_ms
+    );
+    println!("  boundary_expiry_ms: {:.3}", summary.boundary_expiry_ms);
+    println!(
+        "  boundary_pregrow_fission_ms: {:.3}",
+        summary.boundary_pregrow_fission_ms
+    );
+    println!("  boundary_fission_ms: {:.3}", summary.boundary_fission_ms);
+    println!("  boundary_lineage_ms: {:.3}", summary.boundary_lineage_ms);
+    println!(
+        "  boundary_request_drain_ms: {:.3}",
+        summary.boundary_request_drain_ms
+    );
+    println!(
+        "  boundary_pregrow_add_child_ms: {:.3}",
+        summary.boundary_pregrow_add_child_ms
+    );
+    println!(
+        "  boundary_structural_ms: {:.3}",
+        summary.boundary_structural_ms
+    );
+    println!(
+        "  boundary_dimension_rebuild_ms: {:.3}",
+        summary.boundary_dimension_rebuild_ms
+    );
+    println!(
+        "  boundary_final_capacity_ms: {:.3}",
+        summary.boundary_final_capacity_ms
+    );
+    println!(
+        "  boundary_gpu_sync_ms: {:.3}",
+        summary.boundary_gpu_sync_ms
+    );
+    println!(
+        "  boundary_delta_log_ms: {:.3}",
+        summary.boundary_delta_log_ms
+    );
     println!("  boundaries_skipped: {}", summary.boundaries_skipped);
     println!("  rmw_rows_synced: {}", summary.rmw_rows_synced);
     println!("  rmw_readback_bytes: {}", summary.rmw_readback_bytes);
@@ -204,13 +276,31 @@ fn cmd_bench(args: &[String]) {
         summary.intent_deltas_uploaded
     );
     println!("  intent_delta_bytes: {}", summary.intent_delta_bytes);
-    println!("  boundary_readback_bytes: {}", summary.boundary_readback_bytes);
+    println!(
+        "  boundary_readback_bytes: {}",
+        summary.boundary_readback_bytes
+    );
     println!("  boundary_upload_bytes: {}", summary.boundary_upload_bytes);
-    println!("  overlay_deltas_uploaded: {}", summary.overlay_deltas_uploaded);
-    println!("  threshold_regs_uploaded: {}", summary.threshold_regs_uploaded);
-    println!("  reduction_edges_uploaded: {}", summary.reduction_edges_uploaded);
-    println!("  reduction_slots_uploaded: {}", summary.reduction_slots_uploaded);
-    println!("  reduction_depths_total: {}", summary.reduction_depths_total);
+    println!(
+        "  overlay_deltas_uploaded: {}",
+        summary.overlay_deltas_uploaded
+    );
+    println!(
+        "  threshold_regs_uploaded: {}",
+        summary.threshold_regs_uploaded
+    );
+    println!(
+        "  reduction_edges_uploaded: {}",
+        summary.reduction_edges_uploaded
+    );
+    println!(
+        "  reduction_slots_uploaded: {}",
+        summary.reduction_slots_uploaded
+    );
+    println!(
+        "  reduction_depths_total: {}",
+        summary.reduction_depths_total
+    );
     println!("  reduction_depths_max: {}", summary.reduction_depths_max);
     println!(
         "  final_gpu_buffer_bytes: {}",

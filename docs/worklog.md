@@ -6,7 +6,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-21 - Fission path lookup optimization
 
-**Status:** In working tree, tests passing.
+**Status:** Merged to master (`166eb5b`).
 
 **Landed:**
 
@@ -27,6 +27,40 @@ Running log of what's done and what's next, across sessions.
 **Next optimization:** Continue splitting the remaining fission boundary cost:
 threshold registry rebuild, topology rebuild, full shadow upload, and delta-log
 generation are now more likely than parent lookup to dominate.
+
+---
+
+## 2026-05-21 - Fission delta-log indexing and boundary attribution
+
+**Status:** In working tree, tests passing.
+
+**Landed:**
+
+- `BoundaryOutcome` now carries `BoundaryTiming`, and `simthing bench` prints
+  boundary phase totals: GPU readback, alert collection, lifecycle, expiry,
+  fission pregrow, fission, lineage, request drain, AddChild pregrow,
+  structural mutation, dimension rebuild, final capacity growth, GPU sync, and
+  delta-log generation.
+- `delta_log::entries_from_outcome` now builds a one-pass tree index for
+  `SimThingId -> &SimThing` and `SimThingId -> parent_id` lookup, then emits
+  fission/add/overlay payload entries with O(1) lookups instead of rescanning
+  the whole tree per emitted delta.
+
+**Observed smoke result:**
+
+- `fission_stress`, 20k to 40k slots in one boundary, now runs at ~53
+  ms/sim-day. Boundary time is ~30 ms and delta-log generation is ~7.6 ms,
+  down from ~1.09 s before indexing.
+
+**Tests:** `cargo check --workspace`, `cargo test -p simthing-sim
+delta_log::tests`, and `cargo test --workspace` => 182 passed, 1 ignored
+timing diagnostic.
+
+**Next optimization:** With parent lookup and delta-log generation no longer
+dominating, the remaining fission stress cost is the useful GPU-facing work:
+threshold event readback, fission seeding, GPU sync/topology upload, and
+threshold/reduction rebuilds. Next pass should target batching/retaining those
+GPU buffer updates rather than adding more CPU-side semantics.
 
 ---
 
@@ -194,10 +228,11 @@ interim measurement step.
 
 **182/182** tests passing plus 1 ignored timing diagnostic, zero warnings.
 `master` and `origin/master` include GPU intent-delta hot path, consolidated tick
-command submission, 2D large-workload dispatch, and synthetic stress scenarios
-through `0af46f4`, including benchmark attribution and an empty
-threshold-readback skip. Working tree adds static-boundary skipping and sparse
-dirty-row tracking.
+command submission, 2D large-workload dispatch, synthetic stress scenarios,
+benchmark attribution, static-boundary skipping, sparse dirty-row tracking, and
+fission parent lookup optimization through `166eb5b`. Working tree adds
+boundary phase attribution and indexed delta-log emission for fission-heavy
+growth.
 
 ### Todo (recommended order)
 
@@ -238,21 +273,25 @@ dirty-row tracking.
 - [x] **Optimize boundary sync/readback.** The first attribution pass shows
       threshold-free ticks are cheap once readback is skipped; boundary
       readback/upload and tree work now dominate stress runs.
-- [ ] **Profile fission/tree-growth CPU cost.** `fission_stress` still spends
-      seconds in boundary execution when ~20k children spawn; separate fission
-      seeding, lineage, threshold rebuild, topology rebuild, and tree mutation
-      costs.
+- [x] **Profile fission/tree-growth CPU cost.** Boundary timing now separates
+      fission seeding, lineage, structural mutation, GPU sync, and delta-log
+      generation. The major CPU cliff was delta-log tree rescanning and is now
+      indexed.
+- [ ] **Reduce remaining fission-heavy GPU sync/rebuild cost.** `fission_stress`
+      is down to ~53 ms/sim-day; next useful work is retaining/batching
+      threshold and reduction topology updates across growth boundaries where
+      semantics allow it.
 - [ ] **Document/prototype map-scale representation.** Keep current
       `SimThing` as semantic authoring state; evaluate arena/topology sidecars
       only after benchmark data shows tree representation pressure.
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds remains
       useful, but it is behind the GPU performance path.
 
-**Recent:** Static boundary skipping and sparse dirty rows are in the working
-tree. They remove the major non-GPU overhead from static map and intent stress
-runs. Fission parent lookup is optimized in the working tree; remaining fission
-cost should be split across threshold/topology rebuild, full shadow upload, and
-delta-log generation.
+**Recent:** Static boundary skipping, sparse dirty rows, fission parent lookup,
+and indexed delta-log emission remove the major non-GPU overhead from static
+map, intent, and fission-growth stress runs. Remaining fission cost is now
+mostly threshold event readback, actual fission work, and GPU sync/topology
+upload.
 
 **Tabled:** `simthing-studio` designer UI.
 
