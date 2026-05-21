@@ -506,7 +506,8 @@ Integration highlights:
 
 **Shipped recently:** intent-fold accumulator reuse, mid-tick observability docs,
 `rebellion_demo` record/replay smoke, `tree_index` for fission + structural/lifecycle/expiry
-lookups, and B1 targeted boundary value-row upload.
+lookups, B1 targeted boundary value-row upload, and safe threshold/reduction retention
+for topology-stable active boundaries.
 
 **Built (playability):**
 - `crates/simthing-driver` exposes `simthing record`, `simthing replay`, and

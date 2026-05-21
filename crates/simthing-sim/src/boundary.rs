@@ -95,6 +95,8 @@ pub struct BoundaryProtocol {
     cpu_threshold_registry: ThresholdRegistry,
     velocity_alerts: Vec<VelocityAlertRegistration>,
     aggregate_alerts: Vec<AggregateAlertRegistration>,
+    threshold_config_revision: u64,
+    synced_threshold_config_revision: u64,
     /// Append-only log of semantic state changes. Each boundary appends its
     /// entries; callers drain with `take_delta_log()`. The serialization
     /// format and playback logic are deferred to the replay system (Week 5).
@@ -116,6 +118,8 @@ impl BoundaryProtocol {
             cpu_threshold_registry: ThresholdRegistry::new(),
             velocity_alerts: Vec::new(),
             aggregate_alerts: Vec::new(),
+            threshold_config_revision: 0,
+            synced_threshold_config_revision: 0,
             delta_log: Vec::new(),
             fission_lineage: Vec::new(),
         }
@@ -143,6 +147,9 @@ impl BoundaryProtocol {
         let n_dims = coord.n_dims() as usize;
         let mut dirty_value_slots = Vec::new();
         let mut force_full_value_upload = false;
+        let mut topology_dirty = false;
+        let mut threshold_dirty = self.threshold_config_revision
+            != self.synced_threshold_config_revision;
 
         // The CPU shadow reflects only CPU-side patches; integration output
         // from Pass 1/2 lives only on the GPU. Before mutating the shadow
@@ -195,6 +202,10 @@ impl BoundaryProtocol {
             &self.cpu_threshold_registry,
             Some(&boundary_paths),
         );
+        if !out.expiry.expired.is_empty() {
+            threshold_dirty = true;
+            topology_dirty = true;
+        }
         out.timing.expiry_ms = expiry_started.elapsed().as_secs_f64() * 1000.0;
 
         // Pre-grow for possible fission children so seed_fission_child can
@@ -208,6 +219,7 @@ impl BoundaryProtocol {
             coord,
             state,
         );
+        topology_dirty |= force_full_value_upload;
         out.timing.pregrow_fission_ms = pregrow_fission_started.elapsed().as_secs_f64() * 1000.0;
 
         // Step 6: Fission and fusion. Spawns new SimThings + allocates slots.
@@ -232,6 +244,10 @@ impl BoundaryProtocol {
         for &(parent, _) in &out.fission.fusion_pairs {
             push_slot_for_id(&self.allocator, parent, &mut dirty_value_slots);
         }
+        if out.fission.fissions_executed > 0 || out.fission.fusions_executed > 0 {
+            topology_dirty = true;
+            threshold_dirty = true;
+        }
         out.timing.fission_ms = fission_started.elapsed().as_secs_f64() * 1000.0;
 
         // Lineage maintenance:
@@ -246,6 +262,7 @@ impl BoundaryProtocol {
         if !out.fission.lineage_removed.is_empty() {
             let removed = &out.fission.lineage_removed;
             self.fission_lineage.retain(|r| !removed.contains(r));
+            threshold_dirty = true;
         }
         // Prune tombstoned endpoints from fission/fusion (step 6). Remove
         // requests in step 7/8 tombstone later — pruned again below.
@@ -285,12 +302,14 @@ impl BoundaryProtocol {
         // Pre-grow for AddChild subtrees so apply_structural_mutations can
         // project initialized semantic properties into the dense shadow.
         let pregrow_add_child_started = Instant::now();
-        force_full_value_upload |= self.ensure_slot_capacity(
+        let grew_for_add_child = self.ensure_slot_capacity(
             self.allocator.capacity() + projected_add_child_slots(&requests),
             patcher,
             coord,
             state,
         );
+        force_full_value_upload |= grew_for_add_child;
+        topology_dirty |= grew_for_add_child;
         out.timing.pregrow_add_child_ms =
             pregrow_add_child_started.elapsed().as_secs_f64() * 1000.0;
 
@@ -319,6 +338,14 @@ impl BoundaryProtocol {
         if !out.maintainer.tombstoned.is_empty() {
             force_full_value_upload = true;
         }
+        if !out.maintainer.allocated.is_empty()
+            || !out.maintainer.tombstoned.is_empty()
+            || !out.maintainer.reparented.is_empty()
+            || !out.maintainer.dimensions_added.is_empty()
+        {
+            topology_dirty = true;
+            threshold_dirty = true;
+        }
 
         // Remove / reparent tombstones may have invalidated lineage endpoints.
         self.prune_stale_fission_lineage();
@@ -340,9 +367,13 @@ impl BoundaryProtocol {
             );
             state.rebuild_for_registry(&self.registry);
             force_full_value_upload = true;
+            topology_dirty = true;
+            threshold_dirty = true;
         } else if !out.maintainer.dimensions_added.is_empty() {
             state.rebuild_for_registry(&self.registry);
             force_full_value_upload = true;
+            topology_dirty = true;
+            threshold_dirty = true;
         }
         out.timing.dimension_rebuild_ms =
             dimension_rebuild_started.elapsed().as_secs_f64() * 1000.0;
@@ -351,8 +382,10 @@ impl BoundaryProtocol {
         // (AddChild). Resize shadow once more so step 9 uploads the full
         // capacity.
         let final_capacity_started = Instant::now();
-        force_full_value_upload |=
+        let grew_final_capacity =
             self.ensure_slot_capacity(self.allocator.capacity(), patcher, coord, state);
+        force_full_value_upload |= grew_final_capacity;
+        topology_dirty |= grew_final_capacity;
         out.timing.final_capacity_ms = final_capacity_started.elapsed().as_secs_f64() * 1000.0;
 
         // Step 9: Rebuild GPU buffers from current tree + upload shadow.
@@ -372,11 +405,14 @@ impl BoundaryProtocol {
             &self.aggregate_alerts,
             &self.fission_lineage,
             dirty_value_slots.as_deref(),
+            threshold_dirty,
+            topology_dirty,
         );
         out.timing.gpu_sync_ms = gpu_sync_started.elapsed().as_secs_f64() * 1000.0;
         // Adopt the new threshold registry for the next day.
         if let Some(new_reg) = gpu_out.new_threshold_registry {
             self.cpu_threshold_registry = new_reg;
+            self.synced_threshold_config_revision = self.threshold_config_revision;
         }
         out.gpu_sync = GpuSyncOutcome {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
@@ -408,6 +444,7 @@ impl BoundaryProtocol {
     ) -> bool {
         events.is_empty()
             && patcher.pending_boundary_work_count() == 0
+            && self.threshold_config_revision == self.synced_threshold_config_revision
             && !tree_has_boundary_lifecycle_work(&self.root, &self.registry)
     }
 
@@ -418,18 +455,22 @@ impl BoundaryProtocol {
 
     pub fn register_velocity_alert(&mut self, alert: VelocityAlertRegistration) {
         self.velocity_alerts.push(alert);
+        self.threshold_config_revision += 1;
     }
 
     pub fn register_aggregate_alert(&mut self, alert: AggregateAlertRegistration) {
         self.aggregate_alerts.push(alert);
+        self.threshold_config_revision += 1;
     }
 
     pub fn clear_velocity_alerts(&mut self) {
         self.velocity_alerts.clear();
+        self.threshold_config_revision += 1;
     }
 
     pub fn clear_aggregate_alerts(&mut self) {
         self.aggregate_alerts.clear();
+        self.threshold_config_revision += 1;
     }
 
     pub fn velocity_alerts(&self) -> &[VelocityAlertRegistration] {
@@ -545,9 +586,12 @@ impl BoundaryProtocol {
             &self.aggregate_alerts,
             &self.fission_lineage,
             None,
+            true,
+            true,
         );
         if let Some(new_reg) = out.new_threshold_registry {
             self.cpu_threshold_registry = new_reg;
+            self.synced_threshold_config_revision = self.threshold_config_revision;
         }
     }
 
@@ -795,6 +839,20 @@ mod tests {
             &proto.registry,
             &proto.allocator,
         );
+        assert!(!proto.can_skip_empty_boundary(&[], &patcher));
+    }
+
+    #[test]
+    fn boundary_with_unsynced_alert_config_cannot_skip() {
+        let (mut proto, patcher, pid) = simple_proto();
+        let target = proto.root.children[0].id;
+        proto.register_velocity_alert(VelocityAlertRegistration {
+            sim_thing_id: target,
+            property_id: pid,
+            sub_field: SubFieldRole::Velocity,
+            threshold: -0.1,
+            direction: simthing_core::Direction::Falling,
+        });
         assert!(!proto.can_skip_empty_boundary(&[], &patcher));
     }
 

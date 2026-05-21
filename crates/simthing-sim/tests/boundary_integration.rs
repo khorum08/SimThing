@@ -267,6 +267,14 @@ fn boundary_intent_attach_uses_targeted_value_upload() {
         "overlay-only boundary should not flush every value row"
     );
     assert_eq!(outcome.gpu_sync.value_rows_uploaded, 0);
+    assert_eq!(
+        outcome.gpu_sync.threshold_regs_uploaded, 0,
+        "overlay-only boundary should retain the existing threshold buffer"
+    );
+    assert_eq!(
+        outcome.gpu_sync.reduction_edges, 0,
+        "overlay-only boundary should retain the existing reduction topology"
+    );
 
     let values = state.read_values();
     assert_eq!(values[base + amount_off].to_bits(), 0.8f32.to_bits());

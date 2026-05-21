@@ -750,8 +750,8 @@ correctness. `weighted_mean_reduction_matches_cpu_oracle` is the proof of reduct
 
 ## 18. Implementation State
 
-**187/187 tests passing, zero warnings, master current through B1 targeted
-boundary value upload.**
+**188/188 tests passing, zero warnings, master current through safe B2
+threshold/reduction retention.**
 
 ### Complete
 
@@ -766,7 +766,8 @@ boundary value upload.**
   (shadow + live, mid-tick staleness documented), replay v2 (full payloads), aggregate alert
   registration, delta log with OverlayDissolved + lineage entries, boundary phase timing
   attribution, indexed delta log emission, targeted boundary value-row uploads with full
-  fallback after rebuild/tombstone cases
+  fallback after rebuild/tombstone cases, threshold/reduction buffer retention for
+  topology-stable active boundaries
 - `simthing-driver` — record/replay/bench CLI, all builtin stress scenarios,
   full benchmark metric reporting; `rebellion_demo` record/replay smoke verified
 
@@ -783,8 +784,9 @@ non-GPU overhead from static map runs.
 
 ### Open Work
 
-- **Topology retain/batch on fission growth (B2)** — `fission_stress` at ~53 ms/day;
-  remaining cost is threshold readback, fission seeding, and full topology rebuild.
+- **Topology retain/batch on fission growth (B2)** — topology-stable active boundaries
+  now retain threshold/reduction buffers; fission-growth boundaries still rebuild full
+  threshold/reduction topology.
 - **Full RON scenario expansion** — inline tree/registry in scenario files; currently all
   scenarios are hardcoded Rust builtins.
 - **`simthing-studio` designer UI** — tabled.

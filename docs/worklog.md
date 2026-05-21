@@ -291,7 +291,7 @@ growth target.
 
 ## Next session pickup
 
-**187/187** tests passing plus 1 ignored timing diagnostic, zero warnings.
+**188/188** tests passing plus 1 ignored timing diagnostic, zero warnings.
 `master` and `origin/master` include GPU intent-delta hot path, consolidated tick
 command submission, 2D large-workload dispatch, synthetic stress scenarios,
 benchmark attribution, static-boundary skipping, sparse dirty-row tracking,
@@ -350,7 +350,8 @@ reference: `docs/design_v5.md`; implementation review:
 - [ ] **Retain/batch topology on fission growth boundaries (B2).** `fission_stress`
       is ~53 ms/sim-day; remaining cost is threshold readback, fission seeding, and
       full threshold/reduction topology rebuild. Retain CSR/reduction buffers where
-      tree shape only appends.
+      tree shape is unchanged (safe retention started); batch or incrementally patch
+      fission growth if safe.
 - [ ] **Document/prototype map-scale representation.** Keep current `SimThing` as
       semantic authoring state; evaluate arena/topology sidecars only after benchmark
       data shows tree representation pressure.
@@ -358,10 +359,11 @@ reference: `docs/design_v5.md`; implementation review:
       the GPU performance path.
 
 **Recent:** B1 targeted boundary value uploads are implemented with conservative
-full-upload fallbacks; R2 shares one boundary tree index across lifecycle, expiry,
-and fission; bench `--check` guards stress scenarios; replay integration test
-validates entry kinds and lineage parity. Next perf target: B2 topology/threshold
-retention on fission growth boundaries.
+full-upload fallbacks. B2 has started with safe retention: topology-stable active
+boundaries now retain threshold and reduction buffers instead of rebuilding them.
+R2 shares one boundary tree index across lifecycle, expiry, and fission; bench
+`--check` guards stress scenarios; replay integration test validates entry kinds
+and lineage parity. Next perf target: deeper fission-growth topology batching.
 
 **Tabled:** `simthing-studio` designer UI; unified `BoundaryIndex` single-pass
 boundary walk (review item 4 / C1 — Opus-tier, defer until B2 lands).
