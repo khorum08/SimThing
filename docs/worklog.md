@@ -2,6 +2,8 @@
 
 Running log of what's done and what's next, across sessions.
 
+**Canonical spec:** `docs/design_v5.md` · **Agent map:** `docs/agents.md`
+
 ---
 
 ## 2026-05-21 - Fission path lookup optimization
@@ -217,9 +219,8 @@ bytes so stress runs explain where time is going.
 
 **Tests:** `cargo test --workspace` => 173 passed, 1 ignored timing diagnostic.
 
-**Next optimization:** Replace per-slot blocking RMW row readbacks with a
-GPU-side intent delta buffer/pass. Batch readback is acceptable only as an
-interim measurement step.
+**Next optimization (superseded — landed `8fe858b`):** Replace per-slot blocking
+RMW row readbacks with a GPU-side intent delta buffer/pass.
 
 ---
 
@@ -229,9 +230,10 @@ interim measurement step.
 `master` and `origin/master` include GPU intent-delta hot path, consolidated tick
 command submission, 2D large-workload dispatch, synthetic stress scenarios,
 benchmark attribution, static-boundary skipping, sparse dirty-row tracking,
-fission parent lookup optimization, boundary phase attribution, and indexed
-delta-log emission for fission-heavy growth through `26dc4e8`. Design reference:
-`docs/design_v5.md` (PR #33); implementation review: `docs/chatgpt_implementation_review.md`.
+fission parent lookup optimization, boundary phase attribution, indexed
+delta-log emission for fission-heavy growth, and design v5 documentation through
+`2884465`. Design reference: `docs/design_v5.md` (PR #33); implementation review:
+`docs/chatgpt_implementation_review.md`.
 
 ### Todo (recommended order)
 
@@ -251,31 +253,23 @@ delta-log emission for fission-heavy growth through `26dc4e8`. Design reference:
 
 - [x] **GPU growth + patch-authority hardening** - `4b5f1c6`.
 - [x] **GPU intent deltas + stress harness + dispatch scaling** - `8fe858b`.
+- [x] **Eliminate per-slot blocking RMW readbacks** — GPU intent delta buffer/pass
+      (`8fe858b`).
+- [x] **Consolidate GPU command submission** — one-encoder `run_tick_pipeline`
+      (`8fe858b`).
+- [x] **Add synthetic performance stress scenarios** — `map_1m_light`, `pop_heavy`,
+      `intent_stress`, `fission_stress`, `threshold_stress` (`8fe858b`).
+- [x] **Expand benchmark metrics** — overlay/threshold/reduction counts, boundary
+      sync/readback bytes, per-phase timing (`0af46f4`).
+- [x] **Profile benchmark bottlenecks** — attribution separates tick vs boundary
+      work (`0af46f4`).
+- [x] **Optimize boundary sync/readback** — static skip + sparse dirty rows
+      (`0af46f4`).
+- [x] **Profile fission/tree-growth CPU cost** — boundary phase timing + indexed
+      delta-log emission (`26dc4e8`, `166eb5b`).
 
 #### Next
 
-- [x] **Eliminate per-slot blocking RMW readbacks.** Preferred path:
-      GPU-side intent delta buffer/pass. Batch row readback is acceptable only
-      as an interim measurement step.
-- [x] **Consolidate GPU command submission.** Add a one-encoder tick pipeline
-      that records snapshot, velocity, intensity, overlays, reduction, and
-      threshold scan before one queue submit; keep individual pass APIs for
-      tests.
-- [x] **Add synthetic performance stress scenarios.** `map_1m_light`,
-      `pop_heavy`, `intent_stress`, `fission_stress`, and `threshold_stress`.
-- [x] **Expand benchmark metrics.** Report overlay deltas, thresholds,
-      reduction edges/depths, boundary sync/readback bytes, and per-phase timing
-      where practical.
-- [x] **Profile benchmark bottlenecks.** Use the expanded metrics to separate
-      GPU tick time from CPU boundary/tree work, especially for `map_1m_light`
-      and `fission_stress`.
-- [x] **Optimize boundary sync/readback.** The first attribution pass shows
-      threshold-free ticks are cheap once readback is skipped; boundary
-      readback/upload and tree work now dominate stress runs.
-- [x] **Profile fission/tree-growth CPU cost.** Boundary timing now separates
-      fission seeding, lineage, structural mutation, GPU sync, and delta-log
-      generation. The major CPU cliff was delta-log tree rescanning and is now
-      indexed.
 - [ ] **Reduce remaining fission-heavy GPU sync/rebuild cost.** `fission_stress`
       is down to ~53 ms/sim-day; next useful work is retaining/batching
       threshold and reduction topology updates across growth boundaries where

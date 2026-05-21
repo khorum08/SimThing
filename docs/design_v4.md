@@ -1,6 +1,15 @@
 # SimThing: A GPU-Native Recursive World State Architecture
 ## Design Document v4 — The Complete Specification
 
+> **Historical document.** This is the original blueprint. For the implementation-synchronized
+> specification — what was actually built — read **`docs/design_v5.md`** first.
+> **`docs/agents.md`** is the code map; **`docs/worklog.md`** tracks open work.
+>
+> Sections below remain valid for architecture and philosophy unless marked
+> **Superseded in v5**. The six substantive v4→v5 deltas are summarized in
+> `design_v5.md` Preface (reduction tier, intent-delta hot path, consolidated
+> tick submit, static boundary skip, aggregate alerts, two-fidelity observability).
+
 ---
 
 ## 1. The Central Statement
@@ -26,6 +35,10 @@ One mechanism for differentiation. intensity threshold in the registry
 One source of truth.              GPU dense matrices + CPU semantic interpretation
 One place to edit any property.   the DimensionRegistry
 ```
+
+> **Superseded in v5 §1, §10:** Tick pipeline is
+> `intent → snapshot → velocity → intensity → transform → reduce → threshold`.
+> Intent deltas apply on GPU before Pass 0 in the normal feeder path.
 
 Everything else is a consequence.
 
@@ -88,6 +101,10 @@ struct SubFieldSpec {
                                          // None = not evolved by integration
 }
 ```
+
+> **Extended in v5 §5:** `SubFieldSpec::reduction_override: Option<ReductionRule>` declares
+> how each sub-field aggregates into parent `output_vectors` (Mean, Sum, Max, Min, First,
+> WeightedMean). Role defaults apply when unset.
 
 **`governed_by` is the integration control mechanism.** A sub-field advances by `governing_value * delta_time` each tick. The relationship between "position" and "rate of change" is explicit in the spec, not assumed. This means:
 
@@ -500,6 +517,15 @@ Integration reads `SubFieldSpec::governed_by` to know which sub-field evolves wh
 
 ## 9. The GPU Pipeline
 
+> **Superseded in v5 §10.** Pass 3 is **iterative overlay application** (flat
+> `OverlayDelta` list), not `ancestor_xform × local_xform` matrix multiply — see
+> `agents.md` “Transform application — iterative on GPU”. A **pre-Pass 0 intent-delta**
+> pass folds tick-time Set/Add/Multiply without CPU readback. Passes 4–6 use declarative
+> **`ReductionRule`** per sub-field (including `WeightedMean`). The tick records all passes
+> in **one command encoder / one queue submit** (2D dispatch at large slot counts). VRAM
+> figures below that assume `n_dims²` transform matrices are **obsolete** (~4 MB delta
+> buffers replaced ~370 MB of matrix storage).
+
 ### CPU Preparation Pass
 
 Before each tick, the CPU traverses the SimThing tree, composes ancestor transforms per node, and assembles the dense `EvaluationBatch`. During this pass:
@@ -512,6 +538,10 @@ Before each tick, the CPU traverses the SimThing tree, composes ancestor transfo
 The GPU receives only floats at column indices. It has no awareness of sub-field roles, property names, or governed_by relationships.
 
 ### Seven GPU Passes
+
+> **Superseded in v5 §10:** Eight GPU stages in practice — **intent delta** (when present)
+> then Passes 0–7. Pass 7 may scan **`output_vectors`** as well as `values` (aggregate
+> alerts). Snapshot also copies `output_vectors → previous_output_vectors`.
 
 ```
 Pass 0:  Snapshot          previous_values ← values  (2.8 MB GPU memcpy)
@@ -572,6 +602,12 @@ Both figures are well within the VRAM budget of any modern GPU. A midrange deskt
 
 ## 10. The Day Boundary
 
+> **Superseded in v5 §11.** Implemented boundary is **13 steps** when not skipped, including
+> GPU readback at start, player/AI intent attach, slot/registry growth, and indexed delta-log
+> emission. **`can_skip_empty_boundary`** bypasses the full sequence on static days (no
+> threshold events, no pending boundary/player/AI work, no transient lifecycle or CPU-decay
+> work).
+
 The day is the atomic unit of world state resolution and the natural synchronization primitive.
 
 **Within a day:** GPU runs continuously. No authoritative state written. No structural mutations.
@@ -597,17 +633,31 @@ Time acceleration is a timer on the day boundary. The simulation always runs at 
 
 ## 11. The Feeder Thread Architecture
 
+> **Superseded in v5 §12.** Normal tick path: **`apply_collected_as_intents`** folds
+> feeder/player/AI transforms into GPU **`IntentDelta`** records before Pass 0 — not direct
+> shadow row writes + dirty-row upload for every patch. Legacy shadow mutation
+> (`drain` / `apply_collected`) remains for direct/replay callers. See
+> `docs/state-authority.md`.
+
 Three sub-threads with clear ownership:
 
 **Transform Patcher** — continuous within day. Receives `PatchTransform` work items. Resolves `PropertyTransformDelta` sub-field roles to column indices via registry before writing to GPU buffer rows.
+> **Superseded in v5 §12:** Hot path resolves roles into folded intent deltas; shadow writes
+> are the legacy/direct path.
 
 **Dispatch Coordinator** — continuous. Sequences GPU passes 0–7. Reads threshold candidates. Signals boundary completion.
+> **Superseded in v5 §12:** Calls **`run_tick_pipeline`** (one submit per tick). Skips
+> threshold readback when `n_thresholds == 0` or event count is zero.
 
 **Tree Maintainer** — day boundary only. Handles slot allocation, deallocation, reparenting, and `AddDimension` events (when a new `SubFieldSpec` is registered mid-session by a mod or DLC).
 
 ---
 
 ## 12. Threshold Detection
+
+> **Superseded in v5 §13.** **`AggregateAlertRegistration`** thresholds post-reduction
+> **`output_vectors`** (parent aggregates), not only per-entity `values`. CPU semantic
+> mapping includes `ThresholdSemantic::AggregateAlert`.
 
 GPU Pass 7 runs one thread per threshold registration. Output is a sparse `event_candidates` buffer.
 
@@ -647,11 +697,24 @@ Synchronizes semantic deltas only: overlay changes, structural mutations, thresh
 
 The replay file is the semantic delta log — every overlay change, structural mutation, fission, and fusion. `SubFieldSpec::governed_by` relationships and `ClampBehavior` are part of the `SimProperty` definition serialized at session start. On playback, full simulation richness is reconstructed from that compact record.
 
+> **Superseded in v5 §15.** Implemented format is **LDJSON v2**: snapshot carries
+> `fission_lineage`; frames carry full structural payloads (`SimThingAdded { parent, node }`,
+> `FissionOccurred { parent, node }`, lineage add/remove). Optional `shadow_values` per frame
+> for diffing. Float integration is still recomputed on playback — not bit-exact value replay.
+
 ### AI
 
 AI reads the global strategic field and generates intent overlays. Velocity threshold registrations on Named sub-fields give early warning on developing situations. The AI can register a threshold on `Named("axis_drift")` of an ethics property to detect when a polity is shifting ideology faster than expected — before the axis position itself crosses any meaningful boundary.
 
+> **Superseded in v5 §13, §16:** AI also registers **aggregate alerts** on reduced parent
+> fields (`output_vectors`). Mid-day player/AI intent transforms land via the intent-delta
+> path before Pass 0; structural attach still occurs at boundary.
+
 ### Observability
+
+> **Superseded in v5 §14.** Two fidelities: **`observe`** (CPU shadow, cheap, correct after
+> any boundary) and **`observe_live`** (one GPU row readback, mid-tick integrated values for
+> UI/debug). Shadow-only observe may lag mid-tick intent patches.
 
 ```
 query: why is loyalty intensity high on Ptala IV, Kverlikon/bonded cohort?
@@ -697,6 +760,10 @@ The richness scales with the quality of sub-field and governed_by design, not wi
 ---
 
 ## 16. Implementation State
+
+> **Entirely superseded by v5 §18.** As of master: **182/182 tests**, driver bench scenarios,
+> fusion lineage + scar, replay v2, intent-delta hot path, static boundary skip, and perf
+> baselines documented in v5. Do not use this section for current status.
 
 ### Completed
 
@@ -765,6 +832,9 @@ Rebellion is a cohort whose Amount is 0.03 and whose Intensity is 0.87.
 
 Everything else is a consequence.
 ```
+
+> **Superseded in v5 §1, §17:** See v5 central statement for current pass order (`intent → …`)
+> and **`ReductionRule`** / reduction-tier wording.
 
 The simulation is not a state machine that produces events. It is a continuously evolving field that produces events when its values cross thresholds worth naming.
 

@@ -2,6 +2,10 @@
 
 This document is for AI agents picking up work on this project. Read it before touching any code.
 
+**Doc set:** `design_v5.md` (current spec) · `design_v4.md` (historical blueprint) ·
+`state-authority.md` · `invariants.md` · `worklog.md` (session log + next pickup) ·
+`chatgpt_implementation_review.md` (open perf/architecture notes).
+
 ---
 
 ## What this is
@@ -11,7 +15,10 @@ simulation — world, faction, star system, location, cohort — is the same rec
 and the entire world state lives in GPU dense matrices that are evaluated continuously. The CPU
 interprets GPU output as events; it does not drive the simulation.
 
-The full design specification is in `docs/design_v4.md`. Read it. The key ideas are:
+The current design specification is in `docs/design_v5.md`. Read it before changing tick/boundary
+behavior, GPU pass order, or feeder authority paths. `docs/design_v4.md` is the original blueprint;
+use it for historical context only — several sections there are superseded (intent deltas,
+consolidated submit, reduction tier, static boundary skip). The key ideas are:
 
 - **One type:** `SimThing { properties, overlays, children }`
 - **One mechanism for change:** overlay a `PropertyTransformDelta` on a SimThing
@@ -29,8 +36,12 @@ system flags," stop. Those are properties with thresholds, not special cases.
 SimThing/
 ├── Cargo.toml                         workspace manifest
 ├── docs/
-│   ├── design_v4.md                   complete architecture specification (read this)
+│   ├── design_v5.md                   current architecture specification (read this first)
+│   ├── design_v4.md                   original blueprint (historical reference)
+│   ├── state-authority.md             tick vs boundary numeric truth
 │   ├── invariants.md                  non-negotiable code rules (read this too)
+│   ├── worklog.md                     session log + next-session pickup
+│   ├── chatgpt_implementation_review.md  perf review + recommended optimizations
 │   └── agents.md                      this file
 └── crates/
     ├── simthing-core/
@@ -48,32 +59,35 @@ SimThing/
     │   └── src/
     │       ├── lib.rs                 public re-exports
     │       ├── context.rs             GpuContext — device/queue/adapter init
-    │       ├── world_state.rs         GovernedPair, IntensityParams, OverlayDelta,
-    │       │                          SlotDeltaRange (#[repr(C)] Pod), WorldGpuState,
-    │       │                          builders, upload_overlay_deltas, read helpers
-    │       ├── slot.rs                SlotAllocator — stable SimThingId ↔ slot_idx
-    │       ├── projection.rs          project_tree_to_values — sparse → dense values
-    │       ├── overlay_prep.rs        build_overlay_deltas — tree walk → Pass 3 batch
-    │       ├── passes.rs              Pipelines (Pass 0/1/2/3 compute pipelines),
-    │       │                          run_snapshot, run_velocity_integration,
-    │       │                          run_intensity_update, run_apply_overlays
-    │       └── shaders/
-    │           ├── snapshot.wgsl              Pass 0: values → previous_values
-    │           ├── velocity_integration.wgsl  Pass 1: integrate + clamp + pin (I3)
-    │           ├── intensity_update.wgsl      Pass 2: build/decay intensity
-    │           ├── transform_application.wgsl Pass 3: iterative overlay apply
-    │           └── threshold_scan.wgsl        Pass 7: sparse crossing events
+│       ├── world_state.rs         GovernedPair, IntensityParams, IntentDelta,
+│       │                          OverlayDelta, SlotDeltaRange (#[repr(C)] Pod),
+│       │                          WorldGpuState, builders, upload helpers, readback
+│       ├── reduction.rs           Topology, column rules, CPU reduction oracle
+│       ├── slot.rs                SlotAllocator — stable SimThingId ↔ slot_idx
+│       ├── projection.rs          project_tree_to_values — sparse → dense values
+│       ├── overlay_prep.rs        build_overlay_deltas — tree walk → Pass 3 batch
+│       ├── passes.rs              Pipelines (intent + Pass 0–3/4–6/7),
+│       │                          run_tick_pipeline (one encoder/submit),
+│       │                          individual pass runners for focused tests
+│       └── shaders/
+│           ├── intent_delta.wgsl          pre-Pass 0: fold tick-time affine deltas
+│           ├── snapshot.wgsl              Pass 0: values → previous_values
+│           ├── velocity_integration.wgsl  Pass 1: integrate + clamp + pin (I3)
+│           ├── intensity_update.wgsl      Pass 2: build/decay intensity
+│           ├── transform_application.wgsl Pass 3: iterative overlay apply
+│           ├── reduction.wgsl             Passes 4–6: bottom-up parent aggregation
+│           └── threshold_scan.wgsl        Pass 7: sparse crossing events
     ├── simthing-feeder/
     │   └── src/
     │       ├── lib.rs                 public re-exports + topology doc
     │       ├── work.rs                PatchTransform, BoundaryRequest, FeederWork,
     │       │                          FeederSender (Clone) + FeederReceiver (mpsc)
-    │       ├── patcher.rs             TransformPatcher — drains queue, resolves
-    │       │                          SubFieldRole → col via registry, mutates CPU
-    │       │                          shadow, tracks dirty rows + boundary parking
-    │       ├── dispatcher.rs          DispatchCoordinator — uploads dirty rows,
-    │       │                          sequences Pass 0/1/2/3/7, advances tick/day,
-    │       │                          surfaces threshold events
+│       ├── patcher.rs             TransformPatcher — folds tick work into intent
+│       │                          deltas (hot path) or mutates CPU shadow (legacy),
+│       │                          tracks dirty rows + boundary parking
+│       ├── dispatcher.rs          DispatchCoordinator — uploads intent deltas +
+│       │                          dirty rows, run_tick_pipeline, advances tick/day,
+│       │                          surfaces threshold events
     │       └── maintainer.rs          TreeMaintainer — diagnostic seam
     │                                  (real execution lives in simthing-sim)
     └── simthing-sim/
@@ -86,7 +100,7 @@ SimThing/
             │                          decrement, expire writeback
             ├── property_expiry.rs     step 5: threshold-driven property removal +
             │                          column tombstone; CPU TowardZero sweep
-            ├── fission.rs             step 6: fission spawn, placeholder fusion handler
+            ├── fission.rs             step 6: fission spawn, fusion scar handler
             │                          (with secondary-condition guard, dedup)
             ├── tree_mutation.rs       steps 7+8: apply_structural_mutations —
             │                          AddChild / Remove / Reparent /
@@ -95,10 +109,15 @@ SimThing/
             │                          ThresholdBuilder + upload, upload_full_shadow
             ├── boundary.rs            BoundaryProtocol — owns root + registry +
             │                          allocator + cpu ThresholdRegistry; execute()
-            │                          sequences steps 4-9
+            │                          sequences boundary steps; can_skip_empty_boundary
+            ├── observability.rs       observe / observe_live decomposition
             └── replay.rs              ReplaySnapshot + ReplayFrame + ReplayWriter +
                                        ReplayReader + ReplayDriver — LDJSON
                                        structural-reproduction replay
+    └── simthing-driver/
+        └── src/
+            ├── lib.rs                 SimSession, Scenario, bench/record/replay CLI
+            └── session.rs             tick loop, boundary orchestration, metrics
 ```
 
 ---
@@ -114,10 +133,11 @@ Hot-path performance now includes GPU-side intent deltas, consolidated tick
 command submission, static-boundary skipping, sparse dirty-row tracking,
 fission tree path indexing, boundary phase attribution, and indexed delta-log
 emission for fission-heavy growth.
-Within-day shadow patches apply `Set` directly; `Add`/`Multiply` require a
-GPU-synced row. The coordinator refreshes affected rows through
-`read_values_row` before applying collected work, while direct `apply_one`
-skips unsafe RMW unless called with `ShadowFreshness::GpuSynced`. Boundary
+Normal tick-time feeder/player/AI transforms fold into GPU `IntentDelta` records
+and apply before Pass 0 (`apply_collected_as_intents`). The legacy shadow path
+(`drain` / `apply_collected` / `apply_one`) remains for direct and replay-style
+callers; `apply_one` skips unsafe Add/Multiply unless called with
+`ShadowFreshness::GpuSynced`. Boundary
 expiry uses synchronized shadow for TowardZero checks, registry tombstoning
 waits for whole-tree liveness, AddChild projects semantic property values into
 shadow, Remove zeroes tombstoned rows, fission secondary checks use the
@@ -215,18 +235,18 @@ reconstructs tree, registry, allocator, and fission lineage from LDJSON log.**
 
 **`passes.rs` — `Pipelines`:**
 - Owns shared uniform buffer (`PassParams { delta_time, n_dims, _pad, _pad }`) and
-  five compute pipelines: snapshot, velocity, intensity, overlay, threshold.
-- `run_snapshot(state)` — Pass 0, flat dispatch over `n_slots × n_dims`.
-- `run_velocity_integration(state, dt)` — Pass 1, dispatch over `n_slots × n_pairs`.
-- `run_intensity_update(state, dt)` — Pass 2, dispatch over `n_slots × n_params`.
-- `run_apply_overlays(state)` — Pass 3, one thread per slot. Early-returns when
-  `n_overlay_deltas == 0`.
-- `run_threshold_scan(state)` — Pass 7, one thread per registration. Resets the
-  event counter, then atomically appends events to `state.event_candidates`.
-  Early-returns when `n_thresholds == 0`.
+  compute pipelines for intent delta, snapshot, velocity, intensity, overlay,
+  reduction, and threshold.
+- `run_tick_pipeline(state, dt)` — records intent delta (when present) → Pass 0 →
+  1 → 2 → 3 → reduction depths → Pass 7 in one command encoder, one submit.
+  Uses 2D workgroup grids when slot×dim products exceed WebGPU per-axis limits.
+- Individual pass runners (`run_snapshot`, `run_velocity_integration`, etc.) remain
+  for focused unit/parity tests.
 
 **Shaders (`shaders/*.wgsl`):**
-- `snapshot.wgsl` — Pass 0 memcpy `values → previous_values`.
+- `intent_delta.wgsl` — pre-Pass 0 affine fold: `values = values * mul + add` per
+  `(slot, col)` intent record.
+- `snapshot.wgsl` — Pass 0 memcpy `values → previous_values` (+ output_vectors pair).
 - `velocity_integration.wgsl` — Pass 1, FMA-prevention via intermediate `let`,
   ClampBehavior dispatch, I3 velocity pinning at floor/ceiling.
 - `intensity_update.wgsl` — Pass 2, build / decay branches with explicit
@@ -234,12 +254,14 @@ reconstructs tree, registry, allocator, and fission lineage from LDJSON log.**
 - `transform_application.wgsl` — Pass 3, switch on `op_kind` for Multiply / Add / Set.
   No uniform needed: `n_slots = arrayLength(&slot_delta_ranges)`,
   `n_dims = arrayLength(&values) / n_slots`.
+- `reduction.wgsl` — Passes 4–6, one dispatch per depth bucket; per-column
+  `ReductionRule` (Mean, Sum, Max, Min, First, WeightedMean).
 - `threshold_scan.wgsl` — Pass 7, strict crossing detection in three direction
   modes. Atomic counter (`atomic<u32>`) bound directly as `event_count`; output
   index allocated via `atomicAdd`. Event order is therefore nondeterministic —
   callers sort by (slot, col, event_kind) for parity tests.
 
-**Tests: 37 GPU tests + 1 ignored timing diagnostic, all passing, zero warnings.**
+**Tests: 47 GPU tests + 1 ignored timing diagnostic, all passing, zero warnings.**
 
 Highlights:
 - `pass3_overlay_matches_evaluator` — bit-exact parity for Pass 0+1+2+3 against
@@ -259,8 +281,7 @@ Highlights:
 
 **Not yet built in simthing-gpu:**
 - High-level threshold registration helpers (per-property derivation from
-  `FissionThreshold` / `DecayBehavior`) — lives in the day-boundary protocol
-  code, which is Week 3 work in the upcoming `simthing-sim` crate.
+  `FissionThreshold` / `DecayBehavior`) — lives in `simthing-sim` boundary code.
 
 ### simthing-feeder (Week 3, scaffolding complete)
 
@@ -283,12 +304,14 @@ Highlights:
 - `FeederSender::submit_player_intent(target, overlay)` — convenience send method.
 
 **`patcher.rs` — TransformPatcher:**
-- `drain(receiver, registry, allocator, n_dims, &mut shadow, sync_row_from_gpu) -> PatcherStats`:
-  pulls every queued item; resolves `(target, role) → (slot, col)` via
-  `col_for_role` only. Before applying Add/Multiply ops, `DispatchCoordinator`
-  passes a callback that refreshes affected rows from GPU (`read_values_row`).
-  Set/Add/Multiply all land on the shadow. Boundary requests park on
-  `pending_boundary`; player intent overlays park on `pending_player_intents`.
+- **Hot tick path:** `apply_collected_as_intents(feeder_items, ai_items, registry,
+  allocator) -> (PatcherStats, Vec<IntentDelta>)` folds Set/Add/Multiply into per-cell
+  affine records without CPU readback. Boundary requests and player/AI intents park
+  as before.
+- **Legacy / direct path:** `drain(...)` and `apply_collected(...)` mutate the CPU
+  shadow. When `sync_row_from_gpu` is supplied, Add/Multiply refresh affected rows
+  from GPU before apply; otherwise `apply_one` skips unsafe RMW and increments
+  `unsafe_rmw_skipped`.
 - `take_player_intents() -> Vec<PlayerIntentOverlay>` — drains player intents
   for the boundary protocol to attach during step 7/8.
 - `PatcherStats` counts applied writes, unsafe RMW skips, missing targets,
@@ -325,7 +348,7 @@ pass methods available for focused tests.
   expansion, GPU buffer resizing) lands in `simthing-sim`.
 - The dispatch surface is final; only the body of `execute` will change.
 
-**Tests: 18 unit + 4 GPU integration tests, all passing, zero warnings.**
+**Tests: 24 unit + 5 GPU integration tests, all passing, zero warnings.**
 
 Integration highlights:
 - `patch_through_channel_lands_on_gpu_after_one_tick` — full chain:
@@ -395,9 +418,9 @@ Integration highlights:
 - Fission: spawn `SimThing { kind: template.child_kind }`, alloc its slot,
   seed it from the parent's shadow row, zeroing the activating property's
   Amount, then attach as child of trigger SimThing.
-- Fusion: placeholder event handler can locate child by id, remove from parent,
-  and tombstone its slot. Automatic fusion threshold registration from fission
-  lineage and scar application are not wired yet.
+- Fusion: `execute_fusion` applies the scar to the parent's activating-property
+  Amount, tombstones the child, and removes the lineage record. Threshold
+  registration for fusion comes from `ThresholdBuilder::build_with_lineage`.
 
 **`tree_mutation.rs` — steps 7 + 8 (Tree Maintainer execution):**
 - `apply_structural_mutations(requests, root, allocator, registry, shadow, n_dims) -> MaintainerOutcome`.
@@ -423,8 +446,11 @@ Integration highlights:
 **`boundary.rs` — `BoundaryProtocol`:**
 - Owns the authoritative `SimThing` root, `DimensionRegistry`, `SlotAllocator`,
   CPU `ThresholdRegistry`, and registered velocity alerts.
-- `execute(events, patcher, coord, state, day) -> BoundaryOutcome` runs steps 4–9
-  in order:
+- `can_skip_empty_boundary(events, patcher)` — static fast-path when there are no
+  threshold events, no pending boundary/player/AI work, and no transient lifecycle
+  or CPU-decay work due.
+- `execute(events, patcher, coord, state, day) -> BoundaryOutcome` runs the full
+  boundary sequence (13 steps when not skipped; see `design_v5.md` §11):
   1. **Reads GPU values back into `coord.shadow`** (critical: integration
      output lives only on GPU; otherwise the eventual `upload_full_shadow`
      would wipe out a day's worth of Pass 1/2 work).
@@ -449,7 +475,7 @@ Integration highlights:
 `MaintainerOutcome::reparented`, `ExpiryOutcome::expired` — fed to
 `delta_log::entries_from_outcome` for per-event replay entries.
 
-**Tests: 37 unit + 9 GPU integration tests, all passing, zero warnings.**
+**Tests: 67 unit + 18 GPU integration tests, all passing, zero warnings.**
 
 Integration highlights:
 - `fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean` — full end-to-end:
@@ -470,6 +496,8 @@ Integration highlights:
 - `aggregate_alert_registration_surfaces_at_boundary` — an AI-facing aggregate
   alert on a Location's reduced Amount column fires after reduction and surfaces
   through `BoundaryOutcome::aggregate_alerts`.
+- `observe_live_reports_integrated_gpu_values_mid_day` — mid-tick Add/Multiply
+  on GPU shows up in `observe_live` but not in shadow-based `observe`.
 
 **Still open (see `docs/worklog.md` Next session pickup):**
 - Remaining fission boundary profiling: parent lookup and delta-log lookup are
@@ -520,8 +548,8 @@ Integration highlights:
   `DimensionRegistry.by_name`) serialize as pair arrays via `serde_with`.
 
 **State authority:** see `docs/state-authority.md` for tick vs boundary numeric
-truth, within-day Set-only patches, player/AI intent two-phase behavior, and
-`SimThing.properties` vs GPU/shadow roles.
+truth, GPU intent-delta vs legacy shadow paths, player/AI intent two-phase behavior,
+and `SimThing.properties` vs GPU/shadow roles.
 
 ---
 
@@ -532,8 +560,9 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All 164 tests must pass with zero warnings before any commit
-(16 core + 1 driver unit + 2 driver integration + 45 GPU + 21 feeder unit + 4 feeder integration + 59 sim unit + 17 sim integration).
+All **182** tests must pass with zero warnings before any commit
+(16 core + 3 driver unit + 2 driver integration + 47 GPU + 24 feeder unit +
+5 feeder integration + 67 sim unit + 18 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available
@@ -580,8 +609,8 @@ Access sub-fields via `layout.offset_of(&SubFieldRole::Amount)`.
 CPU preparation pass at dispatch time.
 
 **I7:** Structural mutations only at the day boundary.
-This is not yet enforced programmatically (day boundary protocol is Week 3). Until then:
-no test or benchmark should mutate the SimThing tree mid-evaluation.
+Enforced by architecture: the within-day Patcher cannot touch the tree; boundary
+requests and player/AI intents park until `BoundaryProtocol::execute`.
 
 ---
 
@@ -807,6 +836,7 @@ alternatively dispatch is `(N_pairs × N_slots)` with the pair index in the work
 
 The pass ordering is therefore:
 ```
+Intent delta (when present): fold tick-time patches into values[]
 Pass 0: snapshot
 Pass 1: velocity integration     ← reads governed_pairs, writes values[]
 Pass 2: intensity update          ← reads values[] (post-integration velocity)
