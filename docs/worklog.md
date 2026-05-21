@@ -4,6 +4,41 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-21 - Benchmark attribution and zero-threshold readback skip
+
+**Status:** Merged to master (`0af46f4`).
+
+**Landed:**
+
+- `TickOutcome` now reports phase timing for queue drain / intent folding,
+  intent upload, dirty-row upload, GPU pipeline submission, and threshold event
+  readback.
+- `RunSummary` and `simthing bench` now aggregate tick phase timing, boundary
+  time, boundary readback bytes, boundary upload bytes, overlay deltas,
+  threshold registrations, reduction edges, reduction slots, and reduction
+  depth counts.
+- Boundary GPU sync reports reduction edge/slot counts and an estimated upload
+  byte total for values, overlays, thresholds, topology, and column rules.
+- Dispatcher skips threshold event readback entirely when no thresholds are
+  registered, and skips candidate-buffer readback when the event count is zero.
+
+**Observed smoke result:**
+
+- `intent_stress`, 100k slots, 4 ticks/day dropped from ~260 ms of empty event
+  readback to `tick_event_readback_ms: 0.000`; measured tick time is now ~14 ms
+  total for the day, while boundary sync/readback is the visible cost center.
+- `fission_stress`, 20k to 40k slots, reports boundary-dominant runtime:
+  ~6.25 s boundary time, ~60k threshold regs, ~40k reduction slots, and
+  ~40k reduction edges.
+
+**Tests:** `cargo test --workspace` => 177 passed, 1 ignored timing diagnostic.
+
+**Next optimization:** Reduce boundary cost. Start with avoiding unnecessary
+full-value boundary readback/upload when no structural/numeric boundary changes
+require it, then evaluate CPU fission/tree-growth cost in `fission_stress`.
+
+---
+
 ## 2026-05-20 - GPU intent delta hot path
 
 **Status:** Merged to master (`8fe858b`).
@@ -125,7 +160,8 @@ interim measurement step.
 **177/177** tests passing plus 1 ignored timing diagnostic, zero warnings.
 `master` and `origin/master` include GPU intent-delta hot path, consolidated tick
 command submission, 2D large-workload dispatch, and synthetic stress scenarios
-through `8fe858b`.
+through `0af46f4`, including benchmark attribution and an empty
+threshold-readback skip.
 
 ### Todo (recommended order)
 
@@ -157,23 +193,25 @@ through `8fe858b`.
       tests.
 - [x] **Add synthetic performance stress scenarios.** `map_1m_light`,
       `pop_heavy`, `intent_stress`, `fission_stress`, and `threshold_stress`.
-- [ ] **Expand benchmark metrics.** Report overlay deltas, thresholds,
+- [x] **Expand benchmark metrics.** Report overlay deltas, thresholds,
       reduction edges/depths, boundary sync/readback bytes, and per-phase timing
       where practical.
-- [ ] **Profile benchmark bottlenecks.** Use the expanded metrics to separate
+- [x] **Profile benchmark bottlenecks.** Use the expanded metrics to separate
       GPU tick time from CPU boundary/tree work, especially for `map_1m_light`
       and `fission_stress`.
+- [ ] **Optimize boundary sync/readback.** The first attribution pass shows
+      threshold-free ticks are cheap once readback is skipped; boundary
+      readback/upload and tree work now dominate stress runs.
 - [ ] **Document/prototype map-scale representation.** Keep current
       `SimThing` as semantic authoring state; evaluate arena/topology sidecars
       only after benchmark data shows tree representation pressure.
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds remains
       useful, but it is behind the GPU performance path.
 
-**Recent:** GPU intent-delta hot path is implemented and dispatcher ticks now
-submit one consolidated command encoder for the full tick pipeline. Large linear
-GPU workloads split across 2D dispatch grids, and benchmark summaries now have
-stress scenarios for intent, reduction-heavy population, 1M light maps, and
-fission growth.
+**Recent:** Benchmark attribution is merged. It shows the GPU tick pipeline is
+small compared with boundary synchronization on the current stress runs; empty
+threshold-readback skipping removes a major false cost from threshold-free
+scenarios.
 
 **Tabled:** `simthing-studio` designer UI.
 

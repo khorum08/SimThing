@@ -50,6 +50,7 @@ use crate::patcher::{PatcherStats, TransformPatcher};
 use crate::work::FeederReceiver;
 use simthing_core::DimensionRegistry;
 use simthing_gpu::{IntentDelta, Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
+use std::time::Instant;
 
 // ── Outcome ───────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,16 @@ pub struct TickOutcome {
     pub intent_deltas_uploaded: u32,
     /// Bytes uploaded to the per-tick GPU intent delta buffer.
     pub intent_delta_bytes: u64,
+    /// Wall-clock time spent draining queues and folding intents.
+    pub drain_ms: f64,
+    /// Wall-clock time spent uploading GPU intent deltas.
+    pub intent_upload_ms: f64,
+    /// Wall-clock time spent uploading legacy/direct dirty shadow rows.
+    pub dirty_upload_ms: f64,
+    /// Wall-clock time spent recording/submitting the GPU tick pipeline.
+    pub gpu_pipeline_ms: f64,
+    /// Wall-clock time spent reading threshold event count/candidates.
+    pub event_readback_ms: f64,
     /// Threshold crossings detected by Pass 7. Order is GPU-nondeterministic
     /// (atomicAdd race). Callers that need a canonical order must sort.
     pub events: Vec<ThresholdEvent>,
@@ -128,30 +139,48 @@ impl DispatchCoordinator {
         dt: f32,
     ) -> TickOutcome {
         // 1. Drain feeder queue into folded GPU intent deltas.
+        let drain_started = Instant::now();
         let feeder_items = receiver.drain_now();
         let ai_items = patcher.drain_ai_now();
         let (patcher_stats, intent_deltas) =
             patcher.apply_collected_as_intents(feeder_items, ai_items, registry, allocator);
+        let drain_ms = drain_started.elapsed().as_secs_f64() * 1000.0;
         let intent_deltas_uploaded = intent_deltas.len() as u32;
         let intent_delta_bytes =
             intent_deltas.len() as u64 * std::mem::size_of::<IntentDelta>() as u64;
+        let intent_upload_started = Instant::now();
         state.upload_intent_deltas(&intent_deltas);
+        let intent_upload_ms = intent_upload_started.elapsed().as_secs_f64() * 1000.0;
         let rmw_rows_synced = 0;
         let rmw_readback_bytes = 0;
 
         // 2. Upload dirty rows (one write per touched row, coalesced).
+        let dirty_upload_started = Instant::now();
         let dirty = patcher.take_dirty_rows();
         let uploaded_rows = dirty.len() as u32;
         for slot in dirty {
             self.upload_row(state, slot);
         }
+        let dirty_upload_ms = dirty_upload_started.elapsed().as_secs_f64() * 1000.0;
 
         // 3. GPU passes (order matters — see module-level doc).
+        let gpu_pipeline_started = Instant::now();
         pipelines.run_tick_pipeline(state, dt);
+        let gpu_pipeline_ms = gpu_pipeline_started.elapsed().as_secs_f64() * 1000.0;
 
         // 4. Event readback. Cheap even at endgame scale (~3 KB).
-        let count = state.read_event_count();
-        let events = state.read_event_candidates(count);
+        let event_readback_started = Instant::now();
+        let events = if state.n_thresholds == 0 {
+            Vec::new()
+        } else {
+            let count = state.read_event_count();
+            if count == 0 {
+                Vec::new()
+            } else {
+                state.read_event_candidates(count)
+            }
+        };
+        let event_readback_ms = event_readback_started.elapsed().as_secs_f64() * 1000.0;
 
         // 5. Advance counters.
         self.tick_counter += 1;
@@ -169,6 +198,11 @@ impl DispatchCoordinator {
             rmw_readback_bytes,
             intent_deltas_uploaded,
             intent_delta_bytes,
+            drain_ms,
+            intent_upload_ms,
+            dirty_upload_ms,
+            gpu_pipeline_ms,
+            event_readback_ms,
             events,
             boundary_reached,
             tick_index: self.tick_counter,

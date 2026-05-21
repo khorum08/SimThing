@@ -1,6 +1,7 @@
 //! GPU session loop — ticks, boundaries, and replay recording.
 
 use std::path::Path;
+use std::time::Instant;
 
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
 use simthing_feeder::FeederWork;
@@ -31,6 +32,53 @@ pub struct RunSummary {
     pub rmw_readback_bytes: u64,
     pub intent_deltas_uploaded: u64,
     pub intent_delta_bytes: u64,
+    pub tick_total_ms: f64,
+    pub tick_drain_ms: f64,
+    pub tick_intent_upload_ms: f64,
+    pub tick_dirty_upload_ms: f64,
+    pub tick_gpu_pipeline_ms: f64,
+    pub tick_event_readback_ms: f64,
+    pub submit_tick_patches_ms: f64,
+    pub boundary_total_ms: f64,
+    pub boundary_readback_bytes: u64,
+    pub boundary_upload_bytes: u64,
+    pub overlay_deltas_uploaded: u64,
+    pub threshold_regs_uploaded: u64,
+    pub reduction_edges_uploaded: u64,
+    pub reduction_slots_uploaded: u64,
+    pub reduction_depths_total: u64,
+    pub reduction_depths_max: u32,
+}
+
+impl RunSummary {
+    fn new() -> Self {
+        Self {
+            ticks_run: 0,
+            boundaries_run: 0,
+            frames_written: 0,
+            fission_events: 0,
+            rmw_rows_synced: 0,
+            rmw_readback_bytes: 0,
+            intent_deltas_uploaded: 0,
+            intent_delta_bytes: 0,
+            tick_total_ms: 0.0,
+            tick_drain_ms: 0.0,
+            tick_intent_upload_ms: 0.0,
+            tick_dirty_upload_ms: 0.0,
+            tick_gpu_pipeline_ms: 0.0,
+            tick_event_readback_ms: 0.0,
+            submit_tick_patches_ms: 0.0,
+            boundary_total_ms: 0.0,
+            boundary_readback_bytes: 0,
+            boundary_upload_bytes: 0,
+            overlay_deltas_uploaded: 0,
+            threshold_regs_uploaded: 0,
+            reduction_edges_uploaded: 0,
+            reduction_slots_uploaded: 0,
+            reduction_depths_total: 0,
+            reduction_depths_max: 0,
+        }
+    }
 }
 
 /// Owns the full tick + boundary loop for one scenario.
@@ -90,19 +138,13 @@ impl SimSession {
     /// Run until `max_days` boundaries complete (or scenario max if smaller).
     pub fn run(&mut self, max_days: u32) -> Result<RunSummary, SessionError> {
         let cap = max_days.min(self.scenario.max_days);
-        let mut summary = RunSummary {
-            ticks_run: 0,
-            boundaries_run: 0,
-            frames_written: 0,
-            fission_events: 0,
-            rmw_rows_synced: 0,
-            rmw_readback_bytes: 0,
-            intent_deltas_uploaded: 0,
-            intent_delta_bytes: 0,
-        };
+        let mut summary = RunSummary::new();
 
         while summary.boundaries_run < cap as u64 {
+            let submit_started = Instant::now();
             self.submit_tick_patches()?;
+            summary.submit_tick_patches_ms += submit_started.elapsed().as_secs_f64() * 1000.0;
+            let tick_started = Instant::now();
             let tick = self.coord.tick(
                 &self.rx,
                 &mut self.patcher,
@@ -112,14 +154,22 @@ impl SimSession {
                 &mut self.state,
                 self.scenario.dt,
             );
+            summary.tick_total_ms += tick_started.elapsed().as_secs_f64() * 1000.0;
             summary.ticks_run += 1;
             summary.rmw_rows_synced += tick.rmw_rows_synced as u64;
             summary.rmw_readback_bytes += tick.rmw_readback_bytes;
             summary.intent_deltas_uploaded += tick.intent_deltas_uploaded as u64;
             summary.intent_delta_bytes += tick.intent_delta_bytes;
+            summary.tick_drain_ms += tick.drain_ms;
+            summary.tick_intent_upload_ms += tick.intent_upload_ms;
+            summary.tick_dirty_upload_ms += tick.dirty_upload_ms;
+            summary.tick_gpu_pipeline_ms += tick.gpu_pipeline_ms;
+            summary.tick_event_readback_ms += tick.event_readback_ms;
 
             if tick.boundary_reached {
                 let day = tick.day_index;
+                summary.boundary_readback_bytes += self.state.values_len() as u64 * 4;
+                let boundary_started = Instant::now();
                 let outcome = self.proto.execute(
                     tick.events,
                     &mut self.patcher,
@@ -127,7 +177,16 @@ impl SimSession {
                     &mut self.state,
                     day,
                 );
+                summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
                 summary.fission_events += outcome.fission.fissions_executed;
+                summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
+                summary.overlay_deltas_uploaded += outcome.gpu_sync.overlay_deltas_uploaded as u64;
+                summary.threshold_regs_uploaded += outcome.gpu_sync.threshold_regs_uploaded as u64;
+                summary.reduction_edges_uploaded += outcome.gpu_sync.reduction_edges as u64;
+                summary.reduction_slots_uploaded += outcome.gpu_sync.reduction_slots as u64;
+                summary.reduction_depths_total += outcome.gpu_sync.reduction_depths as u64;
+                summary.reduction_depths_max =
+                    summary.reduction_depths_max.max(outcome.gpu_sync.reduction_depths);
                 summary.boundaries_run += 1;
             }
         }
@@ -143,22 +202,16 @@ impl SimSession {
     ) -> Result<RunSummary, SessionError> {
         let mut file = std::fs::File::create(path)?;
         let cap = max_days.min(self.scenario.max_days);
-        let mut summary = RunSummary {
-            ticks_run: 0,
-            boundaries_run: 0,
-            frames_written: 0,
-            fission_events: 0,
-            rmw_rows_synced: 0,
-            rmw_readback_bytes: 0,
-            intent_deltas_uploaded: 0,
-            intent_delta_bytes: 0,
-        };
+        let mut summary = RunSummary::new();
 
         let mut writer = ReplayWriter::new(&mut file);
         writer.write_snapshot(&self.proto.snapshot(0))?;
 
         while summary.boundaries_run < cap as u64 {
+            let submit_started = Instant::now();
             self.submit_tick_patches()?;
+            summary.submit_tick_patches_ms += submit_started.elapsed().as_secs_f64() * 1000.0;
+            let tick_started = Instant::now();
             let tick = self.coord.tick(
                 &self.rx,
                 &mut self.patcher,
@@ -168,14 +221,22 @@ impl SimSession {
                 &mut self.state,
                 self.scenario.dt,
             );
+            summary.tick_total_ms += tick_started.elapsed().as_secs_f64() * 1000.0;
             summary.ticks_run += 1;
             summary.rmw_rows_synced += tick.rmw_rows_synced as u64;
             summary.rmw_readback_bytes += tick.rmw_readback_bytes;
             summary.intent_deltas_uploaded += tick.intent_deltas_uploaded as u64;
             summary.intent_delta_bytes += tick.intent_delta_bytes;
+            summary.tick_drain_ms += tick.drain_ms;
+            summary.tick_intent_upload_ms += tick.intent_upload_ms;
+            summary.tick_dirty_upload_ms += tick.dirty_upload_ms;
+            summary.tick_gpu_pipeline_ms += tick.gpu_pipeline_ms;
+            summary.tick_event_readback_ms += tick.event_readback_ms;
 
             if tick.boundary_reached {
                 let day = tick.day_index;
+                summary.boundary_readback_bytes += self.state.values_len() as u64 * 4;
+                let boundary_started = Instant::now();
                 let outcome = self.proto.execute(
                     tick.events,
                     &mut self.patcher,
@@ -183,7 +244,16 @@ impl SimSession {
                     &mut self.state,
                     day,
                 );
+                summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
                 summary.fission_events += outcome.fission.fissions_executed;
+                summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
+                summary.overlay_deltas_uploaded += outcome.gpu_sync.overlay_deltas_uploaded as u64;
+                summary.threshold_regs_uploaded += outcome.gpu_sync.threshold_regs_uploaded as u64;
+                summary.reduction_edges_uploaded += outcome.gpu_sync.reduction_edges as u64;
+                summary.reduction_slots_uploaded += outcome.gpu_sync.reduction_slots as u64;
+                summary.reduction_depths_total += outcome.gpu_sync.reduction_depths as u64;
+                summary.reduction_depths_max =
+                    summary.reduction_depths_max.max(outcome.gpu_sync.reduction_depths);
 
                 let frame = ReplayFrame {
                     day: day as u32,

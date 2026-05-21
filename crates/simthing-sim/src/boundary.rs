@@ -297,6 +297,9 @@ impl BoundaryProtocol {
             threshold_regs_uploaded: gpu_out.threshold_regs_uploaded,
             new_threshold_registry: None, // moved into self above
             reduction_depths: gpu_out.reduction_depths,
+            reduction_edges: gpu_out.reduction_edges,
+            reduction_slots: gpu_out.reduction_slots,
+            boundary_upload_bytes: gpu_out.boundary_upload_bytes,
         };
 
         self.delta_log

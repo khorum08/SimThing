@@ -164,6 +164,16 @@ fn cmd_bench(args: &[String]) {
     } else {
         ms_total / summary.boundaries_run as f64
     };
+    let avg_tick = |ms: f64| {
+        if summary.ticks_run == 0 { 0.0 } else { ms / summary.ticks_run as f64 }
+    };
+    let avg_boundary = |ms: f64| {
+        if summary.boundaries_run == 0 {
+            0.0
+        } else {
+            ms / summary.boundaries_run as f64
+        }
+    };
 
     println!("benchmark {}", session.scenario.name);
     println!("  n_slots_start: {n_slots_start}");
@@ -176,6 +186,16 @@ fn cmd_bench(args: &[String]) {
     println!("  elapsed_ms: {:.3}", ms_total);
     println!("  ms_per_tick: {:.6}", ms_per_tick);
     println!("  ms_per_sim_day: {:.6}", ms_per_day);
+    println!("  tick_measured_ms: {:.3}", summary.tick_total_ms);
+    println!("  tick_measured_ms_per_tick: {:.6}", avg_tick(summary.tick_total_ms));
+    println!("  tick_submit_patches_ms: {:.3}", summary.submit_tick_patches_ms);
+    println!("  tick_drain_ms: {:.3}", summary.tick_drain_ms);
+    println!("  tick_intent_upload_ms: {:.3}", summary.tick_intent_upload_ms);
+    println!("  tick_dirty_upload_ms: {:.3}", summary.tick_dirty_upload_ms);
+    println!("  tick_gpu_pipeline_submit_ms: {:.3}", summary.tick_gpu_pipeline_ms);
+    println!("  tick_event_readback_ms: {:.3}", summary.tick_event_readback_ms);
+    println!("  boundary_ms: {:.3}", summary.boundary_total_ms);
+    println!("  boundary_ms_per_day: {:.6}", avg_boundary(summary.boundary_total_ms));
     println!("  rmw_rows_synced: {}", summary.rmw_rows_synced);
     println!("  rmw_readback_bytes: {}", summary.rmw_readback_bytes);
     println!(
@@ -183,6 +203,14 @@ fn cmd_bench(args: &[String]) {
         summary.intent_deltas_uploaded
     );
     println!("  intent_delta_bytes: {}", summary.intent_delta_bytes);
+    println!("  boundary_readback_bytes: {}", summary.boundary_readback_bytes);
+    println!("  boundary_upload_bytes: {}", summary.boundary_upload_bytes);
+    println!("  overlay_deltas_uploaded: {}", summary.overlay_deltas_uploaded);
+    println!("  threshold_regs_uploaded: {}", summary.threshold_regs_uploaded);
+    println!("  reduction_edges_uploaded: {}", summary.reduction_edges_uploaded);
+    println!("  reduction_slots_uploaded: {}", summary.reduction_slots_uploaded);
+    println!("  reduction_depths_total: {}", summary.reduction_depths_total);
+    println!("  reduction_depths_max: {}", summary.reduction_depths_max);
     println!(
         "  final_gpu_buffer_bytes: {}",
         session.state.total_buffer_bytes()

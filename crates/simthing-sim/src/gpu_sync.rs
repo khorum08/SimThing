@@ -52,6 +52,9 @@ pub struct GpuSyncOutcome {
     pub threshold_regs_uploaded: u32,
     pub new_threshold_registry: Option<ThresholdRegistry>,
     pub reduction_depths:        u32,
+    pub reduction_edges:         u32,
+    pub reduction_slots:         u32,
+    pub boundary_upload_bytes:   u64,
 }
 
 /// Rebuild Pass 3 and Pass 7 GPU buffers from the current tree state.
@@ -122,6 +125,7 @@ pub fn sync_gpu_buffers(
         depth_ranges.push((offset, bucket.len() as u32));
     }
     out.reduction_depths = depth_ranges.len() as u32;
+    out.reduction_slots = depth_slots.len() as u32;
 
     // `upload_reduction_topology` asserts `child_starts.len() == n_slots + 1`.
     // `build_topology` produces a CSR sized to `allocator.capacity()`, which
@@ -141,6 +145,15 @@ pub fn sync_gpu_buffers(
         &depth_slots,
         depth_ranges,
     );
+    out.reduction_edges = topo.child_indices.len() as u32;
+    out.boundary_upload_bytes = coord.shadow.len() as u64 * std::mem::size_of::<f32>() as u64
+        + deltas.len() as u64 * std::mem::size_of::<simthing_gpu::OverlayDelta>() as u64
+        + ranges.len() as u64 * std::mem::size_of::<simthing_gpu::SlotDeltaRange>() as u64
+        + gpu_regs.len() as u64 * std::mem::size_of::<simthing_gpu::ThresholdRegistration>() as u64
+        + child_starts.len() as u64 * std::mem::size_of::<u32>() as u64
+        + topo.child_indices.len() as u64 * std::mem::size_of::<u32>() as u64
+        + rules_u32.len() as u64 * std::mem::size_of::<u32>() as u64
+        + depth_slots.len() as u64 * std::mem::size_of::<u32>() as u64;
 
     out
 }

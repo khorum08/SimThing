@@ -466,10 +466,8 @@ Integration highlights:
   through `BoundaryOutcome::aggregate_alerts`.
 
 **Still open (see `docs/worklog.md` Next session pickup):**
-- Expanded benchmark attribution: overlay deltas, threshold registrations,
-  reduction edges/depths, boundary sync/readback bytes, and per-phase timing.
-- Bottleneck profiling for `map_1m_light` and `fission_stress` after attribution
-  lands, to separate GPU tick cost from CPU boundary/tree growth work.
+- Boundary synchronization optimization: attribution now shows full boundary
+  value readback/upload and CPU tree growth dominate the current stress runs.
 - Full RON scenario files (tree + registry inline; today: `builtin` templates only).
 - Designer UI (`simthing-studio`) — tabled
 
