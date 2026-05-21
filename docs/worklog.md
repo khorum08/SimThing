@@ -244,9 +244,26 @@ RMW row readbacks with a GPU-side intent delta buffer/pass.
 
 ---
 
+## 2026-05-22 — R2 remainder, bench guard, replay hardening
+
+**Status:** Landed locally (pending merge).
+
+**Landed:**
+
+- **R2:** `tree_index::paths_preorder`; lifecycle + expiry use shared boundary index;
+  fission reuses the same pre-fission index (lifecycle/expiry do not change tree shape).
+- **Bench guard:** `simthing bench --check` + `bench_limits` ceilings for
+  `intent_stress` / `fission_stress`; GPU integration test `bench_stress_scenarios_within_ceiling`.
+- **Replay hardening:** record/replay test asserts frame count, final day, entry kinds
+  (`FissionOccurred`, `FissionLineageAdded`), lineage parity with live session.
+
+**Tests:** `cargo test --workspace` => 186 passed, 1 ignored timing diagnostic.
+
+---
+
 ## Next session pickup
 
-**184/184** tests passing plus 1 ignored timing diagnostic, zero warnings.
+**186/186** tests passing plus 1 ignored timing diagnostic, zero warnings.
 `master` and `origin/master` include GPU intent-delta hot path, consolidated tick
 command submission, 2D large-workload dispatch, synthetic stress scenarios,
 benchmark attribution, static-boundary skipping, sparse dirty-row tracking,
@@ -292,6 +309,9 @@ and review-tier A1–A4 perf/docs work through `de1d16d` (PR #34). Design refere
 - [x] **Record/replay smoke (`rebellion_demo`)** — PR #34 (A3).
 - [x] **Share boundary tree index with structural mutations** — PR #34 (A4,
       `tree_index` module).
+- [x] **Extend shared tree index to lifecycle/expiry (R2).** pending PR.
+- [x] **Bench regression guard (`simthing bench --check`).** pending PR.
+- [x] **Replay record/replay integration hardening.** pending PR.
 
 #### Next
 
@@ -303,19 +323,15 @@ and review-tier A1–A4 perf/docs work through `de1d16d` (PR #34). Design refere
       is ~53 ms/sim-day; remaining cost is threshold readback, fission seeding, and
       full threshold/reduction topology rebuild. Retain CSR/reduction buffers where
       tree shape only appends.
-- [ ] **Extend shared tree index to lifecycle/expiry (R2 remainder).** Fission and
-      structural mutations use `tree_index`; overlay lifecycle and property expiry
-      still walk independently.
 - [ ] **Document/prototype map-scale representation.** Keep current `SimThing` as
       semantic authoring state; evaluate arena/topology sidecars only after benchmark
       data shows tree representation pressure.
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds — behind
       the GPU performance path.
 
-**Recent:** PR #34 landed A1–A4 from the implementation review (fold reuse,
-observability mid-tick docs, record/replay smoke, indexed structural lookups).
-Static map and intent stress paths are largely GPU-submit bound; fission growth
-still spends boundary time on readback, topology rebuild, and full shadow upload.
+**Recent:** R2 shares one boundary tree index across lifecycle, expiry, and fission;
+bench `--check` guards stress scenarios; replay integration test validates entry kinds
+and lineage parity. Next perf target: B1 dirty-row shadow upload.
 
 **Tabled:** `simthing-studio` designer UI; unified `BoundaryIndex` single-pass
 boundary walk (review item 4 / C1 — Opus-tier, defer until B1–B2 land).

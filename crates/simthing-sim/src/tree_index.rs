@@ -50,6 +50,13 @@ pub fn detach_at_path(root: &mut SimThing, path: &[usize]) -> Option<SimThing> {
     Some(parent.children.remove(idx))
 }
 
+/// Child-index paths in depth-first pre-order (shorter paths before deeper ones).
+pub fn paths_preorder(paths: &HashMap<SimThingId, Vec<usize>>) -> Vec<Vec<usize>> {
+    let mut ordered: Vec<Vec<usize>> = paths.values().cloned().collect();
+    ordered.sort_by(|a, b| a.len().cmp(&b.len()).then(a.cmp(b)));
+    ordered
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
