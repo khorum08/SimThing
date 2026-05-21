@@ -224,9 +224,29 @@ RMW row readbacks with a GPU-side intent delta buffer/pass.
 
 ---
 
+## 2026-05-22 — A1–A4: fold reuse, observability docs, smoke, tree index
+
+**Status:** Ready to merge.
+
+**Landed:**
+
+- **A1:** `TransformPatcher` reuses `fold_order` / `fold_accum` across ticks
+  (`clear()` per drain) instead of allocating a fresh `HashMap` every tick.
+- **A2:** `state-authority.md` and `observability.rs` document mid-tick shadow
+  staleness on intent-patched rows; `observe_live` is the GPU-fresh path.
+- **A3:** Smoke pass — `rebellion_demo.ron` record (3 days) → `demo.replay.ldjson`
+  → replay: 3 frames, 4 tree nodes, 1 fission + 1 lineage entry. Pass.
+- **A4:** New `tree_index` module (`build_node_paths`, `detach_at_path`).
+  Fission takes a pre-built index; boundary rebuilds index before structural
+  mutations; `apply_structural_mutations` uses O(1) path lookup when indexed.
+
+**Tests:** `cargo test --workspace` => 184 passed, 1 ignored timing diagnostic.
+
+---
+
 ## Next session pickup
 
-**182/182** tests passing plus 1 ignored timing diagnostic, zero warnings.
+**184/184** tests passing plus 1 ignored timing diagnostic, zero warnings.
 `master` and `origin/master` include GPU intent-delta hot path, consolidated tick
 command submission, 2D large-workload dispatch, synthetic stress scenarios,
 benchmark attribution, static-boundary skipping, sparse dirty-row tracking,
@@ -267,6 +287,10 @@ delta-log emission for fission-heavy growth, and design v5 documentation through
       (`0af46f4`).
 - [x] **Profile fission/tree-growth CPU cost** — boundary phase timing + indexed
       delta-log emission (`26dc4e8`, `166eb5b`).
+- [x] **Reuse intent-fold accumulators on `TransformPatcher`** — A1.
+- [x] **Document mid-tick `observe` vs `observe_live` staleness** — A2.
+- [x] **Record/replay smoke (`rebellion_demo`)** — A3.
+- [x] **Share boundary tree index with structural mutations** — A4 (`tree_index`).
 
 #### Next
 

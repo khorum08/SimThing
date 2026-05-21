@@ -52,6 +52,7 @@ use simthing_core::{
 };
 use simthing_gpu::{SlotAllocator, ThresholdEvent};
 use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
+use crate::tree_index::{node_at_path, node_at_path_mut};
 use std::collections::{HashMap, HashSet};
 
 /// One spawned child's lineage back to its parent + activating template.
@@ -92,8 +93,13 @@ pub struct FissionOutcome {
 }
 
 /// Execute all fission and fusion events for one boundary.
+///
+/// `node_paths` must reflect `root` before any fission mutation (see
+/// `tree_index::build_node_paths`). The caller rebuilds the index after
+/// fission if structural mutations follow in the same boundary.
 pub fn resolve_fission_fusion(
     root:          &mut SimThing,
+    node_paths:    &HashMap<SimThingId, Vec<usize>>,
     registry:      &DimensionRegistry,
     allocator:     &mut SlotAllocator,
     events:        &[ThresholdEvent],
@@ -106,7 +112,6 @@ pub fn resolve_fission_fusion(
 
     // Deduplicate fission triggers.
     let mut seen_fissions: HashSet<(SimThingId, usize)> = HashSet::new();
-    let node_paths = build_node_paths(root);
 
     for event in events {
         let Some(sem) = cpu_reg.get(event.event_kind) else { continue };
@@ -219,41 +224,6 @@ fn execute_fission(
         allocator.tombstone(new_id);
         false
     }
-}
-
-fn build_node_paths(root: &SimThing) -> HashMap<SimThingId, Vec<usize>> {
-    let mut paths = HashMap::new();
-    collect_node_paths(root, &mut Vec::new(), &mut paths);
-    paths
-}
-
-fn collect_node_paths(
-    node: &SimThing,
-    path: &mut Vec<usize>,
-    paths: &mut HashMap<SimThingId, Vec<usize>>,
-) {
-    paths.insert(node.id, path.clone());
-    for (idx, child) in node.children.iter().enumerate() {
-        path.push(idx);
-        collect_node_paths(child, path, paths);
-        path.pop();
-    }
-}
-
-fn node_at_path<'a>(root: &'a SimThing, path: &[usize]) -> Option<&'a SimThing> {
-    let mut node = root;
-    for &idx in path {
-        node = node.children.get(idx)?;
-    }
-    Some(node)
-}
-
-fn node_at_path_mut<'a>(root: &'a mut SimThing, path: &[usize]) -> Option<&'a mut SimThing> {
-    let mut node = root;
-    for &idx in path {
-        node = node.children.get_mut(idx)?;
-    }
-    Some(node)
 }
 
 fn seed_fission_child(
@@ -440,6 +410,7 @@ mod tests {
     };
     use simthing_gpu::SlotAllocator;
     use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
+    use crate::tree_index::build_node_paths;
 
     fn make_fission_property() -> SimProperty {
         let mut p = SimProperty::simple("core", "loyalty", 0);
@@ -485,7 +456,8 @@ mod tests {
         let mut shadow = vec![0.0f32; 3 * n_dims];
         let events = vec![simthing_gpu::ThresholdEvent { slot: 1, col: 0, value: 0.2, event_kind: ek }];
 
-        let out = resolve_fission_fusion(&mut root, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1);
+        let paths = build_node_paths(&root);
+        let out = resolve_fission_fusion(&mut root, &paths, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1);
 
         // cohort (child[0]) now has 1 child spawned by fission
         assert_eq!(out.fissions_executed, 1);
@@ -524,7 +496,8 @@ mod tests {
             simthing_gpu::ThresholdEvent { slot: 1, col: 0, value: 0.2, event_kind: ek },
         ];
 
-        let out = resolve_fission_fusion(&mut root, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1);
+        let paths = build_node_paths(&root);
+        let out = resolve_fission_fusion(&mut root, &paths, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1);
 
         assert_eq!(out.fissions_executed, 1);
         assert_eq!(out.fissions_skipped_duplicate, 1);
@@ -570,8 +543,9 @@ mod tests {
             event_kind: ek,
         }];
 
+        let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
-            &mut root, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
+            &mut root, &paths, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
         );
 
         assert_eq!(out.fissions_executed, 1);
@@ -638,8 +612,9 @@ mod tests {
             event_kind: ek,
         }];
 
+        let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
-            &mut root, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
+            &mut root, &paths, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
         );
 
         assert_eq!(out.fissions_executed, 0);
@@ -672,8 +647,9 @@ mod tests {
             slot: 1, col: 0, value: 0.2, event_kind: ek,
         }];
 
+        let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
-            &mut root, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
+            &mut root, &paths, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
         );
 
         assert_eq!(out.fissions_executed, 1);
@@ -724,8 +700,9 @@ mod tests {
             slot: 0, col: 0, value: 0.9, event_kind: ek,
         }];
 
+        let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
-            &mut root, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
+            &mut root, &paths, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
         );
 
         assert_eq!(out.fusions_executed, 1);

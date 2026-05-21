@@ -108,6 +108,10 @@ pub struct TransformPatcher {
     dirty: Vec<bool>,
     /// Sparse list of slots whose dirty bit flipped from false to true.
     dirty_slots: Vec<u32>,
+    /// Reused each tick by `apply_collected_as_intents` — insertion order for folds.
+    fold_order: Vec<(u32, u32)>,
+    /// Reused each tick by `apply_collected_as_intents` — per-cell affine accumulators.
+    fold_accum: HashMap<(u32, u32), (f32, f32)>,
 }
 
 impl TransformPatcher {
@@ -119,6 +123,8 @@ impl TransformPatcher {
             ai_receiver: None,
             dirty: vec![false; n_slots],
             dirty_slots: Vec::new(),
+            fold_order: Vec::new(),
+            fold_accum: HashMap::new(),
         }
     }
 
@@ -240,8 +246,8 @@ impl TransformPatcher {
         allocator: &SlotAllocator,
     ) -> (PatcherStats, Vec<IntentDelta>) {
         let mut stats = PatcherStats::default();
-        let mut order: Vec<(u32, u32)> = Vec::new();
-        let mut folded: HashMap<(u32, u32), (f32, f32)> = HashMap::new();
+        self.fold_order.clear();
+        self.fold_accum.clear();
 
         for item in feeder_items {
             match item {
@@ -251,8 +257,8 @@ impl TransformPatcher {
                         registry,
                         allocator,
                         &mut stats,
-                        &mut order,
-                        &mut folded,
+                        &mut self.fold_order,
+                        &mut self.fold_accum,
                     );
                 }
                 FeederWork::Boundary(b) => {
@@ -269,8 +275,8 @@ impl TransformPatcher {
                         registry,
                         allocator,
                         &mut stats,
-                        &mut order,
-                        &mut folded,
+                        &mut self.fold_order,
+                        &mut self.fold_accum,
                     );
                     self.pending_player_intents.push(pi);
                     stats.player_intents_parked += 1;
@@ -288,17 +294,18 @@ impl TransformPatcher {
                 registry,
                 allocator,
                 &mut stats,
-                &mut order,
-                &mut folded,
+                &mut self.fold_order,
+                &mut self.fold_accum,
             );
             self.pending_ai_intents.push(ai);
             stats.ai_intents_parked += 1;
         }
 
-        let deltas = order
-            .into_iter()
-            .filter_map(|(slot, col)| {
-                folded
+        let deltas = self
+            .fold_order
+            .iter()
+            .filter_map(|&(slot, col)| {
+                self.fold_accum
                     .get(&(slot, col))
                     .copied()
                     .map(|(mul, add)| IntentDelta {

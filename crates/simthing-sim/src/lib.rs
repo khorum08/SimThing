@@ -52,6 +52,7 @@ pub mod property_expiry;
 pub mod reduced_field;
 pub mod replay;
 pub mod threshold_registry;
+pub mod tree_index;
 pub mod tree_mutation;
 
 pub use boundary::{BoundaryOutcome, BoundaryProtocol, BoundaryTiming};

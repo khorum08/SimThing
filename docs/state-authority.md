@@ -44,6 +44,26 @@ Pass 3 applies the overlay persistently without double-counting on the attach ti
 Integration coverage: `player_intent_mid_day_effect_lands_on_gpu_before_boundary`,
 `player_intent_add_mid_day_uses_integrated_gpu_value`, `ai_intent_mid_day_effect_and_boundary_attach`.
 
+### Observability mid-tick (`observe` vs `observe_live`)
+
+The normal tick path folds transforms into GPU intent deltas and **does not** update the
+CPU shadow for those cells. After any boundary, the shadow reflects the full GPU readback and
+`BoundaryProtocol::observe` is accurate for all rows.
+
+Between boundaries, on intent-patched rows:
+
+| API | Source | Mid-tick after intent delta |
+|-----|--------|----------------------------|
+| `observe` | CPU shadow | **Stale** on rows patched this tick (Set/Add/Multiply via intent path) |
+| `observe_live` | One GPU row readback | **Current** integrated values |
+
+Legacy shadow-path patches (`apply_collected` with dirty-row upload) update the shadow
+mid-tick, so `observe` can appear accurate on those rows without a readback. Callers cannot
+distinguish the two paths from the API alone — use `observe_live` when mid-tick numeric truth
+on recently patched entities matters (UI/debug).
+
+Integration coverage: `observe_live_reports_integrated_gpu_values_mid_day`.
+
 ---
 
 ## During boundary

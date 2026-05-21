@@ -7,9 +7,15 @@
 //! ## Value fidelity
 //!
 //! [`ObserveFidelity::Shadow`] (default via `BoundaryProtocol::observe`) reads
-//! the CPU shadow row — cheap, but may lag mid-tick GPU integration on untouched
-//! rows. [`ObserveFidelity::GpuRow`] (`BoundaryProtocol::observe_live`) reads
-//! one integrated row from the GPU via `read_values_row` — for UI/debug only.
+//! the CPU shadow row — cheap, but may lag mid-tick GPU integration. Rows
+//! touched by the normal **intent-delta** tick path are not written to shadow
+//! until the next boundary readback; shadow-path legacy patches can still be
+//! current mid-tick.
+//!
+//! [`ObserveFidelity::GpuRow`] (`BoundaryProtocol::observe_live`) reads one
+//! integrated row from the GPU via `read_values_row` — for UI/debug when
+//! mid-tick values on intent-patched entities must be exact. See
+//! `docs/state-authority.md` §Observability mid-tick.
 
 use simthing_core::{
     DimensionRegistry, OverlayId, OverlaySource, SimPropertyId, SimThing, SimThingId,
