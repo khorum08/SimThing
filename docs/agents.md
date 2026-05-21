@@ -466,8 +466,8 @@ Integration highlights:
   through `BoundaryOutcome::aggregate_alerts`.
 
 **Still open (see `docs/worklog.md` Next session pickup):**
-- Boundary synchronization optimization: attribution now shows full boundary
-  value readback/upload and CPU tree growth dominate the current stress runs.
+- Fission/tree-growth CPU profiling: static boundaries can now skip readback and
+  upload, leaving `fission_stress` boundary execution as the major scale target.
 - Full RON scenario files (tree + registry inline; today: `builtin` templates only).
 - Designer UI (`simthing-studio`) — tabled
 

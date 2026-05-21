@@ -4,7 +4,7 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-21 - Benchmark attribution and zero-threshold readback skip
+## 2026-05-21 - Benchmark attribution and boundary fast path
 
 **Status:** Merged to master (`0af46f4`).
 
@@ -21,21 +21,30 @@ Running log of what's done and what's next, across sessions.
   byte total for values, overlays, thresholds, topology, and column rules.
 - Dispatcher skips threshold event readback entirely when no thresholds are
   registered, and skips candidate-buffer readback when the event count is zero.
+- Static no-op boundaries now skip full GPU value readback, lifecycle passes,
+  GPU buffer rebuild, and full shadow upload when there are no threshold events,
+  no pending boundary/intents, and no transient overlay or CPU-decay work.
+- Dirty-row tracking now keeps a sparse slot list instead of scanning the full
+  slot bitmap every tick, removing hidden O(n_slots) overhead from static
+  million-slot runs.
 
 **Observed smoke result:**
 
-- `intent_stress`, 100k slots, 4 ticks/day dropped from ~260 ms of empty event
-  readback to `tick_event_readback_ms: 0.000`; measured tick time is now ~14 ms
-  total for the day, while boundary sync/readback is the visible cost center.
+- `intent_stress`, 100k slots, 4 ticks/day now runs at ~20 ms/sim-day with
+  `boundaries_skipped: 1`, zero boundary readback/upload bytes, and zero RMW
+  readbacks.
+- `map_1m_light`, 1M slots, 8 ticks/day now runs at ~25 ms/sim-day with
+  `boundaries_skipped: 1`; sparse dirty rows reduce dirty upload accounting to
+  ~0.001 ms/day when no rows are dirty.
 - `fission_stress`, 20k to 40k slots, reports boundary-dominant runtime:
   ~6.25 s boundary time, ~60k threshold regs, ~40k reduction slots, and
   ~40k reduction edges.
 
-**Tests:** `cargo test --workspace` => 177 passed, 1 ignored timing diagnostic.
+**Tests:** `cargo test --workspace` => 182 passed, 1 ignored timing diagnostic.
 
-**Next optimization:** Reduce boundary cost. Start with avoiding unnecessary
-full-value boundary readback/upload when no structural/numeric boundary changes
-require it, then evaluate CPU fission/tree-growth cost in `fission_stress`.
+**Next optimization:** Profile and reduce CPU fission/tree-growth cost in
+`fission_stress`; static map and intent scenarios are now mostly GPU-submit /
+queue-drain bound rather than boundary-sync bound.
 
 ---
 
@@ -157,11 +166,12 @@ interim measurement step.
 
 ## Next session pickup
 
-**177/177** tests passing plus 1 ignored timing diagnostic, zero warnings.
+**182/182** tests passing plus 1 ignored timing diagnostic, zero warnings.
 `master` and `origin/master` include GPU intent-delta hot path, consolidated tick
 command submission, 2D large-workload dispatch, and synthetic stress scenarios
 through `0af46f4`, including benchmark attribution and an empty
-threshold-readback skip.
+threshold-readback skip. Working tree adds static-boundary skipping and sparse
+dirty-row tracking.
 
 ### Todo (recommended order)
 
@@ -199,19 +209,22 @@ threshold-readback skip.
 - [x] **Profile benchmark bottlenecks.** Use the expanded metrics to separate
       GPU tick time from CPU boundary/tree work, especially for `map_1m_light`
       and `fission_stress`.
-- [ ] **Optimize boundary sync/readback.** The first attribution pass shows
+- [x] **Optimize boundary sync/readback.** The first attribution pass shows
       threshold-free ticks are cheap once readback is skipped; boundary
       readback/upload and tree work now dominate stress runs.
+- [ ] **Profile fission/tree-growth CPU cost.** `fission_stress` still spends
+      seconds in boundary execution when ~20k children spawn; separate fission
+      seeding, lineage, threshold rebuild, topology rebuild, and tree mutation
+      costs.
 - [ ] **Document/prototype map-scale representation.** Keep current
       `SimThing` as semantic authoring state; evaluate arena/topology sidecars
       only after benchmark data shows tree representation pressure.
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds remains
       useful, but it is behind the GPU performance path.
 
-**Recent:** Benchmark attribution is merged. It shows the GPU tick pipeline is
-small compared with boundary synchronization on the current stress runs; empty
-threshold-readback skipping removes a major false cost from threshold-free
-scenarios.
+**Recent:** Static boundary skipping and sparse dirty rows are in the working
+tree. They remove the major non-GPU overhead from static map and intent stress
+runs; fission/tree-growth remains the large late-game CPU cost center.
 
 **Tabled:** `simthing-studio` designer UI.
 

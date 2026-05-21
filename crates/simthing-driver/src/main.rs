@@ -196,6 +196,7 @@ fn cmd_bench(args: &[String]) {
     println!("  tick_event_readback_ms: {:.3}", summary.tick_event_readback_ms);
     println!("  boundary_ms: {:.3}", summary.boundary_total_ms);
     println!("  boundary_ms_per_day: {:.6}", avg_boundary(summary.boundary_total_ms));
+    println!("  boundaries_skipped: {}", summary.boundaries_skipped);
     println!("  rmw_rows_synced: {}", summary.rmw_rows_synced);
     println!("  rmw_readback_bytes: {}", summary.rmw_readback_bytes);
     println!(

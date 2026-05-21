@@ -106,6 +106,8 @@ pub struct TransformPatcher {
     /// since the last `take_dirty_rows()`. Used by the Dispatch Coordinator
     /// to coalesce GPU uploads.
     dirty: Vec<bool>,
+    /// Sparse list of slots whose dirty bit flipped from false to true.
+    dirty_slots: Vec<u32>,
 }
 
 impl TransformPatcher {
@@ -116,6 +118,7 @@ impl TransformPatcher {
             pending_ai_intents: Vec::new(),
             ai_receiver: None,
             dirty: vec![false; n_slots],
+            dirty_slots: Vec::new(),
         }
     }
 
@@ -368,7 +371,10 @@ impl TransformPatcher {
 
         if wrote_to_row {
             if let Some(flag) = self.dirty.get_mut(slot as usize) {
-                *flag = true;
+                if !*flag {
+                    *flag = true;
+                    self.dirty_slots.push(slot);
+                }
             }
         }
     }
@@ -396,10 +402,9 @@ impl TransformPatcher {
     /// Coordinator uses this to issue exactly one `queue.write_buffer` per
     /// dirty row before the next tick.
     pub fn take_dirty_rows(&mut self) -> Vec<u32> {
-        let mut out = Vec::new();
-        for (slot, flag) in self.dirty.iter_mut().enumerate() {
-            if *flag {
-                out.push(slot as u32);
+        let out = std::mem::take(&mut self.dirty_slots);
+        for &slot in &out {
+            if let Some(flag) = self.dirty.get_mut(slot as usize) {
                 *flag = false;
             }
         }
@@ -410,12 +415,27 @@ impl TransformPatcher {
     /// the allocator's capacity at a day boundary.
     pub fn resize(&mut self, n_slots: usize) {
         self.dirty.resize(n_slots, false);
+        self.dirty_slots.retain(|slot| (*slot as usize) < n_slots);
     }
 
     /// Number of currently parked boundary requests. Mostly useful for tests
     /// and observability.
     pub fn pending_boundary_count(&self) -> usize {
         self.pending_boundary.len()
+    }
+
+    pub fn pending_player_intent_count(&self) -> usize {
+        self.pending_player_intents.len()
+    }
+
+    pub fn pending_ai_intent_count(&self) -> usize {
+        self.pending_ai_intents.len()
+    }
+
+    pub fn pending_boundary_work_count(&self) -> usize {
+        self.pending_boundary.len()
+            + self.pending_player_intents.len()
+            + self.pending_ai_intents.len()
     }
 }
 

@@ -40,6 +40,7 @@ pub struct RunSummary {
     pub tick_event_readback_ms: f64,
     pub submit_tick_patches_ms: f64,
     pub boundary_total_ms: f64,
+    pub boundaries_skipped: u64,
     pub boundary_readback_bytes: u64,
     pub boundary_upload_bytes: u64,
     pub overlay_deltas_uploaded: u64,
@@ -69,6 +70,7 @@ impl RunSummary {
             tick_event_readback_ms: 0.0,
             submit_tick_patches_ms: 0.0,
             boundary_total_ms: 0.0,
+            boundaries_skipped: 0,
             boundary_readback_bytes: 0,
             boundary_upload_bytes: 0,
             overlay_deltas_uploaded: 0,
@@ -168,6 +170,14 @@ impl SimSession {
 
             if tick.boundary_reached {
                 let day = tick.day_index;
+                if self
+                    .proto
+                    .can_skip_empty_boundary(&tick.events, &self.patcher)
+                {
+                    summary.boundaries_skipped += 1;
+                    summary.boundaries_run += 1;
+                    continue;
+                }
                 summary.boundary_readback_bytes += self.state.values_len() as u64 * 4;
                 let boundary_started = Instant::now();
                 let outcome = self.proto.execute(
@@ -235,6 +245,21 @@ impl SimSession {
 
             if tick.boundary_reached {
                 let day = tick.day_index;
+                if self
+                    .proto
+                    .can_skip_empty_boundary(&tick.events, &self.patcher)
+                {
+                    let frame = ReplayFrame {
+                        day: day as u32,
+                        entries: Vec::new(),
+                        shadow_values: None,
+                    };
+                    writer.write_frame(&frame)?;
+                    summary.frames_written += 1;
+                    summary.boundaries_skipped += 1;
+                    summary.boundaries_run += 1;
+                    continue;
+                }
                 summary.boundary_readback_bytes += self.state.values_len() as u64 * 4;
                 let boundary_started = Instant::now();
                 let outcome = self.proto.execute(

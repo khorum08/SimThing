@@ -19,7 +19,9 @@
 //! 10. Day N+1 dispatch ready      -- (caller resumes tick loop)
 //! ```
 
-use simthing_core::{DimensionRegistry, SimPropertyId, SimThing, SimThingId};
+use simthing_core::{
+    DecayBehavior, DimensionRegistry, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
+};
 use simthing_feeder::{BoundaryRequest, DispatchCoordinator, MaintainerOutcome, TransformPatcher};
 use simthing_gpu::{SlotAllocator, ThresholdEvent, WorldGpuState};
 
@@ -308,6 +310,19 @@ impl BoundaryProtocol {
         out
     }
 
+    /// True when a day boundary has no semantic work that requires CPU shadow
+    /// authority or GPU buffer rebuilds. Safe empty boundaries can be counted
+    /// without reading back `values` or uploading the full shadow again.
+    pub fn can_skip_empty_boundary(
+        &self,
+        events: &[ThresholdEvent],
+        patcher: &TransformPatcher,
+    ) -> bool {
+        events.is_empty()
+            && patcher.pending_boundary_work_count() == 0
+            && !tree_has_boundary_lifecycle_work(&self.root, &self.registry)
+    }
+
     /// Read-only access to the current threshold registry (for diagnostics).
     pub fn threshold_registry(&self) -> &ThresholdRegistry {
         &self.cpu_threshold_registry
@@ -496,6 +511,34 @@ fn projected_add_child_slots(requests: &[BoundaryRequest]) -> usize {
         .sum()
 }
 
+fn tree_has_boundary_lifecycle_work(node: &SimThing, registry: &DimensionRegistry) -> bool {
+    if node.overlays.iter().any(|overlay| {
+        matches!(overlay.lifecycle, OverlayLifecycle::Transient { .. })
+            || registry
+                .try_property(overlay.transform.property_id)
+                .and_then(|prop| prop.on_expire.as_ref())
+                .is_some()
+    }) {
+        return true;
+    }
+
+    if node.properties.keys().any(|pid| {
+        registry
+            .try_property(*pid)
+            .and_then(|prop| prop.decay.as_ref())
+            .is_some_and(|decay| matches!(
+                decay,
+                DecayBehavior::TowardZero { .. } | DecayBehavior::AfterTicks { .. }
+            ))
+    }) {
+        return true;
+    }
+
+    node.children
+        .iter()
+        .any(|child| tree_has_boundary_lifecycle_work(child, registry))
+}
+
 fn subtree_size(node: &SimThing) -> usize {
     1 + node.children.iter().map(subtree_size).sum::<usize>()
 }
@@ -590,7 +633,11 @@ fn seed_dimension_values(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simthing_core::{DimensionRegistry, SimProperty, SimThing, SimThingKind};
+    use simthing_core::{
+        DecayBehavior, DissolveCondition, Overlay, OverlayId, OverlayKind, OverlaySource,
+        PropertyTransformDelta, SimProperty, SimThingKind, SubFieldRole, TransformOp,
+    };
+    use simthing_feeder::{BoundaryRequest, FeederWork};
     use simthing_gpu::SlotAllocator;
 
     #[test]
@@ -601,5 +648,76 @@ mod tests {
         let alloc = SlotAllocator::new();
         let proto = BoundaryProtocol::new(root, reg, alloc);
         assert!(proto.threshold_registry().is_empty());
+    }
+
+    fn simple_proto() -> (BoundaryProtocol, TransformPatcher, SimPropertyId) {
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(SimProperty::simple("core", "loyalty", 0));
+        let mut root = SimThing::new(SimThingKind::World, 0);
+        let mut child = SimThing::new(SimThingKind::Cohort, 0);
+        child.add_property(pid, reg.property(pid).default_value());
+        root.add_child(child);
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
+        let patcher = TransformPatcher::new(alloc.capacity());
+        (BoundaryProtocol::new(root, reg, alloc), patcher, pid)
+    }
+
+    #[test]
+    fn empty_static_boundary_can_skip() {
+        let (proto, patcher, _) = simple_proto();
+        assert!(proto.can_skip_empty_boundary(&[], &patcher));
+    }
+
+    #[test]
+    fn boundary_with_events_cannot_skip() {
+        let (proto, patcher, _) = simple_proto();
+        let events = vec![ThresholdEvent {
+            slot: 0,
+            col: 0,
+            value: 0.5,
+            event_kind: 0,
+        }];
+        assert!(!proto.can_skip_empty_boundary(&events, &patcher));
+    }
+
+    #[test]
+    fn boundary_with_pending_request_cannot_skip() {
+        let (proto, mut patcher, _) = simple_proto();
+        let target = proto.root.children[0].id;
+        patcher
+            .apply_collected_as_intents(
+                vec![FeederWork::Boundary(BoundaryRequest::Remove { target })],
+                Vec::new(),
+                &proto.registry,
+                &proto.allocator,
+            );
+        assert!(!proto.can_skip_empty_boundary(&[], &patcher));
+    }
+
+    #[test]
+    fn boundary_with_transient_overlay_cannot_skip() {
+        let (mut proto, patcher, pid) = simple_proto();
+        proto.root.children[0].add_overlay(Overlay {
+            id: OverlayId::new(),
+            kind: OverlayKind::Transient,
+            source: OverlaySource::System,
+            affects: Vec::new(),
+            transform: PropertyTransformDelta {
+                property_id: pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.4))],
+            },
+            lifecycle: OverlayLifecycle::Transient {
+                dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 1 }],
+            },
+        });
+        assert!(!proto.can_skip_empty_boundary(&[], &patcher));
+    }
+
+    #[test]
+    fn boundary_with_cpu_decay_cannot_skip() {
+        let (mut proto, patcher, pid) = simple_proto();
+        proto.registry.properties[pid.index()].decay = Some(DecayBehavior::TowardZero { rate: 0.1 });
+        assert!(!proto.can_skip_empty_boundary(&[], &patcher));
     }
 }
