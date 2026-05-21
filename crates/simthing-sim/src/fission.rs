@@ -52,7 +52,7 @@ use simthing_core::{
 };
 use simthing_gpu::{SlotAllocator, ThresholdEvent};
 use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// One spawned child's lineage back to its parent + activating template.
 ///
@@ -106,6 +106,7 @@ pub fn resolve_fission_fusion(
 
     // Deduplicate fission triggers.
     let mut seen_fissions: HashSet<(SimThingId, usize)> = HashSet::new();
+    let node_paths = build_node_paths(root);
 
     for event in events {
         let Some(sem) = cpu_reg.get(event.event_kind) else { continue };
@@ -124,7 +125,7 @@ pub fn resolve_fission_fusion(
 
                 if execute_fission(
                     root, registry, allocator,
-                    stid, pid, idx, values_shadow, n_dims, current_day, &mut out,
+                    &node_paths, stid, pid, idx, values_shadow, n_dims, current_day, &mut out,
                 ) {
                     out.fissions_executed += 1;
                 }
@@ -151,6 +152,7 @@ fn execute_fission(
     root:          &mut SimThing,
     registry:      &DimensionRegistry,
     allocator:     &mut SlotAllocator,
+    node_paths:     &HashMap<SimThingId, Vec<usize>>,
     stid:          SimThingId,
     pid:           SimPropertyId,
     template_idx:  usize,
@@ -161,7 +163,9 @@ fn execute_fission(
 ) -> bool {
     // Verify secondary condition before mutating the tree.
     let ok = {
-        let node = find_node(root, stid);
+        let node = node_paths
+            .get(&stid)
+            .and_then(|path| node_at_path(root, path));
         let slot = node.and_then(|n| allocator.slot_of(n.id));
         match (node, slot) {
             (Some(_n), Some(s)) => {
@@ -187,13 +191,18 @@ fn execute_fission(
     let new_id        = new_child.id;
     let new_slot      = allocator.alloc(new_id);
 
-    if let Some(parent) = find_node(root, stid) {
+    if let Some(parent) = node_paths
+        .get(&stid)
+        .and_then(|path| node_at_path(root, path))
+    {
         if let Some(parent_slot) = allocator.slot_of(parent.id) {
             seed_fission_child(parent, &mut new_child, registry, pid, parent_slot, new_slot, values_shadow, n_dims);
         }
     }
 
-    let parent = find_node_mut(root, stid);
+    let parent = node_paths
+        .get(&stid)
+        .and_then(|path| node_at_path_mut(root, path));
     if let Some(p) = parent {
         p.add_child(new_child);
         out.fission_pairs.push((stid, new_id));
@@ -210,6 +219,41 @@ fn execute_fission(
         allocator.tombstone(new_id);
         false
     }
+}
+
+fn build_node_paths(root: &SimThing) -> HashMap<SimThingId, Vec<usize>> {
+    let mut paths = HashMap::new();
+    collect_node_paths(root, &mut Vec::new(), &mut paths);
+    paths
+}
+
+fn collect_node_paths(
+    node: &SimThing,
+    path: &mut Vec<usize>,
+    paths: &mut HashMap<SimThingId, Vec<usize>>,
+) {
+    paths.insert(node.id, path.clone());
+    for (idx, child) in node.children.iter().enumerate() {
+        path.push(idx);
+        collect_node_paths(child, path, paths);
+        path.pop();
+    }
+}
+
+fn node_at_path<'a>(root: &'a SimThing, path: &[usize]) -> Option<&'a SimThing> {
+    let mut node = root;
+    for &idx in path {
+        node = node.children.get(idx)?;
+    }
+    Some(node)
+}
+
+fn node_at_path_mut<'a>(root: &'a mut SimThing, path: &[usize]) -> Option<&'a mut SimThing> {
+    let mut node = root;
+    for &idx in path {
+        node = node.children.get_mut(idx)?;
+    }
+    Some(node)
 }
 
 fn seed_fission_child(
@@ -360,22 +404,6 @@ fn check_secondary(
                 .map(|v| v < *ceil).unwrap_or(false)
         }
     }
-}
-
-fn find_node(root: &SimThing, id: SimThingId) -> Option<&SimThing> {
-    if root.id == id { return Some(root); }
-    for child in &root.children {
-        if let Some(n) = find_node(child, id) { return Some(n); }
-    }
-    None
-}
-
-fn find_node_mut(root: &mut SimThing, id: SimThingId) -> Option<&mut SimThing> {
-    if root.id == id { return Some(root); }
-    for child in &mut root.children {
-        if let Some(n) = find_node_mut(child, id) { return Some(n); }
-    }
-    None
 }
 
 fn remove_child_from_tree(node: &mut SimThing, child_id: SimThingId) -> bool {

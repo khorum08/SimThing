@@ -4,6 +4,32 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-21 - Fission path lookup optimization
+
+**Status:** In working tree, tests passing.
+
+**Landed:**
+
+- Fission resolution now builds a one-time `SimThingId -> tree path` index for
+  the boundary and reuses it for secondary-condition checks, child seeding, and
+  child attachment.
+- This removes repeated root-to-node scans for every fission event. The old
+  shape was quadratic on wide trees, which is exactly what `fission_stress`
+  exposed.
+
+**Observed smoke result:**
+
+- `fission_stress`, 20k to 40k slots in one boundary, dropped from ~6.3s
+  boundary time to ~1.23s boundary time while still executing 19,999 fissions.
+
+**Tests:** `cargo test --workspace` => 182 passed, 1 ignored timing diagnostic.
+
+**Next optimization:** Continue splitting the remaining fission boundary cost:
+threshold registry rebuild, topology rebuild, full shadow upload, and delta-log
+generation are now more likely than parent lookup to dominate.
+
+---
+
 ## 2026-05-21 - Benchmark attribution and boundary fast path
 
 **Status:** Merged to master (`0af46f4`).
@@ -224,7 +250,9 @@ dirty-row tracking.
 
 **Recent:** Static boundary skipping and sparse dirty rows are in the working
 tree. They remove the major non-GPU overhead from static map and intent stress
-runs; fission/tree-growth remains the large late-game CPU cost center.
+runs. Fission parent lookup is optimized in the working tree; remaining fission
+cost should be split across threshold/topology rebuild, full shadow upload, and
+delta-log generation.
 
 **Tabled:** `simthing-studio` designer UI.
 

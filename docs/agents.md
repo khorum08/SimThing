@@ -466,8 +466,9 @@ Integration highlights:
   through `BoundaryOutcome::aggregate_alerts`.
 
 **Still open (see `docs/worklog.md` Next session pickup):**
-- Fission/tree-growth CPU profiling: static boundaries can now skip readback and
-  upload, leaving `fission_stress` boundary execution as the major scale target.
+- Remaining fission boundary profiling: parent lookup is optimized; split the
+  remaining cost across threshold rebuild, topology rebuild, shadow upload, and
+  delta-log generation.
 - Full RON scenario files (tree + registry inline; today: `builtin` templates only).
 - Designer UI (`simthing-studio`) — tabled
 
