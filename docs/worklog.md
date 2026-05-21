@@ -230,7 +230,8 @@ interim measurement step.
 command submission, 2D large-workload dispatch, synthetic stress scenarios,
 benchmark attribution, static-boundary skipping, sparse dirty-row tracking,
 fission parent lookup optimization, boundary phase attribution, and indexed
-delta-log emission for fission-heavy growth through `26dc4e8`.
+delta-log emission for fission-heavy growth through `26dc4e8`. Design reference:
+`docs/design_v5.md` (PR #33); implementation review: `docs/chatgpt_implementation_review.md`.
 
 ### Todo (recommended order)
 
