@@ -6,6 +6,38 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-21 - Parking note after used-range threshold readback
+
+**Status:** Documentation parking update after `5cc4254`.
+
+**Current state:**
+
+- Last shipped optimization: threshold event candidate readback maps only the
+  used event range instead of the full candidate buffer.
+- Bench output now includes `tick_event_readback_bytes`, making the remaining
+  event-readback cost visible in stress runs.
+- Verified before parking:
+  - `cargo test --workspace` => 188 passed, 1 ignored timing diagnostic.
+  - `simthing bench --scenario scenarios/fission_stress.ron --days 1 --check`
+    => pass, about 63 ms/sim-day on this machine.
+  - `simthing bench --scenario scenarios/intent_stress.ron --days 1 --check`
+    => pass, about 18 ms/sim-day on this machine.
+
+**Parking rationale:**
+
+The repo is clean for tracked files and pushed. The next B2 step is not a
+one-sitting cleanup; it should be a careful design/implementation pass around
+fission-growth topology and threshold registration batching. Do not start it
+without enough room to run full GPU integration tests and stress guards.
+
+**Next safe target:**
+
+Design a fission-growth batching plan that preserves the current authority
+doctrine. Prefer retaining or append-patching GPU topology/threshold buffers
+only when slot assignment and event-kind semantics remain provably stable.
+
+---
+
 ## 2026-05-21 - Fission path lookup optimization
 
 **Status:** Merged to master (`166eb5b`).
@@ -344,14 +376,20 @@ reference: `docs/design_v5.md`; implementation review:
 - [x] **Replay record/replay integration hardening.** PR #36.
 - [x] **Boundary dirty-row shadow upload (B1).** Targeted boundary value-row
       uploads with full-upload fallback for rebuild/tombstone cases.
+- [x] **Safe B2 stable-buffer retention.** Topology-stable active boundaries
+      retain threshold and reduction buffers (`f470c5e`).
+- [x] **Used-range threshold event readback.** Candidate readback maps only
+      fired-event bytes and reports `tick_event_readback_bytes` (`5cc4254`).
 
 #### Next
 
 - [ ] **Retain/batch topology on fission growth boundaries (B2).** `fission_stress`
-      is ~53 ms/sim-day; remaining cost is threshold readback, fission seeding, and
-      full threshold/reduction topology rebuild. Retain CSR/reduction buffers where
-      tree shape is unchanged (safe retention started); batch or incrementally patch
-      fission growth if safe.
+      is roughly 60 ms/sim-day on the current local smoke run. Stable-boundary
+      retention and used-range event readback are done; remaining work is fission
+      growth itself: threshold registration rebuild, reduction topology upload,
+      fission seeding, full value upload after slot growth, and delta emission.
+      Batch or incrementally patch growth only if event-kind semantics and slot
+      topology remain provably correct.
 - [ ] **Document/prototype map-scale representation.** Keep current `SimThing` as
       semantic authoring state; evaluate arena/topology sidecars only after benchmark
       data shows tree representation pressure.

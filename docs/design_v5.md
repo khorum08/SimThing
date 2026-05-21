@@ -751,7 +751,7 @@ correctness. `weighted_mean_reduction_matches_cpu_oracle` is the proof of reduct
 ## 18. Implementation State
 
 **188/188 tests passing, zero warnings, master current through safe B2
-threshold/reduction retention.**
+stable-buffer retention and used-range threshold event readback.**
 
 ### Complete
 
@@ -782,11 +782,27 @@ threshold/reduction retention.**
 Static boundaries (no events, no pending work) skip entirely. Sparse dirty rows eliminated
 non-GPU overhead from static map runs.
 
+### GPU Readback Notes
+
+The tick pipeline still reads threshold events synchronously because boundary
+semantics depend on fired fission/fusion/expiry/alert events. The readback path
+has been narrowed: `read_event_candidates(n)` maps only
+`n * sizeof(ThresholdEvent)` bytes, capped by `n_thresholds`, instead of mapping
+the full candidate buffer. Bench output reports `tick_event_readback_bytes` so
+future optimization can separate "GPU produced many real events" from "CPU
+mapped excess capacity."
+
+This keeps the design GPU-forward: simulation values, reductions, overlays, and
+threshold detection stay on GPU; CPU only consumes the compact event list needed
+to perform boundary-authoritative tree and semantic mutations.
+
 ### Open Work
 
 - **Topology retain/batch on fission growth (B2)** — topology-stable active boundaries
   now retain threshold/reduction buffers; fission-growth boundaries still rebuild full
-  threshold/reduction topology.
+  threshold/reduction topology. Next work should either batch these rebuilds or
+  append-patch them only when slot order, parent-child CSR ranges, depth buckets,
+  and threshold `event_kind` mappings remain deterministic.
 - **Full RON scenario expansion** — inline tree/registry in scenario files; currently all
   scenarios are hardcoded Rust builtins.
 - **`simthing-studio` designer UI** — tabled.
