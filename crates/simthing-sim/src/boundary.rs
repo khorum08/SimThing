@@ -36,6 +36,7 @@ use crate::threshold_registry::{
     AggregateAlertEvent, AggregateAlertRegistration, ThresholdRegistry, ThresholdSemantic,
     VelocityAlertEvent, VelocityAlertRegistration,
 };
+use crate::tree_index::build_node_paths;
 use crate::tree_mutation::apply_structural_mutations;
 use std::time::Instant;
 
@@ -202,9 +203,11 @@ impl BoundaryProtocol {
         // Step 6: Fission and fusion. Spawns new SimThings + allocates slots.
         // Reads from shadow for secondary-condition checks and seeds newly
         // fissioned children from the parent's current GPU row.
+        let fission_paths = build_node_paths(&self.root);
         let fission_started = Instant::now();
         out.fission = resolve_fission_fusion(
             &mut self.root,
+            &fission_paths,
             &self.registry,
             &mut self.allocator,
             &events,
@@ -283,6 +286,7 @@ impl BoundaryProtocol {
             coord.shadow.resize(needed, 0.0);
         }
 
+        let structural_paths = build_node_paths(&self.root);
         let structural_started = Instant::now();
         out.maintainer = apply_structural_mutations(
             requests,
@@ -291,6 +295,7 @@ impl BoundaryProtocol {
             &mut self.registry,
             &mut coord.shadow,
             n_dims,
+            Some(&structural_paths),
         );
 
         // Remove / reparent tombstones may have invalidated lineage endpoints.

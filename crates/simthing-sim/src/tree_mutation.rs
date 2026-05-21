@@ -63,6 +63,8 @@
 use simthing_core::{DimensionRegistry, SimThing, SimThingId};
 use simthing_feeder::{BoundaryRequest, MaintainerOutcome};
 use simthing_gpu::SlotAllocator;
+use crate::tree_index::{detach_at_path, node_at_path, node_at_path_mut};
+use std::collections::HashMap;
 
 /// Apply every `BoundaryRequest` to the authoritative tree + slot table.
 ///
@@ -78,6 +80,7 @@ pub fn apply_structural_mutations(
     registry: &mut DimensionRegistry,
     values_shadow: &mut [f32],
     n_dims: usize,
+    node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
 ) -> MaintainerOutcome {
     let mut out = MaintainerOutcome::default();
 
@@ -92,18 +95,19 @@ pub fn apply_structural_mutations(
                     n_dims,
                     parent,
                     child,
+                    node_paths,
                     &mut out,
                 );
             }
             BoundaryRequest::Remove { target } => {
-                apply_remove(root, allocator, values_shadow, n_dims, target, &mut out);
+                apply_remove(root, allocator, values_shadow, n_dims, target, node_paths, &mut out);
             }
             BoundaryRequest::Reparent { child, new_parent } => {
-                apply_reparent(root, child, new_parent, &mut out);
+                apply_reparent(root, child, new_parent, node_paths, &mut out);
             }
             BoundaryRequest::AttachOverlay { target, overlay } => {
                 let oid = overlay.id;
-                if attach_overlay_to_node(root, target, overlay) {
+                if attach_overlay_to_node(root, target, overlay, node_paths) {
                     out.overlays += 1;
                     out.overlays_attached.push((target, oid));
                 } else {
@@ -135,6 +139,7 @@ fn apply_add_child(
     n_dims: usize,
     parent_id: SimThingId,
     child: SimThing,
+    node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
     out: &mut MaintainerOutcome,
 ) {
     // Collect every id in the subtree being added (typically just the
@@ -143,7 +148,7 @@ fn apply_add_child(
     collect_subtree_ids(&child, &mut new_ids);
 
     // Find parent first; if missing, do nothing.
-    let Some(parent) = find_node_mut(root, parent_id) else {
+    let Some(parent) = lookup_node_mut(root, parent_id, node_paths) else {
         out.rejected_unknown_target += 1;
         return;
     };
@@ -219,6 +224,7 @@ fn apply_remove(
     values_shadow: &mut [f32],
     n_dims: usize,
     target: SimThingId,
+    node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
     out: &mut MaintainerOutcome,
 ) {
     // Cannot remove the root via this path; it would orphan the tree.
@@ -228,7 +234,14 @@ fn apply_remove(
     }
 
     // Find the subtree, collect its ids, then detach + tombstone.
-    let Some(subtree) = detach_subtree(root, target) else {
+    let subtree = if let Some(paths) = node_paths {
+        paths
+            .get(&target)
+            .and_then(|path| detach_at_path(root, path))
+    } else {
+        detach_subtree(root, target)
+    };
+    let Some(subtree) = subtree else {
         out.rejected_unknown_target += 1;
         return;
     };
@@ -275,6 +288,7 @@ fn apply_reparent(
     root: &mut SimThing,
     child: SimThingId,
     new_parent: SimThingId,
+    node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
     out: &mut MaintainerOutcome,
 ) {
     if child == new_parent || child == root.id {
@@ -285,13 +299,13 @@ fn apply_reparent(
 
     // Verify the new parent exists *before* detaching. Otherwise a missing
     // new parent would leave us with an orphaned subtree to dispose of.
-    if find_node(root, new_parent).is_none() {
+    if lookup_node(root, new_parent, node_paths).is_none() {
         out.rejected_unknown_target += 1;
         return;
     }
 
     // Cannot reparent a node under its own descendant — would create a cycle.
-    if let Some(child_node) = find_node(root, child) {
+    if let Some(child_node) = lookup_node(root, child, node_paths) {
         if subtree_contains(child_node, new_parent) {
             out.rejected_unknown_target += 1;
             return;
@@ -301,11 +315,18 @@ fn apply_reparent(
         return;
     }
 
-    let Some(subtree) = detach_subtree(root, child) else {
+    let subtree = if let Some(paths) = node_paths {
+        paths
+            .get(&child)
+            .and_then(|path| detach_at_path(root, path))
+    } else {
+        detach_subtree(root, child)
+    };
+    let Some(subtree) = subtree else {
         out.rejected_unknown_target += 1;
         return;
     };
-    let Some(parent) = find_node_mut(root, new_parent) else {
+    let Some(parent) = lookup_node_mut(root, new_parent, node_paths) else {
         // Race window: someone removed new_parent between check and detach.
         // We checked first to make this practically impossible in single-
         // threaded code; defensive log + reattach to root as fallback.
@@ -328,16 +349,26 @@ fn subtree_contains(node: &SimThing, target: SimThingId) -> bool {
 // ── AttachOverlay ─────────────────────────────────────────────────────────────
 
 fn attach_overlay_to_node(
-    node: &mut SimThing,
+    root: &mut SimThing,
     target: SimThingId,
     overlay: simthing_core::Overlay,
+    node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
 ) -> bool {
-    if node.id == target {
-        node.add_overlay(overlay);
+    if let Some(paths) = node_paths {
+        if let Some(path) = paths.get(&target) {
+            if let Some(node) = node_at_path_mut(root, path) {
+                node.add_overlay(overlay);
+                return true;
+            }
+            return false;
+        }
+    }
+    if root.id == target {
+        root.add_overlay(overlay);
         return true;
     }
-    for c in &mut node.children {
-        if attach_overlay_to_node(c, target, overlay.clone()) {
+    for c in &mut root.children {
+        if attach_overlay_to_node(c, target, overlay.clone(), None) {
             return true;
         }
     }
@@ -345,6 +376,30 @@ fn attach_overlay_to_node(
 }
 
 // ── Tree helpers ──────────────────────────────────────────────────────────────
+
+fn lookup_node<'a>(
+    root: &'a SimThing,
+    id: SimThingId,
+    node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
+) -> Option<&'a SimThing> {
+    if let Some(paths) = node_paths {
+        paths.get(&id).and_then(|path| node_at_path(root, path))
+    } else {
+        find_node(root, id)
+    }
+}
+
+fn lookup_node_mut<'a>(
+    root: &'a mut SimThing,
+    id: SimThingId,
+    node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
+) -> Option<&'a mut SimThing> {
+    if let Some(paths) = node_paths {
+        paths.get(&id).and_then(|path| node_at_path_mut(root, path))
+    } else {
+        find_node_mut(root, id)
+    }
+}
 
 fn find_node<'a>(node: &'a SimThing, id: SimThingId) -> Option<&'a SimThing> {
     if node.id == id {
@@ -414,6 +469,7 @@ mod tests {
             &mut reg,
             &mut shadow,
             n_dims,
+            None,
         );
 
         assert_eq!(out.adds, 1);
@@ -444,6 +500,7 @@ mod tests {
             &mut reg,
             &mut shadow,
             n_dims,
+            None,
         );
 
         assert_eq!(out.rejected_unknown_target, 1);
@@ -476,6 +533,7 @@ mod tests {
             &mut reg,
             &mut shadow,
             n_dims,
+            None,
         );
 
         assert_eq!(out.adds, 1);
@@ -511,6 +569,7 @@ mod tests {
             &mut reg,
             &mut shadow,
             n_dims,
+            None,
         );
 
         assert_eq!(out.removes, 1);
@@ -539,6 +598,7 @@ mod tests {
             &mut reg,
             &mut shadow,
             n_dims,
+            None,
         );
 
         assert_eq!(out.rejected_unknown_target, 1);
@@ -574,6 +634,7 @@ mod tests {
             &mut reg,
             &mut shadow,
             n_dims,
+            None,
         );
 
         assert_eq!(out.reparents, 1);
@@ -608,6 +669,7 @@ mod tests {
             &mut reg,
             &mut shadow,
             n_dims,
+            None,
         );
 
         // Root reparenting is caught by the root-id check before cycle detection.
@@ -644,6 +706,7 @@ mod tests {
             &mut reg,
             &mut shadow,
             n_dims,
+            None,
         );
 
         assert_eq!(out.overlays, 1);
@@ -666,6 +729,7 @@ mod tests {
             &mut reg,
             &mut shadow,
             n_dims,
+            None,
         );
 
         assert_eq!(out.dimensions, 1);
