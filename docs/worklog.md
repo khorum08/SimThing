@@ -361,6 +361,8 @@ reference: `docs/design_v5.md`; implementation review:
 **Recent:** B1 targeted boundary value uploads are implemented with conservative
 full-upload fallbacks. B2 has started with safe retention: topology-stable active
 boundaries now retain threshold and reduction buffers instead of rebuilding them.
+Threshold event candidate readback now maps only the used event range rather than
+the full candidate buffer, and bench output reports `tick_event_readback_bytes`.
 R2 shares one boundary tree index across lifecycle, expiry, and fission; bench
 `--check` guards stress scenarios; replay integration test validates entry kinds
 and lineage parity. Next perf target: deeper fission-growth topology batching.

@@ -760,7 +760,7 @@ threshold/reduction retention.**
   2D dispatch, WeightedMean reduction, output_vectors threshold scanning, amortized growth
 - `simthing-feeder` — intent delta hot path, reusable fold accumulators, static boundary
   skip, sparse dirty-row tracking, player/AI intent two-phase path, patcher boundary/intent
-  separation
+  separation, used-range threshold event candidate readback
 - `simthing-sim` — full 13-step boundary protocol, `tree_index` for fission + structural
   lookups plus lifecycle/expiry reuse, fission lineage + scar semantics, fusion trigger registration, observability
   (shadow + live, mid-tick staleness documented), replay v2 (full payloads), aggregate alert

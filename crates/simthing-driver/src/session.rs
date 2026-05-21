@@ -38,6 +38,7 @@ pub struct RunSummary {
     pub tick_dirty_upload_ms: f64,
     pub tick_gpu_pipeline_ms: f64,
     pub tick_event_readback_ms: f64,
+    pub tick_event_readback_bytes: u64,
     pub submit_tick_patches_ms: f64,
     pub boundary_total_ms: f64,
     pub boundary_value_readback_ms: f64,
@@ -84,6 +85,7 @@ impl RunSummary {
             tick_dirty_upload_ms: 0.0,
             tick_gpu_pipeline_ms: 0.0,
             tick_event_readback_ms: 0.0,
+            tick_event_readback_bytes: 0,
             submit_tick_patches_ms: 0.0,
             boundary_total_ms: 0.0,
             boundary_value_readback_ms: 0.0,
@@ -216,6 +218,7 @@ impl SimSession {
             summary.tick_dirty_upload_ms += tick.dirty_upload_ms;
             summary.tick_gpu_pipeline_ms += tick.gpu_pipeline_ms;
             summary.tick_event_readback_ms += tick.event_readback_ms;
+            summary.tick_event_readback_bytes += tick.event_readback_bytes;
 
             if tick.boundary_reached {
                 let day = tick.day_index;
@@ -298,6 +301,7 @@ impl SimSession {
             summary.tick_dirty_upload_ms += tick.dirty_upload_ms;
             summary.tick_gpu_pipeline_ms += tick.gpu_pipeline_ms;
             summary.tick_event_readback_ms += tick.event_readback_ms;
+            summary.tick_event_readback_bytes += tick.event_readback_bytes;
 
             if tick.boundary_reached {
                 let day = tick.day_index;

@@ -80,6 +80,8 @@ pub struct TickOutcome {
     pub gpu_pipeline_ms: f64,
     /// Wall-clock time spent reading threshold event count/candidates.
     pub event_readback_ms: f64,
+    /// Bytes read back for threshold event count/candidates this tick.
+    pub event_readback_bytes: u64,
     /// Threshold crossings detected by Pass 7. Order is GPU-nondeterministic
     /// (atomicAdd race). Callers that need a canonical order must sort.
     pub events: Vec<ThresholdEvent>,
@@ -180,6 +182,12 @@ impl DispatchCoordinator {
                 state.read_event_candidates(count)
             }
         };
+        let event_readback_bytes = if state.n_thresholds == 0 {
+            0
+        } else {
+            std::mem::size_of::<u32>() as u64
+                + events.len() as u64 * std::mem::size_of::<ThresholdEvent>() as u64
+        };
         let event_readback_ms = event_readback_started.elapsed().as_secs_f64() * 1000.0;
 
         // 5. Advance counters.
@@ -203,6 +211,7 @@ impl DispatchCoordinator {
             dirty_upload_ms,
             gpu_pipeline_ms,
             event_readback_ms,
+            event_readback_bytes,
             events,
             boundary_reached,
             tick_index: self.tick_counter,

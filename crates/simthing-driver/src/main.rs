@@ -220,6 +220,10 @@ fn cmd_bench(args: &[String]) {
         "  tick_event_readback_ms: {:.3}",
         summary.tick_event_readback_ms
     );
+    println!(
+        "  tick_event_readback_bytes: {}",
+        summary.tick_event_readback_bytes
+    );
     println!("  boundary_ms: {:.3}", summary.boundary_total_ms);
     println!(
         "  boundary_ms_per_day: {:.6}",

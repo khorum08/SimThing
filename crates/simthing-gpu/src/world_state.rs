@@ -754,12 +754,13 @@ impl WorldGpuState {
     /// Pass 7 dispatch. Caller is responsible for passing the count read via
     /// `read_event_count()` first (or capping at `n_thresholds`).
     pub fn read_event_candidates(&self, n: u32) -> Vec<ThresholdEvent> {
+        let n = n.min(self.n_thresholds);
         if n == 0 {
             return Vec::new();
         }
-        let bytes = self.read_buffer_bytes(&self.event_candidates);
         let used = (n as usize) * std::mem::size_of::<ThresholdEvent>();
-        bytemuck::cast_slice(&bytes[..used]).to_vec()
+        let bytes = self.read_buffer_bytes_range(&self.event_candidates, 0, used as u64);
+        bytemuck::cast_slice(&bytes).to_vec()
     }
 
     pub fn values_len(&self) -> usize {
