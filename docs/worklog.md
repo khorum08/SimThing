@@ -246,7 +246,7 @@ RMW row readbacks with a GPU-side intent delta buffer/pass.
 
 ## 2026-05-22 — R2 remainder, bench guard, replay hardening
 
-**Status:** Landed locally (pending merge).
+**Status:** Merged to master (`8a0f28f`, PR #36).
 
 **Landed:**
 
@@ -309,9 +309,9 @@ and review-tier A1–A4 perf/docs work through `de1d16d` (PR #34). Design refere
 - [x] **Record/replay smoke (`rebellion_demo`)** — PR #34 (A3).
 - [x] **Share boundary tree index with structural mutations** — PR #34 (A4,
       `tree_index` module).
-- [x] **Extend shared tree index to lifecycle/expiry (R2).** pending PR.
-- [x] **Bench regression guard (`simthing bench --check`).** pending PR.
-- [x] **Replay record/replay integration hardening.** pending PR.
+- [x] **Extend shared tree index to lifecycle/expiry (R2).** PR #36.
+- [x] **Bench regression guard (`simthing bench --check`).** PR #36.
+- [x] **Replay record/replay integration hardening.** PR #36.
 
 #### Next
 
