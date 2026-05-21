@@ -261,16 +261,46 @@ RMW row readbacks with a GPU-side intent delta buffer/pass.
 
 ---
 
+## 2026-05-22 — B1 targeted boundary value upload
+
+**Status:** Ready to land; tests passing.
+
+**Landed:**
+
+- `sync_gpu_buffers` accepts an optional boundary dirty-slot list. When safe,
+  it uploads only rows touched by boundary CPU work instead of always flushing
+  the full `values` shadow back to GPU.
+- Full value upload remains the fallback after slot growth, dimension rebuild,
+  or conservative tombstone cases. The full boundary GPU readback is unchanged.
+- Boundary/bench metrics now report `boundary_value_rows_uploaded` and
+  `boundary_full_value_uploads`.
+- Added GPU integration coverage proving an overlay-only active boundary
+  attaches the overlay, preserves the GPU intent value, and avoids a full
+  value flush.
+
+**Tests:** `cargo test --workspace` => 187 passed, 1 ignored timing diagnostic.
+`simthing bench --scenario scenarios/fission_stress.ron --days 1 --check` and
+`simthing bench --scenario scenarios/intent_stress.ron --days 1 --check` pass.
+
+**Next optimization:** B2 — retain or batch threshold/reduction topology on
+fission growth boundaries. B1 deliberately keeps full value upload after GPU
+buffer rebuilds, so topology/threshold upload now remains the larger fission
+growth target.
+
+---
+
 ## Next session pickup
 
-**186/186** tests passing plus 1 ignored timing diagnostic, zero warnings.
+**187/187** tests passing plus 1 ignored timing diagnostic, zero warnings.
 `master` and `origin/master` include GPU intent-delta hot path, consolidated tick
 command submission, 2D large-workload dispatch, synthetic stress scenarios,
 benchmark attribution, static-boundary skipping, sparse dirty-row tracking,
 fission parent lookup optimization, boundary phase attribution, indexed
 delta-log emission, design v5 documentation (`2884465`), doc hygiene (`42117f7`),
-and review-tier A1–A4 perf/docs work through `de1d16d` (PR #34). Design reference:
-`docs/design_v5.md`; implementation review: `docs/chatgpt_implementation_review.md`.
+review-tier A1–A4 perf/docs work, R2 tree-index sharing, bench guards, replay
+hardening, and B1 targeted boundary value upload on the current branch. Design
+reference: `docs/design_v5.md`; implementation review:
+`docs/chatgpt_implementation_review.md`.
 
 ### Todo (recommended order)
 
@@ -312,13 +342,11 @@ and review-tier A1–A4 perf/docs work through `de1d16d` (PR #34). Design refere
 - [x] **Extend shared tree index to lifecycle/expiry (R2).** PR #36.
 - [x] **Bench regression guard (`simthing bench --check`).** PR #36.
 - [x] **Replay record/replay integration hardening.** PR #36.
+- [x] **Boundary dirty-row shadow upload (B1).** Targeted boundary value-row
+      uploads with full-upload fallback for rebuild/tombstone cases.
 
 #### Next
 
-- [ ] **Boundary dirty-row shadow upload (B1).** Keep full GPU readback at boundary
-      start; upload only rows touched by lifecycle, expiry, fission seeding, and
-      structural mutation instead of unconditional `upload_full_shadow`. Review
-      doc item 3; measurable via boundary upload bytes on `fission_stress`.
 - [ ] **Retain/batch topology on fission growth boundaries (B2).** `fission_stress`
       is ~53 ms/sim-day; remaining cost is threshold readback, fission seeding, and
       full threshold/reduction topology rebuild. Retain CSR/reduction buffers where
@@ -329,12 +357,14 @@ and review-tier A1–A4 perf/docs work through `de1d16d` (PR #34). Design refere
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds — behind
       the GPU performance path.
 
-**Recent:** R2 shares one boundary tree index across lifecycle, expiry, and fission;
-bench `--check` guards stress scenarios; replay integration test validates entry kinds
-and lineage parity. Next perf target: B1 dirty-row shadow upload.
+**Recent:** B1 targeted boundary value uploads are implemented with conservative
+full-upload fallbacks; R2 shares one boundary tree index across lifecycle, expiry,
+and fission; bench `--check` guards stress scenarios; replay integration test
+validates entry kinds and lineage parity. Next perf target: B2 topology/threshold
+retention on fission growth boundaries.
 
 **Tabled:** `simthing-studio` designer UI; unified `BoundaryIndex` single-pass
-boundary walk (review item 4 / C1 — Opus-tier, defer until B1–B2 land).
+boundary walk (review item 4 / C1 — Opus-tier, defer until B2 lands).
 
 ---
 

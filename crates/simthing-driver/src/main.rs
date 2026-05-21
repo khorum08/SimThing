@@ -286,6 +286,14 @@ fn cmd_bench(args: &[String]) {
     );
     println!("  boundary_upload_bytes: {}", summary.boundary_upload_bytes);
     println!(
+        "  boundary_value_rows_uploaded: {}",
+        summary.boundary_value_rows_uploaded
+    );
+    println!(
+        "  boundary_full_value_uploads: {}",
+        summary.boundary_full_value_uploads
+    );
+    println!(
         "  overlay_deltas_uploaded: {}",
         summary.overlay_deltas_uploaded
     );

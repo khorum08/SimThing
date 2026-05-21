@@ -38,6 +38,7 @@ use crate::threshold_registry::{
 };
 use crate::tree_index::build_node_paths;
 use crate::tree_mutation::apply_structural_mutations;
+use std::collections::HashSet;
 use std::time::Instant;
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -140,6 +141,8 @@ impl BoundaryProtocol {
             ..Default::default()
         };
         let n_dims = coord.n_dims() as usize;
+        let mut dirty_value_slots = Vec::new();
+        let mut force_full_value_upload = false;
 
         // The CPU shadow reflects only CPU-side patches; integration output
         // from Pass 1/2 lives only on the GPU. Before mutating the shadow
@@ -175,6 +178,9 @@ impl BoundaryProtocol {
             day as u32,
             Some(&boundary_paths),
         );
+        for &(target, _) in &out.lifecycle.dissolved_overlays {
+            push_slot_for_id(&self.allocator, target, &mut dirty_value_slots);
+        }
         out.timing.lifecycle_ms = lifecycle_started.elapsed().as_secs_f64() * 1000.0;
 
         // Step 5: Property expiry (threshold-driven + CPU-side TowardZero/AfterTicks).
@@ -196,7 +202,7 @@ impl BoundaryProtocol {
         // semantic projection.
         let fission_headroom = events.len();
         let pregrow_fission_started = Instant::now();
-        self.ensure_slot_capacity(
+        force_full_value_upload |= self.ensure_slot_capacity(
             self.allocator.capacity() + fission_headroom,
             patcher,
             coord,
@@ -220,6 +226,12 @@ impl BoundaryProtocol {
             n_dims,
             day as u32,
         );
+        for &(_, child) in &out.fission.fission_pairs {
+            push_slot_for_id(&self.allocator, child, &mut dirty_value_slots);
+        }
+        for &(parent, _) in &out.fission.fusion_pairs {
+            push_slot_for_id(&self.allocator, parent, &mut dirty_value_slots);
+        }
         out.timing.fission_ms = fission_started.elapsed().as_secs_f64() * 1000.0;
 
         // Lineage maintenance:
@@ -273,7 +285,7 @@ impl BoundaryProtocol {
         // Pre-grow for AddChild subtrees so apply_structural_mutations can
         // project initialized semantic properties into the dense shadow.
         let pregrow_add_child_started = Instant::now();
-        self.ensure_slot_capacity(
+        force_full_value_upload |= self.ensure_slot_capacity(
             self.allocator.capacity() + projected_add_child_slots(&requests),
             patcher,
             coord,
@@ -301,6 +313,12 @@ impl BoundaryProtocol {
             n_dims,
             Some(&structural_paths),
         );
+        for &id in &out.maintainer.allocated {
+            push_slot_for_id(&self.allocator, id, &mut dirty_value_slots);
+        }
+        if !out.maintainer.tombstoned.is_empty() {
+            force_full_value_upload = true;
+        }
 
         // Remove / reparent tombstones may have invalidated lineage endpoints.
         self.prune_stale_fission_lineage();
@@ -321,8 +339,10 @@ impl BoundaryProtocol {
                 new_n_dims,
             );
             state.rebuild_for_registry(&self.registry);
+            force_full_value_upload = true;
         } else if !out.maintainer.dimensions_added.is_empty() {
             state.rebuild_for_registry(&self.registry);
+            force_full_value_upload = true;
         }
         out.timing.dimension_rebuild_ms =
             dimension_rebuild_started.elapsed().as_secs_f64() * 1000.0;
@@ -331,11 +351,17 @@ impl BoundaryProtocol {
         // (AddChild). Resize shadow once more so step 9 uploads the full
         // capacity.
         let final_capacity_started = Instant::now();
-        self.ensure_slot_capacity(self.allocator.capacity(), patcher, coord, state);
+        force_full_value_upload |=
+            self.ensure_slot_capacity(self.allocator.capacity(), patcher, coord, state);
         out.timing.final_capacity_ms = final_capacity_started.elapsed().as_secs_f64() * 1000.0;
 
         // Step 9: Rebuild GPU buffers from current tree + upload shadow.
         let gpu_sync_started = Instant::now();
+        let dirty_value_slots = if force_full_value_upload {
+            None
+        } else {
+            Some(dedup_slots(dirty_value_slots))
+        };
         let gpu_out = sync_gpu_buffers(
             &self.root,
             &self.registry,
@@ -345,6 +371,7 @@ impl BoundaryProtocol {
             &self.velocity_alerts,
             &self.aggregate_alerts,
             &self.fission_lineage,
+            dirty_value_slots.as_deref(),
         );
         out.timing.gpu_sync_ms = gpu_sync_started.elapsed().as_secs_f64() * 1000.0;
         // Adopt the new threshold registry for the next day.
@@ -359,6 +386,8 @@ impl BoundaryProtocol {
             reduction_edges: gpu_out.reduction_edges,
             reduction_slots: gpu_out.reduction_slots,
             boundary_upload_bytes: gpu_out.boundary_upload_bytes,
+            value_rows_uploaded: gpu_out.value_rows_uploaded,
+            full_value_upload: gpu_out.full_value_upload,
         };
 
         let delta_log_started = Instant::now();
@@ -515,6 +544,7 @@ impl BoundaryProtocol {
             &self.velocity_alerts,
             &self.aggregate_alerts,
             &self.fission_lineage,
+            None,
         );
         if let Some(new_reg) = out.new_threshold_registry {
             self.cpu_threshold_registry = new_reg;
@@ -542,9 +572,9 @@ impl BoundaryProtocol {
         patcher: &mut TransformPatcher,
         coord: &mut DispatchCoordinator,
         state: &mut WorldGpuState,
-    ) {
+    ) -> bool {
         if required as u32 <= coord.n_slots() {
-            return;
+            return false;
         }
 
         let mut new_n_slots = coord.n_slots().max(1);
@@ -557,7 +587,20 @@ impl BoundaryProtocol {
         coord.resize_slots(new_n_slots);
         patcher.resize(new_n_slots as usize);
         state.rebuild_for_slots(new_n_slots, &self.registry);
+        true
     }
+}
+
+fn push_slot_for_id(allocator: &SlotAllocator, id: SimThingId, slots: &mut Vec<u32>) {
+    if let Some(slot) = allocator.slot_of(id) {
+        slots.push(slot);
+    }
+}
+
+fn dedup_slots(mut slots: Vec<u32>) -> Vec<u32> {
+    let mut seen = HashSet::new();
+    slots.retain(|slot| seen.insert(*slot));
+    slots
 }
 
 fn projected_add_child_slots(requests: &[BoundaryRequest]) -> usize {

@@ -228,7 +228,7 @@ impl DispatchCoordinator {
     }
 
     /// Upload one slot's row from the shadow to the GPU. Internal helper.
-    fn upload_row(&self, state: &WorldGpuState, slot: u32) {
+    pub fn upload_row(&self, state: &WorldGpuState, slot: u32) {
         let n_dims = self.n_dims as usize;
         let base = (slot as usize) * n_dims;
         let row = &self.shadow[base..base + n_dims];

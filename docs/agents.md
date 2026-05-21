@@ -500,14 +500,13 @@ Integration highlights:
   on GPU shows up in `observe_live` but not in shadow-based `observe`.
 
 **Still open (see `docs/worklog.md` Next session pickup):**
-- **B1:** boundary dirty-row shadow upload (full readback stays; targeted upload).
 - **B2:** retain/batch threshold/reduction topology on fission growth boundaries.
-- **R2 remainder:** share `tree_index` with lifecycle/expiry walks.
 - Full RON scenario files (tree + registry inline; today: `builtin` templates only).
 - Designer UI (`simthing-studio`) — tabled
 
-**Shipped (PR #34):** intent-fold accumulator reuse, mid-tick observability docs,
-`rebellion_demo` record/replay smoke, `tree_index` for fission + structural lookups.
+**Shipped recently:** intent-fold accumulator reuse, mid-tick observability docs,
+`rebellion_demo` record/replay smoke, `tree_index` for fission + structural/lifecycle/expiry
+lookups, and B1 targeted boundary value-row upload.
 
 **Built (playability):**
 - `crates/simthing-driver` exposes `simthing record`, `simthing replay`, and

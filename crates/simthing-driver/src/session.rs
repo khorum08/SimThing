@@ -57,6 +57,8 @@ pub struct RunSummary {
     pub boundaries_skipped: u64,
     pub boundary_readback_bytes: u64,
     pub boundary_upload_bytes: u64,
+    pub boundary_value_rows_uploaded: u64,
+    pub boundary_full_value_uploads: u64,
     pub overlay_deltas_uploaded: u64,
     pub threshold_regs_uploaded: u64,
     pub reduction_edges_uploaded: u64,
@@ -101,6 +103,8 @@ impl RunSummary {
             boundaries_skipped: 0,
             boundary_readback_bytes: 0,
             boundary_upload_bytes: 0,
+            boundary_value_rows_uploaded: 0,
+            boundary_full_value_uploads: 0,
             overlay_deltas_uploaded: 0,
             threshold_regs_uploaded: 0,
             reduction_edges_uploaded: 0,
@@ -236,6 +240,11 @@ impl SimSession {
                 summary.fission_events += outcome.fission.fissions_executed;
                 accumulate_boundary_timing(&mut summary, outcome.timing);
                 summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
+                summary.boundary_value_rows_uploaded +=
+                    outcome.gpu_sync.value_rows_uploaded as u64;
+                if outcome.gpu_sync.full_value_upload {
+                    summary.boundary_full_value_uploads += 1;
+                }
                 summary.overlay_deltas_uploaded += outcome.gpu_sync.overlay_deltas_uploaded as u64;
                 summary.threshold_regs_uploaded += outcome.gpu_sync.threshold_regs_uploaded as u64;
                 summary.reduction_edges_uploaded += outcome.gpu_sync.reduction_edges as u64;
@@ -320,6 +329,11 @@ impl SimSession {
                 summary.fission_events += outcome.fission.fissions_executed;
                 accumulate_boundary_timing(&mut summary, outcome.timing);
                 summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
+                summary.boundary_value_rows_uploaded +=
+                    outcome.gpu_sync.value_rows_uploaded as u64;
+                if outcome.gpu_sync.full_value_upload {
+                    summary.boundary_full_value_uploads += 1;
+                }
                 summary.overlay_deltas_uploaded += outcome.gpu_sync.overlay_deltas_uploaded as u64;
                 summary.threshold_regs_uploaded += outcome.gpu_sync.threshold_regs_uploaded as u64;
                 summary.reduction_edges_uploaded += outcome.gpu_sync.reduction_edges as u64;

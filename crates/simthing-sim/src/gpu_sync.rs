@@ -55,6 +55,8 @@ pub struct GpuSyncOutcome {
     pub reduction_edges:         u32,
     pub reduction_slots:         u32,
     pub boundary_upload_bytes:   u64,
+    pub value_rows_uploaded:     u32,
+    pub full_value_upload:       bool,
 }
 
 /// Rebuild Pass 3 and Pass 7 GPU buffers from the current tree state.
@@ -68,6 +70,7 @@ pub fn sync_gpu_buffers(
     velocity_alerts: &[VelocityAlertRegistration],
     aggregate_alerts: &[AggregateAlertRegistration],
     fission_lineage: &[FissionLineageRecord],
+    dirty_value_slots: Option<&[u32]>,
 ) -> GpuSyncOutcome {
     let mut out = GpuSyncOutcome::default();
 
@@ -103,10 +106,22 @@ pub fn sync_gpu_buffers(
     out.threshold_regs_uploaded = n_regs;
     out.new_threshold_registry = Some(cpu_reg);
 
-    // 3. Values shadow flush — upload everything after structural changes.
-    //    Callers that only had dirty-row patches can call upload_row individually;
-    //    here we flush the full shadow to keep correctness simple at boundary time.
-    coord.upload_full_shadow(state);
+    // 3. Values shadow flush. Boundaries that only mutate known slots can
+    //    upload those rows; structural rebuilds and conservative tombstone
+    //    cases still force a full shadow flush.
+    let value_upload_bytes = if let Some(slots) = dirty_value_slots {
+        for &slot in slots {
+            coord.upload_row(state, slot);
+        }
+        out.value_rows_uploaded = slots.len() as u32;
+        out.full_value_upload = false;
+        slots.len() as u64 * state.n_dims as u64 * std::mem::size_of::<f32>() as u64
+    } else {
+        coord.upload_full_shadow(state);
+        out.value_rows_uploaded = state.n_slots;
+        out.full_value_upload = true;
+        coord.shadow.len() as u64 * std::mem::size_of::<f32>() as u64
+    };
 
     // 4. Reduction topology + per-column rule table (Passes 4–6).
     //    Topology depends on tree shape and slot assignments; rebuilt every
@@ -146,7 +161,7 @@ pub fn sync_gpu_buffers(
         depth_ranges,
     );
     out.reduction_edges = topo.child_indices.len() as u32;
-    out.boundary_upload_bytes = coord.shadow.len() as u64 * std::mem::size_of::<f32>() as u64
+    out.boundary_upload_bytes = value_upload_bytes
         + deltas.len() as u64 * std::mem::size_of::<simthing_gpu::OverlayDelta>() as u64
         + ranges.len() as u64 * std::mem::size_of::<simthing_gpu::SlotDeltaRange>() as u64
         + gpu_regs.len() as u64 * std::mem::size_of::<simthing_gpu::ThresholdRegistration>() as u64

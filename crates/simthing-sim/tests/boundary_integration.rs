@@ -207,6 +207,72 @@ fn fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean() {
 }
 
 #[test]
+fn boundary_intent_attach_uses_targeted_value_upload() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    reg.register(loyalty_with_fission());
+    let (world, alloc, cohort_id) = build_initial_world(&mut reg);
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let n_dims = reg.total_columns as u32;
+
+    let mut state = WorldGpuState::new(ctx, &reg, 16);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(16);
+    let mut coord = DispatchCoordinator::new(16, n_dims, 1);
+    let (tx, rx) = feeder_channel();
+
+    let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
+    let base = cohort_slot * n_dims as usize;
+    coord.shadow[base + amount_off] = 0.5;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    tx.submit_player_intent(
+        cohort_id,
+        Overlay {
+            id: OverlayId::new(),
+            kind: OverlayKind::Policy,
+            source: OverlaySource::Player,
+            affects: vec![cohort_id],
+            transform: PropertyTransformDelta {
+                property_id: pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.8))],
+            },
+            lifecycle: OverlayLifecycle::Permanent,
+        },
+    )
+    .unwrap();
+
+    let tick = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
+    );
+    assert!(tick.boundary_reached);
+
+    let outcome = proto.execute(tick.events, &mut patcher, &mut coord, &mut state, 1);
+    assert!(
+        !outcome.gpu_sync.full_value_upload,
+        "overlay-only boundary should not flush every value row"
+    );
+    assert_eq!(outcome.gpu_sync.value_rows_uploaded, 0);
+
+    let values = state.read_values();
+    assert_eq!(values[base + amount_off].to_bits(), 0.8f32.to_bits());
+}
+
+#[test]
 fn fission_beyond_initial_headroom_grows_gpu_state() {
     let Some(ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
