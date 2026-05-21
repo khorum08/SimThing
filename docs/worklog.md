@@ -32,7 +32,7 @@ generation are now more likely than parent lookup to dominate.
 
 ## 2026-05-21 - Fission delta-log indexing and boundary attribution
 
-**Status:** In working tree, tests passing.
+**Status:** Merged to master (`26dc4e8`).
 
 **Landed:**
 
@@ -52,9 +52,8 @@ generation are now more likely than parent lookup to dominate.
   ms/sim-day. Boundary time is ~30 ms and delta-log generation is ~7.6 ms,
   down from ~1.09 s before indexing.
 
-**Tests:** `cargo check --workspace`, `cargo test -p simthing-sim
-delta_log::tests`, and `cargo test --workspace` => 182 passed, 1 ignored
-timing diagnostic.
+**Tests:** `cargo test --workspace` => 182 passed, 1 ignored timing
+diagnostic.
 
 **Next optimization:** With parent lookup and delta-log generation no longer
 dominating, the remaining fission stress cost is the useful GPU-facing work:
@@ -229,10 +228,9 @@ interim measurement step.
 **182/182** tests passing plus 1 ignored timing diagnostic, zero warnings.
 `master` and `origin/master` include GPU intent-delta hot path, consolidated tick
 command submission, 2D large-workload dispatch, synthetic stress scenarios,
-benchmark attribution, static-boundary skipping, sparse dirty-row tracking, and
-fission parent lookup optimization through `166eb5b`. Working tree adds
-boundary phase attribution and indexed delta-log emission for fission-heavy
-growth.
+benchmark attribution, static-boundary skipping, sparse dirty-row tracking,
+fission parent lookup optimization, boundary phase attribution, and indexed
+delta-log emission for fission-heavy growth through `26dc4e8`.
 
 ### Todo (recommended order)
 
