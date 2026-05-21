@@ -226,7 +226,7 @@ RMW row readbacks with a GPU-side intent delta buffer/pass.
 
 ## 2026-05-22 — A1–A4: fold reuse, observability docs, smoke, tree index
 
-**Status:** Ready to merge.
+**Status:** Merged to master (`de1d16d`, PR #34).
 
 **Landed:**
 
@@ -251,9 +251,9 @@ RMW row readbacks with a GPU-side intent delta buffer/pass.
 command submission, 2D large-workload dispatch, synthetic stress scenarios,
 benchmark attribution, static-boundary skipping, sparse dirty-row tracking,
 fission parent lookup optimization, boundary phase attribution, indexed
-delta-log emission for fission-heavy growth, and design v5 documentation through
-`2884465`. Design reference: `docs/design_v5.md` (PR #33); implementation review:
-`docs/chatgpt_implementation_review.md`.
+delta-log emission, design v5 documentation (`2884465`), doc hygiene (`42117f7`),
+and review-tier A1–A4 perf/docs work through `de1d16d` (PR #34). Design reference:
+`docs/design_v5.md`; implementation review: `docs/chatgpt_implementation_review.md`.
 
 ### Todo (recommended order)
 
@@ -287,30 +287,38 @@ delta-log emission for fission-heavy growth, and design v5 documentation through
       (`0af46f4`).
 - [x] **Profile fission/tree-growth CPU cost** — boundary phase timing + indexed
       delta-log emission (`26dc4e8`, `166eb5b`).
-- [x] **Reuse intent-fold accumulators on `TransformPatcher`** — A1.
-- [x] **Document mid-tick `observe` vs `observe_live` staleness** — A2.
-- [x] **Record/replay smoke (`rebellion_demo`)** — A3.
-- [x] **Share boundary tree index with structural mutations** — A4 (`tree_index`).
+- [x] **Reuse intent-fold accumulators on `TransformPatcher`** — PR #34 (A1).
+- [x] **Document mid-tick `observe` vs `observe_live` staleness** — PR #34 (A2).
+- [x] **Record/replay smoke (`rebellion_demo`)** — PR #34 (A3).
+- [x] **Share boundary tree index with structural mutations** — PR #34 (A4,
+      `tree_index` module).
 
 #### Next
 
-- [ ] **Reduce remaining fission-heavy GPU sync/rebuild cost.** `fission_stress`
-      is down to ~53 ms/sim-day; next useful work is retaining/batching
-      threshold and reduction topology updates across growth boundaries where
-      semantics allow it.
-- [ ] **Document/prototype map-scale representation.** Keep current
-      `SimThing` as semantic authoring state; evaluate arena/topology sidecars
-      only after benchmark data shows tree representation pressure.
-- [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds remains
-      useful, but it is behind the GPU performance path.
+- [ ] **Boundary dirty-row shadow upload (B1).** Keep full GPU readback at boundary
+      start; upload only rows touched by lifecycle, expiry, fission seeding, and
+      structural mutation instead of unconditional `upload_full_shadow`. Review
+      doc item 3; measurable via boundary upload bytes on `fission_stress`.
+- [ ] **Retain/batch topology on fission growth boundaries (B2).** `fission_stress`
+      is ~53 ms/sim-day; remaining cost is threshold readback, fission seeding, and
+      full threshold/reduction topology rebuild. Retain CSR/reduction buffers where
+      tree shape only appends.
+- [ ] **Extend shared tree index to lifecycle/expiry (R2 remainder).** Fission and
+      structural mutations use `tree_index`; overlay lifecycle and property expiry
+      still walk independently.
+- [ ] **Document/prototype map-scale representation.** Keep current `SimThing` as
+      semantic authoring state; evaluate arena/topology sidecars only after benchmark
+      data shows tree representation pressure.
+- [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds — behind
+      the GPU performance path.
 
-**Recent:** Static boundary skipping, sparse dirty rows, fission parent lookup,
-and indexed delta-log emission remove the major non-GPU overhead from static
-map, intent, and fission-growth stress runs. Remaining fission cost is now
-mostly threshold event readback, actual fission work, and GPU sync/topology
-upload.
+**Recent:** PR #34 landed A1–A4 from the implementation review (fold reuse,
+observability mid-tick docs, record/replay smoke, indexed structural lookups).
+Static map and intent stress paths are largely GPU-submit bound; fission growth
+still spends boundary time on readback, topology rebuild, and full shadow upload.
 
-**Tabled:** `simthing-studio` designer UI.
+**Tabled:** `simthing-studio` designer UI; unified `BoundaryIndex` single-pass
+boundary walk (review item 4 / C1 — Opus-tier, defer until B1–B2 land).
 
 ---
 
