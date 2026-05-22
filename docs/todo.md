@@ -127,7 +127,14 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
       All 5 handoff acceptance criteria met + 1 supplementary.
 - [ ] **PR 5** — capability runtime state + boundary handler
       (`boundary/capability_handler.rs`). Called by session coordinator,
-      not embedded in `BoundaryProtocol`.
+      not embedded in `BoundaryProtocol`. **Handoff digest for Codex 5.5
+      at `docs/workshop/pr5_handoff_digest.md`** — includes file list,
+      type signatures, divergences to resolve (max_active shape,
+      missing `categories` map on `CapabilityTreeDefinition`,
+      `progress_col` / `research_cost` on `CapabilityDefinition`,
+      instance-by-tree_thing_id lookup), acceptance tests, and
+      gotchas from PRs 2-4 (especially the pass-order trap and
+      `OverlayId` non-determinism).
 - [ ] **PR 6** — preview + mutual exclusivity completion (`preview/capability_preview.rs`).
 
 **Known divergences between handoff doc and PR 1 code (Opus must resolve):**

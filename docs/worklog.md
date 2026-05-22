@@ -109,6 +109,36 @@ for crate naming; mechanism decisions remain valid.
 
 ---
 
+## 2026-05-22 — PR 5 handoff digest for Codex 5.5
+
+**Status:** No code change. Authored
+`docs/workshop/pr5_handoff_digest.md` so the next agent can land PR 5
+cold without re-discovering everything PRs 2-4 settled.
+
+The digest covers:
+
+- Files to create / modify (with exact paths).
+- The five divergences PR 5 must resolve (`MaxActivePolicy` shape;
+  add `categories` map to `CapabilityTreeDefinition`; add
+  `progress_col` + `research_cost` to `CapabilityDefinition`;
+  instance lookup by tree_thing_id vs owner_id; new
+  `CapabilityTreeError` enum).
+- All 10 handoff acceptance tests + suggested implementation order.
+- Eight gotchas distilled from PRs 2-4, especially the GPU pass-order
+  trap (`intent_deltas → snapshot → velocity → intensity → overlay →
+  threshold` — intent and shadow paths can't fire single-tick threshold
+  crossings; only overlay deltas can) and `OverlayId` non-determinism.
+- Test fixture patterns from PR 3 to copy / adapt.
+- Cross-crate layering recommendation: add
+  `simthing-sim = { path = "../simthing-sim" }` to
+  `simthing-spec/Cargo.toml` (safe — `simthing-sim` does not depend
+  on `simthing-spec`).
+
+Branch state at handoff: `master` @ `aac6d1f`, 245 tests passing, 1
+ignored, zero warnings.
+
+---
+
 ## 2026-05-22 — simthing-spec PR 4: capability unlock registration bridge
 
 **Status:** Landed (local). First cross-crate PR of the spec lane.
