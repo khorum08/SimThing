@@ -1,13 +1,16 @@
 # SimThing Todo Log
 
 Current parking state after **B2 fission-growth A/B/C complete** and
-**`simthing-spec` PR 1 lane stabilized** — PR #46 (`7eb48dc`) reverted the
-exploratory PR #45 vertical slice; simulation crates unchanged except the
-revert itself.
+**`simthing-spec` PRs 2-8 landed**. `master` and `origin/master` are parked at
+`8a8061c` (`simthing-spec PR 8: scripted event compiler templates.`).
 
-**Tests:** `cargo test --workspace` → **212** passed, **1** ignored timing
-diagnostic, zero warnings. `fission_stress` ~55 ms/sim-day with
-`boundary_gpu_sync_ms` ~2.0 ms (B2 A/B/C complete).
+**Tests:** `cargo test --workspace` -> **277** passed, **1** ignored timing
+diagnostic, zero warnings. `cargo build --workspace --tests` also completes
+with zero warnings.
+
+**Worktree:** clean for tracked files at parking time. Untracked
+`.claude/worktrees/` and `demo.replay.ldjson` are present and intentionally
+left untouched.
 
 ---
 
@@ -166,7 +169,23 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
       runner, threshold registry upload, parser, or EML. Tests:
       `tests/pr8_event_compiler.rs` — 7 passing scaffold tests.
 
+### Parking notes / next candidates
+
+- [ ] **PR 9 candidate** — execute compiled event definitions at boundary
+      time. PR 8 intentionally stopped at typed templates.
+- [ ] Assemble session/driver ownership for capability tree instances and
+      per-faction state maps.
+- [ ] Clean up PR 5's temporary `simthing-spec -> simthing-sim` /
+      `simthing-spec -> simthing-gpu` threshold dependencies by moving the
+      threshold semantic surface into a lower crate.
+- [ ] B2 append-only capability unlock integration remains deferred; current
+      PR 4 path is full-rebuild.
+
 **Known divergences between handoff doc and PR 1 code (Opus must resolve):**
+
+Historical notes below were written before PRs 2-8 landed. Several are now
+resolved; keep this section as archaeology until the handoff docs are folded
+into the current code.
 
 1. `CapabilityCategorySpec` has no `id` field — handoff §1.4 references one;
    actual struct identifies category by `property_namespace::property_name`.

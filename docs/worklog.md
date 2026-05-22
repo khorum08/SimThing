@@ -6,6 +6,29 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — Parking state after simthing-spec PRs 5-8
+
+**Status:** `master` and `origin/master` are parked at `8a8061c`
+(`simthing-spec PR 8: scripted event compiler templates.`). Tracked files were
+clean before this parking-doc update; untracked `.claude/worktrees/` and
+`demo.replay.ldjson` are present and left untouched.
+
+**Landed this session:**
+- PR 5 — capability runtime state and boundary handler.
+- PR 6 — capability preview reports and full activate-switch verification.
+- PR 7 — canonical Script IR and CPU evaluator.
+- PR 8 — trigger/effect/event compiler templates.
+
+**Verification:** `cargo test --workspace` passed with 277 tests, 1 ignored,
+and zero warnings. `cargo build --workspace --tests` completed with zero
+warnings.
+
+**Next candidates:** PR 9 boundary-time event execution, session/driver
+assembly for capability instances and state, threshold dependency cleanup, and
+B2 append-only capability unlock integration.
+
+---
+
 ## 2026-05-22 — PR 8 trigger/effect/event compiler templates
 
 **Status:** Implemented PR 8 as a conservative compiler-template slice.
