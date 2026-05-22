@@ -6,9 +6,30 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — Stability check: PR 1 lane ready (`7eb48dc`)
+
+**Status:** Confirmed stable on `master` after PR #46 merge.
+
+**Verification (`cargo test --workspace`):**
+- **212 passed**, **1 ignored** (GPU pipeline timing diagnostic), zero warnings.
+- All simulation/integration suites green (core, feeder, gpu, sim, driver).
+- `simthing-spec`: 8 tests (2 unit + 6 integration) — RON load, round-trip,
+  validation only.
+
+**PR 1 boundary confirmed:**
+- `crates/simthing-spec` — 16 source files; no `compile/`, `boundary/`,
+  `preview/`, or `runtime/` modules.
+- Depends on **`simthing-core` only** (not feeder/sim/gpu/driver).
+- No `CapabilityUnlockRegistration`, `ThresholdSemantic::CapabilityUnlock`,
+  or builder/handler symbols anywhere in `crates/`.
+
+**Next:** PR 2 — property + overlay spec compiler.
+
+---
+
 ## 2026-05-22 — Revert `simthing-spec` to PR 1 lane
 
-**Status:** Landed locally (reverts exploratory PRs 3–5 code from PR #45).
+**Status:** Merged PR #46 (`7eb48dc`).
 
 **Kept:** `crates/simthing-spec` workspace membership; authoring structs
 (`GameModeSpec`, `DomainPackSpec`, `CapabilityTreeSpec`, …); generic
@@ -20,7 +41,7 @@ Running log of what's done and what's next, across sessions.
 (sim). `ActivationMode::OnPrereqMet` removed from authored spec (runtime-only,
 later PR).
 
-**Tests:** 209 passed + 1 ignored.
+**Tests:** 212 passed + 1 ignored.
 
 **Next:** PR 2 property/overlay spec compiler per revised ladder in `todo.md`.
 
@@ -28,7 +49,11 @@ later PR).
 
 ## 2026-05-22 — Phase 0 doc pivot + Phase 1 `simthing-spec` PRs 1–5 (superseded)
 
-**Status:** Landed locally (branch pending push).
+> **SUPERSEDED — do not implement from this section.** PR #45 was reverted by PR #46.
+> The current lane is PR 1 authoring-only (merged), then **PR 2** property/overlay
+> spec compiler. See the stability entry above and `docs/todo.md`.
+
+**Status (historical):** Landed as PR #45, then fully reverted by PR #46 (`7eb48dc`).
 
 **Phase 0 — doc ingestion:**
 - Architectural pivot synced across canonical docs + workshop files.
@@ -43,12 +68,13 @@ later PR).
 - `CapabilityTreeBoundaryHandler` → activate/suspend, prereq reset, `OnPrereqMet` sweep,
   `max_active: 1` mutual exclusivity.
 - `preview_capability_effect` API.
-- PR 3 plumbing: `CapabilityUnlockRegistration` (feeder),
+- PR 4 plumbing (historical numbering): `CapabilityUnlockRegistration` (feeder),
   `ThresholdSemantic::CapabilityUnlock` + `append_capability_unlocks` (sim).
 
-**Tests:** 212 passed + 1 ignored (`cargo test --workspace`).
+**Tests (at time of PR #45):** 212 passed + 1 ignored (`cargo test --workspace`).
 
-**Next:** Driver session wiring (attach tree, register unlocks, route boundary events).
+**Next (historical — invalid after PR #46):** ~~Driver session wiring~~ — do not
+implement; follow revised PR ladder in `docs/todo.md` (PR 2 next).
 
 ---
 
@@ -65,7 +91,7 @@ later PR).
 - **`simthing-spec` depends on:** `simthing-core`, `simthing-feeder` only.
 - **`simthing-spec` must not depend on:** `simthing-sim`, `simthing-gpu`.
 - **`simthing-driver` may depend on** `simthing-spec` for session assembly.
-- Minimal sim touch in **PR 3 only:** `CapabilityUnlockRegistration` in feeder,
+- Minimal sim touch in **PR 4** (revised ladder): `CapabilityUnlockRegistration` in feeder,
   `ThresholdSemantic::CapabilityUnlock` in sim.
 
 **Canonical handoff:** `docs/workshop/simthing_spec_workshop.md` (decision log D0–D21,
@@ -239,12 +265,13 @@ the relative win grows in longer / sparser simulations.
 
 **Next session pickup (B2 complete; spec-layer track is primary):**
 
-1. **`simthing-spec` PR 2** — property + overlay spec compiler (PR 1 authoring
-   lane stable).
-2. **`simthing-spec` PRs 3–6** — builder, unlock bridge, boundary handler, preview
-   (sequential; see revised ladder in `todo.md`).
-3. **Alternate (parallel):** `tick_event_readback_ms` deep dive (Opus) or
-   `TopologyState` cache-integrity `debug_assert!` (Sonnet).
+1. **`simthing-spec` PR 2** — property + overlay spec compiler only (PR 1 authoring
+   lane stable on `master` @ `7eb48dc`).
+
+**Alternate (parallel, not blocking PR 2):** `tick_event_readback_ms` deep dive (Opus) or
+`TopologyState` cache-integrity `debug_assert!` (Sonnet). PRs 3–6 follow sequentially
+after PR 2 — see revised ladder in `docs/todo.md`; do not implement from superseded
+sections above.
 
 **Open guardrails:**
 
@@ -1004,11 +1031,15 @@ growth target.
 
 ## Next session pickup
 
-**202/202** tests passing plus 1 ignored timing diagnostic, zero warnings.
-`master` includes V6 guardrails Priorities 1–3 (PR #39, `e275789`). Local
-ahead of `origin/master`:
+**212** tests passing plus **1** ignored timing diagnostic, zero warnings.
+`master` @ `7eb48dc` — B2 fission-growth A/B/C complete; `simthing-spec` PR 1
+authoring-only lane stable after PR #46 revert of PR #45.
 
-- V6 suspended overlays + capability fission clone (`f39fe6d`)
+**Primary next step:** **`simthing-spec` PR 2** — property + overlay spec compiler
+only. Do not implement builder, unlock bridge, boundary handler, or driver session
+wiring until PR 2 lands — see revised ladder in `docs/todo.md`.
+
+**Recent merges on `master`:**
 - Parameterized `capability_container_kinds` — no sim hardcoding (PR #38,
   `a8aab5b`)
 - V6 Priority 1 guardrail: activated overlay GPU integration test
@@ -1019,12 +1050,10 @@ ahead of `origin/master`:
 - B2 Approach A: targeted value upload across fission growth (PR #40,
   `14437f3`)
 - B2 Approach B: append-only threshold registry on pure-fission growth
-  (local, 2026-05-22)
-- Capability-tree concept docs (PR #37), agent briefing sync (`07076b4`)
-- GPU intent-delta hot path, consolidated tick submission, stress scenarios,
-  benchmark attribution, static-boundary skipping, fission path indexing,
-  R2 tree-index sharing, bench guards, replay hardening, B1 targeted boundary
-  value upload, B2 stable-buffer retention, used-range threshold readback
+  (PR #41, 2026-05-22)
+- **`simthing-spec` PR 1** — authoring-only scaffold (PR #46, `7eb48dc`);
+  PR #45 exploratory vertical slice reverted
+- V6 suspended overlays + capability fission clone (`f39fe6d`)
 
 **Design reference:** `docs/design_v6.md` (current, incl. addenda) ·
 `docs/design_v5.md` (historical) · `docs/capability_tree_v1.md` (spec-layer RON) ·
@@ -1109,16 +1138,16 @@ ahead of `origin/master`:
 
 - [x] **`simthing-spec` PR 1** — authoring-only scaffold (`GameModeSpec`, RON
       loaders, diagnostics, validation). Exploratory PR #45 slice reverted.
-- [ ] **`simthing-spec` PR 2+** — property/overlay compiler, then builder,
-      unlock bridge, boundary handler, preview (see `todo.md`).
+- [ ] **`simthing-spec` PR 2** — property + overlay spec compiler (see `todo.md`).
+      PRs 3–6 are sequential follow-ons; do not batch or skip ahead.
 - [ ] **Document/prototype map-scale representation.** Keep current `SimThing` as
       semantic authoring state; evaluate arena/topology sidecars only after benchmark
       data shows tree representation pressure.
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds — behind
       the GPU performance path.
 
-**Recent:** Reverted `simthing-spec` to PR 1 lane (authoring structs only).
-PR #45 exploratory builder/boundary/threshold code removed. 209 tests passing.
+**Recent:** PR #46 merged — `simthing-spec` back on PR 1 authoring-only lane.
+212 tests passing. Ready for PR 2 (property/overlay spec compiler).
 
 **Tabled:** `simthing-studio` designer UI (depends on `simthing-spec`); unified
 `BoundaryIndex` single-pass boundary walk (review item 4 / C1 — Opus-tier).
