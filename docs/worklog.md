@@ -6,6 +6,26 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 - Ingest v5/v6/capability-tree docs into agent briefing
+
+**Status:** Doc sync on `master` after PR #37 (`capability_tree_v1.md`,
+`workshop/tech_tree_decisions.md`) and V6 implementation parking.
+
+**Updated:**
+
+- `docs/agents.md` — canonical spec is now `design_v6.md`; added capability-tree
+  doc set, V6 implementation summary (`Suspended`, activate/suspend boundary
+  requests, capability fission clone), studio-vs-simulation boundary, V6 guardrail
+  next items, test count **197** + 1 ignored.
+- Cross-reference: `design_v5.md` addendum + `design_v6.md` implementation status
+  remain the authoritative spec deltas; `capability_tree_v1.md` is the studio RON
+  reference; `workshop/tech_tree_decisions.md` records decided/open workshop items.
+
+**Unchanged implementation queue:** V6 guardrails (Priorities 1–3), then B2
+fission-growth topology batching (Priority 4). See `docs/todo.md`.
+
+---
+
 ## 2026-05-22 - Parking note: next V6 guardrails queued
 
 **Status:** Todo/worklog-only parking update after documentation commit
@@ -401,16 +421,15 @@ growth target.
 
 ## Next session pickup
 
-**188/188** tests passing plus 1 ignored timing diagnostic, zero warnings.
-`master` and `origin/master` include GPU intent-delta hot path, consolidated tick
-command submission, 2D large-workload dispatch, synthetic stress scenarios,
-benchmark attribution, static-boundary skipping, sparse dirty-row tracking,
-fission parent lookup optimization, boundary phase attribution, indexed
-delta-log emission, design v5 documentation (`2884465`), doc hygiene (`42117f7`),
-review-tier A1–A4 perf/docs work, R2 tree-index sharing, bench guards, replay
-hardening, and B1 targeted boundary value upload on the current branch. Design
-reference: `docs/design_v5.md`; implementation review:
-`docs/chatgpt_implementation_review.md`.
+**197/197** tests passing plus 1 ignored timing diagnostic, zero warnings.
+`master` and `origin/master` include V6 suspended overlays + capability fission
+clone (`f39fe6d`), capability-tree concept docs (PR #37), GPU intent-delta hot path,
+consolidated tick command submission, synthetic stress scenarios, benchmark
+attribution, static-boundary skipping, fission path lookup optimization, R2 tree-index
+sharing, bench guards, replay hardening, B1 targeted boundary value upload, and B2
+stable-buffer retention. Design reference: **`docs/design_v6.md`** (current),
+`docs/design_v5.md` (historical), `docs/capability_tree_v1.md` (studio capability
+trees); implementation review: `docs/chatgpt_implementation_review.md`.
 
 ### Todo (recommended order)
 
@@ -461,13 +480,24 @@ reference: `docs/design_v5.md`; implementation review:
 
 #### Next
 
-- [ ] **Retain/batch topology on fission growth boundaries (B2).** `fission_stress`
-      is roughly 60 ms/sim-day on the current local smoke run. Stable-boundary
-      retention and used-range event readback are done; remaining work is fission
-      growth itself: threshold registration rebuild, reduction topology upload,
-      fission seeding, full value upload after slot growth, and delta emission.
-      Batch or incrementally patch growth only if event-kind semantics and slot
-      topology remain provably correct.
+- [ ] **V6 guardrail — activated overlay GPU test (Priority 1).** Prove
+      `ActivateOverlay` puts a formerly suspended overlay into the next Pass 3
+      upload and affects values on the following tick.
+- [ ] **V6 guardrail — capability fission replay (Priority 2).** End-to-end
+      replay test for fission with `clone_capability_children: true`.
+- [ ] **V6 guardrail — serde default test (Priority 3).** Old `FissionTemplate`
+      without `clone_capability_children` deserializes as `false`.
+- [ ] **Retain/batch topology on fission growth boundaries (B2, Priority 4).**
+      `fission_stress` is roughly 60 ms/sim-day on the current local smoke run.
+      Stable-boundary retention and used-range event readback are done; remaining
+      work is fission growth itself: threshold registration rebuild, reduction
+      topology upload, fission seeding, full value upload after slot growth, and
+      delta emission. Batch or incrementally patch growth only if event-kind
+      semantics and slot topology remain provably correct.
+- [ ] **Capability-tree studio layer.** Authoring/instantiation per
+      `capability_tree_v1.md` and `workshop/tech_tree_decisions.md` — simulation
+      crates stay agnostic; studio reads threshold events and issues
+      `ActivateOverlay` / `SuspendOverlay`.
 - [ ] **Document/prototype map-scale representation.** Keep current `SimThing` as
       semantic authoring state; evaluate arena/topology sidecars only after benchmark
       data shows tree representation pressure.

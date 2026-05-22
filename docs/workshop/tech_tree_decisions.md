@@ -13,8 +13,8 @@ the primitive; the studio layer instantiates it for each use case.
 It is a handoff document for implementation. Do not start writing code
 until all decisions in a given section are marked **DECIDED**.
 
-Reference documents: `docs/design_v5.md`, `docs/chatgpt_implementation_review.md`,
-`docs/workshop/tech_tree_digest.md` (original workshop framing).
+Reference documents: `docs/design_v6.md`, `docs/design_v5.md`,
+`docs/chatgpt_implementation_review.md`, `docs/capability_tree_v1.md`.
 
 ---
 

@@ -1,6 +1,13 @@
 # SimThing — ChatGPT Implementation Review
 ## Architectural Fidelity, Performance Impact, and Recommended Remediation
 
+> **V6 addendum (2026-05-22):** Suspended overlays, `ActivateOverlay`/`SuspendOverlay`,
+> and capability-subtree fission clone landed in `f39fe6d`. Static-boundary skip now
+> treats suspended overlays as inert (no lifecycle work). GPU overlay prep skips
+> suspended entries — no WGSL changes. Studio capability-tree semantics are documented
+> in `capability_tree_v1.md`; simulation crates remain agnostic. Open V6 guardrails:
+> see `docs/todo.md` Priorities 1–3.
+
 ---
 
 ## Executive Summary

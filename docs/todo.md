@@ -47,6 +47,8 @@ parking in `95516b9`.
 - Capability cloning is opt-in per `FissionTemplate` and defaults to `false`,
   preserving existing cohort/location fission behavior.
 - No WGSL shader changes were needed for V6.
+- Studio capability-tree spec: `docs/capability_tree_v1.md`; workshop handoff:
+  `docs/workshop/tech_tree_decisions.md`. Simulation spec: `docs/design_v6.md`.
 - Next implementation session should do Priority 1 and Priority 2 first, then
   return to B2 performance work once the V6 behavior has integration/replay
   guardrails.

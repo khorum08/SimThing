@@ -2,7 +2,9 @@
 
 This document is for AI agents picking up work on this project. Read it before touching any code.
 
-**Doc set:** `design_v5.md` (current spec) · `design_v4.md` (historical blueprint) ·
+**Doc set:** `design_v6.md` (current spec) · `design_v5.md` (v5 implementation-synced
+historical) · `design_v4.md` (original blueprint) · `capability_tree_v1.md` (studio
+capability-tree RON reference) · `workshop/tech_tree_decisions.md` (workshop handoff) ·
 `state-authority.md` · `invariants.md` · `worklog.md` (session log + next pickup) ·
 `chatgpt_implementation_review.md` (open perf/architecture notes).
 
@@ -15,15 +17,19 @@ simulation — world, faction, star system, location, cohort — is the same rec
 and the entire world state lives in GPU dense matrices that are evaluated continuously. The CPU
 interprets GPU output as events; it does not drive the simulation.
 
-The current design specification is in `docs/design_v5.md`. Read it before changing tick/boundary
-behavior, GPU pass order, or feeder authority paths. `docs/design_v4.md` is the original blueprint;
-use it for historical context only — several sections there are superseded (intent deltas,
-consolidated submit, reduction tier, static boundary skip). The key ideas are:
+The current design specification is in `docs/design_v6.md`. Read it before changing tick/boundary
+behavior, overlay lifecycle, fission inheritance, GPU pass order, or feeder authority paths.
+`docs/design_v5.md` remains valid for architecture and v5-era sections not superseded by v6.
+`docs/design_v4.md` is the original blueprint; use it for historical context only.
+Capability/tech-tree authoring is **studio-layer only** — the simulation crates never see
+"tech tree" semantics. For that pattern read `docs/capability_tree_v1.md` and
+`docs/workshop/tech_tree_decisions.md`. The key simulation ideas are:
 
 - **One type:** `SimThing { properties, overlays, children }`
 - **One mechanism for change:** overlay a `PropertyTransformDelta` on a SimThing
 - **One mechanism for differentiation:** intensity threshold in the registry
 - **One place to edit any property:** the `DimensionRegistry`
+- **One overlay lifecycle model:** `Permanent | Transient | Suspended` (v6)
 
 If you find yourself adding a special case for "rebel cohorts" or "civil war state" or "ethics
 system flags," stop. Those are properties with thresholds, not special cases.
@@ -36,11 +42,15 @@ system flags," stop. Those are properties with thresholds, not special cases.
 SimThing/
 ├── Cargo.toml                         workspace manifest
 ├── docs/
-│   ├── design_v5.md                   current architecture specification (read this first)
+│   ├── design_v6.md                   current architecture specification (read this first)
+│   ├── design_v5.md                   v5 implementation-synced spec (historical reference)
 │   ├── design_v4.md                   original blueprint (historical reference)
+│   ├── capability_tree_v1.md          studio capability-tree concept + RON shapes
+│   ├── workshop/tech_tree_decisions.md  capability pattern workshop handoff
 │   ├── state-authority.md             tick vs boundary numeric truth
 │   ├── invariants.md                  non-negotiable code rules (read this too)
 │   ├── worklog.md                     session log + next-session pickup
+│   ├── todo.md                        parking todo log (V6 guardrails + B2)
 │   ├── chatgpt_implementation_review.md  perf review + recommended optimizations
 │   └── agents.md                      this file
 └── crates/
@@ -133,6 +143,16 @@ Hot-path performance now includes GPU-side intent deltas, consolidated tick
 command submission, static-boundary skipping, sparse dirty-row tracking,
 fission tree path indexing, boundary phase attribution, and indexed delta-log
 emission for fission-heavy growth.
+**V6 landed (`f39fe6d`):** `OverlayLifecycle::Suspended { when_activated }`;
+`BoundaryRequest::{ActivateOverlay, SuspendOverlay}`; delta-log/replay entries
+`OverlayActivated` / `OverlaySuspended`; `OverlayContribution.active`; CPU evaluator
+and GPU overlay prep skip inactive/suspended overlays; empty-boundary skip treats
+suspended overlays as inert; `FissionTemplate::clone_capability_children` (serde
+default `false`) with deep-clone of capability containers
+(`Custom("tech_tree")`, `Custom("national_ideas")`, `Custom("talent_tree")`) on
+opted-in faction fission — fresh ids, shadow-row copy, overlay `affects` remap,
+pre-grow slot headroom. Studio capability-tree semantics live in
+`capability_tree_v1.md`; simulation sees only floats, thresholds, and overlay lifecycle.
 Normal tick-time feeder/player/AI transforms fold into GPU `IntentDelta` records
 and apply before Pass 0 (`apply_collected_as_intents`). The legacy shadow path
 (`drain` / `apply_collected` / `apply_one`) remains for direct and replay-style
@@ -232,6 +252,8 @@ reconstructs tree, registry, allocator, and fission lineage from LDJSON log.**
   order `Evaluator::evaluate_node` step 5 applies them. Resolves `SubFieldRole → col`
   via `col_for_role` only (I1). Skips overlays targeting properties the node
   doesn't have (mirrors `resolved` iteration in the CPU oracle).
+- Skips `OverlayLifecycle::Suspended` overlays entirely — they never enter Pass 3
+  until activated at boundary time.
 
 **`passes.rs` — `Pipelines`:**
 - Owns shared uniform buffer (`PassParams { delta_time, n_dims, _pad, _pad }`) and
@@ -261,7 +283,7 @@ reconstructs tree, registry, allocator, and fission lineage from LDJSON log.**
   index allocated via `atomicAdd`. Event order is therefore nondeterministic —
   callers sort by (slot, col, event_kind) for parity tests.
 
-**Tests: 47 GPU tests + 1 ignored timing diagnostic, all passing, zero warnings.**
+**Tests: 48 GPU tests + 1 ignored timing diagnostic, all passing, zero warnings.**
 
 Highlights:
 - `pass3_overlay_matches_evaluator` — bit-exact parity for Pass 0+1+2+3 against
@@ -290,8 +312,10 @@ Highlights:
   the within-day continuous mutation work item. Carries `SubFieldRole`s,
   not column indices (I5).
 - `BoundaryRequest` — enum covering `AddChild` / `Remove` / `Reparent` /
-  `AttachOverlay` / `AddDimension`. Boundary-only per I7; the channel
-  routes these through to the Tree Maintainer at boundary time.
+  `AttachOverlay` / `AddDimension` / `ActivateOverlay` / `SuspendOverlay`.
+  Boundary-only per I7; the channel routes these through to the Tree Maintainer
+  at boundary time. `ActivateOverlay` / `SuspendOverlay` transition overlay
+  lifecycle (v6); see `design_v6.md` §6 and §11.
 - `FeederWork = Patch | Boundary`, transported over `std::sync::mpsc`.
 - `FeederSender` is `Clone` (multiple producers); `FeederReceiver` is
   single-consumer and drained non-blockingly by `drain_now()`.
@@ -389,6 +413,8 @@ Integration highlights:
   SimThing/property/sub-field trajectory.
 
 **`overlay_lifecycle.rs` — step 4 + 7:**
+- `OverlayLifecycle::Suspended { when_activated }` — present in CPU tree and
+  observability; skipped by GPU overlay prep and Pass 3 until activated.
 - `resolve_overlay_lifecycle(root, registry, allocator, shadow, n_dims, day)`
   walks the tree; for each transient overlay it evaluates every
   `DissolveCondition` (PropertyReaches, PropertyBelow, AfterTicks, OverrideReceived,
@@ -418,6 +444,9 @@ Integration highlights:
 - Fission: spawn `SimThing { kind: template.child_kind }`, alloc its slot,
   seed it from the parent's shadow row, zeroing the activating property's
   Amount, then attach as child of trigger SimThing.
+- When `FissionTemplate::clone_capability_children: true`, deep-clone capability
+  container subtrees from parent to spawned child (fresh ids, shadow rows, overlay
+  `affects` remap). Default `false` — cohort/location fission unchanged.
 - Fusion: `execute_fusion` applies the scar to the parent's activating-property
   Amount, tombstones the child, and removes the lineage record. Threshold
   registration for fusion comes from `ThresholdBuilder::build_with_lineage`.
@@ -432,6 +461,8 @@ Integration highlights:
 - `Reparent`: detach + re-attach. Slots preserved — the whole point of slot
   stability. Cycle detection rejects `child → ancestor(child)`.
 - `AttachOverlay`: depth-first find + push into target's overlay vec.
+- `ActivateOverlay` / `SuspendOverlay`: transition overlay lifecycle in place
+  (no slot alloc, no tree reshape). Activation unwraps `Suspended { when_activated }`.
 - `AddDimension`: restores/adopts a registered property id, records it in
   `MaintainerOutcome::dimensions_added`, and lets `BoundaryProtocol` widen
   the CPU shadow + rebuild `WorldGpuState` before step 9.
@@ -475,7 +506,7 @@ Integration highlights:
 `MaintainerOutcome::reparented`, `ExpiryOutcome::expired` — fed to
 `delta_log::entries_from_outcome` for per-event replay entries.
 
-**Tests: 67 unit + 18 GPU integration tests, all passing, zero warnings.**
+**Tests: 79 unit + 19 GPU integration tests, all passing, zero warnings.**
 
 Integration highlights:
 - `fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean` — full end-to-end:
@@ -499,8 +530,13 @@ Integration highlights:
 - `observe_live_reports_integrated_gpu_values_mid_day` — mid-tick Add/Multiply
   on GPU shows up in `observe_live` but not in shadow-based `observe`.
 
-**Still open (see `docs/worklog.md` Next session pickup):**
+**Still open (see `docs/worklog.md` and `docs/todo.md`):**
+- **V6 guardrails:** GPU boundary test for activated suspended overlay → next-tick Pass 3
+  effect; end-to-end replay test for fission with cloned capability subtree; serde default
+  test for `clone_capability_children`.
 - **B2:** retain/batch threshold/reduction topology on fission growth boundaries.
+- **Studio:** capability-tree authoring layer per `capability_tree_v1.md` (simulation
+  crates stay agnostic).
 - Full RON scenario files (tree + registry inline; today: `builtin` templates only).
 - Designer UI (`simthing-studio`) — tabled
 
@@ -518,6 +554,11 @@ for topology-stable active boundaries.
 **Design decisions (closed):**
 - **Fission re-fire:** recurring rebellions are intentional. `FissionTrigger`
   stays live; no suppression when Amount re-crosses. See `docs/state-authority.md`.
+- **Capability trees:** one `Custom(...)` SimThing per tree (not a tree of SimThings).
+  Progress = GPU property sub-fields; unlock payload = `Suspended` overlay per entry;
+  studio layer issues `ActivateOverlay` at boundary when Pass 7 threshold fires.
+  Research costs, prereqs, display names, and RON metadata never enter simulation
+  crates. See `capability_tree_v1.md` and `workshop/tech_tree_decisions.md`.
 
 ### simthing-sim::fission lineage + fusion scar
 - `FissionLineageRecord { parent_id, child_id, property_id, template_idx }`
@@ -563,9 +604,9 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All **186** tests must pass with zero warnings before any commit
-(16 core + 3 driver unit + 3 driver integration + 47 GPU + 24 feeder unit +
-5 feeder integration + 70 sim unit + 18 sim integration).
+All **197** tests must pass with zero warnings before any commit
+(16 core + 3 driver unit + 3 driver integration + 48 GPU + 24 feeder unit +
+5 feeder integration + 79 sim unit + 19 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available
