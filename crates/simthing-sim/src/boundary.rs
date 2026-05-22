@@ -221,13 +221,18 @@ impl BoundaryProtocol {
             &self.registry,
         );
         let pregrow_fission_started = Instant::now();
-        force_full_value_upload |= self.ensure_slot_capacity(
+        // Growth no longer forces a full value upload: `rebuild_for_slots`
+        // preserves existing GPU buffer contents via copy_buffer_to_buffer,
+        // and the freshly-grown region is zero-initialized in both the GPU
+        // buffer (wgpu default) and the CPU shadow (resize fill). Fission
+        // children are tracked individually via `fission_pairs` further down.
+        let grew_for_fission = self.ensure_slot_capacity(
             self.allocator.capacity() + fission_headroom,
             patcher,
             coord,
             state,
         );
-        topology_dirty |= force_full_value_upload;
+        topology_dirty |= grew_for_fission;
         out.timing.pregrow_fission_ms = pregrow_fission_started.elapsed().as_secs_f64() * 1000.0;
 
         // Step 6: Fission and fusion. Spawns new SimThings + allocates slots.
@@ -309,6 +314,9 @@ impl BoundaryProtocol {
 
         // Pre-grow for AddChild subtrees so apply_structural_mutations can
         // project initialized semantic properties into the dense shadow.
+        // Like fission pre-grow, growth here preserves existing GPU data
+        // (rebuild_for_slots copies old → new); newly-allocated subtree
+        // slots are tracked individually via `out.maintainer.allocated`.
         let pregrow_add_child_started = Instant::now();
         let grew_for_add_child = self.ensure_slot_capacity(
             self.allocator.capacity() + projected_add_child_slots(&requests),
@@ -316,7 +324,6 @@ impl BoundaryProtocol {
             coord,
             state,
         );
-        force_full_value_upload |= grew_for_add_child;
         topology_dirty |= grew_for_add_child;
         out.timing.pregrow_add_child_ms =
             pregrow_add_child_started.elapsed().as_secs_f64() * 1000.0;
@@ -387,12 +394,12 @@ impl BoundaryProtocol {
             dimension_rebuild_started.elapsed().as_secs_f64() * 1000.0;
 
         // After structural mutations the allocator may have grown again
-        // (AddChild). Resize shadow once more so step 9 uploads the full
-        // capacity.
+        // (AddChild). Resize shadow once more so step 9 covers the full
+        // capacity. Growth preserves existing GPU data; any newly-allocated
+        // rows are already tracked in `out.maintainer.allocated`.
         let final_capacity_started = Instant::now();
         let grew_final_capacity =
             self.ensure_slot_capacity(self.allocator.capacity(), patcher, coord, state);
-        force_full_value_upload |= grew_final_capacity;
         topology_dirty |= grew_final_capacity;
         out.timing.final_capacity_ms = final_capacity_started.elapsed().as_secs_f64() * 1000.0;
 

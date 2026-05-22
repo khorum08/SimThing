@@ -102,13 +102,30 @@ pub fn sync_gpu_buffers(
     }
 
     // 3. Values shadow flush.
+    //
+    // For the dirty-slot path we coalesce adjacent slot indices into one
+    // contiguous range per `queue.write_buffer` call. Fission and AddChild
+    // pre-grow allocate slots sequentially, so the typical dense case
+    // collapses into a small handful of ranges — avoiding the per-slot
+    // driver overhead that quickly dominates at thousands of dirty slots.
     let value_upload_bytes = if let Some(slots) = dirty_value_slots {
-        for &slot in slots {
-            coord.upload_row(state, slot);
+        let mut sorted: Vec<u32> = slots.to_vec();
+        sorted.sort_unstable();
+        sorted.dedup();
+        let mut i = 0;
+        while i < sorted.len() {
+            let start = sorted[i];
+            let mut end = start;
+            while i + 1 < sorted.len() && sorted[i + 1] == end + 1 {
+                end = sorted[i + 1];
+                i += 1;
+            }
+            coord.upload_row_range(state, start, end - start + 1);
+            i += 1;
         }
-        out.value_rows_uploaded = slots.len() as u32;
+        out.value_rows_uploaded = sorted.len() as u32;
         out.full_value_upload = false;
-        slots.len() as u64 * state.n_dims as u64 * std::mem::size_of::<f32>() as u64
+        sorted.len() as u64 * state.n_dims as u64 * std::mem::size_of::<f32>() as u64
     } else {
         coord.upload_full_shadow(state);
         out.value_rows_uploaded = state.n_slots;

@@ -1,12 +1,12 @@
 # SimThing Todo Log
 
-Current parking state after **V6 guardrails Priorities 1–3** — all three
-V6 lockdown tests landed on 2026-05-22 (post PR #38, `a8aab5b`). Prior
-context: V6 simulation core (`f39fe6d`), parameterized capability container
-kinds (PR #38), capability-tree concept docs (PR #37).
+Current parking state after **B2 fission-growth targeted value upload
+(Approach A)** — buffer-preserving slot growth + coalesced row uploads
+landed on 2026-05-22 atop V6 guardrails Priorities 1–3 (PR #39).
 
 **Tests:** `cargo test --workspace` → **202** passed, **1** ignored timing
-diagnostic, zero warnings.
+diagnostic, zero warnings. `fission_stress` ~55 ms/sim-day (unchanged in
+the dense-fission worst case), `intent_stress` ~17 ms/sim-day.
 
 ---
 
@@ -80,10 +80,24 @@ diagnostic, zero warnings.
 
 ### Performance and studio (V6 guardrails complete — clear path to B2)
 
-- [ ] **Priority 4 — B2 fission-growth topology batching.** Retain or
-      append-patch GPU topology/threshold buffers on growth boundaries only when
-      slot ordering and `event_kind` semantics remain provably correct.
-      `fission_stress` ~60 ms/sim-day locally after B1/B2 partial work.
+- [x] **Priority 4 — B2 fission-growth Approach A (targeted value upload).**
+      Landed 2026-05-22. `WorldGpuState::rebuild_for_slots` now preserves
+      existing GPU contents via `copy_buffer_to_buffer` (values,
+      previous_values, output_vectors, previous_output_vectors). Fission /
+      AddChild / final-capacity pre-grow no longer force a full shadow
+      flush. New `DispatchCoordinator::upload_row_range` coalesces
+      contiguous dirty slots into single `queue.write_buffer` calls in
+      `gpu_sync`. Regression guard:
+      `fission_beyond_initial_headroom_grows_gpu_state` now asserts
+      `!full_value_upload && value_rows_uploaded == 1` for a single
+      fission across a growth boundary.
+- [ ] **Priority 4 — B2 Approach B (append-only threshold registry).**
+      Skip full threshold buffer rebuild on growth boundaries when only
+      new registrations are appended (existing event_kind indices stay
+      stable). Estimated savings ~3–5 ms on `fission_stress`.
+- [ ] **Priority 4 — B2 Approach C (incremental reduction topology).**
+      Extend CSR child layout instead of rebuilding. Highest risk
+      (slot ordering / determinism critical).
 - [ ] **Capability-tree studio layer.** `CapabilityTreeSpec` / builder /
       session init per `capability_tree_v1.md` and
       `workshop/tech_tree_decisions.md`. Studio populates

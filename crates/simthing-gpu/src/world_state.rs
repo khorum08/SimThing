@@ -499,8 +499,13 @@ impl WorldGpuState {
     }
 
     /// Reallocate every slot-capacity-dependent buffer after tree growth.
-    /// The caller should upload the authoritative CPU shadow immediately
-    /// after this call; value buffers are intentionally zero-initialized here.
+    ///
+    /// Existing GPU data for slots `[0..old_n_slots]` is preserved across
+    /// the resize via a `copy_buffer_to_buffer` on the device queue. Slots
+    /// `[old_n_slots..new_n_slots]` are zero-initialized by the new buffer
+    /// allocation. The caller only needs to upload data for newly-allocated
+    /// slots or slots whose CPU shadow diverged from the GPU between
+    /// boundaries (tracked via the dirty-slot list).
     pub fn rebuild_for_slots(&mut self, new_n_slots: u32, registry: &DimensionRegistry) {
         assert!(new_n_slots > 0, "n_slots must be > 0");
         if new_n_slots == self.n_slots {
@@ -514,15 +519,74 @@ impl WorldGpuState {
             new_n_slots,
         );
 
+        let old_n_slots = self.n_slots;
+        let old_n_dims = self.n_dims;
+        let new_n_dims = registry.total_columns as u32;
+
+        // We can only preserve GPU contents when n_dims is unchanged. If
+        // n_dims shifted (a dimension was added/removed), the column layout
+        // of the new buffers does not match the old layout and a CPU-side
+        // reseed must follow; in that case fall through to the reset path.
+        let preserve = old_n_dims == new_n_dims && old_n_slots > 0;
+        let preserve_bytes = if preserve {
+            (old_n_slots as u64) * (old_n_dims as u64) * 4
+        } else {
+            0
+        };
+
         self.n_slots = new_n_slots;
-        self.n_dims = registry.total_columns as u32;
+        self.n_dims = new_n_dims;
         let per_slot_per_col_bytes = (self.n_slots as u64) * (self.n_dims as u64) * 4;
-        self.values = self.mk_storage_buffer("values", per_slot_per_col_bytes);
-        self.previous_values = self.mk_storage_buffer("previous_values", per_slot_per_col_bytes);
-        self.output_vectors = self.mk_storage_buffer("output_vectors", per_slot_per_col_bytes);
-        self.previous_output_vectors =
+
+        let new_values = self.mk_storage_buffer("values", per_slot_per_col_bytes);
+        let new_previous_values =
+            self.mk_storage_buffer("previous_values", per_slot_per_col_bytes);
+        let new_output_vectors =
+            self.mk_storage_buffer("output_vectors", per_slot_per_col_bytes);
+        let new_previous_output_vectors =
             self.mk_storage_buffer("previous_output_vectors", per_slot_per_col_bytes);
 
+        if preserve {
+            // One encoder copies all four buffers from old → new in a single
+            // submit. Cheap: GPU-local memory copy, no CPU round trip.
+            let mut encoder = self
+                .ctx
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("rebuild_for_slots:preserve"),
+                });
+            encoder.copy_buffer_to_buffer(&self.values, 0, &new_values, 0, preserve_bytes);
+            encoder.copy_buffer_to_buffer(
+                &self.previous_values,
+                0,
+                &new_previous_values,
+                0,
+                preserve_bytes,
+            );
+            encoder.copy_buffer_to_buffer(
+                &self.output_vectors,
+                0,
+                &new_output_vectors,
+                0,
+                preserve_bytes,
+            );
+            encoder.copy_buffer_to_buffer(
+                &self.previous_output_vectors,
+                0,
+                &new_previous_output_vectors,
+                0,
+                preserve_bytes,
+            );
+            self.ctx.queue.submit(Some(encoder.finish()));
+        }
+
+        self.values = new_values;
+        self.previous_values = new_previous_values;
+        self.output_vectors = new_output_vectors;
+        self.previous_output_vectors = new_previous_output_vectors;
+
+        // slot_delta_ranges and child_starts are reset — overlay-delta sync
+        // and topology sync both fully rewrite them at every active boundary.
         self.slot_delta_ranges = self.mk_storage_buffer(
             "slot_delta_ranges",
             (self.n_slots as u64) * std::mem::size_of::<SlotDeltaRange>() as u64,

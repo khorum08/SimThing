@@ -248,6 +248,25 @@ impl DispatchCoordinator {
             .write_buffer(&state.values, offset, bytemuck::cast_slice(row));
     }
 
+    /// Upload a contiguous block of slot rows `[slot_start..slot_start + count)`
+    /// in a single `queue.write_buffer` call. Cheap for callers that have
+    /// already coalesced adjacent dirty slots — avoids the per-row driver
+    /// overhead that dominates when `count` is large.
+    pub fn upload_row_range(&self, state: &WorldGpuState, slot_start: u32, count: u32) {
+        if count == 0 {
+            return;
+        }
+        let n_dims = self.n_dims as usize;
+        let base = (slot_start as usize) * n_dims;
+        let span = (count as usize) * n_dims;
+        let rows = &self.shadow[base..base + span];
+        let offset = (slot_start as u64) * (n_dims as u64) * 4;
+        state
+            .ctx
+            .queue
+            .write_buffer(&state.values, offset, bytemuck::cast_slice(rows));
+    }
+
     /// Current monotonic tick id (post-last-tick value).
     pub fn tick_index(&self) -> u64 {
         self.tick_counter

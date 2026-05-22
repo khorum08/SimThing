@@ -339,6 +339,19 @@ fn fission_beyond_initial_headroom_grows_gpu_state() {
     assert_eq!(state.n_slots, coord.n_slots());
     assert_eq!(coord.shadow.len(), state.values_len());
 
+    // B2 (Approach A) regression guard: growing the GPU slot capacity for
+    // fission no longer triggers a full shadow flush. `rebuild_for_slots`
+    // preserves existing slot data via copy_buffer_to_buffer; only the
+    // fission child row needs to be uploaded.
+    assert!(
+        !outcome.gpu_sync.full_value_upload,
+        "fission growth should not force a full value upload"
+    );
+    assert_eq!(
+        outcome.gpu_sync.value_rows_uploaded, 1,
+        "exactly the one new fission child row should upload (not the entire shadow)"
+    );
+
     let child_id = find_node(&proto.root, cohort_id)
         .expect("cohort exists")
         .children[0]
