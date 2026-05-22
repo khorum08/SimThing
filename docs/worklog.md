@@ -6,6 +6,63 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — Phase 0 doc pivot + Phase 1 `simthing-spec` PRs 1–5
+
+**Status:** Landed locally (branch pending push).
+
+**Phase 0 — doc ingestion:**
+- Architectural pivot synced across canonical docs + workshop files.
+- Renamed `simthing-spec worksheet.md` → `simthing_spec_workshop.md`.
+
+**Phase 1 — `simthing-spec` vertical slice:**
+- New crate `crates/simthing-spec` (depends on `simthing-core` + `simthing-feeder` only).
+- RON spec model: `CapabilityTreeSpec`, categories, entries, effects, `ActivationMode`,
+  `ResearchRateSpec`, `MaxActivePolicy`.
+- `CapabilityTreeBuilder` → tree SimThing, suspended overlays, definition tables,
+  unlock registrations.
+- `CapabilityTreeBoundaryHandler` → activate/suspend, prereq reset, `OnPrereqMet` sweep,
+  `max_active: 1` mutual exclusivity.
+- `preview_capability_effect` API.
+- PR 3 plumbing: `CapabilityUnlockRegistration` (feeder),
+  `ThresholdSemantic::CapabilityUnlock` + `append_capability_unlocks` (sim).
+
+**Tests:** 212 passed + 1 ignored (`cargo test --workspace`).
+
+**Next:** Driver session wiring (attach tree, register unlocks, route boundary events).
+
+---
+
+## 2026-05-22 — Architectural pivot: `simthing-studio` → `simthing-spec`
+
+**Status:** Doc sync (canonical docs updated; workshop files on disk).
+
+**Pivot (approved in workshop 2026-05-22):**
+
+- **`simthing-spec`** is the RON→runtime compiler crate — capability trees first,
+  eventually all authored game data (`PropertySpec`, overlays, triggers, events).
+- **`simthing-studio`** is deferred — GUI/editor/importer only; will depend on
+  `simthing-spec`, not replace it.
+- **`simthing-spec` depends on:** `simthing-core`, `simthing-feeder` only.
+- **`simthing-spec` must not depend on:** `simthing-sim`, `simthing-gpu`.
+- **`simthing-driver` may depend on** `simthing-spec` for session assembly.
+- Minimal sim touch in **PR 3 only:** `CapabilityUnlockRegistration` in feeder,
+  `ThresholdSemantic::CapabilityUnlock` in sim.
+
+**Canonical handoff:** `docs/workshop/simthing_spec_workshop.md` (decision log D0–D21,
+implementation path PRs 1–8). Source Q&A:
+`docs/workshop/capability_tree_studio_workshop.md`. Older
+`docs/workshop/tech_tree_decisions.md` §5 still says `simthing-studio` — superseded
+for crate naming; mechanism decisions remain valid.
+
+**Docs updated this session:** `agents.md`, `todo.md`, `worklog.md`,
+`capability_tree_v1.md`, `design_v6.md`, `eml_integration_guidance.md`,
+`tech_tree_decisions.md` (supersession note), `capability_tree_studio_workshop.md`
+(pivot note). New: `workshop/simthing_spec_workshop.md` (renamed from worksheet).
+
+**Next implementation:** PR 1 — `crates/simthing-spec` scaffold (worksheet §14).
+
+---
+
 ## 2026-05-22 — B2 fission-growth Approach C: incremental reduction topology
 
 **Status:** Landed (local). The reduction CSR is no longer rebuilt from
@@ -160,27 +217,15 @@ sit below the run-to-run variance of `tick_event_readback_ms` and
 per growth boundary; full registry walk replaced by walk-only-new) and
 the relative win grows in longer / sparser simulations.
 
-**Next session pickup (B2-C now done — updated preferred order):**
+**Next session pickup (B2 complete; spec-layer track is primary):**
 
-All three B2 approaches are complete. Remaining options and model
-recommendations:
-
-1. **Studio capability-tree builder** (Opus). `CapabilityTreeSpec` /
-   `CapabilityTreeBuilder` per `docs/capability_tree_v1.md`. Greenfield
-   API design — serde shape, builder surface, session-init wiring,
-   keeping simulation crates agnostic. Design mistakes here have downstream
-   consequences. Most gameplay-visible item on the list; exercises the V6
-   suspended-overlay path end-to-end.
-2. **`tick_event_readback_ms` deep dive** (Opus for architecture; Sonnet
-   for impl). Single largest remaining cost in `fission_stress` (~21 ms /
-   ~40% of total). GPU → CPU bandwidth-bound; architecture decision
-   (async readback vs ring-buffer, pipeline depth, event-latency tradeoffs)
-   needs Opus reasoning. Mechanical implementation once approach is pinned
-   can hand off to Sonnet.
-3. **Cache-integrity hardening for `cached_topology_state`** (Sonnet).
-   Add a `debug_assert!` in the non-append-eligible boundary path that
-   reflattens `cached_topology_state` and byte-compares CSR output to
-   `build_topology`. Well-scoped, no design decisions, low risk.
+1. **`simthing-spec` PR 1** — crate scaffold, capability RON spec structs, keys,
+   errors, minimal deserialize tests. Worksheet §14 prompt. No sim/gpu/driver
+   integration yet except workspace `Cargo.toml`.
+2. **`simthing-spec` PRs 2–5** — builder, unlock registration plumbing, boundary
+   handler, preview (sequential; see worksheet §11).
+3. **Alternate (parallel):** `tick_event_readback_ms` deep dive (Opus) or
+   `TopologyState` cache-integrity `debug_assert!` (Sonnet).
 
 **Open guardrails:**
 
@@ -963,7 +1008,8 @@ ahead of `origin/master`:
   value upload, B2 stable-buffer retention, used-range threshold readback
 
 **Design reference:** `docs/design_v6.md` (current, incl. addenda) ·
-`docs/design_v5.md` (historical) · `docs/capability_tree_v1.md` (studio) ·
+`docs/design_v5.md` (historical) · `docs/capability_tree_v1.md` (spec-layer RON) ·
+`docs/workshop/simthing_spec_workshop.md` (canonical handoff) ·
 `docs/chatgpt_implementation_review.md`
 
 ### Todo (recommended order)
@@ -1037,33 +1083,28 @@ ahead of `origin/master`:
       field deserializes to `false`; capability cloning never runs without
       explicit studio opt-in.
 
+- [x] **B2 Approach C — incremental reduction-topology patching.** Landed
+      2026-05-22 (see entry above).
+
 #### Next
 
-- [ ] **Retain/batch topology on fission growth boundaries (B2, Priority 4).**
-      `fission_stress` is roughly 60 ms/sim-day on the current local smoke run.
-      Stable-boundary retention and used-range event readback are done; remaining
-      work is fission growth itself: threshold registration rebuild, reduction
-      topology upload, fission seeding, full value upload after slot growth, and
-      delta emission. Batch or incrementally patch growth only if event-kind
-      semantics and slot topology remain provably correct.
-- [ ] **Capability-tree studio layer.** Authoring/instantiation per
-      `capability_tree_v1.md` and `workshop/tech_tree_decisions.md` — studio
-      populates `capability_container_kinds` on faction fission templates;
-      simulation crates stay agnostic.
+- [ ] **`simthing-spec` PRs 1–5** — capability tree vertical slice per
+      `workshop/simthing_spec_workshop.md`. PR 1: crate scaffold + RON spec
+      structs + deserialize tests. PR 2: `CapabilityTreeBuilder`. PR 3:
+      unlock registration plumbing (minimal sim touch). PR 4: boundary handler.
+      PR 5: preview.
 - [ ] **Document/prototype map-scale representation.** Keep current `SimThing` as
       semantic authoring state; evaluate arena/topology sidecars only after benchmark
       data shows tree representation pressure.
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds — behind
       the GPU performance path.
 
-**Recent:** V6 guardrails Priorities 1–3 all landed on 2026-05-22. Suspended →
-Permanent overlay transitions are GPU-verified; capability fission cloning
-round-trips through the replay log with full payload; legacy
-`FissionTemplate` JSON without `clone_capability_children` defaults to `false`.
-Next: B2 fission-growth batching (Priority 4).
+**Recent:** Architectural pivot doc sync (2026-05-22): `simthing-spec` is the
+RON→runtime compiler; `simthing-studio` GUI deferred. V6 guardrails Priorities
+1–3 landed; B2 Approaches A/B/C complete.
 
-**Tabled:** `simthing-studio` designer UI; unified `BoundaryIndex` single-pass
-boundary walk (review item 4 / C1 — Opus-tier, defer until B2 lands).
+**Tabled:** `simthing-studio` designer UI (depends on `simthing-spec`); unified
+`BoundaryIndex` single-pass boundary walk (review item 4 / C1 — Opus-tier).
 
 ---
 

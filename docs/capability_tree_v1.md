@@ -1,5 +1,5 @@
 # SimThing Capability Tree — Concept Document V1
-## Design Reference for SimThing Studios RON Format
+## Design Reference for SimThing Spec-Layer RON Format
 
 ---
 
@@ -20,7 +20,7 @@ It is not a tree of SimThings. It is one SimThing that contains:
   `Suspended` to `Permanent` and Pass 3 begins applying it every tick.
 
 The tree structure, prereq dependencies, research costs, display names,
-and asset references are **metadata** that lives in the studio layer and
+and asset references are **metadata** that lives in the spec layer (`simthing-spec`)
 in RON files. The simulation never sees them.
 
 ```
@@ -61,7 +61,7 @@ activated, its `PropertyTransformDelta` propagates down through all spatial
 children via Pass 3.
 
 **Unlock** fires when the progress sub-field crosses `research_cost` in
-Pass 7. The studio layer's boundary handler reads the threshold event,
+Pass 7. The spec layer's boundary handler reads the threshold event,
 checks prereqs against the CPU shadow, and issues
 `BoundaryRequest::ActivateOverlay` for the corresponding overlay. The
 simulation executes the activation at boundary step 9.
@@ -183,7 +183,7 @@ effect_2: PropertyTransformDelta(
 )
 ```
 
-Both overlays share the same `CapabilitySpec` entry. The studio layer
+Both overlays share the same `CapabilitySpec` entry. The spec layer
 attaches both to the capability tree node suspended, and activates both
 together when the entry unlocks.
 
@@ -221,8 +221,8 @@ effect: PropertyTransformDelta(
 
 ## 4. RON Format — CapabilityTreeSpec
 
-This is the V1 RON format for `simthing-studio`. It is the authoring
-surface that `CapabilityTreeBuilder` consumes at session init.
+This is the V1 RON format for **`simthing-spec`**. It is the authoring
+surface that `CapabilityTreeBuilder` (in `simthing-spec`) consumes at session init.
 
 ### Top-level structure
 
@@ -562,7 +562,7 @@ one idea from each tier. The mechanism is identical to tech trees except:
 - `tree_kind: "national_ideas"` instead of `"tech_tree"`
 - `research_cost` is 0.0 — progress is set directly by player selection,
   not by research integration
-- The studio layer enforces mutual exclusivity by suspending sibling entries
+- The spec layer enforces mutual exclusivity by suspending sibling entries
   when one is activated (CPU boundary logic — see §7)
 - Ideas are typically organized into tiers rather than linear chains
 
@@ -871,13 +871,13 @@ CapabilityTreeSpec(
 ## 8. Mutual Exclusivity (National Ideas)
 
 National ideas require that activating one entry from a tier suspends its
-siblings. This is enforced by the studio layer at boundary time, not by
+siblings. This is enforced by the spec layer at boundary time, not by
 the simulation.
 
-When the studio layer processes an `ActivateOverlay` for an idea entry, it
+When the spec layer processes an `ActivateOverlay` for an idea entry, it
 also issues `SuspendOverlay` for every sibling in the same category that
 is currently active. The `max_active` field on `CapabilityCategorySpec`
-declares the constraint; the studio layer enforces it.
+declares the constraint; the spec layer enforces it.
 
 The simulation executes all `ActivateOverlay` and `SuspendOverlay` requests
 in the same boundary step 9, so the transition is atomic at the day level.
@@ -936,12 +936,12 @@ The V1 concept document described faction fission inheriting
 simulation knowledge. PR #38 removes that coupling. The simulation now clones
 only children whose `SimThingKind::Custom(name)` appears in
 `FissionTemplate::capability_container_kinds` — a list of opaque strings
-authored by the studio layer.
+authored by the spec layer (`simthing-spec`).
 
-### Studio responsibility
+### Spec-layer responsibility
 
 When defining a **faction fission template** in RON (or generated from
-`CapabilityTreeSpec` / game rules), the studio layer must:
+`CapabilityTreeSpec` / game rules), the spec layer must:
 
 1. Set `clone_capability_children: true` when the spawned faction should inherit
    capability state from the parent.
@@ -991,7 +991,7 @@ It only knows: "clone parent children whose `Custom(name)` is in this list."
 ### §9 update (faction fission inheritance)
 
 Section §9 remains valid with this clarification: inheritance is keyed by
-`capability_container_kinds`, not by fixed kind names. The studio layer maps
+`capability_container_kinds`, not by fixed kind names. The spec layer maps
 each game's capability container labels into that list when authoring fission
 templates.
 
@@ -1004,7 +1004,7 @@ templates.
 - `projected_fission_slots_counts_cloned_capability_subtrees` — pre-grow headroom
   uses the same list (asserts 3 slots for faction + 2-node tech subtree).
 
-### Next studio work (unchanged from V1 scope)
+### Next spec-layer work (unchanged from V1 scope)
 
 - `CapabilityTreeBuilder` session init: attach capability SimThings, seed
   suspended overlays, register property sub-fields.

@@ -319,6 +319,13 @@ correctly for free — no additional delta log changes needed.
 
 ## 5. Studio Layer — CapabilityTreeBuilder (simthing-studio crate)
 
+> **Superseded (2026-05-22):** Crate naming and placement changed. The RON→runtime
+> compiler lives in **`simthing-spec`** (depends on `simthing-core` + `simthing-feeder`).
+> **`simthing-studio`** is deferred GUI/editor only. Mechanism decisions in §5–8
+> remain valid; substitute `simthing-spec` wherever this section names
+> `simthing-studio` as the builder crate. Canonical handoff:
+> `docs/workshop/simthing_spec_workshop.md`.
+
 All tech tree authoring and runtime handling lives in `simthing-studio`.
 The simulation crates (`simthing-core`, `simthing-gpu`, `simthing-feeder`,
 `simthing-sim`) are unchanged except for the `Suspended` overlay addition.
@@ -571,7 +578,8 @@ state and studio metadata.
 
 This section is the complete and exhaustive list of changes required to
 the simulation crates (`simthing-core`, `simthing-gpu`, `simthing-feeder`,
-`simthing-sim`). Everything else lives in `simthing-studio`.
+`simthing-sim`). Everything else lives in **`simthing-spec`** (compiler) with
+**`simthing-studio`** deferred as GUI only.
 
 ### 9a. Design changes (require thought)
 

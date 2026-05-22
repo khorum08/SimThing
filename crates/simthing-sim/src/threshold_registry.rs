@@ -49,6 +49,7 @@
 use simthing_core::{
     DecayBehavior, DimensionRegistry, Direction, SimPropertyId, SimThing, SimThingId, SubFieldRole,
 };
+use simthing_feeder::CapabilityUnlockRegistration;
 use simthing_gpu::{
     SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
     THRESH_BUF_VALUES,
@@ -105,6 +106,14 @@ pub enum ThresholdSemantic {
         sim_thing_id: SimThingId,
         property_id: SimPropertyId,
         sub_field: SubFieldRole,
+    },
+
+    /// Capability-tree progress column crossed `research_cost`. The boundary
+    /// routes this to the spec-layer capability handler.
+    CapabilityUnlock {
+        sim_thing_id: SimThingId,
+        property_id:  SimPropertyId,
+        sub_field:    SubFieldRole,
     },
 }
 
@@ -259,6 +268,71 @@ impl ThresholdBuilder {
             dim_reg,
             allocator,
             aggregate_alerts,
+            &mut gpu_regs,
+            &mut cpu_reg,
+        );
+        (gpu_regs, cpu_reg)
+    }
+
+    /// Append capability-unlock threshold registrations produced by
+    /// `simthing-spec`. Uses the full-rebuild path only (no B2 append yet).
+    pub fn append_capability_unlocks(
+        dim_reg: &DimensionRegistry,
+        allocator: &SlotAllocator,
+        unlocks: &[CapabilityUnlockRegistration],
+        gpu_regs: &mut Vec<ThresholdRegistration>,
+        cpu_reg: &mut ThresholdRegistry,
+    ) {
+        for unlock in unlocks {
+            let Some(slot) = allocator.slot_of(unlock.sim_thing_id) else {
+                continue;
+            };
+            if !dim_reg.is_active(unlock.property_id) {
+                continue;
+            }
+            let prop = dim_reg.property(unlock.property_id);
+            let range = dim_reg.column_range(unlock.property_id);
+            let Some(col) = range.col_for_role(&unlock.sub_field, &prop.layout) else {
+                continue;
+            };
+            let event_kind = cpu_reg.push(ThresholdSemantic::CapabilityUnlock {
+                sim_thing_id: unlock.sim_thing_id,
+                property_id:  unlock.property_id,
+                sub_field:    unlock.sub_field.clone(),
+            });
+            gpu_regs.push(ThresholdRegistration {
+                slot,
+                col: col as u32,
+                threshold: unlock.threshold,
+                direction: DIR_UPWARD,
+                event_kind,
+                buffer: THRESH_BUF_VALUES,
+            });
+        }
+    }
+
+    /// Full rebuild including spec-layer capability unlock registrations.
+    pub fn build_with_lineage_and_unlocks(
+        root: &SimThing,
+        dim_reg: &DimensionRegistry,
+        allocator: &SlotAllocator,
+        velocity_alerts: &[VelocityAlertRegistration],
+        aggregate_alerts: &[AggregateAlertRegistration],
+        lineage: &[FissionLineageRecord],
+        capability_unlocks: &[CapabilityUnlockRegistration],
+    ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
+        let (mut gpu_regs, mut cpu_reg) = Self::build_with_lineage(
+            root,
+            dim_reg,
+            allocator,
+            velocity_alerts,
+            aggregate_alerts,
+            lineage,
+        );
+        Self::append_capability_unlocks(
+            dim_reg,
+            allocator,
+            capability_unlocks,
             &mut gpu_regs,
             &mut cpu_reg,
         );
@@ -724,5 +798,43 @@ mod tests {
             sub_field: SubFieldRole::Velocity,
         }) if *sim_thing_id == cohort_id && *property_id == pid)
         );
+    }
+
+    #[test]
+    fn capability_unlock_registration_maps_to_semantic() {
+        use simthing_feeder::CapabilityUnlockRegistration;
+
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(SimProperty::simple("tech", "propulsion", 0));
+        let mut root = SimThing::new(SimThingKind::Faction, 0);
+        let tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+        let tree_id = tree.id;
+        root.add_child(tree);
+
+        let mut allocator = SlotAllocator::new();
+        allocator.populate_from_tree(&root);
+
+        let unlocks = vec![CapabilityUnlockRegistration {
+            sim_thing_id: tree_id,
+            property_id:  pid,
+            sub_field:    SubFieldRole::Amount,
+            threshold:    100.0,
+        }];
+
+        let (gpu, cpu) = ThresholdBuilder::build_with_lineage_and_unlocks(
+            &root,
+            &reg,
+            &allocator,
+            &[],
+            &[],
+            &[],
+            &unlocks,
+        );
+
+        assert_eq!(gpu.len(), 1);
+        assert!(matches!(
+            cpu.get(gpu[0].event_kind),
+            Some(ThresholdSemantic::CapabilityUnlock { .. })
+        ));
     }
 }

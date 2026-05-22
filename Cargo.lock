@@ -1152,6 +1152,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "simthing-spec"
+version = "0.1.0"
+dependencies = [
+ "ron",
+ "serde",
+ "serde_json",
+ "simthing-core",
+ "simthing-feeder",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "slab"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
