@@ -3,10 +3,12 @@
 This document is for AI agents picking up work on this project. Read it before touching any code.
 
 **Doc set:** `design_v6.md` (current spec) · `design_v5.md` (v5 implementation-synced
-historical) · `design_v4.md` (original blueprint) · `capability_tree_v1.md` (studio
-capability-tree RON reference) · `workshop/tech_tree_decisions.md` (workshop handoff) ·
-`state-authority.md` · `invariants.md` · `worklog.md` (session log + next pickup) ·
-`chatgpt_implementation_review.md` (open perf/architecture notes).
+historical) · `design_v4.md` (original blueprint) · `capability_tree_v1.md` (capability-tree
+RON reference) · `workshop/simthing_spec_workshop.md` (canonical spec-layer handoff) ·
+`workshop/capability_tree_studio_workshop.md` (source workshop Q&A) ·
+`workshop/tech_tree_decisions.md` (2026-05-21 decisions; crate naming superseded by spec
+worksheet) · `state-authority.md` · `invariants.md` · `worklog.md` · `todo.md` ·
+`chatgpt_implementation_review.md` · `eml_integration_guidance.md`.
 
 ---
 
@@ -21,9 +23,12 @@ The current design specification is in `docs/design_v6.md`. Read it before chang
 behavior, overlay lifecycle, fission inheritance, GPU pass order, or feeder authority paths.
 `docs/design_v5.md` remains valid for architecture and v5-era sections not superseded by v6.
 `docs/design_v4.md` is the original blueprint; use it for historical context only.
-Capability/tech-tree authoring is **studio-layer only** — the simulation crates never see
-"tech tree" semantics. For that pattern read `docs/capability_tree_v1.md` and
-`docs/workshop/tech_tree_decisions.md`. The key simulation ideas are:
+Capability/tech-tree authoring is **spec-layer only** — the simulation crates never see
+"tech tree" semantics. Authored RON is compiled by the planned **`simthing-spec`** crate
+(RON → runtime artifacts). The eventual **`simthing-studio`** crate is a deferred
+GUI/editor surface that will depend on `simthing-spec`, not replace it. For the pattern
+read `docs/capability_tree_v1.md` and `docs/workshop/simthing_spec_workshop.md`
+(canonical); `docs/workshop/tech_tree_decisions.md` for earlier workshop decisions.
 
 - **One type:** `SimThing { properties, overlays, children }`
 - **One mechanism for change:** overlay a `PropertyTransformDelta` on a SimThing
@@ -45,8 +50,10 @@ SimThing/
 │   ├── design_v6.md                   current architecture specification (read this first)
 │   ├── design_v5.md                   v5 implementation-synced spec (historical reference)
 │   ├── design_v4.md                   original blueprint (historical reference)
-│   ├── capability_tree_v1.md          studio capability-tree concept + RON shapes
-│   ├── workshop/tech_tree_decisions.md  capability pattern workshop handoff
+│   ├── capability_tree_v1.md          capability-tree concept + RON shapes
+│   ├── workshop/simthing_spec_workshop.md  spec-layer handoff (canonical)
+│   ├── workshop/capability_tree_studio_workshop.md  source workshop Q&A
+│   ├── workshop/tech_tree_decisions.md  2026-05-21 workshop (historical)
 │   ├── state-authority.md             tick vs boundary numeric truth
 │   ├── invariants.md                  non-negotiable code rules (read this too)
 │   ├── worklog.md                     session log + next-session pickup
@@ -128,6 +135,9 @@ SimThing/
         └── src/
             ├── lib.rs                 SimSession, Scenario, bench/record/replay CLI
             └── session.rs             tick loop, boundary orchestration, metrics
+    # Planned (not yet in workspace):
+    # simthing-spec/                   RON → runtime compiler (capability trees first)
+    # simthing-studio/                 deferred GUI/editor; depends on simthing-spec
 ```
 
 ---
@@ -149,10 +159,10 @@ emission for fission-heavy growth.
 and GPU overlay prep skip inactive/suspended overlays; empty-boundary skip treats
 suspended overlays as inert; `FissionTemplate::clone_capability_children` (serde
 default `false`) with deep-clone of capability containers listed in
-`capability_container_kinds` (opaque strings from studio/RON; empty = clone
+`capability_container_kinds` (opaque strings from spec-layer RON; empty = clone
 nothing) on opted-in faction fission — fresh ids, shadow-row copy, overlay `affects` remap,
-pre-grow slot headroom. Studio capability-tree semantics live in
-`capability_tree_v1.md`; simulation sees only floats, thresholds, and overlay lifecycle.
+pre-grow slot headroom. Capability-tree RON semantics live in
+`capability_tree_v1.md`; compilation target is **`simthing-spec`** (not yet in workspace).
 Normal tick-time feeder/player/AI transforms fold into GPU `IntentDelta` records
 and apply before Pass 0 (`apply_collected_as_intents`). The legacy shadow path
 (`drain` / `apply_collected` / `apply_one`) remains for direct and replay-style
@@ -535,10 +545,11 @@ Integration highlights:
   effect; end-to-end replay test for fission with cloned capability subtree; serde default
   test for `clone_capability_children`.
 - **B2:** retain/batch threshold/reduction topology on fission growth boundaries.
-- **Studio:** capability-tree authoring layer per `capability_tree_v1.md` (simulation
-  crates stay agnostic).
+- **Spec layer:** `simthing-spec` capability-tree compiler per
+  `workshop/simthing_spec_workshop.md` PRs 1–5 (simulation crates mostly frozen;
+  minimal feeder/sim plumbing in PR 3).
 - Full RON scenario files (tree + registry inline; today: `builtin` templates only).
-- Designer UI (`simthing-studio`) — tabled
+- **`simthing-studio` designer UI** — tabled; depends on `simthing-spec` when built.
 
 **Shipped recently:** intent-fold accumulator reuse, mid-tick observability docs,
 `rebellion_demo` record/replay smoke, `tree_index` for fission + structural/lifecycle/expiry
@@ -556,7 +567,7 @@ for topology-stable active boundaries.
   stays live; no suppression when Amount re-crosses. See `docs/state-authority.md`.
 - **Capability trees:** one `Custom(...)` SimThing per tree (not a tree of SimThings).
   Progress = GPU property sub-fields; unlock payload = `Suspended` overlay per entry;
-  studio layer issues `ActivateOverlay` at boundary when Pass 7 threshold fires.
+  spec layer issues `ActivateOverlay` at boundary when Pass 7 threshold fires.
   Research costs, prereqs, display names, and RON metadata never enter simulation
   crates. See `capability_tree_v1.md` and `workshop/tech_tree_decisions.md`.
 

@@ -1174,15 +1174,21 @@ simthing-eml
 
 
 
+simthing-spec
+
+&#x20; RON → runtime compiler (capability trees first)
+
+&#x20; CapabilityTreeSpec / CapabilityTreeBuilder
+
+&#x20; boundary handler + session-init wiring
+
+&#x20; depends on simthing-core + simthing-feeder only
+
+
+
 simthing-studio
 
-&#x20; designer UI
-
-&#x20; formula editor
-
-&#x20; Clausewitz import assistant
-
-&#x20; mapping validation
+&#x20; designer UI (deferred; depends on simthing-spec)
 
 
 
