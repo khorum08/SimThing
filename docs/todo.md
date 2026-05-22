@@ -138,7 +138,15 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
       `OnPrereqMet`, fixpoint sweeps, player selection, per-faction active
       state, and `Limited(1)` sibling suspension. Tests:
       `tests/pr5_capability_handler.rs` — 10 passing acceptance tests.
-- [ ] **PR 6** — preview + mutual exclusivity completion (`preview/capability_preview.rs`).
+- [x] **PR 6** — preview + mutual exclusivity completion
+      (`preview/capability_preview.rs`). Landed 2026-05-22. Adds
+      definition-only CPU preview for capability effects with per-overlay
+      breakdowns and combined net deltas. `CapabilityDefinition` now carries
+      compiled `effect_transforms` parallel to overlay/effect keys so preview
+      does not need the template SimThing. Adds full national-ideas
+      activate-switch verification by feeding PR 5 handler requests through
+      real structural overlay activation/suspension. Tests:
+      `tests/pr6_capability_preview.rs` — 5 passing acceptance tests.
 
 **Known divergences between handoff doc and PR 1 code (Opus must resolve):**
 

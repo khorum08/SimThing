@@ -154,6 +154,7 @@ impl CapabilityTreeBuilder {
                 // ── 4. Effects → suspended overlays ───────────────────────────
                 let mut overlay_ids: Vec<OverlayId> = Vec::new();
                 let mut effect_keys: Vec<CapabilityEffectKey> = Vec::new();
+                let mut effect_transforms: Vec<PropertyTransformDelta> = Vec::new();
 
                 for (effect_index, effect) in entry.effects.iter().enumerate() {
                     let (target_ns, target_name) =
@@ -201,13 +202,13 @@ impl CapabilityTreeBuilder {
                             when_activated: Box::new(effect.when_activated.clone()),
                         },
                     };
-                    tree.add_overlay(overlay);
-
                     overlay_ids.push(overlay_id);
                     effect_keys.push(CapabilityEffectKey {
                         entry: entry_key.clone(),
                         effect_index,
                     });
+                    effect_transforms.push(overlay.transform.clone());
+                    tree.add_overlay(overlay);
                     by_overlay.insert(overlay_id, entry_key.clone());
                 }
 
@@ -279,6 +280,7 @@ impl CapabilityTreeBuilder {
                     activation: entry.activation,
                     overlay_ids,
                     effect_keys,
+                    effect_transforms,
                     prereqs,
                     progress_col,
                     research_cost: entry.research_cost,

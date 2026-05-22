@@ -1,7 +1,7 @@
 use crate::keys::{CapabilityEffectKey, CapabilityEntryKey, CategoryKey};
 use crate::spec::capability::{ActivationMode, MaxActivePolicy};
 use serde::{Deserialize, Serialize};
-use simthing_core::{OverlayId, SimPropertyId, SubFieldRole};
+use simthing_core::{OverlayId, PropertyTransformDelta, SimPropertyId, SubFieldRole};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -72,6 +72,9 @@ pub struct CapabilityDefinition {
     /// builds — the runtime atomic `OverlayId::new()` is not, so debug/studio
     /// tools key off `CapabilityEffectKey` instead.
     pub effect_keys: Vec<CapabilityEffectKey>,
+    /// Compiled transform payloads, parallel-indexed with `overlay_ids`.
+    /// Used by CPU preview without needing the template SimThing.
+    pub effect_transforms: Vec<PropertyTransformDelta>,
     pub prereqs: Vec<CapabilityPrereq>,
     pub progress_col: usize,
     pub research_cost: f32,

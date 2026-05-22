@@ -6,6 +6,30 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — PR 6 capability preview + mutual exclusivity completion
+
+**Status:** Implemented PR 6.
+
+**Code:**
+- Added `preview/capability_preview.rs` and public preview re-exports.
+- Added `CapabilityDefinition.effect_transforms`, parallel to
+  `overlay_ids` / `effect_keys`, so preview can run from the shared
+  definition without reading the template SimThing.
+- Implemented `preview_capability_effect`, returning per-overlay breakdowns
+  plus combined net deltas for each `(property_id, role)` pair.
+- Added a full national-ideas activate-switch test that drives PR 5's handler
+  and then applies the emitted `ActivateOverlay` / `SuspendOverlay` requests
+  through the real structural mutation path to verify overlay lifecycles.
+
+**Tests:** `cargo test -p simthing-spec` passes, including the 5 PR 6
+acceptance tests in `tests/pr6_capability_preview.rs`.
+
+**Next:** No remaining PRs from the master handoff ladder. Follow-on work is
+session/driver assembly and the threshold-layer dependency cleanup noted in
+the PR 5 worklog entry.
+
+---
+
 ## 2026-05-22 — PR 5 capability runtime state + boundary handler
 
 **Status:** Implemented Path A from the PR 5 handoff.

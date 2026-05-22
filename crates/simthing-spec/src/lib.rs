@@ -26,6 +26,7 @@ pub mod diagnostics;
 pub mod error;
 pub mod keys;
 pub mod metadata;
+pub mod preview;
 pub mod ron;
 pub mod runtime;
 pub mod spec;
@@ -41,6 +42,10 @@ pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecR
 pub use error::SpecError;
 pub use keys::{CapabilityEffectKey, CapabilityEntryKey, CapabilityTreeKey, CategoryKey};
 pub use metadata::DisplayMeta;
+pub use preview::{
+    preview_capability_effect, CapabilityPreviewDelta, CapabilityPreviewInput,
+    CapabilityPreviewOverlayBreakdown, CapabilityPreviewReport,
+};
 pub use ron::{deserialize_capability_tree_ron, deserialize_game_mode_ron};
 pub use runtime::{
     CapabilityCategoryDefinition, CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
