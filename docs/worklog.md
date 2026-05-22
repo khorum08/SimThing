@@ -160,20 +160,27 @@ sit below the run-to-run variance of `tick_event_readback_ms` and
 per growth boundary; full registry walk replaced by walk-only-new) and
 the relative win grows in longer / sparser simulations.
 
-**Next session pickup (preferred order):**
+**Next session pickup (B2-C now done — updated preferred order):**
 
-1. **B2 Approach C — incremental reduction-topology patching.** Highest
-   risk of the B2 trio (CSR child ordering / determinism). Open in
-   `docs/todo.md` and `docs/design_v6.md` implementation-status addendum.
-2. **Studio capability-tree builder.** `CapabilityTreeSpec` /
-   `CapabilityTreeBuilder` per `docs/capability_tree_v1.md`. More
-   gameplay-visible than B2-C; would also exercise the canonical use
-   case for V6 suspended overlays end-to-end.
-3. **`tick_event_readback_ms` deep dive.** Now the single largest cost
-   in `fission_stress` (~21 ms / ~40% of the total). Reads ~320 KB of
-   threshold events per tick — bandwidth-bound on GPU → CPU. Async
-   readback or speculative ring-buffer schemes could be substantial.
-   Higher difficulty than B2-A/B and Studio.
+All three B2 approaches are complete. Remaining options and model
+recommendations:
+
+1. **Studio capability-tree builder** (Opus). `CapabilityTreeSpec` /
+   `CapabilityTreeBuilder` per `docs/capability_tree_v1.md`. Greenfield
+   API design — serde shape, builder surface, session-init wiring,
+   keeping simulation crates agnostic. Design mistakes here have downstream
+   consequences. Most gameplay-visible item on the list; exercises the V6
+   suspended-overlay path end-to-end.
+2. **`tick_event_readback_ms` deep dive** (Opus for architecture; Sonnet
+   for impl). Single largest remaining cost in `fission_stress` (~21 ms /
+   ~40% of total). GPU → CPU bandwidth-bound; architecture decision
+   (async readback vs ring-buffer, pipeline depth, event-latency tradeoffs)
+   needs Opus reasoning. Mechanical implementation once approach is pinned
+   can hand off to Sonnet.
+3. **Cache-integrity hardening for `cached_topology_state`** (Sonnet).
+   Add a `debug_assert!` in the non-append-eligible boundary path that
+   reflattens `cached_topology_state` and byte-compares CSR output to
+   `build_topology`. Well-scoped, no design decisions, low risk.
 
 **Open guardrails:**
 
