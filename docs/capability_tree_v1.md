@@ -888,8 +888,9 @@ in the same boundary step 9, so the transition is atomic at the day level.
 
 When a faction fissions and the `FissionTemplate` has
 `clone_capability_children: true`, the spawned faction receives a deep
-clone of all capability tree nodes (`tech_tree`, `national_ideas`,
-`talent_tree`). The clone carries:
+clone of every parent child whose `Custom(...)` kind appears in
+`capability_container_kinds` (for example `tech_tree`, `national_ideas`,
+`talent_tree`, or modder-defined labels). The clone carries:
 
 - The same property values — research progress and unlock states copied
   from the parent's GPU shadow row at fission time

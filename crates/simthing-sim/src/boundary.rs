@@ -26,7 +26,9 @@ use simthing_feeder::{BoundaryRequest, DispatchCoordinator, MaintainerOutcome, T
 use simthing_gpu::{SlotAllocator, ThresholdEvent, WorldGpuState};
 
 use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
-use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
+use crate::fission::{
+    is_capability_container, resolve_fission_fusion, FissionLineageRecord, FissionOutcome,
+};
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
@@ -692,10 +694,13 @@ fn projected_fission_slots(
                             .get(&sim_thing_id)
                             .and_then(|path| crate::tree_index::node_at_path(root, path))
                         {
+                            let container_kinds = &ft.template.capability_container_kinds;
                             slots += parent
                                 .children
                                 .iter()
-                                .filter(|child| is_capability_container_kind(&child.kind))
+                                .filter(|child| {
+                                    is_capability_container(&child.kind, container_kinds)
+                                })
                                 .map(subtree_size)
                                 .sum::<usize>();
                         }
@@ -740,14 +745,6 @@ fn tree_has_boundary_lifecycle_work(node: &SimThing, registry: &DimensionRegistr
 
 fn subtree_size(node: &SimThing) -> usize {
     1 + node.children.iter().map(subtree_size).sum::<usize>()
-}
-
-fn is_capability_container_kind(kind: &simthing_core::SimThingKind) -> bool {
-    matches!(
-        kind,
-        simthing_core::SimThingKind::Custom(name)
-            if matches!(name.as_str(), "tech_tree" | "national_ideas" | "talent_tree")
-    )
 }
 
 fn collect_velocity_alerts(
@@ -970,6 +967,7 @@ mod tests {
                 fusion_scar_coefficient: 0.05,
                 resolution_label: "resolved".into(),
                 clone_capability_children: true,
+                capability_container_kinds: vec!["tech_tree".into()],
             },
             secondary: None,
         }];

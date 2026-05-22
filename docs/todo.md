@@ -19,6 +19,9 @@ parking in `95516b9`.
 - [x] Copy cloned capability shadow rows.
 - [x] Remap cloned overlay `affects` from parent owner to spawned owner.
 - [x] Pre-grow boundary slot headroom for cloned capability subtrees.
+- [x] Parameterize capability-container kinds via
+      `FissionTemplate::capability_container_kinds` (no sim hardcoding).
+- [x] Serde default for `capability_container_kinds` (`[]` when omitted).
 
 ## Next
 
@@ -31,9 +34,6 @@ parking in `95516b9`.
 - [ ] **Priority 3:** Add a focused serialization compatibility test proving
       old `FissionTemplate` data without `clone_capability_children`
       deserializes with the default `false`.
-- [ ] Decide whether capability-container names should remain hardcoded
-      (`tech_tree`, `national_ideas`, `talent_tree`) or move behind a registry
-      supplied by a future studio layer.
 - [ ] **Priority 4:** Continue B2: reduce fission-growth boundary cost by retaining or
       append-patching GPU topology/threshold buffers only when slot ordering and
       event-kind semantics remain deterministic.

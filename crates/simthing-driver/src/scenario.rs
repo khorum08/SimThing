@@ -135,6 +135,7 @@ impl Scenario {
                 fusion_scar_coefficient: 0.05,
                 resolution_label: "rebellion_settled".into(),
                 clone_capability_children: false,
+                capability_container_kinds: Vec::new(),
             },
             secondary: None,
         }];
@@ -274,6 +275,7 @@ impl Scenario {
                 fusion_scar_coefficient: 0.02,
                 resolution_label: "stress_resolved".into(),
                 clone_capability_children: false,
+                capability_container_kinds: Vec::new(),
             },
             secondary: None,
         }];

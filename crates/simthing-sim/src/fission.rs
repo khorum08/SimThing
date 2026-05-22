@@ -204,7 +204,14 @@ fn execute_fission(
             seed_fission_child(parent, &mut new_child, registry, pid, parent_slot, new_slot, values_shadow, n_dims);
         }
         if ft.template.clone_capability_children {
-            clone_capability_children(parent, &mut new_child, allocator, values_shadow, n_dims);
+            clone_capability_children(
+                parent,
+                &mut new_child,
+                allocator,
+                values_shadow,
+                n_dims,
+                &ft.template.capability_container_kinds,
+            );
         }
     }
 
@@ -271,14 +278,26 @@ fn seed_fission_child(
     }
 }
 
+pub(crate) fn is_capability_container(kind: &SimThingKind, container_kinds: &[String]) -> bool {
+    match kind {
+        SimThingKind::Custom(name) => container_kinds.iter().any(|k| k == name),
+        _ => false,
+    }
+}
+
 fn clone_capability_children(
-    parent:        &SimThing,
-    child:         &mut SimThing,
-    allocator:     &mut SlotAllocator,
-    values_shadow: &mut [f32],
-    n_dims:        usize,
+    parent:          &SimThing,
+    child:           &mut SimThing,
+    allocator:       &mut SlotAllocator,
+    values_shadow:   &mut [f32],
+    n_dims:          usize,
+    container_kinds: &[String],
 ) {
-    for source_child in parent.children.iter().filter(|node| is_capability_container(&node.kind)) {
+    for source_child in parent
+        .children
+        .iter()
+        .filter(|node| is_capability_container(&node.kind, container_kinds))
+    {
         let (cloned, id_pairs) = clone_subtree_with_fresh_ids(source_child, parent.id, child.id);
         for (source_id, cloned_id) in id_pairs {
             let Some(source_slot) = allocator.slot_of(source_id) else { continue };
@@ -339,14 +358,6 @@ fn copy_shadow_row(source_slot: u32, target_slot: u32, values_shadow: &mut [f32]
     }
     let row: Vec<f32> = values_shadow[source_base..source_base + n_dims].to_vec();
     values_shadow[target_base..target_base + n_dims].copy_from_slice(&row);
-}
-
-fn is_capability_container(kind: &SimThingKind) -> bool {
-    matches!(
-        kind,
-        SimThingKind::Custom(name)
-            if matches!(name.as_str(), "tech_tree" | "national_ideas" | "talent_tree")
-    )
 }
 
 fn execute_fusion(
@@ -505,6 +516,7 @@ mod tests {
                 fusion_scar_coefficient:    0.05,
                 resolution_label:           "resolved".into(),
                 clone_capability_children:  false,
+                capability_container_kinds: Vec::new(),
             },
             secondary: None,
         }];
@@ -710,6 +722,10 @@ mod tests {
         let mut prop = make_fission_property();
         prop.fission_templates[0].template.child_kind = SimThingKindTag::Faction;
         prop.fission_templates[0].template.clone_capability_children = true;
+        prop.fission_templates[0]
+            .template
+            .capability_container_kinds
+            .push("tech_tree".into());
         let pid = reg.register(prop);
         let layout = reg.property(pid).layout.clone();
         let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
@@ -797,6 +813,67 @@ mod tests {
             shadow[cloned_slot * n_dims + amount_off].to_bits(),
             0.42f32.to_bits()
         );
+    }
+
+    #[test]
+    fn clone_capability_children_empty_kinds_clones_nothing() {
+        let mut reg = DimensionRegistry::new();
+        let mut prop = make_fission_property();
+        prop.fission_templates[0].template.child_kind = SimThingKindTag::Faction;
+        prop.fission_templates[0].template.clone_capability_children = true;
+        let pid = reg.register(prop);
+        let layout = reg.property(pid).layout.clone();
+        let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+
+        let mut faction = SimThing::new(SimThingKind::Faction, 0);
+        faction.add_property(pid, reg.property(pid).default_value());
+        let faction_id = faction.id;
+        faction.add_child(SimThing::new(SimThingKind::Custom("tech_tree".into()), 0));
+
+        let mut root = SimThing::new(SimThingKind::Location, 0);
+        root.add_child(faction);
+
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
+        let faction_slot = alloc.slot_of(faction_id).unwrap() as usize;
+
+        let n_dims = reg.total_columns.max(1);
+        let mut shadow = vec![0.0f32; 8 * n_dims];
+        shadow[faction_slot * n_dims + amount_off] = 0.25;
+
+        let mut cpu_reg = ThresholdRegistry::new();
+        let event_kind = cpu_reg.push(ThresholdSemantic::FissionTrigger {
+            sim_thing_id: faction_id,
+            property_id: pid,
+            template_idx: 0,
+        });
+        let events = vec![simthing_gpu::ThresholdEvent {
+            slot: faction_slot as u32,
+            col: amount_off as u32,
+            value: 0.25,
+            event_kind,
+        }];
+
+        let paths = build_node_paths(&root);
+        let out = resolve_fission_fusion(
+            &mut root,
+            &paths,
+            &reg,
+            &mut alloc,
+            &events,
+            &cpu_reg,
+            &mut shadow,
+            n_dims,
+            1,
+        );
+
+        assert_eq!(out.fissions_executed, 1);
+        let spawned = root.children[0]
+            .children
+            .iter()
+            .find(|child| child.kind == SimThingKind::Faction)
+            .expect("fission child faction");
+        assert!(spawned.children.is_empty(), "empty kinds list must clone nothing");
     }
 
     #[test]
