@@ -1,6 +1,35 @@
 # SimThing: A GPU-Native Recursive World State Architecture
 ## Design Document v5 — Implementation-Synchronized Specification
 
+> **Historical document.** This is the v5 implementation-synchronized specification.
+> For the current specification — which adds `OverlayLifecycle::Suspended`,
+> `BoundaryRequest::ActivateOverlay`, `BoundaryRequest::SuspendOverlay`, and
+> `FissionTemplate::clone_capability_children` — read **`docs/design_v6.md`** first.
+> Sections below remain valid for architecture and implementation unless superseded
+> by v6. The v5→v6 deltas are summarized in `design_v6.md` Preface.
+
+### Addendum — V6 implementation landed
+
+The V6 simulation-core changes have landed on `master` in commit `f39fe6d`.
+V5 remains a historical implementation-synchronized reference, but the active
+code now includes:
+
+- `OverlayLifecycle::Suspended { when_activated }`.
+- `BoundaryRequest::ActivateOverlay` and `BoundaryRequest::SuspendOverlay`.
+- Delta-log and replay entries for `OverlayActivated` and `OverlaySuspended`.
+- Observability attribution with `OverlayContribution.active`.
+- GPU overlay prep filtering that keeps suspended overlays out of Pass 3 delta
+  buffers.
+- `FissionTemplate::clone_capability_children`, including fission-time
+  capability-subtree cloning, fresh IDs, shadow-row copies, and overlay
+  `affects` remapping.
+- Boundary pre-grow accounting for cloned capability subtree slots before
+  fission writes new shadow rows.
+
+The GPU-forward doctrine is unchanged: active numeric evaluation remains on the
+GPU, while suspended overlays and capability-clone decisions are CPU semantic
+state resolved at day boundaries.
+
 ---
 
 ## Preface: From V4 to V5

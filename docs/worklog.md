@@ -2,7 +2,7 @@
 
 Running log of what's done and what's next, across sessions.
 
-**Canonical spec:** `docs/design_v5.md` · **Agent map:** `docs/agents.md`
+**Canonical spec:** `docs/design_v6.md` | **Historical spec:** `docs/design_v5.md` | **Agent map:** `docs/agents.md`
 
 ---
 
@@ -35,6 +35,59 @@ without enough room to run full GPU integration tests and stress guards.
 Design a fission-growth batching plan that preserves the current authority
 doctrine. Prefer retaining or append-patching GPU topology/threshold buffers
 only when slot assignment and event-kind semantics remain provably stable.
+
+---
+
+## 2026-05-22 - V6 suspended overlays and capability fission landed
+
+**Status:** Merged to master (`f39fe6d`) and documented for parking.
+
+**Landed:**
+
+- `OverlayLifecycle::Suspended { when_activated }` is now part of the core
+  overlay model.
+- CPU evaluation and GPU overlay prep ignore suspended overlays; Pass 3 only
+  receives active overlay deltas.
+- Boundary requests now include `ActivateOverlay` and `SuspendOverlay`.
+- Tree mutation activates suspended overlays by restoring their parked lifecycle
+  and suspends active overlays by wrapping the current lifecycle.
+- Delta log and replay now capture `OverlayActivated` and `OverlaySuspended`.
+- Observability reports `OverlayContribution.active`, allowing UI/debug tools
+  to distinguish present-but-inert overlays from active effects.
+- Empty static boundaries can still skip when only suspended overlays are
+  present.
+- `FissionTemplate::clone_capability_children` landed with serde default
+  `false`, preserving existing fission behavior unless explicitly enabled.
+- Opted-in fission now deep-clones capability containers (`tech_tree`,
+  `national_ideas`, `talent_tree`) into the spawned child, assigns fresh IDs,
+  allocates slots, copies shadow rows, and remaps overlay `affects` from parent
+  owner to spawned owner.
+- Boundary fission pre-grow now accounts for cloned capability subtree slots
+  before fission writes shadow rows.
+
+**Tests:**
+
+- `cargo test` passed across the workspace before the implementation commit.
+- Focused new coverage includes suspended overlay GPU-prep filtering,
+  activation/suspension tree mutation, lifecycle replay, delta-log entries,
+  observability active attribution, empty-boundary skip behavior, capability
+  subtree cloning, overlay-affects remap, shadow-row copy, and fission slot
+  headroom estimation.
+
+**Docs updated:**
+
+- `docs/design_v5.md` now points at V6 and includes a V6 implementation
+  addendum.
+- `docs/design_v6.md` now has an implementation-status addendum.
+- `docs/todo.md` was created as the current parking todo log.
+
+**Next safe targets:**
+
+- Add a GPU boundary integration test for activation causing next-tick Pass 3
+  effect.
+- Add an end-to-end replay test for fission with cloned capability subtree.
+- Continue B2 topology/threshold batching for fission-growth boundaries, with
+  slot ordering and `event_kind` determinism treated as hard invariants.
 
 ---
 
@@ -1296,3 +1349,4 @@ Patcher + Dispatch Coordinator per design_v4.md section 11.
 **Open questions for the next session (low-priority, can be deferred):**
 - Should `upload_overlay_deltas` reuse a staging buffer rather than recreating `overlay_deltas` each grow? At realistic overlay churn this rarely fires, so probably fine as-is.
 - Pass 3's per-thread loop has variable length per slot. If some slots have very long stacks and most have none, GPU warps will idle. At our scale this is not a concern, but worth profiling once we have realistic overlay loads.
+
