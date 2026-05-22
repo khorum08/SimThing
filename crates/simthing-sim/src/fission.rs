@@ -203,6 +203,9 @@ fn execute_fission(
         if let Some(parent_slot) = allocator.slot_of(parent.id) {
             seed_fission_child(parent, &mut new_child, registry, pid, parent_slot, new_slot, values_shadow, n_dims);
         }
+        if ft.template.clone_capability_children {
+            clone_capability_children(parent, &mut new_child, allocator, values_shadow, n_dims);
+        }
     }
 
     let parent = node_paths
@@ -266,6 +269,84 @@ fn seed_fission_child(
         }
         child.add_property(prop_id, seeded);
     }
+}
+
+fn clone_capability_children(
+    parent:        &SimThing,
+    child:         &mut SimThing,
+    allocator:     &mut SlotAllocator,
+    values_shadow: &mut [f32],
+    n_dims:        usize,
+) {
+    for source_child in parent.children.iter().filter(|node| is_capability_container(&node.kind)) {
+        let (cloned, id_pairs) = clone_subtree_with_fresh_ids(source_child, parent.id, child.id);
+        for (source_id, cloned_id) in id_pairs {
+            let Some(source_slot) = allocator.slot_of(source_id) else { continue };
+            let cloned_slot = allocator.alloc(cloned_id);
+            copy_shadow_row(source_slot, cloned_slot, values_shadow, n_dims);
+        }
+        child.add_child(cloned);
+    }
+}
+
+fn clone_subtree_with_fresh_ids(
+    source:       &SimThing,
+    old_owner_id: SimThingId,
+    new_owner_id: SimThingId,
+) -> (SimThing, Vec<(SimThingId, SimThingId)>) {
+    let mut pairs = Vec::new();
+    let cloned = clone_subtree_with_fresh_ids_inner(source, old_owner_id, new_owner_id, &mut pairs);
+    (cloned, pairs)
+}
+
+fn clone_subtree_with_fresh_ids_inner(
+    source:       &SimThing,
+    old_owner_id: SimThingId,
+    new_owner_id: SimThingId,
+    pairs:        &mut Vec<(SimThingId, SimThingId)>,
+) -> SimThing {
+    let mut cloned = source.clone();
+    let old_id = cloned.id;
+    cloned.id = SimThingId::new();
+    pairs.push((old_id, cloned.id));
+    remap_overlay_affects(&mut cloned, old_owner_id, new_owner_id);
+    cloned.children = source
+        .children
+        .iter()
+        .map(|child| clone_subtree_with_fresh_ids_inner(child, old_owner_id, new_owner_id, pairs))
+        .collect();
+    cloned
+}
+
+fn remap_overlay_affects(node: &mut SimThing, old_id: SimThingId, new_id: SimThingId) {
+    for overlay in &mut node.overlays {
+        for affected in &mut overlay.affects {
+            if *affected == old_id {
+                *affected = new_id;
+            }
+        }
+    }
+    for child in &mut node.children {
+        remap_overlay_affects(child, old_id, new_id);
+    }
+}
+
+fn copy_shadow_row(source_slot: u32, target_slot: u32, values_shadow: &mut [f32], n_dims: usize) {
+    let source_base = source_slot as usize * n_dims;
+    let target_base = target_slot as usize * n_dims;
+    if source_base + n_dims > values_shadow.len() || target_base + n_dims > values_shadow.len() {
+        return;
+    }
+    let row: Vec<f32> = values_shadow[source_base..source_base + n_dims].to_vec();
+    values_shadow[target_base..target_base + n_dims].copy_from_slice(&row);
+}
+
+fn is_capability_container(kind: &SimThingKind) -> bool {
+    matches!(
+        kind,
+        SimThingKind::Custom(name)
+            if matches!(name.as_str(), "tech_tree" | "national_ideas" | "talent_tree")
+    )
 }
 
 fn execute_fusion(
@@ -404,9 +485,9 @@ fn kind_tag_to_kind(tag: &SimThingKindTag) -> SimThingKind {
 mod tests {
     use super::*;
     use simthing_core::{
-        Direction, DimensionRegistry, FissionTemplate, FissionThreshold, SecondaryCondition,
-        SimProperty, SimThing, SimThingKind,
-        SimThingKindTag, SubFieldRole,
+        Direction, DimensionRegistry, FissionTemplate, FissionThreshold, Overlay, OverlayId,
+        OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta, SecondaryCondition,
+        SimProperty, SimThing, SimThingKind, SimThingKindTag, SubFieldRole, TransformOp,
     };
     use simthing_gpu::SlotAllocator;
     use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
@@ -423,6 +504,7 @@ mod tests {
                 fusion_intensity_threshold: 0.8,
                 fusion_scar_coefficient:    0.05,
                 resolution_label:           "resolved".into(),
+                clone_capability_children:  false,
             },
             secondary: None,
         }];
@@ -620,6 +702,101 @@ mod tests {
         assert_eq!(out.fissions_executed, 0);
         assert_eq!(out.fissions_skipped_secondary, 1);
         assert!(root.children[0].children.is_empty());
+    }
+
+    #[test]
+    fn fission_clone_capability_children_remaps_affects_and_copies_shadow() {
+        let mut reg = DimensionRegistry::new();
+        let mut prop = make_fission_property();
+        prop.fission_templates[0].template.child_kind = SimThingKindTag::Faction;
+        prop.fission_templates[0].template.clone_capability_children = true;
+        let pid = reg.register(prop);
+        let layout = reg.property(pid).layout.clone();
+        let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+
+        let mut faction = SimThing::new(SimThingKind::Faction, 0);
+        faction.add_property(pid, reg.property(pid).default_value());
+        let faction_id = faction.id;
+
+        let mut tech_tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+        tech_tree.add_property(pid, reg.property(pid).default_value());
+        let tech_tree_id = tech_tree.id;
+        tech_tree.add_overlay(Overlay {
+            id: OverlayId::new(),
+            kind: OverlayKind::Policy,
+            source: OverlaySource::System,
+            affects: vec![faction_id],
+            transform: PropertyTransformDelta {
+                property_id: pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.2))],
+            },
+            lifecycle: OverlayLifecycle::Suspended {
+                when_activated: Box::new(OverlayLifecycle::Permanent),
+            },
+        });
+        faction.add_child(tech_tree);
+
+        let mut root = SimThing::new(SimThingKind::Location, 0);
+        root.add_child(faction);
+
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
+        let faction_slot = alloc.slot_of(faction_id).unwrap() as usize;
+        let tech_slot = alloc.slot_of(tech_tree_id).unwrap() as usize;
+
+        let n_dims = reg.total_columns.max(1);
+        let mut shadow = vec![0.0f32; 16 * n_dims];
+        shadow[faction_slot * n_dims + amount_off] = 0.25;
+        shadow[tech_slot * n_dims + amount_off] = 0.42;
+
+        let mut cpu_reg = ThresholdRegistry::new();
+        let event_kind = cpu_reg.push(ThresholdSemantic::FissionTrigger {
+            sim_thing_id: faction_id,
+            property_id: pid,
+            template_idx: 0,
+        });
+        let events = vec![simthing_gpu::ThresholdEvent {
+            slot: faction_slot as u32,
+            col: amount_off as u32,
+            value: 0.25,
+            event_kind,
+        }];
+
+        let paths = build_node_paths(&root);
+        let out = resolve_fission_fusion(
+            &mut root,
+            &paths,
+            &reg,
+            &mut alloc,
+            &events,
+            &cpu_reg,
+            &mut shadow,
+            n_dims,
+            1,
+        );
+
+        assert_eq!(out.fissions_executed, 1);
+        let parent_faction = &root.children[0];
+        let spawned = parent_faction
+            .children
+            .iter()
+            .find(|child| child.kind == SimThingKind::Faction)
+            .expect("fission child faction");
+        assert_ne!(spawned.id, faction_id);
+
+        let cloned_tree = spawned
+            .children
+            .iter()
+            .find(|child| child.kind == SimThingKind::Custom("tech_tree".into()))
+            .expect("cloned tech tree");
+        assert_ne!(cloned_tree.id, tech_tree_id);
+        assert_eq!(cloned_tree.overlays[0].affects, vec![spawned.id]);
+
+        let cloned_slot = alloc.slot_of(cloned_tree.id).unwrap() as usize;
+        assert_eq!(
+            shadow[cloned_slot * n_dims + amount_off].to_bits(),
+            0.42f32.to_bits()
+        );
     }
 
     #[test]

@@ -41,28 +41,36 @@ use simthing_core::{OverlayId, SimPropertyId, SimThingId};
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct MaintainerOutcome {
     /// `AddChild` requests acknowledged (slot will be allocated at exec).
-    pub adds:        u32,
+    pub adds: u32,
     /// `Remove` requests acknowledged (slot will be tombstoned at exec).
-    pub removes:     u32,
+    pub removes: u32,
     /// `Reparent` requests acknowledged.
-    pub reparents:   u32,
+    pub reparents: u32,
     /// `AttachOverlay` requests acknowledged.
-    pub overlays:    u32,
+    pub overlays: u32,
+    /// `ActivateOverlay` requests acknowledged.
+    pub overlay_activations: u32,
+    /// `SuspendOverlay` requests acknowledged.
+    pub overlay_suspensions: u32,
     /// `AddDimension` requests acknowledged.
-    pub dimensions:  u32,
+    pub dimensions: u32,
     /// Requests rejected because the target id was not found in the tree.
     pub rejected_unknown_target: u32,
     /// Requests deferred because they reference state not yet implemented
     /// (everything, currently — see TODO list at module top).
-    pub deferred:    u32,
+    pub deferred: u32,
     /// New `SimThingId`s allocated this cycle (one per `AddChild`).
-    pub allocated:   Vec<SimThingId>,
+    pub allocated: Vec<SimThingId>,
     /// `SimThingId`s tombstoned this cycle.
-    pub tombstoned:  Vec<SimThingId>,
+    pub tombstoned: Vec<SimThingId>,
     /// Each successful overlay attach: `(target_sim_thing_id, overlay_id)`.
     /// Used by the delta log to resolve the full `Overlay` from the live tree
     /// for replay serialization.
     pub overlays_attached: Vec<(SimThingId, OverlayId)>,
+    /// Each successful overlay activation: `(target_sim_thing_id, overlay_id)`.
+    pub overlays_activated: Vec<(SimThingId, OverlayId)>,
+    /// Each successful overlay suspension: `(target_sim_thing_id, overlay_id)`.
+    pub overlays_suspended: Vec<(SimThingId, OverlayId)>,
     /// New `SimPropertyId`s admitted this cycle.
     pub dimensions_added: Vec<SimPropertyId>,
     /// Each successful reparent: `(child_id, new_parent_id)`.
@@ -81,7 +89,9 @@ pub struct MaintainerOutcome {
 pub struct TreeMaintainer;
 
 impl TreeMaintainer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 
     /// Drain a boundary batch. Today this records every request as
     /// `deferred` and returns the count summary; the actual mutations are
@@ -99,11 +109,27 @@ impl TreeMaintainer {
             // that the count fields tell the truth about what the
             // simulation queued, even before execution exists.
             match req {
-                BoundaryRequest::AddChild      { .. } => { out.adds       += 1; }
-                BoundaryRequest::Remove        { .. } => { out.removes    += 1; }
-                BoundaryRequest::Reparent      { .. } => { out.reparents  += 1; }
-                BoundaryRequest::AttachOverlay { .. } => { out.overlays   += 1; }
-                BoundaryRequest::AddDimension  { .. } => { out.dimensions += 1; }
+                BoundaryRequest::AddChild { .. } => {
+                    out.adds += 1;
+                }
+                BoundaryRequest::Remove { .. } => {
+                    out.removes += 1;
+                }
+                BoundaryRequest::Reparent { .. } => {
+                    out.reparents += 1;
+                }
+                BoundaryRequest::AttachOverlay { .. } => {
+                    out.overlays += 1;
+                }
+                BoundaryRequest::ActivateOverlay { .. } => {
+                    out.overlay_activations += 1;
+                }
+                BoundaryRequest::SuspendOverlay { .. } => {
+                    out.overlay_suspensions += 1;
+                }
+                BoundaryRequest::AddDimension { .. } => {
+                    out.dimensions += 1;
+                }
             }
             out.deferred += 1;
         }
@@ -134,11 +160,19 @@ mod tests {
         let did = SimThing::new(SimThingKind::Cohort, 0).id;
 
         let out = m.execute(vec![
-            BoundaryRequest::AddChild  { parent: bid, child: a },
-            BoundaryRequest::Remove    { target: aid },
-            BoundaryRequest::Reparent  { child: cid, new_parent: did },
-            BoundaryRequest::AddDimension { property: simthing_core::SimPropertyId(0) },
-            BoundaryRequest::Remove    { target: bid },
+            BoundaryRequest::AddChild {
+                parent: bid,
+                child: a,
+            },
+            BoundaryRequest::Remove { target: aid },
+            BoundaryRequest::Reparent {
+                child: cid,
+                new_parent: did,
+            },
+            BoundaryRequest::AddDimension {
+                property: simthing_core::SimPropertyId(0),
+            },
+            BoundaryRequest::Remove { target: bid },
         ]);
 
         assert_eq!(out.adds, 1);

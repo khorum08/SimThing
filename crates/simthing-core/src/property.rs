@@ -405,6 +405,8 @@ pub struct FissionTemplate {
     pub fusion_intensity_threshold: f32,
     pub fusion_scar_coefficient:    f32,
     pub resolution_label:           String,
+    #[serde(default)]
+    pub clone_capability_children:  bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

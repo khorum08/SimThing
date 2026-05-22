@@ -18,8 +18,8 @@
 //! `docs/state-authority.md` §Observability mid-tick.
 
 use simthing_core::{
-    DimensionRegistry, OverlayId, OverlaySource, SimPropertyId, SimThing, SimThingId,
-    SubFieldRole, TransformOp,
+    DimensionRegistry, OverlayId, OverlaySource, SimPropertyId, SimThing, SimThingId, SubFieldRole,
+    TransformOp,
 };
 use simthing_gpu::SlotAllocator;
 
@@ -40,7 +40,7 @@ pub enum ObserveFidelity {
 /// Snapshot of one sub-field's current value.
 #[derive(Clone, Debug)]
 pub struct SubFieldObservation {
-    pub role:  SubFieldRole,
+    pub role: SubFieldRole,
     pub value: f32,
 }
 
@@ -48,20 +48,22 @@ pub struct SubFieldObservation {
 #[derive(Clone, Debug)]
 pub struct OverlayContribution {
     pub overlay_id: OverlayId,
-    pub source:     OverlaySource,
+    pub source: OverlaySource,
+    /// True when this overlay currently participates in GPU overlay prep.
+    pub active: bool,
     /// The transform ops this overlay applies to the property's sub-fields.
-    pub deltas:     Vec<(SubFieldRole, TransformOp)>,
+    pub deltas: Vec<(SubFieldRole, TransformOp)>,
     /// True when the overlay lives on an ancestor node, not the queried node.
-    pub inherited:  bool,
+    pub inherited: bool,
 }
 
 /// All observations for one property on the queried SimThing.
 #[derive(Clone, Debug)]
 pub struct PropertyObservation {
-    pub property_id:   SimPropertyId,
+    pub property_id: SimPropertyId,
     /// `"namespace::name"` display label.
     pub property_name: String,
-    pub sub_fields:    Vec<SubFieldObservation>,
+    pub sub_fields: Vec<SubFieldObservation>,
     pub overlay_contributions: Vec<OverlayContribution>,
 }
 
@@ -69,7 +71,7 @@ pub struct PropertyObservation {
 #[derive(Clone, Debug)]
 pub struct ObservabilityReport {
     pub sim_thing_id: SimThingId,
-    pub properties:   Vec<PropertyObservation>,
+    pub properties: Vec<PropertyObservation>,
 }
 
 // ── Core query ────────────────────────────────────────────────────────────────
@@ -81,11 +83,11 @@ pub struct ObservabilityReport {
 ///
 /// Returns `None` when `target` is not in the tree or has no allocated slot.
 pub fn observe(
-    root:       &SimThing,
-    registry:   &DimensionRegistry,
-    allocator:  &SlotAllocator,
+    root: &SimThing,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
     target_row: &[f32],
-    target:     SimThingId,
+    target: SimThingId,
 ) -> Option<ObservabilityReport> {
     let path = find_path(root, target)?;
     let node = *path.last()?;
@@ -98,8 +100,8 @@ pub fn observe(
         if !registry.is_active(pid) {
             continue;
         }
-        let prop   = registry.property(pid);
-        let range  = registry.column_range(pid);
+        let prop = registry.property(pid);
+        let range = registry.column_range(pid);
         let layout = &prop.layout;
 
         let sub_fields: Vec<SubFieldObservation> = layout
@@ -108,7 +110,7 @@ pub fn observe(
             .filter_map(|spec| {
                 let col = range.col_for_role(&spec.role, layout)?;
                 Some(SubFieldObservation {
-                    role:  spec.role.clone(),
+                    role: spec.role.clone(),
                     value: target_row.get(col).copied().unwrap_or(0.0),
                 })
             })
@@ -124,16 +126,17 @@ pub fn observe(
                 }
                 contributions.push(OverlayContribution {
                     overlay_id: overlay.id,
-                    source:     overlay.source.clone(),
-                    deltas:     overlay.transform.sub_field_deltas.clone(),
+                    source: overlay.source.clone(),
+                    active: overlay.is_active(),
+                    deltas: overlay.transform.sub_field_deltas.clone(),
                     inherited,
                 });
             }
         }
 
         properties.push(PropertyObservation {
-            property_id:           pid,
-            property_name:         format!("{}::{}", prop.namespace, prop.name),
+            property_id: pid,
+            property_name: format!("{}::{}", prop.namespace, prop.name),
             sub_fields,
             overlay_contributions: contributions,
         });
@@ -179,15 +182,21 @@ mod tests {
         (reg, pid)
     }
 
-    fn make_overlay(pid: SimPropertyId, role: SubFieldRole, op: TransformOp, source: OverlaySource, inherited: bool) -> Overlay {
+    fn make_overlay(
+        pid: SimPropertyId,
+        role: SubFieldRole,
+        op: TransformOp,
+        source: OverlaySource,
+        inherited: bool,
+    ) -> Overlay {
         let _ = inherited; // only used by tests as a label
         Overlay {
-            id:        OverlayId::new(),
-            kind:      OverlayKind::Policy,
+            id: OverlayId::new(),
+            kind: OverlayKind::Policy,
             source,
-            affects:   vec![],
+            affects: vec![],
             transform: PropertyTransformDelta {
-                property_id:      pid,
+                property_id: pid,
                 sub_field_deltas: vec![(role, op)],
             },
             lifecycle: OverlayLifecycle::Permanent,
@@ -197,7 +206,7 @@ mod tests {
     #[test]
     fn observe_returns_none_for_unknown_target() {
         let (reg, _) = fixture();
-        let root  = SimThing::new(SimThingKind::World, 0);
+        let root = SimThing::new(SimThingKind::World, 0);
         let alloc = SlotAllocator::new();
         let ghost = SimThing::new(SimThingKind::Cohort, 0).id;
         assert!(observe(&root, &reg, &alloc, &[], ghost).is_none());
@@ -210,8 +219,8 @@ mod tests {
     #[test]
     fn observe_reports_sub_field_values_from_row() {
         let (reg, pid) = fixture();
-        let layout  = reg.property(pid).layout.clone();
-        let n_dims  = reg.total_columns;
+        let layout = reg.property(pid).layout.clone();
+        let n_dims = reg.total_columns;
 
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
         cohort.add_property(pid, PropertyValue::from_layout(&layout));
@@ -222,11 +231,11 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&root);
-        let slot   = alloc.slot_of(cohort_id).unwrap() as usize;
+        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
         let mut shadow = vec![0.0f32; 2 * n_dims];
 
         // Set Amount (col 0 relative to property start) = 0.5.
-        let range      = reg.column_range(pid);
+        let range = reg.column_range(pid);
         let amount_col = range.col_for_role(&SubFieldRole::Amount, &layout).unwrap();
         shadow[slot * n_dims + amount_col] = 0.5;
 
@@ -243,7 +252,11 @@ mod tests {
 
         let obs = &report.properties[0];
         assert_eq!(obs.property_name, "core::loyalty");
-        let amount_sf = obs.sub_fields.iter().find(|sf| sf.role == SubFieldRole::Amount).unwrap();
+        let amount_sf = obs
+            .sub_fields
+            .iter()
+            .find(|sf| sf.role == SubFieldRole::Amount)
+            .unwrap();
         assert_eq!(amount_sf.value.to_bits(), 0.5f32.to_bits());
     }
 
@@ -254,7 +267,13 @@ mod tests {
 
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
         cohort.add_property(pid, PropertyValue::from_layout(&reg.property(pid).layout));
-        let overlay = make_overlay(pid, SubFieldRole::Amount, TransformOp::Multiply(0.9), OverlaySource::Player, false);
+        let overlay = make_overlay(
+            pid,
+            SubFieldRole::Amount,
+            TransformOp::Multiply(0.9),
+            OverlaySource::Player,
+            false,
+        );
         let overlay_id = overlay.id;
         cohort.add_overlay(overlay);
         let cohort_id = cohort.id;
@@ -291,7 +310,13 @@ mod tests {
         let cohort_id = cohort.id;
 
         // Overlay on the parent (world), not on the cohort.
-        let ancestor_overlay = make_overlay(pid, SubFieldRole::Velocity, TransformOp::Add(-0.05), OverlaySource::System, true);
+        let ancestor_overlay = make_overlay(
+            pid,
+            SubFieldRole::Velocity,
+            TransformOp::Add(-0.05),
+            OverlaySource::System,
+            true,
+        );
         let ancestor_id = ancestor_overlay.id;
 
         let mut root = SimThing::new(SimThingKind::World, 0);
@@ -313,7 +338,10 @@ mod tests {
         .unwrap();
         let obs = &report.properties[0];
         assert_eq!(obs.overlay_contributions.len(), 1);
-        assert!(obs.overlay_contributions[0].inherited, "overlay from ancestor must be flagged inherited");
+        assert!(
+            obs.overlay_contributions[0].inherited,
+            "overlay from ancestor must be flagged inherited"
+        );
         assert_eq!(obs.overlay_contributions[0].overlay_id, ancestor_id);
     }
 
@@ -324,12 +352,24 @@ mod tests {
 
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
         cohort.add_property(pid, PropertyValue::from_layout(&reg.property(pid).layout));
-        let local_overlay = make_overlay(pid, SubFieldRole::Amount, TransformOp::Set(0.8), OverlaySource::Player, false);
+        let local_overlay = make_overlay(
+            pid,
+            SubFieldRole::Amount,
+            TransformOp::Set(0.8),
+            OverlaySource::Player,
+            false,
+        );
         let local_id = local_overlay.id;
         cohort.add_overlay(local_overlay);
         let cohort_id = cohort.id;
 
-        let ancestor_overlay = make_overlay(pid, SubFieldRole::Velocity, TransformOp::Multiply(0.5), OverlaySource::Ai, true);
+        let ancestor_overlay = make_overlay(
+            pid,
+            SubFieldRole::Velocity,
+            TransformOp::Multiply(0.5),
+            OverlaySource::Ai,
+            true,
+        );
         let ancestor_id = ancestor_overlay.id;
 
         let mut root = SimThing::new(SimThingKind::World, 0);
@@ -366,9 +406,18 @@ mod tests {
         let n_dims = reg.total_columns;
 
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
-        cohort.add_property(pid_a, PropertyValue::from_layout(&reg.property(pid_a).layout));
+        cohort.add_property(
+            pid_a,
+            PropertyValue::from_layout(&reg.property(pid_a).layout),
+        );
         // Overlay targets pid_b, which cohort doesn't even have — should be absent.
-        let unrelated = make_overlay(pid_b, SubFieldRole::Amount, TransformOp::Add(1.0), OverlaySource::System, false);
+        let unrelated = make_overlay(
+            pid_b,
+            SubFieldRole::Amount,
+            TransformOp::Add(1.0),
+            OverlaySource::System,
+            false,
+        );
         cohort.add_overlay(unrelated);
         let cohort_id = cohort.id;
 
@@ -392,5 +441,48 @@ mod tests {
         assert_eq!(report.properties.len(), 1);
         assert_eq!(report.properties[0].property_id, pid_a);
         assert!(report.properties[0].overlay_contributions.is_empty());
+    }
+
+    #[test]
+    fn suspended_overlay_contribution_reports_inactive() {
+        let (reg, pid) = fixture();
+        let n_dims = reg.total_columns;
+
+        let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+        cohort.add_property(pid, PropertyValue::from_layout(&reg.property(pid).layout));
+        let mut overlay = make_overlay(
+            pid,
+            SubFieldRole::Amount,
+            TransformOp::Set(0.8),
+            OverlaySource::Player,
+            false,
+        );
+        let overlay_id = overlay.id;
+        overlay.lifecycle = OverlayLifecycle::Suspended {
+            when_activated: Box::new(OverlayLifecycle::Permanent),
+        };
+        cohort.add_overlay(overlay);
+        let cohort_id = cohort.id;
+
+        let mut root = SimThing::new(SimThingKind::World, 0);
+        root.add_child(cohort);
+
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
+        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
+        let shadow = vec![0.0f32; 2 * n_dims];
+
+        let report = observe(
+            &root,
+            &reg,
+            &alloc,
+            cohort_row(&shadow, slot, n_dims),
+            cohort_id,
+        )
+        .unwrap();
+
+        let contrib = &report.properties[0].overlay_contributions[0];
+        assert_eq!(contrib.overlay_id, overlay_id);
+        assert!(!contrib.active);
     }
 }

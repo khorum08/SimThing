@@ -20,7 +20,9 @@
 //! multiple gameplay threads can submit work without locking. The consumer
 //! side lives on the feeder thread and is consumed by `TransformPatcher::drain`.
 
-use simthing_core::{Overlay, PropertyTransformDelta, SimPropertyId, SimThing, SimThingId};
+use simthing_core::{
+    Overlay, OverlayId, PropertyTransformDelta, SimPropertyId, SimThing, SimThingId,
+};
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 // ── Player intent ─────────────────────────────────────────────────────────────
@@ -32,7 +34,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 /// independently of other boundary work.
 #[derive(Clone, Debug)]
 pub struct PlayerIntentOverlay {
-    pub target:  SimThingId,
+    pub target: SimThingId,
     pub overlay: Overlay,
 }
 
@@ -52,7 +54,7 @@ pub struct PlayerIntentOverlay {
 /// to surface.
 #[derive(Clone, Debug)]
 pub struct AiIntentOverlay {
-    pub target:  SimThingId,
+    pub target: SimThingId,
     pub overlay: Overlay,
     /// Urgency hint in [0.0, 1.0]. Higher = AI considers this more time-sensitive.
     pub urgency: f32,
@@ -67,16 +69,22 @@ pub struct AiSender {
 
 impl AiSender {
     pub fn submit(&self, intent: AiIntentOverlay) -> Result<(), FeederError> {
-        self.inner.send(intent).map_err(|_| FeederError::Disconnected)
+        self.inner
+            .send(intent)
+            .map_err(|_| FeederError::Disconnected)
     }
 
     pub fn submit_ai_intent(
         &self,
-        target:  SimThingId,
+        target: SimThingId,
         overlay: Overlay,
         urgency: f32,
     ) -> Result<(), FeederError> {
-        self.submit(AiIntentOverlay { target, overlay, urgency })
+        self.submit(AiIntentOverlay {
+            target,
+            overlay,
+            urgency,
+        })
     }
 }
 
@@ -119,7 +127,7 @@ pub struct PatchTransform {
     /// Semantic mutation. Roles, not columns; properties referenced here must
     /// be active in the registry or the patch is silently skipped (mirrors
     /// `PropertyTransformDelta::apply_to_data` behavior).
-    pub delta:  PropertyTransformDelta,
+    pub delta: PropertyTransformDelta,
 }
 
 /// Day-boundary-only request. The feeder accumulates these during the day
@@ -131,35 +139,40 @@ pub enum BoundaryRequest {
     /// Insert a brand-new SimThing as a child of the given parent. Slot
     /// allocation happens at the boundary; the new id is reported back via
     /// the maintainer's outcome record.
-    AddChild {
-        parent:    SimThingId,
-        child:     SimThing,
-    },
+    AddChild { parent: SimThingId, child: SimThing },
     /// Tombstone a SimThing's slot. Its row stays indexed in the GPU buffer
     /// (slot-reuse is LIFO) but is no longer reachable from the tree.
-    Remove {
-        target: SimThingId,
-    },
+    Remove { target: SimThingId },
     /// Move a subtree under a new parent. The child keeps its slot — only
     /// the parent pointer changes.
     Reparent {
-        child:      SimThingId,
+        child: SimThingId,
         new_parent: SimThingId,
     },
     /// Attach a new permanent or transient overlay to an existing SimThing.
     /// New instruction overlays from player/AI for day N+1 flow through here
     /// (per design_v4.md §10 step 7).
     AttachOverlay {
-        target:  SimThingId,
+        target: SimThingId,
         overlay: Overlay,
+    },
+    /// Activate a suspended overlay at the boundary. No-op if the overlay is
+    /// missing or already active.
+    ActivateOverlay {
+        target: SimThingId,
+        overlay_id: OverlayId,
+    },
+    /// Suspend an active overlay at the boundary. No-op if the overlay is
+    /// missing or already suspended.
+    SuspendOverlay {
+        target: SimThingId,
+        overlay_id: OverlayId,
     },
     /// Register a brand-new `SubFieldSpec` mid-session. Triggers the
     /// `AddDimension` path: registry grows, every existing row gets the
     /// default value for the new column, GPU buffers reallocate. Mods/DLC
     /// path; not used by base content.
-    AddDimension {
-        property: SimPropertyId,
-    },
+    AddDimension { property: SimPropertyId },
 }
 
 /// Outer enum the channel actually carries. The Patcher splits these on
@@ -192,7 +205,7 @@ impl FeederSender {
     pub fn submit_patch(
         &self,
         target: SimThingId,
-        delta:  PropertyTransformDelta,
+        delta: PropertyTransformDelta,
     ) -> Result<(), FeederError> {
         self.send(FeederWork::Patch(PatchTransform { target, delta }))
     }
@@ -204,10 +217,13 @@ impl FeederSender {
     /// Submit a player-authored overlay for attachment at the next day boundary.
     pub fn submit_player_intent(
         &self,
-        target:  SimThingId,
+        target: SimThingId,
         overlay: Overlay,
     ) -> Result<(), FeederError> {
-        self.send(FeederWork::PlayerIntent(PlayerIntentOverlay { target, overlay }))
+        self.send(FeederWork::PlayerIntent(PlayerIntentOverlay {
+            target,
+            overlay,
+        }))
     }
 }
 
@@ -257,8 +273,8 @@ mod tests {
     fn channel_round_trips_a_patch() {
         let (tx, rx) = feeder_channel();
         let target = SimThing::new(SimThingKind::Cohort, 0).id;
-        let delta  = PropertyTransformDelta {
-            property_id:      SimPropertyId(0),
+        let delta = PropertyTransformDelta {
+            property_id: SimPropertyId(0),
             sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
         };
         tx.submit_patch(target, delta.clone()).unwrap();
@@ -283,10 +299,14 @@ mod tests {
     fn boundary_requests_route_through_the_same_channel() {
         let (tx, rx) = feeder_channel();
         let target = SimThing::new(SimThingKind::Cohort, 0).id;
-        tx.submit_boundary(BoundaryRequest::Remove { target }).unwrap();
+        tx.submit_boundary(BoundaryRequest::Remove { target })
+            .unwrap();
         let drained = rx.drain_now();
         assert_eq!(drained.len(), 1);
-        assert!(matches!(drained[0], FeederWork::Boundary(BoundaryRequest::Remove { .. })));
+        assert!(matches!(
+            drained[0],
+            FeederWork::Boundary(BoundaryRequest::Remove { .. })
+        ));
     }
 
     #[test]
@@ -295,10 +315,10 @@ mod tests {
         let tx2 = tx.clone();
         let target = SimThing::new(SimThingKind::Cohort, 0).id;
         let mk_delta = || PropertyTransformDelta {
-            property_id:      SimPropertyId(0),
+            property_id: SimPropertyId(0),
             sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
         };
-        tx .submit_patch(target, mk_delta()).unwrap();
+        tx.submit_patch(target, mk_delta()).unwrap();
         tx2.submit_patch(target, mk_delta()).unwrap();
         assert_eq!(rx.drain_now().len(), 2);
     }
@@ -308,10 +328,15 @@ mod tests {
         let (tx, rx) = feeder_channel();
         drop(rx);
         let target = SimThing::new(SimThingKind::Cohort, 0).id;
-        let err = tx.submit_patch(target, PropertyTransformDelta {
-            property_id:      SimPropertyId(0),
-            sub_field_deltas: Vec::new(),
-        }).unwrap_err();
+        let err = tx
+            .submit_patch(
+                target,
+                PropertyTransformDelta {
+                    property_id: SimPropertyId(0),
+                    sub_field_deltas: Vec::new(),
+                },
+            )
+            .unwrap_err();
         assert!(matches!(err, FeederError::Disconnected));
     }
 }

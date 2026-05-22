@@ -64,9 +64,7 @@ fn record_rebellion_demo_replay_round_trips_structural_state() {
     let scenario = Scenario::from_ron_str(ron).expect("scenario parse");
     let mut session = SimSession::open(scenario).expect("session open");
 
-    let summary = session
-        .record_to_path(&path, 4)
-        .expect("record session");
+    let summary = session.record_to_path(&path, 4).expect("record session");
     assert_eq!(summary.frames_written, 4);
     assert!(summary.fission_events >= 1);
 
@@ -88,13 +86,20 @@ fn record_rebellion_demo_replay_round_trips_structural_state() {
     assert_eq!(driver.day, 4);
     assert_eq!(driver.root.subtree_size(), 4);
     assert_eq!(driver.fission_lineage.len(), 1);
-    assert_eq!(driver.fission_lineage.len(), session.proto.fission_lineage().len());
+    assert_eq!(
+        driver.fission_lineage.len(),
+        session.proto.fission_lineage().len()
+    );
     assert!(
         entry_counts.get("FissionOccurred").copied().unwrap_or(0) >= 1,
         "expected FissionOccurred in replay log, got {entry_counts:?}"
     );
     assert!(
-        entry_counts.get("FissionLineageAdded").copied().unwrap_or(0) >= 1,
+        entry_counts
+            .get("FissionLineageAdded")
+            .copied()
+            .unwrap_or(0)
+            >= 1,
         "expected FissionLineageAdded in replay log, got {entry_counts:?}"
     );
 }
@@ -128,6 +133,8 @@ fn replay_entry_kind(entry: &BoundaryDeltaEntry) -> &'static str {
     match entry {
         BoundaryDeltaEntry::OverlayAttached { .. } => "OverlayAttached",
         BoundaryDeltaEntry::OverlayDissolved { .. } => "OverlayDissolved",
+        BoundaryDeltaEntry::OverlayActivated { .. } => "OverlayActivated",
+        BoundaryDeltaEntry::OverlaySuspended { .. } => "OverlaySuspended",
         BoundaryDeltaEntry::SimThingAdded { .. } => "SimThingAdded",
         BoundaryDeltaEntry::SimThingRemoved { .. } => "SimThingRemoved",
         BoundaryDeltaEntry::DimensionAdded { .. } => "DimensionAdded",

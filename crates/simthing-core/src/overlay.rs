@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// roles (not column indices). The CPU preparation pass resolves roles → columns.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PropertyTransformDelta {
-    pub property_id:      SimPropertyId,
+    pub property_id: SimPropertyId,
     /// List of (sub-field role, operation) pairs.
     pub sub_field_deltas: Vec<(SubFieldRole, TransformOp)>,
 }
@@ -52,9 +52,19 @@ pub enum OverlaySource {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum DissolveCondition {
-    PropertyReaches { property: SimPropertyId, sub_field: SubFieldRole, value: f32 },
-    PropertyBelow   { property: SimPropertyId, sub_field: SubFieldRole, value: f32 },
-    AfterTicks      { remaining: u32 },
+    PropertyReaches {
+        property: SimPropertyId,
+        sub_field: SubFieldRole,
+        value: f32,
+    },
+    PropertyBelow {
+        property: SimPropertyId,
+        sub_field: SubFieldRole,
+        value: f32,
+    },
+    AfterTicks {
+        remaining: u32,
+    },
     OverrideReceived,
     Never,
 }
@@ -65,15 +75,18 @@ pub enum OverlayLifecycle {
     Transient {
         dissolution_conditions: Vec<DissolveCondition>,
     },
+    Suspended {
+        when_activated: Box<OverlayLifecycle>,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Overlay {
-    pub id:        OverlayId,
-    pub kind:      OverlayKind,
-    pub source:    OverlaySource,
+    pub id: OverlayId,
+    pub kind: OverlayKind,
+    pub source: OverlaySource,
     /// Which SimThings this overlay affects (resolved at application time).
-    pub affects:   Vec<SimThingId>,
+    pub affects: Vec<SimThingId>,
     pub transform: PropertyTransformDelta,
     pub lifecycle: OverlayLifecycle,
 }
@@ -81,5 +94,12 @@ pub struct Overlay {
 impl Overlay {
     pub fn is_permanent(&self) -> bool {
         matches!(self.lifecycle, OverlayLifecycle::Permanent)
+    }
+
+    pub fn is_active(&self) -> bool {
+        matches!(
+            self.lifecycle,
+            OverlayLifecycle::Permanent | OverlayLifecycle::Transient { .. }
+        )
     }
 }

@@ -148,8 +148,8 @@ impl BoundaryProtocol {
         let mut dirty_value_slots = Vec::new();
         let mut force_full_value_upload = false;
         let mut topology_dirty = false;
-        let mut threshold_dirty = self.threshold_config_revision
-            != self.synced_threshold_config_revision;
+        let mut threshold_dirty =
+            self.threshold_config_revision != self.synced_threshold_config_revision;
 
         // The CPU shadow reflects only CPU-side patches; integration output
         // from Pass 1/2 lives only on the GPU. Before mutating the shadow
@@ -211,7 +211,13 @@ impl BoundaryProtocol {
         // Pre-grow for possible fission children so seed_fission_child can
         // write the new rows immediately instead of relying on a later
         // semantic projection.
-        let fission_headroom = events.len();
+        let fission_headroom = projected_fission_slots(
+            &events,
+            &self.cpu_threshold_registry,
+            &self.root,
+            &boundary_paths,
+            &self.registry,
+        );
         let pregrow_fission_started = Instant::now();
         force_full_value_upload |= self.ensure_slot_capacity(
             self.allocator.capacity() + fission_headroom,
@@ -657,13 +663,58 @@ fn projected_add_child_slots(requests: &[BoundaryRequest]) -> usize {
         .sum()
 }
 
+fn projected_fission_slots(
+    events: &[ThresholdEvent],
+    registry: &ThresholdRegistry,
+    root: &SimThing,
+    node_paths: &std::collections::HashMap<SimThingId, Vec<usize>>,
+    dim_reg: &DimensionRegistry,
+) -> usize {
+    let mut seen = HashSet::new();
+    events
+        .iter()
+        .filter_map(|event| match registry.get(event.event_kind)? {
+            ThresholdSemantic::FissionTrigger {
+                sim_thing_id,
+                property_id,
+                template_idx,
+            } => Some((*sim_thing_id, *property_id, *template_idx)),
+            _ => None,
+        })
+        .filter(|(sim_thing_id, _, template_idx)| seen.insert((*sim_thing_id, *template_idx)))
+        .map(|(sim_thing_id, property_id, template_idx)| {
+            let mut slots = 1;
+            if dim_reg.is_active(property_id) {
+                let prop = dim_reg.property(property_id);
+                if let Some(ft) = prop.fission_templates.get(template_idx) {
+                    if ft.template.clone_capability_children {
+                        if let Some(parent) = node_paths
+                            .get(&sim_thing_id)
+                            .and_then(|path| crate::tree_index::node_at_path(root, path))
+                        {
+                            slots += parent
+                                .children
+                                .iter()
+                                .filter(|child| is_capability_container_kind(&child.kind))
+                                .map(subtree_size)
+                                .sum::<usize>();
+                        }
+                    }
+                }
+            }
+            slots
+        })
+        .sum()
+}
+
 fn tree_has_boundary_lifecycle_work(node: &SimThing, registry: &DimensionRegistry) -> bool {
     if node.overlays.iter().any(|overlay| {
-        matches!(overlay.lifecycle, OverlayLifecycle::Transient { .. })
-            || registry
-                .try_property(overlay.transform.property_id)
-                .and_then(|prop| prop.on_expire.as_ref())
-                .is_some()
+        overlay.is_active()
+            && (matches!(overlay.lifecycle, OverlayLifecycle::Transient { .. })
+                || registry
+                    .try_property(overlay.transform.property_id)
+                    .and_then(|prop| prop.on_expire.as_ref())
+                    .is_some())
     }) {
         return true;
     }
@@ -689,6 +740,14 @@ fn tree_has_boundary_lifecycle_work(node: &SimThing, registry: &DimensionRegistr
 
 fn subtree_size(node: &SimThing) -> usize {
     1 + node.children.iter().map(subtree_size).sum::<usize>()
+}
+
+fn is_capability_container_kind(kind: &simthing_core::SimThingKind) -> bool {
+    matches!(
+        kind,
+        simthing_core::SimThingKind::Custom(name)
+            if matches!(name.as_str(), "tech_tree" | "national_ideas" | "talent_tree")
+    )
 }
 
 fn collect_velocity_alerts(
@@ -782,8 +841,9 @@ fn seed_dimension_values(
 mod tests {
     use super::*;
     use simthing_core::{
-        DecayBehavior, DissolveCondition, Overlay, OverlayId, OverlayKind, OverlaySource,
-        PropertyTransformDelta, SimProperty, SimThingKind, SubFieldRole, TransformOp,
+        DecayBehavior, Direction, DissolveCondition, FissionTemplate, FissionThreshold, Overlay,
+        OverlayId, OverlayKind, OverlaySource, PropertyTransformDelta, SimProperty, SimThingKind,
+        SimThingKindTag, SubFieldRole, TransformOp,
     };
     use simthing_feeder::{BoundaryRequest, FeederWork};
     use simthing_gpu::SlotAllocator;
@@ -873,6 +933,78 @@ mod tests {
             },
         });
         assert!(!proto.can_skip_empty_boundary(&[], &patcher));
+    }
+
+    #[test]
+    fn boundary_with_only_suspended_overlay_can_skip() {
+        let (mut proto, patcher, pid) = simple_proto();
+        proto.root.children[0].add_overlay(Overlay {
+            id: OverlayId::new(),
+            kind: OverlayKind::Transient,
+            source: OverlaySource::System,
+            affects: Vec::new(),
+            transform: PropertyTransformDelta {
+                property_id: pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.4))],
+            },
+            lifecycle: OverlayLifecycle::Suspended {
+                when_activated: Box::new(OverlayLifecycle::Transient {
+                    dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 1 }],
+                }),
+            },
+        });
+        assert!(proto.can_skip_empty_boundary(&[], &patcher));
+    }
+
+    #[test]
+    fn projected_fission_slots_counts_cloned_capability_subtrees() {
+        let mut reg = DimensionRegistry::new();
+        let mut prop = SimProperty::simple("core", "loyalty", 0);
+        prop.fission_templates = vec![FissionThreshold {
+            sub_field: SubFieldRole::Amount,
+            threshold: 0.3,
+            direction: Direction::Falling,
+            template: FissionTemplate {
+                child_kind: SimThingKindTag::Faction,
+                fusion_intensity_threshold: 0.8,
+                fusion_scar_coefficient: 0.05,
+                resolution_label: "resolved".into(),
+                clone_capability_children: true,
+            },
+            secondary: None,
+        }];
+        let pid = reg.register(prop);
+
+        let mut faction = SimThing::new(SimThingKind::Faction, 0);
+        let faction_id = faction.id;
+        faction.add_property(pid, reg.property(pid).default_value());
+        let mut tech_tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+        tech_tree.add_child(SimThing::new(SimThingKind::Custom("tech_leaf".into()), 0));
+        faction.add_child(tech_tree);
+        faction.add_child(SimThing::new(SimThingKind::Custom("ordinary_child".into()), 0));
+
+        let mut root = SimThing::new(SimThingKind::Location, 0);
+        root.add_child(faction);
+        let paths = build_node_paths(&root);
+
+        let mut threshold_registry = ThresholdRegistry::new();
+        let event_kind = threshold_registry.push(ThresholdSemantic::FissionTrigger {
+            sim_thing_id: faction_id,
+            property_id: pid,
+            template_idx: 0,
+        });
+        let events = vec![ThresholdEvent {
+            slot: 0,
+            col: 0,
+            value: 0.2,
+            event_kind,
+        }];
+
+        assert_eq!(
+            projected_fission_slots(&events, &threshold_registry, &root, &paths, &reg),
+            3,
+            "one fission child plus two nodes in the cloned tech tree"
+        );
     }
 
     #[test]

@@ -36,13 +36,25 @@ pub enum BoundaryDeltaEntry {
     /// `Overlay` payload so replay can re-attach it without referring back
     /// to the live tree.
     OverlayAttached {
-        target:  SimThingId,
+        target: SimThingId,
         overlay: Overlay,
     },
 
     /// A transient overlay dissolved at the boundary (lifecycle step 4).
     OverlayDissolved {
-        target:     SimThingId,
+        target: SimThingId,
+        overlay_id: OverlayId,
+    },
+
+    /// A suspended overlay was activated at the boundary.
+    OverlayActivated {
+        target: SimThingId,
+        overlay_id: OverlayId,
+    },
+
+    /// An active overlay was suspended at the boundary.
+    OverlaySuspended {
+        target: SimThingId,
         overlay_id: OverlayId,
     },
 
@@ -51,10 +63,7 @@ pub enum BoundaryDeltaEntry {
     /// replay can re-attach the subtree verbatim. Silently omitted when the
     /// node cannot be located in the post-boundary tree (e.g. added and
     /// removed in the same boundary).
-    SimThingAdded {
-        parent: SimThingId,
-        node:   SimThing,
-    },
+    SimThingAdded { parent: SimThingId, node: SimThing },
 
     /// A SimThing was removed from the tree (slot tombstoned).
     SimThingRemoved { id: SimThingId },
@@ -67,26 +76,23 @@ pub enum BoundaryDeltaEntry {
     /// `SimThing` payload so replay can structurally re-spawn the child.
     /// Silently omitted when the child is not found in the post-boundary tree
     /// (should not occur in normal operation).
-    FissionOccurred {
-        parent: SimThingId,
-        node:   SimThing,
-    },
+    FissionOccurred { parent: SimThingId, node: SimThing },
 
     /// A fusion event merged `child` back into `parent`'s subtree.
     FusionOccurred {
         parent: SimThingId,
-        child:  SimThingId,
+        child: SimThingId,
     },
 
     /// A property was removed from a SimThing (threshold-driven or CPU decay).
     PropertyExpired {
         sim_thing_id: SimThingId,
-        property_id:  SimPropertyId,
+        property_id: SimPropertyId,
     },
 
     /// A SimThing was reparented under `new_parent`.
     SimThingReparented {
-        child:      SimThingId,
+        child: SimThingId,
         new_parent: SimThingId,
     },
 
@@ -94,18 +100,18 @@ pub enum BoundaryDeltaEntry {
     /// sub-field.
     VelocityAlert {
         sim_thing_id: SimThingId,
-        property_id:  SimPropertyId,
-        sub_field:    SubFieldRole,
-        value:        f32,
+        property_id: SimPropertyId,
+        sub_field: SubFieldRole,
+        value: f32,
     },
 
     /// An aggregate alert threshold fired on a reduced parent column (Pass 7
     /// on `output_vectors`). Observation-only for replay.
     AggregateAlert {
         sim_thing_id: SimThingId,
-        property_id:  SimPropertyId,
-        sub_field:    SubFieldRole,
-        value:        f32,
+        property_id: SimPropertyId,
+        sub_field: SubFieldRole,
+        value: f32,
     },
 
     /// A new fission lineage record was registered (child spawned from parent).
@@ -136,10 +142,7 @@ pub enum BoundaryDeltaEntry {
 /// Entries are emitted in boundary step order (lifecycle → expiry → fission →
 /// structural mutations → velocity alerts) so the log reads chronologically
 /// within a day.
-pub fn entries_from_outcome(
-    outcome: &BoundaryOutcome,
-    root:    &SimThing,
-) -> Vec<BoundaryDeltaEntry> {
+pub fn entries_from_outcome(outcome: &BoundaryOutcome, root: &SimThing) -> Vec<BoundaryDeltaEntry> {
     let index = DeltaLogTreeIndex::new(root);
     let mut entries = Vec::with_capacity(estimated_entry_count(outcome));
 
@@ -184,7 +187,7 @@ pub fn entries_from_outcome(
         if let Some((parent_id, node)) = index.node_with_parent(id) {
             entries.push(BoundaryDeltaEntry::SimThingAdded {
                 parent: parent_id,
-                node:   node.clone(),
+                node: node.clone(),
             });
         }
         // If not found (node was added and removed in same boundary): skip.
@@ -203,6 +206,12 @@ pub fn entries_from_outcome(
             });
         }
     }
+    for &(target, overlay_id) in &outcome.maintainer.overlays_activated {
+        entries.push(BoundaryDeltaEntry::OverlayActivated { target, overlay_id });
+    }
+    for &(target, overlay_id) in &outcome.maintainer.overlays_suspended {
+        entries.push(BoundaryDeltaEntry::OverlaySuspended { target, overlay_id });
+    }
     for &pid in &outcome.maintainer.dimensions_added {
         entries.push(BoundaryDeltaEntry::DimensionAdded { property_id: pid });
     }
@@ -211,17 +220,17 @@ pub fn entries_from_outcome(
     for alert in &outcome.velocity_alerts {
         entries.push(BoundaryDeltaEntry::VelocityAlert {
             sim_thing_id: alert.sim_thing_id,
-            property_id:  alert.property_id,
-            sub_field:    alert.sub_field.clone(),
-            value:        alert.value,
+            property_id: alert.property_id,
+            sub_field: alert.sub_field.clone(),
+            value: alert.value,
         });
     }
     for alert in &outcome.aggregate_alerts {
         entries.push(BoundaryDeltaEntry::AggregateAlert {
             sim_thing_id: alert.sim_thing_id,
-            property_id:  alert.property_id,
-            sub_field:    alert.sub_field.clone(),
-            value:        alert.value,
+            property_id: alert.property_id,
+            sub_field: alert.sub_field.clone(),
+            value: alert.value,
         });
     }
 
@@ -243,6 +252,8 @@ fn estimated_entry_count(outcome: &BoundaryOutcome) -> usize {
         + outcome.maintainer.tombstoned.len()
         + outcome.maintainer.reparented.len()
         + outcome.maintainer.overlays_attached.len()
+        + outcome.maintainer.overlays_activated.len()
+        + outcome.maintainer.overlays_suspended.len()
         + outcome.maintainer.dimensions_added.len()
         + outcome.velocity_alerts.len()
         + outcome.aggregate_alerts.len()
@@ -298,13 +309,13 @@ mod tests {
     use crate::boundary::BoundaryOutcome;
     use crate::fission::FissionOutcome;
     use crate::property_expiry::ExpiryOutcome;
-    use crate::threshold_registry::VelocityAlertEvent;
     use crate::threshold_registry::AggregateAlertEvent;
-    use simthing_feeder::MaintainerOutcome;
+    use crate::threshold_registry::VelocityAlertEvent;
     use simthing_core::{
-        OverlayId, OverlayKind, OverlaySource, OverlayLifecycle, PropertyTransformDelta,
+        OverlayId, OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta,
         SimPropertyId, SimThing, SimThingKind, SubFieldRole, TransformOp,
     };
+    use simthing_feeder::MaintainerOutcome;
 
     fn empty_outcome() -> BoundaryOutcome {
         BoundaryOutcome::default()
@@ -316,12 +327,12 @@ mod tests {
 
     fn make_overlay() -> Overlay {
         Overlay {
-            id:        OverlayId::new(),
-            kind:      OverlayKind::Policy,
-            source:    OverlaySource::System,
-            affects:   Vec::new(),
+            id: OverlayId::new(),
+            kind: OverlayKind::Policy,
+            source: OverlaySource::System,
+            affects: Vec::new(),
             transform: PropertyTransformDelta {
-                property_id:      SimPropertyId(0),
+                property_id: SimPropertyId(0),
                 sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.5))],
             },
             lifecycle: OverlayLifecycle::Permanent,
@@ -329,7 +340,8 @@ mod tests {
     }
 
     fn count_matching<F: Fn(&BoundaryDeltaEntry) -> bool>(
-        entries: &[BoundaryDeltaEntry], f: F,
+        entries: &[BoundaryDeltaEntry],
+        f: F,
     ) -> usize {
         entries.iter().filter(|e| f(e)).count()
     }
@@ -357,21 +369,30 @@ mod tests {
         let mut out = empty_outcome();
         out.fission = FissionOutcome {
             fissions_executed: 2,
-            fusions_executed:  1,
-            fission_pairs:     vec![(parent, child_a), (parent, child_b)],
-            fusion_pairs:      vec![(parent, child_b)],
+            fusions_executed: 1,
+            fission_pairs: vec![(parent, child_a), (parent, child_b)],
+            fusion_pairs: vec![(parent, child_b)],
             ..Default::default()
         };
         let entries = entries_from_outcome(&out, &root);
-        assert_eq!(count_matching(&entries, |e| matches!(e,
+        assert_eq!(
+            count_matching(&entries, |e| matches!(e,
             BoundaryDeltaEntry::FissionOccurred { parent: p, node }
-                if *p == parent && node.id == child_a)), 1);
-        assert_eq!(count_matching(&entries, |e| matches!(e,
+                if *p == parent && node.id == child_a)),
+            1
+        );
+        assert_eq!(
+            count_matching(&entries, |e| matches!(e,
             BoundaryDeltaEntry::FissionOccurred { parent: p, node }
-                if *p == parent && node.id == child_b)), 1);
-        assert_eq!(count_matching(&entries, |e| matches!(e,
+                if *p == parent && node.id == child_b)),
+            1
+        );
+        assert_eq!(
+            count_matching(&entries, |e| matches!(e,
             BoundaryDeltaEntry::FusionOccurred { parent: p, child: c }
-                if *p == parent && *c == child_b)), 1);
+                if *p == parent && *c == child_b)),
+            1
+        );
     }
 
     #[test]
@@ -379,28 +400,34 @@ mod tests {
         use crate::fission::FissionLineageRecord;
 
         let parent_id = SimThing::new(SimThingKind::Cohort, 0).id;
-        let child_id  = SimThing::new(SimThingKind::Cohort, 0).id;
+        let child_id = SimThing::new(SimThingKind::Cohort, 0).id;
         let rec = FissionLineageRecord {
             parent_id,
             child_id,
-            property_id:  SimPropertyId(0),
+            property_id: SimPropertyId(0),
             template_idx: 0,
         };
 
         let mut out = empty_outcome();
         out.fission = FissionOutcome {
-            lineage_added:   vec![rec],
+            lineage_added: vec![rec],
             lineage_removed: vec![rec],
             ..Default::default()
         };
         let entries = entries_from_outcome(&out, &empty_root());
 
-        assert_eq!(count_matching(&entries, |e| matches!(e,
+        assert_eq!(
+            count_matching(&entries, |e| matches!(e,
             BoundaryDeltaEntry::FissionLineageAdded { record: r }
-                if r.parent_id == parent_id && r.child_id == child_id)), 1);
-        assert_eq!(count_matching(&entries, |e| matches!(e,
+                if r.parent_id == parent_id && r.child_id == child_id)),
+            1
+        );
+        assert_eq!(
+            count_matching(&entries, |e| matches!(e,
             BoundaryDeltaEntry::FissionLineageRemoved { record: r }
-                if r.parent_id == parent_id && r.child_id == child_id)), 1);
+                if r.parent_id == parent_id && r.child_id == child_id)),
+            1
+        );
     }
 
     #[test]
@@ -417,7 +444,7 @@ mod tests {
         let id_b = SimThing::new(SimThingKind::Cohort, 0).id; // tombstoned (not in tree)
         let id_c = SimThing::new(SimThingKind::Cohort, 0).id; // reparented child
         let id_d = SimThing::new(SimThingKind::Cohort, 0).id; // reparented new_parent
-        let pid  = SimPropertyId(42);
+        let pid = SimPropertyId(42);
 
         // Build a tree that carries the overlay so find_overlay returns Some.
         let mut target_node = SimThing::new(SimThingKind::Cohort, 0);
@@ -429,35 +456,60 @@ mod tests {
 
         let mut out = empty_outcome();
         out.maintainer = MaintainerOutcome {
-            allocated:         vec![id_a],
-            tombstoned:        vec![id_b],
+            allocated: vec![id_a],
+            tombstoned: vec![id_b],
             overlays_attached: vec![(target_id, oid)],
-            dimensions_added:  vec![pid],
-            reparents:         1,
-            reparented:        vec![(id_c, id_d)],
+            dimensions_added: vec![pid],
+            reparents: 1,
+            reparented: vec![(id_c, id_d)],
             ..Default::default()
         };
         let entries = entries_from_outcome(&out, &root);
 
-        assert_eq!(count_matching(&entries,
-            |e| matches!(e, BoundaryDeltaEntry::SimThingAdded { parent, node }
-                if *parent == root_id && node.id == id_a)), 1);
-        assert_eq!(count_matching(&entries,
-            |e| matches!(e, BoundaryDeltaEntry::SimThingRemoved { id } if *id == id_b)), 1);
-        assert_eq!(count_matching(&entries,
-            |e| matches!(e, BoundaryDeltaEntry::OverlayAttached { target, overlay }
-                if *target == target_id && overlay.id == oid)), 1);
-        assert_eq!(count_matching(&entries,
-            |e| matches!(e, BoundaryDeltaEntry::DimensionAdded { property_id } if *property_id == pid)), 1);
-        assert_eq!(count_matching(&entries,
-            |e| matches!(e, BoundaryDeltaEntry::SimThingReparented { child, new_parent }
-                if *child == id_c && *new_parent == id_d)), 1);
+        assert_eq!(
+            count_matching(
+                &entries,
+                |e| matches!(e, BoundaryDeltaEntry::SimThingAdded { parent, node }
+                if *parent == root_id && node.id == id_a)
+            ),
+            1
+        );
+        assert_eq!(
+            count_matching(
+                &entries,
+                |e| matches!(e, BoundaryDeltaEntry::SimThingRemoved { id } if *id == id_b)
+            ),
+            1
+        );
+        assert_eq!(
+            count_matching(
+                &entries,
+                |e| matches!(e, BoundaryDeltaEntry::OverlayAttached { target, overlay }
+                if *target == target_id && overlay.id == oid)
+            ),
+            1
+        );
+        assert_eq!(
+            count_matching(
+                &entries,
+                |e| matches!(e, BoundaryDeltaEntry::DimensionAdded { property_id } if *property_id == pid)
+            ),
+            1
+        );
+        assert_eq!(
+            count_matching(
+                &entries,
+                |e| matches!(e, BoundaryDeltaEntry::SimThingReparented { child, new_parent }
+                if *child == id_c && *new_parent == id_d)
+            ),
+            1
+        );
     }
 
     #[test]
     fn overlay_attached_skipped_when_not_in_tree() {
         let id_a = SimThing::new(SimThingKind::Cohort, 0).id;
-        let oid  = OverlayId::new();
+        let oid = OverlayId::new();
 
         let mut out = empty_outcome();
         out.maintainer = MaintainerOutcome {
@@ -466,8 +518,9 @@ mod tests {
         };
         let entries = entries_from_outcome(&out, &empty_root());
         // The overlay was never in the tree → entry skipped.
-        assert!(!entries.iter().any(|e|
-            matches!(e, BoundaryDeltaEntry::OverlayAttached { .. })));
+        assert!(!entries
+            .iter()
+            .any(|e| matches!(e, BoundaryDeltaEntry::OverlayAttached { .. })));
     }
 
     #[test]
@@ -480,7 +533,9 @@ mod tests {
             ..Default::default()
         };
         let entries = entries_from_outcome(&out, &empty_root());
-        assert!(!entries.iter().any(|e| matches!(e, BoundaryDeltaEntry::SimThingAdded { .. })));
+        assert!(!entries
+            .iter()
+            .any(|e| matches!(e, BoundaryDeltaEntry::SimThingAdded { .. })));
     }
 
     #[test]
@@ -494,25 +549,36 @@ mod tests {
         let mut out = empty_outcome();
         out.expiry = ExpiryOutcome {
             properties_removed: 2,
-            cpu_side_removals:  1,
-            expired: vec![
-                (id_a, pid1),
-                (id_a, pid2),
-                (id_b, pid3),
-            ],
+            cpu_side_removals: 1,
+            expired: vec![(id_a, pid1), (id_a, pid2), (id_b, pid3)],
             ..Default::default()
         };
         let entries = entries_from_outcome(&out, &empty_root());
         assert_eq!(entries.len(), 3);
-        assert_eq!(count_matching(&entries,
-            |e| matches!(e, BoundaryDeltaEntry::PropertyExpired { sim_thing_id, property_id }
-                if *sim_thing_id == id_a && *property_id == pid1)), 1);
-        assert_eq!(count_matching(&entries,
-            |e| matches!(e, BoundaryDeltaEntry::PropertyExpired { sim_thing_id, property_id }
-                if *sim_thing_id == id_a && *property_id == pid2)), 1);
-        assert_eq!(count_matching(&entries,
-            |e| matches!(e, BoundaryDeltaEntry::PropertyExpired { sim_thing_id, property_id }
-                if *sim_thing_id == id_b && *property_id == pid3)), 1);
+        assert_eq!(
+            count_matching(
+                &entries,
+                |e| matches!(e, BoundaryDeltaEntry::PropertyExpired { sim_thing_id, property_id }
+                if *sim_thing_id == id_a && *property_id == pid1)
+            ),
+            1
+        );
+        assert_eq!(
+            count_matching(
+                &entries,
+                |e| matches!(e, BoundaryDeltaEntry::PropertyExpired { sim_thing_id, property_id }
+                if *sim_thing_id == id_a && *property_id == pid2)
+            ),
+            1
+        );
+        assert_eq!(
+            count_matching(
+                &entries,
+                |e| matches!(e, BoundaryDeltaEntry::PropertyExpired { sim_thing_id, property_id }
+                if *sim_thing_id == id_b && *property_id == pid3)
+            ),
+            1
+        );
     }
 
     #[test]
@@ -533,20 +599,52 @@ mod tests {
     }
 
     #[test]
+    fn overlay_activation_and_suspension_produce_entries() {
+        let target_id = SimThing::new(SimThingKind::Cohort, 0).id;
+        let activated = OverlayId::new();
+        let suspended = OverlayId::new();
+        let mut out = empty_outcome();
+        out.maintainer
+            .overlays_activated
+            .push((target_id, activated));
+        out.maintainer
+            .overlays_suspended
+            .push((target_id, suspended));
+
+        let entries = entries_from_outcome(&out, &empty_root());
+
+        assert!(entries.iter().any(|entry| matches!(
+            entry,
+            BoundaryDeltaEntry::OverlayActivated { target, overlay_id }
+                if *target == target_id && *overlay_id == activated
+        )));
+        assert!(entries.iter().any(|entry| matches!(
+            entry,
+            BoundaryDeltaEntry::OverlaySuspended { target, overlay_id }
+                if *target == target_id && *overlay_id == suspended
+        )));
+    }
+
+    #[test]
     fn aggregate_alert_produces_entry() {
-        let id  = SimThing::new(SimThingKind::Cohort, 0).id;
+        let id = SimThing::new(SimThingKind::Cohort, 0).id;
         let pid = SimPropertyId(7);
         let mut out = empty_outcome();
         out.aggregate_alerts = vec![AggregateAlertEvent {
             sim_thing_id: id,
-            property_id:  pid,
-            sub_field:    SubFieldRole::Amount,
-            value:        0.55,
+            property_id: pid,
+            sub_field: SubFieldRole::Amount,
+            value: 0.55,
         }];
         let entries = entries_from_outcome(&out, &empty_root());
         assert_eq!(entries.len(), 1);
         match &entries[0] {
-            BoundaryDeltaEntry::AggregateAlert { sim_thing_id, property_id, sub_field, value } => {
+            BoundaryDeltaEntry::AggregateAlert {
+                sim_thing_id,
+                property_id,
+                sub_field,
+                value,
+            } => {
                 assert_eq!(*sim_thing_id, id);
                 assert_eq!(*property_id, pid);
                 assert_eq!(*sub_field, SubFieldRole::Amount);
@@ -558,19 +656,24 @@ mod tests {
 
     #[test]
     fn velocity_alerts_produce_per_entry_variants() {
-        let id  = SimThing::new(SimThingKind::Cohort, 0).id;
+        let id = SimThing::new(SimThingKind::Cohort, 0).id;
         let pid = SimPropertyId(7);
         let mut out = empty_outcome();
         out.velocity_alerts = vec![VelocityAlertEvent {
             sim_thing_id: id,
-            property_id:  pid,
-            sub_field:    SubFieldRole::Velocity,
-            value:        -0.21,
+            property_id: pid,
+            sub_field: SubFieldRole::Velocity,
+            value: -0.21,
         }];
         let entries = entries_from_outcome(&out, &empty_root());
         assert_eq!(entries.len(), 1);
         match &entries[0] {
-            BoundaryDeltaEntry::VelocityAlert { sim_thing_id, property_id, sub_field, value } => {
+            BoundaryDeltaEntry::VelocityAlert {
+                sim_thing_id,
+                property_id,
+                sub_field,
+                value,
+            } => {
                 assert_eq!(*sim_thing_id, id);
                 assert_eq!(*property_id, pid);
                 assert_eq!(*sub_field, SubFieldRole::Velocity);
@@ -600,7 +703,7 @@ mod tests {
         root.add_child(added_node);
 
         let mut out = empty_outcome();
-        out.expiry  = ExpiryOutcome {
+        out.expiry = ExpiryOutcome {
             expired: vec![(expiry_id, pid)],
             ..Default::default()
         };
@@ -613,26 +716,31 @@ mod tests {
             ..Default::default()
         };
         out.velocity_alerts = vec![VelocityAlertEvent {
-            sim_thing_id: expiry_id, property_id: pid,
-            sub_field: SubFieldRole::Amount, value: 0.1,
+            sim_thing_id: expiry_id,
+            property_id: pid,
+            sub_field: SubFieldRole::Amount,
+            value: 0.1,
         }];
 
         let entries = entries_from_outcome(&out, &root);
-        let positions: Vec<&str> = entries.iter().map(|e| match e {
-            BoundaryDeltaEntry::PropertyExpired    { .. } => "expiry",
-            BoundaryDeltaEntry::FissionOccurred    { .. } => "fission",
-            BoundaryDeltaEntry::SimThingAdded      { .. } => "add",
-            BoundaryDeltaEntry::VelocityAlert      { .. } => "alert",
-            _ => "other",
-        }).collect();
+        let positions: Vec<&str> = entries
+            .iter()
+            .map(|e| match e {
+                BoundaryDeltaEntry::PropertyExpired { .. } => "expiry",
+                BoundaryDeltaEntry::FissionOccurred { .. } => "fission",
+                BoundaryDeltaEntry::SimThingAdded { .. } => "add",
+                BoundaryDeltaEntry::VelocityAlert { .. } => "alert",
+                _ => "other",
+            })
+            .collect();
 
-        let expiry_pos  = positions.iter().position(|&s| s == "expiry").unwrap();
+        let expiry_pos = positions.iter().position(|&s| s == "expiry").unwrap();
         let fission_pos = positions.iter().position(|&s| s == "fission").unwrap();
-        let add_pos     = positions.iter().position(|&s| s == "add").unwrap();
-        let alert_pos   = positions.iter().position(|&s| s == "alert").unwrap();
+        let add_pos = positions.iter().position(|&s| s == "add").unwrap();
+        let alert_pos = positions.iter().position(|&s| s == "alert").unwrap();
 
-        assert!(expiry_pos  < fission_pos, "expiry before fission");
-        assert!(fission_pos < add_pos,     "fission before structural");
-        assert!(add_pos     < alert_pos,   "structural before alerts");
+        assert!(expiry_pos < fission_pos, "expiry before fission");
+        assert!(fission_pos < add_pos, "fission before structural");
+        assert!(add_pos < alert_pos, "structural before alerts");
     }
 }

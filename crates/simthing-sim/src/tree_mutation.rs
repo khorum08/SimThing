@@ -60,10 +60,10 @@
 //! - Records the property id so the boundary protocol can widen the CPU
 //!   shadow and rebuild `WorldGpuState` before step 9 sync.
 
-use simthing_core::{DimensionRegistry, SimThing, SimThingId};
+use crate::tree_index::{detach_at_path, node_at_path, node_at_path_mut};
+use simthing_core::{DimensionRegistry, OverlayId, OverlayLifecycle, SimThing, SimThingId};
 use simthing_feeder::{BoundaryRequest, MaintainerOutcome};
 use simthing_gpu::SlotAllocator;
-use crate::tree_index::{detach_at_path, node_at_path, node_at_path_mut};
 use std::collections::HashMap;
 
 /// Apply every `BoundaryRequest` to the authoritative tree + slot table.
@@ -100,7 +100,15 @@ pub fn apply_structural_mutations(
                 );
             }
             BoundaryRequest::Remove { target } => {
-                apply_remove(root, allocator, values_shadow, n_dims, target, node_paths, &mut out);
+                apply_remove(
+                    root,
+                    allocator,
+                    values_shadow,
+                    n_dims,
+                    target,
+                    node_paths,
+                    &mut out,
+                );
             }
             BoundaryRequest::Reparent { child, new_parent } => {
                 apply_reparent(root, child, new_parent, node_paths, &mut out);
@@ -112,6 +120,26 @@ pub fn apply_structural_mutations(
                     out.overlays_attached.push((target, oid));
                 } else {
                     out.rejected_unknown_target += 1;
+                }
+            }
+            BoundaryRequest::ActivateOverlay { target, overlay_id } => {
+                match activate_overlay(root, target, overlay_id, node_paths) {
+                    OverlayTransition::Changed => {
+                        out.overlay_activations += 1;
+                        out.overlays_activated.push((target, overlay_id));
+                    }
+                    OverlayTransition::NoOp => {}
+                    OverlayTransition::Missing => out.rejected_unknown_target += 1,
+                }
+            }
+            BoundaryRequest::SuspendOverlay { target, overlay_id } => {
+                match suspend_overlay(root, target, overlay_id, node_paths) {
+                    OverlayTransition::Changed => {
+                        out.overlay_suspensions += 1;
+                        out.overlays_suspended.push((target, overlay_id));
+                    }
+                    OverlayTransition::NoOp => {}
+                    OverlayTransition::Missing => out.rejected_unknown_target += 1,
                 }
             }
             BoundaryRequest::AddDimension { property } => {
@@ -198,7 +226,9 @@ fn project_subtree_to_shadow(
         if end <= values_shadow.len() {
             values_shadow[base..end].fill(0.0);
             for (&pid, pval) in &node.properties {
-                if !registry.is_active(pid) { continue; }
+                if !registry.is_active(pid) {
+                    continue;
+                }
                 let prop = registry.property(pid);
                 let range = registry.column_range(pid);
                 let src_len = prop.layout.stride().min(pval.data.len());
@@ -377,6 +407,62 @@ fn attach_overlay_to_node(
 
 // ── Tree helpers ──────────────────────────────────────────────────────────────
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum OverlayTransition {
+    Changed,
+    NoOp,
+    Missing,
+}
+
+fn activate_overlay(
+    root: &mut SimThing,
+    target: SimThingId,
+    overlay_id: OverlayId,
+    node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
+) -> OverlayTransition {
+    let Some(node) = lookup_node_mut(root, target, node_paths) else {
+        return OverlayTransition::Missing;
+    };
+    let Some(overlay) = node
+        .overlays
+        .iter_mut()
+        .find(|overlay| overlay.id == overlay_id)
+    else {
+        return OverlayTransition::Missing;
+    };
+    let OverlayLifecycle::Suspended { when_activated } = overlay.lifecycle.clone() else {
+        return OverlayTransition::NoOp;
+    };
+    overlay.lifecycle = *when_activated;
+    OverlayTransition::Changed
+}
+
+fn suspend_overlay(
+    root: &mut SimThing,
+    target: SimThingId,
+    overlay_id: OverlayId,
+    node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
+) -> OverlayTransition {
+    let Some(node) = lookup_node_mut(root, target, node_paths) else {
+        return OverlayTransition::Missing;
+    };
+    let Some(overlay) = node
+        .overlays
+        .iter_mut()
+        .find(|overlay| overlay.id == overlay_id)
+    else {
+        return OverlayTransition::Missing;
+    };
+    if matches!(overlay.lifecycle, OverlayLifecycle::Suspended { .. }) {
+        return OverlayTransition::NoOp;
+    }
+    let active_lifecycle = overlay.lifecycle.clone();
+    overlay.lifecycle = OverlayLifecycle::Suspended {
+        when_activated: Box::new(active_lifecycle),
+    };
+    OverlayTransition::Changed
+}
+
 fn lookup_node<'a>(
     root: &'a SimThing,
     id: SimThingId,
@@ -429,9 +515,9 @@ fn find_node_mut<'a>(node: &'a mut SimThing, id: SimThingId) -> Option<&'a mut S
 mod tests {
     use super::*;
     use simthing_core::{
-        DimensionRegistry, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
-        PropertyTransformDelta, PropertyValue, SimProperty, SimPropertyId, SimThing, SimThingKind,
-        SubFieldRole, TransformOp,
+        DimensionRegistry, DissolveCondition, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
+        OverlaySource, PropertyTransformDelta, PropertyValue, SimProperty, SimPropertyId, SimThing,
+        SimThingKind, SubFieldRole, TransformOp,
     };
     use simthing_feeder::BoundaryRequest;
     use simthing_gpu::SlotAllocator;
@@ -527,7 +613,10 @@ mod tests {
 
         let mut shadow = vec![9.0f32; (alloc.capacity() + 2) * n_dims];
         let out = apply_structural_mutations(
-            vec![BoundaryRequest::AddChild { parent: parent_id, child }],
+            vec![BoundaryRequest::AddChild {
+                parent: parent_id,
+                child,
+            }],
             &mut root,
             &mut alloc,
             &mut reg,
@@ -579,9 +668,15 @@ mod tests {
         assert!(out.tombstoned.contains(&leaf_id));
         assert!(root.children.is_empty());
         assert!(!alloc.is_live(alloc.capacity() as u32 - 1));
-        assert!(shadow[loc_slot * n_dims..loc_slot * n_dims + n_dims].iter().all(|v| *v == 0.0));
-        assert!(shadow[cohort_slot * n_dims..cohort_slot * n_dims + n_dims].iter().all(|v| *v == 0.0));
-        assert!(shadow[leaf_slot * n_dims..leaf_slot * n_dims + n_dims].iter().all(|v| *v == 0.0));
+        assert!(shadow[loc_slot * n_dims..loc_slot * n_dims + n_dims]
+            .iter()
+            .all(|v| *v == 0.0));
+        assert!(shadow[cohort_slot * n_dims..cohort_slot * n_dims + n_dims]
+            .iter()
+            .all(|v| *v == 0.0));
+        assert!(shadow[leaf_slot * n_dims..leaf_slot * n_dims + n_dims]
+            .iter()
+            .all(|v| *v == 0.0));
     }
 
     #[test]
@@ -712,6 +807,98 @@ mod tests {
         assert_eq!(out.overlays, 1);
         assert_eq!(out.overlays_attached, vec![(loc_id, oid)]);
         assert_eq!(root.children[0].overlays.len(), 1);
+    }
+
+    #[test]
+    fn activate_overlay_restores_parked_lifecycle() {
+        let (mut reg, mut alloc, mut root) = fixture();
+        let n_dims = reg.total_columns;
+        let loc_id = root.children[0].id;
+        let pid = SimPropertyId(0);
+        let overlay_id = OverlayId::new();
+        root.children[0].add_overlay(Overlay {
+            id: overlay_id,
+            kind: OverlayKind::Policy,
+            source: OverlaySource::Player,
+            affects: vec![],
+            transform: PropertyTransformDelta {
+                property_id: pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.1))],
+            },
+            lifecycle: OverlayLifecycle::Suspended {
+                when_activated: Box::new(OverlayLifecycle::Transient {
+                    dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 3 }],
+                }),
+            },
+        });
+        let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
+
+        let out = apply_structural_mutations(
+            vec![BoundaryRequest::ActivateOverlay {
+                target: loc_id,
+                overlay_id,
+            }],
+            &mut root,
+            &mut alloc,
+            &mut reg,
+            &mut shadow,
+            n_dims,
+            None,
+        );
+
+        assert_eq!(out.overlay_activations, 1);
+        assert_eq!(out.overlays_activated, vec![(loc_id, overlay_id)]);
+        assert!(matches!(
+            root.children[0].overlays[0].lifecycle,
+            OverlayLifecycle::Transient { ref dissolution_conditions }
+                if matches!(
+                    dissolution_conditions.as_slice(),
+                    [DissolveCondition::AfterTicks { remaining: 3 }]
+                )
+        ));
+    }
+
+    #[test]
+    fn suspend_overlay_parks_current_lifecycle() {
+        let (mut reg, mut alloc, mut root) = fixture();
+        let n_dims = reg.total_columns;
+        let loc_id = root.children[0].id;
+        let pid = SimPropertyId(0);
+        let overlay_id = OverlayId::new();
+        root.children[0].add_overlay(Overlay {
+            id: overlay_id,
+            kind: OverlayKind::Policy,
+            source: OverlaySource::Player,
+            affects: vec![],
+            transform: PropertyTransformDelta {
+                property_id: pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(0.9))],
+            },
+            lifecycle: OverlayLifecycle::Permanent,
+        });
+        let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
+
+        let out = apply_structural_mutations(
+            vec![BoundaryRequest::SuspendOverlay {
+                target: loc_id,
+                overlay_id,
+            }],
+            &mut root,
+            &mut alloc,
+            &mut reg,
+            &mut shadow,
+            n_dims,
+            None,
+        );
+
+        assert_eq!(out.overlay_suspensions, 1);
+        assert_eq!(out.overlays_suspended, vec![(loc_id, overlay_id)]);
+        let OverlayLifecycle::Suspended { when_activated } =
+            &root.children[0].overlays[0].lifecycle
+        else {
+            panic!("overlay should be suspended");
+        };
+        assert!(matches!(**when_activated, OverlayLifecycle::Permanent));
     }
 
     #[test]

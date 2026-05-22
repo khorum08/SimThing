@@ -404,6 +404,8 @@ fn entry_kind(entry: &BoundaryDeltaEntry) -> &'static str {
     match entry {
         BoundaryDeltaEntry::OverlayAttached { .. } => "OverlayAttached",
         BoundaryDeltaEntry::OverlayDissolved { .. } => "OverlayDissolved",
+        BoundaryDeltaEntry::OverlayActivated { .. } => "OverlayActivated",
+        BoundaryDeltaEntry::OverlaySuspended { .. } => "OverlaySuspended",
         BoundaryDeltaEntry::SimThingAdded { .. } => "SimThingAdded",
         BoundaryDeltaEntry::SimThingRemoved { .. } => "SimThingRemoved",
         BoundaryDeltaEntry::DimensionAdded { .. } => "DimensionAdded",

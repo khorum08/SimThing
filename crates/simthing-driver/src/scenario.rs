@@ -134,6 +134,7 @@ impl Scenario {
                 fusion_intensity_threshold: 0.8,
                 fusion_scar_coefficient: 0.05,
                 resolution_label: "rebellion_settled".into(),
+                clone_capability_children: false,
             },
             secondary: None,
         }];
@@ -272,6 +273,7 @@ impl Scenario {
                 fusion_intensity_threshold: 0.9,
                 fusion_scar_coefficient: 0.02,
                 resolution_label: "stress_resolved".into(),
+                clone_capability_children: false,
             },
             secondary: None,
         }];

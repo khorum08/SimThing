@@ -42,7 +42,7 @@
 use std::io::{BufRead, Write};
 
 use serde::{Deserialize, Serialize};
-use simthing_core::{DimensionRegistry, SimThing, SimThingId};
+use simthing_core::{DimensionRegistry, OverlayLifecycle, SimThing, SimThingId};
 use simthing_gpu::SlotAllocator;
 
 use crate::delta_log::BoundaryDeltaEntry;
@@ -60,9 +60,9 @@ use crate::fission::FissionLineageRecord;
 /// `#[serde(default)]` attribute.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ReplaySnapshot {
-    pub day:             u32,
-    pub root:            SimThing,
-    pub registry:        DimensionRegistry,
+    pub day: u32,
+    pub root: SimThing,
+    pub registry: DimensionRegistry,
     #[serde(default)]
     pub fission_lineage: Vec<FissionLineageRecord>,
 }
@@ -72,7 +72,7 @@ pub struct ReplaySnapshot {
 /// One day's worth of structural changes.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ReplayFrame {
-    pub day:     u32,
+    pub day: u32,
     pub entries: Vec<BoundaryDeltaEntry>,
     /// Post-boundary CPU shadow (`n_slots × n_dims`), when recording enabled it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -84,7 +84,7 @@ pub struct ReplayFrame {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ReplayRecord {
     Snapshot { snapshot: ReplaySnapshot },
-    Frame    { frame:    ReplayFrame },
+    Frame { frame: ReplayFrame },
 }
 
 // ── Errors ────────────────────────────────────────────────────────────────────
@@ -106,18 +106,23 @@ pub enum ReplayError {
 /// LDJSON replay writer. Emits one record per line into the underlying writer.
 /// Caller is responsible for flushing / closing.
 pub struct ReplayWriter<W: Write> {
-    inner:           W,
+    inner: W,
     snapshot_written: bool,
 }
 
 impl<W: Write> ReplayWriter<W> {
     pub fn new(inner: W) -> Self {
-        Self { inner, snapshot_written: false }
+        Self {
+            inner,
+            snapshot_written: false,
+        }
     }
 
     /// Write the initial snapshot. Must be called before any frames.
     pub fn write_snapshot(&mut self, snapshot: &ReplaySnapshot) -> Result<(), ReplayError> {
-        let rec = ReplayRecord::Snapshot { snapshot: snapshot.clone() };
+        let rec = ReplayRecord::Snapshot {
+            snapshot: snapshot.clone(),
+        };
         serde_json::to_writer(&mut self.inner, &rec)?;
         self.inner.write_all(b"\n")?;
         self.snapshot_written = true;
@@ -129,7 +134,9 @@ impl<W: Write> ReplayWriter<W> {
         if !self.snapshot_written {
             return Err(ReplayError::MissingSnapshot);
         }
-        let rec = ReplayRecord::Frame { frame: frame.clone() };
+        let rec = ReplayRecord::Frame {
+            frame: frame.clone(),
+        };
         serde_json::to_writer(&mut self.inner, &rec)?;
         self.inner.write_all(b"\n")?;
         Ok(())
@@ -139,21 +146,27 @@ impl<W: Write> ReplayWriter<W> {
         self.inner.flush().map_err(Into::into)
     }
 
-    pub fn into_inner(self) -> W { self.inner }
+    pub fn into_inner(self) -> W {
+        self.inner
+    }
 }
 
 // ── Reader ────────────────────────────────────────────────────────────────────
 
 /// LDJSON replay reader. Streams records one line at a time.
 pub struct ReplayReader<R: BufRead> {
-    inner:         R,
+    inner: R,
     snapshot_read: bool,
-    buf:           String,
+    buf: String,
 }
 
 impl<R: BufRead> ReplayReader<R> {
     pub fn new(inner: R) -> Self {
-        Self { inner, snapshot_read: false, buf: String::new() }
+        Self {
+            inner,
+            snapshot_read: false,
+            buf: String::new(),
+        }
     }
 
     /// Read the initial snapshot. Must be the first call.
@@ -184,7 +197,9 @@ impl<R: BufRead> ReplayReader<R> {
                 return Ok(None);
             }
             let line = self.buf.trim_end();
-            if line.is_empty() { continue; }
+            if line.is_empty() {
+                continue;
+            }
             match serde_json::from_str(line)? {
                 ReplayRecord::Frame { frame } => return Ok(Some(frame)),
                 ReplayRecord::Snapshot { .. } => return Err(ReplayError::UnexpectedSnapshot),
@@ -205,13 +220,13 @@ impl<R: BufRead> ReplayReader<R> {
 /// callers can re-register `FusionTrigger` thresholds after replay if needed.
 #[derive(Debug)]
 pub struct ReplayDriver {
-    pub day:             u32,
-    pub root:            SimThing,
-    pub registry:        DimensionRegistry,
-    pub allocator:       SlotAllocator,
+    pub day: u32,
+    pub root: SimThing,
+    pub registry: DimensionRegistry,
+    pub allocator: SlotAllocator,
     pub fission_lineage: Vec<FissionLineageRecord>,
     /// Latest post-boundary shadow checkpoint from a replay frame, if any.
-    pub shadow_values:   Option<Vec<f32>>,
+    pub shadow_values: Option<Vec<f32>>,
 }
 
 impl ReplayDriver {
@@ -221,11 +236,11 @@ impl ReplayDriver {
         let mut allocator = SlotAllocator::new();
         allocator.populate_from_tree(&snapshot.root);
         Self {
-            day:             snapshot.day,
-            root:            snapshot.root,
-            registry:        snapshot.registry,
+            day: snapshot.day,
+            root: snapshot.root,
+            registry: snapshot.registry,
             fission_lineage: snapshot.fission_lineage,
-            shadow_values:   None,
+            shadow_values: None,
             allocator,
         }
     }
@@ -291,6 +306,28 @@ impl ReplayDriver {
                     node.overlays.retain(|o| o.id != overlay_id);
                 }
             }
+            BoundaryDeltaEntry::OverlayActivated { target, overlay_id } => {
+                if let Some(node) = find_node_mut(&mut self.root, target) {
+                    if let Some(overlay) = node.overlays.iter_mut().find(|o| o.id == overlay_id) {
+                        if let OverlayLifecycle::Suspended { when_activated } =
+                            overlay.lifecycle.clone()
+                        {
+                            overlay.lifecycle = *when_activated;
+                        }
+                    }
+                }
+            }
+            BoundaryDeltaEntry::OverlaySuspended { target, overlay_id } => {
+                if let Some(node) = find_node_mut(&mut self.root, target) {
+                    if let Some(overlay) = node.overlays.iter_mut().find(|o| o.id == overlay_id) {
+                        if !matches!(overlay.lifecycle, OverlayLifecycle::Suspended { .. }) {
+                            overlay.lifecycle = OverlayLifecycle::Suspended {
+                                when_activated: Box::new(overlay.lifecycle.clone()),
+                            };
+                        }
+                    }
+                }
+            }
             BoundaryDeltaEntry::SimThingReparented { child, new_parent } => {
                 if let Some(subtree) = detach_subtree(&mut self.root, child) {
                     if let Some(parent) = find_node_mut(&mut self.root, new_parent) {
@@ -300,7 +337,10 @@ impl ReplayDriver {
                     // mirrors live behavior, which rejects unknown targets.
                 }
             }
-            BoundaryDeltaEntry::PropertyExpired { sim_thing_id, property_id } => {
+            BoundaryDeltaEntry::PropertyExpired {
+                sim_thing_id,
+                property_id,
+            } => {
                 if let Some(node) = find_node_mut(&mut self.root, sim_thing_id) {
                     node.properties.remove(&property_id);
                 }
@@ -334,9 +374,13 @@ impl ReplayDriver {
 // ── Internal tree helpers ─────────────────────────────────────────────────────
 
 fn find_node_mut(root: &mut SimThing, id: SimThingId) -> Option<&mut SimThing> {
-    if root.id == id { return Some(root); }
+    if root.id == id {
+        return Some(root);
+    }
     for child in &mut root.children {
-        if let Some(n) = find_node_mut(child, id) { return Some(n); }
+        if let Some(n) = find_node_mut(child, id) {
+            return Some(n);
+        }
     }
     None
 }
@@ -369,10 +413,8 @@ fn tombstone_subtree(node: &SimThing, allocator: &mut SlotAllocator) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use simthing_core::{DimensionRegistry, SimProperty, SimPropertyId, SimThing, SimThingKind};
     use std::io::Cursor;
-    use simthing_core::{
-        DimensionRegistry, SimProperty, SimPropertyId, SimThing, SimThingKind,
-    };
 
     fn fixture() -> ReplaySnapshot {
         let mut registry = DimensionRegistry::new();
@@ -380,7 +422,12 @@ mod tests {
         let mut root = SimThing::new(SimThingKind::World, 0);
         let cohort = SimThing::new(SimThingKind::Cohort, 0);
         root.add_child(cohort);
-        ReplaySnapshot { day: 0, root, registry, fission_lineage: Vec::new() }
+        ReplaySnapshot {
+            day: 0,
+            root,
+            registry,
+            fission_lineage: Vec::new(),
+        }
     }
 
     #[test]
@@ -406,7 +453,11 @@ mod tests {
     fn writer_rejects_frame_before_snapshot() {
         let mut buf: Vec<u8> = Vec::new();
         let mut writer = ReplayWriter::new(&mut buf);
-        let frame = ReplayFrame { day: 1, entries: Vec::new(), ..Default::default() };
+        let frame = ReplayFrame {
+            day: 1,
+            entries: Vec::new(),
+            ..Default::default()
+        };
         let err = writer.write_frame(&frame).unwrap_err();
         assert!(matches!(err, ReplayError::MissingSnapshot));
     }
@@ -417,7 +468,13 @@ mod tests {
         let mut buf: Vec<u8> = Vec::new();
         let mut writer = ReplayWriter::new(&mut buf);
         writer.write_snapshot(&snap).unwrap();
-        writer.write_frame(&ReplayFrame { day: 1, entries: Vec::new(), ..Default::default() }).unwrap();
+        writer
+            .write_frame(&ReplayFrame {
+                day: 1,
+                entries: Vec::new(),
+                ..Default::default()
+            })
+            .unwrap();
         drop(writer);
 
         let mut reader = ReplayReader::new(Cursor::new(buf));
@@ -438,21 +495,22 @@ mod tests {
         let mut driver = ReplayDriver::from_snapshot(snap);
 
         let overlay = simthing_core::Overlay {
-            id:        OverlayId::new(),
-            kind:      OverlayKind::Policy,
-            source:    OverlaySource::Player,
-            affects:   Vec::new(),
+            id: OverlayId::new(),
+            kind: OverlayKind::Policy,
+            source: OverlaySource::Player,
+            affects: Vec::new(),
             transform: PropertyTransformDelta {
-                property_id:      SimPropertyId(0),
+                property_id: SimPropertyId(0),
                 sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.42))],
             },
             lifecycle: OverlayLifecycle::Permanent,
         };
         let oid = overlay.id;
         let frame = ReplayFrame {
-            day:     1,
+            day: 1,
             entries: vec![BoundaryDeltaEntry::OverlayAttached {
-                target: cohort_id, overlay,
+                target: cohort_id,
+                overlay,
             }],
             ..Default::default()
         };
@@ -475,9 +533,10 @@ mod tests {
         assert!(driver.root.children[0].properties.contains_key(&pid));
 
         let frame = ReplayFrame {
-            day:     1,
+            day: 1,
             entries: vec![BoundaryDeltaEntry::PropertyExpired {
-                sim_thing_id: cohort_id, property_id: pid,
+                sim_thing_id: cohort_id,
+                property_id: pid,
             }],
             ..Default::default()
         };
@@ -497,9 +556,9 @@ mod tests {
         let mut driver = ReplayDriver::from_snapshot(snap);
 
         let frame = ReplayFrame {
-            day:     1,
+            day: 1,
             entries: vec![BoundaryDeltaEntry::SimThingReparented {
-                child:     cohort_id,
+                child: cohort_id,
                 new_parent: sib_id,
             }],
             ..Default::default()
@@ -507,7 +566,12 @@ mod tests {
         driver.apply_frame(frame);
 
         // cohort moved out of root's first slot and under sib.
-        let sib = driver.root.children.iter().find(|c| c.id == sib_id).unwrap();
+        let sib = driver
+            .root
+            .children
+            .iter()
+            .find(|c| c.id == sib_id)
+            .unwrap();
         assert_eq!(sib.children.len(), 1);
         assert_eq!(sib.children[0].id, cohort_id);
         assert!(!driver.root.children.iter().any(|c| c.id == cohort_id));
@@ -524,21 +588,25 @@ mod tests {
         let fleet_id = fleet.id;
 
         let frame = ReplayFrame {
-            day:     1,
+            day: 1,
             entries: vec![BoundaryDeltaEntry::SimThingAdded {
                 parent: root_id,
-                node:   fleet,
+                node: fleet,
             }],
             ..Default::default()
         };
         driver.apply_frame(frame);
 
         // Node must appear in the tree under root.
-        assert!(driver.root.children.iter().any(|c| c.id == fleet_id),
-            "fleet must be a direct child of root after SimThingAdded");
+        assert!(
+            driver.root.children.iter().any(|c| c.id == fleet_id),
+            "fleet must be a direct child of root after SimThingAdded"
+        );
         // Slot must be allocated.
-        assert!(driver.allocator.slot_of(fleet_id).is_some(),
-            "fleet slot must be allocated");
+        assert!(
+            driver.allocator.slot_of(fleet_id).is_some(),
+            "fleet slot must be allocated"
+        );
     }
 
     #[test]
@@ -552,20 +620,28 @@ mod tests {
         let rebel_id = rebel.id;
 
         let frame = ReplayFrame {
-            day:     1,
+            day: 1,
             entries: vec![BoundaryDeltaEntry::FissionOccurred {
                 parent: cohort_id,
-                node:   rebel,
+                node: rebel,
             }],
             ..Default::default()
         };
         driver.apply_frame(frame);
 
         // Fission child must appear under the cohort.
-        let cohort = driver.root.children.iter().find(|c| c.id == cohort_id).unwrap();
+        let cohort = driver
+            .root
+            .children
+            .iter()
+            .find(|c| c.id == cohort_id)
+            .unwrap();
         assert_eq!(cohort.children.len(), 1, "one fission child under cohort");
         assert_eq!(cohort.children[0].id, rebel_id);
-        assert!(driver.allocator.slot_of(rebel_id).is_some(), "rebel slot allocated");
+        assert!(
+            driver.allocator.slot_of(rebel_id).is_some(),
+            "rebel slot allocated"
+        );
     }
 
     #[test]
@@ -575,22 +651,20 @@ mod tests {
 
         let snap = fixture();
         let cohort_id = snap.root.children[0].id;
-        let rebel_id  = SimThing::new(SimThingKind::Cohort, 0).id;
+        let rebel_id = SimThing::new(SimThingKind::Cohort, 0).id;
         let mut driver = ReplayDriver::from_snapshot(snap);
 
         let record = FissionLineageRecord {
-            parent_id:    cohort_id,
-            child_id:     rebel_id,
-            property_id:  SimPropertyId(0),
+            parent_id: cohort_id,
+            child_id: rebel_id,
+            property_id: SimPropertyId(0),
             template_idx: 0,
         };
 
         // Add then remove.
         let frame = ReplayFrame {
             day: 1,
-            entries: vec![
-                BoundaryDeltaEntry::FissionLineageAdded { record },
-            ],
+            entries: vec![BoundaryDeltaEntry::FissionLineageAdded { record }],
             ..Default::default()
         };
         driver.apply_frame(frame);
@@ -599,9 +673,7 @@ mod tests {
 
         let frame2 = ReplayFrame {
             day: 2,
-            entries: vec![
-                BoundaryDeltaEntry::FissionLineageRemoved { record },
-            ],
+            entries: vec![BoundaryDeltaEntry::FissionLineageRemoved { record }],
             ..Default::default()
         };
         driver.apply_frame(frame2);
@@ -616,11 +688,11 @@ mod tests {
 
         let mut snap = fixture();
         let cohort_id = snap.root.children[0].id;
-        let rebel_id  = SimThing::new(SimThingKind::Cohort, 0).id;
+        let rebel_id = SimThing::new(SimThingKind::Cohort, 0).id;
         snap.fission_lineage.push(FissionLineageRecord {
-            parent_id:    cohort_id,
-            child_id:     rebel_id,
-            property_id:  SimPropertyId(0),
+            parent_id: cohort_id,
+            child_id: rebel_id,
+            property_id: SimPropertyId(0),
             template_idx: 0,
         });
 
@@ -647,12 +719,12 @@ mod tests {
         let mut driver = ReplayDriver::from_snapshot(snap);
 
         let overlay = simthing_core::Overlay {
-            id:        OverlayId::new(),
-            kind:      OverlayKind::Transient,
-            source:    OverlaySource::System,
-            affects:   Vec::new(),
+            id: OverlayId::new(),
+            kind: OverlayKind::Transient,
+            source: OverlaySource::System,
+            affects: Vec::new(),
             transform: PropertyTransformDelta {
-                property_id:      SimPropertyId(0),
+                property_id: SimPropertyId(0),
                 sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.1))],
             },
             lifecycle: OverlayLifecycle::Permanent,
@@ -660,7 +732,10 @@ mod tests {
         let oid = overlay.id;
         driver.apply_frame(ReplayFrame {
             day: 1,
-            entries: vec![BoundaryDeltaEntry::OverlayAttached { target: cohort_id, overlay }],
+            entries: vec![BoundaryDeltaEntry::OverlayAttached {
+                target: cohort_id,
+                overlay,
+            }],
             ..Default::default()
         });
         assert_eq!(driver.root.children[0].overlays.len(), 1);
@@ -674,6 +749,67 @@ mod tests {
             ..Default::default()
         });
         assert!(driver.root.children[0].overlays.is_empty());
+    }
+
+    #[test]
+    fn driver_replays_overlay_activation_and_suspension() {
+        use simthing_core::{
+            OverlayId, OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta,
+            SubFieldRole, TransformOp,
+        };
+
+        let snap = fixture();
+        let cohort_id = snap.root.children[0].id;
+        let mut driver = ReplayDriver::from_snapshot(snap);
+
+        let oid = OverlayId::new();
+        let overlay = simthing_core::Overlay {
+            id: oid,
+            kind: OverlayKind::Policy,
+            source: OverlaySource::System,
+            affects: Vec::new(),
+            transform: PropertyTransformDelta {
+                property_id: SimPropertyId(0),
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.1))],
+            },
+            lifecycle: OverlayLifecycle::Suspended {
+                when_activated: Box::new(OverlayLifecycle::Permanent),
+            },
+        };
+        driver.apply_frame(ReplayFrame {
+            day: 1,
+            entries: vec![BoundaryDeltaEntry::OverlayAttached {
+                target: cohort_id,
+                overlay,
+            }],
+            ..Default::default()
+        });
+
+        driver.apply_frame(ReplayFrame {
+            day: 2,
+            entries: vec![BoundaryDeltaEntry::OverlayActivated {
+                target: cohort_id,
+                overlay_id: oid,
+            }],
+            ..Default::default()
+        });
+        assert!(matches!(
+            driver.root.children[0].overlays[0].lifecycle,
+            OverlayLifecycle::Permanent
+        ));
+
+        driver.apply_frame(ReplayFrame {
+            day: 3,
+            entries: vec![BoundaryDeltaEntry::OverlaySuspended {
+                target: cohort_id,
+                overlay_id: oid,
+            }],
+            ..Default::default()
+        });
+        assert!(matches!(
+            driver.root.children[0].overlays[0].lifecycle,
+            OverlayLifecycle::Suspended { .. }
+        ));
     }
 
     #[test]
