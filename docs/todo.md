@@ -190,17 +190,22 @@ FissionTemplate(
 3. ~~Priority 3 (`clone_capability_children` serde default)~~ — Done 2026-05-22, PR #39.
 4. ~~Priority 4 — B2 Approach A (targeted value upload)~~ — Done 2026-05-22, PR #40.
 5. ~~Priority 4 — B2 Approach B (append-only threshold registry)~~ — Done 2026-05-22, PR #41.
-6. ~~Priority 4 — B2 Approach C (incremental reduction topology)~~ — Done 2026-05-22.
-7. **Next session — pick one:**
-   - Studio capability-tree builder — most gameplay-visible; exercises V6
+6. ~~Priority 4 — B2 Approach C (incremental reduction topology)~~ — Done 2026-05-22, PR #43.
+7. **Next session — pick one** (model recommendations below):
+   - **Studio capability-tree builder** — most gameplay-visible; exercises V6
      suspended-overlay path end-to-end. Per `docs/capability_tree_v1.md`.
-   - `tick_event_readback_ms` deep dive — the single largest cost remaining
+     Greenfield API design (`CapabilityTreeSpec`, builder, session-init wiring,
+     serde shape) with downstream consequences — **use Opus**.
+   - **`tick_event_readback_ms` deep dive** — the single largest cost remaining
      in `fission_stress` (~21 ms / ~40% of total). GPU → CPU bandwidth-bound;
-     async readback or ring-buffer schemes could be substantial.
-   - Cache-invalidation hardening for `cached_topology_state` — current
-     correctness relies on always taking the full-rebuild path on any
-     non-fission-only mutation. A defensive integrity check (e.g.
-     `debug_assert!` reflattening matches `build_topology` on every
-     non-eligible boundary) would catch any future regressions early.
+     async readback or ring-buffer schemes could be substantial. Architecture
+     decision (pipeline depth, event-latency tradeoffs) requires Opus; mechanical
+     implementation once approach is pinned can be Sonnet. **Use Opus** (or
+     Opus for design + Sonnet for impl if splitting sessions).
+   - **Cache-integrity hardening for `cached_topology_state`** — add a
+     `debug_assert!` in the non-append-eligible boundary path that reflattens
+     the cache and byte-compares CSR output to `build_topology`. Catches any
+     future drift between incremental mutations and tree shape. Well-scoped,
+     no design decisions. **Sonnet is fine**.
 8. Scenario format expansion / map-scale representation doc — tabled until
    the above land.
