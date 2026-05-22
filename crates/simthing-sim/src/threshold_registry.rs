@@ -265,6 +265,35 @@ impl ThresholdBuilder {
         (gpu_regs, cpu_reg)
     }
 
+    /// Append registrations for a subtree to the caller's existing `gpu_regs`
+    /// and `cpu_reg` instead of building fresh ones. Used by B2 Approach B
+    /// (append-only threshold rebuild on pure-fission growth boundaries):
+    /// the boundary already holds the existing threshold registry, so we only
+    /// need to derive registrations for the newly-spawned SimThings. The
+    /// event_kinds assigned to the new entries are `cpu_reg.len()` and onwards.
+    pub fn append_subtree(
+        node: &SimThing,
+        dim_reg: &DimensionRegistry,
+        allocator: &SlotAllocator,
+        gpu_regs: &mut Vec<ThresholdRegistration>,
+        cpu_reg: &mut ThresholdRegistry,
+    ) {
+        Self::walk(node, dim_reg, allocator, gpu_regs, cpu_reg);
+    }
+
+    /// Append the FusionTrigger registrations for the given lineage records
+    /// to the caller's existing `gpu_regs` and `cpu_reg`. Companion to
+    /// `append_subtree` for B2 Approach B.
+    pub fn append_lineage(
+        dim_reg: &DimensionRegistry,
+        allocator: &SlotAllocator,
+        lineage: &[FissionLineageRecord],
+        gpu_regs: &mut Vec<ThresholdRegistration>,
+        cpu_reg: &mut ThresholdRegistry,
+    ) {
+        Self::push_fusion_lineage(dim_reg, allocator, lineage, gpu_regs, cpu_reg);
+    }
+
     fn push_fusion_lineage(
         dim_reg:   &DimensionRegistry,
         allocator: &SlotAllocator,
