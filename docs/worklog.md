@@ -6,6 +6,83 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — B2 fission-growth Approach A: targeted value upload across growth
+
+**Status:** Landed (local). Buffer-preserving slot growth + coalesced
+dirty-row upload means growth boundaries no longer flush the entire shadow.
+
+**Problem:**
+
+Before this change, any boundary that grew the GPU slot capacity (fission
+pre-grow, AddChild pre-grow, final-capacity ensure) forced
+`force_full_value_upload = true`. The reason: `WorldGpuState::rebuild_for_slots`
+allocated fresh buffers and the new GPU memory was uninitialized, so the
+caller had to re-upload every slot's shadow row to restore consistency.
+
+For sparse fission in real gameplay (1–10 fissions per boundary across an
+N-slot world), that meant N slot rows uploaded per growth boundary — most
+of which were unchanged.
+
+**Change:**
+
+1. `simthing-gpu/world_state.rs::rebuild_for_slots` now preserves existing
+   GPU contents across the resize. One `wgpu::CommandEncoder` issues four
+   `copy_buffer_to_buffer` calls (one each for `values`, `previous_values`,
+   `output_vectors`, `previous_output_vectors`) before swapping buffers in.
+   The new region `[old_n_slots..new_n_slots]` is zero-initialized by
+   wgpu's buffer allocation, matching the CPU shadow's `resize` fill.
+   Preservation only runs when `n_dims` is unchanged — dimension shifts
+   still take the full-rebuild path.
+2. `simthing-feeder/dispatcher.rs::upload_row_range(state, slot_start, count)`
+   writes a contiguous block of slot rows in a single `queue.write_buffer`,
+   avoiding the per-row driver overhead that dominates at thousands of
+   dirty slots.
+3. `simthing-sim/gpu_sync.rs` value-upload path sorts/dedups
+   `dirty_value_slots`, walks them to find contiguous runs, and emits one
+   `upload_row_range` per run.
+4. `simthing-sim/boundary.rs` no longer sets `force_full_value_upload = true`
+   after fission pre-grow, AddChild pre-grow, or final-capacity ensure.
+   The previously-allocated slots' shadow data is now correct on GPU
+   (preserved), and newly-allocated slot ids are already tracked in
+   `dirty_value_slots` via `out.fission.fission_pairs` and
+   `out.maintainer.allocated`. Tombstone-induced full-upload and
+   dimension-rebuild full-upload paths are unchanged.
+
+**Regression guard:**
+
+- `fission_beyond_initial_headroom_grows_gpu_state` in
+  `crates/simthing-sim/tests/boundary_integration.rs` now asserts
+  `!outcome.gpu_sync.full_value_upload` and `value_rows_uploaded == 1`
+  across a boundary that grows the GPU capacity for a single fission.
+
+**Benchmark deltas (local):**
+
+| Scenario | Metric | Before | After |
+|---|---|---|---|
+| `fission_stress` (20k fissions in 1 boundary) | `ms_per_sim_day` | ~55 | ~55 |
+| `fission_stress` | `boundary_value_rows_uploaded` | 40,000 | 19,999 |
+| `fission_stress` | `boundary_full_value_uploads` | 1 | 0 |
+| `fission_stress` | `boundary_upload_bytes` | 2,719,944 | 2,479,932 |
+| `intent_stress` | `ms_per_sim_day` | ~17 | ~17 |
+
+`fission_stress` is the worst case (every slot dirty), so the per-row
+savings are mostly offset by coalescing overhead. The optimization shines
+on sparse fission (real gameplay), where upload becomes O(fission_count)
+instead of O(n_slots).
+
+**Tests:** `cargo test --workspace` → **202** passed, 1 ignored timing
+diagnostic, zero warnings. `bench_stress_scenarios_within_ceiling` still
+inside its ceiling.
+
+**Open B2 work (Approaches B and C):**
+
+- Approach B: append-only threshold registry rebuild on growth boundaries.
+  Expected ~3–5 ms savings on `fission_stress`.
+- Approach C: incremental reduction-topology patching. Higher risk —
+  reduction CSR ordering must remain deterministic across growth events.
+
+---
+
 ## 2026-05-22 — V6 guardrails complete: Priorities 1, 2, and 3
 
 **Status:** All three V6 guardrail tests landed (local, ahead of `origin/master`).
@@ -595,16 +672,19 @@ growth target.
 ## Next session pickup
 
 **202/202** tests passing plus 1 ignored timing diagnostic, zero warnings.
-`master` (with three local guardrail tests ahead of `origin/master`) includes:
+`master` includes V6 guardrails Priorities 1–3 (PR #39, `e275789`). Local
+ahead of `origin/master`:
 
 - V6 suspended overlays + capability fission clone (`f39fe6d`)
 - Parameterized `capability_container_kinds` — no sim hardcoding (PR #38,
   `a8aab5b`)
-- V6 Priority 1 guardrail: activated overlay GPU integration test (local,
-  2026-05-22)
-- V6 Priority 2 guardrail: capability fission replay test (local, 2026-05-22)
+- V6 Priority 1 guardrail: activated overlay GPU integration test
+  (PR #39, `e275789`)
+- V6 Priority 2 guardrail: capability fission replay test (PR #39, `e275789`)
 - V6 Priority 3 guardrail: `clone_capability_children` serde default test
-  (local, 2026-05-22)
+  (PR #39, `e275789`)
+- B2 Approach A: targeted value upload across fission growth (local,
+  2026-05-22)
 - Capability-tree concept docs (PR #37), agent briefing sync (`07076b4`)
 - GPU intent-delta hot path, consolidated tick submission, stress scenarios,
   benchmark attribution, static-boundary skipping, fission path indexing,
