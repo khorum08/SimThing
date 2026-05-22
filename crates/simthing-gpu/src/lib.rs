@@ -18,7 +18,7 @@ pub use passes::Pipelines;
 pub use projection::project_tree_to_values;
 pub use reduction::{
     build_column_rule_descriptors, build_column_rules, build_topology, cpu_reduce_oracle,
-    encode_column_rules, ColumnRuleDescriptor, Topology,
+    encode_column_rules, ColumnRuleDescriptor, Topology, TopologyState,
 };
 pub use slot::SlotAllocator;
 pub use world_state::{

@@ -27,7 +27,7 @@ use crate::threshold_registry::{
 use simthing_core::{DimensionRegistry, SimThing};
 use simthing_feeder::DispatchCoordinator;
 use simthing_gpu::{
-    build_column_rule_descriptors, build_topology, encode_column_rules, SlotAllocator,
+    build_column_rule_descriptors, encode_column_rules, SlotAllocator, TopologyState,
     WorldGpuState,
 };
 
@@ -62,6 +62,12 @@ pub fn sync_gpu_buffers(
     dirty_value_slots: Option<&[u32]>,
     rebuild_thresholds: bool,
     rebuild_reduction_topology: bool,
+    // B2 Approach C: the canonical TopologyState owned by the boundary.
+    // When `rebuild_reduction_topology` is true, this routine refreshes
+    // the cache from a full tree walk and re-flattens to CSR. When false
+    // (because the boundary already applied an incremental delta and
+    // uploaded), the cache is left as-is.
+    topology_state: &mut TopologyState,
 ) -> GpuSyncOutcome {
     let mut out = GpuSyncOutcome::default();
 
@@ -136,7 +142,10 @@ pub fn sync_gpu_buffers(
     let mut reduction_upload_bytes = 0u64;
     if rebuild_reduction_topology {
         // 4. Reduction topology + per-column rule table.
-        let topo = build_topology(root, allocator);
+        // Refresh the boundary's canonical TopologyState from the tree
+        // and re-flatten. The cache stays in lockstep with the GPU buffer.
+        *topology_state = TopologyState::build(root, allocator);
+        let topo = topology_state.flatten();
         let descriptors = build_column_rule_descriptors(registry, state.n_dims as usize);
         let rules_u32 = encode_column_rules(&descriptors);
 

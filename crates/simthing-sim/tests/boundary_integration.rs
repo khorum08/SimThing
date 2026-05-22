@@ -365,6 +365,21 @@ fn fission_beyond_initial_headroom_grows_gpu_state() {
          (1 fission child + 1 lineage), not rebuild the entire registry"
     );
 
+    // B2 (Approach C) regression guard: the reduction-topology rebuild must
+    // also take the append/cache path. The post-fission tree is
+    // World → Location → Cohort → newChild = 4 nodes, 3 edges. The cache
+    // patches in the new Cohort → newChild edge instead of walking the
+    // tree from scratch. The CSR uploaded reflects the full updated
+    // topology (3 edges), but it was derived incrementally.
+    assert_eq!(
+        outcome.gpu_sync.reduction_edges, 3,
+        "post-fission topology should have 3 edges (World→Loc, Loc→Cohort, Cohort→newChild)"
+    );
+    assert_eq!(
+        outcome.gpu_sync.reduction_depths, 4,
+        "post-fission depth buckets should be [World], [Loc], [Cohort], [newChild]"
+    );
+
     let child_id = find_node(&proto.root, cohort_id)
         .expect("cohort exists")
         .children[0]

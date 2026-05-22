@@ -131,41 +131,114 @@ impl Topology {
 /// tree. Slots not represented in the tree end up with no children and are
 /// not included in any depth bucket.
 pub fn build_topology(root: &SimThing, allocator: &SlotAllocator) -> Topology {
-    let n_slots = allocator.capacity();
-    // Per-slot child list, in canonical (slot ascending) order.
-    let mut per_slot_children: Vec<Vec<u32>> = vec![Vec::new(); n_slots];
-    let mut depths: Vec<Option<u32>> = vec![None; n_slots];
+    TopologyState::build(root, allocator).flatten()
+}
 
-    walk(root, 0, allocator, &mut per_slot_children, &mut depths);
+/// Persistent canonical source for [`Topology`]. Owned by callers that want
+/// to apply incremental updates (B2 Approach C) instead of rebuilding the
+/// CSR from scratch every boundary.
+///
+/// Invariants maintained by all mutators:
+/// - `per_slot_children[i]` holds child slot indices in strictly ascending
+///   order. The flattened CSR inherits this canonical iteration order,
+///   which Pass 4–6 reduction and the CPU oracle both depend on for
+///   bit-exact `f32` parity.
+/// - `depths[i] == Some(d)` iff slot `i` is reachable from the tree root
+///   at depth `d`.
+/// - `per_slot_children.len() == depths.len()` and both are sized to a
+///   capacity ≥ the slot allocator's capacity.
+#[derive(Clone, Debug, Default)]
+pub struct TopologyState {
+    pub per_slot_children: Vec<Vec<u32>>,
+    pub depths: Vec<Option<u32>>,
+}
 
-    // Sort each parent's children by slot index — canonical iteration order.
-    for v in &mut per_slot_children {
-        v.sort_unstable();
-    }
-
-    // Flatten to CSR.
-    let mut child_starts = Vec::with_capacity(n_slots + 1);
-    let mut child_indices = Vec::new();
-    child_starts.push(0);
-    for kids in &per_slot_children {
-        child_indices.extend_from_slice(kids);
-        child_starts.push(child_indices.len() as u32);
-    }
-
-    // Bucket slots by depth.
-    let max_depth = depths.iter().filter_map(|d| *d).max().unwrap_or(0) as usize;
-    let mut depth_buckets: Vec<Vec<u32>> = vec![Vec::new(); max_depth + 1];
-    for (slot, d) in depths.iter().enumerate() {
-        if let Some(d) = d {
-            depth_buckets[*d as usize].push(slot as u32);
+impl TopologyState {
+    /// Empty state sized for `n_slots` slots.
+    pub fn empty(n_slots: usize) -> Self {
+        Self {
+            per_slot_children: vec![Vec::new(); n_slots],
+            depths: vec![None; n_slots],
         }
     }
-    // Sort within each bucket so reduction is deterministic across runs.
-    for b in &mut depth_buckets {
-        b.sort_unstable();
+
+    /// Full rebuild from a SimThing tree and its allocator. The same code
+    /// path that `build_topology` used to inline; called by both the full
+    /// rebuild path and any caller that needs a fresh state.
+    pub fn build(root: &SimThing, allocator: &SlotAllocator) -> Self {
+        let n_slots = allocator.capacity();
+        let mut state = Self::empty(n_slots);
+        walk(root, 0, allocator, &mut state.per_slot_children, &mut state.depths);
+        // Sort each parent's children by slot index — canonical iteration
+        // order. (Walk visits children in tree order, which is not
+        // necessarily slot order.)
+        for v in &mut state.per_slot_children {
+            v.sort_unstable();
+        }
+        state
     }
 
-    Topology { child_starts, child_indices, depth_buckets }
+    /// Ensure both vecs cover at least `n_slots` slots, extending with
+    /// empty entries. Idempotent and amortized O(n_added).
+    pub fn ensure_capacity(&mut self, n_slots: usize) {
+        if self.per_slot_children.len() < n_slots {
+            self.per_slot_children.resize(n_slots, Vec::new());
+        }
+        if self.depths.len() < n_slots {
+            self.depths.resize(n_slots, None);
+        }
+    }
+
+    /// Incremental insertion of a single `parent_slot → child_slot` edge.
+    /// Used by B2 Approach C on pure-fission growth boundaries: the
+    /// `SlotAllocator` hands out monotonically increasing indices, so a
+    /// newly-spawned child has the highest slot in the world. Pushing onto
+    /// `per_slot_children[parent_slot]` preserves the ascending-slot
+    /// invariant without re-sorting — but the assertion guards against
+    /// the (currently impossible) case where slot reuse breaks that.
+    ///
+    /// Caller must ensure `ensure_capacity` covers both slots first.
+    pub fn add_child(&mut self, parent_slot: u32, child_slot: u32) {
+        let parent_idx = parent_slot as usize;
+        let kids = &mut self.per_slot_children[parent_idx];
+        if let Some(&last) = kids.last() {
+            debug_assert!(
+                child_slot > last,
+                "TopologyState::add_child: child_slot {child_slot} <= existing last child {last} \
+                 (parent_slot {parent_slot}); ascending-slot invariant violated",
+            );
+        }
+        kids.push(child_slot);
+        if let Some(Some(parent_depth)) = self.depths.get(parent_idx).copied() {
+            self.depths[child_slot as usize] = Some(parent_depth + 1);
+        }
+    }
+
+    /// Flatten the per-slot state into the CSR + depth-bucket form that
+    /// `WorldGpuState::upload_reduction_topology` consumes. Cheap — no
+    /// sorting (state already sorted by construction).
+    pub fn flatten(&self) -> Topology {
+        let n_slots = self.per_slot_children.len();
+        let mut child_starts = Vec::with_capacity(n_slots + 1);
+        let mut child_indices = Vec::new();
+        child_starts.push(0);
+        for kids in &self.per_slot_children {
+            child_indices.extend_from_slice(kids);
+            child_starts.push(child_indices.len() as u32);
+        }
+
+        let max_depth = self.depths.iter().filter_map(|d| *d).max().unwrap_or(0) as usize;
+        let mut depth_buckets: Vec<Vec<u32>> = vec![Vec::new(); max_depth + 1];
+        for (slot, d) in self.depths.iter().enumerate() {
+            if let Some(d) = d {
+                depth_buckets[*d as usize].push(slot as u32);
+            }
+        }
+        // Buckets are populated in ascending slot order by construction
+        // (we iterate self.depths in slot order), so no sort needed.
+
+        Topology { child_starts, child_indices, depth_buckets }
+    }
 }
 
 fn walk(
@@ -351,6 +424,85 @@ mod tests {
         alloc.populate_from_tree(&world);
 
         (reg, lid, world, alloc)
+    }
+
+    /// B2 Approach C safety guard: `TopologyState::build(...).flatten()` must
+    /// produce a `Topology` that is bit-identical to `build_topology(...)`.
+    /// CPU/GPU reduction parity (Pass 4–6) depends on the canonical
+    /// ascending-slot child order baked into the CSR; any drift here
+    /// breaks `f32`-associative reduction sums.
+    #[test]
+    fn topology_state_flatten_matches_build_topology() {
+        let (_reg, _lid, world, alloc) = small_tree();
+        let direct = build_topology(&world, &alloc);
+        let via_state = TopologyState::build(&world, &alloc).flatten();
+        assert_eq!(direct.child_starts, via_state.child_starts);
+        assert_eq!(direct.child_indices, via_state.child_indices);
+        assert_eq!(direct.depth_buckets, via_state.depth_buckets);
+    }
+
+    /// B2 Approach C critical safety guard: applying an incremental
+    /// `add_child` to a cached state must produce the same CSR as a full
+    /// rebuild from the post-fission tree. Identical bytes uploaded → same
+    /// reduction output.
+    #[test]
+    fn topology_state_incremental_add_child_matches_full_rebuild() {
+        let (reg, _lid, mut world, mut alloc) = small_tree();
+
+        // Snapshot the cache at the original tree shape.
+        let mut state = TopologyState::build(&world, &alloc);
+
+        // Capture the pre-fission parent ids before we mutate the tree.
+        let parent_a_id = world.children[0].children[0].id;
+        let parent_b_id = world.children[0].children[1].id;
+
+        // Now simulate fission spawning two new cohorts: one under each
+        // existing cohort. The allocator hands out monotonically increasing
+        // slot indices, so each new child ends up at the tail of its
+        // parent's child block (the invariant `add_child` relies on).
+        let new_a = SimThing::new(SimThingKind::Cohort, 0);
+        let new_b = SimThing::new(SimThingKind::Cohort, 0);
+        let new_a_id = new_a.id;
+        let new_b_id = new_b.id;
+        world.children[0].children[0].add_child(new_a);
+        world.children[0].children[1].add_child(new_b);
+        let new_a_slot = alloc.alloc(new_a_id);
+        let new_b_slot = alloc.alloc(new_b_id);
+
+        // Incremental: extend cache to new capacity, then add edges.
+        state.ensure_capacity(alloc.capacity());
+        state.add_child(alloc.slot_of(parent_a_id).unwrap(), new_a_slot);
+        state.add_child(alloc.slot_of(parent_b_id).unwrap(), new_b_slot);
+        let via_incremental = state.flatten();
+
+        // Ground truth: full rebuild from the post-fission tree.
+        let direct = build_topology(&world, &alloc);
+
+        assert_eq!(
+            direct.child_starts, via_incremental.child_starts,
+            "child_starts must match full rebuild"
+        );
+        assert_eq!(
+            direct.child_indices, via_incremental.child_indices,
+            "child_indices must match full rebuild — canonical ascending-slot order"
+        );
+        assert_eq!(
+            direct.depth_buckets, via_incremental.depth_buckets,
+            "depth_buckets must match full rebuild"
+        );
+
+        // And the corollary: the CPU reduction oracle produces identical
+        // f32 output through both topologies.
+        let n_dims = reg.total_columns;
+        let descriptors = build_column_rule_descriptors(&reg, n_dims);
+        let values = vec![0.0_f32; alloc.capacity() * n_dims];
+        let mut out_direct = vec![0.0_f32; values.len()];
+        let mut out_incr = vec![0.0_f32; values.len()];
+        cpu_reduce_oracle(&direct, &descriptors, n_dims, &values, &mut out_direct);
+        cpu_reduce_oracle(&via_incremental, &descriptors, n_dims, &values, &mut out_incr);
+        for (a, b) in out_direct.iter().zip(out_incr.iter()) {
+            assert_eq!(a.to_bits(), b.to_bits());
+        }
     }
 
     #[test]
