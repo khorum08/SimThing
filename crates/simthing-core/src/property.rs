@@ -674,4 +674,28 @@ mod tests {
         assert!(template.clone_capability_children);
         assert!(template.capability_container_kinds.is_empty());
     }
+
+    /// V6 guardrail Priority 3: legacy fission templates persisted before the
+    /// V6 clone-path landed must deserialize with `clone_capability_children`
+    /// defaulting to `false`. Combined with the existing default `[]` for
+    /// `capability_container_kinds`, this guarantees old saves/scenarios
+    /// produce the pre-V6 fission behavior (no capability cloning).
+    #[test]
+    fn fission_template_deserializes_without_clone_capability_children() {
+        let json = r#"{
+            "child_kind": "Cohort",
+            "fusion_intensity_threshold": 0.85,
+            "fusion_scar_coefficient": 0.05,
+            "resolution_label": "resolved"
+        }"#;
+        let template: FissionTemplate = serde_json::from_str(json).unwrap();
+        assert!(
+            !template.clone_capability_children,
+            "missing clone_capability_children must default to false (pre-V6 behavior)"
+        );
+        assert!(
+            template.capability_container_kinds.is_empty(),
+            "missing capability_container_kinds must default to []"
+        );
+    }
 }

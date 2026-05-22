@@ -6,6 +6,116 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — V6 guardrails complete: Priorities 1, 2, and 3
+
+**Status:** All three V6 guardrail tests landed (local, ahead of `origin/master`).
+The Suspended → Permanent overlay contract, the capability-cloning fission
+replay contract, and the serde default for `clone_capability_children` are
+all locked down.
+
+**Priority 2 — Capability fission replay test:**
+
+- `replay_fission_with_cloned_capability_subtree_reconstructs_full_payload`
+  in `crates/simthing-sim/tests/boundary_integration.rs`.
+- Tree: `World → Location → Faction(loyalty Amount=0.5, Velocity=-0.21)`,
+  Faction has a `Custom("tech_tree")` child with its own `Custom("propulsion")`
+  child.
+- `FissionTemplate { child_kind: Faction, clone_capability_children: true,
+  capability_container_kinds: ["tech_tree"] }` — the spawned faction inherits
+  a deep clone of the tech_tree subtree.
+- Verified live:
+  - Spawned Faction has a cloned tech_tree with fresh id.
+  - Cloned tech_tree has its `propulsion` child with fresh id.
+  - All cloned nodes have allocated slots.
+- Verified delta log payload:
+  - `BoundaryDeltaEntry::FissionOccurred { parent, node }` carries the
+    full spawned faction subtree, with the cloned tech_tree (id-matched
+    to the live tree) and its propulsion child as nested children of
+    the `node` payload.
+- Verified replay reconstruction:
+  - `ReplayWriter` → `ReplayReader` round-trip preserves the snapshot
+    and the FissionOccurred frame.
+  - `ReplayDriver::apply_frame` re-attaches the spawned faction under the
+    original faction, the cloned tech_tree under the spawned faction, and
+    the propulsion node under the cloned tech_tree.
+  - `populate_from_tree` allocates slots for every node in the cloned
+    subtree (spawned faction, tech_tree, propulsion) on the replay side.
+  - `FissionLineageAdded` round-trips: `driver.fission_lineage` has the
+    same `(parent_id, child_id)` pair as the live boundary.
+
+**Priority 3 — `clone_capability_children` serde default test:**
+
+- `fission_template_deserializes_without_clone_capability_children` in
+  `crates/simthing-core/src/property.rs` (unit test alongside the existing
+  `capability_container_kinds` default test from PR #38).
+- Asserts: legacy JSON without `clone_capability_children` deserializes to
+  `false` AND `capability_container_kinds` defaults to `[]`. Together these
+  defaults guarantee old saves/scenarios produce pre-V6 fission behavior
+  (no capability cloning runs without explicit studio opt-in).
+
+**Tests:** `cargo test --workspace` → **202** passed (up from 200 after
+Priority 1, 199 before), 1 ignored timing diagnostic, zero warnings.
+
+**Next:** B2 fission-growth topology batching (Priority 4). With V6
+guardrails done, the fission-growth optimization is unblocked. `fission_stress`
+is ~60 ms/sim-day locally; the remaining costs are threshold registration
+rebuild, reduction topology upload, fission seeding, full value upload after
+slot growth, and delta emission. Batch or incrementally patch growth only
+while keeping `event_kind` semantics and slot topology provably correct.
+
+---
+
+## 2026-05-22 — V6 guardrail Priority 1: activated overlay GPU test
+
+**Status:** Test landed on `master`. V6 suspension/activation contract is now
+locked down end-to-end against the real GPU pipeline.
+
+**Landed:**
+
+- New GPU integration test in
+  `crates/simthing-sim/tests/boundary_integration.rs`:
+  `activated_suspended_overlay_appears_in_gpu_delta_and_affects_values`.
+- Test scenario: cohort with loyalty (Amount=0.5, Velocity=0) carries a
+  `Suspended { when_activated: Permanent }` overlay applying Multiply(1.5)
+  to loyalty Amount.
+- Verified four-step contract end-to-end:
+  1. `initial_gpu_sync` + Tick 1: suspended overlay produces zero Pass 3
+     deltas; GPU `values[Amount]` stays at 0.5 (verifies `build_overlay_deltas`
+     filtering via `Overlay::is_active`).
+  2. Empty boundary execute: `overlay_activations == 0`; lifecycle still
+     `Suspended` on the CPU tree.
+  3. `tx.submit_boundary(BoundaryRequest::ActivateOverlay { .. })` →
+     Tick 2 drains it to `patcher.pending_boundary` (value still 0.5 because
+     Pass 3 deltas haven't been rebuilt yet).
+  4. `proto.execute()` runs `activate_overlay` in `apply_structural_mutations`,
+     flipping lifecycle to `Permanent`; `outcome.maintainer.overlays_activated
+     == [(cohort_id, overlay_id)]`; `outcome.gpu_sync.overlay_deltas_uploaded
+     >= 1`.
+  5. Tick 3: Pass 3 applies Multiply(1.5) → `values[Amount] = 0.75`
+     (asserted to within 1e-5).
+
+**Why this is the right shape:**
+
+- dt=0 throughout isolates Pass 3 from Pass 1/2 integration so the overlay
+  is the only thing that can move the value.
+- Two boundaries before activation prove suspended overlays don't trigger
+  spurious boundary work (`overlay_activations == 0`).
+- One boundary at activation proves the lifecycle transition is observable
+  in `MaintainerOutcome`.
+- One post-activation tick proves the GPU delta buffer was rebuilt and
+  Pass 3 picked it up.
+
+**Tests:** `cargo test --workspace` → **200** passed (up from 199), 1
+ignored timing diagnostic, zero warnings.
+
+**Next:** V6 guardrail Priority 2 — end-to-end replay test for fission with
+`clone_capability_children: true` and a populated `capability_container_kinds`
+list, verifying `FissionOccurred { node }` reconstructs the spawned subtree
+including cloned capability children. Then Priority 3 (serde default test
+for `clone_capability_children` bool), then B2 fission-growth batching.
+
+---
+
 ## 2026-05-22 - Parameterize capability container kinds (PR #38)
 
 **Status:** Merged to `master` (`a8aab5b`, PR #38).
@@ -484,12 +594,17 @@ growth target.
 
 ## Next session pickup
 
-**199/199** tests passing plus 1 ignored timing diagnostic, zero warnings.
-`master` and `origin/master` include:
+**202/202** tests passing plus 1 ignored timing diagnostic, zero warnings.
+`master` (with three local guardrail tests ahead of `origin/master`) includes:
 
 - V6 suspended overlays + capability fission clone (`f39fe6d`)
 - Parameterized `capability_container_kinds` — no sim hardcoding (PR #38,
   `a8aab5b`)
+- V6 Priority 1 guardrail: activated overlay GPU integration test (local,
+  2026-05-22)
+- V6 Priority 2 guardrail: capability fission replay test (local, 2026-05-22)
+- V6 Priority 3 guardrail: `clone_capability_children` serde default test
+  (local, 2026-05-22)
 - Capability-tree concept docs (PR #37), agent briefing sync (`07076b4`)
 - GPU intent-delta hot path, consolidated tick submission, stress scenarios,
   benchmark attribution, static-boundary skipping, fission path indexing,
@@ -552,18 +667,27 @@ growth target.
       `Custom(...)` labels in `simthing-sim`; `capability_container_kinds`
       on `FissionTemplate`; Option A empty-list semantics; serde default test
       for kinds field.
+- [x] **V6 guardrail Priority 1 — activated overlay GPU test (2026-05-22).**
+      `activated_suspended_overlay_appears_in_gpu_delta_and_affects_values`
+      in `crates/simthing-sim/tests/boundary_integration.rs`. Verifies
+      Suspended → Permanent transition via `BoundaryRequest::ActivateOverlay`
+      makes a formerly-suspended overlay enter the Pass 3 delta buffer and
+      apply on the following tick (0.5 → 0.75 via Multiply(1.5)).
+- [x] **V6 guardrail Priority 2 — capability fission replay test (2026-05-22).**
+      `replay_fission_with_cloned_capability_subtree_reconstructs_full_payload`
+      in `crates/simthing-sim/tests/boundary_integration.rs`. Drives a faction
+      fission with `clone_capability_children: true` + `["tech_tree"]`; verifies
+      `FissionOccurred { node }` carries the full 2-level cloned tech_tree
+      subtree and `ReplayDriver` reconstructs every node with allocated slots
+      and lineage round-trip.
+- [x] **V6 guardrail Priority 3 — `clone_capability_children` serde default
+      (2026-05-22).** `fission_template_deserializes_without_clone_capability_children`
+      in `crates/simthing-core/src/property.rs`. Legacy JSON without the
+      field deserializes to `false`; capability cloning never runs without
+      explicit studio opt-in.
 
 #### Next
 
-- [ ] **V6 guardrail — activated overlay GPU test (Priority 1).** Prove
-      `ActivateOverlay` puts a formerly suspended overlay into the next Pass 3
-      upload and affects values on the following tick.
-- [ ] **V6 guardrail — capability fission replay (Priority 2).** End-to-end
-      replay test with `clone_capability_children: true` and populated
-      `capability_container_kinds`; verify full spawned subtree payload.
-- [ ] **V6 guardrail — serde default for `clone_capability_children` (Priority 3,
-      partial).** `capability_container_kinds` default test landed PR #38;
-      `clone_capability_children` default test still open.
 - [ ] **Retain/batch topology on fission growth boundaries (B2, Priority 4).**
       `fission_stress` is roughly 60 ms/sim-day on the current local smoke run.
       Stable-boundary retention and used-range event readback are done; remaining
@@ -581,11 +705,11 @@ growth target.
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds — behind
       the GPU performance path.
 
-**Recent:** PR #38 removed the last simulation-crate hardcoding of capability-tree
-kind names. Fission clone and boundary pre-grow both read
-`FissionTemplate::capability_container_kinds` as opaque strings from studio/RON.
-Architectural violation closed. Next: V6 GPU/replay guardrails (Priorities 1–3),
-then B2 fission-growth batching.
+**Recent:** V6 guardrails Priorities 1–3 all landed on 2026-05-22. Suspended →
+Permanent overlay transitions are GPU-verified; capability fission cloning
+round-trips through the replay log with full payload; legacy
+`FissionTemplate` JSON without `clone_capability_children` defaults to `false`.
+Next: B2 fission-growth batching (Priority 4).
 
 **Tabled:** `simthing-studio` designer UI; unified `BoundaryIndex` single-pass
 boundary walk (review item 4 / C1 — Opus-tier, defer until B2 lands).

@@ -1,11 +1,11 @@
 # SimThing Todo Log
 
-Current parking state after **PR #38** (`a8aab5b`) — parameterized
-`FissionTemplate::capability_container_kinds` — merged to `master` on
-2026-05-22. Prior context: V6 simulation core (`f39fe6d`), doc parking
-(`95516b9`, `07076b4`), capability-tree concept docs (PR #37).
+Current parking state after **V6 guardrails Priorities 1–3** — all three
+V6 lockdown tests landed on 2026-05-22 (post PR #38, `a8aab5b`). Prior
+context: V6 simulation core (`f39fe6d`), parameterized capability container
+kinds (PR #38), capability-tree concept docs (PR #37).
 
-**Tests:** `cargo test --workspace` → **199** passed, **1** ignored timing
+**Tests:** `cargo test --workspace` → **202** passed, **1** ignored timing
 diagnostic, zero warnings.
 
 ---
@@ -56,20 +56,29 @@ diagnostic, zero warnings.
 
 ### V6 guardrails (do before B2)
 
-- [ ] **Priority 1 — activated overlay GPU integration test.** Prove
-      `ActivateOverlay` puts a formerly suspended overlay into the next Pass 3
-      delta upload and affects `values` on the following tick (not just CPU
-      tree / observability state).
-- [ ] **Priority 2 — capability fission replay test.** End-to-end replay for
-      fission with `clone_capability_children: true` and a populated
-      `capability_container_kinds` list; verify `FissionOccurred { node }`
-      reconstructs the full spawned subtree including cloned capability children.
-- [ ] **Priority 3 — serde default for `clone_capability_children`.** Add test
-      proving old `FissionTemplate` JSON/RON without `clone_capability_children`
-      deserializes as `false`. *(Partial: `capability_container_kinds` default
-      test landed in PR #38; `clone_capability_children` default test still open.)*
+- [x] **Priority 1 — activated overlay GPU integration test.** Landed
+      2026-05-22. `activated_suspended_overlay_appears_in_gpu_delta_and_affects_values`
+      in `crates/simthing-sim/tests/boundary_integration.rs`. Proves the full
+      Suspended → Permanent transition: suspended overlay is GPU-inert (Pass 3
+      filter), `BoundaryRequest::ActivateOverlay` flips lifecycle, boundary
+      gpu_sync rebuilds Pass 3 deltas, next tick's Pass 3 applies the overlay
+      to `values` (0.5 → 0.75 via Multiply(1.5)).
+- [x] **Priority 2 — capability fission replay test.** Landed 2026-05-22.
+      `replay_fission_with_cloned_capability_subtree_reconstructs_full_payload`
+      in `crates/simthing-sim/tests/boundary_integration.rs`. Drives a faction
+      fission with `clone_capability_children: true` and
+      `capability_container_kinds: ["tech_tree"]`; verifies the
+      `FissionOccurred { node }` payload carries the full cloned tech_tree
+      subtree (2 nested levels), and `ReplayDriver` reconstructs the spawned
+      faction, its cloned tech_tree, and the tech_tree's child, with slots
+      allocated for every node and lineage round-tripped.
+- [x] **Priority 3 — serde default for `clone_capability_children`.** Landed
+      2026-05-22. `fission_template_deserializes_without_clone_capability_children`
+      in `crates/simthing-core/src/property.rs`. Pre-V6 JSON/RON without the
+      field deserializes as `false` (safe default — no capability cloning
+      runs without explicit studio opt-in).
 
-### Performance and studio (after guardrails)
+### Performance and studio (V6 guardrails complete — clear path to B2)
 
 - [ ] **Priority 4 — B2 fission-growth topology batching.** Retain or
       append-patch GPU topology/threshold buffers on growth boundaries only when
@@ -136,8 +145,8 @@ FissionTemplate(
 
 ### Recommended session order
 
-1. Priority 1 (activated overlay GPU proof)
-2. Priority 2 (capability fission replay)
-3. Finish Priority 3 (`clone_capability_children` serde default)
-4. Priority 4 (B2 growth batching)
+1. ~~Priority 1 (activated overlay GPU proof)~~ — Done 2026-05-22.
+2. ~~Priority 2 (capability fission replay)~~ — Done 2026-05-22.
+3. ~~Priority 3 (`clone_capability_children` serde default)~~ — Done 2026-05-22.
+4. **Priority 4 (B2 growth batching) ← next**
 5. Studio capability-tree builder
