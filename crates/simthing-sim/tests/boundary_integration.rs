@@ -352,6 +352,19 @@ fn fission_beyond_initial_headroom_grows_gpu_state() {
         "exactly the one new fission child row should upload (not the entire shadow)"
     );
 
+    // B2 (Approach B) regression guard: pure-fission growth should take the
+    // append-only threshold path instead of rebuilding the entire registry.
+    // For one fission with a single FissionThreshold property:
+    //   - 1 new FissionTrigger registration for the spawned child's loyalty
+    //   - 1 new FusionTrigger registration for the FissionLineageRecord
+    // → 2 appended; the parent cohort's pre-existing FissionTrigger stays
+    // resident on the GPU and is not re-walked.
+    assert_eq!(
+        outcome.gpu_sync.threshold_regs_uploaded, 2,
+        "append-only path should write only the new registrations \
+         (1 fission child + 1 lineage), not rebuild the entire registry"
+    );
+
     let child_id = find_node(&proto.root, cohort_id)
         .expect("cohort exists")
         .children[0]

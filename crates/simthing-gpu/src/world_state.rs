@@ -727,6 +727,74 @@ impl WorldGpuState {
         }
     }
 
+    /// Append new registrations at offset `n_thresholds * sizeof(...)` without
+    /// disturbing the existing buffer contents. Grows the underlying buffer
+    /// via `copy_buffer_to_buffer` when capacity is insufficient, preserving
+    /// already-uploaded registrations. Companion to B2 Approach B's
+    /// append-only threshold rebuild on pure-fission growth boundaries.
+    ///
+    /// Caller is responsible for ensuring the CPU `ThresholdRegistry` is
+    /// extended in lockstep with the same registrations.
+    pub fn append_thresholds(&mut self, new_regs: &[ThresholdRegistration]) {
+        if new_regs.is_empty() {
+            return;
+        }
+        let reg_size = std::mem::size_of::<ThresholdRegistration>();
+        let event_size = std::mem::size_of::<ThresholdEvent>();
+
+        let old_count = self.n_thresholds as u64;
+        let new_count = old_count + new_regs.len() as u64;
+        let needed_reg_bytes = new_count * reg_size as u64;
+        let needed_event_bytes = new_count * event_size as u64;
+
+        // Grow the registry buffer if needed, preserving existing contents.
+        if needed_reg_bytes > self.threshold_registry.size() {
+            let new_buffer = self.ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("threshold_registry"),
+                size: needed_reg_bytes.max(reg_size as u64),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            if old_count > 0 {
+                let mut encoder = self
+                    .ctx
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("append_thresholds:preserve"),
+                    });
+                encoder.copy_buffer_to_buffer(
+                    &self.threshold_registry,
+                    0,
+                    &new_buffer,
+                    0,
+                    old_count * reg_size as u64,
+                );
+                self.ctx.queue.submit(Some(encoder.finish()));
+            }
+            self.threshold_registry = new_buffer;
+        }
+
+        // Grow the candidates buffer if needed. Contents are scratch (Pass 7
+        // writes into it each tick), so no preservation is required.
+        if needed_event_bytes > self.event_candidates.size() {
+            self.event_candidates = self.ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("event_candidates"),
+                size: needed_event_bytes.max(event_size as u64),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+
+        // Write the new registrations at the tail.
+        let offset = old_count * reg_size as u64;
+        self.ctx.queue.write_buffer(
+            &self.threshold_registry,
+            offset,
+            bytemuck::cast_slice(new_regs),
+        );
+        self.n_thresholds = new_count as u32;
+    }
+
     /// Upload reduction topology + per-column rule table. Called once per
     /// boundary after the tree shape changes (or once at session start).
     ///

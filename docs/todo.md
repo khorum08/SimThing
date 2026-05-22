@@ -1,12 +1,13 @@
 # SimThing Todo Log
 
-Current parking state after **B2 fission-growth targeted value upload
-(Approach A)** — buffer-preserving slot growth + coalesced row uploads
-landed on 2026-05-22 atop V6 guardrails Priorities 1–3 (PR #39).
+Current parking state after **B2 Approach A (targeted value upload, PR #40)
+and B2 Approach B (append-only threshold registry)** — both landed on
+2026-05-22 atop V6 guardrails Priorities 1–3 (PR #39).
 
 **Tests:** `cargo test --workspace` → **202** passed, **1** ignored timing
-diagnostic, zero warnings. `fission_stress` ~55 ms/sim-day (unchanged in
-the dense-fission worst case), `intent_stress` ~17 ms/sim-day.
+diagnostic, zero warnings. `fission_stress` ~55 ms/sim-day with
+`boundary_gpu_sync_ms` ~3.8 ms (down from ~7 ms pre-B); upload bytes
+~1.0 MB (down from ~2.5 MB pre-B, ~2.7 MB pre-A).
 
 ---
 
@@ -91,10 +92,21 @@ the dense-fission worst case), `intent_stress` ~17 ms/sim-day.
       `fission_beyond_initial_headroom_grows_gpu_state` now asserts
       `!full_value_upload && value_rows_uploaded == 1` for a single
       fission across a growth boundary.
-- [ ] **Priority 4 — B2 Approach B (append-only threshold registry).**
-      Skip full threshold buffer rebuild on growth boundaries when only
-      new registrations are appended (existing event_kind indices stay
-      stable). Estimated savings ~3–5 ms on `fission_stress`.
+- [x] **Priority 4 — B2 Approach B (append-only threshold registry,
+      2026-05-22).** `ThresholdBuilder::append_subtree` /
+      `append_lineage` and `WorldGpuState::append_thresholds` push new
+      registrations at the tail of the existing GPU buffer (preserving
+      event_kind indices) when boundary mutations are limited to pure
+      fission spawning. `boundary.rs` detects the eligible case (no
+      fusions, no expiry, no add/remove, no dimension/config change)
+      and skips the full tree walk. `fission_stress` `boundary_gpu_sync_ms`:
+      ~7 → ~3.8 ms (~3 ms saved); upload bytes ~2.5 MB → ~1.0 MB;
+      ms_per_sim_day unchanged (within noise on this machine).
+      Regression guard:
+      `fission_beyond_initial_headroom_grows_gpu_state` now asserts
+      `threshold_regs_uploaded == 2` for a single fission (1 new
+      FissionTrigger + 1 new FusionTrigger), proving the append path
+      writes only deltas instead of rebuilding the registry.
 - [ ] **Priority 4 — B2 Approach C (incremental reduction topology).**
       Extend CSR child layout instead of rebuilding. Highest risk
       (slot ordering / determinism critical).

@@ -6,6 +6,91 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — B2 fission-growth Approach B: append-only threshold registry
+
+**Status:** Landed (local). Pure-fission growth boundaries skip the full
+threshold-registry walk and append only the new registrations.
+
+**Problem:**
+
+`ThresholdBuilder::build_with_lineage` walks the entire SimThing tree and
+re-derives every registration from scratch when `threshold_dirty` is set.
+On `fission_stress` that's ~60k registrations (~20k existing parents +
+~20k new children + ~20k fusion-lineage records) walked every boundary —
+~3 ms of pure CPU work even though only the new entries actually need
+to land on the GPU.
+
+**Change:**
+
+1. `simthing-sim/threshold_registry.rs` exposes two new public helpers
+   on `ThresholdBuilder`:
+   - `append_subtree(node, dim_reg, allocator, &mut gpu_regs, &mut cpu_reg)`
+     walks a single subtree, pushing registrations into existing vecs
+     (event_kinds assigned as `cpu_reg.len()` and onwards).
+   - `append_lineage(dim_reg, allocator, lineage, &mut gpu_regs, &mut cpu_reg)`
+     does the same for `FissionLineageRecord`s.
+2. `simthing-gpu/world_state.rs::append_thresholds(new_regs)` writes new
+   registrations at offset `n_thresholds * sizeof(...)`. Grows the
+   underlying buffer via `copy_buffer_to_buffer` when capacity is
+   insufficient, preserving already-uploaded registrations and their
+   event_kind indices. Companion to Approach A's preservation pattern.
+3. `simthing-sim/boundary.rs` computes an `append_eligible` flag after
+   structural mutations: `threshold_dirty` AND `fissions_executed > 0`
+   AND none of `fusions_executed`, `expired`, `tombstoned`, `allocated`
+   (AddChild), `dimensions_added`, `reparented`, `lineage_removed`, AND
+   `threshold_config_revision == synced_threshold_config_revision`. When
+   eligible, the boundary walks only the new fission children's subtrees
+   (reusing `structural_paths` for O(1) lookup) and the new
+   `lineage_added` records, appending the derived registrations to the
+   existing GPU buffer + CPU registry. `threshold_dirty` is then
+   cleared so `gpu_sync` skips the full rebuild.
+4. The full rebuild path is still taken for all other dirty conditions
+   (initial sync, fusion, expiry, structural add/remove, dimension
+   change, config change), so safety isn't traded off — only the
+   pure-growth case is optimized.
+
+**Regression guard:**
+
+- `fission_beyond_initial_headroom_grows_gpu_state` in
+  `crates/simthing-sim/tests/boundary_integration.rs` now asserts
+  `outcome.gpu_sync.threshold_regs_uploaded == 2` for a single fission:
+  one new FissionTrigger (child's loyalty crossing) + one new
+  FusionTrigger (the lineage record). Before Approach B that field
+  reflected the full re-walked registry; after, it counts only what
+  was actually written via `append_thresholds`.
+
+**Benchmark deltas (local, `fission_stress`):**
+
+| Metric | Pre-B (Approach A only) | Post-B (A+B) |
+|---|---|---|
+| `boundary_gpu_sync_ms` | ~7 | ~3.8 |
+| `threshold_regs_uploaded` | 59,997 | 39,998 |
+| `boundary_upload_bytes` | ~2.5 MB | ~1.0 MB |
+| `ms_per_sim_day` | ~55 | ~56 |
+
+The ~3 ms saved in `gpu_sync_ms` sits below the run-to-run variance of
+`tick_event_readback_ms` and `boundary_fission_ms` on this machine, so
+`ms_per_sim_day` is unchanged within noise. The work avoided is real,
+though — ~1.5 MB less GPU upload bandwidth per growth boundary, and the
+CPU walk over 60k entries replaced by a walk over the ~40k new ones
+(plus zero entries for the already-resident ~20k parents). The relative
+win grows with longer simulations (the resident threshold count keeps
+climbing across boundaries when the world fissions but doesn't fuse).
+
+**Tests:** `cargo test --workspace` → **202** passed, 1 ignored timing
+diagnostic, zero warnings. `bench_stress_scenarios_within_ceiling`
+still inside ceiling.
+
+**Open B2 work (Approach C):**
+
+Incremental reduction-topology patching. CSR child layout currently
+rebuilt from scratch on growth; could be patched incrementally if slot
+ordering and determinism are preserved. Highest risk of the three
+approaches — Pass 4–6 reduction depends on deterministic child
+ordering for bit-exact CPU/GPU parity.
+
+---
+
 ## 2026-05-22 — B2 fission-growth Approach A: targeted value upload across growth
 
 **Status:** Landed (local). Buffer-preserving slot growth + coalesced
@@ -683,8 +768,10 @@ ahead of `origin/master`:
 - V6 Priority 2 guardrail: capability fission replay test (PR #39, `e275789`)
 - V6 Priority 3 guardrail: `clone_capability_children` serde default test
   (PR #39, `e275789`)
-- B2 Approach A: targeted value upload across fission growth (local,
-  2026-05-22)
+- B2 Approach A: targeted value upload across fission growth (PR #40,
+  `14437f3`)
+- B2 Approach B: append-only threshold registry on pure-fission growth
+  (local, 2026-05-22)
 - Capability-tree concept docs (PR #37), agent briefing sync (`07076b4`)
 - GPU intent-delta hot path, consolidated tick submission, stress scenarios,
   benchmark attribution, static-boundary skipping, fission path indexing,

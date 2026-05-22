@@ -35,10 +35,10 @@ use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
 use crate::reduced_field::ReducedField;
 use crate::threshold_registry::{
-    AggregateAlertEvent, AggregateAlertRegistration, ThresholdRegistry, ThresholdSemantic,
-    VelocityAlertEvent, VelocityAlertRegistration,
+    AggregateAlertEvent, AggregateAlertRegistration, ThresholdBuilder, ThresholdRegistry,
+    ThresholdSemantic, VelocityAlertEvent, VelocityAlertRegistration,
 };
-use crate::tree_index::build_node_paths;
+use crate::tree_index::{build_node_paths, node_at_path};
 use crate::tree_mutation::apply_structural_mutations;
 use std::collections::HashSet;
 use std::time::Instant;
@@ -403,6 +403,59 @@ impl BoundaryProtocol {
         topology_dirty |= grew_final_capacity;
         out.timing.final_capacity_ms = final_capacity_started.elapsed().as_secs_f64() * 1000.0;
 
+        // B2 Approach B: append-only threshold rebuild for pure-fission
+        // growth boundaries. The full `ThresholdBuilder::build_with_lineage`
+        // walk re-derives every registration from scratch (60k entries in
+        // `fission_stress`). When the only source of threshold churn is
+        // fission spawning new children — no fusions, no expiry, no
+        // structural add/remove, no dimension or config change — we can
+        // derive registrations only for the new children + new lineage
+        // and append them to both the CPU registry and the GPU buffer.
+        // Existing event_kind indices stay stable (we only push at the
+        // tail), so this is safe with respect to in-flight threshold
+        // events resolved via the CPU `ThresholdRegistry` lookup.
+        let mut threshold_regs_appended = 0u32;
+        let append_eligible = threshold_dirty
+            && out.fission.fissions_executed > 0
+            && out.fission.fusions_executed == 0
+            && out.fission.lineage_removed.is_empty()
+            && out.expiry.expired.is_empty()
+            && out.maintainer.allocated.is_empty()
+            && out.maintainer.tombstoned.is_empty()
+            && out.maintainer.dimensions_added.is_empty()
+            && out.maintainer.reparented.is_empty()
+            && self.threshold_config_revision == self.synced_threshold_config_revision;
+        if append_eligible {
+            // Reuse `structural_paths` (built once before apply_structural_mutations).
+            // In the append-eligible case the maintainer's allocated/tombstoned
+            // lists are both empty, so the tree shape — and therefore the
+            // index — has not changed since `structural_paths` was built.
+            let mut new_regs = Vec::new();
+            for &(_, child_id) in &out.fission.fission_pairs {
+                if let Some(path) = structural_paths.get(&child_id) {
+                    if let Some(child_node) = node_at_path(&self.root, path) {
+                        ThresholdBuilder::append_subtree(
+                            child_node,
+                            &self.registry,
+                            &self.allocator,
+                            &mut new_regs,
+                            &mut self.cpu_threshold_registry,
+                        );
+                    }
+                }
+            }
+            ThresholdBuilder::append_lineage(
+                &self.registry,
+                &self.allocator,
+                &out.fission.lineage_added,
+                &mut new_regs,
+                &mut self.cpu_threshold_registry,
+            );
+            state.append_thresholds(&new_regs);
+            threshold_regs_appended = new_regs.len() as u32;
+            threshold_dirty = false;
+        }
+
         // Step 9: Rebuild GPU buffers from current tree + upload shadow.
         let gpu_sync_started = Instant::now();
         let dirty_value_slots = if force_full_value_upload {
@@ -431,7 +484,13 @@ impl BoundaryProtocol {
         }
         out.gpu_sync = GpuSyncOutcome {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
-            threshold_regs_uploaded: gpu_out.threshold_regs_uploaded,
+            // Sum: gpu_out.threshold_regs_uploaded counts entries written by
+            // the full rebuild path (0 when we took the append path);
+            // threshold_regs_appended counts entries written by Approach B's
+            // tail-append path.
+            threshold_regs_uploaded: gpu_out
+                .threshold_regs_uploaded
+                .saturating_add(threshold_regs_appended),
             new_threshold_registry: None, // moved into self above
             reduction_depths: gpu_out.reduction_depths,
             reduction_edges: gpu_out.reduction_edges,
