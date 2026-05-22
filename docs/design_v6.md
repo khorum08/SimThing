@@ -231,6 +231,71 @@ from ~2.5 MB → ~1.0 MB per boundary. The wall-time saving sits below
 run-to-run noise on the development machine but compounds in longer
 simulations as the resident threshold count grows.
 
+**B2 Approach C — incremental reduction-topology patching (2026-05-22):**
+
+The reduction tier (Pass 4–6) reads a CSR child layout (`child_starts`,
+`child_indices`) and a per-depth slot bucketing from GPU storage buffers.
+`build_topology` previously walked the SimThing tree every time
+`topology_dirty` was set, sorted each parent's child list by slot index
+(to lock in the canonical iteration order that CPU oracle and GPU shader
+both depend on for bit-exact `f32` parity), and flattened into the CSR
+form before uploading.
+
+`simthing-gpu::TopologyState` is the new canonical source for the CSR.
+It holds `per_slot_children: Vec<Vec<u32>>` and `depths: Vec<Option<u32>>`
+in ascending-slot order — a `flatten()` over those fields produces a
+`Topology` bit-identical to what `build_topology` returns. `gpu_sync.rs`
+takes the state by `&mut`: the full-rebuild path calls
+`TopologyState::build(...)` to refresh it; Approach C's append path
+patches it directly with `add_child(parent_slot, child_slot)`.
+
+The append path on `boundary.rs` reuses Approach B's eligibility
+predicate (pure-fission growth, no fusion / expiry / add-remove /
+dimension change / config drift). When eligible, it:
+
+1. `cached_topology_state.ensure_capacity(allocator.capacity())` to
+   cover newly-grown slots.
+2. For each `(parent_id, child_id)` in `out.fission.fission_pairs`,
+   calls `add_child(parent_slot, child_slot)`. The `SlotAllocator`
+   guarantees monotonically-increasing indices, so every new child has
+   the highest slot in the world — appending to the parent's child list
+   preserves ascending order without re-sorting.
+3. Re-flattens the cache and uploads via
+   `state.upload_reduction_topology(...)`. The CPU walk + sort that
+   `build_topology` used to do is replaced by a linear pass over the
+   already-sorted cache.
+4. Clears `topology_dirty` so `gpu_sync` skips its rebuild step.
+
+The full-rebuild path remains the fallback for every other dirty
+condition (initial sync, fusion, expiry, structural add/remove,
+dimension change). Safety isn't traded — only the pure-growth case is
+optimized.
+
+**Determinism safety guard:** Two unit tests in `simthing-gpu::reduction`
+prove the cache produces bit-identical output to the full-rebuild path:
+
+- `topology_state_flatten_matches_build_topology` — `TopologyState::build`
+  then `flatten` matches `build_topology` byte-for-byte (`child_starts`,
+  `child_indices`, `depth_buckets`).
+- `topology_state_incremental_add_child_matches_full_rebuild` —
+  incrementally applying `add_child` to a cached state produces the
+  same CSR as a full rebuild from the post-fission tree, AND
+  `cpu_reduce_oracle` over both topologies produces bit-identical
+  `f32` output (no associative-sum drift).
+
+Combined integration assertion in
+`fission_beyond_initial_headroom_grows_gpu_state` checks that
+`reduction_edges == 3` and `reduction_depths == 4` for the
+post-fission tree, confirming the append path was taken and uploaded
+the right shape.
+
+On `fission_stress`, `boundary_gpu_sync_ms` drops from ~3.8 ms
+(Approach B) to ~2.0 ms (Approach B + C): another ~1.8 ms shaved off
+the CPU side of growth boundaries. Total session reduction:
+~6.7 ms → ~2.0 ms (~70% less time in `gpu_sync`). Wall time on
+`fission_stress` is dominated by `tick_event_readback_ms` (~21 ms) so
+the user-visible delta is below noise.
+
 ### Implementation status summary (as of 2026-05-22)
 
 | Area | Status | Reference |
@@ -242,8 +307,9 @@ simulations as the resident threshold count grows.
 | V6 Priority 3 — `clone_capability_children` serde default test | Landed | PR #39, `e275789` |
 | B2 Approach A — targeted value upload across growth | Landed | PR #40, `14437f3` |
 | B2 Approach B — append-only threshold registry on pure-fission growth | Landed | PR #41, `a23820b` |
-| B2 Approach C — incremental reduction-topology patching | Open | — |
+| B2 Approach C — incremental reduction-topology patching | Landed | 2026-05-22 |
 | Studio capability-tree builder (`CapabilityTreeSpec` / boundary handler) | Open | `capability_tree_v1.md` |
+| `tick_event_readback_ms` deep dive (now the dominant cost in `fission_stress`) | Open | — |
 
 ---
 

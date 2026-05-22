@@ -6,6 +6,123 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — B2 fission-growth Approach C: incremental reduction topology
+
+**Status:** Landed (local). The reduction CSR is no longer rebuilt from
+scratch on pure-fission growth boundaries — an incremental patch over a
+cached `TopologyState` produces a byte-identical result.
+
+**Problem:**
+
+`build_topology` walked the full SimThing tree on every `topology_dirty`
+boundary, sorted each parent's child list by slot index (the canonical
+order CPU oracle and GPU shader both lock in for bit-exact `f32`
+parity), then flattened to CSR. On `fission_stress` that walk is ~40k
+nodes plus ~20k sorts every growth boundary.
+
+The CSR layout makes "patch in place" impossible — inserting a child
+into the middle of `child_indices` shifts every subsequent entry — so
+the optimization keeps the canonical per-slot state cached on the
+`BoundaryProtocol`, patches it, and re-flattens.
+
+**Change:**
+
+1. `simthing-gpu/reduction.rs::TopologyState` (new public type):
+   - `per_slot_children: Vec<Vec<u32>>` and `depths: Vec<Option<u32>>`
+     in canonical (ascending-slot) order.
+   - `build(root, allocator)` walks the tree (same logic that
+     `build_topology` previously inlined) and sorts each parent's
+     child list once.
+   - `ensure_capacity(n_slots)` extends both vecs.
+   - `add_child(parent_slot, child_slot)` appends to
+     `per_slot_children[parent_slot]` and derives the new depth from
+     the parent's. `debug_assert!` enforces `child_slot > last_child`,
+     locking in the ascending-slot invariant that the
+     `SlotAllocator`'s monotonic indexing guarantees.
+   - `flatten() -> Topology` produces the CSR + depth buckets — no
+     sorts (the canonical state is already sorted by construction).
+   - `build_topology` is now `TopologyState::build(...).flatten()`.
+
+2. `simthing-sim/gpu_sync.rs::sync_gpu_buffers` takes
+   `&mut TopologyState` and refreshes the cache via
+   `*topology_state = TopologyState::build(root, allocator)` on the
+   full-rebuild path. Boundary owns the cache; gpu_sync mutates it.
+
+3. `simthing-sim/boundary.rs`:
+   - `BoundaryProtocol` gains a `cached_topology_state: TopologyState`
+     field initialized to `TopologyState::default()` (empty).
+   - After Approach B's threshold append block, a parallel
+     `topology_append_eligible` predicate fires under the same pure-
+     fission conditions. When eligible, the boundary calls
+     `cached_topology_state.add_child(parent_slot, child_slot)` for
+     each `(parent_id, child_id)` in `out.fission.fission_pairs`, then
+     re-flattens and uploads via `state.upload_reduction_topology(...)`.
+     `topology_dirty` is cleared so `gpu_sync` skips the rebuild.
+   - The full-rebuild path (called for any non-eligible mutation:
+     fusion, expiry, AddChild, Remove, dimension change) goes
+     through `gpu_sync` and refreshes the cache, keeping it in
+     lockstep with the GPU buffer.
+   - `GpuSyncOutcome::{reduction_depths,reduction_edges,reduction_slots}`
+     report the counts uploaded — populated by exactly one of the two
+     paths (full rebuild via `gpu_out.reduction_*`, or append via the
+     local `topology_appended_*` counters).
+
+**Safety: bit-exact determinism through the cache.**
+
+Two new unit tests in `simthing-gpu::reduction::tests` prove the cache
+produces byte-identical output:
+
+- `topology_state_flatten_matches_build_topology` — round-tripping a
+  fresh state through `flatten` matches `build_topology`'s output
+  field-for-field (`child_starts`, `child_indices`, `depth_buckets`).
+- `topology_state_incremental_add_child_matches_full_rebuild` —
+  applying `add_child` for a fission to a cached state produces the
+  same CSR as a full rebuild from the post-fission tree, AND
+  `cpu_reduce_oracle` over both topologies produces bit-identical
+  `f32` output. This catches any drift in canonical iteration order
+  that would break Pass 4–6 reduction parity.
+
+Integration regression in
+`fission_beyond_initial_headroom_grows_gpu_state`:
+
+- `reduction_edges == 3` (World→Loc, Loc→Cohort, Cohort→newChild)
+- `reduction_depths == 4` (one bucket per depth)
+
+confirming the post-fission topology shape is uploaded correctly via
+the append path.
+
+**Benchmark deltas (local, `fission_stress`, 20k fissions / boundary):**
+
+| Metric | Pre-A | After A (PR #40) | After B (PR #41) | After C |
+|---|---|---|---|---|
+| `boundary_gpu_sync_ms` | ~6.7 | ~7.0 | ~3.8 | ~2.0 |
+| `boundary_upload_bytes` | ~2.72 MB | ~2.48 MB | ~1.04 MB | ~1.04 MB |
+| `threshold_regs_uploaded` | 59,997 | 59,997 | 39,998 | 39,998 |
+| `reduction_edges_uploaded` | 39,998 | 39,998 | 39,998 | 39,998 |
+| `boundary_value_rows_uploaded` | 40,000 | 19,999 | 19,999 | 19,999 |
+| `ms_per_sim_day` | ~55 | ~55 | ~56 | ~60 |
+
+`boundary_gpu_sync_ms` is down 70% over the session (~6.7 → ~2.0).
+The wall-time field still hovers in the ~55–66 ms range — dominated by
+`tick_event_readback_ms` (~21–24 ms) — so the session's combined GPU
+sync wins are not user-visible on this scenario. But the work avoided
+is real and the relative impact grows in larger / sparser
+simulations where reductions and threshold registries get longer.
+
+**Tests:** `cargo test --workspace` → **204 passed** (up from 202 with
+two new `TopologyState` determinism tests), 1 ignored timing
+diagnostic, zero warnings. `bench_stress_scenarios_within_ceiling`
+still inside ceiling.
+
+**Open follow-up:**
+
+- Cache-integrity defensive check: a `debug_assert!` reflattening the
+  cache and comparing to `build_topology` on every non-append-eligible
+  boundary would catch any future drift between cache mutations and
+  the tree shape.
+
+---
+
 ## 2026-05-22 — Session park
 
 Five-PR session. `master` at `a23820b`.

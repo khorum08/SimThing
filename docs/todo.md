@@ -107,9 +107,23 @@ diagnostic, zero warnings. `fission_stress` ~55 ms/sim-day with
       `threshold_regs_uploaded == 2` for a single fission (1 new
       FissionTrigger + 1 new FusionTrigger), proving the append path
       writes only deltas instead of rebuilding the registry.
-- [ ] **Priority 4 — B2 Approach C (incremental reduction topology).**
-      Extend CSR child layout instead of rebuilding. Highest risk
-      (slot ordering / determinism critical).
+- [x] **Priority 4 — B2 Approach C (incremental reduction topology,
+      2026-05-22).** New `simthing-gpu::TopologyState` is the canonical
+      source for the CSR `Topology`; `gpu_sync.rs` takes it by `&mut`
+      so the full-rebuild path refreshes it and the append path
+      (mirroring Approach B's eligibility predicate) patches it
+      in-place via `add_child(parent_slot, child_slot)`. The
+      `SlotAllocator`'s monotonically-increasing index guarantee
+      makes the new child the highest slot in the world, so appending
+      to the parent's child list preserves the ascending-slot
+      invariant without re-sorting. Determinism safety verified by
+      two new unit tests in `simthing-gpu::reduction`
+      (`topology_state_flatten_matches_build_topology` and
+      `topology_state_incremental_add_child_matches_full_rebuild`)
+      that prove byte-identical CSR output AND bit-identical CPU
+      oracle reduction. Integration test adds
+      `reduction_edges == 3` and `reduction_depths == 4` assertions.
+      `fission_stress` `boundary_gpu_sync_ms`: ~3.8 → ~2.0 ms.
 - [ ] **Capability-tree studio layer.** `CapabilityTreeSpec` / builder /
       session init per `capability_tree_v1.md` and
       `workshop/tech_tree_decisions.md`. Studio populates
@@ -176,13 +190,17 @@ FissionTemplate(
 3. ~~Priority 3 (`clone_capability_children` serde default)~~ — Done 2026-05-22, PR #39.
 4. ~~Priority 4 — B2 Approach A (targeted value upload)~~ — Done 2026-05-22, PR #40.
 5. ~~Priority 4 — B2 Approach B (append-only threshold registry)~~ — Done 2026-05-22, PR #41.
-6. **Next session — pick one:**
-   - B2 Approach C (incremental reduction topology) — highest risk, real cost
-     reduction on growth-heavy GPU pipelines.
+6. ~~Priority 4 — B2 Approach C (incremental reduction topology)~~ — Done 2026-05-22.
+7. **Next session — pick one:**
    - Studio capability-tree builder — most gameplay-visible; exercises V6
-     suspended-overlay path end-to-end.
+     suspended-overlay path end-to-end. Per `docs/capability_tree_v1.md`.
    - `tick_event_readback_ms` deep dive — the single largest cost remaining
      in `fission_stress` (~21 ms / ~40% of total). GPU → CPU bandwidth-bound;
      async readback or ring-buffer schemes could be substantial.
-7. Scenario format expansion / map-scale representation doc — tabled until
+   - Cache-invalidation hardening for `cached_topology_state` — current
+     correctness relies on always taking the full-rebuild path on any
+     non-fission-only mutation. A defensive integrity check (e.g.
+     `debug_assert!` reflattening matches `build_topology` on every
+     non-eligible boundary) would catch any future regressions early.
+8. Scenario format expansion / map-scale representation doc — tabled until
    the above land.

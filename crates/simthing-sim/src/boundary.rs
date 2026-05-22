@@ -23,7 +23,10 @@ use simthing_core::{
     DecayBehavior, DimensionRegistry, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
 };
 use simthing_feeder::{BoundaryRequest, DispatchCoordinator, MaintainerOutcome, TransformPatcher};
-use simthing_gpu::{SlotAllocator, ThresholdEvent, WorldGpuState};
+use simthing_gpu::{
+    build_column_rule_descriptors, encode_column_rules, SlotAllocator, ThresholdEvent,
+    TopologyState, WorldGpuState,
+};
 
 use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 use crate::fission::{
@@ -109,6 +112,13 @@ pub struct BoundaryProtocol {
     /// start of each boundary, before any new threshold registrations are
     /// emitted, so that no `FusionTrigger` ever points at a vanished slot.
     fission_lineage: Vec<FissionLineageRecord>,
+    /// B2 Approach C: canonical per-slot child layout + per-slot depth.
+    /// Refreshed from a full tree walk inside `gpu_sync` when the
+    /// reduction topology rebuild path runs; patched in-place by the
+    /// boundary when the append-only fission path applies. Stays in
+    /// lockstep with the `child_starts` / `child_indices` / `depth_slots`
+    /// buffers on `WorldGpuState`.
+    cached_topology_state: TopologyState,
 }
 
 impl BoundaryProtocol {
@@ -124,6 +134,7 @@ impl BoundaryProtocol {
             synced_threshold_config_revision: 0,
             delta_log: Vec::new(),
             fission_lineage: Vec::new(),
+            cached_topology_state: TopologyState::default(),
         }
     }
 
@@ -456,6 +467,80 @@ impl BoundaryProtocol {
             threshold_dirty = false;
         }
 
+        // B2 Approach C: append-only reduction-topology patch on pure-fission
+        // growth boundaries. Eligibility predicate is identical to Approach B
+        // (no fusions, no expiry, no add/remove, no dimension/config change),
+        // because every condition that breaks one breaks the other:
+        // structural mutations reshape the tree, dimension changes invalidate
+        // column rules, fusion removes children. The `cached_topology_state`
+        // owned by this BoundaryProtocol is the canonical CSR source —
+        // `gpu_sync`'s full-rebuild path refreshes it; here we patch it
+        // in-place with the new parent→child edges before re-flattening.
+        let mut topology_regs_appended = 0u32;
+        let mut topology_appended_edges = 0u32;
+        let mut topology_appended_depths = 0u32;
+        let mut topology_appended_slots = 0u32;
+        let topology_append_eligible = topology_dirty
+            && out.fission.fissions_executed > 0
+            && out.fission.fusions_executed == 0
+            && out.fission.lineage_removed.is_empty()
+            && out.expiry.expired.is_empty()
+            && out.maintainer.allocated.is_empty()
+            && out.maintainer.tombstoned.is_empty()
+            && out.maintainer.dimensions_added.is_empty()
+            && out.maintainer.reparented.is_empty()
+            && self.threshold_config_revision == self.synced_threshold_config_revision;
+        if topology_append_eligible {
+            // Extend cache to cover newly-grown slot capacity.
+            self.cached_topology_state
+                .ensure_capacity(self.allocator.capacity());
+            // Apply each new (parent, child) edge. SlotAllocator hands out
+            // monotonically increasing indices, so the new child has the
+            // highest slot in the world — `add_child` push preserves the
+            // ascending-slot invariant without re-sorting.
+            for &(parent_id, child_id) in &out.fission.fission_pairs {
+                if let (Some(p), Some(c)) =
+                    (self.allocator.slot_of(parent_id), self.allocator.slot_of(child_id))
+                {
+                    self.cached_topology_state.add_child(p, c);
+                    topology_regs_appended += 1;
+                }
+            }
+            // Re-flatten cache → CSR + depth buckets, then upload. The same
+            // amount of GPU bytes flows as a full rebuild, but the CPU
+            // tree walk + sort is replaced by a linear pass over the
+            // already-sorted cache.
+            let topo = self.cached_topology_state.flatten();
+            let descriptors =
+                build_column_rule_descriptors(&self.registry, state.n_dims as usize);
+            let rules_u32 = encode_column_rules(&descriptors);
+            let mut depth_slots: Vec<u32> = Vec::new();
+            let mut depth_ranges: Vec<(u32, u32)> = Vec::new();
+            for bucket in &topo.depth_buckets {
+                let offset = depth_slots.len() as u32;
+                depth_slots.extend_from_slice(bucket);
+                depth_ranges.push((offset, bucket.len() as u32));
+            }
+            // `upload_reduction_topology` requires `child_starts.len() == n_slots + 1`.
+            let n_slots = state.n_slots as usize;
+            let mut child_starts = topo.child_starts.clone();
+            if child_starts.len() < n_slots + 1 {
+                let last = *child_starts.last().unwrap_or(&0);
+                child_starts.resize(n_slots + 1, last);
+            }
+            topology_appended_edges = topo.child_indices.len() as u32;
+            topology_appended_depths = topo.depth_buckets.len() as u32;
+            topology_appended_slots = depth_slots.len() as u32;
+            state.upload_reduction_topology(
+                &child_starts,
+                &topo.child_indices,
+                &rules_u32,
+                &depth_slots,
+                depth_ranges,
+            );
+            topology_dirty = false;
+        }
+
         // Step 9: Rebuild GPU buffers from current tree + upload shadow.
         let gpu_sync_started = Instant::now();
         let dirty_value_slots = if force_full_value_upload {
@@ -475,6 +560,7 @@ impl BoundaryProtocol {
             dirty_value_slots.as_deref(),
             threshold_dirty,
             topology_dirty,
+            &mut self.cached_topology_state,
         );
         out.timing.gpu_sync_ms = gpu_sync_started.elapsed().as_secs_f64() * 1000.0;
         // Adopt the new threshold registry for the next day.
@@ -492,13 +578,25 @@ impl BoundaryProtocol {
                 .threshold_regs_uploaded
                 .saturating_add(threshold_regs_appended),
             new_threshold_registry: None, // moved into self above
-            reduction_depths: gpu_out.reduction_depths,
-            reduction_edges: gpu_out.reduction_edges,
-            reduction_slots: gpu_out.reduction_slots,
+            // When gpu_sync's full reduction rebuild path ran, these come
+            // from gpu_out; when Approach C's append path ran, gpu_out
+            // values are 0 and the cached `topology_appended_*` values
+            // describe what was uploaded. They are mutually exclusive
+            // (set by exactly one of the two paths).
+            reduction_depths: gpu_out
+                .reduction_depths
+                .saturating_add(topology_appended_depths),
+            reduction_edges: gpu_out
+                .reduction_edges
+                .saturating_add(topology_appended_edges),
+            reduction_slots: gpu_out
+                .reduction_slots
+                .saturating_add(topology_appended_slots),
             boundary_upload_bytes: gpu_out.boundary_upload_bytes,
             value_rows_uploaded: gpu_out.value_rows_uploaded,
             full_value_upload: gpu_out.full_value_upload,
         };
+        let _ = topology_regs_appended; // count for future telemetry
 
         let delta_log_started = Instant::now();
         self.delta_log
@@ -662,6 +760,7 @@ impl BoundaryProtocol {
             None,
             true,
             true,
+            &mut self.cached_topology_state,
         );
         if let Some(new_reg) = out.new_threshold_registry {
             self.cpu_threshold_registry = new_reg;
