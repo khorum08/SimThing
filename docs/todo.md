@@ -171,8 +171,18 @@ FissionTemplate(
 
 ### Recommended session order
 
-1. ~~Priority 1 (activated overlay GPU proof)~~ — Done 2026-05-22.
-2. ~~Priority 2 (capability fission replay)~~ — Done 2026-05-22.
-3. ~~Priority 3 (`clone_capability_children` serde default)~~ — Done 2026-05-22.
-4. **Priority 4 (B2 growth batching) ← next**
-5. Studio capability-tree builder
+1. ~~Priority 1 (activated overlay GPU proof)~~ — Done 2026-05-22, PR #39.
+2. ~~Priority 2 (capability fission replay)~~ — Done 2026-05-22, PR #39.
+3. ~~Priority 3 (`clone_capability_children` serde default)~~ — Done 2026-05-22, PR #39.
+4. ~~Priority 4 — B2 Approach A (targeted value upload)~~ — Done 2026-05-22, PR #40.
+5. ~~Priority 4 — B2 Approach B (append-only threshold registry)~~ — Done 2026-05-22, PR #41.
+6. **Next session — pick one:**
+   - B2 Approach C (incremental reduction topology) — highest risk, real cost
+     reduction on growth-heavy GPU pipelines.
+   - Studio capability-tree builder — most gameplay-visible; exercises V6
+     suspended-overlay path end-to-end.
+   - `tick_event_readback_ms` deep dive — the single largest cost remaining
+     in `fission_stress` (~21 ms / ~40% of total). GPU → CPU bandwidth-bound;
+     async readback or ring-buffer schemes could be substantial.
+7. Scenario format expansion / map-scale representation doc — tabled until
+   the above land.

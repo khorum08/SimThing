@@ -6,6 +6,66 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — Session park
+
+Five-PR session. `master` at `a23820b`.
+
+**Landed today:**
+
+- PR #39 (`e275789`) — V6 guardrails Priorities 1, 2, 3
+  (suspended-overlay GPU activation, fission-replay round-trip,
+  `clone_capability_children` serde default).
+- PR #40 (`14437f3`) — B2 Approach A: buffer-preserving slot growth +
+  coalesced dirty-row uploads. Value upload becomes O(fission_count)
+  instead of O(n_slots) on growth boundaries.
+- PR #41 (`a23820b`) — B2 Approach B: append-only threshold registry on
+  pure-fission growth. `gpu_sync` walks only new subtrees + new lineage
+  records, appending at the tail of the GPU buffer with stable
+  event_kind indices.
+
+**Tests:** `cargo test --workspace` → **202 passed**, 1 ignored timing
+diagnostic, zero warnings.
+
+**Bench (local, `fission_stress`, 20k fissions/boundary):**
+
+| Metric | Pre-session | After PR #40 (A) | After PR #41 (A+B) |
+|---|---|---|---|
+| `boundary_gpu_sync_ms` | ~6.7 | ~7.0 | ~3.8 |
+| `boundary_upload_bytes` | ~2.72 MB | ~2.48 MB | ~1.04 MB |
+| `threshold_regs_uploaded` | 59,997 | 59,997 | 39,998 |
+| `boundary_value_rows_uploaded` | 40,000 | 19,999 | 19,999 |
+| `boundary_full_value_uploads` | 1 | 0 | 0 |
+| `ms_per_sim_day` | ~55 | ~55 | ~56 |
+
+Wall-time on this synthetic stress scenario stayed flat — the savings
+sit below the run-to-run variance of `tick_event_readback_ms` and
+`boundary_fission_ms`. The work avoided is real (~1.7 MB less upload
+per growth boundary; full registry walk replaced by walk-only-new) and
+the relative win grows in longer / sparser simulations.
+
+**Next session pickup (preferred order):**
+
+1. **B2 Approach C — incremental reduction-topology patching.** Highest
+   risk of the B2 trio (CSR child ordering / determinism). Open in
+   `docs/todo.md` and `docs/design_v6.md` implementation-status addendum.
+2. **Studio capability-tree builder.** `CapabilityTreeSpec` /
+   `CapabilityTreeBuilder` per `docs/capability_tree_v1.md`. More
+   gameplay-visible than B2-C; would also exercise the canonical use
+   case for V6 suspended overlays end-to-end.
+3. **`tick_event_readback_ms` deep dive.** Now the single largest cost
+   in `fission_stress` (~21 ms / ~40% of the total). Reads ~320 KB of
+   threshold events per tick — bandwidth-bound on GPU → CPU. Async
+   readback or speculative ring-buffer schemes could be substantial.
+   Higher difficulty than B2-A/B and Studio.
+
+**Open guardrails:**
+
+- No GPU integration test yet for `BoundaryRequest::SuspendOverlay`
+  (Priority 1 covered the activate path only). Cheap to add when
+  starting a future suspended-overlay session.
+
+---
+
 ## 2026-05-22 — B2 fission-growth Approach B: append-only threshold registry
 
 **Status:** Landed (local). Pure-fission growth boundaries skip the full

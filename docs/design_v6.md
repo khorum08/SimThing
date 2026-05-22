@@ -135,6 +135,116 @@ tree" is. Studio/RON authors populate the list on faction fission templates.
 replay for fission with cloned capability subtree; serde default test for
 `clone_capability_children` bool (kinds default test landed in this PR).
 
+### Addendum — V6 guardrails landed (2026-05-22, PR #39, `e275789`)
+
+The "Still open" items from PR #38 are now closed. Three regression tests
+lock down the V6 contract end-to-end:
+
+| Priority | Test | What it proves |
+|---|---|---|
+| 1 | `activated_suspended_overlay_appears_in_gpu_delta_and_affects_values` (sim integration) | A `Suspended { when_activated: Permanent }` overlay produces zero Pass 3 deltas while suspended; `BoundaryRequest::ActivateOverlay` submitted via `FeederSender::submit_boundary` flips lifecycle in `apply_structural_mutations`; boundary `gpu_sync` rebuilds the Pass 3 delta buffer with the now-active overlay; next tick's Pass 3 applies it to GPU `values` (0.5 → 0.75 via Multiply(1.5)). |
+| 2 | `replay_fission_with_cloned_capability_subtree_reconstructs_full_payload` (sim integration) | A `FissionTemplate` with `clone_capability_children: true` and `capability_container_kinds: ["tech_tree"]` deep-clones a 2-level capability subtree (`tech_tree` → `propulsion`). `BoundaryDeltaEntry::FissionOccurred { parent, node }` carries the full spawned faction subtree; `ReplayDriver::apply_frame` re-attaches it via `populate_from_tree` (slots allocated for every node) and `FissionLineageAdded` round-trips. |
+| 3 | `fission_template_deserializes_without_clone_capability_children` (core unit) | Legacy `FissionTemplate` JSON without `clone_capability_children` deserializes to `false`. Combined with the existing default `[]` for `capability_container_kinds`, pre-V6 templates produce pre-V6 behavior — no capability cloning runs without explicit studio opt-in. |
+
+**Verification after V6 guardrails:** `cargo test --workspace` → 202 passed,
+1 ignored.
+
+### Addendum — B2 fission-growth optimizations landed (2026-05-22)
+
+The V5/V6 boundary doctrine left two pessimistic paths on growth boundaries:
+full value-buffer flush and full threshold-registry walk. Both were the
+"correctness first" defaults from earlier sessions and are now relaxed
+without changing the boundary semantics.
+
+**B2 Approach A — targeted value upload across growth (PR #40, `14437f3`):**
+
+`WorldGpuState::rebuild_for_slots` previously allocated fresh GPU buffers
+on growth (`values`, `previous_values`, `output_vectors`,
+`previous_output_vectors`) and required the caller to re-upload the full
+shadow. It now preserves existing buffer contents via a single
+`copy_buffer_to_buffer` per buffer before swapping the new (larger)
+buffer in. Preservation runs only when `n_dims` is unchanged; dimension
+shifts still take the full-rebuild path.
+
+`DispatchCoordinator::upload_row_range` writes a contiguous block of slot
+rows in one `queue.write_buffer`. `gpu_sync.rs`'s dirty-slot upload sorts
++ dedups + coalesces adjacent slot indices into ranges before calling it
+— avoiding the per-row driver overhead that would dominate at thousands
+of dirty slots.
+
+`boundary.rs` no longer forces `force_full_value_upload = true` on
+fission/AddChild/final-capacity growth. Newly-allocated slots are already
+tracked individually via `out.fission.fission_pairs` and
+`out.maintainer.allocated`; previously-resident slots remain consistent
+on the GPU via the buffer preservation. Tombstone- and
+dimension-rebuild-induced full uploads are unchanged (those paths still
+need a clean slate).
+
+For real gameplay (sparse fission), value upload becomes
+O(fission_count) instead of O(n_slots). On `fission_stress` (every slot
+dirty), wall time is unchanged but upload bytes drop ~9%.
+
+**B2 Approach B — append-only threshold registry on pure-fission growth (PR #41, `a23820b`):**
+
+`ThresholdBuilder::build_with_lineage` walks the entire SimThing tree and
+re-derives every registration when `threshold_dirty` is set. The new
+public helpers `ThresholdBuilder::append_subtree` and
+`ThresholdBuilder::append_lineage` walk only a single subtree (or
+process new lineage records), pushing into externally-supplied vecs.
+Event_kinds for the appended entries are assigned at `cpu_reg.len()`
+and onwards — the existing event_kind indices used by any in-flight
+Pass 7 events stay stable.
+
+`WorldGpuState::append_thresholds(new_regs)` writes new registrations at
+offset `n_thresholds * sizeof(ThresholdRegistration)`. Grows the
+underlying buffer via `copy_buffer_to_buffer` when capacity is
+insufficient (mirroring Approach A's preservation pattern). The
+`event_candidates` buffer also grows, but its contents are Pass 7
+scratch so no preservation is needed.
+
+`boundary.rs` computes an `append_eligible` flag after structural
+mutations:
+
+```text
+threshold_dirty
+  && fissions_executed > 0
+  && fusions_executed == 0
+  && expiry.expired.is_empty()
+  && maintainer.allocated.is_empty()       // no AddChild
+  && maintainer.tombstoned.is_empty()      // no Remove
+  && maintainer.dimensions_added.is_empty()
+  && maintainer.reparented.is_empty()
+  && fission.lineage_removed.is_empty()
+  && threshold_config_revision == synced_threshold_config_revision
+```
+
+When eligible, the boundary walks only the new fission children's
+subtrees (reusing `structural_paths` for O(1) lookup) and the new
+`lineage_added` records, then appends the derived registrations via
+`state.append_thresholds`. `threshold_dirty` is cleared so `gpu_sync`
+skips the full rebuild step. Any other dirty condition falls back to
+the full rebuild — safety is not traded for performance.
+
+On `fission_stress`, `boundary_gpu_sync_ms` drops from ~7 ms → ~3.8 ms
+(CPU walk replaced by walk over new entries only) and upload bytes drop
+from ~2.5 MB → ~1.0 MB per boundary. The wall-time saving sits below
+run-to-run noise on the development machine but compounds in longer
+simulations as the resident threshold count grows.
+
+### Implementation status summary (as of 2026-05-22)
+
+| Area | Status | Reference |
+|---|---|---|
+| V6 simulation core (suspended overlays + capability fission clone) | Landed | `f39fe6d` |
+| Parameterized `capability_container_kinds` (no sim hardcoding) | Landed | PR #38, `a8aab5b` |
+| V6 Priority 1 — activated overlay GPU integration test | Landed | PR #39, `e275789` |
+| V6 Priority 2 — capability fission replay test | Landed | PR #39, `e275789` |
+| V6 Priority 3 — `clone_capability_children` serde default test | Landed | PR #39, `e275789` |
+| B2 Approach A — targeted value upload across growth | Landed | PR #40, `14437f3` |
+| B2 Approach B — append-only threshold registry on pure-fission growth | Landed | PR #41, `a23820b` |
+| B2 Approach C — incremental reduction-topology patching | Open | — |
+| Studio capability-tree builder (`CapabilityTreeSpec` / boundary handler) | Open | `capability_tree_v1.md` |
+
 ---
 
 ## 1. The Central Statement
