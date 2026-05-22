@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-/// How a capability entry becomes active at runtime.
+/// How a capability entry is authored to become active.
+///
+/// Runtime-only states such as `OnPrereqMet`, `Active`, or `WaitingOnPrereq`
+/// will be represented separately in later PRs.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 #[non_exhaustive]
@@ -10,8 +13,6 @@ pub enum ActivationMode {
     Threshold,
     /// No GPU threshold; activated by explicit player/UI selection.
     PlayerSelection,
-    /// Runtime-only: threshold fired but prereqs were unmet; swept each boundary.
-    OnPrereqMet,
 }
 
 /// Authored research-rate seam (Script arm reserved for future).
@@ -27,15 +28,7 @@ impl Default for ResearchRateSpec {
     }
 }
 
-impl ResearchRateSpec {
-    pub fn value(&self) -> f32 {
-        match self {
-            Self::Literal(v) => *v,
-        }
-    }
-}
-
-/// Category-level mutual exclusivity policy.
+/// Category-level mutual exclusivity policy (authored).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum MaxActivePolicy {
@@ -44,20 +37,6 @@ pub enum MaxActivePolicy {
     Limited {
         count: usize,
     },
-}
-
-impl MaxActivePolicy {
-    pub fn from_option(max_active: Option<usize>) -> Result<Self, crate::error::CapabilityTreeError> {
-        match max_active {
-            None => Ok(Self::Unlimited),
-            Some(0) => Err(crate::error::CapabilityTreeError::InvalidMaxActive(
-                0,
-                crate::keys::CategoryKey::new("", ""),
-            )),
-            Some(1) => Ok(Self::Limited { count: 1 }),
-            Some(n) => Err(crate::error::CapabilityTreeError::UnsupportedMaxActive(n)),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -118,8 +97,8 @@ pub struct CapabilitySpec {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CapabilityPrereqSpec {
-    pub category:  String,
-    pub entry_id:  String,
+    pub category: String,
+    pub entry_id: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

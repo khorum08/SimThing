@@ -1159,7 +1159,6 @@ dependencies = [
  "serde",
  "serde_json",
  "simthing-core",
- "simthing-feeder",
  "thiserror 2.0.18",
 ]
 

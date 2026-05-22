@@ -1,75 +1,67 @@
 use serde::{Deserialize, Serialize};
 
-/// Non-fatal authoring warnings collected during spec compilation.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct SpecDiagnostics {
-    pub warnings: Vec<SpecWarning>,
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum DiagnosticSeverity {
+    Error,
+    Warning,
+    Info,
 }
 
-impl SpecDiagnostics {
-    pub fn push(&mut self, warning: SpecWarning) {
-        self.warnings.push(warning);
-    }
-
-    pub fn merge(&mut self, other: SpecDiagnostics) {
-        self.warnings.extend(other.warnings);
-    }
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpecDiagnostic {
+    pub severity:    DiagnosticSeverity,
+    pub code:        String,
+    pub message:     String,
+    #[serde(default)]
+    pub source_path: Option<String>,
+    #[serde(default)]
+    pub hint:        Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum SpecWarning {
-    EmptyEffects {
-        tree_id:  String,
-        entry_id: String,
-    },
-    MaxActiveWithoutPlayerSelection {
-        tree_id:      String,
-        category_key: String,
-    },
-    UnusedCategory {
-        tree_id:      String,
-        category_key: String,
-    },
-    EmptyCapabilityContainerKinds {
-        context: String,
-    },
-}
-
-/// Capability-tree-specific diagnostic emitted at boundary time.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum CapabilityTreeDiagnostic {
-    PrereqsUnmet {
-        entry: CapabilityEntryKeyRef,
-    },
-    ProgressReset {
-        entry: CapabilityEntryKeyRef,
-        value: f32,
-    },
-    ActivationModeChanged {
-        entry: CapabilityEntryKeyRef,
-        from:  crate::spec::capability::ActivationMode,
-        to:    crate::spec::capability::ActivationMode,
-    },
-    MutualExclusivitySuspended {
-        entry: CapabilityEntryKeyRef,
-    },
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct CapabilityEntryKeyRef {
-    pub tree_id:  String,
-    pub category: String,
-    pub entry_id: String,
-}
-
-impl CapabilityEntryKeyRef {
-    pub fn from_key(tree_id: &str, key: &crate::keys::CapabilityEntryKey) -> Self {
+impl SpecDiagnostic {
+    pub fn error(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
-            tree_id:  tree_id.to_owned(),
-            category: key.category.to_string(),
-            entry_id: key.entry_id.clone(),
+            severity:    DiagnosticSeverity::Error,
+            code:        code.into(),
+            message:     message.into(),
+            source_path: None,
+            hint:        None,
+        }
+    }
+
+    pub fn warning(code: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            severity:    DiagnosticSeverity::Warning,
+            code:        code.into(),
+            message:     message.into(),
+            source_path: None,
+            hint:        None,
         }
     }
 }
 
-pub type SpecResult<T> = Result<(T, SpecDiagnostics), crate::error::CapabilityTreeError>;
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpecDiagnostics {
+    pub diagnostics: Vec<SpecDiagnostic>,
+}
+
+impl SpecDiagnostics {
+    pub fn push(&mut self, diagnostic: SpecDiagnostic) {
+        self.diagnostics.push(diagnostic);
+    }
+
+    pub fn has_errors(&self) -> bool {
+        self.diagnostics
+            .iter()
+            .any(|d| d.severity == DiagnosticSeverity::Error)
+    }
+
+    pub fn merge(&mut self, other: SpecDiagnostics) {
+        self.diagnostics.extend(other.diagnostics);
+    }
+}
+
+pub type SpecResult<T> = Result<(T, SpecDiagnostics), SpecError>;
+
+use crate::error::SpecError;

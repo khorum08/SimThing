@@ -6,7 +6,27 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-22 — Phase 0 doc pivot + Phase 1 `simthing-spec` PRs 1–5
+## 2026-05-22 — Revert `simthing-spec` to PR 1 lane
+
+**Status:** Landed locally (reverts exploratory PRs 3–5 code from PR #45).
+
+**Kept:** `crates/simthing-spec` workspace membership; authoring structs
+(`GameModeSpec`, `DomainPackSpec`, `CapabilityTreeSpec`, …); generic
+`SpecDiagnostics`; RON loaders; lightweight validation.
+
+**Removed/deferred:** `compile/`, `boundary/`, `preview/`, `runtime/` modules;
+`CapabilityTreeBuilder`; boundary handler; preview API;
+`CapabilityUnlockRegistration` (feeder); `ThresholdSemantic::CapabilityUnlock`
+(sim). `ActivationMode::OnPrereqMet` removed from authored spec (runtime-only,
+later PR).
+
+**Tests:** 209 passed + 1 ignored.
+
+**Next:** PR 2 property/overlay spec compiler per revised ladder in `todo.md`.
+
+---
+
+## 2026-05-22 — Phase 0 doc pivot + Phase 1 `simthing-spec` PRs 1–5 (superseded)
 
 **Status:** Landed locally (branch pending push).
 
@@ -219,11 +239,10 @@ the relative win grows in longer / sparser simulations.
 
 **Next session pickup (B2 complete; spec-layer track is primary):**
 
-1. **`simthing-spec` PR 1** — crate scaffold, capability RON spec structs, keys,
-   errors, minimal deserialize tests. Worksheet §14 prompt. No sim/gpu/driver
-   integration yet except workspace `Cargo.toml`.
-2. **`simthing-spec` PRs 2–5** — builder, unlock registration plumbing, boundary
-   handler, preview (sequential; see worksheet §11).
+1. **`simthing-spec` PR 2** — property + overlay spec compiler (PR 1 authoring
+   lane stable).
+2. **`simthing-spec` PRs 3–6** — builder, unlock bridge, boundary handler, preview
+   (sequential; see revised ladder in `todo.md`).
 3. **Alternate (parallel):** `tick_event_readback_ms` deep dive (Opus) or
    `TopologyState` cache-integrity `debug_assert!` (Sonnet).
 
@@ -1088,20 +1107,18 @@ ahead of `origin/master`:
 
 #### Next
 
-- [ ] **`simthing-spec` PRs 1–5** — capability tree vertical slice per
-      `workshop/simthing_spec_workshop.md`. PR 1: crate scaffold + RON spec
-      structs + deserialize tests. PR 2: `CapabilityTreeBuilder`. PR 3:
-      unlock registration plumbing (minimal sim touch). PR 4: boundary handler.
-      PR 5: preview.
+- [x] **`simthing-spec` PR 1** — authoring-only scaffold (`GameModeSpec`, RON
+      loaders, diagnostics, validation). Exploratory PR #45 slice reverted.
+- [ ] **`simthing-spec` PR 2+** — property/overlay compiler, then builder,
+      unlock bridge, boundary handler, preview (see `todo.md`).
 - [ ] **Document/prototype map-scale representation.** Keep current `SimThing` as
       semantic authoring state; evaluate arena/topology sidecars only after benchmark
       data shows tree representation pressure.
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds — behind
       the GPU performance path.
 
-**Recent:** Architectural pivot doc sync (2026-05-22): `simthing-spec` is the
-RON→runtime compiler; `simthing-studio` GUI deferred. V6 guardrails Priorities
-1–3 landed; B2 Approaches A/B/C complete.
+**Recent:** Reverted `simthing-spec` to PR 1 lane (authoring structs only).
+PR #45 exploratory builder/boundary/threshold code removed. 209 tests passing.
 
 **Tabled:** `simthing-studio` designer UI (depends on `simthing-spec`); unified
 `BoundaryIndex` single-pass boundary walk (review item 4 / C1 — Opus-tier).

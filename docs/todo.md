@@ -55,21 +55,20 @@ diagnostic, zero warnings. `fission_stress` ~55 ms/sim-day with
 
 ## Next
 
-### `simthing-spec` capability tree vertical slice (PRs 1–5)
+### `simthing-spec` (revised PR ladder)
 
-- [x] **PR 1** — crate scaffold, RON spec structs, keys, errors, diagnostics,
-      deserialize tests (`crates/simthing-spec`).
-- [x] **PR 2** — `CapabilityTreeBuilder`: registry, `ReductionRule::Max`,
-      suspended overlays, `CapabilityTreeDefinition`, unlock registrations.
-- [x] **PR 3** — `CapabilityUnlockRegistration` in `simthing-feeder`;
-      `ThresholdSemantic::CapabilityUnlock` + `append_capability_unlocks` in
-      `simthing-sim` (full-rebuild path only).
-- [x] **PR 4** — `CapabilityTreeBoundaryHandler`: threshold unlock, prereq
-      reset, `OnPrereqMet` sweep, player selection, activate/suspend emission.
-- [x] **PR 5** — `preview_capability_effect` + national-ideas `max_active: 1`
-      mutual exclusivity (suspend-oldest).
+- [x] **PR 1** — crate scaffold, `GameModeSpec`, capability RON structs, keys,
+      generic diagnostics, validation, deserialize tests only.
+- [ ] **PR 2** — property + overlay spec compiler.
+- [ ] **PR 3** — `CapabilityTreeBuilder`.
+- [ ] **PR 4** — capability unlock registration bridge (feeder + sim).
+- [ ] **PR 5** — capability runtime state + boundary handler.
+- [ ] **PR 6** — preview + mutual exclusivity.
 
-**Tests:** `cargo test --workspace` → **212** passed, **1** ignored.
+**Note:** PR #45 exploratory slice reverted; builder/boundary/threshold code
+removed pending later PRs.
+
+**Tests:** `cargo test --workspace` → **209** passed, **1** ignored.
 
 ### Performance and spec layer
 
@@ -140,13 +139,9 @@ diagnostic, zero warnings. `fission_stress` ~55 ms/sim-day with
       oracle reduction. Integration test adds
       `reduction_edges == 3` and `reduction_depths == 4` assertions.
       `fission_stress` `boundary_gpu_sync_ms`: ~3.8 → ~2.0 ms.
-- [ ] **`simthing-spec` — capability tree vertical slice (PRs 1–5).** Universal
-      RON→runtime compiler crate. See `docs/workshop/simthing_spec_workshop.md`:
-      PR 1 scaffold + spec structs; PR 2 `CapabilityTreeBuilder`; PR 3
-      `CapabilityUnlockRegistration` plumbing in feeder/sim; PR 4 boundary handler;
-      PR 5 preview + mutual exclusivity. Populates
-      `capability_container_kinds` on faction fission templates; simulation
-      crates stay agnostic except PR 3 minimal threshold semantic.
+- [ ] **`simthing-spec` PR 2+.** PR 1 landed (authoring-only). Next: property/overlay
+      spec compiler, then builder (PR 3), unlock bridge (PR 4), boundary handler (PR 5).
+      See revised ladder in `docs/todo.md` and `docs/workshop/simthing_spec_workshop.md`.
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds —
       behind the GPU performance path.
 - [ ] **Map-scale representation doc spike.** Evaluate sidecars only if
@@ -225,9 +220,8 @@ simthing-studio   ← deferred GUI; depends on simthing-spec
 4. ~~Priority 4 — B2 Approach A (targeted value upload)~~ — Done 2026-05-22, PR #40.
 5. ~~Priority 4 — B2 Approach B (append-only threshold registry)~~ — Done 2026-05-22, PR #41.
 6. ~~Priority 4 — B2 Approach C (incremental reduction topology)~~ — Done 2026-05-22, PR #43.
-7. **Next session — primary track:** Wire `simthing-spec` into `simthing-driver`
-     (session init, unlock registration, boundary handler routing). Terran tech
-     tree RON end-to-end smoke after driver wiring.
+7. **Next session — primary track:** **`simthing-spec` PR 2** (property + overlay
+     spec compiler). PR 1 lane is stable (authoring structs + RON load only).
    - **Alternate tracks** (parallel, not blocking spec work):
    - **`tick_event_readback_ms` deep dive** — Opus for architecture; Sonnet for impl.
    - **Cache-integrity hardening for `cached_topology_state`** — Sonnet.

@@ -55,13 +55,11 @@
 //!   the top-level driver. This crate is the data-plane logic; thread
 //!   placement is a policy decision the driver makes.
 
-pub mod capability;
 pub mod dispatcher;
 pub mod maintainer;
 pub mod patcher;
 pub mod work;
 
-pub use capability::CapabilityUnlockRegistration;
 pub use dispatcher::{DispatchCoordinator, TickOutcome};
 pub use maintainer::{MaintainerOutcome, TreeMaintainer};
 pub use patcher::{PatcherStats, TransformPatcher};

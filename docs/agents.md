@@ -545,9 +545,8 @@ Integration highlights:
   effect; end-to-end replay test for fission with cloned capability subtree; serde default
   test for `clone_capability_children`.
 - **B2:** retain/batch threshold/reduction topology on fission growth boundaries.
-- **Spec layer:** `simthing-spec` capability-tree compiler per
-  `workshop/simthing_spec_workshop.md` PRs 1–5 (simulation crates mostly frozen;
-  minimal feeder/sim plumbing in PR 3).
+- **Spec layer:** `simthing-spec` PR 1 complete (authoring structs + RON load only).
+  Next PR 2 property/overlay compiler per revised ladder in `todo.md`.
 - Full RON scenario files (tree + registry inline; today: `builtin` templates only).
 - **`simthing-studio` designer UI** — tabled; depends on `simthing-spec` when built.
 
