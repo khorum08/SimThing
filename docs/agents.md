@@ -148,9 +148,9 @@ emission for fission-heavy growth.
 `OverlayActivated` / `OverlaySuspended`; `OverlayContribution.active`; CPU evaluator
 and GPU overlay prep skip inactive/suspended overlays; empty-boundary skip treats
 suspended overlays as inert; `FissionTemplate::clone_capability_children` (serde
-default `false`) with deep-clone of capability containers
-(`Custom("tech_tree")`, `Custom("national_ideas")`, `Custom("talent_tree")`) on
-opted-in faction fission — fresh ids, shadow-row copy, overlay `affects` remap,
+default `false`) with deep-clone of capability containers listed in
+`capability_container_kinds` (opaque strings from studio/RON; empty = clone
+nothing) on opted-in faction fission — fresh ids, shadow-row copy, overlay `affects` remap,
 pre-grow slot headroom. Studio capability-tree semantics live in
 `capability_tree_v1.md`; simulation sees only floats, thresholds, and overlay lifecycle.
 Normal tick-time feeder/player/AI transforms fold into GPU `IntentDelta` records

@@ -69,8 +69,13 @@ Still open:
   in the next Pass 3 upload and affects the next tick.
 - An end-to-end replay test for a fissioned child that carries a cloned
   capability subtree.
-- A future studio/registry decision for capability-container names beyond the
-  three built-in `Custom(...)` identifiers.
+
+Resolved:
+
+- Capability-container kind names are no longer hardcoded in simulation crates.
+  `FissionTemplate::capability_container_kinds: Vec<String>` (serde default `[]`)
+  supplies opaque `Custom(...)` labels from the studio layer; empty means clone
+  nothing even when `clone_capability_children: true`.
 
 ---
 
@@ -311,16 +316,17 @@ struct FissionTemplate {
     fusion_intensity_threshold: f32,
     fusion_scar_coefficient:    f32,
     resolution_label:           String,
-    clone_capability_children:  bool,   // NEW in V6 — default false
+    clone_capability_children:  bool,   // default false
+    capability_container_kinds: Vec<String>, // default [] — opaque Custom labels
 }
 ```
 
 When `clone_capability_children: true`, `execute_fission` after spawning
-the child SimThing also deep-clones all capability container children from
-the parent into the child. Capability containers are identified by kind:
-`Custom("tech_tree")`, `Custom("national_ideas")`, `Custom("talent_tree")`,
-and any other `Custom` kind the studio layer registers as a capability
-container.
+the child SimThing also deep-clones matching capability container children
+from the parent into the child. A container qualifies when its
+`SimThingKind::Custom(name)` appears in `capability_container_kinds`.
+The simulation crate never interprets those strings — the studio layer
+populates the list in RON. Empty list clones nothing (no sim fallback).
 
 **Default is `false`.** Cohort-level fission, location fission, and any
 fission that should not inherit capability state uses the default and is
@@ -368,9 +374,10 @@ of headroom — one per fission event. A faction fission with
 `clone_capability_children: true` needs additional slots: one per
 capability container child being cloned.
 
-The pre-grow now reads `clone_capability_children` from each triggered
-`FissionTemplate` and adds the parent faction's capability child count to
-the headroom estimate for that event.
+The pre-grow now reads `clone_capability_children` and
+`capability_container_kinds` from each triggered `FissionTemplate` and adds
+the parent faction's matching capability child subtree sizes to the headroom
+estimate for that event.
 
 ### Delta Log and Replay
 

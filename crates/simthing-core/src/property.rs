@@ -407,6 +407,8 @@ pub struct FissionTemplate {
     pub resolution_label:           String,
     #[serde(default)]
     pub clone_capability_children:  bool,
+    #[serde(default)]
+    pub capability_container_kinds: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -657,5 +659,19 @@ mod tests {
         assert!((pv.data[pos_off]   - 0.2).abs() < 1e-5, "position was {}", pv.data[pos_off]);
         assert!((pv.data[drift_off] - 0.2).abs() < 1e-5, "drift unchanged");
         assert_eq!(&pv.data[bonus_off..bonus_off + bonus_w], &[1.0, 1.0, 1.0], "bonus vector unchanged");
+    }
+
+    #[test]
+    fn fission_template_deserializes_without_capability_container_kinds() {
+        let json = r#"{
+            "child_kind": "Cohort",
+            "fusion_intensity_threshold": 0.85,
+            "fusion_scar_coefficient": 0.05,
+            "resolution_label": "resolved",
+            "clone_capability_children": true
+        }"#;
+        let template: FissionTemplate = serde_json::from_str(json).unwrap();
+        assert!(template.clone_capability_children);
+        assert!(template.capability_container_kinds.is_empty());
     }
 }

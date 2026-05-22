@@ -564,6 +564,7 @@ mod tests {
                 fusion_scar_coefficient:    0.10,
                 resolution_label:           "settled".into(),
                 clone_capability_children:  false,
+                capability_container_kinds: Vec::new(),
             },
             secondary: None,
         }];
@@ -630,6 +631,7 @@ mod tests {
                 fusion_scar_coefficient:    0.10,
                 resolution_label:           "settled".into(),
                 clone_capability_children:  false,
+                capability_container_kinds: Vec::new(),
             },
             secondary: None,
         }];

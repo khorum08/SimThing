@@ -40,6 +40,7 @@ fn loyalty_with_fission() -> SimProperty {
             fusion_scar_coefficient: 0.05,
             resolution_label: "rebellion_settled".into(),
             clone_capability_children: false,
+            capability_container_kinds: Vec::new(),
         },
         secondary: None,
     }];
