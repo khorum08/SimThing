@@ -1,6 +1,8 @@
 use crate::diagnostics::{SpecDiagnostic, SpecDiagnostics};
 use crate::error::SpecError;
-use crate::spec::capability::{ActivationMode, CapabilityTreeSpec};
+use crate::spec::capability::{
+    ActivationMode, CapabilityTreeSpec, MaxActivePolicy, ReplacementPolicy,
+};
 
 /// Lightweight authored-spec validation for PR 1 (no runtime compilation).
 pub fn validate_capability_tree(spec: &CapabilityTreeSpec) -> Result<SpecDiagnostics, SpecError> {
@@ -9,18 +11,24 @@ pub fn validate_capability_tree(spec: &CapabilityTreeSpec) -> Result<SpecDiagnos
     let mut seen_entries = std::collections::HashSet::new();
 
     for category in &spec.categories {
-        let category_key = format!("{}::{}", category.property_namespace, category.property_name);
+        let category_key = format!(
+            "{}::{}",
+            category.property_namespace, category.property_name
+        );
         if !seen_categories.insert(category_key.clone()) {
-            return Err(SpecError::DuplicateCategory(category_key, spec.tree_id.clone()));
+            return Err(SpecError::DuplicateCategory(
+                category_key,
+                spec.tree_id.clone(),
+            ));
         }
 
-        // v0 max_active policy: None or Some(1). Anything else is unsupported.
-        if let Some(count) = category.max_active {
-            if count != 1 {
+        // v0 max_active policy: Unlimited or Limited(1, SuspendOldest).
+        if let Some(MaxActivePolicy::Limited { count, replacement }) = &category.max_active {
+            if *count != 1 || *replacement != ReplacementPolicy::SuspendOldest {
                 return Err(SpecError::UnsupportedMaxActive {
-                    in_tree:  spec.tree_id.clone(),
+                    in_tree: spec.tree_id.clone(),
                     category: category_key.clone(),
-                    count,
+                    count: *count,
                 });
             }
         }
@@ -28,7 +36,10 @@ pub fn validate_capability_tree(spec: &CapabilityTreeSpec) -> Result<SpecDiagnos
         for entry in &category.entries {
             let entry_key = format!("{category_key}::{}", entry.id);
             if !seen_entries.insert(entry_key.clone()) {
-                return Err(SpecError::DuplicateEntry(entry.id.clone(), spec.tree_id.clone()));
+                return Err(SpecError::DuplicateEntry(
+                    entry.id.clone(),
+                    spec.tree_id.clone(),
+                ));
             }
 
             if entry.activation == ActivationMode::OnPrereqMet {
@@ -79,44 +90,42 @@ pub fn validate_capability_tree(spec: &CapabilityTreeSpec) -> Result<SpecDiagnos
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::spec::capability::{
-        CapabilityCategorySpec, CapabilityEffectSpec, CapabilitySpec,
-    };
+    use crate::spec::capability::{CapabilityCategorySpec, CapabilityEffectSpec, CapabilitySpec};
     use simthing_core::{OverlayLifecycle, SubFieldRole, TransformOp};
 
     fn minimal_tree() -> CapabilityTreeSpec {
         CapabilityTreeSpec {
-            tree_id:    "test".into(),
-            tree_kind:  "tech_tree".into(),
+            tree_id: "test".into(),
+            tree_kind: "tech_tree".into(),
             owner_kind: "Faction".into(),
             categories: vec![CapabilityCategorySpec {
                 property_namespace: "tech".into(),
-                property_name:      "propulsion".into(),
-                display_name:       "Propulsion".into(),
-                tier:               0,
-                max_active:         None,
-                entries:            vec![CapabilitySpec {
-                    id:            "drive".into(),
-                    display_name:  "Drive".into(),
-                    description:   String::new(),
-                    flavor_text:   String::new(),
+                property_name: "propulsion".into(),
+                display_name: "Propulsion".into(),
+                tier: 0,
+                max_active: None,
+                entries: vec![CapabilitySpec {
+                    id: "drive".into(),
+                    display_name: "Drive".into(),
+                    description: String::new(),
+                    flavor_text: String::new(),
                     research_cost: 100.0,
-                    activation:    ActivationMode::Threshold,
+                    activation: ActivationMode::Threshold,
                     research_rate: Default::default(),
-                    icon:          String::new(),
-                    thumbnail:     String::new(),
-                    card_image:    String::new(),
-                    unlock_video:  None,
+                    icon: String::new(),
+                    thumbnail: String::new(),
+                    card_image: String::new(),
+                    unlock_video: None,
                     model_preview: None,
-                    prereqs:       vec![],
+                    prereqs: vec![],
                     unlocks_ship_components: vec![],
-                    unlocks_buildings:       vec![],
-                    unlocks_units:           vec![],
-                    unlocks_weapons:         vec![],
+                    unlocks_buildings: vec![],
+                    unlocks_units: vec![],
+                    unlocks_weapons: vec![],
                     effects: vec![CapabilityEffectSpec {
                         targets_property: "military::fleet_speed".into(),
                         sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(1.1))],
-                        when_activated:   OverlayLifecycle::Permanent,
+                        when_activated: OverlayLifecycle::Permanent,
                     }],
                 }],
             }],

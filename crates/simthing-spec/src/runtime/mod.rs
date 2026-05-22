@@ -9,8 +9,13 @@
 //! Built by [`crate::compile::CapabilityTreeBuilder`].
 
 pub mod capability_definition;
+pub mod capability_state;
 
 pub use capability_definition::{
-    CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
+    CapabilityCategoryDefinition, CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
     CapabilityTreeDefinitionId, CapabilityUnlockRegistration,
+};
+pub use capability_state::{
+    CapabilityTreeDiagnostic, CapabilityTreeInstance, CapabilityTreeNotification,
+    CapabilityTreeState,
 };

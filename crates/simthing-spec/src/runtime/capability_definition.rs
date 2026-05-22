@@ -1,4 +1,5 @@
-use crate::keys::{CapabilityEffectKey, CapabilityEntryKey};
+use crate::keys::{CapabilityEffectKey, CapabilityEntryKey, CategoryKey};
+use crate::spec::capability::{ActivationMode, MaxActivePolicy};
 use serde::{Deserialize, Serialize};
 use simthing_core::{OverlayId, SimPropertyId, SubFieldRole};
 use std::collections::HashMap;
@@ -36,30 +37,44 @@ impl Default for CapabilityTreeDefinitionId {
 /// and carry their own mutable `CapabilityTreeState` (PR 5).
 #[derive(Clone, Debug)]
 pub struct CapabilityTreeDefinition {
-    pub id:           CapabilityTreeDefinitionId,
-    pub tree_id:      String,
-    pub entries:      HashMap<CapabilityEntryKey, CapabilityDefinition>,
+    pub id: CapabilityTreeDefinitionId,
+    pub tree_id: String,
+    pub categories: HashMap<CategoryKey, CapabilityCategoryDefinition>,
+    pub entries: HashMap<CapabilityEntryKey, CapabilityDefinition>,
     /// Fast lookup for the boundary handler when a Pass 7 threshold fires:
     /// `(property_id, sub_field_role) -> entry`.
     pub by_threshold: HashMap<(SimPropertyId, SubFieldRole), CapabilityEntryKey>,
     /// Fast lookup for UI/preview: `overlay_id -> entry`.
-    pub by_overlay:   HashMap<OverlayId, CapabilityEntryKey>,
+    pub by_overlay: HashMap<OverlayId, CapabilityEntryKey>,
+}
+
+/// One compiled capability category. Category policy is shared by all faction
+/// instances; per-faction active entries live in `CapabilityTreeState`.
+#[derive(Clone, Debug)]
+pub struct CapabilityCategoryDefinition {
+    pub key: CategoryKey,
+    pub property_id: SimPropertyId,
+    pub max_active: Option<MaxActivePolicy>,
+    pub tier: u32,
 }
 
 /// One compiled capability entry.
 #[derive(Clone, Debug)]
 pub struct CapabilityDefinition {
-    pub key:          CapabilityEntryKey,
+    pub key: CapabilityEntryKey,
     pub display_name: String,
-    pub description:  String,
-    pub flavor_text:  Option<String>,
+    pub description: String,
+    pub flavor_text: Option<String>,
+    pub activation: ActivationMode,
     /// One `OverlayId` per effect. Activated together when the entry unlocks.
-    pub overlay_ids:  Vec<OverlayId>,
+    pub overlay_ids: Vec<OverlayId>,
     /// Logical effect keys, parallel-indexed with `overlay_ids`. Stable across
     /// builds — the runtime atomic `OverlayId::new()` is not, so debug/studio
     /// tools key off `CapabilityEffectKey` instead.
-    pub effect_keys:  Vec<CapabilityEffectKey>,
-    pub prereqs:      Vec<CapabilityPrereq>,
+    pub effect_keys: Vec<CapabilityEffectKey>,
+    pub prereqs: Vec<CapabilityPrereq>,
+    pub progress_col: usize,
+    pub research_cost: f32,
 }
 
 /// A resolved prereq reference. The boundary handler reads
@@ -67,10 +82,9 @@ pub struct CapabilityDefinition {
 #[derive(Clone, Debug)]
 pub struct CapabilityPrereq {
     pub property_id: SimPropertyId,
-    pub role:        SubFieldRole,
+    pub role: SubFieldRole,
     /// Column index resolved at build time via `col_for_role`. The boundary
     /// handler does array reads, not name lookups (per `docs/invariants.md`).
-    pub col:         usize,
-    pub min_value:   f32,
+    pub col: usize,
+    pub min_value: f32,
 }
-

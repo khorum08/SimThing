@@ -20,6 +20,7 @@
 //! - execute capability unlocks at boundary time
 //! - implement Script IR, EML, scripted events, or effect/trigger compilers
 
+pub mod boundary;
 pub mod compile;
 pub mod diagnostics;
 pub mod error;
@@ -31,26 +32,24 @@ pub mod spec;
 pub mod validate;
 pub mod version;
 
+pub use boundary::{CapabilityBoundaryContext, CapabilityTreeBoundaryHandler, CapabilityTreeError};
 pub use compile::{
     compile_overlay, compile_property, CapabilityTreeBuildOutput, CapabilityTreeBuilder,
     CompileContext,
 };
-pub use runtime::{
-    CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
-    CapabilityTreeDefinitionId, CapabilityUnlockRegistration,
-};
-pub use diagnostics::{
-    DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult,
-};
+pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;
-pub use keys::{
-    CapabilityEffectKey, CapabilityEntryKey, CapabilityTreeKey, CategoryKey,
-};
+pub use keys::{CapabilityEffectKey, CapabilityEntryKey, CapabilityTreeKey, CategoryKey};
 pub use metadata::DisplayMeta;
 pub use ron::{deserialize_capability_tree_ron, deserialize_game_mode_ron};
+pub use runtime::{
+    CapabilityCategoryDefinition, CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
+    CapabilityTreeDefinitionId, CapabilityTreeDiagnostic, CapabilityTreeInstance,
+    CapabilityTreeNotification, CapabilityTreeState, CapabilityUnlockRegistration,
+};
 pub use spec::capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,
-    CapabilitySpec, CapabilityTreeSpec, MaxActivePolicy, ResearchRateSpec,
+    CapabilitySpec, CapabilityTreeSpec, MaxActivePolicy, ReplacementPolicy, ResearchRateSpec,
 };
 pub use spec::domain_pack::DomainPackSpec;
 pub use spec::game_mode::GameModeSpec;

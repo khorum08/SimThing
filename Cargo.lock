@@ -1161,6 +1161,8 @@ dependencies = [
  "serde_json",
  "simthing-core",
  "simthing-feeder",
+ "simthing-gpu",
+ "simthing-sim",
  "thiserror 2.0.18",
 ]
 

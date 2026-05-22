@@ -7,6 +7,8 @@ authors.workspace = true
 [dependencies]
 simthing-core   = { path = "../simthing-core" }
 simthing-feeder = { path = "../simthing-feeder" }
+simthing-gpu    = { path = "../simthing-gpu" }
+simthing-sim    = { path = "../simthing-sim" }
 serde           = { workspace = true }
 thiserror       = { workspace = true }
 ron             = "0.8"

@@ -125,16 +125,19 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
       this because intent_deltas apply BEFORE Pass 0's snapshot, so
       previous == current and the crossing isn't visible).
       All 5 handoff acceptance criteria met + 1 supplementary.
-- [ ] **PR 5** — capability runtime state + boundary handler
+- [x] **PR 5** — capability runtime state + boundary handler
       (`boundary/capability_handler.rs`). Called by session coordinator,
-      not embedded in `BoundaryProtocol`. **Handoff digest for Codex 5.5
-      at `docs/workshop/pr5_handoff_digest.md`** — includes file list,
-      type signatures, divergences to resolve (max_active shape,
-      missing `categories` map on `CapabilityTreeDefinition`,
-      `progress_col` / `research_cost` on `CapabilityDefinition`,
-      instance-by-tree_thing_id lookup), acceptance tests, and
-      gotchas from PRs 2-4 (especially the pass-order trap and
-      `OverlayId` non-determinism).
+      not embedded in `BoundaryProtocol`. Landed 2026-05-22 with Path A
+      for `max_active`: `CapabilityCategorySpec.max_active` is now
+      `Option<MaxActivePolicy>` with `Limited { count, replacement }`, and
+      `ReplacementPolicy::SuspendOldest` is the supported v0 replacement.
+      `CapabilityTreeDefinition` now carries category definitions; entries
+      carry authored activation mode, `progress_col`, and `research_cost`.
+      Added per-faction runtime state, notifications, diagnostics, and the
+      boundary handler for threshold activation, failed-prereq reset into
+      `OnPrereqMet`, fixpoint sweeps, player selection, per-faction active
+      state, and `Limited(1)` sibling suspension. Tests:
+      `tests/pr5_capability_handler.rs` — 10 passing acceptance tests.
 - [ ] **PR 6** — preview + mutual exclusivity completion (`preview/capability_preview.rs`).
 
 **Known divergences between handoff doc and PR 1 code (Opus must resolve):**

@@ -6,7 +6,7 @@ use crate::diagnostics::SpecResult;
 use crate::error::SpecError;
 use crate::keys::{CapabilityEffectKey, CapabilityEntryKey, CategoryKey};
 use crate::runtime::{
-    CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
+    CapabilityCategoryDefinition, CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
     CapabilityTreeDefinitionId, CapabilityUnlockRegistration,
 };
 use crate::spec::capability::{ActivationMode, CapabilityTreeSpec};
@@ -24,8 +24,8 @@ pub struct CapabilityTreeBuildOutput {
     /// Authored template tree. Cloned per faction instance at session-init time;
     /// the session coordinator is responsible for stamping faction-specific
     /// ownership / `affects` on the overlays at activation.
-    pub tree:                 SimThing,
-    pub definition:           CapabilityTreeDefinition,
+    pub tree: SimThing,
+    pub definition: CapabilityTreeDefinition,
     /// One per `ActivationMode::Threshold` entry. `PlayerSelection` and
     /// `OnPrereqMet` entries produce no GPU registration.
     pub unlock_registrations: Vec<CapabilityUnlockRegistration>,
@@ -46,7 +46,7 @@ impl CapabilityTreeBuilder {
     /// 6. Assemble `CapabilityTreeDefinition` with `by_threshold` + `by_overlay`.
     /// 7. Emit one `CapabilityUnlockRegistration` per Threshold entry.
     pub fn build(
-        spec:     &CapabilityTreeSpec,
+        spec: &CapabilityTreeSpec,
         registry: &mut DimensionRegistry,
     ) -> SpecResult<CapabilityTreeBuildOutput> {
         // ── 1. Validate ───────────────────────────────────────────────────────
@@ -54,13 +54,17 @@ impl CapabilityTreeBuilder {
 
         // ── 2. Register one SimProperty per category ──────────────────────────
         let mut category_prop: HashMap<CategoryKey, simthing_core::SimPropertyId> = HashMap::new();
+        let mut categories: HashMap<CategoryKey, CapabilityCategoryDefinition> = HashMap::new();
         for cat in &spec.categories {
             let cat_key = CategoryKey::new(&cat.property_namespace, &cat.property_name);
 
-            if registry.id_of(&cat.property_namespace, &cat.property_name).is_some() {
+            if registry
+                .id_of(&cat.property_namespace, &cat.property_name)
+                .is_some()
+            {
                 return Err(SpecError::DuplicateProperty {
                     namespace: cat.property_namespace.clone(),
-                    name:      cat.property_name.clone(),
+                    name: cat.property_name.clone(),
                 });
             }
 
@@ -69,31 +73,40 @@ impl CapabilityTreeBuilder {
                 .entries
                 .iter()
                 .map(|e| SubFieldSpec {
-                    role:               SubFieldRole::Named(e.id.clone()),
-                    width:              1,
-                    clamp:              ClampBehavior::Floored { min: 0.0 },
-                    velocity_max:       None,
-                    default:            0.0,
-                    display_name:       e.display_name.clone(),
-                    display_range:      None,
-                    governed_by:        None,
+                    role: SubFieldRole::Named(e.id.clone()),
+                    width: 1,
+                    clamp: ClampBehavior::Floored { min: 0.0 },
+                    velocity_max: None,
+                    default: 0.0,
+                    display_name: e.display_name.clone(),
+                    display_range: None,
+                    governed_by: None,
                     reduction_override: Some(ReductionRule::Max),
                 })
                 .collect();
 
             let prop = SimProperty {
-                namespace:          cat.property_namespace.clone(),
-                name:               cat.property_name.clone(),
-                layout:             PropertyLayout { sub_fields },
-                decay:              None,
+                namespace: cat.property_namespace.clone(),
+                name: cat.property_name.clone(),
+                layout: PropertyLayout { sub_fields },
+                decay: None,
                 intensity_behavior: None,
-                fission_templates:  vec![],
-                fusion_templates:   vec![],
-                on_expire:          None,
-                description:        cat.display_name.clone(),
-                intensity_labels:   vec![],
+                fission_templates: vec![],
+                fusion_templates: vec![],
+                on_expire: None,
+                description: cat.display_name.clone(),
+                intensity_labels: vec![],
             };
             let prop_id = registry.register(prop);
+            categories.insert(
+                cat_key.clone(),
+                CapabilityCategoryDefinition {
+                    key: cat_key.clone(),
+                    property_id: prop_id,
+                    max_active: cat.max_active.clone(),
+                    tier: cat.tier,
+                },
+            );
             category_prop.insert(cat_key, prop_id);
         }
 
@@ -108,8 +121,10 @@ impl CapabilityTreeBuilder {
 
         // ── 4 + 6. Compile effects → overlays; build entry definitions ────────
         let mut entries: HashMap<CapabilityEntryKey, CapabilityDefinition> = HashMap::new();
-        let mut by_threshold: HashMap<(simthing_core::SimPropertyId, SubFieldRole), CapabilityEntryKey> =
-            HashMap::new();
+        let mut by_threshold: HashMap<
+            (simthing_core::SimPropertyId, SubFieldRole),
+            CapabilityEntryKey,
+        > = HashMap::new();
         let mut by_overlay: HashMap<OverlayId, CapabilityEntryKey> = HashMap::new();
         let mut unlock_registrations: Vec<CapabilityUnlockRegistration> = Vec::new();
 
@@ -130,6 +145,11 @@ impl CapabilityTreeBuilder {
             for entry in &cat.entries {
                 let entry_key = CapabilityEntryKey::new(cat_key.clone(), &entry.id);
                 let entry_role = SubFieldRole::Named(entry.id.clone());
+                let cat_layout = &registry.property(cat_prop_id).layout;
+                let cat_range = registry.column_range(cat_prop_id);
+                let progress_col = cat_range
+                    .col_for_role(&entry_role, cat_layout)
+                    .expect("builder-created capability role must resolve");
 
                 // ── 4. Effects → suspended overlays ───────────────────────────
                 let mut overlay_ids: Vec<OverlayId> = Vec::new();
@@ -139,23 +159,24 @@ impl CapabilityTreeBuilder {
                     let (target_ns, target_name) =
                         parse_property_ref(&entry.id, effect_index, &effect.targets_property)?;
 
-                    let target_prop_id = registry.id_of(target_ns, target_name).ok_or_else(|| {
-                        SpecError::InvalidEffectTarget {
-                            entry_id:         entry.id.clone(),
-                            effect_index,
-                            targets_property: effect.targets_property.clone(),
-                            reason:           "target property not registered".into(),
-                        }
-                    })?;
+                    let target_prop_id =
+                        registry.id_of(target_ns, target_name).ok_or_else(|| {
+                            SpecError::InvalidEffectTarget {
+                                entry_id: entry.id.clone(),
+                                effect_index,
+                                targets_property: effect.targets_property.clone(),
+                                reason: "target property not registered".into(),
+                            }
+                        })?;
 
                     let target_layout = &registry.property(target_prop_id).layout;
                     for (role, _op) in &effect.sub_field_deltas {
                         if target_layout.offset_of(role).is_none() {
                             return Err(SpecError::InvalidEffectTarget {
-                                entry_id:         entry.id.clone(),
+                                entry_id: entry.id.clone(),
                                 effect_index,
                                 targets_property: effect.targets_property.clone(),
-                                reason:           format!(
+                                reason: format!(
                                     "sub-field role `{}` not present in target layout",
                                     format_role(role),
                                 ),
@@ -165,14 +186,14 @@ impl CapabilityTreeBuilder {
 
                     let overlay_id = OverlayId::new();
                     let overlay = Overlay {
-                        id:        overlay_id,
-                        kind:      OverlayKind::Custom("capability".into()),
-                        source:    OverlaySource::System,
+                        id: overlay_id,
+                        kind: OverlayKind::Custom("capability".into()),
+                        source: OverlaySource::System,
                         // affects is filled in by the session coordinator at
                         // activation time — per CapabilityTreeBoundaryHandler.
-                        affects:   vec![],
+                        affects: vec![],
                         transform: PropertyTransformDelta {
-                            property_id:      target_prop_id,
+                            property_id: target_prop_id,
                             sub_field_deltas: effect.sub_field_deltas.clone(),
                         },
                         // V6: every capability effect starts Suspended.
@@ -184,7 +205,7 @@ impl CapabilityTreeBuilder {
 
                     overlay_ids.push(overlay_id);
                     effect_keys.push(CapabilityEffectKey {
-                        entry:        entry_key.clone(),
+                        entry: entry_key.clone(),
                         effect_index,
                     });
                     by_overlay.insert(overlay_id, entry_key.clone());
@@ -197,23 +218,22 @@ impl CapabilityTreeBuilder {
                         parse_category_ref(&spec.tree_id, &entry.id, &pre.category)?;
                     let pre_cat_key = CategoryKey::new(pre_ns, pre_name);
 
-                    let &pre_prop_id =
-                        category_prop.get(&pre_cat_key).ok_or_else(|| {
-                            SpecError::UnknownPrereqCategory {
-                                in_tree:  spec.tree_id.clone(),
-                                entry_id: entry.id.clone(),
-                                category: pre.category.clone(),
-                            }
-                        })?;
+                    let &pre_prop_id = category_prop.get(&pre_cat_key).ok_or_else(|| {
+                        SpecError::UnknownPrereqCategory {
+                            in_tree: spec.tree_id.clone(),
+                            entry_id: entry.id.clone(),
+                            category: pre.category.clone(),
+                        }
+                    })?;
 
                     let pre_role = SubFieldRole::Named(pre.entry_id.clone());
                     let pre_layout = &registry.property(pre_prop_id).layout;
                     let range = registry.column_range(pre_prop_id);
                     let col = range.col_for_role(&pre_role, pre_layout).ok_or_else(|| {
                         SpecError::UnknownPrereqEntry {
-                            in_tree:         spec.tree_id.clone(),
-                            entry_id:        entry.id.clone(),
-                            category:        pre.category.clone(),
+                            in_tree: spec.tree_id.clone(),
+                            entry_id: entry.id.clone(),
+                            category: pre.category.clone(),
                             prereq_entry_id: pre.entry_id.clone(),
                         }
                     })?;
@@ -222,15 +242,15 @@ impl CapabilityTreeBuilder {
                         .get(&(pre_cat_key.clone(), pre.entry_id.clone()))
                         .copied()
                         .ok_or_else(|| SpecError::UnknownPrereqEntry {
-                            in_tree:         spec.tree_id.clone(),
-                            entry_id:        entry.id.clone(),
-                            category:        pre.category.clone(),
+                            in_tree: spec.tree_id.clone(),
+                            entry_id: entry.id.clone(),
+                            category: pre.category.clone(),
                             prereq_entry_id: pre.entry_id.clone(),
                         })?;
 
                     prereqs.push(CapabilityPrereq {
                         property_id: pre_prop_id,
-                        role:        pre_role,
+                        role: pre_role,
                         col,
                         min_value,
                     });
@@ -238,30 +258,30 @@ impl CapabilityTreeBuilder {
 
                 // ── 7. Threshold unlock registration ──────────────────────────
                 if entry.activation == ActivationMode::Threshold {
-                    by_threshold.insert(
-                        (cat_prop_id, entry_role.clone()),
-                        entry_key.clone(),
-                    );
+                    by_threshold.insert((cat_prop_id, entry_role.clone()), entry_key.clone());
                     unlock_registrations.push(CapabilityUnlockRegistration {
                         sim_thing_id: tree_id,
-                        property_id:  cat_prop_id,
-                        sub_field:    entry_role.clone(),
-                        threshold:    entry.research_cost,
+                        property_id: cat_prop_id,
+                        sub_field: entry_role.clone(),
+                        threshold: entry.research_cost,
                     });
                 }
 
                 let definition = CapabilityDefinition {
-                    key:          entry_key.clone(),
+                    key: entry_key.clone(),
                     display_name: entry.display_name.clone(),
-                    description:  entry.description.clone(),
-                    flavor_text:  if entry.flavor_text.is_empty() {
+                    description: entry.description.clone(),
+                    flavor_text: if entry.flavor_text.is_empty() {
                         None
                     } else {
                         Some(entry.flavor_text.clone())
                     },
+                    activation: entry.activation,
                     overlay_ids,
                     effect_keys,
                     prereqs,
+                    progress_col,
+                    research_cost: entry.research_cost,
                 };
                 entries.insert(entry_key, definition);
             }
@@ -270,6 +290,7 @@ impl CapabilityTreeBuilder {
         let definition = CapabilityTreeDefinition {
             id: CapabilityTreeDefinitionId::new(),
             tree_id: spec.tree_id.clone(),
+            categories,
             entries,
             by_threshold,
             by_overlay,
@@ -289,36 +310,36 @@ impl CapabilityTreeBuilder {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn parse_property_ref<'a>(
-    entry_id:     &str,
+    entry_id: &str,
     effect_index: usize,
-    refstr:       &'a str,
+    refstr: &'a str,
 ) -> Result<(&'a str, &'a str), SpecError> {
     let mut parts = refstr.splitn(2, "::");
-    let ns   = parts.next().unwrap_or("");
+    let ns = parts.next().unwrap_or("");
     let name = parts.next();
     match name {
         Some(n) if !ns.is_empty() && !n.is_empty() => Ok((ns, n)),
         _ => Err(SpecError::InvalidEffectTarget {
-            entry_id:         entry_id.to_owned(),
+            entry_id: entry_id.to_owned(),
             effect_index,
             targets_property: refstr.to_owned(),
-            reason:           "expected `namespace::name`".into(),
+            reason: "expected `namespace::name`".into(),
         }),
     }
 }
 
 fn parse_category_ref<'a>(
-    in_tree:  &str,
+    in_tree: &str,
     entry_id: &str,
-    refstr:   &'a str,
+    refstr: &'a str,
 ) -> Result<(&'a str, &'a str), SpecError> {
     let mut parts = refstr.splitn(2, "::");
-    let ns   = parts.next().unwrap_or("");
+    let ns = parts.next().unwrap_or("");
     let name = parts.next();
     match name {
         Some(n) if !ns.is_empty() && !n.is_empty() => Ok((ns, n)),
         _ => Err(SpecError::UnknownPrereqCategory {
-            in_tree:  in_tree.to_owned(),
+            in_tree: in_tree.to_owned(),
             entry_id: entry_id.to_owned(),
             category: refstr.to_owned(),
         }),
@@ -327,10 +348,10 @@ fn parse_category_ref<'a>(
 
 fn format_role(role: &SubFieldRole) -> String {
     match role {
-        SubFieldRole::Amount    => "Amount".into(),
-        SubFieldRole::Velocity  => "Velocity".into(),
+        SubFieldRole::Amount => "Amount".into(),
+        SubFieldRole::Velocity => "Velocity".into(),
         SubFieldRole::Intensity => "Intensity".into(),
-        SubFieldRole::Named(n)  => format!("Named({n})"),
+        SubFieldRole::Named(n) => format!("Named({n})"),
         SubFieldRole::Custom(n) => format!("Custom({n})"),
     }
 }

@@ -6,6 +6,37 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — PR 5 capability runtime state + boundary handler
+
+**Status:** Implemented Path A from the PR 5 handoff.
+
+**Code:**
+- Added `ReplacementPolicy` and changed `CapabilityCategorySpec.max_active`
+  to `Option<MaxActivePolicy>` with `Limited { count, replacement }`.
+- Added `CapabilityCategoryDefinition`, `CapabilityTreeDefinition.categories`,
+  and per-entry `activation`, `progress_col`, and `research_cost`.
+- Added `runtime/capability_state.rs` for `CapabilityTreeInstance`,
+  `CapabilityTreeState`, `CapabilityTreeNotification`, and
+  `CapabilityTreeDiagnostic`.
+- Added `boundary/capability_handler.rs` with threshold-event handling,
+  failed-prereq progress reset, `OnPrereqMet` fixpoint sweeps, player
+  selection activation, per-faction active tracking, and `Limited(1)` /
+  `SuspendOldest` mutual exclusivity.
+
+**Layering note:** PR 5 consumes `ThresholdRegistry` / `ThresholdSemantic`
+from `simthing-sim` and `ThresholdEvent` from `simthing-gpu`, so
+`simthing-spec` now has temporary direct dependencies on those crates. This
+matches the handoff digest's pragmatic path but diverges from the master
+handoff's ideal dependency graph. A future cleanup should lift the threshold
+semantic surface into a lower crate before driver/session assembly hardens.
+
+**Tests:** `cargo test -p simthing-spec` passes, including the 10 new PR 5
+acceptance tests in `tests/pr5_capability_handler.rs`.
+
+**Next:** PR 6 — preview routine + full activate-switch verification.
+
+---
+
 ## 2026-05-22 — Stability check: PR 1 lane ready (`7eb48dc`)
 
 **Status:** Confirmed stable on `master` after PR #46 merge.

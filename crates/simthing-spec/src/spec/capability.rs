@@ -42,13 +42,22 @@ pub enum MaxActivePolicy {
     Unlimited,
     Limited {
         count: usize,
+        replacement: ReplacementPolicy,
     },
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum ReplacementPolicy {
+    #[default]
+    SuspendOldest,
+    ExplicitSelectionRequired,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CapabilityTreeSpec {
-    pub tree_id:    String,
-    pub tree_kind:  String,
+    pub tree_id: String,
+    pub tree_kind: String,
     pub owner_kind: String,
     pub categories: Vec<CapabilityCategorySpec>,
 }
@@ -56,49 +65,49 @@ pub struct CapabilityTreeSpec {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CapabilityCategorySpec {
     pub property_namespace: String,
-    pub property_name:      String,
-    pub display_name:       String,
+    pub property_name: String,
+    pub display_name: String,
     #[serde(default)]
-    pub tier:               u32,
+    pub tier: u32,
     #[serde(default)]
-    pub max_active:         Option<usize>,
-    pub entries:            Vec<CapabilitySpec>,
+    pub max_active: Option<MaxActivePolicy>,
+    pub entries: Vec<CapabilitySpec>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CapabilitySpec {
-    pub id:            String,
-    pub display_name:  String,
+    pub id: String,
+    pub display_name: String,
     #[serde(default)]
-    pub description:   String,
+    pub description: String,
     #[serde(default)]
-    pub flavor_text:   String,
+    pub flavor_text: String,
     pub research_cost: f32,
     #[serde(default)]
-    pub activation:    ActivationMode,
+    pub activation: ActivationMode,
     #[serde(default)]
     pub research_rate: ResearchRateSpec,
     #[serde(default)]
-    pub icon:          String,
+    pub icon: String,
     #[serde(default)]
-    pub thumbnail:     String,
+    pub thumbnail: String,
     #[serde(default)]
-    pub card_image:    String,
+    pub card_image: String,
     #[serde(default)]
-    pub unlock_video:  Option<String>,
+    pub unlock_video: Option<String>,
     #[serde(default)]
     pub model_preview: Option<String>,
     #[serde(default)]
-    pub prereqs:       Vec<CapabilityPrereqSpec>,
+    pub prereqs: Vec<CapabilityPrereqSpec>,
     #[serde(default)]
     pub unlocks_ship_components: Vec<String>,
     #[serde(default)]
-    pub unlocks_buildings:       Vec<String>,
+    pub unlocks_buildings: Vec<String>,
     #[serde(default)]
-    pub unlocks_units:           Vec<String>,
+    pub unlocks_units: Vec<String>,
     #[serde(default)]
-    pub unlocks_weapons:         Vec<String>,
-    pub effects:                 Vec<CapabilityEffectSpec>,
+    pub unlocks_weapons: Vec<String>,
+    pub effects: Vec<CapabilityEffectSpec>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -111,5 +120,5 @@ pub struct CapabilityPrereqSpec {
 pub struct CapabilityEffectSpec {
     pub targets_property: String,
     pub sub_field_deltas: Vec<(simthing_core::SubFieldRole, simthing_core::TransformOp)>,
-    pub when_activated:   simthing_core::OverlayLifecycle,
+    pub when_activated: simthing_core::OverlayLifecycle,
 }
