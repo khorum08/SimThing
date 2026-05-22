@@ -1,8 +1,13 @@
 use crate::keys::{CapabilityEffectKey, CapabilityEntryKey};
 use serde::{Deserialize, Serialize};
-use simthing_core::{OverlayId, SimPropertyId, SimThingId, SubFieldRole};
+use simthing_core::{OverlayId, SimPropertyId, SubFieldRole};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
+
+// Re-export the canonical `CapabilityUnlockRegistration` from the feeder so
+// PR 3 callers continue to work without changes. PR 4 moved the type from a
+// `simthing-spec`-local placeholder to its permanent home in `simthing-feeder`.
+pub use simthing_feeder::CapabilityUnlockRegistration;
 
 /// Globally unique identifier for a built `CapabilityTreeDefinition`.
 /// Allocated by `CapabilityTreeDefinitionId::new()` at build time.
@@ -69,13 +74,3 @@ pub struct CapabilityPrereq {
     pub min_value:   f32,
 }
 
-/// Placeholder for the type that lives in `simthing-feeder` after PR 4.
-/// Defined here so PR 3 can land before the feeder side ships. PR 4 will
-/// replace this with a re-export from `simthing-feeder`.
-#[derive(Clone, Debug, PartialEq)]
-pub struct CapabilityUnlockRegistration {
-    pub sim_thing_id: SimThingId,
-    pub property_id:  SimPropertyId,
-    pub sub_field:    SubFieldRole,
-    pub threshold:    f32,
-}

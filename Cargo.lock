@@ -1121,6 +1121,7 @@ name = "simthing-feeder"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "serde",
  "simthing-core",
  "simthing-gpu",
  "thiserror 2.0.18",
@@ -1159,6 +1160,7 @@ dependencies = [
  "serde",
  "serde_json",
  "simthing-core",
+ "simthing-feeder",
  "thiserror 2.0.18",
 ]
 

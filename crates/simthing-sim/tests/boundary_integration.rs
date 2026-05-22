@@ -8,17 +8,19 @@
 //! (SimThing tree mutations) and the GPU side (`state.read_values()`).
 
 use simthing_core::{
-    DimensionRegistry, Direction, FissionTemplate, FissionThreshold, IntensityBehavior, Overlay,
-    OverlayId, OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta, PropertyValue,
-    SimProperty, SimThing, SimThingKind, SimThingKindTag, SubFieldRole, TransformOp,
+    ClampBehavior, DimensionRegistry, Direction, FissionTemplate, FissionThreshold,
+    IntensityBehavior, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
+    PropertyLayout, PropertyTransformDelta, PropertyValue, ReductionRule, SimProperty, SimThing,
+    SimThingKind, SimThingKindTag, SubFieldRole, SubFieldSpec, TransformOp,
 };
 use simthing_feeder::{
-    ai_channel, feeder_channel, BoundaryRequest, DispatchCoordinator, FeederWork, TransformPatcher,
+    ai_channel, feeder_channel, BoundaryRequest, CapabilityUnlockRegistration, DispatchCoordinator,
+    FeederWork, TransformPatcher,
 };
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
 use simthing_sim::{
     AggregateAlertRegistration, BoundaryDeltaEntry, BoundaryProtocol, ReplayDriver, ReplayFrame,
-    ReplayReader, ReplayWriter, VelocityAlertRegistration,
+    ReplayReader, ReplayWriter, ThresholdBuilder, ThresholdSemantic, VelocityAlertRegistration,
 };
 
 fn try_gpu() -> Option<GpuContext> {
@@ -2424,5 +2426,169 @@ fn activated_suspended_overlay_appears_in_gpu_delta_and_affects_values() {
         "activated overlay should multiply Amount by 1.5: expected {}, got {}",
         expected,
         amount_after,
+    );
+}
+
+/// PR 4: capability unlock fires through the full Pass 7 path.
+///
+/// Verifies the end-to-end chain produced by PR 3's `CapabilityTreeBuilder`:
+///
+/// 1. The capability tree's progress property is registered with one
+///    `Named(entry_id)` sub-field per entry (mirroring what
+///    `CapabilityTreeBuilder` emits — here we construct it directly to keep
+///    `simthing-sim` free of a `simthing-spec` dev-dep).
+/// 2. `ThresholdBuilder::build_with_capability_unlocks` emits a
+///    `ThresholdRegistration` on the `(slot, col)` for the progress sub-field
+///    plus a parallel `ThresholdSemantic::CapabilityUnlock` on the CPU registry.
+/// 3. A player intent overlay setting progress to `research_cost + 1.0` lands
+///    on the GPU `values` buffer via Pass 3.
+/// 4. Pass 7 fires the upward threshold; the returned `ThresholdEvent`'s
+///    `event_kind` resolves through the CPU registry to the
+///    `CapabilityUnlock` semantic with the right `sim_thing_id`, `property_id`,
+///    and `sub_field`.
+#[test]
+fn capability_unlock_fires_in_boundary_integration_test() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    // ── Build a capability-progress property (one Named sub-field). ───────
+    let cap_property = SimProperty {
+        namespace:          "tech".into(),
+        name:               "propulsion".into(),
+        layout:             PropertyLayout {
+            sub_fields: vec![SubFieldSpec {
+                role:               SubFieldRole::Named("chemical_drive".into()),
+                width:              1,
+                clamp:              ClampBehavior::Floored { min: 0.0 },
+                velocity_max:       None,
+                default:            0.0,
+                display_name:       "Chemical Drive".into(),
+                display_range:      None,
+                governed_by:        None,
+                reduction_override: Some(ReductionRule::Max),
+            }],
+        },
+        decay:              None,
+        intensity_behavior: None,
+        fission_templates:  vec![],
+        fusion_templates:   vec![],
+        on_expire:          None,
+        description:        String::new(),
+        intensity_labels:   vec![],
+    };
+
+    let mut reg = DimensionRegistry::new();
+    let cap_pid = reg.register(cap_property);
+    let n_dims  = reg.total_columns as u32;
+
+    // ── Build the capability tree SimThing as the world root. ─────────────
+    let mut world = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+    world.add_property(cap_pid, reg.property(cap_pid).default_value());
+    let cap_tree_id = world.id;
+
+    // Attach a Permanent overlay that adds (THRESHOLD + 1.0) to progress on
+    // every Pass 3 tick. Crucial detail: the GPU pipeline order is
+    //   intent_deltas → snapshot(values→previous) → velocity → intensity → overlay → threshold
+    // so the only path that produces a visible Pass 7 crossing in a single
+    // tick is the overlay_deltas one (everything before snapshot ends up in
+    // both current and previous). `intent_deltas` (from `submit_player_intent`)
+    // and shadow row uploads (from `TransformOp::Set` via the patcher) both
+    // land before snapshot — they leave previous == current and Pass 7 sees no
+    // crossing.
+    world.add_overlay(Overlay {
+        id:        OverlayId::new(),
+        kind:      OverlayKind::Custom("capability_effect_test".into()),
+        source:    OverlaySource::System,
+        affects:   vec![cap_tree_id],
+        transform: PropertyTransformDelta {
+            property_id:      cap_pid,
+            sub_field_deltas: vec![(
+                SubFieldRole::Named("chemical_drive".into()),
+                TransformOp::Add(5001.0),
+            )],
+        },
+        lifecycle: OverlayLifecycle::Permanent,
+    });
+
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&world);
+    let cap_tree_slot = alloc.slot_of(cap_tree_id).unwrap() as usize;
+
+    // ── Setup GPU + coord. ────────────────────────────────────────────────
+    const N_SLOTS:   u32 = 8;
+    const THRESHOLD: f32 = 5000.0;
+    let mut state    = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines    = Pipelines::new(&state.ctx);
+    let mut patcher  = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord    = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (_tx, rx)    = feeder_channel();
+
+    // Initial shadow: progress = 0.0 (below threshold). The overlay's Pass 3
+    // step will push it to 5001 inside the tick.
+    let base = cap_tree_slot * n_dims as usize;
+    coord.shadow[base] = 0.0;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    // ── Build threshold registrations including the capability unlock. ────
+    let unlock = CapabilityUnlockRegistration {
+        sim_thing_id: cap_tree_id,
+        property_id:  cap_pid,
+        sub_field:    SubFieldRole::Named("chemical_drive".into()),
+        threshold:    THRESHOLD,
+    };
+    let (gpu_regs, cpu_reg) = ThresholdBuilder::build_with_capability_unlocks(
+        &proto.root,
+        &proto.registry,
+        &proto.allocator,
+        &[],
+        std::slice::from_ref(&unlock),
+    );
+
+    // The tree has no fission templates → the only registration is the unlock.
+    assert_eq!(gpu_regs.len(), 1, "only the capability unlock should register");
+    state.upload_thresholds(&gpu_regs);
+
+    // ── Tick. Pass 3 overlay adds 5001 → values crosses THRESHOLD upward. ──
+    let tick = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
+    );
+
+    assert!(
+        !tick.events.is_empty(),
+        "capability unlock must fire — progress crossed THRESHOLD upward",
+    );
+
+    // The fired event_kind resolves through cpu_reg to the CapabilityUnlock
+    // semantic with the right (sim_thing_id, property_id, sub_field).
+    let mut saw_unlock = false;
+    for event in &tick.events {
+        match cpu_reg.get(event.event_kind) {
+            Some(ThresholdSemantic::CapabilityUnlock { sim_thing_id, property_id, sub_field }) => {
+                assert_eq!(*sim_thing_id, cap_tree_id);
+                assert_eq!(*property_id, cap_pid);
+                assert_eq!(*sub_field, SubFieldRole::Named("chemical_drive".into()));
+                saw_unlock = true;
+            }
+            other => panic!("unexpected semantic at event_kind {}: {:?}", event.event_kind, other),
+        }
+    }
+    assert!(saw_unlock, "no CapabilityUnlock event fired");
+
+    // Sanity: the GPU `values` buffer landed at THRESHOLD + 1.0.
+    let values = state.read_values();
+    let progress = values[base];
+    assert!(
+        (progress - (THRESHOLD + 1.0)).abs() < 1e-3,
+        "GPU progress should match the Set transform; got {progress}",
     );
 }

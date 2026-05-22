@@ -109,6 +109,91 @@ for crate naming; mechanism decisions remain valid.
 
 ---
 
+## 2026-05-22 — simthing-spec PR 4: capability unlock registration bridge
+
+**Status:** Landed (local). First cross-crate PR of the spec lane.
+`CapabilityUnlockRegistration` now lives in its permanent home in
+`simthing-feeder`; `simthing-sim`'s `ThresholdBuilder` knows how to turn
+them into Pass 7 registrations + matching CPU semantics.
+
+**What landed:**
+
+1. **`simthing-feeder/src/capability.rs`** — new file. Defines
+   `CapabilityUnlockRegistration { sim_thing_id, property_id, sub_field,
+   threshold }` with `Clone, Debug, PartialEq, Serialize, Deserialize`.
+   Re-exported from `simthing-feeder/src/lib.rs`. `Cargo.toml` adds `serde`
+   to dependencies (was missing — feeder didn't need it before).
+
+2. **`simthing-sim::threshold_registry`** —
+   - `ThresholdSemantic` gains `Serialize, Deserialize` derives and a new
+     `CapabilityUnlock { sim_thing_id, property_id, sub_field }` arm.
+   - `ThresholdBuilder::build_with_capability_unlocks(root, dim_reg,
+     allocator, velocity_alerts, capability_unlocks)` walks the tree
+     normally, pushes velocity alerts, then pushes one upward-direction
+     Pass 7 registration per `CapabilityUnlockRegistration` on the
+     `(slot, col)` resolved via `allocator.slot_of` + `col_for_role`.
+   - `push_capability_unlocks` private helper. Skipping behavior mirrors
+     velocity alerts (inactive property / unallocated sim_thing / missing
+     role → silently skip).
+   - Full-rebuild path only. B2 append-only integration with capability
+     unlocks deferred to a future PR per the handoff — the first fission
+     boundary after a capability tree initializes takes the full rebuild
+     path anyway.
+
+3. **`simthing-spec`** —
+   - `Cargo.toml` gains `simthing-feeder` dependency.
+   - `runtime/capability_definition.rs` removes the placeholder
+     `CapabilityUnlockRegistration` and re-exports the canonical one from
+     `simthing-feeder`. Public API of `simthing-spec` is unchanged —
+     `CapabilityUnlockRegistration` still surfaces at the crate root via
+     the existing `pub use runtime::...`.
+
+**Tests:** 6 new, all passing.
+
+- `simthing-feeder/src/capability.rs::tests::capability_unlock_registration_in_feeder_is_public`
+  — acceptance #1, contract check.
+- `simthing-sim/src/threshold_registry.rs::tests::threshold_builder_with_capability_unlocks_emits_correct_event_kind`
+  — acceptance #2.
+- `simthing-sim/src/threshold_registry.rs::tests::threshold_builder_capability_unlock_resolves_slot_and_col`
+  — acceptance #3, seeds another property first so col is non-zero, and
+  allocates the cap tree onto slot 7 (not 0) to prove the resolution.
+- `simthing-sim/src/threshold_registry.rs::tests::threshold_semantic_capability_unlock_round_trips_serde`
+  — acceptance #4, JSON round-trip via `serde_json`.
+- `simthing-sim/src/threshold_registry.rs::tests::threshold_builder_capability_unlock_skips_unallocated_simthing`
+  — supplementary, mirrors velocity-alert skipping behavior.
+- `simthing-sim/tests/boundary_integration.rs::capability_unlock_fires_in_boundary_integration_test`
+  — acceptance #5, end-to-end GPU pipeline. Builds a one-entry capability
+  property, attaches a Permanent `Add(THRESHOLD + 1)` overlay to the cap
+  tree, calls `build_with_capability_unlocks`, uploads thresholds, runs
+  one tick, and verifies the returned `ThresholdEvent` resolves via
+  `cpu_reg.get(event_kind)` to `CapabilityUnlock` with the right ids.
+
+**Pass-order gotcha (documented in the test).** The GPU pipeline order is
+`intent_deltas → snapshot(values→previous) → velocity → intensity → overlay → threshold`.
+So neither `submit_player_intent` (intent_deltas land before snapshot) nor
+`TransformOp::Set` via the patcher (shadow row uploaded to values before
+snapshot) produces a Pass 7 crossing in a single tick — previous and
+current both reflect the same value. Only the overlay path (Permanent
+overlay attached to the SimThing → `build_overlay_deltas` → Pass 3 after
+snapshot) leaves a visible delta for Pass 7 to detect. The test wires it
+up that way and explains the constraint inline.
+
+`cargo test --workspace` → **245 passed**, 1 ignored, zero warnings.
+(Baseline 239 + 6 new.)
+
+**Not in this PR:**
+
+- B2 append-only integration with capability unlocks — `gpu_sync.rs`'s
+  append path skips them today. The threshold buffer gets rebuilt
+  in-full on every boundary, which is acceptable in v0 because the
+  capability tree spawns once at session init.
+- Runtime instance / state types (`CapabilityTreeInstance`,
+  `CapabilityTreeState`) — PR 5.
+- `CapabilityTreeBoundaryHandler` (handles fired `CapabilityUnlock`
+  events) — PR 5.
+
+---
+
 ## 2026-05-22 — simthing-spec PR 3: CapabilityTreeBuilder
 
 **Status:** Landed (local). Authored `CapabilityTreeSpec` now compiles

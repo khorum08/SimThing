@@ -103,10 +103,28 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
       and self-referential prereqs. Tests:
       `tests/pr3_capability_builder.rs` — 16 passing (all 11 acceptance
       criteria from the handoff + 5 supplementary).
-- [ ] **PR 4** — capability unlock registration bridge: add
-      `CapabilityUnlockRegistration` to `simthing-feeder/src/capability.rs`;
-      add `ThresholdSemantic::CapabilityUnlock` + `build_with_capability_unlocks`
-      to `simthing-sim`; add `simthing-feeder` dep to `simthing-spec`.
+- [x] **PR 4** — capability unlock registration bridge. Landed 2026-05-22.
+      `CapabilityUnlockRegistration` (with `Serialize/Deserialize` derives)
+      lives in `simthing-feeder::capability`; `simthing-spec` re-exports it
+      via `runtime::capability_definition` (placeholder removed) and gains
+      a `simthing-feeder` dep. `simthing-sim::threshold_registry` adds
+      `ThresholdSemantic::CapabilityUnlock { sim_thing_id, property_id,
+      sub_field }` (with `Serialize/Deserialize` derives on the whole enum)
+      plus `ThresholdBuilder::build_with_capability_unlocks(root, dim_reg,
+      allocator, velocity_alerts, capability_unlocks)` and a
+      `push_capability_unlocks` helper. The path is full-rebuild only; B2
+      append-only integration deferred. Skipping behavior matches velocity
+      alerts: inactive properties / unallocated sim_things / missing roles
+      silently skip. `simthing-feeder/Cargo.toml` picks up `serde`. Tests:
+      `simthing-feeder/src/capability.rs` (1), `threshold_registry.rs`
+      tests (4 — 3 acceptance + 1 supplementary), and the GPU integration
+      `capability_unlock_fires_in_boundary_integration_test` in
+      `simthing-sim/tests/boundary_integration.rs` (uses a Permanent
+      overlay attached to the cap tree to push progress across the
+      threshold mid-Pass-3 — `submit_player_intent` doesn't work for
+      this because intent_deltas apply BEFORE Pass 0's snapshot, so
+      previous == current and the crossing isn't visible).
+      All 5 handoff acceptance criteria met + 1 supplementary.
 - [ ] **PR 5** — capability runtime state + boundary handler
       (`boundary/capability_handler.rs`). Called by session coordinator,
       not embedded in `BoundaryProtocol`.

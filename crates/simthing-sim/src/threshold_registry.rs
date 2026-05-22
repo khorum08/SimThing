@@ -46,9 +46,11 @@
 //! 6. **Velocity alerts** — registered by the AI layer against a specific
 //!    SimThing/property/sub-field trajectory.
 
+use serde::{Deserialize, Serialize};
 use simthing_core::{
     DecayBehavior, DimensionRegistry, Direction, SimPropertyId, SimThing, SimThingId, SubFieldRole,
 };
+use simthing_feeder::CapabilityUnlockRegistration;
 use simthing_gpu::{
     SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
     THRESH_BUF_VALUES,
@@ -60,7 +62,7 @@ use crate::fission::FissionLineageRecord;
 
 /// What a fired `ThresholdEvent` means to the CPU boundary protocol.
 /// Indexed by `ThresholdEvent::event_kind` in the `ThresholdRegistry`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ThresholdSemantic {
     /// A `FissionThreshold` fired. The boundary must check the secondary
     /// condition (if any) and, if satisfied, spawn a new SimThing child.
@@ -105,6 +107,18 @@ pub enum ThresholdSemantic {
         sim_thing_id: SimThingId,
         property_id: SimPropertyId,
         sub_field: SubFieldRole,
+    },
+
+    /// A capability tree progress threshold fired. Emitted from a
+    /// `CapabilityUnlockRegistration` (one per `ActivationMode::Threshold`
+    /// entry compiled by `simthing-spec::CapabilityTreeBuilder`). PR 5's
+    /// `CapabilityTreeBoundaryHandler` reads the `sim_thing_id` to find
+    /// the faction's `CapabilityTreeInstance`, then looks up the entry via
+    /// `definition.by_threshold[(property_id, sub_field)]`.
+    CapabilityUnlock {
+        sim_thing_id: SimThingId,
+        property_id:  SimPropertyId,
+        sub_field:    SubFieldRole,
     },
 }
 
@@ -263,6 +277,77 @@ impl ThresholdBuilder {
             &mut cpu_reg,
         );
         (gpu_regs, cpu_reg)
+    }
+
+    /// Build with capability unlocks. Each `CapabilityUnlockRegistration`
+    /// produces one upward-direction Pass 7 watch on its `(slot, col)` pair
+    /// with the matching `ThresholdSemantic::CapabilityUnlock` entry on the
+    /// CPU registry. Capability unlocks watch the `values` buffer (per-slot
+    /// progress columns), not `output_vectors`.
+    ///
+    /// Registrations whose property has been tombstoned, whose `sim_thing_id`
+    /// can't be resolved to a slot, or whose `sub_field` is not present in
+    /// the property layout are silently skipped — mirrors the velocity-alert
+    /// and lineage skipping behavior.
+    ///
+    /// Full-rebuild path only. B2 append-only integration is a future PR;
+    /// the first fission boundary after a capability tree is initialized
+    /// takes the full-rebuild path regardless.
+    pub fn build_with_capability_unlocks(
+        root:                  &SimThing,
+        dim_reg:               &DimensionRegistry,
+        allocator:             &SlotAllocator,
+        velocity_alerts:       &[VelocityAlertRegistration],
+        capability_unlocks:    &[CapabilityUnlockRegistration],
+    ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
+        let mut gpu_regs = Vec::new();
+        let mut cpu_reg = ThresholdRegistry::new();
+        Self::walk(root, dim_reg, allocator, &mut gpu_regs, &mut cpu_reg);
+        Self::push_velocity_alerts(
+            dim_reg, allocator, velocity_alerts,
+            &mut gpu_regs, &mut cpu_reg,
+        );
+        Self::push_capability_unlocks(
+            dim_reg, allocator, capability_unlocks,
+            &mut gpu_regs, &mut cpu_reg,
+        );
+        (gpu_regs, cpu_reg)
+    }
+
+    fn push_capability_unlocks(
+        dim_reg:            &DimensionRegistry,
+        allocator:          &SlotAllocator,
+        capability_unlocks: &[CapabilityUnlockRegistration],
+        gpu_regs:           &mut Vec<ThresholdRegistration>,
+        cpu_reg:            &mut ThresholdRegistry,
+    ) {
+        for unlock in capability_unlocks {
+            if !dim_reg.is_active(unlock.property_id) {
+                continue;
+            }
+            let Some(slot) = allocator.slot_of(unlock.sim_thing_id) else {
+                continue;
+            };
+            let range  = dim_reg.column_range(unlock.property_id);
+            let layout = &dim_reg.property(unlock.property_id).layout;
+            let Some(col) = range.col_for_role(&unlock.sub_field, layout) else {
+                continue;
+            };
+
+            let event_kind = cpu_reg.push(ThresholdSemantic::CapabilityUnlock {
+                sim_thing_id: unlock.sim_thing_id,
+                property_id:  unlock.property_id,
+                sub_field:    unlock.sub_field.clone(),
+            });
+            gpu_regs.push(ThresholdRegistration {
+                slot,
+                col:       col as u32,
+                threshold: unlock.threshold,
+                direction: DIR_UPWARD,
+                event_kind,
+                buffer:    THRESH_BUF_VALUES,
+            });
+        }
     }
 
     /// Append registrations for a subtree to the caller's existing `gpu_regs`
@@ -687,6 +772,164 @@ mod tests {
             cpu.get(r.event_kind),
             Some(ThresholdSemantic::FusionTrigger { .. })
         )));
+    }
+
+    // ── PR 4: capability unlock ───────────────────────────────────────────
+
+    fn cap_property() -> SimProperty {
+        // One Named sub-field at offset 0. Mirrors what
+        // `CapabilityTreeBuilder::build` emits for a one-entry category.
+        use simthing_core::{ClampBehavior, PropertyLayout, ReductionRule, SubFieldSpec};
+        SimProperty {
+            namespace:          "tech".into(),
+            name:               "propulsion".into(),
+            layout:             PropertyLayout {
+                sub_fields: vec![SubFieldSpec {
+                    role:               SubFieldRole::Named("chemical_drive".into()),
+                    width:              1,
+                    clamp:              ClampBehavior::Floored { min: 0.0 },
+                    velocity_max:       None,
+                    default:            0.0,
+                    display_name:       "Chemical Drive".into(),
+                    display_range:      None,
+                    governed_by:        None,
+                    reduction_override: Some(ReductionRule::Max),
+                }],
+            },
+            decay:              None,
+            intensity_behavior: None,
+            fission_templates:  vec![],
+            fusion_templates:   vec![],
+            on_expire:          None,
+            description:        String::new(),
+            intensity_labels:   vec![],
+        }
+    }
+
+    #[test]
+    fn threshold_builder_with_capability_unlocks_emits_correct_event_kind() {
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(cap_property());
+
+        let mut tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+        tree.add_property(pid, reg.property(pid).default_value());
+        let tree_id = tree.id;
+
+        let mut alloc = SlotAllocator::new();
+        alloc.alloc(tree_id);
+
+        let unlocks = vec![CapabilityUnlockRegistration {
+            sim_thing_id: tree_id,
+            property_id:  pid,
+            sub_field:    SubFieldRole::Named("chemical_drive".into()),
+            threshold:    5000.0,
+        }];
+
+        let (gpu, cpu) = ThresholdBuilder::build_with_capability_unlocks(
+            &tree, &reg, &alloc, &[], &unlocks,
+        );
+
+        // One registration, one parallel semantic entry at the same event_kind.
+        assert_eq!(gpu.len(), 1);
+        assert_eq!(cpu.len(), 1);
+        let event_kind = gpu[0].event_kind;
+        match cpu.get(event_kind) {
+            Some(ThresholdSemantic::CapabilityUnlock { sim_thing_id, property_id, sub_field }) => {
+                assert_eq!(*sim_thing_id, tree_id);
+                assert_eq!(*property_id, pid);
+                assert_eq!(*sub_field, SubFieldRole::Named("chemical_drive".into()));
+            }
+            other => panic!("expected CapabilityUnlock at event_kind {event_kind}, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn threshold_builder_capability_unlock_resolves_slot_and_col() {
+        let mut reg = DimensionRegistry::new();
+        // Seed another property first so propulsion is not at column 0 — proves
+        // col resolution actually does the arithmetic.
+        reg.register(SimProperty::simple("core", "loyalty", 0));
+        let pid = reg.register(cap_property());
+
+        let mut tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+        tree.add_property(pid, reg.property(pid).default_value());
+        let tree_id = tree.id;
+
+        let mut alloc = SlotAllocator::new();
+        // Force tree onto slot 7 (not 0) — proves slot resolution.
+        for _ in 0..7 {
+            alloc.alloc(simthing_core::SimThingId::new());
+        }
+        let slot = alloc.alloc(tree_id);
+        assert_eq!(slot, 7);
+
+        let unlocks = vec![CapabilityUnlockRegistration {
+            sim_thing_id: tree_id,
+            property_id:  pid,
+            sub_field:    SubFieldRole::Named("chemical_drive".into()),
+            threshold:    5000.0,
+        }];
+
+        let (gpu, _cpu) = ThresholdBuilder::build_with_capability_unlocks(
+            &tree, &reg, &alloc, &[], &unlocks,
+        );
+
+        // Expected col = start of propulsion (after 3-column loyalty) + 0 (first sub-field).
+        let propulsion_range = reg.column_range(pid);
+        assert_eq!(propulsion_range.start, 3);
+        assert_eq!(gpu[0].slot, 7);
+        assert_eq!(gpu[0].col, propulsion_range.start as u32);
+        assert_eq!(gpu[0].threshold, 5000.0);
+        assert_eq!(gpu[0].direction, DIR_UPWARD);
+        assert_eq!(gpu[0].buffer, THRESH_BUF_VALUES);
+    }
+
+    #[test]
+    fn threshold_builder_capability_unlock_skips_unallocated_simthing() {
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(cap_property());
+
+        let tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+        // Note: tree has NO slot allocated.
+
+        let unlocks = vec![CapabilityUnlockRegistration {
+            sim_thing_id: tree.id,
+            property_id:  pid,
+            sub_field:    SubFieldRole::Named("chemical_drive".into()),
+            threshold:    5000.0,
+        }];
+
+        let (gpu, cpu) = ThresholdBuilder::build_with_capability_unlocks(
+            &tree, &reg, &SlotAllocator::new(), &[], &unlocks,
+        );
+
+        // Silently skipped — matches velocity-alert and lineage behavior.
+        assert!(gpu.is_empty());
+        assert!(cpu.is_empty());
+    }
+
+    #[test]
+    fn threshold_semantic_capability_unlock_round_trips_serde() {
+        let original = ThresholdSemantic::CapabilityUnlock {
+            sim_thing_id: simthing_core::SimThingId::new(),
+            property_id:  SimPropertyId(7),
+            sub_field:    SubFieldRole::Named("warp_drive".into()),
+        };
+
+        let json: String = serde_json::to_string(&original).expect("serialize");
+        let restored: ThresholdSemantic = serde_json::from_str(&json).expect("deserialize");
+
+        match (&original, &restored) {
+            (
+                ThresholdSemantic::CapabilityUnlock { sim_thing_id: a1, property_id: a2, sub_field: a3 },
+                ThresholdSemantic::CapabilityUnlock { sim_thing_id: b1, property_id: b2, sub_field: b3 },
+            ) => {
+                assert_eq!(a1, b1);
+                assert_eq!(a2, b2);
+                assert_eq!(a3, b3);
+            }
+            _ => panic!("variant changed across round-trip: {restored:?}"),
+        }
     }
 
     #[test]

@@ -8,4 +8,5 @@ authors.workspace = true
 simthing-core = { path = "../simthing-core" }
 simthing-gpu  = { path = "../simthing-gpu" }
 bytemuck      = { workspace = true }
+serde         = { workspace = true }
 thiserror     = { workspace = true }
