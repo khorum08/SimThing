@@ -147,6 +147,15 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
       activate-switch verification by feeding PR 5 handler requests through
       real structural overlay activation/suspension. Tests:
       `tests/pr6_capability_preview.rs` — 5 passing acceptance tests.
+- [x] **PR 7** — Script IR. Landed 2026-05-22. Replaces
+      `spec/script_stub.rs` with canonical `ScriptExpr` / `ScriptPredicate`
+      authoring IR, `PropertyKey`, `ScopeRef`, and a CPU evaluator over
+      `DimensionRegistry + shadow + n_dims`. Supports constants, property
+      reads, arithmetic, min/max, clamp, numeric gates, comparison predicates,
+      boolean composition, serde round-trips, and hard evaluation errors for
+      unknown property/role, bad slots/columns, division by zero, and invalid
+      clamps. No EML, parser, trigger/effect compiler, or event system yet.
+      Tests: `tests/pr7_script_ir.rs` — 10 passing acceptance/scaffold tests.
 
 **Known divergences between handoff doc and PR 1 code (Opus must resolve):**
 

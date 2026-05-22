@@ -6,6 +6,30 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — PR 7 canonical Script IR + CPU evaluator
+
+**Status:** Implemented PR 7.
+
+**Code:**
+- Replaced `spec/script_stub.rs` with `spec/script.rs`.
+- Added `PropertyKey`, `ScopeRef`, `ScriptExpr`, and `ScriptPredicate`.
+- Added `ScriptEvalContext` and `ScriptEvalError`.
+- Implemented CPU evaluation over `DimensionRegistry` + dense shadow rows:
+  constants, property reads, arithmetic, min/max, clamp, predicate gates,
+  comparisons, `And` / `Or` / `Not`, and short-circuiting boolean logic.
+
+**Out of scope:** No EML backend, parser, trigger/effect compiler, event
+system, derived-field integration, or GPU evaluator.
+
+**Tests:** `cargo test -p simthing-spec --test pr7_script_ir` passes with
+10 tests covering reads, explicit slot scope, arithmetic, predicates, gates,
+error cases, and serde round-trips.
+
+**Next:** PR 8 — trigger/effect/event compiler, if we choose to continue the
+older workshop ladder.
+
+---
+
 ## 2026-05-22 — PR 6 capability preview + mutual exclusivity completion
 
 **Status:** Implemented PR 6.
@@ -24,9 +48,7 @@ Running log of what's done and what's next, across sessions.
 **Tests:** `cargo test -p simthing-spec` passes, including the 5 PR 6
 acceptance tests in `tests/pr6_capability_preview.rs`.
 
-**Next:** No remaining PRs from the master handoff ladder. Follow-on work is
-session/driver assembly and the threshold-layer dependency cleanup noted in
-the PR 5 worklog entry.
+**Next:** PR 7 — canonical Script IR and CPU evaluator.
 
 ---
 

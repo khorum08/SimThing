@@ -60,5 +60,8 @@ pub use spec::domain_pack::DomainPackSpec;
 pub use spec::game_mode::GameModeSpec;
 pub use spec::overlay::OverlaySpec;
 pub use spec::property::PropertySpec;
+pub use spec::script::{
+    PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
+};
 pub use validate::validate_capability_tree;
 pub use version::SpecVersion;
