@@ -35,8 +35,8 @@ pub mod version;
 
 pub use boundary::{CapabilityBoundaryContext, CapabilityTreeBoundaryHandler, CapabilityTreeError};
 pub use compile::{
-    compile_overlay, compile_property, CapabilityTreeBuildOutput, CapabilityTreeBuilder,
-    CompileContext,
+    compile_effect, compile_event, compile_overlay, compile_property, compile_trigger,
+    CapabilityTreeBuildOutput, CapabilityTreeBuilder, CompileContext,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;
@@ -50,18 +50,22 @@ pub use ron::{deserialize_capability_tree_ron, deserialize_game_mode_ron};
 pub use runtime::{
     CapabilityCategoryDefinition, CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
     CapabilityTreeDefinitionId, CapabilityTreeDiagnostic, CapabilityTreeInstance,
-    CapabilityTreeNotification, CapabilityTreeState, CapabilityUnlockRegistration,
+    CapabilityTreeNotification, CapabilityTreeState, CapabilityUnlockRegistration, CompiledEffect,
+    CompiledThresholdTrigger, CompiledTrigger, ScriptedEventDefinition,
 };
 pub use spec::capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,
     CapabilitySpec, CapabilityTreeSpec, MaxActivePolicy, ReplacementPolicy, ResearchRateSpec,
 };
 pub use spec::domain_pack::DomainPackSpec;
+pub use spec::effect::EffectSpec;
+pub use spec::event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use spec::game_mode::GameModeSpec;
 pub use spec::overlay::OverlaySpec;
 pub use spec::property::PropertySpec;
 pub use spec::script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };
+pub use spec::trigger::{TriggerDirection, TriggerSpec};
 pub use validate::validate_capability_tree;
 pub use version::SpecVersion;

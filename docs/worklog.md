@@ -6,6 +6,33 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — PR 8 trigger/effect/event compiler templates
+
+**Status:** Implemented PR 8 as a conservative compiler-template slice.
+
+**Code:**
+- Added `TriggerSpec`, `EffectSpec`, and `EventSpec` authoring structs.
+- Added `CompiledTrigger`, `CompiledThresholdTrigger`, `CompiledEffect`, and
+  `ScriptedEventDefinition` runtime structs.
+- Added `compile_trigger`, `compile_effect`, and `compile_event`.
+- Threshold triggers resolve property id and column via `DimensionRegistry` /
+  `col_for_role`; predicate triggers preserve PR 7 `ScriptPredicate`.
+- Effects compile to boundary request templates for `Remove`,
+  `ActivateOverlay`, and `SuspendOverlay`.
+
+**Out of scope:** No event runner, no threshold registry upload, no parser,
+no EML backend, no boundary event handler, and no AddChild/Reparent template
+payloads yet.
+
+**Tests:** `cargo test -p simthing-spec --test pr8_event_compiler` passes
+with 7 tests covering threshold compilation, predicate preservation, hard
+errors, effect templates, event composition, and serde round-trips.
+
+**Next:** Session/driver assembly or a PR 9 to execute compiled event
+definitions at boundary time.
+
+---
+
 ## 2026-05-22 — PR 7 canonical Script IR + CPU evaluator
 
 **Status:** Implemented PR 7.
@@ -25,8 +52,7 @@ system, derived-field integration, or GPU evaluator.
 10 tests covering reads, explicit slot scope, arithmetic, predicates, gates,
 error cases, and serde round-trips.
 
-**Next:** PR 8 — trigger/effect/event compiler, if we choose to continue the
-older workshop ladder.
+**Next:** PR 8 — trigger/effect/event compiler.
 
 ---
 

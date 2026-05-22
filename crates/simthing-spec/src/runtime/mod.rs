@@ -10,6 +10,9 @@
 
 pub mod capability_definition;
 pub mod capability_state;
+pub mod compiled_effect;
+pub mod compiled_trigger;
+pub mod scripted_event_definition;
 
 pub use capability_definition::{
     CapabilityCategoryDefinition, CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
@@ -19,3 +22,6 @@ pub use capability_state::{
     CapabilityTreeDiagnostic, CapabilityTreeInstance, CapabilityTreeNotification,
     CapabilityTreeState,
 };
+pub use compiled_effect::CompiledEffect;
+pub use compiled_trigger::{CompiledThresholdTrigger, CompiledTrigger};
+pub use scripted_event_definition::ScriptedEventDefinition;

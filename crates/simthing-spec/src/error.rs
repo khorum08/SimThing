@@ -92,4 +92,11 @@ pub enum SpecError {
         targets_property: String,
         reason:           String,
     },
+
+    // ── Scripted trigger/effect/event compiler (PR 8) ───────────────────────
+    #[error("trigger references unknown property `{namespace}::{name}`")]
+    InvalidTriggerProperty { namespace: String, name: String },
+
+    #[error("trigger references role `{role}` not present in property `{property}`")]
+    InvalidTriggerRole { property: String, role: String },
 }

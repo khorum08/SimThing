@@ -156,6 +156,15 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
       unknown property/role, bad slots/columns, division by zero, and invalid
       clamps. No EML, parser, trigger/effect compiler, or event system yet.
       Tests: `tests/pr7_script_ir.rs` — 10 passing acceptance/scaffold tests.
+- [x] **PR 8** — trigger/effect/event compiler. Landed 2026-05-22 as a
+      conservative typed-template slice: `TriggerSpec`, `EffectSpec`, and
+      `EventSpec` compile into `CompiledTrigger`, `CompiledEffect`, and
+      `ScriptedEventDefinition`. Simple threshold triggers resolve
+      property/role/column against `DimensionRegistry`; predicate triggers
+      preserve PR 7 `ScriptPredicate`; effects compile to boundary request
+      templates for remove / activate overlay / suspend overlay. No event
+      runner, threshold registry upload, parser, or EML. Tests:
+      `tests/pr8_event_compiler.rs` — 7 passing scaffold tests.
 
 **Known divergences between handoff doc and PR 1 code (Opus must resolve):**
 

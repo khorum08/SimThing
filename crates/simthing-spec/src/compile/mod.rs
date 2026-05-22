@@ -13,10 +13,16 @@
 
 pub mod capability;
 pub mod context;
+pub mod effect;
+pub mod event;
 pub mod overlay;
 pub mod property;
+pub mod trigger;
 
 pub use capability::{CapabilityTreeBuildOutput, CapabilityTreeBuilder};
 pub use context::CompileContext;
+pub use effect::compile_effect;
+pub use event::compile_event;
 pub use overlay::compile_overlay;
 pub use property::compile_property;
+pub use trigger::compile_trigger;
