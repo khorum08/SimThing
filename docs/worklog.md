@@ -6,6 +6,31 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 - Parking note: next V6 guardrails queued
+
+**Status:** Todo/worklog-only parking update after documentation commit
+`95516b9`.
+
+**Queued next:**
+
+- Priority 1: GPU boundary integration test proving `ActivateOverlay` makes a
+  formerly suspended overlay enter the next Pass 3 upload and affect values on
+  the following tick.
+- Priority 2: End-to-end replay test proving `FissionOccurred { node }`
+  reconstructs a fissioned child with its cloned capability subtree payload.
+- Priority 3: Serialization compatibility test for old `FissionTemplate` data
+  without `clone_capability_children`, confirming serde default `false`.
+- Priority 4: Resume B2 fission-growth topology/threshold batching only after
+  those V6 guardrails are in place.
+
+**Parking rationale:**
+
+The next work is test-heavy and should not be squeezed into a low-context
+window. The todo log now records the exact order: lock V6 behavior down first,
+then return to GPU-forward late-game fission optimization.
+
+---
+
 ## 2026-05-21 - Parking note after used-range threshold readback
 
 **Status:** Documentation parking update after `5cc4254`.
