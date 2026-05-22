@@ -31,10 +31,6 @@ impl CategoryKey {
             name:      name.into(),
         }
     }
-
-    pub fn from_category_spec(spec: &crate::spec::capability::CapabilityCategorySpec) -> Self {
-        Self::new(&spec.property_namespace, &spec.property_name)
-    }
 }
 
 impl fmt::Display for CategoryKey {
@@ -70,14 +66,4 @@ impl fmt::Display for CapabilityEntryKey {
 pub struct CapabilityEffectKey {
     pub entry:        CapabilityEntryKey,
     pub effect_index: usize,
-}
-
-/// Runtime definition handle (monotonic within a session build).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
-pub struct CapabilityTreeDefinitionId(pub u32);
-
-impl CapabilityTreeDefinitionId {
-    pub fn new(raw: u32) -> Self {
-        Self(raw)
-    }
 }

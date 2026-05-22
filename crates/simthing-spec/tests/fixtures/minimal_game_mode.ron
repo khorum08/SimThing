@@ -1,0 +1,64 @@
+GameModeSpec(
+    id: "terran_campaign",
+    display_name: "Terran Campaign",
+    description: "Minimal PR 1 game mode fixture.",
+    spec_version: (major: 1, minor: 0, patch: 0),
+    metadata: (
+        description: "Terran baseline content.",
+        icon: Some("assets/ui/terran.png"),
+        tags: ["terran", "campaign"],
+    ),
+    domain_packs: [
+        DomainPackSpec(
+            id: "terran_core",
+            display_name: "Terran Core",
+            metadata: (
+                description: "Core terran properties and trees.",
+                tags: ["terran"],
+            ),
+            properties: [
+                PropertySpec(
+                    id: "military_fleet_speed",
+                    namespace: "military",
+                    name: "fleet_speed",
+                    display_name: "Fleet Speed",
+                ),
+            ],
+            overlays: [],
+            capability_trees: [
+                CapabilityTreeSpec(
+                    tree_id: "terran_tech",
+                    tree_kind: "tech_tree",
+                    owner_kind: "Faction",
+                    categories: [
+                        CapabilityCategorySpec(
+                            property_namespace: "tech",
+                            property_name: "propulsion",
+                            display_name: "Propulsion",
+                            entries: [
+                                CapabilitySpec(
+                                    id: "chemical_drive",
+                                    display_name: "Chemical Drive",
+                                    research_cost: 5000.0,
+                                    activation: Threshold,
+                                    effects: [
+                                        CapabilityEffectSpec(
+                                            targets_property: "military::fleet_speed",
+                                            sub_field_deltas: [
+                                                (Amount, Multiply(1.10)),
+                                            ],
+                                            when_activated: Permanent,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ],
+    properties: [],
+    overlays: [],
+    capability_trees: [],
+)
