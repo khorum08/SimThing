@@ -67,14 +67,101 @@ diagnostic, zero warnings. `fission_stress` ~55 ms/sim-day with
 
 ### `simthing-spec` (revised PR ladder — PR 1 done)
 
-- [ ] **PR 2** — property + overlay spec compiler.
-- [ ] **PR 3** — `CapabilityTreeBuilder`.
-- [ ] **PR 4** — capability unlock registration bridge (feeder + sim).
-- [ ] **PR 5** — capability runtime state + boundary handler.
-- [ ] **PR 6** — preview + mutual exclusivity.
+Authoritative spec: `simthing-spec — Master Implementation Handoff` (2026-05-22).
+All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.**
 
-**Ready for PR 2:** `master` @ `7eb48dc`; no runtime compiler modules; no
-feeder/sim capability-unlock plumbing.
+- [x] **PR 2** — property + overlay spec compiler (`compile/property.rs`,
+      `compile/overlay.rs`, `compile/context.rs`). Landed 2026-05-22.
+      `PropertySpec` expanded with `description` + `sub_fields`; empty
+      `sub_fields` defaults to `PropertyLayout::standard(0)`. `OverlaySpec`
+      expanded with `targets_property`, `sub_field_deltas`, `lifecycle`,
+      `kind`, `source`. `compile_property` checks `id_of` before
+      `register` (no panic on duplicate), validates `governed_by`
+      against the same layout. `compile_overlay` parses `"ns::name"`,
+      validates property existence, validates each sub-field role
+      against the target's layout. New errors:
+      `DuplicateProperty`, `UnknownProperty`, `InvalidGovernedByRole`,
+      `InvalidSubFieldRole`, `InvalidPropertyReference`. Tests:
+      `tests/pr2_compile.rs` — 11 passing (all 7 acceptance criteria
+      from the handoff + 4 supplementary).
+- [ ] **PR 3** — `CapabilityTreeBuilder` (`compile/capability.rs`,
+      `runtime/capability_definition.rs`, `runtime/capability_state.rs`).
+      Stub `CapabilityUnlockRegistration` locally; PR 4 replaces it.
+- [ ] **PR 4** — capability unlock registration bridge: add
+      `CapabilityUnlockRegistration` to `simthing-feeder/src/capability.rs`;
+      add `ThresholdSemantic::CapabilityUnlock` + `build_with_capability_unlocks`
+      to `simthing-sim`; add `simthing-feeder` dep to `simthing-spec`.
+- [ ] **PR 5** — capability runtime state + boundary handler
+      (`boundary/capability_handler.rs`). Called by session coordinator,
+      not embedded in `BoundaryProtocol`.
+- [ ] **PR 6** — preview + mutual exclusivity completion (`preview/capability_preview.rs`).
+
+**Known divergences between handoff doc and PR 1 code (Opus must resolve):**
+
+1. `CapabilityCategorySpec` has no `id` field — handoff §1.4 references one;
+   actual struct identifies category by `property_namespace::property_name`.
+   `CategoryKey { namespace, name }` in `keys.rs` already captures this.
+   **Resolution:** add `id: String` to the struct and thread it through, OR
+   accept that category id = `namespace::name` (matching `CategoryKey`).
+
+2. `MaxActivePolicy` in `spec/capability.rs` is `Limited { count: usize }` — no
+   `replacement: ReplacementPolicy` field; no `ReplacementPolicy` enum. Handoff
+   §1.4 requires both. **Resolution:** add `ReplacementPolicy` enum and
+   `replacement` field in PR 2/5 when needed.
+
+3. `ActivationMode` is missing the `OnPrereqMet` arm — the comment says "will be
+   added in later PRs." Handoff §1.3 defines all three arms.
+   **Resolution:** add `OnPrereqMet` to the enum in PR 3; extend `validate.rs`
+   to reject it as an authored default.
+
+4. `CapabilitySpec.research_cost: f32` vs handoff `research_cost: ResearchRateSpec`
+   — the struct also has a separate `research_rate: ResearchRateSpec` field,
+   which is unused. **Resolution:** PR 3 builder reads `research_cost: f32` as
+   the literal threshold value. The `research_rate` field is a vestige of an
+   earlier design; either remove it or leave it unused. Do not rename `research_cost`
+   (serde-breaking).
+
+5. `PropertySpec` is a stub (`id`, `namespace`, `name`, `display_name` only) — no
+   layout, no sub-field specs, no decay, no clamp, no governed_by. PR 2's
+   `compile_property` enforces layout validity, so the struct must grow.
+   **Resolution:** expand `PropertySpec` with at least a `sub_fields` layout
+   description before writing the compiler, OR keep `compile_property` minimal
+   (namespace+name registration with a default layout) and accept simpler tests.
+
+6. `OverlaySpec` is a stub (`id`, `display_name` only) — no `targets_property`,
+   `sub_field_deltas`, or `lifecycle`. PR 2's `compile_overlay` needs these.
+   **Resolution:** expand `OverlaySpec` with those fields, or scope PR 2's
+   `compile_overlay` to the standalone (non-capability) overlay use-case and
+   note that capability overlays are built inline by the PR 3 builder.
+
+7. `DimensionRegistry::register` panics on duplicate `namespace+name` — `compile_property`
+   must check `registry.id_of(ns, name).is_some()` and return
+   `Err(SpecError::DuplicateProperty(...))` before calling `register`.
+   Add the error variant to `error.rs`.
+
+8. No `registry.set_reduction_rule` method exists — handoff prose mentions it but the
+   correct implementation is to set `reduction_override: Some(ReductionRule::Max)` on
+   each `SubFieldSpec` when constructing the `SimProperty`, before calling `register`.
+   `ReductionRule::Max` and `SubFieldSpec::reduction_override` both exist.
+
+9. `SpecError` needs more variants for PR 2/3: at minimum `DuplicateProperty`,
+   `OnPrereqMetAuthoredDefault`, `UnknownPrereqEntry`, `UnknownPrereqCategory`,
+   `UnknownProperty`, `UnsupportedMaxActive`. Add as needed per PR.
+
+10. `CapabilityTreeDefinitionId` type does not exist — needs to be defined in PR 3
+    (likely a newtype wrapping `CapabilityTreeKey` or a `u32` index).
+
+**Confirmed working (no surprises):**
+- `OverlayId::new()` ✓ (atomic counter in `ids.rs`)
+- `col_for_role` ✓ (method on `PropertyColumnRange` in `registry.rs`)
+- `SubFieldRole::Named(String)` ✓
+- `OverlayLifecycle::Suspended { when_activated: Box<OverlayLifecycle> }` ✓
+- `ReductionRule::Max` ✓ (`reduction.rs`; `SubFieldSpec::reduction_override: Option<ReductionRule>`)
+- `ThresholdSemantic` (5 arms; PR 4 adds `CapabilityUnlock`) ✓
+- `CapabilityTreeKey`, `CategoryKey`, `CapabilityEntryKey`, `CapabilityEffectKey` ✓ (`keys.rs`)
+- `SpecDiagnostics`, `SpecError`, `SpecResult<T>` ✓
+- `simthing-feeder` has no `capability.rs` yet — PR 4 creates it ✓
+- **212 tests passing**, 1 ignored, zero warnings ✓
 
 ### Performance and spec layer
 

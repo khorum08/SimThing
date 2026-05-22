@@ -20,6 +20,7 @@
 //! - execute capability unlocks at boundary time
 //! - implement Script IR, EML, scripted events, or effect/trigger compilers
 
+pub mod compile;
 pub mod diagnostics;
 pub mod error;
 pub mod keys;
@@ -29,8 +30,9 @@ pub mod spec;
 pub mod validate;
 pub mod version;
 
+pub use compile::{compile_overlay, compile_property, CompileContext};
 pub use diagnostics::{
-    DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics,
+    DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult,
 };
 pub use error::SpecError;
 pub use keys::{

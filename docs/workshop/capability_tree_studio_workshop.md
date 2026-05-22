@@ -1,14 +1,8 @@
-# Capability Tree Spec Layer — Workshop
+# Capability Tree Studio Layer — Workshop
 ## Session: 2026-05-22
 
-> **Superseded for crate placement (2026-05-22):** This workshop originally scoped
-> work to `simthing-studio`. The approved pivot places the RON→runtime compiler in
-> **`simthing-spec`**; **`simthing-studio`** is deferred GUI only. Mechanism
-> decisions below remain valid. Forward implementation handoff:
-> `docs/workshop/simthing_spec_workshop.md`.
-
-This file records approved design decisions for the capability tree builder
-(originally planned as `simthing-studio`). Decisions are locked once marked **APPROVED**.
+This file records approved design decisions for the `simthing-studio`
+capability tree builder. Decisions are locked once marked **APPROVED**.
 Open questions are marked **OPEN** or **DISCUSS**.
 
 Reference documents:
@@ -534,7 +528,7 @@ Unit tests (in `simthing-studio/src/`):
 
 ## Approved Decisions Log
 
-*(Decisions move here once approved in workshop.)*
+*(All decisions closed. Unified into master handoff document.)*
 
 | # | Decision | Notes |
 |---|---|---|
@@ -548,6 +542,11 @@ Unit tests (in `simthing-studio/src/`):
 | Q4.3 | `CapabilityUnlockRegistration` in `simthing-feeder`. `ThresholdBuilder` grows `build_with_capability_unlocks`. Dep graph: `simthing-core` ← `simthing-feeder` ← `simthing-sim` / `simthing-spec`. | Approved 2026-05-22 |
 | Q5.2 | Failed prereq: reset progress to `research_cost - EPSILON`, transition per-faction `ActivationMode` from `Threshold` → `OnPrereqMet`. `OnPrereqMet` is CPU-only, no GPU registration. Swept after every activation in same tree and once at session init. Per-faction mode state lives in `CapabilityTreeState` (extends Q4.2), recorded in delta log. | Approved 2026-05-22 |
 | ActivationMode | Three arms: `Threshold` (Pass 7 threshold), `PlayerSelection` (explicit UI call), `OnPrereqMet` (CPU sweep only). `#[non_exhaustive]`. No GPU presence for `PlayerSelection` or `OnPrereqMet`. | Approved 2026-05-22 |
+| D17 | Mutual exclusivity uses `CapabilityTreeState.active_by_category`. No overlay scanning. | Approved 2026-05-22 |
+| D18 | Preview returns both per-overlay breakdown and combined result in `CapabilityPreviewReport`. | Approved 2026-05-22 |
+| D19 | `max_active` is category-level. v0: `Unlimited` and `Limited(1)`. Replacement policy: `SuspendOldest` — handler issues `SuspendOverlay` automatically and emits `CapabilityTreeNotification::IdeaSwitched` for the session coordinator to surface to the UI. Switch is not silent but does not block on player input. `Limited(n > 1)` returns `CapabilityTreeError::UnsupportedMaxActive` in v0. | Approved 2026-05-22 |
+| D20 | Always-on validation for authored input. `debug_assert` only for internal invariants. | Approved 2026-05-22 |
+| D21 | Do not test global atomic `OverlayId` determinism. Test instead: `builder_records_overlay_ids_for_each_effect`, `definition_lookup_by_overlay_id_returns_entry`, `logical_effect_keys_are_stable_across_builds`. | Approved 2026-05-22 |
 
 ---
 

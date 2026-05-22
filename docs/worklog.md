@@ -109,6 +109,123 @@ for crate naming; mechanism decisions remain valid.
 
 ---
 
+## 2026-05-22 — simthing-spec PR 2: property + overlay spec compiler
+
+**Status:** Landed (local). New `compile/` module turns authored
+`PropertySpec` / `OverlaySpec` into live `SimProperty` registrations and
+`Overlay` instances.
+
+**What landed:**
+
+1. **`PropertySpec` expansion.** Added `description: String` and
+   `sub_fields: Vec<simthing_core::SubFieldSpec>`. Both `#[serde(default)]`
+   so the existing `minimal_game_mode.ron` fixture still parses. Empty
+   `sub_fields` falls back to `PropertyLayout::standard(0)` (Amount +
+   Velocity + Intensity) — matching `SimProperty::simple` semantics.
+
+2. **`OverlaySpec` expansion.** Added `targets_property: String`
+   (canonical `"namespace::name"`), `sub_field_deltas`, `lifecycle`,
+   `kind`, `source`. No defaults — PR 1 had `overlays: vec![]` everywhere,
+   so no fixture rebreaks.
+
+3. **`compile/property.rs`.** `compile_property(&PropertySpec, &mut DimensionRegistry) -> SpecResult<SimPropertyId>`.
+   - Checks `registry.id_of(ns, name)` before `register` — avoids the
+     `DimensionRegistry` panic on duplicate.
+   - Validates each sub-field's `governed_by` references a role present
+     in the same layout. Failed validation does NOT register the
+     property (no partial state).
+
+4. **`compile/overlay.rs`.** `compile_overlay(&OverlaySpec, &DimensionRegistry) -> SpecResult<Overlay>`.
+   - Parses `"ns::name"` and rejects malformed strings.
+   - Looks up the target property; rejects unknown.
+   - Validates every `sub_field_deltas[i].0` role exists in the target's
+     `PropertyLayout`. This catches authoring bugs at compile time that
+     would otherwise silently no-op at runtime (`apply_to_data` skips
+     unknown roles).
+   - Builds the `Overlay` with `OverlayId::new()` and `affects: vec![]`
+     (attachment is the caller's job).
+
+5. **`compile/context.rs`.** `CompileContext { registry: &mut DimensionRegistry }`
+   with `registry()` / `registry_mut()` accessors. The threading pattern
+   for compiling multiple specs from one domain pack / game mode in
+   sequence.
+
+6. **New `SpecError` variants:** `DuplicateProperty`, `UnknownProperty`,
+   `InvalidGovernedByRole`, `InvalidSubFieldRole`, `InvalidPropertyReference`.
+
+**Tests:** `crates/simthing-spec/tests/pr2_compile.rs` — 11 tests covering
+all 7 acceptance criteria from the handoff doc plus 4 supplementary
+(`compile_property_uses_authored_sub_fields_when_provided`,
+`compile_overlay_invalid_sub_field_role_is_hard_error`,
+`compile_overlay_malformed_property_reference_is_hard_error`,
+`compile_context_overlay_after_property_registration`).
+
+`cargo test --workspace` → **223 passed**, 1 ignored timing diagnostic,
+zero warnings. (Baseline 212 + 11 new.)
+
+**Not in this PR:**
+
+- Decay, intensity behavior, fission/fusion templates, intensity labels
+  on `PropertySpec` — not needed for the acceptance tests; can be added
+  later as authoring needs surface.
+- Capability tree builder — PR 3.
+- Threshold / feeder plumbing — PR 4.
+
+---
+
+## 2026-05-22 — simthing-spec PRs 2–6 prep survey
+
+**Status:** Parked. No code changed. Pre-session codebase survey complete;
+divergences between the handoff doc and PR 1 code are documented.
+
+**Survey scope:** All `crates/simthing-spec/src/` files, `simthing-core`
+type API (`OverlayId`, `DimensionRegistry`, `SubFieldRole`, `ReductionRule`,
+`OverlayLifecycle`), `crates/simthing-feeder/src/lib.rs`,
+`crates/simthing-sim/src/threshold_registry.rs`, `docs/invariants.md`.
+`cargo test --workspace` → **212 passed**, 1 ignored, zero warnings.
+
+**Key findings for Opus:**
+
+1. **`PropertySpec` and `OverlaySpec` are thin stubs** — no layout info.
+   PR 2's `compile_property` / `compile_overlay` must expand them or be
+   scoped to minimal registration. Design call required.
+
+2. **`ActivationMode` missing `OnPrereqMet`** — will be added in PR 3.
+   `validate.rs` must reject it as an authored default.
+
+3. **`MaxActivePolicy`** in code is `Limited { count: usize }` only — no
+   `ReplacementPolicy` field or enum. Handoff §1.4 requires both.
+   Added in PR 5 when the handler needs it.
+
+4. **`CapabilityCategorySpec` has no `id` field** — `CategoryKey` in
+   `keys.rs` already uses `{ namespace, name }`. Either add `id: String`
+   to the struct or accept that category id == `namespace::name`.
+
+5. **`research_cost: f32` vs `ResearchRateSpec`** — struct has both
+   `research_cost: f32` (the literal threshold) and a vestigial
+   `research_rate: ResearchRateSpec`. PR 3 builder reads the `f32`; the
+   `research_rate` field is unused and can be dropped or ignored.
+
+6. **`DimensionRegistry::register` panics on duplicates** — `compile_property`
+   must check `id_of` first and return a `SpecError` instead.
+
+7. **No `registry.set_reduction_rule` method** — set
+   `SubFieldSpec::reduction_override: Some(ReductionRule::Max)` on each
+   sub-field when constructing the `SimProperty` before calling `register`.
+   Both `ReductionRule::Max` and the `reduction_override` field exist.
+
+8. **`CapabilityTreeDefinitionId` type does not exist** — define in PR 3.
+
+9. **`SpecError` needs more variants** — `DuplicateProperty`,
+   `OnPrereqMetAuthoredDefault`, `UnknownPrereqEntry`, `UnknownProperty`,
+   `UnsupportedMaxActive`, etc. Add per PR.
+
+10. **`simthing-feeder` dep absent from `simthing-spec/Cargo.toml`** — added in PR 4.
+
+Full divergence list + confirmed-working inventory in `docs/todo.md`.
+
+---
+
 ## 2026-05-22 — B2 fission-growth Approach C: incremental reduction topology
 
 **Status:** Landed (local). The reduction CSR is no longer rebuilt from
