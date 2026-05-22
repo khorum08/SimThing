@@ -6,6 +6,68 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 - Parameterize capability container kinds (PR #38)
+
+**Status:** Merged to `master` (`a8aab5b`, PR #38).
+
+**Problem resolved:**
+
+`simthing-sim` hardcoded `"tech_tree" | "national_ideas" | "talent_tree"` in
+two places (`fission.rs` and `boundary.rs`), violating the studio/simulation
+boundary: simulation crates must not embed capability-tree semantics.
+
+**Landed:**
+
+- `FissionTemplate::capability_container_kinds: Vec<String>` added in
+  `simthing-core/src/property.rs` with `#[serde(default)]`.
+- Hardcoded kind matchers removed from production code.
+- `pub(crate) fn is_capability_container(kind, container_kinds)` lives in
+  `fission.rs` and is reused by `boundary.rs` for `projected_fission_slots`
+  pre-grow headroom.
+- `execute_fission` passes `&ft.template.capability_container_kinds` into
+  `clone_capability_children`.
+- **Option A:** empty kinds list + `clone_capability_children: true` clones
+  nothing — caller must populate the list explicitly; no sim fallback.
+- Backward compat: omitted JSON field deserializes to `[]`; old templates
+  without capability semantics therefore clone nothing even if the bool were
+  true (safe default).
+
+**Files touched:**
+
+| Crate / doc | Change |
+|---|---|
+| `simthing-core/property.rs` | New field + serde default test |
+| `simthing-sim/fission.rs` | Parameterized filter, shared helper, tests |
+| `simthing-sim/boundary.rs` | Pre-grow uses template kinds; test updated |
+| `simthing-sim/threshold_registry.rs` | Struct literal field |
+| `simthing-sim/tests/boundary_integration.rs` | Struct literal field |
+| `simthing-driver/scenario.rs` | Struct literal field |
+| `docs/design_v6.md` | Addendum + §8/implementation-status updates |
+| `docs/capability_tree_v1.md` | Addendum §11 |
+| `docs/agents.md`, `docs/todo.md` | Brief sync |
+
+**Tests added / updated:**
+
+- `fission_template_deserializes_without_capability_container_kinds` (core)
+- `clone_capability_children_empty_kinds_clones_nothing` (sim unit)
+- `fission_clone_capability_children_remaps_affects_and_copies_shadow` —
+  now sets `capability_container_kinds: ["tech_tree"]`
+- `projected_fission_slots_counts_cloned_capability_subtrees` —
+  now sets `capability_container_kinds: ["tech_tree"]` (asserts 3 slots;
+  would fail at 1 if pre-grow still ignored the list)
+
+**Verification:**
+
+- `cargo test --workspace` → **199** passed, **1** ignored, zero warnings.
+- No `"tech_tree"` / `"national_ideas"` / `"talent_tree"` string literals
+  remain in simulation production paths — only test fixtures and docs.
+
+**Still open after this PR:** V6 guardrails Priorities 1–3 (see `docs/todo.md`).
+Priority 3 partially done: `capability_container_kinds` serde default tested;
+`clone_capability_children` serde default test still outstanding.
+
+---
+
 ## 2026-05-22 - Ingest v5/v6/capability-tree docs into agent briefing
 
 **Status:** Doc sync on `master` after PR #37 (`capability_tree_v1.md`,
@@ -103,8 +165,9 @@ only when slot assignment and event-kind semantics remain provably stable.
   present.
 - `FissionTemplate::clone_capability_children` landed with serde default
   `false`, preserving existing fission behavior unless explicitly enabled.
-- Opted-in fission now deep-clones capability containers (`tech_tree`,
-  `national_ideas`, `talent_tree`) into the spawned child, assigns fresh IDs,
+- Opted-in fission now deep-clones capability containers listed in
+  `FissionTemplate::capability_container_kinds` into the spawned child (see
+  PR #38 — hardcoded kind names removed 2026-05-22), assigns fresh IDs,
   allocates slots, copies shadow rows, and remaps overlay `affects` from parent
   owner to spawned owner.
 - Boundary fission pre-grow now accounts for cloned capability subtree slots
@@ -421,15 +484,21 @@ growth target.
 
 ## Next session pickup
 
-**197/197** tests passing plus 1 ignored timing diagnostic, zero warnings.
-`master` and `origin/master` include V6 suspended overlays + capability fission
-clone (`f39fe6d`), capability-tree concept docs (PR #37), GPU intent-delta hot path,
-consolidated tick command submission, synthetic stress scenarios, benchmark
-attribution, static-boundary skipping, fission path lookup optimization, R2 tree-index
-sharing, bench guards, replay hardening, B1 targeted boundary value upload, and B2
-stable-buffer retention. Design reference: **`docs/design_v6.md`** (current),
-`docs/design_v5.md` (historical), `docs/capability_tree_v1.md` (studio capability
-trees); implementation review: `docs/chatgpt_implementation_review.md`.
+**199/199** tests passing plus 1 ignored timing diagnostic, zero warnings.
+`master` and `origin/master` include:
+
+- V6 suspended overlays + capability fission clone (`f39fe6d`)
+- Parameterized `capability_container_kinds` — no sim hardcoding (PR #38,
+  `a8aab5b`)
+- Capability-tree concept docs (PR #37), agent briefing sync (`07076b4`)
+- GPU intent-delta hot path, consolidated tick submission, stress scenarios,
+  benchmark attribution, static-boundary skipping, fission path indexing,
+  R2 tree-index sharing, bench guards, replay hardening, B1 targeted boundary
+  value upload, B2 stable-buffer retention, used-range threshold readback
+
+**Design reference:** `docs/design_v6.md` (current, incl. addenda) ·
+`docs/design_v5.md` (historical) · `docs/capability_tree_v1.md` (studio) ·
+`docs/chatgpt_implementation_review.md`
 
 ### Todo (recommended order)
 
@@ -477,6 +546,12 @@ trees); implementation review: `docs/chatgpt_implementation_review.md`.
       retain threshold and reduction buffers (`f470c5e`).
 - [x] **Used-range threshold event readback.** Candidate readback maps only
       fired-event bytes and reports `tick_event_readback_bytes` (`5cc4254`).
+- [x] **V6 simulation core** — suspended overlays, activate/suspend, capability
+      fission clone (`f39fe6d`).
+- [x] **Parameterize capability container kinds (PR #38).** No hardcoded
+      `Custom(...)` labels in `simthing-sim`; `capability_container_kinds`
+      on `FissionTemplate`; Option A empty-list semantics; serde default test
+      for kinds field.
 
 #### Next
 
@@ -484,9 +559,11 @@ trees); implementation review: `docs/chatgpt_implementation_review.md`.
       `ActivateOverlay` puts a formerly suspended overlay into the next Pass 3
       upload and affects values on the following tick.
 - [ ] **V6 guardrail — capability fission replay (Priority 2).** End-to-end
-      replay test for fission with `clone_capability_children: true`.
-- [ ] **V6 guardrail — serde default test (Priority 3).** Old `FissionTemplate`
-      without `clone_capability_children` deserializes as `false`.
+      replay test with `clone_capability_children: true` and populated
+      `capability_container_kinds`; verify full spawned subtree payload.
+- [ ] **V6 guardrail — serde default for `clone_capability_children` (Priority 3,
+      partial).** `capability_container_kinds` default test landed PR #38;
+      `clone_capability_children` default test still open.
 - [ ] **Retain/batch topology on fission growth boundaries (B2, Priority 4).**
       `fission_stress` is roughly 60 ms/sim-day on the current local smoke run.
       Stable-boundary retention and used-range event readback are done; remaining
@@ -495,23 +572,20 @@ trees); implementation review: `docs/chatgpt_implementation_review.md`.
       delta emission. Batch or incrementally patch growth only if event-kind
       semantics and slot topology remain provably correct.
 - [ ] **Capability-tree studio layer.** Authoring/instantiation per
-      `capability_tree_v1.md` and `workshop/tech_tree_decisions.md` — simulation
-      crates stay agnostic; studio reads threshold events and issues
-      `ActivateOverlay` / `SuspendOverlay`.
+      `capability_tree_v1.md` and `workshop/tech_tree_decisions.md` — studio
+      populates `capability_container_kinds` on faction fission templates;
+      simulation crates stay agnostic.
 - [ ] **Document/prototype map-scale representation.** Keep current `SimThing` as
       semantic authoring state; evaluate arena/topology sidecars only after benchmark
       data shows tree representation pressure.
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds — behind
       the GPU performance path.
 
-**Recent:** B1 targeted boundary value uploads are implemented with conservative
-full-upload fallbacks. B2 has started with safe retention: topology-stable active
-boundaries now retain threshold and reduction buffers instead of rebuilding them.
-Threshold event candidate readback now maps only the used event range rather than
-the full candidate buffer, and bench output reports `tick_event_readback_bytes`.
-R2 shares one boundary tree index across lifecycle, expiry, and fission; bench
-`--check` guards stress scenarios; replay integration test validates entry kinds
-and lineage parity. Next perf target: deeper fission-growth topology batching.
+**Recent:** PR #38 removed the last simulation-crate hardcoding of capability-tree
+kind names. Fission clone and boundary pre-grow both read
+`FissionTemplate::capability_container_kinds` as opaque strings from studio/RON.
+Architectural violation closed. Next: V6 GPU/replay guardrails (Priorities 1–3),
+then B2 fission-growth batching.
 
 **Tabled:** `simthing-studio` designer UI; unified `BoundaryIndex` single-pass
 boundary walk (review item 4 / C1 — Opus-tier, defer until B2 lands).

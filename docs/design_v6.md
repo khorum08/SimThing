@@ -22,11 +22,11 @@ substantive enough to make v5 incomplete as a reference:
    structural mutations. Zero slot allocation, zero tree reshape.
 
 3. **`FissionTemplate::clone_capability_children`** — a new field on
-   `FissionTemplate` that controls whether capability subtrees
-   (`Custom("tech_tree")`, `Custom("national_ideas")`, etc.) are deep-cloned
+   `FissionTemplate` that controls whether capability subtrees are deep-cloned
    from the parent into the fissioned child at spawn time. Default `false`.
-   Used for faction-level fissions where the child faction should inherit the
-   parent's capability state.
+   Which `Custom(...)` kinds qualify is declared separately via
+   `capability_container_kinds` (see addendum below). Used for faction-level
+   fissions where the child faction should inherit the parent's capability state.
 
 None of these change the GPU pipeline, the reduction tier, the threshold
 system, or the evaluation algorithm. They extend the overlay lifecycle model
@@ -47,8 +47,9 @@ Implemented:
 - `OverlayContribution.active` for inspector/UI attribution.
 - Empty-boundary skip logic that treats suspended overlays as inert.
 - `FissionTemplate::clone_capability_children: bool` with serde default.
-- Fission-time capability-subtree cloning for `Custom("tech_tree")`,
-  `Custom("national_ideas")`, and `Custom("talent_tree")`.
+- Fission-time capability-subtree cloning for parent children whose
+  `SimThingKind::Custom(name)` appears in the template's
+  `capability_container_kinds` list (opaque strings from studio/RON).
 - Fresh IDs and slots for cloned capability subtrees.
 - Shadow-row copies for cloned capability nodes.
 - Overlay `affects` remapping from the parent owner to the spawned owner.
@@ -76,6 +77,63 @@ Resolved:
   `FissionTemplate::capability_container_kinds: Vec<String>` (serde default `[]`)
   supplies opaque `Custom(...)` labels from the studio layer; empty means clone
   nothing even when `clone_capability_children: true`.
+
+### Addendum — `capability_container_kinds` (PR #38, `a8aab5b`)
+
+**Land date:** 2026-05-22 · **Commit:** `a8aab5b` · **PR:** #38
+
+The initial V6 implementation (`f39fe6d`) cloned capability children by matching
+hardcoded `Custom("tech_tree")`, `Custom("national_ideas")`, and
+`Custom("talent_tree")` in `simthing-sim`. That violated the studio/simulation
+boundary documented in §8 and in `capability_tree_v1.md` §10.
+
+**Change:**
+
+```rust
+pub struct FissionTemplate {
+    // ... existing fields ...
+    #[serde(default)]
+    pub clone_capability_children:  bool,
+    #[serde(default)]
+    pub capability_container_kinds: Vec<String>,  // NEW — PR #38
+}
+```
+
+**Semantics (Option A — no sim fallback):**
+
+| `clone_capability_children` | `capability_container_kinds` | Result |
+|---|---|---|
+| `false` | any | No clone path runs |
+| `true` | `[]` | Clone path runs but matches nothing |
+| `true` | `["tech_tree", ...]` | Clone each parent child with matching `Custom(name)` |
+
+The simulation crate compares strings opaquely. It does not know what a "tech
+tree" is. Studio/RON authors populate the list on faction fission templates.
+
+**Code paths updated:**
+
+- `simthing-sim/src/fission.rs` — `clone_capability_children(..., container_kinds)`;
+  shared `is_capability_container(kind, kinds)` helper.
+- `simthing-sim/src/boundary.rs` — `projected_fission_slots` pre-grow reads
+  `&ft.template.capability_container_kinds` for subtree size accounting.
+
+**Backward compatibility:**
+
+- JSON/RON omitting `capability_container_kinds` → deserializes to `[]`.
+- Legacy templates without capability semantics therefore clone nothing even if
+  `clone_capability_children` were true — safe default.
+
+**Tests:**
+
+- `fission_template_deserializes_without_capability_container_kinds`
+- `clone_capability_children_empty_kinds_clones_nothing`
+- Existing clone + pre-grow tests updated to set kinds explicitly.
+
+**Verification:** `cargo test --workspace` → 199 passed, 1 ignored.
+
+**Still open:** GPU integration test for activated suspended overlay; end-to-end
+replay for fission with cloned capability subtree; serde default test for
+`clone_capability_children` bool (kinds default test landed in this PR).
 
 ---
 
@@ -628,39 +686,27 @@ log records every transition. Version control tracks the `FissionTemplate`
 
 ## 18. Implementation State
 
-**188/188 tests passing on v5 master. V6 additions are not yet
-implemented.**
+**199/199 tests passing on master (1 ignored timing diagnostic). V6 simulation
+core landed (`f39fe6d`); capability kind parameterization landed PR #38
+(`a8aab5b`). See preface addenda for full status.**
 
-### V6 Work Required
+### Shipped (V6 + PR #38)
 
-#### Design changes (require thought before coding)
-
-| Location | Change |
+| Area | Status |
 |---|---|
-| `simthing-core/src/overlay.rs` | Add `Suspended` to `OverlayLifecycle`; replace `is_permanent()` with `is_active()` |
-| `simthing-feeder/src/work.rs` | Add `ActivateOverlay { target, overlay_id }` and `SuspendOverlay { target, overlay_id }` to `BoundaryRequest` |
-| `simthing-core/src/property.rs` | Add `clone_capability_children: bool` to `FissionTemplate` |
-| `simthing-sim/src/fission.rs` | Add `clone_capability_children` logic and `remap_overlay_affects` function; update pre-grow headroom |
+| `OverlayLifecycle::Suspended` | Landed |
+| `ActivateOverlay` / `SuspendOverlay` | Landed |
+| Capability fission clone | Landed |
+| `capability_container_kinds` (no sim hardcoding) | Landed PR #38 |
+| GPU passes / WGSL | Unchanged |
 
-#### Mechanical completions (compiler-driven exhaustive match)
+### Still open
 
-| Location | Change |
-|---|---|
-| `simthing-sim/src/gpu_sync.rs` | Skip `Suspended` in `build_overlay_deltas` |
-| `simthing-sim/src/overlay_lifecycle.rs` | Skip `Suspended` in dissolution logic |
-| `simthing-sim/src/delta_log.rs` | Add `OverlayActivated` variant; record lifecycle in `OverlayAttached` |
-| `simthing-sim/src/observability.rs` | Add `active: bool` to `OverlayContribution` |
-| `simthing-sim/src/tree_mutation.rs` | Add `ActivateOverlay` and `SuspendOverlay` handlers |
-| `simthing-sim/src/boundary.rs` | Route `ActivateOverlay` and `SuspendOverlay` through step 9; `tree_has_boundary_lifecycle_work` must not treat `Suspended` as lifecycle work |
-
-#### What does not change
-
-- All GPU passes (0–7) and all WGSL shaders — no changes
-- `simthing-gpu` — no changes
-- `DimensionRegistry` — no changes
-- Reduction tier — no changes
-- Threshold detection — no changes
-- `simthing-feeder` beyond `work.rs` — no changes
+- GPU boundary integration test: activated suspended overlay → next-tick Pass 3 effect
+- End-to-end replay: fission with cloned capability subtree
+- Serde default test for `clone_capability_children` bool
+- B2: topology retain/batch on fission growth boundaries
+- `simthing-studio` capability tree builder + designer UI (tabled)
 
 ### V5 Performance Baselines (unchanged)
 
@@ -673,10 +719,12 @@ implemented.**
 ### Open Work (carries forward from v5)
 
 - **Topology retain/batch on fission growth (B2)**
+- **V6 guardrail tests** — activated overlay GPU proof; capability fission replay
 - **Full RON scenario expansion**
 - **`simthing-studio` capability tree implementation** — `CapabilityTreeSpec`,
-  `CapabilityTreeBuilder`, `CapabilityTreeDefinition`, RON loader. Depends
-  on V6 simulation changes landing first.
+  `CapabilityTreeBuilder`, session init. Studio populates
+  `FissionTemplate::capability_container_kinds` on faction templates; simulation
+  crates remain agnostic. Depends on V6 + PR #38 (landed).
 - **`simthing-studio` designer UI** — tabled.
 
 ---

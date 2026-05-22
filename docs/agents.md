@@ -604,9 +604,9 @@ cd C:\Users\mvorm\SimThing
 cargo test
 ```
 
-All **197** tests must pass with zero warnings before any commit
-(16 core + 3 driver unit + 3 driver integration + 48 GPU + 24 feeder unit +
-5 feeder integration + 79 sim unit + 19 sim integration).
+All **199** tests must pass with zero warnings before any commit
+(17 core + 3 driver unit + 3 driver integration + 48 GPU + 24 feeder unit +
+5 feeder integration + 80 sim unit + 19 sim integration).
 One additional ignored timing diagnostic runs with `cargo test -- --ignored`.
 
 GPU tests skip themselves cleanly when no adapter is available

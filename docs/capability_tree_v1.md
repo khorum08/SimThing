@@ -921,3 +921,93 @@ have no knowledge of them:
 The simulation sees: floats accumulating in property columns, thresholds
 firing when they cross values, overlays transitioning from Suspended to
 Permanent, and effects propagating to spatial children. Nothing else.
+
+---
+
+## 11. Addendum — `capability_container_kinds` (PR #38, 2026-05-22)
+
+**Commit:** `a8aab5b` · **PR:** #38 · **Spec cross-ref:** `design_v6.md` preface
+addendum (same change)
+
+### What changed
+
+The V1 concept document described faction fission inheriting
+`tech_tree`, `national_ideas`, and `talent_tree` as if those names were
+simulation knowledge. PR #38 removes that coupling. The simulation now clones
+only children whose `SimThingKind::Custom(name)` appears in
+`FissionTemplate::capability_container_kinds` — a list of opaque strings
+authored by the studio layer.
+
+### Studio responsibility
+
+When defining a **faction fission template** in RON (or generated from
+`CapabilityTreeSpec` / game rules), the studio layer must:
+
+1. Set `clone_capability_children: true` when the spawned faction should inherit
+   capability state from the parent.
+2. Populate `capability_container_kinds` with every `Custom(...)` label used for
+   capability containers attached to factions in that game/mod.
+
+Example labels from this document: `"tech_tree"`, `"national_ideas"`,
+`"talent_tree"`. Modders may add `"racial_abilities"`, `"policy_tree"`, or any
+other label — no simulation recompile.
+
+```ron
+// On the SimProperty fission template for faction separatism / civil war:
+FissionTemplate(
+    child_kind:                 Faction,
+    fusion_intensity_threshold: 0.8,
+    fusion_scar_coefficient:    0.05,
+    resolution_label:           "separatism",
+    clone_capability_children:  true,
+    capability_container_kinds: [
+        "tech_tree",
+        "national_ideas",
+        "talent_tree",
+        "racial_abilities",
+    ],
+)
+```
+
+Cohort or location fission templates omit both fields (serde defaults:
+`clone_capability_children: false`, `capability_container_kinds: []`).
+
+### Option A semantics (no sim fallback)
+
+If `clone_capability_children: true` but `capability_container_kinds` is empty,
+**nothing is cloned**. This is intentional: the studio must declare which kinds
+qualify. There is no built-in default list in `simthing-sim`.
+
+### What the simulation still never knows
+
+Even after PR #38, the simulation does not know:
+
+- Which strings are "capability trees" vs ordinary `Custom` children
+- That `"tech_tree"` means research progress vs `"national_ideas"` means ideas
+- Research costs, prereqs, display names, or RON metadata
+
+It only knows: "clone parent children whose `Custom(name)` is in this list."
+
+### §9 update (faction fission inheritance)
+
+Section §9 remains valid with this clarification: inheritance is keyed by
+`capability_container_kinds`, not by fixed kind names. The studio layer maps
+each game's capability container labels into that list when authoring fission
+templates.
+
+### Tests proving the contract
+
+- `clone_capability_children_empty_kinds_clones_nothing` — bool true, list empty
+  → spawned faction has no capability children.
+- `fission_clone_capability_children_remaps_affects_and_copies_shadow` — list
+  contains `"tech_tree"` → clone + shadow copy + `affects` remap.
+- `projected_fission_slots_counts_cloned_capability_subtrees` — pre-grow headroom
+  uses the same list (asserts 3 slots for faction + 2-node tech subtree).
+
+### Next studio work (unchanged from V1 scope)
+
+- `CapabilityTreeBuilder` session init: attach capability SimThings, seed
+  suspended overlays, register property sub-fields.
+- Boundary handler: read Pass 7 threshold events → issue `ActivateOverlay`.
+- Faction fission template generation: populate `capability_container_kinds`
+  from game rules / mod config alongside capability tree labels used in the mod.
