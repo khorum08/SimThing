@@ -1888,6 +1888,273 @@ fn replay_fission_round_trip_reconstructs_spawned_child_and_lineage() {
     assert_eq!(driver.fission_lineage[0].child_id, spawned_id);
 }
 
+/// Priority 2 (V6 guardrail): End-to-end replay test for fission with cloned
+/// capability subtree.
+///
+/// Proves the V6 capability-inheritance contract is captured in the boundary
+/// delta log and faithfully reconstructed by `ReplayDriver`:
+///
+/// 1. A `FissionTemplate` with `clone_capability_children: true` and
+///    `capability_container_kinds: ["tech_tree"]` deep-clones the parent
+///    faction's `Custom("tech_tree")` subtree into the spawned faction.
+/// 2. `BoundaryDeltaEntry::FissionOccurred { parent, node }` carries the
+///    full spawned subtree payload (the spawned Faction + the cloned
+///    tech_tree + the tech_tree's own children).
+/// 3. `ReplayDriver::apply_entry` allocates slots for every node in the
+///    cloned subtree via `populate_from_tree` and re-attaches the spawned
+///    Faction with its capability children intact.
+///
+/// Tree shape:
+///   World → Location → Faction(loyalty Amount=0.5, Velocity=-0.21)
+///                          └── tech_tree [Custom("tech_tree")]
+///                                └── propulsion_node [Custom("propulsion")]
+///
+/// After fission: the original Faction has a new sibling child Faction whose
+/// children include a fresh-id clone of the tech_tree subtree (2 nodes).
+#[test]
+fn replay_fission_with_cloned_capability_subtree_reconstructs_full_payload() {
+    use std::io::Cursor;
+
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    // ── Registry: loyalty whose fission spawns a Faction, cloning tech_tree ──
+    let mut reg = DimensionRegistry::new();
+    let mut loyalty = SimProperty::simple("core", "loyalty", 0);
+    loyalty.intensity_behavior = Some(IntensityBehavior::default());
+    loyalty.fission_templates = vec![FissionThreshold {
+        sub_field: SubFieldRole::Amount,
+        threshold: 0.3,
+        direction: Direction::Falling,
+        template: FissionTemplate {
+            child_kind: SimThingKindTag::Faction,
+            fusion_intensity_threshold: 0.8,
+            fusion_scar_coefficient: 0.05,
+            resolution_label: "schism".into(),
+            clone_capability_children: true,
+            capability_container_kinds: vec!["tech_tree".into()],
+        },
+        secondary: None,
+    }];
+    reg.register(loyalty);
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+    let n_dims = reg.total_columns as u32;
+
+    // ── Build tree: World → Location → Faction → tech_tree → propulsion_node ──
+    let propulsion_node = SimThing::new(SimThingKind::Custom("propulsion".into()), 0);
+    let propulsion_id = propulsion_node.id;
+
+    let mut tech_tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+    let tech_tree_id = tech_tree.id;
+    tech_tree.add_child(propulsion_node);
+
+    let mut faction = SimThing::new(SimThingKind::Faction, 0);
+    let mut faction_loyalty = PropertyValue::from_layout(&reg.property(pid).layout);
+    faction_loyalty.data[amount_off] = 0.5;
+    faction_loyalty.data[vel_off] = -0.21;
+    faction.add_property(pid, faction_loyalty);
+    let faction_id = faction.id;
+    faction.add_child(tech_tree);
+
+    let mut loc = SimThing::new(SimThingKind::Location, 0);
+    loc.add_child(faction);
+    let mut world = SimThing::new(SimThingKind::World, 0);
+    world.add_child(loc);
+
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&world);
+
+    // ── GPU + shadow setup ────────────────────────────────────────────
+    const N_SLOTS: u32 = 32;
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (_tx, rx) = feeder_channel();
+
+    let faction_slot = alloc.slot_of(faction_id).unwrap() as usize;
+    let base = faction_slot * n_dims as usize;
+    coord.shadow[base + amount_off] = 0.5;
+    coord.shadow[base + vel_off] = -0.21;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    // Snapshot before any boundary work so replay starts from the same tree.
+    let snapshot = proto.snapshot(0);
+
+    // ── Drive ticks until the loyalty fission threshold fires ─────────
+    let mut events = Vec::new();
+    for _ in 0..8 {
+        let out = coord.tick(
+            &rx,
+            &mut patcher,
+            &proto.registry,
+            &proto.allocator,
+            &pipelines,
+            &mut state,
+            0.5,
+        );
+        if !out.events.is_empty() {
+            events = out.events;
+            break;
+        }
+    }
+    assert!(!events.is_empty(), "loyalty fission threshold must fire");
+
+    // ── Execute boundary: fission spawns Faction + clones tech_tree ──
+    let outcome = proto.execute(events, &mut patcher, &mut coord, &mut state, 1);
+    assert_eq!(
+        outcome.fission.fissions_executed, 1,
+        "expected exactly one fission"
+    );
+
+    // Find the spawned faction and verify the live tree carries the clone.
+    let original_faction = find_node(&proto.root, faction_id).expect("parent faction in tree");
+    let spawned_faction = original_faction
+        .children
+        .iter()
+        .find(|c| c.kind == SimThingKind::Faction)
+        .expect("spawned faction child");
+    let spawned_faction_id = spawned_faction.id;
+    assert_ne!(spawned_faction_id, faction_id);
+
+    let cloned_tech_tree = spawned_faction
+        .children
+        .iter()
+        .find(|c| c.kind == SimThingKind::Custom("tech_tree".into()))
+        .expect("cloned tech_tree attached to spawned faction");
+    let cloned_tech_tree_id = cloned_tech_tree.id;
+    assert_ne!(
+        cloned_tech_tree_id, tech_tree_id,
+        "cloned tech_tree must have a fresh id"
+    );
+    assert_eq!(
+        cloned_tech_tree.children.len(),
+        1,
+        "cloned tech_tree must carry its propulsion child"
+    );
+    let cloned_propulsion = &cloned_tech_tree.children[0];
+    assert_eq!(
+        cloned_propulsion.kind,
+        SimThingKind::Custom("propulsion".into())
+    );
+    let cloned_propulsion_id = cloned_propulsion.id;
+    assert_ne!(cloned_propulsion_id, propulsion_id);
+
+    // ── Capture frame: the delta log must carry the full subtree ─────
+    let frame = ReplayFrame {
+        day: 1,
+        entries: proto.take_delta_log(),
+        ..Default::default()
+    };
+
+    let fission_entry = frame
+        .entries
+        .iter()
+        .find_map(|e| match e {
+            BoundaryDeltaEntry::FissionOccurred { parent, node }
+                if parent == &faction_id && node.id == spawned_faction_id =>
+            {
+                Some(node)
+            }
+            _ => None,
+        })
+        .expect("frame must carry FissionOccurred with the spawned faction node");
+
+    // Critically: the FissionOccurred payload must include the cloned
+    // capability subtree, not just the bare spawned node.
+    let payload_tech_tree = fission_entry
+        .children
+        .iter()
+        .find(|c| c.kind == SimThingKind::Custom("tech_tree".into()))
+        .expect("FissionOccurred payload must include the cloned tech_tree");
+    assert_eq!(
+        payload_tech_tree.id, cloned_tech_tree_id,
+        "payload's cloned tech_tree id should match the live tree"
+    );
+    assert_eq!(
+        payload_tech_tree.children.len(),
+        1,
+        "payload's cloned tech_tree must include its propulsion child"
+    );
+    assert_eq!(
+        payload_tech_tree.children[0].id, cloned_propulsion_id,
+        "payload's propulsion child id must match the live tree"
+    );
+
+    // ── Round-trip through ReplayWriter/Reader ───────────────────────
+    let mut buf = Vec::new();
+    {
+        let mut writer = ReplayWriter::new(&mut buf);
+        writer.write_snapshot(&snapshot).unwrap();
+        writer.write_frame(&frame).unwrap();
+    }
+
+    let mut reader = ReplayReader::new(Cursor::new(buf));
+    let mut driver = ReplayDriver::from_snapshot(reader.read_snapshot().unwrap());
+    driver.apply_frame(reader.next_frame().unwrap().unwrap());
+
+    // ── Verify replay reconstruction matches the live tree ───────────
+    let replay_faction =
+        find_node(&driver.root, faction_id).expect("original faction survives replay");
+    let replay_spawned = replay_faction
+        .children
+        .iter()
+        .find(|c| c.id == spawned_faction_id)
+        .expect("spawned faction re-attached on replay");
+    assert_eq!(replay_spawned.kind, SimThingKind::Faction);
+
+    let replay_tech_tree = replay_spawned
+        .children
+        .iter()
+        .find(|c| c.id == cloned_tech_tree_id)
+        .expect("cloned tech_tree reconstructed on replay");
+    assert_eq!(
+        replay_tech_tree.kind,
+        SimThingKind::Custom("tech_tree".into())
+    );
+    assert_eq!(
+        replay_tech_tree.children.len(),
+        1,
+        "cloned tech_tree's propulsion child must be reconstructed"
+    );
+    assert_eq!(replay_tech_tree.children[0].id, cloned_propulsion_id);
+    assert_eq!(
+        replay_tech_tree.children[0].kind,
+        SimThingKind::Custom("propulsion".into())
+    );
+
+    // The replay allocator must have slots for every node in the cloned
+    // subtree — populate_from_tree walks recursively.
+    assert!(
+        driver.allocator.slot_of(spawned_faction_id).is_some(),
+        "spawned faction must have a replay slot"
+    );
+    assert!(
+        driver.allocator.slot_of(cloned_tech_tree_id).is_some(),
+        "cloned tech_tree must have a replay slot"
+    );
+    assert!(
+        driver.allocator.slot_of(cloned_propulsion_id).is_some(),
+        "cloned propulsion node must have a replay slot"
+    );
+
+    // The fission lineage must round-trip — same parent/child pair as live.
+    assert_eq!(
+        driver.fission_lineage.len(),
+        1,
+        "exactly one lineage record"
+    );
+    assert_eq!(driver.fission_lineage[0].parent_id, faction_id);
+    assert_eq!(driver.fission_lineage[0].child_id, spawned_faction_id);
+}
+
 /// Helper: depth-first find a node by id.
 fn find_node(node: &SimThing, id: simthing_core::SimThingId) -> Option<&SimThing> {
     if node.id == id {
@@ -1911,4 +2178,210 @@ fn find_node_mut(node: &mut SimThing, id: simthing_core::SimThingId) -> Option<&
         }
     }
     None
+}
+
+/// Priority 1 (V6 guardrail): Activated overlay GPU integration test.
+///
+/// Proves the full V6 suspended-overlay activation contract end-to-end:
+///
+/// 1. A `Suspended { when_activated: Permanent }` overlay attached to a
+///    SimThing has zero effect on the GPU `values` buffer (Pass 3 filters it).
+/// 2. `BoundaryRequest::ActivateOverlay` transitions the overlay's lifecycle
+///    to the parked `when_activated` (here: `Permanent`).
+/// 3. The boundary's `gpu_sync` rebuilds the Pass 3 delta buffer, now
+///    including the newly-activated overlay.
+/// 4. The next tick's Pass 3 applies the overlay to `values`.
+///
+/// Setup: cohort with loyalty (Amount=0.5) carries a suspended Multiply(1.5)
+/// overlay on Amount. After activation, Pass 3 applies 0.5 → 0.75.
+#[test]
+fn activated_suspended_overlay_appears_in_gpu_delta_and_affects_values() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    // ── Setup ─────────────────────────────────────────────────────────
+    let mut reg = DimensionRegistry::new();
+    reg.register(loyalty_with_fission());
+
+    let (mut world, alloc, cohort_id) = build_initial_world(&mut reg);
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let n_dims = reg.total_columns as u32;
+
+    // Suspended overlay on the cohort: Multiply(1.5) on loyalty Amount.
+    // when_activated = Permanent → after activation the overlay applies
+    // every Pass 3 until removed.
+    let overlay_id = OverlayId::new();
+    let suspended_overlay = Overlay {
+        id: overlay_id,
+        kind: OverlayKind::Policy,
+        source: OverlaySource::System,
+        affects: vec![cohort_id],
+        transform: PropertyTransformDelta {
+            property_id: pid,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(1.5))],
+        },
+        lifecycle: OverlayLifecycle::Suspended {
+            when_activated: Box::new(OverlayLifecycle::Permanent),
+        },
+    };
+    let cohort_node = find_node_mut(&mut world, cohort_id).expect("cohort exists");
+    cohort_node.overlays.push(suspended_overlay);
+
+    // Pre-size GPU + shadow with headroom.
+    const N_SLOTS: u32 = 16;
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (tx, rx) = feeder_channel();
+
+    // Project initial tree into shadow rows; Velocity stays 0 so dt=0 keeps
+    // the value pinned at 0.5 until an overlay shifts it.
+    let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
+    let base = cohort_slot * n_dims as usize;
+    let initial_amount = 0.5_f32;
+    coord.shadow[base + amount_off] = initial_amount;
+    // Velocity is left at 0 (build_initial_world set -0.21; reset it so we
+    // can isolate the overlay's contribution from integration).
+    let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+    coord.shadow[base + vel_off] = 0.0;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    // Sanity: the initial sync uploaded zero overlay deltas because the only
+    // overlay on the tree is suspended.
+    {
+        let gpu_amount = state.read_values()[base + amount_off];
+        assert_eq!(
+            gpu_amount.to_bits(),
+            initial_amount.to_bits(),
+            "initial GPU value should reflect shadow only (no suspended overlay effect)"
+        );
+    }
+
+    // ── Tick 1: prove the suspended overlay is inert on the GPU ───────
+    let tick1 = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0, // dt=0: Pass 1/2 are no-ops; only Pass 3 could move the value
+    );
+    assert!(tick1.boundary_reached, "ticks_per_day=1 should reach boundary");
+    let gpu_after_tick1 = state.read_values();
+    assert_eq!(
+        gpu_after_tick1[base + amount_off].to_bits(),
+        initial_amount.to_bits(),
+        "suspended overlay must not affect the GPU values buffer"
+    );
+
+    // Execute the first boundary (empty — no requests, no threshold events).
+    // This proves the suspended overlay also doesn't trigger boundary work.
+    let outcome_pre = proto.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 1);
+    assert_eq!(
+        outcome_pre.maintainer.overlay_activations, 0,
+        "no activations should occur before the request is submitted"
+    );
+
+    // The overlay is still suspended on the CPU side.
+    {
+        let cohort = find_node(&proto.root, cohort_id).expect("cohort still in tree");
+        let overlay = cohort
+            .overlays
+            .iter()
+            .find(|o| o.id == overlay_id)
+            .expect("overlay still attached");
+        assert!(
+            matches!(overlay.lifecycle, OverlayLifecycle::Suspended { .. }),
+            "overlay should remain suspended pre-activation, got {:?}",
+            overlay.lifecycle
+        );
+    }
+
+    // ── Submit ActivateOverlay through the feeder channel ─────────────
+    tx.submit_boundary(BoundaryRequest::ActivateOverlay {
+        target: cohort_id,
+        overlay_id,
+    })
+    .expect("feeder channel still open");
+
+    // ── Tick 2: drain the request into pending_boundary ───────────────
+    // Pass 3 still has no active overlay deltas (activation happens in
+    // boundary step, not in tick), so values stay at 0.5.
+    let tick2 = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
+    );
+    assert!(tick2.boundary_reached);
+    assert_eq!(
+        state.read_values()[base + amount_off].to_bits(),
+        initial_amount.to_bits(),
+        "value stays pinned until the boundary activates the overlay"
+    );
+
+    // ── Execute boundary 2: ActivateOverlay flips lifecycle and the
+    //    boundary's gpu_sync rebuilds the Pass 3 delta buffer ──────────
+    let outcome_activate = proto.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 2);
+    assert_eq!(
+        outcome_activate.maintainer.overlay_activations, 1,
+        "boundary should activate exactly one overlay"
+    );
+    assert_eq!(
+        outcome_activate.maintainer.overlays_activated,
+        vec![(cohort_id, overlay_id)],
+        "outcome should record the activated (target, overlay) pair"
+    );
+    assert!(
+        outcome_activate.gpu_sync.overlay_deltas_uploaded >= 1,
+        "Pass 3 delta buffer must include the newly-activated overlay (got {})",
+        outcome_activate.gpu_sync.overlay_deltas_uploaded,
+    );
+
+    // The overlay's lifecycle is now Permanent (the parked `when_activated`).
+    {
+        let cohort = find_node(&proto.root, cohort_id).expect("cohort still in tree");
+        let overlay = cohort
+            .overlays
+            .iter()
+            .find(|o| o.id == overlay_id)
+            .expect("overlay still attached");
+        assert!(
+            matches!(overlay.lifecycle, OverlayLifecycle::Permanent),
+            "overlay must transition Suspended → Permanent, got {:?}",
+            overlay.lifecycle
+        );
+    }
+
+    // ── Tick 3: Pass 3 now applies the activated overlay ─────────────
+    // dt=0 keeps integration off; the only thing that can move the value
+    // is the newly-uploaded overlay delta.
+    let _tick3 = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
+    );
+    let amount_after = state.read_values()[base + amount_off];
+    let expected = initial_amount * 1.5;
+    assert!(
+        (amount_after - expected).abs() < 1e-5,
+        "activated overlay should multiply Amount by 1.5: expected {}, got {}",
+        expected,
+        amount_after,
+    );
 }
