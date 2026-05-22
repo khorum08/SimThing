@@ -2,8 +2,10 @@ use serde::{Deserialize, Serialize};
 
 /// How a capability entry is authored to become active.
 ///
-/// Runtime-only states such as `OnPrereqMet`, `Active`, or `WaitingOnPrereq`
-/// will be represented separately in later PRs.
+/// `Threshold` and `PlayerSelection` are valid authored defaults.
+/// `OnPrereqMet` is **runtime-only** — entries transition into it when their
+/// progress threshold fires but prereqs are not yet met. Authoring an entry
+/// directly as `OnPrereqMet` is a hard error (`SpecError::OnPrereqMetAuthoredDefault`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 #[non_exhaustive]
@@ -13,6 +15,10 @@ pub enum ActivationMode {
     Threshold,
     /// No GPU threshold; activated by explicit player/UI selection.
     PlayerSelection,
+    /// Runtime-only state. The progress threshold fired but at least one prereq
+    /// was not yet satisfied; a CPU sweep re-checks after every activation in
+    /// the same tree and once at session init. Never valid as an authored default.
+    OnPrereqMet,
 }
 
 /// Authored research-rate seam (Script arm reserved for future).

@@ -109,6 +109,112 @@ for crate naming; mechanism decisions remain valid.
 
 ---
 
+## 2026-05-22 — simthing-spec PR 3: CapabilityTreeBuilder
+
+**Status:** Landed (local). Authored `CapabilityTreeSpec` now compiles
+end-to-end into a template `SimThing`, a shared `CapabilityTreeDefinition`,
+and the `CapabilityUnlockRegistration`s that PR 4 will hand to the feeder.
+
+**What landed:**
+
+1. **`ActivationMode::OnPrereqMet`.** Third arm added to the enum.
+   Runtime-only — `validate.rs` rejects authoring with the new
+   `SpecError::OnPrereqMetAuthoredDefault`.
+
+2. **`runtime/` module.**
+   - `CapabilityTreeDefinitionId(u32)` — globally-unique newtype with an
+     atomic `new()` allocator (same pattern as `OverlayId` / `SimThingId`).
+   - `CapabilityTreeDefinition { id, tree_id, entries, by_threshold,
+     by_overlay }` — shared, read-only template. `by_threshold` keys are
+     `(SimPropertyId, SubFieldRole)`; `by_overlay` keys are `OverlayId`.
+   - `CapabilityDefinition { key, display_name, description, flavor_text,
+     overlay_ids, effect_keys, prereqs }` — `overlay_ids` and `effect_keys`
+     are parallel-indexed; `effect_keys` are logical (`entry / effect_index`)
+     and stable across builds, `overlay_ids` come from the runtime atomic
+     so are not.
+   - `CapabilityPrereq { property_id, role, col, min_value }` — column
+     resolved at build time via `col_for_role`. Boundary handler (PR 5)
+     does pure array reads.
+   - `CapabilityUnlockRegistration` placeholder. PR 4 replaces with a
+     re-export from `simthing-feeder`.
+
+3. **`compile/capability.rs::CapabilityTreeBuilder::build`.** Order of operations:
+   - Always-on validation (`validate_capability_tree` — extended below).
+   - Per category: register a `SimProperty` with `PropertyLayout { sub_fields }`
+     where each sub-field is `SubFieldSpec { role: Named(entry.id),
+     reduction_override: Some(ReductionRule::Max), clamp: Floored(0.0),
+     default: 0.0, governed_by: None, ... }`. `ReductionRule::Max` is
+     forced unconditionally — capability progress sub-fields must not get
+     `Mean` even though `SubFieldRole::Named` would default that way.
+   - Build the template `SimThing { kind: Custom(tree_kind),
+     properties: <progress seeded to 0.0>, overlays: [] }`.
+   - For each effect: validate `targets_property` (`"ns::name"`) exists in
+     registry, validate every delta's `SubFieldRole` is in the target
+     layout, allocate an `OverlayId`, push the `Suspended { when_activated:
+     effect.when_activated }` `Overlay` onto the tree.
+   - For each prereq: parse `"ns::name"`, look up category property,
+     resolve `col` via `col_for_role(Named(entry_id), layout)`, look up
+     `min_value` from the prereq entry's `research_cost`.
+   - For each `Threshold` entry: emit one `CapabilityUnlockRegistration
+     { sim_thing_id: tree.id, property_id, sub_field, threshold }`.
+     `PlayerSelection` and `OnPrereqMet` produce none.
+   - Assemble and return `CapabilityTreeBuildOutput`.
+
+4. **`validate.rs` extensions.** Hard errors for `OnPrereqMet` authored
+   default, `Limited(n != 1)` (`UnsupportedMaxActive`), and single-entry
+   self-referential prereqs (`SelfReferentialPrereq`).
+
+5. **New `SpecError` variants:** `OnPrereqMetAuthoredDefault`,
+   `UnknownPrereqCategory`, `UnknownPrereqEntry`, `SelfReferentialPrereq`,
+   `UnsupportedMaxActive`, `InvalidEffectTarget`.
+
+**Design decisions resolved (from prep survey divergences):**
+
+- (1) Category prereq references use `"namespace::name"` format directly.
+  The `CategoryKey { namespace, name }` already in `keys.rs` is the
+  canonical lookup. `CapabilityCategorySpec` stays without an `id` field.
+- (3) `OnPrereqMet` added to `ActivationMode` enum, rejected by validator.
+- (4) Builder reads `CapabilitySpec.research_cost: f32` as both the
+  threshold value and prereq `min_value`. The vestigial `research_rate`
+  field is unused — kept for serde compatibility, can be removed later.
+- (8) `ReductionRule::Max` enforced via `SubFieldSpec::reduction_override`
+  baked into the `SimProperty` before `registry.register` (no fictional
+  `registry.set_reduction_rule` method needed).
+
+**Affects field:** all compiled capability overlays start `affects: vec![]`.
+PR 5's boundary handler will fill it in at activation time (it has the
+faction instance id and overlay id; the runtime resolves the target
+SimThing).
+
+**Tests:** `crates/simthing-spec/tests/pr3_capability_builder.rs` — 16 passing.
+- All 11 acceptance criteria: properties/overlays registered, reduction
+  Max enforced, duplicate entry id rejected, threshold positive cost
+  enforced, `OnPrereqMet` authored default rejected, `PlayerSelection`
+  produces no unlock, same-category prereq resolution, cross-category
+  prereq resolution, overlay ids per effect, by_overlay lookup,
+  logical effect keys stable across builds.
+- 5 supplementary: self-referential prereq, unknown prereq category,
+  unknown prereq entry, unsupported max_active, invalid effect target.
+
+`cargo test --workspace` → **239 passed**, 1 ignored, zero warnings.
+(Baseline 223 + 16 new.)
+
+**Not in this PR:**
+
+- `CapabilityUnlockRegistration` is a placeholder; PR 4 moves it to
+  `simthing-feeder` and replaces the import.
+- `ThresholdSemantic::CapabilityUnlock` and `ThresholdBuilder::build_with_capability_unlocks`
+  — PR 4 in `simthing-sim`.
+- Runtime instance / state types (`CapabilityTreeInstance`,
+  `CapabilityTreeState`, `CapabilityTreeNotification`) — PR 5.
+- `CapabilityTreeBoundaryHandler` — PR 5.
+- Mutual exclusivity policy (`ReplacementPolicy::SuspendOldest`) — PR 5.
+  Validator currently rejects any `Limited(n)` where n != 1, so the v0
+  constraint is enforced; the handler-side semantics land later.
+- Preview routine — PR 6.
+
+---
+
 ## 2026-05-22 — simthing-spec PR 2: property + overlay spec compiler
 
 **Status:** Landed (local). New `compile/` module turns authored

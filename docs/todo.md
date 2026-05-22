@@ -84,9 +84,25 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
       `InvalidSubFieldRole`, `InvalidPropertyReference`. Tests:
       `tests/pr2_compile.rs` — 11 passing (all 7 acceptance criteria
       from the handoff + 4 supplementary).
-- [ ] **PR 3** — `CapabilityTreeBuilder` (`compile/capability.rs`,
-      `runtime/capability_definition.rs`, `runtime/capability_state.rs`).
-      Stub `CapabilityUnlockRegistration` locally; PR 4 replaces it.
+- [x] **PR 3** — `CapabilityTreeBuilder`. Landed 2026-05-22.
+      `runtime/capability_definition.rs` defines `CapabilityTreeDefinitionId`
+      (atomic newtype), `CapabilityTreeDefinition` (shared, immutable,
+      `entries` / `by_threshold` / `by_overlay` lookups), `CapabilityDefinition`
+      (per-entry with parallel `overlay_ids` / `effect_keys`), `CapabilityPrereq`
+      (resolved `property_id` / `role` / `col` / `min_value`), and a
+      placeholder `CapabilityUnlockRegistration` (PR 4 moves to feeder).
+      `compile/capability.rs::CapabilityTreeBuilder::build` runs validation,
+      registers one `SimProperty` per category with one `Named(entry.id)`
+      sub-field each (`ReductionRule::Max` forced via `reduction_override`),
+      constructs the template `SimThing` (`Custom(tree_kind)`), compiles
+      each effect into a `Suspended { when_activated: ... }` `Overlay`,
+      resolves prereqs (cross-category supported via `"ns::name"` strings),
+      and emits one `CapabilityUnlockRegistration` per `Threshold` entry
+      (`PlayerSelection` produces none). `ActivationMode` gains `OnPrereqMet`;
+      `validate.rs` rejects it as an authored default plus `Limited(n != 1)`
+      and self-referential prereqs. Tests:
+      `tests/pr3_capability_builder.rs` — 16 passing (all 11 acceptance
+      criteria from the handoff + 5 supplementary).
 - [ ] **PR 4** — capability unlock registration bridge: add
       `CapabilityUnlockRegistration` to `simthing-feeder/src/capability.rs`;
       add `ThresholdSemantic::CapabilityUnlock` + `build_with_capability_unlocks`

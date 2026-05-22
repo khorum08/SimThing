@@ -14,10 +14,25 @@ pub fn validate_capability_tree(spec: &CapabilityTreeSpec) -> Result<SpecDiagnos
             return Err(SpecError::DuplicateCategory(category_key, spec.tree_id.clone()));
         }
 
+        // v0 max_active policy: None or Some(1). Anything else is unsupported.
+        if let Some(count) = category.max_active {
+            if count != 1 {
+                return Err(SpecError::UnsupportedMaxActive {
+                    in_tree:  spec.tree_id.clone(),
+                    category: category_key.clone(),
+                    count,
+                });
+            }
+        }
+
         for entry in &category.entries {
             let entry_key = format!("{category_key}::{}", entry.id);
             if !seen_entries.insert(entry_key.clone()) {
                 return Err(SpecError::DuplicateEntry(entry.id.clone(), spec.tree_id.clone()));
+            }
+
+            if entry.activation == ActivationMode::OnPrereqMet {
+                return Err(SpecError::OnPrereqMetAuthoredDefault(entry.id.clone()));
             }
 
             if entry.research_cost < 0.0 {
@@ -26,6 +41,13 @@ pub fn validate_capability_tree(spec: &CapabilityTreeSpec) -> Result<SpecDiagnos
 
             if entry.activation == ActivationMode::Threshold && entry.research_cost <= 0.0 {
                 return Err(SpecError::ThresholdRequiresPositiveCost(entry.id.clone()));
+            }
+
+            // Self-referential prereq detection (single-entry cycle).
+            for pre in &entry.prereqs {
+                if pre.category == category_key && pre.entry_id == entry.id {
+                    return Err(SpecError::SelfReferentialPrereq(entry.id.clone()));
+                }
             }
 
             if entry.effects.is_empty() {

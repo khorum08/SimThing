@@ -26,11 +26,19 @@ pub mod error;
 pub mod keys;
 pub mod metadata;
 pub mod ron;
+pub mod runtime;
 pub mod spec;
 pub mod validate;
 pub mod version;
 
-pub use compile::{compile_overlay, compile_property, CompileContext};
+pub use compile::{
+    compile_overlay, compile_property, CapabilityTreeBuildOutput, CapabilityTreeBuilder,
+    CompileContext,
+};
+pub use runtime::{
+    CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
+    CapabilityTreeDefinitionId, CapabilityUnlockRegistration,
+};
 pub use diagnostics::{
     DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult,
 };

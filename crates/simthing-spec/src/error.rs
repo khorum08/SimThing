@@ -55,4 +55,41 @@ pub enum SpecError {
         overlay:          String,
         targets_property: String,
     },
+
+    // ── Capability tree builder (PR 3) ───────────────────────────────────────
+    #[error("entry `{0}` was authored with ActivationMode::OnPrereqMet — that state is runtime-only")]
+    OnPrereqMetAuthoredDefault(String),
+
+    #[error("entry `{entry_id}` in tree `{in_tree}` references unknown prereq category `{category}` (expected `namespace::name`)")]
+    UnknownPrereqCategory {
+        in_tree:  String,
+        entry_id: String,
+        category: String,
+    },
+
+    #[error("entry `{entry_id}` in tree `{in_tree}` references unknown prereq entry `{prereq_entry_id}` in category `{category}`")]
+    UnknownPrereqEntry {
+        in_tree:         String,
+        entry_id:        String,
+        category:        String,
+        prereq_entry_id: String,
+    },
+
+    #[error("entry `{0}` declares itself as a prereq")]
+    SelfReferentialPrereq(String),
+
+    #[error("category `{category}` in tree `{in_tree}` sets max_active = {count}; v0 supports only Unlimited (None) or Limited(1)")]
+    UnsupportedMaxActive {
+        in_tree:  String,
+        category: String,
+        count:    usize,
+    },
+
+    #[error("entry `{entry_id}` effect #{effect_index} targets property `{targets_property}`: {reason}")]
+    InvalidEffectTarget {
+        entry_id:         String,
+        effect_index:     usize,
+        targets_property: String,
+        reason:           String,
+    },
 }
