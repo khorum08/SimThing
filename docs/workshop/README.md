@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `c0fd27c` (PR #52 code `7914528`). **Tests:** 314 passed, 1 ignored. **Next:** Codex O1.
+**Parking (2026-05-23):** `master` @ `70dc00e` (PR #52 code `7914528`). **Tests:** 314 passed, 1 ignored. **Next:** Codex O1.
 
 ## Canonical — `simthing-spec` implementation progress
 
