@@ -90,6 +90,15 @@ pub struct FissionOutcome {
     /// Lineage records whose child fused this boundary. The
     /// `BoundaryProtocol` removes these from its persistent lineage vec.
     pub lineage_removed: Vec<FissionLineageRecord>,
+    /// True if any executed fission this boundary cloned capability
+    /// subtrees (`FissionTemplate.clone_capability_children` + non-empty
+    /// `capability_container_kinds` produced at least one new slot under
+    /// the spawned child). S5: when set, the boundary's Approach C
+    /// append-only topology patch is disqualified — the patch only sees
+    /// the (parent → new_child) edge from `fission_pairs` and misses the
+    /// cloned subtree's internal parent→child edges. Full rebuild path
+    /// is correct; conservative fix per `docs/todo.md` S5.
+    pub cloned_capability_subtrees: bool,
 }
 
 /// Execute all fission and fusion events for one boundary.
@@ -204,7 +213,7 @@ fn execute_fission(
             seed_fission_child(parent, &mut new_child, registry, pid, parent_slot, new_slot, values_shadow, n_dims);
         }
         if ft.template.clone_capability_children {
-            clone_capability_children(
+            let new_slots = clone_capability_children(
                 parent,
                 &mut new_child,
                 allocator,
@@ -212,6 +221,9 @@ fn execute_fission(
                 n_dims,
                 &ft.template.capability_container_kinds,
             );
+            if new_slots > 0 {
+                out.cloned_capability_subtrees = true;
+            }
         }
     }
 
@@ -285,6 +297,11 @@ pub(crate) fn is_capability_container(kind: &SimThingKind, container_kinds: &[St
     }
 }
 
+/// Returns the number of new slots allocated for cloned capability
+/// subtrees. S5: callers use the count to gate Approach C topology
+/// append (any non-zero count means the new (host → cloned-root) plus
+/// internal subtree edges were added — the append path only sees
+/// `fission_pairs` and would drift).
 fn clone_capability_children(
     parent:          &SimThing,
     child:           &mut SimThing,
@@ -292,7 +309,8 @@ fn clone_capability_children(
     values_shadow:   &mut [f32],
     n_dims:          usize,
     container_kinds: &[String],
-) {
+) -> u32 {
+    let mut new_slots = 0u32;
     for source_child in parent
         .children
         .iter()
@@ -303,9 +321,11 @@ fn clone_capability_children(
             let Some(source_slot) = allocator.slot_of(source_id) else { continue };
             let cloned_slot = allocator.alloc(cloned_id);
             copy_shadow_row(source_slot, cloned_slot, values_shadow, n_dims);
+            new_slots += 1;
         }
         child.add_child(cloned);
     }
+    new_slots
 }
 
 fn clone_subtree_with_fresh_ids(

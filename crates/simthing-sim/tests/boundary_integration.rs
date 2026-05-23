@@ -2206,12 +2206,14 @@ fn replay_fission_with_cloned_capability_subtree_reconstructs_full_payload() {
 /// S5 regression guard: fission with `clone_capability_children` must not leave
 /// Approach C incremental topology cache diverged from a full tree walk.
 ///
-/// **Currently ignored / RED:** append is eligible for pure fission but only
-/// patches `fission_pairs` edges. Cloned multi-node capability subtrees add
-/// additional parent→child edges that the append path misses. Codex S5 fix:
-/// disable Approach C append when `clone_capability_children` is set (conservative).
+/// Approach C only patches `fission_pairs` edges (original_parent → new_child).
+/// Cloned multi-node capability subtrees add additional parent→child edges
+/// inside the new_child subtree that an append path would miss. Conservative
+/// fix: `FissionOutcome.cloned_capability_subtrees` gates eligibility — when
+/// set, Approach C is disqualified and the full-rebuild path runs (correct,
+/// slower). Tighter incremental support is future work (track every
+/// parent→child edge added during fission).
 #[test]
-#[ignore = "S5: Approach C append misses cloned capability subtree edges; Codex fix required"]
 fn fission_with_cloned_capability_subtree_reduction_topology_matches_full_rebuild() {
     let Some(ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
@@ -2298,7 +2300,9 @@ fn fission_with_cloned_capability_subtree_reduction_topology_matches_full_rebuil
     let outcome = proto.execute(events, &mut patcher, &mut coord, &mut state, 1);
     assert_eq!(outcome.fission.fissions_executed, 1);
 
-    // Approach C append path currently runs for this pure-fission boundary.
+    // S5 fix: Approach C is now DISABLED for fissions that cloned capability
+    // subtrees; the full-rebuild path in `gpu_sync` runs instead and uploads
+    // the topology CSR. Either path keeps `reduction_edges > 0`.
     assert!(
         outcome.gpu_sync.reduction_edges > 0,
         "topology CSR should be uploaded after fission growth"

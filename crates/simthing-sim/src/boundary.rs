@@ -560,6 +560,13 @@ impl BoundaryProtocol {
             && out.fission.fissions_executed > 0
             && out.fission.fusions_executed == 0
             && out.fission.lineage_removed.is_empty()
+            // S5: cloned capability subtrees introduce parent→child edges
+            // INSIDE the spawned child (cloned_root → its descendants).
+            // `fission_pairs` only captures (original_parent → new_child);
+            // the append path would miss the subtree edges and drift from
+            // a full rebuild. Conservative fix: fall back to full rebuild
+            // whenever any fission this boundary cloned subtrees.
+            && !out.fission.cloned_capability_subtrees
             && out.expiry.expired.is_empty()
             && out.maintainer.allocated.is_empty()
             && out.maintainer.tombstoned.is_empty()

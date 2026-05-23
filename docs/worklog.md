@@ -6,6 +6,41 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-23 — S5: Approach C disabled for cloned capability subtrees
+
+**Status:** `master` @ pending push.
+
+**Landed:**
+
+- `simthing-sim::fission`: `FissionOutcome.cloned_capability_subtrees: bool`
+  flag set when any executed fission this boundary cloned a capability
+  subtree with at least one new slot. `clone_capability_children` now
+  returns the count of new slots so the caller can drive the flag.
+- `simthing-sim::boundary`: Approach C eligibility predicate excludes
+  fissions that cloned capability subtrees. Full-rebuild path in
+  `gpu_sync` runs instead — correct, slightly slower than incremental
+  append. The ignored S5 RED test now passes; `#[ignore]` removed.
+
+**Why conservative:** Approach C's append loop only sees
+`fission_pairs` edges (`original_parent → new_child`). A cloned
+capability subtree adds further parent→child edges INSIDE the new
+child (`new_child → cap_tree_clone → ...`); the append path missed
+those and `cached_topology_state` drifted from a fresh `build_topology`
+walk. Tighter incremental support (track every parent→child edge added
+during fission) is future work.
+
+**Deferred (out of scope, separate design):** "Append-only external
+thresholds for new clones" per `design_v6.5.md:122`. Spec-layer
+capability unlock thresholds for fission-spawned cloned subtrees have
+no registration path today — `install::compile_and_install` runs only
+at session open. Decision needed: should fission re-invoke install, or
+should `FissionOutcome` carry threshold registrations for the new
+clone? Tracked as follow-up.
+
+**Test counts:** 324 passed, 1 ignored (perf bench, unrelated).
+
+---
+
 ## 2026-05-23 — EffectTarget ADR implementation
 
 **Status:** `master` @ pending push.
