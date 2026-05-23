@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `b0912bc`. **Tests:** 322 passed, 2 ignored. **Next (Codex P0):** O1b handler overlay-id fix. **Cursor:** kind/effect-target docs PR.
+**Parking (2026-05-23):** `master` @ `b0912bc`. **Tests:** 322 passed, 2 ignored. **Next (Codex P0):** O1b handler overlay-id fix. **Cursor:** optional S5 regression test PR.
 
 ## Canonical — `simthing-spec` implementation progress
 
@@ -24,8 +24,9 @@
 |----------|------|
 | [`capability_tree_studio_workshop.md`](capability_tree_studio_workshop.md) | Original Claude workshop Q&A (2026-05-22) |
 | [`tech_tree_decisions.md`](tech_tree_decisions.md) | Prior session decisions; crate naming partially superseded |
+| [`capability_tree_v1.md`](../capability_tree_v1.md) | Capability-tree RON reference (§13 install targets, §14 v0 effect scope) |
 | [`../examples/README.md`](../examples/README.md) | InstallTargetSpec RON examples (`AllOfKind`, `ScenarioListed`, `SessionRoot`) |
-| [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder-facing object reference (draft) |
+| [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder-facing object reference (draft, local) |
 
 ## Superseded handoffs (local archive only)
 

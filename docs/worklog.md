@@ -6,7 +6,24 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-23 — InstallTargetSpec examples (Cursor, PR 2)
+## 2026-05-23 — Kind strings + v0 effect-target docs (Cursor, PR 3)
+
+**Status:** branch pending merge.
+
+**Landed:**
+
+- `capability_tree_v1.md` §13 — `InstallTargetSpec`, built-in/custom kind strings,
+  exact matching, `NoMatchingOwners`
+- `capability_tree_v1.md` §14 — v0 capability effect scope (cloned tree only);
+  EffectTarget ADR pending (Opus P3)
+- §2 overlay note corrected to point at §14 (removed stale “targets faction” claim)
+- Progress log footguns + read order updated
+
+**Next:** Cursor optional S5 regression test PR.
+
+---
+
+## 2026-05-23 — InstallTargetSpec examples (Cursor, PR #57)
 
 **Status:** `master` @ `b0912bc` (merge PR #57).
 

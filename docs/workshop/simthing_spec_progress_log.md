@@ -352,7 +352,14 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 |----|-------|-------|
 | **EffectTarget** | Opus | ADR: capability effect target scope (`CapabilityTree` vs `Owner` vs `SessionRoot`). v0 installs overlay `affects` on cloned tree only; modder-facing semantics need explicit model. |
 
-### Done (2026-05-23)
+### Done (2026-05-23, docs)
+
+| ID | Scope |
+|----|-------|
+| **InstallTarget docs** | `capability_tree_v1.md` §13, `docs/examples/`, kind-string table |
+| **EffectTarget v0 warning** | `capability_tree_v1.md` §14 — cloned-tree overlay scope; Opus ADR pending |
+
+### Done (2026-05-23, code/tests)
 
 | ID | Scope |
 |----|-------|
@@ -378,7 +385,7 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 
 - **O1b RED** — install re-stamps overlay ids per clone (`instance.by_overlay`), but handler `emit_activation` still uses template `CapabilityDefinition.overlay_ids`; O1b E2E test ignored until Codex fix.
 - **O1 dimension sync** — O1b run showed `coord.n_dims == registry.total_columns` after `install_spec_state`; not the current blocker.
-- **Overlay `affects`** — per-clone overlays target `cloned_tree_id`, not `owner_id`; internally consistent but not modder-obvious until EffectTarget ADR (Opus).
+- **Overlay `affects` (v0)** — per-clone overlays target `cloned_tree_id`, not `owner_id`. Modder-facing effect scope is documented in `capability_tree_v1.md` §14; EffectTarget ADR (Opus P3) pending. Do not promise owner-targeted capability effects in modder docs yet.
 - **Partial install mutation** — `compile_and_install` mutates registry/root in place; safe when session is discarded on `Err`; unsafe pattern for future Studio preview without clone-then-commit.
 - **Replay** — structural overlay activations replay; spec runtime state does not (O2).
 - **B2 Approach C topology append** — only patches `fission_pairs` edges; incorrect CSR when fission clones multi-node capability subtrees. S5 conservative fix: disable append for `clone_capability_children`.
@@ -411,9 +418,9 @@ These remain valid; see original Q&A in `capability_tree_studio_workshop.md` for
    - `docs/adr/scripted_event_scope_model.md`
    - `docs/adr/spec_session_state_replay.md`
 4. `docs/todo.md` (parking state)
-5. `docs/design_v6.md` + `docs/capability_tree_v1.md` addenda
-6. Code: `install.rs`, `spec_session.rs`, `session.rs`, `boundary/capability_handler.rs`, `boundary/event_handler.rs`
-7. Install examples: `docs/examples/README.md`
+5. `docs/design_v6.md` + `docs/capability_tree_v1.md` addenda (§13 install targets, §14 v0 effect scope)
+6. `docs/examples/README.md` — InstallTargetSpec RON examples
+7. Code: `install.rs`, `spec_session.rs`, `session.rs`, `boundary/capability_handler.rs`, `boundary/event_handler.rs`
 
 **Ignore for implementation:** archived handoffs in `docs/workshop/archive/` (gitignored) — see [`README.md`](README.md).
 
