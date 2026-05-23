@@ -10,6 +10,7 @@ use simthing_sim::{BoundaryProtocol, BoundaryTiming, ReplayFrame, ReplayWriter};
 use thiserror::Error;
 
 use crate::scenario::Scenario;
+use crate::spec_session::SpecSessionState;
 
 #[derive(Debug, Error)]
 pub enum SessionError {
@@ -144,6 +145,7 @@ pub struct SimSession {
     pub pipelines: Pipelines,
     pub rx: simthing_feeder::FeederReceiver,
     pub tx: simthing_feeder::FeederSender,
+    pub spec_state: SpecSessionState,
 }
 
 impl SimSession {
@@ -185,7 +187,14 @@ impl SimSession {
             pipelines,
             rx,
             tx,
+            spec_state: SpecSessionState::new(),
         })
+    }
+
+    pub fn install_spec_state(&mut self, spec_state: SpecSessionState) {
+        self.spec_state = spec_state;
+        self.sync_spec_threshold_registrations();
+        self.proto.initial_gpu_sync(&self.coord, &mut self.state);
     }
 
     /// Run until `max_days` boundaries complete (or scenario max if smaller).
@@ -222,9 +231,10 @@ impl SimSession {
 
             if tick.boundary_reached {
                 let day = tick.day_index;
-                if self
-                    .proto
-                    .can_skip_empty_boundary(&tick.events, &self.patcher)
+                if !self.spec_state.requires_boundary_tick()
+                    && self
+                        .proto
+                        .can_skip_empty_boundary(&tick.events, &self.patcher)
                 {
                     summary.boundaries_skipped += 1;
                     summary.boundaries_run += 1;
@@ -232,19 +242,20 @@ impl SimSession {
                 }
                 summary.boundary_readback_bytes += self.state.values_len() as u64 * 4;
                 let boundary_started = Instant::now();
-                let outcome = self.proto.execute(
+                let spec_state = &mut self.spec_state;
+                let outcome = self.proto.execute_with_boundary_hook(
                     tick.events,
                     &mut self.patcher,
                     &mut self.coord,
                     &mut self.state,
                     day,
+                    |ctx| spec_state.run_boundary_handlers(ctx),
                 );
                 summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
                 summary.fission_events += outcome.fission.fissions_executed;
                 accumulate_boundary_timing(&mut summary, outcome.timing);
                 summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
-                summary.boundary_value_rows_uploaded +=
-                    outcome.gpu_sync.value_rows_uploaded as u64;
+                summary.boundary_value_rows_uploaded += outcome.gpu_sync.value_rows_uploaded as u64;
                 if outcome.gpu_sync.full_value_upload {
                     summary.boundary_full_value_uploads += 1;
                 }
@@ -305,9 +316,10 @@ impl SimSession {
 
             if tick.boundary_reached {
                 let day = tick.day_index;
-                if self
-                    .proto
-                    .can_skip_empty_boundary(&tick.events, &self.patcher)
+                if !self.spec_state.requires_boundary_tick()
+                    && self
+                        .proto
+                        .can_skip_empty_boundary(&tick.events, &self.patcher)
                 {
                     let frame = ReplayFrame {
                         day: day as u32,
@@ -322,19 +334,20 @@ impl SimSession {
                 }
                 summary.boundary_readback_bytes += self.state.values_len() as u64 * 4;
                 let boundary_started = Instant::now();
-                let outcome = self.proto.execute(
+                let spec_state = &mut self.spec_state;
+                let outcome = self.proto.execute_with_boundary_hook(
                     tick.events,
                     &mut self.patcher,
                     &mut self.coord,
                     &mut self.state,
                     day,
+                    |ctx| spec_state.run_boundary_handlers(ctx),
                 );
                 summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
                 summary.fission_events += outcome.fission.fissions_executed;
                 accumulate_boundary_timing(&mut summary, outcome.timing);
                 summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
-                summary.boundary_value_rows_uploaded +=
-                    outcome.gpu_sync.value_rows_uploaded as u64;
+                summary.boundary_value_rows_uploaded += outcome.gpu_sync.value_rows_uploaded as u64;
                 if outcome.gpu_sync.full_value_upload {
                     summary.boundary_full_value_uploads += 1;
                 }
@@ -368,5 +381,14 @@ impl SimSession {
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::BrokenPipe, e))?;
         }
         Ok(())
+    }
+
+    fn sync_spec_threshold_registrations(&mut self) {
+        self.proto.set_capability_unlock_registrations(
+            self.spec_state.capability_unlock_registrations.clone(),
+        );
+        self.proto.set_scripted_event_trigger_registrations(
+            self.spec_state.scripted_event_trigger_registrations(),
+        );
     }
 }

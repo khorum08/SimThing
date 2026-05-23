@@ -22,7 +22,10 @@
 use simthing_core::{
     DecayBehavior, DimensionRegistry, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
 };
-use simthing_feeder::{BoundaryRequest, DispatchCoordinator, MaintainerOutcome, TransformPatcher};
+use simthing_feeder::{
+    BoundaryRequest, CapabilityUnlockRegistration, DispatchCoordinator, MaintainerOutcome,
+    ScriptedEventTriggerRegistration, TransformPatcher,
+};
 use simthing_gpu::{
     build_column_rule_descriptors, encode_column_rules, SlotAllocator, ThresholdEvent,
     TopologyState, WorldGpuState,
@@ -82,6 +85,20 @@ pub struct BoundaryOutcome {
     pub timing: BoundaryTiming,
 }
 
+/// Spec/session extension point run after canonical GPU value readback and
+/// before the normal boundary mutation sequence. This type deliberately uses
+/// only sim/core/feeder/gpu concepts so `simthing-sim` stays independent of
+/// `simthing-spec`.
+pub struct BoundaryHookContext<'a> {
+    pub events: &'a [ThresholdEvent],
+    pub threshold_registry: &'a ThresholdRegistry,
+    pub registry: &'a DimensionRegistry,
+    pub allocator: &'a SlotAllocator,
+    pub shadow: &'a mut [f32],
+    pub n_dims: usize,
+    pub requests: &'a mut Vec<BoundaryRequest>,
+}
+
 /// Top-level boundary orchestrator.
 ///
 /// Owns:
@@ -100,6 +117,8 @@ pub struct BoundaryProtocol {
     cpu_threshold_registry: ThresholdRegistry,
     velocity_alerts: Vec<VelocityAlertRegistration>,
     aggregate_alerts: Vec<AggregateAlertRegistration>,
+    capability_unlocks: Vec<CapabilityUnlockRegistration>,
+    scripted_event_triggers: Vec<ScriptedEventTriggerRegistration>,
     threshold_config_revision: u64,
     synced_threshold_config_revision: u64,
     /// Append-only log of semantic state changes. Each boundary appends its
@@ -130,6 +149,8 @@ impl BoundaryProtocol {
             cpu_threshold_registry: ThresholdRegistry::new(),
             velocity_alerts: Vec::new(),
             aggregate_alerts: Vec::new(),
+            capability_unlocks: Vec::new(),
+            scripted_event_triggers: Vec::new(),
             threshold_config_revision: 0,
             synced_threshold_config_revision: 0,
             delta_log: Vec::new(),
@@ -153,11 +174,31 @@ impl BoundaryProtocol {
         state: &mut WorldGpuState,
         day: u64,
     ) -> BoundaryOutcome {
+        self.execute_with_boundary_hook(events, patcher, coord, state, day, |_| {})
+    }
+
+    /// Run the boundary sequence and allow an upper layer to inject additional
+    /// boundary requests from already-read canonical shadow values. The hook is
+    /// intentionally generic: callers can run spec handlers here without making
+    /// this crate depend on `simthing-spec`.
+    pub fn execute_with_boundary_hook<F>(
+        &mut self,
+        events: Vec<ThresholdEvent>,
+        patcher: &mut TransformPatcher,
+        coord: &mut DispatchCoordinator,
+        state: &mut WorldGpuState,
+        day: u64,
+        mut hook: F,
+    ) -> BoundaryOutcome
+    where
+        F: FnMut(&mut BoundaryHookContext<'_>),
+    {
         let mut out = BoundaryOutcome {
             day,
             ..Default::default()
         };
         let n_dims = coord.n_dims() as usize;
+        let mut requests = Vec::new();
         let mut dirty_value_slots = Vec::new();
         let mut force_full_value_upload = false;
         let mut topology_dirty = false;
@@ -183,6 +224,19 @@ impl BoundaryProtocol {
         out.velocity_alerts = collect_velocity_alerts(&events, &self.cpu_threshold_registry);
         out.aggregate_alerts = collect_aggregate_alerts(&events, &self.cpu_threshold_registry);
         out.timing.alert_collect_ms = alert_collect_started.elapsed().as_secs_f64() * 1000.0;
+
+        {
+            let mut hook_ctx = BoundaryHookContext {
+                events: &events,
+                threshold_registry: &self.cpu_threshold_registry,
+                registry: &self.registry,
+                allocator: &self.allocator,
+                shadow: &mut coord.shadow,
+                n_dims,
+                requests: &mut requests,
+            };
+            hook(&mut hook_ctx);
+        }
 
         let boundary_paths = build_node_paths(&self.root);
 
@@ -301,8 +355,7 @@ impl BoundaryProtocol {
         // to `BoundaryRequest::AttachOverlay` and appended to the request list
         // so attachment and slot-table updates happen in one consistent pass.
         let request_drain_started = Instant::now();
-        let mut requests = patcher.take_boundary_requests();
-        out.boundary_requests = requests.len() as u32;
+        requests.extend(patcher.take_boundary_requests());
 
         let player_intents = patcher.take_player_intents();
         out.player_intents_attached = player_intents.len() as u32;
@@ -321,6 +374,7 @@ impl BoundaryProtocol {
                 overlay: ai.overlay,
             });
         }
+        out.boundary_requests = requests.len() as u32;
         out.timing.request_drain_ms = request_drain_started.elapsed().as_secs_f64() * 1000.0;
 
         // Pre-grow for AddChild subtrees so apply_structural_mutations can
@@ -556,6 +610,8 @@ impl BoundaryProtocol {
             state,
             &self.velocity_alerts,
             &self.aggregate_alerts,
+            &self.capability_unlocks,
+            &self.scripted_event_triggers,
             &self.fission_lineage,
             dirty_value_slots.as_deref(),
             threshold_dirty,
@@ -632,6 +688,22 @@ impl BoundaryProtocol {
 
     pub fn register_aggregate_alert(&mut self, alert: AggregateAlertRegistration) {
         self.aggregate_alerts.push(alert);
+        self.threshold_config_revision += 1;
+    }
+
+    pub fn set_capability_unlock_registrations(
+        &mut self,
+        registrations: Vec<CapabilityUnlockRegistration>,
+    ) {
+        self.capability_unlocks = registrations;
+        self.threshold_config_revision += 1;
+    }
+
+    pub fn set_scripted_event_trigger_registrations(
+        &mut self,
+        registrations: Vec<ScriptedEventTriggerRegistration>,
+    ) {
+        self.scripted_event_triggers = registrations;
         self.threshold_config_revision += 1;
     }
 
@@ -756,6 +828,8 @@ impl BoundaryProtocol {
             state,
             &self.velocity_alerts,
             &self.aggregate_alerts,
+            &self.capability_unlocks,
+            &self.scripted_event_triggers,
             &self.fission_lineage,
             None,
             true,

@@ -4,9 +4,18 @@ use std::collections::HashMap;
 use std::io::BufReader;
 use std::time::Instant;
 
-use simthing_driver::{check_bench_ceiling, Scenario, SimSession};
+use simthing_core::{
+    Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta,
+    SubFieldRole, TransformOp,
+};
+use simthing_driver::{check_bench_ceiling, Scenario, SimSession, SpecSessionState};
 use simthing_gpu::GpuContext;
 use simthing_sim::{BoundaryDeltaEntry, ReplayDriver, ReplayReader};
+use simthing_spec::{
+    compile_property, ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilitySpec,
+    CapabilityTreeBuilder, CapabilityTreeInstance, CapabilityTreeSpec, CapabilityTreeState,
+    PropertySpec,
+};
 
 fn try_gpu() -> bool {
     GpuContext::new_blocking().is_ok()
@@ -101,6 +110,162 @@ fn record_rebellion_demo_replay_round_trips_structural_state() {
             .unwrap_or(0)
             >= 1,
         "expected FissionLineageAdded in replay log, got {entry_counts:?}"
+    );
+}
+
+#[test]
+fn spec_session_capability_unlock_activates_overlay_for_next_tick() {
+    if !try_gpu() {
+        eprintln!("skipping: no GPU");
+        return;
+    }
+
+    let mut registry = simthing_core::DimensionRegistry::new();
+    let (power_id, _) = compile_property(
+        &PropertySpec {
+            id: "core_power".into(),
+            namespace: "core".into(),
+            name: "power".into(),
+            display_name: "Power".into(),
+            description: String::new(),
+            sub_fields: Vec::new(),
+        },
+        &mut registry,
+    )
+    .expect("compile power property");
+
+    let cap_spec = CapabilityTreeSpec {
+        tree_id: "tech_tree".into(),
+        tree_kind: "tech_tree".into(),
+        owner_kind: "faction".into(),
+        categories: vec![CapabilityCategorySpec {
+            property_namespace: "tech".into(),
+            property_name: "propulsion".into(),
+            display_name: "Propulsion".into(),
+            tier: 0,
+            max_active: None,
+            entries: vec![CapabilitySpec {
+                id: "chemical_drive".into(),
+                display_name: "Chemical Drive".into(),
+                description: String::new(),
+                flavor_text: String::new(),
+                research_cost: 10.0,
+                activation: ActivationMode::Threshold,
+                research_rate: Default::default(),
+                icon: String::new(),
+                thumbnail: String::new(),
+                card_image: String::new(),
+                unlock_video: None,
+                model_preview: None,
+                prereqs: Vec::new(),
+                unlocks_ship_components: Vec::new(),
+                unlocks_buildings: Vec::new(),
+                unlocks_units: Vec::new(),
+                unlocks_weapons: Vec::new(),
+                effects: vec![CapabilityEffectSpec {
+                    targets_property: "core::power".into(),
+                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(2.0))],
+                    when_activated: OverlayLifecycle::Permanent,
+                }],
+            }],
+        }],
+    };
+    let (mut built, _) =
+        CapabilityTreeBuilder::build(&cap_spec, &mut registry).expect("capability build");
+    let tree_id = built.tree.id;
+    built
+        .tree
+        .add_property(power_id, registry.property(power_id).default_value());
+    for overlay in &mut built.tree.overlays {
+        overlay.affects = vec![tree_id];
+    }
+
+    let cap_category = built
+        .definition
+        .categories
+        .values()
+        .next()
+        .expect("one capability category");
+    let progress_overlay = Overlay {
+        id: OverlayId::new(),
+        kind: OverlayKind::Custom("research_progress".into()),
+        source: OverlaySource::System,
+        affects: vec![tree_id],
+        transform: PropertyTransformDelta {
+            property_id: cap_category.property_id,
+            sub_field_deltas: vec![(
+                SubFieldRole::Named("chemical_drive".into()),
+                TransformOp::Add(11.0),
+            )],
+        },
+        lifecycle: OverlayLifecycle::Permanent,
+    };
+    built.tree.add_overlay(progress_overlay);
+
+    let scenario = Scenario {
+        name: "capability_unlock_session".into(),
+        ticks_per_day: 1,
+        max_days: 2,
+        dt: 0.0,
+        n_slots: 8,
+        registry,
+        root: built.tree,
+        shadow_seeds: Vec::new(),
+        tick_patches: Vec::new(),
+    };
+    let mut session = SimSession::open(scenario).expect("session open");
+    let tree_slot = session.proto.allocator.slot_of(tree_id).expect("tree slot");
+
+    let instance = CapabilityTreeInstance {
+        owner_id: tree_id,
+        definition_id: built.definition.id,
+        tree_thing_id: tree_id,
+        tree_slot,
+    };
+    let state = CapabilityTreeState {
+        owner_id: tree_id,
+        definition_id: built.definition.id,
+        activation_mode_by_entry: Default::default(),
+        active_by_category: Default::default(),
+    };
+    let mut spec_state = SpecSessionState::new();
+    spec_state.add_capability_tree_instance(
+        built.definition,
+        instance,
+        state,
+        built.unlock_registrations,
+    );
+    session.install_spec_state(spec_state);
+
+    let summary = session.run(2).expect("session run");
+    assert_eq!(summary.boundaries_run, 2);
+    assert!(
+        !session.spec_state.capability_notifications.is_empty()
+            || session.spec_state.capability_diagnostics.is_empty(),
+        "unexpected capability diagnostics: {:?}",
+        session.spec_state.capability_diagnostics
+    );
+    assert!(
+        session.spec_state.handler_errors.is_empty(),
+        "unexpected handler errors: {:?}",
+        session.spec_state.handler_errors
+    );
+
+    let power_col = session
+        .proto
+        .registry
+        .column_range(power_id)
+        .col_for_role(
+            &SubFieldRole::Amount,
+            &session.proto.registry.property(power_id).layout,
+        )
+        .expect("power amount col");
+    let values = session.state.read_values();
+    let idx = tree_slot as usize * session.coord.n_dims() as usize + power_col;
+    assert!(
+        values[idx] >= 2.0,
+        "activated capability overlay should affect next tick power, got {}",
+        values[idx]
     );
 }
 

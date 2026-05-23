@@ -6,6 +6,43 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — PR 11 Track A session/driver assembly
+
+**Status:** Implemented locally on top of `866a467`.
+
+**Design:** Added `docs/adr/pr11_track_a_session_assembly.md`. The driver owns
+spec runtime state; `simthing-sim` stays spec-free. A generic boundary hook
+runs after canonical GPU value readback and before lifecycle/expiry/fission/
+structural mutation, so spec handlers see authoritative shadow values and emit
+ordinary `BoundaryRequest`s.
+
+**Code:**
+
+- Added `simthing-driver::SpecSessionState` with capability definitions,
+  multi-tree-safe capability instance/state keys, scripted-event definitions,
+  cooldowns, diagnostics, notifications, and queued player selections.
+- Added `SimSession::install_spec_state` and wired `run` / `record_to_path`
+  through `BoundaryProtocol::execute_with_boundary_hook`.
+- Added `simthing-sim::BoundaryHookContext` and external feeder-level threshold
+  registration storage for capability unlocks and scripted-event triggers.
+- Extended GPU sync threshold rebuilds so external capability/scripted-event
+  registrations are included without importing `simthing-spec` into sim.
+
+**Tests:** `cargo test --workspace` passes with 311 tests, 1 ignored, zero
+warnings. `cargo build --workspace --tests` is clean. New coverage:
+
+- CPU unit coverage for queued player selection through the capability handler.
+- CPU unit coverage for scripted-event dispatch through `SpecSessionState`.
+- GPU E2E coverage for capability progress threshold -> spec session handler ->
+  overlay activation -> next-tick value change.
+
+**Deferred:** Replay serialization of capability/scripted runtime state, RON
+session initialization from `GameModeSpec`, player input API plumbing beyond
+the queue method, and append-only handling for external threshold
+registrations on cloned capability trees.
+
+---
+
 ## 2026-05-22 — PR 11 Track B merged (PR #47, `392992f`)
 
 **Status:** Merged to `master` via PR #47 (`feat/pr11-track-b`). `master` and
@@ -2722,4 +2759,3 @@ Patcher + Dispatch Coordinator per design_v4.md section 11.
 **Open questions for the next session (low-priority, can be deferred):**
 - Should `upload_overlay_deltas` reuse a staging buffer rather than recreating `overlay_deltas` each grow? At realistic overlay churn this rarely fires, so probably fine as-is.
 - Pass 3's per-thread loop has variable length per slot. If some slots have very long stacks and most have none, GPU warps will idle. At our scale this is not a concern, but worth profiling once we have realistic overlay loads.
-

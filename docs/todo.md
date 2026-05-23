@@ -1,21 +1,23 @@
 # SimThing Todo Log
 
-Current parking state after **`simthing-spec` PRs 2–10 landed**, **PR 11 Track B
-merged (PR #47, `392992f`)**, and **release-mode smoke check passed**.
+Current working state after **`simthing-spec` PRs 2–10 landed**, **PR 11 Track B
+merged (PR #47, `392992f`)**, and **PR 11 Track A session/driver assembly
+implemented locally**.
 
-`master` and `origin/master` are synced at **`392992f`**.
+`master` and `origin/master` are synced at **`866a467`** before the local Track
+A changes.
 
-**Tests:** `cargo test --workspace` → **306** passed, **1** ignored timing
-diagnostic, zero warnings. `cargo build --workspace --release --tests` and
-`cargo test --workspace --release` also clean.
+**Tests:** `cargo test --workspace` -> **311** passed, **1** ignored timing
+diagnostic, zero warnings. `cargo build --workspace --tests` also clean.
 
-**Next session:** **PR 11 Track A (Opus)** — session/driver assembly per
-`docs/workshop/pr11_session_assembly_handoff.md`. Track B mechanical prep is
-merged; Opus owns session state ownership, boundary protocol integration, and
-replay design.
+**Current implementation:** `simthing-driver` owns `SpecSessionState` and calls
+spec boundary handlers through a generic `simthing-sim` boundary hook that runs
+after GPU value readback and before structural mutation. `simthing-sim` remains
+spec-free; it only stores feeder-level external threshold registrations.
 
-**Worktree:** clean for tracked files except standard untracked
-`.claude/worktrees/` and `demo.replay.ldjson`.
+**Worktree:** local Track A edits are not yet committed. Standard untracked
+`.claude/worktrees/`, `demo.replay.ldjson`, and workshop handoff docs remain
+untouched unless explicitly staged.
 
 ---
 
@@ -197,16 +199,25 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
       events. New diagnostic variant: `UnknownEventId` for stale registrations.
       Bumps `simthing_core::Direction` with `Copy + PartialEq + Eq` derives.
       11 acceptance tests in `tests/pr10_scripted_event_thresholds.rs`.
-- [ ] **PR 11 Track A (Opus)** — session/driver assembly: session state
-      ownership, boundary step order, GPU event drain plumbing, E2E integration
-      test. See `docs/workshop/pr11_session_assembly_handoff.md`.
+- [x] **PR 11 Track A (Opus)** — session/driver assembly implemented locally
+      2026-05-22. Adds `docs/adr/pr11_track_a_session_assembly.md`, driver-owned
+      `SpecSessionState`, multi-tree-safe driver keys for capability instances,
+      a generic post-readback `BoundaryHookContext` in `simthing-sim`, external
+      feeder-level capability/scripted-event threshold registration plumbing,
+      `SimSession::install_spec_state`, and handler invocation from the live
+      boundary path. Tests cover queued player selection, scripted-event
+      dispatch, and GPU E2E unlock -> spec handler -> overlay activation ->
+      next-tick value change.
 - [x] **PR 11 Track B (Composer)** — mechanical prep merged PR #47 (`392992f`,
       2026-05-22): B5 release smoke check; B2 `EventKey: From<&str>`/`From<String>`;
       B1 `Display` for capability/scripted-event diagnostics; B3
       `append_capability_unlocks` / `append_scripted_event_triggers`;
       B4 docs addenda in `design_v6.md` and `capability_tree_v1.md`.
-- [ ] Assemble session/driver ownership for capability tree instances and
-      per-faction state maps.
+- [x] Assemble session/driver ownership for capability tree instances and
+      runtime state maps. Driver storage is keyed by
+      `(owner_id, definition_id, tree_thing_id)`; temporary one-instance maps
+      are passed into the PR 5 handler to preserve current handler API while
+      avoiding the session-level multi-tree footgun.
 - [x] Clean up PR 5's temporary `simthing-spec -> simthing-sim` /
       `simthing-spec -> simthing-gpu` threshold dependencies. Done 2026-05-22.
       Approach: introduced `simthing-feeder::CapabilityUnlockEvent` as the
@@ -216,8 +227,14 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
       bridge for callers that hold raw `ThresholdEvent`s. Spec production deps
       are now `simthing-core` + `simthing-feeder` only; `simthing-gpu` /
       `simthing-sim` remain as dev-dependencies for PR 6 integration tests.
-- [ ] B2 append-only capability unlock integration remains deferred; current
-      PR 4 path is full-rebuild.
+- [ ] B2 append-only capability/scripted-event external registration integration
+      remains deferred. Track A full rebuilds include external registrations;
+      append-only handling for newly cloned capability trees is a later
+      optimization/design item.
+- [ ] Replay v3 for spec session state remains deferred. Existing structural
+      overlay activations replay through the boundary delta log, but capability
+      runtime state, scripted-event cooldowns, diagnostics, and notifications
+      are not serialized yet.
 
 **Known divergences between handoff doc and PR 1 code (Opus must resolve):**
 

@@ -25,10 +25,11 @@ use crate::threshold_registry::{
     AggregateAlertRegistration, ThresholdBuilder, ThresholdRegistry, VelocityAlertRegistration,
 };
 use simthing_core::{DimensionRegistry, SimThing};
-use simthing_feeder::DispatchCoordinator;
+use simthing_feeder::{
+    CapabilityUnlockRegistration, DispatchCoordinator, ScriptedEventTriggerRegistration,
+};
 use simthing_gpu::{
-    build_column_rule_descriptors, encode_column_rules, SlotAllocator, TopologyState,
-    WorldGpuState,
+    build_column_rule_descriptors, encode_column_rules, SlotAllocator, TopologyState, WorldGpuState,
 };
 
 /// Outcome of the GPU sync step.
@@ -37,12 +38,12 @@ pub struct GpuSyncOutcome {
     pub overlay_deltas_uploaded: u32,
     pub threshold_regs_uploaded: u32,
     pub new_threshold_registry: Option<ThresholdRegistry>,
-    pub reduction_depths:        u32,
-    pub reduction_edges:         u32,
-    pub reduction_slots:         u32,
-    pub boundary_upload_bytes:   u64,
-    pub value_rows_uploaded:     u32,
-    pub full_value_upload:       bool,
+    pub reduction_depths: u32,
+    pub reduction_edges: u32,
+    pub reduction_slots: u32,
+    pub boundary_upload_bytes: u64,
+    pub value_rows_uploaded: u32,
+    pub full_value_upload: bool,
 }
 
 /// Rebuild boundary-dependent GPU buffers.
@@ -58,6 +59,8 @@ pub fn sync_gpu_buffers(
     state: &mut WorldGpuState,
     velocity_alerts: &[VelocityAlertRegistration],
     aggregate_alerts: &[AggregateAlertRegistration],
+    capability_unlocks: &[CapabilityUnlockRegistration],
+    scripted_event_triggers: &[ScriptedEventTriggerRegistration],
     fission_lineage: &[FissionLineageRecord],
     dirty_value_slots: Option<&[u32]>,
     rebuild_thresholds: bool,
@@ -92,7 +95,7 @@ pub fn sync_gpu_buffers(
     let mut threshold_upload_bytes = 0u64;
     if rebuild_thresholds {
         // 2. Threshold registrations, including fission lineage to FusionTrigger regs.
-        let (gpu_regs, cpu_reg) = ThresholdBuilder::build_with_lineage(
+        let (mut gpu_regs, mut cpu_reg) = ThresholdBuilder::build_with_lineage(
             root,
             registry,
             allocator,
@@ -100,8 +103,20 @@ pub fn sync_gpu_buffers(
             aggregate_alerts,
             fission_lineage,
         );
-        threshold_upload_bytes =
-            gpu_regs.len() as u64 * std::mem::size_of::<simthing_gpu::ThresholdRegistration>() as u64;
+        ThresholdBuilder::append_capability_unlocks(
+            registry,
+            allocator,
+            capability_unlocks,
+            &mut gpu_regs,
+            &mut cpu_reg,
+        );
+        ThresholdBuilder::append_scripted_event_triggers(
+            scripted_event_triggers,
+            &mut gpu_regs,
+            &mut cpu_reg,
+        );
+        threshold_upload_bytes = gpu_regs.len() as u64
+            * std::mem::size_of::<simthing_gpu::ThresholdRegistration>() as u64;
         out.threshold_regs_uploaded = gpu_regs.len() as u32;
         state.upload_thresholds(&gpu_regs);
         out.new_threshold_registry = Some(cpu_reg);
