@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `70dc00e` (PR #52 code `7914528`). **Tests:** 314 passed, 1 ignored. **Next:** Codex O1.
+**Parking (2026-05-23):** `master` @ `6ba4e0d` (PR #53 O1). **Tests:** 320 passed, 1 ignored. **Next:** O4 or O2; parallel S5.
 
 ## Canonical — `simthing-spec` implementation progress
 
@@ -12,7 +12,7 @@
 
 - [`../adr/pr11_track_a_session_assembly.md`](../adr/pr11_track_a_session_assembly.md)
 
-**Phase 1 ADRs (O1 / O2 / O4 — read before implementation):**
+**Phase 1 ADRs (O2 / O4 — read before implementation; O1 landed PR #53):**
 
 - [`../adr/game_mode_session_installation.md`](../adr/game_mode_session_installation.md)
 - [`../adr/scripted_event_scope_model.md`](../adr/scripted_event_scope_model.md)
