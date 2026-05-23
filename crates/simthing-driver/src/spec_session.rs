@@ -16,6 +16,24 @@ use simthing_spec::{
     ScriptedEventDiagnostic,
 };
 use std::collections::HashMap;
+use thiserror::Error;
+
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
+pub enum SpecSessionError {
+    #[error("no capability tree instance for owner `{0:?}`")]
+    UnknownOwner(SimThingId),
+    #[error("owner `{owner_id:?}` has no capability tree `{tree_logical_id}`")]
+    UnknownTree {
+        owner_id: SimThingId,
+        tree_logical_id: String,
+    },
+    #[error("capability tree `{tree_logical_id}` has no entry `{entry_id}` for owner `{owner_id:?}`")]
+    UnknownEntry {
+        owner_id: SimThingId,
+        tree_logical_id: String,
+        entry_id: String,
+    },
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CapabilityInstanceKey {
@@ -101,6 +119,69 @@ impl SpecSessionState {
         entry: CapabilityEntryKey,
     ) {
         self.player_selections.push((instance, entry));
+    }
+
+    /// Queue a player-selection activation using logical tree and entry ids.
+    ///
+    /// Resolves `owner_id` + `tree_logical_id` against installed capability
+    /// instances, then matches `entry_id` within that tree's compiled entries.
+    pub fn queue_player_selection_by_key(
+        &mut self,
+        owner_id: SimThingId,
+        tree_logical_id: &str,
+        entry_id: &str,
+    ) -> Result<(), SpecSessionError> {
+        let matching: Vec<CapabilityInstanceKey> = self
+            .capability_instances
+            .iter()
+            .filter(|(_, instance)| instance.owner_id == owner_id)
+            .filter_map(|(key, instance)| {
+                self.capability_definitions
+                    .get(&instance.definition_id)
+                    .filter(|def| def.tree_id == tree_logical_id)
+                    .map(|_| *key)
+            })
+            .collect();
+
+        if matching.is_empty() {
+            let owner_known = self
+                .capability_instances
+                .values()
+                .any(|instance| instance.owner_id == owner_id);
+            if owner_known {
+                return Err(SpecSessionError::UnknownTree {
+                    owner_id,
+                    tree_logical_id: tree_logical_id.into(),
+                });
+            }
+            return Err(SpecSessionError::UnknownOwner(owner_id));
+        }
+
+        let instance_key = matching[0];
+        let definition = self
+            .capability_definitions
+            .get(&instance_key.definition_id)
+            .expect("instance definition exists");
+
+        let entry_matches: Vec<&CapabilityEntryKey> = definition
+            .entries
+            .keys()
+            .filter(|key| key.entry_id == entry_id)
+            .collect();
+
+        let entry_key = match entry_matches.as_slice() {
+            [key] => (*key).clone(),
+            _ => {
+                return Err(SpecSessionError::UnknownEntry {
+                    owner_id,
+                    tree_logical_id: tree_logical_id.into(),
+                    entry_id: entry_id.into(),
+                });
+            }
+        };
+
+        self.queue_player_selection(instance_key, entry_key);
+        Ok(())
     }
 
     pub fn scripted_event_trigger_registrations(&self) -> Vec<ScriptedEventTriggerRegistration> {
@@ -278,6 +359,151 @@ mod tests {
         CapabilityTreeDefinition, CapabilityTreeDefinitionId, CategoryKey, CompiledEffect,
         CompiledTrigger, EventKey, EventPriority, ScriptPredicate, ScriptedEventDefinition,
     };
+
+    #[test]
+    fn queue_player_selection_by_key_resolves_logical_ids() {
+        let mut registry = DimensionRegistry::new();
+        let prop_id = registry.register(simthing_core::SimProperty::simple("core", "focus", 0));
+        let mut tree = SimThing::new(SimThingKind::Custom("ideas".into()), 0);
+        tree.add_property(prop_id, registry.property(prop_id).default_value());
+        let tree_id = tree.id;
+        let overlay_id = OverlayId::new();
+        tree.add_overlay(simthing_core::Overlay {
+            id: overlay_id,
+            kind: simthing_core::OverlayKind::Custom("idea".into()),
+            source: simthing_core::OverlaySource::System,
+            affects: vec![tree_id],
+            transform: simthing_core::PropertyTransformDelta {
+                property_id: prop_id,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
+            },
+            lifecycle: simthing_core::OverlayLifecycle::Suspended {
+                when_activated: Box::new(simthing_core::OverlayLifecycle::Permanent),
+            },
+        });
+
+        let category = CategoryKey::new("ideas", "national");
+        let entry = simthing_spec::CapabilityEntryKey::new(category.clone(), "focus");
+        let definition_id = CapabilityTreeDefinitionId::new();
+        let definition = CapabilityTreeDefinition {
+            id: definition_id,
+            tree_id: "national_ideas".into(),
+            categories: HashMap::from([(
+                category.clone(),
+                CapabilityCategoryDefinition {
+                    key: category,
+                    property_id: prop_id,
+                    max_active: None,
+                    tier: 0,
+                },
+            )]),
+            entries: HashMap::from([(
+                entry.clone(),
+                CapabilityDefinition {
+                    key: entry.clone(),
+                    display_name: "Focus".into(),
+                    description: String::new(),
+                    flavor_text: None,
+                    activation: ActivationMode::PlayerSelection,
+                    overlay_ids: vec![overlay_id],
+                    effect_keys: Vec::new(),
+                    effect_transforms: Vec::new(),
+                    prereqs: Vec::new(),
+                    progress_col: 0,
+                    research_cost: 1.0,
+                },
+            )]),
+            by_threshold: HashMap::new(),
+            by_overlay: HashMap::from([(overlay_id, entry.clone())]),
+        };
+
+        let mut allocator = simthing_gpu::SlotAllocator::new();
+        allocator.populate_from_tree(&tree);
+        let instance = CapabilityTreeInstance {
+            owner_id: tree_id,
+            definition_id,
+            tree_thing_id: tree_id,
+            tree_slot: allocator.slot_of(tree_id).unwrap(),
+        };
+        let state = CapabilityTreeState {
+            owner_id: tree_id,
+            definition_id,
+            activation_mode_by_entry: HashMap::new(),
+            active_by_category: HashMap::new(),
+        };
+        let mut spec_state = SpecSessionState::new();
+        spec_state.add_capability_tree_instance(definition, instance, state, Vec::new());
+
+        spec_state
+            .queue_player_selection_by_key(tree_id, "national_ideas", "focus")
+            .expect("logical selection resolves");
+
+        let threshold_registry = ThresholdRegistry::new();
+        let mut shadow = vec![0.0; registry.total_columns];
+        let mut requests = Vec::new();
+        let mut hook = BoundaryHookContext {
+            events: &[],
+            threshold_registry: &threshold_registry,
+            registry: &registry,
+            allocator: &allocator,
+            shadow: &mut shadow,
+            n_dims: registry.total_columns,
+            requests: &mut requests,
+        };
+
+        spec_state.run_boundary_handlers(&mut hook);
+
+        assert!(matches!(
+            hook.requests.as_slice(),
+            [simthing_feeder::BoundaryRequest::ActivateOverlay { overlay_id: id, .. }]
+            if *id == overlay_id
+        ));
+        assert!(spec_state.handler_errors.is_empty());
+    }
+
+    #[test]
+    fn queue_player_selection_by_key_reports_unknown_entry() {
+        let mut spec_state = SpecSessionState::new();
+        let owner = SimThingId::new();
+        let definition_id = CapabilityTreeDefinitionId::new();
+        let definition = CapabilityTreeDefinition {
+            id: definition_id,
+            tree_id: "national_ideas".into(),
+            categories: HashMap::new(),
+            entries: HashMap::new(),
+            by_threshold: HashMap::new(),
+            by_overlay: HashMap::new(),
+        };
+        let instance = CapabilityTreeInstance {
+            owner_id: owner,
+            definition_id,
+            tree_thing_id: SimThingId::new(),
+            tree_slot: 0,
+        };
+        spec_state.add_capability_tree_instance(
+            definition,
+            instance,
+            CapabilityTreeState {
+                owner_id: owner,
+                definition_id,
+                activation_mode_by_entry: HashMap::new(),
+                active_by_category: HashMap::new(),
+            },
+            Vec::new(),
+        );
+
+        let err = spec_state
+            .queue_player_selection_by_key(owner, "national_ideas", "missing")
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            SpecSessionError::UnknownEntry {
+                entry_id,
+                tree_logical_id,
+                ..
+            } if entry_id == "missing" && tree_logical_id == "national_ideas"
+        ));
+    }
 
     #[test]
     fn queued_player_selection_runs_through_capability_handler() {
