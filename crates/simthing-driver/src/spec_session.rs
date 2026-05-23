@@ -53,6 +53,21 @@ impl CapabilityInstanceKey {
     }
 }
 
+/// Snapshot of mutable spec-layer state taken immediately before a boundary
+/// runs. The recording path captures this, runs the spec hook, and diffs
+/// against the post-boundary state to produce per-frame deltas.
+///
+/// See `docs/adr/spec_session_state_replay.md`.
+#[derive(Clone, Debug)]
+pub struct PreBoundarySnapshot {
+    pub capability_states: HashMap<CapabilityInstanceKey, CapabilityTreeState>,
+    pub scripted_event_instances: HashMap<ScriptedEventInstanceKey, ScriptedEventInstance>,
+    /// Player selections queued before the boundary — the handler drains
+    /// these, so the snapshot is the only place to recover which selections
+    /// fired this boundary for replay.
+    pub pending_selections: Vec<(CapabilityInstanceKey, CapabilityEntryKey)>,
+}
+
 #[derive(Debug, Default)]
 pub struct SpecSessionState {
     pub capability_definitions: HashMap<CapabilityTreeDefinitionId, CapabilityTreeDefinition>,
@@ -233,6 +248,29 @@ impl SpecSessionState {
         entry: CapabilityEntryKey,
     ) {
         self.player_selections.push((instance, entry));
+    }
+
+    /// Snapshot the mutable spec-layer fields immediately before a boundary
+    /// runs. Paired with `spec_replay::diff_and_emit` after the boundary to
+    /// produce per-frame `SpecDelta`s. Cloning is O(active instances) — small
+    /// in practice (factions × trees + factions × scripted events).
+    ///
+    /// `player_selections` is snapshotted because the boundary handler drains
+    /// the queue; the snapshot is the only record of selections that fired
+    /// this boundary, used to emit `SpecDelta::PlayerSelectionQueued`.
+    pub fn pre_boundary_snapshot(&self) -> PreBoundarySnapshot {
+        PreBoundarySnapshot {
+            capability_states: self.capability_states.clone(),
+            scripted_event_instances: self.scripted_event_instances.clone(),
+            pending_selections: self.player_selections.clone(),
+        }
+    }
+
+    /// Drain pending capability notifications, returning them to the caller.
+    /// The recording path calls this after each boundary to convert the
+    /// transient queue into `SpecDelta::CapabilityNotification` entries.
+    pub fn drain_notifications(&mut self) -> Vec<CapabilityTreeNotification> {
+        std::mem::take(&mut self.capability_notifications)
     }
 
     /// Queue a player-selection activation using logical tree and entry ids.

@@ -1,9 +1,39 @@
 # Spec Session State Replay
 
 **Date:** 2026-05-23
-**Status:** Proposed
-**Blocks:** O2 (Replay v3 — spec session state)
+**Status:** Accepted (O2 implementation landed)
+**Blocks:** O2 (Replay v3 — spec session state) — ✅ landed
 **Related:** [`game_mode_session_installation.md`](game_mode_session_installation.md), [`scripted_event_scope_model.md`](scripted_event_scope_model.md), `docs/replay_v2.md` (existing structural replay)
+
+**Implementation notes:** Landed essentially as proposed. Three integration
+details emerged during the build:
+
+1. **`mode: Option<ActivationMode>`.** The ADR's
+   `CapabilityActivationModeChanged.mode` field is implemented as
+   `Option<ActivationMode>` rather than `ActivationMode`: `None` means
+   "clear the runtime override (revert to authored default)," `Some(m)`
+   installs an override. The ADR's `// None == clear to default` comment
+   anticipated this — the Option wrapper makes the sentinel concrete.
+
+2. **`spec_entries: Vec<serde_json::Value>` on `ReplayFrame`.** To keep
+   `simthing-sim` spec-free, the frame's spec-delta payload is stored as
+   opaque JSON values. The driver round-trips them through
+   `spec_deltas_to_json` / `json_to_spec_deltas`. Sim-only consumers see
+   `spec_entries` as an inert vec of values.
+
+3. **`ReplayWriter::write_extra<T: Serialize>`.** Added to `simthing-sim`
+   as the escape hatch for driver-layer record kinds (the `spec_snapshot`
+   line). The sim layer stays generic — it doesn't know what's in the
+   value, just writes it as one JSON line. `ReplayReader::next_frame`
+   skips unknown `kind` values silently so sim-only readers ignore the
+   spec_snapshot line.
+
+4. **Logical-key matching across replay open.** The acceptance test
+   matches capability states across recording/replay by
+   `(owner_id, tree_logical_id)` rather than `CapabilityInstanceKey` —
+   the latter contains process-local atomic ids
+   (`CapabilityTreeDefinitionId`, `tree_thing_id`) that change every
+   install. This validates the "logical keys throughout" invariant.
 
 ## Context
 

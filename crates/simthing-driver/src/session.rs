@@ -17,6 +17,7 @@ use thiserror::Error;
 
 use crate::install::{compile_and_install, InstallError};
 use crate::scenario::Scenario;
+use crate::spec_replay::{self, make_spec_snapshot_record};
 use crate::spec_session::SpecSessionState;
 
 #[derive(Debug, Error)]
@@ -324,6 +325,15 @@ impl SimSession {
         let mut writer = ReplayWriter::new(&mut file);
         writer.write_snapshot(&self.proto.snapshot(0))?;
 
+        // O2 Replay v3: emit a `spec_snapshot` line right after the
+        // structural snapshot when the session carries installed spec
+        // state. Sim-only readers skip this line via the unknown-kind
+        // fall-through in `ReplayReader::next_frame`.
+        if !self.spec_state.is_empty() {
+            let snap = spec_replay::collect_spec_snapshot(&self.spec_state, 0);
+            writer.write_extra(&make_spec_snapshot_record(snap))?;
+        }
+
         while summary.boundaries_run < cap as u64 {
             let submit_started = Instant::now();
             self.submit_tick_patches()?;
@@ -362,6 +372,7 @@ impl SimSession {
                         day: day as u32,
                         entries: Vec::new(),
                         shadow_values: None,
+                        spec_entries: Vec::new(),
                     };
                     writer.write_frame(&frame)?;
                     summary.frames_written += 1;
@@ -371,6 +382,9 @@ impl SimSession {
                 }
                 summary.boundary_readback_bytes += self.state.values_len() as u64 * 4;
                 let boundary_started = Instant::now();
+                // O2 Replay v3: snapshot mutable spec state before the hook
+                // runs so we can diff post-boundary and emit `SpecDelta`s.
+                let pre_spec = self.spec_state.pre_boundary_snapshot();
                 let spec_state = &mut self.spec_state;
                 let outcome = self.proto.execute_with_boundary_hook(
                     tick.events,
@@ -397,10 +411,18 @@ impl SimSession {
                     .reduction_depths_max
                     .max(outcome.gpu_sync.reduction_depths);
 
+                // O2 Replay v3: diff spec state, drain notifications, build
+                // `spec_entries` for the frame.
+                let notifications = self.spec_state.drain_notifications();
+                let spec_deltas =
+                    spec_replay::diff_and_emit(&pre_spec, &self.spec_state, notifications);
+                let spec_entries = spec_replay::spec_deltas_to_json(&spec_deltas);
+
                 let frame = ReplayFrame {
                     day: day as u32,
                     entries: self.proto.take_delta_log(),
                     shadow_values: Some(self.coord.shadow.clone()),
+                    spec_entries,
                 };
                 writer.write_frame(&frame)?;
                 summary.frames_written += 1;

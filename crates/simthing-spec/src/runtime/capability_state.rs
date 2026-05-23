@@ -1,6 +1,7 @@
 use crate::keys::{CapabilityEntryKey, CategoryKey};
 use crate::runtime::CapabilityTreeDefinitionId;
 use crate::spec::capability::ActivationMode;
+use serde::{Deserialize, Serialize};
 use simthing_core::{OverlayId, SimThingId};
 use std::collections::HashMap;
 
@@ -43,7 +44,7 @@ pub struct CapabilityTreeState {
     pub active_by_category: HashMap<CategoryKey, Vec<CapabilityEntryKey>>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum CapabilityTreeNotification {
     IdeaSwitched {
         owner_id: SimThingId,
