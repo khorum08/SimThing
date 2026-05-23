@@ -56,9 +56,11 @@ Named("entry_id_rate")  — research rate, governed_by drives integration
 
 **Overlays** are attached to the capability tree node at session init
 with `OverlayLifecycle::Suspended { when_activated: Box::new(Permanent) }`.
-The overlay's `affects` field targets the owning Faction node so that when
-activated, its `PropertyTransformDelta` propagates down through all spatial
-children via Pass 3.
+
+> **v0 install note (O1):** After `open_from_spec`, each owner gets a **cloned**
+> capability-tree `SimThing`. Suspended effect overlays on that clone currently
+> set `affects` to the **cloned tree id**, not the owning faction. See
+> [§14 — v0 capability effect target semantics](#14-addendum--v0-capability-effect-target-semantics-opus-p3-pending).
 
 **Unlock** fires when the progress sub-field crosses `research_cost` in
 Pass 7. The spec layer's boundary handler reads the threshold event,
@@ -230,12 +232,16 @@ surface that `CapabilityTreeBuilder` (in `simthing-spec`) consumes at session in
 CapabilityTreeSpec(
     tree_id:      "terran_tech_tree",
     tree_kind:    "tech_tree",          // becomes SimThingKind::Custom(tree_kind)
-    owner_kind:   "Faction",            // which SimThingKind owns this tree
+    owner_kind:   "Faction",            // metadata; install target selects owners (§13)
+    install:      AllOfKind(kind: "Faction"),  // optional; defaults to AllOfKind Faction
     categories: [
         // ...CapabilityCategorySpec entries...
     ],
 )
 ```
+
+See [`docs/examples/README.md`](examples/README.md) for full `GameModeSpec`
+examples of `AllOfKind`, `ScenarioListed`, and `SessionRoot`.
 
 ### Category
 
@@ -1059,5 +1065,121 @@ push helper for B2 append-only session wiring (Track A / PR 11).
 
 ### Next
 
-PR 11 session assembly is landed. Next: session init from authored specs —
-see `docs/workshop/simthing_spec_progress_log.md` § Open work.
+PR 11 session assembly and O1 install are landed. See
+`docs/workshop/simthing_spec_progress_log.md` § Open work. Install-target
+authoring: [§13](#13-addendum--installtargetspec-and-authored-kind-strings-o1-pr-53).
+Effect scope: [§14](#14-addendum--v0-capability-effect-target-semantics-opus-p3-pending).
+
+---
+
+## 13. Addendum — InstallTargetSpec and authored kind strings (O1, PR #53)
+
+**Status:** Landed in `simthing-driver::install` · **ADR:**
+[`game_mode_session_installation.md`](adr/game_mode_session_installation.md) ·
+**Examples:** [`docs/examples/README.md`](examples/README.md)
+
+Each `CapabilityTreeSpec` carries an authored **`install`** field
+(`InstallTargetSpec`) declaring **which scenario owners** receive a cloned
+copy of the tree when `SimSession::open_from_spec` runs.
+
+```ron
+// Default when omitted — every Faction in the scenario tree:
+install: AllOfKind(kind: "Faction"),
+
+// Explicit list from the scenario (not the game mode file):
+install: ScenarioListed(target_id: "player_faction"),
+
+// One clone attached under Scenario::root:
+install: SessionRoot,
+```
+
+### Resolution semantics (v0)
+
+| Variant | Behavior |
+|---------|----------|
+| `AllOfKind { kind }` | Walk `Scenario::root`; install on every `SimThingId` whose kind **exactly** matches `kind` via `simthing_core::kind_matches`. |
+| `ScenarioListed { target_id }` | Install on ids listed in `Scenario::install_targets[target_id]`. Missing key → hard error. Empty list → `NoMatchingOwners`. |
+| `SessionRoot` | Install once on `Scenario::root.id`. |
+
+If `AllOfKind` matches **zero** owners, install fails with
+`InstallError::NoMatchingOwners`. There is no silent skip.
+
+### Authored kind strings for `AllOfKind`
+
+Matching is **intentionally simple and exact** in v0: case-sensitive string
+equality against runtime `SimThingKind`. There is no tag system, fuzzy match,
+or case folding.
+
+**Built-in kinds** (use enum identifier spelling):
+
+| Authored string | Runtime kind |
+|-----------------|--------------|
+| `"World"` | `SimThingKind::World` |
+| `"Faction"` | `SimThingKind::Faction` |
+| `"StarSystem"` | `SimThingKind::StarSystem` |
+| `"Location"` | `SimThingKind::Location` |
+| `"Cohort"` | `SimThingKind::Cohort` |
+| `"Fleet"` | `SimThingKind::Fleet` |
+| `"Station"` | `SimThingKind::Station` |
+
+**Custom kinds** — match the label passed to `SimThingKind::Custom(name)`.
+Examples from capability trees: `"tech_tree"`, `"national_ideas"`,
+`"talent_tree"`. A modder-authored container `"racial_abilities"` matches only
+when the runtime node is `Custom("racial_abilities")`.
+
+`tree_kind` on `CapabilityTreeSpec` is the **label of the cloned capability-tree
+node itself**, not the install filter. `install: AllOfKind(kind: "Faction")`
+finds faction owners; the installed child is still `Custom(tree_kind)`.
+
+### Out of scope (v0)
+
+Tag selectors, owner expressions, dynamic filters, and scenario RON expansion
+of `install_targets` are not implemented. Do not rely on undocumented matching
+rules — if a kind string does not match, installation fails loudly.
+
+---
+
+## 14. Addendum — v0 capability effect target semantics (Opus P3 pending)
+
+**Status:** Current runtime behavior · **Design follow-up:** EffectTarget ADR
+(Opus P3) before Studio/modder-facing promises harden.
+
+### What v0 does today
+
+When `compile_and_install` clones a capability tree per owner (O1):
+
+1. Each owner receives a **new** `SimThing` of kind `Custom(tree_kind)` with
+   fresh `OverlayId`s on its suspended effect overlays.
+2. Those overlays set **`affects` to the cloned capability-tree id** (the clone),
+   not the owning `Faction` / `Location` / session root.
+3. `CapabilityEffectSpec.targets_property` names the **property column** the
+   transform modifies (e.g. `"core::power"`, `"military::fleet_speed"`). It does
+   **not** yet select *which SimThing* receives the transform beyond the
+   overlay's `affects` target.
+
+This is internally consistent for v0 session install and tests, but **not** the
+same as “apply this bonus to the owning faction” unless the property column and
+overlay placement happen to achieve that visually.
+
+### What is not authored yet
+
+Owner-targeted capability effects, session-root effects, “current scope”
+expressions, and other modder-facing **effect target** models are **not** part
+of the RON schema. An **EffectTarget ADR** (Opus P3) will decide explicit
+scopes such as:
+
+- `CapabilityTree` (cloned tree node — closest to v0 today)
+- `Owner` (install target owner)
+- `SessionRoot`
+- `Current` / future scope expressions
+
+Until that ADR lands, treat capability effects as modifying state on the
+**cloned capability-tree SimThing** unless documentation for a specific
+game mode says otherwise.
+
+### Authoring implication
+
+Do not assume `targets_property: "military::fleet_speed"` automatically buffs
+the parent faction. Verify runtime placement via install tests or Studio
+preview once available. Prefer properties registered on the capability tree
+clone when prototyping v0 content.

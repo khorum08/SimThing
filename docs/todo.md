@@ -499,5 +499,6 @@ simthing-studio   ← deferred GUI
 18. **Next — Opus P3:** **EffectTarget ADR** — Owner vs CapabilityTree effect scope
      before Studio/modder docs.
 19. ~~**Cursor:** InstallTargetSpec examples/docs PR~~ — `docs/examples/` + parse smoke test.
-20. **Next — Cursor:** Built-in kind string + v0 effect-target docs PR; optional S5 regression test PR.
-21. Scenario format expansion / map-scale representation — tabled.
+20. ~~**Cursor:** Built-in kind string + v0 effect-target docs PR~~ — `capability_tree_v1.md` §13–§14.
+21. **Next — Cursor:** Optional S5 regression test PR.
+22. Scenario format expansion / map-scale representation — tabled.
