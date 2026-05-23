@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-23 — V6.5 doc synthesis + archive sunset
 
-**Status:** `master` @ `36b3285` (pending commit).
+**Status:** `master` @ `030ef3e` (PR #61 merged).
 
 **Landed (docs):**
 
