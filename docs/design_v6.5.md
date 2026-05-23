@@ -28,6 +28,17 @@ boundary protocol). Read V6.5 first when picking up work; read V6 when changing 
 | `fission_with_cloned_capability_subtree_reduction_topology_matches_full_rebuild` | `simthing-sim` | S5: Approach C topology append misses cloned capability-subtree edges |
 | GPU day-boundary timing budget | `simthing-gpu` | Pre-existing perf diagnostic |
 
+**PR 11 proof still green:** `spec_session_capability_unlock_activates_overlay_for_next_tick`
+(manual `install_spec_state` path) passes. Only `open_from_spec_capability_unlock_activates_overlay_for_next_tick`
+is RED — per-clone overlay id activation after O1 install.
+
+Repro (RED tests only):
+
+```powershell
+cargo test -p simthing-driver open_from_spec_capability_unlock -- --ignored
+cargo test -p simthing-sim fission_with_cloned_capability_subtree_reduction -- --ignored
+```
+
 ---
 
 ## 2. Architecture (unchanged from V6)
@@ -38,7 +49,9 @@ structural mutations, and CPU semantic interpretation of GPU output.
 
 **V6 additions (landed):** suspended overlays, `ActivateOverlay` / `SuspendOverlay`,
 opt-in capability-subtree cloning on fission via `clone_capability_children` +
-`capability_container_kinds`.
+`capability_container_kinds`. B2 fission-growth optimizations (Approaches A/B/C) are
+landed; Approach C has one known RED guard case when fission clones multi-node capability
+subtrees (S5).
 
 **Spec layer (landed):** authored RON compiles to runtime artifacts in `simthing-spec`;
 session ownership lives in `simthing-driver`; `simthing-sim` stays spec-free and exposes a
@@ -110,7 +123,7 @@ simthing-studio   ← deferred GUI (depends on spec)
 | **P1** | **O1c** | — | Registry/GPU dimension sync after install — **ruled out** by O1b run (`n_dims == registry.total_columns`) | Only if reopened |
 | **P2** | **O4** | Codex | Per-owner scripted events (Option B in ADR) | After O1b green |
 | **P2** | **O2** | Codex | Replay v3 (`SpecSnapshot` / `SpecDelta`); `by_overlay` on instance is precondition | After O1b green |
-| **P3** | **EffectTarget** | Opus | ADR: capability effect target scope (`Owner` vs `CapabilityTree` vs `SessionRoot`) | Before Studio/modder exposure |
+| **P3** | **EffectTarget** | Opus | ADR: capability effect target scope (`Owner` vs `CapabilityTree` vs `SessionRoot`). **Why:** v0 overlays affect the cloned capability tree, not the owner — valid but semantically surprising; modder/Studio docs must not ship until this is decided. | Before Studio/modder exposure |
 | — | Scenario RON expansion | — | Inline tree/registry/shadow seeds | Tabled |
 | — | `simthing-studio` GUI | — | Designer surface | Tabled; depends on spec |
 

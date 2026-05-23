@@ -109,10 +109,13 @@ to `CapabilityTreeInstance` (per-clone). `CapabilityTreeBuildOutput` exposes
 
 ## Next
 
-### `simthing-spec` (revised PR ladder — PR 1 done)
+### `simthing-spec` (revised PR ladder — historical)
+
+> **Historical.** PRs 2–11 complete. Current owners: see top of this file and
+> `docs/design_v6.5.md` §5.
 
 Authoritative spec: `simthing-spec — Master Implementation Handoff` (2026-05-22).
-All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.**
+All PRs sequenced deliberately; do not skip ahead.
 
 - [x] **PR 2** — property + overlay spec compiler (`compile/property.rs`,
       `compile/overlay.rs`, `compile/context.rs`). Landed 2026-05-22.
