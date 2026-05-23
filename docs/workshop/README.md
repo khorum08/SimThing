@@ -19,15 +19,21 @@
 
 - [`../adr/spec_session_state_replay.md`](../adr/spec_session_state_replay.md)
 
+## Authoring & design (workshop)
+
+| Document | Role |
+|----------|------|
+| [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder-facing core authoring objects (properties, overlays, capability trees, events) |
+| [`simthing_base_economic_system_working_doc.md`](simthing_base_economic_system_working_doc.md) | Base economic model working doc — resources, transfers, thresholds, fission as SimThing patterns |
+| [`capability_tree_v1.md`](../capability_tree_v1.md) | Capability-tree RON reference (§13 install; §14 EffectTarget) |
+| [`../examples/README.md`](../examples/README.md) | InstallTargetSpec RON examples |
+
 ## Source / historical (in repo — rationale only)
 
 | Document | Role |
 |----------|------|
 | [`capability_tree_studio_workshop.md`](capability_tree_studio_workshop.md) | Original Claude workshop Q&A (2026-05-22); **superseded** for implementation |
 | [`tech_tree_decisions.md`](tech_tree_decisions.md) | Prior session decisions; **superseded** — see progress log § approved decisions |
-| [`capability_tree_v1.md`](../capability_tree_v1.md) | Capability-tree RON reference (§13 install; §14 EffectTarget) |
-| [`../examples/README.md`](../examples/README.md) | InstallTargetSpec RON examples |
-| [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder object reference (draft, local; EffectTarget unblocks) |
 
 ## Superseded handoffs (local archive)
 
