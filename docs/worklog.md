@@ -6,7 +6,13 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-23 — Workshop authoring docs
+## 2026-05-23 — Sonnet/Opus spec handoff (PR #64)
+
+**Status:** `master` @ `9fd8b85`.
+
+**Added:** `docs/workshop/simthing_spec_sonnet_opus_handoff.md` — outstanding work split (Opus: O2 + ADRs; Sonnet: tests/docs/examples).
+
+---
 
 **Status:** `master` @ `afcbd53` (PR #63 merged).
 

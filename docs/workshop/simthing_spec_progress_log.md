@@ -5,7 +5,7 @@ assembly, and O1 session installation.
 **Parking synthesis:** [`docs/design_v6.5.md`](../design_v6.5.md) — read first for HEAD, gates, doc map.  
 **Replaces:** superseded PR handoff/workshop docs (see [`archive/SUNSET.md`](archive/SUNSET.md)).  
 **Last updated:** 2026-05-23  
-**Master HEAD:** `393db00`  
+**Master HEAD:** `9fd8b85` (PR #64)  
 **Verification:** `cargo test --workspace` → **326** passed, **1** ignored, zero warnings.  
 `cargo build --workspace --tests` and release profile build/tests clean.
 

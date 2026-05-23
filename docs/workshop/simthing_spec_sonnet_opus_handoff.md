@@ -1,7 +1,7 @@
 # simthing-spec — Sonnet / Opus Handoff
 
 **Date:** 2026-05-23  
-**Master HEAD:** `b93c1b3` (workshop authoring docs @ `afcbd53`)  
+**Master HEAD:** `9fd8b85` (PR #64 Sonnet/Opus handoff)  
 **Verification:** `cargo test --workspace` → **326** passed, **1** ignored, zero warnings  
 **Parking synthesis:** [`docs/design_v6.5.md`](../design_v6.5.md)
 
