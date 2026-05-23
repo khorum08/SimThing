@@ -78,6 +78,7 @@ fn tree_spec(categories: Vec<CapabilityCategorySpec>) -> simthing_spec::Capabili
         tree_id: "terran_tech".into(),
         tree_kind: "tech_tree".into(),
         owner_kind: "Faction".into(),
+        install: simthing_spec::InstallTargetSpec::faction_default(),
         categories,
     }
 }
@@ -127,6 +128,7 @@ impl Fixture {
             definition_id: self.definition.id,
             tree_thing_id: self.tree_id,
             tree_slot: self.tree_slot,
+            by_overlay: HashMap::new(),
         }
     }
 
@@ -465,6 +467,7 @@ fn capability_tree_state_is_per_faction_not_shared() {
             definition_id: fixture.definition.id,
             tree_thing_id: tree_b,
             tree_slot: 1,
+            by_overlay: HashMap::new(),
         },
     );
     let mut definitions = HashMap::new();

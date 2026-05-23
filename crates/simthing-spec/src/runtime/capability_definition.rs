@@ -35,6 +35,12 @@ impl Default for CapabilityTreeDefinitionId {
 /// Shared, read-only template for a capability tree. One per `CapabilityTreeSpec`
 /// after `CapabilityTreeBuilder::build`. Faction instances reference this by id
 /// and carry their own mutable `CapabilityTreeState` (PR 5).
+///
+/// **Note:** `by_overlay` (overlay id → entry key) lives on
+/// [`CapabilityTreeInstance`](super::CapabilityTreeInstance), not here.
+/// Each cloned tree allocates its own `OverlayId`s at install time, so the
+/// reverse map is per-instance. See
+/// `docs/adr/game_mode_session_installation.md` consequence (c.i).
 #[derive(Clone, Debug)]
 pub struct CapabilityTreeDefinition {
     pub id: CapabilityTreeDefinitionId,
@@ -44,8 +50,6 @@ pub struct CapabilityTreeDefinition {
     /// Fast lookup for the boundary handler when a Pass 7 threshold fires:
     /// `(property_id, sub_field_role) -> entry`.
     pub by_threshold: HashMap<(SimPropertyId, SubFieldRole), CapabilityEntryKey>,
-    /// Fast lookup for UI/preview: `overlay_id -> entry`.
-    pub by_overlay: HashMap<OverlayId, CapabilityEntryKey>,
 }
 
 /// One compiled capability category. Category policy is shared by all faction

@@ -6,6 +6,48 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-23 — O1 session installation (Opus)
+
+**Status:** `master` @ TBD (this branch: `feat/o1-session-installation`).
+
+**Landed:**
+
+- **`InstallTargetSpec`** in `simthing-spec` (`AllOfKind` / `ScenarioListed` /
+  `SessionRoot`); `CapabilityTreeSpec` gains `install` field with serde default
+  matching the prior behavior (`AllOfKind { kind: "Faction" }`).
+- **`GameModeSpec`** / **`DomainPackSpec`** gain `events: Vec<EventSpec>` field
+  (serde-default empty).
+- **`Scenario::install_targets`** — `HashMap<String, Vec<SimThingId>>` for
+  `ScenarioListed` resolution.
+- **`simthing_core::kind_matches`** — string-vs-`SimThingKind` comparison helper.
+- **`by_overlay` migration** — removed from `CapabilityTreeDefinition`,
+  added to `CapabilityTreeInstance`. `CapabilityTreeBuilder::build` returns
+  the template-level map as `CapabilityTreeBuildOutput::template_by_overlay`;
+  install module re-stamps per clone. Replay v3 (O2) picks up from this shape.
+- **`simthing_driver::install`** — new module with `compile_and_install`,
+  `install_tree_for_owner`, `resolve_install_target`, `InstallError`. Clones
+  capability tree `SimThing`s per resolved owner with fresh `OverlayId`s,
+  attaches under each owner, re-allocates slots.
+- **`SimSession::open_from_spec(scenario, &game_mode)`** — RON-driven session
+  open. Composes `open` + `compile_and_install` + `install_spec_state`.
+- **Release-build fix (S3 follow-up):** `debug_assert_topology_cache_matches_tree`
+  was defined `#[cfg(debug_assertions)]` but called unconditionally; gated the
+  call site to match. Pre-existing on master; fixed inline to keep the parking
+  gate green.
+- **6 acceptance tests** in `session_integration.rs`: matching-owner install,
+  multi-owner clone with distinct `OverlayId`s, scenario-listed targeting,
+  `NoMatchingOwners` error, legacy `install_spec_state` regression, and
+  `by_overlay` migration shape assertion.
+
+**Tests:** 320 passed, 1 ignored, zero warnings (debug + release).
+Release-profile build/tests clean.
+
+**Next:** O4 (per-owner scripted events, per scope ADR) and O2 (replay v3, per
+replay ADR). Both can co-land or sequence; O2's `by_overlay` migration is
+already done by this PR. S5/O5 append-only thresholds remain parallel track.
+
+---
+
 ## 2026-05-23 — Composer S3/S4 + doc parking sync (PR #52)
 
 **Status:** `master` @ `7914528`.

@@ -1,3 +1,4 @@
+use crate::spec::install_target::InstallTargetSpec;
 use serde::{Deserialize, Serialize};
 
 /// How a capability entry is authored to become active.
@@ -47,6 +48,15 @@ pub struct CapabilityTreeSpec {
     pub tree_kind: String,
     pub owner_kind: String,
     pub categories: Vec<CapabilityCategorySpec>,
+    /// Authored install target. Defaults to `AllOfKind { kind: "Faction" }`
+    /// so RON files that omit this field install on every faction in scope.
+    /// See `docs/adr/game_mode_session_installation.md`.
+    #[serde(default = "default_capability_install")]
+    pub install: InstallTargetSpec,
+}
+
+fn default_capability_install() -> InstallTargetSpec {
+    InstallTargetSpec::faction_default()
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

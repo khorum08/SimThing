@@ -47,9 +47,11 @@ use simthing_feeder::{
     ScriptedEventTriggerRegistration, TransformPatcher,
 };
 use simthing_gpu::{
-    build_column_rule_descriptors, build_topology, encode_column_rules, SlotAllocator,
-    ThresholdEvent, TopologyState, WorldGpuState,
+    build_column_rule_descriptors, encode_column_rules, SlotAllocator, ThresholdEvent,
+    TopologyState, WorldGpuState,
 };
+#[cfg(debug_assertions)]
+use simthing_gpu::build_topology;
 
 use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 use crate::fission::{
@@ -639,6 +641,7 @@ impl BoundaryProtocol {
             topology_dirty,
             &mut self.cached_topology_state,
         );
+        #[cfg(debug_assertions)]
         if topology_full_rebuild_pending {
             debug_assert_topology_cache_matches_tree(
                 &self.root,
@@ -646,6 +649,8 @@ impl BoundaryProtocol {
                 &self.cached_topology_state,
             );
         }
+        #[cfg(not(debug_assertions))]
+        let _ = topology_full_rebuild_pending;
         out.timing.gpu_sync_ms = gpu_sync_started.elapsed().as_secs_f64() * 1000.0;
         // Adopt the new threshold registry for the next day.
         if let Some(new_reg) = gpu_out.new_threshold_registry {

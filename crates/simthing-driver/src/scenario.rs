@@ -9,6 +9,7 @@ use simthing_core::{
 };
 use simthing_feeder::PatchTransform;
 use simthing_gpu::SlotAllocator;
+use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -47,6 +48,12 @@ pub struct Scenario {
     pub root:          SimThing,
     pub shadow_seeds:  Vec<ShadowSeed>,
     pub tick_patches:  Vec<PatchTransform>,
+    /// Authored install-target registry. Maps a logical target id (used by
+    /// `InstallTargetSpec::ScenarioListed { target_id }` on the spec layer)
+    /// to a list of `SimThingId`s present in `root`. Empty in builtin
+    /// scenarios; populated by RON-loaded scenarios that pin capability
+    /// trees or scripted events to specific owners.
+    pub install_targets: HashMap<String, Vec<SimThingId>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -173,6 +180,7 @@ impl Scenario {
                 velocity: -0.21,
             }],
             tick_patches: Vec::new(),
+            install_targets: HashMap::new(),
         }
     }
 
@@ -203,6 +211,7 @@ impl Scenario {
             root: world,
             shadow_seeds: Vec::new(),
             tick_patches: Vec::new(),
+            install_targets: HashMap::new(),
         }
     }
 
@@ -238,7 +247,7 @@ impl Scenario {
             world.add_child(loc);
         }
 
-        Self { name, ticks_per_day, max_days, dt, n_slots, registry: reg, root: world, shadow_seeds: Vec::new(), tick_patches: Vec::new() }
+        Self { name, ticks_per_day, max_days, dt, n_slots, registry: reg, root: world, shadow_seeds: Vec::new(), tick_patches: Vec::new(), install_targets: HashMap::new() }
     }
 
     pub fn intent_stress(name: String, ticks_per_day: u32, max_days: u32, dt: f32, n_slots: u32) -> Self {
@@ -296,7 +305,7 @@ impl Scenario {
             world.add_child(cohort);
         }
 
-        Self { name, ticks_per_day, max_days, dt, n_slots, registry: reg, root: world, shadow_seeds: Vec::new(), tick_patches: Vec::new() }
+        Self { name, ticks_per_day, max_days, dt, n_slots, registry: reg, root: world, shadow_seeds: Vec::new(), tick_patches: Vec::new(), install_targets: HashMap::new() }
     }
 
     pub fn threshold_stress(name: String, ticks_per_day: u32, max_days: u32, dt: f32, n_slots: u32) -> Self {

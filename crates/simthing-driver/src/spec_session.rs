@@ -418,7 +418,6 @@ mod tests {
                 },
             )]),
             by_threshold: HashMap::new(),
-            by_overlay: HashMap::from([(overlay_id, entry.clone())]),
         };
 
         let mut allocator = simthing_gpu::SlotAllocator::new();
@@ -428,6 +427,7 @@ mod tests {
             definition_id,
             tree_thing_id: tree_id,
             tree_slot: allocator.slot_of(tree_id).unwrap(),
+            by_overlay: HashMap::from([(overlay_id, entry.clone())]),
         };
         let state = CapabilityTreeState {
             owner_id: tree_id,
@@ -476,13 +476,13 @@ mod tests {
             categories: HashMap::new(),
             entries: HashMap::new(),
             by_threshold: HashMap::new(),
-            by_overlay: HashMap::new(),
         };
         let instance = CapabilityTreeInstance {
             owner_id: owner,
             definition_id,
             tree_thing_id: SimThingId::new(),
             tree_slot: 0,
+            by_overlay: HashMap::new(),
         };
         spec_state.add_capability_tree_instance(
             definition,
@@ -563,7 +563,6 @@ mod tests {
                 },
             )]),
             by_threshold: HashMap::new(),
-            by_overlay: HashMap::from([(overlay_id, entry.clone())]),
         };
 
         let mut allocator = simthing_gpu::SlotAllocator::new();
@@ -573,6 +572,7 @@ mod tests {
             definition_id,
             tree_thing_id: tree_id,
             tree_slot: allocator.slot_of(tree_id).unwrap(),
+            by_overlay: HashMap::from([(overlay_id, entry.clone())]),
         };
         let state = CapabilityTreeState {
             owner_id: tree_id,

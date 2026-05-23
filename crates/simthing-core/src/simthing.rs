@@ -80,6 +80,25 @@ impl SimThing {
     }
 }
 
+/// Compare an authored kind string (from RON / spec layer) to a runtime
+/// `SimThingKind`. Used by `InstallTargetSpec::AllOfKind` to match install
+/// targets without exposing `SimThingKind` variants to the spec crate.
+///
+/// Built-in variant names match the enum identifier exactly (`"World"`,
+/// `"Faction"`, …). `Custom(name)` matches when `authored == name`.
+pub fn kind_matches(authored: &str, sim: &SimThingKind) -> bool {
+    match sim {
+        SimThingKind::World      => authored == "World",
+        SimThingKind::Faction    => authored == "Faction",
+        SimThingKind::StarSystem => authored == "StarSystem",
+        SimThingKind::Location   => authored == "Location",
+        SimThingKind::Cohort     => authored == "Cohort",
+        SimThingKind::Fleet      => authored == "Fleet",
+        SimThingKind::Station    => authored == "Station",
+        SimThingKind::Custom(s)  => s == authored,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

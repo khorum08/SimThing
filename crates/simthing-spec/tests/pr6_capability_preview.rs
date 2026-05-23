@@ -89,6 +89,7 @@ fn tree_spec(categories: Vec<CapabilityCategorySpec>) -> simthing_spec::Capabili
         tree_id: "terran_ideas".into(),
         tree_kind: "national_ideas".into(),
         owner_kind: "Faction".into(),
+        install: simthing_spec::InstallTargetSpec::faction_default(),
         categories,
     }
 }
@@ -302,6 +303,7 @@ fn national_ideas_full_path_activate_switch_verify() {
             definition_id: fixture.definition.id,
             tree_thing_id: fixture.tree.id,
             tree_slot: 0,
+            by_overlay: HashMap::new(),
         },
     );
     let mut states = HashMap::from([(fixture.owner_id, fixture.state())]);

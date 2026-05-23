@@ -1,21 +1,30 @@
 # SimThing Todo Log
 
-Current parking state: **`simthing-spec` PRs 1–11 complete**; Phase 1 ADRs, **O3**,
-and Composer **S3/S4** landed. `master` and `origin/master` synced at
-**`70dc00e`** (PR #52 code @ `7914528`).
+Current parking state: **`simthing-spec` PRs 1–11 complete**; Phase 1 ADRs,
+**O3**, Composer **S3/S4**, and **O1** (session installation) landed.
 
-**Tests:** `cargo test --workspace` → **314** passed, **1** ignored, zero
+**Tests:** `cargo test --workspace` → **320** passed, **1** ignored, zero
 warnings. Debug and **release** profile build/tests clean.
 
 **Canonical spec progress:** `docs/workshop/simthing_spec_progress_log.md`
 (replaces PR-scoped workshop handoffs — see `docs/workshop/README.md`).
 
-**Implementation:** `simthing-driver::SpecSessionState` owns spec runtime state;
-`BoundaryProtocol::execute_with_boundary_hook` invokes capability and
-scripted-event handlers after GPU readback. `simthing-sim` remains spec-free.
+**Implementation:** `simthing-driver::SpecSessionState` owns spec runtime
+state; `simthing-driver::install` compiles a `GameModeSpec` against a
+`Scenario`, clones capability trees per owner with fresh `OverlayId`s, and
+populates the spec state. `SimSession::open_from_spec(scenario, &game_mode)`
+is the RON-driven entry point. `BoundaryProtocol::execute_with_boundary_hook`
+invokes capability and scripted-event handlers after GPU readback;
+`simthing-sim` remains spec-free.
 
-**Next (Codex):** **O1** — RON-driven session init per
-`docs/adr/game_mode_session_installation.md`. Then O4 → O2.
+**`by_overlay` migration:** moved from `CapabilityTreeDefinition` (shared)
+to `CapabilityTreeInstance` (per-clone). `CapabilityTreeBuildOutput` exposes
+`template_by_overlay` for the install module to re-stamp.
+
+**Next:** **O4** (per-owner scripted events per
+`docs/adr/scripted_event_scope_model.md`) and **O2** (replay v3 per
+`docs/adr/spec_session_state_replay.md`). O2's `by_overlay` precondition is
+already satisfied by O1; the two can co-land or sequence.
 
 **Parallel (Codex):** **S5/O5** — append-only external thresholds; Approach C
 topology append must exclude `clone_capability_children` fissions (drift found).
@@ -465,10 +474,11 @@ simthing-studio   ← deferred GUI
 8. ~~**PR 11 Track A** — session/driver assembly~~ — Done `01fb572`, parked `9e63718`.
 9. ~~Composer Phase 0 + Phase 1 ADRs + O3~~ — Done through `c3f3556` (PRs #49–51).
 10. ~~Composer S3 + S4~~ — topology full-rebuild guard; capability instance reverse map (PR #52, `7914528`).
-11. **Next session — primary track:** **O1 — session init from authored specs**
-     (`InstallTargetSpec`, `install.rs`, `open_from_spec`, per-owner tree clone,
-     `by_overlay` migration). ADR:
-     `docs/adr/game_mode_session_installation.md`.
-   - **Then:** O4 (per-owner scripted events), O2 (replay v3).
+11. ~~**O1** — RON-driven session installation~~ (`InstallTargetSpec`,
+     `install.rs`, `open_from_spec`, per-owner tree clone, `by_overlay`
+     migration, S3 release-mode cfg fix). 320 tests passing.
+12. **Next session — primary track:** **O4** (per-owner scripted events) or
+     **O2** (replay v3 for spec session state). O2's `by_overlay`
+     precondition is satisfied by O1.
    - **Parallel:** S5/O5 append-only thresholds + Approach C eligibility fix.
-12. Scenario format expansion / map-scale representation — tabled.
+13. Scenario format expansion / map-scale representation — tabled.

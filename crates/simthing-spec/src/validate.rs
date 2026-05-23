@@ -98,6 +98,7 @@ mod tests {
             tree_id: "test".into(),
             tree_kind: "tech_tree".into(),
             owner_kind: "Faction".into(),
+            install: crate::spec::InstallTargetSpec::faction_default(),
             categories: vec![CapabilityCategorySpec {
                 property_namespace: "tech".into(),
                 property_name: "propulsion".into(),

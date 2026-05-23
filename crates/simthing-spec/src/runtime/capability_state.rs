@@ -1,16 +1,26 @@
 use crate::keys::{CapabilityEntryKey, CategoryKey};
 use crate::runtime::CapabilityTreeDefinitionId;
 use crate::spec::capability::ActivationMode;
-use simthing_core::SimThingId;
+use simthing_core::{OverlayId, SimThingId};
 use std::collections::HashMap;
 
 /// One per faction instance. Immutable after session init.
+///
+/// `by_overlay` is per-instance: each cloned tree gets fresh `OverlayId`s at
+/// install time, so the reverse map (overlay id → entry key) cannot live on
+/// the shared [`CapabilityTreeDefinition`](super::CapabilityTreeDefinition).
+/// See `docs/adr/game_mode_session_installation.md` consequence (c.i).
 #[derive(Clone, Debug, PartialEq)]
 pub struct CapabilityTreeInstance {
     pub owner_id: SimThingId,
     pub definition_id: CapabilityTreeDefinitionId,
     pub tree_thing_id: SimThingId,
     pub tree_slot: u32,
+    /// Fast lookup `overlay_id -> entry_key` for this clone's overlays.
+    /// Built at install time from the template `by_overlay` + the per-clone
+    /// `OverlayId` re-stamping. Empty when constructed by hand (e.g., in
+    /// older PR 5/11 tests that don't need the lookup).
+    pub by_overlay: HashMap<OverlayId, CapabilityEntryKey>,
 }
 
 /// One per faction instance. Mutable at boundary time.

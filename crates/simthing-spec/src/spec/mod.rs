@@ -3,6 +3,7 @@ pub mod domain_pack;
 pub mod effect;
 pub mod event;
 pub mod game_mode;
+pub mod install_target;
 pub mod overlay;
 pub mod property;
 pub mod scenario;
@@ -17,6 +18,7 @@ pub use domain_pack::DomainPackSpec;
 pub use effect::EffectSpec;
 pub use event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use game_mode::GameModeSpec;
+pub use install_target::InstallTargetSpec;
 pub use overlay::OverlaySpec;
 pub use property::PropertySpec;
 pub use script::{

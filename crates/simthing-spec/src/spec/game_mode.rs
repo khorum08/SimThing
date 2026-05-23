@@ -19,4 +19,6 @@ pub struct GameModeSpec {
     pub overlays:     Vec<super::overlay::OverlaySpec>,
     #[serde(default)]
     pub capability_trees: Vec<super::capability::CapabilityTreeSpec>,
+    #[serde(default)]
+    pub events:           Vec<super::event::EventSpec>,
 }
