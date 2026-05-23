@@ -2,13 +2,16 @@
 
 This document is for AI agents picking up work on this project. Read it before touching any code.
 
-**Doc set:** `design_v6.md` (current spec) · `design_v5.md` (v5 implementation-synced
-historical) · `design_v4.md` (original blueprint) · `capability_tree_v1.md` (capability-tree
-RON reference) · `workshop/simthing_spec_progress_log.md` (canonical spec-layer progress) ·
-`workshop/capability_tree_studio_workshop.md` (source workshop Q&A) ·
-`workshop/tech_tree_decisions.md` (2026-05-21 decisions; crate naming superseded by spec
-worksheet) · `state-authority.md` · `invariants.md` · `worklog.md` · `todo.md` ·
-`chatgpt_implementation_review.md` · `eml_integration_guidance.md`.
+**Doc set:** `design_v6.5.md` (current-state synthesis — **read first**) ·
+`design_v6.md` (sim architecture spec) · `design_v5.md` (v5 historical) ·
+`design_v4.md` (original blueprint) · `capability_tree_v1.md` (capability-tree
+RON reference) · `workshop/simthing_spec_progress_log.md` (spec-layer PR ledger) ·
+`workshop/README.md` (workshop index) ·
+`workshop/capability_tree_studio_workshop.md` (historical workshop Q&A) ·
+`workshop/tech_tree_decisions.md` (2026-05-21 decisions; superseded) ·
+`state-authority.md` · `invariants.md` · `worklog.md` · `todo.md` ·
+`chatgpt_implementation_review.md` · `eml_integration_guidance.md` ·
+`adr/README.md`.
 
 ---
 
@@ -19,16 +22,17 @@ simulation — world, faction, star system, location, cohort — is the same rec
 and the entire world state lives in GPU dense matrices that are evaluated continuously. The CPU
 interprets GPU output as events; it does not drive the simulation.
 
-The current design specification is in `docs/design_v6.md`. Read it before changing tick/boundary
-behavior, overlay lifecycle, fission inheritance, GPU pass order, or feeder authority paths.
+The current design specification is in `docs/design_v6.md` (simulation mechanics).
+For **implementation state**, parking, and open work read `docs/design_v6.5.md` first.
+Read V6 before changing tick/boundary behavior, overlay lifecycle, fission inheritance,
+GPU pass order, or feeder authority paths.
 `docs/design_v5.md` remains valid for architecture and v5-era sections not superseded by v6.
 `docs/design_v4.md` is the original blueprint; use it for historical context only.
 Capability/tech-tree authoring is **spec-layer only** — the simulation crates never see
 "tech tree" semantics. Authored RON is compiled by the planned **`simthing-spec`** crate
 (RON → runtime artifacts). The eventual **`simthing-studio`** crate is a deferred
-GUI/editor surface that will depend on `simthing-spec`, not replace it. For the pattern
-read `docs/capability_tree_v1.md` and `docs/workshop/simthing_spec_progress_log.md`
-(canonical); `docs/workshop/tech_tree_decisions.md` for earlier workshop decisions.
+GUI/editor surface that will depend on `simthing-spec`, not replace it. For the pattern read `docs/capability_tree_v1.md` and `docs/workshop/simthing_spec_progress_log.md`;
+`docs/design_v6.5.md` for parking. Historical: `docs/workshop/tech_tree_decisions.md`.
 
 - **One type:** `SimThing { properties, overlays, children }`
 - **One mechanism for change:** overlay a `PropertyTransformDelta` on a SimThing
@@ -47,7 +51,8 @@ system flags," stop. Those are properties with thresholds, not special cases.
 SimThing/
 ├── Cargo.toml                         workspace manifest
 ├── docs/
-│   ├── design_v6.md                   current architecture specification (read this first)
+│   ├── design_v6.5.md               current-state synthesis (parking — read first)
+│   ├── design_v6.md                   simulation architecture specification
 │   ├── design_v5.md                   v5 implementation-synced spec (historical reference)
 │   ├── design_v4.md                   original blueprint (historical reference)
 │   ├── capability_tree_v1.md          capability-tree concept + RON shapes

@@ -3,7 +3,9 @@
 Current parking state: **`simthing-spec` PRs 1–11 complete**; Phase 1 ADRs,
 **O3**, Composer **S3/S4**, **O1**, post-O1 doc sync, and **Cursor safe-followup
 handoff (PRs #56–#59) complete**. `master` and `origin/master` synced at
-**`ce904e8`** (PR #60 parking).
+**`36b3285`**.
+
+**Parking synthesis:** [`docs/design_v6.5.md`](design_v6.5.md) — read first for HEAD, gates, doc map.
 
 **Tests:** `cargo test --workspace` → **323** passed, **3** ignored, zero
 warnings. Debug and **release** profile build/tests clean.
@@ -12,8 +14,8 @@ warnings. Debug and **release** profile build/tests clean.
 examples, #58 kind/effect docs, #59 S5 regression). Two tests **ignored/RED**
 await Codex fixes. No further Cursor-scoped work from that handoff.
 
-**Canonical spec progress:** `docs/workshop/simthing_spec_progress_log.md`
-(replaces PR-scoped workshop handoffs — see `docs/workshop/README.md`).
+**Canonical spec progress:** `docs/design_v6.5.md` (parking) ·
+`docs/workshop/simthing_spec_progress_log.md` (PR ledger)
 
 **Implementation:** `simthing-driver::SpecSessionState` owns spec runtime
 state; `simthing-driver::install` compiles a `GameModeSpec` against a
@@ -454,6 +456,7 @@ FissionTemplate(
 
 ### Doc references
 
+- **Current state:** `docs/design_v6.5.md`
 - Simulation spec: `docs/design_v6.md` (incl. implementation addenda)
 - Capability trees: `docs/capability_tree_v1.md` (incl. addendum §11)
 - **Spec-layer handoff (canonical):** `docs/workshop/simthing_spec_progress_log.md`

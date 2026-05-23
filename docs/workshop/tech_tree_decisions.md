@@ -1,6 +1,10 @@
 # Capability Tree Pattern — Workshop Decisions
 ## Session: 2026-05-21
 
+> **Superseded for implementation.** Read [`docs/design_v6.5.md`](../design_v6.5.md) and
+> [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) § approved decisions.
+> Retained for workshop rationale only.
+
 This document records design decisions reached in the workshop session on
 the capability tree pattern. "Tech tree" is used as the worked example
 throughout but the mechanism is general — it applies equally to national

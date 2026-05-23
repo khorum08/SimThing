@@ -1,6 +1,10 @@
 # Capability Tree Studio Layer — Workshop
 ## Session: 2026-05-22
 
+> **Superseded for implementation.** Read [`docs/design_v6.5.md`](../design_v6.5.md),
+> [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md), and
+> [`docs/adr/`](../adr/README.md). Retained for workshop Q&A rationale only.
+
 This file records approved design decisions for the `simthing-studio`
 capability tree builder. Decisions are locked once marked **APPROVED**.
 Open questions are marked **OPEN** or **DISCUSS**.

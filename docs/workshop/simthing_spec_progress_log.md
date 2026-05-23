@@ -1,10 +1,11 @@
 # simthing-spec — Unified Progress Log (PRs 1–11 + O1)
 
-**Status:** Canonical implementation record for `simthing-spec`, PR 11 session
+**Status:** Canonical **implementation ledger** for `simthing-spec`, PR 11 session
 assembly, and O1 session installation.  
-**Replaces:** superseded PR handoff/workshop docs (see [`README.md`](README.md); those files live in local-only `archive/`).  
+**Parking synthesis:** [`docs/design_v6.5.md`](../design_v6.5.md) — read first for HEAD, gates, doc map.  
+**Replaces:** superseded PR handoff/workshop docs (see [`archive/SUNSET.md`](archive/SUNSET.md)).  
 **Last updated:** 2026-05-23  
-**Master HEAD:** `ce904e8` (PR #60 Cursor handoff parked)  
+**Master HEAD:** `36b3285`  
 **Verification:** `cargo test --workspace` → **323** passed, **3** ignored, zero warnings.  
 `cargo build --workspace --tests` and release profile build/tests clean.
 
@@ -414,18 +415,19 @@ These remain valid; see original Q&A in `capability_tree_studio_workshop.md` for
 
 ## Read order for new agents
 
-1. **This document**
-2. `docs/adr/pr11_track_a_session_assembly.md`
-3. **Phase 1 ADRs** (before O2/O4 implementation):
+1. **`docs/design_v6.5.md`** — parking synthesis
+2. **This document** — PR archaeology
+3. `docs/adr/pr11_track_a_session_assembly.md`
+4. **Phase 1 ADRs** (before O2/O4 implementation):
    - `docs/adr/game_mode_session_installation.md` (O1 — landed PR #53)
    - `docs/adr/scripted_event_scope_model.md`
    - `docs/adr/spec_session_state_replay.md`
-4. `docs/todo.md` (parking state)
-5. `docs/design_v6.md` + `docs/capability_tree_v1.md` addenda (§13 install targets, §14 v0 effect scope)
-6. `docs/examples/README.md` — InstallTargetSpec RON examples
-7. Code: `install.rs`, `spec_session.rs`, `session.rs`, `boundary/capability_handler.rs`, `boundary/event_handler.rs`
+5. `docs/todo.md` (parking state)
+6. `docs/design_v6.md` + `docs/capability_tree_v1.md` addenda (§13 install targets, §14 v0 effect scope)
+7. `docs/examples/README.md` — InstallTargetSpec RON examples
+8. Code: `install.rs`, `spec_session.rs`, `session.rs`, `boundary/capability_handler.rs`, `boundary/event_handler.rs`
 
-**Ignore for implementation:** archived handoffs in `docs/workshop/archive/` (gitignored) — see [`README.md`](README.md).
+**Ignore for implementation:** archived handoffs in `docs/workshop/archive/` — see [`archive/SUNSET.md`](archive/SUNSET.md).
 
 ---
 
