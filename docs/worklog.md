@@ -6,7 +6,23 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-23 — Kind strings + v0 effect-target docs (Cursor, PR 3)
+## 2026-05-23 — S5 regression test (Cursor, PR 4)
+
+**Status:** branch pending merge.
+
+**Landed:**
+
+- `BoundaryProtocol::reduction_topology_matches_tree()` test helper
+- `fission_with_cloned_capability_subtree_reduction_topology_matches_full_rebuild`
+  — **ignored/RED** (append cache drifts from full tree walk)
+- Control: `fission_beyond_initial_headroom_grows_gpu_state` asserts helper passes
+  on simple fission append path
+
+**Next:** Codex S5 — disable Approach C append when `clone_capability_children`.
+
+---
+
+## 2026-05-23 — Kind strings + v0 effect-target docs (Cursor, PR #58)
 
 **Status:** `master` @ `e97a9ea` (merge PR #58).
 
