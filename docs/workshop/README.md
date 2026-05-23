@@ -4,13 +4,13 @@
 
 **Read this first for PR 1–11 status, architecture, tests, and open work:**
 
-- [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) — unified progress log (replaces PR handoff digests below)
+- [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) — unified progress log
 
 **Architecture decision (PR 11 Track A):**
 
 - [`../adr/pr11_track_a_session_assembly.md`](../adr/pr11_track_a_session_assembly.md)
 
-## Source / historical (still useful, not progress trackers)
+## Source / historical (in repo)
 
 | Document | Role |
 |----------|------|
@@ -18,16 +18,20 @@
 | [`tech_tree_decisions.md`](tech_tree_decisions.md) | Prior session decisions; crate naming partially superseded |
 | [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder-facing object reference (draft) |
 
-## Superseded by `simthing_spec_progress_log.md`
+## Superseded handoffs (local archive only)
 
-These remain in the repo for archaeology. **Do not implement from them.**
+Superseded PR handoffs and worksheets live in **`archive/`** on disk only. That
+folder is **gitignored** and is not pushed to the remote.
 
-| Document | Superseded |
-|----------|------------|
-| [`simthing_spec_master_handoff.md`](simthing_spec_master_handoff.md) | PR 2–6 implementation handoff |
-| [`simthing_spec_workshop.md`](simthing_spec_workshop.md) | Original worksheet + decision log D0–D21 (decisions retained in progress log; step-by-step instructions superseded) |
-| [`pr5_handoff_digest.md`](pr5_handoff_digest.md) | PR 5 agent handoff |
-| [`opus_current_state_handoff.md`](opus_current_state_handoff.md) | Pre-PR 9/10/11 state |
-| [`pr11_session_assembly_handoff.md`](pr11_session_assembly_handoff.md) | PR 11 Track A/B split (both tracks complete) |
-| [`pr11_track_a_handoff.md`](pr11_track_a_handoff.md) | Pre–Track A pickup |
-| [`pr11_post_track_a_handoff.md`](pr11_post_track_a_handoff.md) | Post–Track A next steps (folded into progress log § Open work) |
+If you need them locally (archaeology, decision-log detail), copy or restore
+from a pre-archive commit or ask a teammate who has the files. Filenames:
+
+- `simthing_spec_master_handoff.md`
+- `simthing_spec_workshop.md`
+- `pr5_handoff_digest.md`
+- `opus_current_state_handoff.md`
+- `pr11_session_assembly_handoff.md`
+- `pr11_track_a_handoff.md`
+- `pr11_post_track_a_handoff.md`
+
+**Do not implement from archived handoffs.** Use `simthing_spec_progress_log.md`.

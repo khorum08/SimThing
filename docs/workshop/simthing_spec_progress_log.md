@@ -1,7 +1,7 @@
 # simthing-spec — Unified Progress Log (PRs 1–11)
 
 **Status:** Canonical implementation record for `simthing-spec` and PR 11 session assembly.  
-**Replaces:** all PR-scoped handoff/workshop docs listed in [`README.md`](README.md).  
+**Replaces:** superseded PR handoff/workshop docs (see [`README.md`](README.md); those files live in local-only `archive/`).  
 **Date:** 2026-05-22  
 **Master HEAD:** `9e63718`  
 **Verification:** `cargo test --workspace` → **311** passed, **1** ignored, zero warnings.  
@@ -372,7 +372,7 @@ These remain valid; see original Q&A in `capability_tree_studio_workshop.md` for
 4. `docs/design_v6.md` + `docs/capability_tree_v1.md` addenda
 5. Code: `spec_session.rs`, `session.rs`, `boundary/capability_handler.rs`, `boundary/event_handler.rs`
 
-**Ignore for implementation:** superseded handoffs listed in [`README.md`](README.md).
+**Ignore for implementation:** archived handoffs in `docs/workshop/archive/` (gitignored) — see [`README.md`](README.md).
 
 ---
 

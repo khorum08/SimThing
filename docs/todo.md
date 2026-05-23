@@ -426,7 +426,7 @@ FissionTemplate(
 - Capability trees: `docs/capability_tree_v1.md` (incl. addendum §11)
 - **Spec-layer handoff (canonical):** `docs/workshop/simthing_spec_progress_log.md`
 - Workshop index: `docs/workshop/README.md`
-- Historical worksheet: `docs/workshop/simthing_spec_workshop.md` (superseded for progress)
+- Historical worksheet: superseded; see `docs/workshop/simthing_spec_progress_log.md`
 - Source workshop Q&A: `docs/workshop/capability_tree_studio_workshop.md`
 - Historical workshop: `docs/workshop/tech_tree_decisions.md`
 - Agent map: `docs/agents.md`

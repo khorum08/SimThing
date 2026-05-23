@@ -1059,5 +1059,5 @@ push helper for B2 append-only session wiring (Track A / PR 11).
 
 ### Next
 
-PR 11 — session state ownership, boundary protocol step order, and end-to-end
-integration test. See `docs/workshop/pr11_session_assembly_handoff.md`.
+PR 11 session assembly is landed. Next: session init from authored specs —
+see `docs/workshop/simthing_spec_progress_log.md` § Open work.

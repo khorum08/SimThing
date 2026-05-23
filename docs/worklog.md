@@ -17,6 +17,7 @@ Running log of what's done and what's next, across sessions.
 - **`docs/workshop/README.md`** — workshop index; marks superseded vs current docs.
 - Supersession banners on historical handoff/workshop files (see README).
 - Parking sync in `docs/todo.md` and this worklog (311 tests, Track A merged).
+- Superseded handoffs moved to `docs/workshop/archive/` (gitignored, local only).
 
 **Release verification (C4):** `cargo build --workspace --release --tests` and
 `cargo test --workspace --release` — both clean, zero warnings.
