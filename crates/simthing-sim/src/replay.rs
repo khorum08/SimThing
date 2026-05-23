@@ -77,6 +77,15 @@ pub struct ReplayFrame {
     /// Post-boundary CPU shadow (`n_slots × n_dims`), when recording enabled it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow_values: Option<Vec<f32>>,
+    /// Per-frame spec-layer deltas (capability states, scripted cooldowns,
+    /// notifications, player selections). Written by `simthing-driver`'s
+    /// recording path; ignored by sim-only consumers. Stored as opaque JSON
+    /// values so `simthing-sim` stays spec-free — the driver deserializes them
+    /// as `SpecDelta` via `spec_replay::json_to_spec_deltas`.
+    ///
+    /// Old replays without this field parse cleanly via the `#[serde(default)]`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub spec_entries: Vec<serde_json::Value>,
 }
 
 /// Discriminated record written one-per-line to the replay stream.
@@ -142,6 +151,17 @@ impl<W: Write> ReplayWriter<W> {
         Ok(())
     }
 
+    /// Write an arbitrary JSON record as a raw line. Used by the driver layer
+    /// to emit format extensions (e.g., spec replay snapshots) between the
+    /// structural snapshot and the first frame, without `simthing-sim` knowing
+    /// about driver-level record types. The caller is responsible for tagging
+    /// (`{ "kind": "...", ... }`) so readers can dispatch.
+    pub fn write_extra<T: Serialize>(&mut self, value: &T) -> Result<(), ReplayError> {
+        serde_json::to_writer(&mut self.inner, value)?;
+        self.inner.write_all(b"\n")?;
+        Ok(())
+    }
+
     pub fn flush(&mut self) -> Result<(), ReplayError> {
         self.inner.flush().map_err(Into::into)
     }
@@ -189,6 +209,10 @@ impl<R: BufRead> ReplayReader<R> {
     }
 
     /// Read the next frame. Returns `Ok(None)` at end-of-stream.
+    ///
+    /// Unknown record kinds (`kind != "frame"` and `kind != "snapshot"`) are
+    /// skipped silently — driver-layer extensions like `spec_snapshot` are
+    /// invisible to sim-only consumers, which preserves forward compatibility.
     pub fn next_frame(&mut self) -> Result<Option<ReplayFrame>, ReplayError> {
         loop {
             self.buf.clear();
@@ -200,9 +224,19 @@ impl<R: BufRead> ReplayReader<R> {
             if line.is_empty() {
                 continue;
             }
-            match serde_json::from_str(line)? {
-                ReplayRecord::Frame { frame } => return Ok(Some(frame)),
-                ReplayRecord::Snapshot { .. } => return Err(ReplayError::UnexpectedSnapshot),
+            // Peek at the `kind` field via a generic Value so we can skip
+            // unknown record kinds (e.g., `spec_snapshot` emitted by the
+            // driver layer) without failing deserialization.
+            let value: serde_json::Value = serde_json::from_str(line)?;
+            let kind = value.get("kind").and_then(|v| v.as_str()).unwrap_or("");
+            match kind {
+                "frame" => {
+                    let frame_val = value.get("frame").cloned().unwrap_or(serde_json::Value::Null);
+                    let frame: ReplayFrame = serde_json::from_value(frame_val)?;
+                    return Ok(Some(frame));
+                }
+                "snapshot" => return Err(ReplayError::UnexpectedSnapshot),
+                _ => continue, // skip driver-layer / future record types
             }
         }
     }
@@ -820,6 +854,7 @@ mod tests {
             day: 1,
             entries: Vec::new(),
             shadow_values: Some(checkpoint.clone()),
+            spec_entries: Vec::new(),
         });
         assert_eq!(driver.shadow_values.as_ref(), Some(&checkpoint));
     }

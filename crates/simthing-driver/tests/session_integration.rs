@@ -1162,3 +1162,234 @@ fn open_from_spec_installs_one_scripted_event_instance_per_faction() {
         assert_eq!(inst.cooldown_remaining, 0, "fresh install starts ready");
     }
 }
+
+// ── O2: Replay v3 spec snapshot + delta round-trip ────────────────────────────
+
+/// O2 acceptance: record a session that produces a capability threshold
+/// unlock (which mutates `active_by_category` and emits an unlock-side
+/// ActivateOverlay), then reopen the replay via `open_replay_with_spec`,
+/// apply structural frames + spec deltas, and assert the post-replay
+/// `SpecSessionState` is field-equivalent to the recorded final state.
+///
+/// Exercises the full v3 pipeline:
+/// - `collect_spec_snapshot` on recording start
+/// - per-frame `diff_and_emit` after the spec hook runs
+/// - `ReplayWriter::write_extra` for the `spec_snapshot` line
+/// - `read_spec_replay_file` decoding both record kinds
+/// - `apply_spec_snapshot` against a freshly-installed session
+/// - `apply_spec_delta` over each frame's `spec_entries`
+/// - logical-key resolution: snapshots reference `tree_id`/`event_id`, never
+///   raw `OverlayId`.
+#[test]
+fn record_and_replay_with_spec_round_trips_capability_state() {
+    if !try_gpu() {
+        eprintln!("skipping: no GPU");
+        return;
+    }
+
+    use simthing_driver::{
+        apply_spec_delta, apply_spec_snapshot, open_replay_with_spec, read_spec_replay_file,
+        SpecDelta,
+    };
+
+    // ── Record ────────────────────────────────────────────────────────────
+    let game_mode = make_threshold_unlock_game_mode();
+    let (mut scenario, _) = scenario_with_factions(1, 16);
+    scenario.max_days = 2;
+
+    let mut session =
+        SimSession::open_from_spec(scenario.clone(), &game_mode).expect("open_from_spec");
+    seed_research_progress_after_open(&mut session, 11.0);
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("o2_round_trip.replay.ldjson");
+
+    let summary = session.record_to_path(&path, 2).expect("record session");
+    assert_eq!(summary.boundaries_run, 2);
+
+    // Capture the live post-record spec state for comparison, keyed by
+    // logical ids (owner_id + tree_logical_id) since process-local atomic
+    // ids (CapabilityTreeDefinitionId, tree_thing_id) differ across the
+    // second install run inside open_replay_with_spec.
+    let live_states: HashMap<(simthing_core::SimThingId, String), CapabilityTreeState> = session
+        .spec_state
+        .capability_states
+        .iter()
+        .map(|(key, st)| {
+            let logical = session
+                .spec_state
+                .capability_definitions
+                .get(&key.definition_id)
+                .map(|d| d.tree_id.clone())
+                .unwrap_or_default();
+            ((key.owner_id, logical), st.clone())
+        })
+        .collect();
+    let live_cooldowns: HashMap<(simthing_core::SimThingId, String), u32> = session
+        .spec_state
+        .scripted_event_instances
+        .iter()
+        .map(|(k, v)| ((k.owner_id, k.event_id.0.clone()), v.cooldown_remaining))
+        .collect();
+
+    // ── Read the replay file: sanity-check format extensions ──────────────
+    let loaded = read_spec_replay_file(&path).expect("read replay");
+    assert!(
+        loaded.spec_snapshot.is_some(),
+        "open_from_spec session must emit a spec_snapshot line"
+    );
+    let total_spec_deltas: usize = loaded.frames.iter().map(|(_, d)| d.len()).sum();
+    assert!(
+        total_spec_deltas > 0,
+        "threshold unlock must emit at least one SpecDelta (CapabilityActiveSetChanged)"
+    );
+
+    let saw_active_set_changed = loaded
+        .frames
+        .iter()
+        .flat_map(|(_, d)| d.iter())
+        .any(|d| matches!(d, SpecDelta::CapabilityActiveSetChanged { .. }));
+    assert!(
+        saw_active_set_changed,
+        "unlock must produce CapabilityActiveSetChanged; got {:?}",
+        loaded
+            .frames
+            .iter()
+            .flat_map(|(_, d)| d.iter())
+            .collect::<Vec<_>>()
+    );
+
+    // No raw OverlayIds should appear in the serialized deltas (logical-key
+    // invariant). The JSON for each spec_entry must not contain an
+    // `overlay_id` field at top level (CapabilityNotification is purely
+    // logical, no overlay ids; other variants don't carry overlay ids).
+    for (_, deltas_json) in loaded
+        .frames
+        .iter()
+        .map(|(f, _)| (f.day, &f.spec_entries))
+    {
+        for v in deltas_json {
+            let s = v.to_string();
+            assert!(
+                !s.contains("overlay_id"),
+                "spec_entry must not serialize raw OverlayId (logical-key invariant): {s}"
+            );
+        }
+    }
+
+    // ── Replay ────────────────────────────────────────────────────────────
+    let (mut replay_session, mut replay_driver, frames) =
+        open_replay_with_spec(&path, &game_mode, scenario).expect("open_replay_with_spec");
+
+    // open_replay_with_spec already applied the spec snapshot (which is
+    // empty in this test since recording started at day 0 with no
+    // cooldowns and no active sets yet). Idempotency check:
+    if let Some(ss) = &loaded.spec_snapshot {
+        apply_spec_snapshot(&mut replay_session.spec_state, ss).expect("snapshot apply idempotent");
+    }
+
+    for (frame, deltas) in frames {
+        replay_driver.apply_frame(frame);
+        for delta in &deltas {
+            apply_spec_delta(&mut replay_session.spec_state, delta)
+                .expect("spec delta applies cleanly");
+        }
+    }
+
+    // ── Assert field-equivalence (logical-key matched) ────────────────────
+    assert_eq!(
+        replay_session.spec_state.capability_states.len(),
+        live_states.len(),
+        "post-replay must have same number of capability states as live session"
+    );
+    // Index the replay session's states by (owner_id, tree_logical_id) so
+    // we can match across the fresh atomic ids handed out by the second
+    // install.
+    let replay_states: HashMap<(simthing_core::SimThingId, String), CapabilityTreeState> =
+        replay_session
+            .spec_state
+            .capability_states
+            .iter()
+            .map(|(key, st)| {
+                let logical = replay_session
+                    .spec_state
+                    .capability_definitions
+                    .get(&key.definition_id)
+                    .map(|d| d.tree_id.clone())
+                    .unwrap_or_default();
+                ((key.owner_id, logical), st.clone())
+            })
+            .collect();
+
+    for (logical_key, live_state) in &live_states {
+        let replayed = replay_states.get(logical_key).unwrap_or_else(|| {
+            panic!(
+                "post-replay missing capability state for {logical_key:?} \
+                 (live={:?}, replay={:?})",
+                live_states.keys().collect::<Vec<_>>(),
+                replay_states.keys().collect::<Vec<_>>(),
+            )
+        });
+        assert_eq!(
+            replayed.activation_mode_by_entry, live_state.activation_mode_by_entry,
+            "activation_mode_by_entry must round-trip for {logical_key:?}"
+        );
+        assert_eq!(
+            replayed.active_by_category, live_state.active_by_category,
+            "active_by_category must round-trip for {logical_key:?} \
+             (live={:?}, replay={:?})",
+            live_state.active_by_category, replayed.active_by_category
+        );
+    }
+
+    // Scripted-event cooldowns also round-trip (zero in this fixture since
+    // there are no scripted events; assertion structure stays useful when
+    // the fixture is extended).
+    let replay_cooldowns: HashMap<(simthing_core::SimThingId, String), u32> = replay_session
+        .spec_state
+        .scripted_event_instances
+        .iter()
+        .map(|(k, v)| ((k.owner_id, k.event_id.0.clone()), v.cooldown_remaining))
+        .collect();
+    for (key, live_cd) in &live_cooldowns {
+        let replayed = replay_cooldowns.get(key).copied().unwrap_or(0);
+        assert_eq!(replayed, *live_cd, "cooldown round-trips for {key:?}");
+    }
+}
+
+/// O2: forward compatibility — a sim-only consumer (`ReplayReader`) opening
+/// a v3 replay must skip the `spec_snapshot` line silently and still read
+/// every structural frame.
+#[test]
+fn replay_reader_skips_spec_snapshot_line_for_sim_only_consumer() {
+    if !try_gpu() {
+        eprintln!("skipping: no GPU");
+        return;
+    }
+
+    let game_mode = make_threshold_unlock_game_mode();
+    let (mut scenario, _) = scenario_with_factions(1, 16);
+    scenario.max_days = 2;
+    let mut session =
+        SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
+    seed_research_progress_after_open(&mut session, 11.0);
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("v3_sim_only.replay.ldjson");
+    session.record_to_path(&path, 2).expect("record");
+
+    // Sim-only path: just ReplayReader + ReplayDriver, no spec_replay.
+    let file = std::fs::File::open(&path).expect("file");
+    let mut reader = ReplayReader::new(BufReader::new(file));
+    let snap = reader.read_snapshot().expect("structural snapshot");
+    let mut driver = ReplayDriver::from_snapshot(snap);
+    let mut frames = 0u32;
+    while let Some(frame) = reader.next_frame().expect("frame parses") {
+        driver.apply_frame(frame);
+        frames += 1;
+    }
+    assert_eq!(
+        frames, 2,
+        "sim-only reader must see both frames despite intervening spec_snapshot line"
+    );
+}
