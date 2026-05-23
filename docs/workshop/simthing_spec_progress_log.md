@@ -5,7 +5,7 @@ assembly, and O1 session installation.
 **Replaces:** superseded PR handoff/workshop docs (see [`README.md`](README.md); those files live in local-only `archive/`).  
 **Last updated:** 2026-05-23  
 **Master HEAD:** `e97a9ea` (PR #58 kind/effect-target docs)  
-**Verification:** `cargo test --workspace` → **322** passed, **2** ignored, zero warnings.  
+**Verification:** `cargo test --workspace` → **323** passed, **3** ignored, zero warnings.  
 `cargo build --workspace --tests` and release profile build/tests clean.
 
 ---
@@ -337,7 +337,8 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 | ID | Owner | Scope |
 |----|-------|-------|
 | **O1c** | Codex | Registry/GPU dimension sync after install — **ruled out** by O1b (`n_dims == total_columns` after install); reopen only if a future case fails |
-| **S5/O5** | Codex | Wire append-only threshold helpers; **conservative fix:** disable Approach C topology/threshold append when fission uses `clone_capability_children` (force full rebuild). See `replay_fission_with_cloned_capability_subtree_reconstructs_full_payload`. |
+| **S5/O5** | Codex | Disable Approach C topology append when fission uses `clone_capability_children` (conservative fix); un-ignore S5 regression test when fixed |
+| **S5-test** | Cursor | ✅ `fission_with_cloned_capability_subtree_reduction_topology_matches_full_rebuild` — ignored/RED |
 
 ### P2 — Codex (ADR landed)
 
@@ -363,6 +364,8 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 
 | ID | Scope |
 |----|-------|
+| **S5-test** | Topology drift regression test + `reduction_topology_matches_tree` helper (ignored/RED, PR 4) |
+| **O1b-test** | `open_from_spec_capability_unlock_activates_overlay_for_next_tick` (ignored/RED, PR #56) |
 | **O1** | Session init — `InstallTargetSpec`, `install.rs`, `open_from_spec`, per-owner clone, `by_overlay` on instance (PR #53) |
 | **O3** | `queue_player_selection_by_key` + `SpecSessionError` (PR #51) |
 | **S3** | Topology cache `debug_assert!` on full-rebuild path (`boundary.rs`, PR #52) |
@@ -436,4 +439,4 @@ cargo test --workspace --release
 git status --short --branch
 ```
 
-Expected: **322** passed, **2** ignored, zero warnings, clean tracked tree.
+Expected: **323** passed, **3** ignored, zero warnings, clean tracked tree.

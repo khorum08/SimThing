@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `e97a9ea`. **Tests:** 322 passed, 2 ignored. **Next (Codex P0):** O1b handler overlay-id fix. **Cursor:** optional S5 regression test PR.
+**Parking (2026-05-23):** `master` @ `e97a9ea`. **Tests:** 323 passed, 3 ignored. **Next (Codex):** O1b handler fix, S5 append disable.
 
 ## Canonical — `simthing-spec` implementation progress
 

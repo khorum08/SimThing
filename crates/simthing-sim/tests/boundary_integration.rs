@@ -397,6 +397,11 @@ fn fission_beyond_initial_headroom_grows_gpu_state() {
         gpu[child_slot * n_dims as usize + vel_off].to_bits(),
         (-0.21f32).to_bits(),
     );
+
+    assert!(
+        proto.reduction_topology_matches_tree(),
+        "simple fission append path must keep topology cache aligned with tree walk"
+    );
 }
 
 /// Boundary requests submitted via the patcher reach the Tree Maintainer
@@ -2196,6 +2201,113 @@ fn replay_fission_with_cloned_capability_subtree_reconstructs_full_payload() {
     );
     assert_eq!(driver.fission_lineage[0].parent_id, faction_id);
     assert_eq!(driver.fission_lineage[0].child_id, spawned_faction_id);
+}
+
+/// S5 regression guard: fission with `clone_capability_children` must not leave
+/// Approach C incremental topology cache diverged from a full tree walk.
+///
+/// **Currently ignored / RED:** append is eligible for pure fission but only
+/// patches `fission_pairs` edges. Cloned multi-node capability subtrees add
+/// additional parent→child edges that the append path misses. Codex S5 fix:
+/// disable Approach C append when `clone_capability_children` is set (conservative).
+#[test]
+#[ignore = "S5: Approach C append misses cloned capability subtree edges; Codex fix required"]
+fn fission_with_cloned_capability_subtree_reduction_topology_matches_full_rebuild() {
+    let Some(ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    let mut loyalty = SimProperty::simple("core", "loyalty", 0);
+    loyalty.intensity_behavior = Some(IntensityBehavior::default());
+    loyalty.fission_templates = vec![FissionThreshold {
+        sub_field: SubFieldRole::Amount,
+        threshold: 0.3,
+        direction: Direction::Falling,
+        template: FissionTemplate {
+            child_kind: SimThingKindTag::Faction,
+            fusion_intensity_threshold: 0.8,
+            fusion_scar_coefficient: 0.05,
+            resolution_label: "schism".into(),
+            clone_capability_children: true,
+            capability_container_kinds: vec!["tech_tree".into()],
+        },
+        secondary: None,
+    }];
+    reg.register(loyalty);
+    let pid = reg.id_of("core", "loyalty").unwrap();
+    let layout = reg.property(pid).layout.clone();
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+    let n_dims = reg.total_columns as u32;
+
+    let propulsion_node = SimThing::new(SimThingKind::Custom("propulsion".into()), 0);
+    let mut tech_tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+    tech_tree.add_child(propulsion_node);
+
+    let mut faction = SimThing::new(SimThingKind::Faction, 0);
+    let mut faction_loyalty = PropertyValue::from_layout(&reg.property(pid).layout);
+    faction_loyalty.data[amount_off] = 0.5;
+    faction_loyalty.data[vel_off] = -0.21;
+    faction.add_property(pid, faction_loyalty);
+    let faction_id = faction.id;
+    faction.add_child(tech_tree);
+
+    let mut loc = SimThing::new(SimThingKind::Location, 0);
+    loc.add_child(faction);
+    let mut world = SimThing::new(SimThingKind::World, 0);
+    world.add_child(loc);
+
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&world);
+
+    const N_SLOTS: u32 = 32;
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (_tx, rx) = feeder_channel();
+
+    let faction_slot = alloc.slot_of(faction_id).unwrap() as usize;
+    let base = faction_slot * n_dims as usize;
+    coord.shadow[base + amount_off] = 0.5;
+    coord.shadow[base + vel_off] = -0.21;
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.initial_gpu_sync(&coord, &mut state);
+
+    let mut events = Vec::new();
+    for _ in 0..8 {
+        let out = coord.tick(
+            &rx,
+            &mut patcher,
+            &proto.registry,
+            &proto.allocator,
+            &pipelines,
+            &mut state,
+            0.5,
+        );
+        if !out.events.is_empty() {
+            events = out.events;
+            break;
+        }
+    }
+    assert!(!events.is_empty(), "loyalty fission threshold must fire");
+
+    let outcome = proto.execute(events, &mut patcher, &mut coord, &mut state, 1);
+    assert_eq!(outcome.fission.fissions_executed, 1);
+
+    // Approach C append path currently runs for this pure-fission boundary.
+    assert!(
+        outcome.gpu_sync.reduction_edges > 0,
+        "topology CSR should be uploaded after fission growth"
+    );
+
+    assert!(
+        proto.reduction_topology_matches_tree(),
+        "cached topology must match full rebuild; drift means unsafe append (S5)"
+    );
 }
 
 /// Helper: depth-first find a node by id.

@@ -882,6 +882,18 @@ impl BoundaryProtocol {
         &self.fission_lineage
     }
 
+    /// Test helper (S5): whether cached reduction topology matches a fresh tree
+    /// walk. After boundary execute, CSR from Approach C append must agree
+    /// with `TopologyState::build` when append is used.
+    #[doc(hidden)]
+    pub fn reduction_topology_matches_tree(&self) -> bool {
+        let direct = TopologyState::build(&self.root, &self.allocator).flatten();
+        let via_cache = self.cached_topology_state.flatten();
+        direct.child_starts == via_cache.child_starts
+            && direct.child_indices == via_cache.child_indices
+            && direct.depth_buckets == via_cache.depth_buckets
+    }
+
     /// Drop lineage records whose parent or child no longer has a live slot.
     fn prune_stale_fission_lineage(&mut self) {
         let allocator = &self.allocator;
