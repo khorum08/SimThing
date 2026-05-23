@@ -6,6 +6,24 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — Parking state after simthing-spec PR 9
+
+**Status:** `master` and `origin/master` parked at `dc61929`
+(`simthing-spec PR 9: scripted event boundary handler.`).
+
+**Landed this session:**
+- PR 9 — scripted event boundary handler (`boundary/event_handler.rs`).
+
+**Verification:** `cargo test --workspace` → 285 passed, 1 ignored, zero
+warnings. `cargo build --workspace --tests` → zero warnings.
+
+**Next candidates:** session/driver assembly for capability tree instances and
+per-faction state maps; threshold dependency cleanup (move `ThresholdSemantic`
+surface into a lower crate); threshold-triggered scripted event GPU registration
+(follow-on to PR 9 predicate path); B2 append-only capability unlock integration.
+
+---
+
 ## 2026-05-22 — PR 9 Sonnet prep (event handler scaffold)
 
 **Status:** Pre-PR-9 prep complete. Branch still parked at `8a8061c` / `d871518`;

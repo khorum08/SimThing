@@ -1,10 +1,10 @@
 # SimThing Todo Log
 
 Current parking state after **B2 fission-growth A/B/C complete** and
-**`simthing-spec` PRs 2-8 landed**. `master` and `origin/master` are parked at
-`8a8061c` (`simthing-spec PR 8: scripted event compiler templates.`).
+**`simthing-spec` PRs 2-9 landed**. `master` and `origin/master` are parked at
+`dc61929` (`simthing-spec PR 9: scripted event boundary handler.`).
 
-**Tests:** `cargo test --workspace` -> **277** passed, **1** ignored timing
+**Tests:** `cargo test --workspace` -> **285** passed, **1** ignored timing
 diagnostic, zero warnings. `cargo build --workspace --tests` also completes
 with zero warnings.
 
@@ -171,16 +171,14 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
 
 ### Parking notes / next candidates
 
-- [ ] **PR 9** — execute compiled event definitions at boundary time.
-      `boundary/event_handler.rs` scaffold is in place (Sonnet prep, 2026-05-22):
-      `ScriptedEventBoundaryHandler`, `ScriptedEventBoundaryContext`,
-      `ScriptedEventDiagnostic` all compile and are exported from `lib.rs`.
-      Design decisions fixed in scaffold: predicate triggers only (threshold
-      triggers deferred to GPU-path PR), cooldowns implemented, priority
-      sort implemented, missing-slot → diagnostic (not panic).
-      **Remaining work (Opus):** write `tests/pr9_event_handler.rs` covering all
-      8 acceptance tests from `opus_current_state_handoff.md` §Suggested PR 9
-      acceptance tests. No new crate dep cycles permitted.
+- [x] **PR 9** — scripted event boundary handler. Landed 2026-05-22.
+      `boundary/event_handler.rs` with `ScriptedEventBoundaryHandler`,
+      `ScriptedEventBoundaryContext`, `ScriptedEventDiagnostic`,
+      `ScriptedEventDiagnosticKind`. Predicate triggers only (threshold triggers
+      deferred to GPU-path PR); cooldowns and priority ordering implemented.
+      Missing slot targets push `UnresolvedEffectTarget` diagnostic. Eval errors
+      push `TriggerEvalError` diagnostic. All 8 acceptance tests pass in
+      `tests/pr9_event_handler.rs`.
 - [ ] Assemble session/driver ownership for capability tree instances and
       per-faction state maps.
 - [ ] Clean up PR 5's temporary `simthing-spec -> simthing-sim` /
