@@ -6,9 +6,33 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-23 — Codex evaluation doc sync + work queue (Composer)
+## 2026-05-23 — O1b E2E test (Cursor, test-only PR)
 
-**Status:** `master` @ `7eb015a` (docs-only; code unchanged).
+**Status:** branch pending merge (test-only + parking docs).
+
+**Landed:**
+
+- `open_from_spec_capability_unlock_activates_overlay_for_next_tick` in
+  `session_integration.rs` — uses `SimSession::open_from_spec`, spec-introduced
+  `core::power` + `tech::propulsion`, threshold unlock path.
+- Test **`#[ignore]` / RED:** `core::power` stays 0 after 2 boundaries.
+
+**Failure analysis (not O1c):**
+
+- After install, `registry.total_columns == coord.n_dims()` (both 7) — dimension
+  sync is **not** the current blocker.
+- Install re-stamps overlay ids on clones (`instance.by_overlay`), but
+  `CapabilityTreeBoundaryHandler::emit_activation` emits template
+  `CapabilityDefinition.overlay_ids` → `ActivateOverlay` targets wrong ids.
+
+**Next:** Codex — handler resolves overlay ids from `instance.by_overlay` per
+entry; un-ignore O1b test. Then Cursor docs/fixtures PRs (Tasks 2–4).
+
+---
+
+## 2026-05-23 — Codex evaluation doc sync + work queue (Composer, PR #55)
+
+**Status:** `master` @ `04867b1` (docs-only).
 
 **Ingested:** Codex post-O1 evaluation (O1b blocking, registry/GPU dimension
 sync risk in `open_from_spec`, S5 conservative fix, reordered O4/O2 after O1b).

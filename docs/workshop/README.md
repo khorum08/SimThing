@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `7eb015a`. **Tests:** 320 passed, 1 ignored. **Next (Codex P0):** O1b → O1c. **Then:** S5, O4, O2. **Opus:** EffectTarget ADR.
+**Parking (2026-05-23):** `master` @ `04867b1`. **Tests:** 321 passed, 2 ignored. **Next (Codex P0):** O1b handler overlay-id fix. **Then:** S5, O4, O2. **Cursor:** install-target examples + kind/effect docs PRs.
 
 ## Canonical — `simthing-spec` implementation progress
 
