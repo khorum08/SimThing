@@ -12,7 +12,7 @@
 use simthing_core::SimThingId;
 use std::collections::HashMap;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct SlotAllocator {
     /// Owner of each slot index. `None` = tombstoned, available for reuse.
     slot_owners: Vec<Option<SimThingId>>,

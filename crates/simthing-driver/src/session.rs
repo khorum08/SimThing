@@ -15,7 +15,7 @@ use simthing_spec::{
 use std::collections::HashMap;
 use thiserror::Error;
 
-use crate::install::{compile_and_install, InstallError};
+use crate::install::{install_atomic, InstallError, InstallPreview};
 use crate::scenario::Scenario;
 use crate::spec_replay::{self, make_spec_snapshot_record};
 use crate::spec_session::SpecSessionState;
@@ -221,7 +221,11 @@ impl SimSession {
         game_mode: &GameModeSpec,
     ) -> Result<Self, SessionError> {
         let mut session = Self::open(scenario)?;
-        let spec_state = compile_and_install(
+        // I1: `install_atomic` clones registry/root/allocator before
+        // running the install, so a failed install leaves the
+        // just-built `BoundaryProtocol` untouched. See
+        // `docs/adr/install_clone_then_commit.md`.
+        let spec_state = install_atomic(
             game_mode,
             &session.scenario,
             &mut session.proto.registry,
@@ -230,6 +234,30 @@ impl SimSession {
         )?;
         session.install_spec_state(spec_state);
         Ok(session)
+    }
+
+    /// Apply a previously-computed `InstallPreview` to this session,
+    /// replacing registry / root / allocator and installing the staged
+    /// `SpecSessionState`. The mirror image of `preview_install` — the
+    /// Studio "preview then accept" flow lands as:
+    ///
+    /// ```ignore
+    /// let preview = preview_install(
+    ///     game_mode, &session.scenario,
+    ///     &session.proto.registry, &session.proto.root, &session.proto.allocator,
+    /// )?;
+    /// // ... inspect `preview` ...
+    /// session.apply_install_preview(preview);
+    /// ```
+    ///
+    /// Triggers an `initial_gpu_sync` via `install_spec_state` so the GPU
+    /// buffer reflects the new tree structure on the next tick. See
+    /// `docs/adr/install_clone_then_commit.md`.
+    pub fn apply_install_preview(&mut self, preview: InstallPreview) {
+        self.proto.registry  = preview.registry;
+        self.proto.root      = preview.root;
+        self.proto.allocator = preview.allocator;
+        self.install_spec_state(preview.state);
     }
 
     /// Run until `max_days` boundaries complete (or scenario max if smaller).

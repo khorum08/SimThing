@@ -48,7 +48,13 @@ pub enum InstallError {
 /// Compile a `GameModeSpec` against the supplied scenario state and return a
 /// populated `SpecSessionState`.
 ///
-/// Mutates `registry`, `root`, and `allocator` in place:
+/// **In-place worker.** Mutates `registry`, `root`, and `allocator` directly
+/// and **does not roll back on error**. If you need atomic-on-error
+/// semantics (the usual case), prefer [`install_atomic`] or
+/// [`preview_install`] — both wrap this function against scratch clones.
+/// See `docs/adr/install_clone_then_commit.md`.
+///
+/// Mutations applied:
 /// - New `SimProperty`s from the spec are registered with `registry`.
 /// - Cloned capability tree `SimThing`s are attached as children of their
 ///   resolved owners under `root`.
@@ -498,4 +504,382 @@ fn attach_child_known_present(
         .position(|c| contains(c, owner_id))
         .expect("contains() guaranteed at least one matching subtree");
     attach_child_known_present(&mut node.children[target_idx], owner_id, child)
+}
+
+// ── I1: clone-then-commit wrappers ────────────────────────────────────────────
+//
+// See `docs/adr/install_clone_then_commit.md`.
+
+/// Staged output of a `preview_install` — the registry / root / allocator /
+/// spec state that **would** be produced if the install were committed. The
+/// caller inspects this (Studio "preview" panel, hot-reload verification),
+/// then either commits via `SimSession::apply_install_preview` or discards.
+///
+/// All four fields are owned values (not references), so the preview can
+/// outlive the inputs it was generated from.
+#[derive(Debug)]
+pub struct InstallPreview {
+    pub registry:  DimensionRegistry,
+    pub root:      SimThing,
+    pub allocator: SlotAllocator,
+    pub state:     SpecSessionState,
+}
+
+/// Run a full `compile_and_install` against scratch copies of the caller's
+/// state. On success, returns an `InstallPreview` carrying the populated
+/// scratch. On error, the caller's `registry` / `root` / `allocator` are
+/// completely untouched — useful for Studio preview workflows or any caller
+/// that wants "try install, possibly discard."
+///
+/// Memory: peaks at roughly 2× the registry + root + allocator size for the
+/// duration of the call. All three are small in practice.
+pub fn preview_install(
+    game_mode: &GameModeSpec,
+    scenario:  &Scenario,
+    registry:  &DimensionRegistry,
+    root:      &SimThing,
+    allocator: &SlotAllocator,
+) -> Result<InstallPreview, InstallError> {
+    let mut scratch_registry  = registry.clone();
+    let mut scratch_root      = root.clone();
+    let mut scratch_allocator = allocator.clone();
+    let state = compile_and_install(
+        game_mode,
+        scenario,
+        &mut scratch_registry,
+        &mut scratch_root,
+        &mut scratch_allocator,
+    )?;
+    Ok(InstallPreview {
+        registry:  scratch_registry,
+        root:      scratch_root,
+        allocator: scratch_allocator,
+        state,
+    })
+}
+
+/// Atomic-on-error install: clones caller state, runs `compile_and_install`
+/// against the clones, and commits the result back to the caller on success.
+/// On error, caller state is unchanged. Drop-in replacement for
+/// `compile_and_install` when atomicity is desired (which is the usual case).
+///
+/// Used by `SimSession::open_from_spec` so a failed install on a brand-new
+/// session leaves the just-built `BoundaryProtocol` untouched, and by any
+/// future caller that wants the same guarantee.
+pub fn install_atomic(
+    game_mode: &GameModeSpec,
+    scenario:  &Scenario,
+    registry:  &mut DimensionRegistry,
+    root:      &mut SimThing,
+    allocator: &mut SlotAllocator,
+) -> Result<SpecSessionState, InstallError> {
+    let preview = preview_install(game_mode, scenario, registry, root, allocator)?;
+    *registry  = preview.registry;
+    *root      = preview.root;
+    *allocator = preview.allocator;
+    Ok(preview.state)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use simthing_core::{SimProperty, SimThing, SimThingKind};
+    use simthing_spec::{
+        ActivationMode, CapabilityCategorySpec, CapabilitySpec, CapabilityTreeSpec, SpecVersion,
+    };
+
+    fn empty_scenario(world: SimThing) -> Scenario {
+        let mut registry = DimensionRegistry::new();
+        let _ = registry.register(SimProperty::simple("_placeholder", "seed", 0));
+        Scenario {
+            name: "i1_test".into(),
+            ticks_per_day: 1,
+            max_days: 1,
+            dt: 0.0,
+            n_slots: 16,
+            registry,
+            root: world,
+            shadow_seeds: Vec::new(),
+            tick_patches: Vec::new(),
+            install_targets: HashMap::new(),
+        }
+    }
+
+    fn stub_capability_spec() -> CapabilitySpec {
+        CapabilitySpec {
+            id: "stub".into(),
+            display_name: "Stub".into(),
+            description: String::new(),
+            flavor_text: String::new(),
+            research_cost: 1.0,
+            activation: ActivationMode::Threshold,
+            icon: String::new(),
+            thumbnail: String::new(),
+            card_image: String::new(),
+            unlock_video: None,
+            model_preview: None,
+            prereqs: Vec::new(),
+            unlocks_ship_components: Vec::new(),
+            unlocks_buildings: Vec::new(),
+            unlocks_units: Vec::new(),
+            unlocks_weapons: Vec::new(),
+            effects: Vec::new(),
+        }
+    }
+
+    /// Game mode that attempts to install a capability tree on an owner
+    /// kind that doesn't exist in the scenario. `CapabilityTreeBuilder`
+    /// registers the category property during step 2 (build), then step 3
+    /// fails with `NoMatchingOwners` — leaving the category property
+    /// registered in the in-place worker. This is the partial-mutation
+    /// footgun the ADR fixes.
+    fn failing_game_mode() -> GameModeSpec {
+        GameModeSpec {
+            id: "i1_failure".into(),
+            display_name: "I1 Failure Fixture".into(),
+            description: String::new(),
+            spec_version: SpecVersion::default(),
+            metadata: Default::default(),
+            domain_packs: Vec::new(),
+            properties: Vec::new(),
+            overlays: Vec::new(),
+            capability_trees: vec![CapabilityTreeSpec {
+                tree_id: "doomed_tree".into(),
+                tree_kind: "doomed_tree".into(),
+                owner_kind: "NonexistentKind".into(),
+                install: InstallTargetSpec::AllOfKind {
+                    kind: "NonexistentKind".into(),
+                },
+                categories: vec![CapabilityCategorySpec {
+                    property_namespace: "i1_test".into(),
+                    property_name: "marker".into(),
+                    display_name: "Marker".into(),
+                    tier: 0,
+                    max_active: None,
+                    entries: vec![stub_capability_spec()],
+                }],
+            }],
+            events: Vec::new(),
+        }
+    }
+
+    /// Game mode that succeeds — installs one tree on the World root via
+    /// `InstallTargetSpec::SessionRoot`.
+    fn succeeding_game_mode() -> GameModeSpec {
+        GameModeSpec {
+            id: "i1_success".into(),
+            display_name: "I1 Success Fixture".into(),
+            description: String::new(),
+            spec_version: SpecVersion::default(),
+            metadata: Default::default(),
+            domain_packs: Vec::new(),
+            properties: Vec::new(),
+            overlays: Vec::new(),
+            capability_trees: vec![CapabilityTreeSpec {
+                tree_id: "root_tree".into(),
+                tree_kind: "root_tree".into(),
+                owner_kind: "World".into(),
+                install: InstallTargetSpec::SessionRoot,
+                categories: vec![CapabilityCategorySpec {
+                    property_namespace: "i1_test".into(),
+                    property_name: "marker".into(),
+                    display_name: "Marker".into(),
+                    tier: 0,
+                    max_active: None,
+                    entries: vec![stub_capability_spec()],
+                }],
+            }],
+            events: Vec::new(),
+        }
+    }
+
+    fn fresh_caller_state(scenario: &Scenario) -> (DimensionRegistry, SimThing, SlotAllocator) {
+        let mut allocator = SlotAllocator::new();
+        allocator.populate_from_tree(&scenario.root);
+        (scenario.registry.clone(), scenario.root.clone(), allocator)
+    }
+
+    /// I1 acceptance: `install_atomic` with a failing spec leaves caller
+    /// state byte-equivalent to before. This is the contract the ADR
+    /// promises and the regression guard against the partial-mutation
+    /// footgun.
+    #[test]
+    fn install_atomic_leaves_caller_state_untouched_on_error() {
+        let world = SimThing::new(SimThingKind::World, 0);
+        let scenario = empty_scenario(world);
+        let (mut registry, mut root, mut allocator) = fresh_caller_state(&scenario);
+
+        let before_registry_len = registry.properties.len();
+        let before_root_children = root.children.len();
+        let before_alloc_capacity = allocator.capacity();
+
+        let err = install_atomic(
+            &failing_game_mode(),
+            &scenario,
+            &mut registry,
+            &mut root,
+            &mut allocator,
+        )
+        .expect_err("doomed spec must fail");
+
+        assert!(
+            matches!(err, InstallError::NoMatchingOwners { .. }),
+            "expected NoMatchingOwners, got {err:?}"
+        );
+        assert_eq!(
+            registry.properties.len(),
+            before_registry_len,
+            "registry must not retain the spec's property after failure (atomic-on-error)"
+        );
+        assert_eq!(
+            root.children.len(),
+            before_root_children,
+            "root tree must not retain any cloned subtree after failure"
+        );
+        assert_eq!(
+            allocator.capacity(),
+            before_alloc_capacity,
+            "allocator must not retain slots from failed install"
+        );
+    }
+
+    /// Contrast: `compile_and_install` (in-place worker) DOES leave caller
+    /// state partially mutated after the same failure. Documents the
+    /// behavioral difference between the worker and the wrappers.
+    #[test]
+    fn compile_and_install_leaks_partial_state_on_error() {
+        let world = SimThing::new(SimThingKind::World, 0);
+        let scenario = empty_scenario(world);
+        let (mut registry, mut root, mut allocator) = fresh_caller_state(&scenario);
+
+        let before_registry_len = registry.properties.len();
+
+        let err = compile_and_install(
+            &failing_game_mode(),
+            &scenario,
+            &mut registry,
+            &mut root,
+            &mut allocator,
+        )
+        .expect_err("doomed spec must fail");
+        assert!(matches!(err, InstallError::NoMatchingOwners { .. }));
+
+        // The in-place worker registered the property before failing the
+        // tree install — that's the partial-mutation footgun the wrappers
+        // exist to eliminate. (If this regresses to equality, the worker
+        // was made atomic; document that and remove this assertion.)
+        assert!(
+            registry.properties.len() > before_registry_len,
+            "compile_and_install is the in-place worker — partial registry \
+             mutation on error is expected (use install_atomic for atomic-on-error)"
+        );
+    }
+
+    /// `preview_install` with a failing spec leaves caller state
+    /// untouched (refs are immutable; the scratch clones absorb the
+    /// partial mutation and get dropped).
+    #[test]
+    fn preview_install_does_not_mutate_caller_state_on_error() {
+        let world = SimThing::new(SimThingKind::World, 0);
+        let scenario = empty_scenario(world);
+        let (registry, root, allocator) = fresh_caller_state(&scenario);
+        let before_registry_len = registry.properties.len();
+        let before_root_children = root.children.len();
+        let before_alloc_capacity = allocator.capacity();
+
+        let err = preview_install(
+            &failing_game_mode(),
+            &scenario,
+            &registry,
+            &root,
+            &allocator,
+        )
+        .expect_err("doomed spec must fail");
+        assert!(matches!(err, InstallError::NoMatchingOwners { .. }));
+
+        assert_eq!(registry.properties.len(), before_registry_len);
+        assert_eq!(root.children.len(), before_root_children);
+        assert_eq!(allocator.capacity(), before_alloc_capacity);
+    }
+
+    /// `preview_install` on a succeeding spec returns a fully-populated
+    /// `InstallPreview` that the caller can inspect without committing.
+    #[test]
+    fn preview_install_returns_populated_preview_on_success() {
+        let world = SimThing::new(SimThingKind::World, 0);
+        let scenario = empty_scenario(world);
+        let (registry, root, allocator) = fresh_caller_state(&scenario);
+        let before_registry_len = registry.properties.len();
+        let before_root_children = root.children.len();
+
+        let preview = preview_install(
+            &succeeding_game_mode(),
+            &scenario,
+            &registry,
+            &root,
+            &allocator,
+        )
+        .expect("succeeding spec must install");
+
+        // Scratch was mutated: new property, cloned tree, allocated slots.
+        assert!(preview.registry.properties.len() > before_registry_len);
+        assert!(preview.root.children.len() > before_root_children);
+        assert_eq!(
+            preview.state.capability_instances.len(),
+            1,
+            "one capability instance expected for SessionRoot install"
+        );
+
+        // Caller state was NOT mutated.
+        assert_eq!(registry.properties.len(), before_registry_len);
+        assert_eq!(root.children.len(), before_root_children);
+    }
+
+    /// `install_atomic` on a succeeding spec commits the scratch state
+    /// back to the caller and returns the same `SpecSessionState` shape
+    /// as the in-place worker.
+    #[test]
+    fn install_atomic_commits_on_success_equivalently_to_worker() {
+        let world_a = SimThing::new(SimThingKind::World, 0);
+        let world_b = SimThing::new(SimThingKind::World, 0);
+        let scenario_a = empty_scenario(world_a);
+        let scenario_b = empty_scenario(world_b);
+        let game_mode = succeeding_game_mode();
+
+        // Path A: atomic wrapper.
+        let (mut registry_a, mut root_a, mut allocator_a) = fresh_caller_state(&scenario_a);
+        let state_a = install_atomic(
+            &game_mode,
+            &scenario_a,
+            &mut registry_a,
+            &mut root_a,
+            &mut allocator_a,
+        )
+        .expect("atomic install");
+
+        // Path B: in-place worker.
+        let (mut registry_b, mut root_b, mut allocator_b) = fresh_caller_state(&scenario_b);
+        let state_b = compile_and_install(
+            &game_mode,
+            &scenario_b,
+            &mut registry_b,
+            &mut root_b,
+            &mut allocator_b,
+        )
+        .expect("worker install");
+
+        // Shape equivalence (raw SimThingIds differ — clones get fresh
+        // ids — so compare counts and structural shape rather than ids).
+        assert_eq!(registry_a.properties.len(), registry_b.properties.len());
+        assert_eq!(root_a.children.len(), root_b.children.len());
+        assert_eq!(
+            state_a.capability_instances.len(),
+            state_b.capability_instances.len()
+        );
+        assert_eq!(
+            state_a.capability_definitions.len(),
+            state_b.capability_definitions.len()
+        );
+        assert_eq!(allocator_a.capacity(), allocator_b.capacity());
+    }
 }

@@ -1507,3 +1507,97 @@ fn replay_reader_skips_spec_snapshot_line_for_sim_only_consumer() {
         "sim-only reader must see both frames despite intervening spec_snapshot line"
     );
 }
+
+// ── I1: install clone-then-commit (Studio preview / hot-reload safety) ───────
+
+/// I1 acceptance: `preview_install` + `apply_install_preview` produces a
+/// running session field-equivalent to `open_from_spec`. This is the
+/// Studio "preview then accept" flow — the designer can inspect the
+/// `InstallPreview` (or discard it) before committing to the live
+/// session. See `docs/adr/install_clone_then_commit.md`.
+#[test]
+fn i1_apply_install_preview_matches_open_from_spec_shape() {
+    if !try_gpu() {
+        eprintln!("skipping: no GPU");
+        return;
+    }
+
+    use simthing_driver::preview_install;
+
+    let game_mode = make_threshold_unlock_game_mode();
+
+    // Path A: open_from_spec baseline.
+    let (mut scenario_a, _) = scenario_with_factions(1, 16);
+    scenario_a.max_days = 2;
+    let session_a =
+        SimSession::open_from_spec(scenario_a, &game_mode).expect("open_from_spec baseline");
+
+    // Path B: open() + preview_install + apply_install_preview.
+    let (mut scenario_b, _) = scenario_with_factions(1, 16);
+    scenario_b.max_days = 2;
+    let mut session_b = SimSession::open(scenario_b).expect("session open");
+    let preview = preview_install(
+        &game_mode,
+        &session_b.scenario,
+        &session_b.proto.registry,
+        &session_b.proto.root,
+        &session_b.proto.allocator,
+    )
+    .expect("preview install");
+    // Inspect: the preview must carry the expected install footprint
+    // BEFORE we commit. This is the Studio "show me what this would do"
+    // surface.
+    assert_eq!(
+        preview.state.capability_instances.len(),
+        1,
+        "preview must carry the installed capability instance"
+    );
+    let before_session_registry_props = session_b.proto.registry.properties.len();
+    let before_session_root_subtree = session_b.proto.root.subtree_size();
+    let before_session_alloc_capacity = session_b.proto.allocator.capacity();
+    // Commit.
+    session_b.apply_install_preview(preview);
+
+    // Path A vs B: shape equivalence after install (SimThingIds differ —
+    // clones get fresh ids — so compare counts / structural shape).
+    assert_eq!(
+        session_a.spec_state.capability_instances.len(),
+        session_b.spec_state.capability_instances.len(),
+        "instance count must match between open_from_spec and apply_install_preview"
+    );
+    assert_eq!(
+        session_a.spec_state.capability_unlock_registrations.len(),
+        session_b.spec_state.capability_unlock_registrations.len(),
+        "unlock registration count must match"
+    );
+    assert_eq!(
+        session_a.proto.registry.properties.len(),
+        session_b.proto.registry.properties.len(),
+        "registry footprint must match"
+    );
+    assert_eq!(
+        session_a.proto.root.subtree_size(),
+        session_b.proto.root.subtree_size(),
+        "root subtree size must match (one cloned tree per faction)"
+    );
+    assert_eq!(
+        session_a.proto.allocator.capacity(),
+        session_b.proto.allocator.capacity(),
+        "allocator capacity must match"
+    );
+
+    // Sanity-check that the commit actually mutated session_b's
+    // underlying BoundaryProtocol (not just spec_state).
+    assert!(
+        session_b.proto.registry.properties.len() > before_session_registry_props,
+        "apply_install_preview must commit registry mutations"
+    );
+    assert!(
+        session_b.proto.root.subtree_size() > before_session_root_subtree,
+        "apply_install_preview must commit root mutations"
+    );
+    assert!(
+        session_b.proto.allocator.capacity() >= before_session_alloc_capacity,
+        "apply_install_preview must commit allocator mutations"
+    );
+}
