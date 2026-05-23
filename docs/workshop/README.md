@@ -7,6 +7,7 @@
 - [`../design_v6.5.md`](../design_v6.5.md) — **parking synthesis** (HEAD, open work, doc map)
 - [`../worklog.md`](../worklog.md) — O1b, EffectTarget, S5, O4 landing notes
 - [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) — PR 1–11 + O1 implementation ledger
+- [`simthing_spec_sonnet_opus_handoff.md`](simthing_spec_sonnet_opus_handoff.md) — **outstanding work; Sonnet vs Opus split**
 
 **Architecture decisions:**
 
