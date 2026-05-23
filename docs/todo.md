@@ -2,6 +2,7 @@
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; Phase 1 ADRs,
 **O3**, Composer **S3/S4**, and **O1** (session installation) landed.
+`master` and `origin/master` synced at **`6ba4e0d`** (PR #53).
 
 **Tests:** `cargo test --workspace` → **320** passed, **1** ignored, zero
 warnings. Debug and **release** profile build/tests clean.
@@ -28,6 +29,10 @@ already satisfied by O1; the two can co-land or sequence.
 
 **Parallel (Codex):** **S5/O5** — append-only external thresholds; Approach C
 topology append must exclude `clone_capability_children` fissions (drift found).
+
+**Known gap (O1b):** threshold unlock E2E via `open_from_spec` not yet tested;
+`spec_session_capability_unlock_activates_overlay_for_next_tick` still uses
+manual `install_spec_state`.
 
 **Worktree:** clean for tracked files. Untracked `.claude/worktrees/`,
 `demo.replay.ldjson`, and draft workshop files may be present locally.
@@ -474,11 +479,10 @@ simthing-studio   ← deferred GUI
 8. ~~**PR 11 Track A** — session/driver assembly~~ — Done `01fb572`, parked `9e63718`.
 9. ~~Composer Phase 0 + Phase 1 ADRs + O3~~ — Done through `c3f3556` (PRs #49–51).
 10. ~~Composer S3 + S4~~ — topology full-rebuild guard; capability instance reverse map (PR #52, `7914528`).
-11. ~~**O1** — RON-driven session installation~~ (`InstallTargetSpec`,
-     `install.rs`, `open_from_spec`, per-owner tree clone, `by_overlay`
-     migration, S3 release-mode cfg fix). 320 tests passing.
+11. ~~**O1** — RON-driven session installation~~ (PR #53, `6ba4e0d`). 320 tests.
 12. **Next session — primary track:** **O4** (per-owner scripted events) or
      **O2** (replay v3 for spec session state). O2's `by_overlay`
      precondition is satisfied by O1.
    - **Parallel:** S5/O5 append-only thresholds + Approach C eligibility fix.
+   - **Follow-up:** O1b — threshold unlock E2E via `open_from_spec`.
 13. Scenario format expansion / map-scale representation — tabled.

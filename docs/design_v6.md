@@ -946,9 +946,10 @@ landed 2026-05-22. See preface addenda for full status.**
 
 ### Still open
 
-- **`simthing-spec` PRs 1–11** — landed; see `workshop/simthing_spec_progress_log.md`
-- **O3, S3, S4, Phase 1 ADRs** — landed 2026-05-23 (PRs #49–52)
-- **Session init from authored specs (O1)** — next Codex milestone
+- **`simthing-spec` PRs 1–11 + O1/O3/S3/S4 + Phase 1 ADRs** — landed; see `workshop/simthing_spec_progress_log.md` (PRs #49–53)
+- **O4** (per-owner scripted events) or **O2** (replay v3) — next Codex milestones
+- **O1b** — threshold unlock E2E via `open_from_spec` (acceptance gap)
+- **S5/O5** — append-only thresholds + Approach C eligibility fix
 - **`tick_event_readback_ms` deep dive** — dominant remaining cost in `fission_stress`
 - **`simthing-studio` designer UI** — tabled; depends on `simthing-spec`
 

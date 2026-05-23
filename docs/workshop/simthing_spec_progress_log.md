@@ -325,15 +325,21 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 
 | ID | Scope | ADR |
 |----|-------|-----|
-| **O1** | Session init from `GameModeSpec` — `InstallTargetSpec`, `install.rs`, `open_from_spec`, per-owner clone | [`game_mode_session_installation.md`](../adr/game_mode_session_installation.md) |
 | **O2** | Replay v3 — `SpecSnapshot`/`SpecDelta`, logical keys | [`spec_session_state_replay.md`](../adr/spec_session_state_replay.md) |
 | **O4** | Per-owner scripted events (Option B) | [`scripted_event_scope_model.md`](../adr/scripted_event_scope_model.md) |
 | **O5** | B2 append-only for external threshold registrations on growth boundaries | — |
+
+### Follow-up (O1 acceptance gap)
+
+| ID | Scope |
+|----|-------|
+| **O1b** | Threshold unlock E2E via `open_from_spec` (no manual `install_spec_state`); ADR acceptance test not yet covered — see `spec_session_capability_unlock_activates_overlay_for_next_tick` |
 
 ### Done (2026-05-23)
 
 | ID | Scope |
 |----|-------|
+| **O1** | Session init — `InstallTargetSpec`, `install.rs`, `open_from_spec`, per-owner clone, `by_overlay` on instance (PR #53) |
 | **O3** | `queue_player_selection_by_key` + `SpecSessionError` (PR #51) |
 | **S3** | Topology cache `debug_assert!` on full-rebuild path (`boundary.rs`, PR #52) |
 | **S4** | `capability_instance_by_tree` reverse map (`spec_session.rs`, PR #52) |
@@ -356,9 +362,9 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 
 ### Known footguns
 
-- **`install_spec_state` is manual** — no RON-driven session open yet (O1).
+- **O1 install path** — use `SimSession::open_from_spec`; legacy `install_spec_state` remains for hand-built tests.
+- **O1b gap** — threshold unlock E2E still proven only via manual install, not `open_from_spec`.
 - **Replay** — structural overlay activations replay; spec runtime state does not (O2).
-- **`by_overlay` on shared definition** — must migrate to instance during O1 (replay ADR).
 - **B2 Approach C topology append** — only patches `fission_pairs` edges; incorrect CSR when fission clones multi-node capability subtrees (`clone_capability_children`). Full-rebuild path is guarded by S3; append path needs S5 fix.
 - **Empty-boundary skip** disabled when spec state needs boundary ticks (scripted predicates, queued selections, `OnPrereqMet` sweeps).
 
@@ -384,13 +390,13 @@ These remain valid; see original Q&A in `capability_tree_studio_workshop.md` for
 
 1. **This document**
 2. `docs/adr/pr11_track_a_session_assembly.md`
-3. **Phase 1 ADRs** (before O1/O2/O4 implementation):
-   - `docs/adr/game_mode_session_installation.md`
+3. **Phase 1 ADRs** (before O2/O4 implementation):
+   - `docs/adr/game_mode_session_installation.md` (O1 — landed PR #53)
    - `docs/adr/scripted_event_scope_model.md`
    - `docs/adr/spec_session_state_replay.md`
 4. `docs/todo.md` (parking state)
 5. `docs/design_v6.md` + `docs/capability_tree_v1.md` addenda
-6. Code: `spec_session.rs`, `session.rs`, `boundary/capability_handler.rs`, `boundary/event_handler.rs`
+6. Code: `install.rs`, `spec_session.rs`, `session.rs`, `boundary/capability_handler.rs`, `boundary/event_handler.rs`
 
 **Ignore for implementation:** archived handoffs in `docs/workshop/archive/` (gitignored) — see [`README.md`](README.md).
 
@@ -406,4 +412,4 @@ cargo test --workspace --release
 git status --short --branch
 ```
 
-Expected: **314** passed, **1** ignored, zero warnings, clean tracked tree.
+Expected: **320** passed, **1** ignored, zero warnings, clean tracked tree.

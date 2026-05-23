@@ -6,9 +6,21 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-23 — O1 session installation (Opus)
+## 2026-05-23 — Doc parking sync after O1 (Composer)
 
-**Status:** `master` @ TBD (this branch: `feat/o1-session-installation`).
+**Status:** `master` @ `6ba4e0d` (unchanged code; docs-only).
+
+**Updated:** `todo.md`, `workshop/simthing_spec_progress_log.md`,
+`workshop/README.md`, `design_v6.md`, this worklog (O1 entry SHA, footguns,
+O1 → Done, O1b gap noted).
+
+**Next:** O4 or O2 (Codex); O1b E2E unlock via `open_from_spec` as follow-up.
+
+---
+
+## 2026-05-23 — O1 session installation (Opus, PR #53)
+
+**Status:** `master` @ `6ba4e0d` (merge PR #53, code `1f4ca97`).
 
 **Landed:**
 
