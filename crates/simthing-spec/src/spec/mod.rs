@@ -11,7 +11,7 @@ pub mod trigger;
 
 pub use capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,
-    CapabilitySpec, CapabilityTreeSpec, MaxActivePolicy, ResearchRateSpec,
+    CapabilitySpec, CapabilityTreeSpec, MaxActivePolicy,
 };
 pub use domain_pack::DomainPackSpec;
 pub use effect::EffectSpec;

@@ -39,7 +39,6 @@ fn entry(
         flavor_text: String::new(),
         research_cost,
         activation,
-        research_rate: Default::default(),
         icon: String::new(),
         thumbnail: String::new(),
         card_image: String::new(),

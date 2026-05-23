@@ -1,23 +1,43 @@
-//! BoundaryProtocol — the §10 day-boundary orchestrator.
+//! BoundaryProtocol — the day-boundary orchestrator.
 //!
-//! Owns the authoritative SimThing tree root and sequences the full
-//! 10-step boundary protocol when the `DispatchCoordinator` signals
-//! `boundary_reached = true`.
+//! Owns the authoritative SimThing tree root and runs the boundary sequence when
+//! the feeder signals `boundary_reached`. Steps 1–3 (tick drain, intent upload,
+//! GPU tick pipeline + Pass 7 threshold events) are handled by the feeder layer;
+//! `BoundaryProtocol::execute` / `execute_with_boundary_hook` handle the CPU
+//! boundary path.
 //!
-//! ## Step sequence (from design_v4.md §10)
+//! ## Boundary sequence (`execute_with_boundary_hook`)
 //!
-//! Steps 1–3 are handled by the feeder layer (`DispatchCoordinator::tick`
-//! + `TransformPatcher::drain`). `BoundaryProtocol::execute` handles 4–10.
+//! Verified against live code — do not reorder without updating this header.
 //!
 //! ```text
-//! 4.  Overlay lifecycle resolves  -- overlay_lifecycle::resolve_overlay_lifecycle
-//! 5.  Property expiry resolves    -- property_expiry::resolve_property_expiry
-//! 6.  Fission/fusion executes     -- fission::resolve_fission_fusion
-//! 7.  Instruction overlays        -- overlay_lifecycle::attach_overlay (per request)
-//! 8.  Slot table + registry sync  -- TreeMaintainer::execute (structural requests)
-//! 9.  GPU buffer sync             -- gpu_sync::sync_gpu_buffers
-//! 10. Day N+1 dispatch ready      -- (caller resumes tick loop)
+//! 0. GPU value readback     — `state.read_values()` into `coord.shadow`
+//! 1. Alert extraction       — velocity + aggregate alerts from Pass 7 events
+//! 2. Boundary hook (PR 11)  — optional `BoundaryHookContext` callback; driver
+//!                             installs spec handlers here (post-readback,
+//!                             pre-structural). Emits `BoundaryRequest`s into
+//!                             the pending structural queue.
+//! 3. Overlay lifecycle      — dissolve / expire overlays
+//! 4. Property expiry        — threshold-driven + CPU decay paths
+//! 5. Fission pre-grow       — slot headroom for projected spawns
+//! 6. Fission / fusion         — tree shape + lineage records
+//! 7. Lineage maintenance      — append/prune `FissionLineageRecord`s
+//! 8. Request drain            — feeder boundary queue + player/AI intent overlays
+//! 9. AddChild pre-grow        — slot headroom for structural adds
+//! 10. Structural mutations    — `apply_structural_mutations` (hook + feeder requests)
+//! 11. Dimension rebuild       — registry column growth if needed
+//! 12. Final slot capacity     — ensure GPU/shadow sized to allocator
+//! 13. GPU buffer sync         — `gpu_sync::sync_gpu_buffers` (threshold/reduction
+//!                               rebuild or B2 append paths)
+//! 14. Delta log               — boundary outcome → replay entries
 //! ```
+//!
+//! `BoundaryProtocol::execute` is a thin wrapper that calls
+//! `execute_with_boundary_hook` with a no-op hook. `BoundaryHookContext` uses
+//! only sim/core/feeder/gpu types so this crate stays independent of
+//! `simthing-spec`. External capability unlock and scripted-event threshold
+//! registrations are stored as feeder-level vecs and included in full threshold
+//! rebuilds during GPU sync.
 
 use simthing_core::{
     DecayBehavior, DimensionRegistry, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
