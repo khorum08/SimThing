@@ -5,6 +5,10 @@
 
 ## Preface: From V5 to V6
 
+> **Implementation state:** For parking, open work, test counts, and doc routing read
+> [`design_v6.5.md`](design_v6.5.md). This document is the simulation **architecture**
+> specification; §18 historical test counts are superseded by V6.5.
+
 Design v5 was the implementation-synchronized specification. V6 adds three
 architectural decisions made during the capability tree workshop that are
 substantive enough to make v5 incomplete as a reference:
@@ -926,6 +930,10 @@ log records every transition. Version control tracks the `FissionTemplate`
 ---
 
 ## 18. Implementation State
+
+> **Superseded:** See [`design_v6.5.md`](design_v6.5.md) for current HEAD, **323** tests
+> (3 ignored), spec-layer status, and ordered open work. Summary below is historical
+> through 2026-05-22.
 
 **202/202 tests passing on master (1 ignored timing diagnostic). V6 simulation
 core landed (`f39fe6d`); capability kind parameterization landed PR #38

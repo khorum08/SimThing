@@ -2,7 +2,23 @@
 
 Running log of what's done and what's next, across sessions.
 
-**Canonical spec:** `docs/design_v6.md` | **Historical spec:** `docs/design_v5.md` | **Agent map:** `docs/agents.md`
+**Canonical spec:** `docs/design_v6.5.md` (parking) · `docs/design_v6.md` (sim mechanics) | **Agent map:** `docs/agents.md`
+
+---
+
+## 2026-05-23 — V6.5 doc synthesis + archive sunset
+
+**Status:** `master` @ `36b3285` (pending commit).
+
+**Landed (docs):**
+
+- `docs/design_v6.5.md` — current-state synthesis (parking, open work, doc map)
+- `docs/workshop/archive/SUNSET.md` + `README.md` — tracked sunset manifest
+- `docs/adr/README.md` — ADR index
+- Cross-links: `agents.md`, `todo.md`, `workshop/README.md`, progress log, historical workshop banners
+- `game_mode_session_installation.md` ADR → Accepted (O1 landed)
+
+**Archive:** Local handoff bodies remain gitignored; implement from V6.5 + progress log only.
 
 ---
 

@@ -1,8 +1,8 @@
 # Game Mode → Session Installation
 
 **Date:** 2026-05-23
-**Status:** Proposed
-**Blocks:** O1 (RON-driven session init), O3 follow-up wiring (logical install targets), partial O4 (per-owner scripted event install)
+**Status:** Accepted (O1 landed PR #53)
+**Blocks:** O3 follow-up wiring (logical install targets), partial O4 (per-owner scripted event install)
 
 ## Context
 
