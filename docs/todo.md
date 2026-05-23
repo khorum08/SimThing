@@ -2,7 +2,7 @@
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; Phase 1 ADRs, **O3**,
 and Composer **S3/S4** landed. `master` and `origin/master` synced at
-**`7914528`** (PR #52 merge; doc parking @ `0245c46`).
+**`c0fd27c`** (PR #52 code @ `7914528`).
 
 **Tests:** `cargo test --workspace` → **314** passed, **1** ignored, zero
 warnings. Debug and **release** profile build/tests clean.
