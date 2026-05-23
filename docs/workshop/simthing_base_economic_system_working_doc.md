@@ -1,63 +1,246 @@
-# SimThing Base Economic System: Resource Balances, Transfers, Thresholds, and Fission
+# SimThing Base Economic System: Provisional Thresholded Accumulation and Emission
+
+> **Status: PROVISIONAL WORKING DOCUMENT**
+>
+> This is a design synthesis, not an accepted ADR and not an implementation spec. It records the current direction of thought for the base SimThing economic/causal substrate. Future ADRs should promote, revise, or reject these ideas after inspection against the current engine invariants.
 
 ## Purpose
 
 This working document captures the current base-economy synthesis for SimThing. It is meant to be readable by modders while still being precise enough for Claude, Cursor, Codex, or a future implementation chat.
 
-The conclusion:
+The newest provisional change is important:
 
-> The base SimThing economy should not be a separate economy engine. It should be ordinary SimThing semantics applied to resource-bearing properties, transfer overlays, thresholds, and boundary effects.
+> The base economic system may be a special case of a more general intrinsic SimThing facility: **thresholded accumulation and emission**.
 
-Research, construction, upkeep, shipbuilding, cohort production, repairs, terraforming, logistics, diplomacy projects, and population growth can all be authored as the same pattern:
-
-> A SimThing has resource balances. Overlays modify flow or transfer balances. Thresholds interpret completion, shortage, exhaustion, or overflow. Boundary handlers apply consequences such as unlocks, fission, instantiation, count increments, or transfer.
-
----
-
-## Canonical Model
+The earlier queue/construction model remains useful, but it should not be treated as the root abstraction. Queue construction, factory production, fleet replenishment, weapons damage, hitpoints, population growth, diplomatic relation shifts, research, repair, logistics, and upkeep are all possible authored cases of the same deeper pattern:
 
 ```text
-Resource property:
-  Amount = balance
-  Velocity = net flow
-  Intensity = stress / volatility / urgency
-
-Cost:
-  negative Amount on a target/project SimThing
-
-Production:
-  positive Velocity
-
-Consumption / upkeep:
-  negative Velocity
-
-Funding / construction / reinforcement:
-  transfer overlay from source resource balance to target negative balance
-
-Completion / deficit / exhaustion:
-  threshold over Amount, Velocity, or Intensity
-
-Output:
-  boundary handler, fission, child instantiation, capability unlock, count increment, or transfer
-
-Priority:
-  overlay metadata, not a default resource column
-
-Resolver:
-  optional later policy layer that converts competing claims into transfer rates
+property accumulates value
+→ overlays modify, route, or convert that value
+→ threshold detects a crossing
+→ boundary semantic emits effects
+→ accumulator is deducted, reset, retained, scarred, expired, or transformed
 ```
 
-Shortest form:
-
-> Resource = Amount + Velocity + Intensity. Cost = negative Amount. Generation = positive Velocity. Consumption = negative Velocity. Funding = transfer overlay. Completion = threshold at zero. Output = boundary/fission/transfer.
+The base SimThing economy should therefore not become a separate economy engine. It should remain ordinary SimThing semantics applied to resource-bearing or progress-bearing properties, overlays, thresholds, and boundary effects.
 
 ---
 
-## Resource Properties
+## Provisional Core Thesis
 
-A resource property is a normal `SimProperty` with a resource semantic role or tag.
+The proposed intrinsic primitive is not `QueueSettlement`, `ConstructionQueue`, or `ResourceConsumed`.
 
-Canonical layout:
+The more general primitive is something like:
+
+```rust
+ThresholdSemantic::EmitOnThreshold
+```
+
+or:
+
+```rust
+ThresholdSemantic::ThresholdedEmission
+ThresholdSemantic::AccumulatorEmission
+```
+
+Naming remains provisional. The intended meaning is:
+
+> Any SimThing property can act as an accumulator. When the accumulator crosses an authored threshold, a core boundary semantic may emit one or more effects, scale those effects by the number of completed units, and then apply an authored consume/reset rule to the accumulator.
+
+This is the constitutional grammar:
+
+```text
+Properties hold accumulation state.
+Overlays route, generate, consume, or transform accumulation.
+Thresholds detect crossings.
+Boundary semantics emit consequences.
+```
+
+Shortest provisional form:
+
+```text
+Accumulator = property/subfield with Amount, Velocity, Intensity, or authored layout
+Input = overlay, transfer, velocity, damage, growth, diplomacy pressure, etc.
+Threshold = crossing condition
+Emission count = floor(accumulator_amount / unit_size), or other authored formula
+Effects = increments, transfers, overlays, fission, instantiation, unlocks, events
+Consume mode = subtract, clamp, retain, scar, expire, reload debt, or transfer remainder
+```
+
+---
+
+## Why This Is Broader Than Queue Construction
+
+Queue construction is one use case:
+
+```text
+unit_progress.Amount >= 1.0
+  -> emit completed units into target cohort/fleet/parent
+  -> subtract emitted_units from unit_progress
+```
+
+But the same facility could express:
+
+```text
+factory::assembly_progress.Amount >= 1.0
+  -> emit inventory units
+  -> subtract emitted units, keep fractional remainder
+
+population::growth.Amount >= 1.0
+  -> increment population count
+  -> subtract emitted growth units
+
+fleet::replenishment_progress.Amount >= 1.0
+  -> increment missile/fighter/crew/readiness stock
+  -> subtract emitted units
+
+ship::damage.Amount >= armor_break_threshold
+  -> attach hull_breach overlay or emit damage event
+  -> retain, scar, or subtract damage depending on authored consume mode
+
+diplomacy::trust.Amount >= treaty_threshold
+  -> activate treaty_available overlay or emit diplomatic event
+  -> retain, clamp, or spend trust depending on authored consume mode
+
+research::ion_drive_progress.Amount >= 1.0
+  -> unlock ion_drive capability
+  -> expire research item or retain completion marker
+```
+
+The facility should be intrinsic because it is not a Stellaris-like queue rule. It is a general SimThing pattern for anything that accumulates state and turns threshold crossings into consequences.
+
+---
+
+## Provisional Emit-On-Threshold Model
+
+An authored/runtime emission spec might look like this conceptually:
+
+```text
+ThresholdedEmissionSpec:
+  owner: SimThingId
+  watched_property: SimPropertyId
+  watched_subfield: Amount | Velocity | Intensity | Named(...)
+  threshold: f32
+  direction: Rising | Falling
+  unit_size: f32
+  max_emit_per_boundary: optional
+  output_count_formula: optional
+  consume_mode: ConsumeMode
+  effects: Vec<EmissionEffect>
+```
+
+On threshold fire:
+
+```text
+value = read watched property/subfield
+emit_count = compute_emit_count(value, unit_size, max_emit_per_boundary)
+apply effects scaled by emit_count
+apply consume/reset mode to watched value
+```
+
+For the common one-column accumulator case:
+
+```text
+emit_count = floor(value / unit_size)
+```
+
+Example:
+
+```text
+unit_progress.Amount = 11.5
+unit_size = 1.0
+emit_count = 11
+```
+
+Boundary result:
+
+```text
+target_cohort.unit_count += 11
+queued_count -= 11, if bounded by a queue count
+unit_progress.Amount -= 11
+unit_progress.Amount remains 0.5
+```
+
+This gives one completion column and one threshold while still allowing multi-unit emission in one boundary.
+
+---
+
+## Consume / Reset Modes
+
+The consume/reset rule is the key to making the primitive general.
+
+Provisional consume modes:
+
+```text
+SubtractEmitted:
+  value -= emit_count * unit_size
+  Keeps fractional remainder. Good for production, growth, replenishment.
+
+ClampToZero:
+  value = 0 after firing. Good for one-shot pressure discharge.
+
+Retain:
+  value remains. Good for persistent gates such as diplomacy states or tech completion markers.
+
+Expire:
+  remove property, queue item, or process after firing. Good for one-shot projects.
+
+Scar:
+  value *= coefficient. Similar to current fusion scar semantics.
+
+ReloadDebt:
+  value -= next_required_amount. Good for repeated batch queues or staged projects.
+
+TransferRemainder:
+  move overflow/remainder to another property or SimThing.
+```
+
+This should be designed as boundary semantics, not as ordinary numeric overlay logic.
+
+---
+
+## Emission Effects
+
+Effects should be generic and composable. Provisional examples:
+
+```text
+IncrementProperty:
+  target property += amount_per_emit * emit_count
+
+TransferAmount:
+  source property -= amount_per_emit * emit_count
+  target property += amount_per_emit * emit_count
+
+InstantiateChild:
+  create child from template, count = emit_count or one per emit
+
+AttachOverlay / ActivateOverlay / SuspendOverlay:
+  modify active overlay state
+
+ActivateCapability:
+  unlock or activate a capability/effect
+
+EmitEvent:
+  produce a scripted or feeder event
+
+Fission / StructuralMutation:
+  spawn, split, reparent, remove, or fuse SimThings
+
+ExpireSelf:
+  remove or tombstone the emitting item/process after settlement
+```
+
+The key rule:
+
+> Thresholded emission should move through existing boundary protocols wherever possible. It should not become a hidden domain engine.
+
+---
+
+## Relationship to Resources
+
+Resource balances remain valid, but they are now one authored use of the broader accumulator/emitter facility.
+
+Canonical resource layout remains:
 
 ```text
 resource::<key>
@@ -66,11 +249,23 @@ resource::<key>
   Intensity
 ```
 
-`Amount` is the current balance. Positive amount means surplus, stock, accumulated value, satisfied value, or available balance depending on context. Negative amount means requirement, debt, shortage, unsatisfied input, or remaining cost depending on context.
+Meanings:
 
-`Velocity` is flow. Positive velocity generates or restores the resource. Negative velocity consumes, drains, degrades, or incurs upkeep.
+```text
+Amount:
+  Current resource balance.
+  Positive amount means surplus, stock, accumulated value, satisfied value, or available balance depending on context.
+  Negative amount means requirement, debt, shortage, unsatisfied input, or remaining cost depending on context.
 
-`Intensity` remains stress, volatility, urgency, or expression strength. Do not use Intensity as base allocation priority.
+Velocity:
+  Net flow.
+  Positive velocity generates or restores the resource.
+  Negative velocity consumes, drains, degrades, or incurs upkeep.
+
+Intensity:
+  Stress, volatility, urgency, instability, or expression strength.
+  It should not be used as base allocation priority.
+```
 
 Examples:
 
@@ -82,11 +277,7 @@ FrigateProject.resource::alloys.Amount = -400
 CohortProject.resource::electronics.Amount = -100
 ```
 
----
-
-## Costs as Negative Balances
-
-A cost is represented as a negative `Amount` on the project or consuming SimThing.
+Cost-as-negative-balance is still useful:
 
 ```text
 FrigateConstruction
@@ -95,223 +286,121 @@ FrigateConstruction
   resource::shipyard_capacity.Amount = -60
 ```
 
-This means the project needs 400 alloys, 80 electronics, and 60 shipyard-capacity units. Transfers move those balances toward zero.
-
-Completion is just a threshold:
+But this is no longer the only possible representation. A queue/factory may instead convert inputs into a normalized one-column accumulator:
 
 ```text
-alloys.Amount >= 0
-AND electronics.Amount >= 0
-AND shipyard_capacity.Amount >= 0
+queue::unit_progress.Amount = 0.0
+threshold: unit_progress >= 1.0
 ```
 
-Once the threshold fires, a boundary handler creates or transfers the completed output.
-
-This removes the need for a special project-progress abstraction in the base case. Progress is the movement of a negative balance toward zero.
+Multi-resource cost can live in transfer/conversion metadata that feeds normalized progress.
 
 ---
 
-## Velocity as Flow
+## Overlays Still Own Input and Intent
 
-Generation and consumption are velocity.
-
-```text
-AlloyFoundry.resource::alloys.Velocity = +8
-AlloyFoundry.resource::energy.Velocity = -2
-Fleet.resource::fuel.Velocity = -4
-Colony.resource::food.Velocity = +12
-```
-
-Overlays modify velocity:
+Overlays should express active economic or causal instructions:
 
 ```text
-UnrestOverlay:
-  resource::alloys.Velocity -= 5
-
-AutomationTechOverlay:
-  resource::alloys.Velocity += 3
-
-RationingPolicyOverlay:
-  resource::food.Velocity += 2
-  population::satisfaction.Velocity -= 0.1
+which source resources are routed
+which target accumulator is fed
+which policy/tech/unrest modifies velocity
+which conversion rate applies
+which priority or cap applies
+whether the process is active, suspended, or expired
 ```
 
-The normal simulation rule remains:
+Examples:
 
 ```text
-Amount += Velocity * dt
+ConstructionFundingOverlay:
+  source: alloys/electronics/labor
+  target: queue::unit_progress
+  conversion: per-unit cost metadata -> normalized progress
+  cap: max unit_progress per day
+
+FactoryOperationOverlay:
+  energy.Velocity -= 2
+  minerals.Velocity -= 6
+  assembly_progress.Velocity += 3
+
+DamageOverlay:
+  ship::damage.Amount += weapon_damage
 ```
 
-Do not reinterpret Velocity as priority. Velocity is flow.
+Overlays answer:
+
+```text
+How does value enter or leave the accumulator?
+```
+
+Thresholded emission answers:
+
+```text
+What happens when enough value has accumulated?
+```
 
 ---
 
-## Thresholds as Meaning
+## Transfer Overlays Remain a Useful Primitive
 
-Thresholds are where resource state becomes consequence.
+Resource transfer is still needed for direct movement of values between SimThings.
 
-```text
-resource::alloys.Amount >= 0
-  -> material requirement satisfied
-
-resource::food.Amount < 0
-  -> hunger pressure
-
-resource::energy.Amount < -100
-  -> underpowered crisis
-
-resource::engineering_research.Amount >= 0
-  -> unlock tech capability
-
-resource::unit_count.Amount >= target_count
-  -> cohort ready
-```
-
-Thresholds remain the owner of completion, deficit, exhaustion, overflow, unlock, fission, and action semantics.
-
----
-
-## Transfer Overlays, Not a Heavy Economy Resolver
-
-The fundamental primitive should be resource transfer, not a hardcoded economy resolver.
-
-Conceptual shape:
+Conceptual transfer overlay:
 
 ```text
 TransferOverlay:
-  source: SimThing.resource::<key>.Amount or flow
-  target: SimThing.resource::<key>.Amount
+  source: SimThing.property/subfield
+  target: SimThing.property/subfield
   rate: amount per tick/day OR share/cap
   constraints:
     - source availability
-    - target remaining deficit
+    - target pull or capacity
     - scope / ownership / capability
   lifecycle:
-    - until target reaches zero
+    - until target reaches threshold
     - until source exhausted
     - while policy active
-    - while queue item active
+    - while process active
 ```
 
 Runtime effect:
 
 ```text
 x = bounded_transfer_amount(source, target, rate, constraints)
-source.Amount -= x
-target.Amount += x
+source -= x
+target += x
 ```
 
-Target pull is derived from negative balance:
-
-```text
-pull = max(0, -target.Amount)
-```
-
-Base economy loop:
-
-```text
-1. Integrate resource velocities.
-2. Execute transfer overlays.
-3. Evaluate thresholds.
-4. Apply boundary effects.
-```
-
-A full allocation resolver is only needed later when rates are not explicit and multiple targets compete for the same pool. In that case, the resolver should convert priority claims into transfer rates. It should not unlock techs, spawn buildings, create ships, or hardcode domain behavior.
+A heavy allocation resolver is not required for v1. A later resolver may convert competing priority claims into explicit transfer rates.
 
 ---
 
-## Resource Participation Rule
+## Current Threshold Action Model
 
-Only resource properties participate in resource transfer semantics.
-
-```text
-No Resource property -> no resource transfer participation.
-No transfer/allocation overlay -> no routed resource flow.
-Thresholds can still wait on ordinary prerequisites.
-```
-
-Resource gate:
+Current engine behavior is important for implementation planning:
 
 ```text
-FrigateProject
-  resource::alloys.Amount = -400
-  resource::labor.Amount = -100
-
-Threshold:
-  alloys.Amount >= 0
-  labor.Amount >= 0
-  -> complete frigate
+GPU Pass 7 emits ThresholdEvent { slot, col, value, event_kind }.
+CPU ThresholdRegistry maps event_kind -> ThresholdSemantic.
+Boundary phases/handlers interpret the semantic action.
 ```
 
-Non-resource prerequisite gate:
+Existing semantic arms include fission, fusion, property expiry, velocity/aggregate alerts, capability unlocks, and scripted event triggers.
 
-```text
-capability::basic_frigate_unlocked == true
-orbital_shipyard_available == true
-no_blockade == true
+A provisional thresholded-emission facility would likely require a new semantic arm such as:
+
+```rust
+ThresholdSemantic::EmitOnThreshold { emitter_id, spec_id }
 ```
 
-Most projects will use both resource balances and non-resource prerequisite thresholds.
+or:
 
----
-
-## Queue-able Construction
-
-Ships, cohorts, armies, buildings, modules, repairs, and reinforcements should be queue-able construction participants.
-
-The queue item is not the completed unit. It is a construction/deployment SimThing or queue entry that resolves into completed output.
-
-```text
-QueueableConstructionItem:
-  output_kind
-  desired_count
-  completed_count
-  target: extant SimThing or parent container
-  per-unit or per-batch negative resource balances
-  completion threshold: all required balances >= 0
-  completion effect: instantiate child OR increment target amount
+```rust
+ThresholdSemantic::ThresholdedEmission { emitter_id, spec_id }
 ```
 
-Per-unit example:
-
-```text
-Build 3 Frigates
-
-Per frigate debt:
-  resource::alloys.Amount = -400
-  resource::electronics.Amount = -80
-  resource::shipyard_capacity.Amount = -60
-
-On threshold satisfaction:
-  instantiate Frigate SimThing
-  attach to target Fleet or reserve pool
-  completed_count += 1
-  if completed_count < desired_count:
-    reload next frigate debt
-  else:
-    expire queue item
-```
-
-Per-batch example:
-
-```text
-Build Cohort Batch
-
-Batch output:
-  output_count = 25 units
-
-Batch debt:
-  resource::alloys.Amount = -50
-  resource::electronics.Amount = -25
-  resource::assembly_labor.Amount = -12.5
-
-On threshold satisfaction:
-  target_cohort.resource::unit_count.Amount += 25
-  completed_count += 25
-  reload or expire queue item
-```
-
-Reinforcement is the same system: construction into an extant target rather than creation of a new target.
+The GPU event should remain small and opaque. The boundary handler should read the current accumulator value from shadow, compute emit count, apply effects, and update the accumulator according to consume mode.
 
 ---
 
@@ -335,32 +424,63 @@ remove child
 tombstone child slot
 ```
 
-So the economic model still needs explicit transfer semantics for:
+So the economic/emission model should not assume current fission/fusion already supports:
 
 ```text
 source.Amount -= x
 target.Amount += x
 ```
 
-Fission/fusion remains relevant as the structural boundary family for completed outputs, but construction needs new or extended effects such as:
+That operation still needs explicit transfer or emission effects.
+
+Fission/fusion remains relevant as one possible boundary effect for emitted consequences, not as the entire resource/queue mechanism.
+
+---
+
+## Queue Construction as an Example, Not the Root Primitive
+
+Queueable items are still useful, but they should be described as a specialization of thresholded emission.
+
+One-column queue version:
 
 ```text
-TransferAmount
-IncrementTargetProperty
-InstantiateChildFromTemplate
-ReloadQueueDebt
-ExpireQueueItem
+QueueableItem SimThing:
+  queue::unit_progress.Amount
+
+Metadata/spec/session state:
+  queued_count
+  output target
+  output mode
+  per-unit input conversion
 ```
+
+Threshold:
+
+```text
+unit_progress.Amount >= 1.0
+```
+
+Boundary emission:
+
+```text
+completed = min(queued_count, floor(unit_progress.Amount))
+target.unit_count += completed
+queued_count -= completed
+unit_progress.Amount -= completed
+if queued_count == 0: expire queue item
+```
+
+This is the same pattern as population growth or factory output. The difference is only the effect list and consume mode.
 
 ---
 
 ## Parent/Child Production and Aggregation
 
-A SimThing can produce resources through its own properties and through attached children.
+A SimThing can produce resources or accumulated value through its own properties and through attached children.
 
-Canonical rule:
+Canonical provisional rule:
 
-> Parent-level resource availability may be derived from reducible descendant state, subject to authored scope, ownership, boundary, capability, logistics, and overlay rules.
+> Parent-level availability may be derived from reducible descendant state, subject to authored scope, ownership, boundary, capability, logistics, and overlay rules.
 
 Example:
 
@@ -384,7 +504,7 @@ Aggregation should be authored or declared, not automatic for every property.
 Open questions:
 
 ```text
-Is this resource exportable upward?
+Is this resource/value exportable upward?
 Does the child reserve local needs first?
 Does ownership permit parent allocation?
 Do blockade/logistics reduce export?
@@ -394,112 +514,11 @@ Does local policy redirect it?
 
 ---
 
-## Authored Regimes Built on the Base
-
-Do not hardcode domain systems such as `ResearchEngine`, `ConstructionEngine`, `UpkeepEngine`, `MarketEngine`, or `ShipbuildingEngine` in v1.
-
-Instead, author regimes on the same primitives.
-
-Research:
-
-```text
-IonDriveResearch
-  resource::engineering_research.Amount = -100
-
-TransferOverlay:
-  source = Empire.resource::engineering_research
-  target = IonDriveResearch.resource::engineering_research
-
-Threshold:
-  engineering_research.Amount >= 0
-  prerequisites satisfied
-  -> unlock ion_drive capability
-```
-
-Construction:
-
-```text
-AlloyFoundryProject
-  resource::minerals.Amount = -300
-  resource::labor.Amount = -100
-
-Threshold:
-  minerals >= 0
-  labor >= 0
-  -> instantiate AlloyFoundry building
-```
-
-Shipbuilding:
-
-```text
-FrigateConstruction
-  resource::alloys.Amount = -400
-  resource::electronics.Amount = -80
-  resource::shipyard_capacity.Amount = -60
-
-Threshold:
-  all resource balances >= 0
-  -> instantiate Frigate child under Fleet or reserve
-```
-
-Upkeep:
-
-```text
-Fleet
-  resource::energy.Velocity = -5
-  resource::munitions.Velocity = -1
-
-Threshold:
-  energy.Amount < 0
-  -> activate underpowered overlay
-```
-
----
-
-## Priority and Allocation Claims
-
-Priority should live on overlays or allocation claims, not as a default column on every project/resource.
-
-Direct transfer:
-
-```text
-TransferOverlay:
-  source = Planet.resource::alloys
-  target = FrigateConstruction.resource::alloys
-  rate = 20/day
-  stop_when = target.Amount >= 0
-```
-
-Contested allocation claim:
-
-```text
-AllocationClaimOverlay:
-  source_pool = Empire.resource::alloys
-  target = FrigateConstruction.resource::alloys
-  priority = 90
-  weight = 1.0
-  cap = 20/day
-```
-
-A later resolver may compute:
-
-```text
-available = source_pool.available
-pull = max(0, -target.Amount)
-raw_weight = priority_curve(priority) * weight * remaining_factor(pull)
-share = raw_weight / sum(raw_weight for pool)
-transfer = min(available * share, cap, pull)
-```
-
-Then execute normal transfer.
-
----
-
 ## Column Discipline
 
 Do not bloat the dense property matrix.
 
-Default resource layout should stay lean:
+Default resource/accumulator layouts should stay lean:
 
 ```text
 Amount
@@ -530,8 +549,8 @@ Derived values should remain derived:
 ```text
 remaining = max(0, -Amount)
 pull = max(0, -target.Amount)
+emit_count = floor(Amount / unit_size)
 allocated_this_tick = diagnostic output
-cost = initial negative Amount or construction spec metadata
 priority = overlay metadata
 ```
 
@@ -541,52 +560,50 @@ Optional advanced layouts may exist, but they are opt-in.
 
 ## Property Kind / Metadata Recommendation
 
-The architecture likely needs a way to identify resource properties.
+The architecture likely needs a way to identify resource properties and/or accumulator-emitter properties.
 
 Possible approaches:
 
 ```text
 SimPropertyKind::Resource
+SimPropertyKind::Accumulator
 PropertyMetadata.economic_role = Resource
+PropertyMetadata.emission_role = Accumulator
 PropertyTag::Resource
+PropertyTag::Accumulator
 ```
 
-Requirements:
-
-```text
-A resource property can be used as transfer source or target.
-A negative Amount can be interpreted as unsatisfied requirement/debt.
-Velocity is interpreted as net flow.
-Thresholds can watch resource state normally.
-Aggregation specs can identify which resources move upward.
-Transfer overlays can refer to resource properties by key/path.
-```
-
-Do not hardcode resource keys like `Alloys`, `Food`, or `Influence` into core enums. Prefer authored keys:
+Do not hardcode authored resource names like `Alloys`, `Food`, or `Influence` into core enums. Prefer authored keys:
 
 ```text
 resource::alloys
 resource::food
 resource::engineering_research
 resource::legitimacy
-resource::activation_compute
-resource::shipyard_capacity
+queue::unit_progress
+factory::assembly_progress
+population::growth
+ship::damage
 ```
+
+Open question:
+
+> Is `EmitOnThreshold` attached to property metadata, threshold metadata, a spec-side emission registry, or a new core threshold semantic registration path?
 
 ---
 
 ## Runtime Phase Model
 
-Likely order:
+Likely conceptual order:
 
 ```text
 1. Apply ordinary overlays to property values and velocities.
 2. Integrate velocity into amount.
-3. Apply child-to-parent resource aggregation/materialization where authored.
-4. Execute direct transfer overlays.
+3. Apply child-to-parent aggregation/materialization where authored.
+4. Execute direct transfer overlays where authored.
 5. Optionally resolve allocation claims into transfers.
 6. Evaluate thresholds.
-7. Apply boundary handlers: unlock, fission, transfer, instantiate, expire, reload.
+7. Apply boundary handlers: emission, unlock, fission, transfer, instantiate, expire, reload.
 8. Update overlay lifecycle.
 9. Emit diagnostics/events.
 ```
@@ -598,6 +615,8 @@ state movement before threshold interpretation;
 threshold interpretation before boundary consequences.
 ```
 
+Exact order must be validated against the current boundary sequence before implementation.
+
 ---
 
 ## GPU Position
@@ -607,21 +626,21 @@ Do **not** implement this on GPU in v1.
 V1 should prove CPU/session semantics first:
 
 ```text
-resource property semantics
-negative Amount as cost/debt
+resource/accumulator property semantics
 Velocity as flow
-direct transfer overlays
-threshold completion
-boundary/fission/transfer effects
-queue fixtures for ships/cohorts
+one-column thresholded emission
+explicit transfer overlays
+boundary emission effects
+queue/factory/growth fixtures
 ```
 
-GPU transfer/allocation work is a later lowering path only after CPU semantics and fixtures are stable.
+GPU transfer/emission/allocation work is a later lowering path only after CPU semantics and fixtures are stable.
 
-Later, if profiling and scale require it, transfer execution may be lowered into:
+Later, if profiling and scale require it, some pieces may be lowered into:
 
 ```text
 compact transfer work-item buffer
+compact emission work-item buffer
 compact allocation claim buffer
 GPU transfer pass
 GPU group reduction for contested allocation
@@ -629,48 +648,50 @@ GPU group reduction for contested allocation
 
 These are optimization targets, not canonical requirements.
 
-The contested allocation case is especially not v1 because it requires grouping and reduction across claims.
-
 ---
 
 ## Implementation Handoff
 
 ### A0 — ADR / Design Only
 
-Create an ADR:
+Create an ADR after this design stabilizes, likely:
+
+```text
+docs/adr/thresholded_accumulation_emission.md
+```
+
+or, if still framed economically:
 
 ```text
 docs/adr/resource_balance_transfer_model.md
 ```
 
-It should establish:
+The ADR should establish or reject:
 
 ```text
-1. Resource properties use normal Amount / Velocity / Intensity semantics.
-2. Costs are represented as negative Amounts on target/project SimThings.
-3. Production and upkeep are represented as Velocity.
-4. Transfer overlays move resource balances between SimThings.
-5. Completion, shortage, overflow, unlock, fission, and output creation are threshold/boundary activity.
-6. Priority belongs to overlays/claims, not default resource columns.
-7. A full allocation resolver is optional and only converts competing claims into transfer operations.
-8. Queue-able construction is repeated satisfaction of per-unit or per-batch negative balances.
-9. Ships and cohorts are outputs of construction queue items, not the queue items themselves.
-10. Non-resource prerequisites remain ordinary threshold predicates.
-11. GPU property columns remain lean; derived values should not become columns unless needed.
-12. V1 is CPU/session-side only; GPU lowering is deferred.
+1. Whether thresholded accumulation/emission is intrinsic SimThing semantics.
+2. Whether the core semantic is named EmitOnThreshold, ThresholdedEmission, or something else.
+3. How emission specs are registered and resolved from threshold events.
+4. Which consume/reset modes are supported in v1.
+5. Which effect kinds are supported in v1.
+6. How resource transfer overlays feed accumulators.
+7. How queue construction is represented as one authored use case.
+8. Why GPU lowering is deferred.
+9. How this interacts with existing fission/fusion, capability unlocks, and scripted events.
 ```
 
 ### Suggested Implementation Ladder
 
 ```text
-A1 — Minimal resource tagging
-A2 — Transfer overlay spec
-A3 — CPU/session direct transfer runtime
-A4 — Ship construction fixture
-A5 — Batch/cohort fixture
-A6 — Aggregation fixture
-A7 — Optional CPU allocation-claim resolver
+A1 — ADR for thresholded accumulation/emission
+A2 — Minimal emission spec registration path
+A3 — CPU/session boundary handler for EmitOnThreshold
+A4 — One-column queue fixture
+A5 — Population growth or factory-output fixture
+A6 — Resource transfer overlay fixture
+A7 — Optional resource/accumulator tags
 A8 — Modder guide and examples
+A9 — Later profiling/GPU lowering only if needed
 ```
 
 Do not implement in v1:
@@ -693,55 +714,53 @@ complex market price formation
 
 ## Modder Mental Model
 
-> A resource is a balance. Positive means you have it. Negative means you need it. Velocity says whether it is rising or falling. Transfers pay debts. Thresholds decide when a debt is satisfied or a shortage becomes dangerous.
+> A SimThing can accumulate value in a property. Overlays push or pull on that value. When the value crosses a threshold, the SimThing emits effects. The accumulator may spend the emitted amount, keep a remainder, retain the state, scar itself, expire, or reload.
 
 Examples:
 
 ```text
-A factory is a SimThing whose resources flow.
-A project is a SimThing with negative resource balances.
-A construction queue is a list of projects that reload their debt after each completed output.
-A ship is born when a project crosses zero and fissions into a fleet.
-A cohort grows when completed batches transfer unit count into the extant cohort.
-A famine begins when food stays below zero long enough to cross a threshold.
-A technology unlocks when research debt reaches zero and prerequisites are satisfied.
+A factory accumulates assembly progress and emits inventory.
+A population accumulates growth and emits new population count.
+A ship accumulates damage and emits hull-breach overlays or events.
+A diplomatic relation accumulates trust and emits treaty availability.
+A queue accumulates unit progress and emits completed ships/cohorts.
+A technology accumulates research and emits a capability unlock.
+A resource pool accumulates stock and emits shortage/overflow consequences.
 ```
 
 The modder-facing slogan:
 
-> To build something, give it a resource debt. To fund it, transfer resources into it. To finish it, watch it cross zero.
+> Accumulate value, cross a threshold, emit consequences.
+
+Older economic slogan, still valid for resource-debt use cases:
+
+> To build something, give it a debt. To fund it, transfer value into it. To finish it, watch it cross zero.
 
 ---
 
-## Final Canonical Summary
+## Final Provisional Summary
 
-The base economic system is the smallest possible economic substrate that still feels alive:
+This document currently proposes a broader base principle than the earlier resource/queue framing:
 
 ```text
-Resource = Amount + Velocity + Intensity
-Cost = negative Amount
-Generation = positive Velocity
-Consumption = negative Velocity
-Funding = transfer overlay
-Priority = overlay metadata
-Completion = threshold at zero
-Output = boundary/fission/transfer
-Resolver = optional claim-to-transfer scheduler
-GPU = later optimization, not v1 semantics
+Base primitive = thresholded accumulation and emission
+Resource economy = one use case
+Queue construction = one use case
+Factory production = one use case
+Damage/hitpoints = one use case
+Population growth = one use case
+Diplomacy/relation thresholds = one use case
 ```
 
-A ship is not built by a shipbuilding engine.
+Potential core form:
 
-A ship is born when a construction SimThing’s resource debts are paid to zero and a threshold fissions the completed vessel into the fleet.
+```text
+Accumulator = property/subfield
+Input = overlay/transfer/velocity
+Threshold = crossing condition
+Emit count = floor(value / unit_size), or authored formula
+Effects = increments/transfers/overlays/instantiation/fission/unlocks/events
+Consume mode = subtract/clamp/retain/scar/expire/reload
+```
 
-A cohort is not filled by a recruitment engine.
-
-It grows when batch debts cross zero and boundary handling transfers completed unit count into the extant cohort.
-
-A technology is not unlocked by a research engine.
-
-It is unlocked when research resource debt reaches zero and prerequisite thresholds are satisfied.
-
-This is the SimThing economic principle:
-
-> Give a thing a debt, give the world a flow, route the flow by overlays, and let thresholds decide what becomes real.
+This remains **provisional** until validated in an ADR and tested against current engine constraints.
