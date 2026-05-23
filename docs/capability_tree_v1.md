@@ -1011,3 +1011,53 @@ templates.
 - Boundary handler: read Pass 7 threshold events → issue `ActivateOverlay`.
 - Faction fission template generation: populate `capability_container_kinds`
   from game rules / mod config alongside capability tree labels used in the mod.
+
+---
+
+## 12. Addendum — capability unlock event bridge + spec deps (PRs 4–10, 2026-05-22)
+
+**Status:** Capability tree authoring through boundary handlers is landed in
+`simthing-spec`. Session/driver assembly (PR 11) is **not yet implemented**.
+
+### Handler input shape
+
+`CapabilityTreeBoundaryHandler::handle_capability_unlock_events` now takes
+`&[CapabilityUnlockEvent]` (defined in `simthing-feeder`), **not** raw
+`ThresholdEvent`s. The session/driver layer is responsible for resolving GPU
+events before calling the handler.
+
+### Conversion bridge
+
+Callers that hold raw Pass 7 events use:
+
+```text
+ThresholdRegistry::extract_capability_unlocks(threshold_events)
+  → Vec<CapabilityUnlockEvent>
+  → CapabilityTreeBoundaryHandler::handle_capability_unlock_events(...)
+```
+
+Non-`CapabilityUnlock` semantic arms and out-of-range `event_kind` values are
+silently filtered (same pattern as `extract_scripted_event_triggers`).
+
+### Entry point rename
+
+The handler entry point was renamed from `handle_threshold_events` to
+`handle_capability_unlock_events` during the spec→sim dependency cleanup.
+Player-driven activation remains `handle_player_selection`.
+
+### Crate boundary (production)
+
+`simthing-spec` production dependencies are **`simthing-core` +
+`simthing-feeder` only**. It must not depend on `simthing-sim` or
+`simthing-gpu` in production code. `simthing-sim` and `simthing-gpu` remain
+dev-dependencies for integration tests.
+
+### Append helpers (Track B)
+
+`ThresholdBuilder::append_capability_unlocks` exposes the existing private
+push helper for B2 append-only session wiring (Track A / PR 11).
+
+### Next
+
+PR 11 — session state ownership, boundary protocol step order, and end-to-end
+integration test. See `docs/workshop/pr11_session_assembly_handoff.md`.

@@ -6,6 +6,30 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — PR 11 Track B: mechanical prep complete
+
+**Status:** Track B tasks B1–B5 from `docs/workshop/pr11_session_assembly_handoff.md`
+landed. **306** tests passing (+8), **1** ignored, zero warnings. Release profile
+also builds and tests clean.
+
+**Landed:**
+
+- **B5** — `cargo build --workspace --release --tests` and
+  `cargo test --workspace --release` both green.
+- **B2** — `EventKey: From<&str>` and `From<String>` in `spec/event.rs`.
+- **B1** — `Display` for `ScriptedEventDiagnosticKind`, `ScriptedEventDiagnostic`,
+  and `CapabilityTreeDiagnostic` with format tests.
+- **B3** — public `ThresholdBuilder::append_capability_unlocks` and
+  `append_scripted_event_triggers` delegating to existing push helpers; index
+  preservation tests.
+- **B4** — addenda in `design_v6.md` (scripted events PRs 7–10) and
+  `capability_tree_v1.md` (unlock event bridge + spec deps).
+
+**Next:** PR 11 **Track A (Opus)** — session state ownership, boundary protocol
+step order, handler wiring, E2E integration test, replay implications documented.
+
+---
+
 ## 2026-05-22 — Parking state after PR 10 + PR 11 handoff digest
 
 **Status:** `master` and `origin/master` parked at `a8355e7`

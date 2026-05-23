@@ -114,6 +114,28 @@ pub enum ScriptedEventDiagnosticKind {
     UnknownEventId,
 }
 
+impl std::fmt::Display for ScriptedEventDiagnosticKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::TriggerEvalError(err) => write!(f, "trigger evaluation failed: {err}"),
+            Self::UnresolvedEffectTarget { slot } => {
+                write!(f, "effect target slot {slot} has no SimThing mapping")
+            }
+            Self::UnknownEventId => write!(f, "threshold fired for unknown event id"),
+        }
+    }
+}
+
+impl std::fmt::Display for ScriptedEventDiagnostic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "scripted event `{}` failed: {}",
+            self.event_id.0, self.kind
+        )
+    }
+}
+
 // ── Implementation ────────────────────────────────────────────────────────────
 
 impl<'a> ScriptedEventBoundaryHandler<'a> {
@@ -235,5 +257,43 @@ fn resolve_effects(
             Some((false, oid)) => BoundaryRequest::SuspendOverlay  { target: target_id, overlay_id: oid },
         };
         ctx.requests.push(request);
+    }
+}
+
+#[cfg(test)]
+mod display_tests {
+    use super::*;
+    use crate::spec::script::ScriptEvalError;
+
+    #[test]
+    fn scripted_event_diagnostic_kind_display_is_non_empty() {
+        let kind = ScriptedEventDiagnosticKind::TriggerEvalError(
+            ScriptEvalError::DivisionByZero,
+        );
+        let text = format!("{kind}");
+        assert!(!text.is_empty());
+        assert!(text.contains("division by zero"));
+    }
+
+    #[test]
+    fn scripted_event_diagnostic_display_includes_event_id() {
+        let diagnostic = ScriptedEventDiagnostic {
+            event_id: EventKey::new("low_loyalty"),
+            kind:     ScriptedEventDiagnosticKind::UnknownEventId,
+        };
+        let text = format!("{diagnostic}");
+        assert!(text.contains("low_loyalty"));
+        assert!(text.contains("unknown event id"));
+    }
+
+    #[test]
+    fn scripted_event_diagnostic_unresolved_target_display_includes_slot() {
+        let diagnostic = ScriptedEventDiagnostic {
+            event_id: EventKey::new("spawn_rebel"),
+            kind:     ScriptedEventDiagnosticKind::UnresolvedEffectTarget { slot: 7 },
+        };
+        let text = format!("{diagnostic}");
+        assert!(text.contains("spawn_rebel"));
+        assert!(text.contains("slot 7"));
     }
 }

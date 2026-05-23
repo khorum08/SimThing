@@ -500,6 +500,40 @@ impl ThresholdBuilder {
         Self::push_fusion_lineage(dim_reg, allocator, lineage, gpu_regs, cpu_reg);
     }
 
+    /// Append capability unlock registrations to the caller's existing
+    /// `gpu_regs` and `cpu_reg`. Companion to `append_subtree` for B2
+    /// append-only threshold rebuild on growth boundaries.
+    pub fn append_capability_unlocks(
+        dim_reg:            &DimensionRegistry,
+        allocator:          &SlotAllocator,
+        capability_unlocks: &[CapabilityUnlockRegistration],
+        gpu_regs:           &mut Vec<ThresholdRegistration>,
+        cpu_reg:            &mut ThresholdRegistry,
+    ) {
+        Self::push_capability_unlocks(
+            dim_reg,
+            allocator,
+            capability_unlocks,
+            gpu_regs,
+            cpu_reg,
+        );
+    }
+
+    /// Append scripted-event trigger registrations to the caller's existing
+    /// `gpu_regs` and `cpu_reg`. Companion to `append_subtree` for B2
+    /// append-only threshold rebuild on growth boundaries.
+    pub fn append_scripted_event_triggers(
+        scripted_event_triggers: &[ScriptedEventTriggerRegistration],
+        gpu_regs:                &mut Vec<ThresholdRegistration>,
+        cpu_reg:                 &mut ThresholdRegistry,
+    ) {
+        Self::push_scripted_event_triggers(
+            scripted_event_triggers,
+            gpu_regs,
+            cpu_reg,
+        );
+    }
+
     fn push_fusion_lineage(
         dim_reg:   &DimensionRegistry,
         allocator: &SlotAllocator,
@@ -1122,5 +1156,110 @@ mod tests {
             sub_field: SubFieldRole::Velocity,
         }) if *sim_thing_id == cohort_id && *property_id == pid)
         );
+    }
+
+    #[test]
+    fn append_capability_unlocks_preserves_existing_event_kinds() {
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(cap_property());
+
+        let mut tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+        tree.add_property(pid, reg.property(pid).default_value());
+        let tree_id = tree.id;
+
+        let mut alloc = SlotAllocator::new();
+        alloc.alloc(tree_id);
+
+        let seed_id = simthing_core::SimThingId::new();
+        let mut gpu_regs = Vec::new();
+        let mut cpu_reg = ThresholdRegistry::new();
+        let seed_kind = cpu_reg.push(ThresholdSemantic::VelocityAlert {
+            sim_thing_id: seed_id,
+            property_id:  SimPropertyId(1),
+            sub_field:    SubFieldRole::Velocity,
+        });
+        gpu_regs.push(ThresholdRegistration {
+            slot:      0,
+            col:       0,
+            threshold: 1.0,
+            direction: DIR_UPWARD,
+            event_kind: seed_kind,
+            buffer:    THRESH_BUF_VALUES,
+        });
+
+        let unlocks = vec![CapabilityUnlockRegistration {
+            sim_thing_id: tree_id,
+            property_id:  pid,
+            sub_field:    SubFieldRole::Named("chemical_drive".into()),
+            threshold:    5000.0,
+        }];
+
+        ThresholdBuilder::append_capability_unlocks(
+            &reg, &alloc, &unlocks, &mut gpu_regs, &mut cpu_reg,
+        );
+
+        assert_eq!(gpu_regs.len(), 2);
+        assert_eq!(cpu_reg.len(), 2);
+        assert_eq!(gpu_regs[0].event_kind, seed_kind);
+        assert_eq!(gpu_regs[1].event_kind, 1);
+        assert!(matches!(
+            cpu_reg.get(1),
+            Some(ThresholdSemantic::CapabilityUnlock { .. })
+        ));
+    }
+
+    #[test]
+    fn append_scripted_event_triggers_preserves_existing_event_kinds() {
+        let seed_id = simthing_core::SimThingId::new();
+        let mut gpu_regs = Vec::new();
+        let mut cpu_reg = ThresholdRegistry::new();
+        let seed_kind = cpu_reg.push(ThresholdSemantic::VelocityAlert {
+            sim_thing_id: seed_id,
+            property_id:  SimPropertyId(1),
+            sub_field:    SubFieldRole::Velocity,
+        });
+        gpu_regs.push(ThresholdRegistration {
+            slot:      0,
+            col:       0,
+            threshold: 1.0,
+            direction: DIR_UPWARD,
+            event_kind: seed_kind,
+            buffer:    THRESH_BUF_VALUES,
+        });
+
+        let triggers = vec![
+            ScriptedEventTriggerRegistration {
+                event_id:  "low_loyalty".into(),
+                slot:      3,
+                col:       2,
+                threshold: 0.25,
+                direction: Direction::Falling,
+            },
+            ScriptedEventTriggerRegistration {
+                event_id:  "faction_collapse".into(),
+                slot:      4,
+                col:       1,
+                threshold: 0.1,
+                direction: Direction::Rising,
+            },
+        ];
+
+        ThresholdBuilder::append_scripted_event_triggers(
+            &triggers, &mut gpu_regs, &mut cpu_reg,
+        );
+
+        assert_eq!(gpu_regs.len(), 3);
+        assert_eq!(cpu_reg.len(), 3);
+        assert_eq!(gpu_regs[0].event_kind, seed_kind);
+        assert_eq!(gpu_regs[1].event_kind, 1);
+        assert_eq!(gpu_regs[2].event_kind, 2);
+        assert!(matches!(
+            cpu_reg.get(1),
+            Some(ThresholdSemantic::ScriptedEventTrigger { event_id }) if event_id == "low_loyalty"
+        ));
+        assert!(matches!(
+            cpu_reg.get(2),
+            Some(ThresholdSemantic::ScriptedEventTrigger { event_id }) if event_id == "faction_collapse"
+        ));
     }
 }
