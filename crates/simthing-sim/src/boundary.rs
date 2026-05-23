@@ -47,8 +47,8 @@ use simthing_feeder::{
     ScriptedEventTriggerRegistration, TransformPatcher,
 };
 use simthing_gpu::{
-    build_column_rule_descriptors, encode_column_rules, SlotAllocator, ThresholdEvent,
-    TopologyState, WorldGpuState,
+    build_column_rule_descriptors, build_topology, encode_column_rules, SlotAllocator,
+    ThresholdEvent, TopologyState, WorldGpuState,
 };
 
 use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
@@ -564,6 +564,7 @@ impl BoundaryProtocol {
             && out.maintainer.dimensions_added.is_empty()
             && out.maintainer.reparented.is_empty()
             && self.threshold_config_revision == self.synced_threshold_config_revision;
+        let topology_full_rebuild_pending = topology_dirty && !topology_append_eligible;
         if topology_append_eligible {
             // Extend cache to cover newly-grown slot capacity.
             self.cached_topology_state
@@ -638,6 +639,13 @@ impl BoundaryProtocol {
             topology_dirty,
             &mut self.cached_topology_state,
         );
+        if topology_full_rebuild_pending {
+            debug_assert_topology_cache_matches_tree(
+                &self.root,
+                &self.allocator,
+                &self.cached_topology_state,
+            );
+        }
         out.timing.gpu_sync_ms = gpu_sync_started.elapsed().as_secs_f64() * 1000.0;
         // Adopt the new threshold registry for the next day.
         if let Some(new_reg) = gpu_out.new_threshold_registry {
@@ -1091,6 +1099,30 @@ fn seed_dimension_values(
             child, registry, allocator, properties, shadow, old_n_dims, new_n_dims,
         );
     }
+}
+
+/// S3 integrity guard: incremental cache and full-rebuild paths must produce
+/// the same CSR as `build_topology` (see `simthing-gpu` reduction tests).
+#[cfg(debug_assertions)]
+fn debug_assert_topology_cache_matches_tree(
+    root: &SimThing,
+    allocator: &SlotAllocator,
+    cached: &TopologyState,
+) {
+    let direct = build_topology(root, allocator);
+    let via_cache = cached.flatten();
+    debug_assert_eq!(
+        direct.child_starts, via_cache.child_starts,
+        "topology cache child_starts drift"
+    );
+    debug_assert_eq!(
+        direct.child_indices, via_cache.child_indices,
+        "topology cache child_indices drift"
+    );
+    debug_assert_eq!(
+        direct.depth_buckets, via_cache.depth_buckets,
+        "topology cache depth_buckets drift"
+    );
 }
 
 #[cfg(test)]

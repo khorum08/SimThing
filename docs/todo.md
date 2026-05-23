@@ -1,9 +1,10 @@
 # SimThing Todo Log
 
-Current parking state: **`simthing-spec` PRs 1–11 complete** (Track A session
-assembly landed). `master` and `origin/master` synced at **`9e63718`**.
+Current parking state: **`simthing-spec` PRs 1–11 complete**; Phase 1 ADRs, **O3**,
+and Composer **S3/S4** landed. `master` and `origin/master` synced at
+**`c3f3556`** (S3/S4 PR pending merge).
 
-**Tests:** `cargo test --workspace` → **311** passed, **1** ignored, zero
+**Tests:** `cargo test --workspace` → **314** passed, **1** ignored, zero
 warnings. Debug and **release** profile build/tests clean.
 
 **Canonical spec progress:** `docs/workshop/simthing_spec_progress_log.md`
@@ -13,8 +14,11 @@ warnings. Debug and **release** profile build/tests clean.
 `BoundaryProtocol::execute_with_boundary_hook` invokes capability and
 scripted-event handlers after GPU readback. `simthing-sim` remains spec-free.
 
-**Next (Opus):** session init from authored specs (O1), replay v3 (O2), player
-selection path (O3) — see progress log § Open work.
+**Next (Codex):** **O1** — RON-driven session init per
+`docs/adr/game_mode_session_installation.md`. Then O4 → O2.
+
+**Parallel (Codex):** **S5/O5** — append-only external thresholds; Approach C
+topology append must exclude `clone_capability_children` fissions (drift found).
 
 **Worktree:** clean for tracked files. Untracked `.claude/worktrees/`,
 `demo.replay.ldjson`, and draft workshop files may be present locally.
@@ -459,11 +463,12 @@ simthing-studio   ← deferred GUI
 6. ~~Priority 4 — B2 Approach C (incremental reduction topology)~~ — Done 2026-05-22, PR #43.
 7. ~~**PR 11 Track B** — mechanical prep~~ — Done PR #47, `392992f`.
 8. ~~**PR 11 Track A** — session/driver assembly~~ — Done `01fb572`, parked `9e63718`.
-9. **Next session — primary track:** **Session init from authored specs (O1)** —
-     compile `GameModeSpec`/domain packs, clone capability trees per faction,
-     auto `install_spec_state`; integration test from RON not hand-built state.
-   - **Also Opus:** replay v3 (O2), player selection path (O3), per-owner
-     scripted events decision (O4), external append-only thresholds (O5).
-   - **Alternate (parallel):** `tick_event_readback_ms` deep dive; `TopologyState`
-     cache-integrity hardening.
-10. Scenario format expansion / map-scale representation — tabled.
+9. ~~Composer Phase 0 + Phase 1 ADRs + O3~~ — Done through `c3f3556` (PRs #49–51).
+10. ~~Composer S3 + S4~~ — topology full-rebuild guard; capability instance reverse map (PR pending).
+11. **Next session — primary track:** **O1 — session init from authored specs**
+     (`InstallTargetSpec`, `install.rs`, `open_from_spec`, per-owner tree clone,
+     `by_overlay` migration). ADR:
+     `docs/adr/game_mode_session_installation.md`.
+   - **Then:** O4 (per-owner scripted events), O2 (replay v3).
+   - **Parallel:** S5/O5 append-only thresholds + Approach C eligibility fix.
+12. Scenario format expansion / map-scale representation — tabled.

@@ -6,6 +6,38 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-23 — Composer S3/S4 + doc parking sync
+
+**Status:** PR pending merge (base `c3f3556`).
+
+**This PR:**
+
+- **S4** — `capability_instance_by_tree` reverse map in `spec_session.rs`.
+- **S3** — `debug_assert!` topology cache vs `build_topology` on full-rebuild
+  path only (`boundary.rs`). Append-path assert removed: Approach C drift on
+  `clone_capability_children` fission (see progress log § S5).
+- Doc parking sync: `todo.md`, progress log, workshop README, this worklog.
+
+**Tests:** 314 passed, 1 ignored, zero warnings.
+
+**Next:** Codex **O1** — RON-driven session init per installation ADR.
+
+---
+
+## 2026-05-23 — Phase 1 ADRs + O3 (PRs #49–51)
+
+**Status:** `master` @ `c3f3556`.
+
+**Landed:**
+
+- **PR #49** — Composer Phase 0: `simthing-spec` crate docs, boundary sequence
+  header, remove `ResearchRateSpec` vestige.
+- **PR #50** — Phase 1 ADRs: session installation, scripted event scope (Option B),
+  spec session replay classification.
+- **PR #51** — O3: `queue_player_selection_by_key`, `SpecSessionError`.
+
+---
+
 ## 2026-05-22 — Phase 1 doc consolidation + PR 11 parking sync
 
 **Status:** `master` @ `9e63718`. Release smoke check passed after Track A.
