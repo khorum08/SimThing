@@ -1357,6 +1357,120 @@ fn record_and_replay_with_spec_round_trips_capability_state() {
     }
 }
 
+// ── B3: precise requires_boundary_tick classification ────────────────────────
+
+/// B3 acceptance: a session whose only spec inputs are
+/// pure-Threshold scripted events (no Predicate triggers, no cooldowns,
+/// no OnPrereqMet, no queued selections), with no events firing in the
+/// triggering buffer, must skip the boundary path entirely. Before B3
+/// the conservative check `!scripted_event_instances.is_empty()`
+/// short-circuited the skip and forced every boundary through the spec
+/// hook even when nothing could possibly fire.
+#[test]
+fn b3_threshold_only_scripted_events_skip_quiet_boundaries() {
+    if !try_gpu() {
+        eprintln!("skipping: no GPU");
+        return;
+    }
+
+    use simthing_spec::{
+        CompiledThresholdTrigger, CompiledTrigger as SpecCompiledTrigger, EventKey,
+        EventPriority, ScopeRef, ScriptedEventDefinition, TriggerDirection,
+    };
+
+    let (mut scenario, _faction_ids) = scenario_with_factions(1, 16);
+    scenario.max_days = 4;
+    let mut session = SimSession::open(scenario).expect("session open");
+
+    // Install one Threshold-trigger scripted event whose threshold will
+    // never fire in this session (no property of interest, no events).
+    let world_id = session.proto.root.id;
+    let mut spec_state = SpecSessionState::new();
+    let def = ScriptedEventDefinition {
+        id: EventKey::new("never_fires"),
+        trigger: SpecCompiledTrigger::Threshold(CompiledThresholdTrigger {
+            target: ScopeRef::Current,
+            property: simthing_core::SimPropertyId(0),
+            role: SubFieldRole::Amount,
+            col: 0,
+            threshold: 1.0e9,
+            direction: TriggerDirection::Rising,
+        }),
+        effects: Vec::new(),
+        cooldown: None,
+        priority: EventPriority::Normal,
+    };
+    spec_state.set_session_root_owner(world_id);
+    spec_state.set_scripted_current_slot(
+        session
+            .proto
+            .allocator
+            .slot_of(world_id)
+            .expect("world slot"),
+    );
+    spec_state.add_scripted_event(def);
+    session.install_spec_state(spec_state);
+
+    let summary = session.run(4).expect("session run");
+    assert_eq!(summary.boundaries_run, 4);
+    assert!(
+        summary.boundaries_skipped >= 1,
+        "B3: pure-Threshold scripted events with no triggering events \
+         must allow at least one boundary skip; got boundaries_skipped={}, \
+         boundaries_run={}",
+        summary.boundaries_skipped,
+        summary.boundaries_run,
+    );
+}
+
+/// B3 negative case: a Predicate-trigger scripted event must NOT skip,
+/// because the predicate re-evaluates every boundary.
+#[test]
+fn b3_predicate_scripted_event_blocks_boundary_skip() {
+    if !try_gpu() {
+        eprintln!("skipping: no GPU");
+        return;
+    }
+
+    use simthing_spec::{
+        CompiledTrigger as SpecCompiledTrigger, EventKey, EventPriority, ScriptPredicate,
+        ScriptedEventDefinition,
+    };
+
+    let (mut scenario, _faction_ids) = scenario_with_factions(1, 16);
+    scenario.max_days = 4;
+    let mut session = SimSession::open(scenario).expect("session open");
+
+    let world_id = session.proto.root.id;
+    let mut spec_state = SpecSessionState::new();
+    let def = ScriptedEventDefinition {
+        id: EventKey::new("always_checks"),
+        // ScriptPredicate::False evaluates every boundary but never fires.
+        // The check itself is what blocks the skip.
+        trigger: SpecCompiledTrigger::Predicate(ScriptPredicate::False),
+        effects: Vec::new(),
+        cooldown: None,
+        priority: EventPriority::Normal,
+    };
+    spec_state.set_session_root_owner(world_id);
+    spec_state.set_scripted_current_slot(
+        session
+            .proto
+            .allocator
+            .slot_of(world_id)
+            .expect("world slot"),
+    );
+    spec_state.add_scripted_event(def);
+    session.install_spec_state(spec_state);
+
+    let summary = session.run(4).expect("session run");
+    assert_eq!(summary.boundaries_run, 4);
+    assert_eq!(
+        summary.boundaries_skipped, 0,
+        "Predicate triggers must force a tick every boundary"
+    );
+}
+
 /// O2: forward compatibility — a sim-only consumer (`ReplayReader`) opening
 /// a v3 replay must skip the `spec_snapshot` line silently and still read
 /// every structural frame.

@@ -261,6 +261,30 @@ impl ThresholdRegistry {
             })
             .collect()
     }
+
+    /// Zero-alloc predicate: any event in `events` resolves to a
+    /// `CapabilityUnlock` registration. Used by the boundary-skip path
+    /// (B3) so we don't allocate a Vec when we only need a bool. Matches
+    /// the semantics of `extract_capability_unlocks(events).is_empty().not()`.
+    pub fn has_capability_unlock_in(&self, events: &[ThresholdEvent]) -> bool {
+        events.iter().any(|event| {
+            matches!(
+                self.get(event.event_kind),
+                Some(ThresholdSemantic::CapabilityUnlock { .. })
+            )
+        })
+    }
+
+    /// Zero-alloc predicate sibling for scripted-event triggers. See
+    /// `has_capability_unlock_in` — same rationale, different semantic arm.
+    pub fn has_scripted_event_trigger_in(&self, events: &[ThresholdEvent]) -> bool {
+        events.iter().any(|event| {
+            matches!(
+                self.get(event.event_kind),
+                Some(ThresholdSemantic::ScriptedEventTrigger { .. })
+            )
+        })
+    }
 }
 
 // ── Builder ───────────────────────────────────────────────────────────────────

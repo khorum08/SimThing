@@ -7,14 +7,15 @@ use simthing_core::SimThingId;
 use simthing_feeder::{
     BoundaryRequest, CapabilityUnlockRegistration, ScriptedEventTriggerRegistration,
 };
-use simthing_sim::BoundaryHookContext;
+use simthing_gpu::ThresholdEvent;
+use simthing_sim::{BoundaryHookContext, ThresholdRegistry};
 use simthing_spec::{
-    CapabilityBoundaryContext, CapabilityEntryKey, CapabilityTreeBoundaryHandler,
+    ActivationMode, CapabilityBoundaryContext, CapabilityEntryKey, CapabilityTreeBoundaryHandler,
     CapabilityTreeDefinition, CapabilityTreeDefinitionId, CapabilityTreeDiagnostic,
     CapabilityTreeError, CapabilityTreeInstance, CapabilityTreeNotification, CapabilityTreeState,
-    EventKey, ScriptedEventBoundaryContext, ScriptedEventBoundaryHandler, ScriptedEventDefinition,
-    ScriptedEventDefinitionId, ScriptedEventDiagnostic, ScriptedEventInstance,
-    ScriptedEventInstanceKey,
+    CompiledTrigger, EventKey, ScriptedEventBoundaryContext, ScriptedEventBoundaryHandler,
+    ScriptedEventDefinition, ScriptedEventDefinitionId, ScriptedEventDiagnostic,
+    ScriptedEventInstance, ScriptedEventInstanceKey,
 };
 use std::collections::HashMap;
 use thiserror::Error;
@@ -105,15 +106,79 @@ impl SpecSessionState {
         self.capability_instances.is_empty() && self.scripted_event_instances.is_empty()
     }
 
-    pub fn requires_boundary_tick(&self) -> bool {
-        !self.scripted_event_instances.is_empty()
-            || !self.player_selections.is_empty()
-            || self.capability_states.values().any(|state| {
-                state
-                    .activation_mode_by_entry
-                    .values()
-                    .any(|mode| *mode == simthing_spec::ActivationMode::OnPrereqMet)
-            })
+    /// Classify whether the upcoming boundary needs a spec-layer hook.
+    /// Returning `false` permits the session loop to take the empty-boundary
+    /// fast path (no `take_delta_log`, no `execute_with_boundary_hook`).
+    ///
+    /// B3 — `docs/adr/`-pending refinement: precise classification beyond
+    /// "any scripted event instance exists":
+    ///
+    /// - **Queued player selections** → must tick (handler dequeues and
+    ///   emits `ActivateOverlay`).
+    /// - **Any scripted-event instance with `cooldown_remaining > 0`** →
+    ///   must tick (cooldowns are decremented inside the handler; skipping
+    ///   would freeze them forever).
+    /// - **Any `Predicate`-trigger scripted-event definition** → must tick
+    ///   (predicates re-evaluate every boundary against `ctx.shadow`).
+    /// - **Any `OnPrereqMet` capability entry** → must tick (the sweep
+    ///   re-checks prereqs every boundary; conservative — refining this
+    ///   would require change-tracking on prereq inputs).
+    /// - **Any `ThresholdEvent` matching a capability-unlock registration**
+    ///   → must tick (the handler dispatches `CapabilityUnlockEvent`s).
+    /// - **Any `ThresholdEvent` matching a scripted-event-trigger
+    ///   registration** → must tick (the threshold-trigger arm only fires
+    ///   when the event id is in the fired-set).
+    ///
+    /// Everything else is genuinely no-op and can skip. The previous
+    /// implementation conservatively forced a tick whenever *any* scripted
+    /// instance existed; pure-Threshold scripted events with no triggering
+    /// event and no cooldown now skip cleanly.
+    pub fn requires_boundary_tick(
+        &self,
+        events: &[ThresholdEvent],
+        threshold_registry: &ThresholdRegistry,
+    ) -> bool {
+        if !self.player_selections.is_empty() {
+            return true;
+        }
+        // Cooldown tick: any instance with non-zero cooldown must run so the
+        // counter decrements. (Storing this as a per-state derived flag would
+        // skip the scan but the instance map is tiny in practice.)
+        if self
+            .scripted_event_instances
+            .values()
+            .any(|inst| inst.cooldown_remaining > 0)
+        {
+            return true;
+        }
+        // Predicate triggers re-eval every boundary regardless of input.
+        if self
+            .scripted_event_definitions
+            .values()
+            .any(|def| matches!(def.trigger, CompiledTrigger::Predicate(_)))
+        {
+            return true;
+        }
+        // OnPrereqMet sweep — conservative: any entry in this state forces a
+        // tick. Refining would require tracking which prereq inputs could
+        // have changed this boundary.
+        if self.capability_states.values().any(|state| {
+            state
+                .activation_mode_by_entry
+                .values()
+                .any(|mode| *mode == ActivationMode::OnPrereqMet)
+        }) {
+            return true;
+        }
+        // Event-driven arms: only force a tick when the actual fired events
+        // match a spec registration. Zero-alloc bool checks (B3).
+        if threshold_registry.has_capability_unlock_in(events) {
+            return true;
+        }
+        if threshold_registry.has_scripted_event_trigger_in(events) {
+            return true;
+        }
+        false
     }
 
     pub fn add_capability_tree_instance(
@@ -860,5 +925,196 @@ mod tests {
             if *target == world_id
         ));
         assert!(spec_state.scripted_event_diagnostics.is_empty());
+    }
+
+    // ── B3: requires_boundary_tick classification ─────────────────────────
+
+    /// Empty state — no instances, no events — must skip cleanly.
+    #[test]
+    fn requires_boundary_tick_empty_state_skips() {
+        let state = SpecSessionState::new();
+        let registry = ThresholdRegistry::new();
+        assert!(!state.requires_boundary_tick(&[], &registry));
+    }
+
+    /// Threshold-only scripted event with no triggering event and no
+    /// cooldown — skips. Regression guard for the B3 win.
+    #[test]
+    fn requires_boundary_tick_threshold_only_event_with_no_input_skips() {
+        let mut state = SpecSessionState::new();
+        let owner = SimThingId::new();
+        // Build a Threshold-trigger scripted event (no Predicate).
+        let def = ScriptedEventDefinition {
+            id: EventKey::new("spawn_thing"),
+            trigger: CompiledTrigger::Threshold(simthing_spec::CompiledThresholdTrigger {
+                target: simthing_spec::ScopeRef::Current,
+                property: simthing_core::SimPropertyId(0),
+                role: SubFieldRole::Amount,
+                col: 0,
+                threshold: 1.0,
+                direction: simthing_spec::TriggerDirection::Rising,
+            }),
+            effects: Vec::new(),
+            cooldown: None,
+            priority: EventPriority::Normal,
+        };
+        state.add_scripted_event_instance(def, owner, 0);
+        let registry = ThresholdRegistry::new();
+        assert!(
+            !state.requires_boundary_tick(&[], &registry),
+            "threshold-only event with no input must not force a tick \
+             (was the conservative-skip blocker before B3)"
+        );
+    }
+
+    /// Predicate-trigger scripted event — always ticks.
+    #[test]
+    fn requires_boundary_tick_predicate_event_always_ticks() {
+        let mut state = SpecSessionState::new();
+        let owner = SimThingId::new();
+        let def = ScriptedEventDefinition {
+            id: EventKey::new("low_loyalty"),
+            trigger: CompiledTrigger::Predicate(ScriptPredicate::True),
+            effects: Vec::new(),
+            cooldown: None,
+            priority: EventPriority::Normal,
+        };
+        state.add_scripted_event_instance(def, owner, 0);
+        let registry = ThresholdRegistry::new();
+        assert!(
+            state.requires_boundary_tick(&[], &registry),
+            "Predicate triggers must re-evaluate every boundary"
+        );
+    }
+
+    /// Active cooldown forces tick so the counter decrements. Skipping
+    /// would freeze cooldowns forever in a quiet game.
+    #[test]
+    fn requires_boundary_tick_active_cooldown_forces_tick() {
+        let mut state = SpecSessionState::new();
+        let owner = SimThingId::new();
+        let def = ScriptedEventDefinition {
+            id: EventKey::new("spawn_thing"),
+            trigger: CompiledTrigger::Threshold(simthing_spec::CompiledThresholdTrigger {
+                target: simthing_spec::ScopeRef::Current,
+                property: simthing_core::SimPropertyId(0),
+                role: SubFieldRole::Amount,
+                col: 0,
+                threshold: 1.0,
+                direction: simthing_spec::TriggerDirection::Rising,
+            }),
+            effects: Vec::new(),
+            cooldown: None,
+            priority: EventPriority::Normal,
+        };
+        let key = state.add_scripted_event_instance(def, owner, 0);
+        // Arm cooldown post-install.
+        state.scripted_event_instances.get_mut(&key).unwrap().cooldown_remaining = 3;
+        let registry = ThresholdRegistry::new();
+        assert!(state.requires_boundary_tick(&[], &registry));
+    }
+
+    /// Queued player selection forces tick.
+    #[test]
+    fn requires_boundary_tick_queued_selection_forces_tick() {
+        let mut state = SpecSessionState::new();
+        let owner = SimThingId::new();
+        let key = CapabilityInstanceKey {
+            owner_id: owner,
+            definition_id: CapabilityTreeDefinitionId::new(),
+            tree_thing_id: SimThingId::new(),
+        };
+        state.queue_player_selection(
+            key,
+            CapabilityEntryKey::new(CategoryKey::new("a", "b"), "c"),
+        );
+        let registry = ThresholdRegistry::new();
+        assert!(state.requires_boundary_tick(&[], &registry));
+    }
+
+    /// `OnPrereqMet` capability state forces tick (conservative — the
+    /// sweep re-checks prereqs every boundary).
+    #[test]
+    fn requires_boundary_tick_on_prereq_met_forces_tick() {
+        let mut state = SpecSessionState::new();
+        let owner = SimThingId::new();
+        let def_id = CapabilityTreeDefinitionId::new();
+        let key = CapabilityInstanceKey {
+            owner_id: owner,
+            definition_id: def_id,
+            tree_thing_id: SimThingId::new(),
+        };
+        let entry = CapabilityEntryKey::new(CategoryKey::new("a", "b"), "c");
+        let mut cap_state = CapabilityTreeState {
+            owner_id: owner,
+            definition_id: def_id,
+            activation_mode_by_entry: HashMap::new(),
+            active_by_category: HashMap::new(),
+        };
+        cap_state
+            .activation_mode_by_entry
+            .insert(entry, ActivationMode::OnPrereqMet);
+        state.capability_states.insert(key, cap_state);
+        let registry = ThresholdRegistry::new();
+        assert!(state.requires_boundary_tick(&[], &registry));
+    }
+
+    /// Matching `ThresholdEvent` on a capability-unlock registration
+    /// forces a tick (handler must dispatch the unlock).
+    #[test]
+    fn requires_boundary_tick_capability_unlock_event_forces_tick() {
+        let state = SpecSessionState::new();
+        let mut registry = ThresholdRegistry::new();
+        let event_kind = registry.push(simthing_sim::ThresholdSemantic::CapabilityUnlock {
+            sim_thing_id: SimThingId::new(),
+            property_id: simthing_core::SimPropertyId(0),
+            sub_field: SubFieldRole::Amount,
+        });
+        let events = vec![simthing_gpu::ThresholdEvent {
+            slot: 0,
+            col: 0,
+            value: 5.0,
+            event_kind,
+        }];
+        assert!(state.requires_boundary_tick(&events, &registry));
+    }
+
+    /// Matching `ThresholdEvent` on a scripted-event-trigger registration
+    /// forces a tick (handler must dispatch the fired event).
+    #[test]
+    fn requires_boundary_tick_scripted_trigger_event_forces_tick() {
+        let state = SpecSessionState::new();
+        let mut registry = ThresholdRegistry::new();
+        let event_kind = registry.push(simthing_sim::ThresholdSemantic::ScriptedEventTrigger {
+            event_id: "spawn_thing".into(),
+        });
+        let events = vec![simthing_gpu::ThresholdEvent {
+            slot: 0,
+            col: 0,
+            value: 5.0,
+            event_kind,
+        }];
+        assert!(state.requires_boundary_tick(&events, &registry));
+    }
+
+    /// Non-matching `ThresholdEvent` (e.g., a fission/velocity arm) does
+    /// not force a spec tick — the structural path handles it.
+    #[test]
+    fn requires_boundary_tick_unrelated_event_does_not_force_spec_tick() {
+        let state = SpecSessionState::new();
+        let mut registry = ThresholdRegistry::new();
+        // Push an arm that is not in {CapabilityUnlock, ScriptedEventTrigger}.
+        let event_kind = registry.push(simthing_sim::ThresholdSemantic::FissionTrigger {
+            sim_thing_id: SimThingId::new(),
+            property_id: simthing_core::SimPropertyId(0),
+            template_idx: 0,
+        });
+        let events = vec![simthing_gpu::ThresholdEvent {
+            slot: 0,
+            col: 0,
+            value: 0.1,
+            event_kind,
+        }];
+        assert!(!state.requires_boundary_tick(&events, &registry));
     }
 }

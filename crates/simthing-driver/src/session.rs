@@ -266,7 +266,9 @@ impl SimSession {
 
             if tick.boundary_reached {
                 let day = tick.day_index;
-                if !self.spec_state.requires_boundary_tick()
+                if !self
+                    .spec_state
+                    .requires_boundary_tick(&tick.events, self.proto.threshold_registry())
                     && self
                         .proto
                         .can_skip_empty_boundary(&tick.events, &self.patcher)
@@ -363,7 +365,9 @@ impl SimSession {
 
             if tick.boundary_reached {
                 let day = tick.day_index;
-                if !self.spec_state.requires_boundary_tick()
+                if !self
+                    .spec_state
+                    .requires_boundary_tick(&tick.events, self.proto.threshold_registry())
                     && self
                         .proto
                         .can_skip_empty_boundary(&tick.events, &self.patcher)
