@@ -6,7 +6,7 @@ the architecture specification for simulation mechanics (overlays, fission, GPU 
 boundary protocol). Read V6.5 first when picking up work; read V6 when changing sim behavior.
 
 **Last updated:** 2026-05-23  
-**Master HEAD:** `e6dd9c3` (PR #68 parking sync)  
+**Master HEAD:** `2ff84bf` (PR #69 parking sync)  
 **Verification:** `cargo test --workspace` → **345** passed, **1** ignored, zero warnings.
 
 ---

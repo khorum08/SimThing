@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `e6dd9c3`. **Tests:** 345 passed, 1 ignored. **Opus P0 complete.** **Next:** Sonnet D1/D2 examples & modder guide.
+**Parking (2026-05-23):** `master` @ `2ff84bf`. **Tests:** 345 passed, 1 ignored. **Opus P0 complete.** **Next:** Sonnet D1/D2 examples & modder guide.
 
 ## Read first — current state
 
