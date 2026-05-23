@@ -1,10 +1,10 @@
 # SimThing Todo Log
 
 Current parking state after **B2 fission-growth A/B/C complete**,
-**`simthing-spec` PRs 2-9 landed**, and the **spec→sim/gpu threshold
-dependency cleanup** done.
+**`simthing-spec` PRs 2-10 landed**, the **spec→sim/gpu threshold
+dependency cleanup** done, and **scripted-event GPU thresholds wired**.
 
-**Tests:** `cargo test --workspace` -> **286** passed, **1** ignored timing
+**Tests:** `cargo test --workspace` -> **298** passed, **1** ignored timing
 diagnostic, zero warnings. `cargo build --workspace --tests` also completes
 with zero warnings.
 
@@ -179,6 +179,19 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
       Missing slot targets push `UnresolvedEffectTarget` diagnostic. Eval errors
       push `TriggerEvalError` diagnostic. All 8 acceptance tests pass in
       `tests/pr9_event_handler.rs`.
+- [x] **PR 10** — scripted-event GPU threshold path. Landed 2026-05-22.
+      Adds `simthing_feeder::ScriptedEventTriggerRegistration` and
+      `ScriptedEventTriggerEvent`; adds
+      `ThresholdSemantic::ScriptedEventTrigger { event_id }` arm plus
+      `ThresholdBuilder::build_with_scripted_event_triggers` and
+      `ThresholdRegistry::extract_scripted_event_triggers` in
+      `simthing-sim`; adds `ScriptedEventDefinition::to_trigger_registration`
+      in spec. `ScriptedEventBoundaryHandler::handle_tick` now takes a
+      `&[ScriptedEventTriggerEvent]` slice and fires threshold-triggered
+      events under unified cooldown/priority gating with predicate-triggered
+      events. New diagnostic variant: `UnknownEventId` for stale registrations.
+      Bumps `simthing_core::Direction` with `Copy + PartialEq + Eq` derives.
+      11 acceptance tests in `tests/pr10_scripted_event_thresholds.rs`.
 - [ ] Assemble session/driver ownership for capability tree instances and
       per-faction state maps.
 - [x] Clean up PR 5's temporary `simthing-spec -> simthing-sim` /

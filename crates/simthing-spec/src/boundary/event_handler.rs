@@ -1,26 +1,45 @@
 //! Boundary-time execution of compiled scripted event definitions.
 //!
-//! [`ScriptedEventBoundaryHandler`] is called once per boundary tick. It
-//! handles **predicate-triggered events only**. Threshold-triggered scripted
-//! events are deferred to a later PR that will upload `CompiledThresholdTrigger`
-//! data to `ThresholdBuilder` and receive GPU `ThresholdEvent`s — do not add
-//! shadow-polling as a substitute for that path.
+//! [`ScriptedEventBoundaryHandler`] is called once per boundary tick and
+//! handles **both predicate-triggered and threshold-triggered** scripted
+//! events under unified cooldown and priority gating.
+//!
+//! ## Trigger paths
+//!
+//! - **Predicate triggers** ([`CompiledTrigger::Predicate`]) — evaluated
+//!   CPU-side every tick against `ctx.shadow` via [`ScriptPredicate::eval`].
+//!   If the predicate returns `true` and the event isn't on cooldown, it fires.
+//! - **Threshold triggers** ([`CompiledTrigger::Threshold`]) — pre-registered
+//!   with the GPU's Pass 7 threshold buffer via
+//!   `simthing_sim::ThresholdBuilder::build_with_scripted_event_triggers`.
+//!   When the GPU fires a `ThresholdEvent`, the session/driver layer resolves
+//!   it to a `ScriptedEventTriggerEvent` (via
+//!   `ThresholdRegistry::extract_scripted_event_triggers`) and passes the
+//!   slice to `handle_tick`. The handler matches `event_id` against its
+//!   definitions and fires under the same cooldown rules. The trigger
+//!   condition is *not* re-evaluated CPU-side — the GPU has already decided.
 //!
 //! ## Execution protocol per call to [`ScriptedEventBoundaryHandler::handle_tick`]
 //!
 //! 1. **Tick cooldowns** — decrement every active cooldown counter by 1 and
 //!    drop entries that reach 0.
-//! 2. **Sort by priority** — process definitions descending
+//! 2. **Index threshold-fired events** — collect `event_id`s from
+//!    `threshold_events` into a `HashSet` for O(1) lookup. Unknown event_ids
+//!    push an [`UnknownEventId`](ScriptedEventDiagnosticKind::UnknownEventId)
+//!    diagnostic.
+//! 3. **Sort by priority** — process definitions descending
 //!    (Critical → High → Normal → Low). [`EventPriority`] derives `Ord`.
-//! 3. **Skip on cooldown** — if `ctx.cooldowns` contains the event's key, skip.
-//! 4. **Skip threshold triggers** — `CompiledTrigger::Threshold` events are not
-//!    evaluated here; they produce no diagnostic, just a no-op.
-//! 5. **Evaluate predicate** — call [`ScriptPredicate::eval`] with a
-//!    [`ScriptEvalContext`] built from `ctx`. Hard eval errors push a
-//!    [`ScriptedEventDiagnostic`] and skip the event.
+//! 4. **Skip on cooldown** — if `ctx.cooldowns` contains the event's key, skip.
+//! 5. **Determine fire condition by trigger kind**:
+//!    - [`CompiledTrigger::Predicate`]: evaluate; eval errors push a
+//!      [`TriggerEvalError`](ScriptedEventDiagnosticKind::TriggerEvalError)
+//!      diagnostic and skip.
+//!    - [`CompiledTrigger::Threshold`]: fire iff `event_id` is in the
+//!      threshold-fired set built in step 2.
 //! 6. **Resolve and emit effects** — for each [`CompiledEffect`], resolve the
-//!    [`ScopeRef`] target against `ctx.slot_to_thing`. Missing slots push a
-//!    `ScriptedEventDiagnostic`; resolved targets push a [`BoundaryRequest`].
+//!    [`ScopeRef`] target against `ctx.slot_to_thing`. Missing slots push an
+//!    [`UnresolvedEffectTarget`](ScriptedEventDiagnosticKind::UnresolvedEffectTarget)
+//!    diagnostic; resolved targets push a [`BoundaryRequest`].
 //! 7. **Arm cooldown** — if the event has a `cooldown`, insert its `ticks`
 //!    value into `ctx.cooldowns`.
 
@@ -28,14 +47,14 @@ use crate::runtime::{CompiledEffect, CompiledTrigger, ScriptedEventDefinition};
 use crate::spec::event::EventKey;
 use crate::spec::script::{ScriptEvalContext, ScriptEvalError, ScopeRef};
 use simthing_core::{DimensionRegistry, SimThingId};
-use simthing_feeder::BoundaryRequest;
-use std::collections::HashMap;
+use simthing_feeder::{BoundaryRequest, ScriptedEventTriggerEvent};
+use std::collections::{HashMap, HashSet};
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 /// Stateless handler that executes compiled scripted event definitions each
-/// boundary tick. Handles predicate triggers only; threshold-triggered events
-/// are a future GPU-path concern.
+/// boundary tick. Processes both predicate triggers (CPU-evaluated) and
+/// threshold triggers (GPU-fired, resolved by the session/driver layer).
 pub struct ScriptedEventBoundaryHandler<'a> {
     pub registry:    &'a DimensionRegistry,
     /// All event definitions to evaluate. The handler sorts internally by
@@ -89,6 +108,10 @@ pub enum ScriptedEventDiagnosticKind {
     /// An effect's `ScopeRef` target resolved to a slot with no entry in
     /// `slot_to_thing`.
     UnresolvedEffectTarget { slot: u32 },
+    /// A threshold-fired event referenced an `event_id` that doesn't match any
+    /// definition in `self.definitions`. Most commonly a stale registration
+    /// whose definition was unloaded.
+    UnknownEventId,
 }
 
 // ── Implementation ────────────────────────────────────────────────────────────
@@ -96,9 +119,35 @@ pub enum ScriptedEventDiagnosticKind {
 impl<'a> ScriptedEventBoundaryHandler<'a> {
     /// Execute all compiled event definitions for one boundary tick.
     ///
+    /// `threshold_events` is the slice of GPU-fired scripted-event thresholds
+    /// resolved by the session/driver this tick. Pass `&[]` for ticks where
+    /// no threshold fired.
+    ///
     /// See the module-level doc for the full execution protocol.
-    pub fn handle_tick(&self, ctx: &mut ScriptedEventBoundaryContext<'_>) {
+    pub fn handle_tick(
+        &self,
+        threshold_events: &[ScriptedEventTriggerEvent],
+        ctx:              &mut ScriptedEventBoundaryContext<'_>,
+    ) {
         tick_cooldowns(ctx);
+
+        // Index threshold-fired events for O(1) lookup. Track unknown ids so
+        // we can emit diagnostics for stale registrations.
+        let mut fired_threshold_ids: HashSet<&str> = HashSet::with_capacity(threshold_events.len());
+        for evt in threshold_events {
+            fired_threshold_ids.insert(evt.event_id.as_str());
+        }
+        // Remove any ids that DO match a definition; what remains are unknowns.
+        let mut unknown_ids: HashSet<&str> = fired_threshold_ids.clone();
+        for def in self.definitions {
+            unknown_ids.remove(def.id.0.as_str());
+        }
+        for event_id in unknown_ids {
+            ctx.diagnostics.push(ScriptedEventDiagnostic {
+                event_id: EventKey::new(event_id),
+                kind:     ScriptedEventDiagnosticKind::UnknownEventId,
+            });
+        }
 
         // Sort by priority descending: Critical(3) > High(2) > Normal(1) > Low(0).
         // `EventPriority` derives `Ord` with variants in ascending declaration order.
@@ -110,31 +159,34 @@ impl<'a> ScriptedEventBoundaryHandler<'a> {
                 continue;
             }
 
-            // Threshold triggers are deferred to the GPU-path PR; skip silently.
-            let CompiledTrigger::Predicate(predicate) = &def.trigger else {
-                continue;
-            };
-
-            let eval_ctx = ScriptEvalContext {
-                registry:     self.registry,
-                shadow:       ctx.shadow,
-                n_dims:       ctx.n_dims,
-                current_slot: ctx.current_slot,
-            };
-
-            match predicate.eval(&eval_ctx) {
-                Err(err) => {
-                    ctx.diagnostics.push(ScriptedEventDiagnostic {
-                        event_id: def.id.clone(),
-                        kind:     ScriptedEventDiagnosticKind::TriggerEvalError(err),
-                    });
-                }
-                Ok(false) => {}
-                Ok(true) => {
-                    resolve_effects(def, ctx);
-                    if let Some(cooldown) = def.cooldown {
-                        ctx.cooldowns.insert(def.id.clone(), cooldown.ticks);
+            let fire = match &def.trigger {
+                CompiledTrigger::Predicate(predicate) => {
+                    let eval_ctx = ScriptEvalContext {
+                        registry:     self.registry,
+                        shadow:       ctx.shadow,
+                        n_dims:       ctx.n_dims,
+                        current_slot: ctx.current_slot,
+                    };
+                    match predicate.eval(&eval_ctx) {
+                        Err(err) => {
+                            ctx.diagnostics.push(ScriptedEventDiagnostic {
+                                event_id: def.id.clone(),
+                                kind:     ScriptedEventDiagnosticKind::TriggerEvalError(err),
+                            });
+                            continue;
+                        }
+                        Ok(b) => b,
                     }
+                }
+                CompiledTrigger::Threshold(_) => {
+                    fired_threshold_ids.contains(def.id.0.as_str())
+                }
+            };
+
+            if fire {
+                resolve_effects(def, ctx);
+                if let Some(cooldown) = def.cooldown {
+                    ctx.cooldowns.insert(def.id.clone(), cooldown.ticks);
                 }
             }
         }

@@ -59,9 +59,11 @@ pub mod capability;
 pub mod dispatcher;
 pub mod maintainer;
 pub mod patcher;
+pub mod scripted_event;
 pub mod work;
 
 pub use capability::{CapabilityUnlockEvent, CapabilityUnlockRegistration};
+pub use scripted_event::{ScriptedEventTriggerEvent, ScriptedEventTriggerRegistration};
 pub use dispatcher::{DispatchCoordinator, TickOutcome};
 pub use maintainer::{MaintainerOutcome, TreeMaintainer};
 pub use patcher::{PatcherStats, TransformPatcher};

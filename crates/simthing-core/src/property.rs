@@ -346,7 +346,7 @@ impl PropertyValue {
 
 // ── Decay and intensity behaviors ─────────────────────────────────────────────
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Direction {
     Rising,
     Falling,

@@ -41,7 +41,7 @@ fn run_tick(
     let handler = ScriptedEventBoundaryHandler { registry, definitions };
     let mut requests    = Vec::new();
     let mut diagnostics = Vec::new();
-    handler.handle_tick(&mut ScriptedEventBoundaryContext {
+    handler.handle_tick(&[], &mut ScriptedEventBoundaryContext {
         n_dims,
         shadow,
         current_slot,
@@ -276,7 +276,7 @@ fn cooldown_suppresses_repeat_firing_until_elapsed() {
         let handler = ScriptedEventBoundaryHandler { registry: registry_ref, definitions: defs_ref };
         let mut requests    = Vec::new();
         let mut diagnostics = Vec::new();
-        handler.handle_tick(&mut ScriptedEventBoundaryContext {
+        handler.handle_tick(&[], &mut ScriptedEventBoundaryContext {
             n_dims: 0, shadow, current_slot: 0, slot_to_thing, cooldowns,
             requests: &mut requests, diagnostics: &mut diagnostics,
         });

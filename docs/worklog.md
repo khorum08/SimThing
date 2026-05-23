@@ -6,6 +6,57 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — PR 10: scripted-event GPU threshold path
+
+**Status:** Threshold-triggered scripted events now have a working
+authoring → GPU → CPU → effect pipeline. Predicate-triggered events
+(PR 9) and threshold-triggered events share `ScriptedEventBoundaryHandler`
+with unified cooldown/priority gating.
+
+**Architecture (mirrors the PR 4 capability-unlock pattern):**
+
+- `simthing_feeder::ScriptedEventTriggerRegistration` — authored-side request:
+  `{ event_id, slot, col, threshold, direction }`. Produced by
+  `ScriptedEventDefinition::to_trigger_registration(current_slot)` for
+  `CompiledTrigger::Threshold` definitions (returns `None` for predicates).
+- `simthing_sim::ThresholdSemantic::ScriptedEventTrigger { event_id }` —
+  new CPU semantic arm; parallel-indexed with the GPU registration buffer.
+- `simthing_sim::ThresholdBuilder::build_with_scripted_event_triggers` —
+  walks the tree, adds velocity alerts, then pushes one
+  `ThresholdRegistration` per scripted-event trigger into the values buffer.
+  Full-rebuild only; B2 append-only deferred.
+- `simthing_sim::ThresholdRegistry::extract_scripted_event_triggers` —
+  filters `&[ThresholdEvent]` to `Vec<ScriptedEventTriggerEvent>` for the
+  spec handler.
+- `simthing_spec::ScriptedEventBoundaryHandler::handle_tick(threshold_events,
+  ctx)` — signature gained the threshold-events slice; predicate and
+  threshold paths now compete under shared `EventPriority` ordering and
+  share the `cooldowns` HashMap. Stale registration ids (no matching
+  definition) push the new `UnknownEventId` diagnostic.
+
+**Why this is the right shape:**
+
+- Predicates and thresholds are conceptually two trigger *sources* but
+  produce the same effect dispatch. Unifying them in a single
+  priority-sorted loop guarantees:
+  - Cross-source priority is correct (Critical threshold > Low predicate)
+  - Cooldown is shared by `EventKey` (an event can't fire from both paths
+    in the same tick)
+  - The caller has exactly one entry point per tick
+
+**Touch-up:** `simthing_core::Direction` now derives `Copy + PartialEq + Eq`.
+The registration type needs these for serde round-trips and value equality
+in tests.
+
+**Verification:** `cargo test --workspace` → 298 passed (+12: 11 new
+PR 10 acceptance tests + 1 feeder serde test), 1 ignored, zero warnings.
+
+**Next candidates:** session/driver assembly (who owns capability instances
+and scripted-event definitions per faction); B2 append-only integration for
+both capability unlocks and scripted-event triggers.
+
+---
+
 ## 2026-05-22 — Threshold dependency cleanup (spec → feeder)
 
 **Status:** `simthing-spec` production code is now independent of

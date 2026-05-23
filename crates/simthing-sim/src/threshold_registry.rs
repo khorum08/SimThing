@@ -50,7 +50,10 @@ use serde::{Deserialize, Serialize};
 use simthing_core::{
     DecayBehavior, DimensionRegistry, Direction, SimPropertyId, SimThing, SimThingId, SubFieldRole,
 };
-use simthing_feeder::{CapabilityUnlockEvent, CapabilityUnlockRegistration};
+use simthing_feeder::{
+    CapabilityUnlockEvent, CapabilityUnlockRegistration, ScriptedEventTriggerEvent,
+    ScriptedEventTriggerRegistration,
+};
 use simthing_gpu::{
     SlotAllocator, ThresholdEvent, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD,
     THRESH_BUF_OUTPUT, THRESH_BUF_VALUES,
@@ -119,6 +122,17 @@ pub enum ThresholdSemantic {
         sim_thing_id: SimThingId,
         property_id:  SimPropertyId,
         sub_field:    SubFieldRole,
+    },
+
+    /// A scripted event's threshold trigger fired. Emitted from a
+    /// `ScriptedEventTriggerRegistration` (one per `CompiledTrigger::Threshold`
+    /// scripted event registered with the session). The spec layer's
+    /// `ScriptedEventBoundaryHandler::handle_tick` matches `event_id` against
+    /// its `ScriptedEventDefinition` slice and fires the corresponding effects
+    /// under standard cooldown/priority gating.
+    ScriptedEventTrigger {
+        /// Matches `simthing_spec::EventKey.0`.
+        event_id: String,
     },
 }
 
@@ -220,6 +234,29 @@ impl ThresholdRegistry {
                     property_id:  *property_id,
                     sub_field:    sub_field.clone(),
                 }),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Filter a slice of GPU `ThresholdEvent`s down to just the
+    /// `ThresholdSemantic::ScriptedEventTrigger` arms, resolved into
+    /// `ScriptedEventTriggerEvent`s for `simthing-spec`'s scripted-event
+    /// boundary handler. Sibling to `extract_capability_unlocks` — same
+    /// pattern, different semantic arm. Non-`ScriptedEventTrigger` arms and
+    /// out-of-range `event_kind`s are silently filtered out.
+    pub fn extract_scripted_event_triggers(
+        &self,
+        events: &[ThresholdEvent],
+    ) -> Vec<ScriptedEventTriggerEvent> {
+        events
+            .iter()
+            .filter_map(|event| match self.get(event.event_kind)? {
+                ThresholdSemantic::ScriptedEventTrigger { event_id } => {
+                    Some(ScriptedEventTriggerEvent {
+                        event_id: event_id.clone(),
+                    })
+                }
                 _ => None,
             })
             .collect()
@@ -343,6 +380,59 @@ impl ThresholdBuilder {
             &mut gpu_regs, &mut cpu_reg,
         );
         (gpu_regs, cpu_reg)
+    }
+
+    /// Build with scripted event triggers. Each `ScriptedEventTriggerRegistration`
+    /// produces one Pass 7 watch on its `(slot, col)` pair with the matching
+    /// `ThresholdSemantic::ScriptedEventTrigger` entry on the CPU registry.
+    /// Scripted event triggers watch the `values` buffer; targeting
+    /// `output_vectors` aggregates is a future extension.
+    ///
+    /// Registrations whose `slot` exceeds the allocator's current capacity are
+    /// kept verbatim — the caller is responsible for resolving `ScopeRef`
+    /// targets to live slots before registration. (We don't have a property_id
+    /// to validate against on this path, unlike capability unlocks.)
+    ///
+    /// Full-rebuild path only; B2 append-only integration is a future PR.
+    pub fn build_with_scripted_event_triggers(
+        root:                    &SimThing,
+        dim_reg:                 &DimensionRegistry,
+        allocator:               &SlotAllocator,
+        velocity_alerts:         &[VelocityAlertRegistration],
+        scripted_event_triggers: &[ScriptedEventTriggerRegistration],
+    ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
+        let mut gpu_regs = Vec::new();
+        let mut cpu_reg = ThresholdRegistry::new();
+        Self::walk(root, dim_reg, allocator, &mut gpu_regs, &mut cpu_reg);
+        Self::push_velocity_alerts(
+            dim_reg, allocator, velocity_alerts,
+            &mut gpu_regs, &mut cpu_reg,
+        );
+        Self::push_scripted_event_triggers(
+            scripted_event_triggers,
+            &mut gpu_regs, &mut cpu_reg,
+        );
+        (gpu_regs, cpu_reg)
+    }
+
+    fn push_scripted_event_triggers(
+        scripted_event_triggers: &[ScriptedEventTriggerRegistration],
+        gpu_regs:                &mut Vec<ThresholdRegistration>,
+        cpu_reg:                 &mut ThresholdRegistry,
+    ) {
+        for trigger in scripted_event_triggers {
+            let event_kind = cpu_reg.push(ThresholdSemantic::ScriptedEventTrigger {
+                event_id: trigger.event_id.clone(),
+            });
+            gpu_regs.push(ThresholdRegistration {
+                slot:      trigger.slot,
+                col:       trigger.col,
+                threshold: trigger.threshold,
+                direction: direction_to_u32(&trigger.direction),
+                event_kind,
+                buffer:    THRESH_BUF_VALUES,
+            });
+        }
     }
 
     fn push_capability_unlocks(

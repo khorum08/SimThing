@@ -23,9 +23,9 @@
 //!
 //! - Session/driver assembly for capability tree instances and per-faction
 //!   state maps.
-//! - Threshold-triggered scripted events (GPU registration of
-//!   `CompiledThresholdTrigger`, `event_kind` routing).
 //! - B2 append-only capability unlock integration.
+//! - B2 append-only integration for scripted-event triggers (the PR 10 path
+//!   is full-rebuild only).
 //!
 //! ## Crate boundary
 //!

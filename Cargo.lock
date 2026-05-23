@@ -1122,6 +1122,7 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "serde",
+ "serde_json",
  "simthing-core",
  "simthing-gpu",
  "thiserror 2.0.18",
