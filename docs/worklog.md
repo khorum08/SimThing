@@ -6,7 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-23 — Parking doc sync (post Opus O1b–O4)
+## 2026-05-23 — Workshop authoring docs
+
+**Status:** pending merge.
+
+**Added:**
+
+- `docs/workshop/simthing_modder_object_guide.md` — modder-facing core authoring objects
+- `docs/workshop/simthing_base_economic_system_working_doc.md` — base economic system working doc
+
+**Updated:** `docs/workshop/README.md` index.
+
+---
 
 **Status:** `master` @ `393db00` (parking sync committed).
 

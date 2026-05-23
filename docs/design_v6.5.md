@@ -114,7 +114,8 @@ simthing-studio   ← deferred GUI (depends on spec)
 | Priority | ID | Owner | Scope | Notes |
 |----------|-----|-------|-------|-------|
 | **P0** | **O2** | Codex | Replay v3 — `SpecSnapshot` / `SpecDelta` for spec runtime state | ADR: `spec_session_state_replay.md` |
-| — | Modder guide | — | `simthing_modder_object_guide.md` draft can proceed (EffectTarget landed) | Untracked local |
+| — | Modder guide | — | `simthing_modder_object_guide.md` in repo; align with EffectTarget §14 as needed | Workshop doc |
+| — | Base economy doc | — | `simthing_base_economic_system_working_doc.md` — design working doc, not implementation spec | Workshop doc |
 | — | B2 topology | — | Tighter Approach C for fission clone internal edges | Future perf work |
 | — | Scripted scope | — | `ScopeRef::Owner`, cross-owner events, cross-instance priority | Deferred in O4 ADR |
 | — | Scenario RON expansion | — | Inline tree/registry/shadow seeds | Tabled |
@@ -169,6 +170,8 @@ simthing-studio   ← deferred GUI (depends on spec)
 | `design_v6.md` | Simulation architecture spec |
 | `capability_tree_v1.md` | RON reference; §13 install; §14 EffectTarget |
 | `examples/README.md` | InstallTargetSpec RON fixtures |
+| `workshop/simthing_modder_object_guide.md` | Modder authoring objects |
+| `workshop/simthing_base_economic_system_working_doc.md` | Base economic system (working doc) |
 | `invariants.md` | Non-negotiable code rules |
 
 ---

@@ -57,7 +57,7 @@ scenario RON expansion; `simthing-studio` GUI.
 - **O1c ruled out** — dimension sync after install not the blocker.
 
 **Worktree:** clean for tracked files. Untracked `.claude/worktrees/`,
-`demo.replay.ldjson`, draft `simthing_modder_object_guide.md` (local only).
+`demo.replay.ldjson`.
 
 ---
 
