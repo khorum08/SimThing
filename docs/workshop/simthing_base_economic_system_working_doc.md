@@ -8,11 +8,11 @@
 
 This working document captures the current base-economy synthesis for SimThing. It is meant to be readable by modders while still being precise enough for Claude, Cursor, Codex, or a future implementation chat.
 
-The newest provisional change is important:
+The current provisional thesis:
 
 > The base economic system may be a special case of a more general intrinsic SimThing facility: **thresholded accumulation and emission**.
 
-The earlier queue/construction model remains useful, but it should not be treated as the root abstraction. Queue construction, factory production, fleet replenishment, weapons damage, hitpoints, population growth, diplomatic relation shifts, research, repair, logistics, and upkeep are all possible authored cases of the same deeper pattern:
+Queue construction, factory production, fleet replenishment, weapons damage, hitpoints, population growth, diplomatic relation shifts, research, repair, logistics, and upkeep are all possible authored cases of the same deeper pattern:
 
 ```text
 property accumulates value
@@ -62,177 +62,406 @@ Shortest provisional form:
 Accumulator = property/subfield with Amount, Velocity, Intensity, or authored layout
 Input = overlay, transfer, velocity, damage, growth, diplomacy pressure, etc.
 Threshold = crossing condition
-Emission count = floor(accumulator_amount / unit_size), or other authored formula
+Emission count = floor(accumulator_amount / unit_size), or other authored pure formula
 Effects = increments, transfers, overlays, fission, instantiation, unlocks, events
 Consume mode = subtract, clamp, retain, scar, expire, reload debt, or transfer remainder
 ```
 
 ---
 
-## Why This Is Broader Than Queue Construction
+## Current Threshold Event Model
 
-Queue construction is one use case:
+The existing GPU threshold path is already close to what this needs.
 
-```text
-unit_progress.Amount >= 1.0
-  -> emit completed units into target cohort/fleet/parent
-  -> subtract emitted_units from unit_progress
+Current GPU event shape:
+
+```rust
+ThresholdEvent {
+    slot,
+    col,
+    value,
+    event_kind,
+}
 ```
 
-But the same facility could express:
+Important interpretation:
 
 ```text
-factory::assembly_progress.Amount >= 1.0
-  -> emit inventory units
-  -> subtract emitted units, keep fractional remainder
-
-population::growth.Amount >= 1.0
-  -> increment population count
-  -> subtract emitted growth units
-
-fleet::replenishment_progress.Amount >= 1.0
-  -> increment missile/fighter/crew/readiness stock
-  -> subtract emitted units
-
-ship::damage.Amount >= armor_break_threshold
-  -> attach hull_breach overlay or emit damage event
-  -> retain, scar, or subtract damage depending on authored consume mode
-
-diplomacy::trust.Amount >= treaty_threshold
-  -> activate treaty_available overlay or emit diplomatic event
-  -> retain, clamp, or spend trust depending on authored consume mode
-
-research::ion_drive_progress.Amount >= 1.0
-  -> unlock ion_drive capability
-  -> expire research item or retain completion marker
+slot       = SimThing slot whose watched value crossed
+col        = watched global column
+value      = current crossed value, not the threshold and not the delta
+event_kind = opaque u32 resolved by CPU ThresholdRegistry into ThresholdSemantic
 ```
 
-The facility should be intrinsic because it is not a Stellaris-like queue rule. It is a general SimThing pattern for anything that accumulates state and turns threshold crossings into consequences.
-
----
-
-## Provisional Emit-On-Threshold Model
-
-An authored/runtime emission spec might look like this conceptually:
-
-```text
-ThresholdedEmissionSpec:
-  owner: SimThingId
-  watched_property: SimPropertyId
-  watched_subfield: Amount | Velocity | Intensity | Named(...)
-  threshold: f32
-  direction: Rising | Falling
-  unit_size: f32
-  max_emit_per_boundary: optional
-  output_count_formula: optional
-  consume_mode: ConsumeMode
-  effects: Vec<EmissionEffect>
-```
-
-On threshold fire:
-
-```text
-value = read watched property/subfield
-emit_count = compute_emit_count(value, unit_size, max_emit_per_boundary)
-apply effects scaled by emit_count
-apply consume/reset mode to watched value
-```
-
-For the common one-column accumulator case:
-
-```text
-emit_count = floor(value / unit_size)
-```
+That means a debt-band accumulator can already use the reported `value` on the CPU side.
 
 Example:
 
 ```text
-unit_progress.Amount = 11.5
-unit_size = 1.0
-emit_count = 11
+queued_build.Amount previous = -200
+queued_build.Amount current  = -145
+unit_cost = 20
+queued_count = 10
+registered threshold = -180
 ```
 
-Boundary result:
+GPU detects the crossing and emits an event with `value = -145`. CPU can compute:
 
 ```text
-target_cohort.unit_count += 11
-queued_count -= 11, if bounded by a queue count
-unit_progress.Amount -= 11
-unit_progress.Amount remains 0.5
+paid = queued_count * unit_cost + value
+paid = 10 * 20 + (-145)
+paid = 55
+emit_count = floor(paid / unit_cost) = 2
 ```
 
-This gives one completion column and one threshold while still allowing multi-unit emission in one boundary.
+The GPU already detects the crossing. The open design question is whether the GPU should also compute `emit_count` and return it as an auxiliary payload.
 
 ---
 
-## Consume / Reset Modes
+## Debt-Band Emission Mode
 
-The consume/reset rule is the key to making the primitive general.
+A strong one-column candidate is **DebtBandEmission**.
 
-Provisional consume modes:
+State:
 
 ```text
-SubtractEmitted:
-  value -= emit_count * unit_size
-  Keeps fractional remainder. Good for production, growth, replenishment.
-
-ClampToZero:
-  value = 0 after firing. Good for one-shot pressure discharge.
-
-Retain:
-  value remains. Good for persistent gates such as diplomacy states or tech completion markers.
-
-Expire:
-  remove property, queue item, or process after firing. Good for one-shot projects.
-
-Scar:
-  value *= coefficient. Similar to current fusion scar semantics.
-
-ReloadDebt:
-  value -= next_required_amount. Good for repeated batch queues or staged projects.
-
-TransferRemainder:
-  move overflow/remainder to another property or SimThing.
+queued_build.Amount = -200
+unit_cost = 20
+queued_count = 10
 ```
 
-This should be designed as boundary semantics, not as ordinary numeric overlay logic.
+Meaning:
+
+```text
+10 units remain queued.
+Each unit costs 20 normalized value.
+Total remaining debt is -200.
+```
+
+Register the next per-unit threshold:
+
+```text
+next_threshold = -((queued_count - 1) * unit_cost)
+next_threshold = -180
+```
+
+If the accumulator jumps from `-200` to `-145`, the GPU fires because it crossed `-180`. The boundary handler computes:
+
+```text
+paid = queued_count * unit_cost + current_value
+paid = 10 * 20 + (-145) = 55
+emit_count = floor(55 / 20) = 2
+```
+
+Then effects can apply:
+
+```text
+target.unit_count += 2
+queued_count -= 2
+queued_build.Amount remains -145
+```
+
+New state:
+
+```text
+queued_count = 8
+queued_build.Amount = -145
+next_threshold = -((8 - 1) * 20) = -140
+```
+
+The remaining `15` value is preserved as carryover toward the next unit. This gives:
+
+```text
+one accumulator column
+one active threshold registration
+multi-unit emission if input overshoots several bands
+fractional carryover
+no per-resource resident debt columns
+```
 
 ---
 
-## Emission Effects
+## EML Position for This Use Case
 
-Effects should be generic and composable. Provisional examples:
+This document must follow `docs/eml_integration_guidance.md`.
+
+That guidance says EML may become a backend for **pure numeric expressions**, derived fields, AI weights, scripted values, and composite predicates. It should not replace native SimThing primitives such as overlays, thresholds, boundary requests, or effect handlers.
+
+Therefore this use case splits cleanly:
 
 ```text
-IncrementProperty:
-  target property += amount_per_emit * emit_count
+Good EML / numeric backend candidate:
+  emit_count = floor((queued_count * unit_cost + current_value) / unit_cost)
 
-TransferAmount:
-  source property -= amount_per_emit * emit_count
-  target property += amount_per_emit * emit_count
-
-InstantiateChild:
-  create child from template, count = emit_count or one per emit
-
-AttachOverlay / ActivateOverlay / SuspendOverlay:
-  modify active overlay state
-
-ActivateCapability:
-  unlock or activate a capability/effect
-
-EmitEvent:
-  produce a scripted or feeder event
-
-Fission / StructuralMutation:
-  spawn, split, reparent, remove, or fuse SimThings
-
-ExpireSelf:
-  remove or tombstone the emitting item/process after settlement
+Not EML:
+  target.unit_count += emit_count
+  queued_count -= emit_count
+  expire queue item
+  instantiate child
+  attach overlay
+  emit event
+  record delta log entries
 ```
 
-The key rule:
+The pure formula may later be lowered to a native GPU expression backend or EML. The actual consequence remains CPU boundary semantics or another native SimThing boundary mechanism.
 
-> Thresholded emission should move through existing boundary protocols wherever possible. It should not become a hidden domain engine.
+Provisional rule:
+
+> EML may compute or help compute the numeric emission payload. EML must not own the effectful emission.
+
+---
+
+## Proposed Event Payload Track
+
+Current event:
+
+```rust
+ThresholdEvent {
+    slot: u32,
+    col: u32,
+    value: f32,
+    event_kind: u32,
+}
+```
+
+Possible later event or side-buffer payload:
+
+```rust
+ThresholdEventV2 {
+    slot: u32,
+    col: u32,
+    value: f32,
+    event_kind: u32,
+    aux0: f32, // e.g. emit_count or computed score
+    aux1: f32, // e.g. remainder, optional
+}
+```
+
+Alternative:
+
+```text
+ThresholdEvent remains unchanged.
+A compact emission payload buffer is indexed by event ordinal or event_kind.
+CPU reads payload only for threshold semantics that need it.
+```
+
+No payload expansion should happen until v1 semantics are proven with the current event shape.
+
+---
+
+## V1–V3 Validation and Testing Regime
+
+### V1 — CPU Semantic Baseline
+
+Goal:
+
+```text
+Prove the intrinsic thresholded-emission model using existing GPU ThresholdEvent.value and CPU boundary semantics.
+```
+
+Implementation shape:
+
+```text
+GPU:
+  increments/integrates accumulator normally
+  detects threshold crossing normally
+  emits ThresholdEvent { slot, col, value, event_kind }
+
+CPU:
+  event_kind -> ThresholdSemantic::EmitOnThreshold / ThresholdedEmission
+  reads emission metadata from session/spec registry
+  computes emit_count from event.value
+  applies boundary effects
+  updates accumulator/queue metadata
+  re-registers next threshold if needed
+```
+
+Required fixtures:
+
+```text
+1. Debt-band queue:
+   Amount -200, unit_cost 20, queued_count 10, value jumps to -145.
+   Expected emit_count = 2, queued_count = 8, carryover preserved.
+
+2. One-column positive accumulator:
+   growth.Amount 2.4, unit_size 1.
+   Expected emit_count = 2, remainder 0.4.
+
+3. Retain-mode gate:
+   trust.Amount crosses threshold.
+   Expected overlay/event emitted without consuming trust.
+
+4. Damage/scar mode:
+   damage crosses band.
+   Expected overlay/event emitted and accumulator scarred or retained.
+
+5. No overshoot case:
+   value crosses exactly one band.
+
+6. Large overshoot case:
+   value crosses many bands in one tick; handler emits all allowed units.
+```
+
+Correctness checks:
+
+```text
+CPU reference calculator and boundary result agree.
+Fractional carryover is preserved.
+Consume modes behave deterministically.
+Delta log/replay path remains coherent.
+Threshold rebuild points at the next active band.
+Existing fission/fusion/capability/scripted-event tests remain green.
+```
+
+Performance measurements:
+
+```text
+N active emitters: 1k, 10k, 100k, 1M if feasible.
+Crossing density: 1%, 10%, 50%, 100%.
+Measure boundary CPU time for emit_count computation and effect dispatch.
+Measure threshold registry rebuild/append cost.
+Measure event readback size and time.
+```
+
+Exit criteria:
+
+```text
+Semantics are stable.
+CPU handler cost is understood.
+No GPU payload changes are justified until CPU cost is a measured bottleneck.
+```
+
+### V2 — Native GPU Payload Prototype
+
+Goal:
+
+```text
+Determine whether computing emit_count on GPU with a native expression/payload path reduces boundary cost enough to justify event-payload complexity.
+```
+
+Implementation shape:
+
+```text
+GPU:
+  detects threshold crossing
+  computes emit_count using a fixed native formula for DebtBandEmission
+  writes emit_count to aux payload or side buffer
+
+CPU:
+  still owns all effects
+  reads emit_count instead of recomputing it
+```
+
+Prototype formula:
+
+```text
+emit_count = floor((queued_count * unit_cost + current_value) / unit_cost)
+```
+
+Required GPU-resident metadata:
+
+```text
+unit_cost
+queued_count or remaining_count
+max_emit_per_boundary, optional
+mode identifier, optional
+```
+
+Required comparisons against V1:
+
+```text
+Same fixture results as V1.
+Bitwise or tolerance-defined agreement for emit_count.
+No missed emissions under overshoot.
+No duplicate emissions after threshold rebuild.
+Event payload readback does not exceed CPU recomputation cost.
+```
+
+Performance measurements:
+
+```text
+GPU pass time with and without payload computation.
+Event/payload buffer readback size.
+CPU boundary time saved.
+Total frame/day-boundary time.
+Scaling under high event density.
+```
+
+Exit criteria:
+
+```text
+V2 must beat or simplify V1 under realistic high-density scenarios.
+If CPU recomputation is cheaper than payload complexity, do not promote V2.
+If payload readback dominates, do not promote V2.
+```
+
+### V3 — ScriptExpr / EML Backend Experiment
+
+Goal:
+
+```text
+Test whether a general pure numeric expression backend, potentially EML, is beneficial for emission formulas beyond the fixed native DebtBandEmission case.
+```
+
+Implementation shape:
+
+```text
+Author formula as ScriptExpr.
+Compile ScriptExpr to CPU reference evaluator.
+Compile ScriptExpr to native GPU expression graph and/or EML backend.
+Use formula only to compute numeric payloads such as emit_count, scores, caps, or conversion rates.
+Effects remain boundary semantics.
+```
+
+Candidate formulas:
+
+```text
+Debt-band emit count.
+Capped production emission.
+Diminishing-return growth emission.
+Damage threshold severity score.
+Diplomatic relation threshold score.
+Factory output under efficiency and disruption modifiers.
+```
+
+Correctness tests:
+
+```text
+CPU reference evaluator matches native GPU backend.
+Native GPU backend matches EML backend within defined tolerance.
+Domain guards prevent NaN/inf propagation.
+Rounding/floor semantics are deterministic and documented.
+Designer-authored formula lowers through ScriptExpr, not raw EML.
+```
+
+Safety tests:
+
+```text
+safe_log behavior, if EML is used.
+safe_exp behavior, if EML is used.
+overflow/underflow behavior.
+NaN and infinity handling.
+clamping and totalized semantics.
+```
+
+Performance tests:
+
+```text
+Expression compile time.
+GPU evaluation time by expression size.
+Tree-size growth for EML lowering.
+Debuggability and explanation output.
+Comparison against fixed native formulas.
+Comparison against CPU recomputation.
+```
+
+Exit criteria:
+
+```text
+EML is promoted only if it improves or unifies enough complex pure numeric formulas to justify safety, debugging, and implementation cost.
+If native GPU expressions are faster/simpler, prefer native GPU expressions.
+If CPU computation is sufficient, defer both.
+```
 
 ---
 
@@ -267,17 +496,7 @@ Intensity:
   It should not be used as base allocation priority.
 ```
 
-Examples:
-
-```text
-Empire.resource::alloys.Amount = +1200
-Planet.resource::alloys.Velocity = +18
-Fleet.resource::energy.Velocity = -5
-FrigateProject.resource::alloys.Amount = -400
-CohortProject.resource::electronics.Amount = -100
-```
-
-Cost-as-negative-balance is still useful:
+Resource-debt example:
 
 ```text
 FrigateConstruction
@@ -286,7 +505,7 @@ FrigateConstruction
   resource::shipyard_capacity.Amount = -60
 ```
 
-But this is no longer the only possible representation. A queue/factory may instead convert inputs into a normalized one-column accumulator:
+One-column normalized accumulator example:
 
 ```text
 queue::unit_progress.Amount = 0.0
@@ -297,7 +516,7 @@ Multi-resource cost can live in transfer/conversion metadata that feeds normaliz
 
 ---
 
-## Overlays Still Own Input and Intent
+## Overlays Own Input and Intent
 
 Overlays should express active economic or causal instructions:
 
@@ -376,34 +595,6 @@ A heavy allocation resolver is not required for v1. A later resolver may convert
 
 ---
 
-## Current Threshold Action Model
-
-Current engine behavior is important for implementation planning:
-
-```text
-GPU Pass 7 emits ThresholdEvent { slot, col, value, event_kind }.
-CPU ThresholdRegistry maps event_kind -> ThresholdSemantic.
-Boundary phases/handlers interpret the semantic action.
-```
-
-Existing semantic arms include fission, fusion, property expiry, velocity/aggregate alerts, capability unlocks, and scripted event triggers.
-
-A provisional thresholded-emission facility would likely require a new semantic arm such as:
-
-```rust
-ThresholdSemantic::EmitOnThreshold { emitter_id, spec_id }
-```
-
-or:
-
-```rust
-ThresholdSemantic::ThresholdedEmission { emitter_id, spec_id }
-```
-
-The GPU event should remain small and opaque. The boundary handler should read the current accumulator value from shadow, compute emit count, apply effects, and update the accumulator according to consume mode.
-
----
-
 ## Current Fission/Fusion Is Not Economic Transfer Yet
 
 Current fission/fusion provides useful boundary-time structural mutation machinery, but it does not currently perform economic amount transfer.
@@ -470,7 +661,21 @@ unit_progress.Amount -= completed
 if queued_count == 0: expire queue item
 ```
 
-This is the same pattern as population growth or factory output. The difference is only the effect list and consume mode.
+Debt-band queue version:
+
+```text
+queued_build.Amount = -200
+unit_cost = 20
+queued_count = 10
+next_threshold = -180
+```
+
+Boundary emission uses event value to compute overshoot:
+
+```text
+paid = queued_count * unit_cost + event.value
+emit_count = floor(paid / unit_cost)
+```
 
 ---
 
@@ -481,23 +686,6 @@ A SimThing can produce resources or accumulated value through its own properties
 Canonical provisional rule:
 
 > Parent-level availability may be derived from reducible descendant state, subject to authored scope, ownership, boundary, capability, logistics, and overlay rules.
-
-Example:
-
-```text
-Empire
-  Planet A
-    District 1 -> resource::minerals.Velocity = +4
-    District 2 -> resource::minerals.Velocity = +6
-  Planet B
-    District 3 -> resource::minerals.Velocity = +3
-```
-
-Empire-level pool may aggregate:
-
-```text
-resource::minerals.Velocity = +13
-```
 
 Aggregation should be authored or declared, not automatic for every property.
 
@@ -619,37 +807,6 @@ Exact order must be validated against the current boundary sequence before imple
 
 ---
 
-## GPU Position
-
-Do **not** implement this on GPU in v1.
-
-V1 should prove CPU/session semantics first:
-
-```text
-resource/accumulator property semantics
-Velocity as flow
-one-column thresholded emission
-explicit transfer overlays
-boundary emission effects
-queue/factory/growth fixtures
-```
-
-GPU transfer/emission/allocation work is a later lowering path only after CPU semantics and fixtures are stable.
-
-Later, if profiling and scale require it, some pieces may be lowered into:
-
-```text
-compact transfer work-item buffer
-compact emission work-item buffer
-compact allocation claim buffer
-GPU transfer pass
-GPU group reduction for contested allocation
-```
-
-These are optimization targets, not canonical requirements.
-
----
-
 ## Implementation Handoff
 
 ### A0 — ADR / Design Only
@@ -658,12 +815,6 @@ Create an ADR after this design stabilizes, likely:
 
 ```text
 docs/adr/thresholded_accumulation_emission.md
-```
-
-or, if still framed economically:
-
-```text
-docs/adr/resource_balance_transfer_model.md
 ```
 
 The ADR should establish or reject:
@@ -676,7 +827,7 @@ The ADR should establish or reject:
 5. Which effect kinds are supported in v1.
 6. How resource transfer overlays feed accumulators.
 7. How queue construction is represented as one authored use case.
-8. Why GPU lowering is deferred.
+8. Why GPU/EML lowering is deferred until validated.
 9. How this interacts with existing fission/fusion, capability unlocks, and scripted events.
 ```
 
@@ -690,8 +841,9 @@ A4 — One-column queue fixture
 A5 — Population growth or factory-output fixture
 A6 — Resource transfer overlay fixture
 A7 — Optional resource/accumulator tags
-A8 — Modder guide and examples
-A9 — Later profiling/GPU lowering only if needed
+A8 — Native GPU payload prototype, only after profiling
+A9 — ScriptExpr / EML backend experiment, only after V2 baseline
+A10 — Modder guide and examples
 ```
 
 Do not implement in v1:
@@ -758,9 +910,10 @@ Potential core form:
 Accumulator = property/subfield
 Input = overlay/transfer/velocity
 Threshold = crossing condition
-Emit count = floor(value / unit_size), or authored formula
+Emit count = floor(value / unit_size), or authored pure formula
 Effects = increments/transfers/overlays/instantiation/fission/unlocks/events
 Consume mode = subtract/clamp/retain/scar/expire/reload
+Numeric payload backend = CPU first, native GPU second, EML only if validated
 ```
 
 This remains **provisional** until validated in an ADR and tested against current engine constraints.
