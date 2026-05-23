@@ -944,12 +944,13 @@ landed 2026-05-22. See preface addenda for full status.**
 | B2 fission-growth optimizations (A/B/C) | Landed 2026-05-22 |
 | GPU passes / WGSL | Unchanged |
 
-### Still open
+### Still open (ordered — Codex evaluation 2026-05-23)
 
-- **`simthing-spec` PRs 1–11 + O1/O3/S3/S4 + Phase 1 ADRs** — landed; see `workshop/simthing_spec_progress_log.md` (PRs #49–53)
-- **O4** (per-owner scripted events) or **O2** (replay v3) — next Codex milestones
-- **O1b** — threshold unlock E2E via `open_from_spec` (acceptance gap)
-- **S5/O5** — append-only thresholds + Approach C eligibility fix
+- **`simthing-spec` PRs 1–11 + O1/O3/S3/S4 + Phase 1 ADRs** — landed (PRs #49–54); see `workshop/simthing_spec_progress_log.md`
+- **O1b + O1c (Codex P0)** — threshold unlock E2E via `open_from_spec`; registry/GPU dimension sync after spec install
+- **S5/O5 (Codex P1)** — append-only thresholds + conservative Approach C fix for `clone_capability_children`
+- **O4 then O2 (Codex P2)** — per-owner scripted events; replay v3
+- **EffectTarget ADR (Opus P3)** — capability effect target scope before modder/Studio
 - **`tick_event_readback_ms` deep dive** — dominant remaining cost in `fission_stress`
 - **`simthing-studio` designer UI** — tabled; depends on `simthing-spec`
 
