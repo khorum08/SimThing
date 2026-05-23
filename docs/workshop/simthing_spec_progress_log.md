@@ -4,7 +4,7 @@
 assembly, and O1 session installation.  
 **Replaces:** superseded PR handoff/workshop docs (see [`README.md`](README.md); those files live in local-only `archive/`).  
 **Last updated:** 2026-05-23  
-**Master HEAD:** `7bc038e` (PR #56 O1b test)  
+**Master HEAD:** `b0912bc` (PR #57 install-target examples)  
 **Verification:** `cargo test --workspace` → **322** passed, **2** ignored, zero warnings.  
 `cargo build --workspace --tests` and release profile build/tests clean.
 

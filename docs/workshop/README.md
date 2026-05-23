@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `7bc038e`. **Tests:** 322 passed, 2 ignored. **Next (Codex P0):** O1b handler overlay-id fix. **Cursor:** kind/effect-target docs PR.
+**Parking (2026-05-23):** `master` @ `b0912bc`. **Tests:** 322 passed, 2 ignored. **Next (Codex P0):** O1b handler overlay-id fix. **Cursor:** kind/effect-target docs PR.
 
 ## Canonical — `simthing-spec` implementation progress
 

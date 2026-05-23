@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-23 — InstallTargetSpec examples (Cursor, PR 2)
 
-**Status:** branch pending merge.
+**Status:** `master` @ `b0912bc` (merge PR #57).
 
 **Landed:**
 
