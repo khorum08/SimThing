@@ -10,6 +10,18 @@ impl EventKey {
     }
 }
 
+impl From<&str> for EventKey {
+    fn from(s: &str) -> Self {
+        Self(s.to_owned())
+    }
+}
+
+impl From<String> for EventKey {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct EventSpec {
     pub id:       String,
@@ -34,4 +46,22 @@ pub enum EventPriority {
     Normal,
     High,
     Critical,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::EventKey;
+
+    #[test]
+    fn event_key_from_str() {
+        let key: EventKey = "low_loyalty".into();
+        assert_eq!(key.0, "low_loyalty");
+    }
+
+    #[test]
+    fn event_key_from_string() {
+        let id = String::from("faction_collapse");
+        let key: EventKey = id.clone().into();
+        assert_eq!(key.0, id);
+    }
 }
