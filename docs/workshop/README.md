@@ -1,5 +1,8 @@
 # Workshop docs index
 
+**Parking (2026-05-23):** `master` through PR #51 (`c3f3556`); S3/S4 landing next.
+**Tests:** 314 passed, 1 ignored. **Next:** Codex O1 (session init from RON).
+
 ## Canonical — `simthing-spec` implementation progress
 
 **Read this first for PR 1–11 status, architecture, tests, and open work:**
@@ -9,6 +12,12 @@
 **Architecture decision (PR 11 Track A):**
 
 - [`../adr/pr11_track_a_session_assembly.md`](../adr/pr11_track_a_session_assembly.md)
+
+**Phase 1 ADRs (O1 / O2 / O4 — read before implementation):**
+
+- [`../adr/game_mode_session_installation.md`](../adr/game_mode_session_installation.md)
+- [`../adr/scripted_event_scope_model.md`](../adr/scripted_event_scope_model.md)
+- [`../adr/spec_session_state_replay.md`](../adr/spec_session_state_replay.md)
 
 ## Source / historical (in repo)
 

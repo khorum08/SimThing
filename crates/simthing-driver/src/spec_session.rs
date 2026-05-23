@@ -66,6 +66,8 @@ pub struct SpecSessionState {
     pub scripted_event_diagnostics: Vec<ScriptedEventDiagnostic>,
     pub handler_errors: Vec<String>,
     player_selections: Vec<(CapabilityInstanceKey, CapabilityEntryKey)>,
+    /// Reverse index: capability tree `SimThingId` → installed instance key.
+    capability_instance_by_tree: HashMap<SimThingId, CapabilityInstanceKey>,
 }
 
 impl SpecSessionState {
@@ -98,8 +100,10 @@ impl SpecSessionState {
         let key = CapabilityInstanceKey::from_instance(&instance);
         self.capability_definitions
             .insert(definition.id, definition);
-        self.capability_instances.insert(key, instance);
+        self.capability_instances.insert(key, instance.clone());
         self.capability_states.insert(key, state);
+        self.capability_instance_by_tree
+            .insert(instance.tree_thing_id, key);
         self.capability_unlock_registrations
             .extend(unlock_registrations);
         key
@@ -207,9 +211,8 @@ impl SpecSessionState {
             .extract_capability_unlocks(ctx.events);
         for event in &unlock_events {
             if !self
-                .capability_instances
-                .keys()
-                .any(|key| key.tree_thing_id == event.sim_thing_id)
+                .capability_instance_by_tree
+                .contains_key(&event.sim_thing_id)
             {
                 self.capability_diagnostics.push(
                     CapabilityTreeDiagnostic::UnknownThresholdSimThing {
@@ -219,7 +222,8 @@ impl SpecSessionState {
             }
         }
 
-        let keys: Vec<CapabilityInstanceKey> = self.capability_instances.keys().copied().collect();
+        let keys: Vec<CapabilityInstanceKey> =
+            self.capability_instance_by_tree.values().copied().collect();
         for key in keys {
             let events_for_instance: Vec<_> = unlock_events
                 .iter()

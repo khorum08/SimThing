@@ -947,7 +947,8 @@ landed 2026-05-22. See preface addenda for full status.**
 ### Still open
 
 - **`simthing-spec` PRs 1–11** — landed; see `workshop/simthing_spec_progress_log.md`
-- **Session init from authored specs (O1)** — next Opus milestone
+- **O3, S3, S4, Phase 1 ADRs** — landed 2026-05-23 (PRs #49–52)
+- **Session init from authored specs (O1)** — next Codex milestone
 - **`tick_event_readback_ms` deep dive** — dominant remaining cost in `fission_stress`
 - **`simthing-studio` designer UI** — tabled; depends on `simthing-spec`
 

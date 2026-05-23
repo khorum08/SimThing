@@ -321,15 +321,30 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 
 ## Open work (post PR 11)
 
-### Opus-tier (architecture)
+### Codex-tier (implementation — ADRs landed)
+
+| ID | Scope | ADR |
+|----|-------|-----|
+| **O1** | Session init from `GameModeSpec` — `InstallTargetSpec`, `install.rs`, `open_from_spec`, per-owner clone | [`game_mode_session_installation.md`](../adr/game_mode_session_installation.md) |
+| **O2** | Replay v3 — `SpecSnapshot`/`SpecDelta`, logical keys | [`spec_session_state_replay.md`](../adr/spec_session_state_replay.md) |
+| **O4** | Per-owner scripted events (Option B) | [`scripted_event_scope_model.md`](../adr/scripted_event_scope_model.md) |
+| **O5** | B2 append-only for external threshold registrations on growth boundaries | — |
+
+### Done (2026-05-23)
 
 | ID | Scope |
 |----|-------|
-| **O1** | Session init from `GameModeSpec` / domain packs / scenario — compile, clone capability trees per faction, auto `install_spec_state` |
-| **O2** | Replay v3 — capability state, cooldowns, queued selections, notifications; `OverlayId` stability |
-| **O3** | Player selection input path — feeder or session API from logical keys |
-| **O4** | Per-owner vs global scripted events — document v0 global or expand |
-| **O5** | B2 append-only for external threshold registrations on cloned capability trees |
+| **O3** | `queue_player_selection_by_key` + `SpecSessionError` (PR #51) |
+| **S3** | Topology cache `debug_assert!` on full-rebuild path (`boundary.rs`) |
+| **S4** | `capability_instance_by_tree` reverse map (`spec_session.rs`) |
+| **S1/S2/D2** | Composer Phase 0 — crate docs, boundary header, `research_rate` removed (PR #49) |
+| **ADRs** | Session installation, scripted scope, replay (PR #50) |
+
+### Mechanical (Codex — open)
+
+| ID | Scope |
+|----|-------|
+| **S5** | Wire append helpers into eligibility guards; **fix Approach C** when fission uses `clone_capability_children` (incremental cache misses cloned-subtree edges — see `replay_fission_with_cloned_capability_subtree_reconstructs_full_payload`) |
 
 ### Deferred / out of scope
 
@@ -341,9 +356,10 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 
 ### Known footguns
 
-- **`install_spec_state` is manual** — no RON-driven session open yet.
-- **Replay** — structural overlay activations replay; spec runtime state does not.
-- **Handler maps** — driver bridges multi-tree storage to owner-keyed PR 5 API.
+- **`install_spec_state` is manual** — no RON-driven session open yet (O1).
+- **Replay** — structural overlay activations replay; spec runtime state does not (O2).
+- **`by_overlay` on shared definition** — must migrate to instance during O1 (replay ADR).
+- **B2 Approach C topology append** — only patches `fission_pairs` edges; incorrect CSR when fission clones multi-node capability subtrees (`clone_capability_children`). Full-rebuild path is guarded by S3; append path needs S5 fix.
 - **Empty-boundary skip** disabled when spec state needs boundary ticks (scripted predicates, queued selections, `OnPrereqMet` sweeps).
 
 ---
@@ -368,9 +384,13 @@ These remain valid; see original Q&A in `capability_tree_studio_workshop.md` for
 
 1. **This document**
 2. `docs/adr/pr11_track_a_session_assembly.md`
-3. `docs/todo.md` (parking state)
-4. `docs/design_v6.md` + `docs/capability_tree_v1.md` addenda
-5. Code: `spec_session.rs`, `session.rs`, `boundary/capability_handler.rs`, `boundary/event_handler.rs`
+3. **Phase 1 ADRs** (before O1/O2/O4 implementation):
+   - `docs/adr/game_mode_session_installation.md`
+   - `docs/adr/scripted_event_scope_model.md`
+   - `docs/adr/spec_session_state_replay.md`
+4. `docs/todo.md` (parking state)
+5. `docs/design_v6.md` + `docs/capability_tree_v1.md` addenda
+6. Code: `spec_session.rs`, `session.rs`, `boundary/capability_handler.rs`, `boundary/event_handler.rs`
 
 **Ignore for implementation:** archived handoffs in `docs/workshop/archive/` (gitignored) — see [`README.md`](README.md).
 
@@ -386,4 +406,4 @@ cargo test --workspace --release
 git status --short --branch
 ```
 
-Expected: **311** passed, **1** ignored, zero warnings, clean tracked tree.
+Expected: **314** passed, **1** ignored, zero warnings, clean tracked tree.
