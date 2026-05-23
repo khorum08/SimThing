@@ -2,11 +2,20 @@
 
 Current parking state after **B2 fission-growth A/B/C complete**,
 **`simthing-spec` PRs 2-10 landed**, the **spec→sim/gpu threshold
-dependency cleanup** done, and **scripted-event GPU thresholds wired**.
+dependency cleanup** done, **scripted-event GPU thresholds wired**, and
+the **PR 11 session/driver assembly handoff digest** prepared.
+
+`master` and `origin/master` are parked at `a8355e7`
+(`docs: PR 11 session/driver assembly handoff digest`).
 
 **Tests:** `cargo test --workspace` -> **298** passed, **1** ignored timing
 diagnostic, zero warnings. `cargo build --workspace --tests` also completes
 with zero warnings.
+
+**Next session:** see `docs/workshop/pr11_session_assembly_handoff.md` for
+the split between Track A (Opus: session state ownership, boundary protocol
+integration, replay design) and Track B (Composer 2.5: 5 narrowly-scoped
+mechanical tasks with explicit do-not-touch lists).
 
 **Worktree:** clean for tracked files at parking time. Untracked
 `.claude/worktrees/` and `demo.replay.ldjson` are present and intentionally

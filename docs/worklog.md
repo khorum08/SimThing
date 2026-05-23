@@ -6,6 +6,30 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — Parking state after PR 10 + PR 11 handoff digest
+
+**Status:** `master` and `origin/master` parked at `a8355e7`
+(`docs: PR 11 session/driver assembly handoff digest`). Last code commit
+is `3e4f6ea` (PR 10). 298 tests passing, 1 ignored, zero warnings.
+
+**Landed this session:**
+
+- PR 9 — scripted event boundary handler (predicate path).
+- Threshold dependency cleanup — `simthing-spec` production deps reduced to
+  `simthing-core` + `simthing-feeder` only via the new
+  `simthing_feeder::CapabilityUnlockEvent` type.
+- PR 10 — scripted-event GPU threshold path. Full pipeline from `EventSpec`
+  through GPU `ThresholdRegistration` to handler-emitted `BoundaryRequest`.
+  `ScriptedEventBoundaryHandler::handle_tick` now unifies predicate and
+  threshold paths under shared cooldown + priority gating.
+- PR 11 handoff digest at `docs/workshop/pr11_session_assembly_handoff.md`.
+
+**Next session:** session/driver assembly. The digest splits the work into
+Track A (Opus, 8 design questions) and Track B (Composer 2.5, 5 mechanical
+tasks with do-not-touch lists). Either track can start independently.
+
+---
+
 ## 2026-05-22 — PR 10: scripted-event GPU threshold path
 
 **Status:** Threshold-triggered scripted events now have a working
