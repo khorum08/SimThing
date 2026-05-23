@@ -310,6 +310,51 @@ Source Q&A: `docs/workshop/capability_tree_studio_workshop.md`.
 Older `docs/workshop/tech_tree_decisions.md` §5 names `simthing-studio` as the
 builder crate — superseded for naming; mechanism decisions remain valid.
 
+### Addendum — Scripted event system v0 (PRs 7–10, 2026-05-22)
+
+**Status:** Authoring, compilation, GPU registration, and boundary handlers are
+landed in `simthing-spec` / `simthing-sim` / `simthing-feeder`. **Session/driver
+assembly is not yet implemented** — handlers exist but are not called from
+`simthing-sim::BoundaryProtocol` or `simthing-driver`.
+
+**Four-stage pipeline:**
+
+1. **`EventSpec`** (RON) — trigger + effects + optional cooldown/priority.
+2. **`compile_event`** (`simthing-spec::compile::event`) — resolves property/role
+   references against a `DimensionRegistry`; emits `ScriptedEventDefinition`.
+3. **`ScriptedEventDefinition`** — holds `CompiledTrigger` (predicate or
+   threshold), compiled effect templates, cooldown, priority. Threshold triggers
+   expose `to_trigger_registration(current_slot)` for GPU upload.
+4. **Boundary dispatch** — `ScriptedEventBoundaryHandler::handle_tick` runs once
+   per boundary tick under unified cooldown + priority gating.
+
+**Two trigger sources, one handler:**
+
+| Source | When evaluated | Input to handler |
+|---|---|---|
+| **Predicate** | Every boundary tick, CPU-side | `ScriptPredicate::eval` over shadow |
+| **Threshold** | GPU Pass 7 crossing | `ScriptedEventTriggerEvent` slice from session layer |
+
+Cross-source priority is correct (e.g. Critical threshold beats Low predicate).
+Cooldown is keyed by `EventKey` and shared across both paths for the same event.
+
+**Cross-crate types:**
+
+- `simthing_feeder::ScriptedEventTriggerRegistration` — authored GPU watch request.
+- `simthing_feeder::ScriptedEventTriggerEvent` — resolved fired event for the handler.
+- `simthing_sim::ThresholdSemantic::ScriptedEventTrigger { event_id }` — CPU semantic
+  arm parallel-indexed with the GPU buffer.
+- `ThresholdBuilder::build_with_scripted_event_triggers` — full-rebuild registration path.
+- `ThresholdRegistry::extract_scripted_event_triggers` — bridge from raw
+  `ThresholdEvent`s to feeder events for the spec handler.
+
+**Public append helpers (Track B):** `ThresholdBuilder::append_scripted_event_triggers`
+delegates to the existing private push helper so a future session layer can choose
+append-vs-rebuild without re-exporting internals.
+
+**Next:** PR 11 session/driver assembly — see
+`docs/workshop/pr11_session_assembly_handoff.md`.
+
 ### Implementation status summary (as of 2026-05-22)
 
 | Area | Status | Reference |
@@ -322,7 +367,9 @@ builder crate — superseded for naming; mechanism decisions remain valid.
 | B2 Approach A — targeted value upload across growth | Landed | PR #40, `14437f3` |
 | B2 Approach B — append-only threshold registry on pure-fission growth | Landed | PR #41, `a23820b` |
 | B2 Approach C — incremental reduction-topology patching | Landed | 2026-05-22 |
-| Spec-layer capability tree (`simthing-spec`: RON → runtime, PRs 1–5) | Open | `workshop/simthing_spec_workshop.md` |
+| Spec-layer capability tree (`simthing-spec`: RON → runtime, PRs 1–6) | Landed | `workshop/simthing_spec_workshop.md` |
+| Scripted events v0 (`simthing-spec` PRs 7–10) | Landed | addendum above |
+| Session/driver assembly (PR 11) | Open | `workshop/pr11_session_assembly_handoff.md` |
 | `tick_event_readback_ms` deep dive (now the dominant cost in `fission_stress`) | Open | — |
 
 ---
