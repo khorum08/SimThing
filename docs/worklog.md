@@ -6,6 +6,26 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — PR 11 Track B merged (PR #47, `392992f`)
+
+**Status:** Merged to `master` via PR #47 (`feat/pr11-track-b`). `master` and
+`origin/master` synced at `392992f`.
+
+**Landed (4 commits):**
+
+- `84e03fc` — B2: `EventKey: From<&str>` / `From<String>`
+- `f2ed680` — B1: `Display` for boundary diagnostics
+- `e8d2980` — B3: `append_capability_unlocks` / `append_scripted_event_triggers`
+- `795bc69` — B4: docs addenda + todo/worklog parking
+
+**Verification:** 306 tests passing (+8), 1 ignored, zero warnings. Release
+profile build and tests clean (B5).
+
+**Next:** PR 11 **Track A (Opus)** — session state ownership, boundary protocol
+step order, handler wiring, E2E integration test, replay implications documented.
+
+---
+
 ## 2026-05-22 — PR 11 Track B: mechanical prep complete
 
 **Status:** Track B tasks B1–B5 from `docs/workshop/pr11_session_assembly_handoff.md`
@@ -1703,29 +1723,21 @@ growth target.
 
 ## Next session pickup
 
-**212** tests passing plus **1** ignored timing diagnostic, zero warnings.
-`master` @ `7eb48dc` — B2 fission-growth A/B/C complete; `simthing-spec` PR 1
-authoring-only lane stable after PR #46 revert of PR #45.
+**306** tests passing plus **1** ignored timing diagnostic, zero warnings.
+`master` @ `392992f` — `simthing-spec` PRs 2–10 landed; PR 11 Track B merged
+(PR #47). Release profile build and tests clean.
 
-**Primary next step:** **`simthing-spec` PR 2** — property + overlay spec compiler
-only. Do not implement builder, unlock bridge, boundary handler, or driver session
-wiring until PR 2 lands — see revised ladder in `docs/todo.md`.
+**Primary next step:** **PR 11 Track A (Opus)** — session/driver assembly per
+`docs/workshop/pr11_session_assembly_handoff.md`. Wire spec boundary handlers
+into the day-boundary protocol; define session state ownership; add E2E
+integration test.
 
 **Recent merges on `master`:**
-- Parameterized `capability_container_kinds` — no sim hardcoding (PR #38,
-  `a8aab5b`)
-- V6 Priority 1 guardrail: activated overlay GPU integration test
-  (PR #39, `e275789`)
-- V6 Priority 2 guardrail: capability fission replay test (PR #39, `e275789`)
-- V6 Priority 3 guardrail: `clone_capability_children` serde default test
-  (PR #39, `e275789`)
-- B2 Approach A: targeted value upload across fission growth (PR #40,
-  `14437f3`)
-- B2 Approach B: append-only threshold registry on pure-fission growth
-  (PR #41, 2026-05-22)
-- **`simthing-spec` PR 1** — authoring-only scaffold (PR #46, `7eb48dc`);
-  PR #45 exploratory vertical slice reverted
-- V6 suspended overlays + capability fission clone (`f39fe6d`)
+- **`simthing-spec` PRs 2–10** — property/overlay compiler through scripted-event
+  GPU threshold path (`3e4f6ea`)
+- **PR 11 Track B** — Display diagnostics, EventKey ergonomics, append threshold
+  helpers, docs addenda (PR #47, `392992f`)
+- PR 11 handoff digest (`a8355e7`) and parking doc sync (`865304d`)
 
 **Design reference:** `docs/design_v6.md` (current, incl. addenda) ·
 `docs/design_v5.md` (historical) · `docs/capability_tree_v1.md` (spec-layer RON) ·
@@ -1808,18 +1820,16 @@ wiring until PR 2 lands — see revised ladder in `docs/todo.md`.
 
 #### Next
 
-- [x] **`simthing-spec` PR 1** — authoring-only scaffold (`GameModeSpec`, RON
-      loaders, diagnostics, validation). Exploratory PR #45 slice reverted.
-- [ ] **`simthing-spec` PR 2** — property + overlay spec compiler (see `todo.md`).
-      PRs 3–6 are sequential follow-ons; do not batch or skip ahead.
+- [ ] **PR 11 Track A (Opus)** — session/driver assembly (see
+      `docs/workshop/pr11_session_assembly_handoff.md`).
 - [ ] **Document/prototype map-scale representation.** Keep current `SimThing` as
       semantic authoring state; evaluate arena/topology sidecars only after benchmark
       data shows tree representation pressure.
 - [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds — behind
       the GPU performance path.
 
-**Recent:** PR #46 merged — `simthing-spec` back on PR 1 authoring-only lane.
-212 tests passing. Ready for PR 2 (property/overlay spec compiler).
+**Recent:** PR #47 merged — PR 11 Track B mechanical prep. 306 tests passing.
+Ready for Track A session assembly (Opus).
 
 **Tabled:** `simthing-studio` designer UI (depends on `simthing-spec`); unified
 `BoundaryIndex` single-pass boundary walk (review item 4 / C1 — Opus-tier).

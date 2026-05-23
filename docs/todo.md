@@ -1,8 +1,9 @@
 # SimThing Todo Log
 
 Current parking state after **`simthing-spec` PRs 2–10 landed**, **PR 11 Track B
-prep complete** (Display impls, `EventKey` ergonomics, append registration
-helpers, docs addenda), and **release-mode smoke check passed**.
+merged (PR #47, `392992f`)**, and **release-mode smoke check passed**.
+
+`master` and `origin/master` are synced at **`392992f`**.
 
 **Tests:** `cargo test --workspace` → **306** passed, **1** ignored timing
 diagnostic, zero warnings. `cargo build --workspace --release --tests` and
@@ -10,7 +11,7 @@ diagnostic, zero warnings. `cargo build --workspace --release --tests` and
 
 **Next session:** **PR 11 Track A (Opus)** — session/driver assembly per
 `docs/workshop/pr11_session_assembly_handoff.md`. Track B mechanical prep is
-done; Opus owns session state ownership, boundary protocol integration, and
+merged; Opus owns session state ownership, boundary protocol integration, and
 replay design.
 
 **Worktree:** clean for tracked files except standard untracked
@@ -199,8 +200,8 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
 - [ ] **PR 11 Track A (Opus)** — session/driver assembly: session state
       ownership, boundary step order, GPU event drain plumbing, E2E integration
       test. See `docs/workshop/pr11_session_assembly_handoff.md`.
-- [x] **PR 11 Track B (Composer)** — mechanical prep (2026-05-22):
-      B5 release smoke check; B2 `EventKey: From<&str>`/`From<String>`;
+- [x] **PR 11 Track B (Composer)** — mechanical prep merged PR #47 (`392992f`,
+      2026-05-22): B5 release smoke check; B2 `EventKey: From<&str>`/`From<String>`;
       B1 `Display` for capability/scripted-event diagnostics; B3
       `append_capability_unlocks` / `append_scripted_event_triggers`;
       B4 docs addenda in `design_v6.md` and `capability_tree_v1.md`.
