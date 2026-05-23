@@ -6,8 +6,13 @@ use std::time::Instant;
 use simthing_feeder::FeederWork;
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
 use simthing_gpu::{GpuContext, Pipelines, WorldGpuState};
-use simthing_sim::{BoundaryProtocol, BoundaryTiming, ReplayFrame, ReplayWriter};
-use simthing_spec::GameModeSpec;
+use simthing_sim::{
+    BoundaryOutcome, BoundaryProtocol, BoundaryTiming, ReplayFrame, ReplayWriter,
+};
+use simthing_spec::{
+    CapabilityTreeInstance, CapabilityTreeState, CapabilityUnlockRegistration, GameModeSpec,
+};
+use std::collections::HashMap;
 use thiserror::Error;
 
 use crate::install::{compile_and_install, InstallError};
@@ -297,6 +302,9 @@ impl SimSession {
                     .reduction_depths_max
                     .max(outcome.gpu_sync.reduction_depths);
                 summary.boundaries_run += 1;
+                // S5 follow-up: register capability instances + threshold
+                // registrations for any fission-cloned capability subtrees.
+                self.react_to_fission_clones(&outcome);
             }
         }
 
@@ -397,6 +405,9 @@ impl SimSession {
                 writer.write_frame(&frame)?;
                 summary.frames_written += 1;
                 summary.boundaries_run += 1;
+                // S5 follow-up (same as `run`): register capability
+                // instances + threshold registrations for fission clones.
+                self.react_to_fission_clones(&outcome);
             }
         }
 
@@ -419,5 +430,115 @@ impl SimSession {
         self.proto.set_scripted_event_trigger_registrations(
             self.spec_state.scripted_event_trigger_registrations(),
         );
+    }
+
+    /// Register `CapabilityTreeInstance`s and threshold registrations for
+    /// every capability subtree that fission cloned this boundary
+    /// (S5 follow-up — fission-spawned trees otherwise have no thresholds
+    /// and unlocks never fire). Re-syncs threshold registrations to the
+    /// protocol so the GPU sees them next boundary.
+    ///
+    /// Returns the count of new instances registered (for telemetry / tests).
+    fn react_to_fission_clones(&mut self, outcome: &BoundaryOutcome) -> u32 {
+        if outcome.fission.cloned_capability_roots.is_empty() {
+            return 0;
+        }
+        let mut registered = 0u32;
+        // Snapshot existing instances so we can iterate without holding a
+        // borrow on `self.spec_state` while we insert new ones.
+        let source_lookup: HashMap<_, _> = self
+            .spec_state
+            .capability_instances
+            .iter()
+            .map(|(_, inst)| (inst.tree_thing_id, inst.clone()))
+            .collect();
+        for root in &outcome.fission.cloned_capability_roots {
+            let Some(source) = source_lookup.get(&root.source_root_id) else {
+                continue;
+            };
+            let Some(tree_slot) = self.proto.allocator.slot_of(root.cloned_root_id) else {
+                continue;
+            };
+            // overlay_id mapping is source → clone. Build by_overlay and
+            // overlay_hosts for the clone by translating the source's
+            // entries through the mapping. Any overlay in the source not
+            // covered by the mapping (shouldn't happen for capability
+            // overlays — every overlay is re-stamped during clone) is
+            // dropped from the clone's lookup.
+            let id_map: HashMap<_, _> =
+                root.overlay_id_pairs.iter().copied().collect();
+            let by_overlay: HashMap<_, _> = source
+                .by_overlay
+                .iter()
+                .filter_map(|(old_oid, entry)| {
+                    id_map.get(old_oid).map(|new_oid| (*new_oid, entry.clone()))
+                })
+                .collect();
+            // For overlay_hosts, the host of an Owner-targeted overlay was
+            // the source owner — for the clone it must be the spawned
+            // owner. CapabilityTree hosts were the source tree root → now
+            // the cloned root. SessionRoot stays the same.
+            let overlay_hosts: HashMap<_, _> = source
+                .overlay_hosts
+                .iter()
+                .filter_map(|(old_oid, host)| {
+                    let new_oid = *id_map.get(old_oid)?;
+                    let new_host = if *host == source.owner_id {
+                        root.spawned_owner_id
+                    } else if *host == source.tree_thing_id {
+                        root.cloned_root_id
+                    } else {
+                        // SessionRoot (or unknown — pass through).
+                        *host
+                    };
+                    Some((new_oid, new_host))
+                })
+                .collect();
+            // Thresholds: one per source registration, re-pointed at the
+            // cloned tree id. Cheap to construct (no GPU work yet).
+            let new_regs: Vec<CapabilityUnlockRegistration> = self
+                .spec_state
+                .capability_unlock_registrations
+                .iter()
+                .filter(|reg| reg.sim_thing_id == root.source_root_id)
+                .map(|reg| CapabilityUnlockRegistration {
+                    sim_thing_id: root.cloned_root_id,
+                    property_id:  reg.property_id,
+                    sub_field:    reg.sub_field.clone(),
+                    threshold:    reg.threshold,
+                })
+                .collect();
+
+            let Some(definition) =
+                self.spec_state.capability_definitions.get(&source.definition_id).cloned()
+            else {
+                continue;
+            };
+            let instance = CapabilityTreeInstance {
+                owner_id: root.spawned_owner_id,
+                definition_id: source.definition_id,
+                tree_thing_id: root.cloned_root_id,
+                tree_slot,
+                by_overlay,
+                overlay_hosts,
+            };
+            let state = CapabilityTreeState {
+                owner_id: root.spawned_owner_id,
+                definition_id: source.definition_id,
+                activation_mode_by_entry: HashMap::new(),
+                active_by_category:       HashMap::new(),
+            };
+            self.spec_state.add_capability_tree_instance(
+                definition,
+                instance,
+                state,
+                new_regs,
+            );
+            registered += 1;
+        }
+        if registered > 0 {
+            self.sync_spec_threshold_registrations();
+        }
+        registered
     }
 }

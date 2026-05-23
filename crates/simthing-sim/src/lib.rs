@@ -57,7 +57,7 @@ pub mod tree_mutation;
 
 pub use boundary::{BoundaryHookContext, BoundaryOutcome, BoundaryProtocol, BoundaryTiming};
 pub use delta_log::{entries_from_outcome, BoundaryDeltaEntry};
-pub use fission::{FissionLineageRecord, FissionOutcome};
+pub use fission::{ClonedCapabilityRoot, FissionLineageRecord, FissionOutcome};
 pub use observability::{
     ObservabilityReport, ObserveFidelity, OverlayContribution, PropertyObservation,
     SubFieldObservation,

@@ -6,6 +6,53 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-23 — S5 follow-up: register capability instances + thresholds for fission clones
+
+**Status:** `master` @ pending push.
+
+**Problem:** After the conservative Approach C disable, fission still left
+fission-spawned capability subtrees with **no `CapabilityTreeInstance`** and
+**no threshold registrations**. Unlocks on the cloned tree never fired —
+the spawned owner had a tree-shaped SimThing but no spec runtime hooked up.
+
+**Landed:**
+
+- `simthing-sim::fission`:
+  - `ClonedCapabilityRoot { spawned_owner_id, source_root_id, cloned_root_id,
+    overlay_id_pairs }` — provenance per cloned capability subtree.
+  - `FissionOutcome.cloned_capability_roots: Vec<ClonedCapabilityRoot>` —
+    populated by `clone_capability_children`.
+  - `clone_subtree_with_fresh_ids` now re-stamps **overlay ids** in addition
+    to SimThingIds. Returns `(SimThing, Vec<(SimThingId, SimThingId)>,
+    Vec<(OverlayId, OverlayId)>)`. Without overlay-id re-stamping, source
+    and clone subtrees would share `OverlayId`s and `ActivateOverlay` would
+    be ambiguous.
+- `simthing-driver::session`: `react_to_fission_clones(&BoundaryOutcome)`
+  helper. For each `ClonedCapabilityRoot`:
+  - Look up source instance via `source_root_id`.
+  - Translate source's `by_overlay` and `overlay_hosts` through
+    `overlay_id_pairs`, remapping Owner hosts to the spawned owner and
+    CapabilityTree hosts to the cloned root.
+  - Synthesize threshold registrations targeting `cloned_root_id`.
+  - Register via `spec_state.add_capability_tree_instance` and re-sync to
+    the protocol so the GPU picks them up next boundary.
+  - Called from both `run` and `record_to_path` loops post-execute.
+- Test:
+  `fission_cloned_capability_subtree_registers_new_instance_and_thresholds`
+  — drives loyalty fission, asserts ≥2 capability instances post-fission
+  (original + clone), new instance has populated `by_overlay`, and a
+  threshold registration targets the cloned tree.
+
+**Test counts:** 325 passed, 1 ignored (perf bench, unrelated).
+
+**Why a full fix vs. minimum:** Overlay-id re-stamping was a sub-bug the
+follow-up surfaced. Source and clone sharing overlay ids would have made
+the threshold registration succeed mechanically while still corrupting
+activation routing. Doing both at once means the clone behaves identically
+to the original for the unlock pipeline.
+
+---
+
 ## 2026-05-23 — S5: Approach C disabled for cloned capability subtrees
 
 **Status:** `master` @ pending push.

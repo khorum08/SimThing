@@ -952,3 +952,134 @@ fn replay_entry_kind(entry: &BoundaryDeltaEntry) -> &'static str {
         BoundaryDeltaEntry::FissionLineageRemoved { .. } => "FissionLineageRemoved",
     }
 }
+
+/// S5 follow-up acceptance: when fission clones a capability subtree, the
+/// driver registers a new `CapabilityTreeInstance` + threshold registrations
+/// for the spawned owner. Without this, unlocks on the cloned tree never
+/// fire because no `CapabilityUnlockRegistration` targets the clone's
+/// `sim_thing_id`.
+#[test]
+fn fission_cloned_capability_subtree_registers_new_instance_and_thresholds() {
+    if !try_gpu() {
+        eprintln!("skipping: no GPU");
+        return;
+    }
+
+    // Build a scenario with one faction carrying a loyalty fission template
+    // that clones tech_tree containers. The capability tree itself is
+    // installed by `open_from_spec` — not pre-attached to the faction.
+    let mut registry = simthing_core::DimensionRegistry::new();
+    let mut loyalty = SimProperty::simple("core", "loyalty", 0);
+    loyalty.intensity_behavior = Some(simthing_core::IntensityBehavior::default());
+    loyalty.fission_templates = vec![simthing_core::FissionThreshold {
+        sub_field: SubFieldRole::Amount,
+        threshold: 0.3,
+        direction: simthing_core::Direction::Falling,
+        template: simthing_core::FissionTemplate {
+            child_kind: simthing_core::SimThingKindTag::Faction,
+            fusion_intensity_threshold: 0.8,
+            fusion_scar_coefficient: 0.05,
+            resolution_label: "schism".into(),
+            clone_capability_children: true,
+            capability_container_kinds: vec!["tech_tree".into()],
+        },
+        secondary: None,
+    }];
+    let loyalty_pid = registry.register(loyalty);
+    let layout = registry.property(loyalty_pid).layout.clone();
+    let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+
+    let mut faction = CoreSimThing::new(SimThingKind::Faction, 0);
+    let mut faction_loyalty =
+        simthing_core::PropertyValue::from_layout(&registry.property(loyalty_pid).layout);
+    faction_loyalty.data[amount_off] = 0.5;
+    faction_loyalty.data[vel_off] = -0.21;
+    faction.add_property(loyalty_pid, faction_loyalty);
+    let original_faction_id = faction.id;
+
+    let mut location = CoreSimThing::new(SimThingKind::Location, 0);
+    location.add_child(faction);
+    let mut world = CoreSimThing::new(SimThingKind::World, 0);
+    world.add_child(location);
+
+    // Seed loyalty on the faction so the threshold fires after a few ticks.
+    let _ = (amount_off, vel_off); // offsets only used for ShadowSeed below
+    let scenario = Scenario {
+        name: "s5_followup".into(),
+        ticks_per_day: 1,
+        max_days: 8,
+        dt: 0.5,
+        n_slots: 32,
+        registry,
+        root: world,
+        shadow_seeds: vec![simthing_driver::ShadowSeed {
+            thing_id: original_faction_id,
+            namespace: "core".into(),
+            name: "loyalty".into(),
+            amount: 0.5,
+            velocity: -0.21,
+        }],
+        tick_patches: Vec::new(),
+        install_targets: HashMap::new(),
+    };
+
+    // Capability tree authored against the same tech_tree kind that fission
+    // clones. `open_from_spec` installs a fresh tech_tree on the existing
+    // faction; fission later clones it onto the spawned faction.
+    let game_mode = make_threshold_unlock_game_mode();
+    assert_eq!(game_mode.capability_trees[0].tree_kind, "tech_tree");
+
+    let mut session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
+    assert_eq!(
+        session.spec_state.capability_instances.len(),
+        1,
+        "install should produce one instance for the original faction"
+    );
+    let baseline_unlock_count = session.spec_state.capability_unlock_registrations.len();
+    assert!(baseline_unlock_count > 0, "threshold-mode entry should register an unlock");
+
+    // Run up to 8 boundaries — the loyalty fission threshold fires within
+    // a couple of ticks given the initial velocity.
+    let summary = session.run(8).expect("session run");
+    assert!(
+        summary.fission_events >= 1,
+        "loyalty fission must fire (got {} events)",
+        summary.fission_events
+    );
+
+    // S5 follow-up assertion: spec_state grew an instance for the spawned
+    // owner, the new instance points at the cloned tree, and threshold
+    // registrations cover both the original and the clone.
+    assert!(
+        session.spec_state.capability_instances.len() >= 2,
+        "expected ≥2 capability instances after fission (original + clone), got {}",
+        session.spec_state.capability_instances.len()
+    );
+    let new_instances: Vec<_> = session
+        .spec_state
+        .capability_instances
+        .values()
+        .filter(|inst| inst.owner_id != original_faction_id)
+        .collect();
+    assert!(
+        !new_instances.is_empty(),
+        "at least one CapabilityTreeInstance must have a non-original owner"
+    );
+    for new_inst in &new_instances {
+        assert_ne!(new_inst.tree_thing_id, original_faction_id);
+        assert!(
+            session
+                .spec_state
+                .capability_unlock_registrations
+                .iter()
+                .any(|reg| reg.sim_thing_id == new_inst.tree_thing_id),
+            "fission-cloned tree {:?} must have at least one threshold registration",
+            new_inst.tree_thing_id,
+        );
+        assert!(
+            !new_inst.by_overlay.is_empty(),
+            "fission-cloned instance's by_overlay must be populated from overlay_id_pairs"
+        );
+    }
+}

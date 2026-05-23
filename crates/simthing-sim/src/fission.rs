@@ -99,6 +99,33 @@ pub struct FissionOutcome {
     /// cloned subtree's internal parent→child edges. Full rebuild path
     /// is correct; conservative fix per `docs/todo.md` S5.
     pub cloned_capability_subtrees: bool,
+    /// Per cloned capability subtree root: `(spawned_owner_id,
+    /// source_root_id, cloned_root_id)`. The driver uses this to
+    /// register new `CapabilityTreeInstance`s + threshold registrations
+    /// for fission-spawned trees — otherwise unlocks on the cloned tree
+    /// never fire (S5 follow-up).
+    pub cloned_capability_roots: Vec<ClonedCapabilityRoot>,
+}
+
+/// Provenance record for one fission-cloned capability subtree root.
+/// Emitted per `is_capability_container` child found on the fission
+/// parent and successfully cloned onto the spawned child.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClonedCapabilityRoot {
+    /// The new SimThing the clone was attached to (i.e. the fission's
+    /// spawned child).
+    pub spawned_owner_id: SimThingId,
+    /// The original capability-tree root the subtree was cloned from.
+    pub source_root_id: SimThingId,
+    /// The id of the cloned subtree root attached under `spawned_owner_id`.
+    pub cloned_root_id: SimThingId,
+    /// Per-overlay id remapping inside the cloned subtree:
+    /// `(source_overlay_id → cloned_overlay_id)`. The driver uses this
+    /// to rebuild `CapabilityTreeInstance.by_overlay` and
+    /// `overlay_hosts` against the source instance's maps. Without
+    /// fresh overlay ids, source and clone would share `OverlayId`s and
+    /// `ActivateOverlay` would be ambiguous.
+    pub overlay_id_pairs: Vec<(simthing_core::OverlayId, simthing_core::OverlayId)>,
 }
 
 /// Execute all fission and fusion events for one boundary.
@@ -213,7 +240,7 @@ fn execute_fission(
             seed_fission_child(parent, &mut new_child, registry, pid, parent_slot, new_slot, values_shadow, n_dims);
         }
         if ft.template.clone_capability_children {
-            let new_slots = clone_capability_children(
+            let cloned_roots = clone_capability_children(
                 parent,
                 &mut new_child,
                 allocator,
@@ -221,8 +248,9 @@ fn execute_fission(
                 n_dims,
                 &ft.template.capability_container_kinds,
             );
-            if new_slots > 0 {
+            if !cloned_roots.is_empty() {
                 out.cloned_capability_subtrees = true;
+                out.cloned_capability_roots.extend(cloned_roots);
             }
         }
     }
@@ -297,11 +325,12 @@ pub(crate) fn is_capability_container(kind: &SimThingKind, container_kinds: &[St
     }
 }
 
-/// Returns the number of new slots allocated for cloned capability
-/// subtrees. S5: callers use the count to gate Approach C topology
-/// append (any non-zero count means the new (host → cloned-root) plus
-/// internal subtree edges were added — the append path only sees
-/// `fission_pairs` and would drift).
+/// Clone every capability container subtree from `parent` into `child`.
+/// Returns one `ClonedCapabilityRoot` per cloned subtree so the driver
+/// can register new `CapabilityTreeInstance`s + threshold registrations
+/// (S5 follow-up — fission-spawned trees otherwise have no thresholds
+/// and unlocks never fire). Empty return = no clones happened (driver
+/// no-op; Approach C append remains eligible).
 fn clone_capability_children(
     parent:          &SimThing,
     child:           &mut SimThing,
@@ -309,50 +338,90 @@ fn clone_capability_children(
     values_shadow:   &mut [f32],
     n_dims:          usize,
     container_kinds: &[String],
-) -> u32 {
-    let mut new_slots = 0u32;
+) -> Vec<ClonedCapabilityRoot> {
+    let mut roots = Vec::new();
     for source_child in parent
         .children
         .iter()
         .filter(|node| is_capability_container(&node.kind, container_kinds))
     {
-        let (cloned, id_pairs) = clone_subtree_with_fresh_ids(source_child, parent.id, child.id);
+        let source_root_id = source_child.id;
+        let (cloned, id_pairs, overlay_id_pairs) =
+            clone_subtree_with_fresh_ids(source_child, parent.id, child.id);
+        let cloned_root_id = cloned.id;
+        let mut allocated_any = false;
         for (source_id, cloned_id) in id_pairs {
             let Some(source_slot) = allocator.slot_of(source_id) else { continue };
             let cloned_slot = allocator.alloc(cloned_id);
             copy_shadow_row(source_slot, cloned_slot, values_shadow, n_dims);
-            new_slots += 1;
+            allocated_any = true;
         }
         child.add_child(cloned);
+        if allocated_any {
+            roots.push(ClonedCapabilityRoot {
+                spawned_owner_id: child.id,
+                source_root_id,
+                cloned_root_id,
+                overlay_id_pairs,
+            });
+        }
     }
-    new_slots
+    roots
 }
 
 fn clone_subtree_with_fresh_ids(
     source:       &SimThing,
     old_owner_id: SimThingId,
     new_owner_id: SimThingId,
-) -> (SimThing, Vec<(SimThingId, SimThingId)>) {
+) -> (
+    SimThing,
+    Vec<(SimThingId, SimThingId)>,
+    Vec<(simthing_core::OverlayId, simthing_core::OverlayId)>,
+) {
     let mut pairs = Vec::new();
-    let cloned = clone_subtree_with_fresh_ids_inner(source, old_owner_id, new_owner_id, &mut pairs);
-    (cloned, pairs)
+    let mut overlay_pairs = Vec::new();
+    let cloned = clone_subtree_with_fresh_ids_inner(
+        source,
+        old_owner_id,
+        new_owner_id,
+        &mut pairs,
+        &mut overlay_pairs,
+    );
+    (cloned, pairs, overlay_pairs)
 }
 
 fn clone_subtree_with_fresh_ids_inner(
-    source:       &SimThing,
-    old_owner_id: SimThingId,
-    new_owner_id: SimThingId,
-    pairs:        &mut Vec<(SimThingId, SimThingId)>,
+    source:        &SimThing,
+    old_owner_id:  SimThingId,
+    new_owner_id:  SimThingId,
+    pairs:         &mut Vec<(SimThingId, SimThingId)>,
+    overlay_pairs: &mut Vec<(simthing_core::OverlayId, simthing_core::OverlayId)>,
 ) -> SimThing {
     let mut cloned = source.clone();
     let old_id = cloned.id;
     cloned.id = SimThingId::new();
     pairs.push((old_id, cloned.id));
+    // Re-stamp overlay ids so the clone owns distinct `OverlayId`s from
+    // the source. Without this, `ActivateOverlay { overlay_id }` would be
+    // ambiguous across source and clone subtrees (S5 follow-up).
+    for overlay in &mut cloned.overlays {
+        let old_oid = overlay.id;
+        overlay.id = simthing_core::OverlayId::new();
+        overlay_pairs.push((old_oid, overlay.id));
+    }
     remap_overlay_affects(&mut cloned, old_owner_id, new_owner_id);
     cloned.children = source
         .children
         .iter()
-        .map(|child| clone_subtree_with_fresh_ids_inner(child, old_owner_id, new_owner_id, pairs))
+        .map(|child| {
+            clone_subtree_with_fresh_ids_inner(
+                child,
+                old_owner_id,
+                new_owner_id,
+                pairs,
+                overlay_pairs,
+            )
+        })
         .collect();
     cloned
 }
