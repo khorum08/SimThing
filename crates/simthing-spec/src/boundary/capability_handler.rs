@@ -4,7 +4,7 @@ use crate::runtime::{
     CapabilityTreeInstance, CapabilityTreeNotification, CapabilityTreeState,
 };
 use crate::spec::capability::{ActivationMode, MaxActivePolicy, ReplacementPolicy};
-use simthing_core::{DimensionRegistry, SimThingId};
+use simthing_core::{DimensionRegistry, OverlayId, SimThingId};
 use simthing_feeder::{BoundaryRequest, CapabilityUnlockEvent};
 use std::collections::{HashMap, HashSet};
 
@@ -203,15 +203,19 @@ impl<'a> CapabilityTreeBoundaryHandler<'a> {
         ctx: &mut CapabilityBoundaryContext<'_>,
         sweep_after: bool,
     ) -> Result<(), CapabilityTreeError> {
-        let entry = definition
+        // Validate the entry exists in the definition (O1b: we no longer
+        // read `entry.overlay_ids` here — those are template ids. Per-clone
+        // overlay ids live on `instance.by_overlay`, re-stamped at install
+        // time via `OverlayId::new()`.)
+        let _entry = definition
             .entries
             .get(&entry_key)
             .ok_or_else(|| CapabilityTreeError::EntryNotInTree(entry_key.to_string()))?;
 
-        for overlay_id in &entry.overlay_ids {
+        for overlay_id in clone_overlay_ids_for_entry(instance, &entry_key) {
             ctx.requests.push(BoundaryRequest::ActivateOverlay {
                 target: instance.tree_thing_id,
-                overlay_id: *overlay_id,
+                overlay_id,
             });
         }
 
@@ -243,10 +247,13 @@ impl<'a> CapabilityTreeBoundaryHandler<'a> {
                     return Ok(());
                 }
                 if let Some(oldest) = category_active.first().cloned() {
-                    for overlay_id in &definition.entries[&oldest].overlay_ids {
+                    // O1b: same per-clone resolution as the activation path.
+                    // `definition.entries[oldest].overlay_ids` holds template
+                    // ids; the live clone's ids live on `instance.by_overlay`.
+                    for overlay_id in clone_overlay_ids_for_entry(instance, &oldest) {
                         ctx.requests.push(BoundaryRequest::SuspendOverlay {
                             target: instance.tree_thing_id,
-                            overlay_id: *overlay_id,
+                            overlay_id,
                         });
                     }
                     category_active.remove(0);
@@ -307,4 +314,27 @@ impl<'a> CapabilityTreeBoundaryHandler<'a> {
 
 fn shadow_index(slot: u32, n_dims: usize, col: usize) -> usize {
     slot as usize * n_dims + col
+}
+
+/// Collect the per-clone `OverlayId`s belonging to `entry_key` on this
+/// instance. `instance.by_overlay` is the inverse map (clone-id →
+/// entry-key) stamped at install time by `install_tree_for_owner`; we
+/// scan it for matches and sort numerically so the activation /
+/// suspension request order is deterministic across runs.
+///
+/// Sorting by the underlying `OverlayId` counter is equivalent to
+/// install-time authoring order because `OverlayId::new()` is a
+/// monotonic atomic counter and install processes template overlays in
+/// their authored sequence.
+fn clone_overlay_ids_for_entry(
+    instance:  &CapabilityTreeInstance,
+    entry_key: &CapabilityEntryKey,
+) -> Vec<OverlayId> {
+    let mut ids: Vec<OverlayId> = instance
+        .by_overlay
+        .iter()
+        .filter_map(|(oid, ek)| (ek == entry_key).then_some(*oid))
+        .collect();
+    ids.sort();
+    ids
 }

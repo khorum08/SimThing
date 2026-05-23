@@ -18,7 +18,7 @@ use simthing_spec::{
     CapabilityUnlockRegistration, DomainPackSpec, EventSpec, GameModeSpec, InstallTargetSpec,
     SpecError,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
 use crate::scenario::Scenario;
@@ -100,7 +100,7 @@ pub fn compile_and_install(
             });
         }
         for owner_id in owners {
-            install_tree_for_owner(compiled, owner_id, root, allocator, &mut state)?;
+            install_tree_for_owner(compiled, owner_id, registry, root, allocator, &mut state)?;
         }
     }
 
@@ -214,6 +214,7 @@ fn collect_matching_kind(node: &SimThing, authored: &str, out: &mut Vec<SimThing
 fn install_tree_for_owner(
     compiled:  &CompiledTree<'_>,
     owner_id:  SimThingId,
+    registry:  &DimensionRegistry,
     root:      &mut SimThing,
     allocator: &mut SlotAllocator,
     state:     &mut SpecSessionState,
@@ -233,9 +234,17 @@ fn install_tree_for_owner(
 
     let mut overlay_id_map: HashMap<OverlayId, OverlayId> = HashMap::new();
     let cloned_tree_id = cloned.id;
+    let mut effect_target_props: HashSet<simthing_core::SimPropertyId> = HashSet::new();
     for template_overlay in &template.overlays {
         let new_id = OverlayId::new();
         overlay_id_map.insert(template_overlay.id, new_id);
+        // Collect every property that an overlay transform targets so we
+        // can register defaults on the clone below. Without this, the GPU
+        // overlay-prep stage (`overlay_prep.rs`) filters out the transform
+        // because `node.properties.contains_key(property_id)` is false on
+        // the freshly cloned tree. v0 install: all effects affect the clone,
+        // so every transform's property must be present on the clone.
+        effect_target_props.insert(template_overlay.transform.property_id);
         let cloned_overlay = Overlay {
             id:        new_id,
             kind:      template_overlay.kind.clone(),
@@ -245,6 +254,16 @@ fn install_tree_for_owner(
             lifecycle: template_overlay.lifecycle.clone(),
         };
         cloned.add_overlay(cloned_overlay);
+    }
+
+    // Ensure every effect-target property is present on the clone with its
+    // registry default. Properties already copied from the template
+    // (notably the capability category property carrying progress sub-fields)
+    // are left untouched.
+    for prop_id in effect_target_props {
+        if !cloned.properties.contains_key(&prop_id) && registry.is_active(prop_id) {
+            cloned.add_property(prop_id, registry.property(prop_id).default_value());
+        }
     }
 
     // 2. Attach as a child of the owner. If the owner is the root itself,

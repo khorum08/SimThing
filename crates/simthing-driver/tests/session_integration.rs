@@ -530,15 +530,14 @@ fn count_tree_children(root: &CoreSimThing, owner_id: simthing_core::SimThingId)
         .unwrap_or(0)
 }
 
-/// E2E acceptance test for O1: threshold unlock via `open_from_spec`.
+/// E2E acceptance test for O1 + O1b: threshold unlock via `open_from_spec`.
 ///
-/// Currently **ignored**: install re-stamps overlay ids on each clone
-/// (`instance.by_overlay`), but `CapabilityTreeBoundaryHandler::emit_activation`
-/// still emits `ActivateOverlay` with template ids from `CapabilityDefinition`.
-/// Registry/coord dimensions match after install (`n_dims == total_columns`);
-/// this is not the suspected O1c dimension-sync bug.
+/// Exercises the full pipeline: spec install (clone tree, re-stamp overlay ids,
+/// seed effect-target properties), GPU integration of the seeded progress
+/// overlay, threshold firing, handler emits ActivateOverlay with per-clone
+/// overlay ids resolved from `instance.by_overlay`, and GPU Pass 3 applies the
+/// activated transform to the cloned tree's slot on the next tick.
 #[test]
-#[ignore = "O1 install gap: handler emits template overlay_ids; per-clone ids are on instance.by_overlay (Codex fix)"]
 fn open_from_spec_capability_unlock_activates_overlay_for_next_tick() {
     if !try_gpu() {
         eprintln!("skipping: no GPU");

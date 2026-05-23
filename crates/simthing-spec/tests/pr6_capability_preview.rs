@@ -97,6 +97,7 @@ fn tree_spec(categories: Vec<CapabilityCategorySpec>) -> simthing_spec::Capabili
 struct Fixture {
     registry: DimensionRegistry,
     definition: CapabilityTreeDefinition,
+    template_by_overlay: HashMap<simthing_core::OverlayId, simthing_spec::CapabilityEntryKey>,
     tree: SimThing,
     owner_id: SimThingId,
     n_dims: usize,
@@ -110,6 +111,7 @@ impl Fixture {
         Self {
             registry,
             definition: out.definition,
+            template_by_overlay: out.template_by_overlay,
             tree: out.tree,
             owner_id: SimThingId::new(),
             n_dims,
@@ -303,7 +305,7 @@ fn national_ideas_full_path_activate_switch_verify() {
             definition_id: fixture.definition.id,
             tree_thing_id: fixture.tree.id,
             tree_slot: 0,
-            by_overlay: HashMap::new(),
+            by_overlay: fixture.template_by_overlay.clone(),
         },
     );
     let mut states = HashMap::from([(fixture.owner_id, fixture.state())]);

@@ -86,6 +86,7 @@ fn tree_spec(categories: Vec<CapabilityCategorySpec>) -> simthing_spec::Capabili
 struct Fixture {
     registry: DimensionRegistry,
     definition: CapabilityTreeDefinition,
+    template_by_overlay: HashMap<simthing_core::OverlayId, simthing_spec::CapabilityEntryKey>,
     owner_id: SimThingId,
     tree_id: SimThingId,
     tree_slot: u32,
@@ -102,6 +103,7 @@ impl Fixture {
         Self {
             registry,
             definition: out.definition,
+            template_by_overlay: out.template_by_overlay,
             owner_id,
             tree_id,
             tree_slot: 0,
@@ -123,12 +125,16 @@ impl Fixture {
     }
 
     fn instance(&self) -> CapabilityTreeInstance {
+        // Tests treat the template overlay ids as the live clone ids
+        // (single-faction / single-tree scenarios). O1b: handler reads
+        // overlay ids from `instance.by_overlay`, so populate it from
+        // the builder's template map.
         CapabilityTreeInstance {
             owner_id: self.owner_id,
             definition_id: self.definition.id,
             tree_thing_id: self.tree_id,
             tree_slot: self.tree_slot,
-            by_overlay: HashMap::new(),
+            by_overlay: self.template_by_overlay.clone(),
         }
     }
 
@@ -467,7 +473,7 @@ fn capability_tree_state_is_per_faction_not_shared() {
             definition_id: fixture.definition.id,
             tree_thing_id: tree_b,
             tree_slot: 1,
-            by_overlay: HashMap::new(),
+            by_overlay: fixture.template_by_overlay.clone(),
         },
     );
     let mut definitions = HashMap::new();
