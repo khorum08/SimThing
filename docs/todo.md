@@ -1,11 +1,16 @@
 # SimThing Todo Log
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; Phase 1 ADRs,
-**O3**, Composer **S3/S4**, **O1** (session installation), and post-O1 doc
-sync landed. `master` and `origin/master` synced at **`61e62c1`** (PR #59).
+**O3**, Composer **S3/S4**, **O1**, post-O1 doc sync, and **Cursor safe-followup
+handoff (PRs #56–#59) complete**. `master` and `origin/master` synced at
+**`3174af0`**.
 
 **Tests:** `cargo test --workspace` → **323** passed, **3** ignored, zero
 warnings. Debug and **release** profile build/tests clean.
+
+**Cursor handoff:** all four designated PRs landed (#56 O1b test, #57 install
+examples, #58 kind/effect docs, #59 S5 regression). Two tests **ignored/RED**
+await Codex fixes. No further Cursor-scoped work from that handoff.
 
 **Canonical spec progress:** `docs/workshop/simthing_spec_progress_log.md`
 (replaces PR-scoped workshop handoffs — see `docs/workshop/README.md`).
@@ -44,7 +49,7 @@ to `CapabilityTreeInstance` (per-clone). `CapabilityTreeBuildOutput` exposes
 - `compile_and_install` mutates registry/root in place on error (safe for `open_from_spec` discard; Studio preview needs clone-then-commit later).
 
 **Worktree:** clean for tracked files. Untracked `.claude/worktrees/`,
-`demo.replay.ldjson`, and draft workshop files may be present locally.
+`demo.replay.ldjson`, draft `simthing_modder_object_guide.md` (local only).
 
 ---
 
@@ -501,4 +506,9 @@ simthing-studio   ← deferred GUI
 19. ~~**Cursor:** InstallTargetSpec examples/docs PR~~ — `docs/examples/` + parse smoke test.
 20. ~~**Cursor:** Built-in kind string + v0 effect-target docs PR~~ — `capability_tree_v1.md` §13–§14.
 21. ~~**Cursor:** Optional S5 regression test PR~~ — ignored/RED topology drift test + helper.
-22. Scenario format expansion / map-scale representation — tabled.
+22. ~~**Cursor safe-followup handoff**~~ — complete (PRs #56–#59); parked.
+23. **Next — Codex P0:** O1b handler overlay-id fix → un-ignore O1b test.
+24. **Next — Codex P1:** S5 append disable for `clone_capability_children` → un-ignore S5 test.
+25. **Next — Codex P2:** O4 then O2 (after O1b green).
+26. **Next — Opus P3:** EffectTarget ADR.
+27. Scenario format expansion / map-scale representation — tabled.
