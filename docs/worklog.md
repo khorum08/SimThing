@@ -6,6 +6,57 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — PR 9 Sonnet prep (event handler scaffold)
+
+**Status:** Pre-PR-9 prep complete. Branch still parked at `8a8061c` / `d871518`;
+no new code commits yet.
+
+**Verified:** `cargo test --workspace` → 277 passed, 1 ignored, zero warnings.
+State matches the `opus_current_state_handoff.md` description exactly.
+
+**Changes made:**
+
+- `crates/simthing-spec/src/lib.rs` — replaced stale "PR 1 non-goals" crate doc
+  comment with an accurate summary of what PRs 1–8 delivered and what is
+  deferred.
+- `crates/simthing-spec/src/boundary/event_handler.rs` — new file; compilable
+  implementation of `ScriptedEventBoundaryHandler`, `ScriptedEventBoundaryContext`,
+  `ScriptedEventDiagnostic`, and `ScriptedEventDiagnosticKind`.
+- `crates/simthing-spec/src/boundary/mod.rs` — wired `pub mod event_handler` and
+  re-exported the three new public types.
+- `crates/simthing-spec/src/lib.rs` — added `ScriptedEventBoundaryContext`,
+  `ScriptedEventBoundaryHandler`, `ScriptedEventDiagnostic` to the `boundary::`
+  pub use block.
+
+**Design decisions encoded in the scaffold:**
+
+- **Predicate triggers only** — `CompiledTrigger::Threshold` events are skipped
+  silently. Scripted-event threshold triggers need GPU registration (a separate
+  later PR) and must not be faked with shadow polling.
+- **Cooldowns implemented** — `ctx.cooldowns: &mut HashMap<EventKey, u32>` tracks
+  remaining ticks per event; `tick_cooldowns` decrements and prunes at the start
+  of each call; cooldown is armed with `CooldownSpec.ticks` after a successful
+  fire. Per-owner semantics are achieved by the caller maintaining separate
+  context instances.
+- **Priority implemented** — definitions are sorted by `EventPriority` descending
+  before iteration (`Critical > High > Normal > Low`).
+- **Missing target → diagnostic** — `ScopeRef` resolution against
+  `slot_to_thing: &HashMap<u32, SimThingId>` pushes a
+  `ScriptedEventDiagnosticKind::UnresolvedEffectTarget { slot }` on miss.
+- **Eval errors → diagnostic, not abort** — `ScriptPredicate::eval` errors push
+  `ScriptedEventDiagnosticKind::TriggerEvalError(ScriptEvalError)` and skip the
+  event; subsequent events still run.
+
+**What PR 9 (Opus) still needs to do:**
+
+- Write `tests/pr9_event_handler.rs` covering all 8 acceptance tests from the
+  handoff doc.
+- Verify edge cases (empty definitions slice, all-on-cooldown, error recovery).
+- Update `docs/todo.md` and `docs/worklog.md` with the PR 9 landing entry.
+- Commit, push, and merge.
+
+---
+
 ## 2026-05-22 — Parking state after simthing-spec PRs 5-8
 
 **Status:** `master` and `origin/master` are parked at `8a8061c`

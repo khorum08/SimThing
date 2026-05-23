@@ -1,24 +1,33 @@
 //! Authored SimThing specification layer.
 //!
 //! This crate owns external RON-facing schemas, validation, diagnostics,
-//! logical keys, and future compilation into live SimThing runtime artifacts.
+//! logical keys, and compilation of spec structures into live SimThing runtime
+//! artifacts.
 //!
-//! PR 1 intentionally contains authoring data structures only. Runtime builders,
-//! boundary handlers, threshold plumbing, Script IR, and Studio integration
-//! land in later PRs.
+//! ## What is here (PRs 1–8)
 //!
-//! ## PR 1 non-goals
+//! - **Authoring structs** (`spec::*`): `PropertySpec`, `OverlaySpec`,
+//!   `CapabilityTreeSpec`, `EventSpec`, `TriggerSpec`, `EffectSpec`, Script IR.
+//! - **Compilers** (`compile::*`): `compile_property`, `compile_overlay`,
+//!   `compile_trigger`, `compile_effect`, `compile_event`,
+//!   `CapabilityTreeBuilder`.
+//! - **Runtime artifacts** (`runtime::*`): `CapabilityTreeDefinition`,
+//!   `CapabilityTreeInstance`, `CapabilityTreeState`,
+//!   `ScriptedEventDefinition`, `CompiledTrigger`, `CompiledEffect`.
+//! - **Boundary handlers** (`boundary::*`): `CapabilityTreeBoundaryHandler`
+//!   (threshold activation, prereq reset, fixpoint sweeps, player selection).
+//! - **Impact preview** (`preview::*`): `CapabilityPreviewReport`.
+//! - **RON loaders**, validation, diagnostics, logical keys.
 //!
-//! PR 1 does not:
-//! - register `SimProperty` entries in a live `DimensionRegistry`
-//! - build `Overlay` instances or attach them to `SimThing` nodes
-//! - create live `SimThing` trees
-//! - emit `BoundaryRequest` values
-//! - integrate with `ThresholdBuilder` or GPU threshold registration
-//! - mutate CPU shadow buffers
-//! - create capability runtime state (`OnPrereqMet`, active-by-category, etc.)
-//! - execute capability unlocks at boundary time
-//! - implement Script IR, EML, scripted events, or effect/trigger compilers
+//! ## Deferred (PR 9+)
+//!
+//! - Scripted event execution at boundary time (`ScriptedEventBoundaryHandler`
+//!   scaffold present; full trigger evaluation and effect dispatch in PR 9).
+//! - Session/driver assembly for capability tree instances and per-faction
+//!   state maps.
+//! - Moving threshold semantic surface into a lower crate to remove the
+//!   temporary `simthing-spec → simthing-sim/gpu` dep violation.
+//! - B2 append-only capability unlock integration.
 
 pub mod boundary;
 pub mod compile;
@@ -33,7 +42,11 @@ pub mod spec;
 pub mod validate;
 pub mod version;
 
-pub use boundary::{CapabilityBoundaryContext, CapabilityTreeBoundaryHandler, CapabilityTreeError};
+pub use boundary::{
+    CapabilityBoundaryContext, CapabilityTreeBoundaryHandler, CapabilityTreeError,
+    ScriptedEventBoundaryContext, ScriptedEventBoundaryHandler, ScriptedEventDiagnostic,
+    ScriptedEventDiagnosticKind,
+};
 pub use compile::{
     compile_effect, compile_event, compile_overlay, compile_property, compile_trigger,
     CapabilityTreeBuildOutput, CapabilityTreeBuilder, CompileContext,
