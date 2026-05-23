@@ -2,9 +2,9 @@
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; Phase 1 ADRs,
 **O3**, Composer **S3/S4**, **O1** (session installation), and post-O1 doc
-sync landed. `master` and `origin/master` synced at **`7eb015a`** (PR #54).
+sync landed. `master` and `origin/master` synced at **`04867b1`** (PR #55).
 
-**Tests:** `cargo test --workspace` → **320** passed, **1** ignored, zero
+**Tests:** `cargo test --workspace` → **321** passed, **2** ignored, zero
 warnings. Debug and **release** profile build/tests clean.
 
 **Canonical spec progress:** `docs/workshop/simthing_spec_progress_log.md`
@@ -26,18 +26,20 @@ to `CapabilityTreeInstance` (per-clone). `CapabilityTreeBuildOutput` exposes
 
 | Priority | ID | Owner | Scope |
 |----------|-----|-------|-------|
-| **P0** | **O1b** | **Codex** | Threshold unlock E2E via `open_from_spec` (ADR acceptance test; spec property not in scenario registry) |
-| **P0** | **O1c** | **Codex** | Registry/GPU dimension sync after `compile_and_install` — resize `coord` + `state.rebuild_for_registry` before `initial_gpu_sync` (Option B); O1b likely exposes this |
+| **P0** | **O1b** | **Codex** | Fix `open_from_spec` threshold unlock E2E — handler must emit `ActivateOverlay` with **per-clone** overlay ids from `instance.by_overlay`, not template ids in `CapabilityDefinition` |
+| **P0** | **O1b-test** | **Cursor** | ✅ Test landed (`open_from_spec_capability_unlock_activates_overlay_for_next_tick`, **ignored/RED**) — un-ignore when Codex fix lands |
+| **P1** | **O1c** | **Codex** | Registry/GPU dimension sync after install — **ruled out** by O1b run (`n_dims == registry.total_columns`); keep only if a future case reopens |
 | **P1** | **S5/O5** | **Codex** | Append-only thresholds + disable Approach C append when `clone_capability_children` (conservative fix first) |
 | **P2** | **O4** | **Codex** | Per-owner scripted events (Option B ADR) |
 | **P2** | **O2** | **Codex** | Replay v3 (`SpecSnapshot`/`SpecDelta`; `by_overlay` precondition met) |
 | **P3** | **EffectTarget** | **Opus** | ADR for capability effect target scope (Owner vs CapabilityTree vs SessionRoot) before Studio/modder exposure |
 
-**Do not start O4/O2 until O1b (+ O1c if needed) is green.**
+**Do not start O4/O2 until O1b handler fix is green (un-ignore E2E test).**
 
 **Known O1 risks (documented, not yet fixed in code):**
 
-- `open_from_spec` runs `SimSession::open` before spec properties register — GPU/`coord.n_dims` may lag `registry.total_columns` until boundary dimension rebuild.
+- **O1b RED (2026-05-23):** install re-stamps overlay ids on each clone (`instance.by_overlay`), but `CapabilityTreeBoundaryHandler::emit_activation` still uses template `overlay_ids` from `CapabilityDefinition` → `ActivateOverlay` misses cloned tree overlays.
+- `open_from_spec` runs `SimSession::open` before spec properties register — O1b test showed `coord.n_dims` matches expanded registry after `install_spec_state`; dimension lag is not the current blocker.
 - Capability overlay `affects` currently target the **cloned tree**, not the owner (intentional v0; modder semantics TBD via Opus ADR).
 - `compile_and_install` mutates registry/root in place on error (safe for `open_from_spec` discard; Studio preview needs clone-then-commit later).
 
@@ -488,11 +490,13 @@ simthing-studio   ← deferred GUI
 10. ~~Composer S3 + S4~~ — topology full-rebuild guard; capability instance reverse map (PR #52, `7914528`).
 11. ~~**O1** — RON-driven session installation~~ (PR #53, `6ba4e0d`). 320 tests.
 12. ~~Post-O1 doc parking sync~~ (PR #54, `7eb015a`).
-13. **Next — Codex P0:** **O1b** (threshold unlock E2E via `open_from_spec`) then
-     **O1c** (registry/GPU dimension sync after spec install if O1b exposes mismatch).
-14. **Next — Codex P1:** **S5/O5** — conservative Approach C eligibility fix +
+13. ~~Codex evaluation doc sync~~ (PR #55, `04867b1`).
+14. ~~O1b E2E test (Cursor)~~ — landed **ignored/RED**; exposes overlay-id remapping gap.
+15. **Next — Codex P0:** fix handler to resolve `ActivateOverlay` ids via `instance.by_overlay`; un-ignore O1b test.
+16. **Next — Codex P1:** **S5/O5** — conservative Approach C eligibility fix +
      append-only external thresholds.
-15. **Next — Codex P2:** **O4** (per-owner scripted events) then **O2** (replay v3).
-16. **Next — Opus P3:** **EffectTarget ADR** — Owner vs CapabilityTree effect scope
+17. **Next — Codex P2:** **O4** (per-owner scripted events) then **O2** (replay v3).
+18. **Next — Opus P3:** **EffectTarget ADR** — Owner vs CapabilityTree effect scope
      before Studio/modder docs.
-17. Scenario format expansion / map-scale representation — tabled.
+19. **Next — Cursor:** InstallTargetSpec examples PR; kind/effect-target docs PR; optional S5 regression test PR.
+20. Scenario format expansion / map-scale representation — tabled.

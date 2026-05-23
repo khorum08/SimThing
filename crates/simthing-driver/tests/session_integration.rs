@@ -365,6 +365,119 @@ fn make_game_mode_spec(install: InstallTargetSpec) -> GameModeSpec {
     }
 }
 
+/// Game mode with a `Threshold` capability entry and `core::power` introduced
+/// only via spec properties (not the base scenario registry).
+fn make_threshold_unlock_game_mode() -> GameModeSpec {
+    GameModeSpec {
+        id: "threshold_unlock".into(),
+        display_name: "Threshold Unlock".into(),
+        description: String::new(),
+        spec_version: SpecVersion::default(),
+        metadata: Default::default(),
+        domain_packs: Vec::new(),
+        properties: vec![PropertySpec {
+            id: "core_power".into(),
+            namespace: "core".into(),
+            name: "power".into(),
+            display_name: "Power".into(),
+            description: String::new(),
+            sub_fields: Vec::new(),
+        }],
+        overlays: Vec::new(),
+        capability_trees: vec![CapabilityTreeSpec {
+            tree_id: "tech_tree".into(),
+            tree_kind: "tech_tree".into(),
+            owner_kind: "Faction".into(),
+            install: InstallTargetSpec::AllOfKind {
+                kind: "Faction".into(),
+            },
+            categories: vec![CapabilityCategorySpec {
+                property_namespace: "tech".into(),
+                property_name: "propulsion".into(),
+                display_name: "Propulsion".into(),
+                tier: 0,
+                max_active: None,
+                entries: vec![CapabilitySpec {
+                    id: "chemical_drive".into(),
+                    display_name: "Chemical Drive".into(),
+                    description: String::new(),
+                    flavor_text: String::new(),
+                    research_cost: 10.0,
+                    activation: ActivationMode::Threshold,
+                    icon: String::new(),
+                    thumbnail: String::new(),
+                    card_image: String::new(),
+                    unlock_video: None,
+                    model_preview: None,
+                    prereqs: Vec::new(),
+                    unlocks_ship_components: Vec::new(),
+                    unlocks_buildings: Vec::new(),
+                    unlocks_units: Vec::new(),
+                    unlocks_weapons: Vec::new(),
+                    effects: vec![CapabilityEffectSpec {
+                        targets_property: "core::power".into(),
+                        sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(2.0))],
+                        when_activated: OverlayLifecycle::Permanent,
+                    }],
+                }],
+            }],
+        }],
+        events: Vec::new(),
+    }
+}
+
+fn find_simthing_mut<'a>(
+    node: &'a mut CoreSimThing,
+    id: simthing_core::SimThingId,
+) -> Option<&'a mut CoreSimThing> {
+    if node.id == id {
+        return Some(node);
+    }
+    for child in &mut node.children {
+        if let Some(found) = find_simthing_mut(child, id) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// Seed research progress on the cloned capability tree after `open_from_spec`.
+/// Does not use `install_spec_state`; only post-open test setup.
+fn seed_research_progress_after_open(session: &mut SimSession, progress_delta: f32) {
+    let instance = session
+        .spec_state
+        .capability_instances
+        .values()
+        .next()
+        .expect("one capability instance after install");
+    let cat_prop_id = session
+        .proto
+        .registry
+        .id_of("tech", "propulsion")
+        .expect("spec-installed category property");
+    let tree_id = instance.tree_thing_id;
+    let progress_overlay = Overlay {
+        id: OverlayId::new(),
+        kind: OverlayKind::Custom("research_progress".into()),
+        source: OverlaySource::System,
+        affects: vec![tree_id],
+        transform: PropertyTransformDelta {
+            property_id: cat_prop_id,
+            sub_field_deltas: vec![(
+                SubFieldRole::Named("chemical_drive".into()),
+                TransformOp::Add(progress_delta),
+            )],
+        },
+        lifecycle: OverlayLifecycle::Permanent,
+    };
+    find_simthing_mut(&mut session.proto.root, tree_id)
+        .expect("cloned capability tree in session root")
+        .add_overlay(progress_overlay);
+    session
+        .proto
+        .initial_gpu_sync(&session.coord, &mut session.state);
+}
+
 fn scenario_with_factions(n_factions: usize, n_slots: u32) -> (Scenario, Vec<simthing_core::SimThingId>) {
     let mut registry = simthing_core::DimensionRegistry::new();
     // Reserve a placeholder property so the registry isn't empty; `core::power`
@@ -415,6 +528,125 @@ fn count_tree_children(root: &CoreSimThing, owner_id: simthing_core::SimThingId)
                 .count()
         })
         .unwrap_or(0)
+}
+
+/// E2E acceptance test for O1: threshold unlock via `open_from_spec`.
+///
+/// Currently **ignored**: install re-stamps overlay ids on each clone
+/// (`instance.by_overlay`), but `CapabilityTreeBoundaryHandler::emit_activation`
+/// still emits `ActivateOverlay` with template ids from `CapabilityDefinition`.
+/// Registry/coord dimensions match after install (`n_dims == total_columns`);
+/// this is not the suspected O1c dimension-sync bug.
+#[test]
+#[ignore = "O1 install gap: handler emits template overlay_ids; per-clone ids are on instance.by_overlay (Codex fix)"]
+fn open_from_spec_capability_unlock_activates_overlay_for_next_tick() {
+    if !try_gpu() {
+        eprintln!("skipping: no GPU");
+        return;
+    }
+
+    let game_mode = make_threshold_unlock_game_mode();
+    let (mut scenario, _faction_ids) = scenario_with_factions(1, 16);
+    scenario.max_days = 2;
+    assert!(
+        scenario.registry.id_of("core", "power").is_none(),
+        "base scenario must not define core::power — property comes from GameModeSpec"
+    );
+    assert!(
+        scenario.registry.id_of("tech", "propulsion").is_none(),
+        "base scenario must not define tech::propulsion — category comes from spec install"
+    );
+
+    let mut session =
+        SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
+
+    assert!(
+        session
+            .proto
+            .registry
+            .id_of("core", "power")
+            .is_some(),
+        "open_from_spec must register spec properties before run"
+    );
+    assert_eq!(session.spec_state.capability_instances.len(), 1);
+    assert_eq!(
+        session.spec_state.capability_unlock_registrations.len(),
+        1,
+        "Threshold entry must produce unlock registration via open_from_spec install"
+    );
+
+    let instance = session
+        .spec_state
+        .capability_instances
+        .values()
+        .next()
+        .expect("installed instance");
+    let tree_slot = instance.tree_slot;
+
+    seed_research_progress_after_open(&mut session, 11.0);
+
+    let summary = session.run(2).expect("session run");
+    assert_eq!(summary.boundaries_run, 2);
+
+    let instance = session
+        .spec_state
+        .capability_instances
+        .values()
+        .next()
+        .expect("installed instance");
+    let definition = session
+        .spec_state
+        .capability_definitions
+        .get(&instance.definition_id)
+        .expect("definition");
+    let entry = definition.entries.values().next().expect("one entry");
+    let cloned_tree = find_simthing_mut(&mut session.proto.root, instance.tree_thing_id)
+        .expect("cloned tree");
+    let cloned_overlay_ids: HashSet<OverlayId> =
+        cloned_tree.overlays.iter().map(|o| o.id).collect();
+    for template_id in &entry.overlay_ids {
+        assert!(
+            !cloned_overlay_ids.contains(template_id),
+            "install re-stamps overlay ids on clone; definition still holds template ids"
+        );
+    }
+
+    assert!(
+        session.spec_state.handler_errors.is_empty(),
+        "unexpected handler errors: {:?}",
+        session.spec_state.handler_errors
+    );
+    assert!(
+        session.spec_state.capability_diagnostics.is_empty(),
+        "unexpected capability diagnostics: {:?}",
+        session.spec_state.capability_diagnostics
+    );
+
+    let power_id = session
+        .proto
+        .registry
+        .id_of("core", "power")
+        .expect("core::power");
+    let power_col = session
+        .proto
+        .registry
+        .column_range(power_id)
+        .col_for_role(
+            &SubFieldRole::Amount,
+            &session.proto.registry.property(power_id).layout,
+        )
+        .expect("power amount col");
+    let values = session.state.read_values();
+    let idx = tree_slot as usize * session.coord.n_dims() as usize + power_col;
+    assert!(
+        values[idx] >= 2.0,
+        "threshold unlock via open_from_spec should activate overlay for next tick; \
+         expected core::power >= 2.0 at cloned tree slot, got {} \
+         (registry cols={}, coord n_dims={})",
+        values[idx],
+        session.proto.registry.total_columns,
+        session.coord.n_dims(),
+    );
 }
 
 #[test]

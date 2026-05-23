@@ -4,8 +4,8 @@
 assembly, and O1 session installation.  
 **Replaces:** superseded PR handoff/workshop docs (see [`README.md`](README.md); those files live in local-only `archive/`).  
 **Last updated:** 2026-05-23  
-**Master HEAD:** `7eb015a` (PR #54 doc sync; O1 code PR #53 @ `6ba4e0d`)  
-**Verification:** `cargo test --workspace` → **320** passed, **1** ignored, zero warnings.  
+**Master HEAD:** `04867b1` (PR #55 doc sync)  
+**Verification:** `cargo test --workspace` → **321** passed, **2** ignored, zero warnings.  
 `cargo build --workspace --tests` and release profile build/tests clean.
 
 ---
@@ -292,7 +292,7 @@ crates/simthing-sim/src/
 | Sim | `BoundaryHookContext`, `execute_with_boundary_hook`, external threshold registration setters |
 | GPU sync | Full threshold rebuild includes external capability/scripted registrations |
 | Handlers wired | `handle_capability_unlock_events`, `sweep_on_prereq_met`, `handle_tick`, queued player selection |
-| E2E | `spec_session_capability_unlock_activates_overlay_for_next_tick` in `session_integration.rs` |
+| E2E | `spec_session_capability_unlock_activates_overlay_for_next_tick` (manual install); `open_from_spec_capability_unlock_activates_overlay_for_next_tick` (**ignored/RED**, O1b) |
 
 ### E2E proof (Track A definition of done)
 
@@ -329,13 +329,14 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 
 | ID | Owner | Scope |
 |----|-------|-------|
-| **O1b** | Codex | Threshold unlock E2E via `open_from_spec` — spec registers properties not in scenario registry; progress crosses threshold → overlay → next-tick value change. Replaces manual `install_spec_state` acceptance path. |
-| **O1c** | Codex | After `compile_and_install`, sync GPU/coord to expanded registry before `initial_gpu_sync` (Option B: `coord.resize_dimensions` + shadow widen/seed + `state.rebuild_for_registry`, mirroring boundary dimension rebuild). Likely required if O1b fails. |
+| **O1b** | Codex | Fix threshold unlock via `open_from_spec` — `CapabilityTreeBoundaryHandler` must emit `ActivateOverlay` with per-clone overlay ids from `instance.by_overlay`, not template ids in `CapabilityDefinition`. Test landed **ignored/RED**. |
+| **O1b-test** | Cursor | ✅ `open_from_spec_capability_unlock_activates_overlay_for_next_tick` — un-ignore when handler fix lands |
 
 ### P1 — Codex (mechanical / perf correctness)
 
 | ID | Owner | Scope |
 |----|-------|-------|
+| **O1c** | Codex | Registry/GPU dimension sync after install — **ruled out** by O1b (`n_dims == total_columns` after install); reopen only if a future case fails |
 | **S5/O5** | Codex | Wire append-only threshold helpers; **conservative fix:** disable Approach C topology/threshold append when fission uses `clone_capability_children` (force full rebuild). See `replay_fission_with_cloned_capability_subtree_reconstructs_full_payload`. |
 
 ### P2 — Codex (ADR landed)
@@ -375,8 +376,8 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 
 ### Known footguns
 
-- **O1 dimension sync** — `open_from_spec` calls `SimSession::open` before spec properties register; `coord.n_dims` / `WorldGpuState` may not match `registry.total_columns` until O1c fix or first boundary dimension rebuild.
-- **O1b not proven** — existing E2E unlock test still uses manual `install_spec_state`; O1 install tests check structure only (`PlayerSelection`, no threshold path).
+- **O1b RED** — install re-stamps overlay ids per clone (`instance.by_overlay`), but handler `emit_activation` still uses template `CapabilityDefinition.overlay_ids`; O1b E2E test ignored until Codex fix.
+- **O1 dimension sync** — O1b run showed `coord.n_dims == registry.total_columns` after `install_spec_state`; not the current blocker.
 - **Overlay `affects`** — per-clone overlays target `cloned_tree_id`, not `owner_id`; internally consistent but not modder-obvious until EffectTarget ADR (Opus).
 - **Partial install mutation** — `compile_and_install` mutates registry/root in place; safe when session is discarded on `Err`; unsafe pattern for future Studio preview without clone-then-commit.
 - **Replay** — structural overlay activations replay; spec runtime state does not (O2).
@@ -427,4 +428,4 @@ cargo test --workspace --release
 git status --short --branch
 ```
 
-Expected: **320** passed, **1** ignored, zero warnings, clean tracked tree.
+Expected: **321** passed, **2** ignored, zero warnings, clean tracked tree.
