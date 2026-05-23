@@ -101,6 +101,18 @@ pub struct ScriptedEventDiagnostic {
     pub kind:     ScriptedEventDiagnosticKind,
 }
 
+impl ScriptedEventDiagnostic {
+    /// Owner-removed diagnostic. Emitted by the driver's per-instance
+    /// slot refresh when an instance's owner no longer has a slot.
+    /// O4 / `docs/adr/scripted_event_scope_model.md`.
+    pub fn owner_removed(owner_id: simthing_core::SimThingId, event_id: EventKey) -> Self {
+        Self {
+            event_id,
+            kind: ScriptedEventDiagnosticKind::OwnerRemoved { owner_id },
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum ScriptedEventDiagnosticKind {
     /// Predicate evaluation failed at runtime.
@@ -112,6 +124,10 @@ pub enum ScriptedEventDiagnosticKind {
     /// definition in `self.definitions`. Most commonly a stale registration
     /// whose definition was unloaded.
     UnknownEventId,
+    /// A scripted-event instance was dropped because its owner is no
+    /// longer in the allocator (fission removal, manual delete). Emitted
+    /// by the driver during per-instance slot refresh. O4.
+    OwnerRemoved { owner_id: simthing_core::SimThingId },
 }
 
 impl std::fmt::Display for ScriptedEventDiagnosticKind {
@@ -122,6 +138,9 @@ impl std::fmt::Display for ScriptedEventDiagnosticKind {
                 write!(f, "effect target slot {slot} has no SimThing mapping")
             }
             Self::UnknownEventId => write!(f, "threshold fired for unknown event id"),
+            Self::OwnerRemoved { owner_id } => {
+                write!(f, "instance owner {owner_id:?} has no slot — instance dropped")
+            }
         }
     }
 }

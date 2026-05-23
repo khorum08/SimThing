@@ -123,19 +123,20 @@ pub fn compile_and_install(
         return Err(InstallError::SlotOverflow { owner_id });
     }
 
-    // ── 5. Scripted events: compile and install at session-global scope. The
-    //      scope ADR (`docs/adr/scripted_event_scope_model.md`) will replace
-    //      this with per-owner instances in O4.
+    // ── 5. Scripted events: one definition + N per-owner instances per
+    //      `EventSpec.install` (O4, `docs/adr/scripted_event_scope_model.md`).
+    //      Default install is `SessionRoot` — pre-O4 behavior.
     let root_slot = allocator
         .slot_of(root.id)
         .ok_or(InstallError::RootHasNoSlot)?;
+    state.set_session_root_owner(root.id);
     state.set_scripted_current_slot(root_slot);
     for event_spec in &game_mode.events {
-        compile_and_install_event(event_spec, registry, &mut state)?;
+        compile_and_install_event(event_spec, registry, scenario, root, allocator, &mut state)?;
     }
     for pack in &game_mode.domain_packs {
         for event_spec in &pack.events {
-            compile_and_install_event(event_spec, registry, &mut state)?;
+            compile_and_install_event(event_spec, registry, scenario, root, allocator, &mut state)?;
         }
     }
 
@@ -168,12 +169,35 @@ fn build_tree<'spec>(
 }
 
 fn compile_and_install_event(
-    spec:     &EventSpec,
-    registry: &DimensionRegistry,
-    state:    &mut SpecSessionState,
+    spec:      &EventSpec,
+    registry:  &DimensionRegistry,
+    scenario:  &Scenario,
+    root:      &SimThing,
+    allocator: &SlotAllocator,
+    state:     &mut SpecSessionState,
 ) -> Result<(), InstallError> {
     let (definition, _diag) = compile_event(spec, registry)?;
-    state.add_scripted_event(definition);
+    let owners = resolve_install_target(&spec.install, scenario, root)?;
+    if owners.is_empty() {
+        return Err(InstallError::NoMatchingOwners {
+            tree_id: spec.id.clone(),
+            target:  spec.install.clone(),
+        });
+    }
+    // O4: one definition, N per-owner instances pointing at it.
+    let event_id = definition.id.clone();
+    let definition_id = state.register_scripted_event_definition(definition);
+    for owner_id in owners {
+        let slot = allocator
+            .slot_of(owner_id)
+            .ok_or(InstallError::RootHasNoSlot)?;
+        let _ = state.attach_scripted_event_instance(
+            definition_id,
+            event_id.clone(),
+            owner_id,
+            slot,
+        );
+    }
     Ok(())
 }
 

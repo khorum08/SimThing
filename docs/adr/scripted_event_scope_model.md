@@ -1,9 +1,21 @@
 # Scripted Event Scope Model
 
 **Date:** 2026-05-23
-**Status:** Proposed
-**Blocks:** O4 (per-owner scripted events)
+**Status:** Accepted (O4 implementation landed)
+**Blocks:** O4 (per-owner scripted events) — ✅ landed
 **Related:** [`game_mode_session_installation.md`](game_mode_session_installation.md), [`spec_session_state_replay.md`](spec_session_state_replay.md)
+
+**Implementation notes:** Landed essentially as proposed. Two API split clarifications
+discovered during integration: (1) `SpecSessionState` exposes
+`register_scripted_event_definition(def) → ScriptedEventDefinitionId` and
+`attach_scripted_event_instance(def_id, event_id, owner, slot)` separately so
+install can register one definition and attach N per-owner instances pointing
+at it. The convenience `add_scripted_event_instance(def, owner, slot)` wraps both
+for single-instance use; the back-compat `add_scripted_event(def)` keeps PR 11
+tests working by attaching one instance against a new
+`session_root_owner` field. (2) `EventSpec.install` defaults to `SessionRoot`
+(`#[serde(default)]`), so existing event RON files install as a single
+instance on `Scenario::root.id` — matching pre-O4 behavior verbatim.
 
 ## Context
 

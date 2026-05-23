@@ -1083,3 +1083,82 @@ fn fission_cloned_capability_subtree_registers_new_instance_and_thresholds() {
         );
     }
 }
+
+/// O4 acceptance: a scripted event spec authoring
+/// `install: AllOfKind { kind: "Faction" }` produces one
+/// `ScriptedEventInstance` per faction at install time, with independent
+/// owner ids and slots — the v0 PR 11 session-global behavior has been
+/// replaced by the per-owner model in
+/// `docs/adr/scripted_event_scope_model.md`.
+#[test]
+fn open_from_spec_installs_one_scripted_event_instance_per_faction() {
+    if !try_gpu() {
+        eprintln!("skipping: no GPU");
+        return;
+    }
+    let (scenario, faction_ids) = scenario_with_factions(2, 8);
+
+    // Game mode with no capability trees (orthogonal to this test) and one
+    // event authored against `AllOfKind { kind: "Faction" }`. The event is
+    // a Predicate(True) trigger with cooldown 5 — predicate triggers don't
+    // need GPU threshold registrations, so this exercises only the install +
+    // per-instance handler dispatch paths.
+    let event_spec = simthing_spec::EventSpec {
+        id: "tick_marker".into(),
+        trigger: simthing_spec::TriggerSpec::Predicate {
+            predicate: simthing_spec::ScriptPredicate::True,
+        },
+        effects: Vec::new(),
+        cooldown: Some(simthing_spec::CooldownSpec { ticks: 5 }),
+        priority: simthing_spec::EventPriority::Normal,
+        install: InstallTargetSpec::AllOfKind {
+            kind: "Faction".into(),
+        },
+    };
+    let game_mode = simthing_spec::GameModeSpec {
+        id: "o4_demo".into(),
+        display_name: "O4 Demo".into(),
+        description: String::new(),
+        spec_version: SpecVersion::default(),
+        metadata: Default::default(),
+        domain_packs: Vec::new(),
+        properties: Vec::new(),
+        overlays: Vec::new(),
+        capability_trees: Vec::new(),
+        events: vec![event_spec],
+    };
+
+    let session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
+
+    // One definition, two per-owner instances.
+    assert_eq!(
+        session.spec_state.scripted_event_definitions.len(),
+        1,
+        "one definition for one event spec"
+    );
+    assert_eq!(
+        session.spec_state.scripted_event_instances.len(),
+        2,
+        "AllOfKind Faction with 2 factions ⇒ 2 instances"
+    );
+
+    // Each instance keys on a distinct faction; slots match the allocator.
+    let owners: HashSet<_> = session
+        .spec_state
+        .scripted_event_instances
+        .values()
+        .map(|inst| inst.key.owner_id)
+        .collect();
+    for fid in &faction_ids {
+        assert!(owners.contains(fid), "instance must exist for faction {:?}", fid);
+    }
+    for inst in session.spec_state.scripted_event_instances.values() {
+        let expected_slot = session
+            .proto
+            .allocator
+            .slot_of(inst.key.owner_id)
+            .expect("owner allocated");
+        assert_eq!(inst.current_slot, expected_slot);
+        assert_eq!(inst.cooldown_remaining, 0, "fresh install starts ready");
+    }
+}

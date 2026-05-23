@@ -31,6 +31,16 @@ pub struct EventSpec {
     pub cooldown: Option<CooldownSpec>,
     #[serde(default)]
     pub priority: EventPriority,
+    /// Which scenario owners receive an instance of this event at install
+    /// time. Defaults to `SessionRoot` (one instance on `Scenario::root.id`,
+    /// matching pre-O4 behavior). Use `AllOfKind { kind: "Faction" }` for
+    /// per-faction events. See `docs/adr/scripted_event_scope_model.md`.
+    #[serde(default = "default_event_install")]
+    pub install:  crate::spec::install_target::InstallTargetSpec,
+}
+
+fn default_event_install() -> crate::spec::install_target::InstallTargetSpec {
+    crate::spec::install_target::InstallTargetSpec::SessionRoot
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

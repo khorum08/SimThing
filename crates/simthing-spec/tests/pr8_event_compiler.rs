@@ -138,6 +138,7 @@ fn compile_event_combines_trigger_effects_and_metadata() {
         ],
         cooldown: Some(CooldownSpec { ticks: 12 }),
         priority: EventPriority::High,
+        install:  simthing_spec::InstallTargetSpec::SessionRoot,
     };
 
     let (compiled, diagnostics) = compile_event(&spec, &registry).unwrap();
@@ -162,6 +163,7 @@ fn event_spec_round_trips_through_serde() {
         }],
         cooldown: None,
         priority: EventPriority::Normal,
+        install:  simthing_spec::InstallTargetSpec::SessionRoot,
     };
 
     let json = serde_json::to_string(&original).expect("serialize");

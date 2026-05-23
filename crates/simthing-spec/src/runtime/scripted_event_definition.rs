@@ -2,8 +2,31 @@ use crate::runtime::{CompiledEffect, CompiledTrigger};
 use crate::spec::script::ScopeRef;
 use crate::spec::trigger::TriggerDirection;
 use crate::spec::{CooldownSpec, EventKey, EventPriority};
-use simthing_core::Direction;
+use simthing_core::{Direction, SimThingId};
 use simthing_feeder::ScriptedEventTriggerRegistration;
+use std::sync::atomic::{AtomicU32, Ordering};
+
+/// Atomic runtime id for a `ScriptedEventDefinition`. Parallel to
+/// `CapabilityTreeDefinitionId` — allocated once per definition
+/// install, used as the foreign key on `ScriptedEventInstance`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ScriptedEventDefinitionId(u32);
+
+impl ScriptedEventDefinitionId {
+    pub fn new() -> Self {
+        static NEXT: AtomicU32 = AtomicU32::new(1);
+        Self(NEXT.fetch_add(1, Ordering::Relaxed))
+    }
+    pub fn raw(self) -> u32 {
+        self.0
+    }
+}
+
+impl Default for ScriptedEventDefinitionId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ScriptedEventDefinition {
@@ -12,6 +35,25 @@ pub struct ScriptedEventDefinition {
     pub effects:  Vec<CompiledEffect>,
     pub cooldown: Option<CooldownSpec>,
     pub priority: EventPriority,
+}
+
+/// Per-owner, per-definition instance — what actually fires in the world.
+/// See `docs/adr/scripted_event_scope_model.md` (Option B).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ScriptedEventInstanceKey {
+    pub owner_id: SimThingId,
+    pub event_id: EventKey,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScriptedEventInstance {
+    pub key:                ScriptedEventInstanceKey,
+    pub definition_id:      ScriptedEventDefinitionId,
+    /// Slot used to resolve `ScopeRef::Current` for this instance. Refreshed
+    /// from the allocator on slot churn (fission, removal).
+    pub current_slot:       u32,
+    /// Boundaries remaining until this instance may fire again. 0 = ready.
+    pub cooldown_remaining: u32,
 }
 
 impl ScriptedEventDefinition {

@@ -6,6 +6,64 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-23 — O4: Per-owner scripted events
+
+**Status:** `master` @ pending push.
+
+**Landed:** Per `docs/adr/scripted_event_scope_model.md` (now Accepted).
+
+- `simthing-spec::runtime`: `ScriptedEventDefinitionId` (atomic),
+  `ScriptedEventInstance`, `ScriptedEventInstanceKey { owner_id, event_id }`.
+  Overlay re-stamping is not relevant here (definitions are shared, instances
+  carry per-owner state).
+- `simthing-spec::spec::event`: `EventSpec.install: InstallTargetSpec`,
+  defaults to `SessionRoot` so every existing event RON deserializes as a
+  single-instance install (pre-O4 behavior).
+- `simthing-spec::boundary::event_handler`: new
+  `ScriptedEventDiagnosticKind::OwnerRemoved { owner_id }` variant.
+- `simthing-driver::SpecSessionState`:
+  - Storage migrated from three flat fields (`scripted_events`,
+    `scripted_cooldowns`, `scripted_current_slot`) to
+    `scripted_event_definitions: HashMap<Id, _>` +
+    `scripted_event_instances: HashMap<Key, _>`.
+  - APIs: `register_scripted_event_definition(def) → Id`,
+    `attach_scripted_event_instance(id, event_id, owner, slot) → Key`,
+    convenience `add_scripted_event_instance(def, owner, slot)`,
+    `refresh_scripted_event_slots(allocator)` (called every boundary;
+    drops stale owners + emits `OwnerRemoved`).
+  - Back-compat shims: `add_scripted_event(def)` and
+    `set_scripted_current_slot(slot)` attach one instance against
+    `session_root_owner` (defaulted, settable via `set_session_root_owner`).
+    PR 11 tests migrate with one extra `set_session_root_owner(world_id)`.
+  - Handler loop iterates instances sorted by `(owner_id, event_id)` for
+    determinism. Per-instance cooldown bridges to the existing
+    `ScriptedEventBoundaryHandler` with a one-entry slice + map; writes
+    cooldown back to the instance.
+  - `scripted_event_trigger_registrations()` emits one registration per
+    instance (per-owner slot).
+- `simthing-driver::install::compile_and_install`: events now install per
+  `EventSpec.install` (one definition + N instances). `set_session_root_owner`
+  initialized to `scenario.root.id` so the default `SessionRoot` events
+  install correctly.
+- Test:
+  `open_from_spec_installs_one_scripted_event_instance_per_faction` —
+  two factions, one event with `AllOfKind { kind: "Faction" }`, asserts
+  one definition + two instances with distinct owner ids and correct slots.
+- PR 11 test `scripted_event_handler_runs_from_spec_session_state` migrated
+  with one line: `set_session_root_owner(world_id)` before
+  `add_scripted_event`.
+
+**Test counts:** 326 passed, 1 ignored (perf bench).
+
+**Deferred (per ADR Out of scope):**
+- `ScopeRef::Owner` symbolic scope.
+- Cross-owner events.
+- Cross-instance priority ordering (per-instance priority preserved; cross
+  unspecified).
+- Cooldown serialization for replay (O2).
+
+---
+
 ## 2026-05-23 — S5 follow-up: register capability instances + thresholds for fission clones
 
 **Status:** `master` @ pending push.

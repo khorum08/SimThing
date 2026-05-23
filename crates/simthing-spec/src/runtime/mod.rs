@@ -24,4 +24,7 @@ pub use capability_state::{
 };
 pub use compiled_effect::CompiledEffect;
 pub use compiled_trigger::{CompiledThresholdTrigger, CompiledTrigger};
-pub use scripted_event_definition::ScriptedEventDefinition;
+pub use scripted_event_definition::{
+    ScriptedEventDefinition, ScriptedEventDefinitionId, ScriptedEventInstance,
+    ScriptedEventInstanceKey,
+};

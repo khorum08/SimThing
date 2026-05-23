@@ -13,7 +13,8 @@ use simthing_spec::{
     CapabilityTreeDefinition, CapabilityTreeDefinitionId, CapabilityTreeDiagnostic,
     CapabilityTreeError, CapabilityTreeInstance, CapabilityTreeNotification, CapabilityTreeState,
     EventKey, ScriptedEventBoundaryContext, ScriptedEventBoundaryHandler, ScriptedEventDefinition,
-    ScriptedEventDiagnostic,
+    ScriptedEventDefinitionId, ScriptedEventDiagnostic, ScriptedEventInstance,
+    ScriptedEventInstanceKey,
 };
 use std::collections::HashMap;
 use thiserror::Error;
@@ -58,9 +59,12 @@ pub struct SpecSessionState {
     pub capability_instances: HashMap<CapabilityInstanceKey, CapabilityTreeInstance>,
     pub capability_states: HashMap<CapabilityInstanceKey, CapabilityTreeState>,
     pub capability_unlock_registrations: Vec<CapabilityUnlockRegistration>,
-    pub scripted_events: Vec<ScriptedEventDefinition>,
-    pub scripted_cooldowns: HashMap<EventKey, u32>,
-    pub scripted_current_slot: u32,
+    /// Per-definition compiled scripted-event payload. Shared across
+    /// every per-owner instance (see `docs/adr/scripted_event_scope_model.md`).
+    pub scripted_event_definitions: HashMap<ScriptedEventDefinitionId, ScriptedEventDefinition>,
+    /// Per-owner instance. Cooldowns and `current_slot` live here so two
+    /// instances of the same definition fire / cool down independently.
+    pub scripted_event_instances: HashMap<ScriptedEventInstanceKey, ScriptedEventInstance>,
     pub capability_notifications: Vec<CapabilityTreeNotification>,
     pub capability_diagnostics: Vec<CapabilityTreeDiagnostic>,
     pub scripted_event_diagnostics: Vec<ScriptedEventDiagnostic>,
@@ -68,6 +72,13 @@ pub struct SpecSessionState {
     player_selections: Vec<(CapabilityInstanceKey, CapabilityEntryKey)>,
     /// Reverse index: capability tree `SimThingId` → installed instance key.
     capability_instance_by_tree: HashMap<SimThingId, CapabilityInstanceKey>,
+    /// Slot supplied to the back-compat `add_scripted_event` shim. Default
+    /// 0; install drives via `set_scripted_current_slot`.
+    session_root_slot: u32,
+    /// Owner id supplied to the back-compat `add_scripted_event` shim.
+    /// Default `SimThingId::default()`; install drives via
+    /// `set_session_root_owner`.
+    session_root_owner: SimThingId,
 }
 
 impl SpecSessionState {
@@ -76,11 +87,11 @@ impl SpecSessionState {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.capability_instances.is_empty() && self.scripted_events.is_empty()
+        self.capability_instances.is_empty() && self.scripted_event_instances.is_empty()
     }
 
     pub fn requires_boundary_tick(&self) -> bool {
-        !self.scripted_events.is_empty()
+        !self.scripted_event_instances.is_empty()
             || !self.player_selections.is_empty()
             || self.capability_states.values().any(|state| {
                 state
@@ -109,12 +120,111 @@ impl SpecSessionState {
         key
     }
 
-    pub fn add_scripted_event(&mut self, definition: ScriptedEventDefinition) {
-        self.scripted_events.push(definition);
+    /// Register a definition and return its fresh
+    /// `ScriptedEventDefinitionId`. Attach instances via
+    /// `attach_scripted_event_instance` — N instances per definition is
+    /// the v1 model (one per `InstallTargetSpec`-resolved owner).
+    pub fn register_scripted_event_definition(
+        &mut self,
+        definition: ScriptedEventDefinition,
+    ) -> ScriptedEventDefinitionId {
+        let definition_id = ScriptedEventDefinitionId::new();
+        self.scripted_event_definitions.insert(definition_id, definition);
+        definition_id
     }
 
+    /// Attach a per-owner instance to a previously-registered definition.
+    /// `event_id` should match `definition.id` — it's surfaced separately
+    /// because `ScriptedEventInstanceKey` keys on (owner_id, event_id) and
+    /// we want to avoid re-borrowing the definition map at the call site.
+    pub fn attach_scripted_event_instance(
+        &mut self,
+        definition_id: ScriptedEventDefinitionId,
+        event_id:      EventKey,
+        owner_id:      SimThingId,
+        slot:          u32,
+    ) -> ScriptedEventInstanceKey {
+        let key = ScriptedEventInstanceKey { owner_id, event_id };
+        self.scripted_event_instances.insert(
+            key.clone(),
+            ScriptedEventInstance {
+                key: key.clone(),
+                definition_id,
+                current_slot: slot,
+                cooldown_remaining: 0,
+            },
+        );
+        key
+    }
+
+    /// Convenience: register a definition and attach a single instance in
+    /// one call. Used by the back-compat shim and by tests that want one
+    /// instance.
+    pub fn add_scripted_event_instance(
+        &mut self,
+        definition: ScriptedEventDefinition,
+        owner_id:   SimThingId,
+        slot:       u32,
+    ) -> ScriptedEventInstanceKey {
+        let event_id = definition.id.clone();
+        let definition_id = self.register_scripted_event_definition(definition);
+        self.attach_scripted_event_instance(definition_id, event_id, owner_id, slot)
+    }
+
+    /// Back-compat shim: install the definition as a single
+    /// `SessionRoot`-style instance using `owner_id = SimThingId::default()`
+    /// and `current_slot` supplied via `set_session_root_slot`. New code
+    /// should call `add_scripted_event_instance` directly.
+    pub fn add_scripted_event(&mut self, definition: ScriptedEventDefinition) {
+        let slot = self.session_root_slot;
+        let owner_id = self.session_root_owner;
+        let _ = self.add_scripted_event_instance(definition, owner_id, slot);
+    }
+
+    /// Back-compat shim for `set_scripted_current_slot` callers. Sets the
+    /// slot used by `add_scripted_event` when it installs a default
+    /// SessionRoot instance, and refreshes any existing instance owned by
+    /// `session_root_owner`.
     pub fn set_scripted_current_slot(&mut self, slot: u32) {
-        self.scripted_current_slot = slot;
+        self.session_root_slot = slot;
+        for inst in self.scripted_event_instances.values_mut() {
+            if inst.key.owner_id == self.session_root_owner {
+                inst.current_slot = slot;
+            }
+        }
+    }
+
+    /// Set the owner id used by the back-compat `add_scripted_event` /
+    /// `set_scripted_current_slot` shims. Install drives this with
+    /// `scenario.root.id`; tests can leave it at default.
+    pub fn set_session_root_owner(&mut self, owner_id: SimThingId) {
+        self.session_root_owner = owner_id;
+    }
+
+    /// Refresh every instance's `current_slot` against `allocator`. Drops
+    /// instances whose owner no longer has a slot and emits an
+    /// `OwnerRemoved` diagnostic. Returns the count of removed instances.
+    pub fn refresh_scripted_event_slots(
+        &mut self,
+        allocator: &simthing_gpu::SlotAllocator,
+    ) -> usize {
+        let mut stale = Vec::new();
+        for inst in self.scripted_event_instances.values_mut() {
+            match allocator.slot_of(inst.key.owner_id) {
+                Some(slot) => inst.current_slot = slot,
+                None => stale.push(inst.key.clone()),
+            }
+        }
+        let removed = stale.len();
+        for key in stale {
+            self.scripted_event_instances.remove(&key);
+            self.scripted_event_diagnostics
+                .push(ScriptedEventDiagnostic::owner_removed(
+                    key.owner_id,
+                    key.event_id,
+                ));
+        }
+        removed
     }
 
     pub fn queue_player_selection(
@@ -189,9 +299,12 @@ impl SpecSessionState {
     }
 
     pub fn scripted_event_trigger_registrations(&self) -> Vec<ScriptedEventTriggerRegistration> {
-        self.scripted_events
-            .iter()
-            .filter_map(|definition| definition.to_trigger_registration(self.scripted_current_slot))
+        self.scripted_event_instances
+            .values()
+            .filter_map(|inst| {
+                let def = self.scripted_event_definitions.get(&inst.definition_id)?;
+                def.to_trigger_registration(inst.current_slot)
+            })
             .collect()
     }
 
@@ -312,32 +425,84 @@ impl SpecSessionState {
         ctx: &mut BoundaryHookContext<'_>,
         slot_to_thing: &HashMap<u32, SimThingId>,
     ) {
-        if self.scripted_events.is_empty() {
+        // Refresh per-instance slots and prune stale instances before any
+        // dispatch this boundary.
+        let _ = self.refresh_scripted_event_slots(ctx.allocator);
+        if self.scripted_event_instances.is_empty() {
             return;
         }
 
         let threshold_events = ctx
             .threshold_registry
             .extract_scripted_event_triggers(ctx.events);
-        let handler = ScriptedEventBoundaryHandler {
-            registry: ctx.registry,
-            definitions: &self.scripted_events,
-        };
-        let mut requests = Vec::new();
-        let mut diagnostics = Vec::new();
-        let mut event_ctx = ScriptedEventBoundaryContext {
-            n_dims: ctx.n_dims,
-            shadow: &*ctx.shadow,
-            current_slot: self.scripted_current_slot,
-            slot_to_thing,
-            cooldowns: &mut self.scripted_cooldowns,
-            requests: &mut requests,
-            diagnostics: &mut diagnostics,
-        };
 
-        handler.handle_tick(&threshold_events, &mut event_ctx);
-        ctx.requests.extend(requests);
-        self.scripted_event_diagnostics.extend(diagnostics);
+        // Iterate instances in deterministic order (sorted by owner_id +
+        // event_id) so any future cross-instance ordering invariants stay
+        // stable across HashMap iteration.
+        let mut keys: Vec<ScriptedEventInstanceKey> =
+            self.scripted_event_instances.keys().cloned().collect();
+        keys.sort_by(|a, b| {
+            a.owner_id
+                .cmp(&b.owner_id)
+                .then_with(|| a.event_id.0.cmp(&b.event_id.0))
+        });
+
+        let mut all_requests = Vec::new();
+        let mut all_diagnostics = Vec::new();
+
+        for key in keys {
+            // Take a one-element definition slice and a one-entry cooldown
+            // map per instance. This isolates each instance's cooldown state
+            // and lets us use the existing handler unchanged (see
+            // `docs/adr/scripted_event_scope_model.md` §2).
+            let inst = match self.scripted_event_instances.get(&key) {
+                Some(i) => i.clone(),
+                None => continue,
+            };
+            let Some(def) = self.scripted_event_definitions.get(&inst.definition_id) else {
+                continue;
+            };
+            let definitions_slice = std::slice::from_ref(def);
+
+            // Per-instance cooldown — bridge to the handler's
+            // `HashMap<EventKey, u32>` shape with a single entry, then
+            // copy the post-handler value back to the instance.
+            let mut cooldowns: HashMap<EventKey, u32> = HashMap::new();
+            if inst.cooldown_remaining > 0 {
+                cooldowns.insert(inst.key.event_id.clone(), inst.cooldown_remaining);
+            }
+
+            let handler = ScriptedEventBoundaryHandler {
+                registry: ctx.registry,
+                definitions: definitions_slice,
+            };
+            let mut requests = Vec::new();
+            let mut diagnostics = Vec::new();
+            let mut event_ctx = ScriptedEventBoundaryContext {
+                n_dims: ctx.n_dims,
+                shadow: &*ctx.shadow,
+                current_slot: inst.current_slot,
+                slot_to_thing,
+                cooldowns: &mut cooldowns,
+                requests: &mut requests,
+                diagnostics: &mut diagnostics,
+            };
+            handler.handle_tick(&threshold_events, &mut event_ctx);
+
+            // Write back cooldown to the per-instance slot.
+            let new_cooldown = cooldowns
+                .get(&inst.key.event_id)
+                .copied()
+                .unwrap_or(0);
+            if let Some(slot) = self.scripted_event_instances.get_mut(&key) {
+                slot.cooldown_remaining = new_cooldown;
+            }
+            all_requests.extend(requests);
+            all_diagnostics.extend(diagnostics);
+        }
+
+        ctx.requests.extend(all_requests);
+        self.scripted_event_diagnostics.extend(all_diagnostics);
     }
 }
 
@@ -632,7 +797,11 @@ mod tests {
             cooldown: None,
             priority: EventPriority::Normal,
         };
+        // O4: per-owner instance install — set the session-root owner so the
+        // back-compat `add_scripted_event` shim attaches the instance to the
+        // real `world_id` (slot refresh would otherwise drop it).
         let mut spec_state = SpecSessionState::new();
+        spec_state.set_session_root_owner(world_id);
         spec_state.set_scripted_current_slot(slot);
         spec_state.add_scripted_event(event);
         let mut hook = BoundaryHookContext {
