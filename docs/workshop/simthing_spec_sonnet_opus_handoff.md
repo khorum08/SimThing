@@ -1,215 +1,135 @@
 # simthing-spec — Sonnet / Opus Handoff
 
 **Date:** 2026-05-23  
-**Master HEAD:** `9fd8b85` (PR #64 Sonnet/Opus handoff)  
-**Verification:** `cargo test --workspace` → **326** passed, **1** ignored, zero warnings  
+**Master HEAD:** `e6dd9c3` (PR #68 parking sync)  
+**Verification:** `cargo test --workspace` → **345** passed, **1** ignored, zero warnings  
 **Parking synthesis:** [`docs/design_v6.5.md`](../design_v6.5.md)
 
 ---
 
 ## 1. Executive summary
 
-The **simthing-spec ladder (PRs 1–11) is complete**, along with post-PR11 work:
+**Opus P0 batch complete.** No P0 code work outstanding on the spec ladder.
 
-| ID | Status | Commit(s) |
-|----|--------|-----------|
-| O1 session install | ✅ | PR #53 |
-| O1b per-clone overlay activation | ✅ | `2eff1e0` |
-| EffectTarget ADR + implementation | ✅ | `8da4be9`, `7febdd1` |
-| S5 Approach C disable + fission clone hooks | ✅ | `dcc74cc`, `1253a97` |
-| O4 per-owner scripted events | ✅ | `8904522` |
+| ID | Status | PR / commit |
+|----|--------|-------------|
+| O1, O1b, EffectTarget, S5, O4 | ✅ | `2eff1e0`–`8904522` |
+| **O2** Replay v3 | ✅ | #65 `2f2a7b5` |
+| **B3** boundary-skip precision | ✅ | #66 `defb42c` |
+| **I1** install clone-then-commit | ✅ | #67 `6b8de81` |
 
-**One P0 code item remains:** **O2 — Replay v3** for spec runtime state.
+**Next work:** Sonnet/Composer **authoring surface** (examples, modder guide, reference docs). Opus optional design-only (S6, I2, H1). **E0 base economy deferred** — do not start.
 
-Everything else is deferred design, mechanical follow-up, workshop/docs, or tabled product work (`simthing-studio`, scenario RON expansion).
-
-### Agent split (this handoff)
+### Agent split
 
 | Agent | Sweet spot | Do **not** |
 |-------|------------|------------|
-| **Opus** | ADRs, cross-crate architecture, vertical features touching spec + driver + replay format | Large mechanical test-only PRs better suited to Sonnet |
-| **Sonnet / Composer** | Mechanical prep, tests, examples, doc alignment, small scoped PRs after ADR lands | Redesign ADR decisions or sim-crate semantics without Opus review |
-
-Historical precedent: Opus landed PR 11 Track A, EffectTarget, O1b–O4. Composer/Cursor landed Track B (append helpers, Display), S3/S4 guards, and regression tests.
+| **Opus** | ADRs, cross-crate architecture, new semantic overlays/runtimes | Mechanical doc/example PRs |
+| **Sonnet / Composer** | Examples, modder guide, parse smoke tests, parking doc sync, B2′ mechanical | Redesign ADR decisions without Opus |
 
 ---
 
-## 2. Current architecture (spec layer)
+## 2. Architecture (spec layer)
 
 ```text
-simthing-core
-    ↑
-simthing-feeder   ← registrations/events (capability + scripted)
-    ↑         ↑
-simthing-spec     simthing-sim   ← spec-free; BoundaryHookContext
-(production:      (production)
- core + feeder)
-    ↑
-simthing-driver   ← SpecSessionState, install, open_from_spec,
-                    react_to_fission_clones, boundary hook wiring
+simthing-driver
+  install.rs       preview_install, install_atomic, apply_install_preview (I1)
+  spec_replay.rs   SpecSnapshot, SpecDelta, open_replay_with_spec (O2)
+  spec_session.rs  requires_boundary_tick (B3), capability + scripted instances
+  session.rs       open_from_spec, record_to_path, react_to_fission_clones
+
+simthing-spec
+  boundary/        capability + scripted event handlers
+  compile/         builders, event compiler
+  spec/script.rs   ScopeRef { Current, Slot } — S6 would extend here
 ```
 
-**Session open:** `SimSession::open_from_spec` → `install::compile_and_install`  
-**Capability:** per-owner clone, `instance.by_overlay`, `overlay_hosts`, `EffectTarget::Owner` default  
-**Scripted events:** one `ScriptedEventDefinition` + N `ScriptedEventInstance` per `EventSpec.install`  
-**Fission clones:** `react_to_fission_clones` registers capability instances + thresholds for spawned subtrees
+---
 
-**Read first:** `design_v6.5.md` · `worklog.md` (O1b–O4 entries) · `simthing_spec_progress_log.md`
+## 3. Opus P0 — complete
+
+### O2 Replay v3 (#65)
+
+- `spec_replay.rs`: `SpecSnapshot`, `SpecDelta`, logical keys only
+- LDJSON: `spec_snapshot` line + per-frame `spec_entries`
+- `open_replay_with_spec`, round-trip E2E in `session_integration.rs`
+- ADR: [`spec_session_state_replay.md`](../adr/spec_session_state_replay.md) → **Accepted**
+
+### B3 boundary skip (#66)
+
+- `requires_boundary_tick`: 6 precise force-tick conditions
+- Threshold-only scripted sessions skip quiet boundaries again
+- Integration tests: `b3_threshold_only_*`, `b3_predicate_*`
+
+### I1 install atomicity (#67)
+
+- `preview_install`, `install_atomic`, `apply_install_preview`
+- `open_from_spec` uses `install_atomic`
+- ADR: [`install_clone_then_commit.md`](../adr/install_clone_then_commit.md) → **Accepted**
 
 ---
 
-## 3. P0 — O2 Replay v3
+## 4. Sonnet / Composer — active backlog
 
-**ADR:** [`docs/adr/spec_session_state_replay.md`](../adr/spec_session_state_replay.md) — **Proposed** (needs Accept + implementation)  
-**Blocks:** durable replay of capability runtime, scripted cooldowns, player selections, notifications
+| Priority | ID | Scope |
+|----------|-----|-------|
+| **P1** | **D2** | `docs/examples/` — Owner `effect_target`, per-faction `EventSpec.install`, CapabilityTree-opt-in |
+| **P1** | **T1** | `loads_*_examples` parse smoke tests (`simthing-spec/tests/`) |
+| **P1** | **D1** | `simthing_modder_object_guide.md` — `effect_target`, `overlay_hosts`, `EventSpec.install`, preview/replay |
+| **P2** | **D3** | `capability_tree_v1.md` — preview `owner_slot`/`root_slot` worked example |
+| **P2** | **R1** | Replay fixture + README for `open_replay_with_spec` |
+| **P2** | **B2′** | Append-only external thresholds on fission-clone path |
+| **P2** | **P1** | Preview/diagnostic `Display` polish (Track B style) |
 
-### Problem
-
-Replay v2 reconstructs tree + registry + structural boundary deltas. Spec runtime is **empty** on replay open:
-
-- Capability activation modes, active sets, mutual-exclusivity state
-- Per-instance scripted cooldowns and slots
-- Queued player selections
-- Capability notifications stream
-
-Raw `OverlayId` is **not stable across processes** — replay must use logical keys (`CapabilityEntryKey`, `EventKey`, `tree_id`, `owner_id`).
-
-### Opus owns
-
-1. **Accept the ADR** (or amend with implementation discoveries).
-2. **Core implementation** — suggested slice order:
-   - `crates/simthing-driver/src/spec_replay.rs` — `SpecSnapshot`, `SpecDelta`, `apply_spec_snapshot`, `apply_spec_delta`
-   - Extend LDJSON replay stream: `spec_snapshot` line + per-frame `spec_entries`
-   - Hook `SimSession::record_to_path` to emit spec snapshot + per-boundary diffs
-   - Hook replay open: `open_replay_with_spec` (re-run `open_from_spec`, then apply snapshot + frame deltas)
-   - Logical-id resolution: `definition_logical_id` → live `CapabilityTreeDefinitionId`; never serialize raw `OverlayId` for spec state
-3. **Overlay activation replay note:** structural `OverlayActivated` deltas may still name template overlay ids — verify interaction with per-clone `overlay_hosts` during replay apply; fix if replay-open unlock path breaks.
-4. **Acceptance:** replay round-trip preserves capability active state + scripted cooldowns across process restart (design one E2E, Sonnet can land the test file once Opus defines the API).
-
-### Sonnet / Composer owns (after Opus lands core)
-
-1. **Integration tests** in `simthing-driver/tests/`:
-   - Record session with capability unlock + scripted event fire → reopen replay → assert spec state matches
-   - Back-compat: old replay files without `spec_snapshot` parse cleanly
-2. **Mechanical serde:** `#[serde(default, skip_serializing_if = "Vec::is_empty")]` on new replay fields
-3. **Doc sync:** `design_v6.5.md`, progress log, ADR status → Accepted, `todo.md` parking
-4. **Optional:** `docs/examples/` replay fixture + README snippet
-
-### Verification (Opus + Sonnet)
-
-```powershell
-cargo test --workspace
-cargo test -p simthing-driver replay
-cargo test -p simthing-driver spec_replay
-```
-
-Target: **326+** passed, **1** ignored (GPU perf bench unchanged).
+**Parallel-safe now** — no Opus gate for D1/D2/T1.
 
 ---
 
-## 4. Deferred spec-layer work (post-O2)
+## 5. Opus — optional (on demand)
 
-### 4.1 Opus — design / ADR first
+| ID | Scope | Crate |
+|----|-------|-------|
+| **S6** | `ScopeRef::Owner` ADR + implementation | `simthing-spec` script IR + event handler |
+| **I2** | Mid-session `apply_install_preview` + GPU resync ADR | `simthing-driver` + `simthing-gpu` |
+| **H1** | Spec hot-reload with state preservation | `simthing-driver` (replay merge semantics) |
 
-| ID | Topic | Why Opus | Inputs |
-|----|-------|----------|--------|
-| **E0** | Base economic system ADR | New overlay semantics (transfer), threshold completion, queue/fission patterns | [`simthing_base_economic_system_working_doc.md`](simthing_base_economic_system_working_doc.md) § Recommended Implementation Ladder A0 |
-| **S6** | `ScopeRef::Owner` + scripted scope extensions | Changes Script IR + event handler contract | O4 ADR § Out of scope |
-| **I1** | Install clone-then-commit | Studio preview / hot-reload safety | Footgun in `design_v6.5.md` §6 |
-| **B3** | Empty-boundary skip / `requires_boundary_tick` classification | Event vs capability boundary-skip policy | O4 landed; skip behavior still coarse |
-
-**Do not implement E1–E7 code until E0 ADR is Accepted.**
-
-### 4.2 Sonnet / Composer — mechanical / tests / docs
-
-| ID | Topic | Depends on | Scope |
-|----|-------|------------|-------|
-| **B2′** | Append-only external thresholds for fission clones | S5 follow-up landed instance reg; append path still deferred | Wire `append_capability_unlocks` / `append_scripted_event_triggers` on fission clone path where eligible; regression test |
-| **D1** | Modder guide ↔ engine alignment | EffectTarget landed | Update `simthing_modder_object_guide.md`: `effect_target`, `EventSpec.install`, `overlay_hosts` mental model; cross-link §14 |
-| **D2** | `docs/examples/` expansion | O4 + EffectTarget | RON fixtures: Owner-targeted effect, per-faction scripted event, `CapabilityTree`-opt-in effect |
-| **D3** | `capability_tree_v1.md` / preview docs | EffectTarget | Ensure preview `owner_slot`/`root_slot` documented with worked example |
-| **P1** | Preview / diagnostic polish | — | `Display` gaps, preview breakdown labels (Track B style mechanical PRs) |
-| **T1** | Parse/load smoke tests | D2 | `loads_*_examples` in `simthing-spec/tests/` |
-
-### 4.3 Base economy ladder (after E0 ADR)
-
-| Step | Owner | Deliverable |
-|------|-------|---------------|
-| A0 | **Opus** | ADR: resource balances, transfer overlays, threshold completion, column discipline |
-| A1 | Sonnet | Resource tagging in spec (`PropertySpec` convention or kind metadata) |
-| A2 | **Opus** | Transfer overlay spec shape + compiler (new semantic — not a one-liner) |
-| A3 | **Opus** | Direct transfer runtime in driver/session |
-| A4–A7 | Opus + Sonnet | Fixtures (Sonnet tests, Opus runtime if complex) |
-| A8 | Sonnet | Modder guide examples + `docs/examples/` |
+**E0 / base economy:** deferred — ignore A0–A8 until explicitly requested.
 
 ---
 
-## 5. Tabled (do not start without explicit ask)
+## 6. Tabled
 
 - `simthing-studio` GUI
-- Full scenario RON expansion (inline tree/registry/shadow seeds)
-- Map-scale representation doc spike
-- EML backend / Clausewitz parser
-- B2 tighter incremental Approach C for fission clone **internal** edges (perf; S5 conservative fix is sufficient for correctness)
-- Cross-owner scripted events, cross-instance priority ordering (O4 ADR deferred)
+- Scenario RON expansion
+- EML / Clausewitz
+- B2 tighter Approach C for fission clone internal edges
+- Cross-owner scripted events, cross-instance priority (O4 ADR deferred)
 
 ---
 
-## 6. Footguns (both agents — read before coding)
+## 7. Footguns
 
-1. **GPU overlay-prep ignores `overlay.affects`** — EffectTarget install **places** overlays on the host SimThing; `overlay_hosts` drives boundary activate/suspend targets.
-2. **Partial install mutation** — `compile_and_install` mutates registry/root in place; Studio needs clone-then-commit (I1).
-3. **`react_to_fission_clones`** synthesizes from source instance — exotic custom install paths need explicit review when extending.
-4. **Replay + OverlayId** — never serialize raw overlay ids for spec state (ADR M1); use logical keys.
-5. **O1c ruled out** — dimension sync after install is not the blocker.
-6. **326 / 1 ignored** — only `pipeline_timing_1000_slots_64_dims` in `simthing-gpu`; do not regress.
+1. **Overlay placement vs `affects`** — GPU overlay-prep walks host tree; EffectTarget + `overlay_hosts` drive routing.
+2. **Mid-session preview** — I1 covers session-open atomicity; running-session apply needs I2.
+3. **Replay keys** — logical keys only; no raw `OverlayId` in spec replay payloads.
+4. **345 / 1 ignored** — GPU perf bench only.
 
 ---
 
-## 7. Key files
+## 8. Key files
 
 | Area | Path |
 |------|------|
-| Install | `crates/simthing-driver/src/install.rs` |
-| Spec session state | `crates/simthing-driver/src/spec_session.rs` |
-| Session + fission hook | `crates/simthing-driver/src/session.rs` |
+| Spec replay (O2) | `crates/simthing-driver/src/spec_replay.rs` |
+| Install / preview (I1) | `crates/simthing-driver/src/install.rs` |
+| Boundary skip (B3) | `crates/simthing-driver/src/spec_session.rs` |
+| E2E tests | `crates/simthing-driver/tests/session_integration.rs` |
 | Capability handler | `crates/simthing-spec/src/boundary/capability_handler.rs` |
 | Event handler | `crates/simthing-spec/src/boundary/event_handler.rs` |
-| Capability builder | `crates/simthing-spec/src/compile/capability.rs` |
-| Replay v2 (sim) | `crates/simthing-sim/src/replay.rs` |
-| O2 target (new) | `crates/simthing-driver/src/spec_replay.rs` |
-| Driver E2E tests | `crates/simthing-driver/tests/session_integration.rs` |
 
 ---
 
-## 8. Recommended pickup order
+## 9. One-line pickup
 
-### Opus
-
-1. Read `spec_session_state_replay.md` + `spec_session.rs` field inventory
-2. Accept ADR → implement O2 core (`spec_replay.rs`, record/open hooks)
-3. Land one replay round-trip E2E (or define API for Sonnet test)
-4. **Then** E0 base economy ADR (if product priority) or I1 install clone-then-commit
-
-### Sonnet / Composer
-
-1. Read `design_v6.5.md` + this handoff
-2. **Wait for O2 API** → replay integration tests + doc sync
-3. Parallel safe work: **D2** examples, **D1** modder guide EffectTarget/O4 sections, **T1** parse smoke tests
-4. After E0 ADR: A1, A8, mechanical tests for A4–A7 fixtures
-
----
-
-## 9. PR discipline
-
-- **One concern per PR** — Opus: vertical slices; Sonnet: tests/docs/examples
-- **Do not modify `simthing-sim` production semantics** for spec-layer work unless ADR explicitly requires it (O2 replay format stays driver/spec-owned)
-- **Keep `simthing-spec` production deps** at `simthing-core` + `simthing-feeder` only
-- Run full workspace tests before merge; release profile smoke if touching driver replay path
-
----
-
-## 10. One-line pickup
-
-**Opus:** Accept and implement **O2 replay v3** (`SpecSnapshot`/`SpecDelta`, logical keys, driver record/open).  
-**Sonnet:** After O2 core lands — replay round-trip tests, examples, modder-guide alignment; parallel doc/example PRs safe now.
+**Opus:** P0 done — park or pick S6/I2/H1 on demand. **Do not start E0.**  
+**Sonnet:** D2 + T1 examples, then D1 modder guide; D3/R1 reference docs.

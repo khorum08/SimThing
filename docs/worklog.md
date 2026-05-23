@@ -75,7 +75,13 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-23 — Sonnet/Opus spec handoff (PR #64)
+## 2026-05-23 — Parking doc sync (post Opus O2/B3/I1)
+
+**Status:** pending commit.
+
+**Synced:** `design_v6.5.md`, `simthing_spec_sonnet_opus_handoff.md`, `adr/README.md`, `agents.md`, workshop README — Opus P0 complete, 345 tests, Sonnet D1/D2 next.
+
+---
 
 **Status:** `master` @ `9fd8b85`.
 

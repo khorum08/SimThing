@@ -6,7 +6,7 @@ precision, I1 install atomicity).
 **Parking synthesis:** [`docs/design_v6.5.md`](../design_v6.5.md) — read first for HEAD, gates, doc map.  
 **Replaces:** superseded PR handoff/workshop docs (see [`archive/SUNSET.md`](archive/SUNSET.md)).  
 **Last updated:** 2026-05-23  
-**Master HEAD:** `0922908` (PR #67 — I1 install clone-then-commit)  
+**Master HEAD:** `e6dd9c3` (PR #68 parking sync)  
 **Verification:** `cargo test --workspace` → **345** passed, **1** ignored, zero warnings.  
 `cargo build --workspace --tests` and release profile build/tests clean.
 

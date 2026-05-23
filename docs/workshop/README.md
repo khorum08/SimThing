@@ -1,13 +1,12 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `9fd8b85`. **Tests:** 326 passed, 1 ignored. **Next:** Opus O2; Sonnet tests/docs after.
+**Parking (2026-05-23):** `master` @ `e6dd9c3`. **Tests:** 345 passed, 1 ignored. **Opus P0 complete.** **Next:** Sonnet D1/D2 examples & modder guide.
 
 ## Read first — current state
 
-- [`../design_v6.5.md`](../design_v6.5.md) — **parking synthesis** (HEAD, open work, doc map)
-- [`../worklog.md`](../worklog.md) — O1b, EffectTarget, S5, O4 landing notes
-- [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) — PR 1–11 + O1 implementation ledger
-- [`simthing_spec_sonnet_opus_handoff.md`](simthing_spec_sonnet_opus_handoff.md) — **outstanding work; Sonnet vs Opus split**
+- [`../design_v6.5.md`](../design_v6.5.md) — **parking synthesis**
+- [`simthing_spec_sonnet_opus_handoff.md`](simthing_spec_sonnet_opus_handoff.md) — Sonnet vs Opus backlog
+- [`../worklog.md`](../worklog.md) — O2, B3, I1 landing notes
 
 **Architecture decisions:**
 
@@ -16,9 +15,8 @@
 - [`../adr/scripted_event_scope_model.md`](../adr/scripted_event_scope_model.md) — Accepted (O4)
 - [`../adr/game_mode_session_installation.md`](../adr/game_mode_session_installation.md) — Accepted (O1)
 
-**Before O2:**
-
-- [`../adr/spec_session_state_replay.md`](../adr/spec_session_state_replay.md)
+- [`../adr/spec_session_state_replay.md`](../adr/spec_session_state_replay.md) — Accepted (O2)
+- [`../adr/install_clone_then_commit.md`](../adr/install_clone_then_commit.md) — Accepted (I1)
 
 ## Authoring & design (workshop)
 

@@ -3,7 +3,7 @@
 Current parking state: **`simthing-spec` PRs 1–11 complete**; **O1**, **O1b**, **EffectTarget**,
 **S5** (+ fission-clone follow-up), **O4**, **O2 Replay v3**, **B3 boundary-skip precision**,
 and **I1 install atomicity** landed on `master`.
-`master` and `origin/master` synced at **`0922908`** (PR #67 I1 merge).
+`master` and `origin/master` synced at **`e6dd9c3`** (PR #68 parking sync).
 
 **Parking synthesis:** [`docs/design_v6.5.md`](design_v6.5.md) — read first for HEAD, gates, doc map.
 
