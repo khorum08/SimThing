@@ -3,7 +3,7 @@
 This document is for AI agents picking up work on this project. Read it before touching any code.
 
 **Doc set:** `design_v6.5.md` (current-state synthesis — **read first**) ·
-`design_v6.md` (sim architecture spec) · `design_v5.md` (v5 historical) ·
+`design_v6.md` (sim architecture spec) · `workshop/simthing_spec_sonnet_opus_handoff.md` (Sonnet/Opus task split) · `design_v5.md` (v5 historical) ·
 `design_v4.md` (original blueprint) · `capability_tree_v1.md` (capability-tree
 RON reference) · `workshop/simthing_spec_progress_log.md` (spec-layer PR ledger) ·
 `workshop/README.md` (workshop index) ·
@@ -24,6 +24,9 @@ interprets GPU output as events; it does not drive the simulation.
 
 The current design specification is in `docs/design_v6.md` (simulation mechanics).
 For **implementation state**, parking, and open work read `docs/design_v6.5.md` first.
+**Spec layer (landed):** `simthing-spec` compiles RON; `simthing-driver` owns session state.
+Key APIs: `open_from_spec`, `preview_install` / `install_atomic` (I1),
+`open_replay_with_spec` / `SpecSnapshot` (O2), `requires_boundary_tick` (B3).
 Read V6 before changing tick/boundary behavior, overlay lifecycle, fission inheritance,
 GPU pass order, or feeder authority paths.
 `docs/design_v5.md` remains valid for architecture and v5-era sections not superseded by v6.
@@ -138,10 +141,12 @@ SimThing/
                                        structural-reproduction replay
     └── simthing-driver/
         └── src/
-            ├── lib.rs                 SimSession, Scenario, bench/record/replay CLI
-            └── session.rs             tick loop, boundary orchestration, metrics
-    # Planned (not yet in workspace):
-    # simthing-spec/                   RON → runtime compiler (capability trees first)
+            ├── lib.rs                 SimSession, Scenario, spec replay re-exports
+            ├── install.rs             compile_and_install, preview_install, install_atomic (I1)
+            ├── spec_replay.rs         SpecSnapshot, SpecDelta, open_replay_with_spec (O2)
+            ├── spec_session.rs        SpecSessionState, requires_boundary_tick (B3)
+            └── session.rs             tick loop, boundary orchestration, record/replay CLI
+    # simthing-spec/                   RON → runtime compiler (in workspace)
     # simthing-studio/                 deferred GUI/editor; depends on simthing-spec
 ```
 

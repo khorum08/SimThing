@@ -6,8 +6,8 @@ the architecture specification for simulation mechanics (overlays, fission, GPU 
 boundary protocol). Read V6.5 first when picking up work; read V6 when changing sim behavior.
 
 **Last updated:** 2026-05-23  
-**Master HEAD:** `9fd8b85` (PR #64 Sonnet/Opus handoff)  
-**Verification:** `cargo test --workspace` → **326** passed, **1** ignored, zero warnings.
+**Master HEAD:** `e6dd9c3` (PR #68 parking sync)  
+**Verification:** `cargo test --workspace` → **345** passed, **1** ignored, zero warnings.
 
 ---
 
@@ -16,20 +16,15 @@ boundary protocol). Read V6.5 first when picking up work; read V6 when changing 
 | Item | Value |
 |------|-------|
 | **Branch** | `master` synced with `origin/master` |
-| **Spec layer** | PRs 1–11 + O1 + O1b + EffectTarget + S5 + O4 complete |
-| **Cursor handoff** | Complete (PRs #56–#59); O1b/S5 tests now **green** |
-| **Next owner** | Codex: **O2** (replay v3) |
+| **Spec layer** | PRs 1–11 + O1–O4 + O1b + EffectTarget + S5 + **O2 + B3 + I1** complete |
+| **Opus P0 batch** | Complete (PRs #65–#67); no P0 code work outstanding |
+| **Next owner** | **Sonnet/Composer** — authoring docs & examples (D1/D2/D3); see handoff |
 
 ### Ignored tests (CI)
 
 | Test | Crate | Notes |
 |------|-------|-------|
 | `pipeline_timing_1000_slots_64_dims` | `simthing-gpu` | Pre-existing perf diagnostic |
-
-Former RED tests (now passing):
-
-- `open_from_spec_capability_unlock_activates_overlay_for_next_tick` — O1b (`2eff1e0`)
-- `fission_with_cloned_capability_subtree_reduction_topology_matches_full_rebuild` — S5 (`dcc74cc`)
 
 ---
 
@@ -39,18 +34,13 @@ SimThing is a GPU-native recursive world simulation. One type (`SimThing`), one 
 algorithm, one overlay lifecycle model (`Permanent | Transient | Suspended`), boundary-time
 structural mutations, and CPU semantic interpretation of GPU output.
 
-**V6 additions (landed):** suspended overlays, `ActivateOverlay` / `SuspendOverlay`,
-opt-in capability-subtree cloning on fission via `clone_capability_children` +
-`capability_container_kinds`. B2 fission-growth optimizations (Approaches A/B/C) are
-landed; Approach C is **disabled** when fission clones capability subtrees (S5 conservative
-fix). Tighter incremental topology for internal clone edges is future work.
+**V6 additions (landed):** suspended overlays, fission capability clone, B2 A/B/C (Approach C
+disabled when fission clones capability subtrees — S5).
 
-**Spec layer (landed):** authored RON compiles to runtime artifacts in `simthing-spec`;
-session ownership lives in `simthing-driver`; `simthing-sim` stays spec-free and exposes a
-generic post-readback boundary hook.
+**Spec layer (landed):** RON → runtime in `simthing-spec`; session state in `simthing-driver`;
+`simthing-sim` spec-free with generic post-readback boundary hook.
 
-For full mechanics, GPU pass order, and invariants see `design_v6.md`, `invariants.md`, and
-`state-authority.md`.
+For full mechanics see `design_v6.md`, `invariants.md`, `state-authority.md`.
 
 ---
 
@@ -62,129 +52,101 @@ simthing-core
 simthing-feeder   ← CapabilityUnlockRegistration/Event,
                     ScriptedEventTriggerRegistration/Event
     ↑         ↑
-simthing-spec     simthing-sim   ← ThresholdSemantic, extract_* bridges,
-(production:      (production)     BoundaryHookContext, external threshold regs,
- core + feeder                    FissionOutcome cloned_capability_roots
- only)
+simthing-spec     simthing-sim   ← BoundaryHookContext, threshold bridges,
+(production:      (production)     replay v2 frames + spec_entries slot
+ core + feeder)
     ↑
-simthing-driver   ← SpecSessionState, install::compile_and_install,
-                    SimSession::open_from_spec, react_to_fission_clones,
-                    per-owner capability + scripted-event instances
+simthing-driver   ← SpecSessionState, install_atomic / preview_install,
+                    spec_replay (O2), open_from_spec, react_to_fission_clones
 
 simthing-gpu      ← WorldGpuState, TopologyState, B2 append paths
-simthing-studio   ← deferred GUI (depends on spec)
+simthing-studio   ← deferred GUI
 ```
 
-### Key session path (O1 + O4)
+### Key session paths
 
-1. `SimSession::open_from_spec(scenario, &game_mode)` — opens scenario, installs spec.
-2. `install::compile_and_install` — properties, overlays, capability trees (per-owner clone
-   with `EffectTarget` overlay placement + `overlay_hosts`), scripted events (one definition +
-   N instances per `EventSpec.install`).
-3. After each tick's GPU readback, driver invokes capability + scripted-event handlers via
-   `BoundaryProtocol::execute_with_boundary_hook`.
-4. After fission with `clone_capability_children`, `react_to_fission_clones` registers
-   cloned capability instances + threshold registrations for spawned subtrees.
+**Open:** `SimSession::open_from_spec` → `install_atomic` (I1 clone-then-commit)  
+**Preview:** `preview_install` → `apply_install_preview` (Studio-safe; no in-place mutation)  
+**Replay:** `record_to_path` emits `spec_snapshot` + per-frame `spec_entries`; `open_replay_with_spec` restores spec runtime  
+**Boundary:** capability + scripted handlers after GPU readback; `requires_boundary_tick` uses 6 precise conditions (B3)
 
-**Code entry points:** `install.rs`, `spec_session.rs`, `session.rs`, `boundary/capability_handler.rs`,
-`boundary/event_handler.rs`, `simthing-sim/fission.rs`.
+**Code entry points:** `install.rs`, `spec_session.rs`, `spec_replay.rs`, `session.rs`, boundary handlers.
 
 ---
 
 ## 4. Landed work (post–PR 11)
 
-| Milestone | Commit area | Notes |
+| Milestone | PR / commit | Notes |
 |-----------|-------------|-------|
-| V6 sim core | `f39fe6d`, PRs #38–#43 | Suspended overlays, capability fission clone, B2 A/B/C |
-| `simthing-spec` PRs 1–11 | 2026-05-22 | Compile pipeline through session assembly |
-| **O1** session install | PR #53 | `open_from_spec`, `InstallTargetSpec`, per-owner clone |
-| Cursor handoff | PRs #56–#59 | O1b/S5 regression tests, install examples, kind docs |
-| **O1b** | `2eff1e0` | Handler resolves per-clone overlay ids via `instance.by_overlay` |
-| **EffectTarget** | `8da4be9`, `7febdd1` | ADR Accepted; `Owner` default; `overlay_hosts` + overlay placement on host |
-| **S5** | `dcc74cc` | Disable Approach C when fission clones capability subtrees |
-| **S5 follow-up** | `1253a97` | Overlay-id re-stamp on fission clone; `react_to_fission_clones` registers instances + thresholds |
-| **O4** | `8904522` | Per-owner scripted event instances; `EventSpec.install`; ADR Accepted |
+| O1–O4, O1b, EffectTarget, S5 | `2eff1e0`–`8904522` | Session install, per-owner events, fission hooks |
+| **O2 Replay v3** | #65 `2f2a7b5` | `SpecSnapshot`/`SpecDelta`, logical keys, round-trip E2E |
+| **B3 boundary skip** | #66 `defb42c` | Precise `requires_boundary_tick`; threshold-only scripted sessions can skip |
+| **I1 install atomicity** | #67 `6b8de81` | `preview_install`, `install_atomic`, `apply_install_preview` |
+| Workshop docs | #63–#64 | Modder guide, base economy working doc, Sonnet/Opus handoff |
 
-**Detailed archaeology:** `docs/workshop/simthing_spec_progress_log.md` · session notes in `worklog.md`.
+**Archaeology:** `workshop/simthing_spec_progress_log.md` · `worklog.md`
 
 ---
 
 ## 5. Open work (ordered)
 
-| Priority | ID | Owner | Scope | Notes |
-|----------|-----|-------|-------|-------|
-| **P0** | **O2** | Codex | Replay v3 — `SpecSnapshot` / `SpecDelta` for spec runtime state | ADR: `spec_session_state_replay.md` |
-| — | Modder guide | — | `simthing_modder_object_guide.md` in repo; align with EffectTarget §14 as needed | Workshop doc |
-| — | Base economy doc | — | `simthing_base_economic_system_working_doc.md` — design working doc, not implementation spec | Workshop doc |
-| — | B2 topology | — | Tighter Approach C for fission clone internal edges | Future perf work |
-| — | Scripted scope | — | `ScopeRef::Owner`, cross-owner events, cross-instance priority | Deferred in O4 ADR |
-| — | Scenario RON expansion | — | Inline tree/registry/shadow seeds | Tabled |
-| — | `simthing-studio` GUI | — | Designer surface | Tabled |
+**No P0 code items.** Next work is Sonnet/Composer authoring surface (see handoff).
+
+| Priority | ID | Owner | Scope |
+|----------|-----|-------|-------|
+| P1 | **D2** / **T1** | Sonnet | `docs/examples/` — EffectTarget, per-faction events; parse smoke tests |
+| P1 | **D1** | Sonnet | Modder guide — `effect_target`, `overlay_hosts`, `EventSpec.install`, replay/preview |
+| P2 | **D3** / **R1** | Sonnet | `capability_tree_v1.md` preview docs; replay example in examples/ |
+| P2 | **B2′** | Sonnet | Append-only external thresholds on fission-clone path |
+| — | **S6** | Opus (optional) | `ScopeRef::Owner` ADR — `simthing-spec` script IR |
+| — | **I2** / **H1** | Opus (optional) | Mid-session GPU resync; spec hot-reload |
+| — | Studio / scenario RON / E0 economy | — | **Tabled** (E0 explicitly deferred) |
 
 ---
 
 ## 6. Known footguns
 
-- **GPU overlay-prep vs `affects`:** Pass 3 walks the SimThing tree and applies overlays on
-  hosts that carry the target property — it does **not** read `overlay.affects`. EffectTarget
-  install places overlays on the correct host and stamps `overlay_hosts` for boundary activate/suspend.
-- **Partial install mutation:** `compile_and_install` mutates registry/root in place on error.
-  Safe for `open_from_spec` discard; Studio preview needs clone-then-commit later.
-- **Replay gap:** Structural overlay activations replay via boundary delta log; spec runtime
-  state (capability selections, scripted cooldowns, diagnostics) does not — **O2**.
-- **Fission clone registration:** `react_to_fission_clones` synthesizes instances from source
-  templates; exotic custom install paths may need explicit review.
-- **Empty-boundary skip:** Non-empty scripted events may disable skip via `requires_boundary_tick()`;
-  event classification revisit deferred.
-- **O1c ruled out:** Registry/GPU dimension sync after install — not the blocker (`n_dims ==
-  total_columns` after install).
+- **GPU overlay-prep vs `affects`:** Pass 3 uses overlay **placement** on the host tree; `overlay_hosts` drives boundary activate/suspend.
+- **Mid-session preview apply:** `apply_install_preview` on a *running* session needs GPU resync (I1 ADR §Out of scope — I2).
+- **Spec hot-reload:** preserving cooldowns/selections across re-install needs replay-style merge (H1).
+- **Fission clone registration:** `react_to_fission_clones` synthesizes from source instance — exotic install paths need review.
+- **Replay logical keys:** never serialize raw `OverlayId` for spec state (O2 ADR M1).
+- **O1c ruled out** — dimension sync after install not the blocker.
 
 ---
 
 ## 7. Documentation map
 
-### Read first (current state)
+### Read first
 
 | Document | Role |
 |----------|------|
-| **This file (`design_v6.5.md`)** | Parking, open work, doc routing |
-| `todo.md` | Priority table + session order |
-| `worklog.md` | Session-by-session landing notes (O1b–O4) |
-| `workshop/simthing_spec_progress_log.md` | PR 1–11 + O1 implementation ledger |
-| `agents.md` | Agent briefing + repo layout |
+| **This file** | Parking synthesis |
+| `workshop/simthing_spec_sonnet_opus_handoff.md` | Sonnet vs Opus task split |
+| `todo.md` | Priority table |
+| `worklog.md` | O2, B3, I1 landing notes |
 
 ### ADRs (`docs/adr/`)
 
 | ADR | Status | Topic |
 |-----|--------|-------|
-| `pr11_track_a_session_assembly.md` | Accepted | Driver-owned session state, boundary hook |
-| `game_mode_session_installation.md` | Accepted | RON-driven session init (O1) |
-| `capability_effect_target_scope.md` | Accepted | EffectTarget — Owner default (Opus P3) |
-| `scripted_event_scope_model.md` | Accepted | Per-owner scripted events (O4) |
-| `spec_session_state_replay.md` | Proposed | O2 replay v3 |
-
-### Architecture & reference
-
-| Document | Role |
-|----------|------|
-| `design_v6.md` | Simulation architecture spec |
-| `capability_tree_v1.md` | RON reference; §13 install; §14 EffectTarget |
-| `examples/README.md` | InstallTargetSpec RON fixtures |
-| `workshop/simthing_modder_object_guide.md` | Modder authoring objects |
-| `workshop/simthing_base_economic_system_working_doc.md` | Base economic system (working doc) |
-| `invariants.md` | Non-negotiable code rules |
+| `pr11_track_a_session_assembly.md` | Accepted | Driver session state, boundary hook |
+| `game_mode_session_installation.md` | Accepted | O1 session install |
+| `capability_effect_target_scope.md` | Accepted | EffectTarget — Owner default |
+| `scripted_event_scope_model.md` | Accepted | O4 per-owner scripted events |
+| `spec_session_state_replay.md` | Accepted | O2 replay v3 |
+| `install_clone_then_commit.md` | Accepted | I1 preview / atomic install |
 
 ---
 
 ## 8. Read order for new agents
 
 1. **This document**
-2. `docs/worklog.md` — O1b, EffectTarget, S5, O4 landing notes
-3. `docs/adr/capability_effect_target_scope.md` + `scripted_event_scope_model.md`
-4. `docs/adr/spec_session_state_replay.md` (before O2)
-5. `docs/todo.md`
-6. `docs/design_v6.md` + `docs/capability_tree_v1.md`
-7. Code: `install.rs`, `spec_session.rs`, `session.rs`, boundary handlers
+2. `workshop/simthing_spec_sonnet_opus_handoff.md`
+3. `worklog.md` — O2, B3, I1 entries
+4. ADRs: replay, install atomicity, EffectTarget, scripted scope
+5. `todo.md` · `design_v6.md` · `capability_tree_v1.md`
+6. Code: `spec_replay.rs`, `install.rs`, `spec_session.rs`, `session.rs`
 
 ---
 
@@ -192,20 +154,17 @@ simthing-studio   ← deferred GUI (depends on spec)
 
 ```powershell
 cargo test --workspace
-cargo build --workspace --tests
-cargo build --workspace --release --tests
-cargo test --workspace --release
-git status --short --branch
 ```
 
-Expected: **326** passed, **1** ignored (GPU perf bench), zero warnings, clean tracked tree.
+Expected: **345** passed, **1** ignored, zero warnings.
 
 Key E2E proofs:
 
 ```powershell
+cargo test -p simthing-driver record_and_replay_with_spec
+cargo test -p simthing-driver b3_threshold_only_scripted
+cargo test -p simthing-driver i1_apply_install_preview
 cargo test -p simthing-driver open_from_spec_capability_unlock
 cargo test -p simthing-driver open_from_spec_owner_targeted_effect
-cargo test -p simthing-driver open_from_spec_installs_one_scripted_event
 cargo test -p simthing-sim fission_with_cloned_capability_subtree_reduction
-cargo test -p simthing-driver fission_cloned_capability_subtree_registers
 ```
