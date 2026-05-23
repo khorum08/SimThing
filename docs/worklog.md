@@ -6,6 +6,75 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-23 — I1: Install clone-then-commit + Studio preview API (PR #67)
+
+**Status:** `master` @ `0922908` (PR #67 merged, code `6b8de81`).
+
+**Landed:** Per `docs/adr/install_clone_then_commit.md` (new, Accepted).
+
+- `crates/simthing-gpu/src/slot.rs`: Added `Clone` to `SlotAllocator` derive.
+- `crates/simthing-driver/src/install.rs`:
+  - `InstallPreview` struct: `pub registry`, `pub root`, `pub allocator`, `pub state`.
+  - `preview_install(game_mode, scenario, &registry, &root, &allocator) -> Result<InstallPreview, InstallError>` — clones inputs, runs `compile_and_install` against scratch; caller state never mutated.
+  - `install_atomic(…&mut…) -> Result<SpecSessionState, InstallError>` — `preview_install` + commit on success.
+  - `compile_and_install` doc: clarified as "in-place worker; prefer `install_atomic`."
+  - 5 unit tests: success, atomicity-on-error, preview-then-commit, install_atomic equivalence, slot stability.
+- `crates/simthing-driver/src/session.rs`:
+  - `open_from_spec` switches to `install_atomic`.
+  - `apply_install_preview(&mut self, preview: InstallPreview)` — swap registry/root/allocator + `install_spec_state`.
+- Integration test: `i1_apply_install_preview_matches_open_from_spec_shape`.
+- `docs/adr/install_clone_then_commit.md` — new ADR (Accepted). Alternatives: delta-recording, rollback, two-phase commit — all rejected.
+
+**Test counts:** 345 passed, 1 ignored.
+
+---
+
+## 2026-05-23 — B3: Precise `requires_boundary_tick` classification (PR #66)
+
+**Status:** `master` @ `bd71ba8` (PR #66 merged, code `defb42c`).
+
+**Problem:** Old classification blocked every boundary skip for sessions with any scripted instance — Threshold-only quiet games never skipped.
+
+**Landed:**
+
+- `crates/simthing-sim/src/threshold_registry.rs`:
+  - `has_capability_unlock_in(&self, events) -> bool` — zero-alloc early-return.
+  - `has_scripted_event_trigger_in(&self, events) -> bool` — zero-alloc early-return.
+- `crates/simthing-driver/src/spec_session.rs`:
+  - `requires_boundary_tick(&self, events: &[ThresholdEvent], threshold_registry: &ThresholdRegistry) -> bool` — 6 precise force-tick conditions (queued selection, cooldown>0, Predicate trigger, OnPrereqMet, CapabilityUnlock event, ScriptedEventTrigger event).
+  - 9 unit tests covering all 6 clauses.
+- `crates/simthing-driver/src/session.rs`: both `run` and `record_to_path` pass events + registry to `requires_boundary_tick`.
+- Integration tests: `b3_threshold_only_scripted_events_skip_quiet_boundaries`; `b3_predicate_scripted_event_blocks_boundary_skip`.
+
+**Test counts:** ~338 passed, 1 ignored (≈ 326 + B3 tests).
+
+---
+
+## 2026-05-23 — O2: Replay v3 — spec session state snapshot + per-frame deltas (PR #65)
+
+**Status:** `master` @ `745b9f0` (PR #65 merged, code `2f2a7b5`).
+
+**Landed:** Per `docs/adr/spec_session_state_replay.md` (Status → Accepted; impl notes appended).
+
+- `crates/simthing-spec/src/runtime/capability_state.rs`: `CapabilityTreeNotification` gains `Serialize, Deserialize`.
+- `crates/simthing-sim/src/replay.rs`:
+  - `ReplayFrame.spec_entries: Vec<serde_json::Value>` (serde default, skip-if-empty).
+  - `ReplayWriter::write_extra<T: Serialize>` — opaque escape hatch, keeps `simthing-sim` spec-free.
+  - `next_frame` skips unknown `kind` values (forward compat for `spec_snapshot` line).
+- `crates/simthing-driver/src/spec_replay.rs` (new):
+  - `SpecSnapshot`, `CapabilityStateSnapshot`, `ScriptedCooldownSnapshot`, `QueuedSelectionSnapshot`.
+  - `SpecDelta` (7 variants, all logical keys — no raw `OverlayId`).
+  - `collect_spec_snapshot`, `diff_and_emit`, `spec_deltas_to_json`, `json_to_spec_deltas`.
+  - `apply_spec_snapshot`, `apply_spec_delta`, `LoadedReplay`, `read_spec_replay_file`, `open_replay_with_spec`.
+  - `ReplayOpenError`.
+- `crates/simthing-driver/src/session.rs`: `record_to_path` emits `spec_snapshot` line and attaches per-frame `spec_entries`.
+- `crates/simthing-driver/src/lib.rs`: all O2 types re-exported.
+- Integration tests: `record_and_replay_with_spec_round_trips_capability_state` (logical-key invariant asserted); `replay_reader_skips_spec_snapshot_line_for_sim_only_consumer`.
+
+**Test counts:** ~326 + O2 tests at landing (O2 → B3 → I1 totals 345).
+
+---
+
 ## 2026-05-23 — Sonnet/Opus spec handoff (PR #64)
 
 **Status:** `master` @ `9fd8b85`.

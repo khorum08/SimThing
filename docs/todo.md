@@ -1,12 +1,13 @@
 # SimThing Todo Log
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; **O1**, **O1b**, **EffectTarget**,
-**S5** (+ fission-clone follow-up), and **O4** landed on `master`. Cursor handoff complete.
-`master` and `origin/master` synced at **`9fd8b85`** (PR #64 workshop handoff).
+**S5** (+ fission-clone follow-up), **O4**, **O2 Replay v3**, **B3 boundary-skip precision**,
+and **I1 install atomicity** landed on `master`.
+`master` and `origin/master` synced at **`0922908`** (PR #67 I1 merge).
 
 **Parking synthesis:** [`docs/design_v6.5.md`](design_v6.5.md) — read first for HEAD, gates, doc map.
 
-**Tests:** `cargo test --workspace` → **326** passed, **1** ignored, zero
+**Tests:** `cargo test --workspace` → **345** passed, **1** ignored, zero
 warnings. Debug and **release** profile build/tests clean.
 
 **Cursor handoff:** complete (PRs #56–#59). O1b and S5 tests **green** after Opus commits
@@ -29,13 +30,19 @@ is the RON-driven entry point. After fission with cloned capability subtrees,
 SimThing map on `CapabilityTreeInstance`. Handler resolves activate/suspend targets
 via `overlay_hosts`; GPU overlay-prep uses overlay **placement** on the host tree.
 
-### Next — ordered (2026-05-23, post Opus O1b–O4)
+### Opus session complete (2026-05-23, O2 + B3 + I1)
 
-| Priority | ID | Owner | Scope |
-|----------|-----|-------|-------|
-| **P0** | **O2** | **Codex** | Replay v3 — `SpecSnapshot`/`SpecDelta` for capability state, scripted cooldowns, diagnostics (`spec_session_state_replay.md`) |
+All three Opus P0 items shipped. No P0 code work outstanding.
 
-**Recently landed (Opus, `2eff1e0`–`8904522`):**
+**Landed (Opus, PRs #65–#67):**
+
+| ID | PR | Commit | Scope |
+|----|-----|--------|-------|
+| **O2** | #65 | `2f2a7b5` | Replay v3 — `SpecSnapshot`/`SpecDelta`, `spec_replay.rs`, `open_replay_with_spec`, logical-key invariant |
+| **B3** | #66 | `defb42c` | Precise `requires_boundary_tick` — 6 conditions; zero-alloc `has_*_in` predicates on `ThresholdRegistry` |
+| **I1** | #67 | `6b8de81` | `preview_install` / `install_atomic` / `apply_install_preview`; `SlotAllocator: Clone`; ADR Accepted |
+
+**Earlier Opus commits (`2eff1e0`–`8904522`):**
 
 | ID | Commit | Scope |
 |----|--------|-------|
@@ -46,18 +53,20 @@ via `overlay_hosts`; GPU overlay-prep uses overlay **placement** on the host tre
 | **O4** | `8904522` | Per-owner scripted event instances; `EventSpec.install` |
 
 **Deferred / tabled:** B2 tighter incremental topology for fission clone internal edges;
-`ScopeRef::Owner` and cross-owner scripted events; install clone-then-commit (Studio);
-scenario RON expansion; `simthing-studio` GUI.
+`ScopeRef::Owner` and cross-owner scripted events; mid-session install atomicity (GPU resync);
+atomic spec hot-reload with `SpecSessionState` preservation; scenario RON expansion;
+`simthing-studio` GUI; E0 base economic system.
 
 **Known risks (remaining):**
 
-- **Replay** — spec runtime state not serialized (O2).
-- **Partial install mutation** — in-place registry/root on error; Studio preview needs clone-then-commit.
-- **Empty-boundary skip** — scripted events may force boundary work; classification revisit deferred.
+- **Mid-session install** — `apply_install_preview` on a *running* session needs GPU resync and slot reallocation. Deferred per I1 ADR.
+- **Spec hot-reload** — preserving in-flight `SpecSessionState` (cooldowns, selections) across re-install needs replay-style state merging.
 - **O1c ruled out** — dimension sync after install not the blocker.
 
 **Worktree:** clean for tracked files. Untracked `.claude/worktrees/`,
 `demo.replay.ldjson`.
+
+**ADRs fully current:** `spec_session_state_replay.md` → Accepted (O2); `install_clone_then_commit.md` → Accepted (I1 new file).
 
 ---
 
@@ -514,6 +523,9 @@ simthing-studio   ← deferred GUI
 17. ~~S5 fission-clone instance registration~~ — `1253a97`.
 18. ~~EffectTarget ADR + implementation~~ — `8da4be9`, `7febdd1`.
 19. ~~O4 per-owner scripted events~~ — `8904522`.
-20. **Next — Codex P0:** **O2** replay v3.
-21. Scenario format expansion / map-scale representation — tabled.
-22. `simthing-studio` GUI — tabled.
+20. ~~**Opus P0 O2** — Replay v3~~ — Done PR #65, `2f2a7b5`.
+21. ~~**Opus P0 B3** — Precise boundary-skip classification~~ — Done PR #66, `defb42c`.
+22. ~~**Opus P0 I1** — Install clone-then-commit~~ — Done PR #67, `6b8de81`.
+23. Scenario format expansion / map-scale representation — tabled.
+24. `simthing-studio` GUI — tabled.
+25. E0 base economic system — tabled (separate design space).
