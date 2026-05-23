@@ -151,7 +151,6 @@ fn spec_session_capability_unlock_activates_overlay_for_next_tick() {
                 flavor_text: String::new(),
                 research_cost: 10.0,
                 activation: ActivationMode::Threshold,
-                research_rate: Default::default(),
                 icon: String::new(),
                 thumbnail: String::new(),
                 card_image: String::new(),

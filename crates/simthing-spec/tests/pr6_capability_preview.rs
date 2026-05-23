@@ -54,7 +54,6 @@ fn entry_with_effects(
             0.0
         },
         activation,
-        research_rate: Default::default(),
         icon: String::new(),
         thumbnail: String::new(),
         card_image: String::new(),

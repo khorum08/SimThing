@@ -21,19 +21,6 @@ pub enum ActivationMode {
     OnPrereqMet,
 }
 
-/// Authored research-rate seam (Script arm reserved for future).
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum ResearchRateSpec {
-    Literal(f32),
-}
-
-impl Default for ResearchRateSpec {
-    fn default() -> Self {
-        Self::Literal(0.0)
-    }
-}
-
 /// Category-level mutual exclusivity policy (authored).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -86,8 +73,6 @@ pub struct CapabilitySpec {
     #[serde(default)]
     pub activation: ActivationMode,
     #[serde(default)]
-    pub research_rate: ResearchRateSpec,
-    #[serde(default)]
     pub icon: String,
     #[serde(default)]
     pub thumbnail: String,
@@ -121,4 +106,23 @@ pub struct CapabilityEffectSpec {
     pub targets_property: String,
     pub sub_field_deltas: Vec<(simthing_core::SubFieldRole, simthing_core::TransformOp)>,
     pub when_activated: simthing_core::OverlayLifecycle,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn capability_spec_ignores_legacy_research_rate_field() {
+        let json = r#"{
+            "id": "drive",
+            "display_name": "Drive",
+            "research_cost": 100.0,
+            "effects": [],
+            "research_rate": { "Literal": 0.5 }
+        }"#;
+        let spec: CapabilitySpec = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(spec.id, "drive");
+        assert_eq!(spec.research_cost, 100.0);
+    }
 }

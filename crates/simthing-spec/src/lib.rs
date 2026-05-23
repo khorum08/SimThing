@@ -1,40 +1,45 @@
 //! Authored SimThing specification layer.
 //!
-//! This crate owns external RON-facing schemas, validation, diagnostics,
-//! logical keys, and compilation of spec structures into live SimThing runtime
-//! artifacts.
+//! This crate compiles external RON-facing game data into native SimThing
+//! runtime artifacts. It owns authored schemas, validation, diagnostics,
+//! logical keys, compile-time conversion, runtime definition types, Script IR,
+//! event/trigger/effect templates, boundary handlers, and impact preview.
 //!
-//! ## What is here (PRs 1–8)
+//! It does **not** execute the simulation, own GPU state, or orchestrate the
+//! day-boundary protocol. The driver (`simthing-driver`) installs compiled
+//! artifacts into `SpecSessionState` and invokes boundary handlers through
+//! a generic sim-side hook after GPU value readback.
 //!
-//! - **Authoring structs** (`spec::*`): `PropertySpec`, `OverlaySpec`,
-//!   `CapabilityTreeSpec`, `EventSpec`, `TriggerSpec`, `EffectSpec`, Script IR.
+//! ## Scope (PRs 1–11)
+//!
+//! - **Authoring structs** (`spec::*`): properties, overlays, capability trees,
+//!   events, triggers, effects, Script IR.
 //! - **Compilers** (`compile::*`): `compile_property`, `compile_overlay`,
-//!   `compile_trigger`, `compile_effect`, `compile_event`,
-//!   `CapabilityTreeBuilder`.
+//!   `CapabilityTreeBuilder`, `compile_event`, trigger/effect compilers.
 //! - **Runtime artifacts** (`runtime::*`): `CapabilityTreeDefinition`,
-//!   `CapabilityTreeInstance`, `CapabilityTreeState`,
-//!   `ScriptedEventDefinition`, `CompiledTrigger`, `CompiledEffect`.
-//! - **Boundary handlers** (`boundary::*`): `CapabilityTreeBoundaryHandler`
-//!   (threshold activation, prereq reset, fixpoint sweeps, player selection).
-//! - **Impact preview** (`preview::*`): `CapabilityPreviewReport`.
+//!   capability/session state types, `ScriptedEventDefinition`.
+//! - **Boundary handlers** (`boundary::*`): capability unlock / player
+//!   selection, scripted-event predicate + threshold dispatch (called by the
+//!   driver hook — not embedded in `simthing-sim::BoundaryProtocol`).
+//! - **Preview** (`preview::*`): `preview_capability_effect`.
 //! - **RON loaders**, validation, diagnostics, logical keys.
 //!
-//! ## Deferred
+//! ## Out of scope / deferred
 //!
-//! - Session/driver assembly for capability tree instances and per-faction
-//!   state maps.
-//! - B2 append-only capability unlock integration.
-//! - B2 append-only integration for scripted-event triggers (the PR 10 path
-//!   is full-rebuild only).
+//! - RON-driven session open from `GameModeSpec` (manual `install_spec_state`
+//!   today — see progress log § Open work O1).
+//! - Replay serialization of spec runtime state (O2).
+//! - B2 append-only integration for external capability/scripted threshold
+//!   registrations on growth boundaries (helpers exist; wiring deferred).
+//! - EML backend, Studio GUI, full scenario RON expansion.
 //!
 //! ## Crate boundary
 //!
 //! Production code depends on `simthing-core` and `simthing-feeder` only.
-//! Integration tests in `tests/` may pull `simthing-gpu` / `simthing-sim` as
-//! dev-dependencies to exercise end-to-end paths. Fired GPU threshold events
-//! are resolved into [`simthing_feeder::CapabilityUnlockEvent`]s by the caller
-//! (via `ThresholdRegistry::extract_capability_unlocks` in `simthing-sim`)
-//! before reaching `CapabilityTreeBoundaryHandler::handle_capability_unlock_events`.
+//! Integration tests may use `simthing-gpu` / `simthing-sim` as dev-dependencies.
+//! Fired GPU threshold events are resolved by the caller via
+//! `ThresholdRegistry::extract_capability_unlocks` / `extract_scripted_event_triggers`
+//! before reaching spec boundary handlers.
 
 pub mod boundary;
 pub mod compile;
@@ -75,7 +80,7 @@ pub use runtime::{
 };
 pub use spec::capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,
-    CapabilitySpec, CapabilityTreeSpec, MaxActivePolicy, ReplacementPolicy, ResearchRateSpec,
+    CapabilitySpec, CapabilityTreeSpec, MaxActivePolicy, ReplacementPolicy,
 };
 pub use spec::domain_pack::DomainPackSpec;
 pub use spec::effect::EffectSpec;
