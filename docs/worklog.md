@@ -6,6 +6,34 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-23 — EffectTarget ADR (Opus P3, Proposed)
+
+**Status:** `master` @ `927359f` + ADR.
+
+**Landed (docs only, no code):**
+
+- `docs/adr/capability_effect_target_scope.md` (Proposed) — `CapabilityEffectSpec.effect_target`
+  selector with three variants (`Owner` default, `CapabilityTree`, `SessionRoot`); install-time
+  resolution of `affects` in `install_tree_for_owner`; preview gains `owner_slot`/`root_slot`;
+  O1b orthogonality made explicit; 6 alternatives considered and rejected.
+- `docs/capability_tree_v1.md` §14 rewritten from "pending" → ADR pointer with decision table
+  and authoring rule.
+
+**Next (Codex):** Implement the ADR — `EffectTarget` enum, `CapabilityTreeBuildOutput`
+effect-target provenance, install resolver, preview slot routing, test updates. Independent
+of O1b (`emit_activation` overlay-id fix); can land in either order.
+
+---
+
+## 2026-05-23 — V6.5 Codex remediation (PR #62)
+
+**Status:** `master` @ `14db14e`.
+
+**Landed:** O1b/S5 repro commands, manual-install E2E clarification, B2 Approach C note,
+EffectTarget P3 rationale, historical todo PR ladder label.
+
+---
+
 ## 2026-05-23 — V6.5 doc synthesis + archive sunset
 
 **Status:** `master` @ `030ef3e` (PR #61 merged).

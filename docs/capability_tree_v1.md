@@ -1139,47 +1139,58 @@ rules — if a kind string does not match, installation fails loudly.
 
 ---
 
-## 14. Addendum — v0 capability effect target semantics (Opus P3 pending)
+## 14. Addendum — Capability effect target semantics (EffectTarget ADR)
 
-**Status:** Current runtime behavior · **Design follow-up:** EffectTarget ADR
-(Opus P3) before Studio/modder-facing promises harden.
+**Status:** Proposed in [`adr/capability_effect_target_scope.md`](adr/capability_effect_target_scope.md)
+· **Implementation:** pending (Codex) · **Gates:**
+`simthing_modder_object_guide.md`, `simthing-studio` effect authoring UI
 
-### What v0 does today
+### What the ADR decides
 
-When `compile_and_install` clones a capability tree per owner (O1):
+`CapabilityEffectSpec` gains an authored `effect_target: EffectTarget`
+selector with three variants and **`Owner` as the default**:
 
-1. Each owner receives a **new** `SimThing` of kind `Custom(tree_kind)` with
-   fresh `OverlayId`s on its suspended effect overlays.
-2. Those overlays set **`affects` to the cloned capability-tree id** (the clone),
-   not the owning `Faction` / `Location` / session root.
-3. `CapabilityEffectSpec.targets_property` names the **property column** the
-   transform modifies (e.g. `"core::power"`, `"military::fleet_speed"`). It does
-   **not** yet select *which SimThing* receives the transform beyond the
-   overlay's `affects` target.
+```ron
+CapabilityEffectSpec(
+    targets_property: "military::fleet_speed",
+    sub_field_deltas: [(Amount, Multiply(3.0))],
+    when_activated: Permanent,
+    // effect_target: Owner    ← implicit when omitted
+)
+```
 
-This is internally consistent for v0 session install and tests, but **not** the
-same as “apply this bonus to the owning faction” unless the property column and
-overlay placement happen to achieve that visually.
+| Variant | Resolved `affects` at install time | Use case |
+|---------|------------------------------------|----------|
+| `Owner` *(default)* | `vec![owner_id]` | Faction-level bonuses, unlock flags, stat multipliers — the common case. |
+| `CapabilityTree` | `vec![cloned_tree_id]` | Tree-internal counters, milestones, bookkeeping that should stay local to the clone. **v0 behavior.** |
+| `SessionRoot` | `vec![scenario.root.id]` | Global era flags, world-state triggers other factions can observe. |
 
-### What is not authored yet
+`#[serde(default)]` on `effect_target` keeps every existing RON file
+parseable. **Runtime semantics flip** from clone-targeted to
+owner-targeted unless modders opt into `CapabilityTree`. This is
+intentional and pre-content; see ADR consequence (g).
 
-Owner-targeted capability effects, session-root effects, “current scope”
-expressions, and other modder-facing **effect target** models are **not** part
-of the RON schema. An **EffectTarget ADR** (Opus P3) will decide explicit
-scopes such as:
+### What changes in code
 
-- `CapabilityTree` (cloned tree node — closest to v0 today)
-- `Owner` (install target owner)
-- `SessionRoot`
-- `Current` / future scope expressions
+1. `install_tree_for_owner` in
+   [`crates/simthing-driver/src/install.rs`](../crates/simthing-driver/src/install.rs)
+   stops hard-coding `affects: vec![cloned_tree_id]` and routes through a
+   `resolve_effect_target` helper per cloned overlay.
+2. `CapabilityTreeBuildOutput` exposes effect-target provenance parallel
+   to `tree.overlays` so the install loop can zip them.
+3. `CapabilityPreviewInput` gains `owner_slot` and `root_slot`; the
+   preview reads from whichever slot matches the effect's target so
+   Studio previews show the actual transformed cell.
+4. `CapabilityTreeBoundaryHandler::emit_activation` is **unchanged** —
+   `target: instance.tree_thing_id` continues to point at the SimThing
+   the overlay lives on (the clone). The O1b fix
+   (`overlay_id` resolution via `instance.by_overlay`) is independent of
+   this ADR and gates the ignored
+   `open_from_spec_capability_unlock_activates_overlay_for_next_tick` test.
 
-Until that ADR lands, treat capability effects as modifying state on the
-**cloned capability-tree SimThing** unless documentation for a specific
-game mode says otherwise.
+### Authoring rule going forward
 
-### Authoring implication
-
-Do not assume `targets_property: "military::fleet_speed"` automatically buffs
-the parent faction. Verify runtime placement via install tests or Studio
-preview once available. Prefer properties registered on the capability tree
-clone when prototyping v0 content.
+`targets_property` columns must exist on the resolved target's slot. The
+default `Owner` target means faction-facing properties should be
+registered without kind restriction (or on the faction kind). The
+Studio property editor can validate this statically when it ships.
