@@ -6,7 +6,32 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-23 — S5 regression test (Cursor, PR 4)
+## 2026-05-23 — Cursor safe-followup handoff parked
+
+**Status:** `master` @ `3174af0`; `origin/master` synced.
+
+**Cursor handoff complete (PRs #56–#59):**
+
+| PR | Deliverable |
+|----|-------------|
+| #56 | O1b `open_from_spec` threshold unlock E2E test (**ignored/RED** — overlay-id remapping) |
+| #57 | `docs/examples/` InstallTargetSpec RON fixtures + README |
+| #58 | `capability_tree_v1.md` §13 kind strings, §14 v0 effect scope |
+| #59 | S5 topology drift regression test (**ignored/RED** — Approach C append) |
+
+**Findings for Codex:**
+
+- O1c dimension sync **ruled out** (`n_dims == registry.total_columns` after install).
+- O1b blocker: handler emits template `overlay_ids`, not per-clone `instance.by_overlay`.
+- S5 blocker: Approach C append misses cloned capability-subtree edges.
+
+**Next owners:** Codex (O1b fix, S5 fix, then O4/O2); Opus (EffectTarget ADR).
+
+**Cursor follow-up when Codex lands:** un-ignore O1b + S5 tests; parking doc sync.
+
+---
+
+## 2026-05-23 — S5 regression test (Cursor, PR #59)
 
 **Status:** `master` @ `61e62c1` (merge PR #59).
 

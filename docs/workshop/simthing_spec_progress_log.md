@@ -4,7 +4,7 @@
 assembly, and O1 session installation.  
 **Replaces:** superseded PR handoff/workshop docs (see [`README.md`](README.md); those files live in local-only `archive/`).  
 **Last updated:** 2026-05-23  
-**Master HEAD:** `61e62c1` (PR #59 S5 regression test)  
+**Master HEAD:** `3174af0` (PRs #56–#59 Cursor handoff; parking sync)  
 **Verification:** `cargo test --workspace` → **323** passed, **3** ignored, zero warnings.  
 `cargo build --workspace --tests` and release profile build/tests clean.
 
