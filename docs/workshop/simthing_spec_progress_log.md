@@ -1,12 +1,13 @@
-# simthing-spec — Unified Progress Log (PRs 1–11 + O1)
+# simthing-spec — Unified Progress Log (PRs 1–11 + O1–O4 + O2 Replay + B3 + I1)
 
 **Status:** Canonical **implementation ledger** for `simthing-spec`, PR 11 session
-assembly, and O1 session installation.  
+assembly, O1 session installation, and the Opus P0 batch (O2 Replay v3, B3 boundary-skip
+precision, I1 install atomicity).  
 **Parking synthesis:** [`docs/design_v6.5.md`](../design_v6.5.md) — read first for HEAD, gates, doc map.  
 **Replaces:** superseded PR handoff/workshop docs (see [`archive/SUNSET.md`](archive/SUNSET.md)).  
 **Last updated:** 2026-05-23  
-**Master HEAD:** `9fd8b85` (PR #64)  
-**Verification:** `cargo test --workspace` → **326** passed, **1** ignored, zero warnings.  
+**Master HEAD:** `0922908` (PR #67 — I1 install clone-then-commit)  
+**Verification:** `cargo test --workspace` → **345** passed, **1** ignored, zero warnings.  
 `cargo build --workspace --tests` and release profile build/tests clean.
 
 ---
@@ -20,7 +21,10 @@ assembly, and O1 session installation.
 | **Session owner** | `simthing-driver::SpecSessionState` + `simthing-driver::install` |
 | **Session open** | `SimSession::open_from_spec` (spec-driven) or `open` + manual `install_spec_state` |
 | **Boundary wiring** | Generic `BoundaryHookContext` in `simthing-sim`; handlers invoked from driver after GPU readback |
-| **ADR** | `docs/adr/pr11_track_a_session_assembly.md` + Phase 1 ADRs (#50) |
+| **Install atomicity** | `preview_install` / `install_atomic` / `apply_install_preview` — Studio preview + hot-reload safety |
+| **Replay** | `spec_replay.rs` — `SpecSnapshot`/`SpecDelta`, `open_replay_with_spec`; logical-key invariant (no raw `OverlayId`) |
+| **Boundary skip** | `requires_boundary_tick(events, threshold_registry)` — 6 precise conditions, Threshold-only sessions skip freely |
+| **ADR** | `docs/adr/pr11_track_a_session_assembly.md` + Phase 1 ADRs (#50) + `install_clone_then_commit.md` (I1) |
 | **Design docs** | `docs/design_v6.md` (scripted events addendum), `docs/capability_tree_v1.md` (§12 unlock bridge) |
 
 ### Dependency graph (as implemented)
@@ -54,9 +58,10 @@ crates/simthing-spec/src/
   preview/        — capability effect preview
 
 crates/simthing-driver/src/
-  install.rs      — compile_and_install, per-owner tree clone, InstallTargetSpec resolution
-  spec_session.rs — SpecSessionState, boundary hook implementation
-  session.rs      — SimSession::open, open_from_spec, install_spec_state
+  install.rs      — compile_and_install, preview_install, install_atomic, InstallPreview
+  spec_session.rs — SpecSessionState, PreBoundarySnapshot, requires_boundary_tick (6 conditions)
+  spec_replay.rs  — SpecSnapshot, SpecDelta, open_replay_with_spec, apply_spec_*, diff_and_emit
+  session.rs      — SimSession::open, open_from_spec (atomic), apply_install_preview
 
 crates/simthing-sim/src/
   boundary.rs     — BoundaryHookContext, execute_with_boundary_hook, external threshold storage
@@ -324,13 +329,23 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 
 ---
 
-## Open work (post O1b / EffectTarget / S5 / O4)
+## Opus P0 batch — landed 2026-05-23 (PRs #65–#67)
 
-### P0 — Codex
+All three Opus P0 items complete. No outstanding P0 code work.
 
-| ID | Owner | Scope | ADR |
-|----|-------|-------|-----|
-| **O2** | Codex | Replay v3 — `SpecSnapshot`/`SpecDelta`, logical keys, cooldown serialization | [`spec_session_state_replay.md`](../adr/spec_session_state_replay.md) |
+| ID | PR | Commit | Scope | ADR |
+|----|-----|--------|-------|-----|
+| **O2** | #65 | `2f2a7b5` | Replay v3 — `SpecSnapshot`/`SpecDelta`, `spec_replay.rs`, `open_replay_with_spec`, logical-key invariant | [`spec_session_state_replay.md`](../adr/spec_session_state_replay.md) → **Accepted** |
+| **B3** | #66 | `defb42c` | Precise `requires_boundary_tick` — 6 conditions; `has_*_in` predicates on `ThresholdRegistry` | (existing boundary-skip design space) |
+| **I1** | #67 | `6b8de81` | `preview_install` / `install_atomic` / `apply_install_preview`; `SlotAllocator: Clone` | [`install_clone_then_commit.md`](../adr/install_clone_then_commit.md) → **Accepted** (new) |
+
+---
+
+## Open work (post Opus P0 batch)
+
+### No outstanding P0 items
+
+The Opus P0 batch is complete. Next work is user-driven.
 
 ### Done (2026-05-23, Opus — `2eff1e0`–`8904522`)
 
@@ -358,21 +373,18 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 - EML backend, full Clausewitz parser
 - Scenario RON expansion (inline tree/registry/shadow seeds)
 - Map-scale representation doc spike
-- Install clone-then-commit (Studio preview / hot-reload safety)
+- Mid-session install atomicity (GPU resync, slot reallocation — see I1 ADR §Out of scope)
+- Spec hot-reload with `SpecSessionState` preservation across re-install
 - B2 tighter incremental topology for fission clone internal edges
 - Scripted: `ScopeRef::Owner`, cross-owner events, cross-instance priority ordering
-- Event boundary-skip classification (`requires_boundary_tick`)
+- E0 base economic system (separate design space, not started)
 
 ### Known footguns
 
 - **GPU overlay-prep vs `affects`:** transforms apply via overlay placement on the host
   SimThing tree, not `overlay.affects`. EffectTarget install + `overlay_hosts` drive routing.
-- **Partial install mutation** — `compile_and_install` mutates registry/root in place; Studio
-  preview needs clone-then-commit.
-- **Replay** — structural overlay activations replay; spec runtime state does not (O2).
 - **Fission clone registration** — `react_to_fission_clones` synthesizes from source instance;
   exotic install paths need review.
-- **Empty-boundary skip** — scripted events may disable skip; classification revisit deferred.
 - **O1c ruled out** — dimension sync after install not the blocker.
 
 ---
@@ -421,4 +433,4 @@ cargo test --workspace --release
 git status --short --branch
 ```
 
-Expected: **326** passed, **1** ignored, zero warnings, clean tracked tree.
+Expected: **345** passed, **1** ignored, zero warnings, clean tracked tree.
