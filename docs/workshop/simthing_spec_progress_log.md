@@ -5,7 +5,7 @@ assembly, and O1 session installation.
 **Replaces:** superseded PR handoff/workshop docs (see [`README.md`](README.md); those files live in local-only `archive/`).  
 **Last updated:** 2026-05-23  
 **Master HEAD:** `7bc038e` (PR #56 O1b test)  
-**Verification:** `cargo test --workspace` → **321** passed, **2** ignored, zero warnings.  
+**Verification:** `cargo test --workspace` → **322** passed, **2** ignored, zero warnings.  
 `cargo build --workspace --tests` and release profile build/tests clean.
 
 ---
@@ -413,6 +413,7 @@ These remain valid; see original Q&A in `capability_tree_studio_workshop.md` for
 4. `docs/todo.md` (parking state)
 5. `docs/design_v6.md` + `docs/capability_tree_v1.md` addenda
 6. Code: `install.rs`, `spec_session.rs`, `session.rs`, `boundary/capability_handler.rs`, `boundary/event_handler.rs`
+7. Install examples: `docs/examples/README.md`
 
 **Ignore for implementation:** archived handoffs in `docs/workshop/archive/` (gitignored) — see [`README.md`](README.md).
 
@@ -428,4 +429,4 @@ cargo test --workspace --release
 git status --short --branch
 ```
 
-Expected: **321** passed, **2** ignored, zero warnings, clean tracked tree.
+Expected: **322** passed, **2** ignored, zero warnings, clean tracked tree.

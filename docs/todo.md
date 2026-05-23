@@ -4,7 +4,7 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; Phase 1 ADRs,
 **O3**, Composer **S3/S4**, **O1** (session installation), and post-O1 doc
 sync landed. `master` and `origin/master` synced at **`7bc038e`** (PR #56).
 
-**Tests:** `cargo test --workspace` → **321** passed, **2** ignored, zero
+**Tests:** `cargo test --workspace` → **322** passed, **2** ignored, zero
 warnings. Debug and **release** profile build/tests clean.
 
 **Canonical spec progress:** `docs/workshop/simthing_spec_progress_log.md`
@@ -498,5 +498,6 @@ simthing-studio   ← deferred GUI
 17. **Next — Codex P2:** **O4** (per-owner scripted events) then **O2** (replay v3).
 18. **Next — Opus P3:** **EffectTarget ADR** — Owner vs CapabilityTree effect scope
      before Studio/modder docs.
-19. **Next — Cursor:** InstallTargetSpec examples PR; kind/effect-target docs PR; optional S5 regression test PR.
-20. Scenario format expansion / map-scale representation — tabled.
+19. ~~**Cursor:** InstallTargetSpec examples/docs PR~~ — `docs/examples/` + parse smoke test.
+20. **Next — Cursor:** Built-in kind string + v0 effect-target docs PR; optional S5 regression test PR.
+21. Scenario format expansion / map-scale representation — tabled.

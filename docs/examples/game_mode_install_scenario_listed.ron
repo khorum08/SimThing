@@ -1,0 +1,48 @@
+// InstallTargetSpec::ScenarioListed — install only on owners named by the scenario.
+// Runtime: scenario.install_targets["player_faction"] = vec![faction_id];
+GameModeSpec(
+    id: "example_scenario_listed",
+    display_name: "Example — scenario-listed install target",
+    description: "Clones `national_ideas` only onto ids listed under `player_faction`.",
+    spec_version: (major: 1, minor: 0, patch: 0),
+    properties: [
+        PropertySpec(
+            id: "core_power",
+            namespace: "core",
+            name: "power",
+            display_name: "Power",
+        ),
+    ],
+    capability_trees: [
+        CapabilityTreeSpec(
+            tree_id: "national_ideas",
+            tree_kind: "national_ideas",
+            owner_kind: "Faction",
+            install: ScenarioListed(target_id: "player_faction"),
+            categories: [
+                CapabilityCategorySpec(
+                    property_namespace: "ideas",
+                    property_name: "national",
+                    display_name: "National Ideas",
+                    entries: [
+                        CapabilitySpec(
+                            id: "centralization",
+                            display_name: "Centralization",
+                            research_cost: 1.0,
+                            activation: PlayerSelection,
+                            effects: [
+                                CapabilityEffectSpec(
+                                    targets_property: "core::power",
+                                    sub_field_deltas: [
+                                        (Amount, Add(1.0)),
+                                    ],
+                                    when_activated: Permanent,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ],
+)

@@ -6,7 +6,23 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-23 — O1b E2E test (Cursor, test-only PR)
+## 2026-05-23 — InstallTargetSpec examples (Cursor, PR 2)
+
+**Status:** branch pending merge.
+
+**Landed:**
+
+- `docs/examples/README.md` — `AllOfKind`, `ScenarioListed`, `SessionRoot` semantics
+- `docs/examples/game_mode_install_all_factions.ron`
+- `docs/examples/game_mode_install_scenario_listed.ron`
+- `docs/examples/game_mode_install_session_root.ron`
+- `pr1_spec.rs`: `loads_install_target_examples` parse smoke test
+
+**Next:** Cursor PR 3 — kind strings + v0 effect-target warning docs.
+
+---
+
+## 2026-05-23 — O1b E2E test (Cursor, PR #56)
 
 **Status:** `master` @ `7bc038e` (merge PR #56).
 

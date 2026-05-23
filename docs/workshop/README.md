@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `7bc038e`. **Tests:** 321 passed, 2 ignored. **Next (Codex P0):** O1b handler overlay-id fix. **Then:** S5, O4, O2. **Cursor:** install-target examples + kind/effect docs PRs.
+**Parking (2026-05-23):** `master` @ `7bc038e`. **Tests:** 322 passed, 2 ignored. **Next (Codex P0):** O1b handler overlay-id fix. **Cursor:** kind/effect-target docs PR.
 
 ## Canonical — `simthing-spec` implementation progress
 
@@ -24,6 +24,7 @@
 |----------|------|
 | [`capability_tree_studio_workshop.md`](capability_tree_studio_workshop.md) | Original Claude workshop Q&A (2026-05-22) |
 | [`tech_tree_decisions.md`](tech_tree_decisions.md) | Prior session decisions; crate naming partially superseded |
+| [`../examples/README.md`](../examples/README.md) | InstallTargetSpec RON examples (`AllOfKind`, `ScenarioListed`, `SessionRoot`) |
 | [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder-facing object reference (draft) |
 
 ## Superseded handoffs (local archive only)

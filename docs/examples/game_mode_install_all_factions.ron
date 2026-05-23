@@ -1,0 +1,48 @@
+// InstallTargetSpec::AllOfKind — one cloned capability tree per matching owner.
+// Default when `install` is omitted on CapabilityTreeSpec.
+GameModeSpec(
+    id: "example_all_factions",
+    display_name: "Example — install on all factions",
+    description: "Clones `national_ideas` onto every SimThing of kind Faction.",
+    spec_version: (major: 1, minor: 0, patch: 0),
+    properties: [
+        PropertySpec(
+            id: "core_power",
+            namespace: "core",
+            name: "power",
+            display_name: "Power",
+        ),
+    ],
+    capability_trees: [
+        CapabilityTreeSpec(
+            tree_id: "national_ideas",
+            tree_kind: "national_ideas",
+            owner_kind: "Faction",
+            install: AllOfKind(kind: "Faction"),
+            categories: [
+                CapabilityCategorySpec(
+                    property_namespace: "ideas",
+                    property_name: "national",
+                    display_name: "National Ideas",
+                    entries: [
+                        CapabilitySpec(
+                            id: "centralization",
+                            display_name: "Centralization",
+                            research_cost: 1.0,
+                            activation: PlayerSelection,
+                            effects: [
+                                CapabilityEffectSpec(
+                                    targets_property: "core::power",
+                                    sub_field_deltas: [
+                                        (Amount, Add(1.0)),
+                                    ],
+                                    when_activated: Permanent,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ],
+)
