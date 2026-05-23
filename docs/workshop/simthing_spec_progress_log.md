@@ -5,8 +5,8 @@ assembly, and O1 session installation.
 **Parking synthesis:** [`docs/design_v6.5.md`](../design_v6.5.md) — read first for HEAD, gates, doc map.  
 **Replaces:** superseded PR handoff/workshop docs (see [`archive/SUNSET.md`](archive/SUNSET.md)).  
 **Last updated:** 2026-05-23  
-**Master HEAD:** `14db14e` (PR #62)  
-**Verification:** `cargo test --workspace` → **323** passed, **3** ignored, zero warnings.  
+**Master HEAD:** `8904522` (O4 per-owner scripted events)  
+**Verification:** `cargo test --workspace` → **326** passed, **1** ignored, zero warnings.  
 `cargo build --workspace --tests` and release profile build/tests clean.
 
 ---
@@ -324,55 +324,33 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 
 ---
 
-## Open work (post PR 11 + O1)
+## Open work (post O1b / EffectTarget / S5 / O4)
 
-### P0 — Codex (blocking; before O4/O2)
-
-| ID | Owner | Scope |
-|----|-------|-------|
-| **O1b** | Codex | Fix threshold unlock via `open_from_spec` — `CapabilityTreeBoundaryHandler` must emit `ActivateOverlay` with per-clone overlay ids from `instance.by_overlay`, not template ids in `CapabilityDefinition`. Test landed **ignored/RED**. |
-| **O1b-test** | Cursor | ✅ `open_from_spec_capability_unlock_activates_overlay_for_next_tick` — un-ignore when handler fix lands |
-
-### P1 — Codex (mechanical / perf correctness)
-
-| ID | Owner | Scope |
-|----|-------|-------|
-| **O1c** | Codex | Registry/GPU dimension sync after install — **ruled out** by O1b (`n_dims == total_columns` after install); reopen only if a future case fails |
-| **S5/O5** | Codex | Disable Approach C topology append when fission uses `clone_capability_children` (conservative fix); un-ignore S5 regression test when fixed |
-| **S5-test** | Cursor | ✅ `fission_with_cloned_capability_subtree_reduction_topology_matches_full_rebuild` — ignored/RED |
-
-### P2 — Codex (ADR landed)
+### P0 — Codex
 
 | ID | Owner | Scope | ADR |
 |----|-------|-------|-----|
-| **O4** | Codex | Per-owner scripted events (Option B) | [`scripted_event_scope_model.md`](../adr/scripted_event_scope_model.md) |
-| **O2** | Codex | Replay v3 — `SpecSnapshot`/`SpecDelta`, logical keys | [`spec_session_state_replay.md`](../adr/spec_session_state_replay.md) |
+| **O2** | Codex | Replay v3 — `SpecSnapshot`/`SpecDelta`, logical keys, cooldown serialization | [`spec_session_state_replay.md`](../adr/spec_session_state_replay.md) |
 
-### P3 — Opus (design, pre-Studio)
+### Done (2026-05-23, Opus — `2eff1e0`–`8904522`)
 
-| ID | Owner | Scope |
-|----|-------|-------|
-| **EffectTarget** | Opus | ADR: capability effect target scope (`CapabilityTree` vs `Owner` vs `SessionRoot`). v0 installs overlay `affects` on cloned tree only; modder-facing semantics need explicit model. |
+| ID | Commit | Scope |
+|----|--------|-------|
+| **O1b** | `2eff1e0` | Per-clone overlay ids in handler; property seed on clone; E2E green |
+| **EffectTarget** | `8da4be9`, `7febdd1` | ADR Accepted; `Owner` default; `overlay_hosts`; host overlay placement |
+| **S5** | `dcc74cc` | Approach C disabled when fission clones capability subtrees; S5 test green |
+| **S5 follow-up** | `1253a97` | Fission overlay-id re-stamp; `react_to_fission_clones`; instance + threshold registration |
+| **O4** | `8904522` | Per-owner scripted event instances; `EventSpec.install`; ADR Accepted |
 
-### Done (2026-05-23, docs)
-
-| ID | Scope |
-|----|-------|
-| **InstallTarget docs** | `capability_tree_v1.md` §13, `docs/examples/`, kind-string table |
-| **EffectTarget v0 warning** | `capability_tree_v1.md` §14 — cloned-tree overlay scope; Opus ADR pending |
-
-### Done (2026-05-23, code/tests)
+### Done (2026-05-23, earlier)
 
 | ID | Scope |
 |----|-------|
-| **S5-test** | Topology drift regression test + `reduction_topology_matches_tree` helper (ignored/RED, PR 4) |
-| **O1b-test** | `open_from_spec_capability_unlock_activates_overlay_for_next_tick` (ignored/RED, PR #56) |
-| **O1** | Session init — `InstallTargetSpec`, `install.rs`, `open_from_spec`, per-owner clone, `by_overlay` on instance (PR #53) |
-| **O3** | `queue_player_selection_by_key` + `SpecSessionError` (PR #51) |
-| **S3** | Topology cache `debug_assert!` on full-rebuild path (`boundary.rs`, PR #52) |
-| **S4** | `capability_instance_by_tree` reverse map (`spec_session.rs`, PR #52) |
-| **S1/S2/D2** | Composer Phase 0 — crate docs, boundary header, `research_rate` removed (PR #49) |
-| **ADRs** | Session installation, scripted scope, replay (PR #50) |
+| **InstallTarget docs** | `capability_tree_v1.md` §13, `docs/examples/` |
+| **O1** | Session init — `InstallTargetSpec`, `open_from_spec`, per-owner clone (PR #53) |
+| **O3** | `queue_player_selection_by_key` (PR #51) |
+| **S3/S4** | Topology guard + capability reverse map (PR #52) |
+| **Cursor handoff** | O1b/S5 tests, install examples, kind docs (PRs #56–#59) |
 
 ### Deferred / out of scope
 
@@ -380,20 +358,22 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 - EML backend, full Clausewitz parser
 - Scenario RON expansion (inline tree/registry/shadow seeds)
 - Map-scale representation doc spike
-- Handler API migration to tree-instance-keyed context (optional cleanup)
 - Install clone-then-commit (Studio preview / hot-reload safety)
-- Single `populate_from_tree` after all clones (multi-faction perf)
-- Event boundary-skip classification (`requires_boundary_tick` — O4/O6)
+- B2 tighter incremental topology for fission clone internal edges
+- Scripted: `ScopeRef::Owner`, cross-owner events, cross-instance priority ordering
+- Event boundary-skip classification (`requires_boundary_tick`)
 
 ### Known footguns
 
-- **O1b RED** — install re-stamps overlay ids per clone (`instance.by_overlay`), but handler `emit_activation` still uses template `CapabilityDefinition.overlay_ids`; O1b E2E test ignored until Codex fix.
-- **O1 dimension sync** — O1b run showed `coord.n_dims == registry.total_columns` after `install_spec_state`; not the current blocker.
-- **Overlay `affects` (v0)** — per-clone overlays target `cloned_tree_id`, not `owner_id`. Modder-facing effect scope is documented in `capability_tree_v1.md` §14; EffectTarget ADR (Opus P3) pending. Do not promise owner-targeted capability effects in modder docs yet.
-- **Partial install mutation** — `compile_and_install` mutates registry/root in place; safe when session is discarded on `Err`; unsafe pattern for future Studio preview without clone-then-commit.
+- **GPU overlay-prep vs `affects`:** transforms apply via overlay placement on the host
+  SimThing tree, not `overlay.affects`. EffectTarget install + `overlay_hosts` drive routing.
+- **Partial install mutation** — `compile_and_install` mutates registry/root in place; Studio
+  preview needs clone-then-commit.
 - **Replay** — structural overlay activations replay; spec runtime state does not (O2).
-- **B2 Approach C topology append** — only patches `fission_pairs` edges; incorrect CSR when fission clones multi-node capability subtrees. S5 conservative fix: disable append for `clone_capability_children`.
-- **Empty-boundary skip** — any non-empty `scripted_events` disables skip via `requires_boundary_tick()`; revisit event classification in O4.
+- **Fission clone registration** — `react_to_fission_clones` synthesizes from source instance;
+  exotic install paths need review.
+- **Empty-boundary skip** — scripted events may disable skip; classification revisit deferred.
+- **O1c ruled out** — dimension sync after install not the blocker.
 
 ---
 
@@ -441,4 +421,4 @@ cargo test --workspace --release
 git status --short --branch
 ```
 
-Expected: **323** passed, **3** ignored, zero warnings, clean tracked tree.
+Expected: **326** passed, **1** ignored, zero warnings, clean tracked tree.

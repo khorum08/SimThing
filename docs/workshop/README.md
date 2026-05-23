@@ -1,20 +1,22 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `14db14e`. **Tests:** 323 passed, 3 ignored. **Cursor handoff:** complete (#56–#59). **Next:** Codex O1b → S5 → O4/O2; Opus EffectTarget ADR.
+**Parking (2026-05-23):** `master` @ `8904522`. **Tests:** 326 passed, 1 ignored. **Next:** Codex O2 (replay v3).
 
 ## Read first — current state
 
 - [`../design_v6.5.md`](../design_v6.5.md) — **parking synthesis** (HEAD, open work, doc map)
+- [`../worklog.md`](../worklog.md) — O1b, EffectTarget, S5, O4 landing notes
 - [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) — PR 1–11 + O1 implementation ledger
 
-**Architecture decision (PR 11 Track A):**
+**Architecture decisions:**
 
 - [`../adr/pr11_track_a_session_assembly.md`](../adr/pr11_track_a_session_assembly.md)
+- [`../adr/capability_effect_target_scope.md`](../adr/capability_effect_target_scope.md) — Accepted
+- [`../adr/scripted_event_scope_model.md`](../adr/scripted_event_scope_model.md) — Accepted (O4)
+- [`../adr/game_mode_session_installation.md`](../adr/game_mode_session_installation.md) — Accepted (O1)
 
-**Phase 1 ADRs (O2 / O4 — read before implementation; O1 landed PR #53):**
+**Before O2:**
 
-- [`../adr/game_mode_session_installation.md`](../adr/game_mode_session_installation.md)
-- [`../adr/scripted_event_scope_model.md`](../adr/scripted_event_scope_model.md)
 - [`../adr/spec_session_state_replay.md`](../adr/spec_session_state_replay.md)
 
 ## Source / historical (in repo — rationale only)
@@ -23,9 +25,9 @@
 |----------|------|
 | [`capability_tree_studio_workshop.md`](capability_tree_studio_workshop.md) | Original Claude workshop Q&A (2026-05-22); **superseded** for implementation |
 | [`tech_tree_decisions.md`](tech_tree_decisions.md) | Prior session decisions; **superseded** — see progress log § approved decisions |
-| [`capability_tree_v1.md`](../capability_tree_v1.md) | Capability-tree RON reference (§13 install targets, §14 v0 effect scope) |
-| [`../examples/README.md`](../examples/README.md) | InstallTargetSpec RON examples (`AllOfKind`, `ScenarioListed`, `SessionRoot`) |
-| [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder-facing object reference (draft, local) |
+| [`capability_tree_v1.md`](../capability_tree_v1.md) | Capability-tree RON reference (§13 install; §14 EffectTarget) |
+| [`../examples/README.md`](../examples/README.md) | InstallTargetSpec RON examples |
+| [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder object reference (draft, local; EffectTarget unblocks) |
 
 ## Superseded handoffs (local archive)
 

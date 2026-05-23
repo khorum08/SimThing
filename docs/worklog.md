@@ -6,9 +6,22 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-23 — Parking doc sync (post Opus O1b–O4)
+
+**Status:** `master` @ `8904522` (pending commit for doc sync).
+
+**Context:** Opus landed O1b, EffectTarget, S5, S5 follow-up, and O4 (`2eff1e0`–`8904522`)
+without updating parking synthesis docs. Worklog entries were current; `design_v6.5.md`,
+`todo.md`, progress log, `adr/README.md`, and workshop index were stale.
+
+**Synced:** HEAD `8904522`, **326** passed / **1** ignored, open work → O2 only, footguns
+updated for EffectTarget/`overlay_hosts`, ADRs marked Accepted.
+
+---
+
 ## 2026-05-23 — O4: Per-owner scripted events
 
-**Status:** `master` @ pending push.
+**Status:** `master` @ `8904522`.
 
 **Landed:** Per `docs/adr/scripted_event_scope_model.md` (now Accepted).
 
@@ -66,7 +79,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-23 — S5 follow-up: register capability instances + thresholds for fission clones
 
-**Status:** `master` @ pending push.
+**Status:** `master` @ `8904522`.
 
 **Problem:** After the conservative Approach C disable, fission still left
 fission-spawned capability subtrees with **no `CapabilityTreeInstance`** and
@@ -113,7 +126,7 @@ to the original for the unlock pipeline.
 
 ## 2026-05-23 — S5: Approach C disabled for cloned capability subtrees
 
-**Status:** `master` @ pending push.
+**Status:** `master` @ `8904522`.
 
 **Landed:**
 
@@ -148,7 +161,7 @@ clone? Tracked as follow-up.
 
 ## 2026-05-23 — EffectTarget ADR implementation
 
-**Status:** `master` @ pending push.
+**Status:** `master` @ `8904522`.
 
 **Landed (code + docs):**
 

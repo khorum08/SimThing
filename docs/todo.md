@@ -1,54 +1,60 @@
 # SimThing Todo Log
 
-Current parking state: **`simthing-spec` PRs 1–11 complete**; Phase 1 ADRs,
-**O3**, Composer **S3/S4**, **O1**, post-O1 doc sync, and **Cursor safe-followup
-handoff (PRs #56–#59) complete**. `master` and `origin/master` synced at
-**`14db14e`** (PR #62 V6.5 Codex remediation).
+Current parking state: **`simthing-spec` PRs 1–11 complete**; **O1**, **O1b**, **EffectTarget**,
+**S5** (+ fission-clone follow-up), and **O4** landed on `master`. Cursor handoff complete.
+`master` and `origin/master` synced at **`8904522`**.
 
 **Parking synthesis:** [`docs/design_v6.5.md`](design_v6.5.md) — read first for HEAD, gates, doc map.
 
-**Tests:** `cargo test --workspace` → **323** passed, **3** ignored, zero
+**Tests:** `cargo test --workspace` → **326** passed, **1** ignored, zero
 warnings. Debug and **release** profile build/tests clean.
 
-**Cursor handoff:** all four designated PRs landed (#56 O1b test, #57 install
-examples, #58 kind/effect docs, #59 S5 regression). Two tests **ignored/RED**
-await Codex fixes. No further Cursor-scoped work from that handoff.
+**Cursor handoff:** complete (PRs #56–#59). O1b and S5 tests **green** after Opus commits
+`2eff1e0`–`8904522`.
 
 **Canonical spec progress:** `docs/design_v6.5.md` (parking) ·
-`docs/workshop/simthing_spec_progress_log.md` (PR ledger)
+`docs/workshop/simthing_spec_progress_log.md` (PR ledger) · `docs/worklog.md` (O1b–O4 notes)
 
 **Implementation:** `simthing-driver::SpecSessionState` owns spec runtime
 state; `simthing-driver::install` compiles a `GameModeSpec` against a
-`Scenario`, clones capability trees per owner with fresh `OverlayId`s, and
-populates the spec state. `SimSession::open_from_spec(scenario, &game_mode)`
-is the RON-driven entry point. `BoundaryProtocol::execute_with_boundary_hook`
-invokes capability and scripted-event handlers after GPU readback;
+`Scenario`, clones capability trees per owner with fresh `OverlayId`s and
+`EffectTarget` overlay placement, installs scripted events as definition +
+N instances, and populates spec state. `SimSession::open_from_spec(scenario, &game_mode)`
+is the RON-driven entry point. After fission with cloned capability subtrees,
+`react_to_fission_clones` registers new capability instances and thresholds.
+`BoundaryProtocol::execute_with_boundary_hook` invokes handlers after GPU readback;
 `simthing-sim` remains spec-free.
 
-**`by_overlay` migration:** moved from `CapabilityTreeDefinition` (shared)
-to `CapabilityTreeInstance` (per-clone). `CapabilityTreeBuildOutput` exposes
-`template_by_overlay` for the install module to re-stamp.
+**`by_overlay` + `overlay_hosts`:** per-clone overlay → entry map and overlay → host
+SimThing map on `CapabilityTreeInstance`. Handler resolves activate/suspend targets
+via `overlay_hosts`; GPU overlay-prep uses overlay **placement** on the host tree.
 
-### Next — ordered (Codex evaluation 2026-05-23)
+### Next — ordered (2026-05-23, post Opus O1b–O4)
 
 | Priority | ID | Owner | Scope |
 |----------|-----|-------|-------|
-| **P0** | **O1b** | **Codex** | Fix `open_from_spec` threshold unlock E2E — handler must emit `ActivateOverlay` with **per-clone** overlay ids from `instance.by_overlay`, not template ids in `CapabilityDefinition` |
-| **P0** | **O1b-test** | **Cursor** | ✅ Test landed (`open_from_spec_capability_unlock_activates_overlay_for_next_tick`, **ignored/RED**) — un-ignore when Codex fix lands |
-| **P1** | **O1c** | **Codex** | Registry/GPU dimension sync after install — **ruled out** by O1b run (`n_dims == registry.total_columns`); keep only if a future case reopens |
-| **P1** | **S5/O5** | **Codex** | Append-only thresholds + disable Approach C append when `clone_capability_children` (conservative fix first) |
-| **P2** | **O4** | **Codex** | Per-owner scripted events (Option B ADR) |
-| **P2** | **O2** | **Codex** | Replay v3 (`SpecSnapshot`/`SpecDelta`; `by_overlay` precondition met) |
-| **P3** | **EffectTarget** | **Opus** | ADR for capability effect target scope (Owner vs CapabilityTree vs SessionRoot) before Studio/modder exposure |
+| **P0** | **O2** | **Codex** | Replay v3 — `SpecSnapshot`/`SpecDelta` for capability state, scripted cooldowns, diagnostics (`spec_session_state_replay.md`) |
 
-**Do not start O4/O2 until O1b handler fix is green (un-ignore E2E test).**
+**Recently landed (Opus, `2eff1e0`–`8904522`):**
 
-**Known O1 risks (documented, not yet fixed in code):**
+| ID | Commit | Scope |
+|----|--------|-------|
+| **O1b** | `2eff1e0` | Handler `emit_activation` uses per-clone ids from `instance.by_overlay` |
+| **EffectTarget** | `8da4be9`, `7febdd1` | ADR Accepted; `Owner` default; `overlay_hosts` + host overlay placement |
+| **S5** | `dcc74cc` | Disable Approach C when fission clones capability subtrees |
+| **S5 follow-up** | `1253a97` | Fission clone overlay-id re-stamp; `react_to_fission_clones` |
+| **O4** | `8904522` | Per-owner scripted event instances; `EventSpec.install` |
 
-- **O1b RED (2026-05-23):** install re-stamps overlay ids on each clone (`instance.by_overlay`), but `CapabilityTreeBoundaryHandler::emit_activation` still uses template `overlay_ids` from `CapabilityDefinition` → `ActivateOverlay` misses cloned tree overlays.
-- `open_from_spec` runs `SimSession::open` before spec properties register — O1b test showed `coord.n_dims` matches expanded registry after `install_spec_state`; dimension lag is not the current blocker.
-- Capability overlay `affects` currently target the **cloned tree**, not the owner (intentional v0; modder semantics TBD via Opus ADR).
-- `compile_and_install` mutates registry/root in place on error (safe for `open_from_spec` discard; Studio preview needs clone-then-commit later).
+**Deferred / tabled:** B2 tighter incremental topology for fission clone internal edges;
+`ScopeRef::Owner` and cross-owner scripted events; install clone-then-commit (Studio);
+scenario RON expansion; `simthing-studio` GUI.
+
+**Known risks (remaining):**
+
+- **Replay** — spec runtime state not serialized (O2).
+- **Partial install mutation** — in-place registry/root on error; Studio preview needs clone-then-commit.
+- **Empty-boundary skip** — scripted events may force boundary work; classification revisit deferred.
+- **O1c ruled out** — dimension sync after install not the blocker.
 
 **Worktree:** clean for tracked files. Untracked `.claude/worktrees/`,
 `demo.replay.ldjson`, draft `simthing_modder_object_guide.md` (local only).
@@ -502,19 +508,12 @@ simthing-studio   ← deferred GUI
 11. ~~**O1** — RON-driven session installation~~ (PR #53, `6ba4e0d`). 320 tests.
 12. ~~Post-O1 doc parking sync~~ (PR #54, `7eb015a`).
 13. ~~Codex evaluation doc sync~~ (PR #55, `04867b1`).
-14. ~~O1b E2E test (Cursor)~~ — landed **ignored/RED**; exposes overlay-id remapping gap.
-15. **Next — Codex P0:** fix handler to resolve `ActivateOverlay` ids via `instance.by_overlay`; un-ignore O1b test.
-16. **Next — Codex P1:** **S5/O5** — conservative Approach C eligibility fix +
-     append-only external thresholds.
-17. **Next — Codex P2:** **O4** (per-owner scripted events) then **O2** (replay v3).
-18. **Next — Opus P3:** **EffectTarget ADR** — Owner vs CapabilityTree effect scope
-     before Studio/modder docs.
-19. ~~**Cursor:** InstallTargetSpec examples/docs PR~~ — `docs/examples/` + parse smoke test.
-20. ~~**Cursor:** Built-in kind string + v0 effect-target docs PR~~ — `capability_tree_v1.md` §13–§14.
-21. ~~**Cursor:** Optional S5 regression test PR~~ — ignored/RED topology drift test + helper.
-22. ~~**Cursor safe-followup handoff**~~ — complete (PRs #56–#59); parked.
-23. **Next — Codex P0:** O1b handler overlay-id fix → un-ignore O1b test.
-24. **Next — Codex P1:** S5 append disable for `clone_capability_children` → un-ignore S5 test.
-25. **Next — Codex P2:** O4 then O2 (after O1b green).
-26. **Next — Opus P3:** EffectTarget ADR.
-27. Scenario format expansion / map-scale representation — tabled.
+14. ~~O1b E2E test (Cursor)~~ — landed; **green** after `2eff1e0`.
+15. ~~O1b handler fix~~ — `2eff1e0`.
+16. ~~S5 Approach C disable~~ — `dcc74cc`.
+17. ~~S5 fission-clone instance registration~~ — `1253a97`.
+18. ~~EffectTarget ADR + implementation~~ — `8da4be9`, `7febdd1`.
+19. ~~O4 per-owner scripted events~~ — `8904522`.
+20. **Next — Codex P0:** **O2** replay v3.
+21. Scenario format expansion / map-scale representation — tabled.
+22. `simthing-studio` GUI — tabled.
