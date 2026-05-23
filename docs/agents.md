@@ -4,7 +4,7 @@ This document is for AI agents picking up work on this project. Read it before t
 
 **Doc set:** `design_v6.md` (current spec) · `design_v5.md` (v5 implementation-synced
 historical) · `design_v4.md` (original blueprint) · `capability_tree_v1.md` (capability-tree
-RON reference) · `workshop/simthing_spec_workshop.md` (canonical spec-layer handoff) ·
+RON reference) · `workshop/simthing_spec_progress_log.md` (canonical spec-layer progress) ·
 `workshop/capability_tree_studio_workshop.md` (source workshop Q&A) ·
 `workshop/tech_tree_decisions.md` (2026-05-21 decisions; crate naming superseded by spec
 worksheet) · `state-authority.md` · `invariants.md` · `worklog.md` · `todo.md` ·
@@ -27,7 +27,7 @@ Capability/tech-tree authoring is **spec-layer only** — the simulation crates 
 "tech tree" semantics. Authored RON is compiled by the planned **`simthing-spec`** crate
 (RON → runtime artifacts). The eventual **`simthing-studio`** crate is a deferred
 GUI/editor surface that will depend on `simthing-spec`, not replace it. For the pattern
-read `docs/capability_tree_v1.md` and `docs/workshop/simthing_spec_workshop.md`
+read `docs/capability_tree_v1.md` and `docs/workshop/simthing_spec_progress_log.md`
 (canonical); `docs/workshop/tech_tree_decisions.md` for earlier workshop decisions.
 
 - **One type:** `SimThing { properties, overlays, children }`
@@ -51,7 +51,7 @@ SimThing/
 │   ├── design_v5.md                   v5 implementation-synced spec (historical reference)
 │   ├── design_v4.md                   original blueprint (historical reference)
 │   ├── capability_tree_v1.md          capability-tree concept + RON shapes
-│   ├── workshop/simthing_spec_workshop.md  spec-layer handoff (canonical)
+│   ├── workshop/simthing_spec_progress_log.md  spec-layer progress (canonical)
 │   ├── workshop/capability_tree_studio_workshop.md  source workshop Q&A
 │   ├── workshop/tech_tree_decisions.md  2026-05-21 workshop (historical)
 │   ├── state-authority.md             tick vs boundary numeric truth

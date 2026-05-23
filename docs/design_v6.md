@@ -302,9 +302,9 @@ Workshop session 2026-05-22 approved a crate split for authored game data:
 | **`simthing-driver`** | May depend on `simthing-spec` for session assembly. |
 | **`simthing-studio`** | Deferred GUI/editor/importer. Depends on `simthing-spec`; does not replace it. |
 
-Implementation path: **`simthing-spec` PRs 1–5** in
-`docs/workshop/simthing_spec_workshop.md`. PR 3 is the only planned minimal
-sim touch (`CapabilityUnlockRegistration`, `ThresholdSemantic::CapabilityUnlock`).
+Implementation path: **`simthing-spec` PRs 1–11** — see
+`docs/workshop/simthing_spec_progress_log.md`. PR 4 is the minimal sim touch
+(`CapabilityUnlockRegistration`, `ThresholdSemantic::CapabilityUnlock`).
 
 Source Q&A: `docs/workshop/capability_tree_studio_workshop.md`.
 Older `docs/workshop/tech_tree_decisions.md` §5 names `simthing-studio` as the
@@ -352,8 +352,8 @@ Cooldown is keyed by `EventKey` and shared across both paths for the same event.
 delegates to the existing private push helper so a future session layer can choose
 append-vs-rebuild without re-exporting internals.
 
-**Next:** PR 11 session/driver assembly — see
-`docs/workshop/pr11_session_assembly_handoff.md`.
+**Next:** Session init from authored specs — see
+`docs/workshop/simthing_spec_progress_log.md` § Open work.
 
 ### Implementation status summary (as of 2026-05-22)
 
@@ -367,9 +367,9 @@ append-vs-rebuild without re-exporting internals.
 | B2 Approach A — targeted value upload across growth | Landed | PR #40, `14437f3` |
 | B2 Approach B — append-only threshold registry on pure-fission growth | Landed | PR #41, `a23820b` |
 | B2 Approach C — incremental reduction-topology patching | Landed | 2026-05-22 |
-| Spec-layer capability tree (`simthing-spec`: RON → runtime, PRs 1–6) | Landed | `workshop/simthing_spec_workshop.md` |
+| Spec-layer capability tree (`simthing-spec`: RON → runtime, PRs 1–6) | Landed | `workshop/simthing_spec_progress_log.md` |
 | Scripted events v0 (`simthing-spec` PRs 7–10) | Landed | addendum above |
-| Session/driver assembly (PR 11) | Open | `workshop/pr11_session_assembly_handoff.md` |
+| Session/driver assembly (PR 11) | Landed | `workshop/simthing_spec_progress_log.md`, ADR `pr11_track_a_session_assembly.md` |
 | `tick_event_readback_ms` deep dive (now the dominant cost in `fission_stress`) | Open | — |
 
 ---
@@ -893,8 +893,8 @@ talent trees, or any specific progression system. Session assembly
 (`simthing-driver`) may depend on `simthing-spec` to compile authored
 RON into runtime artifacts. The deferred **`simthing-studio`** crate is
 a GUI/editor surface only; it will depend on `simthing-spec`, not
-replace it. See `docs/workshop/simthing_spec_workshop.md` (canonical
-handoff) and `docs/capability_tree_v1.md` (RON reference).
+replace it. See `docs/workshop/simthing_spec_progress_log.md` and
+`docs/capability_tree_v1.md` (RON reference).
 
 ---
 
@@ -946,8 +946,8 @@ landed 2026-05-22. See preface addenda for full status.**
 
 ### Still open
 
-- **`simthing-spec` capability tree vertical slice** — PRs 1–5 per
-  `workshop/simthing_spec_workshop.md`
+- **`simthing-spec` PRs 1–11** — landed; see `workshop/simthing_spec_progress_log.md`
+- **Session init from authored specs (O1)** — next Opus milestone
 - **`tick_event_readback_ms` deep dive** — dominant remaining cost in `fission_stress`
 - **`simthing-studio` designer UI** — tabled; depends on `simthing-spec`
 

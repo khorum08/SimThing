@@ -1,23 +1,23 @@
 # SimThing Todo Log
 
-Current working state after **`simthing-spec` PRs 2–10 landed**, **PR 11 Track B
-merged (PR #47, `392992f`)**, and **PR 11 Track A session/driver assembly
-implemented locally**.
+Current parking state: **`simthing-spec` PRs 1–11 complete** (Track A session
+assembly landed). `master` and `origin/master` synced at **`9e63718`**.
 
-`master` and `origin/master` are synced at **`866a467`** before the local Track
-A changes.
+**Tests:** `cargo test --workspace` → **311** passed, **1** ignored, zero
+warnings. Debug and **release** profile build/tests clean.
 
-**Tests:** `cargo test --workspace` -> **311** passed, **1** ignored timing
-diagnostic, zero warnings. `cargo build --workspace --tests` also clean.
+**Canonical spec progress:** `docs/workshop/simthing_spec_progress_log.md`
+(replaces PR-scoped workshop handoffs — see `docs/workshop/README.md`).
 
-**Current implementation:** `simthing-driver` owns `SpecSessionState` and calls
-spec boundary handlers through a generic `simthing-sim` boundary hook that runs
-after GPU value readback and before structural mutation. `simthing-sim` remains
-spec-free; it only stores feeder-level external threshold registrations.
+**Implementation:** `simthing-driver::SpecSessionState` owns spec runtime state;
+`BoundaryProtocol::execute_with_boundary_hook` invokes capability and
+scripted-event handlers after GPU readback. `simthing-sim` remains spec-free.
 
-**Worktree:** local Track A edits are not yet committed. Standard untracked
-`.claude/worktrees/`, `demo.replay.ldjson`, and workshop handoff docs remain
-untouched unless explicitly staged.
+**Next (Opus):** session init from authored specs (O1), replay v3 (O2), player
+selection path (O3) — see progress log § Open work.
+
+**Worktree:** clean for tracked files. Untracked `.claude/worktrees/`,
+`demo.replay.ldjson`, and draft workshop files may be present locally.
 
 ---
 
@@ -199,15 +199,12 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
       events. New diagnostic variant: `UnknownEventId` for stale registrations.
       Bumps `simthing_core::Direction` with `Copy + PartialEq + Eq` derives.
       11 acceptance tests in `tests/pr10_scripted_event_thresholds.rs`.
-- [x] **PR 11 Track A (Opus)** — session/driver assembly implemented locally
-      2026-05-22. Adds `docs/adr/pr11_track_a_session_assembly.md`, driver-owned
-      `SpecSessionState`, multi-tree-safe driver keys for capability instances,
-      a generic post-readback `BoundaryHookContext` in `simthing-sim`, external
-      feeder-level capability/scripted-event threshold registration plumbing,
-      `SimSession::install_spec_state`, and handler invocation from the live
-      boundary path. Tests cover queued player selection, scripted-event
-      dispatch, and GPU E2E unlock -> spec handler -> overlay activation ->
-      next-tick value change.
+- [x] **PR 11 Track A (Opus)** — session/driver assembly merged `01fb572`
+      (2026-05-22). ADR: `docs/adr/pr11_track_a_session_assembly.md`.
+      Driver-owned `SpecSessionState`, multi-tree-safe capability keys, generic
+      post-readback boundary hook in sim, external threshold registration
+      plumbing, `SimSession::install_spec_state`, GPU E2E unlock → handler →
+      overlay → next-tick value change. **311** tests at landing.
 - [x] **PR 11 Track B (Composer)** — mechanical prep merged PR #47 (`392992f`,
       2026-05-22): B5 release smoke check; B2 `EventKey: From<&str>`/`From<String>`;
       B1 `Display` for capability/scripted-event diagnostics; B3
@@ -427,12 +424,14 @@ FissionTemplate(
 
 - Simulation spec: `docs/design_v6.md` (incl. implementation addenda)
 - Capability trees: `docs/capability_tree_v1.md` (incl. addendum §11)
-- **Spec-layer handoff (canonical):** `docs/workshop/simthing_spec_workshop.md`
+- **Spec-layer handoff (canonical):** `docs/workshop/simthing_spec_progress_log.md`
+- Workshop index: `docs/workshop/README.md`
+- Historical worksheet: superseded; see `docs/workshop/simthing_spec_progress_log.md`
 - Source workshop Q&A: `docs/workshop/capability_tree_studio_workshop.md`
 - Historical workshop: `docs/workshop/tech_tree_decisions.md`
 - Agent map: `docs/agents.md`
 
-### Spec-layer dependency graph (PRs 2–10 landed; PR 11 open)
+### Spec-layer dependency graph (PR 11 complete)
 
 ```text
 simthing-core
@@ -440,14 +439,14 @@ simthing-core
 simthing-feeder   ← CapabilityUnlockRegistration, CapabilityUnlockEvent,
                     ScriptedEventTriggerRegistration, ScriptedEventTriggerEvent
     ↑         ↑
-simthing-spec     simthing-sim   ← ThresholdSemantic arms + extract_* bridges
-(production:      (production)
+simthing-spec     simthing-sim   ← ThresholdSemantic, extract_*,
+(production:      (production)     BoundaryHookContext, external threshold regs
  core + feeder
  only)
     ↑
-simthing-driver   ← PR 11 Track A: session assembly (not yet wired)
+simthing-driver   ← SpecSessionState, install_spec_state (wired)
 
-simthing-studio   ← deferred GUI; depends on simthing-spec
+simthing-studio   ← deferred GUI
 ```
 
 ### Recommended session order
@@ -458,14 +457,13 @@ simthing-studio   ← deferred GUI; depends on simthing-spec
 4. ~~Priority 4 — B2 Approach A (targeted value upload)~~ — Done 2026-05-22, PR #40.
 5. ~~Priority 4 — B2 Approach B (append-only threshold registry)~~ — Done 2026-05-22, PR #41.
 6. ~~Priority 4 — B2 Approach C (incremental reduction topology)~~ — Done 2026-05-22, PR #43.
-7. ~~**PR 11 Track B** — mechanical prep (Display, EventKey, append helpers,
-     docs addenda, release smoke)~~ — Done 2026-05-22.
-8. **Next session — primary track:** **PR 11 Track A (Opus)** — session/driver
-     assembly. Wire spec boundary handlers into the day-boundary protocol;
-     define session state ownership; add E2E integration test. Do not embed
-     spec handlers inside `simthing-sim::BoundaryProtocol` (layering mistake).
-   - **Alternate tracks** (parallel, not blocking PR 11):
-   - **`tick_event_readback_ms` deep dive** — Opus for architecture; Sonnet for impl.
-   - **Cache-integrity hardening for `cached_topology_state`** — Sonnet.
-9. Scenario format expansion / map-scale representation doc — tabled until
-   PR 11 lands.
+7. ~~**PR 11 Track B** — mechanical prep~~ — Done PR #47, `392992f`.
+8. ~~**PR 11 Track A** — session/driver assembly~~ — Done `01fb572`, parked `9e63718`.
+9. **Next session — primary track:** **Session init from authored specs (O1)** —
+     compile `GameModeSpec`/domain packs, clone capability trees per faction,
+     auto `install_spec_state`; integration test from RON not hand-built state.
+   - **Also Opus:** replay v3 (O2), player selection path (O3), per-owner
+     scripted events decision (O4), external append-only thresholds (O5).
+   - **Alternate (parallel):** `tick_event_readback_ms` deep dive; `TopologyState`
+     cache-integrity hardening.
+10. Scenario format expansion / map-scale representation — tabled.
