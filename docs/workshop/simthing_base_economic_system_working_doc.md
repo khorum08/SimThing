@@ -26,6 +26,73 @@ The base SimThing economy should therefore not become a separate economy engine.
 
 ---
 
+## Proposed Version Track
+
+This work should be proposed as a **v6.6 design-track integration**, not as immediate full runtime implementation.
+
+Suggested framing:
+
+```text
+v6.5:
+  current architecture baseline and stabilization state
+
+v6.6:
+  design/ADR integration for intrinsic thresholded accumulation and emission
+  resource/accumulator semantics
+  EmitOnThreshold / ThresholdedEmission proposal
+  debt-band emission model
+  transfer overlay relationship
+  V1–V3 CPU / native GPU / EML validation track
+  explicit non-goals for hardcoded economy engines and premature GPU implementation
+
+v6.7+:
+  first implementation slices and fixtures
+  CPU semantic baseline
+  one-column queue fixture
+  factory/growth/damage fixtures
+  resource transfer overlay fixture
+  profiling-driven GPU payload prototype only if justified
+```
+
+Recommended title if promoted into the design docs:
+
+```text
+SimThing Design v6.6 — Thresholded Accumulation and Emission
+```
+
+or:
+
+```text
+v6.6 — Intrinsic Accumulators, Resource Balances, and Emission Semantics
+```
+
+v6.6 should not mean “the economy is implemented.” It should mean:
+
+> SimThing v6.6 establishes thresholded accumulation and emission as the provisional base abstraction for resources, queues, production, replenishment, damage, growth, diplomacy, and other accumulated-state transformations.
+
+Good v6.6 deliverables:
+
+```text
+docs/design_v6.6.md
+docs/adr/thresholded_accumulation_emission.md
+this workshop document linked as background
+clear v1–v3 validation plan
+clear CPU-first implementation ladder
+clear GPU/EML deferral criteria
+```
+
+Bad v6.6 deliverables:
+
+```text
+full resource allocator
+full construction system
+hardcoded research/construction/upkeep engines
+GPU EML emission payloads before CPU baseline
+market/pop/job systems
+```
+
+---
+
 ## Provisional Core Thesis
 
 The proposed intrinsic primitive is not `QueueSettlement`, `ConstructionQueue`, or `ResourceConsumed`.
