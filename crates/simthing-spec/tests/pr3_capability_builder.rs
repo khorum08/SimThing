@@ -74,6 +74,7 @@ fn tree_spec(categories: Vec<CapabilityCategorySpec>) -> CapabilityTreeSpec {
         tree_id: "terran_tech".into(),
         tree_kind: "tech_tree".into(),
         owner_kind: "Faction".into(),
+        install: simthing_spec::InstallTargetSpec::faction_default(),
         categories,
     }
 }
@@ -366,8 +367,10 @@ fn capability_tree_definition_lookup_by_overlay_id_returns_entry() {
     let def = out.definition.entries.get(&key).expect("entry");
     let overlay_id = def.overlay_ids[0];
 
-    // by_overlay lookup round-trips to the same entry key.
-    assert_eq!(out.definition.by_overlay.get(&overlay_id), Some(&key));
+    // Template-level by_overlay round-trips to the same entry key. The
+    // per-instance by_overlay (on CapabilityTreeInstance) is built from this
+    // template map at install time after re-stamping OverlayIds per clone.
+    assert_eq!(out.template_by_overlay.get(&overlay_id), Some(&key));
 }
 
 #[test]

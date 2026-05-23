@@ -40,6 +40,7 @@ fn game_mode_round_trips_with_metadata() {
         properties:       vec![],
         overlays:         vec![],
         capability_trees: vec![],
+        events:           vec![],
     };
 
     let json = serde_json::to_string(&spec).unwrap();
@@ -57,6 +58,7 @@ fn domain_pack_round_trips() {
         properties:       vec![],
         overlays:         vec![],
         capability_trees: vec![],
+        events:           vec![],
     };
     let json = serde_json::to_string(&pack).unwrap();
     let round: DomainPackSpec = serde_json::from_str(&json).unwrap();

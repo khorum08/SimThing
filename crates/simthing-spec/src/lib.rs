@@ -86,6 +86,7 @@ pub use spec::domain_pack::DomainPackSpec;
 pub use spec::effect::EffectSpec;
 pub use spec::event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use spec::game_mode::GameModeSpec;
+pub use spec::install_target::InstallTargetSpec;
 pub use spec::overlay::OverlaySpec;
 pub use spec::property::PropertySpec;
 pub use spec::script::{

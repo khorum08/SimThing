@@ -19,4 +19,4 @@ pub use property::{
 };
 pub use reduction::ReductionRule;
 pub use registry::{DimensionRegistry, PropertyColumnRange};
-pub use simthing::{SimThing, SimThingKind};
+pub use simthing::{kind_matches, SimThing, SimThingKind};

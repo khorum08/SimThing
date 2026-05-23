@@ -7,8 +7,10 @@ use simthing_feeder::FeederWork;
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
 use simthing_gpu::{GpuContext, Pipelines, WorldGpuState};
 use simthing_sim::{BoundaryProtocol, BoundaryTiming, ReplayFrame, ReplayWriter};
+use simthing_spec::GameModeSpec;
 use thiserror::Error;
 
+use crate::install::{compile_and_install, InstallError};
 use crate::scenario::Scenario;
 use crate::spec_session::SpecSessionState;
 
@@ -22,6 +24,8 @@ pub enum SessionError {
     Replay(#[from] simthing_sim::ReplayError),
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
+    #[error("install: {0}")]
+    Install(#[from] InstallError),
 }
 
 pub struct RunSummary {
@@ -195,6 +199,31 @@ impl SimSession {
         self.spec_state = spec_state;
         self.sync_spec_threshold_registrations();
         self.proto.initial_gpu_sync(&self.coord, &mut self.state);
+    }
+
+    /// Open a session from a scenario and immediately install spec runtime
+    /// state compiled from a `GameModeSpec`.
+    ///
+    /// Composes `SimSession::open` + `crate::install::compile_and_install` +
+    /// `install_spec_state`. The scenario sets the GPU sizing (`n_slots`,
+    /// `registry`, root); the spec contributes properties, capability trees
+    /// (cloned per resolved owner), and scripted events.
+    ///
+    /// See `docs/adr/game_mode_session_installation.md`.
+    pub fn open_from_spec(
+        scenario:  Scenario,
+        game_mode: &GameModeSpec,
+    ) -> Result<Self, SessionError> {
+        let mut session = Self::open(scenario)?;
+        let spec_state = compile_and_install(
+            game_mode,
+            &session.scenario,
+            &mut session.proto.registry,
+            &mut session.proto.root,
+            &mut session.proto.allocator,
+        )?;
+        session.install_spec_state(spec_state);
+        Ok(session)
     }
 
     /// Run until `max_days` boundaries complete (or scenario max if smaller).

@@ -29,6 +29,12 @@ pub struct CapabilityTreeBuildOutput {
     /// One per `ActivationMode::Threshold` entry. `PlayerSelection` and
     /// `OnPrereqMet` entries produce no GPU registration.
     pub unlock_registrations: Vec<CapabilityUnlockRegistration>,
+    /// Template-level reverse map `overlay_id -> entry_key` for `tree`'s
+    /// overlays. Cloned trees re-stamp their `OverlayId`s at install time and
+    /// build a per-instance `by_overlay` via the old→new id map. Kept here so
+    /// the driver's install module does not need to walk the tree again to
+    /// re-derive it.
+    pub template_by_overlay: HashMap<OverlayId, CapabilityEntryKey>,
 }
 
 pub struct CapabilityTreeBuilder;
@@ -295,7 +301,6 @@ impl CapabilityTreeBuilder {
             categories,
             entries,
             by_threshold,
-            by_overlay,
         };
 
         Ok((
@@ -303,6 +308,7 @@ impl CapabilityTreeBuilder {
                 tree,
                 definition,
                 unlock_registrations,
+                template_by_overlay: by_overlay,
             },
             diagnostics,
         ))
