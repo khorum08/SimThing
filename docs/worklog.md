@@ -6,17 +6,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-23 — Composer S3/S4 + doc parking sync
+## 2026-05-23 — Composer S3/S4 + doc parking sync (PR #52)
 
-**Status:** PR pending merge (base `c3f3556`).
+**Status:** `master` @ `7914528`.
 
-**This PR:**
+**Landed:**
 
 - **S4** — `capability_instance_by_tree` reverse map in `spec_session.rs`.
 - **S3** — `debug_assert!` topology cache vs `build_topology` on full-rebuild
-  path only (`boundary.rs`). Append-path assert removed: Approach C drift on
-  `clone_capability_children` fission (see progress log § S5).
-- Doc parking sync: `todo.md`, progress log, workshop README, this worklog.
+  path only (`boundary.rs`). Append-path assert excluded: Approach C drift on
+  `clone_capability_children` fission documented for S5.
+- Doc parking sync: `todo.md`, progress log, workshop README, `design_v6.md`.
 
 **Tests:** 314 passed, 1 ignored, zero warnings.
 

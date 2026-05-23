@@ -335,8 +335,8 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 | ID | Scope |
 |----|-------|
 | **O3** | `queue_player_selection_by_key` + `SpecSessionError` (PR #51) |
-| **S3** | Topology cache `debug_assert!` on full-rebuild path (`boundary.rs`) |
-| **S4** | `capability_instance_by_tree` reverse map (`spec_session.rs`) |
+| **S3** | Topology cache `debug_assert!` on full-rebuild path (`boundary.rs`, PR #52) |
+| **S4** | `capability_instance_by_tree` reverse map (`spec_session.rs`, PR #52) |
 | **S1/S2/D2** | Composer Phase 0 — crate docs, boundary header, `research_rate` removed (PR #49) |
 | **ADRs** | Session installation, scripted scope, replay (PR #50) |
 

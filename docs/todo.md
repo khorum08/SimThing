@@ -2,7 +2,7 @@
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; Phase 1 ADRs, **O3**,
 and Composer **S3/S4** landed. `master` and `origin/master` synced at
-**`c3f3556`** (S3/S4 PR pending merge).
+**`7914528`** (PR #52).
 
 **Tests:** `cargo test --workspace` → **314** passed, **1** ignored, zero
 warnings. Debug and **release** profile build/tests clean.
@@ -464,7 +464,7 @@ simthing-studio   ← deferred GUI
 7. ~~**PR 11 Track B** — mechanical prep~~ — Done PR #47, `392992f`.
 8. ~~**PR 11 Track A** — session/driver assembly~~ — Done `01fb572`, parked `9e63718`.
 9. ~~Composer Phase 0 + Phase 1 ADRs + O3~~ — Done through `c3f3556` (PRs #49–51).
-10. ~~Composer S3 + S4~~ — topology full-rebuild guard; capability instance reverse map (PR pending).
+10. ~~Composer S3 + S4~~ — topology full-rebuild guard; capability instance reverse map (PR #52, `7914528`).
 11. **Next session — primary track:** **O1 — session init from authored specs**
      (`InstallTargetSpec`, `install.rs`, `open_from_spec`, per-owner tree clone,
      `by_overlay` migration). ADR:
