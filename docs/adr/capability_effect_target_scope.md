@@ -1,10 +1,33 @@
 # Capability Effect Target Scope
 
 **Date:** 2026-05-23
-**Status:** Proposed
+**Status:** Accepted (implementation landed alongside this ADR)
 **Blocks:** `simthing_modder_object_guide.md` capability-effect section, `simthing-studio` effect authoring UI
-**Related:** [`game_mode_session_installation.md`](game_mode_session_installation.md) (O1, defines per-owner cloning), `capability_tree_v1.md` §14 (current v0 warning)
-**Independent of:** O1b `emit_activation` fix (Codex) — see Decision §3
+**Related:** [`game_mode_session_installation.md`](game_mode_session_installation.md) (O1, defines per-owner cloning), `capability_tree_v1.md` §14 (decision table)
+**Independent of:** O1b `emit_activation` fix (landed `2eff1e0`) — see Decision §3
+
+**Implementation notes (post-decision):**
+
+Resolving `affects` alone is insufficient. The GPU's overlay-prep stage
+(`crates/simthing-gpu/src/overlay_prep.rs`) walks the SimThing tree
+depth-first and applies overlay transforms to every descendant slot
+that carries the target property — it does **not** consult `overlay.affects`.
+For `EffectTarget::Owner` to actually transform the owner's slot, the
+overlay must **live on the owner** (or an ancestor), since the clone is
+a child of the owner. The install layer therefore:
+
+1. Places each cloned overlay on the **host SimThing** dictated by its
+   `EffectTarget` (Owner → owner; CapabilityTree → clone; SessionRoot
+   → root).
+2. Stamps `CapabilityTreeInstance.overlay_hosts: HashMap<OverlayId,
+   SimThingId>` so the boundary handler can pick the correct `target`
+   on `ActivateOverlay` / `SuspendOverlay`.
+3. Seeds the target property on the host's `properties` map so the GPU
+   overlay-prep stage emits deltas for it.
+
+The `affects` field on the cloned overlay is set to the resolved target
+for documentation / debug-readability; the runtime hot path only reads
+`overlay_hosts` and the SimThing tree topology.
 
 ## Context
 

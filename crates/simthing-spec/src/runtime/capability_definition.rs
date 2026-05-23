@@ -79,6 +79,11 @@ pub struct CapabilityDefinition {
     /// Compiled transform payloads, parallel-indexed with `overlay_ids`.
     /// Used by CPU preview without needing the template SimThing.
     pub effect_transforms: Vec<PropertyTransformDelta>,
+    /// Authored `EffectTarget` per effect, parallel-indexed with
+    /// `overlay_ids`. Drives preview slot selection
+    /// (`docs/adr/capability_effect_target_scope.md` §4) and install-time
+    /// resolution of `affects`.
+    pub effect_targets: Vec<crate::spec::capability::EffectTarget>,
     pub prereqs: Vec<CapabilityPrereq>,
     pub progress_col: usize,
     pub research_cost: f32,

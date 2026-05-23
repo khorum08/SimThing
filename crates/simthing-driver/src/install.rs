@@ -15,8 +15,8 @@ use simthing_gpu::SlotAllocator;
 use simthing_spec::{
     compile_event, compile_property, CapabilityEntryKey, CapabilityTreeBuildOutput,
     CapabilityTreeBuilder, CapabilityTreeInstance, CapabilityTreeState, CapabilityTreeSpec,
-    CapabilityUnlockRegistration, DomainPackSpec, EventSpec, GameModeSpec, InstallTargetSpec,
-    SpecError,
+    CapabilityUnlockRegistration, DomainPackSpec, EffectTarget, EventSpec, GameModeSpec,
+    InstallTargetSpec, SpecError,
 };
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
@@ -99,8 +99,11 @@ pub fn compile_and_install(
                 target:  compiled.spec.install.clone(),
             });
         }
+        let root_id = root.id;
         for owner_id in owners {
-            install_tree_for_owner(compiled, owner_id, registry, root, allocator, &mut state)?;
+            install_tree_for_owner(
+                compiled, owner_id, root_id, registry, root, allocator, &mut state,
+            )?;
         }
     }
 
@@ -214,6 +217,7 @@ fn collect_matching_kind(node: &SimThing, authored: &str, out: &mut Vec<SimThing
 fn install_tree_for_owner(
     compiled:  &CompiledTree<'_>,
     owner_id:  SimThingId,
+    root_id:   SimThingId,
     registry:  &DimensionRegistry,
     root:      &mut SimThing,
     allocator: &mut SlotAllocator,
@@ -223,9 +227,13 @@ fn install_tree_for_owner(
     let definition = &compiled.build_out.definition;
 
     // 1. Clone the template with a fresh SimThingId. Properties carry over;
-    //    overlays are re-stamped with new OverlayIds and have their `affects`
-    //    pointed at the new clone so the handler emits the correct activation
-    //    target later.
+    //    overlays are re-stamped with new OverlayIds. Each cloned overlay's
+    //    `affects` list is resolved from the authored `EffectTarget` on the
+    //    corresponding `CapabilityEffectSpec` (see
+    //    `docs/adr/capability_effect_target_scope.md`):
+    //      - Owner          → vec![owner_id]
+    //      - CapabilityTree → vec![cloned_tree_id]   (v0 behavior)
+    //      - SessionRoot    → vec![root_id]
     let SimThingKind::Custom(tree_kind) = &template.kind else {
         unreachable!("CapabilityTreeBuilder always emits SimThingKind::Custom(tree_kind)");
     };
@@ -234,35 +242,60 @@ fn install_tree_for_owner(
 
     let mut overlay_id_map: HashMap<OverlayId, OverlayId> = HashMap::new();
     let cloned_tree_id = cloned.id;
-    let mut effect_target_props: HashSet<simthing_core::SimPropertyId> = HashSet::new();
+    // Per-effect overlay placement and property seeding. GPU overlay-prep
+    // walks the SimThing tree depth-first and applies each overlay's
+    // transform to every node in its descendant subtree that carries the
+    // target property. Therefore an overlay's HOST node must be an ancestor
+    // of every affected slot — for `Owner`, host = owner (the clone's parent);
+    // for `CapabilityTree`, host = clone; for `SessionRoot`, host = root.
+    let mut owner_target_props: HashSet<simthing_core::SimPropertyId> = HashSet::new();
+    let mut clone_target_props: HashSet<simthing_core::SimPropertyId> = HashSet::new();
+    let mut root_target_props:  HashSet<simthing_core::SimPropertyId> = HashSet::new();
+    let mut owner_overlays: Vec<Overlay> = Vec::new();
+    let mut root_overlays:  Vec<Overlay> = Vec::new();
+    let mut overlay_hosts: HashMap<OverlayId, SimThingId> = HashMap::new();
     for template_overlay in &template.overlays {
         let new_id = OverlayId::new();
         overlay_id_map.insert(template_overlay.id, new_id);
-        // Collect every property that an overlay transform targets so we
-        // can register defaults on the clone below. Without this, the GPU
-        // overlay-prep stage (`overlay_prep.rs`) filters out the transform
-        // because `node.properties.contains_key(property_id)` is false on
-        // the freshly cloned tree. v0 install: all effects affect the clone,
-        // so every transform's property must be present on the clone.
-        effect_target_props.insert(template_overlay.transform.property_id);
-        let cloned_overlay = Overlay {
+        let target = compiled
+            .build_out
+            .template_effect_targets
+            .get(&template_overlay.id)
+            .copied()
+            .unwrap_or_default();
+        let affects = resolve_effect_target(target, owner_id, cloned_tree_id, root_id);
+        let host = match target {
+            EffectTarget::Owner          => owner_id,
+            EffectTarget::CapabilityTree => cloned_tree_id,
+            EffectTarget::SessionRoot    => root_id,
+        };
+        overlay_hosts.insert(new_id, host);
+        match target {
+            EffectTarget::Owner          => { owner_target_props.insert(template_overlay.transform.property_id); }
+            EffectTarget::CapabilityTree => { clone_target_props.insert(template_overlay.transform.property_id); }
+            EffectTarget::SessionRoot    => { root_target_props.insert(template_overlay.transform.property_id); }
+        }
+        let new_overlay = Overlay {
             id:        new_id,
             kind:      template_overlay.kind.clone(),
             source:    template_overlay.source.clone(),
-            affects:   vec![cloned_tree_id],
+            affects,
             transform: template_overlay.transform.clone(),
             lifecycle: template_overlay.lifecycle.clone(),
         };
-        cloned.add_overlay(cloned_overlay);
+        match target {
+            EffectTarget::CapabilityTree => cloned.add_overlay(new_overlay),
+            EffectTarget::Owner          => owner_overlays.push(new_overlay),
+            EffectTarget::SessionRoot    => root_overlays.push(new_overlay),
+        }
     }
 
-    // Ensure every effect-target property is present on the clone with its
-    // registry default. Properties already copied from the template
-    // (notably the capability category property carrying progress sub-fields)
-    // are left untouched.
-    for prop_id in effect_target_props {
-        if !cloned.properties.contains_key(&prop_id) && registry.is_active(prop_id) {
-            cloned.add_property(prop_id, registry.property(prop_id).default_value());
+    // Seed effect-target properties on the cloned tree where applicable
+    // (CapabilityTree-targeted effects). Owner- and SessionRoot-targeted
+    // properties are seeded below, after the clone is attached.
+    for prop_id in &clone_target_props {
+        if !cloned.properties.contains_key(prop_id) && registry.is_active(*prop_id) {
+            cloned.add_property(*prop_id, registry.property(*prop_id).default_value());
         }
     }
 
@@ -276,6 +309,29 @@ fn install_tree_for_owner(
             return Err(InstallError::UnknownInstallTarget {
                 key: format!("owner {:?} (not found in scenario root)", owner_id),
             });
+        }
+    }
+
+    // 2b. Seed effect-target properties on the owner and root SimThings so
+    //     the GPU overlay-prep stage emits deltas for Owner/SessionRoot-
+    //     targeted overlays. (CapabilityTree-targeted props were seeded on
+    //     the clone directly above, before attachment.)
+    seed_effect_props_on(root, owner_id, &owner_target_props, registry);
+    seed_effect_props_on(root, root_id,  &root_target_props,  registry);
+
+    // 2c. Attach owner/root overlays to their host SimThings. The GPU
+    //     ancestor walk requires the overlay to live on a node that is
+    //     itself an ancestor of (or equal to) every affected slot.
+    if !owner_overlays.is_empty() {
+        if let Some(owner_node) = find_simthing_mut(root, owner_id) {
+            for overlay in owner_overlays {
+                owner_node.add_overlay(overlay);
+            }
+        }
+    }
+    if !root_overlays.is_empty() {
+        for overlay in root_overlays {
+            root.add_overlay(overlay);
         }
     }
 
@@ -315,6 +371,7 @@ fn install_tree_for_owner(
         tree_thing_id: cloned_tree_id,
         tree_slot,
         by_overlay,
+        overlay_hosts,
     };
     let initial_state = CapabilityTreeState {
         owner_id,
@@ -331,6 +388,60 @@ fn install_tree_for_owner(
     );
 
     Ok(())
+}
+
+/// Resolve a `CapabilityEffectSpec.effect_target` to the concrete
+/// `affects: Vec<SimThingId>` list used at install time. Per the
+/// EffectTarget ADR, `Owner` is the v1 default — install rewrites the
+/// affects list rather than the v0 hard-coded clone target.
+fn resolve_effect_target(
+    target:   EffectTarget,
+    owner_id: SimThingId,
+    clone_id: SimThingId,
+    root_id:  SimThingId,
+) -> Vec<SimThingId> {
+    match target {
+        EffectTarget::Owner          => vec![owner_id],
+        EffectTarget::CapabilityTree => vec![clone_id],
+        EffectTarget::SessionRoot    => vec![root_id],
+    }
+}
+
+/// Find `target_id` inside `root` (depth-first) and add `props` to its
+/// `properties` map with registry defaults if not already present. Used
+/// to seed effect-target properties on owner / session-root SimThings so
+/// the GPU overlay-prep stage emits deltas for cloned overlays whose
+/// `affects` list points outside the clone itself. Silently ignores
+/// targets not found in the tree (should not happen — owner_id came
+/// from install resolution against `root`).
+fn seed_effect_props_on(
+    root:      &mut SimThing,
+    target_id: SimThingId,
+    props:     &HashSet<simthing_core::SimPropertyId>,
+    registry:  &DimensionRegistry,
+) {
+    if props.is_empty() {
+        return;
+    }
+    if let Some(node) = find_simthing_mut(root, target_id) {
+        for prop_id in props {
+            if !node.properties.contains_key(prop_id) && registry.is_active(*prop_id) {
+                node.add_property(*prop_id, registry.property(*prop_id).default_value());
+            }
+        }
+    }
+}
+
+fn find_simthing_mut(node: &mut SimThing, target: SimThingId) -> Option<&mut SimThing> {
+    if node.id == target {
+        return Some(node);
+    }
+    for child in &mut node.children {
+        if let Some(found) = find_simthing_mut(child, target) {
+            return Some(found);
+        }
+    }
+    None
 }
 
 /// Depth-first search for `owner_id` and attach `child` underneath. Returns

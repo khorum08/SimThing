@@ -80,7 +80,7 @@ pub use runtime::{
 };
 pub use spec::capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,
-    CapabilitySpec, CapabilityTreeSpec, MaxActivePolicy, ReplacementPolicy,
+    CapabilitySpec, CapabilityTreeSpec, EffectTarget, MaxActivePolicy, ReplacementPolicy,
 };
 pub use spec::domain_pack::DomainPackSpec;
 pub use spec::effect::EffectSpec;

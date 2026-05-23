@@ -1,6 +1,7 @@
 use crate::boundary::CapabilityTreeError;
 use crate::keys::{CapabilityEffectKey, CapabilityEntryKey};
 use crate::runtime::{CapabilityTreeDefinition, CapabilityTreeState};
+use crate::spec::capability::EffectTarget;
 use simthing_core::{DimensionRegistry, OverlayId, SimPropertyId, SubFieldRole, TransformOp};
 
 pub struct CapabilityPreviewInput<'a> {
@@ -9,7 +10,15 @@ pub struct CapabilityPreviewInput<'a> {
     pub registry: &'a DimensionRegistry,
     pub shadow: &'a [f32],
     pub n_dims: usize,
+    /// Slot of the cloned capability-tree SimThing — used for
+    /// `EffectTarget::CapabilityTree` effects (v0 behavior).
     pub tree_slot: u32,
+    /// Slot of the install-time owner SimThing — used for
+    /// `EffectTarget::Owner` effects (v1 default).
+    pub owner_slot: u32,
+    /// Slot of `Scenario::root` — used for `EffectTarget::SessionRoot`
+    /// effects (global era flags, world-state triggers).
+    pub root_slot: u32,
     pub entry: CapabilityEntryKey,
 }
 
@@ -47,24 +56,30 @@ pub fn preview_capability_effect(
     let mut per_overlay = Vec::new();
     let mut combined = Vec::<CapabilityPreviewDelta>::new();
 
-    for ((overlay_id, effect_key), transform) in entry
+    for (((overlay_id, effect_key), transform), effect_target) in entry
         .overlay_ids
         .iter()
         .zip(entry.effect_keys.iter())
         .zip(entry.effect_transforms.iter())
+        .zip(entry.effect_targets.iter())
     {
         if !input.registry.is_active(transform.property_id) {
             continue;
         }
         let layout = &input.registry.property(transform.property_id).layout;
         let range = input.registry.column_range(transform.property_id);
+        let source_slot = match effect_target {
+            EffectTarget::Owner          => input.owner_slot,
+            EffectTarget::CapabilityTree => input.tree_slot,
+            EffectTarget::SessionRoot    => input.root_slot,
+        };
         let mut deltas = Vec::new();
 
         for (role, op) in &transform.sub_field_deltas {
             let Some(col) = range.col_for_role(role, layout) else {
                 continue;
             };
-            let idx = input.tree_slot as usize * input.n_dims + col;
+            let idx = source_slot as usize * input.n_dims + col;
             let Some(current) = input.shadow.get(idx).copied() else {
                 continue;
             };

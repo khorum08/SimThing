@@ -9,7 +9,7 @@ use crate::runtime::{
     CapabilityCategoryDefinition, CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
     CapabilityTreeDefinitionId, CapabilityUnlockRegistration,
 };
-use crate::spec::capability::{ActivationMode, CapabilityTreeSpec};
+use crate::spec::capability::{ActivationMode, CapabilityTreeSpec, EffectTarget};
 use crate::validate::validate_capability_tree;
 use simthing_core::{
     ClampBehavior, DimensionRegistry, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
@@ -35,6 +35,11 @@ pub struct CapabilityTreeBuildOutput {
     /// the driver's install module does not need to walk the tree again to
     /// re-derive it.
     pub template_by_overlay: HashMap<OverlayId, CapabilityEntryKey>,
+    /// Per-overlay authored `EffectTarget` selector, keyed by template
+    /// `OverlayId`. The driver's install layer resolves each overlay's
+    /// `affects` list from this map at clone time
+    /// (`docs/adr/capability_effect_target_scope.md`).
+    pub template_effect_targets: HashMap<OverlayId, EffectTarget>,
 }
 
 pub struct CapabilityTreeBuilder;
@@ -132,6 +137,7 @@ impl CapabilityTreeBuilder {
             CapabilityEntryKey,
         > = HashMap::new();
         let mut by_overlay: HashMap<OverlayId, CapabilityEntryKey> = HashMap::new();
+        let mut template_effect_targets: HashMap<OverlayId, EffectTarget> = HashMap::new();
         let mut unlock_registrations: Vec<CapabilityUnlockRegistration> = Vec::new();
 
         // Pre-pass: build a lookup of (CategoryKey, entry_id) → research_cost for
@@ -161,6 +167,7 @@ impl CapabilityTreeBuilder {
                 let mut overlay_ids: Vec<OverlayId> = Vec::new();
                 let mut effect_keys: Vec<CapabilityEffectKey> = Vec::new();
                 let mut effect_transforms: Vec<PropertyTransformDelta> = Vec::new();
+                let mut effect_targets_vec: Vec<EffectTarget> = Vec::new();
 
                 for (effect_index, effect) in entry.effects.iter().enumerate() {
                     let (target_ns, target_name) =
@@ -214,8 +221,10 @@ impl CapabilityTreeBuilder {
                         effect_index,
                     });
                     effect_transforms.push(overlay.transform.clone());
+                    effect_targets_vec.push(effect.effect_target);
                     tree.add_overlay(overlay);
                     by_overlay.insert(overlay_id, entry_key.clone());
+                    template_effect_targets.insert(overlay_id, effect.effect_target);
                 }
 
                 // ── 5. Resolve prereqs ────────────────────────────────────────
@@ -287,6 +296,7 @@ impl CapabilityTreeBuilder {
                     overlay_ids,
                     effect_keys,
                     effect_transforms,
+                    effect_targets: effect_targets_vec,
                     prereqs,
                     progress_col,
                     research_cost: entry.research_cost,
@@ -309,6 +319,7 @@ impl CapabilityTreeBuilder {
                 definition,
                 unlock_registrations,
                 template_by_overlay: by_overlay,
+                template_effect_targets,
             },
             diagnostics,
         ))

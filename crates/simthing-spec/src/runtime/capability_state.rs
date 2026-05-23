@@ -21,6 +21,13 @@ pub struct CapabilityTreeInstance {
     /// `OverlayId` re-stamping. Empty when constructed by hand (e.g., in
     /// older PR 5/11 tests that don't need the lookup).
     pub by_overlay: HashMap<OverlayId, CapabilityEntryKey>,
+    /// Per-overlay host SimThing — the node the overlay actually lives on
+    /// in the world tree. Determined by `EffectTarget` at install time
+    /// (`Owner` → owner; `CapabilityTree` → clone; `SessionRoot` → root).
+    /// The boundary handler reads this to pick `target` on
+    /// `ActivateOverlay`/`SuspendOverlay`. Missing entries default to
+    /// `tree_thing_id` (v0 behavior, used by older hand-built tests).
+    pub overlay_hosts: HashMap<OverlayId, SimThingId>,
 }
 
 /// One per faction instance. Mutable at boundary time.

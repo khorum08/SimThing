@@ -166,6 +166,7 @@ fn spec_session_capability_unlock_activates_overlay_for_next_tick() {
                     targets_property: "core::power".into(),
                     sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(2.0))],
                     when_activated: OverlayLifecycle::Permanent,
+                    effect_target: simthing_spec::EffectTarget::CapabilityTree,
                 }],
             }],
         }],
@@ -223,6 +224,7 @@ fn spec_session_capability_unlock_activates_overlay_for_next_tick() {
         tree_thing_id: tree_id,
         tree_slot,
         by_overlay: built.template_by_overlay.clone(),
+        overlay_hosts: HashMap::new(),
     };
     let state = CapabilityTreeState {
         owner_id: tree_id,
@@ -337,6 +339,7 @@ fn make_capability_tree_spec(install: InstallTargetSpec) -> CapabilityTreeSpec {
                     targets_property: "core::power".into(),
                     sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
                     when_activated: OverlayLifecycle::Permanent,
+                    effect_target: simthing_spec::EffectTarget::CapabilityTree,
                 }],
             }],
         }],
@@ -418,6 +421,7 @@ fn make_threshold_unlock_game_mode() -> GameModeSpec {
                         targets_property: "core::power".into(),
                         sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(2.0))],
                         when_activated: OverlayLifecycle::Permanent,
+                        effect_target: simthing_spec::EffectTarget::CapabilityTree,
                     }],
                 }],
             }],
@@ -645,6 +649,81 @@ fn open_from_spec_capability_unlock_activates_overlay_for_next_tick() {
         values[idx],
         session.proto.registry.total_columns,
         session.coord.n_dims(),
+    );
+}
+
+/// EffectTarget ADR acceptance: an `Owner`-targeted (v1 default) effect
+/// modifies the **owner's** property slot when the unlock fires, not the
+/// cloned tree's slot. Mirror of the `CapabilityTree` test above with
+/// `effect_target: Owner` and assertion against `owner_slot`.
+#[test]
+fn open_from_spec_owner_targeted_effect_modifies_owner_slot() {
+    if !try_gpu() {
+        eprintln!("skipping: no GPU");
+        return;
+    }
+
+    // Build a game mode identical to `make_threshold_unlock_game_mode`
+    // but with `effect_target: Owner` on the single effect.
+    let mut game_mode = make_threshold_unlock_game_mode();
+    for tree in &mut game_mode.capability_trees {
+        for cat in &mut tree.categories {
+            for entry in &mut cat.entries {
+                for effect in &mut entry.effects {
+                    effect.effect_target = simthing_spec::EffectTarget::Owner;
+                }
+            }
+        }
+    }
+
+    let (mut scenario, faction_ids) = scenario_with_factions(1, 16);
+    scenario.max_days = 2;
+    let owner_id = faction_ids[0];
+
+    let mut session =
+        SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
+    let instance = session
+        .spec_state
+        .capability_instances
+        .values()
+        .next()
+        .expect("installed instance");
+    let tree_slot = instance.tree_slot;
+    let owner_slot = session
+        .proto
+        .allocator
+        .slot_of(owner_id)
+        .expect("owner slot");
+    assert_ne!(tree_slot, owner_slot, "owner and clone must occupy distinct slots");
+
+    seed_research_progress_after_open(&mut session, 11.0);
+    let summary = session.run(2).expect("session run");
+    assert_eq!(summary.boundaries_run, 2);
+
+    let power_id = session.proto.registry.id_of("core", "power").unwrap();
+    let power_col = session
+        .proto
+        .registry
+        .column_range(power_id)
+        .col_for_role(
+            &SubFieldRole::Amount,
+            &session.proto.registry.property(power_id).layout,
+        )
+        .expect("power amount col");
+    let values = session.state.read_values();
+    let n_dims = session.coord.n_dims() as usize;
+    let owner_idx = owner_slot as usize * n_dims + power_col;
+    let clone_idx = tree_slot as usize * n_dims + power_col;
+    assert!(
+        values[owner_idx] >= 2.0,
+        "Owner-targeted effect must apply to the owner's slot; got {} at owner_slot={}",
+        values[owner_idx],
+        owner_slot,
+    );
+    assert_eq!(
+        values[clone_idx], 0.0,
+        "Owner-targeted effect must NOT apply to the clone's slot; got {} at clone_slot={}",
+        values[clone_idx], tree_slot,
     );
 }
 

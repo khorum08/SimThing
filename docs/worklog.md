@@ -6,6 +6,58 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-23 — EffectTarget ADR implementation
+
+**Status:** `master` @ pending push.
+
+**Landed (code + docs):**
+
+- `simthing-spec`: `EffectTarget` enum (`Owner` default, `CapabilityTree`,
+  `SessionRoot`) on `CapabilityEffectSpec`. `#[serde(default)]` keeps every
+  existing RON file parseable. Builder records `template_effect_targets:
+  HashMap<OverlayId, EffectTarget>` and `CapabilityDefinition.effect_targets:
+  Vec<EffectTarget>` parallel to `overlay_ids`.
+- `simthing-driver::install`: `install_tree_for_owner` now resolves each
+  cloned overlay's host SimThing per `EffectTarget` (Owner → owner;
+  CapabilityTree → clone; SessionRoot → root), places the overlay on that
+  host, seeds the target property on the host, and stamps
+  `CapabilityTreeInstance.overlay_hosts` so the handler picks the right
+  `target` on `ActivateOverlay`/`SuspendOverlay`. Discovery: GPU overlay-prep
+  ignores `affects` and walks the SimThing tree, so overlay placement
+  (not affects) drives transform routing. ADR §Implementation notes
+  documents this.
+- `simthing-spec::preview`: `CapabilityPreviewInput` gains `owner_slot`
+  and `root_slot`. Source slot picked per-effect from `effect_targets`.
+- Test: `open_from_spec_owner_targeted_effect_modifies_owner_slot` — Owner
+  effect lands on owner slot; clone slot stays at 0. Asserts both.
+- Existing v0 tests pin `effect_target: CapabilityTree` explicitly to
+  preserve behavior.
+- `docs/adr/capability_effect_target_scope.md` → Accepted. §14 of
+  `capability_tree_v1.md` → "Accepted, implementation landed."
+
+**Test counts:** 323 passed, 2 ignored (S5 fission, unrelated).
+
+---
+
+## 2026-05-23 — O1b: emit_activation per-clone overlay ids (PR 2eff1e0)
+
+**Status:** `master` @ `2eff1e0`.
+
+**Landed:**
+
+- `simthing-spec::boundary::capability_handler`: `clone_overlay_ids_for_entry`
+  helper resolves per-clone overlay ids from `instance.by_overlay`. Both
+  activation and `Limited(1)/SuspendOldest` suspension paths use it.
+  Sorted by OverlayId for cross-run determinism.
+- `simthing-driver::install`: seeds effect-target properties on the cloned
+  tree (needed by GPU overlay-prep filter) — discovered while landing the
+  ignored E2E test. v0 path; replaced by per-target seeding in EffectTarget
+  ADR commit.
+- Test: `open_from_spec_capability_unlock_activates_overlay_for_next_tick`
+  moved from `#[ignore]` to passing.
+
+---
+
 ## 2026-05-23 — EffectTarget ADR (Opus P3, Proposed)
 
 **Status:** `master` @ `927359f` + ADR.

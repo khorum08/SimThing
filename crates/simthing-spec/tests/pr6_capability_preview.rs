@@ -35,6 +35,7 @@ fn effect(role: SubFieldRole, op: TransformOp) -> CapabilityEffectSpec {
         targets_property: "military::fleet_speed".into(),
         sub_field_deltas: vec![(role, op)],
         when_activated: OverlayLifecycle::Permanent,
+        effect_target: simthing_spec::EffectTarget::CapabilityTree,
     }
 }
 
@@ -143,6 +144,11 @@ impl Fixture {
             shadow,
             n_dims: self.n_dims,
             tree_slot: 0,
+            // Tests in this file author all effects as `CapabilityTree`
+            // (v0 behavior), so `owner_slot` / `root_slot` are unused —
+            // 0 is fine as a sentinel.
+            owner_slot: 0,
+            root_slot: 0,
             entry,
         })
         .expect("preview")
@@ -306,6 +312,7 @@ fn national_ideas_full_path_activate_switch_verify() {
             tree_thing_id: fixture.tree.id,
             tree_slot: 0,
             by_overlay: fixture.template_by_overlay.clone(),
+            overlay_hosts: HashMap::new(),
         },
     );
     let mut states = HashMap::from([(fixture.owner_id, fixture.state())]);

@@ -412,6 +412,7 @@ mod tests {
                     overlay_ids: vec![overlay_id],
                     effect_keys: Vec::new(),
                     effect_transforms: Vec::new(),
+                    effect_targets: Vec::new(),
                     prereqs: Vec::new(),
                     progress_col: 0,
                     research_cost: 1.0,
@@ -428,6 +429,7 @@ mod tests {
             tree_thing_id: tree_id,
             tree_slot: allocator.slot_of(tree_id).unwrap(),
             by_overlay: HashMap::from([(overlay_id, entry.clone())]),
+            overlay_hosts: HashMap::new(),
         };
         let state = CapabilityTreeState {
             owner_id: tree_id,
@@ -483,6 +485,7 @@ mod tests {
             tree_thing_id: SimThingId::new(),
             tree_slot: 0,
             by_overlay: HashMap::new(),
+            overlay_hosts: HashMap::new(),
         };
         spec_state.add_capability_tree_instance(
             definition,
@@ -557,6 +560,7 @@ mod tests {
                     overlay_ids: vec![overlay_id],
                     effect_keys: Vec::new(),
                     effect_transforms: Vec::new(),
+                    effect_targets: Vec::new(),
                     prereqs: Vec::new(),
                     progress_col: 0,
                     research_cost: 1.0,
@@ -573,6 +577,7 @@ mod tests {
             tree_thing_id: tree_id,
             tree_slot: allocator.slot_of(tree_id).unwrap(),
             by_overlay: HashMap::from([(overlay_id, entry.clone())]),
+            overlay_hosts: HashMap::new(),
         };
         let state = CapabilityTreeState {
             owner_id: tree_id,

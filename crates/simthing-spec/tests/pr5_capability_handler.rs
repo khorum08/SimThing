@@ -53,6 +53,7 @@ fn entry(
             targets_property: "military::fleet_speed".into(),
             sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(1.10))],
             when_activated: OverlayLifecycle::Permanent,
+            effect_target: simthing_spec::EffectTarget::CapabilityTree,
         }],
     }
 }
@@ -135,6 +136,7 @@ impl Fixture {
             tree_thing_id: self.tree_id,
             tree_slot: self.tree_slot,
             by_overlay: self.template_by_overlay.clone(),
+            overlay_hosts: HashMap::new(),
         }
     }
 
@@ -474,6 +476,7 @@ fn capability_tree_state_is_per_faction_not_shared() {
             tree_thing_id: tree_b,
             tree_slot: 1,
             by_overlay: fixture.template_by_overlay.clone(),
+            overlay_hosts: HashMap::new(),
         },
     );
     let mut definitions = HashMap::new();

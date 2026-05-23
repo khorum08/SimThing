@@ -214,7 +214,7 @@ impl<'a> CapabilityTreeBoundaryHandler<'a> {
 
         for overlay_id in clone_overlay_ids_for_entry(instance, &entry_key) {
             ctx.requests.push(BoundaryRequest::ActivateOverlay {
-                target: instance.tree_thing_id,
+                target: overlay_host(instance, overlay_id),
                 overlay_id,
             });
         }
@@ -252,7 +252,7 @@ impl<'a> CapabilityTreeBoundaryHandler<'a> {
                     // ids; the live clone's ids live on `instance.by_overlay`.
                     for overlay_id in clone_overlay_ids_for_entry(instance, &oldest) {
                         ctx.requests.push(BoundaryRequest::SuspendOverlay {
-                            target: instance.tree_thing_id,
+                            target: overlay_host(instance, overlay_id),
                             overlay_id,
                         });
                     }
@@ -337,4 +337,17 @@ fn clone_overlay_ids_for_entry(
         .collect();
     ids.sort();
     ids
+}
+
+/// Pick the SimThing that hosts a given overlay. EffectTarget-driven:
+/// `Owner`-targeted overlays live on the owner, `SessionRoot`-targeted on
+/// the scenario root, `CapabilityTree`-targeted on the clone. Falls back
+/// to `tree_thing_id` when `overlay_hosts` is empty (older hand-built
+/// tests pre-dating the EffectTarget ADR).
+fn overlay_host(instance: &CapabilityTreeInstance, overlay_id: OverlayId) -> SimThingId {
+    instance
+        .overlay_hosts
+        .get(&overlay_id)
+        .copied()
+        .unwrap_or(instance.tree_thing_id)
 }

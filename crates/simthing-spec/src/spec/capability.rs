@@ -116,6 +116,30 @@ pub struct CapabilityEffectSpec {
     pub targets_property: String,
     pub sub_field_deltas: Vec<(simthing_core::SubFieldRole, simthing_core::TransformOp)>,
     pub when_activated: simthing_core::OverlayLifecycle,
+    /// Which SimThing this effect's overlay transforms when activated.
+    /// `Owner` (default) sends `affects` to the install-time owner —
+    /// the natural target for faction/character bonuses. See
+    /// `docs/adr/capability_effect_target_scope.md`.
+    #[serde(default)]
+    pub effect_target: EffectTarget,
+}
+
+/// Authored selector for which SimThing a `CapabilityEffectSpec`'s
+/// overlay applies to when activated. Resolved at install time by
+/// `simthing_driver::install::install_tree_for_owner`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum EffectTarget {
+    /// Install-time owner (the SimThing the capability tree was cloned for,
+    /// not the cloned tree itself). v1 default — matches modder intuition
+    /// for faction/character bonuses.
+    #[default]
+    Owner,
+    /// Cloned capability-tree SimThing. v0 behavior — useful for
+    /// tree-internal state (milestones, counters, bookkeeping).
+    CapabilityTree,
+    /// `Scenario::root.id`. Global era flags, world-state triggers.
+    SessionRoot,
 }
 
 #[cfg(test)]

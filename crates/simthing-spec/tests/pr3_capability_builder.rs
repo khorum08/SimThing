@@ -54,6 +54,7 @@ fn entry(
             targets_property: "military::fleet_speed".into(),
             sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(1.10))],
             when_activated: OverlayLifecycle::Permanent,
+            effect_target: simthing_spec::EffectTarget::CapabilityTree,
         }],
     }
 }
@@ -332,6 +333,7 @@ fn capability_tree_builder_records_overlay_ids_for_each_effect() {
         targets_property: "military::fleet_speed".into(),
         sub_field_deltas: vec![(SubFieldRole::Velocity, TransformOp::Add(0.01))],
         when_activated: OverlayLifecycle::Permanent,
+        effect_target: simthing_spec::EffectTarget::CapabilityTree,
     });
 
     let spec = tree_spec(vec![category("tech", "propulsion", vec![e])]);
@@ -386,6 +388,7 @@ fn capability_tree_logical_effect_keys_are_stable_across_builds() {
                 targets_property: "military::fleet_speed".into(),
                 sub_field_deltas: vec![(SubFieldRole::Velocity, TransformOp::Add(0.01))],
                 when_activated: OverlayLifecycle::Permanent,
+                effect_target: simthing_spec::EffectTarget::CapabilityTree,
             });
             e
         }],

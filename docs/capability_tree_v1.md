@@ -1141,8 +1141,8 @@ rules — if a kind string does not match, installation fails loudly.
 
 ## 14. Addendum — Capability effect target semantics (EffectTarget ADR)
 
-**Status:** Proposed in [`adr/capability_effect_target_scope.md`](adr/capability_effect_target_scope.md)
-· **Implementation:** pending (Codex) · **Gates:**
+**Status:** Accepted in [`adr/capability_effect_target_scope.md`](adr/capability_effect_target_scope.md)
+· **Implementation:** landed · **Gates cleared:**
 `simthing_modder_object_guide.md`, `simthing-studio` effect authoring UI
 
 ### What the ADR decides
