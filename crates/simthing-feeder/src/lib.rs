@@ -61,7 +61,7 @@ pub mod maintainer;
 pub mod patcher;
 pub mod work;
 
-pub use capability::CapabilityUnlockRegistration;
+pub use capability::{CapabilityUnlockEvent, CapabilityUnlockRegistration};
 pub use dispatcher::{DispatchCoordinator, TickOutcome};
 pub use maintainer::{MaintainerOutcome, TreeMaintainer};
 pub use patcher::{PatcherStats, TransformPatcher};

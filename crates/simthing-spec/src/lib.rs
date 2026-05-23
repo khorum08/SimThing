@@ -19,15 +19,22 @@
 //! - **Impact preview** (`preview::*`): `CapabilityPreviewReport`.
 //! - **RON loaders**, validation, diagnostics, logical keys.
 //!
-//! ## Deferred (PR 9+)
+//! ## Deferred
 //!
-//! - Scripted event execution at boundary time (`ScriptedEventBoundaryHandler`
-//!   scaffold present; full trigger evaluation and effect dispatch in PR 9).
 //! - Session/driver assembly for capability tree instances and per-faction
 //!   state maps.
-//! - Moving threshold semantic surface into a lower crate to remove the
-//!   temporary `simthing-spec → simthing-sim/gpu` dep violation.
+//! - Threshold-triggered scripted events (GPU registration of
+//!   `CompiledThresholdTrigger`, `event_kind` routing).
 //! - B2 append-only capability unlock integration.
+//!
+//! ## Crate boundary
+//!
+//! Production code depends on `simthing-core` and `simthing-feeder` only.
+//! Integration tests in `tests/` may pull `simthing-gpu` / `simthing-sim` as
+//! dev-dependencies to exercise end-to-end paths. Fired GPU threshold events
+//! are resolved into [`simthing_feeder::CapabilityUnlockEvent`]s by the caller
+//! (via `ThresholdRegistry::extract_capability_unlocks` in `simthing-sim`)
+//! before reaching `CapabilityTreeBoundaryHandler::handle_capability_unlock_events`.
 
 pub mod boundary;
 pub mod compile;

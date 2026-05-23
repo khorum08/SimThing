@@ -6,6 +6,46 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — Threshold dependency cleanup (spec → feeder)
+
+**Status:** `simthing-spec` production code is now independent of
+`simthing-sim` and `simthing-gpu`. Master is parked one commit past the PR 9
+parking commit.
+
+**Problem:** PR 5's `CapabilityTreeBoundaryHandler::handle_threshold_events`
+took `&[ThresholdEvent]` (from `simthing-gpu`) and `&ThresholdRegistry` (from
+`simthing-sim`), forcing the spec crate to depend upward on both. Recorded as
+Known Issue #1 in the post-PR-8 handoff.
+
+**Approach:** introduce a *resolved-event* type that lives below spec:
+
+- `simthing_feeder::CapabilityUnlockEvent { sim_thing_id, property_id,
+  sub_field }` — the post-resolution shape the spec handler actually consumed.
+- Rename handler entry point to `handle_capability_unlock_events(&[CapabilityUnlockEvent], ctx)`.
+- Add `ThresholdRegistry::extract_capability_unlocks(&[ThresholdEvent]) ->
+  Vec<CapabilityUnlockEvent>` in `simthing-sim` as the conversion bridge for
+  callers that hold raw GPU events.
+
+This moves the `event_kind` → `ThresholdSemantic::CapabilityUnlock` resolution
+out of spec and into sim, where the `ThresholdRegistry` already lives.
+
+**Crate boundary now:**
+
+- `simthing-spec` production deps: `simthing-core` + `simthing-feeder` only.
+- `simthing-spec` dev-deps: `simthing-gpu` + `simthing-sim` (PR 6 integration
+  test exercises the full activate/suspend lifecycle through real structural
+  overlay mutation — needs both).
+
+**Verification:** `cargo test --workspace` → 286 passed (+1 for the new
+`extract_capability_unlocks_resolves_threshold_events_to_unlock_events` test),
+1 ignored, zero warnings. `cargo build --workspace --tests` → zero warnings.
+
+**Next candidates:** session/driver assembly; threshold-triggered scripted
+event GPU registration (now unblocked by the cleaner crate boundary); B2
+append-only capability unlock integration.
+
+---
+
 ## 2026-05-22 — Parking state after simthing-spec PR 9
 
 **Status:** `master` and `origin/master` parked at `dc61929`

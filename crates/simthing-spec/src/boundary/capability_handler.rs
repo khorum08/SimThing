@@ -5,9 +5,7 @@ use crate::runtime::{
 };
 use crate::spec::capability::{ActivationMode, MaxActivePolicy, ReplacementPolicy};
 use simthing_core::{DimensionRegistry, SimThingId};
-use simthing_feeder::BoundaryRequest;
-use simthing_gpu::ThresholdEvent;
-use simthing_sim::{ThresholdRegistry, ThresholdSemantic};
+use simthing_feeder::{BoundaryRequest, CapabilityUnlockEvent};
 use std::collections::{HashMap, HashSet};
 
 const PREREQ_RESET_EPSILON: f32 = 0.01;
@@ -42,28 +40,24 @@ pub enum CapabilityTreeError {
 }
 
 impl<'a> CapabilityTreeBoundaryHandler<'a> {
-    pub fn handle_threshold_events(
+    /// Activate capability entries whose progress thresholds fired this tick.
+    ///
+    /// Caller is responsible for resolving raw GPU `ThresholdEvent`s into
+    /// `CapabilityUnlockEvent`s (via `ThresholdRegistry::extract_capability_unlocks`
+    /// in `simthing-sim`, or by direct construction in tests). This keeps
+    /// `simthing-spec` independent of the GPU and threshold-registry crates.
+    pub fn handle_capability_unlock_events(
         &self,
-        events: &[ThresholdEvent],
-        cpu_reg: &ThresholdRegistry,
+        events: &[CapabilityUnlockEvent],
         ctx: &mut CapabilityBoundaryContext<'_>,
     ) -> Result<(), CapabilityTreeError> {
         let mut touched = HashSet::new();
 
         for event in events {
-            let Some(ThresholdSemantic::CapabilityUnlock {
-                sim_thing_id,
-                property_id,
-                sub_field,
-            }) = cpu_reg.get(event.event_kind)
-            else {
-                continue;
-            };
-
-            let Some(instance) = self.instance_by_tree_thing(*sim_thing_id, ctx) else {
+            let Some(instance) = self.instance_by_tree_thing(event.sim_thing_id, ctx) else {
                 ctx.diagnostics
                     .push(CapabilityTreeDiagnostic::UnknownThresholdSimThing {
-                        sim_thing_id: *sim_thing_id,
+                        sim_thing_id: event.sim_thing_id,
                     });
                 continue;
             };
@@ -79,7 +73,7 @@ impl<'a> CapabilityTreeBoundaryHandler<'a> {
 
             let Some(entry_key) = definition
                 .by_threshold
-                .get(&(*property_id, sub_field.clone()))
+                .get(&(event.property_id, event.sub_field.clone()))
                 .cloned()
             else {
                 continue;

@@ -1,10 +1,10 @@
 # SimThing Todo Log
 
-Current parking state after **B2 fission-growth A/B/C complete** and
-**`simthing-spec` PRs 2-9 landed**. `master` and `origin/master` are parked at
-`dc61929` (`simthing-spec PR 9: scripted event boundary handler.`).
+Current parking state after **B2 fission-growth A/B/C complete**,
+**`simthing-spec` PRs 2-9 landed**, and the **spec→sim/gpu threshold
+dependency cleanup** done.
 
-**Tests:** `cargo test --workspace` -> **285** passed, **1** ignored timing
+**Tests:** `cargo test --workspace` -> **286** passed, **1** ignored timing
 diagnostic, zero warnings. `cargo build --workspace --tests` also completes
 with zero warnings.
 
@@ -181,9 +181,15 @@ All PRs sequenced deliberately; do not skip ahead. **Use Opus for all five PRs.*
       `tests/pr9_event_handler.rs`.
 - [ ] Assemble session/driver ownership for capability tree instances and
       per-faction state maps.
-- [ ] Clean up PR 5's temporary `simthing-spec -> simthing-sim` /
-      `simthing-spec -> simthing-gpu` threshold dependencies by moving the
-      threshold semantic surface into a lower crate.
+- [x] Clean up PR 5's temporary `simthing-spec -> simthing-sim` /
+      `simthing-spec -> simthing-gpu` threshold dependencies. Done 2026-05-22.
+      Approach: introduced `simthing-feeder::CapabilityUnlockEvent` as the
+      resolved-event shape spec consumes; renamed handler entry point to
+      `handle_capability_unlock_events`; added
+      `ThresholdRegistry::extract_capability_unlocks` in `simthing-sim` as the
+      bridge for callers that hold raw `ThresholdEvent`s. Spec production deps
+      are now `simthing-core` + `simthing-feeder` only; `simthing-gpu` /
+      `simthing-sim` remain as dev-dependencies for PR 6 integration tests.
 - [ ] B2 append-only capability unlock integration remains deferred; current
       PR 4 path is full-rebuild.
 

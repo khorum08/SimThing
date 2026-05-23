@@ -50,10 +50,10 @@ use serde::{Deserialize, Serialize};
 use simthing_core::{
     DecayBehavior, DimensionRegistry, Direction, SimPropertyId, SimThing, SimThingId, SubFieldRole,
 };
-use simthing_feeder::CapabilityUnlockRegistration;
+use simthing_feeder::{CapabilityUnlockEvent, CapabilityUnlockRegistration};
 use simthing_gpu::{
-    SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
-    THRESH_BUF_VALUES,
+    SlotAllocator, ThresholdEvent, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD,
+    THRESH_BUF_OUTPUT, THRESH_BUF_VALUES,
 };
 
 use crate::fission::FissionLineageRecord;
@@ -192,6 +192,37 @@ impl ThresholdRegistry {
     }
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
+    }
+
+    /// Filter a slice of GPU `ThresholdEvent`s down to just the
+    /// `ThresholdSemantic::CapabilityUnlock` arms, resolved into
+    /// `CapabilityUnlockEvent`s for `simthing-spec`'s boundary handler.
+    ///
+    /// This is the conversion bridge that lets the spec layer stay
+    /// independent of `simthing-gpu` and `simthing-sim`: callers that hold
+    /// raw threshold events call this, then hand the result to
+    /// `CapabilityTreeBoundaryHandler::handle_capability_unlock_events`.
+    /// Non-`CapabilityUnlock` arms and events with out-of-range `event_kind`
+    /// are silently filtered out.
+    pub fn extract_capability_unlocks(
+        &self,
+        events: &[ThresholdEvent],
+    ) -> Vec<CapabilityUnlockEvent> {
+        events
+            .iter()
+            .filter_map(|event| match self.get(event.event_kind)? {
+                ThresholdSemantic::CapabilityUnlock {
+                    sim_thing_id,
+                    property_id,
+                    sub_field,
+                } => Some(CapabilityUnlockEvent {
+                    sim_thing_id: *sim_thing_id,
+                    property_id:  *property_id,
+                    sub_field:    sub_field.clone(),
+                }),
+                _ => None,
+            })
+            .collect()
     }
 }
 
@@ -930,6 +961,40 @@ mod tests {
             }
             _ => panic!("variant changed across round-trip: {restored:?}"),
         }
+    }
+
+    #[test]
+    fn extract_capability_unlocks_resolves_threshold_events_to_unlock_events() {
+        let id1 = simthing_core::SimThingId::new();
+        let id2 = simthing_core::SimThingId::new();
+
+        let mut cpu = ThresholdRegistry::new();
+        let ek_unlock = cpu.push(ThresholdSemantic::CapabilityUnlock {
+            sim_thing_id: id1,
+            property_id:  SimPropertyId(5),
+            sub_field:    SubFieldRole::Named("warp_drive".into()),
+        });
+        let ek_velocity = cpu.push(ThresholdSemantic::VelocityAlert {
+            sim_thing_id: id2,
+            property_id:  SimPropertyId(7),
+            sub_field:    SubFieldRole::Velocity,
+        });
+
+        let events = vec![
+            ThresholdEvent { slot: 0, col: 0, value: 1.0, event_kind: ek_unlock },
+            ThresholdEvent { slot: 1, col: 1, value: 2.0, event_kind: ek_velocity },
+            // Out-of-range event_kind: should be filtered.
+            ThresholdEvent { slot: 2, col: 2, value: 3.0, event_kind: 99 },
+        ];
+
+        let unlocks = cpu.extract_capability_unlocks(&events);
+
+        // Only the CapabilityUnlock arm produces an output; velocity + out-of-range
+        // are silently dropped.
+        assert_eq!(unlocks.len(), 1);
+        assert_eq!(unlocks[0].sim_thing_id, id1);
+        assert_eq!(unlocks[0].property_id, SimPropertyId(5));
+        assert_eq!(unlocks[0].sub_field, SubFieldRole::Named("warp_drive".into()));
     }
 
     #[test]

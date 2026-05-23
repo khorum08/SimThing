@@ -1,7 +1,5 @@
 use simthing_core::{DimensionRegistry, OverlayLifecycle, SimThingId, SubFieldRole, TransformOp};
-use simthing_feeder::BoundaryRequest;
-use simthing_gpu::ThresholdEvent;
-use simthing_sim::{ThresholdRegistry, ThresholdSemantic};
+use simthing_feeder::{BoundaryRequest, CapabilityUnlockEvent};
 use simthing_spec::{
     compile_property, ActivationMode, CapabilityBoundaryContext, CapabilityCategorySpec,
     CapabilityEffectSpec, CapabilityEntryKey, CapabilityPrereqSpec, CapabilitySpec,
@@ -133,24 +131,13 @@ impl Fixture {
         }
     }
 
-    fn threshold_event(&self, key: &CapabilityEntryKey) -> (ThresholdRegistry, ThresholdEvent) {
-        let entry = &self.definition.entries[key];
+    fn unlock_event(&self, key: &CapabilityEntryKey) -> CapabilityUnlockEvent {
         let property_id = self.definition.categories[&key.category].property_id;
-        let mut cpu = ThresholdRegistry::new();
-        let event_kind = cpu.push(ThresholdSemantic::CapabilityUnlock {
+        CapabilityUnlockEvent {
             sim_thing_id: self.tree_id,
             property_id,
             sub_field: SubFieldRole::Named(key.entry_id.clone()),
-        });
-        (
-            cpu,
-            ThresholdEvent {
-                slot: self.tree_slot,
-                col: entry.progress_col as u32,
-                value: entry.research_cost,
-                event_kind,
-            },
-        )
+        }
     }
 
     fn shadow(&self, slots: usize) -> Vec<f32> {
@@ -224,7 +211,7 @@ fn capability_tree_boundary_handler_activates_on_threshold() {
         )],
     )]));
     let key = fixture.key("tech", "propulsion", "chemical_drive");
-    let (cpu, event) = fixture.threshold_event(&key);
+    let event = fixture.unlock_event(&key);
     let mut shadow = fixture.shadow(1);
     let mut states = HashMap::from([(fixture.owner_id, fixture.state())]);
     let mut requests = Vec::new();
@@ -240,7 +227,7 @@ fn capability_tree_boundary_handler_activates_on_threshold() {
         &mut diagnostics,
         |handler, ctx| {
             handler
-                .handle_threshold_events(&[event], &cpu, ctx)
+                .handle_capability_unlock_events(&[event], ctx)
                 .unwrap()
         },
     );
@@ -258,7 +245,7 @@ fn capability_tree_boundary_handler_activates_on_threshold() {
 fn capability_tree_prereq_blocks_activation_and_resets_progress() {
     let fixture = two_entry_threshold_fixture();
     let key = fixture.key("tech", "propulsion", "fusion_drive");
-    let (cpu, event) = fixture.threshold_event(&key);
+    let event = fixture.unlock_event(&key);
     let mut shadow = fixture.shadow(1);
     let progress_col = fixture.definition.entries[&key].progress_col;
     shadow[progress_col] = 8000.0;
@@ -276,7 +263,7 @@ fn capability_tree_prereq_blocks_activation_and_resets_progress() {
         &mut diagnostics,
         |handler, ctx| {
             handler
-                .handle_threshold_events(&[event], &cpu, ctx)
+                .handle_capability_unlock_events(&[event], ctx)
                 .unwrap()
         },
     );
@@ -290,7 +277,7 @@ fn capability_tree_prereq_blocks_activation_and_resets_progress() {
 fn capability_tree_failed_prereq_enters_on_prereq_met() {
     let fixture = two_entry_threshold_fixture();
     let key = fixture.key("tech", "propulsion", "fusion_drive");
-    let (cpu, event) = fixture.threshold_event(&key);
+    let event = fixture.unlock_event(&key);
     let mut shadow = fixture.shadow(1);
     let mut states = HashMap::from([(fixture.owner_id, fixture.state())]);
     let mut requests = Vec::new();
@@ -306,7 +293,7 @@ fn capability_tree_failed_prereq_enters_on_prereq_met() {
         &mut diagnostics,
         |handler, ctx| {
             handler
-                .handle_threshold_events(&[event], &cpu, ctx)
+                .handle_capability_unlock_events(&[event], ctx)
                 .unwrap()
         },
     );
@@ -322,7 +309,7 @@ fn capability_tree_on_prereq_met_sweep_activates_after_dependency_unlock() {
     let fixture = two_entry_threshold_fixture();
     let chemical = fixture.key("tech", "propulsion", "chemical_drive");
     let fusion = fixture.key("tech", "propulsion", "fusion_drive");
-    let (cpu, event) = fixture.threshold_event(&chemical);
+    let event = fixture.unlock_event(&chemical);
     let mut shadow = fixture.shadow(1);
     shadow[fixture.definition.entries[&chemical].progress_col] = 5000.0;
     let mut state = fixture.state();
@@ -343,7 +330,7 @@ fn capability_tree_on_prereq_met_sweep_activates_after_dependency_unlock() {
         &mut diagnostics,
         |handler, ctx| {
             handler
-                .handle_threshold_events(&[event], &cpu, ctx)
+                .handle_capability_unlock_events(&[event], ctx)
                 .unwrap()
         },
     );
@@ -425,7 +412,7 @@ fn capability_tree_cross_category_prereq_resolves() {
     ]));
     let prereq = fixture.key("tech", "physics", "relativity");
     let warp = fixture.key("tech", "propulsion", "warp_drive");
-    let (cpu, event) = fixture.threshold_event(&warp);
+    let event = fixture.unlock_event(&warp);
     let mut shadow = fixture.shadow(1);
     shadow[fixture.definition.entries[&prereq].progress_col] = 3000.0;
     let mut states = HashMap::from([(fixture.owner_id, fixture.state())]);
@@ -442,7 +429,7 @@ fn capability_tree_cross_category_prereq_resolves() {
         &mut diagnostics,
         |handler, ctx| {
             handler
-                .handle_threshold_events(&[event], &cpu, ctx)
+                .handle_capability_unlock_events(&[event], ctx)
                 .unwrap()
         },
     );
@@ -486,7 +473,7 @@ fn capability_tree_state_is_per_faction_not_shared() {
     let mut state_b = fixture.state();
     state_b.owner_id = owner_b;
     let mut states = HashMap::from([(fixture.owner_id, fixture.state()), (owner_b, state_b)]);
-    let (cpu, event) = fixture.threshold_event(&key);
+    let event = fixture.unlock_event(&key);
     let mut shadow = fixture.shadow(2);
     let mut requests = Vec::new();
     let mut notifications = Vec::new();
@@ -506,7 +493,7 @@ fn capability_tree_state_is_per_faction_not_shared() {
     };
 
     handler
-        .handle_threshold_events(&[event], &cpu, &mut ctx)
+        .handle_capability_unlock_events(&[event], &mut ctx)
         .unwrap();
 
     assert!(states[&fixture.owner_id].active_by_category[&key.category].contains(&key));

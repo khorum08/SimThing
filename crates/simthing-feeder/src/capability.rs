@@ -30,6 +30,23 @@ pub struct CapabilityUnlockRegistration {
     pub threshold:    f32,
 }
 
+/// A fired capability unlock threshold, already resolved from
+/// `ThresholdSemantic::CapabilityUnlock` by whoever drains the GPU's
+/// `ThresholdEvent` stream (typically the session/driver layer, via
+/// `ThresholdRegistry::extract_capability_unlocks` in `simthing-sim`).
+///
+/// Lives in `simthing-feeder` so `simthing-spec`'s boundary handler can consume
+/// it without taking a hard dependency on `simthing-sim` or `simthing-gpu`.
+/// The spec handler treats this as the *only* input shape for capability
+/// unlock activation — it never sees raw `ThresholdEvent`s or the
+/// `ThresholdRegistry`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CapabilityUnlockEvent {
+    pub sim_thing_id: SimThingId,
+    pub property_id:  SimPropertyId,
+    pub sub_field:    SubFieldRole,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
