@@ -1,0 +1,47 @@
+// InstallTargetSpec::SessionRoot — one tree on Scenario::root (typically World).
+GameModeSpec(
+    id: "example_session_root",
+    display_name: "Example — session-root install target",
+    description: "Clones a world-level `global_directives` tree onto the session root.",
+    spec_version: (major: 1, minor: 0, patch: 0),
+    properties: [
+        PropertySpec(
+            id: "core_power",
+            namespace: "core",
+            name: "power",
+            display_name: "Power",
+        ),
+    ],
+    capability_trees: [
+        CapabilityTreeSpec(
+            tree_id: "global_directives",
+            tree_kind: "global_directives",
+            owner_kind: "World",
+            install: SessionRoot,
+            categories: [
+                CapabilityCategorySpec(
+                    property_namespace: "world",
+                    property_name: "directives",
+                    display_name: "Global Directives",
+                    entries: [
+                        CapabilitySpec(
+                            id: "expansion_mandate",
+                            display_name: "Expansion Mandate",
+                            research_cost: 1.0,
+                            activation: PlayerSelection,
+                            effects: [
+                                CapabilityEffectSpec(
+                                    targets_property: "core::power",
+                                    sub_field_deltas: [
+                                        (Amount, Add(1.0)),
+                                    ],
+                                    when_activated: Permanent,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ],
+)

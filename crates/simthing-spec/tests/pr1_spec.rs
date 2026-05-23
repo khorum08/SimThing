@@ -1,6 +1,6 @@
 use simthing_spec::{
     deserialize_capability_tree_ron, deserialize_game_mode_ron, validate_capability_tree,
-    ActivationMode, DisplayMeta, DomainPackSpec, GameModeSpec, SpecVersion,
+    ActivationMode, DisplayMeta, DomainPackSpec, GameModeSpec, InstallTargetSpec, SpecVersion,
 };
 
 #[test]
@@ -18,6 +18,32 @@ fn loads_minimal_game_mode_ron() {
     assert_eq!(spec.id, "terran_campaign");
     assert_eq!(spec.domain_packs.len(), 1);
     assert_eq!(spec.domain_packs[0].capability_trees[0].tree_id, "terran_tech");
+}
+
+#[test]
+fn loads_install_target_examples() {
+    let all_factions = include_str!("../../../docs/examples/game_mode_install_all_factions.ron");
+    let listed = include_str!("../../../docs/examples/game_mode_install_scenario_listed.ron");
+    let session_root = include_str!("../../../docs/examples/game_mode_install_session_root.ron");
+
+    let all = deserialize_game_mode_ron(all_factions).expect("all factions example");
+    assert_eq!(
+        all.capability_trees[0].install,
+        InstallTargetSpec::AllOfKind {
+            kind: "Faction".into()
+        }
+    );
+
+    let listed = deserialize_game_mode_ron(listed).expect("scenario listed example");
+    assert_eq!(
+        listed.capability_trees[0].install,
+        InstallTargetSpec::ScenarioListed {
+            target_id: "player_faction".into()
+        }
+    );
+
+    let root = deserialize_game_mode_ron(session_root).expect("session root example");
+    assert_eq!(root.capability_trees[0].install, InstallTargetSpec::SessionRoot);
 }
 
 #[test]
