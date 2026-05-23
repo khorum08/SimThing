@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-23 — O1b E2E test (Cursor, test-only PR)
 
-**Status:** branch pending merge (test-only + parking docs).
+**Status:** `master` @ `7bc038e` (merge PR #56).
 
 **Landed:**
 
