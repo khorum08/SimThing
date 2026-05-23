@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `8904522`. **Tests:** 326 passed, 1 ignored. **Next:** Codex O2 (replay v3).
+**Parking (2026-05-23):** `master` @ `393db00`. **Tests:** 326 passed, 1 ignored. **Next:** Codex O2 (replay v3).
 
 ## Read first — current state
 

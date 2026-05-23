@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-23 — Parking doc sync (post Opus O1b–O4)
 
-**Status:** `master` @ `8904522` (pending commit for doc sync).
+**Status:** `master` @ `393db00` (parking sync committed).
 
 **Context:** Opus landed O1b, EffectTarget, S5, S5 follow-up, and O4 (`2eff1e0`–`8904522`)
 without updating parking synthesis docs. Worklog entries were current; `design_v6.5.md`,

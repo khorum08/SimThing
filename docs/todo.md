@@ -2,7 +2,7 @@
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; **O1**, **O1b**, **EffectTarget**,
 **S5** (+ fission-clone follow-up), and **O4** landed on `master`. Cursor handoff complete.
-`master` and `origin/master` synced at **`8904522`**.
+`master` and `origin/master` synced at **`393db00`** (parking sync post Opus O1b–O4).
 
 **Parking synthesis:** [`docs/design_v6.5.md`](design_v6.5.md) — read first for HEAD, gates, doc map.
 
