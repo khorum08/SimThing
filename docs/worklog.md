@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-23 — Cursor safe-followup handoff parked
 
-**Status:** `master` @ `3174af0`; `origin/master` synced.
+**Status:** `master` @ `ce904e8`; `origin/master` synced (PR #60).
 
 **Cursor handoff complete (PRs #56–#59):**
 

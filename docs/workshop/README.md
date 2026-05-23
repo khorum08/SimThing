@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `3174af0`. **Tests:** 323 passed, 3 ignored. **Cursor handoff:** complete (#56–#59). **Next:** Codex O1b → S5 → O4/O2; Opus EffectTarget ADR.
+**Parking (2026-05-23):** `master` @ `ce904e8`. **Tests:** 323 passed, 3 ignored. **Cursor handoff:** complete (#56–#59). **Next:** Codex O1b → S5 → O4/O2; Opus EffectTarget ADR.
 
 ## Canonical — `simthing-spec` implementation progress
 
