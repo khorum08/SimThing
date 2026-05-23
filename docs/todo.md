@@ -3,7 +3,7 @@
 Current parking state: **`simthing-spec` PRs 1–11 complete**; Phase 1 ADRs,
 **O3**, Composer **S3/S4**, **O1**, post-O1 doc sync, and **Cursor safe-followup
 handoff (PRs #56–#59) complete**. `master` and `origin/master` synced at
-**`030ef3e`** (PR #61 V6.5 doc synthesis).
+**`14db14e`** (PR #62 V6.5 Codex remediation).
 
 **Parking synthesis:** [`docs/design_v6.5.md`](design_v6.5.md) — read first for HEAD, gates, doc map.
 

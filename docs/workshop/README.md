@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `030ef3e`. **Tests:** 323 passed, 3 ignored. **Cursor handoff:** complete (#56–#59). **Next:** Codex O1b → S5 → O4/O2; Opus EffectTarget ADR.
+**Parking (2026-05-23):** `master` @ `14db14e`. **Tests:** 323 passed, 3 ignored. **Cursor handoff:** complete (#56–#59). **Next:** Codex O1b → S5 → O4/O2; Opus EffectTarget ADR.
 
 ## Read first — current state
 
