@@ -6,15 +6,36 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-23 — Doc parking sync after O1 (Composer)
+## 2026-05-23 — Codex evaluation doc sync + work queue (Composer)
 
-**Status:** `master` @ `6ba4e0d` (unchanged code; docs-only).
+**Status:** `master` @ `7eb015a` (docs-only; code unchanged).
+
+**Ingested:** Codex post-O1 evaluation (O1b blocking, registry/GPU dimension
+sync risk in `open_from_spec`, S5 conservative fix, reordered O4/O2 after O1b).
+
+**Updated:** `todo.md`, `workshop/simthing_spec_progress_log.md` (header +
+open-work reorder), `workshop/README.md`, `design_v6.md`, this worklog.
+
+**Code ownership (next):**
+
+| Owner | Work |
+|-------|------|
+| **Codex** | O1b E2E unlock test via `open_from_spec`; O1c dimension/GPU sync (Option B); S5/O5; O4; O2 |
+| **Opus** | EffectTarget scope ADR (Owner vs CapabilityTree) before modder/Studio |
+
+**Next:** Codex **O1b** then **O1c** if red; do not start O4/O2 until green.
+
+---
+
+## 2026-05-23 — Doc parking sync after O1 (Composer, PR #54)
+
+**Status:** `master` @ `7eb015a` (merge PR #54; O1 code @ `6ba4e0d` / PR #53).
 
 **Updated:** `todo.md`, `workshop/simthing_spec_progress_log.md`,
 `workshop/README.md`, `design_v6.md`, this worklog (O1 entry SHA, footguns,
-O1 → Done, O1b gap noted).
+O1 → Done).
 
-**Next:** O4 or O2 (Codex); O1b E2E unlock via `open_from_spec` as follow-up.
+**Next:** superseded by Codex evaluation sync above.
 
 ---
 
@@ -54,9 +75,8 @@ O1 → Done, O1b gap noted).
 **Tests:** 320 passed, 1 ignored, zero warnings (debug + release).
 Release-profile build/tests clean.
 
-**Next:** O4 (per-owner scripted events, per scope ADR) and O2 (replay v3, per
-replay ADR). Both can co-land or sequence; O2's `by_overlay` migration is
-already done by this PR. S5/O5 append-only thresholds remain parallel track.
+**Next:** Codex O1b/O1c (see worklog 2026-05-23 Codex evaluation entry); then S5,
+O4, O2. Opus EffectTarget ADR deferred.
 
 ---
 

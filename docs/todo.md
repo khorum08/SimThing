@@ -1,8 +1,8 @@
 # SimThing Todo Log
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; Phase 1 ADRs,
-**O3**, Composer **S3/S4**, and **O1** (session installation) landed.
-`master` and `origin/master` synced at **`6ba4e0d`** (PR #53).
+**O3**, Composer **S3/S4**, **O1** (session installation), and post-O1 doc
+sync landed. `master` and `origin/master` synced at **`7eb015a`** (PR #54).
 
 **Tests:** `cargo test --workspace` → **320** passed, **1** ignored, zero
 warnings. Debug and **release** profile build/tests clean.
@@ -22,17 +22,24 @@ invokes capability and scripted-event handlers after GPU readback;
 to `CapabilityTreeInstance` (per-clone). `CapabilityTreeBuildOutput` exposes
 `template_by_overlay` for the install module to re-stamp.
 
-**Next:** **O4** (per-owner scripted events per
-`docs/adr/scripted_event_scope_model.md`) and **O2** (replay v3 per
-`docs/adr/spec_session_state_replay.md`). O2's `by_overlay` precondition is
-already satisfied by O1; the two can co-land or sequence.
+### Next — ordered (Codex evaluation 2026-05-23)
 
-**Parallel (Codex):** **S5/O5** — append-only external thresholds; Approach C
-topology append must exclude `clone_capability_children` fissions (drift found).
+| Priority | ID | Owner | Scope |
+|----------|-----|-------|-------|
+| **P0** | **O1b** | **Codex** | Threshold unlock E2E via `open_from_spec` (ADR acceptance test; spec property not in scenario registry) |
+| **P0** | **O1c** | **Codex** | Registry/GPU dimension sync after `compile_and_install` — resize `coord` + `state.rebuild_for_registry` before `initial_gpu_sync` (Option B); O1b likely exposes this |
+| **P1** | **S5/O5** | **Codex** | Append-only thresholds + disable Approach C append when `clone_capability_children` (conservative fix first) |
+| **P2** | **O4** | **Codex** | Per-owner scripted events (Option B ADR) |
+| **P2** | **O2** | **Codex** | Replay v3 (`SpecSnapshot`/`SpecDelta`; `by_overlay` precondition met) |
+| **P3** | **EffectTarget** | **Opus** | ADR for capability effect target scope (Owner vs CapabilityTree vs SessionRoot) before Studio/modder exposure |
 
-**Known gap (O1b):** threshold unlock E2E via `open_from_spec` not yet tested;
-`spec_session_capability_unlock_activates_overlay_for_next_tick` still uses
-manual `install_spec_state`.
+**Do not start O4/O2 until O1b (+ O1c if needed) is green.**
+
+**Known O1 risks (documented, not yet fixed in code):**
+
+- `open_from_spec` runs `SimSession::open` before spec properties register — GPU/`coord.n_dims` may lag `registry.total_columns` until boundary dimension rebuild.
+- Capability overlay `affects` currently target the **cloned tree**, not the owner (intentional v0; modder semantics TBD via Opus ADR).
+- `compile_and_install` mutates registry/root in place on error (safe for `open_from_spec` discard; Studio preview needs clone-then-commit later).
 
 **Worktree:** clean for tracked files. Untracked `.claude/worktrees/`,
 `demo.replay.ldjson`, and draft workshop files may be present locally.
@@ -480,9 +487,12 @@ simthing-studio   ← deferred GUI
 9. ~~Composer Phase 0 + Phase 1 ADRs + O3~~ — Done through `c3f3556` (PRs #49–51).
 10. ~~Composer S3 + S4~~ — topology full-rebuild guard; capability instance reverse map (PR #52, `7914528`).
 11. ~~**O1** — RON-driven session installation~~ (PR #53, `6ba4e0d`). 320 tests.
-12. **Next session — primary track:** **O4** (per-owner scripted events) or
-     **O2** (replay v3 for spec session state). O2's `by_overlay`
-     precondition is satisfied by O1.
-   - **Parallel:** S5/O5 append-only thresholds + Approach C eligibility fix.
-   - **Follow-up:** O1b — threshold unlock E2E via `open_from_spec`.
-13. Scenario format expansion / map-scale representation — tabled.
+12. ~~Post-O1 doc parking sync~~ (PR #54, `7eb015a`).
+13. **Next — Codex P0:** **O1b** (threshold unlock E2E via `open_from_spec`) then
+     **O1c** (registry/GPU dimension sync after spec install if O1b exposes mismatch).
+14. **Next — Codex P1:** **S5/O5** — conservative Approach C eligibility fix +
+     append-only external thresholds.
+15. **Next — Codex P2:** **O4** (per-owner scripted events) then **O2** (replay v3).
+16. **Next — Opus P3:** **EffectTarget ADR** — Owner vs CapabilityTree effect scope
+     before Studio/modder docs.
+17. Scenario format expansion / map-scale representation — tabled.

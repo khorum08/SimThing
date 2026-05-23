@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `6ba4e0d` (PR #53 O1). **Tests:** 320 passed, 1 ignored. **Next:** O4 or O2; parallel S5.
+**Parking (2026-05-23):** `master` @ `7eb015a`. **Tests:** 320 passed, 1 ignored. **Next (Codex P0):** O1b → O1c. **Then:** S5, O4, O2. **Opus:** EffectTarget ADR.
 
 ## Canonical — `simthing-spec` implementation progress
 

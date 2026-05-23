@@ -1,10 +1,11 @@
-# simthing-spec — Unified Progress Log (PRs 1–11)
+# simthing-spec — Unified Progress Log (PRs 1–11 + O1)
 
-**Status:** Canonical implementation record for `simthing-spec` and PR 11 session assembly.  
+**Status:** Canonical implementation record for `simthing-spec`, PR 11 session
+assembly, and O1 session installation.  
 **Replaces:** superseded PR handoff/workshop docs (see [`README.md`](README.md); those files live in local-only `archive/`).  
-**Date:** 2026-05-22  
-**Master HEAD:** `9e63718`  
-**Verification:** `cargo test --workspace` → **311** passed, **1** ignored, zero warnings.  
+**Last updated:** 2026-05-23  
+**Master HEAD:** `7eb015a` (PR #54 doc sync; O1 code PR #53 @ `6ba4e0d`)  
+**Verification:** `cargo test --workspace` → **320** passed, **1** ignored, zero warnings.  
 `cargo build --workspace --tests` and release profile build/tests clean.
 
 ---
@@ -15,9 +16,10 @@
 |------|-------|
 | **Crate** | `crates/simthing-spec` — RON → runtime compiler; does not execute simulation |
 | **Production deps** | `simthing-core`, `simthing-feeder` only |
-| **Session owner** | `simthing-driver::SpecSessionState` (`spec_session.rs`) |
+| **Session owner** | `simthing-driver::SpecSessionState` + `simthing-driver::install` |
+| **Session open** | `SimSession::open_from_spec` (spec-driven) or `open` + manual `install_spec_state` |
 | **Boundary wiring** | Generic `BoundaryHookContext` in `simthing-sim`; handlers invoked from driver after GPU readback |
-| **ADR** | `docs/adr/pr11_track_a_session_assembly.md` |
+| **ADR** | `docs/adr/pr11_track_a_session_assembly.md` + Phase 1 ADRs (#50) |
 | **Design docs** | `docs/design_v6.md` (scripted events addendum), `docs/capability_tree_v1.md` (§12 unlock bridge) |
 
 ### Dependency graph (as implemented)
@@ -33,7 +35,8 @@ simthing-spec     simthing-sim   ← ThresholdSemantic arms, extract_* bridges,
  core + feeder
  only)
     ↑
-simthing-driver   ← SpecSessionState, install_spec_state, boundary hook wiring
+simthing-driver   ← SpecSessionState, install::compile_and_install,
+                    open_from_spec, boundary hook wiring
 
 simthing-studio   ← deferred GUI
 ```
@@ -50,8 +53,9 @@ crates/simthing-spec/src/
   preview/        — capability effect preview
 
 crates/simthing-driver/src/
+  install.rs      — compile_and_install, per-owner tree clone, InstallTargetSpec resolution
   spec_session.rs — SpecSessionState, boundary hook implementation
-  session.rs      — SimSession::install_spec_state, execute_with_boundary_hook
+  session.rs      — SimSession::open, open_from_spec, install_spec_state
 
 crates/simthing-sim/src/
   boundary.rs     — BoundaryHookContext, execute_with_boundary_hook, external threshold storage
@@ -319,21 +323,33 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 
 ---
 
-## Open work (post PR 11)
+## Open work (post PR 11 + O1)
 
-### Codex-tier (implementation — ADRs landed)
+### P0 — Codex (blocking; before O4/O2)
 
-| ID | Scope | ADR |
-|----|-------|-----|
-| **O2** | Replay v3 — `SpecSnapshot`/`SpecDelta`, logical keys | [`spec_session_state_replay.md`](../adr/spec_session_state_replay.md) |
-| **O4** | Per-owner scripted events (Option B) | [`scripted_event_scope_model.md`](../adr/scripted_event_scope_model.md) |
-| **O5** | B2 append-only for external threshold registrations on growth boundaries | — |
+| ID | Owner | Scope |
+|----|-------|-------|
+| **O1b** | Codex | Threshold unlock E2E via `open_from_spec` — spec registers properties not in scenario registry; progress crosses threshold → overlay → next-tick value change. Replaces manual `install_spec_state` acceptance path. |
+| **O1c** | Codex | After `compile_and_install`, sync GPU/coord to expanded registry before `initial_gpu_sync` (Option B: `coord.resize_dimensions` + shadow widen/seed + `state.rebuild_for_registry`, mirroring boundary dimension rebuild). Likely required if O1b fails. |
 
-### Follow-up (O1 acceptance gap)
+### P1 — Codex (mechanical / perf correctness)
 
-| ID | Scope |
-|----|-------|
-| **O1b** | Threshold unlock E2E via `open_from_spec` (no manual `install_spec_state`); ADR acceptance test not yet covered — see `spec_session_capability_unlock_activates_overlay_for_next_tick` |
+| ID | Owner | Scope |
+|----|-------|-------|
+| **S5/O5** | Codex | Wire append-only threshold helpers; **conservative fix:** disable Approach C topology/threshold append when fission uses `clone_capability_children` (force full rebuild). See `replay_fission_with_cloned_capability_subtree_reconstructs_full_payload`. |
+
+### P2 — Codex (ADR landed)
+
+| ID | Owner | Scope | ADR |
+|----|-------|-------|-----|
+| **O4** | Codex | Per-owner scripted events (Option B) | [`scripted_event_scope_model.md`](../adr/scripted_event_scope_model.md) |
+| **O2** | Codex | Replay v3 — `SpecSnapshot`/`SpecDelta`, logical keys | [`spec_session_state_replay.md`](../adr/spec_session_state_replay.md) |
+
+### P3 — Opus (design, pre-Studio)
+
+| ID | Owner | Scope |
+|----|-------|-------|
+| **EffectTarget** | Opus | ADR: capability effect target scope (`CapabilityTree` vs `Owner` vs `SessionRoot`). v0 installs overlay `affects` on cloned tree only; modder-facing semantics need explicit model. |
 
 ### Done (2026-05-23)
 
@@ -346,12 +362,6 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 | **S1/S2/D2** | Composer Phase 0 — crate docs, boundary header, `research_rate` removed (PR #49) |
 | **ADRs** | Session installation, scripted scope, replay (PR #50) |
 
-### Mechanical (Codex — open)
-
-| ID | Scope |
-|----|-------|
-| **S5** | Wire append helpers into eligibility guards; **fix Approach C** when fission uses `clone_capability_children` (incremental cache misses cloned-subtree edges — see `replay_fission_with_cloned_capability_subtree_reconstructs_full_payload`) |
-
 ### Deferred / out of scope
 
 - `simthing-studio` GUI
@@ -359,14 +369,19 @@ PR 4 tests live in `simthing-feeder` and `simthing-sim/threshold_registry`.
 - Scenario RON expansion (inline tree/registry/shadow seeds)
 - Map-scale representation doc spike
 - Handler API migration to tree-instance-keyed context (optional cleanup)
+- Install clone-then-commit (Studio preview / hot-reload safety)
+- Single `populate_from_tree` after all clones (multi-faction perf)
+- Event boundary-skip classification (`requires_boundary_tick` — O4/O6)
 
 ### Known footguns
 
-- **O1 install path** — use `SimSession::open_from_spec`; legacy `install_spec_state` remains for hand-built tests.
-- **O1b gap** — threshold unlock E2E still proven only via manual install, not `open_from_spec`.
+- **O1 dimension sync** — `open_from_spec` calls `SimSession::open` before spec properties register; `coord.n_dims` / `WorldGpuState` may not match `registry.total_columns` until O1c fix or first boundary dimension rebuild.
+- **O1b not proven** — existing E2E unlock test still uses manual `install_spec_state`; O1 install tests check structure only (`PlayerSelection`, no threshold path).
+- **Overlay `affects`** — per-clone overlays target `cloned_tree_id`, not `owner_id`; internally consistent but not modder-obvious until EffectTarget ADR (Opus).
+- **Partial install mutation** — `compile_and_install` mutates registry/root in place; safe when session is discarded on `Err`; unsafe pattern for future Studio preview without clone-then-commit.
 - **Replay** — structural overlay activations replay; spec runtime state does not (O2).
-- **B2 Approach C topology append** — only patches `fission_pairs` edges; incorrect CSR when fission clones multi-node capability subtrees (`clone_capability_children`). Full-rebuild path is guarded by S3; append path needs S5 fix.
-- **Empty-boundary skip** disabled when spec state needs boundary ticks (scripted predicates, queued selections, `OnPrereqMet` sweeps).
+- **B2 Approach C topology append** — only patches `fission_pairs` edges; incorrect CSR when fission clones multi-node capability subtrees. S5 conservative fix: disable append for `clone_capability_children`.
+- **Empty-boundary skip** — any non-empty `scripted_events` disables skip via `requires_boundary_tick()`; revisit event classification in O4.
 
 ---
 
