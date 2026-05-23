@@ -6,9 +6,28 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-22 — Phase 1 doc consolidation + PR 11 parking sync
+
+**Status:** `master` @ `9e63718`. Release smoke check passed after Track A.
+
+**Landed:**
+
+- **`docs/workshop/simthing_spec_progress_log.md`** — unified PR 1–11 progress record;
+  replaces PR-scoped handoff digests for implementation status.
+- **`docs/workshop/README.md`** — workshop index; marks superseded vs current docs.
+- Supersession banners on historical handoff/workshop files (see README).
+- Parking sync in `docs/todo.md` and this worklog (311 tests, Track A merged).
+
+**Release verification (C4):** `cargo build --workspace --release --tests` and
+`cargo test --workspace --release` — both clean, zero warnings.
+
+**Next:** Opus O1 — session init from authored specs (see progress log § Open work).
+
+---
+
 ## 2026-05-22 — PR 11 Track A session/driver assembly
 
-**Status:** Implemented locally on top of `866a467`.
+**Status:** Merged on `master` at `01fb572` (parking docs `9e63718`).
 
 **Design:** Added `docs/adr/pr11_track_a_session_assembly.md`. The driver owns
 spec runtime state; `simthing-sim` stays spec-free. A generic boundary hook
@@ -1760,20 +1779,20 @@ growth target.
 
 ## Next session pickup
 
-**306** tests passing plus **1** ignored timing diagnostic, zero warnings.
-`master` @ `392992f` — `simthing-spec` PRs 2–10 landed; PR 11 Track B merged
-(PR #47). Release profile build and tests clean.
+**311** tests passing plus **1** ignored timing diagnostic, zero warnings.
+`master` @ `9e63718` — `simthing-spec` PRs 1–11 complete including Track A
+session assembly. Release profile build and tests clean.
 
-**Primary next step:** **PR 11 Track A (Opus)** — session/driver assembly per
-`docs/workshop/pr11_session_assembly_handoff.md`. Wire spec boundary handlers
-into the day-boundary protocol; define session state ownership; add E2E
-integration test.
+**Canonical progress:** `docs/workshop/simthing_spec_progress_log.md`
 
-**Recent merges on `master`:**
-- **`simthing-spec` PRs 2–10** — property/overlay compiler through scripted-event
-  GPU threshold path (`3e4f6ea`)
-- **PR 11 Track B** — Display diagnostics, EventKey ergonomics, append threshold
-  helpers, docs addenda (PR #47, `392992f`)
+**Primary next step:** **Session init from authored specs (O1)** — compile
+`GameModeSpec`/domain packs, clone capability trees per faction, wire
+`install_spec_state` from scenario open; integration test from RON.
+
+**Recent on `master`:**
+- PR 11 Track A — `SpecSessionState`, boundary hook, GPU E2E (`01fb572`)
+- PR 11 Track B — PR #47 (`392992f`)
+- PRs 2–10 — full spec compiler + handlers + GPU thresholds (`3e4f6ea`)
 - PR 11 handoff digest (`a8355e7`) and parking doc sync (`865304d`)
 
 **Design reference:** `docs/design_v6.md` (current, incl. addenda) ·
@@ -1857,16 +1876,14 @@ integration test.
 
 #### Next
 
-- [ ] **PR 11 Track A (Opus)** — session/driver assembly (see
-      `docs/workshop/pr11_session_assembly_handoff.md`).
-- [ ] **Document/prototype map-scale representation.** Keep current `SimThing` as
-      semantic authoring state; evaluate arena/topology sidecars only after benchmark
-      data shows tree representation pressure.
-- [ ] **Scenario format expansion.** Full RON tree/registry/shadow seeds — behind
-      the GPU performance path.
+- [ ] **Session init from authored specs (O1)** — see progress log § Open work.
+- [ ] **Replay v3 for spec runtime state (O2)** — document-first acceptable.
+- [ ] **Player selection input path (O3)**.
+- [ ] **Document/prototype map-scale representation.**
+- [ ] **Scenario format expansion.**
 
-**Recent:** PR #47 merged — PR 11 Track B mechanical prep. 306 tests passing.
-Ready for Track A session assembly (Opus).
+**Recent:** PR 11 complete (`9e63718`). Unified progress log at
+`docs/workshop/simthing_spec_progress_log.md`. **311** tests passing.
 
 **Tabled:** `simthing-studio` designer UI (depends on `simthing-spec`); unified
 `BoundaryIndex` single-pass boundary walk (review item 4 / C1 — Opus-tier).

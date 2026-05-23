@@ -1,3 +1,5 @@
+> **SUPERSEDED** — Use [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) (PR 5 section).
+
 # PR 5 Handoff Digest — Capability Runtime State + Boundary Handler
 
 **Date:** 2026-05-22

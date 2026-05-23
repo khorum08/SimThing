@@ -1,3 +1,5 @@
+> **SUPERSEDED** — Folded into [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) § Open work.
+
 # PR 11 Post Track A Handoff Digest
 
 **Date:** 2026-05-22

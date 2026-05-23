@@ -1,3 +1,5 @@
+> **SUPERSEDED for implementation progress** — Use [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) and [`README.md`](README.md). Decision log D0–D21 below remains useful reference; step-by-step PR instructions are historical.
+
 # simthing-spec workshop
 
 ## Purpose

@@ -1,3 +1,5 @@
+> **SUPERSEDED for implementation progress** — Use [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) and [`README.md`](README.md). This file is retained for archaeology and decision-log reference only.
+
 # simthing-spec — Master Implementation Handoff
 ## Date: 2026-05-22
 

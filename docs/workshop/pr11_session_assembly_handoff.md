@@ -1,3 +1,5 @@
+> **SUPERSEDED** — PR 11 Track A and B complete. Use [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md).
+
 # PR 11 — Session / Driver Assembly Handoff
 
 **Date:** 2026-05-22
