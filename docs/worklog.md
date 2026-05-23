@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-23 — Workshop authoring docs
 
-**Status:** pending merge.
+**Status:** `master` @ `afcbd53` (PR #63 merged).
 
 **Added:**
 
