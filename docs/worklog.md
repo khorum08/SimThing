@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-23 — Kind strings + v0 effect-target docs (Cursor, PR 3)
 
-**Status:** branch pending merge.
+**Status:** `master` @ `e97a9ea` (merge PR #58).
 
 **Landed:**
 
