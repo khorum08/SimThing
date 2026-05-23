@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-23 — S5 regression test (Cursor, PR 4)
 
-**Status:** branch pending merge.
+**Status:** `master` @ `61e62c1` (merge PR #59).
 
 **Landed:**
 

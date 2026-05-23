@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `e97a9ea`. **Tests:** 323 passed, 3 ignored. **Next (Codex):** O1b handler fix, S5 append disable.
+**Parking (2026-05-23):** `master` @ `61e62c1`. **Tests:** 323 passed, 3 ignored. **Next (Codex):** O1b handler fix, S5 append disable.
 
 ## Canonical — `simthing-spec` implementation progress
 
