@@ -78,12 +78,17 @@ This spike tests whether a workshop-local gather/combine/scatter kernel can comp
 
 It is not production AccumulatorOp.
 
-The test uses one GPU invocation per parent and loops each parent's child range in canonical order. It intentionally avoids atomics so that WeightedMean parity can be tested independently from transfer/emission contention.
+The test uses one GPU invocation per parent and loops each parent's child range in canonical order. The workshop WGSL loop mirrors production `reduction.wgsl` WeightedMean: first child initializes weighted_sum/weight_sum, loop starts at i=1, zero total weight returns 0. It intentionally avoids atomics so that WeightedMean parity can be tested independently from transfer/emission contention.
 
-| `parity_classification` | Meaning |
-|-------------------------|---------|
-| **BIT_EXACT** | Strong AccumulatorOp v2 candidate for WeightedMean |
-| **TOLERANCE_EXACT** | Passed weakly; production needs explicit tolerance ADR |
-| **FAIL** | Retain specialized WeightedMean reduction path |
+Production reduction currently expects deterministic child-order semantics. This spike distinguishes bit-exact, strict tolerance, and loose tolerance outcomes. **Loose tolerance is not a production parity claim.**
+
+| `parity_classification` | `accumulatorop_weightedmean_gate` | Meaning |
+|-------------------------|-----------------------------------|---------|
+| **BIT_EXACT** | STRONG_PASS | Strong candidate for AccumulatorOp v2 WeightedMean |
+| **STRICT_TOLERANCE** | WEAK_PASS | Likely acceptable; production ADR must define tolerance policy |
+| **LOOSE_TOLERANCE** | WEAK_PASS_REQUIRES_ADR | Exploratory pass only; do not claim production parity without ADR or fix |
+| **FAIL** | FAIL | Retain specialized WeightedMean reduction path |
+
+If this spike remains non-bit-exact, the AccumulatorOp ADR must either accept a tolerance policy or retain specialized WeightedMean reduction.
 
 The 100k test writes `target/workshop/weighted_mean_parity_report_100k.md` (not committed).

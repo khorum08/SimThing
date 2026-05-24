@@ -1,145 +1,10 @@
-WeightedMean AccumulatorOp parity test reports (3 runs)
-Generated: 2026-05-24 17:10:57
+WeightedMean AccumulatorOp parity test reports — hardened classification (3 runs)
+Generated: 2026-05-24 17:19:55
 
 ========== RUN 1 ==========
 
-cargo :     Finished `test` profile [optimized + debuginfo] target(s) in 0.10s
-At C:\Users\mvorm\AppData\Local\Temp\ps-script-431b2d5b-f33f-4939-b078-4175c9917a75.ps1:88 char:13
-+   $output = cargo test -p simthing-workshop weighted_mean -- --nocapt ...
-+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.10s:String) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 
-     Running unittests src\lib.rs (target\debug\deps\simthing_workshop-78310f8cf7bfa4da.exe)
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running tests\eml_phase5_intensity.rs (target\debug\deps\eml_phase5_intensity-6d278bb7686576e1.exe)
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
-
-     Running tests\weighted_mean_parity.rs (target\debug\deps\weighted_mean_parity-e31b0512eea93ccb.exe)
-
-running 6 tests
-test weighted_mean_cpu_oracle_handles_edge_cases ... ok
-WeightedMean AccumulatorOp parity report
-scenario: weighted_mean_10k_x32
-n_parents: 10000
-n_children: 241250
-warm_runs: 10
-
-Correctness:
-max_abs_error: 0.000015258789
-mean_abs_error: 0.00000048292264
-max_ulp_diff: 1570
-bit_exact: false
-within_tolerance: true
-repeated_runs_identical: true
-
-Coverage:
-zero_weight_cases: 1250
-single_child_cases: 1250
-mixed_magnitude_cases: 14232
-negative_value_cases: 80205
-
-Timing:
-cpu_oracle_us: 118
-gpu_cold_total_us: 12678
-gpu_warm_mean_us: 5715
-gpu_warm_min_us: 1434
-gpu_warm_max_us: 32757
-dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
-
-Interpretation:
-correctness_gate: PASS
-determinism_gate: PASS
-parity_classification: TOLERANCE_EXACT
-accumulatorop_weightedmean_gate: PASS
-note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-WeightedMean AccumulatorOp parity report
-scenario: weighted_mean_100k_x32
-n_parents: 100000
-n_children: 2412500
-warm_runs: 10
-
-Correctness:
-max_abs_error: 0.000030517578
-mean_abs_error: 0.0000007108652
-max_ulp_diff: 1570
-bit_exact: false
-within_tolerance: true
-repeated_runs_identical: true
-
-Coverage:
-zero_weight_cases: 12500
-single_child_cases: 12500
-mixed_magnitude_cases: 142426
-negative_value_cases: 802098
-
-Timing:
-cpu_oracle_us: 1370
-gpu_cold_total_us: 47984
-gpu_warm_mean_us: 13256
-gpu_warm_min_us: 9367
-gpu_warm_max_us: 29677
-dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
-
-Interpretation:
-correctness_gate: PASS
-determinism_gate: PASS
-parity_classification: TOLERANCE_EXACT
-accumulatorop_weightedmean_gate: PASS
-note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-WeightedMean AccumulatorOp parity report
-scenario: weighted_mean_small_x8
-n_parents: 128
-n_children: 784
-warm_runs: 10
-
-Correctness:
-max_abs_error: 0.000061035156
-mean_abs_error: 0.000003853056
-max_ulp_diff: 2
-bit_exact: false
-within_tolerance: true
-repeated_runs_identical: true
-
-Coverage:
-zero_weight_cases: 16
-single_child_cases: 16
-mixed_magnitude_cases: 167
-negative_value_cases: 254
-
-Timing:
-cpu_oracle_us: 0
-gpu_cold_total_us: 4787
-gpu_warm_mean_us: 1148
-gpu_warm_min_us: 497
-gpu_warm_max_us: 3413
-dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
-
-Interpretation:
-correctness_gate: PASS
-determinism_gate: PASS
-parity_classification: TOLERANCE_EXACT
-accumulatorop_weightedmean_gate: PASS
-note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-test weighted_mean_report_is_deterministic_across_runs ... ok
-test weighted_mean_gpu_matches_cpu_10k_x32 ... ok
-test weighted_mean_gpu_matches_cpu_small ... ok
-test weighted_mean_gpu_matches_cpu_100k_x32 ... ok
-test weighted_mean_rejects_invalid_inputs ... ok
-
-test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.92s
-
-========== RUN 2 ==========
-
 cargo :     Finished `test` profile [optimized + debuginfo] target(s) in 0.09s
-At C:\Users\mvorm\AppData\Local\Temp\ps-script-431b2d5b-f33f-4939-b078-4175c9917a75.ps1:88 char:13
+At C:\Users\mvorm\AppData\Local\Temp\ps-script-b22da9fe-0144-4b23-b177-c2ec2a786d49.ps1:88 char:13
 +   $output = cargo test -p simthing-workshop weighted_mean -- --nocapt ...
 +             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.09s:String) [], RemoteException
@@ -159,7 +24,260 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; fini
 
      Running tests\weighted_mean_parity.rs (target\debug\deps\weighted_mean_parity-e31b0512eea93ccb.exe)
 
-running 6 tests
+running 9 tests
+test weighted_mean_cpu_oracle_handles_edge_cases ... ok
+WeightedMean AccumulatorOp parity report
+scenario: production_shape_fixture
+n_parents: 7
+n_children: 10
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0
+mean_abs_error: 0
+max_ulp_diff: 0
+bit_exact: true
+within_strict_tolerance: true
+within_loose_tolerance: true
+repeated_runs_identical: true
+
+Max error diagnostics:
+max_error_parent_index: 6
+max_error_cpu_value: 0
+max_error_gpu_value: 0
+max_error_abs: 0
+max_error_ulp: 0
+max_error_range_offset: 10
+max_error_range_len: 0
+
+Coverage (ranges):
+empty_ranges: 2
+non_empty_zero_weight_ranges: 1
+single_child_ranges: 1
+mixed_magnitude_ranges: 2
+negative_value_ranges: 2
+
+Coverage (children):
+negative_value_children: 2
+mixed_magnitude_children: 3
+
+Timing:
+cpu_oracle_us: 0
+gpu_cold_total_us: 10430
+gpu_warm_mean_us: 1761
+gpu_warm_min_us: 519
+gpu_warm_max_us: 7381
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+bit_exact_gate: PASS
+strict_tolerance_gate: PASS
+loose_tolerance_gate: PASS
+determinism_gate: PASS
+parity_classification: BIT_EXACT
+accumulatorop_weightedmean_gate: STRONG_PASS
+decision: Strong pass: candidate for clean AccumulatorOp v2 WeightedMean replacement.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+WeightedMean AccumulatorOp parity report
+scenario: weighted_mean_10k_x32
+n_parents: 10000
+n_children: 241250
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0.000015258789
+mean_abs_error: 0.00000044912053
+max_ulp_diff: 1570
+bit_exact: false
+within_strict_tolerance: false
+within_loose_tolerance: true
+repeated_runs_identical: true
+
+Max error diagnostics:
+max_error_parent_index: 9979
+max_error_cpu_value: 130.67691
+max_error_gpu_value: 130.6769
+max_error_abs: 0.000015258789
+max_error_ulp: 1
+max_error_range_offset: 240704
+max_error_range_len: 32
+
+Coverage (ranges):
+empty_ranges: 1250
+non_empty_zero_weight_ranges: 625
+single_child_ranges: 1250
+mixed_magnitude_ranges: 7917
+negative_value_ranges: 7711
+
+Coverage (children):
+negative_value_children: 80205
+mixed_magnitude_children: 14232
+
+Timing:
+cpu_oracle_us: 76
+gpu_cold_total_us: 6393
+gpu_warm_mean_us: 3596
+gpu_warm_min_us: 1387
+gpu_warm_max_us: 9714
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+bit_exact_gate: FAIL
+strict_tolerance_gate: FAIL
+loose_tolerance_gate: PASS
+determinism_gate: PASS
+parity_classification: LOOSE_TOLERANCE
+accumulatorop_weightedmean_gate: WEAK_PASS_REQUIRES_ADR
+decision: Weak exploratory pass only: do not claim production parity without ADR or fix.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+WeightedMean AccumulatorOp parity report
+scenario: weighted_mean_small_x8
+n_parents: 128
+n_children: 784
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0.000061035156
+mean_abs_error: 0.000003286812
+max_ulp_diff: 2
+bit_exact: false
+within_strict_tolerance: false
+within_loose_tolerance: true
+repeated_runs_identical: true
+
+Max error diagnostics:
+max_error_parent_index: 51
+max_error_cpu_value: -817.65924
+max_error_gpu_value: -817.6592
+max_error_abs: 0.000061035156
+max_error_ulp: 1
+max_error_range_offset: 303
+max_error_range_len: 8
+
+Coverage (ranges):
+empty_ranges: 16
+non_empty_zero_weight_ranges: 8
+single_child_ranges: 16
+mixed_magnitude_ranges: 102
+negative_value_ranges: 99
+
+Coverage (children):
+negative_value_children: 254
+mixed_magnitude_children: 167
+
+Timing:
+cpu_oracle_us: 0
+gpu_cold_total_us: 13506
+gpu_warm_mean_us: 2285
+gpu_warm_min_us: 553
+gpu_warm_max_us: 8679
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+bit_exact_gate: FAIL
+strict_tolerance_gate: FAIL
+loose_tolerance_gate: PASS
+determinism_gate: PASS
+parity_classification: LOOSE_TOLERANCE
+accumulatorop_weightedmean_gate: WEAK_PASS_REQUIRES_ADR
+decision: Weak exploratory pass only: do not claim production parity without ADR or fix.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+sweep n=0: classification=STRICT_TOLERANCE max_abs_error=0.00000047683716 max_ulp_diff=1
+sweep n=1: classification=STRICT_TOLERANCE max_abs_error=0.0000009536743 max_ulp_diff=1
+sweep n=2: classification=LOOSE_TOLERANCE max_abs_error=0.000061035156 max_ulp_diff=285
+sweep n=3: classification=LOOSE_TOLERANCE max_abs_error=0.000061035156 max_ulp_diff=9
+WeightedMean AccumulatorOp parity report
+scenario: weighted_mean_100k_x32
+n_parents: 100000
+n_children: 2412500
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0.000030517578
+mean_abs_error: 0.00000065680206
+max_ulp_diff: 1570
+bit_exact: false
+within_strict_tolerance: false
+within_loose_tolerance: true
+repeated_runs_identical: true
+
+Max error diagnostics:
+max_error_parent_index: 82999
+max_error_cpu_value: 143.81116
+max_error_gpu_value: 143.81113
+max_error_abs: 0.000030517578
+max_error_ulp: 2
+max_error_range_offset: 2002343
+max_error_range_len: 32
+
+Coverage (ranges):
+empty_ranges: 12500
+non_empty_zero_weight_ranges: 6250
+single_child_ranges: 12500
+mixed_magnitude_ranges: 79173
+negative_value_ranges: 77083
+
+Coverage (children):
+negative_value_children: 802098
+mixed_magnitude_children: 142426
+
+Timing:
+cpu_oracle_us: 1297
+gpu_cold_total_us: 22996
+gpu_warm_mean_us: 12874
+gpu_warm_min_us: 9231
+gpu_warm_max_us: 35998
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+bit_exact_gate: FAIL
+strict_tolerance_gate: FAIL
+loose_tolerance_gate: PASS
+determinism_gate: PASS
+parity_classification: LOOSE_TOLERANCE
+accumulatorop_weightedmean_gate: WEAK_PASS_REQUIRES_ADR
+decision: Weak exploratory pass only: do not claim production parity without ADR or fix.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+sweep n=4: classification=LOOSE_TOLERANCE max_abs_error=0.000061035156 max_ulp_diff=9
+sweep n=8: classification=LOOSE_TOLERANCE max_abs_error=0.000061035156 max_ulp_diff=66
+sweep n=16: classification=LOOSE_TOLERANCE max_abs_error=0.000030517578 max_ulp_diff=1210
+test weighted_mean_gpu_matches_cpu_small ... ok
+sweep n=32: classification=LOOSE_TOLERANCE max_abs_error=0.000015258789 max_ulp_diff=99
+sweep n=64: classification=LOOSE_TOLERANCE max_abs_error=0.0000076293945 max_ulp_diff=363
+test weighted_mean_report_is_deterministic_across_runs ... ok
+test weighted_mean_gpu_matches_cpu_10k_x32 ... ok
+test weighted_mean_accepts_valid_edge_inputs ... ok
+test weighted_mean_workshop_matches_production_shape_fixture ... ok
+test weighted_mean_parity_by_child_count_sweep ... ok
+test weighted_mean_gpu_matches_cpu_100k_x32 ... ok
+test weighted_mean_rejects_invalid_inputs ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.44s
+
+========== RUN 2 ==========
+
+cargo :     Finished `test` profile [optimized + debuginfo] target(s) in 0.08s
+At C:\Users\mvorm\AppData\Local\Temp\ps-script-b22da9fe-0144-4b23-b177-c2ec2a786d49.ps1:88 char:13
++   $output = cargo test -p simthing-workshop weighted_mean -- --nocapt ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.08s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+     Running unittests src\lib.rs (target\debug\deps\simthing_workshop-78310f8cf7bfa4da.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\eml_phase5_intensity.rs (target\debug\deps\eml_phase5_intensity-6d278bb7686576e1.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests\weighted_mean_parity.rs (target\debug\deps\weighted_mean_parity-e31b0512eea93ccb.exe)
+
+running 9 tests
 test weighted_mean_cpu_oracle_handles_edge_cases ... ok
 WeightedMean AccumulatorOp parity report
 scenario: weighted_mean_small_x8
@@ -169,33 +287,50 @@ warm_runs: 10
 
 Correctness:
 max_abs_error: 0.000061035156
-mean_abs_error: 0.000003853056
+mean_abs_error: 0.000003286812
 max_ulp_diff: 2
 bit_exact: false
-within_tolerance: true
+within_strict_tolerance: false
+within_loose_tolerance: true
 repeated_runs_identical: true
 
-Coverage:
-zero_weight_cases: 16
-single_child_cases: 16
-mixed_magnitude_cases: 167
-negative_value_cases: 254
+Max error diagnostics:
+max_error_parent_index: 51
+max_error_cpu_value: -817.65924
+max_error_gpu_value: -817.6592
+max_error_abs: 0.000061035156
+max_error_ulp: 1
+max_error_range_offset: 303
+max_error_range_len: 8
+
+Coverage (ranges):
+empty_ranges: 16
+non_empty_zero_weight_ranges: 8
+single_child_ranges: 16
+mixed_magnitude_ranges: 102
+negative_value_ranges: 99
+
+Coverage (children):
+negative_value_children: 254
+mixed_magnitude_children: 167
 
 Timing:
 cpu_oracle_us: 0
-gpu_cold_total_us: 10725
-gpu_warm_mean_us: 1185
-gpu_warm_min_us: 528
-gpu_warm_max_us: 3495
+gpu_cold_total_us: 11573
+gpu_warm_mean_us: 1123
+gpu_warm_min_us: 494
+gpu_warm_max_us: 2558
 dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
 
 Interpretation:
-correctness_gate: PASS
+bit_exact_gate: FAIL
+strict_tolerance_gate: FAIL
+loose_tolerance_gate: PASS
 determinism_gate: PASS
-parity_classification: TOLERANCE_EXACT
-accumulatorop_weightedmean_gate: PASS
+parity_classification: LOOSE_TOLERANCE
+accumulatorop_weightedmean_gate: WEAK_PASS_REQUIRES_ADR
+decision: Weak exploratory pass only: do not claim production parity without ADR or fix.
 note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-test weighted_mean_gpu_matches_cpu_small ... ok
 WeightedMean AccumulatorOp parity report
 scenario: weighted_mean_10k_x32
 n_parents: 10000
@@ -204,32 +339,111 @@ warm_runs: 10
 
 Correctness:
 max_abs_error: 0.000015258789
-mean_abs_error: 0.00000048292264
+mean_abs_error: 0.00000044912053
 max_ulp_diff: 1570
 bit_exact: false
-within_tolerance: true
+within_strict_tolerance: false
+within_loose_tolerance: true
 repeated_runs_identical: true
 
-Coverage:
-zero_weight_cases: 1250
-single_child_cases: 1250
-mixed_magnitude_cases: 14232
-negative_value_cases: 80205
+Max error diagnostics:
+max_error_parent_index: 9979
+max_error_cpu_value: 130.67691
+max_error_gpu_value: 130.6769
+max_error_abs: 0.000015258789
+max_error_ulp: 1
+max_error_range_offset: 240704
+max_error_range_len: 32
+
+Coverage (ranges):
+empty_ranges: 1250
+non_empty_zero_weight_ranges: 625
+single_child_ranges: 1250
+mixed_magnitude_ranges: 7917
+negative_value_ranges: 7711
+
+Coverage (children):
+negative_value_children: 80205
+mixed_magnitude_children: 14232
 
 Timing:
-cpu_oracle_us: 98
-gpu_cold_total_us: 32589
-gpu_warm_mean_us: 4160
-gpu_warm_min_us: 1558
-gpu_warm_max_us: 7644
+cpu_oracle_us: 86
+gpu_cold_total_us: 9802
+gpu_warm_mean_us: 2760
+gpu_warm_min_us: 1622
+gpu_warm_max_us: 8428
 dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
 
 Interpretation:
-correctness_gate: PASS
+bit_exact_gate: FAIL
+strict_tolerance_gate: FAIL
+loose_tolerance_gate: PASS
 determinism_gate: PASS
-parity_classification: TOLERANCE_EXACT
-accumulatorop_weightedmean_gate: PASS
+parity_classification: LOOSE_TOLERANCE
+accumulatorop_weightedmean_gate: WEAK_PASS_REQUIRES_ADR
+decision: Weak exploratory pass only: do not claim production parity without ADR or fix.
 note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+sweep n=0: classification=STRICT_TOLERANCE max_abs_error=0.00000047683716 max_ulp_diff=1
+sweep n=1: classification=STRICT_TOLERANCE max_abs_error=0.0000009536743 max_ulp_diff=1
+sweep n=2: classification=LOOSE_TOLERANCE max_abs_error=0.000061035156 max_ulp_diff=285
+test weighted_mean_gpu_matches_cpu_10k_x32 ... ok
+sweep n=3: classification=LOOSE_TOLERANCE max_abs_error=0.000061035156 max_ulp_diff=9
+test weighted_mean_gpu_matches_cpu_small ... ok
+WeightedMean AccumulatorOp parity report
+scenario: production_shape_fixture
+n_parents: 7
+n_children: 10
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0
+mean_abs_error: 0
+max_ulp_diff: 0
+bit_exact: true
+within_strict_tolerance: true
+within_loose_tolerance: true
+repeated_runs_identical: true
+
+Max error diagnostics:
+max_error_parent_index: 6
+max_error_cpu_value: 0
+max_error_gpu_value: 0
+max_error_abs: 0
+max_error_ulp: 0
+max_error_range_offset: 10
+max_error_range_len: 0
+
+Coverage (ranges):
+empty_ranges: 2
+non_empty_zero_weight_ranges: 1
+single_child_ranges: 1
+mixed_magnitude_ranges: 2
+negative_value_ranges: 2
+
+Coverage (children):
+negative_value_children: 2
+mixed_magnitude_children: 3
+
+Timing:
+cpu_oracle_us: 0
+gpu_cold_total_us: 6409
+gpu_warm_mean_us: 1671
+gpu_warm_min_us: 541
+gpu_warm_max_us: 3891
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+bit_exact_gate: PASS
+strict_tolerance_gate: PASS
+loose_tolerance_gate: PASS
+determinism_gate: PASS
+parity_classification: BIT_EXACT
+accumulatorop_weightedmean_gate: STRONG_PASS
+decision: Strong pass: candidate for clean AccumulatorOp v2 WeightedMean replacement.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+sweep n=4: classification=LOOSE_TOLERANCE max_abs_error=0.000061035156 max_ulp_diff=9
+sweep n=8: classification=LOOSE_TOLERANCE max_abs_error=0.000061035156 max_ulp_diff=66
+sweep n=16: classification=LOOSE_TOLERANCE max_abs_error=0.000030517578 max_ulp_diff=1210
 WeightedMean AccumulatorOp parity report
 scenario: weighted_mean_100k_x32
 n_parents: 100000
@@ -238,43 +452,65 @@ warm_runs: 10
 
 Correctness:
 max_abs_error: 0.000030517578
-mean_abs_error: 0.0000007108652
+mean_abs_error: 0.00000065680206
 max_ulp_diff: 1570
 bit_exact: false
-within_tolerance: true
+within_strict_tolerance: false
+within_loose_tolerance: true
 repeated_runs_identical: true
 
-Coverage:
-zero_weight_cases: 12500
-single_child_cases: 12500
-mixed_magnitude_cases: 142426
-negative_value_cases: 802098
+Max error diagnostics:
+max_error_parent_index: 82999
+max_error_cpu_value: 143.81116
+max_error_gpu_value: 143.81113
+max_error_abs: 0.000030517578
+max_error_ulp: 2
+max_error_range_offset: 2002343
+max_error_range_len: 32
+
+Coverage (ranges):
+empty_ranges: 12500
+non_empty_zero_weight_ranges: 6250
+single_child_ranges: 12500
+mixed_magnitude_ranges: 79173
+negative_value_ranges: 77083
+
+Coverage (children):
+negative_value_children: 802098
+mixed_magnitude_children: 142426
 
 Timing:
-cpu_oracle_us: 1294
-gpu_cold_total_us: 39876
-gpu_warm_mean_us: 13514
-gpu_warm_min_us: 9072
-gpu_warm_max_us: 24316
+cpu_oracle_us: 1286
+gpu_cold_total_us: 30593
+gpu_warm_mean_us: 13325
+gpu_warm_min_us: 8858
+gpu_warm_max_us: 25486
 dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
 
 Interpretation:
-correctness_gate: PASS
+bit_exact_gate: FAIL
+strict_tolerance_gate: FAIL
+loose_tolerance_gate: PASS
 determinism_gate: PASS
-parity_classification: TOLERANCE_EXACT
-accumulatorop_weightedmean_gate: PASS
+parity_classification: LOOSE_TOLERANCE
+accumulatorop_weightedmean_gate: WEAK_PASS_REQUIRES_ADR
+decision: Weak exploratory pass only: do not claim production parity without ADR or fix.
 note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-test weighted_mean_report_is_deterministic_across_runs ... ok
-test weighted_mean_gpu_matches_cpu_10k_x32 ... ok
+sweep n=32: classification=LOOSE_TOLERANCE max_abs_error=0.000015258789 max_ulp_diff=99
+sweep n=64: classification=LOOSE_TOLERANCE max_abs_error=0.0000076293945 max_ulp_diff=363
+test weighted_mean_accepts_valid_edge_inputs ... ok
+test weighted_mean_parity_by_child_count_sweep ... ok
 test weighted_mean_gpu_matches_cpu_100k_x32 ... ok
+test weighted_mean_workshop_matches_production_shape_fixture ... ok
+test weighted_mean_report_is_deterministic_across_runs ... ok
 test weighted_mean_rejects_invalid_inputs ... ok
 
-test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.93s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.41s
 
 ========== RUN 3 ==========
 
 cargo :     Finished `test` profile [optimized + debuginfo] target(s) in 0.09s
-At C:\Users\mvorm\AppData\Local\Temp\ps-script-431b2d5b-f33f-4939-b078-4175c9917a75.ps1:88 char:13
+At C:\Users\mvorm\AppData\Local\Temp\ps-script-b22da9fe-0144-4b23-b177-c2ec2a786d49.ps1:88 char:13
 +   $output = cargo test -p simthing-workshop weighted_mean -- --nocapt ...
 +             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.09s:String) [], RemoteException
@@ -294,43 +530,8 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; fini
 
      Running tests\weighted_mean_parity.rs (target\debug\deps\weighted_mean_parity-e31b0512eea93ccb.exe)
 
-running 6 tests
+running 9 tests
 test weighted_mean_cpu_oracle_handles_edge_cases ... ok
-WeightedMean AccumulatorOp parity report
-scenario: weighted_mean_10k_x32
-n_parents: 10000
-n_children: 241250
-warm_runs: 10
-
-Correctness:
-max_abs_error: 0.000015258789
-mean_abs_error: 0.00000048292264
-max_ulp_diff: 1570
-bit_exact: false
-within_tolerance: true
-repeated_runs_identical: true
-
-Coverage:
-zero_weight_cases: 1250
-single_child_cases: 1250
-mixed_magnitude_cases: 14232
-negative_value_cases: 80205
-
-Timing:
-cpu_oracle_us: 81
-gpu_cold_total_us: 11877
-gpu_warm_mean_us: 2570
-gpu_warm_min_us: 1321
-gpu_warm_max_us: 7875
-dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
-
-Interpretation:
-correctness_gate: PASS
-determinism_gate: PASS
-parity_classification: TOLERANCE_EXACT
-accumulatorop_weightedmean_gate: PASS
-note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-test weighted_mean_report_is_deterministic_across_runs ... ok
 WeightedMean AccumulatorOp parity report
 scenario: weighted_mean_small_x8
 n_parents: 128
@@ -339,32 +540,156 @@ warm_runs: 10
 
 Correctness:
 max_abs_error: 0.000061035156
-mean_abs_error: 0.000003853056
+mean_abs_error: 0.000003286812
 max_ulp_diff: 2
 bit_exact: false
-within_tolerance: true
+within_strict_tolerance: false
+within_loose_tolerance: true
 repeated_runs_identical: true
 
-Coverage:
-zero_weight_cases: 16
-single_child_cases: 16
-mixed_magnitude_cases: 167
-negative_value_cases: 254
+Max error diagnostics:
+max_error_parent_index: 51
+max_error_cpu_value: -817.65924
+max_error_gpu_value: -817.6592
+max_error_abs: 0.000061035156
+max_error_ulp: 1
+max_error_range_offset: 303
+max_error_range_len: 8
+
+Coverage (ranges):
+empty_ranges: 16
+non_empty_zero_weight_ranges: 8
+single_child_ranges: 16
+mixed_magnitude_ranges: 102
+negative_value_ranges: 99
+
+Coverage (children):
+negative_value_children: 254
+mixed_magnitude_children: 167
 
 Timing:
 cpu_oracle_us: 0
-gpu_cold_total_us: 17053
-gpu_warm_mean_us: 947
-gpu_warm_min_us: 448
-gpu_warm_max_us: 3464
+gpu_cold_total_us: 10159
+gpu_warm_mean_us: 3876
+gpu_warm_min_us: 577
+gpu_warm_max_us: 7563
 dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
 
 Interpretation:
-correctness_gate: PASS
+bit_exact_gate: FAIL
+strict_tolerance_gate: FAIL
+loose_tolerance_gate: PASS
 determinism_gate: PASS
-parity_classification: TOLERANCE_EXACT
-accumulatorop_weightedmean_gate: PASS
+parity_classification: LOOSE_TOLERANCE
+accumulatorop_weightedmean_gate: WEAK_PASS_REQUIRES_ADR
+decision: Weak exploratory pass only: do not claim production parity without ADR or fix.
 note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+WeightedMean AccumulatorOp parity report
+scenario: production_shape_fixture
+n_parents: 7
+n_children: 10
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0
+mean_abs_error: 0
+max_ulp_diff: 0
+bit_exact: true
+within_strict_tolerance: true
+within_loose_tolerance: true
+repeated_runs_identical: true
+
+Max error diagnostics:
+max_error_parent_index: 6
+max_error_cpu_value: 0
+max_error_gpu_value: 0
+max_error_abs: 0
+max_error_ulp: 0
+max_error_range_offset: 10
+max_error_range_len: 0
+
+Coverage (ranges):
+empty_ranges: 2
+non_empty_zero_weight_ranges: 1
+single_child_ranges: 1
+mixed_magnitude_ranges: 2
+negative_value_ranges: 2
+
+Coverage (children):
+negative_value_children: 2
+mixed_magnitude_children: 3
+
+Timing:
+cpu_oracle_us: 0
+gpu_cold_total_us: 29863
+gpu_warm_mean_us: 1908
+gpu_warm_min_us: 483
+gpu_warm_max_us: 5850
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+bit_exact_gate: PASS
+strict_tolerance_gate: PASS
+loose_tolerance_gate: PASS
+determinism_gate: PASS
+parity_classification: BIT_EXACT
+accumulatorop_weightedmean_gate: STRONG_PASS
+decision: Strong pass: candidate for clean AccumulatorOp v2 WeightedMean replacement.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+WeightedMean AccumulatorOp parity report
+scenario: weighted_mean_10k_x32
+n_parents: 10000
+n_children: 241250
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0.000015258789
+mean_abs_error: 0.00000044912053
+max_ulp_diff: 1570
+bit_exact: false
+within_strict_tolerance: false
+within_loose_tolerance: true
+repeated_runs_identical: true
+
+Max error diagnostics:
+max_error_parent_index: 9979
+max_error_cpu_value: 130.67691
+max_error_gpu_value: 130.6769
+max_error_abs: 0.000015258789
+max_error_ulp: 1
+max_error_range_offset: 240704
+max_error_range_len: 32
+
+Coverage (ranges):
+empty_ranges: 1250
+non_empty_zero_weight_ranges: 625
+single_child_ranges: 1250
+mixed_magnitude_ranges: 7917
+negative_value_ranges: 7711
+
+Coverage (children):
+negative_value_children: 80205
+mixed_magnitude_children: 14232
+
+Timing:
+cpu_oracle_us: 95
+gpu_cold_total_us: 26975
+gpu_warm_mean_us: 3439
+gpu_warm_min_us: 1364
+gpu_warm_max_us: 7995
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+bit_exact_gate: FAIL
+strict_tolerance_gate: FAIL
+loose_tolerance_gate: PASS
+determinism_gate: PASS
+parity_classification: LOOSE_TOLERANCE
+accumulatorop_weightedmean_gate: WEAK_PASS_REQUIRES_ADR
+decision: Weak exploratory pass only: do not claim production parity without ADR or fix.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+sweep n=0: classification=STRICT_TOLERANCE max_abs_error=0.00000047683716 max_ulp_diff=1
+test weighted_mean_gpu_matches_cpu_small ... ok
 WeightedMean AccumulatorOp parity report
 scenario: weighted_mean_100k_x32
 n_parents: 100000
@@ -373,36 +698,65 @@ warm_runs: 10
 
 Correctness:
 max_abs_error: 0.000030517578
-mean_abs_error: 0.0000007108652
+mean_abs_error: 0.00000065680206
 max_ulp_diff: 1570
 bit_exact: false
-within_tolerance: true
+within_strict_tolerance: false
+within_loose_tolerance: true
 repeated_runs_identical: true
 
-Coverage:
-zero_weight_cases: 12500
-single_child_cases: 12500
-mixed_magnitude_cases: 142426
-negative_value_cases: 802098
+Max error diagnostics:
+max_error_parent_index: 82999
+max_error_cpu_value: 143.81116
+max_error_gpu_value: 143.81113
+max_error_abs: 0.000030517578
+max_error_ulp: 2
+max_error_range_offset: 2002343
+max_error_range_len: 32
+
+Coverage (ranges):
+empty_ranges: 12500
+non_empty_zero_weight_ranges: 6250
+single_child_ranges: 12500
+mixed_magnitude_ranges: 79173
+negative_value_ranges: 77083
+
+Coverage (children):
+negative_value_children: 802098
+mixed_magnitude_children: 142426
 
 Timing:
-cpu_oracle_us: 1126
-gpu_cold_total_us: 17200
-gpu_warm_mean_us: 10552
-gpu_warm_min_us: 9238
-gpu_warm_max_us: 14271
+cpu_oracle_us: 892
+gpu_cold_total_us: 22751
+gpu_warm_mean_us: 16556
+gpu_warm_min_us: 9430
+gpu_warm_max_us: 35675
 dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
 
 Interpretation:
-correctness_gate: PASS
+bit_exact_gate: FAIL
+strict_tolerance_gate: FAIL
+loose_tolerance_gate: PASS
 determinism_gate: PASS
-parity_classification: TOLERANCE_EXACT
-accumulatorop_weightedmean_gate: PASS
+parity_classification: LOOSE_TOLERANCE
+accumulatorop_weightedmean_gate: WEAK_PASS_REQUIRES_ADR
+decision: Weak exploratory pass only: do not claim production parity without ADR or fix.
 note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-test weighted_mean_gpu_matches_cpu_10k_x32 ... ok
+sweep n=1: classification=STRICT_TOLERANCE max_abs_error=0.0000009536743 max_ulp_diff=1
+sweep n=2: classification=LOOSE_TOLERANCE max_abs_error=0.000061035156 max_ulp_diff=285
+sweep n=3: classification=LOOSE_TOLERANCE max_abs_error=0.000061035156 max_ulp_diff=9
+sweep n=4: classification=LOOSE_TOLERANCE max_abs_error=0.000061035156 max_ulp_diff=9
+sweep n=8: classification=LOOSE_TOLERANCE max_abs_error=0.000061035156 max_ulp_diff=66
+sweep n=16: classification=LOOSE_TOLERANCE max_abs_error=0.000030517578 max_ulp_diff=1210
+sweep n=32: classification=LOOSE_TOLERANCE max_abs_error=0.000015258789 max_ulp_diff=99
+sweep n=64: classification=LOOSE_TOLERANCE max_abs_error=0.0000076293945 max_ulp_diff=363
+test weighted_mean_accepts_valid_edge_inputs ... ok
 test weighted_mean_gpu_matches_cpu_100k_x32 ... ok
-test weighted_mean_gpu_matches_cpu_small ... ok
+test weighted_mean_parity_by_child_count_sweep ... ok
+test weighted_mean_workshop_matches_production_shape_fixture ... ok
+test weighted_mean_report_is_deterministic_across_runs ... ok
+test weighted_mean_gpu_matches_cpu_10k_x32 ... ok
 test weighted_mean_rejects_invalid_inputs ... ok
 
-test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.83s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.43s
 

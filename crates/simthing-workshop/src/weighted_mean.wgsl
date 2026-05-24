@@ -1,4 +1,6 @@
 // WeightedMean gather/combine/scatter spike — one invocation per parent, canonical child order.
+// Loop shape mirrors production reduction.wgsl RULE_WEIGHTED_MEAN: first child seeds sums,
+// loop starts at i=1, explicit `let scaled` per term, zero total weight returns 0.
 
 struct WeightedChild {
     value: f32,
