@@ -20,6 +20,12 @@ pub fn format_rich_report(report: &EmlGpuRichReport) -> String {
         "FAIL"
     };
 
+    let shader_performance_gate = if report.eml_vs_hardcoded_overhead_ratio < 3.0 {
+        "PASS (ratio < 3.0)"
+    } else {
+        "FAIL (ratio >= 3.0)"
+    };
+
     format!(
         "EML Phase 5 intensity spike rich report\n\
          n_slots: {}\n\
@@ -50,7 +56,8 @@ pub fn format_rich_report(report: &EmlGpuRichReport) -> String {
          Interpretation:\n\
            correctness_gate: {}\n\
            determinism_gate: {}\n\
-           shader_performance_gate: INFORMATIVE_ONLY\n\
+           shader_performance_gate: {}\n\
+           eml_overhead_ratio: {:.2}x  (acceptable if < 3.0 at 100k; was 2.10x across 3 pre-hardening runs in eml_phase5_reports.txt)\n\
            note: {}",
         report.n_slots,
         report.warm_runs,
@@ -73,6 +80,8 @@ pub fn format_rich_report(report: &EmlGpuRichReport) -> String {
         report.gpu_hardcoded_warm_max_us,
         correctness_gate,
         determinism_gate,
+        shader_performance_gate,
+        report.eml_vs_hardcoded_overhead_ratio,
         report.timing_note,
     )
 }

@@ -1,10 +1,10 @@
 use simthing_workshop::eml_phase5::{
-    compare_cpu_gpu, compare_cpu_gpu_rich, eval_cpu_node, format_rich_report, intensity_update_direct_cpu,
-    intensity_update_nodes, make_inputs_with_params, EmlGpuHarness, IntensityFormulaParams, IntensityInput,
-    MAX_NODES,
+    compare_cpu_gpu, compare_cpu_gpu_rich, compare_cpu_gpu_rich_with_harness, eval_cpu_node,
+    format_rich_report, intensity_update_direct_cpu, intensity_update_nodes, make_inputs_with_params,
+    EmlGpuHarness, IntensityFormulaParams, IntensityInput, MAX_NODES,
 };
 
-fn run_match_test(n: usize) {
+fn run_match_test(harness: &mut EmlGpuHarness, n: usize) {
     let threshold = 0.1;
     let build = 0.2;
     let decay = 0.05;
@@ -15,7 +15,8 @@ fn run_match_test(n: usize) {
     let formula_params =
         IntensityFormulaParams::new(n as u32, threshold, build, decay, dt);
 
-    let report = compare_cpu_gpu_rich(&inputs, &nodes, root, formula_params).unwrap();
+    let report =
+        compare_cpu_gpu_rich_with_harness(harness, &inputs, &nodes, root, formula_params).unwrap();
 
     eprintln!("{}", format_rich_report(&report));
 
@@ -64,6 +65,14 @@ fn run_match_test(n: usize) {
         "hardcoded warm repeated runs were not identical: {:?}",
         report
     );
+    if n == 100_000 {
+        assert!(
+            report.eml_vs_hardcoded_overhead_ratio < 3.0,
+            "EML overhead ratio {:.2} exceeds 3.0x threshold at n={}",
+            report.eml_vs_hardcoded_overhead_ratio,
+            n
+        );
+    }
 }
 
 #[test]
@@ -91,17 +100,20 @@ fn cpu_node_evaluator_matches_direct_formula() {
 
 #[test]
 fn gpu_eml_intensity_matches_cpu_1k() {
-    run_match_test(1_000);
+    let mut harness = EmlGpuHarness::new().unwrap();
+    run_match_test(&mut harness, 1_000);
 }
 
 #[test]
 fn gpu_eml_intensity_matches_cpu_10k() {
-    run_match_test(10_000);
+    let mut harness = EmlGpuHarness::new().unwrap();
+    run_match_test(&mut harness, 10_000);
 }
 
 #[test]
 fn gpu_eml_intensity_matches_cpu_100k() {
-    run_match_test(100_000);
+    let mut harness = EmlGpuHarness::new().unwrap();
+    run_match_test(&mut harness, 100_000);
 }
 
 #[test]
@@ -142,7 +154,7 @@ fn zero_length_inputs_return_empty_outputs() {
     let dt = 1.0;
 
     let (nodes, root) = intensity_update_nodes(threshold, build, decay, dt);
-    let harness = EmlGpuHarness::new().unwrap();
+    let mut harness = EmlGpuHarness::new().unwrap();
 
     let outputs = harness.eval_eml(&[], &nodes, root).unwrap();
     assert!(outputs.is_empty());
@@ -169,6 +181,29 @@ fn rejects_too_many_nodes() {
     }
 
     let inputs = make_inputs_with_params(1, threshold);
-    let harness = EmlGpuHarness::new().unwrap();
+    let mut harness = EmlGpuHarness::new().unwrap();
     assert!(harness.eval_eml(&inputs, &nodes, root).is_err());
+}
+
+#[test]
+fn eml_and_hardcoded_are_bit_exact_for_no_transcendental_formula() {
+    let threshold = 0.1;
+    let build = 0.2;
+    let decay = 0.05;
+    let dt = 1.0;
+    let (nodes, root) = intensity_update_nodes(threshold, build, decay, dt);
+    let inputs = make_inputs_with_params(8, threshold);
+    let formula_params = IntensityFormulaParams::new(8, threshold, build, decay, dt);
+    let mut harness = EmlGpuHarness::new().unwrap();
+    let eml_out = harness.eval_eml(&inputs, &nodes, root).unwrap();
+    let hc_out = harness.eval_hardcoded(&inputs, formula_params).unwrap();
+    for (i, (e, h)) in eml_out.iter().zip(hc_out.iter()).enumerate() {
+        assert_eq!(
+            e.value.to_bits(),
+            h.value.to_bits(),
+            "bit mismatch at slot {i}: EML={} hardcoded={}",
+            e.value,
+            h.value
+        );
+    }
 }
