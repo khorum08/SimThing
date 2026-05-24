@@ -7,6 +7,7 @@ members = [
     "crates/simthing-sim",
     "crates/simthing-driver",
     "crates/simthing-spec",
+    "crates/simthing-workshop",
 ]
 
 [workspace.package]
@@ -24,6 +25,7 @@ thiserror   = { version = "2" }
 wgpu        = { version = "22" }
 bytemuck    = { version = "1",   features = ["derive"] }
 pollster    = { version = "0.3" }
+anyhow      = { version = "1" }
 
 [profile.dev]
 opt-level = 1
