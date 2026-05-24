@@ -71,3 +71,19 @@ The 100k test writes `target/workshop/eml_phase5_rich_report_100k.md` (not commi
 **Performance (informative only):**
 
 - Compare `gpu_eml_warm_mean_us` vs `gpu_hardcoded_warm_mean_us` under the same upload/readback conditions
+
+## WeightedMean AccumulatorOp parity spike
+
+This spike tests whether a workshop-local gather/combine/scatter kernel can compute WeightedMean over parent child-ranges with the same semantics as a CPU oracle.
+
+It is not production AccumulatorOp.
+
+The test uses one GPU invocation per parent and loops each parent's child range in canonical order. It intentionally avoids atomics so that WeightedMean parity can be tested independently from transfer/emission contention.
+
+| `parity_classification` | Meaning |
+|-------------------------|---------|
+| **BIT_EXACT** | Strong AccumulatorOp v2 candidate for WeightedMean |
+| **TOLERANCE_EXACT** | Passed weakly; production needs explicit tolerance ADR |
+| **FAIL** | Retain specialized WeightedMean reduction path |
+
+The 100k test writes `target/workshop/weighted_mean_parity_report_100k.md` (not committed).
