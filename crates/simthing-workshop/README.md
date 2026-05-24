@@ -22,15 +22,32 @@ new_intensity =
 
 This is not a general EML implementation. It uses a hand-authored expression node array and a fixed small opcode set.
 
-A passing result supports the claim that EvalEML is viable for small combine functions in the future AccumulatorWrite v2 / AccumulatorOp model.
+### Spike versions
 
-A failing result means intensity update should remain a retained specialized pass, and the full-pivot docs should not claim complete elegance through GPU EvalEML.
+**v1 (correctness gate)** proved CPU/GPU parity and determinism. GPU timings were setup-inclusive because each eval recreated adapter/device/pipeline.
+
+**v2 (rich harness)** reuses GPU device/queue/pipelines across warm runs, adds a hardcoded intensity shader baseline, fixes empty-input behavior, validates node metadata, and emits richer correctness/determinism/timing reports.
+
+Warm GPU timings still include buffer upload, dispatch, wait, and readback — not pure shader time. Dispatch-only timing is not reported (`wgpu` timestamp queries are not implemented in this spike).
+
+The hardcoded baseline answers: *how much overhead does the tiny EML evaluator add over a bespoke shader?*
+
+### Interpretation
+
+| Outcome | Meaning |
+|---------|---------|
+| Correctness + determinism pass | EvalEML remains viable semantically for small combine functions |
+| Warm EML much slower than warm hardcoded | Viable semantically; retained intensity pass likely wins on performance until further profiling |
+| Warm EML close to hardcoded | Strong candidate for AccumulatorWrite v2 combine path |
+| Correctness fails | Keep intensity as a retained specialized pass |
+
+This still does not prove arbitrary GPU EML readiness (no parser, no `exp(x)-log(y)` Sheffer lowering, no production integration).
 
 ### Known limitations
 
 - Max 32 expression nodes (spike-only bound).
-- Iterative WGSL evaluator over a topologically sorted node array — no recursion, parser, or RON loader.
-- GPU timing includes submit, wait, and readback — not pure shader time.
+- Iterative WGSL evaluator over a topologically sorted node array.
+- GPU cold timing includes full harness init; warm timing includes per-run buffer alloc/upload/readback.
 - Requires a working wgpu adapter (same as `simthing-gpu` tests).
 
 ### Run
@@ -39,3 +56,18 @@ A failing result means intensity update should remain a retained specialized pas
 cargo check -p simthing-workshop
 cargo test -p simthing-workshop -- --nocapture
 ```
+
+The 100k test writes `target/workshop/eml_phase5_rich_report_100k.md` (not committed).
+
+### Expected gates
+
+**Correctness (hard fail):**
+
+- EML vs CPU: `max_abs_error <= 1e-4`, `mean_abs_error <= 1e-5`
+- Hardcoded vs CPU: same thresholds
+- EML vs hardcoded: `max_abs_error <= 1e-4`
+- Warm repeated EML and hardcoded outputs identical
+
+**Performance (informative only):**
+
+- Compare `gpu_eml_warm_mean_us` vs `gpu_hardcoded_warm_mean_us` under the same upload/readback conditions
