@@ -1,0 +1,13 @@
+[package]
+name = "simthing-workshop"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+bytemuck = { workspace = true }
+pollster = { workspace = true }
+wgpu = { workspace = true }
+
+[dev-dependencies]
