@@ -6,6 +6,39 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-24 — `simthing-workshop` spikes: EML Phase 5 + WeightedMean parity (PRs #71–#77)
+
+**Status:** `master` @ `bb09818` (PR #77 merged).
+
+**Scope note:** All work under `crates/simthing-workshop/` is **non-production**. The crate
+exists for **isolated viability tests** (CPU oracle vs workshop-local WGSL). It has zero
+workspace dependents; passing a workshop gate does **not** mean production code should change.
+Production WeightedMean remains in `simthing-gpu`; EML remains optional future backend research
+per `docs/eml_integration_guidance.md`.
+
+**Landed:**
+
+| PR | Commit area | Summary |
+|----|-------------|---------|
+| **#71** | EML Phase 5 spike | Hand-authored 16-node tree; CPU + WGSL evaluators; 1k/10k/100k tests |
+| **#72–#74** | EML harness hardening | Reusable `EmlGpuHarness`, hardcoded baseline, node-buffer cache, cold/warm split, overhead ratio, bit-exact test; `eml_phase5_reports_hardened.txt` |
+| **#75** | WeightedMean parity v1 | Gather/combine/scatter kernel; CPU oracle; 6 tests; `weighted_mean_reports.txt` (v1) |
+| **#76** | Full workshop reports | `workshop_full_reports.txt` — 3-run EML + WeightedMean capture |
+| **#77** | WeightedMean hardening | Strict/loose tolerance classification, max-error diagnostics, range-level coverage, zero-weight generator fix, child-count sweep + production-shape fixture; `weighted_mean_reports.txt` replaced |
+
+**Gate results (workshop only):**
+
+- **EML Phase 5 @ 100k:** correctness/determinism **PASS**; `eml_vs_hardcoded_overhead_ratio` ~1.2–1.5× (soft gate < 3.0×).
+- **WeightedMean @ 100k:** **`LOOSE_TOLERANCE`** / **`WEAK_PASS_REQUIRES_ADR`** (max abs error ~3e-5, deterministic); manual production-shape fixture **BIT_EXACT** / **STRONG_PASS**.
+- **Do not claim:** production AccumulatorOp readiness, general EML backend, or production reduction migration without ADR.
+
+**Tests:** `cargo test -p simthing-workshop` → **17** passed (8 EML + 9 WeightedMean).
+Workspace total **362** passed, **1** ignored (includes workshop crate).
+
+**Docs updated this session:** `docs/todo.md`, `docs/worklog.md` (this entry).
+
+---
+
 ## 2026-05-23 — I1: Install clone-then-commit + Studio preview API (PR #67)
 
 **Status:** `master` @ `0922908` (PR #67 merged, code `6b8de81`).
