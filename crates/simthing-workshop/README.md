@@ -92,3 +92,23 @@ Production reduction currently expects deterministic child-order semantics. This
 If this spike remains non-bit-exact, the AccumulatorOp ADR must either accept a tolerance policy or retain specialized WeightedMean reduction.
 
 The 100k test writes `target/workshop/weighted_mean_parity_report_100k.md` (not committed).
+
+## WeightedMean current-vs-pivot performance spike
+
+This benchmark compares a workshop-local current-shaped broad reduction path against a targeted AccumulatorOp-style WeightedMean path.
+
+The current-shaped path intentionally models current-system costs:
+
+- overlay materialization before reduction;
+- broad `n_dims` column sweep;
+- column-rule table;
+- full parent output vector;
+- work on non-target columns.
+
+The pivot-shaped path (P1: overlay then targeted op) computes only requested WeightedMean aggregate outputs.
+
+This is **not** a production pipeline benchmark. It is a workload-shape benchmark designed to answer when targeted AccumulatorOp WeightedMean might be faster than the current broad reduction paradigm. Warm timings include upload, dispatch, wait, and readback — not pure shader time.
+
+Run: `cargo test -p simthing-workshop weighted_mean_perf -- --nocapture`
+
+The sparse 100k case writes `target/workshop/weighted_mean_perf_report.md` and `.json` (not committed).

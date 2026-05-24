@@ -1,0 +1,856 @@
+WeightedMean current-vs-pivot A/B performance reports (3 runs)
+Generated: 2026-05-24 17:51:13
+
+========== RUN 1 ==========
+
+cargo :    Compiling simthing-workshop v0.1.0 (C:\Users\mvorm\SimThing\crates\simthing-workshop)
+At C:\Users\mvorm\AppData\Local\Temp\ps-script-2b4c9276-07b3-4af0-ae95-fb5eeb471de9.ps1:88 char:13
++   $output = cargo test -p simthing-workshop weighted_mean_perf -- --n ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling si...thing-workshop):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    Finished `test` profile [optimized + debuginfo] target(s) in 1.79s
+     Running unittests src\lib.rs (target\debug\deps\simthing_workshop-63ec5d16a24dbe8f.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\eml_phase5_intensity.rs (target\debug\deps\eml_phase5_intensity-70351f1b76739d25.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests\weighted_mean_parity.rs (target\debug\deps\weighted_mean_parity-259ee6c2bf8c911a.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests\weighted_mean_perf.rs (target\debug\deps\weighted_mean_perf-227d1a156c49b991.exe)
+
+running 4 tests
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_small
+pivot_mode: P1_overlay_then_targeted
+n_parents: 128
+children_per_parent: 8
+n_children: 1024
+n_dims: 16
+weighted_mean_col_count: 2
+overlay_density: 0.1
+n_overlays: 412
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 1894
+current_warm_min_us: 648
+current_warm_max_us: 5886
+pivot_warm_mean_us: 2000
+pivot_warm_min_us: 454
+pivot_warm_max_us: 5225
+speedup_pivot_vs_current: 0.947x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.0000019073486
+pivot_max_abs_error: 0.0000019073486
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Current broad reduction remains competitive for this shape.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_perf_current_and_pivot_match_cpu_small ... ok
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_dense_10k
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 16
+weighted_mean_col_count: 8
+overlay_density: 0.1
+n_overlays: 512000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 11460
+current_warm_min_us: 8339
+current_warm_max_us: 16783
+pivot_warm_mean_us: 5946
+pivot_warm_min_us: 5065
+pivot_warm_max_us: 6633
+speedup_pivot_vs_current: 1.927x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.000002861023
+pivot_max_abs_error: 0.000002861023
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot targeted WeightedMean is beneficial for this sparse aggregate shape.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_dense_10k
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 16
+weighted_mean_col_count: 8
+overlay_density: 0.1
+n_overlays: 512000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 11460
+current_warm_min_us: 8339
+current_warm_max_us: 16783
+pivot_warm_mean_us: 5946
+pivot_warm_min_us: 5065
+pivot_warm_max_us: 6633
+speedup_pivot_vs_current: 1.927x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.000002861023
+pivot_max_abs_error: 0.000002861023
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot targeted WeightedMean is beneficial for this sparse aggregate shape.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_perf_dense_10k_x32_dims16_wm16 ... ok
+overlay_density=0: speedup=1.192x current_us=16922 pivot_us=14200 interpretation=Pivot faster (1.19x) but below 1.5x 
+sparse-target threshold or correctness gate nuance; interpret with workload context.
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_overlay_0
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 64
+weighted_mean_col_count: 1
+overlay_density: 0
+n_overlays: 0
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 16922
+current_warm_min_us: 15879
+current_warm_max_us: 21111
+pivot_warm_mean_us: 14200
+pivot_warm_min_us: 11225
+pivot_warm_max_us: 36312
+speedup_pivot_vs_current: 1.192x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.000002861023
+pivot_max_abs_error: 0.000002861023
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot faster (1.19x) but below 1.5x sparse-target threshold or correctness gate nuance; interpret with workload 
+context.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+overlay_density=0.1: speedup=1.512x current_us=18585 pivot_us=12290 interpretation=Pivot targeted WeightedMean is 
+beneficial for this sparse aggregate shape.
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_overlay_0.1
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 64
+weighted_mean_col_count: 1
+overlay_density: 0.1
+n_overlays: 64000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 18585
+current_warm_min_us: 17570
+current_warm_max_us: 19992
+pivot_warm_mean_us: 12290
+pivot_warm_min_us: 11597
+pivot_warm_max_us: 13011
+speedup_pivot_vs_current: 1.512x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.0000019073486
+pivot_max_abs_error: 0.0000019073486
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot targeted WeightedMean is beneficial for this sparse aggregate shape.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+overlay_density=1: speedup=0.563x current_us=34610 pivot_us=61449 interpretation=Overlay materialization dominates 
+both paths at high overlay density.
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_overlay_1
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 64
+weighted_mean_col_count: 1
+overlay_density: 1
+n_overlays: 640000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 34610
+current_warm_min_us: 23676
+current_warm_max_us: 75820
+pivot_warm_mean_us: 61449
+pivot_warm_min_us: 16512
+pivot_warm_max_us: 247317
+speedup_pivot_vs_current: 0.563x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.0000019073486
+pivot_max_abs_error: 0.0000019073486
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Overlay materialization dominates both paths at high overlay density.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_perf_overlay_density_sweep ... ok
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_sparse_100k
+pivot_mode: P1_overlay_then_targeted
+n_parents: 100000
+children_per_parent: 32
+n_children: 3200000
+n_dims: 64
+weighted_mean_col_count: 1
+overlay_density: 0.1
+n_overlays: 640000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 488424
+current_warm_min_us: 402140
+current_warm_max_us: 584268
+pivot_warm_mean_us: 406742
+pivot_warm_min_us: 350974
+pivot_warm_max_us: 437667
+speedup_pivot_vs_current: 1.201x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.000002861023
+pivot_max_abs_error: 0.000002861023
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot faster (1.20x) but below 1.5x sparse-target threshold or correctness gate nuance; interpret with workload 
+context.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_perf_sparse_100k_x32_dims64_wm1 ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.82s
+
+========== RUN 2 ==========
+
+cargo :     Finished `test` profile [optimized + debuginfo] target(s) in 0.11s
+At C:\Users\mvorm\AppData\Local\Temp\ps-script-2b4c9276-07b3-4af0-ae95-fb5eeb471de9.ps1:88 char:13
++   $output = cargo test -p simthing-workshop weighted_mean_perf -- --n ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.11s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+     Running unittests src\lib.rs (target\debug\deps\simthing_workshop-63ec5d16a24dbe8f.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\eml_phase5_intensity.rs (target\debug\deps\eml_phase5_intensity-70351f1b76739d25.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests\weighted_mean_parity.rs (target\debug\deps\weighted_mean_parity-259ee6c2bf8c911a.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests\weighted_mean_perf.rs (target\debug\deps\weighted_mean_perf-227d1a156c49b991.exe)
+
+running 4 tests
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_small
+pivot_mode: P1_overlay_then_targeted
+n_parents: 128
+children_per_parent: 8
+n_children: 1024
+n_dims: 16
+weighted_mean_col_count: 2
+overlay_density: 0.1
+n_overlays: 412
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 867
+current_warm_min_us: 669
+current_warm_max_us: 1577
+pivot_warm_mean_us: 574
+pivot_warm_min_us: 471
+pivot_warm_max_us: 712
+speedup_pivot_vs_current: 1.510x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.0000019073486
+pivot_max_abs_error: 0.0000019073486
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot targeted WeightedMean is beneficial for this sparse aggregate shape.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_perf_current_and_pivot_match_cpu_small ... ok
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_dense_10k
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 16
+weighted_mean_col_count: 8
+overlay_density: 0.1
+n_overlays: 512000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 8682
+current_warm_min_us: 7483
+current_warm_max_us: 11322
+pivot_warm_mean_us: 5331
+pivot_warm_min_us: 4751
+pivot_warm_max_us: 6091
+speedup_pivot_vs_current: 1.629x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.000002861023
+pivot_max_abs_error: 0.000002861023
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot targeted WeightedMean is beneficial for this sparse aggregate shape.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_dense_10k
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 16
+weighted_mean_col_count: 8
+overlay_density: 0.1
+n_overlays: 512000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 8682
+current_warm_min_us: 7483
+current_warm_max_us: 11322
+pivot_warm_mean_us: 5331
+pivot_warm_min_us: 4751
+pivot_warm_max_us: 6091
+speedup_pivot_vs_current: 1.629x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.000002861023
+pivot_max_abs_error: 0.000002861023
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot targeted WeightedMean is beneficial for this sparse aggregate shape.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_perf_dense_10k_x32_dims16_wm16 ... ok
+overlay_density=0: speedup=1.454x current_us=17183 pivot_us=11815 interpretation=Pivot faster (1.45x) but below 1.5x 
+sparse-target threshold or correctness gate nuance; interpret with workload context.
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_overlay_0
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 64
+weighted_mean_col_count: 1
+overlay_density: 0
+n_overlays: 0
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 17183
+current_warm_min_us: 16484
+current_warm_max_us: 18243
+pivot_warm_mean_us: 11815
+pivot_warm_min_us: 11455
+pivot_warm_max_us: 12268
+speedup_pivot_vs_current: 1.454x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.000002861023
+pivot_max_abs_error: 0.000002861023
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot faster (1.45x) but below 1.5x sparse-target threshold or correctness gate nuance; interpret with workload 
+context.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+overlay_density=0.1: speedup=1.469x current_us=18439 pivot_us=12548 interpretation=Pivot faster (1.47x) but below 1.5x 
+sparse-target threshold or correctness gate nuance; interpret with workload context.
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_overlay_0.1
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 64
+weighted_mean_col_count: 1
+overlay_density: 0.1
+n_overlays: 64000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 18439
+current_warm_min_us: 17985
+current_warm_max_us: 19401
+pivot_warm_mean_us: 12548
+pivot_warm_min_us: 11967
+pivot_warm_max_us: 12938
+speedup_pivot_vs_current: 1.469x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.0000019073486
+pivot_max_abs_error: 0.0000019073486
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot faster (1.47x) but below 1.5x sparse-target threshold or correctness gate nuance; interpret with workload 
+context.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+overlay_density=1: speedup=1.203x current_us=50646 pivot_us=42087 interpretation=Overlay materialization dominates 
+both paths at high overlay density.
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_overlay_1
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 64
+weighted_mean_col_count: 1
+overlay_density: 1
+n_overlays: 640000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 50646
+current_warm_min_us: 23409
+current_warm_max_us: 134568
+pivot_warm_mean_us: 42087
+pivot_warm_min_us: 16556
+pivot_warm_max_us: 132621
+speedup_pivot_vs_current: 1.203x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.0000019073486
+pivot_max_abs_error: 0.0000019073486
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Overlay materialization dominates both paths at high overlay density.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_perf_overlay_density_sweep ... ok
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_sparse_100k
+pivot_mode: P1_overlay_then_targeted
+n_parents: 100000
+children_per_parent: 32
+n_children: 3200000
+n_dims: 64
+weighted_mean_col_count: 1
+overlay_density: 0.1
+n_overlays: 640000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 433110
+current_warm_min_us: 393751
+current_warm_max_us: 503589
+pivot_warm_mean_us: 399783
+pivot_warm_min_us: 347774
+pivot_warm_max_us: 458304
+speedup_pivot_vs_current: 1.083x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.000002861023
+pivot_max_abs_error: 0.000002861023
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot faster (1.08x) but below 1.5x sparse-target threshold or correctness gate nuance; interpret with workload 
+context.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_perf_sparse_100k_x32_dims64_wm1 ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.14s
+
+========== RUN 3 ==========
+
+cargo :     Finished `test` profile [optimized + debuginfo] target(s) in 0.10s
+At C:\Users\mvorm\AppData\Local\Temp\ps-script-2b4c9276-07b3-4af0-ae95-fb5eeb471de9.ps1:88 char:13
++   $output = cargo test -p simthing-workshop weighted_mean_perf -- --n ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.10s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+     Running unittests src\lib.rs (target\debug\deps\simthing_workshop-63ec5d16a24dbe8f.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\eml_phase5_intensity.rs (target\debug\deps\eml_phase5_intensity-70351f1b76739d25.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests\weighted_mean_parity.rs (target\debug\deps\weighted_mean_parity-259ee6c2bf8c911a.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests\weighted_mean_perf.rs (target\debug\deps\weighted_mean_perf-227d1a156c49b991.exe)
+
+running 4 tests
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_small
+pivot_mode: P1_overlay_then_targeted
+n_parents: 128
+children_per_parent: 8
+n_children: 1024
+n_dims: 16
+weighted_mean_col_count: 2
+overlay_density: 0.1
+n_overlays: 412
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 932
+current_warm_min_us: 709
+current_warm_max_us: 1295
+pivot_warm_mean_us: 635
+pivot_warm_min_us: 479
+pivot_warm_max_us: 1286
+speedup_pivot_vs_current: 1.468x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.0000019073486
+pivot_max_abs_error: 0.0000019073486
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot faster (1.47x) but below 1.5x sparse-target threshold or correctness gate nuance; interpret with workload 
+context.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_perf_current_and_pivot_match_cpu_small ... ok
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_dense_10k
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 16
+weighted_mean_col_count: 8
+overlay_density: 0.1
+n_overlays: 512000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 8210
+current_warm_min_us: 7195
+current_warm_max_us: 10937
+pivot_warm_mean_us: 5955
+pivot_warm_min_us: 5346
+pivot_warm_max_us: 7978
+speedup_pivot_vs_current: 1.379x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.000002861023
+pivot_max_abs_error: 0.000002861023
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Expected: broad reduction amortizes work when many columns are needed.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_dense_10k
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 16
+weighted_mean_col_count: 8
+overlay_density: 0.1
+n_overlays: 512000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 8210
+current_warm_min_us: 7195
+current_warm_max_us: 10937
+pivot_warm_mean_us: 5955
+pivot_warm_min_us: 5346
+pivot_warm_max_us: 7978
+speedup_pivot_vs_current: 1.379x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.000002861023
+pivot_max_abs_error: 0.000002861023
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Expected: broad reduction amortizes work when many columns are needed.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_perf_dense_10k_x32_dims16_wm16 ... ok
+overlay_density=0: speedup=1.436x current_us=16736 pivot_us=11654 interpretation=Pivot faster (1.44x) but below 1.5x 
+sparse-target threshold or correctness gate nuance; interpret with workload context.
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_overlay_0
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 64
+weighted_mean_col_count: 1
+overlay_density: 0
+n_overlays: 0
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 16736
+current_warm_min_us: 15980
+current_warm_max_us: 21829
+pivot_warm_mean_us: 11654
+pivot_warm_min_us: 11349
+pivot_warm_max_us: 12077
+speedup_pivot_vs_current: 1.436x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.000002861023
+pivot_max_abs_error: 0.000002861023
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot faster (1.44x) but below 1.5x sparse-target threshold or correctness gate nuance; interpret with workload 
+context.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+overlay_density=0.1: speedup=1.491x current_us=18984 pivot_us=12733 interpretation=Pivot faster (1.49x) but below 1.5x 
+sparse-target threshold or correctness gate nuance; interpret with workload context.
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_overlay_0.1
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 64
+weighted_mean_col_count: 1
+overlay_density: 0.1
+n_overlays: 64000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 18984
+current_warm_min_us: 17761
+current_warm_max_us: 20089
+pivot_warm_mean_us: 12733
+pivot_warm_min_us: 12180
+pivot_warm_max_us: 13356
+speedup_pivot_vs_current: 1.491x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.0000019073486
+pivot_max_abs_error: 0.0000019073486
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot faster (1.49x) but below 1.5x sparse-target threshold or correctness gate nuance; interpret with workload 
+context.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+overlay_density=1: speedup=1.292x current_us=55717 pivot_us=43117 interpretation=Overlay materialization dominates 
+both paths at high overlay density.
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_overlay_1
+pivot_mode: P1_overlay_then_targeted
+n_parents: 10000
+children_per_parent: 32
+n_children: 320000
+n_dims: 64
+weighted_mean_col_count: 1
+overlay_density: 1
+n_overlays: 640000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 55717
+current_warm_min_us: 23556
+current_warm_max_us: 168345
+pivot_warm_mean_us: 43117
+pivot_warm_min_us: 16762
+pivot_warm_max_us: 126572
+speedup_pivot_vs_current: 1.292x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.0000019073486
+pivot_max_abs_error: 0.0000019073486
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Overlay materialization dominates both paths at high overlay density.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_perf_overlay_density_sweep ... ok
+WeightedMean current-vs-pivot performance report
+scenario: weighted_mean_perf_sparse_100k
+pivot_mode: P1_overlay_then_targeted
+n_parents: 100000
+children_per_parent: 32
+n_children: 3200000
+n_dims: 64
+weighted_mean_col_count: 1
+overlay_density: 0.1
+n_overlays: 640000
+warm_runs: 10
+
+Timing (warm, includes upload/dispatch/readback):
+current_warm_mean_us: 526294
+current_warm_min_us: 426868
+current_warm_max_us: 660048
+pivot_warm_mean_us: 502937
+pivot_warm_min_us: 414252
+pivot_warm_max_us: 575693
+speedup_pivot_vs_current: 1.046x
+
+Correctness (WeightedMean columns only):
+current_max_abs_error: 0.000002861023
+pivot_max_abs_error: 0.000002861023
+current_parity_classification: LOOSE_TOLERANCE
+pivot_parity_classification: LOOSE_TOLERANCE
+current_deterministic: true
+pivot_deterministic: true
+
+Interpretation:
+Pivot faster (1.05x) but below 1.5x sparse-target threshold or correctness gate nuance; interpret with workload 
+context.
+
+Disclaimer: workshop-local production-shaped comparison; not a production pipeline benchmark; not pure shader time.
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_perf_sparse_100k_x32_dims64_wm1 ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 13.20s
+
