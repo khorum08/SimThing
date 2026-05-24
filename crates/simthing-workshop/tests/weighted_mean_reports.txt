@@ -1,0 +1,408 @@
+WeightedMean AccumulatorOp parity test reports (3 runs)
+Generated: 2026-05-24 17:10:57
+
+========== RUN 1 ==========
+
+cargo :     Finished `test` profile [optimized + debuginfo] target(s) in 0.10s
+At C:\Users\mvorm\AppData\Local\Temp\ps-script-431b2d5b-f33f-4939-b078-4175c9917a75.ps1:88 char:13
++   $output = cargo test -p simthing-workshop weighted_mean -- --nocapt ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.10s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+     Running unittests src\lib.rs (target\debug\deps\simthing_workshop-78310f8cf7bfa4da.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\eml_phase5_intensity.rs (target\debug\deps\eml_phase5_intensity-6d278bb7686576e1.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests\weighted_mean_parity.rs (target\debug\deps\weighted_mean_parity-e31b0512eea93ccb.exe)
+
+running 6 tests
+test weighted_mean_cpu_oracle_handles_edge_cases ... ok
+WeightedMean AccumulatorOp parity report
+scenario: weighted_mean_10k_x32
+n_parents: 10000
+n_children: 241250
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0.000015258789
+mean_abs_error: 0.00000048292264
+max_ulp_diff: 1570
+bit_exact: false
+within_tolerance: true
+repeated_runs_identical: true
+
+Coverage:
+zero_weight_cases: 1250
+single_child_cases: 1250
+mixed_magnitude_cases: 14232
+negative_value_cases: 80205
+
+Timing:
+cpu_oracle_us: 118
+gpu_cold_total_us: 12678
+gpu_warm_mean_us: 5715
+gpu_warm_min_us: 1434
+gpu_warm_max_us: 32757
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+correctness_gate: PASS
+determinism_gate: PASS
+parity_classification: TOLERANCE_EXACT
+accumulatorop_weightedmean_gate: PASS
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+WeightedMean AccumulatorOp parity report
+scenario: weighted_mean_100k_x32
+n_parents: 100000
+n_children: 2412500
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0.000030517578
+mean_abs_error: 0.0000007108652
+max_ulp_diff: 1570
+bit_exact: false
+within_tolerance: true
+repeated_runs_identical: true
+
+Coverage:
+zero_weight_cases: 12500
+single_child_cases: 12500
+mixed_magnitude_cases: 142426
+negative_value_cases: 802098
+
+Timing:
+cpu_oracle_us: 1370
+gpu_cold_total_us: 47984
+gpu_warm_mean_us: 13256
+gpu_warm_min_us: 9367
+gpu_warm_max_us: 29677
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+correctness_gate: PASS
+determinism_gate: PASS
+parity_classification: TOLERANCE_EXACT
+accumulatorop_weightedmean_gate: PASS
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+WeightedMean AccumulatorOp parity report
+scenario: weighted_mean_small_x8
+n_parents: 128
+n_children: 784
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0.000061035156
+mean_abs_error: 0.000003853056
+max_ulp_diff: 2
+bit_exact: false
+within_tolerance: true
+repeated_runs_identical: true
+
+Coverage:
+zero_weight_cases: 16
+single_child_cases: 16
+mixed_magnitude_cases: 167
+negative_value_cases: 254
+
+Timing:
+cpu_oracle_us: 0
+gpu_cold_total_us: 4787
+gpu_warm_mean_us: 1148
+gpu_warm_min_us: 497
+gpu_warm_max_us: 3413
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+correctness_gate: PASS
+determinism_gate: PASS
+parity_classification: TOLERANCE_EXACT
+accumulatorop_weightedmean_gate: PASS
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_report_is_deterministic_across_runs ... ok
+test weighted_mean_gpu_matches_cpu_10k_x32 ... ok
+test weighted_mean_gpu_matches_cpu_small ... ok
+test weighted_mean_gpu_matches_cpu_100k_x32 ... ok
+test weighted_mean_rejects_invalid_inputs ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.92s
+
+========== RUN 2 ==========
+
+cargo :     Finished `test` profile [optimized + debuginfo] target(s) in 0.09s
+At C:\Users\mvorm\AppData\Local\Temp\ps-script-431b2d5b-f33f-4939-b078-4175c9917a75.ps1:88 char:13
++   $output = cargo test -p simthing-workshop weighted_mean -- --nocapt ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.09s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+     Running unittests src\lib.rs (target\debug\deps\simthing_workshop-78310f8cf7bfa4da.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\eml_phase5_intensity.rs (target\debug\deps\eml_phase5_intensity-6d278bb7686576e1.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests\weighted_mean_parity.rs (target\debug\deps\weighted_mean_parity-e31b0512eea93ccb.exe)
+
+running 6 tests
+test weighted_mean_cpu_oracle_handles_edge_cases ... ok
+WeightedMean AccumulatorOp parity report
+scenario: weighted_mean_small_x8
+n_parents: 128
+n_children: 784
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0.000061035156
+mean_abs_error: 0.000003853056
+max_ulp_diff: 2
+bit_exact: false
+within_tolerance: true
+repeated_runs_identical: true
+
+Coverage:
+zero_weight_cases: 16
+single_child_cases: 16
+mixed_magnitude_cases: 167
+negative_value_cases: 254
+
+Timing:
+cpu_oracle_us: 0
+gpu_cold_total_us: 10725
+gpu_warm_mean_us: 1185
+gpu_warm_min_us: 528
+gpu_warm_max_us: 3495
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+correctness_gate: PASS
+determinism_gate: PASS
+parity_classification: TOLERANCE_EXACT
+accumulatorop_weightedmean_gate: PASS
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_gpu_matches_cpu_small ... ok
+WeightedMean AccumulatorOp parity report
+scenario: weighted_mean_10k_x32
+n_parents: 10000
+n_children: 241250
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0.000015258789
+mean_abs_error: 0.00000048292264
+max_ulp_diff: 1570
+bit_exact: false
+within_tolerance: true
+repeated_runs_identical: true
+
+Coverage:
+zero_weight_cases: 1250
+single_child_cases: 1250
+mixed_magnitude_cases: 14232
+negative_value_cases: 80205
+
+Timing:
+cpu_oracle_us: 98
+gpu_cold_total_us: 32589
+gpu_warm_mean_us: 4160
+gpu_warm_min_us: 1558
+gpu_warm_max_us: 7644
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+correctness_gate: PASS
+determinism_gate: PASS
+parity_classification: TOLERANCE_EXACT
+accumulatorop_weightedmean_gate: PASS
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+WeightedMean AccumulatorOp parity report
+scenario: weighted_mean_100k_x32
+n_parents: 100000
+n_children: 2412500
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0.000030517578
+mean_abs_error: 0.0000007108652
+max_ulp_diff: 1570
+bit_exact: false
+within_tolerance: true
+repeated_runs_identical: true
+
+Coverage:
+zero_weight_cases: 12500
+single_child_cases: 12500
+mixed_magnitude_cases: 142426
+negative_value_cases: 802098
+
+Timing:
+cpu_oracle_us: 1294
+gpu_cold_total_us: 39876
+gpu_warm_mean_us: 13514
+gpu_warm_min_us: 9072
+gpu_warm_max_us: 24316
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+correctness_gate: PASS
+determinism_gate: PASS
+parity_classification: TOLERANCE_EXACT
+accumulatorop_weightedmean_gate: PASS
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_report_is_deterministic_across_runs ... ok
+test weighted_mean_gpu_matches_cpu_10k_x32 ... ok
+test weighted_mean_gpu_matches_cpu_100k_x32 ... ok
+test weighted_mean_rejects_invalid_inputs ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.93s
+
+========== RUN 3 ==========
+
+cargo :     Finished `test` profile [optimized + debuginfo] target(s) in 0.09s
+At C:\Users\mvorm\AppData\Local\Temp\ps-script-431b2d5b-f33f-4939-b078-4175c9917a75.ps1:88 char:13
++   $output = cargo test -p simthing-workshop weighted_mean -- --nocapt ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.09s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+     Running unittests src\lib.rs (target\debug\deps\simthing_workshop-78310f8cf7bfa4da.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\eml_phase5_intensity.rs (target\debug\deps\eml_phase5_intensity-6d278bb7686576e1.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests\weighted_mean_parity.rs (target\debug\deps\weighted_mean_parity-e31b0512eea93ccb.exe)
+
+running 6 tests
+test weighted_mean_cpu_oracle_handles_edge_cases ... ok
+WeightedMean AccumulatorOp parity report
+scenario: weighted_mean_10k_x32
+n_parents: 10000
+n_children: 241250
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0.000015258789
+mean_abs_error: 0.00000048292264
+max_ulp_diff: 1570
+bit_exact: false
+within_tolerance: true
+repeated_runs_identical: true
+
+Coverage:
+zero_weight_cases: 1250
+single_child_cases: 1250
+mixed_magnitude_cases: 14232
+negative_value_cases: 80205
+
+Timing:
+cpu_oracle_us: 81
+gpu_cold_total_us: 11877
+gpu_warm_mean_us: 2570
+gpu_warm_min_us: 1321
+gpu_warm_max_us: 7875
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+correctness_gate: PASS
+determinism_gate: PASS
+parity_classification: TOLERANCE_EXACT
+accumulatorop_weightedmean_gate: PASS
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_report_is_deterministic_across_runs ... ok
+WeightedMean AccumulatorOp parity report
+scenario: weighted_mean_small_x8
+n_parents: 128
+n_children: 784
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0.000061035156
+mean_abs_error: 0.000003853056
+max_ulp_diff: 2
+bit_exact: false
+within_tolerance: true
+repeated_runs_identical: true
+
+Coverage:
+zero_weight_cases: 16
+single_child_cases: 16
+mixed_magnitude_cases: 167
+negative_value_cases: 254
+
+Timing:
+cpu_oracle_us: 0
+gpu_cold_total_us: 17053
+gpu_warm_mean_us: 947
+gpu_warm_min_us: 448
+gpu_warm_max_us: 3464
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+correctness_gate: PASS
+determinism_gate: PASS
+parity_classification: TOLERANCE_EXACT
+accumulatorop_weightedmean_gate: PASS
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+WeightedMean AccumulatorOp parity report
+scenario: weighted_mean_100k_x32
+n_parents: 100000
+n_children: 2412500
+warm_runs: 10
+
+Correctness:
+max_abs_error: 0.000030517578
+mean_abs_error: 0.0000007108652
+max_ulp_diff: 1570
+bit_exact: false
+within_tolerance: true
+repeated_runs_identical: true
+
+Coverage:
+zero_weight_cases: 12500
+single_child_cases: 12500
+mixed_magnitude_cases: 142426
+negative_value_cases: 802098
+
+Timing:
+cpu_oracle_us: 1126
+gpu_cold_total_us: 17200
+gpu_warm_mean_us: 10552
+gpu_warm_min_us: 9238
+gpu_warm_max_us: 14271
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+correctness_gate: PASS
+determinism_gate: PASS
+parity_classification: TOLERANCE_EXACT
+accumulatorop_weightedmean_gate: PASS
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test weighted_mean_gpu_matches_cpu_10k_x32 ... ok
+test weighted_mean_gpu_matches_cpu_100k_x32 ... ok
+test weighted_mean_gpu_matches_cpu_small ... ok
+test weighted_mean_rejects_invalid_inputs ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.83s
+
