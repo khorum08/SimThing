@@ -1,4 +1,11 @@
 //! EML Phase 5 intensity-update spike — hand-authored expression tree, CPU + GPU evaluators.
+//!
+//! CORRECTNESS NOTE: The intensity formula (abs, mul, add, sub, select, clamp01) uses only
+//! IEEE 754 operations with guaranteed exact behavior on both CPU and GPU. Error is exactly
+//! 0.0 on all tested hardware. If this formula is extended to include exp() or log(), error
+//! will no longer be zero and tolerances (1e-4 / 1e-5) must be validated empirically. The
+//! assertions in tests/eml_phase5_intensity.rs use 1e-4 / 1e-5 as conservative guards, not
+//! because drift was observed.
 
 use std::time::Instant;
 
@@ -87,7 +94,7 @@ impl IntensityFormulaParams {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 pub struct EmlNode {
     pub op: u32,
     pub a: u32,
@@ -116,6 +123,8 @@ pub struct EmlGpuRichReport {
     pub cpu_node_eval_us: u64,
     pub cpu_direct_eval_us: u64,
 
+    /// Time for the first eval_eml call on an already-initialized harness.
+    /// Captures pipeline warmup cost. Does NOT include device/pipeline creation.
     pub gpu_eml_cold_total_us: u64,
     pub gpu_eml_warm_mean_us: u64,
     pub gpu_eml_warm_min_us: u64,
@@ -134,6 +143,11 @@ pub struct EmlGpuRichReport {
     pub eml_vs_hardcoded_max_abs_error: f32,
     pub eml_vs_hardcoded_mean_abs_error: f32,
 
+    /// `gpu_eml_warm_mean_us / gpu_hardcoded_warm_mean_us`.
+    /// 1.0 means EML costs the same as hardcoded.
+    /// Decision-relevant: acceptable if < 3.0 at 100k slots.
+    pub eml_vs_hardcoded_overhead_ratio: f32,
+
     pub eml_repeated_runs_identical: bool,
     pub hardcoded_repeated_runs_identical: bool,
 
@@ -148,6 +162,7 @@ pub struct EmlGpuHarness {
     hardcoded_pipeline: ComputePipeline,
     eml_bind_group_layout: wgpu::BindGroupLayout,
     hardcoded_bind_group_layout: wgpu::BindGroupLayout,
+    cached_node_buffer: Option<(Vec<EmlNode>, Buffer)>,
 }
 
 fn node(op: u32, a: u32, b: u32, c: u32, value: f32) -> EmlNode {
@@ -530,11 +545,30 @@ impl EmlGpuHarness {
             hardcoded_pipeline,
             eml_bind_group_layout,
             hardcoded_bind_group_layout,
+            cached_node_buffer: None,
         })
     }
 
+    fn get_or_upload_node_buffer(&mut self, nodes: &[EmlNode]) -> Result<()> {
+        let needs_upload = match &self.cached_node_buffer {
+            Some((cached, _)) => cached.as_slice() != nodes,
+            None => true,
+        };
+
+        if needs_upload {
+            let buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("eml_phase5_nodes"),
+                contents: bytemuck::cast_slice(nodes),
+                usage: BufferUsages::STORAGE,
+            });
+            self.cached_node_buffer = Some((nodes.to_vec(), buffer));
+        }
+
+        Ok(())
+    }
+
     pub fn eval_eml(
-        &self,
+        &mut self,
         inputs: &[IntensityInput],
         nodes: &[EmlNode],
         root_node: u32,
@@ -545,6 +579,9 @@ impl EmlGpuHarness {
         if inputs.is_empty() {
             return Ok(Vec::new());
         }
+
+        self.get_or_upload_node_buffer(nodes)?;
+        let node_buffer = &self.cached_node_buffer.as_ref().unwrap().1;
 
         let n_slots = inputs.len();
         let params = EmlParams {
@@ -557,12 +594,6 @@ impl EmlGpuHarness {
         let input_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("eml_phase5_inputs"),
             contents: bytemuck::cast_slice(inputs),
-            usage: BufferUsages::STORAGE,
-        });
-
-        let node_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("eml_phase5_nodes"),
-            contents: bytemuck::cast_slice(nodes),
             usage: BufferUsages::STORAGE,
         });
 
@@ -743,11 +774,28 @@ pub fn run_gpu_eval_intensity(
     nodes: &[EmlNode],
     root_node: u32,
 ) -> Result<Vec<IntensityOutput>> {
-    let harness = EmlGpuHarness::new()?;
+    let mut harness = EmlGpuHarness::new()?;
     harness.eval_eml(inputs, nodes, root_node)
 }
 
 pub fn compare_cpu_gpu_rich(
+    inputs: &[IntensityInput],
+    nodes: &[EmlNode],
+    root_node: u32,
+    formula_params: IntensityFormulaParams,
+) -> Result<EmlGpuRichReport> {
+    let mut harness = EmlGpuHarness::new()?;
+    compare_cpu_gpu_rich_with_harness(
+        &mut harness,
+        inputs,
+        nodes,
+        root_node,
+        formula_params,
+    )
+}
+
+pub fn compare_cpu_gpu_rich_with_harness(
+    harness: &mut EmlGpuHarness,
     inputs: &[IntensityInput],
     nodes: &[EmlNode],
     root_node: u32,
@@ -779,7 +827,6 @@ pub fn compare_cpu_gpu_rich(
     let cpu_direct_eval_us = t1.elapsed().as_micros() as u64;
 
     let cold_start = Instant::now();
-    let harness = EmlGpuHarness::new()?;
     let eml_cold_outputs = harness.eval_eml(inputs, nodes, root_node)?;
     let gpu_eml_cold_total_us = cold_start.elapsed().as_micros() as u64;
 
@@ -829,6 +876,12 @@ pub fn compare_cpu_gpu_rich(
     let (gpu_hardcoded_warm_mean_us, gpu_hardcoded_warm_min_us, gpu_hardcoded_warm_max_us) =
         warm_stats(&hardcoded_warm_samples);
 
+    let eml_vs_hardcoded_overhead_ratio = if gpu_hardcoded_warm_mean_us == 0 {
+        0.0
+    } else {
+        gpu_eml_warm_mean_us as f32 / gpu_hardcoded_warm_mean_us as f32
+    };
+
     Ok(EmlGpuRichReport {
         n_slots: inputs.len(),
         cpu_node_eval_us,
@@ -846,6 +899,7 @@ pub fn compare_cpu_gpu_rich(
         hardcoded_vs_cpu_mean_abs_error,
         eml_vs_hardcoded_max_abs_error,
         eml_vs_hardcoded_mean_abs_error,
+        eml_vs_hardcoded_overhead_ratio,
         eml_repeated_runs_identical,
         hardcoded_repeated_runs_identical,
         warm_runs: WARM_RUNS,

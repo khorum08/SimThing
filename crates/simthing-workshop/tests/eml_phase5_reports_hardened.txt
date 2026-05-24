@@ -1,10 +1,10 @@
-EML Phase 5 simthing-workshop test reports (3 runs)
-Generated: 2026-05-24 16:28:00
+EML Phase 5 simthing-workshop test reports — hardened harness (3 runs)
+Generated: 2026-05-24 16:54:31
 
 ========== RUN 1 ==========
 
 cargo :     Finished `test` profile [optimized + debuginfo] target(s) in 0.10s
-At C:\Users\mvorm\AppData\Local\Temp\ps-script-635f96c6-f294-4b3e-82bf-83e0a39a56dd.ps1:88 char:13
+At C:\Users\mvorm\AppData\Local\Temp\ps-script-71535497-5d87-4e7f-bd76-f651177a07b6.ps1:88 char:13
 +   $output = cargo test -p simthing-workshop -- --nocapture 2>&1 | Out ...
 +             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.10s:String) [], RemoteException
@@ -18,11 +18,8 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 
      Running tests\eml_phase5_intensity.rs (target\debug\deps\eml_phase5_intensity-6d278bb7686576e1.exe)
 
-running 7 tests
+running 8 tests
 test cpu_node_evaluator_matches_direct_formula ... ok
-test rejects_nan_or_infinite_inputs ... ok
-test zero_length_inputs_return_empty_outputs ... ok
-test rejects_too_many_nodes ... ok
 EML Phase 5 intensity spike rich report
 n_slots: 10000
 warm_runs: 10
@@ -38,55 +35,24 @@ EML repeated runs identical: true
 hardcoded repeated runs identical: true
 
 Timing:
-cpu_node_eval_us: 294
-cpu_direct_eval_us: 7
-gpu_eml_cold_total_us: 700937
-gpu_eml_warm_mean_us: 1248
-gpu_eml_warm_min_us: 594
-gpu_eml_warm_max_us: 4085
-gpu_hardcoded_warm_mean_us: 660
-gpu_hardcoded_warm_min_us: 520
-gpu_hardcoded_warm_max_us: 964
+cpu_node_eval_us: 257
+cpu_direct_eval_us: 11
+gpu_eml_cold_total_us: 11992
+gpu_eml_warm_mean_us: 2888
+gpu_eml_warm_min_us: 600
+gpu_eml_warm_max_us: 12753
+gpu_hardcoded_warm_mean_us: 3317
+gpu_hardcoded_warm_min_us: 602
+gpu_hardcoded_warm_max_us: 21876
 dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
 
 Interpretation:
 correctness_gate: PASS
 determinism_gate: PASS
-shader_performance_gate: INFORMATIVE_ONLY
+shader_performance_gate: PASS (ratio < 3.0)
+eml_overhead_ratio: 0.87x  (acceptable if < 3.0 at 100k; was 2.10x across 3 pre-hardening runs in 
+eml_phase5_reports.txt)
 note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-test gpu_eml_intensity_matches_cpu_10k ... ok
-EML Phase 5 intensity spike rich report
-n_slots: 100000
-warm_runs: 10
-
-Correctness:
-EML vs CPU max_abs_error: 0
-EML vs CPU mean_abs_error: 0
-hardcoded vs CPU max_abs_error: 0
-hardcoded vs CPU mean_abs_error: 0
-EML vs hardcoded max_abs_error: 0
-EML vs hardcoded mean_abs_error: 0
-EML repeated runs identical: true
-hardcoded repeated runs identical: true
-
-Timing:
-cpu_node_eval_us: 2934
-cpu_direct_eval_us: 129
-gpu_eml_cold_total_us: 671425
-gpu_eml_warm_mean_us: 3131
-gpu_eml_warm_min_us: 1689
-gpu_eml_warm_max_us: 12360
-gpu_hardcoded_warm_mean_us: 1283
-gpu_hardcoded_warm_min_us: 977
-gpu_hardcoded_warm_max_us: 2268
-dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
-
-Interpretation:
-correctness_gate: PASS
-determinism_gate: PASS
-shader_performance_gate: INFORMATIVE_ONLY
-note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-test gpu_eml_intensity_matches_cpu_100k ... ok
 EML Phase 5 intensity spike rich report
 n_slots: 1000
 warm_runs: 10
@@ -102,25 +68,66 @@ EML repeated runs identical: true
 hardcoded repeated runs identical: true
 
 Timing:
-cpu_node_eval_us: 36
-cpu_direct_eval_us: 5
-gpu_eml_cold_total_us: 762338
-gpu_eml_warm_mean_us: 547
-gpu_eml_warm_min_us: 403
-gpu_eml_warm_max_us: 1009
-gpu_hardcoded_warm_mean_us: 564
-gpu_hardcoded_warm_min_us: 451
-gpu_hardcoded_warm_max_us: 720
+cpu_node_eval_us: 26
+cpu_direct_eval_us: 1
+gpu_eml_cold_total_us: 27382
+gpu_eml_warm_mean_us: 1774
+gpu_eml_warm_min_us: 493
+gpu_eml_warm_max_us: 8365
+gpu_hardcoded_warm_mean_us: 884
+gpu_hardcoded_warm_min_us: 519
+gpu_hardcoded_warm_max_us: 1555
 dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
 
 Interpretation:
 correctness_gate: PASS
 determinism_gate: PASS
-shader_performance_gate: INFORMATIVE_ONLY
+shader_performance_gate: PASS (ratio < 3.0)
+eml_overhead_ratio: 2.01x  (acceptable if < 3.0 at 100k; was 2.10x across 3 pre-hardening runs in 
+eml_phase5_reports.txt)
 note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-test gpu_eml_intensity_matches_cpu_1k ... ok
+test rejects_too_many_nodes ... ok
+EML Phase 5 intensity spike rich report
+n_slots: 100000
+warm_runs: 10
 
-test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.91s
+Correctness:
+EML vs CPU max_abs_error: 0
+EML vs CPU mean_abs_error: 0
+hardcoded vs CPU max_abs_error: 0
+hardcoded vs CPU mean_abs_error: 0
+EML vs hardcoded max_abs_error: 0
+EML vs hardcoded mean_abs_error: 0
+EML repeated runs identical: true
+hardcoded repeated runs identical: true
+
+Timing:
+cpu_node_eval_us: 2627
+cpu_direct_eval_us: 73
+gpu_eml_cold_total_us: 16868
+gpu_eml_warm_mean_us: 5051
+gpu_eml_warm_min_us: 1705
+gpu_eml_warm_max_us: 21442
+gpu_hardcoded_warm_mean_us: 3168
+gpu_hardcoded_warm_min_us: 1144
+gpu_hardcoded_warm_max_us: 18948
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+correctness_gate: PASS
+determinism_gate: PASS
+shader_performance_gate: PASS (ratio < 3.0)
+eml_overhead_ratio: 1.59x  (acceptable if < 3.0 at 100k; was 2.10x across 3 pre-hardening runs in 
+eml_phase5_reports.txt)
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test eml_and_hardcoded_are_bit_exact_for_no_transcendental_formula ... ok
+test gpu_eml_intensity_matches_cpu_1k ... ok
+test zero_length_inputs_return_empty_outputs ... ok
+test gpu_eml_intensity_matches_cpu_100k ... ok
+test gpu_eml_intensity_matches_cpu_10k ... ok
+test rejects_nan_or_infinite_inputs ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.36s
 
    Doc-tests simthing_workshop
 
@@ -131,7 +138,7 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 ========== RUN 2 ==========
 
 cargo :     Finished `test` profile [optimized + debuginfo] target(s) in 0.10s
-At C:\Users\mvorm\AppData\Local\Temp\ps-script-635f96c6-f294-4b3e-82bf-83e0a39a56dd.ps1:88 char:13
+At C:\Users\mvorm\AppData\Local\Temp\ps-script-71535497-5d87-4e7f-bd76-f651177a07b6.ps1:88 char:13
 +   $output = cargo test -p simthing-workshop -- --nocapture 2>&1 | Out ...
 +             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.10s:String) [], RemoteException
@@ -145,75 +152,8 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 
      Running tests\eml_phase5_intensity.rs (target\debug\deps\eml_phase5_intensity-6d278bb7686576e1.exe)
 
-running 7 tests
-test rejects_nan_or_infinite_inputs ... ok
+running 8 tests
 test cpu_node_evaluator_matches_direct_formula ... ok
-test zero_length_inputs_return_empty_outputs ... ok
-test rejects_too_many_nodes ... ok
-EML Phase 5 intensity spike rich report
-n_slots: 10000
-warm_runs: 10
-
-Correctness:
-EML vs CPU max_abs_error: 0
-EML vs CPU mean_abs_error: 0
-hardcoded vs CPU max_abs_error: 0
-hardcoded vs CPU mean_abs_error: 0
-EML vs hardcoded max_abs_error: 0
-EML vs hardcoded mean_abs_error: 0
-EML repeated runs identical: true
-hardcoded repeated runs identical: true
-
-Timing:
-cpu_node_eval_us: 281
-cpu_direct_eval_us: 7
-gpu_eml_cold_total_us: 652665
-gpu_eml_warm_mean_us: 2913
-gpu_eml_warm_min_us: 738
-gpu_eml_warm_max_us: 14512
-gpu_hardcoded_warm_mean_us: 977
-gpu_hardcoded_warm_min_us: 557
-gpu_hardcoded_warm_max_us: 2148
-dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
-
-Interpretation:
-correctness_gate: PASS
-determinism_gate: PASS
-shader_performance_gate: INFORMATIVE_ONLY
-note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-test gpu_eml_intensity_matches_cpu_10k ... ok
-EML Phase 5 intensity spike rich report
-n_slots: 100000
-warm_runs: 10
-
-Correctness:
-EML vs CPU max_abs_error: 0
-EML vs CPU mean_abs_error: 0
-hardcoded vs CPU max_abs_error: 0
-hardcoded vs CPU mean_abs_error: 0
-EML vs hardcoded max_abs_error: 0
-EML vs hardcoded mean_abs_error: 0
-EML repeated runs identical: true
-hardcoded repeated runs identical: true
-
-Timing:
-cpu_node_eval_us: 2784
-cpu_direct_eval_us: 107
-gpu_eml_cold_total_us: 625124
-gpu_eml_warm_mean_us: 4257
-gpu_eml_warm_min_us: 1645
-gpu_eml_warm_max_us: 14229
-gpu_hardcoded_warm_mean_us: 1977
-gpu_hardcoded_warm_min_us: 1134
-gpu_hardcoded_warm_max_us: 6020
-dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
-
-Interpretation:
-correctness_gate: PASS
-determinism_gate: PASS
-shader_performance_gate: INFORMATIVE_ONLY
-note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-test gpu_eml_intensity_matches_cpu_100k ... ok
 EML Phase 5 intensity spike rich report
 n_slots: 1000
 warm_runs: 10
@@ -229,86 +169,24 @@ EML repeated runs identical: true
 hardcoded repeated runs identical: true
 
 Timing:
-cpu_node_eval_us: 32
-cpu_direct_eval_us: 17
-gpu_eml_cold_total_us: 671941
-gpu_eml_warm_mean_us: 1621
-gpu_eml_warm_min_us: 557
-gpu_eml_warm_max_us: 5159
-gpu_hardcoded_warm_mean_us: 919
-gpu_hardcoded_warm_min_us: 507
-gpu_hardcoded_warm_max_us: 2549
+cpu_node_eval_us: 26
+cpu_direct_eval_us: 4
+gpu_eml_cold_total_us: 9561
+gpu_eml_warm_mean_us: 1105
+gpu_eml_warm_min_us: 514
+gpu_eml_warm_max_us: 2330
+gpu_hardcoded_warm_mean_us: 2120
+gpu_hardcoded_warm_min_us: 595
+gpu_hardcoded_warm_max_us: 11041
 dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
 
 Interpretation:
 correctness_gate: PASS
 determinism_gate: PASS
-shader_performance_gate: INFORMATIVE_ONLY
+shader_performance_gate: PASS (ratio < 3.0)
+eml_overhead_ratio: 0.52x  (acceptable if < 3.0 at 100k; was 2.10x across 3 pre-hardening runs in 
+eml_phase5_reports.txt)
 note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-test gpu_eml_intensity_matches_cpu_1k ... ok
-
-test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.88s
-
-   Doc-tests simthing_workshop
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-========== RUN 3 ==========
-
-cargo :     Finished `test` profile [optimized + debuginfo] target(s) in 0.10s
-At C:\Users\mvorm\AppData\Local\Temp\ps-script-635f96c6-f294-4b3e-82bf-83e0a39a56dd.ps1:88 char:13
-+   $output = cargo test -p simthing-workshop -- --nocapture 2>&1 | Out ...
-+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.10s:String) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 
-     Running unittests src\lib.rs (target\debug\deps\simthing_workshop-78310f8cf7bfa4da.exe)
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running tests\eml_phase5_intensity.rs (target\debug\deps\eml_phase5_intensity-6d278bb7686576e1.exe)
-
-running 7 tests
-test rejects_nan_or_infinite_inputs ... ok
-test cpu_node_evaluator_matches_direct_formula ... ok
-test rejects_too_many_nodes ... ok
-EML Phase 5 intensity spike rich report
-n_slots: 100000
-warm_runs: 10
-
-Correctness:
-EML vs CPU max_abs_error: 0
-EML vs CPU mean_abs_error: 0
-hardcoded vs CPU max_abs_error: 0
-hardcoded vs CPU mean_abs_error: 0
-EML vs hardcoded max_abs_error: 0
-EML vs hardcoded mean_abs_error: 0
-EML repeated runs identical: true
-hardcoded repeated runs identical: true
-
-Timing:
-cpu_node_eval_us: 2787
-cpu_direct_eval_us: 116
-gpu_eml_cold_total_us: 641633
-gpu_eml_warm_mean_us: 2194
-gpu_eml_warm_min_us: 1688
-gpu_eml_warm_max_us: 3322
-gpu_hardcoded_warm_mean_us: 1297
-gpu_hardcoded_warm_min_us: 1109
-gpu_hardcoded_warm_max_us: 1497
-dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
-
-Interpretation:
-correctness_gate: PASS
-determinism_gate: PASS
-shader_performance_gate: INFORMATIVE_ONLY
-note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-test gpu_eml_intensity_matches_cpu_100k ... ok
-test zero_length_inputs_return_empty_outputs ... ok
 EML Phase 5 intensity spike rich report
 n_slots: 10000
 warm_runs: 10
@@ -324,23 +202,92 @@ EML repeated runs identical: true
 hardcoded repeated runs identical: true
 
 Timing:
-cpu_node_eval_us: 285
-cpu_direct_eval_us: 7
-gpu_eml_cold_total_us: 631998
-gpu_eml_warm_mean_us: 1958
-gpu_eml_warm_min_us: 667
-gpu_eml_warm_max_us: 6838
-gpu_hardcoded_warm_mean_us: 1199
-gpu_hardcoded_warm_min_us: 490
-gpu_hardcoded_warm_max_us: 2304
+cpu_node_eval_us: 267
+cpu_direct_eval_us: 64
+gpu_eml_cold_total_us: 15525
+gpu_eml_warm_mean_us: 1158
+gpu_eml_warm_min_us: 549
+gpu_eml_warm_max_us: 4676
+gpu_hardcoded_warm_mean_us: 876
+gpu_hardcoded_warm_min_us: 523
+gpu_hardcoded_warm_max_us: 1653
 dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
 
 Interpretation:
 correctness_gate: PASS
 determinism_gate: PASS
-shader_performance_gate: INFORMATIVE_ONLY
+shader_performance_gate: PASS (ratio < 3.0)
+eml_overhead_ratio: 1.32x  (acceptable if < 3.0 at 100k; was 2.10x across 3 pre-hardening runs in 
+eml_phase5_reports.txt)
 note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test zero_length_inputs_return_empty_outputs ... ok
+EML Phase 5 intensity spike rich report
+n_slots: 100000
+warm_runs: 10
+
+Correctness:
+EML vs CPU max_abs_error: 0
+EML vs CPU mean_abs_error: 0
+hardcoded vs CPU max_abs_error: 0
+hardcoded vs CPU mean_abs_error: 0
+EML vs hardcoded max_abs_error: 0
+EML vs hardcoded mean_abs_error: 0
+EML repeated runs identical: true
+hardcoded repeated runs identical: true
+
+Timing:
+cpu_node_eval_us: 2753
+cpu_direct_eval_us: 78
+gpu_eml_cold_total_us: 10346
+gpu_eml_warm_mean_us: 1896
+gpu_eml_warm_min_us: 1596
+gpu_eml_warm_max_us: 2580
+gpu_hardcoded_warm_mean_us: 1282
+gpu_hardcoded_warm_min_us: 1085
+gpu_hardcoded_warm_max_us: 2303
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+correctness_gate: PASS
+determinism_gate: PASS
+shader_performance_gate: PASS (ratio < 3.0)
+eml_overhead_ratio: 1.48x  (acceptable if < 3.0 at 100k; was 2.10x across 3 pre-hardening runs in 
+eml_phase5_reports.txt)
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test eml_and_hardcoded_are_bit_exact_for_no_transcendental_formula ... ok
+test rejects_too_many_nodes ... ok
+test gpu_eml_intensity_matches_cpu_1k ... ok
+test gpu_eml_intensity_matches_cpu_100k ... ok
 test gpu_eml_intensity_matches_cpu_10k ... ok
+test rejects_nan_or_infinite_inputs ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.35s
+
+   Doc-tests simthing_workshop
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+========== RUN 3 ==========
+
+cargo :     Finished `test` profile [optimized + debuginfo] target(s) in 0.10s
+At C:\Users\mvorm\AppData\Local\Temp\ps-script-71535497-5d87-4e7f-bd76-f651177a07b6.ps1:88 char:13
++   $output = cargo test -p simthing-workshop -- --nocapture 2>&1 | Out ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.10s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+     Running unittests src\lib.rs (target\debug\deps\simthing_workshop-78310f8cf7bfa4da.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\eml_phase5_intensity.rs (target\debug\deps\eml_phase5_intensity-6d278bb7686576e1.exe)
+
+running 8 tests
+test cpu_node_evaluator_matches_direct_formula ... ok
 EML Phase 5 intensity spike rich report
 n_slots: 1000
 warm_runs: 10
@@ -357,24 +304,98 @@ hardcoded repeated runs identical: true
 
 Timing:
 cpu_node_eval_us: 29
-cpu_direct_eval_us: 3
-gpu_eml_cold_total_us: 709787
-gpu_eml_warm_mean_us: 549
-gpu_eml_warm_min_us: 430
-gpu_eml_warm_max_us: 855
-gpu_hardcoded_warm_mean_us: 557
-gpu_hardcoded_warm_min_us: 363
-gpu_hardcoded_warm_max_us: 1138
+cpu_direct_eval_us: 2
+gpu_eml_cold_total_us: 8105
+gpu_eml_warm_mean_us: 1087
+gpu_eml_warm_min_us: 524
+gpu_eml_warm_max_us: 3122
+gpu_hardcoded_warm_mean_us: 2698
+gpu_hardcoded_warm_min_us: 541
+gpu_hardcoded_warm_max_us: 7892
 dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
 
 Interpretation:
 correctness_gate: PASS
 determinism_gate: PASS
-shader_performance_gate: INFORMATIVE_ONLY
+shader_performance_gate: PASS (ratio < 3.0)
+eml_overhead_ratio: 0.40x  (acceptable if < 3.0 at 100k; was 2.10x across 3 pre-hardening runs in 
+eml_phase5_reports.txt)
 note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
-test gpu_eml_intensity_matches_cpu_1k ... ok
+EML Phase 5 intensity spike rich report
+n_slots: 10000
+warm_runs: 10
 
-test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.84s
+Correctness:
+EML vs CPU max_abs_error: 0
+EML vs CPU mean_abs_error: 0
+hardcoded vs CPU max_abs_error: 0
+hardcoded vs CPU mean_abs_error: 0
+EML vs hardcoded max_abs_error: 0
+EML vs hardcoded mean_abs_error: 0
+EML repeated runs identical: true
+hardcoded repeated runs identical: true
+
+Timing:
+cpu_node_eval_us: 271
+cpu_direct_eval_us: 7
+gpu_eml_cold_total_us: 3640
+gpu_eml_warm_mean_us: 1044
+gpu_eml_warm_min_us: 540
+gpu_eml_warm_max_us: 2641
+gpu_hardcoded_warm_mean_us: 846
+gpu_hardcoded_warm_min_us: 588
+gpu_hardcoded_warm_max_us: 1265
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+correctness_gate: PASS
+determinism_gate: PASS
+shader_performance_gate: PASS (ratio < 3.0)
+eml_overhead_ratio: 1.23x  (acceptable if < 3.0 at 100k; was 2.10x across 3 pre-hardening runs in 
+eml_phase5_reports.txt)
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+EML Phase 5 intensity spike rich report
+n_slots: 100000
+warm_runs: 10
+
+Correctness:
+EML vs CPU max_abs_error: 0
+EML vs CPU mean_abs_error: 0
+hardcoded vs CPU max_abs_error: 0
+hardcoded vs CPU mean_abs_error: 0
+EML vs hardcoded max_abs_error: 0
+EML vs hardcoded mean_abs_error: 0
+EML repeated runs identical: true
+hardcoded repeated runs identical: true
+
+Timing:
+cpu_node_eval_us: 2624
+cpu_direct_eval_us: 121
+gpu_eml_cold_total_us: 11565
+gpu_eml_warm_mean_us: 2929
+gpu_eml_warm_min_us: 1684
+gpu_eml_warm_max_us: 9859
+gpu_hardcoded_warm_mean_us: 1624
+gpu_hardcoded_warm_min_us: 1028
+gpu_hardcoded_warm_max_us: 3867
+dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike
+
+Interpretation:
+correctness_gate: PASS
+determinism_gate: PASS
+shader_performance_gate: PASS (ratio < 3.0)
+eml_overhead_ratio: 1.80x  (acceptable if < 3.0 at 100k; was 2.10x across 3 pre-hardening runs in 
+eml_phase5_reports.txt)
+note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
+test rejects_too_many_nodes ... ok
+test gpu_eml_intensity_matches_cpu_1k ... ok
+test eml_and_hardcoded_are_bit_exact_for_no_transcendental_formula ... ok
+test gpu_eml_intensity_matches_cpu_10k ... ok
+test gpu_eml_intensity_matches_cpu_100k ... ok
+test zero_length_inputs_return_empty_outputs ... ok
+test rejects_nan_or_infinite_inputs ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.29s
 
    Doc-tests simthing_workshop
 
