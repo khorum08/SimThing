@@ -15,14 +15,29 @@ pub fn format_weighted_mean_report(report: &WeightedMeanReport) -> String {
            mean_abs_error: {}\n\
            max_ulp_diff: {}\n\
            bit_exact: {}\n\
-           within_tolerance: {}\n\
+           within_strict_tolerance: {}\n\
+           within_loose_tolerance: {}\n\
            repeated_runs_identical: {}\n\
          \n\
-         Coverage:\n\
-           zero_weight_cases: {}\n\
-           single_child_cases: {}\n\
-           mixed_magnitude_cases: {}\n\
-           negative_value_cases: {}\n\
+         Max error diagnostics:\n\
+           max_error_parent_index: {}\n\
+           max_error_cpu_value: {}\n\
+           max_error_gpu_value: {}\n\
+           max_error_abs: {}\n\
+           max_error_ulp: {}\n\
+           max_error_range_offset: {}\n\
+           max_error_range_len: {}\n\
+         \n\
+         Coverage (ranges):\n\
+           empty_ranges: {}\n\
+           non_empty_zero_weight_ranges: {}\n\
+           single_child_ranges: {}\n\
+           mixed_magnitude_ranges: {}\n\
+           negative_value_ranges: {}\n\
+         \n\
+         Coverage (children):\n\
+           negative_value_children: {}\n\
+           mixed_magnitude_children: {}\n\
          \n\
          Timing:\n\
            cpu_oracle_us: {}\n\
@@ -33,10 +48,13 @@ pub fn format_weighted_mean_report(report: &WeightedMeanReport) -> String {
            dispatch_only_unavailable_reason: wgpu timestamp queries not implemented in this spike\n\
          \n\
          Interpretation:\n\
-           correctness_gate: {}\n\
+           bit_exact_gate: {}\n\
+           strict_tolerance_gate: {}\n\
+           loose_tolerance_gate: {}\n\
            determinism_gate: {}\n\
            parity_classification: {}\n\
            accumulatorop_weightedmean_gate: {}\n\
+           decision: {}\n\
            note: {}",
         report.scenario_name,
         report.n_parents,
@@ -46,21 +64,35 @@ pub fn format_weighted_mean_report(report: &WeightedMeanReport) -> String {
         report.mean_abs_error,
         report.max_ulp_diff,
         report.bit_exact,
-        report.within_tolerance,
+        report.within_strict_tolerance,
+        report.within_loose_tolerance,
         report.repeated_runs_identical,
-        report.zero_weight_cases,
-        report.single_child_cases,
-        report.mixed_magnitude_cases,
-        report.negative_value_cases,
+        report.max_error_parent_index,
+        report.max_error_cpu_value,
+        report.max_error_gpu_value,
+        report.max_error_abs,
+        report.max_error_ulp,
+        report.max_error_range_offset,
+        report.max_error_range_len,
+        report.empty_ranges,
+        report.non_empty_zero_weight_ranges,
+        report.single_child_ranges,
+        report.mixed_magnitude_ranges,
+        report.negative_value_ranges,
+        report.negative_value_children,
+        report.mixed_magnitude_children,
         report.cpu_oracle_us,
         report.gpu_cold_total_us,
         report.gpu_warm_mean_us,
         report.gpu_warm_min_us,
         report.gpu_warm_max_us,
-        report.correctness_gate,
+        report.bit_exact_gate,
+        report.strict_tolerance_gate,
+        report.loose_tolerance_gate,
         report.determinism_gate,
         report.parity_classification,
         report.accumulatorop_weightedmean_gate,
+        report.decision,
         report.timing_note,
     )
 }

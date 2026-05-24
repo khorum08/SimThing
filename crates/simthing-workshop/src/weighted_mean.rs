@@ -1,8 +1,10 @@
 //! WeightedMean AccumulatorOp parity spike — gather/combine/scatter over parent child ranges.
 //!
 //! CORRECTNESS NOTE: WeightedMean uses canonical f32 multiply-add in fixed child order.
+//! The workshop WGSL loop mirrors production `reduction.wgsl` WeightedMean: first child
+//! initializes weighted_sum/weight_sum, loop starts at i=1, zero total weight returns 0.
 //! If extended with reordering, atomics, or f64 accumulation, parity classification may
-//! change from BIT_EXACT to TOLERANCE_EXACT or FAIL.
+//! change from BIT_EXACT to STRICT_TOLERANCE, LOOSE_TOLERANCE, or FAIL.
 
 use std::time::Instant;
 
@@ -20,8 +22,10 @@ use wgpu::{
 
 pub const WORKGROUP_SIZE: u32 = 64;
 pub const WARM_RUNS: usize = 10;
-/// Conservative parity tolerance for long f32 reduction chains (FMA ordering may differ on GPU).
-pub const DEFAULT_TOLERANCE: f32 = 1e-4;
+/// Tight parity bound — production ADR should at minimum justify errors above this.
+pub const STRICT_TOLERANCE: f32 = 1e-6;
+/// Exploratory workshop bound for long f32 reduction chains (FMA ordering may differ on GPU).
+pub const LOOSE_TOLERANCE: f32 = 1e-4;
 
 pub const TIMING_NOTE: &str =
     "GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.";
@@ -73,19 +77,34 @@ pub struct WeightedMeanReport {
     pub mean_abs_error: f32,
     pub max_ulp_diff: u32,
 
+    pub max_error_parent_index: usize,
+    pub max_error_cpu_value: f32,
+    pub max_error_gpu_value: f32,
+    pub max_error_abs: f32,
+    pub max_error_ulp: u32,
+    pub max_error_range_offset: u32,
+    pub max_error_range_len: u32,
+
     pub bit_exact: bool,
-    pub within_tolerance: bool,
+    pub within_strict_tolerance: bool,
+    pub within_loose_tolerance: bool,
     pub repeated_runs_identical: bool,
 
-    pub zero_weight_cases: usize,
-    pub single_child_cases: usize,
-    pub mixed_magnitude_cases: usize,
-    pub negative_value_cases: usize,
+    pub empty_ranges: usize,
+    pub non_empty_zero_weight_ranges: usize,
+    pub single_child_ranges: usize,
+    pub mixed_magnitude_ranges: usize,
+    pub negative_value_ranges: usize,
+    pub negative_value_children: usize,
+    pub mixed_magnitude_children: usize,
 
-    pub correctness_gate: String,
+    pub bit_exact_gate: String,
+    pub strict_tolerance_gate: String,
+    pub loose_tolerance_gate: String,
     pub determinism_gate: String,
     pub parity_classification: String,
     pub accumulatorop_weightedmean_gate: String,
+    pub decision: String,
     pub timing_note: String,
 }
 
@@ -105,10 +124,27 @@ pub struct WeightedMeanGpuHarness {
 
 #[derive(Debug, Clone, Copy, Default)]
 struct ScenarioCoverage {
-    zero_weight_cases: usize,
-    single_child_cases: usize,
-    mixed_magnitude_cases: usize,
-    negative_value_cases: usize,
+    empty_ranges: usize,
+    non_empty_zero_weight_ranges: usize,
+    single_child_ranges: usize,
+    mixed_magnitude_ranges: usize,
+    negative_value_ranges: usize,
+    negative_value_children: usize,
+    mixed_magnitude_children: usize,
+}
+
+struct CompareOutputsResult {
+    max_abs_error: f32,
+    mean_abs_error: f32,
+    max_ulp_diff: u32,
+    bit_exact: bool,
+    max_error_parent_index: usize,
+    max_error_cpu_value: f32,
+    max_error_gpu_value: f32,
+    max_error_abs: f32,
+    max_error_ulp: u32,
+    max_error_range_offset: u32,
+    max_error_range_len: u32,
 }
 
 fn storage_entry(binding: u32, read_only: bool) -> BindGroupLayoutEntry {
@@ -245,8 +281,13 @@ fn analyze_coverage(children: &[WeightedChild], ranges: &[ParentRange]) -> Scena
     let mut coverage = ScenarioCoverage::default();
 
     for range in ranges {
+        if range.len == 0 {
+            coverage.empty_ranges += 1;
+            continue;
+        }
+
         if range.len == 1 {
-            coverage.single_child_cases += 1;
+            coverage.single_child_ranges += 1;
         }
 
         let offset = range.offset as usize;
@@ -255,17 +296,29 @@ fn analyze_coverage(children: &[WeightedChild], ranges: &[ParentRange]) -> Scena
 
         let weight_sum: f32 = slice.iter().map(|c| c.weight).sum();
         if weight_sum == 0.0 {
-            coverage.zero_weight_cases += 1;
+            coverage.non_empty_zero_weight_ranges += 1;
         }
+
+        let mut range_has_negative = false;
+        let mut range_has_mixed_magnitude = false;
 
         for child in slice {
             if child.value < 0.0 {
-                coverage.negative_value_cases += 1;
+                coverage.negative_value_children += 1;
+                range_has_negative = true;
             }
             let av = child.value.abs();
             if av >= 1000.0 || (av > 0.0 && av <= 1e-2) {
-                coverage.mixed_magnitude_cases += 1;
+                coverage.mixed_magnitude_children += 1;
+                range_has_mixed_magnitude = true;
             }
+        }
+
+        if range_has_negative {
+            coverage.negative_value_ranges += 1;
+        }
+        if range_has_mixed_magnitude {
+            coverage.mixed_magnitude_ranges += 1;
         }
     }
 
@@ -298,7 +351,7 @@ pub fn make_weighted_mean_scenario(
                 _ => parent as f32 * 0.001 + j as f32 * 0.01,
             };
 
-            let weight = if parent % 16 == 0 {
+            let weight = if parent % 16 == 2 {
                 0.0
             } else {
                 match (parent + j) % 5 {
@@ -321,6 +374,74 @@ pub fn make_weighted_mean_scenario(
 
     WeightedMeanScenario {
         name: name.to_string(),
+        children,
+        ranges,
+    }
+}
+
+/// Manual fixture mirroring production `reduction.wgsl` WeightedMean loop shape:
+/// first child seeds weighted_sum/weight_sum, loop starts at i=1, zero total weight → 0.
+///
+/// Does not depend on `simthing-gpu`; the workshop kernel uses the same canonical child-order
+/// semantics as production reduction, not the tree-dispatch layout.
+pub fn production_shape_fixture() -> WeightedMeanScenario {
+    let children = vec![
+        WeightedChild {
+            value: 10.0,
+            weight: 2.0,
+        },
+        WeightedChild {
+            value: 20.0,
+            weight: 3.0,
+        },
+        WeightedChild {
+            value: 30.0,
+            weight: 0.0,
+        },
+        WeightedChild {
+            value: 40.0,
+            weight: 0.0,
+        },
+        WeightedChild {
+            value: -1000.0,
+            weight: 1.0,
+        },
+        WeightedChild {
+            value: 1000.0,
+            weight: 1.0,
+        },
+        WeightedChild {
+            value: 1e-3,
+            weight: 10.0,
+        },
+        WeightedChild {
+            value: -5.0,
+            weight: 2.0,
+        },
+        WeightedChild {
+            value: 15.0,
+            weight: 4.0,
+        },
+        WeightedChild {
+            value: 99.0,
+            weight: -0.0,
+        },
+    ];
+    let ranges = vec![
+        ParentRange { offset: 0, len: 0 },
+        ParentRange { offset: 0, len: 1 },
+        ParentRange { offset: 2, len: 2 },
+        ParentRange { offset: 4, len: 2 },
+        ParentRange { offset: 6, len: 2 },
+        ParentRange { offset: 8, len: 2 },
+        ParentRange {
+            offset: children.len() as u32,
+            len: 0,
+        },
+    ];
+
+    WeightedMeanScenario {
+        name: "production_shape_fixture".to_string(),
         children,
         ranges,
     }
@@ -522,19 +643,39 @@ impl WeightedMeanGpuHarness {
 fn compare_outputs(
     cpu: &[WeightedMeanOutput],
     gpu: &[WeightedMeanOutput],
-) -> (f32, f32, u32, bool) {
+    ranges: &[ParentRange],
+) -> CompareOutputsResult {
     let mut max_abs_error = 0.0f32;
     let mut sum_abs_error = 0.0f32;
     let mut max_ulp = 0u32;
     let mut bit_exact = true;
+    let mut max_error_parent_index = 0usize;
+    let mut max_error_cpu_value = 0.0f32;
+    let mut max_error_gpu_value = 0.0f32;
+    let mut max_error_abs = 0.0f32;
+    let mut max_error_ulp = 0u32;
+    let mut max_error_range_offset = 0u32;
+    let mut max_error_range_len = 0u32;
 
-    for (c, g) in cpu.iter().zip(gpu.iter()) {
+    for (parent_index, (c, g)) in cpu.iter().zip(gpu.iter()).enumerate() {
         let err = (c.value - g.value).abs();
+        let ulp = max_ulp_diff(c.value, g.value);
         max_abs_error = max_abs_error.max(err);
         sum_abs_error += err;
-        max_ulp = max_ulp.max(max_ulp_diff(c.value, g.value));
+        max_ulp = max_ulp.max(ulp);
         if c.value.to_bits() != g.value.to_bits() {
             bit_exact = false;
+        }
+        if err >= max_error_abs {
+            max_error_parent_index = parent_index;
+            max_error_cpu_value = c.value;
+            max_error_gpu_value = g.value;
+            max_error_abs = err;
+            max_error_ulp = ulp;
+            if let Some(range) = ranges.get(parent_index) {
+                max_error_range_offset = range.offset;
+                max_error_range_len = range.len;
+            }
         }
     }
 
@@ -544,7 +685,34 @@ fn compare_outputs(
         sum_abs_error / cpu.len() as f32
     };
 
-    (max_abs_error, mean_abs_error, max_ulp, bit_exact)
+    CompareOutputsResult {
+        max_abs_error,
+        mean_abs_error,
+        max_ulp_diff: max_ulp,
+        bit_exact,
+        max_error_parent_index,
+        max_error_cpu_value,
+        max_error_gpu_value,
+        max_error_abs,
+        max_error_ulp,
+        max_error_range_offset,
+        max_error_range_len,
+    }
+}
+
+fn parity_decision(classification: &str) -> &'static str {
+    match classification {
+        "BIT_EXACT" => {
+            "Strong pass: candidate for clean AccumulatorOp v2 WeightedMean replacement."
+        }
+        "STRICT_TOLERANCE" => {
+            "Weak pass: likely acceptable, but production ADR must define tolerance policy."
+        }
+        "LOOSE_TOLERANCE" => {
+            "Weak exploratory pass only: do not claim production parity without ADR or fix."
+        }
+        _ => "Retain specialized WeightedMean reduction path.",
+    }
 }
 
 fn build_report(
@@ -557,19 +725,37 @@ fn build_report(
     repeated_runs_identical: bool,
     coverage: ScenarioCoverage,
 ) -> WeightedMeanReport {
-    let (max_abs_error, mean_abs_error, max_ulp_diff, bit_exact) =
-        compare_outputs(cpu_reference, gpu_reference);
-    let within_tolerance = max_abs_error <= DEFAULT_TOLERANCE;
+    let compare = compare_outputs(cpu_reference, gpu_reference, &scenario.ranges);
+    let within_strict_tolerance = compare.max_abs_error <= STRICT_TOLERANCE;
+    let within_loose_tolerance = compare.max_abs_error <= LOOSE_TOLERANCE;
 
-    let parity_classification = if bit_exact && repeated_runs_identical {
+    let parity_classification = if compare.bit_exact && repeated_runs_identical {
         "BIT_EXACT".to_string()
-    } else if within_tolerance && repeated_runs_identical {
-        "TOLERANCE_EXACT".to_string()
+    } else if !compare.bit_exact && within_strict_tolerance && repeated_runs_identical {
+        "STRICT_TOLERANCE".to_string()
+    } else if !compare.bit_exact
+        && !within_strict_tolerance
+        && within_loose_tolerance
+        && repeated_runs_identical
+    {
+        "LOOSE_TOLERANCE".to_string()
     } else {
         "FAIL".to_string()
     };
 
-    let correctness_gate = if within_tolerance {
+    let bit_exact_gate = if compare.bit_exact && repeated_runs_identical {
+        "PASS".to_string()
+    } else {
+        "FAIL".to_string()
+    };
+
+    let strict_tolerance_gate = if within_strict_tolerance && repeated_runs_identical {
+        "PASS".to_string()
+    } else {
+        "FAIL".to_string()
+    };
+
+    let loose_tolerance_gate = if within_loose_tolerance && repeated_runs_identical {
         "PASS".to_string()
     } else {
         "FAIL".to_string()
@@ -581,13 +767,14 @@ fn build_report(
         "FAIL".to_string()
     };
 
-    let accumulatorop_weightedmean_gate =
-        if correctness_gate == "PASS" && determinism_gate == "PASS" && within_tolerance {
-            "PASS".to_string()
-        } else {
-            "FAIL".to_string()
-        };
+    let accumulatorop_weightedmean_gate = match parity_classification.as_str() {
+        "BIT_EXACT" => "STRONG_PASS".to_string(),
+        "STRICT_TOLERANCE" => "WEAK_PASS".to_string(),
+        "LOOSE_TOLERANCE" => "WEAK_PASS_REQUIRES_ADR".to_string(),
+        _ => "FAIL".to_string(),
+    };
 
+    let decision = parity_decision(&parity_classification).to_string();
     let (gpu_warm_mean_us, gpu_warm_min_us, gpu_warm_max_us) = warm_stats(warm_samples);
 
     WeightedMeanReport {
@@ -600,20 +787,34 @@ fn build_report(
         gpu_warm_mean_us,
         gpu_warm_min_us,
         gpu_warm_max_us,
-        max_abs_error,
-        mean_abs_error,
-        max_ulp_diff,
-        bit_exact,
-        within_tolerance,
+        max_abs_error: compare.max_abs_error,
+        mean_abs_error: compare.mean_abs_error,
+        max_ulp_diff: compare.max_ulp_diff,
+        max_error_parent_index: compare.max_error_parent_index,
+        max_error_cpu_value: compare.max_error_cpu_value,
+        max_error_gpu_value: compare.max_error_gpu_value,
+        max_error_abs: compare.max_error_abs,
+        max_error_ulp: compare.max_error_ulp,
+        max_error_range_offset: compare.max_error_range_offset,
+        max_error_range_len: compare.max_error_range_len,
+        bit_exact: compare.bit_exact,
+        within_strict_tolerance,
+        within_loose_tolerance,
         repeated_runs_identical,
-        zero_weight_cases: coverage.zero_weight_cases,
-        single_child_cases: coverage.single_child_cases,
-        mixed_magnitude_cases: coverage.mixed_magnitude_cases,
-        negative_value_cases: coverage.negative_value_cases,
-        correctness_gate,
+        empty_ranges: coverage.empty_ranges,
+        non_empty_zero_weight_ranges: coverage.non_empty_zero_weight_ranges,
+        single_child_ranges: coverage.single_child_ranges,
+        mixed_magnitude_ranges: coverage.mixed_magnitude_ranges,
+        negative_value_ranges: coverage.negative_value_ranges,
+        negative_value_children: coverage.negative_value_children,
+        mixed_magnitude_children: coverage.mixed_magnitude_children,
+        bit_exact_gate,
+        strict_tolerance_gate,
+        loose_tolerance_gate,
         determinism_gate,
         parity_classification,
         accumulatorop_weightedmean_gate,
+        decision,
         timing_note: TIMING_NOTE.to_string(),
     }
 }
