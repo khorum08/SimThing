@@ -112,3 +112,21 @@ This is **not** a production pipeline benchmark. It is a workload-shape benchmar
 Run: `cargo test -p simthing-workshop weighted_mean_perf -- --nocapture`
 
 The sparse 100k case writes `target/workshop/weighted_mean_perf_report.md` and `.json` (not committed).
+
+## Overlay order-band semantics spike
+
+This spike tests whether Add, Multiply, and Set overlays can be compiled into deterministic order bands for an AccumulatorOp-style pivot.
+
+The current-shaped path applies raw overlays in canonical order and intentionally exposes overlay clutter under stress.
+
+The pivot-shaped path compiles compatible contiguous overlay runs into order-band operations:
+
+- Add runs become Sum;
+- Multiply runs become Product;
+- Set runs become LastByPriority / LastByOrder.
+
+The compiler is intentionally conservative and must not group across op-kind or order-band boundaries. This test is meant to reveal whether overlay semantics can move from Partial/Risky to Clean-candidate under AccumulatorOp v2.
+
+Run: `cargo test -p simthing-workshop overlay_order -- --nocapture`
+
+The report bundle test writes `tests/overlay_order_semantics_reports.txt` (committed). Per-run markdown/json still go to `target/workshop/overlay_order_report.md` when invoked individually.

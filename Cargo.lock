@@ -1175,6 +1175,8 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "pollster",
+ "serde",
+ "serde_json",
  "wgpu",
 ]
 
