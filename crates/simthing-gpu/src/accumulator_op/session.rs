@@ -730,7 +730,7 @@ mod tests {
     }
 
     #[test]
-    fn upload_ops_allows_same_target_in_different_bands() {
+    fn upload_ops_allows_same_target_in_different_order_bands() {
         let ops = vec![
             AccumulatorOp {
                 source: SourceSpec::Constant(1.0),
@@ -751,6 +751,130 @@ mod tests {
         ];
         let mut session = gpu_session(4, 1);
         session.upload_ops(&ops).unwrap();
+    }
+
+    #[test]
+    fn upload_ops_rejects_always_and_orderband_same_target() {
+        let ops = vec![
+            AccumulatorOp {
+                source: SourceSpec::Constant(1.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::Always,
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(1, 0)],
+            },
+            AccumulatorOp {
+                source: SourceSpec::Constant(2.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::OrderBand(1),
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(1, 0)],
+            },
+        ];
+        let mut session = gpu_session(4, 1);
+        assert!(matches!(
+            session.upload_ops(&ops),
+            Err(AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
+                slot: 1,
+                col: 0,
+                ..
+            }))
+        ));
+    }
+
+    #[test]
+    fn upload_ops_rejects_always_consume_and_orderband_write_same_cell() {
+        let ops = vec![
+            AccumulatorOp {
+                source: SourceSpec::SlotValue { slot: 0, col: 0 },
+                combine: CombineFn::Identity,
+                gate: GateSpec::Always,
+                scale: ScaleSpec::Constant(1.0),
+                consume: ConsumeMode::SubtractFromSource,
+                targets: vec![(1, 0)],
+            },
+            AccumulatorOp {
+                source: SourceSpec::Constant(2.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::OrderBand(1),
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(0, 0)],
+            },
+        ];
+        let mut session = gpu_session(4, 2);
+        assert!(matches!(
+            session.upload_ops(&ops),
+            Err(AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
+                slot: 0,
+                col: 0,
+                ..
+            }))
+        ));
+    }
+
+    #[test]
+    fn upload_ops_rejects_orderband_consume_and_always_write_same_cell() {
+        let ops = vec![
+            AccumulatorOp {
+                source: SourceSpec::Constant(2.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::Always,
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(0, 0)],
+            },
+            AccumulatorOp {
+                source: SourceSpec::SlotValue { slot: 0, col: 0 },
+                combine: CombineFn::Identity,
+                gate: GateSpec::OrderBand(1),
+                scale: ScaleSpec::Constant(1.0),
+                consume: ConsumeMode::SubtractFromSource,
+                targets: vec![(1, 0)],
+            },
+        ];
+        let mut session = gpu_session(4, 2);
+        assert!(matches!(
+            session.upload_ops(&ops),
+            Err(AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
+                slot: 0,
+                col: 0,
+                ..
+            }))
+        ));
+    }
+
+    #[test]
+    fn upload_ops_rejects_two_always_writers_same_cell() {
+        let ops = vec![
+            AccumulatorOp {
+                source: SourceSpec::Constant(1.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::Always,
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(1, 0)],
+            },
+            AccumulatorOp {
+                source: SourceSpec::Constant(2.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::Always,
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(1, 0)],
+            },
+        ];
+        let mut session = gpu_session(4, 1);
+        assert!(matches!(
+            session.upload_ops(&ops),
+            Err(AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
+                band: u32::MAX,
+                slot: 1,
+                col: 0,
+            }))
+        ));
     }
 
     #[test]

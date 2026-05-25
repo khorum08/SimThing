@@ -70,7 +70,9 @@ One execution model:
 
   B-2 note: the kernel is production-shaped for persistent buffers and compact
   event readback (Identity EmitEvent), but operation-family semantics are only
-  authoritative once their C/E migration PRs pass parity.
+  authoritative once their C/E migration PRs pass parity. Bootstrap validation
+  rejects any same-runtime-cell contention, including Always-vs-OrderBand
+  aliasing, until production contention semantics are implemented.
 
 One retained operation:
   snapshot — copy_buffer_to_buffer (memcpy; not a per-slot write)
