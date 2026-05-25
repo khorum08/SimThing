@@ -2,7 +2,23 @@
 
 Running log of what's done and what's next, across sessions.
 
-**Canonical spec:** `docs/design_v7.md` (AccumulatorOp v2) · `docs/design_v6.5.md` (v6 parking) · `docs/design_v6.md` (sim mechanics) | **Agent map:** `docs/agents.md`
+**Canonical spec:** `docs/design_v7.md` (AccumulatorOp v2) · `docs/design_v6.5.md` (v6 parking) · `docs/design_v6.md` (sim mechanics) | **Agent map:** `docs/agents.md` · **Workshop:** `docs/workshop/workshop_current_state.md`
+
+---
+
+## 2026-05-19 — Workshop docs review + `workshop_current_state`
+
+**Status:** `master` (pending commit — PR to follow).
+
+**Scope:** Full workshop/docs review; synthesize active state into
+`docs/workshop/workshop_current_state.md`; archive stale handoffs and historical Q&A.
+
+**Archived to `docs/workshop/archive/`:** `simthing_spec_sonnet_opus_handoff.md`,
+`capability_tree_studio_workshop.md`, `tech_tree_decisions.md`,
+`soft_aggregate_tolerance_audit.md`, `chatgpt_implementation_review.md`.
+
+**Updated routing:** `workshop/README.md`, `archive/SUNSET.md`, `todo.md`, `design_v6.5.md`,
+`agents.md`, `.gitignore` (archive now tracked in git).
 
 ---
 

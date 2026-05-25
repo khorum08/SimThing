@@ -310,8 +310,8 @@ Implementation path: **`simthing-spec` PRs 1–11** — see
 `docs/workshop/simthing_spec_progress_log.md`. PR 4 is the minimal sim touch
 (`CapabilityUnlockRegistration`, `ThresholdSemantic::CapabilityUnlock`).
 
-Source Q&A: `docs/workshop/capability_tree_studio_workshop.md`.
-Older `docs/workshop/tech_tree_decisions.md` §5 names `simthing-studio` as the
+Source Q&A: `docs/workshop/archive/capability_tree_studio_workshop.md`.
+Older `docs/workshop/archive/tech_tree_decisions.md` §5 names `simthing-studio` as the
 builder crate — superseded for naming; mechanism decisions remain valid.
 
 ### Addendum — Scripted event system v0 (PRs 7–10, 2026-05-22)

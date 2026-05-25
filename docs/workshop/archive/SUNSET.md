@@ -1,43 +1,44 @@
 # Workshop archive — sunset manifest
 
-**Status:** These files are **superseded** and kept on disk for archaeology only.  
+**Status:** These files are **superseded** and kept for archaeology only.  
 **Do not implement from them.** Use the canonical sources listed below.
 
-The archive folder is **gitignored** except this manifest (and `README.md`). Handoff bodies
-are not pushed to the remote; teammates restore from local copies or pre-archive commits if
-needed.
-
-**Sunset date:** 2026-05-23  
-**Superseding synthesis:** [`docs/design_v6.5.md`](../../design_v6.5.md)
+**Sunset policy updated:** 2026-05-19  
+**Superseding synthesis:** [`../workshop_current_state.md`](../workshop_current_state.md)
 
 ---
 
-## File → canonical replacement
+## Recently archived (2026-05-19)
 
 | Archived file | Was | Read instead |
 |---------------|-----|--------------|
-| `simthing_spec_master_handoff.md` | Opus master implementation handoff (PR ladder) | [`simthing_spec_progress_log.md`](../simthing_spec_progress_log.md) · [`design_v6.5.md`](../../design_v6.5.md) §4–§5 |
-| `simthing_spec_workshop.md` | Phase 0 crate pivot worksheet | Progress log § Phase 0 · [`design_v6.md`](../../design_v6.md) spec pivot addendum |
-| `pr5_handoff_digest.md` | PR 5 capability handler acceptance digest | Progress log § PR 5 · `tests/pr5_capability_handler.rs` |
-| `opus_current_state_handoff.md` | Opus parking snapshot (pre–PR 11) | [`design_v6.5.md`](../../design_v6.5.md) · [`todo.md`](../../todo.md) |
-| `pr11_session_assembly_handoff.md` | PR 11 umbrella handoff | [`adr/pr11_track_a_session_assembly.md`](../../adr/pr11_track_a_session_assembly.md) · progress log § PR 11 |
-| `pr11_track_a_handoff.md` | Track A implementation brief | Same ADR · `simthing-driver` install/spec_session modules |
-| `pr11_post_track_a_handoff.md` | Post–Track A parking | [`design_v6.5.md`](../../design_v6.5.md) §5 · progress log open work |
+| `simthing_spec_sonnet_opus_handoff.md` | Opus P0 / Sonnet backlog routing (HEAD `2ff84bf`) | `workshop_current_state.md` §3 · `todo.md` · `simthing_spec_progress_log.md` |
+| `capability_tree_studio_workshop.md` | 2026-05-22 studio workshop Q&A | `design_v6.5.md` · progress log |
+| `tech_tree_decisions.md` | 2026-05-21 workshop decisions | progress log · `capability_tree_v1.md` |
+| `soft_aggregate_tolerance_audit.md` | A-4 Opus audit (pre-#90) | `adr_accumulator_op_v2.md` · landed `SoftAggregateGuard` |
+| `chatgpt_implementation_review.md` | 2026-05 arch/perf review | Historical; see `worklog.md` for subsequent fixes |
 
 ---
 
-## In-repo historical docs (not in this folder)
+## Earlier archived handoffs (2026-05-23)
 
-These remain in git for Q&A rationale but are **not** implementation sources:
-
-| File | Role |
-|------|------|
-| [`capability_tree_studio_workshop.md`](../capability_tree_studio_workshop.md) | 2026-05-22 studio workshop Q&A |
-| [`tech_tree_decisions.md`](../tech_tree_decisions.md) | 2026-05-21 decisions (crate naming superseded) |
+| Archived file | Was | Read instead |
+|---------------|-----|--------------|
+| `simthing_spec_master_handoff.md` | Opus master implementation handoff (PR ladder) | `simthing_spec_progress_log.md` · `design_v6.5.md` §4–§5 |
+| `simthing_spec_workshop.md` | Phase 0 crate pivot worksheet | Progress log § Phase 0 · `design_v6.md` spec pivot addendum |
+| `pr5_handoff_digest.md` | PR 5 capability handler acceptance digest | Progress log § PR 5 · `tests/pr5_capability_handler.rs` |
+| `opus_current_state_handoff.md` | Opus parking snapshot (pre–PR 11) | `design_v6.5.md` · `todo.md` |
+| `pr11_session_assembly_handoff.md` | PR 11 umbrella handoff | `adr/pr11_track_a_session_assembly.md` · progress log § PR 11 |
+| `pr11_track_a_handoff.md` | Track A implementation brief | Same ADR · `simthing-driver` install/spec_session modules |
+| `pr11_post_track_a_handoff.md` | Post–Track A parking | `design_v6.5.md` §5 · progress log open work |
+| `composer_handoff_c2_refinement_c3.md` | C-2/C-3 refinement handoff | `worklog.md` · C-2/C-3 parity tests |
+| `c1_perf_reframe_memo.md` | Duplicate copy | Active memo: [`../c1_perf_reframe_memo.md`](../c1_perf_reframe_memo.md) |
 
 ---
 
 ## Safe deletion
 
-Local archive `.md` bodies may be deleted once this manifest is committed. No code or tests
-reference filenames in this folder.
+Archive bodies may be deleted locally once this manifest is committed, if disk space
+matters. Prefer keeping them in git for teammate archaeology.
+
+No code or tests reference filenames in this folder directly.

@@ -1,7 +1,2 @@
 /target
 .claude/settings.local.json
-
-# Local-only workshop archives (superseded handoffs; not pushed)
-docs/workshop/archive/*
-!docs/workshop/archive/SUNSET.md
-!docs/workshop/archive/README.md

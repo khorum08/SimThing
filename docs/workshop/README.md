@@ -1,46 +1,36 @@
 # Workshop docs index
 
-**Parking (2026-05-23):** `master` @ `2ff84bf`. **Tests:** 345 passed, 1 ignored. **Opus P0 complete.** **Next:** Sonnet D1/D2 examples & modder guide.
+**Current state:** [`workshop_current_state.md`](workshop_current_state.md) — read first.
 
-## Read first — current state
+**Master HEAD:** `5331419` · **Tests:** 430+ passed (see `todo.md` for breakdown)
 
-- [`../design_v6.5.md`](../design_v6.5.md) — **parking synthesis**
-- [`simthing_spec_sonnet_opus_handoff.md`](simthing_spec_sonnet_opus_handoff.md) — Sonnet vs Opus backlog
-- [`../worklog.md`](../worklog.md) — O2, B3, I1 landing notes
+---
 
-**Architecture decisions:**
-
-- [`../adr/pr11_track_a_session_assembly.md`](../adr/pr11_track_a_session_assembly.md)
-- [`../adr/capability_effect_target_scope.md`](../adr/capability_effect_target_scope.md) — Accepted
-- [`../adr/scripted_event_scope_model.md`](../adr/scripted_event_scope_model.md) — Accepted (O4)
-- [`../adr/game_mode_session_installation.md`](../adr/game_mode_session_installation.md) — Accepted (O1)
-
-- [`../adr/spec_session_state_replay.md`](../adr/spec_session_state_replay.md) — Accepted (O2)
-- [`../adr/install_clone_then_commit.md`](../adr/install_clone_then_commit.md) — Accepted (I1)
-
-## Authoring & design (workshop)
+## Active workshop documents
 
 | Document | Role |
 |----------|------|
-| [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder-facing core authoring objects (properties, overlays, capability trees, events) |
-| [`simthing_base_economic_system_working_doc.md`](simthing_base_economic_system_working_doc.md) | Base economic model working doc — resources, transfers, thresholds, fission as SimThing patterns |
-| [`capability_tree_v1.md`](../capability_tree_v1.md) | Capability-tree RON reference (§13 install; §14 EffectTarget) |
-| [`../examples/README.md`](../examples/README.md) | InstallTargetSpec RON examples |
+| [`workshop_current_state.md`](workshop_current_state.md) | **Synthesis** — migration state, routing, read order |
+| [`pivot_forward_implementation_policy.md`](pivot_forward_implementation_policy.md) | AccumulatorOp migration doctrine |
+| [`slot_summary_b4_design.md`](slot_summary_b4_design.md) | Accepted B-4 summary tier design |
+| [`c1_perf_reframe_memo.md`](c1_perf_reframe_memo.md) | Accepted C-1 perf gate reframe |
+| [`multichannel_accumulator_test_battery.md`](multichannel_accumulator_test_battery.md) | Workshop benchmark spec |
+| [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder-facing authoring guide |
+| [`simthing_base_economic_system_working_doc.md`](simthing_base_economic_system_working_doc.md) | Provisional economic substrate (E0 deferred) |
+| [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) | V6 spec implementation ledger |
 
-## Source / historical (in repo — rationale only)
+## Top-level companions
 
 | Document | Role |
 |----------|------|
-| [`capability_tree_studio_workshop.md`](capability_tree_studio_workshop.md) | Original Claude workshop Q&A (2026-05-22); **superseded** for implementation |
-| [`tech_tree_decisions.md`](tech_tree_decisions.md) | Prior session decisions; **superseded** — see progress log § approved decisions |
+| [`../todo.md`](../todo.md) | Priority table and PR ledger |
+| [`../worklog.md`](../worklog.md) | Session landing notes |
+| [`../design_v7.md`](../design_v7.md) | Active GPU + economic spec |
+| [`../design_v6.5.md`](../design_v6.5.md) | V6 spec/session parking |
+| [`../accumulator_op_v2_production_plan.md`](../accumulator_op_v2_production_plan.md) | Migration PR ladder |
 
-## Superseded handoffs (local archive)
+## Archive
 
-Superseded PR handoffs live in [`archive/`](archive/). Handoff **bodies** are
-gitignored (local only); the sunset manifest is tracked:
+Superseded handoffs and historical Q&A: [`archive/`](archive/) — see [`archive/SUNSET.md`](archive/SUNSET.md).
 
-- [`archive/SUNSET.md`](archive/SUNSET.md) — file → canonical replacement map
-- [`archive/README.md`](archive/README.md) — folder policy
-
-**Do not implement from archived handoffs.** Use [`design_v6.5.md`](../design_v6.5.md) and
-`simthing_spec_progress_log.md`.
+**Do not implement from archived files.**

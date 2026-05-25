@@ -1,0 +1,217 @@
+# SimThing Workshop — Current State
+
+**Purpose:** Single synthesis of **active workshop docs**, **production migration state**,
+and **documentation routing**. Read this first when picking up GPU migration or workshop work.
+
+**Last updated:** 2026-05-19  
+**Master HEAD:** `5331419` (PR #113 doc sync; code through PR #111 pivot-forward remedial)  
+**Verification (last recorded):** `cargo test --workspace` → 430+ passed, 1 ignored perf gate
+
+---
+
+## 1. Executive summary
+
+Two parallel tracks:
+
+| Track | Status | Canonical docs |
+|-------|--------|----------------|
+| **V6 spec / driver / session** | **Parked complete** — PRs 1–11, Opus P0 (O2/B3/I1) shipped | `design_v6.5.md`, `simthing_spec_progress_log.md` |
+| **AccumulatorOp v2 / design v7** | **Active** — Phases A–B done; C-1/C-2/C-3 + infra landed; flags default **false** | `design_v7.md`, `accumulator_op_v2_production_plan.md`, `pivot_forward_implementation_policy.md` |
+
+**Production direction:** AccumulatorOp v2 is the intended GPU execution path.
+Legacy passes (intent, overlay, reduction, threshold, velocity, intensity) are
+**oracle/fallback only** until S-phase deletion.
+
+**Next gates:** **C-4** (Opus) overlay Mul/Set + order-band compiler · **C-5** soft reductions.
+
+---
+
+## 2. AccumulatorOp v2 migration state
+
+### Landed (feature-flagged, default false)
+
+| ID | PRs | What |
+|----|-----|------|
+| **A-4** | #90 | Soft-aggregate tolerance policy (`SoftAggregateGuard`) |
+| **B-1–B-3** | #91–#95 | `AccumulatorOpSession`, kernel subset, timestamps |
+| **B-4I** | #108 | Production `SlotSummaryGpu` (32 B/slot, group checksums) |
+| **C-1** | #97–#98 | Threshold scan → AccumulatorOp; single-submit integration |
+| **C-2** | #99–#100 | Intent affine → AccumulatorOp |
+| **C-3** | #105–#107 | Overlay **Add-only** + OrderBand exact f32 order; mixed → legacy fallback |
+| **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
+| **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
+| **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
+
+### Runtime shape (post #109/#111)
+
+```text
+WorldGpuState
+  accumulator_runtime: Option<WorldAccumulatorRuntime>
+    intent_session / threshold_session / overlay_session  (per-family adapter)
+    summary: Option<WorldSummaryRuntime>                  (B-4 from world values)
+  accumulator_overlay_add_active / _bands                 (cached dispatch; survives session take)
+
+BoundaryProtocol flags → sync clears or ensures families
+Dispatcher → take/put sessions; encode world summary after Accumulator passes when active
+```
+
+**Overlay policy (C-3):** Add-only batches → AccumulatorOp with per-cell OrderBand.
+Any active Multiply or Set in the batch → **entire batch** falls back to legacy Pass 3 until C-4.
+
+**Feature flags (authoritative after #111):** flag-off boundary sync calls
+`clear_intent` / `clear_threshold` / `clear_overlay_add`; dispatcher keys off
+session presence + overlay dispatch cache, not stale sessions.
+
+### Open migration work
+
+| Priority | ID | Owner | Blocks |
+|----------|-----|-------|--------|
+| **Opus-gated** | **C-4** | Opus + Composer | Full overlay Mul/Set + dirty order-band compiler → **S-3** |
+| Non-Opus | **C-5** | Opus audit + Composer | WeightedMean tolerance; soft reductions → **S-4** |
+| Non-Opus | **C-6–C-8** | Composer | Reductions, velocity, EML/transfer |
+| Infra | Oracle refactor | Optional | Move C-1/C-2/C-3 parity tests onto `run_family_oracle` |
+
+### Sunset targets (S-phase)
+
+| S-PR | After | Deletes |
+|------|-------|---------|
+| S-1 | C-2 default-on | Legacy intent pass |
+| S-3 | C-3 + C-4 | Legacy overlay prep |
+| S-4 | C-5 + C-6 | Legacy reduction passes |
+| S-5 | C-7 | Legacy velocity |
+| S-6 | C-1 default-on | Legacy threshold scan (Pass 7) |
+
+---
+
+## 3. V6 spec layer (parked)
+
+**Complete:** `simthing-spec` PRs 1–11; Opus P0 O2 (replay v3), B3 (boundary skip), I1 (install atomicity).
+
+**Next (optional, Sonnet/Composer):** modder guide refresh (D1), RON examples (D2), capability-tree preview docs (D3). **E0 base economy deferred.**
+
+**Ledger:** [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md)  
+**Parking synthesis:** [`../design_v6.5.md`](../design_v6.5.md)
+
+---
+
+## 4. Workshop crate (`simthing-workshop`)
+
+Isolated viability spikes — **not production code**, no workspace dependents.
+
+| Spike | Status | Implication |
+|-------|--------|-------------|
+| EML Phase 5 intensity | PASS at 100k | Research only; not general EML path |
+| WeightedMean AccumulatorOp | LOOSE_TOLERANCE at 100k; BIT_EXACT on production-shape fixture | Do not replace production reduction without ADR |
+| Multichannel battery | Spec in `multichannel_accumulator_test_battery.md` | Pivot-readiness gates for workshop only |
+
+See `crates/simthing-workshop/README.md` and `todo.md` § workshop spikes.
+
+---
+
+## 5. Tests (AccumulatorOp focus)
+
+| Suite | Count | Notes |
+|-------|-------|-------|
+| `simthing-gpu` `accumulator_op` | 61 | Includes `WorldSummaryRuntime` unit tests |
+| C-1 parity | 2 | incl. fission stress |
+| C-2 parity | 11 | incl. combined C-1/C-2 |
+| C-3 parity | 13 | incl. combined C-1/C-2/C-3 |
+| C-INF-2 harness | 2 | intent + threshold oracle smoke |
+| Pivot-forward remedial | 3 | authoritative flags |
+| B-4 world summary integrated | 2 | intent + overlay orderbands |
+
+```powershell
+cargo test -p simthing-gpu accumulator_op
+cargo test -p simthing-sim --test c1_threshold_scan_parity --test c2_intent_accumulator_parity --test c3_overlay_add_accumulator_parity
+cargo test -p simthing-sim --test c_inf_legacy_oracle_harness --test pivot_forward_remedial --test b4_world_summary_integrated
+cargo check --workspace
+```
+
+---
+
+## 6. Active workshop documents
+
+| Document | Role |
+|----------|------|
+| **This file** | Current-state synthesis and routing |
+| [`pivot_forward_implementation_policy.md`](pivot_forward_implementation_policy.md) | Active migration doctrine (legacy = oracle/fallback) |
+| [`slot_summary_b4_design.md`](slot_summary_b4_design.md) | Accepted B-4 summary tier design |
+| [`c1_perf_reframe_memo.md`](c1_perf_reframe_memo.md) | Accepted C-1 perf gate reframe (no 5× readback claim) |
+| [`multichannel_accumulator_test_battery.md`](multichannel_accumulator_test_battery.md) | Workshop benchmark spec |
+| [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder-facing authoring surface |
+| [`simthing_base_economic_system_working_doc.md`](simthing_base_economic_system_working_doc.md) | Provisional economic substrate (E0 deferred) |
+| [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) | V6 spec implementation ledger |
+
+---
+
+## 7. Archived workshop documents
+
+Superseded handoffs and historical Q&A live in [`archive/`](archive/). **Do not implement from archived files.**
+
+| Archived | Was | Read instead |
+|----------|-----|--------------|
+| `simthing_spec_sonnet_opus_handoff.md` | Opus P0 / Sonnet backlog routing (2026-05-23) | This file §3 · `todo.md` · progress log |
+| `capability_tree_studio_workshop.md` | 2026-05-22 studio Q&A | `design_v6.5.md` · progress log |
+| `tech_tree_decisions.md` | 2026-05-21 workshop decisions | progress log · `capability_tree_v1.md` |
+| `soft_aggregate_tolerance_audit.md` | A-4 Opus audit (pre-implementation) | `adr_accumulator_op_v2.md` · landed `SoftAggregateGuard` |
+| `chatgpt_implementation_review.md` | 2026-05 perf/arch review | Historical; many items since addressed |
+
+Full manifest: [`archive/SUNSET.md`](archive/SUNSET.md)
+
+---
+
+## 8. Top-level doc map (outside workshop/)
+
+| Document | Role |
+|----------|------|
+| [`../todo.md`](../todo.md) | Priority table, PR ledger, open items |
+| [`../worklog.md`](../worklog.md) | Session-by-session landing notes |
+| [`../design_v7.md`](../design_v7.md) | **Active** GPU + economic spec (supersedes v6 §10) |
+| [`../design_v6.5.md`](../design_v6.5.md) | V6 spec/session parking synthesis |
+| [`../design_v6.md`](../design_v6.md) | V6 mechanics (overlays, fission, boundary) |
+| [`../accumulator_op_v2_production_plan.md`](../accumulator_op_v2_production_plan.md) | 33-PR migration ladder |
+| [`../adr_accumulator_op_v2.md`](../adr_accumulator_op_v2.md) | AccumulatorOp ADR |
+| [`../agents.md`](../agents.md) | Agent map and crate conventions |
+
+---
+
+## 9. Read order for new agents
+
+**GPU / AccumulatorOp migration:**
+
+1. This document
+2. `pivot_forward_implementation_policy.md`
+3. `design_v7.md` §2–§4 (constitution + pass migration table)
+4. `accumulator_op_v2_production_plan.md` — find your PR section
+5. `todo.md` + recent `worklog.md` entries
+6. Code: `accumulator_op/runtime.rs`, `world_state.rs`, `boundary.rs`, `passes.rs`, `dispatcher.rs`
+
+**Spec / session / modder work:**
+
+1. `design_v6.5.md`
+2. `simthing_spec_progress_log.md`
+3. `simthing_modder_object_guide.md`
+4. `todo.md` § Sonnet D1/D2
+
+---
+
+## 10. Migration handoff template
+
+Every future C-family PR must include:
+
+```text
+Pivot posture:
+  AccumulatorOp path is the intended production path.
+  Legacy path is oracle/fallback only.
+
+Sunset target:
+  S-<n> — <old pass deletion>
+
+Legacy interaction allowed:
+  oracle / fallback / none
+
+Legacy interaction forbidden:
+  no new features · no optimization · no semantic expansion
+```
+
+See `pivot_forward_implementation_policy.md` §4 for full policy.

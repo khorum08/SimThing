@@ -1,7 +1,7 @@
 # Pivot-Forward Implementation Policy
 
 **Status:** Active (2026-05-19)  
-**Authority:** `docs/adr_accumulator_op_v2.md`, `docs/design_v7.md`, `docs/accumulator_op_v2_production_plan.md`
+**Authority:** `docs/adr_accumulator_op_v2.md`, `docs/design_v7.md`, `docs/accumulator_op_v2_production_plan.md`, [`workshop_current_state.md`](workshop_current_state.md)
 
 ---
 

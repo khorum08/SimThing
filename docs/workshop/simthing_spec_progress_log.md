@@ -391,7 +391,7 @@ The Opus P0 batch is complete. Next work is user-driven.
 
 ## Approved design decisions (retained from workshop)
 
-These remain valid; see original Q&A in `capability_tree_studio_workshop.md` for rationale.
+These remain valid; see original Q&A in `archive/capability_tree_studio_workshop.md` for rationale.
 
 | ID | Decision |
 |----|----------|
