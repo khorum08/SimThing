@@ -1,8 +1,9 @@
 //! C-4 overlay OrderBand parity and dirty-cache coverage.
 
 use simthing_core::{
-    DimensionRegistry, IntensityBehavior, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
-    OverlaySource, PropertyTransformDelta, PropertyValue, SimProperty, SimThing, SimThingKind,
+    DimensionRegistry, Direction, DissolveCondition, FissionTemplate, FissionThreshold,
+    IntensityBehavior, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
+    PropertyTransformDelta, PropertyValue, SimProperty, SimThing, SimThingKind, SimThingKindTag,
     SubFieldRole, TransformOp,
 };
 use simthing_feeder::{
@@ -10,9 +11,9 @@ use simthing_feeder::{
 };
 use simthing_gpu::{
     set_debug_readback_allowed, summaries_from_values, GpuContext, Pipelines, SlotAllocator,
-    WorldGpuState,
+    ThresholdEvent, WorldGpuState,
 };
-use simthing_sim::BoundaryProtocol;
+use simthing_sim::{BoundaryProtocol, VelocityAlertRegistration};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -80,6 +81,27 @@ fn assert_bits_eq(label: &str, old: &[f32], new: &[f32]) {
             "{label} mismatch at index {i}: {a} vs {b}"
         );
     }
+}
+
+fn sort_events(events: &[ThresholdEvent]) -> Vec<ThresholdEvent> {
+    let mut out = events.to_vec();
+    out.sort_by_key(|e| (e.slot, e.col, e.event_kind));
+    out
+}
+
+fn overlay_cache_stats(state: &WorldGpuState) -> (u64, u64, u32) {
+    let cache = state
+        .accumulator_runtime
+        .as_ref()
+        .unwrap()
+        .overlay_compile_cache
+        .as_ref()
+        .unwrap();
+    (
+        cache.compile_count,
+        cache.upload_count,
+        cache.cached_op_buffer_uploaded_n_ops,
+    )
 }
 
 fn project_to_coord(fx: &Fixture, coord: &mut DispatchCoordinator) {
@@ -201,6 +223,224 @@ parity!(
         *world = parent;
     }
 );
+
+#[test]
+fn c4_suspended_overlay_absent_then_activated() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let mut fx = loyalty_fixture();
+    let target = fx.world.children[0].id;
+    let mut overlay = make_overlay(fx.pid, vec![(SubFieldRole::Amount, TransformOp::Add(1.0))]);
+    let overlay_id = overlay.id;
+    overlay.lifecycle = OverlayLifecycle::Suspended {
+        when_activated: Box::new(OverlayLifecycle::Permanent),
+    };
+    fx.world.children[0].add_overlay(overlay);
+    fx.alloc.populate_from_tree(&fx.world);
+
+    let n_slots = fx.alloc.capacity() as u32;
+    let ctx = GpuContext::new_blocking().expect("gpu");
+    let mut state = WorldGpuState::new(ctx, &fx.reg, n_slots);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(n_slots as usize);
+    let mut coord = DispatchCoordinator::new(n_slots, fx.n_dims, 8);
+    let (_tx, rx) = feeder_channel();
+    project_to_coord(&fx, &mut coord);
+
+    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    proto.flags.use_accumulator_overlay_add = true;
+    proto.initial_gpu_sync(&coord, &mut state);
+    assert_eq!(overlay_cache_stats(&state), (1, 1, 0));
+    let revision = proto.overlay_compile_revision();
+
+    patcher.apply_collected_as_intents(
+        vec![FeederWork::Boundary(BoundaryRequest::ActivateOverlay {
+            target,
+            overlay_id,
+        })],
+        Vec::new(),
+        &proto.registry,
+        &proto.allocator,
+    );
+    let _ = proto.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 1);
+    assert!(proto.overlay_compile_revision() > revision);
+
+    let _ = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
+    );
+    let accumulator = state.read_values();
+    let legacy = run_overlay_ticks(false, 1, |world: &mut SimThing, pid| {
+        world.children[0].add_overlay(make_overlay(
+            pid,
+            vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
+        ));
+    });
+    assert_bits_eq(
+        "c4_suspended_overlay_absent_then_activated",
+        &legacy,
+        &accumulator,
+    );
+}
+
+#[test]
+fn c4_overlay_dissolve_bumps_revision_and_removes_ops() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let mut fx = loyalty_fixture();
+    let mut overlay = make_overlay(fx.pid, vec![(SubFieldRole::Amount, TransformOp::Add(1.0))]);
+    overlay.lifecycle = OverlayLifecycle::Transient {
+        dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 0 }],
+    };
+    fx.world.children[0].add_overlay(overlay);
+    fx.alloc.populate_from_tree(&fx.world);
+
+    let n_slots = fx.alloc.capacity() as u32;
+    let ctx = GpuContext::new_blocking().expect("gpu");
+    let mut state = WorldGpuState::new(ctx, &fx.reg, n_slots);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(n_slots as usize);
+    let mut coord = DispatchCoordinator::new(n_slots, fx.n_dims, 8);
+    let (_tx, rx) = feeder_channel();
+    project_to_coord(&fx, &mut coord);
+
+    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    proto.flags.use_accumulator_overlay_add = true;
+    proto.initial_gpu_sync(&coord, &mut state);
+    assert_eq!(overlay_cache_stats(&state), (1, 1, 1));
+    let revision = proto.overlay_compile_revision();
+
+    let out = proto.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 1);
+    assert_eq!(out.lifecycle.dissolved, 1);
+    assert!(proto.overlay_compile_revision() > revision);
+    assert_eq!(overlay_cache_stats(&state), (2, 2, 0));
+
+    let _ = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
+    );
+    let accumulator = state.read_values();
+    let legacy = run_overlay_ticks(false, 1, |_world: &mut SimThing, _pid| {});
+    assert_bits_eq(
+        "c4_overlay_dissolve_bumps_revision_and_removes_ops",
+        &legacy,
+        &accumulator,
+    );
+}
+
+#[test]
+fn c4_fission_clone_inherits_overlays_correctly() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    fn run(use_accumulator_overlay: bool) -> (Vec<f32>, u64, u64) {
+        let mut reg = DimensionRegistry::new();
+        let mut prop = SimProperty::simple("core", "loyalty", 0);
+        prop.intensity_behavior = Some(IntensityBehavior::default());
+        prop.fission_templates = vec![FissionThreshold {
+            sub_field: SubFieldRole::Amount,
+            threshold: 0.3,
+            direction: Direction::Falling,
+            template: FissionTemplate {
+                child_kind: SimThingKindTag::Cohort,
+                fusion_intensity_threshold: 0.9,
+                fusion_scar_coefficient: 0.02,
+                resolution_label: "resolved".into(),
+                clone_capability_children: false,
+                capability_container_kinds: Vec::new(),
+            },
+            secondary: None,
+        }];
+        let pid = reg.register(prop);
+        let layout = reg.property(pid).layout.clone();
+        let amount = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let velocity = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+        let intensity = layout.offset_of(&SubFieldRole::Intensity).unwrap();
+
+        let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+        let mut pv = PropertyValue::from_layout(&layout);
+        pv.data[amount] = 0.31;
+        pv.data[velocity] = -0.02;
+        pv.data[intensity] = 0.1;
+        cohort.add_property(pid, pv);
+        cohort.add_overlay(make_overlay(
+            pid,
+            vec![(SubFieldRole::Intensity, TransformOp::Add(0.25))],
+        ));
+
+        let mut world = SimThing::new(SimThingKind::World, 0);
+        world.add_child(cohort);
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&world);
+
+        let n_slots = 8;
+        let n_dims = reg.total_columns as u32;
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let mut state = WorldGpuState::new(ctx, &reg, n_slots);
+        let pipelines = Pipelines::new(&state.ctx);
+        let mut patcher = TransformPatcher::new(n_slots as usize);
+        let mut coord = DispatchCoordinator::new(n_slots, n_dims, 8);
+        let (_tx, rx) = feeder_channel();
+        let mut projected = vec![0.0; alloc.capacity() * n_dims as usize];
+        simthing_gpu::project_tree_to_values(&world, &reg, &alloc, n_dims as usize, &mut projected);
+        coord.shadow[..projected.len()].copy_from_slice(&projected);
+
+        let mut proto = BoundaryProtocol::new(world, reg, alloc);
+        proto.flags.use_accumulator_overlay_add = use_accumulator_overlay;
+        proto.initial_gpu_sync(&coord, &mut state);
+        let revision = proto.overlay_compile_revision();
+
+        let tick = coord.tick(
+            &rx,
+            &mut patcher,
+            &proto.registry,
+            &proto.allocator,
+            &pipelines,
+            &mut state,
+            1.0,
+        );
+        assert!(!tick.events.is_empty(), "fission threshold never fired");
+        let out = proto.execute(tick.events, &mut patcher, &mut coord, &mut state, 1);
+        assert_eq!(out.fission.fissions_executed, 1);
+        let revision_after = proto.overlay_compile_revision();
+
+        let _ = coord.tick(
+            &rx,
+            &mut patcher,
+            &proto.registry,
+            &proto.allocator,
+            &pipelines,
+            &mut state,
+            0.0,
+        );
+        (state.read_values(), revision, revision_after)
+    }
+
+    let (legacy, _, _) = run(false);
+    let (accumulator, before, after) = run(true);
+    assert!(after > before);
+    assert_bits_eq(
+        "c4_fission_clone_inherits_overlays_correctly",
+        &legacy,
+        &accumulator,
+    );
+}
 
 #[test]
 fn c4_no_change_tick_does_not_recompile() {
@@ -329,6 +569,74 @@ fn c4_high_density_unchanged_no_recompile_no_upload() {
 }
 
 #[test]
+fn c4_high_density_single_attach_recompiles_once() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut reg = DimensionRegistry::new();
+    let pid = reg.register(SimProperty::simple("core", "loyalty", 0));
+    let layout = reg.property(pid).layout.clone();
+    let mut world = SimThing::new(SimThingKind::World, 0);
+    let mut attach_target = None;
+    for i in 0..1000 {
+        let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+        if attach_target.is_none() {
+            attach_target = Some(cohort.id);
+        }
+        cohort.add_property(pid, PropertyValue::from_layout(&layout));
+        for j in 0..8 {
+            cohort.add_overlay(make_overlay(
+                pid,
+                vec![(
+                    SubFieldRole::Amount,
+                    TransformOp::Add((i + j) as f32 * 0.001),
+                )],
+            ));
+        }
+        world.add_child(cohort);
+    }
+    let target = attach_target.unwrap();
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&world);
+    let n_slots = alloc.capacity() as u32;
+    let n_dims = reg.total_columns as u32;
+
+    let ctx = GpuContext::new_blocking().expect("gpu");
+    let mut state = WorldGpuState::new(ctx, &reg, n_slots);
+    let mut coord = DispatchCoordinator::new(n_slots, n_dims, 8);
+    let mut patcher = TransformPatcher::new(n_slots as usize);
+    let mut projected = vec![0.0; n_slots as usize * n_dims as usize];
+    simthing_gpu::project_tree_to_values(&world, &reg, &alloc, n_dims as usize, &mut projected);
+    coord.shadow.copy_from_slice(&projected);
+
+    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    proto.flags.use_accumulator_overlay_add = true;
+    for _ in 0..25 {
+        proto.initial_gpu_sync(&coord, &mut state);
+    }
+    assert_eq!(overlay_cache_stats(&state), (1, 1, 8000));
+
+    patcher.apply_collected_as_intents(
+        vec![FeederWork::Boundary(BoundaryRequest::AttachOverlay {
+            target,
+            overlay: make_overlay(pid, vec![(SubFieldRole::Amount, TransformOp::Add(1.0))]),
+        })],
+        Vec::new(),
+        &proto.registry,
+        &proto.allocator,
+    );
+    let _ = proto.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 25);
+    assert_eq!(overlay_cache_stats(&state), (2, 2, 8001));
+
+    for _ in 26..50 {
+        proto.initial_gpu_sync(&coord, &mut state);
+    }
+    assert_eq!(overlay_cache_stats(&state), (2, 2, 8001));
+}
+
+#[test]
 fn c4_after_ticks_decrement_alone_does_not_recompile() {
     let Some(_ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
@@ -399,6 +707,87 @@ fn c4_overlay_attach_bumps_revision() {
     );
     let _ = proto.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 1);
     assert!(proto.overlay_compile_revision() > revision);
+}
+
+#[test]
+fn c4_combined_threshold_intent_overlay_path_matches_legacy() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    fn run(use_accumulators: bool) -> (Vec<f32>, Vec<ThresholdEvent>) {
+        let mut fx = loyalty_fixture();
+        let target = fx.world.children[0].id;
+        let pid = fx.pid;
+        fx.world.children[0].add_overlay(make_overlay(
+            pid,
+            vec![
+                (SubFieldRole::Amount, TransformOp::Add(1.0)),
+                (SubFieldRole::Amount, TransformOp::Multiply(2.0)),
+                (SubFieldRole::Amount, TransformOp::Set(5.0)),
+                (SubFieldRole::Amount, TransformOp::Add(1.0)),
+            ],
+        ));
+        fx.alloc.populate_from_tree(&fx.world);
+
+        let n_slots = fx.alloc.capacity() as u32;
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let mut state = WorldGpuState::new(ctx, &fx.reg, n_slots);
+        let pipelines = Pipelines::new(&state.ctx);
+        let mut patcher = TransformPatcher::new(n_slots as usize);
+        let mut coord = DispatchCoordinator::new(n_slots, fx.n_dims, 8);
+        let (tx, rx) = feeder_channel();
+        project_to_coord(&fx, &mut coord);
+
+        let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+        proto.flags.use_accumulator_threshold_scan = use_accumulators;
+        proto.flags.use_accumulator_intent = use_accumulators;
+        proto.flags.use_accumulator_overlay_add = use_accumulators;
+        proto.register_velocity_alert(VelocityAlertRegistration {
+            sim_thing_id: target,
+            property_id: pid,
+            sub_field: SubFieldRole::Amount,
+            threshold: 4.0,
+            direction: Direction::Rising,
+        });
+        proto.initial_gpu_sync(&coord, &mut state);
+
+        tx.submit_patch(
+            target,
+            PropertyTransformDelta {
+                property_id: pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
+            },
+        )
+        .unwrap();
+        let tick = coord.tick(
+            &rx,
+            &mut patcher,
+            &proto.registry,
+            &proto.allocator,
+            &pipelines,
+            &mut state,
+            0.0,
+        );
+        (state.read_values(), sort_events(&tick.events))
+    }
+
+    let (legacy_values, legacy_events) = run(false);
+    let (accumulator_values, accumulator_events) = run(true);
+    assert_bits_eq(
+        "c4_combined_threshold_intent_overlay_path_matches_legacy_values",
+        &legacy_values,
+        &accumulator_values,
+    );
+    assert_eq!(legacy_events.len(), 1);
+    assert_eq!(legacy_events.len(), accumulator_events.len());
+    for (legacy, accumulator) in legacy_events.iter().zip(accumulator_events.iter()) {
+        assert_eq!(legacy.slot, accumulator.slot);
+        assert_eq!(legacy.col, accumulator.col);
+        assert_eq!(legacy.event_kind, accumulator.event_kind);
+        assert_eq!(legacy.value.to_bits(), accumulator.value.to_bits());
+    }
 }
 
 #[test]

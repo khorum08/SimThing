@@ -1270,6 +1270,50 @@ mod tests {
     }
 
     #[test]
+    fn c4_identity_none_assigns_not_adds() {
+        set_debug_readback_allowed(true);
+        let n_dims = 1u32;
+        let (ctx, mut session) = gpu_session(1, n_dims);
+        let op = AccumulatorOp {
+            source: SourceSpec::Constant(3.0),
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![(0, 0)],
+        };
+
+        session.upload_values(&ctx, &[10.0]);
+        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session.tick(&ctx, 0).unwrap();
+
+        let values = session.readback_full(&ctx).unwrap();
+        assert_eq!(values, vec![3.0]);
+    }
+
+    #[test]
+    fn c4_identity_add_to_target_adds() {
+        set_debug_readback_allowed(true);
+        let n_dims = 1u32;
+        let (ctx, mut session) = gpu_session(1, n_dims);
+        let op = AccumulatorOp {
+            source: SourceSpec::Constant(3.0),
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::AddToTarget,
+            targets: vec![(0, 0)],
+        };
+
+        session.upload_values(&ctx, &[10.0]);
+        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session.tick(&ctx, 0).unwrap();
+
+        let values = session.readback_full(&ctx).unwrap();
+        assert_eq!(values, vec![13.0]);
+    }
+
+    #[test]
     fn accumulator_transfer_clamps_to_available_source() {
         set_debug_readback_allowed(true);
         let n_dims = 1u32;

@@ -125,9 +125,11 @@ pub struct BoundaryHookContext<'a> {
 pub struct PipelineFlags {
     pub use_accumulator_threshold_scan: bool,
     pub use_accumulator_intent: bool,
-    /// C-3: Route TransformOp::Add-only overlay batches through AccumulatorOp.
-    /// If any active Multiply or Set overlay is present, the entire overlay batch
-    /// falls back to old Pass 3 until C-4 implements full order-band semantics.
+    /// C-3/C-4 compatibility flag: routes full Add/Multiply/Set overlay batches
+    /// through the AccumulatorOp OrderBand planner. The name is retained for
+    /// compatibility with the staged C-3 Add-only migration; after C-4, the flag
+    /// no longer means Add-only. When false, legacy Pass 3 remains the runtime
+    /// path and oracle until S-3 deletion.
     pub use_accumulator_overlay_add: bool,
 }
 
