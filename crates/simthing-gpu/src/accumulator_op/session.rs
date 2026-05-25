@@ -11,6 +11,7 @@ use wgpu::{
     Maintain, MapMode, PipelineLayoutDescriptor, QuerySet, QuerySetDescriptor, QueryType,
     ShaderModuleDescriptor, ShaderSource, ShaderStages,
 };
+use wgpu::util::DeviceExt;
 
 use crate::context::GpuContext;
 use crate::world_state::{IntentDelta, ThresholdEvent, ThresholdRegistration};
@@ -695,14 +696,12 @@ impl AccumulatorOpSession {
     }
 
     /// Prepare the session for a batched overlay Add pass in the caller's encoder.
-    pub fn prepare_overlay_add(&self, ctx: &GpuContext) {
-        if self.n_ops == 0 {
-            return;
-        }
-        self.write_tick_uniform(ctx, 0);
+    pub fn prepare_overlay_add(&self, _ctx: &GpuContext) {
+        // Band uniforms are written per band inside `encode_overlay_add_into`.
     }
 
     /// Encode overlay Add ops into the command encoder at the overlay position.
+    /// Dispatches `n_bands` OrderBand passes in ascending order within the encoder.
     /// Does NOT submit — caller owns the encoder and submits with other passes.
     pub fn encode_overlay_add_into(
         &mut self,
@@ -710,25 +709,46 @@ impl AccumulatorOpSession {
         encoder: &mut wgpu::CommandEncoder,
         values: &Buffer,
         previous_values: &Buffer,
+        n_bands: u32,
     ) {
-        if self.n_ops == 0 {
+        if self.n_ops == 0 || n_bands == 0 {
             return;
         }
         self.last_pass_time_us = None;
 
-        let execute_bind_group =
-            self.create_execute_bind_group(ctx, values, previous_values);
+        let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
+        let mut band_uniforms = Vec::with_capacity(n_bands as usize);
 
-        {
+        for band in 0..n_bands {
+            let tick_params = AccumulatorTickParams {
+                n_ops: self.n_ops,
+                current_band: band,
+                n_slots: self.n_slots,
+                n_dims: self.n_dims,
+                emission_capacity: self.emission_capacity,
+                threshold_emission_capacity: self.threshold_emission_capacity,
+                _pad0: 0,
+                _pad1: 0,
+            };
+            let tick_uniform = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("accumulator_overlay_add_band_uniform"),
+                contents: bytemuck::bytes_of(&tick_params),
+                usage: BufferUsages::UNIFORM,
+            });
+            let execute_bind_group =
+                self.create_execute_bind_group_with_uniform(ctx, values, previous_values, &tick_uniform);
+            band_uniforms.push(tick_uniform);
+
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("accumulator_overlay_add_pass"),
                 timestamp_writes: None,
             });
             pass.set_pipeline(&self.execute_pipeline);
             pass.set_bind_group(0, &execute_bind_group, &[]);
-            let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
             pass.dispatch_workgroups(groups, 1, 1);
         }
+
+        drop(band_uniforms);
     }
 
     fn write_tick_uniform(&self, ctx: &GpuContext, band: u32) {
@@ -755,6 +775,21 @@ impl AccumulatorOpSession {
         values: &Buffer,
         previous_values: &Buffer,
     ) -> wgpu::BindGroup {
+        self.create_execute_bind_group_with_uniform(
+            ctx,
+            values,
+            previous_values,
+            &self.tick_uniform,
+        )
+    }
+
+    fn create_execute_bind_group_with_uniform(
+        &self,
+        ctx: &GpuContext,
+        values: &Buffer,
+        previous_values: &Buffer,
+        tick_uniform: &Buffer,
+    ) -> wgpu::BindGroup {
         ctx.device.create_bind_group(&BindGroupDescriptor {
             label: Some("accumulator_execute_bg"),
             layout: &self.execute_layout,
@@ -777,7 +812,7 @@ impl AccumulatorOpSession {
                 },
                 BindGroupEntry {
                     binding: 4,
-                    resource: self.tick_uniform.as_entire_binding(),
+                    resource: tick_uniform.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 5,

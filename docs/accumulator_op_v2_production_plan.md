@@ -367,11 +367,12 @@ overlay scenarios.
 
 **Implementation note:** C-3 activates only for Add-only overlay batches.
 Mixed Add/Multiply/Set batches fall back entirely to legacy Pass 3 until C-4.
-Add deltas are folded per `(slot, col)` in legacy delta order (one op per cell)
-before upload to preserve f32 bit parity and avoid same-cell atomic-order
-nondeterminism. This fallback is not a strategic commitment to legacy overlay
-code — C-4 owns the full Add/Multiply/Set order-band compiler and S-3 deletes
-the old overlay path after C-3/C-4 pass parity.
+Add-only batches emit one AccumulatorOp per Add delta with per-cell OrderBand
+sequencing; the pipeline dispatches all bands in ascending order within one
+command buffer to preserve legacy f32 operation order exactly. The old overlay
+path remains only as temporary fallback/oracle for mixed batches. C-4 owns
+Multiply/Set and the full order-band compiler; S-3 deletes the old overlay path
+after C-3/C-4 pass parity.
 
 ---
 

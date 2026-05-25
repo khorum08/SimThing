@@ -203,6 +203,7 @@ impl BoundaryProtocol {
         if !self.flags.use_accumulator_overlay_add {
             state.overlay_add_accumulator = None;
             state.accumulator_overlay_add_active = false;
+            state.accumulator_overlay_add_bands = 0;
             return;
         }
         state.ensure_overlay_add_accumulator();

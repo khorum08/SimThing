@@ -237,10 +237,12 @@ pub struct PipelineFlags {
 - `Add`, `Multiply`, `Set` ops in ancestor-then-local order
 - **C-3 landed:** `use_accumulator_overlay_add` routes Add-only overlay batches
   through AccumulatorOp. If any active Multiply or Set overlay is present, the
-  full overlay batch remains on legacy Pass 3 until C-4. Add deltas are folded
-  per target cell in legacy delta order before upload to preserve f32 bit parity.
-  This fallback is temporary — C-4 owns the full order-band compiler and S-3
-  deletes the old overlay path after C-3/C-4 pass parity.
+  full overlay batch remains on legacy Pass 3 until C-4. For Add-only batches,
+  C-3 emits one AccumulatorOp per Add delta with an OrderBand equal to that
+  cell's local Add sequence index; the pipeline dispatches all overlay Add bands
+  in ascending order within the same command buffer, preserving legacy f32
+  operation order. This fallback is temporary — C-4 owns the full order-band
+  compiler and S-3 deletes the old overlay path after C-3/C-4 pass parity.
 - Post-migration: `Identity+OrderBand(0)`, `Product+OrderBand(1)`,
   `LastByPriority+OrderBand(1)` combines
 

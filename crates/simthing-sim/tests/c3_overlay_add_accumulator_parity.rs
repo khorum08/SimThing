@@ -74,16 +74,6 @@ fn assert_bits_eq(label: &str, old: &[f32], new: &[f32]) {
     }
 }
 
-fn assert_near_eq(label: &str, old: &[f32], new: &[f32], tol: f32) {
-    assert_eq!(old.len(), new.len(), "{label}: length");
-    for (i, (a, b)) in old.iter().zip(new.iter()).enumerate() {
-        assert!(
-            (a - b).abs() <= tol,
-            "{label} mismatch at index {i}: {a} vs {b} (tol {tol})"
-        );
-    }
-}
-
 fn run_overlay_ticks<F>(
     use_accumulator_overlay_add: bool,
     n_ticks: u32,
@@ -242,7 +232,42 @@ parity_scenario!(c3_add_only_old_pass3_noop, 1, 0.0, |world, pid| {
 });
 
 #[test]
-fn c3_same_cell_add_folded_within_tolerance() {
+fn c3_repeated_add_same_cell_preserves_legacy_f32_order() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let setup = |world: &mut SimThing, pid: simthing_core::SimPropertyId| {
+        let cohort = &mut world.children[0];
+        cohort.add_overlay(make_overlay(
+            pid,
+            vec![
+                (SubFieldRole::Amount, TransformOp::Add(1e20)),
+                (SubFieldRole::Amount, TransformOp::Add(-1e20)),
+            ],
+        ));
+    };
+
+    let old = run_overlay_ticks(false, 1, 0.0, setup);
+    let new = run_overlay_ticks(true, 1, 0.0, setup);
+
+    let expected = (1.0f32 + 1e20f32) + (-1e20f32);
+    let amount_idx = 0usize; // loyalty Amount is first column in simple property
+    assert_eq!(
+        old.values[amount_idx].to_bits(),
+        expected.to_bits(),
+        "legacy baseline should match sequential f32 order"
+    );
+    assert_bits_eq(
+        "c3_repeated_add_same_cell",
+        &old.values,
+        &new.values,
+    );
+}
+
+#[test]
+fn c3_same_cell_many_overlays_bit_exact() {
     let Some(_ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
         return;
@@ -259,10 +284,7 @@ fn c3_same_cell_add_folded_within_tolerance() {
     };
     let old = run_overlay_ticks(false, 1, 0.0, setup);
     let new = run_overlay_ticks(true, 1, 0.0, setup);
-    // Folded constant add vs sequential legacy adds can differ by a few ULPs when
-    // many deltas target the same cell from a nonzero base.
-    let tol = f32::EPSILON * n_overlays as f32;
-    assert_near_eq("c3_same_cell_add_folded", &old.values, &new.values, tol);
+    assert_bits_eq("c3_same_cell_many_overlays", &old.values, &new.values);
 }
 
 #[test]

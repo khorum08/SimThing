@@ -1,4 +1,6 @@
-//! C-3 overlay Add → AccumulatorOp planning (Add-only batches, per-cell fold).
+//! C-3 overlay Add → AccumulatorOp planning (Add-only batches, OrderBand sequencing).
+
+use std::collections::HashMap;
 
 use crate::accumulator_op::{
     combine_kind, consume_kind, gate_kind, scale_kind, source_kind, AccumulatorOpGpu,
@@ -8,16 +10,19 @@ use crate::world_state::{OverlayDelta, SlotDeltaRange, OP_ADD};
 /// Outcome of planning a C-3 overlay Add migration for one boundary sync.
 #[derive(Debug, PartialEq)]
 pub enum OverlayAddPlan {
-    /// Every active overlay delta is `OP_ADD`; ops are folded per target cell.
-    AllAdd { ops: Vec<AccumulatorOpGpu> },
+    /// Every active overlay delta is `OP_ADD`; one op per delta with per-cell OrderBands.
+    AllAdd {
+        ops:     Vec<AccumulatorOpGpu>,
+        n_bands: u32,
+    },
     /// At least one Multiply or Set delta — caller must use legacy Pass 3 entirely.
     FallbackNonAdd,
 }
 
-fn make_folded_add_op(slot: u32, col: u32, folded_value: f32) -> AccumulatorOpGpu {
+fn make_add_op(slot: u32, col: u32, value: f32, band: u32) -> AccumulatorOpGpu {
     AccumulatorOpGpu {
         source_kind:  source_kind::CONSTANT,
-        source_slot:  folded_value.to_bits(),
+        source_slot:  value.to_bits(),
         source_col:   0,
         source_count: 0,
         combine_kind: combine_kind::IDENTITY,
@@ -26,7 +31,7 @@ fn make_folded_add_op(slot: u32, col: u32, folded_value: f32) -> AccumulatorOpGp
         combine_c:    0,
         combine_d:    0,
         gate_kind:    gate_kind::ORDER_BAND,
-        gate_a:       0,
+        gate_a:       band,
         gate_b:       0,
         scale_kind:   scale_kind::IDENTITY,
         scale_a:      0,
@@ -47,8 +52,8 @@ fn make_folded_add_op(slot: u32, col: u32, folded_value: f32) -> AccumulatorOpGp
 /// Plan C-3 overlay Add migration for the current overlay delta batch.
 ///
 /// Returns [`OverlayAddPlan::FallbackNonAdd`] when any active delta is not
-/// `OP_ADD`. Otherwise folds Add deltas per `(slot, col)` in legacy delta order
-/// and emits one AccumulatorOp registration per distinct cell.
+/// `OP_ADD`. Otherwise emits one AccumulatorOp per Add delta with an OrderBand
+/// equal to that cell's local Add sequence index (legacy traversal order).
 pub fn plan_overlay_add_accumulator(
     deltas: &[OverlayDelta],
     ranges: &[SlotDeltaRange],
@@ -69,8 +74,9 @@ pub fn plan_overlay_add_accumulator(
         }
     }
 
-    let mut ordered_cells: Vec<(u32, u32)> = Vec::new();
-    let mut folded: Vec<f32> = Vec::new();
+    let mut next_band: HashMap<(u32, u32), u32> = HashMap::new();
+    let mut ops = Vec::new();
+    let mut n_bands = 0u32;
 
     for slot in 0..n_slots as usize {
         if slot >= ranges.len() {
@@ -85,22 +91,15 @@ pub fn plan_overlay_add_accumulator(
             debug_assert_eq!(delta.op_kind, OP_ADD);
 
             let cell = (slot as u32, delta.col);
-            if let Some(idx) = ordered_cells.iter().position(|&c| c == cell) {
-                folded[idx] += delta.value;
-            } else {
-                ordered_cells.push(cell);
-                folded.push(delta.value);
-            }
+            let band = *next_band.get(&cell).unwrap_or(&0);
+            next_band.insert(cell, band + 1);
+            n_bands = n_bands.max(band + 1);
+
+            ops.push(make_add_op(cell.0, cell.1, delta.value, band));
         }
     }
 
-    let ops = ordered_cells
-        .into_iter()
-        .zip(folded)
-        .map(|((slot, col), value)| make_folded_add_op(slot, col, value))
-        .collect();
-
-    OverlayAddPlan::AllAdd { ops }
+    OverlayAddPlan::AllAdd { ops, n_bands }
 }
 
 #[cfg(test)]
@@ -142,7 +141,7 @@ mod tests {
     }
 
     #[test]
-    fn c3_same_cell_add_folds_in_legacy_order() {
+    fn c3_same_cell_add_assigns_increasing_order_bands() {
         let deltas = vec![
             OverlayDelta {
                 col: 0,
@@ -164,20 +163,92 @@ mod tests {
             },
         ];
         let ranges = slot0_range(3);
-        let expected = ((0.0f32 + 1e20f32) + 1.0f32) + (-1e20f32);
 
-        let OverlayAddPlan::AllAdd { ops } =
+        let OverlayAddPlan::AllAdd { ops, n_bands } =
             plan_overlay_add_accumulator(&deltas, &ranges, 1)
         else {
             panic!("expected AllAdd");
         };
-        assert_eq!(ops.len(), 1);
-        assert_eq!(f32::from_bits(ops[0].source_slot), expected);
-        assert_eq!(ops[0].target0_col, 0);
+        assert_eq!(ops.len(), 3);
+        assert_eq!(ops[0].gate_a, 0);
+        assert_eq!(ops[1].gate_a, 1);
+        assert_eq!(ops[2].gate_a, 2);
+        assert_eq!(n_bands, 3);
+        assert_eq!(ops[0].source_slot, 1e20_f32.to_bits());
+        assert_eq!(ops[1].source_slot, 1.0_f32.to_bits());
+        assert_eq!(ops[2].source_slot, (-1e20_f32).to_bits());
     }
 
     #[test]
-    fn c3_add_only_batch_emits_one_op_per_target_cell() {
+    fn c3_different_cells_share_same_band() {
+        let deltas = vec![
+            OverlayDelta {
+                col: 0,
+                op_kind: OP_ADD,
+                value: 1.0,
+                _pad: 0,
+            },
+            OverlayDelta {
+                col: 1,
+                op_kind: OP_ADD,
+                value: 2.0,
+                _pad: 0,
+            },
+        ];
+        let ranges = slot0_range(2);
+
+        let OverlayAddPlan::AllAdd { ops, n_bands } =
+            plan_overlay_add_accumulator(&deltas, &ranges, 1)
+        else {
+            panic!("expected AllAdd");
+        };
+        assert_eq!(ops.len(), 2);
+        assert_eq!(ops[0].gate_a, 0);
+        assert_eq!(ops[1].gate_a, 0);
+        assert_eq!(n_bands, 1);
+    }
+
+    #[test]
+    fn c3_second_add_same_cell_only_advances_that_cell() {
+        let deltas = vec![
+            OverlayDelta {
+                col: 0,
+                op_kind: OP_ADD,
+                value: 1.0,
+                _pad: 0,
+            },
+            OverlayDelta {
+                col: 1,
+                op_kind: OP_ADD,
+                value: 2.0,
+                _pad: 0,
+            },
+            OverlayDelta {
+                col: 0,
+                op_kind: OP_ADD,
+                value: 3.0,
+                _pad: 0,
+            },
+        ];
+        let ranges = slot0_range(3);
+
+        let OverlayAddPlan::AllAdd { ops, n_bands } =
+            plan_overlay_add_accumulator(&deltas, &ranges, 1)
+        else {
+            panic!("expected AllAdd");
+        };
+        assert_eq!(ops.len(), 3);
+        assert_eq!(ops[0].gate_a, 0);
+        assert_eq!(ops[0].target0_col, 0);
+        assert_eq!(ops[1].gate_a, 0);
+        assert_eq!(ops[1].target0_col, 1);
+        assert_eq!(ops[2].gate_a, 1);
+        assert_eq!(ops[2].target0_col, 0);
+        assert_eq!(n_bands, 2);
+    }
+
+    #[test]
+    fn c3_add_only_batch_emits_one_op_per_add_delta() {
         let deltas = vec![
             OverlayDelta {
                 col: 0,
@@ -200,16 +271,13 @@ mod tests {
         ];
         let ranges = slot0_range(3);
 
-        let OverlayAddPlan::AllAdd { ops } =
+        let OverlayAddPlan::AllAdd { ops, n_bands } =
             plan_overlay_add_accumulator(&deltas, &ranges, 1)
         else {
             panic!("expected AllAdd");
         };
-        assert_eq!(ops.len(), 2);
-        assert_eq!(f32::from_bits(ops[0].source_slot), 3.0);
-        assert_eq!(ops[0].target0_col, 0);
-        assert_eq!(f32::from_bits(ops[1].source_slot), 3.0);
-        assert_eq!(ops[1].target0_col, 1);
+        assert_eq!(ops.len(), 3);
+        assert_eq!(n_bands, 2);
     }
 
     #[test]
@@ -246,16 +314,17 @@ mod tests {
     fn c3_empty_add_batch_emits_no_ops() {
         let deltas: Vec<OverlayDelta> = vec![];
         let ranges = slot0_range(0);
-        let OverlayAddPlan::AllAdd { ops } =
+        let OverlayAddPlan::AllAdd { ops, n_bands } =
             plan_overlay_add_accumulator(&deltas, &ranges, 1)
         else {
             panic!("expected AllAdd");
         };
         assert!(ops.is_empty());
+        assert_eq!(n_bands, 0);
     }
 
     #[test]
-    fn c3_folded_value_in_source_slot_field() {
+    fn c3_delta_value_in_source_slot_field() {
         let deltas = vec![OverlayDelta {
             col: 2,
             op_kind: OP_ADD,
@@ -263,7 +332,7 @@ mod tests {
             _pad: 0,
         }];
         let ranges = slot0_range(1);
-        let OverlayAddPlan::AllAdd { ops } =
+        let OverlayAddPlan::AllAdd { ops, n_bands } =
             plan_overlay_add_accumulator(&deltas, &ranges, 1)
         else {
             panic!("expected AllAdd");
@@ -271,5 +340,6 @@ mod tests {
         assert_eq!(ops.len(), 1);
         assert_eq!(ops[0].source_slot, 7.5_f32.to_bits());
         assert_eq!(ops[0].target0_col, 2);
+        assert_eq!(n_bands, 1);
     }
 }

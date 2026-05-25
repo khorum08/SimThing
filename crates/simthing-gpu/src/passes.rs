@@ -728,13 +728,16 @@ impl Pipelines {
             }
         }
 
-        if let Some(session) = sessions.overlay_add.as_mut() {
-            session.encode_overlay_add_into(
-                ctx,
-                &mut encoder,
-                &state.values,
-                &state.previous_values,
-            );
+        if state.accumulator_overlay_add_active && state.accumulator_overlay_add_bands > 0 {
+            if let Some(session) = sessions.overlay_add.as_mut() {
+                session.encode_overlay_add_into(
+                    ctx,
+                    &mut encoder,
+                    &state.values,
+                    &state.previous_values,
+                    state.accumulator_overlay_add_bands,
+                );
+            }
         }
 
         {

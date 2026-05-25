@@ -332,6 +332,8 @@ pub struct WorldGpuState {
     pub overlay_add_accumulator: Option<crate::AccumulatorOpSession>,
     /// True when C-3 uploaded at least one Add op for the current boundary.
     pub accumulator_overlay_add_active: bool,
+    /// Number of OrderBand passes for C-3 overlay Add (max per-cell Add depth).
+    pub accumulator_overlay_add_bands: u32,
 }
 
 impl WorldGpuState {
@@ -453,6 +455,7 @@ impl WorldGpuState {
             intent_accumulator: None,
             overlay_add_accumulator: None,
             accumulator_overlay_add_active: false,
+            accumulator_overlay_add_bands: 0,
         }
     }
 
@@ -462,6 +465,7 @@ impl WorldGpuState {
         self.intent_accumulator = None;
         self.overlay_add_accumulator = None;
         self.accumulator_overlay_add_active = false;
+        self.accumulator_overlay_add_bands = 0;
     }
 
     /// Ensure the C-2 intent AccumulatorOp session exists on this world state.
