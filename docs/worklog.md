@@ -8,13 +8,13 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-19 — C-INF-1 runtime consolidation + C-INF-2 oracle harness
 
-**Status:** Local (pending commit).
+**Status:** `master` @ `164ac14` (PR #109 merged).
 
 **Scope:** Wire `WorldAccumulatorRuntime` into `WorldGpuState`; restore master
 three-session take/put pipeline dispatch inside the runtime envelope; land legacy
 oracle harness with integration tests.
 
-**Landed (this session):**
+**Landed (PR #109, `2f95c6d`):**
 
 - **C-INF-1** — `WorldGpuState::accumulator_runtime: Option<WorldAccumulatorRuntime>`
   replaces three sidecar `Option<AccumulatorOpSession>` fields; per-family sessions
@@ -33,12 +33,12 @@ parity including `c1_c2_c3_combined_accumulator_paths_parity`; C-INF-2 harness (
 
 ## 2026-05-25 — Pivot-forward policy + B-4I summary + C-INF scaffolds
 
-**Status:** `master` @ `523c712` + local pivot-forward infra (pending commit).
+**Status:** `master` @ `16fb97e` (PR #108 merged).
 
 **Scope:** Ingest Opus pivot-forward handoff — enforce AccumulatorOp v2 as production direction;
 implement B-4I production `SlotSummary`; scaffold C-INF-1 runtime envelope and C-INF-2 oracle harness.
 
-**Landed (this session):**
+**Landed (PR #108, `2aa630e`):**
 
 - **`docs/workshop/pivot_forward_implementation_policy.md`** — active doctrine: legacy = oracle/fallback only; every C-family PR names S-phase sunset target
 - **B-4I** — production `SlotSummaryGpu` (32 B/slot): `flags`, `checksum_all`, 4 column-group checksums; WGSL `write_summaries` + CPU oracle; session readback updated
@@ -48,7 +48,7 @@ implement B-4I production `SlotSummary`; scaffold C-INF-1 runtime envelope and C
 **Tests:** B-4 summary unit tests (format roundtrip, group isolation, n_dims 2/64); existing
 `session_readback_summary_matches_cpu_oracle` validates GPU ↔ CPU group checksums.
 
-**Next:** C-INF-1 wire into `WorldGpuState` (consolidation PR) · C-4 Opus order-band compiler · C-5 soft reductions.
+**Next:** C-4 Opus order-band compiler · C-5 soft reductions. *(C-INF wire-up completed in #109.)*
 
 ---
 

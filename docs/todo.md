@@ -2,8 +2,9 @@
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B3/I1) complete;
 **AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98),
-**C-2** (#99–#100), **C-3** (#105–#107), and **pivot-forward policy** landed.
-`master` @ **`523c712`** (PR #107 C-3 OrderBand exact f32 order).
+**C-2** (#99–#100), **C-3** (#105–#107), **pivot-forward policy + B-4I** (#108), and
+**C-INF runtime/oracle** (#109) landed.
+`master` @ **`164ac14`** (PR #109 C-INF-1/C-INF-2 runtime consolidation + oracle harness).
 
 **Pivot posture:** AccumulatorOp v2 is the production direction. Legacy GPU passes are
 **oracle/fallback only** until S-phase deletion. See
@@ -13,7 +14,8 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
 
 **Tests:** `cargo test --workspace` green at last full run (430+ passed, ignored perf gates).
-AccumulatorOp module: **112+** gpu + **9** core tests (after B-4I + C-INF scaffolds).
+AccumulatorOp module: **57** gpu accumulator_op unit tests + **9** core tests; C-1/C-2/C-3 parity
+(26) + C-INF-2 harness (2) green after #109.
 
 **Cursor handoff:** AccumulatorOp v2 Phase C migrations + pivot-forward infrastructure (see table below).
 
@@ -51,8 +53,8 @@ AccumulatorOp module: **112+** gpu + **9** core tests (after B-4I + C-INF scaffo
 | **C-3** | #105 | Overlay Add → AccumulatorOp; `use_accumulator_overlay_add` (default false); Add-only batches |
 | **C-3 refine** | #106 | Mixed Add/Mul/Set → full legacy Pass 3 fallback (no split-mode) |
 | **C-3 OrderBand** | #107 | Per-cell OrderBand sequencing for exact f32 Add order; multi-band dispatch fix |
-| **C-INF-1** | — | `WorldAccumulatorRuntime` wired into `WorldGpuState`; three-session adapter shim |
-| **C-INF-2** | — | Legacy oracle harness + intent/threshold integration tests |
+| **Pivot-forward + B-4I** | #108 | `2aa630e` | Pivot-forward policy; production `SlotSummaryGpu`; C-INF scaffolds |
+| **C-INF-1 + C-INF-2** | #109 | `2f95c6d` | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness + tests |
 
 **Next (non-Opus):** **C-5** soft reductions · per-family oracle scenario expansion (optional refactor of C-1/C-2/C-3 parity tests onto harness).
 
