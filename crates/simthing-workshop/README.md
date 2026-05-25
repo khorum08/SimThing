@@ -155,3 +155,17 @@ Envelope timings are not representative of GPU-resident pivot performance. Resid
 Run: `cargo test -p simthing-workshop multitarget -- --nocapture`
 
 The envelope report bundle writes `tests/multitarget_replay_reports.txt` (committed). The resident report bundle writes `tests/multitarget_replay_resident_reports.txt` (committed). Bursty 100k also writes `target/workshop/multitarget_replay_report.md` / `multitarget_replay_resident_report.md` and `.json`.
+
+## Transfer / emission contention spike
+
+This spike tests whether an AccumulatorOp-style GPU-resident path can resolve contested resource allocation from shared pools into queue accumulators and emitted units.
+
+The current-shaped route is a CPU boundary allocator that sorts and walks requests in deterministic priority order.
+
+The pivot-shaped route is GPU-resident: it uploads initial pool/queue/request buffers once, runs repeated allocation/emission ticks on GPU, emits summaries and optional compact records, and reads final validation once.
+
+The v1 kernel uses one invocation per pool and processes that pool's request range in canonical order. This intentionally avoids nondeterministic atomic races and tests deterministic pool contention first. Cross-pool queue contention and atomic claim-buffer designs are reserved for a later spike.
+
+Run: `cargo test -p simthing-workshop transfer_contention -- --nocapture`
+
+The report bundle writes `tests/transfer_contention_reports.txt` (committed). Hotspot 100k also writes `target/workshop/transfer_contention_report.md` and `.json`.
