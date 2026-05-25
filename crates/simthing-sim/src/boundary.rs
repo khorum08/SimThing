@@ -131,6 +131,9 @@ pub struct PipelineFlags {
     /// no longer means Add-only. When false, legacy Pass 3 remains the runtime
     /// path and oracle until S-3 deletion.
     pub use_accumulator_overlay_add: bool,
+    /// C-5: routes Mean / WeightedMean soft reductions through AccumulatorOp.
+    /// Legacy reduction remains flag-off/oracle for soft columns until S-4.
+    pub use_accumulator_reduction_soft: bool,
 }
 
 /// Top-level boundary orchestrator.
@@ -217,6 +220,17 @@ impl BoundaryProtocol {
             return;
         }
         state.ensure_overlay_add_accumulator();
+    }
+
+    fn sync_accumulator_reduction_soft_session(&self, state: &mut WorldGpuState) {
+        if !self.flags.use_accumulator_reduction_soft {
+            if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                runtime.clear_reduction_soft();
+            }
+            state.set_reduction_soft_dispatch(false, 0);
+            return;
+        }
+        state.ensure_reduction_soft_accumulator();
     }
 
     fn sync_accumulator_threshold_ops(
@@ -732,6 +746,7 @@ impl BoundaryProtocol {
             threshold_dirty,
             topology_dirty,
             self.flags.use_accumulator_overlay_add,
+            self.flags.use_accumulator_reduction_soft,
             self.overlay_compile_revision,
             &mut self.cached_topology_state,
         );
@@ -756,6 +771,7 @@ impl BoundaryProtocol {
         }
         self.sync_accumulator_intent_session(state);
         self.sync_accumulator_overlay_add_session(state);
+        self.sync_accumulator_reduction_soft_session(state);
         out.gpu_sync = GpuSyncOutcome {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
             // Sum: gpu_out.threshold_regs_uploaded counts entries written by
@@ -968,6 +984,7 @@ impl BoundaryProtocol {
             true,
             true,
             self.flags.use_accumulator_overlay_add,
+            self.flags.use_accumulator_reduction_soft,
             self.overlay_compile_revision,
             &mut self.cached_topology_state,
         );
@@ -980,6 +997,7 @@ impl BoundaryProtocol {
         }
         self.sync_accumulator_intent_session(state);
         self.sync_accumulator_overlay_add_session(state);
+        self.sync_accumulator_reduction_soft_session(state);
     }
 
     /// Read-only access to the persistent fission lineage. Useful for tests

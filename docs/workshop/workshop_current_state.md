@@ -22,7 +22,7 @@ Two parallel tracks:
 Legacy passes (intent, overlay, reduction, threshold, velocity, intensity) are
 **oracle/fallback only** until S-phase deletion.
 
-**Next gates:** **C-5** soft reductions · **S-3** overlay sunset after default-on validation.
+**Next gates:** **C-6** exact reductions (Sum/Max/Min) · **S-4** reduction sunset after C-5 + C-6 default-on.
 
 ---
 
@@ -40,6 +40,7 @@ Legacy passes (intent, overlay, reduction, threshold, velocity, intensity) are
 | **C-3** | #105–#107 | Overlay Add-only + OrderBand exact f32 order foundation |
 | **C-4** | #118 | Full Add/Multiply/Set overlay OrderBand compiler + dirty cache |
 | **C-4 remedial** | local | Structural lifecycle/fission/cache hardening + consume-mode regressions |
+| **C-5** | local | Mean / WeightedMean soft reductions → `ReductionSoft` on `output_vectors` |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
@@ -49,10 +50,11 @@ Legacy passes (intent, overlay, reduction, threshold, velocity, intensity) are
 ```text
 WorldGpuState
   accumulator_runtime: Option<WorldAccumulatorRuntime>
-    intent_session / threshold_session / overlay_session  (per-family adapter)
+    intent_session / threshold_session / overlay_session / reduction_soft_session
     overlay_compile_cache: Option<OverlayCompileCache>    (C-4 dirty/cached planner)
     summary: Option<WorldSummaryRuntime>                  (B-4 from world values)
   accumulator_overlay_add_active / _bands                 (cached dispatch; survives session take)
+  accumulator_reduction_soft_active / _bands              (C-5 cached dispatch)
 
 BoundaryProtocol flags → sync clears or ensures families
 Dispatcher → take/put sessions; encode world summary after Accumulator passes when active
@@ -71,8 +73,7 @@ session presence + overlay dispatch cache, not stale sessions.
 
 | Priority | ID | Owner | Blocks |
 |----------|-----|-------|--------|
-| Non-Opus | **C-5** | Opus audit + Composer | WeightedMean tolerance; soft reductions → **S-4** |
-| Non-Opus | **C-6–C-8** | Composer | Reductions, velocity, EML/transfer |
+| Non-Opus | **C-6–C-8** | Composer | Exact reductions, velocity, EML/transfer |
 | Infra | Oracle refactor | Optional | Move C-1/C-2/C-3/C-4 parity tests onto `run_family_oracle` |
 
 ### Sunset targets (S-phase)
@@ -121,6 +122,7 @@ See `crates/simthing-workshop/README.md` and `todo.md` § workshop spikes.
 | C-2 parity | 11 | incl. combined C-1/C-2 |
 | C-3 parity | 13 | incl. combined C-1/C-2/C-3 |
 | C-4 parity/cache | 16 | Add/Mul/Set parity, lifecycle/fission/cache, high-density guards |
+| C-5 reduction | 12 | `reduction_orderband` (2) + legacy oracle (2) + parity/guards (8) |
 | C-INF-2 harness | 2 | intent + threshold oracle smoke |
 | Pivot-forward remedial | 3 | authoritative flags |
 | B-4 world summary integrated | 2 | intent + overlay orderbands |
@@ -130,6 +132,8 @@ cargo test -p simthing-gpu accumulator_op
 cargo test -p simthing-gpu overlay_orderband
 cargo test -p simthing-sim --test c1_threshold_scan_parity --test c2_intent_accumulator_parity --test c3_overlay_add_accumulator_parity
 cargo test -p simthing-sim --test c4_overlay_orderband_parity
+cargo test -p simthing-sim --test c5_legacy_weighted_mean_oracle --test c5_weighted_mean_reduction_parity
+cargo test -p simthing-gpu reduction_orderband
 cargo test -p simthing-sim --test c_inf_legacy_oracle_harness --test pivot_forward_remedial --test b4_world_summary_integrated
 cargo check --workspace
 ```
@@ -144,8 +148,8 @@ cargo check --workspace
 | [`pivot_forward_implementation_policy.md`](pivot_forward_implementation_policy.md) | Active migration doctrine (legacy = oracle/fallback) |
 | [`slot_summary_b4_design.md`](slot_summary_b4_design.md) | Accepted B-4 summary tier design |
 | [`c1_perf_reframe_memo.md`](c1_perf_reframe_memo.md) | Accepted C-1 perf gate reframe (no 5× readback claim) |
-| [`c4_overlay_orderband_compiler_design.md`](c4_overlay_orderband_compiler_design.md) | Accepted C-4 design — Codex 5.5 ready for implementation |
-| [`c5_weighted_mean_reduction_design.md`](c5_weighted_mean_reduction_design.md) | Accepted C-5 design — soft-reduction migration; no production property guard changes needed |
+| [`c4_overlay_orderband_compiler_design.md`](c4_overlay_orderband_compiler_design.md) | Accepted C-4 overlay OrderBand design |
+| [`c5_weighted_mean_reduction_design.md`](c5_weighted_mean_reduction_design.md) | Accepted C-5 design — soft-reduction migration |
 | [`multichannel_accumulator_test_battery.md`](multichannel_accumulator_test_battery.md) | Workshop benchmark spec |
 | [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder-facing authoring surface |
 | [`simthing_base_economic_system_working_doc.md`](simthing_base_economic_system_working_doc.md) | Provisional economic substrate (E0 deferred) |

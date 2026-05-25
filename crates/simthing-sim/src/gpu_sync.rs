@@ -69,6 +69,7 @@ pub fn sync_gpu_buffers(
     rebuild_thresholds: bool,
     rebuild_reduction_topology: bool,
     use_accumulator_overlay_add: bool,
+    use_accumulator_reduction_soft: bool,
     overlay_compile_revision: u64,
     // B2 Approach C: the canonical TopologyState owned by the boundary.
     // When `rebuild_reduction_topology` is true, this routine refreshes
@@ -299,6 +300,31 @@ pub fn sync_gpu_buffers(
             + topo.child_indices.len() as u64 * std::mem::size_of::<u32>() as u64
             + rules_u32.len() as u64 * std::mem::size_of::<u32>() as u64
             + depth_slots.len() as u64 * std::mem::size_of::<u32>() as u64;
+
+        if use_accumulator_reduction_soft {
+            state.ensure_reduction_soft_accumulator();
+            let plan = simthing_gpu::plan_reduction_orderband(
+                topology_state,
+                &descriptors,
+                state.n_dims,
+            )
+            .expect("C-5 reduction OrderBand plan");
+            state
+                .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands)
+                .expect("C-5 reduction op upload");
+        }
+    } else if use_accumulator_reduction_soft {
+        state.ensure_reduction_soft_accumulator();
+        let descriptors = build_column_rule_descriptors(registry, state.n_dims as usize);
+        let plan = simthing_gpu::plan_reduction_orderband(
+            topology_state,
+            &descriptors,
+            state.n_dims,
+        )
+        .expect("C-5 reduction OrderBand plan");
+        state
+            .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands)
+            .expect("C-5 reduction op upload");
     }
 
     out.boundary_upload_bytes =

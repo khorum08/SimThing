@@ -11,6 +11,7 @@ pub mod overlay_prep;
 pub mod passes;
 pub mod projection;
 pub mod reduction;
+pub mod reduction_orderband;
 pub mod slot;
 pub mod world_state;
 
@@ -23,12 +24,16 @@ pub use accumulator_op::{
 };
 pub use context::{GpuContext, GpuInitError};
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
+pub use reduction_orderband::{
+    plan_reduction_orderband, ReductionOrderBandPlan, ReductionPlanError,
+};
 pub use overlay_prep::build_overlay_deltas;
 pub use passes::{AccumulatorPipelineSessions, Pipelines};
 pub use projection::project_tree_to_values;
 pub use reduction::{
     build_column_rule_descriptors, build_column_rules, build_topology, cpu_reduce_oracle,
-    encode_column_rules, ColumnRuleDescriptor, Topology, TopologyState,
+    cpu_reduce_oracle_call_count, encode_column_rules, reset_cpu_reduce_oracle_call_count,
+    ColumnRuleDescriptor, Topology, TopologyState,
 };
 pub use slot::SlotAllocator;
 pub use world_state::{

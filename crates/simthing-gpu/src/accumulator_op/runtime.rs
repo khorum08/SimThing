@@ -94,6 +94,7 @@ pub struct WorldAccumulatorRuntime {
     intent_session: Option<AccumulatorOpSession>,
     threshold_session: Option<AccumulatorOpSession>,
     overlay_session: Option<AccumulatorOpSession>,
+    reduction_soft_session: Option<AccumulatorOpSession>,
     pub summary: Option<WorldSummaryRuntime>,
     pub overlay_compile_cache: Option<OverlayCompileCache>,
 }
@@ -140,6 +141,7 @@ impl WorldAccumulatorRuntime {
             intent_session: None,
             threshold_session: None,
             overlay_session: None,
+            reduction_soft_session: None,
             summary: None,
             overlay_compile_cache: None,
         }
@@ -157,6 +159,10 @@ impl WorldAccumulatorRuntime {
         self.overlay_session.take()
     }
 
+    pub fn take_reduction_soft_session(&mut self) -> Option<AccumulatorOpSession> {
+        self.reduction_soft_session.take()
+    }
+
     pub fn restore_intent_session(&mut self, session: Option<AccumulatorOpSession>) {
         self.intent_session = session;
     }
@@ -169,6 +175,10 @@ impl WorldAccumulatorRuntime {
         self.overlay_session = session;
     }
 
+    pub fn restore_reduction_soft_session(&mut self, session: Option<AccumulatorOpSession>) {
+        self.reduction_soft_session = session;
+    }
+
     pub fn intent_session(&mut self) -> Option<&mut AccumulatorOpSession> {
         self.intent_session.as_mut()
     }
@@ -179,6 +189,10 @@ impl WorldAccumulatorRuntime {
 
     pub fn overlay_session(&mut self) -> Option<&mut AccumulatorOpSession> {
         self.overlay_session.as_mut()
+    }
+
+    pub fn reduction_soft_session(&mut self) -> Option<&mut AccumulatorOpSession> {
+        self.reduction_soft_session.as_mut()
     }
 
     pub fn intent_active(&self) -> bool {
@@ -205,8 +219,19 @@ impl WorldAccumulatorRuntime {
         self.overlay_order_ops.n_bands
     }
 
+    pub fn reduction_soft_active(&self) -> bool {
+        self.reduction_soft_ops.active
+    }
+
+    pub fn reduction_soft_bands(&self) -> u32 {
+        self.reduction_soft_ops.n_bands
+    }
+
     pub fn any_pipeline_active(&self) -> bool {
-        self.intent_active() || self.threshold_active() || self.overlay_order_ops.active
+        self.intent_active()
+            || self.threshold_active()
+            || self.overlay_order_ops.active
+            || self.reduction_soft_ops.active
     }
 
     pub fn ensure_intent_session(
@@ -315,6 +340,52 @@ impl WorldAccumulatorRuntime {
             ..OpSetHandle::INACTIVE
         };
         self.overlay_compile_cache = None;
+    }
+
+    pub fn ensure_reduction_soft_session(
+        &mut self,
+        ctx: &GpuContext,
+        n_slots: u32,
+        n_dims: u32,
+        output_vectors: &wgpu::Buffer,
+    ) {
+        if self.reduction_soft_session.is_none() {
+            self.reduction_soft_session = Some(AccumulatorOpSession::new_attached_to_buffer(
+                ctx,
+                n_slots,
+                n_dims,
+                output_vectors,
+            ));
+        }
+    }
+
+    pub fn clear_reduction_soft(&mut self) {
+        self.reduction_soft_session = None;
+        self.reduction_soft_ops = OpSetHandle {
+            family: OperationFamily::ReductionSoft,
+            exactness: ExactnessClass::SoftAggregate,
+            ..OpSetHandle::INACTIVE
+        };
+    }
+
+    pub fn upload_reduction_soft_ops(
+        &mut self,
+        ctx: &GpuContext,
+        ops: &[AccumulatorOpGpu],
+        n_bands: u32,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if let Some(session) = self.reduction_soft_session.as_mut() {
+            session.upload_gpu_ops(ctx, ops)?;
+            self.reduction_soft_ops = OpSetHandle {
+                family: OperationFamily::ReductionSoft,
+                offset: 0,
+                count: session.n_ops(),
+                active: !ops.is_empty(),
+                n_bands,
+                exactness: ExactnessClass::SoftAggregate,
+            };
+        }
+        Ok(())
     }
 
     pub fn upload_intent_ops(

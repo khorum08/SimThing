@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-25 — C-5 Mean / WeightedMean soft reductions
+
+**Status:** Local implementation (pending commit/PR).
+
+**Scope:** C-5 per Opus design memo — `use_accumulator_reduction_soft` flag,
+`ReductionSoft` session bound to `output_vectors`, `plan_reduction_orderband`,
+linear-loop Mean/WeightedMean gather, legacy `skip_soft_columns` for exact rules.
+
+**Tests:** `c5_legacy_weighted_mean_oracle` (2), `c5_weighted_mean_reduction_parity` (8),
+`reduction_orderband` unit tests (2); C-1/C-2/C-4 regressions green.
+
+---
+
 ## 2026-05-25 — C-4 remedial hardening
 
 **Status:** Local follow-up after PR #118/#119.

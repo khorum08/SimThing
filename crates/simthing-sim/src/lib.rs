@@ -69,8 +69,9 @@ pub use replay::{
     ReplayWriter,
 };
 pub use threshold_registry::{
-    AggregateAlertEvent, AggregateAlertRegistration, ThresholdBuilder, ThresholdRegistry,
-    ThresholdSemantic, VelocityAlertEvent, VelocityAlertRegistration,
+    assert_no_hard_trigger_on_soft_aggregate, AggregateAlertEvent, AggregateAlertRegistration,
+    SoftAggregateViolation, ThresholdBuilder, ThresholdRegistry, ThresholdSemantic,
+    VelocityAlertEvent, VelocityAlertRegistration,
 };
 pub use tree_mutation::apply_structural_mutations;
 pub use legacy_oracle::{

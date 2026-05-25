@@ -17,10 +17,10 @@
 //   RULE_WEIGHTED_MEAN = 5
 
 struct ReduceParams {
-    n_dims:       u32,
-    depth_offset: u32,
-    bucket_size:  u32,
-    _pad:         u32,
+    n_dims:            u32,
+    depth_offset:      u32,
+    bucket_size:       u32,
+    skip_soft_columns: u32,
 };
 
 @group(0) @binding(0) var<storage, read>       values:         array<f32>;
@@ -63,6 +63,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     for (var col: u32 = 0u; col < n_dims; col = col + 1u) {
         let rule_idx = col * 2u;
         let rule = column_rules[rule_idx];
+        if (params.skip_soft_columns != 0u && (rule == 0u || rule == 5u)) {
+            continue;
+        }
         let weight_col = column_rules[rule_idx + 1u];
         let first_child = child_indices[start];
         var acc: f32 = output_vectors[first_child * n_dims + col];

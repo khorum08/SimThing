@@ -4,8 +4,8 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98),
 **C-2** (#99–#100), **C-3** (#105–#107), **pivot-forward policy + B-4I** (#108),
 **C-INF runtime/oracle** (#109), **pivot-forward remedial** (#111), and
-**C-4 overlay OrderBand** (#118) landed. C-4 remedial hardening is local/pending.
-`master` @ **`58b7f69`**.
+**C-4 overlay OrderBand** (#118) landed; **C-5 soft reductions** landed locally.
+`master` @ **`58b7f69`** (pre-C-5 commit).
 
 **Workshop entry point:** [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md)
 
