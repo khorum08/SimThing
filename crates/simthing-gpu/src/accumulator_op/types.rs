@@ -105,7 +105,8 @@ pub struct AccumulatorTickParams {
     pub n_dims: u32,
     pub emission_capacity: u32,
     pub threshold_emission_capacity: u32,
-    pub _pad0: u32,
+    /// C-7: per-tick delta time for IntegrateWithClamp (f32 bit pattern).
+    pub dt_bits: u32,
     pub _pad1: u32,
 }
 

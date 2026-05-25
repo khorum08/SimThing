@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-25  
-**Master HEAD:** pending S-4 PR  
-**Verification (last recorded):** S-4 sunset + full workspace test battery green
+**Master HEAD:** pending C-7 PR  
+**Verification (last recorded):** C-7 velocity + full workspace test battery green
 
 ---
 
@@ -22,7 +22,7 @@ Two parallel tracks:
 Legacy reduction is deleted (S-4). Remaining legacy passes (intent, overlay, threshold,
 velocity, intensity) are oracle/fallback until their S-phase deletions.
 
-**Next gates:** **C-7** velocity integration · **S-3** overlay sunset · **S-6** threshold sunset.
+**Next gates:** **S-3** overlay sunset · **C-8** intensity/EML · **S-6** threshold sunset.
 
 ---
 
@@ -43,7 +43,8 @@ velocity, intensity) are oracle/fallback until their S-phase deletions.
 | **C-5** | #122 | Mean / WeightedMean soft reductions → `ReductionSoft` on `output_vectors` |
 | **C-5 remedial** | #123 | Depth-interleaved soft/exact reduction per depth bucket |
 | **C-6** | #124 | Sum / Max / Min / First exact reductions; full AccumulatorOp path when soft+exact on |
-| **S-4** | pending | Legacy `reduction.wgsl` deleted; AccumulatorOp sole reduction path; flags default on |
+| **S-4** | #126 | Legacy `reduction.wgsl` deleted; AccumulatorOp sole reduction path; flags default on |
+| **C-7** | pending | GovernedPair velocity integration → AccumulatorOp `IntegrateWithClamp`; dt via tick params |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
@@ -53,7 +54,7 @@ velocity, intensity) are oracle/fallback until their S-phase deletions.
 ```text
 WorldGpuState
   accumulator_runtime: Option<WorldAccumulatorRuntime>
-    intent_session / threshold_session / overlay_session / reduction_soft_session
+    intent_session / threshold_session / overlay_session / reduction_soft_session / velocity_session
     overlay_compile_cache: Option<OverlayCompileCache>    (C-4 dirty/cached planner)
     summary: Option<WorldSummaryRuntime>                  (B-4 from world values)
   accumulator_overlay_add_active / _bands                 (cached dispatch; survives session take)
@@ -92,7 +93,7 @@ session presence + overlay dispatch cache, not stale sessions.
 | Priority | ID | Owner | Blocks |
 |----------|-----|-------|--------|
 | Sunset | **S-3** | Composer | Legacy overlay prep deletion after C-4 default-on |
-| Non-Opus | **C-7–C-8** | Composer | Velocity integration, EML/transfer/intensity |
+| Non-Opus | **C-8** | Composer | EML/transfer/intensity |
 | Infra | Oracle refactor | Optional | Move C-1/C-2/C-3/C-4 parity tests onto `run_family_oracle` |
 
 ### Sunset targets (S-phase)
@@ -144,6 +145,7 @@ See `crates/simthing-workshop/README.md` and `todo.md` § workshop spikes.
 | C-5 reduction | 15 | `reduction_orderband` (6) + legacy oracle (2) + parity/guards (11) |
 | C-6 exact reduction | 8 | Sum/Max/Min/First parity vs CPU oracle golden |
 | S-4 sunset | 4 | Shader absent, all-rules golden, no CPU production reduction, combined path |
+| C-7 velocity | 8 | IntegrateWithClamp bit-exact vs legacy; vel_max/amount clamp; combined all-flags |
 | C-INF-2 harness | 2 | intent + threshold oracle smoke |
 | Pivot-forward remedial | 3 | authoritative flags |
 | B-4 world summary integrated | 2 | intent + overlay orderbands |
@@ -155,6 +157,8 @@ cargo test -p simthing-sim --test c1_threshold_scan_parity --test c2_intent_accu
 cargo test -p simthing-sim --test c4_overlay_orderband_parity
 cargo test -p simthing-sim --test c5_legacy_weighted_mean_oracle --test c5_weighted_mean_reduction_parity
 cargo test -p simthing-sim --test c6_exact_reduction_parity
+cargo test -p simthing-sim --test c7_velocity_accumulator_parity
+cargo test -p simthing-sim --test s4_reduction_sunset
 cargo test -p simthing-gpu reduction_orderband
 cargo test -p simthing-sim --test c_inf_legacy_oracle_harness --test pivot_forward_remedial --test b4_world_summary_integrated
 cargo check --workspace

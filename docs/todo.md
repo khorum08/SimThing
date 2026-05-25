@@ -72,8 +72,10 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **C-5** | #122 | Mean/WeightedMean soft reductions → `ReductionSoft` on `output_vectors` |
 | **C-5 remedial** | #123 | Depth-interleaved soft/exact reduction; WeightedMean dependency tests |
 | **C-6** | #124 | `a414a62` | Sum/Max/Min/First exact reductions; `use_accumulator_reduction_exact` |
+| **S-4** | #126 | `208e5a2` | Legacy reduction deleted; AccumulatorOp sole path; flags default on |
+| **C-7** | pending | GovernedPair velocity → AccumulatorOp; `IntegrateWithClamp`; dt in tick params |
 
-**Next (non-Opus):** **C-7** velocity · **S-3** overlay sunset · per-family oracle expansion.
+**Next (non-Opus):** **C-8** intensity/EML · **S-3** overlay sunset · per-family oracle expansion.
 
 **Next (sunset-gated):** **S-3** overlay prep/WGSL deletion after C-4 default-on validation and CI.
 

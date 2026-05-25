@@ -194,7 +194,13 @@ impl DispatchCoordinator {
             .is_some_and(|r| r.threshold_active());
         let overlay_active = state.accumulator_overlay_add_active;
         let reduction_active = state.accumulator_reduction_soft_active;
-        if use_accumulator_intent || use_accumulator_threshold || overlay_active || reduction_active {
+        let velocity_active = state.accumulator_velocity_active;
+        if use_accumulator_intent
+            || use_accumulator_threshold
+            || overlay_active
+            || reduction_active
+            || velocity_active
+        {
             let encode_summary = state
                 .accumulator_runtime
                 .as_ref()
@@ -208,11 +214,13 @@ impl DispatchCoordinator {
             let mut overlay_session = None;
             let mut threshold_session = None;
             let mut reduction_session = None;
+            let mut velocity_session = None;
             if let Some(runtime) = state.accumulator_runtime.as_mut() {
                 intent_session = runtime.take_intent_session();
                 overlay_session = runtime.take_overlay_session();
                 threshold_session = runtime.take_threshold_session();
                 reduction_session = runtime.take_reduction_soft_session();
+                velocity_session = runtime.take_velocity_session();
             }
             pipelines.run_tick_pipeline_with_accumulators(
                 state,
@@ -222,6 +230,7 @@ impl DispatchCoordinator {
                     overlay_add: overlay_session.as_mut(),
                     threshold:   threshold_session.as_mut(),
                     reduction_soft: reduction_session.as_mut(),
+                    velocity: velocity_session.as_mut(),
                     encode_world_summary: encode_summary,
                 },
             );
@@ -230,6 +239,7 @@ impl DispatchCoordinator {
                 runtime.restore_overlay_session(overlay_session);
                 runtime.restore_threshold_session(threshold_session);
                 runtime.restore_reduction_soft_session(reduction_session);
+                runtime.restore_velocity_session(velocity_session);
             }
         } else {
             pipelines.run_tick_pipeline(state, dt);

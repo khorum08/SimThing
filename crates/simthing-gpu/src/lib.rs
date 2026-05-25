@@ -13,6 +13,7 @@ pub mod projection;
 pub mod reduction;
 pub mod reduction_orderband;
 pub mod slot;
+pub mod velocity_accumulator;
 pub mod world_state;
 
 pub use accumulator_op::{
@@ -35,6 +36,7 @@ pub use reduction::{
 };
 pub use overlay_prep::build_overlay_deltas;
 pub use passes::{AccumulatorPipelineSessions, Pipelines};
+pub use velocity_accumulator::{plan_velocity_integration, VelocityAccumulatorPlan};
 pub use projection::project_tree_to_values;
 pub use slot::SlotAllocator;
 pub use world_state::{

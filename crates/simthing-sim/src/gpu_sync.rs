@@ -29,8 +29,8 @@ use simthing_feeder::{
     CapabilityUnlockRegistration, DispatchCoordinator, ScriptedEventTriggerRegistration,
 };
 use simthing_gpu::{
-    build_column_rule_descriptors, encode_column_rules, ReductionPlanError, SlotAllocator,
-    ThresholdRegistration, TopologyState, WorldGpuState,
+    build_column_rule_descriptors, build_governed_pairs, encode_column_rules, plan_velocity_integration,
+    ReductionPlanError, SlotAllocator, ThresholdRegistration, TopologyState, WorldGpuState,
 };
 
 fn upload_accumulator_reduction_plan(
@@ -100,6 +100,7 @@ pub fn sync_gpu_buffers(
     use_accumulator_overlay_add: bool,
     use_accumulator_reduction_soft: bool,
     use_accumulator_reduction_exact: bool,
+    use_accumulator_velocity: bool,
     overlay_compile_revision: u64,
     // B2 Approach C: the canonical TopologyState owned by the boundary.
     // When `rebuild_reduction_topology` is true, this routine refreshes
@@ -346,6 +347,18 @@ pub fn sync_gpu_buffers(
             registry,
             use_accumulator_reduction_exact,
         );
+    }
+
+    if use_accumulator_velocity {
+        state.ensure_velocity_accumulator();
+        let pairs = build_governed_pairs(registry);
+        let plan = plan_velocity_integration(&pairs, state.n_slots);
+        state
+            .upload_velocity_ops_with_bands(&plan.ops, plan.n_bands)
+            .expect("velocity op upload failed");
+    } else if let Some(runtime) = state.accumulator_runtime.as_mut() {
+        runtime.clear_velocity();
+        state.set_velocity_dispatch(false, 0);
     }
 
     out.boundary_upload_bytes =

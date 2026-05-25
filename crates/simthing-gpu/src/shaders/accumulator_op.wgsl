@@ -38,7 +38,7 @@ struct AccumulatorTickParams {
     n_dims: u32,
     emission_capacity: u32,
     threshold_emission_capacity: u32,
-    _pad0: u32,
+    dt_bits: u32,
     _pad1: u32,
 }
 
@@ -80,7 +80,12 @@ const COMBINE_MAX: u32 = 3u;
 const COMBINE_MIN: u32 = 4u;
 const COMBINE_WEIGHTED_MEAN: u32 = 5u;
 const COMBINE_AFFINE_INTENT: u32 = 6u;
+const COMBINE_INTEGRATE_CLAMP: u32 = 9u;
 const COMBINE_FIRST: u32 = 13u;
+
+const CLAMP_BOUNDED: u32 = 0u;
+const CLAMP_FLOORED: u32 = 1u;
+const CLAMP_UNBOUNDED: u32 = 2u;
 
 const GATE_ALWAYS: u32 = 0u;
 const GATE_THRESHOLD: u32 = 1u;
@@ -144,6 +149,22 @@ fn atomic_mul_single_writer_f32_at(idx: u32, val: f32) {
     let cell_ptr = &values[idx];
     let old = bitcast<f32>(atomicLoad(cell_ptr));
     atomicStore(cell_ptr, bitcast<i32>(old * val));
+}
+
+fn apply_amount_clamp(kind: u32, lo: f32, hi: f32, x: f32) -> f32 {
+    if (kind == CLAMP_BOUNDED) { return clamp(x, lo, hi); }
+    if (kind == CLAMP_FLOORED) { return max(x, lo); }
+    return x;
+}
+
+fn amount_at_floor(kind: u32, lo: f32, x: f32) -> bool {
+    if (kind == CLAMP_BOUNDED || kind == CLAMP_FLOORED) { return x <= lo; }
+    return false;
+}
+
+fn amount_at_ceiling(kind: u32, hi: f32, x: f32) -> bool {
+    if (kind == CLAMP_BOUNDED) { return x >= hi; }
+    return false;
 }
 
 fn gate_matches_bandwise(op: AccumulatorOpGpu) -> bool {
@@ -388,6 +409,36 @@ fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
             let new_bits = bitcast<i32>(old * mul + add);
             let result = atomicCompareExchangeWeak(cell_ptr, old_bits, new_bits);
             if result.exchanged { break; }
+        }
+        return;
+    }
+
+    // C-7 GovernedPair velocity integration — multi-target write with legacy
+    // semantics (amount integrate + optional velocity pinning at floor/ceiling).
+    if (op.combine_kind == COMBINE_INTEGRATE_CLAMP) {
+        let amount_idx = linear_idx(op.target0_slot, op.target0_col);
+        let velocity_idx = linear_idx(op.target1_slot, op.target1_col);
+
+        let amount0 = atomic_read_f32_at(amount_idx);
+        let raw_vel = atomic_read_f32_at(velocity_idx);
+
+        let dt = bitcast<f32>(tick_params.dt_bits);
+        let vel_max = bitcast<f32>(op.combine_a);
+        let clamp_min = bitcast<f32>(op.combine_b);
+        let clamp_max = bitcast<f32>(op.combine_c);
+        let clamp_kind = op.combine_d;
+
+        let effective_vel = clamp(raw_vel, -vel_max, vel_max);
+        let delta = effective_vel * dt;
+        let new_val = amount0 + delta;
+        let clamped = apply_amount_clamp(clamp_kind, clamp_min, clamp_max, new_val);
+
+        atomic_store_f32_at(amount_idx, clamped);
+
+        if (amount_at_floor(clamp_kind, clamp_min, clamped)) {
+            atomic_store_f32_at(velocity_idx, max(raw_vel, 0.0));
+        } else if (amount_at_ceiling(clamp_kind, clamp_max, clamped)) {
+            atomic_store_f32_at(velocity_idx, min(raw_vel, 0.0));
         }
         return;
     }

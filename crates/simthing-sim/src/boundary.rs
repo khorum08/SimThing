@@ -136,6 +136,9 @@ pub struct PipelineFlags {
     pub use_accumulator_reduction_soft: bool,
     /// S-4: full AccumulatorOp reduction path; must be enabled with soft flag.
     pub use_accumulator_reduction_exact: bool,
+    /// C-7: routes GovernedPair velocity integration through AccumulatorOp.
+    /// Legacy velocity_integration.wgsl remains flag-off/oracle until velocity sunset.
+    pub use_accumulator_velocity: bool,
 }
 
 impl Default for PipelineFlags {
@@ -146,6 +149,7 @@ impl Default for PipelineFlags {
             use_accumulator_overlay_add: false,
             use_accumulator_reduction_soft: true,
             use_accumulator_reduction_exact: true,
+            use_accumulator_velocity: false,
         }
     }
 }
@@ -254,6 +258,17 @@ impl BoundaryProtocol {
             return;
         }
         state.ensure_reduction_soft_accumulator();
+    }
+
+    fn sync_accumulator_velocity_session(&self, state: &mut WorldGpuState) {
+        if !self.flags.use_accumulator_velocity {
+            if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                runtime.clear_velocity();
+            }
+            state.set_velocity_dispatch(false, 0);
+            return;
+        }
+        state.ensure_velocity_accumulator();
     }
 
     fn sync_accumulator_threshold_ops(
@@ -771,6 +786,7 @@ impl BoundaryProtocol {
             self.flags.use_accumulator_overlay_add,
             self.flags.use_accumulator_reduction_soft,
             self.flags.use_accumulator_reduction_exact,
+            self.flags.use_accumulator_velocity,
             self.overlay_compile_revision,
             &mut self.cached_topology_state,
         );
@@ -796,6 +812,7 @@ impl BoundaryProtocol {
         self.sync_accumulator_intent_session(state);
         self.sync_accumulator_overlay_add_session(state);
         self.sync_accumulator_reduction_soft_session(state);
+        self.sync_accumulator_velocity_session(state);
         out.gpu_sync = GpuSyncOutcome {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
             // Sum: gpu_out.threshold_regs_uploaded counts entries written by
@@ -1010,6 +1027,7 @@ impl BoundaryProtocol {
             self.flags.use_accumulator_overlay_add,
             self.flags.use_accumulator_reduction_soft,
             self.flags.use_accumulator_reduction_exact,
+            self.flags.use_accumulator_velocity,
             self.overlay_compile_revision,
             &mut self.cached_topology_state,
         );
@@ -1023,6 +1041,7 @@ impl BoundaryProtocol {
         self.sync_accumulator_intent_session(state);
         self.sync_accumulator_overlay_add_session(state);
         self.sync_accumulator_reduction_soft_session(state);
+        self.sync_accumulator_velocity_session(state);
     }
 
     /// Read-only access to the persistent fission lineage. Useful for tests

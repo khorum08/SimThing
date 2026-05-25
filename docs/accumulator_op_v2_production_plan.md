@@ -514,15 +514,14 @@ column rules, THRESH_BUF_OUTPUT semantics, GPU-resident two-buffer reduction.
 
 ### PR C-7 — Velocity integration migration
 
+**Status:** Implemented (local, pending PR). `use_accumulator_velocity` default **false**.
+Legacy `velocity_integration.wgsl` retained flag-off/oracle until S-5.
+
 **Model:** Composer 2.5  
 **Scope:** `IntegrateWithClamp` combine function. MultiTarget writes (Amount +
-Velocity). The combine function receives `{ dt, vel_max, amount_min, amount_max }`
-from the registration and applies the full `GovernedPair` semantics in one
-kernel invocation.
-
-The existing `GovernedPair` CPU struct feeds the registration at boundary
-prep time — `dt` comes from the session's tick parameters, `vel_max` and
-clamp bounds come from `SubFieldSpec`.
+Velocity). Clamp metadata (`vel_max`, `clamp_min`, `clamp_max`, `clamp_kind`) in
+uploaded ops; `dt` via `AccumulatorTickParams.dt_bits` (not per-tick op rebuild).
+Legacy-exact semantics: amount integrate + velocity pinning at floor/ceiling only.
 
 **Parity test:** Bit-exact against Pass 1 (velocity integration). Specifically
 test `vel_max` clamp at the exact boundary value — this was the contingency

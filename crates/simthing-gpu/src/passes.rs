@@ -44,12 +44,13 @@ struct PassParams {
     _pad1:      u32,
 }
 
-/// Optional AccumulatorOp sessions folded into one tick command buffer (C-1/C-2/C-3/C-5).
+/// Optional AccumulatorOp sessions folded into one tick command buffer (C-1/C-2/C-3/C-5/C-7).
 pub struct AccumulatorPipelineSessions<'a> {
     pub threshold:   Option<&'a mut crate::AccumulatorOpSession>,
     pub intent:      Option<&'a mut crate::AccumulatorOpSession>,
     pub overlay_add: Option<&'a mut crate::AccumulatorOpSession>,
     pub reduction_soft: Option<&'a mut crate::AccumulatorOpSession>,
+    pub velocity: Option<&'a mut crate::AccumulatorOpSession>,
     pub encode_world_summary: bool,
 }
 
@@ -503,6 +504,7 @@ impl Pipelines {
                 intent:      None,
                 overlay_add: None,
                 reduction_soft: None,
+                velocity: None,
                 encode_world_summary: false,
             },
         );
@@ -526,6 +528,7 @@ impl Pipelines {
                 intent:      None,
                 overlay_add: None,
                 reduction_soft: None,
+                velocity: None,
                 encode_world_summary: false,
             },
         );
@@ -567,7 +570,10 @@ impl Pipelines {
             ],
         });
 
-        let velocity_bg = (state.n_governed_pairs > 0).then(|| {
+        let use_accumulator_velocity = state.accumulator_velocity_active
+            && state.accumulator_velocity_bands > 0;
+
+        let velocity_bg = (!use_accumulator_velocity && state.n_governed_pairs > 0).then(|| {
             ctx.device.create_bind_group(&BindGroupDescriptor {
                 label: Some("velocity_bg"),
                 layout: &self.velocity_layout,
@@ -651,13 +657,37 @@ impl Pipelines {
             pass.set_bind_group(0, &snapshot_bg, &[]);
             dispatch_linear(&mut pass, state.n_slots * state.n_dims);
 
-            if let Some(bg) = velocity_bg.as_ref() {
-                pass.set_pipeline(&self.velocity_pipeline);
-                pass.set_bind_group(0, bg, &[]);
-                dispatch_linear(&mut pass, state.n_slots * state.n_governed_pairs);
+            if !use_accumulator_velocity {
+                if let Some(bg) = velocity_bg.as_ref() {
+                    pass.set_pipeline(&self.velocity_pipeline);
+                    pass.set_bind_group(0, bg, &[]);
+                    dispatch_linear(&mut pass, state.n_slots * state.n_governed_pairs);
+                }
+
+                if let Some(bg) = intensity_bg.as_ref() {
+                    pass.set_pipeline(&self.intensity_pipeline);
+                    pass.set_bind_group(0, bg, &[]);
+                    dispatch_linear(&mut pass, state.n_slots * state.n_intensity_params);
+                }
+            }
+        }
+
+        if use_accumulator_velocity {
+            if let Some(session) = sessions.velocity.as_mut() {
+                session.encode_velocity_into(
+                    ctx,
+                    &mut encoder,
+                    &state.values,
+                    &state.previous_values,
+                    dt,
+                );
             }
 
             if let Some(bg) = intensity_bg.as_ref() {
+                let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                    label: Some("tick_pipeline_intensity_after_c7"),
+                    timestamp_writes: None,
+                });
                 pass.set_pipeline(&self.intensity_pipeline);
                 pass.set_bind_group(0, bg, &[]);
                 dispatch_linear(&mut pass, state.n_slots * state.n_intensity_params);
@@ -1985,6 +2015,7 @@ mod tests {
                 threshold:   None,
                 overlay_add: None,
                 reduction_soft: None,
+                velocity: None,
                 encode_world_summary: false,
             },
         );

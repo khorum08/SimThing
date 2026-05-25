@@ -220,11 +220,13 @@ pub struct PipelineFlags {
 - `encoder.copy_buffer_to_buffer(values_buffer, previous_values_buffer)`
 - No kernel dispatch. Hardware DMA. Not subject to migration.
 
-**Pass 1 — Velocity integration (migrate → C-7, sunset → S-5)**
-- WGSL: `velocity_integration.wgsl`
-- Per-slot: `amount += velocity * dt`, clamped to `vel_max`
-- `GovernedPair` drives per-property parameters
-- Post-migration: replaced by `IntegrateWithClamp` combine + MultiTarget
+**Pass 1 — Velocity integration (C-7 landed, flag default false; sunset → S-5)**
+- **Flag-on:** AccumulatorOp `IntegrateWithClamp` at legacy Pass 1 position (after snapshot).
+  One op per `(slot, governed pair)`; `dt` supplied via `AccumulatorTickParams.dt_bits`.
+  Multi-target write: amount integrate + optional velocity pinning at floor/ceiling
+  (matches legacy `velocity_integration.wgsl` semantics exactly).
+- **Flag-off:** WGSL `velocity_integration.wgsl` (oracle/fallback until S-5).
+- `GovernedPair` metadata compiled to persistent ops at boundary sync.
 
 **Pass 2 — Intensity update (migrate → C-8, sunset → S-2)**
 - WGSL: `intensity_update.wgsl`
