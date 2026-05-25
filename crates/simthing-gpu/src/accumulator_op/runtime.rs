@@ -15,9 +15,23 @@ use super::eml_program_table::{
 };
 use super::session::{AccumulatorOpSession, AccumulatorOpSessionError};
 use super::types::AccumulatorOpGpu;
+use super::types::DEFAULT_THRESHOLD_EMISSION_CAPACITY;
 use super::world_summary::WorldSummaryRuntime;
 use crate::world_state::IntentDelta;
 use crate::GpuContext;
+
+/// Cache key for uploaded C-8b intensity EvalEML ops (world shape + EML plan).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IntensityEmlOpPlanSignature {
+    pub eml_registry_generation: u64,
+    pub n_slots: u32,
+    pub n_dims: u32,
+    pub n_entries: u32,
+    pub n_ops: u32,
+    pub tree_ids: Vec<u32>,
+    pub intensity_cols: Vec<u32>,
+    pub velocity_cols: Vec<u32>,
+}
 
 /// Operation family registered into the world AccumulatorOp runtime.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -111,6 +125,9 @@ pub struct WorldAccumulatorRuntime {
     intensity_tree_ids: Vec<EmlTreeId>,
     /// Registry generation reflected in uploaded intensity EvalEML ops.
     intensity_ops_registry_generation: Option<u64>,
+    /// Authoritative cache key for uploaded intensity EvalEML ops (C-8b remedial).
+    intensity_op_plan_signature: Option<IntensityEmlOpPlanSignature>,
+    intensity_op_upload_count: u64,
 
     /// C-8a persistent GPU EML program table (shared across sessions).
     pub eml: Option<EmlGpuProgramTable>,
@@ -167,6 +184,8 @@ impl WorldAccumulatorRuntime {
             overlay_compile_cache: None,
             intensity_tree_ids: Vec::new(),
             intensity_ops_registry_generation: None,
+            intensity_op_plan_signature: None,
+            intensity_op_upload_count: 0,
             eml: None,
             eml_registry: EmlExpressionRegistry::new(),
         }
@@ -357,6 +376,14 @@ impl WorldAccumulatorRuntime {
 
     pub fn intensity_ops_registry_generation(&self) -> Option<u64> {
         self.intensity_ops_registry_generation
+    }
+
+    pub fn intensity_op_plan_signature(&self) -> Option<&IntensityEmlOpPlanSignature> {
+        self.intensity_op_plan_signature.as_ref()
+    }
+
+    pub fn intensity_op_upload_count(&self) -> u64 {
+        self.intensity_op_upload_count
     }
 
     pub fn any_pipeline_active(&self) -> bool {
@@ -566,6 +593,7 @@ impl WorldAccumulatorRuntime {
         self.intensity_eml_session = None;
         self.intensity_tree_ids.clear();
         self.intensity_ops_registry_generation = None;
+        self.intensity_op_plan_signature = None;
         self.intensity_eml_ops = OpSetHandle {
             family: OperationFamily::EvalEml,
             exactness: ExactnessClass::Exact,
@@ -578,17 +606,38 @@ impl WorldAccumulatorRuntime {
         ctx: &GpuContext,
         ops: &[AccumulatorOp],
         n_bands: u32,
+        signature: IntensityEmlOpPlanSignature,
     ) -> Result<(), AccumulatorOpSessionError> {
-        let registry_generation = self.eml_registry.generation();
-        let needs_upload = self.intensity_ops_registry_generation != Some(registry_generation)
+        let registry_generation = signature.eml_registry_generation;
+        let needs_upload = self.intensity_op_plan_signature.as_ref() != Some(&signature)
             || self
                 .intensity_eml_session
                 .as_ref()
                 .map(|s| s.n_ops() == 0)
                 .unwrap_or(true);
+
+        if needs_upload {
+            let shape_mismatch = self.intensity_eml_session.as_ref().is_some_and(|s| {
+                s.n_slots() != signature.n_slots || s.n_dims() != signature.n_dims
+            });
+            if shape_mismatch {
+                self.intensity_eml_session = None;
+            }
+        }
+
         if !needs_upload {
             return Ok(());
         }
+
+        if self.intensity_eml_session.is_none() {
+            self.ensure_intensity_eml_session(
+                ctx,
+                signature.n_slots,
+                signature.n_dims,
+                DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+            );
+        }
+
         if let Some(session) = self.intensity_eml_session.as_mut() {
             session.upload_ops_with_eml(ctx, ops, Some(&self.eml_registry))?;
             self.intensity_eml_ops = OpSetHandle {
@@ -599,7 +648,9 @@ impl WorldAccumulatorRuntime {
                 n_bands,
                 exactness: ExactnessClass::Exact,
             };
+            self.intensity_op_plan_signature = Some(signature);
             self.intensity_ops_registry_generation = Some(registry_generation);
+            self.intensity_op_upload_count += 1;
         }
         Ok(())
     }
@@ -863,5 +914,88 @@ mod tests {
         assert_eq!(table.node_upload_count, node_uploads);
         assert_eq!(table.range_upload_count, range_uploads);
         assert_eq!(table.generation, generation);
+    }
+
+    #[test]
+    fn c8b_intensity_op_plan_signature_controls_upload_cache() {
+        use simthing_core::{
+            compile_intensity_behavior_to_eml, intensity_tree_id, AccumulatorOp, CombineFn,
+            ConsumeMode, GateSpec, IntensityBehavior, ScaleSpec, SourceSpec,
+        };
+
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let mut runtime = WorldAccumulatorRuntime::new();
+        let behavior = IntensityBehavior::default();
+        let (meta, nodes) = compile_intensity_behavior_to_eml(
+            &behavior,
+            intensity_tree_id(0),
+            1,
+            2,
+        );
+        runtime
+            .eml_registry
+            .replace_formula(intensity_tree_id(0), meta, nodes)
+            .unwrap();
+        runtime.upload_eml_trees(&ctx).unwrap();
+        let gen = runtime.eml_registry.generation();
+
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 2 },
+            combine: CombineFn::EvalEML {
+                tree_id: intensity_tree_id(0).0,
+            },
+            gate: GateSpec::OrderBand(0),
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::ResetTarget,
+            targets: vec![(0, 2)],
+        };
+        let signature = IntensityEmlOpPlanSignature {
+            eml_registry_generation: gen,
+            n_slots: 1,
+            n_dims: 4,
+            n_entries: 1,
+            n_ops: 1,
+            tree_ids: vec![intensity_tree_id(0).0],
+            intensity_cols: vec![2],
+            velocity_cols: vec![1],
+        };
+        runtime
+            .upload_intensity_eml_ops(&ctx, &[op.clone()], 1, signature.clone())
+            .unwrap();
+        assert_eq!(runtime.intensity_op_upload_count(), 1);
+
+        runtime
+            .upload_intensity_eml_ops(&ctx, &[op.clone()], 1, signature)
+            .unwrap();
+        assert_eq!(runtime.intensity_op_upload_count(), 1);
+
+        let op_slot1 = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 1, col: 2 },
+            combine: CombineFn::EvalEML {
+                tree_id: intensity_tree_id(0).0,
+            },
+            gate: GateSpec::OrderBand(0),
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::ResetTarget,
+            targets: vec![(1, 2)],
+        };
+        let signature_grown = IntensityEmlOpPlanSignature {
+            eml_registry_generation: gen,
+            n_slots: 2,
+            n_dims: 4,
+            n_entries: 1,
+            n_ops: 2,
+            tree_ids: vec![intensity_tree_id(0).0],
+            intensity_cols: vec![2],
+            velocity_cols: vec![1],
+        };
+        runtime
+            .upload_intensity_eml_ops(&ctx, &[op, op_slot1], 1, signature_grown)
+            .unwrap();
+        assert_eq!(runtime.intensity_op_upload_count(), 2);
+        assert_eq!(
+            runtime.intensity_eml_session.as_ref().unwrap().n_ops(),
+            2
+        );
     }
 }
