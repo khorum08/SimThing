@@ -3,7 +3,7 @@
 Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B3/I1) complete;
 **AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98)
 and **C-2** (#99) landed.
-`master` @ **`531834a`** (PR #99 C-2 intent AccumulatorOp migration).
+`master` @ **`72eaccc`** (PR #99 C-2 intent AccumulatorOp migration + doc sync).
 
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
 Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
@@ -40,7 +40,7 @@ AccumulatorOp module: **40** gpu + **9** core tests (after C-2).
 |----|--------|-------|
 | **C-1** | #97 | Pass 7 threshold scan → AccumulatorOp `Threshold` + `EmitEvent`; `use_accumulator_threshold_scan` (default false) |
 | **C-1 refine** | #98 | Single-submission pipeline integration; Opus perf reframe (`docs/workshop/c1_perf_reframe_memo.md`); no-regression readback gate |
-| **C-2** | (pending) | Intent delta application → `COMBINE_AFFINE_INTENT`; `use_accumulator_intent` (default false); combined C-1/C-2 ordering test |
+| **C-2** | #99 | Intent delta application → `COMBINE_AFFINE_INTENT`; `use_accumulator_intent` (default false); combined C-1/C-2 ordering test |
 
 **Next:** B-4 Opus summary design · **C-3** overlay Add migration.
 
