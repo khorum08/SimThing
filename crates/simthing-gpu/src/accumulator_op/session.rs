@@ -660,6 +660,12 @@ impl AccumulatorOpSession {
         self.read_execute_pass_timestamp(ctx);
     }
 
+    /// Finish the intent timestamp query if timestamps are supported.
+    /// Call immediately after the submission that drove `encode_intent_into`.
+    pub fn finish_intent(&mut self, ctx: &GpuContext) {
+        self.read_execute_pass_timestamp(ctx);
+    }
+
     fn write_tick_uniform(&self, ctx: &GpuContext, band: u32) {
         let tick_params = AccumulatorTickParams {
             n_ops: self.n_ops,

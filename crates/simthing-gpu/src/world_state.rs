@@ -450,6 +450,12 @@ impl WorldGpuState {
         }
     }
 
+    /// Drop AccumulatorOp sessions so they are recreated after layout changes.
+    pub fn clear_accumulator_sessions(&mut self) {
+        self.threshold_accumulator = None;
+        self.intent_accumulator = None;
+    }
+
     /// Ensure the C-2 intent AccumulatorOp session exists on this world state.
     pub fn ensure_intent_accumulator(&mut self) {
         if self.intent_accumulator.is_none() {
@@ -523,6 +529,8 @@ impl WorldGpuState {
 
         self.rebuild_property_buffers(registry);
 
+        self.clear_accumulator_sessions();
+
         self.threshold_registry = self.mk_storage_buffer(
             "threshold_registry",
             std::mem::size_of::<ThresholdRegistration>() as u64,
@@ -580,8 +588,7 @@ impl WorldGpuState {
 
         self.n_slots = new_n_slots;
         self.n_dims = new_n_dims;
-        self.threshold_accumulator = None;
-        self.intent_accumulator = None;
+        self.clear_accumulator_sessions();
         let per_slot_per_col_bytes = (self.n_slots as u64) * (self.n_dims as u64) * 4;
 
         let new_values = self.mk_storage_buffer("values", per_slot_per_col_bytes);
@@ -1164,6 +1171,28 @@ mod tests {
                 "mismatch at index {i}: {a} vs {b}"
             );
         }
+    }
+
+    #[test]
+    fn c2_registry_growth_recreates_accumulator_sessions() {
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+
+        let mut reg = DimensionRegistry::new();
+        reg.register(SimProperty::simple("core", "loyalty", 0));
+        let mut state = WorldGpuState::new(ctx, &reg, 2);
+        state.ensure_intent_accumulator();
+        state.ensure_threshold_accumulator(4096);
+        assert!(state.intent_accumulator.is_some());
+        assert!(state.threshold_accumulator.is_some());
+
+        reg.register(property_with_intensity("food_security"));
+        state.rebuild_for_registry(&reg);
+
+        assert!(state.intent_accumulator.is_none());
+        assert!(state.threshold_accumulator.is_none());
     }
 
     #[test]

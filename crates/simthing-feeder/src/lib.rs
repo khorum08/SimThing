@@ -64,7 +64,7 @@ pub mod work;
 
 pub use capability::{CapabilityUnlockEvent, CapabilityUnlockRegistration};
 pub use scripted_event::{ScriptedEventTriggerEvent, ScriptedEventTriggerRegistration};
-pub use dispatcher::{DispatchCoordinator, TickOutcome};
+pub use dispatcher::{DispatchCoordinator, TickGpuError, TickOutcome};
 pub use maintainer::{MaintainerOutcome, TreeMaintainer};
 pub use patcher::{PatcherStats, TransformPatcher};
 pub use work::{

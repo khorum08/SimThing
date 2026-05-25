@@ -516,6 +516,9 @@ impl Pipelines {
             skip_threshold_scan,
             &mut sessions,
         );
+        if let Some(session) = sessions.intent.as_mut() {
+            session.finish_intent(&state.ctx);
+        }
         if let Some(session) = sessions.threshold.as_mut() {
             session.finish_threshold_scan(&state.ctx);
         }
@@ -1922,6 +1925,48 @@ mod tests {
 
         let gpu_output = state.read_output_vectors();
         assert_bits_eq("weighted mean reduction", &cpu_output, &gpu_output);
+    }
+
+    #[test]
+    fn c2_integrated_intent_timestamp_finishes_when_supported() {
+        use crate::world_state::IntentDelta;
+
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+
+        let mut reg = DimensionRegistry::new();
+        reg.register(SimProperty::simple("core", "loyalty", 0));
+        let mut state = WorldGpuState::new(ctx, &reg, 1);
+        state.ensure_intent_accumulator();
+        state
+            .upload_accumulator_intents(&[IntentDelta {
+                slot: 0,
+                col:  0,
+                mul:  1.0,
+                add:  0.25,
+            }])
+            .unwrap();
+
+        let pipelines = Pipelines::new(&state.ctx);
+        let mut session = state.intent_accumulator.take().unwrap();
+        pipelines.run_tick_pipeline_with_accumulators(
+            &state,
+            0.0,
+            AccumulatorPipelineSessions {
+                intent:    Some(&mut session),
+                threshold: None,
+            },
+        );
+        state.intent_accumulator = Some(session);
+
+        let session = state.intent_accumulator.as_ref().unwrap();
+        if session.timestamp_supported() {
+            assert!(session.last_pass_time_us().is_some());
+        } else {
+            assert_eq!(session.last_pass_time_us(), None);
+        }
     }
 }
 
