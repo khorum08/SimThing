@@ -1,16 +1,17 @@
 # SimThing Todo Log
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B3/I1) complete;
-**AccumulatorOp v2 Phases A–B** complete through B-3 (#95).
-`master` and `origin/master` synced at **`3e4374b`** (PR #95 B-3 + doc sync).
+**AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98)
+landed, **C-2** on branch `feat/c2-intent-accumulator-migration` (pending merge).
+`master` @ **`1f321d7`** (PR #98 C-1 refine + perf reframe).
 
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
 Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
 
-**Tests:** `cargo test --workspace` green at last full run (430 passed, 6 ignored after A-4).
-AccumulatorOp module: **28** gpu + **9** core tests (after B-3).
+**Tests:** `cargo test --workspace` green at last full run (430+ passed, ignored perf gates).
+AccumulatorOp module: **40** gpu + **9** core tests (after C-2).
 
-**Cursor handoff:** AccumulatorOp v2 Phases A–B (see table below).
+**Cursor handoff:** AccumulatorOp v2 Phase C migrations (see table below).
 
 **Canonical AccumulatorOp v2 progress:** `docs/accumulator_op_v2_production_plan.md` ·
 `docs/adr_accumulator_op_v2.md` · `docs/design_v7.md` · `docs/worklog.md`
@@ -33,7 +34,15 @@ AccumulatorOp module: **28** gpu + **9** core tests (after B-3).
 
 **B-phase complete through B-3:** kernel subset + Always wildcard validation + optional execute-pass timestamps (instrumentation only).
 
-**Next:** B-4 Opus summary design · C-1 threshold scan migration.
+### AccumulatorOp v2 — Phase C (migration, feature-flagged)
+
+| PR | GitHub | Scope |
+|----|--------|-------|
+| **C-1** | #97 | Pass 7 threshold scan → AccumulatorOp `Threshold` + `EmitEvent`; `use_accumulator_threshold_scan` (default false) |
+| **C-1 refine** | #98 | Single-submission pipeline integration; Opus perf reframe (`docs/workshop/c1_perf_reframe_memo.md`); no-regression readback gate |
+| **C-2** | (pending) | Intent delta application → `COMBINE_AFFINE_INTENT`; `use_accumulator_intent` (default false); combined C-1/C-2 ordering test |
+
+**Next:** B-4 Opus summary design · **C-3** overlay Add migration.
 
 **Implementation:** `simthing-driver::SpecSessionState` owns spec runtime
 state; `simthing-driver::install` compiles a `GameModeSpec` against a

@@ -6,6 +6,61 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — C-2: Intent delta AccumulatorOp migration (pending PR)
+
+**Status:** branch `feat/c2-intent-accumulator-migration` — push + merge requested.
+
+**Scope:** Migrate pre-Pass-0 intent delta application to AccumulatorOp behind
+`PipelineFlags.use_accumulator_intent` (default `false`). CPU fold logic unchanged;
+`intent_delta.wgsl` retained until S-1.
+
+**Landed (local, pending merge):**
+
+- `COMBINE_AFFINE_INTENT` in `accumulator_op.wgsl` — exact `value = value * mul + add`
+- `WorldGpuState::intent_accumulator` + per-tick `upload_intent_ops`
+- `AccumulatorPipelineSessions { intent, threshold }` — both passes in one tick command buffer
+  (intent before snapshot, threshold after reduction)
+- `c2_intent_accumulator_parity.rs` — 10 scenarios + `c1_c2_combined_*` ordering test
+- `c2_intent_perf.rs` — ignored no-regression gate (C-1 reframe pattern)
+- **40** gpu `accumulator_op` tests; workspace green
+
+**Docs:** `design_v7.md` §4.3 pre-Pass-0 intent section; production plan C-2 note.
+
+**Next:** C-3 overlay Add migration · B-4 Opus summary design.
+
+---
+
+## 2026-05-19 — C-1 refine: single-submission integration + perf reframe (#98)
+
+**Status:** `master` @ `1f321d7` (PR #98 merged).
+
+**Scope:** Fold AccumulatorOp threshold scan into the world tick command encoder (one
+submission per tick); WGSL polish; Opus review reframing C-1 perf expectation.
+
+**Landed (PR #98, `544d694`):**
+
+- `Pipelines::run_tick_pipeline_with_threshold_scan` / `AccumulatorPipelineSessions` precursor
+- `docs/workshop/c1_perf_reframe_memo.md` — 5× projection not achievable vs production compact readback; gate → no-regression + 1.5× warn
+- `c1_threshold_perf.rs` — reframed assertion (not 5×)
+
+**Next:** C-2 intent migration (this session).
+
+---
+
+## 2026-05-19 — C-1: Pass 7 threshold scan AccumulatorOp migration (#97)
+
+**Status:** merged in PR #97 (`dd71261` on `master` before #98).
+
+**Scope:** Migrate Pass 7 to AccumulatorOp `(Threshold, EmitEvent)` behind
+`use_accumulator_threshold_scan` (default `false`). Parallel `ThresholdEmissionGpu` readback;
+`WorldGpuState::threshold_accumulator` session on boundary sync.
+
+**Tests:** `c1_threshold_scan_parity.rs` — fission_stress 20k × 100 ticks bit-identical events.
+
+**Next:** C-1 refine (#98) · C-2 intent migration.
+
+---
+
 ## 2026-05-19 — B-3: AccumulatorOpSession timestamp query plumbing (#95)
 
 **Status:** `master` @ `3e4374b` (PR #95 merged).
@@ -21,7 +76,7 @@ execute pass. Does not integrate with `BoundaryProtocol` or alter operation sema
 - Pattern reused from workshop `persistent_bench.rs`; synchronous readback for testability
 - **28** gpu `accumulator_op` tests (+3 B-3 tests)
 
-**Next:** B-4 Opus summary/checksum design · C-1 threshold scan migration.
+**Next:** B-4 Opus summary design · C-3 overlay Add migration.
 
 ---
 

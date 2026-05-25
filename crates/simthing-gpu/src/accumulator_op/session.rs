@@ -13,7 +13,7 @@ use wgpu::{
 };
 
 use crate::context::GpuContext;
-use crate::world_state::{ThresholdEvent, ThresholdRegistration};
+use crate::world_state::{IntentDelta, ThresholdEvent, ThresholdRegistration};
 
 use super::encode::{threshold_registrations_to_ops, EncodeError};
 use super::types::AccumulatorOpGpu;
@@ -417,6 +417,35 @@ impl AccumulatorOpSession {
         Ok(())
     }
 
+    /// Upload folded intent deltas as affine AccumulatorOp registrations (C-2).
+    pub fn upload_intent_ops(
+        &mut self,
+        ctx: &GpuContext,
+        deltas: &[IntentDelta],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        self.threshold_event_kinds.clear();
+        if deltas.is_empty() {
+            self.n_ops = 0;
+            return Ok(());
+        }
+        let gpu_ops = AccumulatorOpGpu::encode_intent_deltas(deltas)?;
+
+        let byte_len = gpu_ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
+        if self.op_buffer.size() < byte_len as u64 {
+            self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("accumulator_op_buffer"),
+                size: byte_len.max(4096) as u64,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+
+        ctx.queue
+            .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(&gpu_ops));
+        self.n_ops = gpu_ops.len() as u32;
+        Ok(())
+    }
+
     /// Dispatch Pass B for one OrderBand, then refresh per-slot summaries.
     pub fn tick(&mut self, ctx: &GpuContext, band: u32) -> Result<(), AccumulatorOpSessionError> {
         if self.n_ops == 0 {
@@ -540,6 +569,61 @@ impl AccumulatorOpSession {
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("accumulator_threshold_scan_pass"),
+                timestamp_writes,
+            });
+            pass.set_pipeline(&self.execute_pipeline);
+            pass.set_bind_group(0, &execute_bind_group, &[]);
+            let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
+            pass.dispatch_workgroups(groups, 1, 1);
+        }
+
+        if let (Some(query_set), Some(resolve), Some(readback)) = (
+            self.timestamp_query_set.as_ref(),
+            self.timestamp_resolve_buffer.as_ref(),
+            self.timestamp_readback_buffer.as_ref(),
+        ) {
+            encoder.resolve_query_set(query_set, 0..2, resolve, 0);
+            encoder.copy_buffer_to_buffer(resolve, 0, readback, 0, 16);
+        }
+    }
+
+    /// Prepare the session for a batched intent pass in the caller's encoder.
+    pub fn prepare_intent(&self, ctx: &GpuContext) {
+        if self.n_ops == 0 {
+            return;
+        }
+        self.write_tick_uniform(ctx, 0);
+    }
+
+    /// Encode the C-2 affine intent pass into the caller's command encoder.
+    /// Runs before snapshot in the consolidated tick pipeline. Returns
+    /// immediately when no intent ops are registered.
+    pub fn encode_intent_into(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+        previous_values: &Buffer,
+    ) {
+        if self.n_ops == 0 {
+            return;
+        }
+        self.last_pass_time_us = None;
+
+        let execute_bind_group =
+            self.create_execute_bind_group(ctx, values, previous_values);
+
+        let timestamp_writes = self.timestamp_query_set.as_ref().map(|query_set| {
+            wgpu::ComputePassTimestampWrites {
+                query_set,
+                beginning_of_pass_write_index: Some(0),
+                end_of_pass_write_index: Some(1),
+            }
+        });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("accumulator_intent_pass"),
                 timestamp_writes,
             });
             pass.set_pipeline(&self.execute_pipeline);
@@ -1670,5 +1754,52 @@ mod tests {
                 capacity: 1,
             })
         ));
+    }
+
+    #[test]
+    fn c2_accumulator_intent_matches_cpu_affine() {
+        use super::super::cpu_oracle::execute_intent_deltas_cpu;
+
+        let Some(_) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        set_debug_readback_allowed(true);
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let n_dims = 3u32;
+
+        let run_case = |initial: f32, mul: f32, add: f32| {
+            let values = vec![initial, 0.0, 0.0];
+            let deltas = [IntentDelta {
+                slot: 0,
+                col:  0,
+                mul,
+                add,
+            }];
+            let mut expected = values.clone();
+            execute_intent_deltas_cpu(&mut expected, &deltas, n_dims);
+
+            let mut session = AccumulatorOpSession::new_attached(&ctx, 1, n_dims, 16);
+            session.upload_values(&ctx, &values);
+            session.upload_intent_ops(&ctx, &deltas).unwrap();
+            session.tick(&ctx, 0).unwrap();
+            assert_eq!(session.readback_full(&ctx).unwrap(), expected);
+        };
+
+        run_case(10.0, 2.0, 3.0);
+        run_case(99.0, 0.0, 5.0);
+        run_case(4.0, -1.0, 2.0);
+    }
+
+    #[test]
+    fn c2_empty_intent_set_noops() {
+        let Some(_) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let mut session = AccumulatorOpSession::new_attached(&ctx, 1, 1, 16);
+        session.upload_intent_ops(&ctx, &[]).unwrap();
+        session.prepare_intent(&ctx);
     }
 }

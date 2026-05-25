@@ -5,7 +5,7 @@ use simthing_core::{
 };
 
 use crate::world_state::{
-    ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
+    IntentDelta, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
     THRESH_BUF_VALUES,
 };
 
@@ -28,6 +28,8 @@ pub enum EncodeError {
         slot: u32,
         col:  u32,
     },
+    #[error("duplicate folded intent cell: slot={slot}, col={col}")]
+    DuplicateIntentCell { slot: u32, col: u32 },
 }
 
 impl From<BootstrapContention> for EncodeError {
@@ -88,6 +90,12 @@ impl AccumulatorOpGpu {
         Ok(gpu_ops)
     }
 
+    /// Encode folded intent deltas as affine GPU ops (C-2 intent migration path).
+    pub fn encode_intent_deltas(deltas: &[IntentDelta]) -> Result<Vec<Self>, EncodeError> {
+        validate_intent_deltas_no_duplicate_cells(deltas)?;
+        Ok(deltas.iter().map(intent_delta_to_gpu).collect())
+    }
+
     /// Encode threshold-gated EmitEvent ops (C-1 Pass 7 migration path).
     pub fn encode_threshold_set(ops: &[AccumulatorOp]) -> Result<Vec<Self>, EncodeError> {
         for op in ops {
@@ -96,6 +104,52 @@ impl AccumulatorOpGpu {
         let gpu_ops: Vec<Self> = ops.iter().map(Self::from_op).collect::<Result<_, _>>()?;
         validate_no_contention(&gpu_ops)?;
         Ok(gpu_ops)
+    }
+}
+
+/// Reject duplicate `(slot, col)` rows — the CPU fold must collapse them first.
+pub fn validate_intent_deltas_no_duplicate_cells(
+    deltas: &[IntentDelta],
+) -> Result<(), EncodeError> {
+    let mut seen = std::collections::HashSet::new();
+    for d in deltas {
+        if !seen.insert((d.slot, d.col)) {
+            return Err(EncodeError::DuplicateIntentCell {
+                slot: d.slot,
+                col:  d.col,
+            });
+        }
+    }
+    Ok(())
+}
+
+fn intent_delta_to_gpu(delta: &IntentDelta) -> AccumulatorOpGpu {
+    AccumulatorOpGpu {
+        source_kind:  source_kind::SLOT_VALUE,
+        source_slot:  delta.slot,
+        source_col:   delta.col,
+        source_count: 0,
+        combine_kind: combine_kind::AFFINE_INTENT,
+        combine_a:    delta.mul.to_bits(),
+        combine_b:    delta.add.to_bits(),
+        combine_c:    0,
+        combine_d:    0,
+        gate_kind:    gate_kind::ALWAYS,
+        gate_a:       0,
+        gate_b:       0,
+        scale_kind:   scale_kind::IDENTITY,
+        scale_a:      0,
+        consume:      consume_kind::NONE,
+        target0_slot: delta.slot,
+        target0_col:  delta.col,
+        target1_slot: 0,
+        target1_col:  0,
+        target2_slot: 0,
+        target2_col:  0,
+        target3_slot: 0,
+        target3_col:  0,
+        n_targets:    1,
+        _pad:         0,
     }
 }
 
@@ -305,6 +359,55 @@ fn other_name_gate(gate: &GateSpec) -> &'static str {
 mod tests {
     use super::*;
     use simthing_core::{CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+
+    #[test]
+    fn c2_intent_delta_encodes_affine_params() {
+        let delta = IntentDelta {
+            slot: 3,
+            col:  2,
+            mul:  1.5,
+            add:  -0.25,
+        };
+        let gpu = AccumulatorOpGpu::encode_intent_deltas(std::slice::from_ref(&delta))
+            .unwrap()
+            .pop()
+            .unwrap();
+        assert_eq!(gpu.source_slot, 3);
+        assert_eq!(gpu.source_col, 2);
+        assert_eq!(gpu.combine_kind, combine_kind::AFFINE_INTENT);
+        assert_eq!(gpu.combine_a, 1.5f32.to_bits());
+        assert_eq!(gpu.combine_b, (-0.25f32).to_bits());
+        assert_eq!(gpu.n_targets, 1);
+        assert_eq!(gpu.target0_slot, 3);
+        assert_eq!(gpu.target0_col, 2);
+    }
+
+    #[test]
+    fn c2_intent_delta_duplicate_cell_rejected() {
+        let deltas = [
+            IntentDelta {
+                slot: 0,
+                col:  0,
+                mul:  1.0,
+                add:  1.0,
+            },
+            IntentDelta {
+                slot: 0,
+                col:  0,
+                mul:  2.0,
+                add:  0.0,
+            },
+        ];
+        assert!(matches!(
+            AccumulatorOpGpu::encode_intent_deltas(&deltas),
+            Err(EncodeError::DuplicateIntentCell { slot: 0, col: 0 })
+        ));
+    }
+
+    #[test]
+    fn c2_empty_intent_set_encodes_to_empty() {
+        assert!(AccumulatorOpGpu::encode_intent_deltas(&[]).unwrap().is_empty());
+    }
 
     #[test]
     fn encodes_transfer_op() {

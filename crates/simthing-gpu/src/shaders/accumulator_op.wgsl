@@ -71,6 +71,7 @@ const SOURCE_SLOT_RANGE: u32 = 2u;
 
 const COMBINE_IDENTITY: u32 = 0u;
 const COMBINE_SUM: u32 = 1u;
+const COMBINE_AFFINE_INTENT: u32 = 6u;
 
 const GATE_ALWAYS: u32 = 0u;
 const GATE_THRESHOLD: u32 = 1u;
@@ -245,6 +246,15 @@ fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
 
     let op = ops[op_idx];
+
+    // C-2 folded intent deltas: direct affine update on one cell, no targets.
+    if (op.combine_kind == COMBINE_AFFINE_INTENT) {
+        let idx = linear_idx(op.source_slot, op.source_col);
+        let mul = bitcast<f32>(op.combine_a);
+        let add = bitcast<f32>(op.combine_b);
+        values[idx] = values[idx] * mul + add;
+        return;
+    }
 
     // Threshold ops form a disjoint dispatch family from band-gated ops:
     // they have no targets, no source/consume mutation of values, and a

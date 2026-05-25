@@ -44,6 +44,12 @@ struct PassParams {
     _pad1:      u32,
 }
 
+/// Optional AccumulatorOp sessions folded into one tick command buffer (C-1/C-2).
+pub struct AccumulatorPipelineSessions<'a> {
+    pub threshold: Option<&'a mut crate::AccumulatorOpSession>,
+    pub intent:    Option<&'a mut crate::AccumulatorOpSession>,
+}
+
 pub struct Pipelines {
     uniform_buffer: Buffer,
 
@@ -486,25 +492,52 @@ impl Pipelines {
         self.run_tick_pipeline_ex(state, dt, false);
     }
 
+    /// Consolidated per-tick pipeline integrated with AccumulatorOp migrations.
+    /// Encodes intent (C-2, before snapshot), Passes 0–6, and threshold scan
+    /// (C-1, after reduction) into one command buffer and submits once.
+    pub fn run_tick_pipeline_with_accumulators(
+        &self,
+        state: &WorldGpuState,
+        dt: f32,
+        mut sessions: AccumulatorPipelineSessions<'_>,
+    ) {
+        let skip_old_intent = sessions.intent.is_some();
+        let skip_threshold_scan = sessions.threshold.is_some();
+        if let Some(session) = sessions.intent.as_mut() {
+            session.prepare_intent(&state.ctx);
+        }
+        if let Some(session) = sessions.threshold.as_mut() {
+            session.prepare_threshold_scan(&state.ctx);
+        }
+        self.run_tick_pipeline_internal(
+            state,
+            dt,
+            skip_old_intent,
+            skip_threshold_scan,
+            &mut sessions,
+        );
+        if let Some(session) = sessions.threshold.as_mut() {
+            session.finish_threshold_scan(&state.ctx);
+        }
+    }
+
     /// Consolidated per-tick pipeline integrated with the C-1 AccumulatorOp
-    /// threshold scan. Encodes the full pipeline (Passes 0–6) and the
-    /// AccumulatorOp threshold pass into a single command buffer, submits
-    /// once. One submission per tick is the apples-to-apples production
-    /// shape vs the unflagged `run_tick_pipeline` path.
-    ///
-    /// `session` must be the active `AccumulatorOpSession` from
-    /// `WorldGpuState::threshold_accumulator`; pull it out with `.take()`
-    /// before calling and put it back after, to avoid borrow conflicts
-    /// between the session-mut and the state-imm uses.
+    /// threshold scan. Prefer [`Self::run_tick_pipeline_with_accumulators`]
+    /// when both C-1 and C-2 may be active.
     pub fn run_tick_pipeline_with_threshold_scan(
         &self,
         state: &WorldGpuState,
         dt: f32,
         session: &mut crate::AccumulatorOpSession,
     ) {
-        session.prepare_threshold_scan(&state.ctx);
-        self.run_tick_pipeline_internal(state, dt, /* skip_threshold_scan */ true, Some(session));
-        session.finish_threshold_scan(&state.ctx);
+        self.run_tick_pipeline_with_accumulators(
+            state,
+            dt,
+            AccumulatorPipelineSessions {
+                threshold: Some(session),
+                intent:    None,
+            },
+        );
     }
 
     /// Consolidated per-tick pipeline. When `skip_threshold_scan` is true the
@@ -515,15 +548,25 @@ impl Pipelines {
         dt: f32,
         skip_threshold_scan: bool,
     ) {
-        self.run_tick_pipeline_internal(state, dt, skip_threshold_scan, None);
+        self.run_tick_pipeline_internal(
+            state,
+            dt,
+            false,
+            skip_threshold_scan,
+            &mut AccumulatorPipelineSessions {
+                threshold: None,
+                intent:    None,
+            },
+        );
     }
 
     fn run_tick_pipeline_internal(
         &self,
         state: &WorldGpuState,
         dt: f32,
+        skip_old_intent: bool,
         skip_threshold_scan: bool,
-        accumulator_threshold: Option<&mut crate::AccumulatorOpSession>,
+        sessions: &mut AccumulatorPipelineSessions<'_>,
     ) {
         let ctx = &state.ctx;
 
@@ -644,16 +687,28 @@ impl Pipelines {
         let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("tick_pipeline_encoder"),
         });
+
+        if let Some(session) = sessions.intent.as_mut() {
+            session.encode_intent_into(
+                ctx,
+                &mut encoder,
+                &state.values,
+                &state.previous_values,
+            );
+        }
+
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("tick_pipeline_pass"),
                 timestamp_writes: None,
             });
 
-            if let Some(bg) = intent_bg.as_ref() {
-                pass.set_pipeline(&self.intent_pipeline);
-                pass.set_bind_group(0, bg, &[]);
-                dispatch_linear(&mut pass, state.n_intent_deltas);
+            if !skip_old_intent {
+                if let Some(bg) = intent_bg.as_ref() {
+                    pass.set_pipeline(&self.intent_pipeline);
+                    pass.set_bind_group(0, bg, &[]);
+                    dispatch_linear(&mut pass, state.n_intent_deltas);
+                }
             }
 
             pass.set_pipeline(&self.snapshot_pipeline);
@@ -698,7 +753,7 @@ impl Pipelines {
         // compute pass, different pipeline + bind group). One submission per
         // tick eliminates the second driver fence the standalone
         // `dispatch_threshold_scan` would otherwise introduce.
-        if let Some(session) = accumulator_threshold {
+        if let Some(session) = sessions.threshold.as_mut() {
             session.encode_threshold_scan_into(
                 ctx,
                 &mut encoder,

@@ -123,8 +123,10 @@ pub mod source_kind {
 }
 
 pub mod combine_kind {
-    pub const IDENTITY: u32 = 0;
-    pub const SUM:      u32 = 1;
+    pub const IDENTITY:      u32 = 0;
+    pub const SUM:           u32 = 1;
+    /// C-2 intent delta: `values[slot,col] = values[slot,col] * mul + add`.
+    pub const AFFINE_INTENT: u32 = 6;
 }
 
 pub mod gate_kind {

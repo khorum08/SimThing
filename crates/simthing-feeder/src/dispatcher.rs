@@ -49,7 +49,10 @@
 use crate::patcher::{PatcherStats, TransformPatcher};
 use crate::work::FeederReceiver;
 use simthing_core::DimensionRegistry;
-use simthing_gpu::{IntentDelta, Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
+use simthing_gpu::{
+    AccumulatorPipelineSessions, IntentDelta, Pipelines, SlotAllocator, ThresholdEvent,
+    WorldGpuState,
+};
 use std::time::Instant;
 
 // ── Outcome ───────────────────────────────────────────────────────────────────
@@ -151,7 +154,14 @@ impl DispatchCoordinator {
         let intent_delta_bytes =
             intent_deltas.len() as u64 * std::mem::size_of::<IntentDelta>() as u64;
         let intent_upload_started = Instant::now();
-        state.upload_intent_deltas(&intent_deltas);
+        let use_accumulator_intent = state.intent_accumulator.is_some();
+        if use_accumulator_intent {
+            state
+                .upload_accumulator_intents(&intent_deltas)
+                .expect("AccumulatorOp intent op upload failed");
+        } else {
+            state.upload_intent_deltas(&intent_deltas);
+        }
         let intent_upload_ms = intent_upload_started.elapsed().as_secs_f64() * 1000.0;
         let rmw_rows_synced = 0;
         let rmw_readback_bytes = 0;
@@ -168,17 +178,19 @@ impl DispatchCoordinator {
         // 3. GPU passes (order matters — see module-level doc).
         let gpu_pipeline_started = Instant::now();
         let use_accumulator_threshold = state.threshold_accumulator.is_some();
-        if use_accumulator_threshold {
-            // Take the session out so we can hold &mut on it while passing
-            // &state into the integrated pipeline call. Restored after.
-            // Zero runtime cost; idiomatic Rust workaround for split-borrow
-            // across function calls.
-            let mut session = state
-                .threshold_accumulator
-                .take()
-                .expect("threshold_accumulator present");
-            pipelines.run_tick_pipeline_with_threshold_scan(state, dt, &mut session);
-            state.threshold_accumulator = Some(session);
+        if use_accumulator_intent || use_accumulator_threshold {
+            let mut intent_session = state.intent_accumulator.take();
+            let mut threshold_session = state.threshold_accumulator.take();
+            pipelines.run_tick_pipeline_with_accumulators(
+                state,
+                dt,
+                AccumulatorPipelineSessions {
+                    intent: intent_session.as_mut(),
+                    threshold: threshold_session.as_mut(),
+                },
+            );
+            state.intent_accumulator = intent_session;
+            state.threshold_accumulator = threshold_session;
         } else {
             pipelines.run_tick_pipeline(state, dt);
         }
