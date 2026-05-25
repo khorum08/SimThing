@@ -2,19 +2,24 @@
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B3/I1) complete;
 **AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98),
-**C-2** (#99), **C-2 refine** (#100), and **pivot-forward** (#101) landed.
-`master` @ **`c53bbc4`** (PR #100 C-2 refine + PR #102 pivot-forward Fixes 1–6).
+**C-2** (#99–#100), **C-3** (#105–#107), and **pivot-forward policy** landed.
+`master` @ **`523c712`** (PR #107 C-3 OrderBand exact f32 order).
+
+**Pivot posture:** AccumulatorOp v2 is the production direction. Legacy GPU passes are
+**oracle/fallback only** until S-phase deletion. See
+[`docs/workshop/pivot_forward_implementation_policy.md`](workshop/pivot_forward_implementation_policy.md).
 
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
 Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
 
 **Tests:** `cargo test --workspace` green at last full run (430+ passed, ignored perf gates).
-AccumulatorOp module: **97** gpu + **9** core tests (after pivot-forward #101).
+AccumulatorOp module: **112+** gpu + **9** core tests (after B-4I + C-INF scaffolds).
 
-**Cursor handoff:** AccumulatorOp v2 Phase C migrations (see table below).
+**Cursor handoff:** AccumulatorOp v2 Phase C migrations + pivot-forward infrastructure (see table below).
 
 **Canonical AccumulatorOp v2 progress:** `docs/accumulator_op_v2_production_plan.md` ·
-`docs/adr_accumulator_op_v2.md` · `docs/design_v7.md` · `docs/worklog.md`
+`docs/adr_accumulator_op_v2.md` · `docs/design_v7.md` · `docs/worklog.md` ·
+`docs/workshop/pivot_forward_implementation_policy.md`
 
 **Canonical spec progress (v6 parking):** `docs/design_v6.5.md` ·
 `docs/workshop/simthing_spec_progress_log.md` (PR ledger) · `docs/worklog.md` (session notes)
@@ -42,9 +47,17 @@ AccumulatorOp module: **97** gpu + **9** core tests (after pivot-forward #101).
 | **C-1 refine** | #98 | Single-submission pipeline integration; Opus perf reframe (`docs/workshop/c1_perf_reframe_memo.md`); no-regression readback gate |
 | **C-2** | #99 | Intent delta application → `COMBINE_AFFINE_INTENT`; `use_accumulator_intent` (default false); combined C-1/C-2 ordering test |
 | **C-2 refine** | #100 | `finish_intent()` timestamp; `TickGpuError::AccumulatorThresholdReadback`; registry growth clears accumulator sessions |
-| **Pivot-forward** | #102 | Fixes 1–6: narrow contention validator, encode all combine/source stubs, `Threshold+None`, single-submit reduction, atomic WGSL values |
+| **Pivot-forward Fixes** | #102 | Fixes 1–6: narrow contention validator, encode all combine/source stubs, `Threshold+None`, single-submit reduction, atomic WGSL values |
+| **C-3** | #105 | Overlay Add → AccumulatorOp; `use_accumulator_overlay_add` (default false); Add-only batches |
+| **C-3 refine** | #106 | Mixed Add/Mul/Set → full legacy Pass 3 fallback (no split-mode) |
+| **C-3 OrderBand** | #107 | Per-cell OrderBand sequencing for exact f32 Add order; multi-band dispatch fix |
 
-**Next:** **C-3** overlay Add migration · B-4 Opus summary design.
+**Next (non-Opus):** **C-INF-1** wire `WorldAccumulatorRuntime` into `WorldGpuState` (consolidation PR) · **C-INF-2** per-family oracle scenario wiring.
+
+**Next (Opus-gated):** **C-4** overlay Multiply/Set + dirty order-band compiler → unblocks **S-3** (delete overlay prep WGSL).
+
+**Implementation posture:** Every migration PR names its S-phase sunset target. Legacy interaction:
+oracle/fallback only. Do not enhance legacy passes.
 
 **Implementation:** `simthing-driver::SpecSessionState` owns spec runtime
 state; `simthing-driver::install` compiles a `GameModeSpec` against a

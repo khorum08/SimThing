@@ -7,6 +7,7 @@
 mod bootstrap_validate;
 mod cpu_oracle;
 mod encode;
+mod runtime;
 mod session;
 mod types;
 
@@ -17,13 +18,16 @@ pub use cpu_oracle::{
 pub use encode::{
     threshold_registrations_to_ops, validate_intent_deltas_no_duplicate_cells, EncodeError,
 };
+pub use runtime::{
+    ExactnessClass, LegacyOracleFamily, OpSetHandle, OperationFamily, WorldAccumulatorRuntime,
+};
 pub use types::AccumulatorOpGpu;
 pub use session::{
     set_debug_readback_allowed, AccumulatorOpSession, AccumulatorOpSessionError, WORKGROUP_SIZE,
 };
 pub use types::{
     combine_kind, consume_kind, gate_kind, scale_kind, source_kind, summaries_from_values,
-    slot_checksum, AccumulatorSummaryParams, AccumulatorTickParams, EmissionRecord,
-    EmissionRecordGpu, SlotSummary, SlotSummaryGpu, ThresholdEmission, ThresholdEmissionGpu,
-    DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+    group_checksums, slot_checksum, AccumulatorSummaryParams, AccumulatorTickParams,
+    EmissionRecord, EmissionRecordGpu, SlotSummary, SlotSummaryGpu, ThresholdEmission,
+    ThresholdEmissionGpu, DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
