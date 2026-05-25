@@ -64,6 +64,10 @@ One execution model:
   GPU-resident AccumulatorOpSession, persistent across ticks,
   summary/checksum readback by default
 
+  B-1 note: AccumulatorOpSession in simthing-gpu is a non-integrated bootstrap
+  skeleton (non-contended Identity/Sum/clamped transfer only). Production
+  AccumulatorOp semantics lock only as C-family migrations pass parity.
+
 One retained operation:
   snapshot — copy_buffer_to_buffer (memcpy; not a per-slot write)
 
@@ -402,6 +406,9 @@ Summary (default production):
   CPU reads the summary buffer after each tick.
   Used for: boundary skip decisions, change detection, basic audit.
   Volume: 8 bytes × n_slots per tick.
+
+  B-1 ships checksum-only SlotSummary as a provisional bootstrap tier.
+  B-4 remains responsible for the final summary/checksum/coarse-value design.
 
 Compact records (production audit / selective replay):
   GPU writes EmissionRecord { registration_idx, emit_count } for every

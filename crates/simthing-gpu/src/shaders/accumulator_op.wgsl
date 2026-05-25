@@ -1,5 +1,5 @@
-// Pass B bootstrap kernel — Identity, Sum, and transfer (SubtractFromSource).
-// Expanded in PR B-2 with EmitEvent and atomic helpers.
+// Pass B bootstrap kernel — non-contended Identity, Sum, and clamped transfer only.
+// B-2 expands with EmitEvent, atomics, and broader combine/gate support.
 
 struct AccumulatorOpGpu {
     source_kind: u32,
@@ -61,6 +61,9 @@ const GATE_ORDER_BAND: u32 = 4u;
 const CONSUME_NONE: u32 = 0u;
 const CONSUME_SUBTRACT_FROM_SOURCE: u32 = 1u;
 
+const SCALE_IDENTITY: u32 = 0u;
+const SCALE_CONSTANT: u32 = 1u;
+
 @group(0) @binding(0) var<storage, read> ops: array<AccumulatorOpGpu>;
 @group(0) @binding(1) var<storage, read_write> values: array<f32>;
 @group(0) @binding(2) var<uniform> tick_params: AccumulatorTickParams;
@@ -80,10 +83,16 @@ fn gate_matches(op: AccumulatorOpGpu) -> bool {
 }
 
 fn apply_scale(value: f32, op: AccumulatorOpGpu) -> f32 {
-    if (op.scale_a != 0u) {
+    if (op.scale_kind == SCALE_CONSTANT) {
         return value * bitcast<f32>(op.scale_a);
     }
     return value;
+}
+
+fn clamped_transfer(op: AccumulatorOpGpu) -> f32 {
+    let available = values[linear_idx(op.source_slot, op.source_col)];
+    let requested = bitcast<f32>(op.scale_a);
+    return min(max(requested, 0.0), available);
 }
 
 fn gather_value(op: AccumulatorOpGpu) -> f32 {
@@ -95,15 +104,17 @@ fn gather_value(op: AccumulatorOpGpu) -> f32 {
         return sum;
     }
 
+    if (op.consume == CONSUME_SUBTRACT_FROM_SOURCE
+        && op.source_kind == SOURCE_SLOT_VALUE
+        && op.scale_kind == SCALE_CONSTANT) {
+        return clamped_transfer(op);
+    }
+
     var raw = 0.0;
     if (op.source_kind == SOURCE_CONSTANT) {
         raw = bitcast<f32>(op.source_slot);
     } else if (op.source_kind == SOURCE_SLOT_VALUE) {
         raw = values[linear_idx(op.source_slot, op.source_col)];
-    }
-
-    if (op.consume == CONSUME_SUBTRACT_FROM_SOURCE && op.scale_a != 0u) {
-        return bitcast<f32>(op.scale_a);
     }
 
     return apply_scale(raw, op);

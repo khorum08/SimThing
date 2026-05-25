@@ -4,7 +4,10 @@ use bytemuck::{Pod, Zeroable};
 
 pub const DEFAULT_EMISSION_CAPACITY: u32 = 1024;
 
-/// Per-slot summary written after each tick (default production readback tier).
+/// B-1 provisional summary tier.
+///
+/// Final `SlotSummary` shape is not locked until B-4. Do not treat this
+/// checksum-only format as the production readback contract.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SlotSummary {
     pub slot:     u32,
@@ -12,6 +15,10 @@ pub struct SlotSummary {
 }
 
 /// Compact GPU-resolved emission record (Pass C readback tier).
+///
+/// B-1 allocates emission buffers and exposes readback, but no B-1 kernel path
+/// writes emission records. B-2 owns `EmitEvent`, capacity checks, and atomic
+/// `emission_count` increments.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EmissionRecord {
     pub reg_idx:    u32,
@@ -103,6 +110,7 @@ pub mod consume_kind {
 
 pub mod scale_kind {
     pub const IDENTITY: u32 = 0;
+    pub const CONSTANT: u32 = 1;
 }
 
 /// Compute a slot-row checksum from a flat values buffer (CPU reference).

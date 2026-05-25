@@ -1,5 +1,10 @@
 //! AccumulatorOp v2 Pass B — persistent GPU session and bootstrap kernel.
+//!
+//! B-1 is a **non-contended bootstrap skeleton** only. It does not integrate
+//! with `BoundaryProtocol` and must not be treated as production AccumulatorOp
+//! semantics until B-2/C-family migrations pass parity.
 
+mod bootstrap_validate;
 mod cpu_oracle;
 mod encode;
 mod session;

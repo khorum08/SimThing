@@ -48,6 +48,17 @@ fn apply_scale(value: f32, scale: &ScaleSpec) -> f32 {
     }
 }
 
+fn clamped_transfer(values: &[f32], op: &AccumulatorOp, n_dims: u32) -> Result<f32, CpuOracleError> {
+    let SourceSpec::SlotValue { slot, col } = op.source else {
+        return Err(CpuOracleError::Unsupported("transfer without SlotValue"));
+    };
+    let ScaleSpec::Constant(requested) = op.scale else {
+        return Err(CpuOracleError::Unsupported("transfer without Constant scale"));
+    };
+    let available = values[idx(slot, col, n_dims)];
+    Ok(requested.max(0.0).min(available))
+}
+
 fn gather_and_combine(
     values: &[f32],
     op: &AccumulatorOp,
@@ -56,9 +67,7 @@ fn gather_and_combine(
     match &op.combine {
         CombineFn::Identity => {
             if op.consume == ConsumeMode::SubtractFromSource {
-                if let ScaleSpec::Constant(rate) = op.scale {
-                    return Ok(rate);
-                }
+                return clamped_transfer(values, op, n_dims);
             }
             let raw = read_source(values, &op.source, n_dims)?;
             Ok(apply_scale(raw, &op.scale))
@@ -119,9 +128,9 @@ fn apply_consume(
 ) -> Result<(), CpuOracleError> {
     match op.consume {
         ConsumeMode::None => Ok(()),
-        ConsumeMode::SubtractFromSource => match &op.source {
+        ConsumeMode::SubtractFromSource => match op.source {
             SourceSpec::SlotValue { slot, col } => {
-                values[idx(*slot, *col, n_dims)] -= write_value;
+                values[idx(slot, col, n_dims)] -= write_value;
                 Ok(())
             }
             _ => Err(CpuOracleError::Unsupported(
@@ -129,5 +138,55 @@ fn apply_consume(
             )),
         },
         _ => Err(CpuOracleError::Unsupported("consume")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use simthing_core::{CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+
+    #[test]
+    fn scale_constant_zero_writes_zero_not_raw_value() {
+        let mut values = vec![10.0, 7.0];
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Constant(0.0),
+            consume: ConsumeMode::None,
+            targets: vec![(1, 0)],
+        };
+        execute_ops_cpu(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
+        assert_eq!(values[1], 7.0);
+    }
+
+    #[test]
+    fn subtract_from_source_clamps_to_available_source() {
+        let mut values = vec![5.0, 0.0];
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Constant(10.0),
+            consume: ConsumeMode::SubtractFromSource,
+            targets: vec![(1, 0)],
+        };
+        execute_ops_cpu(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
+        assert_eq!(values[1], 5.0);
+        assert_eq!(values[0], 0.0);
+
+        let mut values = vec![10.0, 0.0];
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Constant(3.0),
+            consume: ConsumeMode::SubtractFromSource,
+            targets: vec![(1, 0)],
+        };
+        execute_ops_cpu(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
+        assert_eq!(values[1], 3.0);
+        assert_eq!(values[0], 7.0);
     }
 }
