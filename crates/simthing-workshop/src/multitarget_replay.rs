@@ -21,8 +21,17 @@ pub const WARM_RUNS: usize = 10;
 pub const REPLAY_MODE_COMPACT: u32 = 0;
 pub const REPLAY_MODE_FULL: u32 = 1;
 
+pub const RESIDENT_TICKS: u32 = 64;
+pub const RESIDENT_WARM_RUNS: usize = 5;
+
+pub const RESIDENT_MODE_SUMMARY_ONLY: u32 = 0;
+pub const RESIDENT_MODE_RECORDS: u32 = 1;
+
 pub const TIMING_NOTE: &str =
-    "Warm timings include upload, dispatch, wait, and readback; not pure shader timestamp time.";
+    "Warm timings include upload, dispatch, wait, and readback; not pure shader timestamp time (upload/readback envelope mode).";
+
+pub const RESIDENT_TIMING_NOTE: &str =
+    "Resident timings upload initial state once, run N GPU ticks, and read final validation once; not pure shader timestamp time.";
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable, PartialEq, Eq)]
@@ -117,6 +126,66 @@ pub struct MultiTargetReplayReport {
     pub final_state_matches_cpu: bool,
     pub replay_from_compact_matches_gpu: bool,
     pub repeated_gpu_outputs_identical: bool,
+    pub interpretation: String,
+    pub timing_note: String,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
+pub struct ResidentParams {
+    pub n_items: u32,
+    pub tick_index: u32,
+    pub record_stride: u32,
+    pub write_per_item_records: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable, PartialEq, Eq)]
+pub struct TickSummaryReadback {
+    pub total_transferred: u32,
+    pub total_emitted_units: u32,
+    pub active_count: u32,
+    pub reserved: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct MultiTargetResidentResult {
+    pub final_states: Vec<QueueState>,
+    pub summaries: Vec<TickSummaryReadback>,
+    pub compact_records: Vec<CompactDeltaRecord>,
+    pub elapsed_us: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MultiTargetResidentReport {
+    pub scenario_name: String,
+    pub n_items: usize,
+    pub active_count: usize,
+    pub ticks: u32,
+    pub record_ticks: u32,
+    pub records_memory_fallback: bool,
+    pub cpu_n_ticks_us: u64,
+    pub gpu_resident_summary_mean_us: u64,
+    pub gpu_resident_summary_min_us: u64,
+    pub gpu_resident_summary_max_us: u64,
+    pub gpu_resident_records_mean_us: u64,
+    pub gpu_resident_records_min_us: u64,
+    pub gpu_resident_records_max_us: u64,
+    pub gpu_resident_summary_per_tick_us: f32,
+    pub gpu_resident_records_per_tick_us: f32,
+    pub cpu_per_tick_us: f32,
+    pub final_state_matches_cpu_summary_mode: bool,
+    pub final_state_matches_cpu_records_mode: bool,
+    pub summary_matches_cpu: bool,
+    pub replay_from_records_matches_gpu: bool,
+    pub resident_summary_speedup_vs_cpu: f32,
+    pub resident_records_speedup_vs_cpu: f32,
+    pub compact_record_bytes_total: usize,
+    pub summary_bytes_total: usize,
+    pub conservation_gate: String,
+    pub replay_gate: String,
+    pub determinism_gate: String,
+    pub resident_performance_gate: String,
     pub interpretation: String,
     pub timing_note: String,
 }
@@ -264,6 +333,133 @@ pub fn replay_from_compact_records(
             units: before.units + record.emit_count,
             _pad0: 0,
         };
+    }
+    Ok(out)
+}
+
+fn apply_compact_record(
+    out: &mut [QueueState],
+    params: &[QueueParams],
+    record: CompactDeltaRecord,
+) -> Result<()> {
+    let idx = record.item as usize;
+    if idx >= out.len() {
+        bail!("record item {} out of range", record.item);
+    }
+
+    let p = params[idx];
+    let before = out[idx];
+
+    if p.is_active == 0 || p.unit_cost == 0 {
+        if record.transfer_amount != 0 || record.emit_count != 0 {
+            bail!("inactive record {} has non-zero deltas", record.item);
+        }
+        return Ok(());
+    }
+
+    if record.transfer_amount > before.source_pool {
+        bail!(
+            "record {} transfer {} exceeds source {}",
+            record.item,
+            record.transfer_amount,
+            before.source_pool
+        );
+    }
+
+    let queue_pre_emit = before.queue_accum + record.transfer_amount;
+    let emitted_value = record.emit_count as u64 * p.unit_cost as u64;
+    if (queue_pre_emit as u64) < emitted_value {
+        bail!(
+            "record {} emit value {} exceeds queue pre-emit {}",
+            record.item,
+            emitted_value,
+            queue_pre_emit
+        );
+    }
+
+    out[idx] = QueueState {
+        source_pool: before.source_pool - record.transfer_amount,
+        queue_accum: queue_pre_emit - record.emit_count * p.unit_cost,
+        units: before.units + record.emit_count,
+        _pad0: 0,
+    };
+    Ok(())
+}
+
+pub fn resolve_cpu_current_n_ticks(
+    scenario: &MultiTargetScenario,
+    ticks: u32,
+) -> (
+    Vec<QueueState>,
+    Vec<TickSummaryReadback>,
+    Vec<CompactDeltaRecord>,
+) {
+    let n_items = scenario.states.len();
+    let mut states = scenario.states.clone();
+    let mut summaries = Vec::with_capacity(ticks as usize);
+    let mut all_records = Vec::with_capacity(ticks as usize * n_items);
+
+    for _tick in 0..ticks {
+        let mut tick_transfer = 0u32;
+        let mut tick_emit = 0u32;
+        let mut tick_active = 0u32;
+
+        for item in 0..n_items {
+            let (new_state, compact, _) =
+                resolve_item(states[item], scenario.params[item], item as u32);
+            states[item] = new_state;
+            tick_transfer = tick_transfer.saturating_add(compact.transfer_amount);
+            tick_emit = tick_emit.saturating_add(compact.emit_count);
+            if scenario.params[item].is_active != 0 {
+                tick_active += 1;
+            }
+            all_records.push(compact);
+        }
+
+        summaries.push(TickSummaryReadback {
+            total_transferred: tick_transfer,
+            total_emitted_units: tick_emit,
+            active_count: tick_active,
+            reserved: 0,
+        });
+    }
+
+    (states, summaries, all_records)
+}
+
+pub fn replay_from_compact_records_n_ticks(
+    initial: &[QueueState],
+    params: &[QueueParams],
+    records: &[CompactDeltaRecord],
+    ticks: u32,
+    n_items: usize,
+) -> Result<Vec<QueueState>> {
+    if initial.len() != params.len() {
+        bail!("initial/params length mismatch");
+    }
+    if records.len() != ticks as usize * n_items {
+        bail!(
+            "records length {} expected {}",
+            records.len(),
+            ticks as usize * n_items
+        );
+    }
+
+    let mut out = initial.to_vec();
+    for tick in 0..ticks as usize {
+        for item in 0..n_items {
+            let idx = tick * n_items + item;
+            let record = records[idx];
+            if record.item as usize != item {
+                bail!(
+                    "record at tick {} slot {} has item id {}",
+                    tick,
+                    item,
+                    record.item
+                );
+            }
+            apply_compact_record(&mut out, params, record)?;
+        }
     }
     Ok(out)
 }
@@ -493,6 +689,40 @@ pub fn make_manual_edge_case_scenario() -> MultiTargetScenario {
     }
 }
 
+pub fn make_depletion_n_tick_scenario() -> MultiTargetScenario {
+    MultiTargetScenario {
+        name: "multitarget_depletion_manual".to_string(),
+        states: vec![
+            QueueState {
+                source_pool: 25,
+                queue_accum: 0,
+                units: 0,
+                _pad0: 0,
+            },
+            QueueState {
+                source_pool: 100,
+                queue_accum: 0,
+                units: 0,
+                _pad0: 0,
+            },
+        ],
+        params: vec![
+            QueueParams {
+                daily_request: 10,
+                unit_cost: 3,
+                is_active: 1,
+                _pad0: 0,
+            },
+            QueueParams {
+                daily_request: 50,
+                unit_cost: 5,
+                is_active: 0,
+                _pad0: 0,
+            },
+        ],
+    }
+}
+
 fn mix_u32(seed: u32) -> u32 {
     seed.wrapping_mul(1_103_515_245).wrapping_add(12_345)
 }
@@ -594,6 +824,8 @@ pub struct MultiTargetReplayHarness {
     queue: Queue,
     pipeline: wgpu::ComputePipeline,
     bind_group_layout: wgpu::BindGroupLayout,
+    resident_pipeline: wgpu::ComputePipeline,
+    resident_bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl MultiTargetReplayHarness {
@@ -659,11 +891,38 @@ impl MultiTargetReplayHarness {
             cache: None,
         });
 
+        let resident_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("multitarget_resident_layout"),
+                entries: &[
+                    storage_entry(0, false),
+                    storage_entry(1, true),
+                    storage_entry(2, false),
+                    storage_entry(3, false),
+                    uniform_entry(4),
+                ],
+            });
+
+        let resident_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("multitarget_resident_pipeline"),
+            layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("multitarget_resident_pl"),
+                bind_group_layouts: &[&resident_bind_group_layout],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "resolve_multitarget_resident_tick",
+            compilation_options: Default::default(),
+            cache: None,
+        });
+
         Ok(Self {
             device,
             queue,
             pipeline,
             bind_group_layout,
+            resident_pipeline,
+            resident_bind_group_layout,
         })
     }
 
@@ -811,6 +1070,196 @@ impl MultiTargetReplayHarness {
 
         Ok((final_states, compact_records, full_records))
     }
+
+    pub fn run_gpu_resident(
+        &self,
+        scenario: &MultiTargetScenario,
+        ticks: u32,
+        write_per_item_records: bool,
+    ) -> Result<MultiTargetResidentResult> {
+        let n_items = scenario.states.len();
+        let states_bytes = pad_storage_bytes(&scenario.states);
+        let params_bytes = pad_storage_bytes(&scenario.params);
+
+        let states_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("multitarget_resident_states"),
+            contents: &states_bytes,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+        });
+        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("multitarget_resident_params"),
+            contents: &params_bytes,
+            usage: BufferUsages::STORAGE,
+        });
+
+        let summary_u32s = (ticks as usize) * 4;
+        let summary_zeros = vec![0u32; summary_u32s];
+        let summary_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("multitarget_resident_summary"),
+            contents: bytemuck::cast_slice(&summary_zeros),
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+        });
+
+        let record_count = if write_per_item_records {
+            ticks as usize * n_items
+        } else {
+            0
+        };
+        let compact_size = if write_per_item_records {
+            (record_count * std::mem::size_of::<CompactDeltaRecord>()) as u64
+        } else {
+            std::mem::size_of::<CompactDeltaRecord>() as u64
+        };
+        let compact_buffer = self.device.create_buffer(&BufferDescriptor {
+            label: Some("multitarget_resident_compact"),
+            size: compact_size,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let workgroups = ((n_items as u32) + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
+        let write_flag = if write_per_item_records {
+            RESIDENT_MODE_RECORDS
+        } else {
+            RESIDENT_MODE_SUMMARY_ONLY
+        };
+
+        let mut uniform_buffers = Vec::with_capacity(ticks as usize);
+        let mut bind_groups = Vec::with_capacity(ticks as usize);
+        for tick in 0..ticks {
+            let gpu_params = ResidentParams {
+                n_items: n_items as u32,
+                tick_index: tick,
+                record_stride: n_items as u32,
+                write_per_item_records: write_flag,
+            };
+            let uniform_buffer =
+                self.device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("multitarget_resident_uniform"),
+                        contents: bytemuck::bytes_of(&gpu_params),
+                        usage: BufferUsages::UNIFORM,
+                    });
+            let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
+                label: Some("multitarget_resident_bg"),
+                layout: &self.resident_bind_group_layout,
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: states_buffer.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        resource: compact_buffer.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 3,
+                        resource: summary_buffer.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 4,
+                        resource: uniform_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+            uniform_buffers.push(uniform_buffer);
+            bind_groups.push(bind_group);
+        }
+
+        let states_size = (n_items * std::mem::size_of::<QueueState>()) as u64;
+        let summary_size = (summary_u32s * std::mem::size_of::<u32>()) as u64;
+        let states_readback = self.device.create_buffer(&BufferDescriptor {
+            label: Some("multitarget_resident_states_readback"),
+            size: states_size.max(4),
+            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let summary_readback = self.device.create_buffer(&BufferDescriptor {
+            label: Some("multitarget_resident_summary_readback"),
+            size: summary_size.max(4),
+            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let compact_readback = self.device.create_buffer(&BufferDescriptor {
+            label: Some("multitarget_resident_compact_readback"),
+            size: compact_size,
+            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let t0 = Instant::now();
+        let mut encoder = self
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("multitarget_resident_enc"),
+            });
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("multitarget_resident_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.resident_pipeline);
+            for bind_group in &bind_groups {
+                pass.set_bind_group(0, bind_group, &[]);
+                pass.dispatch_workgroups(workgroups, 1, 1);
+            }
+        }
+        encoder.copy_buffer_to_buffer(&states_buffer, 0, &states_readback, 0, states_size.max(4));
+        encoder.copy_buffer_to_buffer(
+            &summary_buffer,
+            0,
+            &summary_readback,
+            0,
+            summary_size.max(4),
+        );
+        if write_per_item_records {
+            encoder.copy_buffer_to_buffer(
+                &compact_buffer,
+                0,
+                &compact_readback,
+                0,
+                compact_size,
+            );
+        }
+        self.queue.submit(Some(encoder.finish()));
+        let elapsed_us = t0.elapsed().as_micros() as u64;
+
+        let final_states = map_readback_pod::<QueueState>(&self.device, &states_readback, n_items)?;
+        let summary_raw = map_readback_pod::<u32>(&self.device, &summary_readback, summary_u32s)?;
+        let summaries = parse_tick_summaries(&summary_raw, ticks);
+        let compact_records = if write_per_item_records {
+            map_readback_pod::<CompactDeltaRecord>(&self.device, &compact_readback, record_count)?
+        } else {
+            Vec::new()
+        };
+
+        let _ = uniform_buffers;
+
+        Ok(MultiTargetResidentResult {
+            final_states,
+            summaries,
+            compact_records,
+            elapsed_us,
+        })
+    }
+}
+
+fn parse_tick_summaries(raw: &[u32], ticks: u32) -> Vec<TickSummaryReadback> {
+    (0..ticks as usize)
+        .map(|t| {
+            let base = t * 4;
+            TickSummaryReadback {
+                total_transferred: raw[base],
+                total_emitted_units: raw[base + 1],
+                active_count: raw[base + 2],
+                reserved: raw[base + 3],
+            }
+        })
+        .collect()
 }
 
 fn map_readback_pod<T: Pod>(device: &Device, readback: &Buffer, len: usize) -> Result<Vec<T>> {
@@ -924,22 +1373,307 @@ fn interpretation_string(
     }
     if compact_gate && speedup >= 1.0 {
         format!(
-            "STRONG_PASS: GPU compact settlement matches CPU, replay reconstructs final state, conservation holds, compact records are {:.1}% of full size, GPU compact {:.2}x vs CPU.",
+            "STRONG_PASS: GPU compact settlement matches CPU in upload/readback envelope mode, replay reconstructs final state, conservation holds, compact records are {:.1}% of full size, GPU compact {:.2}x vs CPU.",
             ratio * 100.0,
             speedup
         )
     } else if compact_gate {
         format!(
-            "WEAK_PASS: Correct and deterministic, but GPU compact {:.2}x vs CPU; compact records {:.1}% of full size.",
+            "WEAK_PASS: Correct and deterministic in upload/readback envelope mode, but GPU compact {:.2}x vs CPU; compact records {:.1}% of full size. Envelope timing is not representative of GPU-resident pivot performance.",
             speedup,
             ratio * 100.0
         )
     } else {
         format!(
-            "WEAK_PASS: Correct and deterministic, but compact record savings are weak ({:.1}% of full).",
+            "WEAK_PASS: Correct and deterministic in upload/readback envelope mode, but compact record savings are weak ({:.1}% of full).",
             ratio * 100.0
         )
     }
+}
+
+fn record_ticks_for(n_items: usize, ticks: u32) -> (u32, bool) {
+    let bytes =
+        n_items as u64 * ticks as u64 * std::mem::size_of::<CompactDeltaRecord>() as u64;
+    if bytes > 100 * 1024 * 1024 {
+        (8, true)
+    } else {
+        (ticks, false)
+    }
+}
+
+fn summaries_equal(a: &[TickSummaryReadback], b: &[TickSummaryReadback]) -> bool {
+    a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| x == y)
+}
+
+fn resident_interpretation(
+    conservation_ok: bool,
+    replay_ok: bool,
+    deterministic: bool,
+    final_summary: bool,
+    final_records: bool,
+    summary_match: bool,
+    summary_speedup: f32,
+    records_speedup: f32,
+    records_fallback: bool,
+) -> (String, String) {
+    if !conservation_ok || !replay_ok || !deterministic || !final_summary || !summary_match {
+        return (
+            "FAIL: GPU-resident multi-target settlement or replay validation failed.".to_string(),
+            "FAIL".to_string(),
+        );
+    }
+
+    let perf_gate = if summary_speedup >= 1.0 {
+        if final_records && records_speedup >= 1.0 {
+            "STRONG_PASS".to_string()
+        } else if final_records {
+            "WEAK_PASS".to_string()
+        } else {
+            "STRONG_PASS".to_string()
+        }
+    } else {
+        "WEAK_PASS".to_string()
+    };
+
+    let mut interpretation = if summary_speedup >= 1.0 {
+        format!(
+            "STRONG_PASS: GPU-resident summary mode matches CPU over N ticks ({:.2}x vs CPU). Semantic and summary gates pass.",
+            summary_speedup
+        )
+    } else {
+        format!(
+            "WEAK_PASS: GPU-resident correctness passes but summary mode {:.2}x vs CPU over N ticks; perf unresolved under resident timing.",
+            summary_speedup
+        )
+    };
+
+    if final_records {
+        if records_speedup >= 1.0 {
+            interpretation.push_str(&format!(
+                " Records mode {:.2}x vs CPU.",
+                records_speedup
+            ));
+        } else {
+            interpretation.push_str(&format!(
+                " Records mode slower ({:.2}x vs CPU); log volume pressure.",
+                records_speedup
+            ));
+        }
+    }
+
+    if records_fallback {
+        interpretation.push_str(
+            " Records mode used 8-tick fallback due to ~102MB compact record allocation limit.",
+        );
+    }
+
+    interpretation.push_str(
+        " Workshop-local; not production AccumulatorOp; no contention; not pure shader timing.",
+    );
+
+    (interpretation, perf_gate)
+}
+
+pub fn compare_multitarget_resident_rich(
+    scenario: &MultiTargetScenario,
+    ticks: u32,
+) -> Result<MultiTargetResidentReport> {
+    let harness = MultiTargetReplayHarness::new()?;
+    compare_multitarget_resident_rich_with_harness(&harness, scenario, ticks)
+}
+
+pub fn compare_multitarget_resident_rich_with_harness(
+    harness: &MultiTargetReplayHarness,
+    scenario: &MultiTargetScenario,
+    ticks: u32,
+) -> Result<MultiTargetResidentReport> {
+    let n_items = scenario.states.len();
+    let active_count = scenario
+        .params
+        .iter()
+        .filter(|p| p.is_active != 0)
+        .count();
+    let (record_ticks, records_memory_fallback) = record_ticks_for(n_items, ticks);
+
+    let t0 = Instant::now();
+    let (cpu_final, cpu_summaries, _cpu_records) =
+        resolve_cpu_current_n_ticks(scenario, ticks);
+    let cpu_n_ticks_us = t0.elapsed().as_micros() as u64;
+
+    let (cpu_final_records, cpu_summaries_records, _cpu_records_subset) =
+        if record_ticks < ticks {
+            let (f, s, r) = resolve_cpu_current_n_ticks(scenario, record_ticks);
+            (f, s, r)
+        } else {
+            (cpu_final.clone(), cpu_summaries.clone(), _cpu_records.clone())
+        };
+
+    let t_records = Instant::now();
+    let _ = resolve_cpu_current_n_ticks(scenario, record_ticks);
+    let cpu_records_ticks_us = t_records.elapsed().as_micros() as u64;
+
+    let _ = harness.run_gpu_resident(scenario, ticks, false)?;
+
+    let mut summary_warm = Vec::with_capacity(RESIDENT_WARM_RUNS);
+    let mut records_warm = Vec::with_capacity(RESIDENT_WARM_RUNS);
+    let mut gpu_summary_base: Option<MultiTargetResidentResult> = None;
+    let mut gpu_records_base: Option<MultiTargetResidentResult> = None;
+    let mut deterministic = true;
+
+    for _ in 0..RESIDENT_WARM_RUNS {
+        let gpu_summary = harness.run_gpu_resident(scenario, ticks, false)?;
+        summary_warm.push(gpu_summary.elapsed_us);
+
+        match &gpu_summary_base {
+            None => gpu_summary_base = Some(gpu_summary),
+            Some(base) => {
+                if base.final_states != gpu_summary.final_states
+                    || base.summaries != gpu_summary.summaries
+                {
+                    deterministic = false;
+                }
+            }
+        }
+
+        let gpu_records = harness.run_gpu_resident(scenario, record_ticks, true)?;
+        records_warm.push(gpu_records.elapsed_us);
+
+        match &gpu_records_base {
+            None => gpu_records_base = Some(gpu_records),
+            Some(base) => {
+                if base.final_states != gpu_records.final_states
+                    || base.compact_records != gpu_records.compact_records
+                {
+                    deterministic = false;
+                }
+            }
+        }
+    }
+
+    let gpu_summary = gpu_summary_base.unwrap();
+    let gpu_records = gpu_records_base.unwrap();
+
+    let final_state_matches_cpu_summary_mode =
+        states_equal(&cpu_final, &gpu_summary.final_states);
+    let final_state_matches_cpu_records_mode =
+        states_equal(&cpu_final_records, &gpu_records.final_states);
+    let summary_matches_cpu = summaries_equal(&cpu_summaries, &gpu_summary.summaries);
+
+    let replayed = replay_from_compact_records_n_ticks(
+        &scenario.states,
+        &scenario.params,
+        &gpu_records.compact_records,
+        record_ticks,
+        n_items,
+    )?;
+    let replay_from_records_matches_gpu =
+        states_equal(&replayed, &gpu_records.final_states);
+
+    let records_summaries_match = if record_ticks < ticks {
+        summaries_equal(&cpu_summaries_records, &gpu_records.summaries)
+    } else {
+        true
+    };
+
+    let conservation_gate = if final_state_matches_cpu_summary_mode && summary_matches_cpu {
+        "PASS"
+    } else {
+        "FAIL"
+    };
+    let replay_gate = if replay_from_records_matches_gpu
+        && final_state_matches_cpu_records_mode
+        && records_summaries_match
+    {
+        "PASS"
+    } else {
+        "FAIL"
+    };
+    let determinism_gate = if deterministic { "PASS" } else { "FAIL" };
+
+    let (summary_mean, summary_min, summary_max) = warm_stats(&summary_warm);
+    let (records_mean, records_min, records_max) = warm_stats(&records_warm);
+
+    let cpu_per_tick = cpu_n_ticks_us as f32 / ticks as f32;
+    let summary_per_tick = summary_mean as f32 / ticks as f32;
+    let records_per_tick = records_mean as f32 / record_ticks as f32;
+
+    let summary_speedup = if summary_mean > 0 {
+        cpu_n_ticks_us as f32 / summary_mean as f32
+    } else {
+        0.0
+    };
+    let records_speedup = if records_mean > 0 {
+        cpu_records_ticks_us as f32 / records_mean as f32
+    } else {
+        0.0
+    };
+
+    let summary_bytes_total = ticks as usize * 4 * std::mem::size_of::<u32>();
+    let compact_record_bytes_total =
+        record_ticks as usize * n_items * std::mem::size_of::<CompactDeltaRecord>();
+
+    let (interpretation, resident_performance_gate) = resident_interpretation(
+        conservation_gate == "PASS",
+        replay_gate == "PASS",
+        determinism_gate == "PASS",
+        final_state_matches_cpu_summary_mode,
+        final_state_matches_cpu_records_mode,
+        summary_matches_cpu,
+        summary_speedup,
+        records_speedup,
+        records_memory_fallback,
+    );
+
+    let _ = (summary_min, summary_max, records_min, records_max);
+
+    Ok(MultiTargetResidentReport {
+        scenario_name: scenario.name.clone(),
+        n_items,
+        active_count,
+        ticks,
+        record_ticks,
+        records_memory_fallback,
+        cpu_n_ticks_us,
+        gpu_resident_summary_mean_us: summary_mean,
+        gpu_resident_summary_min_us: summary_min,
+        gpu_resident_summary_max_us: summary_max,
+        gpu_resident_records_mean_us: records_mean,
+        gpu_resident_records_min_us: records_min,
+        gpu_resident_records_max_us: records_max,
+        gpu_resident_summary_per_tick_us: summary_per_tick,
+        gpu_resident_records_per_tick_us: records_per_tick,
+        cpu_per_tick_us: cpu_per_tick,
+        final_state_matches_cpu_summary_mode,
+        final_state_matches_cpu_records_mode,
+        summary_matches_cpu,
+        replay_from_records_matches_gpu,
+        resident_summary_speedup_vs_cpu: summary_speedup,
+        resident_records_speedup_vs_cpu: records_speedup,
+        compact_record_bytes_total,
+        summary_bytes_total,
+        conservation_gate: conservation_gate.to_string(),
+        replay_gate: replay_gate.to_string(),
+        determinism_gate: determinism_gate.to_string(),
+        resident_performance_gate,
+        interpretation,
+        timing_note: RESIDENT_TIMING_NOTE.to_string(),
+    })
+}
+
+pub fn format_multitarget_resident_report(report: &MultiTargetResidentReport) -> String {
+    crate::multitarget_replay_report::format_multitarget_resident_report(report)
+}
+
+pub fn write_multitarget_resident_reports(report: &MultiTargetResidentReport) -> Result<()> {
+    crate::multitarget_replay_report::write_multitarget_resident_reports(report)
+        .map_err(Into::into)
+}
+
+pub fn write_multitarget_resident_reports_bundle(
+    reports: &[MultiTargetResidentReport],
+) -> Result<()> {
+    crate::multitarget_replay_report::write_multitarget_resident_reports_bundle(reports)
+        .map_err(Into::into)
 }
 
 pub fn compare_multitarget_replay_rich(
