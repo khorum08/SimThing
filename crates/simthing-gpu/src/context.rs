@@ -18,6 +18,8 @@ pub struct GpuContext {
     pub adapter:  Adapter,
     pub device:   Device,
     pub queue:    Queue,
+    timestamp_supported: bool,
+    timestamp_period_ns: f32,
 }
 
 impl GpuContext {
@@ -41,11 +43,18 @@ impl GpuContext {
             .await
             .ok_or(GpuInitError::NoAdapter)?;
 
+        let timestamp_supported = adapter.features().contains(Features::TIMESTAMP_QUERY);
+        let required_features = if timestamp_supported {
+            Features::TIMESTAMP_QUERY
+        } else {
+            Features::empty()
+        };
+
         let (device, queue) = adapter
             .request_device(
                 &DeviceDescriptor {
-                    label:            Some("simthing-gpu device"),
-                    required_features: Features::empty(),
+                    label:             Some("simthing-gpu device"),
+                    required_features,
                     required_limits:   Limits::default(),
                     memory_hints:      MemoryHints::default(),
                 },
@@ -53,6 +62,23 @@ impl GpuContext {
             )
             .await?;
 
-        Ok(Self { instance, adapter, device, queue })
+        let timestamp_period_ns = queue.get_timestamp_period();
+
+        Ok(Self {
+            instance,
+            adapter,
+            device,
+            queue,
+            timestamp_supported,
+            timestamp_period_ns,
+        })
+    }
+
+    pub fn timestamp_supported(&self) -> bool {
+        self.timestamp_supported
+    }
+
+    pub fn timestamp_period_ns(&self) -> f32 {
+        self.timestamp_period_ns
     }
 }

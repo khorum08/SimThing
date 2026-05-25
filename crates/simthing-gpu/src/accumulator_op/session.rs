@@ -8,8 +8,8 @@ use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
     CommandEncoderDescriptor, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor,
-    Maintain, MapMode, PipelineLayoutDescriptor, ShaderModuleDescriptor,
-    ShaderSource, ShaderStages,
+    Maintain, MapMode, PipelineLayoutDescriptor, QuerySet, QuerySetDescriptor, QueryType,
+    ShaderModuleDescriptor, ShaderSource, ShaderStages,
 };
 
 use crate::context::GpuContext;
@@ -67,6 +67,11 @@ pub struct AccumulatorOpSession {
     execute_pipeline: ComputePipeline,
     summary_layout: BindGroupLayout,
     summary_pipeline: ComputePipeline,
+
+    timestamp_query_set: Option<QuerySet>,
+    timestamp_resolve_buffer: Option<Buffer>,
+    timestamp_readback_buffer: Option<Buffer>,
+    last_pass_time_us: Option<u64>,
 }
 
 impl AccumulatorOpSession {
@@ -192,6 +197,30 @@ impl AccumulatorOpSession {
             cache: None,
         });
 
+        let (timestamp_query_set, timestamp_resolve_buffer, timestamp_readback_buffer) =
+            if ctx.timestamp_supported() {
+                let query_set = device.create_query_set(&QuerySetDescriptor {
+                    label: Some("accumulator_timestamp_query_set"),
+                    ty: QueryType::Timestamp,
+                    count: 2,
+                });
+                let resolve = device.create_buffer(&BufferDescriptor {
+                    label: Some("accumulator_timestamp_resolve"),
+                    size: 16,
+                    usage: BufferUsages::QUERY_RESOLVE | BufferUsages::COPY_SRC,
+                    mapped_at_creation: false,
+                });
+                let readback = device.create_buffer(&BufferDescriptor {
+                    label: Some("accumulator_timestamp_readback"),
+                    size: 16,
+                    usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+                (Some(query_set), Some(resolve), Some(readback))
+            } else {
+                (None, None, None)
+            };
+
         let session = Self {
             ctx,
             n_slots,
@@ -209,6 +238,10 @@ impl AccumulatorOpSession {
             execute_pipeline,
             summary_layout,
             summary_pipeline,
+            timestamp_query_set,
+            timestamp_resolve_buffer,
+            timestamp_readback_buffer,
+            last_pass_time_us: None,
         };
 
         session.reset_emission_count();
@@ -229,6 +262,16 @@ impl AccumulatorOpSession {
 
     pub fn emission_capacity(&self) -> u32 {
         self.emission_capacity
+    }
+
+    /// Whether this session was created with GPU timestamp query support.
+    pub fn timestamp_supported(&self) -> bool {
+        self.timestamp_query_set.is_some()
+    }
+
+    /// Duration of the last `execute_ops` pass in microseconds, if timestamp queries are supported.
+    pub fn last_pass_time_us(&self) -> Option<u64> {
+        self.last_pass_time_us
     }
 
     /// Upload initial or post-tick values matrix (row-major slot × dims).
@@ -261,12 +304,13 @@ impl AccumulatorOpSession {
     }
 
     /// Dispatch Pass B for one OrderBand, then refresh per-slot summaries.
-    pub fn tick(&self, band: u32) -> Result<(), AccumulatorOpSessionError> {
+    pub fn tick(&mut self, band: u32) -> Result<(), AccumulatorOpSessionError> {
         if self.n_ops == 0 {
             return Err(AccumulatorOpSessionError::NoOps);
         }
 
         self.reset_emission_count();
+        self.last_pass_time_us = None;
 
         let tick_params = AccumulatorTickParams {
             n_ops: self.n_ops,
@@ -318,10 +362,18 @@ impl AccumulatorOpSession {
                 label: Some("accumulator_tick_encoder"),
             });
 
+        let timestamp_writes = self.timestamp_query_set.as_ref().map(|query_set| {
+            wgpu::ComputePassTimestampWrites {
+                query_set,
+                beginning_of_pass_write_index: Some(0),
+                end_of_pass_write_index: Some(1),
+            }
+        });
+
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("accumulator_execute_pass"),
-                timestamp_writes: None,
+                timestamp_writes,
             });
             pass.set_pipeline(&self.execute_pipeline);
             pass.set_bind_group(0, &execute_bind_group, &[]);
@@ -329,8 +381,19 @@ impl AccumulatorOpSession {
             pass.dispatch_workgroups(groups, 1, 1);
         }
 
+        if let (Some(query_set), Some(resolve), Some(readback)) = (
+            self.timestamp_query_set.as_ref(),
+            self.timestamp_resolve_buffer.as_ref(),
+            self.timestamp_readback_buffer.as_ref(),
+        ) {
+            encoder.resolve_query_set(query_set, 0..2, resolve, 0);
+            encoder.copy_buffer_to_buffer(resolve, 0, readback, 0, 16);
+        }
+
         self.dispatch_write_summaries(&mut encoder);
         self.ctx.queue.submit(Some(encoder.finish()));
+
+        self.read_execute_pass_timestamp();
         Ok(())
     }
 
@@ -390,6 +453,37 @@ impl AccumulatorOpSession {
     fn read_emission_count(&self) -> Result<u32, AccumulatorOpSessionError> {
         let bytes = self.read_buffer_bytes(&self.emission_count);
         Ok(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
+    }
+
+    fn read_execute_pass_timestamp(&mut self) {
+        // B-3 reads timestamps synchronously for testability.
+        // Later production profiling can batch or sample timestamp readbacks.
+        let Some(readback) = self.timestamp_readback_buffer.as_ref() else {
+            self.last_pass_time_us = None;
+            return;
+        };
+
+        self.ctx.device.poll(Maintain::Wait);
+        let slice = readback.slice(..);
+        slice.map_async(MapMode::Read, |_| {});
+        self.ctx.device.poll(Maintain::Wait);
+        let mapped = slice.get_mapped_range();
+        if mapped.len() < 16 {
+            self.last_pass_time_us = None;
+            return;
+        }
+
+        let stamps: [u64; 2] = bytemuck::cast_slice(&mapped[..16]).try_into().unwrap();
+        drop(mapped);
+        readback.unmap();
+
+        if stamps[1] >= stamps[0] {
+            let delta = stamps[1] - stamps[0];
+            let ns = delta as f64 * self.ctx.timestamp_period_ns() as f64;
+            self.last_pass_time_us = Some((ns / 1000.0).round() as u64);
+        } else {
+            self.last_pass_time_us = None;
+        }
     }
 
     fn dispatch_write_summaries(
@@ -1036,5 +1130,81 @@ mod tests {
             session.upload_ops(std::slice::from_ref(&op)),
             Err(AccumulatorOpSessionError::Encode(EncodeError::Unsupported(_)))
         ));
+    }
+
+    fn trivial_1000_ops() -> Vec<AccumulatorOp> {
+        (0..1000)
+            .map(|i| AccumulatorOp {
+                source: SourceSpec::Constant(1.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::OrderBand(0),
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(i, 0)],
+            })
+            .collect()
+    }
+
+    #[test]
+    fn b3_timestamp_query_path_does_not_panic() {
+        set_debug_readback_allowed(true);
+        let ctx = GpuContext::new_blocking().expect("gpu context");
+        let mut session = AccumulatorOpSession::new(ctx, 1000, 1);
+        let ops = trivial_1000_ops();
+        session.upload_values(&vec![0.0; 1000]);
+        session.upload_ops(&ops).unwrap();
+        session.tick(0).unwrap();
+
+        if session.timestamp_supported() {
+            assert!(session.last_pass_time_us().is_some());
+        } else {
+            assert_eq!(session.last_pass_time_us(), None);
+        }
+    }
+
+    #[test]
+    fn b3_timestamp_query_reports_plausible_time_when_supported() {
+        set_debug_readback_allowed(true);
+        let ctx = GpuContext::new_blocking().expect("gpu context");
+        let mut session = AccumulatorOpSession::new(ctx, 1000, 1);
+        let ops = trivial_1000_ops();
+        session.upload_values(&vec![0.0; 1000]);
+        session.upload_ops(&ops).unwrap();
+        session.tick(0).unwrap();
+
+        if let Some(us) = session.last_pass_time_us() {
+            assert!(us > 0);
+            assert!(us < 10_000);
+        }
+    }
+
+    #[test]
+    fn b3_timestamp_does_not_alter_semantics() {
+        set_debug_readback_allowed(true);
+        let ctx = GpuContext::new_blocking().expect("gpu context");
+        let n_slots = 8u32;
+        let n_dims = 2u32;
+        let ops = bootstrap_ops();
+        let initial = bootstrap_initial_values(n_slots, n_dims);
+
+        let mut expected = initial.clone();
+        execute_ops_cpu(&mut expected, &ops, 0, n_dims).unwrap();
+        execute_ops_cpu(&mut expected, &ops, 1, n_dims).unwrap();
+        let expected_summaries = summaries_from_values(&expected, n_slots, n_dims);
+
+        let mut session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
+        session.upload_values(&initial);
+        session.upload_ops(&ops).unwrap();
+        session.tick(0).unwrap();
+        session.tick(1).unwrap();
+
+        assert_eq!(session.readback_summary().unwrap(), expected_summaries);
+        assert_eq!(session.readback_full().unwrap(), expected);
+
+        if session.timestamp_supported() {
+            assert!(session.last_pass_time_us().is_some());
+        } else {
+            assert_eq!(session.last_pass_time_us(), None);
+        }
     }
 }

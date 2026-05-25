@@ -234,6 +234,12 @@ trivial 1000-op dispatch. On backends that don't, assert it returns `None`
 without panicking.  
 **Acceptance:** CI green. No panics on any backend.
 
+**Shipped scope (B-3):** optional timestamp query plumbing for
+`AccumulatorOpSession`. Timestamp support is feature-detected. Unsupported
+backends return `None` from `last_pass_time_us()` and still execute normally.
+The B-3 readback is synchronous for testability; future production profiling
+may batch or sample timestamp readbacks.
+
 ---
 
 ### ⚠️ PR B-4 — Opus review: summary/checksum readback design

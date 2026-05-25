@@ -74,6 +74,10 @@ One execution model:
   rejects any same-runtime-cell contention, including Always-vs-OrderBand
   aliasing, until production contention semantics are implemented.
 
+  B-3 note: `AccumulatorOpSession` exposes optional timestamp measurement for
+  the execute pass via `last_pass_time_us()`. This is instrumentation only and
+  does not affect operation semantics.
+
 One retained operation:
   snapshot — copy_buffer_to_buffer (memcpy; not a per-slot write)
 

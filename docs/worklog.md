@@ -6,6 +6,25 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — B-3: AccumulatorOpSession timestamp query plumbing
+
+**Status:** landing this session (PR pending).
+
+**Scope:** Optional GPU timestamp instrumentation on the standalone `AccumulatorOpSession`
+execute pass. Does not integrate with `BoundaryProtocol` or alter operation semantics.
+
+**Landed:**
+
+- `GpuContext`: feature-detect `TIMESTAMP_QUERY`; `timestamp_supported()` / `timestamp_period_ns()`
+- `AccumulatorOpSession`: optional query set + resolve/readback buffers; `tick(&mut self)`;
+  `last_pass_time_us()` returns `None` when unsupported
+- Pattern reused from workshop `persistent_bench.rs`; synchronous readback for testability
+- **28** gpu `accumulator_op` tests (+3 B-3 tests)
+
+**Next:** B-4 Opus summary/checksum design · C-1 threshold scan migration.
+
+---
+
 ## 2026-05-19 — B-2 fix: Always wildcard bootstrap contention (#94)
 
 **Status:** `master` @ `41bb9e9` (PR #94 merged).
@@ -25,7 +44,7 @@ conflicts with any OrderBand (or other Always) op touching the same `(slot, col)
 
 ## 2026-05-19 — AccumulatorOp v2 Phases A–B: A-4 through B-2 (PRs #90–#93)
 
-**Status:** `master` @ `9482ab4` (through PR #94).
+**Status:** `master` @ `41bb9e9` (through PR #94).
 
 **Scope:** Standalone `AccumulatorOpSession` in `simthing-gpu` — persistent Pass B buffers,
 bootstrap → production-shaped kernel subset. **Does not integrate** with `BoundaryProtocol`

@@ -1,14 +1,14 @@
 # SimThing Todo Log
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B3/I1) complete;
-**AccumulatorOp v2 Phases A–B** complete through B-2 + Always wildcard fix (#94).
-`master` and `origin/master` synced at **`41bb9e9`** (PR #94 + doc sync).
+**AccumulatorOp v2 Phases A–B** complete through B-3 timestamp plumbing (landing this session).
+`master` synced at merge of PR #95 (pending).
 
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
 Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
 
 **Tests:** `cargo test --workspace` green at last full run (430 passed, 6 ignored after A-4).
-AccumulatorOp module: **25** gpu + **9** core tests (after #94 Always wildcard fix).
+AccumulatorOp module: **28** gpu + **9** core tests (after B-3).
 
 **Cursor handoff:** AccumulatorOp v2 Phases A–B (see table below).
 
@@ -26,13 +26,14 @@ AccumulatorOp module: **25** gpu + **9** core tests (after #94 Always wildcard f
 | **B-1** | #91 | `afff3b6` | `AccumulatorOpSession` persistent buffers + bootstrap kernel |
 | **B-1 fix** | #92 | `f167e5c` | Scale encoding, contention rejection, clamped transfer, provisional readback tiers |
 | **B-2** | #93 | `02e40eb` | EmitEvent, atomic emission count, overflow reporting, CPU oracle emissions |
-| **B-2 fix** | #94 | `2633970` | Always gate wildcard contention validation — prevents Always vs OrderBand races |
+| **B-2 fix** | #94 | `2633970` | Always gate wildcard contention validation |
+| **B-3** | *(this session)* | — | Optional `TIMESTAMP_QUERY` plumbing, `last_pass_time_us()`, feature-detected fallback |
 
 **Earlier A-phase:** A-1 docs (#86–#87), A-2 types (#88), A-3 EML registry (#89).
 
-**B-2 complete:** Identity/Sum/clamped transfer/EmitEvent kernel subset; Always treated as wildcard at upload validation.
+**B-phase complete through B-3:** kernel subset + Always wildcard validation + optional execute-pass timestamps (instrumentation only).
 
-**Next:** B-3 timestamp queries · B-4 Opus summary design · C-1 threshold scan migration.
+**Next:** B-4 Opus summary design · C-1 threshold scan migration.
 
 **Implementation:** `simthing-driver::SpecSessionState` owns spec runtime
 state; `simthing-driver::install` compiles a `GameModeSpec` against a
