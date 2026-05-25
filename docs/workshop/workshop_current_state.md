@@ -3,9 +3,9 @@
 **Purpose:** Single synthesis of **active workshop docs**, **production migration state**,
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
-**Last updated:** 2026-05-19  
-**Master HEAD:** `709d37d` (PR #114 workshop docs review; code through PR #111 pivot-forward remedial)  
-**Verification (last recorded):** `cargo test --workspace` → 430+ passed, 1 ignored perf gate
+**Last updated:** 2026-05-25  
+**Master HEAD:** local C-4 implementation branch  
+**Verification (last recorded):** C-4 acceptance commands and `cargo test --workspace` green
 
 ---
 
@@ -16,13 +16,13 @@ Two parallel tracks:
 | Track | Status | Canonical docs |
 |-------|--------|----------------|
 | **V6 spec / driver / session** | **Parked complete** — PRs 1–11, Opus P0 (O2/B3/I1) shipped | `design_v6.5.md`, `simthing_spec_progress_log.md` |
-| **AccumulatorOp v2 / design v7** | **Active** — Phases A–B done; C-1/C-2/C-3 + infra landed; flags default **false** | `design_v7.md`, `accumulator_op_v2_production_plan.md`, `pivot_forward_implementation_policy.md` |
+| **AccumulatorOp v2 / design v7** | **Active** — Phases A–B done; C-1/C-2/C-3/C-4 + infra landed; flags default **false** | `design_v7.md`, `accumulator_op_v2_production_plan.md`, `pivot_forward_implementation_policy.md` |
 
 **Production direction:** AccumulatorOp v2 is the intended GPU execution path.
 Legacy passes (intent, overlay, reduction, threshold, velocity, intensity) are
 **oracle/fallback only** until S-phase deletion.
 
-**Next gates:** **C-4** (Opus) overlay Mul/Set + order-band compiler · **C-5** soft reductions.
+**Next gates:** **C-5** soft reductions · **S-3** overlay sunset after default-on validation.
 
 ---
 
@@ -37,7 +37,8 @@ Legacy passes (intent, overlay, reduction, threshold, velocity, intensity) are
 | **B-4I** | #108 | Production `SlotSummaryGpu` (32 B/slot, group checksums) |
 | **C-1** | #97–#98 | Threshold scan → AccumulatorOp; single-submit integration |
 | **C-2** | #99–#100 | Intent affine → AccumulatorOp |
-| **C-3** | #105–#107 | Overlay **Add-only** + OrderBand exact f32 order; mixed → legacy fallback |
+| **C-3** | #105–#107 | Overlay Add-only + OrderBand exact f32 order foundation |
+| **C-4** | local | Full Add/Multiply/Set overlay OrderBand compiler + dirty cache |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
@@ -48,6 +49,7 @@ Legacy passes (intent, overlay, reduction, threshold, velocity, intensity) are
 WorldGpuState
   accumulator_runtime: Option<WorldAccumulatorRuntime>
     intent_session / threshold_session / overlay_session  (per-family adapter)
+    overlay_compile_cache: Option<OverlayCompileCache>    (C-4 dirty/cached planner)
     summary: Option<WorldSummaryRuntime>                  (B-4 from world values)
   accumulator_overlay_add_active / _bands                 (cached dispatch; survives session take)
 
@@ -55,8 +57,10 @@ BoundaryProtocol flags → sync clears or ensures families
 Dispatcher → take/put sessions; encode world summary after Accumulator passes when active
 ```
 
-**Overlay policy (C-3):** Add-only batches → AccumulatorOp with per-cell OrderBand.
-Any active Multiply or Set in the batch → **entire batch** falls back to legacy Pass 3 until C-4.
+**Overlay policy (C-4):** the compatibility flag `use_accumulator_overlay_add`
+now routes full Add/Multiply/Set batches through AccumulatorOp OrderBands using
+the canonical `build_overlay_deltas` output. Legacy Pass 3 remains for flag-off
+execution and oracle parity until S-3.
 
 **Feature flags (authoritative after #111):** flag-off boundary sync calls
 `clear_intent` / `clear_threshold` / `clear_overlay_add`; dispatcher keys off
@@ -66,10 +70,9 @@ session presence + overlay dispatch cache, not stale sessions.
 
 | Priority | ID | Owner | Blocks |
 |----------|-----|-------|--------|
-| **Opus-gated** | **C-4** | Opus + Composer | Full overlay Mul/Set + dirty order-band compiler → **S-3** |
 | Non-Opus | **C-5** | Opus audit + Composer | WeightedMean tolerance; soft reductions → **S-4** |
 | Non-Opus | **C-6–C-8** | Composer | Reductions, velocity, EML/transfer |
-| Infra | Oracle refactor | Optional | Move C-1/C-2/C-3 parity tests onto `run_family_oracle` |
+| Infra | Oracle refactor | Optional | Move C-1/C-2/C-3/C-4 parity tests onto `run_family_oracle` |
 
 ### Sunset targets (S-phase)
 
@@ -116,13 +119,16 @@ See `crates/simthing-workshop/README.md` and `todo.md` § workshop spikes.
 | C-1 parity | 2 | incl. fission stress |
 | C-2 parity | 11 | incl. combined C-1/C-2 |
 | C-3 parity | 13 | incl. combined C-1/C-2/C-3 |
+| C-4 parity/cache | 11 | Add/Mul/Set parity, dirty cache, high-density guard |
 | C-INF-2 harness | 2 | intent + threshold oracle smoke |
 | Pivot-forward remedial | 3 | authoritative flags |
 | B-4 world summary integrated | 2 | intent + overlay orderbands |
 
 ```powershell
 cargo test -p simthing-gpu accumulator_op
+cargo test -p simthing-gpu overlay_orderband
 cargo test -p simthing-sim --test c1_threshold_scan_parity --test c2_intent_accumulator_parity --test c3_overlay_add_accumulator_parity
+cargo test -p simthing-sim --test c4_overlay_orderband_parity
 cargo test -p simthing-sim --test c_inf_legacy_oracle_harness --test pivot_forward_remedial --test b4_world_summary_integrated
 cargo check --workspace
 ```

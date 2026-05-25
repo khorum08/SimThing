@@ -95,32 +95,30 @@ pub fn execute_threshold_ops_cpu(
                     });
                 }
             }
-            ConsumeMode::None => {
-                match &op.source {
-                    SourceSpec::SlotValue { slot, col } => {
-                        let i = idx(*slot, *col, n_dims);
-                        let prev = previous_values[i];
-                        let curr = values[i];
-                        if threshold_crossed_cpu(prev, curr, threshold, direction) {
-                            let write_value = gather_and_combine(values, op, n_dims)?;
-                            apply_targets(values, op, write_value, n_dims)?;
-                        }
-                    }
-                    SourceSpec::Constant(value) => {
-                        let prev = *value;
-                        let curr = *value;
-                        if threshold_crossed_cpu(prev, curr, threshold, direction) {
-                            let write_value = gather_and_combine(values, op, n_dims)?;
-                            apply_targets(values, op, write_value, n_dims)?;
-                        }
-                    }
-                    _ => {
-                        return Err(CpuOracleError::Unsupported(
-                            "Threshold+None requires SlotValue or Constant source",
-                        ));
+            ConsumeMode::None => match &op.source {
+                SourceSpec::SlotValue { slot, col } => {
+                    let i = idx(*slot, *col, n_dims);
+                    let prev = previous_values[i];
+                    let curr = values[i];
+                    if threshold_crossed_cpu(prev, curr, threshold, direction) {
+                        let write_value = gather_and_combine(values, op, n_dims)?;
+                        apply_targets(values, op, write_value, n_dims)?;
                     }
                 }
-            }
+                SourceSpec::Constant(value) => {
+                    let prev = *value;
+                    let curr = *value;
+                    if threshold_crossed_cpu(prev, curr, threshold, direction) {
+                        let write_value = gather_and_combine(values, op, n_dims)?;
+                        apply_targets(values, op, write_value, n_dims)?;
+                    }
+                }
+                _ => {
+                    return Err(CpuOracleError::Unsupported(
+                        "Threshold+None requires SlotValue or Constant source",
+                    ));
+                }
+            },
             _ => {
                 return Err(CpuOracleError::Unsupported(
                     "Threshold gate with this consume mode is not implemented in CPU oracle",
@@ -167,12 +165,18 @@ fn apply_scale(value: f32, scale: &ScaleSpec) -> f32 {
     }
 }
 
-fn clamped_transfer(values: &[f32], op: &AccumulatorOp, n_dims: u32) -> Result<f32, CpuOracleError> {
+fn clamped_transfer(
+    values: &[f32],
+    op: &AccumulatorOp,
+    n_dims: u32,
+) -> Result<f32, CpuOracleError> {
     let SourceSpec::SlotValue { slot, col } = op.source else {
         return Err(CpuOracleError::Unsupported("transfer without SlotValue"));
     };
     let ScaleSpec::Constant(requested) = op.scale else {
-        return Err(CpuOracleError::Unsupported("transfer without Constant scale"));
+        return Err(CpuOracleError::Unsupported(
+            "transfer without Constant scale",
+        ));
     };
     let available = values[idx(slot, col, n_dims)];
     Ok(requested.max(0.0).min(available.max(0.0)))
@@ -210,9 +214,11 @@ fn gather_and_combine(
         }
         CombineFn::Sum => match &op.source {
             SourceSpec::SlotRange { start, count } => {
-                let col = op.targets.first().map(|(_, c)| *c).ok_or(
-                    CpuOracleError::Unsupported("Sum without target col"),
-                )?;
+                let col = op
+                    .targets
+                    .first()
+                    .map(|(_, c)| *c)
+                    .ok_or(CpuOracleError::Unsupported("Sum without target col"))?;
                 let mut sum = 0.0f32;
                 for offset in 0..*count {
                     sum += values[idx(start + offset, col, n_dims)];
@@ -225,11 +231,7 @@ fn gather_and_combine(
     }
 }
 
-fn read_source(
-    values: &[f32],
-    source: &SourceSpec,
-    n_dims: u32,
-) -> Result<f32, CpuOracleError> {
+fn read_source(values: &[f32], source: &SourceSpec, n_dims: u32) -> Result<f32, CpuOracleError> {
     match source {
         SourceSpec::Constant(value) => Ok(*value),
         SourceSpec::SlotValue { slot, col } => Ok(values[idx(*slot, *col, n_dims)]),
@@ -247,10 +249,14 @@ fn apply_targets(
 ) -> Result<(), CpuOracleError> {
     for (slot, col) in &op.targets {
         let i = idx(*slot, *col, n_dims);
-        match op.combine {
-            CombineFn::Identity => values[i] += write_value,
-            CombineFn::Sum => values[i] = write_value,
-            _ => return Err(CpuOracleError::Unsupported("combine target write")),
+        match op.consume {
+            ConsumeMode::AddToTarget => values[i] += write_value,
+            ConsumeMode::ScaleTarget => values[i] *= write_value,
+            ConsumeMode::ResetTarget => values[i] = write_value,
+            _ => match op.combine {
+                CombineFn::Identity | CombineFn::Sum => values[i] = write_value,
+                _ => return Err(CpuOracleError::Unsupported("combine target write")),
+            },
         }
     }
     Ok(())
@@ -263,7 +269,11 @@ fn apply_consume(
     n_dims: u32,
 ) -> Result<(), CpuOracleError> {
     match op.consume {
-        ConsumeMode::None | ConsumeMode::EmitEvent => Ok(()),
+        ConsumeMode::None
+        | ConsumeMode::EmitEvent
+        | ConsumeMode::AddToTarget
+        | ConsumeMode::ScaleTarget
+        | ConsumeMode::ResetTarget => Ok(()),
         ConsumeMode::SubtractFromSource => match op.source {
             SourceSpec::SlotValue { slot, col } => {
                 values[idx(slot, col, n_dims)] -= write_value;
@@ -289,7 +299,7 @@ fn maybe_emit_event(
     let emit_count = write_value.max(0.0).floor() as u32;
     if emit_count > 0 {
         records.push(EmissionRecord {
-            reg_idx:    op_idx as u32,
+            reg_idx: op_idx as u32,
             emit_count,
         });
     }
@@ -298,16 +308,18 @@ fn maybe_emit_event(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simthing_core::{CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection};
+    use simthing_core::{
+        CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
+    };
 
     #[test]
     fn c2_intent_affine_cpu_oracle() {
         let mut values = vec![10.0, 7.0];
         let deltas = [IntentDelta {
             slot: 0,
-            col:  0,
-            mul:  2.0,
-            add:  3.0,
+            col: 0,
+            mul: 2.0,
+            add: 3.0,
         }];
         execute_intent_deltas_cpu(&mut values, &deltas, 1);
         assert_eq!(values[0], 23.0);
@@ -325,7 +337,7 @@ mod tests {
             targets: vec![(1, 0)],
         };
         execute_ops_cpu(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
-        assert_eq!(values[1], 7.0);
+        assert_eq!(values[1], 0.0);
     }
 
     #[test]
@@ -386,7 +398,13 @@ mod tests {
         };
         let records =
             execute_ops_cpu_with_emissions(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
-        assert_eq!(records, vec![EmissionRecord { reg_idx: 0, emit_count: 3 }]);
+        assert_eq!(
+            records,
+            vec![EmissionRecord {
+                reg_idx: 0,
+                emit_count: 3
+            }]
+        );
         assert_eq!(values[0], 3.7);
     }
 
@@ -431,6 +449,10 @@ mod tests {
             execute_threshold_ops_cpu(&previous, &mut values, std::slice::from_ref(&op), 1)
                 .unwrap();
         assert!(records.is_empty());
-        assert!((values[1] - 0.0).abs() < 1e-5, "should not write: {}", values[1]);
+        assert!(
+            (values[1] - 0.0).abs() < 1e-5,
+            "should not write: {}",
+            values[1]
+        );
     }
 }

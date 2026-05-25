@@ -69,6 +69,7 @@ pub fn sync_gpu_buffers(
     rebuild_thresholds: bool,
     rebuild_reduction_topology: bool,
     use_accumulator_overlay_add: bool,
+    overlay_compile_revision: u64,
     // B2 Approach C: the canonical TopologyState owned by the boundary.
     // When `rebuild_reduction_topology` is true, this routine refreshes
     // the cache from a full tree walk and re-flattens to CSR. When false
@@ -85,40 +86,109 @@ pub fn sync_gpu_buffers(
     // requires `ranges.len() == state.n_slots` (the static GPU buffer size).
     // Pad with zero-length ranges for slots that don't exist yet; Pass 3's
     // shader skips those naturally because `range.length == 0`.
-    let (deltas, mut ranges) = simthing_gpu::build_overlay_deltas(root, registry, allocator);
-    if (ranges.len() as u32) < state.n_slots {
-        ranges.resize(
-            state.n_slots as usize,
-            simthing_gpu::SlotDeltaRange::default(),
-        );
-    }
-    let n_deltas = deltas.len() as u32;
+    let mut n_deltas = 0u32;
+    let mut overlay_upload_bytes = 0u64;
     if use_accumulator_overlay_add {
-        let plan =
-            simthing_gpu::plan_overlay_add_accumulator(&deltas, &ranges, state.n_slots);
+        state.ensure_overlay_accumulator();
 
-        match plan {
-            simthing_gpu::OverlayAddPlan::AllAdd { ops, n_bands } => {
-                state.ensure_overlay_add_accumulator();
-                state
-                    .upload_overlay_add_ops_with_bands(&ops, n_bands)
-                    .expect("overlay Add op upload failed");
+        let cache_current = state
+            .accumulator_runtime
+            .as_ref()
+            .and_then(|runtime| runtime.overlay_compile_cache.as_ref())
+            .is_some_and(|cache| cache.compiled_at_revision == overlay_compile_revision);
 
-                let empty_ranges = vec![simthing_gpu::SlotDeltaRange::default(); state.n_slots as usize];
-                state.upload_overlay_deltas(&[], &empty_ranges);
+        if cache_current {
+            if let Some(cache) = state
+                .accumulator_runtime
+                .as_ref()
+                .and_then(|runtime| runtime.overlay_compile_cache.as_ref())
+            {
+                n_deltas = cache.cached_deltas.len() as u32;
+                state.set_overlay_add_dispatch(
+                    cache.cached_op_buffer_uploaded_n_ops > 0,
+                    cache.cached_n_bands,
+                );
             }
-            simthing_gpu::OverlayAddPlan::FallbackNonAdd => {
+        } else {
+            let (deltas, mut ranges) =
+                simthing_gpu::build_overlay_deltas(root, registry, allocator);
+            if (ranges.len() as u32) < state.n_slots {
+                ranges.resize(
+                    state.n_slots as usize,
+                    simthing_gpu::SlotDeltaRange::default(),
+                );
+            }
+            n_deltas = deltas.len() as u32;
+
+            let cache_equal = state
+                .accumulator_runtime
+                .as_ref()
+                .and_then(|runtime| runtime.overlay_compile_cache.as_ref())
+                .is_some_and(|cache| {
+                    cache.cached_deltas == deltas && cache.cached_ranges == ranges
+                });
+
+            if cache_equal {
+                let mut dispatch = None;
+                if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                    if let Some(cache) = runtime.overlay_compile_cache.as_mut() {
+                        cache.compiled_at_revision = overlay_compile_revision;
+                        dispatch = Some((
+                            cache.cached_op_buffer_uploaded_n_ops > 0,
+                            cache.cached_n_bands,
+                        ));
+                    }
+                }
+                if let Some((active, n_bands)) = dispatch {
+                    state.set_overlay_add_dispatch(active, n_bands);
+                }
+            } else {
+                let prior_counts = state
+                    .accumulator_runtime
+                    .as_ref()
+                    .and_then(|runtime| runtime.overlay_compile_cache.as_ref())
+                    .map(|cache| (cache.compile_count, cache.upload_count))
+                    .unwrap_or((0, 0));
+                let simthing_gpu::OverlayOrderBandPlan { ops, n_bands } =
+                    simthing_gpu::plan_overlay_orderband(&deltas, &ranges, state.n_slots);
                 state
-                    .upload_overlay_add_ops_with_bands(&[], 0)
-                    .expect("clear overlay Add ops failed");
-                state.upload_overlay_deltas(&deltas, &ranges);
+                    .upload_overlay_ops_with_bands(&ops, n_bands)
+                    .expect("overlay OrderBand op upload failed");
+                if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                    runtime.overlay_compile_cache = Some(simthing_gpu::OverlayCompileCache {
+                        compiled_at_revision: overlay_compile_revision,
+                        cached_deltas: deltas.clone(),
+                        cached_ranges: ranges.clone(),
+                        cached_n_bands: n_bands,
+                        cached_op_buffer_uploaded_n_ops: ops.len() as u32,
+                        compile_count: prior_counts.0 + 1,
+                        upload_count: prior_counts.1 + 1,
+                    });
+                }
+                overlay_upload_bytes =
+                    ops.len() as u64 * std::mem::size_of::<simthing_gpu::AccumulatorOpGpu>() as u64;
             }
+
+            let empty_ranges =
+                vec![simthing_gpu::SlotDeltaRange::default(); state.n_slots as usize];
+            state.upload_overlay_deltas(&[], &empty_ranges);
         }
     } else {
         if let Some(runtime) = state.accumulator_runtime.as_mut() {
-            runtime.clear_overlay_add();
+            runtime.clear_overlay_orderband();
         }
         state.set_overlay_add_dispatch(false, 0);
+        let (deltas, mut ranges) = simthing_gpu::build_overlay_deltas(root, registry, allocator);
+        if (ranges.len() as u32) < state.n_slots {
+            ranges.resize(
+                state.n_slots as usize,
+                simthing_gpu::SlotDeltaRange::default(),
+            );
+        }
+        n_deltas = deltas.len() as u32;
+        overlay_upload_bytes = deltas.len() as u64
+            * std::mem::size_of::<simthing_gpu::OverlayDelta>() as u64
+            + ranges.len() as u64 * std::mem::size_of::<simthing_gpu::SlotDeltaRange>() as u64;
         state.upload_overlay_deltas(&deltas, &ranges);
     }
     out.overlay_deltas_uploaded = n_deltas;
@@ -231,11 +301,8 @@ pub fn sync_gpu_buffers(
             + depth_slots.len() as u64 * std::mem::size_of::<u32>() as u64;
     }
 
-    out.boundary_upload_bytes = value_upload_bytes
-        + deltas.len() as u64 * std::mem::size_of::<simthing_gpu::OverlayDelta>() as u64
-        + ranges.len() as u64 * std::mem::size_of::<simthing_gpu::SlotDeltaRange>() as u64
-        + threshold_upload_bytes
-        + reduction_upload_bytes;
+    out.boundary_upload_bytes =
+        value_upload_bytes + overlay_upload_bytes + threshold_upload_bytes + reduction_upload_bytes;
 
     out
 }

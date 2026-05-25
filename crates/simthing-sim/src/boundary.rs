@@ -46,12 +46,12 @@ use simthing_feeder::{
     BoundaryRequest, CapabilityUnlockRegistration, DispatchCoordinator, MaintainerOutcome,
     ScriptedEventTriggerRegistration, TransformPatcher,
 };
-use simthing_gpu::{
-    build_column_rule_descriptors, encode_column_rules, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
-    SlotAllocator, ThresholdEvent, ThresholdRegistration, TopologyState, WorldGpuState,
-};
 #[cfg(debug_assertions)]
 use simthing_gpu::build_topology;
+use simthing_gpu::{
+    build_column_rule_descriptors, encode_column_rules, SlotAllocator, ThresholdEvent,
+    ThresholdRegistration, TopologyState, WorldGpuState, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+};
 
 use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 use crate::fission::{
@@ -124,11 +124,11 @@ pub struct BoundaryHookContext<'a> {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PipelineFlags {
     pub use_accumulator_threshold_scan: bool,
-    pub use_accumulator_intent:         bool,
+    pub use_accumulator_intent: bool,
     /// C-3: Route TransformOp::Add-only overlay batches through AccumulatorOp.
     /// If any active Multiply or Set overlay is present, the entire overlay batch
     /// falls back to old Pass 3 until C-4 implements full order-band semantics.
-    pub use_accumulator_overlay_add:    bool,
+    pub use_accumulator_overlay_add: bool,
 }
 
 /// Top-level boundary orchestrator.
@@ -154,6 +154,8 @@ pub struct BoundaryProtocol {
     scripted_event_triggers: Vec<ScriptedEventTriggerRegistration>,
     threshold_config_revision: u64,
     synced_threshold_config_revision: u64,
+    /// Bumped when tree/lifecycle changes can alter `build_overlay_deltas`.
+    overlay_compile_revision: u64,
     /// Append-only log of semantic state changes. Each boundary appends its
     /// entries; callers drain with `take_delta_log()`. The serialization
     /// format and playback logic are deferred to the replay system (Week 5).
@@ -187,6 +189,7 @@ impl BoundaryProtocol {
             scripted_event_triggers: Vec::new(),
             threshold_config_revision: 0,
             synced_threshold_config_revision: 0,
+            overlay_compile_revision: 0,
             delta_log: Vec::new(),
             fission_lineage: Vec::new(),
             cached_topology_state: TopologyState::default(),
@@ -226,9 +229,7 @@ impl BoundaryProtocol {
             return;
         }
 
-        let cap = state
-            .n_thresholds
-            .max(DEFAULT_THRESHOLD_EMISSION_CAPACITY);
+        let cap = state.n_thresholds.max(DEFAULT_THRESHOLD_EMISSION_CAPACITY);
         state.ensure_threshold_accumulator(cap);
         state
             .upload_accumulator_threshold_ops(gpu_regs)
@@ -331,6 +332,9 @@ impl BoundaryProtocol {
         for &(target, _) in &out.lifecycle.dissolved_overlays {
             push_slot_for_id(&self.allocator, target, &mut dirty_value_slots);
         }
+        if out.lifecycle.dissolved > 0 {
+            self.bump_overlay_compile_revision();
+        }
         out.timing.lifecycle_ms = lifecycle_started.elapsed().as_secs_f64() * 1000.0;
 
         // Step 5: Property expiry (threshold-driven + CPU-side TowardZero/AfterTicks).
@@ -348,6 +352,9 @@ impl BoundaryProtocol {
         if !out.expiry.expired.is_empty() {
             threshold_dirty = true;
             topology_dirty = true;
+        }
+        if out.expiry.properties_removed > 0 || out.expiry.cpu_side_removals > 0 {
+            self.bump_overlay_compile_revision();
         }
         out.timing.expiry_ms = expiry_started.elapsed().as_secs_f64() * 1000.0;
 
@@ -374,6 +381,9 @@ impl BoundaryProtocol {
             state,
         );
         topology_dirty |= grew_for_fission;
+        if grew_for_fission {
+            self.bump_overlay_compile_revision();
+        }
         out.timing.pregrow_fission_ms = pregrow_fission_started.elapsed().as_secs_f64() * 1000.0;
 
         // Step 6: Fission and fusion. Spawns new SimThings + allocates slots.
@@ -401,6 +411,7 @@ impl BoundaryProtocol {
         if out.fission.fissions_executed > 0 || out.fission.fusions_executed > 0 {
             topology_dirty = true;
             threshold_dirty = true;
+            self.bump_overlay_compile_revision();
         }
         out.timing.fission_ms = fission_started.elapsed().as_secs_f64() * 1000.0;
 
@@ -466,6 +477,9 @@ impl BoundaryProtocol {
             state,
         );
         topology_dirty |= grew_for_add_child;
+        if grew_for_add_child {
+            self.bump_overlay_compile_revision();
+        }
         out.timing.pregrow_add_child_ms =
             pregrow_add_child_started.elapsed().as_secs_f64() * 1000.0;
 
@@ -502,6 +516,16 @@ impl BoundaryProtocol {
             topology_dirty = true;
             threshold_dirty = true;
         }
+        if !out.maintainer.allocated.is_empty()
+            || !out.maintainer.tombstoned.is_empty()
+            || !out.maintainer.reparented.is_empty()
+            || !out.maintainer.dimensions_added.is_empty()
+            || !out.maintainer.overlays_attached.is_empty()
+            || !out.maintainer.overlays_activated.is_empty()
+            || !out.maintainer.overlays_suspended.is_empty()
+        {
+            self.bump_overlay_compile_revision();
+        }
 
         // Remove / reparent tombstones may have invalidated lineage endpoints.
         self.prune_stale_fission_lineage();
@@ -525,11 +549,13 @@ impl BoundaryProtocol {
             force_full_value_upload = true;
             topology_dirty = true;
             threshold_dirty = true;
+            self.bump_overlay_compile_revision();
         } else if !out.maintainer.dimensions_added.is_empty() {
             state.rebuild_for_registry(&self.registry);
             force_full_value_upload = true;
             topology_dirty = true;
             threshold_dirty = true;
+            self.bump_overlay_compile_revision();
         }
         out.timing.dimension_rebuild_ms =
             dimension_rebuild_started.elapsed().as_secs_f64() * 1000.0;
@@ -542,6 +568,9 @@ impl BoundaryProtocol {
         let grew_final_capacity =
             self.ensure_slot_capacity(self.allocator.capacity(), patcher, coord, state);
         topology_dirty |= grew_final_capacity;
+        if grew_final_capacity {
+            self.bump_overlay_compile_revision();
+        }
         out.timing.final_capacity_ms = final_capacity_started.elapsed().as_secs_f64() * 1000.0;
 
         // B2 Approach B: append-only threshold rebuild for pure-fission
@@ -637,9 +666,10 @@ impl BoundaryProtocol {
             // highest slot in the world — `add_child` push preserves the
             // ascending-slot invariant without re-sorting.
             for &(parent_id, child_id) in &out.fission.fission_pairs {
-                if let (Some(p), Some(c)) =
-                    (self.allocator.slot_of(parent_id), self.allocator.slot_of(child_id))
-                {
+                if let (Some(p), Some(c)) = (
+                    self.allocator.slot_of(parent_id),
+                    self.allocator.slot_of(child_id),
+                ) {
                     self.cached_topology_state.add_child(p, c);
                     topology_regs_appended += 1;
                 }
@@ -649,8 +679,7 @@ impl BoundaryProtocol {
             // tree walk + sort is replaced by a linear pass over the
             // already-sorted cache.
             let topo = self.cached_topology_state.flatten();
-            let descriptors =
-                build_column_rule_descriptors(&self.registry, state.n_dims as usize);
+            let descriptors = build_column_rule_descriptors(&self.registry, state.n_dims as usize);
             let rules_u32 = encode_column_rules(&descriptors);
             let mut depth_slots: Vec<u32> = Vec::new();
             let mut depth_ranges: Vec<(u32, u32)> = Vec::new();
@@ -701,6 +730,7 @@ impl BoundaryProtocol {
             threshold_dirty,
             topology_dirty,
             self.flags.use_accumulator_overlay_add,
+            self.overlay_compile_revision,
             &mut self.cached_topology_state,
         );
         #[cfg(debug_assertions)]
@@ -936,6 +966,7 @@ impl BoundaryProtocol {
             true,
             true,
             self.flags.use_accumulator_overlay_add,
+            self.overlay_compile_revision,
             &mut self.cached_topology_state,
         );
         if let Some(new_reg) = out.new_threshold_registry {
@@ -954,6 +985,18 @@ impl BoundaryProtocol {
     /// fusion / tombstone removes).
     pub fn fission_lineage(&self) -> &[FissionLineageRecord] {
         &self.fission_lineage
+    }
+
+    pub fn overlay_compile_revision(&self) -> u64 {
+        self.overlay_compile_revision
+    }
+
+    pub fn bump_overlay_compile_revision_for_test(&mut self) {
+        self.bump_overlay_compile_revision();
+    }
+
+    fn bump_overlay_compile_revision(&mut self) {
+        self.overlay_compile_revision = self.overlay_compile_revision.wrapping_add(1);
     }
 
     /// Test helper (S5): whether cached reduction topology matches a fresh tree
@@ -1361,7 +1404,10 @@ mod tests {
         let mut tech_tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
         tech_tree.add_child(SimThing::new(SimThingKind::Custom("tech_leaf".into()), 0));
         faction.add_child(tech_tree);
-        faction.add_child(SimThing::new(SimThingKind::Custom("ordinary_child".into()), 0));
+        faction.add_child(SimThing::new(
+            SimThingKind::Custom("ordinary_child".into()),
+            0,
+        ));
 
         let mut root = SimThing::new(SimThingKind::Location, 0);
         root.add_child(faction);

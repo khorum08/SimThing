@@ -23,11 +23,7 @@ pub enum EncodeError {
     #[error(
         "AccumulatorOp bootstrap contains same-band contended cell: band={band}, slot={slot}, col={col}"
     )]
-    BootstrapContention {
-        band: u32,
-        slot: u32,
-        col:  u32,
-    },
+    BootstrapContention { band: u32, slot: u32, col: u32 },
     #[error("duplicate folded intent cell: slot={slot}, col={col}")]
     DuplicateIntentCell { slot: u32, col: u32 },
 }
@@ -37,7 +33,7 @@ impl From<BootstrapContention> for EncodeError {
         Self::BootstrapContention {
             band: value.band,
             slot: value.slot,
-            col:  value.col,
+            col: value.col,
         }
     }
 }
@@ -71,13 +67,13 @@ impl AccumulatorOpGpu {
             scale_a,
             consume,
             target0_slot: targets[0].0,
-            target0_col:  targets[0].1,
+            target0_col: targets[0].1,
             target1_slot: targets[1].0,
-            target1_col:  targets[1].1,
+            target1_col: targets[1].1,
             target2_slot: targets[2].0,
-            target2_col:  targets[2].1,
+            target2_col: targets[2].1,
             target3_slot: targets[3].0,
-            target3_col:  targets[3].1,
+            target3_col: targets[3].1,
             n_targets,
             _pad: 0,
         })
@@ -116,7 +112,7 @@ pub fn validate_intent_deltas_no_duplicate_cells(
         if !seen.insert((d.slot, d.col)) {
             return Err(EncodeError::DuplicateIntentCell {
                 slot: d.slot,
-                col:  d.col,
+                col: d.col,
             });
         }
     }
@@ -125,31 +121,31 @@ pub fn validate_intent_deltas_no_duplicate_cells(
 
 fn intent_delta_to_gpu(delta: &IntentDelta) -> AccumulatorOpGpu {
     AccumulatorOpGpu {
-        source_kind:  source_kind::SLOT_VALUE,
-        source_slot:  delta.slot,
-        source_col:   delta.col,
+        source_kind: source_kind::SLOT_VALUE,
+        source_slot: delta.slot,
+        source_col: delta.col,
         source_count: 0,
         combine_kind: combine_kind::AFFINE_INTENT,
-        combine_a:    delta.mul.to_bits(),
-        combine_b:    delta.add.to_bits(),
-        combine_c:    0,
-        combine_d:    0,
-        gate_kind:    gate_kind::ALWAYS,
-        gate_a:       0,
-        gate_b:       0,
-        scale_kind:   scale_kind::IDENTITY,
-        scale_a:      0,
-        consume:      consume_kind::NONE,
+        combine_a: delta.mul.to_bits(),
+        combine_b: delta.add.to_bits(),
+        combine_c: 0,
+        combine_d: 0,
+        gate_kind: gate_kind::ALWAYS,
+        gate_a: 0,
+        gate_b: 0,
+        scale_kind: scale_kind::IDENTITY,
+        scale_a: 0,
+        consume: consume_kind::NONE,
         target0_slot: delta.slot,
-        target0_col:  delta.col,
+        target0_col: delta.col,
         target1_slot: 0,
-        target1_col:  0,
+        target1_col: 0,
         target2_slot: 0,
-        target2_col:  0,
+        target2_col: 0,
         target3_slot: 0,
-        target3_col:  0,
-        n_targets:    1,
-        _pad:         0,
+        target3_col: 0,
+        n_targets: 1,
+        _pad: 0,
     }
 }
 
@@ -169,11 +165,11 @@ pub fn threshold_registrations_to_ops(
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
                 slot: r.slot,
-                col:  r.col,
+                col: r.col,
             },
             combine: CombineFn::Identity,
             gate: GateSpec::Threshold {
-                value:     r.threshold,
+                value: r.threshold,
                 direction: direction_u32_to_threshold_direction(r.direction),
             },
             scale: ScaleSpec::Identity,
@@ -257,18 +253,8 @@ fn validate_bootstrap_op(op: &AccumulatorOp) -> Result<(), EncodeError> {
 
 fn encode_source(op: &AccumulatorOp) -> Result<(u32, u32, u32, u32), EncodeError> {
     match &op.source {
-        SourceSpec::Constant(value) => Ok((
-            source_kind::CONSTANT,
-            value.to_bits(),
-            0,
-            0,
-        )),
-        SourceSpec::SlotValue { slot, col } => Ok((
-            source_kind::SLOT_VALUE,
-            *slot,
-            *col,
-            0,
-        )),
+        SourceSpec::Constant(value) => Ok((source_kind::CONSTANT, value.to_bits(), 0, 0)),
+        SourceSpec::SlotValue { slot, col } => Ok((source_kind::SLOT_VALUE, *slot, *col, 0)),
         SourceSpec::SlotRange { start, count } => {
             let col = op
                 .targets
@@ -349,9 +335,10 @@ fn encode_consume(consume: ConsumeMode, _gate: &GateSpec) -> Result<u32, EncodeE
         ConsumeMode::None => Ok(consume_kind::NONE),
         ConsumeMode::SubtractFromSource => Ok(consume_kind::SUBTRACT_FROM_SOURCE),
         ConsumeMode::SubtractFromAllInputs => Ok(consume_kind::SUBTRACT_FROM_ALL_INPUTS),
+        ConsumeMode::ResetTarget => Ok(consume_kind::RESET_TARGET),
+        ConsumeMode::ScaleTarget => Ok(consume_kind::SCALE_TARGET),
         ConsumeMode::EmitEvent => Ok(consume_kind::EMIT_EVENT),
-        ConsumeMode::ResetTarget => Err(EncodeError::Unsupported("ResetTarget")),
-        ConsumeMode::ScaleTarget => Err(EncodeError::Unsupported("ScaleTarget")),
+        ConsumeMode::AddToTarget => Ok(consume_kind::ADD_TO_TARGET),
     }
 }
 
@@ -381,9 +368,9 @@ mod tests {
     fn c2_intent_delta_encodes_affine_params() {
         let delta = IntentDelta {
             slot: 3,
-            col:  2,
-            mul:  1.5,
-            add:  -0.25,
+            col: 2,
+            mul: 1.5,
+            add: -0.25,
         };
         let gpu = AccumulatorOpGpu::encode_intent_deltas(std::slice::from_ref(&delta))
             .unwrap()
@@ -404,15 +391,15 @@ mod tests {
         let deltas = [
             IntentDelta {
                 slot: 0,
-                col:  0,
-                mul:  1.0,
-                add:  1.0,
+                col: 0,
+                mul: 1.0,
+                add: 1.0,
             },
             IntentDelta {
                 slot: 0,
-                col:  0,
-                mul:  2.0,
-                add:  0.0,
+                col: 0,
+                mul: 2.0,
+                add: 0.0,
             },
         ];
         assert!(matches!(
@@ -423,7 +410,9 @@ mod tests {
 
     #[test]
     fn c2_empty_intent_set_encodes_to_empty() {
-        assert!(AccumulatorOpGpu::encode_intent_deltas(&[]).unwrap().is_empty());
+        assert!(AccumulatorOpGpu::encode_intent_deltas(&[])
+            .unwrap()
+            .is_empty());
     }
 
     #[test]
@@ -499,7 +488,10 @@ mod tests {
             targets: vec![(99, 0)],
         };
         let result = AccumulatorOpGpu::from_op(&op);
-        assert!(result.is_ok(), "ConjunctiveCrossing must encode: {result:?}");
+        assert!(
+            result.is_ok(),
+            "ConjunctiveCrossing must encode: {result:?}"
+        );
         let gpu = result.unwrap();
         assert_eq!(gpu.source_kind, source_kind::CONJUNCTIVE_CROSSING);
         assert_eq!(gpu.source_count, 2);
@@ -528,10 +520,7 @@ mod tests {
             (CombineFn::Mean, "Mean"),
             (CombineFn::Max, "Max"),
             (CombineFn::Min, "Min"),
-            (
-                CombineFn::WeightedMean { weight_col: 2 },
-                "WeightedMean",
-            ),
+            (CombineFn::WeightedMean { weight_col: 2 }, "WeightedMean"),
             (CombineFn::Product, "Product"),
             (CombineFn::LastByPriority, "LastByPriority"),
             (

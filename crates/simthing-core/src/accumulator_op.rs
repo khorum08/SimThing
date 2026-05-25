@@ -30,8 +30,8 @@ pub enum SourceSpec {
 /// One input channel for a ConjunctiveCrossing or multi-target source.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct InputSpec {
-    pub slot:      u32,
-    pub col:       u32,
+    pub slot: u32,
+    pub col: u32,
     /// Cost per unit for emission calculations; 1.0 for non-emission uses.
     pub unit_cost: f32,
 }
@@ -77,8 +77,8 @@ pub enum CombineFn {
     /// Integrate velocity into amount with clamping.
     /// Used for velocity integration migration.
     IntegrateWithClamp {
-        dt:         f32,
-        vel_max:    f32,
+        dt: f32,
+        vel_max: f32,
         amount_min: f32,
         amount_max: f32,
     },
@@ -111,7 +111,7 @@ pub enum GateSpec {
     Always,
     /// Fires when the source column crosses `value` in `direction`.
     Threshold {
-        value:     f32,
+        value: f32,
         direction: ThresholdDirection,
     },
     /// Fires only when the overlay associated with this registration is active.
@@ -138,7 +138,11 @@ pub enum ThresholdDirection {
 
 // ── ConsumeMode ───────────────────────────────────────────────────────────────
 
-/// What happens to the source after the write.
+/// What happens during and after the target write.
+///
+/// `None`, `ResetTarget`, `ScaleTarget`, and `AddToTarget` form the
+/// write-to-target axis. `SubtractFromSource`, `SubtractFromAllInputs`, and
+/// `EmitEvent` are source/event side effects.
 ///
 /// `SubtractFromSource` and `SubtractFromAllInputs` are the only mechanisms
 /// for resource transfer. `TransformOp::Add` on two separate slots for the
@@ -162,6 +166,8 @@ pub enum ConsumeMode {
     /// Write a compact `EmissionRecord` to the GPU emission buffer and
     /// increment the atomic emission counter. Used for threshold-gated events.
     EmitEvent,
+    /// Add the computed value to the target slot/col. Used for Add overlays.
+    AddToTarget,
 }
 
 // ── ScaleSpec ─────────────────────────────────────────────────────────────────
@@ -210,10 +216,10 @@ pub enum SoftAggregateGuard {
 /// `AccumulatorOpGpu::from_op(&op, slot_resolver)` to convert.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AccumulatorOp {
-    pub source:  SourceSpec,
+    pub source: SourceSpec,
     pub combine: CombineFn,
-    pub gate:    GateSpec,
-    pub scale:   ScaleSpec,
+    pub gate: GateSpec,
+    pub scale: ScaleSpec,
     pub consume: ConsumeMode,
     /// Write targets: up to 4 (slot, col) pairs. Must have at least one.
     pub targets: Vec<(u32, u32)>,
@@ -292,10 +298,10 @@ mod tests {
 
     fn minimal_op() -> AccumulatorOp {
         AccumulatorOp {
-            source:  SourceSpec::Constant(1.0),
+            source: SourceSpec::Constant(1.0),
             combine: CombineFn::Identity,
-            gate:    GateSpec::Always,
-            scale:   ScaleSpec::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
             targets: vec![(0, 0)],
         }
@@ -316,10 +322,10 @@ mod tests {
     fn empty_targets_still_rejected_for_non_threshold_emit() {
         // Always + EmitEvent + empty targets: rejected.
         let mut op = AccumulatorOp {
-            source:  SourceSpec::Constant(1.0),
+            source: SourceSpec::Constant(1.0),
             combine: CombineFn::Identity,
-            gate:    GateSpec::Always,
-            scale:   ScaleSpec::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
             consume: ConsumeMode::EmitEvent,
             targets: vec![],
         };
@@ -331,7 +337,10 @@ mod tests {
 
         // Threshold + None + empty targets: rejected (consume mismatch on top
         // of empty targets, but NoTargets fires first).
-        op.gate = GateSpec::Threshold { value: 0.5, direction: ThresholdDirection::Upward };
+        op.gate = GateSpec::Threshold {
+            value: 0.5,
+            direction: ThresholdDirection::Upward,
+        };
         op.consume = ConsumeMode::None;
         assert_eq!(op.validate(), Err(AccumulatorOpError::NoTargets));
 
@@ -366,7 +375,7 @@ mod tests {
     #[test]
     fn five_targets_is_error() {
         let mut op = minimal_op();
-        op.targets = vec![(0,0),(1,0),(2,0),(3,0),(4,0)];
+        op.targets = vec![(0, 0), (1, 0), (2, 0), (3, 0), (4, 0)];
         assert_eq!(op.validate(), Err(AccumulatorOpError::TooManyTargets(5)));
     }
 
@@ -374,7 +383,10 @@ mod tests {
     fn weighted_mean_requires_slot_range() {
         let mut op = minimal_op();
         op.combine = CombineFn::WeightedMean { weight_col: 1 };
-        assert_eq!(op.validate(), Err(AccumulatorOpError::WeightedMeanRequiresSlotRange));
+        assert_eq!(
+            op.validate(),
+            Err(AccumulatorOpError::WeightedMeanRequiresSlotRange)
+        );
         op.source = SourceSpec::SlotRange { start: 0, count: 4 };
         assert!(op.validate().is_ok());
     }
@@ -390,13 +402,29 @@ mod tests {
     fn conjunctive_crossing_bounds() {
         let mut op = minimal_op();
         op.source = SourceSpec::ConjunctiveCrossing { inputs: vec![] };
-        assert_eq!(op.validate(), Err(AccumulatorOpError::EmptyConjunctiveInputs));
+        assert_eq!(
+            op.validate(),
+            Err(AccumulatorOpError::EmptyConjunctiveInputs)
+        );
         op.source = SourceSpec::ConjunctiveCrossing {
-            inputs: (0u32..5).map(|i| InputSpec { slot: i, col: 0, unit_cost: 1.0 }).collect(),
+            inputs: (0u32..5)
+                .map(|i| InputSpec {
+                    slot: i,
+                    col: 0,
+                    unit_cost: 1.0,
+                })
+                .collect(),
         };
-        assert_eq!(op.validate(), Err(AccumulatorOpError::TooManyConjunctiveInputs(5)));
+        assert_eq!(
+            op.validate(),
+            Err(AccumulatorOpError::TooManyConjunctiveInputs(5))
+        );
         op.source = SourceSpec::ConjunctiveCrossing {
-            inputs: vec![InputSpec { slot: 0, col: 0, unit_cost: 5.0 }],
+            inputs: vec![InputSpec {
+                slot: 0,
+                col: 0,
+                unit_cost: 5.0,
+            }],
         };
         assert!(op.validate().is_ok());
     }
@@ -405,9 +433,16 @@ mod tests {
     fn subtract_all_requires_conjunctive_source() {
         let mut op = minimal_op();
         op.consume = ConsumeMode::SubtractFromAllInputs;
-        assert_eq!(op.validate(), Err(AccumulatorOpError::SubtractAllRequiresConjunctive));
+        assert_eq!(
+            op.validate(),
+            Err(AccumulatorOpError::SubtractAllRequiresConjunctive)
+        );
         op.source = SourceSpec::ConjunctiveCrossing {
-            inputs: vec![InputSpec { slot: 0, col: 0, unit_cost: 5.0 }],
+            inputs: vec![InputSpec {
+                slot: 0,
+                col: 0,
+                unit_cost: 5.0,
+            }],
         };
         assert!(op.validate().is_ok());
     }
@@ -443,8 +478,16 @@ mod tests {
             AccumulatorOp {
                 source: SourceSpec::ConjunctiveCrossing {
                     inputs: vec![
-                        InputSpec { slot: 1, col: 0, unit_cost: 5.0 },
-                        InputSpec { slot: 1, col: 2, unit_cost: 3.0 },
+                        InputSpec {
+                            slot: 1,
+                            col: 0,
+                            unit_cost: 5.0,
+                        },
+                        InputSpec {
+                            slot: 1,
+                            col: 2,
+                            unit_cost: 3.0,
+                        },
                     ],
                 },
                 combine: CombineFn::MinAcrossInputs,

@@ -104,7 +104,7 @@ gate      when the write fires
 
 consume   what happens to the source after the write
           None | SubtractFromSource | SubtractFromAllInputs |
-          ResetTarget | ScaleTarget | EmitEvent
+          ResetTarget | ScaleTarget | EmitEvent | AddToTarget
 
 targets   where the result goes (up to 4 slots × cols)
 
@@ -206,8 +206,7 @@ to `true` and the corresponding sunset PR removes the old code.
 pub struct PipelineFlags {
     pub use_accumulator_threshold_scan: bool,  // C-1 → S-6
     pub use_accumulator_intent:         bool,  // C-2 → S-1
-    pub use_accumulator_overlay_add:    bool,  // C-3 → S-3
-    pub use_accumulator_overlay_mul_set: bool, // C-4 → S-3
+    pub use_accumulator_overlay_add:    bool,  // C-3/C-4 full overlay path → S-3
     pub use_accumulator_weighted_mean:  bool,  // C-5 → S-4
     pub use_accumulator_sum_max_min:    bool,  // C-6 → S-4
     pub use_accumulator_velocity:       bool,  // C-7 → S-5
@@ -235,16 +234,15 @@ pub struct PipelineFlags {
 **Pass 3 — Overlay application (migrate → C-3/C-4, sunset → S-3)**
 - WGSL: inline in `overlay_prep.rs`
 - `Add`, `Multiply`, `Set` ops in ancestor-then-local order
-- **C-3 landed:** `use_accumulator_overlay_add` routes Add-only overlay batches
-  through AccumulatorOp. If any active Multiply or Set overlay is present, the
-  full overlay batch remains on legacy Pass 3 until C-4. For Add-only batches,
-  C-3 emits one AccumulatorOp per Add delta with an OrderBand equal to that
-  cell's local Add sequence index; the pipeline dispatches all overlay Add bands
-  in ascending order within the same command buffer, preserving legacy f32
-  operation order. This fallback is temporary — C-4 owns the full order-band
-  compiler and S-3 deletes the old overlay path after C-3/C-4 pass parity.
-- Post-migration: `Identity+OrderBand(0)`, `Product+OrderBand(1)`,
-  `LastByPriority+OrderBand(1)` combines
+- **C-3/C-4 landed:** `use_accumulator_overlay_add` is retained as the
+  compatibility flag name, but now routes full Add/Multiply/Set overlay batches
+  through the AccumulatorOp OrderBand planner. C-4 consumes the canonical
+  `(OverlayDelta, SlotDeltaRange)` output from `build_overlay_deltas`, assigns a
+  per-cell OrderBand in legacy operation order, and dispatches bands in ascending
+  order within the same command buffer before reduction. Add uses
+  `Identity + AddToTarget`, Multiply uses `Identity + ScaleTarget`, and Set uses
+  `Identity + ResetTarget`.
+- Legacy Pass 3 remains for flag-off execution and oracle parity only until S-3.
 
 **Passes 4–6 — Reduction (migrate → C-5/C-6, sunset → S-4)**
 - WGSL: `reduction.wgsl`

@@ -1,11 +1,13 @@
-//! C-3 bit-exact parity: legacy Pass 3 Add overlays vs AccumulatorOp atomic Add path.
+//! C-3/C-4 bit-exact parity: legacy Pass 3 overlays vs AccumulatorOp OrderBands.
 
 use simthing_core::{
     DimensionRegistry, IntensityBehavior, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
-    OverlaySource, PropertyTransformDelta, PropertyValue, SimProperty, SimThing,
-    SimThingKind, SubFieldRole, TransformOp,
+    OverlaySource, PropertyTransformDelta, PropertyValue, SimProperty, SimThing, SimThingKind,
+    SubFieldRole, TransformOp,
 };
-use simthing_feeder::{feeder_channel, DispatchCoordinator, FeederWork, PatchTransform, TransformPatcher};
+use simthing_feeder::{
+    feeder_channel, DispatchCoordinator, FeederWork, PatchTransform, TransformPatcher,
+};
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
 use simthing_sim::BoundaryProtocol;
 
@@ -14,10 +16,10 @@ fn try_gpu() -> Option<GpuContext> {
 }
 
 struct Fixture {
-    reg:    DimensionRegistry,
-    alloc:  SlotAllocator,
-    pid:    simthing_core::SimPropertyId,
-    world:  SimThing,
+    reg: DimensionRegistry,
+    alloc: SlotAllocator,
+    pid: simthing_core::SimPropertyId,
+    world: SimThing,
     n_dims: u32,
 }
 
@@ -48,12 +50,15 @@ fn loyalty_fixture() -> Fixture {
     }
 }
 
-fn make_overlay(pid: simthing_core::SimPropertyId, ops: Vec<(SubFieldRole, TransformOp)>) -> Overlay {
+fn make_overlay(
+    pid: simthing_core::SimPropertyId,
+    ops: Vec<(SubFieldRole, TransformOp)>,
+) -> Overlay {
     Overlay {
-        id:        OverlayId::new(),
-        kind:      OverlayKind::Policy,
-        source:    OverlaySource::System,
-        affects:   Vec::new(),
+        id: OverlayId::new(),
+        kind: OverlayKind::Policy,
+        source: OverlaySource::System,
+        affects: Vec::new(),
         transform: PropertyTransformDelta {
             property_id: pid,
             sub_field_deltas: ops,
@@ -70,7 +75,11 @@ struct TickSnapshot {
 fn assert_bits_eq(label: &str, old: &[f32], new: &[f32]) {
     assert_eq!(old.len(), new.len(), "{label}: length");
     for (i, (a, b)) in old.iter().zip(new.iter()).enumerate() {
-        assert_eq!(a.to_bits(), b.to_bits(), "{label} mismatch at index {i}: {a} vs {b}");
+        assert_eq!(
+            a.to_bits(),
+            b.to_bits(),
+            "{label} mismatch at index {i}: {a} vs {b}"
+        );
     }
 }
 
@@ -211,17 +220,22 @@ parity_scenario!(c3_mixed_add_set_split, 1, 0.0, |world, pid| {
     ));
 });
 
-parity_scenario!(c3_mixed_add_multiply_set_uses_legacy, 1, 0.0, |world, pid| {
-    let cohort = &mut world.children[0];
-    cohort.add_overlay(make_overlay(
-        pid,
-        vec![
-            (SubFieldRole::Amount, TransformOp::Add(0.1)),
-            (SubFieldRole::Amount, TransformOp::Multiply(1.5)),
-            (SubFieldRole::Amount, TransformOp::Set(0.9)),
-        ],
-    ));
-});
+parity_scenario!(
+    c3_mixed_add_multiply_set_orderband_parity,
+    1,
+    0.0,
+    |world, pid| {
+        let cohort = &mut world.children[0];
+        cohort.add_overlay(make_overlay(
+            pid,
+            vec![
+                (SubFieldRole::Amount, TransformOp::Add(0.1)),
+                (SubFieldRole::Amount, TransformOp::Multiply(1.5)),
+                (SubFieldRole::Amount, TransformOp::Set(0.9)),
+            ],
+        ));
+    }
+);
 
 parity_scenario!(c3_add_only_old_pass3_noop, 1, 0.0, |world, pid| {
     let cohort = &mut world.children[0];
@@ -259,11 +273,7 @@ fn c3_repeated_add_same_cell_preserves_legacy_f32_order() {
         expected.to_bits(),
         "legacy baseline should match sequential f32 order"
     );
-    assert_bits_eq(
-        "c3_repeated_add_same_cell",
-        &old.values,
-        &new.values,
-    );
+    assert_bits_eq("c3_repeated_add_same_cell", &old.values, &new.values);
 }
 
 #[test]
@@ -278,7 +288,10 @@ fn c3_same_cell_many_overlays_bit_exact() {
         for i in 0..n_overlays {
             cohort.add_overlay(make_overlay(
                 pid,
-                vec![(SubFieldRole::Amount, TransformOp::Add(0.01 * (i as f32 + 1.0)))],
+                vec![(
+                    SubFieldRole::Amount,
+                    TransformOp::Add(0.01 * (i as f32 + 1.0)),
+                )],
             ));
         }
     };
@@ -288,7 +301,7 @@ fn c3_same_cell_many_overlays_bit_exact() {
 }
 
 #[test]
-fn c3_mixed_overlay_falls_back_accumulator_inactive() {
+fn c3_mixed_overlay_routes_through_c4_orderband_path() {
     let Some(_ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
         return;
@@ -327,8 +340,8 @@ fn c3_mixed_overlay_falls_back_accumulator_inactive() {
     proto.initial_gpu_sync(&coord, &mut state);
 
     assert!(
-        !state.accumulator_overlay_add_active,
-        "mixed overlay batch must fall back to legacy Pass 3"
+        state.accumulator_overlay_add_active,
+        "mixed overlay batch should use the C-4 OrderBand Accumulator path"
     );
 }
 
@@ -350,7 +363,10 @@ fn c1_c2_c3_combined_accumulator_paths_parity() {
         return;
     };
 
-    let run = |use_intent: bool, use_threshold: bool, use_overlay: bool| -> (TickSnapshot, Vec<ThresholdEvent>) {
+    let run = |use_intent: bool,
+               use_threshold: bool,
+               use_overlay: bool|
+     -> (TickSnapshot, Vec<ThresholdEvent>) {
         let mut reg = DimensionRegistry::new();
         let mut pressure = SimProperty::simple("stress", "pressure", 0);
         pressure.intensity_behavior = Some(IntensityBehavior::default());
@@ -398,13 +414,7 @@ fn c1_c2_c3_combined_accumulator_paths_parity() {
 
         let projected_len = n_slots as usize * n_dims as usize;
         let mut projected = vec![0.0; projected_len];
-        simthing_gpu::project_tree_to_values(
-            &world,
-            &reg,
-            &alloc,
-            n_dims as usize,
-            &mut projected,
-        );
+        simthing_gpu::project_tree_to_values(&world, &reg, &alloc, n_dims as usize, &mut projected);
         coord.shadow[..projected_len].copy_from_slice(&projected);
 
         let mut proto = BoundaryProtocol::new(world, reg, alloc);
