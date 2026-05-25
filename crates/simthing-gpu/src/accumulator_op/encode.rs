@@ -16,7 +16,7 @@ pub enum EncodeError {
     #[error("AccumulatorOp failed CPU validation: {0}")]
     Validation(#[from] simthing_core::AccumulatorOpError),
     #[error(
-        "B-1 bootstrap AccumulatorOp set contains contended writes/consumes in band {band}: slot={slot}, col={col}"
+        "AccumulatorOp bootstrap contains same-band contended cell: band={band}, slot={slot}, col={col}"
     )]
     BootstrapContention {
         band: u32,
@@ -87,9 +87,9 @@ impl AccumulatorOpGpu {
 fn validate_bootstrap_op(op: &AccumulatorOp) -> Result<(), EncodeError> {
     if op.consume == ConsumeMode::SubtractFromSource {
         match (&op.source, &op.scale) {
-            (SourceSpec::SlotValue { .. }, ScaleSpec::Constant(rate)) if *rate >= 0.0 => Ok(()),
+            (SourceSpec::SlotValue { .. }, ScaleSpec::Constant(_)) => Ok(()),
             _ => Err(EncodeError::Unsupported(
-                "SubtractFromSource requires SlotValue source and nonnegative Constant scale",
+                "SubtractFromSource requires SlotValue source and Constant scale",
             )),
         }
     } else {
@@ -153,7 +153,12 @@ fn encode_consume(consume: ConsumeMode) -> Result<u32, EncodeError> {
     match consume {
         ConsumeMode::None => Ok(consume_kind::NONE),
         ConsumeMode::SubtractFromSource => Ok(consume_kind::SUBTRACT_FROM_SOURCE),
-        other => Err(EncodeError::Unsupported(other_name_consume(other))),
+        ConsumeMode::EmitEvent => Ok(consume_kind::EMIT_EVENT),
+        ConsumeMode::SubtractFromAllInputs => {
+            Err(EncodeError::Unsupported("SubtractFromAllInputs"))
+        }
+        ConsumeMode::ResetTarget => Err(EncodeError::Unsupported("ResetTarget")),
+        ConsumeMode::ScaleTarget => Err(EncodeError::Unsupported("ScaleTarget")),
     }
 }
 
@@ -187,16 +192,6 @@ fn other_name_gate(gate: &GateSpec) -> &'static str {
         GateSpec::LifecycleActive => "LifecycleActive",
         GateSpec::DirtyOnly => "DirtyOnly",
         GateSpec::Always | GateSpec::OrderBand(_) => "Always/OrderBand",
-    }
-}
-
-fn other_name_consume(consume: ConsumeMode) -> &'static str {
-    match consume {
-        ConsumeMode::SubtractFromAllInputs => "SubtractFromAllInputs",
-        ConsumeMode::ResetTarget => "ResetTarget",
-        ConsumeMode::ScaleTarget => "ScaleTarget",
-        ConsumeMode::EmitEvent => "EmitEvent",
-        ConsumeMode::None | ConsumeMode::SubtractFromSource => "None/SubtractFromSource",
     }
 }
 

@@ -2,7 +2,45 @@
 
 Running log of what's done and what's next, across sessions.
 
-**Canonical spec:** `docs/design_v6.5.md` (parking) · `docs/design_v6.md` (sim mechanics) | **Agent map:** `docs/agents.md`
+**Canonical spec:** `docs/design_v7.md` (AccumulatorOp v2) · `docs/design_v6.5.md` (v6 parking) · `docs/design_v6.md` (sim mechanics) | **Agent map:** `docs/agents.md`
+
+---
+
+## 2026-05-19 — AccumulatorOp v2 Phases A–B: A-4 through B-2 (PRs #90–#93)
+
+**Status:** `master` @ `a015032` pre-B-2; B-2 merge pending this session.
+
+**Scope:** Standalone `AccumulatorOpSession` in `simthing-gpu` — persistent Pass B buffers,
+bootstrap → production-shaped kernel subset. **Does not integrate** with `BoundaryProtocol`
+or replace old pipeline passes.
+
+**Landed (merged):**
+
+| PR | Commit | Summary |
+|----|--------|---------|
+| **#90 A-4** | `cb33006` | Opus soft-aggregate audit (`docs/workshop/soft_aggregate_tolerance_audit.md`); `SoftAggregateGuard` on `SubFieldSpec`; `assert_no_hard_trigger_on_soft_aggregate()` wired into hard-trigger registration paths; zero existing production exposure found |
+| **#91 B-1** | `afff3b6` | `AccumulatorOpSession` — persistent `op`/`values`/`summary`/`emission` buffers; bootstrap WGSL (Identity/Sum/transfer); CPU oracle parity test across bands |
+| **#92 B-1 fix** | `f167e5c` | `scale_kind::CONSTANT` fix for `Constant(0.0)`; same-band contention rejection; clamped `SubtractFromSource`; provisional summary/emission tier docs; unsupported-variant rejection tests |
+
+**Landing this session (B-2):**
+
+| PR | Summary |
+|----|---------|
+| **#93 B-2** | EmitEvent kernel path — WGSL `emissions` + `atomic emission_count`; bounded compact records; `EmissionOverflow` on readback; `execute_ops_cpu_with_emissions()`; negative transfer clamp; 19 gpu + 9 core `accumulator_op` tests |
+
+**Key files:**
+
+- `crates/simthing-gpu/src/accumulator_op/` — session, encode, cpu_oracle, bootstrap_validate
+- `crates/simthing-gpu/src/shaders/accumulator_op.wgsl`
+- `crates/simthing-core/src/accumulator_op.rs` (A-2 types)
+- `docs/accumulator_op_v2_production_plan.md`, `docs/design_v7.md`
+
+**Explicitly not done (deferred):**
+
+- Threshold gates (C-1), WeightedMean/EvalEML/overlay/conjunctive (C/E), `BoundaryProtocol` hookup
+- Final `SlotSummary` contract (B-4 Opus gate), timestamp queries (B-3)
+
+**Docs updated:** `docs/todo.md`, `docs/worklog.md` (this entry), production plan B-2 shipped scope.
 
 ---
 

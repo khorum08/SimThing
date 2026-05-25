@@ -4,7 +4,7 @@ use bytemuck::{Pod, Zeroable};
 
 pub const DEFAULT_EMISSION_CAPACITY: u32 = 1024;
 
-/// B-1 provisional summary tier.
+/// Provisional B-1/B-2 summary tier.
 ///
 /// Final `SlotSummary` shape is not locked until B-4. Do not treat this
 /// checksum-only format as the production readback contract.
@@ -16,9 +16,9 @@ pub struct SlotSummary {
 
 /// Compact GPU-resolved emission record (Pass C readback tier).
 ///
-/// B-1 allocates emission buffers and exposes readback, but no B-1 kernel path
-/// writes emission records. B-2 owns `EmitEvent`, capacity checks, and atomic
-/// `emission_count` increments.
+/// Compact emission record written by B-2 `EmitEvent` ops. B-2 owns capacity
+/// checks and atomic `emission_count` increments; threshold-gated emission
+/// migration lands in C-1/C-8.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EmissionRecord {
     pub reg_idx:    u32,
@@ -72,10 +72,14 @@ pub struct AccumulatorOpGpu {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 pub struct AccumulatorTickParams {
-    pub n_ops:        u32,
-    pub current_band: u32,
-    pub n_slots:      u32,
-    pub n_dims:       u32,
+    pub n_ops:             u32,
+    pub current_band:      u32,
+    pub n_slots:           u32,
+    pub n_dims:            u32,
+    pub emission_capacity: u32,
+    pub _pad0:             u32,
+    pub _pad1:             u32,
+    pub _pad2:             u32,
 }
 
 #[repr(C)]
@@ -106,6 +110,8 @@ pub mod gate_kind {
 pub mod consume_kind {
     pub const NONE:                 u32 = 0;
     pub const SUBTRACT_FROM_SOURCE: u32 = 1;
+    /// Matches `ConsumeMode::EmitEvent` ordinal in simthing-core.
+    pub const EMIT_EVENT: u32 = 5;
 }
 
 pub mod scale_kind {

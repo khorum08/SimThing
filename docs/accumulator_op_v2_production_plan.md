@@ -173,6 +173,12 @@ Rejects duplicate same-band writes/consumes at upload. `SlotSummary` is
 checksum-only and **provisional pending B-4** — not the production readback
 contract.
 
+**Shipped scope (B-2):** hardens the bootstrap kernel with explicit scale
+encoding, clamped non-contended SlotValue transfer, same-band contention
+rejection, compact `EmitEvent` records, atomic `emission_count`, emission
+overflow reporting, and CPU oracle parity. Still non-integrated; no threshold
+gates, WeightedMean, EvalEML, overlay families, or `BoundaryProtocol` hookup.
+
 ---
 
 ### PR B-2 — Pass B WGSL kernel: Identity, Sum, Transfer, EmitEvent
@@ -183,10 +189,13 @@ Pass B kernel with four combine functions: `Identity`, `Sum`, `Transfer`
 (single-source gather + `SubtractFromSource`), `EmitEvent` (threshold gate +
 atomic counter write to emission buffer).
 
-B-1 shipped the persistent session and a **bootstrap** subset. B-2 owns:
-`EmitEvent`, `emission_count` atomic increments, emission capacity handling,
-broader combine/gate support required by first migration, and stronger parity
-against current pass families.
+B-1 shipped the persistent session and a **bootstrap** subset. B-2 hardens that
+kernel with `EmitEvent`, `emission_count` atomic increments, emission capacity
+handling, and CPU oracle parity. B-2 still does not implement threshold-gated
+migration, WeightedMean, EvalEML, overlay Product/LastByPriority, conjunctive
+production, contended allocation, or `BoundaryProtocol` integration.
+
+C-1 owns threshold scan migration; B-4 owns final summary/checksum design.
 
 Atomic f32 helpers MUST be copied verbatim from
 `crates/simthing-workshop/src/eml_phase5.wgsl`. Do not rewrite.
