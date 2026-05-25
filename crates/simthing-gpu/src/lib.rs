@@ -20,7 +20,7 @@ pub use accumulator_op::{
 };
 pub use context::{GpuContext, GpuInitError};
 pub use overlay_prep::build_overlay_deltas;
-pub use passes::Pipelines;
+pub use passes::{AccumulatorPipelineSessions, Pipelines};
 pub use projection::project_tree_to_values;
 pub use reduction::{
     build_column_rule_descriptors, build_column_rules, build_topology, cpu_reduce_oracle,

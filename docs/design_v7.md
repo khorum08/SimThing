@@ -253,6 +253,15 @@ pub struct PipelineFlags {
   Parity: `c1_threshold_scan_parity.rs` (fission_stress 20k × 100 ticks).
 - Post-sunset (S-6): delete `threshold_scan.wgsl` and the flag; Pass 7 entry removed.
 
+**Pre-Pass 0 — Intent delta application (migrate → C-2, sunset → S-1)**
+- WGSL: `intent_delta.wgsl` (legacy path; default via `use_accumulator_intent: false`)
+- Applies folded CPU `IntentDelta { mul, add }` as `values = values * mul + add`
+- **C-2 landed:** `use_accumulator_intent` on `BoundaryProtocol` wires folded
+  intent rows as `COMBINE_AFFINE_INTENT` ops via `WorldGpuState::intent_accumulator`;
+  encoded in the same tick command buffer before snapshot when flag is true.
+  Parity: `c2_intent_accumulator_parity.rs` (10 scenarios + combined C-1/C-2 ordering).
+- Post-sunset (S-1): delete `intent_delta.wgsl` and the flag.
+
 ---
 
 ## 5. Economic substrate

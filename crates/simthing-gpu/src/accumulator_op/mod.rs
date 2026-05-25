@@ -11,9 +11,12 @@ mod session;
 mod types;
 
 pub use cpu_oracle::{
-    execute_ops_cpu, execute_ops_cpu_with_emissions, execute_threshold_ops_cpu, CpuOracleError,
+    execute_intent_deltas_cpu, execute_ops_cpu, execute_ops_cpu_with_emissions,
+    execute_threshold_ops_cpu, CpuOracleError,
 };
-pub use encode::{threshold_registrations_to_ops, EncodeError};
+pub use encode::{
+    threshold_registrations_to_ops, validate_intent_deltas_no_duplicate_cells, EncodeError,
+};
 pub use types::AccumulatorOpGpu;
 pub use session::{
     set_debug_readback_allowed, AccumulatorOpSession, AccumulatorOpSessionError, WORKGROUP_SIZE,

@@ -333,8 +333,15 @@ a measurable improvement, stop and open an Opus review before migrating further.
 
 **Model:** Codex 5.5  
 **Scope:** Migrate the Intent Pass (intent delta application) to AccumulatorOp
-using `Identity` combine, `Always` gate. The fold logic on CPU is unchanged.
-Feature-flagged with `use_accumulator_intent: bool`.
+using a C-2-specific `COMBINE_AFFINE_INTENT` GPU combine (`value = value * mul + add`).
+The CPU fold logic on the feeder/patcher path is unchanged.
+Feature-flagged with `use_accumulator_intent: bool` (default `false`).
+
+**Implementation note:** Folded `IntentDelta` rows encode as affine AccumulatorOp
+registrations; the Accumulator intent pass runs in the same tick command buffer
+as Passes 0–6 (before snapshot), not as a second submission. Combined C-1/C-2
+test verifies intent-before-threshold ordering. Old `intent_delta.wgsl` remains
+until sunset PR S-1.
 
 **Parity test:** Bit-exact against current intent pass for 10 scenarios.  
 **Acceptance:** CI green. Feature flag default remains `false`.

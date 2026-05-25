@@ -4,12 +4,22 @@ use simthing_core::{
     AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
 };
 
+use crate::world_state::IntentDelta;
+
 use super::types::{EmissionRecord, ThresholdEmission};
 
 #[derive(Clone, Debug, thiserror::Error, PartialEq)]
 pub enum CpuOracleError {
     #[error("unsupported op in CPU oracle: {0}")]
     Unsupported(&'static str),
+}
+
+/// Apply folded intent deltas on CPU (C-2 parity reference).
+pub fn execute_intent_deltas_cpu(values: &mut [f32], deltas: &[IntentDelta], n_dims: u32) {
+    for d in deltas {
+        let i = idx(d.slot, d.col, n_dims);
+        values[i] = values[i] * d.mul + d.add;
+    }
 }
 
 /// Execute one band of AccumulatorOp registrations against a flat values buffer.
@@ -261,6 +271,19 @@ fn maybe_emit_event(
 mod tests {
     use super::*;
     use simthing_core::{CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+
+    #[test]
+    fn c2_intent_affine_cpu_oracle() {
+        let mut values = vec![10.0, 7.0];
+        let deltas = [IntentDelta {
+            slot: 0,
+            col:  0,
+            mul:  2.0,
+            add:  3.0,
+        }];
+        execute_intent_deltas_cpu(&mut values, &deltas, 1);
+        assert_eq!(values[0], 23.0);
+    }
 
     #[test]
     fn accumulator_scale_constant_zero_writes_zero() {

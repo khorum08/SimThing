@@ -16,6 +16,7 @@ use bytemuck::{Pod, Zeroable};
 use simthing_core::{ClampBehavior, DimensionRegistry, SimPropertyId, SubFieldRole};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Maintain, MapMode};
 
+use crate::accumulator_op::DEFAULT_THRESHOLD_EMISSION_CAPACITY;
 use crate::context::GpuContext;
 
 // ── GovernedPair — GPU-friendly encoding of a (governed, governing) sub-field pair ──
@@ -325,6 +326,8 @@ pub struct WorldGpuState {
 
     /// C-1 AccumulatorOp threshold scan session (when migration flag is on).
     pub threshold_accumulator: Option<crate::AccumulatorOpSession>,
+    /// C-2 AccumulatorOp intent delta session (when migration flag is on).
+    pub intent_accumulator: Option<crate::AccumulatorOpSession>,
 }
 
 impl WorldGpuState {
@@ -443,6 +446,31 @@ impl WorldGpuState {
             depth_slots,
             depth_bucket_ranges: Vec::new(),
             threshold_accumulator: None,
+            intent_accumulator: None,
+        }
+    }
+
+    /// Ensure the C-2 intent AccumulatorOp session exists on this world state.
+    pub fn ensure_intent_accumulator(&mut self) {
+        if self.intent_accumulator.is_none() {
+            self.intent_accumulator = Some(crate::AccumulatorOpSession::new_attached(
+                &self.ctx,
+                self.n_slots,
+                self.n_dims,
+                DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+            ));
+        }
+    }
+
+    /// Upload folded intent deltas to the C-2 AccumulatorOp session.
+    pub fn upload_accumulator_intents(
+        &mut self,
+        deltas: &[IntentDelta],
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        if let Some(session) = self.intent_accumulator.as_mut() {
+            session.upload_intent_ops(&self.ctx, deltas)
+        } else {
+            Ok(())
         }
     }
 
@@ -553,6 +581,7 @@ impl WorldGpuState {
         self.n_slots = new_n_slots;
         self.n_dims = new_n_dims;
         self.threshold_accumulator = None;
+        self.intent_accumulator = None;
         let per_slot_per_col_bytes = (self.n_slots as u64) * (self.n_dims as u64) * 4;
 
         let new_values = self.mk_storage_buffer("values", per_slot_per_col_bytes);

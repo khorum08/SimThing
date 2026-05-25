@@ -124,6 +124,7 @@ pub struct BoundaryHookContext<'a> {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PipelineFlags {
     pub use_accumulator_threshold_scan: bool,
+    pub use_accumulator_intent:         bool,
 }
 
 /// Top-level boundary orchestrator.
@@ -186,6 +187,13 @@ impl BoundaryProtocol {
             fission_lineage: Vec::new(),
             cached_topology_state: TopologyState::default(),
         }
+    }
+
+    fn sync_accumulator_intent_session(&self, state: &mut WorldGpuState) {
+        if !self.flags.use_accumulator_intent {
+            return;
+        }
+        state.ensure_intent_accumulator();
     }
 
     fn sync_accumulator_threshold_ops(
@@ -693,6 +701,7 @@ impl BoundaryProtocol {
         if let Some(regs) = gpu_out.rebuilt_threshold_regs.as_deref() {
             self.sync_accumulator_threshold_ops(state, regs);
         }
+        self.sync_accumulator_intent_session(state);
         out.gpu_sync = GpuSyncOutcome {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
             // Sum: gpu_out.threshold_regs_uploaded counts entries written by
@@ -913,6 +922,7 @@ impl BoundaryProtocol {
         if let Some(regs) = out.rebuilt_threshold_regs.as_deref() {
             self.sync_accumulator_threshold_ops(state, regs);
         }
+        self.sync_accumulator_intent_session(state);
     }
 
     /// Read-only access to the persistent fission lineage. Useful for tests
