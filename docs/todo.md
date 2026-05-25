@@ -55,7 +55,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **C-3** | #105 | Overlay Add → AccumulatorOp; `use_accumulator_overlay_add` (default false); Add-only batches |
 | **C-3 refine** | #106 | Mixed Add/Mul/Set → full legacy Pass 3 fallback (no split-mode) |
 | **C-3 OrderBand** | #107 | Per-cell OrderBand sequencing for exact f32 Add order; multi-band dispatch fix |
-| **C-4** | local | Full Add/Mul/Set overlay → AccumulatorOp OrderBand compiler; dirty/cached rebuild |
+| **C-4** | #118 | Full Add/Mul/Set overlay → AccumulatorOp OrderBand compiler; dirty/cached rebuild |
 | **Pivot-forward + B-4I** | #108 | `2aa630e` | Pivot-forward policy; production `SlotSummaryGpu`; C-INF scaffolds |
 | **C-INF-1 + C-INF-2** | #109 | `2f95c6d` | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness + tests |
 | **Pivot-forward remedial** | #111 | `632d656` | Authoritative flags; `WorldSummaryRuntime`; oracle tolerance rename |

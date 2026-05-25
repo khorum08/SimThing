@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-25 — C-4 overlay OrderBand compiler
 
-**Status:** Local implementation complete behind the overlay AccumulatorOp flag.
+**Status:** Merged as PR #118 (`87ba7b0`) behind the overlay AccumulatorOp flag.
 
 **Scope:** Replaced the C-3 Add-only planner with `plan_overlay_orderband`, which
 consumes `build_overlay_deltas` output unchanged and emits deterministic per-cell
