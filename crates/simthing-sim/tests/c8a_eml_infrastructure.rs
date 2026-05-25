@@ -448,7 +448,7 @@ fn c8a_tree_generation_reupload_invalidates_ops() {
         .mark_tree_uploaded(EmlTreeId(1), 0, table.generation)
         .unwrap();
     assert!(table.generation > gen1);
-    assert_eq!(registry.generation(), table.generation);
+    assert_eq!(table.node_upload_count, 2);
 }
 
 #[test]

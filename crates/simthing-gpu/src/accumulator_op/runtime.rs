@@ -196,6 +196,15 @@ impl WorldAccumulatorRuntime {
 
     pub fn upload_eml_trees(&mut self, ctx: &GpuContext) -> Result<(), EmlUploadError> {
         self.ensure_eml_program_table(ctx);
+        let registry_generation = self.eml_registry.generation();
+        if self
+            .eml
+            .as_ref()
+            .and_then(|t| t.uploaded_registry_generation)
+            == Some(registry_generation)
+        {
+            return Ok(());
+        }
         let trees: Vec<_> = self
             .eml_registry
             .formulas_for_gpu_upload()
@@ -210,6 +219,7 @@ impl WorldAccumulatorRuntime {
                 .mark_tree_uploaded(tree_id, range_index, table.generation)
                 .expect("mark_tree_uploaded after GPU upload");
         }
+        table.uploaded_registry_generation = Some(registry_generation);
         self.apply_eml_bindings_to_sessions();
         Ok(())
     }
@@ -686,5 +696,60 @@ mod tests {
             .unwrap();
         assert!(runtime.intent_active());
         assert_eq!(runtime.intent_ops.count, 1);
+    }
+
+    #[test]
+    fn c8a_boundary_sync_skips_unchanged_eml_table_upload() {
+        use simthing_core::{eml_opcode, EmlExecutionClass, EmlFormulaMeta, EmlNodeGpu, EmlTreeId};
+
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let mut runtime = WorldAccumulatorRuntime::new();
+        runtime
+            .eml_registry
+            .register_formula(
+                EmlTreeId(1),
+                EmlFormulaMeta {
+                    tree_id: EmlTreeId(1),
+                    execution_class: EmlExecutionClass::ExactDeterministic,
+                    allowed_consumers: Default::default(),
+                    max_abs_error: None,
+                    deterministic_gpu: true,
+                    requires_guard_for_hard_threshold: false,
+                    node_count: 2,
+                    max_stack_depth: 1,
+                    has_loops: false,
+                    has_recursion: false,
+                    display_name: "lit".into(),
+                },
+                vec![
+                    EmlNodeGpu {
+                        opcode: eml_opcode::LITERAL_F32,
+                        flags: 0,
+                        a: 1.0f32.to_bits(),
+                        b: 0,
+                        c: 0,
+                        d: 0,
+                    },
+                    EmlNodeGpu {
+                        opcode: eml_opcode::RETURN_TOP,
+                        flags: 0,
+                        a: 0,
+                        b: 0,
+                        c: 0,
+                        d: 0,
+                    },
+                ],
+            )
+            .unwrap();
+        runtime.upload_eml_trees(&ctx).unwrap();
+        let table = runtime.eml.as_ref().unwrap();
+        let node_uploads = table.node_upload_count;
+        let range_uploads = table.range_upload_count;
+        let generation = table.generation;
+        runtime.upload_eml_trees(&ctx).unwrap();
+        let table = runtime.eml.as_ref().unwrap();
+        assert_eq!(table.node_upload_count, node_uploads);
+        assert_eq!(table.range_upload_count, range_uploads);
+        assert_eq!(table.generation, generation);
     }
 }

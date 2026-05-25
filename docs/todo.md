@@ -75,7 +75,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **S-4** | #126 | `208e5a2` | Legacy reduction deleted; AccumulatorOp sole path; flags default on |
 | **C-7** | pending | GovernedPair velocity → AccumulatorOp; `IntegrateWithClamp`; dt in tick params |
 
-**Next (non-Opus):** **C-8b** intensity migration · **C-8c** transfer · **C-8d** emission · **S-3** overlay sunset · per-family oracle expansion.
+**Next (non-Opus):** **C-8b** intensity migration · **C-8c** transfer · **C-8d** emission · **S-3** overlay sunset · per-family oracle expansion. C-8a remedial hardening landed locally.
 
 **Next (sunset-gated):** **S-3** overlay prep/WGSL deletion after C-4 default-on validation and CI.
 

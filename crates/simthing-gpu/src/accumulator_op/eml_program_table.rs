@@ -22,6 +22,12 @@ pub enum EmlUploadError {
     TreeCapacityExceeded { need: u32, have: u32 },
     #[error("EML formula {tree_id:?} is CpuOracleOnly and cannot upload to GPU")]
     CpuOracleOnly { tree_id: EmlTreeId },
+    #[error("EML formula {tree_id:?} meta node_count {meta_count} does not match nodes.len() {actual_count}")]
+    NodeCountMismatch {
+        tree_id: EmlTreeId,
+        meta_count: u32,
+        actual_count: u32,
+    },
 }
 
 /// Persistent GPU-resident EML program storage (shared across AccumulatorOp sessions).
@@ -36,6 +42,8 @@ pub struct EmlGpuProgramTable {
     pub range_used: u32,
     pub node_upload_count: u64,
     pub range_upload_count: u64,
+    /// Registry generation last reflected in this GPU table (boundary-sync skip gate).
+    pub uploaded_registry_generation: Option<u64>,
 }
 
 impl EmlGpuProgramTable {
@@ -63,6 +71,7 @@ impl EmlGpuProgramTable {
             range_used: 0,
             node_upload_count: 0,
             range_upload_count: 0,
+            uploaded_registry_generation: None,
         }
     }
 
@@ -159,13 +168,16 @@ impl EmlGpuProgramTable {
         trees: &[(EmlTreeId, EmlFormulaMeta, Vec<EmlNodeGpu>)],
     ) -> Result<HashMap<EmlTreeId, u32>, EmlUploadError> {
         if trees.is_empty() {
+            if self.node_used != 0 || self.range_used != 0 || !self.ranges.is_empty() {
+                self.generation = self.generation.wrapping_add(1);
+            }
             self.ranges.clear();
             self.node_used = 0;
             self.range_used = 0;
             return Ok(HashMap::new());
         }
 
-        let total_nodes: u32 = trees.iter().map(|(_, m, _)| m.node_count).sum();
+        let total_nodes: u32 = trees.iter().map(|(_, _, nodes)| nodes.len() as u32).sum();
         let total_ranges = trees.len() as u32;
         self.ensure_capacity(ctx, total_nodes, total_ranges)?;
 
@@ -177,6 +189,13 @@ impl EmlGpuProgramTable {
         for (range_index, (tree_id, meta, nodes)) in trees.iter().enumerate() {
             if meta.execution_class == EmlExecutionClass::CpuOracleOnly {
                 return Err(EmlUploadError::CpuOracleOnly { tree_id: *tree_id });
+            }
+            if meta.node_count != nodes.len() as u32 {
+                return Err(EmlUploadError::NodeCountMismatch {
+                    tree_id: *tree_id,
+                    meta_count: meta.node_count,
+                    actual_count: nodes.len() as u32,
+                });
             }
             let range = EmlTreeRangeGpu {
                 node_offset,
@@ -203,7 +222,7 @@ impl EmlGpuProgramTable {
 
         self.node_upload_count += 1;
         self.range_upload_count += 1;
-        self.node_used = total_nodes;
+        self.node_used = flat_nodes.len() as u32;
         self.range_used = total_ranges;
         self.ranges = ranges;
         self.generation = self.generation.wrapping_add(1);
@@ -258,7 +277,7 @@ mod tests {
         let mut table = EmlGpuProgramTable::new(&ctx, 32, 8);
         let trees = vec![(
             EmlTreeId(1),
-            meta(1, 2),
+            meta(1, 3),
             vec![literal(2.0), literal(3.0), EmlNodeGpu {
                 opcode: eml_opcode::ADD,
                 flags: 0,
@@ -272,5 +291,46 @@ mod tests {
         assert_eq!(map.get(&EmlTreeId(1)), Some(&0));
         assert_eq!(table.range_used, 1);
         assert_eq!(table.node_used, 3);
+    }
+
+    #[test]
+    fn c8a_upload_rejects_meta_node_count_mismatch() {
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let mut table = EmlGpuProgramTable::new(&ctx, 32, 8);
+        let mut meta = meta(1, 99);
+        meta.node_count = 99;
+        let trees = vec![(EmlTreeId(1), meta, vec![literal(1.0)])];
+        assert_eq!(
+            table.upload_trees(&ctx, &trees),
+            Err(EmlUploadError::NodeCountMismatch {
+                tree_id: EmlTreeId(1),
+                meta_count: 99,
+                actual_count: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn c8a_empty_upload_after_nonempty_table_bumps_generation() {
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let mut table = EmlGpuProgramTable::new(&ctx, 32, 8);
+        let trees = vec![(
+            EmlTreeId(1),
+            meta(1, 2),
+            vec![literal(1.0), EmlNodeGpu {
+                opcode: eml_opcode::RETURN_TOP,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            }],
+        )];
+        table.upload_trees(&ctx, &trees).unwrap();
+        let gen_after_upload = table.generation;
+        table.upload_trees(&ctx, &[]).unwrap();
+        assert!(table.generation > gen_after_upload);
+        assert_eq!(table.node_used, 0);
+        assert_eq!(table.range_used, 0);
     }
 }

@@ -270,6 +270,46 @@ impl EmlExpressionRegistry {
                 upload_generation: None,
             },
         );
+        self.generation = self.generation.wrapping_add(1);
+        Ok(())
+    }
+
+    /// Register a CpuOracleOnly formula for debug/test oracle paths (never GPU-uploaded).
+    pub fn register_cpu_oracle_formula(
+        &mut self,
+        tree_id: EmlTreeId,
+        mut meta: EmlFormulaMeta,
+        nodes: Vec<EmlNode>,
+    ) -> Result<(), EmlRegistryError> {
+        if self.formulas.contains_key(&tree_id) {
+            return Err(EmlRegistryError::DuplicateTreeId(tree_id));
+        }
+        if meta.execution_class != EmlExecutionClass::CpuOracleOnly {
+            return Err(EmlRegistryError::NotCpuOracleOnly { tree_id });
+        }
+        meta.tree_id = tree_id;
+        if nodes.is_empty() {
+            return Err(EmlRegistryError::EmptyTree);
+        }
+        if nodes.len() as u32 > MAX_EML_TREE_NODES {
+            return Err(EmlRegistryError::TooManyNodes(nodes.len() as u32));
+        }
+        meta.node_count = nodes.len() as u32;
+        meta.max_stack_depth = validate_stack_depth(&nodes)?;
+        validate_nodes_for_class(meta.execution_class, &nodes)?;
+        meta.allowed_consumers = EmlConsumerMask(EmlConsumerMask::DEBUG_ORACLE);
+        meta.deterministic_gpu = false;
+        meta.requires_guard_for_hard_threshold = false;
+        self.formulas.insert(
+            tree_id,
+            RegisteredFormula {
+                meta,
+                nodes,
+                range_index: None,
+                upload_generation: None,
+            },
+        );
+        self.generation = self.generation.wrapping_add(1);
         Ok(())
     }
 
@@ -306,17 +346,14 @@ impl EmlExpressionRegistry {
                     });
                 }
             }
-            EmlConsumerKind::HardThreshold => match class {
-                EmlExecutionClass::ExactDeterministic => {}
-                EmlExecutionClass::SoftDeterministic if entry.meta.requires_guard_for_hard_threshold => {
-                }
-                _ => {
+            EmlConsumerKind::HardThreshold => {
+                if class != EmlExecutionClass::ExactDeterministic {
                     return Err(EmlRegistryError::ClassNotAdmissibleForConsumer {
                         class,
                         consumer,
                     });
                 }
-            },
+            }
             EmlConsumerKind::SoftThreshold
             | EmlConsumerKind::Intensity
             | EmlConsumerKind::Emission => {
@@ -329,6 +366,35 @@ impl EmlExpressionRegistry {
             }
         }
         Ok(())
+    }
+
+    /// Future hook: soft hard-threshold admission requires an explicit guard (C-8a rejects all non-exact).
+    pub fn assert_hard_threshold_admissible(
+        &self,
+        tree_id: EmlTreeId,
+        guard_present: bool,
+    ) -> Result<(), EmlRegistryError> {
+        let entry = self
+            .formulas
+            .get(&tree_id)
+            .ok_or(EmlRegistryError::NotRegistered(tree_id))?;
+        let class = entry.meta.execution_class;
+        match class {
+            EmlExecutionClass::ExactDeterministic => Ok(()),
+            EmlExecutionClass::SoftDeterministic => {
+                if guard_present {
+                    Err(EmlRegistryError::GuardedSoftHardThresholdDeferred { tree_id })
+                } else {
+                    Err(EmlRegistryError::GuardRequiredForSoftHardThreshold { tree_id })
+                }
+            }
+            EmlExecutionClass::FastApproximate | EmlExecutionClass::CpuOracleOnly => {
+                Err(EmlRegistryError::ClassNotAdmissibleForConsumer {
+                    class,
+                    consumer: EmlConsumerKind::HardThreshold,
+                })
+            }
+        }
     }
 
     pub fn tree_range_index(&self, tree_id: EmlTreeId) -> Option<u32> {
@@ -349,7 +415,6 @@ impl EmlExpressionRegistry {
             .ok_or(EmlRegistryError::NotRegistered(tree_id))?;
         entry.range_index = Some(range_index);
         entry.upload_generation = Some(generation);
-        self.generation = generation;
         Ok(())
     }
 
@@ -454,6 +519,11 @@ fn validate_nodes_for_class(
     class: EmlExecutionClass,
     nodes: &[EmlNode],
 ) -> Result<(), EmlRegistryError> {
+    for node in nodes {
+        if node.opcode == eml_nodes::opcode::PARAM && node.a > 3 {
+            return Err(EmlRegistryError::ParamIndexOutOfRange { index: node.a });
+        }
+    }
     if class == EmlExecutionClass::CpuOracleOnly {
         return Ok(());
     }
@@ -558,6 +628,14 @@ pub enum EmlRegistryError {
     UnwrappedDivision,
     #[error("EML formula {tree_id:?} is CpuOracleOnly and cannot be uploaded to GPU")]
     CannotUploadCpuOracleOnly { tree_id: EmlTreeId },
+    #[error("EML formula {tree_id:?} must use register_cpu_oracle_formula")]
+    NotCpuOracleOnly { tree_id: EmlTreeId },
+    #[error("EML PARAM index {index} is out of range (must be 0..=3)")]
+    ParamIndexOutOfRange { index: u32 },
+    #[error("EML formula {tree_id:?} requires SoftAggregateGuard for hard-threshold admission")]
+    GuardRequiredForSoftHardThreshold { tree_id: EmlTreeId },
+    #[error("guarded soft hard-threshold admission for {tree_id:?} is deferred past C-8a")]
+    GuardedSoftHardThresholdDeferred { tree_id: EmlTreeId },
 }
 
 #[cfg(test)]
@@ -659,22 +737,123 @@ mod tests {
     }
 
     #[test]
+    fn c8a_cpu_oracle_only_can_register_for_debug_oracle() {
+        let mut registry = EmlExpressionRegistry::new();
+        let id = EmlTreeId(9);
+        let mut meta = exact_meta(9, "cpu_only");
+        meta.execution_class = EmlExecutionClass::CpuOracleOnly;
+        registry
+            .register_cpu_oracle_formula(id, meta, vec![literal(1.0)])
+            .unwrap();
+        assert!(registry
+            .assert_consumer_admissible(id, EmlConsumerKind::DebugOracle)
+            .is_ok());
+        assert_eq!(registry.tree_range_index(id), None);
+    }
+
+    #[test]
+    fn c8a_cpu_oracle_only_not_returned_for_gpu_upload() {
+        let mut registry = EmlExpressionRegistry::new();
+        let id = EmlTreeId(9);
+        let mut meta = exact_meta(9, "cpu_only");
+        meta.execution_class = EmlExecutionClass::CpuOracleOnly;
+        registry
+            .register_cpu_oracle_formula(id, meta, vec![literal(1.0)])
+            .unwrap();
+        assert_eq!(registry.formulas_for_gpu_upload().count(), 0);
+    }
+
+    #[test]
+    fn c8a_cpu_oracle_only_rejected_from_production_consumers() {
+        let mut registry = EmlExpressionRegistry::new();
+        let id = EmlTreeId(9);
+        let mut meta = exact_meta(9, "cpu_only");
+        meta.execution_class = EmlExecutionClass::CpuOracleOnly;
+        registry
+            .register_cpu_oracle_formula(id, meta, vec![literal(1.0)])
+            .unwrap();
+        assert!(registry
+            .assert_consumer_admissible(id, EmlConsumerKind::Intensity)
+            .is_err());
+    }
+
+    #[test]
+    fn c8a_soft_deterministic_hard_threshold_rejected_without_guard() {
+        let mut registry = EmlExpressionRegistry::new();
+        let id = EmlTreeId(1);
+        let mut meta = exact_meta(1, "soft");
+        meta.execution_class = EmlExecutionClass::SoftDeterministic;
+        meta.allowed_consumers =
+            EmlConsumerMask(EmlConsumerMask::HARD_THRESHOLD | EmlConsumerMask::DEBUG_ORACLE);
+        registry
+            .register_formula(id, meta, vec![literal(1.0), literal(2.0), EmlNode {
+                opcode: eml_nodes::opcode::ADD,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            }])
+            .unwrap();
+        assert!(registry
+            .assert_consumer_admissible(id, EmlConsumerKind::HardThreshold)
+            .is_err());
+        assert!(matches!(
+            registry.assert_hard_threshold_admissible(id, false),
+            Err(EmlRegistryError::GuardRequiredForSoftHardThreshold { .. })
+        ));
+    }
+
+    #[test]
+    fn c8a_soft_hard_threshold_requires_explicit_guard() {
+        let mut registry = EmlExpressionRegistry::new();
+        let id = EmlTreeId(1);
+        let mut meta = exact_meta(1, "soft");
+        meta.execution_class = EmlExecutionClass::SoftDeterministic;
+        registry
+            .register_formula(id, meta, vec![literal(1.0)])
+            .unwrap();
+        assert!(matches!(
+            registry.assert_hard_threshold_admissible(id, true),
+            Err(EmlRegistryError::GuardedSoftHardThresholdDeferred { .. })
+        ));
+    }
+
+    #[test]
+    fn c8a_param_index_must_be_0_to_3() {
+        let mut registry = EmlExpressionRegistry::new();
+        let nodes = vec![EmlNode {
+            opcode: eml_nodes::opcode::PARAM,
+            flags: 0,
+            a: 4,
+            b: 0,
+            c: 0,
+            d: 0,
+        }];
+        assert_eq!(
+            registry.register_formula(EmlTreeId(1), exact_meta(1, "param"), nodes),
+            Err(EmlRegistryError::ParamIndexOutOfRange { index: 4 })
+        );
+    }
+
+    #[test]
+    fn register_formula_bumps_registry_generation() {
+        let mut registry = EmlExpressionRegistry::new();
+        assert_eq!(registry.generation(), 0);
+        registry
+            .register_formula(EmlTreeId(1), exact_meta(1, "a"), vec![literal(1.0)])
+            .unwrap();
+        assert_eq!(registry.generation(), 1);
+    }
+
+    #[test]
     fn c8a_stack_depth_validator_rejects_overflow() {
         let mut nodes = Vec::new();
         for i in 0..=EML_STACK_MAX {
             nodes.push(literal(i as f32));
         }
-        nodes.push(EmlNode {
-            opcode: eml_nodes::opcode::ADD,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        });
-        let mut registry = EmlExpressionRegistry::new();
         assert!(matches!(
-            registry.register_formula(EmlTreeId(1), exact_meta(1, "deep"), nodes),
+            validate_stack_depth(&nodes),
             Err(EmlRegistryError::StackDepthExceeded { .. })
         ));
     }
