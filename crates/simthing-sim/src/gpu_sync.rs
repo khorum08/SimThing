@@ -68,6 +68,7 @@ pub fn sync_gpu_buffers(
     dirty_value_slots: Option<&[u32]>,
     rebuild_thresholds: bool,
     rebuild_reduction_topology: bool,
+    use_accumulator_overlay_add: bool,
     // B2 Approach C: the canonical TopologyState owned by the boundary.
     // When `rebuild_reduction_topology` is true, this routine refreshes
     // the cache from a full tree walk and re-flattens to CSR. When false
@@ -92,7 +93,28 @@ pub fn sync_gpu_buffers(
         );
     }
     let n_deltas = deltas.len() as u32;
-    state.upload_overlay_deltas(&deltas, &ranges);
+    if use_accumulator_overlay_add {
+        state.ensure_overlay_add_accumulator();
+        let add_ops =
+            simthing_gpu::build_overlay_add_ops(&deltas, &ranges, state.n_slots);
+        state
+            .upload_overlay_add_ops(&add_ops)
+            .expect("overlay Add op upload failed");
+        state.accumulator_overlay_add_active = !add_ops.is_empty();
+
+        let (ms_deltas, mut ms_ranges) =
+            simthing_gpu::filter_multiply_set_deltas(&deltas, &ranges, state.n_slots);
+        if (ms_ranges.len() as u32) < state.n_slots {
+            ms_ranges.resize(
+                state.n_slots as usize,
+                simthing_gpu::SlotDeltaRange::default(),
+            );
+        }
+        state.upload_overlay_deltas(&ms_deltas, &ms_ranges);
+    } else {
+        state.accumulator_overlay_add_active = false;
+        state.upload_overlay_deltas(&deltas, &ranges);
+    }
     out.overlay_deltas_uploaded = n_deltas;
 
     let mut threshold_upload_bytes = 0u64;

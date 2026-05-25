@@ -328,6 +328,10 @@ pub struct WorldGpuState {
     pub threshold_accumulator: Option<crate::AccumulatorOpSession>,
     /// C-2 AccumulatorOp intent delta session (when migration flag is on).
     pub intent_accumulator: Option<crate::AccumulatorOpSession>,
+    /// C-3 AccumulatorOp overlay Add session (when migration flag is on).
+    pub overlay_add_accumulator: Option<crate::AccumulatorOpSession>,
+    /// True when C-3 uploaded at least one Add op for the current boundary.
+    pub accumulator_overlay_add_active: bool,
 }
 
 impl WorldGpuState {
@@ -447,6 +451,8 @@ impl WorldGpuState {
             depth_bucket_ranges: Vec::new(),
             threshold_accumulator: None,
             intent_accumulator: None,
+            overlay_add_accumulator: None,
+            accumulator_overlay_add_active: false,
         }
     }
 
@@ -454,6 +460,8 @@ impl WorldGpuState {
     pub fn clear_accumulator_sessions(&mut self) {
         self.threshold_accumulator = None;
         self.intent_accumulator = None;
+        self.overlay_add_accumulator = None;
+        self.accumulator_overlay_add_active = false;
     }
 
     /// Ensure the C-2 intent AccumulatorOp session exists on this world state.
@@ -475,6 +483,30 @@ impl WorldGpuState {
     ) -> Result<(), crate::AccumulatorOpSessionError> {
         if let Some(session) = self.intent_accumulator.as_mut() {
             session.upload_intent_ops(&self.ctx, deltas)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Ensure the C-3 overlay Add AccumulatorOp session exists on this world state.
+    pub fn ensure_overlay_add_accumulator(&mut self) {
+        if self.overlay_add_accumulator.is_none() {
+            self.overlay_add_accumulator = Some(crate::AccumulatorOpSession::new_attached(
+                &self.ctx,
+                self.n_slots,
+                self.n_dims,
+                DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+            ));
+        }
+    }
+
+    /// Upload pre-encoded overlay Add ops to the C-3 AccumulatorOp session.
+    pub fn upload_overlay_add_ops(
+        &mut self,
+        ops: &[crate::AccumulatorOpGpu],
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        if let Some(session) = self.overlay_add_accumulator.as_mut() {
+            session.upload_gpu_ops(&self.ctx, ops)
         } else {
             Ok(())
         }
@@ -1185,14 +1217,17 @@ mod tests {
         let mut state = WorldGpuState::new(ctx, &reg, 2);
         state.ensure_intent_accumulator();
         state.ensure_threshold_accumulator(4096);
+        state.ensure_overlay_add_accumulator();
         assert!(state.intent_accumulator.is_some());
         assert!(state.threshold_accumulator.is_some());
+        assert!(state.overlay_add_accumulator.is_some());
 
         reg.register(property_with_intensity("food_security"));
         state.rebuild_for_registry(&reg);
 
         assert!(state.intent_accumulator.is_none());
         assert!(state.threshold_accumulator.is_none());
+        assert!(state.overlay_add_accumulator.is_none());
     }
 
     #[test]

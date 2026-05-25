@@ -446,6 +446,34 @@ impl AccumulatorOpSession {
         Ok(())
     }
 
+    /// Upload pre-encoded GPU ops (e.g. C-3 overlay Add registrations).
+    pub fn upload_gpu_ops(
+        &mut self,
+        ctx: &GpuContext,
+        ops: &[AccumulatorOpGpu],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        self.threshold_event_kinds.clear();
+        if ops.is_empty() {
+            self.n_ops = 0;
+            return Ok(());
+        }
+
+        let byte_len = ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
+        if self.op_buffer.size() < byte_len as u64 {
+            self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("accumulator_op_buffer"),
+                size: byte_len.max(4096) as u64,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+
+        ctx.queue
+            .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(ops));
+        self.n_ops = ops.len() as u32;
+        Ok(())
+    }
+
     /// Dispatch Pass B for one OrderBand, then refresh per-slot summaries.
     pub fn tick(&mut self, ctx: &GpuContext, band: u32) -> Result<(), AccumulatorOpSessionError> {
         if self.n_ops == 0 {
@@ -664,6 +692,43 @@ impl AccumulatorOpSession {
     /// Call immediately after the submission that drove `encode_intent_into`.
     pub fn finish_intent(&mut self, ctx: &GpuContext) {
         self.read_execute_pass_timestamp(ctx);
+    }
+
+    /// Prepare the session for a batched overlay Add pass in the caller's encoder.
+    pub fn prepare_overlay_add(&self, ctx: &GpuContext) {
+        if self.n_ops == 0 {
+            return;
+        }
+        self.write_tick_uniform(ctx, 0);
+    }
+
+    /// Encode overlay Add ops into the command encoder at the overlay position.
+    /// Does NOT submit — caller owns the encoder and submits with other passes.
+    pub fn encode_overlay_add_into(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+        previous_values: &Buffer,
+    ) {
+        if self.n_ops == 0 {
+            return;
+        }
+        self.last_pass_time_us = None;
+
+        let execute_bind_group =
+            self.create_execute_bind_group(ctx, values, previous_values);
+
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("accumulator_overlay_add_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.execute_pipeline);
+            pass.set_bind_group(0, &execute_bind_group, &[]);
+            let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
+            pass.dispatch_workgroups(groups, 1, 1);
+        }
     }
 
     fn write_tick_uniform(&self, ctx: &GpuContext, band: u32) {
@@ -1007,8 +1072,9 @@ mod tests {
 
     use crate::accumulator_op::encode::EncodeError;
     use crate::accumulator_op::{
-        execute_ops_cpu, execute_threshold_ops_cpu, set_debug_readback_allowed,
-        summaries_from_values, threshold_registrations_to_ops,
+        combine_kind, consume_kind, execute_ops_cpu, execute_threshold_ops_cpu, gate_kind,
+        scale_kind, set_debug_readback_allowed, source_kind, summaries_from_values,
+        threshold_registrations_to_ops, AccumulatorOpGpu,
     };
     use crate::context::GpuContext;
 
@@ -1887,5 +1953,54 @@ mod tests {
         let mut session = AccumulatorOpSession::new_attached(&ctx, 1, 1, 16);
         session.upload_intent_ops(&ctx, &[]).unwrap();
         session.prepare_intent(&ctx);
+    }
+
+    #[test]
+    fn c3_overlay_add_accumulator_applies_add_to_values() {
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+
+        let n_dims = 3u32;
+        let mut session = AccumulatorOpSession::new_attached(&ctx, 1, n_dims, 16);
+        session.upload_values(&ctx, &[10.0, 0.0, 0.0]);
+
+        let op = AccumulatorOpGpu {
+            source_kind:  source_kind::CONSTANT,
+            source_slot:  3.5_f32.to_bits(),
+            source_col:   0,
+            source_count: 0,
+            combine_kind: combine_kind::IDENTITY,
+            combine_a:    0,
+            combine_b:    0,
+            combine_c:    0,
+            combine_d:    0,
+            gate_kind:    gate_kind::ORDER_BAND,
+            gate_a:       0,
+            gate_b:       0,
+            scale_kind:   scale_kind::IDENTITY,
+            scale_a:      0,
+            consume:      consume_kind::NONE,
+            target0_slot: 0,
+            target0_col:  0,
+            target1_slot: 0,
+            target1_col:  0,
+            target2_slot: 0,
+            target2_col:  0,
+            target3_slot: 0,
+            target3_col:  0,
+            n_targets:    1,
+            _pad:         0,
+        };
+        session.upload_gpu_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session.tick(&ctx, 0).unwrap();
+
+        let result = session.readback_full(&ctx).unwrap();
+        assert!(
+            (result[0] - 13.5).abs() < 1e-5,
+            "expected 13.5, got {}",
+            result[0]
+        );
     }
 }

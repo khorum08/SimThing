@@ -365,6 +365,11 @@ Add fires before a child's Add when both register in the same tick.
 overlay scenarios.  
 **Acceptance:** CI green. Existing overlay tests pass.
 
+**Implementation note:** One `AccumulatorOpGpu` per `OverlayDelta` where
+`op_kind == OP_ADD`, in original tree-walk order. Same-cell atomic contention
+handled by `atomic_add_f32` — no CPU-side folding. Multiply/Set filtered to
+old Pass 3 in the same tick when the flag is on.
+
 ---
 
 ### ⚠️ PR C-4 — Opus review: Overlay Multiply/Set and OrderBand compiler design
