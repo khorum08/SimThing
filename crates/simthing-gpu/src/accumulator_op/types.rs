@@ -29,14 +29,13 @@ pub struct ThresholdEmissionGpu {
     pub value:   f32,
 }
 
-/// Provisional B-1/B-2 summary tier.
-///
-/// Final `SlotSummary` shape is not locked until B-4. Do not treat this
-/// checksum-only format as the production readback contract.
+/// Production B-4 summary tier (32 B/slot on GPU).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SlotSummary {
-    pub slot:     u32,
-    pub checksum: u32,
+    pub slot:            u32,
+    pub flags:           u32,
+    pub checksum_all:    u32,
+    pub group_checksums: [u32; 4],
 }
 
 /// Compact GPU-resolved emission record (Pass C readback tier).
@@ -53,8 +52,11 @@ pub struct EmissionRecord {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 pub struct SlotSummaryGpu {
-    pub slot:     u32,
-    pub checksum: u32,
+    pub slot:            u32,
+    pub flags:           u32,
+    pub checksum_all:    u32,
+    pub _pad:            u32,
+    pub group_checksums: [u32; 4],
 }
 
 #[repr(C)]
@@ -164,6 +166,24 @@ pub mod scale_kind {
     pub const CONSTANT: u32 = 1;
 }
 
+/// Compute per-group XOR checksums for one slot row (CPU oracle for B-4).
+pub fn group_checksums(values: &[f32], slot: u32, n_dims: u32) -> [u32; 4] {
+    let base = slot as usize * n_dims as usize;
+    let group_size = n_dims.div_ceil(4);
+    let mut out = [0u32; 4];
+    for g in 0..4u32 {
+        let start = g * group_size;
+        if start >= n_dims {
+            continue;
+        }
+        let end = ((g + 1) * group_size).min(n_dims);
+        for col in start..end {
+            out[g as usize] ^= values[base + col as usize].to_bits();
+        }
+    }
+    out
+}
+
 /// Compute a slot-row checksum from a flat values buffer (CPU reference).
 pub fn slot_checksum(values: &[f32], slot: u32, n_dims: u32) -> u32 {
     let base = slot as usize * n_dims as usize;
@@ -179,7 +199,70 @@ pub fn summaries_from_values(values: &[f32], n_slots: u32, n_dims: u32) -> Vec<S
     (0..n_slots)
         .map(|slot| SlotSummary {
             slot,
-            checksum: slot_checksum(values, slot, n_dims),
+            flags: 0,
+            checksum_all: slot_checksum(values, slot, n_dims),
+            group_checksums: group_checksums(values, slot, n_dims),
         })
         .collect()
+}
+
+#[cfg(test)]
+mod summary_tests {
+    use super::*;
+
+    #[test]
+    fn b4_summary_format_roundtrip() {
+        let gpu = SlotSummaryGpu {
+            slot: 3,
+            flags: 0,
+            checksum_all: 42,
+            _pad: 0,
+            group_checksums: [1, 2, 3, 4],
+        };
+        let cpu = SlotSummary {
+            slot: gpu.slot,
+            flags: gpu.flags,
+            checksum_all: gpu.checksum_all,
+            group_checksums: gpu.group_checksums,
+        };
+        assert_eq!(cpu.slot, gpu.slot);
+        assert_eq!(cpu.checksum_all, gpu.checksum_all);
+        assert_eq!(cpu.group_checksums, gpu.group_checksums);
+    }
+
+    #[test]
+    fn b4_flags_zero_by_default() {
+        let values = vec![1.0, 2.0, 3.0, 4.0];
+        let s = summaries_from_values(&values, 1, 4)[0];
+        assert_eq!(s.flags, 0);
+    }
+
+    #[test]
+    fn b4_single_column_change_isolates_one_group() {
+        let a = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let mut b = a.clone();
+        b[2] = 99.0;
+        let sa = summaries_from_values(&a, 1, 6)[0];
+        let sb = summaries_from_values(&b, 1, 6)[0];
+        assert_eq!(sa.group_checksums[0], sb.group_checksums[0]);
+        assert_ne!(sa.group_checksums[1], sb.group_checksums[1]);
+    }
+
+    #[test]
+    fn b4_n_dims_less_than_four() {
+        let values = vec![1.0, 2.0];
+        let s = summaries_from_values(&values, 1, 2)[0];
+        assert_ne!(s.group_checksums[0], 0);
+        assert_eq!(s.group_checksums[2], 0);
+        assert_eq!(s.group_checksums[3], 0);
+    }
+
+    #[test]
+    fn b4_n_dims_sixty_four_groups_cover_all_columns() {
+        let values: Vec<f32> = (0..64).map(|i| (i + 1) as f32).collect();
+        let s = summaries_from_values(&values, 1, 64)[0];
+        assert_ne!(s.group_checksums[0], 0);
+        assert_ne!(s.group_checksums[3], 0);
+        assert_eq!(s.checksum_all, slot_checksum(&values, 0, 64));
+    }
 }

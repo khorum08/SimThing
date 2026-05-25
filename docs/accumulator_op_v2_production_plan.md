@@ -4,6 +4,10 @@
 > The PR ladder below is the authoritative sequencing. Phases A–D are not
 > calendar quarters; they are completion-gated sequences. A phase does not
 > begin until all PRs in the prior phase are green and merged.
+>
+> **Pivot posture (2026-05-25):** AccumulatorOp v2 is the production direction.
+> Legacy GPU passes are oracle/fallback only until S-phase deletion. See
+> [`docs/workshop/pivot_forward_implementation_policy.md`](workshop/pivot_forward_implementation_policy.md).
 
 ---
 
@@ -169,9 +173,8 @@ checksums. Use the `cpu_oracle` from the workshop crate as the reference.
 
 **Shipped scope (post-hardening):** persistent session + bootstrap non-emitting
 kernel only. Supports non-contended Identity/Sum and clamped SlotValue transfer.
-Rejects duplicate same-band writes/consumes at upload. `SlotSummary` is
-checksum-only and **provisional pending B-4** — not the production readback
-contract.
+Rejects duplicate same-band writes/consumes at upload. `SlotSummary` is now the
+production B-4I group-checksum tier (32 B/slot); see B-4 design memo.
 
 **Shipped scope (B-2):** hardens the bootstrap kernel with explicit scale
 encoding, clamped non-contended SlotValue transfer, same-band contention
@@ -244,12 +247,17 @@ may batch or sample timestamp readbacks.
 
 ### ⚠️ PR B-4 — Opus review: summary/checksum readback design
 
-**Design half status:** **Accepted** — see
+**Design status:** **Accepted** — see
 [`docs/workshop/slot_summary_b4_design.md`](workshop/slot_summary_b4_design.md).
 Selected layout: column-group checksums + whole-slot checksum + reserved
 `flags` word, no semantic values, no GPU-side previous-summary comparison.
-The Composer implementation PR (`feat(gpu): implement B-4 AccumulatorOp
-summary protocol`) lands separately per §9 of the memo.
+
+**Implementation (B-4I):** **Landed** — production `SlotSummaryGpu` (32 B/slot),
+WGSL `write_summaries` group checksums, CPU oracle parity tests. Full readback
+remains debug/test only.
+
+**Pivot posture:** Summary tier is production infrastructure, not optional polish.
+Legacy pass readback is not the long-term change-detection path.
 
 **Model:** Opus (design), Composer 2.5 (implementation)  
 **Why Opus:** The summary/checksum readback path is the default production
@@ -350,6 +358,10 @@ until sunset PR S-1.
 
 ### PR C-3 — Overlay Add migration
 
+**Status:** Landed (#105–#107). Add-only → AccumulatorOp with OrderBand exact f32
+order; mixed batches → legacy Pass 3 fallback only. Flag `use_accumulator_overlay_add`
+default false. **Sunset target:** S-3 (with C-4).
+
 **Model:** Composer 2.5  
 **Scope:** Migrate `TransformOp::Add` overlays from Pass 3 to AccumulatorOp
 `Identity + LifecycleActive + OrderBand(0)`. The OrderBand is 0 for Add
@@ -373,6 +385,32 @@ command buffer to preserve legacy f32 operation order exactly. The old overlay
 path remains only as temporary fallback/oracle for mixed batches. C-4 owns
 Multiply/Set and the full order-band compiler; S-3 deletes the old overlay path
 after C-3/C-4 pass parity.
+
+---
+
+### PR C-INF-1 — WorldAccumulatorRuntime consolidation (scaffold)
+
+**Status:** Scaffold landed. `WorldAccumulatorRuntime` + `OpSetHandle` types in
+`simthing-gpu/src/accumulator_op/runtime.rs`. Sidecar sessions
+(`threshold_accumulator`, `intent_accumulator`, `overlay_add_accumulator`) remain
+authoritative until a follow-up consolidation PR wires the envelope into
+`WorldGpuState`.
+
+**Pivot posture:** Stop accumulating per-family `Option<AccumulatorOpSession>`
+sidecars. New migrations register into `WorldAccumulatorRuntime` op sets.
+
+**Acceptance:** C-1/C-2/C-3 tests green; flags default false; no shader deletion.
+
+---
+
+### PR C-INF-2 — Legacy oracle harness (scaffold)
+
+**Status:** Scaffold landed. `simthing-sim::legacy_oracle` defines
+`LegacyOracleRun`, `run_family_oracle`, and comparison policy types. Per-family
+scenario wiring lands in migration PRs; legacy paths invoked only from oracle
+tests or explicit fallback.
+
+**Acceptance:** No runtime tick dependency on oracle harness.
 
 ---
 
@@ -627,7 +665,10 @@ with a clearly reported failure mode (triggers separate design work).
 | B-1 | B | Composer 2.5 | AccumulatorOpSession persistent buffers | None |
 | B-2 | B | Composer 2.5 | Pass B kernel: Identity/Sum/Transfer/EmitEvent | Conservation test |
 | B-3 | B | Codex 5.5 | Timestamp query plumbing | None |
-| **B-4** | **B** | **Opus + Composer** | **Summary/checksum readback design** | **Opus analysis** |
+| **B-4** | **B** | **Opus + Composer** | **Summary/checksum readback design** | **Opus analysis — accepted** |
+| **B-4I** | **B** | **Composer** | **Production SlotSummary protocol (32 B/slot group checksums)** | **CPU/GPU oracle tests** |
+| **C-INF-1** | **C-infra** | **Composer** | **`WorldAccumulatorRuntime` consolidation scaffold** | **C-1/C-2/C-3 tests green; sidecars shimmed** |
+| **C-INF-2** | **C-infra** | **Composer** | **Legacy oracle harness scaffold** | **Legacy invoked only in oracle tests** |
 | C-1 | C | Composer 2.5 | Threshold scan migration | 5× readback speedup |
 | C-2 | C | Codex 5.5 | Intent delta migration | Bit-exact parity |
 | C-3 | C | Composer 2.5 | Overlay Add migration | Bit-exact parity |

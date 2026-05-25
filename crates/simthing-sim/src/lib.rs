@@ -46,6 +46,7 @@ pub mod boundary;
 pub mod delta_log;
 pub mod fission;
 pub mod gpu_sync;
+pub mod legacy_oracle;
 pub mod observability;
 pub mod overlay_lifecycle;
 pub mod property_expiry;
@@ -72,3 +73,6 @@ pub use threshold_registry::{
     ThresholdSemantic, VelocityAlertEvent, VelocityAlertRegistration,
 };
 pub use tree_mutation::apply_structural_mutations;
+pub use legacy_oracle::{
+    run_family_oracle, LegacyOracleRun, OracleExactness, OracleFamily, OracleScenario,
+};

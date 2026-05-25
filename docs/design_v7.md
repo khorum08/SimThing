@@ -432,14 +432,14 @@ the summary/checksum readback.
 
 ```
 Summary (default production):
-  GPU writes SlotSummary { slot, checksum } for every modified slot.
-  CPU reads the summary buffer after each tick.
-  Used for: boundary skip decisions, change detection, basic audit.
-  Volume: 8 bytes × n_slots per tick.
+  GPU writes SlotSummary { slot, flags, checksum_all, group_checksums[4] }
+  for every slot after execute_ops (32 B/slot on GPU).
+  CPU reads the summary buffer after each tick and diffs against cached
+  previous summaries for change detection / boundary-skip input.
+  Volume: 32 bytes × n_slots per tick.
 
-  B-1 ships checksum-only SlotSummary as a provisional bootstrap tier.
-  B-2 continues to use this checksum-only tier for parity.
-  B-4 remains responsible for the final summary/checksum/coarse-value design.
+  B-4 design accepted; B-4I implements the production summary tier.
+  Full readback remains debug/test only.
 
 Compact records (production audit / selective replay):
   GPU writes EmissionRecord { registration_idx, emit_count } for every

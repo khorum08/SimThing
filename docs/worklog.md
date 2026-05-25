@@ -6,6 +6,55 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-25 — Pivot-forward policy + B-4I summary + C-INF scaffolds
+
+**Status:** `master` @ `523c712` + local pivot-forward infra (pending commit).
+
+**Scope:** Ingest Opus pivot-forward handoff — enforce AccumulatorOp v2 as production direction;
+implement B-4I production `SlotSummary`; scaffold C-INF-1 runtime envelope and C-INF-2 oracle harness.
+
+**Landed (this session):**
+
+- **`docs/workshop/pivot_forward_implementation_policy.md`** — active doctrine: legacy = oracle/fallback only; every C-family PR names S-phase sunset target
+- **B-4I** — production `SlotSummaryGpu` (32 B/slot): `flags`, `checksum_all`, 4 column-group checksums; WGSL `write_summaries` + CPU oracle; session readback updated
+- **C-INF-1** — `WorldAccumulatorRuntime` + `OpSetHandle` + `OperationFamily` / `ExactnessClass` in `accumulator_op/runtime.rs` (scaffold; sidecars remain authoritative)
+- **C-INF-2** — `simthing-sim::legacy_oracle` harness types + `run_family_oracle` entry point (scaffold; per-family wiring in migration PRs)
+
+**Tests:** B-4 summary unit tests (format roundtrip, group isolation, n_dims 2/64); existing
+`session_readback_summary_matches_cpu_oracle` validates GPU ↔ CPU group checksums.
+
+**Next:** C-INF-1 wire into `WorldGpuState` (consolidation PR) · C-4 Opus order-band compiler · C-5 soft reductions.
+
+---
+
+## 2026-05-25 — C-3 overlay Add OrderBand exact f32 order (#107)
+
+**Status:** `master` @ `523c712` (PR #107 merged).
+
+**Scope:** Replace folded per-cell Add sums with one AccumulatorOp per Add delta + per-cell
+`OrderBand` sequencing for bit-exact f32 order. Multi-band dispatch in one encoder with
+per-band uniform buffers (fixes wgpu `write_buffer` not applying between passes).
+
+**Policy:** Add-only batches → AccumulatorOp; any Multiply/Set → full legacy Pass 3 fallback.
+
+**Tests:** 13 `c3_overlay_add_accumulator_parity` tests including adversarial `(1.0 + 1e20) + (-1e20)`.
+
+**Sunset target:** S-3 — delete overlay prep / overlay WGSL after C-3+C-4 default-on.
+
+**Next:** pivot-forward policy doc + B-4I summary infrastructure.
+
+---
+
+## 2026-05-25 — C-3 overlay Add migration (#105–#106)
+
+**Status:** merged #105 (initial migration), #106 (mixed-batch fallback fix).
+
+**Scope:** Migrate overlay Add to AccumulatorOp behind `use_accumulator_overlay_add` (default false).
+#106 corrected split-mode bug: mixed Add/Multiply/Set batches no longer route Add to AccumulatorOp
+while Mul/Set stay on legacy.
+
+---
+
 ## 2026-05-25 — Pivot-forward AccumulatorOp corrections (#102)
 
 **Status:** `master` @ `e0f0f7d` (PR #102 merged; rebased after #100).

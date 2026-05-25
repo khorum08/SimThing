@@ -50,7 +50,10 @@ struct AccumulatorSummaryParams {
 
 struct SlotSummaryGpu {
     slot: u32,
-    checksum: u32,
+    flags: u32,
+    checksum_all: u32,
+    _pad: u32,
+    group_checksums: array<u32, 4>,
 }
 
 struct EmissionRecordGpu {
@@ -326,12 +329,23 @@ fn write_summaries(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
 
-    var checksum = 0u;
+    var checksum_all = 0u;
+    var group_checksums = array<u32, 4>(0u, 0u, 0u, 0u);
+    let group_size = (summary_params.n_dims + 3u) / 4u;
+
     for (var col: u32 = 0u; col < summary_params.n_dims; col = col + 1u) {
         let idx = slot * summary_params.n_dims + col;
-        checksum = checksum ^ bitcast<u32>(atomicLoad(&summary_values[idx]));
+        let bits = bitcast<u32>(atomicLoad(&summary_values[idx]));
+        checksum_all = checksum_all ^ bits;
+        let g = col / group_size;
+        if (g < 4u) {
+            group_checksums[g] = group_checksums[g] ^ bits;
+        }
     }
 
     summaries[slot].slot = slot;
-    summaries[slot].checksum = checksum;
+    summaries[slot].flags = 0u;
+    summaries[slot].checksum_all = checksum_all;
+    summaries[slot]._pad = 0u;
+    summaries[slot].group_checksums = group_checksums;
 }

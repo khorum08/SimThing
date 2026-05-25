@@ -830,7 +830,7 @@ impl AccumulatorOpSession {
         })
     }
 
-    /// Provisional B-1/B-2 summary readback tier (checksum-only; final shape is B-4).
+    /// Production B-4 summary readback tier (32 B/slot on GPU).
     pub fn readback_summary(&self, ctx: &GpuContext) -> Result<Vec<SlotSummary>, AccumulatorOpSessionError> {
         let bytes = self.read_buffer_bytes(ctx, &self.summary_buffer);
         let gpu: &[SlotSummaryGpu] = bytemuck::cast_slice(&bytes);
@@ -838,7 +838,9 @@ impl AccumulatorOpSession {
             .iter()
             .map(|s| SlotSummary {
                 slot: s.slot,
-                checksum: s.checksum,
+                flags: s.flags,
+                checksum_all: s.checksum_all,
+                group_checksums: s.group_checksums,
             })
             .collect())
     }
@@ -1514,7 +1516,7 @@ mod tests {
         session.upload_values(&ctx, &[10.0]);
         session.upload_ops(&ctx, std::slice::from_ref(&noop)).unwrap();
         session.tick(&ctx, 0).unwrap();
-        let pre = session.readback_summary(&ctx).unwrap()[0].checksum;
+        let pre = session.readback_summary(&ctx).unwrap()[0].checksum_all;
 
         let add_op = AccumulatorOp {
             source: SourceSpec::Constant(5.0),
@@ -1526,7 +1528,7 @@ mod tests {
         };
         session.upload_ops(&ctx, std::slice::from_ref(&add_op)).unwrap();
         session.tick(&ctx, 0).unwrap();
-        let post = session.readback_summary(&ctx).unwrap()[0].checksum;
+        let post = session.readback_summary(&ctx).unwrap()[0].checksum_all;
         assert_ne!(pre, post);
     }
 

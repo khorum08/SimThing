@@ -17,7 +17,9 @@ pub mod world_state;
 pub use accumulator_op::{
     execute_ops_cpu, set_debug_readback_allowed, threshold_registrations_to_ops,
     AccumulatorOpGpu, AccumulatorOpSession, AccumulatorOpSessionError, EmissionRecord,
-    SlotSummary, ThresholdEmission, ThresholdEmissionGpu, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+    ExactnessClass, LegacyOracleFamily, OpSetHandle, OperationFamily, SlotSummary,
+    ThresholdEmission, ThresholdEmissionGpu, WorldAccumulatorRuntime,
+    DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 pub use context::{GpuContext, GpuInitError};
 pub use overlay_add::{plan_overlay_add_accumulator, OverlayAddPlan};
