@@ -48,7 +48,8 @@
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    DecayBehavior, DimensionRegistry, Direction, SimPropertyId, SimThing, SimThingId, SubFieldRole,
+    DecayBehavior, DimensionRegistry, Direction, ReductionRule, SimPropertyId, SimThing,
+    SimThingId, SoftAggregateGuard, SubFieldRole,
 };
 use simthing_feeder::{
     CapabilityUnlockEvent, CapabilityUnlockRegistration, ScriptedEventTriggerEvent,
@@ -287,6 +288,148 @@ impl ThresholdRegistry {
     }
 }
 
+// ── Soft-aggregate guard validator ────────────────────────────────────────────
+
+/// Failure variant produced by `assert_no_hard_trigger_on_soft_aggregate`.
+/// The four classifying conditions are documented in
+/// `docs/workshop/soft_aggregate_tolerance_audit.md` §3.4.
+#[derive(Clone, Debug, PartialEq)]
+pub enum SoftAggregateViolation {
+    /// A hard structural trigger registration targets the post-reduction
+    /// buffer on a sub-field whose resolved reduction is `Mean` or
+    /// `WeightedMean` and that has no `SoftAggregateGuard` (or has
+    /// `Some(Unguarded)`, which is the explicit "field is informational"
+    /// opt-out and is not valid for hard triggers).
+    HardTriggerOnUnguardedSoftAggregate {
+        property_id:   SimPropertyId,
+        sub_field:     SubFieldRole,
+        rule:          ReductionRule,
+        /// Static label of the violating semantic arm. Used for diagnostics.
+        semantic_kind: &'static str,
+    },
+}
+
+impl std::fmt::Display for SoftAggregateViolation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SoftAggregateViolation::HardTriggerOnUnguardedSoftAggregate {
+                property_id,
+                sub_field,
+                rule,
+                semantic_kind,
+            } => write!(
+                f,
+                "soft-aggregate column registered as hard structural trigger \
+                 without guard: semantic={semantic_kind}, property={property_id:?}, \
+                 sub_field={sub_field:?}, rule={rule:?}. Set \
+                 SubFieldSpec::soft_aggregate_guard to \
+                 Some(Quantized {{ step }}) or Some(Hysteresis {{ band }}) \
+                 — see docs/workshop/soft_aggregate_tolerance_audit.md."
+            ),
+        }
+    }
+}
+
+impl std::error::Error for SoftAggregateViolation {}
+
+/// Classify a `ThresholdSemantic` as a hard structural trigger.
+///
+/// Hard structural triggers are arms whose firing mutates the SimThing tree
+/// (`FissionTrigger`, `FusionTrigger`, `PropertyExpiry`) or durably mutates
+/// spec session state (`CapabilityUnlock`). `VelocityAlert`,
+/// `AggregateAlert`, and `ScriptedEventTrigger` are not in this class:
+/// they surface informationally to AI/observability/spec layers, which
+/// apply their own confirmation logic before any mutation.
+fn is_hard_structural_trigger(s: &ThresholdSemantic) -> bool {
+    matches!(
+        s,
+        ThresholdSemantic::FissionTrigger { .. }
+            | ThresholdSemantic::FusionTrigger { .. }
+            | ThresholdSemantic::PropertyExpiry { .. }
+            | ThresholdSemantic::CapabilityUnlock { .. }
+    )
+}
+
+fn semantic_kind(s: &ThresholdSemantic) -> &'static str {
+    match s {
+        ThresholdSemantic::FissionTrigger { .. } => "FissionTrigger",
+        ThresholdSemantic::FusionTrigger { .. } => "FusionTrigger",
+        ThresholdSemantic::PropertyExpiry { .. } => "PropertyExpiry",
+        ThresholdSemantic::CapabilityUnlock { .. } => "CapabilityUnlock",
+        ThresholdSemantic::VelocityAlert { .. } => "VelocityAlert",
+        ThresholdSemantic::AggregateAlert { .. } => "AggregateAlert",
+        ThresholdSemantic::ScriptedEventTrigger { .. } => "ScriptedEventTrigger",
+    }
+}
+
+fn is_soft_aggregate_rule(r: &ReductionRule) -> bool {
+    matches!(r, ReductionRule::Mean | ReductionRule::WeightedMean { .. })
+}
+
+/// Validate that `(semantic, property, sub_field, buffer)` does not
+/// constitute an un-guarded hard structural trigger on a soft-aggregate
+/// column. Returns `Ok(())` for safe registrations and for non-hard-trigger
+/// semantics.
+///
+/// The validator panics-by-policy when called via `.expect(...)` from the
+/// `ThresholdBuilder` push helpers, matching the production-plan wording
+/// ("panics if a `WeightedMean`-reduced column is registered as a fission
+/// or structural threshold without a guard"). The `Result`-returning form
+/// is preserved so the spec layer or pre-flight tooling can validate before
+/// commit.
+///
+/// Today no production threshold path satisfies the "post-reduction + hard
+/// trigger" combination, so this validator returns `Ok(())` for every
+/// existing registration. It is forward-protecting: when C-5 (WeightedMean
+/// migration) or E0 (economic transfers) introduces registrations that
+/// target `THRESH_BUF_OUTPUT` for a hard trigger, the validator fails fast
+/// at registration time.
+///
+/// See `docs/workshop/soft_aggregate_tolerance_audit.md`.
+pub fn assert_no_hard_trigger_on_soft_aggregate(
+    semantic:    &ThresholdSemantic,
+    property_id: SimPropertyId,
+    sub_field:   &SubFieldRole,
+    buffer:      u32,
+    dim_reg:     &DimensionRegistry,
+) -> Result<(), SoftAggregateViolation> {
+    // Condition 1: hard structural trigger.
+    if !is_hard_structural_trigger(semantic) {
+        return Ok(());
+    }
+    // Condition 2: post-reduction buffer.
+    if buffer != THRESH_BUF_OUTPUT {
+        return Ok(());
+    }
+    // Condition 3: resolved reduction is soft.
+    if !dim_reg.is_active(property_id) {
+        return Ok(());
+    }
+    let prop = dim_reg.property(property_id);
+    let Some(spec) = prop.layout.sub_fields.iter().find(|sf| &sf.role == sub_field) else {
+        return Ok(());
+    };
+    let rule = spec.resolved_reduction();
+    if !is_soft_aggregate_rule(&rule) {
+        return Ok(());
+    }
+    // Condition 4: no real guard. `None` and `Some(Unguarded)` both fail
+    // — `Unguarded` is documented as "only valid for fields that never feed
+    // threshold registrations" (see `SoftAggregateGuard` docstring).
+    match spec.soft_aggregate_guard {
+        Some(SoftAggregateGuard::Quantized { .. })
+        | Some(SoftAggregateGuard::Hysteresis { .. }) => Ok(()),
+        None | Some(SoftAggregateGuard::Unguarded) => {
+            Err(SoftAggregateViolation::HardTriggerOnUnguardedSoftAggregate {
+                property_id,
+                sub_field:     sub_field.clone(),
+                rule,
+                semantic_kind: semantic_kind(semantic),
+            })
+        }
+    }
+}
+
 // ── Builder ───────────────────────────────────────────────────────────────────
 
 /// Walks the SimThing tree and derives GPU + CPU threshold registrations.
@@ -479,11 +622,25 @@ impl ThresholdBuilder {
                 continue;
             };
 
-            let event_kind = cpu_reg.push(ThresholdSemantic::CapabilityUnlock {
+            let semantic = ThresholdSemantic::CapabilityUnlock {
                 sim_thing_id: unlock.sim_thing_id,
                 property_id:  unlock.property_id,
                 sub_field:    unlock.sub_field.clone(),
-            });
+            };
+            // A-4 guard: hard structural triggers may not target a soft-aggregate
+            // post-reduction column without a SoftAggregateGuard. CapabilityUnlock
+            // registers on THRESH_BUF_VALUES today so this is a no-op; the call
+            // future-proofs us against C-5/E0 paths that may route through OUTPUT.
+            assert_no_hard_trigger_on_soft_aggregate(
+                &semantic,
+                unlock.property_id,
+                &unlock.sub_field,
+                THRESH_BUF_VALUES,
+                dim_reg,
+            )
+            .expect("assert_no_hard_trigger_on_soft_aggregate (CapabilityUnlock)");
+
+            let event_kind = cpu_reg.push(semantic);
             gpu_regs.push(ThresholdRegistration {
                 slot,
                 col:       col as u32,
@@ -578,12 +735,25 @@ impl ThresholdBuilder {
                 continue;
             };
 
-            let event_kind = cpu_reg.push(ThresholdSemantic::FusionTrigger {
+            let semantic = ThresholdSemantic::FusionTrigger {
                 child_id:     record.child_id,
                 parent_id:    record.parent_id,
                 property_id:  record.property_id,
                 template_idx: record.template_idx,
-            });
+            };
+            // A-4 guard: FusionTrigger always reads child Intensity (default
+            // ReductionRule::Max — exact, not soft), so this is a no-op today
+            // but forward-protects designer-overridden layouts.
+            assert_no_hard_trigger_on_soft_aggregate(
+                &semantic,
+                record.property_id,
+                &SubFieldRole::Intensity,
+                THRESH_BUF_VALUES,
+                dim_reg,
+            )
+            .expect("assert_no_hard_trigger_on_soft_aggregate (FusionTrigger)");
+
+            let event_kind = cpu_reg.push(semantic);
             gpu_regs.push(ThresholdRegistration {
                 slot:      child_slot,
                 col:       col as u32,
@@ -614,11 +784,25 @@ impl ThresholdBuilder {
                 // 1. Fission thresholds from FissionThreshold list.
                 for (idx, ft) in prop.fission_templates.iter().enumerate() {
                     if let Some(col) = range.col_for_role(&ft.sub_field, layout) {
-                        let event_kind = cpu_reg.push(ThresholdSemantic::FissionTrigger {
+                        let semantic = ThresholdSemantic::FissionTrigger {
                             sim_thing_id: node.id,
                             property_id: *pid,
                             template_idx: idx,
-                        });
+                        };
+                        // A-4 guard: forward-protects against future PRs that
+                        // might register fission triggers on THRESH_BUF_OUTPUT.
+                        assert_no_hard_trigger_on_soft_aggregate(
+                            &semantic,
+                            *pid,
+                            &ft.sub_field,
+                            THRESH_BUF_VALUES,
+                            dim_reg,
+                        )
+                        .expect(
+                            "assert_no_hard_trigger_on_soft_aggregate (FissionTrigger)",
+                        );
+
+                        let event_kind = cpu_reg.push(semantic);
                         gpu_regs.push(ThresholdRegistration {
                             slot: slot,
                             col: col as u32,
@@ -666,6 +850,10 @@ impl ThresholdBuilder {
             sim_thing_id,
             property_id,
         };
+        // A-4 guard: PropertyExpiry is a hard structural trigger. Validate
+        // the watched (property, sub_field) per decay variant before pushing.
+        // All three variants register on THRESH_BUF_VALUES today; the validator
+        // returns Ok(()) in all current cases and is a forward gate.
         match decay {
             Some(DecayBehavior::OnThreshold {
                 threshold,
@@ -673,6 +861,17 @@ impl ThresholdBuilder {
             }) => {
                 // Amount col for this property.
                 if let Some(col) = layout.offset_of(&SubFieldRole::Amount) {
+                    assert_no_hard_trigger_on_soft_aggregate(
+                        &semantic,
+                        property_id,
+                        &SubFieldRole::Amount,
+                        THRESH_BUF_VALUES,
+                        dim_reg,
+                    )
+                    .expect(
+                        "assert_no_hard_trigger_on_soft_aggregate \
+                         (PropertyExpiry::OnThreshold)",
+                    );
                     let event_kind = cpu_reg.push(semantic);
                     gpu_regs.push(ThresholdRegistration {
                         slot,
@@ -686,6 +885,17 @@ impl ThresholdBuilder {
             }
             Some(DecayBehavior::IntensityGated { intensity_floor }) => {
                 if let Some(col) = layout.offset_of(&SubFieldRole::Intensity) {
+                    assert_no_hard_trigger_on_soft_aggregate(
+                        &semantic,
+                        property_id,
+                        &SubFieldRole::Intensity,
+                        THRESH_BUF_VALUES,
+                        dim_reg,
+                    )
+                    .expect(
+                        "assert_no_hard_trigger_on_soft_aggregate \
+                         (PropertyExpiry::IntensityGated)",
+                    );
                     let event_kind = cpu_reg.push(semantic);
                     gpu_regs.push(ThresholdRegistration {
                         slot,
@@ -705,6 +915,17 @@ impl ThresholdBuilder {
                 let other_range = dim_reg.column_range(*other);
                 let other_layout = &dim_reg.property(*other).layout;
                 if let Some(col) = other_range.col_for_role(&SubFieldRole::Amount, other_layout) {
+                    assert_no_hard_trigger_on_soft_aggregate(
+                        &semantic,
+                        *other,
+                        &SubFieldRole::Amount,
+                        THRESH_BUF_VALUES,
+                        dim_reg,
+                    )
+                    .expect(
+                        "assert_no_hard_trigger_on_soft_aggregate \
+                         (PropertyExpiry::WhenProperty)",
+                    );
                     let event_kind = cpu_reg.push(semantic);
                     gpu_regs.push(ThresholdRegistration {
                         slot,
@@ -973,6 +1194,7 @@ mod tests {
                     display_range:      None,
                     governed_by:        None,
                     reduction_override: Some(ReductionRule::Max),
+                    soft_aggregate_guard: None,
                 }],
             },
             decay:              None,
@@ -1285,5 +1507,258 @@ mod tests {
             cpu_reg.get(2),
             Some(ThresholdSemantic::ScriptedEventTrigger { event_id }) if event_id == "faction_collapse"
         ));
+    }
+
+    // ── A-4: soft-aggregate guard validator ──────────────────────────────
+
+    /// Build a property whose `Amount` sub-field has the given
+    /// reduction_override and soft_aggregate_guard. Used by the validator
+    /// tests below.
+    fn property_with_guard(
+        namespace: &str,
+        name: &str,
+        reduction: Option<simthing_core::ReductionRule>,
+        guard:     Option<simthing_core::SoftAggregateGuard>,
+    ) -> SimProperty {
+        use simthing_core::{ClampBehavior, PropertyLayout, SubFieldSpec};
+        SimProperty {
+            namespace: namespace.into(),
+            name:      name.into(),
+            layout: PropertyLayout {
+                sub_fields: vec![SubFieldSpec {
+                    role:                 SubFieldRole::Amount,
+                    width:                1,
+                    clamp:                ClampBehavior::Unbounded,
+                    velocity_max:         None,
+                    default:              0.0,
+                    display_name:         "amount".into(),
+                    display_range:        None,
+                    governed_by:          None,
+                    reduction_override:   reduction,
+                    soft_aggregate_guard: guard,
+                }],
+            },
+            decay:              None,
+            intensity_behavior: None,
+            fission_templates:  vec![],
+            fusion_templates:   vec![],
+            on_expire:          None,
+            description:        String::new(),
+            intensity_labels:   vec![],
+        }
+    }
+
+    fn fission_semantic(stid: SimThingId, pid: SimPropertyId) -> ThresholdSemantic {
+        ThresholdSemantic::FissionTrigger {
+            sim_thing_id: stid,
+            property_id:  pid,
+            template_idx: 0,
+        }
+    }
+
+    #[test]
+    fn validator_passes_for_non_hard_trigger_semantics() {
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(property_with_guard(
+            "core", "morale",
+            Some(simthing_core::ReductionRule::WeightedMean { by: SimPropertyId(0) }),
+            None, // no guard
+        ));
+        let stid = SimThing::new(SimThingKind::Cohort, 0).id;
+
+        // Velocity / Aggregate / ScriptedEvent are NOT hard triggers — must
+        // pass even when targeting OUTPUT on an unguarded soft-aggregate.
+        for sem in [
+            ThresholdSemantic::VelocityAlert {
+                sim_thing_id: stid, property_id: pid, sub_field: SubFieldRole::Amount,
+            },
+            ThresholdSemantic::AggregateAlert {
+                sim_thing_id: stid, property_id: pid, sub_field: SubFieldRole::Amount,
+            },
+            ThresholdSemantic::ScriptedEventTrigger { event_id: "e".into() },
+        ] {
+            assert!(
+                assert_no_hard_trigger_on_soft_aggregate(
+                    &sem, pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg
+                ).is_ok(),
+                "non-hard-trigger {sem:?} must always pass"
+            );
+        }
+    }
+
+    #[test]
+    fn validator_passes_for_hard_trigger_on_values_buffer() {
+        // Today's reality: all hard triggers register on THRESH_BUF_VALUES.
+        // The validator must NOT panic even when the column is a soft
+        // aggregate, because pre-reduction reads bypass the aggregation.
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(property_with_guard(
+            "core", "loyalty",
+            Some(simthing_core::ReductionRule::Mean), // soft
+            None,                                     // no guard
+        ));
+        let stid = SimThing::new(SimThingKind::Cohort, 0).id;
+
+        assert!(assert_no_hard_trigger_on_soft_aggregate(
+            &fission_semantic(stid, pid),
+            pid, &SubFieldRole::Amount, THRESH_BUF_VALUES, &reg,
+        ).is_ok());
+    }
+
+    #[test]
+    fn validator_passes_for_exact_reduction_on_output_buffer() {
+        // Hard trigger on OUTPUT is allowed when the reduction is exact.
+        // Sum/Max/Min/First are exact; only Mean and WeightedMean are soft.
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(property_with_guard(
+            "core", "headcount",
+            Some(simthing_core::ReductionRule::Sum), // exact
+            None,
+        ));
+        let stid = SimThing::new(SimThingKind::Cohort, 0).id;
+
+        assert!(assert_no_hard_trigger_on_soft_aggregate(
+            &fission_semantic(stid, pid),
+            pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
+        ).is_ok());
+    }
+
+    #[test]
+    fn validator_rejects_fission_on_unguarded_mean_output() {
+        // The forward-protection case: hard trigger + OUTPUT + soft reduction +
+        // no guard → violation.
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(property_with_guard(
+            "core", "loyalty",
+            Some(simthing_core::ReductionRule::Mean), // soft
+            None,                                     // no guard
+        ));
+        let stid = SimThing::new(SimThingKind::Cohort, 0).id;
+
+        let err = assert_no_hard_trigger_on_soft_aggregate(
+            &fission_semantic(stid, pid),
+            pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
+        )
+        .unwrap_err();
+        match err {
+            SoftAggregateViolation::HardTriggerOnUnguardedSoftAggregate {
+                property_id, sub_field, rule, semantic_kind,
+            } => {
+                assert_eq!(property_id, pid);
+                assert_eq!(sub_field, SubFieldRole::Amount);
+                assert_eq!(rule, simthing_core::ReductionRule::Mean);
+                assert_eq!(semantic_kind, "FissionTrigger");
+            }
+        }
+    }
+
+    #[test]
+    fn validator_rejects_capability_unlock_on_unguarded_weighted_mean_output() {
+        let mut reg = DimensionRegistry::new();
+        // Seed a property to be the weight column for WeightedMean.
+        let weight_pid = reg.register(SimProperty::simple("core", "headcount", 0));
+        let pid = reg.register(property_with_guard(
+            "tech", "research_efficiency",
+            Some(simthing_core::ReductionRule::WeightedMean { by: weight_pid }),
+            None,
+        ));
+        let stid = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0).id;
+
+        let sem = ThresholdSemantic::CapabilityUnlock {
+            sim_thing_id: stid, property_id: pid, sub_field: SubFieldRole::Amount,
+        };
+        assert!(assert_no_hard_trigger_on_soft_aggregate(
+            &sem, pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn validator_rejects_unguarded_variant_explicitly() {
+        // `Some(Unguarded)` is explicitly the "I know this is informational"
+        // opt-out and is NOT a real guard. A hard trigger on it must fail.
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(property_with_guard(
+            "core", "loyalty",
+            Some(simthing_core::ReductionRule::Mean),
+            Some(simthing_core::SoftAggregateGuard::Unguarded),
+        ));
+        let stid = SimThing::new(SimThingKind::Cohort, 0).id;
+
+        assert!(assert_no_hard_trigger_on_soft_aggregate(
+            &fission_semantic(stid, pid),
+            pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn validator_accepts_quantized_guard() {
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(property_with_guard(
+            "core", "stability",
+            Some(simthing_core::ReductionRule::Mean),
+            Some(simthing_core::SoftAggregateGuard::Quantized { step: 0.1 }),
+        ));
+        let stid = SimThing::new(SimThingKind::Cohort, 0).id;
+
+        assert!(assert_no_hard_trigger_on_soft_aggregate(
+            &fission_semantic(stid, pid),
+            pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn validator_accepts_hysteresis_guard() {
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(property_with_guard(
+            "tech", "drive_efficiency",
+            Some(simthing_core::ReductionRule::WeightedMean { by: SimPropertyId(0) }),
+            Some(simthing_core::SoftAggregateGuard::Hysteresis { band: 0.05 }),
+        ));
+        let stid = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0).id;
+
+        let sem = ThresholdSemantic::CapabilityUnlock {
+            sim_thing_id: stid, property_id: pid, sub_field: SubFieldRole::Amount,
+        };
+        assert!(assert_no_hard_trigger_on_soft_aggregate(
+            &sem, pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn validator_passes_when_property_inactive() {
+        // Tombstoned property: validator returns Ok (caller skips registration
+        // separately via `dim_reg.is_active(pid)` check).
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(property_with_guard(
+            "core", "expired",
+            Some(simthing_core::ReductionRule::Mean),
+            None,
+        ));
+        reg.tombstone(pid);
+        let stid = SimThing::new(SimThingKind::Cohort, 0).id;
+
+        assert!(assert_no_hard_trigger_on_soft_aggregate(
+            &fission_semantic(stid, pid),
+            pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn violation_display_mentions_field_and_guidance() {
+        let err = SoftAggregateViolation::HardTriggerOnUnguardedSoftAggregate {
+            property_id:   SimPropertyId(7),
+            sub_field:     SubFieldRole::Amount,
+            rule:          simthing_core::ReductionRule::WeightedMean { by: SimPropertyId(3) },
+            semantic_kind: "FissionTrigger",
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("FissionTrigger"));
+        assert!(msg.contains("soft_aggregate_guard"));
+        assert!(msg.contains("Quantized") && msg.contains("Hysteresis"));
     }
 }
