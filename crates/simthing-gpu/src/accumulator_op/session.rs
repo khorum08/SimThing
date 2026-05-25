@@ -475,6 +475,48 @@ impl AccumulatorOpSession {
         Ok(())
     }
 
+    /// Number of GPU ops currently loaded in the op buffer.
+    pub fn n_ops(&self) -> u32 {
+        self.n_ops
+    }
+
+    /// Clear the op buffer without touching threshold event-kind sidecar metadata.
+    pub fn clear_op_buffer(&mut self) {
+        self.n_ops = 0;
+    }
+
+    /// Write GPU ops into the session buffer without clearing threshold event kinds.
+    pub fn write_op_buffer(
+        &mut self,
+        ctx: &GpuContext,
+        ops: &[AccumulatorOpGpu],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if ops.is_empty() {
+            self.n_ops = 0;
+            return Ok(());
+        }
+
+        let byte_len = ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
+        if self.op_buffer.size() < byte_len as u64 {
+            self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("accumulator_op_buffer"),
+                size: byte_len.max(4096) as u64,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+
+        ctx.queue
+            .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(ops));
+        self.n_ops = ops.len() as u32;
+        Ok(())
+    }
+
+    /// Restore threshold event kinds after a non-threshold op upload.
+    pub fn restore_threshold_event_kinds(&mut self, kinds: &[u32]) {
+        self.threshold_event_kinds = kinds.to_vec();
+    }
+
     /// Dispatch Pass B for one OrderBand, then refresh per-slot summaries.
     pub fn tick(&mut self, ctx: &GpuContext, band: u32) -> Result<(), AccumulatorOpSessionError> {
         if self.n_ops == 0 {

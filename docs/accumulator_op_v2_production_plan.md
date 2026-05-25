@@ -388,27 +388,25 @@ after C-3/C-4 pass parity.
 
 ---
 
-### PR C-INF-1 — WorldAccumulatorRuntime consolidation (scaffold)
+### PR C-INF-1 — WorldAccumulatorRuntime consolidation
 
-**Status:** Scaffold landed. `WorldAccumulatorRuntime` + `OpSetHandle` types in
-`simthing-gpu/src/accumulator_op/runtime.rs`. Sidecar sessions
-(`threshold_accumulator`, `intent_accumulator`, `overlay_add_accumulator`) remain
-authoritative until a follow-up consolidation PR wires the envelope into
-`WorldGpuState`.
+**Status:** Landed. `WorldGpuState` holds one `accumulator_runtime: Option<WorldAccumulatorRuntime>`
+instead of three sidecar sessions. C-1/C-2/C-3 use per-family `AccumulatorOpSession` instances
+inside the runtime envelope; tick dispatch take/put matches pre-consolidation behavior.
 
-**Pivot posture:** Stop accumulating per-family `Option<AccumulatorOpSession>`
-sidecars. New migrations register into `WorldAccumulatorRuntime` op sets.
+**Pivot posture:** Stop accumulating per-family `Option<AccumulatorOpSession>` sidecars on
+`WorldGpuState`. New migrations register into `WorldAccumulatorRuntime` op sets.
 
 **Acceptance:** C-1/C-2/C-3 tests green; flags default false; no shader deletion.
 
 ---
 
-### PR C-INF-2 — Legacy oracle harness (scaffold)
+### PR C-INF-2 — Legacy oracle harness
 
-**Status:** Scaffold landed. `simthing-sim::legacy_oracle` defines
-`LegacyOracleRun`, `run_family_oracle`, and comparison policy types. Per-family
-scenario wiring lands in migration PRs; legacy paths invoked only from oracle
-tests or explicit fallback.
+**Status:** Landed. `simthing-sim::legacy_oracle` defines `LegacyOracleRun`,
+`run_family_oracle`, comparison helpers, and `OracleCapture`. Integration tests in
+`c_inf_legacy_oracle_harness.rs` (intent + threshold smoke). Legacy paths invoked
+only from oracle tests or explicit fallback.
 
 **Acceptance:** No runtime tick dependency on oracle harness.
 
@@ -667,8 +665,8 @@ with a clearly reported failure mode (triggers separate design work).
 | B-3 | B | Codex 5.5 | Timestamp query plumbing | None |
 | **B-4** | **B** | **Opus + Composer** | **Summary/checksum readback design** | **Opus analysis — accepted** |
 | **B-4I** | **B** | **Composer** | **Production SlotSummary protocol (32 B/slot group checksums)** | **CPU/GPU oracle tests** |
-| **C-INF-1** | **C-infra** | **Composer** | **`WorldAccumulatorRuntime` consolidation scaffold** | **C-1/C-2/C-3 tests green; sidecars shimmed** |
-| **C-INF-2** | **C-infra** | **Composer** | **Legacy oracle harness scaffold** | **Legacy invoked only in oracle tests** |
+| **C-INF-1** | **C-infra** | **Composer** | **`WorldAccumulatorRuntime` consolidation** | **C-1/C-2/C-3 tests green; sidecars shimmed** |
+| **C-INF-2** | **C-infra** | **Composer** | **Legacy oracle harness** | **Legacy invoked only in oracle tests** |
 | C-1 | C | Composer 2.5 | Threshold scan migration | 5× readback speedup |
 | C-2 | C | Codex 5.5 | Intent delta migration | Bit-exact parity |
 | C-3 | C | Composer 2.5 | Overlay Add migration | Bit-exact parity |

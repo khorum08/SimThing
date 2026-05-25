@@ -132,7 +132,7 @@ fn fission_stress_100_ticks_old_and_new_paths_identical_events() {
 fn c1_threshold_accumulator_readback_error_surfaces_in_tick_outcome() {
     use simthing_feeder::TickGpuError;
     use simthing_gpu::{
-        AccumulatorOpSession, DIR_UPWARD, THRESH_BUF_VALUES, ThresholdRegistration,
+        WorldAccumulatorRuntime, DIR_UPWARD, THRESH_BUF_VALUES, ThresholdRegistration,
     };
 
     let Some(_ctx) = try_gpu() else {
@@ -200,9 +200,12 @@ fn c1_threshold_accumulator_readback_error_surfaces_in_tick_outcome() {
     state.write_values(&flat);
     state.write_previous_values(&prev);
 
-    let mut session = AccumulatorOpSession::new_attached(&state.ctx, n_slots, n_dims, 1);
-    session.upload_threshold_ops(&state.ctx, &regs).unwrap();
-    state.threshold_accumulator = Some(session);
+    let mut runtime = WorldAccumulatorRuntime::new();
+    runtime.ensure_threshold_session(&state.ctx, n_slots, n_dims, 1);
+    runtime
+        .upload_threshold_ops(&state.ctx, &regs)
+        .unwrap();
+    state.accumulator_runtime = Some(runtime);
 
     let out = coord.tick(
         &rx,

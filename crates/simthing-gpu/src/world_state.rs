@@ -324,15 +324,10 @@ pub struct WorldGpuState {
     /// these from the last entry (deepest) to the first (root depth).
     pub depth_bucket_ranges: Vec<(u32, u32)>,
 
-    /// C-1 AccumulatorOp threshold scan session (when migration flag is on).
-    pub threshold_accumulator: Option<crate::AccumulatorOpSession>,
-    /// C-2 AccumulatorOp intent delta session (when migration flag is on).
-    pub intent_accumulator: Option<crate::AccumulatorOpSession>,
-    /// C-3 AccumulatorOp overlay Add session (when migration flag is on).
-    pub overlay_add_accumulator: Option<crate::AccumulatorOpSession>,
-    /// True when C-3 uploaded at least one Add op for the current boundary.
+    /// AccumulatorOp v2 world runtime (C-INF-1): one session, named op sets.
+    pub accumulator_runtime: Option<crate::WorldAccumulatorRuntime>,
+    /// Cached C-3 overlay dispatch signal (mirrors runtime; survives runtime `take()`).
     pub accumulator_overlay_add_active: bool,
-    /// Number of OrderBand passes for C-3 overlay Add (max per-cell Add depth).
     pub accumulator_overlay_add_bands: u32,
 }
 
@@ -451,80 +446,115 @@ impl WorldGpuState {
             column_rules,
             depth_slots,
             depth_bucket_ranges: Vec::new(),
-            threshold_accumulator: None,
-            intent_accumulator: None,
-            overlay_add_accumulator: None,
+            accumulator_runtime: None,
             accumulator_overlay_add_active: false,
             accumulator_overlay_add_bands: 0,
         }
     }
 
-    /// Drop AccumulatorOp sessions so they are recreated after layout changes.
+    /// Drop AccumulatorOp runtime so it is recreated after layout changes.
     pub fn clear_accumulator_sessions(&mut self) {
-        self.threshold_accumulator = None;
-        self.intent_accumulator = None;
-        self.overlay_add_accumulator = None;
+        self.accumulator_runtime = None;
         self.accumulator_overlay_add_active = false;
         self.accumulator_overlay_add_bands = 0;
     }
 
-    /// Ensure the C-2 intent AccumulatorOp session exists on this world state.
+    /// Ensure the C-2 intent AccumulatorOp runtime is enabled.
     pub fn ensure_intent_accumulator(&mut self) {
-        if self.intent_accumulator.is_none() {
-            self.intent_accumulator = Some(crate::AccumulatorOpSession::new_attached(
-                &self.ctx,
-                self.n_slots,
-                self.n_dims,
-                DEFAULT_THRESHOLD_EMISSION_CAPACITY,
-            ));
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
         }
+        let n_slots = self.n_slots;
+        let n_dims = self.n_dims;
+        self.accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .ensure_intent_session(
+                &self.ctx,
+                n_slots,
+                n_dims,
+                DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+            );
     }
 
-    /// Upload folded intent deltas to the C-2 AccumulatorOp session.
+    /// Upload folded intent deltas to the C-2 AccumulatorOp runtime.
     pub fn upload_accumulator_intents(
         &mut self,
         deltas: &[IntentDelta],
     ) -> Result<(), crate::AccumulatorOpSessionError> {
-        if let Some(session) = self.intent_accumulator.as_mut() {
-            session.upload_intent_ops(&self.ctx, deltas)
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            runtime.upload_intent_ops(&self.ctx, deltas)
         } else {
             Ok(())
         }
     }
 
-    /// Ensure the C-3 overlay Add AccumulatorOp session exists on this world state.
+    /// Ensure the C-3 overlay Add AccumulatorOp runtime is enabled.
     pub fn ensure_overlay_add_accumulator(&mut self) {
-        if self.overlay_add_accumulator.is_none() {
-            self.overlay_add_accumulator = Some(crate::AccumulatorOpSession::new_attached(
-                &self.ctx,
-                self.n_slots,
-                self.n_dims,
-                DEFAULT_THRESHOLD_EMISSION_CAPACITY,
-            ));
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
         }
+        let n_slots = self.n_slots;
+        let n_dims = self.n_dims;
+        self.accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .ensure_overlay_session(
+                &self.ctx,
+                n_slots,
+                n_dims,
+                DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+            );
     }
 
-    /// Upload pre-encoded overlay Add ops to the C-3 AccumulatorOp session.
+    /// Upload pre-encoded overlay Add ops to the C-3 AccumulatorOp runtime.
     pub fn upload_overlay_add_ops(
         &mut self,
         ops: &[crate::AccumulatorOpGpu],
     ) -> Result<(), crate::AccumulatorOpSessionError> {
-        if let Some(session) = self.overlay_add_accumulator.as_mut() {
-            session.upload_gpu_ops(&self.ctx, ops)
-        } else {
-            Ok(())
-        }
+        self.upload_overlay_add_ops_with_bands(ops, 1)
     }
 
-    /// Ensure the C-1 threshold AccumulatorOp session exists on this world state.
+    /// Upload overlay Add ops and set OrderBand pass count (C-3 boundary sync).
+    pub fn upload_overlay_add_ops_with_bands(
+        &mut self,
+        ops: &[crate::AccumulatorOpGpu],
+        n_bands: u32,
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            runtime.upload_overlay_add_ops(&self.ctx, ops, n_bands)?;
+        }
+        self.set_overlay_add_dispatch(!ops.is_empty(), n_bands);
+        Ok(())
+    }
+
+    pub fn set_overlay_add_dispatch(&mut self, active: bool, n_bands: u32) {
+        self.accumulator_overlay_add_active = active;
+        self.accumulator_overlay_add_bands = n_bands;
+    }
+
+    /// Ensure the C-1 threshold AccumulatorOp runtime is enabled.
     pub fn ensure_threshold_accumulator(&mut self, emission_capacity: u32) {
-        if self.threshold_accumulator.is_none() {
-            self.threshold_accumulator = Some(crate::AccumulatorOpSession::new_attached(
-                &self.ctx,
-                self.n_slots,
-                self.n_dims,
-                emission_capacity,
-            ));
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        let n_slots = self.n_slots;
+        let n_dims = self.n_dims;
+        self.accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .ensure_threshold_session(&self.ctx, n_slots, n_dims, emission_capacity);
+    }
+
+    /// Upload threshold registrations to the C-1 AccumulatorOp runtime.
+    pub fn upload_accumulator_threshold_ops(
+        &mut self,
+        regs: &[ThresholdRegistration],
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            runtime.upload_threshold_ops(&self.ctx, regs)
+        } else {
+            Ok(())
         }
     }
 
@@ -1222,16 +1252,13 @@ mod tests {
         state.ensure_intent_accumulator();
         state.ensure_threshold_accumulator(4096);
         state.ensure_overlay_add_accumulator();
-        assert!(state.intent_accumulator.is_some());
-        assert!(state.threshold_accumulator.is_some());
-        assert!(state.overlay_add_accumulator.is_some());
+        assert!(state.accumulator_runtime.as_ref().unwrap().intent_active());
+        assert!(state.accumulator_runtime.as_ref().unwrap().threshold_active());
 
         reg.register(property_with_intensity("food_security"));
         state.rebuild_for_registry(&reg);
 
-        assert!(state.intent_accumulator.is_none());
-        assert!(state.threshold_accumulator.is_none());
-        assert!(state.overlay_add_accumulator.is_none());
+        assert!(state.accumulator_runtime.is_none());
     }
 
     #[test]

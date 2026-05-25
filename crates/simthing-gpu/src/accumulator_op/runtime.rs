@@ -1,11 +1,15 @@
-//! AccumulatorOp v2 world runtime envelope (C-INF-1 scaffold).
+//! AccumulatorOp v2 world runtime envelope (C-INF-1).
 //!
-//! Target: one GPU-resident runtime with named operation sets instead of
-//! per-family `Option<AccumulatorOpSession>` sidecars. New migrations register
-//! into this structure; existing C-1/C-2/C-3 sessions may remain adapter-
-//! shimmed until consolidation PR completes.
+//! One logical runtime with named operation sets. C-1/C-2/C-3 still use
+//! per-family GPU sessions (adapter shim matching pre-consolidation behavior)
+//! until a single shared op buffer is validated for all families together.
 
-use super::session::AccumulatorOpSession;
+use crate::ThresholdRegistration;
+
+use super::session::{AccumulatorOpSession, AccumulatorOpSessionError};
+use super::types::AccumulatorOpGpu;
+use crate::world_state::IntentDelta;
+use crate::GpuContext;
 
 /// Operation family registered into the world AccumulatorOp runtime.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -45,12 +49,12 @@ pub enum LegacyOracleFamily {
 /// Slice into the shared op buffer for one migrated operation family.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct OpSetHandle {
-    pub family:       OperationFamily,
-    pub offset:       u32,
-    pub count:        u32,
-    pub active:       bool,
-    pub n_bands:      u32,
-    pub exactness:    ExactnessClass,
+    pub family:    OperationFamily,
+    pub offset:    u32,
+    pub count:     u32,
+    pub active:    bool,
+    pub n_bands:   u32,
+    pub exactness: ExactnessClass,
 }
 
 impl OpSetHandle {
@@ -64,27 +68,25 @@ impl OpSetHandle {
     };
 }
 
-/// Single AccumulatorOp runtime envelope for `WorldGpuState` (target shape).
-///
-/// C-INF-1 consolidation PR will replace `threshold_accumulator`,
-/// `intent_accumulator`, and `overlay_add_accumulator` sidecars with this
-/// struct. Until then, sidecars remain authoritative at runtime.
+/// Single AccumulatorOp runtime envelope for `WorldGpuState`.
 pub struct WorldAccumulatorRuntime {
-    pub session:              AccumulatorOpSession,
-    pub intent_ops:           OpSetHandle,
-    pub threshold_ops:        OpSetHandle,
-    pub overlay_add_ops:      OpSetHandle,
-    pub overlay_order_ops:    OpSetHandle,
-    pub reduction_soft_ops:   OpSetHandle,
-    pub reduction_exact_ops:  OpSetHandle,
-    pub velocity_ops:         OpSetHandle,
-    pub intensity_eml_ops:    OpSetHandle,
+    pub intent_ops:          OpSetHandle,
+    pub threshold_ops:       OpSetHandle,
+    pub overlay_add_ops:     OpSetHandle,
+    pub overlay_order_ops:   OpSetHandle,
+    pub reduction_soft_ops:  OpSetHandle,
+    pub reduction_exact_ops: OpSetHandle,
+    pub velocity_ops:        OpSetHandle,
+    pub intensity_eml_ops:   OpSetHandle,
+
+    intent_session:          Option<AccumulatorOpSession>,
+    threshold_session:       Option<AccumulatorOpSession>,
+    overlay_session:         Option<AccumulatorOpSession>,
 }
 
 impl WorldAccumulatorRuntime {
-    pub fn new(session: AccumulatorOpSession) -> Self {
+    pub fn new() -> Self {
         Self {
-            session,
             intent_ops: OpSetHandle::INACTIVE,
             threshold_ops: OpSetHandle {
                 family: OperationFamily::Threshold,
@@ -121,6 +123,236 @@ impl WorldAccumulatorRuntime {
                 exactness: ExactnessClass::Exact,
                 ..OpSetHandle::INACTIVE
             },
+            intent_session: None,
+            threshold_session: None,
+            overlay_session: None,
         }
+    }
+
+    pub fn take_intent_session(&mut self) -> Option<AccumulatorOpSession> {
+        self.intent_session.take()
+    }
+
+    pub fn take_threshold_session(&mut self) -> Option<AccumulatorOpSession> {
+        self.threshold_session.take()
+    }
+
+    pub fn take_overlay_session(&mut self) -> Option<AccumulatorOpSession> {
+        self.overlay_session.take()
+    }
+
+    pub fn restore_intent_session(&mut self, session: Option<AccumulatorOpSession>) {
+        self.intent_session = session;
+    }
+
+    pub fn restore_threshold_session(&mut self, session: Option<AccumulatorOpSession>) {
+        self.threshold_session = session;
+    }
+
+    pub fn restore_overlay_session(&mut self, session: Option<AccumulatorOpSession>) {
+        self.overlay_session = session;
+    }
+
+    pub fn intent_session(&mut self) -> Option<&mut AccumulatorOpSession> {
+        self.intent_session.as_mut()
+    }
+
+    pub fn threshold_session(&mut self) -> Option<&mut AccumulatorOpSession> {
+        self.threshold_session.as_mut()
+    }
+
+    pub fn overlay_session(&mut self) -> Option<&mut AccumulatorOpSession> {
+        self.overlay_session.as_mut()
+    }
+
+    pub fn intent_active(&self) -> bool {
+        self.intent_session.is_some()
+    }
+
+    pub fn threshold_active(&self) -> bool {
+        self.threshold_session.is_some()
+    }
+
+    pub fn overlay_add_active(&self) -> bool {
+        self.overlay_add_ops.active
+    }
+
+    pub fn overlay_add_bands(&self) -> u32 {
+        self.overlay_add_ops.n_bands
+    }
+
+    pub fn any_pipeline_active(&self) -> bool {
+        self.intent_active() || self.threshold_active() || self.overlay_add_ops.active
+    }
+
+    pub fn ensure_intent_session(
+        &mut self,
+        ctx: &GpuContext,
+        n_slots: u32,
+        n_dims: u32,
+        emission_capacity: u32,
+    ) {
+        if self.intent_session.is_none() {
+            self.intent_session = Some(AccumulatorOpSession::new_attached(
+                ctx,
+                n_slots,
+                n_dims,
+                emission_capacity,
+            ));
+        }
+        self.intent_ops = OpSetHandle {
+            family: OperationFamily::Intent,
+            exactness: ExactnessClass::Exact,
+            active: true,
+            ..OpSetHandle::INACTIVE
+        };
+    }
+
+    pub fn ensure_threshold_session(
+        &mut self,
+        ctx: &GpuContext,
+        n_slots: u32,
+        n_dims: u32,
+        emission_capacity: u32,
+    ) {
+        if self.threshold_session.is_none() {
+            self.threshold_session = Some(AccumulatorOpSession::new_attached(
+                ctx,
+                n_slots,
+                n_dims,
+                emission_capacity,
+            ));
+        }
+        self.threshold_ops = OpSetHandle {
+            family: OperationFamily::Threshold,
+            exactness: ExactnessClass::Exact,
+            active: true,
+            ..OpSetHandle::INACTIVE
+        };
+    }
+
+    pub fn ensure_overlay_session(
+        &mut self,
+        ctx: &GpuContext,
+        n_slots: u32,
+        n_dims: u32,
+        emission_capacity: u32,
+    ) {
+        if self.overlay_session.is_none() {
+            self.overlay_session = Some(AccumulatorOpSession::new_attached(
+                ctx,
+                n_slots,
+                n_dims,
+                emission_capacity,
+            ));
+        }
+    }
+
+    pub fn disable_intent(&mut self) {
+        self.intent_session = None;
+        self.intent_ops = OpSetHandle {
+            family: OperationFamily::Intent,
+            exactness: ExactnessClass::Exact,
+            ..OpSetHandle::INACTIVE
+        };
+    }
+
+    pub fn disable_threshold(&mut self) {
+        self.threshold_session = None;
+        self.threshold_ops = OpSetHandle {
+            family: OperationFamily::Threshold,
+            exactness: ExactnessClass::Exact,
+            ..OpSetHandle::INACTIVE
+        };
+    }
+
+    pub fn clear_overlay_add(&mut self) {
+        self.overlay_session = None;
+        self.overlay_add_ops = OpSetHandle {
+            family: OperationFamily::OverlayAdd,
+            exactness: ExactnessClass::Exact,
+            ..OpSetHandle::INACTIVE
+        };
+    }
+
+    pub fn upload_intent_ops(
+        &mut self,
+        ctx: &GpuContext,
+        deltas: &[IntentDelta],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if let Some(session) = self.intent_session.as_mut() {
+            session.upload_intent_ops(ctx, deltas)?;
+            self.intent_ops.count = session.n_ops();
+        }
+        Ok(())
+    }
+
+    pub fn upload_threshold_ops(
+        &mut self,
+        ctx: &GpuContext,
+        regs: &[ThresholdRegistration],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if let Some(session) = self.threshold_session.as_mut() {
+            session.upload_threshold_ops(ctx, regs)?;
+            self.threshold_ops.count = session.n_ops();
+        }
+        Ok(())
+    }
+
+    pub fn upload_overlay_add_ops(
+        &mut self,
+        ctx: &GpuContext,
+        ops: &[AccumulatorOpGpu],
+        n_bands: u32,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if let Some(session) = self.overlay_session.as_mut() {
+            session.upload_gpu_ops(ctx, ops)?;
+            self.overlay_add_ops = OpSetHandle {
+                family: OperationFamily::OverlayAdd,
+                offset: 0,
+                count: session.n_ops(),
+                active: !ops.is_empty(),
+                n_bands,
+                exactness: ExactnessClass::Exact,
+            };
+        }
+        Ok(())
+    }
+
+    pub fn readback_threshold_events(
+        &mut self,
+        ctx: &GpuContext,
+    ) -> Result<Vec<crate::ThresholdEvent>, AccumulatorOpSessionError> {
+        if let Some(session) = self.threshold_session.as_mut() {
+            session.readback_threshold_events(ctx)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::world_state::IntentDelta;
+
+    #[test]
+    fn runtime_tracks_per_family_sessions() {
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let mut runtime = WorldAccumulatorRuntime::new();
+        runtime.ensure_intent_session(&ctx, 2, 1, 16);
+        runtime
+            .upload_intent_ops(
+                &ctx,
+                &[IntentDelta {
+                    slot: 0,
+                    col:  0,
+                    mul:  1.0,
+                    add:  1.0,
+                }],
+            )
+            .unwrap();
+        assert!(runtime.intent_active());
+        assert_eq!(runtime.intent_ops.count, 1);
     }
 }

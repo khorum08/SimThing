@@ -50,7 +50,7 @@ use crate::patcher::{PatcherStats, TransformPatcher};
 use crate::work::FeederReceiver;
 use simthing_core::DimensionRegistry;
 use simthing_gpu::{
-    AccumulatorPipelineSessions, IntentDelta, Pipelines, SlotAllocator, ThresholdEvent,
+    IntentDelta, Pipelines, SlotAllocator, ThresholdEvent,
     WorldGpuState,
 };
 use std::time::Instant;
@@ -162,7 +162,10 @@ impl DispatchCoordinator {
         let intent_delta_bytes =
             intent_deltas.len() as u64 * std::mem::size_of::<IntentDelta>() as u64;
         let intent_upload_started = Instant::now();
-        let use_accumulator_intent = state.intent_accumulator.is_some();
+        let use_accumulator_intent = state
+            .accumulator_runtime
+            .as_ref()
+            .is_some_and(|r| r.intent_active());
         if use_accumulator_intent {
             state
                 .upload_accumulator_intents(&intent_deltas)
@@ -185,24 +188,37 @@ impl DispatchCoordinator {
 
         // 3. GPU passes (order matters — see module-level doc).
         let gpu_pipeline_started = Instant::now();
-        let use_accumulator_threshold = state.threshold_accumulator.is_some();
-        let use_accumulator_overlay_add = state.accumulator_overlay_add_active;
-        if use_accumulator_intent || use_accumulator_threshold || use_accumulator_overlay_add {
-            let mut intent_session = state.intent_accumulator.take();
-            let mut overlay_session = state.overlay_add_accumulator.take();
-            let mut threshold_session = state.threshold_accumulator.take();
+        let use_accumulator_threshold = state
+            .accumulator_runtime
+            .as_ref()
+            .is_some_and(|r| r.threshold_active());
+        let overlay_active = state.accumulator_overlay_add_active;
+        if use_accumulator_intent || use_accumulator_threshold || overlay_active {
+            let mut runtime = state.accumulator_runtime.take();
+            let mut intent_session = runtime
+                .as_mut()
+                .and_then(|r| r.take_intent_session());
+            let mut overlay_session = runtime
+                .as_mut()
+                .and_then(|r| r.take_overlay_session());
+            let mut threshold_session = runtime
+                .as_mut()
+                .and_then(|r| r.take_threshold_session());
             pipelines.run_tick_pipeline_with_accumulators(
                 state,
                 dt,
-                AccumulatorPipelineSessions {
+                simthing_gpu::AccumulatorPipelineSessions {
                     intent:      intent_session.as_mut(),
                     overlay_add: overlay_session.as_mut(),
                     threshold:   threshold_session.as_mut(),
                 },
             );
-            state.intent_accumulator = intent_session;
-            state.overlay_add_accumulator = overlay_session;
-            state.threshold_accumulator = threshold_session;
+            if let Some(r) = runtime.as_mut() {
+                r.restore_intent_session(intent_session);
+                r.restore_overlay_session(overlay_session);
+                r.restore_threshold_session(threshold_session);
+            }
+            state.accumulator_runtime = runtime;
         } else {
             pipelines.run_tick_pipeline(state, dt);
         }
@@ -212,8 +228,8 @@ impl DispatchCoordinator {
         let event_readback_started = Instant::now();
         let mut gpu_error = None;
         let events = if use_accumulator_threshold {
-            match state.threshold_accumulator.as_mut() {
-                Some(s) => match s.readback_threshold_events(&state.ctx) {
+            match state.accumulator_runtime.as_mut() {
+                Some(runtime) => match runtime.readback_threshold_events(&state.ctx) {
                     Ok(events) => events,
                     Err(err) => {
                         gpu_error = Some(TickGpuError::AccumulatorThresholdReadback(
