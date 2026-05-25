@@ -6,9 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-25 — Docs sync: C-5/C-6 reduction migration complete (pending S-4)
+
+**Status:** Pushed on `master` @ `a414a62`.
+
+**Scope:** Sync `todo.md`, `workshop_current_state.md`, and production plan after PR #124.
+Reduction migration path complete behind flags; next gates S-4 sunset and C-7 velocity.
+
+---
+
 ## 2026-05-25 — C-6 Sum / Max / Min / First exact reductions
 
-**Status:** Merged — PR #124 (`dbec3af`).
+**Status:** Merged — PR #124 (`dbec3af` impl; doc sync `a414a62`).
 
 **Scope:** `use_accumulator_reduction_exact` flag; `ReductionPlanMode::AllRules`;
 AccumulatorOp gather for Sum/Max/Min/First; full AccumulatorOp reduction path

@@ -4,8 +4,12 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98),
 **C-2** (#99–#100), **C-3** (#105–#107), **pivot-forward policy + B-4I** (#108),
 **C-INF runtime/oracle** (#109), **pivot-forward remedial** (#111), and
-**C-4 overlay OrderBand** (#118), **C-5 soft reductions** (#122), and **C-6 exact reductions** (#124) landed.
-`master` @ **`dbec3af`**.
+**C-4 overlay OrderBand** (#118), **C-5 soft reductions** (#122–#123), and **C-6 exact reductions** (#124) landed.
+`master` @ **`a414a62`**.
+
+**Reduction flags (default false):** `use_accumulator_reduction_soft` (C-5 Mean/WeightedMean) +
+`use_accumulator_reduction_exact` (C-6 Sum/Max/Min/First; requires soft). Full AccumulatorOp
+reduction when both on; legacy `reduction.wgsl` flag-off/oracle only until **S-4**.
 
 **Workshop entry point:** [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md)
 
@@ -16,10 +20,10 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
 Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
 
-**Tests:** `cargo test --workspace` green at last full run (430+ passed, ignored perf gates).
-AccumulatorOp module: **63** gpu accumulator_op unit tests; C-1/C-2/C-3 parity (26) +
-C-4 parity/cache (16) + C-INF-2 harness (2) + pivot-forward remedial (3) +
-B-4 world summary integrated (2) green after C-4 remedial acceptance runs.
+**Tests:** `cargo test --workspace` green at last full run (450+ passed, ignored perf gates).
+AccumulatorOp module: **63** gpu `accumulator_op` unit tests; `reduction_orderband` (6);
+C-1/C-2/C-3 parity (26) + C-4 parity/cache (16) + C-5 reduction (11) + C-6 exact (9) +
+C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated (2).
 
 **Cursor handoff:** AccumulatorOp v2 Phase C migrations + pivot-forward infrastructure (see table below).
 
@@ -64,7 +68,7 @@ B-4 world summary integrated (2) green after C-4 remedial acceptance runs.
 | **Pivot-forward remedial** | #111 | `632d656` | Authoritative flags; `WorldSummaryRuntime`; oracle tolerance rename |
 | **C-5** | #122 | Mean/WeightedMean soft reductions → `ReductionSoft` on `output_vectors` |
 | **C-5 remedial** | #123 | Depth-interleaved soft/exact reduction; WeightedMean dependency tests |
-| **C-6** | #124 | `dbec3af` | Sum/Max/Min/First exact reductions; `use_accumulator_reduction_exact` |
+| **C-6** | #124 | `a414a62` | Sum/Max/Min/First exact reductions; `use_accumulator_reduction_exact` |
 
 **Next (non-Opus):** **S-4** reduction sunset (after C-5 + C-6 default-on validation) · **C-7** velocity · per-family oracle expansion.
 

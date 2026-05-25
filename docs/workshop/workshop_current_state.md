@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-25  
-**Master HEAD:** `dbec3af` (PR #124 C-6 exact reductions)  
-**Verification (last recorded):** C-6 parity + `cargo test --workspace` green
+**Master HEAD:** `a414a62` (PR #124 C-6 + doc sync)  
+**Verification (last recorded):** C-6 parity + full workspace test battery green
 
 ---
 
@@ -57,8 +57,10 @@ WorldGpuState
     summary: Option<WorldSummaryRuntime>                  (B-4 from world values)
   accumulator_overlay_add_active / _bands                 (cached dispatch; survives session take)
   accumulator_reduction_soft_active / _bands              (C-5 cached dispatch)
+  accumulator_reduction_exact_active                      (C-6 full path; no legacy fallback)
 
 BoundaryProtocol flags → sync clears or ensures families
+  use_accumulator_reduction_soft + use_accumulator_reduction_exact (exact requires soft)
 Dispatcher → take/put sessions; encode world summary after Accumulator passes when active
 ```
 
@@ -66,6 +68,11 @@ Dispatcher → take/put sessions; encode world summary after Accumulator passes 
 now routes full Add/Multiply/Set batches through AccumulatorOp OrderBands using
 the canonical `build_overlay_deltas` output. Legacy Pass 3 remains for flag-off
 execution and oracle parity until S-3.
+
+**Reduction policy (C-5/C-6):** soft flag routes Mean/WeightedMean through AccumulatorOp on
+`output_vectors`; exact flag extends planner to Sum/Max/Min/First. When both flags are on,
+the entire reduction phase is GPU-resident AccumulatorOp with no legacy `reduction.wgsl`
+dispatch. C-5-only mode keeps the depth-interleaved legacy exact fallback until S-4.
 
 **Feature flags (authoritative after #111):** flag-off boundary sync calls
 `clear_intent` / `clear_threshold` / `clear_overlay_add`; dispatcher keys off
@@ -75,7 +82,8 @@ session presence + overlay dispatch cache, not stale sessions.
 
 | Priority | ID | Owner | Blocks |
 |----------|-----|-------|--------|
-| Non-Opus | **C-6–C-8** | Composer | Exact reductions, velocity, EML/transfer |
+| Non-Opus | **C-7–C-8** | Composer | Velocity integration, EML/transfer/intensity |
+| Sunset | **S-4** | Composer | Legacy reduction deletion after C-5 + C-6 default-on + CI burn-in |
 | Infra | Oracle refactor | Optional | Move C-1/C-2/C-3/C-4 parity tests onto `run_family_oracle` |
 
 ### Sunset targets (S-phase)
@@ -84,7 +92,7 @@ session presence + overlay dispatch cache, not stale sessions.
 |------|-------|---------|
 | S-1 | C-2 default-on | Legacy intent pass |
 | S-3 | C-3 + C-4 | Legacy overlay prep |
-| S-4 | C-5 + C-6 | Legacy reduction passes |
+| S-4 | C-5 + C-6 default-on + CI green | Legacy reduction passes + `reduction.wgsl` pipeline branches |
 | S-5 | C-7 | Legacy velocity |
 | S-6 | C-1 default-on | Legacy threshold scan (Pass 7) |
 

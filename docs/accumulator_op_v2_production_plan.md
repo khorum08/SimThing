@@ -670,7 +670,7 @@ with a clearly reported failure mode (triggers separate design work).
 | C-3 | C | Composer 2.5 | Overlay Add migration | Bit-exact parity |
 | C-4 | C | Opus + Codex 5.5 | Multiply/Set OrderBand compiler | Landed behind flag |
 | **C-5** | **C** | **Opus + Composer** | **WeightedMean tolerance boundary audit + soft reductions** | **Landed (#121 design, #122 impl)** |
-| C-6 | C | Composer 2.5 | Sum/Max/Min reductions | Bit-exact parity |
+| C-6 | C | Composer 2.5 | Sum/Max/Min/First exact reductions | **Landed (#124)** |
 | C-7 | C | Composer 2.5 | Velocity integration migration | vel_max clamp test |
 | **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity integration** | **Opus design + 3 parity tests** |
 | **D-1** | **D** | **Opus** | **Hot-pool allocator v2 design** | **Opus design note** |
@@ -944,7 +944,7 @@ as a doc-only PR.
 | C-3 | C | Composer 2.5 | Overlay Add migration | Bit-exact parity |
 | C-4 | C | Opus + Codex 5.5 | Multiply/Set OrderBand compiler | Landed behind flag |
 | **C-5** | **C** | **Opus + Composer** | **WeightedMean tolerance audit + soft reductions** | **Landed (#121, #122)** |
-| C-6 | C | Composer 2.5 | Sum/Max/Min reductions | Bit-exact parity |
+| C-6 | C | Composer 2.5 | Sum/Max/Min/First exact reductions | **Landed (#124)** |
 | C-7 | C | Composer 2.5 | Velocity integration | vel_max clamp test |
 | **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity** | **Opus design** |
 | **D-1** | **D** | **Opus** | **Hot-pool allocator design** | **Opus design note** |
