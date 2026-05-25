@@ -6,14 +6,14 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-19 — B-3: AccumulatorOpSession timestamp query plumbing
+## 2026-05-19 — B-3: AccumulatorOpSession timestamp query plumbing (#95)
 
-**Status:** landing this session (PR pending).
+**Status:** `master` @ `d7855c4` (PR #95 merged).
 
 **Scope:** Optional GPU timestamp instrumentation on the standalone `AccumulatorOpSession`
 execute pass. Does not integrate with `BoundaryProtocol` or alter operation semantics.
 
-**Landed:**
+**Landed (PR #95, `d9fabf9`):**
 
 - `GpuContext`: feature-detect `TIMESTAMP_QUERY`; `timestamp_supported()` / `timestamp_period_ns()`
 - `AccumulatorOpSession`: optional query set + resolve/readback buffers; `tick(&mut self)`;
