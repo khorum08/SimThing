@@ -6,9 +6,9 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-25 — Pivot-forward AccumulatorOp corrections (#101)
+## 2026-05-25 — Pivot-forward AccumulatorOp corrections (#102)
 
-**Status:** merged PR #101 (`feat/pivot-forward-corrections` → `master`, stacked on #100).
+**Status:** `master` @ `e0f0f7d` (PR #102 merged; rebased after #100).
 
 **Scope:** Opus pivot-forward handoff Fixes 1–6 — unblock C-3 through E-3 without implementing
 new WGSL combine kernels.
@@ -34,7 +34,7 @@ new WGSL combine kernels.
 
 ## 2026-05-25 — C-2 refinements (#100)
 
-**Status:** merged PR #100 (`feat/c2-refine-c3-overlay-add` → `master`).
+**Status:** `master` @ `8516269` (PR #100 merged).
 
 **Scope:** Corrective refinements to C-2 integrated pipeline — not C-3 overlay migration.
 
