@@ -235,11 +235,12 @@ pub struct PipelineFlags {
 **Pass 3 — Overlay application (migrate → C-3/C-4, sunset → S-3)**
 - WGSL: inline in `overlay_prep.rs`
 - `Add`, `Multiply`, `Set` ops in ancestor-then-local order
-- **C-3 landed:** `use_accumulator_overlay_add` routes `TransformOp::Add`
-  through AccumulatorOp (one registration per delta, `atomic_add_f32`,
-  GPU-resident). Multiply and Set stay on old Pass 3 in the same tick;
-  AccumulatorOp Add encodes before legacy Pass 3 Multiply/Set in one command
-  buffer, preserving Add-before-Multiply semantics.
+- **C-3 landed:** `use_accumulator_overlay_add` routes Add-only overlay batches
+  through AccumulatorOp. If any active Multiply or Set overlay is present, the
+  full overlay batch remains on legacy Pass 3 until C-4. Add deltas are folded
+  per target cell in legacy delta order before upload to preserve f32 bit parity.
+  This fallback is temporary — C-4 owns the full order-band compiler and S-3
+  deletes the old overlay path after C-3/C-4 pass parity.
 - Post-migration: `Identity+OrderBand(0)`, `Product+OrderBand(1)`,
   `LastByPriority+OrderBand(1)` combines
 
