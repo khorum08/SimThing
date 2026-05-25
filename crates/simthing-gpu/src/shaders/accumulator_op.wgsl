@@ -89,7 +89,7 @@ const DIR_DOWNWARD: u32 = 1u;
 const DIR_EITHER: u32 = 2u;
 
 @group(0) @binding(0) var<storage, read> ops: array<AccumulatorOpGpu>;
-@group(0) @binding(1) var<storage, read_write> values: array<f32>;
+@group(0) @binding(1) var<storage, read_write> values: array<atomic<i32>>;
 @group(0) @binding(2) var<storage, read_write> emissions: array<EmissionRecordGpu>;
 @group(0) @binding(3) var<storage, read_write> emission_count: atomic<u32>;
 @group(0) @binding(4) var<uniform> tick_params: AccumulatorTickParams;
@@ -99,6 +99,20 @@ const DIR_EITHER: u32 = 2u;
 
 fn linear_idx(slot: u32, col: u32) -> u32 {
     return slot * tick_params.n_dims + col;
+}
+
+fn atomic_read_f32_at(idx: u32) -> f32 {
+    return bitcast<f32>(atomicLoad(&values[idx]));
+}
+
+fn atomic_add_f32_at(idx: u32, val: f32) {
+    let cell_ptr = &values[idx];
+    loop {
+        let old_bits = atomicLoad(cell_ptr);
+        let new_bits = bitcast<i32>(bitcast<f32>(old_bits) + val);
+        let result = atomicCompareExchangeWeak(cell_ptr, old_bits, new_bits);
+        if result.exchanged { break; }
+    }
 }
 
 fn gate_matches_bandwise(op: AccumulatorOpGpu) -> bool {
@@ -130,7 +144,7 @@ fn maybe_emit_threshold(op_idx: u32, op: AccumulatorOpGpu) {
     // crossing test and the emission payload.
     let addr = linear_idx(op.source_slot, op.source_col);
     let prev = previous_values[addr];
-    let curr = values[addr];
+    let curr = atomic_read_f32_at(addr);
     let threshold = bitcast<f32>(op.gate_b);
     if (!threshold_crossed(prev, curr, threshold, op.gate_a)) {
         return;
@@ -152,7 +166,7 @@ fn apply_scale(value: f32, op: AccumulatorOpGpu) -> f32 {
 }
 
 fn clamped_transfer(op: AccumulatorOpGpu) -> f32 {
-    let available = values[linear_idx(op.source_slot, op.source_col)];
+    let available = atomic_read_f32_at(linear_idx(op.source_slot, op.source_col));
     let requested = bitcast<f32>(op.scale_a);
     return min(max(requested, 0.0), max(available, 0.0));
 }
@@ -161,7 +175,7 @@ fn gather_value(op: AccumulatorOpGpu) -> f32 {
     if (op.combine_kind == COMBINE_SUM && op.source_kind == SOURCE_SLOT_RANGE) {
         var sum = 0.0;
         for (var i: u32 = 0u; i < op.source_count; i = i + 1u) {
-            sum = sum + values[linear_idx(op.source_slot + i, op.source_col)];
+            sum = sum + atomic_read_f32_at(linear_idx(op.source_slot + i, op.source_col));
         }
         return sum;
     }
@@ -176,7 +190,7 @@ fn gather_value(op: AccumulatorOpGpu) -> f32 {
     if (op.source_kind == SOURCE_CONSTANT) {
         raw = bitcast<f32>(op.source_slot);
     } else if (op.source_kind == SOURCE_SLOT_VALUE) {
-        raw = values[linear_idx(op.source_slot, op.source_col)];
+        raw = atomic_read_f32_at(linear_idx(op.source_slot, op.source_col));
     }
 
     return apply_scale(raw, op);
@@ -184,7 +198,7 @@ fn gather_value(op: AccumulatorOpGpu) -> f32 {
 
 fn clamp_transfer(write_value: f32, op: AccumulatorOpGpu) -> f32 {
     if (op.consume == CONSUME_SUBTRACT_FROM_SOURCE && op.source_kind == SOURCE_SLOT_VALUE) {
-        let available = values[linear_idx(op.source_slot, op.source_col)];
+        let available = atomic_read_f32_at(linear_idx(op.source_slot, op.source_col));
         return min(max(write_value, 0.0), max(available, 0.0));
     }
     return write_value;
@@ -192,10 +206,10 @@ fn clamp_transfer(write_value: f32, op: AccumulatorOpGpu) -> f32 {
 
 fn write_target(slot: u32, col: u32, write_value: f32, op: AccumulatorOpGpu) {
     let idx = linear_idx(slot, col);
-    if (op.combine_kind == COMBINE_IDENTITY) {
-        values[idx] = values[idx] + write_value;
+    if (op.combine_kind == COMBINE_IDENTITY || op.combine_kind == COMBINE_SUM) {
+        atomic_add_f32_at(idx, write_value);
     } else {
-        values[idx] = write_value;
+        _ = atomicExchange(&values[idx], bitcast<i32>(write_value));
     }
 }
 
@@ -217,7 +231,13 @@ fn apply_targets(write_value: f32, op: AccumulatorOpGpu) {
 fn apply_consume(write_value: f32, op: AccumulatorOpGpu) {
     if (op.consume == CONSUME_SUBTRACT_FROM_SOURCE && op.source_kind == SOURCE_SLOT_VALUE) {
         let idx = linear_idx(op.source_slot, op.source_col);
-        values[idx] = values[idx] - write_value;
+        let cell_ptr = &values[idx];
+        loop {
+            let old_bits = atomicLoad(cell_ptr);
+            let new_bits = bitcast<i32>(bitcast<f32>(old_bits) - write_value);
+            let result = atomicCompareExchangeWeak(cell_ptr, old_bits, new_bits);
+            if result.exchanged { break; }
+        }
     }
 }
 
@@ -250,9 +270,16 @@ fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
     // C-2 folded intent deltas: direct affine update on one cell, no targets.
     if (op.combine_kind == COMBINE_AFFINE_INTENT) {
         let idx = linear_idx(op.source_slot, op.source_col);
+        let cell_ptr = &values[idx];
         let mul = bitcast<f32>(op.combine_a);
         let add = bitcast<f32>(op.combine_b);
-        values[idx] = values[idx] * mul + add;
+        loop {
+            let old_bits = atomicLoad(cell_ptr);
+            let old = bitcast<f32>(old_bits);
+            let new_bits = bitcast<i32>(old * mul + add);
+            let result = atomicCompareExchangeWeak(cell_ptr, old_bits, new_bits);
+            if result.exchanged { break; }
+        }
         return;
     }
 

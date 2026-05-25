@@ -221,8 +221,19 @@ fn validate_threshold_op(op: &AccumulatorOp) -> Result<(), EncodeError> {
             }
             Ok(())
         }
+        (GateSpec::Threshold { .. }, ConsumeMode::None) => {
+            if !matches!(
+                op.source,
+                SourceSpec::SlotValue { .. } | SourceSpec::Constant(_)
+            ) {
+                return Err(EncodeError::Unsupported(
+                    "Threshold+None requires SlotValue or Constant source",
+                ));
+            }
+            Ok(())
+        }
         (GateSpec::Threshold { .. }, _) => Err(EncodeError::Unsupported(
-            "Threshold gate requires EmitEvent consume until later phases",
+            "Threshold gate with this consume mode is not yet implemented",
         )),
         _ => Err(EncodeError::Unsupported("not a threshold op")),
     }
@@ -266,8 +277,16 @@ fn encode_source(op: &AccumulatorOp) -> Result<(u32, u32, u32, u32), EncodeError
                 .ok_or(EncodeError::Unsupported("SlotRange without target col"))?;
             Ok((source_kind::SLOT_RANGE, *start, col, *count))
         }
-        SourceSpec::ConjunctiveCrossing { .. } => {
-            Err(EncodeError::Unsupported("ConjunctiveCrossing"))
+        SourceSpec::ConjunctiveCrossing { inputs } => {
+            let first = inputs.first().ok_or(EncodeError::Unsupported(
+                "ConjunctiveCrossing with zero inputs",
+            ))?;
+            Ok((
+                source_kind::CONJUNCTIVE_CROSSING,
+                first.slot,
+                first.col,
+                inputs.len() as u32,
+            ))
         }
     }
 }
@@ -276,7 +295,31 @@ fn encode_combine(op: &AccumulatorOp) -> Result<(u32, u32, u32, u32, u32), Encod
     match &op.combine {
         CombineFn::Identity => Ok((combine_kind::IDENTITY, 0, 0, 0, 0)),
         CombineFn::Sum => Ok((combine_kind::SUM, 0, 0, 0, 0)),
-        other => Err(EncodeError::Unsupported(other_name(other))),
+        CombineFn::Product => Ok((combine_kind::PRODUCT, 0, 0, 0, 0)),
+        CombineFn::LastByPriority => Ok((combine_kind::LAST_BY_PRIORITY, 0, 0, 0, 0)),
+        CombineFn::Mean => Ok((combine_kind::MEAN, 0, 0, 0, 0)),
+        CombineFn::Max => Ok((combine_kind::MAX, 0, 0, 0, 0)),
+        CombineFn::Min => Ok((combine_kind::MIN, 0, 0, 0, 0)),
+        CombineFn::WeightedMean { weight_col } => {
+            Ok((combine_kind::WEIGHTED_MEAN, *weight_col, 0, 0, 0))
+        }
+        CombineFn::IntegrateWithClamp {
+            dt,
+            vel_max,
+            amount_min,
+            amount_max,
+        } => Ok((
+            combine_kind::INTEGRATE_CLAMP,
+            dt.to_bits(),
+            vel_max.to_bits(),
+            amount_min.to_bits(),
+            amount_max.to_bits(),
+        )),
+        CombineFn::CrossingFormula { unit_cost } => {
+            Ok((combine_kind::CROSSING_FORMULA, unit_cost.to_bits(), 0, 0, 0))
+        }
+        CombineFn::MinAcrossInputs => Ok((combine_kind::MIN_ACROSS_INPUTS, 0, 0, 0, 0)),
+        CombineFn::EvalEML { tree_id } => Ok((combine_kind::EVAL_EML, *tree_id, 0, 0, 0)),
     }
 }
 
@@ -301,22 +344,12 @@ fn encode_scale(scale: &ScaleSpec) -> Result<(u32, u32), EncodeError> {
     }
 }
 
-fn encode_consume(consume: ConsumeMode, gate: &GateSpec) -> Result<u32, EncodeError> {
+fn encode_consume(consume: ConsumeMode, _gate: &GateSpec) -> Result<u32, EncodeError> {
     match consume {
-        ConsumeMode::None => {
-            if matches!(gate, GateSpec::Threshold { .. }) {
-                Err(EncodeError::Unsupported(
-                    "Threshold gate requires EmitEvent consume until later phases",
-                ))
-            } else {
-                Ok(consume_kind::NONE)
-            }
-        }
+        ConsumeMode::None => Ok(consume_kind::NONE),
         ConsumeMode::SubtractFromSource => Ok(consume_kind::SUBTRACT_FROM_SOURCE),
+        ConsumeMode::SubtractFromAllInputs => Ok(consume_kind::SUBTRACT_FROM_ALL_INPUTS),
         ConsumeMode::EmitEvent => Ok(consume_kind::EMIT_EVENT),
-        ConsumeMode::SubtractFromAllInputs => {
-            Err(EncodeError::Unsupported("SubtractFromAllInputs"))
-        }
         ConsumeMode::ResetTarget => Err(EncodeError::Unsupported("ResetTarget")),
         ConsumeMode::ScaleTarget => Err(EncodeError::Unsupported("ScaleTarget")),
     }
@@ -328,22 +361,6 @@ fn encode_targets(targets: &[(u32, u32)]) -> ([(u32, u32); 4], u32) {
         out[idx] = *target;
     }
     (out, targets.len() as u32)
-}
-
-fn other_name(combine: &CombineFn) -> &'static str {
-    match combine {
-        CombineFn::Mean => "Mean",
-        CombineFn::Max => "Max",
-        CombineFn::Min => "Min",
-        CombineFn::WeightedMean { .. } => "WeightedMean",
-        CombineFn::Product => "Product",
-        CombineFn::LastByPriority => "LastByPriority",
-        CombineFn::IntegrateWithClamp { .. } => "IntegrateWithClamp",
-        CombineFn::CrossingFormula { .. } => "CrossingFormula",
-        CombineFn::MinAcrossInputs => "MinAcrossInputs",
-        CombineFn::EvalEML { .. } => "EvalEML",
-        CombineFn::Identity | CombineFn::Sum => "Identity/Sum",
-    }
 }
 
 fn other_name_gate(gate: &GateSpec) -> &'static str {
@@ -441,22 +458,103 @@ mod tests {
     }
 
     #[test]
-    fn c1_threshold_gate_non_emit_consume_validator_rejects() {
+    fn threshold_with_none_consume_encodes_ok() {
         let op = AccumulatorOp {
             source: SourceSpec::SlotValue { slot: 0, col: 0 },
             combine: CombineFn::Identity,
             gate: GateSpec::Threshold {
-                value: 1.0,
+                value: 0.5,
                 direction: ThresholdDirection::Upward,
             },
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
             targets: vec![(1, 0)],
         };
-        assert!(matches!(
-            AccumulatorOpGpu::encode_threshold_set(std::slice::from_ref(&op)),
-            Err(EncodeError::Unsupported(_))
-        ));
+        let result = AccumulatorOpGpu::from_op(&op);
+        assert!(result.is_ok(), "{result:?}");
+    }
+
+    #[test]
+    fn conjunctive_crossing_encodes_without_error() {
+        use simthing_core::InputSpec;
+        let op = AccumulatorOp {
+            source: SourceSpec::ConjunctiveCrossing {
+                inputs: vec![
+                    InputSpec {
+                        slot: 1,
+                        col: 0,
+                        unit_cost: 5.0,
+                    },
+                    InputSpec {
+                        slot: 1,
+                        col: 2,
+                        unit_cost: 3.0,
+                    },
+                ],
+            },
+            combine: CombineFn::MinAcrossInputs,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::SubtractFromAllInputs,
+            targets: vec![(99, 0)],
+        };
+        let result = AccumulatorOpGpu::from_op(&op);
+        assert!(result.is_ok(), "ConjunctiveCrossing must encode: {result:?}");
+        let gpu = result.unwrap();
+        assert_eq!(gpu.source_kind, source_kind::CONJUNCTIVE_CROSSING);
+        assert_eq!(gpu.source_count, 2);
+    }
+
+    fn encode_combine_fn_only(
+        combine: &CombineFn,
+    ) -> Result<(u32, u32, u32, u32, u32), EncodeError> {
+        let op = AccumulatorOp {
+            source: SourceSpec::Constant(0.0),
+            combine: combine.clone(),
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![(0, 0)],
+        };
+        let _ = op.validate();
+        encode_combine(&op)
+    }
+
+    #[test]
+    fn all_combine_variants_encode_without_unsupported_error() {
+        let variants: Vec<(CombineFn, &str)> = vec![
+            (CombineFn::Identity, "Identity"),
+            (CombineFn::Sum, "Sum"),
+            (CombineFn::Mean, "Mean"),
+            (CombineFn::Max, "Max"),
+            (CombineFn::Min, "Min"),
+            (
+                CombineFn::WeightedMean { weight_col: 2 },
+                "WeightedMean",
+            ),
+            (CombineFn::Product, "Product"),
+            (CombineFn::LastByPriority, "LastByPriority"),
+            (
+                CombineFn::IntegrateWithClamp {
+                    dt: 1.0,
+                    vel_max: 10.0,
+                    amount_min: 0.0,
+                    amount_max: 100.0,
+                },
+                "IntegrateWithClamp",
+            ),
+            (
+                CombineFn::CrossingFormula { unit_cost: 5.0 },
+                "CrossingFormula",
+            ),
+            (CombineFn::MinAcrossInputs, "MinAcrossInputs"),
+            (CombineFn::EvalEML { tree_id: 1 }, "EvalEML"),
+        ];
+
+        for (combine, name) in variants {
+            let result = encode_combine_fn_only(&combine);
+            assert!(result.is_ok(), "{name} returned Unsupported: {result:?}");
+        }
     }
 
     #[test]
