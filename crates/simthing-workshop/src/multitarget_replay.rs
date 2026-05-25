@@ -31,7 +31,7 @@ pub const TIMING_NOTE: &str =
     "Warm timings include upload, dispatch, wait, and readback; not pure shader timestamp time (upload/readback envelope mode).";
 
 pub const RESIDENT_TIMING_NOTE: &str =
-    "Resident timings upload initial state once, run N GPU ticks, and read final validation once; not pure shader timestamp time.";
+    "Resident total_validation timings include initial buffer upload, encode, submit, GPU wait, and final state/summary/records readback. submit timings cover encode+submit only. Neither is pure shader timestamp time.";
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable, PartialEq, Eq)]
@@ -153,7 +153,8 @@ pub struct MultiTargetResidentResult {
     pub final_states: Vec<QueueState>,
     pub summaries: Vec<TickSummaryReadback>,
     pub compact_records: Vec<CompactDeltaRecord>,
-    pub elapsed_us: u64,
+    pub submit_us: u64,
+    pub total_validation_us: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -165,14 +166,20 @@ pub struct MultiTargetResidentReport {
     pub record_ticks: u32,
     pub records_memory_fallback: bool,
     pub cpu_n_ticks_us: u64,
-    pub gpu_resident_summary_mean_us: u64,
-    pub gpu_resident_summary_min_us: u64,
-    pub gpu_resident_summary_max_us: u64,
-    pub gpu_resident_records_mean_us: u64,
-    pub gpu_resident_records_min_us: u64,
-    pub gpu_resident_records_max_us: u64,
-    pub gpu_resident_summary_per_tick_us: f32,
-    pub gpu_resident_records_per_tick_us: f32,
+    pub gpu_resident_summary_submit_mean_us: u64,
+    pub gpu_resident_summary_submit_min_us: u64,
+    pub gpu_resident_summary_submit_max_us: u64,
+    pub gpu_resident_summary_total_mean_us: u64,
+    pub gpu_resident_summary_total_min_us: u64,
+    pub gpu_resident_summary_total_max_us: u64,
+    pub gpu_resident_records_submit_mean_us: u64,
+    pub gpu_resident_records_submit_min_us: u64,
+    pub gpu_resident_records_submit_max_us: u64,
+    pub gpu_resident_records_total_mean_us: u64,
+    pub gpu_resident_records_total_min_us: u64,
+    pub gpu_resident_records_total_max_us: u64,
+    pub gpu_resident_summary_total_per_tick_us: f32,
+    pub gpu_resident_records_total_per_tick_us: f32,
     pub cpu_per_tick_us: f32,
     pub final_state_matches_cpu_summary_mode: bool,
     pub final_state_matches_cpu_records_mode: bool,
@@ -1077,6 +1084,7 @@ impl MultiTargetReplayHarness {
         ticks: u32,
         write_per_item_records: bool,
     ) -> Result<MultiTargetResidentResult> {
+        let t_total = Instant::now();
         let n_items = scenario.states.len();
         let states_bytes = pad_storage_bytes(&scenario.states);
         let params_bytes = pad_storage_bytes(&scenario.params);
@@ -1191,7 +1199,7 @@ impl MultiTargetReplayHarness {
             mapped_at_creation: false,
         });
 
-        let t0 = Instant::now();
+        let t_submit = Instant::now();
         let mut encoder = self
             .device
             .create_command_encoder(&CommandEncoderDescriptor {
@@ -1226,7 +1234,7 @@ impl MultiTargetReplayHarness {
             );
         }
         self.queue.submit(Some(encoder.finish()));
-        let elapsed_us = t0.elapsed().as_micros() as u64;
+        let submit_us = t_submit.elapsed().as_micros() as u64;
 
         let final_states = map_readback_pod::<QueueState>(&self.device, &states_readback, n_items)?;
         let summary_raw = map_readback_pod::<u32>(&self.device, &summary_readback, summary_u32s)?;
@@ -1236,6 +1244,7 @@ impl MultiTargetReplayHarness {
         } else {
             Vec::new()
         };
+        let total_validation_us = t_total.elapsed().as_micros() as u64;
 
         let _ = uniform_buffers;
 
@@ -1243,7 +1252,8 @@ impl MultiTargetReplayHarness {
             final_states,
             summaries,
             compact_records,
-            elapsed_us,
+            submit_us,
+            total_validation_us,
         })
     }
 }
@@ -1437,12 +1447,12 @@ fn resident_interpretation(
 
     let mut interpretation = if summary_speedup >= 1.0 {
         format!(
-            "STRONG_PASS: GPU-resident summary mode matches CPU over N ticks ({:.2}x vs CPU). Semantic and summary gates pass.",
+            "STRONG_PASS: GPU-resident summary mode matches CPU over N ticks ({:.2}x vs CPU on total_validation timing). Semantic and summary gates pass.",
             summary_speedup
         )
     } else {
         format!(
-            "WEAK_PASS: GPU-resident correctness passes but summary mode {:.2}x vs CPU over N ticks; perf unresolved under resident timing.",
+            "WEAK_PASS: GPU-resident correctness passes but summary mode {:.2}x vs CPU on total_validation timing; perf unresolved.",
             summary_speedup
         )
     };
@@ -1450,12 +1460,12 @@ fn resident_interpretation(
     if final_records {
         if records_speedup >= 1.0 {
             interpretation.push_str(&format!(
-                " Records mode {:.2}x vs CPU.",
+                " Records mode {:.2}x vs CPU on total_validation timing.",
                 records_speedup
             ));
         } else {
             interpretation.push_str(&format!(
-                " Records mode slower ({:.2}x vs CPU); log volume pressure.",
+                " Records mode slower ({:.2}x vs CPU on total_validation timing); log volume pressure.",
                 records_speedup
             ));
         }
@@ -1514,15 +1524,18 @@ pub fn compare_multitarget_resident_rich_with_harness(
 
     let _ = harness.run_gpu_resident(scenario, ticks, false)?;
 
-    let mut summary_warm = Vec::with_capacity(RESIDENT_WARM_RUNS);
-    let mut records_warm = Vec::with_capacity(RESIDENT_WARM_RUNS);
+    let mut summary_submit_warm = Vec::with_capacity(RESIDENT_WARM_RUNS);
+    let mut summary_total_warm = Vec::with_capacity(RESIDENT_WARM_RUNS);
+    let mut records_submit_warm = Vec::with_capacity(RESIDENT_WARM_RUNS);
+    let mut records_total_warm = Vec::with_capacity(RESIDENT_WARM_RUNS);
     let mut gpu_summary_base: Option<MultiTargetResidentResult> = None;
     let mut gpu_records_base: Option<MultiTargetResidentResult> = None;
     let mut deterministic = true;
 
     for _ in 0..RESIDENT_WARM_RUNS {
         let gpu_summary = harness.run_gpu_resident(scenario, ticks, false)?;
-        summary_warm.push(gpu_summary.elapsed_us);
+        summary_submit_warm.push(gpu_summary.submit_us);
+        summary_total_warm.push(gpu_summary.total_validation_us);
 
         match &gpu_summary_base {
             None => gpu_summary_base = Some(gpu_summary),
@@ -1536,7 +1549,8 @@ pub fn compare_multitarget_resident_rich_with_harness(
         }
 
         let gpu_records = harness.run_gpu_resident(scenario, record_ticks, true)?;
-        records_warm.push(gpu_records.elapsed_us);
+        records_submit_warm.push(gpu_records.submit_us);
+        records_total_warm.push(gpu_records.total_validation_us);
 
         match &gpu_records_base {
             None => gpu_records_base = Some(gpu_records),
@@ -1590,20 +1604,26 @@ pub fn compare_multitarget_resident_rich_with_harness(
     };
     let determinism_gate = if deterministic { "PASS" } else { "FAIL" };
 
-    let (summary_mean, summary_min, summary_max) = warm_stats(&summary_warm);
-    let (records_mean, records_min, records_max) = warm_stats(&records_warm);
+    let (summary_submit_mean, summary_submit_min, summary_submit_max) =
+        warm_stats(&summary_submit_warm);
+    let (summary_total_mean, summary_total_min, summary_total_max) =
+        warm_stats(&summary_total_warm);
+    let (records_submit_mean, records_submit_min, records_submit_max) =
+        warm_stats(&records_submit_warm);
+    let (records_total_mean, records_total_min, records_total_max) =
+        warm_stats(&records_total_warm);
 
     let cpu_per_tick = cpu_n_ticks_us as f32 / ticks as f32;
-    let summary_per_tick = summary_mean as f32 / ticks as f32;
-    let records_per_tick = records_mean as f32 / record_ticks as f32;
+    let summary_total_per_tick = summary_total_mean as f32 / ticks as f32;
+    let records_total_per_tick = records_total_mean as f32 / record_ticks as f32;
 
-    let summary_speedup = if summary_mean > 0 {
-        cpu_n_ticks_us as f32 / summary_mean as f32
+    let summary_speedup = if summary_total_mean > 0 {
+        cpu_n_ticks_us as f32 / summary_total_mean as f32
     } else {
         0.0
     };
-    let records_speedup = if records_mean > 0 {
-        cpu_records_ticks_us as f32 / records_mean as f32
+    let records_speedup = if records_total_mean > 0 {
+        cpu_records_ticks_us as f32 / records_total_mean as f32
     } else {
         0.0
     };
@@ -1624,7 +1644,16 @@ pub fn compare_multitarget_resident_rich_with_harness(
         records_memory_fallback,
     );
 
-    let _ = (summary_min, summary_max, records_min, records_max);
+    let _ = (
+        summary_submit_min,
+        summary_submit_max,
+        summary_total_min,
+        summary_total_max,
+        records_submit_min,
+        records_submit_max,
+        records_total_min,
+        records_total_max,
+    );
 
     Ok(MultiTargetResidentReport {
         scenario_name: scenario.name.clone(),
@@ -1634,14 +1663,20 @@ pub fn compare_multitarget_resident_rich_with_harness(
         record_ticks,
         records_memory_fallback,
         cpu_n_ticks_us,
-        gpu_resident_summary_mean_us: summary_mean,
-        gpu_resident_summary_min_us: summary_min,
-        gpu_resident_summary_max_us: summary_max,
-        gpu_resident_records_mean_us: records_mean,
-        gpu_resident_records_min_us: records_min,
-        gpu_resident_records_max_us: records_max,
-        gpu_resident_summary_per_tick_us: summary_per_tick,
-        gpu_resident_records_per_tick_us: records_per_tick,
+        gpu_resident_summary_submit_mean_us: summary_submit_mean,
+        gpu_resident_summary_submit_min_us: summary_submit_min,
+        gpu_resident_summary_submit_max_us: summary_submit_max,
+        gpu_resident_summary_total_mean_us: summary_total_mean,
+        gpu_resident_summary_total_min_us: summary_total_min,
+        gpu_resident_summary_total_max_us: summary_total_max,
+        gpu_resident_records_submit_mean_us: records_submit_mean,
+        gpu_resident_records_submit_min_us: records_submit_min,
+        gpu_resident_records_submit_max_us: records_submit_max,
+        gpu_resident_records_total_mean_us: records_total_mean,
+        gpu_resident_records_total_min_us: records_total_min,
+        gpu_resident_records_total_max_us: records_total_max,
+        gpu_resident_summary_total_per_tick_us: summary_total_per_tick,
+        gpu_resident_records_total_per_tick_us: records_total_per_tick,
         cpu_per_tick_us: cpu_per_tick,
         final_state_matches_cpu_summary_mode,
         final_state_matches_cpu_records_mode,

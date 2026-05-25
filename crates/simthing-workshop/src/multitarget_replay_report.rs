@@ -110,16 +110,22 @@ pub fn format_multitarget_resident_report(report: &MultiTargetResidentReport) ->
          Timing:\n\
            cpu_n_ticks_us: {}\n\
            cpu_per_tick_us: {:.3}\n\
-           gpu_resident_summary_mean_us: {}\n\
-           gpu_resident_summary_min_us: {}\n\
-           gpu_resident_summary_max_us: {}\n\
-           gpu_resident_summary_per_tick_us: {:.3}\n\
-           gpu_resident_records_mean_us: {}\n\
-           gpu_resident_records_min_us: {}\n\
-           gpu_resident_records_max_us: {}\n\
-           gpu_resident_records_per_tick_us: {:.3}\n\
-           resident_summary_speedup_vs_cpu: {:.3}x\n\
-           resident_records_speedup_vs_cpu: {:.3}x\n\
+           gpu_resident_summary_submit_mean_us: {}\n\
+           gpu_resident_summary_submit_min_us: {}\n\
+           gpu_resident_summary_submit_max_us: {}\n\
+           gpu_resident_summary_total_mean_us: {}\n\
+           gpu_resident_summary_total_min_us: {}\n\
+           gpu_resident_summary_total_max_us: {}\n\
+           gpu_resident_summary_total_per_tick_us: {:.3}\n\
+           gpu_resident_records_submit_mean_us: {}\n\
+           gpu_resident_records_submit_min_us: {}\n\
+           gpu_resident_records_submit_max_us: {}\n\
+           gpu_resident_records_total_mean_us: {}\n\
+           gpu_resident_records_total_min_us: {}\n\
+           gpu_resident_records_total_max_us: {}\n\
+           gpu_resident_records_total_per_tick_us: {:.3}\n\
+           resident_summary_speedup_vs_cpu: {:.3}x (total_validation)\n\
+           resident_records_speedup_vs_cpu: {:.3}x (total_validation)\n\
          \n\
          Data movement:\n\
            summary_bytes_total: {}\n\
@@ -146,14 +152,20 @@ pub fn format_multitarget_resident_report(report: &MultiTargetResidentReport) ->
         report.resident_performance_gate,
         report.cpu_n_ticks_us,
         report.cpu_per_tick_us,
-        report.gpu_resident_summary_mean_us,
-        report.gpu_resident_summary_min_us,
-        report.gpu_resident_summary_max_us,
-        report.gpu_resident_summary_per_tick_us,
-        report.gpu_resident_records_mean_us,
-        report.gpu_resident_records_min_us,
-        report.gpu_resident_records_max_us,
-        report.gpu_resident_records_per_tick_us,
+        report.gpu_resident_summary_submit_mean_us,
+        report.gpu_resident_summary_submit_min_us,
+        report.gpu_resident_summary_submit_max_us,
+        report.gpu_resident_summary_total_mean_us,
+        report.gpu_resident_summary_total_min_us,
+        report.gpu_resident_summary_total_max_us,
+        report.gpu_resident_summary_total_per_tick_us,
+        report.gpu_resident_records_submit_mean_us,
+        report.gpu_resident_records_submit_min_us,
+        report.gpu_resident_records_submit_max_us,
+        report.gpu_resident_records_total_mean_us,
+        report.gpu_resident_records_total_min_us,
+        report.gpu_resident_records_total_max_us,
+        report.gpu_resident_records_total_per_tick_us,
         report.resident_summary_speedup_vs_cpu,
         report.resident_records_speedup_vs_cpu,
         report.summary_bytes_total,
