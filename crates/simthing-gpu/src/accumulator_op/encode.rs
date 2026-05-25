@@ -4,6 +4,7 @@ use simthing_core::{
     AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec,
 };
 
+use super::bootstrap_validate::{validate_bootstrap_no_contention, BootstrapContention};
 use super::types::{
     combine_kind, consume_kind, gate_kind, scale_kind, source_kind, AccumulatorOpGpu,
 };
@@ -14,17 +15,36 @@ pub enum EncodeError {
     Unsupported(&'static str),
     #[error("AccumulatorOp failed CPU validation: {0}")]
     Validation(#[from] simthing_core::AccumulatorOpError),
+    #[error(
+        "B-1 bootstrap AccumulatorOp set contains contended writes/consumes in band {band}: slot={slot}, col={col}"
+    )]
+    BootstrapContention {
+        band: u32,
+        slot: u32,
+        col:  u32,
+    },
+}
+
+impl From<BootstrapContention> for EncodeError {
+    fn from(value: BootstrapContention) -> Self {
+        Self::BootstrapContention {
+            band: value.band,
+            slot: value.slot,
+            col:  value.col,
+        }
+    }
 }
 
 impl AccumulatorOpGpu {
     pub fn from_op(op: &AccumulatorOp) -> Result<Self, EncodeError> {
         op.validate()?;
+        validate_bootstrap_op(op)?;
 
         let (source_kind, source_slot, source_col, source_count) = encode_source(op)?;
         let (combine_kind, combine_a, combine_b, combine_c, combine_d) = encode_combine(op)?;
         let (gate_kind, gate_a, gate_b) = encode_gate(&op.gate)?;
         let (scale_kind, scale_a) = encode_scale(&op.scale)?;
-        let consume = encode_consume(op.consume);
+        let consume = encode_consume(op.consume)?;
         let (targets, n_targets) = encode_targets(&op.targets);
 
         Ok(Self {
@@ -54,6 +74,26 @@ impl AccumulatorOpGpu {
             n_targets,
             _pad: 0,
         })
+    }
+
+    /// Encode and validate a full bootstrap op set, including same-band contention checks.
+    pub fn encode_bootstrap_set(ops: &[AccumulatorOp]) -> Result<Vec<Self>, EncodeError> {
+        let gpu_ops: Vec<Self> = ops.iter().map(Self::from_op).collect::<Result<_, _>>()?;
+        validate_bootstrap_no_contention(&gpu_ops)?;
+        Ok(gpu_ops)
+    }
+}
+
+fn validate_bootstrap_op(op: &AccumulatorOp) -> Result<(), EncodeError> {
+    if op.consume == ConsumeMode::SubtractFromSource {
+        match (&op.source, &op.scale) {
+            (SourceSpec::SlotValue { .. }, ScaleSpec::Constant(rate)) if *rate >= 0.0 => Ok(()),
+            _ => Err(EncodeError::Unsupported(
+                "SubtractFromSource requires SlotValue source and nonnegative Constant scale",
+            )),
+        }
+    } else {
+        Ok(())
     }
 }
 
@@ -104,16 +144,16 @@ fn encode_gate(gate: &GateSpec) -> Result<(u32, u32, u32), EncodeError> {
 fn encode_scale(scale: &ScaleSpec) -> Result<(u32, u32), EncodeError> {
     match scale {
         ScaleSpec::Identity => Ok((scale_kind::IDENTITY, 0)),
-        ScaleSpec::Constant(value) => Ok((scale_kind::IDENTITY, value.to_bits())),
+        ScaleSpec::Constant(value) => Ok((scale_kind::CONSTANT, value.to_bits())),
         ScaleSpec::ByColumn { .. } => Err(EncodeError::Unsupported("ScaleSpec::ByColumn")),
     }
 }
 
-fn encode_consume(consume: ConsumeMode) -> u32 {
+fn encode_consume(consume: ConsumeMode) -> Result<u32, EncodeError> {
     match consume {
-        ConsumeMode::None => consume_kind::NONE,
-        ConsumeMode::SubtractFromSource => consume_kind::SUBTRACT_FROM_SOURCE,
-        _ => consume_kind::NONE,
+        ConsumeMode::None => Ok(consume_kind::NONE),
+        ConsumeMode::SubtractFromSource => Ok(consume_kind::SUBTRACT_FROM_SOURCE),
+        other => Err(EncodeError::Unsupported(other_name_consume(other))),
     }
 }
 
@@ -147,5 +187,36 @@ fn other_name_gate(gate: &GateSpec) -> &'static str {
         GateSpec::LifecycleActive => "LifecycleActive",
         GateSpec::DirtyOnly => "DirtyOnly",
         GateSpec::Always | GateSpec::OrderBand(_) => "Always/OrderBand",
+    }
+}
+
+fn other_name_consume(consume: ConsumeMode) -> &'static str {
+    match consume {
+        ConsumeMode::SubtractFromAllInputs => "SubtractFromAllInputs",
+        ConsumeMode::ResetTarget => "ResetTarget",
+        ConsumeMode::ScaleTarget => "ScaleTarget",
+        ConsumeMode::EmitEvent => "EmitEvent",
+        ConsumeMode::None | ConsumeMode::SubtractFromSource => "None/SubtractFromSource",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use simthing_core::{CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+
+    #[test]
+    fn encodes_transfer_op() {
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 1, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Constant(2.0),
+            consume: ConsumeMode::SubtractFromSource,
+            targets: vec![(2, 0)],
+        };
+        let gpu = AccumulatorOpGpu::from_op(&op).unwrap();
+        assert_eq!(gpu.scale_kind, scale_kind::CONSTANT);
+        assert_eq!(gpu.consume, consume_kind::SUBTRACT_FROM_SOURCE);
     }
 }

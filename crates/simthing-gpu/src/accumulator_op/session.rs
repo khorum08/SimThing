@@ -40,8 +40,11 @@ pub enum AccumulatorOpSessionError {
     Readback,
 }
 
-/// GPU-resident AccumulatorOp session. Created at session open, closed at session
-/// close. Does not integrate with `BoundaryProtocol` until Phase C migrations.
+/// GPU-resident AccumulatorOp session (B-1 bootstrap skeleton).
+///
+/// Persistent buffers and readback tiers are production-shaped, but the
+/// bootstrap kernel supports only non-contended Identity/Sum and clamped
+/// SlotValue transfer. Not integrated with `BoundaryProtocol`.
 pub struct AccumulatorOpSession {
     ctx: GpuContext,
     n_slots: u32,
@@ -228,12 +231,9 @@ impl AccumulatorOpSession {
             .write_buffer(&self.values_buffer, 0, bytemuck::cast_slice(values));
     }
 
-    /// Upload AccumulatorOp registrations. Marks the op buffer dirty for GPU upload.
+    /// Upload AccumulatorOp registrations after bootstrap subset + contention validation.
     pub fn upload_ops(&mut self, ops: &[AccumulatorOp]) -> Result<(), AccumulatorOpSessionError> {
-        let gpu_ops: Vec<AccumulatorOpGpu> = ops
-            .iter()
-            .map(AccumulatorOpGpu::from_op)
-            .collect::<Result<_, _>>()?;
+        let gpu_ops = AccumulatorOpGpu::encode_bootstrap_set(ops)?;
 
         let byte_len = gpu_ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
         if self.op_buffer.size() < byte_len as u64 {
@@ -314,7 +314,7 @@ impl AccumulatorOpSession {
         Ok(())
     }
 
-    /// Default production readback tier: per-slot checksum summaries.
+    /// B-1 provisional summary readback tier (checksum-only; final shape is B-4).
     pub fn readback_summary(&self) -> Result<Vec<SlotSummary>, AccumulatorOpSessionError> {
         let bytes = self.read_buffer_bytes(&self.summary_buffer);
         let gpu: &[SlotSummaryGpu] = bytemuck::cast_slice(&bytes);
@@ -327,7 +327,7 @@ impl AccumulatorOpSession {
             .collect())
     }
 
-    /// Compact emission records after reading the atomic emission counter.
+    /// B-1 allocates emission buffers but no kernel path writes records yet (B-2).
     pub fn readback_emissions(&self) -> Result<Vec<EmissionRecord>, AccumulatorOpSessionError> {
         let count = self.read_emission_count()?;
         if count == 0 {
@@ -485,10 +485,16 @@ mod tests {
         AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec,
     };
 
+    use crate::accumulator_op::encode::EncodeError;
     use crate::accumulator_op::{execute_ops_cpu, set_debug_readback_allowed, summaries_from_values};
     use crate::context::GpuContext;
 
     use super::*;
+
+    fn gpu_session(n_slots: u32, n_dims: u32) -> AccumulatorOpSession {
+        let ctx = GpuContext::new_blocking().expect("gpu context");
+        AccumulatorOpSession::new(ctx, n_slots, n_dims)
+    }
 
     fn bootstrap_ops() -> Vec<AccumulatorOp> {
         vec![
@@ -552,5 +558,249 @@ mod tests {
 
         let gpu_values = session.readback_full().unwrap();
         assert_eq!(gpu_values, expected);
+    }
+
+    #[test]
+    fn scale_constant_zero_writes_zero_not_raw_value_gpu() {
+        set_debug_readback_allowed(true);
+        let n_dims = 1u32;
+        let mut values = vec![10.0, 7.0];
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Constant(0.0),
+            consume: ConsumeMode::None,
+            targets: vec![(1, 0)],
+        };
+
+        let mut session = gpu_session(2, n_dims);
+        session.upload_values(&values);
+        session.upload_ops(std::slice::from_ref(&op)).unwrap();
+        session.tick(0).unwrap();
+        values = session.readback_full().unwrap();
+        assert_eq!(values[1], 7.0);
+    }
+
+    #[test]
+    fn subtract_from_source_clamps_to_available_source_gpu() {
+        set_debug_readback_allowed(true);
+        let n_dims = 1u32;
+        let mut session = gpu_session(2, n_dims);
+
+        let mut values = vec![5.0, 0.0];
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Constant(10.0),
+            consume: ConsumeMode::SubtractFromSource,
+            targets: vec![(1, 0)],
+        };
+        session.upload_values(&values);
+        session.upload_ops(std::slice::from_ref(&op)).unwrap();
+        session.tick(0).unwrap();
+        values = session.readback_full().unwrap();
+        assert_eq!(values, vec![0.0, 5.0]);
+
+        let mut values = vec![10.0, 0.0];
+        let op_small = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Constant(3.0),
+            consume: ConsumeMode::SubtractFromSource,
+            targets: vec![(1, 0)],
+        };
+        session.upload_values(&values);
+        session.upload_ops(std::slice::from_ref(&op_small)).unwrap();
+        session.tick(0).unwrap();
+        values = session.readback_full().unwrap();
+        assert_eq!(values, vec![7.0, 3.0]);
+    }
+
+    #[test]
+    fn upload_ops_rejects_duplicate_target_in_same_band() {
+        let ops = vec![
+            AccumulatorOp {
+                source: SourceSpec::Constant(1.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::OrderBand(0),
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(1, 0)],
+            },
+            AccumulatorOp {
+                source: SourceSpec::Constant(2.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::OrderBand(0),
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(1, 0)],
+            },
+        ];
+        let mut session = gpu_session(4, 1);
+        let err = session.upload_ops(&ops).unwrap_err();
+        assert!(matches!(
+            err,
+            AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
+                band: 0,
+                slot: 1,
+                col: 0
+            })
+        ));
+    }
+
+    #[test]
+    fn upload_ops_rejects_duplicate_source_consume_in_same_band() {
+        let ops = vec![
+            AccumulatorOp {
+                source: SourceSpec::SlotValue { slot: 0, col: 0 },
+                combine: CombineFn::Identity,
+                gate: GateSpec::OrderBand(0),
+                scale: ScaleSpec::Constant(1.0),
+                consume: ConsumeMode::SubtractFromSource,
+                targets: vec![(1, 0)],
+            },
+            AccumulatorOp {
+                source: SourceSpec::SlotValue { slot: 0, col: 0 },
+                combine: CombineFn::Identity,
+                gate: GateSpec::OrderBand(0),
+                scale: ScaleSpec::Constant(2.0),
+                consume: ConsumeMode::SubtractFromSource,
+                targets: vec![(2, 0)],
+            },
+        ];
+        let mut session = gpu_session(4, 1);
+        let err = session.upload_ops(&ops).unwrap_err();
+        assert!(matches!(
+            err,
+            AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
+                band: 0,
+                slot: 0,
+                col: 0
+            })
+        ));
+    }
+
+    #[test]
+    fn upload_ops_allows_same_target_in_different_bands() {
+        let ops = vec![
+            AccumulatorOp {
+                source: SourceSpec::Constant(1.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::OrderBand(0),
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(1, 0)],
+            },
+            AccumulatorOp {
+                source: SourceSpec::Constant(2.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::OrderBand(1),
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(1, 0)],
+            },
+        ];
+        let mut session = gpu_session(4, 1);
+        session.upload_ops(&ops).unwrap();
+    }
+
+    #[test]
+    fn b1_readback_emissions_is_empty_without_emit_event_support() {
+        set_debug_readback_allowed(true);
+        let mut session = gpu_session(4, 1);
+        let op = AccumulatorOp {
+            source: SourceSpec::Constant(1.0),
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![(0, 0)],
+        };
+        session.upload_values(&[0.0; 4]);
+        session.upload_ops(std::slice::from_ref(&op)).unwrap();
+        session.tick(0).unwrap();
+        assert!(session.readback_emissions().unwrap().is_empty());
+    }
+
+    #[test]
+    fn b1_rejects_weighted_mean() {
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotRange { start: 0, count: 2 },
+            combine: CombineFn::WeightedMean { weight_col: 1 },
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![(1, 0)],
+        };
+        let mut session = gpu_session(4, 2);
+        assert!(matches!(
+            session.upload_ops(std::slice::from_ref(&op)),
+            Err(AccumulatorOpSessionError::Encode(EncodeError::Unsupported(_)))
+        ));
+    }
+
+    #[test]
+    fn b1_rejects_eval_eml() {
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::EvalEML { tree_id: 1 },
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![(1, 0)],
+        };
+        let mut session = gpu_session(4, 1);
+        assert!(matches!(
+            session.upload_ops(std::slice::from_ref(&op)),
+            Err(AccumulatorOpSessionError::Encode(EncodeError::Unsupported(_)))
+        ));
+    }
+
+    #[test]
+    fn b1_rejects_threshold_gate() {
+        use simthing_core::ThresholdDirection;
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Threshold {
+                value: 1.0,
+                direction: ThresholdDirection::Upward,
+            },
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![(1, 0)],
+        };
+        let mut session = gpu_session(4, 1);
+        assert!(matches!(
+            session.upload_ops(std::slice::from_ref(&op)),
+            Err(AccumulatorOpSessionError::Encode(EncodeError::Unsupported(_)))
+        ));
+    }
+
+    #[test]
+    fn b1_rejects_conjunctive_crossing() {
+        use simthing_core::InputSpec;
+        let op = AccumulatorOp {
+            source: SourceSpec::ConjunctiveCrossing {
+                inputs: vec![InputSpec {
+                    slot: 0,
+                    col: 0,
+                    unit_cost: 1.0,
+                }],
+            },
+            combine: CombineFn::MinAcrossInputs,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::SubtractFromAllInputs,
+            targets: vec![(1, 0)],
+        };
+        let mut session = gpu_session(4, 1);
+        assert!(matches!(
+            session.upload_ops(std::slice::from_ref(&op)),
+            Err(AccumulatorOpSessionError::Encode(EncodeError::Unsupported(_)))
+        ));
     }
 }

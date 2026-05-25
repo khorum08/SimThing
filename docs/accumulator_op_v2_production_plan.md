@@ -167,15 +167,26 @@ reduction), tick once, verify `readback_summary()` produces expected
 checksums. Use the `cpu_oracle` from the workshop crate as the reference.  
 **Acceptance:** CI green. `BoundaryProtocol` untouched.
 
+**Shipped scope (post-hardening):** persistent session + bootstrap non-emitting
+kernel only. Supports non-contended Identity/Sum and clamped SlotValue transfer.
+Rejects duplicate same-band writes/consumes at upload. `SlotSummary` is
+checksum-only and **provisional pending B-4** — not the production readback
+contract.
+
 ---
 
 ### PR B-2 — Pass B WGSL kernel: Identity, Sum, Transfer, EmitEvent
 
 **Model:** Composer 2.5  
-**Scope:** The first production version of `accumulator_op.wgsl` with four
-combine functions: `Identity`, `Sum`, `Transfer` (single-source gather +
-`SubtractFromSource`), `EmitEvent` (threshold gate + atomic counter write to
-emission buffer).
+**Scope:** Expand the bootstrap `accumulator_op.wgsl` into the first production
+Pass B kernel with four combine functions: `Identity`, `Sum`, `Transfer`
+(single-source gather + `SubtractFromSource`), `EmitEvent` (threshold gate +
+atomic counter write to emission buffer).
+
+B-1 shipped the persistent session and a **bootstrap** subset. B-2 owns:
+`EmitEvent`, `emission_count` atomic increments, emission capacity handling,
+broader combine/gate support required by first migration, and stronger parity
+against current pass families.
 
 Atomic f32 helpers MUST be copied verbatim from
 `crates/simthing-workshop/src/eml_phase5.wgsl`. Do not rewrite.
