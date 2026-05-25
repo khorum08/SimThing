@@ -241,7 +241,7 @@ impl AccumulatorOpSession {
         let summary_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("accumulator_summary_layout"),
             entries: &[
-                storage_entry(0, true),
+                storage_entry(0, false),
                 storage_entry(1, false),
                 uniform_entry(2),
             ],
@@ -1375,6 +1375,58 @@ mod tests {
         session.tick(&ctx, 0).unwrap();
         let values = session.readback_full(&ctx).unwrap();
         assert_eq!(values[0], 3.0);
+    }
+
+    #[test]
+    fn summary_checksum_stable_across_two_ticks() {
+        set_debug_readback_allowed(true);
+        let noop = AccumulatorOp {
+            source: SourceSpec::Constant(0.0),
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![(0, 0)],
+        };
+        let (ctx, mut session) = gpu_session(2, 1);
+        session.upload_values(&ctx, &[10.0, 20.0]);
+        session.upload_ops(&ctx, std::slice::from_ref(&noop)).unwrap();
+        session.tick(&ctx, 0).unwrap();
+        let first = session.readback_summary(&ctx).unwrap();
+        session.tick(&ctx, 0).unwrap();
+        let second = session.readback_summary(&ctx).unwrap();
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn summary_checksum_changes_when_values_change() {
+        set_debug_readback_allowed(true);
+        let noop = AccumulatorOp {
+            source: SourceSpec::Constant(0.0),
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![(0, 0)],
+        };
+        let (ctx, mut session) = gpu_session(1, 1);
+        session.upload_values(&ctx, &[10.0]);
+        session.upload_ops(&ctx, std::slice::from_ref(&noop)).unwrap();
+        session.tick(&ctx, 0).unwrap();
+        let pre = session.readback_summary(&ctx).unwrap()[0].checksum;
+
+        let add_op = AccumulatorOp {
+            source: SourceSpec::Constant(5.0),
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![(0, 0)],
+        };
+        session.upload_ops(&ctx, std::slice::from_ref(&add_op)).unwrap();
+        session.tick(&ctx, 0).unwrap();
+        let post = session.readback_summary(&ctx).unwrap()[0].checksum;
+        assert_ne!(pre, post);
     }
 
     #[test]

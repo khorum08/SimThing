@@ -169,7 +169,7 @@ pub fn slot_checksum(values: &[f32], slot: u32, n_dims: u32) -> u32 {
     let base = slot as usize * n_dims as usize;
     let mut checksum = 0u32;
     for col in 0..n_dims as usize {
-        checksum = checksum.wrapping_add(values[base + col].to_bits());
+        checksum ^= values[base + col].to_bits();
     }
     checksum
 }
