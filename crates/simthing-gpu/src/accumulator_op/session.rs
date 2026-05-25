@@ -20,8 +20,8 @@ use super::encode::{threshold_registrations_to_ops, EncodeError};
 use super::types::AccumulatorOpGpu;
 use super::types::{
     AccumulatorSummaryParams, AccumulatorTickParams, EmissionRecord, EmissionRecordGpu,
-    SlotSummary, SlotSummaryGpu, ThresholdEmission, ThresholdEmissionGpu,
-    DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+    EmlNodeGpu, EmlTreeRangeGpu, SlotSummary, SlotSummaryGpu, ThresholdEmission,
+    ThresholdEmissionGpu, DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 
 pub const WORKGROUP_SIZE: u32 = 64;
@@ -66,6 +66,9 @@ pub struct AccumulatorOpSession {
 
     tick_uniform: Buffer,
     summary_uniform: Buffer,
+
+    eml_node_buffer: Buffer,
+    eml_range_buffer: Buffer,
 
     execute_layout: BindGroupLayout,
     execute_pipeline: ComputePipeline,
@@ -226,6 +229,8 @@ impl AccumulatorOpSession {
             mapped_at_creation: false,
         });
 
+        let (eml_node_buffer, eml_range_buffer) = mk_dummy_eml_buffers(device);
+
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("accumulator_op"),
             source: ShaderSource::Wgsl(include_str!("../shaders/accumulator_op.wgsl").into()),
@@ -242,6 +247,8 @@ impl AccumulatorOpSession {
                 storage_entry(5, true),
                 storage_entry(6, false),
                 storage_entry(7, false),
+                storage_entry(8, true),
+                storage_entry(9, true),
             ],
         });
 
@@ -320,6 +327,8 @@ impl AccumulatorOpSession {
             threshold_emission_count,
             tick_uniform,
             summary_uniform,
+            eml_node_buffer,
+            eml_range_buffer,
             execute_layout,
             execute_pipeline,
             summary_layout,
@@ -384,14 +393,37 @@ impl AccumulatorOpSession {
         );
     }
 
+    /// Bind persistent EML program-table buffers (or leave session dummies when unset).
+    pub fn set_eml_buffers(&mut self, node_buffer: Buffer, range_buffer: Buffer) {
+        self.eml_node_buffer = node_buffer;
+        self.eml_range_buffer = range_buffer;
+    }
+
+    fn resolve_eml_buffers<'a>(
+        &'a self,
+        eml: Option<(&'a Buffer, &'a Buffer)>,
+    ) -> (&'a Buffer, &'a Buffer) {
+        eml.unwrap_or((&self.eml_node_buffer, &self.eml_range_buffer))
+    }
+
     /// Upload AccumulatorOp registrations after bootstrap subset + contention validation.
     pub fn upload_ops(
         &mut self,
         ctx: &GpuContext,
         ops: &[AccumulatorOp],
     ) -> Result<(), AccumulatorOpSessionError> {
+        self.upload_ops_with_eml(ctx, ops, None)
+    }
+
+    /// Upload ops, resolving `EvalEML` via an uploaded [`EmlExpressionRegistry`].
+    pub fn upload_ops_with_eml(
+        &mut self,
+        ctx: &GpuContext,
+        ops: &[AccumulatorOp],
+        eml: Option<&simthing_core::EmlExpressionRegistry>,
+    ) -> Result<(), AccumulatorOpSessionError> {
         self.threshold_event_kinds.clear();
-        let gpu_ops = AccumulatorOpGpu::encode_bootstrap_set(ops)?;
+        let gpu_ops = AccumulatorOpGpu::encode_bootstrap_set_with_eml(ops, eml)?;
 
         let byte_len = gpu_ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
         if self.op_buffer.size() < byte_len as u64 {
@@ -536,6 +568,16 @@ impl AccumulatorOpSession {
 
     /// Dispatch Pass B for one OrderBand, then refresh per-slot summaries.
     pub fn tick(&mut self, ctx: &GpuContext, band: u32) -> Result<(), AccumulatorOpSessionError> {
+        self.tick_with_eml(ctx, band, None)
+    }
+
+    /// Dispatch with optional external EML program-table buffer bindings.
+    pub fn tick_with_eml(
+        &mut self,
+        ctx: &GpuContext,
+        band: u32,
+        eml: Option<(&Buffer, &Buffer)>,
+    ) -> Result<(), AccumulatorOpSessionError> {
         if self.n_ops == 0 {
             return Err(AccumulatorOpSessionError::NoOps);
         }
@@ -545,8 +587,12 @@ impl AccumulatorOpSession {
         self.last_pass_time_us = None;
         self.write_tick_uniform(ctx, band);
 
-        let execute_bind_group =
-            self.create_execute_bind_group(ctx, &self.values_buffer, &self.previous_values_buffer);
+        let execute_bind_group = self.create_execute_bind_group(
+            ctx,
+            &self.values_buffer,
+            &self.previous_values_buffer,
+            eml,
+        );
 
         let mut encoder = ctx
             .device
@@ -641,7 +687,7 @@ impl AccumulatorOpSession {
         }
         self.last_pass_time_us = None;
 
-        let execute_bind_group = self.create_execute_bind_group(ctx, values, previous_values);
+        let execute_bind_group = self.create_execute_bind_group(ctx, values, previous_values, None);
 
         let timestamp_writes =
             self.timestamp_query_set
@@ -696,7 +742,7 @@ impl AccumulatorOpSession {
         }
         self.last_pass_time_us = None;
 
-        let execute_bind_group = self.create_execute_bind_group(ctx, values, previous_values);
+        let execute_bind_group = self.create_execute_bind_group(ctx, values, previous_values, None);
 
         let timestamp_writes =
             self.timestamp_query_set
@@ -799,6 +845,7 @@ impl AccumulatorOpSession {
                 values,
                 previous_values,
                 &tick_uniform,
+                None,
             );
             band_uniforms.push(tick_uniform);
 
@@ -867,6 +914,7 @@ impl AccumulatorOpSession {
             output_vectors,
             &self.previous_values_buffer,
             &tick_uniform,
+            None,
         );
 
         let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
@@ -916,6 +964,7 @@ impl AccumulatorOpSession {
             values,
             previous_values,
             &tick_uniform,
+            None,
         );
 
         let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
@@ -948,12 +997,14 @@ impl AccumulatorOpSession {
         ctx: &GpuContext,
         values: &Buffer,
         previous_values: &Buffer,
+        eml: Option<(&Buffer, &Buffer)>,
     ) -> wgpu::BindGroup {
         self.create_execute_bind_group_with_uniform(
             ctx,
             values,
             previous_values,
             &self.tick_uniform,
+            eml,
         )
     }
 
@@ -963,7 +1014,9 @@ impl AccumulatorOpSession {
         values: &Buffer,
         previous_values: &Buffer,
         tick_uniform: &Buffer,
+        eml: Option<(&Buffer, &Buffer)>,
     ) -> wgpu::BindGroup {
+        let (eml_nodes, eml_ranges) = self.resolve_eml_buffers(eml);
         ctx.device.create_bind_group(&BindGroupDescriptor {
             label: Some("accumulator_execute_bg"),
             layout: &self.execute_layout,
@@ -999,6 +1052,14 @@ impl AccumulatorOpSession {
                 BindGroupEntry {
                     binding: 7,
                     resource: self.threshold_emission_count.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 8,
+                    resource: eml_nodes.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 9,
+                    resource: eml_ranges.as_entire_binding(),
                 },
             ],
         })
@@ -1296,6 +1357,32 @@ fn uniform_entry(binding: u32) -> BindGroupLayoutEntry {
         },
         count: None,
     }
+}
+
+fn mk_dummy_eml_buffers(device: &wgpu::Device) -> (Buffer, Buffer) {
+    let node = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("eml_dummy_node"),
+        contents: bytemuck::bytes_of(&EmlNodeGpu {
+            opcode: 0,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        }),
+        usage: BufferUsages::STORAGE,
+    });
+    let range = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("eml_dummy_range"),
+        contents: bytemuck::bytes_of(&EmlTreeRangeGpu {
+            node_offset: 0,
+            node_count: 0,
+            execution_class: 0,
+            flags: 0,
+        }),
+        usage: BufferUsages::STORAGE,
+    });
+    (node, range)
 }
 
 #[cfg(test)]
@@ -1910,16 +1997,84 @@ mod tests {
 
     #[test]
     fn b2_encodes_eval_eml_stub() {
+        use simthing_core::{
+            eml_opcode, EmlConsumerKind, EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry,
+            EmlFormulaMeta, EmlNodeGpu, EmlTreeId,
+        };
+
         let op = AccumulatorOp {
             source: SourceSpec::SlotValue { slot: 0, col: 0 },
             combine: CombineFn::EvalEML { tree_id: 1 },
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
-            consume: ConsumeMode::None,
+            consume: ConsumeMode::ResetTarget,
             targets: vec![(1, 0)],
         };
         let (ctx, mut session) = gpu_session(4, 1);
-        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+
+        let err = session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap_err();
+        assert!(matches!(
+            err,
+            AccumulatorOpSessionError::Encode(EncodeError::EmlTreeNotUploaded { .. })
+        ));
+
+        let mut registry = EmlExpressionRegistry::new();
+        let tree_id = EmlTreeId(1);
+        registry
+            .register_formula(
+                tree_id,
+                EmlFormulaMeta {
+                    tree_id,
+                    execution_class: EmlExecutionClass::ExactDeterministic,
+                    allowed_consumers: EmlConsumerMask::from_kind(EmlConsumerKind::DebugOracle),
+                    max_abs_error: None,
+                    deterministic_gpu: true,
+                    requires_guard_for_hard_threshold: false,
+                    node_count: 3,
+                    max_stack_depth: 1,
+                    has_loops: false,
+                    has_recursion: false,
+                    display_name: "add2_3".into(),
+                },
+                vec![
+                    EmlNodeGpu {
+                        opcode: eml_opcode::LITERAL_F32,
+                        flags: 0,
+                        a: 2.0f32.to_bits(),
+                        b: 0,
+                        c: 0,
+                        d: 0,
+                    },
+                    EmlNodeGpu {
+                        opcode: eml_opcode::LITERAL_F32,
+                        flags: 0,
+                        a: 3.0f32.to_bits(),
+                        b: 0,
+                        c: 0,
+                        d: 0,
+                    },
+                    EmlNodeGpu {
+                        opcode: eml_opcode::ADD,
+                        flags: 0,
+                        a: 0,
+                        b: 0,
+                        c: 0,
+                        d: 0,
+                    },
+                ],
+            )
+            .unwrap();
+        registry.mark_tree_uploaded(tree_id, 0, 1).unwrap();
+
+        let mut table = crate::EmlGpuProgramTable::new(&ctx, 32, 8);
+        let trees = registry
+            .formulas_for_gpu_upload()
+            .map(|(id, meta, nodes)| (id, meta.clone(), nodes.to_vec()))
+            .collect::<Vec<_>>();
+        table.upload_trees(&ctx, &trees).unwrap();
+        session
+            .upload_ops_with_eml(&ctx, std::slice::from_ref(&op), Some(&registry))
+            .unwrap();
     }
 
     #[test]

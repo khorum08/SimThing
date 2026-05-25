@@ -6,6 +6,11 @@
 
 use crate::{OverlayDelta, SlotDeltaRange, ThresholdRegistration};
 
+use simthing_core::EmlExpressionRegistry;
+
+use super::eml_program_table::{
+    EmlGpuProgramTable, EmlUploadError, DEFAULT_EML_NODE_CAPACITY, DEFAULT_EML_TREE_CAPACITY,
+};
 use super::session::{AccumulatorOpSession, AccumulatorOpSessionError};
 use super::types::AccumulatorOpGpu;
 use super::world_summary::WorldSummaryRuntime;
@@ -98,6 +103,11 @@ pub struct WorldAccumulatorRuntime {
     velocity_session: Option<AccumulatorOpSession>,
     pub summary: Option<WorldSummaryRuntime>,
     pub overlay_compile_cache: Option<OverlayCompileCache>,
+
+    /// C-8a persistent GPU EML program table (shared across sessions).
+    pub eml: Option<EmlGpuProgramTable>,
+    /// Authoritative EML formula registry; uploaded at boundary sync when enabled.
+    pub eml_registry: EmlExpressionRegistry,
 }
 
 impl WorldAccumulatorRuntime {
@@ -146,7 +156,62 @@ impl WorldAccumulatorRuntime {
             velocity_session: None,
             summary: None,
             overlay_compile_cache: None,
+            eml: None,
+            eml_registry: EmlExpressionRegistry::new(),
         }
+    }
+
+    fn bind_eml_if_present(&self, _session: &mut AccumulatorOpSession) {
+        // Sessions bind dummy EML buffers by default; production dispatches pass
+        // `WorldAccumulatorRuntime::eml_bind_buffers()` into encode/tick helpers.
+    }
+
+    pub fn eml_bind_buffers(&self) -> Option<(&wgpu::Buffer, &wgpu::Buffer)> {
+        self.eml
+            .as_ref()
+            .map(|t| (&t.node_buffer, &t.range_buffer))
+    }
+
+    pub fn apply_eml_bindings_to_sessions(&mut self) {
+        let _ = self.eml_bind_buffers();
+    }
+
+    pub fn ensure_eml_program_table(&mut self, ctx: &GpuContext) {
+        if self.eml.is_none() {
+            self.eml = Some(EmlGpuProgramTable::new(
+                ctx,
+                DEFAULT_EML_NODE_CAPACITY,
+                DEFAULT_EML_TREE_CAPACITY,
+            ));
+        }
+    }
+
+    pub fn clear_eml_program_table(&mut self) {
+        self.eml = None;
+    }
+
+    pub fn eml_generation(&self) -> u64 {
+        self.eml.as_ref().map(|t| t.generation).unwrap_or(0)
+    }
+
+    pub fn upload_eml_trees(&mut self, ctx: &GpuContext) -> Result<(), EmlUploadError> {
+        self.ensure_eml_program_table(ctx);
+        let trees: Vec<_> = self
+            .eml_registry
+            .formulas_for_gpu_upload()
+            .map(|(id, meta, nodes)| (id, meta.clone(), nodes.to_vec()))
+            .collect();
+        let mut trees = trees;
+        trees.sort_by_key(|(id, _, _)| id.0);
+        let table = self.eml.as_mut().expect("eml table");
+        let mapping = table.upload_trees(ctx, &trees)?;
+        for (tree_id, range_index) in mapping {
+            self.eml_registry
+                .mark_tree_uploaded(tree_id, range_index, table.generation)
+                .expect("mark_tree_uploaded after GPU upload");
+        }
+        self.apply_eml_bindings_to_sessions();
+        Ok(())
     }
 
     pub fn take_intent_session(&mut self) -> Option<AccumulatorOpSession> {
@@ -265,12 +330,14 @@ impl WorldAccumulatorRuntime {
         emission_capacity: u32,
     ) {
         if self.intent_session.is_none() {
-            self.intent_session = Some(AccumulatorOpSession::new_attached(
+            let mut session = AccumulatorOpSession::new_attached(
                 ctx,
                 n_slots,
                 n_dims,
                 emission_capacity,
-            ));
+            );
+            self.bind_eml_if_present(&mut session);
+            self.intent_session = Some(session);
         }
         self.intent_ops = OpSetHandle {
             family: OperationFamily::Intent,
@@ -288,12 +355,14 @@ impl WorldAccumulatorRuntime {
         emission_capacity: u32,
     ) {
         if self.threshold_session.is_none() {
-            self.threshold_session = Some(AccumulatorOpSession::new_attached(
+            let mut session = AccumulatorOpSession::new_attached(
                 ctx,
                 n_slots,
                 n_dims,
                 emission_capacity,
-            ));
+            );
+            self.bind_eml_if_present(&mut session);
+            self.threshold_session = Some(session);
         }
         self.threshold_ops = OpSetHandle {
             family: OperationFamily::Threshold,
@@ -311,12 +380,14 @@ impl WorldAccumulatorRuntime {
         emission_capacity: u32,
     ) {
         if self.overlay_session.is_none() {
-            self.overlay_session = Some(AccumulatorOpSession::new_attached(
+            let mut session = AccumulatorOpSession::new_attached(
                 ctx,
                 n_slots,
                 n_dims,
                 emission_capacity,
-            ));
+            );
+            self.bind_eml_if_present(&mut session);
+            self.overlay_session = Some(session);
         }
     }
 
@@ -373,12 +444,14 @@ impl WorldAccumulatorRuntime {
         output_vectors: &wgpu::Buffer,
     ) {
         if self.reduction_soft_session.is_none() {
-            self.reduction_soft_session = Some(AccumulatorOpSession::new_attached_for_external_values(
+            let mut session = AccumulatorOpSession::new_attached_for_external_values(
                 ctx,
                 n_slots,
                 n_dims,
                 output_vectors,
-            ));
+            );
+            self.bind_eml_if_present(&mut session);
+            self.reduction_soft_session = Some(session);
         }
     }
 
@@ -404,12 +477,14 @@ impl WorldAccumulatorRuntime {
         emission_capacity: u32,
     ) {
         if self.velocity_session.is_none() {
-            self.velocity_session = Some(AccumulatorOpSession::new_attached(
+            let mut session = AccumulatorOpSession::new_attached(
                 ctx,
                 n_slots,
                 n_dims,
                 emission_capacity,
-            ));
+            );
+            self.bind_eml_if_present(&mut session);
+            self.velocity_session = Some(session);
         }
     }
 

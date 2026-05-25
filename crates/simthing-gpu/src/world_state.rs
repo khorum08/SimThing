@@ -724,6 +724,33 @@ impl WorldGpuState {
         }
     }
 
+    /// Mutable access to the world EML formula registry (C-8a).
+    pub fn eml_registry_mut(&mut self) -> &mut simthing_core::EmlExpressionRegistry {
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        &mut self.accumulator_runtime.as_mut().unwrap().eml_registry
+    }
+
+    /// Upload registered EML trees to the persistent GPU program table.
+    pub fn sync_eml_program_table(&mut self) -> Result<(), crate::EmlUploadError> {
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            runtime.upload_eml_trees(&self.ctx)
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn eml_generation(&self) -> u64 {
+        self.accumulator_runtime
+            .as_ref()
+            .map(|r| r.eml_generation())
+            .unwrap_or(0)
+    }
+
     /// Reallocate every layout-dependent buffer after the registry grows.
     /// Values are uploaded by the boundary sync immediately after this call.
     pub fn rebuild_for_registry(&mut self, registry: &DimensionRegistry) {

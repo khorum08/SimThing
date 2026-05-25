@@ -17,11 +17,13 @@ pub mod velocity_accumulator;
 pub mod world_state;
 
 pub use accumulator_op::{
-    execute_ops_cpu, set_debug_readback_allowed, summaries_from_values,
+    eval_eml_cpu, execute_ops_cpu, set_debug_readback_allowed, summaries_from_values,
     threshold_registrations_to_ops, AccumulatorOpGpu, AccumulatorOpSession,
-    AccumulatorOpSessionError, EmissionRecord, ExactnessClass, LegacyOracleFamily, OpSetHandle,
-    OperationFamily, OverlayCompileCache, SlotSummary, ThresholdEmission, ThresholdEmissionGpu,
-    WorldAccumulatorRuntime, WorldSummaryRuntime, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+    AccumulatorOpSessionError, EmissionRecord, EmlGpuProgramTable, EmlTreeRangeGpu,
+    EmlUploadError, ExactnessClass, LegacyOracleFamily, OpSetHandle, OperationFamily,
+    OverlayCompileCache, SlotSummary, ThresholdEmission, ThresholdEmissionGpu,
+    WorldAccumulatorRuntime, WorldSummaryRuntime, DEFAULT_EML_NODE_CAPACITY,
+    DEFAULT_EML_TREE_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 pub use context::{GpuContext, GpuInitError};
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};

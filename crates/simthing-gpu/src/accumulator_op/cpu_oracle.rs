@@ -1,12 +1,135 @@
 //! CPU reference executor for Pass B ops (B-2 parity tests).
 
 use simthing_core::{
-    AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
+    eml_opcode, AccumulatorOp, CombineFn, ConsumeMode, EmlNodeGpu, GateSpec, ScaleSpec, SourceSpec,
+    ThresholdDirection,
 };
 
 use crate::world_state::IntentDelta;
 
 use super::types::{EmissionRecord, ThresholdEmission};
+
+/// Test-only CPU mirror of the WGSL `eml_eval` stack machine (ExactDeterministic opcodes).
+pub fn eval_eml_cpu(
+    nodes: &[EmlNodeGpu],
+    eval_slot: u32,
+    values: &[f32],
+    n_dims: u32,
+    params: [f32; 4],
+) -> f32 {
+    let mut stack = [0.0f32; 16];
+    let mut sp: usize = 0;
+
+    for node in nodes {
+        match node.opcode {
+            eml_opcode::LITERAL_F32 => {
+                stack[sp] = f32::from_bits(node.a);
+                sp += 1;
+            }
+            eml_opcode::SLOT_VALUE => {
+                let i = idx(eval_slot, node.a, n_dims);
+                stack[sp] = values[i];
+                sp += 1;
+            }
+            eml_opcode::PARAM => {
+                stack[sp] = params[node.a as usize];
+                sp += 1;
+            }
+            eml_opcode::ADD => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = lhs + rhs;
+                sp -= 1;
+            }
+            eml_opcode::SUB => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = lhs - rhs;
+                sp -= 1;
+            }
+            eml_opcode::MUL => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = lhs * rhs;
+                sp -= 1;
+            }
+            eml_opcode::NEG => {
+                stack[sp - 1] = -stack[sp - 1];
+            }
+            eml_opcode::DIV => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = lhs / rhs;
+                sp -= 1;
+            }
+            eml_opcode::MIN => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = lhs.min(rhs);
+                sp -= 1;
+            }
+            eml_opcode::MAX => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = lhs.max(rhs);
+                sp -= 1;
+            }
+            eml_opcode::CLAMP_BOUNDED => {
+                let v = stack[sp - 1];
+                stack[sp - 1] = v.clamp(f32::from_bits(node.a), f32::from_bits(node.b));
+            }
+            eml_opcode::CLAMP_FLOORED => {
+                let v = stack[sp - 1];
+                stack[sp - 1] = v.max(f32::from_bits(node.a));
+            }
+            eml_opcode::ABS => {
+                stack[sp - 1] = stack[sp - 1].abs();
+            }
+            eml_opcode::CMP_LT => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = if lhs < rhs { 1.0 } else { 0.0 };
+                sp -= 1;
+            }
+            eml_opcode::CMP_LE => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = if lhs <= rhs { 1.0 } else { 0.0 };
+                sp -= 1;
+            }
+            eml_opcode::CMP_GT => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = if lhs > rhs { 1.0 } else { 0.0 };
+                sp -= 1;
+            }
+            eml_opcode::CMP_GE => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = if lhs >= rhs { 1.0 } else { 0.0 };
+                sp -= 1;
+            }
+            eml_opcode::CMP_EQ => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = if lhs == rhs { 1.0 } else { 0.0 };
+                sp -= 1;
+            }
+            eml_opcode::SELECT => {
+                let f_val = stack[sp - 1];
+                let t_val = stack[sp - 2];
+                let cond = stack[sp - 3] != 0.0;
+                stack[sp - 3] = if cond { t_val } else { f_val };
+                sp -= 2;
+            }
+            eml_opcode::RETURN_TOP => {
+                return stack[sp - 1];
+            }
+            _ => return 0.0,
+        }
+    }
+    stack[sp - 1]
+}
 
 #[derive(Clone, Debug, thiserror::Error, PartialEq)]
 pub enum CpuOracleError {

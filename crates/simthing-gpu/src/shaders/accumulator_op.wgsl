@@ -81,6 +81,7 @@ const COMBINE_MIN: u32 = 4u;
 const COMBINE_WEIGHTED_MEAN: u32 = 5u;
 const COMBINE_AFFINE_INTENT: u32 = 6u;
 const COMBINE_INTEGRATE_CLAMP: u32 = 9u;
+const COMBINE_EVAL_EML: u32 = 12u;
 const COMBINE_FIRST: u32 = 13u;
 
 const CLAMP_BOUNDED: u32 = 0u;
@@ -114,6 +115,187 @@ const DIR_EITHER: u32 = 2u;
 @group(0) @binding(5) var<storage, read> previous_values: array<f32>;
 @group(0) @binding(6) var<storage, read_write> threshold_emissions: array<ThresholdEmissionGpu>;
 @group(0) @binding(7) var<storage, read_write> threshold_emission_count: atomic<u32>;
+@group(0) @binding(8) var<storage, read> eml_nodes: array<EmlNodeGpu>;
+@group(0) @binding(9) var<storage, read> eml_tree_ranges: array<EmlTreeRangeGpu>;
+
+struct EmlNodeGpu {
+    opcode: u32,
+    flags: u32,
+    a: u32,
+    b: u32,
+    c: u32,
+    d: u32,
+}
+
+struct EmlTreeRangeGpu {
+    node_offset: u32,
+    node_count: u32,
+    execution_class: u32,
+    flags: u32,
+}
+
+struct EmlEvalCtx {
+    range_idx: u32,
+    eval_slot: u32,
+    param0: f32,
+    param1: f32,
+    param2: f32,
+    param3: f32,
+}
+
+const EML_OP_LITERAL_F32: u32 = 0u;
+const EML_OP_SLOT_VALUE: u32 = 1u;
+const EML_OP_PARAM: u32 = 2u;
+const EML_OP_ADD: u32 = 10u;
+const EML_OP_SUB: u32 = 11u;
+const EML_OP_MUL: u32 = 12u;
+const EML_OP_NEG: u32 = 13u;
+const EML_OP_DIV: u32 = 14u;
+const EML_OP_MIN: u32 = 20u;
+const EML_OP_MAX: u32 = 21u;
+const EML_OP_CLAMP_BOUNDED: u32 = 22u;
+const EML_OP_CLAMP_FLOORED: u32 = 23u;
+const EML_OP_ABS: u32 = 24u;
+const EML_OP_CMP_LT: u32 = 30u;
+const EML_OP_CMP_LE: u32 = 31u;
+const EML_OP_CMP_GT: u32 = 32u;
+const EML_OP_CMP_GE: u32 = 33u;
+const EML_OP_CMP_EQ: u32 = 34u;
+const EML_OP_SELECT: u32 = 40u;
+const EML_OP_RETURN_TOP: u32 = 50u;
+
+const EML_STACK_MAX: u32 = 16u;
+
+fn eml_param(ctx: EmlEvalCtx, idx: u32) -> f32 {
+    if (idx == 0u) {
+        return ctx.param0;
+    }
+    if (idx == 1u) {
+        return ctx.param1;
+    }
+    if (idx == 2u) {
+        return ctx.param2;
+    }
+    return ctx.param3;
+}
+
+fn eml_eval(ctx: EmlEvalCtx) -> f32 {
+    let range = eml_tree_ranges[ctx.range_idx];
+    var stack: array<f32, 16>;
+    var sp: u32 = 0u;
+
+    for (var i: u32 = 0u; i < range.node_count; i = i + 1u) {
+        let node = eml_nodes[range.node_offset + i];
+        switch node.opcode {
+            case EML_OP_LITERAL_F32: {
+                stack[sp] = bitcast<f32>(node.a);
+                sp = sp + 1u;
+            }
+            case EML_OP_SLOT_VALUE: {
+                stack[sp] = atomic_read_f32_at(linear_idx(ctx.eval_slot, node.a));
+                sp = sp + 1u;
+            }
+            case EML_OP_PARAM: {
+                stack[sp] = eml_param(ctx, node.a);
+                sp = sp + 1u;
+            }
+            case EML_OP_ADD: {
+                let rhs = stack[sp - 1u];
+                let lhs = stack[sp - 2u];
+                stack[sp - 2u] = lhs + rhs;
+                sp = sp - 1u;
+            }
+            case EML_OP_SUB: {
+                let rhs = stack[sp - 1u];
+                let lhs = stack[sp - 2u];
+                stack[sp - 2u] = lhs - rhs;
+                sp = sp - 1u;
+            }
+            case EML_OP_MUL: {
+                let rhs = stack[sp - 1u];
+                let lhs = stack[sp - 2u];
+                stack[sp - 2u] = lhs * rhs;
+                sp = sp - 1u;
+            }
+            case EML_OP_NEG: {
+                stack[sp - 1u] = -stack[sp - 1u];
+            }
+            case EML_OP_DIV: {
+                let rhs = stack[sp - 1u];
+                let lhs = stack[sp - 2u];
+                stack[sp - 2u] = lhs / rhs;
+                sp = sp - 1u;
+            }
+            case EML_OP_MIN: {
+                let rhs = stack[sp - 1u];
+                let lhs = stack[sp - 2u];
+                stack[sp - 2u] = min(lhs, rhs);
+                sp = sp - 1u;
+            }
+            case EML_OP_MAX: {
+                let rhs = stack[sp - 1u];
+                let lhs = stack[sp - 2u];
+                stack[sp - 2u] = max(lhs, rhs);
+                sp = sp - 1u;
+            }
+            case EML_OP_CLAMP_BOUNDED: {
+                let v = stack[sp - 1u];
+                stack[sp - 1u] = clamp(v, bitcast<f32>(node.a), bitcast<f32>(node.b));
+            }
+            case EML_OP_CLAMP_FLOORED: {
+                let v = stack[sp - 1u];
+                stack[sp - 1u] = max(v, bitcast<f32>(node.a));
+            }
+            case EML_OP_ABS: {
+                stack[sp - 1u] = abs(stack[sp - 1u]);
+            }
+            case EML_OP_CMP_LT: {
+                let rhs = stack[sp - 1u];
+                let lhs = stack[sp - 2u];
+                stack[sp - 2u] = select(0.0, 1.0, lhs < rhs);
+                sp = sp - 1u;
+            }
+            case EML_OP_CMP_LE: {
+                let rhs = stack[sp - 1u];
+                let lhs = stack[sp - 2u];
+                stack[sp - 2u] = select(0.0, 1.0, lhs <= rhs);
+                sp = sp - 1u;
+            }
+            case EML_OP_CMP_GT: {
+                let rhs = stack[sp - 1u];
+                let lhs = stack[sp - 2u];
+                stack[sp - 2u] = select(0.0, 1.0, lhs > rhs);
+                sp = sp - 1u;
+            }
+            case EML_OP_CMP_GE: {
+                let rhs = stack[sp - 1u];
+                let lhs = stack[sp - 2u];
+                stack[sp - 2u] = select(0.0, 1.0, lhs >= rhs);
+                sp = sp - 1u;
+            }
+            case EML_OP_CMP_EQ: {
+                let rhs = stack[sp - 1u];
+                let lhs = stack[sp - 2u];
+                stack[sp - 2u] = select(0.0, 1.0, lhs == rhs);
+                sp = sp - 1u;
+            }
+            case EML_OP_SELECT: {
+                let f_val = stack[sp - 1u];
+                let t_val = stack[sp - 2u];
+                let cond = stack[sp - 3u] != 0.0;
+                stack[sp - 3u] = select(f_val, t_val, cond);
+                sp = sp - 2u;
+            }
+            case EML_OP_RETURN_TOP: {
+                return stack[sp - 1u];
+            }
+            default: {
+                return 0.0;
+            }
+        }
+    }
+    return stack[sp - 1u];
+}
 
 fn linear_idx(slot: u32, col: u32) -> u32 {
     return slot * tick_params.n_dims + col;
@@ -295,6 +477,18 @@ fn gather_value(op: AccumulatorOpGpu) -> f32 {
             return 0.0;
         }
         return atomic_read_f32_at(linear_idx(op.source_slot, op.source_col));
+    }
+
+    if (op.combine_kind == COMBINE_EVAL_EML) {
+        let ctx = EmlEvalCtx(
+            op.combine_a,
+            op.source_slot,
+            bitcast<f32>(tick_params.dt_bits),
+            0.0,
+            0.0,
+            0.0,
+        );
+        return eml_eval(ctx);
     }
 
     if (op.consume == CONSUME_SUBTRACT_FROM_SOURCE
