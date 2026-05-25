@@ -98,18 +98,20 @@ pub fn sync_gpu_buffers(
             simthing_gpu::plan_overlay_add_accumulator(&deltas, &ranges, state.n_slots);
 
         match plan {
-            simthing_gpu::OverlayAddPlan::AllAdd { ops } => {
+            simthing_gpu::OverlayAddPlan::AllAdd { ops, n_bands } => {
                 state.ensure_overlay_add_accumulator();
                 state
                     .upload_overlay_add_ops(&ops)
                     .expect("overlay Add op upload failed");
                 state.accumulator_overlay_add_active = !ops.is_empty();
+                state.accumulator_overlay_add_bands = n_bands;
 
                 let empty_ranges = vec![simthing_gpu::SlotDeltaRange::default(); state.n_slots as usize];
                 state.upload_overlay_deltas(&[], &empty_ranges);
             }
             simthing_gpu::OverlayAddPlan::FallbackNonAdd => {
                 state.accumulator_overlay_add_active = false;
+                state.accumulator_overlay_add_bands = 0;
                 state
                     .upload_overlay_add_ops(&[])
                     .expect("clear overlay Add ops failed");
@@ -118,6 +120,7 @@ pub fn sync_gpu_buffers(
         }
     } else {
         state.accumulator_overlay_add_active = false;
+        state.accumulator_overlay_add_bands = 0;
         state.upload_overlay_deltas(&deltas, &ranges);
     }
     out.overlay_deltas_uploaded = n_deltas;
