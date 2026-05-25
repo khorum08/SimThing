@@ -435,7 +435,21 @@ C-1/C-2/C-3 parity green; flags remain default false.
 
 ### ⚠️ PR C-4 — Opus review: Overlay Multiply/Set and OrderBand compiler design
 
-**Model:** Opus (design), Composer 2.5 (implementation)  
+**Design half status:** **Accepted** — see
+[`docs/workshop/c4_overlay_orderband_compiler_design.md`](workshop/c4_overlay_orderband_compiler_design.md).
+Selected: reuse `build_overlay_deltas` unchanged; new
+`plan_overlay_orderband` extends the C-3 per-cell band pattern to mixed
+Add/Mul/Set; two-tier cache (revision counter on `BoundaryProtocol` +
+bytewise equality check on the cached `(deltas, ranges)`); new
+`ConsumeMode::AddToTarget` plus shader-side `ScaleTarget` / `ResetTarget`
+make the (combine, consume) mapping clean. C-3's `(Identity, None)` ≡
+add hack is replaced by `(Identity, AddToTarget)`. The implementation PR
+(Codex 5.5 mechanical) lands separately per §8/§9 of the memo.
+
+**Implementer:** **Codex 5.5** (was previously listed as Composer 2.5;
+the memo specifies enough detail that Codex can execute mechanically).
+
+**Model:** Opus (design), Codex 5.5 (implementation)  
 **Why Opus:** The workshop overlay order-band test showed the conservative
 indexed-range compiler is semantically correct but has a performance cliff
 under high overlay density (density=1.0: 0.56× in run 1, 1.2–1.3× in runs
