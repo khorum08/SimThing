@@ -1,12 +1,14 @@
 pub mod eml_phase5;
 pub mod multitarget_replay;
 pub mod overlay_order;
+pub mod persistent_bench;
 pub mod transfer_contention;
 pub mod weighted_mean;
 pub mod weighted_mean_perf;
 mod report;
 mod multitarget_replay_report;
 mod overlay_order_report;
+mod persistent_bench_report;
 mod transfer_contention_report;
 mod weighted_mean_report;
 mod weighted_mean_perf_report;
