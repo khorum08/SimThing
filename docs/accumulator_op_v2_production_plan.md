@@ -5,8 +5,9 @@
 > calendar quarters; they are completion-gated sequences. A phase does not
 > begin until all PRs in the prior phase are green and merged.
 >
-> **Pivot posture (2026-05-25):** AccumulatorOp v2 is the production direction.
+> **Pivot posture (2026-05-19):** AccumulatorOp v2 is the production direction.
 > Legacy GPU passes are oracle/fallback only until S-phase deletion. See
+> [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md) and
 > [`docs/workshop/pivot_forward_implementation_policy.md`](workshop/pivot_forward_implementation_policy.md).
 
 ---

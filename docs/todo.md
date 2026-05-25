@@ -4,7 +4,9 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98),
 **C-2** (#99–#100), **C-3** (#105–#107), **pivot-forward policy + B-4I** (#108),
 **C-INF runtime/oracle** (#109), and **pivot-forward remedial** (#111) landed.
-`master` @ **`0e7854c`** (PR #112 doc sync; code @ PR #111 authoritative flags + world summary).
+`master` @ **`5331419`**.
+
+**Workshop entry point:** [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md)
 
 **Pivot posture:** AccumulatorOp v2 is the production direction. Legacy GPU passes are
 **oracle/fallback only** until S-phase deletion. See
@@ -128,7 +130,7 @@ written under `target/workshop/` (gitignored).
 
 **Next (workshop, optional):** doc sync with `docs/eml_integration_guidance.md` /
 `docs/workshop/multichannel_accumulator_test_battery.md` gate results; Sonnet D1/D2 modder
-guide & examples per `docs/workshop/simthing_spec_sonnet_opus_handoff.md` (parallel, production docs).
+guide & examples per `docs/workshop/workshop_current_state.md` §3 (parallel, production docs).
 
 **Known risks (remaining):**
 
@@ -554,8 +556,8 @@ FissionTemplate(
 - Workshop index: `docs/workshop/README.md`
 - **Workshop spikes (non-production):** `crates/simthing-workshop/README.md` — EML / WeightedMean gates only
 - Historical worksheet: superseded; see `docs/workshop/simthing_spec_progress_log.md`
-- Source workshop Q&A: `docs/workshop/capability_tree_studio_workshop.md`
-- Historical workshop: `docs/workshop/tech_tree_decisions.md`
+- Source workshop Q&A (archived): `docs/workshop/archive/capability_tree_studio_workshop.md`
+- Historical workshop (archived): `docs/workshop/archive/tech_tree_decisions.md`
 - Agent map: `docs/agents.md`
 
 ### Spec-layer dependency graph (PR 11 complete)
@@ -604,4 +606,4 @@ simthing-studio   ← deferred GUI
 24. `simthing-studio` GUI — tabled.
 25. E0 base economic system — tabled (separate design space).
 26. ~~**Workshop EML Phase 5 + WeightedMean parity spikes**~~ — Done PRs #71–#77; non-production gates only.
-27. Sonnet D1/D2 modder guide & examples — open (see `simthing_spec_sonnet_opus_handoff.md`).
+27. Sonnet D1/D2 modder guide & examples — open (see `workshop/workshop_current_state.md` §3).

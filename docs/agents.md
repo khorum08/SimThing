@@ -3,14 +3,14 @@
 This document is for AI agents picking up work on this project. Read it before touching any code.
 
 **Doc set:** `design_v6.5.md` (current-state synthesis — **read first**) ·
-`design_v6.md` (sim architecture spec) · `workshop/simthing_spec_sonnet_opus_handoff.md` (Sonnet/Opus task split) · `design_v5.md` (v5 historical) ·
+`design_v6.md` (sim architecture spec) · `workshop/workshop_current_state.md` (migration synthesis) · `design_v5.md` (v5 historical) ·
 `design_v4.md` (original blueprint) · `capability_tree_v1.md` (capability-tree
 RON reference) · `workshop/simthing_spec_progress_log.md` (spec-layer PR ledger) ·
 `workshop/README.md` (workshop index) ·
-`workshop/capability_tree_studio_workshop.md` (historical workshop Q&A) ·
-`workshop/tech_tree_decisions.md` (2026-05-21 decisions; superseded) ·
+`workshop/archive/capability_tree_studio_workshop.md` (archived workshop Q&A) ·
+`workshop/archive/tech_tree_decisions.md` (archived; superseded) ·
 `state-authority.md` · `invariants.md` · `worklog.md` · `todo.md` ·
-`chatgpt_implementation_review.md` · `eml_integration_guidance.md` ·
+`workshop/archive/chatgpt_implementation_review.md` · `eml_integration_guidance.md` ·
 `adr/README.md`.
 
 ---
@@ -35,7 +35,7 @@ Capability/tech-tree authoring is **spec-layer only** — the simulation crates 
 "tech tree" semantics. Authored RON is compiled by the planned **`simthing-spec`** crate
 (RON → runtime artifacts). The eventual **`simthing-studio`** crate is a deferred
 GUI/editor surface that will depend on `simthing-spec`, not replace it. For the pattern read `docs/capability_tree_v1.md` and `docs/workshop/simthing_spec_progress_log.md`;
-`docs/design_v6.5.md` for parking. Historical: `docs/workshop/tech_tree_decisions.md`.
+`docs/design_v6.5.md` for parking. Historical: `docs/workshop/archive/tech_tree_decisions.md`.
 
 - **One type:** `SimThing { properties, overlays, children }`
 - **One mechanism for change:** overlay a `PropertyTransformDelta` on a SimThing
@@ -60,13 +60,14 @@ SimThing/
 │   ├── design_v4.md                   original blueprint (historical reference)
 │   ├── capability_tree_v1.md          capability-tree concept + RON shapes
 │   ├── workshop/simthing_spec_progress_log.md  spec-layer progress (canonical)
-│   ├── workshop/capability_tree_studio_workshop.md  source workshop Q&A
-│   ├── workshop/tech_tree_decisions.md  2026-05-21 workshop (historical)
+│   ├── workshop/workshop_current_state.md  migration synthesis
+│   ├── workshop/archive/capability_tree_studio_workshop.md  archived Q&A
+│   ├── workshop/archive/tech_tree_decisions.md  archived decisions
 │   ├── state-authority.md             tick vs boundary numeric truth
 │   ├── invariants.md                  non-negotiable code rules (read this too)
 │   ├── worklog.md                     session log + next-session pickup
 │   ├── todo.md                        parking todo log (V6 guardrails + B2)
-│   ├── chatgpt_implementation_review.md  perf review + recommended optimizations
+│   ├── workshop/archive/chatgpt_implementation_review.md  archived perf review
 │   └── agents.md                      this file
 └── crates/
     ├── simthing-core/
@@ -578,7 +579,7 @@ for topology-stable active boundaries.
   Progress = GPU property sub-fields; unlock payload = `Suspended` overlay per entry;
   spec layer issues `ActivateOverlay` at boundary when Pass 7 threshold fires.
   Research costs, prereqs, display names, and RON metadata never enter simulation
-  crates. See `capability_tree_v1.md` and `workshop/tech_tree_decisions.md`.
+  crates. See `capability_tree_v1.md` and `workshop/archive/tech_tree_decisions.md`.
 
 ### simthing-sim::fission lineage + fusion scar
 - `FissionLineageRecord { parent_id, child_id, property_id, template_idx }`

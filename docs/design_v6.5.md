@@ -3,11 +3,13 @@
 **Purpose:** Single entry point for **implementation state**, parking, open work, and
 documentation routing. V6.5 does **not** replace `design_v6.md` — that document remains
 the architecture specification for simulation mechanics (overlays, fission, GPU passes,
-boundary protocol). Read V6.5 first when picking up work; read V6 when changing sim behavior.
+boundary protocol). Read V6.5 first when picking up **spec/session** work.
 
-**Last updated:** 2026-05-23  
-**Master HEAD:** `2ff84bf` (PR #69 parking sync)  
-**Verification:** `cargo test --workspace` → **345** passed, **1** ignored, zero warnings.
+**GPU migration state:** [`workshop/workshop_current_state.md`](workshop/workshop_current_state.md)
+
+**Last updated:** 2026-05-19  
+**Master HEAD:** `5331419`  
+**Verification:** `cargo test --workspace` → 430+ passed, 1 ignored perf gate.
 
 ---
 
@@ -121,11 +123,11 @@ simthing-studio   ← deferred GUI
 
 | Document | Role |
 |----------|------|
+| **`workshop/workshop_current_state.md`** | **Workshop + AccumulatorOp migration synthesis** |
 | **`design_v7.md`** | **Active GPU + economic spec (supersedes v6 §10)** |
 | **This file** | Session parking synthesis (spec/driver layer) |
-| `workshop/simthing_spec_sonnet_opus_handoff.md` | Sonnet vs Opus task split |
 | `todo.md` | Priority table |
-| `worklog.md` | O2, B3, I1 landing notes |
+| `worklog.md` | Session landing notes |
 | `accumulator_op_v2_production_plan.md` | AccumulatorOp v2 PR ladder (33 PRs) |
 
 ### ADRs (`docs/adr/`)
@@ -145,12 +147,11 @@ AccumulatorOp v2 ADR lives at [`../adr_accumulator_op_v2.md`](../adr_accumulator
 
 ## 8. Read order for new agents
 
-1. **This document**
-2. `workshop/simthing_spec_sonnet_opus_handoff.md`
-3. `worklog.md` — O2, B3, I1 entries
-4. ADRs: replay, install atomicity, EffectTarget, scripted scope
-5. `todo.md` · `design_v6.md` · `capability_tree_v1.md`
-6. Code: `spec_replay.rs`, `install.rs`, `spec_session.rs`, `session.rs`
+1. **`workshop/workshop_current_state.md`** (GPU migration) or **this document** (spec layer)
+2. `worklog.md` — recent entries
+3. ADRs: replay, install atomicity, EffectTarget, scripted scope
+4. `todo.md` · `design_v6.md` · `capability_tree_v1.md`
+5. Code: `spec_replay.rs`, `install.rs`, `spec_session.rs`, `session.rs`
 
 ---
 

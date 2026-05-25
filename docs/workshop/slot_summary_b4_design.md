@@ -457,7 +457,7 @@ Per PR B-4 acceptance:
 - `docs/adr_accumulator_op_v2.md` — ADR (semantic scope, soft-aggregate policy)
 - `docs/design_v7.md` §4 (pipeline), §6 (logging tiers), §8 (performance model)
 - `docs/accumulator_op_v2_production_plan.md` PR B-4
-- `docs/workshop/soft_aggregate_tolerance_audit.md` (PR A-4)
+- `docs/workshop/archive/soft_aggregate_tolerance_audit.md` (PR A-4, archived)
 - `crates/simthing-gpu/src/accumulator_op/types.rs` — current provisional `SlotSummary`
 - `crates/simthing-gpu/src/shaders/accumulator_op.wgsl` — current `write_summaries` kernel
 - `crates/simthing-driver/src/spec_session.rs` — B3 `requires_boundary_tick`
