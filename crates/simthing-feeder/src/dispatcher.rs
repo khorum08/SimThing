@@ -57,6 +57,12 @@ use std::time::Instant;
 
 // ── Outcome ───────────────────────────────────────────────────────────────────
 
+/// GPU-side failures surfaced to the simulation driver instead of silent loss.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TickGpuError {
+    AccumulatorThresholdReadback(String),
+}
+
 /// One tick's worth of observable result. Stats are diagnostic;
 /// `events` is the authoritative crossings list the simulation must act on.
 #[derive(Debug, Default)]
@@ -96,6 +102,8 @@ pub struct TickOutcome {
     pub tick_index: u64,
     /// Monotonic day id; bumps once per `ticks_per_day` ticks.
     pub day_index: u64,
+    /// Structured GPU error when readback or AccumulatorOp work fails.
+    pub gpu_error: Option<TickGpuError>,
 }
 
 // ── Coordinator ───────────────────────────────────────────────────────────────
@@ -198,12 +206,20 @@ impl DispatchCoordinator {
 
         // 4. Event readback. Cheap even at endgame scale (~3 KB).
         let event_readback_started = Instant::now();
+        let mut gpu_error = None;
         let events = if use_accumulator_threshold {
-            state
-                .threshold_accumulator
-                .as_mut()
-                .and_then(|s| s.readback_threshold_events(&state.ctx).ok())
-                .unwrap_or_default()
+            match state.threshold_accumulator.as_mut() {
+                Some(s) => match s.readback_threshold_events(&state.ctx) {
+                    Ok(events) => events,
+                    Err(err) => {
+                        gpu_error = Some(TickGpuError::AccumulatorThresholdReadback(
+                            err.to_string(),
+                        ));
+                        Vec::new()
+                    }
+                },
+                None => Vec::new(),
+            }
         } else if state.n_thresholds == 0 {
             Vec::new()
         } else {
@@ -257,6 +273,7 @@ impl DispatchCoordinator {
             boundary_reached,
             tick_index: self.tick_counter,
             day_index: self.day_counter,
+            gpu_error,
         }
     }
 

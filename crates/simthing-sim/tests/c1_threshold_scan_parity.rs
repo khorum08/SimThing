@@ -127,3 +127,100 @@ fn fission_stress_100_ticks_old_and_new_paths_identical_events() {
         }
     }
 }
+
+#[test]
+fn c1_threshold_accumulator_readback_error_surfaces_in_tick_outcome() {
+    use simthing_feeder::TickGpuError;
+    use simthing_gpu::{
+        AccumulatorOpSession, DIR_UPWARD, THRESH_BUF_VALUES, ThresholdRegistration,
+    };
+
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let (world, reg, alloc) = fission_stress_world(3);
+    let n_slots = alloc.capacity() as u32;
+    let n_dims = reg.total_columns as u32;
+    let amount_col = {
+        let pid = world.children[0].properties.keys().next().copied().unwrap();
+        reg.column_range(pid)
+            .col_for_role(&SubFieldRole::Amount, &reg.property(pid).layout)
+            .unwrap() as u32
+    };
+    let ctx = GpuContext::new_blocking().expect("gpu");
+    let mut state = WorldGpuState::new(ctx, &reg, n_slots);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(n_slots as usize);
+    let mut coord = DispatchCoordinator::new(n_slots, n_dims, 1);
+    let (_tx, rx) = feeder_channel();
+
+    let projected_len = n_slots as usize * n_dims as usize;
+    let mut projected = vec![0.0; projected_len];
+    simthing_gpu::project_tree_to_values(
+        &world,
+        &reg,
+        &alloc,
+        n_dims as usize,
+        &mut projected,
+    );
+    coord.shadow[..projected_len].copy_from_slice(&projected);
+
+    let regs = vec![
+        ThresholdRegistration {
+            slot: 1,
+            col: amount_col,
+            threshold: 0.5,
+            direction: DIR_UPWARD,
+            event_kind: 1,
+            buffer: THRESH_BUF_VALUES,
+        },
+        ThresholdRegistration {
+            slot: 2,
+            col: amount_col,
+            threshold: 0.5,
+            direction: DIR_UPWARD,
+            event_kind: 2,
+            buffer: THRESH_BUF_VALUES,
+        },
+    ];
+    state.upload_thresholds(&regs);
+
+    let mut flat = projected.clone();
+    let mut prev = projected.clone();
+    let layout = reg.property(world.children[0].properties.keys().next().copied().unwrap()).layout.clone();
+    let velocity_col = layout.offset_of(&SubFieldRole::Velocity).unwrap() as u32;
+    for slot in [1u32, 2] {
+        let base = slot as usize * n_dims as usize;
+        flat[base + amount_col as usize] = 0.4;
+        flat[base + velocity_col as usize] = 0.2;
+        prev[base + amount_col as usize] = 0.4;
+    }
+    state.write_values(&flat);
+    state.write_previous_values(&prev);
+
+    let mut session = AccumulatorOpSession::new_attached(&state.ctx, n_slots, n_dims, 1);
+    session.upload_threshold_ops(&state.ctx, &regs).unwrap();
+    state.threshold_accumulator = Some(session);
+
+    let out = coord.tick(
+        &rx,
+        &mut patcher,
+        &reg,
+        &alloc,
+        &pipelines,
+        &mut state,
+        1.0,
+    );
+
+    assert!(
+        matches!(
+            out.gpu_error,
+            Some(TickGpuError::AccumulatorThresholdReadback(_))
+        ),
+        "expected threshold readback error, got {:?}",
+        out.gpu_error
+    );
+    assert!(out.events.is_empty());
+}
