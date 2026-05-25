@@ -130,3 +130,19 @@ The compiler is intentionally conservative and must not group across op-kind or 
 Run: `cargo test -p simthing-workshop overlay_order -- --nocapture`
 
 The report bundle test writes `tests/overlay_order_semantics_reports.txt` (committed). Per-run markdown/json still go to `target/workshop/overlay_order_report.md` when invoked individually.
+
+## Multi-target replay / delta logging spike
+
+This spike tests whether a GPU-side AccumulatorOp-style operation can write multiple related targets and emit compact replay records sufficient to reconstruct final state.
+
+Representative operation:
+
+```text
+source_pool -> queue_accum -> emitted_units
+```
+
+The current-shaped baseline resolves the operation on CPU, representing day-boundary settlement and explicit record construction. The pivot-shaped path resolves on GPU and emits compact delta records; replay reconstructs final state from initial state, params, and compact records only.
+
+Run: `cargo test -p simthing-workshop multitarget -- --nocapture`
+
+The report bundle test writes `tests/multitarget_replay_reports.txt` (committed). Bursty 100k also writes `target/workshop/multitarget_replay_report.md` and `.json`.
