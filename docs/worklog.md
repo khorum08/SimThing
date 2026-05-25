@@ -6,9 +6,9 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-19 — C-2: Intent delta AccumulatorOp migration (pending PR)
+## 2026-05-19 — C-2: Intent delta AccumulatorOp migration (#99)
 
-**Status:** branch `feat/c2-intent-accumulator-migration` — push + merge requested.
+**Status:** `master` @ `531834a` (PR #99 merged).
 
 **Scope:** Migrate pre-Pass-0 intent delta application to AccumulatorOp behind
 `PipelineFlags.use_accumulator_intent` (default `false`). CPU fold logic unchanged;
