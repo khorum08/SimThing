@@ -20,7 +20,7 @@ pub use accumulator_op::{
     SlotSummary, ThresholdEmission, ThresholdEmissionGpu, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 pub use context::{GpuContext, GpuInitError};
-pub use overlay_add::{build_overlay_add_ops, filter_multiply_set_deltas};
+pub use overlay_add::{plan_overlay_add_accumulator, OverlayAddPlan};
 pub use overlay_prep::build_overlay_deltas;
 pub use passes::{AccumulatorPipelineSessions, Pipelines};
 pub use projection::project_tree_to_values;

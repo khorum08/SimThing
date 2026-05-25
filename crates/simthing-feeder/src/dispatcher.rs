@@ -186,7 +186,7 @@ impl DispatchCoordinator {
         // 3. GPU passes (order matters — see module-level doc).
         let gpu_pipeline_started = Instant::now();
         let use_accumulator_threshold = state.threshold_accumulator.is_some();
-        let use_accumulator_overlay_add = state.overlay_add_accumulator.is_some();
+        let use_accumulator_overlay_add = state.accumulator_overlay_add_active;
         if use_accumulator_intent || use_accumulator_threshold || use_accumulator_overlay_add {
             let mut intent_session = state.intent_accumulator.take();
             let mut overlay_session = state.overlay_add_accumulator.take();

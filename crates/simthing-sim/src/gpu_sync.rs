@@ -94,23 +94,28 @@ pub fn sync_gpu_buffers(
     }
     let n_deltas = deltas.len() as u32;
     if use_accumulator_overlay_add {
-        state.ensure_overlay_add_accumulator();
-        let add_ops =
-            simthing_gpu::build_overlay_add_ops(&deltas, &ranges, state.n_slots);
-        state
-            .upload_overlay_add_ops(&add_ops)
-            .expect("overlay Add op upload failed");
-        state.accumulator_overlay_add_active = !add_ops.is_empty();
+        let plan =
+            simthing_gpu::plan_overlay_add_accumulator(&deltas, &ranges, state.n_slots);
 
-        let (ms_deltas, mut ms_ranges) =
-            simthing_gpu::filter_multiply_set_deltas(&deltas, &ranges, state.n_slots);
-        if (ms_ranges.len() as u32) < state.n_slots {
-            ms_ranges.resize(
-                state.n_slots as usize,
-                simthing_gpu::SlotDeltaRange::default(),
-            );
+        match plan {
+            simthing_gpu::OverlayAddPlan::AllAdd { ops } => {
+                state.ensure_overlay_add_accumulator();
+                state
+                    .upload_overlay_add_ops(&ops)
+                    .expect("overlay Add op upload failed");
+                state.accumulator_overlay_add_active = !ops.is_empty();
+
+                let empty_ranges = vec![simthing_gpu::SlotDeltaRange::default(); state.n_slots as usize];
+                state.upload_overlay_deltas(&[], &empty_ranges);
+            }
+            simthing_gpu::OverlayAddPlan::FallbackNonAdd => {
+                state.accumulator_overlay_add_active = false;
+                state
+                    .upload_overlay_add_ops(&[])
+                    .expect("clear overlay Add ops failed");
+                state.upload_overlay_deltas(&deltas, &ranges);
+            }
         }
-        state.upload_overlay_deltas(&ms_deltas, &ms_ranges);
     } else {
         state.accumulator_overlay_add_active = false;
         state.upload_overlay_deltas(&deltas, &ranges);

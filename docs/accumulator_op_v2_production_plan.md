@@ -365,10 +365,13 @@ Add fires before a child's Add when both register in the same tick.
 overlay scenarios.  
 **Acceptance:** CI green. Existing overlay tests pass.
 
-**Implementation note:** One `AccumulatorOpGpu` per `OverlayDelta` where
-`op_kind == OP_ADD`, in original tree-walk order. Same-cell atomic contention
-handled by `atomic_add_f32` — no CPU-side folding. Multiply/Set filtered to
-old Pass 3 in the same tick when the flag is on.
+**Implementation note:** C-3 activates only for Add-only overlay batches.
+Mixed Add/Multiply/Set batches fall back entirely to legacy Pass 3 until C-4.
+Add deltas are folded per `(slot, col)` in legacy delta order (one op per cell)
+before upload to preserve f32 bit parity and avoid same-cell atomic-order
+nondeterminism. This fallback is not a strategic commitment to legacy overlay
+code — C-4 owns the full Add/Multiply/Set order-band compiler and S-3 deletes
+the old overlay path after C-3/C-4 pass parity.
 
 ---
 
