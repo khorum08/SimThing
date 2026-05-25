@@ -55,6 +55,17 @@ working around one of these, stop and reconsider the design.
 | `SimProperty` equality is on `namespace + name` only | Manual `PartialEq`, `Eq`, `Hash` impls that exclude all other fields |
 | Metadata fields do not participate in key comparison | Verified by: two properties with same identity but different layouts compare equal |
 
+## AccumulatorOp v2
+
+| Rule | Enforced by |
+|---|---|
+| Exact operations never use soft-aggregate combine fns | Code review gate; `WeightedMean` / `Mean` may not appear in conservation-critical registration paths |
+| `EvalEML` combine requires a whitelist entry | `EmlExpressionRegistry::assert_whitelisted(tree_id)` checked at registration |
+| `SubtractFromSource` is the only transfer mechanism | No two-overlay transfers; `TransformOp::Add` on two separate slots for the same logical transfer is a violation |
+| Emission records are produced for every GPU-resolved emission | `EmissionRecord { reg_idx, emit_count }` written to compact buffer; read back for delta log |
+| Persistent GPU buffer is the residency model | `AccumulatorOpSession` is created at session open and closed at session close; no per-tick device creation |
+| Timestamp queries are required for performance claims | Any PR claiming a performance win must include timestamped GPU pass measurements, not just wall-clock |
+
 ---
 
 ## The Proof Test

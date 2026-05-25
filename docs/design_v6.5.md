@@ -136,6 +136,7 @@ simthing-studio   ← deferred GUI
 | `scripted_event_scope_model.md` | Accepted | O4 per-owner scripted events |
 | `spec_session_state_replay.md` | Accepted | O2 replay v3 |
 | `install_clone_then_commit.md` | Accepted | I1 preview / atomic install |
+| `adr_accumulator_op_v2.md` | Proposed | AccumulatorOp v2 GPU primitive — see `accumulator_op_v2_production_plan.md` |
 
 ---
 
