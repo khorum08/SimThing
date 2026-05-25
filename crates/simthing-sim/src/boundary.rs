@@ -121,7 +121,7 @@ pub struct BoundaryHookContext<'a> {
     pub requests: &'a mut Vec<BoundaryRequest>,
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct PipelineFlags {
     pub use_accumulator_threshold_scan: bool,
     pub use_accumulator_intent: bool,
@@ -131,12 +131,23 @@ pub struct PipelineFlags {
     /// no longer means Add-only. When false, legacy Pass 3 remains the runtime
     /// path and oracle until S-3 deletion.
     pub use_accumulator_overlay_add: bool,
-    /// C-5: routes Mean / WeightedMean soft reductions through AccumulatorOp.
-    /// Legacy reduction remains flag-off/oracle for soft columns until S-4.
+    /// S-4: AccumulatorOp reduction (Mean/WeightedMean/Sum/Max/Min/First).
+    /// Requires `use_accumulator_reduction_exact` when enabled.
     pub use_accumulator_reduction_soft: bool,
-    /// C-6: routes Sum / Max / Min / First exact reductions through AccumulatorOp.
-    /// Requires `use_accumulator_reduction_soft`. Legacy exact fallback is skipped when on.
+    /// S-4: full AccumulatorOp reduction path; must be enabled with soft flag.
     pub use_accumulator_reduction_exact: bool,
+}
+
+impl Default for PipelineFlags {
+    fn default() -> Self {
+        Self {
+            use_accumulator_threshold_scan: false,
+            use_accumulator_intent: false,
+            use_accumulator_overlay_add: false,
+            use_accumulator_reduction_soft: true,
+            use_accumulator_reduction_exact: true,
+        }
+    }
 }
 
 /// Top-level boundary orchestrator.
@@ -227,7 +238,12 @@ impl BoundaryProtocol {
 
     fn sync_accumulator_reduction_soft_session(&self, state: &mut WorldGpuState) {
         if self.flags.use_accumulator_reduction_exact && !self.flags.use_accumulator_reduction_soft {
-            panic!("C-6 exact reduction requires use_accumulator_reduction_soft");
+            panic!("use_accumulator_reduction_exact requires use_accumulator_reduction_soft");
+        }
+        if self.flags.use_accumulator_reduction_soft && !self.flags.use_accumulator_reduction_exact {
+            panic!(
+                "S-4: soft-only reduction bridge removed; enable use_accumulator_reduction_exact"
+            );
         }
         if !self.flags.use_accumulator_reduction_soft {
             if let Some(runtime) = state.accumulator_runtime.as_mut() {
@@ -236,9 +252,6 @@ impl BoundaryProtocol {
             state.set_reduction_soft_dispatch(false, 0);
             state.set_reduction_exact_dispatch(false);
             return;
-        }
-        if !self.flags.use_accumulator_reduction_exact {
-            state.set_reduction_exact_dispatch(false);
         }
         state.ensure_reduction_soft_accumulator();
     }

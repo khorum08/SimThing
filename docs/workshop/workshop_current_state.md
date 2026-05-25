@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-25  
-**Master HEAD:** `a414a62` (PR #124 C-6 + doc sync)  
-**Verification (last recorded):** C-6 parity + full workspace test battery green
+**Master HEAD:** pending S-4 PR  
+**Verification (last recorded):** S-4 sunset + full workspace test battery green
 
 ---
 
@@ -16,13 +16,13 @@ Two parallel tracks:
 | Track | Status | Canonical docs |
 |-------|--------|----------------|
 | **V6 spec / driver / session** | **Parked complete** — PRs 1–11, Opus P0 (O2/B3/I1) shipped | `design_v6.5.md`, `simthing_spec_progress_log.md` |
-| **AccumulatorOp v2 / design v7** | **Active** — Phases A–B done; C-1–C-6 + infra landed; flags default **false** | `design_v7.md`, `accumulator_op_v2_production_plan.md`, `pivot_forward_implementation_policy.md` |
+| **AccumulatorOp v2 / design v7** | **Active** — Phases A–B done; C-1–C-6 + **S-4** landed; reduction flags default **on** | `design_v7.md`, `accumulator_op_v2_production_plan.md`, `pivot_forward_implementation_policy.md` |
 
 **Production direction:** AccumulatorOp v2 is the intended GPU execution path.
-Legacy passes (intent, overlay, reduction, threshold, velocity, intensity) are
-**oracle/fallback only** until S-phase deletion.
+Legacy reduction is deleted (S-4). Remaining legacy passes (intent, overlay, threshold,
+velocity, intensity) are oracle/fallback until their S-phase deletions.
 
-**Next gates:** **S-4** reduction sunset (after C-5 + C-6 default-on validation) · **C-7** velocity integration.
+**Next gates:** **C-7** velocity integration · **S-3** overlay sunset · **S-6** threshold sunset.
 
 ---
 
@@ -43,6 +43,7 @@ Legacy passes (intent, overlay, reduction, threshold, velocity, intensity) are
 | **C-5** | #122 | Mean / WeightedMean soft reductions → `ReductionSoft` on `output_vectors` |
 | **C-5 remedial** | #123 | Depth-interleaved soft/exact reduction per depth bucket |
 | **C-6** | #124 | Sum / Max / Min / First exact reductions; full AccumulatorOp path when soft+exact on |
+| **S-4** | pending | Legacy `reduction.wgsl` deleted; AccumulatorOp sole reduction path; flags default on |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
@@ -69,16 +70,18 @@ now routes full Add/Multiply/Set batches through AccumulatorOp OrderBands using
 the canonical `build_overlay_deltas` output. Legacy Pass 3 remains for flag-off
 execution and oracle parity until S-3.
 
-**Reduction policy (C-5/C-6):** soft flag routes Mean/WeightedMean through AccumulatorOp on
-`output_vectors`; exact flag extends planner to Sum/Max/Min/First. When both flags are on,
-the entire reduction phase is GPU-resident AccumulatorOp with no legacy `reduction.wgsl`
-dispatch. C-5-only mode keeps the depth-interleaved legacy exact fallback until S-4.
+**Reduction policy (S-4):** `use_accumulator_reduction_soft` + `use_accumulator_reduction_exact`
+default **true** and must both be enabled. Production tick: copy `values` → `output_vectors`,
+then AccumulatorOp reduction bands. No legacy `reduction.wgsl`. Topology planning
+(`child_starts`, `depth_bucket_ranges`, `plan_reduction_orderband`) preserved. Non-contiguous
+child slots skip reduction upload until topology is planner-compatible.
 
-**C-6 landed:**
-- Sum / Max / Min / First exact reductions now execute through AccumulatorOp.
-- C-5 soft and C-6 exact reductions share `ReductionPlanMode` / OrderBand planner.
-- With soft+exact reduction flags enabled, legacy `reduction.wgsl` is not dispatched.
-- Legacy reduction remains only flag-off/oracle until S-4.
+**S-4 landed:**
+- Legacy `reduction.wgsl` deleted.
+- Legacy reduction pipeline, bind group, `skip_soft_columns`, and exact-fallback branch deleted.
+- AccumulatorOp covers Mean, WeightedMean, Sum, Max, Min, First.
+- Two-buffer semantics preserved (`values` → `output_vectors`).
+- THRESH_BUF_OUTPUT semantics unchanged.
 
 **Feature flags (authoritative after #111):** flag-off boundary sync calls
 `clear_intent` / `clear_threshold` / `clear_overlay_add`; dispatcher keys off
@@ -88,40 +91,19 @@ session presence + overlay dispatch cache, not stale sessions.
 
 | Priority | ID | Owner | Blocks |
 |----------|-----|-------|--------|
+| Sunset | **S-3** | Composer | Legacy overlay prep deletion after C-4 default-on |
 | Non-Opus | **C-7–C-8** | Composer | Velocity integration, EML/transfer/intensity |
-| Sunset | **S-4** | Composer | Legacy reduction deletion after C-5 + C-6 default-on + CI burn-in |
 | Infra | Oracle refactor | Optional | Move C-1/C-2/C-3/C-4 parity tests onto `run_family_oracle` |
 
 ### Sunset targets (S-phase)
 
-| S-PR | After | Deletes |
-|------|-------|---------|
-| S-1 | C-2 default-on | Legacy intent pass |
-| S-3 | C-3 + C-4 | Legacy overlay prep |
-| S-4 | C-5 + C-6 default-on + CI green | Legacy reduction passes + `reduction.wgsl` pipeline branches |
-| S-5 | C-7 | Legacy velocity |
-| S-6 | C-1 default-on | Legacy threshold scan (Pass 7) |
-
-### S-4 reduction sunset readiness (pending)
-
-S-4 can begin after:
-- `use_accumulator_reduction_soft` default-on candidate passes.
-- `use_accumulator_reduction_exact` default-on candidate passes.
-- C-5 and C-6 parity tests remain green.
-- Combined all-flags path remains green.
-- No production path dispatches legacy reduction when both flags are on.
-- CI burn-in window satisfied.
-
-**S-4 deletion inventory (draft — not executed until gates pass):**
-- `crates/simthing-gpu/src/shaders/reduction.wgsl`
-- Reduction pipeline creation in `passes.rs`
-- Reduction bind group layout if no longer used
-- Legacy reduction topology upload branches only if not needed by Accumulator planner
-- Legacy reduction standalone `run_reduction_passes` test helper, unless kept as oracle fixture
-- Any `skip_soft_columns` plumbing
-
-**Keep:** `child_starts`, `child_indices`, `depth_slots`, column rules, and
-`plan_reduction_orderband` — still needed by AccumulatorOp reduction planner/tests.
+| S-PR | After | Deletes | Status |
+|------|-------|---------|--------|
+| S-1 | C-2 default-on | Legacy intent pass | Pending |
+| S-3 | C-3 + C-4 | Legacy overlay prep | Pending |
+| S-4 | C-5 + C-6 | Legacy reduction passes + `reduction.wgsl` | **Done** |
+| S-5 | C-7 | Legacy velocity | Pending |
+| S-6 | C-1 default-on | Legacy threshold scan (Pass 7) | Pending |
 
 ---
 
@@ -160,7 +142,8 @@ See `crates/simthing-workshop/README.md` and `todo.md` § workshop spikes.
 | C-3 parity | 13 | incl. combined C-1/C-2/C-3 |
 | C-4 parity/cache | 16 | Add/Mul/Set parity, lifecycle/fission/cache, high-density guards |
 | C-5 reduction | 15 | `reduction_orderband` (6) + legacy oracle (2) + parity/guards (11) |
-| C-6 exact reduction | 10 | Sum/Max/Min/First parity, mixed columns, legacy-fallback guard, S-4 candidate |
+| C-6 exact reduction | 8 | Sum/Max/Min/First parity vs CPU oracle golden |
+| S-4 sunset | 4 | Shader absent, all-rules golden, no CPU production reduction, combined path |
 | C-INF-2 harness | 2 | intent + threshold oracle smoke |
 | Pivot-forward remedial | 3 | authoritative flags |
 | B-4 world summary integrated | 2 | intent + overlay orderbands |

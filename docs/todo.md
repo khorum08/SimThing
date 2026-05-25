@@ -7,14 +7,12 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **C-4 overlay OrderBand** (#118), **C-5 soft reductions** (#122–#123), and **C-6 exact reductions** (#124) landed.
 `master` @ **`a414a62`**.
 
-**Reduction flags (default false):** `use_accumulator_reduction_soft` (C-5 Mean/WeightedMean) +
-`use_accumulator_reduction_exact` (C-6 Sum/Max/Min/First; requires soft). Full AccumulatorOp
-reduction when both on; legacy `reduction.wgsl` flag-off/oracle only until **S-4**.
+**Reduction flags (default true):** `use_accumulator_reduction_soft` +
+`use_accumulator_reduction_exact` (both required). AccumulatorOp is the sole production
+reduction path after **S-4**; legacy `reduction.wgsl` deleted.
 
-**C-6 landed:** Sum / Max / Min / First exact reductions execute through AccumulatorOp; C-5 soft
-and C-6 exact share `ReductionPlanMode` / OrderBand planner; with both flags on legacy
-`reduction.wgsl` is not dispatched. **S-4 prep** documents readiness checklist and deletion
-inventory — execution pending default-on / burn-in.
+**S-4 landed:** legacy reduction shader/pipeline/fallback removed; AccumulatorOp covers all
+reduction rules; CPU oracle retained for test golden only.
 
 **Workshop entry point:** [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md)
 
@@ -75,8 +73,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **C-5 remedial** | #123 | Depth-interleaved soft/exact reduction; WeightedMean dependency tests |
 | **C-6** | #124 | `a414a62` | Sum/Max/Min/First exact reductions; `use_accumulator_reduction_exact` |
 
-**Next (non-Opus):** **S-4** reduction sunset prep complete; execution gated on C-5 + C-6
-default-on validation · **C-7** velocity · per-family oracle expansion.
+**Next (non-Opus):** **C-7** velocity · **S-3** overlay sunset · per-family oracle expansion.
 
 **Next (sunset-gated):** **S-3** overlay prep/WGSL deletion after C-4 default-on validation and CI.
 

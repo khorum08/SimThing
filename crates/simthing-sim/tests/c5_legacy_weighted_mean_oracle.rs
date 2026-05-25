@@ -1,4 +1,4 @@
-//! C-5 legacy reduction current-path tolerance confirmation.
+//! AccumulatorOp reduction vs CPU oracle tolerance confirmation.
 
 use simthing_core::{
     DimensionRegistry, PropertyValue, ReductionRule, SimProperty, SimThing, SimThingKind,
@@ -6,7 +6,8 @@ use simthing_core::{
 };
 use simthing_gpu::{
     build_column_rule_descriptors, build_topology, cpu_reduce_oracle, encode_column_rules,
-    project_tree_to_values, GpuContext, Pipelines, SlotAllocator, WorldGpuState,
+    plan_reduction_orderband, project_tree_to_values, GpuContext, Pipelines, SlotAllocator,
+    TopologyState, WorldGpuState,
 };
 
 const TOL: f32 = 1e-5;
@@ -76,8 +77,17 @@ fn upload_topology(state: &mut WorldGpuState, world: &SimThing, reg: &DimensionR
     );
 }
 
+fn run_accumulator_reduction(state: &mut WorldGpuState) {
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut runtime = state.accumulator_runtime.take().unwrap();
+    let mut session = runtime.take_reduction_soft_session().unwrap();
+    pipelines.run_accumulator_reduction_passes(state, &mut session);
+    runtime.restore_reduction_soft_session(Some(session));
+    state.accumulator_runtime = Some(runtime);
+}
+
 #[test]
-fn legacy_weighted_mean_matches_cpu_oracle_within_1e_5() {
+fn accumulator_weighted_mean_matches_cpu_oracle_within_1e_5() {
     let Some(ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
         return;
@@ -93,20 +103,26 @@ fn legacy_weighted_mean_matches_cpu_oracle_within_1e_5() {
     state.write_values(&flat);
     upload_topology(&mut state, &world, &reg, &alloc);
 
+    state.ensure_reduction_soft_accumulator();
+    let topo_state = TopologyState::build(&world, &alloc);
+    let plan = plan_reduction_orderband(&topo_state, &descriptors, state.n_dims).unwrap();
+    state
+        .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands)
+        .unwrap();
+
     let mut cpu_output = vec![0.0_f32; flat.len()];
     cpu_reduce_oracle(&topo, &descriptors, n_dims, &flat, &mut cpu_output);
 
-    let pipelines = Pipelines::new(&state.ctx);
-    pipelines.run_reduction_passes(&state);
+    run_accumulator_reduction(&mut state);
     let gpu_output = state.read_output_vectors();
 
-    let max_abs_error = max_abs_error(&cpu_output, &gpu_output);
-    eprintln!("legacy weighted mean max_abs_error={max_abs_error}");
-    assert!(max_abs_error < TOL, "max_abs_error={max_abs_error}");
+    let err = max_abs_error(&cpu_output, &gpu_output);
+    eprintln!("accumulator weighted mean max_abs_error={err}");
+    assert!(err < TOL, "max_abs_error={err}");
 }
 
 #[test]
-fn legacy_mean_matches_cpu_oracle_within_1e_5() {
+fn accumulator_mean_matches_cpu_oracle_within_1e_5() {
     let Some(ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
         return;
@@ -140,14 +156,19 @@ fn legacy_mean_matches_cpu_oracle_within_1e_5() {
     state.write_values(&flat);
     upload_topology(&mut state, &world, &reg, &alloc);
 
+    state.ensure_reduction_soft_accumulator();
+    let topo_state = TopologyState::build(&world, &alloc);
+    let plan = plan_reduction_orderband(&topo_state, &descriptors, state.n_dims).unwrap();
+    state
+        .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands)
+        .unwrap();
+
     let mut cpu_output = vec![0.0_f32; flat.len()];
     cpu_reduce_oracle(&topo, &descriptors, n_dims, &flat, &mut cpu_output);
 
-    let pipelines = Pipelines::new(&state.ctx);
-    pipelines.run_reduction_passes(&state);
+    run_accumulator_reduction(&mut state);
     let gpu_output = state.read_output_vectors();
 
-    let max_abs_error = max_abs_error(&cpu_output, &gpu_output);
-    eprintln!("legacy mean max_abs_error={max_abs_error}");
-    assert!(max_abs_error < TOL, "max_abs_error={max_abs_error}");
+    let err = max_abs_error(&cpu_output, &gpu_output);
+    assert!(err < TOL, "max_abs_error={err}");
 }

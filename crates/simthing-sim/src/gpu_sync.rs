@@ -29,9 +29,38 @@ use simthing_feeder::{
     CapabilityUnlockRegistration, DispatchCoordinator, ScriptedEventTriggerRegistration,
 };
 use simthing_gpu::{
-    build_column_rule_descriptors, encode_column_rules, SlotAllocator, ThresholdRegistration,
-    TopologyState, WorldGpuState,
+    build_column_rule_descriptors, encode_column_rules, ReductionPlanError, SlotAllocator,
+    ThresholdRegistration, TopologyState, WorldGpuState,
 };
+
+fn upload_accumulator_reduction_plan(
+    state: &mut WorldGpuState,
+    topology_state: &TopologyState,
+    registry: &DimensionRegistry,
+    use_accumulator_reduction_exact: bool,
+) {
+    assert!(
+        use_accumulator_reduction_exact,
+        "S-4: reduction requires both use_accumulator_reduction_soft and exact"
+    );
+    let descriptors = build_column_rule_descriptors(registry, state.n_dims as usize);
+    match simthing_gpu::plan_reduction_orderband(topology_state, &descriptors, state.n_dims) {
+        Ok(plan) => {
+            state.ensure_reduction_soft_accumulator();
+            state
+                .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands)
+                .expect("reduction op upload");
+        }
+        Err(ReductionPlanError::NonContiguousChildren { .. }) => {
+            if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                runtime.clear_reduction_soft();
+            }
+            state.set_reduction_soft_dispatch(false, 0);
+            state.set_reduction_exact_dispatch(false);
+        }
+        Err(e) => panic!("reduction OrderBand plan: {e}"),
+    }
+}
 
 /// Outcome of the GPU sync step.
 #[derive(Clone, Debug, Default)]
@@ -303,49 +332,20 @@ pub fn sync_gpu_buffers(
             + depth_slots.len() as u64 * std::mem::size_of::<u32>() as u64;
 
         if use_accumulator_reduction_soft {
-            state.ensure_reduction_soft_accumulator();
-            let mode = if use_accumulator_reduction_exact {
-                simthing_gpu::ReductionPlanMode::AllRules
-            } else {
-                simthing_gpu::ReductionPlanMode::SoftOnly
-            };
-            let plan = simthing_gpu::plan_reduction_orderband(
+            upload_accumulator_reduction_plan(
+                state,
                 topology_state,
-                &descriptors,
-                state.n_dims,
-                mode,
-            )
-            .expect("reduction OrderBand plan");
-            state
-                .upload_reduction_soft_ops_with_bands(
-                    &plan.ops,
-                    plan.n_bands,
-                    use_accumulator_reduction_exact,
-                )
-                .expect("reduction op upload");
+                registry,
+                use_accumulator_reduction_exact,
+            );
         }
     } else if use_accumulator_reduction_soft {
-        state.ensure_reduction_soft_accumulator();
-        let descriptors = build_column_rule_descriptors(registry, state.n_dims as usize);
-        let mode = if use_accumulator_reduction_exact {
-            simthing_gpu::ReductionPlanMode::AllRules
-        } else {
-            simthing_gpu::ReductionPlanMode::SoftOnly
-        };
-        let plan = simthing_gpu::plan_reduction_orderband(
+        upload_accumulator_reduction_plan(
+            state,
             topology_state,
-            &descriptors,
-            state.n_dims,
-            mode,
-        )
-        .expect("reduction OrderBand plan");
-        state
-            .upload_reduction_soft_ops_with_bands(
-                &plan.ops,
-                plan.n_bands,
-                use_accumulator_reduction_exact,
-            )
-            .expect("reduction op upload");
+            registry,
+            use_accumulator_reduction_exact,
+        );
     }
 
     out.boundary_upload_bytes =

@@ -6,6 +6,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-25 — S-4 legacy reduction sunset (execution)
+
+**Status:** Local — pending PR.
+
+**Scope:** Delete `reduction.wgsl`, legacy reduction pipeline/bind groups, C-5/C-6 exact
+fallback branch, and legacy dispatch counters. Pure AccumulatorOp reduction encoder;
+`plan_reduction_orderband` plans all rules; reduction flags default on (both required).
+Tests use CPU oracle golden; new `s4_reduction_sunset.rs`. Topology buffers preserved.
+
+---
+
 ## 2026-05-25 — S-4 reduction sunset prep (readiness / cleanup)
 
 **Status:** Local — docs, shader comment, S-4 candidate test. No runtime deletion.
