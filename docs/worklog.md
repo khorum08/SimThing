@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-19 — Workshop docs review + `workshop_current_state`
 
-**Status:** `master` (pending commit — PR to follow).
+**Status:** `master` @ `709d37d` (PR #114 merged).
 
 **Scope:** Full workshop/docs review; synthesize active state into
 `docs/workshop/workshop_current_state.md`; archive stale handoffs and historical Q&A.

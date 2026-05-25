@@ -8,7 +8,7 @@ boundary protocol). Read V6.5 first when picking up **spec/session** work.
 **GPU migration state:** [`workshop/workshop_current_state.md`](workshop/workshop_current_state.md)
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** `5331419`  
+**Master HEAD:** `709d37d`  
 **Verification:** `cargo test --workspace` → 430+ passed, 1 ignored perf gate.
 
 ---
@@ -20,7 +20,7 @@ boundary protocol). Read V6.5 first when picking up **spec/session** work.
 | **Branch** | `master` synced with `origin/master` |
 | **Spec layer** | PRs 1–11 + O1–O4 + O1b + EffectTarget + S5 + **O2 + B3 + I1** complete |
 | **Opus P0 batch** | Complete (PRs #65–#67); no P0 code work outstanding |
-| **Next owner** | **Sonnet/Composer** — authoring docs & examples (D1/D2/D3); see handoff |
+| **Next owner** | **Sonnet/Composer** — authoring docs & examples (D1/D2/D3); see [`workshop_current_state.md`](workshop/workshop_current_state.md) §3 |
 
 ### Ignored tests (CI)
 
@@ -92,7 +92,7 @@ simthing-studio   ← deferred GUI
 
 ## 5. Open work (ordered)
 
-**No P0 code items.** Next work is Sonnet/Composer authoring surface (see handoff).
+**No P0 code items.** Next work is Sonnet/Composer authoring surface (see `workshop/workshop_current_state.md` §3).
 
 | Priority | ID | Owner | Scope |
 |----------|-----|-------|-------|

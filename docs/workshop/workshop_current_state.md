@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** `5331419` (PR #113 doc sync; code through PR #111 pivot-forward remedial)  
+**Master HEAD:** `709d37d` (PR #114 workshop docs review; code through PR #111 pivot-forward remedial)  
 **Verification (last recorded):** `cargo test --workspace` → 430+ passed, 1 ignored perf gate
 
 ---

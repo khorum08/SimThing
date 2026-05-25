@@ -2,7 +2,7 @@
 
 **Current state:** [`workshop_current_state.md`](workshop_current_state.md) — read first.
 
-**Master HEAD:** `5331419` · **Tests:** 430+ passed (see `todo.md` for breakdown)
+**Master HEAD:** `709d37d` · **Tests:** 430+ passed (see `todo.md` for breakdown)
 
 ---
 

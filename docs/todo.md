@@ -4,7 +4,7 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98),
 **C-2** (#99–#100), **C-3** (#105–#107), **pivot-forward policy + B-4I** (#108),
 **C-INF runtime/oracle** (#109), and **pivot-forward remedial** (#111) landed.
-`master` @ **`5331419`**.
+`master` @ **`709d37d`**.
 
 **Workshop entry point:** [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md)
 
