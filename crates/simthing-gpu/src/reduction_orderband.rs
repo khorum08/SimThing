@@ -129,6 +129,26 @@ pub fn plan_reduction_orderband(
     Ok(ReductionOrderBandPlan { ops, n_bands })
 }
 
+/// Map a legacy reduction depth-bucket index to the C-5 OrderBand index.
+///
+/// `depth_bucket_ranges[i]` holds slots at tree depth `i` (root = 0). Legacy
+/// reduction walks buckets deepest-first; soft bands use the same parent-depth
+/// mapping as [`plan_reduction_orderband`]: deepest internal parents are band
+/// 0, then shallower parents. The leaf-only deepest bucket has no soft band.
+pub fn reduction_soft_band_for_depth_bucket(
+    max_tree_depth: u32,
+    depth_bucket_index: u32,
+) -> Option<u32> {
+    if depth_bucket_index >= max_tree_depth {
+        return None;
+    }
+    Some(
+        max_tree_depth
+            .saturating_sub(1)
+            .saturating_sub(depth_bucket_index),
+    )
+}
+
 fn debug_assert_no_duplicate_band_slot_col(ops: &[AccumulatorOpGpu]) {
     #[cfg(debug_assertions)]
     {
@@ -181,6 +201,32 @@ mod tests {
         assert_eq!(op.source_count, 1);
         assert_eq!(op.combine_kind, combine_kind::MEAN);
         assert_eq!(op.consume, consume_kind::RESET_TARGET);
+    }
+
+    #[test]
+    fn c5_soft_band_aligns_with_deepest_first_legacy_buckets() {
+        let max_tree_depth = 2u32;
+        assert_eq!(
+            reduction_soft_band_for_depth_bucket(max_tree_depth, 2),
+            None,
+            "leaf-only deepest bucket has no soft band"
+        );
+        assert_eq!(
+            reduction_soft_band_for_depth_bucket(max_tree_depth, 1),
+            Some(0),
+            "location-depth parents are band 0"
+        );
+        assert_eq!(
+            reduction_soft_band_for_depth_bucket(max_tree_depth, 0),
+            Some(1),
+            "world-depth parents are band 1"
+        );
+
+        let bands: Vec<Option<u32>> = (0..=max_tree_depth)
+            .rev()
+            .map(|depth_idx| reduction_soft_band_for_depth_bucket(max_tree_depth, depth_idx))
+            .collect();
+        assert_eq!(bands, vec![None, Some(0), Some(1)]);
     }
 
     #[test]

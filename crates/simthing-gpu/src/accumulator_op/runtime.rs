@@ -350,7 +350,7 @@ impl WorldAccumulatorRuntime {
         output_vectors: &wgpu::Buffer,
     ) {
         if self.reduction_soft_session.is_none() {
-            self.reduction_soft_session = Some(AccumulatorOpSession::new_attached_to_buffer(
+            self.reduction_soft_session = Some(AccumulatorOpSession::new_attached_for_external_values(
                 ctx,
                 n_slots,
                 n_dims,

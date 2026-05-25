@@ -19,6 +19,7 @@ use wgpu::{
 use wgpu::util::DeviceExt;
 
 use crate::context::GpuContext;
+use crate::reduction_orderband::reduction_soft_band_for_depth_bucket;
 use crate::world_state::{ReduceParams, WorldGpuState};
 
 const WORKGROUP_SIZE: u32 = 64;
@@ -749,24 +750,6 @@ impl Pipelines {
 
         let reduction_soft_active = state.accumulator_reduction_soft_active
             && state.accumulator_reduction_soft_bands > 0;
-        if reduction_soft_active {
-            let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
-            encoder.copy_buffer_to_buffer(
-                &state.values,
-                0,
-                &state.output_vectors,
-                0,
-                copy_bytes,
-            );
-            if let Some(session) = sessions.reduction_soft.as_mut() {
-                session.encode_reduction_soft_into(
-                    ctx,
-                    &mut encoder,
-                    &state.output_vectors,
-                    state.accumulator_reduction_soft_bands,
-                );
-            }
-        }
 
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
@@ -780,14 +763,46 @@ impl Pipelines {
                 dispatch_linear(&mut pass, state.n_slots);
             }
 
-            for (bucket_size, bg) in &reduction_depth_bgs {
-                pass.set_pipeline(&self.reduction_pipeline);
-                pass.set_bind_group(0, bg, &[]);
-                dispatch_linear(&mut pass, *bucket_size);
+            if !reduction_soft_active {
+                for (bucket_size, bg) in &reduction_depth_bgs {
+                    pass.set_pipeline(&self.reduction_pipeline);
+                    pass.set_bind_group(0, bg, &[]);
+                    dispatch_linear(&mut pass, *bucket_size);
+                }
             }
 
+            if !skip_threshold_scan && !reduction_soft_active {
+                if let Some(bg) = threshold_bg.as_ref() {
+                    pass.set_pipeline(&self.threshold_pipeline);
+                    pass.set_bind_group(0, bg, &[]);
+                    dispatch_linear(&mut pass, state.n_thresholds);
+                }
+            }
+        }
+
+        if reduction_soft_active {
+            let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
+            encoder.copy_buffer_to_buffer(
+                &state.values,
+                0,
+                &state.output_vectors,
+                0,
+                copy_bytes,
+            );
+            if let Some(session) = sessions.reduction_soft.as_mut() {
+                self.encode_c5_interleaved_reduction(
+                    ctx,
+                    &mut encoder,
+                    state,
+                    session,
+                );
+            }
             if !skip_threshold_scan {
                 if let Some(bg) = threshold_bg.as_ref() {
+                    let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                        label: Some("tick_pipeline_threshold_after_c5"),
+                        timestamp_writes: None,
+                    });
                     pass.set_pipeline(&self.threshold_pipeline);
                     pass.set_bind_group(0, bg, &[]);
                     dispatch_linear(&mut pass, state.n_thresholds);
@@ -885,8 +900,8 @@ impl Pipelines {
         ctx.queue.submit(Some(encoder.finish()));
     }
 
-    /// C-5 soft-reduction path: leaf init memcpy + AccumulatorOp OrderBands +
-    /// legacy reduction for exact columns only (skip_soft when active).
+    /// C-5 soft-reduction path: leaf init memcpy + per-depth interleaved
+    /// AccumulatorOp OrderBands + legacy exact-column fallback.
     pub fn run_c5_soft_reduction_passes(
         &self,
         state: &WorldGpuState,
@@ -899,39 +914,6 @@ impl Pipelines {
             return;
         }
         let ctx = &state.ctx;
-        let skip_soft = u32::from(state.accumulator_reduction_soft_active);
-
-        let mut reduction_depth_bgs = Vec::new();
-        for &(depth_offset, bucket_size) in state.depth_bucket_ranges.iter().rev() {
-            if bucket_size == 0 {
-                continue;
-            }
-            let p = ReduceParams {
-                n_dims: state.n_dims,
-                depth_offset,
-                bucket_size,
-                skip_soft_columns: skip_soft,
-            };
-            let param_buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("c5_reduction_depth_uniform"),
-                contents: bytemuck::bytes_of(&p),
-                usage: BufferUsages::UNIFORM,
-            });
-            let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
-                label: Some("c5_reduction_depth_bg"),
-                layout: &self.reduction_layout,
-                entries: &[
-                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                    BindGroupEntry { binding: 1, resource: state.output_vectors.as_entire_binding() },
-                    BindGroupEntry { binding: 2, resource: state.child_starts.as_entire_binding() },
-                    BindGroupEntry { binding: 3, resource: state.child_indices.as_entire_binding() },
-                    BindGroupEntry { binding: 4, resource: state.column_rules.as_entire_binding() },
-                    BindGroupEntry { binding: 5, resource: state.depth_slots.as_entire_binding() },
-                    BindGroupEntry { binding: 6, resource: param_buf.as_entire_binding() },
-                ],
-            });
-            reduction_depth_bgs.push((bucket_size, bg));
-        }
 
         let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("c5_soft_reduction_encoder"),
@@ -946,26 +928,95 @@ impl Pipelines {
             copy_bytes,
         );
 
-        session.encode_reduction_soft_into(
-            ctx,
-            &mut encoder,
-            &state.output_vectors,
-            state.accumulator_reduction_soft_bands,
-        );
-
-        {
-            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("c5_legacy_exact_reduction_pass"),
-                timestamp_writes: None,
-            });
-            for (bucket_size, bg) in &reduction_depth_bgs {
-                pass.set_pipeline(&self.reduction_pipeline);
-                pass.set_bind_group(0, bg, &[]);
-                dispatch_linear(&mut pass, *bucket_size);
-            }
-        }
+        self.encode_c5_interleaved_reduction(ctx, &mut encoder, state, session);
 
         ctx.queue.submit(Some(encoder.finish()));
+    }
+
+    /// Copy `values` → `output_vectors`, then interleave C-5 soft bands with
+    /// legacy exact-column reduction per depth bucket (deepest first).
+    fn encode_c5_interleaved_reduction(
+        &self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        state: &WorldGpuState,
+        session: &mut crate::AccumulatorOpSession,
+    ) {
+        let max_tree_depth = state.depth_bucket_ranges.len().saturating_sub(1) as u32;
+        let n_buckets = state.depth_bucket_ranges.len();
+
+        for depth_idx in (0..n_buckets).rev() {
+            let (depth_offset, bucket_size) = state.depth_bucket_ranges[depth_idx];
+            if bucket_size == 0 {
+                continue;
+            }
+
+            if let Some(band) =
+                reduction_soft_band_for_depth_bucket(max_tree_depth, depth_idx as u32)
+            {
+                if band < state.accumulator_reduction_soft_bands {
+                    session.encode_reduction_soft_band_into(
+                        ctx,
+                        encoder,
+                        &state.output_vectors,
+                        band,
+                    );
+                }
+            }
+
+            // TODO(C-6/S-4): legacy exact-column fallback only while C-6 is pending.
+            // Remove in S-4 after Sum/Max/Min migrate to AccumulatorOp.
+            self.encode_legacy_exact_reduction_bucket(
+                ctx,
+                encoder,
+                state,
+                depth_offset,
+                bucket_size,
+            );
+        }
+    }
+
+    /// Legacy reduction for one depth bucket; skips Mean/WeightedMean when C-5 is active.
+    fn encode_legacy_exact_reduction_bucket(
+        &self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        state: &WorldGpuState,
+        depth_offset: u32,
+        bucket_size: u32,
+    ) {
+        let p = ReduceParams {
+            n_dims: state.n_dims,
+            depth_offset,
+            bucket_size,
+            skip_soft_columns: u32::from(state.accumulator_reduction_soft_active),
+        };
+        let param_buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("reduction_depth_uniform"),
+            contents: bytemuck::bytes_of(&p),
+            usage: BufferUsages::UNIFORM,
+        });
+        let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("reduction_depth_bg"),
+            layout: &self.reduction_layout,
+            entries: &[
+                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                BindGroupEntry { binding: 1, resource: state.output_vectors.as_entire_binding() },
+                BindGroupEntry { binding: 2, resource: state.child_starts.as_entire_binding() },
+                BindGroupEntry { binding: 3, resource: state.child_indices.as_entire_binding() },
+                BindGroupEntry { binding: 4, resource: state.column_rules.as_entire_binding() },
+                BindGroupEntry { binding: 5, resource: state.depth_slots.as_entire_binding() },
+                BindGroupEntry { binding: 6, resource: param_buf.as_entire_binding() },
+            ],
+        });
+
+        let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+            label: Some("legacy_exact_reduction_pass"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.reduction_pipeline);
+        pass.set_bind_group(0, &bg, &[]);
+        dispatch_linear(&mut pass, bucket_size);
     }
 
     /// Pass 7: scan registered thresholds for crossings between `previous_values`
