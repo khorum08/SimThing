@@ -4,12 +4,17 @@ pub mod overlay;
 pub mod property;
 pub mod reduction;
 pub mod accumulator_op;
+pub mod eml_registry;
 pub mod registry;
 pub mod simthing;
 
 pub use accumulator_op::{
     AccumulatorOp, AccumulatorOpError, CombineFn, ConsumeMode, GateSpec, InputSpec, ScaleSpec,
     SoftAggregateGuard, SourceSpec, ThresholdDirection,
+};
+pub use eml_registry::{
+    EmlExpressionRegistry, EmlRegistryError, EmlTreeId, EmlTreeMeta, MAX_EML_TREE_NODES,
+    WHITELISTED_FORMULA_CLASSES,
 };
 pub use ids::{OverlayId, SimPropertyId, SimThingId};
 pub use overlay::{
