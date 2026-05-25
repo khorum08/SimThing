@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-19 — B-2 fix: Always wildcard bootstrap contention (#94)
 
-**Status:** `master` @ `9482ab4` (PR #94 merged).
+**Status:** `master` @ `41bb9e9` (PR #94 merged).
 
 **Problem:** `GateSpec::Always` was validated as band 0, but WGSL runs Always ops on every
 `tick(band)` — allowing Always + `OrderBand(n)` same-cell writes to race at runtime.

@@ -2,7 +2,7 @@
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B3/I1) complete;
 **AccumulatorOp v2 Phases A–B** complete through B-2 + Always wildcard fix (#94).
-`master` and `origin/master` synced at **`9482ab4`** (PR #94 Always contention validation).
+`master` and `origin/master` synced at **`41bb9e9`** (PR #94 + doc sync).
 
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
 Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
