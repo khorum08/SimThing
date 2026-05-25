@@ -2,17 +2,38 @@
 //!
 //! See `docs/adr_accumulator_op_v2.md` §EML expression policy and PR A-3 in
 //! `docs/accumulator_op_v2_production_plan.md`.
+//!
+//! # C-8 evolution
+//!
+//! The A-3 `EmlTreeMeta { node_count, has_transcendental, formula_class }`
+//! schema is **refactored to `EmlFormulaMeta` in C-8a** with an explicit
+//! `EmlExecutionClass` (`ExactDeterministic | SoftDeterministic |
+//! FastApproximate | CpuOracleOnly`) and a typed `EmlConsumerMask`.
+//! `WHITELISTED_FORMULA_CLASSES` becomes the C-8 `ExactDeterministic`
+//! admission policy; future `SoftDeterministic` / `FastApproximate`
+//! classes are admitted by explicit per-PR opt-in plus consumer
+//! admissibility (`assert_consumer_admissible(tree_id, consumer)`).
+//!
+//! The A-3 types below are retained verbatim until C-8a lands; C-8a
+//! provides `From<EmlTreeMeta> for EmlFormulaMeta` to migrate existing
+//! call sites. See `docs/workshop/c8_eml_transfer_intensity_design.md`
+//! §3 for the new schema.
 
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-/// Maximum expression-tree node count permitted for GPU `EvalEML` combine.
-/// Workshop validated ≤16 nodes with headroom within the 32-node GPU budget.
+/// Maximum expression-tree node count permitted for GPU `EvalEML` combine
+/// under the **C-8 `ExactDeterministic` baseline**. Workshop validated ≤16
+/// nodes with headroom within the 32-node GPU budget. Future execution
+/// classes (`SoftDeterministic`, `FastApproximate`) may extend this budget
+/// via explicit per-class limits in `EmlFormulaMeta` once C-8a lands.
 pub const MAX_EML_TREE_NODES: u32 = 16;
 
-/// Formula classes whitelisted for GPU `EvalEML` under the AccumulatorOp v2 ADR.
-/// Any other class requires a separate ADR amendment.
+/// Formula classes whitelisted for GPU `EvalEML` under the **C-8
+/// `ExactDeterministic` admission policy**. Future SoftDeterministic /
+/// FastApproximate classes are admitted via the typed `EmlConsumerKind`
+/// matrix in C-8a, not by adding strings here.
 pub const WHITELISTED_FORMULA_CLASSES: &[&str] = &[
     "intensity_update",
     "emission_formula",

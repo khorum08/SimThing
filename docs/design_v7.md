@@ -109,7 +109,12 @@ consume   what happens to the source after the write
 targets   where the result goes (up to 4 slots × cols)
 
 * WeightedMean: soft aggregate; tolerance policy from ADR applies
-† EvalEML: requires whitelist entry; no transcendentals; ≤16 nodes
+† EvalEML: requires execution-class registration + consumer admissibility
+  (see `docs/workshop/c8_eml_transfer_intensity_design.md`). C-8 production
+  baseline admits the `ExactDeterministic` class only: no transcendentals,
+  ≤16 nodes, deterministic IEEE-754 ops, bit-exact CPU↔GPU. The substrate
+  is future-prepped for `SoftDeterministic`, `FastApproximate`, and
+  `CpuOracleOnly` classes admitted by explicit policy in later PRs.
 ```
 
 Velocity integration, overlay application, reduction, transfer, emission —
@@ -231,7 +236,7 @@ pub struct PipelineFlags {
 **Pass 2 — Intensity update (migrate → C-8, sunset → S-2)**
 - WGSL: `intensity_update.wgsl`
 - Per-slot: piecewise `build` or `decay` based on `|velocity| > threshold`
-- Post-migration: replaced by `EvalEML` combine with whitelisted intensity tree
+- Post-migration: replaced by `EvalEML` combine with an `ExactDeterministic` intensity tree compiled from `IntensityBehavior` (C-8b)
 
 **Pass 3 — Overlay application (migrate → C-3/C-4, sunset → S-3)**
 - WGSL: inline in `overlay_prep.rs`
@@ -501,9 +506,22 @@ EML to `f32` values stored in `AccumulatorOp.combine_p0..combine_p3`. One
 compile per recipe class, not per slot.
 
 **Stage 3 — GPU EvalEML combine (GPU, per tick)**
-For whitelisted formulas (no transcendentals, ≤16 nodes), the kernel evaluates
-the EML tree against per-slot inputs inline. Validated: ~1.6× overhead vs
-hardcoded at 100k slots; bit-exact for the tested formula class; deterministic.
+The kernel evaluates the EML tree against per-slot inputs inline via a
+flat stack-machine interpreter over a persistent GPU node buffer. The C-8
+production baseline admits the `ExactDeterministic` execution class:
+deterministic IEEE-754 ops (add/sub/mul/div with guarded divisor,
+min/max/clamp/abs, comparisons, select), no transcendentals, ≤16 nodes,
+bounded stack depth. Validated: ~1.6× overhead vs hardcoded at 100k
+slots; bit-exact CPU↔GPU for the class; deterministic GPU-to-GPU.
+
+The EML substrate is **future-prepped** for richer execution classes —
+`SoftDeterministic` (deterministic approximations with documented
+tolerance), `FastApproximate` (vendor-native math, non-replay-safe),
+`CpuOracleOnly` (test-only) — without reformatting the node buffer or
+the registry. Future PRs admit additional classes through explicit
+policy gates: per-formula tolerance documentation, feature flags, and
+consumer admissibility rules. See
+`docs/workshop/c8_eml_transfer_intensity_design.md` for the framework.
 
 The intensity update formula is the canonical Stage 3 example:
 ```
@@ -513,7 +531,7 @@ else:
     intensity -= decay_coeff × intensity × dt
 intensity = clamp(intensity, 0.0, 1.0)
 ```
-16 nodes, no transcendentals, bit-exact on CPU/GPU comparison.
+16 nodes, `ExactDeterministic`, bit-exact on CPU/GPU comparison.
 
 ---
 
@@ -556,7 +574,7 @@ existing invariants:
 | Rule | Enforced by |
 |---|---|
 | Exact operations never use soft-aggregate combine fns | Code review; `WeightedMean`/`Mean` banned from conservation-critical paths |
-| `EvalEML` requires whitelist entry | `EmlExpressionRegistry::assert_whitelisted()` at registration |
+| `EvalEML` requires execution-class registration + consumer admissibility | `EmlExpressionRegistry::assert_consumer_admissible(tree_id, consumer)` at registration. C-8 production baseline admits `ExactDeterministic` only; future classes (`SoftDeterministic`, `FastApproximate`) require explicit per-PR policy gates. |
 | Transfer uses `SubtractFromSource` only | No two-overlay transfers anywhere in the codebase |
 | Emission records written for every GPU-resolved emission | `EmissionRecord` in compact buffer; count checked against emission_capacity |
 | Persistent session per session lifetime | No `AccumulatorOpSession::new()` in hot path |

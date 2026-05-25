@@ -85,6 +85,18 @@ every variant.
 
 ### PR A-3 — `EmlExpressionRegistry` with whitelist enforcement
 
+> **C-8 evolution note:** The A-3 `EmlTreeMeta { node_count,
+> has_transcendental, formula_class }` schema is **refactored to
+> `EmlFormulaMeta { tree_id, execution_class, allowed_consumers,
+> max_abs_error, deterministic_gpu, requires_guard_for_hard_threshold,
+> ... }` in C-8a**. The A-3 whitelist becomes the `ExactDeterministic`
+> execution-class admission policy; the framework is extended for
+> future `SoftDeterministic` / `FastApproximate` / `CpuOracleOnly`
+> classes per `docs/workshop/c8_eml_transfer_intensity_design.md`. The
+> A-3 string-class check (`["intensity_update", "emission_formula",
+> "conversion_rate"]`) is superseded by the typed `EmlConsumerKind` +
+> admissibility matrix.
+
 **Model:** Composer 2.5  
 **Scope:** Add `simthing-core::eml_registry::EmlExpressionRegistry`:
 - `register(tree_id: EmlTreeId, meta: EmlTreeMeta) -> Result<()>` — registers a
@@ -533,7 +545,20 @@ comparison.
 
 ### ⚠️ PR C-8 — Opus review: EML transfer + intensity migration
 
-**Model:** Opus (integration design), Composer 2.5 (implementation)  
+**Design half status:** **Accepted** — see
+[`docs/workshop/c8_eml_transfer_intensity_design.md`](workshop/c8_eml_transfer_intensity_design.md).
+Selected:
+- **Execution-class taxonomy** (`EmlExecutionClass::{ExactDeterministic, SoftDeterministic, FastApproximate, CpuOracleOnly}`) plus a **consumer admissibility matrix** that gates which classes may feed which consumers.
+- **C-8 production baseline admits `ExactDeterministic` only** — `SoftDeterministic`/`FastApproximate` register structurally but no production consumer admits them yet.
+- **Persistent GPU node buffer + tree-range table** on `WorldAccumulatorRuntime.eml: Option<EmlGpuProgramTable>`. Generation-counter-based invalidation; no per-dispatch upload.
+- **Bounded WGSL lookup:** `AccumulatorOpGpu.combine_a = tree_range_index` (resolved CPU-side at registration); the shader never searches by `tree_id`.
+- **Flat stack-machine interpreter** in WGSL; fixed-depth stack; postfix-encoded nodes.
+- **Auxiliary `AccumulatorInputListTable`** for `MinAcrossInputs + SubtractFromAllInputs` (conjunctive recipes need 4+ inputs; `AccumulatorOpGpu`'s target slots are reserved for write targets).
+- **Staged delivery: C-8a (infra) → C-8b (intensity) → C-8c (transfer) → C-8d (emission)**. Per-stage default-false flags.
+
+**Implementer mix:** **Codex 5.5** for C-8a, C-8b, C-8d; **Composer 2.5** for C-8c (transfer's conservation invariants and the input-list table benefit from architectural judgment).
+
+**Model:** Opus (integration design), Codex 5.5 / Composer 2.5 (staged implementation)  
 **Why Opus:** EML intensity and AccumulatorOp interact at the `EvalEML` combine
 boundary. The workshop validated EML as a standalone harness. Integrating it
 into the AccumulatorOp session means:
@@ -559,14 +584,18 @@ protocol (can the session hot-reload an EML tree without full session teardown?
   as the economic substrate
 
 **Parity tests:**
-- EML intensity bit-exact against CPU oracle (no transcendentals; bit-exact
-  expected per workshop)
+- EML intensity bit-exact against CPU oracle for `ExactDeterministic`
+  baseline formulas (C-8b). Future `SoftDeterministic` intensity formulas
+  may admit tolerance under per-PR opt-in.
 - Transfer conservation: exact balance across 1000 factories, 3 channels,
-  100 ticks
+  100 ticks (C-8c). `ExactDeterministic` only — Soft/Fast classes are
+  structurally rejected from transfer paths.
 - Conjunctive emission: emit count matches CPU reference within 2%
-  (non-determinism tolerance from workshop)
+  (C-8d). Tolerance applies to emission only and does NOT leak into
+  transfer or hard-trigger paths.
 
-**Acceptance:** All three tests pass. Opus design note committed.
+**Acceptance:** All three tests pass per stage. Opus design note
+committed (see design memo link above).
 
 ---
 
