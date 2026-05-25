@@ -1,14 +1,14 @@
 # SimThing Todo Log
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B3/I1) complete;
-**AccumulatorOp v2 Phases A–B** in progress (A-4 through B-2).
-`master` and `origin/master` synced at **`dc6a9c8`** (PR #93 B-2 + doc sync).
+**AccumulatorOp v2 Phases A–B** complete through B-2 + Always wildcard fix (#94).
+`master` and `origin/master` synced at **`9482ab4`** (PR #94 Always contention validation).
 
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
 Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
 
 **Tests:** `cargo test --workspace` green at last full run (430 passed, 6 ignored after A-4).
-AccumulatorOp module: **19** gpu + **9** core tests after B-2.
+AccumulatorOp module: **25** gpu + **9** core tests (after #94 Always wildcard fix).
 
 **Cursor handoff:** AccumulatorOp v2 Phases A–B (see table below).
 
@@ -26,10 +26,11 @@ AccumulatorOp module: **19** gpu + **9** core tests after B-2.
 | **B-1** | #91 | `afff3b6` | `AccumulatorOpSession` persistent buffers + bootstrap kernel |
 | **B-1 fix** | #92 | `f167e5c` | Scale encoding, contention rejection, clamped transfer, provisional readback tiers |
 | **B-2** | #93 | `02e40eb` | EmitEvent, atomic emission count, overflow reporting, CPU oracle emissions |
+| **B-2 fix** | #94 | `2633970` | Always gate wildcard contention validation — prevents Always vs OrderBand races |
 
 **Earlier A-phase:** A-1 docs (#86–#87), A-2 types (#88), A-3 EML registry (#89).
 
-**B-2 scope (landing):** Identity EmitEvent only; non-integrated; no threshold gates / WeightedMean / EvalEML / overlay / conjunctive / `BoundaryProtocol`.
+**B-2 complete:** Identity/Sum/clamped transfer/EmitEvent kernel subset; Always treated as wildcard at upload validation.
 
 **Next:** B-3 timestamp queries · B-4 Opus summary design · C-1 threshold scan migration.
 

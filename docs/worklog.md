@@ -6,9 +6,26 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — B-2 fix: Always wildcard bootstrap contention (#94)
+
+**Status:** `master` @ `9482ab4` (PR #94 merged).
+
+**Problem:** `GateSpec::Always` was validated as band 0, but WGSL runs Always ops on every
+`tick(band)` — allowing Always + `OrderBand(n)` same-cell writes to race at runtime.
+
+**Fix:** `bootstrap_validate.rs` treats Always as a wildcard — any Always write/consume
+conflicts with any OrderBand (or other Always) op touching the same `(slot, col)`.
+`ALWAYS_BAND_SENTINEL = u32::MAX` in error reporting.
+
+**Tests:** +4 session tests, +2 unit tests → **25** gpu `accumulator_op` tests.
+
+**Docs:** production plan B-2 Always wildcard note; `design_v7.md` contention sentence.
+
+---
+
 ## 2026-05-19 — AccumulatorOp v2 Phases A–B: A-4 through B-2 (PRs #90–#93)
 
-**Status:** `master` @ `dc6a9c8` (PR #93 B-2 merged).
+**Status:** `master` @ `9482ab4` (through PR #94).
 
 **Scope:** Standalone `AccumulatorOpSession` in `simthing-gpu` — persistent Pass B buffers,
 bootstrap → production-shaped kernel subset. **Does not integrate** with `BoundaryProtocol`
