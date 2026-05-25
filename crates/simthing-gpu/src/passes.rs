@@ -1982,19 +1982,26 @@ mod tests {
             .unwrap();
 
         let pipelines = Pipelines::new(&state.ctx);
-        let mut session = state.intent_accumulator.take().unwrap();
+        let mut runtime = state.accumulator_runtime.take().unwrap();
+        let mut intent_session = runtime.take_intent_session();
         pipelines.run_tick_pipeline_with_accumulators(
             &state,
             0.0,
             AccumulatorPipelineSessions {
-                intent:      Some(&mut session),
+                intent:      intent_session.as_mut(),
                 threshold:   None,
                 overlay_add: None,
             },
         );
-        state.intent_accumulator = Some(session);
+        runtime.restore_intent_session(intent_session);
+        state.accumulator_runtime = Some(runtime);
 
-        let session = state.intent_accumulator.as_ref().unwrap();
+        let session = state
+            .accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .intent_session()
+            .unwrap();
         if session.timestamp_supported() {
             assert!(session.last_pass_time_us().is_some());
         } else {

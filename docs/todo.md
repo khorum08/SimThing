@@ -51,8 +51,10 @@ AccumulatorOp module: **112+** gpu + **9** core tests (after B-4I + C-INF scaffo
 | **C-3** | #105 | Overlay Add → AccumulatorOp; `use_accumulator_overlay_add` (default false); Add-only batches |
 | **C-3 refine** | #106 | Mixed Add/Mul/Set → full legacy Pass 3 fallback (no split-mode) |
 | **C-3 OrderBand** | #107 | Per-cell OrderBand sequencing for exact f32 Add order; multi-band dispatch fix |
+| **C-INF-1** | — | `WorldAccumulatorRuntime` wired into `WorldGpuState`; three-session adapter shim |
+| **C-INF-2** | — | Legacy oracle harness + intent/threshold integration tests |
 
-**Next (non-Opus):** **C-INF-1** wire `WorldAccumulatorRuntime` into `WorldGpuState` (consolidation PR) · **C-INF-2** per-family oracle scenario wiring.
+**Next (non-Opus):** **C-5** soft reductions · per-family oracle scenario expansion (optional refactor of C-1/C-2/C-3 parity tests onto harness).
 
 **Next (Opus-gated):** **C-4** overlay Multiply/Set + dirty order-band compiler → unblocks **S-3** (delete overlay prep WGSL).
 

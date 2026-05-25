@@ -6,6 +6,31 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — C-INF-1 runtime consolidation + C-INF-2 oracle harness
+
+**Status:** Local (pending commit).
+
+**Scope:** Wire `WorldAccumulatorRuntime` into `WorldGpuState`; restore master
+three-session take/put pipeline dispatch inside the runtime envelope; land legacy
+oracle harness with integration tests.
+
+**Landed (this session):**
+
+- **C-INF-1** — `WorldGpuState::accumulator_runtime: Option<WorldAccumulatorRuntime>`
+  replaces three sidecar `Option<AccumulatorOpSession>` fields; per-family sessions
+  live inside the runtime adapter; dispatcher take/put mirrors pre-consolidation
+  `AccumulatorPipelineSessions { intent, threshold, overlay_add }`
+- **C-INF-2** — `simthing-sim::legacy_oracle`: `run_family_oracle`,
+  `apply_oracle_flags`, `assert_values_oracle`, `assert_events_oracle`; integration
+  tests in `c_inf_legacy_oracle_harness.rs` (intent single-add, threshold fission smoke)
+
+**Tests:** 57 `simthing-gpu` accumulator_op unit tests; C-1 (2), C-2 (11), C-3 (13)
+parity including `c1_c2_c3_combined_accumulator_paths_parity`; C-INF-2 harness (2).
+
+**Next:** C-4 Opus order-band compiler · C-5 soft reductions.
+
+---
+
 ## 2026-05-25 — Pivot-forward policy + B-4I summary + C-INF scaffolds
 
 **Status:** `master` @ `523c712` + local pivot-forward infra (pending commit).

@@ -76,14 +76,13 @@ Performance claims require **timestamped GPU measurements** (ADR invariant): leg
 | C-4 Overlay Mul/Set | **Opus-gated** — full order-band compiler |
 | B-4 Summary design | Accepted (`docs/workshop/slot_summary_b4_design.md`) |
 | B-4I Summary impl | Landed — production `SlotSummaryGpu` + group checksums |
-| C-INF-1 Runtime consolidation | Scaffold — `WorldAccumulatorRuntime` (wire-up PR follows) |
-| C-INF-2 Legacy oracle harness | Scaffold — `legacy_oracle` module |
+| C-INF-1 Runtime consolidation | Landed — `WorldAccumulatorRuntime` on `WorldGpuState` |
+| C-INF-2 Legacy oracle harness | Landed — `legacy_oracle` module + integration tests |
 
 ## 7. Priority infrastructure (non-Opus)
 
-1. **B-4I** — production `SlotSummary` protocol (group checksums, 32 B/slot)
-2. **C-INF-1** — consolidate sidecar sessions into `WorldAccumulatorRuntime`
-3. **C-INF-2** — formalize legacy path as test oracle harness
+1. **C-5** — WeightedMean tolerance boundary audit
+2. Optional — refactor C-1/C-2/C-3 parity tests onto `run_family_oracle`
 
 ## 8. Next Opus gate
 

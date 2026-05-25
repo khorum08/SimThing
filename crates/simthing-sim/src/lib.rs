@@ -74,5 +74,6 @@ pub use threshold_registry::{
 };
 pub use tree_mutation::apply_structural_mutations;
 pub use legacy_oracle::{
-    run_family_oracle, LegacyOracleRun, OracleExactness, OracleFamily, OracleScenario,
+    apply_oracle_flags, assert_events_oracle, assert_values_oracle, run_family_oracle,
+    LegacyOracleRun, OracleCapture, OracleExactness, OracleFamily, OracleScenario,
 };

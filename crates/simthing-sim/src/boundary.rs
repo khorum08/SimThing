@@ -201,9 +201,10 @@ impl BoundaryProtocol {
 
     fn sync_accumulator_overlay_add_session(&self, state: &mut WorldGpuState) {
         if !self.flags.use_accumulator_overlay_add {
-            state.overlay_add_accumulator = None;
-            state.accumulator_overlay_add_active = false;
-            state.accumulator_overlay_add_bands = 0;
+            if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                runtime.clear_overlay_add();
+            }
+            state.set_overlay_add_dispatch(false, 0);
             return;
         }
         state.ensure_overlay_add_accumulator();
@@ -221,11 +222,9 @@ impl BoundaryProtocol {
             .n_thresholds
             .max(DEFAULT_THRESHOLD_EMISSION_CAPACITY);
         state.ensure_threshold_accumulator(cap);
-        if let Some(session) = state.threshold_accumulator.as_mut() {
-            session
-                .upload_threshold_ops(&state.ctx, gpu_regs)
-                .expect("AccumulatorOp threshold op upload failed");
-        }
+        state
+            .upload_accumulator_threshold_ops(gpu_regs)
+            .expect("AccumulatorOp threshold op upload failed");
     }
 
     /// Run the full §10 boundary sequence (steps 4–9).
