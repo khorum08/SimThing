@@ -4,7 +4,7 @@
 //! per-family GPU sessions (adapter shim matching pre-consolidation behavior)
 //! until a single shared op buffer is validated for all families together.
 
-use crate::ThresholdRegistration;
+use crate::{OverlayDelta, SlotDeltaRange, ThresholdRegistration};
 
 use super::session::{AccumulatorOpSession, AccumulatorOpSessionError};
 use super::types::AccumulatorOpGpu;
@@ -50,40 +50,52 @@ pub enum LegacyOracleFamily {
 /// Slice into the shared op buffer for one migrated operation family.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct OpSetHandle {
-    pub family:    OperationFamily,
-    pub offset:    u32,
-    pub count:     u32,
-    pub active:    bool,
-    pub n_bands:   u32,
+    pub family: OperationFamily,
+    pub offset: u32,
+    pub count: u32,
+    pub active: bool,
+    pub n_bands: u32,
     pub exactness: ExactnessClass,
 }
 
 impl OpSetHandle {
     pub const INACTIVE: Self = Self {
-        family:    OperationFamily::Intent,
-        offset:    0,
-        count:     0,
-        active:    false,
-        n_bands:   0,
+        family: OperationFamily::Intent,
+        offset: 0,
+        count: 0,
+        active: false,
+        n_bands: 0,
         exactness: ExactnessClass::Exact,
     };
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct OverlayCompileCache {
+    pub compiled_at_revision: u64,
+    pub cached_deltas: Vec<OverlayDelta>,
+    pub cached_ranges: Vec<SlotDeltaRange>,
+    pub cached_n_bands: u32,
+    pub cached_op_buffer_uploaded_n_ops: u32,
+    pub compile_count: u64,
+    pub upload_count: u64,
+}
+
 /// Single AccumulatorOp runtime envelope for `WorldGpuState`.
 pub struct WorldAccumulatorRuntime {
-    pub intent_ops:          OpSetHandle,
-    pub threshold_ops:       OpSetHandle,
-    pub overlay_add_ops:     OpSetHandle,
-    pub overlay_order_ops:   OpSetHandle,
-    pub reduction_soft_ops:  OpSetHandle,
+    pub intent_ops: OpSetHandle,
+    pub threshold_ops: OpSetHandle,
+    pub overlay_add_ops: OpSetHandle,
+    pub overlay_order_ops: OpSetHandle,
+    pub reduction_soft_ops: OpSetHandle,
     pub reduction_exact_ops: OpSetHandle,
-    pub velocity_ops:        OpSetHandle,
-    pub intensity_eml_ops:   OpSetHandle,
+    pub velocity_ops: OpSetHandle,
+    pub intensity_eml_ops: OpSetHandle,
 
-    intent_session:          Option<AccumulatorOpSession>,
-    threshold_session:       Option<AccumulatorOpSession>,
-    overlay_session:         Option<AccumulatorOpSession>,
-    pub summary:             Option<WorldSummaryRuntime>,
+    intent_session: Option<AccumulatorOpSession>,
+    threshold_session: Option<AccumulatorOpSession>,
+    overlay_session: Option<AccumulatorOpSession>,
+    pub summary: Option<WorldSummaryRuntime>,
+    pub overlay_compile_cache: Option<OverlayCompileCache>,
 }
 
 impl WorldAccumulatorRuntime {
@@ -129,6 +141,7 @@ impl WorldAccumulatorRuntime {
             threshold_session: None,
             overlay_session: None,
             summary: None,
+            overlay_compile_cache: None,
         }
     }
 
@@ -177,15 +190,23 @@ impl WorldAccumulatorRuntime {
     }
 
     pub fn overlay_add_active(&self) -> bool {
-        self.overlay_add_ops.active
+        self.overlay_order_ops.active
     }
 
     pub fn overlay_add_bands(&self) -> u32 {
-        self.overlay_add_ops.n_bands
+        self.overlay_order_ops.n_bands
+    }
+
+    pub fn overlay_active(&self) -> bool {
+        self.overlay_order_ops.active
+    }
+
+    pub fn overlay_n_bands(&self) -> u32 {
+        self.overlay_order_ops.n_bands
     }
 
     pub fn any_pipeline_active(&self) -> bool {
-        self.intent_active() || self.threshold_active() || self.overlay_add_ops.active
+        self.intent_active() || self.threshold_active() || self.overlay_order_ops.active
     }
 
     pub fn ensure_intent_session(
@@ -278,12 +299,22 @@ impl WorldAccumulatorRuntime {
     }
 
     pub fn clear_overlay_add(&mut self) {
+        self.clear_overlay_orderband();
+    }
+
+    pub fn clear_overlay_orderband(&mut self) {
         self.overlay_session = None;
         self.overlay_add_ops = OpSetHandle {
             family: OperationFamily::OverlayAdd,
             exactness: ExactnessClass::Exact,
             ..OpSetHandle::INACTIVE
         };
+        self.overlay_order_ops = OpSetHandle {
+            family: OperationFamily::OverlayOrderBand,
+            exactness: ExactnessClass::Exact,
+            ..OpSetHandle::INACTIVE
+        };
+        self.overlay_compile_cache = None;
     }
 
     pub fn upload_intent_ops(
@@ -316,8 +347,25 @@ impl WorldAccumulatorRuntime {
         ops: &[AccumulatorOpGpu],
         n_bands: u32,
     ) -> Result<(), AccumulatorOpSessionError> {
+        self.upload_overlay_ops(ctx, ops, n_bands)
+    }
+
+    pub fn upload_overlay_ops(
+        &mut self,
+        ctx: &GpuContext,
+        ops: &[AccumulatorOpGpu],
+        n_bands: u32,
+    ) -> Result<(), AccumulatorOpSessionError> {
         if let Some(session) = self.overlay_session.as_mut() {
             session.upload_gpu_ops(ctx, ops)?;
+            self.overlay_order_ops = OpSetHandle {
+                family: OperationFamily::OverlayOrderBand,
+                offset: 0,
+                count: session.n_ops(),
+                active: !ops.is_empty(),
+                n_bands,
+                exactness: ExactnessClass::Exact,
+            };
             self.overlay_add_ops = OpSetHandle {
                 family: OperationFamily::OverlayAdd,
                 offset: 0,
@@ -401,9 +449,9 @@ mod tests {
                 &ctx,
                 &[IntentDelta {
                     slot: 0,
-                    col:  0,
-                    mul:  1.0,
-                    add:  1.0,
+                    col: 0,
+                    mul: 1.0,
+                    add: 1.0,
                 }],
             )
             .unwrap();

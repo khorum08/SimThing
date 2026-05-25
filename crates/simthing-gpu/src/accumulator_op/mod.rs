@@ -20,16 +20,17 @@ pub use encode::{
     threshold_registrations_to_ops, validate_intent_deltas_no_duplicate_cells, EncodeError,
 };
 pub use runtime::{
-    ExactnessClass, LegacyOracleFamily, OpSetHandle, OperationFamily, WorldAccumulatorRuntime,
+    ExactnessClass, LegacyOracleFamily, OpSetHandle, OperationFamily, OverlayCompileCache,
+    WorldAccumulatorRuntime,
 };
-pub use world_summary::WorldSummaryRuntime;
-pub use types::AccumulatorOpGpu;
 pub use session::{
     set_debug_readback_allowed, AccumulatorOpSession, AccumulatorOpSessionError, WORKGROUP_SIZE,
 };
+pub use types::AccumulatorOpGpu;
 pub use types::{
-    combine_kind, consume_kind, gate_kind, scale_kind, source_kind, summaries_from_values,
-    group_checksums, slot_checksum, AccumulatorSummaryParams, AccumulatorTickParams,
-    EmissionRecord, EmissionRecordGpu, SlotSummary, SlotSummaryGpu, ThresholdEmission,
-    ThresholdEmissionGpu, DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+    combine_kind, consume_kind, gate_kind, group_checksums, scale_kind, slot_checksum, source_kind,
+    summaries_from_values, AccumulatorSummaryParams, AccumulatorTickParams, EmissionRecord,
+    EmissionRecordGpu, SlotSummary, SlotSummaryGpu, ThresholdEmission, ThresholdEmissionGpu,
+    DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
+pub use world_summary::WorldSummaryRuntime;

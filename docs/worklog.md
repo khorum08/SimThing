@@ -6,6 +6,36 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-25 — C-4 overlay OrderBand compiler
+
+**Status:** Local implementation complete behind the overlay AccumulatorOp flag.
+
+**Scope:** Replaced the C-3 Add-only planner with `plan_overlay_orderband`, which
+consumes `build_overlay_deltas` output unchanged and emits deterministic per-cell
+OrderBands for Add/Multiply/Set. Added `ConsumeMode::AddToTarget`, shader-side
+Add/Scale/Reset target writes, `BoundaryProtocol::overlay_compile_revision`, and
+`WorldAccumulatorRuntime::overlay_compile_cache`.
+
+**Policy:** `use_accumulator_overlay_add` remains the compatibility flag name but
+now means the full C-4 overlay accumulator path. Legacy Pass 3 remains flag-off
+runtime/oracle only until S-3; S-3 is not landed.
+
+**Tests:** C-4 parity/cache tests and AccumulatorOp/overlay planner tests added.
+Acceptance run green:
+`cargo test -p simthing-gpu accumulator_op`,
+`cargo test -p simthing-gpu overlay_add`,
+`cargo test -p simthing-gpu overlay_orderband`,
+`cargo test -p simthing-sim --test c1_threshold_scan_parity`,
+`cargo test -p simthing-sim --test c2_intent_accumulator_parity`,
+`cargo test -p simthing-sim --test c3_overlay_add_accumulator_parity`,
+`cargo test -p simthing-sim --test c4_overlay_orderband_parity`,
+`cargo test -p simthing-sim --test b4_world_summary_integrated`,
+`cargo test -p simthing-sim --test pivot_forward_remedial`,
+`cargo test -p simthing-sim --test c_inf_legacy_oracle_harness`,
+`cargo check --workspace`, and `cargo test --workspace`.
+
+---
+
 ## 2026-05-19 — Workshop docs review + `workshop_current_state`
 
 **Status:** `master` @ `709d37d` (PR #114 merged).

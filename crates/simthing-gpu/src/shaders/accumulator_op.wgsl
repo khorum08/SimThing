@@ -82,7 +82,11 @@ const GATE_ORDER_BAND: u32 = 4u;
 
 const CONSUME_NONE: u32 = 0u;
 const CONSUME_SUBTRACT_FROM_SOURCE: u32 = 1u;
+const CONSUME_SUBTRACT_FROM_ALL_INPUTS: u32 = 2u;
+const CONSUME_RESET_TARGET: u32 = 3u;
+const CONSUME_SCALE_TARGET: u32 = 4u;
 const CONSUME_EMIT_EVENT: u32 = 5u;
+const CONSUME_ADD_TO_TARGET: u32 = 6u;
 
 const SCALE_IDENTITY: u32 = 0u;
 const SCALE_CONSTANT: u32 = 1u;
@@ -116,6 +120,24 @@ fn atomic_add_f32_at(idx: u32, val: f32) {
         let result = atomicCompareExchangeWeak(cell_ptr, old_bits, new_bits);
         if result.exchanged { break; }
     }
+}
+
+fn atomic_store_f32_at(idx: u32, val: f32) {
+    atomicStore(&values[idx], bitcast<i32>(val));
+}
+
+// C-4 overlay OrderBands guarantee a single writer per (band, slot, col).
+// These helpers are intentionally load+store rather than CAS loops.
+fn atomic_add_single_writer_f32_at(idx: u32, val: f32) {
+    let cell_ptr = &values[idx];
+    let old = bitcast<f32>(atomicLoad(cell_ptr));
+    atomicStore(cell_ptr, bitcast<i32>(old + val));
+}
+
+fn atomic_mul_single_writer_f32_at(idx: u32, val: f32) {
+    let cell_ptr = &values[idx];
+    let old = bitcast<f32>(atomicLoad(cell_ptr));
+    atomicStore(cell_ptr, bitcast<i32>(old * val));
 }
 
 fn gate_matches_bandwise(op: AccumulatorOpGpu) -> bool {
@@ -209,10 +231,23 @@ fn clamp_transfer(write_value: f32, op: AccumulatorOpGpu) -> f32 {
 
 fn write_target(slot: u32, col: u32, write_value: f32, op: AccumulatorOpGpu) {
     let idx = linear_idx(slot, col);
-    if (op.combine_kind == COMBINE_IDENTITY || op.combine_kind == COMBINE_SUM) {
-        atomic_add_f32_at(idx, write_value);
-    } else {
-        _ = atomicExchange(&values[idx], bitcast<i32>(write_value));
+    switch op.consume {
+        case CONSUME_ADD_TO_TARGET: {
+            if (op.gate_kind == GATE_ORDER_BAND) {
+                atomic_add_single_writer_f32_at(idx, write_value);
+            } else {
+                atomic_add_f32_at(idx, write_value);
+            }
+        }
+        case CONSUME_SCALE_TARGET: {
+            atomic_mul_single_writer_f32_at(idx, write_value);
+        }
+        case CONSUME_RESET_TARGET: {
+            atomic_store_f32_at(idx, write_value);
+        }
+        default: {
+            atomic_store_f32_at(idx, write_value);
+        }
     }
 }
 

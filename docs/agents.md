@@ -91,7 +91,8 @@ SimThing/
 │       ├── reduction.rs           Topology, column rules, CPU reduction oracle
 │       ├── slot.rs                SlotAllocator — stable SimThingId ↔ slot_idx
 │       ├── projection.rs          project_tree_to_values — sparse → dense values
-│       ├── overlay_prep.rs        build_overlay_deltas — tree walk → Pass 3 batch
+│       ├── overlay_prep.rs        build_overlay_deltas — canonical overlay delta stream
+│       ├── overlay_orderband.rs   C-4 delta stream → AccumulatorOp OrderBands
 │       ├── passes.rs              Pipelines (intent + Pass 0–3/4–6/7),
 │       │                          run_tick_pipeline (one encoder/submit),
 │       │                          individual pass runners for focused tests
@@ -131,7 +132,7 @@ SimThing/
             ├── tree_mutation.rs       steps 7+8: apply_structural_mutations —
             │                          AddChild / Remove / Reparent /
             │                          AttachOverlay / AddDimension
-            ├── gpu_sync.rs            step 9: build_overlay_deltas + upload,
+            ├── gpu_sync.rs            step 9: overlay delta sync / C-4 cache,
             │                          ThresholdBuilder + upload, upload_full_shadow
             ├── boundary.rs            BoundaryProtocol — owns root + registry +
             │                          allocator + cpu ThresholdRegistry; execute()
@@ -273,8 +274,16 @@ reconstructs tree, registry, allocator, and fission lineage from LDJSON log.**
   order `Evaluator::evaluate_node` step 5 applies them. Resolves `SubFieldRole → col`
   via `col_for_role` only (I1). Skips overlays targeting properties the node
   doesn't have (mirrors `resolved` iteration in the CPU oracle).
-- Skips `OverlayLifecycle::Suspended` overlays entirely — they never enter Pass 3
-  until activated at boundary time.
+- Skips `OverlayLifecycle::Suspended` overlays entirely — they never enter legacy
+  Pass 3 or the C-4 AccumulatorOp overlay registration buffer until activated at
+  boundary time.
+
+**`overlay_orderband.rs` — `plan_overlay_orderband`:**
+- Consumes the canonical `(OverlayDelta, SlotDeltaRange)` output from
+  `build_overlay_deltas` unchanged and assigns a per-cell `OrderBand` for
+  Add/Multiply/Set overlay ops.
+- Multiple ops targeting the same `(slot, col)` receive increasing bands in
+  legacy operation order. Independent cells can share the same band.
 
 **`passes.rs` — `Pipelines`:**
 - Owns shared uniform buffer (`PassParams { delta_time, n_dims, _pad, _pad }`) and
@@ -297,6 +306,8 @@ reconstructs tree, registry, allocator, and fission lineage from LDJSON log.**
 - `transform_application.wgsl` — Pass 3, switch on `op_kind` for Multiply / Add / Set.
   No uniform needed: `n_slots = arrayLength(&slot_delta_ranges)`,
   `n_dims = arrayLength(&values) / n_slots`.
+- `accumulator_op.wgsl` — C-4 overlay target writes use `AddToTarget`,
+  `ScaleTarget`, and `ResetTarget` consume modes with atomic values-buffer writes.
 - `reduction.wgsl` — Passes 4–6, one dispatch per depth bucket; per-column
   `ReductionRule` (Mean, Sum, Max, Min, First, WeightedMean).
 - `threshold_scan.wgsl` — Pass 7, strict crossing detection in three direction
@@ -490,7 +501,10 @@ Integration highlights:
 
 **`gpu_sync.rs` — step 9:**
 - `sync_gpu_buffers(root, registry, allocator, coord, state, velocity_alerts)`:
-  1. `build_overlay_deltas` + pad ranges to `state.n_slots` + `upload_overlay_deltas`.
+  1. If the overlay AccumulatorOp flag is enabled, use
+     `overlay_compile_revision` + `OverlayCompileCache` to reuse or rebuild the
+     C-4 OrderBand registrations from `build_overlay_deltas`. If the flag is
+     disabled, build and upload the legacy Pass 3 overlay buffers.
   2. `ThresholdBuilder::build_with_velocity_alerts` + `upload_thresholds`.
      Returns the new CPU registry.
   3. `coord.upload_full_shadow(state)` — every row, fresh.
@@ -905,7 +919,7 @@ Intent delta (when present): fold tick-time patches into values[]
 Pass 0: snapshot
 Pass 1: velocity integration     ← reads governed_pairs, writes values[]
 Pass 2: intensity update          ← reads values[] (post-integration velocity)
-Pass 3: transform application     ← reads overlay_deltas + slot_delta_ranges, writes values[] (in place)
+Pass 3: transform application     ← flag-off legacy overlay; flag-on C-4 AccumulatorOp OrderBands
 Pass 4–6: reduction
 Pass 7: threshold scan
 ```

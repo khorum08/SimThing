@@ -465,13 +465,16 @@ impl WorldGpuState {
             match family {
                 crate::OperationFamily::Intent => runtime.clear_intent(),
                 crate::OperationFamily::Threshold => runtime.clear_threshold(),
-                crate::OperationFamily::OverlayAdd => {
-                    runtime.clear_overlay_add();
+                crate::OperationFamily::OverlayAdd | crate::OperationFamily::OverlayOrderBand => {
+                    runtime.clear_overlay_orderband();
                     self.set_overlay_add_dispatch(false, 0);
                 }
                 _ => {}
             }
-        } else if matches!(family, crate::OperationFamily::OverlayAdd) {
+        } else if matches!(
+            family,
+            crate::OperationFamily::OverlayAdd | crate::OperationFamily::OverlayOrderBand
+        ) {
             self.set_overlay_add_dispatch(false, 0);
         }
     }
@@ -538,8 +541,12 @@ impl WorldGpuState {
         }
     }
 
-    /// Ensure the C-3 overlay Add AccumulatorOp runtime is enabled.
+    /// Ensure the C-4 overlay OrderBand AccumulatorOp runtime is enabled.
     pub fn ensure_overlay_add_accumulator(&mut self) {
+        self.ensure_overlay_accumulator();
+    }
+
+    pub fn ensure_overlay_accumulator(&mut self) {
         if self.accumulator_runtime.is_none() {
             self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
         }
@@ -556,7 +563,7 @@ impl WorldGpuState {
             );
     }
 
-    /// Upload pre-encoded overlay Add ops to the C-3 AccumulatorOp runtime.
+    /// Upload pre-encoded overlay ops to the C-4 AccumulatorOp runtime.
     pub fn upload_overlay_add_ops(
         &mut self,
         ops: &[crate::AccumulatorOpGpu],
@@ -564,14 +571,22 @@ impl WorldGpuState {
         self.upload_overlay_add_ops_with_bands(ops, 1)
     }
 
-    /// Upload overlay Add ops and set OrderBand pass count (C-3 boundary sync).
+    /// Upload overlay ops and set OrderBand pass count (C-4 boundary sync).
     pub fn upload_overlay_add_ops_with_bands(
         &mut self,
         ops: &[crate::AccumulatorOpGpu],
         n_bands: u32,
     ) -> Result<(), crate::AccumulatorOpSessionError> {
+        self.upload_overlay_ops_with_bands(ops, n_bands)
+    }
+
+    pub fn upload_overlay_ops_with_bands(
+        &mut self,
+        ops: &[crate::AccumulatorOpGpu],
+        n_bands: u32,
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
         if let Some(runtime) = self.accumulator_runtime.as_mut() {
-            runtime.upload_overlay_add_ops(&self.ctx, ops, n_bands)?;
+            runtime.upload_overlay_ops(&self.ctx, ops, n_bands)?;
         }
         self.set_overlay_add_dispatch(!ops.is_empty(), n_bands);
         Ok(())
@@ -707,22 +722,20 @@ impl WorldGpuState {
         let per_slot_per_col_bytes = (self.n_slots as u64) * (self.n_dims as u64) * 4;
 
         let new_values = self.mk_storage_buffer("values", per_slot_per_col_bytes);
-        let new_previous_values =
-            self.mk_storage_buffer("previous_values", per_slot_per_col_bytes);
-        let new_output_vectors =
-            self.mk_storage_buffer("output_vectors", per_slot_per_col_bytes);
+        let new_previous_values = self.mk_storage_buffer("previous_values", per_slot_per_col_bytes);
+        let new_output_vectors = self.mk_storage_buffer("output_vectors", per_slot_per_col_bytes);
         let new_previous_output_vectors =
             self.mk_storage_buffer("previous_output_vectors", per_slot_per_col_bytes);
 
         if preserve {
             // One encoder copies all four buffers from old → new in a single
             // submit. Cheap: GPU-local memory copy, no CPU round trip.
-            let mut encoder = self
-                .ctx
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("rebuild_for_slots:preserve"),
-                });
+            let mut encoder =
+                self.ctx
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("rebuild_for_slots:preserve"),
+                    });
             encoder.copy_buffer_to_buffer(&self.values, 0, &new_values, 0, preserve_bytes);
             encoder.copy_buffer_to_buffer(
                 &self.previous_values,
@@ -924,12 +937,12 @@ impl WorldGpuState {
                 mapped_at_creation: false,
             });
             if old_count > 0 {
-                let mut encoder = self
-                    .ctx
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("append_thresholds:preserve"),
-                    });
+                let mut encoder =
+                    self.ctx
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("append_thresholds:preserve"),
+                        });
                 encoder.copy_buffer_to_buffer(
                     &self.threshold_registry,
                     0,
@@ -1302,7 +1315,11 @@ mod tests {
         state.ensure_threshold_accumulator(4096);
         state.ensure_overlay_add_accumulator();
         assert!(state.accumulator_runtime.as_ref().unwrap().intent_active());
-        assert!(state.accumulator_runtime.as_ref().unwrap().threshold_active());
+        assert!(state
+            .accumulator_runtime
+            .as_ref()
+            .unwrap()
+            .threshold_active());
 
         reg.register(property_with_intensity("food_security"));
         state.rebuild_for_registry(&reg);

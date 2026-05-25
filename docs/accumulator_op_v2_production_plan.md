@@ -365,8 +365,9 @@ until sunset PR S-1.
 ### PR C-3 — Overlay Add migration
 
 **Status:** Landed (#105–#107). Add-only → AccumulatorOp with OrderBand exact f32
-order; mixed batches → legacy Pass 3 fallback only. Flag `use_accumulator_overlay_add`
-default false. **Sunset target:** S-3 (with C-4).
+order. The historical mixed-batch fallback was removed by C-4 while retaining the
+`use_accumulator_overlay_add` flag name for compatibility. **Sunset target:** S-3
+(after C-4 default-on validation).
 
 **Model:** Composer 2.5  
 **Scope:** Migrate `TransformOp::Add` overlays from Pass 3 to AccumulatorOp
@@ -383,14 +384,11 @@ Add fires before a child's Add when both register in the same tick.
 overlay scenarios.  
 **Acceptance:** CI green. Existing overlay tests pass.
 
-**Implementation note:** C-3 activates only for Add-only overlay batches.
-Mixed Add/Multiply/Set batches fall back entirely to legacy Pass 3 until C-4.
-Add-only batches emit one AccumulatorOp per Add delta with per-cell OrderBand
-sequencing; the pipeline dispatches all bands in ascending order within one
-command buffer to preserve legacy f32 operation order exactly. The old overlay
-path remains only as temporary fallback/oracle for mixed batches. C-4 owns
-Multiply/Set and the full order-band compiler; S-3 deletes the old overlay path
-after C-3/C-4 pass parity.
+**Implementation note:** C-3 established the per-cell OrderBand exactness rule
+for Add-only batches. C-4 extends that rule to all Add/Multiply/Set overlay
+batches and removes the mixed-batch fallback when the accumulator overlay flag is
+enabled. Legacy Pass 3 remains only for flag-off execution and oracle parity
+until S-3.
 
 ---
 
@@ -433,18 +431,17 @@ C-1/C-2/C-3 parity green; flags remain default false.
 
 ---
 
-### ⚠️ PR C-4 — Opus review: Overlay Multiply/Set and OrderBand compiler design
+### PR C-4 — Overlay Multiply/Set and OrderBand compiler
 
-**Design half status:** **Accepted** — see
+**Status:** Landed behind the overlay AccumulatorOp flag. See
 [`docs/workshop/c4_overlay_orderband_compiler_design.md`](workshop/c4_overlay_orderband_compiler_design.md).
-Selected: reuse `build_overlay_deltas` unchanged; new
+Implemented: reuse `build_overlay_deltas` unchanged; new
 `plan_overlay_orderband` extends the C-3 per-cell band pattern to mixed
 Add/Mul/Set; two-tier cache (revision counter on `BoundaryProtocol` +
-bytewise equality check on the cached `(deltas, ranges)`); new
+equality check on the cached `(deltas, ranges)`); new
 `ConsumeMode::AddToTarget` plus shader-side `ScaleTarget` / `ResetTarget`
 make the (combine, consume) mapping clean. C-3's `(Identity, None)` ≡
-add hack is replaced by `(Identity, AddToTarget)`. The implementation PR
-(Codex 5.5 mechanical) lands separately per §8/§9 of the memo.
+add hack is replaced by `(Identity, AddToTarget)`.
 
 **Implementer:** **Codex 5.5** (was previously listed as Composer 2.5;
 the memo specifies enough detail that Codex can execute mechanically).
@@ -456,38 +453,18 @@ under high overlay density (density=1.0: 0.56× in run 1, 1.2–1.3× in runs
 2–3, high variance). The dirty/cached-rebuild requirement is clear from the
 data but the compiler design is not.
 
-The specific question: the `OrderBand` compiler must produce a registration
-buffer from the raw overlay tree without recompiling the full index every tick.
-This is analogous to the B2 Approach C incremental CSR patcher for topology.
-Two possible shapes:
-
-Option A: **Delta-only compiler.** Track which overlays have changed since last
-compile (via `OverlayLifecycle` transitions). Recompile only affected
-parent/slot ranges. Requires tracking overlay activation/suspension events.
-
-Option B: **Per-band dirty bits.** One dirty bit per (slot, band). When an
-overlay changes, set the dirty bit for its slot and band. On tick, recompile
-only registrations for dirty (slot, band) pairs.
-
-The choice affects memory layout, the interaction with the existing
-`overlay_prep.rs` path, and the handling of `Suspended` overlays (which
-must not appear in the registration buffer but must re-appear on activation).
-
-**Opus task:** Evaluate Option A vs Option B against: (a) the existing
-`OverlayLifecycle` transition model from `design_v6.md`, (b) the fission-clone
-path (cloned children need fresh registration compilation), (c) the
-performance data from the workshop (small-scenario overhead, high-density
-regression). Produce a two-page design note with a concrete recommendation
-and the data structures.
-
-**Implementation (Composer 2.5 after Opus decision):**
-Implement `Product` + `LastByPriority` combine functions in the kernel.
-Implement the chosen compiler path. Feature-flagged.
+**Implementation:** Full Add/Multiply/Set overlay batches route through
+AccumulatorOp OrderBands when `use_accumulator_overlay_add` is true. The flag
+name is retained from C-3 for compatibility, but the path is now the full C-4
+overlay compiler. The pipeline still runs in one command buffer and executes the
+overlay bands at the original overlay point, before reduction and world summary.
+Legacy Pass 3 remains present for flag-off execution and oracle tests only.
 
 **Parity test:** Bit-exact against current Pass 3 for all overlay op types.  
 **High-density guard test:** At overlay density=1.0, assert the compiler does
 not recompile the full index when no overlays have changed since the last tick.  
-**Acceptance:** Both tests pass. Opus design note committed.
+**Acceptance:** C-4 parity and no-change cache tests pass. Opus design note
+committed. S-3 remains pending; no legacy overlay deletion in C-4.
 
 ---
 
@@ -706,7 +683,7 @@ with a clearly reported failure mode (triggers separate design work).
 | C-1 | C | Composer 2.5 | Threshold scan migration | 5× readback speedup |
 | C-2 | C | Codex 5.5 | Intent delta migration | Bit-exact parity |
 | C-3 | C | Composer 2.5 | Overlay Add migration | Bit-exact parity |
-| **C-4** | **C** | **Opus + Composer** | **Multiply/Set OrderBand compiler** | **Opus design + perf gate** |
+| C-4 | C | Opus + Codex 5.5 | Multiply/Set OrderBand compiler | Landed behind flag |
 | **C-5** | **C** | **Opus + Composer** | **WeightedMean tolerance boundary audit** | **Opus audit + guard test** |
 | C-6 | C | Composer 2.5 | Sum/Max/Min reductions | Bit-exact parity |
 | C-7 | C | Composer 2.5 | Velocity integration migration | vel_max clamp test |
@@ -716,8 +693,8 @@ with a clearly reported failure mode (triggers separate design work).
 | D-3 | D | Composer 2.5 | Changed-only logs + replay integration | Replay test |
 | D-4 | D | Composer 2.5 + Opus | Cross-pool contention gate | Pass or triggers ADR amendment |
 
-**Opus-gated PRs: A-4, B-4, C-4, C-5, C-8, D-1.** Six of twenty PRs. These are
-the six PRs where the correctness or design space is genuinely open and the
+**Remaining Opus-gated PRs: A-4, B-4, C-5, C-8, D-1.** C-4's Opus design has
+landed. These are the PRs where the correctness or design space is genuinely open and the
 cost of a wrong decision is architectural. Every other PR is fully specified by
 the ADR and the workshop evidence and can be executed mechanically.
 
@@ -980,7 +957,7 @@ as a doc-only PR.
 | C-1 | C | Composer 2.5 | Threshold scan migration | 5× readback speedup |
 | C-2 | C | Codex 5.5 | Intent delta migration | Bit-exact parity |
 | C-3 | C | Composer 2.5 | Overlay Add migration | Bit-exact parity |
-| **C-4** | **C** | **Opus + Composer** | **Multiply/Set OrderBand compiler** | **Opus design** |
+| C-4 | C | Opus + Codex 5.5 | Multiply/Set OrderBand compiler | Landed behind flag |
 | **C-5** | **C** | **Opus + Composer** | **WeightedMean tolerance audit** | **Opus audit** |
 | C-6 | C | Composer 2.5 | Sum/Max/Min reductions | Bit-exact parity |
 | C-7 | C | Composer 2.5 | Velocity integration | vel_max clamp test |
@@ -1004,4 +981,4 @@ as a doc-only PR.
 | G-1 | G | Codex 5.5 | Annotate design_v6.md §10 superseded | One commit |
 | **G-2** | **G** | **Opus** | **design_v7.md §4 final review** | **Human + Opus** |
 
-**Total: 33 PRs.** Opus-gated: A-4, B-4, C-4, C-5, C-8, D-1, G-2 — seven of thirty-three.
+**Total: 33 PRs.** Remaining Opus-gated: A-4, B-4, C-5, C-8, D-1, G-2 — six of thirty-three.

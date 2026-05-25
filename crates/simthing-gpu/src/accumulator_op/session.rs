@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use bytemuck;
 use simthing_core::AccumulatorOp;
+use wgpu::util::DeviceExt;
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
@@ -11,7 +12,6 @@ use wgpu::{
     Maintain, MapMode, PipelineLayoutDescriptor, QuerySet, QuerySetDescriptor, QueryType,
     ShaderModuleDescriptor, ShaderSource, ShaderStages,
 };
-use wgpu::util::DeviceExt;
 
 use crate::context::GpuContext;
 use crate::world_state::{IntentDelta, ThresholdEvent, ThresholdRegistration};
@@ -226,13 +226,11 @@ impl AccumulatorOpSession {
 
         let execute_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
             label: Some("accumulator_execute_pipeline"),
-            layout: Some(
-                &device.create_pipeline_layout(&PipelineLayoutDescriptor {
-                    label: Some("accumulator_execute_pl"),
-                    bind_group_layouts: &[&execute_layout],
-                    push_constant_ranges: &[],
-                }),
-            ),
+            layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("accumulator_execute_pl"),
+                bind_group_layouts: &[&execute_layout],
+                push_constant_ranges: &[],
+            })),
             module: &shader,
             entry_point: "execute_ops",
             compilation_options: Default::default(),
@@ -250,13 +248,11 @@ impl AccumulatorOpSession {
 
         let summary_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
             label: Some("accumulator_summary_pipeline"),
-            layout: Some(
-                &device.create_pipeline_layout(&PipelineLayoutDescriptor {
-                    label: Some("accumulator_summary_pl"),
-                    bind_group_layouts: &[&summary_layout],
-                    push_constant_ranges: &[],
-                }),
-            ),
+            layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("accumulator_summary_pl"),
+                bind_group_layouts: &[&summary_layout],
+                push_constant_ranges: &[],
+            })),
             module: &shader,
             entry_point: "write_summaries",
             compilation_options: Default::default(),
@@ -528,11 +524,8 @@ impl AccumulatorOpSession {
         self.last_pass_time_us = None;
         self.write_tick_uniform(ctx, band);
 
-        let execute_bind_group = self.create_execute_bind_group(
-            ctx,
-            &self.values_buffer,
-            &self.previous_values_buffer,
-        );
+        let execute_bind_group =
+            self.create_execute_bind_group(ctx, &self.values_buffer, &self.previous_values_buffer);
 
         let mut encoder = ctx
             .device
@@ -540,13 +533,14 @@ impl AccumulatorOpSession {
                 label: Some("accumulator_tick_encoder"),
             });
 
-        let timestamp_writes = self.timestamp_query_set.as_ref().map(|query_set| {
-            wgpu::ComputePassTimestampWrites {
-                query_set,
-                beginning_of_pass_write_index: Some(0),
-                end_of_pass_write_index: Some(1),
-            }
-        });
+        let timestamp_writes =
+            self.timestamp_query_set
+                .as_ref()
+                .map(|query_set| wgpu::ComputePassTimestampWrites {
+                    query_set,
+                    beginning_of_pass_write_index: Some(0),
+                    end_of_pass_write_index: Some(1),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
@@ -626,16 +620,16 @@ impl AccumulatorOpSession {
         }
         self.last_pass_time_us = None;
 
-        let execute_bind_group =
-            self.create_execute_bind_group(ctx, values, previous_values);
+        let execute_bind_group = self.create_execute_bind_group(ctx, values, previous_values);
 
-        let timestamp_writes = self.timestamp_query_set.as_ref().map(|query_set| {
-            wgpu::ComputePassTimestampWrites {
-                query_set,
-                beginning_of_pass_write_index: Some(0),
-                end_of_pass_write_index: Some(1),
-            }
-        });
+        let timestamp_writes =
+            self.timestamp_query_set
+                .as_ref()
+                .map(|query_set| wgpu::ComputePassTimestampWrites {
+                    query_set,
+                    beginning_of_pass_write_index: Some(0),
+                    end_of_pass_write_index: Some(1),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
@@ -681,16 +675,16 @@ impl AccumulatorOpSession {
         }
         self.last_pass_time_us = None;
 
-        let execute_bind_group =
-            self.create_execute_bind_group(ctx, values, previous_values);
+        let execute_bind_group = self.create_execute_bind_group(ctx, values, previous_values);
 
-        let timestamp_writes = self.timestamp_query_set.as_ref().map(|query_set| {
-            wgpu::ComputePassTimestampWrites {
-                query_set,
-                beginning_of_pass_write_index: Some(0),
-                end_of_pass_write_index: Some(1),
-            }
-        });
+        let timestamp_writes =
+            self.timestamp_query_set
+                .as_ref()
+                .map(|query_set| wgpu::ComputePassTimestampWrites {
+                    query_set,
+                    beginning_of_pass_write_index: Some(0),
+                    end_of_pass_write_index: Some(1),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
@@ -737,12 +731,12 @@ impl AccumulatorOpSession {
         self.read_execute_pass_timestamp(ctx);
     }
 
-    /// Prepare the session for a batched overlay Add pass in the caller's encoder.
+    /// Prepare the session for a batched overlay OrderBand pass in the caller's encoder.
     pub fn prepare_overlay_add(&self, _ctx: &GpuContext) {
         // Band uniforms are written per band inside `encode_overlay_add_into`.
     }
 
-    /// Encode overlay Add ops into the command encoder at the overlay position.
+    /// Encode overlay OrderBand ops into the command encoder at the overlay position.
     /// Dispatches `n_bands` OrderBand passes in ascending order within the encoder.
     /// Does NOT submit — caller owns the encoder and submits with other passes.
     pub fn encode_overlay_add_into(
@@ -772,17 +766,23 @@ impl AccumulatorOpSession {
                 _pad0: 0,
                 _pad1: 0,
             };
-            let tick_uniform = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("accumulator_overlay_add_band_uniform"),
-                contents: bytemuck::bytes_of(&tick_params),
-                usage: BufferUsages::UNIFORM,
-            });
-            let execute_bind_group =
-                self.create_execute_bind_group_with_uniform(ctx, values, previous_values, &tick_uniform);
+            let tick_uniform = ctx
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("accumulator_overlay_orderband_band_uniform"),
+                    contents: bytemuck::bytes_of(&tick_params),
+                    usage: BufferUsages::UNIFORM,
+                });
+            let execute_bind_group = self.create_execute_bind_group_with_uniform(
+                ctx,
+                values,
+                previous_values,
+                &tick_uniform,
+            );
             band_uniforms.push(tick_uniform);
 
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("accumulator_overlay_add_pass"),
+                label: Some("accumulator_overlay_orderband_pass"),
                 timestamp_writes: None,
             });
             pass.set_pipeline(&self.execute_pipeline);
@@ -804,11 +804,8 @@ impl AccumulatorOpSession {
             _pad0: 0,
             _pad1: 0,
         };
-        ctx.queue.write_buffer(
-            &self.tick_uniform,
-            0,
-            bytemuck::bytes_of(&tick_params),
-        );
+        ctx.queue
+            .write_buffer(&self.tick_uniform, 0, bytemuck::bytes_of(&tick_params));
     }
 
     fn create_execute_bind_group(
@@ -873,7 +870,10 @@ impl AccumulatorOpSession {
     }
 
     /// Production B-4 summary readback tier (32 B/slot on GPU).
-    pub fn readback_summary(&self, ctx: &GpuContext) -> Result<Vec<SlotSummary>, AccumulatorOpSessionError> {
+    pub fn readback_summary(
+        &self,
+        ctx: &GpuContext,
+    ) -> Result<Vec<SlotSummary>, AccumulatorOpSessionError> {
         let bytes = self.read_buffer_bytes(ctx, &self.summary_buffer);
         let gpu: &[SlotSummaryGpu] = bytemuck::cast_slice(&bytes);
         Ok(gpu
@@ -902,8 +902,7 @@ impl AccumulatorOpSession {
                 capacity: self.threshold_emission_capacity,
             });
         }
-        let used =
-            (count as u64) * std::mem::size_of::<ThresholdEmissionGpu>() as u64;
+        let used = (count as u64) * std::mem::size_of::<ThresholdEmissionGpu>() as u64;
         let bytes = self.read_buffer_bytes_range(ctx, &self.threshold_emission_buffer, 0, used);
         let gpu: &[ThresholdEmissionGpu] = bytemuck::cast_slice(&bytes);
         Ok(gpu
@@ -968,9 +967,7 @@ impl AccumulatorOpSession {
     /// not an approximation.
     pub fn readback_full(&self, ctx: &GpuContext) -> Result<Vec<f32>, AccumulatorOpSessionError> {
         if !DEBUG_READBACK_ALLOWED.load(Ordering::Relaxed) {
-            eprintln!(
-                "warning: AccumulatorOpSession::readback_full() called outside test mode"
-            );
+            eprintln!("warning: AccumulatorOpSession::readback_full() called outside test mode");
         }
         Ok(self.read_buffer_f32(ctx, &self.values_buffer))
     }
@@ -981,11 +978,8 @@ impl AccumulatorOpSession {
     }
 
     fn reset_threshold_emission_count(&self, ctx: &GpuContext) {
-        ctx.queue.write_buffer(
-            &self.threshold_emission_count,
-            0,
-            &0u32.to_le_bytes(),
-        );
+        ctx.queue
+            .write_buffer(&self.threshold_emission_count, 0, &0u32.to_le_bytes());
     }
 
     fn read_emission_count(&self, ctx: &GpuContext) -> Result<u32, AccumulatorOpSessionError> {
@@ -1032,11 +1026,7 @@ impl AccumulatorOpSession {
         }
     }
 
-    fn dispatch_write_summaries(
-        &self,
-        ctx: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
-    ) {
+    fn dispatch_write_summaries(&self, ctx: &GpuContext, encoder: &mut wgpu::CommandEncoder) {
         self.dispatch_write_summaries_for_values(ctx, encoder, &self.values_buffer);
     }
 
@@ -1175,9 +1165,7 @@ fn uniform_entry(binding: u32) -> BindGroupLayoutEntry {
 
 #[cfg(test)]
 mod tests {
-    use simthing_core::{
-        AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec,
-    };
+    use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
 
     use crate::accumulator_op::encode::EncodeError;
     use crate::accumulator_op::{
@@ -1278,7 +1266,7 @@ mod tests {
         session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
         session.tick(&ctx, 0).unwrap();
         values = session.readback_full(&ctx).unwrap();
-        assert_eq!(values[1], 7.0);
+        assert_eq!(values[1], 0.0);
     }
 
     #[test]
@@ -1312,7 +1300,9 @@ mod tests {
             targets: vec![(1, 0)],
         };
         session.upload_values(&ctx, &values);
-        session.upload_ops(&ctx, std::slice::from_ref(&op_small)).unwrap();
+        session
+            .upload_ops(&ctx, std::slice::from_ref(&op_small))
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
         values = session.readback_full(&ctx).unwrap();
         assert_eq!(values, vec![7.0, 3.0]);
@@ -1475,7 +1465,7 @@ mod tests {
                 combine: CombineFn::Identity,
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
-                consume: ConsumeMode::None,
+                consume: ConsumeMode::AddToTarget,
                 targets: vec![(0, 0)],
             },
             AccumulatorOp {
@@ -1524,7 +1514,7 @@ mod tests {
                 combine: CombineFn::Identity,
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
-                consume: ConsumeMode::None,
+                consume: ConsumeMode::AddToTarget,
                 targets: vec![(0, 0)],
             },
             AccumulatorOp {
@@ -1532,7 +1522,7 @@ mod tests {
                 combine: CombineFn::Identity,
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
-                consume: ConsumeMode::None,
+                consume: ConsumeMode::AddToTarget,
                 targets: vec![(0, 0)],
             },
             AccumulatorOp {
@@ -1540,7 +1530,7 @@ mod tests {
                 combine: CombineFn::Identity,
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
-                consume: ConsumeMode::None,
+                consume: ConsumeMode::AddToTarget,
                 targets: vec![(0, 0)],
             },
         ];
@@ -1565,7 +1555,9 @@ mod tests {
         };
         let (ctx, mut session) = gpu_session(2, 1);
         session.upload_values(&ctx, &[10.0, 20.0]);
-        session.upload_ops(&ctx, std::slice::from_ref(&noop)).unwrap();
+        session
+            .upload_ops(&ctx, std::slice::from_ref(&noop))
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
         let first = session.readback_summary(&ctx).unwrap();
         session.tick(&ctx, 0).unwrap();
@@ -1586,7 +1578,9 @@ mod tests {
         };
         let (ctx, mut session) = gpu_session(1, 1);
         session.upload_values(&ctx, &[10.0]);
-        session.upload_ops(&ctx, std::slice::from_ref(&noop)).unwrap();
+        session
+            .upload_ops(&ctx, std::slice::from_ref(&noop))
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
         let pre = session.readback_summary(&ctx).unwrap()[0].checksum_all;
 
@@ -1598,7 +1592,9 @@ mod tests {
             consume: ConsumeMode::None,
             targets: vec![(0, 0)],
         };
-        session.upload_ops(&ctx, std::slice::from_ref(&add_op)).unwrap();
+        session
+            .upload_ops(&ctx, std::slice::from_ref(&add_op))
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
         let post = session.readback_summary(&ctx).unwrap()[0].checksum_all;
         assert_ne!(pre, post);
@@ -1658,7 +1654,7 @@ mod tests {
         assert_eq!(
             emissions,
             vec![EmissionRecord {
-                reg_idx:    0,
+                reg_idx: 0,
                 emit_count: 3,
             }]
         );
@@ -2033,7 +2029,7 @@ mod tests {
             let values = vec![initial, 0.0, 0.0];
             let deltas = [IntentDelta {
                 slot: 0,
-                col:  0,
+                col: 0,
                 mul,
                 add,
             }];
@@ -2076,33 +2072,35 @@ mod tests {
         session.upload_values(&ctx, &[10.0, 0.0, 0.0]);
 
         let op = AccumulatorOpGpu {
-            source_kind:  source_kind::CONSTANT,
-            source_slot:  3.5_f32.to_bits(),
-            source_col:   0,
+            source_kind: source_kind::CONSTANT,
+            source_slot: 3.5_f32.to_bits(),
+            source_col: 0,
             source_count: 0,
             combine_kind: combine_kind::IDENTITY,
-            combine_a:    0,
-            combine_b:    0,
-            combine_c:    0,
-            combine_d:    0,
-            gate_kind:    gate_kind::ORDER_BAND,
-            gate_a:       0,
-            gate_b:       0,
-            scale_kind:   scale_kind::IDENTITY,
-            scale_a:      0,
-            consume:      consume_kind::NONE,
+            combine_a: 0,
+            combine_b: 0,
+            combine_c: 0,
+            combine_d: 0,
+            gate_kind: gate_kind::ORDER_BAND,
+            gate_a: 0,
+            gate_b: 0,
+            scale_kind: scale_kind::IDENTITY,
+            scale_a: 0,
+            consume: consume_kind::ADD_TO_TARGET,
             target0_slot: 0,
-            target0_col:  0,
+            target0_col: 0,
             target1_slot: 0,
-            target1_col:  0,
+            target1_col: 0,
             target2_slot: 0,
-            target2_col:  0,
+            target2_col: 0,
             target3_slot: 0,
-            target3_col:  0,
-            n_targets:    1,
-            _pad:         0,
+            target3_col: 0,
+            n_targets: 1,
+            _pad: 0,
         };
-        session.upload_gpu_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session
+            .upload_gpu_ops(&ctx, std::slice::from_ref(&op))
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
 
         let result = session.readback_full(&ctx).unwrap();
