@@ -8,6 +8,8 @@ use crate::{OverlayDelta, SlotDeltaRange, ThresholdRegistration};
 
 use simthing_core::EmlExpressionRegistry;
 
+use simthing_core::{AccumulatorOp, EmlTreeId};
+
 use super::eml_program_table::{
     EmlGpuProgramTable, EmlUploadError, DEFAULT_EML_NODE_CAPACITY, DEFAULT_EML_TREE_CAPACITY,
 };
@@ -101,8 +103,14 @@ pub struct WorldAccumulatorRuntime {
     overlay_session: Option<AccumulatorOpSession>,
     reduction_soft_session: Option<AccumulatorOpSession>,
     velocity_session: Option<AccumulatorOpSession>,
+    intensity_eml_session: Option<AccumulatorOpSession>,
     pub summary: Option<WorldSummaryRuntime>,
     pub overlay_compile_cache: Option<OverlayCompileCache>,
+
+    /// Intensity EML tree IDs registered at last boundary sync (C-8b).
+    intensity_tree_ids: Vec<EmlTreeId>,
+    /// Registry generation reflected in uploaded intensity EvalEML ops.
+    intensity_ops_registry_generation: Option<u64>,
 
     /// C-8a persistent GPU EML program table (shared across sessions).
     pub eml: Option<EmlGpuProgramTable>,
@@ -154,8 +162,11 @@ impl WorldAccumulatorRuntime {
             overlay_session: None,
             reduction_soft_session: None,
             velocity_session: None,
+            intensity_eml_session: None,
             summary: None,
             overlay_compile_cache: None,
+            intensity_tree_ids: Vec::new(),
+            intensity_ops_registry_generation: None,
             eml: None,
             eml_registry: EmlExpressionRegistry::new(),
         }
@@ -244,6 +255,10 @@ impl WorldAccumulatorRuntime {
         self.velocity_session.take()
     }
 
+    pub fn take_intensity_eml_session(&mut self) -> Option<AccumulatorOpSession> {
+        self.intensity_eml_session.take()
+    }
+
     pub fn restore_intent_session(&mut self, session: Option<AccumulatorOpSession>) {
         self.intent_session = session;
     }
@@ -264,6 +279,10 @@ impl WorldAccumulatorRuntime {
         self.velocity_session = session;
     }
 
+    pub fn restore_intensity_eml_session(&mut self, session: Option<AccumulatorOpSession>) {
+        self.intensity_eml_session = session;
+    }
+
     pub fn intent_session(&mut self) -> Option<&mut AccumulatorOpSession> {
         self.intent_session.as_mut()
     }
@@ -282,6 +301,10 @@ impl WorldAccumulatorRuntime {
 
     pub fn velocity_session(&mut self) -> Option<&mut AccumulatorOpSession> {
         self.velocity_session.as_mut()
+    }
+
+    pub fn intensity_eml_session(&mut self) -> Option<&mut AccumulatorOpSession> {
+        self.intensity_eml_session.as_mut()
     }
 
     pub fn intent_active(&self) -> bool {
@@ -324,12 +347,25 @@ impl WorldAccumulatorRuntime {
         self.velocity_ops.n_bands
     }
 
+    pub fn intensity_eml_active(&self) -> bool {
+        self.intensity_eml_ops.active
+    }
+
+    pub fn intensity_eml_bands(&self) -> u32 {
+        self.intensity_eml_ops.n_bands
+    }
+
+    pub fn intensity_ops_registry_generation(&self) -> Option<u64> {
+        self.intensity_ops_registry_generation
+    }
+
     pub fn any_pipeline_active(&self) -> bool {
         self.intent_active()
             || self.threshold_active()
             || self.overlay_order_ops.active
             || self.reduction_soft_ops.active
             || self.velocity_ops.active
+            || self.intensity_eml_ops.active
     }
 
     pub fn ensure_intent_session(
@@ -505,6 +541,82 @@ impl WorldAccumulatorRuntime {
             exactness: ExactnessClass::Exact,
             ..OpSetHandle::INACTIVE
         };
+    }
+
+    pub fn ensure_intensity_eml_session(
+        &mut self,
+        ctx: &GpuContext,
+        n_slots: u32,
+        n_dims: u32,
+        emission_capacity: u32,
+    ) {
+        if self.intensity_eml_session.is_none() {
+            let mut session = AccumulatorOpSession::new_attached(
+                ctx,
+                n_slots,
+                n_dims,
+                emission_capacity,
+            );
+            self.bind_eml_if_present(&mut session);
+            self.intensity_eml_session = Some(session);
+        }
+    }
+
+    pub fn clear_intensity_eml(&mut self) {
+        self.intensity_eml_session = None;
+        self.intensity_tree_ids.clear();
+        self.intensity_ops_registry_generation = None;
+        self.intensity_eml_ops = OpSetHandle {
+            family: OperationFamily::EvalEml,
+            exactness: ExactnessClass::Exact,
+            ..OpSetHandle::INACTIVE
+        };
+    }
+
+    pub fn upload_intensity_eml_ops(
+        &mut self,
+        ctx: &GpuContext,
+        ops: &[AccumulatorOp],
+        n_bands: u32,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        let registry_generation = self.eml_registry.generation();
+        let needs_upload = self.intensity_ops_registry_generation != Some(registry_generation)
+            || self
+                .intensity_eml_session
+                .as_ref()
+                .map(|s| s.n_ops() == 0)
+                .unwrap_or(true);
+        if !needs_upload {
+            return Ok(());
+        }
+        if let Some(session) = self.intensity_eml_session.as_mut() {
+            session.upload_ops_with_eml(ctx, ops, Some(&self.eml_registry))?;
+            self.intensity_eml_ops = OpSetHandle {
+                family: OperationFamily::EvalEml,
+                offset: 0,
+                count: session.n_ops(),
+                active: !ops.is_empty(),
+                n_bands,
+                exactness: ExactnessClass::Exact,
+            };
+            self.intensity_ops_registry_generation = Some(registry_generation);
+        }
+        Ok(())
+    }
+
+    pub fn register_intensity_eml_at_boundary(
+        &mut self,
+        dimension_registry: &simthing_core::DimensionRegistry,
+    ) -> Result<Vec<crate::IntensityEmlEntry>, simthing_core::EmlRegistryError> {
+        use crate::intensity_accumulator::register_intensity_eml_formulas;
+        let previous = self.intensity_tree_ids.clone();
+        let entries = register_intensity_eml_formulas(
+            &mut self.eml_registry,
+            dimension_registry,
+            &previous,
+        )?;
+        self.intensity_tree_ids = entries.iter().map(|e| e.tree_id).collect();
+        Ok(entries)
     }
 
     pub fn upload_velocity_ops(

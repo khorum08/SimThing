@@ -6,6 +6,20 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — C-8b: intensity migration via GPU-resident EvalEML
+
+**Landed:**
+- `use_accumulator_intensity` flag (default false; requires `use_accumulator_eml`)
+- `compile_intensity_behavior_to_eml` / `IntensityBehavior::compile_to_eml`
+- Boundary sync: register intensity EML trees, upload program table, upload EvalEML ops
+- `encode_intensity_eml_into` after velocity, before overlay; `dt` via tick params
+- `MAX_EML_TREE_NODES` / `EML_STACK_MAX` = 32 for intensity formula (22 nodes)
+- Tests: `crates/simthing-sim/tests/c8b_intensity_eml_parity.rs`
+
+**Unchanged:** legacy `intensity_update.wgsl` flag-off/oracle; no C-8c/d; no production CPU EML.
+
+---
+
 ## 2026-05-19 — C-8a remedial: EML program-table and admissibility hardening
 
 **Fixes:** node-count accounting uses `nodes.len()`; meta/node mismatch rejected; empty upload bumps generation; unchanged boundary sync skips reupload via `uploaded_registry_generation`; HardThreshold admits ExactDeterministic only (soft requires future guard path); PARAM index 0..=3 validation; `register_cpu_oracle_formula` for debug-only CpuOracleOnly trees.

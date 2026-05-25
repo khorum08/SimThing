@@ -6,6 +6,7 @@
 
 pub mod accumulator_op;
 pub mod context;
+pub mod intensity_accumulator;
 pub mod overlay_orderband;
 pub mod overlay_prep;
 pub mod passes;
@@ -26,6 +27,10 @@ pub use accumulator_op::{
     DEFAULT_EML_TREE_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 pub use context::{GpuContext, GpuInitError};
+pub use intensity_accumulator::{
+    build_intensity_eml_entries, plan_intensity_eml_ops, register_intensity_eml_formulas,
+    IntensityEmlEntry, IntensityEmlPlan,
+};
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
 pub use reduction_orderband::{
     plan_reduction_orderband, reduction_soft_band_for_depth_bucket, ReductionOrderBandPlan,

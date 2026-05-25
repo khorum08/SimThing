@@ -2,7 +2,7 @@
 
 use bytemuck::{Pod, Zeroable};
 
-pub const EML_STACK_MAX: u32 = 16;
+pub const EML_STACK_MAX: u32 = 32;
 
 pub mod opcode {
     pub const LITERAL_F32: u32 = 0;

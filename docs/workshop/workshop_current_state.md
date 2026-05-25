@@ -46,7 +46,8 @@ velocity, intensity) are oracle/fallback until their S-phase deletions.
 | **S-4** | #126 | Legacy `reduction.wgsl` deleted; AccumulatorOp sole reduction path; flags default on |
 | **C-7** | #127 | GovernedPair velocity integration → AccumulatorOp `IntegrateWithClamp`; dt via tick params |
 | **C-8a** | #129 | EML infrastructure: execution classes, registry, persistent GPU program table, EvalEML interpreter (ExactDeterministic only); `use_accumulator_eml` flag (default false) |
-| **C-8a remedial** | local | Node-count accounting, unchanged boundary skip, empty-upload generation bump, HardThreshold gate, PARAM validation, CpuOracleOnly debug registration |
+| **C-8a remedial** | #130 | Node-count accounting, unchanged boundary skip, empty-upload generation bump, HardThreshold gate, PARAM validation, CpuOracleOnly debug registration |
+| **C-8b** | local | Intensity migration: `use_accumulator_intensity`, `IntensityBehavior` → EvalEML, boundary sync upload, tick placement after velocity; legacy `intensity_update.wgsl` flag-off/oracle |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
@@ -56,7 +57,7 @@ velocity, intensity) are oracle/fallback until their S-phase deletions.
 ```text
 WorldGpuState
   accumulator_runtime: Option<WorldAccumulatorRuntime>
-    intent_session / threshold_session / overlay_session / reduction_soft_session / velocity_session
+    intent_session / threshold_session / overlay_session / reduction_soft_session / velocity_session / intensity_eml_session
     overlay_compile_cache: Option<OverlayCompileCache>    (C-4 dirty/cached planner)
     summary: Option<WorldSummaryRuntime>                  (B-4 from world values)
   accumulator_overlay_add_active / _bands                 (cached dispatch; survives session take)
@@ -95,7 +96,7 @@ session presence + overlay dispatch cache, not stale sessions.
 | Priority | ID | Owner | Blocks |
 |----------|-----|-------|--------|
 | Sunset | **S-3** | Composer | Legacy overlay prep deletion after C-4 default-on |
-| Non-Opus | **C-8** | Composer | EML/transfer/intensity |
+| Non-Opus | **C-8c/d** | Composer | Transfer/emission EML migration |
 | Infra | Oracle refactor | Optional | Move C-1/C-2/C-3/C-4 parity tests onto `run_family_oracle` |
 
 ### Sunset targets (S-phase)

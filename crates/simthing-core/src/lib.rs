@@ -6,6 +6,7 @@ pub mod reduction;
 pub mod accumulator_op;
 pub mod eml_nodes;
 pub mod eml_registry;
+pub mod intensity_eml;
 pub mod registry;
 pub mod simthing;
 
@@ -23,6 +24,10 @@ pub use ids::{OverlayId, SimPropertyId, SimThingId};
 pub use overlay::{
     DissolveCondition, Overlay, OverlayKind, OverlayLifecycle, OverlaySource,
     PropertyTransformDelta,
+};
+pub use intensity_eml::{
+    compile_intensity_behavior_to_eml, intensity_eml_direct_cpu, intensity_tree_id,
+    INTENSITY_EML_TREE_ID_BASE,
 };
 pub use property::{
     ClampBehavior, DecayBehavior, Direction, ExpireEffect, ExpireHandler, FissionTemplate,

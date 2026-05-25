@@ -17,7 +17,7 @@ pub fn eval_eml_cpu(
     n_dims: u32,
     params: [f32; 4],
 ) -> f32 {
-    let mut stack = [0.0f32; 16];
+    let mut stack = [0.0f32; 32];
     let mut sp: usize = 0;
 
     for node in nodes {
