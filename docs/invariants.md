@@ -65,6 +65,10 @@ working around one of these, stop and reconsider the design.
 | Emission records are produced for every GPU-resolved emission | `EmissionRecord { reg_idx, emit_count }` written to compact buffer; read back for delta log |
 | Persistent GPU buffer is the residency model | `AccumulatorOpSession` is created at session open and closed at session close; no per-tick device creation |
 | Timestamp queries are required for performance claims | Any PR claiming a performance win must include timestamped GPU pass measurements, not just wall-clock |
+| Old pass code is never deleted without a green CI run at default-on flag | Sunset PR checklist; enforced before deletion |
+| `design_v7.md` §4 is updated by each migration PR | PR template checklist item |
+| `SoftAggregateGuard` on WeightedMean columns feeding thresholds | `assert_no_hard_trigger_on_soft_aggregate()` at registration |
+| `simthing-sim` never knows recipe semantics | No recipe strings, costs, or economic types in `simthing-sim` |
 
 ---
 

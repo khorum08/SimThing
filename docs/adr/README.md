@@ -9,4 +9,6 @@
 | [spec_session_state_replay.md](spec_session_state_replay.md) | Accepted (O2 landed `2f2a7b5`) | Replay v3 — `SpecSnapshot`/`SpecDelta`, logical keys |
 | [install_clone_then_commit.md](install_clone_then_commit.md) | Accepted (I1 landed `6b8de81`) | `preview_install` / `install_atomic` / Studio preview |
 
-**Parking and gates:** [`docs/design_v6.5.md`](../design_v6.5.md)
+AccumulatorOp v2: [`../adr_accumulator_op_v2.md`](../adr_accumulator_op_v2.md) (Proposed) · spec: [`../design_v7.md`](../design_v7.md)
+
+**Parking and gates:** [`docs/design_v6.5.md`](../design_v6.5.md) · **GPU pipeline:** [`docs/design_v7.md`](../design_v7.md)
