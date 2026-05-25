@@ -497,34 +497,18 @@ legacy `reduction.wgsl` dispatch. C-5 bridge (soft only) unchanged. S-4 pending.
 **Parity:** Sum/Max/Min/First bit-exact vs legacy; mixed soft+exact within 1e-5;
 combined all-flags integration test green.
 
-**S-4 readiness checklist (not executed in C-6; prep PR documents gates):**
+### ✅ PR S-4 — Legacy reduction sunset
 
-S-4 can begin after:
-- `use_accumulator_reduction_soft` default-on candidate passes.
-- `use_accumulator_reduction_exact` default-on candidate passes.
-- C-5 and C-6 parity tests remain green.
-- Combined all-flags path remains green.
-- No production path dispatches legacy reduction when both flags are on.
-- CI burn-in window satisfied.
+**Status:** **Landed** (pending PR merge).
 
-**C-6 landed (production direction):**
-- Sum / Max / Min / First exact reductions now execute through AccumulatorOp.
-- C-5 soft and C-6 exact reductions share `ReductionPlanMode` / OrderBand planner.
-- With soft+exact reduction flags enabled, legacy `reduction.wgsl` is not dispatched.
-- Legacy reduction remains only flag-off/oracle until S-4.
+**What shipped:** Deleted `reduction.wgsl`, legacy reduction pipeline/bind groups,
+`skip_soft_columns`, C-5/C-6 exact fallback branch, and legacy dispatch counters.
+`run_accumulator_reduction_passes` is the sole reduction dispatch. `ReductionPlanMode`
+removed — `plan_reduction_orderband` plans all rules. Reduction flags default on
+(both required). Tests use CPU oracle golden; `s4_reduction_sunset.rs` added.
 
-**S-4 deletion inventory (draft — do not execute until gates above pass):**
-- `crates/simthing-gpu/src/shaders/reduction.wgsl`
-- Reduction pipeline creation in `passes.rs`
-- Reduction bind group layout if no longer used
-- Legacy reduction topology upload branches only if not needed by Accumulator planner
-- Legacy reduction standalone `run_reduction_passes` test helper, unless kept as oracle fixture
-- Any `skip_soft_columns` plumbing
-
-**Keep (not part of S-4 shader deletion):** `child_starts`, `child_indices`,
-`depth_slots`, and column rules — still required by the Accumulator reduction
-planner and parity tests. Do not delete topology data just because the legacy
-shader is gone.
+**Preserved:** topology upload, `child_starts` / `child_indices` / `depth_slots`,
+column rules, THRESH_BUF_OUTPUT semantics, GPU-resident two-buffer reduction.
 
 ---
 

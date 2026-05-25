@@ -7,14 +7,6 @@ use crate::accumulator_op::{
 };
 use crate::reduction::{ColumnRuleDescriptor, TopologyState};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ReductionPlanMode {
-    /// C-5 bridge: Mean / WeightedMean only.
-    SoftOnly,
-    /// C-6 full path: all reduction rules through AccumulatorOp.
-    AllRules,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct ReductionOrderBandPlan {
     pub ops: Vec<AccumulatorOpGpu>,
@@ -87,21 +79,11 @@ fn combine_for_rule(desc: &ColumnRuleDescriptor, n_dims: u32) -> Result<(u32, u3
     Ok(weight_col)
 }
 
-fn include_rule(rule: ReductionRule, mode: ReductionPlanMode) -> bool {
-    match mode {
-        ReductionPlanMode::SoftOnly => {
-            matches!(rule, ReductionRule::Mean | ReductionRule::WeightedMean { .. })
-        }
-        ReductionPlanMode::AllRules => true,
-    }
-}
-
 /// Plan reduction ops for AccumulatorOp OrderBand execution.
 pub fn plan_reduction_orderband(
     topology: &TopologyState,
     column_rules: &[ColumnRuleDescriptor],
     n_dims: u32,
-    mode: ReductionPlanMode,
 ) -> Result<ReductionOrderBandPlan, ReductionPlanError> {
     let topo = topology.flatten();
     let max_depth = topo.depth_buckets.len().saturating_sub(1) as u32;
@@ -135,9 +117,6 @@ pub fn plan_reduction_orderband(
                 break;
             }
             let desc = column_rules[col];
-            if !include_rule(desc.rule, mode) {
-                continue;
-            }
             let (combine, weight_col) = combine_for_rule(&desc, n_dims)?;
             ops.push(make_reduction_op(
                 first_child,
@@ -238,9 +217,7 @@ mod tests {
     fn c5_reduction_planner_emits_slotrange_matching_topology_children() {
         let (topo, reg, n_dims) = two_level_fixture();
         let descriptors = build_column_rule_descriptors(&reg, n_dims as usize);
-        let plan =
-            plan_reduction_orderband(&topo, &descriptors, n_dims, ReductionPlanMode::SoftOnly)
-                .unwrap();
+        let plan = plan_reduction_orderband(&topo, &descriptors, n_dims).unwrap();
         assert!(!plan.ops.is_empty());
         let op = &plan.ops[0];
         assert_eq!(op.source_kind, source_kind::SLOT_RANGE);
@@ -280,9 +257,7 @@ mod tests {
         let topo = TopologyState::build(&world, &alloc);
         let n_dims = reg.total_columns as u32;
         let descriptors = build_column_rule_descriptors(&reg, n_dims as usize);
-        let plan =
-            plan_reduction_orderband(&topo, &descriptors, n_dims, ReductionPlanMode::AllRules)
-                .unwrap();
+        let plan = plan_reduction_orderband(&topo, &descriptors, n_dims).unwrap();
 
         let combines: Vec<u32> = plan.ops.iter().map(|op| op.combine_kind).collect();
         assert!(combines.contains(&combine_kind::SUM));
@@ -292,18 +267,13 @@ mod tests {
     }
 
     #[test]
-    fn c6_reduction_planner_all_rules_preserves_soft_rules() {
+    fn c6_reduction_planner_includes_mean_and_max_columns() {
         let (topo, reg, n_dims) = two_level_fixture();
         let descriptors = build_column_rule_descriptors(&reg, n_dims as usize);
-        let soft =
-            plan_reduction_orderband(&topo, &descriptors, n_dims, ReductionPlanMode::SoftOnly)
-                .unwrap();
-        let all =
-            plan_reduction_orderband(&topo, &descriptors, n_dims, ReductionPlanMode::AllRules)
-                .unwrap();
-        for op in &soft.ops {
-            assert!(all.ops.contains(op));
-        }
+        let plan = plan_reduction_orderband(&topo, &descriptors, n_dims).unwrap();
+        let combines: Vec<u32> = plan.ops.iter().map(|op| op.combine_kind).collect();
+        assert!(combines.contains(&combine_kind::MEAN));
+        assert!(combines.contains(&combine_kind::MAX));
     }
 
     #[test]
@@ -336,9 +306,7 @@ mod tests {
     fn c6_reduction_band_mapping_matches_depth_buckets() {
         let (topo, reg, n_dims) = sum_property_fixture();
         let descriptors = build_column_rule_descriptors(&reg, n_dims as usize);
-        let plan =
-            plan_reduction_orderband(&topo, &descriptors, n_dims, ReductionPlanMode::AllRules)
-                .unwrap();
+        let plan = plan_reduction_orderband(&topo, &descriptors, n_dims).unwrap();
         assert_eq!(plan.n_bands, 1);
         assert_eq!(plan.ops[0].gate_a, 0);
     }
@@ -352,8 +320,7 @@ mod tests {
         topo.per_slot_children[0] = vec![1, 3]; // non-contiguous
         let reg = DimensionRegistry::new();
         let descriptors = build_column_rule_descriptors(&reg, 1);
-        let err =
-            plan_reduction_orderband(&topo, &descriptors, 1, ReductionPlanMode::SoftOnly).unwrap_err();
+        let err = plan_reduction_orderband(&topo, &descriptors, 1).unwrap_err();
         assert_eq!(
             err,
             ReductionPlanError::NonContiguousChildren { parent_slot: 0 }

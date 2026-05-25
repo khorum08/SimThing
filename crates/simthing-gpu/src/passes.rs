@@ -16,11 +16,10 @@ use wgpu::{
     ComputePipelineDescriptor, PipelineLayoutDescriptor, ShaderModuleDescriptor,
     ShaderSource, ShaderStages,
 };
-use wgpu::util::DeviceExt;
 
 use crate::context::GpuContext;
 use crate::reduction_orderband::reduction_soft_band_for_depth_bucket;
-use crate::world_state::{ReduceParams, WorldGpuState};
+use crate::world_state::WorldGpuState;
 
 const WORKGROUP_SIZE: u32 = 64;
 const MAX_DISPATCH_X_GROUPS: u32 = 65_535;
@@ -74,9 +73,6 @@ pub struct Pipelines {
 
     threshold_layout:   BindGroupLayout,
     threshold_pipeline: ComputePipeline,
-
-    reduction_layout:   BindGroupLayout,
-    reduction_pipeline: ComputePipeline,
 }
 
 impl Pipelines {
@@ -262,37 +258,6 @@ impl Pipelines {
             cache: None,
         });
 
-        // ── Passes 4–6: bottom-up reduction ─────────────────────────────────
-        let reduction_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("reduction_bgl"),
-            entries: &[
-                storage_entry(0, /*read_only*/ true),  // values
-                storage_entry(1, /*read_only*/ false), // output_vectors (rw)
-                storage_entry(2, /*read_only*/ true),  // child_starts
-                storage_entry(3, /*read_only*/ true),  // child_indices
-                storage_entry(4, /*read_only*/ true),  // column_rules
-                storage_entry(5, /*read_only*/ true),  // depth_slots
-                uniform_entry(6),                       // ReduceParams
-            ],
-        });
-        let reduction_module = device.create_shader_module(ShaderModuleDescriptor {
-            label:  Some("reduction_shader"),
-            source: ShaderSource::Wgsl(include_str!("shaders/reduction.wgsl").into()),
-        });
-        let reduction_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("reduction_pl_layout"),
-            bind_group_layouts: &[&reduction_layout],
-            push_constant_ranges: &[],
-        });
-        let reduction_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("reduction_pipeline"),
-            layout: Some(&reduction_pl_layout),
-            module: &reduction_module,
-            entry_point: "main",
-            compilation_options: Default::default(),
-            cache: None,
-        });
-
         Self {
             uniform_buffer,
             snapshot_layout, snapshot_pipeline,
@@ -301,7 +266,6 @@ impl Pipelines {
             overlay_layout, overlay_pipeline,
             intent_layout, intent_pipeline,
             threshold_layout, threshold_pipeline,
-            reduction_layout, reduction_pipeline,
         }
     }
 
@@ -639,42 +603,6 @@ impl Pipelines {
             })
         });
 
-        let skip_soft = u32::from(state.accumulator_reduction_soft_active);
-        let mut reduction_param_buffers = Vec::new();
-        let mut reduction_depth_bgs = Vec::new();
-        for &(depth_offset, bucket_size) in state.depth_bucket_ranges.iter().rev() {
-            if bucket_size == 0 {
-                continue;
-            }
-            let p = ReduceParams {
-                n_dims:       state.n_dims,
-                depth_offset,
-                bucket_size,
-                skip_soft_columns: skip_soft,
-            };
-            let buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("reduction_depth_uniform"),
-                contents: bytemuck::bytes_of(&p),
-                usage: BufferUsages::UNIFORM,
-            });
-            reduction_param_buffers.push(buf);
-            let buf_ref = reduction_param_buffers.last().unwrap();
-            let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
-                label: Some("reduction_depth_bg"),
-                layout: &self.reduction_layout,
-                entries: &[
-                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                    BindGroupEntry { binding: 1, resource: state.output_vectors.as_entire_binding() },
-                    BindGroupEntry { binding: 2, resource: state.child_starts.as_entire_binding() },
-                    BindGroupEntry { binding: 3, resource: state.child_indices.as_entire_binding() },
-                    BindGroupEntry { binding: 4, resource: state.column_rules.as_entire_binding() },
-                    BindGroupEntry { binding: 5, resource: state.depth_slots.as_entire_binding() },
-                    BindGroupEntry { binding: 6, resource: buf_ref.as_entire_binding() },
-                ],
-            });
-            reduction_depth_bgs.push((bucket_size, bg));
-        }
-
         let threshold_bg = (state.n_thresholds > 0).then(|| {
             ctx.device.create_bind_group(&BindGroupDescriptor {
                 label: Some("threshold_bg"),
@@ -763,14 +691,6 @@ impl Pipelines {
                 dispatch_linear(&mut pass, state.n_slots);
             }
 
-            if !reduction_soft_active {
-                for (bucket_size, bg) in &reduction_depth_bgs {
-                    pass.set_pipeline(&self.reduction_pipeline);
-                    pass.set_bind_group(0, bg, &[]);
-                    dispatch_linear(&mut pass, *bucket_size);
-                }
-            }
-
             if !skip_threshold_scan && !reduction_soft_active {
                 if let Some(bg) = threshold_bg.as_ref() {
                     pass.set_pipeline(&self.threshold_pipeline);
@@ -790,13 +710,11 @@ impl Pipelines {
                 copy_bytes,
             );
             if let Some(session) = sessions.reduction_soft.as_mut() {
-                let exact_fallback = !state.accumulator_reduction_exact_active;
                 self.encode_accumulator_reduction_by_depth(
                     ctx,
                     &mut encoder,
                     state,
                     session,
-                    exact_fallback,
                 );
             }
             if !skip_threshold_scan {
@@ -835,76 +753,8 @@ impl Pipelines {
         ctx.queue.submit(Some(encoder.finish()));
     }
 
-    /// Single-submit reduction across all depth buckets.
-    ///
-    /// GPU compute passes within a single encoder execute in order, so each
-    /// depth bucket's writes to `output_vectors` are visible to shallower
-    /// buckets dispatched later in the same encoder. No inter-submission
-    /// barriers are required.
-    ///
-    /// Performance note: the previous implementation submitted one encoder
-    /// per depth bucket. At hierarchy depth N, that produced N driver fences
-    /// per tick. This single-submit version produces one fence regardless of
-    /// depth. All reduction benchmarks should be re-run after this change
-    /// to establish the correct performance baseline for the ADR.
-    pub fn run_reduction_passes(&self, state: &WorldGpuState) {
-        if state.depth_bucket_ranges.is_empty() {
-            return;
-        }
-        let ctx = &state.ctx;
-
-        let mut reduction_depth_bgs = Vec::new();
-        for &(depth_offset, bucket_size) in state.depth_bucket_ranges.iter().rev() {
-            if bucket_size == 0 {
-                continue;
-            }
-            let p = ReduceParams {
-                n_dims:       state.n_dims,
-                depth_offset,
-                bucket_size,
-                skip_soft_columns: u32::from(state.accumulator_reduction_soft_active),
-            };
-            let param_buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label:    Some("reduction_depth_uniform"),
-                contents: bytemuck::bytes_of(&p),
-                usage:    BufferUsages::UNIFORM,
-            });
-            let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
-                label: Some("reduction_depth_bg"),
-                layout: &self.reduction_layout,
-                entries: &[
-                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                    BindGroupEntry { binding: 1, resource: state.output_vectors.as_entire_binding() },
-                    BindGroupEntry { binding: 2, resource: state.child_starts.as_entire_binding() },
-                    BindGroupEntry { binding: 3, resource: state.child_indices.as_entire_binding() },
-                    BindGroupEntry { binding: 4, resource: state.column_rules.as_entire_binding() },
-                    BindGroupEntry { binding: 5, resource: state.depth_slots.as_entire_binding() },
-                    BindGroupEntry { binding: 6, resource: param_buf.as_entire_binding() },
-                ],
-            });
-            reduction_depth_bgs.push((bucket_size, bg));
-        }
-
-        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("reduction_encoder"),
-        });
-
-        for (bucket_size, bg) in &reduction_depth_bgs {
-            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("reduction_pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.reduction_pipeline);
-            pass.set_bind_group(0, bg, &[]);
-            dispatch_linear(&mut pass, *bucket_size);
-        }
-
-        ctx.queue.submit(Some(encoder.finish()));
-    }
-
-    /// C-5 soft-reduction path: leaf init memcpy + per-depth interleaved
-    /// AccumulatorOp OrderBands + legacy exact-column fallback.
-    pub fn run_c5_soft_reduction_passes(
+    /// AccumulatorOp reduction: leaf init memcpy + per-depth OrderBand dispatch.
+    pub fn run_accumulator_reduction_passes(
         &self,
         state: &WorldGpuState,
         session: &mut crate::AccumulatorOpSession,
@@ -918,7 +768,7 @@ impl Pipelines {
         let ctx = &state.ctx;
 
         let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("c5_soft_reduction_encoder"),
+            label: Some("accumulator_reduction_encoder"),
         });
 
         let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
@@ -930,36 +780,23 @@ impl Pipelines {
             copy_bytes,
         );
 
-        self.encode_accumulator_reduction_by_depth(
-            ctx,
-            &mut encoder,
-            state,
-            session,
-            !state.accumulator_reduction_exact_active,
-        );
+        self.encode_accumulator_reduction_by_depth(ctx, &mut encoder, state, session);
 
         ctx.queue.submit(Some(encoder.finish()));
     }
 
-    /// Copy `values` → `output_vectors`, then interleave AccumulatorOp reduction
-    /// bands with optional legacy exact-column fallback per depth bucket.
+    /// Copy `values` → `output_vectors`, then dispatch AccumulatorOp reduction bands.
     fn encode_accumulator_reduction_by_depth(
         &self,
         ctx: &GpuContext,
         encoder: &mut wgpu::CommandEncoder,
         state: &WorldGpuState,
         session: &mut crate::AccumulatorOpSession,
-        exact_fallback: bool,
     ) {
         let max_tree_depth = state.depth_bucket_ranges.len().saturating_sub(1) as u32;
         let n_buckets = state.depth_bucket_ranges.len();
 
         for depth_idx in (0..n_buckets).rev() {
-            let (depth_offset, bucket_size) = state.depth_bucket_ranges[depth_idx];
-            if bucket_size == 0 {
-                continue;
-            }
-
             if let Some(band) =
                 reduction_soft_band_for_depth_bucket(max_tree_depth, depth_idx as u32)
             {
@@ -972,63 +809,7 @@ impl Pipelines {
                     );
                 }
             }
-
-            if exact_fallback {
-                // TODO(C-6/S-4): legacy exact-column fallback only while C-6 is pending.
-                // Remove in S-4 after Sum/Max/Min migrate to AccumulatorOp.
-                self.encode_legacy_exact_reduction_bucket(
-                    ctx,
-                    encoder,
-                    state,
-                    depth_offset,
-                    bucket_size,
-                );
-            }
         }
-    }
-
-    /// Legacy reduction for one depth bucket; skips Mean/WeightedMean when C-5 is active.
-    fn encode_legacy_exact_reduction_bucket(
-        &self,
-        ctx: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
-        state: &WorldGpuState,
-        depth_offset: u32,
-        bucket_size: u32,
-    ) {
-        crate::reduction::record_legacy_exact_reduction_bucket_dispatch();
-        let p = ReduceParams {
-            n_dims: state.n_dims,
-            depth_offset,
-            bucket_size,
-            skip_soft_columns: u32::from(state.accumulator_reduction_soft_active),
-        };
-        let param_buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("reduction_depth_uniform"),
-            contents: bytemuck::bytes_of(&p),
-            usage: BufferUsages::UNIFORM,
-        });
-        let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
-            label: Some("reduction_depth_bg"),
-            layout: &self.reduction_layout,
-            entries: &[
-                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                BindGroupEntry { binding: 1, resource: state.output_vectors.as_entire_binding() },
-                BindGroupEntry { binding: 2, resource: state.child_starts.as_entire_binding() },
-                BindGroupEntry { binding: 3, resource: state.child_indices.as_entire_binding() },
-                BindGroupEntry { binding: 4, resource: state.column_rules.as_entire_binding() },
-                BindGroupEntry { binding: 5, resource: state.depth_slots.as_entire_binding() },
-                BindGroupEntry { binding: 6, resource: param_buf.as_entire_binding() },
-            ],
-        });
-
-        let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-            label: Some("legacy_exact_reduction_pass"),
-            timestamp_writes: None,
-        });
-        pass.set_pipeline(&self.reduction_pipeline);
-        pass.set_bind_group(0, &bg, &[]);
-        dispatch_linear(&mut pass, bucket_size);
     }
 
     /// Pass 7: scan registered thresholds for crossings between `previous_values`
@@ -1139,6 +920,33 @@ mod tests {
                 a.to_bits(), b.to_bits(),
             );
         }
+    }
+
+    fn upload_accumulator_reduction_plan(
+        state: &mut WorldGpuState,
+        world: &SimThing,
+        alloc: &crate::slot::SlotAllocator,
+        reg: &DimensionRegistry,
+    ) {
+        use crate::reduction::{build_column_rule_descriptors, TopologyState};
+        use crate::reduction_orderband::plan_reduction_orderband;
+
+        state.ensure_reduction_soft_accumulator();
+        let topo_state = TopologyState::build(world, alloc);
+        let descriptors = build_column_rule_descriptors(reg, state.n_dims as usize);
+        let plan = plan_reduction_orderband(&topo_state, &descriptors, state.n_dims).unwrap();
+        state
+            .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands)
+            .expect("reduction upload");
+    }
+
+    fn dispatch_accumulator_reduction(state: &mut WorldGpuState) {
+        let pipelines = Pipelines::new(&state.ctx);
+        let mut runtime = state.accumulator_runtime.take().unwrap();
+        let mut session = runtime.take_reduction_soft_session().unwrap();
+        pipelines.run_accumulator_reduction_passes(state, &mut session);
+        runtime.restore_reduction_soft_session(Some(session));
+        state.accumulator_runtime = Some(runtime);
     }
 
     #[test]
@@ -1498,7 +1306,6 @@ mod tests {
         pipelines.run_velocity_integration(&manual, 1.0);
         pipelines.run_intensity_update(&manual, 1.0);
         pipelines.run_apply_overlays(&manual);
-        pipelines.run_reduction_passes(&manual);
         pipelines.run_threshold_scan(&manual);
 
         let ctx2 = GpuContext::new_blocking().expect("second gpu context");
@@ -1740,7 +1547,6 @@ mod tests {
         pipelines.run_velocity_integration(&state, 1.0); // values amount: 0.35 - 0.10 = 0.25
         pipelines.run_intensity_update(&state, 1.0);
         pipelines.run_apply_overlays(&state);
-        pipelines.run_reduction_passes(&state);
         pipelines.run_threshold_scan(&state);
 
         let count = state.read_event_count();
@@ -1993,26 +1799,27 @@ mod tests {
         let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
         let i_off = layout.offset_of(&SubFieldRole::Intensity).unwrap();
 
-        // Build: World → 2 Locations → 3, 2 cohorts respectively. 8 nodes.
-        let cohort_data: [&[(f32, f32, f32)]; 2] = [
-            &[(0.40, 0.07, 0.20), (0.85, -0.001, 0.60), (0.10, 0.05, 0.30)],
-            &[(0.55, 0.03, 0.45), (0.20, -0.02, 0.10)],
+        // Single location keeps cohort child slots contiguous for AccumulatorOp SlotRange.
+        let cohort_data: [(f32, f32, f32); 5] = [
+            (0.40, 0.07, 0.20),
+            (0.85, -0.001, 0.60),
+            (0.10, 0.05, 0.30),
+            (0.55, 0.03, 0.45),
+            (0.20, -0.02, 0.10),
         ];
 
         let mut world = SimThing::new(SimThingKind::World, 0);
-        for cohorts in &cohort_data {
-            let mut loc = SimThing::new(SimThingKind::Location, 0);
-            for &(a, v, i) in *cohorts {
-                let mut c = SimThing::new(SimThingKind::Cohort, 0);
-                let mut pv = PropertyValue::from_layout(&layout);
-                pv.data[a_off] = a;
-                pv.data[v_off] = v;
-                pv.data[i_off] = i;
-                c.add_property(lid, pv);
-                loc.add_child(c);
-            }
-            world.add_child(loc);
+        let mut loc = SimThing::new(SimThingKind::Location, 0);
+        for &(a, v, i) in &cohort_data {
+            let mut c = SimThing::new(SimThingKind::Cohort, 0);
+            let mut pv = PropertyValue::from_layout(&layout);
+            pv.data[a_off] = a;
+            pv.data[v_off] = v;
+            pv.data[i_off] = i;
+            c.add_property(lid, pv);
+            loc.add_child(c);
         }
+        world.add_child(loc);
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&world);
@@ -2050,15 +1857,21 @@ mod tests {
         let mut cpu_output = vec![0.0_f32; flat.len()];
         cpu_reduce_oracle(&topo, &descriptors, n_dims, &flat, &mut cpu_output);
 
-        // GPU.
-        let pipelines = Pipelines::new(&state.ctx);
-        pipelines.run_reduction_passes(&state);
+        upload_accumulator_reduction_plan(&mut state, &world, &alloc, &reg);
+        dispatch_accumulator_reduction(&mut state);
 
         let gpu_output = state.read_output_vectors();
 
-        // Inner-node rows must match (cohorts are leaves — already covered by
-        // the leaf branch which copies values → output_vectors, also bit-exact).
-        assert_bits_eq("reduction full buffer", &cpu_output, &gpu_output);
+        assert_eq!(cpu_output.len(), gpu_output.len());
+        let max_err = cpu_output
+            .iter()
+            .zip(gpu_output.iter())
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0_f32, f32::max);
+        assert!(
+            max_err < 1e-5,
+            "accumulator reduction max_abs_error={max_err}"
+        );
     }
 
     /// WeightedMean parity: location loyalty = population-weighted cohort mean.
@@ -2132,8 +1945,8 @@ mod tests {
         let mut cpu_output = vec![0.0_f32; flat.len()];
         cpu_reduce_oracle(&topo, &descriptors, n_dims, &flat, &mut cpu_output);
 
-        let pipelines = Pipelines::new(&state.ctx);
-        pipelines.run_reduction_passes(&state);
+        upload_accumulator_reduction_plan(&mut state, &world, &alloc, &reg);
+        dispatch_accumulator_reduction(&mut state);
 
         let gpu_output = state.read_output_vectors();
         assert_bits_eq("weighted mean reduction", &cpu_output, &gpu_output);

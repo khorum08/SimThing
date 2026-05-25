@@ -26,12 +26,11 @@ pub use context::{GpuContext, GpuInitError};
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
 pub use reduction_orderband::{
     plan_reduction_orderband, reduction_soft_band_for_depth_bucket, ReductionOrderBandPlan,
-    ReductionPlanError, ReductionPlanMode,
+    ReductionPlanError,
 };
 pub use reduction::{
     build_column_rule_descriptors, build_column_rules, build_topology, cpu_reduce_oracle,
-    cpu_reduce_oracle_call_count, encode_column_rules, legacy_exact_reduction_bucket_call_count,
-    reset_cpu_reduce_oracle_call_count, reset_legacy_exact_reduction_bucket_call_count,
+    cpu_reduce_oracle_call_count, encode_column_rules, reset_cpu_reduce_oracle_call_count,
     ColumnRuleDescriptor, Topology, TopologyState,
 };
 pub use overlay_prep::build_overlay_deltas;
@@ -40,7 +39,7 @@ pub use projection::project_tree_to_values;
 pub use slot::SlotAllocator;
 pub use world_state::{
     build_governed_pairs, build_intensity_params, encode_rule, GovernedPair, IntensityParams,
-    IntentDelta, OverlayDelta, ReduceParams, SlotDeltaRange, ThresholdEvent, ThresholdRegistration,
+    IntentDelta, OverlayDelta, SlotDeltaRange, ThresholdEvent, ThresholdRegistration,
     WorldGpuState, CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED, DIR_DOWNWARD, DIR_EITHER,
     DIR_UPWARD, OP_ADD, OP_MULTIPLY, OP_SET, RULE_FIRST, RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM,
     RULE_WEIGHTED_MEAN, THRESH_BUF_OUTPUT, THRESH_BUF_VALUES, WEIGHT_COL_NONE,

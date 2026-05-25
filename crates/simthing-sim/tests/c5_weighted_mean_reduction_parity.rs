@@ -1,17 +1,17 @@
 //! C-5 Mean / WeightedMean AccumulatorOp reduction parity and integration tests.
 
+use std::sync::Mutex;
+
 use simthing_core::{
     DimensionRegistry, PropertyValue, ReductionRule, SimProperty, SimThing, SimThingKind,
     SoftAggregateGuard, SubFieldRole,
 };
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
 use simthing_gpu::{
-    build_column_rule_descriptors, build_topology, cpu_reduce_oracle_call_count,
-    encode_column_rules, legacy_exact_reduction_bucket_call_count, plan_reduction_orderband,
-    project_tree_to_values, reset_cpu_reduce_oracle_call_count,
-    reset_legacy_exact_reduction_bucket_call_count, set_debug_readback_allowed,
-    summaries_from_values, GpuContext, Pipelines, ReductionPlanMode, SlotAllocator, Topology, TopologyState, WorldGpuState,
-    THRESH_BUF_OUTPUT,
+    build_column_rule_descriptors, build_topology, cpu_reduce_oracle, cpu_reduce_oracle_call_count,
+    encode_column_rules, plan_reduction_orderband, project_tree_to_values,
+    reset_cpu_reduce_oracle_call_count, set_debug_readback_allowed, summaries_from_values,
+    GpuContext, Pipelines, SlotAllocator, Topology, TopologyState, WorldGpuState, THRESH_BUF_OUTPUT,
 };
 use simthing_sim::{
     assert_no_hard_trigger_on_soft_aggregate, BoundaryProtocol, SoftAggregateViolation,
@@ -19,6 +19,8 @@ use simthing_sim::{
 };
 
 const TOL: f32 = 1e-5;
+
+static CPU_ORACLE_COUNTER_GUARD: Mutex<()> = Mutex::new(());
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -87,25 +89,28 @@ fn setup_mean_state() -> (WorldGpuState, DimensionRegistry, Topology, Vec<f32>) 
     state.ensure_reduction_soft_accumulator();
     let topo_state = TopologyState::build(&world, &alloc);
     let descriptors = build_column_rule_descriptors(&reg, n_dims);
-    let plan = plan_reduction_orderband(
-        &topo_state,
-        &descriptors,
-        state.n_dims,
-        ReductionPlanMode::SoftOnly,
-    )
-    .unwrap();
+    let plan = plan_reduction_orderband(&topo_state, &descriptors, state.n_dims).unwrap();
     state
-        .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands, false)
+        .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands)
         .unwrap();
 
     (state, reg, topo, flat)
+}
+
+fn golden_output(topo: &Topology, reg: &DimensionRegistry, flat: &[f32]) -> Vec<f32> {
+    let _guard = CPU_ORACLE_COUNTER_GUARD.lock().unwrap();
+    let n_dims = reg.total_columns;
+    let descriptors = build_column_rule_descriptors(reg, n_dims);
+    let mut golden = vec![0.0_f32; flat.len()];
+    cpu_reduce_oracle(topo, &descriptors, n_dims, flat, &mut golden);
+    golden
 }
 
 fn run_c5_reduction_only(state: &mut WorldGpuState) {
     let pipelines = Pipelines::new(&state.ctx);
     let mut runtime = state.accumulator_runtime.take().unwrap();
     let mut reduction_session = runtime.take_reduction_soft_session().unwrap();
-    pipelines.run_c5_soft_reduction_passes(state, &mut reduction_session);
+    pipelines.run_accumulator_reduction_passes(state, &mut reduction_session);
     runtime.restore_reduction_soft_session(Some(reduction_session));
     state.accumulator_runtime = Some(runtime);
 }
@@ -163,15 +168,9 @@ fn setup_weighted_mean_state() -> (WorldGpuState, DimensionRegistry, Topology, V
     state.ensure_reduction_soft_accumulator();
     let topo_state = TopologyState::build(&world, &alloc);
     let descriptors = build_column_rule_descriptors(&reg, n_dims);
-    let plan = plan_reduction_orderband(
-        &topo_state,
-        &descriptors,
-        state.n_dims,
-        ReductionPlanMode::SoftOnly,
-    )
-    .unwrap();
+    let plan = plan_reduction_orderband(&topo_state, &descriptors, state.n_dims).unwrap();
     state
-        .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands, false)
+        .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands)
         .unwrap();
 
     (state, reg, topo, flat)
@@ -207,21 +206,12 @@ fn c5_mean_legacy_vs_accumulator_within_1e_5() {
         return;
     };
 
-    let (mut state, _reg, _topo, flat) = setup_mean_state();
-    let n_bands = state.accumulator_reduction_soft_bands;
-
-    let pipelines = Pipelines::new(&state.ctx);
-    state.set_reduction_soft_dispatch(false, 0);
-    pipelines.run_reduction_passes(&state);
-    let legacy = state.read_output_vectors();
-
-    state.write_values(&flat);
-    state.set_reduction_soft_dispatch(true, n_bands);
+    let (mut state, reg, topo, flat) = setup_mean_state();
+    let golden = golden_output(&topo, &reg, &flat);
     run_c5_reduction_only(&mut state);
     let acc = state.read_output_vectors();
-
-    let err = max_abs_error(&legacy, &acc);
-    assert!(err < TOL, "legacy vs accumulator max_abs_error={err}");
+    let err = max_abs_error(&golden, &acc);
+    assert!(err < TOL, "golden vs accumulator max_abs_error={err}");
 }
 
 #[test]
@@ -254,21 +244,12 @@ fn c5_weighted_mean_legacy_vs_accumulator_within_1e_5() {
         return;
     };
 
-    let (mut state, _reg, _topo, flat) = setup_weighted_mean_state();
-    let n_bands = state.accumulator_reduction_soft_bands;
-
-    let pipelines = Pipelines::new(&state.ctx);
-    state.set_reduction_soft_dispatch(false, 0);
-    pipelines.run_reduction_passes(&state);
-    let legacy = state.read_output_vectors();
-
-    state.write_values(&flat);
-    state.set_reduction_soft_dispatch(true, n_bands);
+    let (mut state, reg, topo, flat) = setup_weighted_mean_state();
+    let golden = golden_output(&topo, &reg, &flat);
     run_c5_reduction_only(&mut state);
     let acc = state.read_output_vectors();
-
-    let err = max_abs_error(&legacy, &acc);
-    assert!(err < TOL, "legacy vs accumulator max_abs_error={err}");
+    let err = max_abs_error(&golden, &acc);
+    assert!(err < TOL, "golden vs accumulator max_abs_error={err}");
 }
 
 #[test]
@@ -278,24 +259,15 @@ fn c5_weighted_mean_reads_exact_reduced_weight_columns_by_depth() {
         return;
     };
 
-    let (mut state, reg, _topo, flat) = setup_weighted_mean_state();
-    let n_bands = state.accumulator_reduction_soft_bands;
-
-    let pipelines = Pipelines::new(&state.ctx);
-
-    state.set_reduction_soft_dispatch(false, 0);
-    pipelines.run_reduction_passes(&state);
-    let legacy = state.read_output_vectors();
-
-    state.write_values(&flat);
-    state.set_reduction_soft_dispatch(true, n_bands);
+    let (mut state, reg, topo, flat) = setup_weighted_mean_state();
+    let golden = golden_output(&topo, &reg, &flat);
     run_c5_reduction_only(&mut state);
     let c5 = state.read_output_vectors();
 
-    let cross_err = max_abs_error(&legacy, &c5);
+    let cross_err = max_abs_error(&golden, &c5);
     assert!(
         cross_err < TOL,
-        "legacy vs C-5 max_abs_error={cross_err} (exact-weight dependency ordering)"
+        "golden vs C-5 max_abs_error={cross_err} (exact-weight dependency ordering)"
     );
 
     // (0*1 + 1*100) / 101 — sensitive to whether world WeightedMean sees
@@ -320,6 +292,7 @@ fn c5_production_path_no_cpu_mediated_reduction() {
         return;
     };
 
+    let _guard = CPU_ORACLE_COUNTER_GUARD.lock().unwrap();
     reset_cpu_reduce_oracle_call_count();
     let (mut state, _, _, _) = setup_mean_state();
     for _ in 0..50 {

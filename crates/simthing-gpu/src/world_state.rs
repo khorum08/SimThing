@@ -243,18 +243,6 @@ pub fn encode_rule(rule: simthing_core::ReductionRule) -> u32 {
     }
 }
 
-/// Uniform for one reduction dispatch. Drives the depth-bucket pass: each
-/// thread processes one slot from `depth_slots[depth_offset .. depth_offset + bucket_size]`.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
-pub struct ReduceParams {
-    pub n_dims: u32,
-    pub depth_offset: u32,
-    pub bucket_size: u32,
-    /// When non-zero, skip Mean (0) and WeightedMean (5) columns — C-5 AccumulatorOp path.
-    pub skip_soft_columns: u32,
-}
-
 // ── WorldGpuState ─────────────────────────────────────────────────────────────
 
 pub struct WorldGpuState {
@@ -318,7 +306,7 @@ pub struct WorldGpuState {
     /// Per-column reduction rule (u32), length `n_dims`.
     pub column_rules: Buffer,
     /// Concatenated depth buckets — slot indices grouped by tree depth.
-    /// `depth_bucket_ranges` tells `Pipelines::run_reduction_passes` how to
+    /// `depth_bucket_ranges` tells AccumulatorOp reduction encoding how to
     /// slice this. Empty when no topology has been uploaded yet.
     pub depth_slots: Buffer,
     /// (offset, size) into `depth_slots` per depth. The dispatcher iterates
@@ -640,13 +628,13 @@ impl WorldGpuState {
         &mut self,
         ops: &[crate::AccumulatorOpGpu],
         n_bands: u32,
-        exact_active: bool,
     ) -> Result<(), crate::AccumulatorOpSessionError> {
         if let Some(runtime) = self.accumulator_runtime.as_mut() {
-            runtime.upload_reduction_soft_ops(&self.ctx, ops, n_bands, exact_active)?;
+            runtime.upload_reduction_soft_ops(&self.ctx, ops, n_bands, true)?;
         }
-        self.set_reduction_soft_dispatch(!ops.is_empty(), n_bands);
-        self.set_reduction_exact_dispatch(exact_active && !ops.is_empty());
+        let active = !ops.is_empty();
+        self.set_reduction_soft_dispatch(active, n_bands);
+        self.set_reduction_exact_dispatch(active);
         Ok(())
     }
 

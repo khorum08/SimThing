@@ -244,25 +244,17 @@ pub struct PipelineFlags {
   `Identity + ResetTarget`.
 - Legacy Pass 3 remains for flag-off execution and oracle parity only until S-3.
 
-**Passes 4–6 — Reduction (migrate → C-5/C-6, sunset → S-4)**
-- WGSL: `reduction.wgsl` (legacy path; flag-off/oracle only after C-6)
-- Depth-bucketed `Sum`, `Mean`, `WeightedMean`, `Max`, `Min`, `First`
-- **C-5 landed:** `use_accumulator_reduction_soft` routes Mean / WeightedMean
-  through a `ReductionSoft` AccumulatorOp session bound to `output_vectors`
-  (binding 1, no binding 8). Leaf init: `copy_buffer_to_buffer(values →
-  output_vectors)`; depth-band OrderBand dispatch interleaved with legacy exact
-  fallback per depth when only soft flag is on.
-- **C-6 landed:** `use_accumulator_reduction_exact` (requires soft flag) extends
-  the shared reduction OrderBand planner to Sum / Max / Min / First. When both
-  reduction flags are on, all rules execute through AccumulatorOp and legacy
-  `reduction.wgsl` is not dispatched. Legacy reduction remains flag-off/oracle
-  until S-4.
-  - Sum / Max / Min / First exact reductions now execute through AccumulatorOp.
-  - C-5 soft and C-6 exact reductions share `ReductionPlanMode` / OrderBand planner.
-  - With soft+exact reduction flags enabled, legacy `reduction.wgsl` is not dispatched.
-  - Legacy reduction remains only flag-off/oracle until S-4.
-- Post-migration (S-4): delete `reduction.wgsl` production path after C-5 + C-6
-  default-on validation.
+**Passes 4–6 — Reduction (S-4 complete)**
+- AccumulatorOp `ReductionSoft` session on `output_vectors` (binding 1).
+- Production path: `copy_buffer_to_buffer(values → output_vectors)` then per-depth
+  OrderBand dispatch via `plan_reduction_orderband` (Mean, WeightedMean, Sum, Max,
+  Min, First).
+- Flags: `use_accumulator_reduction_soft` + `use_accumulator_reduction_exact` default
+  **true**; both required. Soft-only bridge and legacy `reduction.wgsl` deleted.
+- Topology buffers (`child_starts`, `child_indices`, `depth_slots`, column rules)
+  retained for planner upload. Non-contiguous child slots skip reduction until
+  topology is SlotRange-compatible.
+- **S-4 landed:** legacy shader/pipeline/fallback removed; THRESH_BUF_OUTPUT unchanged.
 
 **Pass 7 — Threshold scan (migrate → C-1, sunset → S-6)**
 - WGSL: `threshold_scan.wgsl` (legacy path; default via `use_accumulator_threshold_scan: false`)

@@ -263,7 +263,6 @@ fn walk(
 use std::sync::atomic::{AtomicU32, Ordering};
 
 static CPU_REDUCE_ORACLE_CALLS: AtomicU32 = AtomicU32::new(0);
-static LEGACY_EXACT_REDUCTION_BUCKET_CALLS: AtomicU32 = AtomicU32::new(0);
 
 /// Test-only probe: count `cpu_reduce_oracle` invocations.
 pub fn cpu_reduce_oracle_call_count() -> u32 {
@@ -273,21 +272,6 @@ pub fn cpu_reduce_oracle_call_count() -> u32 {
 /// Reset the test-only `cpu_reduce_oracle` call counter.
 pub fn reset_cpu_reduce_oracle_call_count() {
     CPU_REDUCE_ORACLE_CALLS.store(0, Ordering::Relaxed);
-}
-
-/// Test-only probe: legacy exact-column reduction bucket dispatches.
-pub fn legacy_exact_reduction_bucket_call_count() -> u32 {
-    LEGACY_EXACT_REDUCTION_BUCKET_CALLS.load(Ordering::Relaxed)
-}
-
-/// Reset the test-only legacy exact reduction bucket counter.
-pub fn reset_legacy_exact_reduction_bucket_call_count() {
-    LEGACY_EXACT_REDUCTION_BUCKET_CALLS.store(0, Ordering::Relaxed);
-}
-
-/// Increment the test-only legacy exact reduction bucket counter.
-pub fn record_legacy_exact_reduction_bucket_dispatch() {
-    LEGACY_EXACT_REDUCTION_BUCKET_CALLS.fetch_add(1, Ordering::Relaxed);
 }
 
 /// Reduce a SimThing tree on the CPU, matching the GPU reduction shader
