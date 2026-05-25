@@ -1,3 +1,4 @@
+use crate::accumulator_op::SoftAggregateGuard;
 use crate::ids::SimPropertyId;
 use crate::reduction::ReductionRule;
 use serde::{Deserialize, Serialize};
@@ -117,6 +118,22 @@ pub struct SubFieldSpec {
     /// Reduction aggregates children's column values into the parent at the
     /// presentation tier (GPU Passes 4–6 / CPU reduction oracle).
     pub reduction_override: Option<ReductionRule>,
+
+    /// Tolerance policy for soft-aggregate reductions. Required (must be
+    /// `Some(Quantized { .. })` or `Some(Hysteresis { .. })`) when this
+    /// sub-field's resolved reduction is `Mean` or `WeightedMean` AND the
+    /// sub-field is registered as a hard structural threshold reading from
+    /// the post-reduction buffer (`THRESH_BUF_OUTPUT`). `None` and
+    /// `Some(Unguarded)` are equivalent: no guard applied.
+    ///
+    /// Enforced at threshold-registration time by
+    /// `simthing_sim::threshold_registry::assert_no_hard_trigger_on_soft_aggregate`.
+    /// Today no production threshold path satisfies the "post-reduction + hard
+    /// trigger" combination, so this field is forward-protecting — it gates
+    /// the C-5 WeightedMean migration and E0 economic substrate before they
+    /// land. See `docs/workshop/soft_aggregate_tolerance_audit.md`.
+    #[serde(default)]
+    pub soft_aggregate_guard: Option<SoftAggregateGuard>,
 }
 
 impl SubFieldSpec {
@@ -187,6 +204,7 @@ impl PropertyLayout {
                 display_range: Some((0.0, 1.0)),
                 governed_by:   Some(SubFieldRole::Velocity),
                 reduction_override: None,
+                soft_aggregate_guard: None,
             },
             SubFieldSpec {
                 role:          SubFieldRole::Velocity,
@@ -198,6 +216,7 @@ impl PropertyLayout {
                 display_range: None,
                 governed_by:   None,
                 reduction_override: None,
+                soft_aggregate_guard: None,
             },
             SubFieldSpec {
                 role:          SubFieldRole::Intensity,
@@ -209,6 +228,7 @@ impl PropertyLayout {
                 display_range: Some((0.0, 1.0)),
                 governed_by:   None, // updated by IntensityBehavior, not integration
                 reduction_override: None,
+                soft_aggregate_guard: None,
             },
         ];
         for i in 0..vector_len {
@@ -222,6 +242,7 @@ impl PropertyLayout {
                 display_range: None,
                 governed_by:   None,
                 reduction_override: None,
+                soft_aggregate_guard: None,
             });
         }
         Self { sub_fields }
@@ -612,6 +633,7 @@ mod tests {
                     display_range: Some((-10.0, 10.0)),
                     governed_by:   Some(SubFieldRole::Named("axis_drift".into())),
                     reduction_override: None,
+                    soft_aggregate_guard: None,
                 },
                 SubFieldSpec {
                     role:          SubFieldRole::Named("axis_drift".into()),
@@ -623,6 +645,7 @@ mod tests {
                     display_range: None,
                     governed_by:   None,
                     reduction_override: None,
+                    soft_aggregate_guard: None,
                 },
                 SubFieldSpec {
                     role:          SubFieldRole::Named("ethics_bonus".into()),
@@ -634,6 +657,7 @@ mod tests {
                     display_range: Some((0.0, 2.0)),
                     governed_by:   None,
                     reduction_override: None,
+                    soft_aggregate_guard: None,
                 },
             ],
         };

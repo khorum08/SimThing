@@ -35,6 +35,7 @@ fn ethics_property() -> PropertySpec {
                 display_range:      None,
                 governed_by:        Some(SubFieldRole::Named("axis_drift".into())),
                 reduction_override: None,
+                soft_aggregate_guard: None,
             },
             SubFieldSpec {
                 role:               SubFieldRole::Named("axis_drift".into()),
@@ -46,6 +47,7 @@ fn ethics_property() -> PropertySpec {
                 display_range:      None,
                 governed_by:        None,
                 reduction_override: None,
+                soft_aggregate_guard: None,
             },
         ],
     }

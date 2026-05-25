@@ -93,6 +93,7 @@ impl CapabilityTreeBuilder {
                     display_range: None,
                     governed_by: None,
                     reduction_override: Some(ReductionRule::Max),
+                    soft_aggregate_guard: None,
                 })
                 .collect();
 
