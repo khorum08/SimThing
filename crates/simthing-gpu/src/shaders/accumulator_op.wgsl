@@ -305,7 +305,7 @@ fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
     maybe_emit_event(op_idx, write_value, op);
 }
 
-@group(0) @binding(0) var<storage, read> summary_values: array<f32>;
+@group(0) @binding(0) var<storage, read_write> summary_values: array<atomic<i32>>;
 @group(0) @binding(1) var<storage, read_write> summaries: array<SlotSummaryGpu>;
 @group(0) @binding(2) var<uniform> summary_params: AccumulatorSummaryParams;
 
@@ -319,7 +319,7 @@ fn write_summaries(@builtin(global_invocation_id) gid: vec3<u32>) {
     var checksum = 0u;
     for (var col: u32 = 0u; col < summary_params.n_dims; col = col + 1u) {
         let idx = slot * summary_params.n_dims + col;
-        checksum = checksum + bitcast<u32>(summary_values[idx]);
+        checksum = checksum ^ bitcast<u32>(atomicLoad(&summary_values[idx]));
     }
 
     summaries[slot].slot = slot;
