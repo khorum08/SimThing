@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-25  
-**Master HEAD:** `01def4b` (PR #123 C-5 remedial; C-6 local)  
+**Master HEAD:** `dbec3af` (PR #124 C-6 exact reductions)  
 **Verification (last recorded):** C-6 parity + `cargo test --workspace` green
 
 ---
@@ -42,7 +42,7 @@ Legacy passes (intent, overlay, reduction, threshold, velocity, intensity) are
 | **C-4 remedial** | local | Structural lifecycle/fission/cache hardening + consume-mode regressions |
 | **C-5** | #122 | Mean / WeightedMean soft reductions → `ReductionSoft` on `output_vectors` |
 | **C-5 remedial** | #123 | Depth-interleaved soft/exact reduction per depth bucket |
-| **C-6** | local | Sum / Max / Min / First exact reductions; full AccumulatorOp path when soft+exact on |
+| **C-6** | #124 | Sum / Max / Min / First exact reductions; full AccumulatorOp path when soft+exact on |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

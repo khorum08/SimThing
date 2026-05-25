@@ -4,8 +4,8 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98),
 **C-2** (#99–#100), **C-3** (#105–#107), **pivot-forward policy + B-4I** (#108),
 **C-INF runtime/oracle** (#109), **pivot-forward remedial** (#111), and
-**C-4 overlay OrderBand** (#118), **C-5 soft reductions** (#122), and **C-6 exact reductions** (local) landed.
-`master` @ **`01def4b`** (C-5 remedial #123).
+**C-4 overlay OrderBand** (#118), **C-5 soft reductions** (#122), and **C-6 exact reductions** (#124) landed.
+`master` @ **`dbec3af`**.
 
 **Workshop entry point:** [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md)
 
@@ -64,7 +64,7 @@ B-4 world summary integrated (2) green after C-4 remedial acceptance runs.
 | **Pivot-forward remedial** | #111 | `632d656` | Authoritative flags; `WorldSummaryRuntime`; oracle tolerance rename |
 | **C-5** | #122 | Mean/WeightedMean soft reductions → `ReductionSoft` on `output_vectors` |
 | **C-5 remedial** | #123 | Depth-interleaved soft/exact reduction; WeightedMean dependency tests |
-| **C-6** | local | Sum/Max/Min/First exact reductions → AccumulatorOp; `use_accumulator_reduction_exact` |
+| **C-6** | #124 | `dbec3af` | Sum/Max/Min/First exact reductions; `use_accumulator_reduction_exact` |
 
 **Next (non-Opus):** **S-4** reduction sunset (after C-5 + C-6 default-on validation) · **C-7** velocity · per-family oracle expansion.
 

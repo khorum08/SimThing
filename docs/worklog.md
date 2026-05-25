@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-25 — C-6 Sum / Max / Min / First exact reductions
 
-**Status:** Local implementation (pending commit/PR).
+**Status:** Merged — PR #124 (`dbec3af`).
 
 **Scope:** `use_accumulator_reduction_exact` flag; `ReductionPlanMode::AllRules`;
 AccumulatorOp gather for Sum/Max/Min/First; full AccumulatorOp reduction path
