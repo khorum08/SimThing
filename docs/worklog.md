@@ -6,6 +6,27 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-25 — C-6 Sum / Max / Min / First exact reductions
+
+**Status:** Local implementation (pending commit/PR).
+
+**Scope:** `use_accumulator_reduction_exact` flag; `ReductionPlanMode::AllRules`;
+AccumulatorOp gather for Sum/Max/Min/First; full AccumulatorOp reduction path
+when soft+exact flags on (no legacy exact fallback). S-4 checklist documented.
+
+**Tests:** `c6_exact_reduction_parity` (9); C-5/C-1–C-4 regressions green.
+
+---
+
+## 2026-05-25 — C-5 depth-interleaved reduction remedial
+
+**Status:** Merged — PR #123 (`01def4b`).
+
+**Scope:** Interleave C-5 soft bands with legacy exact fallback per depth bucket;
+WeightedMean exact-weight dependency regression tests.
+
+---
+
 ## 2026-05-25 — C-5 Mean / WeightedMean soft reductions
 
 **Status:** Merged — PR #122 (`8605444`).

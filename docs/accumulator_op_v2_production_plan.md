@@ -484,16 +484,25 @@ tolerance `1e-5`; A-4 guard tests unchanged. S-4 pending.
 
 ---
 
-### PR C-6 — Sum, Max, Min reductions
+### ✅ PR C-6 — Sum, Max, Min, First exact reductions → AccumulatorOp
 
-**Model:** Composer 2.5  
-**Scope:** Add `Sum`, `Max`, `Min` combine functions to the kernel. These are
-the clean cases from the Phase 0 v2 analysis — one `SlotRange` registration
-per parent per dimension, workgroup-local reduction, one atomic write.
+**Status:** **Landed** (implementation PR).
 
-**Parity test:** Bit-exact against current reduction passes for Sum (which is
-bit-exact today). Max/Min are bit-exact via shared-memory reduction. Three runs.  
-**Acceptance:** CI green.
+**What shipped:** `use_accumulator_reduction_exact` flag (default false; requires
+soft flag). `ReductionPlanMode::AllRules` extends `plan_reduction_orderband` with
+Sum / Max / Min / First. AccumulatorOp WGSL linear-loop gather for exact rules.
+When soft+exact flags are on, full reduction runs through AccumulatorOp with no
+legacy `reduction.wgsl` dispatch. C-5 bridge (soft only) unchanged. S-4 pending.
+
+**Parity:** Sum/Max/Min/First bit-exact vs legacy; mixed soft+exact within 1e-5;
+combined all-flags integration test green.
+
+**S-4 readiness checklist (not executed in C-6):**
+- C-5 + C-6 flags default on
+- Reduction parity tests green
+- Combined all-flags tests green
+- 7 days CI green
+- No production call site dispatches `reduction.wgsl` under accumulator flags
 
 ---
 

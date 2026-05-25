@@ -75,8 +75,11 @@ const SOURCE_SLOT_RANGE: u32 = 2u;
 const COMBINE_IDENTITY: u32 = 0u;
 const COMBINE_SUM: u32 = 1u;
 const COMBINE_MEAN: u32 = 2u;
+const COMBINE_MAX: u32 = 3u;
+const COMBINE_MIN: u32 = 4u;
 const COMBINE_WEIGHTED_MEAN: u32 = 5u;
 const COMBINE_AFFINE_INTENT: u32 = 6u;
+const COMBINE_FIRST: u32 = 13u;
 
 const GATE_ALWAYS: u32 = 0u;
 const GATE_THRESHOLD: u32 = 1u;
@@ -235,6 +238,41 @@ fn gather_value(op: AccumulatorOpGpu) -> f32 {
             return 0.0;
         }
         return weighted_sum / weight_total;
+    }
+
+    if (op.combine_kind == COMBINE_MAX && op.source_kind == SOURCE_SLOT_RANGE) {
+        if (op.source_count == 0u) {
+            return 0.0;
+        }
+        var acc = atomic_read_f32_at(linear_idx(op.source_slot, op.source_col));
+        for (var i: u32 = 1u; i < op.source_count; i = i + 1u) {
+            let v = atomic_read_f32_at(linear_idx(op.source_slot + i, op.source_col));
+            if (v > acc) {
+                acc = v;
+            }
+        }
+        return acc;
+    }
+
+    if (op.combine_kind == COMBINE_MIN && op.source_kind == SOURCE_SLOT_RANGE) {
+        if (op.source_count == 0u) {
+            return 0.0;
+        }
+        var acc = atomic_read_f32_at(linear_idx(op.source_slot, op.source_col));
+        for (var i: u32 = 1u; i < op.source_count; i = i + 1u) {
+            let v = atomic_read_f32_at(linear_idx(op.source_slot + i, op.source_col));
+            if (v < acc) {
+                acc = v;
+            }
+        }
+        return acc;
+    }
+
+    if (op.combine_kind == COMBINE_FIRST && op.source_kind == SOURCE_SLOT_RANGE) {
+        if (op.source_count == 0u) {
+            return 0.0;
+        }
+        return atomic_read_f32_at(linear_idx(op.source_slot, op.source_col));
     }
 
     if (op.consume == CONSUME_SUBTRACT_FROM_SOURCE

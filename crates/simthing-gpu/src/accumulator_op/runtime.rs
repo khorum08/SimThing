@@ -366,6 +366,11 @@ impl WorldAccumulatorRuntime {
             exactness: ExactnessClass::SoftAggregate,
             ..OpSetHandle::INACTIVE
         };
+        self.reduction_exact_ops = OpSetHandle {
+            family: OperationFamily::ReductionExact,
+            exactness: ExactnessClass::Exact,
+            ..OpSetHandle::INACTIVE
+        };
     }
 
     pub fn upload_reduction_soft_ops(
@@ -373,6 +378,7 @@ impl WorldAccumulatorRuntime {
         ctx: &GpuContext,
         ops: &[AccumulatorOpGpu],
         n_bands: u32,
+        exact_active: bool,
     ) -> Result<(), AccumulatorOpSessionError> {
         if let Some(session) = self.reduction_soft_session.as_mut() {
             session.upload_gpu_ops(ctx, ops)?;
@@ -383,6 +389,14 @@ impl WorldAccumulatorRuntime {
                 active: !ops.is_empty(),
                 n_bands,
                 exactness: ExactnessClass::SoftAggregate,
+            };
+            self.reduction_exact_ops = OpSetHandle {
+                family: OperationFamily::ReductionExact,
+                offset: 0,
+                count: if exact_active { session.n_ops() } else { 0 },
+                active: exact_active && !ops.is_empty(),
+                n_bands,
+                exactness: ExactnessClass::Exact,
             };
         }
         Ok(())

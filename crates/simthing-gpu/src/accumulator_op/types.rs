@@ -143,6 +143,7 @@ pub mod combine_kind {
     pub const CROSSING_FORMULA: u32 = 10; // E-1
     pub const MIN_ACROSS_INPUTS: u32 = 11; // E-3
     pub const EVAL_EML: u32 = 12; // C-8 (Opus-gated)
+    pub const FIRST: u32 = 13; // C-6 reduction
 }
 
 pub mod gate_kind {

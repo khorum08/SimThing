@@ -333,6 +333,8 @@ pub struct WorldGpuState {
     /// Cached C-5 soft reduction dispatch signal (mirrors runtime; survives runtime `take()`).
     pub accumulator_reduction_soft_active: bool,
     pub accumulator_reduction_soft_bands: u32,
+    /// Cached C-6 exact reduction dispatch signal (requires soft flag).
+    pub accumulator_reduction_exact_active: bool,
 }
 
 impl WorldGpuState {
@@ -455,6 +457,7 @@ impl WorldGpuState {
             accumulator_overlay_add_bands: 0,
             accumulator_reduction_soft_active: false,
             accumulator_reduction_soft_bands: 0,
+            accumulator_reduction_exact_active: false,
         }
     }
 
@@ -465,6 +468,7 @@ impl WorldGpuState {
         self.accumulator_overlay_add_bands = 0;
         self.accumulator_reduction_soft_active = false;
         self.accumulator_reduction_soft_bands = 0;
+        self.accumulator_reduction_exact_active = false;
     }
 
     /// Clear one migrated AccumulatorOp family when its feature flag is off.
@@ -480,6 +484,10 @@ impl WorldGpuState {
                 crate::OperationFamily::ReductionSoft => {
                     runtime.clear_reduction_soft();
                     self.set_reduction_soft_dispatch(false, 0);
+                    self.set_reduction_exact_dispatch(false);
+                }
+                crate::OperationFamily::ReductionExact => {
+                    self.set_reduction_exact_dispatch(false);
                 }
                 _ => {}
             }
@@ -490,6 +498,9 @@ impl WorldGpuState {
             self.set_overlay_add_dispatch(false, 0);
         } else if matches!(family, crate::OperationFamily::ReductionSoft) {
             self.set_reduction_soft_dispatch(false, 0);
+            self.set_reduction_exact_dispatch(false);
+        } else if matches!(family, crate::OperationFamily::ReductionExact) {
+            self.set_reduction_exact_dispatch(false);
         }
     }
 
@@ -624,22 +635,31 @@ impl WorldGpuState {
             .ensure_reduction_soft_session(&self.ctx, n_slots, n_dims, &self.output_vectors);
     }
 
-    /// Upload C-5 reduction ops and set OrderBand pass count.
+    /// Upload C-5/C-6 reduction ops and set OrderBand pass count.
     pub fn upload_reduction_soft_ops_with_bands(
         &mut self,
         ops: &[crate::AccumulatorOpGpu],
         n_bands: u32,
+        exact_active: bool,
     ) -> Result<(), crate::AccumulatorOpSessionError> {
         if let Some(runtime) = self.accumulator_runtime.as_mut() {
-            runtime.upload_reduction_soft_ops(&self.ctx, ops, n_bands)?;
+            runtime.upload_reduction_soft_ops(&self.ctx, ops, n_bands, exact_active)?;
         }
         self.set_reduction_soft_dispatch(!ops.is_empty(), n_bands);
+        self.set_reduction_exact_dispatch(exact_active && !ops.is_empty());
         Ok(())
     }
 
     pub fn set_reduction_soft_dispatch(&mut self, active: bool, n_bands: u32) {
         self.accumulator_reduction_soft_active = active;
         self.accumulator_reduction_soft_bands = n_bands;
+        if !active {
+            self.accumulator_reduction_exact_active = false;
+        }
+    }
+
+    pub fn set_reduction_exact_dispatch(&mut self, active: bool) {
+        self.accumulator_reduction_exact_active = active;
     }
 
     /// Ensure the C-1 threshold AccumulatorOp runtime is enabled.
