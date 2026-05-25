@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-19 — B-3: AccumulatorOpSession timestamp query plumbing (#95)
 
-**Status:** `master` @ `d7855c4` (PR #95 merged).
+**Status:** `master` @ `3e4374b` (PR #95 merged).
 
 **Scope:** Optional GPU timestamp instrumentation on the standalone `AccumulatorOpSession`
 execute pass. Does not integrate with `BoundaryProtocol` or alter operation semantics.
