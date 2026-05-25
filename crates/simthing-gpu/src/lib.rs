@@ -15,10 +15,11 @@ pub mod slot;
 pub mod world_state;
 
 pub use accumulator_op::{
-    execute_ops_cpu, set_debug_readback_allowed, threshold_registrations_to_ops,
+    execute_ops_cpu, set_debug_readback_allowed, summaries_from_values,
+    threshold_registrations_to_ops,
     AccumulatorOpGpu, AccumulatorOpSession, AccumulatorOpSessionError, EmissionRecord,
     ExactnessClass, LegacyOracleFamily, OpSetHandle, OperationFamily, SlotSummary,
-    ThresholdEmission, ThresholdEmissionGpu, WorldAccumulatorRuntime,
+    ThresholdEmission, ThresholdEmissionGpu, WorldAccumulatorRuntime, WorldSummaryRuntime,
     DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 pub use context::{GpuContext, GpuInitError};

@@ -256,7 +256,7 @@ pub struct PipelineFlags {
 - WGSL: `threshold_scan.wgsl` (legacy path; default via `use_accumulator_threshold_scan: false`)
 - Reads `previous_values` vs `values`, detects crossings, writes events
 - **C-1 landed:** `use_accumulator_threshold_scan` on `BoundaryProtocol` wires
-  `Threshold` gate + `EmitEvent` via `WorldGpuState::threshold_accumulator`;
+  `Threshold` gate + `EmitEvent` via `WorldGpuState::accumulator_runtime`;
   compact `ThresholdEmissionGpu` readback replaces Pass 7 when flag is true.
   Parity: `c1_threshold_scan_parity.rs` (fission_stress 20k × 100 ticks).
 - Post-sunset (S-6): delete `threshold_scan.wgsl` and the flag; Pass 7 entry removed.
@@ -265,7 +265,7 @@ pub struct PipelineFlags {
 - WGSL: `intent_delta.wgsl` (legacy path; default via `use_accumulator_intent: false`)
 - Applies folded CPU `IntentDelta { mul, add }` as `values = values * mul + add`
 - **C-2 landed:** `use_accumulator_intent` on `BoundaryProtocol` wires folded
-  intent rows as `COMBINE_AFFINE_INTENT` ops via `WorldGpuState::intent_accumulator`;
+  intent rows as `COMBINE_AFFINE_INTENT` ops via `WorldGpuState::accumulator_runtime`;
   encoded in the same tick command buffer before snapshot when flag is true.
   Parity: `c2_intent_accumulator_parity.rs` (10 scenarios + combined C-1/C-2 ordering).
 - Post-sunset (S-1): delete `intent_delta.wgsl` and the flag.

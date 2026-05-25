@@ -10,6 +10,7 @@ mod encode;
 mod runtime;
 mod session;
 mod types;
+mod world_summary;
 
 pub use cpu_oracle::{
     execute_intent_deltas_cpu, execute_ops_cpu, execute_ops_cpu_with_emissions,
@@ -21,6 +22,7 @@ pub use encode::{
 pub use runtime::{
     ExactnessClass, LegacyOracleFamily, OpSetHandle, OperationFamily, WorldAccumulatorRuntime,
 };
+pub use world_summary::WorldSummaryRuntime;
 pub use types::AccumulatorOpGpu;
 pub use session::{
     set_debug_readback_allowed, AccumulatorOpSession, AccumulatorOpSessionError, WORKGROUP_SIZE,

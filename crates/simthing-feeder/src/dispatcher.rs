@@ -194,16 +194,23 @@ impl DispatchCoordinator {
             .is_some_and(|r| r.threshold_active());
         let overlay_active = state.accumulator_overlay_add_active;
         if use_accumulator_intent || use_accumulator_threshold || overlay_active {
-            let mut runtime = state.accumulator_runtime.take();
-            let mut intent_session = runtime
-                .as_mut()
-                .and_then(|r| r.take_intent_session());
-            let mut overlay_session = runtime
-                .as_mut()
-                .and_then(|r| r.take_overlay_session());
-            let mut threshold_session = runtime
-                .as_mut()
-                .and_then(|r| r.take_threshold_session());
+            let encode_summary = state
+                .accumulator_runtime
+                .as_ref()
+                .is_some_and(|r| r.any_pipeline_active());
+            if encode_summary {
+                if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                    runtime.ensure_summary(&state.ctx, state.n_slots, state.n_dims);
+                }
+            }
+            let mut intent_session = None;
+            let mut overlay_session = None;
+            let mut threshold_session = None;
+            if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                intent_session = runtime.take_intent_session();
+                overlay_session = runtime.take_overlay_session();
+                threshold_session = runtime.take_threshold_session();
+            }
             pipelines.run_tick_pipeline_with_accumulators(
                 state,
                 dt,
@@ -211,14 +218,14 @@ impl DispatchCoordinator {
                     intent:      intent_session.as_mut(),
                     overlay_add: overlay_session.as_mut(),
                     threshold:   threshold_session.as_mut(),
+                    encode_world_summary: encode_summary,
                 },
             );
-            if let Some(r) = runtime.as_mut() {
-                r.restore_intent_session(intent_session);
-                r.restore_overlay_session(overlay_session);
-                r.restore_threshold_session(threshold_session);
+            if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                runtime.restore_intent_session(intent_session);
+                runtime.restore_overlay_session(overlay_session);
+                runtime.restore_threshold_session(threshold_session);
             }
-            state.accumulator_runtime = runtime;
         } else {
             pipelines.run_tick_pipeline(state, dt);
         }

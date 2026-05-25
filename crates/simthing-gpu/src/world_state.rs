@@ -459,6 +459,55 @@ impl WorldGpuState {
         self.accumulator_overlay_add_bands = 0;
     }
 
+    /// Clear one migrated AccumulatorOp family when its feature flag is off.
+    pub fn disable_accumulator_family(&mut self, family: crate::OperationFamily) {
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            match family {
+                crate::OperationFamily::Intent => runtime.clear_intent(),
+                crate::OperationFamily::Threshold => runtime.clear_threshold(),
+                crate::OperationFamily::OverlayAdd => {
+                    runtime.clear_overlay_add();
+                    self.set_overlay_add_dispatch(false, 0);
+                }
+                _ => {}
+            }
+        } else if matches!(family, crate::OperationFamily::OverlayAdd) {
+            self.set_overlay_add_dispatch(false, 0);
+        }
+    }
+
+    /// Ensure B-4 summary resources exist for integrated world values.
+    pub fn ensure_accumulator_summary_runtime(&mut self) {
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        let n_slots = self.n_slots;
+        let n_dims = self.n_dims;
+        self.accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .ensure_summary(&self.ctx, n_slots, n_dims);
+    }
+
+    /// Standalone submit: refresh B-4 summaries from `values`.
+    pub fn dispatch_accumulator_world_summary(&mut self) {
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            runtime.ensure_summary(&self.ctx, self.n_slots, self.n_dims);
+            runtime.dispatch_world_summary(&self.ctx, &self.values);
+        }
+    }
+
+    /// Read B-4 slot summaries for the integrated world path.
+    pub fn readback_accumulator_summary(
+        &self,
+    ) -> Result<Vec<crate::SlotSummary>, crate::AccumulatorOpSessionError> {
+        if let Some(runtime) = self.accumulator_runtime.as_ref() {
+            runtime.readback_world_summary(&self.ctx)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
     /// Ensure the C-2 intent AccumulatorOp runtime is enabled.
     pub fn ensure_intent_accumulator(&mut self) {
         if self.accumulator_runtime.is_none() {
