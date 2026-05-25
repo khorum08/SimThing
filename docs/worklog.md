@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — C-8b remedial: intensity EvalEML op-cache invalidation
+
+**Fixes:**
+- `IntensityEmlOpPlanSignature` on `WorldAccumulatorRuntime` — authoritative cache key for uploaded intensity EvalEML ops (EML registry generation, `n_slots`, `n_dims`, entry list, op count, tree/column layout).
+- Slot growth and intensity entry/layout changes force op reupload even when formula registry generation is unchanged.
+- `EmlExpressionRegistry::replace_formula_if_changed` — identical meta/nodes at boundary skip generation bump and EML table reupload.
+- Intensity remains GPU-resident through EvalEML; no CPU production path; no C-8c/d.
+
+**Tests:** extended `c8b_intensity_eml_parity.rs` + runtime signature unit test.
+
+---
+
 ## 2026-05-19 — C-8b: intensity migration via GPU-resident EvalEML
 
 **Landed:**

@@ -77,10 +77,13 @@ pub fn register_intensity_eml_formulas(
     dimension_registry: &DimensionRegistry,
     previous_tree_ids: &[simthing_core::EmlTreeId],
 ) -> Result<Vec<IntensityEmlEntry>, simthing_core::EmlRegistryError> {
-    for tree_id in previous_tree_ids {
-        registry.remove_tree(*tree_id);
-    }
     let entries = build_intensity_eml_entries(dimension_registry);
+    let new_ids: std::collections::HashSet<_> = entries.iter().map(|e| e.tree_id).collect();
+    for tree_id in previous_tree_ids {
+        if !new_ids.contains(tree_id) {
+            registry.remove_tree(*tree_id);
+        }
+    }
     for (idx, prop) in dimension_registry.properties.iter().enumerate() {
         let id = SimPropertyId(idx as u32);
         if !dimension_registry.is_active(id) {
@@ -99,7 +102,7 @@ pub fn register_intensity_eml_formulas(
             entry.velocity_col,
             entry.intensity_col,
         );
-        registry.replace_formula(entry.tree_id, meta, nodes)?;
+        registry.replace_formula_if_changed(entry.tree_id, meta, nodes)?;
         registry.assert_consumer_admissible(entry.tree_id, EmlConsumerKind::Intensity)?;
     }
     Ok(entries)

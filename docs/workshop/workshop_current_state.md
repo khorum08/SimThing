@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** C-8a remedial (local)  
-**Verification (last recorded):** C-8a remedial hardening + C-1–C-7 regression green
+**Master HEAD:** C-8b remedial (local)  
+**Verification (last recorded):** C-8b remedial hardening + C-1–C-8b regression green
 
 ---
 
@@ -22,7 +22,7 @@ Two parallel tracks:
 Legacy reduction is deleted (S-4). Remaining legacy passes (intent, overlay, threshold,
 velocity, intensity) are oracle/fallback until their S-phase deletions.
 
-**Next gates:** **C-8b** intensity migration · **C-8c** transfer · **C-8d** emission · **S-3** overlay sunset · **S-6** threshold sunset.
+**Next gates:** **C-8c** transfer · **C-8d** emission · **S-2** intensity sunset · **S-3** overlay sunset · **S-6** threshold sunset.
 
 ---
 
@@ -48,6 +48,7 @@ velocity, intensity) are oracle/fallback until their S-phase deletions.
 | **C-8a** | #129 | EML infrastructure: execution classes, registry, persistent GPU program table, EvalEML interpreter (ExactDeterministic only); `use_accumulator_eml` flag (default false) |
 | **C-8a remedial** | #130 | Node-count accounting, unchanged boundary skip, empty-upload generation bump, HardThreshold gate, PARAM validation, CpuOracleOnly debug registration |
 | **C-8b** | local | Intensity migration: `use_accumulator_intensity`, `IntensityBehavior` → EvalEML, boundary sync upload, tick placement after velocity; legacy `intensity_update.wgsl` flag-off/oracle |
+| **C-8b remedial** | local | Intensity op upload cache keys on `IntensityEmlOpPlanSignature` (EML generation + world/op-plan shape); slot growth and entry/layout changes force op reupload; `replace_formula_if_changed` avoids boundary EML table churn when formulas unchanged |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

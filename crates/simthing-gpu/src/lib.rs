@@ -24,7 +24,7 @@ pub use accumulator_op::{
     EmlUploadError, ExactnessClass, LegacyOracleFamily, OpSetHandle, OperationFamily,
     OverlayCompileCache, SlotSummary, ThresholdEmission, ThresholdEmissionGpu,
     WorldAccumulatorRuntime, WorldSummaryRuntime, DEFAULT_EML_NODE_CAPACITY,
-    DEFAULT_EML_TREE_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+    DEFAULT_EML_TREE_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY, IntensityEmlOpPlanSignature,
 };
 pub use context::{GpuContext, GpuInitError};
 pub use intensity_accumulator::{

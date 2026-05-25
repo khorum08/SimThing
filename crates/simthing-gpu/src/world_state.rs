@@ -751,8 +751,18 @@ impl WorldGpuState {
         let ops = plan_intensity_eml_ops(&entries, self.n_slots);
         let n_bands = if ops.is_empty() { 0 } else { 1 };
         if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            let signature = crate::IntensityEmlOpPlanSignature {
+                eml_registry_generation: runtime.eml_registry.generation(),
+                n_slots: self.n_slots,
+                n_dims: self.n_dims,
+                n_entries: entries.len() as u32,
+                n_ops: ops.len() as u32,
+                tree_ids: entries.iter().map(|e| e.tree_id.0).collect(),
+                intensity_cols: entries.iter().map(|e| e.intensity_col).collect(),
+                velocity_cols: entries.iter().map(|e| e.velocity_col).collect(),
+            };
             runtime
-                .upload_intensity_eml_ops(&self.ctx, &ops, n_bands)
+                .upload_intensity_eml_ops(&self.ctx, &ops, n_bands, signature)
                 .expect("intensity EvalEML op upload failed");
         }
         self.set_intensity_eml_dispatch(!ops.is_empty(), n_bands);

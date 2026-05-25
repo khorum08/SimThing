@@ -554,11 +554,19 @@ comparison.
 
 **C-8b status:** **Local** — intensity EvalEML migration; `use_accumulator_intensity` (default false); legacy `intensity_update.wgsl` remains flag-off/oracle.
 
+**C-8b remedial status:** **Local** — intensity op upload cache keys on `IntensityEmlOpPlanSignature` (EML generation + world/op-plan shape); slot growth and entry/layout changes force op reupload; unchanged formulas skip EML table churn via `replace_formula_if_changed`.
+
 **C-8b landed:**
 - Legacy intensity update routes through AccumulatorOp `EvalEML` when flag on.
 - `IntensityBehavior` → `ExactDeterministic` EML (22 nodes; `MAX_EML_TREE_NODES`/`EML_STACK_MAX` raised to 32).
 - `dt` via tick params; persistent EML buffers; no per-dispatch upload.
 - C-8c transfer and C-8d emission remain pending.
+
+**C-8b remedial landed:**
+- Intensity op upload cache now keys on EML generation plus world/op-plan shape (`IntensityEmlOpPlanSignature`).
+- Slot growth and intensity entry/layout changes force op reupload.
+- Identical formula/shape boundaries skip EML table and op reupload.
+- Intensity remains GPU-resident through EvalEML.
 
 Selected:
 - **Execution-class taxonomy** (`EmlExecutionClass::{ExactDeterministic, SoftDeterministic, FastApproximate, CpuOracleOnly}`) plus a **consumer admissibility matrix** that gates which classes may feed which consumers.

@@ -24,8 +24,8 @@ pub use encode::{
     threshold_registrations_to_ops, validate_intent_deltas_no_duplicate_cells, EncodeError,
 };
 pub use runtime::{
-    ExactnessClass, LegacyOracleFamily, OpSetHandle, OperationFamily, OverlayCompileCache,
-    WorldAccumulatorRuntime,
+    ExactnessClass, IntensityEmlOpPlanSignature, LegacyOracleFamily, OpSetHandle, OperationFamily,
+    OverlayCompileCache, WorldAccumulatorRuntime,
 };
 pub use session::{
     set_debug_readback_allowed, AccumulatorOpSession, AccumulatorOpSessionError, WORKGROUP_SIZE,

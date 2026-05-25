@@ -317,9 +317,18 @@ impl EmlExpressionRegistry {
     pub fn replace_formula(
         &mut self,
         tree_id: EmlTreeId,
-        mut meta: EmlFormulaMeta,
+        meta: EmlFormulaMeta,
         nodes: Vec<EmlNode>,
     ) -> Result<(), EmlRegistryError> {
+        self.replace_formula_if_changed(tree_id, meta, nodes)?;
+        Ok(())
+    }
+
+    fn prepare_formula(
+        tree_id: EmlTreeId,
+        mut meta: EmlFormulaMeta,
+        nodes: Vec<EmlNode>,
+    ) -> Result<(EmlFormulaMeta, Vec<EmlNode>), EmlRegistryError> {
         meta.tree_id = tree_id;
         if nodes.is_empty() {
             return Err(EmlRegistryError::EmptyTree);
@@ -342,6 +351,23 @@ impl EmlExpressionRegistry {
         );
         meta.requires_guard_for_hard_threshold =
             meta.execution_class == EmlExecutionClass::SoftDeterministic;
+        Ok((meta, nodes))
+    }
+
+    /// Replace a formula only when meta/nodes differ from the registered tree.
+    /// Returns `Ok(true)` when the registry generation was bumped.
+    pub fn replace_formula_if_changed(
+        &mut self,
+        tree_id: EmlTreeId,
+        meta: EmlFormulaMeta,
+        nodes: Vec<EmlNode>,
+    ) -> Result<bool, EmlRegistryError> {
+        let (meta, nodes) = Self::prepare_formula(tree_id, meta, nodes)?;
+        if let Some(existing) = self.formulas.get(&tree_id) {
+            if existing.meta == meta && existing.nodes == nodes {
+                return Ok(false);
+            }
+        }
         self.formulas.insert(
             tree_id,
             RegisteredFormula {
@@ -352,7 +378,7 @@ impl EmlExpressionRegistry {
             },
         );
         self.generation = self.generation.wrapping_add(1);
-        Ok(())
+        Ok(true)
     }
 
     /// Remove a formula from the registry (intensity resync).
@@ -929,5 +955,53 @@ mod tests {
             registry.register_formula(EmlTreeId(1), exact_meta(1, "div"), nodes),
             Err(EmlRegistryError::UnwrappedDivision)
         );
+    }
+
+    #[test]
+    fn replace_formula_if_changed_skips_generation_bump_when_identical() {
+        let mut registry = EmlExpressionRegistry::new();
+        let id = EmlTreeId(7);
+        let meta = exact_meta(7, "intensity");
+        let nodes = vec![literal(1.0), EmlNode {
+            opcode: eml_nodes::opcode::RETURN_TOP,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        }];
+        registry
+            .replace_formula(id, meta.clone(), nodes.clone())
+            .unwrap();
+        let gen_after_first = registry.generation();
+        assert!(!registry
+            .replace_formula_if_changed(id, meta, nodes)
+            .unwrap());
+        assert_eq!(registry.generation(), gen_after_first);
+    }
+
+    #[test]
+    fn replace_formula_if_changed_bumps_generation_when_nodes_differ() {
+        let mut registry = EmlExpressionRegistry::new();
+        let id = EmlTreeId(8);
+        let meta = exact_meta(8, "intensity");
+        let nodes = vec![literal(1.0), EmlNode {
+            opcode: eml_nodes::opcode::RETURN_TOP,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        }];
+        registry
+            .replace_formula(id, meta.clone(), nodes.clone())
+            .unwrap();
+        let gen_after_first = registry.generation();
+        let mut changed = nodes.clone();
+        changed[0].a = 2.0f32.to_bits();
+        assert!(registry
+            .replace_formula_if_changed(id, meta, changed)
+            .unwrap());
+        assert_ne!(registry.generation(), gen_after_first);
     }
 }

@@ -282,18 +282,21 @@ fn c8b_intensity_reuploads_ops_when_eml_generation_changes() {
         .as_ref()
         .unwrap()
         .intensity_ops_registry_generation();
+    let uploads1 = state
+        .accumulator_runtime
+        .as_ref()
+        .unwrap()
+        .intensity_op_upload_count();
 
     behavior.build_coefficient = 3.5;
     let mut reg2 = DimensionRegistry::new();
     reg2.register(intensity_property(behavior));
     state.sync_intensity_eml_accumulator(&reg2);
 
-    let gen2 = state
-        .accumulator_runtime
-        .as_ref()
-        .unwrap()
-        .intensity_ops_registry_generation();
+    let runtime = state.accumulator_runtime.as_ref().unwrap();
+    let gen2 = runtime.intensity_ops_registry_generation();
     assert_ne!(gen1, gen2);
+    assert!(runtime.intensity_op_upload_count() > uploads1);
     assert!(state.accumulator_intensity_eml_active);
 }
 
@@ -308,6 +311,144 @@ fn c8b_intensity_path_no_cpu_mediated_evaluation() {
     let mut state = setup_intensity_state(&reg, 1, &[0.0, 0.1, 0.5]);
     assert!(state.accumulator_intensity_eml_active);
     let _ = run_accumulator_intensity(&mut state, 0.25);
+}
+
+#[test]
+fn c8b_slot_growth_reuploads_intensity_ops_even_when_formula_unchanged() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let mut reg = DimensionRegistry::new();
+    reg.register(intensity_property(IntensityBehavior::default()));
+    let n_dims = reg.total_columns;
+    let icol = intensity_col(&reg);
+
+    let mut state = setup_intensity_state(&reg, 1, &[0.0, 0.1, 0.5]);
+    let sig1 = state
+        .accumulator_runtime
+        .as_ref()
+        .unwrap()
+        .intensity_op_plan_signature()
+        .unwrap()
+        .clone();
+    assert_eq!(sig1.n_slots, 1);
+    assert_eq!(sig1.n_ops, 1);
+
+    state.rebuild_for_slots(2, &reg);
+    let mut flat = vec![0.0_f32; state.values_len()];
+    flat[0..n_dims].copy_from_slice(&[0.0, 0.1, 0.5]);
+    flat[n_dims..2 * n_dims].copy_from_slice(&[0.0, 0.2, 0.3]);
+    state.write_values(&flat);
+    state.sync_intensity_eml_accumulator(&reg);
+
+    let runtime = state.accumulator_runtime.as_ref().unwrap();
+    let sig2 = runtime.intensity_op_plan_signature().unwrap();
+    assert_eq!(sig2.n_slots, 2);
+    assert_eq!(sig2.n_ops, 2);
+    assert_ne!(sig1, *sig2);
+
+    let acc = run_accumulator_intensity(&mut state, 0.5);
+    assert_ne!(acc[icol].to_bits(), 0.5f32.to_bits());
+    assert_ne!(acc[n_dims + icol].to_bits(), 0.3f32.to_bits());
+}
+
+#[test]
+fn c8b_same_shape_same_generation_skips_intensity_op_upload() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let mut reg = DimensionRegistry::new();
+    reg.register(intensity_property(IntensityBehavior::default()));
+    let mut state = setup_intensity_state(&reg, 1, &[0.0, 0.1, 0.5]);
+    assert_eq!(
+        state
+            .accumulator_runtime
+            .as_ref()
+            .unwrap()
+            .intensity_op_upload_count(),
+        1
+    );
+
+    state.sync_intensity_eml_accumulator(&reg);
+    assert_eq!(
+        state
+            .accumulator_runtime
+            .as_ref()
+            .unwrap()
+            .intensity_op_upload_count(),
+        1
+    );
+}
+
+#[test]
+fn c8b_intensity_entry_layout_change_reuploads_ops() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let mut reg = DimensionRegistry::new();
+    reg.register(intensity_property(IntensityBehavior::default()));
+    let mut state = setup_intensity_state(&reg, 1, &[0.0, 0.1, 0.5]);
+    assert_eq!(
+        state
+            .accumulator_runtime
+            .as_ref()
+            .unwrap()
+            .intensity_op_upload_count(),
+        1
+    );
+
+    let mut reg2 = DimensionRegistry::new();
+    reg2.register(intensity_property(IntensityBehavior::default()));
+    let mut p2 = SimProperty::simple("core", "heat", 1);
+    p2.intensity_behavior = Some(IntensityBehavior::default());
+    reg2.register(p2);
+    state.sync_intensity_eml_accumulator(&reg2);
+
+    let runtime = state.accumulator_runtime.as_ref().unwrap();
+    assert_eq!(runtime.intensity_op_upload_count(), 2);
+    let sig = runtime.intensity_op_plan_signature().unwrap();
+    assert_eq!(sig.n_entries, 2);
+    assert_eq!(sig.n_ops, 2);
+}
+
+#[test]
+fn c8b_unchanged_intensity_formula_does_not_reupload_eml_table_each_boundary() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let mut reg = DimensionRegistry::new();
+    reg.register(intensity_property(IntensityBehavior::default()));
+    let mut state = WorldGpuState::new(GpuContext::new_blocking().expect("gpu"), &reg, 1);
+    state.write_values(&[0.0, 0.1, 0.5]);
+    state.sync_intensity_eml_accumulator(&reg);
+
+    let table = state
+        .accumulator_runtime
+        .as_ref()
+        .unwrap()
+        .eml
+        .as_ref()
+        .unwrap();
+    let node_uploads = table.node_upload_count;
+    let range_uploads = table.range_upload_count;
+    let eml_gen = state
+        .accumulator_runtime
+        .as_ref()
+        .unwrap()
+        .eml_registry
+        .generation();
+
+    state.sync_intensity_eml_accumulator(&reg);
+
+    let runtime = state.accumulator_runtime.as_ref().unwrap();
+    let table = runtime.eml.as_ref().unwrap();
+    assert_eq!(table.node_upload_count, node_uploads);
+    assert_eq!(table.range_upload_count, range_uploads);
+    assert_eq!(runtime.eml_registry.generation(), eml_gen);
 }
 
 #[test]
