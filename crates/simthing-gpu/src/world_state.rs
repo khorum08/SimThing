@@ -326,6 +326,9 @@ pub struct WorldGpuState {
     /// Cached C-7 velocity integration dispatch signal.
     pub accumulator_velocity_active: bool,
     pub accumulator_velocity_bands: u32,
+    /// Cached C-8b intensity EvalEML dispatch signal.
+    pub accumulator_intensity_eml_active: bool,
+    pub accumulator_intensity_eml_bands: u32,
 }
 
 impl WorldGpuState {
@@ -451,6 +454,8 @@ impl WorldGpuState {
             accumulator_reduction_exact_active: false,
             accumulator_velocity_active: false,
             accumulator_velocity_bands: 0,
+            accumulator_intensity_eml_active: false,
+            accumulator_intensity_eml_bands: 0,
         }
     }
 
@@ -464,6 +469,8 @@ impl WorldGpuState {
         self.accumulator_reduction_exact_active = false;
         self.accumulator_velocity_active = false;
         self.accumulator_velocity_bands = 0;
+        self.accumulator_intensity_eml_active = false;
+        self.accumulator_intensity_eml_bands = 0;
     }
 
     /// Clear one migrated AccumulatorOp family when its feature flag is off.
@@ -488,6 +495,10 @@ impl WorldGpuState {
                     runtime.clear_velocity();
                     self.set_velocity_dispatch(false, 0);
                 }
+                crate::OperationFamily::EvalEml => {
+                    runtime.clear_intensity_eml();
+                    self.set_intensity_eml_dispatch(false, 0);
+                }
                 _ => {}
             }
         } else if matches!(
@@ -502,6 +513,8 @@ impl WorldGpuState {
             self.set_reduction_exact_dispatch(false);
         } else if matches!(family, crate::OperationFamily::Velocity) {
             self.set_velocity_dispatch(false, 0);
+        } else if matches!(family, crate::OperationFamily::EvalEml) {
+            self.set_intensity_eml_dispatch(false, 0);
         }
     }
 
@@ -697,6 +710,57 @@ impl WorldGpuState {
     pub fn set_velocity_dispatch(&mut self, active: bool, n_bands: u32) {
         self.accumulator_velocity_active = active;
         self.accumulator_velocity_bands = n_bands;
+    }
+
+    /// Ensure C-8b intensity EvalEML AccumulatorOp runtime is enabled.
+    pub fn ensure_intensity_eml_accumulator(&mut self) {
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        let n_slots = self.n_slots;
+        let n_dims = self.n_dims;
+        self.accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .ensure_intensity_eml_session(
+                &self.ctx,
+                n_slots,
+                n_dims,
+                DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+            );
+    }
+
+    /// Register intensity EML formulas, upload GPU table, and upload EvalEML ops.
+    pub fn sync_intensity_eml_accumulator(&mut self, registry: &DimensionRegistry) {
+        use crate::intensity_accumulator::plan_intensity_eml_ops;
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        {
+            let runtime = self.accumulator_runtime.as_mut().unwrap();
+            runtime.ensure_eml_program_table(&self.ctx);
+            runtime
+                .register_intensity_eml_at_boundary(registry)
+                .expect("intensity EML formula registration failed");
+            runtime
+                .upload_eml_trees(&self.ctx)
+                .expect("intensity EML program table upload failed");
+        }
+        self.ensure_intensity_eml_accumulator();
+        let entries = crate::build_intensity_eml_entries(registry);
+        let ops = plan_intensity_eml_ops(&entries, self.n_slots);
+        let n_bands = if ops.is_empty() { 0 } else { 1 };
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            runtime
+                .upload_intensity_eml_ops(&self.ctx, &ops, n_bands)
+                .expect("intensity EvalEML op upload failed");
+        }
+        self.set_intensity_eml_dispatch(!ops.is_empty(), n_bands);
+    }
+
+    pub fn set_intensity_eml_dispatch(&mut self, active: bool, n_bands: u32) {
+        self.accumulator_intensity_eml_active = active;
+        self.accumulator_intensity_eml_bands = n_bands;
     }
 
     /// Ensure the C-1 threshold AccumulatorOp runtime is enabled.

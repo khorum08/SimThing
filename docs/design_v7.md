@@ -216,6 +216,7 @@ pub struct PipelineFlags {
     pub use_accumulator_reduction_exact: bool, // C-6 Sum/Max/Min/First → S-4
     pub use_accumulator_velocity:       bool,  // C-7 → S-5
     pub use_accumulator_eml:            bool,  // C-8a infra upload at boundary sync (default false)
+    pub use_accumulator_intensity:      bool,  // C-8b EvalEML intensity (requires use_accumulator_eml)
     pub use_accumulator_eml_transfer:   bool,  // C-8c → S-2 (future)
 }
 ```
@@ -234,10 +235,13 @@ pub struct PipelineFlags {
 - **Flag-off:** WGSL `velocity_integration.wgsl` (oracle/fallback until S-5).
 - `GovernedPair` metadata compiled to persistent ops at boundary sync.
 
-**Pass 2 — Intensity update (migrate → C-8, sunset → S-2)**
-- WGSL: `intensity_update.wgsl`
-- Per-slot: piecewise `build` or `decay` based on `|velocity| > threshold`
-- Post-migration: replaced by `EvalEML` combine with an `ExactDeterministic` intensity tree compiled from `IntensityBehavior` (C-8b)
+**Pass 2 — Intensity update (C-8b landed, flag default false; sunset → S-2)**
+- **Flag-on:** AccumulatorOp `EvalEML` at legacy Pass 2 position (after velocity, before overlay).
+  One op per `(slot, intensity-bearing property)`; `dt` via `AccumulatorTickParams.dt_bits`.
+  `IntensityBehavior` compiled to `ExactDeterministic` EML at boundary sync; persistent
+  node/range buffers; no per-dispatch EML upload.
+- **Flag-off:** WGSL `intensity_update.wgsl` (oracle/fallback until S-2).
+- Requires `use_accumulator_eml`; validated at boundary sync.
 
 **Pass 3 — Overlay application (migrate → C-3/C-4, sunset → S-3)**
 - WGSL: inline in `overlay_prep.rs`

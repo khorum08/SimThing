@@ -11,7 +11,7 @@ use crate::eml_nodes::{self, EmlNode, EML_STACK_MAX};
 pub use crate::eml_nodes::{opcode as eml_opcode, EmlNode as EmlNodeGpu};
 
 /// Maximum expression-tree node count for GPU `ExactDeterministic` baseline.
-pub const MAX_EML_TREE_NODES: u32 = 16;
+pub const MAX_EML_TREE_NODES: u32 = 32;
 
 /// Formula classes admitted under the C-8 `ExactDeterministic` baseline policy.
 pub const WHITELISTED_FORMULA_CLASSES: &[&str] = &[
@@ -311,6 +311,58 @@ impl EmlExpressionRegistry {
         );
         self.generation = self.generation.wrapping_add(1);
         Ok(())
+    }
+
+    /// Replace an existing formula or register a new one (boundary sync for intensity).
+    pub fn replace_formula(
+        &mut self,
+        tree_id: EmlTreeId,
+        mut meta: EmlFormulaMeta,
+        nodes: Vec<EmlNode>,
+    ) -> Result<(), EmlRegistryError> {
+        meta.tree_id = tree_id;
+        if nodes.is_empty() {
+            return Err(EmlRegistryError::EmptyTree);
+        }
+        if nodes.len() as u32 > MAX_EML_TREE_NODES {
+            return Err(EmlRegistryError::TooManyNodes(nodes.len() as u32));
+        }
+        meta.node_count = nodes.len() as u32;
+        meta.max_stack_depth = validate_stack_depth(&nodes)?;
+        validate_nodes_for_class(meta.execution_class, &nodes)?;
+        if meta.execution_class == EmlExecutionClass::CpuOracleOnly {
+            return Err(EmlRegistryError::CannotUploadCpuOracleOnly { tree_id });
+        }
+        if meta.allowed_consumers.0 == 0 {
+            meta.allowed_consumers = default_mask_for_class(meta.execution_class);
+        }
+        meta.deterministic_gpu = matches!(
+            meta.execution_class,
+            EmlExecutionClass::ExactDeterministic | EmlExecutionClass::SoftDeterministic
+        );
+        meta.requires_guard_for_hard_threshold =
+            meta.execution_class == EmlExecutionClass::SoftDeterministic;
+        self.formulas.insert(
+            tree_id,
+            RegisteredFormula {
+                meta,
+                nodes,
+                range_index: None,
+                upload_generation: None,
+            },
+        );
+        self.generation = self.generation.wrapping_add(1);
+        Ok(())
+    }
+
+    /// Remove a formula from the registry (intensity resync).
+    pub fn remove_tree(&mut self, tree_id: EmlTreeId) -> bool {
+        if self.formulas.remove(&tree_id).is_some() {
+            self.generation = self.generation.wrapping_add(1);
+            true
+        } else {
+            false
+        }
     }
 
     pub fn assert_whitelisted(&self, tree_id: EmlTreeId) -> Result<(), EmlRegistryError> {

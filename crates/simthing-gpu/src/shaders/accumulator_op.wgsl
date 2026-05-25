@@ -164,7 +164,7 @@ const EML_OP_CMP_EQ: u32 = 34u;
 const EML_OP_SELECT: u32 = 40u;
 const EML_OP_RETURN_TOP: u32 = 50u;
 
-const EML_STACK_MAX: u32 = 16u;
+const EML_STACK_MAX: u32 = 32u;
 
 fn eml_param(ctx: EmlEvalCtx, idx: u32) -> f32 {
     if (idx == 0u) {
@@ -181,7 +181,7 @@ fn eml_param(ctx: EmlEvalCtx, idx: u32) -> f32 {
 
 fn eml_eval(ctx: EmlEvalCtx) -> f32 {
     let range = eml_tree_ranges[ctx.range_idx];
-    var stack: array<f32, 16>;
+    var stack: array<f32, 32>;
     var sp: u32 = 0u;
 
     for (var i: u32 = 0u; i < range.node_count; i = i + 1u) {

@@ -77,6 +77,7 @@ fn run_accumulator_velocity(state: &mut WorldGpuState, dt: f32) -> Vec<f32> {
             overlay_add: None,
             reduction_soft: None,
             velocity: velocity_session.as_mut(),
+            intensity_eml: None,
             encode_world_summary: false,
         },
     );

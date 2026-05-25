@@ -550,7 +550,15 @@ comparison.
 
 **C-8a implementation status:** **Landed (#129)** — infrastructure only; see worklog 2026-05-19.
 
-**C-8a remedial status:** **Local** — program-table accounting, boundary skip, admissibility hardening.
+**C-8a remedial status:** **Merged** (#130) — program-table accounting, boundary skip, admissibility hardening.
+
+**C-8b status:** **Local** — intensity EvalEML migration; `use_accumulator_intensity` (default false); legacy `intensity_update.wgsl` remains flag-off/oracle.
+
+**C-8b landed:**
+- Legacy intensity update routes through AccumulatorOp `EvalEML` when flag on.
+- `IntensityBehavior` → `ExactDeterministic` EML (22 nodes; `MAX_EML_TREE_NODES`/`EML_STACK_MAX` raised to 32).
+- `dt` via tick params; persistent EML buffers; no per-dispatch upload.
+- C-8c transfer and C-8d emission remain pending.
 
 Selected:
 - **Execution-class taxonomy** (`EmlExecutionClass::{ExactDeterministic, SoftDeterministic, FastApproximate, CpuOracleOnly}`) plus a **consumer admissibility matrix** that gates which classes may feed which consumers.

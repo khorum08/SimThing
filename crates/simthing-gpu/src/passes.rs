@@ -51,6 +51,7 @@ pub struct AccumulatorPipelineSessions<'a> {
     pub overlay_add: Option<&'a mut crate::AccumulatorOpSession>,
     pub reduction_soft: Option<&'a mut crate::AccumulatorOpSession>,
     pub velocity: Option<&'a mut crate::AccumulatorOpSession>,
+    pub intensity_eml: Option<&'a mut crate::AccumulatorOpSession>,
     pub encode_world_summary: bool,
 }
 
@@ -505,6 +506,7 @@ impl Pipelines {
                 overlay_add: None,
                 reduction_soft: None,
                 velocity: None,
+                intensity_eml: None,
                 encode_world_summary: false,
             },
         );
@@ -529,6 +531,7 @@ impl Pipelines {
                 overlay_add: None,
                 reduction_soft: None,
                 velocity: None,
+                intensity_eml: None,
                 encode_world_summary: false,
             },
         );
@@ -572,6 +575,8 @@ impl Pipelines {
 
         let use_accumulator_velocity = state.accumulator_velocity_active
             && state.accumulator_velocity_bands > 0;
+        let use_accumulator_intensity = state.accumulator_intensity_eml_active
+            && state.accumulator_intensity_eml_bands > 0;
 
         let velocity_bg = (!use_accumulator_velocity && state.n_governed_pairs > 0).then(|| {
             ctx.device.create_bind_group(&BindGroupDescriptor {
@@ -585,7 +590,7 @@ impl Pipelines {
             })
         });
 
-        let intensity_bg = (state.n_intensity_params > 0).then(|| {
+        let intensity_bg = (!use_accumulator_intensity && state.n_intensity_params > 0).then(|| {
             ctx.device.create_bind_group(&BindGroupDescriptor {
                 label: Some("intensity_bg"),
                 layout: &self.intensity_layout,
@@ -664,10 +669,12 @@ impl Pipelines {
                     dispatch_linear(&mut pass, state.n_slots * state.n_governed_pairs);
                 }
 
-                if let Some(bg) = intensity_bg.as_ref() {
-                    pass.set_pipeline(&self.intensity_pipeline);
-                    pass.set_bind_group(0, bg, &[]);
-                    dispatch_linear(&mut pass, state.n_slots * state.n_intensity_params);
+                if !use_accumulator_intensity {
+                    if let Some(bg) = intensity_bg.as_ref() {
+                        pass.set_pipeline(&self.intensity_pipeline);
+                        pass.set_bind_group(0, bg, &[]);
+                        dispatch_linear(&mut pass, state.n_slots * state.n_intensity_params);
+                    }
                 }
             }
         }
@@ -683,14 +690,33 @@ impl Pipelines {
                 );
             }
 
-            if let Some(bg) = intensity_bg.as_ref() {
-                let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                    label: Some("tick_pipeline_intensity_after_c7"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&self.intensity_pipeline);
-                pass.set_bind_group(0, bg, &[]);
-                dispatch_linear(&mut pass, state.n_slots * state.n_intensity_params);
+            if !use_accumulator_intensity {
+                if let Some(bg) = intensity_bg.as_ref() {
+                    let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                        label: Some("tick_pipeline_intensity_after_c7"),
+                        timestamp_writes: None,
+                    });
+                    pass.set_pipeline(&self.intensity_pipeline);
+                    pass.set_bind_group(0, bg, &[]);
+                    dispatch_linear(&mut pass, state.n_slots * state.n_intensity_params);
+                }
+            }
+        }
+
+        if use_accumulator_intensity {
+            if let Some(session) = sessions.intensity_eml.as_mut() {
+                let eml = state
+                    .accumulator_runtime
+                    .as_ref()
+                    .and_then(|r| r.eml_bind_buffers());
+                session.encode_intensity_eml_into(
+                    ctx,
+                    &mut encoder,
+                    &state.values,
+                    &state.previous_values,
+                    dt,
+                    eml,
+                );
             }
         }
 
@@ -2016,6 +2042,7 @@ mod tests {
                 overlay_add: None,
                 reduction_soft: None,
                 velocity: None,
+                intensity_eml: None,
                 encode_world_summary: false,
             },
         );
