@@ -59,57 +59,85 @@ pub fn execute_ops_cpu_with_emissions(
     Ok(records)
 }
 
-/// Execute threshold-gated EmitEvent ops against previous/current value buffers.
+/// Execute threshold-gated ops against previous/current value buffers.
 pub fn execute_threshold_ops_cpu(
     previous_values: &[f32],
-    values: &[f32],
+    values: &mut [f32],
     ops: &[AccumulatorOp],
     n_dims: u32,
 ) -> Result<Vec<ThresholdEmission>, CpuOracleError> {
     let mut records = Vec::new();
+
     for (op_idx, op) in ops.iter().enumerate() {
-        let GateSpec::Threshold { value, direction } = op.gate else {
+        let GateSpec::Threshold {
+            value: threshold,
+            direction,
+        } = op.gate
+        else {
             continue;
         };
-        if op.consume != ConsumeMode::EmitEvent {
-            return Err(CpuOracleError::Unsupported("threshold without EmitEvent"));
-        }
-        let SourceSpec::SlotValue { slot, col } = op.source else {
-            return Err(CpuOracleError::Unsupported("threshold without SlotValue"));
-        };
-        if threshold_crossed(
-            previous_values,
-            values,
-            slot,
-            col,
-            value,
-            direction,
-            n_dims,
-        ) {
-            let curr = values[idx(slot, col, n_dims)];
-            records.push(ThresholdEmission {
-                reg_idx: op_idx as u32,
-                slot,
-                col,
-                value: curr,
-            });
+
+        match op.consume {
+            ConsumeMode::EmitEvent => {
+                let SourceSpec::SlotValue { slot, col } = op.source else {
+                    return Err(CpuOracleError::Unsupported(
+                        "Threshold+EmitEvent requires SlotValue source",
+                    ));
+                };
+                let prev = previous_values[idx(slot, col, n_dims)];
+                let curr = values[idx(slot, col, n_dims)];
+                if threshold_crossed_cpu(prev, curr, threshold, direction) {
+                    records.push(ThresholdEmission {
+                        reg_idx: op_idx as u32,
+                        slot,
+                        col,
+                        value: curr,
+                    });
+                }
+            }
+            ConsumeMode::None => {
+                match &op.source {
+                    SourceSpec::SlotValue { slot, col } => {
+                        let i = idx(*slot, *col, n_dims);
+                        let prev = previous_values[i];
+                        let curr = values[i];
+                        if threshold_crossed_cpu(prev, curr, threshold, direction) {
+                            let write_value = gather_and_combine(values, op, n_dims)?;
+                            apply_targets(values, op, write_value, n_dims)?;
+                        }
+                    }
+                    SourceSpec::Constant(value) => {
+                        let prev = *value;
+                        let curr = *value;
+                        if threshold_crossed_cpu(prev, curr, threshold, direction) {
+                            let write_value = gather_and_combine(values, op, n_dims)?;
+                            apply_targets(values, op, write_value, n_dims)?;
+                        }
+                    }
+                    _ => {
+                        return Err(CpuOracleError::Unsupported(
+                            "Threshold+None requires SlotValue or Constant source",
+                        ));
+                    }
+                }
+            }
+            _ => {
+                return Err(CpuOracleError::Unsupported(
+                    "Threshold gate with this consume mode is not implemented in CPU oracle",
+                ));
+            }
         }
     }
+
     Ok(records)
 }
 
-fn threshold_crossed(
-    previous_values: &[f32],
-    values: &[f32],
-    slot: u32,
-    col: u32,
+fn threshold_crossed_cpu(
+    prev: f32,
+    curr: f32,
     threshold: f32,
     direction: ThresholdDirection,
-    n_dims: u32,
 ) -> bool {
-    let i = idx(slot, col, n_dims);
-    let prev = previous_values[i];
-    let curr = values[i];
     let up = prev <= threshold && curr > threshold;
     let down = prev >= threshold && curr < threshold;
     match direction {
@@ -270,7 +298,7 @@ fn maybe_emit_event(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simthing_core::{CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+    use simthing_core::{CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection};
 
     #[test]
     fn c2_intent_affine_cpu_oracle() {
@@ -360,5 +388,49 @@ mod tests {
             execute_ops_cpu_with_emissions(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
         assert_eq!(records, vec![EmissionRecord { reg_idx: 0, emit_count: 3 }]);
         assert_eq!(values[0], 3.7);
+    }
+
+    #[test]
+    fn threshold_none_cpu_writes_target_on_crossing() {
+        let previous = vec![0.2, 0.0];
+        let mut values = vec![0.5, 0.0];
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Threshold {
+                value: 0.3,
+                direction: ThresholdDirection::Upward,
+            },
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![(1, 0)],
+        };
+        let records =
+            execute_threshold_ops_cpu(&previous, &mut values, std::slice::from_ref(&op), 1)
+                .unwrap();
+        assert!(records.is_empty());
+        assert!((values[1] - 0.5).abs() < 1e-5, "target: {}", values[1]);
+    }
+
+    #[test]
+    fn threshold_none_cpu_no_write_when_not_crossing() {
+        let previous = vec![0.4, 0.0];
+        let mut values = vec![0.5, 0.0];
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Threshold {
+                value: 0.3,
+                direction: ThresholdDirection::Upward,
+            },
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![(1, 0)],
+        };
+        let records =
+            execute_threshold_ops_cpu(&previous, &mut values, std::slice::from_ref(&op), 1)
+                .unwrap();
+        assert!(records.is_empty());
+        assert!((values[1] - 0.0).abs() < 1e-5, "should not write: {}", values[1]);
     }
 }
