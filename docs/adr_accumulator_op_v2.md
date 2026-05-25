@@ -160,18 +160,38 @@ any migration begins.
 
 ### EML expression policy
 
-The `EvalEML` combine is validated for formulas meeting all of:
+The `EvalEML` combine is gated by an **execution-class** registration
+discipline. See `docs/workshop/c8_eml_transfer_intensity_design.md` §1–§2
+for the full framework. Summary:
 
-- No transcendental functions (no exp, log, sin, cos)
-- ≤16 nodes in the expression tree (within the 32-node budget with headroom)
-- The formula class is whitelisted in `docs/eml_integration_guidance.md`
+- **C-8 production baseline:** the `ExactDeterministic` class — no
+  transcendentals, ≤16 nodes, deterministic IEEE-754 ops only, bit-exact
+  CPU↔GPU. This is the only class admitted by production consumers at
+  C-8 landing.
+- **Future-prepped classes:** the registry, node buffer, and validator
+  structurally support `SoftDeterministic` (deterministic approximations
+  with documented `max_abs_error`), `FastApproximate` (vendor-native
+  math; not replay-safe under current model), and `CpuOracleOnly`
+  (test-only). No future class is enabled by default; each requires
+  explicit per-PR opt-in plus consumer admissibility (see below).
+- **Consumer admissibility matrix:** transfer/conservation paths admit
+  `ExactDeterministic` only — Soft/Fast are structurally forbidden from
+  conservation. Hard structural triggers admit Soft only with
+  `SoftAggregateGuard` (per A-4). Emission tolerates Soft/Fast under
+  explicit per-formula tolerance; the tolerance does not leak into
+  transfer or hard-trigger paths.
 
-Overhead is ~1.6× vs the hardcoded kernel at 100k slots. Acceptable.
+Overhead for the `ExactDeterministic` baseline is ~1.6× vs the hardcoded
+kernel at 100k slots. Acceptable. Tier-2/3/4 optimizations (compact
+bytecode, specialized hot-formula kernels) are explicit follow-on PRs;
+the node buffer format does not preclude them.
 
-Formulas outside this envelope must use the hardcoded kernel path or remain
-CPU-side per the EML integration guidance doc's Phase 4 (derived field
-integration). GPU EML evaluation on formulas with transcendentals is
-explicitly out of scope for this ADR.
+Formulas outside any GPU class (e.g. transcendental-bearing trees
+without a registered approximation strategy) must use the
+`CpuOracleOnly` class for testing and remain CPU-side per the EML
+integration guidance doc's Phase 4. **The ADR does not permanently
+restrict the GPU substrate to zero-transcendental formulas;** it
+permanently restricts conservation paths to `ExactDeterministic`.
 
 ### Hot-pool contention policy
 
@@ -269,7 +289,7 @@ These extend `docs/invariants.md` and carry the same enforcement weight:
 | Rule | Enforced by |
 |---|---|
 | Exact operations never use soft-aggregate combine fns | Code review gate; `WeightedMean` / `Mean` may not appear in conservation-critical registration paths |
-| `EvalEML` combine requires a whitelist entry | `EmlExpressionRegistry::assert_whitelisted(tree_id)` checked at registration |
+| `EvalEML` combine requires execution-class registration + consumer admissibility | `EmlExpressionRegistry::assert_consumer_admissible(tree_id, consumer)` at registration. C-8 production baseline admits `ExactDeterministic` only; future classes admitted by explicit per-PR policy gates. See `docs/workshop/c8_eml_transfer_intensity_design.md`. |
 | `SubtractFromSource` is the only transfer mechanism | No two-overlay transfers; `TransformOp::Add` on two separate slots for the same logical transfer is a violation |
 | Emission records are produced for every GPU-resolved emission | `EmissionRecord { reg_idx, emit_count }` written to compact buffer; read back for delta log |
 | Persistent GPU buffer is the residency model | `AccumulatorOpSession` is created at session open and closed at session close; no per-tick device creation |

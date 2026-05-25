@@ -176,6 +176,7 @@ cargo check --workspace
 | [`c1_perf_reframe_memo.md`](c1_perf_reframe_memo.md) | Accepted C-1 perf gate reframe (no 5× readback claim) |
 | [`c4_overlay_orderband_compiler_design.md`](c4_overlay_orderband_compiler_design.md) | Accepted C-4 overlay OrderBand design |
 | [`c5_weighted_mean_reduction_design.md`](c5_weighted_mean_reduction_design.md) | Accepted C-5 design — soft-reduction migration |
+| [`c8_eml_transfer_intensity_design.md`](c8_eml_transfer_intensity_design.md) | Accepted C-8 design — execution-class taxonomy + staged delivery (C-8a/b/c/d). C-8 baseline = `ExactDeterministic` only; substrate future-prepped for `SoftDeterministic` / `FastApproximate` / `CpuOracleOnly` classes |
 | [`multichannel_accumulator_test_battery.md`](multichannel_accumulator_test_battery.md) | Workshop benchmark spec |
 | [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder-facing authoring surface |
 | [`simthing_base_economic_system_working_doc.md`](simthing_base_economic_system_working_doc.md) | Provisional economic substrate (E0 deferred) |
