@@ -143,6 +143,15 @@ source_pool -> queue_accum -> emitted_units
 
 The current-shaped baseline resolves the operation on CPU, representing day-boundary settlement and explicit record construction. The pivot-shaped path resolves on GPU and emits compact delta records; replay reconstructs final state from initial state, params, and compact records only.
 
+Two GPU timing shapes are compared:
+
+| Mode | Shape | Purpose |
+|------|--------|---------|
+| **Envelope (one-shot)** | Upload → 1 tick → readback each run | Semantic/replay/conservation gates |
+| **GPU-resident** | Upload once → N ticks in-place → readback once | Intended AccumulatorOp v2 production shape |
+
+Envelope timings are not representative of GPU-resident pivot performance. Resident summary-only mode tests the fastest audit path; resident records mode tests replay/audit log pressure (~102MB at 100k×64 ticks).
+
 Run: `cargo test -p simthing-workshop multitarget -- --nocapture`
 
-The report bundle test writes `tests/multitarget_replay_reports.txt` (committed). Bursty 100k also writes `target/workshop/multitarget_replay_report.md` and `.json`.
+The envelope report bundle writes `tests/multitarget_replay_reports.txt` (committed). The resident report bundle writes `tests/multitarget_replay_resident_reports.txt` (committed). Bursty 100k also writes `target/workshop/multitarget_replay_report.md` / `multitarget_replay_resident_report.md` and `.json`.
