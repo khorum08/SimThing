@@ -486,7 +486,7 @@ tolerance `1e-5`; A-4 guard tests unchanged. S-4 pending.
 
 ### ✅ PR C-6 — Sum, Max, Min, First exact reductions → AccumulatorOp
 
-**Status:** **Landed** (implementation PR).
+**Status:** **Landed** (#124).
 
 **What shipped:** `use_accumulator_reduction_exact` flag (default false; requires
 soft flag). `ReductionPlanMode::AllRules` extends `plan_reduction_orderband` with
