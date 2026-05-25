@@ -470,7 +470,16 @@ committed. S-3 remains pending; no legacy overlay deletion in C-4.
 
 ### ⚠️ PR C-5 — Opus review: WeightedMean reduction and tolerance boundary
 
-**Model:** Opus (review + boundary analysis), Composer 2.5 (implementation)  
+**Design half status:** **Accepted** — see
+[`docs/workshop/c5_weighted_mean_reduction_design.md`](workshop/c5_weighted_mean_reduction_design.md).
+Selected: re-verified A-4 audit (zero existing exposure); preserve A-4
+validator unchanged; preserve two-buffer model (reductions write
+`output_vectors` via per-family `ReductionSoft` session); linear-loop
+gather kernel for GPU/CPU determinism; no production property changes
+needed; `ConsumeMode::ResetTarget` for reduction assignment (clean v7
+write-target axis from C-4). Implementer is **Codex 5.5** per §10.
+
+**Model:** Opus (review + boundary analysis), Codex 5.5 (implementation)  
 **Why Opus:** WeightedMean is the operation where the tolerance policy from
 A-4 is most likely to create production problems. The workshop showed the
 current path is ALSO loose-tolerance (~3e-6 error) — meaning any existing
