@@ -468,52 +468,19 @@ committed. S-3 remains pending; no legacy overlay deletion in C-4.
 
 ---
 
-### ⚠️ PR C-5 — Opus review: WeightedMean reduction and tolerance boundary
+### ✅ PR C-5 — WeightedMean / Mean soft reductions → AccumulatorOp
 
-**Design half status:** **Accepted** — see
-[`docs/workshop/c5_weighted_mean_reduction_design.md`](workshop/c5_weighted_mean_reduction_design.md).
-Selected: re-verified A-4 audit (zero existing exposure); preserve A-4
-validator unchanged; preserve two-buffer model (reductions write
-`output_vectors` via per-family `ReductionSoft` session); linear-loop
-gather kernel for GPU/CPU determinism; no production property changes
-needed; `ConsumeMode::ResetTarget` for reduction assignment (clean v7
-write-target axis from C-4). Implementer is **Codex 5.5** per §10.
+**Status:** **Landed** (implementation PR; design in
+[`docs/workshop/c5_weighted_mean_reduction_design.md`](workshop/c5_weighted_mean_reduction_design.md)).
 
-**Model:** Opus (review + boundary analysis), Codex 5.5 (implementation)  
-**Why Opus:** WeightedMean is the operation where the tolerance policy from
-A-4 is most likely to create production problems. The workshop showed the
-current path is ALSO loose-tolerance (~3e-6 error) — meaning any existing
-code that reads a WeightedMean-reduced value and uses it for a hard decision
-is already silently wrong.
+**What shipped:** `use_accumulator_reduction_soft` flag (default false);
+`ReductionSoft` session on `WorldAccumulatorRuntime`; `plan_reduction_orderband`;
+linear-loop `COMBINE_MEAN` / `COMBINE_WEIGHTED_MEAN` in `accumulator_op.wgsl`;
+two-buffer model preserved (`values` → memcpy → `output_vectors` reductions);
+legacy `reduction.wgsl` skips soft columns when flag on (exact columns unchanged).
 
-Before migrating WeightedMean to AccumulatorOp, Opus should:
-
-1. Audit all paths in `boundary.rs` and `threshold_registry.rs` where a
-   reduced value could flow into a hard structural decision. This is the
-   "existing production exposure" analysis requested in PR A-4 — do it now
-   if A-4's Opus work identified any exposure.
-
-2. Confirm or deny: does the `WeightedMean` reduction path today produce
-   the same ~3e-6 error vs CPU oracle as the AccumulatorOp pivot path? The
-   workshop measures both and they're identical — but this should be confirmed
-   in the production codebase, not just the workshop.
-
-3. Specify the `SoftAggregateGuard` placement: which specific properties in
-   the default SimThing property set (loyalty, stability, efficiency, morale)
-   use WeightedMean reduction, and which of those feed threshold registrations?
-
-**Implementation (Composer 2.5):**
-`WeightedMean` and `Mean` combine functions in the kernel. Multi-input gather
-over `SlotRange` with `weight_col`. Uses workgroup shared memory for
-deterministic accumulation — same execution model as the current reduction
-pass; just parameterized by combine function rather than hardcoded.
-
-**Parity test:** GPU-to-GPU determinism (not bit-exact vs CPU oracle — that
-is expected to fail at ~3e-6). Three consecutive runs must produce identical
-results.  
-**Guard test:** Assert `SoftAggregateGuard` is present on any WeightedMean
-column that feeds a threshold registration.  
-**Acceptance:** Both tests pass. Opus audit committed.
+**Parity:** GPU-to-GPU bit-identical (three runs); legacy vs AccumulatorOp abs
+tolerance `1e-5`; A-4 guard tests unchanged. S-4 pending.
 
 ---
 

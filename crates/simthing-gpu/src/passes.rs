@@ -44,11 +44,12 @@ struct PassParams {
     _pad1:      u32,
 }
 
-/// Optional AccumulatorOp sessions folded into one tick command buffer (C-1/C-2/C-3).
+/// Optional AccumulatorOp sessions folded into one tick command buffer (C-1/C-2/C-3/C-5).
 pub struct AccumulatorPipelineSessions<'a> {
     pub threshold:   Option<&'a mut crate::AccumulatorOpSession>,
     pub intent:      Option<&'a mut crate::AccumulatorOpSession>,
     pub overlay_add: Option<&'a mut crate::AccumulatorOpSession>,
+    pub reduction_soft: Option<&'a mut crate::AccumulatorOpSession>,
     pub encode_world_summary: bool,
 }
 
@@ -536,6 +537,7 @@ impl Pipelines {
                 threshold:   Some(session),
                 intent:      None,
                 overlay_add: None,
+                reduction_soft: None,
                 encode_world_summary: false,
             },
         );
@@ -558,6 +560,7 @@ impl Pipelines {
                 threshold:   None,
                 intent:      None,
                 overlay_add: None,
+                reduction_soft: None,
                 encode_world_summary: false,
             },
         );
@@ -635,6 +638,7 @@ impl Pipelines {
             })
         });
 
+        let skip_soft = u32::from(state.accumulator_reduction_soft_active);
         let mut reduction_param_buffers = Vec::new();
         let mut reduction_depth_bgs = Vec::new();
         for &(depth_offset, bucket_size) in state.depth_bucket_ranges.iter().rev() {
@@ -645,7 +649,7 @@ impl Pipelines {
                 n_dims:       state.n_dims,
                 depth_offset,
                 bucket_size,
-                _pad:         0,
+                skip_soft_columns: skip_soft,
             };
             let buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("reduction_depth_uniform"),
@@ -743,6 +747,27 @@ impl Pipelines {
             }
         }
 
+        let reduction_soft_active = state.accumulator_reduction_soft_active
+            && state.accumulator_reduction_soft_bands > 0;
+        if reduction_soft_active {
+            let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
+            encoder.copy_buffer_to_buffer(
+                &state.values,
+                0,
+                &state.output_vectors,
+                0,
+                copy_bytes,
+            );
+            if let Some(session) = sessions.reduction_soft.as_mut() {
+                session.encode_reduction_soft_into(
+                    ctx,
+                    &mut encoder,
+                    &state.output_vectors,
+                    state.accumulator_reduction_soft_bands,
+                );
+            }
+        }
+
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("tick_pipeline_post_overlay"),
@@ -820,7 +845,7 @@ impl Pipelines {
                 n_dims:       state.n_dims,
                 depth_offset,
                 bucket_size,
-                _pad:         0,
+                skip_soft_columns: u32::from(state.accumulator_reduction_soft_active),
             };
             let param_buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label:    Some("reduction_depth_uniform"),
@@ -855,6 +880,89 @@ impl Pipelines {
             pass.set_pipeline(&self.reduction_pipeline);
             pass.set_bind_group(0, bg, &[]);
             dispatch_linear(&mut pass, *bucket_size);
+        }
+
+        ctx.queue.submit(Some(encoder.finish()));
+    }
+
+    /// C-5 soft-reduction path: leaf init memcpy + AccumulatorOp OrderBands +
+    /// legacy reduction for exact columns only (skip_soft when active).
+    pub fn run_c5_soft_reduction_passes(
+        &self,
+        state: &WorldGpuState,
+        session: &mut crate::AccumulatorOpSession,
+    ) {
+        if state.depth_bucket_ranges.is_empty()
+            || !state.accumulator_reduction_soft_active
+            || state.accumulator_reduction_soft_bands == 0
+        {
+            return;
+        }
+        let ctx = &state.ctx;
+        let skip_soft = u32::from(state.accumulator_reduction_soft_active);
+
+        let mut reduction_depth_bgs = Vec::new();
+        for &(depth_offset, bucket_size) in state.depth_bucket_ranges.iter().rev() {
+            if bucket_size == 0 {
+                continue;
+            }
+            let p = ReduceParams {
+                n_dims: state.n_dims,
+                depth_offset,
+                bucket_size,
+                skip_soft_columns: skip_soft,
+            };
+            let param_buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("c5_reduction_depth_uniform"),
+                contents: bytemuck::bytes_of(&p),
+                usage: BufferUsages::UNIFORM,
+            });
+            let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
+                label: Some("c5_reduction_depth_bg"),
+                layout: &self.reduction_layout,
+                entries: &[
+                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                    BindGroupEntry { binding: 1, resource: state.output_vectors.as_entire_binding() },
+                    BindGroupEntry { binding: 2, resource: state.child_starts.as_entire_binding() },
+                    BindGroupEntry { binding: 3, resource: state.child_indices.as_entire_binding() },
+                    BindGroupEntry { binding: 4, resource: state.column_rules.as_entire_binding() },
+                    BindGroupEntry { binding: 5, resource: state.depth_slots.as_entire_binding() },
+                    BindGroupEntry { binding: 6, resource: param_buf.as_entire_binding() },
+                ],
+            });
+            reduction_depth_bgs.push((bucket_size, bg));
+        }
+
+        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("c5_soft_reduction_encoder"),
+        });
+
+        let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
+        encoder.copy_buffer_to_buffer(
+            &state.values,
+            0,
+            &state.output_vectors,
+            0,
+            copy_bytes,
+        );
+
+        session.encode_reduction_soft_into(
+            ctx,
+            &mut encoder,
+            &state.output_vectors,
+            state.accumulator_reduction_soft_bands,
+        );
+
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("c5_legacy_exact_reduction_pass"),
+                timestamp_writes: None,
+            });
+            for (bucket_size, bg) in &reduction_depth_bgs {
+                pass.set_pipeline(&self.reduction_pipeline);
+                pass.set_bind_group(0, bg, &[]);
+                dispatch_linear(&mut pass, *bucket_size);
+            }
         }
 
         ctx.queue.submit(Some(encoder.finish()));
@@ -2000,6 +2108,7 @@ mod tests {
                 intent:      intent_session.as_mut(),
                 threshold:   None,
                 overlay_add: None,
+                reduction_soft: None,
                 encode_world_summary: false,
             },
         );

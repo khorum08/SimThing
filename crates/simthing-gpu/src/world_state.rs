@@ -251,7 +251,8 @@ pub struct ReduceParams {
     pub n_dims: u32,
     pub depth_offset: u32,
     pub bucket_size: u32,
-    pub _pad: u32,
+    /// When non-zero, skip Mean (0) and WeightedMean (5) columns — C-5 AccumulatorOp path.
+    pub skip_soft_columns: u32,
 }
 
 // ── WorldGpuState ─────────────────────────────────────────────────────────────
@@ -329,6 +330,9 @@ pub struct WorldGpuState {
     /// Cached C-3 overlay dispatch signal (mirrors runtime; survives runtime `take()`).
     pub accumulator_overlay_add_active: bool,
     pub accumulator_overlay_add_bands: u32,
+    /// Cached C-5 soft reduction dispatch signal (mirrors runtime; survives runtime `take()`).
+    pub accumulator_reduction_soft_active: bool,
+    pub accumulator_reduction_soft_bands: u32,
 }
 
 impl WorldGpuState {
@@ -449,6 +453,8 @@ impl WorldGpuState {
             accumulator_runtime: None,
             accumulator_overlay_add_active: false,
             accumulator_overlay_add_bands: 0,
+            accumulator_reduction_soft_active: false,
+            accumulator_reduction_soft_bands: 0,
         }
     }
 
@@ -457,6 +463,8 @@ impl WorldGpuState {
         self.accumulator_runtime = None;
         self.accumulator_overlay_add_active = false;
         self.accumulator_overlay_add_bands = 0;
+        self.accumulator_reduction_soft_active = false;
+        self.accumulator_reduction_soft_bands = 0;
     }
 
     /// Clear one migrated AccumulatorOp family when its feature flag is off.
@@ -469,6 +477,10 @@ impl WorldGpuState {
                     runtime.clear_overlay_orderband();
                     self.set_overlay_add_dispatch(false, 0);
                 }
+                crate::OperationFamily::ReductionSoft => {
+                    runtime.clear_reduction_soft();
+                    self.set_reduction_soft_dispatch(false, 0);
+                }
                 _ => {}
             }
         } else if matches!(
@@ -476,6 +488,8 @@ impl WorldGpuState {
             crate::OperationFamily::OverlayAdd | crate::OperationFamily::OverlayOrderBand
         ) {
             self.set_overlay_add_dispatch(false, 0);
+        } else if matches!(family, crate::OperationFamily::ReductionSoft) {
+            self.set_reduction_soft_dispatch(false, 0);
         }
     }
 
@@ -595,6 +609,37 @@ impl WorldGpuState {
     pub fn set_overlay_add_dispatch(&mut self, active: bool, n_bands: u32) {
         self.accumulator_overlay_add_active = active;
         self.accumulator_overlay_add_bands = n_bands;
+    }
+
+    /// Ensure the C-5 soft-reduction AccumulatorOp runtime is enabled.
+    pub fn ensure_reduction_soft_accumulator(&mut self) {
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        let n_slots = self.n_slots;
+        let n_dims = self.n_dims;
+        self.accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .ensure_reduction_soft_session(&self.ctx, n_slots, n_dims, &self.output_vectors);
+    }
+
+    /// Upload C-5 reduction ops and set OrderBand pass count.
+    pub fn upload_reduction_soft_ops_with_bands(
+        &mut self,
+        ops: &[crate::AccumulatorOpGpu],
+        n_bands: u32,
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            runtime.upload_reduction_soft_ops(&self.ctx, ops, n_bands)?;
+        }
+        self.set_reduction_soft_dispatch(!ops.is_empty(), n_bands);
+        Ok(())
+    }
+
+    pub fn set_reduction_soft_dispatch(&mut self, active: bool, n_bands: u32) {
+        self.accumulator_reduction_soft_active = active;
+        self.accumulator_reduction_soft_bands = n_bands;
     }
 
     /// Ensure the C-1 threshold AccumulatorOp runtime is enabled.

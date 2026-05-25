@@ -103,6 +103,24 @@ impl AccumulatorOpSession {
         )
     }
 
+    /// C-5 reduction session: binding 1 is routed to `output_vectors` at encode time.
+    /// `bound_values` is retained for API symmetry with the design memo; the caller
+    /// must pass the same buffer to `encode_reduction_soft_into`.
+    pub fn new_attached_to_buffer(
+        ctx: &GpuContext,
+        n_slots: u32,
+        n_dims: u32,
+        _bound_values: &Buffer,
+    ) -> Self {
+        Self::build(
+            ctx,
+            n_slots,
+            n_dims,
+            DEFAULT_EMISSION_CAPACITY,
+            DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+        )
+    }
+
     pub fn with_emission_capacity(
         ctx: &GpuContext,
         n_slots: u32,
@@ -783,6 +801,61 @@ impl AccumulatorOpSession {
 
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("accumulator_overlay_orderband_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.execute_pipeline);
+            pass.set_bind_group(0, &execute_bind_group, &[]);
+            pass.dispatch_workgroups(groups, 1, 1);
+        }
+
+        drop(band_uniforms);
+    }
+
+    /// Encode C-5 soft-reduction OrderBand ops against `output_vectors`.
+    /// Binding 1 reads/writes `output_vectors` (not `values`).
+    pub fn encode_reduction_soft_into(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        output_vectors: &Buffer,
+        n_bands: u32,
+    ) {
+        if self.n_ops == 0 || n_bands == 0 {
+            return;
+        }
+        self.last_pass_time_us = None;
+
+        let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
+        let mut band_uniforms = Vec::with_capacity(n_bands as usize);
+
+        for band in 0..n_bands {
+            let tick_params = AccumulatorTickParams {
+                n_ops: self.n_ops,
+                current_band: band,
+                n_slots: self.n_slots,
+                n_dims: self.n_dims,
+                emission_capacity: self.emission_capacity,
+                threshold_emission_capacity: self.threshold_emission_capacity,
+                _pad0: 0,
+                _pad1: 0,
+            };
+            let tick_uniform = ctx
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("accumulator_reduction_soft_band_uniform"),
+                    contents: bytemuck::bytes_of(&tick_params),
+                    usage: BufferUsages::UNIFORM,
+                });
+            let execute_bind_group = self.create_execute_bind_group_with_uniform(
+                ctx,
+                output_vectors,
+                &self.previous_values_buffer,
+                &tick_uniform,
+            );
+            band_uniforms.push(tick_uniform);
+
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("accumulator_reduction_soft_pass"),
                 timestamp_writes: None,
             });
             pass.set_pipeline(&self.execute_pipeline);

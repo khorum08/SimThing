@@ -116,7 +116,8 @@ pub fn apply_oracle_flags(flags: &mut PipelineFlags, family: OracleFamily, use_a
         OracleFamily::OverlayAdd | OracleFamily::OverlayFull => {
             flags.use_accumulator_overlay_add = use_accumulator
         }
-        OracleFamily::Reduction | OracleFamily::Velocity | OracleFamily::Intensity => {}
+        OracleFamily::Reduction => flags.use_accumulator_reduction_soft = use_accumulator,
+        OracleFamily::Velocity | OracleFamily::Intensity => {}
     }
 }
 

@@ -74,6 +74,8 @@ const SOURCE_SLOT_RANGE: u32 = 2u;
 
 const COMBINE_IDENTITY: u32 = 0u;
 const COMBINE_SUM: u32 = 1u;
+const COMBINE_MEAN: u32 = 2u;
+const COMBINE_WEIGHTED_MEAN: u32 = 5u;
 const COMBINE_AFFINE_INTENT: u32 = 6u;
 
 const GATE_ALWAYS: u32 = 0u;
@@ -203,6 +205,36 @@ fn gather_value(op: AccumulatorOpGpu) -> f32 {
             sum = sum + atomic_read_f32_at(linear_idx(op.source_slot + i, op.source_col));
         }
         return sum;
+    }
+
+    // C-5 intentionally uses linear-loop gather for deterministic soft aggregate
+    // migration. Do not replace with shared-memory tree reduction in C-5.
+    if (op.combine_kind == COMBINE_MEAN && op.source_kind == SOURCE_SLOT_RANGE) {
+        var sum = 0.0;
+        for (var i: u32 = 0u; i < op.source_count; i = i + 1u) {
+            sum = sum + atomic_read_f32_at(linear_idx(op.source_slot + i, op.source_col));
+        }
+        if (op.source_count == 0u) {
+            return 0.0;
+        }
+        return sum / f32(op.source_count);
+    }
+
+    if (op.combine_kind == COMBINE_WEIGHTED_MEAN && op.source_kind == SOURCE_SLOT_RANGE) {
+        let weight_col = op.combine_a;
+        var weighted_sum = 0.0;
+        var weight_total = 0.0;
+        for (var i: u32 = 0u; i < op.source_count; i = i + 1u) {
+            let child_slot = op.source_slot + i;
+            let v = atomic_read_f32_at(linear_idx(child_slot, op.source_col));
+            let w = atomic_read_f32_at(linear_idx(child_slot, weight_col));
+            weighted_sum = weighted_sum + v * w;
+            weight_total = weight_total + w;
+        }
+        if (weight_total == 0.0) {
+            return 0.0;
+        }
+        return weighted_sum / weight_total;
     }
 
     if (op.consume == CONSUME_SUBTRACT_FROM_SOURCE

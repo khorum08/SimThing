@@ -260,6 +260,20 @@ fn walk(
 
 // ── CPU oracle ────────────────────────────────────────────────────────────────
 
+use std::sync::atomic::{AtomicU32, Ordering};
+
+static CPU_REDUCE_ORACLE_CALLS: AtomicU32 = AtomicU32::new(0);
+
+/// Test-only probe: count `cpu_reduce_oracle` invocations.
+pub fn cpu_reduce_oracle_call_count() -> u32 {
+    CPU_REDUCE_ORACLE_CALLS.load(Ordering::Relaxed)
+}
+
+/// Reset the test-only `cpu_reduce_oracle` call counter.
+pub fn reset_cpu_reduce_oracle_call_count() {
+    CPU_REDUCE_ORACLE_CALLS.store(0, Ordering::Relaxed);
+}
+
 /// Reduce a SimThing tree on the CPU, matching the GPU reduction shader
 /// bit-exactly. Operates on flat `values` (post-Pass-3) and writes to a flat
 /// `output` of the same shape.
@@ -273,6 +287,7 @@ pub fn cpu_reduce_oracle(
     values: &[f32],
     output: &mut [f32],
 ) {
+    CPU_REDUCE_ORACLE_CALLS.fetch_add(1, Ordering::Relaxed);
     assert_eq!(descriptors.len(), n_dims);
     assert_eq!(values.len(), output.len());
 
