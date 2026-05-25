@@ -176,8 +176,12 @@ contract.
 **Shipped scope (B-2):** hardens the bootstrap kernel with explicit scale
 encoding, clamped non-contended SlotValue transfer, same-band contention
 rejection, compact `EmitEvent` records, atomic `emission_count`, emission
-overflow reporting, and CPU oracle parity. Still non-integrated; no threshold
-gates, WeightedMean, EvalEML, overlay families, or `BoundaryProtocol` hookup.
+overflow reporting, and CPU oracle parity. Bootstrap validation treats
+`GateSpec::Always` as a wildcard band: an Always op may not write or consume
+any cell that another op writes or consumes in any OrderBand. This is
+conservative and prevents accidental races in the non-contended bootstrap
+kernel. Later allocator/order-band work may relax this only with explicit
+deterministic semantics.
 
 ---
 
