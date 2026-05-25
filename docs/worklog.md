@@ -6,16 +6,14 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
----
-
 ## 2026-05-19 — Pivot-forward remedial: authoritative flags + world summary
 
-**Status:** `master` @ `41d93f3` (PR #111 merged).
+**Status:** `master` @ `0e7854c` (PR #111 merged; docs synced #112).
 
 **Scope:** Harden PR #108/#109 pivot-forward infrastructure — feature flags clear
 stale migrated sessions; B-4 summary reads integrated `WorldGpuState.values`.
 
-**Landed (this session):**
+**Landed (PR #111, `632d656`):**
 
 - **Part 1** — `clear_intent` / `clear_threshold` on flag-off boundary sync; family-isolation tests
 - **Part 2** — `WorldSummaryRuntime` on `WorldAccumulatorRuntime`; tick pipeline encodes world summary after Accumulator passes; `WorldGpuState` readback API

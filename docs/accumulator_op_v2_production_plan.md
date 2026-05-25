@@ -256,6 +256,11 @@ Selected layout: column-group checksums + whole-slot checksum + reserved
 WGSL `write_summaries` group checksums, CPU oracle parity tests. Full readback
 remains debug/test only.
 
+**World integration (PR #111):** **Landed** — `WorldSummaryRuntime` on
+`WorldAccumulatorRuntime` writes summaries from integrated `WorldGpuState.values`
+after C-1/C-2/C-3 tick passes; `WorldGpuState::readback_accumulator_summary()`.
+Standalone `AccumulatorOpSession` summary path unchanged for kernel/oracle tests.
+
 **Pivot posture:** Summary tier is production infrastructure, not optional polish.
 Legacy pass readback is not the long-term change-detection path.
 
@@ -409,6 +414,21 @@ inside the runtime envelope; tick dispatch take/put matches pre-consolidation be
 only from oracle tests or explicit fallback.
 
 **Acceptance:** No runtime tick dependency on oracle harness.
+
+---
+
+### PR Pivot-forward remedial — Authoritative flags + world summary (#111)
+
+**Status:** Landed. Feature flags are authoritative: disabling
+`use_accumulator_intent` or `use_accumulator_threshold_scan` clears stale runtime
+sessions via boundary sync (`clear_intent` / `clear_threshold`); overlay already
+cleared on flag-off. `WorldSummaryRuntime` provides B-4 summaries from integrated
+world values. `OracleExactness::ToleranceAbsEpsilon` replaces mislabeled ULP tolerance.
+
+**Pivot posture:** Strengthen AccumulatorOp runtime authority; no legacy expansion.
+
+**Acceptance:** Flag-off stale-session tests; world summary matches full-value readback;
+C-1/C-2/C-3 parity green; flags remain default false.
 
 ---
 
@@ -667,6 +687,7 @@ with a clearly reported failure mode (triggers separate design work).
 | **B-4I** | **B** | **Composer** | **Production SlotSummary protocol (32 B/slot group checksums)** | **CPU/GPU oracle tests** |
 | **C-INF-1** | **C-infra** | **Composer** | **`WorldAccumulatorRuntime` consolidation** | **C-1/C-2/C-3 tests green; sidecars shimmed** |
 | **C-INF-2** | **C-infra** | **Composer** | **Legacy oracle harness** | **Legacy invoked only in oracle tests** |
+| **Pivot remedial** | **C-infra** | **Composer** | **Authoritative flags + `WorldSummaryRuntime`** | **Flag-off clears sessions; world summary parity** |
 | C-1 | C | Composer 2.5 | Threshold scan migration | 5× readback speedup |
 | C-2 | C | Codex 5.5 | Intent delta migration | Bit-exact parity |
 | C-3 | C | Composer 2.5 | Overlay Add migration | Bit-exact parity |
