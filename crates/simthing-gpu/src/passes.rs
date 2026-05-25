@@ -486,6 +486,27 @@ impl Pipelines {
         self.run_tick_pipeline_ex(state, dt, false);
     }
 
+    /// Consolidated per-tick pipeline integrated with the C-1 AccumulatorOp
+    /// threshold scan. Encodes the full pipeline (Passes 0–6) and the
+    /// AccumulatorOp threshold pass into a single command buffer, submits
+    /// once. One submission per tick is the apples-to-apples production
+    /// shape vs the unflagged `run_tick_pipeline` path.
+    ///
+    /// `session` must be the active `AccumulatorOpSession` from
+    /// `WorldGpuState::threshold_accumulator`; pull it out with `.take()`
+    /// before calling and put it back after, to avoid borrow conflicts
+    /// between the session-mut and the state-imm uses.
+    pub fn run_tick_pipeline_with_threshold_scan(
+        &self,
+        state: &WorldGpuState,
+        dt: f32,
+        session: &mut crate::AccumulatorOpSession,
+    ) {
+        session.prepare_threshold_scan(&state.ctx);
+        self.run_tick_pipeline_internal(state, dt, /* skip_threshold_scan */ true, Some(session));
+        session.finish_threshold_scan(&state.ctx);
+    }
+
     /// Consolidated per-tick pipeline. When `skip_threshold_scan` is true the
     /// Pass 7 threshold dispatch is omitted (C-1 AccumulatorOp path).
     pub fn run_tick_pipeline_ex(
@@ -493,6 +514,16 @@ impl Pipelines {
         state: &WorldGpuState,
         dt: f32,
         skip_threshold_scan: bool,
+    ) {
+        self.run_tick_pipeline_internal(state, dt, skip_threshold_scan, None);
+    }
+
+    fn run_tick_pipeline_internal(
+        &self,
+        state: &WorldGpuState,
+        dt: f32,
+        skip_threshold_scan: bool,
+        accumulator_threshold: Option<&mut crate::AccumulatorOpSession>,
     ) {
         let ctx = &state.ctx;
 
@@ -661,6 +692,21 @@ impl Pipelines {
                 }
             }
         }
+
+        // C-1 integrated path: encode the AccumulatorOp threshold scan into
+        // the same command buffer as the rest of the pipeline (separate
+        // compute pass, different pipeline + bind group). One submission per
+        // tick eliminates the second driver fence the standalone
+        // `dispatch_threshold_scan` would otherwise introduce.
+        if let Some(session) = accumulator_threshold {
+            session.encode_threshold_scan_into(
+                ctx,
+                &mut encoder,
+                &state.values,
+                &state.previous_values,
+            );
+        }
+
         ctx.queue.submit(Some(encoder.finish()));
     }
 

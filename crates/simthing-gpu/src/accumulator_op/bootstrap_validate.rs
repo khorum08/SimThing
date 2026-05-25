@@ -1,7 +1,12 @@
-//! B-2 bootstrap upload validation — rejects contended op sets.
+//! Op-set contention validation. Rejects op sets where two writes (or a write
+//! and a same-cell consume) target the same `(slot, col)` within a single
+//! dispatch.
 //!
-//! `GateSpec::Always` is treated as a wildcard over all bands because the WGSL
-//! kernel executes Always ops on every `tick(band)` call.
+//! `GateSpec::Always` is a wildcard over all bands because the kernel
+//! executes Always ops on every `tick(band)` call. `GateSpec::Threshold` ops
+//! never write to `values_buffer` (their side effect is a record in
+//! `threshold_emission_buffer`) and are therefore exempt from contention
+//! tracking.
 
 use std::collections::HashSet;
 
@@ -47,7 +52,7 @@ fn op_targets(op: &AccumulatorOpGpu) -> impl Iterator<Item = (u32, u32)> + '_ {
 }
 
 /// Reject obviously unsafe bootstrap op sets. False positives are OK.
-pub fn validate_bootstrap_no_contention(
+pub fn validate_no_contention(
     gpu_ops: &[AccumulatorOpGpu],
 ) -> Result<(), BootstrapContention> {
     let mut always_writes: HashSet<(u32, u32)> = HashSet::new();
@@ -264,7 +269,7 @@ mod tests {
             identity_op(gate_kind::ALWAYS, 0, (1, 0)),
             identity_op(gate_kind::ORDER_BAND, 1, (1, 0)),
         ];
-        let err = validate_bootstrap_no_contention(&ops).unwrap_err();
+        let err = validate_no_contention(&ops).unwrap_err();
         assert_eq!(err.slot, 1);
         assert_eq!(err.col, 0);
     }
@@ -275,6 +280,6 @@ mod tests {
             identity_op(gate_kind::ORDER_BAND, 0, (1, 0)),
             identity_op(gate_kind::ORDER_BAND, 1, (1, 0)),
         ];
-        validate_bootstrap_no_contention(&ops).unwrap();
+        validate_no_contention(&ops).unwrap();
     }
 }

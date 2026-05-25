@@ -169,14 +169,16 @@ impl DispatchCoordinator {
         let gpu_pipeline_started = Instant::now();
         let use_accumulator_threshold = state.threshold_accumulator.is_some();
         if use_accumulator_threshold {
-            pipelines.run_tick_pipeline_ex(state, dt, true);
-            if let Some(session) = state.threshold_accumulator.as_mut() {
-                let _ = session.dispatch_threshold_scan(
-                    &state.ctx,
-                    &state.values,
-                    &state.previous_values,
-                );
-            }
+            // Take the session out so we can hold &mut on it while passing
+            // &state into the integrated pipeline call. Restored after.
+            // Zero runtime cost; idiomatic Rust workaround for split-borrow
+            // across function calls.
+            let mut session = state
+                .threshold_accumulator
+                .take()
+                .expect("threshold_accumulator present");
+            pipelines.run_tick_pipeline_with_threshold_scan(state, dt, &mut session);
+            state.threshold_accumulator = Some(session);
         } else {
             pipelines.run_tick_pipeline(state, dt);
         }
@@ -200,10 +202,17 @@ impl DispatchCoordinator {
                 state.read_event_candidates(count)
             }
         };
+        // Account for actual GPU→host bytes transferred per path:
+        // - AccumulatorOp path: 4 B count + n × size_of::<ThresholdEmissionGpu>()
+        //   (16 B per emission; CPU `ThresholdEvent` is the same width but
+        //   the GPU-side struct is the authoritative wire format).
+        // - Legacy Pass 7 path: 4 B count + n × size_of::<ThresholdEvent>().
         let event_readback_bytes = if events.is_empty() {
             0
         } else if use_accumulator_threshold {
-            events.len() as u64 * std::mem::size_of::<ThresholdEvent>() as u64
+            std::mem::size_of::<u32>() as u64
+                + events.len() as u64
+                    * std::mem::size_of::<simthing_gpu::ThresholdEmissionGpu>() as u64
         } else {
             std::mem::size_of::<u32>() as u64
                 + events.len() as u64 * std::mem::size_of::<ThresholdEvent>() as u64

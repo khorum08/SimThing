@@ -100,25 +100,18 @@ fn linear_idx(slot: u32, col: u32) -> u32 {
     return slot * tick_params.n_dims + col;
 }
 
-fn gate_matches(op: AccumulatorOpGpu) -> bool {
+fn gate_matches_bandwise(op: AccumulatorOpGpu) -> bool {
+    // Band-wise gating only — threshold ops are handled by their own dispatch
+    // path in `execute_ops`. Keeping the two gate families separate at the
+    // dispatch level avoids the misleading "always-true" return for threshold
+    // ops and lets the optimizer drop dead branches per dispatch.
     if (op.gate_kind == GATE_ALWAYS) {
         return true;
     }
-    if (op.gate_kind == GATE_THRESHOLD) {
-        return true;
-    }
-    if (op.gate_kind == GATE_ORDER_BAND && op.gate_a == tick_params.current_band) {
-        return true;
-    }
-    return false;
+    return op.gate_kind == GATE_ORDER_BAND && op.gate_a == tick_params.current_band;
 }
 
-fn threshold_crossed(op: AccumulatorOpGpu) -> bool {
-    let threshold = bitcast<f32>(op.gate_b);
-    let direction = op.gate_a;
-    let addr = linear_idx(op.source_slot, op.source_col);
-    let prev = previous_values[addr];
-    let curr = values[addr];
+fn threshold_crossed(prev: f32, curr: f32, threshold: f32, direction: u32) -> bool {
     let up = (prev <= threshold) && (curr > threshold);
     let down = (prev >= threshold) && (curr < threshold);
     if (direction == DIR_UPWARD) {
@@ -131,13 +124,16 @@ fn threshold_crossed(op: AccumulatorOpGpu) -> bool {
 }
 
 fn maybe_emit_threshold(op_idx: u32, op: AccumulatorOpGpu) {
-    if (op.gate_kind != GATE_THRESHOLD || op.consume != CONSUME_EMIT_EVENT) {
+    // Caller guarantees op.gate_kind == GATE_THRESHOLD &&
+    // op.consume == CONSUME_EMIT_EVENT. Read `curr` once and reuse for the
+    // crossing test and the emission payload.
+    let addr = linear_idx(op.source_slot, op.source_col);
+    let prev = previous_values[addr];
+    let curr = values[addr];
+    let threshold = bitcast<f32>(op.gate_b);
+    if (!threshold_crossed(prev, curr, threshold, op.gate_a)) {
         return;
     }
-    if (!threshold_crossed(op)) {
-        return;
-    }
-    let curr = values[linear_idx(op.source_slot, op.source_col)];
     let out_idx = atomicAdd(&threshold_emission_count, 1u);
     if (out_idx < tick_params.threshold_emission_capacity) {
         threshold_emissions[out_idx].reg_idx = op_idx;
@@ -225,7 +221,9 @@ fn apply_consume(write_value: f32, op: AccumulatorOpGpu) {
 }
 
 fn maybe_emit_event(op_idx: u32, write_value: f32, op: AccumulatorOpGpu) {
-    if (op.consume != CONSUME_EMIT_EVENT || op.gate_kind == GATE_THRESHOLD) {
+    // Threshold-gate emissions are handled by `maybe_emit_threshold`; this
+    // path is reached only when `gate_kind != GATE_THRESHOLD` (see dispatch).
+    if (op.consume != CONSUME_EMIT_EVENT) {
         return;
     }
     let emit_count = u32(floor(max(write_value, 0.0)));
@@ -247,14 +245,19 @@ fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
 
     let op = ops[op_idx];
-    if (!gate_matches(op)) {
+
+    // Threshold ops form a disjoint dispatch family from band-gated ops:
+    // they have no targets, no source/consume mutation of values, and a
+    // dedicated emission buffer. Routing them here keeps the
+    // gather/combine/apply path free of threshold-specific branches.
+    if (op.gate_kind == GATE_THRESHOLD) {
+        // Validator (encode.rs::validate_threshold_op) guarantees that any
+        // threshold op also has consume = EmitEvent.
+        maybe_emit_threshold(op_idx, op);
         return;
     }
 
-    // Threshold + EmitEvent: side effect is compact threshold emission only.
-    // Targets are ignored even when non-empty (A-2 validation placeholder).
-    if (op.gate_kind == GATE_THRESHOLD && op.consume == CONSUME_EMIT_EVENT) {
-        maybe_emit_threshold(op_idx, op);
+    if (!gate_matches_bandwise(op)) {
         return;
     }
 
