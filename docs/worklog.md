@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-19 — AccumulatorOp v2 Phases A–B: A-4 through B-2 (PRs #90–#93)
 
-**Status:** `master` @ `4caeea5` (PR #93 B-2 merged).
+**Status:** `master` @ `91c34ef` (PR #93 B-2 merged).
 
 **Scope:** Standalone `AccumulatorOpSession` in `simthing-gpu` — persistent Pass B buffers,
 bootstrap → production-shaped kernel subset. **Does not integrate** with `BoundaryProtocol`
