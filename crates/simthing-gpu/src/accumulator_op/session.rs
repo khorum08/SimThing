@@ -426,22 +426,7 @@ impl AccumulatorOpSession {
         self.reset_emission_count(ctx);
         self.reset_threshold_emission_count(ctx);
         self.last_pass_time_us = None;
-
-        let tick_params = AccumulatorTickParams {
-            n_ops: self.n_ops,
-            current_band: band,
-            n_slots: self.n_slots,
-            n_dims: self.n_dims,
-            emission_capacity: self.emission_capacity,
-            threshold_emission_capacity: self.threshold_emission_capacity,
-            _pad0: 0,
-            _pad1: 0,
-        };
-        ctx.queue.write_buffer(
-            &self.tick_uniform,
-            0,
-            bytemuck::bytes_of(&tick_params),
-        );
+        self.write_tick_uniform(ctx, band);
 
         let execute_bind_group = self.create_execute_bind_group(
             ctx,
@@ -491,6 +476,11 @@ impl AccumulatorOpSession {
     }
 
     /// Dispatch threshold scan against world GPU value buffers (C-1 integrated path).
+    ///
+    /// Convenience wrapper that owns its command buffer + submit. Use
+    /// [`Self::encode_threshold_scan_into`] when batching with other GPU work
+    /// in the same submission (see `Pipelines::run_tick_pipeline_with_threshold_scan`)
+    /// — fewer submissions, fewer driver fences, less per-tick overhead.
     pub fn dispatch_threshold_scan(
         &mut self,
         ctx: &GpuContext,
@@ -503,31 +493,41 @@ impl AccumulatorOpSession {
 
         self.reset_threshold_emission_count(ctx);
         self.last_pass_time_us = None;
-
-        let tick_params = AccumulatorTickParams {
-            n_ops: self.n_ops,
-            current_band: 0,
-            n_slots: self.n_slots,
-            n_dims: self.n_dims,
-            emission_capacity: self.emission_capacity,
-            threshold_emission_capacity: self.threshold_emission_capacity,
-            _pad0: 0,
-            _pad1: 0,
-        };
-        ctx.queue.write_buffer(
-            &self.tick_uniform,
-            0,
-            bytemuck::bytes_of(&tick_params),
-        );
-
-        let execute_bind_group =
-            self.create_execute_bind_group(ctx, values, previous_values);
+        self.write_tick_uniform(ctx, 0);
 
         let mut encoder = ctx
             .device
             .create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("accumulator_threshold_scan_encoder"),
             });
+        self.encode_threshold_scan_into(ctx, &mut encoder, values, previous_values);
+        ctx.queue.submit(Some(encoder.finish()));
+        self.read_execute_pass_timestamp(ctx);
+        Ok(())
+    }
+
+    /// Encode the threshold-scan compute pass into the caller's existing
+    /// command encoder. The caller is responsible for `queue.submit` and for
+    /// calling [`Self::reset_threshold_emission_count`] before the encoder
+    /// runs (typically just before encoding world pipeline passes that share
+    /// the submission). `read_execute_pass_timestamp` must be called after
+    /// the submission to populate `last_pass_time_us`.
+    ///
+    /// Returns immediately when no threshold ops are registered.
+    pub fn encode_threshold_scan_into(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+        previous_values: &Buffer,
+    ) {
+        if self.n_ops == 0 {
+            return;
+        }
+        self.last_pass_time_us = None;
+
+        let execute_bind_group =
+            self.create_execute_bind_group(ctx, values, previous_values);
 
         let timestamp_writes = self.timestamp_query_set.as_ref().map(|query_set| {
             wgpu::ComputePassTimestampWrites {
@@ -556,10 +556,42 @@ impl AccumulatorOpSession {
             encoder.resolve_query_set(query_set, 0..2, resolve, 0);
             encoder.copy_buffer_to_buffer(resolve, 0, readback, 0, 16);
         }
+    }
 
-        ctx.queue.submit(Some(encoder.finish()));
+    /// Prepare the session for a batched threshold scan in the caller's
+    /// encoder: reset the per-tick atomic counter and write the tick uniform.
+    /// Pair with [`Self::encode_threshold_scan_into`] and call
+    /// [`Self::read_execute_pass_timestamp`] after `queue.submit`.
+    pub fn prepare_threshold_scan(&mut self, ctx: &GpuContext) {
+        if self.n_ops == 0 {
+            return;
+        }
+        self.reset_threshold_emission_count(ctx);
+        self.write_tick_uniform(ctx, 0);
+    }
+
+    /// Public timestamp readback hook for callers that drove
+    /// `encode_threshold_scan_into` directly.
+    pub fn finish_threshold_scan(&mut self, ctx: &GpuContext) {
         self.read_execute_pass_timestamp(ctx);
-        Ok(())
+    }
+
+    fn write_tick_uniform(&self, ctx: &GpuContext, band: u32) {
+        let tick_params = AccumulatorTickParams {
+            n_ops: self.n_ops,
+            current_band: band,
+            n_slots: self.n_slots,
+            n_dims: self.n_dims,
+            emission_capacity: self.emission_capacity,
+            threshold_emission_capacity: self.threshold_emission_capacity,
+            _pad0: 0,
+            _pad1: 0,
+        };
+        ctx.queue.write_buffer(
+            &self.tick_uniform,
+            0,
+            bytemuck::bytes_of(&tick_params),
+        );
     }
 
     fn create_execute_bind_group(

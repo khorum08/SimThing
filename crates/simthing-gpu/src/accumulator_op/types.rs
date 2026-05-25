@@ -3,7 +3,13 @@
 use bytemuck::{Pod, Zeroable};
 
 pub const DEFAULT_EMISSION_CAPACITY: u32 = 1024;
-pub const DEFAULT_THRESHOLD_EMISSION_CAPACITY: u32 = 65536;
+/// Default capacity for the C-1 threshold-crossing buffer. Sized for typical
+/// boundary workloads; callers that register many more thresholds should
+/// override via `AccumulatorOpSession::new_attached(_, _, _, capacity)`.
+/// `BoundaryProtocol::sync_accumulator_threshold_ops` lifts this to
+/// `max(n_thresholds, DEFAULT_THRESHOLD_EMISSION_CAPACITY)` so production
+/// usage scales with the registered count.
+pub const DEFAULT_THRESHOLD_EMISSION_CAPACITY: u32 = 4096;
 
 /// Compact threshold crossing record (C-1 parallel emission stream).
 #[derive(Clone, Copy, Debug, PartialEq)]

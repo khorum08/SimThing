@@ -9,7 +9,7 @@ use crate::world_state::{
     THRESH_BUF_VALUES,
 };
 
-use super::bootstrap_validate::{validate_bootstrap_no_contention, BootstrapContention};
+use super::bootstrap_validate::{validate_no_contention, BootstrapContention};
 use super::types::{
     combine_kind, consume_kind, gate_kind, scale_kind, source_kind, AccumulatorOpGpu,
 };
@@ -84,7 +84,7 @@ impl AccumulatorOpGpu {
     /// Encode and validate a full bootstrap op set, including same-band contention checks.
     pub fn encode_bootstrap_set(ops: &[AccumulatorOp]) -> Result<Vec<Self>, EncodeError> {
         let gpu_ops: Vec<Self> = ops.iter().map(Self::from_op).collect::<Result<_, _>>()?;
-        validate_bootstrap_no_contention(&gpu_ops)?;
+        validate_no_contention(&gpu_ops)?;
         Ok(gpu_ops)
     }
 
@@ -94,7 +94,7 @@ impl AccumulatorOpGpu {
             validate_threshold_op(op)?;
         }
         let gpu_ops: Vec<Self> = ops.iter().map(Self::from_op).collect::<Result<_, _>>()?;
-        validate_bootstrap_no_contention(&gpu_ops)?;
+        validate_no_contention(&gpu_ops)?;
         Ok(gpu_ops)
     }
 }
