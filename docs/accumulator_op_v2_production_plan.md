@@ -470,7 +470,7 @@ committed. S-3 remains pending; no legacy overlay deletion in C-4.
 
 ### ✅ PR C-5 — WeightedMean / Mean soft reductions → AccumulatorOp
 
-**Status:** **Landed** (implementation PR; design in
+**Status:** **Landed** (#122; design in
 [`docs/workshop/c5_weighted_mean_reduction_design.md`](workshop/c5_weighted_mean_reduction_design.md)).
 
 **What shipped:** `use_accumulator_reduction_soft` flag (default false);
@@ -660,7 +660,7 @@ with a clearly reported failure mode (triggers separate design work).
 | C-2 | C | Codex 5.5 | Intent delta migration | Bit-exact parity |
 | C-3 | C | Composer 2.5 | Overlay Add migration | Bit-exact parity |
 | C-4 | C | Opus + Codex 5.5 | Multiply/Set OrderBand compiler | Landed behind flag |
-| **C-5** | **C** | **Opus + Composer** | **WeightedMean tolerance boundary audit** | **Opus audit + guard test** |
+| **C-5** | **C** | **Opus + Composer** | **WeightedMean tolerance boundary audit + soft reductions** | **Landed (#121 design, #122 impl)** |
 | C-6 | C | Composer 2.5 | Sum/Max/Min reductions | Bit-exact parity |
 | C-7 | C | Composer 2.5 | Velocity integration migration | vel_max clamp test |
 | **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity integration** | **Opus design + 3 parity tests** |
@@ -669,7 +669,7 @@ with a clearly reported failure mode (triggers separate design work).
 | D-3 | D | Composer 2.5 | Changed-only logs + replay integration | Replay test |
 | D-4 | D | Composer 2.5 + Opus | Cross-pool contention gate | Pass or triggers ADR amendment |
 
-**Remaining Opus-gated PRs: A-4, B-4, C-5, C-8, D-1.** C-4's Opus design has
+**Remaining Opus-gated PRs: A-4, B-4, C-8, D-1.** C-4's Opus design has
 landed. These are the PRs where the correctness or design space is genuinely open and the
 cost of a wrong decision is architectural. Every other PR is fully specified by
 the ADR and the workshop evidence and can be executed mechanically.
@@ -934,7 +934,7 @@ as a doc-only PR.
 | C-2 | C | Codex 5.5 | Intent delta migration | Bit-exact parity |
 | C-3 | C | Composer 2.5 | Overlay Add migration | Bit-exact parity |
 | C-4 | C | Opus + Codex 5.5 | Multiply/Set OrderBand compiler | Landed behind flag |
-| **C-5** | **C** | **Opus + Composer** | **WeightedMean tolerance audit** | **Opus audit** |
+| **C-5** | **C** | **Opus + Composer** | **WeightedMean tolerance audit + soft reductions** | **Landed (#121, #122)** |
 | C-6 | C | Composer 2.5 | Sum/Max/Min reductions | Bit-exact parity |
 | C-7 | C | Composer 2.5 | Velocity integration | vel_max clamp test |
 | **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity** | **Opus design** |
@@ -957,4 +957,4 @@ as a doc-only PR.
 | G-1 | G | Codex 5.5 | Annotate design_v6.md §10 superseded | One commit |
 | **G-2** | **G** | **Opus** | **design_v7.md §4 final review** | **Human + Opus** |
 
-**Total: 33 PRs.** Remaining Opus-gated: A-4, B-4, C-5, C-8, D-1, G-2 — six of thirty-three.
+**Total: 33 PRs.** Remaining Opus-gated: A-4, B-4, C-8, D-1, G-2 — five of thirty-three.

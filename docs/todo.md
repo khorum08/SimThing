@@ -4,8 +4,8 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98),
 **C-2** (#99–#100), **C-3** (#105–#107), **pivot-forward policy + B-4I** (#108),
 **C-INF runtime/oracle** (#109), **pivot-forward remedial** (#111), and
-**C-4 overlay OrderBand** (#118) landed; **C-5 soft reductions** landed locally.
-`master` @ **`58b7f69`** (pre-C-5 commit).
+**C-4 overlay OrderBand** (#118) and **C-5 soft reductions** (#122) landed.
+`master` @ **`8605444`** (C-5 merge).
 
 **Workshop entry point:** [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md)
 
@@ -62,8 +62,9 @@ B-4 world summary integrated (2) green after C-4 remedial acceptance runs.
 | **Pivot-forward + B-4I** | #108 | `2aa630e` | Pivot-forward policy; production `SlotSummaryGpu`; C-INF scaffolds |
 | **C-INF-1 + C-INF-2** | #109 | `2f95c6d` | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness + tests |
 | **Pivot-forward remedial** | #111 | `632d656` | Authoritative flags; `WorldSummaryRuntime`; oracle tolerance rename |
+| **C-5** | #122 | `8605444` | Mean/WeightedMean soft reductions → `ReductionSoft` on `output_vectors`; `plan_reduction_orderband` |
 
-**Next (non-Opus):** **C-5** soft reductions · per-family oracle scenario expansion (optional refactor of C-1/C-2/C-3/C-4 parity tests onto harness).
+**Next (non-Opus):** **C-6** exact reductions (Sum/Max/Min) · per-family oracle scenario expansion (optional refactor of C-1/C-2/C-3/C-4 parity tests onto harness).
 
 **Next (sunset-gated):** **S-3** overlay prep/WGSL deletion after C-4 default-on validation and CI.
 

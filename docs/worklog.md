@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-25 — C-5 Mean / WeightedMean soft reductions
 
-**Status:** Local implementation (pending commit/PR).
+**Status:** Merged — PR #122 (`8605444`).
 
 **Scope:** C-5 per Opus design memo — `use_accumulator_reduction_soft` flag,
 `ReductionSoft` session bound to `output_vectors`, `plan_reduction_orderband`,

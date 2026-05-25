@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-25  
-**Master HEAD:** `58b7f69` (PR #119 docs sync; C-4 implementation through PR #118)  
-**Verification (last recorded):** C-4 remedial acceptance commands and `cargo test --workspace` green
+**Master HEAD:** `8605444` (PR #122 C-5 Mean/WeightedMean soft reductions)  
+**Verification (last recorded):** C-5 parity/guard tests and `cargo test --workspace` green
 
 ---
 
@@ -16,7 +16,7 @@ Two parallel tracks:
 | Track | Status | Canonical docs |
 |-------|--------|----------------|
 | **V6 spec / driver / session** | **Parked complete** — PRs 1–11, Opus P0 (O2/B3/I1) shipped | `design_v6.5.md`, `simthing_spec_progress_log.md` |
-| **AccumulatorOp v2 / design v7** | **Active** — Phases A–B done; C-1/C-2/C-3/C-4 + infra landed; flags default **false** | `design_v7.md`, `accumulator_op_v2_production_plan.md`, `pivot_forward_implementation_policy.md` |
+| **AccumulatorOp v2 / design v7** | **Active** — Phases A–B done; C-1–C-5 + infra landed; flags default **false** | `design_v7.md`, `accumulator_op_v2_production_plan.md`, `pivot_forward_implementation_policy.md` |
 
 **Production direction:** AccumulatorOp v2 is the intended GPU execution path.
 Legacy passes (intent, overlay, reduction, threshold, velocity, intensity) are
@@ -40,7 +40,7 @@ Legacy passes (intent, overlay, reduction, threshold, velocity, intensity) are
 | **C-3** | #105–#107 | Overlay Add-only + OrderBand exact f32 order foundation |
 | **C-4** | #118 | Full Add/Multiply/Set overlay OrderBand compiler + dirty cache |
 | **C-4 remedial** | local | Structural lifecycle/fission/cache hardening + consume-mode regressions |
-| **C-5** | local | Mean / WeightedMean soft reductions → `ReductionSoft` on `output_vectors` |
+| **C-5** | #122 | Mean / WeightedMean soft reductions → `ReductionSoft` on `output_vectors` |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
