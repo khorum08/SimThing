@@ -169,3 +169,19 @@ The v1 kernel uses one invocation per pool and processes that pool's request ran
 Run: `cargo test -p simthing-workshop transfer_contention -- --nocapture`
 
 The report bundle writes `tests/transfer_contention_reports.txt` (committed). Hotspot 100k also writes `target/workshop/transfer_contention_report.md` and `.json`.
+
+## Persistent-buffer / timestamp benchmark spike
+
+This spike compares three routes:
+
+1. CPU boundary settlement;
+2. current-shaped GPU envelope execution with per-tick upload/readback;
+3. pivot-shaped GPU-resident persistent execution.
+
+The purpose is to measure whether the AccumulatorOp pivot benefits from persistent GPU buffers, reduced CPU/GPU boundary churn, and summary-tier readback. When supported by the adapter, timestamp queries measure GPU pass time separately from total validation time.
+
+This is a workshop-local benchmark, not production AccumulatorOp. It does not resolve cross-pool queue contention. Hotspot pool contention is expected to expose the limitations of one-invocation-per-pool allocation.
+
+Run: `cargo test -p simthing-workshop persistent_bench -- --nocapture`
+
+The report bundle writes `tests/persistent_bench_reports.txt` (committed). Hotspot 100k also writes `target/workshop/persistent_bench_report.md` and `.json`.
