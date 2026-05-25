@@ -10,7 +10,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-19 — Pivot-forward remedial: authoritative flags + world summary
 
-**Status:** Local (pending commit).
+**Status:** `master` @ `41d93f3` (PR #111 merged).
 
 **Scope:** Harden PR #108/#109 pivot-forward infrastructure — feature flags clear
 stale migrated sessions; B-4 summary reads integrated `WorldGpuState.values`.
