@@ -6,6 +6,22 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-25 — C-4 remedial hardening
+
+**Status:** Local follow-up after PR #118/#119.
+
+**Scope:** Hardened C-4 before default-on/S-3 by updating the stale
+`use_accumulator_overlay_add` comment, adding lifecycle/fission/cache structural
+coverage, adding a combined C-1/C-2/C-4 ordering test, and locking
+`Identity+None` assignment vs `Identity+AddToTarget` additive semantics.
+
+**Tests:** `simthing-gpu accumulator_op` now has 63 focused tests and
+`c4_overlay_orderband_parity` now has 16 tests. Targeted remedial runs green;
+full acceptance run green, including `cargo check --workspace` and
+`cargo test --workspace`.
+
+---
+
 ## 2026-05-25 — C-4 overlay OrderBand compiler
 
 **Status:** Merged as PR #118 (`87ba7b0`) behind the overlay AccumulatorOp flag.

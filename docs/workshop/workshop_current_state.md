@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-25  
-**Master HEAD:** local C-4 implementation branch  
-**Verification (last recorded):** C-4 acceptance commands and `cargo test --workspace` green
+**Master HEAD:** `58b7f69` (PR #119 docs sync; C-4 implementation through PR #118)  
+**Verification (last recorded):** C-4 remedial acceptance commands and `cargo test --workspace` green
 
 ---
 
@@ -38,7 +38,8 @@ Legacy passes (intent, overlay, reduction, threshold, velocity, intensity) are
 | **C-1** | #97–#98 | Threshold scan → AccumulatorOp; single-submit integration |
 | **C-2** | #99–#100 | Intent affine → AccumulatorOp |
 | **C-3** | #105–#107 | Overlay Add-only + OrderBand exact f32 order foundation |
-| **C-4** | local | Full Add/Multiply/Set overlay OrderBand compiler + dirty cache |
+| **C-4** | #118 | Full Add/Multiply/Set overlay OrderBand compiler + dirty cache |
+| **C-4 remedial** | local | Structural lifecycle/fission/cache hardening + consume-mode regressions |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
@@ -115,11 +116,11 @@ See `crates/simthing-workshop/README.md` and `todo.md` § workshop spikes.
 
 | Suite | Count | Notes |
 |-------|-------|-------|
-| `simthing-gpu` `accumulator_op` | 61 | Includes `WorldSummaryRuntime` unit tests |
+| `simthing-gpu` `accumulator_op` | 63 | Includes `WorldSummaryRuntime` and C-4 consume-mode unit tests |
 | C-1 parity | 2 | incl. fission stress |
 | C-2 parity | 11 | incl. combined C-1/C-2 |
 | C-3 parity | 13 | incl. combined C-1/C-2/C-3 |
-| C-4 parity/cache | 11 | Add/Mul/Set parity, dirty cache, high-density guard |
+| C-4 parity/cache | 16 | Add/Mul/Set parity, lifecycle/fission/cache, high-density guards |
 | C-INF-2 harness | 2 | intent + threshold oracle smoke |
 | Pivot-forward remedial | 3 | authoritative flags |
 | B-4 world summary integrated | 2 | intent + overlay orderbands |
