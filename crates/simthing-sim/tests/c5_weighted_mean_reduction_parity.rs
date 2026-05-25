@@ -7,9 +7,10 @@ use simthing_core::{
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
 use simthing_gpu::{
     build_column_rule_descriptors, build_topology, cpu_reduce_oracle_call_count,
-    encode_column_rules, plan_reduction_orderband, project_tree_to_values,
-    reset_cpu_reduce_oracle_call_count, set_debug_readback_allowed, summaries_from_values,
-    GpuContext, Pipelines, SlotAllocator, Topology, TopologyState, WorldGpuState,
+    encode_column_rules, legacy_exact_reduction_bucket_call_count, plan_reduction_orderband,
+    project_tree_to_values, reset_cpu_reduce_oracle_call_count,
+    reset_legacy_exact_reduction_bucket_call_count, set_debug_readback_allowed,
+    summaries_from_values, GpuContext, Pipelines, ReductionPlanMode, SlotAllocator, Topology, TopologyState, WorldGpuState,
     THRESH_BUF_OUTPUT,
 };
 use simthing_sim::{
@@ -86,9 +87,15 @@ fn setup_mean_state() -> (WorldGpuState, DimensionRegistry, Topology, Vec<f32>) 
     state.ensure_reduction_soft_accumulator();
     let topo_state = TopologyState::build(&world, &alloc);
     let descriptors = build_column_rule_descriptors(&reg, n_dims);
-    let plan = plan_reduction_orderband(&topo_state, &descriptors, state.n_dims).unwrap();
+    let plan = plan_reduction_orderband(
+        &topo_state,
+        &descriptors,
+        state.n_dims,
+        ReductionPlanMode::SoftOnly,
+    )
+    .unwrap();
     state
-        .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands)
+        .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands, false)
         .unwrap();
 
     (state, reg, topo, flat)
@@ -156,9 +163,15 @@ fn setup_weighted_mean_state() -> (WorldGpuState, DimensionRegistry, Topology, V
     state.ensure_reduction_soft_accumulator();
     let topo_state = TopologyState::build(&world, &alloc);
     let descriptors = build_column_rule_descriptors(&reg, n_dims);
-    let plan = plan_reduction_orderband(&topo_state, &descriptors, state.n_dims).unwrap();
+    let plan = plan_reduction_orderband(
+        &topo_state,
+        &descriptors,
+        state.n_dims,
+        ReductionPlanMode::SoftOnly,
+    )
+    .unwrap();
     state
-        .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands)
+        .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands, false)
         .unwrap();
 
     (state, reg, topo, flat)

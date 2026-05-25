@@ -790,11 +790,13 @@ impl Pipelines {
                 copy_bytes,
             );
             if let Some(session) = sessions.reduction_soft.as_mut() {
-                self.encode_c5_interleaved_reduction(
+                let exact_fallback = !state.accumulator_reduction_exact_active;
+                self.encode_accumulator_reduction_by_depth(
                     ctx,
                     &mut encoder,
                     state,
                     session,
+                    exact_fallback,
                 );
             }
             if !skip_threshold_scan {
@@ -928,19 +930,26 @@ impl Pipelines {
             copy_bytes,
         );
 
-        self.encode_c5_interleaved_reduction(ctx, &mut encoder, state, session);
+        self.encode_accumulator_reduction_by_depth(
+            ctx,
+            &mut encoder,
+            state,
+            session,
+            !state.accumulator_reduction_exact_active,
+        );
 
         ctx.queue.submit(Some(encoder.finish()));
     }
 
-    /// Copy `values` → `output_vectors`, then interleave C-5 soft bands with
-    /// legacy exact-column reduction per depth bucket (deepest first).
-    fn encode_c5_interleaved_reduction(
+    /// Copy `values` → `output_vectors`, then interleave AccumulatorOp reduction
+    /// bands with optional legacy exact-column fallback per depth bucket.
+    fn encode_accumulator_reduction_by_depth(
         &self,
         ctx: &GpuContext,
         encoder: &mut wgpu::CommandEncoder,
         state: &WorldGpuState,
         session: &mut crate::AccumulatorOpSession,
+        exact_fallback: bool,
     ) {
         let max_tree_depth = state.depth_bucket_ranges.len().saturating_sub(1) as u32;
         let n_buckets = state.depth_bucket_ranges.len();
@@ -964,15 +973,17 @@ impl Pipelines {
                 }
             }
 
-            // TODO(C-6/S-4): legacy exact-column fallback only while C-6 is pending.
-            // Remove in S-4 after Sum/Max/Min migrate to AccumulatorOp.
-            self.encode_legacy_exact_reduction_bucket(
-                ctx,
-                encoder,
-                state,
-                depth_offset,
-                bucket_size,
-            );
+            if exact_fallback {
+                // TODO(C-6/S-4): legacy exact-column fallback only while C-6 is pending.
+                // Remove in S-4 after Sum/Max/Min migrate to AccumulatorOp.
+                self.encode_legacy_exact_reduction_bucket(
+                    ctx,
+                    encoder,
+                    state,
+                    depth_offset,
+                    bucket_size,
+                );
+            }
         }
     }
 
@@ -985,6 +996,7 @@ impl Pipelines {
         depth_offset: u32,
         bucket_size: u32,
     ) {
+        crate::reduction::record_legacy_exact_reduction_bucket_dispatch();
         let p = ReduceParams {
             n_dims: state.n_dims,
             depth_offset,

@@ -208,7 +208,7 @@ pub struct PipelineFlags {
     pub use_accumulator_intent:         bool,  // C-2 → S-1
     pub use_accumulator_overlay_add:    bool,  // C-3/C-4 full overlay path → S-3
     pub use_accumulator_reduction_soft: bool,  // C-5 Mean/WeightedMean → S-4
-    pub use_accumulator_sum_max_min:    bool,  // C-6 → S-4
+    pub use_accumulator_reduction_exact: bool, // C-6 Sum/Max/Min/First → S-4
     pub use_accumulator_velocity:       bool,  // C-7 → S-5
     pub use_accumulator_eml_transfer:   bool,  // C-8 → S-2
 }
@@ -245,14 +245,17 @@ pub struct PipelineFlags {
 - Legacy Pass 3 remains for flag-off execution and oracle parity only until S-3.
 
 **Passes 4–6 — Reduction (migrate → C-5/C-6, sunset → S-4)**
-- WGSL: `reduction.wgsl` (legacy path; exact columns when C-5 flag on)
-- Depth-bucketed `Sum`, `Mean`, `WeightedMean`, `Max`, `Min`
+- WGSL: `reduction.wgsl` (legacy path; flag-off/oracle only after C-6)
+- Depth-bucketed `Sum`, `Mean`, `WeightedMean`, `Max`, `Min`, `First`
 - **C-5 landed:** `use_accumulator_reduction_soft` routes Mean / WeightedMean
   through a `ReductionSoft` AccumulatorOp session bound to `output_vectors`
   (binding 1, no binding 8). Leaf init: `copy_buffer_to_buffer(values →
-  output_vectors)`; depth-band OrderBand dispatch with linear-loop gather and
-  `ConsumeMode::ResetTarget`. Legacy reduction continues for exact columns
-  (`skip_soft_columns` when flag on). Sum/Max/Min remain C-6. S-4 pending.
+  output_vectors)`; depth-band OrderBand dispatch interleaved with legacy exact
+  fallback per depth when only soft flag is on.
+- **C-6 landed:** `use_accumulator_reduction_exact` (requires soft flag) extends
+  the shared reduction OrderBand planner to Sum / Max / Min / First. When both
+  reduction flags are on, all rules execute through AccumulatorOp and legacy
+  `reduction.wgsl` is not dispatched. S-4 pending.
 - Post-migration (S-4): delete `reduction.wgsl` production path after C-5 + C-6
   default-on validation.
 

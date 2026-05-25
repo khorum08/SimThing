@@ -134,6 +134,9 @@ pub struct PipelineFlags {
     /// C-5: routes Mean / WeightedMean soft reductions through AccumulatorOp.
     /// Legacy reduction remains flag-off/oracle for soft columns until S-4.
     pub use_accumulator_reduction_soft: bool,
+    /// C-6: routes Sum / Max / Min / First exact reductions through AccumulatorOp.
+    /// Requires `use_accumulator_reduction_soft`. Legacy exact fallback is skipped when on.
+    pub use_accumulator_reduction_exact: bool,
 }
 
 /// Top-level boundary orchestrator.
@@ -223,12 +226,19 @@ impl BoundaryProtocol {
     }
 
     fn sync_accumulator_reduction_soft_session(&self, state: &mut WorldGpuState) {
+        if self.flags.use_accumulator_reduction_exact && !self.flags.use_accumulator_reduction_soft {
+            panic!("C-6 exact reduction requires use_accumulator_reduction_soft");
+        }
         if !self.flags.use_accumulator_reduction_soft {
             if let Some(runtime) = state.accumulator_runtime.as_mut() {
                 runtime.clear_reduction_soft();
             }
             state.set_reduction_soft_dispatch(false, 0);
+            state.set_reduction_exact_dispatch(false);
             return;
+        }
+        if !self.flags.use_accumulator_reduction_exact {
+            state.set_reduction_exact_dispatch(false);
         }
         state.ensure_reduction_soft_accumulator();
     }
@@ -747,6 +757,7 @@ impl BoundaryProtocol {
             topology_dirty,
             self.flags.use_accumulator_overlay_add,
             self.flags.use_accumulator_reduction_soft,
+            self.flags.use_accumulator_reduction_exact,
             self.overlay_compile_revision,
             &mut self.cached_topology_state,
         );
@@ -985,6 +996,7 @@ impl BoundaryProtocol {
             true,
             self.flags.use_accumulator_overlay_add,
             self.flags.use_accumulator_reduction_soft,
+            self.flags.use_accumulator_reduction_exact,
             self.overlay_compile_revision,
             &mut self.cached_topology_state,
         );

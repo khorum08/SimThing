@@ -70,6 +70,7 @@ pub fn sync_gpu_buffers(
     rebuild_reduction_topology: bool,
     use_accumulator_overlay_add: bool,
     use_accumulator_reduction_soft: bool,
+    use_accumulator_reduction_exact: bool,
     overlay_compile_revision: u64,
     // B2 Approach C: the canonical TopologyState owned by the boundary.
     // When `rebuild_reduction_topology` is true, this routine refreshes
@@ -303,28 +304,48 @@ pub fn sync_gpu_buffers(
 
         if use_accumulator_reduction_soft {
             state.ensure_reduction_soft_accumulator();
+            let mode = if use_accumulator_reduction_exact {
+                simthing_gpu::ReductionPlanMode::AllRules
+            } else {
+                simthing_gpu::ReductionPlanMode::SoftOnly
+            };
             let plan = simthing_gpu::plan_reduction_orderband(
                 topology_state,
                 &descriptors,
                 state.n_dims,
+                mode,
             )
-            .expect("C-5 reduction OrderBand plan");
+            .expect("reduction OrderBand plan");
             state
-                .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands)
-                .expect("C-5 reduction op upload");
+                .upload_reduction_soft_ops_with_bands(
+                    &plan.ops,
+                    plan.n_bands,
+                    use_accumulator_reduction_exact,
+                )
+                .expect("reduction op upload");
         }
     } else if use_accumulator_reduction_soft {
         state.ensure_reduction_soft_accumulator();
         let descriptors = build_column_rule_descriptors(registry, state.n_dims as usize);
+        let mode = if use_accumulator_reduction_exact {
+            simthing_gpu::ReductionPlanMode::AllRules
+        } else {
+            simthing_gpu::ReductionPlanMode::SoftOnly
+        };
         let plan = simthing_gpu::plan_reduction_orderband(
             topology_state,
             &descriptors,
             state.n_dims,
+            mode,
         )
-        .expect("C-5 reduction OrderBand plan");
+        .expect("reduction OrderBand plan");
         state
-            .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands)
-            .expect("C-5 reduction op upload");
+            .upload_reduction_soft_ops_with_bands(
+                &plan.ops,
+                plan.n_bands,
+                use_accumulator_reduction_exact,
+            )
+            .expect("reduction op upload");
     }
 
     out.boundary_upload_bytes =

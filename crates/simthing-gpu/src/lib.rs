@@ -26,16 +26,17 @@ pub use context::{GpuContext, GpuInitError};
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
 pub use reduction_orderband::{
     plan_reduction_orderband, reduction_soft_band_for_depth_bucket, ReductionOrderBandPlan,
-    ReductionPlanError,
+    ReductionPlanError, ReductionPlanMode,
+};
+pub use reduction::{
+    build_column_rule_descriptors, build_column_rules, build_topology, cpu_reduce_oracle,
+    cpu_reduce_oracle_call_count, encode_column_rules, legacy_exact_reduction_bucket_call_count,
+    reset_cpu_reduce_oracle_call_count, reset_legacy_exact_reduction_bucket_call_count,
+    ColumnRuleDescriptor, Topology, TopologyState,
 };
 pub use overlay_prep::build_overlay_deltas;
 pub use passes::{AccumulatorPipelineSessions, Pipelines};
 pub use projection::project_tree_to_values;
-pub use reduction::{
-    build_column_rule_descriptors, build_column_rules, build_topology, cpu_reduce_oracle,
-    cpu_reduce_oracle_call_count, encode_column_rules, reset_cpu_reduce_oracle_call_count,
-    ColumnRuleDescriptor, Topology, TopologyState,
-};
 pub use slot::SlotAllocator;
 pub use world_state::{
     build_governed_pairs, build_intensity_params, encode_rule, GovernedPair, IntensityParams,
