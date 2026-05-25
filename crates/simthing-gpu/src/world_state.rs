@@ -322,6 +322,9 @@ pub struct WorldGpuState {
     /// (offset, size) into `depth_slots` per depth. The dispatcher iterates
     /// these from the last entry (deepest) to the first (root depth).
     pub depth_bucket_ranges: Vec<(u32, u32)>,
+
+    /// C-1 AccumulatorOp threshold scan session (when migration flag is on).
+    pub threshold_accumulator: Option<crate::AccumulatorOpSession>,
 }
 
 impl WorldGpuState {
@@ -439,6 +442,19 @@ impl WorldGpuState {
             column_rules,
             depth_slots,
             depth_bucket_ranges: Vec::new(),
+            threshold_accumulator: None,
+        }
+    }
+
+    /// Ensure the C-1 threshold AccumulatorOp session exists on this world state.
+    pub fn ensure_threshold_accumulator(&mut self, emission_capacity: u32) {
+        if self.threshold_accumulator.is_none() {
+            self.threshold_accumulator = Some(crate::AccumulatorOpSession::new_attached(
+                &self.ctx,
+                self.n_slots,
+                self.n_dims,
+                emission_capacity,
+            ));
         }
     }
 
@@ -536,6 +552,7 @@ impl WorldGpuState {
 
         self.n_slots = new_n_slots;
         self.n_dims = new_n_dims;
+        self.threshold_accumulator = None;
         let per_slot_per_col_bytes = (self.n_slots as u64) * (self.n_dims as u64) * 4;
 
         let new_values = self.mk_storage_buffer("values", per_slot_per_col_bytes);

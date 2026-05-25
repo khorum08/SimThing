@@ -167,12 +167,30 @@ impl DispatchCoordinator {
 
         // 3. GPU passes (order matters — see module-level doc).
         let gpu_pipeline_started = Instant::now();
-        pipelines.run_tick_pipeline(state, dt);
+        let use_accumulator_threshold = state.threshold_accumulator.is_some();
+        if use_accumulator_threshold {
+            pipelines.run_tick_pipeline_ex(state, dt, true);
+            if let Some(session) = state.threshold_accumulator.as_mut() {
+                let _ = session.dispatch_threshold_scan(
+                    &state.ctx,
+                    &state.values,
+                    &state.previous_values,
+                );
+            }
+        } else {
+            pipelines.run_tick_pipeline(state, dt);
+        }
         let gpu_pipeline_ms = gpu_pipeline_started.elapsed().as_secs_f64() * 1000.0;
 
         // 4. Event readback. Cheap even at endgame scale (~3 KB).
         let event_readback_started = Instant::now();
-        let events = if state.n_thresholds == 0 {
+        let events = if use_accumulator_threshold {
+            state
+                .threshold_accumulator
+                .as_mut()
+                .and_then(|s| s.readback_threshold_events(&state.ctx).ok())
+                .unwrap_or_default()
+        } else if state.n_thresholds == 0 {
             Vec::new()
         } else {
             let count = state.read_event_count();
@@ -182,8 +200,10 @@ impl DispatchCoordinator {
                 state.read_event_candidates(count)
             }
         };
-        let event_readback_bytes = if state.n_thresholds == 0 {
+        let event_readback_bytes = if events.is_empty() {
             0
+        } else if use_accumulator_threshold {
+            events.len() as u64 * std::mem::size_of::<ThresholdEvent>() as u64
         } else {
             std::mem::size_of::<u32>() as u64
                 + events.len() as u64 * std::mem::size_of::<ThresholdEvent>() as u64

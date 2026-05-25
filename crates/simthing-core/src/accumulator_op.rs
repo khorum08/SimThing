@@ -132,6 +132,8 @@ pub enum ThresholdDirection {
     Upward,
     /// Fires when value crosses downward (value <= threshold having been above).
     Downward,
+    /// Fires on either upward or downward strict crossing.
+    Either,
 }
 
 // ── ConsumeMode ───────────────────────────────────────────────────────────────
@@ -221,7 +223,11 @@ impl AccumulatorOp {
     /// Validate the registration for internal consistency.
     /// Called at registration time before the op is uploaded to the GPU.
     pub fn validate(&self) -> Result<(), AccumulatorOpError> {
-        if self.targets.is_empty() {
+        let threshold_emit = matches!(
+            (&self.gate, self.consume),
+            (GateSpec::Threshold { .. }, ConsumeMode::EmitEvent)
+        );
+        if self.targets.is_empty() && !threshold_emit {
             return Err(AccumulatorOpError::NoTargets);
         }
         if self.targets.len() > 4 {
@@ -305,6 +311,22 @@ mod tests {
         let mut op = minimal_op();
         op.targets.clear();
         assert_eq!(op.validate(), Err(AccumulatorOpError::NoTargets));
+    }
+
+    #[test]
+    fn threshold_emit_event_allows_empty_targets() {
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Threshold {
+                value: 0.5,
+                direction: ThresholdDirection::Upward,
+            },
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::EmitEvent,
+            targets: vec![],
+        };
+        assert!(op.validate().is_ok());
     }
 
     #[test]

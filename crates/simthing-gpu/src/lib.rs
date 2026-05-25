@@ -14,8 +14,9 @@ pub mod slot;
 pub mod world_state;
 
 pub use accumulator_op::{
-    execute_ops_cpu, set_debug_readback_allowed, AccumulatorOpGpu, AccumulatorOpSession,
-    AccumulatorOpSessionError, EmissionRecord, SlotSummary,
+    execute_ops_cpu, set_debug_readback_allowed, threshold_registrations_to_ops,
+    AccumulatorOpGpu, AccumulatorOpSession, AccumulatorOpSessionError, EmissionRecord,
+    SlotSummary, ThresholdEmission, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 pub use context::{GpuContext, GpuInitError};
 pub use overlay_prep::build_overlay_deltas;

@@ -483,6 +483,17 @@ impl Pipelines {
     /// velocity, intensity, overlays, reduction, and threshold scan into one
     /// command encoder and submits once.
     pub fn run_tick_pipeline(&self, state: &WorldGpuState, dt: f32) {
+        self.run_tick_pipeline_ex(state, dt, false);
+    }
+
+    /// Consolidated per-tick pipeline. When `skip_threshold_scan` is true the
+    /// Pass 7 threshold dispatch is omitted (C-1 AccumulatorOp path).
+    pub fn run_tick_pipeline_ex(
+        &self,
+        state: &WorldGpuState,
+        dt: f32,
+        skip_threshold_scan: bool,
+    ) {
         let ctx = &state.ctx;
 
         state.reset_event_count();
@@ -642,10 +653,12 @@ impl Pipelines {
                 dispatch_linear(&mut pass, *bucket_size);
             }
 
-            if let Some(bg) = threshold_bg.as_ref() {
-                pass.set_pipeline(&self.threshold_pipeline);
-                pass.set_bind_group(0, bg, &[]);
-                dispatch_linear(&mut pass, state.n_thresholds);
+            if !skip_threshold_scan {
+                if let Some(bg) = threshold_bg.as_ref() {
+                    pass.set_pipeline(&self.threshold_pipeline);
+                    pass.set_bind_group(0, bg, &[]);
+                    dispatch_linear(&mut pass, state.n_thresholds);
+                }
             }
         }
         ctx.queue.submit(Some(encoder.finish()));

@@ -55,7 +55,7 @@ pub mod threshold_registry;
 pub mod tree_index;
 pub mod tree_mutation;
 
-pub use boundary::{BoundaryHookContext, BoundaryOutcome, BoundaryProtocol, BoundaryTiming};
+pub use boundary::{BoundaryHookContext, BoundaryOutcome, BoundaryProtocol, BoundaryTiming, PipelineFlags};
 pub use delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 pub use fission::{ClonedCapabilityRoot, FissionLineageRecord, FissionOutcome};
 pub use observability::{

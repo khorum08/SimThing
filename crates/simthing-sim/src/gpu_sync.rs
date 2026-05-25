@@ -29,7 +29,8 @@ use simthing_feeder::{
     CapabilityUnlockRegistration, DispatchCoordinator, ScriptedEventTriggerRegistration,
 };
 use simthing_gpu::{
-    build_column_rule_descriptors, encode_column_rules, SlotAllocator, TopologyState, WorldGpuState,
+    build_column_rule_descriptors, encode_column_rules, SlotAllocator, ThresholdRegistration,
+    TopologyState, WorldGpuState,
 };
 
 /// Outcome of the GPU sync step.
@@ -38,6 +39,8 @@ pub struct GpuSyncOutcome {
     pub overlay_deltas_uploaded: u32,
     pub threshold_regs_uploaded: u32,
     pub new_threshold_registry: Option<ThresholdRegistry>,
+    /// GPU threshold registrations when `rebuild_thresholds` ran (C-1 sync).
+    pub rebuilt_threshold_regs: Option<Vec<ThresholdRegistration>>,
     pub reduction_depths: u32,
     pub reduction_edges: u32,
     pub reduction_slots: u32,
@@ -119,6 +122,7 @@ pub fn sync_gpu_buffers(
             * std::mem::size_of::<simthing_gpu::ThresholdRegistration>() as u64;
         out.threshold_regs_uploaded = gpu_regs.len() as u32;
         state.upload_thresholds(&gpu_regs);
+        out.rebuilt_threshold_regs = Some(gpu_regs);
         out.new_threshold_registry = Some(cpu_reg);
     }
 

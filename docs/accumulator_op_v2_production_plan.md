@@ -294,6 +294,7 @@ current pass path.
 
 ### PR C-1 — Threshold scan migration
 
+**Status:** Landed (parity green; perf gate ~2.1× at 10k thresholds — Opus review pending per plan).  
 **Model:** Composer 2.5  
 **Scope:** Migrate Pass 7 (threshold scan) to AccumulatorOp using the
 `Threshold` gate + `EmitEvent` consume mode. The GPU atomic counter replaces

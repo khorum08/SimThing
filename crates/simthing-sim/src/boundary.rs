@@ -47,8 +47,8 @@ use simthing_feeder::{
     ScriptedEventTriggerRegistration, TransformPatcher,
 };
 use simthing_gpu::{
-    build_column_rule_descriptors, encode_column_rules, SlotAllocator, ThresholdEvent,
-    TopologyState, WorldGpuState,
+    build_column_rule_descriptors, encode_column_rules, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+    SlotAllocator, ThresholdEvent, ThresholdRegistration, TopologyState, WorldGpuState,
 };
 #[cfg(debug_assertions)]
 use simthing_gpu::build_topology;
@@ -121,6 +121,11 @@ pub struct BoundaryHookContext<'a> {
     pub requests: &'a mut Vec<BoundaryRequest>,
 }
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PipelineFlags {
+    pub use_accumulator_threshold_scan: bool,
+}
+
 /// Top-level boundary orchestrator.
 ///
 /// Owns:
@@ -136,6 +141,7 @@ pub struct BoundaryProtocol {
     pub root: SimThing,
     pub registry: DimensionRegistry,
     pub allocator: SlotAllocator,
+    pub flags: PipelineFlags,
     cpu_threshold_registry: ThresholdRegistry,
     velocity_alerts: Vec<VelocityAlertRegistration>,
     aggregate_alerts: Vec<AggregateAlertRegistration>,
@@ -168,6 +174,7 @@ impl BoundaryProtocol {
             root,
             registry,
             allocator,
+            flags: PipelineFlags::default(),
             cpu_threshold_registry: ThresholdRegistry::new(),
             velocity_alerts: Vec::new(),
             aggregate_alerts: Vec::new(),
@@ -178,6 +185,25 @@ impl BoundaryProtocol {
             delta_log: Vec::new(),
             fission_lineage: Vec::new(),
             cached_topology_state: TopologyState::default(),
+        }
+    }
+
+    fn sync_accumulator_threshold_ops(
+        &self,
+        state: &mut WorldGpuState,
+        gpu_regs: &[ThresholdRegistration],
+    ) {
+        if !self.flags.use_accumulator_threshold_scan {
+            return;
+        }
+        let cap = state
+            .n_thresholds
+            .max(DEFAULT_THRESHOLD_EMISSION_CAPACITY);
+        state.ensure_threshold_accumulator(cap);
+        if let Some(session) = state.threshold_accumulator.as_mut() {
+            session
+                .upload_threshold_ops(&state.ctx, gpu_regs)
+                .expect("AccumulatorOp threshold op upload failed");
         }
     }
 
@@ -664,6 +690,9 @@ impl BoundaryProtocol {
             self.cpu_threshold_registry = new_reg;
             self.synced_threshold_config_revision = self.threshold_config_revision;
         }
+        if let Some(regs) = gpu_out.rebuilt_threshold_regs.as_deref() {
+            self.sync_accumulator_threshold_ops(state, regs);
+        }
         out.gpu_sync = GpuSyncOutcome {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
             // Sum: gpu_out.threshold_regs_uploaded counts entries written by
@@ -674,6 +703,7 @@ impl BoundaryProtocol {
                 .threshold_regs_uploaded
                 .saturating_add(threshold_regs_appended),
             new_threshold_registry: None, // moved into self above
+            rebuilt_threshold_regs: None,
             // When gpu_sync's full reduction rebuild path ran, these come
             // from gpu_out; when Approach C's append path ran, gpu_out
             // values are 0 and the cached `topology_appended_*` values
@@ -879,6 +909,9 @@ impl BoundaryProtocol {
         if let Some(new_reg) = out.new_threshold_registry {
             self.cpu_threshold_registry = new_reg;
             self.synced_threshold_config_revision = self.threshold_config_revision;
+        }
+        if let Some(regs) = out.rebuilt_threshold_regs.as_deref() {
+            self.sync_accumulator_threshold_ops(state, regs);
         }
     }
 

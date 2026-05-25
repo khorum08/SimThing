@@ -1,7 +1,12 @@
 //! Encode CPU-side [`AccumulatorOp`] registrations into GPU layout structs.
 
 use simthing_core::{
-    AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec,
+    AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
+};
+
+use crate::world_state::{
+    ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
+    THRESH_BUF_VALUES,
 };
 
 use super::bootstrap_validate::{validate_bootstrap_no_contention, BootstrapContention};
@@ -44,7 +49,7 @@ impl AccumulatorOpGpu {
         let (combine_kind, combine_a, combine_b, combine_c, combine_d) = encode_combine(op)?;
         let (gate_kind, gate_a, gate_b) = encode_gate(&op.gate)?;
         let (scale_kind, scale_a) = encode_scale(&op.scale)?;
-        let consume = encode_consume(op.consume)?;
+        let consume = encode_consume(op.consume, &op.gate)?;
         let (targets, n_targets) = encode_targets(&op.targets);
 
         Ok(Self {
@@ -82,9 +87,97 @@ impl AccumulatorOpGpu {
         validate_bootstrap_no_contention(&gpu_ops)?;
         Ok(gpu_ops)
     }
+
+    /// Encode threshold-gated EmitEvent ops (C-1 Pass 7 migration path).
+    pub fn encode_threshold_set(ops: &[AccumulatorOp]) -> Result<Vec<Self>, EncodeError> {
+        for op in ops {
+            validate_threshold_op(op)?;
+        }
+        let gpu_ops: Vec<Self> = ops.iter().map(Self::from_op).collect::<Result<_, _>>()?;
+        validate_bootstrap_no_contention(&gpu_ops)?;
+        Ok(gpu_ops)
+    }
+}
+
+/// Convert GPU threshold registrations into AccumulatorOp threshold scan ops.
+pub fn threshold_registrations_to_ops(
+    regs: &[ThresholdRegistration],
+) -> Result<(Vec<AccumulatorOp>, Vec<u32>), EncodeError> {
+    let mut ops = Vec::with_capacity(regs.len());
+    let mut event_kinds = Vec::with_capacity(regs.len());
+    for r in regs {
+        if r.buffer == THRESH_BUF_OUTPUT {
+            return Err(EncodeError::Unsupported(
+                "THRESH_BUF_OUTPUT blocked until C-5/C-6 reduction migration",
+            ));
+        }
+        debug_assert_eq!(r.buffer, THRESH_BUF_VALUES);
+        ops.push(AccumulatorOp {
+            source: SourceSpec::SlotValue {
+                slot: r.slot,
+                col:  r.col,
+            },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Threshold {
+                value:     r.threshold,
+                direction: direction_u32_to_threshold_direction(r.direction),
+            },
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::EmitEvent,
+            targets: vec![],
+        });
+        event_kinds.push(r.event_kind);
+    }
+    Ok((ops, event_kinds))
+}
+
+fn direction_u32_to_threshold_direction(d: u32) -> ThresholdDirection {
+    match d {
+        DIR_DOWNWARD => ThresholdDirection::Downward,
+        DIR_EITHER => ThresholdDirection::Either,
+        _ => ThresholdDirection::Upward,
+    }
+}
+
+fn threshold_direction_to_u32(direction: ThresholdDirection) -> u32 {
+    match direction {
+        ThresholdDirection::Upward => DIR_UPWARD,
+        ThresholdDirection::Downward => DIR_DOWNWARD,
+        ThresholdDirection::Either => DIR_EITHER,
+    }
+}
+
+fn validate_threshold_op(op: &AccumulatorOp) -> Result<(), EncodeError> {
+    match (&op.gate, op.consume) {
+        (GateSpec::Threshold { .. }, ConsumeMode::EmitEvent) => {
+            if !matches!(op.source, SourceSpec::SlotValue { .. }) {
+                return Err(EncodeError::Unsupported(
+                    "Threshold EmitEvent requires SlotValue source",
+                ));
+            }
+            if op.combine != CombineFn::Identity {
+                return Err(EncodeError::Unsupported(
+                    "Threshold EmitEvent requires Identity combine",
+                ));
+            }
+            if op.scale != ScaleSpec::Identity {
+                return Err(EncodeError::Unsupported(
+                    "Threshold EmitEvent requires Identity scale",
+                ));
+            }
+            Ok(())
+        }
+        (GateSpec::Threshold { .. }, _) => Err(EncodeError::Unsupported(
+            "Threshold gate requires EmitEvent consume until later phases",
+        )),
+        _ => Err(EncodeError::Unsupported("not a threshold op")),
+    }
 }
 
 fn validate_bootstrap_op(op: &AccumulatorOp) -> Result<(), EncodeError> {
+    if matches!(&op.gate, GateSpec::Threshold { .. }) {
+        return validate_threshold_op(op);
+    }
     if op.consume == ConsumeMode::SubtractFromSource {
         match (&op.source, &op.scale) {
             (SourceSpec::SlotValue { .. }, ScaleSpec::Constant(_)) => Ok(()),
@@ -137,6 +230,11 @@ fn encode_gate(gate: &GateSpec) -> Result<(u32, u32, u32), EncodeError> {
     match gate {
         GateSpec::Always => Ok((gate_kind::ALWAYS, 0, 0)),
         GateSpec::OrderBand(band) => Ok((gate_kind::ORDER_BAND, *band, 0)),
+        GateSpec::Threshold { value, direction } => Ok((
+            gate_kind::THRESHOLD,
+            threshold_direction_to_u32(*direction),
+            value.to_bits(),
+        )),
         other => Err(EncodeError::Unsupported(other_name_gate(other))),
     }
 }
@@ -149,9 +247,17 @@ fn encode_scale(scale: &ScaleSpec) -> Result<(u32, u32), EncodeError> {
     }
 }
 
-fn encode_consume(consume: ConsumeMode) -> Result<u32, EncodeError> {
+fn encode_consume(consume: ConsumeMode, gate: &GateSpec) -> Result<u32, EncodeError> {
     match consume {
-        ConsumeMode::None => Ok(consume_kind::NONE),
+        ConsumeMode::None => {
+            if matches!(gate, GateSpec::Threshold { .. }) {
+                Err(EncodeError::Unsupported(
+                    "Threshold gate requires EmitEvent consume until later phases",
+                ))
+            } else {
+                Ok(consume_kind::NONE)
+            }
+        }
         ConsumeMode::SubtractFromSource => Ok(consume_kind::SUBTRACT_FROM_SOURCE),
         ConsumeMode::EmitEvent => Ok(consume_kind::EMIT_EVENT),
         ConsumeMode::SubtractFromAllInputs => {
@@ -213,5 +319,56 @@ mod tests {
         let gpu = AccumulatorOpGpu::from_op(&op).unwrap();
         assert_eq!(gpu.scale_kind, scale_kind::CONSTANT);
         assert_eq!(gpu.consume, consume_kind::SUBTRACT_FROM_SOURCE);
+    }
+
+    #[test]
+    fn c1_threshold_gate_emit_event_validator_accepts() {
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Threshold {
+                value: 0.5,
+                direction: ThresholdDirection::Upward,
+            },
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::EmitEvent,
+            targets: vec![],
+        };
+        AccumulatorOpGpu::encode_threshold_set(std::slice::from_ref(&op)).unwrap();
+    }
+
+    #[test]
+    fn c1_threshold_gate_non_emit_consume_validator_rejects() {
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Threshold {
+                value: 1.0,
+                direction: ThresholdDirection::Upward,
+            },
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![(1, 0)],
+        };
+        assert!(matches!(
+            AccumulatorOpGpu::encode_threshold_set(std::slice::from_ref(&op)),
+            Err(EncodeError::Unsupported(_))
+        ));
+    }
+
+    #[test]
+    fn c1_threshold_output_buffer_validator_rejects() {
+        let regs = [ThresholdRegistration {
+            slot: 0,
+            col: 0,
+            threshold: 0.5,
+            direction: DIR_UPWARD,
+            event_kind: 1,
+            buffer: THRESH_BUF_OUTPUT,
+        }];
+        assert!(matches!(
+            threshold_registrations_to_ops(&regs),
+            Err(EncodeError::Unsupported(_))
+        ));
     }
 }
