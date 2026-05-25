@@ -255,7 +255,12 @@ pub struct PipelineFlags {
 - **C-6 landed:** `use_accumulator_reduction_exact` (requires soft flag) extends
   the shared reduction OrderBand planner to Sum / Max / Min / First. When both
   reduction flags are on, all rules execute through AccumulatorOp and legacy
-  `reduction.wgsl` is not dispatched. S-4 pending.
+  `reduction.wgsl` is not dispatched. Legacy reduction remains flag-off/oracle
+  until S-4.
+  - Sum / Max / Min / First exact reductions now execute through AccumulatorOp.
+  - C-5 soft and C-6 exact reductions share `ReductionPlanMode` / OrderBand planner.
+  - With soft+exact reduction flags enabled, legacy `reduction.wgsl` is not dispatched.
+  - Legacy reduction remains only flag-off/oracle until S-4.
 - Post-migration (S-4): delete `reduction.wgsl` production path after C-5 + C-6
   default-on validation.
 

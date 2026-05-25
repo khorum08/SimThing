@@ -1,6 +1,7 @@
-// Pass B kernel — non-contended Identity, Sum, clamped transfer, EmitEvent,
-// and C-1 threshold-gated EmitEvent. WeightedMean, EvalEML, and overlay
-// families land in later C/E phases.
+// Pass B kernel — AccumulatorOp execution for intent, overlay, threshold,
+// and C-5/C-6 reductions. Reduction sessions bind `output_vectors` as the
+// values buffer and use linear SlotRange gathers for Mean, WeightedMean,
+// Sum, Max, Min, and First.
 
 struct AccumulatorOpGpu {
     source_kind: u32,

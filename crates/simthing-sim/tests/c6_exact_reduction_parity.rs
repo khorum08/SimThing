@@ -1,5 +1,7 @@
 //! C-6 Sum / Max / Min / First AccumulatorOp reduction parity tests.
 
+use std::sync::Mutex;
+
 use simthing_core::{
     DimensionRegistry, PropertyValue, ReductionRule, SimProperty, SimThing, SimThingKind,
     SubFieldRole,
@@ -15,6 +17,9 @@ use simthing_gpu::{
 use simthing_sim::BoundaryProtocol;
 
 const TOL: f32 = 1e-5;
+
+/// Global counter for legacy exact buckets is process-wide; serialize counter assertions.
+static LEGACY_BUCKET_COUNTER_GUARD: Mutex<()> = Mutex::new(());
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -242,13 +247,7 @@ fn c6_first_legacy_vs_accumulator_bit_exact() {
     }
 }
 
-#[test]
-fn c6_mixed_soft_and_exact_columns_all_accumulator_matches_legacy() {
-    let Some(_ctx) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-
+fn mixed_all_rules_fixture() -> (DimensionRegistry, SimThing, SlotAllocator) {
     let mut reg = DimensionRegistry::new();
     let pop_id = reg.register({
         let mut p = SimProperty::simple("demo", "population", 0);
@@ -310,6 +309,17 @@ fn c6_mixed_soft_and_exact_columns_all_accumulator_matches_legacy() {
     world.add_child(loc);
     let mut alloc = SlotAllocator::new();
     alloc.populate_from_tree(&world);
+    (reg, world, alloc)
+}
+
+#[test]
+fn c6_mixed_soft_and_exact_columns_all_accumulator_matches_legacy() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let (reg, world, alloc) = mixed_all_rules_fixture();
 
     let (mut state, _, flat) = setup_reduction_state(
         &reg,
@@ -330,6 +340,33 @@ fn c6_mixed_soft_and_exact_columns_all_accumulator_matches_legacy() {
     state.set_reduction_exact_dispatch(true);
     run_accumulator_reduction(&mut state);
     let acc = state.read_output_vectors();
+
+    let pop_id = reg.id_of("demo", "population").expect("population");
+    let loyalty_id = reg.id_of("core", "loyalty").expect("loyalty");
+    let threat_id = reg.id_of("core", "threat").expect("threat");
+    let scarcity_id = reg.id_of("core", "scarcity").expect("scarcity");
+    let founder_id = reg.id_of("core", "founder_trait").expect("founder_trait");
+    let pop_off = reg.property(pop_id).layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let loyalty_off = reg
+        .property(loyalty_id)
+        .layout
+        .offset_of(&SubFieldRole::Amount)
+        .unwrap();
+    let threat_off = reg
+        .property(threat_id)
+        .layout
+        .offset_of(&SubFieldRole::Amount)
+        .unwrap();
+    let scarcity_off = reg
+        .property(scarcity_id)
+        .layout
+        .offset_of(&SubFieldRole::Amount)
+        .unwrap();
+    let founder_off = reg
+        .property(founder_id)
+        .layout
+        .offset_of(&SubFieldRole::Amount)
+        .unwrap();
 
     let exact_cols = [
         reg.column_range(pop_id).start + pop_off,
@@ -437,6 +474,7 @@ fn c6_full_reduction_path_does_not_dispatch_legacy_reduction() {
         ReductionPlanMode::SoftOnly,
         false,
     );
+    let _guard = LEGACY_BUCKET_COUNTER_GUARD.lock().unwrap();
     reset_legacy_exact_reduction_bucket_call_count();
     run_accumulator_reduction(&mut state_c5);
     let bridge_buckets = legacy_exact_reduction_bucket_call_count();
@@ -455,6 +493,55 @@ fn c6_full_reduction_path_does_not_dispatch_legacy_reduction() {
         legacy_exact_reduction_bucket_call_count(),
         0,
         "C-6 full path must not dispatch legacy exact buckets"
+    );
+    drop(_guard);
+}
+
+/// S-4 readiness guard: all reduction rules through AccumulatorOp with no legacy dispatch.
+#[test]
+fn s4_candidate_all_reduction_rules_use_accumulator_without_legacy_dispatch() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let (reg, world, alloc) = mixed_all_rules_fixture();
+    let (mut state, _, flat) = setup_reduction_state(
+        &reg,
+        &world,
+        &alloc,
+        ReductionPlanMode::AllRules,
+        true,
+    );
+    let n_bands = state.accumulator_reduction_soft_bands;
+    let pipelines = Pipelines::new(&state.ctx);
+
+    state.set_reduction_soft_dispatch(false, 0);
+    pipelines.run_reduction_passes(&state);
+    let legacy = state.read_output_vectors();
+
+    state.write_values(&flat);
+    state.set_reduction_soft_dispatch(true, n_bands);
+    state.set_reduction_exact_dispatch(true);
+    assert!(
+        state.accumulator_reduction_soft_active && state.accumulator_reduction_exact_active,
+        "S-4 candidate requires both reduction flags active on dispatch"
+    );
+
+    let _guard = LEGACY_BUCKET_COUNTER_GUARD.lock().unwrap();
+    reset_legacy_exact_reduction_bucket_call_count();
+    run_accumulator_reduction(&mut state);
+    assert_eq!(
+        legacy_exact_reduction_bucket_call_count(),
+        0,
+        "S-4 candidate must not dispatch legacy reduction.wgsl buckets"
+    );
+    drop(_guard);
+
+    let acc = state.read_output_vectors();
+    assert!(
+        max_abs_error(&legacy, &acc) < TOL,
+        "S-4 candidate output must match legacy reduction parity"
     );
 }
 

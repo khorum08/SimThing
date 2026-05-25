@@ -497,12 +497,34 @@ legacy `reduction.wgsl` dispatch. C-5 bridge (soft only) unchanged. S-4 pending.
 **Parity:** Sum/Max/Min/First bit-exact vs legacy; mixed soft+exact within 1e-5;
 combined all-flags integration test green.
 
-**S-4 readiness checklist (not executed in C-6):**
-- C-5 + C-6 flags default on
-- Reduction parity tests green
-- Combined all-flags tests green
-- 7 days CI green
-- No production call site dispatches `reduction.wgsl` under accumulator flags
+**S-4 readiness checklist (not executed in C-6; prep PR documents gates):**
+
+S-4 can begin after:
+- `use_accumulator_reduction_soft` default-on candidate passes.
+- `use_accumulator_reduction_exact` default-on candidate passes.
+- C-5 and C-6 parity tests remain green.
+- Combined all-flags path remains green.
+- No production path dispatches legacy reduction when both flags are on.
+- CI burn-in window satisfied.
+
+**C-6 landed (production direction):**
+- Sum / Max / Min / First exact reductions now execute through AccumulatorOp.
+- C-5 soft and C-6 exact reductions share `ReductionPlanMode` / OrderBand planner.
+- With soft+exact reduction flags enabled, legacy `reduction.wgsl` is not dispatched.
+- Legacy reduction remains only flag-off/oracle until S-4.
+
+**S-4 deletion inventory (draft — do not execute until gates above pass):**
+- `crates/simthing-gpu/src/shaders/reduction.wgsl`
+- Reduction pipeline creation in `passes.rs`
+- Reduction bind group layout if no longer used
+- Legacy reduction topology upload branches only if not needed by Accumulator planner
+- Legacy reduction standalone `run_reduction_passes` test helper, unless kept as oracle fixture
+- Any `skip_soft_columns` plumbing
+
+**Keep (not part of S-4 shader deletion):** `child_starts`, `child_indices`,
+`depth_slots`, and column rules — still required by the Accumulator reduction
+planner and parity tests. Do not delete topology data just because the legacy
+shader is gone.
 
 ---
 
@@ -880,6 +902,22 @@ mechanical, gated on CI passing with the feature flag set to default-on.
 ### PR S-2 — Sunset intensity update (after C-8)
 ### PR S-3 — Sunset overlay prep (after C-3 + C-4)
 ### PR S-4 — Sunset reduction passes 4–6 (after C-5 + C-6)
+
+**Gate:** S-4 can begin only after the readiness checklist in PR C-6 is satisfied
+(default-on candidates, parity green, combined all-flags green, no legacy dispatch
+when both reduction flags on, CI burn-in).
+
+**S-4 deletion inventory:**
+- `crates/simthing-gpu/src/shaders/reduction.wgsl`
+- Reduction pipeline creation in `passes.rs`
+- Reduction bind group layout if no longer used
+- Legacy reduction topology upload branches only if not needed by Accumulator planner
+- Legacy reduction standalone `run_reduction_passes` test helper, unless kept as oracle fixture
+- Any `skip_soft_columns` plumbing
+
+**Do not delete with legacy shader:** `child_starts`, `child_indices`, `depth_slots`,
+column rules, `plan_reduction_orderband`, or topology upload paths still used by
+AccumulatorOp reduction planner/tests.
 ### PR S-5 — Sunset velocity integration (after C-7)
 ### PR S-6 — Sunset threshold scan / Pass 7 (after C-1)
 
