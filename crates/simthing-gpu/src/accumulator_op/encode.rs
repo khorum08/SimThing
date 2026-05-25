@@ -1,7 +1,8 @@
 //! Encode CPU-side [`AccumulatorOp`] registrations into GPU layout structs.
 
 use simthing_core::{
-    AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
+    eml_nodes::execution_class_to_u32, AccumulatorOp, CombineFn, ConsumeMode, EmlExecutionClass,
+    EmlExpressionRegistry, EmlTreeId, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
 };
 
 use crate::world_state::{
@@ -26,6 +27,15 @@ pub enum EncodeError {
     BootstrapContention { band: u32, slot: u32, col: u32 },
     #[error("duplicate folded intent cell: slot={slot}, col={col}")]
     DuplicateIntentCell { slot: u32, col: u32 },
+    #[error("EML tree {tree_id:?} is not uploaded to the GPU program table")]
+    EmlTreeNotUploaded { tree_id: EmlTreeId },
+    #[error("EML formula {tree_id:?} execution class {class:?} is not production-admissible in C-8a")]
+    EmlExecutionClassNotAdmissible {
+        tree_id: EmlTreeId,
+        class: EmlExecutionClass,
+    },
+    #[error("EML registry error: {0}")]
+    EmlRegistry(#[from] simthing_core::EmlRegistryError),
 }
 
 impl From<BootstrapContention> for EncodeError {
@@ -40,11 +50,19 @@ impl From<BootstrapContention> for EncodeError {
 
 impl AccumulatorOpGpu {
     pub fn from_op(op: &AccumulatorOp) -> Result<Self, EncodeError> {
+        Self::from_op_with_eml(op, None)
+    }
+
+    pub fn from_op_with_eml(
+        op: &AccumulatorOp,
+        eml: Option<&EmlExpressionRegistry>,
+    ) -> Result<Self, EncodeError> {
         op.validate()?;
         validate_bootstrap_op(op)?;
 
         let (source_kind, source_slot, source_col, source_count) = encode_source(op)?;
-        let (combine_kind, combine_a, combine_b, combine_c, combine_d) = encode_combine(op)?;
+        let (combine_kind, combine_a, combine_b, combine_c, combine_d) =
+            encode_combine(op, eml)?;
         let (gate_kind, gate_a, gate_b) = encode_gate(&op.gate)?;
         let (scale_kind, scale_a) = encode_scale(&op.scale)?;
         let consume = encode_consume(op.consume, &op.gate)?;
@@ -81,7 +99,18 @@ impl AccumulatorOpGpu {
 
     /// Encode and validate a full bootstrap op set, including same-band contention checks.
     pub fn encode_bootstrap_set(ops: &[AccumulatorOp]) -> Result<Vec<Self>, EncodeError> {
-        let gpu_ops: Vec<Self> = ops.iter().map(Self::from_op).collect::<Result<_, _>>()?;
+        Self::encode_bootstrap_set_with_eml(ops, None)
+    }
+
+    /// Encode bootstrap ops, resolving `EvalEML` tree IDs via the uploaded registry.
+    pub fn encode_bootstrap_set_with_eml(
+        ops: &[AccumulatorOp],
+        eml: Option<&EmlExpressionRegistry>,
+    ) -> Result<Vec<Self>, EncodeError> {
+        let gpu_ops: Vec<Self> = ops
+            .iter()
+            .map(|op| Self::from_op_with_eml(op, eml))
+            .collect::<Result<_, _>>()?;
         validate_no_contention(&gpu_ops)?;
         Ok(gpu_ops)
     }
@@ -277,7 +306,10 @@ fn encode_source(op: &AccumulatorOp) -> Result<(u32, u32, u32, u32), EncodeError
     }
 }
 
-fn encode_combine(op: &AccumulatorOp) -> Result<(u32, u32, u32, u32, u32), EncodeError> {
+fn encode_combine(
+    op: &AccumulatorOp,
+    eml: Option<&EmlExpressionRegistry>,
+) -> Result<(u32, u32, u32, u32, u32), EncodeError> {
     match &op.combine {
         CombineFn::Identity => Ok((combine_kind::IDENTITY, 0, 0, 0, 0)),
         CombineFn::Sum => Ok((combine_kind::SUM, 0, 0, 0, 0)),
@@ -305,7 +337,31 @@ fn encode_combine(op: &AccumulatorOp) -> Result<(u32, u32, u32, u32, u32), Encod
             Ok((combine_kind::CROSSING_FORMULA, unit_cost.to_bits(), 0, 0, 0))
         }
         CombineFn::MinAcrossInputs => Ok((combine_kind::MIN_ACROSS_INPUTS, 0, 0, 0, 0)),
-        CombineFn::EvalEML { tree_id } => Ok((combine_kind::EVAL_EML, *tree_id, 0, 0, 0)),
+        CombineFn::EvalEML { tree_id } => {
+            let tree_id = EmlTreeId(*tree_id);
+            let Some(registry) = eml else {
+                return Err(EncodeError::EmlTreeNotUploaded { tree_id });
+            };
+            let meta = registry
+                .get(tree_id)
+                .ok_or(EncodeError::EmlTreeNotUploaded { tree_id })?;
+            if meta.execution_class != EmlExecutionClass::ExactDeterministic {
+                return Err(EncodeError::EmlExecutionClassNotAdmissible {
+                    tree_id,
+                    class: meta.execution_class,
+                });
+            }
+            let range_index = registry
+                .tree_range_index(tree_id)
+                .ok_or(EncodeError::EmlTreeNotUploaded { tree_id })?;
+            Ok((
+                combine_kind::EVAL_EML,
+                range_index,
+                0,
+                0,
+                execution_class_to_u32(meta.execution_class),
+            ))
+        }
     }
 }
 
@@ -499,6 +555,7 @@ mod tests {
 
     fn encode_combine_fn_only(
         combine: &CombineFn,
+        eml: Option<&EmlExpressionRegistry>,
     ) -> Result<(u32, u32, u32, u32, u32), EncodeError> {
         let op = AccumulatorOp {
             source: SourceSpec::Constant(0.0),
@@ -509,7 +566,7 @@ mod tests {
             targets: vec![(0, 0)],
         };
         let _ = op.validate();
-        encode_combine(&op)
+        encode_combine(&op, eml)
     }
 
     #[test]
@@ -541,8 +598,15 @@ mod tests {
         ];
 
         for (combine, name) in variants {
-            let result = encode_combine_fn_only(&combine);
-            assert!(result.is_ok(), "{name} returned Unsupported: {result:?}");
+            let result = encode_combine_fn_only(&combine, None);
+            if name == "EvalEML" {
+                assert!(
+                    matches!(result, Err(EncodeError::EmlTreeNotUploaded { .. })),
+                    "EvalEML without registry should fail upload: {result:?}"
+                );
+            } else {
+                assert!(result.is_ok(), "{name} returned error: {result:?}");
+            }
         }
     }
 

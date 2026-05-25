@@ -101,6 +101,7 @@ pub fn sync_gpu_buffers(
     use_accumulator_reduction_soft: bool,
     use_accumulator_reduction_exact: bool,
     use_accumulator_velocity: bool,
+    use_accumulator_eml: bool,
     overlay_compile_revision: u64,
     // B2 Approach C: the canonical TopologyState owned by the boundary.
     // When `rebuild_reduction_topology` is true, this routine refreshes
@@ -359,6 +360,12 @@ pub fn sync_gpu_buffers(
     } else if let Some(runtime) = state.accumulator_runtime.as_mut() {
         runtime.clear_velocity();
         state.set_velocity_dispatch(false, 0);
+    }
+
+    if use_accumulator_eml {
+        state
+            .sync_eml_program_table()
+            .expect("EML program table upload failed");
     }
 
     out.boundary_upload_bytes =

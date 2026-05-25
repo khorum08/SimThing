@@ -215,7 +215,8 @@ pub struct PipelineFlags {
     pub use_accumulator_reduction_soft: bool,  // C-5 Mean/WeightedMean → S-4
     pub use_accumulator_reduction_exact: bool, // C-6 Sum/Max/Min/First → S-4
     pub use_accumulator_velocity:       bool,  // C-7 → S-5
-    pub use_accumulator_eml_transfer:   bool,  // C-8 → S-2
+    pub use_accumulator_eml:            bool,  // C-8a infra upload at boundary sync (default false)
+    pub use_accumulator_eml_transfer:   bool,  // C-8c → S-2 (future)
 }
 ```
 

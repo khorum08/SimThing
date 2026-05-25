@@ -547,6 +547,9 @@ comparison.
 
 **Design half status:** **Accepted** — see
 [`docs/workshop/c8_eml_transfer_intensity_design.md`](workshop/c8_eml_transfer_intensity_design.md).
+
+**C-8a implementation status:** **Landed (local)** — infrastructure only; see worklog 2026-05-19.
+
 Selected:
 - **Execution-class taxonomy** (`EmlExecutionClass::{ExactDeterministic, SoftDeterministic, FastApproximate, CpuOracleOnly}`) plus a **consumer admissibility matrix** that gates which classes may feed which consumers.
 - **C-8 production baseline admits `ExactDeterministic` only** — `SoftDeterministic`/`FastApproximate` register structurally but no production consumer admits them yet.

@@ -139,6 +139,8 @@ pub struct PipelineFlags {
     /// C-7: routes GovernedPair velocity integration through AccumulatorOp.
     /// Legacy velocity_integration.wgsl remains flag-off/oracle until velocity sunset.
     pub use_accumulator_velocity: bool,
+    /// C-8a: upload EML program table at boundary sync (infrastructure only; no intensity migration).
+    pub use_accumulator_eml: bool,
 }
 
 impl Default for PipelineFlags {
@@ -150,6 +152,7 @@ impl Default for PipelineFlags {
             use_accumulator_reduction_soft: true,
             use_accumulator_reduction_exact: true,
             use_accumulator_velocity: false,
+            use_accumulator_eml: false,
         }
     }
 }
@@ -269,6 +272,15 @@ impl BoundaryProtocol {
             return;
         }
         state.ensure_velocity_accumulator();
+    }
+
+    fn sync_accumulator_eml_session(&self, state: &mut WorldGpuState) {
+        if !self.flags.use_accumulator_eml {
+            return;
+        }
+        state
+            .sync_eml_program_table()
+            .expect("EML program table upload failed");
     }
 
     fn sync_accumulator_threshold_ops(
@@ -787,6 +799,7 @@ impl BoundaryProtocol {
             self.flags.use_accumulator_reduction_soft,
             self.flags.use_accumulator_reduction_exact,
             self.flags.use_accumulator_velocity,
+            self.flags.use_accumulator_eml,
             self.overlay_compile_revision,
             &mut self.cached_topology_state,
         );
@@ -813,6 +826,7 @@ impl BoundaryProtocol {
         self.sync_accumulator_overlay_add_session(state);
         self.sync_accumulator_reduction_soft_session(state);
         self.sync_accumulator_velocity_session(state);
+        self.sync_accumulator_eml_session(state);
         out.gpu_sync = GpuSyncOutcome {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
             // Sum: gpu_out.threshold_regs_uploaded counts entries written by
@@ -1028,6 +1042,7 @@ impl BoundaryProtocol {
             self.flags.use_accumulator_reduction_soft,
             self.flags.use_accumulator_reduction_exact,
             self.flags.use_accumulator_velocity,
+            self.flags.use_accumulator_eml,
             self.overlay_compile_revision,
             &mut self.cached_topology_state,
         );
@@ -1042,6 +1057,7 @@ impl BoundaryProtocol {
         self.sync_accumulator_overlay_add_session(state);
         self.sync_accumulator_reduction_soft_session(state);
         self.sync_accumulator_velocity_session(state);
+        self.sync_accumulator_eml_session(state);
     }
 
     /// Read-only access to the persistent fission lineage. Useful for tests

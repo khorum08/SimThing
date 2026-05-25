@@ -2,7 +2,7 @@
 
 use thiserror::Error;
 use wgpu::{Adapter, Backends, Device, DeviceDescriptor, Features, Instance,
-           InstanceDescriptor, Limits, MemoryHints, PowerPreference, Queue,
+           InstanceDescriptor, MemoryHints, PowerPreference, Queue,
            RequestAdapterOptions};
 
 #[derive(Debug, Error)]
@@ -50,12 +50,18 @@ impl GpuContext {
             Features::empty()
         };
 
+        let mut limits = adapter.limits();
+        // C-8a EvalEML adds two read-only storage bindings (8–9); need >8 total.
+        limits.max_storage_buffers_per_shader_stage = limits
+            .max_storage_buffers_per_shader_stage
+            .max(10);
+
         let (device, queue) = adapter
             .request_device(
                 &DeviceDescriptor {
                     label:             Some("simthing-gpu device"),
                     required_features,
-                    required_limits:   Limits::default(),
+                    required_limits:   limits,
                     memory_hints:      MemoryHints::default(),
                 },
                 None,

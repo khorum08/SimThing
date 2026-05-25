@@ -6,6 +6,23 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — C-8a EML infrastructure (AccumulatorOp substrate)
+
+**Scope:** Future-prepped EML infrastructure only — no intensity/transfer/emission production migration.
+
+**Landed:**
+- `EmlExecutionClass`, `EmlFormulaMeta`, `EmlConsumerKind`/`EmlConsumerMask`, consumer admissibility validation
+- Persistent GPU `EmlGpuProgramTable` on `WorldAccumulatorRuntime` (node/range buffers, generation protocol)
+- `EvalEML` WGSL stack-machine interpreter (ExactDeterministic opcodes); CPU oracle mirror for tests
+- `tree_range_index` resolved at encode time (`combine_a`); `EncodeError::EmlTreeNotUploaded`
+- Bindings 8–9 on `accumulator_op.wgsl`; dummy buffers when no EML table; device storage-buffer limit bumped via adapter limits
+- `use_accumulator_eml` boundary-sync flag (default false)
+- Tests: `crates/simthing-sim/tests/c8a_eml_infrastructure.rs`
+
+**Not in C-8a:** C-8b intensity, C-8c transfer, C-8d emission; Soft/Fast production execution; production intensity path unchanged (`intensity_update.wgsl`).
+
+---
+
 ## 2026-05-25 — C-7 velocity integration → AccumulatorOp
 
 **Status:** Local — pending PR.

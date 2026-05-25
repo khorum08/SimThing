@@ -3,9 +3,9 @@
 **Purpose:** Single synthesis of **active workshop docs**, **production migration state**,
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
-**Last updated:** 2026-05-25  
-**Master HEAD:** pending C-7 PR  
-**Verification (last recorded):** C-7 velocity + full workspace test battery green
+**Last updated:** 2026-05-19  
+**Master HEAD:** C-8a implementation (local)  
+**Verification (last recorded):** C-8a EML infrastructure + C-1–C-7 + S-4 regression green
 
 ---
 
@@ -22,7 +22,7 @@ Two parallel tracks:
 Legacy reduction is deleted (S-4). Remaining legacy passes (intent, overlay, threshold,
 velocity, intensity) are oracle/fallback until their S-phase deletions.
 
-**Next gates:** **S-3** overlay sunset · **C-8** intensity/EML · **S-6** threshold sunset.
+**Next gates:** **C-8b** intensity migration · **C-8c** transfer · **C-8d** emission · **S-3** overlay sunset · **S-6** threshold sunset.
 
 ---
 
@@ -44,7 +44,8 @@ velocity, intensity) are oracle/fallback until their S-phase deletions.
 | **C-5 remedial** | #123 | Depth-interleaved soft/exact reduction per depth bucket |
 | **C-6** | #124 | Sum / Max / Min / First exact reductions; full AccumulatorOp path when soft+exact on |
 | **S-4** | #126 | Legacy `reduction.wgsl` deleted; AccumulatorOp sole reduction path; flags default on |
-| **C-7** | pending | GovernedPair velocity integration → AccumulatorOp `IntegrateWithClamp`; dt via tick params |
+| **C-7** | #127 | GovernedPair velocity integration → AccumulatorOp `IntegrateWithClamp`; dt via tick params |
+| **C-8a** | local | EML infrastructure: execution classes, registry, persistent GPU program table, EvalEML interpreter (ExactDeterministic only); `use_accumulator_eml` flag (default false) |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

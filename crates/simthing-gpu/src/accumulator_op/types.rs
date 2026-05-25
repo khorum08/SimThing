@@ -1,6 +1,16 @@
 //! GPU-layout types for AccumulatorOp v2 Pass B.
 
 use bytemuck::{Pod, Zeroable};
+pub use simthing_core::EmlNodeGpu;
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+pub struct EmlTreeRangeGpu {
+    pub node_offset: u32,
+    pub node_count: u32,
+    pub execution_class: u32,
+    pub flags: u32,
+}
 
 pub const DEFAULT_EMISSION_CAPACITY: u32 = 1024;
 /// Default capacity for the C-1 threshold-crossing buffer. Sized for typical
