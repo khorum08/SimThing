@@ -244,6 +244,13 @@ may batch or sample timestamp readbacks.
 
 ### ⚠️ PR B-4 — Opus review: summary/checksum readback design
 
+**Design half status:** **Accepted** — see
+[`docs/workshop/slot_summary_b4_design.md`](workshop/slot_summary_b4_design.md).
+Selected layout: column-group checksums + whole-slot checksum + reserved
+`flags` word, no semantic values, no GPU-side previous-summary comparison.
+The Composer implementation PR (`feat(gpu): implement B-4 AccumulatorOp
+summary protocol`) lands separately per §9 of the memo.
+
 **Model:** Opus (design), Composer 2.5 (implementation)  
 **Why Opus:** The summary/checksum readback path is the default production
 tier from the ADR. The workshop showed summary mode wins at 3.4–4.4× over
