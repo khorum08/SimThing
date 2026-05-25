@@ -1,21 +1,37 @@
 # SimThing Todo Log
 
-Current parking state: **`simthing-spec` PRs 1–11 complete**; **O1**, **O1b**, **EffectTarget**,
-**S5** (+ fission-clone follow-up), **O4**, **O2 Replay v3**, **B3 boundary-skip precision**,
-and **I1 install atomicity** landed on `master`.
-`master` and `origin/master` synced at **`bb09818`** (PR #77 workshop WeightedMean hardening).
+Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B3/I1) complete;
+**AccumulatorOp v2 Phases A–B** in progress (A-4 through B-2).
+`master` and `origin/master` synced at **`a015032`** (PR #92 B-1 bootstrap hardening); B-2 merge pending.
 
-**Parking synthesis:** [`docs/design_v6.5.md`](design_v6.5.md) — read first for HEAD, gates, doc map.
+**Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
+Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
 
-**Tests:** `cargo test --workspace` → **362** passed, **1** ignored, zero
-warnings. Debug and **release** profile build/tests clean.
-(Includes **17** workshop-only integration tests in `simthing-workshop`; see below.)
+**Tests:** `cargo test --workspace` green at last full run (430 passed, 6 ignored after A-4).
+AccumulatorOp module: **19** gpu + **9** core tests after B-2.
 
-**Cursor handoff:** complete (PRs #56–#59). O1b and S5 tests **green** after Opus commits
-`2eff1e0`–`8904522`.
+**Cursor handoff:** AccumulatorOp v2 Phases A–B (see table below).
 
-**Canonical spec progress:** `docs/design_v6.5.md` (parking) ·
-`docs/workshop/simthing_spec_progress_log.md` (PR ledger) · `docs/worklog.md` (O1b–O4 notes)
+**Canonical AccumulatorOp v2 progress:** `docs/accumulator_op_v2_production_plan.md` ·
+`docs/adr_accumulator_op_v2.md` · `docs/design_v7.md` · `docs/worklog.md`
+
+**Canonical spec progress (v6 parking):** `docs/design_v6.5.md` ·
+`docs/workshop/simthing_spec_progress_log.md` (PR ledger) · `docs/worklog.md` (session notes)
+
+### AccumulatorOp v2 — Phases A–B (2026-05-19)
+
+| PR | GitHub | Commit | Scope |
+|----|--------|--------|-------|
+| **A-4** | #90 | `cb33006` | Soft-aggregate tolerance — Opus audit, `SoftAggregateGuard`, threshold validator |
+| **B-1** | #91 | `afff3b6` | `AccumulatorOpSession` persistent buffers + bootstrap kernel |
+| **B-1 fix** | #92 | `f167e5c` | Scale encoding, contention rejection, clamped transfer, provisional readback tiers |
+| **B-2** | *(this session)* | — | EmitEvent, atomic emission count, overflow reporting, CPU oracle emissions |
+
+**Earlier A-phase:** A-1 docs (#86–#87), A-2 types (#88), A-3 EML registry (#89).
+
+**B-2 scope (landing):** Identity EmitEvent only; non-integrated; no threshold gates / WeightedMean / EvalEML / overlay / conjunctive / `BoundaryProtocol`.
+
+**Next:** B-3 timestamp queries · B-4 Opus summary design · C-1 threshold scan migration.
 
 **Implementation:** `simthing-driver::SpecSessionState` owns spec runtime
 state; `simthing-driver::install` compiles a `GameModeSpec` against a

@@ -68,6 +68,10 @@ One execution model:
   skeleton (non-contended Identity/Sum/clamped transfer only). Production
   AccumulatorOp semantics lock only as C-family migrations pass parity.
 
+  B-2 note: the kernel is production-shaped for persistent buffers and compact
+  event readback (Identity EmitEvent), but operation-family semantics are only
+  authoritative once their C/E migration PRs pass parity.
+
 One retained operation:
   snapshot — copy_buffer_to_buffer (memcpy; not a per-slot write)
 
@@ -408,6 +412,7 @@ Summary (default production):
   Volume: 8 bytes × n_slots per tick.
 
   B-1 ships checksum-only SlotSummary as a provisional bootstrap tier.
+  B-2 continues to use this checksum-only tier for parity.
   B-4 remains responsible for the final summary/checksum/coarse-value design.
 
 Compact records (production audit / selective replay):

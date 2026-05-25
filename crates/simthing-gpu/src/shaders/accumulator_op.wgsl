@@ -1,5 +1,5 @@
-// Pass B bootstrap kernel — non-contended Identity, Sum, and clamped transfer only.
-// B-2 expands with EmitEvent, atomics, and broader combine/gate support.
+// Pass B kernel — non-contended Identity, Sum, clamped transfer, and EmitEvent.
+// Threshold gates, WeightedMean, EvalEML, and overlay families land in C/E phases.
 
 struct AccumulatorOpGpu {
     source_kind: u32,
@@ -34,6 +34,10 @@ struct AccumulatorTickParams {
     current_band: u32,
     n_slots: u32,
     n_dims: u32,
+    emission_capacity: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
 }
 
 struct AccumulatorSummaryParams {
@@ -48,6 +52,11 @@ struct SlotSummaryGpu {
     checksum: u32,
 }
 
+struct EmissionRecordGpu {
+    reg_idx: u32,
+    emit_count: u32,
+}
+
 const SOURCE_CONSTANT: u32 = 0u;
 const SOURCE_SLOT_VALUE: u32 = 1u;
 const SOURCE_SLOT_RANGE: u32 = 2u;
@@ -60,13 +69,16 @@ const GATE_ORDER_BAND: u32 = 4u;
 
 const CONSUME_NONE: u32 = 0u;
 const CONSUME_SUBTRACT_FROM_SOURCE: u32 = 1u;
+const CONSUME_EMIT_EVENT: u32 = 5u;
 
 const SCALE_IDENTITY: u32 = 0u;
 const SCALE_CONSTANT: u32 = 1u;
 
 @group(0) @binding(0) var<storage, read> ops: array<AccumulatorOpGpu>;
 @group(0) @binding(1) var<storage, read_write> values: array<f32>;
-@group(0) @binding(2) var<uniform> tick_params: AccumulatorTickParams;
+@group(0) @binding(2) var<storage, read_write> emissions: array<EmissionRecordGpu>;
+@group(0) @binding(3) var<storage, read_write> emission_count: atomic<u32>;
+@group(0) @binding(4) var<uniform> tick_params: AccumulatorTickParams;
 
 fn linear_idx(slot: u32, col: u32) -> u32 {
     return slot * tick_params.n_dims + col;
@@ -92,7 +104,7 @@ fn apply_scale(value: f32, op: AccumulatorOpGpu) -> f32 {
 fn clamped_transfer(op: AccumulatorOpGpu) -> f32 {
     let available = values[linear_idx(op.source_slot, op.source_col)];
     let requested = bitcast<f32>(op.scale_a);
-    return min(max(requested, 0.0), available);
+    return min(max(requested, 0.0), max(available, 0.0));
 }
 
 fn gather_value(op: AccumulatorOpGpu) -> f32 {
@@ -118,6 +130,14 @@ fn gather_value(op: AccumulatorOpGpu) -> f32 {
     }
 
     return apply_scale(raw, op);
+}
+
+fn clamp_transfer(write_value: f32, op: AccumulatorOpGpu) -> f32 {
+    if (op.consume == CONSUME_SUBTRACT_FROM_SOURCE && op.source_kind == SOURCE_SLOT_VALUE) {
+        let available = values[linear_idx(op.source_slot, op.source_col)];
+        return min(max(write_value, 0.0), max(available, 0.0));
+    }
+    return write_value;
 }
 
 fn write_target(slot: u32, col: u32, write_value: f32, op: AccumulatorOpGpu) {
@@ -151,6 +171,21 @@ fn apply_consume(write_value: f32, op: AccumulatorOpGpu) {
     }
 }
 
+fn maybe_emit_event(op_idx: u32, write_value: f32, op: AccumulatorOpGpu) {
+    if (op.consume != CONSUME_EMIT_EVENT) {
+        return;
+    }
+    let emit_count = u32(floor(max(write_value, 0.0)));
+    if (emit_count == 0u) {
+        return;
+    }
+    let idx = atomicAdd(&emission_count, 1u);
+    if (idx < tick_params.emission_capacity) {
+        emissions[idx].reg_idx = op_idx;
+        emissions[idx].emit_count = emit_count;
+    }
+}
+
 @compute @workgroup_size(64)
 fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
     let op_idx = gid.x;
@@ -163,9 +198,11 @@ fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
 
-    let write_value = gather_value(op);
+    var write_value = gather_value(op);
+    write_value = clamp_transfer(write_value, op);
     apply_targets(write_value, op);
     apply_consume(write_value, op);
+    maybe_emit_event(op_idx, write_value, op);
 }
 
 @group(0) @binding(0) var<storage, read> summary_values: array<f32>;
