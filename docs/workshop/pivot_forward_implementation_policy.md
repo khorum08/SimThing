@@ -1,6 +1,6 @@
 # Pivot-Forward Implementation Policy
 
-**Status:** Active (2026-05-25)  
+**Status:** Active (2026-05-19)  
 **Authority:** `docs/adr_accumulator_op_v2.md`, `docs/design_v7.md`, `docs/accumulator_op_v2_production_plan.md`
 
 ---
@@ -66,7 +66,7 @@ Reviewer must verify the PR does not deepen legacy dependency.
 
 Performance claims require **timestamped GPU measurements** (ADR invariant): legacy pass µs, AccumulatorOp pass µs, wall time, submission count, readback bytes.
 
-## 6. Current migration state (2026-05-25)
+## 6. Current migration state (2026-05-19)
 
 | Item | Status |
 |------|--------|
@@ -76,8 +76,10 @@ Performance claims require **timestamped GPU measurements** (ADR invariant): leg
 | C-4 Overlay Mul/Set | **Opus-gated** — full order-band compiler |
 | B-4 Summary design | Accepted (`docs/workshop/slot_summary_b4_design.md`) |
 | B-4I Summary impl | Landed — production `SlotSummaryGpu` + group checksums |
-| C-INF-1 Runtime consolidation | Landed — `WorldAccumulatorRuntime` on `WorldGpuState` |
-| C-INF-2 Legacy oracle harness | Landed — `legacy_oracle` module + integration tests |
+| B-4 world integration | Landed (#111) — `WorldSummaryRuntime` reads `WorldGpuState.values` after integrated C-1/C-2/C-3 ticks |
+| C-INF-1 Runtime consolidation | Landed (#109) — `WorldAccumulatorRuntime` on `WorldGpuState` |
+| C-INF-2 Legacy oracle harness | Landed (#109) — `legacy_oracle` module + integration tests |
+| Pivot-forward remedial | Landed (#111) — authoritative feature flags clear stale sessions; `ToleranceAbsEpsilon` oracle naming |
 
 ## 7. Priority infrastructure (non-Opus)
 

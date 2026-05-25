@@ -439,6 +439,9 @@ Summary (default production):
   Volume: 32 bytes × n_slots per tick.
 
   B-4 design accepted; B-4I implements the production summary tier.
+  PR #111 (`WorldSummaryRuntime`) integrates summary generation with integrated
+  C-1/C-2/C-3 world execution — summaries reflect `WorldGpuState.values`, not
+  only standalone `AccumulatorOpSession` ticks.
   Full readback remains debug/test only.
 
 Compact records (production audit / selective replay):

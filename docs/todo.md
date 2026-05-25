@@ -2,9 +2,9 @@
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B3/I1) complete;
 **AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98),
-**C-2** (#99–#100), **C-3** (#105–#107), **pivot-forward policy + B-4I** (#108), and
-**C-INF runtime/oracle** (#109) landed.
-`master` @ **`164ac14`** (PR #109 C-INF-1/C-INF-2 runtime consolidation + oracle harness).
+**C-2** (#99–#100), **C-3** (#105–#107), **pivot-forward policy + B-4I** (#108),
+**C-INF runtime/oracle** (#109), and **pivot-forward remedial** (#111) landed.
+`master` @ **`0e7854c`** (PR #112 doc sync; code @ PR #111 authoritative flags + world summary).
 
 **Pivot posture:** AccumulatorOp v2 is the production direction. Legacy GPU passes are
 **oracle/fallback only** until S-phase deletion. See
@@ -14,8 +14,8 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
 
 **Tests:** `cargo test --workspace` green at last full run (430+ passed, ignored perf gates).
-AccumulatorOp module: **57** gpu accumulator_op unit tests + **9** core tests; C-1/C-2/C-3 parity
-(26) + C-INF-2 harness (2) green after #109.
+AccumulatorOp module: **61** gpu accumulator_op unit tests; C-1/C-2/C-3 parity (26) +
+C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated (2) green after #111.
 
 **Cursor handoff:** AccumulatorOp v2 Phase C migrations + pivot-forward infrastructure (see table below).
 
