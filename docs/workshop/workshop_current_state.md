@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** C-8a implementation (local)  
-**Verification (last recorded):** C-8a EML infrastructure + C-1–C-7 + S-4 regression green
+**Master HEAD:** C-8a remedial (local)  
+**Verification (last recorded):** C-8a remedial hardening + C-1–C-7 regression green
 
 ---
 
@@ -45,7 +45,8 @@ velocity, intensity) are oracle/fallback until their S-phase deletions.
 | **C-6** | #124 | Sum / Max / Min / First exact reductions; full AccumulatorOp path when soft+exact on |
 | **S-4** | #126 | Legacy `reduction.wgsl` deleted; AccumulatorOp sole reduction path; flags default on |
 | **C-7** | #127 | GovernedPair velocity integration → AccumulatorOp `IntegrateWithClamp`; dt via tick params |
-| **C-8a** | local | EML infrastructure: execution classes, registry, persistent GPU program table, EvalEML interpreter (ExactDeterministic only); `use_accumulator_eml` flag (default false) |
+| **C-8a** | #129 | EML infrastructure: execution classes, registry, persistent GPU program table, EvalEML interpreter (ExactDeterministic only); `use_accumulator_eml` flag (default false) |
+| **C-8a remedial** | local | Node-count accounting, unchanged boundary skip, empty-upload generation bump, HardThreshold gate, PARAM validation, CpuOracleOnly debug registration |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

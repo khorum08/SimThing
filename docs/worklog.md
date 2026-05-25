@@ -6,6 +6,14 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — C-8a remedial: EML program-table and admissibility hardening
+
+**Fixes:** node-count accounting uses `nodes.len()`; meta/node mismatch rejected; empty upload bumps generation; unchanged boundary sync skips reupload via `uploaded_registry_generation`; HardThreshold admits ExactDeterministic only (soft requires future guard path); PARAM index 0..=3 validation; `register_cpu_oracle_formula` for debug-only CpuOracleOnly trees.
+
+**Unchanged:** GPU-resident EvalEML; no C-8b/c/d migration.
+
+---
+
 ## 2026-05-19 — C-8a EML infrastructure (AccumulatorOp substrate)
 
 **Scope:** Future-prepped EML infrastructure only — no intensity/transfer/emission production migration.
