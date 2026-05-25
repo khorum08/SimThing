@@ -283,14 +283,24 @@ fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
 
-    // Threshold ops form a disjoint dispatch family from band-gated ops:
-    // they have no targets, no source/consume mutation of values, and a
-    // dedicated emission buffer. Routing them here keeps the
-    // gather/combine/apply path free of threshold-specific branches.
+    // Threshold ops dispatch on consume mode:
+    //   CONSUME_EMIT_EVENT: detect crossing, write compact threshold record.
+    //   CONSUME_NONE:       detect crossing, write to targets (no record).
+    //                       Used by E-1 debt-band preconditions.
+    // Both paths return early — threshold ops are disjoint from band-gated ops.
     if (op.gate_kind == GATE_THRESHOLD) {
-        // Validator (encode.rs::validate_threshold_op) guarantees that any
-        // threshold op also has consume = EmitEvent.
-        maybe_emit_threshold(op_idx, op);
+        if (op.consume == CONSUME_EMIT_EVENT) {
+            maybe_emit_threshold(op_idx, op);
+        } else if (op.consume == CONSUME_NONE && op.source_kind == SOURCE_SLOT_VALUE) {
+            let addr = linear_idx(op.source_slot, op.source_col);
+            let prev = previous_values[addr];
+            let curr = atomic_read_f32_at(addr);
+            let threshold = bitcast<f32>(op.gate_b);
+            if (threshold_crossed(prev, curr, threshold, op.gate_a)) {
+                var write_value = gather_value(op);
+                apply_targets(write_value, op);
+            }
+        }
         return;
     }
 

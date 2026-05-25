@@ -1430,6 +1430,39 @@ mod tests {
     }
 
     #[test]
+    fn threshold_none_writes_target_on_crossing_not_event() {
+        use simthing_core::ThresholdDirection;
+
+        set_debug_readback_allowed(true);
+        let (ctx, mut session) = gpu_session(2, 1);
+        session.upload_values(&ctx, &[0.5, 0.0]);
+        session.upload_previous_values(&ctx, &[0.2, 0.0]);
+
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Threshold {
+                value: 0.3,
+                direction: ThresholdDirection::Upward,
+            },
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![(1, 0)],
+        };
+        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session.tick(&ctx, 0).unwrap();
+
+        let values = session.readback_full(&ctx).unwrap();
+        assert!(
+            (values[1] - 0.5).abs() < 1e-5,
+            "target not written: {}",
+            values[1]
+        );
+        let emissions = session.readback_threshold_emissions(&ctx).unwrap();
+        assert!(emissions.is_empty(), "spurious emission: {emissions:?}");
+    }
+
+    #[test]
     fn b2_emit_event_writes_compact_record() {
         set_debug_readback_allowed(true);
         let ctx = GpuContext::new_blocking().expect("gpu context");
@@ -1710,7 +1743,9 @@ mod tests {
         let regs = threshold_test_regs();
         let (ops, kinds) = threshold_registrations_to_ops(&regs).unwrap();
 
-        let mut expected = execute_threshold_ops_cpu(&previous, &current, &ops, n_dims).unwrap();
+        let mut expected_values = current.clone();
+        let mut expected =
+            execute_threshold_ops_cpu(&previous, &mut expected_values, &ops, n_dims).unwrap();
         expected.sort_by_key(|e| (e.slot, e.col, e.reg_idx));
 
         let mut session = AccumulatorOpSession::new_attached(&ctx, 3, n_dims, 16);
