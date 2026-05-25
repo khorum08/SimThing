@@ -25,7 +25,8 @@ pub use accumulator_op::{
 pub use context::{GpuContext, GpuInitError};
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
 pub use reduction_orderband::{
-    plan_reduction_orderband, ReductionOrderBandPlan, ReductionPlanError,
+    plan_reduction_orderband, reduction_soft_band_for_depth_bucket, ReductionOrderBandPlan,
+    ReductionPlanError,
 };
 pub use overlay_prep::build_overlay_deltas;
 pub use passes::{AccumulatorPipelineSessions, Pipelines};

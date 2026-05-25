@@ -103,6 +103,67 @@ fn run_c5_reduction_only(state: &mut WorldGpuState) {
     state.accumulator_runtime = Some(runtime);
 }
 
+fn weighted_mean_tree_fixture() -> (DimensionRegistry, SimThing, SlotAllocator) {
+    let mut reg = DimensionRegistry::new();
+    let pop_id = reg.register({
+        let mut pop = SimProperty::simple("demo", "population", 0);
+        pop.layout.sub_fields[0].reduction_override = Some(ReductionRule::Sum);
+        pop
+    });
+    let pop_layout = reg.property(pop_id).layout.clone();
+    let pop_a_off = pop_layout.offset_of(&SubFieldRole::Amount).unwrap();
+
+    let mut loyalty = SimProperty::simple("core", "loyalty", 0);
+    let loyalty_layout = loyalty.layout.clone();
+    let loyalty_a_off = loyalty_layout.offset_of(&SubFieldRole::Amount).unwrap();
+    loyalty.layout.sub_fields[0].reduction_override =
+        Some(ReductionRule::WeightedMean { by: pop_id });
+    let loyalty_id = reg.register(loyalty);
+
+    // Single location keeps cohort child slots contiguous for the C-5 planner.
+    // World WeightedMean uses location population, which must be exact-summed
+    // at the location depth before the world soft band runs.
+    let mut world = SimThing::new(SimThingKind::World, 0);
+    let mut loc = SimThing::new(SimThingKind::Location, 0);
+    for &(loyalty_amt, pop_amt) in &[(0.0_f32, 1.0_f32), (1.0, 100.0)] {
+        let mut c = SimThing::new(SimThingKind::Cohort, 0);
+        let mut lpv = PropertyValue::from_layout(&loyalty_layout);
+        lpv.data[loyalty_a_off] = loyalty_amt;
+        c.add_property(loyalty_id, lpv);
+        let mut ppv = PropertyValue::from_layout(&pop_layout);
+        ppv.data[pop_a_off] = pop_amt;
+        c.add_property(pop_id, ppv);
+        loc.add_child(c);
+    }
+    world.add_child(loc);
+
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&world);
+    (reg, world, alloc)
+}
+
+fn setup_weighted_mean_state() -> (WorldGpuState, DimensionRegistry, Topology, Vec<f32>) {
+    let ctx = GpuContext::new_blocking().expect("gpu");
+    let (reg, world, alloc) = weighted_mean_tree_fixture();
+    let n_dims = reg.total_columns;
+    let topo = build_topology(&world, &alloc);
+    let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
+    let mut flat = vec![0.0_f32; state.values_len()];
+    project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
+    state.write_values(&flat);
+    upload_topology(&mut state, &topo, &reg);
+
+    state.ensure_reduction_soft_accumulator();
+    let topo_state = TopologyState::build(&world, &alloc);
+    let descriptors = build_column_rule_descriptors(&reg, n_dims);
+    let plan = plan_reduction_orderband(&topo_state, &descriptors, state.n_dims).unwrap();
+    state
+        .upload_reduction_soft_ops_with_bands(&plan.ops, plan.n_bands)
+        .unwrap();
+
+    (state, reg, topo, flat)
+}
+
 #[test]
 fn c5_accumulator_mean_three_runs_bit_identical() {
     let Some(_ctx) = try_gpu() else {
@@ -148,6 +209,95 @@ fn c5_mean_legacy_vs_accumulator_within_1e_5() {
 
     let err = max_abs_error(&legacy, &acc);
     assert!(err < TOL, "legacy vs accumulator max_abs_error={err}");
+}
+
+#[test]
+fn c5_accumulator_weighted_mean_three_runs_bit_identical() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let (mut state, _, _, _) = setup_weighted_mean_state();
+    run_c5_reduction_only(&mut state);
+    let run1 = state.read_output_vectors();
+    run_c5_reduction_only(&mut state);
+    let run2 = state.read_output_vectors();
+    run_c5_reduction_only(&mut state);
+    let run3 = state.read_output_vectors();
+
+    for (i, (a, b)) in run1.iter().zip(run2.iter()).enumerate() {
+        assert_eq!(a.to_bits(), b.to_bits(), "run1 vs run2 at {i}");
+    }
+    for (i, (a, b)) in run1.iter().zip(run3.iter()).enumerate() {
+        assert_eq!(a.to_bits(), b.to_bits(), "run1 vs run3 at {i}");
+    }
+}
+
+#[test]
+fn c5_weighted_mean_legacy_vs_accumulator_within_1e_5() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let (mut state, _reg, _topo, flat) = setup_weighted_mean_state();
+    let n_bands = state.accumulator_reduction_soft_bands;
+
+    let pipelines = Pipelines::new(&state.ctx);
+    state.set_reduction_soft_dispatch(false, 0);
+    pipelines.run_reduction_passes(&state);
+    let legacy = state.read_output_vectors();
+
+    state.write_values(&flat);
+    state.set_reduction_soft_dispatch(true, n_bands);
+    run_c5_reduction_only(&mut state);
+    let acc = state.read_output_vectors();
+
+    let err = max_abs_error(&legacy, &acc);
+    assert!(err < TOL, "legacy vs accumulator max_abs_error={err}");
+}
+
+#[test]
+fn c5_weighted_mean_reads_exact_reduced_weight_columns_by_depth() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let (mut state, reg, _topo, flat) = setup_weighted_mean_state();
+    let n_bands = state.accumulator_reduction_soft_bands;
+
+    let pipelines = Pipelines::new(&state.ctx);
+
+    state.set_reduction_soft_dispatch(false, 0);
+    pipelines.run_reduction_passes(&state);
+    let legacy = state.read_output_vectors();
+
+    state.write_values(&flat);
+    state.set_reduction_soft_dispatch(true, n_bands);
+    run_c5_reduction_only(&mut state);
+    let c5 = state.read_output_vectors();
+
+    let cross_err = max_abs_error(&legacy, &c5);
+    assert!(
+        cross_err < TOL,
+        "legacy vs C-5 max_abs_error={cross_err} (exact-weight dependency ordering)"
+    );
+
+    // (0*1 + 1*100) / 101 — sensitive to whether world WeightedMean sees
+    // exact-summed location population or stale leaf-copy weights.
+    const EXPECTED_WORLD_LOYALTY: f32 = 100.0 / 101.0;
+
+    let loyalty_id = reg.id_of("core", "loyalty").expect("loyalty");
+    let loyalty_layout = reg.property(loyalty_id).layout.clone();
+    let loyalty_a_off = loyalty_layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let loyalty_gpu_col = reg.column_range(loyalty_id).start + loyalty_a_off;
+    let world_loyalty = c5[loyalty_gpu_col];
+    assert!(
+        (world_loyalty - EXPECTED_WORLD_LOYALTY).abs() < TOL,
+        "world loyalty={world_loyalty} expected={EXPECTED_WORLD_LOYALTY}"
+    );
 }
 
 #[test]
