@@ -3,9 +3,14 @@ pub mod ids;
 pub mod overlay;
 pub mod property;
 pub mod reduction;
+pub mod accumulator_op;
 pub mod registry;
 pub mod simthing;
 
+pub use accumulator_op::{
+    AccumulatorOp, AccumulatorOpError, CombineFn, ConsumeMode, GateSpec, InputSpec, ScaleSpec,
+    SoftAggregateGuard, SourceSpec, ThresholdDirection,
+};
 pub use ids::{OverlayId, SimPropertyId, SimThingId};
 pub use overlay::{
     DissolveCondition, Overlay, OverlayKind, OverlayLifecycle, OverlaySource,
