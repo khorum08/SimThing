@@ -6,6 +6,51 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-25 — Pivot-forward AccumulatorOp corrections (#101)
+
+**Status:** merged PR #101 (`feat/pivot-forward-corrections` → `master`, stacked on #100).
+
+**Scope:** Opus pivot-forward handoff Fixes 1–6 — unblock C-3 through E-3 without implementing
+new WGSL combine kernels.
+
+**Landed:**
+
+- **Fix 1** — `validate_no_contention` narrowed: allow same-cell Identity/Sum adds; reject only
+  double `SubtractFromSource` on the same source cell per band
+- **Fix 2** — `ConjunctiveCrossing` encodes to `source_kind::CONJUNCTIVE_CROSSING` (first input +
+  `source_count`; full 4-input WGSL in E-3)
+- **Fix 3** — all 12 `CombineFn` variants encode to `combine_kind` constants (encoder stubs only)
+- **Fix 4** — `Threshold + ConsumeMode::None` accepted (debt-band precondition path)
+- **Fix 5** — `run_reduction_passes` single encoder/submit with per-depth uniform bind groups
+  (matches tick pipeline pattern)
+- **Fix 6** — WGSL `values` as `array<atomic<i32>>` with CAS add/subtract; index-based helpers
+  (naga rejects storage pointer params); `atomic_same_cell_add_conserves_total` test
+
+**Tests:** **97** gpu `accumulator_op` tests; workspace green (`simthing-gpu` + `simthing-sim`).
+
+**Next:** C-3 overlay Add migration (requires merged pivot-forward).
+
+---
+
+## 2026-05-25 — C-2 refinements (#100)
+
+**Status:** merged PR #100 (`feat/c2-refine-c3-overlay-add` → `master`).
+
+**Scope:** Corrective refinements to C-2 integrated pipeline — not C-3 overlay migration.
+
+**Landed:**
+
+- `AccumulatorOpSession::finish_intent()` — intent timestamp completes when supported
+- `TickGpuError::AccumulatorThresholdReadback` surfaces threshold readback failures in
+  `TickOutcome::gpu_error` (no silent `.unwrap_or_default()`)
+- `WorldGpuState::clear_accumulator_sessions()` on registry/slot rebuild — prevents stale
+  sessions after slot growth
+- `c1_threshold_accumulator_readback_error_surfaces_in_tick_outcome` sim test
+
+**Next:** pivot-forward (#101) then C-3 overlay Add.
+
+---
+
 ## 2026-05-19 — C-2: Intent delta AccumulatorOp migration (#99)
 
 **Status:** `master` @ `531834a` (PR #99 merged).

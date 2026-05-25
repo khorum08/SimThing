@@ -1,15 +1,15 @@
 # SimThing Todo Log
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B3/I1) complete;
-**AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98)
-and **C-2** (#99) landed.
-`master` @ **`b972f3e`** (PR #99 C-2 + doc sync).
+**AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98),
+**C-2** (#99), **C-2 refine** (#100), and **pivot-forward** (#101) landed.
+`master` @ post-#101 merge (C-2 refinements + pivot-forward Fixes 1–6).
 
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
 Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
 
 **Tests:** `cargo test --workspace` green at last full run (430+ passed, ignored perf gates).
-AccumulatorOp module: **40** gpu + **9** core tests (after C-2).
+AccumulatorOp module: **97** gpu + **9** core tests (after pivot-forward #101).
 
 **Cursor handoff:** AccumulatorOp v2 Phase C migrations (see table below).
 
@@ -41,8 +41,10 @@ AccumulatorOp module: **40** gpu + **9** core tests (after C-2).
 | **C-1** | #97 | Pass 7 threshold scan → AccumulatorOp `Threshold` + `EmitEvent`; `use_accumulator_threshold_scan` (default false) |
 | **C-1 refine** | #98 | Single-submission pipeline integration; Opus perf reframe (`docs/workshop/c1_perf_reframe_memo.md`); no-regression readback gate |
 | **C-2** | #99 | Intent delta application → `COMBINE_AFFINE_INTENT`; `use_accumulator_intent` (default false); combined C-1/C-2 ordering test |
+| **C-2 refine** | #100 | `finish_intent()` timestamp; `TickGpuError::AccumulatorThresholdReadback`; registry growth clears accumulator sessions |
+| **Pivot-forward** | #101 | Fixes 1–6: narrow contention validator, encode all combine/source stubs, `Threshold+None`, single-submit reduction, atomic WGSL values |
 
-**Next:** B-4 Opus summary design · **C-3** overlay Add migration.
+**Next:** **C-3** overlay Add migration · B-4 Opus summary design.
 
 **Implementation:** `simthing-driver::SpecSessionState` owns spec runtime
 state; `simthing-driver::install` compiles a `GameModeSpec` against a

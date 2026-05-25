@@ -117,16 +117,30 @@ pub struct AccumulatorSummaryParams {
 }
 
 pub mod source_kind {
-    pub const CONSTANT:   u32 = 0;
-    pub const SLOT_VALUE: u32 = 1;
-    pub const SLOT_RANGE: u32 = 2;
+    pub const CONSTANT:             u32 = 0;
+    pub const SLOT_VALUE:           u32 = 1;
+    pub const SLOT_RANGE:           u32 = 2;
+    /// Conjunctive multi-input (MinAcrossInputs). Full 4-input GPU support
+    /// lands in E-3. For now encodes the first input only; source_count
+    /// carries the declared input count for validation.
+    pub const CONJUNCTIVE_CROSSING: u32 = 3;
 }
 
 pub mod combine_kind {
-    pub const IDENTITY:      u32 = 0;
-    pub const SUM:           u32 = 1;
+    pub const IDENTITY:          u32 = 0;
+    pub const SUM:               u32 = 1;
+    pub const MEAN:              u32 = 2; // C-5/C-6
+    pub const MAX:               u32 = 3; // C-6
+    pub const MIN:               u32 = 4; // C-6
+    pub const WEIGHTED_MEAN:     u32 = 5; // C-5 (Opus-gated)
     /// C-2 intent delta: `values[slot,col] = values[slot,col] * mul + add`.
-    pub const AFFINE_INTENT: u32 = 6;
+    pub const AFFINE_INTENT:     u32 = 6; // C-2 (implemented)
+    pub const PRODUCT:           u32 = 7; // C-4
+    pub const LAST_BY_PRIORITY:  u32 = 8; // C-4
+    pub const INTEGRATE_CLAMP:   u32 = 9; // C-7
+    pub const CROSSING_FORMULA:  u32 = 10; // E-1
+    pub const MIN_ACROSS_INPUTS: u32 = 11; // E-3
+    pub const EVAL_EML:          u32 = 12; // C-8 (Opus-gated)
 }
 
 pub mod gate_kind {
@@ -137,10 +151,12 @@ pub mod gate_kind {
 }
 
 pub mod consume_kind {
-    pub const NONE:                 u32 = 0;
-    pub const SUBTRACT_FROM_SOURCE: u32 = 1;
+    pub const NONE:                    u32 = 0;
+    pub const SUBTRACT_FROM_SOURCE:    u32 = 1;
+    /// Matches `ConsumeMode::SubtractFromAllInputs` ordinal in simthing-core.
+    pub const SUBTRACT_FROM_ALL_INPUTS: u32 = 2;
     /// Matches `ConsumeMode::EmitEvent` ordinal in simthing-core.
-    pub const EMIT_EVENT: u32 = 5;
+    pub const EMIT_EVENT:              u32 = 5;
 }
 
 pub mod scale_kind {

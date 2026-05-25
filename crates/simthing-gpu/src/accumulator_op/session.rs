@@ -818,6 +818,10 @@ impl AccumulatorOpSession {
     }
 
     /// Full values buffer readback — debug only unless explicitly allowed.
+    ///
+    /// The values buffer is stored as `atomic<i32>` on GPU (same bits as f32).
+    /// Readback reinterprets i32 bits as f32 via cast_slice — this is exact,
+    /// not an approximation.
     pub fn readback_full(&self, ctx: &GpuContext) -> Result<Vec<f32>, AccumulatorOpSessionError> {
         if !DEBUG_READBACK_ALLOWED.load(Ordering::Relaxed) {
             eprintln!(
@@ -1161,7 +1165,7 @@ mod tests {
     }
 
     #[test]
-    fn upload_ops_rejects_duplicate_target_same_band() {
+    fn upload_ops_allows_duplicate_target_same_band() {
         let ops = vec![
             AccumulatorOp {
                 source: SourceSpec::Constant(1.0),
@@ -1181,15 +1185,7 @@ mod tests {
             },
         ];
         let (ctx, mut session) = gpu_session(4, 1);
-        let err = session.upload_ops(&ctx, &ops).unwrap_err();
-        assert!(matches!(
-            err,
-            AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
-                band: 0,
-                slot: 1,
-                col: 0
-            })
-        ));
+        session.upload_ops(&ctx, &ops).unwrap();
     }
 
     #[test]
@@ -1249,7 +1245,7 @@ mod tests {
     }
 
     #[test]
-    fn upload_ops_rejects_always_and_orderband_same_target() {
+    fn upload_ops_allows_always_and_orderband_same_target() {
         let ops = vec![
             AccumulatorOp {
                 source: SourceSpec::Constant(1.0),
@@ -1269,18 +1265,11 @@ mod tests {
             },
         ];
         let (ctx, mut session) = gpu_session(4, 1);
-        assert!(matches!(
-            session.upload_ops(&ctx, &ops),
-            Err(AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
-                slot: 1,
-                col: 0,
-                ..
-            }))
-        ));
+        session.upload_ops(&ctx, &ops).unwrap();
     }
 
     #[test]
-    fn upload_ops_rejects_always_consume_and_orderband_write_same_cell() {
+    fn upload_ops_allows_always_consume_and_orderband_write_same_cell() {
         let ops = vec![
             AccumulatorOp {
                 source: SourceSpec::SlotValue { slot: 0, col: 0 },
@@ -1300,18 +1289,11 @@ mod tests {
             },
         ];
         let (ctx, mut session) = gpu_session(4, 2);
-        assert!(matches!(
-            session.upload_ops(&ctx, &ops),
-            Err(AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
-                slot: 0,
-                col: 0,
-                ..
-            }))
-        ));
+        session.upload_ops(&ctx, &ops).unwrap();
     }
 
     #[test]
-    fn upload_ops_rejects_orderband_consume_and_always_write_same_cell() {
+    fn upload_ops_allows_orderband_consume_and_always_write_same_cell() {
         let ops = vec![
             AccumulatorOp {
                 source: SourceSpec::Constant(2.0),
@@ -1331,18 +1313,11 @@ mod tests {
             },
         ];
         let (ctx, mut session) = gpu_session(4, 2);
-        assert!(matches!(
-            session.upload_ops(&ctx, &ops),
-            Err(AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
-                slot: 0,
-                col: 0,
-                ..
-            }))
-        ));
+        session.upload_ops(&ctx, &ops).unwrap();
     }
 
     #[test]
-    fn upload_ops_rejects_two_always_writers_same_cell() {
+    fn upload_ops_allows_two_always_writers_same_cell() {
         let ops = vec![
             AccumulatorOp {
                 source: SourceSpec::Constant(1.0),
@@ -1362,14 +1337,44 @@ mod tests {
             },
         ];
         let (ctx, mut session) = gpu_session(4, 1);
-        assert!(matches!(
-            session.upload_ops(&ctx, &ops),
-            Err(AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
-                band: u32::MAX,
-                slot: 1,
-                col: 0,
-            }))
-        ));
+        session.upload_ops(&ctx, &ops).unwrap();
+    }
+
+    #[test]
+    fn atomic_same_cell_add_conserves_total() {
+        set_debug_readback_allowed(true);
+        let ops = vec![
+            AccumulatorOp {
+                source: SourceSpec::Constant(1.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::Always,
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(0, 0)],
+            },
+            AccumulatorOp {
+                source: SourceSpec::Constant(1.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::Always,
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(0, 0)],
+            },
+            AccumulatorOp {
+                source: SourceSpec::Constant(1.0),
+                combine: CombineFn::Identity,
+                gate: GateSpec::Always,
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::None,
+                targets: vec![(0, 0)],
+            },
+        ];
+        let (ctx, mut session) = gpu_session(1, 1);
+        session.upload_values(&ctx, &[0.0]);
+        session.upload_ops(&ctx, &ops).unwrap();
+        session.tick(&ctx, 0).unwrap();
+        let values = session.readback_full(&ctx).unwrap();
+        assert_eq!(values[0], 3.0);
     }
 
     #[test]
@@ -1455,7 +1460,7 @@ mod tests {
     }
 
     #[test]
-    fn b2_rejects_weighted_mean() {
+    fn b2_encodes_weighted_mean_stub() {
         let op = AccumulatorOp {
             source: SourceSpec::SlotRange { start: 0, count: 2 },
             combine: CombineFn::WeightedMean { weight_col: 1 },
@@ -1465,14 +1470,11 @@ mod tests {
             targets: vec![(1, 0)],
         };
         let (ctx, mut session) = gpu_session(4, 2);
-        assert!(matches!(
-            session.upload_ops(&ctx, std::slice::from_ref(&op)),
-            Err(AccumulatorOpSessionError::Encode(EncodeError::Unsupported(_)))
-        ));
+        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
     }
 
     #[test]
-    fn b2_rejects_eval_eml() {
+    fn b2_encodes_eval_eml_stub() {
         let op = AccumulatorOp {
             source: SourceSpec::SlotValue { slot: 0, col: 0 },
             combine: CombineFn::EvalEML { tree_id: 1 },
@@ -1482,14 +1484,11 @@ mod tests {
             targets: vec![(1, 0)],
         };
         let (ctx, mut session) = gpu_session(4, 1);
-        assert!(matches!(
-            session.upload_ops(&ctx, std::slice::from_ref(&op)),
-            Err(AccumulatorOpSessionError::Encode(EncodeError::Unsupported(_)))
-        ));
+        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
     }
 
     #[test]
-    fn b2_rejects_threshold_gate_with_non_emit_consume() {
+    fn b2_encodes_threshold_gate_with_none_consume() {
         use simthing_core::ThresholdDirection;
         let op = AccumulatorOp {
             source: SourceSpec::SlotValue { slot: 0, col: 0 },
@@ -1503,14 +1502,11 @@ mod tests {
             targets: vec![(1, 0)],
         };
         let (ctx, mut session) = gpu_session(4, 1);
-        assert!(matches!(
-            session.upload_ops(&ctx, std::slice::from_ref(&op)),
-            Err(AccumulatorOpSessionError::Encode(EncodeError::Unsupported(_)))
-        ));
+        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
     }
 
     #[test]
-    fn b2_rejects_conjunctive_crossing() {
+    fn b2_encodes_conjunctive_crossing_stub() {
         use simthing_core::InputSpec;
         let op = AccumulatorOp {
             source: SourceSpec::ConjunctiveCrossing {
@@ -1527,10 +1523,7 @@ mod tests {
             targets: vec![(1, 0)],
         };
         let (ctx, mut session) = gpu_session(4, 1);
-        assert!(matches!(
-            session.upload_ops(&ctx, std::slice::from_ref(&op)),
-            Err(AccumulatorOpSessionError::Encode(EncodeError::Unsupported(_)))
-        ));
+        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
     }
 
     fn trivial_1000_ops() -> Vec<AccumulatorOp> {
