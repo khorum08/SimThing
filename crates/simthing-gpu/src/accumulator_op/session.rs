@@ -784,7 +784,7 @@ impl AccumulatorOpSession {
                 n_dims: self.n_dims,
                 emission_capacity: self.emission_capacity,
                 threshold_emission_capacity: self.threshold_emission_capacity,
-                _pad0: 0,
+                dt_bits: 0,
                 _pad1: 0,
             };
             let tick_uniform = ctx
@@ -852,7 +852,7 @@ impl AccumulatorOpSession {
             n_dims: self.n_dims,
             emission_capacity: self.emission_capacity,
             threshold_emission_capacity: self.threshold_emission_capacity,
-            _pad0: 0,
+            dt_bits: 0,
             _pad1: 0,
         };
         let tick_uniform = ctx
@@ -878,6 +878,56 @@ impl AccumulatorOpSession {
         pass.dispatch_workgroups(groups, 1, 1);
     }
 
+    /// Encode C-7 velocity integration ops into the caller's command encoder.
+    /// Runs after snapshot at the legacy Pass 1 position. `dt` is written to
+    /// tick params for this dispatch only — uploaded ops stay dt-independent.
+    pub fn encode_velocity_into(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+        previous_values: &Buffer,
+        dt: f32,
+    ) {
+        if self.n_ops == 0 {
+            return;
+        }
+        self.last_pass_time_us = None;
+
+        let tick_params = AccumulatorTickParams {
+            n_ops: self.n_ops,
+            current_band: 0,
+            n_slots: self.n_slots,
+            n_dims: self.n_dims,
+            emission_capacity: self.emission_capacity,
+            threshold_emission_capacity: self.threshold_emission_capacity,
+            dt_bits: dt.to_bits(),
+            _pad1: 0,
+        };
+        let tick_uniform = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("accumulator_velocity_tick_uniform"),
+                contents: bytemuck::bytes_of(&tick_params),
+                usage: BufferUsages::UNIFORM,
+            });
+        let execute_bind_group = self.create_execute_bind_group_with_uniform(
+            ctx,
+            values,
+            previous_values,
+            &tick_uniform,
+        );
+
+        let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+            label: Some("accumulator_velocity_pass"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.execute_pipeline);
+        pass.set_bind_group(0, &execute_bind_group, &[]);
+        let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
+        pass.dispatch_workgroups(groups, 1, 1);
+    }
+
     fn write_tick_uniform(&self, ctx: &GpuContext, band: u32) {
         let tick_params = AccumulatorTickParams {
             n_ops: self.n_ops,
@@ -886,7 +936,7 @@ impl AccumulatorOpSession {
             n_dims: self.n_dims,
             emission_capacity: self.emission_capacity,
             threshold_emission_capacity: self.threshold_emission_capacity,
-            _pad0: 0,
+            dt_bits: 0,
             _pad1: 0,
         };
         ctx.queue

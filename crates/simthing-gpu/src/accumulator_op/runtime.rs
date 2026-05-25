@@ -95,6 +95,7 @@ pub struct WorldAccumulatorRuntime {
     threshold_session: Option<AccumulatorOpSession>,
     overlay_session: Option<AccumulatorOpSession>,
     reduction_soft_session: Option<AccumulatorOpSession>,
+    velocity_session: Option<AccumulatorOpSession>,
     pub summary: Option<WorldSummaryRuntime>,
     pub overlay_compile_cache: Option<OverlayCompileCache>,
 }
@@ -142,6 +143,7 @@ impl WorldAccumulatorRuntime {
             threshold_session: None,
             overlay_session: None,
             reduction_soft_session: None,
+            velocity_session: None,
             summary: None,
             overlay_compile_cache: None,
         }
@@ -163,6 +165,10 @@ impl WorldAccumulatorRuntime {
         self.reduction_soft_session.take()
     }
 
+    pub fn take_velocity_session(&mut self) -> Option<AccumulatorOpSession> {
+        self.velocity_session.take()
+    }
+
     pub fn restore_intent_session(&mut self, session: Option<AccumulatorOpSession>) {
         self.intent_session = session;
     }
@@ -179,6 +185,10 @@ impl WorldAccumulatorRuntime {
         self.reduction_soft_session = session;
     }
 
+    pub fn restore_velocity_session(&mut self, session: Option<AccumulatorOpSession>) {
+        self.velocity_session = session;
+    }
+
     pub fn intent_session(&mut self) -> Option<&mut AccumulatorOpSession> {
         self.intent_session.as_mut()
     }
@@ -193,6 +203,10 @@ impl WorldAccumulatorRuntime {
 
     pub fn reduction_soft_session(&mut self) -> Option<&mut AccumulatorOpSession> {
         self.reduction_soft_session.as_mut()
+    }
+
+    pub fn velocity_session(&mut self) -> Option<&mut AccumulatorOpSession> {
+        self.velocity_session.as_mut()
     }
 
     pub fn intent_active(&self) -> bool {
@@ -227,11 +241,20 @@ impl WorldAccumulatorRuntime {
         self.reduction_soft_ops.n_bands
     }
 
+    pub fn velocity_active(&self) -> bool {
+        self.velocity_ops.active
+    }
+
+    pub fn velocity_bands(&self) -> u32 {
+        self.velocity_ops.n_bands
+    }
+
     pub fn any_pipeline_active(&self) -> bool {
         self.intent_active()
             || self.threshold_active()
             || self.overlay_order_ops.active
             || self.reduction_soft_ops.active
+            || self.velocity_ops.active
     }
 
     pub fn ensure_intent_session(
@@ -371,6 +394,52 @@ impl WorldAccumulatorRuntime {
             exactness: ExactnessClass::Exact,
             ..OpSetHandle::INACTIVE
         };
+    }
+
+    pub fn ensure_velocity_session(
+        &mut self,
+        ctx: &GpuContext,
+        n_slots: u32,
+        n_dims: u32,
+        emission_capacity: u32,
+    ) {
+        if self.velocity_session.is_none() {
+            self.velocity_session = Some(AccumulatorOpSession::new_attached(
+                ctx,
+                n_slots,
+                n_dims,
+                emission_capacity,
+            ));
+        }
+    }
+
+    pub fn clear_velocity(&mut self) {
+        self.velocity_session = None;
+        self.velocity_ops = OpSetHandle {
+            family: OperationFamily::Velocity,
+            exactness: ExactnessClass::Exact,
+            ..OpSetHandle::INACTIVE
+        };
+    }
+
+    pub fn upload_velocity_ops(
+        &mut self,
+        ctx: &GpuContext,
+        ops: &[AccumulatorOpGpu],
+        n_bands: u32,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if let Some(session) = self.velocity_session.as_mut() {
+            session.upload_gpu_ops(ctx, ops)?;
+            self.velocity_ops = OpSetHandle {
+                family: OperationFamily::Velocity,
+                offset: 0,
+                count: session.n_ops(),
+                active: !ops.is_empty(),
+                n_bands,
+                exactness: ExactnessClass::Exact,
+            };
+        }
+        Ok(())
     }
 
     pub fn upload_reduction_soft_ops(

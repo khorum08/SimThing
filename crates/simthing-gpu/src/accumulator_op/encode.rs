@@ -290,16 +290,16 @@ fn encode_combine(op: &AccumulatorOp) -> Result<(u32, u32, u32, u32, u32), Encod
             Ok((combine_kind::WEIGHTED_MEAN, *weight_col, 0, 0, 0))
         }
         CombineFn::IntegrateWithClamp {
-            dt,
+            dt: _,
             vel_max,
             amount_min,
             amount_max,
         } => Ok((
             combine_kind::INTEGRATE_CLAMP,
-            dt.to_bits(),
             vel_max.to_bits(),
             amount_min.to_bits(),
             amount_max.to_bits(),
+            0,
         )),
         CombineFn::CrossingFormula { unit_cost } => {
             Ok((combine_kind::CROSSING_FORMULA, unit_cost.to_bits(), 0, 0, 0))

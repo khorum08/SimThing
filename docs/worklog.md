@@ -6,9 +6,21 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-25 — S-4 legacy reduction sunset (execution)
+## 2026-05-25 — C-7 velocity integration → AccumulatorOp
 
 **Status:** Local — pending PR.
+
+**Scope:** `use_accumulator_velocity` (default false). `IntegrateWithClamp` combine in
+`accumulator_op.wgsl` with legacy-exact semantics (amount integrate + velocity pinning).
+`dt` via `AccumulatorTickParams.dt_bits`; persistent op upload at boundary sync.
+Legacy `velocity_integration.wgsl` retained flag-off/oracle only. Tests:
+`c7_velocity_accumulator_parity.rs` (8 cases, `f32::to_bits()` parity).
+
+---
+
+## 2026-05-25 — S-4 legacy reduction sunset (execution)
+
+**Status:** Merged — PR #126 @ `208e5a2`.
 
 **Scope:** Delete `reduction.wgsl`, legacy reduction pipeline/bind groups, C-5/C-6 exact
 fallback branch, and legacy dispatch counters. Pure AccumulatorOp reduction encoder;

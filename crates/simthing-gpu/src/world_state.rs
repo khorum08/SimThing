@@ -323,6 +323,9 @@ pub struct WorldGpuState {
     pub accumulator_reduction_soft_bands: u32,
     /// Cached C-6 exact reduction dispatch signal (requires soft flag).
     pub accumulator_reduction_exact_active: bool,
+    /// Cached C-7 velocity integration dispatch signal.
+    pub accumulator_velocity_active: bool,
+    pub accumulator_velocity_bands: u32,
 }
 
 impl WorldGpuState {
@@ -446,6 +449,8 @@ impl WorldGpuState {
             accumulator_reduction_soft_active: false,
             accumulator_reduction_soft_bands: 0,
             accumulator_reduction_exact_active: false,
+            accumulator_velocity_active: false,
+            accumulator_velocity_bands: 0,
         }
     }
 
@@ -457,6 +462,8 @@ impl WorldGpuState {
         self.accumulator_reduction_soft_active = false;
         self.accumulator_reduction_soft_bands = 0;
         self.accumulator_reduction_exact_active = false;
+        self.accumulator_velocity_active = false;
+        self.accumulator_velocity_bands = 0;
     }
 
     /// Clear one migrated AccumulatorOp family when its feature flag is off.
@@ -477,6 +484,10 @@ impl WorldGpuState {
                 crate::OperationFamily::ReductionExact => {
                     self.set_reduction_exact_dispatch(false);
                 }
+                crate::OperationFamily::Velocity => {
+                    runtime.clear_velocity();
+                    self.set_velocity_dispatch(false, 0);
+                }
                 _ => {}
             }
         } else if matches!(
@@ -489,6 +500,8 @@ impl WorldGpuState {
             self.set_reduction_exact_dispatch(false);
         } else if matches!(family, crate::OperationFamily::ReductionExact) {
             self.set_reduction_exact_dispatch(false);
+        } else if matches!(family, crate::OperationFamily::Velocity) {
+            self.set_velocity_dispatch(false, 0);
         }
     }
 
@@ -648,6 +661,42 @@ impl WorldGpuState {
 
     pub fn set_reduction_exact_dispatch(&mut self, active: bool) {
         self.accumulator_reduction_exact_active = active;
+    }
+
+    /// Ensure the C-7 velocity AccumulatorOp runtime is enabled.
+    pub fn ensure_velocity_accumulator(&mut self) {
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        let n_slots = self.n_slots;
+        let n_dims = self.n_dims;
+        self.accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .ensure_velocity_session(
+                &self.ctx,
+                n_slots,
+                n_dims,
+                DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+            );
+    }
+
+    /// Upload C-7 velocity ops and set dispatch metadata.
+    pub fn upload_velocity_ops_with_bands(
+        &mut self,
+        ops: &[crate::AccumulatorOpGpu],
+        n_bands: u32,
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            runtime.upload_velocity_ops(&self.ctx, ops, n_bands)?;
+        }
+        self.set_velocity_dispatch(!ops.is_empty(), n_bands);
+        Ok(())
+    }
+
+    pub fn set_velocity_dispatch(&mut self, active: bool, n_bands: u32) {
+        self.accumulator_velocity_active = active;
+        self.accumulator_velocity_bands = n_bands;
     }
 
     /// Ensure the C-1 threshold AccumulatorOp runtime is enabled.
