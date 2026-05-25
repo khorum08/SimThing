@@ -609,3 +609,259 @@ an Opus review before proceeding.
 - Full economic V1 implementation (E0). Deferred per `todo.md`.
 - Studio / EML authoring tools. Deferred per `todo.md`.
 - Cross-pool queue contention design (deferred to D-4 gate outcome).
+
+---
+
+## Phase E — Economic V1 integration
+
+Phase E begins after C-8 is merged. It delivers the economic substrate as a
+first-class production capability built on AccumulatorOp primitives. This is
+the integration layer between the GPU primitive and the spec/driver layer that
+modders and Studio will author against. It is not a new engine — it is the
+AccumulatorOp primitive expressed through the spec session model.
+
+### PR E-1 — `EmitOnThreshold` as a first-class AccumulatorOp registration builder
+
+**Model:** Composer 2.5  
+**Scope:** Add `AccumulatorOpBuilder::emit_on_threshold(...)` to `simthing-spec`
+that constructs the correct `AccumulatorOp` registration for the debt-band
+emission model:
+
+```rust
+pub fn emit_on_threshold(
+    accumulator_slot: SlotId,
+    accumulator_col:  SubFieldRole,
+    unit_cost:        f32,
+    queued_count:     u32,
+    max_per_tick:     u32,
+    target_slot:      SlotId,
+    target_col:       SubFieldRole,
+) -> AccumulatorOp
+```
+
+The builder computes `threshold_value = -((queued_count - 1) * unit_cost)` and
+sets `combine: CrossingFormula { unit_cost }`, `consume: SubtractFromSource`,
+`gate: Threshold { value: threshold_value, direction: Downward }`.
+
+Also add the re-registration handler: when an emission fires, the boundary
+hook reads `emit_count` from the emission record, decrements `queued_count`,
+and calls `emit_on_threshold` with the new count to produce a fresh registration.
+
+**Test:** Run the `debt_band_1k` fixture from the workshop battery through the
+production registration builder rather than the workshop harness. Assert
+tick-1 emissions match the expected 2000 across 1000 factories.  
+**Acceptance:** Test passes. Conservation holds exact.
+
+---
+
+### PR E-2 — Transfer overlay as first-class AccumulatorOp registration
+
+**Model:** Codex 5.5  
+**Scope:** Add `AccumulatorOpBuilder::resource_transfer(...)` that constructs
+the `AccumulatorOp` for a faction-pool-to-factory-queue transfer:
+
+```rust
+pub fn resource_transfer(
+    source_slot: SlotId,
+    source_col:  SubFieldRole,
+    target_slot: SlotId,
+    target_col:  SubFieldRole,
+    rate:        f32,
+) -> AccumulatorOp
+```
+
+Sets `combine: Identity`, `consume: SubtractFromSource`. This replaces the
+two-overlay transfer hack at the spec level — any existing `TransferOverlaySpec`
+compiles to this builder rather than two `Add` registrations.
+
+**Test:** Run the `factory_1k` fixture conservation check. Assert faction pool
+decrease == factory queue increase + units consumed (full conservation equation
+from the workshop battery).  
+**Acceptance:** Conservation holds. The two-overlay path in the spec compiler
+is removed and replaced.
+
+---
+
+### PR E-3 — Conjunctive production recipe as AccumulatorOp registration
+
+**Model:** Composer 2.5  
+**Scope:** Add `AccumulatorOpBuilder::conjunctive_recipe(...)`:
+
+```rust
+pub fn conjunctive_recipe(
+    inputs:      &[(SlotId, SubFieldRole, f32)],  // (slot, col, unit_cost) up to 4
+    target_slot: SlotId,
+    target_col:  SubFieldRole,
+    max_per_tick: u32,
+) -> AccumulatorOp
+```
+
+Sets `source: ConjunctiveCrossing`, `combine: MinAcrossInputs`,
+`consume: SubtractFromAllInputs`. The recipe IS the registration. Conservation
+is structurally enforced.
+
+**Test:** Run the multichannel `factory_1k` fixture (iron/energy/labor recipe)
+through the production builder. Assert emission counts match within 2% of
+the workshop ImplC baseline.  
+**Acceptance:** Test passes. `inputs.len() > 4` returns a compile error.
+
+---
+
+### PR E-4 — Economic V1 RON fixture format and session integration
+
+**Model:** Composer 2.5  
+**Scope:** Define the modder-facing RON format for economic properties and
+wire it into `simthing-spec`'s session assembly:
+
+```ron
+// economic_resource.ron
+(
+    property: "iron_ore",
+    namespace: "economy",
+    kind: Resource,
+    accumulator: (
+        initial_pool: 100000.0,
+        transfer_rate: 1.0,
+    ),
+    recipe_input: (
+        unit_cost: 5.0,
+    ),
+)
+```
+
+The `simthing-driver` session assembly translates RON resource specs into
+`AccumulatorOp` registrations (E-1 through E-3 builders) at session open.
+No changes to `simthing-sim`. The sim stays spec-free.
+
+**Test:** A three-channel faction/factory session assembled from RON fixtures
+produces the same emission counts and conservation as the direct-builder test
+in E-3.  
+**Acceptance:** RON → session → 100-tick run → conservation check passes.
+
+---
+
+### PR E-5 — Economic V1 compact log integration
+
+**Model:** Composer 2.5  
+**Scope:** Wire economic emission records into the existing `BoundaryDeltaEntry`
+log:
+- New variant: `BoundaryDeltaEntry::AccumulatorEmission { property_id, emit_count, tick }`
+- Written from the compact emission buffer readback in `AccumulatorOpSession`
+- Replay: applying `AccumulatorEmission` entries to a fresh session reproduces
+  the final state within the soft-aggregate tolerance
+
+**Test:** Record 100 ticks, replay from delta log, assert final resource totals
+match within 1%.  
+**Acceptance:** Replay test passes.
+
+---
+
+### PR E-6 — Update design_v7.md §5 (Economic substrate) and §6 (Modder guide)
+
+**Model:** Codex 5.5  
+**Scope:** Update `design_v7.md`:
+- §5: Document `EmitOnThreshold`, `resource_transfer`, `conjunctive_recipe`
+  as the three canonical economic registration builders
+- §6: Modder guide showing RON format from E-4, conservation guarantees,
+  logging tier defaults for economic properties
+
+**Acceptance:** Doc is internally consistent with the implemented builders.
+
+---
+
+## Phase F — Old pipeline sunset
+
+Phase F begins after Phase C is fully complete. Each sunset PR is Codex 5.5,
+mechanical, gated on CI passing with the feature flag set to default-on.
+
+### PR S-1 — Sunset intent fold (after C-2)
+### PR S-2 — Sunset intensity update (after C-8)
+### PR S-3 — Sunset overlay prep (after C-3 + C-4)
+### PR S-4 — Sunset reduction passes 4–6 (after C-5 + C-6)
+### PR S-5 — Sunset velocity integration (after C-7)
+### PR S-6 — Sunset threshold scan / Pass 7 (after C-1)
+
+Each sunset PR checklist:
+1. Set feature flag default to `true` (AccumulatorOp path)
+2. Run `cargo test --all` — must be fully green
+3. Delete old WGSL shader file(s)
+4. Delete old Rust pass module(s)
+5. Remove feature flag enum variant and all match arms
+6. Update `design_v7.md` §4 to remove the old pass entry
+7. Add `SUPERSEDED` annotation to `design_v6.md` §10 entry for this pass
+
+**Model for all sunset PRs:** Codex 5.5  
+**Gate:** CI green at step 2 before any deletion proceeds. If step 2 fails,
+block sunset and file an issue against the corresponding migration PR.
+
+---
+
+## Phase G — Design document finalization
+
+### PR G-1 — Annotate design_v6.md §10 as superseded
+
+**Model:** Codex 5.5  
+**Scope:** Add to the top of `design_v6.md` §10:
+
+```markdown
+> ⚠️ SUPERSEDED — The GPU pipeline specification in this section is superseded
+> by `docs/adr_accumulator_op_v2.md` and `docs/design_v7.md` §4.
+> This section is retained for historical reference only.
+> Do not implement from this section.
+```
+
+**Acceptance:** One commit. CI green.
+
+### PR G-2 — design_v7.md §4 final review pass
+
+**Model:** Opus  
+**Scope:** After all Phase C and Phase F PRs are merged, Opus reads
+`design_v7.md` §4 and confirms: (a) every operation family is described
+correctly, (b) no old-pass descriptions remain, (c) the pipeline section is
+consistent with the invariants doc and the ADR. Produces any needed corrections
+as a doc-only PR.
+
+**Gate:** Human + Opus sign-off before G-2 merges.
+
+---
+
+## Updated PR ladder summary
+
+| PR | Phase | Model | Description | Gate |
+|---|---|---|---|---|
+| A-1 | A | Codex 5.5 | Merge ADR + update invariants | Human review |
+| A-2 | A | Codex 5.5 | CombineFn + AccumulatorOp types | None |
+| A-3 | A | Composer 2.5 | EmlExpressionRegistry + whitelist | None |
+| **A-4** | **A** | **Opus + Codex** | **Soft-aggregate tolerance audit** | **Human + Opus** |
+| B-1 | B | Composer 2.5 | AccumulatorOpSession buffers | None |
+| B-2 | B | Composer 2.5 | Pass B kernel bootstrap | Conservation test |
+| B-3 | B | Codex 5.5 | Timestamp queries | None |
+| **B-4** | **B** | **Opus + Composer** | **Summary readback design** | **Opus analysis** |
+| C-1 | C | Composer 2.5 | Threshold scan migration | 5× readback speedup |
+| C-2 | C | Codex 5.5 | Intent delta migration | Bit-exact parity |
+| C-3 | C | Composer 2.5 | Overlay Add migration | Bit-exact parity |
+| **C-4** | **C** | **Opus + Composer** | **Multiply/Set OrderBand compiler** | **Opus design** |
+| **C-5** | **C** | **Opus + Composer** | **WeightedMean tolerance audit** | **Opus audit** |
+| C-6 | C | Composer 2.5 | Sum/Max/Min reductions | Bit-exact parity |
+| C-7 | C | Composer 2.5 | Velocity integration | vel_max clamp test |
+| **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity** | **Opus design** |
+| **D-1** | **D** | **Opus** | **Hot-pool allocator design** | **Opus design note** |
+| D-2 | D | Composer 2.5 | Hot-pool allocator v2 | 2× CPU at hotspot |
+| D-3 | D | Composer 2.5 | Changed-only logs + replay | Replay test |
+| D-4 | D | Composer 2.5 + Opus | Cross-pool contention gate | Pass or ADR amendment |
+| E-1 | E | Composer 2.5 | EmitOnThreshold builder | debt_band_1k test |
+| E-2 | E | Codex 5.5 | resource_transfer builder | Conservation test |
+| E-3 | E | Composer 2.5 | conjunctive_recipe builder | factory_1k parity |
+| E-4 | E | Composer 2.5 | Economic V1 RON + session integration | RON→session→conservation |
+| E-5 | E | Composer 2.5 | Economic compact log integration | Replay test |
+| E-6 | E | Codex 5.5 | design_v7.md economic substrate docs | Doc consistency |
+| S-1 | F | Codex 5.5 | Sunset intent fold | CI green at flag=on |
+| S-2 | F | Codex 5.5 | Sunset intensity update | CI green at flag=on |
+| S-3 | F | Codex 5.5 | Sunset overlay prep | CI green at flag=on |
+| S-4 | F | Codex 5.5 | Sunset reduction passes 4–6 | CI green at flag=on |
+| S-5 | F | Codex 5.5 | Sunset velocity integration | CI green at flag=on |
+| S-6 | F | Codex 5.5 | Sunset threshold scan | CI green at flag=on |
+| G-1 | G | Codex 5.5 | Annotate design_v6.md §10 superseded | One commit |
+| **G-2** | **G** | **Opus** | **design_v7.md §4 final review** | **Human + Opus** |
+
+**Total: 33 PRs.** Opus-gated: A-4, B-4, C-4, C-5, C-8, D-1, G-2 — seven of thirty-three.

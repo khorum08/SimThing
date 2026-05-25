@@ -3,7 +3,9 @@
 **Status:** Proposed  
 **Date:** 2026-05-24  
 **Authors:** Architecture review (Opus 4.7 + workshop battery, Cursor Composer 2.5 implementation)  
-**Supersedes:** Nothing formally. Extends the GPU pipeline specified in `design_v6.md` §10.
+**Supersedes:** `design_v6.md` §10 (GPU pipeline). All other sections of v6 remain
+authoritative until `design_v7.md` is accepted.  
+**Completed by:** `design_v7.md` (specification of the v7 architecture this ADR enables).
 
 ---
 
@@ -150,6 +152,12 @@ diplomatic pressure summaries. They must NOT drive exact replay checksums,
 conservation checks, or hard structural transitions without quantization or
 hysteresis guards.
 
+**Important:** The workshop established that the *current* pipeline is also
+loose-tolerance on WeightedMean. Any existing code path that reads a
+WeightedMean-reduced value and uses it as a hard structural trigger is already
+incorrect under the current architecture. PR A-4 audits this exposure before
+any migration begins.
+
 ### EML expression policy
 
 The `EvalEML` combine is validated for formulas meeting all of:
@@ -183,37 +191,74 @@ Cross-pool queue contention is a separate gate not yet tested.
 
 ### Positive
 
-- GPU pipeline collapses from 8 passes to 3. Each operation family is one
-  WGSL kernel entry with a named combine function, not a separate pass.
+- GPU pipeline collapses from 8 passes to 3.
 - Transfer conservation is structurally enforced — `SubtractFromSource` is
   atomically bound to the target write. The two-overlay hack is eliminated.
 - Threshold event readback (currently ~21ms, the dominant boundary cost at
-  scale) is replaced by a GPU atomic counter + compact emission buffer. Route
-  1 from the optimization doc falls out as a natural property of the
-  `EmitEvent` consume mode.
+  scale) is replaced by a GPU atomic counter + compact emission buffer.
 - EML expressions compile to GPU-evaluable trees; intensity update and
-  designer-tunable combine functions share one evaluator kernel rather than
-  requiring bespoke passes.
+  designer-tunable combine functions share one evaluator kernel.
 - Persistent GPU buffers with summary/checksum readback beat the current GPU
-  envelope by 3–46×. Total-validation readback is retained for debug only.
+  envelope by 3–46×.
+- Resource interactions become a native primitive enabling economic V1
+  (transfer, debt-band emission, conjunctive production) to ship as first-class
+  operations rather than CPU-mediated approximations.
 
 ### Negative / caveats
 
-- The `combine` field adds kernel complexity. The kernel is now a switch over
-  ~12 combine variants. Complexity is concentrated in one file rather than
-  spread across 8 passes — a net improvement, but the kernel requires more
-  careful review.
-- WeightedMean is ~3e-6 off CPU oracle. The tolerance policy must be enforced
-  at design time. Any use of WeightedMean output as a hard trigger must be
-  reviewed and approved.
+- The `combine` field adds kernel complexity (~12 combine variants).
+- WeightedMean is ~3e-6 off CPU oracle. Tolerance policy must be enforced.
 - Overlay Multiply/Set under high overlay density (density ≈ 1.0) shows
-  performance regression vs current path in one of three test runs. The
-  `OrderBand` compiler requires a dirty/cached-rebuild path before production
-  to avoid materialising the full indexed set every tick.
-- Hot-pool contention requires a separate allocator design before production.
+  performance regression in some conditions. Dirty/cached-rebuild compiler
+  required.
+- Hot-pool contention requires a separate allocator design.
 - Cross-pool queue contention is untested — explicitly deferred.
 - The CPU oracle must be maintained for each operation family indefinitely.
-  It is the only reliable regression signal for GPU-to-GPU determinism drift.
+
+---
+
+## Old pipeline sunset policy
+
+Each existing pass is removed in a dedicated sunset PR, sequenced after its
+migration PR has been merged, all parity tests have passed, and the feature
+flag has been set to default-on for at least one release cycle.
+
+**Sunset sequence (one PR each, Codex 5.5):**
+
+| Pass | Migration PR | Sunset PR | Removal scope |
+|---|---|---|---|
+| Intent fold | C-2 | S-1 | Delete `intent_fold.rs`, `intent_fold.wgsl`; remove feature flag |
+| Pass 2 (intensity) | C-8 | S-2 | Delete `intensity_update.rs`, `intensity_update.wgsl` |
+| Pass 3 (overlay) | C-3, C-4 | S-3 | Delete `overlay_prep.rs`, overlay WGSL; remove `overlay_prep` module |
+| Pass 4–6 (reduction) | C-5, C-6 | S-4 | Delete `reduction.rs`, reduction WGSL |
+| Pass 1 (velocity) | C-7 | S-5 | Delete `velocity_integration.rs`, velocity WGSL; update `GovernedPair` to use AccumulatorOp builder |
+| Pass 7 (threshold scan) | C-1 | S-6 | Delete threshold scan WGSL; retire `tick_event_readback_ms` label (superseded by `pass_c_readback_us`) |
+
+Each sunset PR must:
+1. Set the feature flag default to `true` (AccumulatorOp path) in a
+   preparatory commit
+2. Run CI at that state — if CI fails, the sunset is blocked until the
+   migration PR is fixed
+3. Delete the old code only after CI passes with the flag defaulted on
+4. Remove the feature flag itself in the same PR
+
+No sunset PR merges while any downstream test references the deleted code.
+
+---
+
+## Design document policy
+
+`design_v6.md` §10 (GPU pipeline) is superseded by this ADR the moment it is
+accepted. The canonical pipeline specification moves to `design_v7.md`, which
+is maintained as a living document updated by each migration PR's author.
+
+Specifically:
+- Each migration PR (C-1 through C-8) includes a diff to `design_v7.md`
+  updating §4 (GPU pipeline passes) to reflect the current state
+- Each sunset PR (S-1 through S-6) removes the corresponding old-pass
+  description from `design_v7.md`
+- `design_v6.md` §10 is annotated with a header: "SUPERSEDED — see
+  design_v7.md §4 for current pipeline specification"
 
 ---
 
@@ -229,28 +274,28 @@ These extend `docs/invariants.md` and carry the same enforcement weight:
 | Emission records are produced for every GPU-resolved emission | `EmissionRecord { reg_idx, emit_count }` written to compact buffer; read back for delta log |
 | Persistent GPU buffer is the residency model | `AccumulatorOpSession` is created at session open and closed at session close; no per-tick device creation |
 | Timestamp queries are required for performance claims | Any PR claiming a performance win must include timestamped GPU pass measurements, not just wall-clock |
+| Old pass code is never deleted without a green CI run at default-on flag | Enforced by sunset PR checklist |
+| `design_v7.md` §4 is updated by each migration PR | PR template checklist item |
 
 ---
 
 ## Out of scope
 
-- Migration of Pass 0 (snapshot). `copy_buffer_to_buffer` is the GPU's native
-  primitive for this case. It stays.
+- Migration of Pass 0 (snapshot). `copy_buffer_to_buffer` stays permanently.
 - Cross-pool queue contention. Separate gate, separate ADR.
-- Hot-pool allocator v2 design. Follow-on engineering gate (see Phase D).
-- Full economic V1 implementation. Deferred per `todo.md`.
-- ScriptExpr / EML Phase 1–4 implementation. Governed by
-  `docs/eml_integration_guidance.md`.
+- Hot-pool allocator v2 design. Follow-on engineering gate (Phase D).
+- ScriptExpr / EML Phase 1–4 implementation. See `docs/eml_integration_guidance.md`.
 - Transcendental functions in EML GPU evaluation.
 
 ---
 
 ## References
 
-- `docs/workshop/accumulator_write_fit_matrix.md` — Phase 0 fit matrix, v1 and v2 analysis
-- `docs/workshop/resolver_architecture_pivot.md` — Pivot proposal and foundational retrospective
-- `docs/workshop/simthing_base_economic_system_working_doc.md` — Economic substrate design
-- `crates/simthing-workshop/tests/` — All workshop battery test reports
-- `docs/eml_integration_guidance.md` — EML expression policy and phase ladder
+- `docs/design_v7.md` — v7 architecture specification (companion to this ADR)
+- `docs/workshop/accumulator_write_fit_matrix.md` — Phase 0 fit matrix
+- `docs/workshop/resolver_architecture_pivot.md` — Pivot proposal
+- `docs/workshop/simthing_base_economic_system_working_doc.md` — Economic substrate
+- `crates/simthing-workshop/tests/` — Workshop battery test reports
+- `docs/eml_integration_guidance.md` — EML expression policy
 - `docs/invariants.md` — Core structural invariants (extended by this ADR)
-- `docs/design_v6.md` §10 — Current GPU pipeline specification
+- `docs/design_v6.md` §10 — SUPERSEDED by this ADR; see design_v7.md §4
