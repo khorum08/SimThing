@@ -3,7 +3,7 @@
 Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B3/I1) complete;
 **AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98),
 **C-2** (#99), **C-2 refine** (#100), and **pivot-forward** (#101) landed.
-`master` @ **`e0f0f7d`** (PR #100 C-2 refine + PR #102 pivot-forward Fixes 1–6).
+`master` @ **`171d1de`** (PR #100 C-2 refine + PR #102 pivot-forward Fixes 1–6).
 
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
 Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
