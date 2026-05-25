@@ -49,6 +49,7 @@ pub struct AccumulatorPipelineSessions<'a> {
     pub threshold:   Option<&'a mut crate::AccumulatorOpSession>,
     pub intent:      Option<&'a mut crate::AccumulatorOpSession>,
     pub overlay_add: Option<&'a mut crate::AccumulatorOpSession>,
+    pub encode_world_summary: bool,
 }
 
 pub struct Pipelines {
@@ -480,7 +481,7 @@ impl Pipelines {
     /// Consolidated per-tick pipeline. Records intent deltas, snapshot,
     /// velocity, intensity, overlays, reduction, and threshold scan into one
     /// command encoder and submits once.
-    pub fn run_tick_pipeline(&self, state: &WorldGpuState, dt: f32) {
+    pub fn run_tick_pipeline(&self, state: &mut WorldGpuState, dt: f32) {
         self.run_tick_pipeline_ex(state, dt, false);
     }
 
@@ -489,7 +490,7 @@ impl Pipelines {
     /// (C-1, after reduction) into one command buffer and submits once.
     pub fn run_tick_pipeline_with_accumulators(
         &self,
-        state: &WorldGpuState,
+        state: &mut WorldGpuState,
         dt: f32,
         mut sessions: AccumulatorPipelineSessions<'_>,
     ) {
@@ -524,7 +525,7 @@ impl Pipelines {
     /// when both C-1 and C-2 may be active.
     pub fn run_tick_pipeline_with_threshold_scan(
         &self,
-        state: &WorldGpuState,
+        state: &mut WorldGpuState,
         dt: f32,
         session: &mut crate::AccumulatorOpSession,
     ) {
@@ -535,6 +536,7 @@ impl Pipelines {
                 threshold:   Some(session),
                 intent:      None,
                 overlay_add: None,
+                encode_world_summary: false,
             },
         );
     }
@@ -543,7 +545,7 @@ impl Pipelines {
     /// Pass 7 threshold dispatch is omitted (C-1 AccumulatorOp path).
     pub fn run_tick_pipeline_ex(
         &self,
-        state: &WorldGpuState,
+        state: &mut WorldGpuState,
         dt: f32,
         skip_threshold_scan: bool,
     ) {
@@ -556,13 +558,14 @@ impl Pipelines {
                 threshold:   None,
                 intent:      None,
                 overlay_add: None,
+                encode_world_summary: false,
             },
         );
     }
 
     fn run_tick_pipeline_internal(
         &self,
-        state: &WorldGpuState,
+        state: &mut WorldGpuState,
         dt: f32,
         skip_old_intent: bool,
         skip_threshold_scan: bool,
@@ -779,6 +782,12 @@ impl Pipelines {
                 &state.values,
                 &state.previous_values,
             );
+        }
+
+        if sessions.encode_world_summary {
+            if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                runtime.encode_world_summary_into(ctx, &mut encoder, &state.values);
+            }
         }
 
         ctx.queue.submit(Some(encoder.finish()));
@@ -1327,7 +1336,7 @@ mod tests {
         piped.upload_intent_deltas(&intent);
         piped.upload_thresholds(&regs);
         let pipelines2 = Pipelines::new(&piped.ctx);
-        pipelines2.run_tick_pipeline(&piped, 1.0);
+        pipelines2.run_tick_pipeline(&mut piped, 1.0);
 
         assert_bits_eq("values", &manual.read_values(), &piped.read_values());
         assert_bits_eq(
@@ -1985,12 +1994,13 @@ mod tests {
         let mut runtime = state.accumulator_runtime.take().unwrap();
         let mut intent_session = runtime.take_intent_session();
         pipelines.run_tick_pipeline_with_accumulators(
-            &state,
+            &mut state,
             0.0,
             AccumulatorPipelineSessions {
                 intent:      intent_session.as_mut(),
                 threshold:   None,
                 overlay_add: None,
+                encode_world_summary: false,
             },
         );
         runtime.restore_intent_session(intent_session);

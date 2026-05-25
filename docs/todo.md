@@ -55,6 +55,7 @@ AccumulatorOp module: **57** gpu accumulator_op unit tests + **9** core tests; C
 | **C-3 OrderBand** | #107 | Per-cell OrderBand sequencing for exact f32 Add order; multi-band dispatch fix |
 | **Pivot-forward + B-4I** | #108 | `2aa630e` | Pivot-forward policy; production `SlotSummaryGpu`; C-INF scaffolds |
 | **C-INF-1 + C-INF-2** | #109 | `2f95c6d` | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness + tests |
+| **Pivot-forward remedial** | — | — | Authoritative flags; `WorldSummaryRuntime`; oracle tolerance rename |
 
 **Next (non-Opus):** **C-5** soft reductions · per-family oracle scenario expansion (optional refactor of C-1/C-2/C-3 parity tests onto harness).
 

@@ -8,6 +8,7 @@ use crate::ThresholdRegistration;
 
 use super::session::{AccumulatorOpSession, AccumulatorOpSessionError};
 use super::types::AccumulatorOpGpu;
+use super::world_summary::WorldSummaryRuntime;
 use crate::world_state::IntentDelta;
 use crate::GpuContext;
 
@@ -82,6 +83,7 @@ pub struct WorldAccumulatorRuntime {
     intent_session:          Option<AccumulatorOpSession>,
     threshold_session:       Option<AccumulatorOpSession>,
     overlay_session:         Option<AccumulatorOpSession>,
+    pub summary:             Option<WorldSummaryRuntime>,
 }
 
 impl WorldAccumulatorRuntime {
@@ -126,6 +128,7 @@ impl WorldAccumulatorRuntime {
             intent_session: None,
             threshold_session: None,
             overlay_session: None,
+            summary: None,
         }
     }
 
@@ -257,6 +260,10 @@ impl WorldAccumulatorRuntime {
         };
     }
 
+    pub fn clear_intent(&mut self) {
+        self.disable_intent();
+    }
+
     pub fn disable_threshold(&mut self) {
         self.threshold_session = None;
         self.threshold_ops = OpSetHandle {
@@ -264,6 +271,10 @@ impl WorldAccumulatorRuntime {
             exactness: ExactnessClass::Exact,
             ..OpSetHandle::INACTIVE
         };
+    }
+
+    pub fn clear_threshold(&mut self) {
+        self.disable_threshold();
     }
 
     pub fn clear_overlay_add(&mut self) {
@@ -325,6 +336,50 @@ impl WorldAccumulatorRuntime {
     ) -> Result<Vec<crate::ThresholdEvent>, AccumulatorOpSessionError> {
         if let Some(session) = self.threshold_session.as_mut() {
             session.readback_threshold_events(ctx)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    pub fn ensure_summary(&mut self, ctx: &GpuContext, n_slots: u32, n_dims: u32) {
+        let needs_rebuild = self
+            .summary
+            .as_ref()
+            .map_or(true, |s| s.n_slots() != n_slots || s.n_dims() != n_dims);
+        if needs_rebuild {
+            self.summary = Some(WorldSummaryRuntime::new(ctx, n_slots, n_dims));
+        }
+    }
+
+    pub fn encode_world_summary_into(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &wgpu::Buffer,
+    ) -> bool {
+        if let Some(summary) = self.summary.as_ref() {
+            summary.encode_into(ctx, encoder, values);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn dispatch_world_summary(&mut self, ctx: &GpuContext, values: &wgpu::Buffer) -> bool {
+        if let Some(summary) = self.summary.as_ref() {
+            summary.dispatch(ctx, values);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn readback_world_summary(
+        &self,
+        ctx: &GpuContext,
+    ) -> Result<Vec<super::types::SlotSummary>, AccumulatorOpSessionError> {
+        if let Some(summary) = self.summary.as_ref() {
+            summary.readback(ctx)
         } else {
             Ok(Vec::new())
         }

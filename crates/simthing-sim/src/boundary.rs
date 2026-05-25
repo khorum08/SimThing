@@ -125,8 +125,9 @@ pub struct BoundaryHookContext<'a> {
 pub struct PipelineFlags {
     pub use_accumulator_threshold_scan: bool,
     pub use_accumulator_intent:         bool,
-    /// C-3: Route TransformOp::Add overlays through AccumulatorOp instead of
-    /// old Pass 3. Multiply and Set overlays still use old Pass 3 in the same tick.
+    /// C-3: Route TransformOp::Add-only overlay batches through AccumulatorOp.
+    /// If any active Multiply or Set overlay is present, the entire overlay batch
+    /// falls back to old Pass 3 until C-4 implements full order-band semantics.
     pub use_accumulator_overlay_add:    bool,
 }
 
@@ -194,6 +195,9 @@ impl BoundaryProtocol {
 
     fn sync_accumulator_intent_session(&self, state: &mut WorldGpuState) {
         if !self.flags.use_accumulator_intent {
+            if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                runtime.clear_intent();
+            }
             return;
         }
         state.ensure_intent_accumulator();
@@ -216,8 +220,12 @@ impl BoundaryProtocol {
         gpu_regs: &[ThresholdRegistration],
     ) {
         if !self.flags.use_accumulator_threshold_scan {
+            if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                runtime.clear_threshold();
+            }
             return;
         }
+
         let cap = state
             .n_thresholds
             .max(DEFAULT_THRESHOLD_EMISSION_CAPACITY);

@@ -6,6 +6,28 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+---
+
+## 2026-05-19 — Pivot-forward remedial: authoritative flags + world summary
+
+**Status:** Local (pending commit).
+
+**Scope:** Harden PR #108/#109 pivot-forward infrastructure — feature flags clear
+stale migrated sessions; B-4 summary reads integrated `WorldGpuState.values`.
+
+**Landed (this session):**
+
+- **Part 1** — `clear_intent` / `clear_threshold` on flag-off boundary sync; family-isolation tests
+- **Part 2** — `WorldSummaryRuntime` on `WorldAccumulatorRuntime`; tick pipeline encodes world summary after Accumulator passes; `WorldGpuState` readback API
+- **Part 3** — `PipelineFlags::use_accumulator_overlay_add` comment aligned with Add-only/mixed-fallback policy
+- **Part 4** — `OracleExactness::ToleranceAbsEpsilon` replaces mislabeled ULP tolerance
+
+**Tests:** 61 gpu accumulator_op; 3 `pivot_forward_remedial`; 2 `b4_world_summary_integrated`; C-1/C-2/C-3 parity + C-INF-2 harness green.
+
+**Next:** C-4 Opus order-band compiler · C-5 soft reductions.
+
+---
+
 ## 2026-05-19 — C-INF-1 runtime consolidation + C-INF-2 oracle harness
 
 **Status:** `master` @ `164ac14` (PR #109 merged).

@@ -24,7 +24,9 @@ pub enum OracleFamily {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OracleExactness {
     BitExact,
-    Tolerance { max_ulps: u32 },
+    /// Absolute epsilon tolerance: `(a - b).abs() <= f32::EPSILON * multiplier`.
+    /// Not ULP-based — use before C-5/C-6 soft-aggregate tests only with this label.
+    ToleranceAbsEpsilon { multiplier: u32 },
 }
 
 /// Scenario token for oracle dispatch (extended per migration PR).
@@ -72,10 +74,10 @@ impl LegacyOracleRun {
                         .zip(&self.accumulator_values)
                         .all(|(a, b)| a.to_bits() == b.to_bits())
             }
-            OracleExactness::Tolerance { max_ulps } => {
+            OracleExactness::ToleranceAbsEpsilon { multiplier } => {
                 self.legacy_values.len() == self.accumulator_values.len()
                     && self.legacy_values.iter().zip(&self.accumulator_values).all(
-                        |(a, b)| (a - b).abs() <= f32::EPSILON * max_ulps as f32,
+                        |(a, b)| (a - b).abs() <= f32::EPSILON * multiplier as f32,
                     )
             }
         }
@@ -96,11 +98,11 @@ impl LegacyOracleRun {
                     && a.event_kind == b.event_kind
                     && a.value.to_bits() == b.value.to_bits()
             }),
-            OracleExactness::Tolerance { max_ulps } => legacy.iter().zip(acc.iter()).all(|(a, b)| {
+            OracleExactness::ToleranceAbsEpsilon { multiplier } => legacy.iter().zip(acc.iter()).all(|(a, b)| {
                 a.slot == b.slot
                     && a.col == b.col
                     && a.event_kind == b.event_kind
-                    && (a.value - b.value).abs() <= f32::EPSILON * max_ulps as f32
+                    && (a.value - b.value).abs() <= f32::EPSILON * multiplier as f32
             }),
         }
     }

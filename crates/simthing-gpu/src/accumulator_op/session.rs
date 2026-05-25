@@ -1037,6 +1037,15 @@ impl AccumulatorOpSession {
         ctx: &GpuContext,
         encoder: &mut wgpu::CommandEncoder,
     ) {
+        self.dispatch_write_summaries_for_values(ctx, encoder, &self.values_buffer);
+    }
+
+    fn dispatch_write_summaries_for_values(
+        &self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+    ) {
         let summary_params = AccumulatorSummaryParams {
             n_slots: self.n_slots,
             n_dims: self.n_dims,
@@ -1055,7 +1064,7 @@ impl AccumulatorOpSession {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: self.values_buffer.as_entire_binding(),
+                    resource: values.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 1,
@@ -1076,6 +1085,27 @@ impl AccumulatorOpSession {
         pass.set_bind_group(0, &summary_bind_group, &[]);
         let groups = self.n_slots.div_ceil(WORKGROUP_SIZE);
         pass.dispatch_workgroups(groups, 1, 1);
+    }
+
+    /// Encode B-4 summaries against an external values buffer (integrated world path).
+    pub fn encode_world_summaries_into(
+        &self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+    ) {
+        self.dispatch_write_summaries_for_values(ctx, encoder, values);
+    }
+
+    /// Standalone submit: write summaries for an external values buffer.
+    pub fn dispatch_world_summaries(&self, ctx: &GpuContext, values: &Buffer) {
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("accumulator_world_summary_encoder"),
+            });
+        self.encode_world_summaries_into(ctx, &mut encoder, values);
+        ctx.queue.submit(Some(encoder.finish()));
     }
 
     fn read_buffer_f32(&self, ctx: &GpuContext, buf: &Buffer) -> Vec<f32> {
