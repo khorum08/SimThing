@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-19 — AccumulatorOp v2 Phases A–B: A-4 through B-2 (PRs #90–#93)
 
-**Status:** `master` @ `a015032` pre-B-2; B-2 merge pending this session.
+**Status:** `master` @ `4caeea5` (PR #93 B-2 merged).
 
 **Scope:** Standalone `AccumulatorOpSession` in `simthing-gpu` — persistent Pass B buffers,
 bootstrap → production-shaped kernel subset. **Does not integrate** with `BoundaryProtocol`
@@ -22,11 +22,7 @@ or replace old pipeline passes.
 | **#91 B-1** | `afff3b6` | `AccumulatorOpSession` — persistent `op`/`values`/`summary`/`emission` buffers; bootstrap WGSL (Identity/Sum/transfer); CPU oracle parity test across bands |
 | **#92 B-1 fix** | `f167e5c` | `scale_kind::CONSTANT` fix for `Constant(0.0)`; same-band contention rejection; clamped `SubtractFromSource`; provisional summary/emission tier docs; unsupported-variant rejection tests |
 
-**Landing this session (B-2):**
-
-| PR | Summary |
-|----|---------|
-| **#93 B-2** | EmitEvent kernel path — WGSL `emissions` + `atomic emission_count`; bounded compact records; `EmissionOverflow` on readback; `execute_ops_cpu_with_emissions()`; negative transfer clamp; 19 gpu + 9 core `accumulator_op` tests |
+| **#93 B-2** | `02e40eb` | EmitEvent kernel path — WGSL `emissions` + `atomic emission_count`; bounded compact records; `EmissionOverflow` on readback; `execute_ops_cpu_with_emissions()`; negative transfer clamp; 19 gpu + 9 core `accumulator_op` tests |
 
 **Key files:**
 

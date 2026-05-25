@@ -2,7 +2,7 @@
 
 Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B3/I1) complete;
 **AccumulatorOp v2 Phases A–B** in progress (A-4 through B-2).
-`master` and `origin/master` synced at **`a015032`** (PR #92 B-1 bootstrap hardening); B-2 merge pending.
+`master` and `origin/master` synced at **`4caeea5`** (PR #93 B-2 kernel).
 
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
 Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
@@ -25,7 +25,7 @@ AccumulatorOp module: **19** gpu + **9** core tests after B-2.
 | **A-4** | #90 | `cb33006` | Soft-aggregate tolerance — Opus audit, `SoftAggregateGuard`, threshold validator |
 | **B-1** | #91 | `afff3b6` | `AccumulatorOpSession` persistent buffers + bootstrap kernel |
 | **B-1 fix** | #92 | `f167e5c` | Scale encoding, contention rejection, clamped transfer, provisional readback tiers |
-| **B-2** | *(this session)* | — | EmitEvent, atomic emission count, overflow reporting, CPU oracle emissions |
+| **B-2** | #93 | `02e40eb` | EmitEvent, atomic emission count, overflow reporting, CPU oracle emissions |
 
 **Earlier A-phase:** A-1 docs (#86–#87), A-2 types (#88), A-3 EML registry (#89).
 
