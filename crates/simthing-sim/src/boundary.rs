@@ -125,6 +125,9 @@ pub struct BoundaryHookContext<'a> {
 pub struct PipelineFlags {
     pub use_accumulator_threshold_scan: bool,
     pub use_accumulator_intent:         bool,
+    /// C-3: Route TransformOp::Add overlays through AccumulatorOp instead of
+    /// old Pass 3. Multiply and Set overlays still use old Pass 3 in the same tick.
+    pub use_accumulator_overlay_add:    bool,
 }
 
 /// Top-level boundary orchestrator.
@@ -194,6 +197,15 @@ impl BoundaryProtocol {
             return;
         }
         state.ensure_intent_accumulator();
+    }
+
+    fn sync_accumulator_overlay_add_session(&self, state: &mut WorldGpuState) {
+        if !self.flags.use_accumulator_overlay_add {
+            state.overlay_add_accumulator = None;
+            state.accumulator_overlay_add_active = false;
+            return;
+        }
+        state.ensure_overlay_add_accumulator();
     }
 
     fn sync_accumulator_threshold_ops(
@@ -680,6 +692,7 @@ impl BoundaryProtocol {
             dirty_value_slots.as_deref(),
             threshold_dirty,
             topology_dirty,
+            self.flags.use_accumulator_overlay_add,
             &mut self.cached_topology_state,
         );
         #[cfg(debug_assertions)]
@@ -702,6 +715,7 @@ impl BoundaryProtocol {
             self.sync_accumulator_threshold_ops(state, regs);
         }
         self.sync_accumulator_intent_session(state);
+        self.sync_accumulator_overlay_add_session(state);
         out.gpu_sync = GpuSyncOutcome {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
             // Sum: gpu_out.threshold_regs_uploaded counts entries written by
@@ -913,6 +927,7 @@ impl BoundaryProtocol {
             None,
             true,
             true,
+            self.flags.use_accumulator_overlay_add,
             &mut self.cached_topology_state,
         );
         if let Some(new_reg) = out.new_threshold_registry {
@@ -923,6 +938,7 @@ impl BoundaryProtocol {
             self.sync_accumulator_threshold_ops(state, regs);
         }
         self.sync_accumulator_intent_session(state);
+        self.sync_accumulator_overlay_add_session(state);
     }
 
     /// Read-only access to the persistent fission lineage. Useful for tests

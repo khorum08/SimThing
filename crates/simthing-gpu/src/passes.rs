@@ -44,10 +44,11 @@ struct PassParams {
     _pad1:      u32,
 }
 
-/// Optional AccumulatorOp sessions folded into one tick command buffer (C-1/C-2).
+/// Optional AccumulatorOp sessions folded into one tick command buffer (C-1/C-2/C-3).
 pub struct AccumulatorPipelineSessions<'a> {
-    pub threshold: Option<&'a mut crate::AccumulatorOpSession>,
-    pub intent:    Option<&'a mut crate::AccumulatorOpSession>,
+    pub threshold:   Option<&'a mut crate::AccumulatorOpSession>,
+    pub intent:      Option<&'a mut crate::AccumulatorOpSession>,
+    pub overlay_add: Option<&'a mut crate::AccumulatorOpSession>,
 }
 
 pub struct Pipelines {
@@ -497,6 +498,9 @@ impl Pipelines {
         if let Some(session) = sessions.intent.as_mut() {
             session.prepare_intent(&state.ctx);
         }
+        if let Some(session) = sessions.overlay_add.as_mut() {
+            session.prepare_overlay_add(&state.ctx);
+        }
         if let Some(session) = sessions.threshold.as_mut() {
             session.prepare_threshold_scan(&state.ctx);
         }
@@ -528,8 +532,9 @@ impl Pipelines {
             state,
             dt,
             AccumulatorPipelineSessions {
-                threshold: Some(session),
-                intent:    None,
+                threshold:   Some(session),
+                intent:      None,
+                overlay_add: None,
             },
         );
     }
@@ -548,8 +553,9 @@ impl Pipelines {
             false,
             skip_threshold_scan,
             &mut AccumulatorPipelineSessions {
-                threshold: None,
-                intent:    None,
+                threshold:   None,
+                intent:      None,
+                overlay_add: None,
             },
         );
     }
@@ -693,7 +699,7 @@ impl Pipelines {
 
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("tick_pipeline_pass"),
+                label: Some("tick_pipeline_pre_overlay"),
                 timestamp_writes: None,
             });
 
@@ -720,6 +726,22 @@ impl Pipelines {
                 pass.set_bind_group(0, bg, &[]);
                 dispatch_linear(&mut pass, state.n_slots * state.n_intensity_params);
             }
+        }
+
+        if let Some(session) = sessions.overlay_add.as_mut() {
+            session.encode_overlay_add_into(
+                ctx,
+                &mut encoder,
+                &state.values,
+                &state.previous_values,
+            );
+        }
+
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("tick_pipeline_post_overlay"),
+                timestamp_writes: None,
+            });
 
             if let Some(bg) = overlay_bg.as_ref() {
                 pass.set_pipeline(&self.overlay_pipeline);
@@ -1962,8 +1984,9 @@ mod tests {
             &state,
             0.0,
             AccumulatorPipelineSessions {
-                intent:    Some(&mut session),
-                threshold: None,
+                intent:      Some(&mut session),
+                threshold:   None,
+                overlay_add: None,
             },
         );
         state.intent_accumulator = Some(session);

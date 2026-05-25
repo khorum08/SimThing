@@ -186,18 +186,22 @@ impl DispatchCoordinator {
         // 3. GPU passes (order matters — see module-level doc).
         let gpu_pipeline_started = Instant::now();
         let use_accumulator_threshold = state.threshold_accumulator.is_some();
-        if use_accumulator_intent || use_accumulator_threshold {
+        let use_accumulator_overlay_add = state.overlay_add_accumulator.is_some();
+        if use_accumulator_intent || use_accumulator_threshold || use_accumulator_overlay_add {
             let mut intent_session = state.intent_accumulator.take();
+            let mut overlay_session = state.overlay_add_accumulator.take();
             let mut threshold_session = state.threshold_accumulator.take();
             pipelines.run_tick_pipeline_with_accumulators(
                 state,
                 dt,
                 AccumulatorPipelineSessions {
-                    intent: intent_session.as_mut(),
-                    threshold: threshold_session.as_mut(),
+                    intent:      intent_session.as_mut(),
+                    overlay_add: overlay_session.as_mut(),
+                    threshold:   threshold_session.as_mut(),
                 },
             );
             state.intent_accumulator = intent_session;
+            state.overlay_add_accumulator = overlay_session;
             state.threshold_accumulator = threshold_session;
         } else {
             pipelines.run_tick_pipeline(state, dt);
