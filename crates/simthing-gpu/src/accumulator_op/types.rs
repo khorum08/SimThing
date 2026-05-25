@@ -3,6 +3,25 @@
 use bytemuck::{Pod, Zeroable};
 
 pub const DEFAULT_EMISSION_CAPACITY: u32 = 1024;
+pub const DEFAULT_THRESHOLD_EMISSION_CAPACITY: u32 = 65536;
+
+/// Compact threshold crossing record (C-1 parallel emission stream).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ThresholdEmission {
+    pub reg_idx: u32,
+    pub slot:    u32,
+    pub col:     u32,
+    pub value:   f32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+pub struct ThresholdEmissionGpu {
+    pub reg_idx: u32,
+    pub slot:    u32,
+    pub col:     u32,
+    pub value:   f32,
+}
 
 /// Provisional B-1/B-2 summary tier.
 ///
@@ -72,14 +91,14 @@ pub struct AccumulatorOpGpu {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 pub struct AccumulatorTickParams {
-    pub n_ops:             u32,
-    pub current_band:      u32,
-    pub n_slots:           u32,
-    pub n_dims:            u32,
-    pub emission_capacity: u32,
-    pub _pad0:             u32,
-    pub _pad1:             u32,
-    pub _pad2:             u32,
+    pub n_ops:                       u32,
+    pub current_band:                u32,
+    pub n_slots:                     u32,
+    pub n_dims:                      u32,
+    pub emission_capacity:           u32,
+    pub threshold_emission_capacity: u32,
+    pub _pad0:                       u32,
+    pub _pad1:                       u32,
 }
 
 #[repr(C)]
@@ -103,6 +122,8 @@ pub mod combine_kind {
 }
 
 pub mod gate_kind {
+    /// Matches `GateSpec::Threshold` ordinal in simthing-core.
+    pub const THRESHOLD:  u32 = 1;
     pub const ALWAYS:     u32 = 0;
     pub const ORDER_BAND: u32 = 4;
 }

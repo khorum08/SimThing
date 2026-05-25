@@ -13,12 +13,14 @@ use wgpu::{
 };
 
 use crate::context::GpuContext;
+use crate::world_state::{ThresholdEvent, ThresholdRegistration};
 
-use super::encode::EncodeError;
+use super::encode::{threshold_registrations_to_ops, EncodeError};
 use super::types::AccumulatorOpGpu;
 use super::types::{
-    AccumulatorSummaryParams, AccumulatorTickParams, EmissionRecord,
-    EmissionRecordGpu, SlotSummary, SlotSummaryGpu, DEFAULT_EMISSION_CAPACITY,
+    AccumulatorSummaryParams, AccumulatorTickParams, EmissionRecord, EmissionRecordGpu,
+    SlotSummary, SlotSummaryGpu, ThresholdEmission, ThresholdEmissionGpu,
+    DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 
 pub const WORKGROUP_SIZE: u32 = 64;
@@ -40,25 +42,26 @@ pub enum AccumulatorOpSessionError {
     Readback,
     #[error("emission buffer overflow: count={count}, capacity={capacity}")]
     EmissionOverflow { count: u32, capacity: u32 },
+    #[error("threshold emission buffer overflow: count={count}, capacity={capacity}")]
+    ThresholdEmissionOverflow { count: u32, capacity: u32 },
 }
 
-/// GPU-resident AccumulatorOp session (B-2 production-shaped kernel subset).
-///
-/// Persistent buffers and compact emission readback are production-shaped, but
-/// the kernel supports only non-contended Identity/Sum, clamped SlotValue
-/// transfer, and Identity EmitEvent. Not integrated with `BoundaryProtocol`.
+/// GPU-resident AccumulatorOp session (B-2 bootstrap + C-1 threshold scan).
 pub struct AccumulatorOpSession {
-    ctx: GpuContext,
     n_slots: u32,
     n_dims: u32,
     n_ops: u32,
     emission_capacity: u32,
+    threshold_emission_capacity: u32,
 
     op_buffer: Buffer,
     values_buffer: Buffer,
+    previous_values_buffer: Buffer,
     summary_buffer: Buffer,
     emission_buffer: Buffer,
     emission_count: Buffer,
+    threshold_emission_buffer: Buffer,
+    threshold_emission_count: Buffer,
 
     tick_uniform: Buffer,
     summary_uniform: Buffer,
@@ -68,22 +71,58 @@ pub struct AccumulatorOpSession {
     summary_layout: BindGroupLayout,
     summary_pipeline: ComputePipeline,
 
+    timestamp_supported: bool,
     timestamp_query_set: Option<QuerySet>,
     timestamp_resolve_buffer: Option<Buffer>,
     timestamp_readback_buffer: Option<Buffer>,
     last_pass_time_us: Option<u64>,
+
+    /// Per-registration sidecar populated by `upload_threshold_ops`.
+    threshold_event_kinds: Vec<u32>,
 }
 
 impl AccumulatorOpSession {
-    pub fn new(ctx: GpuContext, n_slots: u32, n_dims: u32) -> Self {
+    pub fn new(ctx: &GpuContext, n_slots: u32, n_dims: u32) -> Self {
         Self::with_emission_capacity(ctx, n_slots, n_dims, DEFAULT_EMISSION_CAPACITY)
     }
 
+    /// Attach to an existing world GPU context (C-1 integrated threshold scan).
+    pub fn new_attached(
+        ctx: &GpuContext,
+        n_slots: u32,
+        n_dims: u32,
+        threshold_emission_capacity: u32,
+    ) -> Self {
+        Self::build(
+            ctx,
+            n_slots,
+            n_dims,
+            DEFAULT_EMISSION_CAPACITY,
+            threshold_emission_capacity,
+        )
+    }
+
     pub fn with_emission_capacity(
-        ctx: GpuContext,
+        ctx: &GpuContext,
         n_slots: u32,
         n_dims: u32,
         emission_capacity: u32,
+    ) -> Self {
+        Self::build(
+            ctx,
+            n_slots,
+            n_dims,
+            emission_capacity,
+            DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+        )
+    }
+
+    fn build(
+        ctx: &GpuContext,
+        n_slots: u32,
+        n_dims: u32,
+        emission_capacity: u32,
+        threshold_emission_capacity: u32,
     ) -> Self {
         assert!(n_slots > 0 && n_dims > 0, "n_slots and n_dims must be > 0");
 
@@ -92,6 +131,8 @@ impl AccumulatorOpSession {
         let summary_len = (n_slots as u64) * std::mem::size_of::<SlotSummaryGpu>() as u64;
         let emission_len =
             (emission_capacity as u64) * std::mem::size_of::<EmissionRecordGpu>() as u64;
+        let threshold_emission_len = (threshold_emission_capacity as u64)
+            * std::mem::size_of::<ThresholdEmissionGpu>() as u64;
 
         let op_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("accumulator_op_buffer"),
@@ -102,6 +143,13 @@ impl AccumulatorOpSession {
 
         let values_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("accumulator_values"),
+            size: values_len,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let previous_values_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("accumulator_previous_values"),
             size: values_len,
             usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
             mapped_at_creation: false,
@@ -123,6 +171,20 @@ impl AccumulatorOpSession {
 
         let emission_count = device.create_buffer(&BufferDescriptor {
             label: Some("accumulator_emission_count"),
+            size: 4,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let threshold_emission_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("accumulator_threshold_emissions"),
+            size: threshold_emission_len.max(4),
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let threshold_emission_count = device.create_buffer(&BufferDescriptor {
+            label: Some("accumulator_threshold_emission_count"),
             size: 4,
             usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
             mapped_at_creation: false,
@@ -155,6 +217,9 @@ impl AccumulatorOpSession {
                 storage_entry(2, false),
                 storage_entry(3, false),
                 uniform_entry(4),
+                storage_entry(5, true),
+                storage_entry(6, false),
+                storage_entry(7, false),
             ],
         });
 
@@ -222,29 +287,35 @@ impl AccumulatorOpSession {
             };
 
         let session = Self {
-            ctx,
             n_slots,
             n_dims,
             n_ops: 0,
             emission_capacity,
+            threshold_emission_capacity,
             op_buffer,
             values_buffer,
+            previous_values_buffer,
             summary_buffer,
             emission_buffer,
             emission_count,
+            threshold_emission_buffer,
+            threshold_emission_count,
             tick_uniform,
             summary_uniform,
             execute_layout,
             execute_pipeline,
             summary_layout,
             summary_pipeline,
+            timestamp_supported: ctx.timestamp_supported(),
             timestamp_query_set,
             timestamp_resolve_buffer,
             timestamp_readback_buffer,
             last_pass_time_us: None,
+            threshold_event_kinds: Vec::new(),
         };
 
-        session.reset_emission_count();
+        session.reset_emission_count(ctx);
+        session.reset_threshold_emission_count(ctx);
         session
     }
 
@@ -264,9 +335,13 @@ impl AccumulatorOpSession {
         self.emission_capacity
     }
 
+    pub fn threshold_emission_capacity(&self) -> u32 {
+        self.threshold_emission_capacity
+    }
+
     /// Whether this session was created with GPU timestamp query support.
     pub fn timestamp_supported(&self) -> bool {
-        self.timestamp_query_set.is_some()
+        self.timestamp_supported
     }
 
     /// Duration of the last `execute_ops` pass in microseconds, if timestamp queries are supported.
@@ -275,20 +350,34 @@ impl AccumulatorOpSession {
     }
 
     /// Upload initial or post-tick values matrix (row-major slot × dims).
-    pub fn upload_values(&self, values: &[f32]) {
+    pub fn upload_values(&self, ctx: &GpuContext, values: &[f32]) {
         assert_eq!(values.len(), self.values_len());
-        self.ctx
-            .queue
+        ctx.queue
             .write_buffer(&self.values_buffer, 0, bytemuck::cast_slice(values));
     }
 
+    /// Upload previous-tick values for threshold crossing tests.
+    pub fn upload_previous_values(&self, ctx: &GpuContext, values: &[f32]) {
+        assert_eq!(values.len(), self.values_len());
+        ctx.queue.write_buffer(
+            &self.previous_values_buffer,
+            0,
+            bytemuck::cast_slice(values),
+        );
+    }
+
     /// Upload AccumulatorOp registrations after bootstrap subset + contention validation.
-    pub fn upload_ops(&mut self, ops: &[AccumulatorOp]) -> Result<(), AccumulatorOpSessionError> {
+    pub fn upload_ops(
+        &mut self,
+        ctx: &GpuContext,
+        ops: &[AccumulatorOp],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        self.threshold_event_kinds.clear();
         let gpu_ops = AccumulatorOpGpu::encode_bootstrap_set(ops)?;
 
         let byte_len = gpu_ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
         if self.op_buffer.size() < byte_len as u64 {
-            self.op_buffer = self.ctx.device.create_buffer(&BufferDescriptor {
+            self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
                 label: Some("accumulator_op_buffer"),
                 size: byte_len.max(4096) as u64,
                 usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
@@ -296,20 +385,46 @@ impl AccumulatorOpSession {
             });
         }
 
-        self.ctx
-            .queue
+        ctx.queue
             .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(&gpu_ops));
         self.n_ops = gpu_ops.len() as u32;
         Ok(())
     }
 
+    /// Upload threshold-gated EmitEvent ops from Pass 7 registrations (C-1).
+    pub fn upload_threshold_ops(
+        &mut self,
+        ctx: &GpuContext,
+        regs: &[ThresholdRegistration],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        let (ops, event_kinds) = threshold_registrations_to_ops(regs)?;
+        let gpu_ops = AccumulatorOpGpu::encode_threshold_set(&ops)?;
+
+        let byte_len = gpu_ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
+        if self.op_buffer.size() < byte_len as u64 {
+            self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("accumulator_op_buffer"),
+                size: byte_len.max(4096) as u64,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+
+        ctx.queue
+            .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(&gpu_ops));
+        self.n_ops = gpu_ops.len() as u32;
+        self.threshold_event_kinds = event_kinds;
+        Ok(())
+    }
+
     /// Dispatch Pass B for one OrderBand, then refresh per-slot summaries.
-    pub fn tick(&mut self, band: u32) -> Result<(), AccumulatorOpSessionError> {
+    pub fn tick(&mut self, ctx: &GpuContext, band: u32) -> Result<(), AccumulatorOpSessionError> {
         if self.n_ops == 0 {
             return Err(AccumulatorOpSessionError::NoOps);
         }
 
-        self.reset_emission_count();
+        self.reset_emission_count(ctx);
+        self.reset_threshold_emission_count(ctx);
         self.last_pass_time_us = None;
 
         let tick_params = AccumulatorTickParams {
@@ -318,45 +433,23 @@ impl AccumulatorOpSession {
             n_slots: self.n_slots,
             n_dims: self.n_dims,
             emission_capacity: self.emission_capacity,
+            threshold_emission_capacity: self.threshold_emission_capacity,
             _pad0: 0,
             _pad1: 0,
-            _pad2: 0,
         };
-        self.ctx.queue.write_buffer(
+        ctx.queue.write_buffer(
             &self.tick_uniform,
             0,
             bytemuck::bytes_of(&tick_params),
         );
 
-        let execute_bind_group = self.ctx.device.create_bind_group(&BindGroupDescriptor {
-            label: Some("accumulator_execute_bg"),
-            layout: &self.execute_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: self.op_buffer.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: self.values_buffer.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: self.emission_buffer.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 3,
-                    resource: self.emission_count.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 4,
-                    resource: self.tick_uniform.as_entire_binding(),
-                },
-            ],
-        });
+        let execute_bind_group = self.create_execute_bind_group(
+            ctx,
+            &self.values_buffer,
+            &self.previous_values_buffer,
+        );
 
-        let mut encoder = self
-            .ctx
+        let mut encoder = ctx
             .device
             .create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("accumulator_tick_encoder"),
@@ -390,16 +483,134 @@ impl AccumulatorOpSession {
             encoder.copy_buffer_to_buffer(resolve, 0, readback, 0, 16);
         }
 
-        self.dispatch_write_summaries(&mut encoder);
-        self.ctx.queue.submit(Some(encoder.finish()));
+        self.dispatch_write_summaries(ctx, &mut encoder);
+        ctx.queue.submit(Some(encoder.finish()));
 
-        self.read_execute_pass_timestamp();
+        self.read_execute_pass_timestamp(ctx);
         Ok(())
     }
 
+    /// Dispatch threshold scan against world GPU value buffers (C-1 integrated path).
+    pub fn dispatch_threshold_scan(
+        &mut self,
+        ctx: &GpuContext,
+        values: &Buffer,
+        previous_values: &Buffer,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if self.n_ops == 0 {
+            return Ok(());
+        }
+
+        self.reset_threshold_emission_count(ctx);
+        self.last_pass_time_us = None;
+
+        let tick_params = AccumulatorTickParams {
+            n_ops: self.n_ops,
+            current_band: 0,
+            n_slots: self.n_slots,
+            n_dims: self.n_dims,
+            emission_capacity: self.emission_capacity,
+            threshold_emission_capacity: self.threshold_emission_capacity,
+            _pad0: 0,
+            _pad1: 0,
+        };
+        ctx.queue.write_buffer(
+            &self.tick_uniform,
+            0,
+            bytemuck::bytes_of(&tick_params),
+        );
+
+        let execute_bind_group =
+            self.create_execute_bind_group(ctx, values, previous_values);
+
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("accumulator_threshold_scan_encoder"),
+            });
+
+        let timestamp_writes = self.timestamp_query_set.as_ref().map(|query_set| {
+            wgpu::ComputePassTimestampWrites {
+                query_set,
+                beginning_of_pass_write_index: Some(0),
+                end_of_pass_write_index: Some(1),
+            }
+        });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("accumulator_threshold_scan_pass"),
+                timestamp_writes,
+            });
+            pass.set_pipeline(&self.execute_pipeline);
+            pass.set_bind_group(0, &execute_bind_group, &[]);
+            let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
+            pass.dispatch_workgroups(groups, 1, 1);
+        }
+
+        if let (Some(query_set), Some(resolve), Some(readback)) = (
+            self.timestamp_query_set.as_ref(),
+            self.timestamp_resolve_buffer.as_ref(),
+            self.timestamp_readback_buffer.as_ref(),
+        ) {
+            encoder.resolve_query_set(query_set, 0..2, resolve, 0);
+            encoder.copy_buffer_to_buffer(resolve, 0, readback, 0, 16);
+        }
+
+        ctx.queue.submit(Some(encoder.finish()));
+        self.read_execute_pass_timestamp(ctx);
+        Ok(())
+    }
+
+    fn create_execute_bind_group(
+        &self,
+        ctx: &GpuContext,
+        values: &Buffer,
+        previous_values: &Buffer,
+    ) -> wgpu::BindGroup {
+        ctx.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("accumulator_execute_bg"),
+            layout: &self.execute_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: self.op_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: self.emission_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 3,
+                    resource: self.emission_count.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 4,
+                    resource: self.tick_uniform.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 5,
+                    resource: previous_values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 6,
+                    resource: self.threshold_emission_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 7,
+                    resource: self.threshold_emission_count.as_entire_binding(),
+                },
+            ],
+        })
+    }
+
     /// Provisional B-1/B-2 summary readback tier (checksum-only; final shape is B-4).
-    pub fn readback_summary(&self) -> Result<Vec<SlotSummary>, AccumulatorOpSessionError> {
-        let bytes = self.read_buffer_bytes(&self.summary_buffer);
+    pub fn readback_summary(&self, ctx: &GpuContext) -> Result<Vec<SlotSummary>, AccumulatorOpSessionError> {
+        let bytes = self.read_buffer_bytes(ctx, &self.summary_buffer);
         let gpu: &[SlotSummaryGpu] = bytemuck::cast_slice(&bytes);
         Ok(gpu
             .iter()
@@ -410,9 +621,59 @@ impl AccumulatorOpSession {
             .collect())
     }
 
+    /// Read compact threshold crossing records written this tick (C-1).
+    pub fn readback_threshold_emissions(
+        &self,
+        ctx: &GpuContext,
+    ) -> Result<Vec<ThresholdEmission>, AccumulatorOpSessionError> {
+        let count = self.read_threshold_emission_count(ctx)?;
+        if count == 0 {
+            return Ok(Vec::new());
+        }
+        if count > self.threshold_emission_capacity {
+            return Err(AccumulatorOpSessionError::ThresholdEmissionOverflow {
+                count,
+                capacity: self.threshold_emission_capacity,
+            });
+        }
+        let used =
+            (count as u64) * std::mem::size_of::<ThresholdEmissionGpu>() as u64;
+        let bytes = self.read_buffer_bytes_range(ctx, &self.threshold_emission_buffer, 0, used);
+        let gpu: &[ThresholdEmissionGpu] = bytemuck::cast_slice(&bytes);
+        Ok(gpu
+            .iter()
+            .map(|r| ThresholdEmission {
+                reg_idx: r.reg_idx,
+                slot: r.slot,
+                col: r.col,
+                value: r.value,
+            })
+            .collect())
+    }
+
+    /// Reconstruct Pass 7 `ThresholdEvent`s from compact threshold emissions.
+    pub fn readback_threshold_events(
+        &self,
+        ctx: &GpuContext,
+    ) -> Result<Vec<ThresholdEvent>, AccumulatorOpSessionError> {
+        let emissions = self.readback_threshold_emissions(ctx)?;
+        Ok(emissions
+            .into_iter()
+            .map(|e| ThresholdEvent {
+                slot: e.slot,
+                col: e.col,
+                value: e.value,
+                event_kind: self.threshold_event_kinds[e.reg_idx as usize],
+            })
+            .collect())
+    }
+
     /// Read compact emission records written by EmitEvent ops this tick.
-    pub fn readback_emissions(&self) -> Result<Vec<EmissionRecord>, AccumulatorOpSessionError> {
-        let count = self.read_emission_count()?;
+    pub fn readback_emissions(
+        &self,
+        ctx: &GpuContext,
+    ) -> Result<Vec<EmissionRecord>, AccumulatorOpSessionError> {
+        let count = self.read_emission_count(ctx)?;
         if count == 0 {
             return Ok(Vec::new());
         }
@@ -423,7 +684,7 @@ impl AccumulatorOpSession {
             });
         }
         let used = (count as u64) * std::mem::size_of::<EmissionRecordGpu>() as u64;
-        let bytes = self.read_buffer_bytes_range(&self.emission_buffer, 0, used);
+        let bytes = self.read_buffer_bytes_range(ctx, &self.emission_buffer, 0, used);
         let gpu: &[EmissionRecordGpu] = bytemuck::cast_slice(&bytes);
         Ok(gpu
             .iter()
@@ -435,27 +696,42 @@ impl AccumulatorOpSession {
     }
 
     /// Full values buffer readback — debug only unless explicitly allowed.
-    pub fn readback_full(&self) -> Result<Vec<f32>, AccumulatorOpSessionError> {
+    pub fn readback_full(&self, ctx: &GpuContext) -> Result<Vec<f32>, AccumulatorOpSessionError> {
         if !DEBUG_READBACK_ALLOWED.load(Ordering::Relaxed) {
             eprintln!(
                 "warning: AccumulatorOpSession::readback_full() called outside test mode"
             );
         }
-        Ok(self.read_buffer_f32(&self.values_buffer))
+        Ok(self.read_buffer_f32(ctx, &self.values_buffer))
     }
 
-    fn reset_emission_count(&self) {
-        self.ctx
-            .queue
+    fn reset_emission_count(&self, ctx: &GpuContext) {
+        ctx.queue
             .write_buffer(&self.emission_count, 0, &0u32.to_le_bytes());
     }
 
-    fn read_emission_count(&self) -> Result<u32, AccumulatorOpSessionError> {
-        let bytes = self.read_buffer_bytes(&self.emission_count);
+    fn reset_threshold_emission_count(&self, ctx: &GpuContext) {
+        ctx.queue.write_buffer(
+            &self.threshold_emission_count,
+            0,
+            &0u32.to_le_bytes(),
+        );
+    }
+
+    fn read_emission_count(&self, ctx: &GpuContext) -> Result<u32, AccumulatorOpSessionError> {
+        let bytes = self.read_buffer_bytes(ctx, &self.emission_count);
         Ok(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
     }
 
-    fn read_execute_pass_timestamp(&mut self) {
+    fn read_threshold_emission_count(
+        &self,
+        ctx: &GpuContext,
+    ) -> Result<u32, AccumulatorOpSessionError> {
+        let bytes = self.read_buffer_bytes(ctx, &self.threshold_emission_count);
+        Ok(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
+    }
+
+    fn read_execute_pass_timestamp(&mut self, ctx: &GpuContext) {
         // B-3 reads timestamps synchronously for testability.
         // Later production profiling can batch or sample timestamp readbacks.
         let Some(readback) = self.timestamp_readback_buffer.as_ref() else {
@@ -463,10 +739,10 @@ impl AccumulatorOpSession {
             return;
         };
 
-        self.ctx.device.poll(Maintain::Wait);
+        ctx.device.poll(Maintain::Wait);
         let slice = readback.slice(..);
         slice.map_async(MapMode::Read, |_| {});
-        self.ctx.device.poll(Maintain::Wait);
+        ctx.device.poll(Maintain::Wait);
         let mapped = slice.get_mapped_range();
         if mapped.len() < 16 {
             self.last_pass_time_us = None;
@@ -479,7 +755,7 @@ impl AccumulatorOpSession {
 
         if stamps[1] >= stamps[0] {
             let delta = stamps[1] - stamps[0];
-            let ns = delta as f64 * self.ctx.timestamp_period_ns() as f64;
+            let ns = delta as f64 * ctx.timestamp_period_ns() as f64;
             self.last_pass_time_us = Some((ns / 1000.0).round() as u64);
         } else {
             self.last_pass_time_us = None;
@@ -488,6 +764,7 @@ impl AccumulatorOpSession {
 
     fn dispatch_write_summaries(
         &self,
+        ctx: &GpuContext,
         encoder: &mut wgpu::CommandEncoder,
     ) {
         let summary_params = AccumulatorSummaryParams {
@@ -496,13 +773,13 @@ impl AccumulatorOpSession {
             _pad0: 0,
             _pad1: 0,
         };
-        self.ctx.queue.write_buffer(
+        ctx.queue.write_buffer(
             &self.summary_uniform,
             0,
             bytemuck::bytes_of(&summary_params),
         );
 
-        let summary_bind_group = self.ctx.device.create_bind_group(&BindGroupDescriptor {
+        let summary_bind_group = ctx.device.create_bind_group(&BindGroupDescriptor {
             label: Some("accumulator_summary_bg"),
             layout: &self.summary_layout,
             entries: &[
@@ -531,40 +808,40 @@ impl AccumulatorOpSession {
         pass.dispatch_workgroups(groups, 1, 1);
     }
 
-    fn read_buffer_f32(&self, buf: &Buffer) -> Vec<f32> {
-        let bytes = self.read_buffer_bytes(buf);
+    fn read_buffer_f32(&self, ctx: &GpuContext, buf: &Buffer) -> Vec<f32> {
+        let bytes = self.read_buffer_bytes(ctx, buf);
         bytemuck::cast_slice(&bytes).to_vec()
     }
 
-    fn read_buffer_bytes(&self, buf: &Buffer) -> Vec<u8> {
-        self.read_buffer_bytes_range(buf, 0, buf.size())
+    fn read_buffer_bytes(&self, ctx: &GpuContext, buf: &Buffer) -> Vec<u8> {
+        self.read_buffer_bytes_range(ctx, buf, 0, buf.size())
     }
 
     fn read_buffer_bytes_range(
         &self,
+        ctx: &GpuContext,
         buf: &Buffer,
         offset: u64,
         size: u64,
     ) -> Vec<u8> {
-        let staging = self.ctx.device.create_buffer(&BufferDescriptor {
+        let staging = ctx.device.create_buffer(&BufferDescriptor {
             label: Some("accumulator_staging_read"),
             size,
             usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
-        let mut encoder = self
-            .ctx
+        let mut encoder = ctx
             .device
             .create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("accumulator_read_encoder"),
             });
         encoder.copy_buffer_to_buffer(buf, offset, &staging, 0, size);
-        self.ctx.queue.submit(Some(encoder.finish()));
+        ctx.queue.submit(Some(encoder.finish()));
 
         let slice = staging.slice(..);
         slice.map_async(MapMode::Read, |_| {});
-        self.ctx.device.poll(Maintain::Wait);
+        ctx.device.poll(Maintain::Wait);
         let mapped = slice.get_mapped_range();
         mapped.to_vec()
     }
@@ -604,15 +881,17 @@ mod tests {
 
     use crate::accumulator_op::encode::EncodeError;
     use crate::accumulator_op::{
-        execute_ops_cpu, set_debug_readback_allowed, summaries_from_values,
+        execute_ops_cpu, execute_threshold_ops_cpu, set_debug_readback_allowed,
+        summaries_from_values, threshold_registrations_to_ops,
     };
     use crate::context::GpuContext;
 
     use super::*;
 
-    fn gpu_session(n_slots: u32, n_dims: u32) -> AccumulatorOpSession {
+    fn gpu_session(n_slots: u32, n_dims: u32) -> (GpuContext, AccumulatorOpSession) {
         let ctx = GpuContext::new_blocking().expect("gpu context");
-        AccumulatorOpSession::new(ctx, n_slots, n_dims)
+        let session = AccumulatorOpSession::new(&ctx, n_slots, n_dims);
+        (ctx, session)
     }
 
     fn bootstrap_ops() -> Vec<AccumulatorOp> {
@@ -666,16 +945,16 @@ mod tests {
         execute_ops_cpu(&mut expected, &ops, 1, n_dims).unwrap();
         let expected_summaries = summaries_from_values(&expected, n_slots, n_dims);
 
-        let mut session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
-        session.upload_values(&initial);
-        session.upload_ops(&ops).unwrap();
-        session.tick(0).unwrap();
-        session.tick(1).unwrap();
+        let mut session = AccumulatorOpSession::new(&ctx, n_slots, n_dims);
+        session.upload_values(&ctx, &initial);
+        session.upload_ops(&ctx, &ops).unwrap();
+        session.tick(&ctx, 0).unwrap();
+        session.tick(&ctx, 1).unwrap();
 
-        let gpu_summaries = session.readback_summary().unwrap();
+        let gpu_summaries = session.readback_summary(&ctx).unwrap();
         assert_eq!(gpu_summaries, expected_summaries);
 
-        let gpu_values = session.readback_full().unwrap();
+        let gpu_values = session.readback_full(&ctx).unwrap();
         assert_eq!(gpu_values, expected);
     }
 
@@ -693,11 +972,11 @@ mod tests {
             targets: vec![(1, 0)],
         };
 
-        let mut session = gpu_session(2, n_dims);
-        session.upload_values(&values);
-        session.upload_ops(std::slice::from_ref(&op)).unwrap();
-        session.tick(0).unwrap();
-        values = session.readback_full().unwrap();
+        let (ctx, mut session) = gpu_session(2, n_dims);
+        session.upload_values(&ctx, &values);
+        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session.tick(&ctx, 0).unwrap();
+        values = session.readback_full(&ctx).unwrap();
         assert_eq!(values[1], 7.0);
     }
 
@@ -705,7 +984,7 @@ mod tests {
     fn accumulator_transfer_clamps_to_available_source() {
         set_debug_readback_allowed(true);
         let n_dims = 1u32;
-        let mut session = gpu_session(2, n_dims);
+        let (ctx, mut session) = gpu_session(2, n_dims);
 
         let mut values = vec![5.0, 0.0];
         let op = AccumulatorOp {
@@ -716,10 +995,10 @@ mod tests {
             consume: ConsumeMode::SubtractFromSource,
             targets: vec![(1, 0)],
         };
-        session.upload_values(&values);
-        session.upload_ops(std::slice::from_ref(&op)).unwrap();
-        session.tick(0).unwrap();
-        values = session.readback_full().unwrap();
+        session.upload_values(&ctx, &values);
+        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session.tick(&ctx, 0).unwrap();
+        values = session.readback_full(&ctx).unwrap();
         assert_eq!(values, vec![0.0, 5.0]);
 
         let mut values = vec![10.0, 0.0];
@@ -731,10 +1010,10 @@ mod tests {
             consume: ConsumeMode::SubtractFromSource,
             targets: vec![(1, 0)],
         };
-        session.upload_values(&values);
-        session.upload_ops(std::slice::from_ref(&op_small)).unwrap();
-        session.tick(0).unwrap();
-        values = session.readback_full().unwrap();
+        session.upload_values(&ctx, &values);
+        session.upload_ops(&ctx, std::slice::from_ref(&op_small)).unwrap();
+        session.tick(&ctx, 0).unwrap();
+        values = session.readback_full(&ctx).unwrap();
         assert_eq!(values, vec![7.0, 3.0]);
     }
 
@@ -742,7 +1021,7 @@ mod tests {
     fn accumulator_transfer_rejects_negative_requested_transfer() {
         set_debug_readback_allowed(true);
         let n_dims = 1u32;
-        let mut session = gpu_session(2, n_dims);
+        let (ctx, mut session) = gpu_session(2, n_dims);
         let mut values = vec![5.0, 0.0];
         let op = AccumulatorOp {
             source: SourceSpec::SlotValue { slot: 0, col: 0 },
@@ -752,10 +1031,10 @@ mod tests {
             consume: ConsumeMode::SubtractFromSource,
             targets: vec![(1, 0)],
         };
-        session.upload_values(&values);
-        session.upload_ops(std::slice::from_ref(&op)).unwrap();
-        session.tick(0).unwrap();
-        values = session.readback_full().unwrap();
+        session.upload_values(&ctx, &values);
+        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session.tick(&ctx, 0).unwrap();
+        values = session.readback_full(&ctx).unwrap();
         assert_eq!(values, vec![5.0, 0.0]);
     }
 
@@ -779,8 +1058,8 @@ mod tests {
                 targets: vec![(1, 0)],
             },
         ];
-        let mut session = gpu_session(4, 1);
-        let err = session.upload_ops(&ops).unwrap_err();
+        let (ctx, mut session) = gpu_session(4, 1);
+        let err = session.upload_ops(&ctx, &ops).unwrap_err();
         assert!(matches!(
             err,
             AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
@@ -811,8 +1090,8 @@ mod tests {
                 targets: vec![(2, 0)],
             },
         ];
-        let mut session = gpu_session(4, 1);
-        let err = session.upload_ops(&ops).unwrap_err();
+        let (ctx, mut session) = gpu_session(4, 1);
+        let err = session.upload_ops(&ctx, &ops).unwrap_err();
         assert!(matches!(
             err,
             AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
@@ -843,8 +1122,8 @@ mod tests {
                 targets: vec![(1, 0)],
             },
         ];
-        let mut session = gpu_session(4, 1);
-        session.upload_ops(&ops).unwrap();
+        let (ctx, mut session) = gpu_session(4, 1);
+        session.upload_ops(&ctx, &ops).unwrap();
     }
 
     #[test]
@@ -867,9 +1146,9 @@ mod tests {
                 targets: vec![(1, 0)],
             },
         ];
-        let mut session = gpu_session(4, 1);
+        let (ctx, mut session) = gpu_session(4, 1);
         assert!(matches!(
-            session.upload_ops(&ops),
+            session.upload_ops(&ctx, &ops),
             Err(AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
                 slot: 1,
                 col: 0,
@@ -898,9 +1177,9 @@ mod tests {
                 targets: vec![(0, 0)],
             },
         ];
-        let mut session = gpu_session(4, 2);
+        let (ctx, mut session) = gpu_session(4, 2);
         assert!(matches!(
-            session.upload_ops(&ops),
+            session.upload_ops(&ctx, &ops),
             Err(AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
                 slot: 0,
                 col: 0,
@@ -929,9 +1208,9 @@ mod tests {
                 targets: vec![(1, 0)],
             },
         ];
-        let mut session = gpu_session(4, 2);
+        let (ctx, mut session) = gpu_session(4, 2);
         assert!(matches!(
-            session.upload_ops(&ops),
+            session.upload_ops(&ctx, &ops),
             Err(AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
                 slot: 0,
                 col: 0,
@@ -960,9 +1239,9 @@ mod tests {
                 targets: vec![(1, 0)],
             },
         ];
-        let mut session = gpu_session(4, 1);
+        let (ctx, mut session) = gpu_session(4, 1);
         assert!(matches!(
-            session.upload_ops(&ops),
+            session.upload_ops(&ctx, &ops),
             Err(AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
                 band: u32::MAX,
                 slot: 1,
@@ -975,7 +1254,7 @@ mod tests {
     fn b2_emit_event_writes_compact_record() {
         set_debug_readback_allowed(true);
         let ctx = GpuContext::new_blocking().expect("gpu context");
-        let mut session = AccumulatorOpSession::new(ctx, 2, 1);
+        let mut session = AccumulatorOpSession::new(&ctx, 2, 1);
         let op = AccumulatorOp {
             source: SourceSpec::Constant(3.7),
             combine: CombineFn::Identity,
@@ -984,11 +1263,11 @@ mod tests {
             consume: ConsumeMode::EmitEvent,
             targets: vec![(0, 0)],
         };
-        session.upload_values(&[0.0, 0.0]);
-        session.upload_ops(std::slice::from_ref(&op)).unwrap();
-        session.tick(0).unwrap();
+        session.upload_values(&ctx, &[0.0, 0.0]);
+        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session.tick(&ctx, 0).unwrap();
 
-        let emissions = session.readback_emissions().unwrap();
+        let emissions = session.readback_emissions(&ctx).unwrap();
         assert_eq!(
             emissions,
             vec![EmissionRecord {
@@ -996,14 +1275,14 @@ mod tests {
                 emit_count: 3,
             }]
         );
-        let values = session.readback_full().unwrap();
+        let values = session.readback_full(&ctx).unwrap();
         assert_eq!(values[0], 3.7);
     }
 
     #[test]
     fn b2_emit_event_zero_count_writes_no_record() {
         set_debug_readback_allowed(true);
-        let mut session = gpu_session(2, 1);
+        let (ctx, mut session) = gpu_session(2, 1);
         let op = AccumulatorOp {
             source: SourceSpec::Constant(0.3),
             combine: CombineFn::Identity,
@@ -1012,17 +1291,17 @@ mod tests {
             consume: ConsumeMode::EmitEvent,
             targets: vec![(0, 0)],
         };
-        session.upload_values(&[0.0, 0.0]);
-        session.upload_ops(std::slice::from_ref(&op)).unwrap();
-        session.tick(0).unwrap();
-        assert!(session.readback_emissions().unwrap().is_empty());
+        session.upload_values(&ctx, &[0.0, 0.0]);
+        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session.tick(&ctx, 0).unwrap();
+        assert!(session.readback_emissions(&ctx).unwrap().is_empty());
     }
 
     #[test]
     fn b2_emission_overflow_is_reported() {
         set_debug_readback_allowed(true);
         let ctx = GpuContext::new_blocking().expect("gpu context");
-        let mut session = AccumulatorOpSession::with_emission_capacity(ctx, 4, 1, 1);
+        let mut session = AccumulatorOpSession::with_emission_capacity(&ctx, 4, 1, 1);
         let ops = vec![
             AccumulatorOp {
                 source: SourceSpec::Constant(5.0),
@@ -1041,11 +1320,11 @@ mod tests {
                 targets: vec![(1, 0)],
             },
         ];
-        session.upload_values(&[0.0; 4]);
-        session.upload_ops(&ops).unwrap();
-        session.tick(0).unwrap();
+        session.upload_values(&ctx, &[0.0; 4]);
+        session.upload_ops(&ctx, &ops).unwrap();
+        session.tick(&ctx, 0).unwrap();
         assert!(matches!(
-            session.readback_emissions(),
+            session.readback_emissions(&ctx),
             Err(AccumulatorOpSessionError::EmissionOverflow {
                 count: 2,
                 capacity: 1,
@@ -1063,9 +1342,9 @@ mod tests {
             consume: ConsumeMode::None,
             targets: vec![(1, 0)],
         };
-        let mut session = gpu_session(4, 2);
+        let (ctx, mut session) = gpu_session(4, 2);
         assert!(matches!(
-            session.upload_ops(std::slice::from_ref(&op)),
+            session.upload_ops(&ctx, std::slice::from_ref(&op)),
             Err(AccumulatorOpSessionError::Encode(EncodeError::Unsupported(_)))
         ));
     }
@@ -1080,15 +1359,15 @@ mod tests {
             consume: ConsumeMode::None,
             targets: vec![(1, 0)],
         };
-        let mut session = gpu_session(4, 1);
+        let (ctx, mut session) = gpu_session(4, 1);
         assert!(matches!(
-            session.upload_ops(std::slice::from_ref(&op)),
+            session.upload_ops(&ctx, std::slice::from_ref(&op)),
             Err(AccumulatorOpSessionError::Encode(EncodeError::Unsupported(_)))
         ));
     }
 
     #[test]
-    fn b2_rejects_threshold_gate_until_c1() {
+    fn b2_rejects_threshold_gate_with_non_emit_consume() {
         use simthing_core::ThresholdDirection;
         let op = AccumulatorOp {
             source: SourceSpec::SlotValue { slot: 0, col: 0 },
@@ -1101,9 +1380,9 @@ mod tests {
             consume: ConsumeMode::None,
             targets: vec![(1, 0)],
         };
-        let mut session = gpu_session(4, 1);
+        let (ctx, mut session) = gpu_session(4, 1);
         assert!(matches!(
-            session.upload_ops(std::slice::from_ref(&op)),
+            session.upload_ops(&ctx, std::slice::from_ref(&op)),
             Err(AccumulatorOpSessionError::Encode(EncodeError::Unsupported(_)))
         ));
     }
@@ -1125,9 +1404,9 @@ mod tests {
             consume: ConsumeMode::SubtractFromAllInputs,
             targets: vec![(1, 0)],
         };
-        let mut session = gpu_session(4, 1);
+        let (ctx, mut session) = gpu_session(4, 1);
         assert!(matches!(
-            session.upload_ops(std::slice::from_ref(&op)),
+            session.upload_ops(&ctx, std::slice::from_ref(&op)),
             Err(AccumulatorOpSessionError::Encode(EncodeError::Unsupported(_)))
         ));
     }
@@ -1149,11 +1428,11 @@ mod tests {
     fn b3_timestamp_query_path_does_not_panic() {
         set_debug_readback_allowed(true);
         let ctx = GpuContext::new_blocking().expect("gpu context");
-        let mut session = AccumulatorOpSession::new(ctx, 1000, 1);
+        let mut session = AccumulatorOpSession::new(&ctx, 1000, 1);
         let ops = trivial_1000_ops();
-        session.upload_values(&vec![0.0; 1000]);
-        session.upload_ops(&ops).unwrap();
-        session.tick(0).unwrap();
+        session.upload_values(&ctx, &vec![0.0; 1000]);
+        session.upload_ops(&ctx, &ops).unwrap();
+        session.tick(&ctx, 0).unwrap();
 
         if session.timestamp_supported() {
             assert!(session.last_pass_time_us().is_some());
@@ -1166,11 +1445,11 @@ mod tests {
     fn b3_timestamp_query_reports_plausible_time_when_supported() {
         set_debug_readback_allowed(true);
         let ctx = GpuContext::new_blocking().expect("gpu context");
-        let mut session = AccumulatorOpSession::new(ctx, 1000, 1);
+        let mut session = AccumulatorOpSession::new(&ctx, 1000, 1);
         let ops = trivial_1000_ops();
-        session.upload_values(&vec![0.0; 1000]);
-        session.upload_ops(&ops).unwrap();
-        session.tick(0).unwrap();
+        session.upload_values(&ctx, &vec![0.0; 1000]);
+        session.upload_ops(&ctx, &ops).unwrap();
+        session.tick(&ctx, 0).unwrap();
 
         if let Some(us) = session.last_pass_time_us() {
             assert!(us > 0);
@@ -1192,19 +1471,172 @@ mod tests {
         execute_ops_cpu(&mut expected, &ops, 1, n_dims).unwrap();
         let expected_summaries = summaries_from_values(&expected, n_slots, n_dims);
 
-        let mut session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
-        session.upload_values(&initial);
-        session.upload_ops(&ops).unwrap();
-        session.tick(0).unwrap();
-        session.tick(1).unwrap();
+        let mut session = AccumulatorOpSession::new(&ctx, n_slots, n_dims);
+        session.upload_values(&ctx, &initial);
+        session.upload_ops(&ctx, &ops).unwrap();
+        session.tick(&ctx, 0).unwrap();
+        session.tick(&ctx, 1).unwrap();
 
-        assert_eq!(session.readback_summary().unwrap(), expected_summaries);
-        assert_eq!(session.readback_full().unwrap(), expected);
+        assert_eq!(session.readback_summary(&ctx).unwrap(), expected_summaries);
+        assert_eq!(session.readback_full(&ctx).unwrap(), expected);
 
         if session.timestamp_supported() {
             assert!(session.last_pass_time_us().is_some());
         } else {
             assert_eq!(session.last_pass_time_us(), None);
         }
+    }
+
+    fn threshold_test_regs() -> Vec<ThresholdRegistration> {
+        use crate::world_state::{DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_VALUES};
+        vec![
+            ThresholdRegistration {
+                slot: 0,
+                col: 0,
+                threshold: 0.30,
+                direction: DIR_DOWNWARD,
+                event_kind: 100,
+                buffer: THRESH_BUF_VALUES,
+            },
+            ThresholdRegistration {
+                slot: 1,
+                col: 0,
+                threshold: 0.30,
+                direction: DIR_UPWARD,
+                event_kind: 101,
+                buffer: THRESH_BUF_VALUES,
+            },
+            ThresholdRegistration {
+                slot: 2,
+                col: 0,
+                threshold: 0.50,
+                direction: DIR_EITHER,
+                event_kind: 102,
+                buffer: THRESH_BUF_VALUES,
+            },
+        ]
+    }
+
+    fn setup_threshold_values(n_dims: u32) -> (Vec<f32>, Vec<f32>) {
+        let n = 3 * n_dims as usize;
+        let mut previous = vec![0.0_f32; n];
+        let mut current = vec![0.0_f32; n];
+        previous[0] = 0.40;
+        current[0] = 0.10;
+        previous[1 * n_dims as usize] = 0.10;
+        current[1 * n_dims as usize] = 0.50;
+        previous[2 * n_dims as usize] = 0.50;
+        current[2 * n_dims as usize] = 0.50;
+        (previous, current)
+    }
+
+    #[test]
+    fn c1_threshold_gpu_matches_cpu_oracle() {
+        let Some(_) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        set_debug_readback_allowed(true);
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let n_dims = 1u32;
+        let (previous, current) = setup_threshold_values(n_dims);
+        let regs = threshold_test_regs();
+        let (ops, kinds) = threshold_registrations_to_ops(&regs).unwrap();
+
+        let mut expected = execute_threshold_ops_cpu(&previous, &current, &ops, n_dims).unwrap();
+        expected.sort_by_key(|e| (e.slot, e.col, e.reg_idx));
+
+        let mut session = AccumulatorOpSession::new_attached(&ctx, 3, n_dims, 16);
+        session.upload_values(&ctx, &current);
+        session.upload_previous_values(&ctx, &previous);
+        session.upload_threshold_ops(&ctx, &regs).unwrap();
+        session.tick(&ctx, 0).unwrap();
+
+        let mut gpu = session.readback_threshold_emissions(&ctx).unwrap();
+        gpu.sort_by_key(|e| (e.slot, e.col, e.reg_idx));
+        assert_eq!(gpu.len(), 2);
+        assert_eq!(gpu[0].slot, 0);
+        assert_eq!(gpu[1].slot, 1);
+
+        let events = session.readback_threshold_events(&ctx).unwrap();
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].event_kind, kinds[0]);
+        assert_eq!(events[1].event_kind, kinds[1]);
+    }
+
+    #[test]
+    fn c1_threshold_event_kinds_round_trip() {
+        let Some(_) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let n_dims = 1u32;
+        let (previous, current) = setup_threshold_values(n_dims);
+        let regs = threshold_test_regs();
+        let (_, kinds) = threshold_registrations_to_ops(&regs).unwrap();
+
+        let mut session = AccumulatorOpSession::new_attached(&ctx, 3, n_dims, 16);
+        session.upload_values(&ctx, &current);
+        session.upload_previous_values(&ctx, &previous);
+        session.upload_threshold_ops(&ctx, &regs).unwrap();
+        session.tick(&ctx, 0).unwrap();
+
+        let events = session.readback_threshold_events(&ctx).unwrap();
+        for ev in events {
+            let idx = regs
+                .iter()
+                .position(|r| r.slot == ev.slot && r.col == ev.col)
+                .expect("slot/col");
+            assert_eq!(ev.event_kind, kinds[idx]);
+        }
+    }
+
+    #[test]
+    fn c1_threshold_emission_overflow_reported() {
+        let Some(_) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let n_dims = 1u32;
+        let mut previous = vec![0.0, 0.0];
+        let mut current = vec![1.0, 1.0];
+        previous[0] = 0.0;
+        current[0] = 1.0;
+        previous[1] = 0.0;
+        current[1] = 1.0;
+        let regs = vec![
+            ThresholdRegistration {
+                slot: 0,
+                col: 0,
+                threshold: 0.5,
+                direction: crate::world_state::DIR_UPWARD,
+                event_kind: 1,
+                buffer: crate::world_state::THRESH_BUF_VALUES,
+            },
+            ThresholdRegistration {
+                slot: 1,
+                col: 0,
+                threshold: 0.5,
+                direction: crate::world_state::DIR_UPWARD,
+                event_kind: 2,
+                buffer: crate::world_state::THRESH_BUF_VALUES,
+            },
+        ];
+
+        let mut session = AccumulatorOpSession::new_attached(&ctx, 2, n_dims, 1);
+        session.upload_values(&ctx, &current);
+        session.upload_previous_values(&ctx, &previous);
+        session.upload_threshold_ops(&ctx, &regs).unwrap();
+        session.tick(&ctx, 0).unwrap();
+
+        assert!(matches!(
+            session.readback_threshold_emissions(&ctx),
+            Err(AccumulatorOpSessionError::ThresholdEmissionOverflow {
+                count: 2,
+                capacity: 1,
+            })
+        ));
     }
 }

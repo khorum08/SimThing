@@ -1,5 +1,6 @@
-// Pass B kernel — non-contended Identity, Sum, clamped transfer, and EmitEvent.
-// Threshold gates, WeightedMean, EvalEML, and overlay families land in C/E phases.
+// Pass B kernel — non-contended Identity, Sum, clamped transfer, EmitEvent,
+// and C-1 threshold-gated EmitEvent. WeightedMean, EvalEML, and overlay
+// families land in later C/E phases.
 
 struct AccumulatorOpGpu {
     source_kind: u32,
@@ -35,9 +36,9 @@ struct AccumulatorTickParams {
     n_slots: u32,
     n_dims: u32,
     emission_capacity: u32,
+    threshold_emission_capacity: u32,
     _pad0: u32,
     _pad1: u32,
-    _pad2: u32,
 }
 
 struct AccumulatorSummaryParams {
@@ -57,6 +58,13 @@ struct EmissionRecordGpu {
     emit_count: u32,
 }
 
+struct ThresholdEmissionGpu {
+    reg_idx: u32,
+    slot: u32,
+    col: u32,
+    value: f32,
+}
+
 const SOURCE_CONSTANT: u32 = 0u;
 const SOURCE_SLOT_VALUE: u32 = 1u;
 const SOURCE_SLOT_RANGE: u32 = 2u;
@@ -65,6 +73,7 @@ const COMBINE_IDENTITY: u32 = 0u;
 const COMBINE_SUM: u32 = 1u;
 
 const GATE_ALWAYS: u32 = 0u;
+const GATE_THRESHOLD: u32 = 1u;
 const GATE_ORDER_BAND: u32 = 4u;
 
 const CONSUME_NONE: u32 = 0u;
@@ -74,11 +83,18 @@ const CONSUME_EMIT_EVENT: u32 = 5u;
 const SCALE_IDENTITY: u32 = 0u;
 const SCALE_CONSTANT: u32 = 1u;
 
+const DIR_UPWARD: u32 = 0u;
+const DIR_DOWNWARD: u32 = 1u;
+const DIR_EITHER: u32 = 2u;
+
 @group(0) @binding(0) var<storage, read> ops: array<AccumulatorOpGpu>;
 @group(0) @binding(1) var<storage, read_write> values: array<f32>;
 @group(0) @binding(2) var<storage, read_write> emissions: array<EmissionRecordGpu>;
 @group(0) @binding(3) var<storage, read_write> emission_count: atomic<u32>;
 @group(0) @binding(4) var<uniform> tick_params: AccumulatorTickParams;
+@group(0) @binding(5) var<storage, read> previous_values: array<f32>;
+@group(0) @binding(6) var<storage, read_write> threshold_emissions: array<ThresholdEmissionGpu>;
+@group(0) @binding(7) var<storage, read_write> threshold_emission_count: atomic<u32>;
 
 fn linear_idx(slot: u32, col: u32) -> u32 {
     return slot * tick_params.n_dims + col;
@@ -88,10 +104,47 @@ fn gate_matches(op: AccumulatorOpGpu) -> bool {
     if (op.gate_kind == GATE_ALWAYS) {
         return true;
     }
+    if (op.gate_kind == GATE_THRESHOLD) {
+        return true;
+    }
     if (op.gate_kind == GATE_ORDER_BAND && op.gate_a == tick_params.current_band) {
         return true;
     }
     return false;
+}
+
+fn threshold_crossed(op: AccumulatorOpGpu) -> bool {
+    let threshold = bitcast<f32>(op.gate_b);
+    let direction = op.gate_a;
+    let addr = linear_idx(op.source_slot, op.source_col);
+    let prev = previous_values[addr];
+    let curr = values[addr];
+    let up = (prev <= threshold) && (curr > threshold);
+    let down = (prev >= threshold) && (curr < threshold);
+    if (direction == DIR_UPWARD) {
+        return up;
+    }
+    if (direction == DIR_DOWNWARD) {
+        return down;
+    }
+    return up || down;
+}
+
+fn maybe_emit_threshold(op_idx: u32, op: AccumulatorOpGpu) {
+    if (op.gate_kind != GATE_THRESHOLD || op.consume != CONSUME_EMIT_EVENT) {
+        return;
+    }
+    if (!threshold_crossed(op)) {
+        return;
+    }
+    let curr = values[linear_idx(op.source_slot, op.source_col)];
+    let out_idx = atomicAdd(&threshold_emission_count, 1u);
+    if (out_idx < tick_params.threshold_emission_capacity) {
+        threshold_emissions[out_idx].reg_idx = op_idx;
+        threshold_emissions[out_idx].slot = op.source_slot;
+        threshold_emissions[out_idx].col = op.source_col;
+        threshold_emissions[out_idx].value = curr;
+    }
 }
 
 fn apply_scale(value: f32, op: AccumulatorOpGpu) -> f32 {
@@ -172,7 +225,7 @@ fn apply_consume(write_value: f32, op: AccumulatorOpGpu) {
 }
 
 fn maybe_emit_event(op_idx: u32, write_value: f32, op: AccumulatorOpGpu) {
-    if (op.consume != CONSUME_EMIT_EVENT) {
+    if (op.consume != CONSUME_EMIT_EVENT || op.gate_kind == GATE_THRESHOLD) {
         return;
     }
     let emit_count = u32(floor(max(write_value, 0.0)));
@@ -195,6 +248,13 @@ fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     let op = ops[op_idx];
     if (!gate_matches(op)) {
+        return;
+    }
+
+    // Threshold + EmitEvent: side effect is compact threshold emission only.
+    // Targets are ignored even when non-empty (A-2 validation placeholder).
+    if (op.gate_kind == GATE_THRESHOLD && op.consume == CONSUME_EMIT_EVENT) {
+        maybe_emit_threshold(op_idx, op);
         return;
     }
 

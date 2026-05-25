@@ -1,10 +1,10 @@
 //! CPU reference executor for Pass B ops (B-2 parity tests).
 
 use simthing_core::{
-    AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec,
+    AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
 };
 
-use super::types::EmissionRecord;
+use super::types::{EmissionRecord, ThresholdEmission};
 
 #[derive(Clone, Debug, thiserror::Error, PartialEq)]
 pub enum CpuOracleError {
@@ -34,6 +34,12 @@ pub fn execute_ops_cpu_with_emissions(
         if !gate_matches(&op.gate, band) {
             continue;
         }
+        if matches!(
+            (&op.gate, op.consume),
+            (GateSpec::Threshold { .. }, ConsumeMode::EmitEvent)
+        ) {
+            continue;
+        }
         let write_value = gather_and_combine(values, op, n_dims)?;
         let write_value = clamp_transfer(values, op, write_value, n_dims)?;
         apply_targets(values, op, write_value, n_dims)?;
@@ -43,13 +49,73 @@ pub fn execute_ops_cpu_with_emissions(
     Ok(records)
 }
 
+/// Execute threshold-gated EmitEvent ops against previous/current value buffers.
+pub fn execute_threshold_ops_cpu(
+    previous_values: &[f32],
+    values: &[f32],
+    ops: &[AccumulatorOp],
+    n_dims: u32,
+) -> Result<Vec<ThresholdEmission>, CpuOracleError> {
+    let mut records = Vec::new();
+    for (op_idx, op) in ops.iter().enumerate() {
+        let GateSpec::Threshold { value, direction } = op.gate else {
+            continue;
+        };
+        if op.consume != ConsumeMode::EmitEvent {
+            return Err(CpuOracleError::Unsupported("threshold without EmitEvent"));
+        }
+        let SourceSpec::SlotValue { slot, col } = op.source else {
+            return Err(CpuOracleError::Unsupported("threshold without SlotValue"));
+        };
+        if threshold_crossed(
+            previous_values,
+            values,
+            slot,
+            col,
+            value,
+            direction,
+            n_dims,
+        ) {
+            let curr = values[idx(slot, col, n_dims)];
+            records.push(ThresholdEmission {
+                reg_idx: op_idx as u32,
+                slot,
+                col,
+                value: curr,
+            });
+        }
+    }
+    Ok(records)
+}
+
+fn threshold_crossed(
+    previous_values: &[f32],
+    values: &[f32],
+    slot: u32,
+    col: u32,
+    threshold: f32,
+    direction: ThresholdDirection,
+    n_dims: u32,
+) -> bool {
+    let i = idx(slot, col, n_dims);
+    let prev = previous_values[i];
+    let curr = values[i];
+    let up = prev <= threshold && curr > threshold;
+    let down = prev >= threshold && curr < threshold;
+    match direction {
+        ThresholdDirection::Upward => up,
+        ThresholdDirection::Downward => down,
+        ThresholdDirection::Either => up || down,
+    }
+}
+
 fn idx(slot: u32, col: u32, n_dims: u32) -> usize {
     slot as usize * n_dims as usize + col as usize
 }
 
 fn gate_matches(gate: &GateSpec, band: u32) -> bool {
     match gate {
-        GateSpec::Always => true,
+        GateSpec::Always | GateSpec::Threshold { .. } => true,
         GateSpec::OrderBand(current) => *current == band,
         _ => false,
     }

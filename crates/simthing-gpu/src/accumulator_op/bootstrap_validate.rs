@@ -5,7 +5,7 @@
 
 use std::collections::HashSet;
 
-use super::types::{consume_kind, gate_kind, AccumulatorOpGpu};
+use super::types::{consume_kind, AccumulatorOpGpu};
 
 /// Band value in [`BootstrapContention`] when the conflict involves `Always`.
 pub const ALWAYS_BAND_SENTINEL: u32 = u32::MAX;
@@ -14,6 +14,8 @@ pub const ALWAYS_BAND_SENTINEL: u32 = u32::MAX;
 enum GateScope {
     Always,
     OrderBand(u32),
+    /// Threshold + EmitEvent ops do not write to `values_buffer`.
+    Threshold,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -24,7 +26,9 @@ pub struct BootstrapContention {
 }
 
 fn gate_scope(op: &AccumulatorOpGpu) -> GateScope {
-    if op.gate_kind == gate_kind::ORDER_BAND {
+    if op.gate_kind == super::types::gate_kind::THRESHOLD {
+        GateScope::Threshold
+    } else if op.gate_kind == super::types::gate_kind::ORDER_BAND {
         GateScope::OrderBand(op.gate_a)
     } else {
         GateScope::Always
@@ -55,6 +59,9 @@ pub fn validate_bootstrap_no_contention(
 
     for op in gpu_ops {
         let scope = gate_scope(op);
+        if scope == GateScope::Threshold {
+            continue;
+        }
 
         for (slot, col) in op_targets(op) {
             let cell = (slot, col);
@@ -100,6 +107,7 @@ fn check_write(
 ) -> Option<BootstrapContention> {
     let (slot, col) = cell;
     match scope {
+        GateScope::Threshold => {}
         GateScope::Always => {
             if always_writes.contains(&cell)
                 || always_consumes.contains(&cell)
@@ -142,6 +150,7 @@ fn check_consume(
 ) -> Option<BootstrapContention> {
     let (slot, col) = cell;
     match scope {
+        GateScope::Threshold => {}
         GateScope::Always => {
             if always_consumes.contains(&cell)
                 || always_writes.contains(&cell)
@@ -180,6 +189,7 @@ fn record_write(
     band_write_cells: &mut HashSet<(u32, u32)>,
 ) {
     match scope {
+        GateScope::Threshold => {}
         GateScope::Always => {
             always_writes.insert(cell);
         }
@@ -199,6 +209,7 @@ fn record_consume(
     band_consume_cells: &mut HashSet<(u32, u32)>,
 ) {
     match scope {
+        GateScope::Threshold => {}
         GateScope::Always => {
             always_consumes.insert(cell);
         }

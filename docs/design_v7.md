@@ -245,10 +245,13 @@ pub struct PipelineFlags {
   in depth-bucket OrderBand sequence
 
 **Pass 7 — Threshold scan (migrate → C-1, sunset → S-6)**
-- WGSL: inline in threshold scan dispatch
+- WGSL: `threshold_scan.wgsl` (legacy path; default via `use_accumulator_threshold_scan: false`)
 - Reads `previous_values` vs `values`, detects crossings, writes events
-- Post-migration: `Threshold` gate + `EmitEvent` consume; GPU atomic counter
-  replaces full-buffer scan
+- **C-1 landed:** `use_accumulator_threshold_scan` on `BoundaryProtocol` wires
+  `Threshold` gate + `EmitEvent` via `WorldGpuState::threshold_accumulator`;
+  compact `ThresholdEmissionGpu` readback replaces Pass 7 when flag is true.
+  Parity: `c1_threshold_scan_parity.rs` (fission_stress 20k × 100 ticks).
+- Post-sunset (S-6): delete `threshold_scan.wgsl` and the flag; Pass 7 entry removed.
 
 ---
 
