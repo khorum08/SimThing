@@ -1,10 +1,19 @@
 # C-4 Overlay Multiply/Set + Dirty/Cached OrderBand Compiler (Opus design memo)
 
 **Author:** Opus 4.7
-**Date:** 2026-05-25
+**Date:** 2026-05-25 (erratum: 2026-05-25)
 **Gate for:** Composer/Codex implementation PR — `feat(gpu): C-4 overlay Mul/Set + dirty OrderBand compiler`
 **Status:** Accepted (design); implementation PR follows separately
 **Implementer:** **Codex 5.5** (mechanical execution from this memo's specifications)
+
+> ⚠️ **2026-05-25 ERRATUM**: §7.1 supersedes §7.2's `write_target`
+> sketch. The original sketch used plain `values[idx] = ...` assignment,
+> which does not compile because `values: array<atomic<i32>>` in the
+> actual shader. Codex must use the `atomicLoad` + `atomicStore` form
+> from §7.1, scoped to the per-band single-writer invariant. The CAS
+> loop in `atomic_add_f32_at` is not required here (only one writer
+> per cell per dispatch) and would impose unnecessary overhead in the
+> high-density path the workshop regression hit.
 **Companion:** `docs/adr_accumulator_op_v2.md`, `docs/design_v7.md` §2/§4, `docs/accumulator_op_v2_production_plan.md` PR C-4, `docs/workshop/pivot_forward_implementation_policy.md`, `docs/workshop/slot_summary_b4_design.md`
 
 ---
@@ -447,7 +456,136 @@ Reasons to put it here rather than `BoundaryProtocol`:
 
 ## 7. WGSL changes
 
-### `crates/simthing-gpu/src/shaders/accumulator_op.wgsl`
+> **READ §7.1 (ERRATUM) FIRST.** The original `write_target` sketch in
+> §7.2 used plain `values[idx] = ...` assignment, which does not compile
+> against the actual buffer type `array<atomic<i32>>`. Codex must use
+> the corrected WGSL in §7.1.
+
+### 7.1 ERRATUM — atomic buffer-type guidance for `write_target`
+
+**Actual buffer types in `accumulator_op.wgsl` (as of 2026-05-25):**
+
+```wgsl
+@group(0) @binding(1) var<storage, read_write> values: array<atomic<i32>>;
+@group(0) @binding(5) var<storage, read> previous_values: array<f32>;
+```
+
+`values` is `array<atomic<i32>>` — f32 values are stored bit-cast as i32
+so that WGSL atomic ops can address them. `previous_values` is plain
+`array<f32>` because the threshold scan only reads it, never writes.
+
+**Existing helpers Codex must use (in the shader, already implemented):**
+
+```wgsl
+fn atomic_read_f32_at(idx: u32) -> f32 {
+    return bitcast<f32>(atomicLoad(&values[idx]));
+}
+
+fn atomic_add_f32_at(idx: u32, val: f32) {
+    let cell_ptr = &values[idx];
+    loop {
+        let old_bits = atomicLoad(cell_ptr);
+        let new_bits = bitcast<i32>(bitcast<f32>(old_bits) + val);
+        let result = atomicCompareExchangeWeak(cell_ptr, old_bits, new_bits);
+        if (result.exchanged) { break; }
+    }
+}
+```
+
+C-4 must add two more helpers, scoped to **the per-band single-writer
+invariant** that the OrderBand planner guarantees (one writer per `(slot,
+col)` per dispatch). Because there is no in-dispatch contention on any
+cell C-4 writes, **CAS loops are not required for Mul / Set / Add** —
+plain `atomicLoad` + bitcast + arithmetic + `atomicStore` is race-free
+within one dispatch, and meaningfully cheaper than the CAS loop that
+`atomic_add_f32_at` uses.
+
+```wgsl
+/// Atomic store of an f32 value (bitcast to i32 for the underlying
+/// atomic). Safe without CAS *only when the caller guarantees no other
+/// thread in the current dispatch writes the same cell*. The C-4
+/// OrderBand planner enforces this: one op per (slot, col) per band.
+fn atomic_store_f32_at(idx: u32, val: f32) {
+    atomicStore(&values[idx], bitcast<i32>(val));
+}
+
+/// Load-modify-store add. Same single-writer-per-dispatch precondition
+/// as `atomic_store_f32_at`. Cheaper than `atomic_add_f32_at` because
+/// no CAS loop. Codex MUST NOT use this from any path that does not
+/// honor the OrderBand single-writer invariant.
+fn atomic_add_single_writer_f32_at(idx: u32, val: f32) {
+    let cell_ptr = &values[idx];
+    let old = bitcast<f32>(atomicLoad(cell_ptr));
+    atomicStore(cell_ptr, bitcast<i32>(old + val));
+}
+
+/// Load-modify-store multiply. Same single-writer-per-dispatch
+/// precondition as the others.
+fn atomic_mul_single_writer_f32_at(idx: u32, val: f32) {
+    let cell_ptr = &values[idx];
+    let old = bitcast<f32>(atomicLoad(cell_ptr));
+    atomicStore(cell_ptr, bitcast<i32>(old * val));
+}
+```
+
+**Corrected `write_target` for C-4 (use this; ignore §7.2's body):**
+
+```wgsl
+fn write_target(slot: u32, col: u32, write_value: f32, op: AccumulatorOpGpu) {
+    let idx = linear_idx(slot, col);
+    // ╔════════════════════════════════════════════════════════════════╗
+    // ║ Single-writer-per-dispatch invariant (C-4 OrderBand planner): ║
+    // ║   For every (band, slot, col), there is at most one op in the ║
+    // ║   uploaded buffer. Each band is dispatched separately by the  ║
+    // ║   pipeline; the implicit memory barrier between dispatches    ║
+    // ║   makes the next band's load see the previous band's writes.  ║
+    // ║   This is what licenses atomicLoad + atomicStore here instead ║
+    // ║   of the CAS loop used by the multi-writer bootstrap path.    ║
+    // ║ Debug-assert in plan_overlay_orderband enforces the invariant.║
+    // ╚════════════════════════════════════════════════════════════════╝
+    switch op.consume {
+        case CONSUME_ADD_TO_TARGET: {
+            atomic_add_single_writer_f32_at(idx, write_value);
+        }
+        case CONSUME_SCALE_TARGET: {
+            atomic_mul_single_writer_f32_at(idx, write_value);
+        }
+        case CONSUME_RESET_TARGET: {
+            atomic_store_f32_at(idx, write_value);
+        }
+        default: {
+            // Identity / no-mutation-modifier consume modes write the
+            // value through. Matches the bootstrap (Identity, None) path.
+            atomic_store_f32_at(idx, write_value);
+        }
+    }
+}
+```
+
+**For the C-3 Add-overlay migration in the same PR**: the existing
+overlay-add path that calls `atomic_add_f32_at` (the CAS-loop helper)
+should switch to `atomic_add_single_writer_f32_at` once the migrated
+C-3 ops are dispatched as `(Identity, AddToTarget)` through the new
+`write_target` path. The CAS-loop helper stays in the shader because
+the multi-writer bootstrap path (B-2 contention) still uses it; C-4
+must not delete it.
+
+**Why not just use the CAS loop everywhere?** It works correctly under
+the single-writer invariant (CAS will succeed on the first attempt,
+because no other thread is racing), but it costs a `loop` construct
+plus the `result.exchanged` branch per write. With ~n_active_overlays ×
+n_slots writes per tick at density 1.0, that's measurable overhead
+exactly in the path the workshop's high-density regression hit. The
+single-writer helpers compile to one atomic load + one atomic store —
+two driver-level ops, no loop. The performance delta is worth the
+small amount of additional shader code.
+
+### 7.2 (SUPERSEDED by 7.1) — original sketch, retained for context
+
+The text below was the original §7 body before this erratum. **Do not
+implement this sketch**; it omits the atomic buffer-type handling that
+the actual shader requires. Kept inline so reviewers can see the
+diff against the corrected version above.
 
 Add constants:
 
@@ -460,31 +598,21 @@ const CONSUME_ADD_TO_TARGET:  u32 = 8u;
 (Verify the next available ordinal after the existing constants in the
 shader; A-2's `simthing-core::ConsumeMode` discriminants must align with
 these. Update `crates/simthing-gpu/src/accumulator_op/types.rs::consume_kind`
-to match.)
+to match. **This bullet still applies** — both §7.1 and §7.2 need the
+constants.)
 
-Replace `write_target`:
+~~Replace `write_target`:~~
 
 ```wgsl
+// SUPERSEDED — `values` is atomic<i32>, not plain f32. Plain assignment
+// does not compile. Use the §7.1 form instead.
 fn write_target(slot: u32, col: u32, write_value: f32, op: AccumulatorOpGpu) {
     let idx = linear_idx(slot, col);
-    // Within a single OrderBand dispatch, each cell has at most one writer
-    // (enforced by the C-4 OrderBand planner). Therefore no atomic CAS loop
-    // is required — plain read-modify-write is race-free per dispatch.
     switch op.consume {
-        case CONSUME_ADD_TO_TARGET: {
-            values[idx] = values[idx] + write_value;
-        }
-        case CONSUME_SCALE_TARGET: {
-            values[idx] = values[idx] * write_value;
-        }
-        case CONSUME_RESET_TARGET: {
-            values[idx] = write_value;
-        }
-        default: {
-            // Identity / no-mutation-modifier consume modes write the value
-            // through. Matches the bootstrap (Identity, None) path.
-            values[idx] = write_value;
-        }
+        case CONSUME_ADD_TO_TARGET: { values[idx] = values[idx] + write_value; }
+        case CONSUME_SCALE_TARGET:  { values[idx] = values[idx] * write_value; }
+        case CONSUME_RESET_TARGET:  { values[idx] = write_value; }
+        default:                    { values[idx] = write_value; }
     }
 }
 ```
@@ -492,8 +620,10 @@ fn write_target(slot: u32, col: u32, write_value: f32, op: AccumulatorOpGpu) {
 The pre-C-4 `if (op.combine_kind == COMBINE_IDENTITY) { values[idx] = values[idx] + write_value; }`
 branch is **removed**. C-3 Add ops now reach this shader as `(Identity,
 AddToTarget)` and dispatch into the `CONSUME_ADD_TO_TARGET` arm.
+**(Still applies — the routing decision is correct; only the body is
+updated by §7.1.)**
 
-### Verify per-band single-writer invariant
+### 7.3 Verify per-band single-writer invariant
 
 The planner's per-cell `next_band` HashMap guarantees one writer per
 `(slot, col)` per band. Add a debug_assert at the end of
@@ -511,8 +641,10 @@ The planner's per-cell `next_band` HashMap guarantees one writer per
 }
 ```
 
-This is a correctness invariant; if it ever fires the planner has a bug.
-Keep it under `debug_assertions` to avoid runtime cost.
+This is a correctness invariant; if it ever fires the planner has a bug,
+**and the §7.1 single-writer helpers become unsafe** — the CAS-loop
+helper would still be correct but the optimized helpers would race. Keep
+the assert under `debug_assertions` to avoid runtime cost.
 
 ---
 
@@ -561,9 +693,22 @@ crates/simthing-gpu/src/lib.rs
 
 crates/simthing-gpu/src/shaders/accumulator_op.wgsl
   - Add CONSUME_* constants
-  - Replace write_target body with the switch on op.consume (see §7)
+  - Add three new helpers per §7.1: `atomic_store_f32_at`,
+    `atomic_add_single_writer_f32_at`, `atomic_mul_single_writer_f32_at`.
+    These are atomic load + atomic store (NOT CAS loops) because the
+    OrderBand planner enforces one writer per (slot, col) per dispatch.
+    Document the single-writer precondition inline. The existing CAS-loop
+    helper `atomic_add_f32_at` STAYS (used by the multi-writer bootstrap
+    path).
+  - Replace write_target body with the §7.1 (NOT §7.2) form: switch on
+    op.consume that dispatches into the three single-writer helpers
+    plus `atomic_store_f32_at` for the default/assign case. `values` is
+    `array<atomic<i32>>` — plain assignment does not compile.
   - Remove the old `if (op.combine_kind == COMBINE_IDENTITY) ... else ...`
-    branch
+    branch.
+  - Migrate the existing C-3 overlay-add atomic_add_f32_at call site to
+    atomic_add_single_writer_f32_at once C-3 ops are routed through the
+    new (Identity, AddToTarget) consume mode.
 
 crates/simthing-gpu/src/accumulator_op/runtime.rs
   - WorldAccumulatorRuntime: add `overlay_compile_cache: Option<OverlayCompileCache>`
