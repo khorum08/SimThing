@@ -6,6 +6,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-25 — S-4 reduction sunset prep (readiness / cleanup)
+
+**Status:** Local — docs, shader comment, S-4 candidate test. No runtime deletion.
+
+**Scope:** Pivot-forward handoff after C-6. Mark C-6 landed in active docs; replace stale
+`accumulator_op.wgsl` header; add S-4 readiness checklist and deletion inventory; add
+`s4_candidate_all_reduction_rules_use_accumulator_without_legacy_dispatch` parity guard.
+`reduction.wgsl` retained until default-on / burn-in gates pass.
+
+---
+
 ## 2026-05-25 — Docs sync: C-5/C-6 reduction migration complete (pending S-4)
 
 **Status:** Pushed on `master` @ `a414a62`.

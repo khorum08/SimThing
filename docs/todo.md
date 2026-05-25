@@ -11,6 +11,11 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 `use_accumulator_reduction_exact` (C-6 Sum/Max/Min/First; requires soft). Full AccumulatorOp
 reduction when both on; legacy `reduction.wgsl` flag-off/oracle only until **S-4**.
 
+**C-6 landed:** Sum / Max / Min / First exact reductions execute through AccumulatorOp; C-5 soft
+and C-6 exact share `ReductionPlanMode` / OrderBand planner; with both flags on legacy
+`reduction.wgsl` is not dispatched. **S-4 prep** documents readiness checklist and deletion
+inventory — execution pending default-on / burn-in.
+
 **Workshop entry point:** [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md)
 
 **Pivot posture:** AccumulatorOp v2 is the production direction. Legacy GPU passes are
@@ -22,7 +27,7 @@ Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
 
 **Tests:** `cargo test --workspace` green at last full run (450+ passed, ignored perf gates).
 AccumulatorOp module: **63** gpu `accumulator_op` unit tests; `reduction_orderband` (6);
-C-1/C-2/C-3 parity (26) + C-4 parity/cache (16) + C-5 reduction (11) + C-6 exact (9) +
+C-1/C-2/C-3 parity (26) + C-4 parity/cache (16) + C-5 reduction (11) + C-6 exact (10) +
 C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated (2).
 
 **Cursor handoff:** AccumulatorOp v2 Phase C migrations + pivot-forward infrastructure (see table below).
@@ -70,7 +75,8 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **C-5 remedial** | #123 | Depth-interleaved soft/exact reduction; WeightedMean dependency tests |
 | **C-6** | #124 | `a414a62` | Sum/Max/Min/First exact reductions; `use_accumulator_reduction_exact` |
 
-**Next (non-Opus):** **S-4** reduction sunset (after C-5 + C-6 default-on validation) · **C-7** velocity · per-family oracle expansion.
+**Next (non-Opus):** **S-4** reduction sunset prep complete; execution gated on C-5 + C-6
+default-on validation · **C-7** velocity · per-family oracle expansion.
 
 **Next (sunset-gated):** **S-3** overlay prep/WGSL deletion after C-4 default-on validation and CI.
 

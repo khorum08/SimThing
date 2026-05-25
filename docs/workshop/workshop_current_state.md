@@ -74,6 +74,12 @@ execution and oracle parity until S-3.
 the entire reduction phase is GPU-resident AccumulatorOp with no legacy `reduction.wgsl`
 dispatch. C-5-only mode keeps the depth-interleaved legacy exact fallback until S-4.
 
+**C-6 landed:**
+- Sum / Max / Min / First exact reductions now execute through AccumulatorOp.
+- C-5 soft and C-6 exact reductions share `ReductionPlanMode` / OrderBand planner.
+- With soft+exact reduction flags enabled, legacy `reduction.wgsl` is not dispatched.
+- Legacy reduction remains only flag-off/oracle until S-4.
+
 **Feature flags (authoritative after #111):** flag-off boundary sync calls
 `clear_intent` / `clear_threshold` / `clear_overlay_add`; dispatcher keys off
 session presence + overlay dispatch cache, not stale sessions.
@@ -95,6 +101,27 @@ session presence + overlay dispatch cache, not stale sessions.
 | S-4 | C-5 + C-6 default-on + CI green | Legacy reduction passes + `reduction.wgsl` pipeline branches |
 | S-5 | C-7 | Legacy velocity |
 | S-6 | C-1 default-on | Legacy threshold scan (Pass 7) |
+
+### S-4 reduction sunset readiness (pending)
+
+S-4 can begin after:
+- `use_accumulator_reduction_soft` default-on candidate passes.
+- `use_accumulator_reduction_exact` default-on candidate passes.
+- C-5 and C-6 parity tests remain green.
+- Combined all-flags path remains green.
+- No production path dispatches legacy reduction when both flags are on.
+- CI burn-in window satisfied.
+
+**S-4 deletion inventory (draft — not executed until gates pass):**
+- `crates/simthing-gpu/src/shaders/reduction.wgsl`
+- Reduction pipeline creation in `passes.rs`
+- Reduction bind group layout if no longer used
+- Legacy reduction topology upload branches only if not needed by Accumulator planner
+- Legacy reduction standalone `run_reduction_passes` test helper, unless kept as oracle fixture
+- Any `skip_soft_columns` plumbing
+
+**Keep:** `child_starts`, `child_indices`, `depth_slots`, column rules, and
+`plan_reduction_orderband` — still needed by AccumulatorOp reduction planner/tests.
 
 ---
 
@@ -133,7 +160,7 @@ See `crates/simthing-workshop/README.md` and `todo.md` § workshop spikes.
 | C-3 parity | 13 | incl. combined C-1/C-2/C-3 |
 | C-4 parity/cache | 16 | Add/Mul/Set parity, lifecycle/fission/cache, high-density guards |
 | C-5 reduction | 15 | `reduction_orderband` (6) + legacy oracle (2) + parity/guards (11) |
-| C-6 exact reduction | 9 | Sum/Max/Min/First parity, mixed columns, legacy-fallback guard |
+| C-6 exact reduction | 10 | Sum/Max/Min/First parity, mixed columns, legacy-fallback guard, S-4 candidate |
 | C-INF-2 harness | 2 | intent + threshold oracle smoke |
 | Pivot-forward remedial | 3 | authoritative flags |
 | B-4 world summary integrated | 2 | intent + overlay orderbands |
