@@ -73,9 +73,6 @@ pub struct Pipelines {
 
     reduction_layout:   BindGroupLayout,
     reduction_pipeline: ComputePipeline,
-    /// Dedicated uniform buffer for reduction (separate from shared pass uniform
-    /// so per-depth dispatches can be queued without race risk).
-    reduction_uniform:  Buffer,
 }
 
 impl Pipelines {
@@ -291,12 +288,6 @@ impl Pipelines {
             compilation_options: Default::default(),
             cache: None,
         });
-        let reduction_uniform = device.create_buffer(&BufferDescriptor {
-            label: Some("reduction_uniform"),
-            size:  std::mem::size_of::<ReduceParams>() as u64,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
 
         Self {
             uniform_buffer,
@@ -306,7 +297,7 @@ impl Pipelines {
             overlay_layout, overlay_pipeline,
             intent_layout, intent_pipeline,
             threshold_layout, threshold_pipeline,
-            reduction_layout, reduction_pipeline, reduction_uniform,
+            reduction_layout, reduction_pipeline,
         }
     }
 
@@ -768,28 +759,25 @@ impl Pipelines {
         ctx.queue.submit(Some(encoder.finish()));
     }
 
+    /// Single-submit reduction across all depth buckets.
+    ///
+    /// GPU compute passes within a single encoder execute in order, so each
+    /// depth bucket's writes to `output_vectors` are visible to shallower
+    /// buckets dispatched later in the same encoder. No inter-submission
+    /// barriers are required.
+    ///
+    /// Performance note: the previous implementation submitted one encoder
+    /// per depth bucket. At hierarchy depth N, that produced N driver fences
+    /// per tick. This single-submit version produces one fence regardless of
+    /// depth. All reduction benchmarks should be re-run after this change
+    /// to establish the correct performance baseline for the ADR.
     pub fn run_reduction_passes(&self, state: &WorldGpuState) {
         if state.depth_bucket_ranges.is_empty() {
             return;
         }
         let ctx = &state.ctx;
 
-        let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
-            label: Some("reduction_bg"),
-            layout: &self.reduction_layout,
-            entries: &[
-                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                BindGroupEntry { binding: 1, resource: state.output_vectors.as_entire_binding() },
-                BindGroupEntry { binding: 2, resource: state.child_starts.as_entire_binding() },
-                BindGroupEntry { binding: 3, resource: state.child_indices.as_entire_binding() },
-                BindGroupEntry { binding: 4, resource: state.column_rules.as_entire_binding() },
-                BindGroupEntry { binding: 5, resource: state.depth_slots.as_entire_binding() },
-                BindGroupEntry { binding: 6, resource: self.reduction_uniform.as_entire_binding() },
-            ],
-        });
-
-        // Iterate buckets deepest-first so children's output_vectors rows are
-        // written before parents read them.
+        let mut reduction_depth_bgs = Vec::new();
         for &(depth_offset, bucket_size) in state.depth_bucket_ranges.iter().rev() {
             if bucket_size == 0 {
                 continue;
@@ -800,23 +788,42 @@ impl Pipelines {
                 bucket_size,
                 _pad:         0,
             };
-            ctx.queue
-                .write_buffer(&self.reduction_uniform, 0, bytemuck::bytes_of(&p));
-
-            let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-                label: Some("reduction_encoder"),
+            let param_buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label:    Some("reduction_depth_uniform"),
+                contents: bytemuck::bytes_of(&p),
+                usage:    BufferUsages::UNIFORM,
             });
-            {
-                let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                    label: Some("reduction_pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&self.reduction_pipeline);
-                pass.set_bind_group(0, &bg, &[]);
-                dispatch_linear(&mut pass, bucket_size);
-            }
-            ctx.queue.submit(Some(encoder.finish()));
+            let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
+                label: Some("reduction_depth_bg"),
+                layout: &self.reduction_layout,
+                entries: &[
+                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
+                    BindGroupEntry { binding: 1, resource: state.output_vectors.as_entire_binding() },
+                    BindGroupEntry { binding: 2, resource: state.child_starts.as_entire_binding() },
+                    BindGroupEntry { binding: 3, resource: state.child_indices.as_entire_binding() },
+                    BindGroupEntry { binding: 4, resource: state.column_rules.as_entire_binding() },
+                    BindGroupEntry { binding: 5, resource: state.depth_slots.as_entire_binding() },
+                    BindGroupEntry { binding: 6, resource: param_buf.as_entire_binding() },
+                ],
+            });
+            reduction_depth_bgs.push((bucket_size, bg));
         }
+
+        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("reduction_encoder"),
+        });
+
+        for (bucket_size, bg) in &reduction_depth_bgs {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("reduction_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.reduction_pipeline);
+            pass.set_bind_group(0, bg, &[]);
+            dispatch_linear(&mut pass, *bucket_size);
+        }
+
+        ctx.queue.submit(Some(encoder.finish()));
     }
 
     /// Pass 7: scan registered thresholds for crossings between `previous_values`
