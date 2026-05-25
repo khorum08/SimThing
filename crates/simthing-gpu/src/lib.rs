@@ -4,6 +4,7 @@
 //! reads or writes. CPU-side preparation, compute pipelines, and the GPU pass
 //! sequencer build on top of `WorldGpuState`.
 
+pub mod accumulator_op;
 pub mod context;
 pub mod overlay_prep;
 pub mod passes;
@@ -12,6 +13,10 @@ pub mod reduction;
 pub mod slot;
 pub mod world_state;
 
+pub use accumulator_op::{
+    execute_ops_cpu, set_debug_readback_allowed, AccumulatorOpGpu, AccumulatorOpSession,
+    AccumulatorOpSessionError, EmissionRecord, SlotSummary,
+};
 pub use context::{GpuContext, GpuInitError};
 pub use overlay_prep::build_overlay_deltas;
 pub use passes::Pipelines;
