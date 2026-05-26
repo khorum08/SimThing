@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** C-8d remedial (local)  
-**Verification (last recorded):** C-8d emission signature hardening + C-1–C-8d regression green
+**Master HEAD:** C-8 completion gate (local)  
+**Verification (last recorded):** C-8 full pipeline integration + C-1–C-8d regression green
 
 ---
 
@@ -22,7 +22,9 @@ Two parallel tracks:
 Legacy reduction is deleted (S-4). Remaining legacy passes (intent, overlay, threshold,
 velocity, intensity) are oracle/fallback until their S-phase deletions.
 
-**Next gates:** **S-2** intensity sunset · **S-3** overlay sunset · **S-6** threshold sunset.
+**Next gates:** **S-2** legacy intensity deletion (inventory in [`s2_legacy_intensity_sunset_inventory.md`](s2_legacy_intensity_sunset_inventory.md)) · **S-3** overlay sunset · **S-6** threshold sunset.
+
+**C-8 complete:** EML infrastructure, intensity, transfer, and emission are GPU-resident through AccumulatorOp. TransferConservation remains ExactDeterministic only. Emission tolerance remains future-gated and isolated from transfer/hard thresholds. Legacy `intensity_update.wgsl` remains flag-off/oracle only pending S-2.
 
 ---
 
@@ -53,6 +55,7 @@ velocity, intensity) are oracle/fallback until their S-phase deletions.
 | **C-8c remedial** | local | Planner rejects same-band consumed-input contention; validates unit costs and single-source `output_scale`; defensive source debit clamp; input-list generation bump on nonempty→empty clear |
 | **C-8d** | local | Emission substrate: `use_accumulator_emission`, `EmissionRegistration` planner, `IdentityFloor` / `Constant` / `EvalEML` ExactDeterministic, GPU dispatch after transfer/before overlay; `EmissionRecordGpu { reg_idx, emit_count }` unchanged; stable `reg_idx` via `combine_b`; overflow observable |
 | **C-8d remedial** | local | Emission op-plan signature includes `reg_indices`, `constant_value_bits`, `max_emit`; EvalEML tree IDs derived/validated from formula variant; `max_emit` explicitly rejected until shader clamp implemented |
+| **C-8 completion gate** | local | Full C-8 all-flags integration test; persistent table/op reuse; legacy intensity dispatch guard; [`s2_legacy_intensity_sunset_inventory.md`](s2_legacy_intensity_sunset_inventory.md) |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

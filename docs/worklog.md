@@ -6,6 +6,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — C-8 completion gate + S-2 intensity sunset prep
+
+**Added:**
+- `crates/simthing-sim/tests/c8_full_pipeline_integration.rs` — full C-8 all-flags integration, upload-stability, legacy intensity dispatch guard.
+- `docs/workshop/s2_legacy_intensity_sunset_inventory.md` — S-2 deletion inventory (no deletion in this PR).
+- Test-only `legacy_intensity_dispatch_count()` counter in `passes.rs`.
+
+**C-8 marked complete** in docs; S-2 remains pending.
+
+---
+
 ## 2026-05-19 — C-8d remedial: emission op signature and max_emit semantics
 
 **Fixes:**

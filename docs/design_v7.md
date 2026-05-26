@@ -263,6 +263,8 @@ pub struct PipelineFlags {
 - **Flag-off:** no production emission path.
 - Op-plan cache signature includes `reg_indices`, `constant_value_bits`, and `max_emit` state; `max_emit` rejected at plan time until shader clamp exists.
 
+**C-8 block complete:** C-8a (EML infra) + C-8b (intensity EvalEML) + C-8c (exact transfer) + C-8d (emission) validated together in `c8_full_pipeline_integration.rs`. Legacy `intensity_update.wgsl` remains flag-off/oracle until S-2.
+
 **Pass 3 — Overlay application (migrate → C-3/C-4, sunset → S-3)**
 - WGSL: inline in `overlay_prep.rs`
 - `Add`, `Multiply`, `Set` ops in ancestor-then-local order

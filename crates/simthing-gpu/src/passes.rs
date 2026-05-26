@@ -9,6 +9,7 @@
 //! and rewritten on each dispatch with the current dt.
 
 use bytemuck::{Pod, Zeroable};
+use std::sync::atomic::{AtomicU64, Ordering};
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor,
@@ -23,6 +24,23 @@ use crate::world_state::WorldGpuState;
 
 const WORKGROUP_SIZE: u32 = 64;
 const MAX_DISPATCH_X_GROUPS: u32 = 65_535;
+
+static LEGACY_INTENSITY_DISPATCH_COUNT: AtomicU64 = AtomicU64::new(0);
+
+/// Reset the test-only legacy intensity dispatch counter.
+pub fn reset_legacy_intensity_dispatch_count() {
+    LEGACY_INTENSITY_DISPATCH_COUNT.store(0, Ordering::Relaxed);
+}
+
+/// Test-only count of legacy `intensity_update.wgsl` dispatches in the tick pipeline.
+pub fn legacy_intensity_dispatch_count() -> u64 {
+    LEGACY_INTENSITY_DISPATCH_COUNT.load(Ordering::Relaxed)
+}
+
+#[inline]
+fn record_legacy_intensity_dispatch() {
+    LEGACY_INTENSITY_DISPATCH_COUNT.fetch_add(1, Ordering::Relaxed);
+}
 
 fn dispatch_linear(pass: &mut ComputePass<'_>, total_invocations: u32) {
     if total_invocations == 0 {
@@ -372,11 +390,10 @@ impl Pipelines {
             pass.set_pipeline(&self.intensity_pipeline);
             pass.set_bind_group(0, &bg, &[]);
             dispatch_linear(&mut pass, total);
+            record_legacy_intensity_dispatch();
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
-
-    /// Pass 3: apply overlay deltas iteratively per slot.
     ///
     /// Reads from `state.overlay_deltas` (pre-uploaded by `upload_overlay_deltas`) and
     /// applies each op in place to `values`. No-ops if `state.n_overlay_deltas == 0`.
@@ -684,6 +701,7 @@ impl Pipelines {
                         pass.set_pipeline(&self.intensity_pipeline);
                         pass.set_bind_group(0, bg, &[]);
                         dispatch_linear(&mut pass, state.n_slots * state.n_intensity_params);
+                        record_legacy_intensity_dispatch();
                     }
                 }
             }
@@ -709,6 +727,7 @@ impl Pipelines {
                     pass.set_pipeline(&self.intensity_pipeline);
                     pass.set_bind_group(0, bg, &[]);
                     dispatch_linear(&mut pass, state.n_slots * state.n_intensity_params);
+                    record_legacy_intensity_dispatch();
                 }
             }
         }
