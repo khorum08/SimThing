@@ -560,7 +560,6 @@ comparison.
 - Legacy intensity update routes through AccumulatorOp `EvalEML` when flag on.
 - `IntensityBehavior` → `ExactDeterministic` EML (22 nodes; `MAX_EML_TREE_NODES`/`EML_STACK_MAX` raised to 32).
 - `dt` via tick params; persistent EML buffers; no per-dispatch upload.
-- C-8d emission remains pending.
 
 **C-8b remedial landed:**
 - Intensity op upload cache now keys on EML generation plus world/op-plan shape (`IntensityEmlOpPlanSignature`).
@@ -574,7 +573,6 @@ comparison.
 - `MinAcrossInputs` + `SubtractFromAllInputs` support conjunctive exact transfer; single-source `SubtractFromSource` for fixed-amount moves.
 - `TransferConservation` admits `ExactDeterministic` only.
 - No CPU-mediated production transfer.
-- C-8d emission remains pending.
 
 **C-8c remedial landed:**
 - Transfer planner rejects same-band consumed-input contention (policy A).
@@ -583,6 +581,14 @@ comparison.
 - Invalid unit costs and non-finite transfer values rejected before GPU upload.
 - Input-list table generation invalidates on nonempty→empty clear.
 - Defensive single-source debit clamp in WGSL (not transactional reservation).
+
+**C-8d landed:**
+- GPU-resident emission substrate added through AccumulatorOp (`use_accumulator_emission`, default false).
+- `EmissionRecordGpu` schema remains `{ reg_idx, emit_count }`; stable `reg_idx` via `combine_b`.
+- ExactDeterministic emission formulas are bit-exact; Soft/Fast emission remains future-gated by explicit tolerance policy.
+- `TransferConservation` remains ExactDeterministic only; emission tolerance does not leak into transfer or hard thresholds.
+- No CPU-mediated production emission; no per-dispatch EML upload.
+- Tick placement after transfer, before overlay.
 
 Selected:
 - **Execution-class taxonomy** (`EmlExecutionClass::{ExactDeterministic, SoftDeterministic, FastApproximate, CpuOracleOnly}`) plus a **consumer admissibility matrix** that gates which classes may feed which consumers.

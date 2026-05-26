@@ -29,7 +29,7 @@ pub use input_list_table::{
 };
 pub use runtime::{
     ExactnessClass, IntensityEmlOpPlanSignature, LegacyOracleFamily, OpSetHandle, OperationFamily,
-    OverlayCompileCache, TransferOpPlanSignature, WorldAccumulatorRuntime,
+    OverlayCompileCache, TransferOpPlanSignature, EmissionOpPlanSignature, WorldAccumulatorRuntime,
 };
 pub use session::{
     set_debug_readback_allowed, AccumulatorOpSession, AccumulatorOpSessionError, WORKGROUP_SIZE,

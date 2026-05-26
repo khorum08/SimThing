@@ -53,6 +53,7 @@ pub struct AccumulatorPipelineSessions<'a> {
     pub velocity: Option<&'a mut crate::AccumulatorOpSession>,
     pub intensity_eml: Option<&'a mut crate::AccumulatorOpSession>,
     pub transfer: Option<&'a mut crate::AccumulatorOpSession>,
+    pub emission: Option<&'a mut crate::AccumulatorOpSession>,
     pub encode_world_summary: bool,
 }
 
@@ -509,6 +510,7 @@ impl Pipelines {
                 velocity: None,
                 intensity_eml: None,
                 transfer: None,
+                emission: None,
                 encode_world_summary: false,
             },
         );
@@ -535,6 +537,7 @@ impl Pipelines {
                 velocity: None,
                 intensity_eml: None,
                 transfer: None,
+                emission: None,
                 encode_world_summary: false,
             },
         );
@@ -582,6 +585,8 @@ impl Pipelines {
             && state.accumulator_intensity_eml_bands > 0;
         let use_accumulator_transfer = state.accumulator_transfer_active
             && state.accumulator_transfer_bands > 0;
+        let use_accumulator_emission = state.accumulator_emission_active
+            && state.accumulator_emission_bands > 0;
 
         let velocity_bg = (!use_accumulator_velocity && state.n_governed_pairs > 0).then(|| {
             ctx.device.create_bind_group(&BindGroupDescriptor {
@@ -742,6 +747,23 @@ impl Pipelines {
                     &state.previous_values,
                     eml,
                     input_list,
+                );
+            }
+        }
+
+        if use_accumulator_emission {
+            if let Some(session) = sessions.emission.as_mut() {
+                let eml = state
+                    .accumulator_runtime
+                    .as_ref()
+                    .and_then(|r| r.eml_bind_buffers());
+                session.encode_emission_into(
+                    ctx,
+                    &mut encoder,
+                    &state.values,
+                    &state.previous_values,
+                    dt,
+                    eml,
                 );
             }
         }
@@ -2070,6 +2092,7 @@ mod tests {
                 velocity: None,
                 intensity_eml: None,
                 transfer: None,
+                emission: None,
                 encode_world_summary: false,
             },
         );

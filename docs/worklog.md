@@ -6,6 +6,21 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — C-8d: GPU-resident emission substrate
+
+**Landed:**
+- `use_accumulator_emission` flag (default false) on `PipelineFlags`; requires `use_accumulator_eml` for EvalEML formulas
+- `emission_accumulator` planner: `IdentityFloor`, `Constant`, `EvalEML` ExactDeterministic → `ConsumeMode::EmitEvent`
+- Stable `reg_idx` encoded in `combine_b`; shader writes `EmissionRecordGpu { reg_idx, emit_count }`
+- `WorldGpuState::sync_emission_accumulator`; `EmissionOpPlanSignature` cache hardening (mirrors C-8b/C-8c)
+- Tick placement after transfer, before overlay; persistent EML buffers; no per-dispatch upload
+- Soft/Fast emission rejected unless explicit tolerance gate exists; `TransferConservation` unchanged
+- Tests: `crates/simthing-sim/tests/c8d_emission_accumulator_parity.rs`
+
+**Not in C-8d:** S-2 legacy intensity deletion; Soft/Fast production emission without tolerance gate.
+
+---
+
 ## 2026-05-19 — C-8c remedial: transfer conservation under input contention
 
 **Fixes:**

@@ -79,6 +79,7 @@ fn run_accumulator_transfer(state: &mut WorldGpuState, dt: f32) -> Vec<f32> {
             velocity: None,
             intensity_eml: None,
             transfer: transfer_session.as_mut(),
+            emission: None,
             encode_world_summary: false,
         },
     );
@@ -511,6 +512,7 @@ fn run_accumulator_velocity_and_transfer(state: &mut WorldGpuState, dt: f32) -> 
             velocity: velocity_session.as_mut(),
             intensity_eml: None,
             transfer: transfer_session.as_mut(),
+            emission: None,
             encode_world_summary: false,
         },
     );

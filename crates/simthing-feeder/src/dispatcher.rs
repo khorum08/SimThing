@@ -197,6 +197,7 @@ impl DispatchCoordinator {
         let velocity_active = state.accumulator_velocity_active;
         let intensity_eml_active = state.accumulator_intensity_eml_active;
         let transfer_active = state.accumulator_transfer_active;
+        let emission_active = state.accumulator_emission_active;
         if use_accumulator_intent
             || use_accumulator_threshold
             || overlay_active
@@ -204,6 +205,7 @@ impl DispatchCoordinator {
             || velocity_active
             || intensity_eml_active
             || transfer_active
+            || emission_active
         {
             let encode_summary = state
                 .accumulator_runtime
@@ -221,6 +223,7 @@ impl DispatchCoordinator {
             let mut velocity_session = None;
             let mut intensity_eml_session = None;
             let mut transfer_session = None;
+            let mut emission_session = None;
             if let Some(runtime) = state.accumulator_runtime.as_mut() {
                 intent_session = runtime.take_intent_session();
                 overlay_session = runtime.take_overlay_session();
@@ -229,6 +232,7 @@ impl DispatchCoordinator {
                 velocity_session = runtime.take_velocity_session();
                 intensity_eml_session = runtime.take_intensity_eml_session();
                 transfer_session = runtime.take_transfer_session();
+                emission_session = runtime.take_emission_session();
             }
             pipelines.run_tick_pipeline_with_accumulators(
                 state,
@@ -241,6 +245,7 @@ impl DispatchCoordinator {
                     velocity: velocity_session.as_mut(),
                     intensity_eml: intensity_eml_session.as_mut(),
                     transfer: transfer_session.as_mut(),
+                    emission: emission_session.as_mut(),
                     encode_world_summary: encode_summary,
                 },
             );
@@ -252,6 +257,7 @@ impl DispatchCoordinator {
                 runtime.restore_velocity_session(velocity_session);
                 runtime.restore_intensity_eml_session(intensity_eml_session);
                 runtime.restore_transfer_session(transfer_session);
+                runtime.restore_emission_session(emission_session);
             }
         } else {
             pipelines.run_tick_pipeline(state, dt);

@@ -250,7 +250,17 @@ pub struct PipelineFlags {
   sync only; generation-based skip when unchanged. Planner rejects same-band consumed-input
   contention before upload (same-target atomic adds remain allowed).
 - `TransferConservation` admits `ExactDeterministic` only.
-- **Flag-off:** no production transfer path (C-8d emission separate).
+- **Flag-off:** no production transfer path.
+
+**Pass 2c — Economic emission (C-8d landed, flag default false)**
+- **Flag-on:** AccumulatorOp emission substrate after transfer, before overlay.
+  `IdentityFloor`, `Constant`, and `EvalEML` ExactDeterministic formulas map to
+  `ConsumeMode::EmitEvent` with stable `reg_idx` in `combine_b`.
+  Compact `EmissionRecordGpu { reg_idx, emit_count }`; overflow observable via
+  `emission_count > emission_capacity`.
+- Soft/Fast emission rejected unless explicit tolerance gate exists.
+- Requires `use_accumulator_eml` when EvalEML formulas are used.
+- **Flag-off:** no production emission path.
 
 **Pass 3 — Overlay application (migrate → C-3/C-4, sunset → S-3)**
 - WGSL: inline in `overlay_prep.rs`

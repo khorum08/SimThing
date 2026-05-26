@@ -332,6 +332,9 @@ pub struct WorldGpuState {
     /// Cached C-8c transfer dispatch signal.
     pub accumulator_transfer_active: bool,
     pub accumulator_transfer_bands: u32,
+    /// Cached C-8d emission dispatch signal.
+    pub accumulator_emission_active: bool,
+    pub accumulator_emission_bands: u32,
 }
 
 impl WorldGpuState {
@@ -461,6 +464,8 @@ impl WorldGpuState {
             accumulator_intensity_eml_bands: 0,
             accumulator_transfer_active: false,
             accumulator_transfer_bands: 0,
+            accumulator_emission_active: false,
+            accumulator_emission_bands: 0,
         }
     }
 
@@ -478,6 +483,8 @@ impl WorldGpuState {
         self.accumulator_intensity_eml_bands = 0;
         self.accumulator_transfer_active = false;
         self.accumulator_transfer_bands = 0;
+        self.accumulator_emission_active = false;
+        self.accumulator_emission_bands = 0;
     }
 
     /// Clear one migrated AccumulatorOp family when its feature flag is off.
@@ -857,6 +864,94 @@ impl WorldGpuState {
     pub fn set_transfer_dispatch(&mut self, active: bool, n_bands: u32) {
         self.accumulator_transfer_active = active;
         self.accumulator_transfer_bands = n_bands;
+    }
+
+    pub fn ensure_emission_accumulator(&mut self) {
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        let n_slots = self.n_slots;
+        let n_dims = self.n_dims;
+        self.accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .ensure_emission_session(
+                &self.ctx,
+                n_slots,
+                n_dims,
+                crate::DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+            );
+    }
+
+    /// Upload emission ops for C-8d.
+    pub fn sync_emission_accumulator(
+        &mut self,
+        registrations: &[crate::EmissionRegistration],
+    ) -> Result<(), crate::EmissionSyncError> {
+        use crate::emission_accumulator::{
+            encode_emission_plan, emission_plan_signature_fields, plan_emission_ops,
+            EmissionFormula,
+        };
+
+        if registrations.is_empty() {
+            if let Some(runtime) = self.accumulator_runtime.as_mut() {
+                runtime.clear_emission();
+            }
+            self.set_emission_dispatch(false, 0);
+            return Ok(());
+        }
+
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+
+        let needs_eml = registrations
+            .iter()
+            .any(|r| matches!(r.formula, EmissionFormula::EvalEml { .. }));
+
+        let plan = {
+            let runtime = self.accumulator_runtime.as_mut().unwrap();
+            if needs_eml {
+                runtime.ensure_eml_program_table(&self.ctx);
+            }
+            plan_emission_ops(registrations, Some(&runtime.eml_registry))?
+        };
+
+        if needs_eml {
+            self.accumulator_runtime
+                .as_mut()
+                .unwrap()
+                .upload_eml_trees(&self.ctx)?;
+        }
+
+        self.ensure_emission_accumulator();
+        let gpu_ops = {
+            let runtime = self.accumulator_runtime.as_ref().unwrap();
+            encode_emission_plan(&plan, Some(&runtime.eml_registry))?
+        };
+        let (source_slots, source_cols, tree_ids, formula_kinds) =
+            emission_plan_signature_fields(registrations);
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            let signature = crate::EmissionOpPlanSignature {
+                eml_registry_generation: runtime.eml_registry.generation(),
+                n_slots: self.n_slots,
+                n_dims: self.n_dims,
+                n_registrations: registrations.len() as u32,
+                n_ops: gpu_ops.len() as u32,
+                source_slots,
+                source_cols,
+                tree_ids,
+                formula_kinds,
+            };
+            runtime.upload_emission_ops(&self.ctx, &gpu_ops, plan.n_bands, signature)?;
+        }
+        self.set_emission_dispatch(!gpu_ops.is_empty(), plan.n_bands);
+        Ok(())
+    }
+
+    pub fn set_emission_dispatch(&mut self, active: bool, n_bands: u32) {
+        self.accumulator_emission_active = active;
+        self.accumulator_emission_bands = n_bands;
     }
 
     /// Ensure the C-1 threshold AccumulatorOp runtime is enabled.
