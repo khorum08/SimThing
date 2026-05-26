@@ -1,6 +1,7 @@
-//! C-7 velocity integration AccumulatorOp parity vs legacy Pass 1.
+//! C-7 velocity integration AccumulatorOp parity vs CPU/golden oracle.
+//! Legacy `velocity_integration.wgsl` was deleted in S-5.
 
-use simthing_core::{ClampBehavior, DimensionRegistry, SimProperty, SubFieldRole};
+use simthing_core::{ClampBehavior, DimensionRegistry, PropertyValue, SimProperty, SubFieldRole};
 use simthing_gpu::{
     build_governed_pairs, plan_velocity_integration, GpuContext, Pipelines, WorldGpuState,
 };
@@ -9,13 +10,13 @@ fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
 }
 
-fn assert_bits_eq(label: &str, legacy: &[f32], acc: &[f32]) {
-    assert_eq!(legacy.len(), acc.len(), "{label}: length mismatch");
-    for (i, (a, b)) in legacy.iter().zip(acc.iter()).enumerate() {
+fn assert_bits_eq(label: &str, expected: &[f32], actual: &[f32]) {
+    assert_eq!(expected.len(), actual.len(), "{label}: length mismatch");
+    for (i, (a, b)) in expected.iter().zip(actual.iter()).enumerate() {
         assert_eq!(
             a.to_bits(),
             b.to_bits(),
-            "{label}: index {i} diverges — legacy={a} ({:08x}), acc={b} ({:08x})",
+            "{label}: index {i} diverges — expected={a} ({:08x}), actual={b} ({:08x})",
             a.to_bits(),
             b.to_bits(),
         );
@@ -51,11 +52,21 @@ fn setup_velocity_state(reg: &DimensionRegistry, n_slots: u32, initial: &[f32]) 
     state
 }
 
-fn run_legacy_velocity(state: &WorldGpuState, dt: f32) -> Vec<f32> {
-    let pipelines = Pipelines::new(&state.ctx);
-    pipelines.run_snapshot(state);
-    pipelines.run_velocity_integration(state, dt);
-    state.read_values()
+fn cpu_integrate_rows(
+    layout: &simthing_core::PropertyLayout,
+    rows: &[Vec<f32>],
+    dt: f32,
+) -> Vec<f32> {
+    let stride = layout.stride();
+    let mut out = Vec::with_capacity(rows.len() * stride);
+    for row in rows {
+        let mut pv = PropertyValue {
+            data: row[..stride].to_vec(),
+        };
+        pv.integrate(&layout, dt);
+        out.extend_from_slice(&pv.data);
+    }
+    out
 }
 
 fn run_accumulator_velocity(state: &mut WorldGpuState, dt: f32) -> Vec<f32> {
@@ -83,33 +94,32 @@ fn run_accumulator_velocity(state: &mut WorldGpuState, dt: f32) -> Vec<f32> {
 }
 
 #[test]
-fn c7_velocity_basic_legacy_vs_accumulator_bit_exact() {
+fn c7_velocity_basic_cpu_golden_bit_exact() {
     let Some(_ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
         return;
     };
     let mut reg = DimensionRegistry::new();
-    reg.register(governed_amount_velocity_property(
+    let pid = reg.register(governed_amount_velocity_property(
         Some(10.0),
         ClampBehavior::Bounded {
             min: 0.0,
             max: 100.0,
         },
     ));
+    let layout = reg.property(pid).layout.clone();
     let n_dims = reg.total_columns;
     let mut row = vec![0.0_f32; n_dims];
     row[0] = 10.0; // amount
     row[1] = 2.0; // velocity
 
-    let legacy_state = setup_velocity_state(&reg, 1, &row);
-    let mut acc_state = setup_velocity_state(&reg, 1, &row);
+    let mut state = setup_velocity_state(&reg, 1, &row);
     let dt = 0.5;
-
-    let legacy = run_legacy_velocity(&legacy_state, dt);
-    let acc = run_accumulator_velocity(&mut acc_state, dt);
-    assert_bits_eq("basic", &legacy, &acc);
-    assert_eq!(legacy[0].to_bits(), (11.0_f32).to_bits());
-    assert_eq!(legacy[1].to_bits(), (2.0_f32).to_bits());
+    let expected = cpu_integrate_rows(&layout, std::slice::from_ref(&row), dt);
+    let actual = run_accumulator_velocity(&mut state, dt);
+    assert_bits_eq("basic", &expected, &actual);
+    assert_eq!(actual[0].to_bits(), (11.0_f32).to_bits());
+    assert_eq!(actual[1].to_bits(), (2.0_f32).to_bits());
 }
 
 #[test]
@@ -120,13 +130,14 @@ fn c7_velocity_vel_max_boundary_bit_exact() {
     };
     let vel_max = 0.5_f32;
     let mut reg = DimensionRegistry::new();
-    reg.register(governed_amount_velocity_property(
+    let pid = reg.register(governed_amount_velocity_property(
         Some(vel_max),
         ClampBehavior::Bounded {
             min: 0.0,
             max: 100.0,
         },
     ));
+    let layout = reg.property(pid).layout.clone();
     let n_dims = reg.total_columns;
 
     let cases: &[(f32, &str)] = &[
@@ -141,11 +152,10 @@ fn c7_velocity_vel_max_boundary_bit_exact() {
         row[0] = 0.4;
         row[1] = *velocity;
 
-        let legacy_state = setup_velocity_state(&reg, 1, &row);
-        let mut acc_state = setup_velocity_state(&reg, 1, &row);
-        let legacy = run_legacy_velocity(&legacy_state, 1.0);
-        let acc = run_accumulator_velocity(&mut acc_state, 1.0);
-        assert_bits_eq(label, &legacy, &acc);
+        let mut state = setup_velocity_state(&reg, 1, &row);
+        let expected = cpu_integrate_rows(&layout, std::slice::from_ref(&row), 1.0);
+        let actual = run_accumulator_velocity(&mut state, 1.0);
+        assert_bits_eq(label, &expected, &actual);
     }
 }
 
@@ -156,10 +166,11 @@ fn c7_velocity_amount_clamp_min_max_bit_exact() {
         return;
     };
     let mut reg = DimensionRegistry::new();
-    reg.register(governed_amount_velocity_property(
+    let pid = reg.register(governed_amount_velocity_property(
         Some(10.0),
         ClampBehavior::Bounded { min: 0.0, max: 1.0 },
     ));
+    let layout = reg.property(pid).layout.clone();
     let n_dims = reg.total_columns;
 
     let cases: &[(f32, f32, f32, &str)] = &[
@@ -174,11 +185,10 @@ fn c7_velocity_amount_clamp_min_max_bit_exact() {
         row[0] = *amount;
         row[1] = *velocity;
 
-        let legacy_state = setup_velocity_state(&reg, 1, &row);
-        let mut acc_state = setup_velocity_state(&reg, 1, &row);
-        let legacy = run_legacy_velocity(&legacy_state, *dt);
-        let acc = run_accumulator_velocity(&mut acc_state, *dt);
-        assert_bits_eq(label, &legacy, &acc);
+        let mut state = setup_velocity_state(&reg, 1, &row);
+        let expected = cpu_integrate_rows(&layout, std::slice::from_ref(&row), *dt);
+        let actual = run_accumulator_velocity(&mut state, *dt);
+        assert_bits_eq(label, &expected, &actual);
     }
 }
 
@@ -189,22 +199,22 @@ fn c7_velocity_writes_amount_and_velocity_targets() {
         return;
     };
     let mut reg = DimensionRegistry::new();
-    reg.register(governed_amount_velocity_property(
+    let pid = reg.register(governed_amount_velocity_property(
         Some(1.0),
         ClampBehavior::Bounded { min: 0.0, max: 1.0 },
     ));
+    let layout = reg.property(pid).layout.clone();
     let n_dims = reg.total_columns;
     let mut row = vec![0.0_f32; n_dims];
     row[0] = 0.0;
     row[1] = -0.2;
 
-    let legacy_state = setup_velocity_state(&reg, 1, &row);
-    let mut acc_state = setup_velocity_state(&reg, 1, &row);
-    let legacy = run_legacy_velocity(&legacy_state, 1.0);
-    let acc = run_accumulator_velocity(&mut acc_state, 1.0);
-    assert_bits_eq("floor pin amount+velocity", &legacy, &acc);
-    assert_eq!(legacy[0].to_bits(), 0.0_f32.to_bits());
-    assert!(legacy[1] >= 0.0);
+    let mut state = setup_velocity_state(&reg, 1, &row);
+    let expected = cpu_integrate_rows(&layout, std::slice::from_ref(&row), 1.0);
+    let actual = run_accumulator_velocity(&mut state, 1.0);
+    assert_bits_eq("floor pin amount+velocity", &expected, &actual);
+    assert_eq!(actual[0].to_bits(), 0.0_f32.to_bits());
+    assert!(actual[1] >= 0.0);
 }
 
 #[test]
@@ -214,24 +224,26 @@ fn c7_velocity_many_slots_many_pairs_bit_exact() {
         return;
     };
     let mut reg = DimensionRegistry::new();
-    reg.register(governed_amount_velocity_property(
+    let pid = reg.register(governed_amount_velocity_property(
         Some(0.5),
         ClampBehavior::Bounded { min: 0.0, max: 1.0 },
     ));
+    let layout = reg.property(pid).layout.clone();
     let n_dims = reg.total_columns;
     let n_slots = 4u32;
     let mut flat = vec![0.0_f32; n_dims * n_slots as usize];
+    let mut rows = Vec::with_capacity(n_slots as usize);
     for slot in 0..n_slots as usize {
         let base = slot * n_dims;
         flat[base] = 0.2 + slot as f32 * 0.1;
         flat[base + 1] = -0.1 + slot as f32 * 0.05;
+        rows.push(flat[base..base + n_dims].to_vec());
     }
 
-    let legacy_state = setup_velocity_state(&reg, n_slots, &flat);
-    let mut acc_state = setup_velocity_state(&reg, n_slots, &flat);
-    let legacy = run_legacy_velocity(&legacy_state, 0.25);
-    let acc = run_accumulator_velocity(&mut acc_state, 0.25);
-    assert_bits_eq("multi-slot", &legacy, &acc);
+    let mut state = setup_velocity_state(&reg, n_slots, &flat);
+    let expected = cpu_integrate_rows(&layout, &rows, 0.25);
+    let actual = run_accumulator_velocity(&mut state, 0.25);
+    assert_bits_eq("multi-slot", &expected, &actual);
 }
 
 #[test]
@@ -241,20 +253,20 @@ fn c7_velocity_dt_zero_bit_exact() {
         return;
     };
     let mut reg = DimensionRegistry::new();
-    reg.register(governed_amount_velocity_property(
+    let pid = reg.register(governed_amount_velocity_property(
         Some(1.0),
         ClampBehavior::Bounded { min: 0.0, max: 1.0 },
     ));
+    let layout = reg.property(pid).layout.clone();
     let n_dims = reg.total_columns;
     let mut row = vec![0.0_f32; n_dims];
     row[0] = 0.42;
     row[1] = -0.33;
 
-    let legacy_state = setup_velocity_state(&reg, 1, &row);
-    let mut acc_state = setup_velocity_state(&reg, 1, &row);
-    let legacy = run_legacy_velocity(&legacy_state, 0.0);
-    let acc = run_accumulator_velocity(&mut acc_state, 0.0);
-    assert_bits_eq("dt=0", &legacy, &acc);
+    let mut state = setup_velocity_state(&reg, 1, &row);
+    let expected = cpu_integrate_rows(&layout, std::slice::from_ref(&row), 0.0);
+    let actual = run_accumulator_velocity(&mut state, 0.0);
+    assert_bits_eq("dt=0", &expected, &actual);
 }
 
 #[test]
@@ -284,7 +296,7 @@ fn c7_combined_c1_c2_c4_reduction_velocity_all_flags_on() {
         eprintln!("skipping: no GPU");
         return;
     };
-    use simthing_core::{PropertyValue, SimThing, SimThingKind};
+    use simthing_core::{SimThing, SimThingKind};
     use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
     use simthing_gpu::SlotAllocator;
     use simthing_sim::BoundaryProtocol;
