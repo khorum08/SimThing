@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-26  
-**Master HEAD:** E-3 conjunctive recipe builder merged; E-2A (#146); E-1 (#144/#145); post-sunset cleanup (#143)
+**Master HEAD:** E-3 conjunctive recipe builder merged (#147, `ca8b34e`); E-2A (#146); E-1 (#144/#145)
 **Verification (last recorded):** `cargo test --workspace` green after S-6/S-5/S-1; focused sunset and C-1/C-2/C-7/C-8 regressions green
 
 ---
@@ -72,7 +72,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **S-1** | `6b9bf8f` | Legacy `intent_delta.wgsl` + intent pipeline deleted; AccumulatorOp intent mandatory for pending intents |
 | **E-1** | #144 | `emit_on_threshold` builder in `simthing-core`; compiles to C-1 threshold+EmitEvent ops; re-registration helpers |
 | **E-2A** | #146 | `resource_transfer_discrete` builder; exact SubtractFromSource discrete transfer |
-| **E-3** | — | `conjunctive_recipe` builder; lifted CPU N≤4 cap; C-8c MinAcrossInputs + SubtractFromAllInputs |
+| **E-3** | #147 | `conjunctive_recipe` builder; lifted CPU N≤4 cap; C-8c MinAcrossInputs + SubtractFromAllInputs |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

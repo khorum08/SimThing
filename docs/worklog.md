@@ -10,7 +10,7 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-26 — E-3 conjunctive_recipe builder + N-input cap lift
+## 2026-05-26 — E-3 conjunctive_recipe builder + N-input cap lift (#147)
 
 - Added `AccumulatorOpBuilder::conjunctive_recipe` / `ConjunctiveRecipeRegistration` in `simthing-core`; compiles to C-8c `ConjunctiveCrossing` + `MinAcrossInputs` + `SubtractFromAllInputs`.
 - Lifted stale CPU-side `inputs.len() > 4` validation in `AccumulatorOp::validate`; GPU input-list table already supported arbitrary N.

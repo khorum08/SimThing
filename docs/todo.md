@@ -101,7 +101,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **S-1** | `6b9bf8f` | — | Legacy intent deleted; AccumulatorOp intent mandatory for pending intent workloads |
 | **E-1** | #144 | — | **Done** — EmitOnThreshold builder; threshold+EmitEvent registration API over C-1 substrate |
 | **E-2A** | #146 | — | **Done** — `resource_transfer_discrete` exact discrete transfer builder |
-| **E-3** | — | — | **Done** — `conjunctive_recipe` builder + N-input cap lift |
+| **E-3** | #147 | — | **Done** — `conjunctive_recipe` builder + N-input cap lift |
 
 **Next recommended gates (pivot-forward order):**
 
