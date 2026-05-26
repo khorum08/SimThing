@@ -1,3 +1,4 @@
+pub mod arena_registry;
 pub mod bench_limits;
 pub mod install;
 pub mod scenario;
@@ -5,6 +6,11 @@ pub mod session;
 pub mod spec_replay;
 pub mod spec_session;
 
+pub use arena_registry::{
+    ArenaCoupling, ArenaDiagnostic, ArenaExpansionReport, ArenaIdx, ArenaParticipant,
+    ArenaRefreshReport, ArenaRegistry, ArenaRegistryBuilder, ArenaRegistryError, CouplingDelay,
+    FissionPolicy, GpuArenaDescriptor, SlotId,
+};
 pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,

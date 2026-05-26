@@ -3,6 +3,7 @@
 //! This module is deliberately above `simthing-sim`: the driver can depend on
 //! both crates, while the sim boundary protocol remains spec-agnostic.
 
+use crate::arena_registry::ArenaRegistry;
 use simthing_core::SimThingId;
 use simthing_feeder::{
     BoundaryRequest, CapabilityUnlockRegistration, ScriptedEventTriggerRegistration,
@@ -87,6 +88,8 @@ pub struct SpecSessionState {
     pub capability_diagnostics: Vec<CapabilityTreeDiagnostic>,
     pub scripted_event_diagnostics: Vec<ScriptedEventDiagnostic>,
     pub handler_errors: Vec<String>,
+    /// Resource Flow arena participation registry (E-9). Driver/spec artifact only.
+    pub arena_registry: ArenaRegistry,
     player_selections: Vec<(CapabilityInstanceKey, CapabilityEntryKey)>,
     /// Reverse index: capability tree `SimThingId` → installed instance key.
     capability_instance_by_tree: HashMap<SimThingId, CapabilityInstanceKey>,

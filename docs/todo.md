@@ -105,10 +105,11 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-3R** | #148 | — | **Done** — throttle hint metadata hardening before E-4 |
 | **E-7** | #149 | — | **Done** — `governed_by` planner generalization to arbitrary Named pairs |
 | **E-8** | #150 | — | **Done** — `accumulator_spec` compile-time metadata on `SubFieldSpec` |
+| **E-9** | — | — | **Done** — `ArenaRegistry` driver session artifact |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **E-9** — `ArenaRegistry` in `simthing-driver` with incremental refresh
+1. **E-10** — `simthing-spec` admission framework + expansion report
 2. **Opus** — production transfer/emission registration ownership
 3. **D-1** — discrete-transaction contention memo (D-2 deferred unless memo revives narrower GPU allocator need)
 
@@ -117,11 +118,11 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-1 memo evaluates discrete boundary transactions only.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
-**E-2B blocked:** `resource_flow_participant` requires E-9 ArenaRegistry (E-8 metadata landed).
+**E-2B blocked:** `resource_flow_participant` requires E-10/E-11 enrollment compilation (E-9 registry landed).
 
-**Next (immediate):** E-9 per Resource Flow substrate path (or Opus transfer/emission ownership).
+**Next (immediate):** E-10 per Resource Flow substrate path (or Opus transfer/emission ownership).
 
-**Next (non-Opus implementation):** E-9 — not E-11 directly.
+**Next (non-Opus implementation):** E-10 — not E-11 directly.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

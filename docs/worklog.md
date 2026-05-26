@@ -10,6 +10,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — E-9 ArenaRegistry driver session artifact
+
+- Added `ArenaRegistry`, `GpuArenaDescriptor`, `ArenaCoupling`, `CouplingDelay`, `FissionPolicy` in `simthing-driver`.
+- Session build validation: explicit admission, bounded wildcard, max participants/fanout/orderband, all-algebraic cycle rejection.
+- `refresh_subtree(changed_root)` — subtree-scoped generation bump, not global rebuild.
+- Wired `SpecSessionState.arena_registry`; `simthing-sim` remains arena-ignorant.
+- Tests: `arena_registry` module + integration tests (13 cases).
+
+**Verification:** `cargo test -p simthing-driver arena_registry`; `cargo test --workspace`.
+
+---
+
 ## 2026-05-26 — E-8 accumulator_spec on SubFieldSpec (#150)
 
 - Added `accumulator_spec: Option<AccumulatorSpec>` to `SubFieldSpec` with serde default/backcompat.
