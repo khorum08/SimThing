@@ -11,6 +11,7 @@ use crate::world_state::{
 };
 
 use super::bootstrap_validate::{validate_no_contention, BootstrapContention};
+use super::input_list_table::InputListRange;
 use super::types::{
     combine_kind, consume_kind, gate_kind, scale_kind, source_kind, AccumulatorOpGpu,
 };
@@ -95,6 +96,18 @@ impl AccumulatorOpGpu {
             n_targets,
             _pad: 0,
         })
+    }
+
+    pub fn from_op_with_input_list(
+        op: &AccumulatorOp,
+        range: InputListRange,
+    ) -> Result<Self, EncodeError> {
+        let mut gpu = Self::from_op(op)?;
+        gpu.source_kind = source_kind::INPUT_LIST;
+        gpu.source_slot = range.offset;
+        gpu.source_col = 0;
+        gpu.source_count = range.count;
+        Ok(gpu)
     }
 
     /// Encode and validate a full bootstrap op set, including same-band contention checks.
@@ -275,6 +288,21 @@ fn validate_bootstrap_op(op: &AccumulatorOp) -> Result<(), EncodeError> {
                 "SubtractFromSource requires SlotValue source and Constant scale",
             )),
         }
+    } else if op.consume == ConsumeMode::SubtractFromAllInputs {
+        match (&op.source, &op.combine) {
+            (SourceSpec::ConjunctiveCrossing { inputs }, CombineFn::MinAcrossInputs) => {
+                if inputs.is_empty() {
+                    Err(EncodeError::Unsupported(
+                        "SubtractFromAllInputs requires non-empty ConjunctiveCrossing",
+                    ))
+                } else {
+                    Ok(())
+                }
+            }
+            _ => Err(EncodeError::Unsupported(
+                "SubtractFromAllInputs requires ConjunctiveCrossing + MinAcrossInputs",
+            )),
+        }
     } else {
         Ok(())
     }
@@ -293,15 +321,12 @@ fn encode_source(op: &AccumulatorOp) -> Result<(u32, u32, u32, u32), EncodeError
             Ok((source_kind::SLOT_RANGE, *start, col, *count))
         }
         SourceSpec::ConjunctiveCrossing { inputs } => {
-            let first = inputs.first().ok_or(EncodeError::Unsupported(
-                "ConjunctiveCrossing with zero inputs",
-            ))?;
-            Ok((
-                source_kind::CONJUNCTIVE_CROSSING,
-                first.slot,
-                first.col,
-                inputs.len() as u32,
-            ))
+            if inputs.is_empty() {
+                return Err(EncodeError::Unsupported(
+                    "ConjunctiveCrossing with zero inputs",
+                ));
+            }
+            Ok((source_kind::INPUT_LIST, 0, 0, inputs.len() as u32))
         }
     }
 }

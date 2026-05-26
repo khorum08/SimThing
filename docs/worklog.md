@@ -6,6 +6,21 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — C-8c: GPU-resident transfer substrate
+
+**Landed:**
+- `use_accumulator_transfer` flag (default false) on `PipelineFlags`
+- `AccumulatorInputGpu` + persistent `AccumulatorInputListTable` (binding 10)
+- `SOURCE_INPUT_LIST`, `MinAcrossInputs`, `SubtractFromSource`, `SubtractFromAllInputs` in `accumulator_op.wgsl`
+- `transfer_accumulator` planner + `WorldGpuState::sync_transfer_accumulator`
+- Tick placement after intensity, before overlay; feeder session take/restore
+- `TransferConservation` = `ExactDeterministic` only; no CPU production path; no per-dispatch input-list upload
+- Tests: `crates/simthing-sim/tests/c8c_transfer_accumulator_parity.rs`
+
+**Not in C-8c:** C-8d emission / `EmitEvent` substrate.
+
+---
+
 ## 2026-05-19 — C-8b remedial: intensity EvalEML op-cache invalidation
 
 **Fixes:**

@@ -217,7 +217,7 @@ pub struct PipelineFlags {
     pub use_accumulator_velocity:       bool,  // C-7 → S-5
     pub use_accumulator_eml:            bool,  // C-8a infra upload at boundary sync (default false)
     pub use_accumulator_intensity:      bool,  // C-8b EvalEML intensity (requires use_accumulator_eml)
-    pub use_accumulator_eml_transfer:   bool,  // C-8c → S-2 (future)
+    pub use_accumulator_transfer:       bool,  // C-8c exact transfer substrate (default false)
 }
 ```
 
@@ -242,6 +242,14 @@ pub struct PipelineFlags {
   node/range buffers; no per-dispatch EML upload.
 - **Flag-off:** WGSL `intensity_update.wgsl` (oracle/fallback until S-2).
 - Requires `use_accumulator_eml`; validated at boundary sync.
+
+**Pass 2b — Economic transfer (C-8c landed, flag default false)**
+- **Flag-on:** AccumulatorOp transfer substrate after intensity, before overlay.
+  Single-source `SubtractFromSource`; conjunctive `MinAcrossInputs + SubtractFromAllInputs`
+  via persistent `AccumulatorInputListTable` (binding 10). Input lists uploaded at boundary
+  sync only; generation-based skip when unchanged.
+- `TransferConservation` admits `ExactDeterministic` only.
+- **Flag-off:** no production transfer path (C-8d emission separate).
 
 **Pass 3 — Overlay application (migrate → C-3/C-4, sunset → S-3)**
 - WGSL: inline in `overlay_prep.rs`

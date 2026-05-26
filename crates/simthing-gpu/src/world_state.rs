@@ -329,6 +329,9 @@ pub struct WorldGpuState {
     /// Cached C-8b intensity EvalEML dispatch signal.
     pub accumulator_intensity_eml_active: bool,
     pub accumulator_intensity_eml_bands: u32,
+    /// Cached C-8c transfer dispatch signal.
+    pub accumulator_transfer_active: bool,
+    pub accumulator_transfer_bands: u32,
 }
 
 impl WorldGpuState {
@@ -456,6 +459,8 @@ impl WorldGpuState {
             accumulator_velocity_bands: 0,
             accumulator_intensity_eml_active: false,
             accumulator_intensity_eml_bands: 0,
+            accumulator_transfer_active: false,
+            accumulator_transfer_bands: 0,
         }
     }
 
@@ -471,6 +476,8 @@ impl WorldGpuState {
         self.accumulator_velocity_bands = 0;
         self.accumulator_intensity_eml_active = false;
         self.accumulator_intensity_eml_bands = 0;
+        self.accumulator_transfer_active = false;
+        self.accumulator_transfer_bands = 0;
     }
 
     /// Clear one migrated AccumulatorOp family when its feature flag is off.
@@ -771,6 +778,87 @@ impl WorldGpuState {
     pub fn set_intensity_eml_dispatch(&mut self, active: bool, n_bands: u32) {
         self.accumulator_intensity_eml_active = active;
         self.accumulator_intensity_eml_bands = n_bands;
+    }
+
+    pub fn ensure_transfer_accumulator(&mut self) {
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        let n_slots = self.n_slots;
+        let n_dims = self.n_dims;
+        self.accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .ensure_transfer_session(
+                &self.ctx,
+                n_slots,
+                n_dims,
+                crate::DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+            );
+    }
+
+    /// Upload input-list table and transfer EvalEML ops for C-8c.
+    pub fn sync_transfer_accumulator(
+        &mut self,
+        registrations: &[crate::TransferRegistration],
+    ) {
+        use crate::transfer_accumulator::{encode_transfer_plan, plan_transfer_ops};
+        let plan = plan_transfer_ops(registrations);
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        let source_generation = transfer_registrations_generation(registrations);
+        let non_empty_lists: Vec<_> = plan
+            .input_lists
+            .iter()
+            .filter(|l| !l.is_empty())
+            .cloned()
+            .collect();
+        let (input_list_generation, ranges) = {
+            let runtime = self.accumulator_runtime.as_mut().unwrap();
+            runtime.ensure_input_list_table(&self.ctx);
+            let ranges = runtime
+                .input_lists
+                .as_mut()
+                .unwrap()
+                .upload_lists(&self.ctx, &non_empty_lists, source_generation)
+                .expect("input-list upload failed");
+            let gen = runtime.input_lists.as_ref().unwrap().generation;
+            (gen, ranges)
+        };
+        self.ensure_transfer_accumulator();
+        let gpu_ops = encode_transfer_plan(&plan, &ranges).expect("transfer encode failed");
+        let mut input_slots = Vec::new();
+        let mut input_cols = Vec::new();
+        let mut unit_cost_bits = Vec::new();
+        for list in &plan.input_lists {
+            for inp in list {
+                input_slots.push(inp.slot);
+                input_cols.push(inp.col);
+                unit_cost_bits.push(inp.unit_cost_bits);
+            }
+        }
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            let signature = crate::TransferOpPlanSignature {
+                n_slots: self.n_slots,
+                n_dims: self.n_dims,
+                n_ops: gpu_ops.len() as u32,
+                n_registrations: registrations.len() as u32,
+                input_list_generation,
+                input_slots,
+                input_cols,
+                unit_cost_bits,
+            };
+            runtime
+                .upload_transfer_ops(&self.ctx, &gpu_ops, plan.n_bands, signature)
+                .expect("transfer op upload failed");
+        }
+        self.set_transfer_dispatch(!gpu_ops.is_empty(), plan.n_bands);
+    }
+
+    pub fn set_transfer_dispatch(&mut self, active: bool, n_bands: u32) {
+        self.accumulator_transfer_active = active;
+        self.accumulator_transfer_bands = n_bands;
     }
 
     /// Ensure the C-1 threshold AccumulatorOp runtime is enabled.
@@ -1415,6 +1503,28 @@ impl WorldGpuState {
         staging.unmap();
         out
     }
+}
+
+fn transfer_registrations_generation(regs: &[crate::TransferRegistration]) -> u64 {
+    let mut h = 1u64;
+    for reg in regs {
+        h = h
+            .wrapping_mul(31)
+            .wrapping_add(reg.target_slot as u64)
+            .wrapping_add(reg.target_col as u64)
+            .wrapping_add(reg.output_scale.to_bits() as u64);
+        if let Some(max) = reg.max_transfer {
+            h = h.wrapping_add(max.to_bits() as u64);
+        }
+        for inp in &reg.inputs {
+            h = h
+                .wrapping_mul(17)
+                .wrapping_add(inp.slot as u64)
+                .wrapping_add(inp.col as u64)
+                .wrapping_add(inp.unit_cost.to_bits() as u64);
+        }
+    }
+    h
 }
 
 #[cfg(test)]

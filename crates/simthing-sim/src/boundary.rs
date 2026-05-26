@@ -143,6 +143,8 @@ pub struct PipelineFlags {
     pub use_accumulator_eml: bool,
     /// C-8b: routes intensity update through AccumulatorOp EvalEML (requires `use_accumulator_eml`).
     pub use_accumulator_intensity: bool,
+    /// C-8c: routes exact economic transfer through AccumulatorOp (input-list substrate).
+    pub use_accumulator_transfer: bool,
 }
 
 impl Default for PipelineFlags {
@@ -156,6 +158,7 @@ impl Default for PipelineFlags {
             use_accumulator_velocity: false,
             use_accumulator_eml: false,
             use_accumulator_intensity: false,
+            use_accumulator_transfer: false,
         }
     }
 }
@@ -304,6 +307,17 @@ impl BoundaryProtocol {
             return;
         }
         state.sync_intensity_eml_accumulator(&self.registry);
+    }
+
+    fn sync_accumulator_transfer_session(&self, state: &mut WorldGpuState) {
+        if !self.flags.use_accumulator_transfer {
+            if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                runtime.clear_transfer();
+            }
+            state.set_transfer_dispatch(false, 0);
+            return;
+        }
+        state.ensure_transfer_accumulator();
     }
 
     fn sync_accumulator_threshold_ops(
@@ -854,6 +868,7 @@ impl BoundaryProtocol {
         } else {
             self.sync_accumulator_eml_session(state);
         }
+        self.sync_accumulator_transfer_session(state);
         out.gpu_sync = GpuSyncOutcome {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
             // Sum: gpu_out.threshold_regs_uploaded counts entries written by
@@ -1085,6 +1100,7 @@ impl BoundaryProtocol {
         self.sync_accumulator_reduction_soft_session(state);
         self.sync_accumulator_velocity_session(state);
         self.sync_accumulator_eml_session(state);
+        self.sync_accumulator_transfer_session(state);
     }
 
     /// Read-only access to the persistent fission lineage. Useful for tests

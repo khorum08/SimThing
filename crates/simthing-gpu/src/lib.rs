@@ -14,22 +14,28 @@ pub mod projection;
 pub mod reduction;
 pub mod reduction_orderband;
 pub mod slot;
+pub mod transfer_accumulator;
 pub mod velocity_accumulator;
 pub mod world_state;
 
 pub use accumulator_op::{
     eval_eml_cpu, execute_ops_cpu, set_debug_readback_allowed, summaries_from_values,
-    threshold_registrations_to_ops, AccumulatorOpGpu, AccumulatorOpSession,
-    AccumulatorOpSessionError, EmissionRecord, EmlGpuProgramTable, EmlTreeRangeGpu,
-    EmlUploadError, ExactnessClass, LegacyOracleFamily, OpSetHandle, OperationFamily,
-    OverlayCompileCache, SlotSummary, ThresholdEmission, ThresholdEmissionGpu,
-    WorldAccumulatorRuntime, WorldSummaryRuntime, DEFAULT_EML_NODE_CAPACITY,
-    DEFAULT_EML_TREE_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY, IntensityEmlOpPlanSignature,
+    threshold_registrations_to_ops, AccumulatorInputGpu, AccumulatorInputListTable,
+    AccumulatorOpGpu, AccumulatorOpSession, AccumulatorOpSessionError, EmissionRecord,
+    EmlGpuProgramTable, EmlTreeRangeGpu, EmlUploadError, ExactnessClass, InputListRange,
+    LegacyOracleFamily, OpSetHandle, OperationFamily, OverlayCompileCache, SlotSummary,
+    ThresholdEmission, ThresholdEmissionGpu, TransferOpPlanSignature, WorldAccumulatorRuntime,
+    WorldSummaryRuntime, DEFAULT_EML_NODE_CAPACITY, DEFAULT_EML_TREE_CAPACITY,
+    DEFAULT_INPUT_LIST_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY, EncodeError,
+    IntensityEmlOpPlanSignature,
 };
 pub use context::{GpuContext, GpuInitError};
 pub use intensity_accumulator::{
     build_intensity_eml_entries, plan_intensity_eml_ops, register_intensity_eml_formulas,
     IntensityEmlEntry, IntensityEmlPlan,
+};
+pub use transfer_accumulator::{
+    encode_transfer_plan, plan_transfer_ops, TransferInputRef, TransferPlan, TransferRegistration,
 };
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
 pub use reduction_orderband::{

@@ -175,7 +175,12 @@ pub fn execute_ops_cpu_with_emissions(
         }
         let write_value = gather_and_combine(values, op, n_dims)?;
         let write_value = clamp_transfer(values, op, write_value, n_dims)?;
-        apply_targets(values, op, write_value, n_dims)?;
+        let target_value = if matches!(op.combine, CombineFn::MinAcrossInputs) {
+            apply_scale(write_value, &op.scale)
+        } else {
+            write_value
+        };
+        apply_targets(values, op, target_value, n_dims)?;
         apply_consume(values, op, write_value, n_dims)?;
         maybe_emit_event(op_idx, op, write_value, &mut records);
     }
@@ -350,6 +355,26 @@ fn gather_and_combine(
             }
             _ => Err(CpuOracleError::Unsupported("Sum without SlotRange")),
         },
+        CombineFn::MinAcrossInputs => {
+            let SourceSpec::ConjunctiveCrossing { inputs } = &op.source else {
+                return Err(CpuOracleError::Unsupported(
+                    "MinAcrossInputs without ConjunctiveCrossing",
+                ));
+            };
+            let mut amount = f32::MAX;
+            for input in inputs {
+                if input.unit_cost <= 0.0 {
+                    return Ok(0.0);
+                }
+                let available = values[idx(input.slot, input.col, n_dims)];
+                amount = amount.min(available / input.unit_cost);
+            }
+            if inputs.is_empty() {
+                Ok(0.0)
+            } else {
+                Ok(amount.max(0.0).floor())
+            }
+        }
         _ => Err(CpuOracleError::Unsupported("combine")),
     }
 }
@@ -377,7 +402,16 @@ fn apply_targets(
             ConsumeMode::ScaleTarget => values[i] *= write_value,
             ConsumeMode::ResetTarget => values[i] = write_value,
             _ => match op.combine {
-                CombineFn::Identity | CombineFn::Sum => values[i] = write_value,
+                CombineFn::Identity | CombineFn::Sum | CombineFn::MinAcrossInputs => {
+                    if matches!(
+                        op.consume,
+                        ConsumeMode::SubtractFromSource | ConsumeMode::SubtractFromAllInputs
+                    ) {
+                        values[i] += write_value;
+                    } else {
+                        values[i] = write_value;
+                    }
+                }
                 _ => return Err(CpuOracleError::Unsupported("combine target write")),
             },
         }
@@ -406,7 +440,19 @@ fn apply_consume(
                 "SubtractFromSource without SlotValue",
             )),
         },
-        _ => Err(CpuOracleError::Unsupported("consume")),
+        ConsumeMode::SubtractFromAllInputs => {
+            let SourceSpec::ConjunctiveCrossing { inputs } = &op.source else {
+                return Err(CpuOracleError::Unsupported(
+                    "SubtractFromAllInputs without ConjunctiveCrossing",
+                ));
+            };
+            let unit_count = write_value;
+            for input in inputs {
+                let i = idx(input.slot, input.col, n_dims);
+                values[i] = (values[i] - unit_count * input.unit_cost).max(0.0);
+            }
+            Ok(())
+        }
     }
 }
 

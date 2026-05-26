@@ -33,6 +33,19 @@ pub struct IntensityEmlOpPlanSignature {
     pub velocity_cols: Vec<u32>,
 }
 
+/// Cache key for uploaded C-8c transfer Eval ops (world shape + input-list plan).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TransferOpPlanSignature {
+    pub n_slots: u32,
+    pub n_dims: u32,
+    pub n_ops: u32,
+    pub n_registrations: u32,
+    pub input_list_generation: u64,
+    pub input_slots: Vec<u32>,
+    pub input_cols: Vec<u32>,
+    pub unit_cost_bits: Vec<u32>,
+}
+
 /// Operation family registered into the world AccumulatorOp runtime.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum OperationFamily {
@@ -111,6 +124,7 @@ pub struct WorldAccumulatorRuntime {
     pub reduction_exact_ops: OpSetHandle,
     pub velocity_ops: OpSetHandle,
     pub intensity_eml_ops: OpSetHandle,
+    pub transfer_ops: OpSetHandle,
 
     intent_session: Option<AccumulatorOpSession>,
     threshold_session: Option<AccumulatorOpSession>,
@@ -118,6 +132,7 @@ pub struct WorldAccumulatorRuntime {
     reduction_soft_session: Option<AccumulatorOpSession>,
     velocity_session: Option<AccumulatorOpSession>,
     intensity_eml_session: Option<AccumulatorOpSession>,
+    transfer_session: Option<AccumulatorOpSession>,
     pub summary: Option<WorldSummaryRuntime>,
     pub overlay_compile_cache: Option<OverlayCompileCache>,
 
@@ -128,6 +143,10 @@ pub struct WorldAccumulatorRuntime {
     /// Authoritative cache key for uploaded intensity EvalEML ops (C-8b remedial).
     intensity_op_plan_signature: Option<IntensityEmlOpPlanSignature>,
     intensity_op_upload_count: u64,
+
+    transfer_op_plan_signature: Option<TransferOpPlanSignature>,
+    transfer_op_upload_count: u64,
+    pub input_lists: Option<super::input_list_table::AccumulatorInputListTable>,
 
     /// C-8a persistent GPU EML program table (shared across sessions).
     pub eml: Option<EmlGpuProgramTable>,
@@ -174,18 +193,27 @@ impl WorldAccumulatorRuntime {
                 exactness: ExactnessClass::Exact,
                 ..OpSetHandle::INACTIVE
             },
+            transfer_ops: OpSetHandle {
+                family: OperationFamily::EconomicTransfer,
+                exactness: ExactnessClass::Exact,
+                ..OpSetHandle::INACTIVE
+            },
             intent_session: None,
             threshold_session: None,
             overlay_session: None,
             reduction_soft_session: None,
             velocity_session: None,
             intensity_eml_session: None,
+            transfer_session: None,
             summary: None,
             overlay_compile_cache: None,
             intensity_tree_ids: Vec::new(),
             intensity_ops_registry_generation: None,
             intensity_op_plan_signature: None,
             intensity_op_upload_count: 0,
+            transfer_op_plan_signature: None,
+            transfer_op_upload_count: 0,
+            input_lists: None,
             eml: None,
             eml_registry: EmlExpressionRegistry::new(),
         }
@@ -393,6 +421,7 @@ impl WorldAccumulatorRuntime {
             || self.reduction_soft_ops.active
             || self.velocity_ops.active
             || self.intensity_eml_ops.active
+            || self.transfer_ops.active
     }
 
     pub fn ensure_intent_session(
@@ -651,6 +680,124 @@ impl WorldAccumulatorRuntime {
             self.intensity_op_plan_signature = Some(signature);
             self.intensity_ops_registry_generation = Some(registry_generation);
             self.intensity_op_upload_count += 1;
+        }
+        Ok(())
+    }
+
+    pub fn ensure_input_list_table(&mut self, ctx: &GpuContext) {
+        if self.input_lists.is_none() {
+            self.input_lists = Some(super::input_list_table::AccumulatorInputListTable::new(
+                ctx,
+                super::input_list_table::DEFAULT_INPUT_LIST_CAPACITY,
+            ));
+        }
+    }
+
+    pub fn input_list_bind_buffer(&self) -> Option<&wgpu::Buffer> {
+        self.input_lists.as_ref().map(|t| t.buffer())
+    }
+
+    pub fn ensure_transfer_session(
+        &mut self,
+        ctx: &GpuContext,
+        n_slots: u32,
+        n_dims: u32,
+        emission_capacity: u32,
+    ) {
+        if self.transfer_session.is_none() {
+            let mut session =
+                AccumulatorOpSession::new_attached(ctx, n_slots, n_dims, emission_capacity);
+            self.bind_eml_if_present(&mut session);
+            self.transfer_session = Some(session);
+        }
+    }
+
+    pub fn clear_transfer(&mut self) {
+        self.transfer_session = None;
+        self.transfer_op_plan_signature = None;
+        self.transfer_ops = OpSetHandle {
+            family: OperationFamily::EconomicTransfer,
+            exactness: ExactnessClass::Exact,
+            ..OpSetHandle::INACTIVE
+        };
+    }
+
+    pub fn take_transfer_session(&mut self) -> Option<AccumulatorOpSession> {
+        self.transfer_session.take()
+    }
+
+    pub fn restore_transfer_session(&mut self, session: Option<AccumulatorOpSession>) {
+        self.transfer_session = session;
+    }
+
+    pub fn transfer_session(&mut self) -> Option<&mut AccumulatorOpSession> {
+        self.transfer_session.as_mut()
+    }
+
+    pub fn transfer_active(&self) -> bool {
+        self.transfer_ops.active
+    }
+
+    pub fn transfer_bands(&self) -> u32 {
+        self.transfer_ops.n_bands
+    }
+
+    pub fn transfer_op_upload_count(&self) -> u64 {
+        self.transfer_op_upload_count
+    }
+
+    pub fn transfer_op_plan_signature(&self) -> Option<&TransferOpPlanSignature> {
+        self.transfer_op_plan_signature.as_ref()
+    }
+
+    pub fn upload_transfer_ops(
+        &mut self,
+        ctx: &GpuContext,
+        gpu_ops: &[AccumulatorOpGpu],
+        n_bands: u32,
+        signature: TransferOpPlanSignature,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        let needs_upload = self.transfer_op_plan_signature.as_ref() != Some(&signature)
+            || self
+                .transfer_session
+                .as_ref()
+                .map(|s| s.n_ops() == 0)
+                .unwrap_or(true);
+
+        if needs_upload {
+            let shape_mismatch = self.transfer_session.as_ref().is_some_and(|s| {
+                s.n_slots() != signature.n_slots || s.n_dims() != signature.n_dims
+            });
+            if shape_mismatch {
+                self.transfer_session = None;
+            }
+        }
+
+        if !needs_upload {
+            return Ok(());
+        }
+
+        if self.transfer_session.is_none() {
+            self.ensure_transfer_session(
+                ctx,
+                signature.n_slots,
+                signature.n_dims,
+                DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+            );
+        }
+
+        if let Some(session) = self.transfer_session.as_mut() {
+            session.upload_gpu_ops(ctx, gpu_ops)?;
+            self.transfer_ops = OpSetHandle {
+                family: OperationFamily::EconomicTransfer,
+                offset: 0,
+                count: session.n_ops(),
+                active: !gpu_ops.is_empty(),
+                n_bands,
+                exactness: ExactnessClass::Exact,
+            };
+            self.transfer_op_plan_signature = Some(signature);
+            self.transfer_op_upload_count += 1;
         }
         Ok(())
     }
