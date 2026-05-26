@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-26  
-**Master HEAD:** E-7 governed_by planner generalization (#149); E-3R (#148); E-3 (#147)
+**Master HEAD:** E-8 accumulator_spec metadata (#150); E-7 (#149); E-3R (#148)
 **Verification (last recorded):** `cargo test --workspace` green after S-6/S-5/S-1; focused sunset and C-1/C-2/C-7/C-8 regressions green
 
 ---
@@ -75,7 +75,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-3** | #147 | `conjunctive_recipe` builder; lifted CPU N≤4 cap; C-8c MinAcrossInputs + SubtractFromAllInputs |
 | **E-3R** | #148 | `throttle_hint_max_per_tick` metadata hardening; E-4 must not treat as GPU cap |
 | **E-7** | #149 | `governed_by` planner generalization; arbitrary `(Named, Named)` pairs via `IntegrateWithClamp` |
-| **E-8** | — | `accumulator_spec` on `SubFieldSpec`; compile-time Resource Flow metadata only |
+| **E-8** | #150 | `accumulator_spec` on `SubFieldSpec`; compile-time Resource Flow metadata only |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

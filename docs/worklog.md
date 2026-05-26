@@ -10,7 +10,7 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-26 — E-8 accumulator_spec on SubFieldSpec
+## 2026-05-26 — E-8 accumulator_spec on SubFieldSpec (#150)
 
 - Added `accumulator_spec: Option<AccumulatorSpec>` to `SubFieldSpec` with serde default/backcompat.
 - New compile-time types in `simthing-core`: `AccumulatorSpec`, `AccumulatorRole`, `BalanceSpec`, `NumCountSource`, `LogTier`, `ArenaName`.
