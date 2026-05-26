@@ -6,10 +6,6 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
----
-
----
-
 ## 2026-05-26 — E-10 Resource Flow admission framework (#153)
 
 - Added authored `ResourceFlowSpec` on `GameModeSpec` plus `compile_resource_flow_admission` in `simthing-spec`.
