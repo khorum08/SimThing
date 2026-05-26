@@ -10,6 +10,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — E-3R conjunctive recipe throttle semantics hardening
+
+- Renamed `max_per_tick` → `throttle_hint_max_per_tick` on `ConjunctiveRecipeRegistration` and builder API; documented as registration metadata only.
+- E-3 GPU substrate unchanged: emits all affordable exact recipe units; C-8c bridge does not forward throttle hint.
+- Added `e3_max_per_tick_is_metadata_not_gpu_cap` test (hint=1, output=4); E-4 gate note in design_v7 §5.2 and production plan.
+- Future enforced cap must be GPU-resident and conservation-preserving (TODO in builder module).
+
+**Verification:** `e3_conjunctive_recipe_builder`; `cargo test --workspace`.
+
+---
+
 ## 2026-05-26 — E-3 conjunctive_recipe builder + N-input cap lift (#147)
 
 - Added `AccumulatorOpBuilder::conjunctive_recipe` / `ConjunctiveRecipeRegistration` in `simthing-core`; compiles to C-8c `ConjunctiveCrossing` + `MinAcrossInputs` + `SubtractFromAllInputs`.

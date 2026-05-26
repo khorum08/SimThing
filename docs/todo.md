@@ -102,6 +102,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-1** | #144 | — | **Done** — EmitOnThreshold builder; threshold+EmitEvent registration API over C-1 substrate |
 | **E-2A** | #146 | — | **Done** — `resource_transfer_discrete` exact discrete transfer builder |
 | **E-3** | #147 | — | **Done** — `conjunctive_recipe` builder + N-input cap lift |
+| **E-3R** | — | — | **Done** — throttle hint metadata hardening before E-4 |
 
 **Next recommended gates (pivot-forward order):**
 

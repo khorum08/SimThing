@@ -197,6 +197,9 @@ pub fn encode_transfer_plan(
 }
 
 /// Convert one E-3 registration into a C-8c [`TransferRegistration`].
+///
+/// `throttle_hint_max_per_tick` on the registration is not forwarded — C-8c has
+/// no per-tick recipe cap; E-3 emits all affordable exact units.
 pub fn conjunctive_recipe_registration_to_transfer(
     reg: &simthing_core::ConjunctiveRecipeRegistration,
 ) -> TransferRegistration {
