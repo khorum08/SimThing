@@ -10,7 +10,7 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-26 — E-1 remedial: buffer semantics + status cleanup
+## 2026-05-26 — E-1 remedial: buffer semantics + status cleanup (#145)
 
 - `emit_on_threshold_registrations_to_ops` now rejects `EmitOnThresholdBuffer::Output` registrations (plain `AccumulatorOp` cannot carry buffer selector).
 - `emit_on_threshold_registrations_to_gpu` remains the canonical bridge for Values and Output; `upload_threshold_ops` preserves buffer via `AccumulatorOpGpu.source_count`.
