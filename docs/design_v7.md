@@ -478,11 +478,9 @@ pub fn emit_on_threshold(
 ) -> AccumulatorOp
 ```
 
-Future economic builders (E-3):
+Economic builders in `simthing-core` (E-1, E-2A, E-3 landed):
 
 ```rust
-// In simthing-core (E-2A landed):
-
 /// Exact discrete source-debit transfer (construction commits, treaty payments, etc.).
 pub fn resource_transfer_discrete(
     source_slot: u32,
@@ -492,8 +490,18 @@ pub fn resource_transfer_discrete(
     amount:      f32,
 ) -> AccumulatorOp
 
-// In simthing-spec (planned):
+/// Emits one unit when ALL inputs have accumulated enough for one recipe (arbitrary N).
+pub fn conjunctive_recipe(
+    inputs:       &[(u32, u32, f32)], // source_slot, source_col, unit_cost
+    target_slot:  u32,
+    target_col:   u32,
+    max_per_tick: u32,
+) -> AccumulatorOp
+```
 
+Planned in `simthing-spec`:
+
+```rust
 /// Continuous per-tick transfer rate (distinct from E-2A discrete commits).
 pub fn resource_transfer(
     source: ResourceRef,
@@ -508,13 +516,6 @@ pub fn emit_on_threshold_debt_band(
     queued_count: u32,
     max_per_tick: u32,
     target:       ResourceRef,
-) -> AccumulatorOp
-
-/// Emits one unit when ALL inputs have accumulated enough for one recipe.
-pub fn conjunctive_recipe(
-    inputs:      &[RecipeInput],   // (resource, unit_cost) up to 4
-    target:      ResourceRef,
-    max_per_tick: u32,
 ) -> AccumulatorOp
 ```
 

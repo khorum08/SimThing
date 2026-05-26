@@ -249,9 +249,6 @@ impl AccumulatorOp {
             if inputs.is_empty() {
                 return Err(AccumulatorOpError::EmptyConjunctiveInputs);
             }
-            if inputs.len() > 4 {
-                return Err(AccumulatorOpError::TooManyConjunctiveInputs(inputs.len()));
-            }
         }
         if let SourceSpec::SlotRange { count, .. } = &self.source {
             if *count == 0 {
@@ -283,8 +280,6 @@ pub enum AccumulatorOpError {
     WeightedMeanRequiresSlotRange,
     #[error("ConjunctiveCrossing source requires at least one input")]
     EmptyConjunctiveInputs,
-    #[error("ConjunctiveCrossing has {0} inputs; maximum is 4")]
-    TooManyConjunctiveInputs(usize),
     #[error("SlotRange source must have count > 0")]
     EmptySlotRange,
     #[error("EvalEML tree_id {0} is invalid")]
@@ -408,7 +403,7 @@ mod tests {
     }
 
     #[test]
-    fn conjunctive_crossing_bounds() {
+    fn conjunctive_crossing_accepts_arbitrary_n() {
         let mut op = minimal_op();
         op.source = SourceSpec::ConjunctiveCrossing { inputs: vec![] };
         assert_eq!(
@@ -416,18 +411,17 @@ mod tests {
             Err(AccumulatorOpError::EmptyConjunctiveInputs)
         );
         op.source = SourceSpec::ConjunctiveCrossing {
-            inputs: (0u32..5)
+            inputs: (0u32..8)
                 .map(|i| InputSpec {
-                    slot: i,
-                    col: 0,
+                    slot: 0,
+                    col: i,
                     unit_cost: 1.0,
                 })
                 .collect(),
         };
-        assert_eq!(
-            op.validate(),
-            Err(AccumulatorOpError::TooManyConjunctiveInputs(5))
-        );
+        op.combine = CombineFn::MinAcrossInputs;
+        op.consume = ConsumeMode::SubtractFromAllInputs;
+        assert!(op.validate().is_ok());
         op.source = SourceSpec::ConjunctiveCrossing {
             inputs: vec![InputSpec {
                 slot: 0,
