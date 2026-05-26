@@ -250,7 +250,7 @@ pub struct PipelineFlags {
   One op per `(slot, intensity-bearing property)`; `dt` via `AccumulatorTickParams.dt_bits`.
   `IntensityBehavior` compiled to `ExactDeterministic` EML at boundary sync; persistent
   node/range buffers; no per-dispatch EML upload.
-- **S-2:** Legacy WGSL `intensity_update.wgsl` and `intensity_params` buffer deleted; no flag-off fallback.
+- **S-2:** Legacy WGSL `intensity_update.wgsl` and `intensity_params` buffer **deleted**; no flag-off fallback. The shader file is not part of the production pipeline.
 - `use_accumulator_intensity` defaults **true**; requires `use_accumulator_eml`; worlds with
   `IntensityBehavior` panic at boundary validation if intensity is disabled.
 
@@ -276,7 +276,11 @@ pub struct PipelineFlags {
 
 **C-8 block complete:** C-8a (EML infra) + C-8b (intensity EvalEML) + C-8c (exact transfer) + C-8d (emission) validated together in `c8_full_pipeline_integration.rs`.
 
-**S-2 complete:** Legacy intensity shader/pipeline deleted; production intensity is EvalEML-only through AccumulatorOp.
+**S-2 complete:**
+- Legacy `intensity_update.wgsl` and `intensity_params` buffer **deleted** — not an active production path.
+- Intensity is AccumulatorOp `EvalEML` only.
+- `use_accumulator_eml` + `use_accumulator_intensity` default **on**.
+- Disabling intensity with registered `IntensityBehavior` panics at boundary validation.
 
 **Pass 3 — Overlay application (migrate → C-3/C-4, sunset → S-3)**
 - WGSL: inline in `overlay_prep.rs`

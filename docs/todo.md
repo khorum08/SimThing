@@ -4,20 +4,29 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98),
 **C-2** (#99–#100), **C-3** (#105–#107), **pivot-forward policy + B-4I** (#108),
 **C-INF runtime/oracle** (#109), **pivot-forward remedial** (#111), and
-**C-4 overlay OrderBand** (#118), **C-5 soft reductions** (#122–#123), and **C-6 exact reductions** (#124) landed.
-`master` @ **`a414a62`**.
+**C-4 overlay OrderBand** (#118), **C-5 soft reductions** (#122–#123), **C-6 exact reductions** (#124),
+**S-4 reduction sunset** (#126), **C-7 velocity** (#127), **C-8 EML block** (#129–#137), and
+**S-2 intensity sunset** (#138) landed.
+`master` @ **`cacf755`** (#139 doc sync).
 
 **Reduction flags (default true):** `use_accumulator_reduction_soft` +
 `use_accumulator_reduction_exact` (both required). AccumulatorOp is the sole production
 reduction path after **S-4**; legacy `reduction.wgsl` deleted.
 
+**EML + intensity flags (default true):** `use_accumulator_eml` +
+`use_accumulator_intensity`. Legacy `intensity_update.wgsl` deleted after **S-2**;
+EvalEML is the only production intensity path.
+
 **S-4 landed:** legacy reduction shader/pipeline/fallback removed; AccumulatorOp covers all
 reduction rules; CPU oracle retained for test golden only.
 
+**S-2 landed:** legacy intensity shader/pipeline deleted; EvalEML intensity only.
+
 **Workshop entry point:** [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md)
 
-**Pivot posture:** AccumulatorOp v2 is the production direction. Legacy GPU passes are
-**oracle/fallback only** until S-phase deletion. See
+**Pivot posture:** AccumulatorOp v2 is the production direction. Legacy reduction (S-4) and
+legacy intensity (S-2) are **deleted**. Remaining legacy passes (intent, overlay, threshold,
+velocity) are **oracle/fallback only** until S-phase deletion. See
 [`docs/workshop/pivot_forward_implementation_policy.md`](workshop/pivot_forward_implementation_policy.md).
 
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
@@ -73,9 +82,33 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **C-5 remedial** | #123 | Depth-interleaved soft/exact reduction; WeightedMean dependency tests |
 | **C-6** | #124 | `a414a62` | Sum/Max/Min/First exact reductions; `use_accumulator_reduction_exact` |
 | **S-4** | #126 | `208e5a2` | Legacy reduction deleted; AccumulatorOp sole path; flags default on |
-| **C-7** | pending | GovernedPair velocity → AccumulatorOp; `IntegrateWithClamp`; dt in tick params |
+| **C-7** | #127 | — | GovernedPair velocity → AccumulatorOp `IntegrateWithClamp`; dt in tick params |
+| **C-8a** | #129 | — | EML infrastructure; persistent GPU program table |
+| **C-8a remedial** | #130 | — | Program-table accounting, admissibility hardening |
+| **C-8b** | #131 | — | Intensity → EvalEML; `use_accumulator_intensity` default on |
+| **C-8b remedial** | #132 | — | Intensity op upload cache invalidation |
+| **C-8c** | #133 | — | Transfer substrate + input-list table |
+| **C-8c remedial** | #134 | — | Same-band consumed-input contention rejection |
+| **C-8d** | #135 | — | Emission substrate (ExactDeterministic baseline) |
+| **C-8d remedial** | #136 | — | Emission op signature + max_emit rejection |
+| **C-8 completion gate** | #137 | — | Full C-8 all-flags integration |
+| **S-2** | #138 | — | Legacy intensity deleted; EvalEML only |
 
-**Next (non-Opus):** **S-3** overlay sunset · per-family oracle expansion. **S-2** legacy intensity deletion **complete**.
+**Next recommended gates (pivot-forward order):**
+
+1. **S-3** — legacy overlay sunset (C-3/C-4 migrated; legacy Pass 3 still flag-off/oracle)
+2. **S-6** — legacy threshold scan sunset
+3. **S-5** — legacy velocity sunset
+4. **S-1** — legacy intent sunset
+5. **Opus** — production transfer/emission registration ownership (substrate landed; spec/builder integration pending)
+6. **D-1** — shared-input/hot-pool allocator semantics (true cross-pool contention beyond C-8c policy A)
+
+**Open design warnings (preserve):**
+- Transfer/emission registration ownership: substrate-level only; production source-of-truth still needs integration.
+- Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-phase allocator handles true shared-pool contention.
+- Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
+
+**Next (non-Opus implementation):** **S-3** overlay sunset · per-family oracle expansion.
 
 **Next (sunset-gated):** **S-3** overlay prep/WGSL deletion after C-4 default-on validation and CI.
 
@@ -130,8 +163,8 @@ atomic spec hot-reload with `SpecSessionState` preservation; scenario RON expans
 > and report artifacts. It has **no dependents** in the workspace and **does not reflect
 > production GPU/simulation code**. Passing a workshop gate is **not** a claim that
 > production should adopt that path without an ADR. Production WeightedMean lives in
-> `simthing-gpu` (`reduction.wgsl`, `cpu_reduce_oracle`); production intensity updates
-> do not use the EML eval path tested here.
+> `simthing-gpu` reduction via AccumulatorOp; production intensity uses EvalEML through
+> AccumulatorOp (legacy `intensity_update.wgsl` deleted in S-2).
 
 **Crate README:** `crates/simthing-workshop/README.md`
 
