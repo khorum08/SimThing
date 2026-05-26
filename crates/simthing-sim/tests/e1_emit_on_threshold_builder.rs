@@ -10,8 +10,9 @@ use simthing_core::{
 };
 use simthing_gpu::{
     emit_on_threshold_registrations_to_gpu, emit_on_threshold_registrations_to_ops,
-    execute_threshold_ops_cpu, threshold_registrations_to_ops, AccumulatorOpSession, GpuContext,
-    ThresholdRegistration, WorldGpuState, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_VALUES,
+    execute_threshold_ops_cpu, threshold_registrations_to_ops, AccumulatorOpSession, EncodeError,
+    GpuContext, ThresholdRegistration, WorldGpuState, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD,
+    THRESH_BUF_OUTPUT, THRESH_BUF_VALUES,
 };
 
 fn try_gpu() -> Option<GpuContext> {
@@ -223,6 +224,40 @@ fn e1_no_legacy_threshold_shader_and_routes_through_accumulator_op() {
         .expect("readback");
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_kind, 1);
+}
+
+#[test]
+fn e1_output_buffer_registration_preserved_in_gpu_bridge() {
+    let reg = EmitOnThresholdRegistration {
+        slot: 2,
+        col: 1,
+        threshold: 0.25,
+        direction: ThresholdDirection::Upward,
+        event_kind: 55,
+        buffer: EmitOnThresholdBuffer::Output,
+    };
+    let gpu = emit_on_threshold_registrations_to_gpu(std::slice::from_ref(&reg));
+    assert_eq!(gpu.len(), 1);
+    assert_eq!(gpu[0].buffer, THRESH_BUF_OUTPUT);
+    assert_eq!(gpu[0].slot, 2);
+    assert_eq!(gpu[0].col, 1);
+    assert_eq!(gpu[0].event_kind, 55);
+}
+
+#[test]
+fn e1_output_buffer_rejected_by_plain_ops_helper() {
+    let reg = EmitOnThresholdRegistration {
+        slot: 0,
+        col: 0,
+        threshold: 0.5,
+        direction: ThresholdDirection::Upward,
+        event_kind: 1,
+        buffer: EmitOnThresholdBuffer::Output,
+    };
+    assert!(matches!(
+        emit_on_threshold_registrations_to_ops(std::slice::from_ref(&reg)),
+        Err(EncodeError::Unsupported(_))
+    ));
 }
 
 #[test]
