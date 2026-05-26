@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** C-8d emission (local)  
-**Verification (last recorded):** C-8d emission + C-1–C-8d regression green
+**Master HEAD:** C-8d remedial (local)  
+**Verification (last recorded):** C-8d emission signature hardening + C-1–C-8d regression green
 
 ---
 
@@ -52,6 +52,7 @@ velocity, intensity) are oracle/fallback until their S-phase deletions.
 | **C-8c** | #133 | Transfer substrate: `use_accumulator_transfer`, persistent `AccumulatorInputListTable`, `MinAcrossInputs` + `SubtractFromAllInputs`, GPU dispatch after intensity/before overlay; `TransferConservation` = `ExactDeterministic` only |
 | **C-8c remedial** | local | Planner rejects same-band consumed-input contention; validates unit costs and single-source `output_scale`; defensive source debit clamp; input-list generation bump on nonempty→empty clear |
 | **C-8d** | local | Emission substrate: `use_accumulator_emission`, `EmissionRegistration` planner, `IdentityFloor` / `Constant` / `EvalEML` ExactDeterministic, GPU dispatch after transfer/before overlay; `EmissionRecordGpu { reg_idx, emit_count }` unchanged; stable `reg_idx` via `combine_b`; overflow observable |
+| **C-8d remedial** | local | Emission op-plan signature includes `reg_indices`, `constant_value_bits`, `max_emit`; EvalEML tree IDs derived/validated from formula variant; `max_emit` explicitly rejected until shader clamp implemented |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

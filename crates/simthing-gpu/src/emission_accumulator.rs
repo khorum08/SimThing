@@ -12,6 +12,11 @@ pub const FORMULA_KIND_IDENTITY_FLOOR: u32 = 0;
 pub const FORMULA_KIND_CONSTANT: u32 = 1;
 pub const FORMULA_KIND_EVAL_EML: u32 = 2;
 
+/// Sentinel values for [`EmissionOpPlanSignature`] optional fields.
+pub const NO_TREE_ID: u32 = u32::MAX;
+pub const NO_MAX_EMIT: u32 = u32::MAX;
+pub const NO_CONSTANT: u32 = 0;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum EmissionFormula {
     IdentityFloor,
@@ -44,6 +49,15 @@ pub enum EmissionPlanError {
     EmlRegistry(#[from] simthing_core::EmlRegistryError),
     #[error("non-finite constant emission value")]
     NonFiniteConstant,
+    #[error("max_emit is not supported until shader clamp is implemented")]
+    MaxEmitUnsupported,
+    #[error(
+        "registration tree_id {registration_tree_id:?} does not match EvalEML formula tree_id {formula_tree_id}"
+    )]
+    MismatchedTreeIdField {
+        registration_tree_id: Option<u32>,
+        formula_tree_id: u32,
+    },
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -66,6 +80,30 @@ fn formula_kind(formula: &EmissionFormula) -> u32 {
     }
 }
 
+fn formula_tree_id(formula: &EmissionFormula) -> Option<EmlTreeId> {
+    match formula {
+        EmissionFormula::EvalEml { tree_id } => Some(*tree_id),
+        _ => None,
+    }
+}
+
+fn validate_registration(reg: &EmissionRegistration) -> Result<(), EmissionPlanError> {
+    if reg.max_emit.is_some() {
+        return Err(EmissionPlanError::MaxEmitUnsupported);
+    }
+    if let EmissionFormula::EvalEml { tree_id: formula_id } = &reg.formula {
+        if let Some(reg_tree) = reg.tree_id {
+            if reg_tree != *formula_id {
+                return Err(EmissionPlanError::MismatchedTreeIdField {
+                    registration_tree_id: Some(reg_tree.0),
+                    formula_tree_id: formula_id.0,
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Build logical emission ops (non-conservation, `ConsumeMode::EmitEvent`).
 pub fn plan_emission_ops(
     registrations: &[EmissionRegistration],
@@ -75,6 +113,7 @@ pub fn plan_emission_ops(
     let mut reg_indices = Vec::with_capacity(registrations.len());
 
     for reg in registrations {
+        validate_registration(reg)?;
         let op = match &reg.formula {
             EmissionFormula::IdentityFloor => AccumulatorOp {
                 source: SourceSpec::SlotValue {
@@ -147,18 +186,47 @@ pub fn encode_emission_plan(
 
 pub fn emission_plan_signature_fields(
     registrations: &[EmissionRegistration],
-) -> (Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>) {
+) -> (
+    Vec<u32>,
+    Vec<u32>,
+    Vec<u32>,
+    Vec<u32>,
+    Vec<u32>,
+    Vec<u32>,
+    Vec<u32>,
+) {
     let mut source_slots = Vec::with_capacity(registrations.len());
     let mut source_cols = Vec::with_capacity(registrations.len());
     let mut tree_ids = Vec::with_capacity(registrations.len());
     let mut formula_kinds = Vec::with_capacity(registrations.len());
+    let mut reg_indices = Vec::with_capacity(registrations.len());
+    let mut constant_value_bits = Vec::with_capacity(registrations.len());
+    let mut max_emit_values = Vec::with_capacity(registrations.len());
     for reg in registrations {
         source_slots.push(reg.source_slot);
         source_cols.push(reg.source_col);
-        tree_ids.push(reg.tree_id.map(|t| t.0).unwrap_or(0));
+        tree_ids.push(
+            formula_tree_id(&reg.formula)
+                .map(|t| t.0)
+                .unwrap_or(NO_TREE_ID),
+        );
         formula_kinds.push(formula_kind(&reg.formula));
+        reg_indices.push(reg.reg_idx);
+        constant_value_bits.push(match reg.formula {
+            EmissionFormula::Constant { value } => value.to_bits(),
+            _ => NO_CONSTANT,
+        });
+        max_emit_values.push(reg.max_emit.unwrap_or(NO_MAX_EMIT));
     }
-    (source_slots, source_cols, tree_ids, formula_kinds)
+    (
+        source_slots,
+        source_cols,
+        tree_ids,
+        formula_kinds,
+        reg_indices,
+        constant_value_bits,
+        max_emit_values,
+    )
 }
 
 #[cfg(test)]
@@ -287,5 +355,62 @@ mod tests {
         let plan = plan_emission_ops(&regs, None).unwrap();
         let gpu = encode_emission_plan(&plan, None).unwrap();
         assert_eq!(gpu[0].combine_b, 42);
+    }
+
+    #[test]
+    fn c8d_max_emit_rejected_until_supported() {
+        let regs = vec![EmissionRegistration {
+            source_slot: 0,
+            source_col: 0,
+            tree_id: None,
+            formula: EmissionFormula::IdentityFloor,
+            max_emit: Some(5),
+            reg_idx: 0,
+        }];
+        assert_eq!(
+            plan_emission_ops(&regs, None),
+            Err(EmissionPlanError::MaxEmitUnsupported)
+        );
+    }
+
+    #[test]
+    fn c8d_mismatched_registration_tree_id_rejected() {
+        let regs = vec![EmissionRegistration {
+            source_slot: 0,
+            source_col: 0,
+            tree_id: Some(EmlTreeId(1)),
+            formula: EmissionFormula::EvalEml {
+                tree_id: EmlTreeId(2),
+            },
+            max_emit: None,
+            reg_idx: 0,
+        }];
+        assert_eq!(
+            plan_emission_ops(&regs, None),
+            Err(EmissionPlanError::MismatchedTreeIdField {
+                registration_tree_id: Some(1),
+                formula_tree_id: 2,
+            })
+        );
+    }
+
+    #[test]
+    fn signature_uses_formula_tree_id_not_parallel_field() {
+        let regs = vec![EmissionRegistration {
+            source_slot: 0,
+            source_col: 0,
+            tree_id: None,
+            formula: EmissionFormula::EvalEml {
+                tree_id: EmlTreeId(7),
+            },
+            max_emit: None,
+            reg_idx: 3,
+        }];
+        let (_, _, tree_ids, _, reg_indices, constant_bits, max_emit) =
+            emission_plan_signature_fields(&regs);
+        assert_eq!(tree_ids, vec![7]);
+        assert_eq!(reg_indices, vec![3]);
+        assert_eq!(constant_bits, vec![NO_CONSTANT]);
+        assert_eq!(max_emit, vec![NO_MAX_EMIT]);
     }
 }

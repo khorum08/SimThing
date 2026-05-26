@@ -83,6 +83,11 @@ impl EmlGpuProgramTable {
         &self.range_buffer
     }
 
+    /// Total GPU upload operations performed on this table (node buffer writes).
+    pub fn upload_count(&self) -> u64 {
+        self.node_upload_count
+    }
+
     pub fn ensure_capacity(
         &mut self,
         ctx: &GpuContext,
