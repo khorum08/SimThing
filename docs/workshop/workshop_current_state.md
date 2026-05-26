@@ -3,9 +3,9 @@
 **Purpose:** Single synthesis of **active workshop docs**, **production migration state**,
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
-**Last updated:** 2026-05-25  
-**Master HEAD:** S-3 legacy overlay sunset (local)  
-**Verification (last recorded):** S-2 + C-8 full pipeline integration + C-1–C-8d regression green
+**Last updated:** 2026-05-26  
+**Master HEAD:** S-6/S-5/S-1 legacy sunset sequence (local)  
+**Verification (last recorded):** S-6 + S-5 + S-1 focused sunset tests green; C-1/C-2/C-7/C-8 focused regression green
 
 ---
 
@@ -18,10 +18,10 @@ Two parallel tracks:
 | **V6 spec / driver / session** | **Parked complete** — PRs 1–11, Opus P0 (O2/B3/I1) shipped | `design_v6.5.md`, `simthing_spec_progress_log.md` |
 | **AccumulatorOp v2 / design v7** | **Active** — Phases A–B done; C-1–C-6 + **S-4** landed; reduction flags default **on** | `design_v7.md`, `accumulator_op_v2_production_plan.md`, `pivot_forward_implementation_policy.md` |
 
-**Production direction:** AccumulatorOp v2 is the intended GPU execution path.
-Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Remaining legacy passes (intent, threshold, velocity) are oracle/fallback until their S-phase deletions.
+**Production direction:** AccumulatorOp v2 is the GPU execution path.
+Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Legacy threshold is deleted (S-6). Legacy velocity is deleted (S-5). Legacy intent is deleted (S-1). Snapshot is the only retained non-Accumulator operation.
 
-**Next gates:** **S-6** threshold sunset · **S-5** velocity · **S-1** intent.
+**Next gates:** D-1 discrete-transaction contention memo · production transfer/emission registration ownership · Resource Flow E-7/E-8/E-9 ladder when scheduled.
 
 **Open design gates (not sunset):** production transfer/emission registration ownership (substrate landed; spec/builder integration pending); **D-1** shared-input/hot-pool allocator semantics for true cross-pool contention (C-8c rejects same-band consumed-input contention only); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
 
@@ -37,9 +37,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 ### Landed AccumulatorOp migration / sunset state
 
-**Default-on today:** reduction soft/exact · EML · EvalEML intensity.
+**Default-on today:** reduction soft/exact · EML · EvalEML intensity · threshold · velocity · intent.
 
-**Default-off / pending sunset:** intent · velocity · threshold · transfer · emission.
+**Default-off / pending integration:** transfer · emission.
 
 | ID | PRs | What |
 |----|-----|------|
@@ -67,6 +67,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **C-8d remedial** | #136 | Emission op-plan signature includes `reg_indices`, `constant_value_bits`, `max_emit`; EvalEML tree IDs derived/validated from formula variant; `max_emit` explicitly rejected until shader clamp implemented |
 | **C-8 completion gate** | #137 | Full C-8 all-flags integration test; persistent table/op reuse; [`s2_legacy_intensity_sunset_inventory.md`](s2_legacy_intensity_sunset_inventory.md) |
 | **S-2** | #138 | Legacy `intensity_update.wgsl` + Pass 2 pipeline deleted; EvalEML intensity only; `use_accumulator_intensity` + `use_accumulator_eml` default **true** |
+| **S-6** | local | Legacy `threshold_scan.wgsl` + Pass 7 pipeline deleted; AccumulatorOp threshold mandatory for registered thresholds |
+| **S-5** | local | Legacy `velocity_integration.wgsl` + Pass 1 pipeline deleted; AccumulatorOp velocity mandatory for governed pairs |
+| **S-1** | local | Legacy `intent_delta.wgsl` + intent pipeline deleted; AccumulatorOp intent mandatory for pending intents |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
@@ -114,23 +117,20 @@ session presence + overlay dispatch cache, not stale sessions.
 
 | Priority | ID | Owner | Blocks |
 |----------|-----|-------|--------|
-| Sunset | **S-6** | Composer | Legacy threshold scan (Pass 7) deletion after C-1 default-on |
-| Sunset | **S-5** | Composer | Legacy velocity integration deletion after C-7 default-on |
-| Sunset | **S-1** | Composer | Legacy intent fold deletion after C-2 default-on |
 | Design | Transfer/emission registration ownership | Opus | Substrate landed; production spec/builder source-of-truth integration |
-| Design | **D-1** shared-input allocator | Opus | True cross-pool contention beyond C-8c same-band rejection |
+| Design | **D-1** discrete-transaction memo | Opus | Rescoped by Resource Flow ADR; no GPU allocator implementation |
 | Infra | Oracle refactor | Optional | Move C-1/C-2/C-3/C-4 parity tests onto `run_family_oracle` |
 
 ### Sunset targets (S-phase)
 
 | S-PR | After | Deletes | Status |
 |------|-------|---------|--------|
-| S-1 | C-2 default-on | Legacy intent pass | Pending |
+| S-1 | C-2 default-on | Legacy intent pass | **Done** |
 | S-2 | C-8b default-on | Legacy intensity (`intensity_update.wgsl`) | **Done (#138)** |
 | S-3 | C-3 + C-4 | Legacy overlay prep | Done |
 | S-4 | C-5 + C-6 | Legacy reduction passes + `reduction.wgsl` | **Done (#126)** |
-| S-5 | C-7 | Legacy velocity | Pending |
-| S-6 | C-1 default-on | Legacy threshold scan (Pass 7) | Pending |
+| S-5 | C-7 | Legacy velocity | **Done** |
+| S-6 | C-1 default-on | Legacy threshold scan (Pass 7) | **Done** |
 
 ---
 

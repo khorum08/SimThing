@@ -8,24 +8,24 @@ fn registry_with_properties() -> DimensionRegistry {
     let mut registry = DimensionRegistry::new();
     compile_property(
         &PropertySpec {
-            id:           "core_loyalty".into(),
-            namespace:    "core".into(),
-            name:         "loyalty".into(),
+            id: "core_loyalty".into(),
+            namespace: "core".into(),
+            name: "loyalty".into(),
             display_name: "Loyalty".into(),
-            description:  String::new(),
-            sub_fields:   vec![],
+            description: String::new(),
+            sub_fields: vec![],
         },
         &mut registry,
     )
     .expect("loyalty property");
     compile_property(
         &PropertySpec {
-            id:           "core_stability".into(),
-            namespace:    "core".into(),
-            name:         "stability".into(),
+            id: "core_stability".into(),
+            namespace: "core".into(),
+            name: "stability".into(),
             display_name: "Stability".into(),
-            description:  String::new(),
-            sub_fields:   vec![],
+            description: String::new(),
+            sub_fields: vec![],
         },
         &mut registry,
     )
@@ -48,7 +48,7 @@ fn ctx<'a>(
 
 fn read(ns: &str, name: &str, role: SubFieldRole) -> ScriptExpr {
     ScriptExpr::Read {
-        scope:    ScopeRef::Current,
+        scope: ScopeRef::Current,
         property: PropertyKey::new(ns, name),
         role,
     }
@@ -83,9 +83,9 @@ fn script_expr_reads_explicit_slot_scope() {
     shadow[registry.total_columns + amount_col] = 0.75;
 
     let expr = ScriptExpr::Read {
-        scope:    ScopeRef::Slot(0),
+        scope: ScopeRef::Slot(0),
         property: PropertyKey::new("core", "loyalty"),
-        role:     SubFieldRole::Amount,
+        role: SubFieldRole::Amount,
     };
 
     assert_eq!(expr.eval(&ctx(&registry, &shadow, 1)).unwrap(), 0.25);
@@ -115,8 +115,8 @@ fn script_expr_evaluates_arithmetic_min_max_and_clamp() {
                 )),
             )),
         )),
-        min:   0.0,
-        max:   25.0,
+        min: 0.0,
+        max: 25.0,
     };
 
     assert_eq!(expr.eval(&ctx(&registry, &shadow, 0)).unwrap(), 25.0);
@@ -178,9 +178,9 @@ fn script_expr_reports_slot_out_of_bounds() {
     let registry = registry_with_properties();
     let shadow = vec![0.0; registry.total_columns];
     let expr = ScriptExpr::Read {
-        scope:    ScopeRef::Slot(2),
+        scope: ScopeRef::Slot(2),
         property: PropertyKey::new("core", "loyalty"),
-        role:     SubFieldRole::Amount,
+        role: SubFieldRole::Amount,
     };
 
     assert_eq!(
@@ -199,8 +199,8 @@ fn script_expr_reports_division_by_zero_and_invalid_clamp() {
     );
     let clamp = ScriptExpr::Clamp {
         value: Box::new(ScriptExpr::Const(1.0)),
-        min:   2.0,
-        max:   1.0,
+        min: 2.0,
+        max: 1.0,
     };
 
     assert_eq!(

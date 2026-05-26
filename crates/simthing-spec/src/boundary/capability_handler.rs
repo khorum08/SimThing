@@ -327,7 +327,7 @@ fn shadow_index(slot: u32, n_dims: usize, col: usize) -> usize {
 /// monotonic atomic counter and install processes template overlays in
 /// their authored sequence.
 fn clone_overlay_ids_for_entry(
-    instance:  &CapabilityTreeInstance,
+    instance: &CapabilityTreeInstance,
     entry_key: &CapabilityEntryKey,
 ) -> Vec<OverlayId> {
     let mut ids: Vec<OverlayId> = instance

@@ -13,12 +13,12 @@ use crate::GpuContext;
 
 /// Dedicated B-4 summary resources for integrated world execution (C-INF remedial).
 pub struct WorldSummaryRuntime {
-    summary_buffer:  Buffer,
+    summary_buffer: Buffer,
     summary_uniform: Buffer,
-    summary_layout:  BindGroupLayout,
+    summary_layout: BindGroupLayout,
     summary_pipeline: ComputePipeline,
-    n_slots:         u32,
-    n_dims:          u32,
+    n_slots: u32,
+    n_dims: u32,
 }
 
 impl WorldSummaryRuntime {
@@ -57,13 +57,11 @@ impl WorldSummaryRuntime {
 
         let summary_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
             label: Some("world_summary_pipeline"),
-            layout: Some(
-                &device.create_pipeline_layout(&PipelineLayoutDescriptor {
-                    label: Some("world_summary_pl"),
-                    bind_group_layouts: &[&summary_layout],
-                    push_constant_ranges: &[],
-                }),
-            ),
+            layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("world_summary_pl"),
+                bind_group_layouts: &[&summary_layout],
+                push_constant_ranges: &[],
+            })),
             module: &shader,
             entry_point: "write_summaries",
             compilation_options: Default::default(),
@@ -88,12 +86,7 @@ impl WorldSummaryRuntime {
         self.n_dims
     }
 
-    pub fn encode_into(
-        &self,
-        ctx: &GpuContext,
-        encoder: &mut CommandEncoder,
-        values: &Buffer,
-    ) {
+    pub fn encode_into(&self, ctx: &GpuContext, encoder: &mut CommandEncoder, values: &Buffer) {
         self.encode_write_summaries_for_values(ctx, encoder, values);
     }
 
@@ -107,7 +100,10 @@ impl WorldSummaryRuntime {
         ctx.queue.submit(Some(encoder.finish()));
     }
 
-    pub fn readback(&self, ctx: &GpuContext) -> Result<Vec<SlotSummary>, AccumulatorOpSessionError> {
+    pub fn readback(
+        &self,
+        ctx: &GpuContext,
+    ) -> Result<Vec<SlotSummary>, AccumulatorOpSessionError> {
         let bytes = read_buffer_bytes(ctx, &self.summary_buffer);
         let gpu: &[SlotSummaryGpu] = bytemuck::cast_slice(&bytes);
         Ok(gpu
@@ -314,4 +310,3 @@ mod tests {
         assert_eq!(first, second);
     }
 }
-

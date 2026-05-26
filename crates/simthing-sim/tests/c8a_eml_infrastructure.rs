@@ -6,8 +6,8 @@ use simthing_core::{
     ScaleSpec, SourceSpec,
 };
 use simthing_gpu::{
-    eval_eml_cpu, set_debug_readback_allowed, AccumulatorOpGpu, AccumulatorOpSession, EmlGpuProgramTable,
-    GpuContext,
+    eval_eml_cpu, set_debug_readback_allowed, AccumulatorOpGpu, AccumulatorOpSession,
+    EmlGpuProgramTable, GpuContext,
 };
 
 fn try_gpu() -> Option<GpuContext> {
@@ -108,14 +108,18 @@ fn c8a_eml_execution_class_validation_allows_exact_in_transfer() {
         .register_formula(
             id,
             exact_meta(1, "xfer"),
-            vec![literal(1.0), literal(2.0), EmlNodeGpu {
-                opcode: eml_opcode::ADD,
-                flags: 0,
-                a: 0,
-                b: 0,
-                c: 0,
-                d: 0,
-            }],
+            vec![
+                literal(1.0),
+                literal(2.0),
+                EmlNodeGpu {
+                    opcode: eml_opcode::ADD,
+                    flags: 0,
+                    a: 0,
+                    b: 0,
+                    c: 0,
+                    d: 0,
+                },
+            ],
         )
         .unwrap();
     assert!(registry
@@ -152,14 +156,17 @@ fn c8a_eml_tree_table_upload_roundtrip() {
         &mut table,
         1,
         exact_meta(1, "lit"),
-        vec![literal(42.0), EmlNodeGpu {
-            opcode: eml_opcode::RETURN_TOP,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        }],
+        vec![
+            literal(42.0),
+            EmlNodeGpu {
+                opcode: eml_opcode::RETURN_TOP,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+        ],
     );
     assert_eq!(registry.tree_range_index(EmlTreeId(1)), Some(0));
     assert_eq!(table.range_used, 1);
@@ -339,10 +346,7 @@ fn c8a_eval_eml_clamp_min_max_select_bit_exact() {
     let eml = Some((&table.node_buffer, &table.range_buffer));
     session.upload_values(&ctx, &clamp_values);
 
-    let ops = vec![
-        eval_eml_op(1, 0, 1),
-        eval_eml_op(2, 0, 2),
-    ];
+    let ops = vec![eval_eml_op(1, 0, 1), eval_eml_op(2, 0, 2)];
     let gpu_ops = AccumulatorOpGpu::encode_bootstrap_set_with_eml(&ops, Some(&registry)).unwrap();
     session.upload_gpu_ops(&ctx, &gpu_ops).unwrap();
     session.tick_with_eml(&ctx, 0, eml).unwrap();
@@ -366,14 +370,17 @@ fn c8a_multiple_eml_trees_one_dispatch() {
         &mut table,
         1,
         exact_meta(1, "five"),
-        vec![literal(5.0), EmlNodeGpu {
-            opcode: eml_opcode::RETURN_TOP,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        }],
+        vec![
+            literal(5.0),
+            EmlNodeGpu {
+                opcode: eml_opcode::RETURN_TOP,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+        ],
     );
     register_and_upload(
         &ctx,
@@ -381,14 +388,17 @@ fn c8a_multiple_eml_trees_one_dispatch() {
         &mut table,
         2,
         exact_meta(2, "seven"),
-        vec![literal(7.0), EmlNodeGpu {
-            opcode: eml_opcode::RETURN_TOP,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        }],
+        vec![
+            literal(7.0),
+            EmlNodeGpu {
+                opcode: eml_opcode::RETURN_TOP,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+        ],
     );
     assert_eq!(registry.tree_range_index(EmlTreeId(1)), Some(0));
     assert_eq!(registry.tree_range_index(EmlTreeId(2)), Some(1));
@@ -421,27 +431,33 @@ fn c8a_tree_generation_reupload_invalidates_ops() {
         &mut table,
         1,
         exact_meta(1, "v1"),
-        vec![literal(1.0), EmlNodeGpu {
-            opcode: eml_opcode::RETURN_TOP,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        }],
+        vec![
+            literal(1.0),
+            EmlNodeGpu {
+                opcode: eml_opcode::RETURN_TOP,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+        ],
     );
     let gen1 = table.generation;
     let trees = vec![(
         EmlTreeId(1),
         registry.get(EmlTreeId(1)).unwrap().clone(),
-        vec![literal(9.0), EmlNodeGpu {
-            opcode: eml_opcode::RETURN_TOP,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        }],
+        vec![
+            literal(9.0),
+            EmlNodeGpu {
+                opcode: eml_opcode::RETURN_TOP,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+        ],
     )];
     table.upload_trees(&ctx, &trees).unwrap();
     registry
@@ -465,14 +481,17 @@ fn c8a_node_buffer_capacity_growth_preserves_existing_trees() {
         &mut table,
         1,
         exact_meta(1, "a"),
-        vec![literal(1.0), EmlNodeGpu {
-            opcode: eml_opcode::RETURN_TOP,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        }],
+        vec![
+            literal(1.0),
+            EmlNodeGpu {
+                opcode: eml_opcode::RETURN_TOP,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+        ],
     );
     register_and_upload(
         &ctx,
@@ -480,14 +499,17 @@ fn c8a_node_buffer_capacity_growth_preserves_existing_trees() {
         &mut table,
         2,
         exact_meta(2, "b"),
-        vec![literal(2.0), EmlNodeGpu {
-            opcode: eml_opcode::RETURN_TOP,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        }],
+        vec![
+            literal(2.0),
+            EmlNodeGpu {
+                opcode: eml_opcode::RETURN_TOP,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+        ],
     );
     assert!(table.node_capacity >= 4);
     assert_eq!(table.range_used, 2);
@@ -507,14 +529,17 @@ fn c8a_persistent_node_buffer_no_per_dispatch_upload() {
         &mut table,
         1,
         exact_meta(1, "five"),
-        vec![literal(5.0), EmlNodeGpu {
-            opcode: eml_opcode::RETURN_TOP,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        }],
+        vec![
+            literal(5.0),
+            EmlNodeGpu {
+                opcode: eml_opcode::RETURN_TOP,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+        ],
     );
     let uploads_after_register = table.node_upload_count;
 

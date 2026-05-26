@@ -6,7 +6,8 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **C-INF runtime/oracle** (#109), **pivot-forward remedial** (#111), and
 **C-4 overlay OrderBand** (#118), **C-5 soft reductions** (#122–#123), **C-6 exact reductions** (#124),
 **S-4 reduction sunset** (#126), **C-7 velocity** (#127), **C-8 EML block** (#129–#137),
-**S-2 intensity sunset** (#138), and **S-3 overlay sunset** (local) landed.
+**S-2 intensity sunset** (#138), **S-3 overlay sunset**, **S-6 threshold sunset**,
+**S-5 velocity sunset**, and **S-1 intent sunset** (local) landed.
 `master` @ **`cacf755`** (#139 doc sync).
 
 **Reduction flags (default true):** `use_accumulator_reduction_soft` +
@@ -24,9 +25,10 @@ reduction rules; CPU oracle retained for test golden only.
 
 **Workshop entry point:** [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md)
 
-**Pivot posture:** AccumulatorOp v2 is the production direction. Legacy reduction (S-4),
-legacy intensity (S-2), and legacy overlay (S-3) are **deleted**. Remaining legacy passes
-(intent, threshold, velocity) are **oracle/fallback only** until S-phase deletion. See
+**Pivot posture:** AccumulatorOp v2 is the production runtime. Legacy reduction (S-4),
+legacy intensity (S-2), legacy overlay (S-3), legacy threshold (S-6), legacy velocity (S-5),
+and legacy intent (S-1) are **deleted**. Snapshot is the only retained non-Accumulator
+operation. See
 [`docs/workshop/pivot_forward_implementation_policy.md`](workshop/pivot_forward_implementation_policy.md).
 
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
@@ -65,9 +67,9 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 | PR | GitHub | Scope |
 |----|--------|-------|
-| **C-1** | #97 | Pass 7 threshold scan → AccumulatorOp `Threshold` + `EmitEvent`; `use_accumulator_threshold_scan` (default false) |
+| **C-1** | #97 | Pass 7 threshold scan → AccumulatorOp `Threshold` + `EmitEvent`; S-6 deleted legacy shader/pipeline and defaulted accumulator path |
 | **C-1 refine** | #98 | Single-submission pipeline integration; Opus perf reframe (`docs/workshop/c1_perf_reframe_memo.md`); no-regression readback gate |
-| **C-2** | #99 | Intent delta application → `COMBINE_AFFINE_INTENT`; `use_accumulator_intent` (default false); combined C-1/C-2 ordering test |
+| **C-2** | #99 | Intent delta application → `COMBINE_AFFINE_INTENT`; S-1 deleted legacy shader/pipeline and defaulted accumulator path |
 | **C-2 refine** | #100 | `finish_intent()` timestamp; `TickGpuError::AccumulatorThresholdReadback`; registry growth clears accumulator sessions |
 | **Pivot-forward Fixes** | #102 | Fixes 1–6: narrow contention validator, encode all combine/source stubs, `Threshold+None`, single-submit reduction, atomic WGSL values |
 | **C-3** | #105 | Overlay Add → AccumulatorOp; `use_accumulator_overlay_add` (default false); Add-only batches |
@@ -94,23 +96,23 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **C-8d remedial** | #136 | — | Emission op signature + max_emit rejection |
 | **C-8 completion gate** | #137 | — | Full C-8 all-flags integration |
 | **S-2** | #138 | — | Legacy intensity deleted; EvalEML only |
+| **S-6** | local | — | Legacy threshold scan deleted; AccumulatorOp threshold mandatory for threshold workloads |
+| **S-5** | local | — | Legacy velocity deleted; AccumulatorOp velocity mandatory for governed velocity workloads |
+| **S-1** | local | — | Legacy intent deleted; AccumulatorOp intent mandatory for pending intent workloads |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **S-6** — legacy threshold scan sunset
-2. **S-5** — legacy velocity sunset
-3. **S-1** — legacy intent sunset
-4. **Opus** — production transfer/emission registration ownership (substrate landed; spec/builder integration pending)
-5. **D-1** — shared-input/hot-pool allocator semantics (true cross-pool contention beyond C-8c policy A)
+1. **Opus** — production transfer/emission registration ownership (substrate landed; spec/builder integration pending)
+2. **D-1** — discrete-transaction contention memo per Resource Flow ADR
 
 **Open design warnings (preserve):**
 - Transfer/emission registration ownership: substrate-level only; production source-of-truth still needs integration.
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-phase allocator handles true shared-pool contention.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
-**Next (non-Opus implementation):** **S-6** threshold sunset · per-family oracle expansion.
+**Next (non-Opus implementation):** per-family oracle cleanup after S-1/S-5/S-6.
 
-**Next (sunset-gated):** **S-6** threshold scan deletion after C-1 default-on validation and CI.
+**Next (sunset-gated):** none; all migrated legacy passes are deleted. Snapshot remains.
 
 **Implementation posture:** Every migration PR names its S-phase sunset target. Legacy interaction:
 oracle/fallback only. Do not enhance legacy passes.

@@ -17,7 +17,10 @@ fn loads_minimal_game_mode_ron() {
     let spec = deserialize_game_mode_ron(text).expect("parse game mode");
     assert_eq!(spec.id, "terran_campaign");
     assert_eq!(spec.domain_packs.len(), 1);
-    assert_eq!(spec.domain_packs[0].capability_trees[0].tree_id, "terran_tech");
+    assert_eq!(
+        spec.domain_packs[0].capability_trees[0].tree_id,
+        "terran_tech"
+    );
 }
 
 #[test]
@@ -43,15 +46,18 @@ fn loads_install_target_examples() {
     );
 
     let root = deserialize_game_mode_ron(session_root).expect("session root example");
-    assert_eq!(root.capability_trees[0].install, InstallTargetSpec::SessionRoot);
+    assert_eq!(
+        root.capability_trees[0].install,
+        InstallTargetSpec::SessionRoot
+    );
 }
 
 #[test]
 fn game_mode_round_trips_with_metadata() {
     let spec = GameModeSpec {
-        id:           "test_mode".into(),
+        id: "test_mode".into(),
         display_name: "Test Mode".into(),
-        description:  "desc".into(),
+        description: "desc".into(),
         spec_version: SpecVersion {
             major: 1,
             minor: 2,
@@ -59,14 +65,14 @@ fn game_mode_round_trips_with_metadata() {
         },
         metadata: DisplayMeta {
             description: "meta".into(),
-            icon:        Some("icon.png".into()),
-            tags:        vec!["a".into(), "b".into()],
+            icon: Some("icon.png".into()),
+            tags: vec!["a".into(), "b".into()],
         },
-        domain_packs:     vec![],
-        properties:       vec![],
-        overlays:         vec![],
+        domain_packs: vec![],
+        properties: vec![],
+        overlays: vec![],
         capability_trees: vec![],
-        events:           vec![],
+        events: vec![],
     };
 
     let json = serde_json::to_string(&spec).unwrap();
@@ -78,13 +84,13 @@ fn game_mode_round_trips_with_metadata() {
 #[test]
 fn domain_pack_round_trips() {
     let pack = DomainPackSpec {
-        id:               "pack".into(),
-        display_name:     "Pack".into(),
-        metadata:         DisplayMeta::default(),
-        properties:       vec![],
-        overlays:         vec![],
+        id: "pack".into(),
+        display_name: "Pack".into(),
+        metadata: DisplayMeta::default(),
+        properties: vec![],
+        overlays: vec![],
         capability_trees: vec![],
-        events:           vec![],
+        events: vec![],
     };
     let json = serde_json::to_string(&pack).unwrap();
     let round: DomainPackSpec = serde_json::from_str(&json).unwrap();

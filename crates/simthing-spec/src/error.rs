@@ -30,48 +30,50 @@ pub enum SpecError {
 
     #[error("sub-field `{sub_field}` on property `{property}` declares governed_by `{governed_by}` which is not present in the same layout")]
     InvalidGovernedByRole {
-        property:    String,
-        sub_field:   String,
+        property: String,
+        sub_field: String,
         governed_by: String,
     },
 
     // ── Overlay compilation (PR 2) ───────────────────────────────────────────
     #[error("overlay `{overlay}` targets unknown property `{namespace}::{name}`")]
     UnknownProperty {
-        overlay:   String,
+        overlay: String,
         namespace: String,
-        name:      String,
+        name: String,
     },
 
     #[error("overlay `{overlay}` references sub-field role `{role}` not present in property `{property}`'s layout")]
     InvalidSubFieldRole {
-        overlay:  String,
+        overlay: String,
         property: String,
-        role:     String,
+        role: String,
     },
 
     #[error("overlay `{overlay}` has malformed targets_property `{targets_property}` (expected `namespace::name`)")]
     InvalidPropertyReference {
-        overlay:          String,
+        overlay: String,
         targets_property: String,
     },
 
     // ── Capability tree builder (PR 3) ───────────────────────────────────────
-    #[error("entry `{0}` was authored with ActivationMode::OnPrereqMet — that state is runtime-only")]
+    #[error(
+        "entry `{0}` was authored with ActivationMode::OnPrereqMet — that state is runtime-only"
+    )]
     OnPrereqMetAuthoredDefault(String),
 
     #[error("entry `{entry_id}` in tree `{in_tree}` references unknown prereq category `{category}` (expected `namespace::name`)")]
     UnknownPrereqCategory {
-        in_tree:  String,
+        in_tree: String,
         entry_id: String,
         category: String,
     },
 
     #[error("entry `{entry_id}` in tree `{in_tree}` references unknown prereq entry `{prereq_entry_id}` in category `{category}`")]
     UnknownPrereqEntry {
-        in_tree:         String,
-        entry_id:        String,
-        category:        String,
+        in_tree: String,
+        entry_id: String,
+        category: String,
         prereq_entry_id: String,
     },
 
@@ -80,17 +82,19 @@ pub enum SpecError {
 
     #[error("category `{category}` in tree `{in_tree}` sets max_active = {count}; v0 supports only Unlimited (None) or Limited(1)")]
     UnsupportedMaxActive {
-        in_tree:  String,
+        in_tree: String,
         category: String,
-        count:    usize,
+        count: usize,
     },
 
-    #[error("entry `{entry_id}` effect #{effect_index} targets property `{targets_property}`: {reason}")]
+    #[error(
+        "entry `{entry_id}` effect #{effect_index} targets property `{targets_property}`: {reason}"
+    )]
     InvalidEffectTarget {
-        entry_id:         String,
-        effect_index:     usize,
+        entry_id: String,
+        effect_index: usize,
         targets_property: String,
-        reason:           String,
+        reason: String,
     },
 
     // ── Scripted trigger/effect/event compiler (PR 8) ───────────────────────

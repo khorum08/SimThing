@@ -14,11 +14,12 @@ pub fn format_rich_report(report: &EmlGpuRichReport) -> String {
         "FAIL"
     };
 
-    let determinism_gate = if report.eml_repeated_runs_identical && report.hardcoded_repeated_runs_identical {
-        "PASS"
-    } else {
-        "FAIL"
-    };
+    let determinism_gate =
+        if report.eml_repeated_runs_identical && report.hardcoded_repeated_runs_identical {
+            "PASS"
+        } else {
+            "FAIL"
+        };
 
     let shader_performance_gate = if report.eml_vs_hardcoded_overhead_ratio < 3.0 {
         "PASS (ratio < 3.0)"

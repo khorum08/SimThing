@@ -5,14 +5,14 @@ use simthing_core::{DimensionRegistry, SimPropertyId, SubFieldRole};
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PropertyKey {
     pub namespace: String,
-    pub name:      String,
+    pub name: String,
 }
 
 impl PropertyKey {
     pub fn new(namespace: impl Into<String>, name: impl Into<String>) -> Self {
         Self {
             namespace: namespace.into(),
-            name:      name.into(),
+            name: name.into(),
         }
     }
 }
@@ -32,9 +32,9 @@ pub enum ScopeRef {
 pub enum ScriptExpr {
     Const(f32),
     Read {
-        scope:    ScopeRef,
+        scope: ScopeRef,
         property: PropertyKey,
-        role:     SubFieldRole,
+        role: SubFieldRole,
     },
     Add(Box<ScriptExpr>, Box<ScriptExpr>),
     Sub(Box<ScriptExpr>, Box<ScriptExpr>),
@@ -44,8 +44,8 @@ pub enum ScriptExpr {
     Max(Box<ScriptExpr>, Box<ScriptExpr>),
     Clamp {
         value: Box<ScriptExpr>,
-        min:   f32,
-        max:   f32,
+        min: f32,
+        max: f32,
     },
     Gate(Box<ScriptPredicate>),
 }
@@ -65,9 +65,9 @@ pub enum ScriptPredicate {
 }
 
 pub struct ScriptEvalContext<'a> {
-    pub registry:     &'a DimensionRegistry,
-    pub shadow:       &'a [f32],
-    pub n_dims:       usize,
+    pub registry: &'a DimensionRegistry,
+    pub shadow: &'a [f32],
+    pub n_dims: usize,
     pub current_slot: u32,
 }
 
@@ -78,7 +78,7 @@ pub enum ScriptEvalError {
     #[error("script references role `{role:?}` not present on property `{property_id:?}`")]
     UnknownRole {
         property_id: SimPropertyId,
-        role:        SubFieldRole,
+        role: SubFieldRole,
     },
     #[error("script scope references slot {slot}, but shadow only has {slots} slots")]
     SlotOutOfBounds { slot: u32, slots: usize },
@@ -155,17 +155,17 @@ impl ScriptPredicate {
 }
 
 fn read_value(
-    ctx:      &ScriptEvalContext<'_>,
-    scope:    &ScopeRef,
+    ctx: &ScriptEvalContext<'_>,
+    scope: &ScopeRef,
     property: &PropertyKey,
-    role:     &SubFieldRole,
+    role: &SubFieldRole,
 ) -> Result<f32, ScriptEvalError> {
     let property_id = ctx
         .registry
         .id_of(&property.namespace, &property.name)
         .ok_or_else(|| ScriptEvalError::UnknownProperty {
             namespace: property.namespace.clone(),
-            name:      property.name.clone(),
+            name: property.name.clone(),
         })?;
     let layout = &ctx.registry.property(property_id).layout;
     let range = ctx.registry.column_range(property_id);

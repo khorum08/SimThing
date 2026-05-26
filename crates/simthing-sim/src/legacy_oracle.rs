@@ -1,4 +1,4 @@
-//! Legacy oracle harness (C-INF-2).
+//! Migration oracle harness (C-INF-2).
 //!
 //! Formalizes legacy GPU pass invocation for parity tests. Runtime tick paths
 //! must not depend on this module — it exists so migration PRs compare
@@ -26,7 +26,9 @@ pub enum OracleExactness {
     BitExact,
     /// Absolute epsilon tolerance: `(a - b).abs() <= f32::EPSILON * multiplier`.
     /// Not ULP-based — use before C-5/C-6 soft-aggregate tests only with this label.
-    ToleranceAbsEpsilon { multiplier: u32 },
+    ToleranceAbsEpsilon {
+        multiplier: u32,
+    },
 }
 
 /// Scenario token for oracle dispatch (extended per migration PR).
@@ -41,26 +43,26 @@ pub enum OracleScenario {
 /// Values and events captured from one oracle path run.
 #[derive(Clone, Debug, Default)]
 pub struct OracleCapture {
-    pub values:          Vec<f32>,
-    pub events:          Vec<ThresholdEvent>,
-    pub readback_bytes:  u64,
-    pub gpu_us:          Option<u64>,
+    pub values: Vec<f32>,
+    pub events: Vec<ThresholdEvent>,
+    pub readback_bytes: u64,
+    pub gpu_us: Option<u64>,
 }
 
 /// Result of running legacy vs AccumulatorOp for one family/scenario pair.
 #[derive(Clone, Debug)]
 pub struct LegacyOracleRun {
-    pub family:                     OracleFamily,
-    pub scenario:                   OracleScenario,
-    pub exactness:                  OracleExactness,
-    pub legacy_values:              Vec<f32>,
-    pub accumulator_values:         Vec<f32>,
-    pub legacy_events:              Vec<ThresholdEvent>,
-    pub accumulator_events:         Vec<ThresholdEvent>,
-    pub legacy_readback_bytes:      u64,
+    pub family: OracleFamily,
+    pub scenario: OracleScenario,
+    pub exactness: OracleExactness,
+    pub legacy_values: Vec<f32>,
+    pub accumulator_values: Vec<f32>,
+    pub legacy_events: Vec<ThresholdEvent>,
+    pub accumulator_events: Vec<ThresholdEvent>,
+    pub legacy_readback_bytes: u64,
     pub accumulator_readback_bytes: u64,
-    pub legacy_gpu_us:              Option<u64>,
-    pub accumulator_gpu_us:         Option<u64>,
+    pub legacy_gpu_us: Option<u64>,
+    pub accumulator_gpu_us: Option<u64>,
 }
 
 impl LegacyOracleRun {
@@ -76,9 +78,11 @@ impl LegacyOracleRun {
             }
             OracleExactness::ToleranceAbsEpsilon { multiplier } => {
                 self.legacy_values.len() == self.accumulator_values.len()
-                    && self.legacy_values.iter().zip(&self.accumulator_values).all(
-                        |(a, b)| (a - b).abs() <= f32::EPSILON * multiplier as f32,
-                    )
+                    && self
+                        .legacy_values
+                        .iter()
+                        .zip(&self.accumulator_values)
+                        .all(|(a, b)| (a - b).abs() <= f32::EPSILON * multiplier as f32)
             }
         }
     }
@@ -98,18 +102,34 @@ impl LegacyOracleRun {
                     && a.event_kind == b.event_kind
                     && a.value.to_bits() == b.value.to_bits()
             }),
-            OracleExactness::ToleranceAbsEpsilon { multiplier } => legacy.iter().zip(acc.iter()).all(|(a, b)| {
-                a.slot == b.slot
-                    && a.col == b.col
-                    && a.event_kind == b.event_kind
-                    && (a.value - b.value).abs() <= f32::EPSILON * multiplier as f32
-            }),
+            OracleExactness::ToleranceAbsEpsilon { multiplier } => {
+                legacy.iter().zip(acc.iter()).all(|(a, b)| {
+                    a.slot == b.slot
+                        && a.col == b.col
+                        && a.event_kind == b.event_kind
+                        && (a.value - b.value).abs() <= f32::EPSILON * multiplier as f32
+                })
+            }
         }
     }
 }
 
+fn legacy_runtime_path_deleted(family: OracleFamily) -> bool {
+    matches!(
+        family,
+        OracleFamily::Intent
+            | OracleFamily::Threshold
+            | OracleFamily::OverlayAdd
+            | OracleFamily::OverlayFull
+            | OracleFamily::Reduction
+            | OracleFamily::Velocity
+            | OracleFamily::Intensity
+    )
+}
+
 /// Apply migration flags for one family oracle run.
 pub fn apply_oracle_flags(flags: &mut PipelineFlags, family: OracleFamily, use_accumulator: bool) {
+    let use_accumulator = use_accumulator || legacy_runtime_path_deleted(family);
     match family {
         OracleFamily::Intent => flags.use_accumulator_intent = use_accumulator,
         OracleFamily::Threshold => flags.use_accumulator_threshold_scan = use_accumulator,
@@ -131,7 +151,7 @@ pub fn run_family_oracle<F>(
 where
     F: FnMut(bool) -> OracleCapture,
 {
-    let legacy = run_once(false);
+    let legacy = run_once(legacy_runtime_path_deleted(family));
     let accumulator = run_once(true);
     LegacyOracleRun {
         family,

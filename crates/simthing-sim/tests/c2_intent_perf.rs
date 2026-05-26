@@ -59,7 +59,10 @@ fn c2_intent_perf_no_regression() {
 
         let mk = |slot_idx: u32| PropertyTransformDelta {
             property_id: pid,
-            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.001 * slot_idx as f32))],
+            sub_field_deltas: vec![(
+                SubFieldRole::Amount,
+                TransformOp::Add(0.001 * slot_idx as f32),
+            )],
         };
 
         for _ in 0..N_WARMUP {
@@ -115,9 +118,7 @@ fn c2_intent_perf_no_regression() {
     const NO_REGRESSION_RATIO: f64 = 1.0;
     const WARNING_RATIO: f64 = 1.5;
     if ratio < WARNING_RATIO {
-        eprintln!(
-            "WARN: c2 tick pipeline ratio {ratio:.2}x below {WARNING_RATIO:.1}x threshold"
-        );
+        eprintln!("WARN: c2 tick pipeline ratio {ratio:.2}x below {WARNING_RATIO:.1}x threshold");
     }
     assert!(
         ratio >= NO_REGRESSION_RATIO,

@@ -7,8 +7,8 @@ use bytemuck::{Pod, Zeroable};
 use serde::Serialize;
 use wgpu::util::DeviceExt;
 use wgpu::{
-    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
+    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
+    BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
     CommandEncoderDescriptor, ComputePassDescriptor, ComputePipelineDescriptor, Device,
     DeviceDescriptor, Features, Instance, InstanceDescriptor, Maintain, MapMode, MemoryHints,
     PipelineLayoutDescriptor, PowerPreference, QuerySetDescriptor, QueryType, Queue,
@@ -153,7 +153,10 @@ fn mix_u32(seed: u32) -> u32 {
     seed.wrapping_mul(1_103_515_245).wrapping_add(12_345)
 }
 
-pub fn sort_queues_and_build_ranges(queues: &mut [BenchQueue], n_pools: usize) -> Vec<BenchPoolRange> {
+pub fn sort_queues_and_build_ranges(
+    queues: &mut [BenchQueue],
+    n_pools: usize,
+) -> Vec<BenchPoolRange> {
     let mut indexed: Vec<(usize, BenchQueue)> = queues
         .iter()
         .copied()
@@ -227,7 +230,9 @@ pub fn resolve_cpu_persistent_bench(
 
         for pool_idx in 0..scenario.pools.len() {
             let before = pools[pool_idx].amount;
-            pools[pool_idx].amount = pools[pool_idx].amount.saturating_add(pools[pool_idx].regen_per_tick);
+            pools[pool_idx].amount = pools[pool_idx]
+                .amount
+                .saturating_add(pools[pool_idx].regen_per_tick);
             let range = scenario.pool_ranges[pool_idx];
 
             for i in 0..range.count {
@@ -352,8 +357,7 @@ pub fn conservation_check(
         }
     }
 
-    pool_before + regen_total + accum_before
-        == pool_after + accum_after + emitted_value
+    pool_before + regen_total + accum_before == pool_after + accum_after + emitted_value
 }
 
 pub fn make_persistent_bench_scenario(
@@ -517,7 +521,11 @@ fn warm_stats(samples: &[u64]) -> (u64, u64, u64) {
         return (0, 0, 0);
     }
     let sum: u64 = samples.iter().sum();
-    (sum / samples.len() as u64, *samples.iter().min().unwrap(), *samples.iter().max().unwrap())
+    (
+        sum / samples.len() as u64,
+        *samples.iter().min().unwrap(),
+        *samples.iter().max().unwrap(),
+    )
 }
 
 struct GpuTickBuffers {
@@ -635,7 +643,11 @@ impl PersistentBenchHarness {
                 usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             });
-            (Some(query_set), Some(timestamp_resolve), Some(timestamp_readback))
+            (
+                Some(query_set),
+                Some(timestamp_resolve),
+                Some(timestamp_readback),
+            )
         } else {
             (None, None, None)
         };
@@ -674,29 +686,37 @@ impl PersistentBenchHarness {
             std::mem::size_of::<BenchRecord>() as u64
         };
 
-        let pools_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("pb_pools"),
-            contents: &pad_storage_bytes(initial_pools),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
-        });
-        let queues_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("pb_queues"),
-            contents: &pad_storage_bytes(initial_queues),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
-        });
-        let ranges_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("pb_ranges"),
-            contents: &pad_storage_bytes(&scenario.pool_ranges),
-            usage: BufferUsages::STORAGE,
-        });
+        let pools_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("pb_pools"),
+                contents: &pad_storage_bytes(initial_pools),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+            });
+        let queues_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("pb_queues"),
+                contents: &pad_storage_bytes(initial_queues),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+            });
+        let ranges_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("pb_ranges"),
+                contents: &pad_storage_bytes(&scenario.pool_ranges),
+                usage: BufferUsages::STORAGE,
+            });
 
         let accum_u32s = (ticks as usize) * 6;
         let accum_zeros = vec![0u32; accum_u32s];
-        let accum_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("pb_accum"),
-            contents: bytemuck::cast_slice(&accum_zeros),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
-        });
+        let accum_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("pb_accum"),
+                contents: bytemuck::cast_slice(&accum_zeros),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+            });
 
         let records_buffer = self.device.create_buffer(&BufferDescriptor {
             label: Some("pb_records"),
@@ -836,7 +856,13 @@ impl PersistentBenchHarness {
         let queues_size = (n_queues * std::mem::size_of::<BenchQueue>()) as u64;
         let accum_size = (ticks as usize * 6 * std::mem::size_of::<u32>()) as u64;
 
-        encoder.copy_buffer_to_buffer(&bufs.pools_buffer, 0, &bufs.pools_readback, 0, pools_size.max(4));
+        encoder.copy_buffer_to_buffer(
+            &bufs.pools_buffer,
+            0,
+            &bufs.pools_readback,
+            0,
+            pools_size.max(4),
+        );
         encoder.copy_buffer_to_buffer(
             &bufs.queues_buffer,
             0,
@@ -870,8 +896,14 @@ impl PersistentBenchHarness {
         n_queues: usize,
         ticks: u32,
         log_records: bool,
-    ) -> Result<(Vec<BenchPool>, Vec<BenchQueue>, Vec<BenchTickSummary>, Vec<BenchRecord>)> {
-        let final_pools = map_readback_pod::<BenchPool>(&self.device, &bufs.pools_readback, n_pools)?;
+    ) -> Result<(
+        Vec<BenchPool>,
+        Vec<BenchQueue>,
+        Vec<BenchTickSummary>,
+        Vec<BenchRecord>,
+    )> {
+        let final_pools =
+            map_readback_pod::<BenchPool>(&self.device, &bufs.pools_readback, n_pools)?;
         let final_queues =
             map_readback_pod::<BenchQueue>(&self.device, &bufs.queues_readback, n_queues)?;
         let accum_raw =
@@ -894,7 +926,13 @@ impl PersistentBenchHarness {
         scenario: &PersistentBenchScenario,
         ticks: u32,
         log_records: bool,
-    ) -> Result<(Vec<BenchPool>, Vec<BenchQueue>, Vec<BenchTickSummary>, Vec<BenchRecord>, u64)> {
+    ) -> Result<(
+        Vec<BenchPool>,
+        Vec<BenchQueue>,
+        Vec<BenchTickSummary>,
+        Vec<BenchRecord>,
+        u64,
+    )> {
         let t_total = Instant::now();
         let n_pools = scenario.pools.len();
         let n_queues = scenario.queues.len();
@@ -1046,7 +1084,8 @@ fn interpretation_string(
 ) -> (String, String) {
     if !correctness_ok || !conservation_ok || !deterministic {
         return (
-            "FAIL: persistent benchmark correctness, conservation, or determinism failed.".to_string(),
+            "FAIL: persistent benchmark correctness, conservation, or determinism failed."
+                .to_string(),
             "FAIL".to_string(),
         );
     }
@@ -1105,7 +1144,12 @@ pub fn compare_persistent_bench_rich_with_harness(
     let (env_pools, env_queues, env_summaries, _, envelope_us) =
         harness.run_current_gpu_envelope(scenario, ticks, log_records)?;
 
-    let _ = harness.run_pivot_gpu_resident(scenario, ticks, log_records, harness.timestamp_supported)?;
+    let _ = harness.run_pivot_gpu_resident(
+        scenario,
+        ticks,
+        log_records,
+        harness.timestamp_supported,
+    )?;
 
     let mut pivot_warm = Vec::with_capacity(WARM_RUNS);
     let mut pivot_base: Option<PersistentGpuResult> = None;
@@ -1133,8 +1177,8 @@ pub fn compare_persistent_bench_rich_with_harness(
     }
 
     let pivot = pivot_base.unwrap();
-    let final_state_matches_cpu =
-        pools_equal(&cpu_pools, &pivot.final_pools) && queues_equal(&cpu_queues, &pivot.final_queues);
+    let final_state_matches_cpu = pools_equal(&cpu_pools, &pivot.final_pools)
+        && queues_equal(&cpu_queues, &pivot.final_queues);
     let summaries_match_cpu = summaries_equal(&cpu_summaries, &pivot.summaries);
     let envelope_matches = pools_equal(&cpu_pools, &env_pools)
         && queues_equal(&cpu_queues, &env_queues)
@@ -1259,5 +1303,6 @@ pub fn write_persistent_bench_reports(report: &PersistentBenchReport) -> Result<
 }
 
 pub fn write_persistent_bench_reports_bundle(reports: &[PersistentBenchReport]) -> Result<()> {
-    crate::persistent_bench_report::write_persistent_bench_reports_bundle(reports).map_err(Into::into)
+    crate::persistent_bench_report::write_persistent_bench_reports_bundle(reports)
+        .map_err(Into::into)
 }

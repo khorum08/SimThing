@@ -8,44 +8,50 @@ use simthing_spec::{
 
 fn empty_property(namespace: &str, name: &str) -> PropertySpec {
     PropertySpec {
-        id:           format!("{namespace}_{name}"),
-        namespace:    namespace.into(),
-        name:         name.into(),
+        id: format!("{namespace}_{name}"),
+        namespace: namespace.into(),
+        name: name.into(),
         display_name: String::new(),
-        description:  String::new(),
-        sub_fields:   vec![],
+        description: String::new(),
+        sub_fields: vec![],
     }
 }
 
 fn ethics_property() -> PropertySpec {
     PropertySpec {
-        id:           "ethics".into(),
-        namespace:    "philosophy".into(),
-        name:         "ethics".into(),
+        id: "ethics".into(),
+        namespace: "philosophy".into(),
+        name: "ethics".into(),
         display_name: "Ethics".into(),
-        description:  "Designer-named layout with a governing sub-field.".into(),
-        sub_fields:   vec![
+        description: "Designer-named layout with a governing sub-field.".into(),
+        sub_fields: vec![
             SubFieldSpec {
-                role:               SubFieldRole::Named("axis_position".into()),
-                width:              1,
-                clamp:              ClampBehavior::Bounded { min: -10.0, max: 10.0 },
-                velocity_max:       None,
-                default:            0.0,
-                display_name:       "Axis".into(),
-                display_range:      None,
-                governed_by:        Some(SubFieldRole::Named("axis_drift".into())),
+                role: SubFieldRole::Named("axis_position".into()),
+                width: 1,
+                clamp: ClampBehavior::Bounded {
+                    min: -10.0,
+                    max: 10.0,
+                },
+                velocity_max: None,
+                default: 0.0,
+                display_name: "Axis".into(),
+                display_range: None,
+                governed_by: Some(SubFieldRole::Named("axis_drift".into())),
                 reduction_override: None,
                 soft_aggregate_guard: None,
             },
             SubFieldSpec {
-                role:               SubFieldRole::Named("axis_drift".into()),
-                width:              1,
-                clamp:              ClampBehavior::Bounded { min: -1.0, max: 1.0 },
-                velocity_max:       None,
-                default:            0.0,
-                display_name:       "Drift".into(),
-                display_range:      None,
-                governed_by:        None,
+                role: SubFieldRole::Named("axis_drift".into()),
+                width: 1,
+                clamp: ClampBehavior::Bounded {
+                    min: -1.0,
+                    max: 1.0,
+                },
+                velocity_max: None,
+                default: 0.0,
+                display_name: "Drift".into(),
+                display_range: None,
+                governed_by: None,
                 reduction_override: None,
                 soft_aggregate_guard: None,
             },
@@ -83,11 +89,13 @@ fn compile_property_uses_authored_sub_fields_when_provided() {
     assert_eq!(prop.layout.sub_fields.len(), 2);
     assert_eq!(prop.layout.stride(), 2);
     assert_eq!(
-        prop.layout.offset_of(&SubFieldRole::Named("axis_position".into())),
+        prop.layout
+            .offset_of(&SubFieldRole::Named("axis_position".into())),
         Some(0),
     );
     assert_eq!(
-        prop.layout.offset_of(&SubFieldRole::Named("axis_drift".into())),
+        prop.layout
+            .offset_of(&SubFieldRole::Named("axis_drift".into())),
         Some(1),
     );
 }
@@ -103,7 +111,7 @@ fn compile_property_duplicate_key_is_hard_error() {
         err,
         SpecError::DuplicateProperty {
             namespace: "core".into(),
-            name:      "loyalty".into(),
+            name: "loyalty".into(),
         }
     );
 }
@@ -118,7 +126,11 @@ fn compile_property_invalid_governed_by_role_is_hard_error() {
 
     let err = compile_property(&spec, &mut registry).expect_err("should reject");
     match err {
-        SpecError::InvalidGovernedByRole { property, sub_field, governed_by } => {
+        SpecError::InvalidGovernedByRole {
+            property,
+            sub_field,
+            governed_by,
+        } => {
             assert_eq!(property, "philosophy::ethics");
             assert_eq!(sub_field, "Named(axis_position)");
             assert_eq!(governed_by, "Named(missing_role)");
@@ -134,13 +146,13 @@ fn compile_property_invalid_governed_by_role_is_hard_error() {
 
 fn fleet_speed_overlay() -> OverlaySpec {
     OverlaySpec {
-        id:               "trade_boost".into(),
-        display_name:     "Trade Boost".into(),
+        id: "trade_boost".into(),
+        display_name: "Trade Boost".into(),
         targets_property: "military::fleet_speed".into(),
         sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(1.1))],
-        lifecycle:        OverlayLifecycle::Permanent,
-        kind:             OverlayKind::Policy,
-        source:           OverlaySource::Player,
+        lifecycle: OverlayLifecycle::Permanent,
+        kind: OverlayKind::Policy,
+        source: OverlaySource::Player,
     }
 }
 
@@ -159,7 +171,7 @@ fn compile_overlay_resolves_subfield_roles_to_columns() {
 
     // Sub-field roles resolve to columns via the registry's column_range +
     // layout.offset_of pipeline — the same one Pass 3 uses at runtime.
-    let range  = registry.column_range(prop_id);
+    let range = registry.column_range(prop_id);
     let layout = &registry.property(prop_id).layout;
     let amount_col = range
         .col_for_role(&overlay.transform.sub_field_deltas[0].0, layout)
@@ -172,7 +184,11 @@ fn compile_overlay_unknown_property_is_hard_error() {
     let registry = DimensionRegistry::new();
     let err = compile_overlay(&fleet_speed_overlay(), &registry).expect_err("must fail");
     match err {
-        SpecError::UnknownProperty { overlay, namespace, name } => {
+        SpecError::UnknownProperty {
+            overlay,
+            namespace,
+            name,
+        } => {
             assert_eq!(overlay, "trade_boost");
             assert_eq!(namespace, "military");
             assert_eq!(name, "fleet_speed");
@@ -226,7 +242,9 @@ fn compile_overlay_suspended_lifecycle_round_trips() {
     // The suspended wrapper preserves the inner lifecycle byte-for-byte.
     match &overlay.lifecycle {
         OverlayLifecycle::Suspended { when_activated } => match when_activated.as_ref() {
-            OverlayLifecycle::Transient { dissolution_conditions } => {
+            OverlayLifecycle::Transient {
+                dissolution_conditions,
+            } => {
                 assert_eq!(dissolution_conditions.len(), 1);
                 match &dissolution_conditions[0] {
                     DissolveCondition::AfterTicks { remaining } => assert_eq!(*remaining, 100),
@@ -279,7 +297,11 @@ fn compile_context_overlay_after_property_registration() {
     let mut registry = DimensionRegistry::new();
     let mut ctx = CompileContext::new(&mut registry);
 
-    compile_property(&empty_property("military", "fleet_speed"), ctx.registry_mut()).unwrap();
+    compile_property(
+        &empty_property("military", "fleet_speed"),
+        ctx.registry_mut(),
+    )
+    .unwrap();
 
     // After mutation, the context can be used immutably for overlay compilation
     // in the same lexical scope — the borrow checker accepts the alternation.

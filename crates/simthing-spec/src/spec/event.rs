@@ -24,9 +24,9 @@ impl From<String> for EventKey {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct EventSpec {
-    pub id:       String,
-    pub trigger:  TriggerSpec,
-    pub effects:  Vec<EffectSpec>,
+    pub id: String,
+    pub trigger: TriggerSpec,
+    pub effects: Vec<EffectSpec>,
     #[serde(default)]
     pub cooldown: Option<CooldownSpec>,
     #[serde(default)]
@@ -36,7 +36,7 @@ pub struct EventSpec {
     /// matching pre-O4 behavior). Use `AllOfKind { kind: "Faction" }` for
     /// per-faction events. See `docs/adr/scripted_event_scope_model.md`.
     #[serde(default = "default_event_install")]
-    pub install:  crate::spec::install_target::InstallTargetSpec,
+    pub install: crate::spec::install_target::InstallTargetSpec,
 }
 
 fn default_event_install() -> crate::spec::install_target::InstallTargetSpec {

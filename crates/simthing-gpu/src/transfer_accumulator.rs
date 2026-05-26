@@ -6,9 +6,7 @@ use simthing_core::{
     AccumulatorOp, CombineFn, ConsumeMode, EmlTreeId, GateSpec, InputSpec, ScaleSpec, SourceSpec,
 };
 
-use crate::{
-    AccumulatorInputGpu, AccumulatorOpGpu, EncodeError, InputListRange,
-};
+use crate::{AccumulatorInputGpu, AccumulatorOpGpu, EncodeError, InputListRange};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransferInputRef {
@@ -40,11 +38,7 @@ pub enum TransferPlanError {
     #[error("transfer registration has no inputs")]
     EmptyInputs,
     #[error("non-positive or non-finite unit cost at slot {slot} col {col}: {unit_cost}")]
-    NonPositiveUnitCost {
-        slot: u32,
-        col: u32,
-        unit_cost: f32,
-    },
+    NonPositiveUnitCost { slot: u32, col: u32, unit_cost: f32 },
     #[error("consumed input cell ({slot}, {col}) appears in more than one same-band transfer op")]
     ContendedConsumedInput { slot: u32, col: u32 },
     #[error("single-source fixed transfer requires output_scale == 1.0 (got {output_scale})")]
@@ -90,10 +84,7 @@ fn validate_registration(reg: &TransferRegistration) -> Result<(), TransferPlanE
 }
 
 fn consumed_cells(reg: &TransferRegistration) -> Vec<(u32, u32)> {
-    reg.inputs
-        .iter()
-        .map(|i| (i.slot, i.col))
-        .collect()
+    reg.inputs.iter().map(|i| (i.slot, i.col)).collect()
 }
 
 fn input_to_gpu(input: &TransferInputRef) -> AccumulatorInputGpu {
@@ -226,7 +217,10 @@ mod tests {
         let plan = plan_transfer_ops(&regs).unwrap();
         assert_eq!(plan.ops.len(), 1);
         assert!(plan.input_lists[0].is_empty());
-        assert!(matches!(plan.ops[0].consume, ConsumeMode::SubtractFromSource));
+        assert!(matches!(
+            plan.ops[0].consume,
+            ConsumeMode::SubtractFromSource
+        ));
     }
 
     #[test]
@@ -373,9 +367,7 @@ mod tests {
         }];
         assert_eq!(
             plan_transfer_ops(&regs),
-            Err(TransferPlanError::UnsupportedSingleSourceOutputScale {
-                output_scale: 2.0
-            })
+            Err(TransferPlanError::UnsupportedSingleSourceOutputScale { output_scale: 2.0 })
         );
     }
 }

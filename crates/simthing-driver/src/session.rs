@@ -6,9 +6,7 @@ use std::time::Instant;
 use simthing_feeder::FeederWork;
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
 use simthing_gpu::{GpuContext, Pipelines, WorldGpuState};
-use simthing_sim::{
-    BoundaryOutcome, BoundaryProtocol, BoundaryTiming, ReplayFrame, ReplayWriter,
-};
+use simthing_sim::{BoundaryOutcome, BoundaryProtocol, BoundaryTiming, ReplayFrame, ReplayWriter};
 use simthing_spec::{
     CapabilityTreeInstance, CapabilityTreeState, CapabilityUnlockRegistration, GameModeSpec,
 };
@@ -257,7 +255,7 @@ impl SimSession {
     ///
     /// See `docs/adr/game_mode_session_installation.md`.
     pub fn open_from_spec(
-        scenario:  Scenario,
+        scenario: Scenario,
         game_mode: &GameModeSpec,
     ) -> Result<Self, SessionError> {
         let mut session = Self::open(scenario)?;
@@ -294,8 +292,8 @@ impl SimSession {
     /// buffer reflects the new tree structure on the next tick. See
     /// `docs/adr/install_clone_then_commit.md`.
     pub fn apply_install_preview(&mut self, preview: InstallPreview) {
-        self.proto.registry  = preview.registry;
-        self.proto.root      = preview.root;
+        self.proto.registry = preview.registry;
+        self.proto.root = preview.root;
         self.proto.allocator = preview.allocator;
         self.install_spec_state(preview.state);
     }
@@ -559,8 +557,7 @@ impl SimSession {
             // covered by the mapping (shouldn't happen for capability
             // overlays — every overlay is re-stamped during clone) is
             // dropped from the clone's lookup.
-            let id_map: HashMap<_, _> =
-                root.overlay_id_pairs.iter().copied().collect();
+            let id_map: HashMap<_, _> = root.overlay_id_pairs.iter().copied().collect();
             let by_overlay: HashMap<_, _> = source
                 .by_overlay
                 .iter()
@@ -597,14 +594,17 @@ impl SimSession {
                 .filter(|reg| reg.sim_thing_id == root.source_root_id)
                 .map(|reg| CapabilityUnlockRegistration {
                     sim_thing_id: root.cloned_root_id,
-                    property_id:  reg.property_id,
-                    sub_field:    reg.sub_field.clone(),
-                    threshold:    reg.threshold,
+                    property_id: reg.property_id,
+                    sub_field: reg.sub_field.clone(),
+                    threshold: reg.threshold,
                 })
                 .collect();
 
-            let Some(definition) =
-                self.spec_state.capability_definitions.get(&source.definition_id).cloned()
+            let Some(definition) = self
+                .spec_state
+                .capability_definitions
+                .get(&source.definition_id)
+                .cloned()
             else {
                 continue;
             };
@@ -620,14 +620,10 @@ impl SimSession {
                 owner_id: root.spawned_owner_id,
                 definition_id: source.definition_id,
                 activation_mode_by_entry: HashMap::new(),
-                active_by_category:       HashMap::new(),
+                active_by_category: HashMap::new(),
             };
-            self.spec_state.add_capability_tree_instance(
-                definition,
-                instance,
-                state,
-                new_regs,
-            );
+            self.spec_state
+                .add_capability_tree_instance(definition, instance, state, new_regs);
             registered += 1;
         }
         if registered > 0 {

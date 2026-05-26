@@ -16,6 +16,10 @@ fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
 }
 
+fn enable_intent_accumulator(state: &mut WorldGpuState) {
+    state.ensure_intent_accumulator();
+}
+
 #[test]
 fn add_and_multiply_patches_apply_on_gpu_without_rmw_readback() {
     let Some(ctx) = try_gpu() else {
@@ -26,6 +30,7 @@ fn add_and_multiply_patches_apply_on_gpu_without_rmw_readback() {
     let (reg, alloc, pid, [a, _b]) = fixture();
     let n_dims = reg.total_columns as u32;
     let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
+    enable_intent_accumulator(&mut state);
     let pipelines = Pipelines::new(&state.ctx);
     let mut patcher = TransformPatcher::new(alloc.capacity());
     let mut coord = DispatchCoordinator::new(alloc.capacity() as u32, n_dims, 8);
@@ -103,6 +108,7 @@ fn patch_through_channel_lands_on_gpu_after_one_tick() {
     let n_dims = reg.total_columns as u32;
 
     let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
+    enable_intent_accumulator(&mut state);
     let pipelines = Pipelines::new(&state.ctx);
     let mut patcher = TransformPatcher::new(alloc.capacity());
     let mut coord = DispatchCoordinator::new(alloc.capacity() as u32, n_dims, 4);
@@ -152,6 +158,7 @@ fn day_boundary_fires_on_ticks_per_day() {
     let (reg, alloc, _pid, _) = fixture();
     let n_dims = reg.total_columns as u32;
     let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
+    enable_intent_accumulator(&mut state);
     let pipelines = Pipelines::new(&state.ctx);
     let mut patcher = TransformPatcher::new(alloc.capacity());
     let mut coord = DispatchCoordinator::new(alloc.capacity() as u32, n_dims, 4);
@@ -219,6 +226,7 @@ fn many_patches_same_cell_coalesce_to_one_intent_delta() {
     let (reg, alloc, pid, [a, _b]) = fixture();
     let n_dims = reg.total_columns as u32;
     let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
+    enable_intent_accumulator(&mut state);
     let pipelines = Pipelines::new(&state.ctx);
     let mut patcher = TransformPatcher::new(alloc.capacity());
     let mut coord = DispatchCoordinator::new(alloc.capacity() as u32, n_dims, 8);

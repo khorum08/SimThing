@@ -53,17 +53,19 @@ pub enum ReductionRule {
     /// First child's value in canonical slot order.
     First,
     /// Arithmetic mean weighted by another property's `Amount` on each child.
-    WeightedMean { by: crate::ids::SimPropertyId },
+    WeightedMean {
+        by: crate::ids::SimPropertyId,
+    },
 }
 
 impl ReductionRule {
     /// Default rule for a sub-field with this role when no override is set.
     pub fn default_for_role(role: &SubFieldRole) -> Self {
         match role {
-            SubFieldRole::Amount    => ReductionRule::Mean,
-            SubFieldRole::Velocity  => ReductionRule::Mean,
+            SubFieldRole::Amount => ReductionRule::Mean,
+            SubFieldRole::Velocity => ReductionRule::Mean,
             SubFieldRole::Intensity => ReductionRule::Max,
-            SubFieldRole::Named(_)  => ReductionRule::Mean,
+            SubFieldRole::Named(_) => ReductionRule::Mean,
             SubFieldRole::Custom(_) => ReductionRule::Mean,
         }
     }
@@ -77,14 +79,14 @@ mod tests {
     fn override_resolves_via_subfield_spec() {
         use crate::property::{ClampBehavior, SubFieldSpec};
         let mut spec = SubFieldSpec {
-            role:          SubFieldRole::Amount,
-            width:         1,
-            clamp:         ClampBehavior::Unbounded,
-            velocity_max:  None,
-            default:       0.0,
-            display_name:  "x".into(),
+            role: SubFieldRole::Amount,
+            width: 1,
+            clamp: ClampBehavior::Unbounded,
+            velocity_max: None,
+            default: 0.0,
+            display_name: "x".into(),
             display_range: None,
-            governed_by:   None,
+            governed_by: None,
             reduction_override: None,
             soft_aggregate_guard: None,
         };
@@ -95,9 +97,18 @@ mod tests {
 
     #[test]
     fn role_defaults() {
-        assert_eq!(ReductionRule::default_for_role(&SubFieldRole::Amount),    ReductionRule::Mean);
-        assert_eq!(ReductionRule::default_for_role(&SubFieldRole::Velocity),  ReductionRule::Mean);
-        assert_eq!(ReductionRule::default_for_role(&SubFieldRole::Intensity), ReductionRule::Max);
+        assert_eq!(
+            ReductionRule::default_for_role(&SubFieldRole::Amount),
+            ReductionRule::Mean
+        );
+        assert_eq!(
+            ReductionRule::default_for_role(&SubFieldRole::Velocity),
+            ReductionRule::Mean
+        );
+        assert_eq!(
+            ReductionRule::default_for_role(&SubFieldRole::Intensity),
+            ReductionRule::Max
+        );
         assert_eq!(
             ReductionRule::default_for_role(&SubFieldRole::Named("axis_drift".into())),
             ReductionRule::Mean,

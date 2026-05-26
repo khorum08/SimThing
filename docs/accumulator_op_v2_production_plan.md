@@ -5,10 +5,11 @@
 > calendar quarters; they are completion-gated sequences. A phase does not
 > begin until all PRs in the prior phase are green and merged.
 >
-> **Pivot posture (2026-05-25):** AccumulatorOp v2 is the production direction.
-> Legacy reduction (S-4), legacy intensity (S-2), and legacy overlay (S-3) are
-> **deleted**. Remaining legacy passes (intent, threshold, velocity) are
-> oracle/fallback until their S-phase deletions. See
+> **Pivot posture (2026-05-26):** AccumulatorOp v2 is the production direction.
+> Legacy reduction (S-4), legacy intensity (S-2), legacy overlay (S-3),
+> legacy threshold (S-6), legacy velocity (S-5), and legacy intent (S-1) are
+> **deleted**. The only retained old operation is snapshot
+> (`copy_buffer_to_buffer`). See
 > [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md) and
 > [`docs/workshop/pivot_forward_implementation_policy.md`](workshop/pivot_forward_implementation_policy.md).
 
@@ -363,16 +364,17 @@ a measurable improvement, stop and open an Opus review before migrating further.
 **Scope:** Migrate the Intent Pass (intent delta application) to AccumulatorOp
 using a C-2-specific `COMBINE_AFFINE_INTENT` GPU combine (`value = value * mul + add`).
 The CPU fold logic on the feeder/patcher path is unchanged.
-Feature-flagged with `use_accumulator_intent: bool` (default `false`).
+Feature-flagged with `use_accumulator_intent: bool` (default `true` after S-1).
 
 **Implementation note:** Folded `IntentDelta` rows encode as affine AccumulatorOp
 registrations; the Accumulator intent pass runs in the same tick command buffer
 as Passes 0–6 (before snapshot), not as a second submission. Combined C-1/C-2
-test verifies intent-before-threshold ordering. Old `intent_delta.wgsl` remains
-until sunset PR S-1.
+test verifies intent-before-threshold ordering. S-1 deleted old
+`intent_delta.wgsl`; disabling AccumulatorOp intent with pending intents now
+rejects loudly instead of falling back.
 
 **Parity test:** Bit-exact against current intent pass for 10 scenarios.  
-**Acceptance:** CI green. Feature flag default remains `false`.
+**Acceptance:** CI green. S-1 sunset tests use AccumulatorOp/CPU golden coverage.
 
 ---
 
@@ -554,8 +556,10 @@ column rules, THRESH_BUF_OUTPUT semantics, GPU-resident two-buffer reduction.
 
 ### PR C-7 — Velocity integration migration
 
-**Status:** Landed (#127). `use_accumulator_velocity` default **false**.
-Legacy `velocity_integration.wgsl` retained flag-off/oracle until S-5.
+**Status:** Landed (#127); sunset complete locally. `use_accumulator_velocity`
+default **true** after S-5. Legacy `velocity_integration.wgsl` and pipeline
+wiring are deleted; disabling AccumulatorOp velocity with governed pairs now
+rejects loudly.
 
 **Model:** Composer 2.5  
 **Scope:** `IntegrateWithClamp` combine function. MultiTarget writes (Amount +
@@ -1226,6 +1230,20 @@ Phase F begins after Phase C is fully complete. Each sunset PR is Codex 5.5,
 mechanical, gated on CI passing with the feature flag set to default-on.
 
 ### PR S-1 — Sunset intent fold (after C-2)
+
+**Status:** Done locally. Legacy intent shader and pipeline wiring deleted;
+AccumulatorOp intent is the default production path and is mandatory when
+player or AI intents are pending.
+
+**Deleted:**
+- `crates/simthing-gpu/src/shaders/intent_delta.wgsl`
+- Legacy intent pipeline, bind group layout, and dispatch branch in `passes.rs`
+
+**Kept:** `PlayerIntent`/`IntentDelta` intake semantics, CPU-side intent folding,
+and AccumulatorOp `COMBINE_AFFINE_INTENT` registration/dispatch.
+
+**Tests:** `s1_intent_sunset.rs`, rewritten `c2_intent_accumulator_parity.rs`;
+intent still composes with AccumulatorOp overlay/threshold ordering.
 ### PR S-2 — Sunset intensity update (after C-8) — **Landed (#138)**
 
 **Status:** Merged. Legacy Pass 2 deleted; EvalEML intensity is the only production path.
@@ -1263,14 +1281,45 @@ when both reduction flags on, CI burn-in).
 column rules, `plan_reduction_orderband`, or topology upload paths still used by
 AccumulatorOp reduction planner/tests.
 ### PR S-5 — Sunset velocity integration (after C-7)
+
+**Status:** Done locally. Legacy velocity shader and pipeline wiring deleted;
+AccumulatorOp velocity integration is the default production path and is
+mandatory when governed Amount/Velocity pairs exist.
+
+**Deleted:**
+- `crates/simthing-gpu/src/shaders/velocity_integration.wgsl`
+- Legacy velocity pipeline, bind group layout, and dispatch branch in `passes.rs`
+
+**Kept:** C-7 `IntegrateWithClamp`, governed Amount/Velocity planning, and
+bit-exact clamp semantics. E-7 generalized arbitrary governed pairs remain
+future work.
+
+**Tests:** `s5_velocity_sunset.rs`, `c7_velocity_accumulator_parity.rs`.
+
 ### PR S-6 — Sunset threshold scan / Pass 7 (after C-1)
+
+**Status:** Done locally. Legacy threshold shader and Pass 7 pipeline wiring
+deleted; AccumulatorOp threshold scan is the default production path and is
+mandatory when threshold registrations exist.
+
+**Deleted:**
+- `crates/simthing-gpu/src/shaders/threshold_scan.wgsl`
+- Legacy threshold pipeline, bind group layout, and dispatch branch in `passes.rs`
+
+**Kept:** threshold registrations, compact event readback, and AccumulatorOp
+`Threshold` + `EmitEvent` dispatch/readback.
+
+**Tests:** `s6_threshold_sunset.rs`, rewritten `c1_threshold_scan_parity.rs`.
+
+After S-1/S-2/S-3/S-4/S-5/S-6, the only retained old operation is snapshot
+(`copy_buffer_to_buffer`).
 
 Each sunset PR checklist:
 1. Set feature flag default to `true` (AccumulatorOp path)
 2. Run `cargo test --all` — must be fully green
 3. Delete old WGSL shader file(s)
 4. Delete old Rust pass module(s)
-5. Remove feature flag enum variant and all match arms
+5. Remove fallback dispatch branches; compatibility flags must reject real workloads when disabled
 6. Update `design_v7.md` §4 to remove the old pass entry
 7. Add `SUPERSEDED` annotation to `design_v6.md` §10 entry for this pass
 
@@ -1344,12 +1393,12 @@ as a doc-only PR.
 | **E-9** | **E** | **Composer 2.5** | **`ArenaRegistry` in `simthing-driver` with subtree-incremental refresh** | **3-arena fixture + refresh scope test** |
 | **E-10** | **E** | **Composer 2.5** | **`simthing-spec` admission framework (caps, fission policy, cycle-with-delay, expansion report)** | **Bad-spec rejection + good-spec compile** |
 | **E-11** | **E** | **Opus + Composer 2.5** | **Hierarchical allocation kernel + CPU oracle parity + stability tests** | **CPU oracle bit-exact + zero-weight + 3-level conservation** |
-| S-1 | F | Codex 5.5 | Sunset intent fold | CI green at flag=on |
+| S-1 | F | Codex 5.5 | Sunset intent fold | **Done locally** |
 | S-2 | F | Codex 5.5 | Sunset intensity update | **Landed (#138)** |
 | S-3 | F | Codex 5.5 | Sunset overlay prep | CI green at flag=on |
 | S-4 | F | Codex 5.5 | Sunset reduction passes 4–6 | **Landed** |
-| S-5 | F | Codex 5.5 | Sunset velocity integration | CI green at flag=on |
-| S-6 | F | Codex 5.5 | Sunset threshold scan | CI green at flag=on |
+| S-5 | F | Codex 5.5 | Sunset velocity integration | **Done locally** |
+| S-6 | F | Codex 5.5 | Sunset threshold scan | **Done locally** |
 | G-1 | G | Codex 5.5 | Annotate design_v6.md §10 superseded | One commit |
 | **G-2** | **G** | **Opus** | **design_v7.md §4 final review** | **Human + Opus** |
 

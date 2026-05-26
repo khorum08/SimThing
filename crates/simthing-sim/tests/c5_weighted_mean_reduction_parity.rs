@@ -11,7 +11,8 @@ use simthing_gpu::{
     build_column_rule_descriptors, build_topology, cpu_reduce_oracle, cpu_reduce_oracle_call_count,
     encode_column_rules, plan_reduction_orderband, project_tree_to_values,
     reset_cpu_reduce_oracle_call_count, set_debug_readback_allowed, summaries_from_values,
-    GpuContext, Pipelines, SlotAllocator, Topology, TopologyState, WorldGpuState, THRESH_BUF_OUTPUT,
+    GpuContext, Pipelines, SlotAllocator, Topology, TopologyState, WorldGpuState,
+    THRESH_BUF_OUTPUT,
 };
 use simthing_sim::{
     assert_no_hard_trigger_on_soft_aggregate, BoundaryProtocol, SoftAggregateViolation,

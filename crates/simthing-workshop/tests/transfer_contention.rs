@@ -52,17 +52,10 @@ fn transfer_contention_cpu_oracle_handles_priority_edges() {
 
 #[test]
 fn transfer_contention_replay_reconstructs_cpu() {
-    let scenario = make_transfer_contention_scenario(
-        "transfer_replay_small",
-        64,
-        256,
-        0.7,
-        false,
-        false,
-    );
+    let scenario =
+        make_transfer_contention_scenario("transfer_replay_small", 64, 256, 0.7, false, false);
     let ticks = 8;
-    let (cpu_pools, cpu_queues, _, records) =
-        resolve_cpu_contention_n_ticks(&scenario, ticks);
+    let (cpu_pools, cpu_queues, _, records) = resolve_cpu_contention_n_ticks(&scenario, ticks);
     let replayed = replay_transfer_records_n_ticks(
         &scenario.pools,
         &scenario.queues,
@@ -103,8 +96,7 @@ fn transfer_contention_gpu_resident_sparse_100k() {
     );
     let harness = TransferContentionHarness::new().unwrap();
     let report =
-        compare_transfer_contention_rich_with_harness(&harness, &scenario, RESIDENT_TICKS)
-            .unwrap();
+        compare_transfer_contention_rich_with_harness(&harness, &scenario, RESIDENT_TICKS).unwrap();
     assert_report_ok(&report);
 }
 
@@ -120,8 +112,7 @@ fn transfer_contention_gpu_resident_bursty_100k() {
     );
     let harness = TransferContentionHarness::new().unwrap();
     let report =
-        compare_transfer_contention_rich_with_harness(&harness, &scenario, RESIDENT_TICKS)
-            .unwrap();
+        compare_transfer_contention_rich_with_harness(&harness, &scenario, RESIDENT_TICKS).unwrap();
     assert_report_ok(&report);
 }
 
@@ -137,24 +128,15 @@ fn transfer_contention_gpu_resident_hotspot_100k() {
     );
     let harness = TransferContentionHarness::new().unwrap();
     let report =
-        compare_transfer_contention_rich_with_harness(&harness, &scenario, RESIDENT_TICKS)
-            .unwrap();
+        compare_transfer_contention_rich_with_harness(&harness, &scenario, RESIDENT_TICKS).unwrap();
     assert_report_ok(&report);
     write_transfer_contention_reports(&report).expect("write transfer contention reports");
 }
 
 #[test]
 fn transfer_contention_rejects_corrupted_record() {
-    let scenario = make_transfer_contention_scenario(
-        "transfer_corrupt",
-        16,
-        64,
-        1.0,
-        false,
-        false,
-    );
-    let (final_pools, final_queues, _, mut records) =
-        resolve_cpu_contention_n_ticks(&scenario, 1);
+    let scenario = make_transfer_contention_scenario("transfer_corrupt", 16, 64, 1.0, false, false);
+    let (final_pools, final_queues, _, mut records) = resolve_cpu_contention_n_ticks(&scenario, 1);
     assert!(conservation_check_contention_records(
         &scenario.pools,
         &final_pools,
@@ -177,16 +159,18 @@ fn transfer_contention_rejects_corrupted_record() {
         &scenario.queues,
         &records
     ));
-    assert!(replay_transfer_records_n_ticks(
-        &scenario.pools,
-        &scenario.queues,
-        &scenario.requests,
-        &records,
-        1,
-        scenario.requests.len(),
-    )
-    .is_err()
-        || !priority_allocation_check(&scenario, &scenario.pools, &records, 1));
+    assert!(
+        replay_transfer_records_n_ticks(
+            &scenario.pools,
+            &scenario.queues,
+            &scenario.requests,
+            &records,
+            1,
+            scenario.requests.len(),
+        )
+        .is_err()
+            || !priority_allocation_check(&scenario, &scenario.pools, &records, 1)
+    );
 }
 
 #[test]
@@ -202,8 +186,7 @@ fn transfer_contention_gpu_resident_hotspot_1m() {
     );
     let harness = TransferContentionHarness::new().unwrap();
     let report =
-        compare_transfer_contention_rich_with_harness(&harness, &scenario, RESIDENT_TICKS)
-            .unwrap();
+        compare_transfer_contention_rich_with_harness(&harness, &scenario, RESIDENT_TICKS).unwrap();
     assert_report_ok(&report);
 }
 

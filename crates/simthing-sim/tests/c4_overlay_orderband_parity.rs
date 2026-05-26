@@ -751,13 +751,13 @@ fn c4_overlay_attach_bumps_revision() {
 }
 
 #[test]
-fn c4_combined_threshold_intent_overlay_path_matches_legacy() {
+fn c4_combined_threshold_intent_overlay_path_replay_stable() {
     let Some(_ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
         return;
     };
 
-    fn run(use_accumulators: bool) -> (Vec<f32>, Vec<ThresholdEvent>) {
+    fn run() -> (Vec<f32>, Vec<ThresholdEvent>) {
         let mut fx = loyalty_fixture();
         let target = fx.world.children[0].id;
         let pid = fx.pid;
@@ -782,8 +782,8 @@ fn c4_combined_threshold_intent_overlay_path_matches_legacy() {
         project_to_coord(&fx, &mut coord);
 
         let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
-        proto.flags.use_accumulator_threshold_scan = use_accumulators;
-        proto.flags.use_accumulator_intent = use_accumulators;
+        proto.flags.use_accumulator_threshold_scan = true;
+        proto.flags.use_accumulator_intent = true;
         proto.flags.use_accumulator_overlay_add = true;
         proto.register_velocity_alert(VelocityAlertRegistration {
             sim_thing_id: target,
@@ -814,20 +814,20 @@ fn c4_combined_threshold_intent_overlay_path_matches_legacy() {
         (state.read_values(), sort_events(&tick.events))
     }
 
-    let (legacy_values, legacy_events) = run(false);
-    let (accumulator_values, accumulator_events) = run(true);
+    let (first_values, first_events) = run();
+    let (second_values, second_events) = run();
     assert_bits_eq(
-        "c4_combined_threshold_intent_overlay_path_matches_legacy_values",
-        &legacy_values,
-        &accumulator_values,
+        "c4_combined_threshold_intent_overlay_path_replay_stable_values",
+        &first_values,
+        &second_values,
     );
-    assert_eq!(legacy_events.len(), 1);
-    assert_eq!(legacy_events.len(), accumulator_events.len());
-    for (legacy, accumulator) in legacy_events.iter().zip(accumulator_events.iter()) {
-        assert_eq!(legacy.slot, accumulator.slot);
-        assert_eq!(legacy.col, accumulator.col);
-        assert_eq!(legacy.event_kind, accumulator.event_kind);
-        assert_eq!(legacy.value.to_bits(), accumulator.value.to_bits());
+    assert_eq!(first_events.len(), 1);
+    assert_eq!(first_events.len(), second_events.len());
+    for (first, second) in first_events.iter().zip(second_events.iter()) {
+        assert_eq!(first.slot, second.slot);
+        assert_eq!(first.col, second.col);
+        assert_eq!(first.event_kind, second.event_kind);
+        assert_eq!(first.value.to_bits(), second.value.to_bits());
     }
 }
 

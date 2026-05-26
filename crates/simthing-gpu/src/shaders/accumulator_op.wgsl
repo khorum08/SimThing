@@ -115,6 +115,7 @@ const SCALE_CONSTANT: u32 = 1u;
 const DIR_UPWARD: u32 = 0u;
 const DIR_DOWNWARD: u32 = 1u;
 const DIR_EITHER: u32 = 2u;
+const THRESH_BUF_OUTPUT: u32 = 1u;
 
 @group(0) @binding(0) var<storage, read> ops: array<AccumulatorOpGpu>;
 @group(0) @binding(1) var<storage, read_write> values: array<atomic<i32>>;
@@ -127,6 +128,8 @@ const DIR_EITHER: u32 = 2u;
 @group(0) @binding(8) var<storage, read> eml_nodes: array<EmlNodeGpu>;
 @group(0) @binding(9) var<storage, read> eml_tree_ranges: array<EmlTreeRangeGpu>;
 @group(0) @binding(10) var<storage, read> input_list: array<AccumulatorInputGpu>;
+@group(0) @binding(11) var<storage, read> previous_output_values: array<f32>;
+@group(0) @binding(12) var<storage, read> output_values: array<f32>;
 
 struct EmlNodeGpu {
     opcode: u32,
@@ -387,8 +390,9 @@ fn maybe_emit_threshold(op_idx: u32, op: AccumulatorOpGpu) {
     // op.consume == CONSUME_EMIT_EVENT. Read `curr` once and reuse for the
     // crossing test and the emission payload.
     let addr = linear_idx(op.source_slot, op.source_col);
-    let prev = previous_values[addr];
-    let curr = atomic_read_f32_at(addr);
+    let use_output = op.source_count == THRESH_BUF_OUTPUT;
+    let prev = select(previous_values[addr], previous_output_values[addr], use_output);
+    let curr = select(atomic_read_f32_at(addr), output_values[addr], use_output);
     let threshold = bitcast<f32>(op.gate_b);
     if (!threshold_crossed(prev, curr, threshold, op.gate_a)) {
         return;
@@ -708,8 +712,9 @@ fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
             maybe_emit_threshold(op_idx, op);
         } else if (op.consume == CONSUME_NONE && op.source_kind == SOURCE_SLOT_VALUE) {
             let addr = linear_idx(op.source_slot, op.source_col);
-            let prev = previous_values[addr];
-            let curr = atomic_read_f32_at(addr);
+            let use_output = op.source_count == THRESH_BUF_OUTPUT;
+            let prev = select(previous_values[addr], previous_output_values[addr], use_output);
+            let curr = select(atomic_read_f32_at(addr), output_values[addr], use_output);
             let threshold = bitcast<f32>(op.gate_b);
             if (threshold_crossed(prev, curr, threshold, op.gate_a)) {
                 var write_value = gather_value(op);

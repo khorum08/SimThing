@@ -6,11 +6,11 @@ pub fn compile_effect(spec: &EffectSpec) -> SpecResult<CompiledEffect> {
     let effect = match spec {
         EffectSpec::Remove { target } => CompiledEffect::Remove { target: *target },
         EffectSpec::ActivateOverlay { target, overlay_id } => CompiledEffect::ActivateOverlay {
-            target:     *target,
+            target: *target,
             overlay_id: *overlay_id,
         },
         EffectSpec::SuspendOverlay { target, overlay_id } => CompiledEffect::SuspendOverlay {
-            target:     *target,
+            target: *target,
             overlay_id: *overlay_id,
         },
     };

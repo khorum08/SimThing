@@ -51,7 +51,11 @@ impl AccumulatorInputListTable {
         &self.buffer
     }
 
-    pub fn ensure_capacity(&mut self, ctx: &GpuContext, required_entries: u32) -> Result<(), InputListUploadError> {
+    pub fn ensure_capacity(
+        &mut self,
+        ctx: &GpuContext,
+        required_entries: u32,
+    ) -> Result<(), InputListUploadError> {
         if required_entries <= self.capacity {
             return Ok(());
         }
@@ -114,11 +118,8 @@ impl AccumulatorInputListTable {
         }
 
         self.ensure_capacity(ctx, flat_len)?;
-        ctx.queue.write_buffer(
-            &self.buffer,
-            0,
-            bytemuck::cast_slice(&flat),
-        );
+        ctx.queue
+            .write_buffer(&self.buffer, 0, bytemuck::cast_slice(&flat));
         self.entries = flat;
         self.used = flat_len;
         self.generation = self.generation.wrapping_add(1);
@@ -157,7 +158,13 @@ mod tests {
         let mut table = AccumulatorInputListTable::new(&ctx, 16);
         let lists = vec![vec![input(0, 1, 5.0), input(0, 2, 3.0)]];
         let ranges = table.upload_lists(&ctx, &lists, 1).unwrap();
-        assert_eq!(ranges, vec![InputListRange { offset: 0, count: 2 }]);
+        assert_eq!(
+            ranges,
+            vec![InputListRange {
+                offset: 0,
+                count: 2
+            }]
+        );
         assert_eq!(table.used, 2);
         assert_eq!(table.upload_count, 1);
     }

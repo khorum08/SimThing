@@ -5,7 +5,7 @@ pub struct DisplayMeta {
     #[serde(default)]
     pub description: String,
     #[serde(default)]
-    pub icon:          Option<String>,
+    pub icon: Option<String>,
     #[serde(default)]
-    pub tags:          Vec<String>,
+    pub tags: Vec<String>,
 }

@@ -19,9 +19,9 @@ use crate::world_state::{IntentDelta, ThresholdEvent, ThresholdRegistration};
 use super::encode::{threshold_registrations_to_ops, EncodeError};
 use super::types::AccumulatorOpGpu;
 use super::types::{
-    AccumulatorSummaryParams, AccumulatorTickParams, EmissionRecord, EmissionRecordGpu,
-    EmlNodeGpu, EmlTreeRangeGpu, SlotSummary, SlotSummaryGpu, ThresholdEmission,
-    ThresholdEmissionGpu, DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+    AccumulatorSummaryParams, AccumulatorTickParams, EmissionRecord, EmissionRecordGpu, EmlNodeGpu,
+    EmlTreeRangeGpu, SlotSummary, SlotSummaryGpu, ThresholdEmission, ThresholdEmissionGpu,
+    DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 
 pub const WORKGROUP_SIZE: u32 = 64;
@@ -163,7 +163,7 @@ impl AccumulatorOpSession {
         let op_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("accumulator_op_buffer"),
             size: 4096,
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
@@ -252,6 +252,8 @@ impl AccumulatorOpSession {
                 storage_entry(8, true),
                 storage_entry(9, true),
                 storage_entry(10, true),
+                storage_entry(11, true),
+                storage_entry(12, true),
             ],
         });
 
@@ -434,7 +436,7 @@ impl AccumulatorOpSession {
             self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
                 label: Some("accumulator_op_buffer"),
                 size: byte_len.max(4096) as u64,
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             });
         }
@@ -452,14 +454,17 @@ impl AccumulatorOpSession {
         regs: &[ThresholdRegistration],
     ) -> Result<(), AccumulatorOpSessionError> {
         let (ops, event_kinds) = threshold_registrations_to_ops(regs)?;
-        let gpu_ops = AccumulatorOpGpu::encode_threshold_set(&ops)?;
+        let mut gpu_ops = AccumulatorOpGpu::encode_threshold_set(&ops)?;
+        for (op, reg) in gpu_ops.iter_mut().zip(regs) {
+            op.source_count = reg.buffer;
+        }
 
         let byte_len = gpu_ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
         if self.op_buffer.size() < byte_len as u64 {
             self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
                 label: Some("accumulator_op_buffer"),
                 size: byte_len.max(4096) as u64,
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             });
         }
@@ -469,6 +474,73 @@ impl AccumulatorOpSession {
         self.n_ops = gpu_ops.len() as u32;
         self.threshold_event_kinds = event_kinds;
         Ok(())
+    }
+
+    pub fn append_threshold_ops(
+        &mut self,
+        ctx: &GpuContext,
+        regs: &[ThresholdRegistration],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if regs.is_empty() {
+            return Ok(());
+        }
+        let (ops, event_kinds) = threshold_registrations_to_ops(regs)?;
+        let mut gpu_ops = AccumulatorOpGpu::encode_threshold_set(&ops)?;
+        for (op, reg) in gpu_ops.iter_mut().zip(regs) {
+            op.source_count = reg.buffer;
+        }
+        let op_size = std::mem::size_of::<AccumulatorOpGpu>();
+        let old_count = self.n_ops as u64;
+        let new_count = old_count + gpu_ops.len() as u64;
+        let needed_bytes = new_count * op_size as u64;
+
+        if self.op_buffer.size() < needed_bytes {
+            let new_buffer = ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("accumulator_op_buffer"),
+                size: needed_bytes.max(4096),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            if old_count > 0 {
+                let mut encoder = ctx
+                    .device
+                    .create_command_encoder(&CommandEncoderDescriptor {
+                        label: Some("append_threshold_ops:preserve"),
+                    });
+                encoder.copy_buffer_to_buffer(
+                    &self.op_buffer,
+                    0,
+                    &new_buffer,
+                    0,
+                    old_count * op_size as u64,
+                );
+                ctx.queue.submit(Some(encoder.finish()));
+            }
+            self.op_buffer = new_buffer;
+        }
+
+        ctx.queue.write_buffer(
+            &self.op_buffer,
+            old_count * op_size as u64,
+            bytemuck::cast_slice(&gpu_ops),
+        );
+        self.n_ops = new_count as u32;
+        self.threshold_event_kinds.extend(event_kinds);
+        Ok(())
+    }
+
+    pub fn ensure_threshold_emission_capacity(&mut self, ctx: &GpuContext, capacity: u32) {
+        if capacity <= self.threshold_emission_capacity {
+            return;
+        }
+        let len = (capacity as u64) * std::mem::size_of::<ThresholdEmissionGpu>() as u64;
+        self.threshold_emission_buffer = ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("accumulator_threshold_emissions"),
+            size: len.max(4),
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        self.threshold_emission_capacity = capacity;
     }
 
     /// Upload folded intent deltas as affine AccumulatorOp registrations (C-2).
@@ -489,7 +561,7 @@ impl AccumulatorOpSession {
             self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
                 label: Some("accumulator_op_buffer"),
                 size: byte_len.max(4096) as u64,
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             });
         }
@@ -517,7 +589,7 @@ impl AccumulatorOpSession {
             self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
                 label: Some("accumulator_op_buffer"),
                 size: byte_len.max(4096) as u64,
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             });
         }
@@ -554,7 +626,7 @@ impl AccumulatorOpSession {
             self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
                 label: Some("accumulator_op_buffer"),
                 size: byte_len.max(4096) as u64,
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             });
         }
@@ -686,12 +758,40 @@ impl AccumulatorOpSession {
         values: &Buffer,
         previous_values: &Buffer,
     ) {
+        self.encode_threshold_scan_with_outputs_into(
+            ctx,
+            encoder,
+            values,
+            previous_values,
+            previous_values,
+            previous_values,
+        );
+    }
+
+    pub fn encode_threshold_scan_with_outputs_into(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+        previous_values: &Buffer,
+        output_values: &Buffer,
+        previous_output_values: &Buffer,
+    ) {
         if self.n_ops == 0 {
             return;
         }
         self.last_pass_time_us = None;
 
-        let execute_bind_group = self.create_execute_bind_group(ctx, values, previous_values, None);
+        let execute_bind_group = self.create_execute_bind_group_with_threshold_buffers(
+            ctx,
+            values,
+            previous_values,
+            &self.tick_uniform,
+            None,
+            None,
+            previous_output_values,
+            output_values,
+        );
 
         let timestamp_writes =
             self.timestamp_query_set
@@ -1182,6 +1282,32 @@ impl AccumulatorOpSession {
     ) -> wgpu::BindGroup {
         let (eml_nodes, eml_ranges) = self.resolve_eml_buffers(eml);
         let input_list_buf = input_list.unwrap_or(&self.input_list_buffer);
+        self.create_execute_bind_group_with_threshold_buffers(
+            ctx,
+            values,
+            previous_values,
+            tick_uniform,
+            Some((eml_nodes, eml_ranges)),
+            Some(input_list_buf),
+            previous_values,
+            previous_values,
+        )
+    }
+
+    fn create_execute_bind_group_with_threshold_buffers(
+        &self,
+        ctx: &GpuContext,
+        values: &Buffer,
+        previous_values: &Buffer,
+        tick_uniform: &Buffer,
+        resolved_eml: Option<(&Buffer, &Buffer)>,
+        input_list: Option<&Buffer>,
+        previous_output_values: &Buffer,
+        output_values: &Buffer,
+    ) -> wgpu::BindGroup {
+        let (eml_nodes, eml_ranges) =
+            resolved_eml.unwrap_or_else(|| self.resolve_eml_buffers(None));
+        let input_list_buf = input_list.unwrap_or(&self.input_list_buffer);
         ctx.device.create_bind_group(&BindGroupDescriptor {
             label: Some("accumulator_execute_bg"),
             layout: &self.execute_layout,
@@ -1229,6 +1355,14 @@ impl AccumulatorOpSession {
                 BindGroupEntry {
                     binding: 10,
                     resource: input_list_buf.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 11,
+                    resource: previous_output_values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 12,
+                    resource: output_values.as_entire_binding(),
                 },
             ],
         })
@@ -1299,10 +1433,7 @@ impl AccumulatorOpSession {
     }
 
     /// Total emission record attempts this tick (may exceed capacity on overflow).
-    pub fn read_emission_count(
-        &self,
-        ctx: &GpuContext,
-    ) -> Result<u32, AccumulatorOpSessionError> {
+    pub fn read_emission_count(&self, ctx: &GpuContext) -> Result<u32, AccumulatorOpSessionError> {
         self.read_emission_count_inner(ctx)
     }
 
@@ -1379,7 +1510,10 @@ impl AccumulatorOpSession {
             .write_buffer(&self.threshold_emission_count, 0, &0u32.to_le_bytes());
     }
 
-    fn read_emission_count_inner(&self, ctx: &GpuContext) -> Result<u32, AccumulatorOpSessionError> {
+    fn read_emission_count_inner(
+        &self,
+        ctx: &GpuContext,
+    ) -> Result<u32, AccumulatorOpSessionError> {
         let bytes = self.read_buffer_bytes(ctx, &self.emission_count);
         Ok(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
     }
@@ -2227,7 +2361,9 @@ mod tests {
         };
         let (ctx, mut session) = gpu_session(4, 1);
 
-        let err = session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap_err();
+        let err = session
+            .upload_ops(&ctx, std::slice::from_ref(&op))
+            .unwrap_err();
         assert!(matches!(
             err,
             AccumulatorOpSessionError::Encode(EncodeError::EmlTreeNotUploaded { .. })

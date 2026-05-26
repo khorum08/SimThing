@@ -348,16 +348,23 @@ pub fn sync_gpu_buffers(
         );
     }
 
+    let pairs = build_governed_pairs(registry);
     if use_accumulator_velocity {
         state.ensure_velocity_accumulator();
-        let pairs = build_governed_pairs(registry);
         let plan = plan_velocity_integration(&pairs, state.n_slots);
         state
             .upload_velocity_ops_with_bands(&plan.ops, plan.n_bands)
             .expect("velocity op upload failed");
-    } else if let Some(runtime) = state.accumulator_runtime.as_mut() {
-        runtime.clear_velocity();
-        state.set_velocity_dispatch(false, 0);
+    } else {
+        if !pairs.is_empty() {
+            panic!(
+                "Legacy velocity_integration.wgsl was deleted in S-5; AccumulatorOp velocity must remain enabled when governed velocity pairs exist."
+            );
+        }
+        if let Some(runtime) = state.accumulator_runtime.as_mut() {
+            runtime.clear_velocity();
+            state.set_velocity_dispatch(false, 0);
+        }
     }
 
     if use_accumulator_eml {

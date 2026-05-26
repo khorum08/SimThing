@@ -1,9 +1,9 @@
 use simthing_core::{DimensionRegistry, OverlayId, SimThingId};
 use simthing_feeder::BoundaryRequest;
 use simthing_spec::{
-    CooldownSpec, CompiledEffect, CompiledTrigger, EventKey, EventPriority,
-    ScriptedEventBoundaryContext, ScriptedEventBoundaryHandler, ScriptedEventDiagnostic,
-    ScriptedEventDefinition, ScopeRef, ScriptPredicate,
+    CompiledEffect, CompiledTrigger, CooldownSpec, EventKey, EventPriority, ScopeRef,
+    ScriptPredicate, ScriptedEventBoundaryContext, ScriptedEventBoundaryHandler,
+    ScriptedEventDefinition, ScriptedEventDiagnostic,
 };
 use std::collections::HashMap;
 
@@ -21,8 +21,8 @@ fn predicate_def(
     priority: EventPriority,
 ) -> ScriptedEventDefinition {
     ScriptedEventDefinition {
-        id:       EventKey::new(id),
-        trigger:  CompiledTrigger::Predicate(predicate),
+        id: EventKey::new(id),
+        trigger: CompiledTrigger::Predicate(predicate),
         effects,
         cooldown,
         priority,
@@ -30,26 +30,32 @@ fn predicate_def(
 }
 
 fn run_tick(
-    registry:      &DimensionRegistry,
-    definitions:   &[ScriptedEventDefinition],
-    shadow:        &[f32],
-    n_dims:        usize,
-    current_slot:  u32,
+    registry: &DimensionRegistry,
+    definitions: &[ScriptedEventDefinition],
+    shadow: &[f32],
+    n_dims: usize,
+    current_slot: u32,
     slot_to_thing: &HashMap<u32, SimThingId>,
-    cooldowns:     &mut HashMap<EventKey, u32>,
+    cooldowns: &mut HashMap<EventKey, u32>,
 ) -> (Vec<BoundaryRequest>, Vec<ScriptedEventDiagnostic>) {
-    let handler = ScriptedEventBoundaryHandler { registry, definitions };
-    let mut requests    = Vec::new();
+    let handler = ScriptedEventBoundaryHandler {
+        registry,
+        definitions,
+    };
+    let mut requests = Vec::new();
     let mut diagnostics = Vec::new();
-    handler.handle_tick(&[], &mut ScriptedEventBoundaryContext {
-        n_dims,
-        shadow,
-        current_slot,
-        slot_to_thing,
-        cooldowns,
-        requests:    &mut requests,
-        diagnostics: &mut diagnostics,
-    });
+    handler.handle_tick(
+        &[],
+        &mut ScriptedEventBoundaryContext {
+            n_dims,
+            shadow,
+            current_slot,
+            slot_to_thing,
+            cooldowns,
+            requests: &mut requests,
+            diagnostics: &mut diagnostics,
+        },
+    );
     (requests, diagnostics)
 }
 
@@ -59,7 +65,7 @@ fn run_tick(
 /// `BoundaryRequest::Remove` when the target slot is in `slot_to_thing`.
 #[test]
 fn predicate_true_event_emits_remove_request() {
-    let registry  = empty_registry();
+    let registry = empty_registry();
     let target_id = SimThingId::new();
     let mut slot_to_thing = HashMap::new();
     slot_to_thing.insert(0u32, target_id);
@@ -67,15 +73,16 @@ fn predicate_true_event_emits_remove_request() {
     let defs = vec![predicate_def(
         "remove_event",
         ScriptPredicate::True,
-        vec![CompiledEffect::Remove { target: ScopeRef::Current }],
+        vec![CompiledEffect::Remove {
+            target: ScopeRef::Current,
+        }],
         None,
         EventPriority::Normal,
     )];
 
     let mut cooldowns = HashMap::new();
-    let (requests, diagnostics) = run_tick(
-        &registry, &defs, &[], 0, 0, &slot_to_thing, &mut cooldowns,
-    );
+    let (requests, diagnostics) =
+        run_tick(&registry, &defs, &[], 0, 0, &slot_to_thing, &mut cooldowns);
 
     assert!(diagnostics.is_empty(), "no diagnostics expected");
     assert_eq!(requests.len(), 1);
@@ -95,15 +102,16 @@ fn predicate_false_event_emits_no_requests() {
     let defs = vec![predicate_def(
         "false_event",
         ScriptPredicate::False,
-        vec![CompiledEffect::Remove { target: ScopeRef::Current }],
+        vec![CompiledEffect::Remove {
+            target: ScopeRef::Current,
+        }],
         None,
         EventPriority::Normal,
     )];
 
     let mut cooldowns = HashMap::new();
-    let (requests, diagnostics) = run_tick(
-        &registry, &defs, &[], 0, 0, &slot_to_thing, &mut cooldowns,
-    );
+    let (requests, diagnostics) =
+        run_tick(&registry, &defs, &[], 0, 0, &slot_to_thing, &mut cooldowns);
 
     assert!(diagnostics.is_empty());
     assert!(requests.is_empty());
@@ -122,16 +130,16 @@ fn current_scope_resolves_to_current_slot() {
     let defs = vec![predicate_def(
         "current_scope_event",
         ScriptPredicate::True,
-        vec![CompiledEffect::Remove { target: ScopeRef::Current }],
+        vec![CompiledEffect::Remove {
+            target: ScopeRef::Current,
+        }],
         None,
         EventPriority::Normal,
     )];
 
     let mut cooldowns = HashMap::new();
     // current_slot = 2 → should target id_slot2, not id_slot5
-    let (requests, _) = run_tick(
-        &registry, &defs, &[], 0, 2, &slot_to_thing, &mut cooldowns,
-    );
+    let (requests, _) = run_tick(&registry, &defs, &[], 0, 2, &slot_to_thing, &mut cooldowns);
 
     assert_eq!(requests.len(), 1);
     match &requests[0] {
@@ -144,9 +152,9 @@ fn current_scope_resolves_to_current_slot() {
 /// in `slot_to_thing`, regardless of `current_slot`.
 #[test]
 fn slot_scope_resolves_to_named_slot() {
-    let registry  = empty_registry();
-    let id_slot0  = SimThingId::new();
-    let id_slot7  = SimThingId::new();
+    let registry = empty_registry();
+    let id_slot0 = SimThingId::new();
+    let id_slot7 = SimThingId::new();
     let mut slot_to_thing = HashMap::new();
     slot_to_thing.insert(0u32, id_slot0);
     slot_to_thing.insert(7u32, id_slot7);
@@ -155,15 +163,15 @@ fn slot_scope_resolves_to_named_slot() {
         "slot_scope_event",
         ScriptPredicate::True,
         // Effect explicitly names slot 7, not current
-        vec![CompiledEffect::Remove { target: ScopeRef::Slot(7) }],
+        vec![CompiledEffect::Remove {
+            target: ScopeRef::Slot(7),
+        }],
         None,
         EventPriority::Normal,
     )];
 
     let mut cooldowns = HashMap::new();
-    let (requests, _) = run_tick(
-        &registry, &defs, &[], 0, 0, &slot_to_thing, &mut cooldowns,
-    );
+    let (requests, _) = run_tick(&registry, &defs, &[], 0, 0, &slot_to_thing, &mut cooldowns);
 
     assert_eq!(requests.len(), 1);
     match &requests[0] {
@@ -184,19 +192,26 @@ fn missing_slot_target_produces_diagnostic_not_panic() {
     let defs = vec![predicate_def(
         "missing_target_event",
         ScriptPredicate::True,
-        vec![CompiledEffect::Remove { target: ScopeRef::Slot(99) }],
+        vec![CompiledEffect::Remove {
+            target: ScopeRef::Slot(99),
+        }],
         None,
         EventPriority::Normal,
     )];
 
     let mut cooldowns = HashMap::new();
-    let (requests, diagnostics) = run_tick(
-        &registry, &defs, &[], 0, 0, &slot_to_thing, &mut cooldowns,
-    );
+    let (requests, diagnostics) =
+        run_tick(&registry, &defs, &[], 0, 0, &slot_to_thing, &mut cooldowns);
 
-    assert!(requests.is_empty(), "no request should be emitted for a missing target");
+    assert!(
+        requests.is_empty(),
+        "no request should be emitted for a missing target"
+    );
     assert_eq!(diagnostics.len(), 1);
-    assert_eq!(diagnostics[0].event_id, EventKey::new("missing_target_event"));
+    assert_eq!(
+        diagnostics[0].event_id,
+        EventKey::new("missing_target_event")
+    );
     matches!(
         diagnostics[0].kind,
         simthing_spec::ScriptedEventDiagnosticKind::UnresolvedEffectTarget { slot: 99 }
@@ -206,10 +221,10 @@ fn missing_slot_target_produces_diagnostic_not_panic() {
 /// AT-6: Multiple effects on a single event are emitted in declaration order.
 #[test]
 fn effect_order_is_preserved() {
-    let registry    = empty_registry();
-    let id_a        = SimThingId::new();
-    let id_b        = SimThingId::new();
-    let overlay_id  = OverlayId::new();
+    let registry = empty_registry();
+    let id_a = SimThingId::new();
+    let id_b = SimThingId::new();
+    let overlay_id = OverlayId::new();
     let mut slot_to_thing = HashMap::new();
     slot_to_thing.insert(1u32, id_a);
     slot_to_thing.insert(2u32, id_b);
@@ -218,18 +233,25 @@ fn effect_order_is_preserved() {
         "ordered_effects_event",
         ScriptPredicate::True,
         vec![
-            CompiledEffect::ActivateOverlay { target: ScopeRef::Slot(1), overlay_id },
-            CompiledEffect::SuspendOverlay  { target: ScopeRef::Slot(2), overlay_id },
-            CompiledEffect::Remove          { target: ScopeRef::Slot(1) },
+            CompiledEffect::ActivateOverlay {
+                target: ScopeRef::Slot(1),
+                overlay_id,
+            },
+            CompiledEffect::SuspendOverlay {
+                target: ScopeRef::Slot(2),
+                overlay_id,
+            },
+            CompiledEffect::Remove {
+                target: ScopeRef::Slot(1),
+            },
         ],
         None,
         EventPriority::Normal,
     )];
 
     let mut cooldowns = HashMap::new();
-    let (requests, diagnostics) = run_tick(
-        &registry, &defs, &[], 0, 0, &slot_to_thing, &mut cooldowns,
-    );
+    let (requests, diagnostics) =
+        run_tick(&registry, &defs, &[], 0, 0, &slot_to_thing, &mut cooldowns);
 
     assert!(diagnostics.is_empty());
     assert_eq!(requests.len(), 3);
@@ -261,31 +283,48 @@ fn cooldown_suppresses_repeat_firing_until_elapsed() {
     let defs = vec![predicate_def(
         "cooldown_event",
         ScriptPredicate::True,
-        vec![CompiledEffect::Remove { target: ScopeRef::Current }],
+        vec![CompiledEffect::Remove {
+            target: ScopeRef::Current,
+        }],
         Some(CooldownSpec { ticks: 2 }),
         EventPriority::Normal,
     )];
 
-    let registry_ref  = &registry;
-    let defs_ref      = defs.as_slice();
-    let shadow        = &[];
+    let registry_ref = &registry;
+    let defs_ref = defs.as_slice();
+    let shadow = &[];
     let slot_to_thing = &slot_to_thing;
     let mut cooldowns = HashMap::new();
 
     let tick = |cooldowns: &mut HashMap<EventKey, u32>| -> usize {
-        let handler = ScriptedEventBoundaryHandler { registry: registry_ref, definitions: defs_ref };
-        let mut requests    = Vec::new();
+        let handler = ScriptedEventBoundaryHandler {
+            registry: registry_ref,
+            definitions: defs_ref,
+        };
+        let mut requests = Vec::new();
         let mut diagnostics = Vec::new();
-        handler.handle_tick(&[], &mut ScriptedEventBoundaryContext {
-            n_dims: 0, shadow, current_slot: 0, slot_to_thing, cooldowns,
-            requests: &mut requests, diagnostics: &mut diagnostics,
-        });
+        handler.handle_tick(
+            &[],
+            &mut ScriptedEventBoundaryContext {
+                n_dims: 0,
+                shadow,
+                current_slot: 0,
+                slot_to_thing,
+                cooldowns,
+                requests: &mut requests,
+                diagnostics: &mut diagnostics,
+            },
+        );
         requests.len()
     };
 
     assert_eq!(tick(&mut cooldowns), 1, "tick 1: should fire");
     assert_eq!(tick(&mut cooldowns), 0, "tick 2: on cooldown (1 remaining)");
-    assert_eq!(tick(&mut cooldowns), 1, "tick 3: cooldown expired, should fire again");
+    assert_eq!(
+        tick(&mut cooldowns),
+        1,
+        "tick 3: cooldown expired, should fire again"
+    );
     assert_eq!(tick(&mut cooldowns), 0, "tick 4: on cooldown again");
 }
 
@@ -294,8 +333,8 @@ fn cooldown_suppresses_repeat_firing_until_elapsed() {
 /// low-priority definition was registered first.
 #[test]
 fn priority_ordering_critical_fires_before_low() {
-    let registry  = empty_registry();
-    let id_low    = SimThingId::new();
+    let registry = empty_registry();
+    let id_low = SimThingId::new();
     let id_critical = SimThingId::new();
     let mut slot_to_thing = HashMap::new();
     slot_to_thing.insert(0u32, id_low);
@@ -306,35 +345,41 @@ fn priority_ordering_critical_fires_before_low() {
         predicate_def(
             "low_event",
             ScriptPredicate::True,
-            vec![CompiledEffect::Remove { target: ScopeRef::Slot(0) }],
+            vec![CompiledEffect::Remove {
+                target: ScopeRef::Slot(0),
+            }],
             None,
             EventPriority::Low,
         ),
         predicate_def(
             "critical_event",
             ScriptPredicate::True,
-            vec![CompiledEffect::Remove { target: ScopeRef::Slot(1) }],
+            vec![CompiledEffect::Remove {
+                target: ScopeRef::Slot(1),
+            }],
             None,
             EventPriority::Critical,
         ),
     ];
 
     let mut cooldowns = HashMap::new();
-    let (requests, diagnostics) = run_tick(
-        &registry, &defs, &[], 0, 0, &slot_to_thing, &mut cooldowns,
-    );
+    let (requests, diagnostics) =
+        run_tick(&registry, &defs, &[], 0, 0, &slot_to_thing, &mut cooldowns);
 
     assert!(diagnostics.is_empty());
     assert_eq!(requests.len(), 2);
     // Critical's request (targeting id_critical / slot 1) must come first.
     match &requests[0] {
-        BoundaryRequest::Remove { target } => assert_eq!(*target, id_critical,
-            "first request should be from Critical event"),
+        BoundaryRequest::Remove { target } => assert_eq!(
+            *target, id_critical,
+            "first request should be from Critical event"
+        ),
         other => panic!("expected Remove, got {other:?}"),
     }
     match &requests[1] {
-        BoundaryRequest::Remove { target } => assert_eq!(*target, id_low,
-            "second request should be from Low event"),
+        BoundaryRequest::Remove { target } => {
+            assert_eq!(*target, id_low, "second request should be from Low event")
+        }
         other => panic!("expected Remove, got {other:?}"),
     }
 }

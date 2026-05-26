@@ -647,12 +647,12 @@ fn player_intent_overlay_arrives_attached_at_boundary() {
 
     // ── Player submits an overlay before the boundary tick ────────────
     let intent_overlay = Overlay {
-        id:        OverlayId::new(),
-        kind:      OverlayKind::Policy,
-        source:    OverlaySource::Player,
-        affects:   vec![cohort_id],
+        id: OverlayId::new(),
+        kind: OverlayKind::Policy,
+        source: OverlaySource::Player,
+        affects: vec![cohort_id],
         transform: PropertyTransformDelta {
-            property_id:      pid,
+            property_id: pid,
             sub_field_deltas: vec![(SubFieldRole::Velocity, TransformOp::Add(-0.1))],
         },
         lifecycle: OverlayLifecycle::Permanent,
@@ -670,7 +670,10 @@ fn player_intent_overlay_arrives_attached_at_boundary() {
         &mut state,
         1.0,
     );
-    assert!(tick_out.boundary_reached, "expected boundary on tick 1 of 1");
+    assert!(
+        tick_out.boundary_reached,
+        "expected boundary on tick 1 of 1"
+    );
 
     // ── Boundary: player intent should be attached to cohort ──────────
     let outcome = proto.execute(tick_out.events, &mut patcher, &mut coord, &mut state, 1);
@@ -724,12 +727,12 @@ fn player_intent_mid_day_effect_lands_on_gpu_before_boundary() {
 
     // ── Submit player intent: Set Amount = 0.6 ────────────────────────
     let intent_overlay = Overlay {
-        id:        OverlayId::new(),
-        kind:      OverlayKind::Policy,
-        source:    OverlaySource::Player,
-        affects:   vec![cohort_id],
+        id: OverlayId::new(),
+        kind: OverlayKind::Policy,
+        source: OverlaySource::Player,
+        affects: vec![cohort_id],
         transform: PropertyTransformDelta {
-            property_id:      pid,
+            property_id: pid,
             sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.6))],
         },
         lifecycle: OverlayLifecycle::Permanent,
@@ -739,9 +742,18 @@ fn player_intent_mid_day_effect_lands_on_gpu_before_boundary() {
 
     // ── Tick 1: mid-day, boundary NOT yet reached ─────────────────────
     let tick1 = coord.tick(
-        &rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0,
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        1.0,
     );
-    assert!(!tick1.boundary_reached, "tick 1 of 2 must not signal boundary");
+    assert!(
+        !tick1.boundary_reached,
+        "tick 1 of 2 must not signal boundary"
+    );
 
     // The transform was applied to the shadow during drain and uploaded to
     // the GPU as a dirty row. Read back and confirm Amount = 0.6.
@@ -761,7 +773,13 @@ fn player_intent_mid_day_effect_lands_on_gpu_before_boundary() {
 
     // ── Tick 2: boundary reached ──────────────────────────────────────
     let tick2 = coord.tick(
-        &rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0,
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        1.0,
     );
     assert!(tick2.boundary_reached, "tick 2 of 2 must signal boundary");
 
@@ -819,7 +837,13 @@ fn player_intent_add_mid_day_uses_integrated_gpu_value() {
     proto.initial_gpu_sync(&coord, &mut state);
 
     let tick1 = coord.tick(
-        &rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0,
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        1.0,
     );
     assert!(!tick1.boundary_reached);
 
@@ -833,12 +857,12 @@ fn player_intent_add_mid_day_uses_integrated_gpu_value() {
     tx.submit_player_intent(
         cohort_id,
         Overlay {
-            id:        OverlayId::new(),
-            kind:      OverlayKind::Policy,
-            source:    OverlaySource::Player,
-            affects:   vec![cohort_id],
+            id: OverlayId::new(),
+            kind: OverlayKind::Policy,
+            source: OverlaySource::Player,
+            affects: vec![cohort_id],
             transform: PropertyTransformDelta {
-                property_id:      pid,
+                property_id: pid,
                 sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(-0.05))],
             },
             lifecycle: OverlayLifecycle::Permanent,
@@ -847,7 +871,13 @@ fn player_intent_add_mid_day_uses_integrated_gpu_value() {
     .unwrap();
 
     let tick2 = coord.tick(
-        &rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0,
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        1.0,
     );
     assert_eq!(tick2.patcher_stats.unsafe_rmw_skipped, 0);
 
@@ -905,12 +935,21 @@ fn observe_live_reports_integrated_gpu_values_mid_day() {
     proto.initial_gpu_sync(&coord, &mut state);
 
     let tick = coord.tick(
-        &rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0,
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        1.0,
     );
     assert!(!tick.boundary_reached);
 
     let gpu_amount = state.read_values()[base + amount_off];
-    assert!((gpu_amount - 0.29).abs() < 0.001, "expected integrated ~0.29, got {gpu_amount}");
+    assert!(
+        (gpu_amount - 0.29).abs() < 0.001,
+        "expected integrated ~0.29, got {gpu_amount}"
+    );
 
     let shadow_report = proto.observe(&coord, cohort_id).expect("observe");
     let shadow_amount = shadow_report.properties[0]
@@ -925,7 +964,9 @@ fn observe_live_reports_integrated_gpu_values_mid_day() {
         "shadow observe should still show pre-integration seed"
     );
 
-    let live_report = proto.observe_live(&coord, &state, cohort_id).expect("observe_live");
+    let live_report = proto
+        .observe_live(&coord, &state, cohort_id)
+        .expect("observe_live");
     let live_amount = live_report.properties[0]
         .sub_fields
         .iter()
@@ -984,12 +1025,12 @@ fn ai_intent_mid_day_effect_and_boundary_attach() {
 
     // ── AI submits intent: Set Amount = 0.8, urgency = 0.95 ──────────
     let ai_overlay = Overlay {
-        id:        OverlayId::new(),
-        kind:      OverlayKind::Policy,
-        source:    OverlaySource::Ai,
-        affects:   vec![cohort_id],
+        id: OverlayId::new(),
+        kind: OverlayKind::Policy,
+        source: OverlaySource::Ai,
+        affects: vec![cohort_id],
         transform: PropertyTransformDelta {
-            property_id:      pid,
+            property_id: pid,
             sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.8))],
         },
         lifecycle: OverlayLifecycle::Permanent,
@@ -998,7 +1039,15 @@ fn ai_intent_mid_day_effect_and_boundary_attach() {
     ai_tx.submit_ai_intent(cohort_id, ai_overlay, 0.95).unwrap();
 
     // ── Tick 1: mid-day ───────────────────────────────────────────────
-    let tick1 = coord.tick(&rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0);
+    let tick1 = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        1.0,
+    );
     assert!(!tick1.boundary_reached);
 
     // Transform visible on GPU already.
@@ -1010,10 +1059,22 @@ fn ai_intent_mid_day_effect_and_boundary_attach() {
         "AI intent Set(0.8) must reach GPU within the same tick"
     );
     // Not yet in tree.
-    assert!(find_node(&proto.root, cohort_id).unwrap().overlays.iter().all(|o| o.id != overlay_id));
+    assert!(find_node(&proto.root, cohort_id)
+        .unwrap()
+        .overlays
+        .iter()
+        .all(|o| o.id != overlay_id));
 
     // ── Tick 2: boundary ─────────────────────────────────────────────
-    let tick2 = coord.tick(&rx, &mut patcher, &proto.registry, &proto.allocator, &pipelines, &mut state, 1.0);
+    let tick2 = coord.tick(
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        1.0,
+    );
     assert!(tick2.boundary_reached);
 
     let outcome = proto.execute(tick2.events, &mut patcher, &mut coord, &mut state, 1);
@@ -1022,7 +1083,11 @@ fn ai_intent_mid_day_effect_and_boundary_attach() {
 
     // Overlay structurally attached.
     assert!(
-        find_node(&proto.root, cohort_id).unwrap().overlays.iter().any(|o| o.id == overlay_id),
+        find_node(&proto.root, cohort_id)
+            .unwrap()
+            .overlays
+            .iter()
+            .any(|o| o.id == overlay_id),
         "AI intent overlay must be in tree after boundary"
     );
 }
@@ -1131,7 +1196,7 @@ fn aggregate_alert_registration_surfaces_at_boundary() {
     assert_eq!(alert.sim_thing_id, loc_id);
     assert_eq!(alert.property_id, pid);
     assert_eq!(alert.sub_field, SubFieldRole::Amount);
-    assert_eq!(alert.value.to_bits(), 0.70_f32.to_bits()    );
+    assert_eq!(alert.value.to_bits(), 0.70_f32.to_bits());
 }
 
 /// Recurring rebellions are intentional: after a first fission, raising Amount
@@ -1327,7 +1392,10 @@ fn aggregate_alert_does_not_refire_while_aggregate_stays_above_threshold() {
         0.0,
     );
     assert!(
-        tick2.events.iter().any(|e| e.value.to_bits() == 0.70_f32.to_bits()),
+        tick2
+            .events
+            .iter()
+            .any(|e| e.value.to_bits() == 0.70_f32.to_bits()),
         "expected initial crossing at loc mean 0.70"
     );
 
@@ -1416,8 +1484,10 @@ fn remove_after_fission_prunes_lineage() {
     assert_eq!(proto.fission_lineage().len(), 1);
     assert_eq!(proto.fission_lineage()[0].child_id, child_id);
 
-    tx.send(FeederWork::Boundary(BoundaryRequest::Remove { target: child_id }))
-        .unwrap();
+    tx.send(FeederWork::Boundary(BoundaryRequest::Remove {
+        target: child_id,
+    }))
+    .unwrap();
 
     let _ = coord.tick(
         &rx,
@@ -1582,8 +1652,8 @@ fn fission_then_fusion_applies_scar_and_tombstones_child() {
     let pid = reg.id_of("core", "loyalty").unwrap();
     let layout = reg.property(pid).layout.clone();
     let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
-    let vel_off    = layout.offset_of(&SubFieldRole::Velocity).unwrap();
-    let int_off    = layout.offset_of(&SubFieldRole::Intensity).unwrap();
+    let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+    let int_off = layout.offset_of(&SubFieldRole::Intensity).unwrap();
     let n_dims = reg.total_columns as u32;
 
     const N_SLOTS: u32 = 16;
@@ -1596,7 +1666,7 @@ fn fission_then_fusion_applies_scar_and_tombstones_child() {
     let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
     let base = cohort_slot * n_dims as usize;
     coord.shadow[base + amount_off] = 0.5;
-    coord.shadow[base + vel_off]    = -0.21;
+    coord.shadow[base + vel_off] = -0.21;
 
     let mut proto = BoundaryProtocol::new(world, reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
@@ -1606,8 +1676,13 @@ fn fission_then_fusion_applies_scar_and_tombstones_child() {
     let mut max_ticks = 8;
     while events_fired.is_empty() && max_ticks > 0 {
         let out = coord.tick(
-            &rx, &mut patcher, &proto.registry, &proto.allocator,
-            &pipelines, &mut state, 0.5,
+            &rx,
+            &mut patcher,
+            &proto.registry,
+            &proto.allocator,
+            &pipelines,
+            &mut state,
+            0.5,
         );
         if !out.events.is_empty() {
             events_fired = out.events;
@@ -1621,11 +1696,15 @@ fn fission_then_fusion_applies_scar_and_tombstones_child() {
     let _ = proto.execute(events_fired, &mut patcher, &mut coord, &mut state, 1);
     let cohort = find_node(&proto.root, cohort_id).expect("cohort still in tree");
     assert_eq!(cohort.children.len(), 1, "fission produced one child");
-    let child_id   = cohort.children[0].id;
+    let child_id = cohort.children[0].id;
     let child_slot = proto.allocator.slot_of(child_id).unwrap() as usize;
-    assert_eq!(proto.fission_lineage().len(), 1, "lineage record after fission");
+    assert_eq!(
+        proto.fission_lineage().len(),
+        1,
+        "lineage record after fission"
+    );
     assert_eq!(proto.fission_lineage()[0].parent_id, cohort_id);
-    assert_eq!(proto.fission_lineage()[0].child_id,  child_id);
+    assert_eq!(proto.fission_lineage()[0].child_id, child_id);
 
     // ── Patch child velocity positive so Pass 2 builds intensity ─────
     // Default IntensityBehavior: build_coefficient = 2.0, velocity_threshold
@@ -1633,26 +1712,35 @@ fn fission_then_fusion_applies_scar_and_tombstones_child() {
     // 0.85 in five ticks.
     tx.send(FeederWork::Patch(PatchTransform {
         target: child_id,
-        delta:  PropertyTransformDelta {
-            property_id:      pid,
+        delta: PropertyTransformDelta {
+            property_id: pid,
             sub_field_deltas: vec![(SubFieldRole::Velocity, TransformOp::Set(0.21))],
         },
-    })).unwrap();
+    }))
+    .unwrap();
 
     // ── Drive until FusionTrigger fires on the child ─────────────────
     let mut fusion_events = Vec::new();
     let mut max_ticks = 12;
     while fusion_events.is_empty() && max_ticks > 0 {
         let out = coord.tick(
-            &rx, &mut patcher, &proto.registry, &proto.allocator,
-            &pipelines, &mut state, 0.5,
+            &rx,
+            &mut patcher,
+            &proto.registry,
+            &proto.allocator,
+            &pipelines,
+            &mut state,
+            0.5,
         );
         // Filter to events that resolve to FusionTrigger semantically — the
         // parent may still have FissionTrigger registrations live, though we
         // don't expect them to fire (amount has bottomed out).
         for ev in out.events {
             let resolved = proto.threshold_registry().get(ev.event_kind);
-            if matches!(resolved, Some(simthing_sim::ThresholdSemantic::FusionTrigger { .. })) {
+            if matches!(
+                resolved,
+                Some(simthing_sim::ThresholdSemantic::FusionTrigger { .. })
+            ) {
                 fusion_events.push(ev);
             }
         }
@@ -1672,9 +1760,19 @@ fn fission_then_fusion_applies_scar_and_tombstones_child() {
 
     // Child gone.
     let cohort = find_node(&proto.root, cohort_id).expect("cohort survives");
-    assert!(cohort.children.is_empty(), "child removed from tree on fusion");
-    assert!(proto.allocator.slot_of(child_id).is_none(), "child slot tombstoned");
-    assert_eq!(proto.fission_lineage().len(), 0, "lineage record pruned on fusion");
+    assert!(
+        cohort.children.is_empty(),
+        "child removed from tree on fusion"
+    );
+    assert!(
+        proto.allocator.slot_of(child_id).is_none(),
+        "child slot tombstoned"
+    );
+    assert_eq!(
+        proto.fission_lineage().len(),
+        0,
+        "lineage record pruned on fusion"
+    );
 
     // Scar applied. boundary.rs's `execute` re-reads GPU values into shadow at
     // the start of each boundary, then fusion's `apply_fusion_scar` multiplied
@@ -1741,28 +1839,38 @@ fn replay_round_trip_reconstructs_overlay_and_dimension_changes() {
     // ── Day 1: AttachOverlay ─────────────────────────────────────────
     let pid = proto.registry.id_of("core", "loyalty").unwrap();
     let overlay = Overlay {
-        id:        OverlayId::new(),
-        kind:      OverlayKind::Policy,
-        source:    OverlaySource::Player,
-        affects:   Vec::new(),
+        id: OverlayId::new(),
+        kind: OverlayKind::Policy,
+        source: OverlaySource::Player,
+        affects: Vec::new(),
         transform: PropertyTransformDelta {
-            property_id:      pid,
+            property_id: pid,
             sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.42))],
         },
         lifecycle: OverlayLifecycle::Permanent,
     };
     let attached_overlay_id = overlay.id;
     tx.send(FeederWork::Boundary(BoundaryRequest::AttachOverlay {
-        target:  cohort_id,
+        target: cohort_id,
         overlay,
-    })).unwrap();
+    }))
+    .unwrap();
 
     let _ = coord.tick(
-        &rx, &mut patcher, &proto.registry, &proto.allocator,
-        &pipelines, &mut state, 0.0,
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
     );
     let _ = proto.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 1);
-    let frame_1 = ReplayFrame { day: 1, entries: proto.take_delta_log(), ..Default::default() };
+    let frame_1 = ReplayFrame {
+        day: 1,
+        entries: proto.take_delta_log(),
+        ..Default::default()
+    };
 
     // Sanity: the frame should carry the OverlayAttached entry.
     assert!(frame_1.entries.iter().any(|e| matches!(
@@ -1776,14 +1884,25 @@ fn replay_round_trip_reconstructs_overlay_and_dimension_changes() {
         .registry
         .register(SimProperty::simple("core", "food_security", 0));
     proto.registry.tombstone(food_id);
-    tx.send(FeederWork::Boundary(BoundaryRequest::AddDimension { property: food_id }))
-        .unwrap();
+    tx.send(FeederWork::Boundary(BoundaryRequest::AddDimension {
+        property: food_id,
+    }))
+    .unwrap();
     let _ = coord.tick(
-        &rx, &mut patcher, &proto.registry, &proto.allocator,
-        &pipelines, &mut state, 0.0,
+        &rx,
+        &mut patcher,
+        &proto.registry,
+        &proto.allocator,
+        &pipelines,
+        &mut state,
+        0.0,
     );
     let _ = proto.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 2);
-    let frame_2 = ReplayFrame { day: 2, entries: proto.take_delta_log(), ..Default::default() };
+    let frame_2 = ReplayFrame {
+        day: 2,
+        entries: proto.take_delta_log(),
+        ..Default::default()
+    };
 
     assert!(frame_2.entries.iter().any(|e| matches!(
         e,
@@ -1800,7 +1919,10 @@ fn replay_round_trip_reconstructs_overlay_and_dimension_changes() {
         writer.write_frame(&frame_2).unwrap();
         writer.flush().unwrap();
     }
-    assert!(!buf.is_empty(), "LDJSON buffer should contain at least 3 lines");
+    assert!(
+        !buf.is_empty(),
+        "LDJSON buffer should contain at least 3 lines"
+    );
     assert_eq!(buf.iter().filter(|&&b| b == b'\n').count(), 3);
 
     // ── Read back + drive ────────────────────────────────────────────
@@ -1815,8 +1937,7 @@ fn replay_round_trip_reconstructs_overlay_and_dimension_changes() {
 
     // ── Structural reproduction assertions ───────────────────────────
     // The cohort in the driver's tree must carry the attached overlay.
-    let cohort = find_node(&driver.root, cohort_id)
-        .expect("cohort survives into replay");
+    let cohort = find_node(&driver.root, cohort_id).expect("cohort survives into replay");
     assert_eq!(cohort.overlays.len(), 1, "overlay re-attached on replay");
     assert_eq!(cohort.overlays[0].id, attached_overlay_id);
 
@@ -2433,7 +2554,10 @@ fn activated_suspended_overlay_appears_in_gpu_delta_and_affects_values() {
         &mut state,
         0.0, // dt=0: Pass 1/2 are no-ops; only Pass 3 could move the value
     );
-    assert!(tick1.boundary_reached, "ticks_per_day=1 should reach boundary");
+    assert!(
+        tick1.boundary_reached,
+        "ticks_per_day=1 should reach boundary"
+    );
     let gpu_after_tick1 = state.read_values();
     assert_eq!(
         gpu_after_tick1[base + amount_off].to_bits(),
@@ -2571,34 +2695,34 @@ fn capability_unlock_fires_in_boundary_integration_test() {
 
     // ── Build a capability-progress property (one Named sub-field). ───────
     let cap_property = SimProperty {
-        namespace:          "tech".into(),
-        name:               "propulsion".into(),
-        layout:             PropertyLayout {
+        namespace: "tech".into(),
+        name: "propulsion".into(),
+        layout: PropertyLayout {
             sub_fields: vec![SubFieldSpec {
-                role:               SubFieldRole::Named("chemical_drive".into()),
-                width:              1,
-                clamp:              ClampBehavior::Floored { min: 0.0 },
-                velocity_max:       None,
-                default:            0.0,
-                display_name:       "Chemical Drive".into(),
-                display_range:      None,
-                governed_by:        None,
+                role: SubFieldRole::Named("chemical_drive".into()),
+                width: 1,
+                clamp: ClampBehavior::Floored { min: 0.0 },
+                velocity_max: None,
+                default: 0.0,
+                display_name: "Chemical Drive".into(),
+                display_range: None,
+                governed_by: None,
                 reduction_override: Some(ReductionRule::Max),
                 soft_aggregate_guard: None,
             }],
         },
-        decay:              None,
+        decay: None,
         intensity_behavior: None,
-        fission_templates:  vec![],
-        fusion_templates:   vec![],
-        on_expire:          None,
-        description:        String::new(),
-        intensity_labels:   vec![],
+        fission_templates: vec![],
+        fusion_templates: vec![],
+        on_expire: None,
+        description: String::new(),
+        intensity_labels: vec![],
     };
 
     let mut reg = DimensionRegistry::new();
     let cap_pid = reg.register(cap_property);
-    let n_dims  = reg.total_columns as u32;
+    let n_dims = reg.total_columns as u32;
 
     // ── Build the capability tree SimThing as the world root. ─────────────
     let mut world = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
@@ -2615,12 +2739,12 @@ fn capability_unlock_fires_in_boundary_integration_test() {
     // land before snapshot — they leave previous == current and Pass 7 sees no
     // crossing.
     world.add_overlay(Overlay {
-        id:        OverlayId::new(),
-        kind:      OverlayKind::Custom("capability_effect_test".into()),
-        source:    OverlaySource::System,
-        affects:   vec![cap_tree_id],
+        id: OverlayId::new(),
+        kind: OverlayKind::Custom("capability_effect_test".into()),
+        source: OverlaySource::System,
+        affects: vec![cap_tree_id],
         transform: PropertyTransformDelta {
-            property_id:      cap_pid,
+            property_id: cap_pid,
             sub_field_deltas: vec![(
                 SubFieldRole::Named("chemical_drive".into()),
                 TransformOp::Add(5001.0),
@@ -2634,13 +2758,13 @@ fn capability_unlock_fires_in_boundary_integration_test() {
     let cap_tree_slot = alloc.slot_of(cap_tree_id).unwrap() as usize;
 
     // ── Setup GPU + coord. ────────────────────────────────────────────────
-    const N_SLOTS:   u32 = 8;
+    const N_SLOTS: u32 = 8;
     const THRESHOLD: f32 = 5000.0;
-    let mut state    = WorldGpuState::new(ctx, &reg, N_SLOTS);
-    let pipelines    = Pipelines::new(&state.ctx);
-    let mut patcher  = TransformPatcher::new(N_SLOTS as usize);
-    let mut coord    = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
-    let (_tx, rx)    = feeder_channel();
+    let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut patcher = TransformPatcher::new(N_SLOTS as usize);
+    let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
+    let (_tx, rx) = feeder_channel();
 
     // Initial shadow: progress = 0.0 (below threshold). The overlay's Pass 3
     // step will push it to 5001 inside the tick.
@@ -2653,9 +2777,9 @@ fn capability_unlock_fires_in_boundary_integration_test() {
     // ── Build threshold registrations including the capability unlock. ────
     let unlock = CapabilityUnlockRegistration {
         sim_thing_id: cap_tree_id,
-        property_id:  cap_pid,
-        sub_field:    SubFieldRole::Named("chemical_drive".into()),
-        threshold:    THRESHOLD,
+        property_id: cap_pid,
+        sub_field: SubFieldRole::Named("chemical_drive".into()),
+        threshold: THRESHOLD,
     };
     let (gpu_regs, cpu_reg) = ThresholdBuilder::build_with_capability_unlocks(
         &proto.root,
@@ -2666,8 +2790,16 @@ fn capability_unlock_fires_in_boundary_integration_test() {
     );
 
     // The tree has no fission templates → the only registration is the unlock.
-    assert_eq!(gpu_regs.len(), 1, "only the capability unlock should register");
+    assert_eq!(
+        gpu_regs.len(),
+        1,
+        "only the capability unlock should register"
+    );
     state.upload_thresholds(&gpu_regs);
+    state.ensure_threshold_accumulator(gpu_regs.len().max(1) as u32);
+    state
+        .upload_accumulator_threshold_ops(&gpu_regs)
+        .expect("threshold accumulator upload");
 
     // ── Tick. Pass 3 overlay adds 5001 → values crosses THRESHOLD upward. ──
     let tick = coord.tick(
@@ -2690,13 +2822,20 @@ fn capability_unlock_fires_in_boundary_integration_test() {
     let mut saw_unlock = false;
     for event in &tick.events {
         match cpu_reg.get(event.event_kind) {
-            Some(ThresholdSemantic::CapabilityUnlock { sim_thing_id, property_id, sub_field }) => {
+            Some(ThresholdSemantic::CapabilityUnlock {
+                sim_thing_id,
+                property_id,
+                sub_field,
+            }) => {
                 assert_eq!(*sim_thing_id, cap_tree_id);
                 assert_eq!(*property_id, cap_pid);
                 assert_eq!(*sub_field, SubFieldRole::Named("chemical_drive".into()));
                 saw_unlock = true;
             }
-            other => panic!("unexpected semantic at event_kind {}: {:?}", event.event_kind, other),
+            other => panic!(
+                "unexpected semantic at event_kind {}: {:?}",
+                event.event_kind, other
+            ),
         }
     }
     assert!(saw_unlock, "no CapabilityUnlock event fired");

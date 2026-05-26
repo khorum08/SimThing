@@ -1,4 +1,4 @@
-//! C-1 performance gate: AccumulatorOp threshold readback vs Pass 7.
+//! C-1 performance smoke after S-6: AccumulatorOp threshold readback only.
 //!
 //! ## Methodology
 //!
@@ -46,7 +46,7 @@
 
 use simthing_core::{DimensionRegistry, SimProperty};
 use simthing_gpu::{
-    AccumulatorOpSession, GpuContext, Pipelines, ThresholdRegistration, WorldGpuState, DIR_UPWARD,
+    AccumulatorOpSession, GpuContext, ThresholdRegistration, WorldGpuState, DIR_UPWARD,
     THRESH_BUF_VALUES,
 };
 use std::time::Instant;
@@ -56,7 +56,7 @@ fn try_gpu() -> Option<GpuContext> {
 }
 
 #[test]
-fn c1_emission_readback_at_least_5x_faster_than_tick_event_readback() {
+fn c1_accumulator_threshold_readback_smoke() {
     let Some(ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
         return;
@@ -71,7 +71,6 @@ fn c1_emission_readback_at_least_5x_faster_than_tick_event_readback() {
     let mut reg = DimensionRegistry::new();
     reg.register(SimProperty::simple("stress", "pressure", 0));
     let mut state = WorldGpuState::new(ctx, &reg, N_SLOTS);
-    let pipelines = Pipelines::new(&state.ctx);
 
     let mut regs = Vec::with_capacity(N_REGS as usize);
     for i in 0..N_REGS {
@@ -92,22 +91,7 @@ fn c1_emission_readback_at_least_5x_faster_than_tick_event_readback() {
     state.write_previous_values(&previous);
     state.write_values(&current);
 
-    // Old path: Pass 7 dispatch (excluded from timing), then read_event_count
-    // + read_event_candidates is the *readback path* we're benchmarking.
-    let measure_old = || {
-        state.reset_event_count();
-        pipelines.run_threshold_scan(&state);
-        let started = Instant::now();
-        let count = state.read_event_count();
-        let _ = if count > 0 {
-            state.read_event_candidates(count)
-        } else {
-            Vec::new()
-        };
-        started.elapsed().as_secs_f64() * 1000.0
-    };
-
-    // New path: AccumulatorOp dispatch (excluded from timing), then
+    // AccumulatorOp dispatch (excluded from timing), then
     // readback_threshold_events is the *readback path* we're benchmarking.
     let mut session = AccumulatorOpSession::new_attached(&state.ctx, N_SLOTS, N_DIMS, N_REGS);
     session.upload_threshold_ops(&state.ctx, &regs).unwrap();
@@ -120,17 +104,10 @@ fn c1_emission_readback_at_least_5x_faster_than_tick_event_readback() {
         started.elapsed().as_secs_f64() * 1000.0
     };
 
-    // Warmup both paths to flush driver / cache / first-dispatch costs.
+    // Warmup to flush driver / cache / first-dispatch costs.
     for _ in 0..N_WARMUP {
-        let _ = measure_old();
         let _ = measure_new();
     }
-
-    let mut old_ms = 0.0_f64;
-    for _ in 0..N_TICKS {
-        old_ms += measure_old();
-    }
-    old_ms /= N_TICKS as f64;
 
     let mut new_ms = 0.0_f64;
     for _ in 0..N_TICKS {
@@ -138,25 +115,6 @@ fn c1_emission_readback_at_least_5x_faster_than_tick_event_readback() {
     }
     new_ms /= N_TICKS as f64;
 
-    const NO_REGRESSION_RATIO: f64 = 1.0;
-    const WARNING_RATIO: f64 = 1.5;
-
-    let ratio = old_ms / new_ms.max(f64::MIN_POSITIVE);
-    eprintln!(
-        "c1 perf (readback-only): old_ms={old_ms:.4} new_ms={new_ms:.4} ratio={ratio:.2}x"
-    );
-    if ratio < WARNING_RATIO {
-        eprintln!(
-            "WARN: c1 readback ratio {ratio:.2}x below {WARNING_RATIO:.1}x \
-             threshold — investigate before sunset PR S-6"
-        );
-    }
-    assert!(
-        ratio >= NO_REGRESSION_RATIO,
-        "C-1 readback regressed: ratio={ratio:.2}x \
-         (old={old_ms:.4}ms new={new_ms:.4}ms). The migration must not be \
-         slower than the legacy path. See \
-         docs/workshop/c1_perf_reframe_memo.md for the production-plan \
-         §C-1 reframe."
-    );
+    eprintln!("c1 perf (readback-only, AccumulatorOp): new_ms={new_ms:.4}");
+    assert!(new_ms.is_finite());
 }

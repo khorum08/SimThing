@@ -214,16 +214,10 @@ impl EmlGpuProgramTable {
             mapping.insert(*tree_id, range_index as u32);
         }
 
-        ctx.queue.write_buffer(
-            &self.node_buffer,
-            0,
-            bytemuck::cast_slice(&flat_nodes),
-        );
-        ctx.queue.write_buffer(
-            &self.range_buffer,
-            0,
-            bytemuck::cast_slice(&ranges),
-        );
+        ctx.queue
+            .write_buffer(&self.node_buffer, 0, bytemuck::cast_slice(&flat_nodes));
+        ctx.queue
+            .write_buffer(&self.range_buffer, 0, bytemuck::cast_slice(&ranges));
 
         self.node_upload_count += 1;
         self.range_upload_count += 1;
@@ -283,14 +277,18 @@ mod tests {
         let trees = vec![(
             EmlTreeId(1),
             meta(1, 3),
-            vec![literal(2.0), literal(3.0), EmlNodeGpu {
-                opcode: eml_opcode::ADD,
-                flags: 0,
-                a: 0,
-                b: 0,
-                c: 0,
-                d: 0,
-            }],
+            vec![
+                literal(2.0),
+                literal(3.0),
+                EmlNodeGpu {
+                    opcode: eml_opcode::ADD,
+                    flags: 0,
+                    a: 0,
+                    b: 0,
+                    c: 0,
+                    d: 0,
+                },
+            ],
         )];
         let map = table.upload_trees(&ctx, &trees).unwrap();
         assert_eq!(map.get(&EmlTreeId(1)), Some(&0));
@@ -322,14 +320,17 @@ mod tests {
         let trees = vec![(
             EmlTreeId(1),
             meta(1, 2),
-            vec![literal(1.0), EmlNodeGpu {
-                opcode: eml_opcode::RETURN_TOP,
-                flags: 0,
-                a: 0,
-                b: 0,
-                c: 0,
-                d: 0,
-            }],
+            vec![
+                literal(1.0),
+                EmlNodeGpu {
+                    opcode: eml_opcode::RETURN_TOP,
+                    flags: 0,
+                    a: 0,
+                    b: 0,
+                    c: 0,
+                    d: 0,
+                },
+            ],
         )];
         table.upload_trees(&ctx, &trees).unwrap();
         let gen_after_upload = table.generation;

@@ -6,13 +6,13 @@ use simthing_core::{OverlayKind, OverlayLifecycle, OverlaySource, SubFieldRole, 
 /// AI / system overlays declared in domain packs.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OverlaySpec {
-    pub id:               String,
+    pub id: String,
     #[serde(default)]
-    pub display_name:     String,
+    pub display_name: String,
     /// `"namespace::name"` of the target property. Resolved at compile time.
     pub targets_property: String,
     pub sub_field_deltas: Vec<(SubFieldRole, TransformOp)>,
-    pub lifecycle:        OverlayLifecycle,
-    pub kind:             OverlayKind,
-    pub source:           OverlaySource,
+    pub lifecycle: OverlayLifecycle,
+    pub kind: OverlayKind,
+    pub source: OverlaySource,
 }

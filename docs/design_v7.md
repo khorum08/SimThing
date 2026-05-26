@@ -39,10 +39,10 @@ for how values move between SimThings.
 **New: Logging tiers** — summary/checksum default production tier; compact
 emission records for audit and replay; full state readback for debug only.
 
-**Migration progress (2026-05-25):** Reduction (S-4), intensity (S-2), and overlay (S-3) legacy
-passes deleted. C-8 EML block (infra, intensity, transfer, emission) landed.
-Remaining legacy passes: intent, threshold, velocity — flag-gated until
-S-1, S-6, S-5.
+**Migration progress (2026-05-26):** Reduction (S-4), intensity (S-2), overlay
+(S-3), threshold (S-6), velocity (S-5), and intent (S-1) legacy passes deleted.
+C-8 EML block (infra, intensity, transfer, emission) landed. Snapshot is the
+only retained non-Accumulator operation.
 
 **Unchanged from v6/v6.5:**
 - SimThing recursive type (`SimThing { properties, overlays, children }`)
@@ -208,10 +208,9 @@ registration time by `assert_no_hard_trigger_on_soft_aggregate()`.
 
 > This section is maintained as a living document. Each migration PR updates
 > it to reflect which passes have moved to AccumulatorOp and which remain.
-> Current state (2026-05-25): hybrid migration — reduction (S-4), intensity
-> (S-2), and overlay (S-3) legacy passes deleted; C-8 EML block landed.
-> Remaining legacy passes (intent, threshold, velocity) are flag-gated
-> oracle/fallback until their S-phase sunsets.
+> Current state (2026-05-26): reduction (S-4), intensity (S-2), overlay (S-3),
+> threshold (S-6), velocity (S-5), and intent (S-1) legacy passes are deleted.
+> Snapshot is the only retained non-Accumulator operation.
 
 ### 4.1 The target 3-pass architecture (post-migration)
 
@@ -245,12 +244,12 @@ after S-2; overlay has no legacy fallback after S-3.
 
 ```rust
 pub struct PipelineFlags {
-    pub use_accumulator_threshold_scan: bool,  // C-1 → S-6 (default false)
-    pub use_accumulator_intent:         bool,  // C-2 → S-1 (default false)
+    pub use_accumulator_threshold_scan: bool,  // S-6: default true; mandatory for threshold workloads
+    pub use_accumulator_intent:         bool,  // S-1: default true; mandatory for pending intents
     pub use_accumulator_overlay_add:    bool,  // S-3 overlay OrderBands (default true; mandatory for overlay workloads)
     pub use_accumulator_reduction_soft: bool,  // C-5 → S-4 (default true)
     pub use_accumulator_reduction_exact: bool, // C-6 → S-4 (default true)
-    pub use_accumulator_velocity:       bool,  // C-7 → S-5 (default false)
+    pub use_accumulator_velocity:       bool,  // S-5: default true; mandatory for governed pairs
     pub use_accumulator_eml:            bool,  // C-8a infra (default true)
     pub use_accumulator_intensity:      bool,  // C-8b EvalEML intensity (default true; requires use_accumulator_eml)
     pub use_accumulator_transfer:       bool,  // C-8c exact transfer (default false)
@@ -264,12 +263,13 @@ pub struct PipelineFlags {
 - `encoder.copy_buffer_to_buffer(values_buffer, previous_values_buffer)`
 - No kernel dispatch. Hardware DMA. Not subject to migration.
 
-**Pass 1 — Velocity integration (C-7 landed, flag default false; sunset → S-5)**
-- **Flag-on:** AccumulatorOp `IntegrateWithClamp` at legacy Pass 1 position (after snapshot).
+**Pass 1 — Velocity integration (S-5 complete)**
+- **Production:** AccumulatorOp `IntegrateWithClamp` at legacy Pass 1 position (after snapshot).
   One op per `(slot, governed pair)`; `dt` supplied via `AccumulatorTickParams.dt_bits`.
   Multi-target write: amount integrate + optional velocity pinning at floor/ceiling
   (matches legacy `velocity_integration.wgsl` semantics exactly).
-- **Flag-off:** WGSL `velocity_integration.wgsl` (oracle/fallback until S-5).
+- **S-5:** legacy `velocity_integration.wgsl` and velocity pipeline deleted. Disabling
+  accumulator velocity while governed pairs exist rejects the workload.
 - `GovernedPair` metadata compiled to persistent ops at boundary sync.
 
 **Pass 2 — Intensity update (C-8b + S-2 landed)**
@@ -339,23 +339,18 @@ pub struct PipelineFlags {
   topology is SlotRange-compatible.
 - **S-4 landed:** legacy shader/pipeline/fallback removed; THRESH_BUF_OUTPUT unchanged.
 
-**Pass 7 — Threshold scan (migrate → C-1, sunset → S-6)**
-- WGSL: `threshold_scan.wgsl` (legacy path; default via `use_accumulator_threshold_scan: false`)
-- Reads `previous_values` vs `values`, detects crossings, writes events
-- **C-1 landed:** `use_accumulator_threshold_scan` on `BoundaryProtocol` wires
-  `Threshold` gate + `EmitEvent` via `WorldGpuState::accumulator_runtime`;
-  compact `ThresholdEmissionGpu` readback replaces Pass 7 when flag is true.
-  Parity: `c1_threshold_scan_parity.rs` (fission_stress 20k × 100 ticks).
-- Post-sunset (S-6): delete `threshold_scan.wgsl` and the flag; Pass 7 entry removed.
+**Threshold scan (S-6 complete)**
+- **Production:** AccumulatorOp `Threshold` gate + `EmitEvent` via
+  `WorldGpuState::accumulator_runtime`; compact `ThresholdEmissionGpu` readback.
+- **S-6:** legacy `threshold_scan.wgsl` and Pass 7 pipeline deleted. Disabling
+  accumulator threshold scan while threshold registrations exist rejects the workload.
 
-**Pre-Pass 0 — Intent delta application (migrate → C-2, sunset → S-1)**
-- WGSL: `intent_delta.wgsl` (legacy path; default via `use_accumulator_intent: false`)
-- Applies folded CPU `IntentDelta { mul, add }` as `values = values * mul + add`
-- **C-2 landed:** `use_accumulator_intent` on `BoundaryProtocol` wires folded
-  intent rows as `COMBINE_AFFINE_INTENT` ops via `WorldGpuState::accumulator_runtime`;
-  encoded in the same tick command buffer before snapshot when flag is true.
-  Parity: `c2_intent_accumulator_parity.rs` (10 scenarios + combined C-1/C-2 ordering).
-- Post-sunset (S-1): delete `intent_delta.wgsl` and the flag.
+**Pre-snapshot intent delta application (S-1 complete)**
+- **Production:** folded CPU `IntentDelta { mul, add }` rows encode as
+  AccumulatorOp `COMBINE_AFFINE_INTENT` and execute before snapshot in the same
+  tick command buffer.
+- **S-1:** legacy `intent_delta.wgsl` and intent pipeline deleted. Disabling
+  accumulator intent while pending intents exist rejects the workload.
 
 ---
 

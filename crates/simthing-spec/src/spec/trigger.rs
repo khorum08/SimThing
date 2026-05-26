@@ -13,9 +13,9 @@ pub enum TriggerDirection {
 #[serde(rename_all = "PascalCase")]
 pub enum TriggerSpec {
     Threshold {
-        target:    ScopeRef,
-        property:  PropertyKey,
-        role:      SubFieldRole,
+        target: ScopeRef,
+        property: PropertyKey,
+        role: SubFieldRole,
         threshold: f32,
         direction: TriggerDirection,
     },

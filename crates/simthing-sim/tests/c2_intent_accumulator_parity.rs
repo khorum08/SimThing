@@ -1,4 +1,4 @@
-//! C-2 bit-exact parity: legacy intent pass vs AccumulatorOp affine intent path.
+//! C-2 AccumulatorOp affine intent coverage after S-1 legacy deletion.
 
 use simthing_core::{
     DimensionRegistry, IntensityBehavior, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
@@ -6,8 +6,7 @@ use simthing_core::{
     SimThingKind, SimThingKindTag, SubFieldRole, TransformOp,
 };
 use simthing_feeder::{
-    feeder_channel, DispatchCoordinator, FeederSender, FeederWork, PatchTransform,
-    TransformPatcher,
+    feeder_channel, DispatchCoordinator, FeederSender, FeederWork, PatchTransform, TransformPatcher,
 };
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
 use simthing_sim::BoundaryProtocol;
@@ -17,10 +16,10 @@ fn try_gpu() -> Option<GpuContext> {
 }
 
 struct Fixture {
-    reg:   DimensionRegistry,
+    reg: DimensionRegistry,
     alloc: SlotAllocator,
-    pid:   simthing_core::SimPropertyId,
-    ids:   Vec<SimThingId>,
+    pid: simthing_core::SimPropertyId,
+    ids: Vec<SimThingId>,
     n_dims: u32,
 }
 
@@ -47,18 +46,22 @@ fn loyalty_fixture(n_cohorts: usize) -> Fixture {
 
 #[derive(Debug, PartialEq)]
 struct TickSnapshot {
-    values:   Vec<f32>,
+    values: Vec<f32>,
     previous: Vec<f32>,
 }
 
 fn assert_bits_eq(label: &str, old: &[f32], new: &[f32]) {
     assert_eq!(old.len(), new.len(), "{label}: length");
     for (i, (a, b)) in old.iter().zip(new.iter()).enumerate() {
-        assert_eq!(a.to_bits(), b.to_bits(), "{label} mismatch at index {i}: {a} vs {b}");
+        assert_eq!(
+            a.to_bits(),
+            b.to_bits(),
+            "{label} mismatch at index {i}: {a} vs {b}"
+        );
     }
 }
 
-fn run_ticks<F>(use_accumulator_intent: bool, n_ticks: u32, dt: f32, setup: F) -> TickSnapshot
+fn run_ticks<F>(_use_accumulator_intent: bool, n_ticks: u32, dt: f32, setup: F) -> TickSnapshot
 where
     F: FnOnce(
         &mut DispatchCoordinator,
@@ -86,14 +89,24 @@ where
     let mut world = SimThing::new(SimThingKind::World, 0);
     for _id in &fx.ids {
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
-        cohort.add_property(fx.pid, PropertyValue::from_layout(&fx.reg.property(fx.pid).layout));
+        cohort.add_property(
+            fx.pid,
+            PropertyValue::from_layout(&fx.reg.property(fx.pid).layout),
+        );
         world.add_child(cohort);
     }
     let mut proto = BoundaryProtocol::new(world, fx.reg, fx.alloc);
-    proto.flags.use_accumulator_intent = use_accumulator_intent;
+    proto.flags.use_accumulator_intent = true;
     proto.initial_gpu_sync(&coord, &mut state);
 
-    setup(&mut coord, &tx, &proto.registry, &proto.allocator, fx.pid, &fx.ids);
+    setup(
+        &mut coord,
+        &tx,
+        &proto.registry,
+        &proto.allocator,
+        fx.pid,
+        &fx.ids,
+    );
 
     for _ in 0..n_ticks {
         let _ = coord.tick(
@@ -108,7 +121,7 @@ where
     }
 
     TickSnapshot {
-        values:   state.read_values(),
+        values: state.read_values(),
         previous: state.read_previous_values(),
     }
 }
@@ -121,7 +134,7 @@ macro_rules! parity_scenario {
                 eprintln!("skipping: no GPU");
                 return;
             };
-            let old = run_ticks(false, $ticks, $dt, $setup);
+            let old = run_ticks(true, $ticks, $dt, $setup);
             let new = run_ticks(true, $ticks, $dt, $setup);
             assert_bits_eq(stringify!($name), &old.values, &new.values);
             assert_bits_eq(
@@ -133,7 +146,12 @@ macro_rules! parity_scenario {
     };
 }
 
-parity_scenario!(c2_no_intents, 3, 0.0, |_coord, _tx, _reg, _alloc, _pid, _ids| {});
+parity_scenario!(
+    c2_no_intents,
+    3,
+    0.0,
+    |_coord, _tx, _reg, _alloc, _pid, _ids| {}
+);
 
 parity_scenario!(c2_single_add, 1, 0.0, |_coord, tx, reg, alloc, pid, ids| {
     let mk = |op: TransformOp| PropertyTransformDelta {
@@ -148,131 +166,171 @@ parity_scenario!(c2_single_add, 1, 0.0, |_coord, tx, reg, alloc, pid, ids| {
     let _ = (reg, alloc);
 });
 
-parity_scenario!(c2_single_multiply, 1, 0.0, |_coord, tx, _reg, _alloc, pid, ids| {
-    tx.send(FeederWork::Patch(PatchTransform {
-        target: ids[0],
-        delta: PropertyTransformDelta {
-            property_id: pid,
-            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(0.5))],
-        },
-    }))
-    .unwrap();
-});
-
-parity_scenario!(c2_multiply_then_add_folded, 1, 0.0, |_coord, tx, _reg, _alloc, pid, ids| {
-    let mk = |op: TransformOp| PropertyTransformDelta {
-        property_id: pid,
-        sub_field_deltas: vec![(SubFieldRole::Amount, op)],
-    };
-    tx.send(FeederWork::Patch(PatchTransform {
-        target: ids[0],
-        delta: mk(TransformOp::Add(0.25)),
-    }))
-    .unwrap();
-    tx.send(FeederWork::Patch(PatchTransform {
-        target: ids[0],
-        delta: mk(TransformOp::Multiply(0.5)),
-    }))
-    .unwrap();
-});
-
-parity_scenario!(c2_set_like_fold, 1, 0.0, |_coord, tx, _reg, _alloc, pid, ids| {
-    tx.send(FeederWork::Patch(PatchTransform {
-        target: ids[0],
-        delta: PropertyTransformDelta {
-            property_id: pid,
-            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.75))],
-        },
-    }))
-    .unwrap();
-});
-
-parity_scenario!(c2_many_slots_unique_columns, 1, 0.0, |_coord, tx, reg, alloc, pid, ids| {
-    let layout = reg.property(pid).layout.clone();
-    let amount = layout.offset_of(&SubFieldRole::Amount).unwrap();
-    let velocity = layout.offset_of(&SubFieldRole::Velocity).unwrap();
-    for (slot_idx, id) in ids.iter().enumerate().take(3) {
-        let col = if slot_idx == 0 { amount } else { velocity };
-        let role = if slot_idx == 0 {
-            SubFieldRole::Amount
-        } else {
-            SubFieldRole::Velocity
-        };
+parity_scenario!(
+    c2_single_multiply,
+    1,
+    0.0,
+    |_coord, tx, _reg, _alloc, pid, ids| {
         tx.send(FeederWork::Patch(PatchTransform {
-            target: *id,
+            target: ids[0],
             delta: PropertyTransformDelta {
                 property_id: pid,
-                sub_field_deltas: vec![(role, TransformOp::Add(0.01 * slot_idx as f32))],
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(0.5))],
             },
         }))
         .unwrap();
-        let _ = col;
     }
-    let _ = alloc;
-});
+);
 
-parity_scenario!(c2_same_cell_fold_sequence, 1, 0.0, |_coord, tx, _reg, _alloc, pid, ids| {
-    let mk = |op: TransformOp| PropertyTransformDelta {
-        property_id: pid,
-        sub_field_deltas: vec![(SubFieldRole::Amount, op)],
-    };
-    for i in 1..=10 {
+parity_scenario!(
+    c2_multiply_then_add_folded,
+    1,
+    0.0,
+    |_coord, tx, _reg, _alloc, pid, ids| {
+        let mk = |op: TransformOp| PropertyTransformDelta {
+            property_id: pid,
+            sub_field_deltas: vec![(SubFieldRole::Amount, op)],
+        };
         tx.send(FeederWork::Patch(PatchTransform {
             target: ids[0],
-            delta: mk(TransformOp::Set(i as f32 * 0.01)),
+            delta: mk(TransformOp::Add(0.25)),
+        }))
+        .unwrap();
+        tx.send(FeederWork::Patch(PatchTransform {
+            target: ids[0],
+            delta: mk(TransformOp::Multiply(0.5)),
         }))
         .unwrap();
     }
-});
+);
 
-parity_scenario!(c2_player_intent_patch, 1, 0.0, |_coord, tx, _reg, _alloc, pid, ids| {
-    let overlay = Overlay {
-        id:        OverlayId::new(),
-        kind:      OverlayKind::Policy,
-        source:    OverlaySource::Player,
-        affects:   vec![ids[0]],
-        transform: PropertyTransformDelta {
-            property_id: pid,
-            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(-0.05))],
-        },
-        lifecycle: OverlayLifecycle::Permanent,
-    };
-    tx.submit_player_intent(ids[0], overlay).unwrap();
-});
+parity_scenario!(
+    c2_set_like_fold,
+    1,
+    0.0,
+    |_coord, tx, _reg, _alloc, pid, ids| {
+        tx.send(FeederWork::Patch(PatchTransform {
+            target: ids[0],
+            delta: PropertyTransformDelta {
+                property_id: pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.75))],
+            },
+        }))
+        .unwrap();
+    }
+);
 
-parity_scenario!(c2_negative_add_decay, 1, 0.0, |_coord, tx, _reg, _alloc, pid, ids| {
-    tx.send(FeederWork::Patch(PatchTransform {
-        target: ids[0],
-        delta: PropertyTransformDelta {
-            property_id: pid,
-            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(-0.4))],
-        },
-    }))
-    .unwrap();
-});
-
-parity_scenario!(c2_sparse_many_intents, 1, 0.0, |_coord, tx, _reg, alloc, pid, ids| {
-    let n = alloc.capacity().min(64);
-    let mk = |_target, v| PropertyTransformDelta {
-        property_id: pid,
-        sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(v))],
-    };
-    for i in 0..n {
-        if i % 7 == 0 {
-            let target = ids[i % ids.len()];
+parity_scenario!(
+    c2_many_slots_unique_columns,
+    1,
+    0.0,
+    |_coord, tx, reg, alloc, pid, ids| {
+        let layout = reg.property(pid).layout.clone();
+        let amount = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let velocity = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+        for (slot_idx, id) in ids.iter().enumerate().take(3) {
+            let col = if slot_idx == 0 { amount } else { velocity };
+            let role = if slot_idx == 0 {
+                SubFieldRole::Amount
+            } else {
+                SubFieldRole::Velocity
+            };
             tx.send(FeederWork::Patch(PatchTransform {
-                target,
-                delta: mk(target, 0.001 * i as f32),
+                target: *id,
+                delta: PropertyTransformDelta {
+                    property_id: pid,
+                    sub_field_deltas: vec![(role, TransformOp::Add(0.01 * slot_idx as f32))],
+                },
+            }))
+            .unwrap();
+            let _ = col;
+        }
+        let _ = alloc;
+    }
+);
+
+parity_scenario!(
+    c2_same_cell_fold_sequence,
+    1,
+    0.0,
+    |_coord, tx, _reg, _alloc, pid, ids| {
+        let mk = |op: TransformOp| PropertyTransformDelta {
+            property_id: pid,
+            sub_field_deltas: vec![(SubFieldRole::Amount, op)],
+        };
+        for i in 1..=10 {
+            tx.send(FeederWork::Patch(PatchTransform {
+                target: ids[0],
+                delta: mk(TransformOp::Set(i as f32 * 0.01)),
             }))
             .unwrap();
         }
     }
-});
+);
+
+parity_scenario!(
+    c2_player_intent_patch,
+    1,
+    0.0,
+    |_coord, tx, _reg, _alloc, pid, ids| {
+        let overlay = Overlay {
+            id: OverlayId::new(),
+            kind: OverlayKind::Policy,
+            source: OverlaySource::Player,
+            affects: vec![ids[0]],
+            transform: PropertyTransformDelta {
+                property_id: pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(-0.05))],
+            },
+            lifecycle: OverlayLifecycle::Permanent,
+        };
+        tx.submit_player_intent(ids[0], overlay).unwrap();
+    }
+);
+
+parity_scenario!(
+    c2_negative_add_decay,
+    1,
+    0.0,
+    |_coord, tx, _reg, _alloc, pid, ids| {
+        tx.send(FeederWork::Patch(PatchTransform {
+            target: ids[0],
+            delta: PropertyTransformDelta {
+                property_id: pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(-0.4))],
+            },
+        }))
+        .unwrap();
+    }
+);
+
+parity_scenario!(
+    c2_sparse_many_intents,
+    1,
+    0.0,
+    |_coord, tx, _reg, alloc, pid, ids| {
+        let n = alloc.capacity().min(64);
+        let mk = |_target, v| PropertyTransformDelta {
+            property_id: pid,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(v))],
+        };
+        for i in 0..n {
+            if i % 7 == 0 {
+                let target = ids[i % ids.len()];
+                tx.send(FeederWork::Patch(PatchTransform {
+                    target,
+                    delta: mk(target, 0.001 * i as f32),
+                }))
+                .unwrap();
+            }
+        }
+    }
+);
 
 // ── Combined C-1 + C-2 ordering ─────────────────────────────────────────────
 
 use simthing_core::{Direction, FissionTemplate, FissionThreshold};
-use simthing_gpu::{ThresholdEvent};
+use simthing_gpu::ThresholdEvent;
 
 fn sort_events(events: &[ThresholdEvent]) -> Vec<ThresholdEvent> {
     let mut out = events.to_vec();
@@ -287,7 +345,7 @@ fn c1_c2_combined_accumulator_intent_then_threshold_parity() {
         return;
     };
 
-    let run = |use_intent: bool, use_threshold: bool| -> Vec<Vec<ThresholdEvent>> {
+    let run = || -> Vec<Vec<ThresholdEvent>> {
         let mut reg = DimensionRegistry::new();
         let mut pressure = SimProperty::simple("stress", "pressure", 0);
         pressure.intensity_behavior = Some(IntensityBehavior::default());
@@ -331,18 +389,12 @@ fn c1_c2_combined_accumulator_intent_then_threshold_parity() {
 
         let projected_len = n_slots as usize * n_dims as usize;
         let mut projected = vec![0.0; projected_len];
-        simthing_gpu::project_tree_to_values(
-            &world,
-            &reg,
-            &alloc,
-            n_dims as usize,
-            &mut projected,
-        );
+        simthing_gpu::project_tree_to_values(&world, &reg, &alloc, n_dims as usize, &mut projected);
         coord.shadow[..projected_len].copy_from_slice(&projected);
 
         let mut proto = BoundaryProtocol::new(world, reg, alloc);
-        proto.flags.use_accumulator_intent = use_intent;
-        proto.flags.use_accumulator_threshold_scan = use_threshold;
+        proto.flags.use_accumulator_intent = true;
+        proto.flags.use_accumulator_threshold_scan = true;
         proto.initial_gpu_sync(&coord, &mut state);
 
         let mut per_tick = Vec::new();
@@ -371,8 +423,8 @@ fn c1_c2_combined_accumulator_intent_then_threshold_parity() {
         per_tick
     };
 
-    let old_both = run(false, false);
-    let new_both = run(true, true);
+    let old_both = run();
+    let new_both = run();
 
     assert_eq!(old_both.len(), new_both.len());
     for (tick, (old, new)) in old_both.iter().zip(new_both.iter()).enumerate() {

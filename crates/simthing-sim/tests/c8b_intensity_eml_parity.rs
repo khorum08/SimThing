@@ -6,7 +6,7 @@ use simthing_core::{
     SimPropertyId,
 };
 use simthing_gpu::{
-    eval_eml_cpu, plan_velocity_integration, build_governed_pairs, GpuContext, Pipelines,
+    build_governed_pairs, eval_eml_cpu, plan_velocity_integration, GpuContext, Pipelines,
     WorldGpuState,
 };
 
@@ -99,7 +99,9 @@ fn c8b_intensity_behavior_compiles_exact_deterministic_eml() {
     let behavior = IntensityBehavior::default();
     let (meta, nodes) = compile_intensity_behavior_to_eml(&behavior, intensity_tree_id(0), 1, 2);
     assert_eq!(meta.execution_class, EmlExecutionClass::ExactDeterministic);
-    assert!(meta.allowed_consumers.contains_kind(EmlConsumerKind::Intensity));
+    assert!(meta
+        .allowed_consumers
+        .contains_kind(EmlConsumerKind::Intensity));
     assert_eq!(meta.node_count, nodes.len() as u32);
     for node in &nodes {
         if node.opcode == eml_opcode::PARAM {
@@ -137,7 +139,11 @@ fn c8b_intensity_eml_cpu_oracle_matches_legacy_formula() {
         let expected = intensity_eml_direct_cpu(&behavior, velocity, intensity, dt);
         let values = vec![0.0, velocity, intensity];
         let got = eval_eml_cpu(&gpu_nodes, 0, &values, 3, [dt, 0.0, 0.0, 0.0]);
-        assert_eq!(got.to_bits(), expected.to_bits(), "vel={velocity} int={intensity} dt={dt}");
+        assert_eq!(
+            got.to_bits(),
+            expected.to_bits(),
+            "vel={velocity} int={intensity} dt={dt}"
+        );
     }
 }
 
@@ -240,7 +246,10 @@ fn c8b_intensity_runs_after_velocity_before_overlay() {
 
     let after = state.read_values();
     assert!(after[1].abs() > behavior.velocity_threshold);
-    assert!(after[icol] > 0.2, "intensity should increase after velocity+intensity pass");
+    assert!(
+        after[icol] > 0.2,
+        "intensity should increase after velocity+intensity pass"
+    );
 }
 
 #[test]

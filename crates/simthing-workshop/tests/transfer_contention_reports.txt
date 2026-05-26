@@ -36,23 +36,23 @@ determinism_gate: PASS
 performance_gate: STRONG_PASS
 
 Timing:
-cpu_n_ticks_us: 55495
-cpu_per_tick_us: 867.109
+cpu_n_ticks_us: 60957
+cpu_per_tick_us: 952.453
 gpu_summary_submit_mean_us: 159
-gpu_summary_total_mean_us: 28242
-gpu_summary_total_per_tick_us: 441.281
-gpu_records_submit_mean_us: 112
-gpu_records_total_mean_us: 41855
-gpu_records_total_per_tick_us: 5231.875
-summary_speedup_vs_cpu: 1.965x (total_validation)
-records_speedup_vs_cpu: 0.174x (total_validation)
+gpu_summary_total_mean_us: 50042
+gpu_summary_total_per_tick_us: 781.906
+gpu_records_submit_mean_us: 115
+gpu_records_total_mean_us: 34618
+gpu_records_total_per_tick_us: 4327.250
+summary_speedup_vs_cpu: 1.218x (total_validation)
+records_speedup_vs_cpu: 0.200x (total_validation)
 
 Data movement:
 summary_bytes_total: 2097152
 compact_record_bytes_total: 25600000
 
 Interpretation:
-STRONG_PASS: GPU-resident pool-contention matches CPU (1.96x vs CPU on total_validation). Conservation, priority, and replay gates pass. Records mode used 8-tick fallback due to ~205MB compact record allocation limit. v1 is pool-contention only (queue_cross_pool_contention=false); CPU-compiled ordering; not production AccumulatorOp; no atomics; not pure shader timing.
+STRONG_PASS: GPU-resident pool-contention matches CPU (1.22x vs CPU on total_validation). Conservation, priority, and replay gates pass. Records mode used 8-tick fallback due to ~205MB compact record allocation limit. v1 is pool-contention only (queue_cross_pool_contention=false); CPU-compiled ordering; not production AccumulatorOp; no atomics; not pure shader timing.
 note: Resident total_validation timings include initial buffer upload, encode, submit, GPU wait, and final readback. submit timings cover encode+submit only. Neither is pure shader timestamp time.
 
 Disclaimer: workshop-local; v1 pool-contention only; CPU-compiled request ordering; not production AccumulatorOp; no atomics; not pure shader timestamp timing.
@@ -92,23 +92,23 @@ determinism_gate: PASS
 performance_gate: STRONG_PASS
 
 Timing:
-cpu_n_ticks_us: 58207
-cpu_per_tick_us: 909.484
-gpu_summary_submit_mean_us: 151
-gpu_summary_total_mean_us: 29559
-gpu_summary_total_per_tick_us: 461.859
-gpu_records_submit_mean_us: 107
-gpu_records_total_mean_us: 26016
-gpu_records_total_per_tick_us: 3252.000
-summary_speedup_vs_cpu: 1.969x (total_validation)
-records_speedup_vs_cpu: 0.332x (total_validation)
+cpu_n_ticks_us: 62014
+cpu_per_tick_us: 968.969
+gpu_summary_submit_mean_us: 155
+gpu_summary_total_mean_us: 25271
+gpu_summary_total_per_tick_us: 394.859
+gpu_records_submit_mean_us: 100
+gpu_records_total_mean_us: 34446
+gpu_records_total_per_tick_us: 4305.750
+summary_speedup_vs_cpu: 2.454x (total_validation)
+records_speedup_vs_cpu: 0.247x (total_validation)
 
 Data movement:
 summary_bytes_total: 2097152
 compact_record_bytes_total: 25600000
 
 Interpretation:
-STRONG_PASS: GPU-resident pool-contention matches CPU (1.97x vs CPU on total_validation). Conservation, priority, and replay gates pass. Records mode used 8-tick fallback due to ~205MB compact record allocation limit. v1 is pool-contention only (queue_cross_pool_contention=false); CPU-compiled ordering; not production AccumulatorOp; no atomics; not pure shader timing.
+STRONG_PASS: GPU-resident pool-contention matches CPU (2.45x vs CPU on total_validation). Conservation, priority, and replay gates pass. Records mode used 8-tick fallback due to ~205MB compact record allocation limit. v1 is pool-contention only (queue_cross_pool_contention=false); CPU-compiled ordering; not production AccumulatorOp; no atomics; not pure shader timing.
 note: Resident total_validation timings include initial buffer upload, encode, submit, GPU wait, and final readback. submit timings cover encode+submit only. Neither is pure shader timestamp time.
 
 Disclaimer: workshop-local; v1 pool-contention only; CPU-compiled request ordering; not production AccumulatorOp; no atomics; not pure shader timestamp timing.
@@ -148,23 +148,23 @@ determinism_gate: PASS
 performance_gate: WEAK_PASS
 
 Timing:
-cpu_n_ticks_us: 61263
-cpu_per_tick_us: 957.234
-gpu_summary_submit_mean_us: 229
-gpu_summary_total_mean_us: 445054
-gpu_summary_total_per_tick_us: 6953.969
-gpu_records_submit_mean_us: 116
-gpu_records_total_mean_us: 76178
-gpu_records_total_per_tick_us: 9522.250
-summary_speedup_vs_cpu: 0.138x (total_validation)
-records_speedup_vs_cpu: 0.124x (total_validation)
+cpu_n_ticks_us: 59739
+cpu_per_tick_us: 933.422
+gpu_summary_submit_mean_us: 316
+gpu_summary_total_mean_us: 446601
+gpu_summary_total_per_tick_us: 6978.141
+gpu_records_submit_mean_us: 117
+gpu_records_total_mean_us: 78913
+gpu_records_total_per_tick_us: 9864.125
+summary_speedup_vs_cpu: 0.134x (total_validation)
+records_speedup_vs_cpu: 0.105x (total_validation)
 
 Data movement:
 summary_bytes_total: 32768
 compact_record_bytes_total: 25600000
 
 Interpretation:
-WEAK_PASS: Correctness passes but summary mode 0.14x vs CPU on total_validation; perf unresolved under hotspot/sparse loads. Records mode used 8-tick fallback due to ~205MB compact record allocation limit. v1 is pool-contention only (queue_cross_pool_contention=false); CPU-compiled ordering; not production AccumulatorOp; no atomics; not pure shader timing.
+WEAK_PASS: Correctness passes but summary mode 0.13x vs CPU on total_validation; perf unresolved under hotspot/sparse loads. Records mode used 8-tick fallback due to ~205MB compact record allocation limit. v1 is pool-contention only (queue_cross_pool_contention=false); CPU-compiled ordering; not production AccumulatorOp; no atomics; not pure shader timing.
 note: Resident total_validation timings include initial buffer upload, encode, submit, GPU wait, and final readback. submit timings cover encode+submit only. Neither is pure shader timestamp time.
 
 Disclaimer: workshop-local; v1 pool-contention only; CPU-compiled request ordering; not production AccumulatorOp; no atomics; not pure shader timestamp timing.

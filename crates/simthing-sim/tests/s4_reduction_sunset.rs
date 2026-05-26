@@ -12,7 +12,8 @@ use simthing_gpu::{
     build_column_rule_descriptors, build_topology, cpu_reduce_oracle, cpu_reduce_oracle_call_count,
     encode_column_rules, plan_reduction_orderband, project_tree_to_values,
     reset_cpu_reduce_oracle_call_count, set_debug_readback_allowed, summaries_from_values,
-    GpuContext, Pipelines, SlotAllocator, Topology, TopologyState, WorldGpuState, THRESH_BUF_OUTPUT,
+    GpuContext, Pipelines, SlotAllocator, Topology, TopologyState, WorldGpuState,
+    THRESH_BUF_OUTPUT,
 };
 use simthing_sim::BoundaryProtocol;
 
@@ -24,7 +25,11 @@ fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
 }
 
-fn upload_topology(state: &mut WorldGpuState, topo: &simthing_gpu::Topology, reg: &DimensionRegistry) {
+fn upload_topology(
+    state: &mut WorldGpuState,
+    topo: &simthing_gpu::Topology,
+    reg: &DimensionRegistry,
+) {
     let n_dims = state.n_dims as usize;
     let descriptors = build_column_rule_descriptors(reg, n_dims);
     let rules_u32 = encode_column_rules(&descriptors);
@@ -81,10 +86,9 @@ fn mixed_all_rules_fixture() -> (DimensionRegistry, SimThing, SlotAllocator) {
 
     let mut world = SimThing::new(SimThingKind::World, 0);
     let mut loc = SimThing::new(SimThingKind::Location, 0);
-    for &(loyalty, pop, threat, scarcity, founder) in &[
-        (0.2, 10.0, -1.0, 5.0, 11.0),
-        (0.8, 30.0, 3.0, 2.0, 99.0),
-    ] {
+    for &(loyalty, pop, threat, scarcity, founder) in
+        &[(0.2, 10.0, -1.0, 5.0, 11.0), (0.8, 30.0, 3.0, 2.0, 99.0)]
+    {
         let mut c = SimThing::new(SimThingKind::Cohort, 0);
         let mut lpv = PropertyValue::from_layout(&loyalty_layout);
         lpv.data[loyalty_off] = loyalty;
@@ -176,7 +180,11 @@ fn s4_all_reduction_rules_accumulator_matches_legacy_golden() {
     let threat_id = reg.id_of("core", "threat").expect("threat");
     let scarcity_id = reg.id_of("core", "scarcity").expect("scarcity");
     let founder_id = reg.id_of("core", "founder_trait").expect("founder_trait");
-    let pop_off = reg.property(pop_id).layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let pop_off = reg
+        .property(pop_id)
+        .layout
+        .offset_of(&SubFieldRole::Amount)
+        .unwrap();
     let loyalty_off = reg
         .property(loyalty_id)
         .layout
@@ -291,7 +299,10 @@ fn s4_combined_c1_c2_c4_reduction_path_green() {
     assert_eq!(gpu_summary, cpu_summary);
 
     let out = state.read_output_vectors();
-    assert!(out.iter().any(|v| v.is_finite()), "output_vectors must be populated");
+    assert!(
+        out.iter().any(|v| v.is_finite()),
+        "output_vectors must be populated"
+    );
     let _ = THRESH_BUF_OUTPUT;
     let _ = patcher;
 }

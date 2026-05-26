@@ -17,9 +17,9 @@ pub struct SlotAllocator {
     /// Owner of each slot index. `None` = tombstoned, available for reuse.
     slot_owners: Vec<Option<SimThingId>>,
     /// Reverse lookup: SimThingId → slot index.
-    by_id:       HashMap<SimThingId, u32>,
+    by_id: HashMap<SimThingId, u32>,
     /// LIFO stack of tombstoned slots awaiting reuse.
-    free:        Vec<u32>,
+    free: Vec<u32>,
 }
 
 impl SlotAllocator {
@@ -35,7 +35,7 @@ impl SlotAllocator {
         }
         let slot = match self.free.pop() {
             Some(s) => s,
-            None    => {
+            None => {
                 let s = self.slot_owners.len() as u32;
                 self.slot_owners.push(None);
                 s
@@ -154,7 +154,7 @@ mod tests {
     #[test]
     fn populate_from_tree_allocates_every_node() {
         let mut world = SimThing::new(SimThingKind::World, 0);
-        let mut loc1  = SimThing::new(SimThingKind::Location, 0);
+        let mut loc1 = SimThing::new(SimThingKind::Location, 0);
         loc1.add_child(SimThing::new(SimThingKind::Cohort, 0));
         loc1.add_child(SimThing::new(SimThingKind::Cohort, 0));
         let mut loc2 = SimThing::new(SimThingKind::Location, 0);

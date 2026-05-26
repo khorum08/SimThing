@@ -2,8 +2,8 @@
 
 use simthing_core::{
     eml_opcode, ClampBehavior, DimensionRegistry, EmlConsumerKind, EmlConsumerMask,
-    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId,
-    EmlRegistryError, SimProperty, SubFieldRole, SubFieldSpec,
+    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlRegistryError,
+    EmlTreeId, SimProperty, SubFieldRole, SubFieldSpec,
 };
 use simthing_gpu::{
     encode_emission_plan, plan_emission_ops, plan_transfer_ops, set_debug_readback_allowed,
@@ -176,7 +176,9 @@ fn c8d_identity_floor_emission_records_count() {
         max_emit: None,
         reg_idx: 11,
     }];
-    state.sync_emission_accumulator(&regs).expect("sync emission");
+    state
+        .sync_emission_accumulator(&regs)
+        .expect("sync emission");
     let emissions = run_accumulator_emission(&mut state, 1.0).expect("readback");
     assert_eq!(emissions.len(), 1);
     assert_eq!(emissions[0].reg_idx, 11);
@@ -240,7 +242,9 @@ fn c8d_eval_eml_exact_emission_matches_cpu_oracle() {
         source_slot: 0,
         source_col: 0,
         tree_id: Some(EmlTreeId(1)),
-        formula: EmissionFormula::EvalEml { tree_id: EmlTreeId(1) },
+        formula: EmissionFormula::EvalEml {
+            tree_id: EmlTreeId(1),
+        },
         max_emit: None,
         reg_idx: 5,
     }];
@@ -452,7 +456,9 @@ fn c8d_eval_eml_emission_does_not_reupload_eml_per_tick() {
         source_slot: 0,
         source_col: 0,
         tree_id: Some(EmlTreeId(1)),
-        formula: EmissionFormula::EvalEml { tree_id: EmlTreeId(1) },
+        formula: EmissionFormula::EvalEml {
+            tree_id: EmlTreeId(1),
+        },
         max_emit: None,
         reg_idx: 0,
     }];
@@ -465,7 +471,10 @@ fn c8d_eval_eml_emission_does_not_reupload_eml_per_tick() {
     state.sync_emission_accumulator(&regs).expect("re-sync");
     let runtime = state.accumulator_runtime.as_ref().unwrap();
     assert_eq!(runtime.eml_generation(), eml_generation);
-    assert_eq!(runtime.eml.as_ref().unwrap().upload_count(), eml_upload_count);
+    assert_eq!(
+        runtime.eml.as_ref().unwrap().upload_count(),
+        eml_upload_count
+    );
     assert_eq!(runtime.emission_op_upload_count(), op_uploads);
     run_accumulator_emission(&mut state, 1.0).expect("tick2");
 }

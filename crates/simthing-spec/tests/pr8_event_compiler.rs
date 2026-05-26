@@ -1,20 +1,20 @@
 use simthing_core::{DimensionRegistry, OverlayId, SubFieldRole};
 use simthing_spec::{
     compile_effect, compile_event, compile_property, compile_trigger, CompiledEffect,
-    CompiledTrigger, CooldownSpec, EffectSpec, EventPriority, EventSpec, PropertyKey,
-    PropertySpec, ScopeRef, ScriptExpr, ScriptPredicate, SpecError, TriggerDirection, TriggerSpec,
+    CompiledTrigger, CooldownSpec, EffectSpec, EventPriority, EventSpec, PropertyKey, PropertySpec,
+    ScopeRef, ScriptExpr, ScriptPredicate, SpecError, TriggerDirection, TriggerSpec,
 };
 
 fn registry_with_loyalty() -> DimensionRegistry {
     let mut registry = DimensionRegistry::new();
     compile_property(
         &PropertySpec {
-            id:           "core_loyalty".into(),
-            namespace:    "core".into(),
-            name:         "loyalty".into(),
+            id: "core_loyalty".into(),
+            namespace: "core".into(),
+            name: "loyalty".into(),
             display_name: "Loyalty".into(),
-            description:  String::new(),
-            sub_fields:   vec![],
+            description: String::new(),
+            sub_fields: vec![],
         },
         &mut registry,
     )
@@ -24,9 +24,9 @@ fn registry_with_loyalty() -> DimensionRegistry {
 
 fn threshold_trigger() -> TriggerSpec {
     TriggerSpec::Threshold {
-        target:    ScopeRef::Current,
-        property:  PropertyKey::new("core", "loyalty"),
-        role:      SubFieldRole::Amount,
+        target: ScopeRef::Current,
+        property: PropertyKey::new("core", "loyalty"),
+        role: SubFieldRole::Amount,
         threshold: 0.25,
         direction: TriggerDirection::Falling,
     }
@@ -70,9 +70,9 @@ fn compile_predicate_trigger_preserves_script_predicate() {
 fn compile_trigger_rejects_unknown_property() {
     let registry = registry_with_loyalty();
     let spec = TriggerSpec::Threshold {
-        target:    ScopeRef::Current,
-        property:  PropertyKey::new("missing", "thing"),
-        role:      SubFieldRole::Amount,
+        target: ScopeRef::Current,
+        property: PropertyKey::new("missing", "thing"),
+        role: SubFieldRole::Amount,
         threshold: 1.0,
         direction: TriggerDirection::Rising,
     };
@@ -87,9 +87,9 @@ fn compile_trigger_rejects_unknown_property() {
 fn compile_trigger_rejects_unknown_role() {
     let registry = registry_with_loyalty();
     let spec = TriggerSpec::Threshold {
-        target:    ScopeRef::Current,
-        property:  PropertyKey::new("core", "loyalty"),
-        role:      SubFieldRole::Named("not_present".into()),
+        target: ScopeRef::Current,
+        property: PropertyKey::new("core", "loyalty"),
+        role: SubFieldRole::Named("not_present".into()),
         threshold: 1.0,
         direction: TriggerDirection::Rising,
     };
@@ -125,9 +125,9 @@ fn compile_event_combines_trigger_effects_and_metadata() {
     let registry = registry_with_loyalty();
     let overlay_id = OverlayId::new();
     let spec = EventSpec {
-        id:       "low_loyalty_warning".into(),
-        trigger:  threshold_trigger(),
-        effects:  vec![
+        id: "low_loyalty_warning".into(),
+        trigger: threshold_trigger(),
+        effects: vec![
             EffectSpec::SuspendOverlay {
                 target: ScopeRef::Current,
                 overlay_id,
@@ -138,7 +138,7 @@ fn compile_event_combines_trigger_effects_and_metadata() {
         ],
         cooldown: Some(CooldownSpec { ticks: 12 }),
         priority: EventPriority::High,
-        install:  simthing_spec::InstallTargetSpec::SessionRoot,
+        install: simthing_spec::InstallTargetSpec::SessionRoot,
     };
 
     let (compiled, diagnostics) = compile_event(&spec, &registry).unwrap();
@@ -154,16 +154,16 @@ fn compile_event_combines_trigger_effects_and_metadata() {
 #[test]
 fn event_spec_round_trips_through_serde() {
     let original = EventSpec {
-        id:       "predicate_event".into(),
-        trigger:  TriggerSpec::Predicate {
+        id: "predicate_event".into(),
+        trigger: TriggerSpec::Predicate {
             predicate: ScriptPredicate::True,
         },
-        effects:  vec![EffectSpec::Remove {
+        effects: vec![EffectSpec::Remove {
             target: ScopeRef::Current,
         }],
         cooldown: None,
         priority: EventPriority::Normal,
-        install:  simthing_spec::InstallTargetSpec::SessionRoot,
+        install: simthing_spec::InstallTargetSpec::SessionRoot,
     };
 
     let json = serde_json::to_string(&original).expect("serialize");

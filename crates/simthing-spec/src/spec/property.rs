@@ -8,14 +8,14 @@ use simthing_core::SubFieldSpec;
 pub struct PropertySpec {
     /// Logical id used by asset cross-references (e.g. "military_fleet_speed").
     /// Distinct from the `namespace::name` canonical registry key.
-    pub id:           String,
-    pub namespace:    String,
-    pub name:         String,
+    pub id: String,
+    pub namespace: String,
+    pub name: String,
     #[serde(default)]
     pub display_name: String,
     #[serde(default)]
-    pub description:  String,
+    pub description: String,
     /// Sub-field layout. Empty = standard scalar layout.
     #[serde(default)]
-    pub sub_fields:   Vec<SubFieldSpec>,
+    pub sub_fields: Vec<SubFieldSpec>,
 }

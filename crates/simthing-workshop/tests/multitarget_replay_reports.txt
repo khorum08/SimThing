@@ -30,14 +30,14 @@ replay_from_compact_matches_gpu: true
 repeated_gpu_outputs_identical: true
 
 Timing:
-cpu_current_us: 9
-gpu_compact_warm_mean_us: 2704
-gpu_compact_warm_min_us: 742
-gpu_compact_warm_max_us: 12098
-gpu_full_warm_mean_us: 824
-gpu_full_warm_min_us: 630
-gpu_full_warm_max_us: 1133
-speedup_gpu_compact_vs_cpu: 0.003x
+cpu_current_us: 6
+gpu_compact_warm_mean_us: 3332
+gpu_compact_warm_min_us: 883
+gpu_compact_warm_max_us: 9957
+gpu_full_warm_mean_us: 3809
+gpu_full_warm_min_us: 824
+gpu_full_warm_max_us: 9293
+speedup_gpu_compact_vs_cpu: 0.002x
 
 Record size:
 compact_record_bytes: 16384
@@ -79,14 +79,14 @@ replay_from_compact_matches_gpu: true
 repeated_gpu_outputs_identical: true
 
 Timing:
-cpu_current_us: 728
-gpu_compact_warm_mean_us: 8428
-gpu_compact_warm_min_us: 6015
-gpu_compact_warm_max_us: 11829
-gpu_full_warm_mean_us: 25547
-gpu_full_warm_min_us: 19743
-gpu_full_warm_max_us: 29899
-speedup_gpu_compact_vs_cpu: 0.086x
+cpu_current_us: 804
+gpu_compact_warm_mean_us: 17700
+gpu_compact_warm_min_us: 6592
+gpu_compact_warm_max_us: 38860
+gpu_full_warm_mean_us: 13372
+gpu_full_warm_min_us: 10820
+gpu_full_warm_max_us: 17575
+speedup_gpu_compact_vs_cpu: 0.045x
 
 Record size:
 compact_record_bytes: 1600000
@@ -94,7 +94,7 @@ full_record_bytes: 4400000
 compact_vs_full_record_ratio: 0.3636
 
 Interpretation:
-WEAK_PASS: Correct and deterministic in upload/readback envelope mode, but GPU compact 0.09x vs CPU; compact records 36.4% of full size. Envelope timing is not representative of GPU-resident pivot performance.
+WEAK_PASS: Correct and deterministic in upload/readback envelope mode, but GPU compact 0.05x vs CPU; compact records 36.4% of full size. Envelope timing is not representative of GPU-resident pivot performance.
 note: Warm timings include upload, dispatch, wait, and readback; not pure shader timestamp time (upload/readback envelope mode).
 
 Disclaimer: workshop-local; compares CPU boundary-style settlement vs GPU multi-target resolution with compact replay records; warm timings include upload/dispatch/readback (envelope mode, not GPU-resident pivot).
@@ -128,14 +128,14 @@ replay_from_compact_matches_gpu: true
 repeated_gpu_outputs_identical: true
 
 Timing:
-cpu_current_us: 752
-gpu_compact_warm_mean_us: 16792
-gpu_compact_warm_min_us: 7042
-gpu_compact_warm_max_us: 35807
-gpu_full_warm_mean_us: 10654
-gpu_full_warm_min_us: 7240
-gpu_full_warm_max_us: 14804
-speedup_gpu_compact_vs_cpu: 0.045x
+cpu_current_us: 1040
+gpu_compact_warm_mean_us: 19597
+gpu_compact_warm_min_us: 11332
+gpu_compact_warm_max_us: 24023
+gpu_full_warm_mean_us: 24261
+gpu_full_warm_min_us: 19318
+gpu_full_warm_max_us: 26922
+speedup_gpu_compact_vs_cpu: 0.053x
 
 Record size:
 compact_record_bytes: 1600000
@@ -143,7 +143,7 @@ full_record_bytes: 4400000
 compact_vs_full_record_ratio: 0.3636
 
 Interpretation:
-WEAK_PASS: Correct and deterministic in upload/readback envelope mode, but GPU compact 0.04x vs CPU; compact records 36.4% of full size. Envelope timing is not representative of GPU-resident pivot performance.
+WEAK_PASS: Correct and deterministic in upload/readback envelope mode, but GPU compact 0.05x vs CPU; compact records 36.4% of full size. Envelope timing is not representative of GPU-resident pivot performance.
 note: Warm timings include upload, dispatch, wait, and readback; not pure shader timestamp time (upload/readback envelope mode).
 
 Disclaimer: workshop-local; compares CPU boundary-style settlement vs GPU multi-target resolution with compact replay records; warm timings include upload/dispatch/readback (envelope mode, not GPU-resident pivot).

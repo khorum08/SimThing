@@ -748,11 +748,11 @@ impl WorldGpuState {
         let (input_list_generation, ranges) = {
             let runtime = self.accumulator_runtime.as_mut().unwrap();
             runtime.ensure_input_list_table(&self.ctx);
-            let ranges = runtime
-                .input_lists
-                .as_mut()
-                .unwrap()
-                .upload_lists(&self.ctx, &non_empty_lists, source_generation)?;
+            let ranges = runtime.input_lists.as_mut().unwrap().upload_lists(
+                &self.ctx,
+                &non_empty_lists,
+                source_generation,
+            )?;
             let gen = runtime.input_lists.as_ref().unwrap().generation;
             (gen, ranges)
         };
@@ -813,7 +813,7 @@ impl WorldGpuState {
         registrations: &[crate::EmissionRegistration],
     ) -> Result<(), crate::EmissionSyncError> {
         use crate::emission_accumulator::{
-            encode_emission_plan, emission_plan_signature_fields, plan_emission_ops,
+            emission_plan_signature_fields, encode_emission_plan, plan_emission_ops,
             EmissionFormula,
         };
 
@@ -908,6 +908,17 @@ impl WorldGpuState {
     ) -> Result<(), crate::AccumulatorOpSessionError> {
         if let Some(runtime) = self.accumulator_runtime.as_mut() {
             runtime.upload_threshold_ops(&self.ctx, regs)
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn append_accumulator_threshold_ops(
+        &mut self,
+        regs: &[ThresholdRegistration],
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            runtime.append_threshold_ops(&self.ctx, regs)
         } else {
             Ok(())
         }
@@ -1119,7 +1130,6 @@ impl WorldGpuState {
                 .queue
                 .write_buffer(&self.governed_pairs, 0, bytemuck::cast_slice(&pairs));
         }
-
     }
 
     /// Upload a fresh batch of per-tick overlay deltas + per-slot ranges.
@@ -1180,12 +1190,11 @@ impl WorldGpuState {
 
     /// Upload a fresh set of GPU threshold registrations. Reallocates both
     /// `threshold_registry` and `event_candidates` if larger than the current
-    /// capacity. Pass 7 dispatches one thread per registration, and emits at
-    /// most one event per registration, so `event_candidates` is sized to
-    /// match.
+    /// capacity. AccumulatorOp threshold scan emits at most one event per
+    /// registration, so `event_candidates` is sized to match.
     ///
-    /// Empty input is allowed: `n_thresholds` becomes 0 and `run_threshold_scan`
-    /// will early-return without dispatching.
+    /// Empty input is allowed: `n_thresholds` becomes 0 and threshold dispatch
+    /// will early-return without scanning.
     pub fn upload_thresholds(&mut self, regs: &[ThresholdRegistration]) {
         let needed_count = regs.len().max(1);
         let reg_bytes = (needed_count * std::mem::size_of::<ThresholdRegistration>()) as u64;
@@ -1357,8 +1366,8 @@ impl WorldGpuState {
             .write_buffer(&self.output_vectors, 0, bytemuck::cast_slice(data));
     }
 
-    /// Reset the per-tick atomic event counter to zero. Call this before each
-    /// `run_threshold_scan`; `Pipelines::run_threshold_scan` does it internally.
+    /// Reset the per-tick atomic event counter to zero before threshold
+    /// AccumulatorOp dispatch.
     pub fn reset_event_count(&self) {
         self.ctx
             .queue

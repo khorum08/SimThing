@@ -56,7 +56,12 @@ fn weighted_mean_fixture() -> (DimensionRegistry, SimThing, SlotAllocator, usize
     (reg, world, alloc, n_cols)
 }
 
-fn upload_topology(state: &mut WorldGpuState, world: &SimThing, reg: &DimensionRegistry, alloc: &SlotAllocator) {
+fn upload_topology(
+    state: &mut WorldGpuState,
+    world: &SimThing,
+    reg: &DimensionRegistry,
+    alloc: &SlotAllocator,
+) {
     let n_dims = state.n_dims as usize;
     let topo = build_topology(world, alloc);
     let descriptors = build_column_rule_descriptors(reg, n_dims);

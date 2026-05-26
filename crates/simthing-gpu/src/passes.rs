@@ -1,4 +1,5 @@
-//! Compute pipelines and dispatch wrappers for Passes 0/1 and overlay/intent/threshold.
+//! Compute pipelines and dispatch wrappers for the retained snapshot operation
+//! plus AccumulatorOp-backed tick orchestration.
 //!
 //! Each pass owns its shader module, bind group layout, pipeline layout, and
 //! pipeline. Bind groups are created per-dispatch from the supplied
@@ -62,15 +63,6 @@ pub struct Pipelines {
 
     snapshot_layout: BindGroupLayout,
     snapshot_pipeline: ComputePipeline,
-
-    velocity_layout: BindGroupLayout,
-    velocity_pipeline: ComputePipeline,
-
-    intent_layout: BindGroupLayout,
-    intent_pipeline: ComputePipeline,
-
-    threshold_layout: BindGroupLayout,
-    threshold_pipeline: ComputePipeline,
 }
 
 impl Pipelines {
@@ -113,102 +105,10 @@ impl Pipelines {
             cache: None,
         });
 
-        // ── Pass 1: velocity integration ────────────────────────────────────
-        let velocity_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("velocity_bgl"),
-            entries: &[
-                storage_entry(0, /*read_only*/ false), // values (rw)
-                storage_entry(1, /*read_only*/ true),  // pairs
-                uniform_entry(2),                      // params
-            ],
-        });
-        let velocity_module = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("velocity_shader"),
-            source: ShaderSource::Wgsl(include_str!("shaders/velocity_integration.wgsl").into()),
-        });
-        let velocity_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("velocity_pl_layout"),
-            bind_group_layouts: &[&velocity_layout],
-            push_constant_ranges: &[],
-        });
-        let velocity_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("velocity_pipeline"),
-            layout: Some(&velocity_pl_layout),
-            module: &velocity_module,
-            entry_point: "main",
-            compilation_options: Default::default(),
-            cache: None,
-        });
-
-        // Per-tick feeder/player/AI intent deltas, applied before snapshot.
-        let intent_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("intent_bgl"),
-            entries: &[
-                storage_entry(0, /*read_only*/ false), // values (rw)
-                storage_entry(1, /*read_only*/ true),  // intent_deltas
-                uniform_entry(2),                      // params
-            ],
-        });
-        let intent_module = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("intent_delta_shader"),
-            source: ShaderSource::Wgsl(include_str!("shaders/intent_delta.wgsl").into()),
-        });
-        let intent_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("intent_pl_layout"),
-            bind_group_layouts: &[&intent_layout],
-            push_constant_ranges: &[],
-        });
-        let intent_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("intent_pipeline"),
-            layout: Some(&intent_pl_layout),
-            module: &intent_module,
-            entry_point: "main",
-            compilation_options: Default::default(),
-            cache: None,
-        });
-
-        // ── Pass 7: threshold scan ───────────────────────────────────────────
-        let threshold_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("threshold_bgl"),
-            entries: &[
-                storage_entry(0, /*read_only*/ true),  // values
-                storage_entry(1, /*read_only*/ true),  // previous_values
-                storage_entry(2, /*read_only*/ true),  // output_vectors
-                storage_entry(3, /*read_only*/ true),  // previous_output_vectors
-                storage_entry(4, /*read_only*/ true),  // registry
-                storage_entry(5, /*read_only*/ false), // event_count (atomic u32)
-                storage_entry(6, /*read_only*/ false), // event_candidates
-                uniform_entry(7),                      // params
-            ],
-        });
-        let threshold_module = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("threshold_shader"),
-            source: ShaderSource::Wgsl(include_str!("shaders/threshold_scan.wgsl").into()),
-        });
-        let threshold_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("threshold_pl_layout"),
-            bind_group_layouts: &[&threshold_layout],
-            push_constant_ranges: &[],
-        });
-        let threshold_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("threshold_pipeline"),
-            layout: Some(&threshold_pl_layout),
-            module: &threshold_module,
-            entry_point: "main",
-            compilation_options: Default::default(),
-            cache: None,
-        });
-
         Self {
             uniform_buffer,
             snapshot_layout,
             snapshot_pipeline,
-            velocity_layout,
-            velocity_pipeline,
-            intent_layout,
-            intent_pipeline,
-            threshold_layout,
-            threshold_pipeline,
         }
     }
 
@@ -272,43 +172,23 @@ impl Pipelines {
             return;
         }
         let ctx = &state.ctx;
-        self.write_params(ctx, state, dt);
-
-        let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
-            label: Some("velocity_bg"),
-            layout: &self.velocity_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: state.values.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: state.governed_pairs.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: self.uniform_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let total = state.n_slots * state.n_governed_pairs;
-
+        let pairs = state.read_governed_pairs();
+        let plan = crate::plan_velocity_integration(&pairs, state.n_slots);
+        let mut session = crate::AccumulatorOpSession::new_attached(
+            ctx,
+            state.n_slots,
+            state.n_dims,
+            plan.ops.len() as u32,
+        );
+        session
+            .upload_gpu_ops(ctx, &plan.ops)
+            .expect("AccumulatorOp velocity op upload failed");
         let mut encoder = ctx
             .device
             .create_command_encoder(&CommandEncoderDescriptor {
-                label: Some("velocity_encoder"),
+                label: Some("accumulator_velocity_encoder"),
             });
-        {
-            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("velocity_pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.velocity_pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            dispatch_linear(&mut pass, total);
-        }
+        session.encode_velocity_into(ctx, &mut encoder, &state.values, &state.previous_values, dt);
         ctx.queue.submit(Some(encoder.finish()));
     }
 
@@ -368,50 +248,6 @@ impl Pipelines {
         }
         if let Some(runtime) = state.accumulator_runtime.as_mut() {
             runtime.restore_overlay_session(session);
-        }
-        ctx.queue.submit(Some(encoder.finish()));
-    }
-
-    /// Apply folded per-tick intent deltas directly on the GPU.
-    pub fn run_apply_intents(&self, state: &WorldGpuState) {
-        if state.n_intent_deltas == 0 {
-            return;
-        }
-        let ctx = &state.ctx;
-        self.write_params(ctx, state, 0.0);
-
-        let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
-            label: Some("intent_bg"),
-            layout: &self.intent_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: state.values.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: state.intent_deltas.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: self.uniform_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let mut encoder = ctx
-            .device
-            .create_command_encoder(&CommandEncoderDescriptor {
-                label: Some("intent_encoder"),
-            });
-        {
-            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("intent_pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.intent_pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            dispatch_linear(&mut pass, state.n_intent_deltas);
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
@@ -496,13 +332,13 @@ impl Pipelines {
         &self,
         state: &mut WorldGpuState,
         dt: f32,
-        skip_threshold_scan: bool,
+        _skip_threshold_scan: bool,
     ) {
         self.run_tick_pipeline_internal(
             state,
             dt,
-            false,
-            skip_threshold_scan,
+            true,
+            true,
             &mut AccumulatorPipelineSessions {
                 threshold: None,
                 intent: None,
@@ -521,35 +357,14 @@ impl Pipelines {
         &self,
         state: &mut WorldGpuState,
         dt: f32,
-        skip_old_intent: bool,
-        skip_threshold_scan: bool,
+        _skip_old_intent: bool,
+        _skip_threshold_scan: bool,
         sessions: &mut AccumulatorPipelineSessions<'_>,
     ) {
         let ctx = &state.ctx;
 
         state.reset_event_count();
         self.write_params(ctx, state, dt);
-
-        let intent_bg = (state.n_intent_deltas > 0).then(|| {
-            ctx.device.create_bind_group(&BindGroupDescriptor {
-                label: Some("intent_bg"),
-                layout: &self.intent_layout,
-                entries: &[
-                    BindGroupEntry {
-                        binding: 0,
-                        resource: state.values.as_entire_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 1,
-                        resource: state.intent_deltas.as_entire_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 2,
-                        resource: self.uniform_buffer.as_entire_binding(),
-                    },
-                ],
-            })
-        });
 
         let snapshot_bg = ctx.device.create_bind_group(&BindGroupDescriptor {
             label: Some("snapshot_bg"),
@@ -583,68 +398,6 @@ impl Pipelines {
         let use_accumulator_emission =
             state.accumulator_emission_active && state.accumulator_emission_bands > 0;
 
-        let velocity_bg = (!use_accumulator_velocity && state.n_governed_pairs > 0).then(|| {
-            ctx.device.create_bind_group(&BindGroupDescriptor {
-                label: Some("velocity_bg"),
-                layout: &self.velocity_layout,
-                entries: &[
-                    BindGroupEntry {
-                        binding: 0,
-                        resource: state.values.as_entire_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 1,
-                        resource: state.governed_pairs.as_entire_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 2,
-                        resource: self.uniform_buffer.as_entire_binding(),
-                    },
-                ],
-            })
-        });
-
-        let threshold_bg = (state.n_thresholds > 0).then(|| {
-            ctx.device.create_bind_group(&BindGroupDescriptor {
-                label: Some("threshold_bg"),
-                layout: &self.threshold_layout,
-                entries: &[
-                    BindGroupEntry {
-                        binding: 0,
-                        resource: state.values.as_entire_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 1,
-                        resource: state.previous_values.as_entire_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 2,
-                        resource: state.output_vectors.as_entire_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 3,
-                        resource: state.previous_output_vectors.as_entire_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 4,
-                        resource: state.threshold_registry.as_entire_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 5,
-                        resource: state.event_count.as_entire_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 6,
-                        resource: state.event_candidates.as_entire_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 7,
-                        resource: self.uniform_buffer.as_entire_binding(),
-                    },
-                ],
-            })
-        });
-
         let mut encoder = ctx
             .device
             .create_command_encoder(&CommandEncoderDescriptor {
@@ -661,25 +414,9 @@ impl Pipelines {
                 timestamp_writes: None,
             });
 
-            if !skip_old_intent {
-                if let Some(bg) = intent_bg.as_ref() {
-                    pass.set_pipeline(&self.intent_pipeline);
-                    pass.set_bind_group(0, bg, &[]);
-                    dispatch_linear(&mut pass, state.n_intent_deltas);
-                }
-            }
-
             pass.set_pipeline(&self.snapshot_pipeline);
             pass.set_bind_group(0, &snapshot_bg, &[]);
             dispatch_linear(&mut pass, state.n_slots * state.n_dims);
-
-            if !use_accumulator_velocity {
-                if let Some(bg) = velocity_bg.as_ref() {
-                    pass.set_pipeline(&self.velocity_pipeline);
-                    pass.set_bind_group(0, bg, &[]);
-                    dispatch_linear(&mut pass, state.n_slots * state.n_governed_pairs);
-                }
-            }
         }
 
         if use_accumulator_velocity {
@@ -764,37 +501,11 @@ impl Pipelines {
         let reduction_soft_active =
             state.accumulator_reduction_soft_active && state.accumulator_reduction_soft_bands > 0;
 
-        {
-            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("tick_pipeline_post_overlay"),
-                timestamp_writes: None,
-            });
-
-            if !skip_threshold_scan && !reduction_soft_active {
-                if let Some(bg) = threshold_bg.as_ref() {
-                    pass.set_pipeline(&self.threshold_pipeline);
-                    pass.set_bind_group(0, bg, &[]);
-                    dispatch_linear(&mut pass, state.n_thresholds);
-                }
-            }
-        }
-
         if reduction_soft_active {
             let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
             encoder.copy_buffer_to_buffer(&state.values, 0, &state.output_vectors, 0, copy_bytes);
             if let Some(session) = sessions.reduction_soft.as_mut() {
                 self.encode_accumulator_reduction_by_depth(ctx, &mut encoder, state, session);
-            }
-            if !skip_threshold_scan {
-                if let Some(bg) = threshold_bg.as_ref() {
-                    let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                        label: Some("tick_pipeline_threshold_after_c5"),
-                        timestamp_writes: None,
-                    });
-                    pass.set_pipeline(&self.threshold_pipeline);
-                    pass.set_bind_group(0, bg, &[]);
-                    dispatch_linear(&mut pass, state.n_thresholds);
-                }
             }
         }
 
@@ -804,11 +515,13 @@ impl Pipelines {
         // tick eliminates the second driver fence the standalone
         // `dispatch_threshold_scan` would otherwise introduce.
         if let Some(session) = sessions.threshold.as_mut() {
-            session.encode_threshold_scan_into(
+            session.encode_threshold_scan_with_outputs_into(
                 ctx,
                 &mut encoder,
                 &state.values,
                 &state.previous_values,
+                &state.output_vectors,
+                &state.previous_output_vectors,
             );
         }
 
@@ -875,81 +588,6 @@ impl Pipelines {
             }
         }
     }
-
-    /// Pass 7: scan registered thresholds for crossings between `previous_values`
-    /// and `values`. Resets the event counter to zero, dispatches one thread per
-    /// registration, and atomically appends `ThresholdEvent`s to
-    /// `state.event_candidates`.
-    ///
-    /// Early-returns if no thresholds are registered. Caller is responsible for
-    /// reading the result via `state.read_event_count()` + `state.read_event_candidates(n)`.
-    pub fn run_threshold_scan(&self, state: &WorldGpuState) {
-        // Reset the atomic counter before this tick's scan.
-        state.reset_event_count();
-
-        if state.n_thresholds == 0 {
-            return;
-        }
-        let ctx = &state.ctx;
-
-        // n_dims is the only field Pass 7 reads from the uniform; dt is ignored.
-        self.write_params(ctx, state, 0.0);
-
-        let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
-            label: Some("threshold_bg"),
-            layout: &self.threshold_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: state.values.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: state.previous_values.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: state.output_vectors.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 3,
-                    resource: state.previous_output_vectors.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 4,
-                    resource: state.threshold_registry.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 5,
-                    resource: state.event_count.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 6,
-                    resource: state.event_candidates.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 7,
-                    resource: self.uniform_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let mut encoder = ctx
-            .device
-            .create_command_encoder(&CommandEncoderDescriptor {
-                label: Some("threshold_encoder"),
-            });
-        {
-            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("threshold_pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.threshold_pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            dispatch_linear(&mut pass, state.n_thresholds);
-        }
-        ctx.queue.submit(Some(encoder.finish()));
-    }
 }
 
 fn storage_entry(binding: u32, read_only: bool) -> BindGroupLayoutEntry {
@@ -958,19 +596,6 @@ fn storage_entry(binding: u32, read_only: bool) -> BindGroupLayoutEntry {
         visibility: ShaderStages::COMPUTE,
         ty: BindingType::Buffer {
             ty: BufferBindingType::Storage { read_only },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-fn uniform_entry(binding: u32) -> BindGroupLayoutEntry {
-    BindGroupLayoutEntry {
-        binding,
-        visibility: ShaderStages::COMPUTE,
-        ty: BindingType::Buffer {
-            ty: BufferBindingType::Uniform,
             has_dynamic_offset: false,
             min_binding_size: None,
         },
@@ -1442,17 +1067,64 @@ mod tests {
         manual.upload_thresholds(&regs);
         let pipelines = Pipelines::new(&manual.ctx);
 
-        pipelines.run_apply_intents(&manual);
+        let mut intent_session = crate::AccumulatorOpSession::new_attached(
+            &manual.ctx,
+            manual.n_slots,
+            manual.n_dims,
+            intent.len() as u32,
+        );
+        intent_session
+            .upload_intent_ops(&manual.ctx, &intent)
+            .unwrap();
+        let mut intent_encoder =
+            manual
+                .ctx
+                .device
+                .create_command_encoder(&CommandEncoderDescriptor {
+                    label: Some("manual_intent_accumulator_encoder"),
+                });
+        intent_session.prepare_intent(&manual.ctx);
+        intent_session.encode_intent_into(
+            &manual.ctx,
+            &mut intent_encoder,
+            &manual.values,
+            &manual.previous_values,
+        );
+        manual.ctx.queue.submit(Some(intent_encoder.finish()));
+        intent_session.finish_intent(&manual.ctx);
         pipelines.run_snapshot(&manual);
         pipelines.run_velocity_integration(&manual, 1.0);
         run_intensity_eml_on_state(&pipelines, &mut manual, &reg, 1.0);
-        pipelines.run_threshold_scan(&manual);
+        let manual_events = run_accumulator_threshold_scan(&manual, &regs);
 
         let ctx2 = GpuContext::new_blocking().expect("second gpu context");
         let mut piped = WorldGpuState::new(ctx2, &reg, 1);
         piped.write_values(&initial);
         piped.upload_intent_deltas(&intent);
         piped.upload_thresholds(&regs);
+        let mut piped_intent_session = crate::AccumulatorOpSession::new_attached(
+            &piped.ctx,
+            piped.n_slots,
+            piped.n_dims,
+            intent.len() as u32,
+        );
+        piped_intent_session
+            .upload_intent_ops(&piped.ctx, &intent)
+            .unwrap();
+        let vplan = crate::plan_velocity_integration(&piped.read_governed_pairs(), piped.n_slots);
+        let mut piped_velocity_session = if vplan.n_bands > 0 {
+            piped.ensure_velocity_accumulator();
+            piped
+                .upload_velocity_ops_with_bands(&vplan.ops, vplan.n_bands)
+                .unwrap();
+            piped
+                .accumulator_runtime
+                .as_mut()
+                .unwrap()
+                .take_velocity_session()
+        } else {
+            None
+        };
         piped.sync_intensity_eml_accumulator(&reg);
         let pipelines2 = Pipelines::new(&piped.ctx);
         let mut intensity_session = piped
@@ -1464,11 +1136,11 @@ mod tests {
             &mut piped,
             1.0,
             AccumulatorPipelineSessions {
-                intent: None,
+                intent: Some(&mut piped_intent_session),
                 threshold: None,
                 overlay_add: None,
                 reduction_soft: None,
-                velocity: None,
+                velocity: piped_velocity_session.as_mut(),
                 intensity_eml: intensity_session.as_mut(),
                 transfer: None,
                 emission: None,
@@ -1480,6 +1152,9 @@ mod tests {
             .as_mut()
             .unwrap()
             .restore_intensity_eml_session(intensity_session);
+        if let Some(runtime) = piped.accumulator_runtime.as_mut() {
+            runtime.restore_velocity_session(piped_velocity_session);
+        }
 
         assert_bits_eq("values", &manual.read_values(), &piped.read_values());
         assert_bits_eq(
@@ -1487,11 +1162,7 @@ mod tests {
             &manual.read_previous_values(),
             &piped.read_previous_values(),
         );
-        assert_eq!(manual.read_event_count(), piped.read_event_count());
-        assert_eq!(
-            manual.read_event_candidates(1),
-            piped.read_event_candidates(1),
-        );
+        assert_eq!(manual_events, run_accumulator_threshold_scan(&piped, &regs),);
     }
 
     /// CPU oracle for Pass 7. Same crossing logic as the WGSL shader; used to
@@ -1530,6 +1201,37 @@ mod tests {
             }
         }
         events
+    }
+
+    fn run_accumulator_threshold_scan(
+        state: &WorldGpuState,
+        regs: &[crate::world_state::ThresholdRegistration],
+    ) -> Vec<crate::world_state::ThresholdEvent> {
+        let mut session = crate::AccumulatorOpSession::new_attached(
+            &state.ctx,
+            state.n_slots,
+            state.n_dims,
+            regs.len() as u32,
+        );
+        session.upload_threshold_ops(&state.ctx, regs).unwrap();
+        let mut encoder = state
+            .ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("test_threshold_scan_with_outputs"),
+            });
+        session.prepare_threshold_scan(&state.ctx);
+        session.encode_threshold_scan_with_outputs_into(
+            &state.ctx,
+            &mut encoder,
+            &state.values,
+            &state.previous_values,
+            &state.output_vectors,
+            &state.previous_output_vectors,
+        );
+        state.ctx.queue.submit(Some(encoder.finish()));
+        session.finish_threshold_scan(&state.ctx);
+        session.readback_threshold_events(&state.ctx).unwrap()
     }
 
     /// Pass 7 directly: set up `previous_values` and `values` so that each
@@ -1618,11 +1320,7 @@ mod tests {
         );
         assert_eq!(cpu.len(), 3, "oracle should produce exactly 3 events");
 
-        let pipelines = Pipelines::new(&state.ctx);
-        pipelines.run_threshold_scan(&state);
-
-        let count = state.read_event_count();
-        let mut gpu: Vec<ThresholdEvent> = state.read_event_candidates(count);
+        let mut gpu: Vec<ThresholdEvent> = run_accumulator_threshold_scan(&state, &regs);
 
         // GPU event order is nondeterministic (atomicAdd race). Sort both sides.
         let key = |e: &ThresholdEvent| (e.event_kind, e.slot, e.col);
@@ -1697,11 +1395,7 @@ mod tests {
         );
         assert_eq!(cpu.len(), 1);
 
-        let pipelines = Pipelines::new(&state.ctx);
-        pipelines.run_threshold_scan(&state);
-
-        let count = state.read_event_count();
-        let gpu = state.read_event_candidates(count);
+        let gpu = run_accumulator_threshold_scan(&state, &regs);
         assert_eq!(gpu.len(), 1);
         assert_eq!(gpu[0].value.to_bits(), 0.50_f32.to_bits());
         assert_eq!(gpu[0].event_kind, 200);
@@ -1717,13 +1411,8 @@ mod tests {
         let mut reg = DimensionRegistry::new();
         reg.register(SimProperty::simple("core", "loyalty", 0));
         let state = WorldGpuState::new(ctx, &reg, 2);
-        let pipelines = Pipelines::new(&state.ctx);
-        state
-            .ctx
-            .queue
-            .write_buffer(&state.event_count, 0, &42u32.to_le_bytes());
-        pipelines.run_threshold_scan(&state); // n_thresholds == 0 → no-op
-        assert_eq!(state.read_event_count(), 0);
+        let gpu = run_accumulator_threshold_scan(&state, &[]);
+        assert!(gpu.is_empty());
     }
 
     /// End-to-end Pass 0+1+2+3+7: a velocity-integration tick crosses a threshold
@@ -1765,12 +1454,8 @@ mod tests {
         pipelines.run_snapshot(&state); // previous_* <- current
         pipelines.run_velocity_integration(&state, 1.0); // values amount: 0.35 - 0.10 = 0.25
         run_intensity_eml_on_state(&pipelines, &mut state, &reg, 1.0);
-        pipelines.run_threshold_scan(&state);
-
-        let count = state.read_event_count();
-        assert_eq!(count, 1, "expected exactly one downward crossing");
-
-        let events = state.read_event_candidates(count);
+        let events = run_accumulator_threshold_scan(&state, &regs);
+        assert_eq!(events.len(), 1, "expected exactly one downward crossing");
         assert_eq!(events[0].slot, 0);
         assert_eq!(events[0].col, a_off as u32);
         assert_eq!(events[0].event_kind, 7);

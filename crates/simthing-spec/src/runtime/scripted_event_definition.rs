@@ -30,9 +30,9 @@ impl Default for ScriptedEventDefinitionId {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ScriptedEventDefinition {
-    pub id:       EventKey,
-    pub trigger:  CompiledTrigger,
-    pub effects:  Vec<CompiledEffect>,
+    pub id: EventKey,
+    pub trigger: CompiledTrigger,
+    pub effects: Vec<CompiledEffect>,
     pub cooldown: Option<CooldownSpec>,
     pub priority: EventPriority,
 }
@@ -47,11 +47,11 @@ pub struct ScriptedEventInstanceKey {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ScriptedEventInstance {
-    pub key:                ScriptedEventInstanceKey,
-    pub definition_id:      ScriptedEventDefinitionId,
+    pub key: ScriptedEventInstanceKey,
+    pub definition_id: ScriptedEventDefinitionId,
     /// Slot used to resolve `ScopeRef::Current` for this instance. Refreshed
     /// from the allocator on slot churn (fission, removal).
-    pub current_slot:       u32,
+    pub current_slot: u32,
     /// Boundaries remaining until this instance may fire again. 0 = ready.
     pub cooldown_remaining: u32,
 }
@@ -74,13 +74,13 @@ impl ScriptedEventDefinition {
             return None;
         };
         let slot = match trigger.target {
-            ScopeRef::Current  => current_slot,
-            ScopeRef::Slot(s)  => s,
+            ScopeRef::Current => current_slot,
+            ScopeRef::Slot(s) => s,
         };
         Some(ScriptedEventTriggerRegistration {
-            event_id:  self.id.0.clone(),
+            event_id: self.id.0.clone(),
             slot,
-            col:       trigger.col as u32,
+            col: trigger.col as u32,
             threshold: trigger.threshold,
             direction: trigger_direction_to_core(&trigger.direction),
         })
@@ -89,7 +89,7 @@ impl ScriptedEventDefinition {
 
 fn trigger_direction_to_core(dir: &TriggerDirection) -> Direction {
     match dir {
-        TriggerDirection::Rising  => Direction::Rising,
+        TriggerDirection::Rising => Direction::Rising,
         TriggerDirection::Falling => Direction::Falling,
     }
 }

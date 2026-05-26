@@ -254,9 +254,7 @@ impl WorldAccumulatorRuntime {
     }
 
     pub fn eml_bind_buffers(&self) -> Option<(&wgpu::Buffer, &wgpu::Buffer)> {
-        self.eml
-            .as_ref()
-            .map(|t| (&t.node_buffer, &t.range_buffer))
+        self.eml.as_ref().map(|t| (&t.node_buffer, &t.range_buffer))
     }
 
     pub fn apply_eml_bindings_to_sessions(&mut self) {
@@ -462,12 +460,8 @@ impl WorldAccumulatorRuntime {
         emission_capacity: u32,
     ) {
         if self.intent_session.is_none() {
-            let mut session = AccumulatorOpSession::new_attached(
-                ctx,
-                n_slots,
-                n_dims,
-                emission_capacity,
-            );
+            let mut session =
+                AccumulatorOpSession::new_attached(ctx, n_slots, n_dims, emission_capacity);
             self.bind_eml_if_present(&mut session);
             self.intent_session = Some(session);
         }
@@ -487,14 +481,12 @@ impl WorldAccumulatorRuntime {
         emission_capacity: u32,
     ) {
         if self.threshold_session.is_none() {
-            let mut session = AccumulatorOpSession::new_attached(
-                ctx,
-                n_slots,
-                n_dims,
-                emission_capacity,
-            );
+            let mut session =
+                AccumulatorOpSession::new_attached(ctx, n_slots, n_dims, emission_capacity);
             self.bind_eml_if_present(&mut session);
             self.threshold_session = Some(session);
+        } else if let Some(session) = self.threshold_session.as_mut() {
+            session.ensure_threshold_emission_capacity(ctx, emission_capacity);
         }
         self.threshold_ops = OpSetHandle {
             family: OperationFamily::Threshold,
@@ -512,12 +504,8 @@ impl WorldAccumulatorRuntime {
         emission_capacity: u32,
     ) {
         if self.overlay_session.is_none() {
-            let mut session = AccumulatorOpSession::new_attached(
-                ctx,
-                n_slots,
-                n_dims,
-                emission_capacity,
-            );
+            let mut session =
+                AccumulatorOpSession::new_attached(ctx, n_slots, n_dims, emission_capacity);
             self.bind_eml_if_present(&mut session);
             self.overlay_session = Some(session);
         }
@@ -609,12 +597,8 @@ impl WorldAccumulatorRuntime {
         emission_capacity: u32,
     ) {
         if self.velocity_session.is_none() {
-            let mut session = AccumulatorOpSession::new_attached(
-                ctx,
-                n_slots,
-                n_dims,
-                emission_capacity,
-            );
+            let mut session =
+                AccumulatorOpSession::new_attached(ctx, n_slots, n_dims, emission_capacity);
             self.bind_eml_if_present(&mut session);
             self.velocity_session = Some(session);
         }
@@ -637,12 +621,8 @@ impl WorldAccumulatorRuntime {
         emission_capacity: u32,
     ) {
         if self.intensity_eml_session.is_none() {
-            let mut session = AccumulatorOpSession::new_attached(
-                ctx,
-                n_slots,
-                n_dims,
-                emission_capacity,
-            );
+            let mut session =
+                AccumulatorOpSession::new_attached(ctx, n_slots, n_dims, emission_capacity);
             self.bind_eml_if_present(&mut session);
             self.intensity_eml_session = Some(session);
         }
@@ -943,11 +923,8 @@ impl WorldAccumulatorRuntime {
     ) -> Result<Vec<crate::IntensityEmlEntry>, simthing_core::EmlRegistryError> {
         use crate::intensity_accumulator::register_intensity_eml_formulas;
         let previous = self.intensity_tree_ids.clone();
-        let entries = register_intensity_eml_formulas(
-            &mut self.eml_registry,
-            dimension_registry,
-            &previous,
-        )?;
+        let entries =
+            register_intensity_eml_formulas(&mut self.eml_registry, dimension_registry, &previous)?;
         self.intensity_tree_ids = entries.iter().map(|e| e.tree_id).collect();
         Ok(entries)
     }
@@ -1021,6 +998,19 @@ impl WorldAccumulatorRuntime {
         if let Some(session) = self.threshold_session.as_mut() {
             session.upload_threshold_ops(ctx, regs)?;
             self.threshold_ops.count = session.n_ops();
+        }
+        Ok(())
+    }
+
+    pub fn append_threshold_ops(
+        &mut self,
+        ctx: &GpuContext,
+        regs: &[ThresholdRegistration],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if let Some(session) = self.threshold_session.as_mut() {
+            session.append_threshold_ops(ctx, regs)?;
+            self.threshold_ops.count = session.n_ops();
+            self.threshold_ops.active = session.n_ops() > 0;
         }
         Ok(())
     }
@@ -1208,12 +1198,8 @@ mod tests {
         let ctx = GpuContext::new_blocking().expect("gpu");
         let mut runtime = WorldAccumulatorRuntime::new();
         let behavior = IntensityBehavior::default();
-        let (meta, nodes) = compile_intensity_behavior_to_eml(
-            &behavior,
-            intensity_tree_id(0),
-            1,
-            2,
-        );
+        let (meta, nodes) =
+            compile_intensity_behavior_to_eml(&behavior, intensity_tree_id(0), 1, 2);
         runtime
             .eml_registry
             .replace_formula(intensity_tree_id(0), meta, nodes)
@@ -1275,9 +1261,6 @@ mod tests {
             .upload_intensity_eml_ops(&ctx, &[op, op_slot1], 1, signature_grown)
             .unwrap();
         assert_eq!(runtime.intensity_op_upload_count(), 2);
-        assert_eq!(
-            runtime.intensity_eml_session.as_ref().unwrap().n_ops(),
-            2
-        );
+        assert_eq!(runtime.intensity_eml_session.as_ref().unwrap().n_ops(), 2);
     }
 }

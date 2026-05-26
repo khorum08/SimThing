@@ -69,9 +69,9 @@ pub fn preview_capability_effect(
         let layout = &input.registry.property(transform.property_id).layout;
         let range = input.registry.column_range(transform.property_id);
         let source_slot = match effect_target {
-            EffectTarget::Owner          => input.owner_slot,
+            EffectTarget::Owner => input.owner_slot,
             EffectTarget::CapabilityTree => input.tree_slot,
-            EffectTarget::SessionRoot    => input.root_slot,
+            EffectTarget::SessionRoot => input.root_slot,
         };
         let mut deltas = Vec::new();
 

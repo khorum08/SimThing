@@ -353,7 +353,11 @@ pub fn diff_and_emit(
             .chain(before.active_by_category.keys())
             .cloned()
             .collect();
-        cats.sort_by(|a, b| a.namespace.cmp(&b.namespace).then_with(|| a.name.cmp(&b.name)));
+        cats.sort_by(|a, b| {
+            a.namespace
+                .cmp(&b.namespace)
+                .then_with(|| a.name.cmp(&b.name))
+        });
         cats.dedup();
         for category in cats {
             let bv = before.active_by_category.get(&category);
@@ -458,7 +462,9 @@ pub fn spec_deltas_to_json(deltas: &[SpecDelta]) -> Vec<serde_json::Value> {
 
 /// Deserialize the opaque JSON values from `ReplayFrame::spec_entries` back
 /// into `SpecDelta`s.
-pub fn json_to_spec_deltas(values: &[serde_json::Value]) -> Result<Vec<SpecDelta>, serde_json::Error> {
+pub fn json_to_spec_deltas(
+    values: &[serde_json::Value],
+) -> Result<Vec<SpecDelta>, serde_json::Error> {
     values
         .iter()
         .map(|v| serde_json::from_value(v.clone()))
@@ -508,7 +514,11 @@ pub fn apply_spec_snapshot(
 
     for sel in &snapshot.queued_selections {
         state
-            .queue_player_selection_by_key(sel.owner_id, &sel.definition_logical_id, &sel.entry.entry_id)
+            .queue_player_selection_by_key(
+                sel.owner_id,
+                &sel.definition_logical_id,
+                &sel.entry.entry_id,
+            )
             .map_err(|e| ReplayOpenError::SelectionResolution(e.to_string()))?;
     }
 
@@ -570,7 +580,8 @@ pub fn apply_spec_delta(
             if active.is_empty() {
                 st.active_by_category.remove(category);
             } else {
-                st.active_by_category.insert(category.clone(), active.clone());
+                st.active_by_category
+                    .insert(category.clone(), active.clone());
             }
         }
         SpecDelta::CapabilityNotification(n) => {
@@ -670,7 +681,10 @@ pub fn read_spec_replay_file(path: &Path) -> Result<LoadedReplay, ReplayOpenErro
         return Err(ReplayOpenError::MissingStructuralSnapshot);
     }
     let structural_snapshot: ReplaySnapshot = serde_json::from_value(
-        first_value.get("snapshot").cloned().unwrap_or(serde_json::Value::Null),
+        first_value
+            .get("snapshot")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
     )?;
 
     let mut spec_snapshot: Option<SpecSnapshot> = None;
@@ -690,7 +704,9 @@ pub fn read_spec_replay_file(path: &Path) -> Result<LoadedReplay, ReplayOpenErro
         match v.get("kind").and_then(|s| s.as_str()) {
             Some("spec_snapshot") => {
                 let ss: SpecSnapshot = serde_json::from_value(
-                    v.get("spec_snapshot").cloned().unwrap_or(serde_json::Value::Null),
+                    v.get("spec_snapshot")
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Null),
                 )?;
                 spec_snapshot = Some(ss);
             }

@@ -22,7 +22,7 @@ enum GateScope {
 pub struct BootstrapContention {
     pub band: u32,
     pub slot: u32,
-    pub col:  u32,
+    pub col: u32,
 }
 
 fn gate_scope(op: &AccumulatorOpGpu) -> GateScope {
@@ -39,9 +39,7 @@ fn gate_scope(op: &AccumulatorOpGpu) -> GateScope {
 /// with atomic writes.
 ///
 /// Multiple Identity/Sum writes to the same `(slot, col)` are allowed.
-pub fn validate_no_contention(
-    gpu_ops: &[AccumulatorOpGpu],
-) -> Result<(), BootstrapContention> {
+pub fn validate_no_contention(gpu_ops: &[AccumulatorOpGpu]) -> Result<(), BootstrapContention> {
     let mut always_consumes: HashSet<(u32, u32)> = HashSet::new();
     let mut band_consumes: HashSet<(u32, u32, u32)> = HashSet::new();
 
@@ -60,7 +58,7 @@ pub fn validate_no_contention(
                         return Err(BootstrapContention {
                             band: ALWAYS_BAND_SENTINEL,
                             slot: op.source_slot,
-                            col:  op.source_col,
+                            col: op.source_col,
                         });
                     }
                     always_consumes.insert(cell);
@@ -71,7 +69,7 @@ pub fn validate_no_contention(
                         return Err(BootstrapContention {
                             band,
                             slot: op.source_slot,
-                            col:  op.source_col,
+                            col: op.source_col,
                         });
                     }
                     band_consumes.insert(key);
@@ -85,38 +83,38 @@ pub fn validate_no_contention(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::types::{
         combine_kind, consume_kind, gate_kind, scale_kind, source_kind, AccumulatorOpGpu,
     };
+    use super::*;
 
     fn identity_op(gate_kind_val: u32, gate_a: u32, target: (u32, u32)) -> AccumulatorOpGpu {
         AccumulatorOpGpu {
-            source_kind:  source_kind::CONSTANT,
-            source_slot:  1f32.to_bits(),
-            source_col:   0,
+            source_kind: source_kind::CONSTANT,
+            source_slot: 1f32.to_bits(),
+            source_col: 0,
             source_count: 0,
             combine_kind: combine_kind::IDENTITY,
-            combine_a:    0,
-            combine_b:    0,
-            combine_c:    0,
-            combine_d:    0,
-            gate_kind:    gate_kind_val,
+            combine_a: 0,
+            combine_b: 0,
+            combine_c: 0,
+            combine_d: 0,
+            gate_kind: gate_kind_val,
             gate_a,
-            gate_b:       0,
-            scale_kind:   scale_kind::IDENTITY,
-            scale_a:      0,
-            consume:      consume_kind::NONE,
+            gate_b: 0,
+            scale_kind: scale_kind::IDENTITY,
+            scale_a: 0,
+            consume: consume_kind::NONE,
             target0_slot: target.0,
-            target0_col:  target.1,
+            target0_col: target.1,
             target1_slot: 0,
-            target1_col:  0,
+            target1_col: 0,
             target2_slot: 0,
-            target2_col:  0,
+            target2_col: 0,
             target3_slot: 0,
-            target3_col:  0,
-            n_targets:    1,
-            _pad:         0,
+            target3_col: 0,
+            n_targets: 1,
+            _pad: 0,
         }
     }
 
@@ -127,31 +125,31 @@ mod tests {
         target: (u32, u32),
     ) -> AccumulatorOpGpu {
         AccumulatorOpGpu {
-            source_kind:  source_kind::SLOT_VALUE,
-            source_slot:  source.0,
-            source_col:   source.1,
+            source_kind: source_kind::SLOT_VALUE,
+            source_slot: source.0,
+            source_col: source.1,
             source_count: 0,
             combine_kind: combine_kind::IDENTITY,
-            combine_a:    0,
-            combine_b:    0,
-            combine_c:    0,
-            combine_d:    0,
-            gate_kind:    gate_kind_val,
+            combine_a: 0,
+            combine_b: 0,
+            combine_c: 0,
+            combine_d: 0,
+            gate_kind: gate_kind_val,
             gate_a,
-            gate_b:       0,
-            scale_kind:   scale_kind::CONSTANT,
-            scale_a:      1f32.to_bits(),
-            consume:      consume_kind::SUBTRACT_FROM_SOURCE,
+            gate_b: 0,
+            scale_kind: scale_kind::CONSTANT,
+            scale_a: 1f32.to_bits(),
+            consume: consume_kind::SUBTRACT_FROM_SOURCE,
             target0_slot: target.0,
-            target0_col:  target.1,
+            target0_col: target.1,
             target1_slot: 0,
-            target1_col:  0,
+            target1_col: 0,
             target2_slot: 0,
-            target2_col:  0,
+            target2_col: 0,
             target3_slot: 0,
-            target3_col:  0,
-            n_targets:    1,
-            _pad:         0,
+            target3_col: 0,
+            n_targets: 1,
+            _pad: 0,
         }
     }
 

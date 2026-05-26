@@ -165,14 +165,12 @@ mod tests {
     #[test]
     fn c8b_intensity_behavior_compiles_exact_deterministic_eml() {
         let behavior = IntensityBehavior::default();
-        let (meta, nodes) = compile_intensity_behavior_to_eml(
-            &behavior,
-            intensity_tree_id(0),
-            1,
-            2,
-        );
+        let (meta, nodes) =
+            compile_intensity_behavior_to_eml(&behavior, intensity_tree_id(0), 1, 2);
         assert_eq!(meta.execution_class, EmlExecutionClass::ExactDeterministic);
-        assert!(meta.allowed_consumers.contains_kind(EmlConsumerKind::Intensity));
+        assert!(meta
+            .allowed_consumers
+            .contains_kind(EmlConsumerKind::Intensity));
         assert_eq!(meta.node_count, nodes.len() as u32);
         assert!(nodes.len() as u32 <= MAX_EML_TREE_NODES);
         for node in &nodes {
@@ -208,12 +206,8 @@ mod tests {
         ];
         for (velocity, intensity, dt) in cases {
             let expected = intensity_eml_direct_cpu(&behavior, velocity, intensity, dt);
-            let (meta, nodes) = compile_intensity_behavior_to_eml(
-                &behavior,
-                intensity_tree_id(0),
-                1,
-                2,
-            );
+            let (meta, nodes) =
+                compile_intensity_behavior_to_eml(&behavior, intensity_tree_id(0), 1, 2);
             let mut values = vec![0.0, velocity, intensity];
             let got = simthing_gpu_oracle_stub(&meta, &nodes, &mut values, 3, dt);
             assert_eq!(

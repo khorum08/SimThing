@@ -1,9 +1,7 @@
 use crate::diagnostics::{SpecDiagnostics, SpecResult};
 use crate::error::SpecError;
 use crate::spec::property::PropertySpec;
-use simthing_core::{
-    DimensionRegistry, PropertyLayout, SimProperty, SimPropertyId, SubFieldRole,
-};
+use simthing_core::{DimensionRegistry, PropertyLayout, SimProperty, SimPropertyId, SubFieldRole};
 
 /// Compile a `PropertySpec` into a live `SimProperty` and register it with the
 /// supplied `DimensionRegistry`.
@@ -22,35 +20,37 @@ use simthing_core::{
 /// - Empty `sub_fields` → `PropertyLayout::standard(0)` (Amount + Velocity + Intensity).
 /// - Non-empty `sub_fields` → those specs become the layout verbatim.
 pub fn compile_property(
-    spec:     &PropertySpec,
+    spec: &PropertySpec,
     registry: &mut DimensionRegistry,
 ) -> SpecResult<SimPropertyId> {
     if registry.id_of(&spec.namespace, &spec.name).is_some() {
         return Err(SpecError::DuplicateProperty {
             namespace: spec.namespace.clone(),
-            name:      spec.name.clone(),
+            name: spec.name.clone(),
         });
     }
 
     let layout = if spec.sub_fields.is_empty() {
         PropertyLayout::standard(0)
     } else {
-        PropertyLayout { sub_fields: spec.sub_fields.clone() }
+        PropertyLayout {
+            sub_fields: spec.sub_fields.clone(),
+        }
     };
 
     validate_governed_by(spec, &layout)?;
 
     let prop = SimProperty {
-        namespace:          spec.namespace.clone(),
-        name:               spec.name.clone(),
+        namespace: spec.namespace.clone(),
+        name: spec.name.clone(),
         layout,
-        decay:              None,
+        decay: None,
         intensity_behavior: None,
-        fission_templates:  vec![],
-        fusion_templates:   vec![],
-        on_expire:          None,
-        description:        spec.description.clone(),
-        intensity_labels:   vec![],
+        fission_templates: vec![],
+        fusion_templates: vec![],
+        on_expire: None,
+        description: spec.description.clone(),
+        intensity_labels: vec![],
     };
 
     let id = registry.register(prop);
@@ -62,8 +62,8 @@ fn validate_governed_by(spec: &PropertySpec, layout: &PropertyLayout) -> Result<
         if let Some(gov_role) = &sf.governed_by {
             if layout.offset_of(gov_role).is_none() {
                 return Err(SpecError::InvalidGovernedByRole {
-                    property:    format!("{}::{}", spec.namespace, spec.name),
-                    sub_field:   format_role(&sf.role),
+                    property: format!("{}::{}", spec.namespace, spec.name),
+                    sub_field: format_role(&sf.role),
                     governed_by: format_role(gov_role),
                 });
             }
@@ -74,10 +74,10 @@ fn validate_governed_by(spec: &PropertySpec, layout: &PropertyLayout) -> Result<
 
 fn format_role(role: &SubFieldRole) -> String {
     match role {
-        SubFieldRole::Amount    => "Amount".into(),
-        SubFieldRole::Velocity  => "Velocity".into(),
+        SubFieldRole::Amount => "Amount".into(),
+        SubFieldRole::Velocity => "Velocity".into(),
         SubFieldRole::Intensity => "Intensity".into(),
-        SubFieldRole::Named(n)  => format!("Named({n})"),
+        SubFieldRole::Named(n) => format!("Named({n})"),
         SubFieldRole::Custom(n) => format!("Custom({n})"),
     }
 }

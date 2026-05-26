@@ -7,14 +7,12 @@
 //!
 //! See `docs/adr/game_mode_session_installation.md` for design rationale.
 
-use simthing_core::{
-    kind_matches, Overlay, OverlayId, SimThing, SimThingId, SimThingKind,
-};
 use simthing_core::DimensionRegistry;
+use simthing_core::{kind_matches, Overlay, OverlayId, SimThing, SimThingId, SimThingKind};
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
     compile_event, compile_property, CapabilityEntryKey, CapabilityTreeBuildOutput,
-    CapabilityTreeBuilder, CapabilityTreeInstance, CapabilityTreeState, CapabilityTreeSpec,
+    CapabilityTreeBuilder, CapabilityTreeInstance, CapabilityTreeSpec, CapabilityTreeState,
     CapabilityUnlockRegistration, DomainPackSpec, EffectTarget, EventSpec, GameModeSpec,
     InstallTargetSpec, SpecError,
 };
@@ -32,7 +30,7 @@ pub enum InstallError {
     #[error("capability tree `{tree_id}` resolved to zero owners for target `{target:?}`")]
     NoMatchingOwners {
         tree_id: String,
-        target:   InstallTargetSpec,
+        target: InstallTargetSpec,
     },
 
     #[error("scenario install_targets key `{key}` is not defined in the scenario")]
@@ -41,7 +39,9 @@ pub enum InstallError {
     #[error("slot allocation overflow for owner {owner_id:?} (cloned tree exceeds scenario n_slots; raise n_slots)")]
     SlotOverflow { owner_id: SimThingId },
 
-    #[error("session root has no slot — allocator was not populated before install_targets resolution")]
+    #[error(
+        "session root has no slot — allocator was not populated before install_targets resolution"
+    )]
     RootHasNoSlot,
 }
 
@@ -64,9 +64,9 @@ pub enum InstallError {
 /// by `SimSession::install_spec_state`).
 pub fn compile_and_install(
     game_mode: &GameModeSpec,
-    scenario:  &Scenario,
-    registry:  &mut DimensionRegistry,
-    root:      &mut SimThing,
+    scenario: &Scenario,
+    registry: &mut DimensionRegistry,
+    root: &mut SimThing,
     allocator: &mut SlotAllocator,
 ) -> Result<SpecSessionState, InstallError> {
     let mut state = SpecSessionState::new();
@@ -102,7 +102,7 @@ pub fn compile_and_install(
         if owners.is_empty() {
             return Err(InstallError::NoMatchingOwners {
                 tree_id: compiled.spec.tree_id.clone(),
-                target:  compiled.spec.install.clone(),
+                target: compiled.spec.install.clone(),
             });
         }
         let root_id = root.id;
@@ -152,12 +152,12 @@ pub fn compile_and_install(
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 struct CompiledTree<'spec> {
-    spec:      &'spec CapabilityTreeSpec,
+    spec: &'spec CapabilityTreeSpec,
     build_out: CapabilityTreeBuildOutput,
 }
 
 fn compile_pack_properties(
-    pack:     &DomainPackSpec,
+    pack: &DomainPackSpec,
     registry: &mut DimensionRegistry,
 ) -> Result<(), InstallError> {
     for prop_spec in &pack.properties {
@@ -167,7 +167,7 @@ fn compile_pack_properties(
 }
 
 fn build_tree<'spec>(
-    spec:     &'spec CapabilityTreeSpec,
+    spec: &'spec CapabilityTreeSpec,
     registry: &mut DimensionRegistry,
 ) -> Result<CompiledTree<'spec>, InstallError> {
     let (build_out, _diag) = CapabilityTreeBuilder::build(spec, registry)?;
@@ -175,19 +175,19 @@ fn build_tree<'spec>(
 }
 
 fn compile_and_install_event(
-    spec:      &EventSpec,
-    registry:  &DimensionRegistry,
-    scenario:  &Scenario,
-    root:      &SimThing,
+    spec: &EventSpec,
+    registry: &DimensionRegistry,
+    scenario: &Scenario,
+    root: &SimThing,
     allocator: &SlotAllocator,
-    state:     &mut SpecSessionState,
+    state: &mut SpecSessionState,
 ) -> Result<(), InstallError> {
     let (definition, _diag) = compile_event(spec, registry)?;
     let owners = resolve_install_target(&spec.install, scenario, root)?;
     if owners.is_empty() {
         return Err(InstallError::NoMatchingOwners {
             tree_id: spec.id.clone(),
-            target:  spec.install.clone(),
+            target: spec.install.clone(),
         });
     }
     // O4: one definition, N per-owner instances pointing at it.
@@ -197,12 +197,8 @@ fn compile_and_install_event(
         let slot = allocator
             .slot_of(owner_id)
             .ok_or(InstallError::RootHasNoSlot)?;
-        let _ = state.attach_scripted_event_instance(
-            definition_id,
-            event_id.clone(),
-            owner_id,
-            slot,
-        );
+        let _ =
+            state.attach_scripted_event_instance(definition_id, event_id.clone(), owner_id, slot);
     }
     Ok(())
 }
@@ -210,9 +206,9 @@ fn compile_and_install_event(
 /// Resolve a `InstallTargetSpec` against the scenario's current root and the
 /// `Scenario::install_targets` registry. Returns the matching owner ids.
 pub(crate) fn resolve_install_target(
-    target:   &InstallTargetSpec,
+    target: &InstallTargetSpec,
     scenario: &Scenario,
-    root:     &SimThing,
+    root: &SimThing,
 ) -> Result<Vec<SimThingId>, InstallError> {
     match target {
         InstallTargetSpec::AllOfKind { kind } => {
@@ -221,12 +217,11 @@ pub(crate) fn resolve_install_target(
             Ok(out)
         }
         InstallTargetSpec::ScenarioListed { target_id } => {
-            let owners = scenario
-                .install_targets
-                .get(target_id)
-                .ok_or_else(|| InstallError::UnknownInstallTarget {
+            let owners = scenario.install_targets.get(target_id).ok_or_else(|| {
+                InstallError::UnknownInstallTarget {
                     key: target_id.clone(),
-                })?;
+                }
+            })?;
             Ok(owners.clone())
         }
         InstallTargetSpec::SessionRoot => Ok(vec![root.id]),
@@ -245,13 +240,13 @@ fn collect_matching_kind(node: &SimThing, authored: &str, out: &mut Vec<SimThing
 /// Clone the template capability tree for one owner, attach it under that
 /// owner in `root`, allocate slots, and register the instance in `state`.
 fn install_tree_for_owner(
-    compiled:  &CompiledTree<'_>,
-    owner_id:  SimThingId,
-    root_id:   SimThingId,
-    registry:  &DimensionRegistry,
-    root:      &mut SimThing,
+    compiled: &CompiledTree<'_>,
+    owner_id: SimThingId,
+    root_id: SimThingId,
+    registry: &DimensionRegistry,
+    root: &mut SimThing,
     allocator: &mut SlotAllocator,
-    state:     &mut SpecSessionState,
+    state: &mut SpecSessionState,
 ) -> Result<(), InstallError> {
     let template = &compiled.build_out.tree;
     let definition = &compiled.build_out.definition;
@@ -267,7 +262,10 @@ fn install_tree_for_owner(
     let SimThingKind::Custom(tree_kind) = &template.kind else {
         unreachable!("CapabilityTreeBuilder always emits SimThingKind::Custom(tree_kind)");
     };
-    let mut cloned = SimThing::new(SimThingKind::Custom(tree_kind.clone()), template.spawned_day);
+    let mut cloned = SimThing::new(
+        SimThingKind::Custom(tree_kind.clone()),
+        template.spawned_day,
+    );
     cloned.properties = template.properties.clone();
 
     let mut overlay_id_map: HashMap<OverlayId, OverlayId> = HashMap::new();
@@ -280,9 +278,9 @@ fn install_tree_for_owner(
     // for `CapabilityTree`, host = clone; for `SessionRoot`, host = root.
     let mut owner_target_props: HashSet<simthing_core::SimPropertyId> = HashSet::new();
     let mut clone_target_props: HashSet<simthing_core::SimPropertyId> = HashSet::new();
-    let mut root_target_props:  HashSet<simthing_core::SimPropertyId> = HashSet::new();
+    let mut root_target_props: HashSet<simthing_core::SimPropertyId> = HashSet::new();
     let mut owner_overlays: Vec<Overlay> = Vec::new();
-    let mut root_overlays:  Vec<Overlay> = Vec::new();
+    let mut root_overlays: Vec<Overlay> = Vec::new();
     let mut overlay_hosts: HashMap<OverlayId, SimThingId> = HashMap::new();
     for template_overlay in &template.overlays {
         let new_id = OverlayId::new();
@@ -295,28 +293,34 @@ fn install_tree_for_owner(
             .unwrap_or_default();
         let affects = resolve_effect_target(target, owner_id, cloned_tree_id, root_id);
         let host = match target {
-            EffectTarget::Owner          => owner_id,
+            EffectTarget::Owner => owner_id,
             EffectTarget::CapabilityTree => cloned_tree_id,
-            EffectTarget::SessionRoot    => root_id,
+            EffectTarget::SessionRoot => root_id,
         };
         overlay_hosts.insert(new_id, host);
         match target {
-            EffectTarget::Owner          => { owner_target_props.insert(template_overlay.transform.property_id); }
-            EffectTarget::CapabilityTree => { clone_target_props.insert(template_overlay.transform.property_id); }
-            EffectTarget::SessionRoot    => { root_target_props.insert(template_overlay.transform.property_id); }
+            EffectTarget::Owner => {
+                owner_target_props.insert(template_overlay.transform.property_id);
+            }
+            EffectTarget::CapabilityTree => {
+                clone_target_props.insert(template_overlay.transform.property_id);
+            }
+            EffectTarget::SessionRoot => {
+                root_target_props.insert(template_overlay.transform.property_id);
+            }
         }
         let new_overlay = Overlay {
-            id:        new_id,
-            kind:      template_overlay.kind.clone(),
-            source:    template_overlay.source.clone(),
+            id: new_id,
+            kind: template_overlay.kind.clone(),
+            source: template_overlay.source.clone(),
             affects,
             transform: template_overlay.transform.clone(),
             lifecycle: template_overlay.lifecycle.clone(),
         };
         match target {
             EffectTarget::CapabilityTree => cloned.add_overlay(new_overlay),
-            EffectTarget::Owner          => owner_overlays.push(new_overlay),
-            EffectTarget::SessionRoot    => root_overlays.push(new_overlay),
+            EffectTarget::Owner => owner_overlays.push(new_overlay),
+            EffectTarget::SessionRoot => root_overlays.push(new_overlay),
         }
     }
 
@@ -347,7 +351,7 @@ fn install_tree_for_owner(
     //     targeted overlays. (CapabilityTree-targeted props were seeded on
     //     the clone directly above, before attachment.)
     seed_effect_props_on(root, owner_id, &owner_target_props, registry);
-    seed_effect_props_on(root, root_id,  &root_target_props,  registry);
+    seed_effect_props_on(root, root_id, &root_target_props, registry);
 
     // 2c. Attach owner/root overlays to their host SimThings. The GPU
     //     ancestor walk requires the overlay to live on a node that is
@@ -379,9 +383,9 @@ fn install_tree_for_owner(
         .iter()
         .map(|reg| CapabilityUnlockRegistration {
             sim_thing_id: cloned_tree_id,
-            property_id:  reg.property_id,
-            sub_field:    reg.sub_field.clone(),
-            threshold:    reg.threshold,
+            property_id: reg.property_id,
+            sub_field: reg.sub_field.clone(),
+            threshold: reg.threshold,
         })
         .collect();
 
@@ -391,7 +395,9 @@ fn install_tree_for_owner(
         .template_by_overlay
         .iter()
         .filter_map(|(old_id, key)| {
-            overlay_id_map.get(old_id).map(|new_id| (*new_id, key.clone()))
+            overlay_id_map
+                .get(old_id)
+                .map(|new_id| (*new_id, key.clone()))
         })
         .collect();
 
@@ -407,7 +413,7 @@ fn install_tree_for_owner(
         owner_id,
         definition_id: definition.id,
         activation_mode_by_entry: HashMap::new(),
-        active_by_category:       HashMap::new(),
+        active_by_category: HashMap::new(),
     };
 
     state.add_capability_tree_instance(
@@ -425,15 +431,15 @@ fn install_tree_for_owner(
 /// EffectTarget ADR, `Owner` is the v1 default — install rewrites the
 /// affects list rather than the v0 hard-coded clone target.
 fn resolve_effect_target(
-    target:   EffectTarget,
+    target: EffectTarget,
     owner_id: SimThingId,
     clone_id: SimThingId,
-    root_id:  SimThingId,
+    root_id: SimThingId,
 ) -> Vec<SimThingId> {
     match target {
-        EffectTarget::Owner          => vec![owner_id],
+        EffectTarget::Owner => vec![owner_id],
         EffectTarget::CapabilityTree => vec![clone_id],
-        EffectTarget::SessionRoot    => vec![root_id],
+        EffectTarget::SessionRoot => vec![root_id],
     }
 }
 
@@ -445,10 +451,10 @@ fn resolve_effect_target(
 /// targets not found in the tree (should not happen — owner_id came
 /// from install resolution against `root`).
 fn seed_effect_props_on(
-    root:      &mut SimThing,
+    root: &mut SimThing,
     target_id: SimThingId,
-    props:     &HashSet<simthing_core::SimPropertyId>,
-    registry:  &DimensionRegistry,
+    props: &HashSet<simthing_core::SimPropertyId>,
+    registry: &DimensionRegistry,
 ) {
     if props.is_empty() {
         return;
@@ -489,11 +495,7 @@ fn contains(node: &SimThing, target: SimThingId) -> bool {
 }
 
 /// Precondition: `contains(node, owner_id)` is true.
-fn attach_child_known_present(
-    node:     &mut SimThing,
-    owner_id: SimThingId,
-    child:    SimThing,
-) -> bool {
+fn attach_child_known_present(node: &mut SimThing, owner_id: SimThingId, child: SimThing) -> bool {
     if node.id == owner_id {
         node.add_child(child);
         return true;
@@ -519,10 +521,10 @@ fn attach_child_known_present(
 /// outlive the inputs it was generated from.
 #[derive(Debug)]
 pub struct InstallPreview {
-    pub registry:  DimensionRegistry,
-    pub root:      SimThing,
+    pub registry: DimensionRegistry,
+    pub root: SimThing,
     pub allocator: SlotAllocator,
-    pub state:     SpecSessionState,
+    pub state: SpecSessionState,
 }
 
 /// Run a full `compile_and_install` against scratch copies of the caller's
@@ -535,13 +537,13 @@ pub struct InstallPreview {
 /// duration of the call. All three are small in practice.
 pub fn preview_install(
     game_mode: &GameModeSpec,
-    scenario:  &Scenario,
-    registry:  &DimensionRegistry,
-    root:      &SimThing,
+    scenario: &Scenario,
+    registry: &DimensionRegistry,
+    root: &SimThing,
     allocator: &SlotAllocator,
 ) -> Result<InstallPreview, InstallError> {
-    let mut scratch_registry  = registry.clone();
-    let mut scratch_root      = root.clone();
+    let mut scratch_registry = registry.clone();
+    let mut scratch_root = root.clone();
     let mut scratch_allocator = allocator.clone();
     let state = compile_and_install(
         game_mode,
@@ -551,8 +553,8 @@ pub fn preview_install(
         &mut scratch_allocator,
     )?;
     Ok(InstallPreview {
-        registry:  scratch_registry,
-        root:      scratch_root,
+        registry: scratch_registry,
+        root: scratch_root,
         allocator: scratch_allocator,
         state,
     })
@@ -568,14 +570,14 @@ pub fn preview_install(
 /// future caller that wants the same guarantee.
 pub fn install_atomic(
     game_mode: &GameModeSpec,
-    scenario:  &Scenario,
-    registry:  &mut DimensionRegistry,
-    root:      &mut SimThing,
+    scenario: &Scenario,
+    registry: &mut DimensionRegistry,
+    root: &mut SimThing,
     allocator: &mut SlotAllocator,
 ) -> Result<SpecSessionState, InstallError> {
     let preview = preview_install(game_mode, scenario, registry, root, allocator)?;
-    *registry  = preview.registry;
-    *root      = preview.root;
+    *registry = preview.registry;
+    *root = preview.root;
     *allocator = preview.allocator;
     Ok(preview.state)
 }

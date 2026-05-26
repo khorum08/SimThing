@@ -10,10 +10,10 @@ pub enum CompiledTrigger {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CompiledThresholdTrigger {
-    pub target:    ScopeRef,
-    pub property:  SimPropertyId,
-    pub role:      SubFieldRole,
-    pub col:       usize,
+    pub target: ScopeRef,
+    pub property: SimPropertyId,
+    pub role: SubFieldRole,
+    pub col: usize,
     pub threshold: f32,
     pub direction: TriggerDirection,
 }

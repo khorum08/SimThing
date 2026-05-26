@@ -12,12 +12,12 @@ use anyhow::{bail, Context, Result};
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 use wgpu::{
-    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
+    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
+    BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
     CommandEncoderDescriptor, ComputePipeline, ComputePipelineDescriptor, Device, DeviceDescriptor,
     Features, Instance, InstanceDescriptor, Limits, Maintain, MapMode, MemoryHints,
-    PipelineLayoutDescriptor, PowerPreference, Queue, RequestAdapterOptions, ShaderModuleDescriptor,
-    ShaderStages,
+    PipelineLayoutDescriptor, PowerPreference, Queue, RequestAdapterOptions,
+    ShaderModuleDescriptor, ShaderStages,
 };
 
 pub const WORKGROUP_SIZE: u32 = 64;
@@ -243,10 +243,7 @@ pub fn weighted_mean_cpu(
 
 pub fn validate_scenario(children: &[WeightedChild], ranges: &[ParentRange]) -> Result<()> {
     if children.len() > u32::MAX as usize {
-        bail!(
-            "children.len() {} exceeds u32::MAX",
-            children.len()
-        );
+        bail!("children.len() {} exceeds u32::MAX", children.len());
     }
     if ranges.len() > u32::MAX as usize {
         bail!("ranges.len() {} exceeds u32::MAX", ranges.len());
@@ -536,17 +533,21 @@ impl WeightedMeanGpuHarness {
             _pad2: 0,
         };
 
-        let children_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("weighted_mean_children"),
-            contents: bytemuck::cast_slice(children),
-            usage: BufferUsages::STORAGE,
-        });
+        let children_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("weighted_mean_children"),
+                contents: bytemuck::cast_slice(children),
+                usage: BufferUsages::STORAGE,
+            });
 
-        let ranges_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("weighted_mean_ranges"),
-            contents: bytemuck::cast_slice(ranges),
-            usage: BufferUsages::STORAGE,
-        });
+        let ranges_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("weighted_mean_ranges"),
+                contents: bytemuck::cast_slice(ranges),
+                usage: BufferUsages::STORAGE,
+            });
 
         let output_size = (n_parents * std::mem::size_of::<WeightedMeanOutput>()) as u64;
         let output_buffer = self.device.create_buffer(&BufferDescriptor {
@@ -556,11 +557,13 @@ impl WeightedMeanGpuHarness {
             mapped_at_creation: false,
         });
 
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("weighted_mean_params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: BufferUsages::UNIFORM,
-        });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("weighted_mean_params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: BufferUsages::UNIFORM,
+            });
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             label: Some("weighted_mean_bind_group"),
@@ -630,10 +633,9 @@ impl WeightedMeanGpuHarness {
             .context("buffer map failed")?;
 
         let mapped = slice.get_mapped_range();
-        let outputs: Vec<WeightedMeanOutput> = bytemuck::cast_slice(
-            &mapped[..n_parents * std::mem::size_of::<WeightedMeanOutput>()],
-        )
-        .to_vec();
+        let outputs: Vec<WeightedMeanOutput> =
+            bytemuck::cast_slice(&mapped[..n_parents * std::mem::size_of::<WeightedMeanOutput>()])
+                .to_vec();
         drop(mapped);
         readback.unmap();
         Ok(outputs)

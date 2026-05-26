@@ -18,11 +18,11 @@ use crate::slot::SlotAllocator;
 ///
 /// `values.len()` must equal `allocator.capacity() * n_dims`.
 pub fn project_tree_to_values(
-    root:      &SimThing,
-    registry:  &DimensionRegistry,
+    root: &SimThing,
+    registry: &DimensionRegistry,
     allocator: &SlotAllocator,
-    n_dims:    usize,
-    values:    &mut [f32],
+    n_dims: usize,
+    values: &mut [f32],
 ) {
     debug_assert_eq!(
         values.len(),
@@ -33,18 +33,18 @@ pub fn project_tree_to_values(
 }
 
 fn project_node(
-    node:      &SimThing,
-    registry:  &DimensionRegistry,
+    node: &SimThing,
+    registry: &DimensionRegistry,
     allocator: &SlotAllocator,
-    n_dims:    usize,
-    values:    &mut [f32],
+    n_dims: usize,
+    values: &mut [f32],
 ) {
     if let Some(slot) = allocator.slot_of(node.id) {
         let slot_base = slot as usize * n_dims;
         for (&prop_id, pv) in &node.properties {
             let range = registry.column_range(prop_id);
             let start = slot_base + range.start;
-            let end   = start + pv.data.len();
+            let end = start + pv.data.len();
             values[start..end].copy_from_slice(&pv.data);
         }
     }
@@ -57,8 +57,8 @@ fn project_node(
 mod tests {
     use super::*;
     use simthing_core::{
-        DimensionRegistry, IntensityBehavior, PropertyValue, SimProperty, SimThing,
-        SimThingKind, SubFieldRole,
+        DimensionRegistry, IntensityBehavior, PropertyValue, SimProperty, SimThing, SimThingKind,
+        SubFieldRole,
     };
 
     fn loyalty_property() -> SimProperty {
@@ -71,7 +71,7 @@ mod tests {
     fn projection_writes_property_data_at_slot_and_column_range() {
         let mut reg = DimensionRegistry::new();
         let loyalty_id = reg.register(loyalty_property());
-        let food_id    = reg.register(SimProperty::simple("core", "food_security", 0));
+        let food_id = reg.register(SimProperty::simple("core", "food_security", 0));
 
         // Build: world → 2 children, each with both properties populated.
         let mut world = SimThing::new(SimThingKind::World, 0);
@@ -101,7 +101,9 @@ mod tests {
 
         // World has no properties → its row is all zeros.
         let world_slot = alloc.slot_of(world.id).unwrap() as usize;
-        assert!(flat[world_slot * n_dims..(world_slot + 1) * n_dims].iter().all(|&x| x == 0.0));
+        assert!(flat[world_slot * n_dims..(world_slot + 1) * n_dims]
+            .iter()
+            .all(|&x| x == 0.0));
 
         // Check the two location rows: loyalty amount appears at its column.
         let loyalty_range = reg.column_range(loyalty_id);
@@ -120,7 +122,11 @@ mod tests {
 
         let mut world = SimThing::new(SimThingKind::World, 0);
         let mut pv = PropertyValue::from_layout(&reg.property(id).layout);
-        let a_off = reg.property(id).layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let a_off = reg
+            .property(id)
+            .layout
+            .offset_of(&SubFieldRole::Amount)
+            .unwrap();
         pv.data[a_off] = 0.42;
         world.add_property(id, pv);
 

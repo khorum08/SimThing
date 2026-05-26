@@ -50,7 +50,10 @@ fn upload_topology(state: &mut WorldGpuState, topo: &Topology, reg: &DimensionRe
     );
 }
 
-fn cohort_tree_with_rule(rule: ReductionRule, values: &[f32]) -> (DimensionRegistry, SimThing, SlotAllocator) {
+fn cohort_tree_with_rule(
+    rule: ReductionRule,
+    values: &[f32],
+) -> (DimensionRegistry, SimThing, SlotAllocator) {
     let mut reg = DimensionRegistry::new();
     let mut prop = SimProperty::simple("demo", "metric", 0);
     prop.layout.sub_fields[0].reduction_override = Some(rule);
@@ -143,8 +146,7 @@ fn c6_max_legacy_vs_accumulator_bit_exact() {
         return;
     };
 
-    let (reg, world, alloc) =
-        cohort_tree_with_rule(ReductionRule::Max, &[-3.0, 5.0, 5.0, 1.0]);
+    let (reg, world, alloc) = cohort_tree_with_rule(ReductionRule::Max, &[-3.0, 5.0, 5.0, 1.0]);
     let (mut state, topo, flat) = setup_reduction_state(&reg, &world, &alloc);
     let golden = golden_output(&topo, &reg, &flat);
     run_accumulator_reduction(&mut state);
@@ -161,8 +163,7 @@ fn c6_min_legacy_vs_accumulator_bit_exact() {
         return;
     };
 
-    let (reg, world, alloc) =
-        cohort_tree_with_rule(ReductionRule::Min, &[-3.0, -1.0, -1.0, 2.0]);
+    let (reg, world, alloc) = cohort_tree_with_rule(ReductionRule::Min, &[-3.0, -1.0, -1.0, 2.0]);
     let (mut state, topo, flat) = setup_reduction_state(&reg, &world, &alloc);
     let golden = golden_output(&topo, &reg, &flat);
     run_accumulator_reduction(&mut state);
@@ -226,10 +227,9 @@ fn mixed_all_rules_fixture() -> (DimensionRegistry, SimThing, SlotAllocator) {
 
     let mut world = SimThing::new(SimThingKind::World, 0);
     let mut loc = SimThing::new(SimThingKind::Location, 0);
-    for &(loyalty, pop, threat, scarcity, founder) in &[
-        (0.2, 10.0, -1.0, 5.0, 11.0),
-        (0.8, 30.0, 3.0, 2.0, 99.0),
-    ] {
+    for &(loyalty, pop, threat, scarcity, founder) in
+        &[(0.2, 10.0, -1.0, 5.0, 11.0), (0.8, 30.0, 3.0, 2.0, 99.0)]
+    {
         let mut c = SimThing::new(SimThingKind::Cohort, 0);
         let mut lpv = PropertyValue::from_layout(&loyalty_layout);
         lpv.data[loyalty_off] = loyalty;
@@ -272,7 +272,11 @@ fn c6_mixed_soft_and_exact_columns_all_accumulator_matches_legacy() {
     let threat_id = reg.id_of("core", "threat").expect("threat");
     let scarcity_id = reg.id_of("core", "scarcity").expect("scarcity");
     let founder_id = reg.id_of("core", "founder_trait").expect("founder_trait");
-    let pop_off = reg.property(pop_id).layout.offset_of(&SubFieldRole::Amount).unwrap();
+    let pop_off = reg
+        .property(pop_id)
+        .layout
+        .offset_of(&SubFieldRole::Amount)
+        .unwrap();
     let loyalty_off = reg
         .property(loyalty_id)
         .layout

@@ -17,14 +17,7 @@ fn assert_report_ok(report: &simthing_workshop::persistent_bench::PersistentBenc
 
 #[test]
 fn persistent_bench_cpu_oracle_conserves_resources() {
-    let scenario = make_persistent_bench_scenario(
-        "pb_cpu_conservation",
-        16,
-        256,
-        0.8,
-        false,
-        true,
-    );
+    let scenario = make_persistent_bench_scenario("pb_cpu_conservation", 16, 256, 0.8, false, true);
     let ticks = 8;
     let (final_pools, final_queues, summaries, _) =
         resolve_cpu_persistent_bench(&scenario, ticks, false);
@@ -36,25 +29,21 @@ fn persistent_bench_cpu_oracle_conserves_resources() {
         ticks
     ));
     assert_eq!(summaries.len(), ticks as usize);
-    assert!(summaries.iter().all(|s| s.total_emitted_units > 0 || s.active_queues == 0));
+    assert!(summaries
+        .iter()
+        .all(|s| s.total_emitted_units > 0 || s.active_queues == 0));
 }
 
 #[test]
 fn persistent_bench_current_gpu_envelope_matches_cpu_small() {
-    let scenario = make_persistent_bench_scenario(
-        "pb_envelope_small",
-        64,
-        1_024,
-        0.7,
-        false,
-        true,
-    );
+    let scenario = make_persistent_bench_scenario("pb_envelope_small", 64, 1_024, 0.7, false, true);
     let harness = PersistentBenchHarness::new().unwrap();
     let ticks = 8;
     let (cpu_pools, cpu_queues, cpu_summaries, _) =
         resolve_cpu_persistent_bench(&scenario, ticks, false);
-    let (gpu_pools, gpu_queues, gpu_summaries, _, _) =
-        harness.run_current_gpu_envelope(&scenario, ticks, false).unwrap();
+    let (gpu_pools, gpu_queues, gpu_summaries, _, _) = harness
+        .run_current_gpu_envelope(&scenario, ticks, false)
+        .unwrap();
     assert_eq!(gpu_pools, cpu_pools);
     assert_eq!(gpu_queues, cpu_queues);
     assert_eq!(gpu_summaries, cpu_summaries);
@@ -62,29 +51,17 @@ fn persistent_bench_current_gpu_envelope_matches_cpu_small() {
 
 #[test]
 fn persistent_bench_pivot_resident_matches_cpu_small() {
-    let scenario = make_persistent_bench_scenario(
-        "pb_pivot_small",
-        64,
-        1_024,
-        0.7,
-        false,
-        true,
-    );
+    let scenario = make_persistent_bench_scenario("pb_pivot_small", 64, 1_024, 0.7, false, true);
     let harness = PersistentBenchHarness::new().unwrap();
-    let report = compare_persistent_bench_rich_with_harness(&harness, &scenario, 16, false).unwrap();
+    let report =
+        compare_persistent_bench_rich_with_harness(&harness, &scenario, 16, false).unwrap();
     assert_report_ok(&report);
 }
 
 #[test]
 fn persistent_bench_distributed_100k_summary_only() {
-    let scenario = make_persistent_bench_scenario(
-        "pb_distributed_100k",
-        1_024,
-        100_000,
-        1.0,
-        false,
-        true,
-    );
+    let scenario =
+        make_persistent_bench_scenario("pb_distributed_100k", 1_024, 100_000, 1.0, false, true);
     let harness = PersistentBenchHarness::new().unwrap();
     let report =
         compare_persistent_bench_rich_with_harness(&harness, &scenario, DEFAULT_TICKS, false)
@@ -94,14 +71,8 @@ fn persistent_bench_distributed_100k_summary_only() {
 
 #[test]
 fn persistent_bench_sparse_100k_summary_only() {
-    let scenario = make_persistent_bench_scenario(
-        "pb_sparse_100k",
-        1_024,
-        100_000,
-        0.05,
-        false,
-        true,
-    );
+    let scenario =
+        make_persistent_bench_scenario("pb_sparse_100k", 1_024, 100_000, 0.05, false, true);
     let harness = PersistentBenchHarness::new().unwrap();
     let report =
         compare_persistent_bench_rich_with_harness(&harness, &scenario, DEFAULT_TICKS, false)
@@ -111,14 +82,7 @@ fn persistent_bench_sparse_100k_summary_only() {
 
 #[test]
 fn persistent_bench_hotspot_100k_summary_only() {
-    let scenario = make_persistent_bench_scenario(
-        "pb_hotspot_100k",
-        16,
-        100_000,
-        1.0,
-        true,
-        true,
-    );
+    let scenario = make_persistent_bench_scenario("pb_hotspot_100k", 16, 100_000, 1.0, true, true);
     let harness = PersistentBenchHarness::new().unwrap();
     let report =
         compare_persistent_bench_rich_with_harness(&harness, &scenario, DEFAULT_TICKS, false)
@@ -129,17 +93,9 @@ fn persistent_bench_hotspot_100k_summary_only() {
 
 #[test]
 fn persistent_bench_records_mode_replays_small() {
-    let scenario = make_persistent_bench_scenario(
-        "pb_records_small",
-        64,
-        4_096,
-        0.7,
-        false,
-        true,
-    );
+    let scenario = make_persistent_bench_scenario("pb_records_small", 64, 4_096, 0.7, false, true);
     let ticks = 16;
-    let (cpu_pools, cpu_queues, _, records) =
-        resolve_cpu_persistent_bench(&scenario, ticks, true);
+    let (cpu_pools, cpu_queues, _, records) = resolve_cpu_persistent_bench(&scenario, ticks, true);
     let replayed = replay_bench_records(
         &scenario.pools,
         &scenario.queues,
@@ -170,14 +126,8 @@ fn persistent_bench_records_mode_replays_small() {
 #[test]
 #[ignore = "large persistent benchmark"]
 fn persistent_bench_distributed_1m() {
-    let scenario = make_persistent_bench_scenario(
-        "pb_distributed_1m",
-        4_096,
-        1_000_000,
-        1.0,
-        false,
-        true,
-    );
+    let scenario =
+        make_persistent_bench_scenario("pb_distributed_1m", 4_096, 1_000_000, 1.0, false, true);
     let harness = PersistentBenchHarness::new().unwrap();
     let report =
         compare_persistent_bench_rich_with_harness(&harness, &scenario, DEFAULT_TICKS, false)
@@ -189,30 +139,9 @@ fn persistent_bench_distributed_1m() {
 fn persistent_bench_report_bundle() {
     let harness = PersistentBenchHarness::new().unwrap();
     let scenarios = [
-        make_persistent_bench_scenario(
-            "pb_distributed_100k",
-            1_024,
-            100_000,
-            1.0,
-            false,
-            true,
-        ),
-        make_persistent_bench_scenario(
-            "pb_sparse_100k",
-            1_024,
-            100_000,
-            0.05,
-            false,
-            true,
-        ),
-        make_persistent_bench_scenario(
-            "pb_hotspot_100k",
-            16,
-            100_000,
-            1.0,
-            true,
-            true,
-        ),
+        make_persistent_bench_scenario("pb_distributed_100k", 1_024, 100_000, 1.0, false, true),
+        make_persistent_bench_scenario("pb_sparse_100k", 1_024, 100_000, 0.05, false, true),
+        make_persistent_bench_scenario("pb_hotspot_100k", 16, 100_000, 1.0, true, true),
     ];
     let mut reports = Vec::with_capacity(scenarios.len());
     for scenario in scenarios {

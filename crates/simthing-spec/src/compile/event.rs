@@ -5,7 +5,7 @@ use crate::spec::{EventKey, EventSpec};
 use simthing_core::DimensionRegistry;
 
 pub fn compile_event(
-    spec:     &EventSpec,
+    spec: &EventSpec,
     registry: &DimensionRegistry,
 ) -> SpecResult<ScriptedEventDefinition> {
     let (trigger, trigger_diag) = compile_trigger(&spec.trigger, registry)?;

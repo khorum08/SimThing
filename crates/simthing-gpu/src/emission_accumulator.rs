@@ -91,7 +91,10 @@ fn validate_registration(reg: &EmissionRegistration) -> Result<(), EmissionPlanE
     if reg.max_emit.is_some() {
         return Err(EmissionPlanError::MaxEmitUnsupported);
     }
-    if let EmissionFormula::EvalEml { tree_id: formula_id } = &reg.formula {
+    if let EmissionFormula::EvalEml {
+        tree_id: formula_id,
+    } = &reg.formula
+    {
         if let Some(reg_tree) = reg.tree_id {
             if reg_tree != *formula_id {
                 return Err(EmissionPlanError::MismatchedTreeIdField {
@@ -149,9 +152,7 @@ pub fn plan_emission_ops(
                         slot: reg.source_slot,
                         col: reg.source_col,
                     },
-                    combine: CombineFn::EvalEML {
-                        tree_id: tree_id.0,
-                    },
+                    combine: CombineFn::EvalEML { tree_id: tree_id.0 },
                     gate: GateSpec::OrderBand(0),
                     scale: ScaleSpec::Identity,
                     consume: ConsumeMode::EmitEvent,
@@ -275,14 +276,18 @@ mod tests {
         let mut registry = EmlExpressionRegistry::new();
         let id = EmlTreeId(1);
         registry
-            .register_formula(id, exact_meta(1), vec![EmlNodeGpu {
-                opcode: eml_opcode::LITERAL_F32,
-                flags: 0,
-                a: 1.0f32.to_bits(),
-                b: 0,
-                c: 0,
-                d: 0,
-            }])
+            .register_formula(
+                id,
+                exact_meta(1),
+                vec![EmlNodeGpu {
+                    opcode: eml_opcode::LITERAL_F32,
+                    flags: 0,
+                    a: 1.0f32.to_bits(),
+                    b: 0,
+                    c: 0,
+                    d: 0,
+                }],
+            )
             .unwrap();
         let regs = vec![EmissionRegistration {
             source_slot: 0,
@@ -303,14 +308,18 @@ mod tests {
         meta.execution_class = EmlExecutionClass::CpuOracleOnly;
         meta.allowed_consumers = EmlConsumerMask(EmlConsumerMask::DEBUG_ORACLE);
         assert!(registry
-            .register_formula(id, meta, vec![EmlNodeGpu {
-                opcode: eml_opcode::LITERAL_F32,
-                flags: 0,
-                a: 1.0f32.to_bits(),
-                b: 0,
-                c: 0,
-                d: 0,
-            }])
+            .register_formula(
+                id,
+                meta,
+                vec![EmlNodeGpu {
+                    opcode: eml_opcode::LITERAL_F32,
+                    flags: 0,
+                    a: 1.0f32.to_bits(),
+                    b: 0,
+                    c: 0,
+                    d: 0,
+                }]
+            )
             .is_err());
     }
 
@@ -322,14 +331,18 @@ mod tests {
         meta.execution_class = EmlExecutionClass::FastApproximate;
         meta.allowed_consumers = EmlConsumerMask(EmlConsumerMask::DEBUG_ORACLE);
         registry
-            .register_formula(id, meta, vec![EmlNodeGpu {
-                opcode: eml_opcode::LITERAL_F32,
-                flags: 0,
-                a: 1.0f32.to_bits(),
-                b: 0,
-                c: 0,
-                d: 0,
-            }])
+            .register_formula(
+                id,
+                meta,
+                vec![EmlNodeGpu {
+                    opcode: eml_opcode::LITERAL_F32,
+                    flags: 0,
+                    a: 1.0f32.to_bits(),
+                    b: 0,
+                    c: 0,
+                    d: 0,
+                }],
+            )
             .unwrap();
         let regs = vec![EmissionRegistration {
             source_slot: 0,

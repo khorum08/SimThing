@@ -7,12 +7,12 @@ use bytemuck::{Pod, Zeroable};
 use serde::Serialize;
 use wgpu::util::DeviceExt;
 use wgpu::{
-    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
+    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
+    BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
     CommandEncoderDescriptor, ComputePipeline, ComputePipelineDescriptor, Device, DeviceDescriptor,
     Features, Instance, InstanceDescriptor, Maintain, MapMode, MemoryHints,
-    PipelineLayoutDescriptor, PowerPreference, Queue, RequestAdapterOptions, ShaderModuleDescriptor,
-    ShaderStages,
+    PipelineLayoutDescriptor, PowerPreference, Queue, RequestAdapterOptions,
+    ShaderModuleDescriptor, ShaderStages,
 };
 
 use crate::weighted_mean::TIMING_NOTE;
@@ -189,7 +189,10 @@ fn warm_stats(samples: &[u64]) -> (u64, u64, u64) {
 }
 
 fn f32_slices_identical(a: &[f32], b: &[f32]) -> bool {
-    a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| x.to_bits() == y.to_bits())
+    a.len() == b.len()
+        && a.iter()
+            .zip(b.iter())
+            .all(|(x, y)| x.to_bits() == y.to_bits())
 }
 
 fn compare_errors(reference: &[f32], candidate: &[f32]) -> (f32, f32, bool) {
@@ -518,8 +521,7 @@ pub fn compile_overlay_order_bands(scenario: &OverlayOrderScenario) -> CompiledO
     compiled_ops.sort_by(canonical_compiled_order);
     stats.compiled_op_count = compiled_ops.len();
     if stats.raw_overlay_count > 0 {
-        stats.compression_ratio =
-            stats.compiled_op_count as f32 / stats.raw_overlay_count as f32;
+        stats.compression_ratio = stats.compiled_op_count as f32 / stats.raw_overlay_count as f32;
     }
 
     CompiledOverlayScenario {
@@ -665,7 +667,13 @@ pub fn make_overlay_order_scenario(
     }
 
     let bands = [10u32, 20, 30, 40, 50];
-    let sources = [SOURCE_ANCESTOR, SOURCE_LOCAL, SOURCE_LOCAL, SOURCE_LOCAL, SOURCE_GLOBAL];
+    let sources = [
+        SOURCE_ANCESTOR,
+        SOURCE_LOCAL,
+        SOURCE_LOCAL,
+        SOURCE_LOCAL,
+        SOURCE_GLOBAL,
+    ];
 
     for slot in 0..n_slots {
         for col in 0..n_cols {
@@ -681,9 +689,7 @@ pub fn make_overlay_order_scenario(
                     0 => (OVERLAY_ADD, 0.5 + (j as f32 * 0.1), 0),
                     1 => (OVERLAY_MUL, 1.01 + (j as f32 * 0.02), 0),
                     2 => (OVERLAY_SET, 3.0 + (j as f32), j as u32),
-                    3 if j > 0 && overlays_per_value > 2 => {
-                        (OVERLAY_ADD, 1.0, 0)
-                    }
+                    3 if j > 0 && overlays_per_value > 2 => (OVERLAY_ADD, 1.0, 0),
                     4 if j > 0 => (OVERLAY_MUL, 0.99, 0),
                     5 => (OVERLAY_ADD, -0.25, 0),
                     6 => (OVERLAY_SET, 99.0, (j + 1) as u32),
@@ -901,22 +907,28 @@ impl OverlayOrderHarness {
         let n_values = scenario.n_slots * scenario.n_cols;
         let output_size = (n_values * std::mem::size_of::<f32>()) as u64;
 
-        let base_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("overlay_order_base"),
-            contents: bytemuck::cast_slice(&scenario.base_values),
-            usage: BufferUsages::STORAGE,
-        });
+        let base_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("overlay_order_base"),
+                contents: bytemuck::cast_slice(&scenario.base_values),
+                usage: BufferUsages::STORAGE,
+            });
         let overlay_bytes = pad_storage_bytes(&overlays);
-        let overlay_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("overlay_order_raw"),
-            contents: &overlay_bytes,
-            usage: BufferUsages::STORAGE,
-        });
-        let range_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("overlay_order_cell_ranges"),
-            contents: bytemuck::cast_slice(&cell_ranges),
-            usage: BufferUsages::STORAGE,
-        });
+        let overlay_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("overlay_order_raw"),
+                contents: &overlay_bytes,
+                usage: BufferUsages::STORAGE,
+            });
+        let range_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("overlay_order_cell_ranges"),
+                contents: bytemuck::cast_slice(&cell_ranges),
+                usage: BufferUsages::STORAGE,
+            });
         let output_buffer = self.device.create_buffer(&BufferDescriptor {
             label: Some("overlay_order_current_out"),
             size: output_size,
@@ -924,11 +936,13 @@ impl OverlayOrderHarness {
             mapped_at_creation: false,
         });
         let params = Self::params(scenario, 0);
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("overlay_order_current_params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: BufferUsages::UNIFORM,
-        });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("overlay_order_current_params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: BufferUsages::UNIFORM,
+            });
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             label: Some("overlay_order_current_bg"),
@@ -973,13 +987,7 @@ impl OverlayOrderHarness {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        Self::readback(
-            &self.device,
-            &self.queue,
-            encoder,
-            &output_buffer,
-            n_values,
-        )
+        Self::readback(&self.device, &self.queue, encoder, &output_buffer, n_values)
     }
 
     pub fn run_pivot(
@@ -995,22 +1003,28 @@ impl OverlayOrderHarness {
         let n_values = scenario.n_slots * scenario.n_cols;
         let output_size = (n_values * std::mem::size_of::<f32>()) as u64;
 
-        let base_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("overlay_order_pivot_base"),
-            contents: bytemuck::cast_slice(&scenario.base_values),
-            usage: BufferUsages::STORAGE,
-        });
+        let base_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("overlay_order_pivot_base"),
+                contents: bytemuck::cast_slice(&scenario.base_values),
+                usage: BufferUsages::STORAGE,
+            });
         let compiled_bytes = pad_storage_bytes(&compiled_ops);
-        let compiled_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("overlay_order_compiled"),
-            contents: &compiled_bytes,
-            usage: BufferUsages::STORAGE,
-        });
-        let range_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("overlay_order_compiled_ranges"),
-            contents: bytemuck::cast_slice(&cell_ranges),
-            usage: BufferUsages::STORAGE,
-        });
+        let compiled_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("overlay_order_compiled"),
+                contents: &compiled_bytes,
+                usage: BufferUsages::STORAGE,
+            });
+        let range_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("overlay_order_compiled_ranges"),
+                contents: bytemuck::cast_slice(&cell_ranges),
+                usage: BufferUsages::STORAGE,
+            });
         let output_buffer = self.device.create_buffer(&BufferDescriptor {
             label: Some("overlay_order_pivot_out"),
             size: output_size,
@@ -1018,11 +1032,13 @@ impl OverlayOrderHarness {
             mapped_at_creation: false,
         });
         let params = Self::params(scenario, compiled.compiled_ops.len() as u32);
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("overlay_order_pivot_params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: BufferUsages::UNIFORM,
-        });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("overlay_order_pivot_params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: BufferUsages::UNIFORM,
+            });
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             label: Some("overlay_order_pivot_bg"),
@@ -1067,13 +1083,7 @@ impl OverlayOrderHarness {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        Self::readback(
-            &self.device,
-            &self.queue,
-            encoder,
-            &output_buffer,
-            n_values,
-        )
+        Self::readback(&self.device, &self.queue, encoder, &output_buffer, n_values)
     }
 
     fn readback(
@@ -1246,7 +1256,8 @@ pub fn compare_overlay_order_rich_with_harness(
         0.0
     };
 
-    let classification = semantic_classification(cpu_semantic_match, gpu_pivot_ok, &compiled.compile_stats);
+    let classification =
+        semantic_classification(cpu_semantic_match, gpu_pivot_ok, &compiled.compile_stats);
 
     Ok(OverlayOrderReport {
         scenario_name: scenario.name.clone(),
@@ -1293,9 +1304,7 @@ pub fn write_overlay_order_reports(report: &OverlayOrderReport) -> Result<()> {
     crate::overlay_order_report::write_overlay_order_reports(report).map_err(Into::into)
 }
 
-pub fn write_overlay_order_semantics_reports_bundle(
-    reports: &[OverlayOrderReport],
-) -> Result<()> {
+pub fn write_overlay_order_semantics_reports_bundle(reports: &[OverlayOrderReport]) -> Result<()> {
     crate::overlay_order_report::write_overlay_order_semantics_reports_bundle(reports)
         .map_err(Into::into)
 }

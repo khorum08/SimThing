@@ -1,9 +1,7 @@
 use crate::diagnostics::{SpecDiagnostics, SpecResult};
 use crate::error::SpecError;
 use crate::spec::overlay::OverlaySpec;
-use simthing_core::{
-    DimensionRegistry, Overlay, OverlayId, PropertyTransformDelta, SubFieldRole,
-};
+use simthing_core::{DimensionRegistry, Overlay, OverlayId, PropertyTransformDelta, SubFieldRole};
 
 /// Compile an `OverlaySpec` into a live `Overlay` instance.
 ///
@@ -18,34 +16,33 @@ use simthing_core::{
 ///
 /// `affects` is left empty — overlays are attached to specific SimThings at
 /// runtime by the caller (e.g. the capability builder or session coordinator).
-pub fn compile_overlay(
-    spec:     &OverlaySpec,
-    registry: &DimensionRegistry,
-) -> SpecResult<Overlay> {
+pub fn compile_overlay(spec: &OverlaySpec, registry: &DimensionRegistry) -> SpecResult<Overlay> {
     let (ns, name) = parse_property_ref(&spec.id, &spec.targets_property)?;
 
-    let property_id = registry.id_of(ns, name).ok_or_else(|| SpecError::UnknownProperty {
-        overlay:   spec.id.clone(),
-        namespace: ns.to_owned(),
-        name:      name.to_owned(),
-    })?;
+    let property_id = registry
+        .id_of(ns, name)
+        .ok_or_else(|| SpecError::UnknownProperty {
+            overlay: spec.id.clone(),
+            namespace: ns.to_owned(),
+            name: name.to_owned(),
+        })?;
 
     let layout = &registry.property(property_id).layout;
     for (role, _op) in &spec.sub_field_deltas {
         if layout.offset_of(role).is_none() {
             return Err(SpecError::InvalidSubFieldRole {
-                overlay:  spec.id.clone(),
+                overlay: spec.id.clone(),
                 property: format!("{ns}::{name}"),
-                role:     format_role(role),
+                role: format_role(role),
             });
         }
     }
 
     let overlay = Overlay {
-        id:        OverlayId::new(),
-        kind:      spec.kind.clone(),
-        source:    spec.source.clone(),
-        affects:   vec![],
+        id: OverlayId::new(),
+        kind: spec.kind.clone(),
+        source: spec.source.clone(),
+        affects: vec![],
         transform: PropertyTransformDelta {
             property_id,
             sub_field_deltas: spec.sub_field_deltas.clone(),
@@ -58,15 +55,15 @@ pub fn compile_overlay(
 
 fn parse_property_ref<'a>(
     overlay_id: &str,
-    refstr:     &'a str,
+    refstr: &'a str,
 ) -> Result<(&'a str, &'a str), SpecError> {
     let mut parts = refstr.splitn(2, "::");
-    let ns   = parts.next().unwrap_or("");
+    let ns = parts.next().unwrap_or("");
     let name = parts.next();
     match name {
         Some(name) if !ns.is_empty() && !name.is_empty() => Ok((ns, name)),
         _ => Err(SpecError::InvalidPropertyReference {
-            overlay:          overlay_id.to_owned(),
+            overlay: overlay_id.to_owned(),
             targets_property: refstr.to_owned(),
         }),
     }
@@ -74,10 +71,10 @@ fn parse_property_ref<'a>(
 
 fn format_role(role: &SubFieldRole) -> String {
     match role {
-        SubFieldRole::Amount    => "Amount".into(),
-        SubFieldRole::Velocity  => "Velocity".into(),
+        SubFieldRole::Amount => "Amount".into(),
+        SubFieldRole::Velocity => "Velocity".into(),
         SubFieldRole::Intensity => "Intensity".into(),
-        SubFieldRole::Named(n)  => format!("Named({n})"),
+        SubFieldRole::Named(n) => format!("Named({n})"),
         SubFieldRole::Custom(n) => format!("Custom({n})"),
     }
 }

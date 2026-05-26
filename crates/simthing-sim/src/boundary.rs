@@ -135,8 +135,8 @@ pub struct PipelineFlags {
     pub use_accumulator_reduction_soft: bool,
     /// S-4: full AccumulatorOp reduction path; must be enabled with soft flag.
     pub use_accumulator_reduction_exact: bool,
-    /// C-7: routes GovernedPair velocity integration through AccumulatorOp.
-    /// Legacy velocity_integration.wgsl remains flag-off/oracle until velocity sunset.
+    /// S-5: routes GovernedPair velocity integration through AccumulatorOp.
+    /// Disabling this while governed pairs exist rejects the workload.
     pub use_accumulator_velocity: bool,
     /// C-8a: upload EML program table at boundary sync (infrastructure only; no intensity migration).
     pub use_accumulator_eml: bool,
@@ -151,12 +151,12 @@ pub struct PipelineFlags {
 impl Default for PipelineFlags {
     fn default() -> Self {
         Self {
-            use_accumulator_threshold_scan: false,
-            use_accumulator_intent: false,
+            use_accumulator_threshold_scan: true,
+            use_accumulator_intent: true,
             use_accumulator_overlay_add: true,
             use_accumulator_reduction_soft: true,
             use_accumulator_reduction_exact: true,
-            use_accumulator_velocity: false,
+            use_accumulator_velocity: true,
             use_accumulator_eml: true,
             use_accumulator_intensity: true,
             use_accumulator_transfer: false,
@@ -183,6 +183,17 @@ impl PipelineFlags {
         {
             panic!(
                 "Legacy intensity path was deleted in S-2; use_accumulator_intensity must remain enabled."
+            );
+        }
+    }
+
+    pub fn validate_velocity_enabled_for_registry(&self, registry: &DimensionRegistry) {
+        self.validate();
+        if !self.use_accumulator_velocity
+            && !simthing_gpu::build_governed_pairs(registry).is_empty()
+        {
+            panic!(
+                "Legacy velocity_integration.wgsl was deleted in S-5; AccumulatorOp velocity must remain enabled when governed velocity pairs exist."
             );
         }
     }
@@ -297,6 +308,8 @@ impl BoundaryProtocol {
     }
 
     fn sync_accumulator_velocity_session(&self, state: &mut WorldGpuState) {
+        self.flags
+            .validate_velocity_enabled_for_registry(&self.registry);
         if !self.flags.use_accumulator_velocity {
             if let Some(runtime) = state.accumulator_runtime.as_mut() {
                 runtime.clear_velocity();
@@ -358,6 +371,11 @@ impl BoundaryProtocol {
         gpu_regs: &[ThresholdRegistration],
     ) {
         if !self.flags.use_accumulator_threshold_scan {
+            if !gpu_regs.is_empty() {
+                panic!(
+                    "Legacy threshold_scan.wgsl was deleted in S-6; use_accumulator_threshold_scan must remain enabled when threshold registrations exist."
+                );
+            }
             if let Some(runtime) = state.accumulator_runtime.as_mut() {
                 runtime.clear_threshold();
             }
@@ -757,6 +775,12 @@ impl BoundaryProtocol {
                 &mut self.cpu_threshold_registry,
             );
             state.append_thresholds(&new_regs);
+            if self.flags.use_accumulator_threshold_scan {
+                state.ensure_threshold_accumulator(state.n_thresholds.max(1));
+                state
+                    .append_accumulator_threshold_ops(&new_regs)
+                    .expect("threshold accumulator append failed");
+            }
             threshold_regs_appended = new_regs.len() as u32;
             threshold_dirty = false;
         }

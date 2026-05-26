@@ -14,14 +14,7 @@ fn assert_perf_correctness(report: &simthing_workshop::weighted_mean_perf::Weigh
 
 #[test]
 fn weighted_mean_perf_current_and_pivot_match_cpu_small() {
-    let scenario = make_weighted_mean_perf_scenario(
-        "weighted_mean_perf_small",
-        128,
-        8,
-        16,
-        2,
-        0.1,
-    );
+    let scenario = make_weighted_mean_perf_scenario("weighted_mean_perf_small", 128, 8, 16, 2, 0.1);
     let harness = WeightedMeanPerfHarness::new().unwrap();
     let report = compare_weighted_mean_perf_with_harness(&harness, &scenario).unwrap();
     assert_perf_correctness(&report);
@@ -29,14 +22,8 @@ fn weighted_mean_perf_current_and_pivot_match_cpu_small() {
 
 #[test]
 fn weighted_mean_perf_sparse_100k_x32_dims64_wm1() {
-    let scenario = make_weighted_mean_perf_scenario(
-        "weighted_mean_perf_sparse_100k",
-        100_000,
-        32,
-        64,
-        1,
-        0.1,
-    );
+    let scenario =
+        make_weighted_mean_perf_scenario("weighted_mean_perf_sparse_100k", 100_000, 32, 64, 1, 0.1);
     let harness = WeightedMeanPerfHarness::new().unwrap();
     let report = compare_weighted_mean_perf_with_harness(&harness, &scenario).unwrap();
     assert_perf_correctness(&report);
@@ -45,14 +32,8 @@ fn weighted_mean_perf_sparse_100k_x32_dims64_wm1() {
 
 #[test]
 fn weighted_mean_perf_dense_10k_x32_dims16_wm16() {
-    let scenario = make_weighted_mean_perf_scenario(
-        "weighted_mean_perf_dense_10k",
-        10_000,
-        32,
-        16,
-        8,
-        0.1,
-    );
+    let scenario =
+        make_weighted_mean_perf_scenario("weighted_mean_perf_dense_10k", 10_000, 32, 16, 8, 0.1);
     let harness = WeightedMeanPerfHarness::new().unwrap();
     let report = compare_weighted_mean_perf_with_harness(&harness, &scenario).unwrap();
     eprintln!("{}", format_perf_report(&report));

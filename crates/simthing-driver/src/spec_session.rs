@@ -29,7 +29,9 @@ pub enum SpecSessionError {
         owner_id: SimThingId,
         tree_logical_id: String,
     },
-    #[error("capability tree `{tree_logical_id}` has no entry `{entry_id}` for owner `{owner_id:?}`")]
+    #[error(
+        "capability tree `{tree_logical_id}` has no entry `{entry_id}` for owner `{owner_id:?}`"
+    )]
     UnknownEntry {
         owner_id: SimThingId,
         tree_logical_id: String,
@@ -209,7 +211,8 @@ impl SpecSessionState {
         definition: ScriptedEventDefinition,
     ) -> ScriptedEventDefinitionId {
         let definition_id = ScriptedEventDefinitionId::new();
-        self.scripted_event_definitions.insert(definition_id, definition);
+        self.scripted_event_definitions
+            .insert(definition_id, definition);
         definition_id
     }
 
@@ -220,9 +223,9 @@ impl SpecSessionState {
     pub fn attach_scripted_event_instance(
         &mut self,
         definition_id: ScriptedEventDefinitionId,
-        event_id:      EventKey,
-        owner_id:      SimThingId,
-        slot:          u32,
+        event_id: EventKey,
+        owner_id: SimThingId,
+        slot: u32,
     ) -> ScriptedEventInstanceKey {
         let key = ScriptedEventInstanceKey { owner_id, event_id };
         self.scripted_event_instances.insert(
@@ -243,8 +246,8 @@ impl SpecSessionState {
     pub fn add_scripted_event_instance(
         &mut self,
         definition: ScriptedEventDefinition,
-        owner_id:   SimThingId,
-        slot:       u32,
+        owner_id: SimThingId,
+        slot: u32,
     ) -> ScriptedEventInstanceKey {
         let event_id = definition.id.clone();
         let definition_id = self.register_scripted_event_definition(definition);
@@ -593,10 +596,7 @@ impl SpecSessionState {
             handler.handle_tick(&threshold_events, &mut event_ctx);
 
             // Write back cooldown to the per-instance slot.
-            let new_cooldown = cooldowns
-                .get(&inst.key.event_id)
-                .copied()
-                .unwrap_or(0);
+            let new_cooldown = cooldowns.get(&inst.key.event_id).copied().unwrap_or(0);
             if let Some(slot) = self.scripted_event_instances.get_mut(&key) {
                 slot.cooldown_remaining = new_cooldown;
             }
@@ -1009,7 +1009,11 @@ mod tests {
         };
         let key = state.add_scripted_event_instance(def, owner, 0);
         // Arm cooldown post-install.
-        state.scripted_event_instances.get_mut(&key).unwrap().cooldown_remaining = 3;
+        state
+            .scripted_event_instances
+            .get_mut(&key)
+            .unwrap()
+            .cooldown_remaining = 3;
         let registry = ThresholdRegistry::new();
         assert!(state.requires_boundary_tick(&[], &registry));
     }

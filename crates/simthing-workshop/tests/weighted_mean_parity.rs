@@ -1,12 +1,10 @@
 use simthing_workshop::weighted_mean::{
     compare_weighted_mean_rich, compare_weighted_mean_rich_with_harness, format_report,
     make_weighted_mean_scenario, production_shape_fixture, validate_scenario, weighted_mean_cpu,
-    WeightedChild, WeightedMeanGpuHarness, WeightedMeanScenario, ParentRange, LOOSE_TOLERANCE,
+    ParentRange, WeightedChild, WeightedMeanGpuHarness, WeightedMeanScenario, LOOSE_TOLERANCE,
 };
 
-fn assert_generated_scenario_report(
-    report: &simthing_workshop::weighted_mean::WeightedMeanReport,
-) {
+fn assert_generated_scenario_report(report: &simthing_workshop::weighted_mean::WeightedMeanReport) {
     eprintln!("{}", format_report(report));
 
     assert!(report.within_loose_tolerance, "{:?}", report);
@@ -157,7 +155,9 @@ fn weighted_mean_rejects_invalid_inputs() {
     let mut nan_value = valid.clone();
     nan_value.children[0].value = f32::NAN;
     assert!(compare_weighted_mean_rich(&nan_value).is_err());
-    assert!(harness.eval(&nan_value.children, &nan_value.ranges).is_err());
+    assert!(harness
+        .eval(&nan_value.children, &nan_value.ranges)
+        .is_err());
 
     let mut inf_value = valid.clone();
     inf_value.children[0].value = f32::INFINITY;
@@ -174,17 +174,17 @@ fn weighted_mean_rejects_invalid_inputs() {
     let mut bad_range = valid.clone();
     bad_range.ranges[0].len += 1000;
     assert!(compare_weighted_mean_rich(&bad_range).is_err());
-    assert!(harness.eval(&bad_range.children, &bad_range.ranges).is_err());
+    assert!(harness
+        .eval(&bad_range.children, &bad_range.ranges)
+        .is_err());
 
     let mut past_end_range = valid.clone();
     past_end_range.ranges[0].offset = valid.children.len() as u32;
     past_end_range.ranges[0].len = 1;
     assert!(compare_weighted_mean_rich(&past_end_range).is_err());
-    assert!(
-        harness
-            .eval(&past_end_range.children, &past_end_range.ranges)
-            .is_err()
-    );
+    assert!(harness
+        .eval(&past_end_range.children, &past_end_range.ranges)
+        .is_err());
 }
 
 #[test]
@@ -223,7 +223,9 @@ fn weighted_mean_accepts_valid_edge_inputs() {
         children: Vec::new(),
         ranges: Vec::new(),
     };
-    let gpu_empty = harness.eval(&empty.children, &empty.ranges).expect("empty gpu");
+    let gpu_empty = harness
+        .eval(&empty.children, &empty.ranges)
+        .expect("empty gpu");
     assert!(gpu_empty.is_empty());
 
     let trailing_empty = WeightedMeanScenario {

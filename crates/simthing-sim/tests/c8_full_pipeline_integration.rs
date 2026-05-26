@@ -1,8 +1,8 @@
 //! C-8 completion gate: full GPU-resident EML/intensity/transfer/emission block.
 
 use simthing_core::{
-    ClampBehavior, DimensionRegistry, IntensityBehavior, PropertyValue, SimProperty,
-    SimPropertyId, SimThing, SimThingKind, SubFieldRole, SubFieldSpec,
+    ClampBehavior, DimensionRegistry, IntensityBehavior, PropertyValue, SimProperty, SimPropertyId,
+    SimThing, SimThingKind, SubFieldRole, SubFieldSpec,
 };
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
 use simthing_gpu::{
@@ -15,7 +15,14 @@ fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
 }
 
-fn c8_full_registry() -> (DimensionRegistry, SimPropertyId, SimPropertyId, u32, u32, u32) {
+fn c8_full_registry() -> (
+    DimensionRegistry,
+    SimPropertyId,
+    SimPropertyId,
+    u32,
+    u32,
+    u32,
+) {
     let mut reg = DimensionRegistry::new();
     let mut loyalty = SimProperty::simple("core", "loyalty", 0);
     loyalty.intensity_behavior = Some(IntensityBehavior::default());
@@ -108,9 +115,15 @@ fn c8_full_world(
     let amount = loyalty_layout.offset_of(&SubFieldRole::Amount).unwrap();
     let velocity = loyalty_layout.offset_of(&SubFieldRole::Velocity).unwrap();
     let intensity = loyalty_layout.offset_of(&SubFieldRole::Intensity).unwrap();
-    let stock = resources_layout.offset_of(&SubFieldRole::Named("stock".into())).unwrap();
-    let pool = resources_layout.offset_of(&SubFieldRole::Named("pool".into())).unwrap();
-    let sink = resources_layout.offset_of(&SubFieldRole::Named("sink".into())).unwrap();
+    let stock = resources_layout
+        .offset_of(&SubFieldRole::Named("stock".into()))
+        .unwrap();
+    let pool = resources_layout
+        .offset_of(&SubFieldRole::Named("pool".into()))
+        .unwrap();
+    let sink = resources_layout
+        .offset_of(&SubFieldRole::Named("sink".into()))
+        .unwrap();
 
     let mut world = SimThing::new(SimThingKind::World, 0);
     let mut loc = SimThing::new(SimThingKind::Location, 0);
@@ -193,9 +206,7 @@ fn sync_c8_substrates(
 
 fn col_global(reg: &DimensionRegistry, pid: SimPropertyId, role: SubFieldRole) -> u32 {
     let layout = reg.property(pid).layout.clone();
-    reg.column_range(pid)
-        .col_for_role(&role, &layout)
-        .unwrap() as u32
+    reg.column_range(pid).col_for_role(&role, &layout).unwrap() as u32
 }
 
 fn flat_index(slot: u32, col: u32, n_dims: u32) -> usize {
@@ -218,11 +229,7 @@ struct UploadSnapshot {
 fn snapshot_upload_counts(state: &WorldGpuState) -> UploadSnapshot {
     let runtime = state.accumulator_runtime.as_ref().unwrap();
     UploadSnapshot {
-        eml_upload_count: runtime
-            .eml
-            .as_ref()
-            .map(|t| t.upload_count())
-            .unwrap_or(0),
+        eml_upload_count: runtime.eml.as_ref().map(|t| t.upload_count()).unwrap_or(0),
         input_list_upload_count: runtime
             .input_lists
             .as_ref()
@@ -250,16 +257,8 @@ fn c8_full_gpu_resident_pipeline_all_flags_on() {
     legacy_intensity_shader_deleted();
 
     let (reg, loyalty_pid, resources_pid, _, _, intensity_col) = c8_full_registry();
-    let stock_col = col_global(
-        &reg,
-        resources_pid,
-        SubFieldRole::Named("stock".into()),
-    );
-    let pool_col = col_global(
-        &reg,
-        resources_pid,
-        SubFieldRole::Named("pool".into()),
-    );
+    let stock_col = col_global(&reg, resources_pid, SubFieldRole::Named("stock".into()));
+    let pool_col = col_global(&reg, resources_pid, SubFieldRole::Named("pool".into()));
 
     let (world, alloc) = c8_full_world(&reg, loyalty_pid, resources_pid);
     let cohort_slot = first_cohort_slot(&world, &alloc);
@@ -320,8 +319,14 @@ fn c8_full_gpu_resident_pipeline_all_flags_on() {
 
     let stock_after = values[stock_idx];
     let pool_after = values[pool_idx];
-    assert_eq!(stock_after.to_bits(), (f32::from_bits(stock_before) - 1.0).to_bits());
-    assert_eq!(pool_after.to_bits(), (f32::from_bits(pool_before) + 1.0).to_bits());
+    assert_eq!(
+        stock_after.to_bits(),
+        (f32::from_bits(stock_before) - 1.0).to_bits()
+    );
+    assert_eq!(
+        pool_after.to_bits(),
+        (f32::from_bits(pool_before) + 1.0).to_bits()
+    );
 
     let emissions = state
         .accumulator_runtime
@@ -352,16 +357,8 @@ fn c8_full_pipeline_reuses_persistent_tables_and_ops_across_ticks() {
     set_debug_readback_allowed(true);
 
     let (reg, loyalty_pid, resources_pid, _, _, _) = c8_full_registry();
-    let stock_col = col_global(
-        &reg,
-        resources_pid,
-        SubFieldRole::Named("stock".into()),
-    );
-    let pool_col = col_global(
-        &reg,
-        resources_pid,
-        SubFieldRole::Named("pool".into()),
-    );
+    let stock_col = col_global(&reg, resources_pid, SubFieldRole::Named("stock".into()));
+    let pool_col = col_global(&reg, resources_pid, SubFieldRole::Named("pool".into()));
 
     let (world, alloc) = c8_full_world(&reg, loyalty_pid, resources_pid);
     let cohort_slot = first_cohort_slot(&world, &alloc);
@@ -441,16 +438,8 @@ fn c8_accumulator_intensity_uses_eval_eml_only() {
     legacy_intensity_shader_deleted();
 
     let (reg, loyalty_pid, resources_pid, _, _, _) = c8_full_registry();
-    let stock_col = col_global(
-        &reg,
-        resources_pid,
-        SubFieldRole::Named("stock".into()),
-    );
-    let pool_col = col_global(
-        &reg,
-        resources_pid,
-        SubFieldRole::Named("pool".into()),
-    );
+    let stock_col = col_global(&reg, resources_pid, SubFieldRole::Named("stock".into()));
+    let pool_col = col_global(&reg, resources_pid, SubFieldRole::Named("pool".into()));
 
     let (world, alloc) = c8_full_world(&reg, loyalty_pid, resources_pid);
     let cohort_slot = first_cohort_slot(&world, &alloc);
@@ -492,5 +481,12 @@ fn c8_accumulator_intensity_uses_eval_eml_only() {
     drop(tx);
 
     assert!(state.accumulator_intensity_eml_active);
-    assert!(state.accumulator_runtime.as_ref().unwrap().intensity_op_upload_count() > 0);
+    assert!(
+        state
+            .accumulator_runtime
+            .as_ref()
+            .unwrap()
+            .intensity_op_upload_count()
+            > 0
+    );
 }

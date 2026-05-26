@@ -7,12 +7,11 @@ use bytemuck::{Pod, Zeroable};
 use serde::Serialize;
 use wgpu::util::DeviceExt;
 use wgpu::{
-    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
-    CommandEncoderDescriptor, ComputePipelineDescriptor, Device, DeviceDescriptor,
-    Features, Instance, InstanceDescriptor, Maintain, MapMode, MemoryHints,
-    PipelineLayoutDescriptor, PowerPreference, Queue, RequestAdapterOptions, ShaderModuleDescriptor,
-    ShaderStages,
+    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
+    BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
+    CommandEncoderDescriptor, ComputePipelineDescriptor, Device, DeviceDescriptor, Features,
+    Instance, InstanceDescriptor, Maintain, MapMode, MemoryHints, PipelineLayoutDescriptor,
+    PowerPreference, Queue, RequestAdapterOptions, ShaderModuleDescriptor, ShaderStages,
 };
 
 pub const WORKGROUP_SIZE: u32 = 64;
@@ -263,7 +262,11 @@ fn resolve_item(
 pub fn resolve_cpu_current(
     scenario: &MultiTargetScenario,
     full_records: bool,
-) -> (Vec<QueueState>, Vec<CompactDeltaRecord>, Vec<FullDeltaRecord>) {
+) -> (
+    Vec<QueueState>,
+    Vec<CompactDeltaRecord>,
+    Vec<FullDeltaRecord>,
+) {
     let n_items = scenario.states.len();
     let mut final_states = Vec::with_capacity(n_items);
     let mut compact_records = Vec::with_capacity(n_items);
@@ -937,21 +940,29 @@ impl MultiTargetReplayHarness {
         &self,
         scenario: &MultiTargetScenario,
         replay_mode: u32,
-    ) -> Result<(Vec<QueueState>, Vec<CompactDeltaRecord>, Vec<FullDeltaRecord>)> {
+    ) -> Result<(
+        Vec<QueueState>,
+        Vec<CompactDeltaRecord>,
+        Vec<FullDeltaRecord>,
+    )> {
         let n_items = scenario.states.len();
         let initial_bytes = pad_storage_bytes(&scenario.states);
         let params_bytes = pad_storage_bytes(&scenario.params);
 
-        let initial_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("multitarget_initial"),
-            contents: &initial_bytes,
-            usage: BufferUsages::STORAGE,
-        });
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("multitarget_params"),
-            contents: &params_bytes,
-            usage: BufferUsages::STORAGE,
-        });
+        let initial_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("multitarget_initial"),
+                contents: &initial_bytes,
+                usage: BufferUsages::STORAGE,
+            });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("multitarget_params"),
+                contents: &params_bytes,
+                usage: BufferUsages::STORAGE,
+            });
 
         let final_size = (n_items * std::mem::size_of::<QueueState>()) as u64;
         let compact_size = (n_items * std::mem::size_of::<CompactDeltaRecord>()) as u64;
@@ -982,11 +993,13 @@ impl MultiTargetReplayHarness {
             _pad0: 0,
             _pad1: 0,
         };
-        let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("multitarget_uniform"),
-            contents: bytemuck::bytes_of(&gpu_params),
-            usage: BufferUsages::UNIFORM,
-        });
+        let uniform_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("multitarget_uniform"),
+                contents: bytemuck::bytes_of(&gpu_params),
+                usage: BufferUsages::UNIFORM,
+            });
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             label: Some("multitarget_bg"),
@@ -1089,24 +1102,30 @@ impl MultiTargetReplayHarness {
         let states_bytes = pad_storage_bytes(&scenario.states);
         let params_bytes = pad_storage_bytes(&scenario.params);
 
-        let states_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("multitarget_resident_states"),
-            contents: &states_bytes,
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
-        });
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("multitarget_resident_params"),
-            contents: &params_bytes,
-            usage: BufferUsages::STORAGE,
-        });
+        let states_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("multitarget_resident_states"),
+                contents: &states_bytes,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+            });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("multitarget_resident_params"),
+                contents: &params_bytes,
+                usage: BufferUsages::STORAGE,
+            });
 
         let summary_u32s = (ticks as usize) * 4;
         let summary_zeros = vec![0u32; summary_u32s];
-        let summary_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("multitarget_resident_summary"),
-            contents: bytemuck::cast_slice(&summary_zeros),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
-        });
+        let summary_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("multitarget_resident_summary"),
+                contents: bytemuck::cast_slice(&summary_zeros),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+            });
 
         let record_count = if write_per_item_records {
             ticks as usize * n_items
@@ -1225,13 +1244,7 @@ impl MultiTargetReplayHarness {
             summary_size.max(4),
         );
         if write_per_item_records {
-            encoder.copy_buffer_to_buffer(
-                &compact_buffer,
-                0,
-                &compact_readback,
-                0,
-                compact_size,
-            );
+            encoder.copy_buffer_to_buffer(&compact_buffer, 0, &compact_readback, 0, compact_size);
         }
         self.queue.submit(Some(encoder.finish()));
         let submit_us = t_submit.elapsed().as_micros() as u64;
@@ -1321,17 +1334,7 @@ fn scenario_totals(
     final_state: &[QueueState],
     params: &[QueueParams],
     records: &[CompactDeltaRecord],
-) -> (
-    u64,
-    u64,
-    u64,
-    u64,
-    u64,
-    u64,
-    u64,
-    u64,
-    u64,
-) {
+) -> (u64, u64, u64, u64, u64, u64, u64, u64, u64) {
     let mut total_source_before = 0u64;
     let mut total_queue_before = 0u64;
     let mut total_units_before = 0u64;
@@ -1351,8 +1354,7 @@ fn scenario_totals(
         total_units_after += final_state[idx].units as u64;
         total_transferred += records[idx].transfer_amount as u64;
         total_emitted_units += records[idx].emit_count as u64;
-        total_emitted_value +=
-            records[idx].emit_count as u64 * params[idx].unit_cost as u64;
+        total_emitted_value += records[idx].emit_count as u64 * params[idx].unit_cost as u64;
     }
 
     (
@@ -1402,8 +1404,7 @@ fn interpretation_string(
 }
 
 fn record_ticks_for(n_items: usize, ticks: u32) -> (u32, bool) {
-    let bytes =
-        n_items as u64 * ticks as u64 * std::mem::size_of::<CompactDeltaRecord>() as u64;
+    let bytes = n_items as u64 * ticks as u64 * std::mem::size_of::<CompactDeltaRecord>() as u64;
     if bytes > 100 * 1024 * 1024 {
         (8, true)
     } else {
@@ -1498,25 +1499,23 @@ pub fn compare_multitarget_resident_rich_with_harness(
     ticks: u32,
 ) -> Result<MultiTargetResidentReport> {
     let n_items = scenario.states.len();
-    let active_count = scenario
-        .params
-        .iter()
-        .filter(|p| p.is_active != 0)
-        .count();
+    let active_count = scenario.params.iter().filter(|p| p.is_active != 0).count();
     let (record_ticks, records_memory_fallback) = record_ticks_for(n_items, ticks);
 
     let t0 = Instant::now();
-    let (cpu_final, cpu_summaries, _cpu_records) =
-        resolve_cpu_current_n_ticks(scenario, ticks);
+    let (cpu_final, cpu_summaries, _cpu_records) = resolve_cpu_current_n_ticks(scenario, ticks);
     let cpu_n_ticks_us = t0.elapsed().as_micros() as u64;
 
-    let (cpu_final_records, cpu_summaries_records, _cpu_records_subset) =
-        if record_ticks < ticks {
-            let (f, s, r) = resolve_cpu_current_n_ticks(scenario, record_ticks);
-            (f, s, r)
-        } else {
-            (cpu_final.clone(), cpu_summaries.clone(), _cpu_records.clone())
-        };
+    let (cpu_final_records, cpu_summaries_records, _cpu_records_subset) = if record_ticks < ticks {
+        let (f, s, r) = resolve_cpu_current_n_ticks(scenario, record_ticks);
+        (f, s, r)
+    } else {
+        (
+            cpu_final.clone(),
+            cpu_summaries.clone(),
+            _cpu_records.clone(),
+        )
+    };
 
     let t_records = Instant::now();
     let _ = resolve_cpu_current_n_ticks(scenario, record_ticks);
@@ -1567,8 +1566,7 @@ pub fn compare_multitarget_resident_rich_with_harness(
     let gpu_summary = gpu_summary_base.unwrap();
     let gpu_records = gpu_records_base.unwrap();
 
-    let final_state_matches_cpu_summary_mode =
-        states_equal(&cpu_final, &gpu_summary.final_states);
+    let final_state_matches_cpu_summary_mode = states_equal(&cpu_final, &gpu_summary.final_states);
     let final_state_matches_cpu_records_mode =
         states_equal(&cpu_final_records, &gpu_records.final_states);
     let summary_matches_cpu = summaries_equal(&cpu_summaries, &gpu_summary.summaries);
@@ -1580,8 +1578,7 @@ pub fn compare_multitarget_resident_rich_with_harness(
         record_ticks,
         n_items,
     )?;
-    let replay_from_records_matches_gpu =
-        states_equal(&replayed, &gpu_records.final_states);
+    let replay_from_records_matches_gpu = states_equal(&replayed, &gpu_records.final_states);
 
     let records_summaries_match = if record_ticks < ticks {
         summaries_equal(&cpu_summaries_records, &gpu_records.summaries)
@@ -1700,8 +1697,7 @@ pub fn format_multitarget_resident_report(report: &MultiTargetResidentReport) ->
 }
 
 pub fn write_multitarget_resident_reports(report: &MultiTargetResidentReport) -> Result<()> {
-    crate::multitarget_replay_report::write_multitarget_resident_reports(report)
-        .map_err(Into::into)
+    crate::multitarget_replay_report::write_multitarget_resident_reports(report).map_err(Into::into)
 }
 
 pub fn write_multitarget_resident_reports_bundle(
@@ -1807,11 +1803,7 @@ pub fn compare_multitarget_replay_rich_with_harness(
         0.0
     };
 
-    let active_count = scenario
-        .params
-        .iter()
-        .filter(|p| p.is_active != 0)
-        .count();
+    let active_count = scenario.params.iter().filter(|p| p.is_active != 0).count();
     let unit_cost_min = scenario
         .params
         .iter()
@@ -1835,12 +1827,7 @@ pub fn compare_multitarget_replay_rich_with_harness(
         total_transferred,
         total_emitted_units,
         total_emitted_value,
-    ) = scenario_totals(
-        &scenario.states,
-        &gpu_final,
-        &scenario.params,
-        &gpu_compact,
-    );
+    ) = scenario_totals(&scenario.states, &gpu_final, &scenario.params, &gpu_compact);
 
     let interpretation = interpretation_string(
         conservation_ok,
@@ -1898,9 +1885,7 @@ pub fn write_multitarget_replay_reports(report: &MultiTargetReplayReport) -> Res
     crate::multitarget_replay_report::write_multitarget_replay_reports(report).map_err(Into::into)
 }
 
-pub fn write_multitarget_replay_reports_bundle(
-    reports: &[MultiTargetReplayReport],
-) -> Result<()> {
+pub fn write_multitarget_replay_reports_bundle(reports: &[MultiTargetReplayReport]) -> Result<()> {
     crate::multitarget_replay_report::write_multitarget_replay_reports_bundle(reports)
         .map_err(Into::into)
 }

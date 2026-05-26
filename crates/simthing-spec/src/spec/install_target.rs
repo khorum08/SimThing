@@ -26,6 +26,8 @@ impl InstallTargetSpec {
     /// Default capability-tree install target — covers existing RON files
     /// that omit the `install` field. Matches every `Faction` in the scene.
     pub fn faction_default() -> Self {
-        Self::AllOfKind { kind: "Faction".into() }
+        Self::AllOfKind {
+            kind: "Faction".into(),
+        }
     }
 }

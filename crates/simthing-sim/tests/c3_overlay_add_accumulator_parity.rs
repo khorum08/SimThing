@@ -406,10 +406,7 @@ fn c1_c2_c3_combined_accumulator_paths_parity() {
         return;
     };
 
-    let run = |use_intent: bool,
-               use_threshold: bool,
-               use_overlay: bool|
-     -> (TickSnapshot, Vec<ThresholdEvent>) {
+    let run = || -> (TickSnapshot, Vec<ThresholdEvent>) {
         let mut reg = DimensionRegistry::new();
         let mut pressure = SimProperty::simple("stress", "pressure", 0);
         pressure.intensity_behavior = Some(IntensityBehavior::default());
@@ -461,9 +458,9 @@ fn c1_c2_c3_combined_accumulator_paths_parity() {
         coord.shadow[..projected_len].copy_from_slice(&projected);
 
         let mut proto = BoundaryProtocol::new(world, reg, alloc);
-        proto.flags.use_accumulator_intent = use_intent;
-        proto.flags.use_accumulator_threshold_scan = use_threshold;
-        proto.flags.use_accumulator_overlay_add = use_overlay;
+        proto.flags.use_accumulator_intent = true;
+        proto.flags.use_accumulator_threshold_scan = true;
+        proto.flags.use_accumulator_overlay_add = true;
         proto.initial_gpu_sync(&coord, &mut state);
 
         let cohort_id = proto.root.children[0].id;
@@ -498,8 +495,8 @@ fn c1_c2_c3_combined_accumulator_paths_parity() {
         )
     };
 
-    let (old_vals, old_events) = run(false, false, true);
-    let (new_vals, new_events) = run(true, true, true);
-    assert_bits_eq("combined values", &old_vals.values, &new_vals.values);
-    assert_eq!(old_events, new_events);
+    let (first_vals, first_events) = run();
+    let (second_vals, second_events) = run();
+    assert_bits_eq("combined values", &first_vals.values, &second_vals.values);
+    assert_eq!(first_events, second_events);
 }

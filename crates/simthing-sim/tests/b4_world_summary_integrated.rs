@@ -8,19 +8,25 @@ use simthing_core::{
 use simthing_feeder::{
     feeder_channel, DispatchCoordinator, FeederWork, PatchTransform, TransformPatcher,
 };
-use simthing_gpu::{set_debug_readback_allowed, summaries_from_values, GpuContext, Pipelines, SlotAllocator, WorldGpuState};
+use simthing_gpu::{
+    set_debug_readback_allowed, summaries_from_values, GpuContext, Pipelines, SlotAllocator,
+    WorldGpuState,
+};
 use simthing_sim::BoundaryProtocol;
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
 }
 
-fn make_overlay(pid: simthing_core::SimPropertyId, ops: Vec<(SubFieldRole, TransformOp)>) -> Overlay {
+fn make_overlay(
+    pid: simthing_core::SimPropertyId,
+    ops: Vec<(SubFieldRole, TransformOp)>,
+) -> Overlay {
     Overlay {
-        id:        OverlayId::new(),
-        kind:      OverlayKind::Policy,
-        source:    OverlaySource::System,
-        affects:   Vec::new(),
+        id: OverlayId::new(),
+        kind: OverlayKind::Policy,
+        source: OverlaySource::System,
+        affects: Vec::new(),
         transform: PropertyTransformDelta {
             property_id: pid,
             sub_field_deltas: ops,

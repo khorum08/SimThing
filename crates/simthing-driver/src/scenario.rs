@@ -29,25 +29,25 @@ pub enum ScenarioError {
 /// CPU shadow seeds applied before the first GPU upload.
 #[derive(Clone, Debug)]
 pub struct ShadowSeed {
-    pub thing_id:  SimThingId,
+    pub thing_id: SimThingId,
     pub namespace: String,
-    pub name:      String,
-    pub amount:    f32,
-    pub velocity:  f32,
+    pub name: String,
+    pub amount: f32,
+    pub velocity: f32,
 }
 
 /// Everything needed to construct a `SimSession`.
 #[derive(Clone, Debug)]
 pub struct Scenario {
-    pub name:          String,
+    pub name: String,
     pub ticks_per_day: u32,
-    pub max_days:      u32,
-    pub dt:            f32,
-    pub n_slots:       u32,
-    pub registry:      DimensionRegistry,
-    pub root:          SimThing,
-    pub shadow_seeds:  Vec<ShadowSeed>,
-    pub tick_patches:  Vec<PatchTransform>,
+    pub max_days: u32,
+    pub dt: f32,
+    pub n_slots: u32,
+    pub registry: DimensionRegistry,
+    pub root: SimThing,
+    pub shadow_seeds: Vec<ShadowSeed>,
+    pub tick_patches: Vec<PatchTransform>,
     /// Authored install-target registry. Maps a logical target id (used by
     /// `InstallTargetSpec::ScenarioListed { target_id }` on the spec layer)
     /// to a list of `SimThingId`s present in `root`. Empty in builtin
@@ -58,12 +58,12 @@ pub struct Scenario {
 
 #[derive(Debug, Deserialize)]
 struct ScenarioSpec {
-    name:          String,
+    name: String,
     ticks_per_day: u32,
-    max_days:      u32,
-    dt:            f32,
-    n_slots:       u32,
-    builtin:       String,
+    max_days: u32,
+    dt: f32,
+    n_slots: u32,
+    builtin: String,
 }
 
 impl Scenario {
@@ -184,7 +184,13 @@ impl Scenario {
         }
     }
 
-    pub fn map_light(name: String, ticks_per_day: u32, max_days: u32, dt: f32, n_slots: u32) -> Self {
+    pub fn map_light(
+        name: String,
+        ticks_per_day: u32,
+        max_days: u32,
+        dt: f32,
+        n_slots: u32,
+    ) -> Self {
         let mut reg = DimensionRegistry::new();
         let pid = reg.register(SimProperty::simple("map", "stability", 0));
         let layout = reg.property(pid).layout.clone();
@@ -215,7 +221,13 @@ impl Scenario {
         }
     }
 
-    pub fn pop_heavy(name: String, ticks_per_day: u32, max_days: u32, dt: f32, n_slots: u32) -> Self {
+    pub fn pop_heavy(
+        name: String,
+        ticks_per_day: u32,
+        max_days: u32,
+        dt: f32,
+        n_slots: u32,
+    ) -> Self {
         let mut reg = DimensionRegistry::new();
         let mut population = SimProperty::simple("pop", "cohort", 29);
         population.intensity_behavior = Some(IntensityBehavior::default());
@@ -230,11 +242,15 @@ impl Scenario {
         let mut made = 1u32;
         let mut world = SimThing::new(SimThingKind::World, 0);
         for loc_i in 0..locations {
-            if made >= n_slots { break; }
+            if made >= n_slots {
+                break;
+            }
             let mut loc = SimThing::new(SimThingKind::Location, 0);
             made += 1;
             for cohort_i in 0..cohorts_per_location {
-                if made >= n_slots { break; }
+                if made >= n_slots {
+                    break;
+                }
                 let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
                 let mut pv = PropertyValue::from_layout(&layout);
                 pv.data[amount] = 0.4 + ((cohort_i % 50) as f32) * 0.002;
@@ -247,10 +263,27 @@ impl Scenario {
             world.add_child(loc);
         }
 
-        Self { name, ticks_per_day, max_days, dt, n_slots, registry: reg, root: world, shadow_seeds: Vec::new(), tick_patches: Vec::new(), install_targets: HashMap::new() }
+        Self {
+            name,
+            ticks_per_day,
+            max_days,
+            dt,
+            n_slots,
+            registry: reg,
+            root: world,
+            shadow_seeds: Vec::new(),
+            tick_patches: Vec::new(),
+            install_targets: HashMap::new(),
+        }
     }
 
-    pub fn intent_stress(name: String, ticks_per_day: u32, max_days: u32, dt: f32, n_slots: u32) -> Self {
+    pub fn intent_stress(
+        name: String,
+        ticks_per_day: u32,
+        max_days: u32,
+        dt: f32,
+        n_slots: u32,
+    ) -> Self {
         let mut scenario = Self::map_light(name, ticks_per_day, max_days, dt, n_slots);
         let pid = scenario.registry.id_of("map", "stability").unwrap();
         let mut patches = Vec::new();
@@ -270,7 +303,13 @@ impl Scenario {
         scenario
     }
 
-    pub fn fission_stress(name: String, ticks_per_day: u32, max_days: u32, dt: f32, n_slots: u32) -> Self {
+    pub fn fission_stress(
+        name: String,
+        ticks_per_day: u32,
+        max_days: u32,
+        dt: f32,
+        n_slots: u32,
+    ) -> Self {
         let mut reg = DimensionRegistry::new();
         let mut pressure = SimProperty::simple("stress", "pressure", 0);
         pressure.intensity_behavior = Some(IntensityBehavior::default());
@@ -305,10 +344,27 @@ impl Scenario {
             world.add_child(cohort);
         }
 
-        Self { name, ticks_per_day, max_days, dt, n_slots, registry: reg, root: world, shadow_seeds: Vec::new(), tick_patches: Vec::new(), install_targets: HashMap::new() }
+        Self {
+            name,
+            ticks_per_day,
+            max_days,
+            dt,
+            n_slots,
+            registry: reg,
+            root: world,
+            shadow_seeds: Vec::new(),
+            tick_patches: Vec::new(),
+            install_targets: HashMap::new(),
+        }
     }
 
-    pub fn threshold_stress(name: String, ticks_per_day: u32, max_days: u32, dt: f32, n_slots: u32) -> Self {
+    pub fn threshold_stress(
+        name: String,
+        ticks_per_day: u32,
+        max_days: u32,
+        dt: f32,
+        n_slots: u32,
+    ) -> Self {
         let mut scenario = Self::fission_stress(name, ticks_per_day, max_days, dt, n_slots);
         scenario.max_days = scenario.max_days.max(2);
         scenario

@@ -231,7 +231,10 @@ impl<R: BufRead> ReplayReader<R> {
             let kind = value.get("kind").and_then(|v| v.as_str()).unwrap_or("");
             match kind {
                 "frame" => {
-                    let frame_val = value.get("frame").cloned().unwrap_or(serde_json::Value::Null);
+                    let frame_val = value
+                        .get("frame")
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Null);
                     let frame: ReplayFrame = serde_json::from_value(frame_val)?;
                     return Ok(Some(frame));
                 }

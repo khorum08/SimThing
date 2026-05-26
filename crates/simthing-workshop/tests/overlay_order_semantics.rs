@@ -1,8 +1,9 @@
 use simthing_workshop::overlay_order::{
-    apply_compiled_overlays_cpu, apply_overlays_cpu_current, compare_overlay_order_rich_with_harness,
-    compile_overlay_order_bands, format_overlay_order_report, make_manual_adversarial_scenario,
-    make_overlay_order_scenario, make_unsafe_grouping_trap_scenario,
-    write_overlay_order_semantics_reports_bundle, OverlayOrderHarness,
+    apply_compiled_overlays_cpu, apply_overlays_cpu_current,
+    compare_overlay_order_rich_with_harness, compile_overlay_order_bands,
+    format_overlay_order_report, make_manual_adversarial_scenario, make_overlay_order_scenario,
+    make_unsafe_grouping_trap_scenario, write_overlay_order_semantics_reports_bundle,
+    OverlayOrderHarness,
 };
 
 fn assert_report_ok(report: &simthing_workshop::overlay_order::OverlayOrderReport) {
@@ -36,11 +37,9 @@ fn overlay_order_compiler_preserves_cpu_semantics() {
     assert_eq!(cpu_current, cpu_compiled);
     assert!(compiled.compile_stats.compiled_op_count <= compiled.compile_stats.raw_overlay_count);
 
-    let report = compare_overlay_order_rich_with_harness(
-        &OverlayOrderHarness::new().unwrap(),
-        &scenario,
-    )
-    .unwrap();
+    let report =
+        compare_overlay_order_rich_with_harness(&OverlayOrderHarness::new().unwrap(), &scenario)
+            .unwrap();
     assert_eq!(report.semantic_gate, "PASS");
 }
 
@@ -90,10 +89,18 @@ fn overlay_order_wide_sparse_stress() {
 fn overlay_order_does_not_group_mixed_ops_unsafely() {
     let scenario = make_unsafe_grouping_trap_scenario();
     let cpu_current = apply_overlays_cpu_current(&scenario);
-    assert!((cpu_current[6] - 31.0).abs() <= 1e-6, "expected 31 got {}", cpu_current[6]);
+    assert!(
+        (cpu_current[6] - 31.0).abs() <= 1e-6,
+        "expected 31 got {}",
+        cpu_current[6]
+    );
 
     let compiled = compile_overlay_order_bands(&scenario);
     let cpu_compiled = apply_compiled_overlays_cpu(&scenario, &compiled);
-    assert!((cpu_compiled[6] - 31.0).abs() <= 1e-6, "expected 31 got {}", cpu_compiled[6]);
+    assert!(
+        (cpu_compiled[6] - 31.0).abs() <= 1e-6,
+        "expected 31 got {}",
+        cpu_compiled[6]
+    );
     assert!(compiled.compile_stats.unsafe_grouping_detected);
 }

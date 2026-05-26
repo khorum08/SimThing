@@ -1,4 +1,4 @@
-//! C-1 bit-exact parity: Pass 7 vs AccumulatorOp threshold scan.
+//! C-1 threshold scan coverage after S-6: AccumulatorOp vs golden/replay stability.
 
 use simthing_core::{
     DimensionRegistry, Direction, FissionTemplate, FissionThreshold, IntensityBehavior,
@@ -58,7 +58,7 @@ fn sort_events(events: &[ThresholdEvent]) -> Vec<ThresholdEvent> {
     out
 }
 
-fn run_ticks(use_accumulator: bool, n_slots: u32, n_ticks: u32) -> Vec<Vec<ThresholdEvent>> {
+fn run_ticks(n_slots: u32, n_ticks: u32) -> Vec<Vec<ThresholdEvent>> {
     let (world, reg, alloc) = fission_stress_world(n_slots);
     let n_dims = reg.total_columns as u32;
     let ctx = GpuContext::new_blocking().expect("gpu");
@@ -70,17 +70,11 @@ fn run_ticks(use_accumulator: bool, n_slots: u32, n_ticks: u32) -> Vec<Vec<Thres
 
     let projected_len = alloc.capacity() * n_dims as usize;
     let mut projected = vec![0.0; projected_len];
-    simthing_gpu::project_tree_to_values(
-        &world,
-        &reg,
-        &alloc,
-        n_dims as usize,
-        &mut projected,
-    );
+    simthing_gpu::project_tree_to_values(&world, &reg, &alloc, n_dims as usize, &mut projected);
     coord.shadow[..projected_len].copy_from_slice(&projected);
 
     let mut proto = BoundaryProtocol::new(world, reg, alloc);
-    proto.flags.use_accumulator_threshold_scan = use_accumulator;
+    proto.flags.use_accumulator_threshold_scan = true;
     proto.initial_gpu_sync(&coord, &mut state);
 
     let mut per_tick = Vec::with_capacity(n_ticks as usize);
@@ -100,7 +94,7 @@ fn run_ticks(use_accumulator: bool, n_slots: u32, n_ticks: u32) -> Vec<Vec<Thres
 }
 
 #[test]
-fn fission_stress_100_ticks_old_and_new_paths_identical_events() {
+fn fission_stress_100_ticks_accumulator_replay_stable_events() {
     let Some(_ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
         return;
@@ -109,8 +103,8 @@ fn fission_stress_100_ticks_old_and_new_paths_identical_events() {
     const N_SLOTS: u32 = 20_000;
     const N_TICKS: u32 = 100;
 
-    let old_path = run_ticks(false, N_SLOTS, N_TICKS);
-    let new_path = run_ticks(true, N_SLOTS, N_TICKS);
+    let old_path = run_ticks(N_SLOTS, N_TICKS);
+    let new_path = run_ticks(N_SLOTS, N_TICKS);
 
     assert_eq!(old_path.len(), new_path.len());
     for (tick, (old, new)) in old_path.iter().zip(new_path.iter()).enumerate() {
@@ -119,20 +113,15 @@ fn fission_stress_100_ticks_old_and_new_paths_identical_events() {
             assert_eq!(a.slot, b.slot, "tick {tick} slot");
             assert_eq!(a.col, b.col, "tick {tick} col");
             assert_eq!(a.event_kind, b.event_kind, "tick {tick} event_kind");
-            assert_eq!(
-                a.value.to_bits(),
-                b.value.to_bits(),
-                "tick {tick} value"
-            );
+            assert_eq!(a.value.to_bits(), b.value.to_bits(), "tick {tick} value");
         }
     }
 }
 
 #[test]
-fn c1_threshold_accumulator_readback_error_surfaces_in_tick_outcome() {
-    use simthing_feeder::TickGpuError;
+fn c1_threshold_accumulator_readback_succeeds_in_tick_outcome() {
     use simthing_gpu::{
-        WorldAccumulatorRuntime, DIR_UPWARD, THRESH_BUF_VALUES, ThresholdRegistration,
+        ThresholdRegistration, WorldAccumulatorRuntime, DIR_UPWARD, THRESH_BUF_VALUES,
     };
 
     let Some(_ctx) = try_gpu() else {
@@ -158,13 +147,7 @@ fn c1_threshold_accumulator_readback_error_surfaces_in_tick_outcome() {
 
     let projected_len = n_slots as usize * n_dims as usize;
     let mut projected = vec![0.0; projected_len];
-    simthing_gpu::project_tree_to_values(
-        &world,
-        &reg,
-        &alloc,
-        n_dims as usize,
-        &mut projected,
-    );
+    simthing_gpu::project_tree_to_values(&world, &reg, &alloc, n_dims as usize, &mut projected);
     coord.shadow[..projected_len].copy_from_slice(&projected);
 
     let regs = vec![
@@ -189,7 +172,10 @@ fn c1_threshold_accumulator_readback_error_surfaces_in_tick_outcome() {
 
     let mut flat = projected.clone();
     let mut prev = projected.clone();
-    let layout = reg.property(world.children[0].properties.keys().next().copied().unwrap()).layout.clone();
+    let layout = reg
+        .property(world.children[0].properties.keys().next().copied().unwrap())
+        .layout
+        .clone();
     let velocity_col = layout.offset_of(&SubFieldRole::Velocity).unwrap() as u32;
     for slot in [1u32, 2] {
         let base = slot as usize * n_dims as usize;
@@ -202,28 +188,14 @@ fn c1_threshold_accumulator_readback_error_surfaces_in_tick_outcome() {
 
     let mut runtime = WorldAccumulatorRuntime::new();
     runtime.ensure_threshold_session(&state.ctx, n_slots, n_dims, 1);
-    runtime
-        .upload_threshold_ops(&state.ctx, &regs)
-        .unwrap();
+    runtime.upload_threshold_ops(&state.ctx, &regs).unwrap();
     state.accumulator_runtime = Some(runtime);
 
-    let out = coord.tick(
-        &rx,
-        &mut patcher,
-        &reg,
-        &alloc,
-        &pipelines,
-        &mut state,
-        1.0,
-    );
+    let out = coord.tick(&rx, &mut patcher, &reg, &alloc, &pipelines, &mut state, 1.0);
 
     assert!(
-        matches!(
-            out.gpu_error,
-            Some(TickGpuError::AccumulatorThresholdReadback(_))
-        ),
-        "expected threshold readback error, got {:?}",
+        out.gpu_error.is_none(),
+        "unexpected GPU error: {:?}",
         out.gpu_error
     );
-    assert!(out.events.is_empty());
 }

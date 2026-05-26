@@ -13,12 +13,12 @@ use anyhow::{bail, Context, Result};
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 use wgpu::{
-    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
+    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
+    BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
     CommandEncoderDescriptor, ComputePipeline, ComputePipelineDescriptor, Device, DeviceDescriptor,
     Features, Instance, InstanceDescriptor, Limits, Maintain, MapMode, MemoryHints,
-    PipelineLayoutDescriptor, PowerPreference, Queue, RequestAdapterOptions, ShaderModuleDescriptor,
-    ShaderStages,
+    PipelineLayoutDescriptor, PowerPreference, Queue, RequestAdapterOptions,
+    ShaderModuleDescriptor, ShaderStages,
 };
 
 pub const MAX_NODES: usize = 32;
@@ -35,7 +35,8 @@ pub const OP_SUB: u32 = 7;
 pub const OP_SELECT: u32 = 8;
 pub const OP_CLAMP01: u32 = 9;
 
-pub const TIMING_NOTE: &str = "GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.";
+pub const TIMING_NOTE: &str =
+    "GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.";
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
@@ -412,16 +413,8 @@ pub fn validate_nodes(nodes: &[EmlNode], root_node: u32) -> Result<()> {
     }
     for (i, n) in nodes.iter().enumerate() {
         match n.op {
-            OP_CONST
-            | OP_INPUT_VELOCITY
-            | OP_INPUT_INTENSITY
-            | OP_ABS
-            | OP_GREATER_THAN
-            | OP_MUL
-            | OP_ADD
-            | OP_SUB
-            | OP_SELECT
-            | OP_CLAMP01 => {}
+            OP_CONST | OP_INPUT_VELOCITY | OP_INPUT_INTENSITY | OP_ABS | OP_GREATER_THAN
+            | OP_MUL | OP_ADD | OP_SUB | OP_SELECT | OP_CLAMP01 => {}
             op => bail!("unknown EML opcode {op} at node {i}"),
         }
     }
@@ -556,11 +549,13 @@ impl EmlGpuHarness {
         };
 
         if needs_upload {
-            let buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("eml_phase5_nodes"),
-                contents: bytemuck::cast_slice(nodes),
-                usage: BufferUsages::STORAGE,
-            });
+            let buffer = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("eml_phase5_nodes"),
+                    contents: bytemuck::cast_slice(nodes),
+                    usage: BufferUsages::STORAGE,
+                });
             self.cached_node_buffer = Some((nodes.to_vec(), buffer));
         }
 
@@ -591,11 +586,13 @@ impl EmlGpuHarness {
             _pad1: 0,
         };
 
-        let input_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("eml_phase5_inputs"),
-            contents: bytemuck::cast_slice(inputs),
-            usage: BufferUsages::STORAGE,
-        });
+        let input_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("eml_phase5_inputs"),
+                contents: bytemuck::cast_slice(inputs),
+                usage: BufferUsages::STORAGE,
+            });
 
         let output_size = (n_slots * std::mem::size_of::<IntensityOutput>()) as u64;
         let output_buffer = self.device.create_buffer(&BufferDescriptor {
@@ -605,11 +602,13 @@ impl EmlGpuHarness {
             mapped_at_creation: false,
         });
 
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("eml_phase5_params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: BufferUsages::UNIFORM,
-        });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("eml_phase5_params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: BufferUsages::UNIFORM,
+            });
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             label: Some("eml_phase5_bind_group"),
@@ -680,11 +679,13 @@ impl EmlGpuHarness {
         let mut gpu_params = params;
         gpu_params.n_slots = n_slots as u32;
 
-        let input_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("eml_phase5_hardcoded_inputs"),
-            contents: bytemuck::cast_slice(inputs),
-            usage: BufferUsages::STORAGE,
-        });
+        let input_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("eml_phase5_hardcoded_inputs"),
+                contents: bytemuck::cast_slice(inputs),
+                usage: BufferUsages::STORAGE,
+            });
 
         let output_size = (n_slots * std::mem::size_of::<IntensityOutput>()) as u64;
         let output_buffer = self.device.create_buffer(&BufferDescriptor {
@@ -694,11 +695,13 @@ impl EmlGpuHarness {
             mapped_at_creation: false,
         });
 
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("eml_phase5_hardcoded_params"),
-            contents: bytemuck::bytes_of(&gpu_params),
-            usage: BufferUsages::UNIFORM,
-        });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("eml_phase5_hardcoded_params"),
+                contents: bytemuck::bytes_of(&gpu_params),
+                usage: BufferUsages::UNIFORM,
+            });
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             label: Some("eml_phase5_hardcoded_bind_group"),
@@ -750,7 +753,11 @@ impl EmlGpuHarness {
         Ok(outputs)
     }
 
-    fn readback_outputs(device: &Device, readback: &Buffer, n_slots: usize) -> Result<Vec<IntensityOutput>> {
+    fn readback_outputs(
+        device: &Device,
+        readback: &Buffer,
+        n_slots: usize,
+    ) -> Result<Vec<IntensityOutput>> {
         let slice = readback.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
         slice.map_async(MapMode::Read, move |r| {
@@ -762,7 +769,9 @@ impl EmlGpuHarness {
             .context("buffer map failed")?;
 
         let mapped = slice.get_mapped_range();
-        let outputs: Vec<IntensityOutput> = bytemuck::cast_slice(&mapped[..n_slots * std::mem::size_of::<IntensityOutput>()]).to_vec();
+        let outputs: Vec<IntensityOutput> =
+            bytemuck::cast_slice(&mapped[..n_slots * std::mem::size_of::<IntensityOutput>()])
+                .to_vec();
         drop(mapped);
         readback.unmap();
         Ok(outputs)
@@ -785,13 +794,7 @@ pub fn compare_cpu_gpu_rich(
     formula_params: IntensityFormulaParams,
 ) -> Result<EmlGpuRichReport> {
     let mut harness = EmlGpuHarness::new()?;
-    compare_cpu_gpu_rich_with_harness(
-        &mut harness,
-        inputs,
-        nodes,
-        root_node,
-        formula_params,
-    )
+    compare_cpu_gpu_rich_with_harness(&mut harness, inputs, nodes, root_node, formula_params)
 }
 
 pub fn compare_cpu_gpu_rich_with_harness(
@@ -912,13 +915,7 @@ pub fn compare_cpu_gpu(
     nodes: &[EmlNode],
     root_node: u32,
 ) -> Result<EmlGpuReport> {
-    let formula_params = IntensityFormulaParams::new(
-        inputs.len() as u32,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-    );
+    let formula_params = IntensityFormulaParams::new(inputs.len() as u32, 0.0, 0.0, 0.0, 0.0);
     let rich = compare_cpu_gpu_rich(inputs, nodes, root_node, formula_params)?;
     Ok(EmlGpuReport {
         n_slots: rich.n_slots,

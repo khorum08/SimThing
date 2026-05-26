@@ -59,7 +59,10 @@ fn make_reduction_op(
     }
 }
 
-fn combine_for_rule(desc: &ColumnRuleDescriptor, n_dims: u32) -> Result<(u32, u32), ReductionPlanError> {
+fn combine_for_rule(
+    desc: &ColumnRuleDescriptor,
+    n_dims: u32,
+) -> Result<(u32, u32), ReductionPlanError> {
     let weight_col = match desc.rule {
         ReductionRule::Mean => (combine_kind::MEAN, 0),
         ReductionRule::WeightedMean { .. } => {

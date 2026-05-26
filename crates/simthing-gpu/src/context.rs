@@ -1,9 +1,10 @@
 //! GPU device/queue lifecycle. One `GpuContext` per session.
 
 use thiserror::Error;
-use wgpu::{Adapter, Backends, Device, DeviceDescriptor, Features, Instance,
-           InstanceDescriptor, MemoryHints, PowerPreference, Queue,
-           RequestAdapterOptions};
+use wgpu::{
+    Adapter, Backends, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor,
+    MemoryHints, PowerPreference, Queue, RequestAdapterOptions,
+};
 
 #[derive(Debug, Error)]
 pub enum GpuInitError {
@@ -15,9 +16,9 @@ pub enum GpuInitError {
 
 pub struct GpuContext {
     pub instance: Instance,
-    pub adapter:  Adapter,
-    pub device:   Device,
-    pub queue:    Queue,
+    pub adapter: Adapter,
+    pub device: Device,
+    pub queue: Queue,
     timestamp_supported: bool,
     timestamp_period_ns: f32,
 }
@@ -36,9 +37,9 @@ impl GpuContext {
 
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
-                power_preference:       PowerPreference::default(),
+                power_preference: PowerPreference::default(),
                 force_fallback_adapter: false,
-                compatible_surface:     None,
+                compatible_surface: None,
             })
             .await
             .ok_or(GpuInitError::NoAdapter)?;
@@ -52,17 +53,16 @@ impl GpuContext {
 
         let mut limits = adapter.limits();
         // C-8a EvalEML adds two read-only storage bindings (8–9); need >8 total.
-        limits.max_storage_buffers_per_shader_stage = limits
-            .max_storage_buffers_per_shader_stage
-            .max(10);
+        limits.max_storage_buffers_per_shader_stage =
+            limits.max_storage_buffers_per_shader_stage.max(10);
 
         let (device, queue) = adapter
             .request_device(
                 &DeviceDescriptor {
-                    label:             Some("simthing-gpu device"),
+                    label: Some("simthing-gpu device"),
                     required_features,
-                    required_limits:   limits,
-                    memory_hints:      MemoryHints::default(),
+                    required_limits: limits,
+                    memory_hints: MemoryHints::default(),
                 },
                 None,
             )

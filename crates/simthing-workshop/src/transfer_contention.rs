@@ -7,12 +7,11 @@ use bytemuck::{Pod, Zeroable};
 use serde::Serialize;
 use wgpu::util::DeviceExt;
 use wgpu::{
-    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
-    CommandEncoderDescriptor, ComputePipelineDescriptor, Device, DeviceDescriptor,
-    Features, Instance, InstanceDescriptor, Maintain, MapMode, MemoryHints,
-    PipelineLayoutDescriptor, PowerPreference, Queue, RequestAdapterOptions, ShaderModuleDescriptor,
-    ShaderStages,
+    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
+    BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
+    CommandEncoderDescriptor, ComputePipelineDescriptor, Device, DeviceDescriptor, Features,
+    Instance, InstanceDescriptor, Maintain, MapMode, MemoryHints, PipelineLayoutDescriptor,
+    PowerPreference, Queue, RequestAdapterOptions, ShaderModuleDescriptor, ShaderStages,
 };
 
 pub const WORKGROUP_SIZE: u32 = 64;
@@ -166,7 +165,12 @@ pub struct TransferContentionReport {
     pub timing_note: String,
 }
 
-fn canonical_cmp(a: &TransferRequest, b: &TransferRequest, a_idx: usize, b_idx: usize) -> std::cmp::Ordering {
+fn canonical_cmp(
+    a: &TransferRequest,
+    b: &TransferRequest,
+    a_idx: usize,
+    b_idx: usize,
+) -> std::cmp::Ordering {
     a.pool
         .cmp(&b.pool)
         .then(a.priority_band.cmp(&b.priority_band))
@@ -707,9 +711,7 @@ impl TransferContentionHarness {
 
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("transfer_contention"),
-            source: wgpu::ShaderSource::Wgsl(
-                include_str!("transfer_contention_gpu.wgsl").into(),
-            ),
+            source: wgpu::ShaderSource::Wgsl(include_str!("transfer_contention_gpu.wgsl").into()),
         });
 
         let resident_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -757,43 +759,56 @@ impl TransferContentionHarness {
         let n_queues = scenario.queues.len();
         let n_requests = scenario.requests.len();
 
-        let pools_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("tc_pools"),
-            contents: &pad_storage_bytes(&scenario.pools),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
-        });
-        let queues_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("tc_queues"),
-            contents: &pad_storage_bytes(&scenario.queues),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
-        });
-        let requests_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("tc_requests"),
-            contents: &pad_storage_bytes(&scenario.requests),
-            usage: BufferUsages::STORAGE,
-        });
-        let ranges_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("tc_ranges"),
-            contents: &pad_storage_bytes(&scenario.pool_ranges),
-            usage: BufferUsages::STORAGE,
-        });
+        let pools_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("tc_pools"),
+                contents: &pad_storage_bytes(&scenario.pools),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+            });
+        let queues_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("tc_queues"),
+                contents: &pad_storage_bytes(&scenario.queues),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+            });
+        let requests_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("tc_requests"),
+                contents: &pad_storage_bytes(&scenario.requests),
+                usage: BufferUsages::STORAGE,
+            });
+        let ranges_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("tc_ranges"),
+                contents: &pad_storage_bytes(&scenario.pool_ranges),
+                usage: BufferUsages::STORAGE,
+            });
 
         let summary_count = ticks as usize * n_pools;
-        let summary_zeros = vec![PoolTickSummary {
-            pool: 0,
-            tick: 0,
-            amount_before: 0,
-            amount_after: 0,
-            total_requested: 0,
-            total_allocated: 0,
-            total_emitted_units: 0,
-            active_requests: 0,
-        }; summary_count];
-        let summaries_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("tc_summaries"),
-            contents: bytemuck::cast_slice(&summary_zeros),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
-        });
+        let summary_zeros = vec![
+            PoolTickSummary {
+                pool: 0,
+                tick: 0,
+                amount_before: 0,
+                amount_after: 0,
+                total_requested: 0,
+                total_allocated: 0,
+                total_emitted_units: 0,
+                active_requests: 0,
+            };
+            summary_count
+        ];
+        let summaries_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("tc_summaries"),
+                contents: bytemuck::cast_slice(&summary_zeros),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+            });
 
         let record_count = if write_records {
             ticks as usize * n_requests
@@ -951,11 +966,7 @@ impl TransferContentionHarness {
         let summaries =
             map_readback_pod::<PoolTickSummary>(&self.device, &summaries_readback, summary_count)?;
         let records = if write_records {
-            map_readback_pod::<TransferDeltaRecord>(
-                &self.device,
-                &records_readback,
-                record_count,
-            )?
+            map_readback_pod::<TransferDeltaRecord>(&self.device, &records_readback, record_count)?
         } else {
             Vec::new()
         };
@@ -1031,17 +1042,7 @@ fn scenario_totals(
     final_pools: &[PoolState],
     final_queues: &[QueueState],
     records: &[TransferDeltaRecord],
-) -> (
-    u64,
-    u64,
-    u64,
-    u64,
-    u64,
-    u64,
-    u64,
-    u64,
-    u64,
-) {
+) -> (u64, u64, u64, u64, u64, u64, u64, u64, u64) {
     let total_pool_before: u64 = scenario.pools.iter().map(|p| p.amount as u64).sum();
     let total_pool_after: u64 = final_pools.iter().map(|p| p.amount as u64).sum();
     let total_queue_accum_before: u64 = scenario.queues.iter().map(|q| q.accum as u64).sum();
@@ -1212,10 +1213,9 @@ pub fn compare_transfer_contention_rich_with_harness(
     let final_state_matches_cpu_summary_mode =
         pools_equal(&cpu_final_pools, &gpu_summary.final_pools)
             && queues_equal(&cpu_final_queues, &gpu_summary.final_queues);
-    let final_state_matches_cpu_records_mode = pools_equal(
-        &cpu_final_pools_records,
-        &gpu_records.final_pools,
-    ) && queues_equal(&cpu_final_queues_records, &gpu_records.final_queues);
+    let final_state_matches_cpu_records_mode =
+        pools_equal(&cpu_final_pools_records, &gpu_records.final_pools)
+            && queues_equal(&cpu_final_queues_records, &gpu_records.final_queues);
     let summaries_match_cpu = summaries_equal(&cpu_summaries, &gpu_summary.summaries);
 
     let replayed = replay_transfer_records_n_ticks(
@@ -1237,8 +1237,7 @@ pub fn compare_transfer_contention_rich_with_harness(
         &scenario.queues,
         &cpu_records,
     );
-    let priority_ok =
-        priority_allocation_check(scenario, &scenario.pools, &cpu_records, ticks);
+    let priority_ok = priority_allocation_check(scenario, &scenario.pools, &cpu_records, ticks);
 
     let conservation_gate = if conservation_ok && final_state_matches_cpu_summary_mode {
         "PASS"
@@ -1297,13 +1296,14 @@ pub fn compare_transfer_contention_rich_with_harness(
         total_requested,
         total_allocated,
         total_emitted_value,
-    ) = scenario_totals(scenario, &gpu_summary.final_pools, &gpu_summary.final_queues, &cpu_records);
-
-    let _ = (
-        cpu_records_subset,
-        summary_submit_mean,
-        records_submit_mean,
+    ) = scenario_totals(
+        scenario,
+        &gpu_summary.final_pools,
+        &gpu_summary.final_queues,
+        &cpu_records,
     );
+
+    let _ = (cpu_records_subset, summary_submit_mean, records_submit_mean);
 
     Ok(TransferContentionReport {
         scenario_name: scenario.name.clone(),

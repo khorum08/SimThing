@@ -21,14 +21,14 @@ impl fmt::Display for CapabilityTreeKey {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CategoryKey {
     pub namespace: String,
-    pub name:      String,
+    pub name: String,
 }
 
 impl CategoryKey {
     pub fn new(namespace: impl Into<String>, name: impl Into<String>) -> Self {
         Self {
             namespace: namespace.into(),
-            name:      name.into(),
+            name: name.into(),
         }
     }
 }
@@ -64,6 +64,6 @@ impl fmt::Display for CapabilityEntryKey {
 /// Logical effect identity (`entry` + zero-based effect index).
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CapabilityEffectKey {
-    pub entry:        CapabilityEntryKey,
+    pub entry: CapabilityEntryKey,
     pub effect_index: usize,
 }

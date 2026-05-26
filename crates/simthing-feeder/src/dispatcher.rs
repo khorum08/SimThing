@@ -49,10 +49,7 @@
 use crate::patcher::{PatcherStats, TransformPatcher};
 use crate::work::FeederReceiver;
 use simthing_core::DimensionRegistry;
-use simthing_gpu::{
-    IntentDelta, Pipelines, SlotAllocator, ThresholdEvent,
-    WorldGpuState,
-};
+use simthing_gpu::{IntentDelta, Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
 use std::time::Instant;
 
 // ── Outcome ───────────────────────────────────────────────────────────────────
@@ -170,8 +167,10 @@ impl DispatchCoordinator {
             state
                 .upload_accumulator_intents(&intent_deltas)
                 .expect("AccumulatorOp intent op upload failed");
-        } else {
-            state.upload_intent_deltas(&intent_deltas);
+        } else if !intent_deltas.is_empty() {
+            panic!(
+                "Legacy intent_delta.wgsl was deleted in S-1; AccumulatorOp intent must remain enabled when player or AI intents exist."
+            );
         }
         let intent_upload_ms = intent_upload_started.elapsed().as_secs_f64() * 1000.0;
         let rmw_rows_synced = 0;
@@ -238,9 +237,9 @@ impl DispatchCoordinator {
                 state,
                 dt,
                 simthing_gpu::AccumulatorPipelineSessions {
-                    intent:      intent_session.as_mut(),
+                    intent: intent_session.as_mut(),
                     overlay_add: overlay_session.as_mut(),
-                    threshold:   threshold_session.as_mut(),
+                    threshold: threshold_session.as_mut(),
                     reduction_soft: reduction_session.as_mut(),
                     velocity: velocity_session.as_mut(),
                     intensity_eml: intensity_eml_session.as_mut(),
@@ -272,9 +271,8 @@ impl DispatchCoordinator {
                 Some(runtime) => match runtime.readback_threshold_events(&state.ctx) {
                     Ok(events) => events,
                     Err(err) => {
-                        gpu_error = Some(TickGpuError::AccumulatorThresholdReadback(
-                            err.to_string(),
-                        ));
+                        gpu_error =
+                            Some(TickGpuError::AccumulatorThresholdReadback(err.to_string()));
                         Vec::new()
                     }
                 },
@@ -283,12 +281,9 @@ impl DispatchCoordinator {
         } else if state.n_thresholds == 0 {
             Vec::new()
         } else {
-            let count = state.read_event_count();
-            if count == 0 {
-                Vec::new()
-            } else {
-                state.read_event_candidates(count)
-            }
+            panic!(
+                "Legacy threshold_scan.wgsl was deleted in S-6; AccumulatorOp threshold scan must remain enabled when threshold registrations exist."
+            );
         };
         // Account for actual GPU→host bytes transferred per path:
         // - AccumulatorOp path: 4 B count + n × size_of::<ThresholdEmissionGpu>()
@@ -302,8 +297,7 @@ impl DispatchCoordinator {
                 + events.len() as u64
                     * std::mem::size_of::<simthing_gpu::ThresholdEmissionGpu>() as u64
         } else {
-            std::mem::size_of::<u32>() as u64
-                + events.len() as u64 * std::mem::size_of::<ThresholdEvent>() as u64
+            0
         };
         let event_readback_ms = event_readback_started.elapsed().as_secs_f64() * 1000.0;
 

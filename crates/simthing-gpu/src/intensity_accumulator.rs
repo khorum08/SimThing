@@ -92,7 +92,9 @@ pub fn register_intensity_eml_formulas(
         let Some(behavior) = &prop.intensity_behavior else {
             continue;
         };
-        let entry = entries.iter().find(|e| e.tree_id == intensity_tree_id(idx as u32));
+        let entry = entries
+            .iter()
+            .find(|e| e.tree_id == intensity_tree_id(idx as u32));
         let Some(entry) = entry else {
             continue;
         };

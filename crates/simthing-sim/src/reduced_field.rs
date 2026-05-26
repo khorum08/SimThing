@@ -45,9 +45,9 @@ impl ReducedField {
     /// property's column range overflows the row.
     pub fn property_value(
         &self,
-        slot:     u32,
+        slot: u32,
         registry: &DimensionRegistry,
-        prop_id:  SimPropertyId,
+        prop_id: SimPropertyId,
     ) -> Option<PropertyValue> {
         let row = self.row(slot)?;
         let range = registry.column_range(prop_id);

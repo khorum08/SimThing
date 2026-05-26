@@ -302,9 +302,7 @@ fn bench_stress_scenarios_within_ceiling() {
 
 use simthing_core::{SimProperty, SimThing as CoreSimThing, SimThingKind};
 use simthing_driver::{InstallError, SessionError};
-use simthing_spec::{
-    CapabilityTreeDefinition, GameModeSpec, InstallTargetSpec, SpecVersion,
-};
+use simthing_spec::{CapabilityTreeDefinition, GameModeSpec, InstallTargetSpec, SpecVersion};
 
 fn make_capability_tree_spec(install: InstallTargetSpec) -> CapabilityTreeSpec {
     CapabilityTreeSpec {
@@ -485,7 +483,10 @@ fn seed_research_progress_after_open(session: &mut SimSession, progress_delta: f
         .initial_gpu_sync(&session.coord, &mut session.state);
 }
 
-fn scenario_with_factions(n_factions: usize, n_slots: u32) -> (Scenario, Vec<simthing_core::SimThingId>) {
+fn scenario_with_factions(
+    n_factions: usize,
+    n_slots: u32,
+) -> (Scenario, Vec<simthing_core::SimThingId>) {
     let mut registry = simthing_core::DimensionRegistry::new();
     // Reserve a placeholder property so the registry isn't empty; `core::power`
     // is added by the spec at install time.
@@ -515,7 +516,10 @@ fn scenario_with_factions(n_factions: usize, n_slots: u32) -> (Scenario, Vec<sim
 }
 
 fn count_tree_children(root: &CoreSimThing, owner_id: simthing_core::SimThingId) -> usize {
-    fn find<'a>(node: &'a CoreSimThing, owner: simthing_core::SimThingId) -> Option<&'a CoreSimThing> {
+    fn find<'a>(
+        node: &'a CoreSimThing,
+        owner: simthing_core::SimThingId,
+    ) -> Option<&'a CoreSimThing> {
         if node.id == owner {
             return Some(node);
         }
@@ -563,15 +567,10 @@ fn open_from_spec_capability_unlock_activates_overlay_for_next_tick() {
         "base scenario must not define tech::propulsion — category comes from spec install"
     );
 
-    let mut session =
-        SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
+    let mut session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
 
     assert!(
-        session
-            .proto
-            .registry
-            .id_of("core", "power")
-            .is_some(),
+        session.proto.registry.id_of("core", "power").is_some(),
         "open_from_spec must register spec properties before run"
     );
     assert_eq!(session.spec_state.capability_instances.len(), 1);
@@ -606,8 +605,8 @@ fn open_from_spec_capability_unlock_activates_overlay_for_next_tick() {
         .get(&instance.definition_id)
         .expect("definition");
     let entry = definition.entries.values().next().expect("one entry");
-    let cloned_tree = find_simthing_mut(&mut session.proto.root, instance.tree_thing_id)
-        .expect("cloned tree");
+    let cloned_tree =
+        find_simthing_mut(&mut session.proto.root, instance.tree_thing_id).expect("cloned tree");
     let cloned_overlay_ids: HashSet<OverlayId> =
         cloned_tree.overlays.iter().map(|o| o.id).collect();
     for template_id in &entry.overlay_ids {
@@ -683,8 +682,7 @@ fn open_from_spec_owner_targeted_effect_modifies_owner_slot() {
     scenario.max_days = 2;
     let owner_id = faction_ids[0];
 
-    let mut session =
-        SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
+    let mut session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
     let instance = session
         .spec_state
         .capability_instances
@@ -697,7 +695,10 @@ fn open_from_spec_owner_targeted_effect_modifies_owner_slot() {
         .allocator
         .slot_of(owner_id)
         .expect("owner slot");
-    assert_ne!(tree_slot, owner_slot, "owner and clone must occupy distinct slots");
+    assert_ne!(
+        tree_slot, owner_slot,
+        "owner and clone must occupy distinct slots"
+    );
 
     seed_research_progress_after_open(&mut session, 11.0);
     let summary = session.run(2).expect("session run");
@@ -738,7 +739,9 @@ fn open_from_spec_installs_capability_tree_for_each_matching_owner() {
     }
     let (scenario, faction_ids) = scenario_with_factions(1, 8);
     let owner_id = faction_ids[0];
-    let game_mode = make_game_mode_spec(InstallTargetSpec::AllOfKind { kind: "Faction".into() });
+    let game_mode = make_game_mode_spec(InstallTargetSpec::AllOfKind {
+        kind: "Faction".into(),
+    });
 
     let session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
 
@@ -773,7 +776,10 @@ fn open_from_spec_installs_capability_tree_for_each_matching_owner() {
 
     // No threshold registrations because the only entry is PlayerSelection.
     assert!(
-        session.spec_state.capability_unlock_registrations.is_empty(),
+        session
+            .spec_state
+            .capability_unlock_registrations
+            .is_empty(),
         "PlayerSelection entries produce no unlock registrations"
     );
 }
@@ -785,7 +791,9 @@ fn open_from_spec_installs_separate_tree_per_owner() {
         return;
     }
     let (scenario, faction_ids) = scenario_with_factions(2, 16);
-    let game_mode = make_game_mode_spec(InstallTargetSpec::AllOfKind { kind: "Faction".into() });
+    let game_mode = make_game_mode_spec(InstallTargetSpec::AllOfKind {
+        kind: "Faction".into(),
+    });
 
     let session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
 
@@ -806,7 +814,11 @@ fn open_from_spec_installs_separate_tree_per_owner() {
         .values()
         .map(|i| i.tree_thing_id)
         .collect();
-    assert_eq!(tree_ids.len(), 2, "tree_thing_ids must be distinct per owner");
+    assert_eq!(
+        tree_ids.len(),
+        2,
+        "tree_thing_ids must be distinct per owner"
+    );
 
     // by_overlay maps must use distinct OverlayIds per instance.
     let mut all_overlay_ids: HashSet<OverlayId> = HashSet::new();
@@ -868,14 +880,19 @@ fn open_from_spec_no_matching_owners_is_error() {
     }
     // World-only scenario, no Faction children.
     let (scenario, _) = scenario_with_factions(0, 4);
-    let game_mode = make_game_mode_spec(InstallTargetSpec::AllOfKind { kind: "Faction".into() });
+    let game_mode = make_game_mode_spec(InstallTargetSpec::AllOfKind {
+        kind: "Faction".into(),
+    });
 
     let result = SimSession::open_from_spec(scenario, &game_mode);
     match result {
         Err(SessionError::Install(InstallError::NoMatchingOwners { tree_id, .. })) => {
             assert_eq!(tree_id, "ideas");
         }
-        other => panic!("expected NoMatchingOwners install error, got {:?}", other.map(|_| ())),
+        other => panic!(
+            "expected NoMatchingOwners install error, got {:?}",
+            other.map(|_| ())
+        ),
     }
 }
 
@@ -1040,7 +1057,10 @@ fn fission_cloned_capability_subtree_registers_new_instance_and_thresholds() {
         "install should produce one instance for the original faction"
     );
     let baseline_unlock_count = session.spec_state.capability_unlock_registrations.len();
-    assert!(baseline_unlock_count > 0, "threshold-mode entry should register an unlock");
+    assert!(
+        baseline_unlock_count > 0,
+        "threshold-mode entry should register an unlock"
+    );
 
     // Run up to 8 boundaries — the loyalty fission threshold fires within
     // a couple of ticks given the initial velocity.
@@ -1153,7 +1173,11 @@ fn open_from_spec_installs_one_scripted_event_instance_per_faction() {
         .map(|inst| inst.key.owner_id)
         .collect();
     for fid in &faction_ids {
-        assert!(owners.contains(fid), "instance must exist for faction {:?}", fid);
+        assert!(
+            owners.contains(fid),
+            "instance must exist for faction {:?}",
+            fid
+        );
     }
     for inst in session.spec_state.scripted_event_instances.values() {
         let expected_slot = session
@@ -1266,11 +1290,7 @@ fn record_and_replay_with_spec_round_trips_capability_state() {
     // invariant). The JSON for each spec_entry must not contain an
     // `overlay_id` field at top level (CapabilityNotification is purely
     // logical, no overlay ids; other variants don't carry overlay ids).
-    for (_, deltas_json) in loaded
-        .frames
-        .iter()
-        .map(|(f, _)| (f.day, &f.spec_entries))
-    {
+    for (_, deltas_json) in loaded.frames.iter().map(|(f, _)| (f.day, &f.spec_entries)) {
         for v in deltas_json {
             let s = v.to_string();
             assert!(
@@ -1377,8 +1397,8 @@ fn b3_threshold_only_scripted_events_skip_quiet_boundaries() {
     }
 
     use simthing_spec::{
-        CompiledThresholdTrigger, CompiledTrigger as SpecCompiledTrigger, EventKey,
-        EventPriority, ScopeRef, ScriptedEventDefinition, TriggerDirection,
+        CompiledThresholdTrigger, CompiledTrigger as SpecCompiledTrigger, EventKey, EventPriority,
+        ScopeRef, ScriptedEventDefinition, TriggerDirection,
     };
 
     let (mut scenario, _faction_ids) = scenario_with_factions(1, 16);
@@ -1487,8 +1507,7 @@ fn replay_reader_skips_spec_snapshot_line_for_sim_only_consumer() {
     let game_mode = make_threshold_unlock_game_mode();
     let (mut scenario, _) = scenario_with_factions(1, 16);
     scenario.max_days = 2;
-    let mut session =
-        SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
+    let mut session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
     seed_research_progress_after_open(&mut session, 11.0);
 
     let dir = tempfile::tempdir().expect("tempdir");

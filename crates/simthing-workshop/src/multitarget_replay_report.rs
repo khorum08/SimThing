@@ -197,10 +197,7 @@ pub fn write_multitarget_resident_reports(
         format_multitarget_resident_report(report),
     )?;
     let json = serde_json::to_string_pretty(report).unwrap_or_else(|_| "{}".to_string());
-    std::fs::write(
-        dir.join("multitarget_replay_resident_report.json"),
-        json,
-    )?;
+    std::fs::write(dir.join("multitarget_replay_resident_report.json"), json)?;
     Ok(())
 }
 

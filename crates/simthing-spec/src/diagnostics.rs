@@ -10,33 +10,33 @@ pub enum DiagnosticSeverity {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpecDiagnostic {
-    pub severity:    DiagnosticSeverity,
-    pub code:        String,
-    pub message:     String,
+    pub severity: DiagnosticSeverity,
+    pub code: String,
+    pub message: String,
     #[serde(default)]
     pub source_path: Option<String>,
     #[serde(default)]
-    pub hint:        Option<String>,
+    pub hint: Option<String>,
 }
 
 impl SpecDiagnostic {
     pub fn error(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
-            severity:    DiagnosticSeverity::Error,
-            code:        code.into(),
-            message:     message.into(),
+            severity: DiagnosticSeverity::Error,
+            code: code.into(),
+            message: message.into(),
             source_path: None,
-            hint:        None,
+            hint: None,
         }
     }
 
     pub fn warning(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
-            severity:    DiagnosticSeverity::Warning,
-            code:        code.into(),
-            message:     message.into(),
+            severity: DiagnosticSeverity::Warning,
+            code: code.into(),
+            message: message.into(),
             source_path: None,
-            hint:        None,
+            hint: None,
         }
     }
 }

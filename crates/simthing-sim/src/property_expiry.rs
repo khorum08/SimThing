@@ -17,9 +17,9 @@
 //! - `TowardZero`: not threshold-based; we check if amount is effectively zero
 //!   (|amount| < epsilon) each boundary and remove then.
 
-use simthing_core::{DecayBehavior, DimensionRegistry, SimPropertyId, SimThing, SimThingId};
 use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
 use crate::tree_index::{node_at_path_mut, paths_preorder};
+use simthing_core::{DecayBehavior, DimensionRegistry, SimPropertyId, SimThing, SimThingId};
 use simthing_gpu::{SlotAllocator, ThresholdEvent};
 use std::collections::HashMap;
 
@@ -31,7 +31,7 @@ pub struct ExpiryOutcome {
     /// Registry columns tombstoned (only when last instance of that property expired).
     pub columns_tombstoned: u32,
     /// Properties removed via AfterTicks/TowardZero (non-threshold path).
-    pub cpu_side_removals:  u32,
+    pub cpu_side_removals: u32,
     /// Each property removal: `(sim_thing_id, property_id)`.
     pub expired: Vec<(SimThingId, SimPropertyId)>,
 }
@@ -39,21 +39,29 @@ pub struct ExpiryOutcome {
 /// Step 5 main entry point. Process all PropertyExpiry threshold events.
 /// Also runs a CPU-side AfterTicks / TowardZero sweep across the tree.
 pub fn resolve_property_expiry(
-    root:       &mut SimThing,
-    registry:   &mut DimensionRegistry,
-    allocator:  &SlotAllocator,
+    root: &mut SimThing,
+    registry: &mut DimensionRegistry,
+    allocator: &SlotAllocator,
     values_shadow: &[f32],
-    n_dims:     usize,
-    events:     &[ThresholdEvent],
-    cpu_reg:    &ThresholdRegistry,
+    n_dims: usize,
+    events: &[ThresholdEvent],
+    cpu_reg: &ThresholdRegistry,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
 ) -> ExpiryOutcome {
     let mut out = ExpiryOutcome::default();
 
     // GPU-threshold-driven expiry.
     for event in events {
-        let Some(sem) = cpu_reg.get(event.event_kind) else { continue };
-        let ThresholdSemantic::PropertyExpiry { sim_thing_id, property_id } = sem else { continue };
+        let Some(sem) = cpu_reg.get(event.event_kind) else {
+            continue;
+        };
+        let ThresholdSemantic::PropertyExpiry {
+            sim_thing_id,
+            property_id,
+        } = sem
+        else {
+            continue;
+        };
         let (stid, pid) = (*sim_thing_id, *property_id);
 
         if remove_property(root, stid, pid, node_paths) {
@@ -67,15 +75,23 @@ pub fn resolve_property_expiry(
     }
 
     // CPU-side sweep: AfterTicks decay and TowardZero decay.
-    cpu_decay_sweep(root, registry, allocator, values_shadow, n_dims, node_paths, &mut out);
+    cpu_decay_sweep(
+        root,
+        registry,
+        allocator,
+        values_shadow,
+        n_dims,
+        node_paths,
+        &mut out,
+    );
 
     out
 }
 
 fn remove_property(
-    root:   &mut SimThing,
+    root: &mut SimThing,
     target: SimThingId,
-    pid:    SimPropertyId,
+    pid: SimPropertyId,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
 ) -> bool {
     if let Some(paths) = node_paths {
@@ -89,16 +105,14 @@ fn remove_property(
     remove_property_from_tree(root, target, pid)
 }
 
-fn remove_property_from_tree(
-    node:   &mut SimThing,
-    target: SimThingId,
-    pid:    SimPropertyId,
-) -> bool {
+fn remove_property_from_tree(node: &mut SimThing, target: SimThingId, pid: SimPropertyId) -> bool {
     if node.id == target {
         return node.remove_property(&pid).is_some();
     }
     for child in &mut node.children {
-        if remove_property_from_tree(child, target, pid) { return true; }
+        if remove_property_from_tree(child, target, pid) {
+            return true;
+        }
     }
     false
 }
@@ -126,7 +140,9 @@ fn tree_has_property_recursive(node: &SimThing, pid: SimPropertyId) -> bool {
     if node.properties.contains_key(&pid) {
         return true;
     }
-    node.children.iter().any(|c| tree_has_property_recursive(c, pid))
+    node.children
+        .iter()
+        .any(|c| tree_has_property_recursive(c, pid))
 }
 
 /// CPU-side decay that doesn't map to GPU thresholds:
@@ -134,16 +150,24 @@ fn tree_has_property_recursive(node: &SimThing, pid: SimPropertyId) -> bool {
 /// - `DecayBehavior::TowardZero` — remove when |amount| < 1e-4.
 ///   (The rate is applied by Pass 1 velocity integration; we just check here.)
 fn cpu_decay_sweep(
-    root:     &mut SimThing,
+    root: &mut SimThing,
     registry: &mut DimensionRegistry,
     allocator: &SlotAllocator,
     values_shadow: &[f32],
     n_dims: usize,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
-    out:      &mut ExpiryOutcome,
+    out: &mut ExpiryOutcome,
 ) {
     let mut removals = Vec::new();
-    cpu_decay_collect(root, registry, allocator, values_shadow, n_dims, node_paths, &mut removals);
+    cpu_decay_collect(
+        root,
+        registry,
+        allocator,
+        values_shadow,
+        n_dims,
+        node_paths,
+        &mut removals,
+    );
 
     let mut removed_pids = Vec::new();
     for (stid, pid) in removals {
@@ -165,13 +189,13 @@ fn cpu_decay_sweep(
 }
 
 fn cpu_decay_collect(
-    root:     &SimThing,
+    root: &SimThing,
     registry: &DimensionRegistry,
     allocator: &SlotAllocator,
     values_shadow: &[f32],
     n_dims: usize,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
-    out:      &mut Vec<(SimThingId, SimPropertyId)>,
+    out: &mut Vec<(SimThingId, SimPropertyId)>,
 ) {
     if let Some(paths) = node_paths {
         use crate::tree_index::node_at_path;
@@ -186,12 +210,12 @@ fn cpu_decay_collect(
 }
 
 fn cpu_decay_collect_recursive(
-    node:     &SimThing,
+    node: &SimThing,
     registry: &DimensionRegistry,
     allocator: &SlotAllocator,
     values_shadow: &[f32],
     n_dims: usize,
-    out:      &mut Vec<(SimThingId, SimPropertyId)>,
+    out: &mut Vec<(SimThingId, SimPropertyId)>,
 ) {
     cpu_decay_collect_node(node, registry, allocator, values_shadow, n_dims, out);
     for child in &node.children {
@@ -200,15 +224,17 @@ fn cpu_decay_collect_recursive(
 }
 
 fn cpu_decay_collect_node(
-    node:     &SimThing,
+    node: &SimThing,
     registry: &DimensionRegistry,
     allocator: &SlotAllocator,
     values_shadow: &[f32],
     n_dims: usize,
-    out:      &mut Vec<(SimThingId, SimPropertyId)>,
+    out: &mut Vec<(SimThingId, SimPropertyId)>,
 ) {
     for (&pid, _pval) in &node.properties {
-        if !registry.is_active(pid) { continue; }
+        if !registry.is_active(pid) {
+            continue;
+        }
         let prop = registry.property(pid);
         match &prop.decay {
             Some(DecayBehavior::AfterTicks { remaining: 0 }) => {
@@ -219,9 +245,15 @@ fn cpu_decay_collect_node(
                 let layout = &prop.layout;
                 if let Some(slot) = allocator.slot_of(node.id) {
                     let range = registry.column_range(pid);
-                    if let Some(col) = range.col_for_role(&simthing_core::SubFieldRole::Amount, layout) {
+                    if let Some(col) =
+                        range.col_for_role(&simthing_core::SubFieldRole::Amount, layout)
+                    {
                         let addr = slot as usize * n_dims + col;
-                        if values_shadow.get(addr).map(|v| v.abs() < 1e-4).unwrap_or(false) {
+                        if values_shadow
+                            .get(addr)
+                            .map(|v| v.abs() < 1e-4)
+                            .unwrap_or(false)
+                        {
                             out.push((node.id, pid));
                         }
                     }
@@ -235,22 +267,31 @@ fn cpu_decay_collect_node(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::threshold_registry::ThresholdRegistry;
     use simthing_core::{
         DecayBehavior, DimensionRegistry, PropertyValue, SimProperty, SimThing, SimThingKind,
         SubFieldRole,
     };
-    use crate::threshold_registry::ThresholdRegistry;
     use simthing_gpu::SlotAllocator;
 
     #[test]
     fn no_events_no_removals() {
-        let mut reg  = DimensionRegistry::new();
+        let mut reg = DimensionRegistry::new();
         reg.register(SimProperty::simple("core", "loyalty", 0));
         let mut root = SimThing::new(SimThingKind::World, 0);
         let alloc = SlotAllocator::new();
-        let cpu_reg  = ThresholdRegistry::new();
+        let cpu_reg = ThresholdRegistry::new();
         let n_dims = reg.total_columns;
-        let out = resolve_property_expiry(&mut root, &mut reg, &alloc, &[], n_dims, &[], &cpu_reg, None);
+        let out = resolve_property_expiry(
+            &mut root,
+            &mut reg,
+            &alloc,
+            &[],
+            n_dims,
+            &[],
+            &cpu_reg,
+            None,
+        );
         assert_eq!(out.properties_removed, 0);
         assert_eq!(out.columns_tombstoned, 0);
     }
@@ -258,7 +299,7 @@ mod tests {
     #[test]
     fn property_expiry_event_removes_and_tombstones() {
         let mut reg = DimensionRegistry::new();
-        let pid     = reg.register(SimProperty::simple("core", "loyalty", 0));
+        let pid = reg.register(SimProperty::simple("core", "loyalty", 0));
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
         let pval = reg.property(pid).default_value();
         cohort.add_property(pid, pval);
@@ -266,7 +307,7 @@ mod tests {
         let mut cpu_reg = ThresholdRegistry::new();
         let ek = cpu_reg.push(ThresholdSemantic::PropertyExpiry {
             sim_thing_id: cohort.id,
-            property_id:  pid,
+            property_id: pid,
         });
 
         let mut root = SimThing::new(SimThingKind::World, 0);
@@ -277,17 +318,13 @@ mod tests {
         let shadow = vec![0.0; alloc.capacity() * n_dims];
 
         let events = vec![simthing_gpu::ThresholdEvent {
-            slot: 0, col: 0, value: 0.0, event_kind: ek,
+            slot: 0,
+            col: 0,
+            value: 0.0,
+            event_kind: ek,
         }];
         let out = resolve_property_expiry(
-            &mut root,
-            &mut reg,
-            &alloc,
-            &shadow,
-            n_dims,
-            &events,
-            &cpu_reg,
-            None,
+            &mut root, &mut reg, &alloc, &shadow, n_dims, &events, &cpu_reg, None,
         );
 
         assert_eq!(out.properties_removed, 1);

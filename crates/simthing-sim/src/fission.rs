@@ -45,14 +45,14 @@
 //! Amount re-crosses the fission threshold later, a new child may spawn. That
 //! is intentional (see `docs/state-authority.md`).
 
+use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
+use crate::tree_index::{node_at_path, node_at_path_mut};
 use serde::{Deserialize, Serialize};
 use simthing_core::{
     DimensionRegistry, PropertyValue, SecondaryCondition, SimPropertyId, SimThing, SimThingId,
     SimThingKind, SimThingKindTag, SubFieldRole,
 };
 use simthing_gpu::{SlotAllocator, ThresholdEvent};
-use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
-use crate::tree_index::{node_at_path, node_at_path_mut};
 use std::collections::{HashMap, HashSet};
 
 /// One spawned child's lineage back to its parent + activating template.
@@ -66,9 +66,9 @@ use std::collections::{HashMap, HashSet};
 /// LDJSON round-trips in the replay log.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FissionLineageRecord {
-    pub parent_id:    SimThingId,
-    pub child_id:     SimThingId,
-    pub property_id:  SimPropertyId,
+    pub parent_id: SimThingId,
+    pub child_id: SimThingId,
+    pub property_id: SimPropertyId,
     pub template_idx: usize,
 }
 
@@ -134,15 +134,15 @@ pub struct ClonedCapabilityRoot {
 /// `tree_index::build_node_paths`). The caller rebuilds the index after
 /// fission if structural mutations follow in the same boundary.
 pub fn resolve_fission_fusion(
-    root:          &mut SimThing,
-    node_paths:    &HashMap<SimThingId, Vec<usize>>,
-    registry:      &DimensionRegistry,
-    allocator:     &mut SlotAllocator,
-    events:        &[ThresholdEvent],
-    cpu_reg:       &ThresholdRegistry,
+    root: &mut SimThing,
+    node_paths: &HashMap<SimThingId, Vec<usize>>,
+    registry: &DimensionRegistry,
+    allocator: &mut SlotAllocator,
+    events: &[ThresholdEvent],
+    cpu_reg: &ThresholdRegistry,
     values_shadow: &mut [f32],
-    n_dims:        usize,
-    current_day:   u32,
+    n_dims: usize,
+    current_day: u32,
 ) -> FissionOutcome {
     let mut out = FissionOutcome::default();
 
@@ -150,9 +150,15 @@ pub fn resolve_fission_fusion(
     let mut seen_fissions: HashSet<(SimThingId, usize)> = HashSet::new();
 
     for event in events {
-        let Some(sem) = cpu_reg.get(event.event_kind) else { continue };
+        let Some(sem) = cpu_reg.get(event.event_kind) else {
+            continue;
+        };
         match sem {
-            ThresholdSemantic::FissionTrigger { sim_thing_id, property_id, template_idx } => {
+            ThresholdSemantic::FissionTrigger {
+                sim_thing_id,
+                property_id,
+                template_idx,
+            } => {
                 let key = (*sim_thing_id, *template_idx);
                 if seen_fissions.contains(&key) {
                     out.fissions_skipped_duplicate += 1;
@@ -161,25 +167,47 @@ pub fn resolve_fission_fusion(
                 seen_fissions.insert(key);
 
                 let stid = *sim_thing_id;
-                let pid  = *property_id;
-                let idx  = *template_idx;
+                let pid = *property_id;
+                let idx = *template_idx;
 
                 if execute_fission(
-                    root, registry, allocator,
-                    &node_paths, stid, pid, idx, values_shadow, n_dims, current_day, &mut out,
+                    root,
+                    registry,
+                    allocator,
+                    &node_paths,
+                    stid,
+                    pid,
+                    idx,
+                    values_shadow,
+                    n_dims,
+                    current_day,
+                    &mut out,
                 ) {
                     out.fissions_executed += 1;
                 }
             }
-            ThresholdSemantic::FusionTrigger { child_id, parent_id, property_id, template_idx } => {
+            ThresholdSemantic::FusionTrigger {
+                child_id,
+                parent_id,
+                property_id,
+                template_idx,
+            } => {
                 let cid = *child_id;
                 let par = *parent_id;
                 let pid = *property_id;
                 let idx = *template_idx;
 
                 execute_fusion(
-                    root, registry, allocator,
-                    cid, par, pid, idx, values_shadow, n_dims, &mut out,
+                    root,
+                    registry,
+                    allocator,
+                    cid,
+                    par,
+                    pid,
+                    idx,
+                    values_shadow,
+                    n_dims,
+                    &mut out,
                 );
             }
             _ => {}
@@ -190,17 +218,17 @@ pub fn resolve_fission_fusion(
 }
 
 fn execute_fission(
-    root:          &mut SimThing,
-    registry:      &DimensionRegistry,
-    allocator:     &mut SlotAllocator,
-    node_paths:     &HashMap<SimThingId, Vec<usize>>,
-    stid:          SimThingId,
-    pid:           SimPropertyId,
-    template_idx:  usize,
+    root: &mut SimThing,
+    registry: &DimensionRegistry,
+    allocator: &mut SlotAllocator,
+    node_paths: &HashMap<SimThingId, Vec<usize>>,
+    stid: SimThingId,
+    pid: SimPropertyId,
+    template_idx: usize,
     values_shadow: &mut [f32],
-    n_dims:        usize,
-    current_day:   u32,
-    out:           &mut FissionOutcome,
+    n_dims: usize,
+    current_day: u32,
+    out: &mut FissionOutcome,
 ) -> bool {
     // Verify secondary condition before mutating the tree.
     let ok = {
@@ -211,9 +239,18 @@ fn execute_fission(
         match (node, slot) {
             (Some(_n), Some(s)) => {
                 let prop = registry.property(pid);
-                if template_idx >= prop.fission_templates.len() { return false; }
+                if template_idx >= prop.fission_templates.len() {
+                    return false;
+                }
                 let ft = &prop.fission_templates[template_idx];
-                check_secondary(ft.secondary.as_ref(), pid, registry, values_shadow, s, n_dims)
+                check_secondary(
+                    ft.secondary.as_ref(),
+                    pid,
+                    registry,
+                    values_shadow,
+                    s,
+                    n_dims,
+                )
             }
             _ => false,
         }
@@ -225,19 +262,28 @@ fn execute_fission(
     }
 
     // Spawn the child.
-    let prop      = registry.property(pid);
-    let ft        = &prop.fission_templates[template_idx];
+    let prop = registry.property(pid);
+    let ft = &prop.fission_templates[template_idx];
     let child_kind = kind_tag_to_kind(&ft.template.child_kind);
     let mut new_child = SimThing::new(child_kind, current_day);
-    let new_id        = new_child.id;
-    let new_slot      = allocator.alloc(new_id);
+    let new_id = new_child.id;
+    let new_slot = allocator.alloc(new_id);
 
     if let Some(parent) = node_paths
         .get(&stid)
         .and_then(|path| node_at_path(root, path))
     {
         if let Some(parent_slot) = allocator.slot_of(parent.id) {
-            seed_fission_child(parent, &mut new_child, registry, pid, parent_slot, new_slot, values_shadow, n_dims);
+            seed_fission_child(
+                parent,
+                &mut new_child,
+                registry,
+                pid,
+                parent_slot,
+                new_slot,
+                values_shadow,
+                n_dims,
+            );
         }
         if ft.template.clone_capability_children {
             let cloned_roots = clone_capability_children(
@@ -262,9 +308,9 @@ fn execute_fission(
         p.add_child(new_child);
         out.fission_pairs.push((stid, new_id));
         out.lineage_added.push(FissionLineageRecord {
-            parent_id:    stid,
-            child_id:     new_id,
-            property_id:  pid,
+            parent_id: stid,
+            child_id: new_id,
+            property_id: pid,
             template_idx,
         });
         true
@@ -277,14 +323,14 @@ fn execute_fission(
 }
 
 fn seed_fission_child(
-    parent:         &SimThing,
-    child:          &mut SimThing,
-    registry:       &DimensionRegistry,
+    parent: &SimThing,
+    child: &mut SimThing,
+    registry: &DimensionRegistry,
     activating_pid: SimPropertyId,
-    parent_slot:    u32,
-    child_slot:     u32,
-    values_shadow:  &mut [f32],
-    n_dims:         usize,
+    parent_slot: u32,
+    child_slot: u32,
+    values_shadow: &mut [f32],
+    n_dims: usize,
 ) {
     let child_base = child_slot as usize * n_dims;
     if child_base + n_dims <= values_shadow.len() {
@@ -293,13 +339,17 @@ fn seed_fission_child(
 
     let parent_base = parent_slot as usize * n_dims;
     for &prop_id in parent.properties.keys() {
-        if !registry.is_active(prop_id) { continue; }
+        if !registry.is_active(prop_id) {
+            continue;
+        }
 
-        let prop  = registry.property(prop_id);
+        let prop = registry.property(prop_id);
         let range = registry.column_range(prop_id);
         let start = parent_base + range.start;
-        let end   = start + prop.layout.stride();
-        if end > values_shadow.len() { continue; }
+        let end = start + prop.layout.stride();
+        if end > values_shadow.len() {
+            continue;
+        }
 
         let mut seeded = PropertyValue {
             data: values_shadow[start..end].to_vec(),
@@ -332,11 +382,11 @@ pub(crate) fn is_capability_container(kind: &SimThingKind, container_kinds: &[St
 /// and unlocks never fire). Empty return = no clones happened (driver
 /// no-op; Approach C append remains eligible).
 fn clone_capability_children(
-    parent:          &SimThing,
-    child:           &mut SimThing,
-    allocator:       &mut SlotAllocator,
-    values_shadow:   &mut [f32],
-    n_dims:          usize,
+    parent: &SimThing,
+    child: &mut SimThing,
+    allocator: &mut SlotAllocator,
+    values_shadow: &mut [f32],
+    n_dims: usize,
     container_kinds: &[String],
 ) -> Vec<ClonedCapabilityRoot> {
     let mut roots = Vec::new();
@@ -351,7 +401,9 @@ fn clone_capability_children(
         let cloned_root_id = cloned.id;
         let mut allocated_any = false;
         for (source_id, cloned_id) in id_pairs {
-            let Some(source_slot) = allocator.slot_of(source_id) else { continue };
+            let Some(source_slot) = allocator.slot_of(source_id) else {
+                continue;
+            };
             let cloned_slot = allocator.alloc(cloned_id);
             copy_shadow_row(source_slot, cloned_slot, values_shadow, n_dims);
             allocated_any = true;
@@ -370,7 +422,7 @@ fn clone_capability_children(
 }
 
 fn clone_subtree_with_fresh_ids(
-    source:       &SimThing,
+    source: &SimThing,
     old_owner_id: SimThingId,
     new_owner_id: SimThingId,
 ) -> (
@@ -391,10 +443,10 @@ fn clone_subtree_with_fresh_ids(
 }
 
 fn clone_subtree_with_fresh_ids_inner(
-    source:        &SimThing,
-    old_owner_id:  SimThingId,
-    new_owner_id:  SimThingId,
-    pairs:         &mut Vec<(SimThingId, SimThingId)>,
+    source: &SimThing,
+    old_owner_id: SimThingId,
+    new_owner_id: SimThingId,
+    pairs: &mut Vec<(SimThingId, SimThingId)>,
     overlay_pairs: &mut Vec<(simthing_core::OverlayId, simthing_core::OverlayId)>,
 ) -> SimThing {
     let mut cloned = source.clone();
@@ -450,16 +502,16 @@ fn copy_shadow_row(source_slot: u32, target_slot: u32, values_shadow: &mut [f32]
 }
 
 fn execute_fusion(
-    root:          &mut SimThing,
-    registry:      &DimensionRegistry,
-    allocator:     &mut SlotAllocator,
-    child_id:      SimThingId,
-    parent_id:     SimThingId,
-    pid:           SimPropertyId,
-    template_idx:  usize,
+    root: &mut SimThing,
+    registry: &DimensionRegistry,
+    allocator: &mut SlotAllocator,
+    child_id: SimThingId,
+    parent_id: SimThingId,
+    pid: SimPropertyId,
+    template_idx: usize,
     values_shadow: &mut [f32],
-    n_dims:        usize,
-    out:           &mut FissionOutcome,
+    n_dims: usize,
+    out: &mut FissionOutcome,
 ) {
     // Apply the scar to the parent before removing the child. The scar is a
     // permanent multiplicative reduction on the parent's activating-property
@@ -468,7 +520,13 @@ fn execute_fusion(
     // Resolved against the registry so a tombstoned property silently no-ops
     // (matches the behavior of other shadow-touching steps).
     let scar_applied = apply_fusion_scar(
-        registry, allocator, parent_id, pid, template_idx, values_shadow, n_dims,
+        registry,
+        allocator,
+        parent_id,
+        pid,
+        template_idx,
+        values_shadow,
+        n_dims,
     );
 
     // Find and remove the child from its parent's children list.
@@ -480,7 +538,10 @@ fn execute_fusion(
         // so BoundaryProtocol can prune its persistent lineage vec, even if
         // the scar lookup couldn't resolve (defensive: tombstoned property).
         out.lineage_removed.push(FissionLineageRecord {
-            parent_id, child_id, property_id: pid, template_idx,
+            parent_id,
+            child_id,
+            property_id: pid,
+            template_idx,
         });
         let _ = scar_applied;
     } else {
@@ -491,69 +552,79 @@ fn execute_fusion(
 /// Multiply the parent's activating-property Amount by `(1 - scar_coef)` in
 /// the shadow. Returns true if the write happened, false on any lookup miss.
 fn apply_fusion_scar(
-    registry:      &DimensionRegistry,
-    allocator:     &SlotAllocator,
-    parent_id:     SimThingId,
-    pid:           SimPropertyId,
-    template_idx:  usize,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
+    parent_id: SimThingId,
+    pid: SimPropertyId,
+    template_idx: usize,
     values_shadow: &mut [f32],
-    n_dims:        usize,
+    n_dims: usize,
 ) -> bool {
-    if !registry.is_active(pid) { return false; }
+    if !registry.is_active(pid) {
+        return false;
+    }
     let prop = registry.property(pid);
-    if template_idx >= prop.fission_templates.len() { return false; }
-    let ft   = &prop.fission_templates[template_idx];
+    if template_idx >= prop.fission_templates.len() {
+        return false;
+    }
+    let ft = &prop.fission_templates[template_idx];
     let coef = ft.template.fusion_scar_coefficient.clamp(0.0, 1.0);
 
-    let Some(parent_slot) = allocator.slot_of(parent_id) else { return false };
-    let range  = registry.column_range(pid);
+    let Some(parent_slot) = allocator.slot_of(parent_id) else {
+        return false;
+    };
+    let range = registry.column_range(pid);
     let layout = &prop.layout;
     let Some(amount_col) = range.col_for_role(&SubFieldRole::Amount, layout) else {
         return false;
     };
     let idx = parent_slot as usize * n_dims + amount_col;
-    if idx >= values_shadow.len() { return false; }
+    if idx >= values_shadow.len() {
+        return false;
+    }
     values_shadow[idx] *= 1.0 - coef;
     true
 }
 
 fn check_secondary(
-    secondary:     Option<&SecondaryCondition>,
+    secondary: Option<&SecondaryCondition>,
     triggering_pid: SimPropertyId,
-    registry:      &DimensionRegistry,
+    registry: &DimensionRegistry,
     values_shadow: &[f32],
-    slot:          u32,
-    n_dims:        usize,
+    slot: u32,
+    n_dims: usize,
 ) -> bool {
     let Some(cond) = secondary else { return true };
     let base = (slot as usize) * n_dims;
 
     // Helper to read amount/intensity from shadow.
     let read_role = |pid: SimPropertyId, role: &SubFieldRole| -> Option<f32> {
-        if !registry.is_active(pid) { return None; }
-        let range  = registry.column_range(pid);
+        if !registry.is_active(pid) {
+            return None;
+        }
+        let range = registry.column_range(pid);
         let layout = &registry.property(pid).layout;
-        let col    = range.col_for_role(role, layout)?;
+        let col = range.col_for_role(role, layout)?;
         values_shadow.get(base + col).copied()
     };
 
     match cond {
         SecondaryCondition::IntensityAbove(floor) => {
             read_role(triggering_pid, &SubFieldRole::Intensity)
-                .map(|v| v > *floor).unwrap_or(false)
+                .map(|v| v > *floor)
+                .unwrap_or(false)
         }
         SecondaryCondition::IntensityBelow(ceil) => {
             read_role(triggering_pid, &SubFieldRole::Intensity)
-                .map(|v| v < *ceil).unwrap_or(false)
+                .map(|v| v < *ceil)
+                .unwrap_or(false)
         }
-        SecondaryCondition::AmountAbove(floor) => {
-            read_role(triggering_pid, &SubFieldRole::Amount)
-                .map(|v| v > *floor).unwrap_or(false)
-        }
-        SecondaryCondition::AmountBelow(ceil) => {
-            read_role(triggering_pid, &SubFieldRole::Amount)
-                .map(|v| v < *ceil).unwrap_or(false)
-        }
+        SecondaryCondition::AmountAbove(floor) => read_role(triggering_pid, &SubFieldRole::Amount)
+            .map(|v| v > *floor)
+            .unwrap_or(false),
+        SecondaryCondition::AmountBelow(ceil) => read_role(triggering_pid, &SubFieldRole::Amount)
+            .map(|v| v < *ceil)
+            .unwrap_or(false),
     }
 }
 
@@ -563,48 +634,50 @@ fn remove_child_from_tree(node: &mut SimThing, child_id: SimThingId) -> bool {
         return true;
     }
     for child in &mut node.children {
-        if remove_child_from_tree(child, child_id) { return true; }
+        if remove_child_from_tree(child, child_id) {
+            return true;
+        }
     }
     false
 }
 
 fn kind_tag_to_kind(tag: &SimThingKindTag) -> SimThingKind {
     match tag {
-        SimThingKindTag::World      => SimThingKind::World,
-        SimThingKindTag::Faction    => SimThingKind::Faction,
+        SimThingKindTag::World => SimThingKind::World,
+        SimThingKindTag::Faction => SimThingKind::Faction,
         SimThingKindTag::StarSystem => SimThingKind::StarSystem,
-        SimThingKindTag::Location   => SimThingKind::Location,
-        SimThingKindTag::Cohort     => SimThingKind::Cohort,
-        SimThingKindTag::Fleet      => SimThingKind::Fleet,
-        SimThingKindTag::Station    => SimThingKind::Station,
-        SimThingKindTag::Custom(s)  => SimThingKind::Custom(s.clone()),
+        SimThingKindTag::Location => SimThingKind::Location,
+        SimThingKindTag::Cohort => SimThingKind::Cohort,
+        SimThingKindTag::Fleet => SimThingKind::Fleet,
+        SimThingKindTag::Station => SimThingKind::Station,
+        SimThingKindTag::Custom(s) => SimThingKind::Custom(s.clone()),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
+    use crate::tree_index::build_node_paths;
     use simthing_core::{
-        Direction, DimensionRegistry, FissionTemplate, FissionThreshold, Overlay, OverlayId,
+        DimensionRegistry, Direction, FissionTemplate, FissionThreshold, Overlay, OverlayId,
         OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta, SecondaryCondition,
         SimProperty, SimThing, SimThingKind, SimThingKindTag, SubFieldRole, TransformOp,
     };
     use simthing_gpu::SlotAllocator;
-    use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
-    use crate::tree_index::build_node_paths;
 
     fn make_fission_property() -> SimProperty {
         let mut p = SimProperty::simple("core", "loyalty", 0);
         p.fission_templates = vec![FissionThreshold {
-            sub_field:  SubFieldRole::Amount,
-            threshold:  0.3,
-            direction:  Direction::Falling,
-            template:   FissionTemplate {
-                child_kind:                 SimThingKindTag::Cohort,
+            sub_field: SubFieldRole::Amount,
+            threshold: 0.3,
+            direction: Direction::Falling,
+            template: FissionTemplate {
+                child_kind: SimThingKindTag::Cohort,
                 fusion_intensity_threshold: 0.8,
-                fusion_scar_coefficient:    0.05,
-                resolution_label:           "resolved".into(),
-                clone_capability_children:  false,
+                fusion_scar_coefficient: 0.05,
+                resolution_label: "resolved".into(),
+                clone_capability_children: false,
                 capability_container_kinds: Vec::new(),
             },
             secondary: None,
@@ -614,12 +687,12 @@ mod tests {
 
     #[test]
     fn fission_spawns_child_when_secondary_met() {
-        let mut reg   = DimensionRegistry::new();
-        let pid       = reg.register(make_fission_property());
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(make_fission_property());
         let mut alloc = SlotAllocator::new();
 
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
-        let pval       = reg.property(pid).default_value();
+        let pval = reg.property(pid).default_value();
         cohort.add_property(pid, pval);
         let cid = cohort.id;
         alloc.alloc(cid);
@@ -631,16 +704,31 @@ mod tests {
         let mut cpu_reg = ThresholdRegistry::new();
         let ek = cpu_reg.push(ThresholdSemantic::FissionTrigger {
             sim_thing_id: cid,
-            property_id:  pid,
+            property_id: pid,
             template_idx: 0,
         });
 
         let n_dims = reg.total_columns.max(1);
         let mut shadow = vec![0.0f32; 3 * n_dims];
-        let events = vec![simthing_gpu::ThresholdEvent { slot: 1, col: 0, value: 0.2, event_kind: ek }];
+        let events = vec![simthing_gpu::ThresholdEvent {
+            slot: 1,
+            col: 0,
+            value: 0.2,
+            event_kind: ek,
+        }];
 
         let paths = build_node_paths(&root);
-        let out = resolve_fission_fusion(&mut root, &paths, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1);
+        let out = resolve_fission_fusion(
+            &mut root,
+            &paths,
+            &reg,
+            &mut alloc,
+            &events,
+            &cpu_reg,
+            &mut shadow,
+            n_dims,
+            1,
+        );
 
         // cohort (child[0]) now has 1 child spawned by fission
         assert_eq!(out.fissions_executed, 1);
@@ -650,12 +738,12 @@ mod tests {
 
     #[test]
     fn duplicate_fission_trigger_is_skipped() {
-        let mut reg   = DimensionRegistry::new();
-        let pid       = reg.register(make_fission_property());
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(make_fission_property());
         let mut alloc = SlotAllocator::new();
 
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
-        let pval       = reg.property(pid).default_value();
+        let pval = reg.property(pid).default_value();
         cohort.add_property(pid, pval);
         let cid = cohort.id;
         alloc.alloc(cid);
@@ -667,7 +755,7 @@ mod tests {
         let mut cpu_reg = ThresholdRegistry::new();
         let ek = cpu_reg.push(ThresholdSemantic::FissionTrigger {
             sim_thing_id: cid,
-            property_id:  pid,
+            property_id: pid,
             template_idx: 0,
         });
 
@@ -675,12 +763,32 @@ mod tests {
         let mut shadow = vec![0.0f32; 3 * n_dims];
         // Send the same event twice.
         let events = vec![
-            simthing_gpu::ThresholdEvent { slot: 1, col: 0, value: 0.2, event_kind: ek },
-            simthing_gpu::ThresholdEvent { slot: 1, col: 0, value: 0.2, event_kind: ek },
+            simthing_gpu::ThresholdEvent {
+                slot: 1,
+                col: 0,
+                value: 0.2,
+                event_kind: ek,
+            },
+            simthing_gpu::ThresholdEvent {
+                slot: 1,
+                col: 0,
+                value: 0.2,
+                event_kind: ek,
+            },
         ];
 
         let paths = build_node_paths(&root);
-        let out = resolve_fission_fusion(&mut root, &paths, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1);
+        let out = resolve_fission_fusion(
+            &mut root,
+            &paths,
+            &reg,
+            &mut alloc,
+            &events,
+            &cpu_reg,
+            &mut shadow,
+            n_dims,
+            1,
+        );
 
         assert_eq!(out.fissions_executed, 1);
         assert_eq!(out.fissions_skipped_duplicate, 1);
@@ -689,8 +797,8 @@ mod tests {
 
     #[test]
     fn fission_child_inherits_parent_properties_from_shadow() {
-        let mut reg   = DimensionRegistry::new();
-        let pid       = reg.register(make_fission_property());
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(make_fission_property());
         let mut alloc = SlotAllocator::new();
 
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
@@ -703,37 +811,47 @@ mod tests {
         root.add_child(cohort);
 
         let layout = reg.property(pid).layout.clone();
-        let amount_off    = layout.offset_of(&SubFieldRole::Amount).unwrap();
-        let velocity_off  = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+        let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let velocity_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
         let intensity_off = layout.offset_of(&SubFieldRole::Intensity).unwrap();
         let n_dims = reg.total_columns.max(1);
         let mut shadow = vec![0.0f32; 4 * n_dims];
         let parent_base = parent_slot * n_dims;
-        shadow[parent_base + amount_off]    = 0.24;
-        shadow[parent_base + velocity_off]  = -0.12;
+        shadow[parent_base + amount_off] = 0.24;
+        shadow[parent_base + velocity_off] = -0.12;
         shadow[parent_base + intensity_off] = 0.66;
 
         let mut cpu_reg = ThresholdRegistry::new();
         let ek = cpu_reg.push(ThresholdSemantic::FissionTrigger {
             sim_thing_id: cid,
-            property_id:  pid,
+            property_id: pid,
             template_idx: 0,
         });
         let events = vec![simthing_gpu::ThresholdEvent {
-            slot:       parent_slot as u32,
-            col:        amount_off as u32,
-            value:      0.24,
+            slot: parent_slot as u32,
+            col: amount_off as u32,
+            value: 0.24,
             event_kind: ek,
         }];
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
-            &mut root, &paths, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
+            &mut root,
+            &paths,
+            &reg,
+            &mut alloc,
+            &events,
+            &cpu_reg,
+            &mut shadow,
+            n_dims,
+            1,
         );
 
         assert_eq!(out.fissions_executed, 1);
         let child = &root.children[0].children[0];
-        let seeded = child.property(pid).expect("child inherits activating property");
+        let seeded = child
+            .property(pid)
+            .expect("child inherits activating property");
         assert_eq!(seeded.data[amount_off], 0.0);
         assert_eq!(seeded.data[velocity_off].to_bits(), (-0.12f32).to_bits());
         assert_eq!(seeded.data[intensity_off].to_bits(), (0.66f32).to_bits());
@@ -741,8 +859,14 @@ mod tests {
         let child_slot = alloc.slot_of(child.id).unwrap() as usize;
         let child_base = child_slot * n_dims;
         assert_eq!(shadow[child_base + amount_off], 0.0);
-        assert_eq!(shadow[child_base + velocity_off].to_bits(), (-0.12f32).to_bits());
-        assert_eq!(shadow[child_base + intensity_off].to_bits(), (0.66f32).to_bits());
+        assert_eq!(
+            shadow[child_base + velocity_off].to_bits(),
+            (-0.12f32).to_bits()
+        );
+        assert_eq!(
+            shadow[child_base + intensity_off].to_bits(),
+            (0.66f32).to_bits()
+        );
     }
 
     #[test]
@@ -797,7 +921,15 @@ mod tests {
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
-            &mut root, &paths, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
+            &mut root,
+            &paths,
+            &reg,
+            &mut alloc,
+            &events,
+            &cpu_reg,
+            &mut shadow,
+            n_dims,
+            1,
         );
 
         assert_eq!(out.fissions_executed, 0);
@@ -962,13 +1094,16 @@ mod tests {
             .iter()
             .find(|child| child.kind == SimThingKind::Faction)
             .expect("fission child faction");
-        assert!(spawned.children.is_empty(), "empty kinds list must clone nothing");
+        assert!(
+            spawned.children.is_empty(),
+            "empty kinds list must clone nothing"
+        );
     }
 
     #[test]
     fn fission_emits_lineage_record_per_successful_spawn() {
-        let mut reg   = DimensionRegistry::new();
-        let pid       = reg.register(make_fission_property());
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(make_fission_property());
         let mut alloc = SlotAllocator::new();
 
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
@@ -981,18 +1116,31 @@ mod tests {
 
         let mut cpu_reg = ThresholdRegistry::new();
         let ek = cpu_reg.push(ThresholdSemantic::FissionTrigger {
-            sim_thing_id: cid, property_id: pid, template_idx: 0,
+            sim_thing_id: cid,
+            property_id: pid,
+            template_idx: 0,
         });
 
         let n_dims = reg.total_columns.max(1);
         let mut shadow = vec![0.0f32; 3 * n_dims];
         let events = vec![simthing_gpu::ThresholdEvent {
-            slot: 1, col: 0, value: 0.2, event_kind: ek,
+            slot: 1,
+            col: 0,
+            value: 0.2,
+            event_kind: ek,
         }];
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
-            &mut root, &paths, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
+            &mut root,
+            &paths,
+            &reg,
+            &mut alloc,
+            &events,
+            &cpu_reg,
+            &mut shadow,
+            n_dims,
+            1,
         );
 
         assert_eq!(out.fissions_executed, 1);
@@ -1008,8 +1156,8 @@ mod tests {
 
     #[test]
     fn fusion_applies_scar_to_parent_amount_and_tombstones_child() {
-        let mut reg   = DimensionRegistry::new();
-        let pid       = reg.register(make_fission_property());
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(make_fission_property());
         // Default scar_coef = 0.05; parent amount goes 1.0 → 0.95.
 
         let mut parent = SimThing::new(SimThingKind::Cohort, 0);
@@ -1023,9 +1171,9 @@ mod tests {
         root.add_child(parent);
 
         let mut alloc = SlotAllocator::new();
-        let root_slot   = alloc.alloc(root.id);
+        let root_slot = alloc.alloc(root.id);
         let parent_slot = alloc.alloc(parent_id);
-        let _           = alloc.alloc(child_id);
+        let _ = alloc.alloc(child_id);
         let _ = root_slot;
 
         let n_dims = reg.total_columns.max(1);
@@ -1037,15 +1185,29 @@ mod tests {
 
         let mut cpu_reg = ThresholdRegistry::new();
         let ek = cpu_reg.push(ThresholdSemantic::FusionTrigger {
-            child_id, parent_id, property_id: pid, template_idx: 0,
+            child_id,
+            parent_id,
+            property_id: pid,
+            template_idx: 0,
         });
         let events = vec![simthing_gpu::ThresholdEvent {
-            slot: 0, col: 0, value: 0.9, event_kind: ek,
+            slot: 0,
+            col: 0,
+            value: 0.9,
+            event_kind: ek,
         }];
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
-            &mut root, &paths, &reg, &mut alloc, &events, &cpu_reg, &mut shadow, n_dims, 1,
+            &mut root,
+            &paths,
+            &reg,
+            &mut alloc,
+            &events,
+            &cpu_reg,
+            &mut shadow,
+            n_dims,
+            1,
         );
 
         assert_eq!(out.fusions_executed, 1);

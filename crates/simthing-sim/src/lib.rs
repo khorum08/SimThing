@@ -56,9 +56,15 @@ pub mod threshold_registry;
 pub mod tree_index;
 pub mod tree_mutation;
 
-pub use boundary::{BoundaryHookContext, BoundaryOutcome, BoundaryProtocol, BoundaryTiming, PipelineFlags};
+pub use boundary::{
+    BoundaryHookContext, BoundaryOutcome, BoundaryProtocol, BoundaryTiming, PipelineFlags,
+};
 pub use delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 pub use fission::{ClonedCapabilityRoot, FissionLineageRecord, FissionOutcome};
+pub use legacy_oracle::{
+    apply_oracle_flags, assert_events_oracle, assert_values_oracle, run_family_oracle,
+    LegacyOracleRun, OracleCapture, OracleExactness, OracleFamily, OracleScenario,
+};
 pub use observability::{
     ObservabilityReport, ObserveFidelity, OverlayContribution, PropertyObservation,
     SubFieldObservation,
@@ -74,7 +80,3 @@ pub use threshold_registry::{
     VelocityAlertEvent, VelocityAlertRegistration,
 };
 pub use tree_mutation::apply_structural_mutations;
-pub use legacy_oracle::{
-    apply_oracle_flags, assert_events_oracle, assert_values_oracle, run_family_oracle,
-    LegacyOracleRun, OracleCapture, OracleExactness, OracleFamily, OracleScenario,
-};

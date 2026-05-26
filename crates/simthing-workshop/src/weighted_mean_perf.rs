@@ -10,12 +10,12 @@ use bytemuck::{Pod, Zeroable};
 use serde::Serialize;
 use wgpu::util::DeviceExt;
 use wgpu::{
-    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
+    Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
+    BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
     CommandEncoderDescriptor, ComputePipeline, ComputePipelineDescriptor, Device, DeviceDescriptor,
     Features, Instance, InstanceDescriptor, Maintain, MapMode, MemoryHints,
-    PipelineLayoutDescriptor, PowerPreference, Queue, RequestAdapterOptions, ShaderModuleDescriptor,
-    ShaderStages,
+    PipelineLayoutDescriptor, PowerPreference, Queue, RequestAdapterOptions,
+    ShaderModuleDescriptor, ShaderStages,
 };
 
 use crate::weighted_mean::{LOOSE_TOLERANCE, STRICT_TOLERANCE, TIMING_NOTE};
@@ -163,7 +163,10 @@ fn warm_stats(samples: &[u64]) -> (u64, u64, u64) {
 }
 
 fn f32_slices_identical(a: &[f32], b: &[f32]) -> bool {
-    a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| x.to_bits() == y.to_bits())
+    a.len() == b.len()
+        && a.iter()
+            .zip(b.iter())
+            .all(|(x, y)| x.to_bits() == y.to_bits())
 }
 
 pub fn n_children(scenario: &WeightedMeanPerfScenario) -> usize {
@@ -182,10 +185,13 @@ pub fn make_weighted_mean_perf_scenario(
     let weighted_mean_cols: Vec<u32> = (0..wm_count).map(|i| (i * 2) as u32).collect();
     let weight_cols: Vec<u32> = weighted_mean_cols.iter().map(|c| c + 1).collect();
 
-    let mut column_rules = vec![ColumnRule {
-        rule_kind: RULE_FIRST,
-        weight_col: 0,
-    }; n_dims];
+    let mut column_rules = vec![
+        ColumnRule {
+            rule_kind: RULE_FIRST,
+            weight_col: 0,
+        };
+        n_dims
+    ];
 
     for col in 0..n_dims {
         let col_u = col as u32;
@@ -389,8 +395,7 @@ pub fn extract_wm_from_current(current: &[f32], scenario: &WeightedMeanPerfScena
     let mut out = vec![0.0f32; scenario.n_parents * wm_count];
     for parent in 0..scenario.n_parents {
         for (wm_idx, &col) in scenario.weighted_mean_cols.iter().enumerate() {
-            out[parent * wm_count + wm_idx] =
-                current[parent * scenario.n_dims + col as usize];
+            out[parent * wm_count + wm_idx] = current[parent * scenario.n_dims + col as usize];
         }
     }
     out
@@ -418,22 +423,17 @@ pub fn classify_parity(max_error: f32, deterministic: bool) -> String {
     }
 }
 
-fn build_interpretation(
-    report: &WeightedMeanPerfReport,
-    speedup: f32,
-) -> String {
+fn build_interpretation(report: &WeightedMeanPerfReport, speedup: f32) -> String {
     let current_ok = report.current_parity_classification != "FAIL";
     let pivot_ok = report.pivot_parity_classification != "FAIL";
 
-    if pivot_ok
-        && current_ok
-        && speedup > 1.5
-        && report.weighted_mean_col_count < report.n_dims
-    {
-        return "Pivot targeted WeightedMean is beneficial for this sparse aggregate shape.".to_string();
+    if pivot_ok && current_ok && speedup > 1.5 && report.weighted_mean_col_count < report.n_dims {
+        return "Pivot targeted WeightedMean is beneficial for this sparse aggregate shape."
+            .to_string();
     }
     if report.weighted_mean_col_count >= report.n_dims / 2 {
-        return "Expected: broad reduction amortizes work when many columns are needed.".to_string();
+        return "Expected: broad reduction amortizes work when many columns are needed."
+            .to_string();
     }
     if report.overlay_density >= 0.9 {
         return "Overlay materialization dominates both paths at high overlay density.".to_string();
@@ -521,33 +521,31 @@ impl WeightedMeanPerfHarness {
             ],
         });
 
-        let current_overlay_pipeline =
-            device.create_compute_pipeline(&ComputePipelineDescriptor {
-                label: Some("wm_perf_overlay"),
-                layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
-                    label: Some("wm_perf_overlay_pl"),
-                    bind_group_layouts: &[&current_overlay_layout],
-                    push_constant_ranges: &[],
-                })),
-                module: &current_shader,
-                entry_point: "apply_overlays",
-                compilation_options: Default::default(),
-                cache: None,
-            });
+        let current_overlay_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("wm_perf_overlay"),
+            layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("wm_perf_overlay_pl"),
+                bind_group_layouts: &[&current_overlay_layout],
+                push_constant_ranges: &[],
+            })),
+            module: &current_shader,
+            entry_point: "apply_overlays",
+            compilation_options: Default::default(),
+            cache: None,
+        });
 
-        let current_reduce_pipeline =
-            device.create_compute_pipeline(&ComputePipelineDescriptor {
-                label: Some("wm_perf_current_reduce"),
-                layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
-                    label: Some("wm_perf_current_reduce_pl"),
-                    bind_group_layouts: &[&current_reduce_layout],
-                    push_constant_ranges: &[],
-                })),
-                module: &current_shader,
-                entry_point: "current_reduce",
-                compilation_options: Default::default(),
-                cache: None,
-            });
+        let current_reduce_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("wm_perf_current_reduce"),
+            layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("wm_perf_current_reduce_pl"),
+                bind_group_layouts: &[&current_reduce_layout],
+                push_constant_ranges: &[],
+            })),
+            module: &current_shader,
+            entry_point: "current_reduce",
+            compilation_options: Default::default(),
+            cache: None,
+        });
 
         let pivot_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
             label: Some("wm_perf_pivot"),
@@ -599,9 +597,8 @@ impl WeightedMeanPerfHarness {
         let child_start = parent_start * cpp;
         let child_rows = parent_count * cpp;
 
-        let child_values = scenario.child_values
-            [child_start * nd..(child_start + child_rows) * nd]
-            .to_vec();
+        let child_values =
+            scenario.child_values[child_start * nd..(child_start + child_rows) * nd].to_vec();
 
         let overlays = scenario
             .overlays
@@ -658,16 +655,20 @@ impl WeightedMeanPerfHarness {
         }
 
         let params = Self::perf_params(scenario);
-        let overlays_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("wm_perf_overlays"),
-            contents: bytemuck::cast_slice(&scenario.overlays),
-            usage: BufferUsages::STORAGE,
-        });
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("wm_perf_overlay_params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: BufferUsages::UNIFORM,
-        });
+        let overlays_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("wm_perf_overlays"),
+                contents: bytemuck::cast_slice(&scenario.overlays),
+                usage: BufferUsages::STORAGE,
+            });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("wm_perf_overlay_params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: BufferUsages::UNIFORM,
+            });
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             label: Some("wm_perf_overlay_bg"),
@@ -688,8 +689,7 @@ impl WeightedMeanPerfHarness {
             ],
         });
 
-        let workgroups =
-            ((scenario.overlays.len() as u32) + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
+        let workgroups = ((scenario.overlays.len() as u32) + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
         let mut encoder = self
             .device
             .create_command_encoder(&CommandEncoderDescriptor {
@@ -723,7 +723,8 @@ impl WeightedMeanPerfHarness {
             for p in 0..count {
                 let dst = (parent_start + p) * scenario.n_dims;
                 let src = p * scenario.n_dims;
-                full[dst..dst + scenario.n_dims].copy_from_slice(&partial[src..src + scenario.n_dims]);
+                full[dst..dst + scenario.n_dims]
+                    .copy_from_slice(&partial[src..src + scenario.n_dims]);
             }
             parent_start += count;
         }
@@ -736,19 +737,23 @@ impl WeightedMeanPerfHarness {
         let outputs_size =
             (scenario.n_parents * scenario.n_dims * std::mem::size_of::<f32>()) as u64;
 
-        let values_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("wm_perf_current_values"),
-            contents: bytemuck::cast_slice(&scenario.child_values),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
-        });
+        let values_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("wm_perf_current_values"),
+                contents: bytemuck::cast_slice(&scenario.child_values),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+            });
 
         self.run_overlay_pass(&values_buffer, scenario)?;
 
-        let rules_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("wm_perf_column_rules"),
-            contents: bytemuck::cast_slice(&scenario.column_rules),
-            usage: BufferUsages::STORAGE,
-        });
+        let rules_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("wm_perf_column_rules"),
+                contents: bytemuck::cast_slice(&scenario.column_rules),
+                usage: BufferUsages::STORAGE,
+            });
 
         let output_buffer = self.device.create_buffer(&BufferDescriptor {
             label: Some("wm_perf_current_outputs"),
@@ -758,11 +763,13 @@ impl WeightedMeanPerfHarness {
         });
 
         let params = Self::perf_params(scenario);
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("wm_perf_current_params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: BufferUsages::UNIFORM,
-        });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("wm_perf_current_params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: BufferUsages::UNIFORM,
+            });
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             label: Some("wm_perf_current_reduce_bg"),
@@ -812,7 +819,11 @@ impl WeightedMeanPerfHarness {
         encoder.copy_buffer_to_buffer(&output_buffer, 0, &readback, 0, outputs_size);
         self.queue.submit(Some(encoder.finish()));
 
-        Self::readback_f32(&self.device, &readback, scenario.n_parents * scenario.n_dims)
+        Self::readback_f32(
+            &self.device,
+            &readback,
+            scenario.n_parents * scenario.n_dims,
+        )
     }
 
     pub fn run_pivot_style(&self, scenario: &WeightedMeanPerfScenario) -> Result<Vec<f32>> {
@@ -843,24 +854,30 @@ impl WeightedMeanPerfHarness {
         let outputs_len = scenario.n_parents * wm_count;
         let outputs_size = (outputs_len * std::mem::size_of::<f32>()) as u64;
 
-        let values_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("wm_perf_pivot_values"),
-            contents: bytemuck::cast_slice(&scenario.child_values),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
-        });
+        let values_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("wm_perf_pivot_values"),
+                contents: bytemuck::cast_slice(&scenario.child_values),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+            });
 
         self.run_overlay_pass(&values_buffer, scenario)?;
 
-        let wm_cols_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("wm_perf_wm_cols"),
-            contents: bytemuck::cast_slice(&scenario.weighted_mean_cols),
-            usage: BufferUsages::STORAGE,
-        });
-        let weight_cols_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("wm_perf_weight_cols"),
-            contents: bytemuck::cast_slice(&scenario.weight_cols),
-            usage: BufferUsages::STORAGE,
-        });
+        let wm_cols_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("wm_perf_wm_cols"),
+                contents: bytemuck::cast_slice(&scenario.weighted_mean_cols),
+                usage: BufferUsages::STORAGE,
+            });
+        let weight_cols_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("wm_perf_weight_cols"),
+                    contents: bytemuck::cast_slice(&scenario.weight_cols),
+                    usage: BufferUsages::STORAGE,
+                });
 
         let output_buffer = self.device.create_buffer(&BufferDescriptor {
             label: Some("wm_perf_pivot_outputs"),
@@ -870,11 +887,13 @@ impl WeightedMeanPerfHarness {
         });
 
         let params = Self::perf_params(scenario);
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("wm_perf_pivot_params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: BufferUsages::UNIFORM,
-        });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("wm_perf_pivot_params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: BufferUsages::UNIFORM,
+            });
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             label: Some("wm_perf_pivot_bg"),
@@ -1046,7 +1065,9 @@ pub fn compare_weighted_mean_perf_with_harness(
     Ok(report)
 }
 
-pub fn compare_weighted_mean_perf(scenario: &WeightedMeanPerfScenario) -> Result<WeightedMeanPerfReport> {
+pub fn compare_weighted_mean_perf(
+    scenario: &WeightedMeanPerfScenario,
+) -> Result<WeightedMeanPerfReport> {
     let harness = WeightedMeanPerfHarness::new()?;
     compare_weighted_mean_perf_with_harness(&harness, scenario)
 }

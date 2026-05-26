@@ -76,8 +76,8 @@ pub use runtime::{
     CapabilityCategoryDefinition, CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
     CapabilityTreeDefinitionId, CapabilityTreeDiagnostic, CapabilityTreeInstance,
     CapabilityTreeNotification, CapabilityTreeState, CapabilityUnlockRegistration, CompiledEffect,
-    CompiledThresholdTrigger, CompiledTrigger, ScriptedEventDefinition,
-    ScriptedEventDefinitionId, ScriptedEventInstance, ScriptedEventInstanceKey,
+    CompiledThresholdTrigger, CompiledTrigger, ScriptedEventDefinition, ScriptedEventDefinitionId,
+    ScriptedEventInstance, ScriptedEventInstanceKey,
 };
 pub use spec::capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,

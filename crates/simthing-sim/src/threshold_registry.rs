@@ -121,8 +121,8 @@ pub enum ThresholdSemantic {
     /// `definition.by_threshold[(property_id, sub_field)]`.
     CapabilityUnlock {
         sim_thing_id: SimThingId,
-        property_id:  SimPropertyId,
-        sub_field:    SubFieldRole,
+        property_id: SimPropertyId,
+        sub_field: SubFieldRole,
     },
 
     /// A scripted event's threshold trigger fired. Emitted from a
@@ -232,8 +232,8 @@ impl ThresholdRegistry {
                     sub_field,
                 } => Some(CapabilityUnlockEvent {
                     sim_thing_id: *sim_thing_id,
-                    property_id:  *property_id,
-                    sub_field:    sub_field.clone(),
+                    property_id: *property_id,
+                    sub_field: sub_field.clone(),
                 }),
                 _ => None,
             })
@@ -301,9 +301,9 @@ pub enum SoftAggregateViolation {
     /// `Some(Unguarded)`, which is the explicit "field is informational"
     /// opt-out and is not valid for hard triggers).
     HardTriggerOnUnguardedSoftAggregate {
-        property_id:   SimPropertyId,
-        sub_field:     SubFieldRole,
-        rule:          ReductionRule,
+        property_id: SimPropertyId,
+        sub_field: SubFieldRole,
+        rule: ReductionRule,
         /// Static label of the violating semantic arm. Used for diagnostics.
         semantic_kind: &'static str,
     },
@@ -387,11 +387,11 @@ fn is_soft_aggregate_rule(r: &ReductionRule) -> bool {
 ///
 /// See `docs/workshop/soft_aggregate_tolerance_audit.md`.
 pub fn assert_no_hard_trigger_on_soft_aggregate(
-    semantic:    &ThresholdSemantic,
+    semantic: &ThresholdSemantic,
     property_id: SimPropertyId,
-    sub_field:   &SubFieldRole,
-    buffer:      u32,
-    dim_reg:     &DimensionRegistry,
+    sub_field: &SubFieldRole,
+    buffer: u32,
+    dim_reg: &DimensionRegistry,
 ) -> Result<(), SoftAggregateViolation> {
     // Condition 1: hard structural trigger.
     if !is_hard_structural_trigger(semantic) {
@@ -406,7 +406,12 @@ pub fn assert_no_hard_trigger_on_soft_aggregate(
         return Ok(());
     }
     let prop = dim_reg.property(property_id);
-    let Some(spec) = prop.layout.sub_fields.iter().find(|sf| &sf.role == sub_field) else {
+    let Some(spec) = prop
+        .layout
+        .sub_fields
+        .iter()
+        .find(|sf| &sf.role == sub_field)
+    else {
         return Ok(());
     };
     let rule = spec.resolved_reduction();
@@ -419,14 +424,14 @@ pub fn assert_no_hard_trigger_on_soft_aggregate(
     match spec.soft_aggregate_guard {
         Some(SoftAggregateGuard::Quantized { .. })
         | Some(SoftAggregateGuard::Hysteresis { .. }) => Ok(()),
-        None | Some(SoftAggregateGuard::Unguarded) => {
-            Err(SoftAggregateViolation::HardTriggerOnUnguardedSoftAggregate {
+        None | Some(SoftAggregateGuard::Unguarded) => Err(
+            SoftAggregateViolation::HardTriggerOnUnguardedSoftAggregate {
                 property_id,
-                sub_field:     sub_field.clone(),
+                sub_field: sub_field.clone(),
                 rule,
                 semantic_kind: semantic_kind(semantic),
-            })
-        }
+            },
+        ),
     }
 }
 
@@ -466,8 +471,12 @@ impl ThresholdBuilder {
         aggregate_alerts: &[AggregateAlertRegistration],
     ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
         Self::build_with_lineage(
-            root, dim_reg, allocator,
-            velocity_alerts, aggregate_alerts, &[],
+            root,
+            dim_reg,
+            allocator,
+            velocity_alerts,
+            aggregate_alerts,
+            &[],
         )
     }
 
@@ -490,13 +499,7 @@ impl ThresholdBuilder {
         let mut gpu_regs = Vec::new();
         let mut cpu_reg = ThresholdRegistry::new();
         Self::walk(root, dim_reg, allocator, &mut gpu_regs, &mut cpu_reg);
-        Self::push_fusion_lineage(
-            dim_reg,
-            allocator,
-            lineage,
-            &mut gpu_regs,
-            &mut cpu_reg,
-        );
+        Self::push_fusion_lineage(dim_reg, allocator, lineage, &mut gpu_regs, &mut cpu_reg);
         Self::push_velocity_alerts(
             dim_reg,
             allocator,
@@ -529,22 +532,28 @@ impl ThresholdBuilder {
     /// the first fission boundary after a capability tree is initialized
     /// takes the full-rebuild path regardless.
     pub fn build_with_capability_unlocks(
-        root:                  &SimThing,
-        dim_reg:               &DimensionRegistry,
-        allocator:             &SlotAllocator,
-        velocity_alerts:       &[VelocityAlertRegistration],
-        capability_unlocks:    &[CapabilityUnlockRegistration],
+        root: &SimThing,
+        dim_reg: &DimensionRegistry,
+        allocator: &SlotAllocator,
+        velocity_alerts: &[VelocityAlertRegistration],
+        capability_unlocks: &[CapabilityUnlockRegistration],
     ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
         let mut gpu_regs = Vec::new();
         let mut cpu_reg = ThresholdRegistry::new();
         Self::walk(root, dim_reg, allocator, &mut gpu_regs, &mut cpu_reg);
         Self::push_velocity_alerts(
-            dim_reg, allocator, velocity_alerts,
-            &mut gpu_regs, &mut cpu_reg,
+            dim_reg,
+            allocator,
+            velocity_alerts,
+            &mut gpu_regs,
+            &mut cpu_reg,
         );
         Self::push_capability_unlocks(
-            dim_reg, allocator, capability_unlocks,
-            &mut gpu_regs, &mut cpu_reg,
+            dim_reg,
+            allocator,
+            capability_unlocks,
+            &mut gpu_regs,
+            &mut cpu_reg,
         );
         (gpu_regs, cpu_reg)
     }
@@ -562,52 +571,52 @@ impl ThresholdBuilder {
     ///
     /// Full-rebuild path only; B2 append-only integration is a future PR.
     pub fn build_with_scripted_event_triggers(
-        root:                    &SimThing,
-        dim_reg:                 &DimensionRegistry,
-        allocator:               &SlotAllocator,
-        velocity_alerts:         &[VelocityAlertRegistration],
+        root: &SimThing,
+        dim_reg: &DimensionRegistry,
+        allocator: &SlotAllocator,
+        velocity_alerts: &[VelocityAlertRegistration],
         scripted_event_triggers: &[ScriptedEventTriggerRegistration],
     ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
         let mut gpu_regs = Vec::new();
         let mut cpu_reg = ThresholdRegistry::new();
         Self::walk(root, dim_reg, allocator, &mut gpu_regs, &mut cpu_reg);
         Self::push_velocity_alerts(
-            dim_reg, allocator, velocity_alerts,
-            &mut gpu_regs, &mut cpu_reg,
+            dim_reg,
+            allocator,
+            velocity_alerts,
+            &mut gpu_regs,
+            &mut cpu_reg,
         );
-        Self::push_scripted_event_triggers(
-            scripted_event_triggers,
-            &mut gpu_regs, &mut cpu_reg,
-        );
+        Self::push_scripted_event_triggers(scripted_event_triggers, &mut gpu_regs, &mut cpu_reg);
         (gpu_regs, cpu_reg)
     }
 
     fn push_scripted_event_triggers(
         scripted_event_triggers: &[ScriptedEventTriggerRegistration],
-        gpu_regs:                &mut Vec<ThresholdRegistration>,
-        cpu_reg:                 &mut ThresholdRegistry,
+        gpu_regs: &mut Vec<ThresholdRegistration>,
+        cpu_reg: &mut ThresholdRegistry,
     ) {
         for trigger in scripted_event_triggers {
             let event_kind = cpu_reg.push(ThresholdSemantic::ScriptedEventTrigger {
                 event_id: trigger.event_id.clone(),
             });
             gpu_regs.push(ThresholdRegistration {
-                slot:      trigger.slot,
-                col:       trigger.col,
+                slot: trigger.slot,
+                col: trigger.col,
                 threshold: trigger.threshold,
                 direction: direction_to_u32(&trigger.direction),
                 event_kind,
-                buffer:    THRESH_BUF_VALUES,
+                buffer: THRESH_BUF_VALUES,
             });
         }
     }
 
     fn push_capability_unlocks(
-        dim_reg:            &DimensionRegistry,
-        allocator:          &SlotAllocator,
+        dim_reg: &DimensionRegistry,
+        allocator: &SlotAllocator,
         capability_unlocks: &[CapabilityUnlockRegistration],
-        gpu_regs:           &mut Vec<ThresholdRegistration>,
-        cpu_reg:            &mut ThresholdRegistry,
+        gpu_regs: &mut Vec<ThresholdRegistration>,
+        cpu_reg: &mut ThresholdRegistry,
     ) {
         for unlock in capability_unlocks {
             if !dim_reg.is_active(unlock.property_id) {
@@ -616,7 +625,7 @@ impl ThresholdBuilder {
             let Some(slot) = allocator.slot_of(unlock.sim_thing_id) else {
                 continue;
             };
-            let range  = dim_reg.column_range(unlock.property_id);
+            let range = dim_reg.column_range(unlock.property_id);
             let layout = &dim_reg.property(unlock.property_id).layout;
             let Some(col) = range.col_for_role(&unlock.sub_field, layout) else {
                 continue;
@@ -624,8 +633,8 @@ impl ThresholdBuilder {
 
             let semantic = ThresholdSemantic::CapabilityUnlock {
                 sim_thing_id: unlock.sim_thing_id,
-                property_id:  unlock.property_id,
-                sub_field:    unlock.sub_field.clone(),
+                property_id: unlock.property_id,
+                sub_field: unlock.sub_field.clone(),
             };
             // A-4 guard: hard structural triggers may not target a soft-aggregate
             // post-reduction column without a SoftAggregateGuard. CapabilityUnlock
@@ -643,11 +652,11 @@ impl ThresholdBuilder {
             let event_kind = cpu_reg.push(semantic);
             gpu_regs.push(ThresholdRegistration {
                 slot,
-                col:       col as u32,
+                col: col as u32,
                 threshold: unlock.threshold,
                 direction: DIR_UPWARD,
                 event_kind,
-                buffer:    THRESH_BUF_VALUES,
+                buffer: THRESH_BUF_VALUES,
             });
         }
     }
@@ -685,19 +694,13 @@ impl ThresholdBuilder {
     /// `gpu_regs` and `cpu_reg`. Companion to `append_subtree` for B2
     /// append-only threshold rebuild on growth boundaries.
     pub fn append_capability_unlocks(
-        dim_reg:            &DimensionRegistry,
-        allocator:          &SlotAllocator,
+        dim_reg: &DimensionRegistry,
+        allocator: &SlotAllocator,
         capability_unlocks: &[CapabilityUnlockRegistration],
-        gpu_regs:           &mut Vec<ThresholdRegistration>,
-        cpu_reg:            &mut ThresholdRegistry,
+        gpu_regs: &mut Vec<ThresholdRegistration>,
+        cpu_reg: &mut ThresholdRegistry,
     ) {
-        Self::push_capability_unlocks(
-            dim_reg,
-            allocator,
-            capability_unlocks,
-            gpu_regs,
-            cpu_reg,
-        );
+        Self::push_capability_unlocks(dim_reg, allocator, capability_unlocks, gpu_regs, cpu_reg);
     }
 
     /// Append scripted-event trigger registrations to the caller's existing
@@ -705,40 +708,42 @@ impl ThresholdBuilder {
     /// append-only threshold rebuild on growth boundaries.
     pub fn append_scripted_event_triggers(
         scripted_event_triggers: &[ScriptedEventTriggerRegistration],
-        gpu_regs:                &mut Vec<ThresholdRegistration>,
-        cpu_reg:                 &mut ThresholdRegistry,
+        gpu_regs: &mut Vec<ThresholdRegistration>,
+        cpu_reg: &mut ThresholdRegistry,
     ) {
-        Self::push_scripted_event_triggers(
-            scripted_event_triggers,
-            gpu_regs,
-            cpu_reg,
-        );
+        Self::push_scripted_event_triggers(scripted_event_triggers, gpu_regs, cpu_reg);
     }
 
     fn push_fusion_lineage(
-        dim_reg:   &DimensionRegistry,
+        dim_reg: &DimensionRegistry,
         allocator: &SlotAllocator,
-        lineage:   &[FissionLineageRecord],
-        gpu_regs:  &mut Vec<ThresholdRegistration>,
-        cpu_reg:   &mut ThresholdRegistry,
+        lineage: &[FissionLineageRecord],
+        gpu_regs: &mut Vec<ThresholdRegistration>,
+        cpu_reg: &mut ThresholdRegistry,
     ) {
         for record in lineage {
-            if !dim_reg.is_active(record.property_id) { continue; }
+            if !dim_reg.is_active(record.property_id) {
+                continue;
+            }
             let prop = dim_reg.property(record.property_id);
-            if record.template_idx >= prop.fission_templates.len() { continue; }
+            if record.template_idx >= prop.fission_templates.len() {
+                continue;
+            }
             let ft = &prop.fission_templates[record.template_idx];
 
-            let Some(child_slot) = allocator.slot_of(record.child_id) else { continue };
-            let range  = dim_reg.column_range(record.property_id);
+            let Some(child_slot) = allocator.slot_of(record.child_id) else {
+                continue;
+            };
+            let range = dim_reg.column_range(record.property_id);
             let layout = &prop.layout;
             let Some(col) = range.col_for_role(&SubFieldRole::Intensity, layout) else {
                 continue;
             };
 
             let semantic = ThresholdSemantic::FusionTrigger {
-                child_id:     record.child_id,
-                parent_id:    record.parent_id,
-                property_id:  record.property_id,
+                child_id: record.child_id,
+                parent_id: record.parent_id,
+                property_id: record.property_id,
                 template_idx: record.template_idx,
             };
             // A-4 guard: FusionTrigger always reads child Intensity (default
@@ -755,12 +760,12 @@ impl ThresholdBuilder {
 
             let event_kind = cpu_reg.push(semantic);
             gpu_regs.push(ThresholdRegistration {
-                slot:      child_slot,
-                col:       col as u32,
+                slot: child_slot,
+                col: col as u32,
                 threshold: ft.template.fusion_intensity_threshold,
                 direction: DIR_UPWARD,
                 event_kind,
-                buffer:    THRESH_BUF_VALUES,
+                buffer: THRESH_BUF_VALUES,
             });
         }
     }
@@ -798,9 +803,7 @@ impl ThresholdBuilder {
                             THRESH_BUF_VALUES,
                             dim_reg,
                         )
-                        .expect(
-                            "assert_no_hard_trigger_on_soft_aggregate (FissionTrigger)",
-                        );
+                        .expect("assert_no_hard_trigger_on_soft_aggregate (FissionTrigger)");
 
                         let event_kind = cpu_reg.push(semantic);
                         gpu_regs.push(ThresholdRegistration {
@@ -1062,9 +1065,7 @@ mod tests {
     #[test]
     fn fusion_lineage_emits_one_intensity_threshold_per_record() {
         use crate::fission::FissionLineageRecord;
-        use simthing_core::{
-            Direction as Dir, FissionTemplate, FissionThreshold, SimThingKindTag,
-        };
+        use simthing_core::{Direction as Dir, FissionTemplate, FissionThreshold, SimThingKindTag};
 
         let mut reg = DimensionRegistry::new();
         let mut prop = SimProperty::simple("core", "loyalty", 0);
@@ -1075,9 +1076,9 @@ mod tests {
             template: FissionTemplate {
                 child_kind: SimThingKindTag::Cohort,
                 fusion_intensity_threshold: 0.85,
-                fusion_scar_coefficient:    0.10,
-                resolution_label:           "settled".into(),
-                clone_capability_children:  false,
+                fusion_scar_coefficient: 0.10,
+                resolution_label: "settled".into(),
+                clone_capability_children: false,
                 capability_container_kinds: Vec::new(),
             },
             secondary: None,
@@ -1095,24 +1096,28 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         let parent_slot = alloc.alloc(parent_id);
-        let child_slot  = alloc.alloc(child_id);
+        let child_slot = alloc.alloc(child_id);
 
         let lineage = vec![FissionLineageRecord {
-            parent_id, child_id, property_id: pid, template_idx: 0,
+            parent_id,
+            child_id,
+            property_id: pid,
+            template_idx: 0,
         }];
 
-        let (gpu, cpu) = ThresholdBuilder::build_with_lineage(
-            &parent, &reg, &alloc, &[], &[], &lineage,
-        );
+        let (gpu, cpu) =
+            ThresholdBuilder::build_with_lineage(&parent, &reg, &alloc, &[], &[], &lineage);
 
         // Parent + child each contribute one FissionTrigger registration
         // (from `walk`) plus the one FusionTrigger registration we asked for.
         let fusion_regs: Vec<_> = gpu
             .iter()
-            .filter(|r| matches!(
-                cpu.get(r.event_kind),
-                Some(ThresholdSemantic::FusionTrigger { .. })
-            ))
+            .filter(|r| {
+                matches!(
+                    cpu.get(r.event_kind),
+                    Some(ThresholdSemantic::FusionTrigger { .. })
+                )
+            })
             .collect();
         assert_eq!(fusion_regs.len(), 1);
 
@@ -1129,9 +1134,7 @@ mod tests {
     #[test]
     fn fusion_lineage_skipped_when_child_has_no_slot() {
         use crate::fission::FissionLineageRecord;
-        use simthing_core::{
-            Direction as Dir, FissionTemplate, FissionThreshold, SimThingKindTag,
-        };
+        use simthing_core::{Direction as Dir, FissionTemplate, FissionThreshold, SimThingKindTag};
 
         let mut reg = DimensionRegistry::new();
         let mut prop = SimProperty::simple("core", "loyalty", 0);
@@ -1142,9 +1145,9 @@ mod tests {
             template: FissionTemplate {
                 child_kind: SimThingKindTag::Cohort,
                 fusion_intensity_threshold: 0.85,
-                fusion_scar_coefficient:    0.10,
-                resolution_label:           "settled".into(),
-                clone_capability_children:  false,
+                fusion_scar_coefficient: 0.10,
+                resolution_label: "settled".into(),
+                clone_capability_children: false,
                 capability_container_kinds: Vec::new(),
             },
             secondary: None,
@@ -1153,7 +1156,7 @@ mod tests {
 
         // Allocate parent but tombstone the child (simulates Remove or fusion).
         let parent_id = SimThing::new(SimThingKind::Cohort, 0).id;
-        let child_id  = SimThing::new(SimThingKind::Cohort, 1).id;
+        let child_id = SimThing::new(SimThingKind::Cohort, 1).id;
         let mut alloc = SlotAllocator::new();
         alloc.alloc(parent_id);
         alloc.alloc(child_id);
@@ -1161,12 +1164,14 @@ mod tests {
 
         let root = SimThing::new(SimThingKind::World, 0);
         let lineage = vec![FissionLineageRecord {
-            parent_id, child_id, property_id: pid, template_idx: 0,
+            parent_id,
+            child_id,
+            property_id: pid,
+            template_idx: 0,
         }];
 
-        let (gpu, cpu) = ThresholdBuilder::build_with_lineage(
-            &root, &reg, &alloc, &[], &[], &lineage,
-        );
+        let (gpu, cpu) =
+            ThresholdBuilder::build_with_lineage(&root, &reg, &alloc, &[], &[], &lineage);
 
         assert!(gpu.iter().all(|r| !matches!(
             cpu.get(r.event_kind),
@@ -1181,29 +1186,29 @@ mod tests {
         // `CapabilityTreeBuilder::build` emits for a one-entry category.
         use simthing_core::{ClampBehavior, PropertyLayout, ReductionRule, SubFieldSpec};
         SimProperty {
-            namespace:          "tech".into(),
-            name:               "propulsion".into(),
-            layout:             PropertyLayout {
+            namespace: "tech".into(),
+            name: "propulsion".into(),
+            layout: PropertyLayout {
                 sub_fields: vec![SubFieldSpec {
-                    role:               SubFieldRole::Named("chemical_drive".into()),
-                    width:              1,
-                    clamp:              ClampBehavior::Floored { min: 0.0 },
-                    velocity_max:       None,
-                    default:            0.0,
-                    display_name:       "Chemical Drive".into(),
-                    display_range:      None,
-                    governed_by:        None,
+                    role: SubFieldRole::Named("chemical_drive".into()),
+                    width: 1,
+                    clamp: ClampBehavior::Floored { min: 0.0 },
+                    velocity_max: None,
+                    default: 0.0,
+                    display_name: "Chemical Drive".into(),
+                    display_range: None,
+                    governed_by: None,
                     reduction_override: Some(ReductionRule::Max),
                     soft_aggregate_guard: None,
                 }],
             },
-            decay:              None,
+            decay: None,
             intensity_behavior: None,
-            fission_templates:  vec![],
-            fusion_templates:   vec![],
-            on_expire:          None,
-            description:        String::new(),
-            intensity_labels:   vec![],
+            fission_templates: vec![],
+            fusion_templates: vec![],
+            on_expire: None,
+            description: String::new(),
+            intensity_labels: vec![],
         }
     }
 
@@ -1221,21 +1226,24 @@ mod tests {
 
         let unlocks = vec![CapabilityUnlockRegistration {
             sim_thing_id: tree_id,
-            property_id:  pid,
-            sub_field:    SubFieldRole::Named("chemical_drive".into()),
-            threshold:    5000.0,
+            property_id: pid,
+            sub_field: SubFieldRole::Named("chemical_drive".into()),
+            threshold: 5000.0,
         }];
 
-        let (gpu, cpu) = ThresholdBuilder::build_with_capability_unlocks(
-            &tree, &reg, &alloc, &[], &unlocks,
-        );
+        let (gpu, cpu) =
+            ThresholdBuilder::build_with_capability_unlocks(&tree, &reg, &alloc, &[], &unlocks);
 
         // One registration, one parallel semantic entry at the same event_kind.
         assert_eq!(gpu.len(), 1);
         assert_eq!(cpu.len(), 1);
         let event_kind = gpu[0].event_kind;
         match cpu.get(event_kind) {
-            Some(ThresholdSemantic::CapabilityUnlock { sim_thing_id, property_id, sub_field }) => {
+            Some(ThresholdSemantic::CapabilityUnlock {
+                sim_thing_id,
+                property_id,
+                sub_field,
+            }) => {
                 assert_eq!(*sim_thing_id, tree_id);
                 assert_eq!(*property_id, pid);
                 assert_eq!(*sub_field, SubFieldRole::Named("chemical_drive".into()));
@@ -1266,14 +1274,13 @@ mod tests {
 
         let unlocks = vec![CapabilityUnlockRegistration {
             sim_thing_id: tree_id,
-            property_id:  pid,
-            sub_field:    SubFieldRole::Named("chemical_drive".into()),
-            threshold:    5000.0,
+            property_id: pid,
+            sub_field: SubFieldRole::Named("chemical_drive".into()),
+            threshold: 5000.0,
         }];
 
-        let (gpu, _cpu) = ThresholdBuilder::build_with_capability_unlocks(
-            &tree, &reg, &alloc, &[], &unlocks,
-        );
+        let (gpu, _cpu) =
+            ThresholdBuilder::build_with_capability_unlocks(&tree, &reg, &alloc, &[], &unlocks);
 
         // Expected col = start of propulsion (after 3-column loyalty) + 0 (first sub-field).
         let propulsion_range = reg.column_range(pid);
@@ -1295,13 +1302,17 @@ mod tests {
 
         let unlocks = vec![CapabilityUnlockRegistration {
             sim_thing_id: tree.id,
-            property_id:  pid,
-            sub_field:    SubFieldRole::Named("chemical_drive".into()),
-            threshold:    5000.0,
+            property_id: pid,
+            sub_field: SubFieldRole::Named("chemical_drive".into()),
+            threshold: 5000.0,
         }];
 
         let (gpu, cpu) = ThresholdBuilder::build_with_capability_unlocks(
-            &tree, &reg, &SlotAllocator::new(), &[], &unlocks,
+            &tree,
+            &reg,
+            &SlotAllocator::new(),
+            &[],
+            &unlocks,
         );
 
         // Silently skipped — matches velocity-alert and lineage behavior.
@@ -1313,8 +1324,8 @@ mod tests {
     fn threshold_semantic_capability_unlock_round_trips_serde() {
         let original = ThresholdSemantic::CapabilityUnlock {
             sim_thing_id: simthing_core::SimThingId::new(),
-            property_id:  SimPropertyId(7),
-            sub_field:    SubFieldRole::Named("warp_drive".into()),
+            property_id: SimPropertyId(7),
+            sub_field: SubFieldRole::Named("warp_drive".into()),
         };
 
         let json: String = serde_json::to_string(&original).expect("serialize");
@@ -1322,8 +1333,16 @@ mod tests {
 
         match (&original, &restored) {
             (
-                ThresholdSemantic::CapabilityUnlock { sim_thing_id: a1, property_id: a2, sub_field: a3 },
-                ThresholdSemantic::CapabilityUnlock { sim_thing_id: b1, property_id: b2, sub_field: b3 },
+                ThresholdSemantic::CapabilityUnlock {
+                    sim_thing_id: a1,
+                    property_id: a2,
+                    sub_field: a3,
+                },
+                ThresholdSemantic::CapabilityUnlock {
+                    sim_thing_id: b1,
+                    property_id: b2,
+                    sub_field: b3,
+                },
             ) => {
                 assert_eq!(a1, b1);
                 assert_eq!(a2, b2);
@@ -1341,20 +1360,35 @@ mod tests {
         let mut cpu = ThresholdRegistry::new();
         let ek_unlock = cpu.push(ThresholdSemantic::CapabilityUnlock {
             sim_thing_id: id1,
-            property_id:  SimPropertyId(5),
-            sub_field:    SubFieldRole::Named("warp_drive".into()),
+            property_id: SimPropertyId(5),
+            sub_field: SubFieldRole::Named("warp_drive".into()),
         });
         let ek_velocity = cpu.push(ThresholdSemantic::VelocityAlert {
             sim_thing_id: id2,
-            property_id:  SimPropertyId(7),
-            sub_field:    SubFieldRole::Velocity,
+            property_id: SimPropertyId(7),
+            sub_field: SubFieldRole::Velocity,
         });
 
         let events = vec![
-            ThresholdEvent { slot: 0, col: 0, value: 1.0, event_kind: ek_unlock },
-            ThresholdEvent { slot: 1, col: 1, value: 2.0, event_kind: ek_velocity },
+            ThresholdEvent {
+                slot: 0,
+                col: 0,
+                value: 1.0,
+                event_kind: ek_unlock,
+            },
+            ThresholdEvent {
+                slot: 1,
+                col: 1,
+                value: 2.0,
+                event_kind: ek_velocity,
+            },
             // Out-of-range event_kind: should be filtered.
-            ThresholdEvent { slot: 2, col: 2, value: 3.0, event_kind: 99 },
+            ThresholdEvent {
+                slot: 2,
+                col: 2,
+                value: 3.0,
+                event_kind: 99,
+            },
         ];
 
         let unlocks = cpu.extract_capability_unlocks(&events);
@@ -1364,7 +1398,10 @@ mod tests {
         assert_eq!(unlocks.len(), 1);
         assert_eq!(unlocks[0].sim_thing_id, id1);
         assert_eq!(unlocks[0].property_id, SimPropertyId(5));
-        assert_eq!(unlocks[0].sub_field, SubFieldRole::Named("warp_drive".into()));
+        assert_eq!(
+            unlocks[0].sub_field,
+            SubFieldRole::Named("warp_drive".into())
+        );
     }
 
     #[test]
@@ -1421,27 +1458,31 @@ mod tests {
         let mut cpu_reg = ThresholdRegistry::new();
         let seed_kind = cpu_reg.push(ThresholdSemantic::VelocityAlert {
             sim_thing_id: seed_id,
-            property_id:  SimPropertyId(1),
-            sub_field:    SubFieldRole::Velocity,
+            property_id: SimPropertyId(1),
+            sub_field: SubFieldRole::Velocity,
         });
         gpu_regs.push(ThresholdRegistration {
-            slot:      0,
-            col:       0,
+            slot: 0,
+            col: 0,
             threshold: 1.0,
             direction: DIR_UPWARD,
             event_kind: seed_kind,
-            buffer:    THRESH_BUF_VALUES,
+            buffer: THRESH_BUF_VALUES,
         });
 
         let unlocks = vec![CapabilityUnlockRegistration {
             sim_thing_id: tree_id,
-            property_id:  pid,
-            sub_field:    SubFieldRole::Named("chemical_drive".into()),
-            threshold:    5000.0,
+            property_id: pid,
+            sub_field: SubFieldRole::Named("chemical_drive".into()),
+            threshold: 5000.0,
         }];
 
         ThresholdBuilder::append_capability_unlocks(
-            &reg, &alloc, &unlocks, &mut gpu_regs, &mut cpu_reg,
+            &reg,
+            &alloc,
+            &unlocks,
+            &mut gpu_regs,
+            &mut cpu_reg,
         );
 
         assert_eq!(gpu_regs.len(), 2);
@@ -1461,38 +1502,36 @@ mod tests {
         let mut cpu_reg = ThresholdRegistry::new();
         let seed_kind = cpu_reg.push(ThresholdSemantic::VelocityAlert {
             sim_thing_id: seed_id,
-            property_id:  SimPropertyId(1),
-            sub_field:    SubFieldRole::Velocity,
+            property_id: SimPropertyId(1),
+            sub_field: SubFieldRole::Velocity,
         });
         gpu_regs.push(ThresholdRegistration {
-            slot:      0,
-            col:       0,
+            slot: 0,
+            col: 0,
             threshold: 1.0,
             direction: DIR_UPWARD,
             event_kind: seed_kind,
-            buffer:    THRESH_BUF_VALUES,
+            buffer: THRESH_BUF_VALUES,
         });
 
         let triggers = vec![
             ScriptedEventTriggerRegistration {
-                event_id:  "low_loyalty".into(),
-                slot:      3,
-                col:       2,
+                event_id: "low_loyalty".into(),
+                slot: 3,
+                col: 2,
                 threshold: 0.25,
                 direction: Direction::Falling,
             },
             ScriptedEventTriggerRegistration {
-                event_id:  "faction_collapse".into(),
-                slot:      4,
-                col:       1,
+                event_id: "faction_collapse".into(),
+                slot: 4,
+                col: 1,
                 threshold: 0.1,
                 direction: Direction::Rising,
             },
         ];
 
-        ThresholdBuilder::append_scripted_event_triggers(
-            &triggers, &mut gpu_regs, &mut cpu_reg,
-        );
+        ThresholdBuilder::append_scripted_event_triggers(&triggers, &mut gpu_regs, &mut cpu_reg);
 
         assert_eq!(gpu_regs.len(), 3);
         assert_eq!(cpu_reg.len(), 3);
@@ -1518,40 +1557,40 @@ mod tests {
         namespace: &str,
         name: &str,
         reduction: Option<simthing_core::ReductionRule>,
-        guard:     Option<simthing_core::SoftAggregateGuard>,
+        guard: Option<simthing_core::SoftAggregateGuard>,
     ) -> SimProperty {
         use simthing_core::{ClampBehavior, PropertyLayout, SubFieldSpec};
         SimProperty {
             namespace: namespace.into(),
-            name:      name.into(),
+            name: name.into(),
             layout: PropertyLayout {
                 sub_fields: vec![SubFieldSpec {
-                    role:                 SubFieldRole::Amount,
-                    width:                1,
-                    clamp:                ClampBehavior::Unbounded,
-                    velocity_max:         None,
-                    default:              0.0,
-                    display_name:         "amount".into(),
-                    display_range:        None,
-                    governed_by:          None,
-                    reduction_override:   reduction,
+                    role: SubFieldRole::Amount,
+                    width: 1,
+                    clamp: ClampBehavior::Unbounded,
+                    velocity_max: None,
+                    default: 0.0,
+                    display_name: "amount".into(),
+                    display_range: None,
+                    governed_by: None,
+                    reduction_override: reduction,
                     soft_aggregate_guard: guard,
                 }],
             },
-            decay:              None,
+            decay: None,
             intensity_behavior: None,
-            fission_templates:  vec![],
-            fusion_templates:   vec![],
-            on_expire:          None,
-            description:        String::new(),
-            intensity_labels:   vec![],
+            fission_templates: vec![],
+            fusion_templates: vec![],
+            on_expire: None,
+            description: String::new(),
+            intensity_labels: vec![],
         }
     }
 
     fn fission_semantic(stid: SimThingId, pid: SimPropertyId) -> ThresholdSemantic {
         ThresholdSemantic::FissionTrigger {
             sim_thing_id: stid,
-            property_id:  pid,
+            property_id: pid,
             template_idx: 0,
         }
     }
@@ -1560,8 +1599,11 @@ mod tests {
     fn validator_passes_for_non_hard_trigger_semantics() {
         let mut reg = DimensionRegistry::new();
         let pid = reg.register(property_with_guard(
-            "core", "morale",
-            Some(simthing_core::ReductionRule::WeightedMean { by: SimPropertyId(0) }),
+            "core",
+            "morale",
+            Some(simthing_core::ReductionRule::WeightedMean {
+                by: SimPropertyId(0),
+            }),
             None, // no guard
         ));
         let stid = SimThing::new(SimThingKind::Cohort, 0).id;
@@ -1570,17 +1612,28 @@ mod tests {
         // pass even when targeting OUTPUT on an unguarded soft-aggregate.
         for sem in [
             ThresholdSemantic::VelocityAlert {
-                sim_thing_id: stid, property_id: pid, sub_field: SubFieldRole::Amount,
+                sim_thing_id: stid,
+                property_id: pid,
+                sub_field: SubFieldRole::Amount,
             },
             ThresholdSemantic::AggregateAlert {
-                sim_thing_id: stid, property_id: pid, sub_field: SubFieldRole::Amount,
+                sim_thing_id: stid,
+                property_id: pid,
+                sub_field: SubFieldRole::Amount,
             },
-            ThresholdSemantic::ScriptedEventTrigger { event_id: "e".into() },
+            ThresholdSemantic::ScriptedEventTrigger {
+                event_id: "e".into(),
+            },
         ] {
             assert!(
                 assert_no_hard_trigger_on_soft_aggregate(
-                    &sem, pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg
-                ).is_ok(),
+                    &sem,
+                    pid,
+                    &SubFieldRole::Amount,
+                    THRESH_BUF_OUTPUT,
+                    &reg
+                )
+                .is_ok(),
                 "non-hard-trigger {sem:?} must always pass"
             );
         }
@@ -1593,7 +1646,8 @@ mod tests {
         // aggregate, because pre-reduction reads bypass the aggregation.
         let mut reg = DimensionRegistry::new();
         let pid = reg.register(property_with_guard(
-            "core", "loyalty",
+            "core",
+            "loyalty",
             Some(simthing_core::ReductionRule::Mean), // soft
             None,                                     // no guard
         ));
@@ -1601,8 +1655,12 @@ mod tests {
 
         assert!(assert_no_hard_trigger_on_soft_aggregate(
             &fission_semantic(stid, pid),
-            pid, &SubFieldRole::Amount, THRESH_BUF_VALUES, &reg,
-        ).is_ok());
+            pid,
+            &SubFieldRole::Amount,
+            THRESH_BUF_VALUES,
+            &reg,
+        )
+        .is_ok());
     }
 
     #[test]
@@ -1611,7 +1669,8 @@ mod tests {
         // Sum/Max/Min/First are exact; only Mean and WeightedMean are soft.
         let mut reg = DimensionRegistry::new();
         let pid = reg.register(property_with_guard(
-            "core", "headcount",
+            "core",
+            "headcount",
             Some(simthing_core::ReductionRule::Sum), // exact
             None,
         ));
@@ -1619,8 +1678,12 @@ mod tests {
 
         assert!(assert_no_hard_trigger_on_soft_aggregate(
             &fission_semantic(stid, pid),
-            pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
-        ).is_ok());
+            pid,
+            &SubFieldRole::Amount,
+            THRESH_BUF_OUTPUT,
+            &reg,
+        )
+        .is_ok());
     }
 
     #[test]
@@ -1629,7 +1692,8 @@ mod tests {
         // no guard → violation.
         let mut reg = DimensionRegistry::new();
         let pid = reg.register(property_with_guard(
-            "core", "loyalty",
+            "core",
+            "loyalty",
             Some(simthing_core::ReductionRule::Mean), // soft
             None,                                     // no guard
         ));
@@ -1637,12 +1701,18 @@ mod tests {
 
         let err = assert_no_hard_trigger_on_soft_aggregate(
             &fission_semantic(stid, pid),
-            pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
+            pid,
+            &SubFieldRole::Amount,
+            THRESH_BUF_OUTPUT,
+            &reg,
         )
         .unwrap_err();
         match err {
             SoftAggregateViolation::HardTriggerOnUnguardedSoftAggregate {
-                property_id, sub_field, rule, semantic_kind,
+                property_id,
+                sub_field,
+                rule,
+                semantic_kind,
             } => {
                 assert_eq!(property_id, pid);
                 assert_eq!(sub_field, SubFieldRole::Amount);
@@ -1658,17 +1728,24 @@ mod tests {
         // Seed a property to be the weight column for WeightedMean.
         let weight_pid = reg.register(SimProperty::simple("core", "headcount", 0));
         let pid = reg.register(property_with_guard(
-            "tech", "research_efficiency",
+            "tech",
+            "research_efficiency",
             Some(simthing_core::ReductionRule::WeightedMean { by: weight_pid }),
             None,
         ));
         let stid = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0).id;
 
         let sem = ThresholdSemantic::CapabilityUnlock {
-            sim_thing_id: stid, property_id: pid, sub_field: SubFieldRole::Amount,
+            sim_thing_id: stid,
+            property_id: pid,
+            sub_field: SubFieldRole::Amount,
         };
         assert!(assert_no_hard_trigger_on_soft_aggregate(
-            &sem, pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
+            &sem,
+            pid,
+            &SubFieldRole::Amount,
+            THRESH_BUF_OUTPUT,
+            &reg,
         )
         .is_err());
     }
@@ -1679,7 +1756,8 @@ mod tests {
         // opt-out and is NOT a real guard. A hard trigger on it must fail.
         let mut reg = DimensionRegistry::new();
         let pid = reg.register(property_with_guard(
-            "core", "loyalty",
+            "core",
+            "loyalty",
             Some(simthing_core::ReductionRule::Mean),
             Some(simthing_core::SoftAggregateGuard::Unguarded),
         ));
@@ -1687,7 +1765,10 @@ mod tests {
 
         assert!(assert_no_hard_trigger_on_soft_aggregate(
             &fission_semantic(stid, pid),
-            pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
+            pid,
+            &SubFieldRole::Amount,
+            THRESH_BUF_OUTPUT,
+            &reg,
         )
         .is_err());
     }
@@ -1696,7 +1777,8 @@ mod tests {
     fn validator_accepts_quantized_guard() {
         let mut reg = DimensionRegistry::new();
         let pid = reg.register(property_with_guard(
-            "core", "stability",
+            "core",
+            "stability",
             Some(simthing_core::ReductionRule::Mean),
             Some(simthing_core::SoftAggregateGuard::Quantized { step: 0.1 }),
         ));
@@ -1704,7 +1786,10 @@ mod tests {
 
         assert!(assert_no_hard_trigger_on_soft_aggregate(
             &fission_semantic(stid, pid),
-            pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
+            pid,
+            &SubFieldRole::Amount,
+            THRESH_BUF_OUTPUT,
+            &reg,
         )
         .is_ok());
     }
@@ -1713,17 +1798,26 @@ mod tests {
     fn validator_accepts_hysteresis_guard() {
         let mut reg = DimensionRegistry::new();
         let pid = reg.register(property_with_guard(
-            "tech", "drive_efficiency",
-            Some(simthing_core::ReductionRule::WeightedMean { by: SimPropertyId(0) }),
+            "tech",
+            "drive_efficiency",
+            Some(simthing_core::ReductionRule::WeightedMean {
+                by: SimPropertyId(0),
+            }),
             Some(simthing_core::SoftAggregateGuard::Hysteresis { band: 0.05 }),
         ));
         let stid = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0).id;
 
         let sem = ThresholdSemantic::CapabilityUnlock {
-            sim_thing_id: stid, property_id: pid, sub_field: SubFieldRole::Amount,
+            sim_thing_id: stid,
+            property_id: pid,
+            sub_field: SubFieldRole::Amount,
         };
         assert!(assert_no_hard_trigger_on_soft_aggregate(
-            &sem, pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
+            &sem,
+            pid,
+            &SubFieldRole::Amount,
+            THRESH_BUF_OUTPUT,
+            &reg,
         )
         .is_ok());
     }
@@ -1734,7 +1828,8 @@ mod tests {
         // separately via `dim_reg.is_active(pid)` check).
         let mut reg = DimensionRegistry::new();
         let pid = reg.register(property_with_guard(
-            "core", "expired",
+            "core",
+            "expired",
             Some(simthing_core::ReductionRule::Mean),
             None,
         ));
@@ -1743,7 +1838,10 @@ mod tests {
 
         assert!(assert_no_hard_trigger_on_soft_aggregate(
             &fission_semantic(stid, pid),
-            pid, &SubFieldRole::Amount, THRESH_BUF_OUTPUT, &reg,
+            pid,
+            &SubFieldRole::Amount,
+            THRESH_BUF_OUTPUT,
+            &reg,
         )
         .is_ok());
     }
@@ -1751,9 +1849,11 @@ mod tests {
     #[test]
     fn violation_display_mentions_field_and_guidance() {
         let err = SoftAggregateViolation::HardTriggerOnUnguardedSoftAggregate {
-            property_id:   SimPropertyId(7),
-            sub_field:     SubFieldRole::Amount,
-            rule:          simthing_core::ReductionRule::WeightedMean { by: SimPropertyId(3) },
+            property_id: SimPropertyId(7),
+            sub_field: SubFieldRole::Amount,
+            rule: simthing_core::ReductionRule::WeightedMean {
+                by: SimPropertyId(3),
+            },
             semantic_kind: "FissionTrigger",
         };
         let msg = format!("{err}");

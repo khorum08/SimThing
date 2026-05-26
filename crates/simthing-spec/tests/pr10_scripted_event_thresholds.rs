@@ -6,7 +6,9 @@
 //! - `simthing_sim::ThresholdRegistry::extract_scripted_event_triggers` filtering
 //! - `ScriptedEventBoundaryHandler::handle_tick` threshold path (cooldown + priority + unknown-id)
 
-use simthing_core::{DimensionRegistry, Direction, SimThing, SimThingId, SimThingKind, SubFieldRole};
+use simthing_core::{
+    DimensionRegistry, Direction, SimThing, SimThingId, SimThingKind, SubFieldRole,
+};
 use simthing_feeder::{
     BoundaryRequest, ScriptedEventTriggerEvent, ScriptedEventTriggerRegistration,
 };
@@ -14,9 +16,9 @@ use simthing_gpu::{SlotAllocator, ThresholdEvent, DIR_DOWNWARD, DIR_UPWARD, THRE
 use simthing_sim::{ThresholdBuilder, ThresholdRegistry, ThresholdSemantic};
 use simthing_spec::{
     compile_property, CompiledEffect, CompiledThresholdTrigger, CompiledTrigger, CooldownSpec,
-    EventKey, EventPriority, PropertySpec, ScopeRef, ScriptPredicate,
-    ScriptedEventBoundaryContext, ScriptedEventBoundaryHandler, ScriptedEventDefinition,
-    ScriptedEventDiagnostic, ScriptedEventDiagnosticKind, TriggerDirection,
+    EventKey, EventPriority, PropertySpec, ScopeRef, ScriptPredicate, ScriptedEventBoundaryContext,
+    ScriptedEventBoundaryHandler, ScriptedEventDefinition, ScriptedEventDiagnostic,
+    ScriptedEventDiagnosticKind, TriggerDirection,
 };
 use std::collections::HashMap;
 
@@ -26,12 +28,12 @@ fn registry_with_loyalty() -> DimensionRegistry {
     let mut registry = DimensionRegistry::new();
     compile_property(
         &PropertySpec {
-            id:           "core_loyalty".into(),
-            namespace:    "core".into(),
-            name:         "loyalty".into(),
+            id: "core_loyalty".into(),
+            namespace: "core".into(),
+            name: "loyalty".into(),
             display_name: "Loyalty".into(),
-            description:  String::new(),
-            sub_fields:   vec![],
+            description: String::new(),
+            sub_fields: vec![],
         },
         &mut registry,
     )
@@ -40,11 +42,11 @@ fn registry_with_loyalty() -> DimensionRegistry {
 }
 
 fn threshold_event_def(
-    id:        &str,
-    trigger:   CompiledThresholdTrigger,
-    effects:   Vec<CompiledEffect>,
-    cooldown:  Option<CooldownSpec>,
-    priority:  EventPriority,
+    id: &str,
+    trigger: CompiledThresholdTrigger,
+    effects: Vec<CompiledEffect>,
+    cooldown: Option<CooldownSpec>,
+    priority: EventPriority,
 ) -> ScriptedEventDefinition {
     ScriptedEventDefinition {
         id: EventKey::new(id),
@@ -60,17 +62,19 @@ fn threshold_event_def(
 #[test]
 fn to_trigger_registration_resolves_slot_role_threshold_and_direction() {
     let trigger = CompiledThresholdTrigger {
-        target:    ScopeRef::Slot(7),
-        property:  simthing_core::SimPropertyId(0),
-        role:      SubFieldRole::Amount,
-        col:       2,
+        target: ScopeRef::Slot(7),
+        property: simthing_core::SimPropertyId(0),
+        role: SubFieldRole::Amount,
+        col: 2,
         threshold: 0.25,
         direction: TriggerDirection::Falling,
     };
     let def = threshold_event_def(
         "low_loyalty",
         trigger,
-        vec![CompiledEffect::Remove { target: ScopeRef::Current }],
+        vec![CompiledEffect::Remove {
+            target: ScopeRef::Current,
+        }],
         None,
         EventPriority::Normal,
     );
@@ -87,20 +91,14 @@ fn to_trigger_registration_resolves_slot_role_threshold_and_direction() {
 #[test]
 fn to_trigger_registration_resolves_current_to_supplied_slot() {
     let trigger = CompiledThresholdTrigger {
-        target:    ScopeRef::Current,
-        property:  simthing_core::SimPropertyId(0),
-        role:      SubFieldRole::Amount,
-        col:       0,
+        target: ScopeRef::Current,
+        property: simthing_core::SimPropertyId(0),
+        role: SubFieldRole::Amount,
+        col: 0,
         threshold: 1.0,
         direction: TriggerDirection::Rising,
     };
-    let def = threshold_event_def(
-        "self_event",
-        trigger,
-        vec![],
-        None,
-        EventPriority::Normal,
-    );
+    let def = threshold_event_def("self_event", trigger, vec![], None, EventPriority::Normal);
 
     let registration = def.to_trigger_registration(42).expect("threshold trigger");
     assert_eq!(registration.slot, 42);
@@ -128,15 +126,19 @@ fn threshold_builder_emits_parallel_scripted_event_trigger_entry() {
     let root = SimThing::new(SimThingKind::World, 0);
 
     let triggers = vec![ScriptedEventTriggerRegistration {
-        event_id:  "rebellion_warning".into(),
-        slot:      3,
-        col:       1,
+        event_id: "rebellion_warning".into(),
+        slot: 3,
+        col: 1,
         threshold: 0.1,
         direction: Direction::Falling,
     }];
 
     let (gpu, cpu) = ThresholdBuilder::build_with_scripted_event_triggers(
-        &root, &registry, &allocator, &[], &triggers,
+        &root,
+        &registry,
+        &allocator,
+        &[],
+        &triggers,
     );
 
     assert_eq!(gpu.len(), 1);
@@ -163,15 +165,19 @@ fn threshold_builder_handles_rising_direction() {
     let root = SimThing::new(SimThingKind::World, 0);
 
     let triggers = vec![ScriptedEventTriggerRegistration {
-        event_id:  "loyalty_climb".into(),
-        slot:      0,
-        col:       0,
+        event_id: "loyalty_climb".into(),
+        slot: 0,
+        col: 0,
         threshold: 0.9,
         direction: Direction::Rising,
     }];
 
     let (gpu, _cpu) = ThresholdBuilder::build_with_scripted_event_triggers(
-        &root, &registry, &allocator, &[], &triggers,
+        &root,
+        &registry,
+        &allocator,
+        &[],
+        &triggers,
     );
     assert_eq!(gpu[0].direction, DIR_UPWARD);
 }
@@ -187,18 +193,38 @@ fn extract_scripted_event_triggers_filters_to_scripted_arms() {
     });
     let ek_capability = cpu.push(ThresholdSemantic::CapabilityUnlock {
         sim_thing_id: id,
-        property_id:  simthing_core::SimPropertyId(0),
-        sub_field:    SubFieldRole::Amount,
+        property_id: simthing_core::SimPropertyId(0),
+        sub_field: SubFieldRole::Amount,
     });
     let ek_scripted2 = cpu.push(ThresholdSemantic::ScriptedEventTrigger {
         event_id: "beta".into(),
     });
 
     let events = vec![
-        ThresholdEvent { slot: 0, col: 0, value: 1.0, event_kind: ek_scripted   },
-        ThresholdEvent { slot: 1, col: 1, value: 2.0, event_kind: ek_capability },
-        ThresholdEvent { slot: 2, col: 2, value: 3.0, event_kind: ek_scripted2  },
-        ThresholdEvent { slot: 3, col: 3, value: 4.0, event_kind: 99            }, // out of range
+        ThresholdEvent {
+            slot: 0,
+            col: 0,
+            value: 1.0,
+            event_kind: ek_scripted,
+        },
+        ThresholdEvent {
+            slot: 1,
+            col: 1,
+            value: 2.0,
+            event_kind: ek_capability,
+        },
+        ThresholdEvent {
+            slot: 2,
+            col: 2,
+            value: 3.0,
+            event_kind: ek_scripted2,
+        },
+        ThresholdEvent {
+            slot: 3,
+            col: 3,
+            value: 4.0,
+            event_kind: 99,
+        }, // out of range
     ];
 
     let resolved = cpu.extract_scripted_event_triggers(&events);
@@ -211,24 +237,30 @@ fn extract_scripted_event_triggers_filters_to_scripted_arms() {
 // ── AT-4: Handler fires threshold events under cooldown/priority gating ──────
 
 fn run_tick_with_thresholds(
-    registry:         &DimensionRegistry,
-    definitions:      &[ScriptedEventDefinition],
+    registry: &DimensionRegistry,
+    definitions: &[ScriptedEventDefinition],
     threshold_events: &[ScriptedEventTriggerEvent],
-    slot_to_thing:    &HashMap<u32, SimThingId>,
-    cooldowns:        &mut HashMap<EventKey, u32>,
+    slot_to_thing: &HashMap<u32, SimThingId>,
+    cooldowns: &mut HashMap<EventKey, u32>,
 ) -> (Vec<BoundaryRequest>, Vec<ScriptedEventDiagnostic>) {
-    let handler = ScriptedEventBoundaryHandler { registry, definitions };
-    let mut requests    = Vec::new();
+    let handler = ScriptedEventBoundaryHandler {
+        registry,
+        definitions,
+    };
+    let mut requests = Vec::new();
     let mut diagnostics = Vec::new();
-    handler.handle_tick(threshold_events, &mut ScriptedEventBoundaryContext {
-        n_dims:        0,
-        shadow:        &[],
-        current_slot:  0,
-        slot_to_thing,
-        cooldowns,
-        requests:      &mut requests,
-        diagnostics:   &mut diagnostics,
-    });
+    handler.handle_tick(
+        threshold_events,
+        &mut ScriptedEventBoundaryContext {
+            n_dims: 0,
+            shadow: &[],
+            current_slot: 0,
+            slot_to_thing,
+            cooldowns,
+            requests: &mut requests,
+            diagnostics: &mut diagnostics,
+        },
+    );
     (requests, diagnostics)
 }
 
@@ -242,24 +274,27 @@ fn threshold_fired_event_emits_effect_request() {
     let defs = vec![threshold_event_def(
         "low_loyalty",
         CompiledThresholdTrigger {
-            target:    ScopeRef::Current,
-            property:  simthing_core::SimPropertyId(0),
-            role:      SubFieldRole::Amount,
-            col:       0,
+            target: ScopeRef::Current,
+            property: simthing_core::SimPropertyId(0),
+            role: SubFieldRole::Amount,
+            col: 0,
             threshold: 0.25,
             direction: TriggerDirection::Falling,
         },
-        vec![CompiledEffect::Remove { target: ScopeRef::Current }],
+        vec![CompiledEffect::Remove {
+            target: ScopeRef::Current,
+        }],
         None,
         EventPriority::Normal,
     )];
 
-    let events = vec![ScriptedEventTriggerEvent { event_id: "low_loyalty".into() }];
+    let events = vec![ScriptedEventTriggerEvent {
+        event_id: "low_loyalty".into(),
+    }];
     let mut cooldowns = HashMap::new();
 
-    let (requests, diagnostics) = run_tick_with_thresholds(
-        &registry, &defs, &events, &slot_to_thing, &mut cooldowns,
-    );
+    let (requests, diagnostics) =
+        run_tick_with_thresholds(&registry, &defs, &events, &slot_to_thing, &mut cooldowns);
 
     assert!(diagnostics.is_empty(), "no diagnostics");
     assert_eq!(requests.len(), 1);
@@ -280,9 +315,8 @@ fn threshold_event_with_no_matching_definition_produces_unknown_event_id_diagnos
     }];
     let mut cooldowns = HashMap::new();
 
-    let (requests, diagnostics) = run_tick_with_thresholds(
-        &registry, &defs, &events, &slot_to_thing, &mut cooldowns,
-    );
+    let (requests, diagnostics) =
+        run_tick_with_thresholds(&registry, &defs, &events, &slot_to_thing, &mut cooldowns);
 
     assert!(requests.is_empty());
     assert_eq!(diagnostics.len(), 1);
@@ -308,30 +342,35 @@ fn threshold_path_respects_cooldown_armed_by_predicate_path() {
     let defs = vec![threshold_event_def(
         "cooled_event",
         CompiledThresholdTrigger {
-            target:    ScopeRef::Current,
-            property:  simthing_core::SimPropertyId(0),
-            role:      SubFieldRole::Amount,
-            col:       0,
+            target: ScopeRef::Current,
+            property: simthing_core::SimPropertyId(0),
+            role: SubFieldRole::Amount,
+            col: 0,
             threshold: 0.5,
             direction: TriggerDirection::Falling,
         },
-        vec![CompiledEffect::Remove { target: ScopeRef::Current }],
+        vec![CompiledEffect::Remove {
+            target: ScopeRef::Current,
+        }],
         Some(CooldownSpec { ticks: 3 }),
         EventPriority::Normal,
     )];
 
-    let events = vec![ScriptedEventTriggerEvent { event_id: "cooled_event".into() }];
+    let events = vec![ScriptedEventTriggerEvent {
+        event_id: "cooled_event".into(),
+    }];
     let mut cooldowns = HashMap::new();
 
-    let (req1, _) = run_tick_with_thresholds(
-        &registry, &defs, &events, &slot_to_thing, &mut cooldowns,
-    );
+    let (req1, _) =
+        run_tick_with_thresholds(&registry, &defs, &events, &slot_to_thing, &mut cooldowns);
     assert_eq!(req1.len(), 1, "tick 1: should fire");
 
-    let (req2, _) = run_tick_with_thresholds(
-        &registry, &defs, &events, &slot_to_thing, &mut cooldowns,
+    let (req2, _) =
+        run_tick_with_thresholds(&registry, &defs, &events, &slot_to_thing, &mut cooldowns);
+    assert!(
+        req2.is_empty(),
+        "tick 2: on cooldown, threshold event must NOT re-fire"
     );
-    assert!(req2.is_empty(), "tick 2: on cooldown, threshold event must NOT re-fire");
 }
 
 #[test]
@@ -348,21 +387,25 @@ fn threshold_and_predicate_definitions_compete_under_priority_ordering() {
     let critical_threshold = threshold_event_def(
         "crit_threshold",
         CompiledThresholdTrigger {
-            target:    ScopeRef::Slot(1),
-            property:  simthing_core::SimPropertyId(0),
-            role:      SubFieldRole::Amount,
-            col:       0,
+            target: ScopeRef::Slot(1),
+            property: simthing_core::SimPropertyId(0),
+            role: SubFieldRole::Amount,
+            col: 0,
             threshold: 0.5,
             direction: TriggerDirection::Rising,
         },
-        vec![CompiledEffect::Remove { target: ScopeRef::Slot(1) }],
+        vec![CompiledEffect::Remove {
+            target: ScopeRef::Slot(1),
+        }],
         None,
         EventPriority::Critical,
     );
     let low_predicate = ScriptedEventDefinition {
         id: EventKey::new("low_predicate"),
         trigger: CompiledTrigger::Predicate(ScriptPredicate::True),
-        effects: vec![CompiledEffect::Remove { target: ScopeRef::Slot(2) }],
+        effects: vec![CompiledEffect::Remove {
+            target: ScopeRef::Slot(2),
+        }],
         cooldown: None,
         priority: EventPriority::Low,
     };
@@ -370,24 +413,29 @@ fn threshold_and_predicate_definitions_compete_under_priority_ordering() {
     // Order list with Low first to prove sorting actually runs.
     let defs = vec![low_predicate, critical_threshold];
 
-    let events = vec![ScriptedEventTriggerEvent { event_id: "crit_threshold".into() }];
+    let events = vec![ScriptedEventTriggerEvent {
+        event_id: "crit_threshold".into(),
+    }];
     let mut cooldowns = HashMap::new();
 
-    let (requests, diagnostics) = run_tick_with_thresholds(
-        &registry, &defs, &events, &slot_to_thing, &mut cooldowns,
-    );
+    let (requests, diagnostics) =
+        run_tick_with_thresholds(&registry, &defs, &events, &slot_to_thing, &mut cooldowns);
 
     assert!(diagnostics.is_empty());
     assert_eq!(requests.len(), 2);
     // Critical (threshold-triggered, targeting id_a) must come first.
     match &requests[0] {
-        BoundaryRequest::Remove { target } => assert_eq!(*target, id_a,
-            "Critical-priority threshold event should fire first"),
+        BoundaryRequest::Remove { target } => assert_eq!(
+            *target, id_a,
+            "Critical-priority threshold event should fire first"
+        ),
         other => panic!("expected Remove targeting id_a, got {other:?}"),
     }
     match &requests[1] {
-        BoundaryRequest::Remove { target } => assert_eq!(*target, id_b,
-            "Low-priority predicate event should fire second"),
+        BoundaryRequest::Remove { target } => assert_eq!(
+            *target, id_b,
+            "Low-priority predicate event should fire second"
+        ),
         other => panic!("expected Remove targeting id_b, got {other:?}"),
     }
 }
@@ -404,23 +452,27 @@ fn threshold_event_not_fired_when_definition_has_threshold_trigger_but_no_event(
     let defs = vec![threshold_event_def(
         "not_fired",
         CompiledThresholdTrigger {
-            target:    ScopeRef::Current,
-            property:  simthing_core::SimPropertyId(0),
-            role:      SubFieldRole::Amount,
-            col:       0,
+            target: ScopeRef::Current,
+            property: simthing_core::SimPropertyId(0),
+            role: SubFieldRole::Amount,
+            col: 0,
             threshold: 0.5,
             direction: TriggerDirection::Rising,
         },
-        vec![CompiledEffect::Remove { target: ScopeRef::Current }],
+        vec![CompiledEffect::Remove {
+            target: ScopeRef::Current,
+        }],
         None,
         EventPriority::Normal,
     )];
 
     let mut cooldowns = HashMap::new();
-    let (requests, diagnostics) = run_tick_with_thresholds(
-        &registry, &defs, &[], &slot_to_thing, &mut cooldowns,
-    );
+    let (requests, diagnostics) =
+        run_tick_with_thresholds(&registry, &defs, &[], &slot_to_thing, &mut cooldowns);
 
-    assert!(requests.is_empty(), "threshold event must not fire without a matching GPU event");
+    assert!(
+        requests.is_empty(),
+        "threshold event must not fire without a matching GPU event"
+    );
     assert!(diagnostics.is_empty());
 }

@@ -40,13 +40,13 @@ use simthing_core::Direction;
 pub struct ScriptedEventTriggerRegistration {
     /// Matches `simthing_spec::EventKey.0`. Identifies which scripted event
     /// definition the boundary handler should fire when this threshold trips.
-    pub event_id:  String,
+    pub event_id: String,
     /// Concrete slot in the GPU `values` buffer to watch. `ScopeRef::Current`
     /// must be resolved to a real slot before constructing this struct.
-    pub slot:      u32,
+    pub slot: u32,
     /// Absolute column in the dense `values` row (already resolved via
     /// `DimensionRegistry::column_range` + `col_for_role`).
-    pub col:       u32,
+    pub col: u32,
     /// Trigger threshold value, copied from the `CompiledThresholdTrigger`.
     pub threshold: f32,
     /// Rising = fire when value crosses upward through `threshold`;
@@ -73,9 +73,9 @@ mod tests {
     #[test]
     fn registration_serde_round_trip() {
         let original = ScriptedEventTriggerRegistration {
-            event_id:  "rebellion_warning".into(),
-            slot:      4,
-            col:       12,
+            event_id: "rebellion_warning".into(),
+            slot: 4,
+            col: 12,
             threshold: 0.25,
             direction: Direction::Falling,
         };

@@ -5,8 +5,8 @@ use simthing_workshop::multitarget_replay::{
     replay_from_compact_records, replay_from_compact_records_n_ticks, resolve_cpu_current,
     resolve_cpu_current_n_ticks, write_multitarget_replay_reports,
     write_multitarget_replay_reports_bundle, write_multitarget_resident_reports,
-    write_multitarget_resident_reports_bundle, MultiTargetReplayHarness, RESIDENT_TICKS,
-    REPLAY_MODE_COMPACT, REPLAY_MODE_FULL,
+    write_multitarget_resident_reports_bundle, MultiTargetReplayHarness, REPLAY_MODE_COMPACT,
+    REPLAY_MODE_FULL, RESIDENT_TICKS,
 };
 
 fn assert_report_ok(report: &simthing_workshop::multitarget_replay::MultiTargetReplayReport) {
@@ -91,7 +91,8 @@ fn multitarget_gpu_full_records_match_compact() {
     let harness = MultiTargetReplayHarness::new().unwrap();
 
     let (cpu_final, cpu_compact, _) = resolve_cpu_current(&scenario, true);
-    let (gpu_compact_final, gpu_compact, _) = harness.run_gpu(&scenario, REPLAY_MODE_COMPACT).unwrap();
+    let (gpu_compact_final, gpu_compact, _) =
+        harness.run_gpu(&scenario, REPLAY_MODE_COMPACT).unwrap();
     let (_, _, gpu_full) = harness.run_gpu(&scenario, REPLAY_MODE_FULL).unwrap();
 
     assert_eq!(gpu_compact_final, cpu_final);
@@ -101,9 +102,18 @@ fn multitarget_gpu_full_records_match_compact() {
         assert_eq!(full.transfer_amount, compact.transfer_amount);
         assert_eq!(full.emit_count, compact.emit_count);
         assert_eq!(full.is_active, compact.is_active);
-        assert_eq!(full.source_after, gpu_compact_final[full.item as usize].source_pool);
-        assert_eq!(full.queue_after, gpu_compact_final[full.item as usize].queue_accum);
-        assert_eq!(full.units_after, gpu_compact_final[full.item as usize].units);
+        assert_eq!(
+            full.source_after,
+            gpu_compact_final[full.item as usize].source_pool
+        );
+        assert_eq!(
+            full.queue_after,
+            gpu_compact_final[full.item as usize].queue_accum
+        );
+        assert_eq!(
+            full.units_after,
+            gpu_compact_final[full.item as usize].units
+        );
     }
 }
 
@@ -142,13 +152,10 @@ fn multitarget_conservation_rejects_corrupted_record() {
         &scenario.params,
         &compact
     ));
-    assert!(replay_from_compact_records(&scenario.states, &scenario.params, &compact).is_err()
-        || !conservation_check(
-            &scenario.states,
-            &cpu_final,
-            &scenario.params,
-            &compact
-        ));
+    assert!(
+        replay_from_compact_records(&scenario.states, &scenario.params, &compact).is_err()
+            || !conservation_check(&scenario.states, &cpu_final, &scenario.params, &compact)
+    );
 }
 
 #[test]
@@ -182,8 +189,7 @@ fn multitarget_replay_report_bundle() {
 fn multitarget_cpu_n_ticks_oracle_depletes_sources() {
     let scenario = make_depletion_n_tick_scenario();
     let ticks = 5u32;
-    let (final_states, summaries, records) =
-        resolve_cpu_current_n_ticks(&scenario, ticks);
+    let (final_states, summaries, records) = resolve_cpu_current_n_ticks(&scenario, ticks);
 
     assert_eq!(final_states[0].source_pool, 0);
     assert_eq!(final_states[0].queue_accum, 1);
@@ -219,8 +225,7 @@ fn multitarget_cpu_n_ticks_oracle_depletes_sources() {
 fn multitarget_gpu_resident_summary_matches_cpu_small() {
     let scenario = make_multitarget_scenario("multitarget_resident_small", 1_024, 0.7, false);
     let harness = MultiTargetReplayHarness::new().unwrap();
-    let report =
-        compare_multitarget_resident_rich_with_harness(&harness, &scenario, 16).unwrap();
+    let report = compare_multitarget_resident_rich_with_harness(&harness, &scenario, 16).unwrap();
     assert_resident_report_ok(&report);
 }
 
@@ -228,8 +233,7 @@ fn multitarget_gpu_resident_summary_matches_cpu_small() {
 fn multitarget_gpu_resident_records_replay_small() {
     let scenario = make_multitarget_scenario("multitarget_resident_records", 1_024, 0.7, false);
     let harness = MultiTargetReplayHarness::new().unwrap();
-    let (cpu_final, cpu_summaries, cpu_records) =
-        resolve_cpu_current_n_ticks(&scenario, 16);
+    let (cpu_final, cpu_summaries, cpu_records) = resolve_cpu_current_n_ticks(&scenario, 16);
     let gpu = harness.run_gpu_resident(&scenario, 16, true).unwrap();
     assert_eq!(gpu.final_states, cpu_final);
     assert_eq!(gpu.summaries, cpu_summaries);
@@ -248,19 +252,23 @@ fn multitarget_gpu_resident_records_replay_small() {
 
 #[test]
 fn multitarget_gpu_resident_sparse_100k() {
-    let scenario = make_multitarget_scenario("multitarget_resident_sparse_100k", 100_000, 0.01, false);
+    let scenario =
+        make_multitarget_scenario("multitarget_resident_sparse_100k", 100_000, 0.01, false);
     let harness = MultiTargetReplayHarness::new().unwrap();
     let report =
-        compare_multitarget_resident_rich_with_harness(&harness, &scenario, RESIDENT_TICKS).unwrap();
+        compare_multitarget_resident_rich_with_harness(&harness, &scenario, RESIDENT_TICKS)
+            .unwrap();
     assert_resident_report_ok(&report);
 }
 
 #[test]
 fn multitarget_gpu_resident_bursty_100k() {
-    let scenario = make_multitarget_scenario("multitarget_resident_bursty_100k", 100_000, 1.0, true);
+    let scenario =
+        make_multitarget_scenario("multitarget_resident_bursty_100k", 100_000, 1.0, true);
     let harness = MultiTargetReplayHarness::new().unwrap();
     let report =
-        compare_multitarget_resident_rich_with_harness(&harness, &scenario, RESIDENT_TICKS).unwrap();
+        compare_multitarget_resident_rich_with_harness(&harness, &scenario, RESIDENT_TICKS)
+            .unwrap();
     assert_resident_report_ok(&report);
     write_multitarget_resident_reports(&report).expect("write resident reports");
 }
@@ -268,10 +276,12 @@ fn multitarget_gpu_resident_bursty_100k() {
 #[test]
 #[ignore = "large GPU resident benchmark"]
 fn multitarget_gpu_resident_bursty_1m() {
-    let scenario = make_multitarget_scenario("multitarget_resident_bursty_1m", 1_000_000, 1.0, true);
+    let scenario =
+        make_multitarget_scenario("multitarget_resident_bursty_1m", 1_000_000, 1.0, true);
     let harness = MultiTargetReplayHarness::new().unwrap();
     let report =
-        compare_multitarget_resident_rich_with_harness(&harness, &scenario, RESIDENT_TICKS).unwrap();
+        compare_multitarget_resident_rich_with_harness(&harness, &scenario, RESIDENT_TICKS)
+            .unwrap();
     assert_resident_report_ok(&report);
 }
 

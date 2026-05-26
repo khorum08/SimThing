@@ -8,6 +8,32 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — S-6/S-5/S-1 legacy sunset sequence
+
+**Deleted:**
+- `crates/simthing-gpu/src/shaders/threshold_scan.wgsl`
+- `crates/simthing-gpu/src/shaders/velocity_integration.wgsl`
+- `crates/simthing-gpu/src/shaders/intent_delta.wgsl`
+- Legacy threshold, velocity, and intent pipeline/layout/bind-group wiring from `Pipelines`
+
+**Changed:**
+- `use_accumulator_threshold_scan`, `use_accumulator_velocity`, and
+  `use_accumulator_intent` now default **true**.
+- Threshold, velocity, and intent workloads reject loudly when their
+  AccumulatorOp path is disabled; no CPU production fallback or runtime legacy
+  oracle remains.
+- C-1/C-2 parity coverage now uses AccumulatorOp replay/CPU-golden checks
+  instead of deleted shader oracles. C-7 remains bit-exact via the
+  AccumulatorOp-backed velocity helper.
+- Added `s6_threshold_sunset.rs`, `s5_velocity_sunset.rs`, and
+  `s1_intent_sunset.rs`.
+
+**Migration state:** S-2 intensity, S-3 overlay, S-4 reduction, S-6 threshold,
+S-5 velocity, and S-1 intent legacy passes are deleted. Snapshot
+(`copy_buffer_to_buffer`) is the only retained old operation.
+
+---
+
 ## 2026-05-25 — S-3 legacy overlay sunset
 
 **Deleted:**

@@ -83,7 +83,10 @@ impl std::fmt::Display for CapabilityTreeDiagnostic {
                     "capability tree definition `{definition_id:?}` is not loaded"
                 )
             }
-            Self::EntryNotInTree { definition_id, entry } => {
+            Self::EntryNotInTree {
+                definition_id,
+                entry,
+            } => {
                 write!(
                     f,
                     "entry `{entry:?}` is not in capability tree definition `{definition_id:?}`"
@@ -101,9 +104,7 @@ mod display_tests {
     #[test]
     fn capability_tree_diagnostic_display_includes_sim_thing_id() {
         let id = SimThingId::new();
-        let diagnostic = CapabilityTreeDiagnostic::UnknownThresholdSimThing {
-            sim_thing_id: id,
-        };
+        let diagnostic = CapabilityTreeDiagnostic::UnknownThresholdSimThing { sim_thing_id: id };
         let text = format!("{diagnostic}");
         assert!(!text.is_empty());
         assert!(text.contains(&format!("{id:?}")));
@@ -124,7 +125,7 @@ mod display_tests {
         let entry = CapabilityEntryKey {
             category: CategoryKey {
                 namespace: "tech".into(),
-                name:      "propulsion".into(),
+                name: "propulsion".into(),
             },
             entry_id: "warp_drive".into(),
         };

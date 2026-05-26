@@ -56,7 +56,7 @@ pub fn build_column_rules(registry: &DimensionRegistry, n_dims: usize) -> Vec<Re
 /// Per-column reduction descriptor for CPU oracle and GPU upload.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ColumnRuleDescriptor {
-    pub rule:       ReductionRule,
+    pub rule: ReductionRule,
     /// Global column of the `Amount` sub-field on the weight property when
     /// `rule` is `WeightedMean`. `WEIGHT_COL_NONE` otherwise.
     pub weight_col: u32,
@@ -168,7 +168,13 @@ impl TopologyState {
     pub fn build(root: &SimThing, allocator: &SlotAllocator) -> Self {
         let n_slots = allocator.capacity();
         let mut state = Self::empty(n_slots);
-        walk(root, 0, allocator, &mut state.per_slot_children, &mut state.depths);
+        walk(
+            root,
+            0,
+            allocator,
+            &mut state.per_slot_children,
+            &mut state.depths,
+        );
         // Sort each parent's children by slot index — canonical iteration
         // order. (Walk visits children in tree order, which is not
         // necessarily slot order.)
@@ -237,7 +243,11 @@ impl TopologyState {
         // Buckets are populated in ascending slot order by construction
         // (we iterate self.depths in slot order), so no sort needed.
 
-        Topology { child_starts, child_indices, depth_buckets }
+        Topology {
+            child_starts,
+            child_indices,
+            depth_buckets,
+        }
     }
 }
 
@@ -248,7 +258,9 @@ fn walk(
     per_slot_children: &mut [Vec<u32>],
     depths: &mut [Option<u32>],
 ) {
-    let Some(slot) = allocator.slot_of(node.id) else { return; };
+    let Some(slot) = allocator.slot_of(node.id) else {
+        return;
+    };
     depths[slot as usize] = Some(depth);
     for child in &node.children {
         if let Some(child_slot) = allocator.slot_of(child.id) {
@@ -321,7 +333,13 @@ fn reduce_one_slot(
     // Inner: reduce each column independently.
     for col in 0..n_dims {
         let desc = descriptors[col];
-        let v = reduce_column(desc, col, n_dims, &topology.child_indices[start..end], output);
+        let v = reduce_column(
+            desc,
+            col,
+            n_dims,
+            &topology.child_indices[start..end],
+            output,
+        );
         output[base + col] = v;
     }
 }
@@ -360,7 +378,9 @@ fn reduce_column(
             let mut acc = read(child_slots[0], col);
             for &s in &child_slots[1..] {
                 let v = read(s, col);
-                if v > acc { acc = v; }
+                if v > acc {
+                    acc = v;
+                }
             }
             acc
         }
@@ -368,7 +388,9 @@ fn reduce_column(
             let mut acc = read(child_slots[0], col);
             for &s in &child_slots[1..] {
                 let v = read(s, col);
-                if v < acc { acc = v; }
+                if v < acc {
+                    acc = v;
+                }
             }
             acc
         }
@@ -413,9 +435,9 @@ mod tests {
 
         // World → 1 Location → 2 Cohorts. 4 slots total.
         let mut world = SimThing::new(SimThingKind::World, 0);
-        let mut loc   = SimThing::new(SimThingKind::Location, 0);
-        let mut c1    = SimThing::new(SimThingKind::Cohort, 0);
-        let mut c2    = SimThing::new(SimThingKind::Cohort, 0);
+        let mut loc = SimThing::new(SimThingKind::Location, 0);
+        let mut c1 = SimThing::new(SimThingKind::Cohort, 0);
+        let mut c2 = SimThing::new(SimThingKind::Cohort, 0);
 
         let layout = reg.property(lid).layout.clone();
         let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
@@ -514,7 +536,13 @@ mod tests {
         let mut out_direct = vec![0.0_f32; values.len()];
         let mut out_incr = vec![0.0_f32; values.len()];
         cpu_reduce_oracle(&direct, &descriptors, n_dims, &values, &mut out_direct);
-        cpu_reduce_oracle(&via_incremental, &descriptors, n_dims, &values, &mut out_incr);
+        cpu_reduce_oracle(
+            &via_incremental,
+            &descriptors,
+            n_dims,
+            &values,
+            &mut out_incr,
+        );
         for (a, b) in out_direct.iter().zip(out_incr.iter()) {
             assert_eq!(a.to_bits(), b.to_bits());
         }
@@ -533,7 +561,7 @@ mod tests {
 
         let world_slot = alloc.slot_of(world.id).unwrap();
         let world_kids_start = topo.child_starts[world_slot as usize] as usize;
-        let world_kids_end   = topo.child_starts[world_slot as usize + 1] as usize;
+        let world_kids_end = topo.child_starts[world_slot as usize + 1] as usize;
         assert_eq!(world_kids_end - world_kids_start, 1, "world has 1 child");
     }
 
@@ -556,7 +584,7 @@ mod tests {
         cpu_reduce_oracle(&topo, &descriptors, n_dims, &values, &mut output);
 
         // Location's reduced row: amount = mean(0.40, 0.60) = 0.50, intensity = max(0.10, 0.80) = 0.80.
-        let loc_id  = world.children[0].id;
+        let loc_id = world.children[0].id;
         let loc_slot = alloc.slot_of(loc_id).unwrap() as usize;
         let range = reg.column_range(lid);
         assert_eq!(
@@ -573,7 +601,7 @@ mod tests {
         for col in 0..n_dims {
             assert_eq!(
                 output[world_slot * n_dims + col].to_bits(),
-                output[loc_slot   * n_dims + col].to_bits(),
+                output[loc_slot * n_dims + col].to_bits(),
                 "world should mirror its single child at col {col}"
             );
         }
@@ -598,14 +626,14 @@ mod tests {
         // Property with one Amount sub-field overridden to Sum.
         let layout = PropertyLayout {
             sub_fields: vec![SubFieldSpec {
-                role:               SubFieldRole::Amount,
-                width:              1,
-                clamp:              ClampBehavior::Unbounded,
-                velocity_max:       None,
-                default:            0.0,
-                display_name:       "n".into(),
-                display_range:      None,
-                governed_by:        None,
+                role: SubFieldRole::Amount,
+                width: 1,
+                clamp: ClampBehavior::Unbounded,
+                velocity_max: None,
+                default: 0.0,
+                display_name: "n".into(),
+                display_range: None,
+                governed_by: None,
                 reduction_override: Some(ReductionRule::Sum),
                 soft_aggregate_guard: None,
             }],
@@ -623,14 +651,14 @@ mod tests {
         // Custom property with Sum override on the Amount sub-field.
         let layout = PropertyLayout {
             sub_fields: vec![SubFieldSpec {
-                role:               SubFieldRole::Amount,
-                width:              1,
-                clamp:              ClampBehavior::Unbounded,
-                velocity_max:       None,
-                default:            0.0,
-                display_name:       "n".into(),
-                display_range:      None,
-                governed_by:        None,
+                role: SubFieldRole::Amount,
+                width: 1,
+                clamp: ClampBehavior::Unbounded,
+                velocity_max: None,
+                default: 0.0,
+                display_name: "n".into(),
+                display_range: None,
+                governed_by: None,
                 reduction_override: Some(ReductionRule::Sum),
                 soft_aggregate_guard: None,
             }],

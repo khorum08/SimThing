@@ -45,7 +45,7 @@
 
 use crate::runtime::{CompiledEffect, CompiledTrigger, ScriptedEventDefinition};
 use crate::spec::event::EventKey;
-use crate::spec::script::{ScriptEvalContext, ScriptEvalError, ScopeRef};
+use crate::spec::script::{ScopeRef, ScriptEvalContext, ScriptEvalError};
 use simthing_core::{DimensionRegistry, SimThingId};
 use simthing_feeder::{BoundaryRequest, ScriptedEventTriggerEvent};
 use std::collections::{HashMap, HashSet};
@@ -56,7 +56,7 @@ use std::collections::{HashMap, HashSet};
 /// boundary tick. Processes both predicate triggers (CPU-evaluated) and
 /// threshold triggers (GPU-fired, resolved by the session/driver layer).
 pub struct ScriptedEventBoundaryHandler<'a> {
-    pub registry:    &'a DimensionRegistry,
+    pub registry: &'a DimensionRegistry,
     /// All event definitions to evaluate. The handler sorts internally by
     /// [`EventPriority`]; the caller does not need to pre-sort.
     pub definitions: &'a [ScriptedEventDefinition],
@@ -67,27 +67,27 @@ pub struct ScriptedEventBoundaryHandler<'a> {
 /// Per-tick mutable state threaded through event execution.
 pub struct ScriptedEventBoundaryContext<'a> {
     /// Number of property dimensions in the shadow buffer.
-    pub n_dims:         usize,
+    pub n_dims: usize,
     /// Flat CPU shadow buffer: `shadow[slot * n_dims .. (slot + 1) * n_dims]`.
-    pub shadow:         &'a [f32],
+    pub shadow: &'a [f32],
     /// The "home" slot for `ScopeRef::Current` in both trigger evaluation and
     /// effect resolution.
-    pub current_slot:   u32,
+    pub current_slot: u32,
     /// Maps raw slot index (u32) → [`SimThingId`] for resolving [`ScopeRef`]
     /// targets in [`CompiledEffect`]s. A missing key means the slot is
     /// unoccupied; the effect is skipped with a diagnostic.
-    pub slot_to_thing:  &'a HashMap<u32, SimThingId>,
+    pub slot_to_thing: &'a HashMap<u32, SimThingId>,
     /// Remaining-ticks map for events currently on cooldown. The handler ticks
     /// this down at the start of each call and skips events whose key is still
     /// present. Entries are removed when they reach 0. Keyed by [`EventKey`]
     /// only (not per-owner). For per-owner semantics, callers maintain separate
     /// context instances.
-    pub cooldowns:      &'a mut HashMap<EventKey, u32>,
+    pub cooldowns: &'a mut HashMap<EventKey, u32>,
     /// Accumulates [`BoundaryRequest`]s emitted by triggered event effects.
-    pub requests:       &'a mut Vec<BoundaryRequest>,
+    pub requests: &'a mut Vec<BoundaryRequest>,
     /// Accumulates soft errors from trigger evaluation and effect resolution.
     /// A diagnostic here does not abort the tick; subsequent events still run.
-    pub diagnostics:    &'a mut Vec<ScriptedEventDiagnostic>,
+    pub diagnostics: &'a mut Vec<ScriptedEventDiagnostic>,
 }
 
 // ── Diagnostic ────────────────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ pub struct ScriptedEventDiagnostic {
     /// The event that encountered an error.
     pub event_id: EventKey,
     /// The specific error.
-    pub kind:     ScriptedEventDiagnosticKind,
+    pub kind: ScriptedEventDiagnosticKind,
 }
 
 impl ScriptedEventDiagnostic {
@@ -139,7 +139,10 @@ impl std::fmt::Display for ScriptedEventDiagnosticKind {
             }
             Self::UnknownEventId => write!(f, "threshold fired for unknown event id"),
             Self::OwnerRemoved { owner_id } => {
-                write!(f, "instance owner {owner_id:?} has no slot — instance dropped")
+                write!(
+                    f,
+                    "instance owner {owner_id:?} has no slot — instance dropped"
+                )
             }
         }
     }
@@ -168,7 +171,7 @@ impl<'a> ScriptedEventBoundaryHandler<'a> {
     pub fn handle_tick(
         &self,
         threshold_events: &[ScriptedEventTriggerEvent],
-        ctx:              &mut ScriptedEventBoundaryContext<'_>,
+        ctx: &mut ScriptedEventBoundaryContext<'_>,
     ) {
         tick_cooldowns(ctx);
 
@@ -186,7 +189,7 @@ impl<'a> ScriptedEventBoundaryHandler<'a> {
         for event_id in unknown_ids {
             ctx.diagnostics.push(ScriptedEventDiagnostic {
                 event_id: EventKey::new(event_id),
-                kind:     ScriptedEventDiagnosticKind::UnknownEventId,
+                kind: ScriptedEventDiagnosticKind::UnknownEventId,
             });
         }
 
@@ -203,25 +206,23 @@ impl<'a> ScriptedEventBoundaryHandler<'a> {
             let fire = match &def.trigger {
                 CompiledTrigger::Predicate(predicate) => {
                     let eval_ctx = ScriptEvalContext {
-                        registry:     self.registry,
-                        shadow:       ctx.shadow,
-                        n_dims:       ctx.n_dims,
+                        registry: self.registry,
+                        shadow: ctx.shadow,
+                        n_dims: ctx.n_dims,
                         current_slot: ctx.current_slot,
                     };
                     match predicate.eval(&eval_ctx) {
                         Err(err) => {
                             ctx.diagnostics.push(ScriptedEventDiagnostic {
                                 event_id: def.id.clone(),
-                                kind:     ScriptedEventDiagnosticKind::TriggerEvalError(err),
+                                kind: ScriptedEventDiagnosticKind::TriggerEvalError(err),
                             });
                             continue;
                         }
                         Ok(b) => b,
                     }
                 }
-                CompiledTrigger::Threshold(_) => {
-                    fired_threshold_ids.contains(def.id.0.as_str())
-                }
+                CompiledTrigger::Threshold(_) => fired_threshold_ids.contains(def.id.0.as_str()),
             };
 
             if fire {
@@ -246,34 +247,41 @@ fn tick_cooldowns(ctx: &mut ScriptedEventBoundaryContext<'_>) {
 
 /// Resolve `CompiledEffect` targets to `SimThingId`s and push `BoundaryRequest`s.
 /// Effects whose target slot is missing in `slot_to_thing` push a diagnostic.
-fn resolve_effects(
-    def: &ScriptedEventDefinition,
-    ctx: &mut ScriptedEventBoundaryContext<'_>,
-) {
+fn resolve_effects(def: &ScriptedEventDefinition, ctx: &mut ScriptedEventBoundaryContext<'_>) {
     for effect in &def.effects {
         let (scope, overlay_arm) = match effect {
-            CompiledEffect::Remove          { target }             => (target, None),
-            CompiledEffect::ActivateOverlay { target, overlay_id } => (target, Some((true,  *overlay_id))),
-            CompiledEffect::SuspendOverlay  { target, overlay_id } => (target, Some((false, *overlay_id))),
+            CompiledEffect::Remove { target } => (target, None),
+            CompiledEffect::ActivateOverlay { target, overlay_id } => {
+                (target, Some((true, *overlay_id)))
+            }
+            CompiledEffect::SuspendOverlay { target, overlay_id } => {
+                (target, Some((false, *overlay_id)))
+            }
         };
 
         let slot = match scope {
-            ScopeRef::Current  => ctx.current_slot,
-            ScopeRef::Slot(s)  => *s,
+            ScopeRef::Current => ctx.current_slot,
+            ScopeRef::Slot(s) => *s,
         };
 
         let Some(&target_id) = ctx.slot_to_thing.get(&slot) else {
             ctx.diagnostics.push(ScriptedEventDiagnostic {
                 event_id: def.id.clone(),
-                kind:     ScriptedEventDiagnosticKind::UnresolvedEffectTarget { slot },
+                kind: ScriptedEventDiagnosticKind::UnresolvedEffectTarget { slot },
             });
             continue;
         };
 
         let request = match overlay_arm {
-            None               => BoundaryRequest::Remove { target: target_id },
-            Some((true,  oid)) => BoundaryRequest::ActivateOverlay { target: target_id, overlay_id: oid },
-            Some((false, oid)) => BoundaryRequest::SuspendOverlay  { target: target_id, overlay_id: oid },
+            None => BoundaryRequest::Remove { target: target_id },
+            Some((true, oid)) => BoundaryRequest::ActivateOverlay {
+                target: target_id,
+                overlay_id: oid,
+            },
+            Some((false, oid)) => BoundaryRequest::SuspendOverlay {
+                target: target_id,
+                overlay_id: oid,
+            },
         };
         ctx.requests.push(request);
     }
@@ -286,9 +294,7 @@ mod display_tests {
 
     #[test]
     fn scripted_event_diagnostic_kind_display_is_non_empty() {
-        let kind = ScriptedEventDiagnosticKind::TriggerEvalError(
-            ScriptEvalError::DivisionByZero,
-        );
+        let kind = ScriptedEventDiagnosticKind::TriggerEvalError(ScriptEvalError::DivisionByZero);
         let text = format!("{kind}");
         assert!(!text.is_empty());
         assert!(text.contains("division by zero"));
@@ -298,7 +304,7 @@ mod display_tests {
     fn scripted_event_diagnostic_display_includes_event_id() {
         let diagnostic = ScriptedEventDiagnostic {
             event_id: EventKey::new("low_loyalty"),
-            kind:     ScriptedEventDiagnosticKind::UnknownEventId,
+            kind: ScriptedEventDiagnosticKind::UnknownEventId,
         };
         let text = format!("{diagnostic}");
         assert!(text.contains("low_loyalty"));
@@ -309,7 +315,7 @@ mod display_tests {
     fn scripted_event_diagnostic_unresolved_target_display_includes_slot() {
         let diagnostic = ScriptedEventDiagnostic {
             event_id: EventKey::new("spawn_rebel"),
-            kind:     ScriptedEventDiagnosticKind::UnresolvedEffectTarget { slot: 7 },
+            kind: ScriptedEventDiagnosticKind::UnresolvedEffectTarget { slot: 7 },
         };
         let text = format!("{diagnostic}");
         assert!(text.contains("spawn_rebel"));

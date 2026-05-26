@@ -5,8 +5,8 @@ use simthing_core::{
 };
 use simthing_gpu::{
     build_governed_pairs, execute_ops_cpu, plan_transfer_ops, plan_velocity_integration,
-    set_debug_readback_allowed, AccumulatorInputListTable, AccumulatorPipelineSessions,
-    GpuContext, Pipelines, TransferInputRef, TransferPlanError, TransferRegistration, WorldGpuState,
+    set_debug_readback_allowed, AccumulatorInputListTable, AccumulatorPipelineSessions, GpuContext,
+    Pipelines, TransferInputRef, TransferPlanError, TransferRegistration, WorldGpuState,
 };
 
 fn try_gpu() -> Option<GpuContext> {
@@ -49,7 +49,10 @@ fn setup_transfer_state(n_slots: u32, per_slot: &[f32]) -> WorldGpuState {
     let reg = transfer_registry_with_columns(per_slot.len() as u32);
     assert_eq!(reg.total_columns as usize, per_slot.len());
     let state = WorldGpuState::new(GpuContext::new_blocking().expect("gpu"), &reg, n_slots);
-    assert_eq!(state.n_governed_pairs, 0, "transfer tests must not run legacy velocity");
+    assert_eq!(
+        state.n_governed_pairs, 0,
+        "transfer tests must not run legacy velocity"
+    );
     let mut flat = vec![0.0_f32; state.values_len()];
     for slot in 0..n_slots {
         let base = slot as usize * state.n_dims as usize;
@@ -104,9 +107,7 @@ fn c8c_input_list_table_upload_roundtrip() {
         unit_cost_bits: 2.0f32.to_bits(),
         flags: 0,
     };
-    let ranges = table
-        .upload_lists(&ctx, &[vec![entry]], 1)
-        .expect("upload");
+    let ranges = table.upload_lists(&ctx, &[vec![entry]], 1).expect("upload");
     assert_eq!(ranges.len(), 1);
     assert_eq!(table.upload_count, 1);
 }
@@ -171,7 +172,8 @@ fn c8c_single_source_transfer_conserves_exactly() {
         max_transfer: Some(3.0),
         tree_id: None,
     }];
-    state.sync_transfer_accumulator(&regs)
+    state
+        .sync_transfer_accumulator(&regs)
         .expect("C-8c transfer plan rejected: consumed input contention or invalid unit cost");
     let after = run_accumulator_transfer(&mut state, 1.0);
     assert_eq!(after[0].to_bits(), 7.0f32.to_bits());
@@ -211,7 +213,8 @@ fn c8c_conjunctive_transfer_min_across_inputs() {
         max_transfer: None,
         tree_id: None,
     }];
-    state.sync_transfer_accumulator(&regs)
+    state
+        .sync_transfer_accumulator(&regs)
         .expect("C-8c transfer plan rejected: consumed input contention or invalid unit cost");
     let after = run_accumulator_transfer(&mut state, 1.0);
     assert_eq!(after[0].to_bits(), 0.0f32.to_bits());
@@ -247,7 +250,8 @@ fn c8c_transfer_does_not_produce_negative_inputs() {
         max_transfer: None,
         tree_id: None,
     }];
-    state.sync_transfer_accumulator(&regs)
+    state
+        .sync_transfer_accumulator(&regs)
         .expect("C-8c transfer plan rejected: consumed input contention or invalid unit cost");
     let after = run_accumulator_transfer(&mut state, 1.0);
     assert!(after[0] >= 0.0);
@@ -282,7 +286,8 @@ fn c8c_transfer_1000_factories_3_channels_100_ticks_conserves_exactly() {
             tree_id: None,
         });
     }
-    state.sync_transfer_accumulator(&regs)
+    state
+        .sync_transfer_accumulator(&regs)
         .expect("C-8c transfer plan rejected: consumed input contention or invalid unit cost");
     let sum_before: f32 = state.read_values().iter().sum();
     for _ in 0..TICKS {
@@ -334,7 +339,8 @@ fn c8c_transfer_contention_same_target_conserves() {
             tree_id: None,
         },
     ];
-    state.sync_transfer_accumulator(&regs)
+    state
+        .sync_transfer_accumulator(&regs)
         .expect("C-8c transfer plan rejected: consumed input contention or invalid unit cost");
     let before_sum: f32 = state.read_values().iter().sum();
     let after = run_accumulator_transfer(&mut state, 1.0);
@@ -364,7 +370,8 @@ fn c8c_transfer_path_no_cpu_mediated_evaluation() {
         max_transfer: Some(1.0),
         tree_id: None,
     }];
-    state.sync_transfer_accumulator(&regs)
+    state
+        .sync_transfer_accumulator(&regs)
         .expect("C-8c transfer plan rejected: consumed input contention or invalid unit cost");
     assert!(state.accumulator_transfer_active);
     let _ = run_accumulator_transfer(&mut state, 1.0);
@@ -389,7 +396,8 @@ fn c8c_transfer_does_not_reupload_input_lists_per_tick() {
         max_transfer: Some(1.0),
         tree_id: None,
     }];
-    state.sync_transfer_accumulator(&regs)
+    state
+        .sync_transfer_accumulator(&regs)
         .expect("C-8c transfer plan rejected: consumed input contention or invalid unit cost");
     let uploads = state
         .accumulator_runtime
@@ -478,7 +486,8 @@ fn c8c_combined_c1_c2_c4_s4_c7_c8b_c8c_all_flags_on() {
         max_transfer: Some(1.0),
         tree_id: None,
     }];
-    state.sync_transfer_accumulator(&transfer_regs)
+    state
+        .sync_transfer_accumulator(&transfer_regs)
         .expect("C-8c transfer plan rejected: consumed input contention or invalid unit cost");
     let after = run_accumulator_transfer(&mut state, 1.0);
     assert_eq!(after[0].to_bits(), 9.0f32.to_bits());
@@ -688,9 +697,7 @@ fn c8c_rejects_single_source_output_scale_until_supported() {
     }];
     assert_eq!(
         plan_transfer_ops(&regs),
-        Err(TransferPlanError::UnsupportedSingleSourceOutputScale {
-            output_scale: 2.0
-        })
+        Err(TransferPlanError::UnsupportedSingleSourceOutputScale { output_scale: 2.0 })
     );
 }
 
@@ -727,9 +734,7 @@ fn c8c_input_list_empty_upload_after_nonempty_bumps_generation() {
         unit_cost_bits: 1.0f32.to_bits(),
         flags: 0,
     };
-    table
-        .upload_lists(&ctx, &[vec![entry]], 1)
-        .expect("upload");
+    table.upload_lists(&ctx, &[vec![entry]], 1).expect("upload");
     let gen = table.generation;
     table.upload_lists(&ctx, &[], 2).expect("clear");
     assert!(table.generation > gen);
@@ -739,8 +744,8 @@ fn c8c_input_list_empty_upload_after_nonempty_bumps_generation() {
 /// resources should not accidentally inherit governed Amount/Velocity clamping
 /// unless the model explicitly uses governed columns as transfer inputs.
 #[test]
-fn c8c_transfer_with_governed_property_requires_accumulator_velocity_or_unbounded_resource_columns(
-) {
+fn c8c_transfer_with_governed_property_requires_accumulator_velocity_or_unbounded_resource_columns()
+{
     let Some(_ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
         return;
@@ -749,7 +754,10 @@ fn c8c_transfer_with_governed_property_requires_accumulator_velocity_or_unbounde
     let mut reg = DimensionRegistry::new();
     reg.register(governed_amount_velocity_property(
         Some(10.0),
-        ClampBehavior::Bounded { min: 0.0, max: 100.0 },
+        ClampBehavior::Bounded {
+            min: 0.0,
+            max: 100.0,
+        },
     ));
     let n_dims = reg.total_columns as usize;
     let mut state = WorldGpuState::new(GpuContext::new_blocking().expect("gpu"), &reg, 1);

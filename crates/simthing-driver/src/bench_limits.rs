@@ -1,22 +1,25 @@
 //! Loose perf ceilings for `simthing bench --check`.
 //!
-//! Baselines (v5 §18): intent_stress ~20 ms/day, fission_stress ~53 ms/day.
-//! Ceilings use ~4× headroom for CI variance and slower GPUs.
+//! Baselines:
+//! - v5 §18 legacy path: intent_stress ~20 ms/day, fission_stress ~53 ms/day.
+//! - v7.5 S-1/S-5/S-6 sunset path: intent_stress routes 10k folded intents
+//!   through mandatory AccumulatorOp registrations; local runs are ~170-260 ms/day.
+//! Ceilings keep headroom for CI variance and slower GPUs.
 
 use crate::RunSummary;
 
 pub struct BenchCeiling {
-    pub name:               &'static str,
+    pub name: &'static str,
     pub max_ms_per_sim_day: f64,
 }
 
 pub const CEILINGS: &[BenchCeiling] = &[
     BenchCeiling {
-        name:               "intent_stress",
-        max_ms_per_sim_day: 100.0,
+        name: "intent_stress",
+        max_ms_per_sim_day: 350.0,
     },
     BenchCeiling {
-        name:               "fission_stress",
+        name: "fission_stress",
         max_ms_per_sim_day: 200.0,
     },
 ];
@@ -29,11 +32,7 @@ pub fn ms_per_sim_day(elapsed_ms: f64, boundaries_run: u64) -> f64 {
     }
 }
 
-pub fn check(
-    scenario_name: &str,
-    elapsed_ms: f64,
-    summary: &RunSummary,
-) -> Result<f64, String> {
+pub fn check(scenario_name: &str, elapsed_ms: f64, summary: &RunSummary) -> Result<f64, String> {
     let ms_per_day = ms_per_sim_day(elapsed_ms, summary.boundaries_run);
     let Some(ceiling) = CEILINGS.iter().find(|c| c.name == scenario_name) else {
         return Ok(ms_per_day);

@@ -23,17 +23,17 @@ pub enum SimThingKind {
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SimThing {
-    pub id:         SimThingId,
-    pub kind:       SimThingKind,
+    pub id: SimThingId,
+    pub kind: SimThingKind,
     /// Sparse map: only properties that are currently meaningful for this entity.
     /// Adding a new property dimension never changes this struct.
     /// Serialized as a list of pairs since JSON object keys must be strings.
     #[serde_as(as = "Vec<(_, _)>")]
     pub properties: HashMap<SimPropertyId, PropertyValue>,
     /// All overlays directly owned by this SimThing (policy, governance, instructions, etc.)
-    pub overlays:   Vec<Overlay>,
+    pub overlays: Vec<Overlay>,
     /// Physical spatial children (locations own cohorts; systems own locations; etc.)
-    pub children:   Vec<SimThing>,
+    pub children: Vec<SimThing>,
     /// Day this SimThing was created (set at spawn).
     pub spawned_day: u32,
 }
@@ -41,11 +41,11 @@ pub struct SimThing {
 impl SimThing {
     pub fn new(kind: SimThingKind, spawned_day: u32) -> Self {
         Self {
-            id:          SimThingId::new(),
+            id: SimThingId::new(),
             kind,
-            properties:  HashMap::new(),
-            overlays:    Vec::new(),
-            children:    Vec::new(),
+            properties: HashMap::new(),
+            overlays: Vec::new(),
+            children: Vec::new(),
             spawned_day,
         }
     }
@@ -76,7 +76,11 @@ impl SimThing {
 
     /// Total number of SimThings in this subtree (including self).
     pub fn subtree_size(&self) -> usize {
-        1 + self.children.iter().map(|c| c.subtree_size()).sum::<usize>()
+        1 + self
+            .children
+            .iter()
+            .map(|c| c.subtree_size())
+            .sum::<usize>()
     }
 }
 
@@ -88,14 +92,14 @@ impl SimThing {
 /// `"Faction"`, …). `Custom(name)` matches when `authored == name`.
 pub fn kind_matches(authored: &str, sim: &SimThingKind) -> bool {
     match sim {
-        SimThingKind::World      => authored == "World",
-        SimThingKind::Faction    => authored == "Faction",
+        SimThingKind::World => authored == "World",
+        SimThingKind::Faction => authored == "Faction",
         SimThingKind::StarSystem => authored == "StarSystem",
-        SimThingKind::Location   => authored == "Location",
-        SimThingKind::Cohort     => authored == "Cohort",
-        SimThingKind::Fleet      => authored == "Fleet",
-        SimThingKind::Station    => authored == "Station",
-        SimThingKind::Custom(s)  => s == authored,
+        SimThingKind::Location => authored == "Location",
+        SimThingKind::Cohort => authored == "Cohort",
+        SimThingKind::Fleet => authored == "Fleet",
+        SimThingKind::Station => authored == "Station",
+        SimThingKind::Custom(s) => s == authored,
     }
 }
 
@@ -106,7 +110,7 @@ mod tests {
     #[test]
     fn subtree_size() {
         let mut world = SimThing::new(SimThingKind::World, 0);
-        let mut loc   = SimThing::new(SimThingKind::Location, 0);
+        let mut loc = SimThing::new(SimThingKind::Location, 0);
         loc.add_child(SimThing::new(SimThingKind::Cohort, 0));
         loc.add_child(SimThing::new(SimThingKind::Cohort, 0));
         world.add_child(loc);

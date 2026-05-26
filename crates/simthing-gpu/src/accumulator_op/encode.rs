@@ -6,8 +6,7 @@ use simthing_core::{
 };
 
 use crate::world_state::{
-    IntentDelta, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
-    THRESH_BUF_VALUES,
+    IntentDelta, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_VALUES,
 };
 
 use super::bootstrap_validate::{validate_no_contention, BootstrapContention};
@@ -30,7 +29,9 @@ pub enum EncodeError {
     DuplicateIntentCell { slot: u32, col: u32 },
     #[error("EML tree {tree_id:?} is not uploaded to the GPU program table")]
     EmlTreeNotUploaded { tree_id: EmlTreeId },
-    #[error("EML formula {tree_id:?} execution class {class:?} is not production-admissible in C-8a")]
+    #[error(
+        "EML formula {tree_id:?} execution class {class:?} is not production-admissible in C-8a"
+    )]
     EmlExecutionClassNotAdmissible {
         tree_id: EmlTreeId,
         class: EmlExecutionClass,
@@ -62,8 +63,7 @@ impl AccumulatorOpGpu {
         validate_bootstrap_op(op)?;
 
         let (source_kind, source_slot, source_col, source_count) = encode_source(op)?;
-        let (combine_kind, combine_a, combine_b, combine_c, combine_d) =
-            encode_combine(op, eml)?;
+        let (combine_kind, combine_a, combine_b, combine_c, combine_d) = encode_combine(op, eml)?;
         let (gate_kind, gate_a, gate_b) = encode_gate(&op.gate)?;
         let (scale_kind, scale_a) = encode_scale(&op.scale)?;
         let consume = encode_consume(op.consume, &op.gate)?;
@@ -198,12 +198,9 @@ pub fn threshold_registrations_to_ops(
     let mut ops = Vec::with_capacity(regs.len());
     let mut event_kinds = Vec::with_capacity(regs.len());
     for r in regs {
-        if r.buffer == THRESH_BUF_OUTPUT {
-            return Err(EncodeError::Unsupported(
-                "THRESH_BUF_OUTPUT blocked until C-5/C-6 reduction migration",
-            ));
-        }
-        debug_assert_eq!(r.buffer, THRESH_BUF_VALUES);
+        debug_assert!(
+            r.buffer == THRESH_BUF_VALUES || r.buffer == crate::world_state::THRESH_BUF_OUTPUT
+        );
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
                 slot: r.slot,
@@ -443,6 +440,7 @@ fn other_name_gate(gate: &GateSpec) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world_state::THRESH_BUF_OUTPUT;
     use simthing_core::{CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
 
     #[test]
@@ -636,7 +634,7 @@ mod tests {
     }
 
     #[test]
-    fn c1_threshold_output_buffer_validator_rejects() {
+    fn c1_threshold_output_buffer_registrations_encode() {
         let regs = [ThresholdRegistration {
             slot: 0,
             col: 0,
@@ -645,9 +643,8 @@ mod tests {
             event_kind: 1,
             buffer: THRESH_BUF_OUTPUT,
         }];
-        assert!(matches!(
-            threshold_registrations_to_ops(&regs),
-            Err(EncodeError::Unsupported(_))
-        ));
+        let (ops, kinds) = threshold_registrations_to_ops(&regs).unwrap();
+        assert_eq!(ops.len(), 1);
+        assert_eq!(kinds, vec![1]);
     }
 }

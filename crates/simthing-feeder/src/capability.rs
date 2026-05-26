@@ -25,9 +25,9 @@ use simthing_core::{SimPropertyId, SimThingId, SubFieldRole};
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CapabilityUnlockRegistration {
     pub sim_thing_id: SimThingId,
-    pub property_id:  SimPropertyId,
-    pub sub_field:    SubFieldRole,
-    pub threshold:    f32,
+    pub property_id: SimPropertyId,
+    pub sub_field: SubFieldRole,
+    pub threshold: f32,
 }
 
 /// A fired capability unlock threshold, already resolved from
@@ -43,8 +43,8 @@ pub struct CapabilityUnlockRegistration {
 #[derive(Clone, Debug, PartialEq)]
 pub struct CapabilityUnlockEvent {
     pub sim_thing_id: SimThingId,
-    pub property_id:  SimPropertyId,
-    pub sub_field:    SubFieldRole,
+    pub property_id: SimPropertyId,
+    pub sub_field: SubFieldRole,
 }
 
 #[cfg(test)]
@@ -59,9 +59,9 @@ mod tests {
     fn capability_unlock_registration_in_feeder_is_public() {
         let _reg: CapabilityUnlockRegistration = CapabilityUnlockRegistration {
             sim_thing_id: SimThingId::new(),
-            property_id:  SimPropertyId(0),
-            sub_field:    SubFieldRole::Amount,
-            threshold:    1.0,
+            property_id: SimPropertyId(0),
+            sub_field: SubFieldRole::Amount,
+            threshold: 1.0,
         };
         // Also reachable via `simthing_feeder::CapabilityUnlockRegistration`
         // (the crate-root re-export):

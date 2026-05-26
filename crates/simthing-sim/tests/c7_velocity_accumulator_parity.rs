@@ -1,8 +1,6 @@
 //! C-7 velocity integration AccumulatorOp parity vs legacy Pass 1.
 
-use simthing_core::{
-    ClampBehavior, DimensionRegistry, SimProperty, SubFieldRole,
-};
+use simthing_core::{ClampBehavior, DimensionRegistry, SimProperty, SubFieldRole};
 use simthing_gpu::{
     build_governed_pairs, plan_velocity_integration, GpuContext, Pipelines, WorldGpuState,
 };
@@ -35,11 +33,7 @@ fn governed_amount_velocity_property(vel_max: Option<f32>, clamp: ClampBehavior)
     p
 }
 
-fn setup_velocity_state(
-    reg: &DimensionRegistry,
-    n_slots: u32,
-    initial: &[f32],
-) -> WorldGpuState {
+fn setup_velocity_state(reg: &DimensionRegistry, n_slots: u32, initial: &[f32]) -> WorldGpuState {
     let mut state = WorldGpuState::new(GpuContext::new_blocking().expect("gpu"), reg, n_slots);
     let n_dims = state.n_dims as usize;
     let mut flat = vec![0.0_f32; state.values_len()];
@@ -97,7 +91,10 @@ fn c7_velocity_basic_legacy_vs_accumulator_bit_exact() {
     let mut reg = DimensionRegistry::new();
     reg.register(governed_amount_velocity_property(
         Some(10.0),
-        ClampBehavior::Bounded { min: 0.0, max: 100.0 },
+        ClampBehavior::Bounded {
+            min: 0.0,
+            max: 100.0,
+        },
     ));
     let n_dims = reg.total_columns;
     let mut row = vec![0.0_f32; n_dims];
@@ -125,7 +122,10 @@ fn c7_velocity_vel_max_boundary_bit_exact() {
     let mut reg = DimensionRegistry::new();
     reg.register(governed_amount_velocity_property(
         Some(vel_max),
-        ClampBehavior::Bounded { min: 0.0, max: 100.0 },
+        ClampBehavior::Bounded {
+            min: 0.0,
+            max: 100.0,
+        },
     ));
     let n_dims = reg.total_columns;
 

@@ -14,11 +14,8 @@ pub use crate::eml_nodes::{opcode as eml_opcode, EmlNode as EmlNodeGpu};
 pub const MAX_EML_TREE_NODES: u32 = 32;
 
 /// Formula classes admitted under the C-8 `ExactDeterministic` baseline policy.
-pub const WHITELISTED_FORMULA_CLASSES: &[&str] = &[
-    "intensity_update",
-    "emission_formula",
-    "conversion_rate",
-];
+pub const WHITELISTED_FORMULA_CLASSES: &[&str] =
+    &["intensity_update", "emission_formula", "conversion_rate"];
 
 /// Stable identifier for a registered EML expression tree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -213,7 +210,11 @@ impl EmlExpressionRegistry {
     }
 
     /// A-3 compatibility shim — maps legacy metadata to C-8 and registers empty nodes.
-    pub fn register(&mut self, tree_id: EmlTreeId, meta: EmlTreeMeta) -> Result<(), EmlRegistryError> {
+    pub fn register(
+        &mut self,
+        tree_id: EmlTreeId,
+        meta: EmlTreeMeta,
+    ) -> Result<(), EmlRegistryError> {
         meta.validate_for_whitelist()?;
         let mut formula = EmlFormulaMeta::from(meta);
         formula.tree_id = tree_id;
@@ -409,10 +410,7 @@ impl EmlExpressionRegistry {
             .ok_or(EmlRegistryError::NotRegistered(tree_id))?;
         let class = entry.meta.execution_class;
         if !entry.meta.allowed_consumers.contains_kind(consumer) {
-            return Err(EmlRegistryError::ClassNotAdmissibleForConsumer {
-                class,
-                consumer,
-            });
+            return Err(EmlRegistryError::ClassNotAdmissibleForConsumer { class, consumer });
         }
         match consumer {
             EmlConsumerKind::DebugOracle => return Ok(()),
@@ -476,9 +474,7 @@ impl EmlExpressionRegistry {
     }
 
     pub fn tree_range_index(&self, tree_id: EmlTreeId) -> Option<u32> {
-        self.formulas
-            .get(&tree_id)
-            .and_then(|f| f.range_index)
+        self.formulas.get(&tree_id).and_then(|f| f.range_index)
     }
 
     pub fn mark_tree_uploaded(
@@ -548,7 +544,10 @@ fn validate_stack_depth(nodes: &[EmlNode]) -> Result<u32, EmlRegistryError> {
             | eml_nodes::opcode::PARAM => {
                 sp += 1;
             }
-            eml_nodes::opcode::NEG | eml_nodes::opcode::CLAMP_BOUNDED | eml_nodes::opcode::CLAMP_FLOORED | eml_nodes::opcode::ABS => {}
+            eml_nodes::opcode::NEG
+            | eml_nodes::opcode::CLAMP_BOUNDED
+            | eml_nodes::opcode::CLAMP_FLOORED
+            | eml_nodes::opcode::ABS => {}
             eml_nodes::opcode::ADD
             | eml_nodes::opcode::SUB
             | eml_nodes::opcode::MUL
@@ -696,7 +695,9 @@ pub enum EmlRegistryError {
     },
     #[error("EML formula {tree_id:?} has not been uploaded to a session yet")]
     TreeNotUploaded { tree_id: EmlTreeId },
-    #[error("EML formula registration would exceed node budget (requested {requested}, max {max})")]
+    #[error(
+        "EML formula registration would exceed node budget (requested {requested}, max {max})"
+    )]
     NodeBudgetExceeded { requested: u32, max: u32 },
     #[error("EML stack depth {depth} exceeds maximum {max}")]
     StackDepthExceeded { depth: u32, max: u32 },
@@ -753,11 +754,14 @@ mod tests {
         for (idx, class) in WHITELISTED_FORMULA_CLASSES.iter().enumerate() {
             let id = EmlTreeId(idx as u32 + 1);
             registry
-                .register(id, EmlTreeMeta {
-                    node_count: 1,
-                    has_transcendental: false,
-                    formula_class: class.to_string(),
-                })
+                .register(
+                    id,
+                    EmlTreeMeta {
+                        node_count: 1,
+                        has_transcendental: false,
+                        formula_class: class.to_string(),
+                    },
+                )
                 .unwrap_or_else(|e| panic!("register {class}: {e}"));
             assert!(registry.assert_whitelisted(id).is_ok());
         }
@@ -788,14 +792,22 @@ mod tests {
         meta.allowed_consumers =
             EmlConsumerMask(EmlConsumerMask::SOFT_THRESHOLD | EmlConsumerMask::DEBUG_ORACLE);
         registry
-            .register_formula(id, meta, vec![literal(1.0), literal(2.0), EmlNode {
-                opcode: eml_nodes::opcode::ADD,
-                flags: 0,
-                a: 0,
-                b: 0,
-                c: 0,
-                d: 0,
-            }])
+            .register_formula(
+                id,
+                meta,
+                vec![
+                    literal(1.0),
+                    literal(2.0),
+                    EmlNode {
+                        opcode: eml_nodes::opcode::ADD,
+                        flags: 0,
+                        a: 0,
+                        b: 0,
+                        c: 0,
+                        d: 0,
+                    },
+                ],
+            )
             .unwrap();
         assert!(registry
             .assert_consumer_admissible(id, EmlConsumerKind::TransferConservation)
@@ -864,14 +876,22 @@ mod tests {
         meta.allowed_consumers =
             EmlConsumerMask(EmlConsumerMask::HARD_THRESHOLD | EmlConsumerMask::DEBUG_ORACLE);
         registry
-            .register_formula(id, meta, vec![literal(1.0), literal(2.0), EmlNode {
-                opcode: eml_nodes::opcode::ADD,
-                flags: 0,
-                a: 0,
-                b: 0,
-                c: 0,
-                d: 0,
-            }])
+            .register_formula(
+                id,
+                meta,
+                vec![
+                    literal(1.0),
+                    literal(2.0),
+                    EmlNode {
+                        opcode: eml_nodes::opcode::ADD,
+                        flags: 0,
+                        a: 0,
+                        b: 0,
+                        c: 0,
+                        d: 0,
+                    },
+                ],
+            )
             .unwrap();
         assert!(registry
             .assert_consumer_admissible(id, EmlConsumerKind::HardThreshold)
@@ -962,14 +982,17 @@ mod tests {
         let mut registry = EmlExpressionRegistry::new();
         let id = EmlTreeId(7);
         let meta = exact_meta(7, "intensity");
-        let nodes = vec![literal(1.0), EmlNode {
-            opcode: eml_nodes::opcode::RETURN_TOP,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        }];
+        let nodes = vec![
+            literal(1.0),
+            EmlNode {
+                opcode: eml_nodes::opcode::RETURN_TOP,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+        ];
         registry
             .replace_formula(id, meta.clone(), nodes.clone())
             .unwrap();
@@ -985,14 +1008,17 @@ mod tests {
         let mut registry = EmlExpressionRegistry::new();
         let id = EmlTreeId(8);
         let meta = exact_meta(8, "intensity");
-        let nodes = vec![literal(1.0), EmlNode {
-            opcode: eml_nodes::opcode::RETURN_TOP,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        }];
+        let nodes = vec![
+            literal(1.0),
+            EmlNode {
+                opcode: eml_nodes::opcode::RETURN_TOP,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+        ];
         registry
             .replace_formula(id, meta.clone(), nodes.clone())
             .unwrap();

@@ -9,11 +9,11 @@ pub enum EffectSpec {
         target: ScopeRef,
     },
     ActivateOverlay {
-        target:     ScopeRef,
+        target: ScopeRef,
         overlay_id: OverlayId,
     },
     SuspendOverlay {
-        target:     ScopeRef,
+        target: ScopeRef,
         overlay_id: OverlayId,
     },
 }
