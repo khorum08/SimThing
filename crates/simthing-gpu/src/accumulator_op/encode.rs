@@ -193,6 +193,11 @@ fn intent_delta_to_gpu(delta: &IntentDelta) -> AccumulatorOpGpu {
 }
 
 /// Convert E-1 builder registrations into GPU threshold registrations.
+///
+/// Canonical bridge for both [`EmitOnThresholdBuffer::Values`] and
+/// [`EmitOnThresholdBuffer::Output`]. Upload the result via
+/// `AccumulatorOpSession::upload_threshold_ops` so `ThresholdRegistration.buffer`
+/// is written into `AccumulatorOpGpu.source_count`.
 pub fn emit_on_threshold_registrations_to_gpu(
     regs: &[EmitOnThresholdRegistration],
 ) -> Vec<ThresholdRegistration> {
@@ -211,10 +216,22 @@ pub fn emit_on_threshold_registrations_to_gpu(
         .collect()
 }
 
-/// Compile E-1 registrations through the canonical C-1 threshold path.
+/// Compile E-1 Values-buffer registrations into plain AccumulatorOps.
+///
+/// Plain [`AccumulatorOp`] values do not encode the threshold buffer selector.
+/// Output-buffer registrations must use [`emit_on_threshold_registrations_to_gpu`]
+/// and `upload_threshold_ops` instead.
 pub fn emit_on_threshold_registrations_to_ops(
     regs: &[EmitOnThresholdRegistration],
 ) -> Result<(Vec<AccumulatorOp>, Vec<u32>), EncodeError> {
+    if regs
+        .iter()
+        .any(|r| r.buffer == EmitOnThresholdBuffer::Output)
+    {
+        return Err(EncodeError::Unsupported(
+            "EmitOnThreshold Output-buffer registrations must be uploaded through ThresholdRegistration / upload_threshold_ops so source_count preserves THRESH_BUF_OUTPUT",
+        ));
+    }
     let gpu_regs = emit_on_threshold_registrations_to_gpu(regs);
     threshold_registrations_to_ops(&gpu_regs)
 }

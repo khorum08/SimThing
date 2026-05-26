@@ -10,6 +10,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — E-1 remedial: buffer semantics + status cleanup
+
+- `emit_on_threshold_registrations_to_ops` now rejects `EmitOnThresholdBuffer::Output` registrations (plain `AccumulatorOp` cannot carry buffer selector).
+- `emit_on_threshold_registrations_to_gpu` remains the canonical bridge for Values and Output; `upload_threshold_ops` preserves buffer via `AccumulatorOpGpu.source_count`.
+- Added Output-buffer bridge and rejection tests in `e1_emit_on_threshold_builder.rs`.
+- Marked E-1 as Done (#144) in active docs.
+
+**Verification:** E-1 + C-1/C-8d/S-6 regressions; `cargo test --workspace`.
+
+---
+
 ## 2026-05-26 — E-1 EmitOnThreshold builder
 
 - Added first-class threshold-emission builder in `simthing-core` (`AccumulatorOpBuilder::emit_on_threshold`, `EmitOnThresholdRegistration`, `rebuild_emit_on_threshold_ops`).

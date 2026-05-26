@@ -831,8 +831,10 @@ AccumulatorOp primitive expressed through the spec session model.
 
 ### PR E-1 — `EmitOnThreshold` as a first-class AccumulatorOp registration builder
 
-**Status:** **Landed** — first-class `emit_on_threshold(...)` builder in `simthing-core`;
+**Status:** **Landed** (#144) — first-class `emit_on_threshold(...)` builder in `simthing-core`;
 re-registration helpers compile to existing C-1/C-8d threshold+EmitEvent registrations.
+Output-buffer registrations must use `emit_on_threshold_registrations_to_gpu` /
+`upload_threshold_ops` (plain `AccumulatorOp` does not carry buffer selector).
 No new GPU primitive.
 
 **Model:** Composer 2.5  

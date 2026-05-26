@@ -10,6 +10,11 @@ use crate::{
 };
 
 /// Which GPU buffer a threshold registration observes for crossing detection.
+///
+/// The buffer selector is preserved by the GPU bridge
+/// (`emit_on_threshold_registrations_to_gpu`) and by `upload_threshold_ops`,
+/// which writes it into `AccumulatorOpGpu.source_count`. Plain [`AccumulatorOp`]
+/// values do not carry this selector.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EmitOnThresholdBuffer {
     /// `values` / `previous_values` (default C-1 path).
@@ -73,11 +78,19 @@ pub fn emit_on_threshold(
 }
 
 /// Compile one registration into its AccumulatorOp shape.
+///
+/// Only the threshold gate fields are represented; [`EmitOnThresholdBuffer`] is
+/// not encoded. For `Output`, use `emit_on_threshold_registrations_to_gpu` and
+/// `AccumulatorOpSession::upload_threshold_ops`.
 pub fn emit_on_threshold_registration_to_op(reg: &EmitOnThresholdRegistration) -> AccumulatorOp {
     AccumulatorOpBuilder::emit_on_threshold(reg.slot, reg.col, reg.threshold, reg.direction)
 }
 
-/// Session-open / boundary refresh: compile all active threshold-emission registrations.
+/// Session-open / boundary refresh: compile Values-buffer threshold-emission registrations.
+///
+/// Plain [`AccumulatorOp`] values do not encode the buffer selector. Registrations
+/// with [`EmitOnThresholdBuffer::Output`] must be uploaded through
+/// `emit_on_threshold_registrations_to_gpu` and `upload_threshold_ops`.
 pub fn rebuild_emit_on_threshold_ops(regs: &[EmitOnThresholdRegistration]) -> Vec<AccumulatorOp> {
     regs.iter()
         .map(emit_on_threshold_registration_to_op)
