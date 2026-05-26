@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-26  
-**Master HEAD:** E-1 EmitOnThreshold builder (pending merge); post-sunset cleanup (#143); S-6/S-5/S-1 sequence (`6b9bf8f`)
+**Master HEAD:** E-1 EmitOnThreshold builder merged (#144, `736f982`); post-sunset cleanup (#143); S-6/S-5/S-1 sequence (`6b9bf8f`)
 **Verification (last recorded):** `cargo test --workspace` green after S-6/S-5/S-1; focused sunset and C-1/C-2/C-7/C-8 regressions green
 
 ---
@@ -70,7 +70,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **S-6** | `6b9bf8f` | Legacy `threshold_scan.wgsl` + Pass 7 pipeline deleted; AccumulatorOp threshold mandatory for registered thresholds |
 | **S-5** | `6b9bf8f` | Legacy `velocity_integration.wgsl` + Pass 1 pipeline deleted; AccumulatorOp velocity mandatory for governed pairs |
 | **S-1** | `6b9bf8f` | Legacy `intent_delta.wgsl` + intent pipeline deleted; AccumulatorOp intent mandatory for pending intents |
-| **E-1** | (pending) | `emit_on_threshold` builder in `simthing-core`; compiles to C-1 threshold+EmitEvent ops; re-registration helpers |
+| **E-1** | #144 | `emit_on_threshold` builder in `simthing-core`; compiles to C-1 threshold+EmitEvent ops; re-registration helpers |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
