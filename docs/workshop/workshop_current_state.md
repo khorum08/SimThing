@@ -21,7 +21,7 @@ Two parallel tracks:
 **Production direction:** AccumulatorOp v2 is the GPU execution path.
 Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Legacy threshold is deleted (S-6). Legacy velocity is deleted (S-5). Legacy intent is deleted (S-1). Snapshot is the only retained non-Accumulator operation.
 
-**Next gates:** **E-7** governed_by planner · D-1 discrete-transaction contention memo · Resource Flow E-8/E-9 ladder when scheduled. **E-2B** `resource_flow_participant` remains blocked on E-8/E-9. **E-11** hierarchical allocation is a later reviewed Resource Flow gate.
+**Next gates:** **E-8** `accumulator_spec` · Opus production transfer/emission registration ownership · D-1 discrete-transaction contention memo · Resource Flow E-9/E-10 ladder when scheduled. **E-2B** `resource_flow_participant` remains blocked on E-8/E-9. **E-11** hierarchical allocation is a later reviewed Resource Flow gate.
 
 **Open design gates (not sunset):** production transfer/emission registration ownership (substrate landed; spec/builder integration pending); **D-1** discrete-transaction contention memo (continuous-flow hot-pool allocator scope dissolved by Resource Flow ADR; C-8c still rejects same-band consumed-input contention); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
 
@@ -74,6 +74,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-2A** | #146 | `resource_transfer_discrete` builder; exact SubtractFromSource discrete transfer |
 | **E-3** | #147 | `conjunctive_recipe` builder; lifted CPU N≤4 cap; C-8c MinAcrossInputs + SubtractFromAllInputs |
 | **E-3R** | #148 | `throttle_hint_max_per_tick` metadata hardening; E-4 must not treat as GPU cap |
+| **E-7** | — | `governed_by` planner generalization; arbitrary `(Named, Named)` pairs via `IntegrateWithClamp` |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

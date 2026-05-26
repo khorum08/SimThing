@@ -10,6 +10,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — E-7 governed_by planner generalization
+
+- Extracted `governed_pairs_for_property` for role-agnostic E-7 discovery; `build_governed_pairs` delegates per property.
+- Added `plan_governed_integration` alias; C-7 `IntegrateWithClamp` kernel unchanged — operates on column offsets only.
+- Named `(balance, flow)` pair integrates bit-exact vs CPU oracle; Amount/Velocity path unchanged.
+- Missing governing role skipped consistently (planner + CPU oracle); invalid links remain `simthing-spec` hard errors.
+- Tests: `e7_governed_by_planner_generalization`; C-7 regressions green.
+
+**Verification:** E-7 + C-7 tests; `cargo test --workspace`.
+
+---
+
 ## 2026-05-26 — E-3R conjunctive recipe throttle semantics hardening (#148)
 
 - Renamed `max_per_tick` → `throttle_hint_max_per_tick` on `ConjunctiveRecipeRegistration` and builder API; documented as registration metadata only.

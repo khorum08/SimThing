@@ -1,6 +1,8 @@
-//! C-7 velocity integration → AccumulatorOp planner.
+//! C-7 / E-7 governed integration → AccumulatorOp planner.
 //!
 //! Encodes property-level [`GovernedPair`] metadata into per-(slot, pair) GPU ops.
+//! E-7 generalizes beyond `(Amount, Velocity)` to arbitrary `(Named, Named)` pairs
+//! such as `(balance, flow)` using the same `IntegrateWithClamp` kernel branch.
 //! `dt` is supplied at dispatch via [`crate::AccumulatorTickParams::dt_bits`], not
 //! baked into uploaded ops.
 
@@ -15,9 +17,20 @@ pub struct VelocityAccumulatorPlan {
     pub n_bands: u32,
 }
 
+/// E-7 alias: plan governed integration for arbitrary `governed_by` pairs.
+pub type GovernedIntegrationPlan = VelocityAccumulatorPlan;
+
 /// Build one AccumulatorOp per `(slot, governed pair)` matching legacy Pass 1
 /// dispatch topology (`n_slots * n_pairs` threads).
 pub fn plan_velocity_integration(pairs: &[GovernedPair], n_slots: u32) -> VelocityAccumulatorPlan {
+    plan_governed_integration(pairs, n_slots)
+}
+
+/// E-7: compile arbitrary `governed_by` pairs to `IntegrateWithClamp` ops.
+pub fn plan_governed_integration(
+    pairs: &[GovernedPair],
+    n_slots: u32,
+) -> GovernedIntegrationPlan {
     let mut ops = Vec::with_capacity(pairs.len() * n_slots as usize);
     for slot in 0..n_slots {
         for pair in pairs {
@@ -25,7 +38,7 @@ pub fn plan_velocity_integration(pairs: &[GovernedPair], n_slots: u32) -> Veloci
         }
     }
     let n_bands = if ops.is_empty() { 0 } else { 1 };
-    VelocityAccumulatorPlan { ops, n_bands }
+    GovernedIntegrationPlan { ops, n_bands }
 }
 
 fn pair_to_gpu_op(slot: u32, pair: &GovernedPair) -> AccumulatorOpGpu {
@@ -99,7 +112,27 @@ mod tests {
             vel_max: f32::INFINITY,
             clamp_kind: CLAMP_FLOORED,
         }];
-        let plan = plan_velocity_integration(&pairs, 1);
+        let plan = plan_governed_integration(&pairs, 1);
         assert_eq!(plan.ops[0].combine_d, CLAMP_FLOORED);
+    }
+
+    #[test]
+    fn plan_governed_integration_emits_integrate_with_clamp_for_named_pair() {
+        let pairs = vec![GovernedPair {
+            governed_col: 11,
+            governing_col: 10,
+            clamp_min: 0.0,
+            clamp_max: 1000.0,
+            vel_max: 5.0,
+            clamp_kind: CLAMP_BOUNDED,
+        }];
+        let plan = plan_governed_integration(&pairs, 2);
+        assert_eq!(plan.ops.len(), 2);
+        let op = &plan.ops[0];
+        assert_eq!(op.combine_kind, combine_kind::INTEGRATE_CLAMP);
+        assert_eq!(op.target0_col, 11);
+        assert_eq!(op.target1_col, 10);
+        assert_eq!(op.n_targets, 2);
+        assert_eq!(op.consume, consume_kind::NONE);
     }
 }

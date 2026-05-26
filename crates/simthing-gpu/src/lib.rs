@@ -63,9 +63,12 @@ pub use transfer_accumulator::{
     encode_transfer_plan, plan_transfer_ops, TransferInputRef, TransferPlan, TransferPlanError,
     TransferRegistration, TransferSyncError,
 };
-pub use velocity_accumulator::{plan_velocity_integration, VelocityAccumulatorPlan};
+pub use velocity_accumulator::{
+    plan_governed_integration, plan_velocity_integration, GovernedIntegrationPlan,
+    VelocityAccumulatorPlan,
+};
 pub use world_state::{
-    build_governed_pairs, encode_rule, GovernedPair, IntentDelta, OverlayDelta, SlotDeltaRange,
+    build_governed_pairs, encode_rule, governed_pairs_for_property, GovernedPair, IntentDelta, OverlayDelta, SlotDeltaRange,
     ThresholdEvent, ThresholdRegistration, WorldGpuState, CLAMP_BOUNDED, CLAMP_FLOORED,
     CLAMP_UNBOUNDED, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, OP_ADD, OP_MULTIPLY, OP_SET, RULE_FIRST,
     RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM, RULE_WEIGHTED_MEAN, THRESH_BUF_OUTPUT,
