@@ -10,6 +10,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — E-9R participant_range contiguity hardening
+
+- Canonicalize `ArenaRegistry::participants` to arena-major order at build time (E-9R).
+- Each `GpuArenaDescriptor::participant_range` is now a valid contiguous slice after interleaved admissions.
+- Stable within-arena admission order preserved; subtree refresh unchanged.
+
+**Verification:** E-9R + `arena_registry` tests; `cargo test --workspace`.
+
+---
+
 ## 2026-05-26 — E-9 ArenaRegistry driver session artifact (#151)
 
 - Added `ArenaRegistry`, `GpuArenaDescriptor`, `ArenaCoupling`, `CouplingDelay`, `FissionPolicy` in `simthing-driver`.
