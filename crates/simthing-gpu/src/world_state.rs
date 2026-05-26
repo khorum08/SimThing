@@ -12,7 +12,7 @@
 //! Threshold registry / event_candidates buffers are deferred to Pass 7 work.
 
 use bytemuck::{Pod, Zeroable};
-use simthing_core::{ClampBehavior, DimensionRegistry, SimPropertyId};
+use simthing_core::{ClampBehavior, DimensionRegistry, PropertyColumnRange, PropertyLayout, SimPropertyId};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Maintain, MapMode};
 
 use crate::accumulator_op::DEFAULT_THRESHOLD_EMISSION_CAPACITY;
@@ -45,10 +45,43 @@ impl GovernedPair {
     }
 }
 
-/// Walk every active property in the registry and emit one GovernedPair per
-/// sub-field whose `governed_by` is `Some`. Matches the CPU oracle in
-/// `PropertyValue::integrate` — one pair per sub-field, indexed at the first
-/// float of each (governed sub-fields are scalar in practice).
+/// Emit one [`GovernedPair`] per sub-field with `governed_by: Some(_)` in `layout`.
+///
+/// E-7: role-agnostic discovery — supports `(Amount, Velocity)`, `(Named("balance"),
+/// Named("flow"))`, and any other declared pair. Skips entries whose governing role
+/// is absent from the layout (matches CPU `PropertyValue::integrate`). Invalid
+/// `governed_by` links are hard errors at the `simthing-spec` compile layer.
+pub fn governed_pairs_for_property(
+    range: &PropertyColumnRange,
+    layout: &PropertyLayout,
+) -> Vec<GovernedPair> {
+    let mut pairs = Vec::new();
+    for sf in &layout.sub_fields {
+        let Some(gov_role) = &sf.governed_by else {
+            continue;
+        };
+        let Some(governed_col) = range.col_for_role(&sf.role, layout) else {
+            continue;
+        };
+        let Some(governing_col) = range.col_for_role(gov_role, layout) else {
+            continue;
+        };
+        let (clamp_kind, clamp_min, clamp_max) = GovernedPair::encode_clamp(&sf.clamp);
+        let vel_max = sf.velocity_max.unwrap_or(f32::INFINITY);
+        pairs.push(GovernedPair {
+            governed_col: governed_col as u32,
+            governing_col: governing_col as u32,
+            clamp_min,
+            clamp_max,
+            vel_max,
+            clamp_kind,
+        });
+    }
+    pairs
+}
+
+/// Walk every active property in the registry and emit one [`GovernedPair`] per
+/// governed sub-field. Matches the CPU oracle in `PropertyValue::integrate`.
 pub fn build_governed_pairs(registry: &DimensionRegistry) -> Vec<GovernedPair> {
     let mut pairs = Vec::new();
     for (idx, prop) in registry.properties.iter().enumerate() {
@@ -56,29 +89,10 @@ pub fn build_governed_pairs(registry: &DimensionRegistry) -> Vec<GovernedPair> {
         if !registry.is_active(id) {
             continue;
         }
-        let range = registry.column_range(id);
-        let layout = &prop.layout;
-        for sf in &layout.sub_fields {
-            let Some(gov_role) = &sf.governed_by else {
-                continue;
-            };
-            let Some(governed_col) = range.col_for_role(&sf.role, layout) else {
-                continue;
-            };
-            let Some(governing_col) = range.col_for_role(gov_role, layout) else {
-                continue;
-            };
-            let (clamp_kind, clamp_min, clamp_max) = GovernedPair::encode_clamp(&sf.clamp);
-            let vel_max = sf.velocity_max.unwrap_or(f32::INFINITY);
-            pairs.push(GovernedPair {
-                governed_col: governed_col as u32,
-                governing_col: governing_col as u32,
-                clamp_min,
-                clamp_max,
-                vel_max,
-                clamp_kind,
-            });
-        }
+        pairs.extend(governed_pairs_for_property(
+            &registry.column_range(id),
+            &prop.layout,
+        ));
     }
     pairs
 }
@@ -1545,7 +1559,7 @@ fn transfer_registrations_generation(regs: &[crate::TransferRegistration]) -> u6
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simthing_core::{DimensionRegistry, IntensityBehavior, SimProperty};
+    use simthing_core::{ClampBehavior, DimensionRegistry, IntensityBehavior, PropertyLayout, SimProperty, SubFieldRole, SubFieldSpec};
 
     fn try_gpu() -> Option<GpuContext> {
         GpuContext::new_blocking().ok()
@@ -1555,6 +1569,67 @@ mod tests {
         let mut p = SimProperty::simple("core", name, 0);
         p.intensity_behavior = Some(IntensityBehavior::default());
         p
+    }
+
+    #[test]
+    fn governed_pairs_named_balance_flow() {
+        let layout = PropertyLayout {
+            sub_fields: vec![
+                SubFieldSpec {
+                    role: SubFieldRole::Named("flow".into()),
+                    width: 1,
+                    clamp: ClampBehavior::Unbounded,
+                    velocity_max: None,
+                    default: 0.0,
+                    display_name: "flow".into(),
+                    display_range: None,
+                    governed_by: None,
+                    reduction_override: None,
+                    soft_aggregate_guard: None,
+                },
+                SubFieldSpec {
+                    role: SubFieldRole::Named("balance".into()),
+                    width: 1,
+                    clamp: ClampBehavior::Bounded {
+                        min: 0.0,
+                        max: 1000.0,
+                    },
+                    velocity_max: Some(5.0),
+                    default: 0.0,
+                    display_name: "balance".into(),
+                    display_range: None,
+                    governed_by: Some(SubFieldRole::Named("flow".into())),
+                    reduction_override: None,
+                    soft_aggregate_guard: None,
+                },
+            ],
+        };
+        let range = PropertyColumnRange { start: 10, stride: 2 };
+        let pairs = governed_pairs_for_property(&range, &layout);
+        assert_eq!(pairs.len(), 1);
+        assert_eq!(pairs[0].governed_col, 11);
+        assert_eq!(pairs[0].governing_col, 10);
+        assert_eq!(pairs[0].vel_max, 5.0);
+    }
+
+    #[test]
+    fn governed_pairs_skip_missing_governing_role() {
+        let layout = PropertyLayout {
+            sub_fields: vec![SubFieldSpec {
+                role: SubFieldRole::Named("balance".into()),
+                width: 1,
+                clamp: ClampBehavior::Unbounded,
+                velocity_max: None,
+                default: 0.0,
+                display_name: "balance".into(),
+                display_range: None,
+                governed_by: Some(SubFieldRole::Named("flow".into())),
+                reduction_override: None,
+                soft_aggregate_guard: None,
+            }],
+        };
+        let range = PropertyColumnRange { start: 0, stride: 1 };
+        assert!(governed_pairs_for_property(&range, &layout).is_empty());
     }
 
     #[test]

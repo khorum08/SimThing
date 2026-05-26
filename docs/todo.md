@@ -103,10 +103,11 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-2A** | #146 | — | **Done** — `resource_transfer_discrete` exact discrete transfer builder |
 | **E-3** | #147 | — | **Done** — `conjunctive_recipe` builder + N-input cap lift |
 | **E-3R** | #148 | — | **Done** — throttle hint metadata hardening before E-4 |
+| **E-7** | — | — | **Done** — `governed_by` planner generalization to arbitrary Named pairs |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **E-7** — `governed_by` planner generalization
+1. **E-8** — `accumulator_spec` on `SubFieldSpec`
 2. **Opus** — production transfer/emission registration ownership
 3. **D-1** — discrete-transaction contention memo (D-2 deferred unless memo revives narrower GPU allocator need)
 
@@ -117,9 +118,9 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-1 memo evaluates discrete boundary transactions only.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
-**Next (immediate):** E-7 per production plan.
+**Next (immediate):** E-8 per Resource Flow substrate path (or Opus transfer/emission ownership).
 
-**Next (non-Opus implementation):** E-7 — not E-11 directly.
+**Next (non-Opus implementation):** E-8 — not E-11 directly.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

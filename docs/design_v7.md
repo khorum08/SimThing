@@ -263,11 +263,13 @@ pub struct PipelineFlags {
 - `encoder.copy_buffer_to_buffer(values_buffer, previous_values_buffer)`
 - No kernel dispatch. Hardware DMA. Not subject to migration.
 
-**Pass 1 — Velocity integration (S-5 complete)**
+**Pass 1 — Governed integration (C-7 + E-7)**
 - **Production:** AccumulatorOp `IntegrateWithClamp` at legacy Pass 1 position (after snapshot).
   One op per `(slot, governed pair)`; `dt` supplied via `AccumulatorTickParams.dt_bits`.
-  Multi-target write: amount integrate + optional velocity pinning at floor/ceiling
-  (matches legacy `velocity_integration.wgsl` semantics exactly).
+  Multi-target write: governed column integrate + optional governing-rate pinning at floor/ceiling.
+- **E-7 landed:** planner discovery is role-agnostic — `(Amount, Velocity)`,
+  `(Named("balance"), Named("flow"))`, and any other `governed_by` pair compile to the
+  same `IntegrateWithClamp` op shape. WGSL operates on column offsets only.
 - **S-5:** legacy `velocity_integration.wgsl` and velocity pipeline deleted. Disabling
   accumulator velocity while governed pairs exist rejects the workload.
 - `GovernedPair` metadata compiled to persistent ops at boundary sync.
