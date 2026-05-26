@@ -19,6 +19,7 @@ use simthing_spec::{
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
+use crate::resource_flow_compile::compile_and_materialize_resource_flow;
 use crate::scenario::Scenario;
 use crate::spec_session::SpecSessionState;
 
@@ -77,6 +78,13 @@ pub fn compile_and_install(
     }
     for prop_spec in &game_mode.properties {
         compile_property(prop_spec, registry)?;
+    }
+
+    // ── 1b. Resource Flow admission (E-10): validate metadata and build registry.
+    if let Some(resource_flow) = &game_mode.resource_flow {
+        let (arena_registry, _report) =
+            compile_and_materialize_resource_flow(resource_flow, registry)?;
+        state.arena_registry = arena_registry;
     }
 
     // Global overlays from the game mode envelope are deferred per the ADR
@@ -662,6 +670,7 @@ mod tests {
                 }],
             }],
             events: Vec::new(),
+            resource_flow: None,
         }
     }
 
@@ -692,6 +701,7 @@ mod tests {
                 }],
             }],
             events: Vec::new(),
+            resource_flow: None,
         }
     }
 

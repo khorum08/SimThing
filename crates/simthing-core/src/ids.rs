@@ -14,6 +14,12 @@ impl SimThingId {
     pub fn raw(self) -> u32 {
         self.0
     }
+
+    /// Reconstruct a session-local id from a previously assigned raw value.
+    /// Used when assembling explicit arena admission from compiled spec metadata.
+    pub fn from_session_raw(raw: u32) -> Self {
+        Self(raw)
+    }
 }
 
 impl Default for SimThingId {

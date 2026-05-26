@@ -103,4 +103,94 @@ pub enum SpecError {
 
     #[error("trigger references role `{role}` not present in property `{property}`")]
     InvalidTriggerRole { property: String, role: String },
+
+    // ── Resource Flow admission (E-10) ───────────────────────────────────────
+    #[error("duplicate arena name `{name}`")]
+    DuplicateArenaName { name: String },
+
+    #[error("arena `{arena}` requires explicit admission; implicit participation is forbidden")]
+    ImplicitParticipation { arena: String },
+
+    #[error("property `{property}` sub-field `{sub_field}` references unknown arena `{arena}`")]
+    UnknownArenaRoleReference {
+        arena: String,
+        property: String,
+        sub_field: String,
+    },
+
+    #[error("unknown arena `{arena}` in {context}")]
+    UnknownArenaReference { arena: String, context: String },
+
+    #[error("property `{property}` is not registered for Resource Flow admission")]
+    UnknownResourceFlowProperty { property: String },
+
+    #[error("arena `{arena}` declares wildcard admission without a declared upper bound")]
+    UnboundedWildcardAdmission { arena: String },
+
+    #[error("arena `{arena}` wildcard expansion {computed} exceeds declared cap {declared}")]
+    WildcardExpansionExceedsCap {
+        arena: String,
+        declared: u32,
+        computed: u32,
+    },
+
+    #[error("arena `{arena}` flow property `{property}` conflicts with arena `{other_arena}`")]
+    ConflictingArenaFlowProperty {
+        arena: String,
+        other_arena: String,
+        property: String,
+    },
+
+    #[error("property `{property}` sub-field `{sub_field}` Balance num_count_source references unresolved property id {referenced_property_id}")]
+    UnresolvedBalanceNumCountSource {
+        property: String,
+        sub_field: String,
+        referenced_property_id: u32,
+    },
+
+    #[error("arena `{arena}` duplicate {kind} binding: `{first}` vs `{second}`")]
+    DuplicateArenaRoleBinding {
+        arena: String,
+        kind: String,
+        first: String,
+        second: String,
+    },
+
+    #[error("property `{property}` sub-field `{sub_field}` possession does not admit to arena `{arena}`")]
+    PropertyPossessionNotArenaAdmission {
+        arena: String,
+        property: String,
+        sub_field: String,
+    },
+
+    #[error("arena `{arena}` exceeds max_participants ({declared} declared, {computed} computed)")]
+    MaxParticipantsExceeded {
+        arena: String,
+        declared: u32,
+        computed: u32,
+    },
+
+    #[error("arena `{arena}` exceeds max_coupling_fanout ({declared} declared, {computed} computed)")]
+    MaxCouplingFanoutExceeded {
+        arena: String,
+        declared: u32,
+        computed: u32,
+    },
+
+    #[error("arena `{arena}` exceeds max_orderband_depth ({declared} declared, {computed} computed)")]
+    MaxOrderBandDepthExceeded {
+        arena: String,
+        declared: u32,
+        computed: u32,
+    },
+
+    #[error("coupling graph contains an all-algebraic cycle")]
+    AllAlgebraicCouplingCycle,
+
+    #[error("arena `{arena}` hidden fanout {computed} exceeds declared budget {declared}")]
+    HiddenFanoutExceeded {
+        arena: String,
+        declared: u32,
+        computed: u32,
+    },
 }

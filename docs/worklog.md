@@ -10,6 +10,21 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — E-10 Resource Flow admission framework (#TBD)
+
+- Added authored `ResourceFlowSpec` on `GameModeSpec` plus `compile_resource_flow_admission` in `simthing-spec`.
+- Validates `accumulator_spec` arena bindings, explicit/wildcard admission, caps, coupling graph, Balance `num_count_source`, duplicate role bindings.
+- Driver `compile_and_materialize_resource_flow` builds `ArenaRegistry` and deterministic `ResourceFlowExpansionReport`.
+- Wired into `install` after property compile; `simthing-sim` remains arena-ignorant.
+- Hidden fanout check now compares combined in+out edges against declared budget (reachable guardrail).
+- Tests: 13-case `e10_*` suite in `simthing-spec`.
+
+**Verification:** `cargo test -p simthing-spec e10`; `cargo test -p simthing-driver arena_registry`; `cargo test --workspace`.
+
+**Next:** E-11 hierarchical allocation — Opus/design review before implementation.
+
+---
+
 ## 2026-05-26 — E-9R participant_range contiguity hardening (#152)
 
 - Canonicalize `ArenaRegistry::participants` to arena-major order at build time (E-9R).

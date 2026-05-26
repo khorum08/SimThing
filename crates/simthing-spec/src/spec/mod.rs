@@ -6,6 +6,7 @@ pub mod game_mode;
 pub mod install_target;
 pub mod overlay;
 pub mod property;
+pub mod resource_flow;
 pub mod scenario;
 pub mod script;
 pub mod trigger;
@@ -21,6 +22,10 @@ pub use game_mode::GameModeSpec;
 pub use install_target::InstallTargetSpec;
 pub use overlay::OverlaySpec;
 pub use property::PropertySpec;
+pub use resource_flow::{
+    ArenaSpec, CouplingDelaySpec, CouplingSpec, ExplicitParticipantSpec, FissionPolicySpec,
+    ResourceFlowSpec, WildcardAdmissionSpec,
+};
 pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };

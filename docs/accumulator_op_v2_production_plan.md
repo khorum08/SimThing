@@ -1412,7 +1412,7 @@ as a doc-only PR.
 | **E-7** | **E** | **Composer 2.5** | **`governed_by` planner generalization to arbitrary `(Named, Named)` pairs** | **Existing C-7 + new pair test** |
 | **E-8** | **E** | **Codex 5.5** | **`accumulator_spec` on `SubFieldSpec`** | **Serde + invariant: no runtime branching** |
 | **E-9** | **E** | **Composer 2.5** | **`ArenaRegistry` in `simthing-driver` with subtree-incremental refresh** | **3-arena fixture + refresh scope test** |
-| **E-10** | **E** | **Composer 2.5** | **`simthing-spec` admission framework (caps, fission policy, cycle-with-delay, expansion report)** | **Bad-spec rejection + good-spec compile** |
+| **E-10** | **E** | **Composer 2.5** | **`simthing-spec` admission framework (caps, fission policy, cycle-with-delay, expansion report)** | **Done (#TBD)** — 13-case `e10_*` rejection + expansion report suite |
 | **E-11** | **E** | **Opus + Composer 2.5** | **Hierarchical allocation kernel + CPU oracle parity + stability tests** | **CPU oracle bit-exact + zero-weight + 3-level conservation** |
 | S-1 | F | Codex 5.5 | Sunset intent fold | **Done locally** |
 | S-2 | F | Codex 5.5 | Sunset intensity update | **Landed (#138)** |

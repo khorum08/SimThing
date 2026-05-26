@@ -60,8 +60,10 @@ pub use boundary::{
     ScriptedEventDiagnosticKind,
 };
 pub use compile::{
-    compile_effect, compile_event, compile_overlay, compile_property, compile_trigger,
-    CapabilityTreeBuildOutput, CapabilityTreeBuilder, CompileContext,
+    compile_effect, compile_event, compile_overlay, compile_property, compile_resource_flow_admission,
+    compile_trigger, CapabilityTreeBuildOutput, CapabilityTreeBuilder, CompileContext,
+    CompiledArenaAdmission, CompiledCouplingAdmission, CompiledCouplingDelay,
+    CompiledResourceFlowAdmission, ResourceFlowDiagnostic, ResourceFlowExpansionReport,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;
@@ -90,6 +92,10 @@ pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;
 pub use spec::overlay::OverlaySpec;
 pub use spec::property::PropertySpec;
+pub use spec::resource_flow::{
+    ArenaSpec, CouplingDelaySpec, CouplingSpec, ExplicitParticipantSpec, FissionPolicySpec,
+    ResourceFlowSpec, WildcardAdmissionSpec,
+};
 pub use spec::script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };
