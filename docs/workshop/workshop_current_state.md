@@ -78,7 +78,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-8** | #150 | `accumulator_spec` on `SubFieldSpec`; compile-time Resource Flow metadata only |
 | **E-9** | #151 | `ArenaRegistry` driver session artifact; explicit admission + subtree refresh |
 | **E-9R** | #152 | `participant_range` contiguity hardening via arena-major canonicalization |
-| **E-10** | #TBD | Resource Flow admission framework; expansion report; bad-spec hard rejection |
+| **E-10** | #153 | Resource Flow admission framework; expansion report; bad-spec hard rejection |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

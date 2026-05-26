@@ -10,7 +10,7 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-26 — E-10 Resource Flow admission framework (#TBD)
+## 2026-05-26 — E-10 Resource Flow admission framework (#153)
 
 - Added authored `ResourceFlowSpec` on `GameModeSpec` plus `compile_resource_flow_admission` in `simthing-spec`.
 - Validates `accumulator_spec` arena bindings, explicit/wildcard admission, caps, coupling graph, Balance `num_count_source`, duplicate role bindings.

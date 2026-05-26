@@ -107,7 +107,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-8** | #150 | — | **Done** — `accumulator_spec` compile-time metadata on `SubFieldSpec` |
 | **E-9** | #151 | — | **Done** — `ArenaRegistry` driver session artifact |
 | **E-9R** | #152 | — | **Done** — participant_range contiguity hardening |
-| **E-10** | #TBD | — | **Done** — Resource Flow admission framework + expansion report |
+| **E-10** | #153 | — | **Done** — Resource Flow admission framework + expansion report |
 
 **Next recommended gates (pivot-forward order):**
 
