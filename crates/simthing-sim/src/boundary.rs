@@ -158,8 +158,8 @@ impl Default for PipelineFlags {
             use_accumulator_reduction_soft: true,
             use_accumulator_reduction_exact: true,
             use_accumulator_velocity: false,
-            use_accumulator_eml: false,
-            use_accumulator_intensity: false,
+            use_accumulator_eml: true,
+            use_accumulator_intensity: true,
             use_accumulator_transfer: false,
             use_accumulator_emission: false,
         }
@@ -173,6 +173,18 @@ impl PipelineFlags {
         }
         if self.use_accumulator_emission && !self.use_accumulator_eml {
             panic!("C-8d emission EvalEML requires use_accumulator_eml");
+        }
+    }
+
+    /// S-2: worlds with `IntensityBehavior` require accumulator EvalEML intensity.
+    pub fn validate_intensity_enabled_for_registry(&self, registry: &DimensionRegistry) {
+        self.validate();
+        if !self.use_accumulator_intensity
+            && !simthing_gpu::build_intensity_eml_entries(registry).is_empty()
+        {
+            panic!(
+                "Legacy intensity path was deleted in S-2; use_accumulator_intensity must remain enabled."
+            );
         }
     }
 }
@@ -304,7 +316,7 @@ impl BoundaryProtocol {
     }
 
     fn sync_accumulator_intensity_session(&self, state: &mut WorldGpuState) {
-        self.flags.validate();
+        self.flags.validate_intensity_enabled_for_registry(&self.registry);
         if !self.flags.use_accumulator_intensity {
             if let Some(runtime) = state.accumulator_runtime.as_mut() {
                 runtime.clear_intensity_eml();
@@ -1119,6 +1131,9 @@ impl BoundaryProtocol {
         self.sync_accumulator_reduction_soft_session(state);
         self.sync_accumulator_velocity_session(state);
         self.sync_accumulator_eml_session(state);
+        if self.flags.use_accumulator_intensity {
+            self.sync_accumulator_intensity_session(state);
+        }
         self.sync_accumulator_transfer_session(state);
         self.sync_accumulator_emission_session(state);
     }

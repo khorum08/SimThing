@@ -1,4 +1,4 @@
-//! C-8b intensity EvalEML parity vs legacy Pass 2.
+//! C-8b intensity EvalEML parity vs CPU/EML golden oracle.
 
 use simthing_core::{
     compile_intensity_behavior_to_eml, eml_opcode, intensity_eml_direct_cpu, intensity_tree_id,
@@ -32,18 +32,19 @@ fn setup_intensity_state(reg: &DimensionRegistry, n_slots: u32, initial: &[f32])
     state
 }
 
-fn run_legacy_intensity(state: &WorldGpuState, dt: f32) -> Vec<f32> {
+fn run_accumulator_intensity(state: &mut WorldGpuState, dt: f32) -> Vec<f32> {
     let pipelines = Pipelines::new(&state.ctx);
-    pipelines.run_snapshot(state);
-    if state.n_governed_pairs > 0 {
-        pipelines.run_velocity_integration(state, dt);
-    }
-    pipelines.run_intensity_update(state, dt);
+    pipelines.run_accumulator_intensity_eml(state, dt);
     state.read_values()
 }
 
-fn run_accumulator_intensity(state: &mut WorldGpuState, dt: f32) -> Vec<f32> {
+fn run_accumulator_intensity_with_velocity(state: &mut WorldGpuState, dt: f32) -> Vec<f32> {
     let pipelines = Pipelines::new(&state.ctx);
+    let mut velocity_session = state
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .take_velocity_session();
     let mut intensity_session = state
         .accumulator_runtime
         .as_mut()
@@ -57,13 +58,18 @@ fn run_accumulator_intensity(state: &mut WorldGpuState, dt: f32) -> Vec<f32> {
             threshold: None,
             overlay_add: None,
             reduction_soft: None,
-            velocity: None,
+            velocity: velocity_session.as_mut(),
             intensity_eml: intensity_session.as_mut(),
             transfer: None,
             emission: None,
             encode_world_summary: false,
         },
     );
+    state
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .restore_velocity_session(velocity_session);
     state
         .accumulator_runtime
         .as_mut()
@@ -77,6 +83,15 @@ fn intensity_col(reg: &DimensionRegistry) -> usize {
     reg.column_range(SimPropertyId(0))
         .col_for_role(&simthing_core::SubFieldRole::Intensity, layout)
         .unwrap()
+}
+
+fn cpu_golden_intensity(
+    behavior: &IntensityBehavior,
+    velocity: f32,
+    intensity: f32,
+    dt: f32,
+) -> f32 {
+    intensity_eml_direct_cpu(behavior, velocity, intensity, dt)
 }
 
 #[test]
@@ -127,14 +142,14 @@ fn c8b_intensity_eml_cpu_oracle_matches_legacy_formula() {
 }
 
 #[test]
-fn c8b_intensity_gpu_eval_eml_matches_legacy_bit_exact() {
+fn c8b_intensity_gpu_eval_eml_matches_cpu_golden_bit_exact() {
     let Some(_ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
         return;
     };
     let behavior = IntensityBehavior::default();
     let mut reg = DimensionRegistry::new();
-    reg.register(intensity_property(behavior));
+    reg.register(intensity_property(behavior.clone()));
     let n_dims = reg.total_columns;
     let icol = intensity_col(&reg);
 
@@ -150,15 +165,13 @@ fn c8b_intensity_gpu_eval_eml_matches_legacy_bit_exact() {
         row[1] = velocity;
         row[icol] = intensity;
 
-        let legacy_state = setup_intensity_state(&reg, 1, &row);
         let mut acc_state = setup_intensity_state(&reg, 1, &row);
-        let legacy = run_legacy_intensity(&legacy_state, dt);
         let acc = run_accumulator_intensity(&mut acc_state, dt);
+        let expected = cpu_golden_intensity(&behavior, velocity, intensity, dt);
         assert_eq!(
-            legacy[icol].to_bits(),
             acc[icol].to_bits(),
-            "{label}: legacy={} acc={}",
-            legacy[icol],
+            expected.to_bits(),
+            "{label}: expected={expected} acc={}",
             acc[icol]
         );
     }
@@ -461,8 +474,9 @@ fn c8b_combined_c1_c2_c4_s4_c7_c8b_all_flags_on() {
         eprintln!("skipping: no GPU");
         return;
     };
+    let behavior = IntensityBehavior::default();
     let mut reg = DimensionRegistry::new();
-    reg.register(intensity_property(IntensityBehavior::default()));
+    reg.register(intensity_property(behavior.clone()));
     let n_dims = reg.total_columns;
     let icol = intensity_col(&reg);
     let mut row = vec![0.0_f32; n_dims];
@@ -477,8 +491,7 @@ fn c8b_combined_c1_c2_c4_s4_c7_c8b_all_flags_on() {
         .upload_velocity_ops_with_bands(&vplan.ops, vplan.n_bands)
         .expect("velocity upload");
 
-    let legacy_state = setup_intensity_state(&reg, 1, &row);
-    let legacy = run_legacy_intensity(&legacy_state, 0.5);
-    let acc = run_accumulator_intensity(&mut state, 0.5);
-    assert_eq!(legacy[icol].to_bits(), acc[icol].to_bits());
+    let acc = run_accumulator_intensity_with_velocity(&mut state, 0.5);
+    let expected = cpu_golden_intensity(&behavior, row[1], row[icol], 0.5);
+    assert_eq!(acc[icol].to_bits(), expected.to_bits());
 }

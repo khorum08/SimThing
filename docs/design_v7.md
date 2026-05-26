@@ -235,13 +235,14 @@ pub struct PipelineFlags {
 - **Flag-off:** WGSL `velocity_integration.wgsl` (oracle/fallback until S-5).
 - `GovernedPair` metadata compiled to persistent ops at boundary sync.
 
-**Pass 2 — Intensity update (C-8b landed, flag default false; sunset → S-2)**
-- **Flag-on:** AccumulatorOp `EvalEML` at legacy Pass 2 position (after velocity, before overlay).
+**Pass 2 — Intensity update (C-8b + S-2 landed)**
+- **Production:** AccumulatorOp `EvalEML` at Pass 2 position (after velocity, before overlay).
   One op per `(slot, intensity-bearing property)`; `dt` via `AccumulatorTickParams.dt_bits`.
   `IntensityBehavior` compiled to `ExactDeterministic` EML at boundary sync; persistent
   node/range buffers; no per-dispatch EML upload.
-- **Flag-off:** WGSL `intensity_update.wgsl` (oracle/fallback until S-2).
-- Requires `use_accumulator_eml`; validated at boundary sync.
+- **S-2:** Legacy WGSL `intensity_update.wgsl` and `intensity_params` buffer deleted; no flag-off fallback.
+- `use_accumulator_intensity` defaults **true**; requires `use_accumulator_eml`; worlds with
+  `IntensityBehavior` panic at boundary validation if intensity is disabled.
 
 **Pass 2b — Economic transfer (C-8c landed, flag default false)**
 - **Flag-on:** AccumulatorOp transfer substrate after intensity, before overlay.
@@ -263,7 +264,9 @@ pub struct PipelineFlags {
 - **Flag-off:** no production emission path.
 - Op-plan cache signature includes `reg_indices`, `constant_value_bits`, and `max_emit` state; `max_emit` rejected at plan time until shader clamp exists.
 
-**C-8 block complete:** C-8a (EML infra) + C-8b (intensity EvalEML) + C-8c (exact transfer) + C-8d (emission) validated together in `c8_full_pipeline_integration.rs`. Legacy `intensity_update.wgsl` remains flag-off/oracle until S-2.
+**C-8 block complete:** C-8a (EML infra) + C-8b (intensity EvalEML) + C-8c (exact transfer) + C-8d (emission) validated together in `c8_full_pipeline_integration.rs`.
+
+**S-2 complete:** Legacy intensity shader/pipeline deleted; production intensity is EvalEML-only through AccumulatorOp.
 
 **Pass 3 — Overlay application (migrate → C-3/C-4, sunset → S-3)**
 - WGSL: inline in `overlay_prep.rs`
