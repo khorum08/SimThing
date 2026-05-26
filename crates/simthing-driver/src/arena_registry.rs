@@ -335,9 +335,9 @@ fn validate_and_finalize(
                 computed,
             });
         }
-        // Hidden fanout: total touched edges must fit declared budget.
+        // Hidden fanout: combined in+out edges must fit the declared budget.
         let total = out_fanout[idx] + in_fanout[idx];
-        if total > arena.max_coupling_fanout.saturating_mul(2) {
+        if total > arena.max_coupling_fanout {
             return Err(ArenaRegistryError::HiddenFanoutExceeded {
                 arena: arena.name.clone(),
                 declared: arena.max_coupling_fanout,

@@ -73,6 +73,7 @@ fn game_mode_round_trips_with_metadata() {
         overlays: vec![],
         capability_trees: vec![],
         events: vec![],
+        resource_flow: None,
     };
 
     let json = serde_json::to_string(&spec).unwrap();

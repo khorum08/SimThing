@@ -1,6 +1,7 @@
 pub mod arena_registry;
 pub mod bench_limits;
 pub mod install;
+pub mod resource_flow_compile;
 pub mod scenario;
 pub mod session;
 pub mod spec_replay;
@@ -14,6 +15,9 @@ pub use arena_registry::{
 pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
+};
+pub use resource_flow_compile::{
+    compile_and_materialize_resource_flow, materialize_arena_registry,
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};

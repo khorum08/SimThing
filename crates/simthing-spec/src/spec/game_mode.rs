@@ -21,4 +21,7 @@ pub struct GameModeSpec {
     pub capability_trees: Vec<super::capability::CapabilityTreeSpec>,
     #[serde(default)]
     pub events: Vec<super::event::EventSpec>,
+    /// Resource Flow arena admission graph (E-10). Validated at session build.
+    #[serde(default)]
+    pub resource_flow: Option<super::resource_flow::ResourceFlowSpec>,
 }
