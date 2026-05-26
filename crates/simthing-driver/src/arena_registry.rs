@@ -300,13 +300,6 @@ fn validate_and_finalize(
                 arena: arena.name.clone(),
             });
         }
-        let start = builder
-            .participants
-            .iter()
-            .position(|p| p.arena_idx == arena_idx as ArenaIdx)
-            .map(|i| i as u32)
-            .unwrap_or(0);
-        arena.participant_range = (start, count);
         if arena.reserved_orderband_depth > arena.max_orderband_depth {
             return Err(ArenaRegistryError::MaxOrderBandDepthExceeded {
                 arena: arena.name.clone(),
@@ -314,6 +307,15 @@ fn validate_and_finalize(
                 computed: arena.reserved_orderband_depth,
             });
         }
+    }
+
+    // E-9R: arena-major canonical order so participant_range is a contiguous slice.
+    canonicalize_participants_arena_major(&mut builder.participants);
+    let mut range_start = 0u32;
+    for (arena_idx, arena) in builder.arenas.iter_mut().enumerate() {
+        let count = per_arena_counts[arena_idx];
+        arena.participant_range = (range_start, count);
+        range_start += count;
     }
 
     // Coupling fanout: out-edges per arena.
@@ -364,6 +366,11 @@ fn validate_and_finalize(
     };
 
     Ok((registry, report))
+}
+
+/// Sort participants arena-major (0..n) preserving stable within-arena order.
+fn canonicalize_participants_arena_major(participants: &mut [ArenaParticipant]) {
+    participants.sort_by_key(|p| p.arena_idx);
 }
 
 fn find_all_algebraic_cycle(couplings: &[ArenaCoupling]) -> Option<Vec<ArenaIdx>> {
@@ -446,6 +453,130 @@ mod tests {
             wildcard_max_expansion: None,
             reserved_orderband_depth: 0,
         }
+    }
+
+    fn participants_in_range<'a>(
+        reg: &'a ArenaRegistry,
+        arena_idx: ArenaIdx,
+    ) -> &'a [ArenaParticipant] {
+        let (start, len) = reg.arenas[arena_idx as usize].participant_range;
+        let start = start as usize;
+        let end = start + len as usize;
+        &reg.participants[start..end]
+    }
+
+    #[test]
+    fn arena_registry_participant_ranges_are_contiguous_when_admissions_interleaved() {
+        let mut b = ArenaRegistryBuilder::new();
+        let food = b.push_arena(food_arena(4));
+        let research = b.push_arena(research_arena());
+        let root_a = SimThingId::new();
+        let root_b = SimThingId::new();
+        let root_c = SimThingId::new();
+        // Interleaved: food A, research B, food C
+        b.admit_participant(food, 10, root_a).unwrap();
+        b.admit_participant(research, 20, root_b).unwrap();
+        b.admit_participant(food, 30, root_c).unwrap();
+        let (reg, _) = b.build().unwrap();
+
+        assert_eq!(reg.arenas[food as usize].participant_range, (0, 2));
+        assert_eq!(reg.arenas[research as usize].participant_range, (2, 1));
+
+        let food_slice = participants_in_range(&reg, food);
+        assert_eq!(food_slice.len(), 2);
+        assert!(food_slice.iter().all(|p| p.arena_idx == food));
+        assert_eq!(food_slice[0].slot, 10);
+        assert_eq!(food_slice[1].slot, 30);
+        assert_eq!(food_slice[0].subtree_root, root_a);
+        assert_eq!(food_slice[1].subtree_root, root_c);
+
+        let research_slice = participants_in_range(&reg, research);
+        assert_eq!(research_slice.len(), 1);
+        assert_eq!(research_slice[0].slot, 20);
+        assert_eq!(research_slice[0].subtree_root, root_b);
+        assert!(research_slice.iter().all(|p| p.arena_idx == research));
+    }
+
+    #[test]
+    fn arena_registry_participant_range_slices_match_arena_idx() {
+        let mut b = ArenaRegistryBuilder::new();
+        let food = b.push_arena(food_arena(4));
+        let research = b.push_arena(research_arena());
+        let suppression = b.push_arena(GpuArenaDescriptor {
+            name: "suppression".into(),
+            flow_property_id: SimPropertyId(3),
+            balance_property_id: None,
+            max_participants: 4,
+            max_coupling_fanout: 4,
+            max_orderband_depth: 8,
+            fission_policy: FissionPolicy::Reject,
+            participant_range: (0, 0),
+            wildcard_max_expansion: None,
+            reserved_orderband_depth: 0,
+        });
+        b.admit_participant(research, 1, SimThingId::new()).unwrap();
+        b.admit_participant(food, 2, SimThingId::new()).unwrap();
+        b.admit_participant(suppression, 3, SimThingId::new()).unwrap();
+        b.admit_participant(food, 4, SimThingId::new()).unwrap();
+        let (reg, _) = b.build().unwrap();
+
+        for (arena_idx, arena) in reg.arenas.iter().enumerate() {
+            let slice = participants_in_range(&reg, arena_idx as ArenaIdx);
+            assert_eq!(slice.len(), arena.participant_range.1 as usize);
+            assert!(slice.iter().all(|p| p.arena_idx == arena_idx as ArenaIdx));
+        }
+        assert_eq!(reg.arenas[0].participant_range, (0, 2));
+        assert_eq!(reg.arenas[1].participant_range, (2, 1));
+        assert_eq!(reg.arenas[2].participant_range, (3, 1));
+    }
+
+    #[test]
+    fn arena_registry_participant_range_is_stable_with_multiple_arenas() {
+        let build = |roots: [SimThingId; 4]| {
+            let mut b = ArenaRegistryBuilder::new();
+            let food = b.push_arena(food_arena(4));
+            let research = b.push_arena(research_arena());
+            b.admit_participant(research, 5, roots[0]).unwrap();
+            b.admit_participant(food, 1, roots[1]).unwrap();
+            b.admit_participant(food, 2, roots[2]).unwrap();
+            b.admit_participant(research, 6, roots[3]).unwrap();
+            b.build().unwrap().0
+        };
+        let roots = [
+            SimThingId::new(),
+            SimThingId::new(),
+            SimThingId::new(),
+            SimThingId::new(),
+        ];
+        let a = build(roots);
+        let b = build(roots);
+        assert_eq!(a.participants, b.participants);
+        assert_eq!(
+            a.arenas
+                .iter()
+                .map(|arena| arena.participant_range)
+                .collect::<Vec<_>>(),
+            b.arenas
+                .iter()
+                .map(|arena| arena.participant_range)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn arena_registry_refresh_subtree_still_counts_after_participant_canonicalization() {
+        let mut b = ArenaRegistryBuilder::new();
+        let food = b.push_arena(food_arena(4));
+        let research = b.push_arena(research_arena());
+        let root_a = SimThingId::new();
+        let root_b = SimThingId::new();
+        b.admit_participant(food, 10, root_a).unwrap();
+        b.admit_participant(research, 20, root_b).unwrap();
+        b.admit_participant(food, 30, root_a).unwrap();
+        let (mut reg, _) = b.build().unwrap();
+        let report = reg.refresh_subtree(root_a);
+        assert_eq!(report.participants_reevaluated, 2);
+        assert_eq!(report.untouched_participant_count, 1);
     }
 
     #[test]
