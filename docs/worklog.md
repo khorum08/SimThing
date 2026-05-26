@@ -10,7 +10,7 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-26 — E-2A resource_transfer_discrete builder
+## 2026-05-26 — E-2A resource_transfer_discrete builder (#146)
 
 - Added first-class exact discrete transfer builder in `simthing-core` (`try_resource_transfer_discrete`, `DiscreteTransferRegistration`, `rebuild_discrete_transfer_ops`).
 - Builder compiles to C-8c `SubtractFromSource` + `Constant(amount)` transfer shape; GPU bridge via `discrete_transfer_registrations_to_transfer`.

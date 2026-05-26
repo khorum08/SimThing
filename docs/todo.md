@@ -100,7 +100,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **S-5** | `6b9bf8f` | — | Legacy velocity deleted; AccumulatorOp velocity mandatory for governed velocity workloads |
 | **S-1** | `6b9bf8f` | — | Legacy intent deleted; AccumulatorOp intent mandatory for pending intent workloads |
 | **E-1** | #144 | — | **Done** — EmitOnThreshold builder; threshold+EmitEvent registration API over C-1 substrate |
-| **E-2A** | (pending) | — | **Done** — `resource_transfer_discrete` exact discrete transfer builder |
+| **E-2A** | #146 | — | **Done** — `resource_transfer_discrete` exact discrete transfer builder |
 
 **Next recommended gates (pivot-forward order):**
 
