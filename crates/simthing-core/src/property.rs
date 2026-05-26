@@ -134,6 +134,12 @@ pub struct SubFieldSpec {
     /// land. See `docs/workshop/soft_aggregate_tolerance_audit.md`.
     #[serde(default)]
     pub soft_aggregate_guard: Option<SoftAggregateGuard>,
+
+    /// Resource Flow compile-time metadata (E-8). None for non-resource sub-fields.
+    /// Compiles away before GPU upload; must not drive runtime branching in
+    /// `simthing-sim`.
+    #[serde(default)]
+    pub accumulator_spec: Option<crate::accumulator_spec::AccumulatorSpec>,
 }
 
 impl SubFieldSpec {
@@ -207,6 +213,7 @@ impl PropertyLayout {
                 governed_by: Some(SubFieldRole::Velocity),
                 reduction_override: None,
                 soft_aggregate_guard: None,
+                accumulator_spec: None,
             },
             SubFieldSpec {
                 role: SubFieldRole::Velocity,
@@ -222,6 +229,7 @@ impl PropertyLayout {
                 governed_by: None,
                 reduction_override: None,
                 soft_aggregate_guard: None,
+                accumulator_spec: None,
             },
             SubFieldSpec {
                 role: SubFieldRole::Intensity,
@@ -234,6 +242,7 @@ impl PropertyLayout {
                 governed_by: None, // updated by IntensityBehavior, not integration
                 reduction_override: None,
                 soft_aggregate_guard: None,
+                accumulator_spec: None,
             },
         ];
         for i in 0..vector_len {
@@ -248,6 +257,7 @@ impl PropertyLayout {
                 governed_by: None,
                 reduction_override: None,
                 soft_aggregate_guard: None,
+                accumulator_spec: None,
             });
         }
         Self { sub_fields }
@@ -672,6 +682,7 @@ mod tests {
                     governed_by: Some(SubFieldRole::Named("axis_drift".into())),
                     reduction_override: None,
                     soft_aggregate_guard: None,
+                    accumulator_spec: None,
                 },
                 SubFieldSpec {
                     role: SubFieldRole::Named("axis_drift".into()),
@@ -687,6 +698,7 @@ mod tests {
                     governed_by: None,
                     reduction_override: None,
                     soft_aggregate_guard: None,
+                    accumulator_spec: None,
                 },
                 SubFieldSpec {
                     role: SubFieldRole::Named("ethics_bonus".into()),
@@ -699,6 +711,7 @@ mod tests {
                     governed_by: None,
                     reduction_override: None,
                     soft_aggregate_guard: None,
+                    accumulator_spec: None,
                 },
             ],
         };

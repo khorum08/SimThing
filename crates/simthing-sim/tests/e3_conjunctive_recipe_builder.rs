@@ -121,6 +121,7 @@ fn e3_n8_recipe_validate_and_executes() {
             governed_by: None,
             reduction_override: None,
             soft_aggregate_guard: None,
+                    accumulator_spec: None,
         })
         .collect();
     dim.register(SimProperty {
@@ -257,6 +258,7 @@ fn e3_max_per_tick_is_metadata_not_gpu_cap() {
             governed_by: None,
             reduction_override: None,
             soft_aggregate_guard: None,
+                    accumulator_spec: None,
         })
         .collect();
     dim.register(SimProperty {

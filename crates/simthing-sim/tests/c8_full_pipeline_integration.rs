@@ -40,6 +40,7 @@ fn c8_full_registry() -> (
             governed_by: None,
             reduction_override: None,
             soft_aggregate_guard: None,
+                    accumulator_spec: None,
         },
         SubFieldSpec {
             role: SubFieldRole::Named("pool".into()),
@@ -52,6 +53,7 @@ fn c8_full_registry() -> (
             governed_by: None,
             reduction_override: None,
             soft_aggregate_guard: None,
+                    accumulator_spec: None,
         },
         SubFieldSpec {
             role: SubFieldRole::Named("sink".into()),
@@ -64,6 +66,7 @@ fn c8_full_registry() -> (
             governed_by: None,
             reduction_override: None,
             soft_aggregate_guard: None,
+                    accumulator_spec: None,
         },
     ];
     let resources_pid = reg.register(SimProperty {

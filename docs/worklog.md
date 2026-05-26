@@ -10,6 +10,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — E-8 accumulator_spec on SubFieldSpec
+
+- Added `accumulator_spec: Option<AccumulatorSpec>` to `SubFieldSpec` with serde default/backcompat.
+- New compile-time types in `simthing-core`: `AccumulatorSpec`, `AccumulatorRole`, `BalanceSpec`, `NumCountSource`, `LogTier`, `ArenaName`.
+- No runtime semantics, no GPU changes, no `AccumulatorRole` branching in `simthing-sim`.
+- E-9 ArenaRegistry and E-2B `resource_flow_participant` remain blocked on E-9 enrollment.
+
+**Verification:** `accumulator_spec` + `property` tests; `cargo test --workspace`.
+
+---
+
 ## 2026-05-26 — E-7 governed_by planner generalization (#149)
 
 - Extracted `governed_pairs_for_property` for role-agnostic E-7 discovery; `build_governed_pairs` delegates per property.

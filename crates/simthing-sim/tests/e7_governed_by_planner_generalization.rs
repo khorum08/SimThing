@@ -55,6 +55,7 @@ fn balance_flow_property(flow_max: Option<f32>, balance_clamp: ClampBehavior) ->
                     governed_by: None,
                     reduction_override: None,
                     soft_aggregate_guard: None,
+                    accumulator_spec: None,
                 },
                 SubFieldSpec {
                     role: SubFieldRole::Named("balance".into()),
@@ -67,6 +68,7 @@ fn balance_flow_property(flow_max: Option<f32>, balance_clamp: ClampBehavior) ->
                     governed_by: Some(SubFieldRole::Named("flow".into())),
                     reduction_override: None,
                     soft_aggregate_guard: None,
+                    accumulator_spec: None,
                 },
             ],
         },
@@ -258,6 +260,7 @@ fn e7_missing_governing_role_skipped_consistently() {
             governed_by: Some(SubFieldRole::Named("flow".into())),
             reduction_override: None,
             soft_aggregate_guard: None,
+                    accumulator_spec: None,
         }],
     };
     let range = simthing_core::PropertyColumnRange {

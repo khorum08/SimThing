@@ -376,7 +376,7 @@ Phase E grows from six PRs to eleven. Phase D rescopes.
 | **E-5** | UNCHANGED | Compact log integration. |
 | **E-6** | FOLLOWS | Doc update; mostly covered by this ADR + v7.5 bump. |
 | **E-7** | NEW | `governed_by` generalization: C-7 `IntegrateWithClamp` planner from `(Amount, Velocity)` to arbitrary `(Named, Named)` pairs. Kernel unchanged. |
-| **E-8** | NEW | `accumulator_spec: Option<AccumulatorSpec>` lands on `SubFieldSpec`. |
+| **E-8** | NEW | **Done** — `accumulator_spec: Option<AccumulatorSpec>` on `SubFieldSpec`. |
 | **E-9** | NEW | `ArenaRegistry` in `simthing-driver` with incremental boundary refresh. |
 | **E-10** | NEW | `simthing-spec` admission framework: caps, fission policy, cycle-with-delay check, expansion report. |
 | **E-11** | NEW | Hierarchical allocation kernel pattern + CPU oracle parity + stability tests under hierarchical fanout. |
