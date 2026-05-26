@@ -590,6 +590,12 @@ comparison.
 - No CPU-mediated production emission; no per-dispatch EML upload.
 - Tick placement after transfer, before overlay.
 
+**C-8d remedial landed:**
+- Emission op-plan signature includes stable `reg_idx`, constant value bits, and `max_emit` state.
+- EvalEML tree IDs derived/validated from the formula variant (parallel field must match or be absent).
+- `max_emit` explicitly rejected until shader clamp is implemented.
+- Emission remains GPU-resident through AccumulatorOp; transfer conservation unchanged.
+
 Selected:
 - **Execution-class taxonomy** (`EmlExecutionClass::{ExactDeterministic, SoftDeterministic, FastApproximate, CpuOracleOnly}`) plus a **consumer admissibility matrix** that gates which classes may feed which consumers.
 - **C-8 production baseline admits `ExactDeterministic` only** — `SoftDeterministic`/`FastApproximate` register structurally but no production consumer admits them yet.

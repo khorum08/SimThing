@@ -929,8 +929,15 @@ impl WorldGpuState {
             let runtime = self.accumulator_runtime.as_ref().unwrap();
             encode_emission_plan(&plan, Some(&runtime.eml_registry))?
         };
-        let (source_slots, source_cols, tree_ids, formula_kinds) =
-            emission_plan_signature_fields(registrations);
+        let (
+            source_slots,
+            source_cols,
+            tree_ids,
+            formula_kinds,
+            reg_indices,
+            constant_value_bits,
+            max_emit,
+        ) = emission_plan_signature_fields(registrations);
         if let Some(runtime) = self.accumulator_runtime.as_mut() {
             let signature = crate::EmissionOpPlanSignature {
                 eml_registry_generation: runtime.eml_registry.generation(),
@@ -942,6 +949,9 @@ impl WorldGpuState {
                 source_cols,
                 tree_ids,
                 formula_kinds,
+                reg_indices,
+                constant_value_bits,
+                max_emit,
             };
             runtime.upload_emission_ops(&self.ctx, &gpu_ops, plan.n_bands, signature)?;
         }

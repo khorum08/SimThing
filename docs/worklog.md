@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — C-8d remedial: emission op signature and max_emit semantics
+
+**Fixes:**
+- `EmissionOpPlanSignature` now includes `reg_indices`, `constant_value_bits`, and `max_emit` so semantic changes force op reupload.
+- EvalEML tree IDs derived from `EmissionFormula` variant; parallel `tree_id` field validated for consistency.
+- `max_emit` explicitly rejected (`EmissionPlanError::MaxEmitUnsupported`) until shader clamp is implemented.
+- EML reupload test asserts `EmlGpuProgramTable::upload_count()` directly.
+
+**Tests:** extended `c8d_emission_accumulator_parity.rs` (constant/reg_idx reupload, same-plan skip, max_emit rejection).
+
+---
+
 ## 2026-05-19 — C-8d: GPU-resident emission substrate
 
 **Landed:**

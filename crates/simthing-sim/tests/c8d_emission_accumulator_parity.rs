@@ -8,8 +8,8 @@ use simthing_core::{
 use simthing_gpu::{
     encode_emission_plan, plan_emission_ops, plan_transfer_ops, set_debug_readback_allowed,
     AccumulatorOpSession, AccumulatorOpSessionError, AccumulatorPipelineSessions, EmissionFormula,
-    EmissionRegistration, GpuContext, Pipelines, TransferInputRef, TransferRegistration,
-    WorldGpuState,
+    EmissionPlanError, EmissionRegistration, GpuContext, Pipelines, TransferInputRef,
+    TransferRegistration, WorldGpuState,
 };
 
 fn try_gpu() -> Option<GpuContext> {
@@ -458,14 +458,165 @@ fn c8d_eval_eml_emission_does_not_reupload_eml_per_tick() {
     }];
     state.sync_emission_accumulator(&regs).expect("sync");
     let runtime = state.accumulator_runtime.as_ref().unwrap();
-    let eml_uploads = runtime.eml_generation();
+    let eml_generation = runtime.eml_generation();
+    let eml_upload_count = runtime.eml.as_ref().unwrap().upload_count();
     let op_uploads = runtime.emission_op_upload_count();
     run_accumulator_emission(&mut state, 1.0).expect("tick");
     state.sync_emission_accumulator(&regs).expect("re-sync");
     let runtime = state.accumulator_runtime.as_ref().unwrap();
-    assert_eq!(runtime.eml_generation(), eml_uploads);
+    assert_eq!(runtime.eml_generation(), eml_generation);
+    assert_eq!(runtime.eml.as_ref().unwrap().upload_count(), eml_upload_count);
     assert_eq!(runtime.emission_op_upload_count(), op_uploads);
     run_accumulator_emission(&mut state, 1.0).expect("tick2");
+}
+
+fn constant_emission_reg(value: f32, reg_idx: u32) -> EmissionRegistration {
+    EmissionRegistration {
+        source_slot: 0,
+        source_col: 0,
+        tree_id: None,
+        formula: EmissionFormula::Constant { value },
+        max_emit: None,
+        reg_idx,
+    }
+}
+
+#[test]
+fn c8d_constant_value_change_reuploads_emission_ops() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let mut state = setup_emission_state(1, &[0.0]);
+    state
+        .sync_emission_accumulator(&[constant_emission_reg(2.0, 7)])
+        .expect("sync");
+    let uploads_after_first = state
+        .accumulator_runtime
+        .as_ref()
+        .unwrap()
+        .emission_op_upload_count();
+    state
+        .sync_emission_accumulator(&[constant_emission_reg(5.0, 7)])
+        .expect("re-sync");
+    let uploads_after_second = state
+        .accumulator_runtime
+        .as_ref()
+        .unwrap()
+        .emission_op_upload_count();
+    assert!(uploads_after_second > uploads_after_first);
+    let emissions = run_accumulator_emission(&mut state, 1.0).expect("dispatch");
+    assert_eq!(emissions.len(), 1);
+    assert_eq!(emissions[0].reg_idx, 7);
+    assert_eq!(emissions[0].emit_count, 5);
+}
+
+#[test]
+fn c8d_reg_idx_change_reuploads_emission_ops() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let mut state = setup_emission_state(1, &[3.7]);
+    state
+        .sync_emission_accumulator(&[EmissionRegistration {
+            source_slot: 0,
+            source_col: 0,
+            tree_id: None,
+            formula: EmissionFormula::IdentityFloor,
+            max_emit: None,
+            reg_idx: 7,
+        }])
+        .expect("sync");
+    let uploads_after_first = state
+        .accumulator_runtime
+        .as_ref()
+        .unwrap()
+        .emission_op_upload_count();
+    state
+        .sync_emission_accumulator(&[EmissionRegistration {
+            source_slot: 0,
+            source_col: 0,
+            tree_id: None,
+            formula: EmissionFormula::IdentityFloor,
+            max_emit: None,
+            reg_idx: 42,
+        }])
+        .expect("re-sync");
+    let uploads_after_second = state
+        .accumulator_runtime
+        .as_ref()
+        .unwrap()
+        .emission_op_upload_count();
+    assert!(uploads_after_second > uploads_after_first);
+    let emissions = run_accumulator_emission(&mut state, 1.0).expect("dispatch");
+    assert_eq!(emissions.len(), 1);
+    assert_eq!(emissions[0].reg_idx, 42);
+    assert_eq!(emissions[0].emit_count, 3);
+}
+
+#[test]
+fn c8d_mismatched_registration_tree_id_rejected() {
+    assert_eq!(
+        plan_emission_ops(
+            &[EmissionRegistration {
+                source_slot: 0,
+                source_col: 0,
+                tree_id: Some(EmlTreeId(1)),
+                formula: EmissionFormula::EvalEml {
+                    tree_id: EmlTreeId(2),
+                },
+                max_emit: None,
+                reg_idx: 0,
+            }],
+            None,
+        ),
+        Err(EmissionPlanError::MismatchedTreeIdField {
+            registration_tree_id: Some(1),
+            formula_tree_id: 2,
+        })
+    );
+}
+
+#[test]
+fn c8d_max_emit_rejected_until_supported() {
+    assert_eq!(
+        plan_emission_ops(
+            &[EmissionRegistration {
+                source_slot: 0,
+                source_col: 0,
+                tree_id: None,
+                formula: EmissionFormula::IdentityFloor,
+                max_emit: Some(3),
+                reg_idx: 0,
+            }],
+            None,
+        ),
+        Err(EmissionPlanError::MaxEmitUnsupported)
+    );
+}
+
+#[test]
+fn c8d_same_emission_plan_skips_upload() {
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let mut state = setup_emission_state(1, &[4.0]);
+    let regs = vec![constant_emission_reg(4.0, 1)];
+    state.sync_emission_accumulator(&regs).expect("sync");
+    let uploads_after_first = state
+        .accumulator_runtime
+        .as_ref()
+        .unwrap()
+        .emission_op_upload_count();
+    state.sync_emission_accumulator(&regs).expect("re-sync");
+    let uploads_after_second = state
+        .accumulator_runtime
+        .as_ref()
+        .unwrap()
+        .emission_op_upload_count();
+    assert_eq!(uploads_after_second, uploads_after_first);
 }
 
 #[test]

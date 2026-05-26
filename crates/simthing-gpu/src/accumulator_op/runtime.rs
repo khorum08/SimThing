@@ -58,6 +58,9 @@ pub struct EmissionOpPlanSignature {
     pub source_cols: Vec<u32>,
     pub tree_ids: Vec<u32>,
     pub formula_kinds: Vec<u32>,
+    pub reg_indices: Vec<u32>,
+    pub constant_value_bits: Vec<u32>,
+    pub max_emit: Vec<u32>,
 }
 
 /// Operation family registered into the world AccumulatorOp runtime.

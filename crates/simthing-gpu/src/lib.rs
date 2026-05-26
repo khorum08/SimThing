@@ -44,7 +44,8 @@ pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
 pub use emission_accumulator::{
     encode_emission_plan, emission_plan_signature_fields, plan_emission_ops, EmissionFormula,
     EmissionPlan, EmissionPlanError, EmissionRegistration, EmissionSyncError,
-    FORMULA_KIND_CONSTANT, FORMULA_KIND_EVAL_EML, FORMULA_KIND_IDENTITY_FLOOR,
+    FORMULA_KIND_CONSTANT, FORMULA_KIND_EVAL_EML, FORMULA_KIND_IDENTITY_FLOOR, NO_CONSTANT,
+    NO_MAX_EMIT, NO_TREE_ID,
 };
 pub use reduction_orderband::{
     plan_reduction_orderband, reduction_soft_band_for_depth_bucket, ReductionOrderBandPlan,

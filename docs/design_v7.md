@@ -261,6 +261,7 @@ pub struct PipelineFlags {
 - Soft/Fast emission rejected unless explicit tolerance gate exists.
 - Requires `use_accumulator_eml` when EvalEML formulas are used.
 - **Flag-off:** no production emission path.
+- Op-plan cache signature includes `reg_indices`, `constant_value_bits`, and `max_emit` state; `max_emit` rejected at plan time until shader clamp exists.
 
 **Pass 3 — Overlay application (migrate → C-3/C-4, sunset → S-3)**
 - WGSL: inline in `overlay_prep.rs`
