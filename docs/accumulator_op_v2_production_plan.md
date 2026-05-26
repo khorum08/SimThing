@@ -1032,9 +1032,7 @@ These five PRs land the Resource Flow Substrate per
 `docs/adr/resource_flow_substrate.md`. The substrate is a registration
 discipline on top of AccumulatorOp v2; no new GPU primitive is introduced.
 
-**PR sequencing:** E-7 and E-8 are prerequisites for E-9. E-9 is a prerequisite
-for E-10 and E-11. **Do not execute E-11 before E-9 is stable.** E-1, E-3, E-5
-remain independent. E-2 split can land independently.
+**PR sequencing:** E-7 through E-10 landed (#149–#153). **E-11 requires Opus/design review before implementation** — do not start from this table alone. E-1, E-3, E-5 remain independent. E-2 split can land independently.
 
 ### PR E-7 — `governed_by` planner generalization
 
@@ -1148,6 +1146,7 @@ globally). Verify the driver emits the correct flat `AccumulatorOp` set.
 
 ### PR E-10 — `simthing-spec` admission framework
 
+**Status:** Done (#153)
 **Model:** Composer 2.5
 **Prerequisites:** E-9
 **Scope:** Implement the draconian content guardrail framework per
@@ -1186,7 +1185,8 @@ OrderBand sweep with per-intermediate weight reductions and per-child share
 computations. The composition is novel; verification needs its own parity
 tests against a CPU oracle and stability tests under hierarchical fanout.
 
-**Prerequisites:** E-9, E-10
+**Prerequisites:** E-9, E-10 (landed)
+**Gate:** Opus/design review must complete before implementation begins. E-2B `resource_flow_participant` remains blocked until E-11 enrollment compiles.
 **Scope:** Implement the allocation kernel pattern per
 `docs/adr/resource_flow_substrate.md` §"Hierarchical allocation kernel
 pattern". Per intermediate participant, the driver emits two AccumulatorOp
