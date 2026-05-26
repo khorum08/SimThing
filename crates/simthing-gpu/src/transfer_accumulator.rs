@@ -196,6 +196,37 @@ pub fn encode_transfer_plan(
     Ok(gpu_ops)
 }
 
+/// Convert one E-3 registration into a C-8c [`TransferRegistration`].
+pub fn conjunctive_recipe_registration_to_transfer(
+    reg: &simthing_core::ConjunctiveRecipeRegistration,
+) -> TransferRegistration {
+    TransferRegistration {
+        inputs: reg
+            .inputs
+            .iter()
+            .map(|i| TransferInputRef {
+                slot: i.slot,
+                col: i.col,
+                unit_cost: i.unit_cost,
+            })
+            .collect(),
+        target_slot: reg.target_slot,
+        target_col: reg.target_col,
+        output_scale: 1.0,
+        max_transfer: None,
+        tree_id: None,
+    }
+}
+
+/// Convert E-3 conjunctive recipe registrations into C-8c planner registrations.
+pub fn conjunctive_recipe_registrations_to_transfer(
+    regs: &[simthing_core::ConjunctiveRecipeRegistration],
+) -> Vec<TransferRegistration> {
+    regs.iter()
+        .map(conjunctive_recipe_registration_to_transfer)
+        .collect()
+}
+
 /// Convert one E-2A registration into a C-8c [`TransferRegistration`].
 ///
 /// Callers should validate via `simthing_core::try_resource_transfer_discrete` first.

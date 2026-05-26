@@ -1389,7 +1389,7 @@ as a doc-only PR.
 | E-1 | E | Composer 2.5 | EmitOnThreshold builder | `e1_emit_on_threshold_builder` |
 | E-2A | E | Codex 5.5 | resource_transfer_discrete builder | `e2a_resource_transfer_discrete_builder` |
 | **E-2** | **E** | **Codex 5.5** | **SPLIT: discrete + flow-participant builders** | **Conservation + enrollment tests** |
-| **E-3** | **E** | **Composer 2.5** | **conjunctive_recipe builder + lift N≤4 cap** | **factory_1k parity + N=8 test** |
+| E-3 | E | Composer 2.5 | conjunctive_recipe builder + lift N≤4 cap | **Done** — `e3_conjunctive_recipe_builder` |
 | E-4 | E | Composer 2.5 | Economic V1 RON + session integration | RON→session→conservation |
 | E-5 | E | Composer 2.5 | Economic compact log integration | Replay test |
 | **E-6** | **E** | **Codex 5.5** | **design_v7.md docs (mostly landed by v7.5 bump)** | **Doc consistency** |

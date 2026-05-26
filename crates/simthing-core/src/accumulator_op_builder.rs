@@ -6,10 +6,11 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
+    AccumulatorOp, CombineFn, ConsumeMode, GateSpec, InputSpec, ScaleSpec, SourceSpec,
+    ThresholdDirection,
 };
 
-/// Errors returned by E-2A discrete transfer builder validation.
+/// Errors returned by AccumulatorOp registration builders (E-2A, E-3, …).
 #[derive(Clone, Debug, PartialEq, thiserror::Error)]
 pub enum AccumulatorOpBuilderError {
     #[error("discrete transfer amount must be finite")]
@@ -18,6 +19,31 @@ pub enum AccumulatorOpBuilderError {
     NegativeAmount,
     #[error("discrete transfer source and target cells must differ")]
     SameSourceAndTarget,
+    #[error("conjunctive recipe requires at least one input")]
+    EmptyConjunctiveInputs,
+    #[error("conjunctive recipe unit cost must be finite and > 0 at slot {slot} col {col}")]
+    NonPositiveUnitCost { slot: u32, col: u32 },
+    #[error("conjunctive recipe max_per_tick must be > 0")]
+    InvalidMaxPerTick,
+}
+
+/// One input channel for a conjunctive production recipe (E-3).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ConjunctiveRecipeInput {
+    pub slot: u32,
+    pub col: u32,
+    pub unit_cost: f32,
+}
+
+/// One conjunctive recipe registration compiled by the E-3 builder surface.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ConjunctiveRecipeRegistration {
+    pub inputs: Vec<ConjunctiveRecipeInput>,
+    pub target_slot: u32,
+    pub target_col: u32,
+    /// Session/boundary throttle hint; the op uses C-8c Identity scaling today.
+    /// Zero is rejected at registration time.
+    pub max_per_tick: u32,
 }
 
 /// One exact discrete source-debit transfer registration (E-2A).
@@ -134,6 +160,47 @@ impl AccumulatorOpBuilder {
             targets: vec![(target_slot, target_col)],
         })
     }
+
+    /// Build an exact conjunctive production recipe (E-3 / C-8c conjunctive path).
+    ///
+    /// Recipe count is `floor(min(input_i / unit_cost_i))` at execution time; all
+    /// inputs are debited and the target is credited by that count (Identity scale).
+    /// `max_per_tick` is stored on [`ConjunctiveRecipeRegistration`] for boundary
+    /// throttling policy; the GPU op does not cap recipe count yet.
+    pub fn conjunctive_recipe(
+        inputs: &[(u32, u32, f32)],
+        target_slot: u32,
+        target_col: u32,
+        max_per_tick: u32,
+    ) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
+        if inputs.is_empty() {
+            return Err(AccumulatorOpBuilderError::EmptyConjunctiveInputs);
+        }
+        if max_per_tick == 0 {
+            return Err(AccumulatorOpBuilderError::InvalidMaxPerTick);
+        }
+        let mut input_specs = Vec::with_capacity(inputs.len());
+        for &(slot, col, unit_cost) in inputs {
+            if !unit_cost.is_finite() || unit_cost <= 0.0 {
+                return Err(AccumulatorOpBuilderError::NonPositiveUnitCost { slot, col });
+            }
+            input_specs.push(InputSpec {
+                slot,
+                col,
+                unit_cost,
+            });
+        }
+        Ok(AccumulatorOp {
+            source: SourceSpec::ConjunctiveCrossing {
+                inputs: input_specs,
+            },
+            combine: CombineFn::MinAcrossInputs,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::SubtractFromAllInputs,
+            targets: vec![(target_slot, target_col)],
+        })
+    }
 }
 
 /// Convenience alias for [`AccumulatorOpBuilder::emit_on_threshold`].
@@ -181,6 +248,43 @@ pub fn resource_transfer_discrete(
         amount,
     )
     .expect("invalid discrete transfer registration")
+}
+
+/// Exact conjunctive recipe builder (E-3).
+pub fn try_conjunctive_recipe(
+    inputs: &[(u32, u32, f32)],
+    target_slot: u32,
+    target_col: u32,
+    max_per_tick: u32,
+) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
+    AccumulatorOpBuilder::conjunctive_recipe(inputs, target_slot, target_col, max_per_tick)
+}
+
+/// Compile one conjunctive recipe registration into its AccumulatorOp shape.
+pub fn conjunctive_recipe_registration_to_op(
+    reg: &ConjunctiveRecipeRegistration,
+) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
+    if reg.max_per_tick == 0 {
+        return Err(AccumulatorOpBuilderError::InvalidMaxPerTick);
+    }
+    let inputs: Vec<(u32, u32, f32)> = reg
+        .inputs
+        .iter()
+        .map(|i| (i.slot, i.col, i.unit_cost))
+        .collect();
+    AccumulatorOpBuilder::conjunctive_recipe(
+        &inputs,
+        reg.target_slot,
+        reg.target_col,
+        reg.max_per_tick,
+    )
+}
+
+/// Session-open / boundary refresh: compile conjunctive recipe registrations.
+pub fn rebuild_conjunctive_recipe_ops(
+    regs: &[ConjunctiveRecipeRegistration],
+) -> Result<Vec<AccumulatorOp>, AccumulatorOpBuilderError> {
+    regs.iter().map(conjunctive_recipe_registration_to_op).collect()
 }
 
 /// Compile one discrete transfer registration into its AccumulatorOp shape.
@@ -251,6 +355,27 @@ pub fn refresh_emit_on_threshold_debt_band(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn conjunctive_recipe_validates() {
+        let op = try_conjunctive_recipe(&[(0, 0, 5.0), (0, 1, 3.0)], 0, 2, 4).unwrap();
+        op.validate().expect("conjunctive recipe validates");
+    }
+
+    #[test]
+    fn conjunctive_recipe_rejects_empty_inputs() {
+        assert_eq!(
+            try_conjunctive_recipe(&[], 0, 0, 1),
+            Err(AccumulatorOpBuilderError::EmptyConjunctiveInputs)
+        );
+    }
+
+    #[test]
+    fn conjunctive_recipe_accepts_eight_inputs() {
+        let inputs: Vec<(u32, u32, f32)> = (0..8).map(|c| (0, c, 1.0)).collect();
+        let op = try_conjunctive_recipe(&inputs, 0, 8, 1).unwrap();
+        op.validate().expect("N=8 conjunctive validates");
+    }
 
     #[test]
     fn resource_transfer_discrete_validates() {

@@ -10,6 +10,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — E-3 conjunctive_recipe builder + N-input cap lift
+
+- Added `AccumulatorOpBuilder::conjunctive_recipe` / `ConjunctiveRecipeRegistration` in `simthing-core`; compiles to C-8c `ConjunctiveCrossing` + `MinAcrossInputs` + `SubtractFromAllInputs`.
+- Lifted stale CPU-side `inputs.len() > 4` validation in `AccumulatorOp::validate`; GPU input-list table already supported arbitrary N.
+- GPU bridge: `conjunctive_recipe_registrations_to_transfer` via existing C-8c planner.
+- Tests: exact per-recipe conservation, clamp, zero-input no-op, N=8 validate+execute, invalid input rejection; E-2A/C-8c/E-1 regressions green.
+- No new GPU primitive, no ArenaRegistry, no E-2B/E-11. E-2B remains blocked on E-8/E-9.
+
+**Verification:** `e3_conjunctive_recipe_builder`; E-2A/C-8c/C-8/E-1 regressions; `cargo test --workspace`.
+
+---
+
 ## 2026-05-26 — E-2A resource_transfer_discrete builder (#146)
 
 - Added first-class exact discrete transfer builder in `simthing-core` (`try_resource_transfer_discrete`, `DiscreteTransferRegistration`, `rebuild_discrete_transfer_ops`).

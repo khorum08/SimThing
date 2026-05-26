@@ -101,13 +101,13 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **S-1** | `6b9bf8f` | — | Legacy intent deleted; AccumulatorOp intent mandatory for pending intent workloads |
 | **E-1** | #144 | — | **Done** — EmitOnThreshold builder; threshold+EmitEvent registration API over C-1 substrate |
 | **E-2A** | #146 | — | **Done** — `resource_transfer_discrete` exact discrete transfer builder |
+| **E-3** | — | — | **Done** — `conjunctive_recipe` builder + N-input cap lift |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **E-3** — conjunctive recipe builder + N-input cap lift
-2. **E-7** — `governed_by` planner generalization
-3. **Opus** — production transfer/emission registration ownership
-4. **D-1** — discrete-transaction contention memo (D-2 deferred unless memo revives narrower GPU allocator need)
+1. **E-7** — `governed_by` planner generalization
+2. **Opus** — production transfer/emission registration ownership
+3. **D-1** — discrete-transaction contention memo (D-2 deferred unless memo revives narrower GPU allocator need)
 
 **E-2B blocked:** `resource_flow_participant` requires E-8/E-9 AccumulatorRole / ArenaRegistry.
 
@@ -116,9 +116,9 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-1 memo evaluates discrete boundary transactions only.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
-**Next (immediate):** E-3 / E-7 per production plan.
+**Next (immediate):** E-7 per production plan.
 
-**Next (non-Opus implementation):** E-3 or E-7 — not E-11 directly.
+**Next (non-Opus implementation):** E-7 — not E-11 directly.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

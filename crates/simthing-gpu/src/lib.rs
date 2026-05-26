@@ -58,6 +58,7 @@ pub use reduction_orderband::{
 };
 pub use slot::SlotAllocator;
 pub use transfer_accumulator::{
+    conjunctive_recipe_registration_to_transfer, conjunctive_recipe_registrations_to_transfer,
     discrete_transfer_registration_to_transfer, discrete_transfer_registrations_to_transfer,
     encode_transfer_plan, plan_transfer_ops, TransferInputRef, TransferPlan, TransferPlanError,
     TransferRegistration, TransferSyncError,
