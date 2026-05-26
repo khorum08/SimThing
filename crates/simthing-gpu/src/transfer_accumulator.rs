@@ -196,6 +196,35 @@ pub fn encode_transfer_plan(
     Ok(gpu_ops)
 }
 
+/// Convert one E-2A registration into a C-8c [`TransferRegistration`].
+///
+/// Callers should validate via `simthing_core::try_resource_transfer_discrete` first.
+pub fn discrete_transfer_registration_to_transfer(
+    reg: &simthing_core::DiscreteTransferRegistration,
+) -> TransferRegistration {
+    TransferRegistration {
+        inputs: vec![TransferInputRef {
+            slot: reg.source_slot,
+            col: reg.source_col,
+            unit_cost: 1.0,
+        }],
+        target_slot: reg.target_slot,
+        target_col: reg.target_col,
+        output_scale: 1.0,
+        max_transfer: Some(reg.amount),
+        tree_id: None,
+    }
+}
+
+/// Convert E-2A discrete transfer registrations into C-8c planner registrations.
+pub fn discrete_transfer_registrations_to_transfer(
+    regs: &[simthing_core::DiscreteTransferRegistration],
+) -> Vec<TransferRegistration> {
+    regs.iter()
+        .map(discrete_transfer_registration_to_transfer)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

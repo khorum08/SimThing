@@ -16,10 +16,12 @@ pub use accumulator_op::{
     SoftAggregateGuard, SourceSpec, ThresholdDirection,
 };
 pub use accumulator_op_builder::{
-    debt_band_next_threshold, emit_on_threshold, emit_on_threshold_registration_to_op,
-    refresh_emit_on_threshold_debt_band, rebuild_emit_on_threshold_event_kinds,
-    rebuild_emit_on_threshold_ops, AccumulatorOpBuilder, EmitOnThresholdBuffer,
-    EmitOnThresholdRegistration,
+    debt_band_next_threshold, discrete_transfer_registration_to_op, emit_on_threshold,
+    emit_on_threshold_registration_to_op, refresh_emit_on_threshold_debt_band,
+    rebuild_discrete_transfer_ops, rebuild_emit_on_threshold_event_kinds,
+    rebuild_emit_on_threshold_ops, resource_transfer_discrete,
+    try_resource_transfer_discrete, AccumulatorOpBuilder, AccumulatorOpBuilderError,
+    DiscreteTransferRegistration, EmitOnThresholdBuffer, EmitOnThresholdRegistration,
 };
 pub use eml_nodes::{opcode as eml_opcode, EML_STACK_MAX};
 pub use eml_registry::{

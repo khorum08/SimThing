@@ -478,12 +478,23 @@ pub fn emit_on_threshold(
 ) -> AccumulatorOp
 ```
 
-Future economic builders (E-2A, E-3):
+Future economic builders (E-3):
 
 ```rust
+// In simthing-core (E-2A landed):
+
+/// Exact discrete source-debit transfer (construction commits, treaty payments, etc.).
+pub fn resource_transfer_discrete(
+    source_slot: u32,
+    source_col:  u32,
+    target_slot: u32,
+    target_col:  u32,
+    amount:      f32,
+) -> AccumulatorOp
+
 // In simthing-spec (planned):
 
-/// Transfers `rate` units per tick from `source` to `target`.
+/// Continuous per-tick transfer rate (distinct from E-2A discrete commits).
 pub fn resource_transfer(
     source: ResourceRef,
     target: ResourceRef,

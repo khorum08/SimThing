@@ -21,7 +21,7 @@ Two parallel tracks:
 **Production direction:** AccumulatorOp v2 is the GPU execution path.
 Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Legacy threshold is deleted (S-6). Legacy velocity is deleted (S-5). Legacy intent is deleted (S-1). Snapshot is the only retained non-Accumulator operation.
 
-**Next gates:** **E-2A** `resource_transfer_discrete` · **E-3** conjunctive recipe · D-1 discrete-transaction contention memo · Resource Flow E-7/E-8/E-9 ladder when scheduled.
+**Next gates:** **E-3** conjunctive recipe · **E-7** governed_by planner · D-1 discrete-transaction contention memo · Resource Flow E-8/E-9 ladder when scheduled. **E-2B** `resource_flow_participant` remains blocked on E-8/E-9.
 
 **Open design gates (not sunset):** production transfer/emission registration ownership (substrate landed; spec/builder integration pending); **D-1** discrete-transaction contention memo (continuous-flow hot-pool allocator scope dissolved by Resource Flow ADR; C-8c still rejects same-band consumed-input contention); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
 
@@ -71,6 +71,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **S-5** | `6b9bf8f` | Legacy `velocity_integration.wgsl` + Pass 1 pipeline deleted; AccumulatorOp velocity mandatory for governed pairs |
 | **S-1** | `6b9bf8f` | Legacy `intent_delta.wgsl` + intent pipeline deleted; AccumulatorOp intent mandatory for pending intents |
 | **E-1** | #144 | `emit_on_threshold` builder in `simthing-core`; compiles to C-1 threshold+EmitEvent ops; re-registration helpers |
+| **E-2A** | (pending) | `resource_transfer_discrete` builder; exact SubtractFromSource discrete transfer |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
