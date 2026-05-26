@@ -5,9 +5,9 @@
 //!
 //! Synchronization targets:
 //!
-//! 1. Overlay deltas (Pass 3).
-//!    Rebuilt at each active boundary because attached/dissolved overlays
-//!    directly change the pass-3 transform list.
+//! 1. Overlay deltas.
+//!    Rebuilt or reused by the AccumulatorOp OrderBand compiler because
+//!    attached/dissolved overlays directly change the transform list.
 //!
 //! 2. Threshold registrations (Pass 7).
 //!    Rebuilt only when the tree, registry, alert registrations, or fission
@@ -29,8 +29,9 @@ use simthing_feeder::{
     CapabilityUnlockRegistration, DispatchCoordinator, ScriptedEventTriggerRegistration,
 };
 use simthing_gpu::{
-    build_column_rule_descriptors, build_governed_pairs, encode_column_rules, plan_velocity_integration,
-    ReductionPlanError, SlotAllocator, ThresholdRegistration, TopologyState, WorldGpuState,
+    build_column_rule_descriptors, build_governed_pairs, encode_column_rules,
+    plan_velocity_integration, ReductionPlanError, SlotAllocator, ThresholdRegistration,
+    TopologyState, WorldGpuState,
 };
 
 fn upload_accumulator_reduction_plan(
@@ -112,7 +113,7 @@ pub fn sync_gpu_buffers(
 ) -> GpuSyncOutcome {
     let mut out = GpuSyncOutcome::default();
 
-    // 1. Overlay deltas - always rebuild at active boundaries.
+    // 1. Overlay deltas - compiled into AccumulatorOp OrderBands.
     //
     // `build_overlay_deltas` returns one range per allocated slot, so
     // `ranges.len() == allocator.capacity()`. `state.upload_overlay_deltas`
@@ -201,16 +202,8 @@ pub fn sync_gpu_buffers(
                 overlay_upload_bytes =
                     ops.len() as u64 * std::mem::size_of::<simthing_gpu::AccumulatorOpGpu>() as u64;
             }
-
-            let empty_ranges =
-                vec![simthing_gpu::SlotDeltaRange::default(); state.n_slots as usize];
-            state.upload_overlay_deltas(&[], &empty_ranges);
         }
     } else {
-        if let Some(runtime) = state.accumulator_runtime.as_mut() {
-            runtime.clear_overlay_orderband();
-        }
-        state.set_overlay_add_dispatch(false, 0);
         let (deltas, mut ranges) = simthing_gpu::build_overlay_deltas(root, registry, allocator);
         if (ranges.len() as u32) < state.n_slots {
             ranges.resize(
@@ -219,10 +212,15 @@ pub fn sync_gpu_buffers(
             );
         }
         n_deltas = deltas.len() as u32;
-        overlay_upload_bytes = deltas.len() as u64
-            * std::mem::size_of::<simthing_gpu::OverlayDelta>() as u64
-            + ranges.len() as u64 * std::mem::size_of::<simthing_gpu::SlotDeltaRange>() as u64;
-        state.upload_overlay_deltas(&deltas, &ranges);
+        if !deltas.is_empty() {
+            panic!(
+                "Legacy overlay path was deleted in S-3; AccumulatorOp overlay must remain enabled."
+            );
+        }
+        if let Some(runtime) = state.accumulator_runtime.as_mut() {
+            runtime.clear_overlay_orderband();
+        }
+        state.set_overlay_add_dispatch(false, 0);
     }
     out.overlay_deltas_uploaded = n_deltas;
 

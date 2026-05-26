@@ -5,10 +5,10 @@
 > calendar quarters; they are completion-gated sequences. A phase does not
 > begin until all PRs in the prior phase are green and merged.
 >
-> **Pivot posture (2026-05-19):** AccumulatorOp v2 is the production direction.
-> Legacy reduction (S-4) and legacy intensity (S-2) are **deleted**. Remaining
-> legacy passes (intent, overlay, threshold, velocity) are oracle/fallback until
-> their S-phase deletions. See
+> **Pivot posture (2026-05-25):** AccumulatorOp v2 is the production direction.
+> Legacy reduction (S-4), legacy intensity (S-2), and legacy overlay (S-3) are
+> **deleted**. Remaining legacy passes (intent, threshold, velocity) are
+> oracle/fallback until their S-phase deletions. See
 > [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md) and
 > [`docs/workshop/pivot_forward_implementation_policy.md`](workshop/pivot_forward_implementation_policy.md).
 
@@ -401,8 +401,8 @@ overlay scenarios.
 **Implementation note:** C-3 established the per-cell OrderBand exactness rule
 for Add-only batches. C-4 extends that rule to all Add/Multiply/Set overlay
 batches and removes the mixed-batch fallback when the accumulator overlay flag is
-enabled. Legacy Pass 3 remains only for flag-off execution and oracle parity
-until S-3.
+enabled. S-3 deletes the legacy Pass 3 runtime branch; overlay workloads now
+require the AccumulatorOp OrderBand path.
 
 ---
 
@@ -472,13 +472,39 @@ AccumulatorOp OrderBands when `use_accumulator_overlay_add` is true. The flag
 name is retained from C-3 for compatibility, but the path is now the full C-4
 overlay compiler. The pipeline still runs in one command buffer and executes the
 overlay bands at the original overlay point, before reduction and world summary.
-Legacy Pass 3 remains present for flag-off execution and oracle tests only.
+S-3 removes the legacy shader/pipeline branch; CPU/golden tests now cover
+overlay parity.
 
-**Parity test:** Bit-exact against current Pass 3 for all overlay op types.  
+**Parity test:** Bit-exact against CPU/golden canonical overlay order for all overlay op types.  
 **High-density guard test:** At overlay density=1.0, assert the compiler does
 not recompile the full index when no overlays have changed since the last tick.  
 **Acceptance:** C-4 parity and no-change cache tests pass. Opus design note
-committed. S-3 remains pending; no legacy overlay deletion in C-4.
+committed. S-3 deletes the old overlay shader/pipeline after C-4 validation.
+
+---
+
+### ✅ PR S-3 — Legacy overlay sunset
+
+**Status:** Landed locally.
+
+**Scope:** Delete the legacy Pass 3 overlay runtime path after C-3/C-4 migrated
+Add/Multiply/Set overlays to AccumulatorOp OrderBands.
+
+**What shipped:**
+- Deleted `crates/simthing-gpu/src/shaders/transform_application.wgsl`.
+- Removed `overlay_pipeline`, `overlay_layout`, legacy overlay bind-group
+  creation, and legacy overlay dispatch from `Pipelines`.
+- `use_accumulator_overlay_add` now defaults **true** and is mandatory for
+  active overlay workloads. Disabling it with overlay deltas panics with the S-3
+  deletion message rather than falling back.
+- C-3/C-4 overlay parity tests now use CPU/golden canonical overlay order rather
+  than the deleted shader path.
+- Added `s3_overlay_sunset.rs` guards for shader absence, default accumulator
+  routing, flag-off rejection, CPU golden Add/Multiply/Set parity, and cache
+  rebuild after lifecycle activation.
+
+**Acceptance:** S-3 overlay sunset, C-3/C-4 overlay parity, and GPU pass tests
+green locally. No CPU production overlay path was added.
 
 ---
 
@@ -983,7 +1009,6 @@ mechanical, gated on CI passing with the feature flag set to default-on.
 
 **Inventory:** [`docs/workshop/s2_legacy_intensity_sunset_inventory.md`](workshop/s2_legacy_intensity_sunset_inventory.md)
 
-### PR S-3 — Sunset overlay prep (after C-3 + C-4)
 ### PR S-4 — Sunset reduction passes 4–6 (after C-5 + C-6)
 
 **Gate:** S-4 can begin only after the readiness checklist in PR C-6 is satisfied

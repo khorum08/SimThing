@@ -477,6 +477,9 @@ fn seed_research_progress_after_open(session: &mut SimSession, progress_delta: f
     find_simthing_mut(&mut session.proto.root, tree_id)
         .expect("cloned capability tree in session root")
         .add_overlay(progress_overlay);
+    // This test mutates the protocol tree directly, bypassing the boundary
+    // requests that normally invalidate the C-4 overlay compile cache.
+    session.proto.bump_overlay_compile_revision_for_test();
     session
         .proto
         .initial_gpu_sync(&session.coord, &mut session.state);

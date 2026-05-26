@@ -3,8 +3,8 @@
 **Purpose:** Single synthesis of **active workshop docs**, **production migration state**,
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
-**Last updated:** 2026-05-19  
-**Master HEAD:** docs/s2-production-plan-v7-sync (#139) @ `cacf755`  
+**Last updated:** 2026-05-25  
+**Master HEAD:** S-3 legacy overlay sunset (local)  
 **Verification (last recorded):** S-2 + C-8 full pipeline integration + C-1–C-8d regression green
 
 ---
@@ -19,15 +19,17 @@ Two parallel tracks:
 | **AccumulatorOp v2 / design v7** | **Active** — Phases A–B done; C-1–C-6 + **S-4** landed; reduction flags default **on** | `design_v7.md`, `accumulator_op_v2_production_plan.md`, `pivot_forward_implementation_policy.md` |
 
 **Production direction:** AccumulatorOp v2 is the intended GPU execution path.
-Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Remaining legacy passes (intent, overlay, threshold, velocity) are oracle/fallback until their S-phase deletions.
+Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Remaining legacy passes (intent, threshold, velocity) are oracle/fallback until their S-phase deletions.
 
-**Next gates:** **S-3** overlay sunset · **S-6** threshold sunset · **S-5** velocity · **S-1** intent.
+**Next gates:** **S-6** threshold sunset · **S-5** velocity · **S-1** intent.
 
 **Open design gates (not sunset):** production transfer/emission registration ownership (substrate landed; spec/builder integration pending); **D-1** shared-input/hot-pool allocator semantics for true cross-pool contention (C-8c rejects same-band consumed-input contention only); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
 
 **C-8 complete:** EML infrastructure, intensity, transfer, and emission are GPU-resident through AccumulatorOp. TransferConservation remains ExactDeterministic only. Emission tolerance remains future-gated and isolated from transfer/hard thresholds.
 
 **S-2 complete:** Legacy `intensity_update.wgsl` deleted. `IntensityBehavior` routes through AccumulatorOp EvalEML only; `use_accumulator_intensity` defaults on; disabling intensity with registered `IntensityBehavior` panics at boundary validation.
+
+**S-3 complete:** Legacy `transform_application.wgsl` and the overlay pipeline/bind-group branch are deleted. Add/Multiply/Set overlays route solely through AccumulatorOp OrderBands; `use_accumulator_overlay_add` defaults on and disabling it with active overlay deltas rejects the workload.
 
 ---
 
@@ -37,7 +39,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Remaining 
 
 **Default-on today:** reduction soft/exact · EML · EvalEML intensity.
 
-**Default-off / pending sunset:** intent · overlay · velocity · threshold · transfer · emission.
+**Default-off / pending sunset:** intent · velocity · threshold · transfer · emission.
 
 | ID | PRs | What |
 |----|-----|------|
@@ -48,7 +50,8 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Remaining 
 | **C-2** | #99–#100 | Intent affine → AccumulatorOp |
 | **C-3** | #105–#107 | Overlay Add-only + OrderBand exact f32 order foundation |
 | **C-4** | #118 | Full Add/Multiply/Set overlay OrderBand compiler + dirty cache |
-| **C-4 remedial** | local | Structural lifecycle/fission/cache hardening + consume-mode regressions |
+| **C-4 remedial** | #120 | Structural lifecycle/fission/cache hardening + consume-mode regressions |
+| **S-3** | local | Legacy overlay shader/pipeline deleted; AccumulatorOp OrderBands sole overlay path |
 | **C-5** | #122 | Mean / WeightedMean soft reductions → `ReductionSoft` on `output_vectors` |
 | **C-5 remedial** | #123 | Depth-interleaved soft/exact reduction per depth bucket |
 | **C-6** | #124 | Sum / Max / Min / First exact reductions; full AccumulatorOp path when soft+exact on |
@@ -87,8 +90,8 @@ Dispatcher → take/put sessions; encode world summary after Accumulator passes 
 
 **Overlay policy (C-4):** the compatibility flag `use_accumulator_overlay_add`
 now routes full Add/Multiply/Set batches through AccumulatorOp OrderBands using
-the canonical `build_overlay_deltas` output. Legacy Pass 3 remains for flag-off
-execution and oracle parity until S-3.
+the canonical `build_overlay_deltas` output. S-3 deleted legacy Pass 3; the flag
+defaults true and disabled overlay workloads reject instead of falling back.
 
 **Reduction policy (S-4):** `use_accumulator_reduction_soft` + `use_accumulator_reduction_exact`
 default **true** and must both be enabled. Production tick: copy `values` → `output_vectors`,
@@ -111,7 +114,6 @@ session presence + overlay dispatch cache, not stale sessions.
 
 | Priority | ID | Owner | Blocks |
 |----------|-----|-------|--------|
-| Sunset | **S-3** | Composer | Legacy overlay prep deletion after C-4 default-on |
 | Sunset | **S-6** | Composer | Legacy threshold scan (Pass 7) deletion after C-1 default-on |
 | Sunset | **S-5** | Composer | Legacy velocity integration deletion after C-7 default-on |
 | Sunset | **S-1** | Composer | Legacy intent fold deletion after C-2 default-on |
@@ -125,7 +127,7 @@ session presence + overlay dispatch cache, not stale sessions.
 |------|-------|---------|--------|
 | S-1 | C-2 default-on | Legacy intent pass | Pending |
 | S-2 | C-8b default-on | Legacy intensity (`intensity_update.wgsl`) | **Done (#138)** |
-| S-3 | C-3 + C-4 | Legacy overlay prep | Pending |
+| S-3 | C-3 + C-4 | Legacy overlay prep | Done |
 | S-4 | C-5 + C-6 | Legacy reduction passes + `reduction.wgsl` | **Done (#126)** |
 | S-5 | C-7 | Legacy velocity | Pending |
 | S-6 | C-1 default-on | Legacy threshold scan (Pass 7) | Pending |
