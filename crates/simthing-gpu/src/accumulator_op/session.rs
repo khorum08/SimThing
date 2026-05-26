@@ -69,6 +69,7 @@ pub struct AccumulatorOpSession {
 
     eml_node_buffer: Buffer,
     eml_range_buffer: Buffer,
+    input_list_buffer: Buffer,
 
     execute_layout: BindGroupLayout,
     execute_pipeline: ComputePipeline,
@@ -230,6 +231,7 @@ impl AccumulatorOpSession {
         });
 
         let (eml_node_buffer, eml_range_buffer) = mk_dummy_eml_buffers(device);
+        let input_list_buffer = mk_dummy_input_list_buffer(device);
 
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("accumulator_op"),
@@ -249,6 +251,7 @@ impl AccumulatorOpSession {
                 storage_entry(7, false),
                 storage_entry(8, true),
                 storage_entry(9, true),
+                storage_entry(10, true),
             ],
         });
 
@@ -329,6 +332,7 @@ impl AccumulatorOpSession {
             summary_uniform,
             eml_node_buffer,
             eml_range_buffer,
+            input_list_buffer,
             execute_layout,
             execute_pipeline,
             summary_layout,
@@ -846,6 +850,7 @@ impl AccumulatorOpSession {
                 previous_values,
                 &tick_uniform,
                 None,
+                None,
             );
             band_uniforms.push(tick_uniform);
 
@@ -915,6 +920,7 @@ impl AccumulatorOpSession {
             &self.previous_values_buffer,
             &tick_uniform,
             None,
+            None,
         );
 
         let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
@@ -964,6 +970,7 @@ impl AccumulatorOpSession {
             values,
             previous_values,
             &tick_uniform,
+            None,
             None,
         );
 
@@ -1016,10 +1023,62 @@ impl AccumulatorOpSession {
             previous_values,
             &tick_uniform,
             eml,
+            None,
         );
 
         let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
             label: Some("accumulator_intensity_eml_pass"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.execute_pipeline);
+        pass.set_bind_group(0, &execute_bind_group, &[]);
+        let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
+        pass.dispatch_workgroups(groups, 1, 1);
+    }
+
+    /// Encode C-8c transfer ops into the caller's command encoder (after intensity, before overlay).
+    pub fn encode_transfer_into(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+        previous_values: &Buffer,
+        eml: Option<(&Buffer, &Buffer)>,
+        input_list: Option<&Buffer>,
+    ) {
+        if self.n_ops == 0 {
+            return;
+        }
+        self.last_pass_time_us = None;
+
+        let tick_params = AccumulatorTickParams {
+            n_ops: self.n_ops,
+            current_band: 0,
+            n_slots: self.n_slots,
+            n_dims: self.n_dims,
+            emission_capacity: self.emission_capacity,
+            threshold_emission_capacity: self.threshold_emission_capacity,
+            dt_bits: 0,
+            _pad1: 0,
+        };
+        let tick_uniform = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("accumulator_transfer_tick_uniform"),
+                contents: bytemuck::bytes_of(&tick_params),
+                usage: BufferUsages::UNIFORM,
+            });
+        let execute_bind_group = self.create_execute_bind_group_with_uniform(
+            ctx,
+            values,
+            previous_values,
+            &tick_uniform,
+            eml,
+            input_list,
+        );
+
+        let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+            label: Some("accumulator_transfer_pass"),
             timestamp_writes: None,
         });
         pass.set_pipeline(&self.execute_pipeline);
@@ -1056,6 +1115,7 @@ impl AccumulatorOpSession {
             previous_values,
             &self.tick_uniform,
             eml,
+            None,
         )
     }
 
@@ -1066,8 +1126,10 @@ impl AccumulatorOpSession {
         previous_values: &Buffer,
         tick_uniform: &Buffer,
         eml: Option<(&Buffer, &Buffer)>,
+        input_list: Option<&Buffer>,
     ) -> wgpu::BindGroup {
         let (eml_nodes, eml_ranges) = self.resolve_eml_buffers(eml);
+        let input_list_buf = input_list.unwrap_or(&self.input_list_buffer);
         ctx.device.create_bind_group(&BindGroupDescriptor {
             label: Some("accumulator_execute_bg"),
             layout: &self.execute_layout,
@@ -1111,6 +1173,10 @@ impl AccumulatorOpSession {
                 BindGroupEntry {
                     binding: 9,
                     resource: eml_ranges.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 10,
+                    resource: input_list_buf.as_entire_binding(),
                 },
             ],
         })
@@ -1408,6 +1474,20 @@ fn uniform_entry(binding: u32) -> BindGroupLayoutEntry {
         },
         count: None,
     }
+}
+
+fn mk_dummy_input_list_buffer(device: &wgpu::Device) -> Buffer {
+    use super::types::AccumulatorInputGpu;
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("input_list_dummy"),
+        contents: bytemuck::bytes_of(&AccumulatorInputGpu {
+            slot: 0,
+            col: 0,
+            unit_cost_bits: 1.0f32.to_bits(),
+            flags: 0,
+        }),
+        usage: BufferUsages::STORAGE,
+    })
 }
 
 fn mk_dummy_eml_buffers(device: &wgpu::Device) -> (Buffer, Buffer) {

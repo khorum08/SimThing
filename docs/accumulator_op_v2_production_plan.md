@@ -560,13 +560,21 @@ comparison.
 - Legacy intensity update routes through AccumulatorOp `EvalEML` when flag on.
 - `IntensityBehavior` → `ExactDeterministic` EML (22 nodes; `MAX_EML_TREE_NODES`/`EML_STACK_MAX` raised to 32).
 - `dt` via tick params; persistent EML buffers; no per-dispatch upload.
-- C-8c transfer and C-8d emission remain pending.
+- C-8d emission remains pending.
 
 **C-8b remedial landed:**
 - Intensity op upload cache now keys on EML generation plus world/op-plan shape (`IntensityEmlOpPlanSignature`).
 - Slot growth and intensity entry/layout changes force op reupload.
 - Identical formula/shape boundaries skip EML table and op reupload.
 - Intensity remains GPU-resident through EvalEML.
+
+**C-8c landed:**
+- Transfer substrate routes through AccumulatorOp (`use_accumulator_transfer`, default false).
+- `AccumulatorInputListTable` provides persistent GPU input lists (generation-based skip; no per-dispatch upload).
+- `MinAcrossInputs` + `SubtractFromAllInputs` support conjunctive exact transfer; single-source `SubtractFromSource` for fixed-amount moves.
+- `TransferConservation` admits `ExactDeterministic` only.
+- No CPU-mediated production transfer.
+- C-8d emission remains pending.
 
 Selected:
 - **Execution-class taxonomy** (`EmlExecutionClass::{ExactDeterministic, SoftDeterministic, FastApproximate, CpuOracleOnly}`) plus a **consumer admissibility matrix** that gates which classes may feed which consumers.

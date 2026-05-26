@@ -52,6 +52,7 @@ pub struct AccumulatorPipelineSessions<'a> {
     pub reduction_soft: Option<&'a mut crate::AccumulatorOpSession>,
     pub velocity: Option<&'a mut crate::AccumulatorOpSession>,
     pub intensity_eml: Option<&'a mut crate::AccumulatorOpSession>,
+    pub transfer: Option<&'a mut crate::AccumulatorOpSession>,
     pub encode_world_summary: bool,
 }
 
@@ -507,6 +508,7 @@ impl Pipelines {
                 reduction_soft: None,
                 velocity: None,
                 intensity_eml: None,
+                transfer: None,
                 encode_world_summary: false,
             },
         );
@@ -532,6 +534,7 @@ impl Pipelines {
                 reduction_soft: None,
                 velocity: None,
                 intensity_eml: None,
+                transfer: None,
                 encode_world_summary: false,
             },
         );
@@ -577,6 +580,8 @@ impl Pipelines {
             && state.accumulator_velocity_bands > 0;
         let use_accumulator_intensity = state.accumulator_intensity_eml_active
             && state.accumulator_intensity_eml_bands > 0;
+        let use_accumulator_transfer = state.accumulator_transfer_active
+            && state.accumulator_transfer_bands > 0;
 
         let velocity_bg = (!use_accumulator_velocity && state.n_governed_pairs > 0).then(|| {
             ctx.device.create_bind_group(&BindGroupDescriptor {
@@ -716,6 +721,27 @@ impl Pipelines {
                     &state.previous_values,
                     dt,
                     eml,
+                );
+            }
+        }
+
+        if use_accumulator_transfer {
+            if let Some(session) = sessions.transfer.as_mut() {
+                let eml = state
+                    .accumulator_runtime
+                    .as_ref()
+                    .and_then(|r| r.eml_bind_buffers());
+                let input_list = state
+                    .accumulator_runtime
+                    .as_ref()
+                    .and_then(|r| r.input_list_bind_buffer());
+                session.encode_transfer_into(
+                    ctx,
+                    &mut encoder,
+                    &state.values,
+                    &state.previous_values,
+                    eml,
+                    input_list,
                 );
             }
         }
@@ -2043,6 +2069,7 @@ mod tests {
                 reduction_soft: None,
                 velocity: None,
                 intensity_eml: None,
+                transfer: None,
                 encode_world_summary: false,
             },
         );

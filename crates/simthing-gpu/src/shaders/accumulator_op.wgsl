@@ -69,9 +69,17 @@ struct ThresholdEmissionGpu {
     value: f32,
 }
 
+struct AccumulatorInputGpu {
+    slot: u32,
+    col: u32,
+    unit_cost_bits: u32,
+    flags: u32,
+}
+
 const SOURCE_CONSTANT: u32 = 0u;
 const SOURCE_SLOT_VALUE: u32 = 1u;
 const SOURCE_SLOT_RANGE: u32 = 2u;
+const SOURCE_INPUT_LIST: u32 = 3u;
 
 const COMBINE_IDENTITY: u32 = 0u;
 const COMBINE_SUM: u32 = 1u;
@@ -81,6 +89,7 @@ const COMBINE_MIN: u32 = 4u;
 const COMBINE_WEIGHTED_MEAN: u32 = 5u;
 const COMBINE_AFFINE_INTENT: u32 = 6u;
 const COMBINE_INTEGRATE_CLAMP: u32 = 9u;
+const COMBINE_MIN_ACROSS_INPUTS: u32 = 11u;
 const COMBINE_EVAL_EML: u32 = 12u;
 const COMBINE_FIRST: u32 = 13u;
 
@@ -117,6 +126,7 @@ const DIR_EITHER: u32 = 2u;
 @group(0) @binding(7) var<storage, read_write> threshold_emission_count: atomic<u32>;
 @group(0) @binding(8) var<storage, read> eml_nodes: array<EmlNodeGpu>;
 @group(0) @binding(9) var<storage, read> eml_tree_ranges: array<EmlTreeRangeGpu>;
+@group(0) @binding(10) var<storage, read> input_list: array<AccumulatorInputGpu>;
 
 struct EmlNodeGpu {
     opcode: u32,
@@ -405,6 +415,24 @@ fn clamped_transfer(op: AccumulatorOpGpu) -> f32 {
     return min(max(requested, 0.0), max(available, 0.0));
 }
 
+fn gather_min_across_inputs(op: AccumulatorOpGpu) -> f32 {
+    var amount = 3.402823466e38;
+    for (var i: u32 = 0u; i < op.source_count; i = i + 1u) {
+        let input = input_list[op.source_slot + i];
+        let available = atomic_read_f32_at(linear_idx(input.slot, input.col));
+        let unit_cost = bitcast<f32>(input.unit_cost_bits);
+        if (unit_cost <= 0.0) {
+            return 0.0;
+        }
+        let possible = available / unit_cost;
+        amount = min(amount, possible);
+    }
+    if (op.source_count == 0u) {
+        return 0.0;
+    }
+    return max(floor(amount), 0.0);
+}
+
 fn gather_value(op: AccumulatorOpGpu) -> f32 {
     if (op.combine_kind == COMBINE_SUM && op.source_kind == SOURCE_SLOT_RANGE) {
         var sum = 0.0;
@@ -491,6 +519,11 @@ fn gather_value(op: AccumulatorOpGpu) -> f32 {
         return eml_eval(ctx);
     }
 
+    if (op.combine_kind == COMBINE_MIN_ACROSS_INPUTS
+        && op.source_kind == SOURCE_INPUT_LIST) {
+        return gather_min_across_inputs(op);
+    }
+
     if (op.consume == CONSUME_SUBTRACT_FROM_SOURCE
         && op.source_kind == SOURCE_SLOT_VALUE
         && op.scale_kind == SCALE_CONSTANT) {
@@ -531,6 +564,9 @@ fn write_target(slot: u32, col: u32, write_value: f32, op: AccumulatorOpGpu) {
         case CONSUME_RESET_TARGET: {
             atomic_store_f32_at(idx, write_value);
         }
+        case CONSUME_SUBTRACT_FROM_SOURCE, CONSUME_SUBTRACT_FROM_ALL_INPUTS: {
+            atomic_add_f32_at(idx, write_value);
+        }
         default: {
             atomic_store_f32_at(idx, write_value);
         }
@@ -561,6 +597,25 @@ fn apply_consume(write_value: f32, op: AccumulatorOpGpu) {
             let new_bits = bitcast<i32>(bitcast<f32>(old_bits) - write_value);
             let result = atomicCompareExchangeWeak(cell_ptr, old_bits, new_bits);
             if result.exchanged { break; }
+        }
+    }
+    if (op.consume == CONSUME_SUBTRACT_FROM_ALL_INPUTS
+        && op.source_kind == SOURCE_INPUT_LIST) {
+        let unit_count = write_value;
+        for (var i: u32 = 0u; i < op.source_count; i = i + 1u) {
+            let input = input_list[op.source_slot + i];
+            let unit_cost = bitcast<f32>(input.unit_cost_bits);
+            let subtract = unit_count * unit_cost;
+            let idx = linear_idx(input.slot, input.col);
+            let cell_ptr = &values[idx];
+            loop {
+                let old_bits = atomicLoad(cell_ptr);
+                let old = bitcast<f32>(old_bits);
+                let new_val = max(old - subtract, 0.0);
+                let new_bits = bitcast<i32>(new_val);
+                let result = atomicCompareExchangeWeak(cell_ptr, old_bits, new_bits);
+                if result.exchanged { break; }
+            }
         }
     }
 }
@@ -664,7 +719,11 @@ fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     var write_value = gather_value(op);
     write_value = clamp_transfer(write_value, op);
-    apply_targets(write_value, op);
+    var target_value = write_value;
+    if (op.combine_kind == COMBINE_MIN_ACROSS_INPUTS) {
+        target_value = apply_scale(write_value, op);
+    }
+    apply_targets(target_value, op);
     apply_consume(write_value, op);
     maybe_emit_event(op_idx, write_value, op);
 }

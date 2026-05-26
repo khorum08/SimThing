@@ -78,6 +78,15 @@ pub struct EmissionRecordGpu {
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+pub struct AccumulatorInputGpu {
+    pub slot: u32,
+    pub col: u32,
+    pub unit_cost_bits: u32,
+    pub flags: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 pub struct AccumulatorOpGpu {
     pub source_kind: u32,
     pub source_slot: u32,
@@ -133,10 +142,10 @@ pub mod source_kind {
     pub const CONSTANT: u32 = 0;
     pub const SLOT_VALUE: u32 = 1;
     pub const SLOT_RANGE: u32 = 2;
-    /// Conjunctive multi-input (MinAcrossInputs). Full 4-input GPU support
-    /// lands in E-3. For now encodes the first input only; source_count
-    /// carries the declared input count for validation.
-    pub const CONJUNCTIVE_CROSSING: u32 = 3;
+    /// Persistent GPU input-list slice (`source_slot` = offset, `source_count` = length).
+    pub const INPUT_LIST: u32 = 3;
+    /// Legacy alias retained for encode/tests.
+    pub const CONJUNCTIVE_CROSSING: u32 = INPUT_LIST;
 }
 
 pub mod combine_kind {
