@@ -869,22 +869,27 @@ because it depends on `AccumulatorRole` / `ArenaRegistry` semantics.
 
 #### PR E-2A — `resource_transfer_discrete(...)`
 
+**Status:** **Landed** — first-class exact discrete transfer builder in `simthing-core`;
+compiles to C-8c `SubtractFromSource` single-source transfer shape. No new GPU primitive.
+E-2B remains blocked on E-8/E-9.
+
 ```rust
 pub fn resource_transfer_discrete(
-    source_slot: SlotId,
-    source_col:  SubFieldRole,
-    target_slot: SlotId,
-    target_col:  SubFieldRole,
+    source_slot: u32,
+    source_col:  u32,
+    target_slot: u32,
+    target_col:  u32,
     amount:      f32,
 ) -> AccumulatorOp
 ```
 
-Sets `combine: Identity`, `consume: SubtractFromSource`. For boundary-time
-discrete transactions (construction commits, treaty payments, emergency
-spend). Exact conservation.
+Sets `combine: Identity`, `gate: Always`, `scale: Constant(amount)`,
+`consume: SubtractFromSource`. GPU upload bridge:
+`discrete_transfer_registrations_to_transfer` → `plan_transfer_ops` / `sync_transfer_accumulator`.
 
-**Test:** Conservation test for the discrete builder (faction pool decrease ==
-factory queue increase). Exact per-transaction conservation.
+**Test:** `crates/simthing-sim/tests/e2a_resource_transfer_discrete_builder.rs` — exact
+debit/credit, insufficient-source clamp, zero no-op, invalid amount rejection, C-8c shape parity.  
+**Acceptance:** Tests pass. C-8c exact transfer regressions remain green.
 
 #### PR E-2B — `resource_flow_participant(...)`
 
@@ -1382,6 +1387,7 @@ as a doc-only PR.
 | D-3 | D | Composer 2.5 | Changed-only logs + replay | Replay test |
 | D-4 | D | Composer 2.5 + Opus | Cross-pool contention gate | Pass or ADR amendment |
 | E-1 | E | Composer 2.5 | EmitOnThreshold builder | `e1_emit_on_threshold_builder` |
+| E-2A | E | Codex 5.5 | resource_transfer_discrete builder | `e2a_resource_transfer_discrete_builder` |
 | **E-2** | **E** | **Codex 5.5** | **SPLIT: discrete + flow-participant builders** | **Conservation + enrollment tests** |
 | **E-3** | **E** | **Composer 2.5** | **conjunctive_recipe builder + lift N≤4 cap** | **factory_1k parity + N=8 test** |
 | E-4 | E | Composer 2.5 | Economic V1 RON + session integration | RON→session→conservation |

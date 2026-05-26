@@ -10,6 +10,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — E-2A resource_transfer_discrete builder
+
+- Added first-class exact discrete transfer builder in `simthing-core` (`try_resource_transfer_discrete`, `DiscreteTransferRegistration`, `rebuild_discrete_transfer_ops`).
+- Builder compiles to C-8c `SubtractFromSource` + `Constant(amount)` transfer shape; GPU bridge via `discrete_transfer_registrations_to_transfer`.
+- Tested exact debit/credit conservation, insufficient-source clamp, zero no-op, invalid amount rejection, C-8c planner parity, and GPU AccumulatorOp execution.
+- No continuous Resource Flow enrollment, no ArenaRegistry, no new GPU primitive. E-2B remains blocked on E-8/E-9.
+
+**Verification:** E-2A tests; C-8c/C-8/E-1 regressions; `cargo test --workspace`.
+
+---
+
 ## 2026-05-26 — E-1 remedial: buffer semantics + status cleanup (#145)
 
 - `emit_on_threshold_registrations_to_ops` now rejects `EmitOnThresholdBuffer::Output` registrations (plain `AccumulatorOp` cannot carry buffer selector).

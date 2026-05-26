@@ -9,6 +9,49 @@ use crate::{
     AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
 };
 
+/// Errors returned by E-2A discrete transfer builder validation.
+#[derive(Clone, Debug, PartialEq, thiserror::Error)]
+pub enum AccumulatorOpBuilderError {
+    #[error("discrete transfer amount must be finite")]
+    NonFiniteAmount,
+    #[error("discrete transfer amount must be >= 0")]
+    NegativeAmount,
+    #[error("discrete transfer source and target cells must differ")]
+    SameSourceAndTarget,
+}
+
+/// One exact discrete source-debit transfer registration (E-2A).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct DiscreteTransferRegistration {
+    pub source_slot: u32,
+    pub source_col: u32,
+    pub target_slot: u32,
+    pub target_col: u32,
+    pub amount: f32,
+}
+
+fn validate_discrete_transfer_amount(amount: f32) -> Result<(), AccumulatorOpBuilderError> {
+    if !amount.is_finite() {
+        return Err(AccumulatorOpBuilderError::NonFiniteAmount);
+    }
+    if amount < 0.0 {
+        return Err(AccumulatorOpBuilderError::NegativeAmount);
+    }
+    Ok(())
+}
+
+fn validate_discrete_transfer_cells(
+    source_slot: u32,
+    source_col: u32,
+    target_slot: u32,
+    target_col: u32,
+) -> Result<(), AccumulatorOpBuilderError> {
+    if source_slot == target_slot && source_col == target_col {
+        return Err(AccumulatorOpBuilderError::SameSourceAndTarget);
+    }
+    Ok(())
+}
+
 /// Which GPU buffer a threshold registration observes for crossing detection.
 ///
 /// The buffer selector is preserved by the GPU bridge
@@ -65,6 +108,32 @@ impl AccumulatorOpBuilder {
             targets: vec![],
         }
     }
+
+    /// Build an exact discrete source-debit transfer (E-2A / C-8c single-source path).
+    ///
+    /// `transfer_amount = min(max(amount, 0), max(source_value, 0))` at execution time;
+    /// source is debited and target is credited by that amount.
+    pub fn resource_transfer_discrete(
+        source_slot: u32,
+        source_col: u32,
+        target_slot: u32,
+        target_col: u32,
+        amount: f32,
+    ) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
+        validate_discrete_transfer_amount(amount)?;
+        validate_discrete_transfer_cells(source_slot, source_col, target_slot, target_col)?;
+        Ok(AccumulatorOp {
+            source: SourceSpec::SlotValue {
+                slot: source_slot,
+                col: source_col,
+            },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Constant(amount),
+            consume: ConsumeMode::SubtractFromSource,
+            targets: vec![(target_slot, target_col)],
+        })
+    }
 }
 
 /// Convenience alias for [`AccumulatorOpBuilder::emit_on_threshold`].
@@ -75,6 +144,63 @@ pub fn emit_on_threshold(
     direction: ThresholdDirection,
 ) -> AccumulatorOp {
     AccumulatorOpBuilder::emit_on_threshold(source_slot, source_col, threshold, direction)
+}
+
+/// Exact discrete source-debit transfer builder (E-2A).
+pub fn try_resource_transfer_discrete(
+    source_slot: u32,
+    source_col: u32,
+    target_slot: u32,
+    target_col: u32,
+    amount: f32,
+) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
+    AccumulatorOpBuilder::resource_transfer_discrete(
+        source_slot,
+        source_col,
+        target_slot,
+        target_col,
+        amount,
+    )
+}
+
+/// Exact discrete source-debit transfer builder (E-2A).
+///
+/// Prefer [`try_resource_transfer_discrete`] when handling invalid inputs.
+pub fn resource_transfer_discrete(
+    source_slot: u32,
+    source_col: u32,
+    target_slot: u32,
+    target_col: u32,
+    amount: f32,
+) -> AccumulatorOp {
+    try_resource_transfer_discrete(
+        source_slot,
+        source_col,
+        target_slot,
+        target_col,
+        amount,
+    )
+    .expect("invalid discrete transfer registration")
+}
+
+/// Compile one discrete transfer registration into its AccumulatorOp shape.
+pub fn discrete_transfer_registration_to_op(
+    reg: &DiscreteTransferRegistration,
+) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
+    AccumulatorOpBuilder::resource_transfer_discrete(
+        reg.source_slot,
+        reg.source_col,
+        reg.target_slot,
+        reg.target_col,
+        reg.amount,
+    )
+}
+
+/// Session-open / boundary refresh: compile discrete transfer registrations.
+pub fn rebuild_discrete_transfer_ops(
+    regs: &[DiscreteTransferRegistration],
+) -> Result<Vec<AccumulatorOp>, AccumulatorOpBuilderError> {
+    regs.iter().map(discrete_transfer_registration_to_op).collect()
 }
 
 /// Compile one registration into its AccumulatorOp shape.
@@ -125,6 +251,55 @@ pub fn refresh_emit_on_threshold_debt_band(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resource_transfer_discrete_validates() {
+        let op = try_resource_transfer_discrete(0, 0, 0, 1, 5.0).unwrap();
+        op.validate().expect("discrete transfer validates");
+    }
+
+    #[test]
+    fn resource_transfer_discrete_rejects_negative_amount() {
+        assert_eq!(
+            try_resource_transfer_discrete(0, 0, 0, 1, -1.0),
+            Err(AccumulatorOpBuilderError::NegativeAmount)
+        );
+    }
+
+    #[test]
+    fn resource_transfer_discrete_rejects_same_cell() {
+        assert_eq!(
+            try_resource_transfer_discrete(0, 0, 0, 0, 1.0),
+            Err(AccumulatorOpBuilderError::SameSourceAndTarget)
+        );
+    }
+
+    #[test]
+    fn rebuild_discrete_transfer_ops_preserves_order() {
+        let regs = [
+            DiscreteTransferRegistration {
+                source_slot: 0,
+                source_col: 0,
+                target_slot: 0,
+                target_col: 1,
+                amount: 3.0,
+            },
+            DiscreteTransferRegistration {
+                source_slot: 1,
+                source_col: 0,
+                target_slot: 2,
+                target_col: 0,
+                amount: 7.0,
+            },
+        ];
+        let ops = rebuild_discrete_transfer_ops(&regs).unwrap();
+        assert_eq!(ops.len(), 2);
+        assert_eq!(
+            ops[0].scale,
+            ScaleSpec::Constant(3.0),
+            "order preserved"
+        );
+    }
 
     #[test]
     fn emit_on_threshold_validates() {
