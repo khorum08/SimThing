@@ -1,4 +1,4 @@
-//! C-3/C-4 bit-exact parity: legacy Pass 3 overlays vs AccumulatorOp OrderBands.
+//! C-3/C-4 bit-exact parity: AccumulatorOp OrderBand overlays vs CPU golden order.
 
 use simthing_core::{
     DimensionRegistry, IntensityBehavior, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
@@ -8,7 +8,10 @@ use simthing_core::{
 use simthing_feeder::{
     feeder_channel, DispatchCoordinator, FeederWork, PatchTransform, TransformPatcher,
 };
-use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
+use simthing_gpu::{
+    build_overlay_deltas, GpuContext, Pipelines, SlotAllocator, WorldGpuState, OP_ADD, OP_MULTIPLY,
+    OP_SET,
+};
 use simthing_sim::BoundaryProtocol;
 
 fn try_gpu() -> Option<GpuContext> {
@@ -83,12 +86,56 @@ fn assert_bits_eq(label: &str, old: &[f32], new: &[f32]) {
     }
 }
 
-fn run_overlay_ticks<F>(
-    use_accumulator_overlay_add: bool,
-    n_ticks: u32,
-    dt: f32,
-    setup: F,
-) -> TickSnapshot
+fn apply_overlay_golden(values: &mut [f32], fx: &Fixture) {
+    let (deltas, ranges) = build_overlay_deltas(&fx.world, &fx.reg, &fx.alloc);
+    for slot in 0..fx.alloc.capacity() {
+        if slot >= ranges.len() {
+            break;
+        }
+        let range = ranges[slot];
+        for i in range.offset as usize..(range.offset + range.length) as usize {
+            let delta = deltas[i];
+            let idx = slot * fx.n_dims as usize + delta.col as usize;
+            match delta.op_kind {
+                OP_ADD => values[idx] += delta.value,
+                OP_MULTIPLY => values[idx] *= delta.value,
+                OP_SET => values[idx] = delta.value,
+                other => panic!("unsupported overlay op kind {other}"),
+            }
+        }
+    }
+}
+
+fn golden_overlay_ticks<F>(n_ticks: u32, dt: f32, setup: F) -> TickSnapshot
+where
+    F: FnOnce(&mut SimThing, simthing_core::SimPropertyId),
+{
+    assert_eq!(
+        dt.to_bits(),
+        0.0f32.to_bits(),
+        "CPU overlay golden covers overlay-only scenarios"
+    );
+    let mut fx = loyalty_fixture();
+    setup(&mut fx.world, fx.pid);
+    fx.alloc = SlotAllocator::new();
+    fx.alloc.populate_from_tree(&fx.world);
+
+    let projected_len = fx.alloc.capacity() * fx.n_dims as usize;
+    let mut values = vec![0.0; projected_len];
+    simthing_gpu::project_tree_to_values(
+        &fx.world,
+        &fx.reg,
+        &fx.alloc,
+        fx.n_dims as usize,
+        &mut values,
+    );
+    for _ in 0..n_ticks {
+        apply_overlay_golden(&mut values, &fx);
+    }
+    TickSnapshot { values }
+}
+
+fn run_overlay_ticks<F>(n_ticks: u32, dt: f32, setup: F) -> TickSnapshot
 where
     F: FnOnce(&mut SimThing, simthing_core::SimPropertyId),
 {
@@ -117,7 +164,7 @@ where
     coord.shadow[..projected_len].copy_from_slice(&projected);
 
     let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
-    proto.flags.use_accumulator_overlay_add = use_accumulator_overlay_add;
+    proto.flags.use_accumulator_overlay_add = true;
     proto.initial_gpu_sync(&coord, &mut state);
 
     for _ in 0..n_ticks {
@@ -145,9 +192,9 @@ macro_rules! parity_scenario {
                 eprintln!("skipping: no GPU");
                 return;
             };
-            let old = run_overlay_ticks(false, $ticks, $dt, $setup);
-            let new = run_overlay_ticks(true, $ticks, $dt, $setup);
-            assert_bits_eq(stringify!($name), &old.values, &new.values);
+            let golden = golden_overlay_ticks($ticks, $dt, $setup);
+            let gpu = run_overlay_ticks($ticks, $dt, $setup);
+            assert_bits_eq(stringify!($name), &golden.values, &gpu.values);
         }
     };
 }
@@ -263,17 +310,13 @@ fn c3_repeated_add_same_cell_preserves_legacy_f32_order() {
         ));
     };
 
-    let old = run_overlay_ticks(false, 1, 0.0, setup);
-    let new = run_overlay_ticks(true, 1, 0.0, setup);
+    let new = run_overlay_ticks(1, 0.0, setup);
 
     let expected = (1.0f32 + 1e20f32) + (-1e20f32);
     let amount_idx = 0usize; // loyalty Amount is first column in simple property
-    assert_eq!(
-        old.values[amount_idx].to_bits(),
-        expected.to_bits(),
-        "legacy baseline should match sequential f32 order"
-    );
-    assert_bits_eq("c3_repeated_add_same_cell", &old.values, &new.values);
+    assert_eq!(new.values[amount_idx].to_bits(), expected.to_bits());
+    let golden = golden_overlay_ticks(1, 0.0, setup);
+    assert_bits_eq("c3_repeated_add_same_cell", &golden.values, &new.values);
 }
 
 #[test]
@@ -295,9 +338,9 @@ fn c3_same_cell_many_overlays_bit_exact() {
             ));
         }
     };
-    let old = run_overlay_ticks(false, 1, 0.0, setup);
-    let new = run_overlay_ticks(true, 1, 0.0, setup);
-    assert_bits_eq("c3_same_cell_many_overlays", &old.values, &new.values);
+    let golden = golden_overlay_ticks(1, 0.0, setup);
+    let new = run_overlay_ticks(1, 0.0, setup);
+    assert_bits_eq("c3_same_cell_many_overlays", &golden.values, &new.values);
 }
 
 #[test]
@@ -455,7 +498,7 @@ fn c1_c2_c3_combined_accumulator_paths_parity() {
         )
     };
 
-    let (old_vals, old_events) = run(false, false, false);
+    let (old_vals, old_events) = run(false, false, true);
     let (new_vals, new_events) = run(true, true, true);
     assert_bits_eq("combined values", &old_vals.values, &new_vals.values);
     assert_eq!(old_events, new_events);

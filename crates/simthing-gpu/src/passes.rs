@@ -11,10 +11,10 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor,
-    BufferUsages, CommandEncoderDescriptor, ComputePass, ComputePassDescriptor, ComputePipeline,
-    ComputePipelineDescriptor, PipelineLayoutDescriptor, ShaderModuleDescriptor,
-    ShaderSource, ShaderStages,
+    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
+    CommandEncoderDescriptor, ComputePass, ComputePassDescriptor, ComputePipeline,
+    ComputePipelineDescriptor, PipelineLayoutDescriptor, ShaderModuleDescriptor, ShaderSource,
+    ShaderStages,
 };
 
 use crate::context::GpuContext;
@@ -39,15 +39,15 @@ fn dispatch_linear(pass: &mut ComputePass<'_>, total_invocations: u32) {
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 struct PassParams {
     delta_time: f32,
-    n_dims:     u32,
-    _pad0:      u32,
-    _pad1:      u32,
+    n_dims: u32,
+    _pad0: u32,
+    _pad1: u32,
 }
 
 /// Optional AccumulatorOp sessions folded into one tick command buffer (C-1/C-2/C-3/C-5/C-7).
 pub struct AccumulatorPipelineSessions<'a> {
-    pub threshold:   Option<&'a mut crate::AccumulatorOpSession>,
-    pub intent:      Option<&'a mut crate::AccumulatorOpSession>,
+    pub threshold: Option<&'a mut crate::AccumulatorOpSession>,
+    pub intent: Option<&'a mut crate::AccumulatorOpSession>,
     pub overlay_add: Option<&'a mut crate::AccumulatorOpSession>,
     pub reduction_soft: Option<&'a mut crate::AccumulatorOpSession>,
     pub velocity: Option<&'a mut crate::AccumulatorOpSession>,
@@ -60,19 +60,16 @@ pub struct AccumulatorPipelineSessions<'a> {
 pub struct Pipelines {
     uniform_buffer: Buffer,
 
-    snapshot_layout:   BindGroupLayout,
+    snapshot_layout: BindGroupLayout,
     snapshot_pipeline: ComputePipeline,
 
-    velocity_layout:   BindGroupLayout,
+    velocity_layout: BindGroupLayout,
     velocity_pipeline: ComputePipeline,
 
-    overlay_layout:   BindGroupLayout,
-    overlay_pipeline: ComputePipeline,
-
-    intent_layout:   BindGroupLayout,
+    intent_layout: BindGroupLayout,
     intent_pipeline: ComputePipeline,
 
-    threshold_layout:   BindGroupLayout,
+    threshold_layout: BindGroupLayout,
     threshold_pipeline: ComputePipeline,
 }
 
@@ -83,7 +80,7 @@ impl Pipelines {
         // Uniform buffer — small, frequently overwritten.
         let uniform_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("pass_params_uniform"),
-            size:  std::mem::size_of::<PassParams>() as u64,
+            size: std::mem::size_of::<PassParams>() as u64,
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -99,7 +96,7 @@ impl Pipelines {
             ],
         });
         let snapshot_module = device.create_shader_module(ShaderModuleDescriptor {
-            label:  Some("snapshot_shader"),
+            label: Some("snapshot_shader"),
             source: ShaderSource::Wgsl(include_str!("shaders/snapshot.wgsl").into()),
         });
         let snapshot_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -122,11 +119,11 @@ impl Pipelines {
             entries: &[
                 storage_entry(0, /*read_only*/ false), // values (rw)
                 storage_entry(1, /*read_only*/ true),  // pairs
-                uniform_entry(2),                       // params
+                uniform_entry(2),                      // params
             ],
         });
         let velocity_module = device.create_shader_module(ShaderModuleDescriptor {
-            label:  Some("velocity_shader"),
+            label: Some("velocity_shader"),
             source: ShaderSource::Wgsl(include_str!("shaders/velocity_integration.wgsl").into()),
         });
         let velocity_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -143,47 +140,17 @@ impl Pipelines {
             cache: None,
         });
 
-        // ── Pass 3: overlay transform application ───────────────────────────
-        // No uniform buffer: n_slots / n_dims derived from buffer lengths in shader.
-        let overlay_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("overlay_bgl"),
-            entries: &[
-                storage_entry(0, /*read_only*/ false), // values (rw)
-                storage_entry(1, /*read_only*/ true),  // overlay_deltas
-                storage_entry(2, /*read_only*/ true),  // slot_delta_ranges
-            ],
-        });
-        let overlay_module = device.create_shader_module(ShaderModuleDescriptor {
-            label:  Some("overlay_shader"),
-            source: ShaderSource::Wgsl(
-                include_str!("shaders/transform_application.wgsl").into(),
-            ),
-        });
-        let overlay_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("overlay_pl_layout"),
-            bind_group_layouts: &[&overlay_layout],
-            push_constant_ranges: &[],
-        });
-        let overlay_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("overlay_pipeline"),
-            layout: Some(&overlay_pl_layout),
-            module: &overlay_module,
-            entry_point: "main",
-            compilation_options: Default::default(),
-            cache: None,
-        });
-
         // Per-tick feeder/player/AI intent deltas, applied before snapshot.
         let intent_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("intent_bgl"),
             entries: &[
                 storage_entry(0, /*read_only*/ false), // values (rw)
                 storage_entry(1, /*read_only*/ true),  // intent_deltas
-                uniform_entry(2),                       // params
+                uniform_entry(2),                      // params
             ],
         });
         let intent_module = device.create_shader_module(ShaderModuleDescriptor {
-            label:  Some("intent_delta_shader"),
+            label: Some("intent_delta_shader"),
             source: ShaderSource::Wgsl(include_str!("shaders/intent_delta.wgsl").into()),
         });
         let intent_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -211,11 +178,11 @@ impl Pipelines {
                 storage_entry(4, /*read_only*/ true),  // registry
                 storage_entry(5, /*read_only*/ false), // event_count (atomic u32)
                 storage_entry(6, /*read_only*/ false), // event_candidates
-                uniform_entry(7),                       // params
+                uniform_entry(7),                      // params
             ],
         });
         let threshold_module = device.create_shader_module(ShaderModuleDescriptor {
-            label:  Some("threshold_shader"),
+            label: Some("threshold_shader"),
             source: ShaderSource::Wgsl(include_str!("shaders/threshold_scan.wgsl").into()),
         });
         let threshold_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -234,21 +201,26 @@ impl Pipelines {
 
         Self {
             uniform_buffer,
-            snapshot_layout, snapshot_pipeline,
-            velocity_layout, velocity_pipeline,
-            overlay_layout, overlay_pipeline,
-            intent_layout, intent_pipeline,
-            threshold_layout, threshold_pipeline,
+            snapshot_layout,
+            snapshot_pipeline,
+            velocity_layout,
+            velocity_pipeline,
+            intent_layout,
+            intent_pipeline,
+            threshold_layout,
+            threshold_pipeline,
         }
     }
 
     fn write_params(&self, ctx: &GpuContext, state: &WorldGpuState, dt: f32) {
         let p = PassParams {
             delta_time: dt,
-            n_dims:     state.n_dims,
-            _pad0: 0, _pad1: 0,
+            n_dims: state.n_dims,
+            _pad0: 0,
+            _pad1: 0,
         };
-        ctx.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&p));
+        ctx.queue
+            .write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&p));
     }
 
     pub fn run_snapshot(&self, state: &WorldGpuState) {
@@ -257,18 +229,32 @@ impl Pipelines {
             label: Some("snapshot_bg"),
             layout: &self.snapshot_layout,
             entries: &[
-                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                BindGroupEntry { binding: 1, resource: state.previous_values.as_entire_binding() },
-                BindGroupEntry { binding: 2, resource: state.output_vectors.as_entire_binding() },
-                BindGroupEntry { binding: 3, resource: state.previous_output_vectors.as_entire_binding() },
+                BindGroupEntry {
+                    binding: 0,
+                    resource: state.values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: state.previous_values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: state.output_vectors.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 3,
+                    resource: state.previous_output_vectors.as_entire_binding(),
+                },
             ],
         });
 
         let total = state.n_slots * state.n_dims;
 
-        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("snapshot_encoder"),
-        });
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("snapshot_encoder"),
+            });
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("snapshot_pass"),
@@ -282,7 +268,9 @@ impl Pipelines {
     }
 
     pub fn run_velocity_integration(&self, state: &WorldGpuState, dt: f32) {
-        if state.n_governed_pairs == 0 { return; }
+        if state.n_governed_pairs == 0 {
+            return;
+        }
         let ctx = &state.ctx;
         self.write_params(ctx, state, dt);
 
@@ -290,17 +278,28 @@ impl Pipelines {
             label: Some("velocity_bg"),
             layout: &self.velocity_layout,
             entries: &[
-                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                BindGroupEntry { binding: 1, resource: state.governed_pairs.as_entire_binding() },
-                BindGroupEntry { binding: 2, resource: self.uniform_buffer.as_entire_binding() },
+                BindGroupEntry {
+                    binding: 0,
+                    resource: state.values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: state.governed_pairs.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: self.uniform_buffer.as_entire_binding(),
+                },
             ],
         });
 
         let total = state.n_slots * state.n_governed_pairs;
 
-        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("velocity_encoder"),
-        });
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("velocity_encoder"),
+            });
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("velocity_pass"),
@@ -320,9 +319,11 @@ impl Pipelines {
         }
         let ctx = &state.ctx;
         self.write_params(ctx, state, dt);
-        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("intensity_eml_encoder"),
-        });
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("intensity_eml_encoder"),
+            });
         if let Some(runtime) = state.accumulator_runtime.as_mut() {
             let mut session = runtime.take_intensity_eml_session();
             if let Some(session) = session.as_mut() {
@@ -341,43 +342,41 @@ impl Pipelines {
         ctx.queue.submit(Some(encoder.finish()));
     }
 
-    ///
-    /// Reads from `state.overlay_deltas` (pre-uploaded by `upload_overlay_deltas`) and
-    /// applies each op in place to `values`. No-ops if `state.n_overlay_deltas == 0`.
-    pub fn run_apply_overlays(&self, state: &WorldGpuState) {
-        if state.n_overlay_deltas == 0 { return; }
+    /// S-3 overlay dispatch: apply C-4 OrderBand overlay ops through AccumulatorOp.
+    pub fn run_accumulator_overlays(&self, state: &mut WorldGpuState) {
+        if !state.accumulator_overlay_add_active || state.accumulator_overlay_add_bands == 0 {
+            return;
+        }
         let ctx = &state.ctx;
-
-        let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
-            label: Some("overlay_bg"),
-            layout: &self.overlay_layout,
-            entries: &[
-                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                BindGroupEntry { binding: 1, resource: state.overlay_deltas.as_entire_binding() },
-                BindGroupEntry { binding: 2, resource: state.slot_delta_ranges.as_entire_binding() },
-            ],
-        });
-
-        // One thread per slot.
-
-        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("overlay_encoder"),
-        });
-        {
-            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("overlay_pass"),
-                timestamp_writes: None,
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("overlay_accumulator_encoder"),
             });
-            pass.set_pipeline(&self.overlay_pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            dispatch_linear(&mut pass, state.n_slots);
+        let mut session = state
+            .accumulator_runtime
+            .as_mut()
+            .and_then(|runtime| runtime.take_overlay_session());
+        if let Some(session) = session.as_mut() {
+            session.encode_overlay_add_into(
+                ctx,
+                &mut encoder,
+                &state.values,
+                &state.previous_values,
+                state.accumulator_overlay_add_bands,
+            );
+        }
+        if let Some(runtime) = state.accumulator_runtime.as_mut() {
+            runtime.restore_overlay_session(session);
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
 
     /// Apply folded per-tick intent deltas directly on the GPU.
     pub fn run_apply_intents(&self, state: &WorldGpuState) {
-        if state.n_intent_deltas == 0 { return; }
+        if state.n_intent_deltas == 0 {
+            return;
+        }
         let ctx = &state.ctx;
         self.write_params(ctx, state, 0.0);
 
@@ -385,15 +384,26 @@ impl Pipelines {
             label: Some("intent_bg"),
             layout: &self.intent_layout,
             entries: &[
-                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                BindGroupEntry { binding: 1, resource: state.intent_deltas.as_entire_binding() },
-                BindGroupEntry { binding: 2, resource: self.uniform_buffer.as_entire_binding() },
+                BindGroupEntry {
+                    binding: 0,
+                    resource: state.values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: state.intent_deltas.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: self.uniform_buffer.as_entire_binding(),
+                },
             ],
         });
 
-        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("intent_encoder"),
-        });
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("intent_encoder"),
+            });
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("intent_pass"),
@@ -467,8 +477,8 @@ impl Pipelines {
             state,
             dt,
             AccumulatorPipelineSessions {
-                threshold:   Some(session),
-                intent:      None,
+                threshold: Some(session),
+                intent: None,
                 overlay_add: None,
                 reduction_soft: None,
                 velocity: None,
@@ -494,8 +504,8 @@ impl Pipelines {
             false,
             skip_threshold_scan,
             &mut AccumulatorPipelineSessions {
-                threshold:   None,
-                intent:      None,
+                threshold: None,
+                intent: None,
                 overlay_add: None,
                 reduction_soft: None,
                 velocity: None,
@@ -525,9 +535,18 @@ impl Pipelines {
                 label: Some("intent_bg"),
                 layout: &self.intent_layout,
                 entries: &[
-                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                    BindGroupEntry { binding: 1, resource: state.intent_deltas.as_entire_binding() },
-                    BindGroupEntry { binding: 2, resource: self.uniform_buffer.as_entire_binding() },
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: state.values.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: state.intent_deltas.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        resource: self.uniform_buffer.as_entire_binding(),
+                    },
                 ],
             })
         });
@@ -536,42 +555,51 @@ impl Pipelines {
             label: Some("snapshot_bg"),
             layout: &self.snapshot_layout,
             entries: &[
-                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                BindGroupEntry { binding: 1, resource: state.previous_values.as_entire_binding() },
-                BindGroupEntry { binding: 2, resource: state.output_vectors.as_entire_binding() },
-                BindGroupEntry { binding: 3, resource: state.previous_output_vectors.as_entire_binding() },
+                BindGroupEntry {
+                    binding: 0,
+                    resource: state.values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: state.previous_values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: state.output_vectors.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 3,
+                    resource: state.previous_output_vectors.as_entire_binding(),
+                },
             ],
         });
 
-        let use_accumulator_velocity = state.accumulator_velocity_active
-            && state.accumulator_velocity_bands > 0;
-        let use_accumulator_intensity = state.accumulator_intensity_eml_active
-            && state.accumulator_intensity_eml_bands > 0;
-        let use_accumulator_transfer = state.accumulator_transfer_active
-            && state.accumulator_transfer_bands > 0;
-        let use_accumulator_emission = state.accumulator_emission_active
-            && state.accumulator_emission_bands > 0;
+        let use_accumulator_velocity =
+            state.accumulator_velocity_active && state.accumulator_velocity_bands > 0;
+        let use_accumulator_intensity =
+            state.accumulator_intensity_eml_active && state.accumulator_intensity_eml_bands > 0;
+        let use_accumulator_transfer =
+            state.accumulator_transfer_active && state.accumulator_transfer_bands > 0;
+        let use_accumulator_emission =
+            state.accumulator_emission_active && state.accumulator_emission_bands > 0;
 
         let velocity_bg = (!use_accumulator_velocity && state.n_governed_pairs > 0).then(|| {
             ctx.device.create_bind_group(&BindGroupDescriptor {
                 label: Some("velocity_bg"),
                 layout: &self.velocity_layout,
                 entries: &[
-                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                    BindGroupEntry { binding: 1, resource: state.governed_pairs.as_entire_binding() },
-                    BindGroupEntry { binding: 2, resource: self.uniform_buffer.as_entire_binding() },
-                ],
-            })
-        });
-
-        let overlay_bg = (state.n_overlay_deltas > 0).then(|| {
-            ctx.device.create_bind_group(&BindGroupDescriptor {
-                label: Some("overlay_bg"),
-                layout: &self.overlay_layout,
-                entries: &[
-                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                    BindGroupEntry { binding: 1, resource: state.overlay_deltas.as_entire_binding() },
-                    BindGroupEntry { binding: 2, resource: state.slot_delta_ranges.as_entire_binding() },
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: state.values.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: state.governed_pairs.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        resource: self.uniform_buffer.as_entire_binding(),
+                    },
                 ],
             })
         });
@@ -581,29 +609,50 @@ impl Pipelines {
                 label: Some("threshold_bg"),
                 layout: &self.threshold_layout,
                 entries: &[
-                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                    BindGroupEntry { binding: 1, resource: state.previous_values.as_entire_binding() },
-                    BindGroupEntry { binding: 2, resource: state.output_vectors.as_entire_binding() },
-                    BindGroupEntry { binding: 3, resource: state.previous_output_vectors.as_entire_binding() },
-                    BindGroupEntry { binding: 4, resource: state.threshold_registry.as_entire_binding() },
-                    BindGroupEntry { binding: 5, resource: state.event_count.as_entire_binding() },
-                    BindGroupEntry { binding: 6, resource: state.event_candidates.as_entire_binding() },
-                    BindGroupEntry { binding: 7, resource: self.uniform_buffer.as_entire_binding() },
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: state.values.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: state.previous_values.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        resource: state.output_vectors.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 3,
+                        resource: state.previous_output_vectors.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 4,
+                        resource: state.threshold_registry.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 5,
+                        resource: state.event_count.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 6,
+                        resource: state.event_candidates.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 7,
+                        resource: self.uniform_buffer.as_entire_binding(),
+                    },
                 ],
             })
         });
 
-        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("tick_pipeline_encoder"),
-        });
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("tick_pipeline_encoder"),
+            });
 
         if let Some(session) = sessions.intent.as_mut() {
-            session.encode_intent_into(
-                ctx,
-                &mut encoder,
-                &state.values,
-                &state.previous_values,
-            );
+            session.encode_intent_into(ctx, &mut encoder, &state.values, &state.previous_values);
         }
 
         {
@@ -712,20 +761,14 @@ impl Pipelines {
             }
         }
 
-        let reduction_soft_active = state.accumulator_reduction_soft_active
-            && state.accumulator_reduction_soft_bands > 0;
+        let reduction_soft_active =
+            state.accumulator_reduction_soft_active && state.accumulator_reduction_soft_bands > 0;
 
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("tick_pipeline_post_overlay"),
                 timestamp_writes: None,
             });
-
-            if let Some(bg) = overlay_bg.as_ref() {
-                pass.set_pipeline(&self.overlay_pipeline);
-                pass.set_bind_group(0, bg, &[]);
-                dispatch_linear(&mut pass, state.n_slots);
-            }
 
             if !skip_threshold_scan && !reduction_soft_active {
                 if let Some(bg) = threshold_bg.as_ref() {
@@ -738,20 +781,9 @@ impl Pipelines {
 
         if reduction_soft_active {
             let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
-            encoder.copy_buffer_to_buffer(
-                &state.values,
-                0,
-                &state.output_vectors,
-                0,
-                copy_bytes,
-            );
+            encoder.copy_buffer_to_buffer(&state.values, 0, &state.output_vectors, 0, copy_bytes);
             if let Some(session) = sessions.reduction_soft.as_mut() {
-                self.encode_accumulator_reduction_by_depth(
-                    ctx,
-                    &mut encoder,
-                    state,
-                    session,
-                );
+                self.encode_accumulator_reduction_by_depth(ctx, &mut encoder, state, session);
             }
             if !skip_threshold_scan {
                 if let Some(bg) = threshold_bg.as_ref() {
@@ -803,18 +835,14 @@ impl Pipelines {
         }
         let ctx = &state.ctx;
 
-        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("accumulator_reduction_encoder"),
-        });
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("accumulator_reduction_encoder"),
+            });
 
         let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
-        encoder.copy_buffer_to_buffer(
-            &state.values,
-            0,
-            &state.output_vectors,
-            0,
-            copy_bytes,
-        );
+        encoder.copy_buffer_to_buffer(&state.values, 0, &state.output_vectors, 0, copy_bytes);
 
         self.encode_accumulator_reduction_by_depth(ctx, &mut encoder, state, session);
 
@@ -859,7 +887,9 @@ impl Pipelines {
         // Reset the atomic counter before this tick's scan.
         state.reset_event_count();
 
-        if state.n_thresholds == 0 { return; }
+        if state.n_thresholds == 0 {
+            return;
+        }
         let ctx = &state.ctx;
 
         // n_dims is the only field Pass 7 reads from the uniform; dt is ignored.
@@ -869,20 +899,46 @@ impl Pipelines {
             label: Some("threshold_bg"),
             layout: &self.threshold_layout,
             entries: &[
-                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                BindGroupEntry { binding: 1, resource: state.previous_values.as_entire_binding() },
-                BindGroupEntry { binding: 2, resource: state.output_vectors.as_entire_binding() },
-                BindGroupEntry { binding: 3, resource: state.previous_output_vectors.as_entire_binding() },
-                BindGroupEntry { binding: 4, resource: state.threshold_registry.as_entire_binding() },
-                BindGroupEntry { binding: 5, resource: state.event_count.as_entire_binding() },
-                BindGroupEntry { binding: 6, resource: state.event_candidates.as_entire_binding() },
-                BindGroupEntry { binding: 7, resource: self.uniform_buffer.as_entire_binding() },
+                BindGroupEntry {
+                    binding: 0,
+                    resource: state.values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: state.previous_values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: state.output_vectors.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 3,
+                    resource: state.previous_output_vectors.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 4,
+                    resource: state.threshold_registry.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 5,
+                    resource: state.event_count.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 6,
+                    resource: state.event_candidates.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 7,
+                    resource: self.uniform_buffer.as_entire_binding(),
+                },
             ],
         });
 
-        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("threshold_encoder"),
-        });
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("threshold_encoder"),
+            });
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("threshold_pass"),
@@ -927,8 +983,8 @@ mod tests {
     use super::*;
     use simthing_core::evaluate::Evaluator;
     use simthing_core::{
-        DimensionRegistry, IntensityBehavior, PropertyValue, SimProperty, SimThing,
-        SimThingKind, SubFieldRole,
+        DimensionRegistry, IntensityBehavior, PropertyValue, SimProperty, SimThing, SimThingKind,
+        SubFieldRole,
     };
 
     fn try_gpu() -> Option<GpuContext> {
@@ -951,9 +1007,11 @@ mod tests {
         assert_eq!(cpu.len(), gpu.len(), "{label}: length mismatch");
         for (i, (a, b)) in cpu.iter().zip(gpu.iter()).enumerate() {
             assert_eq!(
-                a.to_bits(), b.to_bits(),
+                a.to_bits(),
+                b.to_bits(),
                 "{label}: index {i} diverges — cpu={a} ({:08x}), gpu={b} ({:08x})",
-                a.to_bits(), b.to_bits(),
+                a.to_bits(),
+                b.to_bits(),
             );
         }
     }
@@ -966,6 +1024,21 @@ mod tests {
     ) {
         state.sync_intensity_eml_accumulator(reg);
         pipelines.run_accumulator_intensity_eml(state, dt);
+    }
+
+    fn upload_accumulator_overlay_plan(
+        state: &mut WorldGpuState,
+        world: &SimThing,
+        reg: &DimensionRegistry,
+        alloc: &crate::slot::SlotAllocator,
+    ) -> usize {
+        let (deltas, ranges) = crate::overlay_prep::build_overlay_deltas(world, reg, alloc);
+        let plan = crate::plan_overlay_orderband(&deltas, &ranges, state.n_slots);
+        state.ensure_overlay_add_accumulator();
+        state
+            .upload_overlay_ops_with_bands(&plan.ops, plan.n_bands)
+            .expect("overlay upload");
+        deltas.len()
     }
 
     fn upload_accumulator_reduction_plan(
@@ -997,12 +1070,17 @@ mod tests {
 
     #[test]
     fn snapshot_copies_values_to_previous() {
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
         let mut reg = DimensionRegistry::new();
         reg.register(loyalty_property());
         let state = WorldGpuState::new(ctx, &reg, 3);
 
-        let input: Vec<f32> = (0..state.values_len()).map(|i| (i as f32) * 0.13 + 0.5).collect();
+        let input: Vec<f32> = (0..state.values_len())
+            .map(|i| (i as f32) * 0.13 + 0.5)
+            .collect();
         state.write_values(&input);
 
         let pipelines = Pipelines::new(&state.ctx);
@@ -1016,7 +1094,10 @@ mod tests {
     /// negative velocity (exercises velocity pinning).
     #[test]
     fn velocity_integration_matches_cpu_oracle_dt_one() {
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
         let mut reg = DimensionRegistry::new();
         let id = reg.register(loyalty_property());
         let layout = reg.property(id).layout.clone();
@@ -1027,8 +1108,12 @@ mod tests {
         let i_off = layout.offset_of(&SubFieldRole::Intensity).unwrap();
 
         let mut slots = vec![vec![0.0f32; stride], vec![0.0f32; stride]];
-        slots[0][a_off] = 0.4;  slots[0][v_off] =  0.07; slots[0][i_off] = 0.2;
-        slots[1][a_off] = 0.0;  slots[1][v_off] = -0.05; slots[1][i_off] = 0.3;
+        slots[0][a_off] = 0.4;
+        slots[0][v_off] = 0.07;
+        slots[0][i_off] = 0.2;
+        slots[1][a_off] = 0.0;
+        slots[1][v_off] = -0.05;
+        slots[1][i_off] = 0.3;
 
         let dt = 1.0;
 
@@ -1045,7 +1130,7 @@ mod tests {
         let n_dims = state.n_dims as usize;
         let mut flat = vec![0.0f32; state.values_len()];
         for (s, d) in slots.iter().enumerate() {
-            flat[s * n_dims .. s * n_dims + stride].copy_from_slice(d);
+            flat[s * n_dims..s * n_dims + stride].copy_from_slice(d);
         }
         state.write_values(&flat);
 
@@ -1054,7 +1139,7 @@ mod tests {
 
         let gpu_flat = state.read_values();
         for s in 0..2 {
-            let gpu_slice = &gpu_flat[s * n_dims .. s * n_dims + stride];
+            let gpu_slice = &gpu_flat[s * n_dims..s * n_dims + stride];
             assert_bits_eq(&format!("slot {s}"), &cpu[s], gpu_slice);
         }
     }
@@ -1065,7 +1150,10 @@ mod tests {
     /// to explicit fma() on both sides.
     #[test]
     fn velocity_integration_matches_cpu_oracle_fractional_dt() {
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
         let mut reg = DimensionRegistry::new();
         let id = reg.register(loyalty_property());
         let layout = reg.property(id).layout.clone();
@@ -1075,8 +1163,8 @@ mod tests {
         let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
 
         let mut d = vec![0.0f32; stride];
-        d[a_off] = 0.4_f32 + 1e-7;   // not a clean fraction
-        d[v_off] = 0.07_f32 - 3e-8;  // not a clean fraction
+        d[a_off] = 0.4_f32 + 1e-7; // not a clean fraction
+        d[v_off] = 0.07_f32 - 3e-8; // not a clean fraction
 
         let dt = 0.5;
         let mut pv = PropertyValue { data: d.clone() };
@@ -1097,7 +1185,10 @@ mod tests {
     /// C-8b EvalEML intensity alone. Uses raw initial velocity (no Pass 1 first).
     #[test]
     fn intensity_eml_matches_cpu_oracle() {
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
         let mut reg = DimensionRegistry::new();
         let id = reg.register(loyalty_property());
         let layout = reg.property(id).layout.clone();
@@ -1109,8 +1200,10 @@ mod tests {
 
         // Slot 0: high velocity → build branch. Slot 1: low velocity → decay branch.
         let mut slots = vec![vec![0.0f32; stride], vec![0.0f32; stride]];
-        slots[0][v_off] = 0.09;  slots[0][i_off] = 0.2;
-        slots[1][v_off] = 0.001; slots[1][i_off] = 0.7;
+        slots[0][v_off] = 0.09;
+        slots[0][i_off] = 0.2;
+        slots[1][v_off] = 0.001;
+        slots[1][i_off] = 0.7;
 
         let dt = 0.5;
 
@@ -1125,7 +1218,7 @@ mod tests {
         let n_dims = state.n_dims as usize;
         let mut flat = vec![0.0f32; state.values_len()];
         for (s, d) in slots.iter().enumerate() {
-            flat[s * n_dims .. s * n_dims + stride].copy_from_slice(d);
+            flat[s * n_dims..s * n_dims + stride].copy_from_slice(d);
         }
         state.write_values(&flat);
 
@@ -1134,7 +1227,7 @@ mod tests {
 
         let gpu_flat = state.read_values();
         for s in 0..2 {
-            let gpu_slice = &gpu_flat[s * n_dims .. s * n_dims + stride];
+            let gpu_slice = &gpu_flat[s * n_dims..s * n_dims + stride];
             assert_bits_eq(&format!("slot {s}"), &cpu[s], gpu_slice);
         }
     }
@@ -1148,11 +1241,14 @@ mod tests {
     fn tree_driven_pipeline_matches_evaluator() {
         use crate::projection::project_tree_to_values;
         use crate::slot::SlotAllocator;
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
 
         let mut reg = DimensionRegistry::new();
         let loyalty_id = reg.register(loyalty_property());
-        let food_id    = reg.register(SimProperty::simple("core", "food_security", 0));
+        let food_id = reg.register(SimProperty::simple("core", "food_security", 0));
 
         let l_layout = reg.property(loyalty_id).layout.clone();
         let f_layout = reg.property(food_id).layout.clone();
@@ -1169,10 +1265,10 @@ mod tests {
         // and one cohort starts at the loyalty floor (pinning case).
         let cohort_specs: [(f32, f32, f32); 4] = [
             // (loyalty_amount, loyalty_velocity, loyalty_intensity)
-            (0.40,  0.07,  0.20),  // mid-range, building intensity
-            (0.85, -0.001, 0.60),  // near ceiling, decay branch
-            (0.00, -0.05,  0.30),  // at floor, negative vel → pinning
-            (0.50,  0.09,  0.10),  // mid-range, building
+            (0.40, 0.07, 0.20),   // mid-range, building intensity
+            (0.85, -0.001, 0.60), // near ceiling, decay branch
+            (0.00, -0.05, 0.30),  // at floor, negative vel → pinning
+            (0.50, 0.09, 0.10),   // mid-range, building
         ];
 
         let mut world = SimThing::new(SimThingKind::World, 0);
@@ -1228,19 +1324,17 @@ mod tests {
         // Compare every CPU-snapshot entity's properties against the
         // corresponding slot row in the GPU buffer.
         for entity in &cpu_snap.entities {
-            let slot = alloc.slot_of(entity.id)
+            let slot = alloc
+                .slot_of(entity.id)
                 .unwrap_or_else(|| panic!("entity {:?} not allocated", entity.id));
             let slot_base = slot as usize * n_dims;
 
             for (prop_id, cpu_pv) in &entity.properties {
                 let range = reg.column_range(*prop_id);
                 let start = slot_base + range.start;
-                let end   = start + cpu_pv.data.len();
+                let end = start + cpu_pv.data.len();
                 let gpu_data = &gpu_flat[start..end];
-                let label = format!(
-                    "entity {:?} slot {} prop {:?}",
-                    entity.id, slot, prop_id,
-                );
+                let label = format!("entity {:?} slot {} prop {:?}", entity.id, slot, prop_id,);
                 assert_bits_eq(&label, &cpu_pv.data, gpu_data);
             }
         }
@@ -1256,7 +1350,10 @@ mod tests {
     /// and no overlays. Pass 0 result is verified via previous_values readback.
     #[test]
     fn full_pipeline_matches_evaluator() {
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
 
         let mut reg = DimensionRegistry::new();
         let id = reg.register(loyalty_property());
@@ -1295,11 +1392,7 @@ mod tests {
 
         // Pass 0 invariant: previous_values must equal the pre-pass values.
         let prev = state.read_previous_values();
-        assert_bits_eq(
-            "Pass 0 snapshot",
-            &flat,
-            &prev,
-        );
+        assert_bits_eq("Pass 0 snapshot", &flat, &prev);
 
         let gpu_flat = state.read_values();
         let gpu_data = &gpu_flat[range.start..range.start + stride];
@@ -1309,10 +1402,13 @@ mod tests {
     #[test]
     fn run_tick_pipeline_matches_manual_pass_sequence() {
         use crate::world_state::{
-            IntentDelta, DIR_DOWNWARD, THRESH_BUF_VALUES, ThresholdRegistration,
+            IntentDelta, ThresholdRegistration, DIR_DOWNWARD, THRESH_BUF_VALUES,
         };
 
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
         let mut reg = DimensionRegistry::new();
         let id = reg.register(loyalty_property());
         let layout = reg.property(id).layout.clone();
@@ -1350,7 +1446,6 @@ mod tests {
         pipelines.run_snapshot(&manual);
         pipelines.run_velocity_integration(&manual, 1.0);
         run_intensity_eml_on_state(&pipelines, &mut manual, &reg, 1.0);
-        pipelines.run_apply_overlays(&manual);
         pipelines.run_threshold_scan(&manual);
 
         let ctx2 = GpuContext::new_blocking().expect("second gpu context");
@@ -1403,15 +1498,13 @@ mod tests {
     /// produce reference events for the parity test below.
     fn cpu_threshold_scan(
         previous_values: &[f32],
-        values:          &[f32],
+        values: &[f32],
         previous_output: &[f32],
-        output:          &[f32],
-        n_dims:          u32,
-        regs:            &[crate::world_state::ThresholdRegistration],
+        output: &[f32],
+        n_dims: u32,
+        regs: &[crate::world_state::ThresholdRegistration],
     ) -> Vec<crate::world_state::ThresholdEvent> {
-        use crate::world_state::{
-            DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_OUTPUT, ThresholdEvent,
-        };
+        use crate::world_state::{ThresholdEvent, DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_OUTPUT};
         let mut events = Vec::new();
         for r in regs {
             let addr = (r.slot * n_dims + r.col) as usize;
@@ -1420,18 +1513,18 @@ mod tests {
             } else {
                 (previous_values[addr], values[addr])
             };
-            let up   = prev <= r.threshold && curr > r.threshold;
+            let up = prev <= r.threshold && curr > r.threshold;
             let down = prev >= r.threshold && curr < r.threshold;
             let crossed = match r.direction {
-                DIR_UPWARD   => up,
+                DIR_UPWARD => up,
                 DIR_DOWNWARD => down,
-                _            => up || down,
+                _ => up || down,
             };
             if crossed {
                 events.push(ThresholdEvent {
-                    slot:       r.slot,
-                    col:        r.col,
-                    value:      curr,
+                    slot: r.slot,
+                    col: r.col,
+                    value: curr,
                     event_kind: r.event_kind,
                 });
             }
@@ -1445,11 +1538,14 @@ mod tests {
     #[test]
     fn threshold_scan_matches_cpu_oracle() {
         use crate::world_state::{
-            DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_VALUES, ThresholdEvent,
-            ThresholdRegistration,
+            ThresholdEvent, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD,
+            THRESH_BUF_VALUES,
         };
 
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
         let mut reg = DimensionRegistry::new();
         reg.register(SimProperty::simple("core", "loyalty", 0));
         let mut state = WorldGpuState::new(ctx, &reg, 4);
@@ -1461,27 +1557,64 @@ mod tests {
         //   slot 2: STATIONARY at 0.50, EITHER threshold 0.50 → does NOT fire
         //   slot 3: DOWN crossing 0.60 → 0.40, EITHER threshold 0.50 → fires
         let mut previous = vec![0.0_f32; state.values_len()];
-        let mut current  = vec![0.0_f32; state.values_len()];
-        previous[0 * n_dims] = 0.40;  current[0 * n_dims] = 0.10;
-        previous[1 * n_dims] = 0.10;  current[1 * n_dims] = 0.50;
-        previous[2 * n_dims] = 0.50;  current[2 * n_dims] = 0.50;
-        previous[3 * n_dims] = 0.60;  current[3 * n_dims] = 0.40;
+        let mut current = vec![0.0_f32; state.values_len()];
+        previous[0 * n_dims] = 0.40;
+        current[0 * n_dims] = 0.10;
+        previous[1 * n_dims] = 0.10;
+        current[1 * n_dims] = 0.50;
+        previous[2 * n_dims] = 0.50;
+        current[2 * n_dims] = 0.50;
+        previous[3 * n_dims] = 0.60;
+        current[3 * n_dims] = 0.40;
 
         state.write_previous_values(&previous);
         state.write_values(&current);
 
         let regs = vec![
-            ThresholdRegistration { slot: 0, col: 0, threshold: 0.30, direction: DIR_DOWNWARD, event_kind: 100, buffer: THRESH_BUF_VALUES },
-            ThresholdRegistration { slot: 1, col: 0, threshold: 0.30, direction: DIR_UPWARD,   event_kind: 101, buffer: THRESH_BUF_VALUES },
-            ThresholdRegistration { slot: 2, col: 0, threshold: 0.50, direction: DIR_EITHER,   event_kind: 102, buffer: THRESH_BUF_VALUES },
-            ThresholdRegistration { slot: 3, col: 0, threshold: 0.50, direction: DIR_EITHER,   event_kind: 103, buffer: THRESH_BUF_VALUES },
+            ThresholdRegistration {
+                slot: 0,
+                col: 0,
+                threshold: 0.30,
+                direction: DIR_DOWNWARD,
+                event_kind: 100,
+                buffer: THRESH_BUF_VALUES,
+            },
+            ThresholdRegistration {
+                slot: 1,
+                col: 0,
+                threshold: 0.30,
+                direction: DIR_UPWARD,
+                event_kind: 101,
+                buffer: THRESH_BUF_VALUES,
+            },
+            ThresholdRegistration {
+                slot: 2,
+                col: 0,
+                threshold: 0.50,
+                direction: DIR_EITHER,
+                event_kind: 102,
+                buffer: THRESH_BUF_VALUES,
+            },
+            ThresholdRegistration {
+                slot: 3,
+                col: 0,
+                threshold: 0.50,
+                direction: DIR_EITHER,
+                event_kind: 103,
+                buffer: THRESH_BUF_VALUES,
+            },
         ];
         state.upload_thresholds(&regs);
 
         let prev_out = vec![0.0_f32; state.values_len()];
         let out_flat = vec![0.0_f32; state.values_len()];
         let cpu = cpu_threshold_scan(
-            &previous, &current, &prev_out, &out_flat, n_dims as u32, &regs,
+            &previous,
+            &current,
+            &prev_out,
+            &out_flat,
+            n_dims as u32,
+            &regs,
         );
         assert_eq!(cpu.len(), 3, "oracle should produce exactly 3 events");
 
@@ -1497,26 +1630,37 @@ mod tests {
         cpu_sorted.sort_by_key(key);
         gpu.sort_by_key(key);
 
-        assert_eq!(cpu_sorted.len(), gpu.len(),
-            "event count mismatch: cpu={} gpu={}", cpu_sorted.len(), gpu.len());
+        assert_eq!(
+            cpu_sorted.len(),
+            gpu.len(),
+            "event count mismatch: cpu={} gpu={}",
+            cpu_sorted.len(),
+            gpu.len()
+        );
 
         for (i, (c, g)) in cpu_sorted.iter().zip(gpu.iter()).enumerate() {
-            assert_eq!(c.slot,       g.slot,       "event {i} slot");
-            assert_eq!(c.col,        g.col,        "event {i} col");
+            assert_eq!(c.slot, g.slot, "event {i} slot");
+            assert_eq!(c.col, g.col, "event {i} col");
             assert_eq!(c.event_kind, g.event_kind, "event {i} event_kind");
-            assert_eq!(c.value.to_bits(), g.value.to_bits(),
-                "event {i} value: cpu={} gpu={}", c.value, g.value);
+            assert_eq!(
+                c.value.to_bits(),
+                g.value.to_bits(),
+                "event {i} value: cpu={} gpu={}",
+                c.value,
+                g.value
+            );
         }
     }
 
     /// Pass 7 on `output_vectors`: upward crossing on a parent aggregate row.
     #[test]
     fn threshold_scan_on_output_vectors_matches_cpu_oracle() {
-        use crate::world_state::{
-            DIR_UPWARD, THRESH_BUF_OUTPUT, ThresholdRegistration,
-        };
+        use crate::world_state::{ThresholdRegistration, DIR_UPWARD, THRESH_BUF_OUTPUT};
 
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
         let mut reg = DimensionRegistry::new();
         reg.register(SimProperty::simple("core", "loyalty", 0));
         let mut state = WorldGpuState::new(ctx, &reg, 2);
@@ -1566,7 +1710,10 @@ mod tests {
     /// Pass 7 with no registered thresholds: must be a no-op, no panic.
     #[test]
     fn threshold_scan_no_registrations_is_noop() {
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
         let mut reg = DimensionRegistry::new();
         reg.register(SimProperty::simple("core", "loyalty", 0));
         let state = WorldGpuState::new(ctx, &reg, 2);
@@ -1584,9 +1731,12 @@ mod tests {
     /// the post-Pass-0 snapshot vs. post-integration values.
     #[test]
     fn threshold_scan_after_full_pipeline() {
-        use crate::world_state::{DIR_DOWNWARD, THRESH_BUF_VALUES, ThresholdRegistration};
+        use crate::world_state::{ThresholdRegistration, DIR_DOWNWARD, THRESH_BUF_VALUES};
 
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
         let mut reg = DimensionRegistry::new();
         let id = reg.register(loyalty_property());
         let layout = reg.property(id).layout.clone();
@@ -1601,22 +1751,20 @@ mod tests {
         state.write_values(&flat);
         let _ = stride;
 
-        let regs = vec![
-            ThresholdRegistration {
-                slot: 0, col: a_off as u32,
-                threshold:  0.30,
-                direction:  DIR_DOWNWARD,
-                event_kind: 7,
-                buffer:     THRESH_BUF_VALUES,
-            },
-        ];
+        let regs = vec![ThresholdRegistration {
+            slot: 0,
+            col: a_off as u32,
+            threshold: 0.30,
+            direction: DIR_DOWNWARD,
+            event_kind: 7,
+            buffer: THRESH_BUF_VALUES,
+        }];
         state.upload_thresholds(&regs);
 
         let pipelines = Pipelines::new(&state.ctx);
-        pipelines.run_snapshot(&state);                  // previous_* <- current
+        pipelines.run_snapshot(&state); // previous_* <- current
         pipelines.run_velocity_integration(&state, 1.0); // values amount: 0.35 - 0.10 = 0.25
         run_intensity_eml_on_state(&pipelines, &mut state, &reg, 1.0);
-        pipelines.run_apply_overlays(&state);
         pipelines.run_threshold_scan(&state);
 
         let count = state.read_event_count();
@@ -1641,16 +1789,19 @@ mod tests {
     #[test]
     #[ignore]
     fn pipeline_timing_1000_slots_64_dims() {
-        use crate::overlay_prep::build_overlay_deltas;
         use crate::projection::project_tree_to_values;
         use crate::slot::SlotAllocator;
         use simthing_core::ids::OverlayId;
-        use simthing_core::overlay::{Overlay, OverlayKind, OverlayLifecycle, OverlaySource,
-                                     PropertyTransformDelta};
+        use simthing_core::overlay::{
+            Overlay, OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta,
+        };
         use simthing_core::property::TransformOp;
         use std::time::Instant;
 
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
 
         let mut reg = DimensionRegistry::new();
         // standard(61): stride = 3 amount/velocity/intensity + 61 named = 64.
@@ -1669,12 +1820,12 @@ mod tests {
             pv.data[i_off] = 0.3;
             cohort.add_property(lid, pv);
             cohort.add_overlay(Overlay {
-                id:        OverlayId::new(),
-                kind:      OverlayKind::Policy,
-                source:    OverlaySource::Player,
-                affects:   vec![],
+                id: OverlayId::new(),
+                kind: OverlayKind::Policy,
+                source: OverlaySource::Player,
+                affects: vec![],
                 transform: PropertyTransformDelta {
-                    property_id:      lid,
+                    property_id: lid,
                     sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(0.99))],
                 },
                 lifecycle: OverlayLifecycle::Permanent,
@@ -1686,7 +1837,7 @@ mod tests {
         alloc.populate_from_tree(&world);
 
         let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
-        assert_eq!(state.n_dims,  64);
+        assert_eq!(state.n_dims, 64);
         assert!(state.n_slots >= 1000);
 
         let n_dims = state.n_dims as usize;
@@ -1694,8 +1845,7 @@ mod tests {
         project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
         state.write_values(&flat);
 
-        let (od, ranges) = build_overlay_deltas(&world, &reg, &alloc);
-        state.upload_overlay_deltas(&od, &ranges);
+        let n_overlay_deltas = upload_accumulator_overlay_plan(&mut state, &world, &reg, &alloc);
 
         let pipelines = Pipelines::new(&state.ctx);
         state.sync_intensity_eml_accumulator(&reg);
@@ -1704,21 +1854,24 @@ mod tests {
         pipelines.run_snapshot(&state);
         pipelines.run_velocity_integration(&state, 0.5);
         pipelines.run_accumulator_intensity_eml(&mut state, 0.5);
-        pipelines.run_apply_overlays(&state);
+        pipelines.run_accumulator_overlays(&mut state);
         let _ = state.read_values(); // force flush
 
         let t0 = Instant::now();
         pipelines.run_snapshot(&state);
         pipelines.run_velocity_integration(&state, 0.5);
         pipelines.run_accumulator_intensity_eml(&mut state, 0.5);
-        pipelines.run_apply_overlays(&state);
+        pipelines.run_accumulator_overlays(&mut state);
         // Force the submitted work to complete before stopping the clock.
         let _ = state.read_values();
         let elapsed = t0.elapsed();
 
         eprintln!(
             "pipeline_timing_1000x64: {} slots × {} dims, {} overlay deltas → {:.2} ms",
-            state.n_slots, state.n_dims, od.len(), elapsed.as_secs_f64() * 1000.0,
+            state.n_slots,
+            state.n_dims,
+            n_overlay_deltas,
+            elapsed.as_secs_f64() * 1000.0,
         );
         assert!(
             elapsed.as_millis() < 50,
@@ -1727,7 +1880,7 @@ mod tests {
         );
     }
 
-    /// Pass 0+1+2+3 against Evaluator on a tree with overlays at multiple levels.
+    /// Pass 0+1+2+S-3 accumulator overlay against Evaluator on a tree with overlays at multiple levels.
     ///
     /// Tree: World (Multiply loyalty amount by 0.8)
     ///         └─ Location (Add -0.1 to loyalty velocity)
@@ -1738,16 +1891,19 @@ mod tests {
     /// the ancestor overlay of the Location doesn't affect a node that lacks
     /// the property (World itself has no loyalty property).
     #[test]
-    fn pass3_overlay_matches_evaluator() {
-        use crate::overlay_prep::build_overlay_deltas;
+    fn accumulator_overlay_matches_evaluator() {
         use crate::projection::project_tree_to_values;
         use crate::slot::SlotAllocator;
         use simthing_core::ids::OverlayId;
-        use simthing_core::overlay::{Overlay, OverlayKind, OverlayLifecycle, OverlaySource,
-                                     PropertyTransformDelta};
+        use simthing_core::overlay::{
+            Overlay, OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta,
+        };
         use simthing_core::property::TransformOp;
 
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
 
         let mut reg = DimensionRegistry::new();
         let lid = reg.register(loyalty_property());
@@ -1759,12 +1915,12 @@ mod tests {
 
         let make_overlay = |deltas: Vec<(SubFieldRole, TransformOp)>| -> Overlay {
             Overlay {
-                id:        OverlayId::new(),
-                kind:      OverlayKind::Policy,
-                source:    OverlaySource::Player,
-                affects:   vec![],
+                id: OverlayId::new(),
+                kind: OverlayKind::Policy,
+                source: OverlaySource::Player,
+                affects: vec![],
                 transform: PropertyTransformDelta {
-                    property_id:      lid,
+                    property_id: lid,
                     sub_field_deltas: deltas,
                 },
                 lifecycle: OverlayLifecycle::Permanent,
@@ -1773,15 +1929,17 @@ mod tests {
 
         // World: Multiply(0.8) on loyalty amount.
         let mut world = SimThing::new(SimThingKind::World, 0);
-        world.add_overlay(make_overlay(vec![
-            (SubFieldRole::Amount, TransformOp::Multiply(0.8)),
-        ]));
+        world.add_overlay(make_overlay(vec![(
+            SubFieldRole::Amount,
+            TransformOp::Multiply(0.8),
+        )]));
 
         // Location: Add(-0.1) on loyalty velocity.
         let mut location = SimThing::new(SimThingKind::Location, 0);
-        location.add_overlay(make_overlay(vec![
-            (SubFieldRole::Velocity, TransformOp::Add(-0.1)),
-        ]));
+        location.add_overlay(make_overlay(vec![(
+            SubFieldRole::Velocity,
+            TransformOp::Add(-0.1),
+        )]));
 
         // Cohort A: loyalty mid-range, building; local Set(0.5) on intensity.
         let mut cohort_a = SimThing::new(SimThingKind::Cohort, 0);
@@ -1790,9 +1948,10 @@ mod tests {
         pv_a.data[v_off] = 0.08;
         pv_a.data[i_off] = 0.20;
         cohort_a.add_property(lid, pv_a);
-        cohort_a.add_overlay(make_overlay(vec![
-            (SubFieldRole::Intensity, TransformOp::Set(0.5)),
-        ]));
+        cohort_a.add_overlay(make_overlay(vec![(
+            SubFieldRole::Intensity,
+            TransformOp::Set(0.5),
+        )]));
         let cohort_a_id = cohort_a.id;
 
         // Cohort B: loyalty near floor, negative velocity (exercises pinning + overlays).
@@ -1823,15 +1982,13 @@ mod tests {
         project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
         state.write_values(&flat);
 
-        // Build and upload the overlay delta batch for this tick.
-        let (od, ranges) = build_overlay_deltas(&world, &reg, &alloc);
-        state.upload_overlay_deltas(&od, &ranges);
+        upload_accumulator_overlay_plan(&mut state, &world, &reg, &alloc);
 
         let pipelines = Pipelines::new(&state.ctx);
         pipelines.run_snapshot(&state);
         pipelines.run_velocity_integration(&state, dt);
         run_intensity_eml_on_state(&pipelines, &mut state, &reg, dt);
-        pipelines.run_apply_overlays(&state);
+        pipelines.run_accumulator_overlays(&mut state);
 
         let gpu_flat = state.read_values();
 
@@ -1842,7 +1999,7 @@ mod tests {
             let slot_base = slot as usize * n_dims;
             let range = reg.column_range(lid);
             let start = slot_base + range.start;
-            let end   = start + entity.properties[&lid].data.len();
+            let end = start + entity.properties[&lid].data.len();
             assert_bits_eq(label, &entity.properties[&lid].data, &gpu_flat[start..end]);
         }
     }
@@ -1856,12 +2013,14 @@ mod tests {
     fn reduction_matches_cpu_oracle() {
         use crate::projection::project_tree_to_values;
         use crate::reduction::{
-            build_column_rule_descriptors, build_topology, cpu_reduce_oracle,
-            encode_column_rules,
+            build_column_rule_descriptors, build_topology, cpu_reduce_oracle, encode_column_rules,
         };
         use crate::slot::SlotAllocator;
 
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
 
         let mut reg = DimensionRegistry::new();
         let lid = reg.register(loyalty_property());
@@ -1950,13 +2109,15 @@ mod tests {
     fn weighted_mean_reduction_matches_cpu_oracle() {
         use crate::projection::project_tree_to_values;
         use crate::reduction::{
-            build_column_rule_descriptors, build_topology, cpu_reduce_oracle,
-            encode_column_rules,
+            build_column_rule_descriptors, build_topology, cpu_reduce_oracle, encode_column_rules,
         };
         use crate::slot::SlotAllocator;
         use simthing_core::ReductionRule;
 
-        let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
 
         let mut reg = DimensionRegistry::new();
         let pop_id = reg.register(SimProperty::simple("demo", "population", 0));
@@ -2039,9 +2200,9 @@ mod tests {
         state
             .upload_accumulator_intents(&[IntentDelta {
                 slot: 0,
-                col:  0,
-                mul:  1.0,
-                add:  0.25,
+                col: 0,
+                mul: 1.0,
+                add: 0.25,
             }])
             .unwrap();
 
@@ -2052,8 +2213,8 @@ mod tests {
             &mut state,
             0.0,
             AccumulatorPipelineSessions {
-                intent:      intent_session.as_mut(),
-                threshold:   None,
+                intent: intent_session.as_mut(),
+                threshold: None,
                 overlay_add: None,
                 reduction_soft: None,
                 velocity: None,
@@ -2079,4 +2240,3 @@ mod tests {
         }
     }
 }
-

@@ -31,10 +31,10 @@ for how values move between SimThings.
 **New: Logging tiers** — summary/checksum default production tier; compact
 emission records for audit and replay; full state readback for debug only.
 
-**Migration progress (2026-05-19):** Reduction (S-4) and intensity (S-2) legacy
+**Migration progress (2026-05-25):** Reduction (S-4), intensity (S-2), and overlay (S-3) legacy
 passes deleted. C-8 EML block (infra, intensity, transfer, emission) landed.
-Remaining legacy passes: intent, overlay, threshold, velocity — flag-gated until
-S-1, S-3, S-5, S-6.
+Remaining legacy passes: intent, threshold, velocity — flag-gated until
+S-1, S-6, S-5.
 
 **Unchanged from v6/v6.5:**
 - SimThing recursive type (`SimThing { properties, overlays, children }`)
@@ -182,10 +182,10 @@ registration time by `assert_no_hard_trigger_on_soft_aggregate()`.
 
 > This section is maintained as a living document. Each migration PR updates
 > it to reflect which passes have moved to AccumulatorOp and which remain.
-> Current state (2026-05-19): hybrid migration — reduction (S-4) and intensity
-> (S-2) legacy passes deleted; C-8 EML block landed; remaining legacy passes
-> (intent, overlay, threshold, velocity) are flag-gated oracle/fallback until
-> their S-phase sunsets.
+> Current state (2026-05-25): hybrid migration — reduction (S-4), intensity
+> (S-2), and overlay (S-3) legacy passes deleted; C-8 EML block landed.
+> Remaining legacy passes (intent, threshold, velocity) are flag-gated
+> oracle/fallback until their S-phase sunsets.
 
 ### 4.1 The target 3-pass architecture (post-migration)
 
@@ -212,15 +212,16 @@ Pass C:  Event readback
 ### 4.2 Current state during migration
 
 The following flags control which path runs for each operation family.
-Defaults are mixed: reduction, EML, and intensity default **on**; other families
-default **off** until their migration PR enables them and the corresponding
-sunset PR removes legacy code. Intensity has no legacy fallback after S-2.
+Defaults are mixed: overlay, reduction, EML, and intensity default **on**; other
+families default **off** until their migration PR enables them and the
+corresponding sunset PR removes legacy code. Intensity has no legacy fallback
+after S-2; overlay has no legacy fallback after S-3.
 
 ```rust
 pub struct PipelineFlags {
     pub use_accumulator_threshold_scan: bool,  // C-1 → S-6 (default false)
     pub use_accumulator_intent:         bool,  // C-2 → S-1 (default false)
-    pub use_accumulator_overlay_add:    bool,  // C-3/C-4 → S-3 (default false)
+    pub use_accumulator_overlay_add:    bool,  // S-3 overlay OrderBands (default true; mandatory for overlay workloads)
     pub use_accumulator_reduction_soft: bool,  // C-5 → S-4 (default true)
     pub use_accumulator_reduction_exact: bool, // C-6 → S-4 (default true)
     pub use_accumulator_velocity:       bool,  // C-7 → S-5 (default false)
@@ -282,10 +283,12 @@ pub struct PipelineFlags {
 - `use_accumulator_eml` + `use_accumulator_intensity` default **on**.
 - Disabling intensity with registered `IntensityBehavior` panics at boundary validation.
 
-**Pass 3 — Overlay application (migrate → C-3/C-4, sunset → S-3)**
-- WGSL: inline in `overlay_prep.rs`
-- `Add`, `Multiply`, `Set` ops in ancestor-then-local order
-- **C-3/C-4 landed:** `use_accumulator_overlay_add` is retained as the
+**Pass 3 — Overlay application (S-3 complete)**
+- **Production:** AccumulatorOp OrderBands at the original overlay point (after
+  intensity/transfer/emission, before reduction).
+- `Add`, `Multiply`, `Set` ops preserve ancestor-then-local order from
+  `build_overlay_deltas`.
+- **C-3/C-4/S-3 landed:** `use_accumulator_overlay_add` is retained as the
   compatibility flag name, but now routes full Add/Multiply/Set overlay batches
   through the AccumulatorOp OrderBand planner. C-4 consumes the canonical
   `(OverlayDelta, SlotDeltaRange)` output from `build_overlay_deltas`, assigns a
@@ -293,7 +296,10 @@ pub struct PipelineFlags {
   order within the same command buffer before reduction. Add uses
   `Identity + AddToTarget`, Multiply uses `Identity + ScaleTarget`, and Set uses
   `Identity + ResetTarget`.
-- Legacy Pass 3 remains for flag-off execution and oracle parity only until S-3.
+- **S-3:** Legacy `transform_application.wgsl`, `overlay_pipeline`,
+  `overlay_layout`, and legacy overlay dispatch are deleted. The flag defaults
+  true; disabling it with active overlay deltas rejects the workload rather than
+  falling back.
 
 **Passes 4–6 — Reduction (S-4 complete)**
 - AccumulatorOp `ReductionSoft` session on `output_vectors` (binding 1).

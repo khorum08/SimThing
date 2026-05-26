@@ -5,8 +5,8 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **C-2** (#99–#100), **C-3** (#105–#107), **pivot-forward policy + B-4I** (#108),
 **C-INF runtime/oracle** (#109), **pivot-forward remedial** (#111), and
 **C-4 overlay OrderBand** (#118), **C-5 soft reductions** (#122–#123), **C-6 exact reductions** (#124),
-**S-4 reduction sunset** (#126), **C-7 velocity** (#127), **C-8 EML block** (#129–#137), and
-**S-2 intensity sunset** (#138) landed.
+**S-4 reduction sunset** (#126), **C-7 velocity** (#127), **C-8 EML block** (#129–#137),
+**S-2 intensity sunset** (#138), and **S-3 overlay sunset** (local) landed.
 `master` @ **`cacf755`** (#139 doc sync).
 
 **Reduction flags (default true):** `use_accumulator_reduction_soft` +
@@ -24,9 +24,9 @@ reduction rules; CPU oracle retained for test golden only.
 
 **Workshop entry point:** [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md)
 
-**Pivot posture:** AccumulatorOp v2 is the production direction. Legacy reduction (S-4) and
-legacy intensity (S-2) are **deleted**. Remaining legacy passes (intent, overlay, threshold,
-velocity) are **oracle/fallback only** until S-phase deletion. See
+**Pivot posture:** AccumulatorOp v2 is the production direction. Legacy reduction (S-4),
+legacy intensity (S-2), and legacy overlay (S-3) are **deleted**. Remaining legacy passes
+(intent, threshold, velocity) are **oracle/fallback only** until S-phase deletion. See
 [`docs/workshop/pivot_forward_implementation_policy.md`](workshop/pivot_forward_implementation_policy.md).
 
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
@@ -34,7 +34,7 @@ Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
 
 **Tests:** `cargo test --workspace` green at last full run (450+ passed, ignored perf gates).
 AccumulatorOp module: **63** gpu `accumulator_op` unit tests; `reduction_orderband` (6);
-C-1/C-2/C-3 parity (26) + C-4 parity/cache (16) + C-5 reduction (11) + C-6 exact (10) +
+C-1/C-2/C-3 parity (26) + C-4 parity/cache (16) + S-3 overlay sunset (5) + C-5 reduction (11) + C-6 exact (10) +
 C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated (2).
 
 **Cursor handoff:** AccumulatorOp v2 Phase C migrations + pivot-forward infrastructure (see table below).
@@ -74,7 +74,8 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **C-3 refine** | #106 | Mixed Add/Mul/Set → full legacy Pass 3 fallback (no split-mode) |
 | **C-3 OrderBand** | #107 | Per-cell OrderBand sequencing for exact f32 Add order; multi-band dispatch fix |
 | **C-4** | #118 | Full Add/Mul/Set overlay → AccumulatorOp OrderBand compiler; dirty/cached rebuild |
-| **C-4 remedial** | local | Lifecycle/fission/cache hardening; combined C-1/C-2/C-4 path; consume-mode regressions |
+| **C-4 remedial** | #120 | Lifecycle/fission/cache hardening; combined C-1/C-2/C-4 path; consume-mode regressions |
+| **S-3** | local | Legacy overlay shader/pipeline deleted; AccumulatorOp OrderBands sole overlay path |
 | **Pivot-forward + B-4I** | #108 | `2aa630e` | Pivot-forward policy; production `SlotSummaryGpu`; C-INF scaffolds |
 | **C-INF-1 + C-INF-2** | #109 | `2f95c6d` | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness + tests |
 | **Pivot-forward remedial** | #111 | `632d656` | Authoritative flags; `WorldSummaryRuntime`; oracle tolerance rename |
@@ -96,21 +97,20 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Next recommended gates (pivot-forward order):**
 
-1. **S-3** — legacy overlay sunset (C-3/C-4 migrated; legacy Pass 3 still flag-off/oracle)
-2. **S-6** — legacy threshold scan sunset
-3. **S-5** — legacy velocity sunset
-4. **S-1** — legacy intent sunset
-5. **Opus** — production transfer/emission registration ownership (substrate landed; spec/builder integration pending)
-6. **D-1** — shared-input/hot-pool allocator semantics (true cross-pool contention beyond C-8c policy A)
+1. **S-6** — legacy threshold scan sunset
+2. **S-5** — legacy velocity sunset
+3. **S-1** — legacy intent sunset
+4. **Opus** — production transfer/emission registration ownership (substrate landed; spec/builder integration pending)
+5. **D-1** — shared-input/hot-pool allocator semantics (true cross-pool contention beyond C-8c policy A)
 
 **Open design warnings (preserve):**
 - Transfer/emission registration ownership: substrate-level only; production source-of-truth still needs integration.
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-phase allocator handles true shared-pool contention.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
-**Next (non-Opus implementation):** **S-3** overlay sunset · per-family oracle expansion.
+**Next (non-Opus implementation):** **S-6** threshold sunset · per-family oracle expansion.
 
-**Next (sunset-gated):** **S-3** overlay prep/WGSL deletion after C-4 default-on validation and CI.
+**Next (sunset-gated):** **S-6** threshold scan deletion after C-1 default-on validation and CI.
 
 **Implementation posture:** Every migration PR names its S-phase sunset target. Legacy interaction:
 oracle/fallback only. Do not enhance legacy passes.

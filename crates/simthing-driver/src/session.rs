@@ -203,8 +203,48 @@ impl SimSession {
 
     pub fn install_spec_state(&mut self, spec_state: SpecSessionState) {
         self.spec_state = spec_state;
+        self.resync_gpu_shape_after_spec_install();
         self.sync_spec_threshold_registrations();
         self.proto.initial_gpu_sync(&self.coord, &mut self.state);
+    }
+
+    fn resync_gpu_shape_after_spec_install(&mut self) {
+        let required_slots = self
+            .coord
+            .n_slots()
+            .max(self.proto.allocator.capacity() as u32)
+            .max(1);
+        let required_dims = self.proto.registry.total_columns as u32;
+
+        if required_slots > self.coord.n_slots() {
+            self.coord.resize_slots(required_slots);
+            self.patcher.resize(required_slots as usize);
+        }
+
+        let slots_changed = required_slots > self.state.n_slots;
+        let dims_changed = required_dims != self.state.n_dims;
+        if slots_changed {
+            self.state
+                .rebuild_for_slots(required_slots, &self.proto.registry);
+        } else if dims_changed {
+            self.state.rebuild_for_registry(&self.proto.registry);
+        }
+
+        if required_dims != self.coord.n_dims() {
+            self.coord.resize_dimensions(required_dims);
+        }
+
+        self.coord.shadow.fill(0.0);
+        let projected_len = self.proto.allocator.capacity() * required_dims as usize;
+        let mut projected = vec![0.0; projected_len];
+        simthing_gpu::project_tree_to_values(
+            &self.proto.root,
+            &self.proto.registry,
+            &self.proto.allocator,
+            required_dims as usize,
+            &mut projected,
+        );
+        self.coord.shadow[..projected_len].copy_from_slice(&projected);
     }
 
     /// Open a session from a scenario and immediately install spec runtime

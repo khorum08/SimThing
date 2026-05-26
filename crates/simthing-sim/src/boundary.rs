@@ -125,11 +125,10 @@ pub struct BoundaryHookContext<'a> {
 pub struct PipelineFlags {
     pub use_accumulator_threshold_scan: bool,
     pub use_accumulator_intent: bool,
-    /// C-3/C-4 compatibility flag: routes full Add/Multiply/Set overlay batches
-    /// through the AccumulatorOp OrderBand planner. The name is retained for
-    /// compatibility with the staged C-3 Add-only migration; after C-4, the flag
-    /// no longer means Add-only. When false, legacy Pass 3 remains the runtime
-    /// path and oracle until S-3 deletion.
+    /// S-3 compatibility flag: routes all Add/Multiply/Set overlay batches
+    /// through AccumulatorOp OrderBands. The name is retained for the staged
+    /// C-3 migration; this is no longer Add-only. If disabled while overlay
+    /// deltas exist, sync rejects the workload because legacy Pass 3 is gone.
     pub use_accumulator_overlay_add: bool,
     /// S-4: AccumulatorOp reduction (Mean/WeightedMean/Sum/Max/Min/First).
     /// Requires `use_accumulator_reduction_exact` when enabled.
@@ -154,7 +153,7 @@ impl Default for PipelineFlags {
         Self {
             use_accumulator_threshold_scan: false,
             use_accumulator_intent: false,
-            use_accumulator_overlay_add: false,
+            use_accumulator_overlay_add: true,
             use_accumulator_reduction_soft: true,
             use_accumulator_reduction_exact: true,
             use_accumulator_velocity: false,
@@ -276,10 +275,12 @@ impl BoundaryProtocol {
     }
 
     fn sync_accumulator_reduction_soft_session(&self, state: &mut WorldGpuState) {
-        if self.flags.use_accumulator_reduction_exact && !self.flags.use_accumulator_reduction_soft {
+        if self.flags.use_accumulator_reduction_exact && !self.flags.use_accumulator_reduction_soft
+        {
             panic!("use_accumulator_reduction_exact requires use_accumulator_reduction_soft");
         }
-        if self.flags.use_accumulator_reduction_soft && !self.flags.use_accumulator_reduction_exact {
+        if self.flags.use_accumulator_reduction_soft && !self.flags.use_accumulator_reduction_exact
+        {
             panic!(
                 "S-4: soft-only reduction bridge removed; enable use_accumulator_reduction_exact"
             );
@@ -316,7 +317,8 @@ impl BoundaryProtocol {
     }
 
     fn sync_accumulator_intensity_session(&self, state: &mut WorldGpuState) {
-        self.flags.validate_intensity_enabled_for_registry(&self.registry);
+        self.flags
+            .validate_intensity_enabled_for_registry(&self.registry);
         if !self.flags.use_accumulator_intensity {
             if let Some(runtime) = state.accumulator_runtime.as_mut() {
                 runtime.clear_intensity_eml();

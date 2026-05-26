@@ -8,6 +8,27 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-25 — S-3 legacy overlay sunset
+
+**Deleted:**
+- `crates/simthing-gpu/src/shaders/transform_application.wgsl`
+- Legacy overlay pipeline/layout/bind-group wiring and dispatch from `Pipelines`
+
+**Changed:**
+- `use_accumulator_overlay_add` now defaults **true** and is mandatory for
+  overlay workloads; disabling it with active overlay deltas rejects with the
+  S-3 deletion message.
+- Overlay execution is solely `build_overlay_deltas` → C-4 OrderBand compiler /
+  cache → `accumulator_op.wgsl`.
+- C-3/C-4 overlay tests compare against CPU/golden canonical order instead of
+  the deleted shader path.
+- Added `s3_overlay_sunset.rs` with shader-absence, default-path, flag-off
+  rejection, CPU-golden Add/Multiply/Set, and lifecycle cache guards.
+
+**S-3 marked complete** in docs; threshold, velocity, and intent sunsets remain pending.
+
+---
+
 ## 2026-05-19 — Pivot-forward remedial: C-8/S-2 doc consistency (#139 follow-up)
 
 **Scope:** docs-only reconciliation after S-2 (#138) and production-plan sync (#139).
