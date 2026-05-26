@@ -10,7 +10,7 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-26 — E-9 ArenaRegistry driver session artifact
+## 2026-05-26 — E-9 ArenaRegistry driver session artifact (#151)
 
 - Added `ArenaRegistry`, `GpuArenaDescriptor`, `ArenaCoupling`, `CouplingDelay`, `FissionPolicy` in `simthing-driver`.
 - Session build validation: explicit admission, bounded wildcard, max participants/fanout/orderband, all-algebraic cycle rejection.

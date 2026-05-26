@@ -105,7 +105,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-3R** | #148 | — | **Done** — throttle hint metadata hardening before E-4 |
 | **E-7** | #149 | — | **Done** — `governed_by` planner generalization to arbitrary Named pairs |
 | **E-8** | #150 | — | **Done** — `accumulator_spec` compile-time metadata on `SubFieldSpec` |
-| **E-9** | — | — | **Done** — `ArenaRegistry` driver session artifact |
+| **E-9** | #151 | — | **Done** — `ArenaRegistry` driver session artifact |
 
 **Next recommended gates (pivot-forward order):**
 

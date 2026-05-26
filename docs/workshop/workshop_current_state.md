@@ -76,7 +76,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-3R** | #148 | `throttle_hint_max_per_tick` metadata hardening; E-4 must not treat as GPU cap |
 | **E-7** | #149 | `governed_by` planner generalization; arbitrary `(Named, Named)` pairs via `IntegrateWithClamp` |
 | **E-8** | #150 | `accumulator_spec` on `SubFieldSpec`; compile-time Resource Flow metadata only |
-| **E-9** | — | `ArenaRegistry` driver session artifact; explicit admission + subtree refresh |
+| **E-9** | #151 | `ArenaRegistry` driver session artifact; explicit admission + subtree refresh |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
