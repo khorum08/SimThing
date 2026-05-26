@@ -145,6 +145,8 @@ pub struct PipelineFlags {
     pub use_accumulator_intensity: bool,
     /// C-8c: routes exact economic transfer through AccumulatorOp (input-list substrate).
     pub use_accumulator_transfer: bool,
+    /// C-8d: routes economic emission through AccumulatorOp (requires `use_accumulator_eml` for EvalEML).
+    pub use_accumulator_emission: bool,
 }
 
 impl Default for PipelineFlags {
@@ -159,6 +161,7 @@ impl Default for PipelineFlags {
             use_accumulator_eml: false,
             use_accumulator_intensity: false,
             use_accumulator_transfer: false,
+            use_accumulator_emission: false,
         }
     }
 }
@@ -167,6 +170,9 @@ impl PipelineFlags {
     pub fn validate(&self) {
         if self.use_accumulator_intensity && !self.use_accumulator_eml {
             panic!("C-8b intensity requires use_accumulator_eml");
+        }
+        if self.use_accumulator_emission && !self.use_accumulator_eml {
+            panic!("C-8d emission EvalEML requires use_accumulator_eml");
         }
     }
 }
@@ -318,6 +324,18 @@ impl BoundaryProtocol {
             return;
         }
         state.ensure_transfer_accumulator();
+    }
+
+    fn sync_accumulator_emission_session(&self, state: &mut WorldGpuState) {
+        self.flags.validate();
+        if !self.flags.use_accumulator_emission {
+            if let Some(runtime) = state.accumulator_runtime.as_mut() {
+                runtime.clear_emission();
+            }
+            state.set_emission_dispatch(false, 0);
+            return;
+        }
+        state.ensure_emission_accumulator();
     }
 
     fn sync_accumulator_threshold_ops(
@@ -869,6 +887,7 @@ impl BoundaryProtocol {
             self.sync_accumulator_eml_session(state);
         }
         self.sync_accumulator_transfer_session(state);
+        self.sync_accumulator_emission_session(state);
         out.gpu_sync = GpuSyncOutcome {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
             // Sum: gpu_out.threshold_regs_uploaded counts entries written by
@@ -1101,6 +1120,7 @@ impl BoundaryProtocol {
         self.sync_accumulator_velocity_session(state);
         self.sync_accumulator_eml_session(state);
         self.sync_accumulator_transfer_session(state);
+        self.sync_accumulator_emission_session(state);
     }
 
     /// Read-only access to the persistent fission lineage. Useful for tests

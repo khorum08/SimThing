@@ -46,6 +46,20 @@ pub struct TransferOpPlanSignature {
     pub unit_cost_bits: Vec<u32>,
 }
 
+/// Cache key for uploaded C-8d emission ops (world shape + EML + registration plan).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EmissionOpPlanSignature {
+    pub eml_registry_generation: u64,
+    pub n_slots: u32,
+    pub n_dims: u32,
+    pub n_registrations: u32,
+    pub n_ops: u32,
+    pub source_slots: Vec<u32>,
+    pub source_cols: Vec<u32>,
+    pub tree_ids: Vec<u32>,
+    pub formula_kinds: Vec<u32>,
+}
+
 /// Operation family registered into the world AccumulatorOp runtime.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum OperationFamily {
@@ -125,6 +139,7 @@ pub struct WorldAccumulatorRuntime {
     pub velocity_ops: OpSetHandle,
     pub intensity_eml_ops: OpSetHandle,
     pub transfer_ops: OpSetHandle,
+    pub emission_ops: OpSetHandle,
 
     intent_session: Option<AccumulatorOpSession>,
     threshold_session: Option<AccumulatorOpSession>,
@@ -133,6 +148,7 @@ pub struct WorldAccumulatorRuntime {
     velocity_session: Option<AccumulatorOpSession>,
     intensity_eml_session: Option<AccumulatorOpSession>,
     transfer_session: Option<AccumulatorOpSession>,
+    emission_session: Option<AccumulatorOpSession>,
     pub summary: Option<WorldSummaryRuntime>,
     pub overlay_compile_cache: Option<OverlayCompileCache>,
 
@@ -146,6 +162,8 @@ pub struct WorldAccumulatorRuntime {
 
     transfer_op_plan_signature: Option<TransferOpPlanSignature>,
     transfer_op_upload_count: u64,
+    emission_op_plan_signature: Option<EmissionOpPlanSignature>,
+    emission_op_upload_count: u64,
     pub input_lists: Option<super::input_list_table::AccumulatorInputListTable>,
 
     /// C-8a persistent GPU EML program table (shared across sessions).
@@ -198,6 +216,11 @@ impl WorldAccumulatorRuntime {
                 exactness: ExactnessClass::Exact,
                 ..OpSetHandle::INACTIVE
             },
+            emission_ops: OpSetHandle {
+                family: OperationFamily::EconomicEmission,
+                exactness: ExactnessClass::Exact,
+                ..OpSetHandle::INACTIVE
+            },
             intent_session: None,
             threshold_session: None,
             overlay_session: None,
@@ -205,6 +228,7 @@ impl WorldAccumulatorRuntime {
             velocity_session: None,
             intensity_eml_session: None,
             transfer_session: None,
+            emission_session: None,
             summary: None,
             overlay_compile_cache: None,
             intensity_tree_ids: Vec::new(),
@@ -213,6 +237,8 @@ impl WorldAccumulatorRuntime {
             intensity_op_upload_count: 0,
             transfer_op_plan_signature: None,
             transfer_op_upload_count: 0,
+            emission_op_plan_signature: None,
+            emission_op_upload_count: 0,
             input_lists: None,
             eml: None,
             eml_registry: EmlExpressionRegistry::new(),
@@ -422,6 +448,7 @@ impl WorldAccumulatorRuntime {
             || self.velocity_ops.active
             || self.intensity_eml_ops.active
             || self.transfer_ops.active
+            || self.emission_ops.active
     }
 
     pub fn ensure_intent_session(
@@ -798,6 +825,111 @@ impl WorldAccumulatorRuntime {
             };
             self.transfer_op_plan_signature = Some(signature);
             self.transfer_op_upload_count += 1;
+        }
+        Ok(())
+    }
+
+    pub fn ensure_emission_session(
+        &mut self,
+        ctx: &GpuContext,
+        n_slots: u32,
+        n_dims: u32,
+        emission_capacity: u32,
+    ) {
+        if self.emission_session.is_none() {
+            let mut session =
+                AccumulatorOpSession::new_attached(ctx, n_slots, n_dims, emission_capacity);
+            self.bind_eml_if_present(&mut session);
+            self.emission_session = Some(session);
+        }
+    }
+
+    pub fn clear_emission(&mut self) {
+        self.emission_session = None;
+        self.emission_op_plan_signature = None;
+        self.emission_ops = OpSetHandle {
+            family: OperationFamily::EconomicEmission,
+            exactness: ExactnessClass::Exact,
+            ..OpSetHandle::INACTIVE
+        };
+    }
+
+    pub fn take_emission_session(&mut self) -> Option<AccumulatorOpSession> {
+        self.emission_session.take()
+    }
+
+    pub fn restore_emission_session(&mut self, session: Option<AccumulatorOpSession>) {
+        self.emission_session = session;
+    }
+
+    pub fn emission_session(&mut self) -> Option<&mut AccumulatorOpSession> {
+        self.emission_session.as_mut()
+    }
+
+    pub fn emission_active(&self) -> bool {
+        self.emission_ops.active
+    }
+
+    pub fn emission_bands(&self) -> u32 {
+        self.emission_ops.n_bands
+    }
+
+    pub fn emission_op_upload_count(&self) -> u64 {
+        self.emission_op_upload_count
+    }
+
+    pub fn emission_op_plan_signature(&self) -> Option<&EmissionOpPlanSignature> {
+        self.emission_op_plan_signature.as_ref()
+    }
+
+    pub fn upload_emission_ops(
+        &mut self,
+        ctx: &GpuContext,
+        gpu_ops: &[AccumulatorOpGpu],
+        n_bands: u32,
+        signature: EmissionOpPlanSignature,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        let needs_upload = self.emission_op_plan_signature.as_ref() != Some(&signature)
+            || self
+                .emission_session
+                .as_ref()
+                .map(|s| s.n_ops() == 0)
+                .unwrap_or(true);
+
+        if needs_upload {
+            let shape_mismatch = self.emission_session.as_ref().is_some_and(|s| {
+                s.n_slots() != signature.n_slots || s.n_dims() != signature.n_dims
+            });
+            if shape_mismatch {
+                self.emission_session = None;
+            }
+        }
+
+        if !needs_upload {
+            return Ok(());
+        }
+
+        if self.emission_session.is_none() {
+            self.ensure_emission_session(
+                ctx,
+                signature.n_slots,
+                signature.n_dims,
+                DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+            );
+        }
+
+        if let Some(session) = self.emission_session.as_mut() {
+            session.upload_gpu_ops(ctx, gpu_ops)?;
+            self.emission_ops = OpSetHandle {
+                family: OperationFamily::EconomicEmission,
+                offset: 0,
+                count: session.n_ops(),
+                active: !gpu_ops.is_empty(),
+                n_bands,
+                exactness: ExactnessClass::Exact,
+            };
+            self.emission_op_plan_signature = Some(signature);
+            self.emission_op_upload_count += 1;
         }
         Ok(())
     }

@@ -7,6 +7,7 @@
 pub mod accumulator_op;
 pub mod context;
 pub mod intensity_accumulator;
+pub mod emission_accumulator;
 pub mod overlay_orderband;
 pub mod overlay_prep;
 pub mod passes;
@@ -24,7 +25,8 @@ pub use accumulator_op::{
     AccumulatorOpGpu, AccumulatorOpSession, AccumulatorOpSessionError, EmissionRecord,
     EmlGpuProgramTable, EmlTreeRangeGpu, EmlUploadError, ExactnessClass, InputListRange,
     LegacyOracleFamily, OpSetHandle, OperationFamily, OverlayCompileCache, SlotSummary,
-    ThresholdEmission, ThresholdEmissionGpu, TransferOpPlanSignature, WorldAccumulatorRuntime,
+    ThresholdEmission, ThresholdEmissionGpu, EmissionOpPlanSignature, TransferOpPlanSignature,
+    WorldAccumulatorRuntime,
     WorldSummaryRuntime, DEFAULT_EML_NODE_CAPACITY, DEFAULT_EML_TREE_CAPACITY,
     DEFAULT_INPUT_LIST_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY, EncodeError,
     IntensityEmlOpPlanSignature,
@@ -39,6 +41,11 @@ pub use transfer_accumulator::{
     TransferRegistration, TransferSyncError,
 };
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
+pub use emission_accumulator::{
+    encode_emission_plan, emission_plan_signature_fields, plan_emission_ops, EmissionFormula,
+    EmissionPlan, EmissionPlanError, EmissionRegistration, EmissionSyncError,
+    FORMULA_KIND_CONSTANT, FORMULA_KIND_EVAL_EML, FORMULA_KIND_IDENTITY_FLOOR,
+};
 pub use reduction_orderband::{
     plan_reduction_orderband, reduction_soft_band_for_depth_bucket, ReductionOrderBandPlan,
     ReductionPlanError,

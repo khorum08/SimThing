@@ -637,7 +637,8 @@ fn maybe_emit_event(op_idx: u32, write_value: f32, op: AccumulatorOpGpu) {
     }
     let idx = atomicAdd(&emission_count, 1u);
     if (idx < tick_params.emission_capacity) {
-        emissions[idx].reg_idx = op_idx;
+        // C-8d: stable registration id encoded in combine_b by the emission planner.
+        emissions[idx].reg_idx = op.combine_b;
         emissions[idx].emit_count = emit_count;
     }
 }

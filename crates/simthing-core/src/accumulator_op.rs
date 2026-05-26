@@ -229,11 +229,12 @@ impl AccumulatorOp {
     /// Validate the registration for internal consistency.
     /// Called at registration time before the op is uploaded to the GPU.
     pub fn validate(&self) -> Result<(), AccumulatorOpError> {
-        let threshold_emit = matches!(
-            (&self.gate, self.consume),
-            (GateSpec::Threshold { .. }, ConsumeMode::EmitEvent)
-        );
-        if self.targets.is_empty() && !threshold_emit {
+        let emit_event_no_targets = matches!(self.consume, ConsumeMode::EmitEvent)
+            && matches!(
+                &self.gate,
+                GateSpec::Threshold { .. } | GateSpec::OrderBand(_)
+            );
+        if self.targets.is_empty() && !emit_event_no_targets {
             return Err(AccumulatorOpError::NoTargets);
         }
         if self.targets.len() > 4 {
@@ -312,14 +313,10 @@ mod tests {
         assert!(minimal_op().validate().is_ok());
     }
 
-    /// A-4 guard test: the C-1 relaxation that allows empty targets is
-    /// narrow — it applies ONLY to (Threshold, EmitEvent). Any other
-    /// gate/consume combination with empty targets must still fail
-    /// `AccumulatorOpError::NoTargets`. This catches the regression where
-    /// a future refactor of `validate()` widens the relaxation past its
-    /// intended scope.
+    /// A-4 / C-8d guard: empty targets are allowed only for EmitEvent with
+    /// Threshold (C-1) or OrderBand (C-8d economic emission).
     #[test]
-    fn empty_targets_still_rejected_for_non_threshold_emit() {
+    fn empty_targets_still_rejected_for_non_emit_event_shapes() {
         // Always + EmitEvent + empty targets: rejected.
         let mut op = AccumulatorOp {
             source: SourceSpec::Constant(1.0),
@@ -331,12 +328,11 @@ mod tests {
         };
         assert_eq!(op.validate(), Err(AccumulatorOpError::NoTargets));
 
-        // OrderBand + EmitEvent + empty targets: rejected.
+        // OrderBand + EmitEvent + empty targets: allowed (C-8d emission substrate).
         op.gate = GateSpec::OrderBand(0);
-        assert_eq!(op.validate(), Err(AccumulatorOpError::NoTargets));
+        assert!(op.validate().is_ok());
 
-        // Threshold + None + empty targets: rejected (consume mismatch on top
-        // of empty targets, but NoTargets fires first).
+        // Threshold + None + empty targets: rejected.
         op.gate = GateSpec::Threshold {
             value: 0.5,
             direction: ThresholdDirection::Upward,
@@ -344,7 +340,7 @@ mod tests {
         op.consume = ConsumeMode::None;
         assert_eq!(op.validate(), Err(AccumulatorOpError::NoTargets));
 
-        // The one permitted shape: Threshold + EmitEvent + empty targets.
+        // Threshold + EmitEvent + empty targets: allowed (C-1).
         op.consume = ConsumeMode::EmitEvent;
         assert!(op.validate().is_ok());
     }
@@ -354,6 +350,19 @@ mod tests {
         let mut op = minimal_op();
         op.targets.clear();
         assert_eq!(op.validate(), Err(AccumulatorOpError::NoTargets));
+    }
+
+    #[test]
+    fn orderband_emit_event_allows_empty_targets() {
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::Identity,
+            gate: GateSpec::OrderBand(0),
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::EmitEvent,
+            targets: vec![],
+        };
+        assert!(op.validate().is_ok());
     }
 
     #[test]

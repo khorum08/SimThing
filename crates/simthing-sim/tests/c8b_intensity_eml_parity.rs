@@ -60,6 +60,7 @@ fn run_accumulator_intensity(state: &mut WorldGpuState, dt: f32) -> Vec<f32> {
             velocity: None,
             intensity_eml: intensity_session.as_mut(),
             transfer: None,
+            emission: None,
             encode_world_summary: false,
         },
     );
@@ -209,6 +210,7 @@ fn c8b_intensity_runs_after_velocity_before_overlay() {
             velocity: velocity_session.as_mut(),
             intensity_eml: intensity_session.as_mut(),
             transfer: None,
+            emission: None,
             encode_world_summary: false,
         },
     );
