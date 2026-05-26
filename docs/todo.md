@@ -99,24 +99,24 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **S-6** | `6b9bf8f` | — | Legacy threshold scan deleted; AccumulatorOp threshold mandatory for threshold workloads |
 | **S-5** | `6b9bf8f` | — | Legacy velocity deleted; AccumulatorOp velocity mandatory for governed velocity workloads |
 | **S-1** | `6b9bf8f` | — | Legacy intent deleted; AccumulatorOp intent mandatory for pending intent workloads |
+| **E-1** | (pending) | — | EmitOnThreshold builder; threshold+EmitEvent registration API over C-1 substrate |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **E-1** — `EmitOnThreshold` builder/spec API (substrate landed in C-1/C-8d)
-2. **E-2A** — `resource_transfer_discrete(...)` builder
-3. **E-3** — conjunctive recipe builder + N-input cap lift
-4. **E-7** — `governed_by` planner generalization
-5. **Opus** — production transfer/emission registration ownership
-6. **D-1** — discrete-transaction contention memo (D-2 deferred unless memo revives narrower GPU allocator need)
+1. **E-2A** — `resource_transfer_discrete(...)` builder
+2. **E-3** — conjunctive recipe builder + N-input cap lift
+3. **E-7** — `governed_by` planner generalization
+4. **Opus** — production transfer/emission registration ownership
+5. **D-1** — discrete-transaction contention memo (D-2 deferred unless memo revives narrower GPU allocator need)
 
 **Open design warnings (preserve):**
 - Transfer/emission registration ownership: substrate-level only; production source-of-truth still needs integration.
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-1 memo evaluates discrete boundary transactions only.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
-**Next (immediate):** post-sunset doc/test hygiene only (this cleanup PR).
+**Next (immediate):** E-2A / E-3 / E-7 per production plan.
 
-**Next (non-Opus implementation):** E-1, E-2A, E-3, or E-7 per production plan — not E-11 directly.
+**Next (non-Opus implementation):** E-2A, E-3, or E-7 — not E-11 directly.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

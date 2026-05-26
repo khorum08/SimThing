@@ -457,12 +457,31 @@ implementation rationale.
 
 ### 5.2 Builder API
 
-The spec layer provides three builders that produce correctly-formed
+The spec layer provides builders that produce correctly-formed
 `AccumulatorOp` registrations. Modders and Studio use these; they do not
 construct `AccumulatorOp` directly.
 
+**E-1 landed (`simthing-core`):** hard threshold event builder over the C-1
+threshold + `EmitEvent` substrate — exact deterministic crossings for debt-band
+alerts, unlocks, scripted triggers, and other discrete threshold paths. Not
+Resource Flow allocation (that is E-8/E-9).
+
 ```rust
-// In simthing-spec:
+// In simthing-core (E-1):
+
+/// Emits a threshold-crossing event when `source` crosses `threshold`.
+pub fn emit_on_threshold(
+    source_slot: u32,
+    source_col:  u32,
+    threshold:   f32,
+    direction:   ThresholdDirection,
+) -> AccumulatorOp
+```
+
+Future economic builders (E-2A, E-3):
+
+```rust
+// In simthing-spec (planned):
 
 /// Transfers `rate` units per tick from `source` to `target`.
 pub fn resource_transfer(
@@ -471,8 +490,8 @@ pub fn resource_transfer(
     rate:   f32,
 ) -> AccumulatorOp
 
-/// Emits units when the debt-band accumulator crosses a band boundary.
-pub fn emit_on_threshold(
+/// Debt-band emission registration (E-1 threshold events + C-8d emission).
+pub fn emit_on_threshold_debt_band(
     accumulator: ResourceRef,
     unit_cost:   f32,
     queued_count: u32,
