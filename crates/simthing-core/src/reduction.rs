@@ -89,6 +89,7 @@ mod tests {
             governed_by: None,
             reduction_override: None,
             soft_aggregate_guard: None,
+                    accumulator_spec: None,
         };
         assert_eq!(spec.resolved_reduction(), ReductionRule::Mean);
         spec.reduction_override = Some(ReductionRule::Sum);

@@ -94,6 +94,7 @@ impl CapabilityTreeBuilder {
                     governed_by: None,
                     reduction_override: Some(ReductionRule::Max),
                     soft_aggregate_guard: None,
+                    accumulator_spec: None,
                 })
                 .collect();
 

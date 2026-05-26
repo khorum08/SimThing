@@ -1586,6 +1586,7 @@ mod tests {
                     governed_by: None,
                     reduction_override: None,
                     soft_aggregate_guard: None,
+                    accumulator_spec: None,
                 },
                 SubFieldSpec {
                     role: SubFieldRole::Named("balance".into()),
@@ -1601,6 +1602,7 @@ mod tests {
                     governed_by: Some(SubFieldRole::Named("flow".into())),
                     reduction_override: None,
                     soft_aggregate_guard: None,
+                    accumulator_spec: None,
                 },
             ],
         };
@@ -1626,6 +1628,7 @@ mod tests {
                 governed_by: Some(SubFieldRole::Named("flow".into())),
                 reduction_override: None,
                 soft_aggregate_guard: None,
+                    accumulator_spec: None,
             }],
         };
         let range = PropertyColumnRange { start: 0, stride: 1 };

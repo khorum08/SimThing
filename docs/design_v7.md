@@ -180,15 +180,19 @@ SubFieldSpec {
     clamp:                  ClampBehavior,
     reduction_rule:         Option<ReductionRule>,
     soft_aggregate_guard:   Option<SoftAggregateGuard>,   // NEW in v7
-    accumulator_spec:       Option<AccumulatorSpec>,       // NEW in v7
+    accumulator_spec:       Option<AccumulatorSpec>,       // E-8 landed (compile-time metadata)
 }
 
 struct AccumulatorSpec {
-    /// Which combine function this sub-field uses when participating in
-    /// emission or production recipes.
-    combine_hint:   CombineFn,
-    /// Logging tier override for this field. Default: Summary.
+    role:           AccumulatorRole,
     log_tier:       LogTier,
+}
+
+enum AccumulatorRole {
+    IntrinsicFlow,
+    AllocatedFlow { arena: ArenaName },
+    Balance(BalanceSpec),
+    AllocatorWeight { arena: ArenaName },
 }
 
 enum SoftAggregateGuard {

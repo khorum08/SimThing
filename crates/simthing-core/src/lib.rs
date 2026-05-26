@@ -1,5 +1,6 @@
 pub mod accumulator_op;
 pub mod accumulator_op_builder;
+pub mod accumulator_spec;
 pub mod eml_nodes;
 pub mod eml_registry;
 pub mod evaluate;
@@ -24,6 +25,9 @@ pub use accumulator_op_builder::{
     try_resource_transfer_discrete, AccumulatorOpBuilder, AccumulatorOpBuilderError,
     ConjunctiveRecipeInput, ConjunctiveRecipeRegistration, DiscreteTransferRegistration,
     EmitOnThresholdBuffer, EmitOnThresholdRegistration,
+};
+pub use accumulator_spec::{
+    AccumulatorRole, AccumulatorSpec, ArenaName, BalanceSpec, LogTier, NumCountSource,
 };
 pub use eml_nodes::{opcode as eml_opcode, EML_STACK_MAX};
 pub use eml_registry::{
