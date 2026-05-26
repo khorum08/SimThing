@@ -61,7 +61,7 @@ working around one of these, stop and reconsider the design.
 |---|---|
 | Exact operations never use soft-aggregate combine fns | Code review gate; `WeightedMean` / `Mean` may not appear in conservation-critical registration paths |
 | `EvalEML` combine requires a whitelist entry | `EmlExpressionRegistry::assert_whitelisted(tree_id)` checked at registration |
-| `SubtractFromSource` is the only transfer mechanism | No two-overlay transfers; `TransformOp::Add` on two separate slots for the same logical transfer is a violation |
+| `SubtractFromSource` is the transfer mechanism for source-debit transactions | Discrete transfers and per-recipe consumption (via `SubtractFromAllInputs`) use `SubtractFromSource`-class semantics; allocator disbursements use `AddToTarget` on independent target slots with approximate-deterministic conservation per `docs/adr/resource_flow_substrate.md`. No two-overlay transfers anywhere |
 | Emission records are produced for every GPU-resolved emission | `EmissionRecord { reg_idx, emit_count }` written to compact buffer; read back for delta log |
 | Persistent GPU buffer is the residency model | `AccumulatorOpSession` is created at session open and closed at session close; no per-tick device creation |
 | Timestamp queries are required for performance claims | Any PR claiming a performance win must include timestamped GPU pass measurements, not just wall-clock |
@@ -69,6 +69,25 @@ working around one of these, stop and reconsider the design.
 | `design_v7.md` §4 is updated by each migration PR | PR template checklist item |
 | `SoftAggregateGuard` on WeightedMean columns feeding thresholds | `assert_no_hard_trigger_on_soft_aggregate()` at registration |
 | `simthing-sim` never knows recipe semantics | No recipe strings, costs, or economic types in `simthing-sim` |
+
+## Resource Flow Substrate
+
+Added by `docs/adr/resource_flow_substrate.md`. These rules govern the
+continuous-flow arena substrate that builds on AccumulatorOp v2.
+
+| Rule | Enforced by |
+|---|---|
+| Arena participation is explicit | `simthing-spec` rejects implicit/wildcard admission without declared upper bound at session build; property possession alone never admits to an arena |
+| Arena caps are declared and enforced | Every `GpuArenaDescriptor` carries `max_participants`, `max_coupling_fanout`, `max_orderband_depth`; spec compiler fails the build if computed expansion exceeds any declared cap |
+| Coupling cycles must contain a delay-bearing edge | Spec compiler walks the coupling graph; any cycle whose edges are all `CouplingDelay::Algebraic` fails the build |
+| Hierarchical conservation is approximate-deterministic | For every intermediate allocator, `|Σ disbursed − budget| ≤ O(ε × n_children)`; residual integrates into the parent's `Balance` via existing `governed_by`; error is deterministic and replay is bit-exact |
+| Balance is the sole carryforward ledger for resource flow | Leaf residual, allocator rounding residual, and zero-weight surplus all integrate into `Balance` via existing `governed_by` machinery; no separate per-arena budget state may exist in the runtime |
+| Allocation policy is expressed through overlays, not policy enums | Allocator kernel reads weight columns; weight columns default to Demand-proportional and are overlay-modifiable via existing Add/Multiply/Set OrderBands; no new policy enum in `ArenaSpec` or the kernel |
+| `simthing-sim` never sees `ArenaRegistry` | The driver compiles registry → flat `AccumulatorOp` registrations before upload; `simthing-sim` sees only `AccumulatorOp` structs and remains arena-ignorant |
+| Fission inheritance is declared per arena | Each arena declares its `FissionPolicy` from `{Inherit, Reevaluate, Reject}` (default `Reevaluate`); the boundary protocol applies the policy at fission time via incremental subtree-scoped re-evaluation |
+| `AccumulatorRole` is compile-time metadata only | Roles compile away into combine/gate/consume choices before reaching the GPU; `simthing-sim` never branches on `AccumulatorRole` at runtime |
+| ArenaRegistry refresh is subtree-incremental | Boundary structural mutations refresh only the affected subtree's selector evaluations, not the global registry; expansion report updates correspondingly |
+| Zero `weight_sum` integrates to parent Balance | When all child weights at an intermediate allocator are zero, every `child_share` evaluates to 0 via EML `SELECT`; the undisbursed budget integrates into the parent's `Balance` via the standard `governed_by` path |
 
 ---
 

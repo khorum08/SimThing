@@ -1,15 +1,23 @@
-# SimThing — Design v7
+# SimThing — Design v7.5
 
 > **Status:** Active specification. Living document updated by each migration
 > PR. Supersedes `design_v6.md` §10 (GPU pipeline). All other sections of
 > `design_v6.md` and `design_v6.5.md` remain authoritative until explicitly
 > superseded here.
 >
+> **v7.5 bump (2026-05-26):** Resource Flow Substrate adopted via
+> `docs/adr/resource_flow_substrate.md`. New constitutional clause (§2), new
+> Pattern 4 (§5.1), new conservation guarantees (§5.5), new invariant rows
+> (§9). No GPU primitive changes; substrate is a registration discipline over
+> existing AccumulatorOp v2. Prior v7 text remains correct; v7.5 extends it.
+>
 > **Companion documents:**
-> - `docs/adr_accumulator_op_v2.md` — decision rationale and evidence
-> - `docs/accumulator_op_v2_production_plan.md` — PR ladder
+> - `docs/adr_accumulator_op_v2.md` — AccumulatorOp v2 decision rationale
+> - `docs/adr/resource_flow_substrate.md` — Resource Flow substrate ADR
+> - `docs/accumulator_op_v2_production_plan.md` — PR ladder (E-7 through E-11 land Resource Flow)
 > - `docs/design_v6.md` — previous specification (§10 superseded)
 > - `docs/design_v6.5.md` — session parking doc (unchanged)
+> - `docs/workshop/resource_flow_adr_shaping.md` — Resource Flow design rationale + implementation detail
 
 ---
 
@@ -82,6 +90,24 @@ One execution model:
   B-3 note: `AccumulatorOpSession` exposes optional timestamp measurement for
   the execute pass via `last_pass_time_us()`. This is instrumentation only and
   does not affect operation semantics.
+
+One mechanism for resource interaction at scale (v7.5):
+  ArenaRegistry { arenas, participants, couplings }
+  — the substrate for continuous resource flow, hierarchical allocation,
+    and arena-to-arena coupling. Built by simthing-spec at session open
+    from designer-declared admission rules; refreshed at boundary structural
+    mutations via incremental subtree-scoped selector re-evaluation;
+    consumed by simthing-driver as AccumulatorOp registrations targeting
+    the existing GPU substrate. simthing-sim never sees ArenaRegistry.
+
+  Constitutional rule:
+    Capability is universal       — any SimThing CAN participate.
+    Participation is explicit     — admission requires a designer selector.
+    Expansion is bounded          — every arena declares hard caps.
+    Unsafe content is rejected    — at import / session build, not at runtime.
+
+  Decision: see `docs/adr/resource_flow_substrate.md`. Implementation: E-7
+  through E-11 in the production plan.
 
 One retained operation:
   snapshot — copy_buffer_to_buffer (memcpy; not a per-slot write)
@@ -335,10 +361,12 @@ pub struct PipelineFlags {
 
 ## 5. Economic substrate
 
-### 5.1 The three canonical patterns
+### 5.1 The four canonical patterns
 
-Every resource interaction in SimThing is one of three AccumulatorOp
-registration patterns:
+Every resource interaction in SimThing is one of four AccumulatorOp
+registration patterns. Patterns 1–3 are discrete per-recipe transactions;
+Pattern 4 is the continuous-flow substrate that handles many-participant
+arena dynamics without tick-time pool contention.
 
 **Pattern 1: Resource transfer**
 
@@ -391,6 +419,46 @@ target:   units_produced_slot, amount_col
 
 The recipe IS the registration. Conservation is structurally enforced across
 all three channels atomically. No CPU correlation state.
+
+**Pattern 4: Continuous resource flow with hierarchical allocation (v7.5)**
+
+```
+A faction supplies food intrinsically; planets and districts consume it;
+the surplus or deficit propagates as Balance.
+
+Per tick (existing C-5/C-6 reduction substrate):
+  leaf→root Sum reduction over intrinsic_flow column
+  produces root_intrinsic_flow_reduced
+  alongside it: leaf→root Sum reduction over weight column
+  produces per-intermediate weight_sum
+
+Per tick (new E-11 allocation substrate, mirror direction):
+  root→leaf proportional allocation via OrderBand sweep
+  each intermediate splits budget across children by:
+    child_share = select(weight_sum > 0,
+                          budget * child_weight / weight_sum,
+                          0)
+  default child_weight = child Demand (max(0, -Balance_subtree))
+  overlays modify weight columns via existing Add/Multiply/Set OrderBands
+  policy / interdiction / player intent compose through the overlay stack
+
+Per tick (E-7 generalized governed_by integration):
+  Balance_{t+1} = Balance_t
+    + (intrinsic_flow + allocated_flow - consumption) × dt
+
+Per arena coupling (designer-declared per edge):
+  from_arena root flow propagates to to_arena via declared delay form
+  (Algebraic / OneTickDelay / BoundaryStage / AccumulatorState) and
+  declared transform (Identity / Scale / EvalEML)
+```
+
+No new GPU primitive. Every arena compiles to existing combine/gate/consume
+variants. The substrate is a registration discipline over AccumulatorOp v2.
+Conservation, fission, expansion, and policy are all enforced at the spec
+compile layer or via existing overlay/integration primitives — not in the
+runtime kernel. See `docs/adr/resource_flow_substrate.md` for the full
+decision and `docs/workshop/resource_flow_adr_shaping.md` for the
+implementation rationale.
 
 ### 5.2 Builder API
 
@@ -465,9 +533,10 @@ The `simthing-driver` session assembly translates these into `AccumulatorOp`
 registrations at session open. `simthing-sim` sees only `AccumulatorOp`
 structs; it never knows what "iron_ore" or "basic_unit" means.
 
-### 5.4 Conservation guarantee
+### 5.4 Per-recipe conservation
 
-The following invariant holds exactly for all economic registrations:
+The following invariant holds exactly for all per-recipe (Pattern 1–3)
+registrations:
 
 ```
 faction_pool_decrease = factory_queue_increase + (total_emissions × Σ unit_costs)
@@ -484,6 +553,54 @@ Tolerance: ±0.01 × faction_pool_decrease (floating-point drift only,
 
 This invariant is verified by the boundary handler after each tick using
 the summary/checksum readback.
+
+### 5.5 Conservation guarantees for continuous flow (v7.5)
+
+Pattern 4 introduces a hierarchical allocation substrate. Conservation is
+enforced at three independent levels, each by the mechanism naturally
+suited to it:
+
+**Per-recipe (§5.4, exact):** unchanged. `MinAcrossInputs +
+SubtractFromAllInputs` is exact across all input channels.
+
+**Per-allocator-level (approximate-deterministic):** for every intermediate
+allocator `I` with children `C_1, …, C_n`:
+
+```
+|Σ_i disbursed(I → C_i) − budget(I)| ≤ O(ε × n_children)
+```
+
+The O(ε × n) bound arises from independent per-child f32 division
+`child_share = budget × w_i / weight_sum`. Even though
+`Σ w_i = weight_sum` by construction (Sum reduction), the sum of
+independently-computed f32 quotients is not exactly `budget`. The residual
+integrates into the parent's `Balance` via the existing `governed_by`
+machinery (E-7) — the same path that handles leaf residuals. The error is
+deterministic (same inputs produce same residual), so replay remains
+bit-exact. Over time, residual is bounded because subsequent Balance
+integration closes the gap.
+
+This is acceptable because allocation IS continuous flow — soft drift of
+O(ε × n) per tick is the correct semantics for a rate signal. Discrete
+source-debit transfers (E-2 discrete builder) remain exact via
+`SubtractFromSource`.
+
+**Per-arena (structural):** total intrinsic flow plus inbound coupling
+contributions equals total leaf allocations plus Balance changes plus
+emission consumption. The spec compiler verifies no orphan participants
+exist (every participant traces to a declared intrinsic-flow source or an
+inbound coupling).
+
+**Zero-weight handling:** when `weight_sum == 0` at an intermediate
+node (all children have zero demand and no policy overlays), every
+`child_share` evaluates to 0 via EML `SELECT`. The undisbursed budget
+integrates into the parent's own `Balance` via the standard `governed_by`
+path. No special-case kernel handling required.
+
+**Balance is the carryforward ledger.** Leaf residuals, allocator rounding
+residuals, and zero-weight surplus all integrate into `Balance` via the
+existing `governed_by` machinery. No separate per-arena budget state
+exists in the runtime.
 
 ---
 
@@ -629,7 +746,7 @@ existing invariants:
 |---|---|
 | Exact operations never use soft-aggregate combine fns | Code review; `WeightedMean`/`Mean` banned from conservation-critical paths |
 | `EvalEML` requires execution-class registration + consumer admissibility | `EmlExpressionRegistry::assert_consumer_admissible(tree_id, consumer)` at registration. C-8 production baseline admits `ExactDeterministic` only; future classes (`SoftDeterministic`, `FastApproximate`) require explicit per-PR policy gates. |
-| Transfer uses `SubtractFromSource` only | No two-overlay transfers anywhere in the codebase |
+| Transfer uses `SubtractFromSource` for source-debit only; allocator disbursements use `AddToTarget` with approximate-deterministic per-level conservation | Per `docs/adr/resource_flow_substrate.md`. No two-overlay transfers anywhere in the codebase |
 | Emission records written for every GPU-resolved emission | `EmissionRecord` in compact buffer; count checked against emission_capacity |
 | Persistent session per session lifetime | No `AccumulatorOpSession::new()` in hot path |
 | Timestamp queries required for perf claims | PR template checklist |
@@ -638,17 +755,26 @@ existing invariants:
 | `SoftAggregateGuard` on WeightedMean columns feeding thresholds | `assert_no_hard_trigger_on_soft_aggregate()` at registration |
 | `simthing-sim` never knows recipe semantics | No recipe strings, costs, or economic types in `simthing-sim` |
 
+**Resource Flow Substrate invariants (v7.5):** see
+`docs/invariants.md` → "Resource Flow Substrate" section for the full
+table (arena enrollment explicitness, hierarchical conservation bound,
+Balance-as-carryforward-ledger, AccumulatorRole compile-time-only,
+subtree-incremental refresh, etc.). The full ADR is at
+`docs/adr/resource_flow_substrate.md`.
+
 ---
 
 ## 10. Read order for new agents
 
 1. `docs/invariants.md` — hard rules, always read first
-2. `docs/adr_accumulator_op_v2.md` — the decision and evidence
-3. `docs/design_v7.md` §2 (constitution) and §4 (current pipeline state)
-4. `docs/design_v7.md` §5 (economic substrate) if working on resource/economic code
-5. `docs/eml_integration_guidance.md` if working on EML expressions
-6. `docs/accumulator_op_v2_production_plan.md` for the PR you're implementing
-7. `docs/design_v6.md` for anything not yet superseded by v7
-8. `docs/design_v6.5.md` (session parking doc — spec/driver layer)
+2. `docs/adr_accumulator_op_v2.md` — the AccumulatorOp v2 decision and evidence
+3. `docs/adr/resource_flow_substrate.md` — the Resource Flow substrate decision (v7.5)
+4. `docs/design_v7.md` §2 (constitution) and §4 (current pipeline state)
+5. `docs/design_v7.md` §5 (economic substrate + Pattern 4 continuous flow) if working on resource/economic code
+6. `docs/eml_integration_guidance.md` if working on EML expressions
+7. `docs/accumulator_op_v2_production_plan.md` for the PR you're implementing
+8. `docs/workshop/resource_flow_adr_shaping.md` for Resource Flow implementation detail
+9. `docs/design_v6.md` for anything not yet superseded by v7
+10. `docs/design_v6.5.md` (session parking doc — spec/driver layer)
 
 Do not implement from `design_v6.md §10`. It is superseded.

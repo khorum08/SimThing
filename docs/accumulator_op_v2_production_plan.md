@@ -683,46 +683,38 @@ EML classes remain future-gated.
 Phase D is conditional: it begins only if Phase C's contention scenario
 benchmarks show the v1 allocator is a production bottleneck.
 
-### ⚠️ PR D-1 — Opus design: hot-pool allocator v2
+### ⚠️ PR D-1 — RESCOPED to discrete-transaction contention analysis memo
 
-**Model:** Opus (design only)  
-**Why Opus:** This is the most open design question remaining. The workshop
-showed the v1 one-invocation-per-pool allocator collapses to 0.14× CPU at 16
-pools / 100k requesters. Three candidate strategies from the ADR:
+**Status (2026-05-26):** Original hot-pool allocator v2 design scope is
+**dissolved for the continuous-flow case** by the Resource Flow Substrate ADR
+(`docs/adr/resource_flow_substrate.md`). Continuous flow eliminates per-tick
+shared-pool contention architecturally — the workshop's 16-pool / 100k
+requester regime cannot arise under the Resource Flow Substrate because no
+shared pool slot is written at tick time. Hierarchical fanout distributes
+contention across tree depth.
 
-1. **Segmented scan:** Divide each pool's requester range into segments of
-   size N. Each GPU workgroup handles one segment. Requires a prefix-sum
-   reduction to compute per-segment available balances.
+**D-1 rescoped to a short Opus memo** evaluating whether *discrete*
+transactions (construction commits, treaty payments, emergency spend) reach
+contention scales that justify a GPU allocator at all. Likely outcome:
+CPU-side priority queue with `SubtractFromSource` ops at boundary time is
+sufficient at realistic scales (O(10²) discrete decisions per faction per
+boundary, vs the workshop's O(10⁵)).
 
-2. **Prefix allocation:** Two-pass approach — first pass computes how much
-   each requester would get if unconstrained; second pass applies the pool
-   capacity constraint via prefix sum and scales down proportionally.
-
-3. **Subrange partitioning:** Statically assign requesters to pool subranges
-   at registration time. Each subrange gets an equal fraction of the pool.
-   Simpler, less fair.
-
-Opus task: Evaluate the three strategies against: (a) conservation guarantee
-(exact vs approximate), (b) fairness (priority ordering vs proportional),
-(c) GPU implementation complexity, (d) interaction with the existing
-`emit_count` calculation from debt-band emission. Produce a design note with
-a concrete recommendation, WGSL pseudocode, and the CPU registration change
-required.
-
-**Gate:** This PR produces a design document only. Implementation is PR D-2,
-after human + Opus review of the design.  
-**Acceptance:** Design note committed to `docs/workshop/`.
+**Model:** Opus (memo only)
+**Gate:** Memo committed to `docs/workshop/`. No implementation PR.
+**Output:** Recommendation either confirming D-2 deferral or motivating its
+revival as a narrower scope.
 
 ---
 
-### PR D-2 — Hot-pool allocator v2 implementation
+### PR D-2 — DEFERRED INDEFINITELY
 
-**Model:** Composer 2.5 (after Opus design from D-1)  
-**Scope:** Implement the allocator strategy from D-1. Feature-flagged behind
-`allocator_strategy: AllocatorStrategy` on `AccumulatorOpSession`.  
-**Test:** Hotspot scenario (16 pools, 100k requesters): beat CPU by at least 2×.
-Conservation remains exact.  
-**Acceptance:** Both tests pass.
+**Status (2026-05-26):** Deferred indefinitely pending discrete-transaction
+workload that demonstrates need. Continuous-flow workloads are addressed
+by Phase E (Resource Flow Substrate). If D-1 memo concludes discrete
+transactions need a GPU allocator, this PR's scope will be re-defined at
+that time. The original "hot-pool allocator v2" design is no longer
+applicable.
 
 ---
 
@@ -869,42 +861,60 @@ tick-1 emissions match the expected 2000 across 1000 factories.
 
 ---
 
-### PR E-2 — Transfer overlay as first-class AccumulatorOp registration
+### PR E-2 — SPLIT: discrete transfer + continuous-flow participant builders
 
-**Model:** Codex 5.5  
-**Scope:** Add `AccumulatorOpBuilder::resource_transfer(...)` that constructs
-the `AccumulatorOp` for a faction-pool-to-factory-queue transfer:
+**Model:** Codex 5.5
+**Scope:** Split E-2 into two builders to match the ADR's discrete-vs-continuous
+separation.
+
+**Builder A — `resource_transfer_discrete(...)`:**
 
 ```rust
-pub fn resource_transfer(
+pub fn resource_transfer_discrete(
     source_slot: SlotId,
     source_col:  SubFieldRole,
     target_slot: SlotId,
     target_col:  SubFieldRole,
-    rate:        f32,
+    amount:      f32,
 ) -> AccumulatorOp
 ```
 
-Sets `combine: Identity`, `consume: SubtractFromSource`. This replaces the
-two-overlay transfer hack at the spec level — any existing `TransferOverlaySpec`
-compiles to this builder rather than two `Add` registrations.
+Sets `combine: Identity`, `consume: SubtractFromSource`. For boundary-time
+discrete transactions (construction commits, treaty payments, emergency
+spend). Exact conservation.
 
-**Test:** Run the `factory_1k` fixture conservation check. Assert faction pool
-decrease == factory queue increase + units consumed (full conservation equation
-from the workshop battery).  
-**Acceptance:** Conservation holds. The two-overlay path in the spec compiler
-is removed and replaced.
+**Builder B — `resource_flow_participant(...)`:**
+
+```rust
+pub fn resource_flow_participant(
+    slot:     SlotId,
+    arena:    ArenaName,
+    role:     AccumulatorRole,  // IntrinsicFlow | AllocatedFlow | AllocatorWeight
+) -> AccumulatorOpSet
+```
+
+Produces the registrations that enroll a slot in an arena's continuous-flow
+substrate. Used by E-9 `ArenaRegistry` compilation. Returns a set (not a single
+op) because enrollment may produce reduction + allocation registrations.
+
+**Test:** Conservation test for the discrete builder (faction pool decrease ==
+factory queue increase). Enrollment test for the flow participant builder
+(arena participant set is well-formed; reduction + allocation ops are emitted
+as expected).
+**Acceptance:** Both tests pass. The two-overlay transfer hack is removed.
 
 ---
 
-### PR E-3 — Conjunctive production recipe as AccumulatorOp registration
+### PR E-3 — Conjunctive recipe builder + lift CPU-side N≤4 cap
 
-**Model:** Composer 2.5  
-**Scope:** Add `AccumulatorOpBuilder::conjunctive_recipe(...)`:
+**Model:** Composer 2.5
+**Scope:** Two parts:
+
+**(a)** Add `AccumulatorOpBuilder::conjunctive_recipe(...)`:
 
 ```rust
 pub fn conjunctive_recipe(
-    inputs:      &[(SlotId, SubFieldRole, f32)],  // (slot, col, unit_cost) up to 4
+    inputs:      &[(SlotId, SubFieldRole, f32)],  // (slot, col, unit_cost) — arbitrary N
     target_slot: SlotId,
     target_col:  SubFieldRole,
     max_per_tick: u32,
@@ -912,13 +922,21 @@ pub fn conjunctive_recipe(
 ```
 
 Sets `source: ConjunctiveCrossing`, `combine: MinAcrossInputs`,
-`consume: SubtractFromAllInputs`. The recipe IS the registration. Conservation
-is structurally enforced.
+`consume: SubtractFromAllInputs`. The recipe IS the registration.
+Conservation structurally enforced.
 
-**Test:** Run the multichannel `factory_1k` fixture (iron/energy/labor recipe)
-through the production builder. Assert emission counts match within 2% of
-the workshop ImplC baseline.  
-**Acceptance:** Test passes. `inputs.len() > 4` returns a compile error.
+**(b)** Lift the `inputs.len() > 4` CPU-side cap in
+`crates/simthing-core/src/accumulator_op.rs::AccumulatorOp::validate`. The GPU
+input-list table (C-8c, binding 10) already supports arbitrary N via
+`ensure_capacity`. The 4-input limit is a stale CPU-side holdover from the
+pre-input-list inline-array layout. Remove the limit; add a test exercising
+N=8 inputs.
+
+**Test:** (a) Run the multichannel `factory_1k` fixture (iron/energy/labor) and
+an N=8 fixture through the production builder. Assert emission counts within 2%
+of workshop ImplC baseline. (b) Unit test that `AccumulatorOp::validate` accepts
+N>4 conjunctive inputs.
+**Acceptance:** Both tests pass.
 
 ---
 
@@ -971,16 +989,234 @@ match within 1%.
 
 ---
 
-### PR E-6 — Update design_v7.md §5 (Economic substrate) and §6 (Modder guide)
+### PR E-6 — Update design_v7.md and economic docs (covered by v7.5 bump)
 
-**Model:** Codex 5.5  
-**Scope:** Update `design_v7.md`:
-- §5: Document `EmitOnThreshold`, `resource_transfer`, `conjunctive_recipe`
-  as the three canonical economic registration builders
-- §6: Modder guide showing RON format from E-4, conservation guarantees,
-  logging tier defaults for economic properties
+**Status (2026-05-26):** **Substantially landed via the v7.5 bump** that
+accompanied the Resource Flow Substrate ADR. `design_v7.md` §2 (constitution),
+§5.1 (Pattern 4), §5.4 (renamed to per-recipe conservation), §5.5 (continuous
+flow conservation), §9 (invariants pointer), §10 (read order) all landed.
 
-**Acceptance:** Doc is internally consistent with the implemented builders.
+**Remaining E-6 scope:** Update `design_v7.md` §6 (Logging tiers) to clarify
+that allocator disbursements do not produce emission records (they are not
+threshold-gated), and surface via summary diff only. Add a worked example to
+§5 showing a complete Pattern 4 arena (e.g. food: faction → planets → districts
+with one inbound coupling from trade_access).
+
+**Model:** Codex 5.5
+**Acceptance:** Logging-tier clarification landed. Worked example landed.
+
+---
+
+## Phase E continued — Resource Flow Substrate landing (E-7 through E-11)
+
+These five PRs land the Resource Flow Substrate per
+`docs/adr/resource_flow_substrate.md`. The substrate is a registration
+discipline on top of AccumulatorOp v2; no new GPU primitive is introduced.
+
+**PR sequencing:** E-7 and E-8 are prerequisites for E-9. E-9 is a prerequisite
+for E-10 and E-11. **Do not execute E-11 before E-9 is stable.** E-1, E-3, E-5
+remain independent. E-2 split can land independently.
+
+### PR E-7 — `governed_by` planner generalization
+
+**Model:** Composer 2.5
+**Scope:** Generalize the C-7 `IntegrateWithClamp` planner from special-casing
+`(Amount, Velocity)` governed pairs to supporting arbitrary `(Named, Named)`
+pairs. The kernel `COMBINE_INTEGRATE_CLAMP` branch in
+`crates/simthing-gpu/src/shaders/accumulator_op.wgsl` is **unchanged** — it
+already operates on `(governed_offset, governing_offset, dt, clamp_bounds)`
+and does not depend on role names. Only the planner needs to compile arbitrary
+governed pairs.
+
+This enables `Balance` integrating from `Flow` (the core of Pattern 4) without
+touching the velocity-integration path.
+
+**Test:** Bit-exact parity against the existing C-7 velocity integration for
+`(Amount, Velocity)` pairs. New test: `(Named("balance"), Named("flow"))` pair
+integrates correctly on a synthetic arena fixture.
+**Acceptance:** Existing C-7 tests still green; new governed-pair test passes.
+
+---
+
+### PR E-8 — `accumulator_spec: Option<AccumulatorSpec>` lands on `SubFieldSpec`
+
+**Model:** Codex 5.5
+**Scope:** Add the planned `accumulator_spec` field to
+`crates/simthing-core/src/property.rs::SubFieldSpec`. Schema per
+`docs/adr/resource_flow_substrate.md` §"Substrate shape":
+
+```rust
+pub struct SubFieldSpec {
+    // existing fields unchanged
+    #[serde(default)]
+    pub accumulator_spec: Option<AccumulatorSpec>,
+}
+
+pub struct AccumulatorSpec {
+    pub role:     AccumulatorRole,
+    pub log_tier: LogTier,
+}
+
+pub enum AccumulatorRole {
+    IntrinsicFlow,
+    AllocatedFlow { arena: ArenaName },
+    Balance(BalanceSpec),
+    AllocatorWeight { arena: ArenaName },
+}
+
+pub struct BalanceSpec {
+    pub unit_cost: Option<f32>,
+    pub num_count_source: Option<NumCountSource>,
+}
+
+pub enum NumCountSource {
+    Static(u32),
+    Column { property_id: SimPropertyId, role: SubFieldRole },
+}
+
+pub type ArenaName = String;
+```
+
+**Critical invariant:** `AccumulatorRole` is **compile-time spec metadata only**.
+It must not become runtime semantic branching in `simthing-sim`. By the time
+`AccumulatorOp` registrations reach the sim crate, the role has compiled away
+into specific combine/gate/consume choices.
+
+**Test:** Serde roundtrip for every variant. Unit test that a SubFieldSpec
+without `accumulator_spec` is unchanged in behavior (None is the default).
+**Acceptance:** CI green. No `AccumulatorRole` match arms in `simthing-sim`.
+
+---
+
+### PR E-9 — `ArenaRegistry` in `simthing-driver` with incremental refresh
+
+**Model:** Composer 2.5
+**Prerequisites:** E-7 + E-8
+**Scope:** Implement `ArenaRegistry` per `docs/adr/resource_flow_substrate.md`
+§"Substrate shape". Lives in `simthing-driver` as session-owned state.
+
+```rust
+pub struct ArenaRegistry {
+    pub arenas:       Vec<GpuArenaDescriptor>,
+    pub participants: Vec<(ArenaIdx, SlotId)>,
+    pub couplings:    Vec<ArenaCoupling>,
+    pub generation:   u64,
+}
+
+// + GpuArenaDescriptor, ArenaCoupling, CouplingDelay, CouplingTransform,
+//   FissionPolicy { Inherit, Reevaluate, Reject } — no Custom in v1.
+```
+
+**Boundary refresh API:** `ArenaRegistry::refresh_for_structural_mutation(&mut
+self, mutated_subtree: &SubtreeId)`. Refresh re-evaluates admission selectors
+**only for the affected subtree**, not the global registry. Modeled on the
+B2 Approach B append-only threshold rebuild pattern. Naive global refresh on
+every fission is **forbidden** — it creates a boundary-time bloat vector. The
+expansion report updates correspondingly.
+
+The driver compiles registry → flat `AccumulatorOp` registrations through
+existing `WorldGpuState::sync_accumulator_*_session` paths. `simthing-sim`
+remains arena-ignorant.
+
+**Test:** Three-arena synthetic fixture (food, research, suppression) with
+three coupling edges. Verify registry construction; verify fission scenario
+refreshes only the affected subtree (bump `generation` selectively, not
+globally). Verify the driver emits the correct flat `AccumulatorOp` set.
+**Acceptance:** All tests pass. `simthing-sim` does not gain any
+`ArenaRegistry` import.
+
+---
+
+### PR E-10 — `simthing-spec` admission framework
+
+**Model:** Composer 2.5
+**Prerequisites:** E-9
+**Scope:** Implement the draconian content guardrail framework per
+`docs/adr/resource_flow_substrate.md` §"Draconian content guardrail".
+
+Spec compiler enforces at session build time (rejection, not warning):
+
+1. Explicit participation only (property possession ≠ admission)
+2. Hard caps per arena (`max_participants`, `max_coupling_fanout`,
+   `max_orderband_depth`)
+3. Wildcard discipline (declared upper bound; compiler computes expansion)
+4. `FissionPolicy` declared per arena (from
+   `{Inherit, Reevaluate, Reject}` — no `Custom` in v1)
+5. Cycle-with-delay check (no cycle whose edges are all `Algebraic`)
+6. OrderBand budget verified against declared `max_orderband_depth`
+7. No hidden fanout exceeding declared budget
+
+**Expansion report:** the compiler produces a per-build report listing
+per-arena participant counts, per-coupling fanout, total registration count,
+total OrderBand depth used, and any rejected-risk diagnostics.
+
+**Test:** Fixture suite of intentionally-bad specs (implicit participation,
+cap violation, cycle without delay, etc.), each must be rejected with a
+specific diagnostic. Fixture suite of well-formed specs must compile and
+produce expected expansion reports.
+**Acceptance:** All test fixtures pass; expansion report format stable.
+
+---
+
+### ⚠️ PR E-11 — Hierarchical allocation kernel pattern + CPU oracle parity
+
+**Model:** Opus (review and design pseudocode), Composer 2.5 (implementation)
+**Why Opus:** E-11 is a real new GPU production capability. Although it reuses
+the existing AccumulatorOp kernel, it is structured as a reverse-direction
+OrderBand sweep with per-intermediate weight reductions and per-child share
+computations. The composition is novel; verification needs its own parity
+tests against a CPU oracle and stability tests under hierarchical fanout.
+
+**Prerequisites:** E-9, E-10
+**Scope:** Implement the allocation kernel pattern per
+`docs/adr/resource_flow_substrate.md` §"Hierarchical allocation kernel
+pattern". Per intermediate participant, the driver emits two AccumulatorOp
+registrations:
+
+```
+1. Weight-sum reduction (upward sweep, alongside intrinsic Flow):
+   source:  SlotRange { children }
+   combine: Sum
+   gate:    OrderBand(reduction_band)
+   consume: ResetTarget
+   target:  intermediate.weight_sum
+
+2. Per-child disbursement (downward sweep):
+   source:  SlotValue { intermediate, budget_col }
+   combine: EvalEML { child_share_formula }
+              where formula = select(weight_sum > 0,
+                                      budget * child_weight / weight_sum,
+                                      0)
+   gate:    OrderBand(allocation_band)
+   consume: AddToTarget
+   target:  child.allocated_flow_col
+```
+
+`child_share_formula` is a fixed EML tree (well within the 32-node
+`ExactDeterministic` class limit). One tree per arena, not per intermediate.
+The EML `SELECT` op handles the `weight_sum == 0` case without kernel
+modification.
+
+OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
+
+**Tests:**
+
+1. **Parity test:** CPU oracle of the hierarchical allocation against the
+   GPU implementation. Bit-exact for fixed tree topology under
+   `ExactDeterministic` EML class.
+2. **Stability test:** Hierarchical fanout under varying child counts
+   (10/100/1000 children per intermediate). Conservation drift bounded by
+   O(ε × n_children) per level as specified in the ADR. Replay bit-exact.
+3. **Zero-weight test:** All children have zero demand. Verify
+   `weight_sum == 0` produces zero disbursement and budget integrates to
+   parent Balance via standard `governed_by`.
+4. **Conservation test:** End-to-end arena (3 levels, 100 leaf participants)
+   over 100 ticks: total intrinsic_flow + coupling_in = total leaf
+   allocations + Balance changes. Verified within O(ε × n_levels ×
+   n_children).
+
+**Acceptance:** All four tests pass. CPU oracle parity is bit-exact for
+`ExactDeterministic`. Replay is bit-exact under varying fission cascades.
 
 ---
 
@@ -1093,16 +1329,21 @@ as a doc-only PR.
 | C-6 | C | Composer 2.5 | Sum/Max/Min/First exact reductions | **Landed (#124)** |
 | C-7 | C | Composer 2.5 | Velocity integration | **Landed (#127)** |
 | **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity + emission** | **Landed + S-2 sunset** |
-| **D-1** | **D** | **Opus** | **Hot-pool allocator design** | **Opus design note** |
-| D-2 | D | Composer 2.5 | Hot-pool allocator v2 | 2× CPU at hotspot |
+| **D-1** | **D** | **Opus (memo only)** | **RESCOPED to discrete-transaction memo — see ADR `resource_flow_substrate.md`** | **Memo committed** |
+| D-2 | D | — | **DEFERRED INDEFINITELY** — no concrete scope until D-1 memo motivates a revival | n/a |
 | D-3 | D | Composer 2.5 | Changed-only logs + replay | Replay test |
 | D-4 | D | Composer 2.5 + Opus | Cross-pool contention gate | Pass or ADR amendment |
 | E-1 | E | Composer 2.5 | EmitOnThreshold builder | debt_band_1k test |
-| E-2 | E | Codex 5.5 | resource_transfer builder | Conservation test |
-| E-3 | E | Composer 2.5 | conjunctive_recipe builder | factory_1k parity |
+| **E-2** | **E** | **Codex 5.5** | **SPLIT: discrete + flow-participant builders** | **Conservation + enrollment tests** |
+| **E-3** | **E** | **Composer 2.5** | **conjunctive_recipe builder + lift N≤4 cap** | **factory_1k parity + N=8 test** |
 | E-4 | E | Composer 2.5 | Economic V1 RON + session integration | RON→session→conservation |
 | E-5 | E | Composer 2.5 | Economic compact log integration | Replay test |
-| E-6 | E | Codex 5.5 | design_v7.md economic substrate docs | Doc consistency |
+| **E-6** | **E** | **Codex 5.5** | **design_v7.md docs (mostly landed by v7.5 bump)** | **Doc consistency** |
+| **E-7** | **E** | **Composer 2.5** | **`governed_by` planner generalization to arbitrary `(Named, Named)` pairs** | **Existing C-7 + new pair test** |
+| **E-8** | **E** | **Codex 5.5** | **`accumulator_spec` on `SubFieldSpec`** | **Serde + invariant: no runtime branching** |
+| **E-9** | **E** | **Composer 2.5** | **`ArenaRegistry` in `simthing-driver` with subtree-incremental refresh** | **3-arena fixture + refresh scope test** |
+| **E-10** | **E** | **Composer 2.5** | **`simthing-spec` admission framework (caps, fission policy, cycle-with-delay, expansion report)** | **Bad-spec rejection + good-spec compile** |
+| **E-11** | **E** | **Opus + Composer 2.5** | **Hierarchical allocation kernel + CPU oracle parity + stability tests** | **CPU oracle bit-exact + zero-weight + 3-level conservation** |
 | S-1 | F | Codex 5.5 | Sunset intent fold | CI green at flag=on |
 | S-2 | F | Codex 5.5 | Sunset intensity update | **Landed (#138)** |
 | S-3 | F | Codex 5.5 | Sunset overlay prep | CI green at flag=on |
@@ -1112,4 +1353,7 @@ as a doc-only PR.
 | G-1 | G | Codex 5.5 | Annotate design_v6.md §10 superseded | One commit |
 | **G-2** | **G** | **Opus** | **design_v7.md §4 final review** | **Human + Opus** |
 
-**Total: 33 PRs.** Remaining Opus-gated: A-4, B-4, D-1, G-2 — four of thirty-three.
+**Total: 38 PRs.** Remaining Opus-gated: A-4, B-4, D-1 (memo), E-11, G-2 —
+five of thirty-eight. D-2 deferred indefinitely. Resource Flow Substrate
+landing spans E-7 through E-11 per
+`docs/adr/resource_flow_substrate.md`.
