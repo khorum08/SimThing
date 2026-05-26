@@ -513,7 +513,7 @@ combined all-flags integration test green.
 
 ### ✅ PR S-4 — Legacy reduction sunset
 
-**Status:** **Landed** (pending PR merge).
+**Status:** **Landed** (#126).
 
 **What shipped:** Deleted `reduction.wgsl`, legacy reduction pipeline/bind groups,
 `skip_soft_columns`, C-5/C-6 exact fallback branch, and legacy dispatch counters.
@@ -528,7 +528,7 @@ column rules, THRESH_BUF_OUTPUT semantics, GPU-resident two-buffer reduction.
 
 ### PR C-7 — Velocity integration migration
 
-**Status:** Implemented (local, pending PR). `use_accumulator_velocity` default **false**.
+**Status:** Landed (#127). `use_accumulator_velocity` default **false**.
 Legacy `velocity_integration.wgsl` retained flag-off/oracle until S-5.
 
 **Model:** Composer 2.5  
@@ -554,9 +554,9 @@ comparison.
 
 **C-8a remedial status:** **Merged** (#130) — program-table accounting, boundary skip, admissibility hardening.
 
-**C-8b status:** **Landed** — intensity EvalEML migration; `use_accumulator_intensity` (default **true**); legacy `intensity_update.wgsl` **deleted (S-2)**.
+**C-8b status:** **Landed (#131)** — intensity EvalEML migration; `use_accumulator_intensity` (default **true**); legacy `intensity_update.wgsl` **deleted (S-2 #138)**.
 
-**C-8b remedial status:** **Local** — intensity op upload cache keys on `IntensityEmlOpPlanSignature` (EML generation + world/op-plan shape); slot growth and entry/layout changes force op reupload; unchanged formulas skip EML table churn via `replace_formula_if_changed`.
+**C-8b remedial status:** **Landed (#132)** — intensity op upload cache keys on `IntensityEmlOpPlanSignature` (EML generation + world/op-plan shape); slot growth and entry/layout changes force op reupload; unchanged formulas skip EML table churn via `replace_formula_if_changed`.
 
 **C-8b landed:**
 - `IntensityBehavior` → `ExactDeterministic` EML (22 nodes; `MAX_EML_TREE_NODES`/`EML_STACK_MAX` raised to 32).
@@ -574,14 +574,14 @@ comparison.
 - Identical formula/shape boundaries skip EML table and op reupload.
 - Intensity remains GPU-resident through EvalEML.
 
-**C-8c landed:**
+**C-8c landed (#133):**
 - Transfer substrate routes through AccumulatorOp (`use_accumulator_transfer`, default false).
 - `AccumulatorInputListTable` provides persistent GPU input lists (generation-based skip; no per-dispatch upload).
 - `MinAcrossInputs` + `SubtractFromAllInputs` support conjunctive exact transfer; single-source `SubtractFromSource` for fixed-amount moves.
 - `TransferConservation` admits `ExactDeterministic` only.
 - No CPU-mediated production transfer.
 
-**C-8c remedial landed:**
+**C-8c remedial landed (#134):**
 - Transfer planner rejects same-band consumed-input contention (policy A).
 - Same-target contention remains allowed via atomic target adds.
 - Single-source `output_scale != 1.0` rejected until explicitly supported.
@@ -589,7 +589,7 @@ comparison.
 - Input-list table generation invalidates on nonempty→empty clear.
 - Defensive single-source debit clamp in WGSL (not transactional reservation).
 
-**C-8d landed:**
+**C-8d landed (#135):**
 - GPU-resident emission substrate added through AccumulatorOp (`use_accumulator_emission`, default false).
 - `EmissionRecordGpu` schema remains `{ reg_idx, emit_count }`; stable `reg_idx` via `combine_b`.
 - ExactDeterministic emission formulas are bit-exact; Soft/Fast emission remains future-gated by explicit tolerance policy.
@@ -597,7 +597,7 @@ comparison.
 - No CPU-mediated production emission; no per-dispatch EML upload.
 - Tick placement after transfer, before overlay.
 
-**C-8d remedial landed:**
+**C-8d remedial landed (#136):**
 - Emission op-plan signature includes stable `reg_idx`, constant value bits, and `max_emit` state.
 - EvalEML tree IDs derived/validated from the formula variant (parallel field must match or be absent).
 - `max_emit` explicitly rejected until shader clamp is implemented.
@@ -621,30 +621,16 @@ Selected:
 
 **Implementer mix:** **Codex 5.5** for C-8a, C-8b, C-8d; **Composer 2.5** for C-8c (transfer's conservation invariants and the input-list table benefit from architectural judgment).
 
-**Model:** Opus (integration design), Codex 5.5 / Composer 2.5 (staged implementation)  
-**Why Opus:** EML intensity and AccumulatorOp interact at the `EvalEML` combine
-boundary. The workshop validated EML as a standalone harness. Integrating it
-into the AccumulatorOp session means:
+**Opus design resolved:** C-8 design landed in [`docs/workshop/c8_eml_transfer_intensity_design.md`](workshop/c8_eml_transfer_intensity_design.md).
 
-1. The `EmlExpressionRegistry` from A-3 must be the source of truth for tree
-   IDs in `EvalEML` registrations.
-2. The EML node buffer must be a persistent GPU buffer in `AccumulatorOpSession`,
-   not uploaded per dispatch (the fix from the EML Phase 5 hardening handoff).
-3. The tree can change at session open (when a new recipe is registered) but
-   not mid-tick.
-
-Opus should specify: (a) where the EML node buffer lives in the session
-(alongside `op_buffer`? separate?), (b) how tree ID → buffer offset is
-resolved in the WGSL shader, (c) whether a single dispatch can handle multiple
-EML trees (different formula classes in the same tick), (d) the tree-change
-protocol (can the session hot-reload an EML tree without full session teardown?
-— relevant to I2/H1 deferred work).
-
-**Implementation (Composer 2.5):**
-- `EvalEML` combine in the kernel
-- Persistent node buffer in `AccumulatorOpSession`
-- Transfer (`CrossingFormula` + `MinAcrossInputs` + `SubtractFromAllInputs`)
-  as the economic substrate
+Implemented:
+- `WorldAccumulatorRuntime.eml: Option<EmlGpuProgramTable>`
+- persistent node/range buffers
+- CPU-side `tree_id` → `tree_range_index` resolution
+- `AccumulatorOpGpu.combine_a = tree_range_index`
+- no WGSL tree-id search
+- generation-based table invalidation
+- multi-tree dispatch through per-op tree range indices
 
 **Parity tests:**
 - EML intensity bit-exact against CPU oracle for `ExactDeterministic`
@@ -653,12 +639,16 @@ protocol (can the session hot-reload an EML tree without full session teardown?
 - Transfer conservation: exact balance across 1000 factories, 3 channels,
   100 ticks (C-8c). `ExactDeterministic` only — Soft/Fast classes are
   structurally rejected from transfer paths.
-- Conjunctive emission: emit count matches CPU reference within 2%
-  (C-8d). Tolerance applies to emission only and does NOT leak into
-  transfer or hard-trigger paths.
+- **C-8d baseline:** `ExactDeterministic` emission formulas are bit-exact.
+- **Future Soft/Fast emission:** tolerance gate remains future work; any 2%
+  tolerance applies only to future explicitly-gated emission behavior and
+  must not leak into `TransferConservation` or hard thresholds.
 
-**Acceptance:** All three tests pass per stage. Opus design note
-committed (see design memo link above).
+**Acceptance:** All stage tests pass. Design memo linked above.
+
+**Open after C-8:** production transfer/emission registration ownership
+(spec/builder integration); shared-input cross-pool contention (D-1); Soft/Fast
+EML classes remain future-gated.
 
 ---
 
@@ -768,7 +758,7 @@ with a clearly reported failure mode (triggers separate design work).
 | C-4 | C | Opus + Codex 5.5 | Multiply/Set OrderBand compiler | Landed behind flag |
 | **C-5** | **C** | **Opus + Composer** | **WeightedMean tolerance boundary audit + soft reductions** | **Landed (#121 design, #122 impl)** |
 | C-6 | C | Composer 2.5 | Sum/Max/Min/First exact reductions | **Landed (#124)** |
-| C-7 | C | Composer 2.5 | Velocity integration migration | vel_max clamp test |
+| C-7 | C | Composer 2.5 | Velocity integration migration | **Landed (#127)** |
 | **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity + emission** | **Landed + S-2 sunset** |
 | **D-1** | **D** | **Opus** | **Hot-pool allocator v2 design** | **Opus design note** |
 | D-2 | D | Composer 2.5 | Hot-pool allocator v2 implementation | 2× CPU at hotspot |
@@ -1076,7 +1066,7 @@ as a doc-only PR.
 | C-4 | C | Opus + Codex 5.5 | Multiply/Set OrderBand compiler | Landed behind flag |
 | **C-5** | **C** | **Opus + Composer** | **WeightedMean tolerance audit + soft reductions** | **Landed (#121, #122)** |
 | C-6 | C | Composer 2.5 | Sum/Max/Min/First exact reductions | **Landed (#124)** |
-| C-7 | C | Composer 2.5 | Velocity integration | vel_max clamp test |
+| C-7 | C | Composer 2.5 | Velocity integration | **Landed (#127)** |
 | **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity + emission** | **Landed + S-2 sunset** |
 | **D-1** | **D** | **Opus** | **Hot-pool allocator design** | **Opus design note** |
 | D-2 | D | Composer 2.5 | Hot-pool allocator v2 | 2× CPU at hotspot |

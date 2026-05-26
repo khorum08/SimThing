@@ -6,6 +6,28 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+---
+
+## 2026-05-19 — Pivot-forward remedial: C-8/S-2 doc consistency (#139 follow-up)
+
+**Scope:** docs-only reconciliation after S-2 (#138) and production-plan sync (#139).
+
+**Updated:**
+- `docs/workshop/workshop_current_state.md` — landed table PR numbers (#131–#138), default-on/off summary, S-2 removed from open work
+- `docs/accumulator_op_v2_production_plan.md` — C-7/C-8 landed status, Opus design resolved, emission tolerance clarified
+- `docs/design_v7.md` — explicit S-2 complete bullets; no active `intensity_update.wgsl` path
+- `docs/todo.md` — next gates S-3 → S-6 → S-5 → S-1; open design warnings preserved
+
+**Next implementation gate:** **S-3** legacy overlay sunset.
+
+---
+
+## 2026-05-19 — docs: S-2 production plan + design v7 sync (#139)
+
+**Updated:** `accumulator_op_v2_production_plan.md`, `design_v7.md` — S-2 complete, mixed flag defaults, C-8 landed status.
+
+---
+
 ## 2026-05-19 — S-2 legacy intensity sunset
 
 **Deleted:**
