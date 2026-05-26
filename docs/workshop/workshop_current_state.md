@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-26  
-**Master HEAD:** S-6/S-5/S-1 legacy sunset sequence (local)  
-**Verification (last recorded):** S-6 + S-5 + S-1 focused sunset tests green; C-1/C-2/C-7/C-8 focused regression green
+**Master HEAD:** S-6/S-5/S-1 legacy sunset sequence merged (`6b9bf8f`)
+**Verification (last recorded):** `cargo test --workspace` green after S-6/S-5/S-1; focused sunset and C-1/C-2/C-7/C-8 regressions green
 
 ---
 
@@ -16,7 +16,7 @@ Two parallel tracks:
 | Track | Status | Canonical docs |
 |-------|--------|----------------|
 | **V6 spec / driver / session** | **Parked complete** — PRs 1–11, Opus P0 (O2/B3/I1) shipped | `design_v6.5.md`, `simthing_spec_progress_log.md` |
-| **AccumulatorOp v2 / design v7** | **Active** — Phases A–B done; C-1–C-6 + **S-4** landed; reduction flags default **on** | `design_v7.md`, `accumulator_op_v2_production_plan.md`, `pivot_forward_implementation_policy.md` |
+| **AccumulatorOp v2 / design v7** | **Active** — Phases A–B done; C-1–C-8 landed; S-1/S-2/S-3/S-4/S-5/S-6 legacy passes deleted | `design_v7.md`, `accumulator_op_v2_production_plan.md`, `pivot_forward_implementation_policy.md` |
 
 **Production direction:** AccumulatorOp v2 is the GPU execution path.
 Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Legacy threshold is deleted (S-6). Legacy velocity is deleted (S-5). Legacy intent is deleted (S-1). Snapshot is the only retained non-Accumulator operation.
@@ -67,9 +67,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **C-8d remedial** | #136 | Emission op-plan signature includes `reg_indices`, `constant_value_bits`, `max_emit`; EvalEML tree IDs derived/validated from formula variant; `max_emit` explicitly rejected until shader clamp implemented |
 | **C-8 completion gate** | #137 | Full C-8 all-flags integration test; persistent table/op reuse; [`s2_legacy_intensity_sunset_inventory.md`](s2_legacy_intensity_sunset_inventory.md) |
 | **S-2** | #138 | Legacy `intensity_update.wgsl` + Pass 2 pipeline deleted; EvalEML intensity only; `use_accumulator_intensity` + `use_accumulator_eml` default **true** |
-| **S-6** | local | Legacy `threshold_scan.wgsl` + Pass 7 pipeline deleted; AccumulatorOp threshold mandatory for registered thresholds |
-| **S-5** | local | Legacy `velocity_integration.wgsl` + Pass 1 pipeline deleted; AccumulatorOp velocity mandatory for governed pairs |
-| **S-1** | local | Legacy `intent_delta.wgsl` + intent pipeline deleted; AccumulatorOp intent mandatory for pending intents |
+| **S-6** | `6b9bf8f` | Legacy `threshold_scan.wgsl` + Pass 7 pipeline deleted; AccumulatorOp threshold mandatory for registered thresholds |
+| **S-5** | `6b9bf8f` | Legacy `velocity_integration.wgsl` + Pass 1 pipeline deleted; AccumulatorOp velocity mandatory for governed pairs |
+| **S-1** | `6b9bf8f` | Legacy `intent_delta.wgsl` + intent pipeline deleted; AccumulatorOp intent mandatory for pending intents |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
@@ -79,7 +79,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 ```text
 WorldGpuState
   accumulator_runtime: Option<WorldAccumulatorRuntime>
-    intent_session / threshold_session / overlay_session / reduction_soft_session / velocity_session / intensity_eml_session
+    intent_session / threshold_session / overlay_session / reduction_soft_session / velocity_session / intensity_eml_session / transfer_session / emission_session
     overlay_compile_cache: Option<OverlayCompileCache>    (C-4 dirty/cached planner)
     summary: Option<WorldSummaryRuntime>                  (B-4 from world values)
   accumulator_overlay_add_active / _bands                 (cached dispatch; survives session take)
@@ -109,9 +109,9 @@ child slots skip reduction upload until topology is planner-compatible.
 - Two-buffer semantics preserved (`values` → `output_vectors`).
 - THRESH_BUF_OUTPUT semantics unchanged.
 
-**Feature flags (authoritative after #111):** flag-off boundary sync calls
-`clear_intent` / `clear_threshold` / `clear_overlay_add`; dispatcher keys off
-session presence + overlay dispatch cache, not stale sessions.
+**Feature flags (authoritative after #111 + sunsets):** empty workload flag-off sync clears
+stale sessions; disabling accumulator families with real deleted-legacy workloads rejects
+explicitly instead of falling back or silently skipping work.
 
 ### Open migration work
 
@@ -119,18 +119,18 @@ session presence + overlay dispatch cache, not stale sessions.
 |----------|-----|-------|--------|
 | Design | Transfer/emission registration ownership | Opus | Substrate landed; production spec/builder source-of-truth integration |
 | Design | **D-1** discrete-transaction memo | Opus | Rescoped by Resource Flow ADR; no GPU allocator implementation |
-| Infra | Oracle refactor | Optional | Move C-1/C-2/C-3/C-4 parity tests onto `run_family_oracle` |
+| Infra | Test-harness cleanup | Optional | Runtime legacy oracle/fallback peers are gone; remaining cleanup is test-only ergonomics |
 
 ### Sunset targets (S-phase)
 
 | S-PR | After | Deletes | Status |
 |------|-------|---------|--------|
-| S-1 | C-2 default-on | Legacy intent pass | **Done** |
+| S-1 | C-2 default-on | Legacy intent pass | **Done (`6b9bf8f`)** |
 | S-2 | C-8b default-on | Legacy intensity (`intensity_update.wgsl`) | **Done (#138)** |
 | S-3 | C-3 + C-4 | Legacy overlay prep | Done |
 | S-4 | C-5 + C-6 | Legacy reduction passes + `reduction.wgsl` | **Done (#126)** |
-| S-5 | C-7 | Legacy velocity | **Done** |
-| S-6 | C-1 default-on | Legacy threshold scan (Pass 7) | **Done** |
+| S-5 | C-7 | Legacy velocity | **Done (`6b9bf8f`)** |
+| S-6 | C-1 default-on | Legacy threshold scan (Pass 7) | **Done (`6b9bf8f`)** |
 
 ---
 

@@ -7,8 +7,8 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **C-4 overlay OrderBand** (#118), **C-5 soft reductions** (#122–#123), **C-6 exact reductions** (#124),
 **S-4 reduction sunset** (#126), **C-7 velocity** (#127), **C-8 EML block** (#129–#137),
 **S-2 intensity sunset** (#138), **S-3 overlay sunset**, **S-6 threshold sunset**,
-**S-5 velocity sunset**, and **S-1 intent sunset** (local) landed.
-`master` @ **`cacf755`** (#139 doc sync).
+**S-5 velocity sunset**, and **S-1 intent sunset** landed.
+`master` includes **`6b9bf8f`** (S-6/S-5/S-1 sunset sequence).
 
 **Reduction flags (default true):** `use_accumulator_reduction_soft` +
 `use_accumulator_reduction_exact` (both required). AccumulatorOp is the sole production
@@ -34,8 +34,8 @@ operation. See
 **Parking synthesis:** [`docs/design_v7.md`](design_v7.md) — AccumulatorOp v2 target architecture.
 Historical v6.5 parking: [`docs/design_v6.5.md`](design_v6.5.md).
 
-**Tests:** `cargo test --workspace` green at last full run (450+ passed, ignored perf gates).
-AccumulatorOp module: **63** gpu `accumulator_op` unit tests; `reduction_orderband` (6);
+**Tests:** `cargo test --workspace` green after S-6/S-5/S-1 (450+ passed, ignored perf gates).
+AccumulatorOp module: **72** gpu `accumulator_op` unit tests; `reduction_orderband` (6);
 C-1/C-2/C-3 parity (26) + C-4 parity/cache (16) + S-3 overlay sunset (5) + C-5 reduction (11) + C-6 exact (10) +
 C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated (2).
 
@@ -96,9 +96,9 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **C-8d remedial** | #136 | — | Emission op signature + max_emit rejection |
 | **C-8 completion gate** | #137 | — | Full C-8 all-flags integration |
 | **S-2** | #138 | — | Legacy intensity deleted; EvalEML only |
-| **S-6** | local | — | Legacy threshold scan deleted; AccumulatorOp threshold mandatory for threshold workloads |
-| **S-5** | local | — | Legacy velocity deleted; AccumulatorOp velocity mandatory for governed velocity workloads |
-| **S-1** | local | — | Legacy intent deleted; AccumulatorOp intent mandatory for pending intent workloads |
+| **S-6** | local | `6b9bf8f` | Legacy threshold scan deleted; AccumulatorOp threshold mandatory for threshold workloads |
+| **S-5** | local | `6b9bf8f` | Legacy velocity deleted; AccumulatorOp velocity mandatory for governed velocity workloads |
+| **S-1** | local | `6b9bf8f` | Legacy intent deleted; AccumulatorOp intent mandatory for pending intent workloads |
 
 **Next recommended gates (pivot-forward order):**
 
@@ -110,12 +110,13 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-phase allocator handles true shared-pool contention.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
-**Next (non-Opus implementation):** per-family oracle cleanup after S-1/S-5/S-6.
+**Next (non-Opus implementation):** optional test-harness cleanup only; runtime legacy oracle/fallback peers are gone.
 
 **Next (sunset-gated):** none; all migrated legacy passes are deleted. Snapshot remains.
 
-**Implementation posture:** Every migration PR names its S-phase sunset target. Legacy interaction:
-oracle/fallback only. Do not enhance legacy passes.
+**Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
+reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp
+baselines only.
 
 **Implementation:** `simthing-driver::SpecSessionState` owns spec runtime
 state; `simthing-driver::install` compiles a `GameModeSpec` against a

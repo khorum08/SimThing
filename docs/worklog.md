@@ -8,6 +8,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — S-6/S-5/S-1 merge + state-log sync
+
+**State:**
+- `master` fast-forwarded through implementation commit `6b9bf8f`.
+- Full workspace verification passed after the sunset sequence: `cargo test --workspace`.
+- Todo, worklog, and workshop state logs updated to treat S-6/S-5/S-1 as merged, not local.
+
+**Remaining retained old operation:** snapshot (`copy_buffer_to_buffer`).
+
+---
+
 ## 2026-05-26 — S-6/S-5/S-1 legacy sunset sequence
 
 **Deleted:**
