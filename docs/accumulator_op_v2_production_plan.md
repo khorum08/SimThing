@@ -1405,7 +1405,7 @@ as a doc-only PR.
 | E-7 | E | Composer 2.5 | governed_by planner generalization to arbitrary Named pairs | **Done (#149)** — `e7_governed_by_planner_generalization` |
 | E-8 | E | Codex 5.5 | accumulator_spec on SubFieldSpec | **Done (#150)** — `accumulator_spec` serde/defaults tests |
 | E-9 | E | Composer 2.5 | ArenaRegistry in simthing-driver | **Done (#151)** — `arena_registry` driver tests |
-| E-9R | E | Composer 2.5 | participant_range contiguity hardening | **Done** — interleaved admission slice tests |
+| E-9R | E | Composer 2.5 | participant_range contiguity hardening | **Done (#152)** — interleaved admission slice tests |
 | E-4 | E | Composer 2.5 | Economic V1 RON + session integration | RON→session→conservation |
 | E-5 | E | Composer 2.5 | Economic compact log integration | Replay test |
 | **E-6** | **E** | **Codex 5.5** | **design_v7.md docs (mostly landed by v7.5 bump)** | **Doc consistency** |
