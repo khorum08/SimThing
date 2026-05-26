@@ -797,13 +797,13 @@ impl WorldGpuState {
             );
     }
 
-    /// Upload input-list table and transfer EvalEML ops for C-8c.
+    /// Upload input-list table and transfer ops for C-8c.
     pub fn sync_transfer_accumulator(
         &mut self,
         registrations: &[crate::TransferRegistration],
-    ) {
+    ) -> Result<(), crate::TransferSyncError> {
         use crate::transfer_accumulator::{encode_transfer_plan, plan_transfer_ops};
-        let plan = plan_transfer_ops(registrations);
+        let plan = plan_transfer_ops(registrations)?;
         if self.accumulator_runtime.is_none() {
             self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
         }
@@ -821,13 +821,12 @@ impl WorldGpuState {
                 .input_lists
                 .as_mut()
                 .unwrap()
-                .upload_lists(&self.ctx, &non_empty_lists, source_generation)
-                .expect("input-list upload failed");
+                .upload_lists(&self.ctx, &non_empty_lists, source_generation)?;
             let gen = runtime.input_lists.as_ref().unwrap().generation;
             (gen, ranges)
         };
         self.ensure_transfer_accumulator();
-        let gpu_ops = encode_transfer_plan(&plan, &ranges).expect("transfer encode failed");
+        let gpu_ops = encode_transfer_plan(&plan, &ranges)?;
         let mut input_slots = Vec::new();
         let mut input_cols = Vec::new();
         let mut unit_cost_bits = Vec::new();
@@ -849,11 +848,10 @@ impl WorldGpuState {
                 input_cols,
                 unit_cost_bits,
             };
-            runtime
-                .upload_transfer_ops(&self.ctx, &gpu_ops, plan.n_bands, signature)
-                .expect("transfer op upload failed");
+            runtime.upload_transfer_ops(&self.ctx, &gpu_ops, plan.n_bands, signature)?;
         }
         self.set_transfer_dispatch(!gpu_ops.is_empty(), plan.n_bands);
+        Ok(())
     }
 
     pub fn set_transfer_dispatch(&mut self, active: bool, n_bands: u32) {
