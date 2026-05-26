@@ -1402,7 +1402,7 @@ as a doc-only PR.
 | **E-2** | **E** | **Codex 5.5** | **SPLIT: discrete + flow-participant builders** | **Conservation + enrollment tests** |
 | E-3 | E | Composer 2.5 | conjunctive_recipe builder + lift N≤4 cap | **Done (#147)** — `e3_conjunctive_recipe_builder` |
 | E-3R | E | Composer 2.5 | throttle_hint_max_per_tick metadata hardening | **Done (#148)** — `e3_max_per_tick_is_metadata_not_gpu_cap` |
-| E-7 | E | Composer 2.5 | governed_by planner generalization to arbitrary Named pairs | **Done** — `e7_governed_by_planner_generalization` |
+| E-7 | E | Composer 2.5 | governed_by planner generalization to arbitrary Named pairs | **Done (#149)** — `e7_governed_by_planner_generalization` |
 | E-4 | E | Composer 2.5 | Economic V1 RON + session integration | RON→session→conservation |
 | E-5 | E | Composer 2.5 | Economic compact log integration | Replay test |
 | **E-6** | **E** | **Codex 5.5** | **design_v7.md docs (mostly landed by v7.5 bump)** | **Doc consistency** |

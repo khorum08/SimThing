@@ -10,7 +10,7 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-26 — E-7 governed_by planner generalization
+## 2026-05-26 — E-7 governed_by planner generalization (#149)
 
 - Extracted `governed_pairs_for_property` for role-agnostic E-7 discovery; `build_governed_pairs` delegates per property.
 - Added `plan_governed_integration` alias; C-7 `IntegrateWithClamp` kernel unchanged — operates on column offsets only.
