@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** C-8 completion gate (local)  
-**Verification (last recorded):** C-8 full pipeline integration + C-1–C-8d regression green
+**Master HEAD:** S-2 legacy intensity sunset (local)  
+**Verification (last recorded):** S-2 + C-8 full pipeline integration + C-1–C-8d regression green
 
 ---
 
@@ -19,12 +19,13 @@ Two parallel tracks:
 | **AccumulatorOp v2 / design v7** | **Active** — Phases A–B done; C-1–C-6 + **S-4** landed; reduction flags default **on** | `design_v7.md`, `accumulator_op_v2_production_plan.md`, `pivot_forward_implementation_policy.md` |
 
 **Production direction:** AccumulatorOp v2 is the intended GPU execution path.
-Legacy reduction is deleted (S-4). Remaining legacy passes (intent, overlay, threshold,
-velocity, intensity) are oracle/fallback until their S-phase deletions.
+Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Remaining legacy passes (intent, overlay, threshold, velocity) are oracle/fallback until their S-phase deletions.
 
-**Next gates:** **S-2** legacy intensity deletion (inventory in [`s2_legacy_intensity_sunset_inventory.md`](s2_legacy_intensity_sunset_inventory.md)) · **S-3** overlay sunset · **S-6** threshold sunset.
+**Next gates:** **S-3** overlay sunset · **S-6** threshold sunset.
 
-**C-8 complete:** EML infrastructure, intensity, transfer, and emission are GPU-resident through AccumulatorOp. TransferConservation remains ExactDeterministic only. Emission tolerance remains future-gated and isolated from transfer/hard thresholds. Legacy `intensity_update.wgsl` remains flag-off/oracle only pending S-2.
+**C-8 complete:** EML infrastructure, intensity, transfer, and emission are GPU-resident through AccumulatorOp. TransferConservation remains ExactDeterministic only. Emission tolerance remains future-gated and isolated from transfer/hard thresholds.
+
+**S-2 complete:** Legacy `intensity_update.wgsl` deleted. `IntensityBehavior` routes through AccumulatorOp EvalEML only; `use_accumulator_intensity` defaults on; disabling intensity with registered `IntensityBehavior` panics at boundary validation.
 
 ---
 

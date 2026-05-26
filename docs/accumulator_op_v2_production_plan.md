@@ -552,7 +552,7 @@ comparison.
 
 **C-8a remedial status:** **Merged** (#130) — program-table accounting, boundary skip, admissibility hardening.
 
-**C-8b status:** **Local** — intensity EvalEML migration; `use_accumulator_intensity` (default false); legacy `intensity_update.wgsl` remains flag-off/oracle.
+**C-8b status:** **Landed** — intensity EvalEML migration; `use_accumulator_intensity` (default **true**); legacy `intensity_update.wgsl` **deleted (S-2)**.
 
 **C-8b remedial status:** **Local** — intensity op upload cache keys on `IntensityEmlOpPlanSignature` (EML generation + world/op-plan shape); slot growth and entry/layout changes force op reupload; unchanged formulas skip EML table churn via `replace_formula_if_changed`.
 

@@ -6,9 +6,8 @@ use simthing_core::{
 };
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
 use simthing_gpu::{
-    legacy_intensity_dispatch_count, project_tree_to_values, reset_legacy_intensity_dispatch_count,
-    set_debug_readback_allowed, EmissionFormula, EmissionRegistration, GpuContext, Pipelines,
-    SlotAllocator, TransferInputRef, TransferRegistration, WorldGpuState,
+    project_tree_to_values, set_debug_readback_allowed, EmissionFormula, EmissionRegistration,
+    GpuContext, Pipelines, SlotAllocator, TransferInputRef, TransferRegistration, WorldGpuState,
 };
 use simthing_sim::BoundaryProtocol;
 
@@ -235,6 +234,12 @@ fn snapshot_upload_counts(state: &WorldGpuState) -> UploadSnapshot {
     }
 }
 
+fn legacy_intensity_shader_deleted() {
+    let shader_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../simthing-gpu/src/shaders/intensity_update.wgsl");
+    assert!(!shader_path.exists());
+}
+
 #[test]
 fn c8_full_gpu_resident_pipeline_all_flags_on() {
     let Some(_ctx) = try_gpu() else {
@@ -242,7 +247,7 @@ fn c8_full_gpu_resident_pipeline_all_flags_on() {
         return;
     };
     set_debug_readback_allowed(true);
-    reset_legacy_intensity_dispatch_count();
+    legacy_intensity_shader_deleted();
 
     let (reg, loyalty_pid, resources_pid, _, _, intensity_col) = c8_full_registry();
     let stock_col = col_global(
@@ -306,7 +311,6 @@ fn c8_full_gpu_resident_pipeline_all_flags_on() {
     assert!(state.accumulator_transfer_active);
     assert!(state.accumulator_emission_active);
     assert!(state.accumulator_velocity_active);
-    assert_eq!(legacy_intensity_dispatch_count(), 0);
 
     let values = state.read_values();
     assert!(values.iter().all(|v| v.is_finite()));
@@ -429,12 +433,12 @@ fn c8_full_pipeline_reuses_persistent_tables_and_ops_across_ticks() {
 }
 
 #[test]
-fn c8_accumulator_intensity_enabled_does_not_dispatch_legacy_intensity() {
+fn c8_accumulator_intensity_uses_eval_eml_only() {
     let Some(_ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
         return;
     };
-    reset_legacy_intensity_dispatch_count();
+    legacy_intensity_shader_deleted();
 
     let (reg, loyalty_pid, resources_pid, _, _, _) = c8_full_registry();
     let stock_col = col_global(
@@ -488,5 +492,5 @@ fn c8_accumulator_intensity_enabled_does_not_dispatch_legacy_intensity() {
     drop(tx);
 
     assert!(state.accumulator_intensity_eml_active);
-    assert_eq!(legacy_intensity_dispatch_count(), 0);
+    assert!(state.accumulator_runtime.as_ref().unwrap().intensity_op_upload_count() > 0);
 }

@@ -6,6 +6,23 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — S-2 legacy intensity sunset
+
+**Deleted:**
+- `crates/simthing-gpu/src/shaders/intensity_update.wgsl`
+- Legacy intensity pipeline/bind group/dispatch in `passes.rs`
+- `IntensityParams` buffer, `build_intensity_params`, legacy dispatch counter
+
+**Changed:**
+- `use_accumulator_intensity` + `use_accumulator_eml` default **true**
+- Boundary validation panics when intensity disabled with `IntensityBehavior`
+- C-8b tests use CPU/EML golden oracle; `s2_legacy_intensity_sunset.rs` added
+- C-8 full integration uses structural shader-deleted guard
+
+**S-2 marked complete** in docs; C-8 all-flags integration remains green.
+
+---
+
 ## 2026-05-19 — C-8 completion gate + S-2 intensity sunset prep
 
 **Added:**

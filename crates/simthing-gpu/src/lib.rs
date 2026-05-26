@@ -57,15 +57,12 @@ pub use reduction::{
     ColumnRuleDescriptor, Topology, TopologyState,
 };
 pub use overlay_prep::build_overlay_deltas;
-pub use passes::{
-    legacy_intensity_dispatch_count, reset_legacy_intensity_dispatch_count,
-    AccumulatorPipelineSessions, Pipelines,
-};
+pub use passes::{AccumulatorPipelineSessions, Pipelines};
 pub use velocity_accumulator::{plan_velocity_integration, VelocityAccumulatorPlan};
 pub use projection::project_tree_to_values;
 pub use slot::SlotAllocator;
 pub use world_state::{
-    build_governed_pairs, build_intensity_params, encode_rule, GovernedPair, IntensityParams,
+    build_governed_pairs, encode_rule, GovernedPair,
     IntentDelta, OverlayDelta, SlotDeltaRange, ThresholdEvent, ThresholdRegistration,
     WorldGpuState, CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED, DIR_DOWNWARD, DIR_EITHER,
     DIR_UPWARD, OP_ADD, OP_MULTIPLY, OP_SET, RULE_FIRST, RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM,

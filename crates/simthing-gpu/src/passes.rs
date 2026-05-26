@@ -1,4 +1,4 @@
-//! Compute pipelines and dispatch wrappers for Passes 0/1/2.
+//! Compute pipelines and dispatch wrappers for Passes 0/1 and overlay/intent/threshold.
 //!
 //! Each pass owns its shader module, bind group layout, pipeline layout, and
 //! pipeline. Bind groups are created per-dispatch from the supplied
@@ -9,7 +9,6 @@
 //! and rewritten on each dispatch with the current dt.
 
 use bytemuck::{Pod, Zeroable};
-use std::sync::atomic::{AtomicU64, Ordering};
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor,
@@ -24,23 +23,6 @@ use crate::world_state::WorldGpuState;
 
 const WORKGROUP_SIZE: u32 = 64;
 const MAX_DISPATCH_X_GROUPS: u32 = 65_535;
-
-static LEGACY_INTENSITY_DISPATCH_COUNT: AtomicU64 = AtomicU64::new(0);
-
-/// Reset the test-only legacy intensity dispatch counter.
-pub fn reset_legacy_intensity_dispatch_count() {
-    LEGACY_INTENSITY_DISPATCH_COUNT.store(0, Ordering::Relaxed);
-}
-
-/// Test-only count of legacy `intensity_update.wgsl` dispatches in the tick pipeline.
-pub fn legacy_intensity_dispatch_count() -> u64 {
-    LEGACY_INTENSITY_DISPATCH_COUNT.load(Ordering::Relaxed)
-}
-
-#[inline]
-fn record_legacy_intensity_dispatch() {
-    LEGACY_INTENSITY_DISPATCH_COUNT.fetch_add(1, Ordering::Relaxed);
-}
 
 fn dispatch_linear(pass: &mut ComputePass<'_>, total_invocations: u32) {
     if total_invocations == 0 {
@@ -83,9 +65,6 @@ pub struct Pipelines {
 
     velocity_layout:   BindGroupLayout,
     velocity_pipeline: ComputePipeline,
-
-    intensity_layout:   BindGroupLayout,
-    intensity_pipeline: ComputePipeline,
 
     overlay_layout:   BindGroupLayout,
     overlay_pipeline: ComputePipeline,
@@ -159,33 +138,6 @@ impl Pipelines {
             label: Some("velocity_pipeline"),
             layout: Some(&velocity_pl_layout),
             module: &velocity_module,
-            entry_point: "main",
-            compilation_options: Default::default(),
-            cache: None,
-        });
-
-        // ── Pass 2: intensity update ────────────────────────────────────────
-        let intensity_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("intensity_bgl"),
-            entries: &[
-                storage_entry(0, /*read_only*/ false), // values (rw)
-                storage_entry(1, /*read_only*/ true),  // intensity_params
-                uniform_entry(2),                       // pass_params
-            ],
-        });
-        let intensity_module = device.create_shader_module(ShaderModuleDescriptor {
-            label:  Some("intensity_shader"),
-            source: ShaderSource::Wgsl(include_str!("shaders/intensity_update.wgsl").into()),
-        });
-        let intensity_pl_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("intensity_pl_layout"),
-            bind_group_layouts: &[&intensity_layout],
-            push_constant_ranges: &[],
-        });
-        let intensity_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("intensity_pipeline"),
-            layout: Some(&intensity_pl_layout),
-            module: &intensity_module,
             entry_point: "main",
             compilation_options: Default::default(),
             cache: None,
@@ -284,7 +236,6 @@ impl Pipelines {
             uniform_buffer,
             snapshot_layout, snapshot_pipeline,
             velocity_layout, velocity_pipeline,
-            intensity_layout, intensity_pipeline,
             overlay_layout, overlay_pipeline,
             intent_layout, intent_pipeline,
             threshold_layout, threshold_pipeline,
@@ -362,38 +313,34 @@ impl Pipelines {
         ctx.queue.submit(Some(encoder.finish()));
     }
 
-    pub fn run_intensity_update(&self, state: &WorldGpuState, dt: f32) {
-        if state.n_intensity_params == 0 { return; }
+    /// C-8b EvalEML intensity update (requires `sync_intensity_eml_accumulator` first).
+    pub fn run_accumulator_intensity_eml(&self, state: &mut WorldGpuState, dt: f32) {
+        if !state.accumulator_intensity_eml_active {
+            return;
+        }
         let ctx = &state.ctx;
         self.write_params(ctx, state, dt);
-
-        let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
-            label: Some("intensity_bg"),
-            layout: &self.intensity_layout,
-            entries: &[
-                BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                BindGroupEntry { binding: 1, resource: state.intensity_params.as_entire_binding() },
-                BindGroupEntry { binding: 2, resource: self.uniform_buffer.as_entire_binding() },
-            ],
-        });
-
-        let total = state.n_slots * state.n_intensity_params;
-
         let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("intensity_encoder"),
+            label: Some("intensity_eml_encoder"),
         });
-        {
-            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("intensity_pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.intensity_pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            dispatch_linear(&mut pass, total);
-            record_legacy_intensity_dispatch();
+        if let Some(runtime) = state.accumulator_runtime.as_mut() {
+            let mut session = runtime.take_intensity_eml_session();
+            if let Some(session) = session.as_mut() {
+                let eml = runtime.eml_bind_buffers();
+                session.encode_intensity_eml_into(
+                    ctx,
+                    &mut encoder,
+                    &state.values,
+                    &state.previous_values,
+                    dt,
+                    eml,
+                );
+            }
+            runtime.restore_intensity_eml_session(session);
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
+
     ///
     /// Reads from `state.overlay_deltas` (pre-uploaded by `upload_overlay_deltas`) and
     /// applies each op in place to `values`. No-ops if `state.n_overlay_deltas == 0`.
@@ -617,18 +564,6 @@ impl Pipelines {
             })
         });
 
-        let intensity_bg = (!use_accumulator_intensity && state.n_intensity_params > 0).then(|| {
-            ctx.device.create_bind_group(&BindGroupDescriptor {
-                label: Some("intensity_bg"),
-                layout: &self.intensity_layout,
-                entries: &[
-                    BindGroupEntry { binding: 0, resource: state.values.as_entire_binding() },
-                    BindGroupEntry { binding: 1, resource: state.intensity_params.as_entire_binding() },
-                    BindGroupEntry { binding: 2, resource: self.uniform_buffer.as_entire_binding() },
-                ],
-            })
-        });
-
         let overlay_bg = (state.n_overlay_deltas > 0).then(|| {
             ctx.device.create_bind_group(&BindGroupDescriptor {
                 label: Some("overlay_bg"),
@@ -695,15 +630,6 @@ impl Pipelines {
                     pass.set_bind_group(0, bg, &[]);
                     dispatch_linear(&mut pass, state.n_slots * state.n_governed_pairs);
                 }
-
-                if !use_accumulator_intensity {
-                    if let Some(bg) = intensity_bg.as_ref() {
-                        pass.set_pipeline(&self.intensity_pipeline);
-                        pass.set_bind_group(0, bg, &[]);
-                        dispatch_linear(&mut pass, state.n_slots * state.n_intensity_params);
-                        record_legacy_intensity_dispatch();
-                    }
-                }
             }
         }
 
@@ -716,19 +642,6 @@ impl Pipelines {
                     &state.previous_values,
                     dt,
                 );
-            }
-
-            if !use_accumulator_intensity {
-                if let Some(bg) = intensity_bg.as_ref() {
-                    let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                        label: Some("tick_pipeline_intensity_after_c7"),
-                        timestamp_writes: None,
-                    });
-                    pass.set_pipeline(&self.intensity_pipeline);
-                    pass.set_bind_group(0, bg, &[]);
-                    dispatch_linear(&mut pass, state.n_slots * state.n_intensity_params);
-                    record_legacy_intensity_dispatch();
-                }
             }
         }
 
@@ -1045,6 +958,16 @@ mod tests {
         }
     }
 
+    fn run_intensity_eml_on_state(
+        pipelines: &Pipelines,
+        state: &mut WorldGpuState,
+        reg: &DimensionRegistry,
+        dt: f32,
+    ) {
+        state.sync_intensity_eml_accumulator(reg);
+        pipelines.run_accumulator_intensity_eml(state, dt);
+    }
+
     fn upload_accumulator_reduction_plan(
         state: &mut WorldGpuState,
         world: &SimThing,
@@ -1171,10 +1094,9 @@ mod tests {
         assert_bits_eq("fractional-dt", &pv.data, &gpu_flat[..stride]);
     }
 
-    /// Pass 2 alone. Uses raw initial velocity (no Pass 1 first), so CPU
-    /// `update_intensity` is called directly on initial data.
+    /// C-8b EvalEML intensity alone. Uses raw initial velocity (no Pass 1 first).
     #[test]
-    fn intensity_update_matches_cpu_oracle() {
+    fn intensity_eml_matches_cpu_oracle() {
         let Some(ctx) = try_gpu() else { eprintln!("skipping: no GPU"); return };
         let mut reg = DimensionRegistry::new();
         let id = reg.register(loyalty_property());
@@ -1199,7 +1121,7 @@ mod tests {
             *d = pv.data;
         }
 
-        let state = WorldGpuState::new(ctx, &reg, 2);
+        let mut state = WorldGpuState::new(ctx, &reg, 2);
         let n_dims = state.n_dims as usize;
         let mut flat = vec![0.0f32; state.values_len()];
         for (s, d) in slots.iter().enumerate() {
@@ -1208,7 +1130,7 @@ mod tests {
         state.write_values(&flat);
 
         let pipelines = Pipelines::new(&state.ctx);
-        pipelines.run_intensity_update(&state, dt);
+        run_intensity_eml_on_state(&pipelines, &mut state, &reg, dt);
 
         let gpu_flat = state.read_values();
         for s in 0..2 {
@@ -1290,7 +1212,7 @@ mod tests {
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&world);
 
-        let state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
+        let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
         let n_dims = state.n_dims as usize;
         let mut flat = vec![0.0f32; state.values_len()];
         project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
@@ -1299,7 +1221,7 @@ mod tests {
         let pipelines = Pipelines::new(&state.ctx);
         pipelines.run_snapshot(&state);
         pipelines.run_velocity_integration(&state, dt);
-        pipelines.run_intensity_update(&state, dt);
+        run_intensity_eml_on_state(&pipelines, &mut state, &reg, dt);
 
         let gpu_flat = state.read_values();
 
@@ -1360,7 +1282,7 @@ mod tests {
         let snap = evaluator.evaluate(&cohort, 1);
         let cpu_data = &snap.get(cohort_id).unwrap().properties[&id].data;
 
-        let state = WorldGpuState::new(ctx, &reg, 1);
+        let mut state = WorldGpuState::new(ctx, &reg, 1);
         let range = reg.column_range(id).clone();
         let mut flat = vec![0.0f32; state.values_len()];
         flat[range.start..range.start + stride].copy_from_slice(&initial_data);
@@ -1369,7 +1291,7 @@ mod tests {
         let pipelines = Pipelines::new(&state.ctx);
         pipelines.run_snapshot(&state);
         pipelines.run_velocity_integration(&state, dt);
-        pipelines.run_intensity_update(&state, dt);
+        run_intensity_eml_on_state(&pipelines, &mut state, &reg, dt);
 
         // Pass 0 invariant: previous_values must equal the pre-pass values.
         let prev = state.read_previous_values();
@@ -1427,7 +1349,7 @@ mod tests {
         pipelines.run_apply_intents(&manual);
         pipelines.run_snapshot(&manual);
         pipelines.run_velocity_integration(&manual, 1.0);
-        pipelines.run_intensity_update(&manual, 1.0);
+        run_intensity_eml_on_state(&pipelines, &mut manual, &reg, 1.0);
         pipelines.run_apply_overlays(&manual);
         pipelines.run_threshold_scan(&manual);
 
@@ -1436,8 +1358,33 @@ mod tests {
         piped.write_values(&initial);
         piped.upload_intent_deltas(&intent);
         piped.upload_thresholds(&regs);
+        piped.sync_intensity_eml_accumulator(&reg);
         let pipelines2 = Pipelines::new(&piped.ctx);
-        pipelines2.run_tick_pipeline(&mut piped, 1.0);
+        let mut intensity_session = piped
+            .accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .take_intensity_eml_session();
+        pipelines2.run_tick_pipeline_with_accumulators(
+            &mut piped,
+            1.0,
+            AccumulatorPipelineSessions {
+                intent: None,
+                threshold: None,
+                overlay_add: None,
+                reduction_soft: None,
+                velocity: None,
+                intensity_eml: intensity_session.as_mut(),
+                transfer: None,
+                emission: None,
+                encode_world_summary: false,
+            },
+        );
+        piped
+            .accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .restore_intensity_eml_session(intensity_session);
 
         assert_bits_eq("values", &manual.read_values(), &piped.read_values());
         assert_bits_eq(
@@ -1668,7 +1615,7 @@ mod tests {
         let pipelines = Pipelines::new(&state.ctx);
         pipelines.run_snapshot(&state);                  // previous_* <- current
         pipelines.run_velocity_integration(&state, 1.0); // values amount: 0.35 - 0.10 = 0.25
-        pipelines.run_intensity_update(&state, 1.0);
+        run_intensity_eml_on_state(&pipelines, &mut state, &reg, 1.0);
         pipelines.run_apply_overlays(&state);
         pipelines.run_threshold_scan(&state);
 
@@ -1751,18 +1698,19 @@ mod tests {
         state.upload_overlay_deltas(&od, &ranges);
 
         let pipelines = Pipelines::new(&state.ctx);
+        state.sync_intensity_eml_accumulator(&reg);
 
         // Warm-up tick — first dispatch incurs pipeline cache + driver init.
         pipelines.run_snapshot(&state);
         pipelines.run_velocity_integration(&state, 0.5);
-        pipelines.run_intensity_update(&state, 0.5);
+        pipelines.run_accumulator_intensity_eml(&mut state, 0.5);
         pipelines.run_apply_overlays(&state);
         let _ = state.read_values(); // force flush
 
         let t0 = Instant::now();
         pipelines.run_snapshot(&state);
         pipelines.run_velocity_integration(&state, 0.5);
-        pipelines.run_intensity_update(&state, 0.5);
+        pipelines.run_accumulator_intensity_eml(&mut state, 0.5);
         pipelines.run_apply_overlays(&state);
         // Force the submitted work to complete before stopping the clock.
         let _ = state.read_values();
@@ -1882,7 +1830,7 @@ mod tests {
         let pipelines = Pipelines::new(&state.ctx);
         pipelines.run_snapshot(&state);
         pipelines.run_velocity_integration(&state, dt);
-        pipelines.run_intensity_update(&state, dt);
+        run_intensity_eml_on_state(&pipelines, &mut state, &reg, dt);
         pipelines.run_apply_overlays(&state);
 
         let gpu_flat = state.read_values();
