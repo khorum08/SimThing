@@ -596,6 +596,12 @@ comparison.
 - `max_emit` explicitly rejected until shader clamp is implemented.
 - Emission remains GPU-resident through AccumulatorOp; transfer conservation unchanged.
 
+**C-8 complete (completion gate):**
+- Full GPU-resident C-8 block validated: EML + intensity + transfer + emission in one tick pipeline.
+- Persistent EML/input-list/op reuse across ticks with varying `dt`.
+- Legacy intensity not dispatched when `use_accumulator_intensity` is active.
+- S-2 deletion inventory documented; legacy intensity not deleted in this PR.
+
 Selected:
 - **Execution-class taxonomy** (`EmlExecutionClass::{ExactDeterministic, SoftDeterministic, FastApproximate, CpuOracleOnly}`) plus a **consumer admissibility matrix** that gates which classes may feed which consumers.
 - **C-8 production baseline admits `ExactDeterministic` only** — `SoftDeterministic`/`FastApproximate` register structurally but no production consumer admits them yet.
