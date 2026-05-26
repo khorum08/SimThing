@@ -10,6 +10,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — E-1 EmitOnThreshold builder
+
+- Added first-class threshold-emission builder in `simthing-core` (`AccumulatorOpBuilder::emit_on_threshold`, `EmitOnThresholdRegistration`, `rebuild_emit_on_threshold_ops`).
+- Builder compiles to existing AccumulatorOp threshold+EmitEvent registrations (C-1/C-8d substrate unchanged).
+- GPU bridge: `emit_on_threshold_registrations_to_gpu` / `emit_on_threshold_registrations_to_ops` in `simthing-gpu`.
+- Preserved exact hard-threshold semantics; debt-band re-registration helper (`refresh_emit_on_threshold_debt_band`).
+- No new GPU primitive; no legacy threshold fallback. S-6 remains intact.
+- Tests: `crates/simthing-sim/tests/e1_emit_on_threshold_builder.rs`.
+
+**Verification:** E-1 tests; C-1/C-8d/S-6 sunset regressions; `cargo check --workspace`.
+
+---
+
 ## 2026-05-26 — Post S-6/S-5/S-1 sunset cleanup
 
 **Runtime:**

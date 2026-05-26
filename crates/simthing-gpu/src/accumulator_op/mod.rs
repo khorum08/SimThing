@@ -22,6 +22,7 @@ pub use eml_program_table::{
     EmlGpuProgramTable, EmlUploadError, DEFAULT_EML_NODE_CAPACITY, DEFAULT_EML_TREE_CAPACITY,
 };
 pub use encode::{
+    emit_on_threshold_registrations_to_gpu, emit_on_threshold_registrations_to_ops,
     threshold_registrations_to_ops, validate_intent_deltas_no_duplicate_cells, EncodeError,
 };
 pub use input_list_table::{

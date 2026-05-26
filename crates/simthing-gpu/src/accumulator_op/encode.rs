@@ -2,7 +2,8 @@
 
 use simthing_core::{
     eml_nodes::execution_class_to_u32, AccumulatorOp, CombineFn, ConsumeMode, EmlExecutionClass,
-    EmlExpressionRegistry, EmlTreeId, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
+    EmlExpressionRegistry, EmlTreeId, EmitOnThresholdBuffer, EmitOnThresholdRegistration,
+    GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
 };
 
 use crate::world_state::{
@@ -189,6 +190,33 @@ fn intent_delta_to_gpu(delta: &IntentDelta) -> AccumulatorOpGpu {
         n_targets: 1,
         _pad: 0,
     }
+}
+
+/// Convert E-1 builder registrations into GPU threshold registrations.
+pub fn emit_on_threshold_registrations_to_gpu(
+    regs: &[EmitOnThresholdRegistration],
+) -> Vec<ThresholdRegistration> {
+    regs.iter()
+        .map(|r| ThresholdRegistration {
+            slot: r.slot,
+            col: r.col,
+            threshold: r.threshold,
+            direction: threshold_direction_to_u32(r.direction),
+            event_kind: r.event_kind,
+            buffer: match r.buffer {
+                EmitOnThresholdBuffer::Values => THRESH_BUF_VALUES,
+                EmitOnThresholdBuffer::Output => crate::world_state::THRESH_BUF_OUTPUT,
+            },
+        })
+        .collect()
+}
+
+/// Compile E-1 registrations through the canonical C-1 threshold path.
+pub fn emit_on_threshold_registrations_to_ops(
+    regs: &[EmitOnThresholdRegistration],
+) -> Result<(Vec<AccumulatorOp>, Vec<u32>), EncodeError> {
+    let gpu_regs = emit_on_threshold_registrations_to_gpu(regs);
+    threshold_registrations_to_ops(&gpu_regs)
 }
 
 /// Convert GPU threshold registrations into AccumulatorOp threshold scan ops.

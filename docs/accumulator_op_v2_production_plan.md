@@ -831,39 +831,30 @@ AccumulatorOp primitive expressed through the spec session model.
 
 ### PR E-1 — `EmitOnThreshold` as a first-class AccumulatorOp registration builder
 
-**Status:** Substrate support landed through C-1 threshold scan and C-8d emission
-records. Remaining scope is the first-class builder/spec API and re-registration
-helper at session open and boundary emission events.
+**Status:** **Landed** — first-class `emit_on_threshold(...)` builder in `simthing-core`;
+re-registration helpers compile to existing C-1/C-8d threshold+EmitEvent registrations.
+No new GPU primitive.
 
 **Model:** Composer 2.5  
-**Scope:** Add `AccumulatorOpBuilder::emit_on_threshold(...)` to `simthing-spec`
-that constructs the correct `AccumulatorOp` registration for the debt-band
-emission model:
+**Scope:** `AccumulatorOpBuilder::emit_on_threshold(...)` in `simthing-core` constructs
+the C-1 threshold + `EmitEvent` registration shape:
 
 ```rust
 pub fn emit_on_threshold(
-    accumulator_slot: SlotId,
-    accumulator_col:  SubFieldRole,
-    unit_cost:        f32,
-    queued_count:     u32,
-    max_per_tick:     u32,
-    target_slot:      SlotId,
-    target_col:       SubFieldRole,
+    source_slot: u32,
+    source_col:  u32,
+    threshold:   f32,
+    direction:   ThresholdDirection,
 ) -> AccumulatorOp
 ```
 
-The builder computes `threshold_value = -((queued_count - 1) * unit_cost)` and
-sets `combine: CrossingFormula { unit_cost }`, `consume: SubtractFromSource`,
-`gate: Threshold { value: threshold_value, direction: Downward }`.
+`EmitOnThresholdRegistration` + `rebuild_emit_on_threshold_ops` support session-open
+and boundary threshold refresh. `refresh_emit_on_threshold_debt_band` advances debt-band
+threshold values after emission without Resource Flow registry machinery.
 
-Also add the re-registration handler: when an emission fires, the boundary
-hook reads `emit_count` from the emission record, decrements `queued_count`,
-and calls `emit_on_threshold` with the new count to produce a fresh registration.
-
-**Test:** Run the `debt_band_1k` fixture from the workshop battery through the
-production registration builder rather than the workshop harness. Assert
-tick-1 emissions match the expected 2000 across 1000 factories.  
-**Acceptance:** Test passes. Conservation holds exact.
+**Test:** `crates/simthing-sim/tests/e1_emit_on_threshold_builder.rs` — op-shape parity
+with C-1, upward/downward/either/no-crossing, debt-band re-registration, S-6 intact.  
+**Acceptance:** Tests pass. C-1/C-8d/S-6 regressions remain green.
 
 ---
 
@@ -1388,7 +1379,7 @@ as a doc-only PR.
 | D-2 | D | — | **DEFERRED INDEFINITELY** — no concrete scope until D-1 memo motivates a revival | n/a |
 | D-3 | D | Composer 2.5 | Changed-only logs + replay | Replay test |
 | D-4 | D | Composer 2.5 + Opus | Cross-pool contention gate | Pass or ADR amendment |
-| E-1 | E | Composer 2.5 | EmitOnThreshold builder | debt_band_1k test |
+| E-1 | E | Composer 2.5 | EmitOnThreshold builder | `e1_emit_on_threshold_builder` |
 | **E-2** | **E** | **Codex 5.5** | **SPLIT: discrete + flow-participant builders** | **Conservation + enrollment tests** |
 | **E-3** | **E** | **Composer 2.5** | **conjunctive_recipe builder + lift N≤4 cap** | **factory_1k parity + N=8 test** |
 | E-4 | E | Composer 2.5 | Economic V1 RON + session integration | RON→session→conservation |

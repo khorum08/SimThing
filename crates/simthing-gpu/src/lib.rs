@@ -20,8 +20,10 @@ pub mod velocity_accumulator;
 pub mod world_state;
 
 pub use accumulator_op::{
-    eval_eml_cpu, execute_ops_cpu, set_debug_readback_allowed, summaries_from_values,
-    threshold_registrations_to_ops, AccumulatorInputGpu, AccumulatorInputListTable,
+    eval_eml_cpu, execute_ops_cpu, execute_threshold_ops_cpu, set_debug_readback_allowed,
+    summaries_from_values, emit_on_threshold_registrations_to_gpu,
+    emit_on_threshold_registrations_to_ops, threshold_registrations_to_ops,
+    AccumulatorInputGpu, AccumulatorInputListTable,
     AccumulatorOpGpu, AccumulatorOpSession, AccumulatorOpSessionError, EmissionOpPlanSignature,
     EmissionRecord, EmlGpuProgramTable, EmlTreeRangeGpu, EmlUploadError, EncodeError,
     ExactnessClass, InputListRange, IntensityEmlOpPlanSignature, LegacyOracleFamily, OpSetHandle,
