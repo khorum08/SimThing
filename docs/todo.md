@@ -8,7 +8,7 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **S-4 reduction sunset** (#126), **C-7 velocity** (#127), **C-8 EML block** (#129–#137),
 **S-2 intensity sunset** (#138), **S-3 overlay sunset** (#141), **S-6 threshold sunset**,
 **S-5 velocity sunset**, and **S-1 intent sunset** (`6b9bf8f`) landed.
-`master` @ post-sunset cleanup pending.
+`master` @ **`6975b93`** (post-sunset cleanup #143).
 
 **Reduction flags (default true):** `use_accumulator_reduction_soft` +
 `use_accumulator_reduction_exact` (both required). AccumulatorOp is the sole production

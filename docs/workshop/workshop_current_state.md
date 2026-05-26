@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-26  
-**Master HEAD:** S-6/S-5/S-1 legacy sunset sequence merged (`6b9bf8f`)
+**Master HEAD:** post-sunset cleanup merged (`6975b93`, #143); S-6/S-5/S-1 sequence (`6b9bf8f`)
 **Verification (last recorded):** `cargo test --workspace` green after S-6/S-5/S-1; focused sunset and C-1/C-2/C-7/C-8 regressions green
 
 ---
