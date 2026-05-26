@@ -99,7 +99,7 @@ fn e3_n8_recipe_validate_and_executes() {
             .collect(),
         target_slot: 0,
         target_col: 8,
-        max_per_tick: 1,
+        throttle_hint_max_per_tick: 1,
     };
     let transfer_regs = conjunctive_recipe_registrations_to_transfer(std::slice::from_ref(&reg));
     let plan = plan_transfer_ops(&transfer_regs).unwrap();
@@ -207,10 +207,115 @@ fn e3_invalid_nonfinite_unit_cost_rejected() {
 }
 
 #[test]
-fn e3_invalid_max_per_tick_rejected() {
+fn e3_max_per_tick_is_metadata_not_gpu_cap() {
+    // Inputs afford 4 recipe units; throttle hint says 1 — GPU/CPU still emit 4.
+    let op = try_conjunctive_recipe(&[(0, 0, 2.0), (0, 1, 2.0)], 0, 2, 1).unwrap();
+    let mut values = [8.0_f32, 8.0, 0.0];
+    run_cpu_recipe(&mut values, &op);
+    assert_eq!(values[0].to_bits(), 0.0_f32.to_bits());
+    assert_eq!(values[1].to_bits(), 0.0_f32.to_bits());
+    assert_eq!(values[2].to_bits(), 4.0_f32.to_bits());
+
+    let Some(_ctx) = try_gpu() else {
+        eprintln!("skipping GPU metadata-cap portion: no GPU");
+        return;
+    };
+    set_debug_readback_allowed(true);
+
+    let reg = ConjunctiveRecipeRegistration {
+        inputs: vec![
+            ConjunctiveRecipeInput {
+                slot: 0,
+                col: 0,
+                unit_cost: 2.0,
+            },
+            ConjunctiveRecipeInput {
+                slot: 0,
+                col: 1,
+                unit_cost: 2.0,
+            },
+        ],
+        target_slot: 0,
+        target_col: 2,
+        throttle_hint_max_per_tick: 1,
+    };
+    let transfer_regs = conjunctive_recipe_registrations_to_transfer(std::slice::from_ref(&reg));
+
+    use simthing_core::{
+        ClampBehavior, DimensionRegistry, PropertyLayout, SimProperty, SubFieldRole, SubFieldSpec,
+    };
+    let mut dim = DimensionRegistry::new();
+    let sub_fields: Vec<SubFieldSpec> = (0..3)
+        .map(|i| SubFieldSpec {
+            role: SubFieldRole::Named(format!("col{i}")),
+            width: 1,
+            clamp: ClampBehavior::Unbounded,
+            velocity_max: None,
+            default: 0.0,
+            display_name: format!("col{i}"),
+            display_range: None,
+            governed_by: None,
+            reduction_override: None,
+            soft_aggregate_guard: None,
+        })
+        .collect();
+    dim.register(SimProperty {
+        namespace: "recipe".into(),
+        name: "meta".into(),
+        layout: PropertyLayout { sub_fields },
+        decay: None,
+        intensity_behavior: None,
+        fission_templates: vec![],
+        fusion_templates: vec![],
+        on_expire: None,
+        description: String::new(),
+        intensity_labels: vec![],
+    });
+
+    let mut state = WorldGpuState::new(GpuContext::new_blocking().expect("gpu"), &dim, 1);
+    state.write_values(&[8.0, 8.0, 0.0]);
+    state
+        .sync_transfer_accumulator(&transfer_regs)
+        .expect("C-8c upload");
+
+    let pipelines = Pipelines::new(&state.ctx);
+    let mut transfer_session = state
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .take_transfer_session();
+    pipelines.run_tick_pipeline_with_accumulators(
+        &mut state,
+        1.0,
+        AccumulatorPipelineSessions {
+            intent: None,
+            threshold: None,
+            overlay_add: None,
+            reduction_soft: None,
+            velocity: None,
+            intensity_eml: None,
+            transfer: transfer_session.as_mut(),
+            emission: None,
+            encode_world_summary: false,
+        },
+    );
+    state
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .restore_transfer_session(transfer_session);
+
+    let gpu = state.read_values();
+    assert_eq!(gpu[0].to_bits(), 0.0_f32.to_bits());
+    assert_eq!(gpu[1].to_bits(), 0.0_f32.to_bits());
+    assert_eq!(gpu[2].to_bits(), 4.0_f32.to_bits());
+}
+
+#[test]
+fn e3_invalid_throttle_hint_max_per_tick_rejected() {
     assert_eq!(
         try_conjunctive_recipe(&[(0, 0, 1.0)], 0, 1, 0),
-        Err(AccumulatorOpBuilderError::InvalidMaxPerTick)
+        Err(AccumulatorOpBuilderError::InvalidThrottleHintMaxPerTick)
     );
 }
 
@@ -231,13 +336,13 @@ fn e3_builder_matches_c8c_transfer_planner_shape() {
         ],
         target_slot: 0,
         target_col: 2,
-        max_per_tick: 4,
+        throttle_hint_max_per_tick: 4,
     };
     let builder_op = try_conjunctive_recipe(
         &[(0, 0, 5.0), (0, 1, 3.0)],
         reg.target_slot,
         reg.target_col,
-        reg.max_per_tick,
+        reg.throttle_hint_max_per_tick,
     )
     .unwrap();
     let transfer_regs = conjunctive_recipe_registrations_to_transfer(std::slice::from_ref(&reg));

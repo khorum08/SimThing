@@ -491,13 +491,23 @@ pub fn resource_transfer_discrete(
 ) -> AccumulatorOp
 
 /// Emits one unit when ALL inputs have accumulated enough for one recipe (arbitrary N).
+/// E-3 emits all currently affordable exact units per tick.
+/// `throttle_hint_max_per_tick` is registration metadata only — not enforced on GPU.
 pub fn conjunctive_recipe(
-    inputs:       &[(u32, u32, f32)], // source_slot, source_col, unit_cost
-    target_slot:  u32,
-    target_col:   u32,
-    max_per_tick: u32,
+    inputs:                      &[(u32, u32, f32)], // source_slot, source_col, unit_cost
+    target_slot:                 u32,
+    target_col:                  u32,
+    throttle_hint_max_per_tick:  u32,
 ) -> AccumulatorOp
 ```
+
+**E-3 conjunctive recipe throttle semantics (E-3R):**
+
+- E-3 conjunctive recipes emit **all currently affordable exact units** per tick.
+- Per-tick throttling is **not enforced** until a later explicit GPU-resident cap mechanism lands.
+- `throttle_hint_max_per_tick` on [`ConjunctiveRecipeRegistration`] is boundary/session metadata for E-4 assembly; it is not encoded into `AccumulatorOp` and must not be treated as a production cap.
+- E-4 RON must not promise recipe throttling unless it routes through that later cap mechanism.
+- Any future enforced cap must affect both target credit and input debit and preserve exact per-recipe conservation.
 
 Planned in `simthing-spec`:
 
@@ -551,9 +561,12 @@ Economic properties in modder-facing RON:
         (resource: "labor",     unit_cost: 2.0),
     ],
     output: "units_produced",
-    max_per_tick: 4,
+    // Maps to throttle_hint_max_per_tick — metadata only until explicit cap lands.
+    throttle_hint_max_per_tick: 4,
 )
 ```
+
+E-4 session assembly may carry `throttle_hint_max_per_tick` from RON, but the E-3 GPU substrate does not enforce it. Modder-facing docs must not describe this field as a guaranteed per-tick production cap until a GPU-resident enforcement mechanism ships.
 
 The `simthing-driver` session assembly translates these into `AccumulatorOp`
 registrations at session open. `simthing-sim` sees only `AccumulatorOp`

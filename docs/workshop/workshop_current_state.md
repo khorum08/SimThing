@@ -73,6 +73,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-1** | #144 | `emit_on_threshold` builder in `simthing-core`; compiles to C-1 threshold+EmitEvent ops; re-registration helpers |
 | **E-2A** | #146 | `resource_transfer_discrete` builder; exact SubtractFromSource discrete transfer |
 | **E-3** | #147 | `conjunctive_recipe` builder; lifted CPU N≤4 cap; C-8c MinAcrossInputs + SubtractFromAllInputs |
+| **E-3R** | — | `throttle_hint_max_per_tick` metadata hardening; E-4 must not treat as GPU cap |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

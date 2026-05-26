@@ -23,8 +23,8 @@ pub enum AccumulatorOpBuilderError {
     EmptyConjunctiveInputs,
     #[error("conjunctive recipe unit cost must be finite and > 0 at slot {slot} col {col}")]
     NonPositiveUnitCost { slot: u32, col: u32 },
-    #[error("conjunctive recipe max_per_tick must be > 0")]
-    InvalidMaxPerTick,
+    #[error("conjunctive recipe throttle_hint_max_per_tick must be > 0")]
+    InvalidThrottleHintMaxPerTick,
 }
 
 /// One input channel for a conjunctive production recipe (E-3).
@@ -41,10 +41,16 @@ pub struct ConjunctiveRecipeRegistration {
     pub inputs: Vec<ConjunctiveRecipeInput>,
     pub target_slot: u32,
     pub target_col: u32,
-    /// Session/boundary throttle hint; the op uses C-8c Identity scaling today.
-    /// Zero is rejected at registration time.
-    pub max_per_tick: u32,
+    /// Boundary/throttle metadata for session assembly (E-4+). Not encoded into
+    /// [`AccumulatorOp`] and not enforced by the C-8c GPU conjunctive path.
+    /// E-3 emits all currently affordable exact recipe units per tick.
+    pub throttle_hint_max_per_tick: u32,
 }
+
+// TODO(E-3R+): Any future enforced per-tick recipe cap must be GPU-resident,
+// affect both target credit and input debit, and preserve exact per-recipe
+// conservation. Do not use ScaleSpec::Constant alone — WGSL applies scale only
+// to the target write for MinAcrossInputs while consume debits the unscaled count.
 
 /// One exact discrete source-debit transfer registration (E-2A).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -165,19 +171,23 @@ impl AccumulatorOpBuilder {
     ///
     /// Recipe count is `floor(min(input_i / unit_cost_i))` at execution time; all
     /// inputs are debited and the target is credited by that count (Identity scale).
-    /// `max_per_tick` is stored on [`ConjunctiveRecipeRegistration`] for boundary
-    /// throttling policy; the GPU op does not cap recipe count yet.
+    /// E-3 emits every affordable exact unit — no per-tick cap is applied on GPU.
+    ///
+    /// `throttle_hint_max_per_tick` is registration metadata only (stored on
+    /// [`ConjunctiveRecipeRegistration`] for E-4 session assembly). It must be > 0
+    /// but does not affect the compiled op. Per-tick throttling is not enforced
+    /// until a later explicit GPU-resident cap mechanism lands.
     pub fn conjunctive_recipe(
         inputs: &[(u32, u32, f32)],
         target_slot: u32,
         target_col: u32,
-        max_per_tick: u32,
+        throttle_hint_max_per_tick: u32,
     ) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
         if inputs.is_empty() {
             return Err(AccumulatorOpBuilderError::EmptyConjunctiveInputs);
         }
-        if max_per_tick == 0 {
-            return Err(AccumulatorOpBuilderError::InvalidMaxPerTick);
+        if throttle_hint_max_per_tick == 0 {
+            return Err(AccumulatorOpBuilderError::InvalidThrottleHintMaxPerTick);
         }
         let mut input_specs = Vec::with_capacity(inputs.len());
         for &(slot, col, unit_cost) in inputs {
@@ -255,17 +265,22 @@ pub fn try_conjunctive_recipe(
     inputs: &[(u32, u32, f32)],
     target_slot: u32,
     target_col: u32,
-    max_per_tick: u32,
+    throttle_hint_max_per_tick: u32,
 ) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
-    AccumulatorOpBuilder::conjunctive_recipe(inputs, target_slot, target_col, max_per_tick)
+    AccumulatorOpBuilder::conjunctive_recipe(
+        inputs,
+        target_slot,
+        target_col,
+        throttle_hint_max_per_tick,
+    )
 }
 
 /// Compile one conjunctive recipe registration into its AccumulatorOp shape.
 pub fn conjunctive_recipe_registration_to_op(
     reg: &ConjunctiveRecipeRegistration,
 ) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
-    if reg.max_per_tick == 0 {
-        return Err(AccumulatorOpBuilderError::InvalidMaxPerTick);
+    if reg.throttle_hint_max_per_tick == 0 {
+        return Err(AccumulatorOpBuilderError::InvalidThrottleHintMaxPerTick);
     }
     let inputs: Vec<(u32, u32, f32)> = reg
         .inputs
@@ -276,7 +291,7 @@ pub fn conjunctive_recipe_registration_to_op(
         &inputs,
         reg.target_slot,
         reg.target_col,
-        reg.max_per_tick,
+        reg.throttle_hint_max_per_tick,
     )
 }
 

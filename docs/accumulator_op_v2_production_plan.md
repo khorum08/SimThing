@@ -927,9 +927,16 @@ pub fn conjunctive_recipe(
 ) -> AccumulatorOp
 ```
 
+(E-3R: builder parameter renamed to `throttle_hint_max_per_tick`; not enforced on GPU.)
+
 Sets `source: ConjunctiveCrossing`, `combine: MinAcrossInputs`,
 `consume: SubtractFromAllInputs`. The recipe IS the registration.
-Conservation structurally enforced.
+Conservation structurally enforced. E-3 emits all affordable exact units;
+`throttle_hint_max_per_tick` is registration metadata only (E-3R).
+
+**(c) E-3R remedial:** Rename/harden `max_per_tick` → `throttle_hint_max_per_tick`;
+document that per-tick throttling is not GPU-enforced until a later cap mechanism.
+E-4 RON must not promise recipe throttling without that mechanism.
 
 **(b)** Lift the `inputs.len() > 4` CPU-side cap in
 `crates/simthing-core/src/accumulator_op.rs::AccumulatorOp::validate`. The GPU
@@ -973,6 +980,10 @@ wire it into `simthing-spec`'s session assembly:
 The `simthing-driver` session assembly translates RON resource specs into
 `AccumulatorOp` registrations (E-1 through E-3 builders) at session open.
 No changes to `simthing-sim`. The sim stays spec-free.
+
+**E-3R gate:** Do not wire RON `throttle_hint_max_per_tick` (or legacy
+`max_per_tick`) as an enforced production cap. E-3 emits all affordable exact
+recipe units; per-tick throttling requires a later explicit GPU-resident cap.
 
 **Test:** A three-channel faction/factory session assembled from RON fixtures
 produces the same emission counts and conservation as the direct-builder test
@@ -1390,6 +1401,7 @@ as a doc-only PR.
 | E-2A | E | Codex 5.5 | resource_transfer_discrete builder | `e2a_resource_transfer_discrete_builder` |
 | **E-2** | **E** | **Codex 5.5** | **SPLIT: discrete + flow-participant builders** | **Conservation + enrollment tests** |
 | E-3 | E | Composer 2.5 | conjunctive_recipe builder + lift N≤4 cap | **Done (#147)** — `e3_conjunctive_recipe_builder` |
+| E-3R | E | Composer 2.5 | throttle_hint_max_per_tick metadata hardening | **Done** — `e3_max_per_tick_is_metadata_not_gpu_cap` |
 | E-4 | E | Composer 2.5 | Economic V1 RON + session integration | RON→session→conservation |
 | E-5 | E | Composer 2.5 | Economic compact log integration | Replay test |
 | **E-6** | **E** | **Codex 5.5** | **design_v7.md docs (mostly landed by v7.5 bump)** | **Doc consistency** |
