@@ -31,6 +31,11 @@ for how values move between SimThings.
 **New: Logging tiers** — summary/checksum default production tier; compact
 emission records for audit and replay; full state readback for debug only.
 
+**Migration progress (2026-05-19):** Reduction (S-4) and intensity (S-2) legacy
+passes deleted. C-8 EML block (infra, intensity, transfer, emission) landed.
+Remaining legacy passes: intent, overlay, threshold, velocity — flag-gated until
+S-1, S-3, S-5, S-6.
+
 **Unchanged from v6/v6.5:**
 - SimThing recursive type (`SimThing { properties, overlays, children }`)
 - OverlayLifecycle (`Permanent | Transient | Suspended`)
@@ -177,7 +182,10 @@ registration time by `assert_no_hard_trigger_on_soft_aggregate()`.
 
 > This section is maintained as a living document. Each migration PR updates
 > it to reflect which passes have moved to AccumulatorOp and which remain.
-> Current state: pre-migration baseline (all passes still exist).
+> Current state (2026-05-19): hybrid migration — reduction (S-4) and intensity
+> (S-2) legacy passes deleted; C-8 EML block landed; remaining legacy passes
+> (intent, overlay, threshold, velocity) are flag-gated oracle/fallback until
+> their S-phase sunsets.
 
 ### 4.1 The target 3-pass architecture (post-migration)
 
@@ -204,20 +212,22 @@ Pass C:  Event readback
 ### 4.2 Current state during migration
 
 The following flags control which path runs for each operation family.
-All default to `false` (existing path) until each migration PR flips them
-to `true` and the corresponding sunset PR removes the old code.
+Defaults are mixed: reduction, EML, and intensity default **on**; other families
+default **off** until their migration PR enables them and the corresponding
+sunset PR removes legacy code. Intensity has no legacy fallback after S-2.
 
 ```rust
 pub struct PipelineFlags {
-    pub use_accumulator_threshold_scan: bool,  // C-1 → S-6
-    pub use_accumulator_intent:         bool,  // C-2 → S-1
-    pub use_accumulator_overlay_add:    bool,  // C-3/C-4 full overlay path → S-3
-    pub use_accumulator_reduction_soft: bool,  // C-5 Mean/WeightedMean → S-4
-    pub use_accumulator_reduction_exact: bool, // C-6 Sum/Max/Min/First → S-4
-    pub use_accumulator_velocity:       bool,  // C-7 → S-5
-    pub use_accumulator_eml:            bool,  // C-8a infra upload at boundary sync (default false)
-    pub use_accumulator_intensity:      bool,  // C-8b EvalEML intensity (requires use_accumulator_eml)
-    pub use_accumulator_transfer:       bool,  // C-8c exact transfer substrate (default false)
+    pub use_accumulator_threshold_scan: bool,  // C-1 → S-6 (default false)
+    pub use_accumulator_intent:         bool,  // C-2 → S-1 (default false)
+    pub use_accumulator_overlay_add:    bool,  // C-3/C-4 → S-3 (default false)
+    pub use_accumulator_reduction_soft: bool,  // C-5 → S-4 (default true)
+    pub use_accumulator_reduction_exact: bool, // C-6 → S-4 (default true)
+    pub use_accumulator_velocity:       bool,  // C-7 → S-5 (default false)
+    pub use_accumulator_eml:            bool,  // C-8a infra (default true)
+    pub use_accumulator_intensity:      bool,  // C-8b EvalEML intensity (default true; requires use_accumulator_eml)
+    pub use_accumulator_transfer:       bool,  // C-8c exact transfer (default false)
+    pub use_accumulator_emission:       bool,  // C-8d emission substrate (default false; requires use_accumulator_eml when EvalEML)
 }
 ```
 
@@ -531,9 +541,11 @@ designer formula, EML compiles to a scalar at boundary prep time. The GPU
 sees a constant.
 
 **Stage 2 — Registration parameter generation (CPU, session open or recipe change)**
-Per-property parameters like intensity build/decay coefficients compile via
-EML to `f32` values stored in `AccumulatorOp.combine_p0..combine_p3`. One
-compile per recipe class, not per slot.
+Scalar formula parameters (e.g. constant emission amounts, boundary-prep overlay
+values) compile via EML to `f32` values stored in `AccumulatorOp.combine_p0..combine_p3`.
+One compile per recipe class, not per slot. Full per-tick formulas (intensity,
+EvalEML transfer/emission) compile to persistent GPU node trees at boundary sync
+instead — see Stage 3.
 
 **Stage 3 — GPU EvalEML combine (GPU, per tick)**
 The kernel evaluates the EML tree against per-slot inputs inline via a
@@ -553,7 +565,9 @@ policy gates: per-formula tolerance documentation, feature flags, and
 consumer admissibility rules. See
 `docs/workshop/c8_eml_transfer_intensity_design.md` for the framework.
 
-The intensity update formula is the canonical Stage 3 example:
+The intensity update formula is the canonical Stage 3 example. Coefficients
+(`build_coeff`, `decay_coeff`, `threshold`) are embedded in the compiled EML
+tree at boundary sync; `dt` and slot inputs are read per tick from GPU buffers:
 ```
 if |velocity| > threshold:
     intensity += build_coeff × |velocity| × dt

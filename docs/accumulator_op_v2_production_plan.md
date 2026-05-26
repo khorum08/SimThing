@@ -6,7 +6,9 @@
 > begin until all PRs in the prior phase are green and merged.
 >
 > **Pivot posture (2026-05-19):** AccumulatorOp v2 is the production direction.
-> Legacy GPU passes are oracle/fallback only until S-phase deletion. See
+> Legacy reduction (S-4) and legacy intensity (S-2) are **deleted**. Remaining
+> legacy passes (intent, overlay, threshold, velocity) are oracle/fallback until
+> their S-phase deletions. See
 > [`docs/workshop/workshop_current_state.md`](workshop/workshop_current_state.md) and
 > [`docs/workshop/pivot_forward_implementation_policy.md`](workshop/pivot_forward_implementation_policy.md).
 
@@ -543,7 +545,7 @@ comparison.
 
 ---
 
-### ⚠️ PR C-8 — Opus review: EML transfer + intensity migration
+### ✅ PR C-8 — EML transfer + intensity + emission migration
 
 **Design half status:** **Accepted** — see
 [`docs/workshop/c8_eml_transfer_intensity_design.md`](workshop/c8_eml_transfer_intensity_design.md).
@@ -557,9 +559,14 @@ comparison.
 **C-8b remedial status:** **Local** — intensity op upload cache keys on `IntensityEmlOpPlanSignature` (EML generation + world/op-plan shape); slot growth and entry/layout changes force op reupload; unchanged formulas skip EML table churn via `replace_formula_if_changed`.
 
 **C-8b landed:**
-- Legacy intensity update routes through AccumulatorOp `EvalEML` when flag on.
 - `IntensityBehavior` → `ExactDeterministic` EML (22 nodes; `MAX_EML_TREE_NODES`/`EML_STACK_MAX` raised to 32).
+- Production intensity routes through AccumulatorOp `EvalEML` after velocity, before overlay.
 - `dt` via tick params; persistent EML buffers; no per-dispatch upload.
+
+**S-2 landed (#138):**
+- Deleted `intensity_update.wgsl`, legacy Pass 2 pipeline/bind group wiring, and `IntensityParams` buffer.
+- `use_accumulator_intensity` + `use_accumulator_eml` default **true**; disabling intensity with registered `IntensityBehavior` panics at boundary validation.
+- C-8b parity tests use CPU/EML golden oracle only; `s2_legacy_intensity_sunset.rs` validates default path and rejection semantics.
 
 **C-8b remedial landed:**
 - Intensity op upload cache now keys on EML generation plus world/op-plan shape (`IntensityEmlOpPlanSignature`).
@@ -596,11 +603,12 @@ comparison.
 - `max_emit` explicitly rejected until shader clamp is implemented.
 - Emission remains GPU-resident through AccumulatorOp; transfer conservation unchanged.
 
-**C-8 complete (completion gate):**
+**C-8 complete (completion gate, #137):**
 - Full GPU-resident C-8 block validated: EML + intensity + transfer + emission in one tick pipeline.
 - Persistent EML/input-list/op reuse across ticks with varying `dt`.
-- Legacy intensity not dispatched when `use_accumulator_intensity` is active.
-- S-2 deletion inventory documented; legacy intensity not deleted in this PR.
+- `c8_full_pipeline_integration.rs` exercises all flags together.
+
+**S-2 complete:** Legacy intensity deleted; production intensity is EvalEML-only (see S-2 landed above).
 
 Selected:
 - **Execution-class taxonomy** (`EmlExecutionClass::{ExactDeterministic, SoftDeterministic, FastApproximate, CpuOracleOnly}`) plus a **consumer admissibility matrix** that gates which classes may feed which consumers.
@@ -609,7 +617,7 @@ Selected:
 - **Bounded WGSL lookup:** `AccumulatorOpGpu.combine_a = tree_range_index` (resolved CPU-side at registration); the shader never searches by `tree_id`.
 - **Flat stack-machine interpreter** in WGSL; fixed-depth stack; postfix-encoded nodes.
 - **Auxiliary `AccumulatorInputListTable`** for `MinAcrossInputs + SubtractFromAllInputs` (conjunctive recipes need 4+ inputs; `AccumulatorOpGpu`'s target slots are reserved for write targets).
-- **Staged delivery: C-8a (infra) → C-8b (intensity) → C-8c (transfer) → C-8d (emission)**. Per-stage default-false flags.
+- **Staged delivery: C-8a (infra) → C-8b (intensity) → C-8c (transfer) → C-8d (emission)**. Transfer/emission flags remain default-off until explicitly enabled; EML + intensity default-on after S-2.
 
 **Implementer mix:** **Codex 5.5** for C-8a, C-8b, C-8d; **Composer 2.5** for C-8c (transfer's conservation invariants and the input-list table benefit from architectural judgment).
 
@@ -761,13 +769,13 @@ with a clearly reported failure mode (triggers separate design work).
 | **C-5** | **C** | **Opus + Composer** | **WeightedMean tolerance boundary audit + soft reductions** | **Landed (#121 design, #122 impl)** |
 | C-6 | C | Composer 2.5 | Sum/Max/Min/First exact reductions | **Landed (#124)** |
 | C-7 | C | Composer 2.5 | Velocity integration migration | vel_max clamp test |
-| **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity integration** | **Opus design + 3 parity tests** |
+| **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity + emission** | **Landed + S-2 sunset** |
 | **D-1** | **D** | **Opus** | **Hot-pool allocator v2 design** | **Opus design note** |
 | D-2 | D | Composer 2.5 | Hot-pool allocator v2 implementation | 2× CPU at hotspot |
 | D-3 | D | Composer 2.5 | Changed-only logs + replay integration | Replay test |
 | D-4 | D | Composer 2.5 + Opus | Cross-pool contention gate | Pass or triggers ADR amendment |
 
-**Remaining Opus-gated PRs: A-4, B-4, C-8, D-1.** C-4's Opus design has
+**Remaining Opus-gated PRs: A-4, B-4, D-1.** C-4 and C-8 Opus design have
 landed. These are the PRs where the correctness or design space is genuinely open and the
 cost of a wrong decision is architectural. Every other PR is fully specified by
 the ADR and the workshop evidence and can be executed mechanically.
@@ -966,7 +974,25 @@ Phase F begins after Phase C is fully complete. Each sunset PR is Codex 5.5,
 mechanical, gated on CI passing with the feature flag set to default-on.
 
 ### PR S-1 — Sunset intent fold (after C-2)
-### PR S-2 — Sunset intensity update (after C-8)
+### PR S-2 — Sunset intensity update (after C-8) — **Landed (#138)**
+
+**Status:** Merged. Legacy Pass 2 deleted; EvalEML intensity is the only production path.
+
+**Deleted:**
+- `crates/simthing-gpu/src/shaders/intensity_update.wgsl`
+- Legacy intensity pipeline, bind group layout, and dispatch branches in `passes.rs`
+- `IntensityParams`, `build_intensity_params`, `WorldGpuState::intensity_params`, legacy dispatch counter
+
+**Kept:** `IntensityBehavior`, `compile_intensity_behavior_to_eml`, `intensity_accumulator.rs`, EML `Intensity` consumer.
+
+**Flag posture:**
+- `use_accumulator_eml` + `use_accumulator_intensity` default **true**
+- `PipelineFlags::validate_intensity_enabled_for_registry` panics when intensity is disabled but the registry has `IntensityBehavior`
+
+**Tests:** `s2_legacy_intensity_sunset.rs`, rewritten `c8b_intensity_eml_parity.rs` (CPU/EML golden), C-8 full integration still green.
+
+**Inventory:** [`docs/workshop/s2_legacy_intensity_sunset_inventory.md`](workshop/s2_legacy_intensity_sunset_inventory.md)
+
 ### PR S-3 — Sunset overlay prep (after C-3 + C-4)
 ### PR S-4 — Sunset reduction passes 4–6 (after C-5 + C-6)
 
@@ -1051,7 +1077,7 @@ as a doc-only PR.
 | **C-5** | **C** | **Opus + Composer** | **WeightedMean tolerance audit + soft reductions** | **Landed (#121, #122)** |
 | C-6 | C | Composer 2.5 | Sum/Max/Min/First exact reductions | **Landed (#124)** |
 | C-7 | C | Composer 2.5 | Velocity integration | vel_max clamp test |
-| **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity** | **Opus design** |
+| **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity + emission** | **Landed + S-2 sunset** |
 | **D-1** | **D** | **Opus** | **Hot-pool allocator design** | **Opus design note** |
 | D-2 | D | Composer 2.5 | Hot-pool allocator v2 | 2× CPU at hotspot |
 | D-3 | D | Composer 2.5 | Changed-only logs + replay | Replay test |
@@ -1063,12 +1089,12 @@ as a doc-only PR.
 | E-5 | E | Composer 2.5 | Economic compact log integration | Replay test |
 | E-6 | E | Codex 5.5 | design_v7.md economic substrate docs | Doc consistency |
 | S-1 | F | Codex 5.5 | Sunset intent fold | CI green at flag=on |
-| S-2 | F | Codex 5.5 | Sunset intensity update | CI green at flag=on |
+| S-2 | F | Codex 5.5 | Sunset intensity update | **Landed (#138)** |
 | S-3 | F | Codex 5.5 | Sunset overlay prep | CI green at flag=on |
-| S-4 | F | Codex 5.5 | Sunset reduction passes 4–6 | CI green at flag=on |
+| S-4 | F | Codex 5.5 | Sunset reduction passes 4–6 | **Landed** |
 | S-5 | F | Codex 5.5 | Sunset velocity integration | CI green at flag=on |
 | S-6 | F | Codex 5.5 | Sunset threshold scan | CI green at flag=on |
 | G-1 | G | Codex 5.5 | Annotate design_v6.md §10 superseded | One commit |
 | **G-2** | **G** | **Opus** | **design_v7.md §4 final review** | **Human + Opus** |
 
-**Total: 33 PRs.** Remaining Opus-gated: A-4, B-4, C-8, D-1, G-2 — five of thirty-three.
+**Total: 33 PRs.** Remaining Opus-gated: A-4, B-4, D-1, G-2 — four of thirty-three.
