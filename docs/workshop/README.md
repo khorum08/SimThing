@@ -18,6 +18,8 @@
 | [`simthing_modder_object_guide.md`](simthing_modder_object_guide.md) | Modder-facing authoring guide |
 | [`simthing_base_economic_system_working_doc.md`](simthing_base_economic_system_working_doc.md) | Provisional economic substrate (E0 deferred) |
 | [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) | V6 spec implementation ledger |
+| [`resource_flow_adr_shaping.md`](resource_flow_adr_shaping.md) | **ADR-shaping draft** — continuous resource flow substrate (constitution + invariants additions, E-7…E-11) |
+| [`resource_flow_feasibility_opus.md`](resource_flow_feasibility_opus.md) | Feasibility evaluation — grounding evidence for the ADR-shaping draft (superseded by it; retained for traceability) |
 
 ## Top-level companions
 
