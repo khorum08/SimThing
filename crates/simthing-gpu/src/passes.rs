@@ -167,31 +167,6 @@ impl Pipelines {
         ctx.queue.submit(Some(encoder.finish()));
     }
 
-    pub fn run_velocity_integration(&self, state: &WorldGpuState, dt: f32) {
-        if state.n_governed_pairs == 0 {
-            return;
-        }
-        let ctx = &state.ctx;
-        let pairs = state.read_governed_pairs();
-        let plan = crate::plan_velocity_integration(&pairs, state.n_slots);
-        let mut session = crate::AccumulatorOpSession::new_attached(
-            ctx,
-            state.n_slots,
-            state.n_dims,
-            plan.ops.len() as u32,
-        );
-        session
-            .upload_gpu_ops(ctx, &plan.ops)
-            .expect("AccumulatorOp velocity op upload failed");
-        let mut encoder = ctx
-            .device
-            .create_command_encoder(&CommandEncoderDescriptor {
-                label: Some("accumulator_velocity_encoder"),
-            });
-        session.encode_velocity_into(ctx, &mut encoder, &state.values, &state.previous_values, dt);
-        ctx.queue.submit(Some(encoder.finish()));
-    }
-
     /// C-8b EvalEML intensity update (requires `sync_intensity_eml_accumulator` first).
     pub fn run_accumulator_intensity_eml(&self, state: &mut WorldGpuState, dt: f32) {
         if !state.accumulator_intensity_eml_active {
@@ -651,6 +626,33 @@ mod tests {
         pipelines.run_accumulator_intensity_eml(state, dt);
     }
 
+    /// Test-only AccumulatorOp velocity helper using an attached session.
+    /// Not a production fallback; S-5 deleted the legacy velocity pass.
+    fn run_velocity_integration_test_helper(pipelines: &Pipelines, state: &WorldGpuState, dt: f32) {
+        if state.n_governed_pairs == 0 {
+            return;
+        }
+        let ctx = &state.ctx;
+        let pairs = state.read_governed_pairs();
+        let plan = crate::plan_velocity_integration(&pairs, state.n_slots);
+        let mut session = crate::AccumulatorOpSession::new_attached(
+            ctx,
+            state.n_slots,
+            state.n_dims,
+            plan.ops.len() as u32,
+        );
+        session
+            .upload_gpu_ops(ctx, &plan.ops)
+            .expect("AccumulatorOp velocity op upload failed");
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("accumulator_velocity_encoder"),
+            });
+        session.encode_velocity_into(ctx, &mut encoder, &state.values, &state.previous_values, dt);
+        ctx.queue.submit(Some(encoder.finish()));
+    }
+
     fn upload_accumulator_overlay_plan(
         state: &mut WorldGpuState,
         world: &SimThing,
@@ -760,7 +762,7 @@ mod tests {
         state.write_values(&flat);
 
         let pipelines = Pipelines::new(&state.ctx);
-        pipelines.run_velocity_integration(&state, dt);
+        run_velocity_integration_test_helper(&pipelines, &state, dt);
 
         let gpu_flat = state.read_values();
         for s in 0..2 {
@@ -801,7 +803,7 @@ mod tests {
         state.write_values(&flat);
 
         let pipelines = Pipelines::new(&state.ctx);
-        pipelines.run_velocity_integration(&state, dt);
+        run_velocity_integration_test_helper(&pipelines, &state, dt);
 
         let gpu_flat = state.read_values();
         assert_bits_eq("fractional-dt", &pv.data, &gpu_flat[..stride]);
@@ -941,7 +943,7 @@ mod tests {
 
         let pipelines = Pipelines::new(&state.ctx);
         pipelines.run_snapshot(&state);
-        pipelines.run_velocity_integration(&state, dt);
+        run_velocity_integration_test_helper(&pipelines, &state, dt);
         run_intensity_eml_on_state(&pipelines, &mut state, &reg, dt);
 
         let gpu_flat = state.read_values();
@@ -1012,7 +1014,7 @@ mod tests {
 
         let pipelines = Pipelines::new(&state.ctx);
         pipelines.run_snapshot(&state);
-        pipelines.run_velocity_integration(&state, dt);
+        run_velocity_integration_test_helper(&pipelines, &state, dt);
         run_intensity_eml_on_state(&pipelines, &mut state, &reg, dt);
 
         // Pass 0 invariant: previous_values must equal the pre-pass values.
@@ -1093,7 +1095,7 @@ mod tests {
         manual.ctx.queue.submit(Some(intent_encoder.finish()));
         intent_session.finish_intent(&manual.ctx);
         pipelines.run_snapshot(&manual);
-        pipelines.run_velocity_integration(&manual, 1.0);
+        run_velocity_integration_test_helper(&pipelines, &manual, 1.0);
         run_intensity_eml_on_state(&pipelines, &mut manual, &reg, 1.0);
         let manual_events = run_accumulator_threshold_scan(&manual, &regs);
 
@@ -1452,7 +1454,7 @@ mod tests {
 
         let pipelines = Pipelines::new(&state.ctx);
         pipelines.run_snapshot(&state); // previous_* <- current
-        pipelines.run_velocity_integration(&state, 1.0); // values amount: 0.35 - 0.10 = 0.25
+        run_velocity_integration_test_helper(&pipelines, &state, 1.0); // values amount: 0.35 - 0.10 = 0.25
         run_intensity_eml_on_state(&pipelines, &mut state, &reg, 1.0);
         let events = run_accumulator_threshold_scan(&state, &regs);
         assert_eq!(events.len(), 1, "expected exactly one downward crossing");
@@ -1537,14 +1539,14 @@ mod tests {
 
         // Warm-up tick — first dispatch incurs pipeline cache + driver init.
         pipelines.run_snapshot(&state);
-        pipelines.run_velocity_integration(&state, 0.5);
+        run_velocity_integration_test_helper(&pipelines, &state, 0.5);
         pipelines.run_accumulator_intensity_eml(&mut state, 0.5);
         pipelines.run_accumulator_overlays(&mut state);
         let _ = state.read_values(); // force flush
 
         let t0 = Instant::now();
         pipelines.run_snapshot(&state);
-        pipelines.run_velocity_integration(&state, 0.5);
+        run_velocity_integration_test_helper(&pipelines, &state, 0.5);
         pipelines.run_accumulator_intensity_eml(&mut state, 0.5);
         pipelines.run_accumulator_overlays(&mut state);
         // Force the submitted work to complete before stopping the clock.
@@ -1671,7 +1673,7 @@ mod tests {
 
         let pipelines = Pipelines::new(&state.ctx);
         pipelines.run_snapshot(&state);
-        pipelines.run_velocity_integration(&state, dt);
+        run_velocity_integration_test_helper(&pipelines, &state, dt);
         run_intensity_eml_on_state(&pipelines, &mut state, &reg, dt);
         pipelines.run_accumulator_overlays(&mut state);
 

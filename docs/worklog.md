@@ -8,6 +8,22 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+---
+
+## 2026-05-26 — Post S-6/S-5/S-1 sunset cleanup
+
+**Runtime:**
+- Removed public `Pipelines::run_velocity_integration`; attached-session helper is test-only inside `passes.rs`.
+- C-7 parity tests now compare persistent AccumulatorOp velocity vs CPU/golden oracle (no legacy shader reference).
+
+**Docs:**
+- Workshop current-state: S-3 → #141, D-1 rescoped wording, sunset test inventory, pivot-forward doctrine updated.
+- Todo/production plan: D-1/D-2 and E-phase sequencing reconciled with Resource Flow ADR.
+
+**Verification:** `cargo check --workspace`; `cargo test --workspace`.
+
+---
+
 ## 2026-05-26 — S-6/S-5/S-1 merge + state-log sync
 
 **State:**
@@ -34,10 +50,12 @@ Running log of what's done and what's next, across sessions.
   AccumulatorOp path is disabled; no CPU production fallback or runtime legacy
   oracle remains.
 - C-1/C-2 parity coverage now uses AccumulatorOp replay/CPU-golden checks
-  instead of deleted shader oracles. C-7 remains bit-exact via the
-  AccumulatorOp-backed velocity helper.
+  instead of deleted shader oracles. C-7 remains bit-exact via persistent
+  AccumulatorOp velocity session vs CPU/golden oracle.
 - Added `s6_threshold_sunset.rs`, `s5_velocity_sunset.rs`, and
   `s1_intent_sunset.rs`.
+
+**Follow-up:** doc/test hygiene and removal/containment of standalone test-only AccumulatorOp helpers (see post-sunset cleanup entry).
 
 **Migration state:** S-2 intensity, S-3 overlay, S-4 reduction, S-6 threshold,
 S-5 velocity, and S-1 intent legacy passes are deleted. Snapshot

@@ -6,9 +6,9 @@ Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B
 **C-INF runtime/oracle** (#109), **pivot-forward remedial** (#111), and
 **C-4 overlay OrderBand** (#118), **C-5 soft reductions** (#122–#123), **C-6 exact reductions** (#124),
 **S-4 reduction sunset** (#126), **C-7 velocity** (#127), **C-8 EML block** (#129–#137),
-**S-2 intensity sunset** (#138), **S-3 overlay sunset**, **S-6 threshold sunset**,
-**S-5 velocity sunset**, and **S-1 intent sunset** landed.
-`master` includes **`6b9bf8f`** (S-6/S-5/S-1 sunset sequence).
+**S-2 intensity sunset** (#138), **S-3 overlay sunset** (#141), **S-6 threshold sunset**,
+**S-5 velocity sunset**, and **S-1 intent sunset** (`6b9bf8f`) landed.
+`master` @ post-sunset cleanup pending.
 
 **Reduction flags (default true):** `use_accumulator_reduction_soft` +
 `use_accumulator_reduction_exact` (both required). AccumulatorOp is the sole production
@@ -77,7 +77,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **C-3 OrderBand** | #107 | Per-cell OrderBand sequencing for exact f32 Add order; multi-band dispatch fix |
 | **C-4** | #118 | Full Add/Mul/Set overlay → AccumulatorOp OrderBand compiler; dirty/cached rebuild |
 | **C-4 remedial** | #120 | Lifecycle/fission/cache hardening; combined C-1/C-2/C-4 path; consume-mode regressions |
-| **S-3** | local | Legacy overlay shader/pipeline deleted; AccumulatorOp OrderBands sole overlay path |
+| **S-3** | #141 | — | Legacy overlay deleted; AccumulatorOp OrderBands sole overlay path |
 | **Pivot-forward + B-4I** | #108 | `2aa630e` | Pivot-forward policy; production `SlotSummaryGpu`; C-INF scaffolds |
 | **C-INF-1 + C-INF-2** | #109 | `2f95c6d` | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness + tests |
 | **Pivot-forward remedial** | #111 | `632d656` | Authoritative flags; `WorldSummaryRuntime`; oracle tolerance rename |
@@ -96,23 +96,27 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **C-8d remedial** | #136 | — | Emission op signature + max_emit rejection |
 | **C-8 completion gate** | #137 | — | Full C-8 all-flags integration |
 | **S-2** | #138 | — | Legacy intensity deleted; EvalEML only |
-| **S-6** | local | `6b9bf8f` | Legacy threshold scan deleted; AccumulatorOp threshold mandatory for threshold workloads |
-| **S-5** | local | `6b9bf8f` | Legacy velocity deleted; AccumulatorOp velocity mandatory for governed velocity workloads |
-| **S-1** | local | `6b9bf8f` | Legacy intent deleted; AccumulatorOp intent mandatory for pending intent workloads |
+| **S-6** | `6b9bf8f` | — | Legacy threshold scan deleted; AccumulatorOp threshold mandatory for threshold workloads |
+| **S-5** | `6b9bf8f` | — | Legacy velocity deleted; AccumulatorOp velocity mandatory for governed velocity workloads |
+| **S-1** | `6b9bf8f` | — | Legacy intent deleted; AccumulatorOp intent mandatory for pending intent workloads |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **Opus** — production transfer/emission registration ownership (substrate landed; spec/builder integration pending)
-2. **D-1** — discrete-transaction contention memo per Resource Flow ADR
+1. **E-1** — `EmitOnThreshold` builder/spec API (substrate landed in C-1/C-8d)
+2. **E-2A** — `resource_transfer_discrete(...)` builder
+3. **E-3** — conjunctive recipe builder + N-input cap lift
+4. **E-7** — `governed_by` planner generalization
+5. **Opus** — production transfer/emission registration ownership
+6. **D-1** — discrete-transaction contention memo (D-2 deferred unless memo revives narrower GPU allocator need)
 
 **Open design warnings (preserve):**
 - Transfer/emission registration ownership: substrate-level only; production source-of-truth still needs integration.
-- Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-phase allocator handles true shared-pool contention.
+- Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-1 memo evaluates discrete boundary transactions only.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
-**Next (non-Opus implementation):** optional test-harness cleanup only; runtime legacy oracle/fallback peers are gone.
+**Next (immediate):** post-sunset doc/test hygiene only (this cleanup PR).
 
-**Next (sunset-gated):** none; all migrated legacy passes are deleted. Snapshot remains.
+**Next (non-Opus implementation):** E-1, E-2A, E-3, or E-7 per production plan — not E-11 directly.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

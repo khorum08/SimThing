@@ -23,7 +23,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **Next gates:** D-1 discrete-transaction contention memo · production transfer/emission registration ownership · Resource Flow E-7/E-8/E-9 ladder when scheduled.
 
-**Open design gates (not sunset):** production transfer/emission registration ownership (substrate landed; spec/builder integration pending); **D-1** shared-input/hot-pool allocator semantics for true cross-pool contention (C-8c rejects same-band consumed-input contention only); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
+**Open design gates (not sunset):** production transfer/emission registration ownership (substrate landed; spec/builder integration pending); **D-1** discrete-transaction contention memo (continuous-flow hot-pool allocator scope dissolved by Resource Flow ADR; C-8c still rejects same-band consumed-input contention); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
 
 **C-8 complete:** EML infrastructure, intensity, transfer, and emission are GPU-resident through AccumulatorOp. TransferConservation remains ExactDeterministic only. Emission tolerance remains future-gated and isolated from transfer/hard thresholds.
 
@@ -51,7 +51,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **C-3** | #105–#107 | Overlay Add-only + OrderBand exact f32 order foundation |
 | **C-4** | #118 | Full Add/Multiply/Set overlay OrderBand compiler + dirty cache |
 | **C-4 remedial** | #120 | Structural lifecycle/fission/cache hardening + consume-mode regressions |
-| **S-3** | local | Legacy overlay shader/pipeline deleted; AccumulatorOp OrderBands sole overlay path |
+| **S-3** | #141 | Legacy overlay shader/pipeline deleted; AccumulatorOp OrderBands sole overlay path |
 | **C-5** | #122 | Mean / WeightedMean soft reductions → `ReductionSoft` on `output_vectors` |
 | **C-5 remedial** | #123 | Depth-interleaved soft/exact reduction per depth bucket |
 | **C-6** | #124 | Sum / Max / Min / First exact reductions; full AccumulatorOp path when soft+exact on |
@@ -127,7 +127,7 @@ explicitly instead of falling back or silently skipping work.
 |------|-------|---------|--------|
 | S-1 | C-2 default-on | Legacy intent pass | **Done (`6b9bf8f`)** |
 | S-2 | C-8b default-on | Legacy intensity (`intensity_update.wgsl`) | **Done (#138)** |
-| S-3 | C-3 + C-4 | Legacy overlay prep | Done |
+| S-3 | C-3 + C-4 | Legacy overlay prep | **Done (#141)** |
 | S-4 | C-5 + C-6 | Legacy reduction passes + `reduction.wgsl` | **Done (#126)** |
 | S-5 | C-7 | Legacy velocity | **Done (`6b9bf8f`)** |
 | S-6 | C-1 default-on | Legacy threshold scan (Pass 7) | **Done (`6b9bf8f`)** |
@@ -171,7 +171,10 @@ See `crates/simthing-workshop/README.md` and `todo.md` § workshop spikes.
 | C-5 reduction | 15 | `reduction_orderband` (6) + legacy oracle (2) + parity/guards (11) |
 | C-6 exact reduction | 8 | Sum/Max/Min/First parity vs CPU oracle golden |
 | S-4 sunset | 4 | Shader absent, all-rules golden, no CPU production reduction, combined path |
-| C-7 velocity | 8 | IntegrateWithClamp bit-exact vs legacy; vel_max/amount clamp; combined all-flags |
+| S-1 sunset | 4 | Shader absent, default-on, disabled rejection, AccumulatorOp mandatory |
+| S-5 sunset | 4 | Shader absent, default-on, disabled rejection, CPU/golden parity |
+| S-6 sunset | 4 | Shader absent, default-on, disabled rejection, threshold mandatory |
+| C-7 velocity | 8 | IntegrateWithClamp bit-exact vs CPU/golden oracle; legacy velocity pass deleted in S-5 |
 | C-INF-2 harness | 2 | intent + threshold oracle smoke |
 | Pivot-forward remedial | 3 | authoritative flags |
 | B-4 world summary integrated | 2 | intent + overlay orderbands |
@@ -184,7 +187,7 @@ cargo test -p simthing-sim --test c4_overlay_orderband_parity
 cargo test -p simthing-sim --test c5_legacy_weighted_mean_oracle --test c5_weighted_mean_reduction_parity
 cargo test -p simthing-sim --test c6_exact_reduction_parity
 cargo test -p simthing-sim --test c7_velocity_accumulator_parity
-cargo test -p simthing-sim --test s4_reduction_sunset
+cargo test -p simthing-sim --test s1_intent_sunset --test s4_reduction_sunset --test s5_velocity_sunset --test s6_threshold_sunset
 cargo test -p simthing-gpu reduction_orderband
 cargo test -p simthing-sim --test c_inf_legacy_oracle_harness --test pivot_forward_remedial --test b4_world_summary_integrated
 cargo check --workspace
@@ -197,7 +200,7 @@ cargo check --workspace
 | Document | Role |
 |----------|------|
 | **This file** | Current-state synthesis and routing |
-| [`pivot_forward_implementation_policy.md`](pivot_forward_implementation_policy.md) | Active migration doctrine (legacy = oracle/fallback) |
+| [`pivot_forward_implementation_policy.md`](pivot_forward_implementation_policy.md) | Active migration doctrine; legacy runtime fallbacks are deleted, CPU/golden oracles are test-only |
 | [`slot_summary_b4_design.md`](slot_summary_b4_design.md) | Accepted B-4 summary tier design |
 | [`c1_perf_reframe_memo.md`](c1_perf_reframe_memo.md) | Accepted C-1 perf gate reframe (no 5× readback claim) |
 | [`c4_overlay_orderband_compiler_design.md`](c4_overlay_orderband_compiler_design.md) | Accepted C-4 overlay OrderBand design |

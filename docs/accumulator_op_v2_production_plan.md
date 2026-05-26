@@ -782,8 +782,8 @@ with a clearly reported failure mode (triggers separate design work).
 | C-6 | C | Composer 2.5 | Sum/Max/Min/First exact reductions | **Landed (#124)** |
 | C-7 | C | Composer 2.5 | Velocity integration migration | **Landed (#127)** |
 | **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity + emission** | **Landed + S-2 sunset** |
-| **D-1** | **D** | **Opus** | **Hot-pool allocator v2 design** | **Opus design note** |
-| D-2 | D | Composer 2.5 | Hot-pool allocator v2 implementation | 2× CPU at hotspot |
+| **D-1** | **D** | **Opus (memo only)** | **Discrete-transaction contention analysis memo** | **Memo committed** |
+| D-2 | D | — | **Deferred; revive only if D-1 proves need** | n/a |
 | D-3 | D | Composer 2.5 | Changed-only logs + replay integration | Replay test |
 | D-4 | D | Composer 2.5 + Opus | Cross-pool contention gate | Pass or triggers ADR amendment |
 
@@ -806,20 +806,18 @@ an Opus review before proceeding.
 | C-6 Sum/Max/Min | 1.2–1.9× reduction in reduction pass time at 100k+ parents | Workshop WeightedMean A/B data |
 | C-7 velocity | Neutral to 1.2× | Velocity is a small fraction of current tick cost |
 | C-8 transfer + emission | Current paradigm has no equivalent path | New capability, not a migration |
-| D-2 hot-pool v2 | 2× CPU at 16-pool hotspot | Replaces the 0.14× measured weakness |
+| D-2 deferred | n/a | Continuous-flow contention dissolved by Resource Flow ADR; no active performance target unless D-1 revives a narrower discrete-transaction GPU allocator |
 
 ---
 
 ## What this plan explicitly does NOT include
 
-- Removal of the current 8-pass pipeline. Each pass is removed only when its
-  migration PR is merged, all parity tests pass, and the feature flag is
-  flipped. The feature flags are permanent until removal PRs land.
+- Removal of legacy passes before their sunset PRs land. **S-1 through S-6 are complete**; snapshot is the only retained non-Accumulator GPU operation.
 - Migration of Pass 0 (snapshot). `copy_buffer_to_buffer` stays.
 - EML Phase 1–4 implementation. See `docs/eml_integration_guidance.md`.
-- Full economic V1 implementation (E0). Deferred per `todo.md`.
+- Complete game-content economy design, balancing, Studio tooling, or final scenario content. This plan **does** include Economic V1 substrate/builders (E-1 through E-3) and Resource Flow infrastructure (E-7 through E-11); it does **not** include full content/economy authoring.
 - Studio / EML authoring tools. Deferred per `todo.md`.
-- Cross-pool queue contention design (deferred to D-4 gate outcome).
+- D-2 hot-pool allocator v2 implementation (deferred indefinitely unless D-1 memo revives a narrower discrete scope).
 
 ---
 
@@ -832,6 +830,10 @@ modders and Studio will author against. It is not a new engine — it is the
 AccumulatorOp primitive expressed through the spec session model.
 
 ### PR E-1 — `EmitOnThreshold` as a first-class AccumulatorOp registration builder
+
+**Status:** Substrate support landed through C-1 threshold scan and C-8d emission
+records. Remaining scope is the first-class builder/spec API and re-registration
+helper at session open and boundary emission events.
 
 **Model:** Composer 2.5  
 **Scope:** Add `AccumulatorOpBuilder::emit_on_threshold(...)` to `simthing-spec`
@@ -869,9 +871,10 @@ tick-1 emissions match the expected 2000 across 1000 factories.
 
 **Model:** Codex 5.5
 **Scope:** Split E-2 into two builders to match the ADR's discrete-vs-continuous
-separation.
+separation. **E-2A can land before E-8/E-9; E-2B must land after or with E-8/E-9**
+because it depends on `AccumulatorRole` / `ArenaRegistry` semantics.
 
-**Builder A — `resource_transfer_discrete(...)`:**
+#### PR E-2A — `resource_transfer_discrete(...)`
 
 ```rust
 pub fn resource_transfer_discrete(
@@ -887,7 +890,10 @@ Sets `combine: Identity`, `consume: SubtractFromSource`. For boundary-time
 discrete transactions (construction commits, treaty payments, emergency
 spend). Exact conservation.
 
-**Builder B — `resource_flow_participant(...)`:**
+**Test:** Conservation test for the discrete builder (faction pool decrease ==
+factory queue increase). Exact per-transaction conservation.
+
+#### PR E-2B — `resource_flow_participant(...)`
 
 ```rust
 pub fn resource_flow_participant(
@@ -901,11 +907,9 @@ Produces the registrations that enroll a slot in an arena's continuous-flow
 substrate. Used by E-9 `ArenaRegistry` compilation. Returns a set (not a single
 op) because enrollment may produce reduction + allocation registrations.
 
-**Test:** Conservation test for the discrete builder (faction pool decrease ==
-factory queue increase). Enrollment test for the flow participant builder
-(arena participant set is well-formed; reduction + allocation ops are emitted
-as expected).
-**Acceptance:** Both tests pass. The two-overlay transfer hack is removed.
+**Test:** Enrollment test for the flow participant builder (arena participant set
+is well-formed; reduction + allocation ops are emitted as expected).
+**Acceptance:** E-2A and E-2B tests pass independently. The two-overlay transfer hack is removed.
 
 ---
 
@@ -937,9 +941,11 @@ pre-input-list inline-array layout. Remove the limit; add a test exercising
 N=8 inputs.
 
 **Test:** (a) Run the multichannel `factory_1k` fixture (iron/energy/labor) and
-an N=8 fixture through the production builder. Assert emission counts within 2%
-of workshop ImplC baseline. (b) Unit test that `AccumulatorOp::validate` accepts
-N>4 conjunctive inputs.
+an N=8 fixture through the production builder. Conjunctive recipe builder must
+preserve **exact per-recipe conservation** for `ExactDeterministic` fixtures.
+Any tolerance applies only to historical workshop baseline comparisons and must
+not weaken conservation tests. (b) Unit test that `AccumulatorOp::validate`
+accepts N>4 conjunctive inputs.
 **Acceptance:** Both tests pass.
 
 ---
