@@ -590,11 +590,16 @@ fn apply_targets(write_value: f32, op: AccumulatorOpGpu) {
 
 fn apply_consume(write_value: f32, op: AccumulatorOpGpu) {
     if (op.consume == CONSUME_SUBTRACT_FROM_SOURCE && op.source_kind == SOURCE_SLOT_VALUE) {
+        // C-8c planner rejects same-band consumed-input contention. This clamp is
+        // defensive only; it is not a transactional reservation mechanism.
         let idx = linear_idx(op.source_slot, op.source_col);
         let cell_ptr = &values[idx];
         loop {
             let old_bits = atomicLoad(cell_ptr);
-            let new_bits = bitcast<i32>(bitcast<f32>(old_bits) - write_value);
+            let old = bitcast<f32>(old_bits);
+            let debit = min(max(write_value, 0.0), max(old, 0.0));
+            let new_val = old - debit;
+            let new_bits = bitcast<i32>(new_val);
             let result = atomicCompareExchangeWeak(cell_ptr, old_bits, new_bits);
             if result.exchanged { break; }
         }

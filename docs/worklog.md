@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — C-8c remedial: transfer conservation under input contention
+
+**Fixes:**
+- `plan_transfer_ops` now returns `Result<_, TransferPlanError>` and rejects same-band consumed-input contention.
+- Validates unit costs, `max_transfer`, and single-source `output_scale == 1.0` before GPU upload.
+- Defensive single-source debit clamp in `accumulator_op.wgsl` (planner rejection is primary fix).
+- Input-list table bumps generation on nonempty→empty clear upload.
+- `WorldGpuState::sync_transfer_accumulator` returns `TransferSyncError`.
+
+**Tests:** extended `c8c_transfer_accumulator_parity.rs` (contention rejection, governed-property integration).
+
+---
+
 ## 2026-05-19 — C-8c: GPU-resident transfer substrate
 
 **Landed:**

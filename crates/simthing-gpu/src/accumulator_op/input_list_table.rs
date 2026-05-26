@@ -86,6 +86,9 @@ impl AccumulatorInputListTable {
     ) -> Result<Vec<InputListRange>, InputListUploadError> {
         let flat_len: u32 = lists.iter().map(|l| l.len() as u32).sum();
         if flat_len == 0 {
+            if self.used != 0 || !self.entries.is_empty() {
+                self.generation = self.generation.wrapping_add(1);
+            }
             self.entries.clear();
             self.used = 0;
             self.uploaded_generation = Some(self.generation);
@@ -178,5 +181,18 @@ mod tests {
         table.upload_lists(&ctx, &lists, 1).unwrap();
         assert!(table.capacity >= 3);
         assert_eq!(table.entries.len(), 3);
+    }
+
+    #[test]
+    fn c8c_input_list_empty_upload_after_nonempty_bumps_generation() {
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let mut table = AccumulatorInputListTable::new(&ctx, 16);
+        let lists = vec![vec![input(0, 0, 1.0)]];
+        table.upload_lists(&ctx, &lists, 1).unwrap();
+        let gen_after_nonempty = table.generation;
+        table.upload_lists(&ctx, &[], 2).unwrap();
+        assert!(table.generation > gen_after_nonempty);
+        assert!(table.entries.is_empty());
+        assert_eq!(table.used, 0);
     }
 }

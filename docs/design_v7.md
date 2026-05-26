@@ -247,7 +247,8 @@ pub struct PipelineFlags {
 - **Flag-on:** AccumulatorOp transfer substrate after intensity, before overlay.
   Single-source `SubtractFromSource`; conjunctive `MinAcrossInputs + SubtractFromAllInputs`
   via persistent `AccumulatorInputListTable` (binding 10). Input lists uploaded at boundary
-  sync only; generation-based skip when unchanged.
+  sync only; generation-based skip when unchanged. Planner rejects same-band consumed-input
+  contention before upload (same-target atomic adds remain allowed).
 - `TransferConservation` admits `ExactDeterministic` only.
 - **Flag-off:** no production transfer path (C-8d emission separate).
 

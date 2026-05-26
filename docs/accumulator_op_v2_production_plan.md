@@ -576,6 +576,14 @@ comparison.
 - No CPU-mediated production transfer.
 - C-8d emission remains pending.
 
+**C-8c remedial landed:**
+- Transfer planner rejects same-band consumed-input contention (policy A).
+- Same-target contention remains allowed via atomic target adds.
+- Single-source `output_scale != 1.0` rejected until explicitly supported.
+- Invalid unit costs and non-finite transfer values rejected before GPU upload.
+- Input-list table generation invalidates on nonempty→empty clear.
+- Defensive single-source debit clamp in WGSL (not transactional reservation).
+
 Selected:
 - **Execution-class taxonomy** (`EmlExecutionClass::{ExactDeterministic, SoftDeterministic, FastApproximate, CpuOracleOnly}`) plus a **consumer admissibility matrix** that gates which classes may feed which consumers.
 - **C-8 production baseline admits `ExactDeterministic` only** — `SoftDeterministic`/`FastApproximate` register structurally but no production consumer admits them yet.

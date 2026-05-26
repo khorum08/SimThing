@@ -35,7 +35,8 @@ pub use intensity_accumulator::{
     IntensityEmlEntry, IntensityEmlPlan,
 };
 pub use transfer_accumulator::{
-    encode_transfer_plan, plan_transfer_ops, TransferInputRef, TransferPlan, TransferRegistration,
+    encode_transfer_plan, plan_transfer_ops, TransferInputRef, TransferPlan, TransferPlanError,
+    TransferRegistration, TransferSyncError,
 };
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
 pub use reduction_orderband::{
