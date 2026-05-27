@@ -113,11 +113,13 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-10R3** | — | — | **Done** — arena-local gap block reservation + post-materialize capacity check |
 | **E-8R** | — | — | **Done** — arena-internal plumbing columns at property compile |
 | **E-7R** | — | — | **Done** — `plan_governed_integration_at_band` ordering API |
-| **E-11 design** | — | — | **Accepted** — Opus v2 memo landed; execution blocked pending review |
+| **E-11 design** | — | — | **Accepted** — Opus v2 memo landed |
+| **E-11 review** | — | — | **Done** — readiness review PASS; handoff published |
+| **E-11** | — | — | **Ready** — implement allocation per [`e11_implementation_handoff.md`](workshop/e11_implementation_handoff.md) |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **Final E-11 readiness review** — confirm E-10R/E-10R2/E-10R3/E-8R/E-7R APIs vs Opus v2 memo; generate narrowed E-11 implementation handoff (**do not implement allocation execution yet**)
+1. **E-11 allocation execution** — follow [`e11_implementation_handoff.md`](workshop/e11_implementation_handoff.md) (oracle, planner, EML, `e11_*` tests; no new WGSL)
 2. **Opus** — production transfer/emission registration ownership
 3. **D-1** — discrete-transaction contention memo (D-2 deferred unless memo revives narrower GPU allocator need)
 
@@ -128,9 +130,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-10R/E-10R2/E-10R3/E-8R/E-7R prerequisites landed).
 
-**Next (immediate):** E-11 review pass → narrowed implementation handoff — **not** direct E-11 allocation execution.
-
-**Next (non-Opus implementation):** Opus transfer/emission ownership or D-1 memo — not E-11 directly.
+**Next (immediate):** E-11 allocation implementation per [`e11_implementation_handoff.md`](workshop/e11_implementation_handoff.md).
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp
