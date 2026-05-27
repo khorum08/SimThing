@@ -6,6 +6,22 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — Opus design memo: production transfer/emission registration ownership
+
+- Landed Opus design review at [`docs/reviews/transfer_emission_registration_ownership_opus_review.md`](reviews/transfer_emission_registration_ownership_opus_review.md). Docs-only; no implementation in this commit.
+- **Gate decision (design authority):** E-11B nested hierarchy GPU **deferred**; production transfer/emission registration ownership is the next implementation gate. Rationale: E-11B is substrate growth (almost certainly new WGSL / new `AccumulatorOp` primitive — both stop conditions); registration ownership is policy clarification on existing substrate with no kernel changes. Maximal-simplicity choice.
+- **Ownership model:** `simthing-spec` authors transfer / recipe / emission / threshold-emit content as first-class RON (sibling to `ResourceFlowSpec`, not subsumed); `simthing-driver` compiles to existing `simthing-core` `*Registration` shapes via existing `simthing-gpu` bridges; `simthing-sim` remains spec-free and arena-ignorant. Stable `reg_idx` from authoring identity; subtree-scoped boundary refresh; replay bit-exact for `ExactDeterministic`.
+- **No stop conditions triggered.** No new WGSL, no new primitive, no `simthing-sim` semantic ownership, no CPU production fallback, no weakening of exact conservation, no folding hard-currency transfer into Resource Flow, no flipping `use_accumulator_resource_flow` default-on.
+- **Cursor handoff (Phase T):** T-1 spec authoring types → T-2 compile pass → T-3 driver materialization → T-4 session integration → T-5 boundary refresh / replay tests → T-6 docs sync. Phase T ladder added to `accumulator_op_v2_production_plan.md`. Transfer/emission flags remain default false until T-5 burn-in is itself green.
+- **Companion doc updates (same commit):** `accumulator_op_v2_production_plan.md` (Phase T added; C-8 open line updated), `todo.md` (next-gates re-ordered, design warning updated), `workshop/workshop_current_state.md` (executive summary + open migration work).
+- **Still blocked / deferred:** E-2B `resource_flow_participant` (enrollment compilation), default-on Resource Flow, E-11B nested GPU, D-1 discrete-transaction memo, Soft/Fast EML for transfer/emission, `max_emit` enforcement.
+
+**Verification:** docs-only landing; no runtime gates exercised. Future T-5 acceptance: `cargo test -p simthing-spec transfer emission -- --nocapture`; `cargo test -p simthing-driver transfer emission -- --nocapture`; `cargo test -p simthing-gpu accumulator_op -- --nocapture`; `cargo test -p simthing-driver e11_resource_flow_soak -- --nocapture`; `cargo check --workspace`; `cargo test --workspace`.
+
+**Next:** Cursor begins Phase T at T-1 (spec authoring types). Do not bundle PRs.
+
+---
+
 ## 2026-05-19 — E-11 controlled opt-in CI soak
 
 - Added `ResourceFlowSoakMode`, `ResourceFlowSoakFixture`, and `ResourceFlowSoakSummaryReport` (driver/test-reporting only).

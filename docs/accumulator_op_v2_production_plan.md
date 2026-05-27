@@ -677,8 +677,10 @@ Implemented:
 **Acceptance:** All stage tests pass. Design memo linked above.
 
 **Open after C-8:** production transfer/emission registration ownership
-(spec/builder integration); shared-input cross-pool contention (D-1); Soft/Fast
-EML classes remain future-gated.
+(spec/builder integration) — **design memo landed 2026-05-27** at
+[`docs/reviews/transfer_emission_registration_ownership_opus_review.md`](reviews/transfer_emission_registration_ownership_opus_review.md);
+Cursor implementation ladder lives in Phase T below. Shared-input cross-pool
+contention (D-1); Soft/Fast EML classes remain future-gated.
 
 ---
 
@@ -1241,6 +1243,48 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **Acceptance:** All four tests pass. CPU oracle parity is bit-exact for
 `ExactDeterministic`. Replay is bit-exact under varying fission cascades.
+
+---
+
+## Phase T — Production transfer/emission registration ownership
+
+**Design gate:** [`docs/reviews/transfer_emission_registration_ownership_opus_review.md`](reviews/transfer_emission_registration_ownership_opus_review.md)
+(Opus, 2026-05-27, **Accepted**). No stop conditions triggered.
+
+**Posture (preserves v7.5):** runtime substrate is unchanged; ownership of
+transfer / recipe / emission / threshold-emit registrations moves to
+`simthing-spec` (authoring) → `simthing-driver` (compilation) → existing
+`simthing-core` builders and `simthing-gpu` planners. `simthing-sim` remains
+spec-free and arena-ignorant. No new WGSL; no new `AccumulatorOp` primitive;
+no CPU production fallback peer; transfer/emission flags remain default false
+until T-5 burn-in is itself green.
+
+| PR | Model | Scope | Gate |
+|----|-------|-------|------|
+| **T-1** | Codex 5.5 | `simthing-spec` authoring types: `ResourceTransferSpec`, `ResourceRecipeSpec`, `ResourceEmissionSpec`, `EmitOnThresholdSpec` (+ `EmissionFormulaSpec`, `RecipeInputSpec`, `EmitBufferSpec`) | RON serde roundtrip suite |
+| **T-2** | Composer 2.5 | `simthing-spec::compile::resource_economy` resolves keys / EML formulas / validation; extends expansion report | Rejection-fixture suite (mirrors E-10) |
+| **T-3** | Composer 2.5 | `simthing-driver::resource_economy_compile` → `ResourceEconomyRegistrations`; stable `reg_idx` from authoring identity; subtree-scoped refresh | Golden compile + stable-`reg_idx` tests |
+| **T-4** | Composer 2.5 | Session integration + boundary refresh via existing `sync_accumulator_{transfer,emission}_session` paths; generation-keyed skip; flag-off populated-spec rejection | Session-open + flag-off-rejects tests |
+| **T-5** | Composer 2.5 | Boundary refresh / replay tests; subtree-refresh asserted via generation counter; anti-import test (`simthing-sim` ⊥ `simthing-spec`) | 100-tick conservation + replay bit-exact |
+| **T-6** | Codex 5.5 | Docs sync (this plan, `design_v7.md` §5/§6, `workshop_current_state.md`, `todo.md`) | Doc consistency |
+
+**Stop conditions (re-asserted; all unchanged from the v2 ADR):** no new WGSL,
+no new `AccumulatorOp` primitive, no `simthing-sim` semantic ownership of
+transfer/emission, no CPU production fallback, no weakening of exact transfer
+conservation, no folding of hard-currency transfers into continuous Resource
+Flow, no flipping of `use_accumulator_resource_flow` to default-on (that is a
+separate gate, downstream of T-5 and E-2B).
+
+**Acceptance verification (post-T-5):**
+
+```powershell
+cargo test -p simthing-spec transfer emission -- --nocapture
+cargo test -p simthing-driver transfer emission -- --nocapture
+cargo test -p simthing-gpu accumulator_op -- --nocapture
+cargo test -p simthing-driver e11_resource_flow_soak -- --nocapture
+cargo check --workspace
+cargo test --workspace
+```
 
 ---
 
