@@ -1316,6 +1316,7 @@ default false and are enabled only by scenario/session opt-in.
 | **RF-T5** | Composer 2.5 | Scenario-class burn-in / telemetry soak (`FlatStarResourceFlow` profile product soak) | **Done** — `resource_flow_scenario_class_burn_in` suite (16 tests) |
 | **RF posture** | — | Limited scenario-class production posture review | **Done** — Recommendation A; bounded `FlatStarResourceFlow` production posture |
 | **RF-T6** | — | Production docs / telemetry polish for bounded `FlatStarResourceFlow` posture | **Done** — production-facing guide; no runtime behavior expansion |
+| **Phase T RON smoke addendum** | — | Designer-authored `resource_economy` RON fixture through deserialize/compile/install/open path | **Done** — `resource_economy_designer_ron` + `resource_economy_designer_ron_session`; no runtime behavior expansion |
 
 **Stop conditions (re-asserted; all unchanged from the v2 ADR):** no new WGSL,
 no new `AccumulatorOp` primitive, no `simthing-sim` semantic ownership of
@@ -1323,6 +1324,17 @@ transfer/emission, no CPU production fallback, no weakening of exact transfer
 conservation, no folding of hard-currency transfers into continuous Resource
 Flow, no flipping of `use_accumulator_resource_flow` to default-on (that is a
 separate gate, downstream of T-5 and E-2B).
+
+**Phase T designer/RON smoke addendum landed:** a designer-authored
+`resource_economy` RON fixture now exercises `deserialize_game_mode_ron` →
+compile/install/`open_from_spec` and a short session run. Transfer, recipe, and
+emission authoring remain explicit `ResourceEconomySpec` content.
+`ResourceEconomyOptInMode` remains default disabled. Global transfer/emission
+flags remain default false. No WGSL changes. No new `AccumulatorRole` variants.
+No CPU production fallback. `simthing-sim` remains spec-free and semantic-free.
+Resource Flow bounded `FlatStarResourceFlow` posture remains unchanged. Full
+simthing-spec/RON/Designer guardrail rebuild remains deferred to its own future
+track.
 
 **Acceptance verification (post-T-6):**
 
@@ -1332,10 +1344,12 @@ cargo test -p simthing-driver --test resource_economy_burn_in -- --nocapture
 cargo test -p simthing-driver --test resource_economy_replay -- --nocapture
 cargo test -p simthing-driver --test resource_economy_boundary_refresh -- --nocapture
 cargo test -p simthing-driver --test resource_economy_session_open -- --nocapture
+cargo test -p simthing-driver --test resource_economy_designer_ron_session -- --nocapture
 cargo test -p simthing-driver --test resource_economy_flag_off_rejects -- --nocapture
 cargo test -p simthing-driver --test resource_economy_compile -- --nocapture
 cargo test -p simthing-driver --test resource_economy_stable_reg_idx -- --nocapture
 cargo test -p simthing-spec --test resource_economy_roundtrip -- --nocapture
+cargo test -p simthing-spec --test resource_economy_designer_ron -- --nocapture
 cargo test -p simthing-spec --test resource_economy_compile_rejections -- --nocapture
 cargo test -p simthing-spec --test resource_economy_expansion_report -- --nocapture
 cargo test -p simthing-gpu accumulator_op -- --nocapture

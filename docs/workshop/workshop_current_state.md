@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27
-**Master HEAD:** RF-T6 production docs / telemetry polish
-**Verification (last recorded):** RF-T6 production docs / telemetry polish — docs-only; `cargo check --workspace` + `cargo test --workspace` PASS.
+**Master HEAD:** Phase T designer/RON smoke addendum
+**Verification (last recorded):** Phase T designer/RON smoke addendum — targeted RON/spec/session suites; `cargo check --workspace` + `cargo test --workspace` PASS.
 
 ---
 
@@ -41,7 +41,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **RF-T6 status:** **Done** — production docs / telemetry polish for bounded `FlatStarResourceFlow` posture ([guide](../resource_flow_limited_scenario_class_posture.md)). Limited scenario-class `FlatStarResourceFlow` remains the accepted bounded production Resource Flow posture. Global flag remains default false; spec presence alone does not enable GPU; spec `FlatStarOptIn` remains supported and takes precedence. E-11 flat-star, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment remain the only covered execution paths. E-11B and Policy B remain deferred. No WGSL, new roles, CPU fallback, or `simthing-sim` arena awareness. Designer-facing spec/RON guardrail rebuild remains deferred.
 
-**Next gates:** choose by product priority: **E-11B**, **D-2a**, Phase T designer/RON smoke addendum, simthing-spec/RON rebuild, or continued soak. Global default-on remains deferred and is not the default next gate.
+**Phase T designer/RON smoke addendum:** **Done** — a designer-authored `resource_economy` RON fixture now exercises `deserialize_game_mode_ron` -> compile/install/`open_from_spec`. Transfer, recipe, and emission authoring remain explicit `ResourceEconomySpec` content. `ResourceEconomyOptInMode` remains default disabled. Global transfer/emission flags remain default false. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains spec-free and semantic-free. Resource Flow bounded `FlatStarResourceFlow` posture remains unchanged. Full simthing-spec/RON/Designer guardrail rebuild remains deferred to its own future track.
+
+**Next gates:** choose by product priority: **E-11B**, **D-2a**, continued RF-T5-style flat-star soak, or full simthing-spec/RON/Designer guardrail rebuild. Global default-on remains deferred and is not the default next gate.
 
 **Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. E-11B deferred by default. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
 
@@ -113,6 +115,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **T-4** | #168 | Session integration + boundary refresh; generation skip; flag-off reject 8/8 |
 | **T-5** | #169 | Boundary refresh / replay / 100-tick conservation burn-in 13/13 |
 | **T-6** | `3294e6f` | Limited opt-in scenario flagging; global transfer/emission defaults remain false |
+| **Phase T RON smoke addendum** | — | Designer-authored `resource_economy` RON fixture through deserialize/compile/install/open_from_spec |
 | **D-1** | (pending merge) | Discrete-transaction contention memo; D-2 deferred |
 | **E-11B readiness** | (pending merge) | Nested hierarchy GPU audit; implementation deferred by default |
 | **E-2B static enrollment** | (pending merge) | Selector → explicit participants at install |

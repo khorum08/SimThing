@@ -8,9 +8,7 @@ use simthing_spec::{
     compile_resource_economy, EmissionFormulaSpec, PropertyKey, RecipeInputSpec,
     ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec, ResourceTransferSpec, SpecError,
 };
-use support::{
-    amount_property, exact_eml_registry, fast_eml_registry, register_amount_property,
-};
+use support::{amount_property, exact_eml_registry, fast_eml_registry, register_amount_property};
 
 fn pk(ns: &str, name: &str) -> PropertyKey {
     PropertyKey::new(ns, name)
@@ -87,10 +85,7 @@ fn resource_economy_rejects_unknown_subfield_role() {
         ..Default::default()
     };
     let err = compile_resource_economy(&spec, &reg, &eml).unwrap_err();
-    assert!(matches!(
-        err,
-        SpecError::InvalidResourceEconomyRole { .. }
-    ));
+    assert!(matches!(err, SpecError::InvalidResourceEconomyRole { .. }));
 }
 
 #[test]
@@ -123,9 +118,7 @@ fn resource_economy_rejects_duplicate_authoring_id() {
     };
     assert_eq!(
         compile_resource_economy(&spec, &reg, &eml),
-        Err(SpecError::DuplicateResourceEconomyId {
-            id: "dup".into()
-        })
+        Err(SpecError::DuplicateResourceEconomyId { id: "dup".into() })
     );
 }
 
@@ -221,6 +214,34 @@ fn resource_economy_rejects_empty_recipe_inputs() {
     assert_eq!(
         compile_resource_economy(&spec, &reg, &eml),
         Err(SpecError::EmptyRecipeInputs {
+            recipe: "r1".into()
+        })
+    );
+}
+
+#[test]
+fn resource_economy_compile_rejects_zero_throttle_hint() {
+    let mut reg = support::empty_registry();
+    register_amount_property(&mut reg, "core", "food");
+    register_amount_property(&mut reg, "core", "out");
+    let eml = exact_eml_registry(&[]);
+    let spec = ResourceEconomySpec {
+        recipes: vec![ResourceRecipeSpec {
+            id: "r1".into(),
+            inputs: vec![RecipeInputSpec {
+                property: pk("core", "food"),
+                role: SubFieldRole::Named("amount".into()),
+                unit_cost: 1.0,
+            }],
+            target: pk("core", "out"),
+            target_role: SubFieldRole::Named("amount".into()),
+            throttle_hint_max_per_tick: 0,
+        }],
+        ..Default::default()
+    };
+    assert_eq!(
+        compile_resource_economy(&spec, &reg, &eml),
+        Err(SpecError::InvalidRecipeThrottleHint {
             recipe: "r1".into()
         })
     );

@@ -6,6 +6,23 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 - Phase T designer/RON smoke addendum
+
+- Added [`resource_economy_smoke.ron`](../crates/simthing-spec/tests/fixtures/game_modes/resource_economy_smoke.ron): a minimal designer-authored `GameModeSpec` with explicit transfer, recipe, and emission `ResourceEconomySpec` content.
+- Added [`resource_economy_designer_ron.rs`](../crates/simthing-spec/tests/resource_economy_designer_ron.rs): fixture deserialization, RON roundtrip without resource economy field drop, compile success, and unknown-field rejection for a misspelled transfer source field.
+- Added [`resource_economy_designer_ron_session.rs`](../crates/simthing-driver/tests/resource_economy_designer_ron_session.rs): fixture path through `deserialize_game_mode_ron` -> `SimSession::open_from_spec`, live transfer/recipe/emission registration materialization, and a short session run.
+- Added the missing zero `throttle_hint_max_per_tick` rejection assertion in [`resource_economy_compile_rejections.rs`](../crates/simthing-spec/tests/resource_economy_compile_rejections.rs).
+- Phase T designer/RON smoke addendum landed. A designer-authored resource_economy RON fixture now exercises deserialize_game_mode_ron -> compile/install/open_from_spec.
+- Transfer, recipe, and emission authoring remain explicit `ResourceEconomySpec` content. `ResourceEconomyOptInMode` remains default disabled. Global transfer/emission flags remain default false.
+- No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains spec-free and semantic-free. Resource Flow bounded `FlatStarResourceFlow` posture remains unchanged.
+- Full simthing-spec/RON/Designer guardrail rebuild remains deferred to its own future track.
+
+**Verification:** targeted RON/spec/session suites, resource economy regressions, `cargo check --workspace`, and `cargo test --workspace` PASS. Test visibility report: [`phase_t_resource_economy_designer_ron_test_results.md`](tests/phase_t_resource_economy_designer_ron_test_results.md).
+
+**Next gate:** choose by product priority: E-11B nested hierarchy GPU, D-2a boundary transaction scheduling, continued RF-T5-style flat-star soak, or full simthing-spec/RON/Designer guardrail rebuild.
+
+---
+
 ## 2026-05-27 — RF-T6: production docs / telemetry polish
 
 - Added [`docs/resource_flow_limited_scenario_class_posture.md`](resource_flow_limited_scenario_class_posture.md): production-facing guide for bounded `FlatStarResourceFlow` posture.
