@@ -6,7 +6,7 @@
 |-------|-------|
 | **Date/time** | 2026-05-19 (local) |
 | **Base HEAD (pre-commit)** | `37885c287a53c62941e7351520c7cf4dcf1d7654` |
-| **Final commit SHA** | (pending commit) |
+| **Final commit SHA** | `041c0d8` |
 | **rustc** | 1.95.0 (59807616e 2026-04-14) |
 | **cargo** | 1.95.0 (f2d3ce0bd 2026-03-21) |
 | **Platform/OS** | Windows 10.0.26200 (win32) |
