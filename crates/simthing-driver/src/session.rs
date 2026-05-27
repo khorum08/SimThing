@@ -164,6 +164,8 @@ pub struct SimSession {
     /// Last boundary dynamic Resource Flow fission enrollment report (E-2B-5R).
     pub last_resource_flow_dynamic_enrollment_report:
         Option<crate::resource_flow_fission_enrollment::DynamicFissionEnrollmentReport>,
+    /// RF-T3: why Resource Flow GPU execution is enabled/disabled on this session.
+    pub resource_flow_flag_source: crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource,
 }
 
 impl SimSession {
@@ -207,7 +209,16 @@ impl SimSession {
             tx,
             spec_state: SpecSessionState::new(),
             last_resource_flow_dynamic_enrollment_report: None,
+            resource_flow_flag_source:
+                crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource::DefaultDisabled,
         })
+    }
+
+    /// Test harness only: set Resource Flow flag directly (distinct from spec opt-in).
+    pub fn override_resource_flow_flag_for_tests(&mut self, enabled: bool) {
+        self.proto.flags.use_accumulator_resource_flow = enabled;
+        self.resource_flow_flag_source =
+            crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource::TestOverride;
     }
 
     pub fn install_spec_state(&mut self, spec_state: SpecSessionState) -> Result<(), SessionError> {
@@ -331,6 +342,14 @@ impl SimSession {
             &mut session.proto.allocator,
         )?;
         apply_resource_economy_opt_in(&mut session.proto.flags, game_mode);
+        session.resource_flow_flag_source =
+            crate::resource_flow_opt_in_telemetry::flag_source_from_opt_in_mode(
+                game_mode
+                    .resource_flow
+                    .as_ref()
+                    .map(|spec| spec.opt_in_mode)
+                    .unwrap_or(ResourceFlowOptInMode::Disabled),
+            );
         apply_resource_flow_opt_in(&mut session.proto.flags, game_mode);
         if session.proto.flags.use_accumulator_resource_flow {
             validate_resource_flow_flat_star_opt_in(game_mode, &spec_state)?;

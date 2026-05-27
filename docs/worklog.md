@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — RF-T3: product-like opt-in soak / telemetry surfacing
+
+- **`resource_flow_opt_in_telemetry.rs`** — `ResourceFlowOptInTelemetryReport`, `ResourceFlowFlagSource` (`DefaultDisabled`, `SpecFlatStarOptIn`, `TestOverride`); `SimSession::resource_flow_flag_source` + `collect_resource_flow_opt_in_telemetry`.
+- **`resource_flow_opt_in_product_soak.rs`** — product-like FlatStarOptIn fixtures (128/256 static, dynamic fission cadence, multi-arena, replay, disabled, rejection, resync) + soak/telemetry runners.
+- **Tests:** [`resource_flow_opt_in_telemetry.rs`](../crates/simthing-driver/tests/resource_flow_opt_in_telemetry.rs) (6), [`resource_flow_opt_in_product_soak.rs`](../crates/simthing-driver/tests/resource_flow_opt_in_product_soak.rs) (13).
+- RF-T3 landed: product-like opt-in Resource Flow soak and telemetry surfacing. FlatStarOptIn scenarios now emit/record flag-source, sync, arena, participant, generation, dynamic admission/rejection, and parity/replay metrics. Global flag remains default false. E-11B and Policy B remain deferred. No WGSL. No CPU fallback. `simthing-sim` remains arena-ignorant.
+
+**Verification:** targeted RF-T3 + regression suites + `cargo test --workspace` — PASS ([test report](tests/resource_flow_opt_in_product_soak_test_results.md)).
+
+**Next gate:** Resource Flow global default-on readiness re-review (before RF-T4 or any default-on implementation).
+
+---
+
 ## 2026-05-19 — RF-T2: limited opt-in scenario burn-in expansion
 
 - **`resource_flow_opt_in_burn_in.rs`** — named RF-T2 fixtures opening via `ResourceFlowOptInMode::FlatStarOptIn` + `SimSession::open_from_spec`; static 10/64-participant, skewed-weight, dynamic single/multi fission, two-arena, disabled, wildcard-reject, resync, replay paths.
