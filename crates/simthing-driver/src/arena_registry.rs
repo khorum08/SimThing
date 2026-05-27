@@ -251,6 +251,26 @@ impl ArenaRegistry {
         }
     }
 
+    /// Preflight runtime admission without mutating the registry.
+    pub fn can_admit_participant_runtime(
+        &self,
+        arena_idx: ArenaIdx,
+    ) -> Result<(), ArenaRegistryError> {
+        let arena = self
+            .arenas
+            .get(arena_idx as usize)
+            .ok_or(ArenaRegistryError::InvalidArenaIdx(arena_idx))?;
+        let next_count = arena.participant_range.1.saturating_add(1);
+        if next_count > arena.max_participants {
+            return Err(ArenaRegistryError::MaxParticipantsExceeded {
+                arena: arena.name.clone(),
+                declared: arena.max_participants,
+                computed: next_count,
+            });
+        }
+        Ok(())
+    }
+
     /// Admit a participant at runtime (E-2B-5). Updates arena participant slices
     /// without rebuilding the registry. Does not bump `generation` — caller
     /// batches one increment per boundary enrollment pass.

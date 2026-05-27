@@ -159,6 +159,9 @@ pub struct SimSession {
     pub rx: simthing_feeder::FeederReceiver,
     pub tx: simthing_feeder::FeederSender,
     pub spec_state: SpecSessionState,
+    /// Last boundary dynamic Resource Flow fission enrollment report (E-2B-5R).
+    pub last_resource_flow_dynamic_enrollment_report:
+        Option<crate::resource_flow_fission_enrollment::DynamicFissionEnrollmentReport>,
 }
 
 impl SimSession {
@@ -201,6 +204,7 @@ impl SimSession {
             rx,
             tx,
             spec_state: SpecSessionState::new(),
+            last_resource_flow_dynamic_enrollment_report: None,
         })
     }
 
@@ -429,8 +433,7 @@ impl SimSession {
                 // S5 follow-up: register capability instances + threshold
                 // registrations for any fission-cloned capability subtrees.
                 self.react_to_fission_clones(&outcome);
-                self.react_to_fission_resource_flow_enrollment(&outcome);
-                self.sync_resource_flow_if_enabled()?;
+                self.react_to_fission_resource_flow_enrollment(&outcome)?;
                 self.sync_resource_economy_if_enabled()?;
             }
         }
@@ -558,8 +561,7 @@ impl SimSession {
                 // S5 follow-up (same as `run`): register capability
                 // instances + threshold registrations for fission clones.
                 self.react_to_fission_clones(&outcome);
-                self.react_to_fission_resource_flow_enrollment(&outcome);
-                self.sync_resource_flow_if_enabled()?;
+                self.react_to_fission_resource_flow_enrollment(&outcome)?;
                 self.sync_resource_economy_if_enabled()?;
             }
         }
@@ -695,20 +697,36 @@ impl SimSession {
 
     /// E-2B-5 Policy A: enroll fission-spawned hosted SimThings into parent's
     /// Resource Flow arenas via arena-root sibling append.
-    fn react_to_fission_resource_flow_enrollment(&mut self, outcome: &BoundaryOutcome) {
+    pub fn react_to_fission_resource_flow_enrollment(
+        &mut self,
+        outcome: &BoundaryOutcome,
+    ) -> Result<(), SessionError> {
         if outcome.fission.fission_pairs.is_empty()
             || self.spec_state.arena_registry.arenas.is_empty()
         {
-            return;
+            self.last_resource_flow_dynamic_enrollment_report = None;
+            return Ok(());
         }
-        let _report = crate::resource_flow_fission_enrollment::react_to_fission_resource_flow_enrollment(
-            &outcome.fission,
-            &mut self.spec_state.arena_registry,
-            &mut self.spec_state.arena_participant_scaffold,
-            &mut self.proto.root,
-            &self.proto.registry,
-            &mut self.proto.allocator,
-        );
+        let report =
+            crate::resource_flow_fission_enrollment::react_to_fission_resource_flow_enrollment(
+                &outcome.fission,
+                &mut self.spec_state.arena_registry,
+                &mut self.spec_state.arena_participant_scaffold,
+                &mut self.proto.root,
+                &self.proto.registry,
+                &mut self.proto.allocator,
+            );
+        let should_sync = report.any_admissions()
+            && self.proto.flags.use_accumulator_resource_flow;
+        if !report.admissions.is_empty() || !report.rejections.is_empty() {
+            self.last_resource_flow_dynamic_enrollment_report = Some(report);
+        } else {
+            self.last_resource_flow_dynamic_enrollment_report = None;
+        }
+        if should_sync {
+            self.sync_resource_flow_if_enabled()?;
+        }
+        Ok(())
     }
 }
 

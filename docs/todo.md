@@ -136,14 +136,14 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Open design warnings (preserve):**
 - Transfer/emission registration ownership: **Phase T complete.** T-6 landed limited opt-in scenario flagging for resource economy transfer/emission. Global transfer/emission flags remain default false. Only explicitly opted-in scenarios enable AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free. Hard-currency transfers remain on exact discrete AccumulatorOp transfer paths, not Resource Flow.
-- **E-2B-5 Policy A dynamic fission enrollment landed:** [`react_to_fission_resource_flow_enrollment`](../crates/simthing-driver/src/resource_flow_fission_enrollment.rs) + session boundary hook. Fission children inherit parent arena membership via arena-root sibling append. Policy B Reevaluate deferred. Gap-only enrollment not used for flat-star. E-11B deferred. `use_accumulator_resource_flow` default false. Test report: [`e2b5_dynamic_fission_enrollment_implementation_test_results.md`](tests/e2b5_dynamic_fission_enrollment_implementation_test_results.md).
+- **E-2B-5R landed:** dynamic fission enrollment atomicity and visible diagnostics hardening. Failed dynamic enrollment cannot leave partial tree/scaffold/registry state. Boundary-time dynamic enrollment reports are retained/inspectable. Policy A inherit-only remains the implemented v1. Policy B Reevaluate remains deferred. Gap-only enrollment remains reserved for future E-11B nested hierarchy semantics. E-11B remains deferred by default. `use_accumulator_resource_flow` remains default false. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant. Test report: [`e2b5r_dynamic_fission_enrollment_atomicity_test_results.md`](tests/e2b5r_dynamic_fission_enrollment_atomicity_test_results.md).
 - **E-2B static enrollment compilation landed:** Resource Flow enrollment selectors resolve to explicit participants at session install ([`EnrollmentSelectorSpec`](../crates/simthing-spec/src/spec/resource_flow.rs), [`resolve_resource_flow_enrollment`](../crates/simthing-driver/src/resource_flow_enrollment.rs)). No legacy `resource_flow_participant` AccumulatorOp builder. E-10R/E-10R2/E-10R3 scaffold and E-11 flat-star execution reused unchanged.
 - **E-11B readiness review landed:** nested hierarchy GPU execution/materialization current-state audit ([`e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md)). No production code changes. E-11B deferred by default.
 - **D-1 memo landed:** discrete-transaction contention current-state audit ([`d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md)). No production code changes.
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; T-2 compile rejects same-band authoring collisions.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
-**E-2B:** **Done (static E-2B-1…4 + E-2B-5 Policy A).**
+**E-2B:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R).**
 
 **Next (immediate):** Resource Flow dynamic enrollment soak / opt-in scenario burn-in; or E-11B, D-2a, Resource Flow default-on per product priority.
 

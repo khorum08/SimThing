@@ -13,7 +13,7 @@ use simthing_spec::{PropertyKey, ResourceFlowSpec, SpecError};
 use std::collections::HashMap;
 use thiserror::Error;
 
-use crate::arena_registry::{ArenaIdx, ArenaRegistryError, FissionPolicy, SlotId};
+use crate::arena_registry::{ArenaIdx, ArenaRegistry, ArenaRegistryError, FissionPolicy, SlotId};
 use crate::install::InstallError;
 
 /// `(hosted SimThing id, arena idx) → arena-participant slot`.
@@ -193,19 +193,30 @@ pub enum DynamicEnrollmentError {
     },
 }
 
-/// Append a fission child as a new arena-root sibling participant (Policy A flat-star path).
-///
-/// Does not consume E-10R3 gap pools. Rejects when `last_sibling + 1` is blocked.
-pub fn try_append_arena_root_sibling_participant(
-    scaffold: &mut ArenaParticipantScaffold,
-    root: &mut SimThing,
+/// Prepared arena-root sibling append — all preflight checks passed; commit applies mutations.
+#[derive(Clone, Debug)]
+pub struct PendingDynamicArenaRootParticipant {
+    pub arena_idx: ArenaIdx,
+    pub arena_name: String,
+    pub child_hosted_id: SimThingId,
+    pub arena_root_id: SimThingId,
+    pub last_sibling_slot: SlotId,
+    pub participant_slot: SlotId,
+    pub participant_node: SimThing,
+}
+
+/// Preflight arena-root sibling append without mutating tree/scaffold/allocator/registry.
+pub fn prepare_dynamic_arena_root_append(
+    scaffold: &ArenaParticipantScaffold,
+    root: &SimThing,
     arena_idx: ArenaIdx,
     arena_name: &str,
     child_hosted_id: SimThingId,
     flow_property_id: SimPropertyId,
     registry: &DimensionRegistry,
-    allocator: &mut SlotAllocator,
-) -> Result<SlotId, DynamicEnrollmentError> {
+    allocator: &SlotAllocator,
+    arena_registry: &ArenaRegistry,
+) -> Result<PendingDynamicArenaRootParticipant, DynamicEnrollmentError> {
     if scaffold
         .index
         .participant_slot(child_hosted_id, arena_idx)
@@ -234,9 +245,22 @@ pub fn try_append_arena_root_sibling_participant(
         });
     }
 
+    arena_registry
+        .can_admit_participant_runtime(arena_idx)
+        .map_err(|source| DynamicEnrollmentError::RegistryAdmissionFailed {
+            arena: arena_name.to_string(),
+            source,
+        })?;
+
     let last_sibling = *sibling_slots.last().expect("non-empty siblings");
+    let participant_slot = allocator
+        .can_alloc_contiguous_after(last_sibling)
+        .map_err(|source| DynamicEnrollmentError::ContiguityExtensionFailed {
+            arena: arena_name.to_string(),
+            source,
+        })?;
+
     let mut participant_node = SimThing::new(SimThingKind::ArenaParticipant, 0);
-    let participant_id = participant_node.id;
     seed_participant_property(
         &mut participant_node,
         flow_property_id,
@@ -244,26 +268,93 @@ pub fn try_append_arena_root_sibling_participant(
         child_hosted_id,
     );
 
-    let participant_slot = allocator
-        .try_alloc_contiguous_after(last_sibling, participant_id)
+    Ok(PendingDynamicArenaRootParticipant {
+        arena_idx,
+        arena_name: arena_name.to_string(),
+        child_hosted_id,
+        arena_root_id,
+        last_sibling_slot: last_sibling,
+        participant_slot,
+        participant_node,
+    })
+}
+
+/// Commit a prepared append: allocator → registry → tree → scaffold.
+pub fn commit_dynamic_arena_root_append(
+    pending: PendingDynamicArenaRootParticipant,
+    scaffold: &mut ArenaParticipantScaffold,
+    root: &mut SimThing,
+    arena_registry: &mut ArenaRegistry,
+    allocator: &mut SlotAllocator,
+) -> Result<SlotId, DynamicEnrollmentError> {
+    let participant_id = pending.participant_node.id;
+    let allocated_slot = allocator
+        .try_alloc_contiguous_after(pending.last_sibling_slot, participant_id)
         .map_err(|source| DynamicEnrollmentError::ContiguityExtensionFailed {
-            arena: arena_name.to_string(),
+            arena: pending.arena_name.clone(),
             source,
         })?;
+    debug_assert_eq!(allocated_slot, pending.participant_slot);
 
-    let arena_root = find_child_mut(root, arena_root_id).expect("arena root in tree");
-    arena_root.add_child(participant_node);
+    if let Err(source) = arena_registry.admit_participant_runtime(
+        pending.arena_idx,
+        allocated_slot,
+        pending.child_hosted_id,
+    ) {
+        let _ = allocator.tombstone(participant_id);
+        return Err(DynamicEnrollmentError::RegistryAdmissionFailed {
+            arena: pending.arena_name,
+            source,
+        });
+    }
 
-    scaffold
-        .index
-        .by_host_and_arena
-        .insert((child_hosted_id, arena_idx), participant_slot);
+    let arena_root = find_child_mut(root, pending.arena_root_id).expect("arena root in tree");
+    arena_root.add_child(pending.participant_node);
 
-    if let Some(report) = scaffold.reports.get_mut(arena_idx as usize) {
+    scaffold.index.by_host_and_arena.insert(
+        (pending.child_hosted_id, pending.arena_idx),
+        allocated_slot,
+    );
+
+    if let Some(report) = scaffold.reports.get_mut(pending.arena_idx as usize) {
         report.participant_count = report.participant_count.saturating_add(1);
     }
 
-    Ok(participant_slot)
+    Ok(allocated_slot)
+}
+
+/// Append a fission child as a new arena-root sibling participant (Policy A flat-star path).
+///
+/// Does not consume E-10R3 gap pools. Rejects when `last_sibling + 1` is blocked.
+pub fn try_append_arena_root_sibling_participant(
+    scaffold: &mut ArenaParticipantScaffold,
+    root: &mut SimThing,
+    arena_idx: ArenaIdx,
+    arena_name: &str,
+    child_hosted_id: SimThingId,
+    flow_property_id: SimPropertyId,
+    registry: &DimensionRegistry,
+    allocator: &mut SlotAllocator,
+    arena_registry: &mut ArenaRegistry,
+) -> Result<SlotId, DynamicEnrollmentError> {
+    let pending = prepare_dynamic_arena_root_append(
+        scaffold,
+        root,
+        arena_idx,
+        arena_name,
+        child_hosted_id,
+        flow_property_id,
+        registry,
+        allocator,
+        arena_registry,
+    )?;
+    commit_dynamic_arena_root_append(
+        pending,
+        scaffold,
+        root,
+        arena_registry,
+        allocator,
+    )
 }
 
 /// Consume a reserved gap slot for a fission-spawned participant child, or reject

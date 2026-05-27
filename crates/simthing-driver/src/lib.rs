@@ -38,11 +38,12 @@ pub use arena_hierarchy::{
 };
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};
 pub use arena_participant::{
-    all_reserved_gap_slots, arena_participant_sibling_slots, materialize_arena_participants,
+    all_reserved_gap_slots, arena_participant_sibling_slots, commit_dynamic_arena_root_append,
+    materialize_arena_participants, prepare_dynamic_arena_root_append,
     slot_in_participant_sibling_range, slots_are_contiguous, try_alloc_participant_child_in_gap,
     try_append_arena_root_sibling_participant, ArenaParticipantAllocationReport,
     ArenaParticipantIndex, ArenaParticipantScaffold, DynamicEnrollmentError, GapAllocError,
-    ReservedGapPool,
+    PendingDynamicArenaRootParticipant, ReservedGapPool,
 };
 pub use arena_registry::{
     ArenaCoupling, ArenaDiagnostic, ArenaExpansionReport, ArenaIdx, ArenaParticipant,

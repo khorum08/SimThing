@@ -8,10 +8,13 @@ use simthing_core::{
 };
 use simthing_driver::{
     all_reserved_gap_slots, arena_participant_sibling_slots, build_execution_plan,
-    materialize_arena_participants, plan_arena_allocation, react_to_fission_resource_flow_enrollment,
-    run_flat_star_burn_in, slots_are_contiguous, validate_resource_flow_preflight,
-    ArenaRegistryBuilder, FissionPolicy, GpuArenaDescriptor, SimSession,
+    commit_dynamic_arena_root_append, materialize_arena_participants,
+    plan_arena_allocation, prepare_dynamic_arena_root_append,
+    react_to_fission_resource_flow_enrollment, run_flat_star_burn_in, slots_are_contiguous,
+    validate_resource_flow_preflight, ArenaRegistryBuilder, FissionPolicy, GpuArenaDescriptor,
+    SimSession,
 };
+use simthing_sim::BoundaryOutcome;
 use simthing_gpu::SlotAllocator;
 use simthing_sim::{FissionOutcome, PipelineFlags};
 use simthing_spec::{
@@ -363,14 +366,218 @@ fn e2b5_reject_policy_does_not_enroll_child() {
 }
 
 #[test]
-fn e2b5_max_participants_exceeded_rejects_child() {
+fn e2b5_max_participants_exceeded_rejects_child_without_partial_mutation() {
     let mut fx = open_enrollment_fixture(1, 1, FissionPolicySpec::Inherit, 0);
+    let arena_root_id = fx.spec_state.arena_participant_scaffold.arena_root_ids[&0];
+    let siblings_before = arena_participant_sibling_slots(&fx.root, arena_root_id, &fx.alloc);
+    let participants_before = fx.spec_state.arena_registry.participants.clone();
+    let gen_before = fx.spec_state.arena_registry.generation;
+    let live_before = fx.alloc.live_count();
+
     let report = apply_dynamic_enrollment(&mut fx);
 
     assert!(report.admissions.is_empty());
     assert_eq!(report.rejections.len(), 1);
     assert!(report.rejections[0].reason.contains("max_participants"));
+    assert!(
+        fx.spec_state
+            .arena_participant_scaffold
+            .index
+            .participant_slot(fx.child_id, 0)
+            .is_none()
+    );
+    let siblings_after = arena_participant_sibling_slots(&fx.root, arena_root_id, &fx.alloc);
+    assert_eq!(siblings_before, siblings_after);
+    assert_eq!(fx.spec_state.arena_registry.participants, participants_before);
+    assert_eq!(fx.spec_state.arena_registry.generation, gen_before);
+    assert_eq!(fx.alloc.live_count(), live_before);
 }
+
+#[test]
+fn e2b5_registry_rejection_does_not_mutate_scaffold_or_tree() {
+    let mut fx = open_enrollment_fixture(1, 16, FissionPolicySpec::Inherit, 0);
+    let arena_root_id = fx.spec_state.arena_participant_scaffold.arena_root_ids[&0];
+    let siblings_before = arena_participant_sibling_slots(&fx.root, arena_root_id, &fx.alloc);
+    let participants_before = fx.spec_state.arena_registry.participants.clone();
+    let index_before = fx.spec_state.arena_participant_scaffold.index.clone();
+    let gen_before = fx.spec_state.arena_registry.generation;
+    let live_before = fx.alloc.live_count();
+    let flow_id = fx.reg.id_of("core", "food_flow").unwrap();
+
+    let pending = prepare_dynamic_arena_root_append(
+        &fx.spec_state.arena_participant_scaffold,
+        &fx.root,
+        0,
+        "food",
+        fx.child_id,
+        flow_id,
+        &fx.reg,
+        &fx.alloc,
+        &fx.spec_state.arena_registry,
+    )
+    .expect("prepare should pass with capacity");
+
+    fx.spec_state.arena_registry.arenas[0].max_participants = 1;
+
+    let err = commit_dynamic_arena_root_append(
+        pending,
+        &mut fx.spec_state.arena_participant_scaffold,
+        &mut fx.root,
+        &mut fx.spec_state.arena_registry,
+        &mut fx.alloc,
+    )
+    .expect_err("registry should reject after cap shrink");
+
+    assert!(matches!(
+        err,
+        simthing_driver::DynamicEnrollmentError::RegistryAdmissionFailed { .. }
+    ));
+    assert!(
+        fx.spec_state
+            .arena_participant_scaffold
+            .index
+            .participant_slot(fx.child_id, 0)
+            .is_none()
+    );
+    assert_eq!(
+        fx.spec_state.arena_participant_scaffold.index,
+        index_before
+    );
+    let siblings_after = arena_participant_sibling_slots(&fx.root, arena_root_id, &fx.alloc);
+    assert_eq!(siblings_before, siblings_after);
+    assert_eq!(fx.spec_state.arena_registry.participants, participants_before);
+    assert_eq!(fx.spec_state.arena_registry.generation, gen_before);
+    assert_eq!(fx.alloc.live_count(), live_before);
+}
+
+#[test]
+fn e2b5_session_boundary_records_dynamic_enrollment_report() {
+    let mut fx = open_enrollment_fixture(1, 16, FissionPolicySpec::Inherit, 0);
+    let child_id = fx.child_id;
+    let parent_id = fx.parent_id;
+    let scenario = support::e11_flat_star::flat_star_scenario(1, 32);
+    let mut session = SimSession::open(scenario).expect("open");
+    session.proto.root = fx.root;
+    session.proto.allocator = fx.alloc;
+    session.proto.registry = fx.reg;
+    session.spec_state = fx.spec_state;
+
+    let outcome = BoundaryOutcome {
+        fission: fission_outcome(parent_id, child_id),
+        ..Default::default()
+    };
+    session
+        .react_to_fission_resource_flow_enrollment(&outcome)
+        .expect("enrollment hook");
+
+    let report = session
+        .last_resource_flow_dynamic_enrollment_report
+        .expect("report retained");
+    assert_eq!(report.admissions.len(), 1);
+    assert!(report.rejections.is_empty());
+}
+
+#[test]
+fn e2b5_no_admission_does_not_change_resource_flow_upload_state() {
+    let Some(_gpu) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut fx = open_enrollment_fixture(1, 1, FissionPolicySpec::Inherit, 0);
+    let child_id = fx.child_id;
+    let parent_id = fx.parent_id;
+    let scenario = support::e11_flat_star::flat_star_scenario(1, 32);
+    let mut session = SimSession::open(scenario).expect("open");
+    session.proto.root = fx.root;
+    session.proto.allocator = fx.alloc;
+    session.proto.registry = fx.reg;
+    session.spec_state = fx.spec_state;
+    session.proto.flags.use_accumulator_resource_flow = true;
+    session.sync_resource_flow_if_enabled().expect("initial sync");
+    let ops_before = session
+        .state
+        .accumulator_runtime
+        .as_ref()
+        .unwrap()
+        .resource_flow_ops
+        .count;
+    let gen_before = session.spec_state.arena_registry.generation;
+
+    let outcome = BoundaryOutcome {
+        fission: fission_outcome(parent_id, child_id),
+        ..Default::default()
+    };
+    session
+        .react_to_fission_resource_flow_enrollment(&outcome)
+        .expect("rejected enrollment");
+
+    let report = session
+        .last_resource_flow_dynamic_enrollment_report
+        .as_ref()
+        .expect("rejection report");
+    assert!(report.admissions.is_empty());
+    assert_eq!(report.rejections.len(), 1);
+    let ops_after = session
+        .state
+        .accumulator_runtime
+        .as_ref()
+        .unwrap()
+        .resource_flow_ops
+        .count;
+    assert_eq!(ops_before, ops_after);
+    assert_eq!(session.spec_state.arena_registry.generation, gen_before);
+}
+
+#[test]
+fn e2b5_successful_admission_still_resyncs_when_flag_enabled() {
+    let Some(_gpu) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+
+    let mut fx = open_enrollment_fixture(2, 16, FissionPolicySpec::Inherit, 0);
+    apply_dynamic_enrollment(&mut fx);
+
+    let scenario = support::e11_flat_star::flat_star_scenario(2, 64);
+    let mut session = SimSession::open(scenario).expect("open");
+    session.proto.root = fx.root;
+    session.proto.allocator = fx.alloc;
+    session.proto.registry = fx.reg;
+    session.spec_state = fx.spec_state;
+    session.proto.flags.use_accumulator_resource_flow = true;
+
+    let plan = build_execution_plan(
+        &session.proto.registry,
+        &session.spec_state.arena_registry.arenas,
+        &session.proto.root,
+        &session.proto.allocator,
+        &session.spec_state.arena_participant_scaffold,
+        session.spec_state.arena_registry.generation,
+    )
+    .expect("plan");
+    let expected_ops = plan_arena_allocation(
+        &plan.arenas[0],
+        &simthing_gpu::build_governed_pairs(&session.proto.registry),
+        session.state.n_slots,
+    )
+    .expect("plan ops")
+    .cpu_ops
+    .len() as u32;
+
+    session.sync_resource_flow_if_enabled().expect("sync");
+    assert_eq!(
+        session
+            .state
+            .accumulator_runtime
+            .as_ref()
+            .unwrap()
+            .resource_flow_ops
+            .count,
+        expected_ops
+    );
+}
+
 
 #[test]
 fn e2b5_contiguity_extension_impossible_rejects_no_compaction() {
