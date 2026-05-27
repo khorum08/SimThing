@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — E-11B-4: nested fission / gap preservation hardening
+
+- Added nested fission/gap diagnostics: `reserve_gap_pools_for_parent_slots`, `nested_fission_gap_report`, `gap_pool_snapshot`, `HierarchyNode::active_child_slots`, `ArenaTreeLayout::interior_participant_slots`.
+- Added [`e11b_nested_fission_gap.rs`](../crates/simthing-driver/tests/e11b_nested_fission_gap.rs) (13 tests): reserved-gap SlotRange preservation, gap-only non-leaf behavior, contiguity/rejection without compaction, D=3/D=4 GPU parity after safe gap claims, gap exhaustion, replay determinism, flat-star regression.
+- E-11B nested fission/gap hardening landed. No dynamic nested enrollment. No Policy B. No WGSL. No CPU fallback. `simthing-sim` remains arena-ignorant. FlatStarResourceFlow posture unchanged. Global flag remains default false.
+
+**Verification:** [`e11b_nested_fission_gap_test_results.md`](tests/e11b_nested_fission_gap_test_results.md) — targeted E-11B + regression suites PASS (local GPU).
+
+**Next gate:** product priority: continue E-11B toward nested dynamic enrollment, narrow D-2a, simthing-spec/RON rebuild, or continued soak.
+
+---
+
 ## 2026-05-27 - E-11B nested hierarchy GPU kickoff
 
 - Added nested hierarchy materialization for already-authored static

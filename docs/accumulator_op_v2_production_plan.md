@@ -1263,26 +1263,11 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **D-2a readiness status:** **Done** — [`docs/reviews/d2a_boundary_transaction_scheduling_readiness.md`](reviews/d2a_boundary_transaction_scheduling_readiness.md). Boundary transaction scheduling readiness review. No production code changes. Phase T remains complete. Phase T designer/RON smoke addendum remains landed. Hard-currency transfer remains exact discrete AccumulatorOp transfer/recipe/emission. Resource Flow remains separate. Bounded `FlatStarResourceFlow` posture unchanged. Global Resource Flow default-on remains deferred. **Recommendation: defer D-2a implementation** until a named multi-transaction product scenario requires sequential cross-band ordering; narrow driver-only ladder documented if approved later. No WGSL. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains spec-free and semantic-free.
 
-**Next gate:** after the E-11B kickoff slice, choose by product priority: continue
-E-11B toward fission/gap preservation, narrow D-2a implementation only after a
-named hard-currency scenario needs sequential cross-band ordering,
-simthing-spec/RON/Designer guardrail rebuild, or continued flat-star soak. Global
-default-on remains deferred.
+**Next gate:** choose by product priority: continue E-11B toward nested dynamic enrollment, narrow D-2a only after a named hard-currency scenario, simthing-spec/RON/Designer guardrail rebuild, or continued flat-star soak. Global default-on remains deferred.
 
 **E-11B readiness status:** **Done** — [`docs/reviews/e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md). Nested hierarchy GPU execution/materialization current-state audit. No production code changes. Phase T remains complete. D-1 remains landed; D-2 GPU allocator remains deferred. `use_accumulator_resource_flow` remains default false. E-11B deferred by default.
 
-**E-11B implementation status:** **Kickoff slice landed.** Nested D=3/D=4
-static Resource Flow hierarchy materialization now has GPU parity coverage via
-existing AccumulatorOp v2 OrderBand reduction/allocation bands. FlatStarResourceFlow
-remains the accepted bounded production posture. E-11B is an explicit nested
-extension and does not make Resource Flow global default-on. Global
-`PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence
-of `ResourceFlowSpec` alone does not enable GPU execution. Policy B Reevaluate
-remains deferred. D-2a remains deferred until a named hard-currency product
-scenario needs sequential cross-band ordering. No WGSL changes. No new
-`AccumulatorRole` variants. No CPU production fallback. `simthing-sim` remains
-arena-ignorant. Resource Flow remains separate from hard-currency transfer.
-Designer-facing spec/RON guardrail rebuild remains deferred.
+**E-11B implementation status:** **Kickoff + fission/gap hardening landed.** Nested D=3/D=4 static Resource Flow hierarchy materialization has GPU parity coverage via existing AccumulatorOp v2 OrderBand reduction/allocation bands. **E-11B nested fission/gap hardening landed:** reserved-gap children preserve active child SlotRange and do not become allocation leaves unless explicitly admitted by a future nested enrollment gate; D=3/D=4 nested GPU parity remains green for active trees after safe gap claims; attaching gap fission children to nested topology rejects without slot compaction. FlatStarResourceFlow remains the accepted bounded production posture. E-11B is an explicit nested extension and does not make Resource Flow global default-on. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Policy B Reevaluate remains deferred. D-2a remains deferred until a named hard-currency product scenario needs sequential cross-band ordering. No WGSL changes. No new `AccumulatorRole` variants. No CPU production fallback. `simthing-sim` remains arena-ignorant. Resource Flow remains separate from hard-currency transfer. Designer-facing spec/RON guardrail rebuild remains deferred.
 
 **E-2B-5 status:** **Done (Policy A implementation + E-2B-5R hardening)** — [`react_to_fission_resource_flow_enrollment`](../crates/simthing-driver/src/resource_flow_fission_enrollment.rs) wired in `SimSession` boundary path. Fission children inherit parent arena membership and are admitted as arena-root sibling participants when capacity and contiguous-slot extension allow. **E-2B-5R landed:** dynamic fission enrollment atomicity and visible diagnostics hardening. Failed dynamic enrollment cannot leave partial tree/scaffold/registry state. Boundary-time dynamic enrollment reports are retained/inspectable via `last_resource_flow_dynamic_enrollment_report`. Policy B Reevaluate remains deferred (mapped to inherit-only). Gap-only enrollment reserved for future E-11B nested hierarchy semantics; not used for flat-star leaf disbursement. Soak: PR #178.
 
@@ -1338,6 +1323,7 @@ default false and are enabled only by scenario/session opt-in.
 | **Phase T RON smoke addendum** | — | Designer-authored `resource_economy` RON fixture through deserialize/compile/install/open path | **Done** — `resource_economy_designer_ron` + `resource_economy_designer_ron_session`; no runtime behavior expansion |
 | **D-2a readiness** | — | Boundary transaction scheduling readiness review (post–D-1) | **Done** — [`d2a_boundary_transaction_scheduling_readiness.md`](reviews/d2a_boundary_transaction_scheduling_readiness.md); **defer implementation** |
 | **E-11B kickoff** | Composer 2.5 | Nested D=3/D=4 static hierarchy materialization + GPU parity tests | **Done** — explicit nested extension; no default-on, WGSL, roles, CPU fallback, or `simthing-sim` arena awareness |
+| **E-11B-4** | Composer 2.5 | Nested fission/gap preservation hardening + diagnostics | **Done** — `e11b_nested_fission_gap` suite (13 tests) |
 
 **Stop conditions (re-asserted; all unchanged from the v2 ADR):** no new WGSL,
 no new `AccumulatorOp` primitive, no `simthing-sim` semantic ownership of

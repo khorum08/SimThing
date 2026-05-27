@@ -462,6 +462,93 @@ pub fn all_reserved_gap_slots(scaffold: &ArenaParticipantScaffold) -> Vec<SlotId
     out
 }
 
+/// Reserve E-10R3 gap pools for explicit interior participant slots (nested layouts).
+pub fn reserve_gap_pools_for_parent_slots(
+    scaffold: &mut ArenaParticipantScaffold,
+    allocator: &mut SlotAllocator,
+    parent_slots: &[SlotId],
+    gap_per_parent: u32,
+) -> Option<SlotId> {
+    if gap_per_parent == 0 || parent_slots.is_empty() {
+        return None;
+    }
+    let total = gap_per_parent.saturating_mul(parent_slots.len() as u32);
+    let gap_block = allocator.reserve_exclusive_gap_block(total);
+    for (i, parent_slot) in parent_slots.iter().enumerate() {
+        let start = (i as u32 * gap_per_parent) as usize;
+        let end = start + gap_per_parent as usize;
+        scaffold.gap_pools.insert(
+            *parent_slot,
+            ReservedGapPool {
+                parent_participant_slot: *parent_slot,
+                available: gap_block[start..end].to_vec(),
+            },
+        );
+    }
+    gap_block.first().copied()
+}
+
+/// Diagnostic report for nested fission / reserved-gap preservation (driver/test-reporting).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct NestedFissionGapReport {
+    pub parent_participant_slot: SlotId,
+    pub active_child_slots: Vec<SlotId>,
+    pub reserved_gap_slots: Vec<SlotId>,
+    pub gap_outside_active_child_span: bool,
+    pub gap_outside_arena_sibling_range: bool,
+    pub active_children_contiguous: bool,
+}
+
+/// Build a nested fission/gap preservation report for one interior parent.
+pub fn nested_fission_gap_report(
+    parent_participant_slot: SlotId,
+    active_child_slots: &[SlotId],
+    scaffold: &ArenaParticipantScaffold,
+    arena_sibling_first: Option<SlotId>,
+    arena_sibling_count: u32,
+) -> NestedFissionGapReport {
+    let reserved_gap_slots = scaffold
+        .gap_pools
+        .get(&parent_participant_slot)
+        .map(|pool| pool.reserved_slots().to_vec())
+        .unwrap_or_default();
+    let gap_outside_active_child_span = if active_child_slots.is_empty() {
+        !reserved_gap_slots.is_empty()
+    } else {
+        let first = active_child_slots[0];
+        let count = active_child_slots.len() as u32;
+        reserved_gap_slots
+            .iter()
+            .all(|slot| !slot_in_active_child_span(first, count, *slot))
+    };
+    let gap_outside_arena_sibling_range = reserved_gap_slots.iter().all(|slot| {
+        arena_sibling_first
+            .map(|first| !slot_in_participant_sibling_range(first, arena_sibling_count, *slot))
+            .unwrap_or(true)
+    });
+    NestedFissionGapReport {
+        parent_participant_slot,
+        active_child_slots: active_child_slots.to_vec(),
+        reserved_gap_slots,
+        gap_outside_active_child_span,
+        gap_outside_arena_sibling_range,
+        active_children_contiguous: slots_are_contiguous(active_child_slots),
+    }
+}
+
+fn slot_in_active_child_span(first: SlotId, count: u32, slot: SlotId) -> bool {
+    count > 0 && slot >= first && slot < first.saturating_add(count)
+}
+
+/// Snapshot reserved-gap pool availability for replay/determinism checks.
+pub fn gap_pool_snapshot(scaffold: &ArenaParticipantScaffold) -> HashMap<SlotId, Vec<SlotId>> {
+    scaffold
+        .gap_pools
+        .iter()
+        .map(|(parent, pool)| (*parent, pool.reserved_slots().to_vec()))
+        .collect()
+}
+
 /// True when `slots` form a contiguous ascending range (SlotRange precondition).
 pub fn slots_are_contiguous(slots: &[SlotId]) -> bool {
     if slots.is_empty() {
