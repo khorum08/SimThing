@@ -1032,7 +1032,7 @@ These five PRs land the Resource Flow Substrate per
 `docs/adr/resource_flow_substrate.md`. The substrate is a registration
 discipline on top of AccumulatorOp v2; no new GPU primitive is introduced.
 
-**PR sequencing:** E-7 through E-10 landed (#149–#153). **E-10R, E-8R, and E-7R landed** as pre-E-11 prerequisites. Opus v2 E-11 design memo accepted ([`docs/workshop/e11_hierarchical_allocation_design.md`](workshop/e11_hierarchical_allocation_design.md)). **Cursor must not implement E-11 allocation execution until a post-prerequisite review pass confirms the landed APIs and produces a narrowed handoff.** E-1, E-3, E-5 remain independent. E-2 split can land independently.
+**PR sequencing:** E-7 through E-10 landed (#149–#153). **E-10R, E-8R, E-7R, and E-10R2 landed** as pre-E-11 prerequisites. Opus v2 E-11 design memo accepted ([`docs/workshop/e11_hierarchical_allocation_design.md`](workshop/e11_hierarchical_allocation_design.md)). **Cursor must not implement E-11 allocation execution until a post-prerequisite review pass confirms the landed APIs and produces a narrowed handoff.** E-1, E-3, E-5 remain independent. E-2 split can land independently.
 
 ### PR E-7 — `governed_by` planner generalization
 
@@ -1185,7 +1185,7 @@ OrderBand sweep with per-intermediate weight reductions and per-child share
 computations. The composition is novel; verification needs its own parity
 tests against a CPU oracle and stability tests under hierarchical fanout.
 
-**Prerequisites:** E-9, E-10, **E-10R, E-8R, E-7R** (landed)
+**Prerequisites:** E-9, E-10, **E-10R, E-8R, E-7R, E-10R2** (landed)
 **Gate:** Opus v2 design memo accepted. **Allocation execution blocked** until post-prerequisite review pass and narrowed implementation handoff. E-2B `resource_flow_participant` remains blocked until E-11 enrollment compiles.
 **Scope:** Implement the allocation kernel pattern per
 `docs/adr/resource_flow_substrate.md` §"Hierarchical allocation kernel
@@ -1414,6 +1414,7 @@ as a doc-only PR.
 | **E-9** | **E** | **Composer 2.5** | **`ArenaRegistry` in `simthing-driver` with subtree-incremental refresh** | **3-arena fixture + refresh scope test** |
 | **E-10** | **E** | **Composer 2.5** | **`simthing-spec` admission framework (caps, fission policy, cycle-with-delay, expansion report)** | **Done (#153)** — 13-case `e10_*` rejection + expansion report suite |
 | **E-10R** | **E** | **Composer 2.5** | **Driver participant identity preflight + reserved-gap admission** | **Done** — `e10r_*` suite |
+| **E-10R2** | **E** | **Composer 2.5** | **ArenaParticipant SimThing scaffold + contiguity/gap tests** | **Done** — `e10r2_*` suite |
 | **E-8R** | **E** | **Composer 2.5** | **Arena-internal plumbing columns at compile** | **Done** — `e8r_*` suite |
 | **E-7R** | **E** | **Composer 2.5** | **`plan_governed_integration_at_band` ordering API** | **Done** — `e7r_*` suite |
 | **E-11 design** | **E** | **Opus** | **Hierarchical allocation v2 design memo** | **Accepted** — memo landed; execution gated |

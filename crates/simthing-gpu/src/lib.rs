@@ -56,7 +56,7 @@ pub use reduction_orderband::{
     plan_reduction_orderband, reduction_soft_band_for_depth_bucket, ReductionOrderBandPlan,
     ReductionPlanError,
 };
-pub use slot::SlotAllocator;
+pub use slot::{SlotAllocError, SlotAllocator};
 pub use transfer_accumulator::{
     conjunctive_recipe_registration_to_transfer, conjunctive_recipe_registrations_to_transfer,
     discrete_transfer_registration_to_transfer, discrete_transfer_registrations_to_transfer,

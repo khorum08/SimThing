@@ -90,6 +90,8 @@ pub struct SpecSessionState {
     pub handler_errors: Vec<String>,
     /// Resource Flow arena participation registry (E-9). Driver/spec artifact only.
     pub arena_registry: ArenaRegistry,
+    /// Arena-participant SimThing scaffold (E-10R2). Driver-only topology artifact.
+    pub arena_participant_scaffold: crate::arena_participant::ArenaParticipantScaffold,
     player_selections: Vec<(CapabilityInstanceKey, CapabilityEntryKey)>,
     /// Reverse index: capability tree `SimThingId` → installed instance key.
     capability_instance_by_tree: HashMap<SimThingId, CapabilityInstanceKey>,
