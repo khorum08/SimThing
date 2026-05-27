@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — E-11 final readiness review + implementation handoff
+
+- Published [`e11_readiness_review.md`](workshop/e11_readiness_review.md): all nine prerequisite checklist items **PASS**; no remedial required.
+- Published [`e11_implementation_handoff.md`](workshop/e11_implementation_handoff.md): narrowed Cursor binding for E-11 allocation execution.
+- **E-11 allocation authorized** — implement per handoff (not in this docs PR).
+
+**Next:** E-11 allocation PR (`arena_hierarchy`, oracle, planner, EML, `e11_*` tests).
+
+---
+
 ## 2026-05-26 — E-10R3 arena-local gap block reservation
 
 - Replaced per-participant adjacent gap reservation with arena-local block layout: contiguous participant sibling block + separate reserved-gap block (`N × K` slots).

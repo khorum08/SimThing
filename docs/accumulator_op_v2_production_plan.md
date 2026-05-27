@@ -1032,7 +1032,7 @@ These five PRs land the Resource Flow Substrate per
 `docs/adr/resource_flow_substrate.md`. The substrate is a registration
 discipline on top of AccumulatorOp v2; no new GPU primitive is introduced.
 
-**PR sequencing:** E-7 through E-10 landed (#149–#153). **E-10R, E-8R, E-7R, E-10R2, and E-10R3 landed** as pre-E-11 prerequisites. Opus v2 E-11 design memo accepted ([`docs/workshop/e11_hierarchical_allocation_design.md`](workshop/e11_hierarchical_allocation_design.md)). **Cursor must not implement E-11 allocation execution until a final readiness review confirms the landed APIs and produces a narrowed handoff.** E-1, E-3, E-5 remain independent. E-2 split can land independently.
+**PR sequencing:** E-7 through E-10 landed (#149–#153). **Pre-E-11 prerequisites landed** (E-10R, E-8R, E-7R, E-10R2, E-10R3). **E-11 readiness review PASS** — implement allocation per [`e11_implementation_handoff.md`](workshop/e11_implementation_handoff.md). E-1, E-3, E-5 remain independent.
 
 ### PR E-7 — `governed_by` planner generalization
 
@@ -1186,7 +1186,7 @@ computations. The composition is novel; verification needs its own parity
 tests against a CPU oracle and stability tests under hierarchical fanout.
 
 **Prerequisites:** E-9, E-10, **E-10R, E-8R, E-7R, E-10R2, E-10R3** (landed)
-**Gate:** Opus v2 design memo accepted. **Allocation execution blocked** until post-prerequisite review pass and narrowed implementation handoff. E-2B `resource_flow_participant` remains blocked until E-11 enrollment compiles.
+**Gate:** Readiness review complete ([`e11_readiness_review.md`](workshop/e11_readiness_review.md)). **Implement** per [`e11_implementation_handoff.md`](workshop/e11_implementation_handoff.md). E-2B `resource_flow_participant` remains blocked until E-11 enrollment compiles.
 **Scope:** Implement the allocation kernel pattern per
 `docs/adr/resource_flow_substrate.md` §"Hierarchical allocation kernel
 pattern". Per intermediate participant, the driver emits two AccumulatorOp
@@ -1418,8 +1418,9 @@ as a doc-only PR.
 | **E-10R3** | **E** | **Composer 2.5** | **Arena-local gap block reservation + capacity hardening** | **Done** — `e10r3_*` suite |
 | **E-8R** | **E** | **Composer 2.5** | **Arena-internal plumbing columns at compile** | **Done** — `e8r_*` suite |
 | **E-7R** | **E** | **Composer 2.5** | **`plan_governed_integration_at_band` ordering API** | **Done** — `e7r_*` suite |
-| **E-11 design** | **E** | **Opus** | **Hierarchical allocation v2 design memo** | **Accepted** — memo landed; execution gated |
-| **E-11** | **E** | **Opus + Composer 2.5** | **Hierarchical allocation kernel + CPU oracle parity + stability tests** | **Blocked** — review pass + narrowed handoff required |
+| **E-11 design** | **E** | **Opus** | **Hierarchical allocation v2 design memo** | **Accepted** |
+| **E-11 review** | **E** | **Composer 2.5** | **Final readiness review + narrowed handoff** | **Done** |
+| **E-11** | **E** | **Opus + Composer 2.5** | **Hierarchical allocation kernel + CPU oracle parity + stability tests** | **Ready** — see implementation handoff |
 | S-1 | F | Codex 5.5 | Sunset intent fold | **Done locally** |
 | S-2 | F | Codex 5.5 | Sunset intensity update | **Landed (#138)** |
 | S-3 | F | Codex 5.5 | Sunset overlay prep | CI green at flag=on |
