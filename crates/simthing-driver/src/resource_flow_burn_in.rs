@@ -61,6 +61,63 @@ impl ResourceFlowScenarioBurnInReport {
     }
 }
 
+/// CI soak summary (driver/test-reporting only; no runtime policy branching).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ResourceFlowSoakSummaryReport {
+    pub scenario_name: String,
+    pub ticks_checked: u32,
+    pub sync_cycles_checked: u32,
+    pub total_ops: u32,
+    pub n_bands: u32,
+    pub max_abs_error: f32,
+    pub replay_bit_exact: bool,
+}
+
+impl ResourceFlowSoakSummaryReport {
+    pub fn from_parts(
+        scenario_name: impl Into<String>,
+        sync: &ResourceFlowSyncReport,
+        burn: &ResourceFlowBurnInReport,
+        sync_cycles_checked: u32,
+        require_bit_exact: bool,
+    ) -> Self {
+        let replay_bit_exact = burn.max_abs_error.to_bits() == 0.0_f32.to_bits();
+        Self {
+            scenario_name: scenario_name.into(),
+            ticks_checked: burn.ticks_checked,
+            sync_cycles_checked,
+            total_ops: sync.total_ops,
+            n_bands: burn.n_bands.max(sync.n_bands),
+            max_abs_error: burn.max_abs_error,
+            replay_bit_exact: require_bit_exact && replay_bit_exact,
+        }
+    }
+
+    pub fn assert_within_contract(&self, require_bit_exact: bool, max_abs_error_allowed: f32) {
+        if require_bit_exact {
+            assert_eq!(
+                self.max_abs_error.to_bits(),
+                0.0_f32.to_bits(),
+                "soak {name} must be bit-exact",
+                name = self.scenario_name
+            );
+            assert!(
+                self.replay_bit_exact,
+                "soak {name} must report replay_bit_exact",
+                name = self.scenario_name
+            );
+        } else {
+            assert!(
+                self.max_abs_error <= max_abs_error_allowed,
+                "soak {name} max_abs_error {err} exceeds allowed {allowed}",
+                name = self.scenario_name,
+                err = self.max_abs_error,
+                allowed = max_abs_error_allowed
+            );
+        }
+    }
+}
+
 /// Run `ticks` flat-star allocation passes on GPU and compare leaf `allocated_flow` to the CPU oracle.
 pub fn run_flat_star_burn_in(
     state: &mut WorldGpuState,

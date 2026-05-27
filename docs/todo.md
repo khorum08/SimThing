@@ -119,11 +119,12 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-11R** | `8939fc6` | #160 | **Done** — sync errors, scope honesty, session-path test |
 | **E-11 burn-in** | `ae75d8e` | #161 | **Done** — controlled flat-star scaffold; `e11_burn_in_*` 4/4; flag default false |
 | **E-11 burn-in scenarios** | — | — | **Done** — named fixtures + `e11_burn_in_scenarios_*` 6/6; flag default false |
+| **E-11 CI soak** | — | — | **Done** — opt-in soak `e11_resource_flow_soak` 6/6; `ResourceFlowSoakSummaryReport` |
 
 **Next recommended gates (pivot-forward order):**
 
 1. **Opus** — production transfer/emission registration ownership
-2. **Controlled opt-in scenario flagging / CI soak** (optional) — limited scenario flags for default-off Resource Flow soak
+2. **Limited opt-in scenario flagging** (optional) — extend explicit scenario opt-in beyond CI soak fixtures
 3. **E-11B** (optional/future) — nested hierarchy GPU execution / materialization
 4. **D-1** — discrete-transaction contention memo
 
@@ -134,7 +135,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-11 execution landed; enrollment compilation not in scope).
 
-**Next (immediate):** route to Opus transfer/emission registration ownership, optional controlled opt-in scenario flagging / CI soak, or D-1 memo. E-11B nested GPU remains optional/future. E-2B blocked unless enrollment compilation explicitly lands.
+**Next (immediate):** route to Opus transfer/emission registration ownership, optional limited opt-in scenario flagging, or D-1 memo. E-11B nested GPU remains optional/future. E-2B blocked unless enrollment compilation explicitly lands.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — E-11 controlled opt-in CI soak
+
+- Added `ResourceFlowSoakMode`, `ResourceFlowSoakFixture`, and `ResourceFlowSoakSummaryReport` (driver/test-reporting only).
+- Added `e11_resource_flow_soak.rs` (6 tests): 1000-tick equal/skewed/zero-weight oracle parity, 100-cycle resync stability, flag default false, flat-star-only guard.
+- Reuses `e11_flat_star` and `e11_burn_in_scenarios` fixtures; no runtime policy branching.
+- Controlled opt-in CI soak landed for flat-star Resource Flow. `use_accumulator_resource_flow` remains default false. E-11 remains flat-star D=2 vertical slice; E-11B nested hierarchy GPU deferred. No new WGSL; `simthing-sim` remains arena-ignorant.
+
+**Verification:** `cargo test -p simthing-driver --test e11_resource_flow_soak`; `cargo test -p simthing-driver e11_burn_in e11_burn_in_scenarios`; `cargo test --workspace`.
+
+**Next decision:** continue soak / limited scenario opt-in, or route to Opus transfer/emission registration ownership.
+
+---
+
 ## 2026-05-19 — E-11 controlled burn-in scenario fixtures
 
 - Added `ResourceFlowScenarioBurnInReport` and named flat-star fixtures in `tests/support/e11_burn_in_scenarios.rs`.
