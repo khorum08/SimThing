@@ -14,6 +14,7 @@ pub mod resource_economy_sync;
 pub mod resource_flow_burn_in;
 pub mod resource_flow_compile;
 pub mod resource_flow_enrollment;
+pub mod resource_flow_opt_in_burn_in;
 pub mod resource_flow_dynamic_enrollment_soak;
 pub mod resource_flow_fission_enrollment;
 pub mod resource_flow_preflight;
@@ -81,6 +82,17 @@ pub use resource_flow_compile::{
     compile_and_materialize_resource_flow, materialize_arena_registry,
 };
 pub use resource_flow_enrollment::{resolve_resource_flow_enrollment, EnrollmentError};
+pub use resource_flow_opt_in_burn_in::{
+    clone_for_replay, fixture_disabled_populated_spec, fixture_dynamic_multi_fission,
+    fixture_dynamic_single_fission, fixture_repeated_resync, fixture_replay_static,
+    fixture_static_flat_star_10_participants, fixture_static_flat_star_64_participants,
+    fixture_static_flat_star_skewed_weights, fixture_two_arena_no_coupling,
+    fixture_wildcard_rejected, open_fixture_session, run_opt_in_burn_in, assert_fixture_contract,
+    RfT2BurnInFixture, RfT2BurnInReport, RfT2EnrollmentKind, RfT2OptInSession,
+    RF_T2_DISABLED_POPULATED, RF_T2_DYNAMIC_MULTI_FISSION, RF_T2_DYNAMIC_SINGLE_FISSION,
+    RF_T2_STATIC_FLAT_STAR_10, RF_T2_STATIC_FLAT_STAR_64, RF_T2_STATIC_FLAT_STAR_SKEWED,
+    RF_T2_TWO_ARENA_NO_COUPLING, RF_T2_WILDCARD_REJECTED,
+};
 pub use resource_flow_dynamic_enrollment_soak::{
     initial_dynamic_enrollment_sync, run_dynamic_enrollment_gpu_burn_in,
     run_dynamic_enrollment_resync_cycles, DynamicEnrollmentBoundaryMetrics,

@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** RF-T1 Resource Flow opt-in flagging (merged PR #180, `388353a`)  
-**Verification (last recorded):** RF-T1 gate — `cargo test --workspace` PASS ([report](../tests/resource_flow_opt_in_flagging_test_results.md))
+**Master HEAD:** RF-T2 opt-in burn-in expansion (pending merge)  
+**Verification (last recorded):** RF-T2 gate — `cargo test --workspace` PASS ([report](../tests/resource_flow_opt_in_burn_in_test_results.md))
 
 ---
 
@@ -27,9 +27,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **RF default-on review:** **Done** — [`resource_flow_default_on_readiness_review.md`](../reviews/resource_flow_default_on_readiness_review.md). **Recommendation B:** limited scenario-class opt-in may proceed; global default-on deferred. No production code changes.
 
-**RF-T1 status:** **Done** — `ResourceFlowOptInMode` on `ResourceFlowSpec`; `FlatStarOptIn` enables GPU Resource Flow per scenario via `open_from_spec`. Global flag remains default false. Populated spec without opt-in stays inactive. E-11B and Policy B remain deferred.
+**RF-T2 status:** **Done** — opt-in burn-in fixtures via `open_from_spec` + `FlatStarOptIn`; static/dynamic/two-arena/disabled/wildcard-reject coverage. Global flag remains default false.
 
-**Next gates:** **RF-T2 limited opt-in scenario burn-in expansion**; **E-11B**; **D-2a** per product priority.
+**Next gates:** **RF-T3 product-like opt-in soak / telemetry surfacing**; **E-11B**; **D-2a** per product priority.
 
 **Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. E-11B deferred by default. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
 

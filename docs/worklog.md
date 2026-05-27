@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — RF-T2: limited opt-in scenario burn-in expansion
+
+- **`resource_flow_opt_in_burn_in.rs`** — named RF-T2 fixtures opening via `ResourceFlowOptInMode::FlatStarOptIn` + `SimSession::open_from_spec`; static 10/64-participant, skewed-weight, dynamic single/multi fission, two-arena, disabled, wildcard-reject, resync, replay paths.
+- **`resource_flow_opt_in_burn_in.rs` (tests)** — 15 burn-in/regression tests.
+- RF-T2 landed: limited opt-in scenario burn-in expansion for Resource Flow. Only explicitly authored FlatStarOptIn scenarios enable GPU Resource Flow execution. Global flag remains default false. E-11B and Policy B remain deferred. No WGSL. No CPU fallback. `simthing-sim` remains arena-ignorant.
+
+**Verification:** targeted RF-T2 + regression suites + `cargo test --workspace` — PASS ([test report](tests/resource_flow_opt_in_burn_in_test_results.md)).
+
+**Next gate:** RF-T3 product-like opt-in soak / telemetry surfacing.
+
+---
+
 ## 2026-05-19 — RF-T1: limited scenario-class Resource Flow opt-in flagging
 
 - **`ResourceFlowOptInMode`** on `ResourceFlowSpec` (`Disabled`, `FlatStarOptIn`); mirrors Phase T `ResourceEconomyOptInMode` posture.
