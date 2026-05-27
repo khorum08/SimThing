@@ -31,6 +31,36 @@ impl ResourceFlowBurnInReport {
     }
 }
 
+/// Per-scenario burn-in report (driver/test-reporting only; no runtime policy branching).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ResourceFlowScenarioBurnInReport {
+    pub scenario_name: String,
+    pub arenas_planned: u32,
+    pub total_ops: u32,
+    pub n_bands: u32,
+    pub ticks_checked: u32,
+    pub max_abs_error: f32,
+    pub replay_bit_exact: bool,
+}
+
+impl ResourceFlowScenarioBurnInReport {
+    pub fn from_parts(
+        scenario_name: impl Into<String>,
+        sync: &ResourceFlowSyncReport,
+        burn: &ResourceFlowBurnInReport,
+    ) -> Self {
+        Self {
+            scenario_name: scenario_name.into(),
+            arenas_planned: sync.arenas_planned,
+            total_ops: sync.total_ops,
+            n_bands: burn.n_bands.max(sync.n_bands),
+            ticks_checked: burn.ticks_checked,
+            max_abs_error: burn.max_abs_error,
+            replay_bit_exact: burn.max_abs_error.to_bits() == 0.0_f32.to_bits(),
+        }
+    }
+}
+
 /// Run `ticks` flat-star allocation passes on GPU and compare leaf `allocated_flow` to the CPU oracle.
 pub fn run_flat_star_burn_in(
     state: &mut WorldGpuState,

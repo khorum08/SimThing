@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** E-11 burn-in scaffold (pending merge)  
-**Verification (last recorded):** `e11_burn_in_*` 4/4; `e11`/`e11r` green; flag default false
+**Master HEAD:** E-11 controlled burn-in scenario fixtures (pending merge)  
+**Verification (last recorded):** `e11_burn_in_*` 10/10; `e11`/`e11r` green; flag default false
 
 ---
 
@@ -21,9 +21,9 @@ Two parallel tracks:
 **Production direction:** AccumulatorOp v2 is the GPU execution path.
 Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Legacy threshold is deleted (S-6). Legacy velocity is deleted (S-5). Legacy intent is deleted (S-1). Snapshot is the only retained non-Accumulator operation.
 
-**E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** landed: `ResourceFlowBurnInReport`, `e11_burn_in_*` tests, shared flat-star fixture. Nested hierarchy GPU **deferred (E-11B)**. `use_accumulator_resource_flow` **default false**.
+**E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Controlled burn-in scenario fixtures** landed: `small_flat_star_*` fixtures, `ResourceFlowScenarioBurnInReport`, `e11_burn_in_scenarios_*` (6 tests). Nested hierarchy GPU **deferred (E-11B)**. `use_accumulator_resource_flow` **default false**. No new WGSL; `simthing-sim` remains arena-ignorant.
 
-**Next gates:** continue controlled default-off burn-in · Opus production transfer/emission registration ownership · D-1 discrete-transaction contention memo. **E-2B** blocked unless enrollment compilation explicitly lands.
+**Next gates:** Opus production transfer/emission registration ownership · controlled opt-in scenario flagging / CI soak (optional) · D-1 discrete-transaction contention memo. **E-11B** nested hierarchy GPU remains deferred. **E-2B** blocked unless enrollment compilation explicitly lands.
 
 **Open design gates (not sunset):** production transfer/emission registration ownership (substrate landed; spec/builder integration pending); **D-1** discrete-transaction contention memo (continuous-flow hot-pool allocator scope dissolved by Resource Flow ADR; C-8c still rejects same-band consumed-input contention); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
 
@@ -87,6 +87,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-11** | #159 | Flat-star D=2 GPU slice; nested GPU deferred |
 | **E-11R** | #160 | Sync errors + session-path test + scope honesty |
 | **E-11 burn-in** | #161 | Controlled flat-star scaffold; flag default false |
+| **E-11 burn-in scenarios** | — | Named fixtures + `e11_burn_in_scenarios_*` 6/6; `ResourceFlowScenarioBurnInReport` |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

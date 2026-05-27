@@ -188,17 +188,37 @@ pub fn open_flat_star_session(hosted_count: usize, flag_enabled: bool) -> FlatSt
     }
 }
 
+pub fn root_slot(layout: &ArenaTreeLayout) -> u32 {
+    layout.participant_roots[0].participant_slot
+}
+
+pub fn leaf_slots(layout: &ArenaTreeLayout) -> Vec<u32> {
+    layout.participant_roots[0]
+        .children
+        .iter()
+        .map(|n| n.participant_slot)
+        .collect()
+}
+
+pub fn flat_star_cell_inputs(
+    root_slot: u32,
+    leaf_slots: &[u32],
+    cols: NodeColumnRefs,
+    root_intrinsic_flow: f32,
+    leaf_weights: &[f32],
+) -> std::collections::HashMap<(u32, u32), f32> {
+    let mut inputs =
+        std::collections::HashMap::from([((root_slot, cols.intrinsic_flow_col), root_intrinsic_flow)]);
+    for (slot, &weight) in leaf_slots.iter().zip(leaf_weights.iter()) {
+        inputs.insert((*slot, cols.weight_col), weight);
+    }
+    inputs
+}
+
 pub fn standard_flat_star_inputs(
     root_slot: u32,
     leaf_slots: &[u32],
     cols: NodeColumnRefs,
 ) -> std::collections::HashMap<(u32, u32), f32> {
-    let mut inputs = std::collections::HashMap::from([((root_slot, cols.intrinsic_flow_col), 10.0)]);
-    if !leaf_slots.is_empty() {
-        inputs.insert((leaf_slots[0], cols.weight_col), 1.0);
-    }
-    if leaf_slots.len() > 1 {
-        inputs.insert((leaf_slots[1], cols.weight_col), 3.0);
-    }
-    inputs
+    flat_star_cell_inputs(root_slot, leaf_slots, cols, 10.0, &[1.0, 3.0])
 }

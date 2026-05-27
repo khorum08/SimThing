@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — E-11 controlled burn-in scenario fixtures
+
+- Added `ResourceFlowScenarioBurnInReport` and named flat-star fixtures in `tests/support/e11_burn_in_scenarios.rs`.
+- Added `e11_burn_in_scenarios.rs` (6 tests): equal/skewed/zero-weight 100-tick oracle parity, repeated sync stability, flag default false, no nested GPU claims.
+- Controlled flat-star burn-in scenario fixtures landed. `use_accumulator_resource_flow` remains default false. E-11 remains flat-star vertical slice; E-11B nested hierarchy GPU deferred. No new WGSL; `simthing-sim` remains arena-ignorant.
+
+**Verification:** `cargo test -p simthing-driver e11_burn_in`; `cargo test -p simthing-driver e11 e11r`; `cargo test --workspace`.
+
+**Next decision:** continue burn-in, consider limited opt-in scenario flagging / CI soak, or route to Opus transfer/emission registration ownership.
+
+---
+
 ## 2026-05-19 — E-11 controlled burn-in scaffold
 
 - Added `resource_flow_burn_in.rs` with `ResourceFlowBurnInReport` and `run_flat_star_burn_in` (PR [#161](https://github.com/khorum08/SimThing/pull/161), `ae75d8e`).
