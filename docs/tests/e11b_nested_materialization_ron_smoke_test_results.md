@@ -2,7 +2,7 @@
 
 **Date/time:** 2026-05-27 (local)  
 **Base HEAD before commit:** `b8d181053432f1e72120907b38e85fec60050ac5`  
-**Final commit SHA:** pending at report write  
+**Final commit SHA:** `500154f`  
 **rustc:** 1.95.0 (59807616e 2026-04-14)  
 **cargo:** 1.95.0 (f2d3ce0bd 2026-03-21)  
 **Platform/OS:** Windows 10 (win32 10.0.26200)  
