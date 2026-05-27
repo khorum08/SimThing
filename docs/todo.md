@@ -117,13 +117,14 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-11 review** | — | — | **Done** — readiness review PASS; handoff published |
 | **E-11** | `8a628ca` | #159 | **Done** — flat-star D=2 vertical slice; `e11_*` 14/14; flag default false |
 | **E-11R** | `8939fc6` | #160 | **Done** — sync errors, scope honesty, session-path test |
+| **E-11 burn-in** | `ae75d8e` | #161 | **Done** — controlled flat-star scaffold; `e11_burn_in_*` 4/4; flag default false |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **E-11R hardening** — sync errors, honest scope docs, session-path test (required before burn-in)
-2. **Burn-in** — enable `use_accumulator_resource_flow` in controlled scenarios after E-11R
-3. **E-11B** (optional) — nested hierarchy GPU execution / materialization
-4. **Opus** — production transfer/emission registration ownership
+1. **Controlled burn-in** — flat-star `use_accumulator_resource_flow` explicitly enabled in tests/scenarios (flag stays default false)
+2. **E-11B** (optional/future) — nested hierarchy GPU execution / materialization
+3. **Opus** — production transfer/emission registration ownership
+4. **D-1** — discrete-transaction contention memo
 
 **Open design warnings (preserve):**
 - Transfer/emission registration ownership: substrate-level only; production source-of-truth still needs integration.
@@ -132,7 +133,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-11 execution landed; enrollment compilation not in scope).
 
-**Next (immediate):** controlled burn-in for `use_accumulator_resource_flow` (default false) or E-11B nested GPU.
+**Next (immediate):** continue controlled burn-in in CI/scenarios (default-off) or route to Opus transfer/emission registration ownership / D-1 memo. E-11B nested GPU remains optional/future.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp
