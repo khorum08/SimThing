@@ -57,6 +57,7 @@ fn food_arena(gap: u32, expected_children: u32) -> ArenaSpec {
         reserved_gap_per_intermediate: gap,
         expected_max_children_per_intermediate: expected_children,
         explicit_participants: vec![],
+        enrollment: None,
         wildcard_admission: None,
     }
 }

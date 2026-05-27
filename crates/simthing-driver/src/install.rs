@@ -28,6 +28,7 @@ use crate::resource_economy_compile::{
     ResourceEconomyCompileError,
 };
 use crate::resource_flow_compile::compile_and_materialize_resource_flow;
+use crate::resource_flow_enrollment::resolve_resource_flow_enrollment;
 use crate::arena_participant::materialize_arena_participants;
 use crate::resource_flow_preflight::validate_resource_flow_preflight;
 use crate::scenario::Scenario;
@@ -154,8 +155,10 @@ pub fn compile_and_install(
     // ── 4b. Resource Flow admission (E-10 + E-10R): spec compile after properties,
     //      identity preflight after live slot allocation, then materialize registry.
     if let Some(resource_flow) = &game_mode.resource_flow {
-        validate_resource_flow_preflight(resource_flow, allocator)?;
-        let scaffold = materialize_arena_participants(resource_flow, registry, root, allocator)?;
+        let resolved =
+            resolve_resource_flow_enrollment(resource_flow, scenario, root, allocator)?;
+        validate_resource_flow_preflight(&resolved, allocator)?;
+        let scaffold = materialize_arena_participants(&resolved, registry, root, allocator)?;
         if allocator.capacity() > n_slots_cap {
             return Err(InstallError::ResourceFlowSlotOverflow {
                 capacity: allocator.capacity(),
@@ -163,7 +166,7 @@ pub fn compile_and_install(
             });
         }
         let (arena_registry, _report) =
-            compile_and_materialize_resource_flow(resource_flow, registry)?;
+            compile_and_materialize_resource_flow(&resolved, registry)?;
         state.arena_registry = arena_registry;
         state.arena_participant_scaffold = scaffold;
     }

@@ -29,8 +29,8 @@ pub use resource_economy::{
     ResourceTransferSpec,
 };
 pub use resource_flow::{
-    ArenaSpec, CouplingDelaySpec, CouplingSpec, ExplicitParticipantSpec, FissionPolicySpec,
-    ResourceFlowSpec, WildcardAdmissionSpec,
+    ArenaSpec, CouplingDelaySpec, CouplingSpec, EnrollmentSelectorSpec, ExplicitParticipantSpec,
+    FissionPolicySpec, ResourceFlowSpec, WildcardAdmissionSpec,
 };
 pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,

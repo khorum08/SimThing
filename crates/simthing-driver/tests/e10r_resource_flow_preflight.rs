@@ -24,6 +24,7 @@ fn food_arena_with_participant(slot: u32, subtree_root_id: u32) -> ArenaSpec {
             slot,
             subtree_root_id,
         }],
+        enrollment: None,
         wildcard_admission: None,
     }
 }

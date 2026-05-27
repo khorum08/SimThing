@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — E-2B: static Resource Flow enrollment compilation (E-2B-1…4)
+
+- Added `EnrollmentSelectorSpec` on `ArenaSpec` (`ExplicitOnly`, `InstallTarget(InstallTargetSpec)`).
+- Added `resolve_resource_flow_enrollment` in `simthing-driver`; wired into `install.rs` before E-10R preflight.
+- Tests: `resource_flow_enrollment_roundtrip`, `resource_flow_enrollment_compile`, `resource_flow_enrollment_session`.
+- E-2B static enrollment compilation landed. No legacy `resource_flow_participant` AccumulatorOp builder. E-2B-5 dynamic fission deferred. E-11B deferred. `use_accumulator_resource_flow` default false.
+
+**Verification:** E-2B test suites + `cargo test --workspace`.
+
+**Next gate:** E-2B-5, E-11B, D-2a, or Resource Flow default-on.
+
+---
+
 ## 2026-05-27 — E-2B: Resource Flow enrollment compilation readiness review
 
 - Added [`docs/reviews/e2b_resource_flow_enrollment_compilation_readiness.md`](reviews/e2b_resource_flow_enrollment_compilation_readiness.md): definition of E-2B enrollment compilation; spec vs driver mapping; E-10R/E-11 relationship; fission implications; implementation ladder E-2B-1…6; required tests.

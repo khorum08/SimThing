@@ -223,6 +223,12 @@ pub enum SpecError {
         expected: u32,
     },
 
+    #[error("arena `{arena}` duplicate enrollment for hosted SimThing subtree_root_id {subtree_root_id}")]
+    DuplicateEnrollmentHostedSimThing {
+        arena: String,
+        subtree_root_id: u32,
+    },
+
     // ── Resource economy compile (Phase T-2) ───────────────────────────────────
     #[error("resource economy duplicate authoring id `{id}`")]
     DuplicateResourceEconomyId { id: String },
