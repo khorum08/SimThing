@@ -429,6 +429,8 @@ impl SimSession {
                 // S5 follow-up: register capability instances + threshold
                 // registrations for any fission-cloned capability subtrees.
                 self.react_to_fission_clones(&outcome);
+                self.react_to_fission_resource_flow_enrollment(&outcome);
+                self.sync_resource_flow_if_enabled()?;
                 self.sync_resource_economy_if_enabled()?;
             }
         }
@@ -556,6 +558,8 @@ impl SimSession {
                 // S5 follow-up (same as `run`): register capability
                 // instances + threshold registrations for fission clones.
                 self.react_to_fission_clones(&outcome);
+                self.react_to_fission_resource_flow_enrollment(&outcome);
+                self.sync_resource_flow_if_enabled()?;
                 self.sync_resource_economy_if_enabled()?;
             }
         }
@@ -687,6 +691,24 @@ impl SimSession {
             self.sync_spec_threshold_registrations();
         }
         registered
+    }
+
+    /// E-2B-5 Policy A: enroll fission-spawned hosted SimThings into parent's
+    /// Resource Flow arenas via arena-root sibling append.
+    fn react_to_fission_resource_flow_enrollment(&mut self, outcome: &BoundaryOutcome) {
+        if outcome.fission.fission_pairs.is_empty()
+            || self.spec_state.arena_registry.arenas.is_empty()
+        {
+            return;
+        }
+        let _report = crate::resource_flow_fission_enrollment::react_to_fission_resource_flow_enrollment(
+            &outcome.fission,
+            &mut self.spec_state.arena_registry,
+            &mut self.spec_state.arena_participant_scaffold,
+            &mut self.proto.root,
+            &self.proto.registry,
+            &mut self.proto.allocator,
+        );
     }
 }
 

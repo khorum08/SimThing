@@ -14,6 +14,7 @@ pub mod resource_economy_sync;
 pub mod resource_flow_burn_in;
 pub mod resource_flow_compile;
 pub mod resource_flow_enrollment;
+pub mod resource_flow_fission_enrollment;
 pub mod resource_flow_preflight;
 pub mod scenario;
 pub mod session;
@@ -39,8 +40,9 @@ pub use child_share_eml::{child_share_cpu, register_child_share_formula};
 pub use arena_participant::{
     all_reserved_gap_slots, arena_participant_sibling_slots, materialize_arena_participants,
     slot_in_participant_sibling_range, slots_are_contiguous, try_alloc_participant_child_in_gap,
-    ArenaParticipantAllocationReport, ArenaParticipantIndex, ArenaParticipantScaffold,
-    GapAllocError, ReservedGapPool,
+    try_append_arena_root_sibling_participant, ArenaParticipantAllocationReport,
+    ArenaParticipantIndex, ArenaParticipantScaffold, DynamicEnrollmentError, GapAllocError,
+    ReservedGapPool,
 };
 pub use arena_registry::{
     ArenaCoupling, ArenaDiagnostic, ArenaExpansionReport, ArenaIdx, ArenaParticipant,
@@ -77,6 +79,10 @@ pub use resource_flow_compile::{
     compile_and_materialize_resource_flow, materialize_arena_registry,
 };
 pub use resource_flow_enrollment::{resolve_resource_flow_enrollment, EnrollmentError};
+pub use resource_flow_fission_enrollment::{
+    react_to_fission_resource_flow_enrollment, DynamicFissionEnrollmentAdmission,
+    DynamicFissionEnrollmentRejection, DynamicFissionEnrollmentReport,
+};
 pub use resource_flow_preflight::validate_resource_flow_preflight;
 pub use simthing_gpu::SlotAllocError;
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};

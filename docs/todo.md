@@ -129,23 +129,23 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Next recommended gates (pivot-forward order):**
 
-1. **E-2B-5 implementation (Policy A)** — inherit-only dynamic fission enrollment with arena-root sibling append ([readiness review](reviews/e2b5_dynamic_fission_enrollment_readiness.md))
+1. **Resource Flow dynamic enrollment soak / opt-in scenario burn-in** (recommended after E-2B-5)
 2. **E-11B nested hierarchy GPU** — if nested static Resource Flow scenarios are next (deferred by default)
 3. **D-2a boundary transaction scheduling** — only if discrete hard-currency ordering is urgent
 4. **Resource Flow default-on decision** — only after additional product burn-in
 
 **Open design warnings (preserve):**
 - Transfer/emission registration ownership: **Phase T complete.** T-6 landed limited opt-in scenario flagging for resource economy transfer/emission. Global transfer/emission flags remain default false. Only explicitly opted-in scenarios enable AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free. Hard-currency transfers remain on exact discrete AccumulatorOp transfer paths, not Resource Flow.
-- **E-2B-5 dynamic fission enrollment readiness review landed:** current-state audit ([`e2b5_dynamic_fission_enrollment_readiness.md`](reviews/e2b5_dynamic_fission_enrollment_readiness.md)). No production code changes. E-2B static enrollment remains done. E-11B remains deferred by default. `use_accumulator_resource_flow` remains default false. Recommendation: Policy A inherit + arena-root append. Test report: [`e2b5_dynamic_fission_enrollment_readiness_test_results.md`](tests/e2b5_dynamic_fission_enrollment_readiness_test_results.md).
+- **E-2B-5 Policy A dynamic fission enrollment landed:** [`react_to_fission_resource_flow_enrollment`](../crates/simthing-driver/src/resource_flow_fission_enrollment.rs) + session boundary hook. Fission children inherit parent arena membership via arena-root sibling append. Policy B Reevaluate deferred. Gap-only enrollment not used for flat-star. E-11B deferred. `use_accumulator_resource_flow` default false. Test report: [`e2b5_dynamic_fission_enrollment_implementation_test_results.md`](tests/e2b5_dynamic_fission_enrollment_implementation_test_results.md).
 - **E-2B static enrollment compilation landed:** Resource Flow enrollment selectors resolve to explicit participants at session install ([`EnrollmentSelectorSpec`](../crates/simthing-spec/src/spec/resource_flow.rs), [`resolve_resource_flow_enrollment`](../crates/simthing-driver/src/resource_flow_enrollment.rs)). No legacy `resource_flow_participant` AccumulatorOp builder. E-10R/E-10R2/E-10R3 scaffold and E-11 flat-star execution reused unchanged.
 - **E-11B readiness review landed:** nested hierarchy GPU execution/materialization current-state audit ([`e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md)). No production code changes. E-11B deferred by default.
 - **D-1 memo landed:** discrete-transaction contention current-state audit ([`d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md)). No production code changes.
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; T-2 compile rejects same-band authoring collisions.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
-**E-2B:** **Done (static E-2B-1…4).** **E-2B-5:** readiness review landed; implement Policy A when prioritized.
+**E-2B:** **Done (static E-2B-1…4 + E-2B-5 Policy A).**
 
-**Next (immediate):** E-2B-5 readiness review outcome — implement Policy A ladder, E-11B, D-2a, Resource Flow default-on, or defer per product priority.
+**Next (immediate):** Resource Flow dynamic enrollment soak / opt-in scenario burn-in; or E-11B, D-2a, Resource Flow default-on per product priority.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

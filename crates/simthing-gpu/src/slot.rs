@@ -20,6 +20,8 @@ pub enum SlotAllocError {
     SlotLive { slot: u32 },
     #[error("cannot reserve adjacent gap at slot {slot}: occupied by live SimThing")]
     AdjacentOccupied { slot: u32 },
+    #[error("contiguous slot extension at {slot} blocked by exclusive reserved gap slot")]
+    ContiguityBlockedByGap { slot: u32 },
 }
 
 #[derive(Clone, Debug, Default)]
@@ -157,6 +159,36 @@ impl SlotAllocator {
         Ok(slots)
     }
 
+    /// Allocate `id` at exactly `after_slot + 1` for arena-root sibling append.
+    ///
+    /// Rejects when the target slot is live, exclusively reserved (gap block),
+    /// or otherwise unavailable — never falls back to non-contiguous `alloc()`.
+    pub fn try_alloc_contiguous_after(
+        &mut self,
+        after_slot: u32,
+        id: SimThingId,
+    ) -> Result<u32, SlotAllocError> {
+        if let Some(&existing) = self.by_id.get(&id) {
+            return Ok(existing);
+        }
+        let target = after_slot.saturating_add(1);
+        while self.capacity() as u32 <= target {
+            self.slot_owners.push(None);
+        }
+        if self.is_live(target) {
+            return Err(SlotAllocError::AdjacentOccupied { slot: target });
+        }
+        if self.exclusive_reserved.contains(&target) {
+            return Err(SlotAllocError::ContiguityBlockedByGap { slot: target });
+        }
+        if let Some(pos) = self.free.iter().position(|&s| s == target) {
+            self.free.remove(pos);
+        }
+        self.slot_owners[target as usize] = Some(id);
+        self.by_id.insert(id, target);
+        Ok(target)
+    }
+
     /// Assign `id` to an exclusively reserved tombstoned slot.
     pub fn claim_exclusive_slot(&mut self, slot: u32, id: SimThingId) -> Result<(), SlotAllocError> {
         if self.by_id.contains_key(&id) {
@@ -265,5 +297,31 @@ mod tests {
         let slot = alloc.alloc(id);
         alloc.tombstone(id);
         assert_eq!(alloc.owner_of(slot), None);
+    }
+
+    #[test]
+    fn try_alloc_contiguous_after_extends_high_water_mark() {
+        let mut alloc = SlotAllocator::new();
+        let a = SimThing::new(SimThingKind::Cohort, 0).id;
+        let b = SimThing::new(SimThingKind::Cohort, 0).id;
+        let sa = alloc.alloc(a);
+        let sb = alloc.try_alloc_contiguous_after(sa, b).unwrap();
+        assert_eq!(sb, sa + 1);
+        assert_eq!(alloc.slot_of(b), Some(sb));
+    }
+
+    #[test]
+    fn try_alloc_contiguous_after_rejects_gap_blocked_slot() {
+        let mut alloc = SlotAllocator::new();
+        let a = SimThing::new(SimThingKind::Cohort, 0).id;
+        let b = SimThing::new(SimThingKind::Cohort, 0).id;
+        let sa = alloc.alloc(a);
+        let gap = alloc.reserve_exclusive_gap_block(1);
+        assert_eq!(gap[0], sa + 1);
+        let err = alloc.try_alloc_contiguous_after(sa, b).unwrap_err();
+        assert!(matches!(
+            err,
+            SlotAllocError::ContiguityBlockedByGap { slot } if slot == sa + 1
+        ));
     }
 }
