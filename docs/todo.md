@@ -122,7 +122,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-11 CI soak** | — | — | **Done** — opt-in soak `e11_resource_flow_soak` 6/6; `ResourceFlowSoakSummaryReport` |
 | **T-1** | — | #165 | **Done** — `resource_economy` authoring types + RON roundtrip 12/12 |
 | **T-2** | `986bc99` | #166 | **Done** — `compile::resource_economy` validation + expansion report |
-| **T-3** | — | — | **Done** — `resource_economy_compile` materialization + stable emission `reg_idx`; no session integration yet |
+| **T-3** | `05f8b10` | #167 | **Done** — `resource_economy_compile` materialization + stable emission `reg_idx`; no session integration yet |
 
 **Next recommended gates (pivot-forward order):**
 

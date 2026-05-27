@@ -1255,7 +1255,7 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **T-2 status:** **Done** — PR #166 (`986bc99`). `simthing-spec::compile::resource_economy` validation + `CompiledResourceEconomy` artifact + `ResourceEconomyExpansionReport`. Rejection suite (11) + positive/expansion report suite (8) + roundtrip (12) green. Transfer/emission flags remain default false.
 
-**T-3 status:** **Done** — `simthing-driver::resource_economy_compile` materializes `CompiledResourceEconomy` into existing transfer/recipe/emission/threshold registration shapes. Stable emission `reg_idx` from authoring identity tested (11 driver tests). `ResourceEconomyRegistry` generation scaffold added. No session integration yet. No boundary refresh yet. No GPU upload path changes yet. No WGSL changes. Transfer/emission flags remain default false. **Next gate:** T-4 session integration + boundary refresh through existing `sync_accumulator_{transfer,emission}_session` paths.
+**T-3 status:** **Done** — PR #167 (`05f8b10`). `simthing-driver::resource_economy_compile` materializes `CompiledResourceEconomy` into existing transfer/recipe/emission/threshold registration shapes. Stable emission `reg_idx` from authoring identity tested (11 driver tests). `ResourceEconomyRegistry` generation scaffold added. No session integration yet. No boundary refresh yet. No GPU upload path changes yet. No WGSL changes. Transfer/emission flags remain default false. **Next gate:** T-4 session integration + boundary refresh through existing `sync_accumulator_{transfer,emission}_session` paths.
 
 **Posture (preserves v7.5):** runtime substrate is unchanged; ownership of
 transfer / recipe / emission / threshold-emit registrations moves to

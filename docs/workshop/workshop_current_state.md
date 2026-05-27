@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** Phase T-3 resource economy driver materialization (pending merge)  
+**Master HEAD:** Phase T-3 resource economy driver materialization (PR #167, `05f8b10`)  
 **Verification (last recorded):** `resource_economy_compile` 8/8 + `resource_economy_stable_reg_idx` 3/3; transfer/emission flags default false
 
 ---
@@ -91,7 +91,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-11 CI soak** | — | Opt-in soak `e11_resource_flow_soak` 6/6; flag default false |
 | **T-1** | #165 | `resource_economy` authoring types + RON roundtrip 12/12 |
 | **T-2** | #166 | `compile::resource_economy` validation + expansion report 19/19 |
-| **T-3** | — | `resource_economy_compile` materialization + stable reg_idx 11/11; no session integration |
+| **T-3** | #167 | `resource_economy_compile` materialization + stable reg_idx 11/11; no session integration |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
