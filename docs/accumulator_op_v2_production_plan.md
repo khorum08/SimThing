@@ -1253,7 +1253,9 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **T-1 status:** **Done** — PR #165 (`b2557e6`). `simthing-spec::spec::resource_economy` authoring types + `resource_economy_roundtrip` RON suite (12/12). No compile pass, driver materialization, session integration, or GPU changes yet. Transfer/emission flags remain default false.
 
-**T-2 status:** **Done** — PR #166 (`986bc99`). `simthing-spec::compile::resource_economy` validation + `CompiledResourceEconomy` artifact + `ResourceEconomyExpansionReport`. Rejection suite (11) + positive/expansion report suite (8) + roundtrip (12) green. No driver materialization yet. No session integration yet. No GPU changes. Transfer/emission flags remain default false. **Next gate:** T-3 `simthing-driver::resource_economy_compile` materialization into existing builder/planner registration shapes.
+**T-2 status:** **Done** — PR #166 (`986bc99`). `simthing-spec::compile::resource_economy` validation + `CompiledResourceEconomy` artifact + `ResourceEconomyExpansionReport`. Rejection suite (11) + positive/expansion report suite (8) + roundtrip (12) green. Transfer/emission flags remain default false.
+
+**T-3 status:** **Done** — `simthing-driver::resource_economy_compile` materializes `CompiledResourceEconomy` into existing transfer/recipe/emission/threshold registration shapes. Stable emission `reg_idx` from authoring identity tested (11 driver tests). `ResourceEconomyRegistry` generation scaffold added. No session integration yet. No boundary refresh yet. No GPU upload path changes yet. No WGSL changes. Transfer/emission flags remain default false. **Next gate:** T-4 session integration + boundary refresh through existing `sync_accumulator_{transfer,emission}_session` paths.
 
 **Posture (preserves v7.5):** runtime substrate is unchanged; ownership of
 transfer / recipe / emission / threshold-emit registrations moves to
@@ -1267,7 +1269,7 @@ until T-5 burn-in is itself green.
 |----|-------|-------|------|
 | **T-1** | Codex 5.5 | `simthing-spec` authoring types (`resource_economy.rs`) | **Done** — RON roundtrip suite |
 | **T-2** | Composer 2.5 | `simthing-spec::compile::resource_economy` resolves keys / EML formulas / validation; extends expansion report | **Done** — rejection + expansion report suites (19/19) |
-| **T-3** | Composer 2.5 | `simthing-driver::resource_economy_compile` → `ResourceEconomyRegistrations`; stable `reg_idx` from authoring identity; subtree-scoped refresh | Pending |
+| **T-3** | Composer 2.5 | `simthing-driver::resource_economy_compile` → `ResourceEconomyRegistrations`; stable `reg_idx` from authoring identity; subtree-scoped refresh | **Done** — materialization + stable reg_idx suites (11/11) |
 | **T-4** | Composer 2.5 | Session integration + boundary refresh via existing `sync_accumulator_{transfer,emission}_session` paths; generation-keyed skip; flag-off populated-spec rejection | Pending |
 | **T-5** | Composer 2.5 | Boundary refresh / replay tests; subtree-refresh asserted via generation counter; anti-import test (`simthing-sim` ⊥ `simthing-spec`) | Pending |
 | **T-6** | Codex 5.5 | Docs sync (this plan, `design_v7.md` §5/§6, `workshop_current_state.md`, `todo.md`) | Pending |

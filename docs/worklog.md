@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — Phase T-3: resource economy driver materialization
+
+- Added `simthing-driver::resource_economy_compile` with `materialize_resource_economy_registrations`, `ResourceEconomyRegistrations`, `ResourceEconomyMaterializationReport`, and `ResourceEconomyRegistry` (generation scaffold).
+- Materializes T-2 `CompiledResourceEconomy` into existing `DiscreteTransferRegistration`, `ConjunctiveRecipeRegistration`, `EmissionRegistration`, and `EmitOnThresholdRegistration` shapes; validates via existing rebuild/planner paths.
+- Stable emission `reg_idx` assigned from sorted authoring id (not vector insertion order). Added `resource_economy_compile.rs` (8 tests) and `resource_economy_stable_reg_idx.rs` (3 tests) plus anti-import check.
+- T-3 landed: driver materialization only. No session integration yet. No boundary refresh yet. No GPU upload path changes yet. Transfer/emission flags remain default false.
+
+**Verification:** `cargo test -p simthing-driver resource_economy_compile -- --nocapture`; `cargo test -p simthing-driver resource_economy_stable_reg_idx -- --nocapture`; `cargo test -p simthing-spec resource_economy -- --nocapture`; `cargo test -p simthing-gpu accumulator_op -- --nocapture`; `cargo check --workspace`; `cargo test --workspace`.
+
+**Next gate:** T-4 — session integration + boundary refresh through existing `sync_accumulator_transfer_session` / `sync_accumulator_emission_session` paths.
+
+---
+
 ## 2026-05-27 — Phase T-2: resource economy compile pass
 
 - Added `simthing-spec::compile::resource_economy` with `compile_resource_economy`, `CompiledResourceEconomy`, and `ResourceEconomyExpansionReport`.
