@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** Resource Flow default-on readiness review (pending merge)  
+**Master HEAD:** Resource Flow default-on readiness review (merged PR #179)  
 **Verification (last recorded):** docs-only; `cargo test --workspace` PASS
 
 ---
@@ -105,7 +105,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-2B-5** | merged (`a740845`) | Policy A dynamic fission enrollment |
 | **E-2B-5R** | merged (PR #177) | Atomicity + visible boundary diagnostics |
 | **E-2B-5 soak** | merged (PR #178) | Dynamic enrollment opt-in burn-in |
-| **RF default-on readiness** | (pending merge) | Recommendation B; global default-on rejected |
+| **RF default-on readiness** | merged (PR #179) | Recommendation B; global default-on rejected |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
