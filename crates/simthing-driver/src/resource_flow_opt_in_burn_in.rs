@@ -55,6 +55,12 @@ pub const RF_T5_PROFILE_DISABLED: &str = "rf_t5_profile_disabled_or_default_no_g
 pub const RF_T5_PROFILE_REJECTION: &str = "rf_t5_profile_rejection_telemetry";
 pub const RF_T5_PROFILE_RESYNC: &str = "rf_t5_profile_repeated_resync_stable";
 
+pub const RF_CONTINUED_STATIC_512: &str = "rf_continued_static_512_participants";
+pub const RF_CONTINUED_STATIC_SKEWED: &str = "rf_continued_static_skewed_weights";
+pub const RF_CONTINUED_DYNAMIC_POLICY_A: &str = "rf_continued_dynamic_policy_a_fission";
+pub const RF_CONTINUED_MULTI_ARENA: &str = "rf_continued_multi_arena_no_coupling";
+pub const RF_CONTINUED_REPLAY: &str = "rf_continued_replay_same_seed";
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RfT2EnrollmentKind {
     StaticExplicit,
@@ -612,6 +618,24 @@ pub fn fixture_product_static_128_participants() -> RfT2BurnInFixture {
     }
 }
 
+pub fn fixture_product_static_512_participants() -> RfT2BurnInFixture {
+    RfT2BurnInFixture {
+        name: RF_CONTINUED_STATIC_512,
+        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
+        enrollment: RfT2EnrollmentKind::StaticExplicit,
+        participant_count: 512,
+        ticks: 1000,
+        sync_cycles: 0,
+        root_intrinsic_flow: 10.0,
+        leaf_weights: vec![],
+        expected_admissions: 0,
+        expected_rejections: 0,
+        expect_generation_bump: false,
+        expect_gpu_active: true,
+        require_bit_exact: false,
+    }
+}
+
 pub fn fixture_product_static_256_participants() -> RfT2BurnInFixture {
     RfT2BurnInFixture {
         name: RF_T3_PRODUCT_STATIC_256,
@@ -751,6 +775,13 @@ pub fn fixture_profile_static_128_participants() -> RfT2BurnInFixture {
     )
 }
 
+pub fn fixture_profile_static_512_participants() -> RfT2BurnInFixture {
+    profile_fixture_from_product(
+        fixture_product_static_512_participants(),
+        RF_CONTINUED_STATIC_512,
+    )
+}
+
 pub fn fixture_profile_static_256_participants() -> RfT2BurnInFixture {
     profile_fixture_from_product(
         fixture_product_static_256_participants(),
@@ -859,7 +890,10 @@ fn scenario_for_fixture(fixture: &RfT2BurnInFixture) -> (Scenario, Option<Fissio
             (scenario, Some(fission))
         }
         _ => {
-            if fixture.name == RF_T2_STATIC_FLAT_STAR_SKEWED {
+            if matches!(
+                fixture.name,
+                RF_T2_STATIC_FLAT_STAR_SKEWED | RF_CONTINUED_STATIC_SKEWED
+            ) {
                 (build_skewed_scenario(reg), None)
             } else {
                 (

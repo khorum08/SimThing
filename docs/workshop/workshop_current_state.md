@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** E-11B pause / product-priority checkpoint (pending merge)  
-**Verification (last recorded):** docs-only — `cargo check --workspace` / `cargo test --workspace` PASS
+**Master HEAD:** continued flat-star soak checkpoint (pending merge)  
+**Verification (last recorded):** `resource_flow_flat_star_continued_soak` — 12/12 PASS (local GPU; 512 static @ 1000 ticks)
 
 ---
 
@@ -23,7 +23,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed. FlatStarResourceFlow remains the accepted bounded production posture. `use_accumulator_resource_flow` **default false**. No new WGSL; no new roles; no CPU fallback; `simthing-sim` remains arena-ignorant.
 
-**E-11B status:** **Paused (not abandoned)** after kickoff + E-11B-4 fission/gap hardening + nested dynamic enrollment readiness review. Nested D=3/D=4 static GPU parity remains landed. Nested reserved-gap children remain non-leaf unless explicitly admitted by a future nested enrollment gate. Nested dynamic enrollment deferred until a named product scenario requires it. **E-11B-5 not authorized** without named scenario. E-11B remains an explicit nested extension, not Resource Flow global default-on.
+**Continued flat-star soak:** **Done** — `resource_flow_flat_star_continued_soak` (12 tests). Static 512-participant, skewed-weight, Policy A dynamic fission, multi-arena, replay @ 1000 ticks. `FlatStarContinuedSoakSummary` for operator-facing reporting. Confidence/observability only; no Resource Flow semantics expansion. E-11B remains paused.
+
+**E-11B status:** **Paused (not abandoned)** after kickoff + E-11B-4 + readiness review + pause checkpoint. Nested D=3/D=4 static GPU parity remains landed. Nested reserved-gap children remain non-leaf unless explicitly admitted by a future nested enrollment gate. Nested dynamic enrollment deferred until a named product scenario requires it. **E-11B-5 not authorized** without named scenario. E-11B remains an explicit nested extension, not Resource Flow global default-on.
 
 **E-2B status:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).** Dynamic fission enrollment via arena-root sibling append ([memo](../reviews/e2b5_dynamic_fission_enrollment_readiness.md), soak PR #178). `use_accumulator_resource_flow` **default false**.
 
@@ -49,11 +51,11 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **Next gates (product priority — choose one track):**
 
-1. **Continued flat-star soak** — default confidence path
-2. **Narrow D-2a** — only after named hard-currency multi-transaction scenario
-3. **simthing-spec/RON rebuild** — when authoring track opens
-4. **Narrow E-11B-5** — only after named nested dynamic Resource Flow scenario (**E-11B paused until then**)
-5. **New scenario-driven vertical slice** — product-led
+1. **Narrow D-2a** — only after named hard-currency multi-transaction scenario
+2. **simthing-spec/RON rebuild** — when authoring track opens
+3. **Narrow E-11B-5** — only after named nested dynamic Resource Flow scenario (**E-11B paused until then**)
+4. **New scenario-driven vertical slice** — product-led
+5. **Additional flat-star soak** — only if evidence gap remains
 
 Global default-on remains deferred and rejected.
 
