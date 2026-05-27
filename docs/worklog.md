@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — Phase T-1: resource economy authoring types
+
+- Added `simthing-spec::spec::resource_economy` with `ResourceEconomySpec`, transfer/recipe/emission/threshold authoring types, and `EmissionFormulaSpec` / `EmitBufferSpec`.
+- Added `resource_economy_roundtrip.rs` (12 tests): RON roundtrip for all variants, empty-list defaults, unsafe-field rejection (`max_emit`, `consume_mode`, `rate`, `probability`, `max_per_tick` alias).
+- T-1 landed: authoring schema only. No compile pass, driver/session integration, or GPU changes. Transfer/emission flags remain default false. Resource Flow remains separate from discrete transfer/emission.
+
+**Verification:** `cargo test -p simthing-spec --test resource_economy_roundtrip`; `cargo check --workspace`; `cargo test --workspace`.
+
+**Next gate:** T-2 — `simthing-spec::compile::resource_economy` validation and expansion report.
+
+---
+
 ## 2026-05-27 — Opus design memo: production transfer/emission registration ownership
 
 - Landed Opus design review at [`docs/reviews/transfer_emission_registration_ownership_opus_review.md`](reviews/transfer_emission_registration_ownership_opus_review.md). Docs-only; no implementation in this commit.

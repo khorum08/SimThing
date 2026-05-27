@@ -120,23 +120,24 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-11 burn-in** | `ae75d8e` | #161 | **Done** — controlled flat-star scaffold; `e11_burn_in_*` 4/4; flag default false |
 | **E-11 burn-in scenarios** | — | — | **Done** — named fixtures + `e11_burn_in_scenarios_*` 6/6; flag default false |
 | **E-11 CI soak** | — | — | **Done** — opt-in soak `e11_resource_flow_soak` 6/6; `ResourceFlowSoakSummaryReport` |
+| **T-1** | — | — | **Done** — `resource_economy` authoring types + RON roundtrip tests; no compile/driver/GPU |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **Cursor T-1…T-6** — production transfer/emission registration ownership implementation per Opus memo
-   ([`docs/reviews/transfer_emission_registration_ownership_opus_review.md`](reviews/transfer_emission_registration_ownership_opus_review.md), **landed 2026-05-27**). Phase T ladder in `accumulator_op_v2_production_plan.md`.
-2. **Limited opt-in scenario flagging** (optional) — extend explicit scenario opt-in beyond CI soak fixtures
-3. **E-11B** (optional/future) — nested hierarchy GPU execution / materialization
-4. **D-1** — discrete-transaction contention memo
+1. **T-2** — `simthing-spec::compile::resource_economy` validation and expansion report
+2. **T-3…T-5** — driver materialization, session integration, boundary refresh / replay tests (Phase T ladder)
+3. **Limited opt-in scenario flagging** (optional)
+4. **E-11B** (optional/future) — nested hierarchy GPU execution / materialization
+5. **D-1** — discrete-transaction contention memo
 
 **Open design warnings (preserve):**
-- Transfer/emission registration ownership: **design memo landed (Opus, 2026-05-27).** Spec/driver integration pending via Cursor Phase T ladder; transfer/emission flags remain default false until T-5 burn-in is green.
+- Transfer/emission registration ownership: **Opus design memo landed (2026-05-27).** **T-1 authoring types landed.** Spec compile (T-2) and driver integration (T-3…T-5) pending; transfer/emission flags remain default false until T-5 burn-in is green.
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-1 memo evaluates discrete boundary transactions only.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
 **E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-11 execution landed; enrollment compilation not in scope). Phase T does **not** unblock E-2B — it addresses transfer/emission/recipe/threshold-emit registration ownership only.
 
-**Next (immediate):** Cursor T-1…T-6 implementation per Opus memo; optional limited opt-in scenario flagging; or D-1 memo. E-11B nested GPU remains optional/future. E-2B blocked unless enrollment compilation explicitly lands.
+**Next (immediate):** T-2 `simthing-spec::compile::resource_economy` validation/expansion report; then T-3 driver materialization. E-11B nested GPU remains optional/future. E-2B blocked unless enrollment compilation explicitly lands.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

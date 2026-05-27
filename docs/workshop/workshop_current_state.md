@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** Opus transfer/emission registration ownership memo (docs-only)  
-**Verification (last recorded):** `e11_resource_flow_soak` 6/6; `e11_burn_in_*` 16/16; flag default false
+**Master HEAD:** Phase T-1 resource economy authoring types (pending merge)  
+**Verification (last recorded):** `resource_economy_roundtrip` 12/12; transfer/emission flags default false
 
 ---
 
@@ -23,9 +23,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed: `ResourceFlowSoakMode::FlatStarOptIn`, `ResourceFlowSoakSummaryReport`, `e11_resource_flow_soak` (6 tests). Nested hierarchy GPU **deferred (E-11B)**. `use_accumulator_resource_flow` **default false**. No new WGSL; `simthing-sim` remains arena-ignorant.
 
-**Next gates:** **Cursor Phase T** — production transfer/emission registration ownership implementation per Opus memo ([`../reviews/transfer_emission_registration_ownership_opus_review.md`](../reviews/transfer_emission_registration_ownership_opus_review.md), landed 2026-05-27) · limited opt-in scenario flagging (optional) · D-1 discrete-transaction contention memo. **E-11B** nested hierarchy GPU remains deferred. **E-2B** blocked unless enrollment compilation explicitly lands.
+**Next gates:** **T-2** — `simthing-spec::compile::resource_economy` validation/expansion report · **T-3…T-5** driver materialization and session integration · limited opt-in scenario flagging (optional) · D-1 discrete-transaction contention memo. **E-11B** nested hierarchy GPU remains deferred. **E-2B** blocked unless enrollment compilation explicitly lands.
 
-**Open design gates (not sunset):** production transfer/emission registration ownership — **Opus design memo landed 2026-05-27**; Cursor Phase T (T-1…T-6) implements spec authoring → driver compilation → session integration, with transfer/emission flags remaining default false until T-5 burn-in is green. **D-1** discrete-transaction contention memo (continuous-flow hot-pool allocator scope dissolved by Resource Flow ADR; C-8c still rejects same-band consumed-input contention); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
+**Open design gates (not sunset):** production transfer/emission registration ownership — **Opus design memo landed 2026-05-27**; **T-1 authoring types landed** (`resource_economy.rs` + RON roundtrip tests). T-2 compile pass and T-3…T-5 driver integration pending; transfer/emission flags remain default false until T-5 burn-in is green. **D-1** discrete-transaction contention memo (continuous-flow hot-pool allocator scope dissolved by Resource Flow ADR; C-8c still rejects same-band consumed-input contention); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
 
 **C-8 complete:** EML infrastructure, intensity, transfer, and emission are GPU-resident through AccumulatorOp. TransferConservation remains ExactDeterministic only. Emission tolerance remains future-gated and isolated from transfer/hard thresholds.
 
@@ -89,6 +89,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-11 burn-in** | #161 | Controlled flat-star scaffold; flag default false |
 | **E-11 burn-in scenarios** | #162 | Named fixtures + `e11_burn_in_scenarios_*` 6/6 |
 | **E-11 CI soak** | — | Opt-in soak `e11_resource_flow_soak` 6/6; flag default false |
+| **T-1** | — | `resource_economy` authoring types + RON roundtrip 12/12 |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
@@ -136,7 +137,7 @@ explicitly instead of falling back or silently skipping work.
 
 | Priority | ID | Owner | Blocks |
 |----------|-----|-------|--------|
-| Implementation | **Phase T (T-1…T-6)** transfer/emission registration ownership | Cursor (Codex 5.5 + Composer 2.5) | Opus design memo landed ([`../reviews/transfer_emission_registration_ownership_opus_review.md`](../reviews/transfer_emission_registration_ownership_opus_review.md)); ladder in `accumulator_op_v2_production_plan.md` Phase T |
+| Implementation | **Phase T** transfer/emission registration ownership | Cursor (Codex 5.5 + Composer 2.5) | **T-1 Done** — `resource_economy` authoring + RON tests; T-2…T-6 pending ([Opus memo](../reviews/transfer_emission_registration_ownership_opus_review.md)) |
 | Design | **D-1** discrete-transaction memo | Opus | Rescoped by Resource Flow ADR; no GPU allocator implementation |
 | Infra | Test-harness cleanup | Optional | Runtime legacy oracle/fallback peers are gone; remaining cleanup is test-only ergonomics |
 
