@@ -30,6 +30,8 @@ pub enum SessionError {
     Io(#[from] std::io::Error),
     #[error("install: {0}")]
     Install(#[from] InstallError),
+    #[error("resource flow sync: {0}")]
+    ResourceFlow(#[from] crate::arena_allocation_sync::ResourceFlowSyncError),
 }
 
 pub struct RunSummary {
@@ -199,17 +201,19 @@ impl SimSession {
         })
     }
 
-    pub fn install_spec_state(&mut self, spec_state: SpecSessionState) {
+    pub fn install_spec_state(&mut self, spec_state: SpecSessionState) -> Result<(), SessionError> {
         self.spec_state = spec_state;
         self.resync_gpu_shape_after_spec_install();
         self.sync_spec_threshold_registrations();
-        self.sync_resource_flow_if_enabled();
+        self.sync_resource_flow_if_enabled()?;
         self.proto.initial_gpu_sync(&self.coord, &mut self.state);
+        Ok(())
     }
 
-    fn sync_resource_flow_if_enabled(&mut self) {
+    /// Sync E-11 resource-flow AccumulatorOps when the pipeline flag is enabled.
+    pub fn sync_resource_flow_if_enabled(&mut self) -> Result<(), SessionError> {
         let enabled = self.proto.flags.use_accumulator_resource_flow;
-        let _ = crate::arena_allocation_sync::sync_resource_flow_accumulator(
+        crate::arena_allocation_sync::sync_resource_flow_accumulator(
             &mut self.state,
             &self.proto.registry,
             &self.spec_state.arena_registry,
@@ -217,7 +221,8 @@ impl SimSession {
             &self.proto.root,
             &self.proto.allocator,
             enabled,
-        );
+        )?;
+        Ok(())
     }
 
     fn resync_gpu_shape_after_spec_install(&mut self) {
@@ -284,7 +289,7 @@ impl SimSession {
             &mut session.proto.root,
             &mut session.proto.allocator,
         )?;
-        session.install_spec_state(spec_state);
+        session.install_spec_state(spec_state)?;
         Ok(session)
     }
 
@@ -305,11 +310,11 @@ impl SimSession {
     /// Triggers an `initial_gpu_sync` via `install_spec_state` so the GPU
     /// buffer reflects the new tree structure on the next tick. See
     /// `docs/adr/install_clone_then_commit.md`.
-    pub fn apply_install_preview(&mut self, preview: InstallPreview) {
+    pub fn apply_install_preview(&mut self, preview: InstallPreview) -> Result<(), SessionError> {
         self.proto.registry = preview.registry;
         self.proto.root = preview.root;
         self.proto.allocator = preview.allocator;
-        self.install_spec_state(preview.state);
+        self.install_spec_state(preview.state)
     }
 
     /// Run until `max_days` boundaries complete (or scenario max if smaller).

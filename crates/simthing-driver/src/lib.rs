@@ -20,7 +20,10 @@ pub use arena_allocation_oracle::{
 pub use arena_allocation_plan::{
     max_disbursement_band, plan_arena_allocation, AllocationPlanError, ArenaAllocationPlan,
 };
-pub use arena_allocation_sync::{build_plan_for_tests, sync_resource_flow_accumulator, ResourceFlowSyncReport};
+pub use arena_allocation_sync::{
+    build_plan_for_tests, sync_resource_flow_accumulator, ResourceFlowSyncError,
+    ResourceFlowSyncReport,
+};
 pub use arena_hierarchy::{
     build_custom_layout, build_execution_plan, build_flat_star_layout, resolve_node_columns,
     total_bands_for_depth, ArenaBandLayout, ArenaExecutionPlan, ArenaTreeLayout, HierarchyError,

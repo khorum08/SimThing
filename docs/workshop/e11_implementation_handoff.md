@@ -1,10 +1,22 @@
 # E-11 — Narrowed Implementation Handoff (Cursor binding)
 
-**Status:** **Done** — PR [#159](https://github.com/khorum08/SimThing/pull/159), commit `8a628ca`.  
+**Status:** **Done (flat-star vertical slice)** — PR [#159](https://github.com/khorum08/SimThing/pull/159), commit `8a628ca`. **E-11R hardening** landed PR [#160](https://github.com/khorum08/SimThing/pull/160). Burn-in may proceed under default-off flag control.  
 **Authority:** [`e11_hierarchical_allocation_design.md`](e11_hierarchical_allocation_design.md) (Opus v2)  
 **Prerequisites:** E-10R, E-10R2, E-10R3, E-8R, E-7R — **landed** (PRs #155–#157).
 
 **Do not re-implement prerequisites.** Build on the landed APIs below.
+
+---
+
+## What actually landed (honest scope)
+
+E-11 landed **flat-star D=2 allocation execution** over AccumulatorOp v2:
+
+- `build_execution_plan` materializes a **D=2 star** from arena participants (first sibling = root, remainder = leaves).
+- GPU parity is proven for the flat-star path (`e11_single_level_positive_weights_cpu_gpu_parity`, session-path `e11_resource_flow_flag_uploads_and_dispatches_flat_star_ops`).
+- **Nested hierarchy GPU execution is deferred** to E-11B / follow-up. CPU oracle covers custom nested layouts (`e11_multi_level_hierarchy_cpu_oracle_parity`); production materialization of nested trees is not wired.
+
+`use_accumulator_resource_flow` remains **default false**. Do not begin burn-in until E-11R error propagation and scope/test hardening land.
 
 ---
 
@@ -29,7 +41,7 @@
 ```
 e11_single_level_positive_weights_cpu_gpu_parity
 e11_zero_weight_sum_allocates_zero_no_nan
-e11_multi_level_hierarchy_cpu_gpu_parity
+e11_multi_level_hierarchy_cpu_oracle_parity
 e11_reserved_gap_fission_preserves_slotrange
 e11_orderband_depth_budget_enforced
 e11_balance_integrates_after_allocation_band
@@ -43,7 +55,17 @@ e11_no_nan_propagation_in_disbursement_path
 e11_replay_bit_exact_across_two_runs
 ```
 
-**Verification gate:** `cargo test -p simthing-driver e11`; prerequisite suites (`e10r*`, `e8r`, `e7r`, `accumulator_op`); `cargo check --workspace`; `cargo test --workspace`.
+**Verification gate:** `cargo test -p simthing-driver e11 e11r`; prerequisite suites (`e10r*`, `e8r`, `e7r`, `accumulator_op`); `cargo check --workspace`; `cargo test --workspace`.
+
+---
+
+## E-11R remedial hardening (landed with this PR)
+
+| Item | Status |
+|------|--------|
+| Sync errors | `ResourceFlowSyncError`; `install_spec_state` / `sync_resource_flow_if_enabled` propagate when flag enabled |
+| Scope honesty | Flat-star D=2 GPU path documented; nested GPU deferred (E-11B) |
+| Tests | `e11r_resource_flow_sync_error_is_reported_when_flag_enabled`, `e11_resource_flow_flag_uploads_and_dispatches_flat_star_ops`; renamed `e11_multi_level_hierarchy_cpu_oracle_parity` |
 
 ---
 

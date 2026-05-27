@@ -8,6 +8,7 @@ use crate::arena_hierarchy::{build_execution_plan, resolve_node_columns, ArenaEx
 use crate::arena_participant::ArenaParticipantScaffold;
 use crate::arena_registry::ArenaRegistry;
 use crate::child_share_eml::register_child_share_formula;
+use thiserror::Error;
 
 #[derive(Clone, Debug, Default)]
 pub struct ResourceFlowSyncReport {
@@ -15,6 +16,14 @@ pub struct ResourceFlowSyncReport {
     pub total_ops: u32,
     pub n_bands: u32,
     pub enabled: bool,
+}
+
+#[derive(Debug, Error)]
+pub enum ResourceFlowSyncError {
+    #[error(transparent)]
+    Hierarchy(#[from] HierarchyError),
+    #[error(transparent)]
+    OpUpload(#[from] simthing_gpu::AccumulatorOpSessionError),
 }
 
 /// Plan and upload E-11 allocation ops when `use_accumulator_resource_flow` is enabled.
@@ -26,7 +35,7 @@ pub fn sync_resource_flow_accumulator(
     root: &simthing_core::SimThing,
     allocator: &simthing_gpu::SlotAllocator,
     enabled: bool,
-) -> Result<ResourceFlowSyncReport, HierarchyError> {
+) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
     if !enabled || arena_registry.arenas.is_empty() {
         state.clear_resource_flow_accumulator();
         return Ok(ResourceFlowSyncReport {
@@ -67,8 +76,7 @@ pub fn sync_resource_flow_accumulator(
     }
 
     state
-        .sync_resource_flow_ops_from_cpu(&combined_cpu, max_bands, &eml_registry)
-        .expect("resource-flow op upload");
+        .sync_resource_flow_ops_from_cpu(&combined_cpu, max_bands, &eml_registry)?;
 
     Ok(ResourceFlowSyncReport {
         arenas_planned: plan.arenas.len() as u32,

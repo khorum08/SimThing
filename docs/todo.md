@@ -115,13 +115,15 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-7R** | — | — | **Done** — `plan_governed_integration_at_band` ordering API |
 | **E-11 design** | — | — | **Accepted** — Opus v2 memo landed |
 | **E-11 review** | — | — | **Done** — readiness review PASS; handoff published |
-| **E-11** | `8a628ca` | #159 | **Done** — hierarchical allocation execution; `e11_*` 14/14; flag default false |
+| **E-11** | `8a628ca` | #159 | **Done** — flat-star D=2 vertical slice; `e11_*` 14/14; flag default false |
+| **E-11R** | `8939fc6` | #160 | **Done** — sync errors, scope honesty, session-path test |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **Burn-in** — enable `use_accumulator_resource_flow` in controlled scenarios after CI soak
-2. **Opus** — production transfer/emission registration ownership
-3. **D-1** — discrete-transaction contention memo (D-2 deferred unless memo revives narrower GPU allocator need)
+1. **E-11R hardening** — sync errors, honest scope docs, session-path test (required before burn-in)
+2. **Burn-in** — enable `use_accumulator_resource_flow` in controlled scenarios after E-11R
+3. **E-11B** (optional) — nested hierarchy GPU execution / materialization
+4. **Opus** — production transfer/emission registration ownership
 
 **Open design warnings (preserve):**
 - Transfer/emission registration ownership: substrate-level only; production source-of-truth still needs integration.
@@ -130,7 +132,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-11 execution landed; enrollment compilation not in scope).
 
-**Next (immediate):** burn-in `use_accumulator_resource_flow` (default false) · Opus transfer/emission registration ownership.
+**Next (immediate):** controlled burn-in for `use_accumulator_resource_flow` (default false) or E-11B nested GPU.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp
