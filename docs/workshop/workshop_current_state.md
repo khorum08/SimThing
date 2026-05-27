@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** RF-T2 opt-in burn-in expansion (pending merge)  
+**Master HEAD:** RF-T2 opt-in burn-in expansion (merged PR #181, `ccc141a`)  
 **Verification (last recorded):** RF-T2 gate — `cargo test --workspace` PASS ([report](../tests/resource_flow_opt_in_burn_in_test_results.md))
 
 ---

@@ -4,7 +4,7 @@
 |-------|-------|
 | **Date/time** | 2026-05-19 (local verification run) |
 | **Base HEAD (before commit)** | `79f5311b586b95ba51c9bbd2a3d61f98e593aa40` |
-| **Final commit SHA** | `e13a4b4` |
+| **Final commit SHA** | `ccc141a` (merge PR #181) |
 | **rustc** | 1.95.0 (59807616e 2026-04-14) |
 | **cargo** | 1.95.0 (f2d3ce0bd 2026-03-21) |
 | **Platform/OS** | Windows 10.0.26200 (win32) |
