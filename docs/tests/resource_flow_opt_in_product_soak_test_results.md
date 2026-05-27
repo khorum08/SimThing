@@ -4,7 +4,7 @@
 |-------|-------|
 | **Date/time** | 2026-05-19 (local verification run) |
 | **Base HEAD (before commit)** | `70c2d3465016219920c2c10e277ce83cc3fd280d` |
-| **Final commit SHA** | `2ed811b` |
+| **Final commit SHA** | `b8654a3` (branch tip; RF-T3 impl `2ed811b`) |
 | **rustc** | `1.95.0 (59807616e 2026-04-14)` |
 | **cargo** | `1.95.0 (f2d3ce0bd 2026-03-21)` |
 | **Platform/OS** | Windows 10 (win32 10.0.26200), PowerShell |
