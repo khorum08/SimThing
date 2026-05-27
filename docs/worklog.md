@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — E-11R remedial hardening (pre burn-in)
+
+- Propagate resource-flow sync errors: `ResourceFlowSyncError`, `SessionError::ResourceFlow`, `install_spec_state` / `sync_resource_flow_if_enabled` return `Result` when flag enabled.
+- Renamed misleading `e11_multi_level_hierarchy_cpu_gpu_parity` → `e11_multi_level_hierarchy_cpu_oracle_parity` (nested GPU deferred).
+- Added `e11r_arena_allocation.rs`: sync error test + session-path flat-star upload/dispatch test.
+- Docs updated: E-11 = flat-star vertical slice; nested hierarchy GPU = E-11B follow-up; no burn-in until E-11R lands.
+
+**Verification:** `cargo test -p simthing-driver e11 e11r`; `cargo test --workspace`.
+
+**Next:** merge E-11R → controlled burn-in for default-off flag, or nested hierarchy GPU (E-11B).
+
+---
+
 ## 2026-05-19 — E-11 hierarchical allocation execution
 
 - Landed E-11 allocation execution on AccumulatorOp v2 substrate (PR [#159](https://github.com/khorum08/SimThing/pull/159), `8a628ca`).

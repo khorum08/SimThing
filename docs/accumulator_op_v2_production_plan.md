@@ -1179,7 +1179,7 @@ produce expected expansion reports.
 ### ✅ PR E-11 — Hierarchical allocation kernel pattern + CPU oracle parity
 
 **Model:** Opus (review and design pseudocode), Composer 2.5 (implementation)
-**Status:** **Done** — PR #159 (`8a628ca`); allocation execution + `e11_*` suite (14/14). `use_accumulator_resource_flow` default **false** pending burn-in.
+**Status:** **Done (flat-star vertical slice)** — PR #159 (`8a628ca`). Flat-star D=2 GPU path + CPU oracle for nested layouts. **E-11R hardening required before burn-in.** Nested hierarchy GPU execution deferred (E-11B).
 **Why Opus:** E-11 is a real new GPU production capability. Although it reuses
 the existing AccumulatorOp kernel, it is structured as a reverse-direction
 OrderBand sweep with per-intermediate weight reductions and per-child share
@@ -1425,7 +1425,8 @@ as a doc-only PR.
 | **E-7R** | **E** | **Composer 2.5** | **`plan_governed_integration_at_band` ordering API** | **Done** — `e7r_*` suite |
 | **E-11 design** | **E** | **Opus** | **Hierarchical allocation v2 design memo** | **Accepted** |
 | **E-11 review** | **E** | **Composer 2.5** | **Final readiness review + narrowed handoff** | **Done** |
-| **E-11** | **E** | **Opus + Composer 2.5** | **Hierarchical allocation kernel + CPU oracle parity + stability tests** | **Done** |
+| **E-11** | **E** | **Opus + Composer 2.5** | **Flat-star D=2 allocation kernel + CPU oracle** | **Done (slice)** |
+| **E-11R** | **E** | **Composer 2.5** | **Sync error propagation + scope honesty + session-path test** | **Done** |
 | S-1 | F | Codex 5.5 | Sunset intent fold | **Done locally** |
 | S-2 | F | Codex 5.5 | Sunset intensity update | **Landed (#138)** |
 | S-3 | F | Codex 5.5 | Sunset overlay prep | CI green at flag=on |

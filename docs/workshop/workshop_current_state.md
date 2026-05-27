@@ -21,9 +21,9 @@ Two parallel tracks:
 **Production direction:** AccumulatorOp v2 is the GPU execution path.
 Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Legacy threshold is deleted (S-6). Legacy velocity is deleted (S-5). Legacy intent is deleted (S-1). Snapshot is the only retained non-Accumulator operation.
 
-**E-11 status:** **Done** — allocation execution landed ([`e11_implementation_handoff.md`](e11_implementation_handoff.md)). Modules: `arena_hierarchy`, `arena_allocation_oracle`, `arena_allocation_plan`, `child_share_eml`, `arena_allocation_sync`. `use_accumulator_resource_flow` default **false** pending burn-in. No new WGSL. `simthing-sim` remains arena-ignorant.
+**E-11 status:** **Done (flat-star vertical slice)** — PR #159. Flat-star D=2 GPU allocation over AccumulatorOp; nested hierarchy GPU execution **deferred (E-11B)**. E-11R hardening in flight: sync error propagation, honest scope docs, session-path test. `use_accumulator_resource_flow` default **false** — no burn-in until E-11R lands. No new WGSL. `simthing-sim` remains arena-ignorant.
 
-**Next gates:** burn-in flag · Opus production transfer/emission registration ownership · D-1 discrete-transaction contention memo. **E-2B** `resource_flow_participant` remains blocked unless E-11 enrollment compilation explicitly lands.
+**Next gates:** **E-11R merge** → controlled burn-in or E-11B nested GPU · Opus production transfer/emission registration ownership · D-1 discrete-transaction contention memo. **E-2B** `resource_flow_participant` remains blocked unless E-11 enrollment compilation explicitly lands.
 
 **Open design gates (not sunset):** production transfer/emission registration ownership (substrate landed; spec/builder integration pending); **D-1** discrete-transaction contention memo (continuous-flow hot-pool allocator scope dissolved by Resource Flow ADR; C-8c still rejects same-band consumed-input contention); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
 
@@ -84,7 +84,8 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-10R** | — | Driver participant identity preflight + reserved-gap admission |
 | **E-8R** | — | Arena-internal plumbing columns at property compile |
 | **E-7R** | — | `plan_governed_integration_at_band` for E-11 integration placement |
-| **E-11** | #159 | Allocation execution landed; `e11_*` 14/14; flag default false |
+| **E-11** | #159 | Flat-star D=2 GPU slice; nested GPU deferred |
+| **E-11R** | — | Pre burn-in hardening (sync errors, session-path test) |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

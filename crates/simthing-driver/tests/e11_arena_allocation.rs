@@ -290,7 +290,7 @@ fn e11_zero_weight_sum_allocates_zero_no_nan() {
 }
 
 #[test]
-fn e11_multi_level_hierarchy_cpu_gpu_parity() {
+fn e11_multi_level_hierarchy_cpu_oracle_parity() {
     let f = materialize_d2(1, 0, 16);
     let c = f.cols;
     let arena = GpuArenaDescriptor {
