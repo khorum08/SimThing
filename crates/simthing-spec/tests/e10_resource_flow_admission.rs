@@ -62,6 +62,7 @@ fn food_arena_spec(max_participants: u32) -> ArenaSpec {
             slot: 1,
             subtree_root_id: 42,
         }],
+        enrollment: None,
         wildcard_admission: None,
     }
 }
@@ -82,6 +83,7 @@ fn research_arena_spec() -> ArenaSpec {
             slot: 2,
             subtree_root_id: 43,
         }],
+        enrollment: None,
         wildcard_admission: None,
     }
 }

@@ -102,8 +102,8 @@ pub use spec::resource_economy::{
     ResourceTransferSpec,
 };
 pub use spec::resource_flow::{
-    ArenaSpec, CouplingDelaySpec, CouplingSpec, ExplicitParticipantSpec, FissionPolicySpec,
-    ResourceFlowSpec, WildcardAdmissionSpec,
+    ArenaSpec, CouplingDelaySpec, CouplingSpec, EnrollmentSelectorSpec, ExplicitParticipantSpec,
+    FissionPolicySpec, ResourceFlowSpec, WildcardAdmissionSpec,
 };
 pub use spec::script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,

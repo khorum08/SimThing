@@ -96,6 +96,7 @@ fn arena_spec(participants: Vec<(u32, u32)>, gap: u32, max_depth: u32) -> ArenaS
                 subtree_root_id,
             })
             .collect(),
+        enrollment: None,
         wildcard_admission: None,
     }
 }

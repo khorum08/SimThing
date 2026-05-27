@@ -13,6 +13,7 @@ pub mod resource_economy_oracle;
 pub mod resource_economy_sync;
 pub mod resource_flow_burn_in;
 pub mod resource_flow_compile;
+pub mod resource_flow_enrollment;
 pub mod resource_flow_preflight;
 pub mod scenario;
 pub mod session;
@@ -75,6 +76,7 @@ pub use resource_flow_burn_in::{
 pub use resource_flow_compile::{
     compile_and_materialize_resource_flow, materialize_arena_registry,
 };
+pub use resource_flow_enrollment::{resolve_resource_flow_enrollment, EnrollmentError};
 pub use resource_flow_preflight::validate_resource_flow_preflight;
 pub use simthing_gpu::SlotAllocError;
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};

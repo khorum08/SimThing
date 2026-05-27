@@ -112,6 +112,7 @@ pub fn flat_star_game_mode(max_orderband_depth: u32) -> GameModeSpec {
                 reserved_gap_per_intermediate: 0,
                 expected_max_children_per_intermediate: 0,
                 explicit_participants: Vec::new(),
+                enrollment: None,
                 wildcard_admission: None,
             }],
             couplings: vec![],

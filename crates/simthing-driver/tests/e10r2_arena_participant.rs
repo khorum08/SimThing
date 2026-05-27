@@ -66,6 +66,7 @@ fn food_arena(
                 subtree_root_id,
             })
             .collect(),
+        enrollment: None,
         wildcard_admission: None,
     }
 }

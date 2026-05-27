@@ -1,3 +1,4 @@
+use crate::spec::install_target::InstallTargetSpec;
 use crate::spec::script::PropertyKey;
 use serde::{Deserialize, Serialize};
 
@@ -35,8 +36,22 @@ pub struct ArenaSpec {
     pub expected_max_children_per_intermediate: u32,
     #[serde(default)]
     pub explicit_participants: Vec<ExplicitParticipantSpec>,
+    /// E-2B: authored enrollment selector resolved to `explicit_participants` at session install.
+    #[serde(default)]
+    pub enrollment: Option<EnrollmentSelectorSpec>,
     #[serde(default)]
     pub wildcard_admission: Option<WildcardAdmissionSpec>,
+}
+
+/// Resource Flow arena enrollment selector (E-2B).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum EnrollmentSelectorSpec {
+    /// Use authored `explicit_participants` only (default when `enrollment` is omitted).
+    #[default]
+    ExplicitOnly,
+    /// Resolve live session install targets into `explicit_participants` before E-10R preflight.
+    InstallTarget(InstallTargetSpec),
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
