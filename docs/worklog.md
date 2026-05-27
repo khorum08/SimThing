@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — RF-T1: limited scenario-class Resource Flow opt-in flagging
+
+- **`ResourceFlowOptInMode`** on `ResourceFlowSpec` (`Disabled`, `FlatStarOptIn`); mirrors Phase T `ResourceEconomyOptInMode` posture.
+- **`SimSession::open_from_spec`** applies opt-in via `apply_resource_flow_opt_in`; flat-star validation rejects wildcard admission (E-11B deferred).
+- **Tests:** [`resource_flow_opt_in_roundtrip.rs`](../crates/simthing-spec/tests/resource_flow_opt_in_roundtrip.rs), [`resource_flow_opt_in.rs`](../crates/simthing-driver/tests/resource_flow_opt_in.rs).
+- RF-T1 landed: limited scenario-class Resource Flow opt-in flagging. `ResourceFlowOptInMode` enables `FlatStarOptIn` per authored scenario/game mode. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU Resource Flow execution. E-11 flat-star path, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment are reused. E-11B remains deferred. Policy B Reevaluate remains deferred. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant.
+
+**Verification:** targeted RF-T1 + regression suites + `cargo check --workspace` + `cargo test --workspace` — PASS ([test report](tests/resource_flow_opt_in_flagging_test_results.md)).
+
+**Next gate:** RF-T2 limited opt-in scenario burn-in expansion.
+
+---
+
 ## 2026-05-19 — Resource Flow default-on readiness review
 
 - Added [`docs/reviews/resource_flow_default_on_readiness_review.md`](reviews/resource_flow_default_on_readiness_review.md): audits default-on candidates (global vs scenario-class vs spec opt-in); burn-in evidence from E-2B, E-11, E-2B-5/5R, soak; explicit exclusions (E-11B, Policy B, gap-only, wildcards, product scale).

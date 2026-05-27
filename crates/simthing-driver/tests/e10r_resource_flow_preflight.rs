@@ -37,6 +37,7 @@ fn e10r_rejects_unknown_subtree_root_id() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena_with_participant(0, 9999)],
         couplings: vec![],
+    ..Default::default()
     };
     let err = validate_resource_flow_preflight(&spec, &alloc).unwrap_err();
     assert!(matches!(
@@ -53,6 +54,7 @@ fn e10r_rejects_slot_mismatch() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena_with_participant(99, world.id.raw())],
         couplings: vec![],
+    ..Default::default()
     };
     let err = validate_resource_flow_preflight(&spec, &alloc).unwrap_err();
     assert!(matches!(
@@ -75,6 +77,7 @@ fn e10r_rejects_tombstoned_participant() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena_with_participant(slot, cohort_id.raw())],
         couplings: vec![],
+    ..Default::default()
     };
     let err = validate_resource_flow_preflight(&spec, &alloc).unwrap_err();
     assert!(matches!(
@@ -91,6 +94,7 @@ fn e10r_accepts_valid_explicit_participant() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena_with_participant(0, world.id.raw())],
         couplings: vec![],
+    ..Default::default()
     };
     assert!(validate_resource_flow_preflight(&spec, &alloc).is_ok());
 }
@@ -106,6 +110,7 @@ fn e10r_rejects_reserved_gap_smaller_than_expected_fanout() {
     let spec = ResourceFlowSpec {
         arenas: vec![arena],
         couplings: vec![],
+    ..Default::default()
     };
     let err = validate_resource_flow_preflight(&spec, &alloc).unwrap_err();
     assert!(matches!(err, SpecError::ReservedGapTooSmall { .. }));

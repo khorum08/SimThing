@@ -141,6 +141,7 @@ fn materialize_d2(hosted_count: usize, gap: u32, max_depth: u32) -> E11Fixture {
             ..arena_spec(vec![], gap, max_depth)
         }],
         couplings: vec![],
+    ..Default::default()
     };
     validate_resource_flow_preflight(&spec, &alloc).unwrap();
     let scaffold = materialize_arena_participants(&spec, &reg, &mut root, &mut alloc).unwrap();

@@ -105,6 +105,7 @@ fn e10_rejects_implicit_participation() {
     let spec = ResourceFlowSpec {
         arenas: vec![arena],
         couplings: vec![],
+    ..Default::default()
     };
     let err = compile_resource_flow_admission(&spec, &reg).unwrap_err();
     assert!(matches!(err, SpecError::ImplicitParticipation { .. }));
@@ -138,6 +139,7 @@ fn e10_rejects_unknown_arena_role_reference() {
     let flow_spec = ResourceFlowSpec {
         arenas: vec![food_arena_spec(4)],
         couplings: vec![],
+    ..Default::default()
     };
     let err = compile_resource_flow_admission(&flow_spec, &reg).unwrap_err();
     assert!(matches!(
@@ -158,6 +160,7 @@ fn e10_rejects_unbounded_wildcard_without_cap() {
     let spec = ResourceFlowSpec {
         arenas: vec![arena],
         couplings: vec![],
+    ..Default::default()
     };
     let err = compile_resource_flow_admission(&spec, &reg).unwrap_err();
     assert!(matches!(err, SpecError::UnboundedWildcardAdmission { .. }));
@@ -174,6 +177,7 @@ fn e10_enforces_max_participants() {
     let spec = ResourceFlowSpec {
         arenas: vec![arena],
         couplings: vec![],
+    ..Default::default()
     };
     let err = compile_and_materialize_resource_flow(&spec, &reg).unwrap_err();
     assert!(matches!(err, SpecError::MaxParticipantsExceeded { .. }));
@@ -209,6 +213,7 @@ fn e10_rejects_all_algebraic_coupling_cycle() {
                 delay: CouplingDelaySpec::Algebraic,
             },
         ],
+        ..Default::default()
     };
     let err = compile_and_materialize_resource_flow(&spec, &reg).unwrap_err();
     assert!(matches!(err, SpecError::AllAlgebraicCouplingCycle));
@@ -231,6 +236,7 @@ fn e10_allows_cycle_with_delay_edge() {
                 delay: CouplingDelaySpec::OneTickDelay,
             },
         ],
+        ..Default::default()
     };
     assert!(compile_and_materialize_resource_flow(&spec, &reg).is_ok());
 }
@@ -254,6 +260,7 @@ fn e10_rejects_hidden_fanout() {
                 delay: CouplingDelaySpec::OneTickDelay,
             },
         ],
+        ..Default::default()
     };
     let err = compile_and_materialize_resource_flow(&spec, &reg).unwrap_err();
     assert!(matches!(err, SpecError::HiddenFanoutExceeded { .. }));
@@ -268,6 +275,7 @@ fn e10_rejects_orderband_budget_excess() {
     let spec = ResourceFlowSpec {
         arenas: vec![arena],
         couplings: vec![],
+    ..Default::default()
     };
     let err = compile_and_materialize_resource_flow(&spec, &reg).unwrap_err();
     assert!(matches!(err, SpecError::MaxOrderBandDepthExceeded { .. }));
@@ -302,6 +310,7 @@ fn e10_rejects_unresolved_balance_num_count_source() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena_spec(4)],
         couplings: vec![],
+    ..Default::default()
     };
     let err = compile_resource_flow_admission(&spec, &reg).unwrap_err();
     assert!(matches!(
@@ -320,6 +329,7 @@ fn e10_expansion_report_is_stable() {
             to_arena: "research".into(),
             delay: CouplingDelaySpec::OneTickDelay,
         }],
+        ..Default::default()
     };
     let (_, report_a) = compile_and_materialize_resource_flow(&spec, &reg).unwrap();
     let (_, report_b) = compile_and_materialize_resource_flow(&spec, &reg).unwrap();
@@ -376,6 +386,7 @@ fn e10_rejects_property_possession_without_explicit_admission() {
     let spec = ResourceFlowSpec {
         arenas: vec![arena],
         couplings: vec![],
+    ..Default::default()
     };
     let err = compile_resource_flow_admission(&spec, &reg).unwrap_err();
     assert!(matches!(
@@ -427,6 +438,7 @@ fn e10_rejects_duplicate_arena_role_binding_on_same_property() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena_spec(4)],
         couplings: vec![],
+    ..Default::default()
     };
     let err = compile_resource_flow_admission(&spec, &reg).unwrap_err();
     assert!(matches!(err, SpecError::DuplicateArenaRoleBinding { .. }));

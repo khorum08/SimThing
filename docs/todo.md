@@ -129,13 +129,13 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Next recommended gates (pivot-forward order):**
 
-1. **Resource Flow limited scenario-class opt-in flagging (RF-T1)** — mirroring T-6 `ResourceEconomyOptInMode`; **not** global default-on (see [`resource_flow_default_on_readiness_review.md`](reviews/resource_flow_default_on_readiness_review.md), Recommendation **B**)
-2. **Resource Flow limited opt-in scenario burn-in expansion**
-3. **E-11B nested hierarchy GPU** — if nested static Resource Flow scenarios are next (deferred by default)
-4. **D-2a boundary transaction scheduling** — only if discrete hard-currency ordering is urgent
+1. **RF-T2 limited opt-in scenario burn-in expansion** — explicit FlatStarOptIn scenarios; **not** global default-on
+2. **E-11B nested hierarchy GPU** — if nested static Resource Flow scenarios are next (deferred by default)
+3. **D-2a boundary transaction scheduling** — only if discrete hard-currency ordering is urgent
 
 **Open design warnings (preserve):**
 - Transfer/emission registration ownership: **Phase T complete.** T-6 landed limited opt-in scenario flagging for resource economy transfer/emission. Global transfer/emission flags remain default false. Only explicitly opted-in scenarios enable AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free. Hard-currency transfers remain on exact discrete AccumulatorOp transfer paths, not Resource Flow.
+- **RF-T1 landed:** limited scenario-class Resource Flow opt-in flagging. `ResourceFlowOptInMode` on `ResourceFlowSpec` enables `FlatStarOptIn` per authored scenario/game mode. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU Resource Flow execution. E-11 flat-star path, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment are reused. E-11B remains deferred. Policy B Reevaluate remains deferred. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant.
 - **Resource Flow default-on readiness review landed:** [`resource_flow_default_on_readiness_review.md`](reviews/resource_flow_default_on_readiness_review.md). No production code changes. **Recommendation B:** limited scenario-class default-on readiness may proceed; global default-on rejected. E-2B static enrollment, E-2B-5 Policy A, E-2B-5R atomicity, and dynamic enrollment soak remain landed. `use_accumulator_resource_flow` remains default false. E-11B remains deferred by default. Policy B Reevaluate remains deferred. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant.
 - **Resource Flow dynamic enrollment soak landed:** [`resource_flow_dynamic_enrollment_soak.rs`](../crates/simthing-driver/src/resource_flow_dynamic_enrollment_soak.rs) + [`e2b5_dynamic_enrollment_soak.rs`](../crates/simthing-driver/tests/e2b5_dynamic_enrollment_soak.rs) (PR #178). E-2B-5R remained atomic under soak.
 - **E-2B static enrollment compilation landed:** Resource Flow enrollment selectors resolve to explicit participants at session install ([`EnrollmentSelectorSpec`](../crates/simthing-spec/src/spec/resource_flow.rs), [`resolve_resource_flow_enrollment`](../crates/simthing-driver/src/resource_flow_enrollment.rs)). No legacy `resource_flow_participant` AccumulatorOp builder. E-10R/E-10R2/E-10R3 scaffold and E-11 flat-star execution reused unchanged.
@@ -146,7 +146,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **E-2B:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).**
 
-**Next (immediate):** Resource Flow limited scenario-class opt-in flagging (RF-T1); or burn-in expansion, E-11B, D-2a per product priority.
+**Next (immediate):** RF-T2 limited opt-in scenario burn-in expansion; or E-11B, D-2a per product priority.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

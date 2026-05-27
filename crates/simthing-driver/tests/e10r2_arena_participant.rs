@@ -111,6 +111,7 @@ fn materialize_fixture(
             ..arena
         }],
         couplings: vec![],
+    ..Default::default()
     };
     validate_resource_flow_preflight(&spec, &alloc).unwrap();
     let scaffold = materialize_arena_participants(&spec, &reg, &mut root, &mut alloc).unwrap();

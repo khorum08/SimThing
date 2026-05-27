@@ -153,6 +153,7 @@ fn open_enrollment_fixture(
             wildcard_admission: None,
         }],
         couplings: vec![],
+    ..Default::default()
     };
 
     validate_resource_flow_preflight(&spec, &alloc).unwrap();
@@ -257,6 +258,7 @@ fn e2b5_parent_enrolled_in_two_arenas_child_inherits_both() {
             wildcard_admission: None,
         }],
         couplings: vec![],
+    ..Default::default()
     };
     validate_resource_flow_preflight(&food_spec, &alloc).unwrap();
     let mut scaffold = materialize_arena_participants(&food_spec, &reg, &mut root, &mut alloc).unwrap();
@@ -288,6 +290,7 @@ fn e2b5_parent_enrolled_in_two_arenas_child_inherits_both() {
             wildcard_admission: None,
         }],
         couplings: vec![],
+    ..Default::default()
     };
     validate_resource_flow_preflight(&research_only, &alloc).unwrap();
     let research_scaffold =
@@ -314,6 +317,7 @@ fn e2b5_parent_enrolled_in_two_arenas_child_inherits_both() {
     let full_spec = ResourceFlowSpec {
         arenas: vec![food_spec.arenas[0].clone(), research_only.arenas[0].clone()],
         couplings: vec![],
+    ..Default::default()
     };
     let (arena_registry, _) =
         simthing_driver::compile_and_materialize_resource_flow(&full_spec, &reg).unwrap();

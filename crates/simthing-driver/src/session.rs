@@ -9,7 +9,7 @@ use simthing_gpu::{GpuContext, Pipelines, WorldGpuState};
 use simthing_sim::{BoundaryOutcome, BoundaryProtocol, BoundaryTiming, ReplayFrame, ReplayWriter};
 use simthing_spec::{
     CapabilityTreeInstance, CapabilityTreeState, CapabilityUnlockRegistration, GameModeSpec,
-    ResourceEconomyOptInMode,
+    ResourceEconomyOptInMode, ResourceFlowOptInMode,
 };
 use std::collections::HashMap;
 use thiserror::Error;
@@ -35,6 +35,8 @@ pub enum SessionError {
     ResourceFlow(#[from] crate::arena_allocation_sync::ResourceFlowSyncError),
     #[error("resource economy sync: {0}")]
     ResourceEconomy(#[from] crate::resource_economy_sync::ResourceEconomySyncError),
+    #[error("resource flow opt-in: {0}")]
+    ResourceFlowOptIn(String),
 }
 
 pub struct RunSummary {
@@ -329,6 +331,10 @@ impl SimSession {
             &mut session.proto.allocator,
         )?;
         apply_resource_economy_opt_in(&mut session.proto.flags, game_mode);
+        apply_resource_flow_opt_in(&mut session.proto.flags, game_mode);
+        if session.proto.flags.use_accumulator_resource_flow {
+            validate_resource_flow_flat_star_opt_in(game_mode, &spec_state)?;
+        }
         session.install_spec_state(spec_state)?;
         Ok(session)
     }
@@ -755,4 +761,52 @@ fn apply_resource_economy_opt_in(
             flags.use_accumulator_emission = true;
         }
     }
+}
+
+fn apply_resource_flow_opt_in(flags: &mut simthing_sim::PipelineFlags, game_mode: &GameModeSpec) {
+    let mode = game_mode
+        .resource_flow
+        .as_ref()
+        .map(|spec| spec.opt_in_mode)
+        .unwrap_or(ResourceFlowOptInMode::Disabled);
+
+    match mode {
+        ResourceFlowOptInMode::Disabled => {}
+        ResourceFlowOptInMode::FlatStarOptIn => {
+            flags.use_accumulator_resource_flow = true;
+        }
+    }
+}
+
+fn validate_resource_flow_flat_star_opt_in(
+    game_mode: &GameModeSpec,
+    spec_state: &SpecSessionState,
+) -> Result<(), SessionError> {
+    let Some(flow) = game_mode.resource_flow.as_ref() else {
+        return Err(SessionError::ResourceFlowOptIn(
+            "FlatStarOptIn requires authored ResourceFlowSpec".into(),
+        ));
+    };
+    if flow.arenas.is_empty() {
+        return Err(SessionError::ResourceFlowOptIn(
+            "FlatStarOptIn requires at least one arena".into(),
+        ));
+    }
+    for arena in &flow.arenas {
+        if arena.wildcard_admission.is_some() {
+            return Err(SessionError::ResourceFlowOptIn(format!(
+                "arena `{}` wildcard admission is not supported for FlatStarOptIn (E-11B deferred)",
+                arena.name
+            )));
+        }
+    }
+    for arena in &spec_state.arena_registry.arenas {
+        if arena.wildcard_max_expansion.is_some() {
+            return Err(SessionError::ResourceFlowOptIn(format!(
+                "arena `{}` wildcard expansion is not supported for FlatStarOptIn",
+                arena.name
+            )));
+        }
+    }
+    Ok(())
 }

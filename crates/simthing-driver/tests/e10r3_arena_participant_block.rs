@@ -87,6 +87,7 @@ fn materialize_multi(n_hosted: usize, gap: u32) -> (SimThing, SlotAllocator, sim
             ..food_arena(gap, gap)
         }],
         couplings: vec![],
+    ..Default::default()
     };
     validate_resource_flow_preflight(&spec, &alloc).unwrap();
     let scaffold = materialize_arena_participants(&spec, &reg, &mut root, &mut alloc).unwrap();
@@ -238,6 +239,7 @@ fn e10r3_resource_flow_materialization_respects_scenario_slot_capacity() {
                 ..food_arena(2, 2)
             }],
             couplings: vec![],
+        ..Default::default()
         }),
         resource_economy: None,
     };

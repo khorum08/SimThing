@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** Resource Flow default-on readiness review (merged PR #179)  
-**Verification (last recorded):** docs-only; `cargo test --workspace` PASS
+**Master HEAD:** RF-T1 Resource Flow opt-in flagging (pending merge)  
+**Verification (last recorded):** RF-T1 gate — `cargo test --workspace` PASS ([report](../tests/resource_flow_opt_in_flagging_test_results.md))
 
 ---
 
@@ -27,7 +27,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **RF default-on review:** **Done** — [`resource_flow_default_on_readiness_review.md`](../reviews/resource_flow_default_on_readiness_review.md). **Recommendation B:** limited scenario-class opt-in may proceed; global default-on deferred. No production code changes.
 
-**Next gates:** **Resource Flow limited scenario-class opt-in flagging (RF-T1)**; **burn-in expansion**; **E-11B**; **D-2a** per product priority.
+**RF-T1 status:** **Done** — `ResourceFlowOptInMode` on `ResourceFlowSpec`; `FlatStarOptIn` enables GPU Resource Flow per scenario via `open_from_spec`. Global flag remains default false. Populated spec without opt-in stays inactive. E-11B and Policy B remain deferred.
+
+**Next gates:** **RF-T2 limited opt-in scenario burn-in expansion**; **E-11B**; **D-2a** per product priority.
 
 **Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. E-11B deferred by default. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
 
