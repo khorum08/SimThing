@@ -3,9 +3,9 @@
 **Purpose:** Single synthesis of **active workshop docs**, **production migration state**,
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
-**Last updated:** 2026-05-19  
-**Master HEAD:** RF-T5 scenario-class burn-in / telemetry soak (pending merge)  
-**Verification (last recorded):** RF-T5 `resource_flow_scenario_class_burn_in` — 16/16 PASS (local GPU)
+**Last updated:** 2026-05-27
+**Master HEAD:** RF-T5 scenario-class burn-in / telemetry soak (merged PR #185, `7f56992`)
+**Verification (last recorded):** RF limited scenario-class posture review — docs-only; RF-T5 report inspected before artifact cleanup; `cargo check --workspace` + `cargo test --workspace` PASS.
 
 ---
 
@@ -37,7 +37,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **RF-T5 status:** **Done** — scenario-class burn-in / telemetry soak via `FlatStarResourceFlow` profile; product-like static/dynamic/multi-arena/replay/rejection/resync fixtures; `ScenarioClassDefaultOn` flag-source + execution-profile attribution. Global flag remains default false.
 
-**Next gates:** **Resource Flow limited scenario-class production posture review** (recommended; not global default-on); **E-11B**; **D-2a**; simthing-spec rebuild per product priority.
+**Resource Flow limited scenario-class production posture:** **Done** — [`resource_flow_limited_scenario_class_production_posture.md`](../reviews/resource_flow_limited_scenario_class_production_posture.md). **Recommendation A:** limited scenario-class `FlatStarResourceFlow` is accepted as the current bounded production Resource Flow posture. No production code changes. RF-T1 through RF-T5 remain landed. Global flag remains default false; spec presence alone does not enable GPU; spec `FlatStarOptIn` remains supported and takes precedence. E-11 flat-star, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment remain the only covered execution paths. E-11B and Policy B remain deferred. No WGSL, new roles, CPU fallback, or `simthing-sim` arena awareness. Designer-facing spec/RON guardrail rebuild remains deferred.
+
+**Next gates:** **RF-T6 production docs/telemetry polish** (recommended); **E-11B**; **D-2a**; simthing-spec/RON rebuild; or continued soak per product priority. Global default-on remains deferred.
 
 **Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. E-11B deferred by default. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
 

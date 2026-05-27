@@ -6,6 +6,22 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — Resource Flow limited scenario-class production posture review
+
+- Added [`resource_flow_limited_scenario_class_production_posture.md`](reviews/resource_flow_limited_scenario_class_production_posture.md): post-RF-T5 docs-only posture review.
+- Resource Flow limited scenario-class production posture review landed. No production code changes. RF-T1 through RF-T5 remain landed.
+- **Recommendation A:** limited scenario-class `FlatStarResourceFlow` is accepted as the current bounded production Resource Flow posture.
+- Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Spec `FlatStarOptIn` remains supported and takes precedence.
+- E-11 flat-star, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment remain the only covered execution paths. E-11B remains deferred. Policy B Reevaluate remains deferred.
+- No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant. Designer-facing spec/RON guardrail rebuild remains deferred to the future simthing-spec rebuild track.
+- Deleted inspected RF-T5 local test artifacts (`resource_flow_scenario_class_burn_in_test_results.md`, `_full.log`); formal reviews and active docs remain.
+
+**Verification:** docs-only PR; RF-T5 report was inspected before artifact cleanup. Local `cargo check --workspace` and `cargo test --workspace` PASS.
+
+**Next gate:** RF-T6 production docs/telemetry polish is recommended; E-11B, D-2a, simthing-spec/RON rebuild, or continued soak remain product-priority options. Global default-on remains deferred.
+
+---
+
 ## 2026-05-19 — RF-T5: scenario-class Resource Flow burn-in / telemetry soak
 
 - **`resource_flow_scenario_class_burn_in.rs`** — profile-path product soak mirroring RF-T3; opens via `ResourceFlowExecutionProfile::FlatStarResourceFlow` with spec `opt_in_mode` disabled.
@@ -13,9 +29,9 @@ Running log of what's done and what's next, across sessions.
 - **Tests:** [`resource_flow_scenario_class_burn_in.rs`](../crates/simthing-driver/tests/resource_flow_scenario_class_burn_in.rs) (16 tests).
 - RF-T5 landed: scenario-class Resource Flow burn-in / telemetry soak. `FlatStarResourceFlow` profile soaked through product-like scenarios. Global flag remains default false. Spec FlatStarOptIn precedence preserved. Scenario-class telemetry records `ScenarioClassDefaultOn` and execution profile name. E-11B and Policy B remain deferred. No WGSL. No CPU fallback. `simthing-sim` remains arena-ignorant. Designer-facing spec/RON guardrail rebuild deferred.
 
-**Verification:** targeted RF-T5 + regression suites + `cargo test --workspace` — PASS ([test report](tests/resource_flow_scenario_class_burn_in_test_results.md)).
+**Verification:** targeted RF-T5 + regression suites + `cargo test --workspace` — PASS. The local RF-T5 test artifact was inspected by the production posture review and retired from the tree.
 
-**Next gate:** Resource Flow limited scenario-class production posture review (recommended); global default-on remains deferred.
+**Next gate:** Resource Flow limited scenario-class production posture review (completed 2026-05-27); global default-on remains deferred.
 
 ---
 
@@ -26,7 +42,7 @@ Running log of what's done and what's next, across sessions.
 - **Tests:** [`resource_flow_scenario_class_default_on.rs`](../crates/simthing-driver/tests/resource_flow_scenario_class_default_on.rs) (16 tests).
 - RF-T4 landed: limited scenario-class Resource Flow default-on implementation. Named scenario classes / execution profiles can enable the flat-star Resource Flow GPU path at session open. Global flag remains default false. E-11B and Policy B remain deferred. No WGSL. No CPU fallback. `simthing-sim` remains arena-ignorant. Designer-facing spec/RON guardrail rebuild deferred.
 
-**Verification:** targeted RF-T4 + regression suites + `cargo test --workspace` — PASS ([test report](tests/resource_flow_scenario_class_default_on_test_results.md)).
+**Verification:** targeted RF-T4 + regression suites + `cargo test --workspace` — PASS. The local RF-T4 test artifact was retired by RF-T5.
 
 **Next gate:** RF-T5 scenario-class burn-in / telemetry soak; global default-on remains deferred.
 
