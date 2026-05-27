@@ -512,6 +512,14 @@ impl EmlExpressionRegistry {
         self.formulas.get(&tree_id).map(|f| &f.meta)
     }
 
+    /// Resolve a designer-stable formula key to a registered tree id.
+    pub fn tree_id_by_display_name(&self, display_name: &str) -> Option<EmlTreeId> {
+        self.formulas
+            .iter()
+            .find(|(_, entry)| entry.meta.display_name == display_name)
+            .map(|(id, _)| *id)
+    }
+
     pub fn get_nodes(&self, tree_id: EmlTreeId) -> Option<&[EmlNode]> {
         self.formulas.get(&tree_id).map(|f| f.nodes.as_slice())
     }

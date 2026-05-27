@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — Phase T-2: resource economy compile pass
+
+- Added `simthing-spec::compile::resource_economy` with `compile_resource_economy`, `CompiledResourceEconomy`, and `ResourceEconomyExpansionReport`.
+- Resolves property keys, subfield roles, EML formula keys (`ExactDeterministic` + `EmlConsumerKind::Emission` only), and conservative same-band consumed-input contention pre-validation.
+- Added `resource_economy_compile_rejections.rs` (11 tests) and `resource_economy_expansion_report.rs` (8 tests). T-1 roundtrip suite remains green (12/12).
+- T-2 landed: spec compile/validation only. No driver materialization yet. No session integration yet. No GPU changes. Transfer/emission flags remain default false.
+
+**Verification:** `cargo test -p simthing-spec resource_economy -- --nocapture`; `cargo test -p simthing-driver --test e11_resource_flow_soak`; `cargo check --workspace`; `cargo test --workspace`.
+
+**Next gate:** T-3 — `simthing-driver::resource_economy_compile` materialization into existing builder/planner registration shapes.
+
+---
+
 ## 2026-05-27 — Phase T-1: resource economy authoring types
 
 - Added `simthing-spec::spec::resource_economy` with `ResourceEconomySpec`, transfer/recipe/emission/threshold authoring types, and `EmissionFormulaSpec` / `EmitBufferSpec`.

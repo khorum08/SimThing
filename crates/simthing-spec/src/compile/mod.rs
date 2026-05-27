@@ -17,6 +17,7 @@ pub mod effect;
 pub mod event;
 pub mod overlay;
 pub mod property;
+pub mod resource_economy;
 pub mod resource_flow_admission;
 pub mod trigger;
 
@@ -26,6 +27,12 @@ pub use effect::compile_effect;
 pub use event::compile_event;
 pub use overlay::compile_overlay;
 pub use property::compile_property;
+pub use resource_economy::{
+    compile_resource_economy, CompiledEmitOnThreshold, CompiledEmissionFormula,
+    CompiledResourceEconomy, CompiledResourceEmission, CompiledResourceRecipe,
+    CompiledResourceRecipeInput, CompiledResourceTransfer, ResourceEconomyDiagnostic,
+    ResourceEconomyExpansionReport,
+};
 pub use resource_flow_admission::{
     compile_resource_flow_admission, CompiledArenaAdmission, CompiledCouplingAdmission,
     CompiledCouplingDelay, CompiledResourceFlowAdmission, ResourceFlowDiagnostic,

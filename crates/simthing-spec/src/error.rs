@@ -222,4 +222,80 @@ pub enum SpecError {
         reserved: u32,
         expected: u32,
     },
+
+    // ── Resource economy compile (Phase T-2) ───────────────────────────────────
+    #[error("resource economy duplicate authoring id `{id}`")]
+    DuplicateResourceEconomyId { id: String },
+
+    #[error("resource economy transfer `{transfer}` references unknown source property `{namespace}::{name}`")]
+    UnknownResourceEconomySourceProperty {
+        transfer: String,
+        namespace: String,
+        name: String,
+    },
+
+    #[error("resource economy transfer `{transfer}` references unknown target property `{namespace}::{name}`")]
+    UnknownResourceEconomyTargetProperty {
+        transfer: String,
+        namespace: String,
+        name: String,
+    },
+
+    #[error("resource economy `{context}` references unknown property `{namespace}::{name}`")]
+    UnknownResourceEconomyProperty {
+        context: String,
+        namespace: String,
+        name: String,
+    },
+
+    #[error("resource economy `{context}` references role `{role}` not present in property `{property}`")]
+    InvalidResourceEconomyRole {
+        context: String,
+        property: String,
+        role: String,
+    },
+
+    #[error("resource economy transfer `{transfer}` amount must be finite and >= 0")]
+    InvalidTransferAmount { transfer: String },
+
+    #[error("resource economy recipe `{recipe}` input unit_cost must be finite and > 0")]
+    InvalidRecipeUnitCost { recipe: String },
+
+    #[error("resource economy recipe `{recipe}` requires at least one input")]
+    EmptyRecipeInputs { recipe: String },
+
+    #[error("resource economy recipe `{recipe}` throttle_hint_max_per_tick must be > 0")]
+    InvalidRecipeThrottleHint { recipe: String },
+
+    #[error("resource economy emission `{emission}` references unknown EML formula key `{formula_key}`")]
+    UnknownEmissionFormulaKey {
+        emission: String,
+        formula_key: String,
+    },
+
+    #[error("resource economy emission `{emission}` EML formula `{formula_key}` is not ExactDeterministic for Emission")]
+    EmissionEmlNotExactDeterministic {
+        emission: String,
+        formula_key: String,
+    },
+
+    #[error("resource economy emission `{emission}` formula shape is not supported")]
+    UnsupportedEmissionFormula { emission: String },
+
+    #[error("resource economy emission `{emission}` constant must be finite")]
+    InvalidEmissionConstant { emission: String },
+
+    #[error("resource economy threshold emit `{emit}` threshold must be finite")]
+    InvalidThresholdEmitThreshold { emit: String },
+
+    #[error(
+        "resource economy consumed input (property {property_id}, col {col}) contended on order band {order_band} between `{first}` and `{second}`"
+    )]
+    ResourceEconomyConsumedInputContention {
+        property_id: u32,
+        col: u32,
+        order_band: u32,
+        first: String,
+        second: String,
+    },
 }

@@ -60,10 +60,14 @@ pub use boundary::{
     ScriptedEventDiagnosticKind,
 };
 pub use compile::{
-    compile_effect, compile_event, compile_overlay, compile_property, compile_resource_flow_admission,
-    compile_trigger, CapabilityTreeBuildOutput, CapabilityTreeBuilder, CompileContext,
-    CompiledArenaAdmission, CompiledCouplingAdmission, CompiledCouplingDelay,
-    CompiledResourceFlowAdmission, ResourceFlowDiagnostic, ResourceFlowExpansionReport,
+    compile_effect, compile_event, compile_overlay, compile_property, compile_resource_economy,
+    compile_resource_flow_admission, compile_trigger, CapabilityTreeBuildOutput,
+    CapabilityTreeBuilder, CompileContext, CompiledArenaAdmission, CompiledCouplingAdmission,
+    CompiledCouplingDelay, CompiledEmitOnThreshold, CompiledEmissionFormula,
+    CompiledResourceEconomy, CompiledResourceEmission, CompiledResourceFlowAdmission,
+    CompiledResourceRecipe, CompiledResourceRecipeInput, CompiledResourceTransfer,
+    ResourceEconomyDiagnostic, ResourceEconomyExpansionReport, ResourceFlowDiagnostic,
+    ResourceFlowExpansionReport,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;
