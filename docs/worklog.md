@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — E-11B static nested participant RON smoke
+
+- Added [`resource_flow_nested_participant_roundtrip.rs`](../crates/simthing-spec/tests/resource_flow_nested_participant_roundtrip.rs) and [`e11b_nested_materialization_ron_session.rs`](../crates/simthing-driver/tests/e11b_nested_materialization_ron_session.rs).
+- E-11B static nested participant RON smoke landed. `parent_subtree_root_id` remains an optional static authoring field for explicit Resource Flow participants. RON-authored D=3/D=4 explicit nested participant specs materialize into nested `ArenaParticipant` topology and reach `build_nested_layout`. Flat-star Resource Flow authoring remains backwards-compatible when `parent_subtree_root_id` is omitted. Pending mapping/location work may use static deep hierarchy materialization later, but no mapping runtime behavior was implemented. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. E-11B-5 dynamic nested enrollment remains deferred until a named scenario requires it. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. No WGSL changes. No new AccumulatorRole variants. No CPU fallback. No slot compaction. No Policy B Reevaluate. `simthing-sim` remains arena-ignorant and spec-free.
+- Deleted inspected E-11B-1 local test report artifact.
+
+**Verification:** [`e11b_nested_materialization_ron_smoke_test_results.md`](tests/e11b_nested_materialization_ron_smoke_test_results.md)
+
+**Next gate:** unchanged — park until a finalized mapping sub-slice or named non-mapping product scenario.
+
+---
+
 ## 2026-05-27 — E-11B-1 explicit nested participant materialization
 
 - Added optional `ExplicitParticipantSpec.parent_subtree_root_id` for static nested participant authoring.
@@ -13,7 +25,7 @@ Running log of what's done and what's next, across sessions.
 - `build_execution_plan` already dispatches to `build_nested_layout` when nested topology exists.
 - E-11B explicit nested participant materialization landed. This is a narrow static materialization fix for future deep arena use cases, including provisional mapping/location hierarchy work. No mapping runtime behavior was implemented. No dynamic nested enrollment was implemented. Flat-star behavior remains backwards compatible when `parent_subtree_root_id` is `None`. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. No WGSL changes. No new AccumulatorRole variants. No CPU fallback. No slot compaction. No indirection-list SlotRange replacement. No Policy B Reevaluate. `simthing-sim` remains arena-ignorant and spec-free.
 
-**Verification:** [`e11b_explicit_nested_materialization_test_results.md`](tests/e11b_explicit_nested_materialization_test_results.md)
+**Verification:** historical E-11B-1 materialization report deleted after inspection; see E-11B RON smoke report.
 
 **Next gate:** unchanged — product names a scenario; re-select track A–E; or finalize mapping direction for impact review before mapping-driven implementation.
 
