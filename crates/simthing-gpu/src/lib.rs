@@ -64,8 +64,8 @@ pub use transfer_accumulator::{
     TransferRegistration, TransferSyncError,
 };
 pub use velocity_accumulator::{
-    plan_governed_integration, plan_velocity_integration, GovernedIntegrationPlan,
-    VelocityAccumulatorPlan,
+    plan_governed_integration, plan_governed_integration_at_band, plan_velocity_integration,
+    GovernedIntegrationPlan, PlannerError, VelocityAccumulatorPlan,
 };
 pub use world_state::{
     build_governed_pairs, encode_rule, governed_pairs_for_property, GovernedPair, IntentDelta, OverlayDelta, SlotDeltaRange,

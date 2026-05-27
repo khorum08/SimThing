@@ -1,7 +1,10 @@
 use crate::diagnostics::{SpecDiagnostics, SpecResult};
 use crate::error::SpecError;
 use crate::spec::property::PropertySpec;
-use simthing_core::{DimensionRegistry, PropertyLayout, SimProperty, SimPropertyId, SubFieldRole};
+use simthing_core::{
+    expand_arena_internal_columns, DimensionRegistry, PropertyLayout, SimProperty,
+    SimPropertyId, SubFieldRole,
+};
 
 /// Compile a `PropertySpec` into a live `SimProperty` and register it with the
 /// supplied `DimensionRegistry`.
@@ -37,6 +40,7 @@ pub fn compile_property(
             sub_fields: spec.sub_fields.clone(),
         }
     };
+    let layout = expand_arena_internal_columns(layout);
 
     validate_governed_by(spec, &layout)?;
 

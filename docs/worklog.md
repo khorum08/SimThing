@@ -6,6 +6,20 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — Pre-E-11 prerequisites (E-10R, E-8R, E-7R) + E-11 v2 design memo
+
+- Landed Opus v2 [`e11_hierarchical_allocation_design.md`](workshop/e11_hierarchical_allocation_design.md). **E-11 design accepted; allocation execution blocked** until post-prerequisite review pass.
+- **E-10R:** `validate_resource_flow_preflight` in driver (identity + reserved-gap checks); install runs preflight after live slot allocation.
+- **E-8R:** `expand_arena_internal_columns` in `simthing-core`; wired through `compile_property`.
+- **E-7R:** `plan_governed_integration_at_band` in `simthing-gpu` with participant filter.
+- Tests: `e10r_*` (driver), `e8r_*` (core), `e7r_*` (gpu).
+
+**Verification:** `cargo test -p simthing-driver e10r`; `cargo test -p simthing-core e8r`; `cargo test -p simthing-gpu e7r`; `cargo test --workspace`.
+
+**Next:** Review pass confirming landed APIs vs memo → narrowed E-11 implementation handoff. **Do not start E-11 allocation execution directly.**
+
+---
+
 ## 2026-05-26 — E-10 Resource Flow admission framework (#153)
 
 - Added authored `ResourceFlowSpec` on `GameModeSpec` plus `compile_resource_flow_admission` in `simthing-spec`.

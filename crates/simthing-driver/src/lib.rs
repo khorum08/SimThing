@@ -2,6 +2,7 @@ pub mod arena_registry;
 pub mod bench_limits;
 pub mod install;
 pub mod resource_flow_compile;
+pub mod resource_flow_preflight;
 pub mod scenario;
 pub mod session;
 pub mod spec_replay;
@@ -19,6 +20,7 @@ pub use install::{
 pub use resource_flow_compile::{
     compile_and_materialize_resource_flow, materialize_arena_registry,
 };
+pub use resource_flow_preflight::validate_resource_flow_preflight;
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};
 pub use spec_replay::{

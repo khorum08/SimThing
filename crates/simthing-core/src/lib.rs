@@ -1,6 +1,7 @@
 pub mod accumulator_op;
 pub mod accumulator_op_builder;
 pub mod accumulator_spec;
+pub mod arena_layout;
 pub mod eml_nodes;
 pub mod eml_registry;
 pub mod evaluate;
@@ -28,6 +29,10 @@ pub use accumulator_op_builder::{
 };
 pub use accumulator_spec::{
     AccumulatorRole, AccumulatorSpec, ArenaName, BalanceSpec, LogTier, NumCountSource,
+};
+pub use arena_layout::{
+    arena_internal_columns_present, expand_arena_internal_columns,
+    property_needs_arena_internal_columns, ARENA_INTERNAL_COLUMN_ROLES,
 };
 pub use eml_nodes::{opcode as eml_opcode, EML_STACK_MAX};
 pub use eml_registry::{
