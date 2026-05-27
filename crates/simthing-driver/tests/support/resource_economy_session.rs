@@ -10,7 +10,8 @@ use simthing_driver::Scenario;
 use simthing_gpu::{GpuContext, SlotAllocator};
 use simthing_spec::{
     metadata::DisplayMeta, version::SpecVersion, EmissionFormulaSpec, GameModeSpec,
-    PropertyKey, PropertySpec, ResourceEconomySpec, ResourceEmissionSpec, ResourceTransferSpec,
+    PropertyKey, PropertySpec, RecipeInputSpec, ResourceEconomySpec, ResourceEmissionSpec,
+    ResourceRecipeSpec, ResourceTransferSpec,
 };
 
 pub fn try_gpu() -> bool {
@@ -93,6 +94,115 @@ pub fn emission_game_mode() -> GameModeSpec {
         ..Default::default()
     });
     mode
+}
+
+pub fn recipe_game_mode() -> GameModeSpec {
+    let mut mode = base_game_mode();
+    mode.resource_economy = Some(ResourceEconomySpec {
+        recipes: vec![ResourceRecipeSpec {
+            id: "r1".into(),
+            inputs: vec![
+                RecipeInputSpec {
+                    property: PropertyKey::new("core", "food"),
+                    role: SubFieldRole::Named("amount".into()),
+                    unit_cost: 1.0,
+                },
+                RecipeInputSpec {
+                    property: PropertyKey::new("core", "ore"),
+                    role: SubFieldRole::Named("amount".into()),
+                    unit_cost: 2.0,
+                },
+            ],
+            target: PropertyKey::new("core", "product"),
+            target_role: SubFieldRole::Named("amount".into()),
+            throttle_hint_max_per_tick: 99,
+        }],
+        ..Default::default()
+    });
+    mode
+}
+
+pub fn amount_col(reg: &DimensionRegistry, ns: &str, name: &str) -> u32 {
+    let pid = reg.id_of(ns, name).expect("property registered");
+    reg.column_range(pid)
+        .col_for_role(
+            &SubFieldRole::Named("amount".into()),
+            &reg.property(pid).layout,
+        )
+        .expect("amount column") as u32
+}
+
+pub fn open_live_transfer_session() -> simthing_driver::SimSession {
+    let scenario = live_slot_scenario();
+    let mut session =
+        simthing_driver::SimSession::open_from_spec(scenario, &live_slot_game_mode()).expect("open");
+    session.proto.flags.use_accumulator_transfer = true;
+    session.sync_resource_economy_if_enabled().expect("sync");
+    session
+}
+
+pub fn open_live_emission_session() -> simthing_driver::SimSession {
+    let mut scenario = live_slot_scenario();
+    scenario.registry = scenario.registry.clone();
+    let mut mode = base_game_mode();
+    mode.resource_economy = Some(ResourceEconomySpec {
+        emissions: vec![identity_emission("e1", "food")],
+        ..Default::default()
+    });
+    let mut session = simthing_driver::SimSession::open_from_spec(scenario, &mode).expect("open");
+    session.proto.flags.use_accumulator_eml = true;
+    session.proto.flags.use_accumulator_emission = true;
+    session.sync_resource_economy_if_enabled().expect("sync");
+    session
+}
+
+pub fn open_rebellion_transfer_session() -> simthing_driver::SimSession {
+    let ron = include_str!("../../../../scenarios/rebellion_demo.ron");
+    let scenario = simthing_driver::Scenario::from_ron_str(ron).expect("scenario");
+    let mut session =
+        simthing_driver::SimSession::open_from_spec(scenario, &transfer_game_mode()).expect("open");
+    session.proto.flags.use_accumulator_transfer = true;
+    session.sync_resource_economy_if_enabled().expect("sync");
+    session
+}
+
+/// Recipe fixture: food, ore, and product on world root (single slot for GPU conjunctive parity).
+pub fn recipe_scenario() -> Scenario {
+    let mut reg = DimensionRegistry::new();
+    let food = register_amount(&mut reg, "core", "food");
+    let ore = register_amount(&mut reg, "core", "ore");
+    let product = register_amount(&mut reg, "core", "product");
+
+    let food_layout = reg.property(food).layout.clone();
+    let ore_layout = reg.property(ore).layout.clone();
+    let product_layout = reg.property(product).layout.clone();
+
+    let mut world = SimThing::new(SimThingKind::World, 0);
+    world.add_property(food, PropertyValue::from_layout(&food_layout));
+    world.add_property(ore, PropertyValue::from_layout(&ore_layout));
+    world.add_property(product, PropertyValue::from_layout(&product_layout));
+
+    Scenario {
+        name: "recipe_economy".into(),
+        ticks_per_day: 1,
+        max_days: 4,
+        dt: 1.0,
+        n_slots: 4,
+        registry: reg,
+        root: world,
+        shadow_seeds: vec![],
+        tick_patches: vec![],
+        install_targets: Default::default(),
+    }
+}
+
+pub fn open_recipe_session() -> simthing_driver::SimSession {
+    let scenario = recipe_scenario();
+    let mut session =
+        simthing_driver::SimSession::open_from_spec(scenario, &recipe_game_mode()).expect("open");
+    session.proto.flags.use_accumulator_transfer = true;
+    session.sync_resource_economy_if_enabled().expect("sync");
+    session
 }
 
 pub fn register_amount(reg: &mut DimensionRegistry, ns: &str, name: &str) -> simthing_core::SimPropertyId {

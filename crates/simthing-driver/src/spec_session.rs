@@ -122,7 +122,9 @@ impl SpecSessionState {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.capability_instances.is_empty() && self.scripted_event_instances.is_empty()
+        self.capability_instances.is_empty()
+            && self.scripted_event_instances.is_empty()
+            && self.resource_economy_registry.is_none()
     }
 
     /// Classify whether the upcoming boundary needs a spec-layer hook.

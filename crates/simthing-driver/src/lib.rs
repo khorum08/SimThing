@@ -7,7 +7,9 @@ pub mod arena_registry;
 pub mod bench_limits;
 pub mod child_share_eml;
 pub mod install;
+pub mod resource_economy_burn_in;
 pub mod resource_economy_compile;
+pub mod resource_economy_oracle;
 pub mod resource_economy_sync;
 pub mod resource_flow_burn_in;
 pub mod resource_flow_compile;
@@ -54,6 +56,13 @@ pub use resource_economy_compile::{
     materialize_resource_economy_registry, materialize_resource_economy_registry_for_session,
     resolve_live_property_slot, ResourceEconomyCompileError, ResourceEconomyMaterializationReport,
     ResourceEconomyRegistry, ResourceEconomyRegistrations,
+};
+pub use resource_economy_burn_in::{
+    run_emission_burn_in, run_transfer_recipe_burn_in, ResourceEconomyBurnInReport,
+};
+pub use resource_economy_oracle::{
+    assert_discrete_transfer_conserved, run_emission_cpu_oracle, run_transfer_recipe_cpu_oracle,
+    sum_cells, ResourceEconomyOracleError,
 };
 pub use resource_economy_sync::{
     sync_resource_economy_accumulator, sync_resource_economy_if_present,
