@@ -24,4 +24,7 @@ pub struct GameModeSpec {
     /// Resource Flow arena admission graph (E-10). Validated at session build.
     #[serde(default)]
     pub resource_flow: Option<super::resource_flow::ResourceFlowSpec>,
+    /// Production transfer / recipe / emission / threshold-emit registrations (Phase T).
+    #[serde(default)]
+    pub resource_economy: Option<super::resource_economy::ResourceEconomySpec>,
 }

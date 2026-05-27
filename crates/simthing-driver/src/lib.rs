@@ -8,6 +8,7 @@ pub mod bench_limits;
 pub mod child_share_eml;
 pub mod install;
 pub mod resource_economy_compile;
+pub mod resource_economy_sync;
 pub mod resource_flow_burn_in;
 pub mod resource_flow_compile;
 pub mod resource_flow_preflight;
@@ -48,9 +49,15 @@ pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
 };
 pub use resource_economy_compile::{
-    materialize_resource_economy_registrations, materialize_resource_economy_registry,
-    ResourceEconomyCompileError, ResourceEconomyMaterializationReport, ResourceEconomyRegistry,
-    ResourceEconomyRegistrations,
+    find_property_owner, materialize_resource_economy_registrations,
+    materialize_resource_economy_registrations_with_slots,
+    materialize_resource_economy_registry, materialize_resource_economy_registry_for_session,
+    resolve_live_property_slot, ResourceEconomyCompileError, ResourceEconomyMaterializationReport,
+    ResourceEconomyRegistry, ResourceEconomyRegistrations,
+};
+pub use resource_economy_sync::{
+    sync_resource_economy_accumulator, sync_resource_economy_if_present,
+    ResourceEconomySyncError, ResourceEconomySyncReport,
 };
 pub use resource_flow_burn_in::{
     run_flat_star_burn_in, ResourceFlowBurnInReport, ResourceFlowScenarioBurnInReport,

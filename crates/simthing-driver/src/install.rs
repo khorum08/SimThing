@@ -8,17 +8,25 @@
 //! See `docs/adr/game_mode_session_installation.md` for design rationale.
 
 use simthing_core::DimensionRegistry;
-use simthing_core::{kind_matches, Overlay, OverlayId, SimThing, SimThingId, SimThingKind};
+use simthing_core::{
+    kind_matches, Overlay, OverlayId, PropertyValue, SimThing, SimThingId,
+    SimThingKind,
+};
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
-    compile_event, compile_property, CapabilityEntryKey, CapabilityTreeBuildOutput,
-    CapabilityTreeBuilder, CapabilityTreeInstance, CapabilityTreeSpec, CapabilityTreeState,
-    CapabilityUnlockRegistration, DomainPackSpec, EffectTarget, EventSpec, GameModeSpec,
-    InstallTargetSpec, SpecError,
+    compile_event, compile_property, compile_resource_economy, CapabilityEntryKey,
+    CapabilityTreeBuildOutput, CapabilityTreeBuilder, CapabilityTreeInstance,
+    CapabilityTreeSpec, CapabilityTreeState, CapabilityUnlockRegistration, DomainPackSpec,
+    EffectTarget, EventSpec, GameModeSpec, InstallTargetSpec, PropertyKey, ResourceEconomySpec,
+    SpecError,
 };
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
+use crate::resource_economy_compile::{
+    find_property_owner, materialize_resource_economy_registry_for_session,
+    ResourceEconomyCompileError,
+};
 use crate::resource_flow_compile::compile_and_materialize_resource_flow;
 use crate::arena_participant::materialize_arena_participants;
 use crate::resource_flow_preflight::validate_resource_flow_preflight;
@@ -54,6 +62,9 @@ pub enum InstallError {
         "resource flow materialization exceeds scenario n_slots ({capacity} > {cap})"
     )]
     ResourceFlowSlotOverflow { capacity: usize, cap: usize },
+
+    #[error("resource economy compile: {0}")]
+    ResourceEconomy(#[from] ResourceEconomyCompileError),
 }
 
 /// Compile a `GameModeSpec` against the supplied scenario state and return a
@@ -157,6 +168,20 @@ pub fn compile_and_install(
         state.arena_participant_scaffold = scaffold;
     }
 
+    // ── 4c. Resource economy (Phase T): compile + live-slot materialization.
+    if let Some(resource_economy) = &game_mode.resource_economy {
+        ensure_resource_economy_properties(resource_economy, registry, root)?;
+        let eml_registry = simthing_core::EmlExpressionRegistry::new();
+        let compiled = compile_resource_economy(resource_economy, registry, &eml_registry)?;
+        state.resource_economy_registry = Some(materialize_resource_economy_registry_for_session(
+            &compiled,
+            registry,
+            &eml_registry,
+            root,
+            allocator,
+        )?);
+    }
+
     // ── 5. Scripted events: one definition + N per-owner instances per
     //      `EventSpec.install` (O4, `docs/adr/scripted_event_scope_model.md`).
     //      Default install is `SessionRoot` — pre-O4 behavior.
@@ -192,6 +217,46 @@ fn compile_pack_properties(
         compile_property(prop_spec, registry)?;
     }
     Ok(())
+}
+
+fn ensure_resource_economy_properties(
+    spec: &ResourceEconomySpec,
+    registry: &DimensionRegistry,
+    root: &mut SimThing,
+) -> Result<(), InstallError> {
+    for key in resource_economy_property_keys(spec) {
+        let property_id = registry
+            .id_of(&key.namespace, &key.name)
+            .ok_or_else(|| SpecError::ValidationFailed)?;
+        if find_property_owner(root, property_id).is_none() {
+            let layout = registry.property(property_id).layout.clone();
+            root.add_property(property_id, PropertyValue::from_layout(&layout));
+        }
+    }
+    Ok(())
+}
+
+fn resource_economy_property_keys(spec: &ResourceEconomySpec) -> Vec<PropertyKey> {
+    let mut keys = Vec::new();
+    for transfer in &spec.transfers {
+        keys.push(transfer.source.clone());
+        keys.push(transfer.target.clone());
+    }
+    for recipe in &spec.recipes {
+        for input in &recipe.inputs {
+            keys.push(input.property.clone());
+        }
+        keys.push(recipe.target.clone());
+    }
+    for emission in &spec.emissions {
+        keys.push(emission.source.clone());
+    }
+    for emit in &spec.emit_on_threshold {
+        keys.push(emit.source.clone());
+    }
+    keys.sort_by(|a, b| (a.namespace.as_str(), a.name.as_str()).cmp(&(b.namespace.as_str(), b.name.as_str())));
+    keys.dedup_by(|a, b| a.namespace == b.namespace && a.name == b.name);
+    keys
 }
 
 fn build_tree<'spec>(
@@ -691,6 +756,7 @@ mod tests {
             }],
             events: Vec::new(),
             resource_flow: None,
+            resource_economy: None,
         }
     }
 
@@ -722,6 +788,7 @@ mod tests {
             }],
             events: Vec::new(),
             resource_flow: None,
+            resource_economy: None,
         }
     }
 

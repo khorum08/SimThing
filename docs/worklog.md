@@ -6,6 +6,20 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — Phase T-4: resource economy session integration + boundary refresh
+
+- Added `GameModeSpec::resource_economy` and driver install step 4c: T-2 compile → T-3 live-slot materialization → `SpecSessionState::resource_economy_registry`.
+- Added `resource_economy_sync`: uploads via existing `WorldGpuState::sync_transfer_accumulator` / `sync_emission_accumulator`; generation-keyed skip; flag-off populated-spec rejection on boundary sync (install stores registry without rejecting).
+- Session path uses live allocator slot resolution (`materialize_resource_economy_registry_for_session`); T-3 flat `property_id.0` placeholder remains unit-test only.
+- Boundary refresh wired in `SimSession::run` / `record_to_path` after each boundary via `sync_resource_economy_if_enabled`.
+- T-4 landed: session integration + boundary refresh for resource economy registrations. Uses existing sync paths. Flag-off populated-spec rejection enforced. Generation-keyed skip landed. Live slot resolution replaced T-3 placeholder in session path. No WGSL changes. No CPU fallback. Transfer/emission flags remain default false.
+
+**Verification:** `cargo test -p simthing-driver resource_economy_session_open -- --nocapture`; `cargo test -p simthing-driver resource_economy_flag_off_rejects -- --nocapture`; `cargo test -p simthing-driver resource_economy_compile -- --nocapture`; `cargo test -p simthing-driver resource_economy_stable_reg_idx -- --nocapture`; `cargo test -p simthing-spec resource_economy_ -- --nocapture`; `cargo test -p simthing-gpu accumulator_op -- --nocapture`; `cargo check --workspace`; `cargo test --workspace`.
+
+**Next gate:** T-5 — boundary refresh / replay tests and 100-tick conservation burn-in.
+
+---
+
 ## 2026-05-27 — Phase T-3: resource economy driver materialization
 
 - Added `simthing-driver::resource_economy_compile` with `materialize_resource_economy_registrations`, `ResourceEconomyRegistrations`, `ResourceEconomyMaterializationReport`, and `ResourceEconomyRegistry` (generation scaffold).

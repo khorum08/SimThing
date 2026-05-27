@@ -238,6 +238,7 @@ fn e10r3_resource_flow_materialization_respects_scenario_slot_capacity() {
             }],
             couplings: vec![],
         }),
+        resource_economy: None,
     };
 
     // world + 3 hosted + arena_root + 3 participants + 6 gap slots = 14

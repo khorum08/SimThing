@@ -92,6 +92,8 @@ pub struct SpecSessionState {
     pub arena_registry: ArenaRegistry,
     /// Arena-participant SimThing scaffold (E-10R2). Driver-only topology artifact.
     pub arena_participant_scaffold: crate::arena_participant::ArenaParticipantScaffold,
+    /// Materialized production transfer/recipe/emission/threshold registrations (Phase T-3/T-4).
+    pub resource_economy_registry: Option<crate::resource_economy_compile::ResourceEconomyRegistry>,
     player_selections: Vec<(CapabilityInstanceKey, CapabilityEntryKey)>,
     /// Reverse index: capability tree `SimThingId` → installed instance key.
     capability_instance_by_tree: HashMap<SimThingId, CapabilityInstanceKey>,
@@ -102,11 +104,21 @@ pub struct SpecSessionState {
     /// Default `SimThingId::default()`; install drives via
     /// `set_session_root_owner`.
     session_root_owner: SimThingId,
+    /// Generation last uploaded to GPU for resource economy registrations (T-4 skip gate).
+    resource_economy_uploaded_generation: u64,
 }
 
 impl SpecSessionState {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn resource_economy_uploaded_generation(&self) -> u64 {
+        self.resource_economy_uploaded_generation
+    }
+
+    pub fn set_resource_economy_uploaded_generation(&mut self, generation: u64) {
+        self.resource_economy_uploaded_generation = generation;
     }
 
     pub fn is_empty(&self) -> bool {

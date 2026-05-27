@@ -32,6 +32,8 @@ pub enum SessionError {
     Install(#[from] InstallError),
     #[error("resource flow sync: {0}")]
     ResourceFlow(#[from] crate::arena_allocation_sync::ResourceFlowSyncError),
+    #[error("resource economy sync: {0}")]
+    ResourceEconomy(#[from] crate::resource_economy_sync::ResourceEconomySyncError),
 }
 
 pub struct RunSummary {
@@ -206,6 +208,7 @@ impl SimSession {
         self.resync_gpu_shape_after_spec_install();
         self.sync_spec_threshold_registrations();
         self.sync_resource_flow_if_enabled()?;
+        self.sync_resource_economy_at_install()?;
         self.proto.initial_gpu_sync(&self.coord, &mut self.state);
         Ok(())
     }
@@ -222,6 +225,34 @@ impl SimSession {
             &self.proto.allocator,
             enabled,
         )?;
+        Ok(())
+    }
+
+    /// Session install: upload when flags allow; never reject populated specs with flags off.
+    fn sync_resource_economy_at_install(&mut self) -> Result<(), SessionError> {
+        self.sync_resource_economy_internal(false)
+    }
+
+    /// Boundary refresh: upload when flags allow; reject populated specs with flags off.
+    pub fn sync_resource_economy_if_enabled(&mut self) -> Result<(), SessionError> {
+        self.sync_resource_economy_internal(true)
+    }
+
+    fn sync_resource_economy_internal(&mut self, reject_flag_off_populated: bool) -> Result<(), SessionError> {
+        let transfer_enabled = self.proto.flags.use_accumulator_transfer;
+        let emission_enabled = self.proto.flags.use_accumulator_emission;
+        let uploaded_generation = self.spec_state.resource_economy_uploaded_generation();
+        let mut generation = uploaded_generation;
+        crate::resource_economy_sync::sync_resource_economy_if_present(
+            &mut self.state,
+            self.spec_state.resource_economy_registry.as_ref(),
+            &mut generation,
+            transfer_enabled,
+            emission_enabled,
+            reject_flag_off_populated,
+        )?;
+        self.spec_state
+            .set_resource_economy_uploaded_generation(generation);
         Ok(())
     }
 
@@ -393,6 +424,7 @@ impl SimSession {
                 // S5 follow-up: register capability instances + threshold
                 // registrations for any fission-cloned capability subtrees.
                 self.react_to_fission_clones(&outcome);
+                self.sync_resource_economy_if_enabled()?;
             }
         }
 
@@ -519,6 +551,7 @@ impl SimSession {
                 // S5 follow-up (same as `run`): register capability
                 // instances + threshold registrations for fission clones.
                 self.react_to_fission_clones(&outcome);
+                self.sync_resource_economy_if_enabled()?;
             }
         }
 

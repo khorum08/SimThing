@@ -10,11 +10,9 @@ use simthing_core::{
     rebuild_discrete_transfer_ops, rebuild_emit_on_threshold_ops, AccumulatorOpBuilderError,
     ConjunctiveRecipeInput, ConjunctiveRecipeRegistration, DimensionRegistry,
     DiscreteTransferRegistration, EmitOnThresholdBuffer, EmitOnThresholdRegistration,
-    EmlExpressionRegistry, SimPropertyId,
+    EmlExpressionRegistry, SimPropertyId, SimThing,
 };
-use simthing_gpu::{
-    plan_emission_ops, EmissionFormula, EmissionPlanError, EmissionRegistration,
-};
+use simthing_gpu::{plan_emission_ops, EmissionFormula, EmissionPlanError, EmissionRegistration, SlotAllocator};
 use simthing_spec::{
     CompiledEmissionFormula, CompiledResourceEconomy, CompiledResourceEmission, EmitBufferSpec,
 };
@@ -62,6 +60,12 @@ pub enum ResourceEconomyCompileError {
     #[error("resource economy references unknown property id {0}")]
     UnknownProperty(u32),
 
+    #[error("resource economy property id {property_id} is not present on the session tree")]
+    UnknownPropertyOwner { property_id: u32 },
+
+    #[error("resource economy property id {property_id} owner has no allocated slot")]
+    UnknownPropertySlot { property_id: u32 },
+
     #[error("resource economy transfer `{id}` source and target cells must differ")]
     SameSourceAndTarget { id: String },
 
@@ -74,12 +78,27 @@ pub enum ResourceEconomyCompileError {
 
 /// Materialize compiled resource economy rows into existing registration structs.
 ///
-/// Slot mapping uses the T-3 flat convention `SimPropertyId.0` as the owning slot.
-/// T-4 session integration replaces this with live allocator slot resolution.
+/// Uses the T-3 flat convention `SimPropertyId.0` as slot (unit tests only).
+/// Production session install uses [`materialize_resource_economy_registry_for_session`].
 pub fn materialize_resource_economy_registrations(
     compiled: &CompiledResourceEconomy,
     registry: &DimensionRegistry,
     eml_registry: &EmlExpressionRegistry,
+) -> Result<ResourceEconomyRegistrations, ResourceEconomyCompileError> {
+    materialize_resource_economy_registrations_with_slots(
+        compiled,
+        registry,
+        eml_registry,
+        &|property_id| Ok(flat_property_slot(property_id)),
+    )
+}
+
+/// Materialize with an explicit property→slot resolver (live allocator in T-4).
+pub fn materialize_resource_economy_registrations_with_slots(
+    compiled: &CompiledResourceEconomy,
+    registry: &DimensionRegistry,
+    eml_registry: &EmlExpressionRegistry,
+    resolve_slot: &dyn Fn(SimPropertyId) -> Result<u32, ResourceEconomyCompileError>,
 ) -> Result<ResourceEconomyRegistrations, ResourceEconomyCompileError> {
     let emission_reg_idx_by_id = assign_emission_reg_indices(&compiled.emissions);
 
@@ -91,8 +110,8 @@ pub fn materialize_resource_economy_registrations(
         ensure_property_known(registry, transfer.source_property)?;
         ensure_property_known(registry, transfer.target_property)?;
 
-        let source_slot = property_to_slot(transfer.source_property);
-        let target_slot = property_to_slot(transfer.target_property);
+        let source_slot = resolve_slot(transfer.source_property)?;
+        let target_slot = resolve_slot(transfer.target_property)?;
         if source_slot == target_slot && transfer.source_col == transfer.target_col {
             return Err(ResourceEconomyCompileError::SameSourceAndTarget {
                 id: transfer.id.clone(),
@@ -122,7 +141,7 @@ pub fn materialize_resource_economy_registrations(
             .map(|input| {
                 ensure_property_known(registry, input.property)?;
                 Ok(ConjunctiveRecipeInput {
-                    slot: property_to_slot(input.property),
+                    slot: resolve_slot(input.property)?,
                     col: input.col,
                     unit_cost: input.unit_cost,
                 })
@@ -131,7 +150,7 @@ pub fn materialize_resource_economy_registrations(
 
         let reg = ConjunctiveRecipeRegistration {
             inputs,
-            target_slot: property_to_slot(recipe.target_property),
+            target_slot: resolve_slot(recipe.target_property)?,
             target_col: recipe.target_col,
             throttle_hint_max_per_tick: recipe.throttle_hint_max_per_tick,
         };
@@ -151,6 +170,7 @@ pub fn materialize_resource_economy_registrations(
             reg_idx,
             eml_registry,
             registry,
+            resolve_slot,
         )?);
     }
 
@@ -159,7 +179,7 @@ pub fn materialize_resource_economy_registrations(
     for emit in &compiled.emit_on_threshold {
         ensure_property_known(registry, emit.source_property)?;
         let reg = EmitOnThresholdRegistration {
-            slot: property_to_slot(emit.source_property),
+            slot: resolve_slot(emit.source_property)?,
             col: emit.source_col,
             threshold: emit.threshold,
             direction: emit.direction,
@@ -204,6 +224,28 @@ pub fn materialize_resource_economy_registrations(
     })
 }
 
+/// Materialize for production session install using live tree + allocator slots.
+pub fn materialize_resource_economy_registry_for_session(
+    compiled: &CompiledResourceEconomy,
+    registry: &DimensionRegistry,
+    eml_registry: &EmlExpressionRegistry,
+    root: &SimThing,
+    allocator: &SlotAllocator,
+) -> Result<ResourceEconomyRegistry, ResourceEconomyCompileError> {
+    let resolve = |property_id: SimPropertyId| {
+        resolve_live_property_slot(property_id, root, allocator)
+    };
+    Ok(ResourceEconomyRegistry {
+        registrations: materialize_resource_economy_registrations_with_slots(
+            compiled,
+            registry,
+            eml_registry,
+            &resolve,
+        )?,
+        generation: 1,
+    })
+}
+
 /// Wrap materialized registrations in the subtree-refresh registry scaffold.
 pub fn materialize_resource_economy_registry(
     compiled: &CompiledResourceEconomy,
@@ -237,6 +279,7 @@ fn materialize_emission(
     reg_idx: u32,
     _eml_registry: &EmlExpressionRegistry,
     registry: &DimensionRegistry,
+    resolve_slot: &dyn Fn(SimPropertyId) -> Result<u32, ResourceEconomyCompileError>,
 ) -> Result<EmissionRegistration, ResourceEconomyCompileError> {
     ensure_property_known(registry, emission.source_property)?;
     let (formula, tree_id) = match &emission.formula {
@@ -252,7 +295,7 @@ fn materialize_emission(
     };
 
     Ok(EmissionRegistration {
-        source_slot: property_to_slot(emission.source_property),
+        source_slot: resolve_slot(emission.source_property)?,
         source_col: emission.source_col,
         tree_id,
         formula,
@@ -278,9 +321,38 @@ fn ensure_property_known(
     Ok(())
 }
 
-/// T-3 flat slot convention: property id indexes the owning slot in test fixtures.
-/// T-4 replaces this with live `SlotAllocator` resolution.
-fn property_to_slot(property_id: SimPropertyId) -> u32 {
+/// Resolve a property to the live GPU slot of its owning SimThing node.
+pub fn resolve_live_property_slot(
+    property_id: SimPropertyId,
+    root: &SimThing,
+    allocator: &SlotAllocator,
+) -> Result<u32, ResourceEconomyCompileError> {
+    let owner = find_property_owner(root, property_id).ok_or(
+        ResourceEconomyCompileError::UnknownPropertyOwner {
+            property_id: property_id.0,
+        },
+    )?;
+    allocator
+        .slot_of(owner)
+        .ok_or(ResourceEconomyCompileError::UnknownPropertySlot {
+            property_id: property_id.0,
+        })
+}
+
+pub fn find_property_owner(root: &SimThing, property_id: SimPropertyId) -> Option<simthing_core::SimThingId> {
+    if root.properties.contains_key(&property_id) {
+        return Some(root.id);
+    }
+    for child in &root.children {
+        if let Some(id) = find_property_owner(child, property_id) {
+            return Some(id);
+        }
+    }
+    None
+}
+
+/// T-3 flat slot convention for unit tests without a live session tree.
+fn flat_property_slot(property_id: SimPropertyId) -> u32 {
     property_id.0
 }
 

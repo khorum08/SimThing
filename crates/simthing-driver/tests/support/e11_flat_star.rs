@@ -116,6 +116,7 @@ pub fn flat_star_game_mode(max_orderband_depth: u32) -> GameModeSpec {
             }],
             couplings: vec![],
         }),
+        resource_economy: None,
     }
 }
 
