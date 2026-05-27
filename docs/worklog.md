@@ -6,6 +6,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — Continued flat-star Resource Flow soak checkpoint
+
+- Added [`resource_flow_flat_star_continued_soak.rs`](../crates/simthing-driver/src/resource_flow_flat_star_continued_soak.rs) + test suite (12 tests): static 512-participant, skewed-weight, Policy A dynamic fission, multi-arena, replay, telemetry, posture guards.
+- Continued flat-star Resource Flow soak checkpoint landed. Confidence/observability only; no Resource Flow semantics expansion. E-11B remains paused.
+
+**Verification:** [`resource_flow_flat_star_continued_soak_test_results.md`](tests/resource_flow_flat_star_continued_soak_test_results.md)
+
+**Next gate:** product priority — D-2a, simthing-spec/RON rebuild, E-11B-5, new vertical slice, or additional soak if evidence gap remains.
+
+---
+
 ## 2026-05-27 — E-11B pause / product-priority checkpoint
 
 - Docs-only workspace checkpoint: **E-11B paused** after kickoff + E-11B-4 + nested dynamic enrollment readiness review.
