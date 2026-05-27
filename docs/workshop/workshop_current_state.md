@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** E-2B-5R dynamic fission enrollment atomicity hardening (pending merge)  
+**Master HEAD:** E-2B-5R dynamic fission enrollment atomicity hardening (merged PR #177)  
 **Verification (last recorded):** [`e2b5r_dynamic_fission_enrollment_atomicity_test_results.md`](../tests/e2b5r_dynamic_fission_enrollment_atomicity_test_results.md) — PASS; resource-flow flag default false
 
 ---
@@ -101,7 +101,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-11B readiness** | (pending merge) | Nested hierarchy GPU audit; implementation deferred by default |
 | **E-2B static enrollment** | (pending merge) | Selector → explicit participants at install |
 | **E-2B-5** | merged (`a740845`) | Policy A dynamic fission enrollment |
-| **E-2B-5R** | (pending merge) | Atomicity + visible boundary diagnostics |
+| **E-2B-5R** | merged (PR #177) | Atomicity + visible boundary diagnostics |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
