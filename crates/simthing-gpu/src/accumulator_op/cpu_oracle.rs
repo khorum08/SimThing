@@ -341,15 +341,10 @@ fn gather_and_combine(
             Ok(apply_scale(raw, &op.scale))
         }
         CombineFn::Sum => match &op.source {
-            SourceSpec::SlotRange { start, count } => {
-                let col = op
-                    .targets
-                    .first()
-                    .map(|(_, c)| *c)
-                    .ok_or(CpuOracleError::Unsupported("Sum without target col"))?;
+            SourceSpec::SlotRange { start, count, col } => {
                 let mut sum = 0.0f32;
                 for offset in 0..*count {
-                    sum += values[idx(start + offset, col, n_dims)];
+                    sum += values[idx(start + offset, *col, n_dims)];
                 }
                 Ok(sum)
             }

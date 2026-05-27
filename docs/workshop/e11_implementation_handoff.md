@@ -1,10 +1,49 @@
 # E-11 — Narrowed Implementation Handoff (Cursor binding)
 
-**Status:** Authorized after [final readiness review](e11_readiness_review.md) (2026-05-26).  
+**Status:** **Done** — PR [#159](https://github.com/khorum08/SimThing/pull/159), commit `8a628ca`.  
 **Authority:** [`e11_hierarchical_allocation_design.md`](e11_hierarchical_allocation_design.md) (Opus v2)  
 **Prerequisites:** E-10R, E-10R2, E-10R3, E-8R, E-7R — **landed** (PRs #155–#157).
 
 **Do not re-implement prerequisites.** Build on the landed APIs below.
+
+---
+
+## Landed E-11 modules
+
+| Module | Purpose |
+|--------|---------|
+| `arena_hierarchy.rs` | Execution plan, tree layout, band math, column resolution |
+| `arena_allocation_oracle.rs` | CPU oracle (phases 0–3) |
+| `arena_allocation_plan.rs` | AccumulatorOp planner (reset, up-sweep, broadcast/disburse, E-7R integration) |
+| `child_share_eml.rs` | `child_share_formula` EML registration |
+| `arena_allocation_sync.rs` | Session sync behind `use_accumulator_resource_flow` (default **false**) |
+
+**Substrate note:** `SourceSpec::SlotRange` now carries explicit `col` so up-sweep can sum child `intrinsic_flow` / `weight` into parent `intrinsic_flow_sum` / `weight_sum` columns.
+
+**Constitution preserved:** no new WGSL; `simthing-sim` arena-ignorant; E-2B blocked unless enrollment compilation explicitly lands.
+
+---
+
+## `e11_*` test suite (14/14 green)
+
+```
+e11_single_level_positive_weights_cpu_gpu_parity
+e11_zero_weight_sum_allocates_zero_no_nan
+e11_multi_level_hierarchy_cpu_gpu_parity
+e11_reserved_gap_fission_preserves_slotrange
+e11_orderband_depth_budget_enforced
+e11_balance_integrates_after_allocation_band
+e11_rejects_missing_allocator_weight
+e11_rejects_missing_allocated_flow
+e11_no_new_wgsl
+e11_no_simthing_sim_arena_imports
+e11_allocated_flow_resets_each_tick
+e11_integration_band_immediately_follows_deepest_disbursement
+e11_no_nan_propagation_in_disbursement_path
+e11_replay_bit_exact_across_two_runs
+```
+
+**Verification gate:** `cargo test -p simthing-driver e11`; prerequisite suites (`e10r*`, `e8r`, `e7r`, `accumulator_op`); `cargo check --workspace`; `cargo test --workspace`.
 
 ---
 

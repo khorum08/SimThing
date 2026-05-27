@@ -146,6 +146,8 @@ pub struct PipelineFlags {
     pub use_accumulator_transfer: bool,
     /// C-8d: routes economic emission through AccumulatorOp (requires `use_accumulator_eml` for EvalEML).
     pub use_accumulator_emission: bool,
+    /// E-11: routes arena resource-flow allocation through AccumulatorOp OrderBands (default off).
+    pub use_accumulator_resource_flow: bool,
 }
 
 impl Default for PipelineFlags {
@@ -161,6 +163,7 @@ impl Default for PipelineFlags {
             use_accumulator_intensity: true,
             use_accumulator_transfer: false,
             use_accumulator_emission: false,
+            use_accumulator_resource_flow: false,
         }
     }
 }

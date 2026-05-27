@@ -3,9 +3,9 @@
 **Purpose:** Single synthesis of **active workshop docs**, **production migration state**,
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
-**Last updated:** 2026-05-26  
-**Master HEAD:** E-11 readiness review + implementation handoff; E-10R3 gap block reservation  
-**Verification (last recorded):** `cargo test --workspace` green; prerequisite suites green
+**Last updated:** 2026-05-19  
+**Master HEAD:** E-11 allocation execution (PR #159)  
+**Verification (last recorded):** `cargo test --workspace` green; `e11_*` 14/14; prerequisite suites green
 
 ---
 
@@ -21,9 +21,9 @@ Two parallel tracks:
 **Production direction:** AccumulatorOp v2 is the GPU execution path.
 Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Legacy threshold is deleted (S-6). Legacy velocity is deleted (S-5). Legacy intent is deleted (S-1). Snapshot is the only retained non-Accumulator operation.
 
-**E-11 status:** Opus v2 design accepted. **Prerequisites E-10R–E-10R3, E-8R, E-7R landed and reviewed** ([`e11_readiness_review.md`](e11_readiness_review.md)). **E-11 allocation execution authorized** via [`e11_implementation_handoff.md`](e11_implementation_handoff.md). Do not start E-11 until reading the handoff.
+**E-11 status:** **Done** — allocation execution landed ([`e11_implementation_handoff.md`](e11_implementation_handoff.md)). Modules: `arena_hierarchy`, `arena_allocation_oracle`, `arena_allocation_plan`, `child_share_eml`, `arena_allocation_sync`. `use_accumulator_resource_flow` default **false** pending burn-in. No new WGSL. `simthing-sim` remains arena-ignorant.
 
-**Next gates:** **E-11 allocation implementation** (narrowed handoff) · Opus production transfer/emission registration ownership · D-1 discrete-transaction contention memo. **E-2B** `resource_flow_participant` remains blocked until E-11 enrollment compiles.
+**Next gates:** burn-in flag · Opus production transfer/emission registration ownership · D-1 discrete-transaction contention memo. **E-2B** `resource_flow_participant` remains blocked unless E-11 enrollment compilation explicitly lands.
 
 **Open design gates (not sunset):** production transfer/emission registration ownership (substrate landed; spec/builder integration pending); **D-1** discrete-transaction contention memo (continuous-flow hot-pool allocator scope dissolved by Resource Flow ADR; C-8c still rejects same-band consumed-input contention); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
 
@@ -84,7 +84,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-10R** | — | Driver participant identity preflight + reserved-gap admission |
 | **E-8R** | — | Arena-internal plumbing columns at property compile |
 | **E-7R** | — | `plan_governed_integration_at_band` for E-11 integration placement |
-| **E-11 design** | — | Opus v2 memo accepted; allocation execution blocked pending review pass |
+| **E-11** | #159 | Allocation execution landed; `e11_*` 14/14; flag default false |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

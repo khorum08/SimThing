@@ -354,13 +354,8 @@ fn encode_source(op: &AccumulatorOp) -> Result<(u32, u32, u32, u32), EncodeError
     match &op.source {
         SourceSpec::Constant(value) => Ok((source_kind::CONSTANT, value.to_bits(), 0, 0)),
         SourceSpec::SlotValue { slot, col } => Ok((source_kind::SLOT_VALUE, *slot, *col, 0)),
-        SourceSpec::SlotRange { start, count } => {
-            let col = op
-                .targets
-                .first()
-                .map(|(_, col)| *col)
-                .ok_or(EncodeError::Unsupported("SlotRange without target col"))?;
-            Ok((source_kind::SLOT_RANGE, *start, col, *count))
+        SourceSpec::SlotRange { start, count, col } => {
+            Ok((source_kind::SLOT_RANGE, *start, *col, *count))
         }
         SourceSpec::ConjunctiveCrossing { inputs } => {
             if inputs.is_empty() {

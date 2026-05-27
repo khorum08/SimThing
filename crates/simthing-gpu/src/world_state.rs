@@ -291,6 +291,9 @@ pub struct WorldGpuState {
     /// Cached C-8d emission dispatch signal.
     pub accumulator_emission_active: bool,
     pub accumulator_emission_bands: u32,
+    /// E-11 resource-flow allocation OrderBand dispatch (default off).
+    pub accumulator_resource_flow_active: bool,
+    pub accumulator_resource_flow_bands: u32,
 }
 
 impl WorldGpuState {
@@ -404,6 +407,8 @@ impl WorldGpuState {
             accumulator_transfer_bands: 0,
             accumulator_emission_active: false,
             accumulator_emission_bands: 0,
+            accumulator_resource_flow_active: false,
+            accumulator_resource_flow_bands: 0,
         }
     }
 
@@ -423,6 +428,8 @@ impl WorldGpuState {
         self.accumulator_transfer_bands = 0;
         self.accumulator_emission_active = false;
         self.accumulator_emission_bands = 0;
+        self.accumulator_resource_flow_active = false;
+        self.accumulator_resource_flow_bands = 0;
     }
 
     /// Clear one migrated AccumulatorOp family when its feature flag is off.
@@ -662,6 +669,144 @@ impl WorldGpuState {
     pub fn set_velocity_dispatch(&mut self, active: bool, n_bands: u32) {
         self.accumulator_velocity_active = active;
         self.accumulator_velocity_bands = n_bands;
+    }
+
+    pub fn clear_resource_flow_accumulator(&mut self) {
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            runtime.clear_resource_flow();
+        }
+        self.accumulator_resource_flow_active = false;
+        self.accumulator_resource_flow_bands = 0;
+    }
+
+    pub fn ensure_resource_flow_accumulator(&mut self) {
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        let n_slots = self.n_slots;
+        let n_dims = self.n_dims;
+        self.accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .ensure_resource_flow_session(
+                &self.ctx,
+                n_slots,
+                n_dims,
+                DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+            );
+    }
+
+    /// Upload E-11 resource-flow ops and register supplemental EML formulas.
+    pub fn sync_resource_flow_ops_from_cpu(
+        &mut self,
+        ops: &[simthing_core::AccumulatorOp],
+        n_bands: u32,
+        supplemental_eml: &simthing_core::EmlExpressionRegistry,
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        {
+            let runtime = self.accumulator_runtime.as_mut().unwrap();
+            runtime.ensure_eml_program_table(&self.ctx);
+            for (id, meta, nodes) in supplemental_eml.formulas_for_gpu_upload() {
+                if runtime.eml_registry.get(id).is_none() {
+                    runtime
+                        .eml_registry
+                        .register_formula(id, meta.clone(), nodes.to_vec())
+                        .expect("resource-flow EML registration");
+                }
+            }
+            runtime
+                .upload_eml_trees(&self.ctx)
+                .expect("resource-flow EML upload");
+        }
+        self.ensure_resource_flow_accumulator();
+        let gpu_ops: Vec<crate::AccumulatorOpGpu> = {
+            let runtime = self.accumulator_runtime.as_ref().unwrap();
+            ops.iter()
+                .map(|op| {
+                    crate::AccumulatorOpGpu::from_op_with_eml(op, Some(&runtime.eml_registry))
+                        .expect("resource-flow op encode")
+                })
+                .collect()
+        };
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            runtime.upload_resource_flow_ops(&self.ctx, &gpu_ops, n_bands)?;
+        }
+        self.set_resource_flow_dispatch(!ops.is_empty(), n_bands);
+        Ok(())
+    }
+
+    /// Upload pre-encoded GPU ops (legacy path when EML already marked uploaded).
+    pub fn sync_resource_flow_ops(
+        &mut self,
+        ops: &[crate::AccumulatorOpGpu],
+        n_bands: u32,
+        supplemental_eml: &simthing_core::EmlExpressionRegistry,
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        if self.accumulator_runtime.is_none() {
+            self.accumulator_runtime = Some(crate::WorldAccumulatorRuntime::new());
+        }
+        {
+            let runtime = self.accumulator_runtime.as_mut().unwrap();
+            runtime.ensure_eml_program_table(&self.ctx);
+            for (id, meta, nodes) in supplemental_eml.formulas_for_gpu_upload() {
+                if runtime.eml_registry.get(id).is_none() {
+                    runtime
+                        .eml_registry
+                        .register_formula(id, meta.clone(), nodes.to_vec())
+                        .expect("resource-flow EML registration");
+                }
+            }
+            runtime
+                .upload_eml_trees(&self.ctx)
+                .expect("resource-flow EML upload");
+        }
+        self.ensure_resource_flow_accumulator();
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            runtime.upload_resource_flow_ops(&self.ctx, ops, n_bands)?;
+        }
+        self.set_resource_flow_dispatch(!ops.is_empty(), n_bands);
+        Ok(())
+    }
+
+    pub fn set_resource_flow_dispatch(&mut self, active: bool, n_bands: u32) {
+        self.accumulator_resource_flow_active = active;
+        self.accumulator_resource_flow_bands = n_bands;
+    }
+
+    /// Dispatch uploaded E-11 resource-flow OrderBand ops (test/session helper).
+    pub fn run_resource_flow_bands(&mut self, n_bands: u32, dt: f32) {
+        if !self.accumulator_resource_flow_active || n_bands == 0 {
+            return;
+        }
+        let Some(mut runtime) = self.accumulator_runtime.take() else {
+            return;
+        };
+        let Some(mut session) = runtime.take_resource_flow_session() else {
+            self.accumulator_runtime = Some(runtime);
+            return;
+        };
+        let eml = runtime.eml_bind_buffers();
+        let mut encoder = self.ctx.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("resource_flow_bands_encoder"),
+            },
+        );
+        session.encode_orderband_with_eml_into(
+            &self.ctx,
+            &mut encoder,
+            &self.values,
+            &self.previous_values,
+            n_bands,
+            dt,
+            eml,
+        );
+        self.ctx.queue.submit(Some(encoder.finish()));
+        let _ = self.ctx.device.poll(wgpu::Maintain::Wait);
+        runtime.restore_resource_flow_session(Some(session));
+        self.accumulator_runtime = Some(runtime);
     }
 
     /// Ensure C-8b intensity EvalEML AccumulatorOp runtime is enabled.

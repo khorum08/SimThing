@@ -193,6 +193,50 @@ pub fn try_alloc_participant_child_in_gap(
     }
 }
 
+/// Minimal E-11 fission refresh: claim gap slot and attach `ArenaParticipant` under parent.
+pub fn refresh_fission_participant_child(
+    scaffold: &mut ArenaParticipantScaffold,
+    root: &mut SimThing,
+    parent_participant_slot: SlotId,
+    child_hosted_id: SimThingId,
+    flow_property_id: SimPropertyId,
+    registry: &DimensionRegistry,
+    allocator: &mut SlotAllocator,
+    fission_policy: FissionPolicy,
+) -> Result<SlotId, GapAllocError> {
+    let mut child_participant = SimThing::new(SimThingKind::ArenaParticipant, 0);
+    let child_participant_id = child_participant.id;
+    seed_participant_property(
+        &mut child_participant,
+        flow_property_id,
+        registry,
+        child_hosted_id,
+    );
+    let slot = try_alloc_participant_child_in_gap(
+        scaffold,
+        parent_participant_slot,
+        child_participant_id,
+        allocator,
+        fission_policy,
+    )?;
+    let parent_id = allocator.owner_of(parent_participant_slot).expect("parent slot");
+    let parent = find_child_mut(root, parent_id).expect("parent in tree");
+    parent.add_child(child_participant);
+    Ok(slot)
+}
+
+fn find_child_mut(node: &mut SimThing, id: SimThingId) -> Option<&mut SimThing> {
+    if node.id == id {
+        return Some(node);
+    }
+    for child in &mut node.children {
+        if let Some(found) = find_child_mut(child, id) {
+            return Some(found);
+        }
+    }
+    None
+}
+
 /// Return contiguous arena-participant child slots under an arena root (topology order).
 pub fn arena_participant_sibling_slots(
     root: &SimThing,
