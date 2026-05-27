@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — Workspace hygiene / paused-state consistency checkpoint
+
+- Fixed cosmetic export whitespace in [`simthing-driver` `lib.rs`](../crates/simthing-driver/src/lib.rs) (`fixture_profile_repeated_resync` / `fixture_profile_static_128_participants`).
+- Workspace hygiene checkpoint landed. **No runtime behavior changes.** Implementation remains paused pending a named product scenario.
+- The provisional mapping/location proposal should not trigger generic product scenario templates, broad simthing-spec/RON/Designer guardrail work, or runtime mapping implementation yet.
+- FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. E-11B remains paused; E-11B-5 requires a named nested dynamic Resource Flow scenario. D-2a remains deferred until a named hard-currency ordering scenario exists. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Resource Flow remains separate from Phase T hard-currency transfer/recipe/emission. No WGSL changes. No new AccumulatorRole variants. No CPU fallback. `simthing-sim` remains arena-ignorant and spec-free.
+- Deleted stale local test artifacts under `docs/tests/`.
+
+**Next gate:** unchanged — product names a scenario; re-select track A–E; or finalize mapping direction for impact review before any mapping-driven implementation.
+
+---
+
 ## 2026-05-27 — Product-priority vertical slice selection checkpoint
 
 - Added [`product_priority_vertical_slice_selection.md`](reviews/product_priority_vertical_slice_selection.md) — docs-first track selection after continued flat-star soak.

@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** product-priority vertical slice selection checkpoint (pending merge)  
-**Verification (last recorded):** docs-only — `cargo check --workspace` / `cargo test --workspace` PASS
+**Master HEAD:** workspace hygiene / paused-state consistency checkpoint (pending merge)  
+**Verification (last recorded):** `cargo fmt --check` / `cargo check --workspace` / `cargo test --workspace` PASS
 
 ---
 
@@ -60,6 +60,8 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 - **E** — additional flat-star soak (named evidence gap)
 
 Global default-on remains deferred and rejected.
+
+**Mapping/location (provisional):** Any mapping/location direction under discussion is **provisional** and must not trigger generic product scenario templates, broad simthing-spec/RON/Designer guardrail work, or runtime mapping implementation until product finalizes direction and completes an impact review.
 
 **Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. **E-11B paused** — static nested kickoff + fission/gap hardening landed; nested dynamic enrollment deferred. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
 
