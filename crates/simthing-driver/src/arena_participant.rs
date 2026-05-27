@@ -1,8 +1,8 @@
-//! E-10R2 — ArenaParticipant SimThing scaffold (driver/session topology only).
+//! E-10R2/E-10R3 — ArenaParticipant SimThing scaffold (driver/session topology only).
 //!
 //! Materializes dedicated arena-participant wrapper nodes for admitted explicit
 //! participants, proves sibling contiguity for SlotRange reductions, and tracks
-//! reserved-gap pools for fission-spawned participant children.
+//! arena-local reserved-gap blocks for fission-spawned participant children.
 
 use simthing_core::{
     DimensionRegistry, PropertyLayout, PropertyValue, SimPropertyId, SimThing, SimThingId,
@@ -37,9 +37,13 @@ pub struct ArenaParticipantAllocationReport {
     pub participant_count: u32,
     pub reserved_gap_per_intermediate: u32,
     pub max_children_per_intermediate: u32,
+    /// First slot of the contiguous participant sibling block under the arena root.
+    pub participant_sibling_first: Option<SlotId>,
+    /// First slot of the arena-local reserved gap block (if any).
+    pub gap_block_first: Option<SlotId>,
 }
 
-/// LIFO pool of exclusively reserved tombstoned slots adjacent to a parent participant.
+/// LIFO pool of exclusively reserved tombstoned slots in the arena-local gap block.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReservedGapPool {
     pub parent_participant_slot: SlotId,
@@ -125,21 +129,27 @@ pub fn materialize_arena_participants(
                 .index
                 .by_host_and_arena
                 .insert((*hosted_id, arena_idx), *participant_slot);
+        }
 
-            if arena.reserved_gap_per_intermediate > 0 {
-                let gap_slots = allocator.reserve_adjacent_gaps_after(
-                    *participant_slot,
-                    arena.reserved_gap_per_intermediate,
-                )?;
+        let gap_k = arena.reserved_gap_per_intermediate;
+        let gap_block_first = if gap_k > 0 && !participant_slots.is_empty() {
+            let total_gaps = gap_k.saturating_mul(participant_slots.len() as u32);
+            let gap_block = allocator.reserve_exclusive_gap_block(total_gaps);
+            for (i, participant_slot) in participant_slots.iter().enumerate() {
+                let start = (i as u32 * gap_k) as usize;
+                let end = start + gap_k as usize;
                 scaffold.gap_pools.insert(
                     *participant_slot,
                     ReservedGapPool {
                         parent_participant_slot: *participant_slot,
-                        available: gap_slots,
+                        available: gap_block[start..end].to_vec(),
                     },
                 );
             }
-        }
+            gap_block.first().copied()
+        } else {
+            None
+        };
 
         scaffold.arena_root_ids.insert(arena_idx, arena_root_id);
         scaffold.reports.push(ArenaParticipantAllocationReport {
@@ -148,6 +158,8 @@ pub fn materialize_arena_participants(
             participant_count: participant_slots.len() as u32,
             reserved_gap_per_intermediate: arena.reserved_gap_per_intermediate,
             max_children_per_intermediate: arena.expected_max_children_per_intermediate,
+            participant_sibling_first: participant_slots.first().copied(),
+            gap_block_first,
         });
     }
 
@@ -197,6 +209,22 @@ pub fn arena_participant_sibling_slots(
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// True when `slot` falls in the half-open participant sibling `[first, first + count)`.
+pub fn slot_in_participant_sibling_range(first: SlotId, count: u32, slot: SlotId) -> bool {
+    count > 0 && slot >= first && slot < first.saturating_add(count)
+}
+
+/// Return all exclusively reserved gap slots across every parent pool in `scaffold`.
+pub fn all_reserved_gap_slots(scaffold: &ArenaParticipantScaffold) -> Vec<SlotId> {
+    let mut out = Vec::new();
+    for pool in scaffold.gap_pools.values() {
+        out.extend_from_slice(pool.reserved_slots());
+    }
+    out.sort_unstable();
+    out.dedup();
+    out
 }
 
 /// True when `slots` form a contiguous ascending range (SlotRange precondition).

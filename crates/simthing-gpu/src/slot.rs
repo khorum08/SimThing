@@ -110,9 +110,26 @@ impl SlotAllocator {
         self.exclusive_reserved.contains(&slot)
     }
 
+    /// Extend the high-water mark with `count` exclusively reserved tombstoned
+    /// slots (arena-local gap block). Returns ascending slot ids. Not placed on
+    /// the global LIFO `free` stack until claimed via [`Self::claim_exclusive_slot`].
+    pub fn reserve_exclusive_gap_block(&mut self, count: u32) -> Vec<u32> {
+        if count == 0 {
+            return Vec::new();
+        }
+        let mut slots = Vec::with_capacity(count as usize);
+        for _ in 0..count {
+            let slot = self.capacity() as u32;
+            self.slot_owners.push(None);
+            self.exclusive_reserved.insert(slot);
+            slots.push(slot);
+        }
+        slots
+    }
+
     /// Extend the buffer with exclusively reserved tombstoned slots immediately
-    /// after `parent_slot`. Returns ascending slot ids. These slots are not placed
-    /// on the global LIFO `free` stack until claimed via [`Self::claim_exclusive_slot`].
+    /// after `parent_slot`. Prefer [`Self::reserve_exclusive_gap_block`] when
+    /// sibling participants occupy the slots after `parent_slot`.
     pub fn reserve_adjacent_gaps_after(
         &mut self,
         parent_slot: u32,

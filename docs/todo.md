@@ -110,13 +110,14 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-10** | #153 | — | **Done** — Resource Flow admission framework + expansion report |
 | **E-10R** | — | — | **Done** — driver participant identity preflight + reserved-gap admission |
 | **E-10R2** | — | — | **Done** — ArenaParticipant SimThing scaffold + contiguity/gap tests |
+| **E-10R3** | — | — | **Done** — arena-local gap block reservation + post-materialize capacity check |
 | **E-8R** | — | — | **Done** — arena-internal plumbing columns at property compile |
 | **E-7R** | — | — | **Done** — `plan_governed_integration_at_band` ordering API |
 | **E-11 design** | — | — | **Accepted** — Opus v2 memo landed; execution blocked pending review |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **E-11 review pass** — confirm landed E-10R/E-10R2/E-8R/E-7R APIs vs Opus v2 memo; generate narrowed E-11 implementation handoff (**do not implement allocation execution yet**)
+1. **Final E-11 readiness review** — confirm E-10R/E-10R2/E-10R3/E-8R/E-7R APIs vs Opus v2 memo; generate narrowed E-11 implementation handoff (**do not implement allocation execution yet**)
 2. **Opus** — production transfer/emission registration ownership
 3. **D-1** — discrete-transaction contention memo (D-2 deferred unless memo revives narrower GPU allocator need)
 
@@ -125,7 +126,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-1 memo evaluates discrete boundary transactions only.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
-**E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-10R/E-10R2/E-8R/E-7R prerequisites landed).
+**E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-10R/E-10R2/E-10R3/E-8R/E-7R prerequisites landed).
 
 **Next (immediate):** E-11 review pass → narrowed implementation handoff — **not** direct E-11 allocation execution.
 
