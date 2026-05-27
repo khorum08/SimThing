@@ -3,7 +3,7 @@
 //! Unmarked columns are auto-derived at compile/register time. They carry no
 //! `accumulator_spec` metadata and do not add `AccumulatorRole` variants.
 
-use crate::accumulator_spec::{AccumulatorRole, AccumulatorSpec};
+use crate::accumulator_spec::AccumulatorRole;
 use crate::property::{ClampBehavior, PropertyLayout, SubFieldRole, SubFieldSpec};
 
 /// Arena-internal column roles appended in deterministic order (E-8R).
