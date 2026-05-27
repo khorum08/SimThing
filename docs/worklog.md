@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — E-2B: Resource Flow enrollment compilation readiness review
+
+- Added [`docs/reviews/e2b_resource_flow_enrollment_compilation_readiness.md`](reviews/e2b_resource_flow_enrollment_compilation_readiness.md): definition of E-2B enrollment compilation; spec vs driver mapping; E-10R/E-11 relationship; fission implications; implementation ladder E-2B-1…6; required tests.
+- E-2B enrollment compilation readiness review landed. No production code changes. E-11B remains deferred by default. Phase T remains complete. D-1 remains landed; D-2 GPU allocator remains deferred. `use_accumulator_resource_flow` remains default false.
+- **Recommendation:** implement narrowed E-2B-1…4 static session-open enrollment (selector → explicit participants); defer E-2B-5 dynamic fission and legacy `resource_flow_participant` op-set builder; E-2B does not require E-11B.
+
+**Verification:** `cargo check --workspace`; `cargo test --workspace`.
+
+**Next gate:** E-2B implementation ladder (E-2B-1…4), Opus selector review (optional), D-2a, or E-11B.
+
+---
+
 ## 2026-05-27 — E-11B: nested hierarchy GPU readiness review
 
 - Added [`docs/reviews/e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md): current-state audit of E-11 flat-star vs nested gaps; SlotRange/contiguity requirements; E-10R3 gap validity; E-7R integration placement; CPU oracle vs GPU parity; priority vs E-2B/D-2a.
