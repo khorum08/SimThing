@@ -129,17 +129,20 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Next recommended gates (pivot-forward order):**
 
-1. **D-2** — boundary transaction scheduling (only if D-1 memo workload proves need) **or E-11B** nested hierarchy GPU (optional/future)
+1. **E-11B implementation ladder** — only if nested Resource Flow is explicitly prioritized ([readiness review](reviews/e11b_nested_hierarchy_gpu_readiness_review.md) recommends defer by default)
+2. **E-2B enrollment compilation** — if dynamic Resource Flow participant growth is on the near-term roadmap
+3. **D-2a boundary transaction scheduling** — only if discrete hard-currency ordering is urgent (D-1 memo)
 
 **Open design warnings (preserve):**
 - Transfer/emission registration ownership: **Phase T complete.** T-6 landed limited opt-in scenario flagging for resource economy transfer/emission. Global transfer/emission flags remain default false. Only explicitly opted-in scenarios enable AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free. Hard-currency transfers remain on exact discrete AccumulatorOp transfer paths, not Resource Flow.
-- **D-1 memo landed:** discrete-transaction contention current-state audit and implementation recommendations ([`d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md)). No production code changes. Next gate depends on D-1 recommendation: D-2 implementation handoff or E-11B nested hierarchy GPU.
+- **E-11B readiness review landed:** nested hierarchy GPU execution/materialization current-state audit ([`e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md)). No production code changes. Phase T remains complete. D-1 remains landed; D-2 GPU allocator remains deferred. `use_accumulator_resource_flow` remains default false. Next gate depends on review recommendation: E-11B implementation ladder, E-2B enrollment compilation, or D-2a discrete scheduling.
+- **D-1 memo landed:** discrete-transaction contention current-state audit ([`d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md)). No production code changes.
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; T-2 compile rejects same-band authoring collisions.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
 **E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-11 execution landed; enrollment compilation not in scope). Phase T does **not** unblock E-2B — it addresses transfer/emission/recipe/threshold-emit registration ownership only.
 
-**Next (immediate):** Next gate depends on D-1 recommendation: D-2 boundary transaction scheduling (if needed) or E-11B nested hierarchy GPU. E-2B blocked unless enrollment compilation explicitly lands.
+**Next (immediate):** Next gate depends on E-11B readiness review recommendation: E-11B implementation ladder (if nested Resource Flow prioritized), E-2B enrollment compilation, or D-2a discrete scheduling. E-2B remains blocked unless enrollment compilation explicitly lands.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

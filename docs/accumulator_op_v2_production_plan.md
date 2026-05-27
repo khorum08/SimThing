@@ -1181,7 +1181,7 @@ produce expected expansion reports.
 ### ✅ PR E-11 — Hierarchical allocation kernel pattern + CPU oracle parity
 
 **Model:** Opus (review and design pseudocode), Composer 2.5 (implementation)
-**Status:** **Done (flat-star vertical slice)** — PR #159 (`8a628ca`). **E-11R** PR #160 landed. **Burn-in scaffold** landed (`ResourceFlowBurnInReport`, `e11_burn_in_*`). **Controlled burn-in scenario fixtures** landed (`ResourceFlowScenarioBurnInReport`, `e11_burn_in_scenarios_*`). **Controlled opt-in CI soak** landed (`ResourceFlowSoakSummaryReport`, `e11_resource_flow_soak`, `ResourceFlowSoakMode::FlatStarOptIn`). Flat-star D=2 GPU path; nested GPU deferred (E-11B). Flag **default false**; soak active in opt-in tests only. No new WGSL; `simthing-sim` remains arena-ignorant. **Next decision:** continue soak / limited scenario opt-in, or route to Opus transfer/emission registration ownership.
+**Status:** **Done (flat-star vertical slice)** — PR #159 (`8a628ca`). **E-11R** PR #160 landed. **Burn-in scaffold** landed. **Controlled burn-in scenario fixtures** landed. **Controlled opt-in CI soak** landed. Flat-star D=2 GPU path; nested GPU deferred pending E-11B readiness review. **E-11B readiness review landed** — see [`e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md). Flag **default false**; soak active in opt-in tests only. No new WGSL; `simthing-sim` remains arena-ignorant.
 **Why Opus:** E-11 is a real new GPU production capability. Although it reuses
 the existing AccumulatorOp kernel, it is structured as a reverse-direction
 OrderBand sweep with per-intermediate weight reductions and per-child share
@@ -1263,7 +1263,9 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **T-6 status:** **Done** — direct commit `3294e6f`. Limited opt-in scenario flagging for resource economy transfer/emission execution. `ResourceEconomyOptInMode` is explicit and defaults disabled. Global transfer/emission flags remain default false; only explicitly opted-in scenarios enable the existing AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free. **Phase T complete.**
 
-**D-1 status:** **Done** — [`docs/reviews/d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md). Discrete-transaction contention current-state audit and implementation recommendations. No production code changes. Phase T remains complete in default-off / explicit-opt-in posture. **Next gate:** D-2 implementation handoff (only if discrete workload proves need) or E-11B nested hierarchy GPU.
+**D-1 status:** **Done** — [`docs/reviews/d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md). Discrete-transaction contention current-state audit and implementation recommendations. No production code changes. Phase T remains complete in default-off / explicit-opt-in posture. D-2 GPU allocator remains deferred.
+
+**E-11B readiness status:** **Done** — [`docs/reviews/e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md). Nested hierarchy GPU execution/materialization current-state audit. No production code changes. Phase T remains complete. D-1 remains landed; D-2 GPU allocator remains deferred. `use_accumulator_resource_flow` remains default false. **Next gate depends on review recommendation:** E-11B implementation ladder (if nested Resource Flow prioritized), E-2B enrollment compilation, or D-2a discrete scheduling.
 
 **Posture (preserves v7.5):** runtime substrate is unchanged; ownership of
 transfer / recipe / emission / threshold-emit registrations moves to
@@ -1498,6 +1500,7 @@ as a doc-only PR.
 | **E-11 burn-in** | **E** | **Composer 2.5** | **Controlled flat-star burn-in tests + report struct** | **Done** |
 | **E-11 burn-in scenarios** | **E** | **Composer 2.5** | **Named flat-star scenario fixtures + `ResourceFlowScenarioBurnInReport`** | **Done** |
 | **E-11 CI soak** | **E** | **Composer 2.5** | **Opt-in flat-star CI soak + `ResourceFlowSoakSummaryReport`** | **Done** |
+| **E-11B readiness** | **E** | **Opus (memo only)** | **Nested hierarchy GPU execution/materialization audit** | **Done** — [`e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md) |
 | S-1 | F | Codex 5.5 | Sunset intent fold | **Done locally** |
 | S-2 | F | Codex 5.5 | Sunset intensity update | **Landed (#138)** |
 | S-3 | F | Codex 5.5 | Sunset overlay prep | CI green at flag=on |

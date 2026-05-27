@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — E-11B: nested hierarchy GPU readiness review
+
+- Added [`docs/reviews/e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md): current-state audit of E-11 flat-star vs nested gaps; SlotRange/contiguity requirements; E-10R3 gap validity; E-7R integration placement; CPU oracle vs GPU parity; priority vs E-2B/D-2a.
+- E-11B readiness review landed: nested hierarchy GPU execution/materialization current-state audit. No production code changes. Phase T remains complete. D-1 remains landed; D-2 GPU allocator remains deferred. `use_accumulator_resource_flow` remains default false.
+- **Recommendation:** defer E-11B as default next gate; authorize narrowed E-11B-1…B-5 ladder when nested Resource Flow is explicitly prioritized. E-2B enrollment compilation is higher priority if dynamic enrollment is on the roadmap.
+
+**Verification:** `cargo check --workspace`; `cargo test --workspace`.
+
+**Next gate:** Product decision — E-11B implementation ladder, E-2B enrollment compilation, or D-2a discrete scheduling.
+
+---
+
 ## 2026-05-27 — D-1: discrete-transaction contention memo
 
 - Added [`docs/reviews/d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md): current-state audit of discrete transfer/recipe/emission/threshold classes post–Phase T; existing guardrails (T-2, C-8c, bootstrap); remaining cross-band and boundary ordering gaps; recommended policy boundary; D-2 deferral with optional D-2a driver scheduler path.
