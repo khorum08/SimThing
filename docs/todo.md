@@ -132,19 +132,23 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-11B nested dynamic enrollment readiness** | — | — | **Done** — [`e11b_nested_dynamic_enrollment_readiness.md`](reviews/e11b_nested_dynamic_enrollment_readiness.md); defer by default |
 | **E-11B pause checkpoint** | — | — | **Done** — E-11B paused after kickoff + E-11B-4 + readiness review; E-11B-5 not authorized without named scenario |
 | **Continued flat-star soak** | — | — | **Done** — `resource_flow_flat_star_continued_soak` 12/12; 512 static @ 1000 ticks (local GPU) |
+| **Product-priority vertical slice selection** | — | — | **Done** — [`product_priority_vertical_slice_selection.md`](reviews/product_priority_vertical_slice_selection.md); **Recommendation F:** pause |
 
-**Next recommended gates (product-priority order — choose one track):**
+**Next recommended action:** **Pause implementation** and gather product requirements per selection review. Do not open D-2a, E-11B-5, spec/RON rebuild, new vertical slice, or additional soak until product names a scenario and re-selects track A–E.
 
-1. **Narrow D-2a implementation** — only if a named multi-transaction hard-currency scenario requires sequential cross-band ordering
-2. **Full simthing-spec/RON/Designer guardrail rebuild** — when the authoring track intentionally opens
-3. **Narrow E-11B-5 nested dynamic enrollment** — only if product names a nested dynamic Resource Flow scenario (**E-11B track paused until then**)
-4. **New scenario-driven vertical slice** — product-led, constitutionally bounded
-5. **Additional flat-star soak** — only if evidence gap remains after continued soak checkpoint
-6. **Resource Flow global default-on** — remains deferred and rejected; do not choose by default
+**Deferred tracks (require named scenario before authorization):**
 
-**E-11B track status:** **Paused (not abandoned).** Static nested D=3/D=4 GPU parity and fission/gap hardening remain landed. Nested dynamic enrollment deferred. E-11B-5 not authorized without named product scenario.
+1. **Narrow D-2a** — named multi-transaction hard-currency ordering scenario
+2. **Narrow E-11B-5** — named nested dynamic Resource Flow scenario
+3. **simthing-spec/RON/Designer guardrail rebuild** — authoring track intentionally opens
+4. **New scenario-driven vertical slice (A)** — product brief + FlatStarResourceFlow / Phase T fixture plan
+5. **Additional flat-star soak (E)** — specific evidence gap named
+6. **Resource Flow global default-on** — remains deferred and rejected
+
+**E-11B track status:** **Paused (not abandoned).**
 
 **Open design warnings (preserve):**
+- **Product-priority vertical slice selection checkpoint landed.** No production code changes. Continued flat-star Resource Flow soak remains landed and green. FlatStarResourceFlow remains the accepted bounded production posture. **Recommendation F:** pause implementation and gather product requirements. E-11B remains paused; E-11B-5 requires a named nested dynamic Resource Flow scenario. D-2a remains deferred until a named hard-currency ordering scenario exists. simthing-spec/RON/Designer guardrail rebuild remains deferred. Global flag default false. Resource Flow separate from Phase T. Next implementation gate depends on review recommendation after product names a scenario.
 - **Continued flat-star Resource Flow soak checkpoint landed.** FlatStarResourceFlow remains the accepted bounded production posture. The checkpoint adds confidence/observability only and does not expand Resource Flow semantics. E-11B remains paused; E-11B-5 is not authorized without a named nested dynamic Resource Flow scenario. D-2a remains deferred until a named hard-currency scenario needs sequential cross-band ordering. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Spec FlatStarOptIn remains supported and takes precedence. Resource Flow remains separate from Phase T hard-currency transfer/recipe/emission. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant and spec-free. Designer-facing spec/RON guardrail rebuild remains deferred.
 - **E-11B paused** after nested static GPU parity, fission/gap hardening, and nested dynamic enrollment readiness review. Nested D=3/D=4 static hierarchy materialization remains landed and GPU-parity covered. Nested reserved-gap children remain non-leaf unless explicitly admitted by a future nested enrollment gate. Nested dynamic enrollment is deferred until a named product scenario requires it. Future E-11B-5 must be narrow: explicit nested admission, contiguous extension or visible rejection, generation/sync reporting, replay/parity tests. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Policy B Reevaluate remains deferred. D-2a remains deferred until a named hard-currency product scenario needs sequential cross-band ordering. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant. Resource Flow remains separate from hard-currency transfer. Designer-facing spec/RON guardrail rebuild remains deferred.
 - **E-11B nested fission/gap hardening landed:** reserved-gap children preserve active child SlotRange and do not become allocation leaves unless explicitly admitted by a future nested enrollment gate. D=3/D=4 nested GPU parity remains green for active trees after safe gap claims. FlatStarResourceFlow remains the accepted bounded production posture. E-11B remains an explicit nested extension and does not make Resource Flow global default-on. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Policy B Reevaluate remains deferred. D-2a remains deferred until a named hard-currency product scenario needs sequential cross-band ordering. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant. Resource Flow remains separate from hard-currency transfer. Designer-facing spec/RON guardrail rebuild remains deferred.
@@ -170,10 +174,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **E-2B:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).**
 
-**Next (immediate):** depends on product priority: continue E-11B toward
-fission/gap preservation, narrow D-2a implementation only after a named
-scenario, continued soak, or simthing-spec/RON rebuild. Global default-on
-remains deferred.
+**Next (immediate):** **Pause implementation (F)** — gather product requirements per [`product_priority_vertical_slice_selection.md`](reviews/product_priority_vertical_slice_selection.md). Re-select track A–E only after product names a scenario. Global default-on remains deferred.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp
