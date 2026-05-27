@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** E-2B-5 dynamic enrollment soak (merged PR #178)  
-**Verification (last recorded):** [`e2b5_dynamic_enrollment_soak_test_results.md`](../tests/e2b5_dynamic_enrollment_soak_test_results.md) — PASS; resource-flow flag default false
+**Master HEAD:** Resource Flow default-on readiness review (pending merge)  
+**Verification (last recorded):** docs-only; `cargo test --workspace` PASS
 
 ---
 
@@ -23,9 +23,11 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed. **E-11B readiness review landed** — nested hierarchy GPU deferred pending product priority ([memo](../reviews/e11b_nested_hierarchy_gpu_readiness_review.md)). `use_accumulator_resource_flow` **default false**. No new WGSL; `simthing-sim` remains arena-ignorant.
 
-**E-2B status:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).** Dynamic fission enrollment via arena-root sibling append with atomic prepare/commit ([memo](../reviews/e2b5_dynamic_fission_enrollment_readiness.md), [soak test report](../tests/e2b5_dynamic_enrollment_soak_test_results.md)). Resource Flow dynamic enrollment soak landed; E-2B-5R remained atomic under soak. E-11B deferred. `use_accumulator_resource_flow` **default false**.
+**E-2B status:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).** Dynamic fission enrollment via arena-root sibling append ([memo](../reviews/e2b5_dynamic_fission_enrollment_readiness.md), soak PR #178). `use_accumulator_resource_flow` **default false**.
 
-**Next gates:** **Resource Flow default-on readiness review** (recommended after soak; not default-on); **E-11B**, **D-2a**, **limited opt-in scenario burn-in expansion** per product priority.
+**RF default-on review:** **Done** — [`resource_flow_default_on_readiness_review.md`](../reviews/resource_flow_default_on_readiness_review.md). **Recommendation B:** limited scenario-class opt-in may proceed; global default-on deferred. No production code changes.
+
+**Next gates:** **Resource Flow limited scenario-class opt-in flagging (RF-T1)**; **burn-in expansion**; **E-11B**; **D-2a** per product priority.
 
 **Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. E-11B deferred by default. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
 
@@ -103,6 +105,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-2B-5** | merged (`a740845`) | Policy A dynamic fission enrollment |
 | **E-2B-5R** | merged (PR #177) | Atomicity + visible boundary diagnostics |
 | **E-2B-5 soak** | merged (PR #178) | Dynamic enrollment opt-in burn-in |
+| **RF default-on readiness** | (pending merge) | Recommendation B; global default-on rejected |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
@@ -154,7 +157,8 @@ explicitly instead of falling back or silently skipping work.
 | Design | **E-11B** nested hierarchy readiness | Opus | **Done** — audit; defer by default ([memo](../reviews/e11b_nested_hierarchy_gpu_readiness_review.md)) |
 | Design | **E-2B** enrollment compilation readiness | Opus | **Done** — audit ([memo](../reviews/e2b_resource_flow_enrollment_compilation_readiness.md)) |
 | Implementation | **E-2B** static enrollment E-2B-1…4 | Composer 2.5 | **Done** — selector install + session tests |
-| Design | **E-2B-5 / soak** dynamic fission enrollment | Cursor | **Done** — Policy A + atomicity + soak ([memo](../reviews/e2b5_dynamic_fission_enrollment_readiness.md), [soak report](../tests/e2b5_dynamic_enrollment_soak_test_results.md)) |
+| Design | **RF default-on readiness** | Cursor | **Done** — Recommendation B ([memo](../reviews/resource_flow_default_on_readiness_review.md)) |
+| Design | **E-2B-5 / soak** dynamic fission enrollment | Cursor | **Done** — Policy A + atomicity + soak ([memo](../reviews/e2b5_dynamic_fission_enrollment_readiness.md)) |
 | Implementation | **Phase T** transfer/emission registration ownership | Cursor (Codex 5.5 + Composer 2.5) | **Complete** — T-1 through T-6 landed; default-off / explicit opt-in production posture ([Opus memo](../reviews/transfer_emission_registration_ownership_opus_review.md)) |
 | Infra | Test-harness cleanup | Optional | Runtime legacy oracle/fallback peers are gone; remaining cleanup is test-only ergonomics |
 
