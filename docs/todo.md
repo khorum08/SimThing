@@ -122,24 +122,24 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-11 CI soak** | — | — | **Done** — opt-in soak `e11_resource_flow_soak` 6/6; `ResourceFlowSoakSummaryReport` |
 | **T-1** | — | #165 | **Done** — `resource_economy` authoring types + RON roundtrip 12/12 |
 | **T-2** | `986bc99` | #166 | **Done** — `compile::resource_economy` validation + expansion report |
-| **T-3** | `05f8b10` | #167 | **Done** — `resource_economy_compile` materialization + stable emission `reg_idx`; no session integration yet |
+| **T-3** | `05f8b10` | #167 | **Done** — `resource_economy_compile` materialization + stable emission `reg_idx` |
+| **T-4** | pending | pending | **Done** — session integration + boundary refresh; generation-keyed skip; flag-off populated-spec rejection |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **T-4** — session integration + boundary refresh via existing `sync_accumulator_{transfer,emission}_session` paths
-2. **T-5** — boundary refresh / replay tests (Phase T ladder)
+1. **T-5** — boundary refresh / replay tests; 100-tick conservation burn-in (Phase T ladder)
 3. **Limited opt-in scenario flagging** (optional)
 4. **E-11B** (optional/future) — nested hierarchy GPU execution / materialization
 5. **D-1** — discrete-transaction contention memo
 
 **Open design warnings (preserve):**
-- Transfer/emission registration ownership: **Opus design memo landed (2026-05-27).** **T-1 authoring types landed.** **T-2 compile pass landed.** **T-3 driver materialization landed** — `simthing-driver::resource_economy_compile` into existing registration shapes; stable emission `reg_idx` tested. No session integration, boundary refresh, or GPU upload changes yet. T-4…T-5 pending; transfer/emission flags remain default false until T-5 burn-in is green.
+- Transfer/emission registration ownership: **Opus design memo landed (2026-05-27).** **T-1 authoring types landed.** **T-2 compile pass landed.** **T-3 driver materialization landed.** **T-4 session integration + boundary refresh landed** — `resource_economy_sync` via existing transfer/emission accumulator paths; generation-keyed skip; flag-off populated-spec rejection; live slot resolution in session path. T-5 burn-in pending; transfer/emission flags remain default false until T-5 burn-in is green.
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-1 memo evaluates discrete boundary transactions only.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
 **E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-11 execution landed; enrollment compilation not in scope). Phase T does **not** unblock E-2B — it addresses transfer/emission/recipe/threshold-emit registration ownership only.
 
-**Next (immediate):** T-4 session integration + boundary refresh through existing `sync_accumulator_transfer_session` / `sync_accumulator_emission_session` paths. E-11B nested GPU remains optional/future. E-2B blocked unless enrollment compilation explicitly lands.
+**Next (immediate):** T-5 boundary refresh / replay tests and 100-tick conservation burn-in. E-11B nested GPU remains optional/future. E-2B blocked unless enrollment compilation explicitly lands.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp
