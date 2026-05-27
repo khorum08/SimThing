@@ -49,6 +49,11 @@ pub enum InstallError {
 
     #[error("slot allocation error: {0}")]
     SlotAlloc(#[from] simthing_gpu::SlotAllocError),
+
+    #[error(
+        "resource flow materialization exceeds scenario n_slots ({capacity} > {cap})"
+    )]
+    ResourceFlowSlotOverflow { capacity: usize, cap: usize },
 }
 
 /// Compile a `GameModeSpec` against the supplied scenario state and return a
@@ -140,6 +145,12 @@ pub fn compile_and_install(
     if let Some(resource_flow) = &game_mode.resource_flow {
         validate_resource_flow_preflight(resource_flow, allocator)?;
         let scaffold = materialize_arena_participants(resource_flow, registry, root, allocator)?;
+        if allocator.capacity() > n_slots_cap {
+            return Err(InstallError::ResourceFlowSlotOverflow {
+                capacity: allocator.capacity(),
+                cap: n_slots_cap,
+            });
+        }
         let (arena_registry, _report) =
             compile_and_materialize_resource_flow(resource_flow, registry)?;
         state.arena_registry = arena_registry;

@@ -10,9 +10,10 @@ pub mod spec_replay;
 pub mod spec_session;
 
 pub use arena_participant::{
-    arena_participant_sibling_slots, materialize_arena_participants, slots_are_contiguous,
-    try_alloc_participant_child_in_gap, ArenaParticipantAllocationReport, ArenaParticipantIndex,
-    ArenaParticipantScaffold, GapAllocError, ReservedGapPool,
+    all_reserved_gap_slots, arena_participant_sibling_slots, materialize_arena_participants,
+    slot_in_participant_sibling_range, slots_are_contiguous, try_alloc_participant_child_in_gap,
+    ArenaParticipantAllocationReport, ArenaParticipantIndex, ArenaParticipantScaffold,
+    GapAllocError, ReservedGapPool,
 };
 pub use arena_registry::{
     ArenaCoupling, ArenaDiagnostic, ArenaExpansionReport, ArenaIdx, ArenaParticipant,

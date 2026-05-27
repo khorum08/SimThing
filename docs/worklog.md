@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — E-10R3 arena-local gap block reservation
+
+- Replaced per-participant adjacent gap reservation with arena-local block layout: contiguous participant sibling block + separate reserved-gap block (`N × K` slots).
+- Added `SlotAllocator::reserve_exclusive_gap_block`; gap pools split deterministically per parent.
+- Install step 4b now rejects `ResourceFlowSlotOverflow` when materialization exceeds `scenario.n_slots`.
+- Tests: `e10r3_*` (6); E-10R2 tests updated for block semantics.
+
+**Verification:** `cargo test -p simthing-driver e10r3`; `cargo test --workspace`.
+
+**Next:** Final E-11 readiness review → narrowed allocation handoff. **Do not start E-11 allocation execution yet.**
+
+---
+
 ## 2026-05-26 — E-10R2 ArenaParticipant scaffold
 
 - Added `SimThingKind::ArenaParticipant` (driver/session topology marker; `simthing-sim` arena-ignorant).

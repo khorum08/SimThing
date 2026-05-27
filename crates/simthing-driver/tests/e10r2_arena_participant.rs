@@ -179,16 +179,20 @@ fn e10r2_arena_participant_kind_does_not_cross_into_simthing_sim() {
 }
 
 #[test]
-fn e10r2_reserved_gap_slots_are_adjacent_to_parent() {
+fn e10r2_reserved_gap_slots_are_in_arena_local_block() {
     let (_reg, _root, _alloc, scaffold) = materialize_fixture(
         |root| {
             root.add_child(SimThing::new(SimThingKind::Cohort, 0));
         },
         food_arena(vec![], 3, 3),
     );
+    let report = &scaffold.reports[0];
     let parent_slot = scaffold.index.by_host_and_arena.values().next().copied().unwrap();
     let pool = scaffold.gap_pools.get(&parent_slot).unwrap();
-    assert_eq!(pool.reserved_slots(), &[parent_slot + 1, parent_slot + 2, parent_slot + 3]);
+    let gap_block_first = report.gap_block_first.unwrap();
+    assert_eq!(pool.reserved_slots(), &[gap_block_first, gap_block_first + 1, gap_block_first + 2]);
+    // Single-participant arenas still place the gap block immediately after the sibling.
+    assert_eq!(gap_block_first, parent_slot + 1);
 }
 
 #[test]
