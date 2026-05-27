@@ -1251,6 +1251,8 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 **Design gate:** [`docs/reviews/transfer_emission_registration_ownership_opus_review.md`](reviews/transfer_emission_registration_ownership_opus_review.md)
 (Opus, 2026-05-27, **Accepted**). No stop conditions triggered.
 
+**T-1 status:** **Done** — `simthing-spec::spec::resource_economy` authoring types + `resource_economy_roundtrip` RON suite. No compile pass, driver materialization, session integration, or GPU changes yet. Transfer/emission flags remain default false.
+
 **Posture (preserves v7.5):** runtime substrate is unchanged; ownership of
 transfer / recipe / emission / threshold-emit registrations moves to
 `simthing-spec` (authoring) → `simthing-driver` (compilation) → existing
@@ -1261,12 +1263,12 @@ until T-5 burn-in is itself green.
 
 | PR | Model | Scope | Gate |
 |----|-------|-------|------|
-| **T-1** | Codex 5.5 | `simthing-spec` authoring types: `ResourceTransferSpec`, `ResourceRecipeSpec`, `ResourceEmissionSpec`, `EmitOnThresholdSpec` (+ `EmissionFormulaSpec`, `RecipeInputSpec`, `EmitBufferSpec`) | RON serde roundtrip suite |
-| **T-2** | Composer 2.5 | `simthing-spec::compile::resource_economy` resolves keys / EML formulas / validation; extends expansion report | Rejection-fixture suite (mirrors E-10) |
-| **T-3** | Composer 2.5 | `simthing-driver::resource_economy_compile` → `ResourceEconomyRegistrations`; stable `reg_idx` from authoring identity; subtree-scoped refresh | Golden compile + stable-`reg_idx` tests |
-| **T-4** | Composer 2.5 | Session integration + boundary refresh via existing `sync_accumulator_{transfer,emission}_session` paths; generation-keyed skip; flag-off populated-spec rejection | Session-open + flag-off-rejects tests |
-| **T-5** | Composer 2.5 | Boundary refresh / replay tests; subtree-refresh asserted via generation counter; anti-import test (`simthing-sim` ⊥ `simthing-spec`) | 100-tick conservation + replay bit-exact |
-| **T-6** | Codex 5.5 | Docs sync (this plan, `design_v7.md` §5/§6, `workshop_current_state.md`, `todo.md`) | Doc consistency |
+| **T-1** | Codex 5.5 | `simthing-spec` authoring types (`resource_economy.rs`) | **Done** — RON roundtrip suite |
+| **T-2** | Composer 2.5 | `simthing-spec::compile::resource_economy` resolves keys / EML formulas / validation; extends expansion report | Pending — rejection-fixture suite (mirrors E-10) |
+| **T-3** | Composer 2.5 | `simthing-driver::resource_economy_compile` → `ResourceEconomyRegistrations`; stable `reg_idx` from authoring identity; subtree-scoped refresh | Pending |
+| **T-4** | Composer 2.5 | Session integration + boundary refresh via existing `sync_accumulator_{transfer,emission}_session` paths; generation-keyed skip; flag-off populated-spec rejection | Pending |
+| **T-5** | Composer 2.5 | Boundary refresh / replay tests; subtree-refresh asserted via generation counter; anti-import test (`simthing-sim` ⊥ `simthing-spec`) | Pending |
+| **T-6** | Codex 5.5 | Docs sync (this plan, `design_v7.md` §5/§6, `workshop_current_state.md`, `todo.md`) | Pending |
 
 **Stop conditions (re-asserted; all unchanged from the v2 ADR):** no new WGSL,
 no new `AccumulatorOp` primitive, no `simthing-sim` semantic ownership of
