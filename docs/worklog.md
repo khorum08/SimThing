@@ -6,6 +6,22 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — RF-T6: production docs / telemetry polish
+
+- Added [`docs/resource_flow_limited_scenario_class_posture.md`](resource_flow_limited_scenario_class_posture.md): production-facing guide for bounded `FlatStarResourceFlow` posture.
+- Documented what `FlatStarResourceFlow` means, how it differs from global default-on, how it differs from `ResourceFlowSpec` presence, and how it relates to spec `FlatStarOptIn`.
+- Documented accepted scenario classes, blocked scenario classes, telemetry field meanings, flag-source interpretation, operator/debug checklist, stop conditions, and regression checklist.
+- RF-T6 landed: production docs / telemetry polish for bounded `FlatStarResourceFlow` posture. Limited scenario-class `FlatStarResourceFlow` remains the accepted bounded production Resource Flow posture.
+- Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Spec `FlatStarOptIn` remains supported and takes precedence.
+- E-11 flat-star, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment remain the only covered execution paths. E-11B remains deferred. Policy B Reevaluate remains deferred.
+- No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant. Designer-facing spec/RON guardrail rebuild remains deferred to the future simthing-spec rebuild track.
+
+**Verification:** docs-only PR; no telemetry code changed. Local `cargo check --workspace` and `cargo test --workspace` PASS.
+
+**Next gate:** choose by product priority: E-11B nested hierarchy GPU, D-2a boundary transaction scheduling, Phase T designer/RON smoke addendum, simthing-spec/RON/Designer guardrail rebuild, or continued RF-T5-style soak for larger flat-star scenarios. Do not move to global default-on by default.
+
+---
+
 ## 2026-05-27 — Resource Flow limited scenario-class production posture review
 
 - Added [`resource_flow_limited_scenario_class_production_posture.md`](reviews/resource_flow_limited_scenario_class_production_posture.md): post-RF-T5 docs-only posture review.

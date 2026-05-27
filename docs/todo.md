@@ -129,15 +129,16 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Next recommended gates (pivot-forward order):**
 
-1. **RF-T6 production docs / telemetry polish** — recommended after the limited scenario-class posture review; no runtime behavior expansion
-2. **E-11B nested hierarchy GPU** — if nested static Resource Flow scenarios are next (deferred by default)
-3. **D-2a boundary transaction scheduling** — only if discrete hard-currency ordering is urgent
-4. **simthing-spec/RON/Designer guardrail rebuild** — when that track is intentionally opened
+1. **E-11B nested hierarchy GPU** — if nested static Resource Flow scenarios become priority (deferred by default)
+2. **D-2a boundary transaction scheduling** — if hard-currency ordering is urgent
+3. **Phase T designer/RON smoke addendum** — if near-term economic scenario authoring is priority
+4. **simthing-spec/RON/Designer guardrail rebuild** — when the authoring track intentionally opens
 5. **Continued RF-T5-style soak** — optional confidence work for larger flat-star scenarios
-6. **Resource Flow global default-on** — remains deferred and rejected for now
+6. **Resource Flow global default-on** — remains deferred and rejected for now; do not choose by default
 
 **Open design warnings (preserve):**
 - Transfer/emission registration ownership: **Phase T complete.** T-6 landed limited opt-in scenario flagging for resource economy transfer/emission. Global transfer/emission flags remain default false. Only explicitly opted-in scenarios enable AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free. Hard-currency transfers remain on exact discrete AccumulatorOp transfer paths, not Resource Flow.
+- **RF-T6 landed:** production docs / telemetry polish for bounded `FlatStarResourceFlow` posture. [`resource_flow_limited_scenario_class_posture.md`](resource_flow_limited_scenario_class_posture.md) documents accepted scenario classes, blocked paths, telemetry fields, flag-source interpretation, and operator/debug checklist. Limited scenario-class `FlatStarResourceFlow` remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Spec `FlatStarOptIn` remains supported and takes precedence. E-11 flat-star, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment remain the only covered execution paths. E-11B remains deferred. Policy B Reevaluate remains deferred. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant. Designer-facing spec/RON guardrail rebuild remains deferred to the future simthing-spec rebuild track.
 - **Resource Flow limited scenario-class production posture review landed:** [`resource_flow_limited_scenario_class_production_posture.md`](reviews/resource_flow_limited_scenario_class_production_posture.md). No production code changes. RF-T1 through RF-T5 remain landed. **Recommendation A:** limited scenario-class `FlatStarResourceFlow` is accepted as the current bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Spec `FlatStarOptIn` remains supported and takes precedence. E-11 flat-star, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment remain the only covered execution paths. E-11B remains deferred. Policy B Reevaluate remains deferred. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant. Designer-facing spec/RON guardrail rebuild remains deferred to the future simthing-spec rebuild track. Next gate depends on product priority: RF-T6 production docs/telemetry polish (recommended), E-11B, D-2a, simthing-spec/RON rebuild, or continued soak.
 - **RF-T5 landed:** scenario-class Resource Flow burn-in / telemetry soak. `ResourceFlowExecutionProfile::FlatStarResourceFlow` was soaked through product-like static, dynamic, multi-arena, replay, rejection, and resync scenarios. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Spec `FlatStarOptIn` remains supported and takes precedence. Scenario-class enablement records distinct flag-source telemetry and execution-profile attribution. E-11 flat-star, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment remain the only covered execution paths. E-11B remains deferred. Policy B Reevaluate remains deferred. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant. Designer-facing spec/RON guardrail rebuild remains deferred to the future simthing-spec rebuild track.
 - **RF-T4 landed:** limited scenario-class Resource Flow default-on implementation.
@@ -155,7 +156,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **E-2B:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).**
 
-**Next (immediate):** RF-T6 production docs/telemetry polish is recommended after Recommendation A; global default-on remains deferred; or E-11B, D-2a, simthing-spec rebuild, or continued soak per product priority.
+**Next (immediate):** choose by product priority: E-11B, D-2a, Phase T designer/RON smoke addendum, simthing-spec/RON rebuild, or continued RF-T5-style soak. Global default-on remains deferred and is not the default next gate.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp
