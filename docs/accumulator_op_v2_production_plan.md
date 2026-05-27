@@ -1251,7 +1251,7 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 **Design gate:** [`docs/reviews/transfer_emission_registration_ownership_opus_review.md`](reviews/transfer_emission_registration_ownership_opus_review.md)
 (Opus, 2026-05-27, **Accepted**). No stop conditions triggered.
 
-**T-1 status:** **Done** — `simthing-spec::spec::resource_economy` authoring types + `resource_economy_roundtrip` RON suite. No compile pass, driver materialization, session integration, or GPU changes yet. Transfer/emission flags remain default false.
+**T-1 status:** **Done** — PR #165 (`b2557e6`). `simthing-spec::spec::resource_economy` authoring types + `resource_economy_roundtrip` RON suite (12/12). No compile pass, driver materialization, session integration, or GPU changes yet. Transfer/emission flags remain default false.
 
 **Posture (preserves v7.5):** runtime substrate is unchanged; ownership of
 transfer / recipe / emission / threshold-emit registrations moves to
