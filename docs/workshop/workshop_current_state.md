@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** paused-state docs hygiene after E-11B RON smoke (pending merge)  
+**Master HEAD:** `754f548` — paused-state docs hygiene after E-11B RON smoke (merged PR #196)  
 **Verification (last recorded):** docs-only — `cargo check --workspace` / `cargo test --workspace` PASS
 
 ---
