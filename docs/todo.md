@@ -123,19 +123,20 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Next recommended gates (pivot-forward order):**
 
-1. **Opus** — production transfer/emission registration ownership
+1. **Cursor T-1…T-6** — production transfer/emission registration ownership implementation per Opus memo
+   ([`docs/reviews/transfer_emission_registration_ownership_opus_review.md`](reviews/transfer_emission_registration_ownership_opus_review.md), **landed 2026-05-27**). Phase T ladder in `accumulator_op_v2_production_plan.md`.
 2. **Limited opt-in scenario flagging** (optional) — extend explicit scenario opt-in beyond CI soak fixtures
 3. **E-11B** (optional/future) — nested hierarchy GPU execution / materialization
 4. **D-1** — discrete-transaction contention memo
 
 **Open design warnings (preserve):**
-- Transfer/emission registration ownership: substrate-level only; production source-of-truth still needs integration.
+- Transfer/emission registration ownership: **design memo landed (Opus, 2026-05-27).** Spec/driver integration pending via Cursor Phase T ladder; transfer/emission flags remain default false until T-5 burn-in is green.
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-1 memo evaluates discrete boundary transactions only.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
-**E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-11 execution landed; enrollment compilation not in scope).
+**E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-11 execution landed; enrollment compilation not in scope). Phase T does **not** unblock E-2B — it addresses transfer/emission/recipe/threshold-emit registration ownership only.
 
-**Next (immediate):** route to Opus transfer/emission registration ownership, optional limited opt-in scenario flagging, or D-1 memo. E-11B nested GPU remains optional/future. E-2B blocked unless enrollment compilation explicitly lands.
+**Next (immediate):** Cursor T-1…T-6 implementation per Opus memo; optional limited opt-in scenario flagging; or D-1 memo. E-11B nested GPU remains optional/future. E-2B blocked unless enrollment compilation explicitly lands.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp
