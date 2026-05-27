@@ -118,12 +118,13 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-11** | `8a628ca` | #159 | **Done** — flat-star D=2 vertical slice; `e11_*` 14/14; flag default false |
 | **E-11R** | `8939fc6` | #160 | **Done** — sync errors, scope honesty, session-path test |
 | **E-11 burn-in** | `ae75d8e` | #161 | **Done** — controlled flat-star scaffold; `e11_burn_in_*` 4/4; flag default false |
+| **E-11 burn-in scenarios** | — | — | **Done** — named fixtures + `e11_burn_in_scenarios_*` 6/6; flag default false |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **Controlled burn-in** — flat-star `use_accumulator_resource_flow` explicitly enabled in tests/scenarios (flag stays default false)
-2. **E-11B** (optional/future) — nested hierarchy GPU execution / materialization
-3. **Opus** — production transfer/emission registration ownership
+1. **Opus** — production transfer/emission registration ownership
+2. **Controlled opt-in scenario flagging / CI soak** (optional) — limited scenario flags for default-off Resource Flow soak
+3. **E-11B** (optional/future) — nested hierarchy GPU execution / materialization
 4. **D-1** — discrete-transaction contention memo
 
 **Open design warnings (preserve):**
@@ -133,7 +134,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-11 execution landed; enrollment compilation not in scope).
 
-**Next (immediate):** continue controlled burn-in in CI/scenarios (default-off) or route to Opus transfer/emission registration ownership / D-1 memo. E-11B nested GPU remains optional/future.
+**Next (immediate):** route to Opus transfer/emission registration ownership, optional controlled opt-in scenario flagging / CI soak, or D-1 memo. E-11B nested GPU remains optional/future. E-2B blocked unless enrollment compilation explicitly lands.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp
