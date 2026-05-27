@@ -129,22 +129,23 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Next recommended gates (pivot-forward order):**
 
-1. **E-2B-5 dynamic fission enrollment** — if runtime participant growth is next
-2. **E-11B nested hierarchy GPU** — if nested static Resource Flow scenarios are next ([E-11B review](reviews/e11b_nested_hierarchy_gpu_readiness_review.md) defers by default)
-3. **D-2a boundary transaction scheduling** — only if discrete hard-currency ordering is urgent (D-1 memo)
+1. **E-2B-5 implementation (Policy A)** — inherit-only dynamic fission enrollment with arena-root sibling append ([readiness review](reviews/e2b5_dynamic_fission_enrollment_readiness.md))
+2. **E-11B nested hierarchy GPU** — if nested static Resource Flow scenarios are next (deferred by default)
+3. **D-2a boundary transaction scheduling** — only if discrete hard-currency ordering is urgent
 4. **Resource Flow default-on decision** — only after additional product burn-in
 
 **Open design warnings (preserve):**
 - Transfer/emission registration ownership: **Phase T complete.** T-6 landed limited opt-in scenario flagging for resource economy transfer/emission. Global transfer/emission flags remain default false. Only explicitly opted-in scenarios enable AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free. Hard-currency transfers remain on exact discrete AccumulatorOp transfer paths, not Resource Flow.
-- **E-2B static enrollment compilation landed:** Resource Flow enrollment selectors resolve to explicit participants at session install ([`EnrollmentSelectorSpec`](../crates/simthing-spec/src/spec/resource_flow.rs), [`resolve_resource_flow_enrollment`](../crates/simthing-driver/src/resource_flow_enrollment.rs)). No legacy `resource_flow_participant` AccumulatorOp builder. E-10R/E-10R2/E-10R3 scaffold and E-11 flat-star execution reused unchanged. E-2B-5 dynamic fission enrollment remains deferred. E-11B nested hierarchy GPU remains deferred. `use_accumulator_resource_flow` remains default false. No WGSL. No CPU fallback. `simthing-sim` arena-ignorant.
+- **E-2B-5 dynamic fission enrollment readiness review landed:** current-state audit ([`e2b5_dynamic_fission_enrollment_readiness.md`](reviews/e2b5_dynamic_fission_enrollment_readiness.md)). No production code changes. E-2B static enrollment remains done. E-11B remains deferred by default. `use_accumulator_resource_flow` remains default false. Recommendation: Policy A inherit + arena-root append. Test report: [`e2b5_dynamic_fission_enrollment_readiness_test_results.md`](tests/e2b5_dynamic_fission_enrollment_readiness_test_results.md).
+- **E-2B static enrollment compilation landed:** Resource Flow enrollment selectors resolve to explicit participants at session install ([`EnrollmentSelectorSpec`](../crates/simthing-spec/src/spec/resource_flow.rs), [`resolve_resource_flow_enrollment`](../crates/simthing-driver/src/resource_flow_enrollment.rs)). No legacy `resource_flow_participant` AccumulatorOp builder. E-10R/E-10R2/E-10R3 scaffold and E-11 flat-star execution reused unchanged.
 - **E-11B readiness review landed:** nested hierarchy GPU execution/materialization current-state audit ([`e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md)). No production code changes. E-11B deferred by default.
 - **D-1 memo landed:** discrete-transaction contention current-state audit ([`d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md)). No production code changes.
 - Shared-input transfer contention: C-8c rejects same-band consumed-input contention; T-2 compile rejects same-band authoring collisions.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
-**E-2B:** **Done (static E-2B-1…4)** — selector enrollment at session install. E-2B-5 dynamic fission deferred.
+**E-2B:** **Done (static E-2B-1…4).** **E-2B-5:** readiness review landed; implement Policy A when prioritized.
 
-**Next (immediate):** Product gate — E-2B-5 dynamic fission enrollment, E-11B nested hierarchy GPU, D-2a discrete scheduling, or Resource Flow default-on (after burn-in).
+**Next (immediate):** E-2B-5 readiness review outcome — implement Policy A ladder, E-11B, D-2a, Resource Flow default-on, or defer per product priority.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

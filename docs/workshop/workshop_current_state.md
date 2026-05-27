@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** E-2B static enrollment compilation (pending merge)  
-**Verification (last recorded):** `resource_flow_enrollment_*` + E-11/E-10R suites + `cargo test --workspace` green; resource-flow flag default false
+**Master HEAD:** E-2B-5 dynamic fission enrollment readiness review (pending merge)  
+**Verification (last recorded):** [`e2b5_dynamic_fission_enrollment_readiness_test_results.md`](../tests/e2b5_dynamic_fission_enrollment_readiness_test_results.md) — PASS; resource-flow flag default false
 
 ---
 
@@ -23,11 +23,11 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed. **E-11B readiness review landed** — nested hierarchy GPU deferred pending product priority ([memo](../reviews/e11b_nested_hierarchy_gpu_readiness_review.md)). `use_accumulator_resource_flow` **default false**. No new WGSL; `simthing-sim` remains arena-ignorant.
 
-**E-2B status:** **Done (static E-2B-1…4)** — enrollment selectors resolve at session install; E-11 flat-star path without manual `fill_explicit_participants`. E-2B-5 dynamic fission deferred. E-11B deferred. `use_accumulator_resource_flow` **default false**.
+**E-2B status:** **Done (static E-2B-1…4).** **E-2B-5 readiness review landed** — Policy A inherit + arena-root append recommended; implementation deferred ([memo](../reviews/e2b5_dynamic_fission_enrollment_readiness.md)). E-11B deferred. `use_accumulator_resource_flow` **default false**.
 
-**Next gates:** Product decision — **E-2B-5** dynamic fission enrollment, **E-11B** nested hierarchy GPU, **D-2a** discrete scheduling, or **Resource Flow default-on** (after burn-in).
+**Next gates:** **E-2B-5 readiness review outcome** — implement Policy A (E-2B-5a…f), **E-11B**, **D-2a**, **Resource Flow default-on**, or defer.
 
-**Open design gates (not sunset):** **Phase T complete.** D-1 memo landed; D-2 GPU allocator deferred. **E-2B static enrollment landed.** E-11B deferred by default. Global transfer/emission flags remain default false. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain on exact discrete AccumulatorOp paths, not Resource Flow.
+**Open design gates (not sunset):** Phase T complete. E-2B static enrollment done. E-2B-5 readiness review landed. E-11B deferred by default. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
 
 **C-8 complete:** EML infrastructure, intensity, transfer, and emission are GPU-resident through AccumulatorOp. TransferConservation remains ExactDeterministic only. Emission tolerance remains future-gated and isolated from transfer/hard thresholds.
 
@@ -100,6 +100,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **D-1** | (pending merge) | Discrete-transaction contention memo; D-2 deferred |
 | **E-11B readiness** | (pending merge) | Nested hierarchy GPU audit; implementation deferred by default |
 | **E-2B static enrollment** | (pending merge) | Selector → explicit participants at install |
+| **E-2B-5 readiness** | (pending merge) | Dynamic fission audit; Policy A recommended |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
@@ -151,6 +152,7 @@ explicitly instead of falling back or silently skipping work.
 | Design | **E-11B** nested hierarchy readiness | Opus | **Done** — audit; defer by default ([memo](../reviews/e11b_nested_hierarchy_gpu_readiness_review.md)) |
 | Design | **E-2B** enrollment compilation readiness | Opus | **Done** — audit ([memo](../reviews/e2b_resource_flow_enrollment_compilation_readiness.md)) |
 | Implementation | **E-2B** static enrollment E-2B-1…4 | Composer 2.5 | **Done** — selector install + session tests |
+| Design | **E-2B-5** dynamic fission readiness | Opus | **Done** — Policy A recommended ([memo](../reviews/e2b5_dynamic_fission_enrollment_readiness.md)) |
 | Implementation | **Phase T** transfer/emission registration ownership | Cursor (Codex 5.5 + Composer 2.5) | **Complete** — T-1 through T-6 landed; default-off / explicit opt-in production posture ([Opus memo](../reviews/transfer_emission_registration_ownership_opus_review.md)) |
 | Infra | Test-harness cleanup | Optional | Runtime legacy oracle/fallback peers are gone; remaining cleanup is test-only ergonomics |
 

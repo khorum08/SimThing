@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — E-2B-5: dynamic fission enrollment readiness review
+
+- Added [`docs/reviews/e2b5_dynamic_fission_enrollment_readiness.md`](reviews/e2b5_dynamic_fission_enrollment_readiness.md): Policy A inherit + arena-root append; gap primitive insufficient alone for flat-star; Reevaluate deferred; E-11B not required for Policy A.
+- Added [`docs/tests/e2b5_dynamic_fission_enrollment_readiness_test_results.md`](tests/e2b5_dynamic_fission_enrollment_readiness_test_results.md) + full log.
+- E-2B-5 dynamic fission enrollment readiness review landed. No production code changes. E-2B static enrollment remains done. E-11B remains deferred by default. `use_accumulator_resource_flow` remains default false.
+
+**Verification:** `cargo check --workspace`; `cargo test --workspace` — PASS ([test report](tests/e2b5_dynamic_fission_enrollment_readiness_test_results.md)).
+
+**Next gate:** E-2B-5 Policy A implementation, E-11B, D-2a, Resource Flow default-on, or deferral.
+
+---
+
 ## 2026-05-27 — E-2B: static Resource Flow enrollment compilation (E-2B-1…4)
 
 - Added `EnrollmentSelectorSpec` on `ArenaSpec` (`ExplicitOnly`, `InstallTarget(InstallTargetSpec)`).
