@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — E-2B-5 soak: Resource Flow dynamic enrollment opt-in burn-in
+
+- **`resource_flow_dynamic_enrollment_soak.rs`** — `DynamicEnrollmentSoakReport`, GPU burn-in runner, resync cycle helper (driver/test-reporting only).
+- **`e2b5_dynamic_enrollment_soak.rs`** — 12 soak tests covering single/multi fission, two-arena inherit, cap-full rejection atomicity, contiguity-blocked rejection, flag-off registry-only path, replay determinism, repeated resync stability, 1000-tick GPU parity.
+- Resource Flow dynamic enrollment soak landed. E-2B-5R dynamic fission enrollment remained atomic under soak. Policy A inherit-only remains the implemented v1. Policy B Reevaluate remains deferred. Gap-only enrollment remains reserved for future E-11B nested hierarchy semantics. E-11B remains deferred by default. `use_accumulator_resource_flow` remains default false. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant.
+
+**Verification:** targeted driver/gpu tests + `cargo check --workspace` + `cargo test --workspace` — PASS ([test report](tests/e2b5_dynamic_enrollment_soak_test_results.md)).
+
+**Next gate:** Resource Flow default-on readiness review (recommended; not default-on implementation).
+
+---
+
 ## 2026-05-19 — E-2B-5R: dynamic fission enrollment atomicity + visible diagnostics
 
 - **Two-phase dynamic admission** — `prepare_dynamic_arena_root_append` preflights arena existence, duplicate enrollment, sibling contiguity, `max_participants`, and `last_sibling + 1` availability; `commit_dynamic_arena_root_append` mutates allocator → registry → tree → scaffold in order with allocator tombstone rollback on registry rejection.

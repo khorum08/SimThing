@@ -14,6 +14,7 @@ pub mod resource_economy_sync;
 pub mod resource_flow_burn_in;
 pub mod resource_flow_compile;
 pub mod resource_flow_enrollment;
+pub mod resource_flow_dynamic_enrollment_soak;
 pub mod resource_flow_fission_enrollment;
 pub mod resource_flow_preflight;
 pub mod scenario;
@@ -80,6 +81,11 @@ pub use resource_flow_compile::{
     compile_and_materialize_resource_flow, materialize_arena_registry,
 };
 pub use resource_flow_enrollment::{resolve_resource_flow_enrollment, EnrollmentError};
+pub use resource_flow_dynamic_enrollment_soak::{
+    initial_dynamic_enrollment_sync, run_dynamic_enrollment_gpu_burn_in,
+    run_dynamic_enrollment_resync_cycles, DynamicEnrollmentBoundaryMetrics,
+    DynamicEnrollmentSoakReport,
+};
 pub use resource_flow_fission_enrollment::{
     react_to_fission_resource_flow_enrollment, DynamicFissionEnrollmentAdmission,
     DynamicFissionEnrollmentRejection, DynamicFissionEnrollmentReport,
