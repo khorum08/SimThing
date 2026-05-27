@@ -251,6 +251,49 @@ impl ArenaRegistry {
         }
     }
 
+    /// Admit a participant at runtime (E-2B-5). Updates arena participant slices
+    /// without rebuilding the registry. Does not bump `generation` — caller
+    /// batches one increment per boundary enrollment pass.
+    pub fn admit_participant_runtime(
+        &mut self,
+        arena_idx: ArenaIdx,
+        slot: SlotId,
+        subtree_root: SimThingId,
+    ) -> Result<(), ArenaRegistryError> {
+        let arena = self
+            .arenas
+            .get(arena_idx as usize)
+            .ok_or(ArenaRegistryError::InvalidArenaIdx(arena_idx))?;
+        let (start, len) = arena.participant_range;
+        let next_count = len.saturating_add(1);
+        if next_count > arena.max_participants {
+            return Err(ArenaRegistryError::MaxParticipantsExceeded {
+                arena: arena.name.clone(),
+                declared: arena.max_participants,
+                computed: next_count,
+            });
+        }
+        let insert_at = (start + len) as usize;
+        self.participants.insert(
+            insert_at,
+            ArenaParticipant {
+                arena_idx,
+                slot,
+                subtree_root,
+            },
+        );
+        self.arenas[arena_idx as usize].participant_range.1 += 1;
+        for following in self.arenas.iter_mut().skip(arena_idx as usize + 1) {
+            following.participant_range.0 += 1;
+        }
+        Ok(())
+    }
+
+    /// Bump registry generation after a successful dynamic enrollment batch.
+    pub fn bump_generation_after_runtime_admit(&mut self) {
+        self.generation = self.generation.saturating_add(1);
+    }
+
     pub fn expansion_report(&self) -> ArenaExpansionReport {
         ArenaExpansionReport {
             arena_count: self.arenas.len(),

@@ -895,7 +895,7 @@ debit/credit, insufficient-source clamp, zero no-op, invalid amount rejection, C
 
 #### PR E-2B — Resource Flow enrollment compilation
 
-**Status:** **Done (E-2B-1…4 static session-open slice)** — authored `EnrollmentSelectorSpec` on `ArenaSpec`; `resolve_resource_flow_enrollment` resolves `InstallTargetSpec` → live `ExplicitParticipantSpec` at session install; existing E-10R/E-10R2/E-10R3 scaffold and E-11 flat-star sync unchanged. **No legacy `resource_flow_participant` AccumulatorOp builder.** E-2B-5 dynamic fission enrollment remains deferred.
+**Status:** **Done (E-2B-1…4 static session-open slice; E-2B-5 Policy A dynamic fission enrollment)** — authored `EnrollmentSelectorSpec` on `ArenaSpec`; `resolve_resource_flow_enrollment` resolves `InstallTargetSpec` → live `ExplicitParticipantSpec` at session install; `react_to_fission_resource_flow_enrollment` admits fission children as arena-root sibling participants (inherit-only, contiguous append). Existing E-10R/E-10R2/E-10R3 scaffold and E-11 flat-star sync reused. **No legacy `resource_flow_participant` AccumulatorOp builder.**
 
 ```rust
 pub enum EnrollmentSelectorSpec {
@@ -1263,9 +1263,13 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **E-11B readiness status:** **Done** — [`docs/reviews/e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md). Nested hierarchy GPU execution/materialization current-state audit. No production code changes. Phase T remains complete. D-1 remains landed; D-2 GPU allocator remains deferred. `use_accumulator_resource_flow` remains default false. E-11B deferred by default.
 
-**E-2B-5 readiness status:** **Done** — [`docs/reviews/e2b5_dynamic_fission_enrollment_readiness.md`](reviews/e2b5_dynamic_fission_enrollment_readiness.md). Dynamic fission enrollment current-state audit. No production code changes. E-2B static enrollment remains done. E-11B remains deferred by default. `use_accumulator_resource_flow` remains default false. **Recommendation:** implement narrowed Policy A (inherit + arena-root sibling append); defer Policy B Reevaluate. **Next gate depends on review recommendation:** E-2B-5 implementation, E-11B, D-2a, Resource Flow default-on, or deferral.
+**E-2B-5 status:** **Done (Policy A implementation)** — [`react_to_fission_resource_flow_enrollment`](../crates/simthing-driver/src/resource_flow_fission_enrollment.rs) wired in `SimSession` boundary path. Fission children inherit parent arena membership and are admitted as arena-root sibling participants when capacity and contiguous-slot extension allow. Policy B Reevaluate remains deferred (mapped to inherit-only). Gap-only enrollment reserved for future E-11B nested hierarchy semantics; not used for flat-star leaf disbursement. Test report: [`e2b5_dynamic_fission_enrollment_implementation_test_results.md`](tests/e2b5_dynamic_fission_enrollment_implementation_test_results.md).
 
-**E-2B status:** **Done (static enrollment E-2B-1…4)** — Resource Flow enrollment selectors resolve to explicit participants at session install. No legacy `resource_flow_participant` AccumulatorOp builder. E-10R/E-10R2/E-10R3 scaffold and E-11 flat-star execution reused unchanged. E-2B-5 dynamic fission enrollment readiness review landed; implementation remains deferred pending product gate. E-11B nested hierarchy GPU remains deferred. `use_accumulator_resource_flow` remains default false. No WGSL changes. No CPU production fallback. `simthing-sim` remains arena-ignorant.
+**E-2B-5 readiness status:** **Done** — [`docs/reviews/e2b5_dynamic_fission_enrollment_readiness.md`](reviews/e2b5_dynamic_fission_enrollment_readiness.md).
+
+**E-2B status:** **Done (static enrollment E-2B-1…4 + E-2B-5 Policy A)** — Resource Flow enrollment selectors resolve to explicit participants at session install; dynamic fission enrollment admits children at boundary via arena-root sibling append. No legacy `resource_flow_participant` AccumulatorOp builder. E-11B nested hierarchy GPU remains deferred. `use_accumulator_resource_flow` remains default false. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant.
+
+**Next gate:** Resource Flow dynamic enrollment soak / opt-in scenario burn-in (recommended); E-11B, D-2a, or Resource Flow default-on only after additional burn-in.
 
 **E-2B readiness status:** **Done** — [`docs/reviews/e2b_resource_flow_enrollment_compilation_readiness.md`](reviews/e2b_resource_flow_enrollment_compilation_readiness.md).
 
@@ -1505,6 +1509,7 @@ as a doc-only PR.
 | **E-11B readiness** | **E** | **Opus (memo only)** | **Nested hierarchy GPU execution/materialization audit** | **Done** — [`e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md) |
 | **E-2B readiness** | **E** | **Opus (memo only)** | **Resource Flow enrollment compilation audit** | **Done** — [`e2b_resource_flow_enrollment_compilation_readiness.md`](reviews/e2b_resource_flow_enrollment_compilation_readiness.md) |
 | **E-2B static enrollment** | **E** | **Composer 2.5** | **Selector → ExplicitParticipantSpec → E-11 flat-star** | **Done** — `resource_flow_enrollment_*` tests |
+| **E-2B-5** | **E** | **Cursor** | **Policy A dynamic fission enrollment** | **Done** — [`resource_flow_fission_enrollment.rs`](../crates/simthing-driver/src/resource_flow_fission_enrollment.rs) |
 | **E-2B-5 readiness** | **E** | **Opus (memo only)** | **Dynamic fission enrollment audit** | **Done** — [`e2b5_dynamic_fission_enrollment_readiness.md`](reviews/e2b5_dynamic_fission_enrollment_readiness.md) |
 | S-1 | F | Codex 5.5 | Sunset intent fold | **Done locally** |
 | S-2 | F | Codex 5.5 | Sunset intensity update | **Landed (#138)** |

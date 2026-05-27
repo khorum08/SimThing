@@ -13,7 +13,7 @@ use simthing_spec::{PropertyKey, ResourceFlowSpec, SpecError};
 use std::collections::HashMap;
 use thiserror::Error;
 
-use crate::arena_registry::{ArenaIdx, FissionPolicy, SlotId};
+use crate::arena_registry::{ArenaIdx, ArenaRegistryError, FissionPolicy, SlotId};
 use crate::install::InstallError;
 
 /// `(hosted SimThing id, arena idx) → arena-participant slot`.
@@ -164,6 +164,106 @@ pub fn materialize_arena_participants(
     }
 
     Ok(scaffold)
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
+pub enum DynamicEnrollmentError {
+    #[error("arena index {0} has no materialized root")]
+    UnknownArena(ArenaIdx),
+    #[error("arena `{arena}` has no participant siblings to extend")]
+    EmptyParticipantBlock { arena: String },
+    #[error("participant sibling block for arena `{arena}` is not contiguous")]
+    NonContiguousSiblings { arena: String },
+    #[error("child hosted SimThing `{child:?}` already enrolled in arena `{arena}`")]
+    AlreadyEnrolled {
+        arena: String,
+        child: SimThingId,
+    },
+    #[error("contiguous slot extension failed for arena `{arena}`: {source}")]
+    ContiguityExtensionFailed {
+        arena: String,
+        #[source]
+        source: SlotAllocError,
+    },
+    #[error("arena registry admission failed for arena `{arena}`: {source}")]
+    RegistryAdmissionFailed {
+        arena: String,
+        #[source]
+        source: ArenaRegistryError,
+    },
+}
+
+/// Append a fission child as a new arena-root sibling participant (Policy A flat-star path).
+///
+/// Does not consume E-10R3 gap pools. Rejects when `last_sibling + 1` is blocked.
+pub fn try_append_arena_root_sibling_participant(
+    scaffold: &mut ArenaParticipantScaffold,
+    root: &mut SimThing,
+    arena_idx: ArenaIdx,
+    arena_name: &str,
+    child_hosted_id: SimThingId,
+    flow_property_id: SimPropertyId,
+    registry: &DimensionRegistry,
+    allocator: &mut SlotAllocator,
+) -> Result<SlotId, DynamicEnrollmentError> {
+    if scaffold
+        .index
+        .participant_slot(child_hosted_id, arena_idx)
+        .is_some()
+    {
+        return Err(DynamicEnrollmentError::AlreadyEnrolled {
+            arena: arena_name.to_string(),
+            child: child_hosted_id,
+        });
+    }
+
+    let arena_root_id = *scaffold
+        .arena_root_ids
+        .get(&arena_idx)
+        .ok_or(DynamicEnrollmentError::UnknownArena(arena_idx))?;
+
+    let sibling_slots = arena_participant_sibling_slots(root, arena_root_id, allocator);
+    if sibling_slots.is_empty() {
+        return Err(DynamicEnrollmentError::EmptyParticipantBlock {
+            arena: arena_name.to_string(),
+        });
+    }
+    if !slots_are_contiguous(&sibling_slots) {
+        return Err(DynamicEnrollmentError::NonContiguousSiblings {
+            arena: arena_name.to_string(),
+        });
+    }
+
+    let last_sibling = *sibling_slots.last().expect("non-empty siblings");
+    let mut participant_node = SimThing::new(SimThingKind::ArenaParticipant, 0);
+    let participant_id = participant_node.id;
+    seed_participant_property(
+        &mut participant_node,
+        flow_property_id,
+        registry,
+        child_hosted_id,
+    );
+
+    let participant_slot = allocator
+        .try_alloc_contiguous_after(last_sibling, participant_id)
+        .map_err(|source| DynamicEnrollmentError::ContiguityExtensionFailed {
+            arena: arena_name.to_string(),
+            source,
+        })?;
+
+    let arena_root = find_child_mut(root, arena_root_id).expect("arena root in tree");
+    arena_root.add_child(participant_node);
+
+    scaffold
+        .index
+        .by_host_and_arena
+        .insert((child_hosted_id, arena_idx), participant_slot);
+
+    if let Some(report) = scaffold.reports.get_mut(arena_idx as usize) {
+        report.participant_count = report.participant_count.saturating_add(1);
+    }
+
+    Ok(participant_slot)
 }
 
 /// Consume a reserved gap slot for a fission-spawned participant child, or reject
