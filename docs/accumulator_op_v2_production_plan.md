@@ -1179,7 +1179,7 @@ produce expected expansion reports.
 ### ✅ PR E-11 — Hierarchical allocation kernel pattern + CPU oracle parity
 
 **Model:** Opus (review and design pseudocode), Composer 2.5 (implementation)
-**Status:** **Done (flat-star vertical slice)** — PR #159 (`8a628ca`). **E-11R** PR #160 landed. Flat-star D=2 GPU path + CPU oracle for nested layouts. Nested hierarchy GPU execution deferred (E-11B). Controlled burn-in is next gate.
+**Status:** **Done (flat-star vertical slice)** — PR #159 (`8a628ca`). **E-11R** PR #160 landed. **Burn-in scaffold** landed (`ResourceFlowBurnInReport`, `e11_burn_in_*`). Flat-star D=2 GPU path; nested GPU deferred (E-11B). Flag **default false**; controlled burn-in active in tests.
 **Why Opus:** E-11 is a real new GPU production capability. Although it reuses
 the existing AccumulatorOp kernel, it is structured as a reverse-direction
 OrderBand sweep with per-intermediate weight reductions and per-child share
@@ -1425,8 +1425,9 @@ as a doc-only PR.
 | **E-7R** | **E** | **Composer 2.5** | **`plan_governed_integration_at_band` ordering API** | **Done** — `e7r_*` suite |
 | **E-11 design** | **E** | **Opus** | **Hierarchical allocation v2 design memo** | **Accepted** |
 | **E-11 review** | **E** | **Composer 2.5** | **Final readiness review + narrowed handoff** | **Done** |
-| **E-11** | **E** | **Opus + Composer 2.5** | **Flat-star D=2 allocation kernel + CPU oracle** | **Done (slice)** |
+| **E-11** | **E** | **Opus + Composer 2.5** | **Flat-star D=2 allocation kernel + CPU oracle** | **Done — flat-star slice; E-11R landed; burn-in scaffold; flag default false** |
 | **E-11R** | **E** | **Composer 2.5** | **Sync error propagation + scope honesty + session-path test** | **Done** |
+| **E-11 burn-in** | **E** | **Composer 2.5** | **Controlled flat-star burn-in tests + report struct** | **Done** |
 | S-1 | F | Codex 5.5 | Sunset intent fold | **Done locally** |
 | S-2 | F | Codex 5.5 | Sunset intensity update | **Landed (#138)** |
 | S-3 | F | Codex 5.5 | Sunset overlay prep | CI green at flag=on |

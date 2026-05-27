@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — E-11 controlled burn-in scaffold
+
+- Added `resource_flow_burn_in.rs` with `ResourceFlowBurnInReport` and `run_flat_star_burn_in` (driver-only reporting).
+- Added `e11_burn_in.rs` (4 tests): replay stability, flag-off clears ops, expected op count, 100-tick CPU oracle parity.
+- Factored flat-star session fixture into `tests/support/e11_flat_star.rs`; refactored `e11r_arena_allocation.rs` to reuse it.
+- Docs: E-11R removed from forward gates; next immediate gate = controlled default-off burn-in continuation.
+
+**Verification:** `cargo test -p simthing-driver e11 e11r e11_burn_in`; `cargo test --workspace`.
+
+**Next:** continue burn-in / consider default-on later, or Opus transfer/emission registration / D-1 memo. E-11B nested GPU remains deferred.
+
+---
+
 ## 2026-05-19 — E-11R remedial hardening (pre burn-in)
 
 - Landed E-11R remedial hardening (PR [#160](https://github.com/khorum08/SimThing/pull/160), `8939fc6`).
