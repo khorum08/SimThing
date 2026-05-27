@@ -3,12 +3,12 @@
 #![allow(dead_code)]
 
 use simthing_core::{
-    ClampBehavior, DimensionRegistry, EmlConsumerMask, EmlExecutionClass,
-    EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, PropertyLayout, SimProperty,
-    SimPropertyId, SubFieldRole, SubFieldSpec,
+    ClampBehavior, DimensionRegistry, EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry,
+    EmlFormulaMeta, EmlNodeGpu, EmlTreeId, PropertyLayout, SimProperty, SimPropertyId,
+    SubFieldRole, SubFieldSpec,
 };
 use simthing_spec::{
-    compile_resource_economy, EmitBufferSpec, EmitOnThresholdSpec, EmissionFormulaSpec,
+    compile_resource_economy, EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec,
     PropertyKey, RecipeInputSpec, ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec,
     ResourceTransferSpec, TriggerDirection,
 };
@@ -17,7 +17,11 @@ pub fn empty_registry() -> DimensionRegistry {
     DimensionRegistry::new()
 }
 
-pub fn register_amount_property(reg: &mut DimensionRegistry, ns: &str, name: &str) -> SimPropertyId {
+pub fn register_amount_property(
+    reg: &mut DimensionRegistry,
+    ns: &str,
+    name: &str,
+) -> SimPropertyId {
     reg.register(SimProperty {
         namespace: ns.into(),
         name: name.into(),
@@ -50,7 +54,13 @@ pub fn pk(ns: &str, name: &str) -> PropertyKey {
     PropertyKey::new(ns, name)
 }
 
-pub fn amount_transfer(id: &str, source: &str, target: &str, amount: f32, band: u32) -> ResourceTransferSpec {
+pub fn amount_transfer(
+    id: &str,
+    source: &str,
+    target: &str,
+    amount: f32,
+    band: u32,
+) -> ResourceTransferSpec {
     ResourceTransferSpec {
         id: id.into(),
         source: pk("core", source),
@@ -98,7 +108,11 @@ pub fn exact_eml_registry(entries: &[(&str, u32)]) -> EmlExpressionRegistry {
     eml
 }
 
-pub fn compile_fixture(spec: &ResourceEconomySpec, reg: &DimensionRegistry, eml: &EmlExpressionRegistry) -> simthing_spec::CompiledResourceEconomy {
+pub fn compile_fixture(
+    spec: &ResourceEconomySpec,
+    reg: &DimensionRegistry,
+    eml: &EmlExpressionRegistry,
+) -> simthing_spec::CompiledResourceEconomy {
     compile_resource_economy(spec, reg, eml).unwrap()
 }
 
@@ -154,6 +168,7 @@ pub fn full_fixture_spec() -> ResourceEconomySpec {
             event_kind: 3,
             buffer: EmitBufferSpec::Output,
         }],
+        ..Default::default()
     }
 }
 

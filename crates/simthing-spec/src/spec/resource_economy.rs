@@ -12,6 +12,12 @@ use simthing_core::SubFieldRole;
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ResourceEconomySpec {
+    /// Explicit production execution opt-in for AccumulatorOp transfer/emission.
+    ///
+    /// Presence of a resource economy spec is not enough to enable execution;
+    /// scenarios must choose one of the non-disabled modes.
+    #[serde(default)]
+    pub opt_in_mode: ResourceEconomyOptInMode,
     #[serde(default)]
     pub transfers: Vec<ResourceTransferSpec>,
     #[serde(default)]
@@ -20,6 +26,16 @@ pub struct ResourceEconomySpec {
     pub emissions: Vec<ResourceEmissionSpec>,
     #[serde(default)]
     pub emit_on_threshold: Vec<EmitOnThresholdSpec>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum ResourceEconomyOptInMode {
+    #[default]
+    Disabled,
+    TransferOnly,
+    EmissionOnly,
+    TransferAndEmission,
 }
 
 /// Exact discrete source-debit transfer (E-2A authoring surface).

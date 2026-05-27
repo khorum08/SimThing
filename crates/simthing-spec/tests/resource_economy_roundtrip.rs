@@ -2,7 +2,7 @@
 
 use simthing_core::SubFieldRole;
 use simthing_spec::{
-    EmitBufferSpec, EmitOnThresholdSpec, EmissionFormulaSpec, PropertyKey, RecipeInputSpec,
+    EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, PropertyKey, RecipeInputSpec,
     ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec, ResourceTransferSpec,
     TriggerDirection,
 };
@@ -156,6 +156,7 @@ fn resource_economy_spec_roundtrip_all_variants() {
             event_kind: 1,
             buffer: EmitBufferSpec::Values,
         }],
+        ..Default::default()
     };
     roundtrip_ron(&spec);
 }
@@ -170,6 +171,10 @@ fn resource_economy_missing_lists_default_empty() {
     assert!(spec.recipes.is_empty());
     assert!(spec.emissions.is_empty());
     assert!(spec.emit_on_threshold.is_empty());
+    assert_eq!(
+        spec.opt_in_mode,
+        simthing_spec::ResourceEconomyOptInMode::Disabled
+    );
 }
 
 #[test]

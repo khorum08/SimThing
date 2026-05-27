@@ -5,13 +5,11 @@ mod support;
 
 use simthing_core::{SubFieldRole, ThresholdDirection};
 use simthing_spec::{
-    compile_resource_economy, CompiledEmissionFormula, EmitBufferSpec, EmitOnThresholdSpec,
-    EmissionFormulaSpec, PropertyKey, RecipeInputSpec, ResourceEconomySpec,
-    ResourceEmissionSpec, ResourceRecipeSpec, TriggerDirection,
+    compile_resource_economy, CompiledEmissionFormula, EmissionFormulaSpec, EmitBufferSpec,
+    EmitOnThresholdSpec, PropertyKey, RecipeInputSpec, ResourceEconomySpec, ResourceEmissionSpec,
+    ResourceRecipeSpec, TriggerDirection,
 };
-use support::{
-    amount_property, exact_eml_registry, register_amount_property,
-};
+use support::{amount_property, exact_eml_registry, register_amount_property};
 
 fn pk(ns: &str, name: &str) -> PropertyKey {
     PropertyKey::new(ns, name)
@@ -139,7 +137,10 @@ fn resource_economy_compile_valid_eval_eml_emission() {
     };
     let compiled = compile_resource_economy(&spec, &reg, &eml).unwrap();
     match &compiled.emissions[0].formula {
-        CompiledEmissionFormula::EvalEml { formula_key, tree_id } => {
+        CompiledEmissionFormula::EvalEml {
+            formula_key,
+            tree_id,
+        } => {
             assert_eq!(formula_key, "food_emission_v1");
             assert_eq!(tree_id.0, 42);
         }
@@ -234,6 +235,7 @@ fn resource_economy_expansion_report_counts_all_variants() {
             event_kind: 1,
             buffer: EmitBufferSpec::Values,
         }],
+        ..Default::default()
     };
     let compiled = compile_resource_economy(&spec, &reg, &eml).unwrap();
     let report = &compiled.report;

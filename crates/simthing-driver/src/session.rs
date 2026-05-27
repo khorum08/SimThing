@@ -9,6 +9,7 @@ use simthing_gpu::{GpuContext, Pipelines, WorldGpuState};
 use simthing_sim::{BoundaryOutcome, BoundaryProtocol, BoundaryTiming, ReplayFrame, ReplayWriter};
 use simthing_spec::{
     CapabilityTreeInstance, CapabilityTreeState, CapabilityUnlockRegistration, GameModeSpec,
+    ResourceEconomyOptInMode,
 };
 use std::collections::HashMap;
 use thiserror::Error;
@@ -238,7 +239,10 @@ impl SimSession {
         self.sync_resource_economy_internal(true)
     }
 
-    fn sync_resource_economy_internal(&mut self, reject_flag_off_populated: bool) -> Result<(), SessionError> {
+    fn sync_resource_economy_internal(
+        &mut self,
+        reject_flag_off_populated: bool,
+    ) -> Result<(), SessionError> {
         let transfer_enabled = self.proto.flags.use_accumulator_transfer;
         let emission_enabled = self.proto.flags.use_accumulator_emission;
         let uploaded_generation = self.spec_state.resource_economy_uploaded_generation();
@@ -320,6 +324,7 @@ impl SimSession {
             &mut session.proto.root,
             &mut session.proto.allocator,
         )?;
+        apply_resource_economy_opt_in(&mut session.proto.flags, game_mode);
         session.install_spec_state(spec_state)?;
         Ok(session)
     }
@@ -682,5 +687,32 @@ impl SimSession {
             self.sync_spec_threshold_registrations();
         }
         registered
+    }
+}
+
+fn apply_resource_economy_opt_in(
+    flags: &mut simthing_sim::PipelineFlags,
+    game_mode: &GameModeSpec,
+) {
+    let mode = game_mode
+        .resource_economy
+        .as_ref()
+        .map(|spec| spec.opt_in_mode)
+        .unwrap_or(ResourceEconomyOptInMode::Disabled);
+
+    match mode {
+        ResourceEconomyOptInMode::Disabled => {}
+        ResourceEconomyOptInMode::TransferOnly => {
+            flags.use_accumulator_transfer = true;
+        }
+        ResourceEconomyOptInMode::EmissionOnly => {
+            flags.use_accumulator_eml = true;
+            flags.use_accumulator_emission = true;
+        }
+        ResourceEconomyOptInMode::TransferAndEmission => {
+            flags.use_accumulator_transfer = true;
+            flags.use_accumulator_eml = true;
+            flags.use_accumulator_emission = true;
+        }
     }
 }

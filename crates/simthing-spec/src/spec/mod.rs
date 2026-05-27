@@ -24,8 +24,9 @@ pub use install_target::InstallTargetSpec;
 pub use overlay::OverlaySpec;
 pub use property::PropertySpec;
 pub use resource_economy::{
-    EmitBufferSpec, EmitOnThresholdSpec, EmissionFormulaSpec, RecipeInputSpec,
-    ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec, ResourceTransferSpec,
+    EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec,
+    ResourceEconomyOptInMode, ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec,
+    ResourceTransferSpec,
 };
 pub use resource_flow::{
     ArenaSpec, CouplingDelaySpec, CouplingSpec, ExplicitParticipantSpec, FissionPolicySpec,
