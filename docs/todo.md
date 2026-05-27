@@ -125,21 +125,21 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **T-3** | `05f8b10` | #167 | **Done** — `resource_economy_compile` materialization + stable emission `reg_idx` |
 | **T-4** | `92733c2` | #168 | **Done** — session integration + boundary refresh; generation-keyed skip; flag-off populated-spec rejection |
 | **T-5** | `91bdae3` | #169 | **Done** — boundary refresh / replay / 100-tick conservation burn-in |
-| **T-6** | `3294e6f` | #___ | **Done** — limited opt-in scenario flagging; global transfer/emission flags remain default false |
+| **T-6** | `3294e6f` | direct commit | **Done** — limited opt-in scenario flagging; global transfer/emission flags remain default false |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **D-1** — discrete-transaction contention memo
-2. **E-11B** (optional/future) — nested hierarchy GPU execution / materialization
+1. **D-2** — boundary transaction scheduling (only if D-1 memo workload proves need) **or E-11B** nested hierarchy GPU (optional/future)
 
 **Open design warnings (preserve):**
-- Transfer/emission registration ownership: **Phase T complete.** T-6 landed limited opt-in scenario flagging for resource economy transfer/emission. Global transfer/emission flags remain default false. Only explicitly opted-in scenarios enable AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free.
-- Shared-input transfer contention: C-8c rejects same-band consumed-input contention; D-1 memo evaluates discrete boundary transactions only.
+- Transfer/emission registration ownership: **Phase T complete.** T-6 landed limited opt-in scenario flagging for resource economy transfer/emission. Global transfer/emission flags remain default false. Only explicitly opted-in scenarios enable AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free. Hard-currency transfers remain on exact discrete AccumulatorOp transfer paths, not Resource Flow.
+- **D-1 memo landed:** discrete-transaction contention current-state audit and implementation recommendations ([`d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md)). No production code changes. Next gate depends on D-1 recommendation: D-2 implementation handoff or E-11B nested hierarchy GPU.
+- Shared-input transfer contention: C-8c rejects same-band consumed-input contention; T-2 compile rejects same-band authoring collisions.
 - Soft/Fast EML: future-gated; production admits `ExactDeterministic` only.
 
 **E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-11 execution landed; enrollment compilation not in scope). Phase T does **not** unblock E-2B — it addresses transfer/emission/recipe/threshold-emit registration ownership only.
 
-**Next (immediate):** D-1 discrete-transaction contention memo. E-11B nested GPU remains optional/future. E-2B blocked unless enrollment compilation explicitly lands.
+**Next (immediate):** Next gate depends on D-1 recommendation: D-2 boundary transaction scheduling (if needed) or E-11B nested hierarchy GPU. E-2B blocked unless enrollment compilation explicitly lands.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

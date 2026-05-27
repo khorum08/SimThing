@@ -689,9 +689,9 @@ contention (D-1); Soft/Fast EML classes remain future-gated.
 Phase D is conditional: it begins only if Phase C's contention scenario
 benchmarks show the v1 allocator is a production bottleneck.
 
-### ⚠️ PR D-1 — RESCOPED to discrete-transaction contention analysis memo
+### ⚠️ PR D-1 — Discrete-transaction contention analysis memo
 
-**Status (2026-05-26):** Original hot-pool allocator v2 design scope is
+**Status (2026-05-27):** **Done** — [`docs/reviews/d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md). Original hot-pool allocator v2 design scope is
 **dissolved for the continuous-flow case** by the Resource Flow Substrate ADR
 (`docs/adr/resource_flow_substrate.md`). Continuous flow eliminates per-tick
 shared-pool contention architecturally — the workshop's 16-pool / 100k
@@ -699,15 +699,15 @@ requester regime cannot arise under the Resource Flow Substrate because no
 shared pool slot is written at tick time. Hierarchical fanout distributes
 contention across tree depth.
 
-**D-1 rescoped to a short Opus memo** evaluating whether *discrete*
+**D-1 memo** evaluates whether *discrete*
 transactions (construction commits, treaty payments, emergency spend) reach
-contention scales that justify a GPU allocator at all. Likely outcome:
-CPU-side priority queue with `SubtractFromSource` ops at boundary time is
-sufficient at realistic scales (O(10²) discrete decisions per faction per
-boundary, vs the workshop's O(10⁵)).
+contention scales that justify a GPU allocator at all. **Conclusion:** layered
+same-band consumed-input rejection (T-2, C-8c, bootstrap) is sufficient for
+current Phase T workloads; D-2 GPU allocator remains deferred; prefer driver-only
+boundary transaction scheduling (D-2a) if cross-band ordering is needed.
 
-**Model:** Opus (memo only)
-**Gate:** Memo committed to `docs/workshop/`. No implementation PR.
+**Model:** Opus (memo only)  
+**Gate:** Memo committed to [`docs/reviews/d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md). No implementation PR. **Done (2026-05-27).**
 **Output:** Recommendation either confirming D-2 deferral or motivating its
 revival as a narrower scope.
 
@@ -784,7 +784,7 @@ with a clearly reported failure mode (triggers separate design work).
 | C-6 | C | Composer 2.5 | Sum/Max/Min/First exact reductions | **Landed (#124)** |
 | C-7 | C | Composer 2.5 | Velocity integration migration | **Landed (#127)** |
 | **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity + emission** | **Landed + S-2 sunset** |
-| **D-1** | **D** | **Opus (memo only)** | **Discrete-transaction contention analysis memo** | **Memo committed** |
+| **D-1** | **D** | **Opus (memo only)** | **Discrete-transaction contention analysis memo** | **Done** — [`d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md) |
 | D-2 | D | — | **Deferred; revive only if D-1 proves need** | n/a |
 | D-3 | D | Composer 2.5 | Changed-only logs + replay integration | Replay test |
 | D-4 | D | Composer 2.5 + Opus | Cross-pool contention gate | Pass or triggers ADR amendment |
@@ -1259,9 +1259,11 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **T-4 status:** **Done** — PR #168 (`92733c2`). Session integration + boundary refresh for materialized resource economy registrations. Uses existing `sync_accumulator_transfer_session` / `sync_accumulator_emission_session` paths via `resource_economy_sync` → `WorldGpuState::sync_{transfer,emission}_accumulator`. Flag-off populated-spec rejection enforced on boundary sync. Generation-keyed skip landed. Live slot resolution replaced T-3 property-id placeholder in session path. No WGSL changes. No CPU fallback. Transfer/emission flags remain default false.
 
-**T-5 status:** **Done** — PR #169 (`91bdae3`). Boundary refresh / replay / 100-tick conservation burn-in for resource economy registrations. Uses existing transfer/emission accumulator sync paths. Replay determinism tested. Exact discrete transfer conservation tested. Recipe/emission oracle tests landed. No WGSL changes. No CPU fallback. Transfer/emission flags remain default false. **Next gate:** T-6 limited opt-in scenario flagging / default-off production burn-in decision.
+**T-5 status:** **Done** — PR #169 (`91bdae3`). Boundary refresh / replay / 100-tick conservation burn-in for resource economy registrations. Uses existing transfer/emission accumulator sync paths. Replay determinism tested. Exact discrete transfer conservation tested. Recipe/emission oracle tests landed. No WGSL changes. No CPU fallback. Transfer/emission flags remain default false.
 
-**T-6 status:** **Done** — PR #___ (`3294e6f`). Limited opt-in scenario flagging for resource economy transfer/emission execution. `ResourceEconomyOptInMode` is explicit and defaults disabled. Global transfer/emission flags remain default false; only explicitly opted-in scenarios enable the existing AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free.
+**T-6 status:** **Done** — direct commit `3294e6f`. Limited opt-in scenario flagging for resource economy transfer/emission execution. `ResourceEconomyOptInMode` is explicit and defaults disabled. Global transfer/emission flags remain default false; only explicitly opted-in scenarios enable the existing AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free. **Phase T complete.**
+
+**D-1 status:** **Done** — [`docs/reviews/d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md). Discrete-transaction contention current-state audit and implementation recommendations. No production code changes. Phase T remains complete in default-off / explicit-opt-in posture. **Next gate:** D-2 implementation handoff (only if discrete workload proves need) or E-11B nested hierarchy GPU.
 
 **Posture (preserves v7.5):** runtime substrate is unchanged; ownership of
 transfer / recipe / emission / threshold-emit registrations moves to
@@ -1279,7 +1281,7 @@ default false and are enabled only by scenario/session opt-in.
 | **T-3** | Composer 2.5 | `simthing-driver::resource_economy_compile` → `ResourceEconomyRegistrations`; stable `reg_idx` from authoring identity; subtree-scoped refresh | **Done** — materialization + stable reg_idx suites (11/11) |
 | **T-4** | Composer 2.5 | Session integration + boundary refresh via existing `sync_accumulator_{transfer,emission}_session` paths; generation-keyed skip; flag-off populated-spec rejection | **Done** — session open + flag-off reject + generation skip suites (8/8) |
 | **T-5** | Composer 2.5 | Boundary refresh / replay determinism; 100-tick transfer/recipe/emission conservation burn-in vs CPU oracle; generation-keyed skip + reupload tests | **Done** — PR #169 (`91bdae3`) |
-| **T-6** | Codex 5.5 | Limited opt-in scenario flagging / default-off production burn-in decision | **Done** — PR #___ (`3294e6f`) |
+| **T-6** | Codex 5.5 | Limited opt-in scenario flagging / default-off production burn-in decision | **Done** — direct commit `3294e6f` |
 
 **Stop conditions (re-asserted; all unchanged from the v2 ADR):** no new WGSL,
 no new `AccumulatorOp` primitive, no `simthing-sim` semantic ownership of
@@ -1464,7 +1466,7 @@ as a doc-only PR.
 | C-6 | C | Composer 2.5 | Sum/Max/Min/First exact reductions | **Landed (#124)** |
 | C-7 | C | Composer 2.5 | Velocity integration | **Landed (#127)** |
 | **C-8** | **C** | **Opus + Composer** | **EML + transfer + intensity + emission** | **Landed + S-2 sunset** |
-| **D-1** | **D** | **Opus (memo only)** | **RESCOPED to discrete-transaction memo — see ADR `resource_flow_substrate.md`** | **Memo committed** |
+| **D-1** | **D** | **Opus (memo only)** | **Discrete-transaction contention memo — see ADR `resource_flow_substrate.md`** | **Done** — [`d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md) |
 | D-2 | D | — | **DEFERRED INDEFINITELY** — no concrete scope until D-1 memo motivates a revival | n/a |
 | D-3 | D | Composer 2.5 | Changed-only logs + replay | Replay test |
 | D-4 | D | Composer 2.5 + Opus | Cross-pool contention gate | Pass or ADR amendment |
