@@ -1179,7 +1179,7 @@ produce expected expansion reports.
 ### ✅ PR E-11 — Hierarchical allocation kernel pattern + CPU oracle parity
 
 **Model:** Opus (review and design pseudocode), Composer 2.5 (implementation)
-**Status:** **Done (flat-star vertical slice)** — PR #159 (`8a628ca`). Flat-star D=2 GPU path + CPU oracle for nested layouts. **E-11R hardening required before burn-in.** Nested hierarchy GPU execution deferred (E-11B).
+**Status:** **Done (flat-star vertical slice)** — PR #159 (`8a628ca`). **E-11R** PR #160 landed. Flat-star D=2 GPU path + CPU oracle for nested layouts. Nested hierarchy GPU execution deferred (E-11B). Controlled burn-in is next gate.
 **Why Opus:** E-11 is a real new GPU production capability. Although it reuses
 the existing AccumulatorOp kernel, it is structured as a reverse-direction
 OrderBand sweep with per-intermediate weight reductions and per-child share

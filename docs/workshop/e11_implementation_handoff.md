@@ -1,6 +1,6 @@
 # E-11 — Narrowed Implementation Handoff (Cursor binding)
 
-**Status:** **Done (flat-star vertical slice)** — PR [#159](https://github.com/khorum08/SimThing/pull/159), commit `8a628ca`. **E-11R hardening** required before burn-in (see below).  
+**Status:** **Done (flat-star vertical slice)** — PR [#159](https://github.com/khorum08/SimThing/pull/159), commit `8a628ca`. **E-11R hardening** landed PR [#160](https://github.com/khorum08/SimThing/pull/160). Burn-in may proceed under default-off flag control.  
 **Authority:** [`e11_hierarchical_allocation_design.md`](e11_hierarchical_allocation_design.md) (Opus v2)  
 **Prerequisites:** E-10R, E-10R2, E-10R3, E-8R, E-7R — **landed** (PRs #155–#157).
 

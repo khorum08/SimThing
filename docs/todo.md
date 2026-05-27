@@ -116,7 +116,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-11 design** | — | — | **Accepted** — Opus v2 memo landed |
 | **E-11 review** | — | — | **Done** — readiness review PASS; handoff published |
 | **E-11** | `8a628ca` | #159 | **Done** — flat-star D=2 vertical slice; `e11_*` 14/14; flag default false |
-| **E-11R** | — | — | **Done** — sync errors, scope honesty, session-path test |
+| **E-11R** | `8939fc6` | #160 | **Done** — sync errors, scope honesty, session-path test |
 
 **Next recommended gates (pivot-forward order):**
 
@@ -132,7 +132,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **E-2B blocked:** `resource_flow_participant` requires E-11 enrollment compilation (E-11 execution landed; enrollment compilation not in scope).
 
-**Next (immediate):** E-11R hardening PR → then controlled burn-in or E-11B nested GPU.
+**Next (immediate):** controlled burn-in for `use_accumulator_resource_flow` (default false) or E-11B nested GPU.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

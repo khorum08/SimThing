@@ -21,7 +21,7 @@ Two parallel tracks:
 **Production direction:** AccumulatorOp v2 is the GPU execution path.
 Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Legacy threshold is deleted (S-6). Legacy velocity is deleted (S-5). Legacy intent is deleted (S-1). Snapshot is the only retained non-Accumulator operation.
 
-**E-11 status:** **Done (flat-star vertical slice)** — PR #159. Flat-star D=2 GPU allocation over AccumulatorOp; nested hierarchy GPU execution **deferred (E-11B)**. E-11R hardening in flight: sync error propagation, honest scope docs, session-path test. `use_accumulator_resource_flow` default **false** — no burn-in until E-11R lands. No new WGSL. `simthing-sim` remains arena-ignorant.
+**E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160 landed (sync errors, session-path test, scope honesty). Nested hierarchy GPU **deferred (E-11B)**. `use_accumulator_resource_flow` default **false** — controlled burn-in is next gate.
 
 **Next gates:** **E-11R merge** → controlled burn-in or E-11B nested GPU · Opus production transfer/emission registration ownership · D-1 discrete-transaction contention memo. **E-2B** `resource_flow_participant` remains blocked unless E-11 enrollment compilation explicitly lands.
 

@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-19 — E-11R remedial hardening (pre burn-in)
 
-- Propagate resource-flow sync errors: `ResourceFlowSyncError`, `SessionError::ResourceFlow`, `install_spec_state` / `sync_resource_flow_if_enabled` return `Result` when flag enabled.
+- Landed E-11R remedial hardening (PR [#160](https://github.com/khorum08/SimThing/pull/160), `8939fc6`).
 - Renamed misleading `e11_multi_level_hierarchy_cpu_gpu_parity` → `e11_multi_level_hierarchy_cpu_oracle_parity` (nested GPU deferred).
 - Added `e11r_arena_allocation.rs`: sync error test + session-path flat-star upload/dispatch test.
 - Docs updated: E-11 = flat-star vertical slice; nested hierarchy GPU = E-11B follow-up; no burn-in until E-11R lands.
