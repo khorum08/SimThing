@@ -13,8 +13,8 @@ use simthing_gpu::SlotAllocator;
 use simthing_sim::{BoundaryOutcome, FissionOutcome};
 use simthing_spec::{
     compile_property, ArenaSpec, ExplicitParticipantSpec, FissionPolicySpec, GameModeSpec,
-    PropertyKey, PropertySpec, ResourceFlowOptInMode, ResourceFlowSpec, SpecVersion,
-    WildcardAdmissionSpec,
+    PropertyKey, PropertySpec, ResourceFlowExecutionProfile, ResourceFlowOptInMode,
+    ResourceFlowSpec, SpecVersion, WildcardAdmissionSpec,
 };
 
 use crate::arena_hierarchy::{build_execution_plan, resolve_node_columns, ArenaTreeLayout, NodeColumnRefs};
@@ -305,6 +305,7 @@ fn base_game_mode(id: &str) -> GameModeSpec {
         events: vec![],
         resource_flow: None,
         resource_economy: None,
+        resource_flow_execution_profile: Default::default(),
     }
 }
 
@@ -833,14 +834,27 @@ fn execution_layout(session: &SimSession) -> (ArenaTreeLayout, NodeColumnRefs) {
 }
 
 pub fn open_fixture_session(fixture: &RfT2BurnInFixture) -> Result<RfT2OptInSession, SessionError> {
+    open_fixture_session_with_execution_profile(
+        fixture,
+        ResourceFlowExecutionProfile::DefaultDisabled,
+    )
+}
+
+pub fn open_fixture_session_with_execution_profile(
+    fixture: &RfT2BurnInFixture,
+    profile: ResourceFlowExecutionProfile,
+) -> Result<RfT2OptInSession, SessionError> {
     let (scenario, fission) = scenario_for_fixture(fixture);
-    let game_mode = build_game_mode(fixture, &scenario);
+    let mut game_mode = build_game_mode(fixture, &scenario);
+    game_mode.resource_flow_execution_profile = profile;
     let mut session = SimSession::open_from_spec(scenario, &game_mode)?;
 
+    let expect_flag = fixture.opt_in_mode == ResourceFlowOptInMode::FlatStarOptIn
+        || profile.enables_flat_star_resource_flow();
     assert_eq!(
         session.proto.flags.use_accumulator_resource_flow,
-        fixture.opt_in_mode == ResourceFlowOptInMode::FlatStarOptIn,
-        "fixture {name} flag must match opt_in_mode",
+        expect_flag,
+        "fixture {name} flag must match opt-in/profile",
         name = fixture.name
     );
 
@@ -996,7 +1010,8 @@ pub fn run_opt_in_burn_in(
 
 pub fn clone_for_replay(fx: &RfT2OptInSession, fixture: &RfT2BurnInFixture) -> RfT2OptInSession {
     let (scenario, _) = scenario_for_fixture(fixture);
-    let game_mode = build_game_mode(fixture, &scenario);
+    let mut game_mode = build_game_mode(fixture, &scenario);
+    game_mode.resource_flow_execution_profile = fx.session.resource_flow_execution_profile;
     let mut session = SimSession::open_from_spec(scenario, &game_mode).expect("replay open");
     session.proto.root = fx.session.proto.root.clone();
     session.proto.allocator = fx.session.proto.allocator.clone();

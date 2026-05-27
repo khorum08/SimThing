@@ -1,4 +1,4 @@
-//! RF-T3 — Resource Flow opt-in telemetry and flag-source attribution (driver/test-reporting).
+//! RF-T3/RF-T4 — Resource Flow opt-in telemetry and flag-source attribution (driver/test-reporting).
 
 use simthing_spec::ResourceFlowOptInMode;
 
@@ -12,6 +12,7 @@ pub enum ResourceFlowFlagSource {
     #[default]
     DefaultDisabled,
     SpecFlatStarOptIn,
+    ScenarioClassDefaultOn,
     TestOverride,
 }
 
@@ -21,6 +22,7 @@ pub struct ResourceFlowOptInTelemetryReport {
     pub scenario_name: String,
     pub opt_in_mode: ResourceFlowOptInMode,
     pub flag_source: ResourceFlowFlagSource,
+    pub execution_profile_name: String,
     pub resource_flow_enabled: bool,
     pub arenas_planned: u32,
     pub participants_planned: u32,
@@ -92,6 +94,7 @@ pub fn collect_resource_flow_opt_in_telemetry(
         scenario_name: scenario_name.into(),
         opt_in_mode,
         flag_source: session.resource_flow_flag_source,
+        execution_profile_name: session.resource_flow_execution_profile.as_str().into(),
         resource_flow_enabled: session.proto.flags.use_accumulator_resource_flow,
         arenas_planned: session.spec_state.arena_registry.arenas.len() as u32,
         participants_planned: session.spec_state.arena_registry.participants.len() as u32,

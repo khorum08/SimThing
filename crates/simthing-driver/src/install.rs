@@ -760,6 +760,7 @@ mod tests {
             events: Vec::new(),
             resource_flow: None,
             resource_economy: None,
+            resource_flow_execution_profile: Default::default(),
         }
     }
 
@@ -792,6 +793,7 @@ mod tests {
             events: Vec::new(),
             resource_flow: None,
             resource_economy: None,
+            resource_flow_execution_profile: Default::default(),
         }
     }
 

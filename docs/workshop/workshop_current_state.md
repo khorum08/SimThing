@@ -33,7 +33,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **RF global/default-on re-review:** **Done** — [`resource_flow_global_default_on_rereview.md`](../reviews/resource_flow_global_default_on_rereview.md). **Recommendation B:** proceed to RF-T4 limited scenario-class default-on; global default-on rejected (D). No production code changes.
 
-**Next gates:** **RF-T4 limited scenario-class default-on**; **E-11B**; **D-2a** per product priority.
+**RF-T4 status:** **Done** — `ResourceFlowExecutionProfile` on `GameModeSpec`; `FlatStarResourceFlow` enables GPU via `ScenarioClassDefaultOn`; spec FlatStarOptIn precedence preserved. Global flag remains default false.
+
+**Next gates:** **RF-T5 scenario-class burn-in / telemetry soak**; global default-on remains deferred; **E-11B**; **D-2a**; simthing-spec rebuild per product priority.
 
 **Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. E-11B deferred by default. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
 

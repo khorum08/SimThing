@@ -33,6 +33,33 @@ pub enum ResourceFlowOptInMode {
     FlatStarOptIn,
 }
 
+/// RF-T4 — scenario-class / execution-profile enablement for flat-star Resource Flow GPU path.
+///
+/// Distinct from `ResourceFlowOptInMode`: profile enablement applies at session open when
+/// spec `opt_in_mode` is `Disabled` or omitted. Does not flip global `PipelineFlags` default.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum ResourceFlowExecutionProfile {
+    /// No scenario-class Resource Flow GPU enablement.
+    #[default]
+    DefaultDisabled,
+    /// Enable E-11 flat-star D=2 GPU path via named execution profile (RF-T4).
+    FlatStarResourceFlow,
+}
+
+impl ResourceFlowExecutionProfile {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::DefaultDisabled => "DefaultDisabled",
+            Self::FlatStarResourceFlow => "FlatStarResourceFlow",
+        }
+    }
+
+    pub fn enables_flat_star_resource_flow(self) -> bool {
+        matches!(self, Self::FlatStarResourceFlow)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ArenaSpec {
     pub name: String,

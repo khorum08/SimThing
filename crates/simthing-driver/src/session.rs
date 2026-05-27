@@ -9,7 +9,7 @@ use simthing_gpu::{GpuContext, Pipelines, WorldGpuState};
 use simthing_sim::{BoundaryOutcome, BoundaryProtocol, BoundaryTiming, ReplayFrame, ReplayWriter};
 use simthing_spec::{
     CapabilityTreeInstance, CapabilityTreeState, CapabilityUnlockRegistration, GameModeSpec,
-    ResourceEconomyOptInMode, ResourceFlowOptInMode,
+    ResourceEconomyOptInMode, ResourceFlowExecutionProfile, ResourceFlowOptInMode,
 };
 use std::collections::HashMap;
 use thiserror::Error;
@@ -166,6 +166,8 @@ pub struct SimSession {
         Option<crate::resource_flow_fission_enrollment::DynamicFissionEnrollmentReport>,
     /// RF-T3: why Resource Flow GPU execution is enabled/disabled on this session.
     pub resource_flow_flag_source: crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource,
+    /// RF-T4: authored scenario-class / execution profile at session open.
+    pub resource_flow_execution_profile: ResourceFlowExecutionProfile,
 }
 
 impl SimSession {
@@ -211,6 +213,7 @@ impl SimSession {
             last_resource_flow_dynamic_enrollment_report: None,
             resource_flow_flag_source:
                 crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource::DefaultDisabled,
+            resource_flow_execution_profile: ResourceFlowExecutionProfile::DefaultDisabled,
         })
     }
 
@@ -342,17 +345,11 @@ impl SimSession {
             &mut session.proto.allocator,
         )?;
         apply_resource_economy_opt_in(&mut session.proto.flags, game_mode);
+        session.resource_flow_execution_profile = game_mode.resource_flow_execution_profile;
         session.resource_flow_flag_source =
-            crate::resource_flow_opt_in_telemetry::flag_source_from_opt_in_mode(
-                game_mode
-                    .resource_flow
-                    .as_ref()
-                    .map(|spec| spec.opt_in_mode)
-                    .unwrap_or(ResourceFlowOptInMode::Disabled),
-            );
-        apply_resource_flow_opt_in(&mut session.proto.flags, game_mode);
+            resolve_resource_flow_execution(&mut session.proto.flags, game_mode);
         if session.proto.flags.use_accumulator_resource_flow {
-            validate_resource_flow_flat_star_opt_in(game_mode, &spec_state)?;
+            validate_resource_flow_flat_star_execution(game_mode, &spec_state)?;
         }
         session.install_spec_state(spec_state)?;
         Ok(session)
@@ -782,19 +779,42 @@ fn apply_resource_economy_opt_in(
     }
 }
 
-fn apply_resource_flow_opt_in(flags: &mut simthing_sim::PipelineFlags, game_mode: &GameModeSpec) {
-    let mode = game_mode
+fn resolve_resource_flow_execution(
+    flags: &mut simthing_sim::PipelineFlags,
+    game_mode: &GameModeSpec,
+) -> crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource {
+    use crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource;
+
+    let opt_in = game_mode
         .resource_flow
         .as_ref()
         .map(|spec| spec.opt_in_mode)
         .unwrap_or(ResourceFlowOptInMode::Disabled);
 
-    match mode {
-        ResourceFlowOptInMode::Disabled => {}
+    match opt_in {
         ResourceFlowOptInMode::FlatStarOptIn => {
             flags.use_accumulator_resource_flow = true;
+            ResourceFlowFlagSource::SpecFlatStarOptIn
+        }
+        ResourceFlowOptInMode::Disabled => {
+            if game_mode
+                .resource_flow_execution_profile
+                .enables_flat_star_resource_flow()
+            {
+                flags.use_accumulator_resource_flow = true;
+                ResourceFlowFlagSource::ScenarioClassDefaultOn
+            } else {
+                ResourceFlowFlagSource::DefaultDisabled
+            }
         }
     }
+}
+
+fn validate_resource_flow_flat_star_execution(
+    game_mode: &GameModeSpec,
+    spec_state: &SpecSessionState,
+) -> Result<(), SessionError> {
+    validate_resource_flow_flat_star_opt_in(game_mode, spec_state)
 }
 
 fn validate_resource_flow_flat_star_opt_in(
@@ -803,18 +823,18 @@ fn validate_resource_flow_flat_star_opt_in(
 ) -> Result<(), SessionError> {
     let Some(flow) = game_mode.resource_flow.as_ref() else {
         return Err(SessionError::ResourceFlowOptIn(
-            "FlatStarOptIn requires authored ResourceFlowSpec".into(),
+            "Resource Flow GPU execution requires authored ResourceFlowSpec".into(),
         ));
     };
     if flow.arenas.is_empty() {
         return Err(SessionError::ResourceFlowOptIn(
-            "FlatStarOptIn requires at least one arena".into(),
+            "Resource Flow GPU execution requires at least one arena".into(),
         ));
     }
     for arena in &flow.arenas {
         if arena.wildcard_admission.is_some() {
             return Err(SessionError::ResourceFlowOptIn(format!(
-                "arena `{}` wildcard admission is not supported for FlatStarOptIn (E-11B deferred)",
+                "arena `{}` wildcard admission is not supported for flat-star Resource Flow (E-11B deferred)",
                 arena.name
             )));
         }
@@ -822,7 +842,7 @@ fn validate_resource_flow_flat_star_opt_in(
     for arena in &spec_state.arena_registry.arenas {
         if arena.wildcard_max_expansion.is_some() {
             return Err(SessionError::ResourceFlowOptIn(format!(
-                "arena `{}` wildcard expansion is not supported for FlatStarOptIn",
+                "arena `{}` wildcard expansion is not supported for flat-star Resource Flow",
                 arena.name
             )));
         }
