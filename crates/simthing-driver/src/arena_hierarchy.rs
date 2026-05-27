@@ -154,6 +154,20 @@ impl ArenaTreeLayout {
             .collect()
     }
 
+    pub fn find_node_by_slot(&self, slot: SlotId) -> Option<&HierarchyNode> {
+        self.iter_all()
+            .into_iter()
+            .find(|node| node.participant_slot == slot)
+    }
+
+    pub fn interior_participant_slots(&self) -> Vec<SlotId> {
+        self.iter_all()
+            .into_iter()
+            .filter(|node| node.is_interior())
+            .map(|node| node.participant_slot)
+            .collect()
+    }
+
     pub fn participant_slots(&self) -> Vec<SlotId> {
         self.iter_all()
             .into_iter()
@@ -184,6 +198,10 @@ impl HierarchyNode {
             child.verify_child_contiguity()?;
         }
         Ok(())
+    }
+
+    pub fn active_child_slots(&self) -> Vec<SlotId> {
+        self.children.iter().map(|c| c.participant_slot).collect()
     }
 }
 
