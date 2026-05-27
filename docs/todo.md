@@ -124,7 +124,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **T-2** | `986bc99` | #166 | **Done** — `compile::resource_economy` validation + expansion report |
 | **T-3** | `05f8b10` | #167 | **Done** — `resource_economy_compile` materialization + stable emission `reg_idx` |
 | **T-4** | `92733c2` | #168 | **Done** — session integration + boundary refresh; generation-keyed skip; flag-off populated-spec rejection |
-| **T-5** | (pending commit) | (pending PR) | **Done** — boundary refresh / replay / 100-tick conservation burn-in |
+| **T-5** | `6bb3828` | (pending PR) | **Done** — boundary refresh / replay / 100-tick conservation burn-in |
 
 **Next recommended gates (pivot-forward order):**
 
