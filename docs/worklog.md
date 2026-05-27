@@ -6,6 +6,20 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — Phase T-5: resource economy boundary refresh / replay / conservation burn-in
+
+- Added `ResourceEconomyBurnInReport` and driver-only burn-in helpers (`resource_economy_burn_in.rs`).
+- Added CPU oracle for discrete transfer, conjunctive recipe, and IdentityFloor/Constant emission parity (`resource_economy_oracle.rs`).
+- Added boundary refresh tests (`resource_economy_boundary_refresh.rs`), replay determinism tests (`resource_economy_replay.rs`), and 100-tick burn-in tests (`resource_economy_burn_in.rs`).
+- `SpecSessionState::is_empty()` now treats materialized `resource_economy_registry` as spec-bearing so replay emits `spec_snapshot`.
+- T-5 landed: boundary refresh / replay / 100-tick conservation burn-in for resource economy registrations. Uses existing transfer/emission accumulator sync paths. Replay determinism tested. Exact discrete transfer conservation tested. Recipe/emission oracle tests landed. No WGSL changes. No CPU fallback. Transfer/emission flags remain default false.
+
+**Verification:** `cargo test -p simthing-driver resource_economy_boundary_refresh -- --nocapture`; `cargo test -p simthing-driver resource_economy_replay -- --nocapture`; `cargo test -p simthing-driver resource_economy_burn_in -- --nocapture`; `cargo test -p simthing-driver resource_economy_ -- --nocapture`; `cargo test -p simthing-spec resource_economy_ -- --nocapture`; `cargo test -p simthing-gpu accumulator_op -- --nocapture`; `cargo check --workspace`; `cargo test --workspace`.
+
+**Next gate:** T-6 — limited opt-in scenario flagging / default-off production burn-in decision.
+
+---
+
 ## 2026-05-27 — Phase T-4: resource economy session integration + boundary refresh
 
 - Added `GameModeSpec::resource_economy` and driver install step 4c: T-2 compile → T-3 live-slot materialization → `SpecSessionState::resource_economy_registry`.

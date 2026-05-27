@@ -1257,7 +1257,9 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **T-3 status:** **Done** — PR #167 (`05f8b10`). `simthing-driver::resource_economy_compile` materializes `CompiledResourceEconomy` into existing transfer/recipe/emission/threshold registration shapes. Stable emission `reg_idx` from authoring identity tested (11 driver tests). `ResourceEconomyRegistry` generation scaffold added. No WGSL changes. Transfer/emission flags remain default false.
 
-**T-4 status:** **Done** — PR #168 (`92733c2`). Session integration + boundary refresh for materialized resource economy registrations. Uses existing `sync_accumulator_transfer_session` / `sync_accumulator_emission_session` paths via `resource_economy_sync` → `WorldGpuState::sync_{transfer,emission}_accumulator`. Flag-off populated-spec rejection enforced on boundary sync. Generation-keyed skip landed. Live slot resolution replaced T-3 property-id placeholder in session path. No WGSL changes. No CPU fallback. Transfer/emission flags remain default false. **Next gate:** T-5 boundary refresh / replay / 100-tick conservation burn-in.
+**T-4 status:** **Done** — PR #168 (`92733c2`). Session integration + boundary refresh for materialized resource economy registrations. Uses existing `sync_accumulator_transfer_session` / `sync_accumulator_emission_session` paths via `resource_economy_sync` → `WorldGpuState::sync_{transfer,emission}_accumulator`. Flag-off populated-spec rejection enforced on boundary sync. Generation-keyed skip landed. Live slot resolution replaced T-3 property-id placeholder in session path. No WGSL changes. No CPU fallback. Transfer/emission flags remain default false.
+
+**T-5 status:** **Done** — boundary refresh / replay / 100-tick conservation burn-in for resource economy registrations. Uses existing transfer/emission accumulator sync paths. Replay determinism tested. Exact discrete transfer conservation tested. Recipe/emission oracle tests landed. No WGSL changes. No CPU fallback. Transfer/emission flags remain default false. **Next gate:** T-6 limited opt-in scenario flagging / default-off production burn-in decision.
 
 **Posture (preserves v7.5):** runtime substrate is unchanged; ownership of
 transfer / recipe / emission / threshold-emit registrations moves to
@@ -1265,7 +1267,7 @@ transfer / recipe / emission / threshold-emit registrations moves to
 `simthing-core` builders and `simthing-gpu` planners. `simthing-sim` remains
 spec-free and arena-ignorant. No new WGSL; no new `AccumulatorOp` primitive;
 no CPU production fallback peer; transfer/emission flags remain default false
-until T-5 burn-in is itself green.
+until T-6 limited opt-in scenario flagging / default-off production burn-in decision.
 
 | PR | Model | Scope | Gate |
 |----|-------|-------|------|
@@ -1273,8 +1275,8 @@ until T-5 burn-in is itself green.
 | **T-2** | Composer 2.5 | `simthing-spec::compile::resource_economy` resolves keys / EML formulas / validation; extends expansion report | **Done** — rejection + expansion report suites (19/19) |
 | **T-3** | Composer 2.5 | `simthing-driver::resource_economy_compile` → `ResourceEconomyRegistrations`; stable `reg_idx` from authoring identity; subtree-scoped refresh | **Done** — materialization + stable reg_idx suites (11/11) |
 | **T-4** | Composer 2.5 | Session integration + boundary refresh via existing `sync_accumulator_{transfer,emission}_session` paths; generation-keyed skip; flag-off populated-spec rejection | **Done** — session open + flag-off reject + generation skip suites (8/8) |
-| **T-5** | Composer 2.5 | Boundary refresh / replay tests; subtree-refresh asserted via generation counter; anti-import test (`simthing-sim` ⊥ `simthing-spec`) | Pending |
-| **T-6** | Codex 5.5 | Docs sync (this plan, `design_v7.md` §5/§6, `workshop_current_state.md`, `todo.md`) | Pending |
+| **T-5** | Composer 2.5 | Boundary refresh / replay determinism; 100-tick transfer/recipe/emission conservation burn-in vs CPU oracle; generation-keyed skip + reupload tests | **Done** — boundary refresh + replay + burn-in suites |
+| **T-6** | Codex 5.5 | Limited opt-in scenario flagging / default-off production burn-in decision | Pending |
 
 **Stop conditions (re-asserted; all unchanged from the v2 ADR):** no new WGSL,
 no new `AccumulatorOp` primitive, no `simthing-sim` semantic ownership of

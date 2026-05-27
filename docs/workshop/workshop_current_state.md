@@ -3,9 +3,9 @@
 **Purpose:** Single synthesis of **active workshop docs**, **production migration state**,
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
-**Last updated:** 2026-05-27  
-**Master HEAD:** Phase T-4 resource economy session integration (PR #168, `92733c2`)  
-**Verification (last recorded):** `resource_economy_session_open` 6/6 + `resource_economy_flag_off_rejects` 2/2 + T-1/T-2/T-3 suites green; transfer/emission flags default false
+**Last updated:** 2026-05-19  
+**Master HEAD:** Phase T-5 resource economy burn-in (branch `t5-resource-economy-burn-in`, pending merge)  
+**Verification (last recorded):** `resource_economy_boundary_refresh` 5/5 + `resource_economy_replay` 3/3 + `resource_economy_burn_in` 5/5 + T-4 suites green; transfer/emission flags default false
 
 ---
 
@@ -23,9 +23,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed: `ResourceFlowSoakMode::FlatStarOptIn`, `ResourceFlowSoakSummaryReport`, `e11_resource_flow_soak` (6 tests). Nested hierarchy GPU **deferred (E-11B)**. `use_accumulator_resource_flow` **default false**. No new WGSL; `simthing-sim` remains arena-ignorant.
 
-**Next gates:** **T-5** — boundary refresh / replay tests; 100-tick conservation burn-in · limited opt-in scenario flagging (optional) · D-1 discrete-transaction contention memo. **E-11B** nested hierarchy GPU remains deferred. **E-2B** blocked unless enrollment compilation explicitly lands.
+**Next gates:** **T-6** — limited opt-in scenario flagging / default-off production burn-in decision · D-1 discrete-transaction contention memo. **E-11B** nested hierarchy GPU remains deferred. **E-2B** blocked unless enrollment compilation explicitly lands.
 
-**Open design gates (not sunset):** production transfer/emission registration ownership — **Opus design memo landed 2026-05-27**; **T-1 authoring types landed**; **T-2 compile pass landed**; **T-3 driver materialization landed**; **T-4 session integration + boundary refresh landed** (`resource_economy_sync` via existing `sync_accumulator_{transfer,emission}_session` paths; generation-keyed skip; flag-off populated-spec rejection; live slot resolution in session path). T-5 burn-in pending; transfer/emission flags remain default false until T-5 burn-in is green. **D-1** discrete-transaction contention memo (continuous-flow hot-pool allocator scope dissolved by Resource Flow ADR; C-8c still rejects same-band consumed-input contention); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
+**Open design gates (not sunset):** production transfer/emission registration ownership — **Opus design memo landed 2026-05-27**; **T-1 authoring types landed**; **T-2 compile pass landed**; **T-3 driver materialization landed**; **T-4 session integration + boundary refresh landed**; **T-5 landed** — boundary refresh / replay / 100-tick conservation burn-in for resource economy registrations (uses existing `sync_accumulator_{transfer,emission}_session` paths; replay determinism tested; exact discrete transfer conservation tested; recipe/emission oracle tests landed). No WGSL changes. No CPU fallback. Transfer/emission flags remain default false. **Next gate:** T-6 limited opt-in scenario flagging / default-off production burn-in decision. **D-1** discrete-transaction contention memo (continuous-flow hot-pool allocator scope dissolved by Resource Flow ADR; C-8c still rejects same-band consumed-input contention); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
 
 **C-8 complete:** EML infrastructure, intensity, transfer, and emission are GPU-resident through AccumulatorOp. TransferConservation remains ExactDeterministic only. Emission tolerance remains future-gated and isolated from transfer/hard thresholds.
 
@@ -93,6 +93,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **T-2** | #166 | `compile::resource_economy` validation + expansion report 19/19 |
 | **T-3** | #167 | `resource_economy_compile` materialization + stable reg_idx 11/11 |
 | **T-4** | #168 | Session integration + boundary refresh; generation skip; flag-off reject 8/8 |
+| **T-5** | (pending PR) | Boundary refresh / replay / 100-tick conservation burn-in 13/13 |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
@@ -140,7 +141,7 @@ explicitly instead of falling back or silently skipping work.
 
 | Priority | ID | Owner | Blocks |
 |----------|-----|-------|--------|
-| Implementation | **Phase T** transfer/emission registration ownership | Cursor (Codex 5.5 + Composer 2.5) | **T-1 Done** — authoring + RON tests; **T-2 Done** — spec compile/validation; **T-3 Done** — driver materialization + stable reg_idx; **T-4 Done** — session integration + boundary refresh; T-5…T-6 pending ([Opus memo](../reviews/transfer_emission_registration_ownership_opus_review.md)) |
+| Implementation | **Phase T** transfer/emission registration ownership | Cursor (Codex 5.5 + Composer 2.5) | **T-1 Done** — authoring + RON tests; **T-2 Done** — spec compile/validation; **T-3 Done** — driver materialization + stable reg_idx; **T-4 Done** — session integration + boundary refresh; **T-5 Done** — boundary refresh / replay / burn-in; **T-6 pending** — limited opt-in scenario flagging ([Opus memo](../reviews/transfer_emission_registration_ownership_opus_review.md)) |
 | Design | **D-1** discrete-transaction memo | Opus | Rescoped by Resource Flow ADR; no GPU allocator implementation |
 | Infra | Test-harness cleanup | Optional | Runtime legacy oracle/fallback peers are gone; remaining cleanup is test-only ergonomics |
 
