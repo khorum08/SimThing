@@ -1273,7 +1273,9 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **RF-T1 status:** **Done** — limited scenario-class Resource Flow opt-in flagging. `ResourceFlowOptInMode` on `ResourceFlowSpec` enables `FlatStarOptIn` per authored scenario/game mode. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU Resource Flow execution. E-11 flat-star path, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment are reused. E-11B remains deferred. Policy B Reevaluate remains deferred. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant.
 
-**Next gate:** RF-T2 limited opt-in scenario burn-in expansion; or E-11B, D-2a per product priority.
+**RF-T2 status:** **Done** — limited opt-in scenario burn-in expansion. [`resource_flow_opt_in_burn_in.rs`](../crates/simthing-driver/src/resource_flow_opt_in_burn_in.rs) + [`resource_flow_opt_in_burn_in.rs`](../crates/simthing-driver/tests/resource_flow_opt_in_burn_in.rs). Only explicitly authored `FlatStarOptIn` scenarios enable GPU Resource Flow execution via `open_from_spec`. Static 10/64-participant, skewed-weight, dynamic single/multi fission, two-arena, disabled-populated, wildcard-reject, resync stability, and replay determinism fixtures. Global flag remains default false. E-11B and Policy B remain deferred.
+
+**Next gate:** RF-T3 product-like opt-in soak / telemetry surfacing; or E-11B, D-2a per product priority.
 
 **E-2B readiness status:** **Done** — [`docs/reviews/e2b_resource_flow_enrollment_compilation_readiness.md`](reviews/e2b_resource_flow_enrollment_compilation_readiness.md).
 
@@ -1295,6 +1297,7 @@ default false and are enabled only by scenario/session opt-in.
 | **T-5** | Composer 2.5 | Boundary refresh / replay determinism; 100-tick transfer/recipe/emission conservation burn-in vs CPU oracle; generation-keyed skip + reupload tests | **Done** — PR #169 (`91bdae3`) |
 | **T-6** | Codex 5.5 | Limited opt-in scenario flagging / default-off production burn-in decision | **Done** — direct commit `3294e6f` |
 | **RF-T1** | Codex 5.5 | Resource Flow execution opt-in (`ResourceFlowOptInMode` on `ResourceFlowSpec`; `SimSession::open_from_spec` applies flag) | **Done** — `resource_flow_opt_in` + roundtrip suites |
+| **RF-T2** | Codex 5.5 | Opt-in scenario burn-in expansion (`resource_flow_opt_in_burn_in` fixtures via `open_from_spec`) | **Done** — `resource_flow_opt_in_burn_in` suite (15 tests) |
 
 **Stop conditions (re-asserted; all unchanged from the v2 ADR):** no new WGSL,
 no new `AccumulatorOp` primitive, no `simthing-sim` semantic ownership of
