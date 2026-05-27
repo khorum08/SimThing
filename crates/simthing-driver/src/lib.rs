@@ -37,9 +37,9 @@ pub use arena_allocation_sync::{
     ResourceFlowSyncReport,
 };
 pub use arena_hierarchy::{
-    build_custom_layout, build_execution_plan, build_flat_star_layout, resolve_node_columns,
-    total_bands_for_depth, ArenaBandLayout, ArenaExecutionPlan, ArenaTreeLayout, HierarchyError,
-    HierarchyNode, NodeColumnRefs,
+    build_custom_layout, build_execution_plan, build_flat_star_layout, build_nested_layout,
+    resolve_node_columns, total_bands_for_depth, ArenaBandLayout, ArenaExecutionPlan,
+    ArenaTreeLayout, HierarchyError, HierarchyNode, NodeColumnRefs,
 };
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};
 pub use arena_participant::{

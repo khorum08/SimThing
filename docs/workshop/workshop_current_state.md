@@ -3,9 +3,9 @@
 **Purpose:** Single synthesis of **active workshop docs**, **production migration state**,
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
-**Last updated:** 2026-05-27  
-**Master HEAD:** D-2a boundary transaction scheduling readiness review (pending merge)  
-**Verification (last recorded):** D-2a docs-only — `cargo check --workspace` + `cargo test --workspace` PASS.
+**Last updated:** 2026-05-27
+**Master HEAD:** E-11B nested hierarchy GPU kickoff (pending merge)
+**Verification (last recorded):** E-11B focused suite PASS; full regression ladder recorded in `docs/tests/e11b_nested_hierarchy_gpu_test_results.md`.
 
 ---
 
@@ -21,7 +21,7 @@ Two parallel tracks:
 **Production direction:** AccumulatorOp v2 is the GPU execution path.
 Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Legacy threshold is deleted (S-6). Legacy velocity is deleted (S-5). Legacy intent is deleted (S-1). Snapshot is the only retained non-Accumulator operation.
 
-**E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed. **E-11B readiness review landed** — nested hierarchy GPU deferred pending product priority ([memo](../reviews/e11b_nested_hierarchy_gpu_readiness_review.md)). `use_accumulator_resource_flow` **default false**. No new WGSL; `simthing-sim` remains arena-ignorant.
+**E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed. **E-11B kickoff slice landed** — nested D=3/D=4 static Resource Flow hierarchy materialization now has GPU parity coverage over existing AccumulatorOp v2 OrderBand primitives. FlatStarResourceFlow remains the accepted bounded production posture. E-11B is an explicit nested extension, not Resource Flow global default-on. `use_accumulator_resource_flow` **default false**. No new WGSL; no new roles; no CPU fallback; `simthing-sim` remains arena-ignorant.
 
 **E-2B status:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).** Dynamic fission enrollment via arena-root sibling append ([memo](../reviews/e2b5_dynamic_fission_enrollment_readiness.md), soak PR #178). `use_accumulator_resource_flow` **default false**.
 
@@ -45,9 +45,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **D-2a readiness:** **Done** — [`d2a_boundary_transaction_scheduling_readiness.md`](../reviews/d2a_boundary_transaction_scheduling_readiness.md). Boundary transaction scheduling readiness review. No production code changes. **Recommendation: defer D-2a implementation** — Phase T same-band collision rejection sufficient for current workloads; `order_band` wiring gap documented. Hard-currency transfer remains exact discrete AccumulatorOp path; Resource Flow separate. No WGSL, new roles, or CPU fallback.
 
-**Next gates:** depends on D-2a review and product priority: narrow **D-2a implementation** (only after named multi-transaction scenario), **E-11B**, continued soak, or **simthing-spec/RON rebuild**. Global default-on remains deferred.
+**Next gates:** depends on product priority: continue **E-11B** toward fission/gap preservation, narrow **D-2a implementation** only after a named multi-transaction hard-currency scenario, continued soak, or **simthing-spec/RON rebuild**. Global default-on remains deferred.
 
-**Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. E-11B deferred by default. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
+**Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. E-11B static nested kickoff slice landed; fission/gap continuation remains product-priority gated. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
 
 **C-8 complete:** EML infrastructure, intensity, transfer, and emission are GPU-resident through AccumulatorOp. TransferConservation remains ExactDeterministic only. Emission tolerance remains future-gated and isolated from transfer/hard thresholds.
 
@@ -119,7 +119,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **T-6** | `3294e6f` | Limited opt-in scenario flagging; global transfer/emission defaults remain false |
 | **Phase T RON smoke addendum** | — | Designer-authored `resource_economy` RON fixture through deserialize/compile/install/open_from_spec |
 | **D-1** | (pending merge) | Discrete-transaction contention memo; D-2 deferred |
-| **E-11B readiness** | (pending merge) | Nested hierarchy GPU audit; implementation deferred by default |
+| **E-11B kickoff** | pending merge | Nested D=3/D=4 static hierarchy materialization + GPU parity; explicit extension, no default-on |
 | **E-2B static enrollment** | (pending merge) | Selector → explicit participants at install |
 | **E-2B-5** | merged (`a740845`) | Policy A dynamic fission enrollment |
 | **E-2B-5R** | merged (PR #177) | Atomicity + visible boundary diagnostics |
@@ -173,7 +173,7 @@ explicitly instead of falling back or silently skipping work.
 | Priority | ID | Owner | Blocks |
 |----------|-----|-------|--------|
 | Design | **D-1** discrete-transaction memo | Opus | **Done** — contention audit; D-2 deferred ([memo](../reviews/d1_discrete_transaction_contention_memo.md)) |
-| Design | **E-11B** nested hierarchy readiness | Opus | **Done** — audit; defer by default ([memo](../reviews/e11b_nested_hierarchy_gpu_readiness_review.md)) |
+| Implementation | **E-11B** nested hierarchy GPU kickoff | Composer 2.5 | **Done** — D=3/D=4 static materialization + GPU parity; continue only by product priority |
 | Design | **E-2B** enrollment compilation readiness | Opus | **Done** — audit ([memo](../reviews/e2b_resource_flow_enrollment_compilation_readiness.md)) |
 | Implementation | **E-2B** static enrollment E-2B-1…4 | Composer 2.5 | **Done** — selector install + session tests |
 | Design | **RF default-on readiness** | Cursor | **Done** — Recommendation B ([memo](../reviews/resource_flow_default_on_readiness_review.md)) |
@@ -200,7 +200,7 @@ explicitly instead of falling back or silently skipping work.
 
 **Next (optional, Sonnet/Composer):** modder guide refresh (D1), RON examples (D2), capability-tree preview docs (D3). **E0 base economy deferred.**
 
-**Ledger:** [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md)  
+**Ledger:** [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md)
 **Parking synthesis:** [`../design_v6.5.md`](../design_v6.5.md)
 
 ---

@@ -6,6 +6,41 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 - E-11B nested hierarchy GPU kickoff
+
+- Added nested hierarchy materialization for already-authored static
+  `ArenaParticipant` layouts under arena roots. D=3 and D=4 trees now build
+  depth-ordered Resource Flow execution plans over existing AccumulatorOp v2
+  OrderBand reduction/allocation primitives.
+- Added [`e11b_nested_hierarchy_gpu.rs`](../crates/simthing-driver/tests/e11b_nested_hierarchy_gpu.rs):
+  D=3/D=4 CPU/GPU parity, depth-ordered band construction, participant identity
+  preservation, gap-only flat-star guard, no slot compaction, replay
+  determinism, flat-star regression, no new WGSL, no new simthing-sim arena
+  imports, and global flag default-false coverage.
+- E-11B nested hierarchy GPU slice landed. Nested D=3/D=4 static Resource Flow
+  hierarchy materialization now has GPU parity coverage.
+- FlatStarResourceFlow remains the accepted bounded production posture. E-11B is
+  an explicit nested extension and does not make Resource Flow global
+  default-on. Global `PipelineFlags::default().use_accumulator_resource_flow`
+  remains false. Presence of `ResourceFlowSpec` alone does not enable GPU
+  execution.
+- Policy B Reevaluate remains deferred. D-2a remains deferred until a named
+  hard-currency product scenario needs sequential cross-band ordering. No WGSL
+  changes. No new AccumulatorRole variants. No CPU production fallback.
+  `simthing-sim` remains arena-ignorant. Resource Flow remains separate from
+  hard-currency transfer. Designer-facing spec/RON guardrail rebuild remains
+  deferred.
+
+**Verification:** E-11B focused suite PASS; full required regression ladder
+recorded in [`e11b_nested_hierarchy_gpu_test_results.md`](tests/e11b_nested_hierarchy_gpu_test_results.md).
+
+**Next gate:** choose by product priority: continue E-11B fission/gap coverage,
+narrow D-2a only for a named hard-currency ordering scenario, full
+simthing-spec/RON/Designer guardrail rebuild, or continued flat-star soak.
+Global default-on remains deferred.
+
+---
+
 ## 2026-05-27 — D-2a: boundary transaction scheduling readiness review
 
 - Added [`docs/reviews/d2a_boundary_transaction_scheduling_readiness.md`](reviews/d2a_boundary_transaction_scheduling_readiness.md): post–Phase T / post–D-1 audit of hard-currency boundary ordering needs.

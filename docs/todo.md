@@ -127,16 +127,18 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **T-5** | `91bdae3` | #169 | **Done** — boundary refresh / replay / 100-tick conservation burn-in |
 | **T-6** | `3294e6f` | direct commit | **Done** — limited opt-in scenario flagging; global transfer/emission flags remain default false |
 | **Phase T RON smoke addendum** | — | — | **Done** — designer-authored `resource_economy` RON fixture exercises deserialize/compile/install/open_from_spec |
+| **E-11B kickoff** | — | — | **Done** — nested D=3/D=4 static Resource Flow hierarchy materialization with GPU parity coverage |
 
 **Next recommended gates (pivot-forward order):**
 
-1. **Narrow D-2a implementation** — only if a named multi-transaction hard-currency scenario requires sequential cross-band ordering (review recommends defer until then)
-2. **E-11B nested hierarchy GPU** — if nested static Resource Flow scenarios become priority (deferred by default)
+1. **Continue E-11B** — only if nested Resource Flow fission/gap preservation becomes product priority
+2. **Narrow D-2a implementation** — only if a named multi-transaction hard-currency scenario requires sequential cross-band ordering (review recommends defer until then)
 3. **Continued RF-T5-style soak** — optional confidence work for larger flat-star scenarios
 4. **Full simthing-spec/RON/Designer guardrail rebuild** — when the authoring track intentionally opens
 5. **Resource Flow global default-on** — remains deferred and rejected for now; do not choose by default
 
 **Open design warnings (preserve):**
+- **E-11B nested hierarchy GPU slice landed:** nested D=3/D=4 static Resource Flow hierarchy materialization now has GPU parity coverage. FlatStarResourceFlow remains the accepted bounded production posture. E-11B is an explicit nested extension and does not make Resource Flow global default-on. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Policy B Reevaluate remains deferred. D-2a remains deferred until a named hard-currency product scenario needs sequential cross-band ordering. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant. Resource Flow remains separate from hard-currency transfer. Designer-facing spec/RON guardrail rebuild remains deferred.
 - **D-2a boundary transaction scheduling readiness review landed:** [`d2a_boundary_transaction_scheduling_readiness.md`](reviews/d2a_boundary_transaction_scheduling_readiness.md). No production code changes. Phase T remains complete. Phase T designer/RON smoke addendum remains landed. Hard-currency transfer remains exact discrete AccumulatorOp transfer/recipe/emission. Resource Flow remains separate from hard-currency transfer. Bounded `FlatStarResourceFlow` posture remains unchanged. Global Resource Flow default-on remains deferred. **Recommendation: defer D-2a implementation** — current same-band collision rejection is sufficient for shipped workloads; `order_band` wiring gap documented. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains spec-free and semantic-free. Designer/RON/spec guardrail rebuild remains deferred.
 - Transfer/emission registration ownership: **Phase T complete.** T-6 landed limited opt-in scenario flagging for resource economy transfer/emission. Global transfer/emission flags remain default false. Only explicitly opted-in scenarios enable AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free. Hard-currency transfers remain on exact discrete AccumulatorOp transfer paths, not Resource Flow.
 - **Phase T designer/RON smoke addendum landed:** a designer-authored `resource_economy` RON fixture now exercises `deserialize_game_mode_ron` → compile/install/`open_from_spec`. Transfer, recipe, and emission authoring remain explicit `ResourceEconomySpec` content. `ResourceEconomyOptInMode` remains default disabled. Global transfer/emission flags remain default false. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains spec-free and semantic-free. Resource Flow bounded `FlatStarResourceFlow` posture remains unchanged. Full simthing-spec/RON/Designer guardrail rebuild remains deferred to its own future track.
@@ -158,7 +160,10 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **E-2B:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).**
 
-**Next (immediate):** depends on D-2a review recommendation and product priority: narrow D-2a implementation (only after named scenario), E-11B, continued soak, or simthing-spec/RON rebuild. Global default-on remains deferred.
+**Next (immediate):** depends on product priority: continue E-11B toward
+fission/gap preservation, narrow D-2a implementation only after a named
+scenario, continued soak, or simthing-spec/RON rebuild. Global default-on
+remains deferred.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

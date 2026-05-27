@@ -311,6 +311,73 @@ pub fn build_flat_star_layout(
     })
 }
 
+/// Build a nested participant hierarchy from already-materialized ArenaParticipant
+/// SimThing topology. SlotRange reductions require each parent's direct
+/// ArenaParticipant children to occupy a contiguous slot group.
+pub fn build_nested_layout(
+    arena_idx: ArenaIdx,
+    arena: &GpuArenaDescriptor,
+    cols: NodeColumnRefs,
+    root: &SimThing,
+    allocator: &SlotAllocator,
+    scaffold: &ArenaParticipantScaffold,
+    index: &HashMap<(SimThingId, ArenaIdx), SlotId>,
+) -> Result<ArenaTreeLayout, HierarchyError> {
+    let arena_root_id = *scaffold
+        .arena_root_ids
+        .get(&arena_idx)
+        .ok_or_else(|| HierarchyError::EmptyParticipants {
+            arena: arena.name.clone(),
+        })?;
+    let arena_root_slot = allocator
+        .slot_of(arena_root_id)
+        .expect("arena root allocated");
+    let arena_root =
+        find_child(root, arena_root_id).ok_or_else(|| HierarchyError::EmptyParticipants {
+            arena: arena.name.clone(),
+        })?;
+
+    let participant_roots: Vec<HierarchyNode> = arena_root
+        .children
+        .iter()
+        .filter(|child| child.kind == simthing_core::SimThingKind::ArenaParticipant)
+        .map(|child| build_nested_node(child, arena_idx, cols, allocator, index, 0))
+        .collect::<Result<Vec<_>, _>>()?;
+    if participant_roots.is_empty() {
+        return Err(HierarchyError::EmptyParticipants {
+            arena: arena.name.clone(),
+        });
+    }
+
+    let max_depth = max_node_depth(&participant_roots).saturating_add(1);
+    let bands = ArenaBandLayout::for_depth(max_depth);
+    if bands.total_bands_used > arena.max_orderband_depth {
+        return Err(HierarchyError::OrderBandDepthExceeded {
+            arena: arena.name.clone(),
+            needed: bands.total_bands_used,
+            max: arena.max_orderband_depth,
+        });
+    }
+    for root in &participant_roots {
+        root.verify_child_contiguity()?;
+    }
+
+    let interior_count = participant_roots.iter().map(count_interiors).sum::<u32>();
+
+    Ok(ArenaTreeLayout {
+        arena_idx,
+        arena_root_simthing: arena_root_id,
+        arena_root_slot,
+        participant_roots,
+        max_depth,
+        max_children_per_intermediate: arena.max_participants,
+        interior_count,
+        band_layout: bands,
+        reserved_gap_per_intermediate: 0,
+        flow_property_id: arena.flow_property_id,
+    })
+}
+
 /// Build an arbitrary hierarchy tree for multi-level tests (slots must be pre-validated).
 pub fn build_custom_layout(
     arena_idx: ArenaIdx,
@@ -374,15 +441,15 @@ pub fn build_execution_plan(
         let arena_idx = arena_idx as ArenaIdx;
         let layout = registry.property(arena_desc.flow_property_id).layout.clone();
         let cols = resolve_node_columns(&layout, &arena_desc.name)?;
-        let tree = build_flat_star_layout(
-            arena_idx,
-            arena_desc,
-            cols,
-            root,
-            allocator,
-            scaffold,
-            &index,
-        )?;
+        let tree = if has_nested_participants(root, scaffold, arena_idx) {
+            build_nested_layout(
+                arena_idx, arena_desc, cols, root, allocator, scaffold, &index,
+            )?
+        } else {
+            build_flat_star_layout(
+                arena_idx, arena_desc, cols, root, allocator, scaffold, &index,
+            )?
+        };
         arenas.push(tree);
     }
 
@@ -391,6 +458,89 @@ pub fn build_execution_plan(
         arena_participant_index: index,
         generation,
     })
+}
+
+fn build_nested_node(
+    node: &SimThing,
+    arena_idx: ArenaIdx,
+    cols: NodeColumnRefs,
+    allocator: &SlotAllocator,
+    index: &HashMap<(SimThingId, ArenaIdx), SlotId>,
+    depth: u32,
+) -> Result<HierarchyNode, HierarchyError> {
+    let participant_slot = allocator
+        .slot_of(node.id)
+        .ok_or(HierarchyError::NonContiguousChildren { parent_slot: 0 })?;
+    let children = node
+        .children
+        .iter()
+        .filter(|child| child.kind == simthing_core::SimThingKind::ArenaParticipant)
+        .map(|child| build_nested_node(child, arena_idx, cols, allocator, index, depth + 1))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(HierarchyNode {
+        participant_slot,
+        hosted_simthing_id: hosted_for_slot(index, arena_idx, participant_slot),
+        depth,
+        children,
+        cols,
+        gap_used: 0,
+    })
+}
+
+fn max_node_depth(roots: &[HierarchyNode]) -> u32 {
+    roots
+        .iter()
+        .map(|root| {
+            let mut nodes = Vec::new();
+            root.walk_subtree(&mut nodes);
+            nodes.iter().map(|node| node.depth).max().unwrap_or(0)
+        })
+        .max()
+        .unwrap_or(0)
+}
+
+fn count_interiors(root: &HierarchyNode) -> u32 {
+    let mut nodes = Vec::new();
+    root.walk_subtree(&mut nodes);
+    nodes.iter().filter(|node| node.is_interior()).count() as u32
+}
+
+fn has_nested_participants(
+    root: &SimThing,
+    scaffold: &ArenaParticipantScaffold,
+    arena_idx: ArenaIdx,
+) -> bool {
+    let Some(arena_root_id) = scaffold.arena_root_ids.get(&arena_idx).copied() else {
+        return false;
+    };
+    find_child(root, arena_root_id)
+        .map(|arena_root| {
+            arena_root.children.iter().any(|child| {
+                child.kind == simthing_core::SimThingKind::ArenaParticipant
+                    && contains_participant_child(child)
+            })
+        })
+        .unwrap_or(false)
+}
+
+fn contains_participant_child(node: &SimThing) -> bool {
+    node.children.iter().any(|child| {
+        child.kind == simthing_core::SimThingKind::ArenaParticipant
+            || contains_participant_child(child)
+    })
+}
+
+fn find_child<'a>(root: &'a SimThing, id: SimThingId) -> Option<&'a SimThing> {
+    if root.id == id {
+        return Some(root);
+    }
+    for child in &root.children {
+        if let Some(found) = find_child(child, id) {
+            return Some(found);
+        }
+    }
+    None
 }
 
 fn hosted_for_slot(
