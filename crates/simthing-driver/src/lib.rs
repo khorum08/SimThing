@@ -15,6 +15,8 @@ pub mod resource_flow_burn_in;
 pub mod resource_flow_compile;
 pub mod resource_flow_enrollment;
 pub mod resource_flow_opt_in_burn_in;
+pub mod resource_flow_opt_in_product_soak;
+pub mod resource_flow_opt_in_telemetry;
 pub mod resource_flow_dynamic_enrollment_soak;
 pub mod resource_flow_fission_enrollment;
 pub mod resource_flow_preflight;
@@ -92,6 +94,21 @@ pub use resource_flow_opt_in_burn_in::{
     RF_T2_DISABLED_POPULATED, RF_T2_DYNAMIC_MULTI_FISSION, RF_T2_DYNAMIC_SINGLE_FISSION,
     RF_T2_STATIC_FLAT_STAR_10, RF_T2_STATIC_FLAT_STAR_64, RF_T2_STATIC_FLAT_STAR_SKEWED,
     RF_T2_TWO_ARENA_NO_COUPLING, RF_T2_WILDCARD_REJECTED,
+};
+pub use resource_flow_opt_in_product_soak::{
+    assert_telemetry_contract, fixture_product_disabled_spec_diagnostics,
+    fixture_product_dynamic_fission_cadence, fixture_product_multi_arena_no_coupling,
+    fixture_product_multi_session_replay, fixture_product_rejection_telemetry,
+    fixture_product_repeated_resync, fixture_product_static_128_participants,
+    fixture_product_static_256_participants, open_product_session, run_multi_session_replay,
+    run_product_soak_with_telemetry, telemetry_for_open_session, RF_T3_PRODUCT_DISABLED,
+    RF_T3_PRODUCT_DYNAMIC_FISSION, RF_T3_PRODUCT_MULTI_ARENA, RF_T3_PRODUCT_MULTI_SESSION,
+    RF_T3_PRODUCT_REJECTION, RF_T3_PRODUCT_RESYNC, RF_T3_PRODUCT_STATIC_128,
+    RF_T3_PRODUCT_STATIC_256,
+};
+pub use resource_flow_opt_in_telemetry::{
+    collect_resource_flow_opt_in_telemetry, flag_source_from_opt_in_mode,
+    ResourceFlowFlagSource, ResourceFlowOptInTelemetryReport,
 };
 pub use resource_flow_dynamic_enrollment_soak::{
     initial_dynamic_enrollment_sync, run_dynamic_enrollment_gpu_burn_in,
