@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** RF-T1 Resource Flow opt-in flagging (pending merge)  
+**Master HEAD:** RF-T1 Resource Flow opt-in flagging (merged PR #180, `388353a`)  
 **Verification (last recorded):** RF-T1 gate — `cargo test --workspace` PASS ([report](../tests/resource_flow_opt_in_flagging_test_results.md))
 
 ---
