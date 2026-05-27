@@ -6,13 +6,28 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — Paused-state docs hygiene after E-11B RON smoke
+
+- Paused-state docs hygiene checkpoint landed after E-11B static nested participant RON smoke. No runtime behavior changes. Implementation remains paused pending finalized mapping/product direction.
+- Verified active docs record **E-11B-1 explicit nested participant materialization** and **E-11B static nested participant RON smoke** as landed.
+- Deleted inspected local test artifact `docs/tests/e11b_nested_materialization_ron_smoke_test_results.md`.
+- Cleaned stale **pending merge** language in workshop PR routing table.
+
+**E-11B-1 (landed):** `ExplicitParticipantSpec.parent_subtree_root_id` enables static nested Resource Flow participant authoring. `materialize_arena_participants` builds nested `ArenaParticipant` topology and preserves per-parent child contiguity. Narrow static materialization fix only — no mapping runtime, dynamic nested enrollment, WGSL, new roles, CPU fallback, Policy B, or slot compaction.
+
+**E-11B RON smoke (landed):** `parent_subtree_root_id` remains an optional static authoring field. RON-authored D=3/D=4 explicit nested participant specs materialize into nested `ArenaParticipant` topology and reach `build_nested_layout`. Flat-star Resource Flow authoring remains backwards-compatible when `parent_subtree_root_id` is omitted. Pending mapping/location work may use static deep hierarchy materialization later, but no mapping runtime behavior was implemented.
+
+**Next gate:** park until mapping direction is finalized enough to define the next narrow substrate slice, or product names a concrete non-mapping scenario.
+
+---
+
 ## 2026-05-27 — E-11B static nested participant RON smoke
 
 - Added [`resource_flow_nested_participant_roundtrip.rs`](../crates/simthing-spec/tests/resource_flow_nested_participant_roundtrip.rs) and [`e11b_nested_materialization_ron_session.rs`](../crates/simthing-driver/tests/e11b_nested_materialization_ron_session.rs).
 - E-11B static nested participant RON smoke landed. `parent_subtree_root_id` remains an optional static authoring field for explicit Resource Flow participants. RON-authored D=3/D=4 explicit nested participant specs materialize into nested `ArenaParticipant` topology and reach `build_nested_layout`. Flat-star Resource Flow authoring remains backwards-compatible when `parent_subtree_root_id` is omitted. Pending mapping/location work may use static deep hierarchy materialization later, but no mapping runtime behavior was implemented. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. E-11B-5 dynamic nested enrollment remains deferred until a named scenario requires it. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. No WGSL changes. No new AccumulatorRole variants. No CPU fallback. No slot compaction. No Policy B Reevaluate. `simthing-sim` remains arena-ignorant and spec-free.
 - Deleted inspected E-11B-1 local test report artifact.
 
-**Verification:** [`e11b_nested_materialization_ron_smoke_test_results.md`](tests/e11b_nested_materialization_ron_smoke_test_results.md)
+**Verification:** docs-only; `cargo check --workspace` / `cargo test --workspace` PASS. Local test report deleted after inspection in follow-up hygiene PR.
 
 **Next gate:** unchanged — park until a finalized mapping sub-slice or named non-mapping product scenario.
 
