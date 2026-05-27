@@ -130,13 +130,14 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Next recommended gates (pivot-forward order):**
 
-1. **E-11B nested hierarchy GPU** — if nested static Resource Flow scenarios become priority (deferred by default)
-2. **D-2a boundary transaction scheduling** — if hard-currency ordering is urgent
+1. **Narrow D-2a implementation** — only if a named multi-transaction hard-currency scenario requires sequential cross-band ordering (review recommends defer until then)
+2. **E-11B nested hierarchy GPU** — if nested static Resource Flow scenarios become priority (deferred by default)
 3. **Continued RF-T5-style soak** — optional confidence work for larger flat-star scenarios
 4. **Full simthing-spec/RON/Designer guardrail rebuild** — when the authoring track intentionally opens
 5. **Resource Flow global default-on** — remains deferred and rejected for now; do not choose by default
 
 **Open design warnings (preserve):**
+- **D-2a boundary transaction scheduling readiness review landed:** [`d2a_boundary_transaction_scheduling_readiness.md`](reviews/d2a_boundary_transaction_scheduling_readiness.md). No production code changes. Phase T remains complete. Phase T designer/RON smoke addendum remains landed. Hard-currency transfer remains exact discrete AccumulatorOp transfer/recipe/emission. Resource Flow remains separate from hard-currency transfer. Bounded `FlatStarResourceFlow` posture remains unchanged. Global Resource Flow default-on remains deferred. **Recommendation: defer D-2a implementation** — current same-band collision rejection is sufficient for shipped workloads; `order_band` wiring gap documented. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains spec-free and semantic-free. Designer/RON/spec guardrail rebuild remains deferred.
 - Transfer/emission registration ownership: **Phase T complete.** T-6 landed limited opt-in scenario flagging for resource economy transfer/emission. Global transfer/emission flags remain default false. Only explicitly opted-in scenarios enable AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free. Hard-currency transfers remain on exact discrete AccumulatorOp transfer paths, not Resource Flow.
 - **Phase T designer/RON smoke addendum landed:** a designer-authored `resource_economy` RON fixture now exercises `deserialize_game_mode_ron` → compile/install/`open_from_spec`. Transfer, recipe, and emission authoring remain explicit `ResourceEconomySpec` content. `ResourceEconomyOptInMode` remains default disabled. Global transfer/emission flags remain default false. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains spec-free and semantic-free. Resource Flow bounded `FlatStarResourceFlow` posture remains unchanged. Full simthing-spec/RON/Designer guardrail rebuild remains deferred to its own future track.
 - **RF-T6 landed:** production docs / telemetry polish for bounded `FlatStarResourceFlow` posture. [`resource_flow_limited_scenario_class_posture.md`](resource_flow_limited_scenario_class_posture.md) documents accepted scenario classes, blocked paths, telemetry fields, flag-source interpretation, and operator/debug checklist. Limited scenario-class `FlatStarResourceFlow` remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Spec `FlatStarOptIn` remains supported and takes precedence. E-11 flat-star, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment remain the only covered execution paths. E-11B remains deferred. Policy B Reevaluate remains deferred. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant. Designer-facing spec/RON guardrail rebuild remains deferred to the future simthing-spec rebuild track.
@@ -157,7 +158,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **E-2B:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).**
 
-**Next (immediate):** choose by product priority: E-11B, D-2a, continued RF-T5-style flat-star soak, or full simthing-spec/RON/Designer guardrail rebuild. Global default-on remains deferred and is not the default next gate.
+**Next (immediate):** depends on D-2a review recommendation and product priority: narrow D-2a implementation (only after named scenario), E-11B, continued soak, or simthing-spec/RON rebuild. Global default-on remains deferred.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp

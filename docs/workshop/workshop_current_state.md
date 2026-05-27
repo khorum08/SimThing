@@ -3,9 +3,9 @@
 **Purpose:** Single synthesis of **active workshop docs**, **production migration state**,
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
-**Last updated:** 2026-05-27
-**Master HEAD:** Phase T designer/RON smoke addendum
-**Verification (last recorded):** Phase T designer/RON smoke addendum — targeted RON/spec/session suites; `cargo check --workspace` + `cargo test --workspace` PASS.
+**Last updated:** 2026-05-27  
+**Master HEAD:** D-2a boundary transaction scheduling readiness review (pending merge)  
+**Verification (last recorded):** D-2a docs-only — `cargo check --workspace` + `cargo test --workspace` PASS.
 
 ---
 
@@ -43,7 +43,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **Phase T designer/RON smoke addendum:** **Done** — a designer-authored `resource_economy` RON fixture now exercises `deserialize_game_mode_ron` -> compile/install/`open_from_spec`. Transfer, recipe, and emission authoring remain explicit `ResourceEconomySpec` content. `ResourceEconomyOptInMode` remains default disabled. Global transfer/emission flags remain default false. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains spec-free and semantic-free. Resource Flow bounded `FlatStarResourceFlow` posture remains unchanged. Full simthing-spec/RON/Designer guardrail rebuild remains deferred to its own future track.
 
-**Next gates:** choose by product priority: **E-11B**, **D-2a**, continued RF-T5-style flat-star soak, or full simthing-spec/RON/Designer guardrail rebuild. Global default-on remains deferred and is not the default next gate.
+**D-2a readiness:** **Done** — [`d2a_boundary_transaction_scheduling_readiness.md`](../reviews/d2a_boundary_transaction_scheduling_readiness.md). Boundary transaction scheduling readiness review. No production code changes. **Recommendation: defer D-2a implementation** — Phase T same-band collision rejection sufficient for current workloads; `order_band` wiring gap documented. Hard-currency transfer remains exact discrete AccumulatorOp path; Resource Flow separate. No WGSL, new roles, or CPU fallback.
+
+**Next gates:** depends on D-2a review and product priority: narrow **D-2a implementation** (only after named multi-transaction scenario), **E-11B**, continued soak, or **simthing-spec/RON rebuild**. Global default-on remains deferred.
 
 **Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. E-11B deferred by default. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
 
