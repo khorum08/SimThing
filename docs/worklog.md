@@ -6,13 +6,25 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — Resource Flow default-on readiness review
+
+- Added [`docs/reviews/resource_flow_default_on_readiness_review.md`](reviews/resource_flow_default_on_readiness_review.md): audits default-on candidates (global vs scenario-class vs spec opt-in); burn-in evidence from E-2B, E-11, E-2B-5/5R, soak; explicit exclusions (E-11B, Policy B, gap-only, wildcards, product scale).
+- **Recommendation B:** limited scenario-class default-on readiness may proceed (T-6 analogue); **global default-on rejected (D)**.
+- Resource Flow default-on readiness review landed. No production code changes. E-2B static enrollment, E-2B-5 Policy A, E-2B-5R atomicity, and dynamic enrollment soak remain landed. `use_accumulator_resource_flow` remains default false. E-11B remains deferred by default. Policy B Reevaluate remains deferred. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant.
+
+**Verification:** `cargo check --workspace`; `cargo test --workspace` — PASS (docs-only gate).
+
+**Next gate:** Resource Flow limited scenario-class opt-in flagging (RF-T1); or continued explicit opt-in burn-in, E-11B, D-2a.
+
+---
+
 ## 2026-05-19 — E-2B-5 soak: Resource Flow dynamic enrollment opt-in burn-in
 
 - **`resource_flow_dynamic_enrollment_soak.rs`** — `DynamicEnrollmentSoakReport`, GPU burn-in runner, resync cycle helper (driver/test-reporting only).
 - **`e2b5_dynamic_enrollment_soak.rs`** — 12 soak tests covering single/multi fission, two-arena inherit, cap-full rejection atomicity, contiguity-blocked rejection, flag-off registry-only path, replay determinism, repeated resync stability, 1000-tick GPU parity.
 - Resource Flow dynamic enrollment soak landed. E-2B-5R dynamic fission enrollment remained atomic under soak. Policy A inherit-only remains the implemented v1. Policy B Reevaluate remains deferred. Gap-only enrollment remains reserved for future E-11B nested hierarchy semantics. E-11B remains deferred by default. `use_accumulator_resource_flow` remains default false. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant.
 
-**Verification:** targeted driver/gpu tests + `cargo check --workspace` + `cargo test --workspace` — PASS ([test report](tests/e2b5_dynamic_enrollment_soak_test_results.md)).
+**Verification:** targeted driver/gpu tests + `cargo check --workspace` + `cargo test --workspace` — PASS (PR #178).
 
 **Next gate:** Resource Flow default-on readiness review (recommended; not default-on implementation).
 
