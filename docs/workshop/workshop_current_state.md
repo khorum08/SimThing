@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** `44537cf` — E-11B static nested participant RON smoke (merged PR #195)  
-**Verification (last recorded):** `cargo test --workspace` PASS
+**Master HEAD:** paused-state docs hygiene after E-11B RON smoke (pending merge)  
+**Verification (last recorded):** docs-only — `cargo check --workspace` / `cargo test --workspace` PASS
 
 ---
 
@@ -134,9 +134,11 @@ Global default-on remains deferred and rejected.
 | **T-5** | #169 | Boundary refresh / replay / 100-tick conservation burn-in 13/13 |
 | **T-6** | `3294e6f` | Limited opt-in scenario flagging; global transfer/emission defaults remain false |
 | **Phase T RON smoke addendum** | — | Designer-authored `resource_economy` RON fixture through deserialize/compile/install/open_from_spec |
-| **D-1** | (pending merge) | Discrete-transaction contention memo; D-2 deferred |
-| **E-11B kickoff** | pending merge | Nested D=3/D=4 static hierarchy materialization + GPU parity; explicit extension, no default-on |
-| **E-2B static enrollment** | (pending merge) | Selector → explicit participants at install |
+| **D-1** | — | Discrete-transaction contention memo; D-2 deferred |
+| **E-11B kickoff** | — | Nested D=3/D=4 static hierarchy materialization + GPU parity; explicit extension, no default-on |
+| **E-11B-1** | #194 | Explicit nested participant materialization via `parent_subtree_root_id` |
+| **E-11B RON smoke** | #195 | Static nested participant RON/serde + session materialization smoke |
+| **E-2B static enrollment** | — | Selector → explicit participants at install |
 | **E-2B-5** | merged (`a740845`) | Policy A dynamic fission enrollment |
 | **E-2B-5R** | merged (PR #177) | Atomicity + visible boundary diagnostics |
 | **E-2B-5 soak** | merged (PR #178) | Dynamic enrollment opt-in burn-in |

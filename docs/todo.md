@@ -174,11 +174,11 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **E-2B:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).**
 
-**E-11B-1:** **Done** — explicit nested participant materialization (`parent_subtree_root_id`, nested `materialize_arena_participants`, depth-first contiguity). Narrow static fix for future deep arena / provisional mapping hierarchy authoring. No mapping runtime, no dynamic nested enrollment, no WGSL. E-11B-5 remains paused.
+**E-11B-1:** **Done** — explicit nested participant materialization landed. `ExplicitParticipantSpec.parent_subtree_root_id` enables static nested Resource Flow participant authoring. `materialize_arena_participants` builds nested `ArenaParticipant` topology and preserves per-parent child contiguity. Narrow static materialization fix for provisional deep-arena / mapping hierarchy authoring only — no mapping runtime, dynamic nested enrollment, WGSL, new roles, CPU fallback, Policy B, or slot compaction. E-11B-5 remains paused.
 
-**E-11B RON smoke:** **Done** — `parent_subtree_root_id` RON/serde roundtrip + RON-authored D=3/D=4 materialization reaches `build_nested_layout`; flat-star authoring unchanged when field omitted.
+**E-11B RON smoke:** **Done** — static nested participant RON smoke landed. `parent_subtree_root_id` remains an optional static authoring field. RON-authored D=3/D=4 explicit nested participant specs materialize into nested `ArenaParticipant` topology and reach `build_nested_layout`. Flat-star Resource Flow authoring remains backwards-compatible when `parent_subtree_root_id` is omitted. Pending mapping/location work may use static deep hierarchy materialization later, but no mapping runtime behavior was implemented.
 
-**Next (immediate):** **Pause implementation (F)** — gather product requirements per [`product_priority_vertical_slice_selection.md`](reviews/product_priority_vertical_slice_selection.md). Re-select track A–E only after product names a scenario. Global default-on remains deferred. **Mapping/location direction remains provisional** — must not trigger templates, simthing-spec/RON/Designer rebuild, or runtime mapping work until product finalizes direction.
+**Next (immediate):** **Pause implementation (F)** — park until mapping direction is finalized enough to define the next narrow substrate slice, or product names a concrete non-mapping scenario per [`product_priority_vertical_slice_selection.md`](reviews/product_priority_vertical_slice_selection.md). Global default-on remains deferred. **Mapping/location direction remains provisional** — must not trigger templates, simthing-spec/RON/Designer rebuild, or runtime mapping work until product finalizes direction.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
 reintroduce runtime legacy oracle/fallback peers; tests use CPU/golden or AccumulatorOp
