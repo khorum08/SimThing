@@ -75,6 +75,7 @@ fn game_mode_round_trips_with_metadata() {
         events: vec![],
         resource_flow: None,
         resource_economy: None,
+        resource_flow_execution_profile: Default::default(),
     };
 
     let json = serde_json::to_string(&spec).unwrap();

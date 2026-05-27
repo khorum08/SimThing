@@ -27,4 +27,10 @@ pub struct GameModeSpec {
     /// Production transfer / recipe / emission / threshold-emit registrations (Phase T).
     #[serde(default)]
     pub resource_economy: Option<super::resource_economy::ResourceEconomySpec>,
+    /// RF-T4: scenario-class flat-star Resource Flow execution profile at session open.
+    ///
+    /// Precedence: explicit spec `FlatStarOptIn` wins over profile enablement. Profile does
+    /// not enable GPU from `ResourceFlowSpec` presence alone — arenas must be authored.
+    #[serde(default)]
+    pub resource_flow_execution_profile: super::resource_flow::ResourceFlowExecutionProfile,
 }

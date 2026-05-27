@@ -119,6 +119,7 @@ pub fn flat_star_game_mode(max_orderband_depth: u32) -> GameModeSpec {
             ..Default::default()
         }),
         resource_economy: None,
+        resource_flow_execution_profile: Default::default(),
     }
 }
 

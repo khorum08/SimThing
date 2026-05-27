@@ -1,8 +1,8 @@
 //! RF-T1 — Resource Flow execution opt-in RON roundtrip.
 
 use simthing_spec::{
-    ArenaSpec, FissionPolicySpec, PropertyKey, ResourceFlowOptInMode, ResourceFlowSpec,
-    deserialize_game_mode_ron, GameModeSpec,
+    ArenaSpec, FissionPolicySpec, PropertyKey, ResourceFlowExecutionProfile,
+    ResourceFlowOptInMode, ResourceFlowSpec, deserialize_game_mode_ron, GameModeSpec,
 };
 
 fn sample_arena() -> ArenaSpec {
@@ -42,6 +42,7 @@ fn resource_flow_opt_in_mode_roundtrips_ron() {
             couplings: vec![],
         }),
         resource_economy: None,
+        ..Default::default()
     };
 
     let ron = ron::ser::to_string(&spec).expect("serialize game mode");
@@ -72,4 +73,34 @@ fn resource_flow_opt_in_default_disabled() {
     )"#;
     let spec_missing: ResourceFlowSpec = ron::from_str(text_missing).expect("parse without opt_in");
     assert_eq!(spec_missing.opt_in_mode, ResourceFlowOptInMode::Disabled);
+}
+
+#[test]
+fn resource_flow_execution_profile_roundtrips_ron() {
+    let spec = GameModeSpec {
+        id: "rf_t4_roundtrip".into(),
+        display_name: String::new(),
+        description: String::new(),
+        spec_version: Default::default(),
+        metadata: Default::default(),
+        domain_packs: vec![],
+        properties: vec![],
+        overlays: vec![],
+        capability_trees: vec![],
+        events: vec![],
+        resource_flow: Some(ResourceFlowSpec {
+            opt_in_mode: ResourceFlowOptInMode::Disabled,
+            arenas: vec![sample_arena()],
+            couplings: vec![],
+        }),
+        resource_economy: None,
+        resource_flow_execution_profile: ResourceFlowExecutionProfile::FlatStarResourceFlow,
+    };
+
+    let ron = ron::ser::to_string(&spec).expect("serialize game mode");
+    let parsed = deserialize_game_mode_ron(&ron).expect("parse game mode");
+    assert_eq!(
+        parsed.resource_flow_execution_profile,
+        ResourceFlowExecutionProfile::FlatStarResourceFlow
+    );
 }

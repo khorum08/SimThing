@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — RF-T4: limited scenario-class Resource Flow default-on
+
+- **`ResourceFlowExecutionProfile`** on `GameModeSpec` (`DefaultDisabled`, `FlatStarResourceFlow`); session open applies profile when spec `opt_in_mode` is `Disabled`.
+- **`ResourceFlowFlagSource::ScenarioClassDefaultOn`** + `execution_profile_name` in telemetry; spec `FlatStarOptIn` precedence preserved.
+- **Tests:** [`resource_flow_scenario_class_default_on.rs`](../crates/simthing-driver/tests/resource_flow_scenario_class_default_on.rs) (16 tests).
+- RF-T4 landed: limited scenario-class Resource Flow default-on implementation. Named scenario classes / execution profiles can enable the flat-star Resource Flow GPU path at session open. Global flag remains default false. E-11B and Policy B remain deferred. No WGSL. No CPU fallback. `simthing-sim` remains arena-ignorant. Designer-facing spec/RON guardrail rebuild deferred.
+
+**Verification:** targeted RF-T4 + regression suites + `cargo test --workspace` — PASS ([test report](tests/resource_flow_scenario_class_default_on_test_results.md)).
+
+**Next gate:** RF-T5 scenario-class burn-in / telemetry soak; global default-on remains deferred.
+
+---
+
 ## 2026-05-19 — Resource Flow global/default-on readiness re-review (post–RF-T3)
 
 - **`resource_flow_global_default_on_rereview.md`** — docs-only re-review after RF-T1/T2/T3; answers 10 review questions; cites RF-T3 evidence.

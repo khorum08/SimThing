@@ -30,7 +30,8 @@ pub use resource_economy::{
 };
 pub use resource_flow::{
     ArenaSpec, CouplingDelaySpec, CouplingSpec, EnrollmentSelectorSpec, ExplicitParticipantSpec,
-    FissionPolicySpec, ResourceFlowOptInMode, ResourceFlowSpec, WildcardAdmissionSpec,
+    FissionPolicySpec, ResourceFlowExecutionProfile, ResourceFlowOptInMode, ResourceFlowSpec,
+    WildcardAdmissionSpec,
 };
 pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,

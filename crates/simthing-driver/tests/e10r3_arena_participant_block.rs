@@ -242,6 +242,7 @@ fn e10r3_resource_flow_materialization_respects_scenario_slot_capacity() {
         ..Default::default()
         }),
         resource_economy: None,
+        resource_flow_execution_profile: Default::default(),
     };
 
     // world + 3 hosted + arena_root + 3 participants + 6 gap slots = 14

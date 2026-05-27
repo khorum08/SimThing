@@ -1279,7 +1279,9 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **Resource Flow global/default-on re-review status:** **Done** — [`resource_flow_global_default_on_rereview.md`](reviews/resource_flow_global_default_on_rereview.md). No production code changes. **Recommendation B:** proceed to RF-T4 limited scenario-class default-on; global default-on rejected (D). RF-T1/T2/T3 evidence cited. Global flag remains default false.
 
-**Next gate:** RF-T4 limited scenario-class default-on implementation; or E-11B, D-2a per product priority.
+**RF-T4 status:** **Done** — limited scenario-class Resource Flow default-on. `ResourceFlowExecutionProfile` on `GameModeSpec`; `FlatStarResourceFlow` profile enables flat-star GPU path at session open with `ScenarioClassDefaultOn` flag source. Spec `FlatStarOptIn` precedence preserved. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. E-11 flat-star, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment remain the only covered execution paths. E-11B remains deferred. Policy B Reevaluate remains deferred. No WGSL. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant. Designer-facing spec/RON guardrail rebuild deferred.
+
+**Next gate:** RF-T5 scenario-class burn-in / telemetry soak; global default-on remains deferred; or E-11B, D-2a per product priority.
 
 **E-2B readiness status:** **Done** — [`docs/reviews/e2b_resource_flow_enrollment_compilation_readiness.md`](reviews/e2b_resource_flow_enrollment_compilation_readiness.md).
 
@@ -1304,7 +1306,8 @@ default false and are enabled only by scenario/session opt-in.
 | **RF-T2** | Codex 5.5 | Opt-in scenario burn-in expansion (`resource_flow_opt_in_burn_in` fixtures via `open_from_spec`) | **Done** — `resource_flow_opt_in_burn_in` suite (15 tests) |
 | **RF-T3** | Codex 5.5 | Product-like opt-in soak + telemetry (`ResourceFlowOptInTelemetryReport`, flag-source attribution, product fixtures) | **Done** — `resource_flow_opt_in_telemetry` (6) + `resource_flow_opt_in_product_soak` (13) |
 | **RF re-review** | Codex 5.5 | Global/default-on readiness re-review post–RF-T3 | **Done** — [`resource_flow_global_default_on_rereview.md`](reviews/resource_flow_global_default_on_rereview.md); recommendation B |
-| **RF-T4** | — | Limited scenario-class default-on (not global; not spec-presence inference) | **Next** — authorized by re-review |
+| **RF-T4** | Codex 5.5 | Limited scenario-class default-on (`ResourceFlowExecutionProfile`, scenario-class flag source) | **Done** — `resource_flow_scenario_class_default_on` suite (16 tests) |
+| **RF-T5** | — | Scenario-class burn-in / telemetry soak | **Next** |
 
 **Stop conditions (re-asserted; all unchanged from the v2 ADR):** no new WGSL,
 no new `AccumulatorOp` primitive, no `simthing-sim` semantic ownership of
