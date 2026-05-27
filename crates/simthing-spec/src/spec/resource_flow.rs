@@ -105,6 +105,30 @@ pub struct ExplicitParticipantSpec {
     pub slot: u32,
     /// Session-local SimThing identity (raw id assigned at install).
     pub subtree_root_id: u32,
+    /// When set, this participant is a child of the explicit participant whose
+    /// `subtree_root_id` equals this value within the same arena list.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_subtree_root_id: Option<u64>,
+}
+
+impl ExplicitParticipantSpec {
+    /// Flat-star participant (direct child of the arena root).
+    pub fn flat(slot: u32, subtree_root_id: u32) -> Self {
+        Self {
+            slot,
+            subtree_root_id,
+            parent_subtree_root_id: None,
+        }
+    }
+
+    /// Nested participant child of another explicit participant in the same arena.
+    pub fn nested(slot: u32, subtree_root_id: u32, parent_subtree_root_id: u64) -> Self {
+        Self {
+            slot,
+            subtree_root_id,
+            parent_subtree_root_id: Some(parent_subtree_root_id),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

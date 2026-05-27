@@ -1,10 +1,10 @@
 //! E-10R2 — ArenaParticipant scaffold tests.
 
+use simthing_core::ClampBehavior;
 use simthing_core::{
     AccumulatorRole, AccumulatorSpec, DimensionRegistry, LogTier, SimThing, SimThingKind,
     SimThingKindTag, SubFieldRole, SubFieldSpec,
 };
-use simthing_core::ClampBehavior;
 use simthing_driver::{
     arena_participant_sibling_slots, materialize_arena_participants, slots_are_contiguous,
     try_alloc_participant_child_in_gap, validate_resource_flow_preflight, ArenaParticipantScaffold,
@@ -43,11 +43,7 @@ fn register_food_flow(reg: &mut DimensionRegistry) {
     compile_property(&spec, reg).unwrap();
 }
 
-fn food_arena(
-    participants: Vec<(u32, u32)>,
-    gap: u32,
-    expected_children: u32,
-) -> ArenaSpec {
+fn food_arena(participants: Vec<(u32, u32)>, gap: u32, expected_children: u32) -> ArenaSpec {
     ArenaSpec {
         name: "food".into(),
         flow_property: PropertyKey::new("core", "food_flow"),
@@ -61,10 +57,7 @@ fn food_arena(
         expected_max_children_per_intermediate: expected_children,
         explicit_participants: participants
             .into_iter()
-            .map(|(slot, subtree_root_id)| ExplicitParticipantSpec {
-                slot,
-                subtree_root_id,
-            })
+            .map(|(slot, subtree_root_id)| ExplicitParticipantSpec::flat(slot, subtree_root_id))
             .collect(),
         enrollment: None,
         wildcard_admission: None,
@@ -87,18 +80,14 @@ fn materialize_fixture(
     build_hosted(&mut root);
     alloc.populate_from_tree(&root);
 
-    let spec_participants: Vec<ExplicitParticipantSpec> = arena
-        .explicit_participants
-        .iter()
-        .cloned()
-        .collect();
+    let spec_participants: Vec<ExplicitParticipantSpec> =
+        arena.explicit_participants.iter().cloned().collect();
 
     let spec_participants = if spec_participants.is_empty() {
         root.children
             .iter()
-            .map(|hosted| ExplicitParticipantSpec {
-                slot: alloc.slot_of(hosted.id).unwrap(),
-                subtree_root_id: hosted.id.raw(),
+            .map(|hosted| {
+                ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw())
             })
             .collect()
     } else {
@@ -111,7 +100,7 @@ fn materialize_fixture(
             ..arena
         }],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     validate_resource_flow_preflight(&spec, &alloc).unwrap();
     let scaffold = materialize_arena_participants(&spec, &reg, &mut root, &mut alloc).unwrap();
@@ -189,10 +178,19 @@ fn e10r2_reserved_gap_slots_are_in_arena_local_block() {
         food_arena(vec![], 3, 3),
     );
     let report = &scaffold.reports[0];
-    let parent_slot = scaffold.index.by_host_and_arena.values().next().copied().unwrap();
+    let parent_slot = scaffold
+        .index
+        .by_host_and_arena
+        .values()
+        .next()
+        .copied()
+        .unwrap();
     let pool = scaffold.gap_pools.get(&parent_slot).unwrap();
     let gap_block_first = report.gap_block_first.unwrap();
-    assert_eq!(pool.reserved_slots(), &[gap_block_first, gap_block_first + 1, gap_block_first + 2]);
+    assert_eq!(
+        pool.reserved_slots(),
+        &[gap_block_first, gap_block_first + 1, gap_block_first + 2]
+    );
     // Single-participant arenas still place the gap block immediately after the sibling.
     assert_eq!(gap_block_first, parent_slot + 1);
 }
@@ -205,7 +203,13 @@ fn e10r2_reserved_gap_consumed_before_non_gap_tombstones() {
         },
         food_arena(vec![], 2, 2),
     );
-    let parent_slot = scaffold.index.by_host_and_arena.values().next().copied().unwrap();
+    let parent_slot = scaffold
+        .index
+        .by_host_and_arena
+        .values()
+        .next()
+        .copied()
+        .unwrap();
 
     let unrelated = SimThing::new(SimThingKind::Cohort, 0);
     let unrelated_slot = alloc.alloc(unrelated.id);
@@ -245,7 +249,13 @@ fn e10r2_gap_exhaustion_rejects_for_reject_policy() {
         },
         food_arena(vec![], 1, 1),
     );
-    let parent_slot = scaffold.index.by_host_and_arena.values().next().copied().unwrap();
+    let parent_slot = scaffold
+        .index
+        .by_host_and_arena
+        .values()
+        .next()
+        .copied()
+        .unwrap();
 
     let first = SimThing::new(SimThingKind::ArenaParticipant, 0).id;
     try_alloc_participant_child_in_gap(

@@ -2,9 +2,7 @@
 
 use simthing_core::SimThing;
 use simthing_gpu::SlotAllocator;
-use simthing_spec::{
-    EnrollmentSelectorSpec, ExplicitParticipantSpec, ResourceFlowSpec, SpecError,
-};
+use simthing_spec::{EnrollmentSelectorSpec, ExplicitParticipantSpec, ResourceFlowSpec, SpecError};
 use std::collections::HashSet;
 use thiserror::Error;
 
@@ -67,14 +65,13 @@ fn resolve_install_target_to_explicit(
     let mut explicit = Vec::with_capacity(hosted_ids.len());
     for id in hosted_ids {
         let raw = id.raw();
-        let slot = allocator.slot_of(id).ok_or(SpecError::UnknownExplicitParticipantSimThing {
-            arena: arena.name.clone(),
-            subtree_root_id: raw,
-        })?;
-        explicit.push(ExplicitParticipantSpec {
-            slot,
-            subtree_root_id: raw,
-        });
+        let slot = allocator
+            .slot_of(id)
+            .ok_or(SpecError::UnknownExplicitParticipantSimThing {
+                arena: arena.name.clone(),
+                subtree_root_id: raw,
+            })?;
+        explicit.push(ExplicitParticipantSpec::flat(slot, raw));
     }
     Ok(explicit)
 }

@@ -130,10 +130,7 @@ pub fn fill_explicit_participants(game_mode: &mut GameModeSpec, scenario: &Scena
         .root
         .children
         .iter()
-        .map(|c| ExplicitParticipantSpec {
-            slot: alloc.slot_of(c.id).unwrap(),
-            subtree_root_id: c.id.raw(),
-        })
+        .map(|c| ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap(), c.id.raw()))
         .collect();
     game_mode.resource_flow.as_mut().unwrap().arenas[0].explicit_participants = participants;
 }

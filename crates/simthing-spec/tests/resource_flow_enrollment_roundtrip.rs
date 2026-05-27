@@ -18,10 +18,7 @@ fn sample_arena_explicit_only() -> ArenaSpec {
         reserved_orderband_depth: 0,
         reserved_gap_per_intermediate: 0,
         expected_max_children_per_intermediate: 0,
-        explicit_participants: vec![ExplicitParticipantSpec {
-            slot: 1,
-            subtree_root_id: 42,
-        }],
+        explicit_participants: vec![ExplicitParticipantSpec::flat(1, 42)],
         enrollment: Some(EnrollmentSelectorSpec::ExplicitOnly),
         wildcard_admission: None,
     }
