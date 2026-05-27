@@ -1263,7 +1263,9 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **E-11B readiness status:** **Done** — [`docs/reviews/e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md). Nested hierarchy GPU execution/materialization current-state audit. No production code changes. Phase T remains complete. D-1 remains landed; D-2 GPU allocator remains deferred. `use_accumulator_resource_flow` remains default false. E-11B deferred by default.
 
-**E-2B status:** **Done (static enrollment E-2B-1…4)** — Resource Flow enrollment selectors resolve to explicit participants at session install. No legacy `resource_flow_participant` AccumulatorOp builder. E-10R/E-10R2/E-10R3 scaffold and E-11 flat-star execution reused unchanged. E-2B-5 dynamic fission enrollment remains deferred. E-11B nested hierarchy GPU remains deferred. `use_accumulator_resource_flow` remains default false. No WGSL changes. No CPU production fallback. `simthing-sim` remains arena-ignorant.
+**E-2B-5 readiness status:** **Done** — [`docs/reviews/e2b5_dynamic_fission_enrollment_readiness.md`](reviews/e2b5_dynamic_fission_enrollment_readiness.md). Dynamic fission enrollment current-state audit. No production code changes. E-2B static enrollment remains done. E-11B remains deferred by default. `use_accumulator_resource_flow` remains default false. **Recommendation:** implement narrowed Policy A (inherit + arena-root sibling append); defer Policy B Reevaluate. **Next gate depends on review recommendation:** E-2B-5 implementation, E-11B, D-2a, Resource Flow default-on, or deferral.
+
+**E-2B status:** **Done (static enrollment E-2B-1…4)** — Resource Flow enrollment selectors resolve to explicit participants at session install. No legacy `resource_flow_participant` AccumulatorOp builder. E-10R/E-10R2/E-10R3 scaffold and E-11 flat-star execution reused unchanged. E-2B-5 dynamic fission enrollment readiness review landed; implementation remains deferred pending product gate. E-11B nested hierarchy GPU remains deferred. `use_accumulator_resource_flow` remains default false. No WGSL changes. No CPU production fallback. `simthing-sim` remains arena-ignorant.
 
 **E-2B readiness status:** **Done** — [`docs/reviews/e2b_resource_flow_enrollment_compilation_readiness.md`](reviews/e2b_resource_flow_enrollment_compilation_readiness.md).
 
@@ -1503,6 +1505,7 @@ as a doc-only PR.
 | **E-11B readiness** | **E** | **Opus (memo only)** | **Nested hierarchy GPU execution/materialization audit** | **Done** — [`e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md) |
 | **E-2B readiness** | **E** | **Opus (memo only)** | **Resource Flow enrollment compilation audit** | **Done** — [`e2b_resource_flow_enrollment_compilation_readiness.md`](reviews/e2b_resource_flow_enrollment_compilation_readiness.md) |
 | **E-2B static enrollment** | **E** | **Composer 2.5** | **Selector → ExplicitParticipantSpec → E-11 flat-star** | **Done** — `resource_flow_enrollment_*` tests |
+| **E-2B-5 readiness** | **E** | **Opus (memo only)** | **Dynamic fission enrollment audit** | **Done** — [`e2b5_dynamic_fission_enrollment_readiness.md`](reviews/e2b5_dynamic_fission_enrollment_readiness.md) |
 | S-1 | F | Codex 5.5 | Sunset intent fold | **Done locally** |
 | S-2 | F | Codex 5.5 | Sunset intensity update | **Landed (#138)** |
 | S-3 | F | Codex 5.5 | Sunset overlay prep | CI green at flag=on |
