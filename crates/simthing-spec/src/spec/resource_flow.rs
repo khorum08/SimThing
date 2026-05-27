@@ -27,6 +27,12 @@ pub struct ArenaSpec {
     /// Structural OrderBand reservation for future E-11 allocation (0 until enrolled).
     #[serde(default)]
     pub reserved_orderband_depth: u32,
+    /// Reserved child slots per intermediate for fission contiguity (E-10R).
+    #[serde(default)]
+    pub reserved_gap_per_intermediate: u32,
+    /// Expected max children per intermediate — must fit in reserved gap (E-10R).
+    #[serde(default)]
+    pub expected_max_children_per_intermediate: u32,
     #[serde(default)]
     pub explicit_participants: Vec<ExplicitParticipantSpec>,
     #[serde(default)]

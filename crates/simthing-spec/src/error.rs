@@ -193,4 +193,33 @@ pub enum SpecError {
         declared: u32,
         computed: u32,
     },
+
+    // ── Resource Flow preflight (E-10R, driver-mapped) ─────────────────────────
+    #[error("arena `{arena}` explicit participant subtree_root_id {subtree_root_id} is unknown in the live session")]
+    UnknownExplicitParticipantSimThing {
+        arena: String,
+        subtree_root_id: u32,
+    },
+
+    #[error("arena `{arena}` explicit participant subtree_root_id {subtree_root_id} slot mismatch (declared {declared_slot}, actual {actual_slot})")]
+    ExplicitParticipantSlotMismatch {
+        arena: String,
+        subtree_root_id: u32,
+        declared_slot: u32,
+        actual_slot: u32,
+    },
+
+    #[error("arena `{arena}` explicit participant subtree_root_id {subtree_root_id} slot {slot} is tombstoned")]
+    ExplicitParticipantTombstoned {
+        arena: String,
+        subtree_root_id: u32,
+        slot: u32,
+    },
+
+    #[error("arena `{arena}` reserved_gap_per_intermediate {reserved} is smaller than expected_max_children_per_intermediate {expected}")]
+    ReservedGapTooSmall {
+        arena: String,
+        reserved: u32,
+        expected: u32,
+    },
 }

@@ -19,6 +19,7 @@
 | [`simthing_base_economic_system_working_doc.md`](simthing_base_economic_system_working_doc.md) | Provisional economic substrate (E0 deferred) |
 | [`simthing_spec_progress_log.md`](simthing_spec_progress_log.md) | V6 spec implementation ledger |
 | [`resource_flow_adr_shaping.md`](resource_flow_adr_shaping.md) | **ADR-shaping draft** — continuous resource flow substrate (constitution + invariants additions, E-7…E-11) |
+| [`e11_hierarchical_allocation_design.md`](e11_hierarchical_allocation_design.md) | **Accepted E-11 v2 design memo** — hierarchical allocation; prerequisites E-10R/E-8R/E-7R; no E-11 execution yet |
 | [`resource_flow_feasibility_opus.md`](resource_flow_feasibility_opus.md) | Feasibility evaluation — grounding evidence for the ADR-shaping draft (superseded by it; retained for traceability) |
 
 ## Top-level companions

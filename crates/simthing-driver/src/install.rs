@@ -20,6 +20,7 @@ use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
 use crate::resource_flow_compile::compile_and_materialize_resource_flow;
+use crate::resource_flow_preflight::validate_resource_flow_preflight;
 use crate::scenario::Scenario;
 use crate::spec_session::SpecSessionState;
 
@@ -80,13 +81,6 @@ pub fn compile_and_install(
         compile_property(prop_spec, registry)?;
     }
 
-    // ── 1b. Resource Flow admission (E-10): validate metadata and build registry.
-    if let Some(resource_flow) = &game_mode.resource_flow {
-        let (arena_registry, _report) =
-            compile_and_materialize_resource_flow(resource_flow, registry)?;
-        state.arena_registry = arena_registry;
-    }
-
     // Global overlays from the game mode envelope are deferred per the ADR
     // (`docs/adr/game_mode_session_installation.md` §4). Capability tree
     // overlays compile inline through `CapabilityTreeBuilder::build` below.
@@ -135,6 +129,15 @@ pub fn compile_and_install(
             .map(|inst| inst.owner_id)
             .unwrap_or_else(SimThingId::new);
         return Err(InstallError::SlotOverflow { owner_id });
+    }
+
+    // ── 4b. Resource Flow admission (E-10 + E-10R): spec compile after properties,
+    //      identity preflight after live slot allocation, then materialize registry.
+    if let Some(resource_flow) = &game_mode.resource_flow {
+        validate_resource_flow_preflight(resource_flow, allocator)?;
+        let (arena_registry, _report) =
+            compile_and_materialize_resource_flow(resource_flow, registry)?;
+        state.arena_registry = arena_registry;
     }
 
     // ── 5. Scripted events: one definition + N per-owner instances per
