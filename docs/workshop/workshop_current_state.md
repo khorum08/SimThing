@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** RF-T3 product soak / telemetry (merged PR #182, `a2a961e`)  
-**Verification (last recorded):** RF global/default-on re-review — `cargo test --workspace` PASS
+**Master HEAD:** RF-T5 scenario-class burn-in / telemetry soak (pending merge)  
+**Verification (last recorded):** RF-T5 `resource_flow_scenario_class_burn_in` — 16/16 PASS (local GPU)
 
 ---
 
@@ -35,7 +35,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **RF-T4 status:** **Done** — `ResourceFlowExecutionProfile` on `GameModeSpec`; `FlatStarResourceFlow` enables GPU via `ScenarioClassDefaultOn`; spec FlatStarOptIn precedence preserved. Global flag remains default false.
 
-**Next gates:** **RF-T5 scenario-class burn-in / telemetry soak**; global default-on remains deferred; **E-11B**; **D-2a**; simthing-spec rebuild per product priority.
+**RF-T5 status:** **Done** — scenario-class burn-in / telemetry soak via `FlatStarResourceFlow` profile; product-like static/dynamic/multi-arena/replay/rejection/resync fixtures; `ScenarioClassDefaultOn` flag-source + execution-profile attribution. Global flag remains default false.
+
+**Next gates:** **Resource Flow limited scenario-class production posture review** (recommended; not global default-on); **E-11B**; **D-2a**; simthing-spec rebuild per product priority.
 
 **Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. E-11B deferred by default. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
 

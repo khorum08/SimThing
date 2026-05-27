@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — RF-T5: scenario-class Resource Flow burn-in / telemetry soak
+
+- **`resource_flow_scenario_class_burn_in.rs`** — profile-path product soak mirroring RF-T3; opens via `ResourceFlowExecutionProfile::FlatStarResourceFlow` with spec `opt_in_mode` disabled.
+- **RF-T5 fixtures:** `rf_t5_profile_*` static 128/256, dynamic fission, multi-arena, replay, disabled/default inactive, rejection, resync.
+- **Tests:** [`resource_flow_scenario_class_burn_in.rs`](../crates/simthing-driver/tests/resource_flow_scenario_class_burn_in.rs) (16 tests).
+- RF-T5 landed: scenario-class Resource Flow burn-in / telemetry soak. `FlatStarResourceFlow` profile soaked through product-like scenarios. Global flag remains default false. Spec FlatStarOptIn precedence preserved. Scenario-class telemetry records `ScenarioClassDefaultOn` and execution profile name. E-11B and Policy B remain deferred. No WGSL. No CPU fallback. `simthing-sim` remains arena-ignorant. Designer-facing spec/RON guardrail rebuild deferred.
+
+**Verification:** targeted RF-T5 + regression suites + `cargo test --workspace` — PASS ([test report](tests/resource_flow_scenario_class_burn_in_test_results.md)).
+
+**Next gate:** Resource Flow limited scenario-class production posture review (recommended); global default-on remains deferred.
+
+---
+
 ## 2026-05-19 — RF-T4: limited scenario-class Resource Flow default-on
 
 - **`ResourceFlowExecutionProfile`** on `GameModeSpec` (`DefaultDisabled`, `FlatStarResourceFlow`); session open applies profile when spec `opt_in_mode` is `Disabled`.
