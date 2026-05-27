@@ -121,7 +121,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-11 burn-in scenarios** | — | — | **Done** — named fixtures + `e11_burn_in_scenarios_*` 6/6; flag default false |
 | **E-11 CI soak** | — | — | **Done** — opt-in soak `e11_resource_flow_soak` 6/6; `ResourceFlowSoakSummaryReport` |
 | **T-1** | — | #165 | **Done** — `resource_economy` authoring types + RON roundtrip 12/12 |
-| **T-2** | — | — | **Done** — `compile::resource_economy` validation + expansion report; no driver materialization yet |
+| **T-2** | `986bc99` | #166 | **Done** — `compile::resource_economy` validation + expansion report; no driver materialization yet |
 
 **Next recommended gates (pivot-forward order):**
 

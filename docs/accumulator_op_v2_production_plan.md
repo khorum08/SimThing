@@ -1253,7 +1253,7 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **T-1 status:** **Done** — PR #165 (`b2557e6`). `simthing-spec::spec::resource_economy` authoring types + `resource_economy_roundtrip` RON suite (12/12). No compile pass, driver materialization, session integration, or GPU changes yet. Transfer/emission flags remain default false.
 
-**T-2 status:** **Done** — `simthing-spec::compile::resource_economy` validation + `CompiledResourceEconomy` artifact + `ResourceEconomyExpansionReport`. Rejection suite (11) + positive/expansion report suite (8) + roundtrip (12) green. No driver materialization yet. No session integration yet. No GPU changes. Transfer/emission flags remain default false. **Next gate:** T-3 `simthing-driver::resource_economy_compile` materialization into existing builder/planner registration shapes.
+**T-2 status:** **Done** — PR #166 (`986bc99`). `simthing-spec::compile::resource_economy` validation + `CompiledResourceEconomy` artifact + `ResourceEconomyExpansionReport`. Rejection suite (11) + positive/expansion report suite (8) + roundtrip (12) green. No driver materialization yet. No session integration yet. No GPU changes. Transfer/emission flags remain default false. **Next gate:** T-3 `simthing-driver::resource_economy_compile` materialization into existing builder/planner registration shapes.
 
 **Posture (preserves v7.5):** runtime substrate is unchanged; ownership of
 transfer / recipe / emission / threshold-emit registrations moves to
