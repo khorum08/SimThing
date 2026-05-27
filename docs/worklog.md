@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — E-2B-5R: dynamic fission enrollment atomicity + visible diagnostics
+
+- **Two-phase dynamic admission** — `prepare_dynamic_arena_root_append` preflights arena existence, duplicate enrollment, sibling contiguity, `max_participants`, and `last_sibling + 1` availability; `commit_dynamic_arena_root_append` mutates allocator → registry → tree → scaffold in order with allocator tombstone rollback on registry rejection.
+- **`SlotAllocator::can_alloc_contiguous_after`** + **`ArenaRegistry::can_admit_participant_runtime`** — read-only preflight helpers.
+- **Session diagnostics** — `SimSession::last_resource_flow_dynamic_enrollment_report` retains boundary-time admissions/rejections; Resource Flow sync runs only when `report.any_admissions() && use_accumulator_resource_flow`.
+- E-2B-5R landed: dynamic fission enrollment atomicity and visible diagnostics hardening. Failed dynamic enrollment cannot leave partial tree/scaffold/registry state. Boundary-time dynamic enrollment reports are retained/inspectable. Policy A inherit-only remains the implemented v1. Policy B Reevaluate remains deferred. Gap-only enrollment remains reserved for future E-11B nested hierarchy semantics. E-11B remains deferred by default. `use_accumulator_resource_flow` remains default false. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant.
+
+**Verification:** targeted driver/gpu tests + `cargo check --workspace` + `cargo test --workspace` — PASS ([test report](tests/e2b5r_dynamic_fission_enrollment_atomicity_test_results.md)).
+
+**Next gate:** Resource Flow dynamic enrollment soak / opt-in scenario burn-in (recommended; not default-on).
+
+---
+
 ## 2026-05-27 — E-2B-5: Policy A dynamic fission enrollment implementation
 
 - **`react_to_fission_resource_flow_enrollment`** — inherit-only dynamic enrollment; arena-root sibling append via `try_append_arena_root_sibling_participant` + `try_alloc_contiguous_after`.
@@ -13,7 +26,7 @@ Running log of what's done and what's next, across sessions.
 - Tests: [`e2b5_dynamic_fission_enrollment.rs`](../crates/simthing-driver/tests/e2b5_dynamic_fission_enrollment.rs) (17 cases).
 - E-2B-5 Policy A dynamic fission enrollment landed. Fission children inherit parent arena membership and are admitted as arena-root sibling participants when capacity and contiguous-slot extension allow. Policy B Reevaluate remains deferred. Gap-only enrollment remains reserved for future E-11B nested hierarchy semantics and is not used for flat-star leaf disbursement. E-11B remains deferred by default. `use_accumulator_resource_flow` remains default false. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant.
 
-**Verification:** targeted driver/gpu tests + `cargo check --workspace` + `cargo test --workspace` — PASS ([test report](tests/e2b5_dynamic_fission_enrollment_implementation_test_results.md)).
+**Verification:** targeted driver/gpu tests + `cargo check --workspace` + `cargo test --workspace` — PASS (superseded by [E-2B-5R test report](tests/e2b5r_dynamic_fission_enrollment_atomicity_test_results.md)).
 
 **Next gate:** Resource Flow dynamic enrollment soak / opt-in scenario burn-in (recommended).
 

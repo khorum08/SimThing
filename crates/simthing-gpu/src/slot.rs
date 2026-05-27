@@ -159,6 +159,21 @@ impl SlotAllocator {
         Ok(slots)
     }
 
+    /// Read-only preflight for [`Self::try_alloc_contiguous_after`].
+    pub fn can_alloc_contiguous_after(&self, after_slot: u32) -> Result<u32, SlotAllocError> {
+        let target = after_slot.saturating_add(1);
+        if self.capacity() as u32 <= target {
+            return Ok(target);
+        }
+        if self.is_live(target) {
+            return Err(SlotAllocError::AdjacentOccupied { slot: target });
+        }
+        if self.exclusive_reserved.contains(&target) {
+            return Err(SlotAllocError::ContiguityBlockedByGap { slot: target });
+        }
+        Ok(target)
+    }
+
     /// Allocate `id` at exactly `after_slot + 1` for arena-root sibling append.
     ///
     /// Rejects when the target slot is live, exclusively reserved (gap block),

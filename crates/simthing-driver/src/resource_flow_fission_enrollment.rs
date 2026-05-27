@@ -5,7 +5,8 @@ use simthing_gpu::SlotAllocator;
 use simthing_sim::FissionOutcome;
 
 use crate::arena_participant::{
-    try_append_arena_root_sibling_participant, ArenaParticipantScaffold, DynamicEnrollmentError,
+    commit_dynamic_arena_root_append, prepare_dynamic_arena_root_append, ArenaParticipantScaffold,
+    DynamicEnrollmentError,
 };
 use crate::arena_registry::{ArenaIdx, ArenaRegistry, FissionPolicy};
 
@@ -97,7 +98,7 @@ pub fn react_to_fission_resource_flow_enrollment(
                 continue;
             }
 
-            match try_append_arena_root_sibling_participant(
+            match prepare_dynamic_arena_root_append(
                 scaffold,
                 root,
                 arena_idx,
@@ -106,14 +107,17 @@ pub fn react_to_fission_resource_flow_enrollment(
                 arena.flow_property_id,
                 dimension_registry,
                 allocator,
+                arena_registry,
             ) {
-                Ok(participant_slot) => {
-                    match arena_registry.admit_participant_runtime(
-                        arena_idx,
-                        participant_slot,
-                        child_id,
+                Ok(pending) => {
+                    match commit_dynamic_arena_root_append(
+                        pending,
+                        scaffold,
+                        root,
+                        arena_registry,
+                        allocator,
                     ) {
-                        Ok(()) => {
+                        Ok(participant_slot) => {
                             admitted_this_batch = true;
                             report.admissions.push(DynamicFissionEnrollmentAdmission {
                                 parent_id,
@@ -127,7 +131,7 @@ pub fn react_to_fission_resource_flow_enrollment(
                                 parent_id,
                                 child_id,
                                 arena_idx,
-                                reason: format!("registry admission failed: {err}"),
+                                reason: enrollment_error_reason(&err),
                             });
                         }
                     }
