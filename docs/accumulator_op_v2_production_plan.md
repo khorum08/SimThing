@@ -1261,13 +1261,16 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **T-5 status:** **Done** — PR #169 (`91bdae3`). Boundary refresh / replay / 100-tick conservation burn-in for resource economy registrations. Uses existing transfer/emission accumulator sync paths. Replay determinism tested. Exact discrete transfer conservation tested. Recipe/emission oracle tests landed. No WGSL changes. No CPU fallback. Transfer/emission flags remain default false. **Next gate:** T-6 limited opt-in scenario flagging / default-off production burn-in decision.
 
+**T-6 status:** **Done** — PR #___ (`3294e6f`). Limited opt-in scenario flagging for resource economy transfer/emission execution. `ResourceEconomyOptInMode` is explicit and defaults disabled. Global transfer/emission flags remain default false; only explicitly opted-in scenarios enable the existing AccumulatorOp transfer/emission paths. T-5 burn-in remains green. No WGSL changes. No CPU fallback. `simthing-sim` remains spec-free and semantic-free.
+
 **Posture (preserves v7.5):** runtime substrate is unchanged; ownership of
 transfer / recipe / emission / threshold-emit registrations moves to
 `simthing-spec` (authoring) → `simthing-driver` (compilation) → existing
 `simthing-core` builders and `simthing-gpu` planners. `simthing-sim` remains
 spec-free and arena-ignorant. No new WGSL; no new `AccumulatorOp` primitive;
-no CPU production fallback peer; transfer/emission flags remain default false
-until T-6 limited opt-in scenario flagging / default-off production burn-in decision.
+no CPU production fallback peer. Phase T is complete in a default-off /
+explicit-opt-in production posture: transfer/emission flags remain globally
+default false and are enabled only by scenario/session opt-in.
 
 | PR | Model | Scope | Gate |
 |----|-------|-------|------|
@@ -1276,7 +1279,7 @@ until T-6 limited opt-in scenario flagging / default-off production burn-in deci
 | **T-3** | Composer 2.5 | `simthing-driver::resource_economy_compile` → `ResourceEconomyRegistrations`; stable `reg_idx` from authoring identity; subtree-scoped refresh | **Done** — materialization + stable reg_idx suites (11/11) |
 | **T-4** | Composer 2.5 | Session integration + boundary refresh via existing `sync_accumulator_{transfer,emission}_session` paths; generation-keyed skip; flag-off populated-spec rejection | **Done** — session open + flag-off reject + generation skip suites (8/8) |
 | **T-5** | Composer 2.5 | Boundary refresh / replay determinism; 100-tick transfer/recipe/emission conservation burn-in vs CPU oracle; generation-keyed skip + reupload tests | **Done** — PR #169 (`91bdae3`) |
-| **T-6** | Codex 5.5 | Limited opt-in scenario flagging / default-off production burn-in decision | Pending |
+| **T-6** | Codex 5.5 | Limited opt-in scenario flagging / default-off production burn-in decision | **Done** — PR #___ (`3294e6f`) |
 
 **Stop conditions (re-asserted; all unchanged from the v2 ADR):** no new WGSL,
 no new `AccumulatorOp` primitive, no `simthing-sim` semantic ownership of
@@ -1285,13 +1288,22 @@ conservation, no folding of hard-currency transfers into continuous Resource
 Flow, no flipping of `use_accumulator_resource_flow` to default-on (that is a
 separate gate, downstream of T-5 and E-2B).
 
-**Acceptance verification (post-T-5):**
+**Acceptance verification (post-T-6):**
 
 ```powershell
-cargo test -p simthing-spec transfer emission -- --nocapture
-cargo test -p simthing-driver transfer emission -- --nocapture
+cargo test -p simthing-driver --test resource_economy_opt_in -- --nocapture
+cargo test -p simthing-driver --test resource_economy_burn_in -- --nocapture
+cargo test -p simthing-driver --test resource_economy_replay -- --nocapture
+cargo test -p simthing-driver --test resource_economy_boundary_refresh -- --nocapture
+cargo test -p simthing-driver --test resource_economy_session_open -- --nocapture
+cargo test -p simthing-driver --test resource_economy_flag_off_rejects -- --nocapture
+cargo test -p simthing-driver --test resource_economy_compile -- --nocapture
+cargo test -p simthing-driver --test resource_economy_stable_reg_idx -- --nocapture
+cargo test -p simthing-spec --test resource_economy_roundtrip -- --nocapture
+cargo test -p simthing-spec --test resource_economy_compile_rejections -- --nocapture
+cargo test -p simthing-spec --test resource_economy_expansion_report -- --nocapture
 cargo test -p simthing-gpu accumulator_op -- --nocapture
-cargo test -p simthing-driver e11_resource_flow_soak -- --nocapture
+cargo test -p simthing-driver --test e11_resource_flow_soak -- --nocapture
 cargo check --workspace
 cargo test --workspace
 ```

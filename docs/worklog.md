@@ -6,6 +6,20 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — Phase T-6: limited opt-in resource economy flagging
+
+- Added `ResourceEconomyOptInMode` on `ResourceEconomySpec`: `Disabled`, `TransferOnly`, `EmissionOnly`, and `TransferAndEmission`.
+- `SimSession::open_from_spec` now applies the explicit opt-in to session-local pipeline flags before resource economy install sync.
+- Global `use_accumulator_transfer` and `use_accumulator_emission` defaults remain false. Populated resource economy specs without opt-in still reject at boundary sync.
+- Opt-in scenarios use the existing T-4/T-5 transfer/emission AccumulatorOp sync path. No WGSL changes, no new AccumulatorOp primitive, no CPU fallback, and `simthing-sim` remains spec-free.
+- Deleted temporary pre-T6 verification artifacts under `docs/test_runs/`.
+
+**Verification:** exact `--test` resource economy suites, `simthing-gpu accumulator_op`, `e11_resource_flow_soak`, `cargo check --workspace`, and `cargo test --workspace` all passed.
+
+**Next gate:** D-1 — discrete-transaction contention memo. E-11B remains optional/future; E-2B remains blocked unless enrollment compilation explicitly lands.
+
+---
+
 ## 2026-05-19 — Phase T-5: resource economy boundary refresh / replay / conservation burn-in
 
 - Added `ResourceEconomyBurnInReport` and driver-only burn-in helpers (`resource_economy_burn_in.rs`).
