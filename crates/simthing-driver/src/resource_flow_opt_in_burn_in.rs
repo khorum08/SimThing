@@ -46,6 +46,15 @@ pub const RF_T3_PRODUCT_DISABLED: &str = "rf_t3_product_disabled_spec_diagnostic
 pub const RF_T3_PRODUCT_REJECTION: &str = "rf_t3_product_rejection_telemetry";
 pub const RF_T3_PRODUCT_RESYNC: &str = "rf_t3_product_repeated_resync_stable";
 
+pub const RF_T5_PROFILE_STATIC_128: &str = "rf_t5_profile_static_128_participants";
+pub const RF_T5_PROFILE_STATIC_256: &str = "rf_t5_profile_static_256_participants";
+pub const RF_T5_PROFILE_DYNAMIC_FISSION: &str = "rf_t5_profile_dynamic_fission_cadence";
+pub const RF_T5_PROFILE_MULTI_ARENA: &str = "rf_t5_profile_multi_arena_no_coupling";
+pub const RF_T5_PROFILE_MULTI_SESSION: &str = "rf_t5_profile_multi_session_replay";
+pub const RF_T5_PROFILE_DISABLED: &str = "rf_t5_profile_disabled_or_default_no_gpu_execution";
+pub const RF_T5_PROFILE_REJECTION: &str = "rf_t5_profile_rejection_telemetry";
+pub const RF_T5_PROFILE_RESYNC: &str = "rf_t5_profile_repeated_resync_stable";
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RfT2EnrollmentKind {
     StaticExplicit,
@@ -727,6 +736,88 @@ pub fn fixture_product_repeated_resync() -> RfT2BurnInFixture {
         expect_gpu_active: true,
         require_bit_exact: true,
     }
+}
+
+fn profile_fixture_from_product(mut base: RfT2BurnInFixture, name: &'static str) -> RfT2BurnInFixture {
+    base.name = name;
+    base.opt_in_mode = ResourceFlowOptInMode::Disabled;
+    base
+}
+
+pub fn fixture_profile_static_128_participants() -> RfT2BurnInFixture {
+    profile_fixture_from_product(
+        fixture_product_static_128_participants(),
+        RF_T5_PROFILE_STATIC_128,
+    )
+}
+
+pub fn fixture_profile_static_256_participants() -> RfT2BurnInFixture {
+    profile_fixture_from_product(
+        fixture_product_static_256_participants(),
+        RF_T5_PROFILE_STATIC_256,
+    )
+}
+
+pub fn fixture_profile_dynamic_fission_cadence() -> RfT2BurnInFixture {
+    profile_fixture_from_product(
+        fixture_product_dynamic_fission_cadence(),
+        RF_T5_PROFILE_DYNAMIC_FISSION,
+    )
+}
+
+pub fn fixture_profile_multi_arena_no_coupling() -> RfT2BurnInFixture {
+    profile_fixture_from_product(
+        fixture_product_multi_arena_no_coupling(),
+        RF_T5_PROFILE_MULTI_ARENA,
+    )
+}
+
+pub fn fixture_profile_multi_session_replay() -> RfT2BurnInFixture {
+    profile_fixture_from_product(
+        fixture_product_multi_session_replay(),
+        RF_T5_PROFILE_MULTI_SESSION,
+    )
+}
+
+pub fn fixture_profile_disabled_or_default() -> RfT2BurnInFixture {
+    RfT2BurnInFixture {
+        name: RF_T5_PROFILE_DISABLED,
+        opt_in_mode: ResourceFlowOptInMode::Disabled,
+        enrollment: RfT2EnrollmentKind::DisabledPopulated,
+        participant_count: 10,
+        ticks: 0,
+        sync_cycles: 0,
+        root_intrinsic_flow: 10.0,
+        leaf_weights: vec![],
+        expected_admissions: 0,
+        expected_rejections: 0,
+        expect_generation_bump: false,
+        expect_gpu_active: false,
+        require_bit_exact: true,
+    }
+}
+
+pub fn fixture_profile_rejection_telemetry() -> RfT2BurnInFixture {
+    profile_fixture_from_product(
+        fixture_product_rejection_telemetry(),
+        RF_T5_PROFILE_REJECTION,
+    )
+}
+
+pub fn fixture_profile_repeated_resync() -> RfT2BurnInFixture {
+    profile_fixture_from_product(
+        fixture_product_repeated_resync(),
+        RF_T5_PROFILE_RESYNC,
+    )
+}
+
+pub fn open_fixture_session_with_default_profile(
+    fixture: &RfT2BurnInFixture,
+) -> Result<RfT2OptInSession, SessionError> {
+    open_fixture_session_with_execution_profile(
+        fixture,
+        ResourceFlowExecutionProfile::DefaultDisabled,
+    )
 }
 
 pub fn fixture_replay_static() -> RfT2BurnInFixture {
