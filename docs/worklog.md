@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — D-2a: boundary transaction scheduling readiness review
+
+- Added [`docs/reviews/d2a_boundary_transaction_scheduling_readiness.md`](reviews/d2a_boundary_transaction_scheduling_readiness.md): post–Phase T / post–D-1 audit of hard-currency boundary ordering needs.
+- D-2a boundary transaction scheduling readiness review landed. No production code changes. Phase T remains complete. Phase T designer/RON smoke addendum remains landed. Hard-currency transfer remains exact discrete AccumulatorOp transfer/recipe/emission. Resource Flow remains separate from hard-currency transfer. Bounded `FlatStarResourceFlow` posture unchanged. Global Resource Flow default-on remains deferred. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains spec-free and semantic-free.
+- **Recommendation: defer D-2a implementation** — current same-band collision rejection sufficient for shipped workloads; `order_band` not yet wired through C-8c planner documented as technical debt.
+- Deleted inspected Phase T designer/RON local test artifact (`phase_t_resource_economy_designer_ron_test_results.md`).
+
+**Verification:** docs-only PR; `cargo check --workspace` and `cargo test --workspace` PASS.
+
+**Next gate:** depends on product priority: narrow D-2a implementation (only after named scenario), E-11B, simthing-spec/RON rebuild, or continued soak.
+
+---
+
 ## 2026-05-27 - Phase T designer/RON smoke addendum
 
 - Added [`resource_economy_smoke.ron`](../crates/simthing-spec/tests/fixtures/game_modes/resource_economy_smoke.ron): a minimal designer-authored `GameModeSpec` with explicit transfer, recipe, and emission `ResourceEconomySpec` content.
