@@ -170,14 +170,18 @@ pub enum SpecError {
         computed: u32,
     },
 
-    #[error("arena `{arena}` exceeds max_coupling_fanout ({declared} declared, {computed} computed)")]
+    #[error(
+        "arena `{arena}` exceeds max_coupling_fanout ({declared} declared, {computed} computed)"
+    )]
     MaxCouplingFanoutExceeded {
         arena: String,
         declared: u32,
         computed: u32,
     },
 
-    #[error("arena `{arena}` exceeds max_orderband_depth ({declared} declared, {computed} computed)")]
+    #[error(
+        "arena `{arena}` exceeds max_orderband_depth ({declared} declared, {computed} computed)"
+    )]
     MaxOrderBandDepthExceeded {
         arena: String,
         declared: u32,
@@ -196,10 +200,7 @@ pub enum SpecError {
 
     // ── Resource Flow preflight (E-10R, driver-mapped) ─────────────────────────
     #[error("arena `{arena}` explicit participant subtree_root_id {subtree_root_id} is unknown in the live session")]
-    UnknownExplicitParticipantSimThing {
-        arena: String,
-        subtree_root_id: u32,
-    },
+    UnknownExplicitParticipantSimThing { arena: String, subtree_root_id: u32 },
 
     #[error("arena `{arena}` explicit participant subtree_root_id {subtree_root_id} slot mismatch (declared {declared_slot}, actual {actual_slot})")]
     ExplicitParticipantSlotMismatch {
@@ -224,10 +225,19 @@ pub enum SpecError {
     },
 
     #[error("arena `{arena}` duplicate enrollment for hosted SimThing subtree_root_id {subtree_root_id}")]
-    DuplicateEnrollmentHostedSimThing {
+    DuplicateEnrollmentHostedSimThing { arena: String, subtree_root_id: u32 },
+
+    #[error("arena `{arena}` explicit participant parent_subtree_root_id {parent_subtree_root_id} is unknown in the same arena explicit list")]
+    UnknownExplicitParticipantParent {
         arena: String,
-        subtree_root_id: u32,
+        parent_subtree_root_id: u64,
     },
+
+    #[error("arena `{arena}` explicit participant parent graph contains a cycle involving subtree_root_id {subtree_root_id}")]
+    ExplicitParticipantParentCycle { arena: String, subtree_root_id: u32 },
+
+    #[error("arena `{arena}` explicit participant depth-first allocation failed child contiguity")]
+    ExplicitParticipantAllocationNonContiguous { arena: String },
 
     // ── Resource economy compile (Phase T-2) ───────────────────────────────────
     #[error("resource economy duplicate authoring id `{id}`")]
@@ -273,7 +283,9 @@ pub enum SpecError {
     #[error("resource economy recipe `{recipe}` throttle_hint_max_per_tick must be > 0")]
     InvalidRecipeThrottleHint { recipe: String },
 
-    #[error("resource economy emission `{emission}` references unknown EML formula key `{formula_key}`")]
+    #[error(
+        "resource economy emission `{emission}` references unknown EML formula key `{formula_key}`"
+    )]
     UnknownEmissionFormulaKey {
         emission: String,
         formula_key: String,

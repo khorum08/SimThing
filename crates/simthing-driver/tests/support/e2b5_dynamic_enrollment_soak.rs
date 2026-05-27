@@ -159,10 +159,7 @@ pub fn open_single_fission_setup(
         .children
         .iter()
         .take(parent_count)
-        .map(|hosted| ExplicitParticipantSpec {
-            slot: alloc.slot_of(hosted.id).unwrap(),
-            subtree_root_id: hosted.id.raw(),
-        })
+        .map(|hosted| ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw()))
         .collect();
 
     let spec = ResourceFlowSpec {
@@ -228,10 +225,7 @@ fn open_multi_fission_setup(parent_count: usize, max_participants: u32) -> Enrol
     let explicit: Vec<ExplicitParticipantSpec> = root
         .children
         .iter()
-        .map(|hosted| ExplicitParticipantSpec {
-            slot: alloc.slot_of(hosted.id).unwrap(),
-            subtree_root_id: hosted.id.raw(),
-        })
+        .map(|hosted| ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw()))
         .collect();
 
     let spec = ResourceFlowSpec {
@@ -304,10 +298,7 @@ fn open_two_arena_setup() -> EnrollmentSoakSetup {
             reserved_orderband_depth: 0,
             reserved_gap_per_intermediate: 0,
             expected_max_children_per_intermediate: 0,
-            explicit_participants: vec![ExplicitParticipantSpec {
-                slot: alloc.slot_of(parent_id).unwrap(),
-                subtree_root_id: parent_id.raw(),
-            }],
+            explicit_participants: vec![ExplicitParticipantSpec::flat(alloc.slot_of(parent_id).unwrap(), parent_id.raw())],
             enrollment: None,
             wildcard_admission: None,
         }],
@@ -334,10 +325,7 @@ fn open_two_arena_setup() -> EnrollmentSoakSetup {
             reserved_orderband_depth: 0,
             reserved_gap_per_intermediate: 0,
             expected_max_children_per_intermediate: 0,
-            explicit_participants: vec![ExplicitParticipantSpec {
-                slot: alloc.slot_of(parent_id).unwrap(),
-                subtree_root_id: parent_id.raw(),
-            }],
+            explicit_participants: vec![ExplicitParticipantSpec::flat(alloc.slot_of(parent_id).unwrap(), parent_id.raw())],
             enrollment: None,
             wildcard_admission: None,
         }],

@@ -9,7 +9,8 @@ use simthing_driver::{
     plan_arena_allocation, register_child_share_formula, resolve_node_columns,
     run_arena_allocation_oracle, slots_are_contiguous, total_bands_for_depth,
     try_alloc_participant_child_in_gap, validate_resource_flow_preflight, ArenaParticipantScaffold,
-    ArenaRegistry, FissionPolicy, GpuArenaDescriptor, HierarchyError, HierarchyNode, NodeColumnRefs,
+    ArenaRegistry, FissionPolicy, GpuArenaDescriptor, HierarchyError, HierarchyNode,
+    NodeColumnRefs,
 };
 use simthing_gpu::{GpuContext, SlotAllocator, WorldAccumulatorRuntime, WorldGpuState};
 use simthing_sim::PipelineFlags;
@@ -43,7 +44,11 @@ fn flow_subfield(name: &str, role: AccumulatorRole) -> SubFieldSpec {
     }
 }
 
-fn register_flow(reg: &mut DimensionRegistry, arena: &str, with_balance: bool) -> simthing_core::SimPropertyId {
+fn register_flow(
+    reg: &mut DimensionRegistry,
+    arena: &str,
+    with_balance: bool,
+) -> simthing_core::SimPropertyId {
     let mut sub_fields = vec![
         flow_subfield("flow", AccumulatorRole::IntrinsicFlow),
         flow_subfield(
@@ -91,10 +96,7 @@ fn arena_spec(participants: Vec<(u32, u32)>, gap: u32, max_depth: u32) -> ArenaS
         expected_max_children_per_intermediate: gap,
         explicit_participants: participants
             .into_iter()
-            .map(|(slot, subtree_root_id)| ExplicitParticipantSpec {
-                slot,
-                subtree_root_id,
-            })
+            .map(|(slot, subtree_root_id)| ExplicitParticipantSpec::flat(slot, subtree_root_id))
             .collect(),
         enrollment: None,
         wildcard_admission: None,
@@ -129,10 +131,7 @@ fn materialize_d2(hosted_count: usize, gap: u32, max_depth: u32) -> E11Fixture {
     let participants: Vec<_> = root
         .children
         .iter()
-        .map(|c| ExplicitParticipantSpec {
-            slot: alloc.slot_of(c.id).unwrap(),
-            subtree_root_id: c.id.raw(),
-        })
+        .map(|c| ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap(), c.id.raw()))
         .collect();
 
     let spec = ResourceFlowSpec {
@@ -141,7 +140,7 @@ fn materialize_d2(hosted_count: usize, gap: u32, max_depth: u32) -> E11Fixture {
             ..arena_spec(vec![], gap, max_depth)
         }],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     validate_resource_flow_preflight(&spec, &alloc).unwrap();
     let scaffold = materialize_arena_participants(&spec, &reg, &mut root, &mut alloc).unwrap();
@@ -172,19 +171,12 @@ fn d2_layout_from_fixture(f: &E11Fixture) -> simthing_driver::ArenaTreeLayout {
         arenas: vec![arena],
         ..Default::default()
     };
-    build_execution_plan(
-        &f.reg,
-        &registry.arenas,
-        &f.root,
-        &f.alloc,
-        &f.scaffold,
-        0,
-    )
-    .unwrap()
-    .arenas
-    .into_iter()
-    .next()
-    .unwrap()
+    build_execution_plan(&f.reg, &registry.arenas, &f.root, &f.alloc, &f.scaffold, 0)
+        .unwrap()
+        .arenas
+        .into_iter()
+        .next()
+        .unwrap()
 }
 
 fn cell(values: &HashMap<(u32, u32), f32>, slot: u32, col: u32) -> f32 {
@@ -398,10 +390,15 @@ fn e11_orderband_depth_budget_enforced() {
     };
     let needed = total_bands_for_depth(2);
     assert_eq!(needed, 5);
-    let err = build_execution_plan(&f.reg, &[arena], &f.root, &f.alloc, &f.scaffold, 0).unwrap_err();
+    let err =
+        build_execution_plan(&f.reg, &[arena], &f.root, &f.alloc, &f.scaffold, 0).unwrap_err();
     assert!(matches!(
         err,
-        HierarchyError::OrderBandDepthExceeded { needed: 5, max: 4, .. }
+        HierarchyError::OrderBandDepthExceeded {
+            needed: 5,
+            max: 4,
+            ..
+        }
     ));
 }
 
@@ -473,11 +470,7 @@ fn e11_no_new_wgsl() {
         .filter_map(|e| e.ok())
         .map(|e| e.file_name().to_string_lossy().into_owned())
         .collect();
-    let allowed = [
-        "accumulator_op.wgsl",
-        "snapshot.wgsl",
-        "world_summary.wgsl",
-    ];
+    let allowed = ["accumulator_op.wgsl", "snapshot.wgsl", "world_summary.wgsl"];
     for name in &entries {
         assert!(
             allowed.contains(&name.as_str()),

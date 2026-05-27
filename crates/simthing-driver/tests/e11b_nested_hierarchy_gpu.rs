@@ -406,10 +406,7 @@ fn e11b_nested_rejects_gap_only_flat_star_leaf_claim() {
     let participants: Vec<_> = root
         .children
         .iter()
-        .map(|child| ExplicitParticipantSpec {
-            slot: alloc.slot_of(child.id).unwrap(),
-            subtree_root_id: child.id.raw(),
-        })
+        .map(|child| ExplicitParticipantSpec::flat(alloc.slot_of(child.id).unwrap(), child.id.raw()))
         .collect();
     let spec = ResourceFlowSpec {
         arenas: vec![ArenaSpec {

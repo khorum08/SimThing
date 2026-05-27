@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — E-11B-1 explicit nested participant materialization
+
+- Added optional `ExplicitParticipantSpec.parent_subtree_root_id` for static nested participant authoring.
+- Refactored `materialize_arena_participants` to build nested `ArenaParticipant` topology with depth-first allocation and per-parent child contiguity.
+- `build_execution_plan` already dispatches to `build_nested_layout` when nested topology exists.
+- E-11B explicit nested participant materialization landed. This is a narrow static materialization fix for future deep arena use cases, including provisional mapping/location hierarchy work. No mapping runtime behavior was implemented. No dynamic nested enrollment was implemented. Flat-star behavior remains backwards compatible when `parent_subtree_root_id` is `None`. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. No WGSL changes. No new AccumulatorRole variants. No CPU fallback. No slot compaction. No indirection-list SlotRange replacement. No Policy B Reevaluate. `simthing-sim` remains arena-ignorant and spec-free.
+
+**Verification:** [`e11b_explicit_nested_materialization_test_results.md`](tests/e11b_explicit_nested_materialization_test_results.md)
+
+**Next gate:** unchanged — product names a scenario; re-select track A–E; or finalize mapping direction for impact review before mapping-driven implementation.
+
+---
+
 ## 2026-05-27 — Workspace hygiene / paused-state consistency checkpoint
 
 - Fixed cosmetic export whitespace in [`simthing-driver` `lib.rs`](../crates/simthing-driver/src/lib.rs) (`fixture_profile_repeated_resync` / `fixture_profile_static_128_participants`).

@@ -130,10 +130,7 @@ fn open_enrollment_fixture(
         .children
         .iter()
         .take(parent_count)
-        .map(|hosted| ExplicitParticipantSpec {
-            slot: alloc.slot_of(hosted.id).unwrap(),
-            subtree_root_id: hosted.id.raw(),
-        })
+        .map(|hosted| ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw()))
         .collect();
 
     let spec = ResourceFlowSpec {
@@ -250,10 +247,7 @@ fn e2b5_parent_enrolled_in_two_arenas_child_inherits_both() {
             reserved_orderband_depth: 0,
             reserved_gap_per_intermediate: 0,
             expected_max_children_per_intermediate: 0,
-            explicit_participants: vec![ExplicitParticipantSpec {
-                slot: alloc.slot_of(parent_id).unwrap(),
-                subtree_root_id: parent_id.raw(),
-            }],
+            explicit_participants: vec![ExplicitParticipantSpec::flat(alloc.slot_of(parent_id).unwrap(), parent_id.raw())],
             enrollment: None,
             wildcard_admission: None,
         }],
@@ -282,10 +276,7 @@ fn e2b5_parent_enrolled_in_two_arenas_child_inherits_both() {
             reserved_orderband_depth: 0,
             reserved_gap_per_intermediate: 0,
             expected_max_children_per_intermediate: 0,
-            explicit_participants: vec![ExplicitParticipantSpec {
-                slot: alloc.slot_of(parent_id).unwrap(),
-                subtree_root_id: parent_id.raw(),
-            }],
+            explicit_participants: vec![ExplicitParticipantSpec::flat(alloc.slot_of(parent_id).unwrap(), parent_id.raw())],
             enrollment: None,
             wildcard_admission: None,
         }],

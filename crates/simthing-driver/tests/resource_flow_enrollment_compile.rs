@@ -113,14 +113,8 @@ fn resource_flow_enrollment_rejects_duplicate_hosted_simthing() {
         arenas: vec![ArenaSpec {
             enrollment: Some(EnrollmentSelectorSpec::ExplicitOnly),
             explicit_participants: vec![
-                ExplicitParticipantSpec {
-                    slot: alloc.slot_of(root.children[0].id).unwrap(),
-                    subtree_root_id: root.children[0].id.raw(),
-                },
-                ExplicitParticipantSpec {
-                    slot: alloc.slot_of(root.children[0].id).unwrap(),
-                    subtree_root_id: root.children[0].id.raw(),
-                },
+                ExplicitParticipantSpec::flat(alloc.slot_of(root.children[0].id).unwrap(), root.children[0].id.raw()),
+                ExplicitParticipantSpec::flat(alloc.slot_of(root.children[0].id).unwrap(), root.children[0].id.raw()),
             ],
             ..food_arena(16)
         }],

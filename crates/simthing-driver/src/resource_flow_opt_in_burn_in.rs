@@ -17,7 +17,9 @@ use simthing_spec::{
     ResourceFlowSpec, SpecVersion, WildcardAdmissionSpec,
 };
 
-use crate::arena_hierarchy::{build_execution_plan, resolve_node_columns, ArenaTreeLayout, NodeColumnRefs};
+use crate::arena_hierarchy::{
+    build_execution_plan, resolve_node_columns, ArenaTreeLayout, NodeColumnRefs,
+};
 use crate::resource_flow_burn_in::{ResourceFlowBurnInReport, ResourceFlowSoakSummaryReport};
 use crate::resource_flow_dynamic_enrollment_soak::{
     run_dynamic_enrollment_gpu_burn_in, run_dynamic_enrollment_resync_cycles,
@@ -187,7 +189,10 @@ fn register_research_flow(reg: &mut DimensionRegistry) {
 }
 
 fn n_slots_for(participant_count: u32) -> u32 {
-    participant_count.saturating_mul(2).saturating_add(32).max(128)
+    participant_count
+        .saturating_mul(2)
+        .saturating_add(32)
+        .max(128)
 }
 
 fn build_hosted_flat_scenario(participant_count: u32, registry: DimensionRegistry) -> Scenario {
@@ -298,10 +303,7 @@ fn fill_explicit_roots(game_mode: &mut GameModeSpec, scenario: &Scenario) {
         .root
         .children
         .iter()
-        .map(|c| ExplicitParticipantSpec {
-            slot: alloc.slot_of(c.id).unwrap(),
-            subtree_root_id: c.id.raw(),
-        })
+        .map(|c| ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap(), c.id.raw()))
         .collect();
     game_mode.resource_flow.as_mut().unwrap().arenas[0].explicit_participants = participants;
 }
@@ -378,9 +380,11 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                 .root
                 .children
                 .iter()
-                .map(|hosted| ExplicitParticipantSpec {
-                    slot: alloc.slot_of(hosted.id).unwrap(),
-                    subtree_root_id: hosted.id.raw(),
+                .map(|hosted| {
+                    ExplicitParticipantSpec::flat(
+                        alloc.slot_of(hosted.id).unwrap(),
+                        hosted.id.raw(),
+                    )
                 })
                 .collect();
             let flow = mode.resource_flow.as_mut().unwrap();
@@ -424,9 +428,11 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                     .root
                     .children
                     .iter()
-                    .map(|hosted| ExplicitParticipantSpec {
-                        slot: alloc.slot_of(hosted.id).unwrap(),
-                        subtree_root_id: hosted.id.raw(),
+                    .map(|hosted| {
+                        ExplicitParticipantSpec::flat(
+                            alloc.slot_of(hosted.id).unwrap(),
+                            hosted.id.raw(),
+                        )
                     })
                     .collect();
                 mode.resource_flow.as_mut().unwrap().arenas[0].explicit_participants = explicit;
@@ -762,7 +768,10 @@ pub fn fixture_product_repeated_resync() -> RfT2BurnInFixture {
     }
 }
 
-fn profile_fixture_from_product(mut base: RfT2BurnInFixture, name: &'static str) -> RfT2BurnInFixture {
+fn profile_fixture_from_product(
+    mut base: RfT2BurnInFixture,
+    name: &'static str,
+) -> RfT2BurnInFixture {
     base.name = name;
     base.opt_in_mode = ResourceFlowOptInMode::Disabled;
     base
@@ -836,10 +845,7 @@ pub fn fixture_profile_rejection_telemetry() -> RfT2BurnInFixture {
 }
 
 pub fn fixture_profile_repeated_resync() -> RfT2BurnInFixture {
-    profile_fixture_from_product(
-        fixture_product_repeated_resync(),
-        RF_T5_PROFILE_RESYNC,
-    )
+    profile_fixture_from_product(fixture_product_repeated_resync(), RF_T5_PROFILE_RESYNC)
 }
 
 pub fn open_fixture_session_with_default_profile(
@@ -926,8 +932,7 @@ fn cell_inputs(
     } else {
         leaf_weights.to_vec()
     };
-    let mut inputs =
-        HashMap::from([((root_slot, cols.intrinsic_flow_col), root_intrinsic_flow)]);
+    let mut inputs = HashMap::from([((root_slot, cols.intrinsic_flow_col), root_intrinsic_flow)]);
     for (slot, &weight) in leaves.iter().zip(weights.iter()) {
         inputs.insert((*slot, cols.weight_col), weight);
     }
@@ -992,7 +997,10 @@ pub fn open_fixture_session_with_execution_profile(
             ..Default::default()
         };
         session.react_to_fission_resource_flow_enrollment(&outcome)?;
-        if let Some(report) = session.last_resource_flow_dynamic_enrollment_report.as_ref() {
+        if let Some(report) = session
+            .last_resource_flow_dynamic_enrollment_report
+            .as_ref()
+        {
             boundary_metrics = DynamicEnrollmentBoundaryMetrics::from_enrollment_report(
                 report,
                 1,
@@ -1029,7 +1037,12 @@ pub fn open_fixture_session_with_execution_profile(
 }
 
 pub fn assert_fixture_contract(fx: &RfT2OptInSession, fixture: &RfT2BurnInFixture) {
-    assert_eq!(fx.layout.max_depth, 2, "fixture {name} must stay flat-star D=2", name = fixture.name);
+    assert_eq!(
+        fx.layout.max_depth,
+        2,
+        "fixture {name} must stay flat-star D=2",
+        name = fixture.name
+    );
     assert_eq!(
         fx.session.state.accumulator_resource_flow_active,
         fixture.expect_gpu_active,
@@ -1104,7 +1117,10 @@ pub fn run_opt_in_burn_in(
     };
 
     let replay_bit_exact = burn.max_abs_error.to_bits() == 0.0_f32.to_bits();
-    if fixture.require_bit_exact && fixture.ticks > 0 && fx.session.proto.flags.use_accumulator_resource_flow {
+    if fixture.require_bit_exact
+        && fixture.ticks > 0
+        && fx.session.proto.flags.use_accumulator_resource_flow
+    {
         assert_eq!(
             burn.max_abs_error.to_bits(),
             0.0_f32.to_bits(),
@@ -1116,11 +1132,13 @@ pub fn run_opt_in_burn_in(
     Ok(RfT2BurnInReport {
         scenario_name: fixture.name.to_string(),
         ticks_checked: burn.ticks_checked,
-        sync_cycles_checked: sync_cycles_checked.max(if fx.session.proto.flags.use_accumulator_resource_flow {
-            1
-        } else {
-            0
-        }),
+        sync_cycles_checked: sync_cycles_checked.max(
+            if fx.session.proto.flags.use_accumulator_resource_flow {
+                1
+            } else {
+                0
+            },
+        ),
         admissions_observed: fx.boundary_metrics.admissions_observed,
         rejections_observed: fx.boundary_metrics.rejections_observed,
         generation_start: fx.boundary_metrics.generation_start,
@@ -1145,7 +1163,9 @@ pub fn clone_for_replay(fx: &RfT2OptInSession, fixture: &RfT2BurnInFixture) -> R
     session.spec_state.arena_participant_scaffold =
         fx.session.spec_state.arena_participant_scaffold.clone();
     session.proto.flags = fx.session.proto.flags.clone();
-    session.sync_resource_flow_if_enabled().expect("replay sync");
+    session
+        .sync_resource_flow_if_enabled()
+        .expect("replay sync");
 
     let (layout, cols) = execution_layout(&session);
     let leaf_slots = leaf_slots_for_layout(&layout);

@@ -75,10 +75,7 @@ fn materialize_multi(n_hosted: usize, gap: u32) -> (SimThing, SlotAllocator, sim
     let explicit_participants: Vec<ExplicitParticipantSpec> = root
         .children
         .iter()
-        .map(|hosted| ExplicitParticipantSpec {
-            slot: alloc.slot_of(hosted.id).unwrap(),
-            subtree_root_id: hosted.id.raw(),
-        })
+        .map(|hosted| ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw()))
         .collect();
 
     let spec = ResourceFlowSpec {
@@ -216,10 +213,7 @@ fn e10r3_resource_flow_materialization_respects_scenario_slot_capacity() {
     let explicit_participants: Vec<ExplicitParticipantSpec> = root
         .children
         .iter()
-        .map(|hosted| ExplicitParticipantSpec {
-            slot: alloc.slot_of(hosted.id).unwrap(),
-            subtree_root_id: hosted.id.raw(),
-        })
+        .map(|hosted| ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw()))
         .collect();
 
     let game_mode = GameModeSpec {

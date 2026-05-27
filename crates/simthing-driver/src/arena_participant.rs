@@ -10,7 +10,7 @@ use simthing_core::{
 };
 use simthing_gpu::{SlotAllocError, SlotAllocator};
 use simthing_spec::{PropertyKey, ResourceFlowSpec, SpecError};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
 use crate::arena_registry::{ArenaIdx, ArenaRegistry, ArenaRegistryError, FissionPolicy, SlotId};
@@ -24,9 +24,7 @@ pub struct ArenaParticipantIndex {
 
 impl ArenaParticipantIndex {
     pub fn participant_slot(&self, hosted: SimThingId, arena_idx: ArenaIdx) -> Option<SlotId> {
-        self.by_host_and_arena
-            .get(&(hosted, arena_idx))
-            .copied()
+        self.by_host_and_arena.get(&(hosted, arena_idx)).copied()
     }
 }
 
@@ -92,20 +90,50 @@ pub fn materialize_arena_participants(
     for (arena_idx, arena) in spec.arenas.iter().enumerate() {
         let arena_idx = arena_idx as ArenaIdx;
         let flow_property_id = resolve_flow_property(registry, &arena.flow_property)?;
+        validate_explicit_participant_graph(arena)?;
 
         let mut arena_root = SimThing::new(
             SimThingKind::Custom(format!("arena_root:{}", arena.name)),
             0,
         );
         let arena_root_id = arena_root.id;
-        let mut hosted_ids: Vec<SimThingId> = Vec::new();
 
+        let nested = arena
+            .explicit_participants
+            .iter()
+            .any(|participant| participant.parent_subtree_root_id.is_some());
+
+        let mut nodes_by_hosted: HashMap<u32, SimThing> = HashMap::new();
+        let mut participant_node_by_hosted: HashMap<u32, SimThingId> = HashMap::new();
         for participant in &arena.explicit_participants {
             let hosted_id = SimThingId::from_session_raw(participant.subtree_root_id);
             let mut node = SimThing::new(SimThingKind::ArenaParticipant, 0);
             seed_participant_property(&mut node, flow_property_id, registry, hosted_id);
-            arena_root.add_child(node);
-            hosted_ids.push(hosted_id);
+            participant_node_by_hosted.insert(participant.subtree_root_id, node.id);
+            nodes_by_hosted.insert(participant.subtree_root_id, node);
+        }
+
+        let mut children_by_parent: HashMap<Option<u32>, Vec<u32>> = HashMap::new();
+        for participant in &arena.explicit_participants {
+            let parent = participant
+                .parent_subtree_root_id
+                .map(|parent_id| parent_id as u32);
+            children_by_parent
+                .entry(parent)
+                .or_default()
+                .push(participant.subtree_root_id);
+        }
+
+        for participant in &arena.explicit_participants {
+            if participant.parent_subtree_root_id.is_some() {
+                continue;
+            }
+            attach_participant_subtree(
+                participant.subtree_root_id,
+                &mut arena_root,
+                &mut nodes_by_hosted,
+                &children_by_parent,
+            );
         }
 
         root.add_child(arena_root);
@@ -115,38 +143,50 @@ pub fn materialize_arena_participants(
             .expect("arena root just allocated");
 
         let arena_root_ref = find_child(root, arena_root_id).expect("arena root attached");
-        let mut participant_slots = Vec::new();
+        let mut top_level_slots = Vec::new();
         for child in &arena_root_ref.children {
             if child.kind != SimThingKind::ArenaParticipant {
                 continue;
             }
-            allocator.alloc(child.id);
-            participant_slots.push(allocator.slot_of(child.id).expect("participant allocated"));
+            materialize_participant_subtree(child, allocator, &arena.name)?;
+            top_level_slots.push(allocator.slot_of(child.id).expect("participant allocated"));
         }
 
-        for (hosted_id, participant_slot) in hosted_ids.iter().zip(participant_slots.iter()) {
+        for participant in &arena.explicit_participants {
+            let hosted_id = SimThingId::from_session_raw(participant.subtree_root_id);
+            let participant_id = *participant_node_by_hosted
+                .get(&participant.subtree_root_id)
+                .expect("participant node reserved");
+            let participant_slot = allocator
+                .slot_of(participant_id)
+                .expect("explicit participant allocated");
             scaffold
                 .index
                 .by_host_and_arena
-                .insert((*hosted_id, arena_idx), *participant_slot);
+                .insert((hosted_id, arena_idx), participant_slot);
         }
 
         let gap_k = arena.reserved_gap_per_intermediate;
-        let gap_block_first = if gap_k > 0 && !participant_slots.is_empty() {
-            let total_gaps = gap_k.saturating_mul(participant_slots.len() as u32);
-            let gap_block = allocator.reserve_exclusive_gap_block(total_gaps);
-            for (i, participant_slot) in participant_slots.iter().enumerate() {
-                let start = (i as u32 * gap_k) as usize;
-                let end = start + gap_k as usize;
-                scaffold.gap_pools.insert(
-                    *participant_slot,
-                    ReservedGapPool {
-                        parent_participant_slot: *participant_slot,
-                        available: gap_block[start..end].to_vec(),
-                    },
-                );
+        let gap_block_first = if gap_k > 0 && !top_level_slots.is_empty() {
+            if nested {
+                let interior_slots = interior_participant_slots(arena_root_ref, allocator);
+                reserve_gap_pools_for_parent_slots(&mut scaffold, allocator, &interior_slots, gap_k)
+            } else {
+                let total_gaps = gap_k.saturating_mul(top_level_slots.len() as u32);
+                let gap_block = allocator.reserve_exclusive_gap_block(total_gaps);
+                for (i, participant_slot) in top_level_slots.iter().enumerate() {
+                    let start = (i as u32 * gap_k) as usize;
+                    let end = start + gap_k as usize;
+                    scaffold.gap_pools.insert(
+                        *participant_slot,
+                        ReservedGapPool {
+                            parent_participant_slot: *participant_slot,
+                            available: gap_block[start..end].to_vec(),
+                        },
+                    );
+                }
+                gap_block.first().copied()
             }
-            gap_block.first().copied()
         } else {
             None
         };
@@ -155,15 +195,184 @@ pub fn materialize_arena_participants(
         scaffold.reports.push(ArenaParticipantAllocationReport {
             arena: arena.name.clone(),
             root_slot: arena_root_slot,
-            participant_count: participant_slots.len() as u32,
+            participant_count: arena.explicit_participants.len() as u32,
             reserved_gap_per_intermediate: arena.reserved_gap_per_intermediate,
             max_children_per_intermediate: arena.expected_max_children_per_intermediate,
-            participant_sibling_first: participant_slots.first().copied(),
+            participant_sibling_first: top_level_slots.first().copied(),
             gap_block_first,
         });
     }
 
     Ok(scaffold)
+}
+
+fn validate_explicit_participant_graph(
+    arena: &simthing_spec::ArenaSpec,
+) -> Result<(), InstallError> {
+    let mut by_subtree_root: HashMap<u32, usize> = HashMap::new();
+    for participant in &arena.explicit_participants {
+        if by_subtree_root
+            .insert(
+                participant.subtree_root_id,
+                participant.subtree_root_id as usize,
+            )
+            .is_some()
+        {
+            return Err(InstallError::Spec(
+                SpecError::DuplicateEnrollmentHostedSimThing {
+                    arena: arena.name.clone(),
+                    subtree_root_id: participant.subtree_root_id,
+                },
+            ));
+        }
+    }
+
+    for participant in &arena.explicit_participants {
+        let Some(parent_id) = participant.parent_subtree_root_id else {
+            continue;
+        };
+        if parent_id > u32::MAX as u64 {
+            return Err(InstallError::Spec(
+                SpecError::UnknownExplicitParticipantParent {
+                    arena: arena.name.clone(),
+                    parent_subtree_root_id: parent_id,
+                },
+            ));
+        }
+        let parent_u32 = parent_id as u32;
+        if !by_subtree_root.contains_key(&parent_u32) {
+            return Err(InstallError::Spec(
+                SpecError::UnknownExplicitParticipantParent {
+                    arena: arena.name.clone(),
+                    parent_subtree_root_id: parent_id,
+                },
+            ));
+        }
+    }
+
+    for participant in &arena.explicit_participants {
+        let mut seen = HashSet::new();
+        let mut current = Some(participant.subtree_root_id);
+        while let Some(subtree_root_id) = current {
+            if !seen.insert(subtree_root_id) {
+                return Err(InstallError::Spec(
+                    SpecError::ExplicitParticipantParentCycle {
+                        arena: arena.name.clone(),
+                        subtree_root_id: participant.subtree_root_id,
+                    },
+                ));
+            }
+            current = parent_subtree_root_id(arena, subtree_root_id);
+        }
+    }
+
+    Ok(())
+}
+
+fn parent_subtree_root_id(arena: &simthing_spec::ArenaSpec, subtree_root_id: u32) -> Option<u32> {
+    arena
+        .explicit_participants
+        .iter()
+        .find(|participant| participant.subtree_root_id == subtree_root_id)
+        .and_then(|participant| participant.parent_subtree_root_id)
+        .map(|parent_id| parent_id as u32)
+}
+
+fn attach_participant_subtree(
+    subtree_root_id: u32,
+    parent_node: &mut SimThing,
+    nodes_by_hosted: &mut HashMap<u32, SimThing>,
+    children_by_parent: &HashMap<Option<u32>, Vec<u32>>,
+) {
+    let mut node = nodes_by_hosted
+        .remove(&subtree_root_id)
+        .expect("participant node reserved");
+    if let Some(child_ids) = children_by_parent.get(&Some(subtree_root_id)) {
+        for child_id in child_ids {
+            attach_participant_subtree(*child_id, &mut node, nodes_by_hosted, children_by_parent);
+        }
+    }
+    parent_node.add_child(node);
+}
+
+fn materialize_participant_subtree(
+    node: &SimThing,
+    allocator: &mut SlotAllocator,
+    arena_name: &str,
+) -> Result<(), InstallError> {
+    if allocator.slot_of(node.id).is_none() {
+        allocator.alloc(node.id);
+    }
+
+    let children: Vec<&SimThing> = node
+        .children
+        .iter()
+        .filter(|child| child.kind == SimThingKind::ArenaParticipant)
+        .collect();
+    if children.is_empty() {
+        return Ok(());
+    }
+
+    let mut child_slots = Vec::with_capacity(children.len());
+    for child in &children {
+        if allocator.slot_of(child.id).is_none() {
+            allocator.alloc(child.id);
+        }
+        child_slots.push(
+            allocator
+                .slot_of(child.id)
+                .expect("child participant allocated"),
+        );
+    }
+    if !slots_are_contiguous(&child_slots) {
+        return Err(InstallError::Spec(
+            SpecError::ExplicitParticipantAllocationNonContiguous {
+                arena: arena_name.to_string(),
+            },
+        ));
+    }
+
+    for child in children {
+        materialize_participant_subtree(child, allocator, arena_name)?;
+    }
+    Ok(())
+}
+
+fn interior_participant_slots(arena_root: &SimThing, allocator: &SlotAllocator) -> Vec<SlotId> {
+    let mut out = Vec::new();
+    collect_interior_participant_slots(arena_root, allocator, &mut out);
+    out.sort_unstable();
+    out.dedup();
+    out
+}
+
+fn collect_interior_participant_slots(
+    node: &SimThing,
+    allocator: &SlotAllocator,
+    out: &mut Vec<SlotId>,
+) {
+    if node.kind != SimThingKind::ArenaParticipant {
+        for child in &node.children {
+            collect_interior_participant_slots(child, allocator, out);
+        }
+        return;
+    }
+
+    let participant_children: Vec<&SimThing> = node
+        .children
+        .iter()
+        .filter(|child| child.kind == SimThingKind::ArenaParticipant)
+        .collect();
+    if !participant_children.is_empty() {
+        out.push(
+            allocator
+                .slot_of(node.id)
+                .expect("interior participant allocated"),
+        );
+    }
+    for child in participant_children {
+        collect_interior_participant_slots(child, allocator, out);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
@@ -175,10 +384,7 @@ pub enum DynamicEnrollmentError {
     #[error("participant sibling block for arena `{arena}` is not contiguous")]
     NonContiguousSiblings { arena: String },
     #[error("child hosted SimThing `{child:?}` already enrolled in arena `{arena}`")]
-    AlreadyEnrolled {
-        arena: String,
-        child: SimThingId,
-    },
+    AlreadyEnrolled { arena: String, child: SimThingId },
     #[error("contiguous slot extension failed for arena `{arena}`: {source}")]
     ContiguityExtensionFailed {
         arena: String,
@@ -253,12 +459,13 @@ pub fn prepare_dynamic_arena_root_append(
         })?;
 
     let last_sibling = *sibling_slots.last().expect("non-empty siblings");
-    let participant_slot = allocator
-        .can_alloc_contiguous_after(last_sibling)
-        .map_err(|source| DynamicEnrollmentError::ContiguityExtensionFailed {
-            arena: arena_name.to_string(),
-            source,
-        })?;
+    let participant_slot =
+        allocator
+            .can_alloc_contiguous_after(last_sibling)
+            .map_err(|source| DynamicEnrollmentError::ContiguityExtensionFailed {
+                arena: arena_name.to_string(),
+                source,
+            })?;
 
     let mut participant_node = SimThing::new(SimThingKind::ArenaParticipant, 0);
     seed_participant_property(
@@ -311,10 +518,10 @@ pub fn commit_dynamic_arena_root_append(
     let arena_root = find_child_mut(root, pending.arena_root_id).expect("arena root in tree");
     arena_root.add_child(pending.participant_node);
 
-    scaffold.index.by_host_and_arena.insert(
-        (pending.child_hosted_id, pending.arena_idx),
-        allocated_slot,
-    );
+    scaffold
+        .index
+        .by_host_and_arena
+        .insert((pending.child_hosted_id, pending.arena_idx), allocated_slot);
 
     if let Some(report) = scaffold.reports.get_mut(pending.arena_idx as usize) {
         report.participant_count = report.participant_count.saturating_add(1);
@@ -348,13 +555,7 @@ pub fn try_append_arena_root_sibling_participant(
         allocator,
         arena_registry,
     )?;
-    commit_dynamic_arena_root_append(
-        pending,
-        scaffold,
-        root,
-        arena_registry,
-        allocator,
-    )
+    commit_dynamic_arena_root_append(pending, scaffold, root, arena_registry, allocator)
 }
 
 /// Consume a reserved gap slot for a fission-spawned participant child, or reject
@@ -366,12 +567,13 @@ pub fn try_alloc_participant_child_in_gap(
     allocator: &mut SlotAllocator,
     fission_policy: FissionPolicy,
 ) -> Result<SlotId, GapAllocError> {
-    let pool = scaffold
-        .gap_pools
-        .get_mut(&parent_participant_slot)
-        .ok_or(GapAllocError::Exhausted {
-            parent_slot: parent_participant_slot,
-        })?;
+    let pool =
+        scaffold
+            .gap_pools
+            .get_mut(&parent_participant_slot)
+            .ok_or(GapAllocError::Exhausted {
+                parent_slot: parent_participant_slot,
+            })?;
     if let Some(slot) = pool.available.pop() {
         allocator.claim_exclusive_slot(slot, child_id)?;
         return Ok(slot);
@@ -410,7 +612,9 @@ pub fn refresh_fission_participant_child(
         allocator,
         fission_policy,
     )?;
-    let parent_id = allocator.owner_of(parent_participant_slot).expect("parent slot");
+    let parent_id = allocator
+        .owner_of(parent_participant_slot)
+        .expect("parent slot");
     let parent = find_child_mut(root, parent_id).expect("parent in tree");
     parent.add_child(child_participant);
     Ok(slot)

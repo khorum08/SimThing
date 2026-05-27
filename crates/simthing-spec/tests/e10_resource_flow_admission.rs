@@ -58,10 +58,7 @@ fn food_arena_spec(max_participants: u32) -> ArenaSpec {
         reserved_orderband_depth: 0,
         reserved_gap_per_intermediate: 0,
         expected_max_children_per_intermediate: 0,
-        explicit_participants: vec![ExplicitParticipantSpec {
-            slot: 1,
-            subtree_root_id: 42,
-        }],
+        explicit_participants: vec![ExplicitParticipantSpec::flat(1, 42)],
         enrollment: None,
         wildcard_admission: None,
     }
@@ -79,10 +76,7 @@ fn research_arena_spec() -> ArenaSpec {
         reserved_orderband_depth: 0,
         reserved_gap_per_intermediate: 0,
         expected_max_children_per_intermediate: 0,
-        explicit_participants: vec![ExplicitParticipantSpec {
-            slot: 2,
-            subtree_root_id: 43,
-        }],
+        explicit_participants: vec![ExplicitParticipantSpec::flat(2, 43)],
         enrollment: None,
         wildcard_admission: None,
     }
@@ -170,10 +164,7 @@ fn e10_rejects_unbounded_wildcard_without_cap() {
 fn e10_enforces_max_participants() {
     let reg = setup_two_arena_registry();
     let mut arena = food_arena_spec(1);
-    arena.explicit_participants.push(ExplicitParticipantSpec {
-        slot: 2,
-        subtree_root_id: 99,
-    });
+    arena.explicit_participants.push(ExplicitParticipantSpec::flat(2, 99));
     let spec = ResourceFlowSpec {
         arenas: vec![arena],
         couplings: vec![],
@@ -189,10 +180,7 @@ fn e10_rejects_all_algebraic_coupling_cycle() {
     let mut suppression = food_arena_spec(4);
     suppression.name = "suppression".into();
     suppression.flow_property = PropertyKey::new("core", "suppression_flow");
-    suppression.explicit_participants = vec![ExplicitParticipantSpec {
-        slot: 3,
-        subtree_root_id: 44,
-    }];
+    suppression.explicit_participants = vec![ExplicitParticipantSpec::flat(3, 44)];
 
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena_spec(4), research_arena_spec(), suppression],
