@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — D-1: discrete-transaction contention memo
+
+- Added [`docs/reviews/d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md): current-state audit of discrete transfer/recipe/emission/threshold classes post–Phase T; existing guardrails (T-2, C-8c, bootstrap); remaining cross-band and boundary ordering gaps; recommended policy boundary; D-2 deferral with optional D-2a driver scheduler path.
+- D-1 memo landed: discrete-transaction contention current-state audit and implementation recommendations. No production code changes. Phase T remains complete in default-off / explicit-opt-in posture.
+- T-6 docs cleanup: replaced `PR #___` placeholders with direct commit `3294e6f` (T-6 implementation was not PR #170). Temporary pre-T6 verification artifacts remain absent from the tree.
+
+**Verification:** `cargo check --workspace`; `cargo test --workspace`.
+
+**Next gate:** D-2 implementation handoff (only if discrete workload proves need) or E-11B nested hierarchy GPU.
+
+---
+
 ## 2026-05-27 — Phase T-6: limited opt-in resource economy flagging
 
 - Added `ResourceEconomyOptInMode` on `ResourceEconomySpec`: `Disabled`, `TransferOnly`, `EmissionOnly`, and `TransferAndEmission`.
