@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** E-11 allocation execution (pending merge)  
+**Master HEAD:** E-11 allocation execution (PR #159)  
 **Verification (last recorded):** `cargo test --workspace` green; `e11_*` 14/14; prerequisite suites green
 
 ---
@@ -84,7 +84,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-10R** | — | Driver participant identity preflight + reserved-gap admission |
 | **E-8R** | — | Arena-internal plumbing columns at property compile |
 | **E-7R** | — | `plan_governed_integration_at_band` for E-11 integration placement |
-| **E-11** | — | Allocation execution landed; `e11_*` 14/14; flag default false |
+| **E-11** | #159 | Allocation execution landed; `e11_*` 14/14; flag default false |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |

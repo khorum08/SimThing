@@ -1032,7 +1032,7 @@ These five PRs land the Resource Flow Substrate per
 `docs/adr/resource_flow_substrate.md`. The substrate is a registration
 discipline on top of AccumulatorOp v2; no new GPU primitive is introduced.
 
-**PR sequencing:** E-7 through E-10 landed (#149–#153). **Pre-E-11 prerequisites landed** (E-10R, E-8R, E-7R, E-10R2, E-10R3). **E-11 allocation execution landed** (see PR E-11). E-1, E-3, E-5 remain independent.
+**PR sequencing:** E-7 through E-10 landed (#149–#153). **Pre-E-11 prerequisites landed** (E-10R, E-8R, E-7R, E-10R2, E-10R3). **E-11 allocation execution landed** (#159, `8a628ca`). E-1, E-3, E-5 remain independent.
 
 ### PR E-7 — `governed_by` planner generalization
 
@@ -1179,7 +1179,7 @@ produce expected expansion reports.
 ### ✅ PR E-11 — Hierarchical allocation kernel pattern + CPU oracle parity
 
 **Model:** Opus (review and design pseudocode), Composer 2.5 (implementation)
-**Status:** **Done** — allocation execution + `e11_*` suite (14/14). `use_accumulator_resource_flow` default **false** pending burn-in.
+**Status:** **Done** — PR #159 (`8a628ca`); allocation execution + `e11_*` suite (14/14). `use_accumulator_resource_flow` default **false** pending burn-in.
 **Why Opus:** E-11 is a real new GPU production capability. Although it reuses
 the existing AccumulatorOp kernel, it is structured as a reverse-direction
 OrderBand sweep with per-intermediate weight reductions and per-child share

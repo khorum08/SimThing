@@ -115,7 +115,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-7R** | — | — | **Done** — `plan_governed_integration_at_band` ordering API |
 | **E-11 design** | — | — | **Accepted** — Opus v2 memo landed |
 | **E-11 review** | — | — | **Done** — readiness review PASS; handoff published |
-| **E-11** | — | — | **Done** — hierarchical allocation execution; `e11_*` 14/14; flag default false |
+| **E-11** | `8a628ca` | #159 | **Done** — hierarchical allocation execution; `e11_*` 14/14; flag default false |
 
 **Next recommended gates (pivot-forward order):**
 

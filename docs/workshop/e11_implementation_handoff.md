@@ -1,6 +1,6 @@
 # E-11 — Narrowed Implementation Handoff (Cursor binding)
 
-**Status:** **Done** — allocation execution landed (branch `e11-allocation-execution`; PR pending merge).  
+**Status:** **Done** — PR [#159](https://github.com/khorum08/SimThing/pull/159), commit `8a628ca`.  
 **Authority:** [`e11_hierarchical_allocation_design.md`](e11_hierarchical_allocation_design.md) (Opus v2)  
 **Prerequisites:** E-10R, E-10R2, E-10R3, E-8R, E-7R — **landed** (PRs #155–#157).
 

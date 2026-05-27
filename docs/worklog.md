@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-19 — E-11 hierarchical allocation execution
 
-- Landed E-11 allocation execution on AccumulatorOp v2 substrate (no new WGSL, no new `AccumulatorRole` variants).
+- Landed E-11 allocation execution on AccumulatorOp v2 substrate (PR [#159](https://github.com/khorum08/SimThing/pull/159), `8a628ca`).
 - **Modules:** `arena_hierarchy`, `arena_allocation_oracle`, `arena_allocation_plan`, `child_share_eml`, `arena_allocation_sync`; session wiring via `use_accumulator_resource_flow` (default **false**).
 - **Substrate fix:** `SourceSpec::SlotRange { col }` — explicit gather column for cross-column up-sweep reductions.
 - **Tests:** `e11_arena_allocation.rs` — 14/14 green including CPU/GPU parity, zero-weight no-NaN, depth budget, fission gap, integration band ordering.
