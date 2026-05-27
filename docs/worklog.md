@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — Product-priority vertical slice selection checkpoint
+
+- Added [`product_priority_vertical_slice_selection.md`](reviews/product_priority_vertical_slice_selection.md) — docs-first track selection after continued flat-star soak.
+- **Recommendation: F — pause implementation and gather product requirements.** No named product scenario justifies D-2a, E-11B-5, spec/RON rebuild, new vertical slice, or additional soak.
+- Product-priority vertical slice selection checkpoint landed. No production code changes. Deleted superseded continued-soak local test artifacts per handoff.
+
+**Next gate:** product names a scenario; re-select track A–E; implement only the authorized named scenario track.
+
+---
+
 ## 2026-05-27 — Continued flat-star Resource Flow soak checkpoint
 
 - Added [`resource_flow_flat_star_continued_soak.rs`](../crates/simthing-driver/src/resource_flow_flat_star_continued_soak.rs) + test suite (12 tests): static 512-participant, skewed-weight, Policy A dynamic fission, multi-arena, replay, telemetry, posture guards.
