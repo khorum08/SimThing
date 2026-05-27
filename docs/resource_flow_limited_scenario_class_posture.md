@@ -104,8 +104,7 @@ The covered execution paths are only:
 
 Keep these blocked from `FlatStarResourceFlow` production posture:
 
-- Nested D>2 Resource Flow allocation.
-- E-11B nested hierarchy GPU.
+- Nested dynamic enrollment (E-11B-5) — static nested D=3/D=4 materialization is landed for explicit nested tests, but nested dynamic admission is paused/deferred until a named product scenario requires it.
 - Policy B `Reevaluate` selector re-run.
 - Wildcard or unbounded dynamic selector expansion.
 - Coupling-heavy arena graphs requiring product-scale delay semantics.
@@ -179,7 +178,7 @@ scenario requires any of the following:
 
 - Global Resource Flow default-on.
 - GPU execution inferred from `ResourceFlowSpec` presence.
-- E-11B nested hierarchy GPU.
+- E-11B nested dynamic enrollment (E-11B-5).
 - Policy B `Reevaluate` selector re-run.
 - Wildcard or unbounded dynamic selector expansion.
 - New WGSL.
@@ -191,7 +190,7 @@ scenario requires any of the following:
 - Hard-currency transfer through Resource Flow.
 - Immediate designer/RON/spec guardrail redesign inside the RF track.
 
-Route nested hierarchy requirements to E-11B. Route hard-currency ordering
+Route nested dynamic enrollment requirements to E-11B-5 (E-11B track paused until product names a scenario). Route hard-currency ordering
 requirements to D-2a. Route authoring-safety and product-UX guardrail
 requirements to the future simthing-spec/RON/Designer rebuild track.
 
