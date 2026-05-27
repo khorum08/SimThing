@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** E-11B nested hierarchy GPU readiness review (pending merge)  
-**Verification (last recorded):** `resource_economy_opt_in` + T-5/T-4 suites + `e11_resource_flow_soak` + `cargo test --workspace` green; transfer/emission and resource-flow flags default false
+**Master HEAD:** E-2B enrollment compilation readiness review (pending merge)  
+**Verification (last recorded):** E-11B review merge + `cargo test --workspace` green; transfer/emission and resource-flow flags default false
 
 ---
 
@@ -23,9 +23,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed. **E-11B readiness review landed** — nested hierarchy GPU deferred pending product priority ([memo](../reviews/e11b_nested_hierarchy_gpu_readiness_review.md)). `use_accumulator_resource_flow` **default false**. No new WGSL; `simthing-sim` remains arena-ignorant.
 
-**Next gates:** **Product decision** — E-11B implementation ladder (if nested Resource Flow prioritized), **E-2B** enrollment compilation, or **D-2a** discrete scheduling. E-2B remains blocked unless enrollment compilation explicitly lands.
+**Next gates:** **E-2B readiness review outcome** — implement E-2B-1…4 static enrollment ladder ([memo](../reviews/e2b_resource_flow_enrollment_compilation_readiness.md)); alternates: **D-2a** discrete scheduling or **E-11B** (deferred by default).
 
-**Open design gates (not sunset):** **Phase T complete.** D-1 memo landed; D-2 GPU allocator deferred. **E-11B readiness review landed** — defer E-11B by default; narrowed E-11B-1…B-5 ladder authorized when nested Resource Flow is prioritized. Global transfer/emission flags remain default false. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain on exact discrete AccumulatorOp paths, not Resource Flow. Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
+**Open design gates (not sunset):** **Phase T complete.** D-1 memo landed; D-2 GPU allocator deferred. **E-11B readiness review landed** — defer E-11B by default. **E-2B readiness review landed** — implement static enrollment compilation (E-2B-1…4); does not require E-11B. Global transfer/emission flags remain default false. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain on exact discrete AccumulatorOp paths, not Resource Flow. Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
 
 **C-8 complete:** EML infrastructure, intensity, transfer, and emission are GPU-resident through AccumulatorOp. TransferConservation remains ExactDeterministic only. Emission tolerance remains future-gated and isolated from transfer/hard thresholds.
 
@@ -97,6 +97,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **T-6** | `3294e6f` | Limited opt-in scenario flagging; global transfer/emission defaults remain false |
 | **D-1** | (pending merge) | Discrete-transaction contention memo; D-2 deferred |
 | **E-11B readiness** | (pending merge) | Nested hierarchy GPU audit; implementation deferred by default |
+| **E-2B readiness** | (pending merge) | Enrollment compilation audit; implement E-2B-1…4 recommended |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
@@ -146,6 +147,7 @@ explicitly instead of falling back or silently skipping work.
 |----------|-----|-------|--------|
 | Design | **D-1** discrete-transaction memo | Opus | **Done** — contention audit; D-2 deferred ([memo](../reviews/d1_discrete_transaction_contention_memo.md)) |
 | Design | **E-11B** nested hierarchy readiness | Opus | **Done** — audit; defer by default ([memo](../reviews/e11b_nested_hierarchy_gpu_readiness_review.md)) |
+| Design | **E-2B** enrollment compilation readiness | Opus | **Done** — audit; implement E-2B-1…4 ([memo](../reviews/e2b_resource_flow_enrollment_compilation_readiness.md)) |
 | Implementation | **Phase T** transfer/emission registration ownership | Cursor (Codex 5.5 + Composer 2.5) | **Complete** — T-1 through T-6 landed; default-off / explicit opt-in production posture ([Opus memo](../reviews/transfer_emission_registration_ownership_opus_review.md)) |
 | Infra | Test-harness cleanup | Optional | Runtime legacy oracle/fallback peers are gone; remaining cleanup is test-only ergonomics |
 

@@ -1265,7 +1265,9 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **D-1 status:** **Done** — [`docs/reviews/d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md). Discrete-transaction contention current-state audit and implementation recommendations. No production code changes. Phase T remains complete in default-off / explicit-opt-in posture. D-2 GPU allocator remains deferred.
 
-**E-11B readiness status:** **Done** — [`docs/reviews/e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md). Nested hierarchy GPU execution/materialization current-state audit. No production code changes. Phase T remains complete. D-1 remains landed; D-2 GPU allocator remains deferred. `use_accumulator_resource_flow` remains default false. **Next gate depends on review recommendation:** E-11B implementation ladder (if nested Resource Flow prioritized), E-2B enrollment compilation, or D-2a discrete scheduling.
+**E-11B readiness status:** **Done** — [`docs/reviews/e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md). Nested hierarchy GPU execution/materialization current-state audit. No production code changes. Phase T remains complete. D-1 remains landed; D-2 GPU allocator remains deferred. `use_accumulator_resource_flow` remains default false. E-11B deferred by default.
+
+**E-2B readiness status:** **Done** — [`docs/reviews/e2b_resource_flow_enrollment_compilation_readiness.md`](reviews/e2b_resource_flow_enrollment_compilation_readiness.md). Resource Flow enrollment compilation current-state audit. No production code changes. E-11B remains deferred by default. Phase T remains complete. D-1 remains landed; D-2 GPU allocator remains deferred. `use_accumulator_resource_flow` remains default false. **Next gate depends on review recommendation:** E-2B implementation ladder, E-11B, D-2a, or Opus review of selector authoring.
 
 **Posture (preserves v7.5):** runtime substrate is unchanged; ownership of
 transfer / recipe / emission / threshold-emit registrations moves to
@@ -1501,6 +1503,7 @@ as a doc-only PR.
 | **E-11 burn-in scenarios** | **E** | **Composer 2.5** | **Named flat-star scenario fixtures + `ResourceFlowScenarioBurnInReport`** | **Done** |
 | **E-11 CI soak** | **E** | **Composer 2.5** | **Opt-in flat-star CI soak + `ResourceFlowSoakSummaryReport`** | **Done** |
 | **E-11B readiness** | **E** | **Opus (memo only)** | **Nested hierarchy GPU execution/materialization audit** | **Done** — [`e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md) |
+| **E-2B readiness** | **E** | **Opus (memo only)** | **Resource Flow enrollment compilation audit** | **Done** — [`e2b_resource_flow_enrollment_compilation_readiness.md`](reviews/e2b_resource_flow_enrollment_compilation_readiness.md) |
 | S-1 | F | Codex 5.5 | Sunset intent fold | **Done locally** |
 | S-2 | F | Codex 5.5 | Sunset intensity update | **Landed (#138)** |
 | S-3 | F | Codex 5.5 | Sunset overlay prep | CI green at flag=on |
