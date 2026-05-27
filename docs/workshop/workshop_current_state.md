@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** E-11B-4 nested fission/gap hardening (pending merge)  
-**Verification (last recorded):** E-11B-4 `e11b_nested_fission_gap` — 13/13 PASS (local GPU)
+**Master HEAD:** E-11B nested dynamic enrollment readiness review (pending merge)  
+**Verification (last recorded):** docs-only — `cargo check --workspace` / `cargo test --workspace` PASS
 
 ---
 
@@ -21,7 +21,9 @@ Two parallel tracks:
 **Production direction:** AccumulatorOp v2 is the GPU execution path.
 Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Legacy threshold is deleted (S-6). Legacy velocity is deleted (S-5). Legacy intent is deleted (S-1). Snapshot is the only retained non-Accumulator operation.
 
-**E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed. **E-11B kickoff + fission/gap hardening landed** — nested D=3/D=4 static GPU parity; reserved-gap children preserve active child SlotRange and do not become allocation leaves unless explicitly admitted by a future nested enrollment gate. FlatStarResourceFlow remains the accepted bounded production posture. E-11B is an explicit nested extension, not Resource Flow global default-on. `use_accumulator_resource_flow` **default false**. No new WGSL; no new roles; no CPU fallback; `simthing-sim` remains arena-ignorant.
+**E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed. **E-11B kickoff + fission/gap hardening landed** — nested D=3/D=4 static GPU parity; reserved-gap children preserve active child SlotRange and do not become allocation leaves unless explicitly admitted by a future nested enrollment gate. **E-11B nested dynamic enrollment readiness review landed** — defer by default; narrow E-11B-5 ladder if product prioritizes. FlatStarResourceFlow remains the accepted bounded production posture. E-11B is an explicit nested extension, not Resource Flow global default-on. `use_accumulator_resource_flow` **default false**. No new WGSL; no new roles; no CPU fallback; `simthing-sim` remains arena-ignorant.
+
+**E-11B nested dynamic enrollment readiness:** **Done** — [`e11b_nested_dynamic_enrollment_readiness.md`](../reviews/e11b_nested_dynamic_enrollment_readiness.md). No production code changes. **Recommendation: defer** nested dynamic enrollment until named product scenario. Policy B remains deferred. Gap children are not automatic allocation leaves.
 
 **E-2B status:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).** Dynamic fission enrollment via arena-root sibling append ([memo](../reviews/e2b5_dynamic_fission_enrollment_readiness.md), soak PR #178). `use_accumulator_resource_flow` **default false**.
 
@@ -45,9 +47,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **D-2a readiness:** **Done** — [`d2a_boundary_transaction_scheduling_readiness.md`](../reviews/d2a_boundary_transaction_scheduling_readiness.md). Boundary transaction scheduling readiness review. No production code changes. **Recommendation: defer D-2a implementation** — Phase T same-band collision rejection sufficient for current workloads; `order_band` wiring gap documented. Hard-currency transfer remains exact discrete AccumulatorOp path; Resource Flow separate. No WGSL, new roles, or CPU fallback.
 
-**Next gates:** product priority: continue **E-11B** toward nested dynamic enrollment, narrow **D-2a**, **simthing-spec/RON rebuild**, or continued soak. Global default-on remains deferred.
+**Next gates:** product priority per readiness review: **pause E-11B** (default), **narrow E-11B-5** nested dynamic enrollment (only after named scenario), **D-2a**, **simthing-spec/RON rebuild**, or continued soak. Global default-on remains deferred.
 
-**Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. E-11B static nested kickoff + fission/gap hardening landed; nested dynamic enrollment remains product-priority gated. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
+**Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. E-11B static nested kickoff + fission/gap hardening landed; nested dynamic enrollment **deferred by default** pending product pull. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
 
 **C-8 complete:** EML infrastructure, intensity, transfer, and emission are GPU-resident through AccumulatorOp. TransferConservation remains ExactDeterministic only. Emission tolerance remains future-gated and isolated from transfer/hard thresholds.
 

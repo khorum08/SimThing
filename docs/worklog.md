@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — E-11B nested dynamic enrollment readiness review
+
+- Added [`e11b_nested_dynamic_enrollment_readiness.md`](reviews/e11b_nested_dynamic_enrollment_readiness.md) — docs-first audit post–E-11B-4.
+- **Recommendation: defer** nested dynamic enrollment until a named product scenario requires it. Narrow E-11B-5 ladder authorized if product prioritizes. Not Opus unless Policy B / compaction / selector re-run mandated.
+- E-11B nested dynamic enrollment readiness review landed. No production code changes. Deleted superseded E-11B-4 local test artifacts per handoff.
+
+**Next gate:** product priority: pause E-11B (default), narrow E-11B-5, D-2a, or simthing-spec/RON rebuild.
+
+---
+
 ## 2026-05-27 — E-11B-4: nested fission / gap preservation hardening
 
 - Added nested fission/gap diagnostics: `reserve_gap_pools_for_parent_slots`, `nested_fission_gap_report`, `gap_pool_snapshot`, `HierarchyNode::active_child_slots`, `ArenaTreeLayout::interior_participant_slots`.
