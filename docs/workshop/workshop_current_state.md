@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** RF-T3 product soak / telemetry (pending merge)  
-**Verification (last recorded):** RF-T3 gate — `cargo test --workspace` PASS ([report](../tests/resource_flow_opt_in_product_soak_test_results.md))
+**Master HEAD:** RF-T3 product soak / telemetry (merged PR #182, `a2a961e`)  
+**Verification (last recorded):** RF global/default-on re-review — `cargo test --workspace` PASS
 
 ---
 
@@ -31,7 +31,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **RF-T3 status:** **Done** — product-like opt-in soak + telemetry (`ResourceFlowOptInTelemetryReport`, flag-source attribution); 128/256 static, dynamic fission cadence, multi-arena, replay, disabled, rejection fixtures. Global flag remains default false.
 
-**Next gates:** **Resource Flow global default-on readiness re-review** (before RF-T4); **E-11B**; **D-2a** per product priority.
+**RF global/default-on re-review:** **Done** — [`resource_flow_global_default_on_rereview.md`](../reviews/resource_flow_global_default_on_rereview.md). **Recommendation B:** proceed to RF-T4 limited scenario-class default-on; global default-on rejected (D). No production code changes.
+
+**Next gates:** **RF-T4 limited scenario-class default-on**; **E-11B**; **D-2a** per product priority.
 
 **Open design gates (not sunset):** Phase T complete. E-2B static + dynamic enrollment done. E-11B deferred by default. `use_accumulator_resource_flow` remains default false. Hard-currency transfers remain separate from Resource Flow.
 

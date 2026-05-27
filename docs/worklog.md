@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — Resource Flow global/default-on readiness re-review (post–RF-T3)
+
+- **`resource_flow_global_default_on_rereview.md`** — docs-only re-review after RF-T1/T2/T3; answers 10 review questions; cites RF-T3 evidence.
+- Resource Flow global/default-on readiness re-review landed. No production code changes. RF-T1 scenario-class opt-in, RF-T2 opt-in burn-in expansion, and RF-T3 product-like opt-in soak + telemetry remain landed. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. E-11 flat-star, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment remain the only covered execution paths. E-11B remains deferred. Policy B Reevaluate remains deferred. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant.
+- **Recommendation B:** proceed to RF-T4 limited scenario-class default-on; reject global default-on (D).
+
+**Verification:** `cargo check --workspace` + `cargo test --workspace` — PASS (docs-only PR).
+
+**Next gate:** RF-T4 limited scenario-class default-on implementation.
+
+---
+
 ## 2026-05-19 — RF-T3: product-like opt-in soak / telemetry surfacing
 
 - **`resource_flow_opt_in_telemetry.rs`** — `ResourceFlowOptInTelemetryReport`, `ResourceFlowFlagSource` (`DefaultDisabled`, `SpecFlatStarOptIn`, `TestOverride`); `SimSession::resource_flow_flag_source` + `collect_resource_flow_opt_in_telemetry`.
