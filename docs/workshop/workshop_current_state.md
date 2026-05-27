@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** E-11B-1 explicit nested participant materialization (pending merge)  
-**Verification (last recorded):** `cargo fmt` / `cargo check --workspace` / `cargo test --workspace` PASS
+**Master HEAD:** E-11B static nested participant RON smoke (pending merge)  
+**Verification (last recorded):** `cargo test --workspace` PASS
 
 ---
 
@@ -27,7 +27,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **Continued flat-star soak:** **Done** — `resource_flow_flat_star_continued_soak` (12 tests). Confidence/observability only. E-11B remains paused.
 
-**E-11B status:** **Paused (not abandoned)** — E-11B-1 explicit nested participant materialization landed (`parent_subtree_root_id`, nested `materialize_arena_participants`, depth-first contiguity). Static D=3/D=4 nested GPU parity remains green via existing `build_nested_layout` dispatch. Nested dynamic enrollment deferred until a named product scenario requires it. **E-11B-5 not authorized** without named scenario. E-11B remains an explicit nested extension, not Resource Flow global default-on. No mapping runtime, no dynamic nested enrollment, no WGSL changes.
+**E-11B status:** **Paused (not abandoned)** — E-11B-1 explicit nested participant materialization landed (`parent_subtree_root_id`, nested `materialize_arena_participants`, depth-first contiguity). E-11B static nested participant RON smoke landed (serde roundtrip + RON-authored D=3/D=4 reach `build_nested_layout`; flat-star unchanged when field omitted). Static D=3/D=4 nested GPU parity remains green via existing `build_nested_layout` dispatch. Nested dynamic enrollment deferred until a named product scenario requires it. **E-11B-5 not authorized** without named scenario. Pending mapping/location remains provisional; no mapping runtime. E-11B remains an explicit nested extension, not Resource Flow global default-on.
 
 **E-2B status:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).** Dynamic fission enrollment via arena-root sibling append ([memo](../reviews/e2b5_dynamic_fission_enrollment_readiness.md), soak PR #178). `use_accumulator_resource_flow` **default false**.
 
