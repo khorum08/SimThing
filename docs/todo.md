@@ -117,7 +117,7 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 | **E-11 review** | — | — | **Done** — readiness review PASS; handoff published |
 | **E-11** | `8a628ca` | #159 | **Done** — flat-star D=2 vertical slice; `e11_*` 14/14; flag default false |
 | **E-11R** | `8939fc6` | #160 | **Done** — sync errors, scope honesty, session-path test |
-| **E-11 burn-in** | — | — | **Done** — controlled flat-star scaffold; `e11_burn_in_*` 4/4; flag default false |
+| **E-11 burn-in** | `ae75d8e` | #161 | **Done** — controlled flat-star scaffold; `e11_burn_in_*` 4/4; flag default false |
 
 **Next recommended gates (pivot-forward order):**
 

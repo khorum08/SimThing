@@ -8,7 +8,7 @@ Running log of what's done and what's next, across sessions.
 
 ## 2026-05-19 — E-11 controlled burn-in scaffold
 
-- Added `resource_flow_burn_in.rs` with `ResourceFlowBurnInReport` and `run_flat_star_burn_in` (driver-only reporting).
+- Added `resource_flow_burn_in.rs` with `ResourceFlowBurnInReport` and `run_flat_star_burn_in` (PR [#161](https://github.com/khorum08/SimThing/pull/161), `ae75d8e`).
 - Added `e11_burn_in.rs` (4 tests): replay stability, flag-off clears ops, expected op count, 100-tick CPU oracle parity.
 - Factored flat-star session fixture into `tests/support/e11_flat_star.rs`; refactored `e11r_arena_allocation.rs` to reuse it.
 - Docs: E-11R removed from forward gates; next immediate gate = controlled default-off burn-in continuation.

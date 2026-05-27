@@ -86,7 +86,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **E-7R** | — | `plan_governed_integration_at_band` for E-11 integration placement |
 | **E-11** | #159 | Flat-star D=2 GPU slice; nested GPU deferred |
 | **E-11R** | #160 | Sync errors + session-path test + scope honesty |
-| **E-11 burn-in** | — | Controlled flat-star scaffold; flag default false |
+| **E-11 burn-in** | #161 | Controlled flat-star scaffold; flag default false |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
