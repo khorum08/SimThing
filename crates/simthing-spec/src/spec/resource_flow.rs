@@ -6,12 +6,31 @@ use serde::{Deserialize, Serialize};
 ///
 /// Declares explicit arena participation, caps, coupling edges, and fission policy.
 /// Property `accumulator_spec` metadata is validated against this graph at session build.
+///
+/// `opt_in_mode` controls **GPU execution** for Resource Flow (RF-T1). Presence of arenas
+/// alone does not enable `use_accumulator_resource_flow`; scenarios must opt in explicitly.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ResourceFlowSpec {
+    /// Explicit production execution opt-in for E-11 flat-star Resource Flow GPU sync.
+    ///
+    /// Authored arena/coupling content is compiled regardless; only execution requires opt-in.
+    #[serde(default)]
+    pub opt_in_mode: ResourceFlowOptInMode,
     #[serde(default)]
     pub arenas: Vec<ArenaSpec>,
     #[serde(default)]
     pub couplings: Vec<CouplingSpec>,
+}
+
+/// Resource Flow GPU execution opt-in (RF-T1). Mirrors `ResourceEconomyOptInMode` posture.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum ResourceFlowOptInMode {
+    /// Compile/install Resource Flow artifacts; do not enable GPU Resource Flow sync.
+    #[default]
+    Disabled,
+    /// Enable E-11 flat-star D=2 GPU path for this scenario/game mode only.
+    FlatStarOptIn,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

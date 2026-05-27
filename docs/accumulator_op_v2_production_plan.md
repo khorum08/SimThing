@@ -1271,9 +1271,9 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **Resource Flow default-on readiness status:** **Done** — [`resource_flow_default_on_readiness_review.md`](reviews/resource_flow_default_on_readiness_review.md). **Recommendation B:** limited scenario-class default-on readiness may proceed; **global default-on rejected (D)**. No production code changes. `use_accumulator_resource_flow` remains default false.
 
-**E-2B status:** **Done (static enrollment E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak)** — Resource Flow enrollment selectors resolve to explicit participants at session install; dynamic fission enrollment admits children at boundary via arena-root sibling append with atomic prepare/commit. No legacy `resource_flow_participant` AccumulatorOp builder. E-11B nested hierarchy GPU remains deferred. `use_accumulator_resource_flow` remains default false. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant.
+**RF-T1 status:** **Done** — limited scenario-class Resource Flow opt-in flagging. `ResourceFlowOptInMode` on `ResourceFlowSpec` enables `FlatStarOptIn` per authored scenario/game mode. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU Resource Flow execution. E-11 flat-star path, E-2B static enrollment, and E-2B-5 Policy A dynamic enrollment are reused. E-11B remains deferred. Policy B Reevaluate remains deferred. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant.
 
-**Next gate:** Resource Flow limited scenario-class opt-in flagging (RF-T1, mirroring T-6); or continued explicit opt-in burn-in expansion, E-11B, D-2a per product priority.
+**Next gate:** RF-T2 limited opt-in scenario burn-in expansion; or E-11B, D-2a per product priority.
 
 **E-2B readiness status:** **Done** — [`docs/reviews/e2b_resource_flow_enrollment_compilation_readiness.md`](reviews/e2b_resource_flow_enrollment_compilation_readiness.md).
 
@@ -1294,6 +1294,7 @@ default false and are enabled only by scenario/session opt-in.
 | **T-4** | Composer 2.5 | Session integration + boundary refresh via existing `sync_accumulator_{transfer,emission}_session` paths; generation-keyed skip; flag-off populated-spec rejection | **Done** — session open + flag-off reject + generation skip suites (8/8) |
 | **T-5** | Composer 2.5 | Boundary refresh / replay determinism; 100-tick transfer/recipe/emission conservation burn-in vs CPU oracle; generation-keyed skip + reupload tests | **Done** — PR #169 (`91bdae3`) |
 | **T-6** | Codex 5.5 | Limited opt-in scenario flagging / default-off production burn-in decision | **Done** — direct commit `3294e6f` |
+| **RF-T1** | Codex 5.5 | Resource Flow execution opt-in (`ResourceFlowOptInMode` on `ResourceFlowSpec`; `SimSession::open_from_spec` applies flag) | **Done** — `resource_flow_opt_in` + roundtrip suites |
 
 **Stop conditions (re-asserted; all unchanged from the v2 ADR):** no new WGSL,
 no new `AccumulatorOp` primitive, no `simthing-sim` semantic ownership of

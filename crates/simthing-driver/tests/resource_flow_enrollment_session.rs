@@ -65,6 +65,7 @@ fn flat_star_game_mode_with_enrollment(max_orderband_depth: u32) -> GameModeSpec
                 wildcard_admission: None,
             }],
             couplings: vec![],
+        ..Default::default()
         }),
         resource_economy: None,
     }

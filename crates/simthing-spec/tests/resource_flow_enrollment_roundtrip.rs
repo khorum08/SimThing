@@ -51,6 +51,7 @@ fn resource_flow_enrollment_selector_roundtrips_ron() {
                 ..sample_arena_explicit_only()
             }],
             couplings: vec![],
+        ..Default::default()
         }),
         resource_economy: None,
     };

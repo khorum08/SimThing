@@ -182,6 +182,7 @@ pub fn open_single_fission_setup(
             wildcard_admission: None,
         }],
         couplings: vec![],
+        ..Default::default()
     };
 
     validate_resource_flow_preflight(&spec, &alloc).unwrap();
@@ -250,6 +251,7 @@ fn open_multi_fission_setup(parent_count: usize, max_participants: u32) -> Enrol
             wildcard_admission: None,
         }],
         couplings: vec![],
+        ..Default::default()
     };
 
     validate_resource_flow_preflight(&spec, &alloc).unwrap();
@@ -310,6 +312,7 @@ fn open_two_arena_setup() -> EnrollmentSoakSetup {
             wildcard_admission: None,
         }],
         couplings: vec![],
+        ..Default::default()
     };
     validate_resource_flow_preflight(&food_spec, &alloc).unwrap();
     let mut scaffold =
@@ -339,6 +342,7 @@ fn open_two_arena_setup() -> EnrollmentSoakSetup {
             wildcard_admission: None,
         }],
         couplings: vec![],
+        ..Default::default()
     };
     validate_resource_flow_preflight(&research_only, &alloc).unwrap();
     let research_scaffold =
@@ -362,6 +366,7 @@ fn open_two_arena_setup() -> EnrollmentSoakSetup {
     let full_spec = ResourceFlowSpec {
         arenas: vec![food_spec.arenas[0].clone(), research_only.arenas[0].clone()],
         couplings: vec![],
+        ..Default::default()
     };
     let (arena_registry, _) =
         simthing_driver::compile_and_materialize_resource_flow(&full_spec, &reg).unwrap();

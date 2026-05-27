@@ -59,6 +59,7 @@ fn resource_flow_enrollment_install_target_resolves_all_of_kind() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena(16)],
         couplings: vec![],
+    ..Default::default()
     };
     let resolved =
         resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).expect("resolve");
@@ -81,6 +82,7 @@ fn resource_flow_enrollment_rejects_empty_resolution() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena(16)],
         couplings: vec![],
+    ..Default::default()
     };
     let err = resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).unwrap_err();
     assert!(matches!(
@@ -95,6 +97,7 @@ fn resource_flow_enrollment_rejects_over_max_participants() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena(2)],
         couplings: vec![],
+    ..Default::default()
     };
     let err = resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).unwrap_err();
     assert!(matches!(
@@ -122,6 +125,7 @@ fn resource_flow_enrollment_rejects_duplicate_hosted_simthing() {
             ..food_arena(16)
         }],
         couplings: vec![],
+    ..Default::default()
     };
     spec.arenas[0].enrollment = Some(EnrollmentSelectorSpec::ExplicitOnly);
     let err = resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).unwrap_err();
@@ -137,6 +141,7 @@ fn resource_flow_enrollment_resolved_participants_pass_e10r_preflight() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena(16)],
         couplings: vec![],
+    ..Default::default()
     };
     let resolved =
         resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).expect("resolve");
@@ -164,6 +169,7 @@ fn resource_flow_enrollment_materializes_arena_participant_scaffold() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena(16)],
         couplings: vec![],
+    ..Default::default()
     };
     let resolved =
         resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).expect("resolve");
@@ -197,6 +203,7 @@ fn resource_flow_enrollment_preserves_sibling_contiguity() {
         &ResourceFlowSpec {
             arenas: vec![food_arena(16)],
             couplings: vec![],
+        ..Default::default()
         },
         &scenario,
         &root,
@@ -228,6 +235,7 @@ fn resource_flow_enrollment_does_not_require_e11b_nested_gpu() {
         &ResourceFlowSpec {
             arenas: vec![food_arena(16)],
             couplings: vec![],
+        ..Default::default()
         },
         &scenario,
         &root,
