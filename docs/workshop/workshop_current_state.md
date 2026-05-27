@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** workspace hygiene / paused-state consistency checkpoint (pending merge)  
+**Master HEAD:** `beb42b7` — workspace hygiene / paused-state consistency checkpoint (merged PR #192)  
 **Verification (last recorded):** `cargo fmt --check` / `cargo check --workspace` / `cargo test --workspace` PASS
 
 ---
