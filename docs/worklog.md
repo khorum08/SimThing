@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — E-11B pause / product-priority checkpoint
+
+- Docs-only workspace checkpoint: **E-11B paused** after kickoff + E-11B-4 + nested dynamic enrollment readiness review.
+- E-11B paused after nested static GPU parity, fission/gap hardening, and nested dynamic enrollment readiness review. Nested D=3/D=4 static hierarchy materialization remains landed and GPU-parity covered. Nested reserved-gap children remain non-leaf unless explicitly admitted by a future nested enrollment gate. Nested dynamic enrollment is deferred until a named product scenario requires it. E-11B-5 not authorized without named scenario. FlatStarResourceFlow remains bounded production posture. Global flag default false. No production code changes.
+- Deleted superseded E-11B nested dynamic enrollment readiness local test artifacts.
+
+**Next gate:** product priority — continued flat-star soak, D-2a, simthing-spec/RON rebuild, narrow E-11B-5, or new scenario-driven vertical slice.
+
+---
+
 ## 2026-05-27 — E-11B nested dynamic enrollment readiness review
 
 - Added [`e11b_nested_dynamic_enrollment_readiness.md`](reviews/e11b_nested_dynamic_enrollment_readiness.md) — docs-first audit post–E-11B-4.
