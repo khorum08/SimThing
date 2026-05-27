@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** E-11B static nested participant RON smoke (pending merge)  
+**Master HEAD:** `44537cf` — E-11B static nested participant RON smoke (merged PR #195)  
 **Verification (last recorded):** `cargo test --workspace` PASS
 
 ---
