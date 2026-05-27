@@ -48,6 +48,7 @@ pub use install::{
 };
 pub use resource_flow_burn_in::{
     run_flat_star_burn_in, ResourceFlowBurnInReport, ResourceFlowScenarioBurnInReport,
+    ResourceFlowSoakSummaryReport,
 };
 pub use resource_flow_compile::{
     compile_and_materialize_resource_flow, materialize_arena_registry,

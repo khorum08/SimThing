@@ -129,6 +129,58 @@ pub fn run_scenario_burn_in(
     report
 }
 
+pub fn assert_flat_star_only_no_nested_claims(fx: &FlatStarSession) {
+    use simthing_driver::{build_execution_plan, plan_arena_allocation};
+
+    assert_eq!(fx.layout.max_depth, 2, "E-11 remains flat-star D=2 only");
+    for node in fx.layout.iter_all() {
+        assert!(
+            node.depth <= 1,
+            "flat-star nodes must be root or leaf only, got depth {}",
+            node.depth
+        );
+    }
+
+    let arena = &fx.session.spec_state.arena_registry.arenas[0];
+    assert!(
+        arena.wildcard_max_expansion.is_none(),
+        "Resource Flow soak must avoid wildcard admission"
+    );
+    assert!(
+        !fx.session
+            .spec_state
+            .arena_participant_scaffold
+            .index
+            .by_host_and_arena
+            .is_empty(),
+        "Resource Flow soak must use explicit participants"
+    );
+
+    let execution = build_execution_plan(
+        &fx.session.proto.registry,
+        &fx.session.spec_state.arena_registry.arenas,
+        &fx.session.proto.root,
+        &fx.session.proto.allocator,
+        &fx.session.spec_state.arena_participant_scaffold,
+        fx.session.spec_state.arena_registry.generation,
+    )
+    .expect("execution plan");
+
+    assert_eq!(execution.arenas.len(), 1);
+    assert_eq!(execution.arenas[0].max_depth, 2);
+
+    let plan = plan_arena_allocation(
+        &execution.arenas[0],
+        &simthing_gpu::build_governed_pairs(&fx.session.proto.registry),
+        fx.session.state.n_slots,
+    )
+    .expect("allocation plan");
+    assert!(
+        !plan.cpu_ops.is_empty(),
+        "flat-star GPU path must emit allocation ops"
+    );
+}
+
 pub fn assert_no_nan_in_leaf_allocated(
     state: &simthing_gpu::WorldGpuState,
     layout: &ArenaTreeLayout,
