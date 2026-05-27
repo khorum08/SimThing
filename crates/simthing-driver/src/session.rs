@@ -203,7 +203,21 @@ impl SimSession {
         self.spec_state = spec_state;
         self.resync_gpu_shape_after_spec_install();
         self.sync_spec_threshold_registrations();
+        self.sync_resource_flow_if_enabled();
         self.proto.initial_gpu_sync(&self.coord, &mut self.state);
+    }
+
+    fn sync_resource_flow_if_enabled(&mut self) {
+        let enabled = self.proto.flags.use_accumulator_resource_flow;
+        let _ = crate::arena_allocation_sync::sync_resource_flow_accumulator(
+            &mut self.state,
+            &self.proto.registry,
+            &self.spec_state.arena_registry,
+            &self.spec_state.arena_participant_scaffold,
+            &self.proto.root,
+            &self.proto.allocator,
+            enabled,
+        );
     }
 
     fn resync_gpu_shape_after_spec_install(&mut self) {

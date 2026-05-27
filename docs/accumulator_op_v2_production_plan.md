@@ -1032,7 +1032,7 @@ These five PRs land the Resource Flow Substrate per
 `docs/adr/resource_flow_substrate.md`. The substrate is a registration
 discipline on top of AccumulatorOp v2; no new GPU primitive is introduced.
 
-**PR sequencing:** E-7 through E-10 landed (#149–#153). **Pre-E-11 prerequisites landed** (E-10R, E-8R, E-7R, E-10R2, E-10R3). **E-11 readiness review PASS** — implement allocation per [`e11_implementation_handoff.md`](workshop/e11_implementation_handoff.md). E-1, E-3, E-5 remain independent.
+**PR sequencing:** E-7 through E-10 landed (#149–#153). **Pre-E-11 prerequisites landed** (E-10R, E-8R, E-7R, E-10R2, E-10R3). **E-11 allocation execution landed** (see PR E-11). E-1, E-3, E-5 remain independent.
 
 ### PR E-7 — `governed_by` planner generalization
 
@@ -1176,9 +1176,10 @@ produce expected expansion reports.
 
 ---
 
-### ⚠️ PR E-11 — Hierarchical allocation kernel pattern + CPU oracle parity
+### ✅ PR E-11 — Hierarchical allocation kernel pattern + CPU oracle parity
 
 **Model:** Opus (review and design pseudocode), Composer 2.5 (implementation)
+**Status:** **Done** — allocation execution + `e11_*` suite (14/14). `use_accumulator_resource_flow` default **false** pending burn-in.
 **Why Opus:** E-11 is a real new GPU production capability. Although it reuses
 the existing AccumulatorOp kernel, it is structured as a reverse-direction
 OrderBand sweep with per-intermediate weight reductions and per-child share
@@ -1186,7 +1187,11 @@ computations. The composition is novel; verification needs its own parity
 tests against a CPU oracle and stability tests under hierarchical fanout.
 
 **Prerequisites:** E-9, E-10, **E-10R, E-8R, E-7R, E-10R2, E-10R3** (landed)
-**Gate:** Readiness review complete ([`e11_readiness_review.md`](workshop/e11_readiness_review.md)). **Implement** per [`e11_implementation_handoff.md`](workshop/e11_implementation_handoff.md). E-2B `resource_flow_participant` remains blocked until E-11 enrollment compiles.
+**Landed modules:** `arena_hierarchy`, `arena_allocation_oracle`, `arena_allocation_plan`, `child_share_eml` (EML formula registration), `arena_allocation_sync` (session flag wiring).
+**Substrate:** `SourceSpec::SlotRange { start, count, col }` — explicit gather column for up-sweep into `intrinsic_flow_sum` / `weight_sum`.
+**Tests:** `crates/simthing-driver/tests/e11_arena_allocation.rs` — 14 tests including CPU/GPU parity, zero-weight no-NaN, multi-level oracle, depth budget, fission gap, integration band ordering, no new WGSL, no simthing-sim arena imports.
+**Constitution:** no new WGSL; no new `AccumulatorRole`; `simthing-sim` arena-ignorant; E-2B blocked unless enrollment compilation explicitly lands.
+**Gate:** Readiness review complete ([`e11_readiness_review.md`](workshop/e11_readiness_review.md)). Implemented per [`e11_implementation_handoff.md`](workshop/e11_implementation_handoff.md).
 **Scope:** Implement the allocation kernel pattern per
 `docs/adr/resource_flow_substrate.md` §"Hierarchical allocation kernel
 pattern". Per intermediate participant, the driver emits two AccumulatorOp
@@ -1420,7 +1425,7 @@ as a doc-only PR.
 | **E-7R** | **E** | **Composer 2.5** | **`plan_governed_integration_at_band` ordering API** | **Done** — `e7r_*` suite |
 | **E-11 design** | **E** | **Opus** | **Hierarchical allocation v2 design memo** | **Accepted** |
 | **E-11 review** | **E** | **Composer 2.5** | **Final readiness review + narrowed handoff** | **Done** |
-| **E-11** | **E** | **Opus + Composer 2.5** | **Hierarchical allocation kernel + CPU oracle parity + stability tests** | **Ready** — see implementation handoff |
+| **E-11** | **E** | **Opus + Composer 2.5** | **Hierarchical allocation kernel + CPU oracle parity + stability tests** | **Done** |
 | S-1 | F | Codex 5.5 | Sunset intent fold | **Done locally** |
 | S-2 | F | Codex 5.5 | Sunset intensity update | **Landed (#138)** |
 | S-3 | F | Codex 5.5 | Sunset overlay prep | CI green at flag=on |

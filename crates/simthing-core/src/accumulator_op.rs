@@ -21,7 +21,7 @@ pub enum SourceSpec {
     SlotValue { slot: u32, col: u32 },
     /// Read from a contiguous range of slots; same column in each.
     /// Used for reductions (Sum, Mean, Max, Min, WeightedMean).
-    SlotRange { start: u32, count: u32 },
+    SlotRange { start: u32, count: u32, col: u32 },
     /// Read from up to 4 explicit (slot, col, unit_cost) inputs.
     /// Used for conjunctive production recipes.
     ConjunctiveCrossing { inputs: Vec<InputSpec> },
@@ -391,14 +391,22 @@ mod tests {
             op.validate(),
             Err(AccumulatorOpError::WeightedMeanRequiresSlotRange)
         );
-        op.source = SourceSpec::SlotRange { start: 0, count: 4 };
+        op.source = SourceSpec::SlotRange {
+            start: 0,
+            count: 4,
+            col: 0,
+        };
         assert!(op.validate().is_ok());
     }
 
     #[test]
     fn empty_slot_range_is_error() {
         let mut op = minimal_op();
-        op.source = SourceSpec::SlotRange { start: 0, count: 0 };
+        op.source = SourceSpec::SlotRange {
+            start: 0,
+            count: 0,
+            col: 0,
+        };
         assert_eq!(op.validate(), Err(AccumulatorOpError::EmptySlotRange));
     }
 
@@ -471,7 +479,11 @@ mod tests {
                 targets: vec![(1, 2)],
             },
             AccumulatorOp {
-                source: SourceSpec::SlotRange { start: 0, count: 8 },
+                source: SourceSpec::SlotRange {
+                    start: 0,
+                    count: 8,
+                    col: 0,
+                },
                 combine: CombineFn::WeightedMean { weight_col: 3 },
                 gate: GateSpec::OrderBand(2),
                 scale: ScaleSpec::Constant(0.5),

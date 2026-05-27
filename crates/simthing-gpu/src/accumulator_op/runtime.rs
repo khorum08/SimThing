@@ -77,6 +77,8 @@ pub enum OperationFamily {
     EconomicTransfer,
     EconomicEmission,
     EconomicConjunctiveProduction,
+    /// E-11 resource-flow hierarchical allocation OrderBands.
+    ResourceFlow,
 }
 
 /// Exactness class for registration validation and oracle comparison policy.
@@ -143,6 +145,7 @@ pub struct WorldAccumulatorRuntime {
     pub intensity_eml_ops: OpSetHandle,
     pub transfer_ops: OpSetHandle,
     pub emission_ops: OpSetHandle,
+    pub resource_flow_ops: OpSetHandle,
 
     intent_session: Option<AccumulatorOpSession>,
     threshold_session: Option<AccumulatorOpSession>,
@@ -152,6 +155,7 @@ pub struct WorldAccumulatorRuntime {
     intensity_eml_session: Option<AccumulatorOpSession>,
     transfer_session: Option<AccumulatorOpSession>,
     emission_session: Option<AccumulatorOpSession>,
+    resource_flow_session: Option<AccumulatorOpSession>,
     pub summary: Option<WorldSummaryRuntime>,
     pub overlay_compile_cache: Option<OverlayCompileCache>,
 
@@ -224,6 +228,11 @@ impl WorldAccumulatorRuntime {
                 exactness: ExactnessClass::Exact,
                 ..OpSetHandle::INACTIVE
             },
+            resource_flow_ops: OpSetHandle {
+                family: OperationFamily::ResourceFlow,
+                exactness: ExactnessClass::Exact,
+                ..OpSetHandle::INACTIVE
+            },
             intent_session: None,
             threshold_session: None,
             overlay_session: None,
@@ -232,6 +241,7 @@ impl WorldAccumulatorRuntime {
             intensity_eml_session: None,
             transfer_session: None,
             emission_session: None,
+            resource_flow_session: None,
             summary: None,
             overlay_compile_cache: None,
             intensity_tree_ids: Vec::new(),
@@ -947,6 +957,62 @@ impl WorldAccumulatorRuntime {
             };
         }
         Ok(())
+    }
+
+    pub fn ensure_resource_flow_session(
+        &mut self,
+        ctx: &GpuContext,
+        n_slots: u32,
+        n_dims: u32,
+        emission_capacity: u32,
+    ) {
+        if self.resource_flow_session.is_none() {
+            let mut session =
+                AccumulatorOpSession::new_attached(ctx, n_slots, n_dims, emission_capacity);
+            self.bind_eml_if_present(&mut session);
+            self.resource_flow_session = Some(session);
+        }
+    }
+
+    pub fn clear_resource_flow(&mut self) {
+        self.resource_flow_session = None;
+        self.resource_flow_ops = OpSetHandle {
+            family: OperationFamily::ResourceFlow,
+            exactness: ExactnessClass::Exact,
+            ..OpSetHandle::INACTIVE
+        };
+    }
+
+    pub fn upload_resource_flow_ops(
+        &mut self,
+        ctx: &GpuContext,
+        ops: &[AccumulatorOpGpu],
+        n_bands: u32,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if let Some(session) = self.resource_flow_session.as_mut() {
+            session.upload_gpu_ops(ctx, ops)?;
+            self.resource_flow_ops = OpSetHandle {
+                family: OperationFamily::ResourceFlow,
+                offset: 0,
+                count: session.n_ops(),
+                active: !ops.is_empty(),
+                n_bands,
+                exactness: ExactnessClass::Exact,
+            };
+        }
+        Ok(())
+    }
+
+    pub fn take_resource_flow_session(&mut self) -> Option<AccumulatorOpSession> {
+        self.resource_flow_session.take()
+    }
+
+    pub fn restore_resource_flow_session(&mut self, session: Option<AccumulatorOpSession>) {
+        self.resource_flow_session = session;
+    }
+
+    pub fn resource_flow_session_mut(&mut self) -> Option<&mut AccumulatorOpSession> {
+        self.resource_flow_session.as_mut()
     }
 
     pub fn upload_reduction_soft_ops(

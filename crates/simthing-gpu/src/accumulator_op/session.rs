@@ -966,6 +966,65 @@ impl AccumulatorOpSession {
         drop(band_uniforms);
     }
 
+    /// Encode OrderBand ops with optional EML program-table bindings (E-11).
+    pub fn encode_orderband_with_eml_into(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+        previous_values: &Buffer,
+        n_bands: u32,
+        dt: f32,
+        eml: Option<(&Buffer, &Buffer)>,
+    ) {
+        if self.n_ops == 0 || n_bands == 0 {
+            return;
+        }
+        self.last_pass_time_us = None;
+
+        let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
+        let mut band_uniforms = Vec::with_capacity(n_bands as usize);
+
+        for band in 0..n_bands {
+            let tick_params = AccumulatorTickParams {
+                n_ops: self.n_ops,
+                current_band: band,
+                n_slots: self.n_slots,
+                n_dims: self.n_dims,
+                emission_capacity: self.emission_capacity,
+                threshold_emission_capacity: self.threshold_emission_capacity,
+                dt_bits: dt.to_bits(),
+                _pad1: 0,
+            };
+            let tick_uniform = ctx
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("accumulator_orderband_eml_band_uniform"),
+                    contents: bytemuck::bytes_of(&tick_params),
+                    usage: BufferUsages::UNIFORM,
+                });
+            let execute_bind_group = self.create_execute_bind_group_with_uniform(
+                ctx,
+                values,
+                previous_values,
+                &tick_uniform,
+                eml,
+                None,
+            );
+            band_uniforms.push(tick_uniform);
+
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("accumulator_orderband_eml_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.execute_pipeline);
+            pass.set_bind_group(0, &execute_bind_group, &[]);
+            pass.dispatch_workgroups(groups, 1, 1);
+        }
+
+        drop(band_uniforms);
+    }
+
     /// Encode C-5 soft-reduction OrderBand ops against `output_vectors`.
     /// Binding 1 reads/writes `output_vectors` (not `values`).
     pub fn encode_reduction_soft_into(
@@ -1773,7 +1832,11 @@ mod tests {
                 targets: vec![(2, 0)],
             },
             AccumulatorOp {
-                source: SourceSpec::SlotRange { start: 3, count: 2 },
+                source: SourceSpec::SlotRange {
+                    start: 3,
+                    count: 2,
+                    col: 0,
+                },
                 combine: CombineFn::Sum,
                 gate: GateSpec::OrderBand(1),
                 scale: ScaleSpec::Identity,
@@ -2333,7 +2396,11 @@ mod tests {
     #[test]
     fn b2_encodes_weighted_mean_stub() {
         let op = AccumulatorOp {
-            source: SourceSpec::SlotRange { start: 0, count: 2 },
+            source: SourceSpec::SlotRange {
+                start: 0,
+                count: 2,
+                col: 0,
+            },
             combine: CombineFn::WeightedMean { weight_col: 1 },
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
