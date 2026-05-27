@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** Phase T-5 resource economy burn-in (branch `t5-resource-economy-burn-in`, pending merge)  
+**Master HEAD:** Phase T-5 resource economy burn-in (PR #169, `91bdae3`)  
 **Verification (last recorded):** `resource_economy_boundary_refresh` 5/5 + `resource_economy_replay` 3/3 + `resource_economy_burn_in` 5/5 + T-4 suites green; transfer/emission flags default false
 
 ---
@@ -93,7 +93,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 | **T-2** | #166 | `compile::resource_economy` validation + expansion report 19/19 |
 | **T-3** | #167 | `resource_economy_compile` materialization + stable reg_idx 11/11 |
 | **T-4** | #168 | Session integration + boundary refresh; generation skip; flag-off reject 8/8 |
-| **T-5** | (pending PR) | Boundary refresh / replay / 100-tick conservation burn-in 13/13 |
+| **T-5** | #169 | Boundary refresh / replay / 100-tick conservation burn-in 13/13 |
 | **Pivot-forward** | #102, #108 | Policy doc, encode fixes, atomic WGSL values |
 | **C-INF-1/2** | #109 | `WorldAccumulatorRuntime` on `WorldGpuState`; legacy oracle harness |
 | **Remedial** | #111 | Authoritative flags clear stale sessions; `WorldSummaryRuntime` for integrated B-4 summary |
