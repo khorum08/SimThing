@@ -1,0 +1,256 @@
+//! E-10R2 — ArenaParticipant SimThing scaffold (driver/session topology only).
+//!
+//! Materializes dedicated arena-participant wrapper nodes for admitted explicit
+//! participants, proves sibling contiguity for SlotRange reductions, and tracks
+//! reserved-gap pools for fission-spawned participant children.
+
+use simthing_core::{
+    DimensionRegistry, PropertyLayout, PropertyValue, SimPropertyId, SimThing, SimThingId,
+    SimThingKind, SubFieldRole,
+};
+use simthing_gpu::{SlotAllocError, SlotAllocator};
+use simthing_spec::{PropertyKey, ResourceFlowSpec, SpecError};
+use std::collections::HashMap;
+use thiserror::Error;
+
+use crate::arena_registry::{ArenaIdx, FissionPolicy, SlotId};
+use crate::install::InstallError;
+
+/// `(hosted SimThing id, arena idx) → arena-participant slot`.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ArenaParticipantIndex {
+    pub by_host_and_arena: HashMap<(SimThingId, ArenaIdx), SlotId>,
+}
+
+impl ArenaParticipantIndex {
+    pub fn participant_slot(&self, hosted: SimThingId, arena_idx: ArenaIdx) -> Option<SlotId> {
+        self.by_host_and_arena
+            .get(&(hosted, arena_idx))
+            .copied()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ArenaParticipantAllocationReport {
+    pub arena: String,
+    pub root_slot: SlotId,
+    pub participant_count: u32,
+    pub reserved_gap_per_intermediate: u32,
+    pub max_children_per_intermediate: u32,
+}
+
+/// LIFO pool of exclusively reserved tombstoned slots adjacent to a parent participant.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReservedGapPool {
+    pub parent_participant_slot: SlotId,
+    /// Ascending reservation order; consumed LIFO (pop from end).
+    available: Vec<SlotId>,
+}
+
+impl ReservedGapPool {
+    pub fn remaining(&self) -> u32 {
+        self.available.len() as u32
+    }
+
+    pub fn reserved_slots(&self) -> &[SlotId] {
+        &self.available
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ArenaParticipantScaffold {
+    pub index: ArenaParticipantIndex,
+    pub reports: Vec<ArenaParticipantAllocationReport>,
+    /// Parent participant slot → reserved gap pool.
+    pub gap_pools: HashMap<SlotId, ReservedGapPool>,
+    /// Arena root SimThing id per arena index.
+    pub arena_root_ids: HashMap<ArenaIdx, SimThingId>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
+pub enum GapAllocError {
+    #[error("reserved gap exhausted for parent participant slot {parent_slot}")]
+    Exhausted { parent_slot: SlotId },
+    #[error("slot allocator error: {0}")]
+    Slot(#[from] SlotAllocError),
+}
+
+/// Materialize arena roots and dedicated participant SimThings for every admitted
+/// explicit participant. Hosted SimThings are not replaced or re-slotted.
+pub fn materialize_arena_participants(
+    spec: &ResourceFlowSpec,
+    registry: &DimensionRegistry,
+    root: &mut SimThing,
+    allocator: &mut SlotAllocator,
+) -> Result<ArenaParticipantScaffold, InstallError> {
+    let mut scaffold = ArenaParticipantScaffold::default();
+
+    for (arena_idx, arena) in spec.arenas.iter().enumerate() {
+        let arena_idx = arena_idx as ArenaIdx;
+        let flow_property_id = resolve_flow_property(registry, &arena.flow_property)?;
+
+        let mut arena_root = SimThing::new(
+            SimThingKind::Custom(format!("arena_root:{}", arena.name)),
+            0,
+        );
+        let arena_root_id = arena_root.id;
+        let mut hosted_ids: Vec<SimThingId> = Vec::new();
+
+        for participant in &arena.explicit_participants {
+            let hosted_id = SimThingId::from_session_raw(participant.subtree_root_id);
+            let mut node = SimThing::new(SimThingKind::ArenaParticipant, 0);
+            seed_participant_property(&mut node, flow_property_id, registry, hosted_id);
+            arena_root.add_child(node);
+            hosted_ids.push(hosted_id);
+        }
+
+        root.add_child(arena_root);
+        allocator.alloc(arena_root_id);
+        let arena_root_slot = allocator
+            .slot_of(arena_root_id)
+            .expect("arena root just allocated");
+
+        let arena_root_ref = find_child(root, arena_root_id).expect("arena root attached");
+        let mut participant_slots = Vec::new();
+        for child in &arena_root_ref.children {
+            if child.kind != SimThingKind::ArenaParticipant {
+                continue;
+            }
+            allocator.alloc(child.id);
+            participant_slots.push(allocator.slot_of(child.id).expect("participant allocated"));
+        }
+
+        for (hosted_id, participant_slot) in hosted_ids.iter().zip(participant_slots.iter()) {
+            scaffold
+                .index
+                .by_host_and_arena
+                .insert((*hosted_id, arena_idx), *participant_slot);
+
+            if arena.reserved_gap_per_intermediate > 0 {
+                let gap_slots = allocator.reserve_adjacent_gaps_after(
+                    *participant_slot,
+                    arena.reserved_gap_per_intermediate,
+                )?;
+                scaffold.gap_pools.insert(
+                    *participant_slot,
+                    ReservedGapPool {
+                        parent_participant_slot: *participant_slot,
+                        available: gap_slots,
+                    },
+                );
+            }
+        }
+
+        scaffold.arena_root_ids.insert(arena_idx, arena_root_id);
+        scaffold.reports.push(ArenaParticipantAllocationReport {
+            arena: arena.name.clone(),
+            root_slot: arena_root_slot,
+            participant_count: participant_slots.len() as u32,
+            reserved_gap_per_intermediate: arena.reserved_gap_per_intermediate,
+            max_children_per_intermediate: arena.expected_max_children_per_intermediate,
+        });
+    }
+
+    Ok(scaffold)
+}
+
+/// Consume a reserved gap slot for a fission-spawned participant child, or reject
+/// when the pool is exhausted and policy is `Reject`.
+pub fn try_alloc_participant_child_in_gap(
+    scaffold: &mut ArenaParticipantScaffold,
+    parent_participant_slot: SlotId,
+    child_id: SimThingId,
+    allocator: &mut SlotAllocator,
+    fission_policy: FissionPolicy,
+) -> Result<SlotId, GapAllocError> {
+    let pool = scaffold
+        .gap_pools
+        .get_mut(&parent_participant_slot)
+        .ok_or(GapAllocError::Exhausted {
+            parent_slot: parent_participant_slot,
+        })?;
+    if let Some(slot) = pool.available.pop() {
+        allocator.claim_exclusive_slot(slot, child_id)?;
+        return Ok(slot);
+    }
+    match fission_policy {
+        FissionPolicy::Reject => Err(GapAllocError::Exhausted {
+            parent_slot: parent_participant_slot,
+        }),
+        FissionPolicy::Inherit | FissionPolicy::Reevaluate => Ok(allocator.alloc(child_id)),
+    }
+}
+
+/// Return contiguous arena-participant child slots under an arena root (topology order).
+pub fn arena_participant_sibling_slots(
+    root: &SimThing,
+    arena_root_id: SimThingId,
+    allocator: &SlotAllocator,
+) -> Vec<SlotId> {
+    find_child(root, arena_root_id)
+        .map(|arena_root| {
+            arena_root
+                .children
+                .iter()
+                .filter(|c| c.kind == SimThingKind::ArenaParticipant)
+                .map(|c| allocator.slot_of(c.id).expect("participant has slot"))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// True when `slots` form a contiguous ascending range (SlotRange precondition).
+pub fn slots_are_contiguous(slots: &[SlotId]) -> bool {
+    if slots.is_empty() {
+        return true;
+    }
+    let first = slots[0];
+    slots
+        .iter()
+        .enumerate()
+        .all(|(i, &slot)| slot == first + i as u32)
+}
+
+fn resolve_flow_property(
+    registry: &DimensionRegistry,
+    key: &PropertyKey,
+) -> Result<SimPropertyId, InstallError> {
+    registry.id_of(&key.namespace, &key.name).ok_or_else(|| {
+        InstallError::Spec(SpecError::UnknownProperty {
+            overlay: format!("arena:{}", key.name),
+            namespace: key.namespace.clone(),
+            name: key.name.clone(),
+        })
+    })
+}
+
+fn seed_participant_property(
+    node: &mut SimThing,
+    property_id: SimPropertyId,
+    registry: &DimensionRegistry,
+    hosted_id: SimThingId,
+) {
+    let layout = registry.property(property_id).layout.clone();
+    let mut value = PropertyValue::from_layout(&layout);
+    set_hosted_simthing_id(&mut value, &layout, hosted_id);
+    node.add_property(property_id, value);
+}
+
+fn set_hosted_simthing_id(value: &mut PropertyValue, layout: &PropertyLayout, hosted: SimThingId) {
+    let role = SubFieldRole::Named("hosted_simthing_id".into());
+    if let Some(offset) = layout.offset_of(&role) {
+        value.data[offset] = hosted.raw() as f32;
+    }
+}
+
+fn find_child<'a>(root: &'a SimThing, id: SimThingId) -> Option<&'a SimThing> {
+    if root.id == id {
+        return Some(root);
+    }
+    for child in &root.children {
+        if let Some(found) = find_child(child, id) {
+            return Some(found);
+        }
+    }
+    None
+}

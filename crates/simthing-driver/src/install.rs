@@ -20,6 +20,7 @@ use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
 use crate::resource_flow_compile::compile_and_materialize_resource_flow;
+use crate::arena_participant::materialize_arena_participants;
 use crate::resource_flow_preflight::validate_resource_flow_preflight;
 use crate::scenario::Scenario;
 use crate::spec_session::SpecSessionState;
@@ -45,6 +46,9 @@ pub enum InstallError {
         "session root has no slot — allocator was not populated before install_targets resolution"
     )]
     RootHasNoSlot,
+
+    #[error("slot allocation error: {0}")]
+    SlotAlloc(#[from] simthing_gpu::SlotAllocError),
 }
 
 /// Compile a `GameModeSpec` against the supplied scenario state and return a
@@ -135,9 +139,11 @@ pub fn compile_and_install(
     //      identity preflight after live slot allocation, then materialize registry.
     if let Some(resource_flow) = &game_mode.resource_flow {
         validate_resource_flow_preflight(resource_flow, allocator)?;
+        let scaffold = materialize_arena_participants(resource_flow, registry, root, allocator)?;
         let (arena_registry, _report) =
             compile_and_materialize_resource_flow(resource_flow, registry)?;
         state.arena_registry = arena_registry;
+        state.arena_participant_scaffold = scaffold;
     }
 
     // ── 5. Scripted events: one definition + N per-owner instances per

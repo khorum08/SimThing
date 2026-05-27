@@ -14,6 +14,9 @@ pub enum SimThingKind {
     Cohort,
     Fleet,
     Station,
+    /// Driver/session topology marker for arena-participant wrapper nodes (E-10R2).
+    /// Not a spatial entity; `simthing-sim` must not branch on this variant.
+    ArenaParticipant,
     Custom(String),
 }
 
@@ -99,6 +102,7 @@ pub fn kind_matches(authored: &str, sim: &SimThingKind) -> bool {
         SimThingKind::Cohort => authored == "Cohort",
         SimThingKind::Fleet => authored == "Fleet",
         SimThingKind::Station => authored == "Station",
+        SimThingKind::ArenaParticipant => authored == "ArenaParticipant",
         SimThingKind::Custom(s) => s == authored,
     }
 }

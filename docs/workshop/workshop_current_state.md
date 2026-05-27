@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-26  
-**Master HEAD:** Pre-E-11 prerequisites (E-10R, E-8R, E-7R) + E-11 v2 design memo; E-10 (#153)  
-**Verification (last recorded):** `cargo test --workspace` green; `e10r_*`, `e8r_*`, `e7r_*` suites green
+**Master HEAD:** E-10R2 ArenaParticipant scaffold; pre-E-11 prerequisites (E-10R, E-8R, E-7R) + E-11 v2 design memo; E-10 (#153)  
+**Verification (last recorded):** `cargo test --workspace` green; `e10r2_*`, `e10r_*`, `e8r_*`, `e7r_*` suites green
 
 ---
 
@@ -21,9 +21,9 @@ Two parallel tracks:
 **Production direction:** AccumulatorOp v2 is the GPU execution path.
 Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Legacy threshold is deleted (S-6). Legacy velocity is deleted (S-5). Legacy intent is deleted (S-1). Snapshot is the only retained non-Accumulator operation.
 
-**E-11 status:** Opus v2 design accepted ([`e11_hierarchical_allocation_design.md`](e11_hierarchical_allocation_design.md)). **E-10R, E-8R, and E-7R prerequisites landed.** Cursor must **not** implement E-11 allocation execution until a post-prerequisite review pass confirms the landed APIs match the memo — then generate a narrower E-11 implementation handoff.
+**E-11 status:** Opus v2 design accepted ([`e11_hierarchical_allocation_design.md`](e11_hierarchical_allocation_design.md)). **E-10R identity preflight, E-8R internal columns, E-7R band placement, and E-10R2 ArenaParticipant scaffold landed.** Cursor must **not** implement E-11 allocation execution until a post-prerequisite review pass confirms the landed APIs match the memo — then generate a narrower E-11 implementation handoff.
 
-**Next gates:** **E-11 review pass → narrowed implementation handoff** · Opus production transfer/emission registration ownership · D-1 discrete-transaction contention memo. **E-2B** `resource_flow_participant` remains blocked until E-11 enrollment compiles. **E-10** admission framework landed.
+**Next gates:** **E-11 review pass → narrowed implementation handoff** · Opus production transfer/emission registration ownership · D-1 discrete-transaction contention memo. **E-2B** `resource_flow_participant` remains blocked until E-11 enrollment compiles. **E-10** admission framework landed. **E-10R2** structural scaffold landed.
 
 **Open design gates (not sunset):** production transfer/emission registration ownership (substrate landed; spec/builder integration pending); **D-1** discrete-transaction contention memo (continuous-flow hot-pool allocator scope dissolved by Resource Flow ADR; C-8c still rejects same-band consumed-input contention); Soft/Fast EML classes remain future-gated (`ExactDeterministic` only in production).
 

@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-26 — E-10R2 ArenaParticipant scaffold
+
+- Added `SimThingKind::ArenaParticipant` (driver/session topology marker; `simthing-sim` arena-ignorant).
+- Driver `arena_participant` module: `ArenaParticipantIndex`, `materialize_arena_participants`, reserved-gap pools with exclusive `SlotAllocator` slots.
+- Install step 4b materializes participant nodes after E-10R preflight; hosted SimThings unchanged.
+- Tests: `e10r2_*` (7) — contiguity, index, gap adjacency/consumption, Reject-on-exhaustion.
+
+**Verification:** `cargo test -p simthing-driver e10r2`; `cargo test --workspace`.
+
+**Next:** E-11 review pass vs Opus v2 → narrowed allocation handoff. **Do not start E-11 allocation execution yet.**
+
+---
+
 ## 2026-05-26 — Pre-E-11 prerequisites (E-10R, E-8R, E-7R) + E-11 v2 design memo
 
 - Landed Opus v2 [`e11_hierarchical_allocation_design.md`](workshop/e11_hierarchical_allocation_design.md). **E-11 design accepted; allocation execution blocked** until post-prerequisite review pass.

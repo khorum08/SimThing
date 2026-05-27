@@ -1,3 +1,4 @@
+pub mod arena_participant;
 pub mod arena_registry;
 pub mod bench_limits;
 pub mod install;
@@ -8,6 +9,11 @@ pub mod session;
 pub mod spec_replay;
 pub mod spec_session;
 
+pub use arena_participant::{
+    arena_participant_sibling_slots, materialize_arena_participants, slots_are_contiguous,
+    try_alloc_participant_child_in_gap, ArenaParticipantAllocationReport, ArenaParticipantIndex,
+    ArenaParticipantScaffold, GapAllocError, ReservedGapPool,
+};
 pub use arena_registry::{
     ArenaCoupling, ArenaDiagnostic, ArenaExpansionReport, ArenaIdx, ArenaParticipant,
     ArenaRefreshReport, ArenaRegistry, ArenaRegistryBuilder, ArenaRegistryError, CouplingDelay,
@@ -21,6 +27,7 @@ pub use resource_flow_compile::{
     compile_and_materialize_resource_flow, materialize_arena_registry,
 };
 pub use resource_flow_preflight::validate_resource_flow_preflight;
+pub use simthing_gpu::SlotAllocError;
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};
 pub use spec_replay::{

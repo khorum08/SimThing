@@ -10,7 +10,17 @@
 //! patches be delta uploads rather than full rewrites.
 
 use simthing_core::SimThingId;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum SlotAllocError {
+    #[error("slot {slot} is not exclusively reserved for gap consumption")]
+    NotExclusiveReserved { slot: u32 },
+    #[error("slot {slot} is live")]
+    SlotLive { slot: u32 },
+    #[error("cannot reserve adjacent gap at slot {slot}: occupied by live SimThing")]
+    AdjacentOccupied { slot: u32 },
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct SlotAllocator {
@@ -20,6 +30,8 @@ pub struct SlotAllocator {
     by_id: HashMap<SimThingId, u32>,
     /// LIFO stack of tombstoned slots awaiting reuse.
     free: Vec<u32>,
+    /// Tombstoned slots held for arena-participant gap pools — excluded from `free`.
+    exclusive_reserved: HashSet<u32>,
 }
 
 impl SlotAllocator {
@@ -91,6 +103,58 @@ impl SlotAllocator {
         for child in &root.children {
             self.populate_from_tree(child);
         }
+    }
+
+    /// True when `slot` is tombstoned and held for a parent's reserved gap pool.
+    pub fn is_exclusive_reserved(&self, slot: u32) -> bool {
+        self.exclusive_reserved.contains(&slot)
+    }
+
+    /// Extend the buffer with exclusively reserved tombstoned slots immediately
+    /// after `parent_slot`. Returns ascending slot ids. These slots are not placed
+    /// on the global LIFO `free` stack until claimed via [`Self::claim_exclusive_slot`].
+    pub fn reserve_adjacent_gaps_after(
+        &mut self,
+        parent_slot: u32,
+        count: u32,
+    ) -> Result<Vec<u32>, SlotAllocError> {
+        if count == 0 {
+            return Ok(Vec::new());
+        }
+        let mut slots = Vec::with_capacity(count as usize);
+        for i in 1..=count {
+            let slot = parent_slot.saturating_add(i);
+            while self.capacity() as u32 <= slot {
+                self.slot_owners.push(None);
+            }
+            if self.is_live(slot) {
+                return Err(SlotAllocError::AdjacentOccupied { slot });
+            }
+            if let Some(pos) = self.free.iter().position(|&s| s == slot) {
+                self.free.remove(pos);
+            }
+            self.slot_owners[slot as usize] = None;
+            self.exclusive_reserved.insert(slot);
+            slots.push(slot);
+        }
+        Ok(slots)
+    }
+
+    /// Assign `id` to an exclusively reserved tombstoned slot.
+    pub fn claim_exclusive_slot(&mut self, slot: u32, id: SimThingId) -> Result<(), SlotAllocError> {
+        if self.by_id.contains_key(&id) {
+            return Ok(());
+        }
+        if !self.exclusive_reserved.contains(&slot) {
+            return Err(SlotAllocError::NotExclusiveReserved { slot });
+        }
+        if self.is_live(slot) {
+            return Err(SlotAllocError::SlotLive { slot });
+        }
+        self.exclusive_reserved.remove(&slot);
+        self.slot_owners[slot as usize] = Some(id);
+        self.by_id.insert(id, slot);
+        Ok(())
     }
 }
 
