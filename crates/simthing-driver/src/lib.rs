@@ -6,6 +6,7 @@ pub mod arena_participant;
 pub mod arena_registry;
 pub mod bench_limits;
 pub mod child_share_eml;
+pub mod field_scheduler;
 pub mod install;
 pub mod resource_economy_burn_in;
 pub mod resource_economy_compile;
@@ -57,6 +58,12 @@ pub use arena_registry::{
 };
 pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};
+pub use field_scheduler::{
+    count_cadence_due_ticks, execute_scheduled_stencil_regions, DirtyRegionState, FieldCadence,
+    FieldDispatchDecision, FieldDispatchReason, FieldDispatchSchedule, FieldGridDescriptor, FieldId,
+    FieldRegionId, FieldRegionRegistration, FieldScheduleState, FieldScheduler,
+    FieldSchedulerError, FieldSchedulerReport, ScheduledExecutionSummary,
+};
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
 };

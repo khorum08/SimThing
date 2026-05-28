@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-28 — Phase M-2 cadence scheduler + dirty macro-region skip
+
+- Phase M-2 landed: generic `FieldScheduler` with cadence tiers (`EveryTick`, `EveryN`, `OnEvent`) and dirty macro-region skip. False schedules acceptable; false skips forbidden. Scheduled stencil execution uses M-1.1 no-readback default.
+- Grid size / square uniformity remain designer-facing M-3 admission concerns; M-2 tests include 5×5, 10×10, 20×20 evidence fixtures only.
+- No production mapping runtime; no pass graph wiring. Next: **Phase M-3**.
+
+**Verification:** [`phase_m2_field_scheduler_dirty_skip_test_results.md`](tests/phase_m2_field_scheduler_dirty_skip_test_results.md)
+
+---
+
 ## 2026-05-28 — Phase M-1.1 no-readback execution hardening
 
 - Phase M-1.1 landed: `execute_configured` defaults to GPU-resident dispatch (`readback_values: false`); `StructuredFieldExecutionReport.values` is `Option<Vec<f32>>`.

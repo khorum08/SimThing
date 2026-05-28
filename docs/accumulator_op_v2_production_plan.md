@@ -1578,10 +1578,12 @@ no RegionCell/map names in the primitive.
 new reduce-into convenience matches a manual `SlotRange` Sum bit-for-bit.  
 **Acceptance:** CI green. `simthing-gpu` only. No new WGSL. No defaults changed.
 
-### PR M-2 — Cadence scheduler + dirty macro-region skip (driver, adopted opts)
+### PR M-2 — Cadence scheduler + dirty macro-region skip (driver, adopted opts) — **Done**
 
 **Model:** Composer 2.5  
-**Scope:** A generic field scheduler in `simthing-driver` implementing the two
+**Status:** **Landed** — generic `FieldScheduler`, cadence tiers, dirty skip, `execute_scheduled_stencil_regions` helper. Driver-only; no pass graph wiring.
+
+**Scope (original):** A generic field scheduler in `simthing-driver` implementing the two
 **adopted** optimizations:
 - Cadence tiers (`EveryTick | EveryN | OnEvent`) per registered field; the
   scheduler skips non-due fields before command-buffer construction. Deterministic
@@ -1733,7 +1735,7 @@ Until then, caller-managed one-shot-seed-then-zero (v1) is the only source polic
 | G-1 | G | Codex 5.5 | Annotate design_v6.md §10 superseded | One commit |
 | **G-2** | **G** | **Opus** | **design_v7.md §4 final review** | **Human + Opus** |
 | M-1 | M | Composer 2.5 | RegionField execution API on StructuredFieldStencilOp (generic) | **Done** — stencil parity + reduce-into bit-exact |
-| M-2 | M | Composer 2.5 | Cadence scheduler + dirty macro-region skip (driver) | Determinism + zero false-skips |
+| M-2 | M | Composer 2.5 | Cadence scheduler + dirty macro-region skip (driver) | **Done** — determinism + zero false-skips |
 | M-3 | M | Composer 2.5 | `RegionFieldSpec` RON + mapping admission framework (designer-layer) | Rejection suite + opaque-op round-trip; default-off |
 | **M-4** | **M** | **Opus + Composer** | **Atlas batching isolation + VRAM accounting (provisional)** | **Opus design + human sign-off; provisional/opt-in** |
 | M-5 | M | Composer 2.5 | Generic source-identity buffer (behavioral source policy) | **DEFERRED** — not scheduled until a scenario names the need |
