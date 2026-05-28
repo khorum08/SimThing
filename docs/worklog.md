@@ -6,6 +6,20 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — SEAD operator toolkit probe (reverted to parked state)
+
+- Ran third SEAD feasibility sandbox (PR #204): stabilized propagation operators, dirty/frontier skip, cadence, whitelist admission, hierarchy-first awareness, hybrid model, PF/dirty comparison, cost projection. 11/11 PASS (`--test-threads=1`). Overall verdict **PARTIAL**.
+- Best operator: **directed_decayed** (ScaleTarget decay + directed SE AddToTarget) — [4][4] directional at H=8 without blowup.
+- Hierarchy Sum→faction→urgency ~15× cheaper than lateral H=8 for faction awareness (1.45 ms vs 21 ms).
+- Dirty frontier skips ~37% cells at H=8; collapses at H=16 (96% dirty). Frontier multi-tick cadence loses/partially preserves direction at effective H=16.
+- Whitelist: field_* classes rejected by legacy gate; C-8 register_formula accepts (finding C — policy work).
+- Cost: projected 30k dirty-adjusted ~3237 ms — OVER BUDGET; hierarchy + cadence mandatory at scale.
+- Preserved at [`sead_operator_toolkit_sandbox_code_preserve.rs`](workshop/sead_operator_toolkit_sandbox_code_preserve.rs) and [`sead_operator_toolkit_sandbox_test_results.md`](tests/sead_operator_toolkit_sandbox_test_results.md).
+
+**Verification:** [`revert_sead_operator_toolkit_sandbox_to_parked_state_test_results.md`](tests/revert_sead_operator_toolkit_sandbox_to_parked_state_test_results.md)
+
+---
+
 ## 2026-05-19 — SEAD strategic horizon / velocity / PF-skip probe (reverted to parked state)
 
 - Ran second SEAD feasibility sandbox (PR #202): strategic horizon sweep, multi-cadence, explicit-column velocity, PF convergence/skip simulation. 11/11 PASS (`--test-threads=1`). Overall verdict **PARTIAL**.

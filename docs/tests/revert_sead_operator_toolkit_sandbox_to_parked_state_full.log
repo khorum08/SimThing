@@ -1,0 +1,17 @@
+=== git status ===
+D  crates/simthing-driver/tests/sead_operator_toolkit_sandbox.rs  M crates/simthing-workshop/tests/multitarget_replay_reports.txt  M crates/simthing-workshop/tests/multitarget_replay_resident_reports.txt  M crates/simthing-workshop/tests/overlay_order_semantics_reports.txt  M crates/simthing-workshop/tests/persistent_bench_reports.txt  M crates/simthing-workshop/tests/transfer_contention_reports.txt  M docs/accumulator_op_v2_production_plan.md  M docs/todo.md  M docs/worklog.md  M docs/workshop/workshop_current_state.md ?? .claude/worktrees/ ?? crates/simthing-workshop/target/ ?? demo.replay.ldjson ?? docs/tests/revert_sead_operator_toolkit_sandbox_to_parked_state_test_results.md
+=== git rev-parse HEAD ===
+91c1afc890f046eb2e77bd453d86ab6aad7b778e
+=== rustc/cargo ===
+rustc 1.95.0 (59807616e 2026-04-14)
+cargo 1.95.0 (f2d3ce0bd 2026-03-21)
+=== E-11B regressions ===
+ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+ test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+ test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+ test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.78s 
+ test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.07s 
+=== cargo check --workspace ===
+warning: `simthing-driver` (lib) generated 1 warning (run `cargo fix --lib -p simthing-driver` to apply 1 suggestion)     Finished `dev` profile [optimized + debuginfo] target(s) in 0.12s
+=== expected removal ===
+    resource_flow_scenario_class_default_on     session_integration
