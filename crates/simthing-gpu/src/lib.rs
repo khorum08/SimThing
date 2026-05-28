@@ -4,7 +4,6 @@
 //! reads or writes. CPU-side preparation, compute pipelines, and the GPU pass
 //! sequencer build on top of `WorldGpuState`.
 
-pub mod sead_tensor_stencil_refinement_prototype;
 pub mod accumulator_op;
 pub mod context;
 pub mod emission_accumulator;
@@ -32,11 +31,6 @@ pub use accumulator_op::{
     TransferOpPlanSignature, WorldAccumulatorRuntime, WorldSummaryRuntime,
     DEFAULT_EML_NODE_CAPACITY, DEFAULT_EML_TREE_CAPACITY, DEFAULT_INPUT_LIST_CAPACITY,
     DEFAULT_THRESHOLD_EMISSION_CAPACITY,
-};
-pub use sead_tensor_stencil_refinement_prototype::{
-    cpu_horizon, cpu_stencil_step, make_params, StencilRefinementParamsGpu,
-    StencilRefinementPrototype, DIRECTED_NW, DIRECTED_SE, VARIANT_DECAYED_NORMALIZED,
-    VARIANT_DIRECTED, VARIANT_NORMALIZED, VARIANT_SOURCE_CAPPED,
 };
 pub use context::{GpuContext, GpuInitError};
 pub use emission_accumulator::{
