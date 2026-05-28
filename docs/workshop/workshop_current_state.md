@@ -3,24 +3,30 @@
 **Purpose:** Single synthesis of **active workshop docs**, **production migration state**,
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
-**Last updated:** 2026-05-19  
+**Last updated:** 2026-05-28  
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Master HEAD:** `1acfa1f` (Phase M-first-slice-R3)  
 **Verification (last recorded):** Phase M-first-slice-R3 — 28/28 PASS; workspace green  
-**Next action:** **M-first-slice GPU-resident runtime landed; ready for Opus/product review.** M-4 remains parked at decision gate — human + Opus sign-off required before atlas implementation. Not default session wiring.
+**Next action:** **First-slice runtime accepted by Opus as a stable base (R3).** Named next mapping step is **Option 3 — a product-facing first-slice scenario fixture** (single grid, no atlas). The M-4 atlas packer is **not** next. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
 
 ---
 
-## Current decision gate (Phase M-4)
+## Current decision gate (Phase M-4) — resolved 2026-05-28
 
-| Option | Action | Gate |
-|--------|--------|------|
-| **A** | Implement generic M-4 atlas packer | Human + Opus sign-off on [`mapping_atlas_batching_isolation_design_note.md`](mapping_atlas_batching_isolation_design_note.md) |
-| **B** | Defer atlas; first-slice runtime wiring (one 10×10 grid, no atlas) | Separate explicit product/architecture decision — **not** authorized by M-4 design note alone |
+Opus ratified the M-4A isolation policy and accepted the first-slice runtime as a stable base
+([`../reviews/m4_m4a_first_slice_oversight_opus_review.md`](../reviews/m4_m4a_first_slice_oversight_opus_review.md)).
 
-Atlas batching remains **provisional and unimplemented**. The M-4 design note is a future contract only.
+| Option | Action | Status |
+|--------|--------|--------|
+| **A** | Implement generic M-4 atlas packer | **Deferred / not next** — admissible only after a named multi-theater scenario needs batching, an approved VRAM budget exists, and an M-4 PR satisfies the §11 binding acceptance gate |
+| **B** | First-slice runtime wiring (one 10×10 grid, no atlas) | **Done** — landed and hardened through R1/R2/R3; accepted as stable base |
+| **Next** | Product-facing first-slice scenario fixture on the landed runtime (single grid, no atlas) | **Named next mapping step** |
+
+Atlas batching remains **provisional and unimplemented**; `request_atlas_batching` stays
+rejected at admission. The M-4A ratification covers the **isolation policy only**, not
+implementation. Isolation policy: algebraic tile-local mask G=0 preferred for homogeneous
+square batches; physical gutter G≥H fallback; local-bounds metadata deferred.
 
 ## 1. Executive summary
 

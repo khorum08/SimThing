@@ -1632,7 +1632,7 @@ bounded_field_update are admitted at designer/spec policy layer without new EML
 opcodes. MappingExecutionProfile remains default Disabled; spec presence alone
 does not enable execution. No production mapping runtime landed. No production
 pass graph wiring landed. No map/faction/AI semantics entered simthing-sim or
-WGSL. Next Phase M task: human + Opus sign-off at M-4 decision gate (Option A atlas packer **or** Option B first-slice runtime wiring as separate explicit decision). Neither path is auto-next.
+WGSL. Next Phase M task: **Option 3 — product-facing first-slice scenario fixture** (single grid, no atlas) on the landed, accepted first-slice runtime. The M-4 atlas packer (Option A/Option 4) is **not** next; it waits for a named multi-theater scenario, an approved VRAM budget, and a §11-gate-passing M-4 PR.
 
 **Test:** A rejection suite (one case per banned/over-cap condition) plus a
 round-trip that a valid bounded field compiles to generic stencil + reduction +
@@ -1753,9 +1753,13 @@ The named next mapping step is **Option 3 — a product-facing first-slice scena
 
 **Implementation (Composer 2.5):** generic atlas packer in the driver behind the
 mapping profile; VRAM-multiplier reporting wired into the debug surface; refuses
-to pack without an isolation policy. **Blocked until human + Opus sign-off and explicit Option A selection.**  
-**Gate:** Opus design note committed; human + Opus sign-off required before any atlas code. Atlas stays
-provisional and opt-in.  
+to pack unless exactly one admitted isolation policy is configured. **Blocked** — the
+isolation-policy sign-off is done (Opus 2026-05-28), but atlas code stays blocked until a
+named multi-theater scenario needs batching, an approved VRAM budget exists, and a PR
+satisfies the §11 binding gate. Atlas is **not** the next mapping step (Option 3 is).  
+**Gate:** Opus design note committed and isolation policy ratified; a §11-gate-passing M-4 PR
+required before any atlas code. Atlas stays provisional, unimplemented, and opt-in;
+`request_atlas_batching` stays rejected at admission until that PR.  
 **Acceptance (future implementation PR only):** Design note committed; packer + VRAM reporting tests pass; refuses
 unsafe packing; **full-tile bit-exact parity against the exact per-tile-protocol
 CPU oracle** (t44-only acceptance is explicitly insufficient for production).

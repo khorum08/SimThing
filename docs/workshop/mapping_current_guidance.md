@@ -78,5 +78,9 @@ Historical sandbox source, candidate notes, revert reports, and full logs live u
 [`archive/mapping/`](archive/mapping/) and [`../tests/archive/`](../tests/archive/).
 They remain valid evidence but are not active guidance.
 
-Do not implement production mapping runtime until first-slice session wiring is separately
-gated after an explicit Option A or Option B decision.
+The opt-in first-slice runtime is landed and accepted as a stable base (R1/R2/R3); it is
+**not** wired into the default session pass graph and `MappingExecutionProfile` default
+remains `Disabled`. The named next mapping step is the **Option 3 product-facing first-slice
+scenario fixture** (single grid, no atlas). Do not begin the M-4 atlas packer (Option 4): it
+waits for a named multi-theater scenario, an approved VRAM budget, and a §11-gate-passing
+M-4 implementation PR.

@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-28 — Opus M-4A ratification + first-slice acceptance, and docs reconciliation
+
+- **Opus oversight (PR #233):** ratified the M-4A isolation-policy amendment and accepted the first-slice runtime (through R3) as a stable base. Memo: [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md). Verified guardrails in code; re-ran first-slice suite on GPU (28/28).
+- Ratified: **AlgebraicTileLocalMask G=0** is the preferred isolation candidate for homogeneous square atlas batches; **PhysicalGutter G≥H** is fallback; **LocalBoundsMetadata** deferred. The M-4 design-note §11 checklist is promoted to a **binding acceptance gate**.
+- **Ratification covers the isolation policy only** — atlas batching remains **Provisional and unimplemented**; `request_atlas_batching` stays rejected at admission until a named multi-theater scenario, an approved VRAM budget, and a §11-gate-passing M-4 PR all exist.
+- **Named next mapping step: Option 3 — product-facing first-slice scenario fixture** (single grid, no atlas). Atlas packer (Option 4) is **not** next.
+- **Docs reconciliation (this entry):** removed stale pre-ratification wording from the M-4 design note (status table, three-policy isolation requirement, future-packer obligation, "active evidence" → ratified) and synchronized `mapping_current_guidance.md`, `workshop_current_state.md`, `accumulator_op_v2_production_plan.md`, ADR, `design_v7_7.md`, `invariants.md`, `todo.md`. Scale caveat (per-slot bridge queue writes) preserved.
+- Docs-only. No production Rust/WGSL/test/runtime changes. `MappingExecutionProfile` default remains `Disabled`; simthing-sim remains map-free.
+- Verification: [`tests/opus_m4a_ratification_docs_reconciliation_test_results.md`](tests/opus_m4a_ratification_docs_reconciliation_test_results.md).
+
 ## 2026-05-19 — Phase M-first-slice-R3 GPU-resident readiness/observability parking
 
 - Readiness pass adds `FirstSliceReadinessReport` with dispatch, GPU bridge cost-shape, budget, and execution observability for Opus/product review.
