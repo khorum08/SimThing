@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — Mapping optimization remedial probe (reverted to parked state)
+
+- Ran remedial sandbox resolving toolkit PARTIALs: atlas gutter sweep (G∈{0,1,2,4,8,9}), VRAM tax, source-policy behavior models, combined stack with G=H=8, active halo on safe atlas. 10/10 PASS (`--test-threads=1`). Overall verdict **PARTIAL+**.
+- Combined stack with safe gutter: max_error_vs_oracle≈0.003, speedup≈18× (PASS). t44 cross-tile leak negligible with per-tile seed clearing.
+- Source policy: caller-managed required (growth_ratio≈2.13); behavioral WGSL DEFERRED — column-wide source_col zero unsafe without explicit source identity.
+- G≥H recommended for ADR; 10×10 VRAM multiplier 6.76× at H=8.
+- Preserved at [`mapping_optimization_remedial_sandbox_code_preserve.rs`](workshop/mapping_optimization_remedial_sandbox_code_preserve.rs), [`mapping_optimization_remedial_candidate_notes.md`](workshop/mapping_optimization_remedial_candidate_notes.md), [`mapping_optimization_remedial_sandbox_test_results.md`](tests/mapping_optimization_remedial_sandbox_test_results.md).
+
+**Verification:** [`revert_mapping_optimization_remedial_sandbox_to_parked_state_test_results.md`](tests/revert_mapping_optimization_remedial_sandbox_to_parked_state_test_results.md)
+
+---
+
 ## 2026-05-19 — Mapping optimization toolkit probe (reverted to parked state)
 
 - Ran atlas batching, cadence tiers, dirty macro-region skipping, and active frontier+halo sandbox against live V7.6 `StructuredFieldStencilOp`. 11/11 PASS (`--test-threads=1`). Overall verdict **PARTIAL**.
