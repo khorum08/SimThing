@@ -422,6 +422,14 @@ expected event. This is a landing note only: no CPU-side AI planner, atlas batch
 M-4A masking, active mask, perception, map residency, source identity, semantic WGSL,
 default session wiring, or `simthing-sim` map awareness is authorized or landed.
 
+**Update (2026-05-28, CommitmentSpec fixture):** The first-slice commitment threshold/event
+binding moved into a designer/spec-facing RON-admitted `FirstSliceCommitmentSpec` shape.
+The decision path remains unchanged: parent `field_urgency` crosses an authored threshold
+and emits through the existing Threshold + EmitEvent substrate. This is a landing note
+only: no CPU-side AI planner, atlas batching, M-4A masking, active mask, perception, map
+residency, source identity, semantic WGSL, default session wiring, or `simthing-sim` map
+awareness is authorized or landed.
+
 ---
 
 ## Read order for agents touching mapping

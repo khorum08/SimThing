@@ -17,9 +17,9 @@ pub mod effect;
 pub mod event;
 pub mod overlay;
 pub mod property;
-pub mod resource_economy;
 pub mod region_field_admission;
 pub mod region_field_budget;
+pub mod resource_economy;
 pub mod resource_flow_admission;
 pub mod trigger;
 
@@ -29,24 +29,25 @@ pub use effect::compile_effect;
 pub use event::compile_event;
 pub use overlay::compile_overlay;
 pub use property::compile_property;
-pub use resource_economy::{
-    compile_resource_economy, CompiledEmitOnThreshold, CompiledEmissionFormula,
-    CompiledResourceEconomy, CompiledResourceEmission, CompiledResourceRecipe,
-    CompiledResourceRecipeInput, CompiledResourceTransfer, ResourceEconomyDiagnostic,
-    ResourceEconomyExpansionReport,
-};
 pub use region_field_admission::{
-    compile_region_field_preview, compile_region_field_stencil_config, admit_region_field_formula_class,
-    CompiledFieldCadence, CompiledRegionFieldBoundaryMode, CompiledRegionFieldMaskMode,
-    CompiledRegionFieldOperator, CompiledRegionFieldPreview, CompiledRegionFieldSourcePolicy,
-    CompiledRegionFieldStencilSpec, ADMITTED_REGION_FIELD_FORMULA_CLASSES,
+    admit_region_field_formula_class, compile_region_field_preview,
+    compile_region_field_stencil_config, CompiledFieldCadence,
+    CompiledFirstSliceCommitmentDirection, CompiledFirstSliceCommitmentThreshold,
+    CompiledRegionFieldBoundaryMode, CompiledRegionFieldMaskMode, CompiledRegionFieldOperator,
+    CompiledRegionFieldPreview, CompiledRegionFieldSourcePolicy, CompiledRegionFieldStencilSpec,
+    ADMITTED_REGION_FIELD_FORMULA_CLASSES, FIRST_SLICE_FIELD_URGENCY_COL,
     REGION_FIELD_DEFAULT_HORIZON_CAP, REGION_FIELD_EXTENDED_HORIZON_CAP,
-    REGION_FIELD_EXTENDED_MAX_GRID, REGION_FIELD_MAX_CELL_COUNT,
-    REGION_FIELD_STANDARD_MAX_GRID,
+    REGION_FIELD_EXTENDED_MAX_GRID, REGION_FIELD_MAX_CELL_COUNT, REGION_FIELD_STANDARD_MAX_GRID,
 };
 pub use region_field_budget::{
     estimate_region_field_budget, region_field_isolation_multiplier, RegionFieldBudgetError,
     RegionFieldBudgetEstimate, RegionFieldBudgetSpec, RegionFieldIsolationPolicyEstimate,
+};
+pub use resource_economy::{
+    compile_resource_economy, CompiledEmissionFormula, CompiledEmitOnThreshold,
+    CompiledResourceEconomy, CompiledResourceEmission, CompiledResourceRecipe,
+    CompiledResourceRecipeInput, CompiledResourceTransfer, ResourceEconomyDiagnostic,
+    ResourceEconomyExpansionReport,
 };
 pub use resource_flow_admission::{
     compile_resource_flow_admission, CompiledArenaAdmission, CompiledCouplingAdmission,

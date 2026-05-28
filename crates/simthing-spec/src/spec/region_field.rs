@@ -29,6 +29,8 @@ pub struct RegionFieldSpec {
     pub reduction: Option<RegionFieldReductionSpec>,
     #[serde(default)]
     pub parent_formula: Option<RegionFieldFormulaBindingSpec>,
+    #[serde(default)]
+    pub commitment: Option<FirstSliceCommitmentSpec>,
     /// Atlas batching is provisional (M-4) and rejected at admission in M-3.
     #[serde(default)]
     pub request_atlas_batching: bool,
@@ -85,6 +87,23 @@ pub struct RegionFieldFormulaBindingSpec {
     pub formula_class: String,
     #[serde(default)]
     pub tree_id: Option<u32>,
+}
+
+/// First-slice designer-authored threshold binding over parent `field_urgency`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FirstSliceCommitmentSpec {
+    pub source_formula_class: String,
+    pub parent_slot: u32,
+    pub urgency_col: u32,
+    pub threshold: f32,
+    pub direction: FirstSliceCommitmentDirectionSpec,
+    pub event_kind: u32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum FirstSliceCommitmentDirectionSpec {
+    Upward,
 }
 
 /// Mapping execution opt-in profile (structure only in M-3).

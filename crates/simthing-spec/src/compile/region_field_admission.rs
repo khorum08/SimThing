@@ -10,8 +10,9 @@ use crate::compile::region_field_budget::{
 };
 use crate::error::SpecError;
 use crate::spec::region_field::{
-    RegionFieldCadenceSpec, RegionFieldGridProfile, RegionFieldOperatorSpec,
-    RegionFieldReductionSpec, RegionFieldSourcePolicySpec, RegionFieldSpec,
+    FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, RegionFieldCadenceSpec,
+    RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
+    RegionFieldSourcePolicySpec, RegionFieldSpec,
 };
 
 pub const REGION_FIELD_STANDARD_MAX_GRID: u32 = 10;
@@ -19,6 +20,7 @@ pub const REGION_FIELD_EXTENDED_MAX_GRID: u32 = 32;
 pub const REGION_FIELD_MAX_CELL_COUNT: u32 = 1024;
 pub const REGION_FIELD_DEFAULT_HORIZON_CAP: u32 = 8;
 pub const REGION_FIELD_EXTENDED_HORIZON_CAP: u32 = 16;
+pub const FIRST_SLICE_FIELD_URGENCY_COL: u32 = 4;
 
 /// Admitted field formula classes at the designer/spec policy layer (M-3).
 pub const ADMITTED_REGION_FIELD_FORMULA_CLASSES: &[&str] = &[
@@ -85,6 +87,22 @@ pub struct CompiledRegionFieldPreview {
     pub cadence: CompiledFieldCadence,
     pub reduction: Option<ColumnAwareReductionSpec>,
     pub parent_formula_class: Option<String>,
+    pub commitment: Option<CompiledFirstSliceCommitmentThreshold>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CompiledFirstSliceCommitmentDirection {
+    Upward,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CompiledFirstSliceCommitmentThreshold {
+    pub source_formula_class: String,
+    pub parent_slot: u32,
+    pub urgency_col: u32,
+    pub threshold: f32,
+    pub direction: CompiledFirstSliceCommitmentDirection,
+    pub event_kind: u32,
 }
 
 fn field_err(field: &str, reason: impl Into<String>) -> SpecError {
@@ -109,7 +127,10 @@ fn validate_grid(spec: &RegionFieldSpec) -> Result<u32, SpecError> {
     if spec.grid_size > max_grid {
         return Err(field_err(
             &spec.name,
-            format!("grid_size {} exceeds profile cap {}", spec.grid_size, max_grid),
+            format!(
+                "grid_size {} exceeds profile cap {}",
+                spec.grid_size, max_grid
+            ),
         ));
     }
     let cells = spec
@@ -153,16 +174,10 @@ fn validate_operator_and_source(spec: &RegionFieldSpec) -> Result<(), SpecError>
         }
         RegionFieldOperatorSpec::SourceCappedNormalized => {
             let cap = spec.source_cap.ok_or_else(|| {
-                field_err(
-                    &spec.name,
-                    "SourceCappedNormalized requires source_cap",
-                )
+                field_err(&spec.name, "SourceCappedNormalized requires source_cap")
             })?;
             if !cap.is_finite() || cap <= 0.0 {
-                return Err(field_err(
-                    &spec.name,
-                    "source_cap must be finite and > 0",
-                ));
+                return Err(field_err(&spec.name, "source_cap must be finite and > 0"));
             }
         }
     }
@@ -227,10 +242,9 @@ fn validate_horizon(spec: &RegionFieldSpec) -> Result<(), SpecError> {
 fn compile_cadence(spec: &RegionFieldSpec) -> Result<CompiledFieldCadence, SpecError> {
     match spec.cadence {
         RegionFieldCadenceSpec::EveryTick => Ok(CompiledFieldCadence::EveryTick),
-        RegionFieldCadenceSpec::EveryN(0) => Err(field_err(
-            &spec.name,
-            "EveryN cadence requires n > 0",
-        )),
+        RegionFieldCadenceSpec::EveryN(0) => {
+            Err(field_err(&spec.name, "EveryN cadence requires n > 0"))
+        }
         RegionFieldCadenceSpec::EveryN(n) => Ok(CompiledFieldCadence::EveryN { n }),
         RegionFieldCadenceSpec::OnEvent => Ok(CompiledFieldCadence::OnEvent),
     }
@@ -277,6 +291,84 @@ fn validate_formula_class(spec: &RegionFieldSpec, class: &str) -> Result<(), Spe
         &spec.name,
         format!("unknown or unbounded formula class `{class}`"),
     ))
+}
+
+fn compile_commitment(
+    spec: &RegionFieldSpec,
+    commitment: &FirstSliceCommitmentSpec,
+    reduction: Option<&ColumnAwareReductionSpec>,
+    parent_formula_class: Option<&str>,
+) -> Result<CompiledFirstSliceCommitmentThreshold, SpecError> {
+    if !commitment.threshold.is_finite() {
+        return Err(field_err(&spec.name, "commitment threshold must be finite"));
+    }
+    if commitment.event_kind == 0 {
+        return Err(field_err(
+            &spec.name,
+            "commitment event_kind must be nonzero",
+        ));
+    }
+    if !matches!(
+        commitment.direction,
+        FirstSliceCommitmentDirectionSpec::Upward
+    ) {
+        return Err(field_err(
+            &spec.name,
+            "commitment direction must be Upward in first-slice v1",
+        ));
+    }
+    let Some(reduction) = reduction else {
+        return Err(field_err(
+            &spec.name,
+            "commitment requires reduction binding",
+        ));
+    };
+    let Some(parent_formula_class) = parent_formula_class else {
+        return Err(field_err(
+            &spec.name,
+            "commitment requires parent_formula field_urgency",
+        ));
+    };
+    if parent_formula_class != "field_urgency" {
+        return Err(field_err(
+            &spec.name,
+            "commitment requires parent_formula field_urgency",
+        ));
+    }
+    if commitment.source_formula_class != "field_urgency" {
+        return Err(field_err(
+            &spec.name,
+            "commitment source_formula_class must be field_urgency",
+        ));
+    }
+    if commitment.parent_slot != reduction.parent_slot {
+        return Err(field_err(
+            &spec.name,
+            "commitment parent_slot must match reduction parent_slot",
+        ));
+    }
+    if commitment.urgency_col != FIRST_SLICE_FIELD_URGENCY_COL {
+        return Err(field_err(
+            &spec.name,
+            format!(
+                "commitment urgency_col must be {FIRST_SLICE_FIELD_URGENCY_COL} for first-slice field_urgency"
+            ),
+        ));
+    }
+    if commitment.urgency_col >= spec.n_dims {
+        return Err(field_err(
+            &spec.name,
+            "commitment urgency_col out of range for n_dims",
+        ));
+    }
+    Ok(CompiledFirstSliceCommitmentThreshold {
+        source_formula_class: commitment.source_formula_class.clone(),
+        parent_slot: commitment.parent_slot,
+        urgency_col: commitment.urgency_col,
+        threshold: commitment.threshold,
+        direction: CompiledFirstSliceCommitmentDirection::Upward,
+        event_kind: commitment.event_kind,
+    })
 }
 
 /// Validate a field formula class for RegionFieldSpec parent bindings.
@@ -338,6 +430,12 @@ pub fn compile_region_field_preview(
         None
     };
 
+    let commitment = spec
+        .commitment
+        .as_ref()
+        .map(|c| compile_commitment(spec, c, reduction.as_ref(), parent_formula_class.as_deref()))
+        .transpose()?;
+
     let stencil = CompiledRegionFieldStencilSpec {
         width: spec.grid_size,
         height: spec.grid_size,
@@ -363,12 +461,16 @@ pub fn compile_region_field_preview(
         cadence,
         reduction,
         parent_formula_class,
+        commitment,
     };
     validate_budget_preview(spec, &preview)?;
     Ok(preview)
 }
 
-fn validate_budget_preview(spec: &RegionFieldSpec, preview: &CompiledRegionFieldPreview) -> Result<(), SpecError> {
+fn validate_budget_preview(
+    spec: &RegionFieldSpec,
+    preview: &CompiledRegionFieldPreview,
+) -> Result<(), SpecError> {
     let Some(max_bytes) = spec.max_region_field_vram_bytes else {
         return Ok(());
     };
@@ -384,12 +486,12 @@ fn validate_budget_preview(spec: &RegionFieldSpec, preview: &CompiledRegionField
     estimate_region_field_budget(&budget_spec)
         .map(|_| ())
         .map_err(|err: RegionFieldBudgetError| {
-        field_err(
-            &spec.name,
-            format!(
-                "VRAM budget exceeded: requested {} bytes, allowed {} bytes",
-                err.requested_bytes, err.allowed_bytes
-            ),
-        )
-    })
+            field_err(
+                &spec.name,
+                format!(
+                    "VRAM budget exceeded: requested {} bytes, allowed {} bytes",
+                    err.requested_bytes, err.allowed_bytes
+                ),
+            )
+        })
 }
