@@ -24,11 +24,13 @@ Active read order:
 
 Phase M-first-slice runtime landed behind explicit `MappingExecutionProfile::SparseRegionFieldV1` opt-in in `simthing-driver` (`FirstSliceMappingSession`). It exercises one bounded RegionField grid with `source_capped_normalized`, H≤8, caller-managed one-shot seed then zero, dirty skip, SlotRange Sum reduction, and parent `field_urgency` EvalEML.
 
-**M-first-slice-R2 landed:** GPU-resident Layer 1→2→3 bridge. The first-slice hot path now keeps stencil field state on GPU, copies canonical field data into AccumulatorOpSession values buffer without CPU readback, and executes SlotRange Sum + field_urgency EvalEML without hidden GPU→CPU→GPU staging. Debug/diagnostic readback remains explicit and test-only. No atlas batching landed. No M-4A atlas masking landed. No active mask, perception, map residency, behavioral source policy, or source_mask landed. No semantic WGSL landed. simthing-sim remains map-free. Defaults unchanged.
+**M-first-slice-R3 landed:** GPU-resident first-slice readiness/observability parking pass. The first-slice hot path remains GPU-resident through stencil, SlotRange Sum reduction, and field_urgency EvalEML. R3 adds readiness/cost-shape reporting and locks the no-hidden-readback invariant for Opus/product review. No atlas batching landed. No M-4A atlas masking landed. No active mask, perception, map residency, behavioral source policy, or source_mask landed. No semantic WGSL landed. simthing-sim remains map-free. Defaults unchanged.
 
-**M-first-slice-R1 landed:** GPU-state ownership/no-readback correctness hardening (stencil/seed protocol). See [`../tests/phase_m_first_slice_runtime_r1_no_readback_correctness_test_results.md`](../tests/phase_m_first_slice_runtime_r1_no_readback_correctness_test_results.md).
+**Known scale caveat:** First-slice bridge uses queue writes for child resource values and parent weights. This is acceptable for the 10×10 first slice. Future multi-field/atlas scale should replace per-slot resource writes with a generic preinitialized resource column, fill helper, or GPU fill kernel after a separate measured design step.
 
-See [`../tests/phase_m_first_slice_runtime_test_results.md`](../tests/phase_m_first_slice_runtime_test_results.md) and [`../tests/phase_m_first_slice_runtime_r2_gpu_bridge_test_results.md`](../tests/phase_m_first_slice_runtime_r2_gpu_bridge_test_results.md).
+**M-first-slice-R2 landed:** GPU-resident Layer 1→2→3 bridge. See [`../tests/phase_m_first_slice_runtime_r2_gpu_bridge_test_results.md`](../tests/phase_m_first_slice_runtime_r2_gpu_bridge_test_results.md).
+
+See [`../tests/phase_m_first_slice_runtime_r3_readiness_test_results.md`](../tests/phase_m_first_slice_runtime_r3_readiness_test_results.md).
 
 ## Parked status (Phase M-4)
 
@@ -62,8 +64,8 @@ Choose **one** explicitly — do not treat the design note as auto-authorization
 - **M-1.1 landed:** no-readback dispatch/report path for future schedulers; readback explicit for tests/diagnostics and readback-derived stats
 - **M-2 landed:** generic cadence scheduler and dirty macro-region skip helper
 - **M-2.1 landed:** FieldScheduler API hardening — region identity keyed by `(FieldId, FieldRegionId)`; visitor-based scheduled execution
-- **M-first-slice-R2 landed (opt-in):** GPU-resident Layer 1→2→3 bridge for [`FirstSliceMappingSession`](../../crates/simthing-driver/src/first_slice_mapping_runtime.rs)
-- **M-first-slice-R1 landed (opt-in):** GPU-resident no-readback correctness hardening for [`FirstSliceMappingSession`](../../crates/simthing-driver/src/first_slice_mapping_runtime.rs)
+- **M-first-slice-R3 landed (opt-in):** GPU-resident readiness/observability parking — [`FirstSliceMappingSession`](../../crates/simthing-driver/src/first_slice_mapping_runtime.rs)
+- **M-first-slice-R2 landed (opt-in):** GPU-resident Layer 1→2→3 bridge — [`FirstSliceMappingSession`](../../crates/simthing-driver/src/first_slice_mapping_runtime.rs)
 - **M-3 landed:** RegionFieldSpec RON + mapping admission framework — designer/spec structure only; compiles/previews to generic substrate configs; MappingExecutionProfile default Disabled
 - **M-4 design note landed (parked):** [`mapping_atlas_batching_isolation_design_note.md`](mapping_atlas_batching_isolation_design_note.md)
 

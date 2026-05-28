@@ -1689,6 +1689,23 @@ Defaults unchanged.
 
 **Test:** [`phase_m_first_slice_runtime_r2_gpu_bridge_test_results.md`](tests/phase_m_first_slice_runtime_r2_gpu_bridge_test_results.md) — 24/24 PASS.
 
+### PR M-first-slice-R3 — GPU-resident readiness/observability parking — **Done**
+
+**Status:** **Landed** — readiness/observability pass for Opus/product review. No new mapping runtime behavior. **Not** wired into default `SimSession` pass graph.
+
+M-first-slice-R3 landed: GPU-resident first-slice readiness/observability parking pass.
+The first-slice hot path remains GPU-resident through stencil, SlotRange Sum reduction, and field_urgency EvalEML. R3 adds readiness/cost-shape reporting and locks the no-hidden-readback invariant for Opus/product review.
+No atlas batching landed.
+No M-4A atlas masking landed.
+No active mask, perception, map residency, behavioral source policy, or source_mask landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Known scale caveat:** First-slice bridge uses queue writes for child resource values and parent weights (acceptable for 10×10 first slice).
+
+**Test:** [`phase_m_first_slice_runtime_r3_readiness_test_results.md`](tests/phase_m_first_slice_runtime_r3_readiness_test_results.md) — 28/28 PASS.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; parked at decision gate**
 
 **Status:** Phase M-4 design note is **parked** pending human + Opus sign-off. The design note defines the future contract only — it is **not** implementation authorization. **M-4 atlas packer implementation is not automatically next** unless sign-off occurs and Option A is explicitly chosen.
