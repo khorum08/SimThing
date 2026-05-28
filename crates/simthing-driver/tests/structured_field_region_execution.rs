@@ -70,12 +70,17 @@ fn test_a_execution_api_horizon_guard() {
                 ctx,
                 StructuredFieldExecutionOptions {
                     collect_field_stats: false,
+                    readback_values: false,
                     steps: None,
                 },
             )
             .unwrap();
         assert_eq!(report.debug.executed_horizon, 4);
         assert_eq!(report.debug.dispatch_count, 4);
+        assert!(report.values.is_none());
+        assert!(report.debug.field_max.is_none());
+        assert!(report.debug.field_l1_norm.is_none());
+        assert!(report.debug.active_mask_ratio.is_none());
 
         op.upload_values(ctx, &values).unwrap();
         let err = op
@@ -83,16 +88,71 @@ fn test_a_execution_api_horizon_guard() {
                 ctx,
                 StructuredFieldExecutionOptions {
                     collect_field_stats: false,
+                    readback_values: false,
                     steps: Some(8),
                 },
             )
             .unwrap_err();
         assert!(format!("{err}").contains("exceed configured horizon"));
+
+        op.upload_values(ctx, &values).unwrap();
+        let readback_err = op
+            .execute_configured(
+                ctx,
+                StructuredFieldExecutionOptions {
+                    collect_field_stats: false,
+                    readback_values: true,
+                    steps: Some(8),
+                },
+            )
+            .unwrap_err();
+        assert!(format!("{readback_err}").contains("exceed configured horizon"));
     });
 }
 
 #[test]
-fn test_b_debug_report_fields_10x10() {
+fn test_b_readback_path_explicit() {
+    with_gpu(|ctx| {
+        let config = StructuredFieldStencilConfig {
+            width: 3,
+            height: 3,
+            n_dims: N_DIMS,
+            source_col: 0,
+            target_col: 0,
+            horizon: 2,
+            alpha_self: 1.0,
+            gamma_neighbor: 0.8,
+            source_cap: None,
+            operator: StructuredFieldStencilOperator::Normalized,
+            source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
+            boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
+            mask_mode: StructuredFieldStencilMaskMode::All,
+            allow_extended_horizon: false,
+        };
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let mut values = vec![0.0f32; op.config().values_len()];
+        values[idx(4, 0)] = 50.0;
+        op.upload_values(ctx, &values).unwrap();
+
+        let report = op
+            .execute_configured(
+                ctx,
+                StructuredFieldExecutionOptions {
+                    collect_field_stats: false,
+                    readback_values: true,
+                    steps: None,
+                },
+            )
+            .unwrap();
+        assert!(report.values.is_some());
+        assert!(report.debug.field_max.is_none());
+        assert!(report.debug.field_l1_norm.is_none());
+        assert!(report.debug.active_mask_ratio.is_none());
+    });
+}
+
+#[test]
+fn test_c_stats_path_readback_derived() {
     with_gpu(|ctx| {
         let config = StructuredFieldStencilConfig {
             width: 10,
@@ -120,10 +180,12 @@ fn test_b_debug_report_fields_10x10() {
                 ctx,
                 StructuredFieldExecutionOptions {
                     collect_field_stats: true,
+                    readback_values: false,
                     steps: None,
                 },
             )
             .unwrap();
+        assert!(report.values.is_some(), "stats require readback");
         let d = &report.debug;
         assert_eq!(d.dispatch_count, 4);
         assert_eq!(d.configured_horizon, 4);

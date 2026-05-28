@@ -198,7 +198,9 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Docs cleanup (pre-Phase M):** **Done** — superseded artifacts archived; authoritative mapping guidance: ADR + V7.7 + invariants + [`mapping_current_guidance.md`](workshop/mapping_current_guidance.md).
 
-**Phase M-1:** **Done** — generic `StructuredFieldStencilOp::execute_configured` execution API and column-aware reduction convenience over existing `SlotRange` Sum. StructuredFieldStencilOp remains live, opt-in, hardened, and inert by default. No production mapping runtime; no pass graph wiring. Next coding task: **Phase M-2**.
+**Phase M-1:** **Done** — generic `StructuredFieldStencilOp::execute_configured` execution API and column-aware reduction convenience over existing `SlotRange` Sum.
+
+**Phase M-1.1:** **Done** — no-readback configured execution path; readback explicit for tests/diagnostics and readback-derived stats. No production mapping runtime; no pass graph wiring. Next coding task: **Phase M-2**.
 
 **V7.6 StructuredFieldStencilOp:** **Live, opt-in, hardened, inert by default** — not mapping runtime; not wired into production passes.
 

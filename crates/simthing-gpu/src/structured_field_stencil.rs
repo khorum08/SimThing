@@ -577,7 +577,8 @@ impl StructuredFieldStencilOp {
     /// Execute the configured structured field stencil and return a generic report.
     ///
     /// Uses [`Self::run_configured_horizon`] unless `options.steps` is set; optional
-    /// step overrides must not exceed `config.horizon`.
+    /// step overrides must not exceed `config.horizon`. By default dispatches without
+    /// CPU readback; set `readback_values` or `collect_field_stats` for explicit readback.
     pub fn execute_configured(
         &self,
         ctx: &GpuContext,
@@ -594,11 +595,21 @@ impl StructuredFieldStencilOp {
         }
         self.validate_execution_steps(steps)?;
         let dispatches = self.dispatch_ping_pong(ctx, steps)?;
-        let values = self.readback_after_ping_pong(ctx, steps);
         let mut debug =
             StructuredFieldStencilDebugReport::from_run(&self.config, steps, dispatches);
+
+        let want_readback = options.readback_values || options.collect_field_stats;
+        let values = if want_readback {
+            Some(self.readback_after_ping_pong(ctx, steps))
+        } else {
+            None
+        };
+
         if options.collect_field_stats {
-            debug.apply_field_stats(&values, &self.config);
+            let buf = values
+                .as_ref()
+                .expect("collect_field_stats requires values readback");
+            debug.apply_field_stats(buf, &self.config);
             debug.active_mask_ratio = Some(match self.config.mask_mode {
                 StructuredFieldStencilMaskMode::All => 1.0,
                 StructuredFieldStencilMaskMode::ActiveOnlyExperimentalNoHalo => {
@@ -606,6 +617,7 @@ impl StructuredFieldStencilOp {
                 }
             });
         }
+
         Ok(StructuredFieldExecutionReport { values, debug })
     }
 
@@ -638,18 +650,31 @@ impl StructuredFieldStencilOp {
 }
 
 /// Options for [`StructuredFieldStencilOp::execute_configured`].
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct StructuredFieldExecutionOptions {
-    /// When true, read back target-column max/L1 and active-mask ratio.
+    /// When true, read back target-column max/L1 and active-mask ratio (requires values readback).
     pub collect_field_stats: bool,
+    /// When true, read back the full values buffer after dispatch. Default is GPU-resident dispatch only.
+    pub readback_values: bool,
     /// Optional step override. Must be `<= config.horizon` when set.
     pub steps: Option<u32>,
+}
+
+impl Default for StructuredFieldExecutionOptions {
+    fn default() -> Self {
+        Self {
+            collect_field_stats: false,
+            readback_values: false,
+            steps: None,
+        }
+    }
 }
 
 /// Result of a configured structured-field execution.
 #[derive(Clone, Debug, PartialEq)]
 pub struct StructuredFieldExecutionReport {
-    pub values: Vec<f32>,
+    /// Present only when readback was requested (`readback_values` or `collect_field_stats`).
+    pub values: Option<Vec<f32>>,
     pub debug: StructuredFieldStencilDebugReport,
 }
 
