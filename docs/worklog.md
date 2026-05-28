@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — SEAD strategic horizon / velocity / PF-skip probe (reverted to parked state)
+
+- Ran second SEAD feasibility sandbox (PR #202): strategic horizon sweep, multi-cadence, explicit-column velocity, PF convergence/skip simulation. 11/11 PASS (`--test-threads=1`). Overall verdict **PARTIAL**.
+- Strategic horizon: [4][4] directional at H=8 with directed SE propagation (first probe NSEW bidirectional unstable).
+- Velocity: explicit `threat_previous` + `threat_velocity` columns work on GPU (14.3% overhead at 196 cells).
+- PF skip: convergence measurable (ratio≈0.8); skip candidate threshold PARTIAL by tick 32.
+- Preserved at [`sead_strategic_horizon_sandbox_code_preserve.rs`](workshop/sead_strategic_horizon_sandbox_code_preserve.rs) and [`sead_strategic_horizon_sandbox_test_results.md`](tests/sead_strategic_horizon_sandbox_test_results.md).
+
+**Verification:** [`revert_sead_strategic_horizon_sandbox_to_parked_state_test_results.md`](tests/revert_sead_strategic_horizon_sandbox_to_parked_state_test_results.md)
+
+---
+
 ## 2026-05-19 — SEAD field-intelligence feasibility probe (reverted to parked state)
 
 - Ran staged SEAD / sparse RegionCell field-intelligence feasibility probe (PR #200). 13/13 sandbox tests PASS; overall decision-gate verdict **PARTIAL**.
