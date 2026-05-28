@@ -3,13 +3,13 @@
 **Purpose:** Single synthesis of **active workshop docs**, **production migration state**,
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
-**Last updated:** 2026-05-28  
+**Last updated:** 2026-05-19  
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Master HEAD:** (M-4A sandbox merge pending)  
+**Master HEAD:** `bf8c189` (Phase M-4A sandbox merge)  
 **Verification (last recorded):** M-4A algebraic mask sandbox; revert verification green  
-**Next action:** **Parked at decision gate** — human + Opus sign-off required before atlas implementation (Option A), **or** explicit decision to proceed to first-slice runtime wiring without atlas (Option B). **Not** automatic implementation.
+**Next action:** **Explicit product decision required** — **Option B recommended:** first-slice runtime wiring (ADR first slice: one grid, no atlas). **Option A** (M-4 atlas packer) remains gated on human + Opus sign-off including M-4A algebraic-mask amendment. See [`mapping_first_slice_runtime_handoff.md`](mapping_first_slice_runtime_handoff.md).
 
 ---
 

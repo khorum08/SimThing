@@ -6,6 +6,13 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — M-4A post-merge evaluation + M-first-slice handoff
+
+- Evaluated PR #226 (`bf8c189`): **consistent** with V7.7, Mapping ADR, SEAD principles. No code remedial.
+- ADR: added M-4A evidence citation + proposed-amendment subsection (classification not auto-changed).
+- Next handoff: [`mapping_first_slice_runtime_handoff.md`](workshop/mapping_first_slice_runtime_handoff.md) (Option B recommended).
+- Evaluation: [`mapping_m4a_post_merge_evaluation_test_results.md`](tests/mapping_m4a_post_merge_evaluation_test_results.md).
+
 ## 2026-05-19 — Phase M-4A algebraic tile-local atlas masking sandbox
 
 - M-4A sandbox probe completed and reverted to parked state. Candidate code preserved: [`mapping_atlas_algebraic_mask_sandbox_code_preserve.rs`](workshop/mapping_atlas_algebraic_mask_sandbox_code_preserve.rs), [`structured_field_stencil_atlas_mask_candidate.wgsl`](workshop/structured_field_stencil_atlas_mask_candidate.wgsl).
