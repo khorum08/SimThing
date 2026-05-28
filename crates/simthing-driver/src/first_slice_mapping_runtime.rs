@@ -132,6 +132,8 @@ pub struct FirstSliceMappingReport {
     pub total_dispatches: u32,
     pub reduction_executed: bool,
     pub eml_executed: bool,
+    /// Stencil field readbacks performed while preparing reduction/EML (0 on GPU-resident hot path).
+    pub reduction_stencil_readbacks: u32,
 }
 
 impl FirstSliceMappingReport {
@@ -150,6 +152,7 @@ impl FirstSliceMappingReport {
             total_dispatches: 0,
             reduction_executed: false,
             eml_executed: false,
+            reduction_stencil_readbacks: 0,
         }
     }
 }
@@ -210,6 +213,7 @@ pub struct FirstSliceMappingSession {
     seeds_applied_this_tick: bool,
     gpu_state_canonical: bool,
     host_values_valid: bool,
+    reduction_stencil_readbacks_this_tick: u32,
 }
 
 struct StencilTickResult {
@@ -313,6 +317,7 @@ impl FirstSliceMappingSession {
             seeds_applied_this_tick: false,
             gpu_state_canonical: true,
             host_values_valid: true,
+            reduction_stencil_readbacks_this_tick: 0,
         })
     }
 
@@ -463,14 +468,45 @@ impl FirstSliceMappingSession {
         })
     }
 
-    fn field_values_for_reduction(&self, ctx: &GpuContext) -> Vec<f32> {
-        if self.gpu_state_canonical {
-            self.stencil.readback_input_buffer(ctx)
-        } else if self.host_values_valid {
-            self.values.clone()
-        } else {
-            self.stencil.readback_input_buffer(ctx)
+    fn bridge_stencil_field_to_accumulator(
+        &mut self,
+        ctx: &GpuContext,
+        weight_a: f32,
+        weight_b: f32,
+    ) -> Result<(), FirstSliceMappingError> {
+        let reduction = self.preview.reduction.as_ref().expect("validated at open");
+        let parent_slot = reduction.parent_slot;
+        let cell_count = self.preview.cell_count;
+        let prefix_bytes = (cell_count * self.n_dims) as u64 * std::mem::size_of::<f32>() as u64;
+
+        self.acc_session.zero_values_buffer(ctx);
+        self.acc_session
+            .copy_values_prefix_from_buffer(
+                ctx,
+                &self.stencil.input_buffer,
+                0,
+                0,
+                prefix_bytes,
+            )
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
+
+        let mut resource_writes = Vec::with_capacity(cell_count as usize);
+        for slot in 0..cell_count {
+            resource_writes.push((slot, self.eml_resource_col, 1.0));
         }
+        self.acc_session
+            .write_slot_col_values(ctx, &resource_writes)
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
+        self.acc_session
+            .write_slot_col_values(
+                ctx,
+                &[
+                    (parent_slot, self.eml_weight_a_col, weight_a),
+                    (parent_slot, self.eml_weight_b_col, weight_b),
+                ],
+            )
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
+        Ok(())
     }
 
     fn run_reduction_and_eml(
@@ -486,19 +522,10 @@ impl FirstSliceMappingSession {
 
         let parent_slot = reduction.parent_slot;
         let parent_col = reduction.parent_col;
-
-        let field = self.field_values_for_reduction(ctx);
-        let mut pv = field;
         let cell_count = self.preview.cell_count;
-        let needed = ((parent_slot + 1) * self.n_dims) as usize;
-        if pv.len() < needed {
-            pv.resize(needed, 0.0);
-        }
-        for s in 0..cell_count {
-            pv[self.slot_idx(s, self.eml_resource_col)] = 1.0;
-        }
-        pv[self.slot_idx(parent_slot, self.eml_weight_a_col)] = weight_a;
-        pv[self.slot_idx(parent_slot, self.eml_weight_b_col)] = weight_b;
+
+        self.reduction_stencil_readbacks_this_tick = 0;
+        self.bridge_stencil_field_to_accumulator(ctx, weight_a, weight_b)?;
 
         let sum_resource_op = AccumulatorOp {
             source: SourceSpec::SlotRange {
@@ -530,7 +557,6 @@ impl FirstSliceMappingSession {
         if readback_report {
             set_debug_readback_allowed(true);
         }
-        self.acc_session.upload_values(ctx, &pv);
         self.acc_session
             .upload_ops_with_eml(
                 ctx,
@@ -573,6 +599,7 @@ impl FirstSliceMappingSession {
         }
 
         self.apply_pending_seeds_to_host();
+        self.reduction_stencil_readbacks_this_tick = 0;
 
         let (decisions, scheduler_report) = self.scheduler.decide_tick(tick)?;
         let scheduled = decisions.iter().any(|d| {
@@ -640,6 +667,7 @@ impl FirstSliceMappingSession {
             total_dispatches: source_setup_dispatches + propagation_dispatches,
             reduction_executed,
             eml_executed,
+            reduction_stencil_readbacks: self.reduction_stencil_readbacks_this_tick,
         })
     }
 }

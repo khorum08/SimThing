@@ -744,3 +744,140 @@ fn test_r1_j_posture_preserved() {
     let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
     assert!(!sim_lib.contains("RegionField"));
 }
+
+// --- M-first-slice-R2: GPU-resident Layer 1→2→3 bridge ---
+
+#[test]
+fn test_r2_a_hot_path_no_hidden_reduction_readback() {
+    with_gpu(|ctx| {
+        let spec = first_slice_spec();
+        let mut session = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        session
+            .queue_seeds(&[FirstSliceSeed { row: 3, col: 3, value: 70.0 }])
+            .unwrap();
+        let report = session
+            .tick(ctx, FirstSliceTickOptions::hot_path(), (0.3, 0.2))
+            .unwrap();
+        assert!(report.field_values.is_none());
+        assert!(report.reduction_parent_value.is_none());
+        assert!(report.eml_output.is_none());
+        assert!(report.reduction_executed);
+        assert!(report.eml_executed);
+        assert_eq!(report.reduction_stencil_readbacks, 0);
+    });
+}
+
+#[test]
+fn test_r2_b_gpu_bridge_matches_debug_semantics() {
+    with_gpu(|ctx| {
+        let spec = first_slice_spec();
+        let seeds = [FirstSliceSeed { row: 4, col: 4, value: 80.0 }];
+        let weights = (0.2, 0.1);
+
+        let mut debug = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        debug.queue_seeds(&seeds).unwrap();
+        let debug_report = debug
+            .tick(ctx, FirstSliceTickOptions::debug_readback(), weights)
+            .unwrap();
+
+        let mut hot = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        hot.queue_seeds(&seeds).unwrap();
+        hot.tick(ctx, FirstSliceTickOptions::hot_path(), weights)
+            .unwrap();
+        let hot_field = hot.readback_canonical_field(ctx);
+        let (hot_threat, hot_eml) = hot.diagnostic_readback_reduction_eml(ctx, weights).unwrap();
+
+        assert_fields_near(
+            debug_report.field_values.as_ref().unwrap(),
+            &hot_field,
+            1e-4,
+            "hot vs debug field",
+        );
+        assert!(
+            (debug_report.reduction_parent_value.unwrap() - hot_threat).abs() < 0.01,
+            "reduction mismatch"
+        );
+        assert!(
+            (debug_report.eml_output.unwrap() - hot_eml).abs() < 1e-4,
+            "eml mismatch"
+        );
+    });
+}
+
+#[test]
+fn test_r2_c_two_tick_gpu_bridge_persistence() {
+    with_gpu(|ctx| {
+        let spec = first_slice_spec();
+        let weights = (0.5, 0.2);
+        let mut session = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        session
+            .queue_seeds(&[FirstSliceSeed { row: 1, col: 1, value: 55.0 }])
+            .unwrap();
+        session
+            .tick(ctx, FirstSliceTickOptions::hot_path(), weights)
+            .unwrap();
+        session
+            .queue_seeds(&[FirstSliceSeed { row: 8, col: 8, value: 40.0 }])
+            .unwrap();
+        session
+            .tick(ctx, FirstSliceTickOptions::hot_path(), weights)
+            .unwrap();
+
+        let config = compiled_stencil_to_gpu_config(
+            &compile_region_field_preview(&spec).unwrap().stencil,
+        );
+        let cpu = run_caller_managed_cpu_ticks(
+            &config,
+            &[&[(1, 1, 55.0)], &[(8, 8, 40.0)]],
+            spec.horizon,
+        );
+        let gpu = session.readback_canonical_field(ctx);
+        let col = spec.source_col;
+        let nd = spec.n_dims;
+        for slot in 0..100 {
+            assert!(
+                (cpu[idx(slot, col, nd)] - gpu[idx(slot, col, nd)]).abs() <= 0.0001,
+                "field slot={slot}"
+            );
+        }
+
+        let (threat, eml) = session.diagnostic_readback_reduction_eml(ctx, weights).unwrap();
+        assert!(threat.is_finite() && threat > 0.0);
+        assert!(eml.is_finite());
+    });
+}
+
+#[test]
+fn test_r2_g_posture_preserved() {
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
+    assert!(!PipelineFlags::default().use_accumulator_resource_flow);
+    let runtime_src = include_str!("../src/first_slice_mapping_runtime.rs");
+    assert!(!runtime_src.contains("ActiveOnlyExperimentalNoHalo"));
+    assert!(!runtime_src.contains("source_mask"));
+    assert!(!runtime_src.contains("atlas"));
+    let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
+    assert!(!sim_lib.contains("RegionField"));
+}
