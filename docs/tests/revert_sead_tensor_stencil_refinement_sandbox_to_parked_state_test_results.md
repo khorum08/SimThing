@@ -3,7 +3,7 @@
 **Date/time:** 2026-05-19  
 **Base HEAD (before revert branch):** `be564a3` — SEAD tensor/stencil refinement probe merge (PR #208)  
 **Revert branch commit:** `cebb8cb` (revert PR #208 merge)  
-**Final commit SHA:** _(filled after revert merge PR)_  
+**Final commit SHA:** `b1f0934` (revert merge PR #209)  
 **rustc:** `rustc 1.95.0 (59807616e 2026-04-14)`  
 **cargo:** `cargo 1.95.0 (f2d3ce0bd 2026-03-21)`  
 **Platform/OS:** Windows 10 (win32 10.0.26200), PowerShell  
