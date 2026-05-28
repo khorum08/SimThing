@@ -3,7 +3,7 @@
 **Date/time:** 2026-05-28  
 **Base HEAD:** `a498276dabfd0659e13375c1b3287cb13303975c` (docs cleanup merge, PR #218)  
 **Branch:** `phase-m1-regionfield-execution-api`  
-**Final commit SHA:** `74f4956` (phase-m1-regionfield-execution-api)  
+**Final commit SHA:** `9cfb382` (phase-m1-regionfield-execution-api)  
 **rustc:** `rustc 1.95.0 (59807616e 2026-04-14)`  
 **cargo:** `cargo 1.95.0 (f2d3ce0bd 2026-03-21)`  
 **Platform/OS:** Windows 10 (win32 10.0.26200), PowerShell
