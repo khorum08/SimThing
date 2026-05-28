@@ -28,6 +28,8 @@ Current next work:
 - **M-3 landed:** RegionFieldSpec RON + mapping admission framework — designer/spec structure only; compiles/previews to generic substrate configs; MappingExecutionProfile default Disabled
 - Next implementation task: **Opus-gated M-4** atlas batching isolation + VRAM accounting design (provisional), unless first-slice runtime wiring is explicitly selected after M-3 review
 
+**Deferred (M-3):** Perception field enum/class names (`true_field`, `observed_field`, `confidence_field`, `deception_field`) remain admission-category placeholders only; no perception runtime or authoritative-column write guards until a later phase.
+
 Historical sandbox source, candidate notes, revert reports, and full logs live under
 [`archive/mapping/`](archive/mapping/) and [`../tests/archive/`](../tests/archive/).
 They remain valid evidence but are not active guidance.
