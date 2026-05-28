@@ -404,6 +404,15 @@ Named next step: a product-facing first-slice scenario fixture (single grid, no 
 resource/parent-weight columns (fine and reported at 10×10; must be redesigned and measured
 before atlas/multi-field scale).
 
+**Update (2026-05-28, product fixture):** The product-facing first-slice scenario fixture
+landed as an opt-in test/RON fixture over the accepted runtime: one grid,
+source_capped_normalized, H<=8, caller-managed seed-only clear, dirty scheduling,
+SlotRange Sum reduction, and parent field_urgency EvalEML. It proves default-off behavior,
+explicit `SparseRegionFieldV1` opt-in, hot-path `reduction_stencil_readbacks=0`, finite
+field propagation, and personality/weight-sensitive urgency. This is a landing note only:
+no atlas, M-4A masking, active mask, perception, map residency, source identity, semantic
+WGSL, default session wiring, or `simthing-sim` map awareness is authorized or landed.
+
 ---
 
 ## Read order for agents touching mapping

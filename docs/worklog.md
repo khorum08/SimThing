@@ -6,6 +6,14 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-28 — Phase M product-facing first-slice scenario fixture
+
+- Phase M product-facing first-slice scenario fixture landed. It drives the accepted GPU-resident first-slice runtime from a small product-style RegionFieldSpec/RON fixture: one grid, source_capped_normalized, H<=8, caller-managed seed-only clear, dirty scheduling, SlotRange Sum reduction, and parent field_urgency EvalEML.
+- The fixture proves default-off behavior, explicit SparseRegionFieldV1 opt-in, GPU-resident hot path with reduction_stencil_readbacks=0, finite propagated field values, and personality/weight-sensitive urgency.
+- No atlas batching landed. No M-4A atlas masking landed. No active mask, perception, map residency, behavioral source policy, or source_mask landed. No semantic WGSL landed. simthing-sim remains map-free. Defaults unchanged.
+- Known caveat preserved: First-slice bridge uses queue writes for child resource values and parent weights. This is acceptable for the 10x10 first-slice fixture. Future multi-field/atlas scale must replace per-slot resource writes with a generic preinitialized resource column, fill helper, or GPU fill kernel after a separate measured design step.
+- Test report: [`tests/phase_m_first_slice_product_fixture_test_results.md`](tests/phase_m_first_slice_product_fixture_test_results.md).
+
 ## 2026-05-28 — Opus M-4A ratification + first-slice acceptance, and docs reconciliation
 
 - **Opus oversight (PR #233):** ratified the M-4A isolation-policy amendment and accepted the first-slice runtime (through R3) as a stable base. Memo: [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md). Verified guardrails in code; re-ran first-slice suite on GPU (28/28).

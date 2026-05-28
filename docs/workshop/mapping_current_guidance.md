@@ -20,6 +20,28 @@ Active read order:
 6. [`mapping_atlas_algebraic_mask_candidate_notes.md`](mapping_atlas_algebraic_mask_candidate_notes.md) (M-4A sandbox evidence — **candidate only, reverted**)
 7. Cited `docs/tests/` evidence before changing any classification
 
+## Phase M product fixture (landed — opt-in)
+
+Phase M product-facing first-slice scenario fixture landed. It drives the accepted
+GPU-resident first-slice runtime from a small product-style RegionFieldSpec/RON fixture:
+one grid, source_capped_normalized, H<=8, caller-managed seed-only clear, dirty
+scheduling, SlotRange Sum reduction, and parent field_urgency EvalEML.
+
+The fixture proves default-off behavior, explicit SparseRegionFieldV1 opt-in,
+GPU-resident hot path with reduction_stencil_readbacks=0, finite propagated field
+values, and personality/weight-sensitive urgency.
+
+No atlas batching landed. No M-4A atlas masking landed. No active mask, perception,
+map residency, behavioral source policy, or source_mask landed. No semantic WGSL landed.
+simthing-sim remains map-free. Defaults unchanged.
+
+Known caveat: First-slice bridge uses queue writes for child resource values and parent
+weights. This is acceptable for the 10x10 first-slice fixture. Future multi-field/atlas
+scale must replace per-slot resource writes with a generic preinitialized resource column,
+fill helper, or GPU fill kernel after a separate measured design step.
+
+See [`../tests/phase_m_first_slice_product_fixture_test_results.md`](../tests/phase_m_first_slice_product_fixture_test_results.md).
+
 ## Phase M-first-slice (landed — opt-in)
 
 Phase M-first-slice runtime landed behind explicit `MappingExecutionProfile::SparseRegionFieldV1` opt-in in `simthing-driver` (`FirstSliceMappingSession`). It exercises one bounded RegionField grid with `source_capped_normalized`, H≤8, caller-managed one-shot seed then zero, dirty skip, SlotRange Sum reduction, and parent `field_urgency` EvalEML.
@@ -52,14 +74,14 @@ For broader implications of M-4A algebraic masking, see the M-4 design note sect
 Option B was taken and is complete: the first-slice runtime landed and was hardened through
 R1/R2/R3 and **accepted by Opus as a stable base**
 ([`../reviews/m4_m4a_first_slice_oversight_opus_review.md`](../reviews/m4_m4a_first_slice_oversight_opus_review.md)).
-The **named next mapping step is a product-facing first-slice scenario fixture (single grid,
-no atlas)** — not the atlas packer.
+The product-facing first-slice scenario fixture (single grid, no atlas) is now landed.
+The atlas packer remains deferred.
 
 | Option | Path | Status |
 |--------|------|--------|
 | **A** | Implement the generic M-4 atlas packer | **Deferred** — admissible only after a named multi-theater scenario, an approved VRAM budget, and a §11-gate-passing PR. Not next. |
 | **B** | First-slice runtime wiring (single grid, no atlas) | **Done** — landed, hardened (R1/R2/R3), accepted. |
-| **Next** | Product-facing first-slice scenario fixture on the landed runtime | **Named next step** (Composer-class; no atlas/active-mask/perception/source_mask/new-WGSL/default-on). |
+| **Next** | Product-facing first-slice scenario fixture on the landed runtime | **Done** — landed as an opt-in product fixture; no atlas/active-mask/perception/source_mask/new-WGSL/default-on. |
 
 ## Landed Phase M natives
 
@@ -78,9 +100,9 @@ Historical sandbox source, candidate notes, revert reports, and full logs live u
 [`archive/mapping/`](archive/mapping/) and [`../tests/archive/`](../tests/archive/).
 They remain valid evidence but are not active guidance.
 
-The opt-in first-slice runtime is landed and accepted as a stable base (R1/R2/R3); it is
-**not** wired into the default session pass graph and `MappingExecutionProfile` default
-remains `Disabled`. The named next mapping step is the **Option 3 product-facing first-slice
-scenario fixture** (single grid, no atlas). Do not begin the M-4 atlas packer (Option 4): it
-waits for a named multi-theater scenario, an approved VRAM budget, and a §11-gate-passing
-M-4 implementation PR.
+The opt-in first-slice runtime is landed and accepted as a stable base (R1/R2/R3), and the
+Option 3 product-facing first-slice scenario fixture is now landed (single grid, no atlas).
+It is **not** wired into the default session pass graph and `MappingExecutionProfile`
+default remains `Disabled`. Do not begin the M-4 atlas packer (Option 4): it waits for a
+named multi-theater scenario, an approved VRAM budget, and a §11-gate-passing M-4
+implementation PR.
