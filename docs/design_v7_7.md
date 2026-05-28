@@ -107,12 +107,15 @@ Classifications are ratified in the ADR. Summary:
 - **Adopted (now):** cadence tiers (RON/Designer), dirty macro-region skipping
   (driver/scheduler), caller-managed one-shot-seed-then-zero source policy (v1
   runtime API).
-- **Provisional:** atlas batching (gutter ≥ H short-term fallback, **6.76× VRAM multiplier
-  on 10×10 H=8**, VRAM-multiplier reporting mandatory; **M-4A evidence proposes
-  algebraic tile-local mask G=0 as preferred path for homogeneous square batches —
-  pending Opus ADR amendment**; local-bounds metadata is the long-term preferred
-  isolation policy) and active frontier + H-hop/per-hop
-  halo (CPU-oracle parity required; active-only **banned**).
+- **Provisional:** atlas batching (still unimplemented; `request_atlas_batching` rejected
+  at admission). Isolation policy **ratified (Opus 2026-05-28):** for homogeneous square
+  batches, **algebraic tile-local mask G=0 is the preferred isolation candidate** (1.0×
+  VRAM, full-tile protocol-oracle parity); **physical gutter G≥H is the fallback** (**6.76×
+  VRAM on 10×10 H=8**, VRAM-multiplier reporting mandatory); local-bounds metadata remains
+  the deferred long-term policy. Ratifying the isolation policy does **not** authorize
+  implementation — a gate-passing M-4 PR is still required (`docs/reviews/m4_m4a_first_slice_oversight_opus_review.md`).
+  Also provisional: active frontier + H-hop/per-hop halo (CPU-oracle parity required;
+  active-only **banned**).
 - **Deferred:** behavioral source policy (needs explicit `source_mask`/seed
   buffer; column-wide source zeroing **banned**).
 
@@ -239,8 +242,11 @@ pressure fields. No CPU map planner.
 
 Optimization doctrine:
   adopted     — cadence tiers, dirty macro-region skipping, caller-managed source.
-  provisional — atlas batching (gutter>=H, 6.76x VRAM, reporting mandatory;
-                local-bounds long-term), active+H-hop halo (active-only banned).
+  provisional — atlas batching (unimplemented; isolation ratified 2026-05-28:
+                algebraic tile-local mask G=0 preferred for homogeneous square
+                batches at 1.0x VRAM, physical gutter G>=H fallback at 6.76x,
+                reporting mandatory, local-bounds long-term; implementation still
+                gated on a §11-gate-passing PR), active+H-hop halo (active-only banned).
   deferred    — behavioral source policy (needs source identity; column zero banned).
 
 Velocity needs an explicit previous-value column (EML has no previous read).

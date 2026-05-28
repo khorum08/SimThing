@@ -29,7 +29,11 @@ Foreign-tile reads are annihilated algebraically before accumulation. Global buf
 5. **Normalization:** Fixed-denominator zero-boundary preferred over valid-neighbor renormalization (edge amplification in renorm variant).
 6. **Source protocol:** Per-tile seed identity clear still required; column-wide `source_col` zero remains banned.
 
-## Proposed M-4 amendment (pending sign-off)
+## M-4 amendment (ratified Opus 2026-05-28)
+
+> Originally proposed pending sign-off; **ratified by Opus 2026-05-28 under human
+> delegation** — see [`../reviews/m4_m4a_first_slice_oversight_opus_review.md`](../reviews/m4_m4a_first_slice_oversight_opus_review.md).
+> Ratifies the isolation *policy* only; atlas implementation remains gated on a §11-gate-passing PR.
 
 Short-term atlas isolation for **homogeneous square batches** may use either:
 

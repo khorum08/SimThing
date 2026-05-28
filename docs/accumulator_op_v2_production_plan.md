@@ -1706,9 +1706,9 @@ Defaults unchanged.
 
 **Test:** [`phase_m_first_slice_runtime_r3_readiness_test_results.md`](tests/phase_m_first_slice_runtime_r3_readiness_test_results.md) — 28/28 PASS.
 
-### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; parked at decision gate**
+### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
-**Status:** Phase M-4 design note is **parked** pending human + Opus sign-off. The design note defines the future contract only — it is **not** implementation authorization. **M-4 atlas packer implementation is not automatically next** unless sign-off occurs and Option A is explicitly chosen.
+**Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. **The named next mapping step is the first-slice product scenario fixture (Option 3, single grid, no atlas), not the atlas packer.**
 
 **Model:** Opus (design), Composer 2.5 (implementation)  
 **Why Opus:** Atlas batching is **provisional** in the ADR. The short-term policy
@@ -1727,10 +1727,10 @@ alone (t44 was the sandbox tactical-signal metric; full-tile parity is only
 meaningful against a protocol-faithful oracle). Produce a design note.  
 **Design note landed:** [`workshop/mapping_atlas_batching_isolation_design_note.md`](workshop/mapping_atlas_batching_isolation_design_note.md).
 
-Phase M-4 design note is parked pending human + Opus sign-off.
+Phase M-4 isolation policy is ratified (Opus 2026-05-28); atlas implementation remains gated.
 Atlas batching remains provisional and unimplemented.
-The design note defines the future contract only: gutter >= effective horizon **or**
-algebraic tile-local mask for homogeneous square batches (M-4A evidence),
+The design note defines the contract: algebraic tile-local mask G=0 (preferred) **or**
+gutter >= effective horizon (fallback) for homogeneous square batches (M-4A evidence),
 mandatory VRAM accounting, per-tile seed clearing, full-tile protocol-oracle
 parity, and t44/corridor agreement is insufficient for production acceptance.
 **M-4A (2026-05-19):** Algebraic tile-local masking sandbox completed and reverted.
@@ -1740,10 +1740,16 @@ See [`tests/mapping_atlas_algebraic_mask_sandbox_test_results.md`](tests/mapping
 No production mapping runtime landed. No production pass graph wiring landed.
 No map/faction/AI semantics entered simthing-sim or WGSL.
 
-**Current decision gate (choose one explicitly — do not auto-implement):**
+**Decision gate (resolved 2026-05-28):** Option B was taken — the first-slice runtime
+landed and was hardened through R1/R2/R3 and **accepted by Opus as a stable base**
+([`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)).
+The named next mapping step is **Option 3 — a product-facing first-slice scenario fixture**
+(single grid, no atlas). **Option A (atlas packer) is NOT next**; it is admissible only after
+(a) a named multi-theater scenario that needs batching, (b) an approved VRAM budget, and
+(c) a PR satisfying the §11 binding gate.
 
-- **Option A:** After human + Opus sign-off, implement the generic M-4 atlas packer.
-- **Option B:** Defer atlas and proceed to first-slice runtime wiring, because the named first slice uses one grid and no atlas. First-slice runtime wiring is a **separate explicit gate** — not authorized by the M-4 design note alone.
+- **Option A (deferred):** Implement the generic M-4 atlas packer — only under the conditions above.
+- **Option B (done):** First-slice runtime wiring — landed, hardened (R1/R2/R3), accepted.
 
 **Implementation (Composer 2.5):** generic atlas packer in the driver behind the
 mapping profile; VRAM-multiplier reporting wired into the debug surface; refuses
@@ -1841,7 +1847,7 @@ Until then, caller-managed one-shot-seed-then-zero (v1) is the only source polic
 | M-1 | M | Composer 2.5 | RegionField execution API on StructuredFieldStencilOp (generic) | **Done** — stencil parity + reduce-into bit-exact |
 | M-2 | M | Composer 2.5 | Cadence scheduler + dirty macro-region skip (driver) | **Done** — determinism + zero false-skips |
 | M-3 | M | Composer 2.5 | `RegionFieldSpec` RON + mapping admission framework (designer-layer) | **Done** — rejection suite + RON roundtrip; default-off |
-| **M-4** | **M** | **Opus + Composer** | **Atlas batching isolation + VRAM accounting (provisional)** | **Design note Done; parked** — M-4A evidence favors algebraic G=0 mask; requires sign-off + Option A |
+| **M-4** | **M** | **Opus + Composer** | **Atlas batching isolation + VRAM accounting (provisional)** | **Design note Done; isolation ratified 2026-05-28** (algebraic G=0 mask preferred, gutter fallback, §11 binding gate). Atlas still unimplemented; implementation gated on a §11-passing PR. Next step is Option 3 first-slice fixture, not the packer. |
 | **M-4A** | **M** | **Composer 2.5** | **Algebraic tile-local atlas masking sandbox** | **Done; reverted** — [`mapping_atlas_algebraic_mask_sandbox_test_results.md`](tests/mapping_atlas_algebraic_mask_sandbox_test_results.md) |
 | M-5 | M | Composer 2.5 | Generic source-identity buffer (behavioral source policy) | **DEFERRED** — not scheduled until a scenario names the need |
 
