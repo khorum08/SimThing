@@ -9,7 +9,7 @@
 
 ## Final commit SHA
 
-`1979c8c` (docs: capture M-4A algebraic masking architectural implications for Opus)
+`51b10c9` (docs: capture M-4A algebraic masking architectural implications for Opus)
 
 ## Files changed
 

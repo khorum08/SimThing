@@ -7,7 +7,7 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Master HEAD:** `1979c8c` (M-4A architectural implications doc update)  
+**Master HEAD:** `51b10c9` (M-4A architectural implications doc update)  
 **Verification (last recorded):** M-4A architectural implications doc update — workspace check/test green  
 **Next action:** **Parked at decision gate** — human + Opus sign-off required before atlas implementation (Option A), **or** explicit product/architecture decision to proceed to first-slice runtime wiring without atlas (Option B). **Not** automatic implementation. No mapping runtime authorized.
 
