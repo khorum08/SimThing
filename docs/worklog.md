@@ -6,6 +6,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — Mapping optimization toolkit probe (reverted to parked state)
+
+- Ran atlas batching, cadence tiers, dirty macro-region skipping, and active frontier+halo sandbox against live V7.6 `StructuredFieldStencilOp`. 11/11 PASS (`--test-threads=1`). Overall verdict **PARTIAL**.
+- Atlas batching: strong dispatch speedup (N=64 ~59.6×) but gutter=1 cross-tile coupling at H=8.
+- Cadence tiers: deterministic; dirty skip: 62.5% skip ratio, zero false skips; H-hop halo matches oracle.
+- Preserved at [`mapping_optimization_toolkit_sandbox_code_preserve.rs`](workshop/mapping_optimization_toolkit_sandbox_code_preserve.rs), [`mapping_optimization_toolkit_candidate_notes.md`](workshop/mapping_optimization_toolkit_candidate_notes.md), [`mapping_optimization_toolkit_sandbox_test_results.md`](tests/mapping_optimization_toolkit_sandbox_test_results.md).
+
+**Verification:** [`revert_mapping_optimization_toolkit_sandbox_to_parked_state_test_results.md`](tests/revert_mapping_optimization_toolkit_sandbox_to_parked_state_test_results.md)
+
+---
+
 ## 2026-05-19 — V7.6 StructuredFieldStencilOp parked pending Mapping ADR
 
 - Docs-only parking pass after promotion (PR #210) and guardrail hardening (PR #211).
