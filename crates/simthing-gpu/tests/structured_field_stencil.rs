@@ -491,3 +491,50 @@ fn test_m1_1_horizon_guard_on_no_readback_and_readback_paths() {
         }
     });
 }
+
+#[test]
+fn test_r1_gpu_buffer_copy_and_cell_write_helpers() {
+    with_gpu(|ctx| {
+        let config = normalized_config(4, 4, 1);
+        let op = StructuredFieldStencilOp::new(ctx, config.clone()).unwrap();
+        let n_dims = config.n_dims;
+        let zeros = vec![0.0f32; config.values_len()];
+        op.upload_values(ctx, &zeros).unwrap();
+
+        let writes = [(5u32, 0u32, 42.0f32), (10u32, 0u32, 17.0f32)];
+        op.write_cell_values(ctx, &op.input_buffer, &writes)
+            .unwrap();
+        let seeded = op.readback_input_buffer(ctx);
+        assert!((seeded[idx(5, 0, n_dims)] - 42.0).abs() < 1e-6);
+        assert!((seeded[idx(10, 0, n_dims)] - 17.0).abs() < 1e-6);
+
+        op.dispatch_once(ctx, &op.input_buffer, &op.output_buffer);
+        op.zero_cell_values(ctx, &op.output_buffer, &[(5, 0), (10, 0)])
+            .unwrap();
+        op.copy_output_to_input(ctx);
+        let after = op.readback_input_buffer(ctx);
+        assert!(after[idx(5, 0, n_dims)].abs() < 1e-6);
+        assert!(after[idx(10, 0, n_dims)].abs() < 1e-6);
+        assert!(after[idx(6, 0, n_dims)] > 0.0, "neighbor propagation preserved");
+
+        op.upload_values(ctx, &zeros).unwrap();
+        op.write_cell_values(ctx, &op.input_buffer, &[(0, 0, 100.0)]).unwrap();
+        for _ in 0..3 {
+            op.dispatch_once(ctx, &op.input_buffer, &op.output_buffer);
+            op.copy_output_to_input(ctx);
+        }
+        let canonical = op.readback_input_buffer(ctx);
+        let params = params_from_config(&config);
+        let mut cpu = zeros;
+        cpu[idx(0, 0, n_dims)] = 100.0;
+        cpu = cpu_horizon(&cpu, &params, 3);
+        assert_fields_near_helper(&cpu, &canonical, 1e-4);
+    });
+}
+
+fn assert_fields_near_helper(a: &[f32], b: &[f32], tol: f32) {
+    assert_eq!(a.len(), b.len());
+    for (i, (&x, &y)) in a.iter().zip(b.iter()).enumerate() {
+        assert!((x - y).abs() <= tol, "mismatch at {i}: {x} vs {y}");
+    }
+}

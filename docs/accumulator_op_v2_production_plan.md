@@ -1656,6 +1656,23 @@ landed. simthing-sim remains map-free. Defaults unchanged.
 
 **Test:** [`phase_m_first_slice_runtime_test_results.md`](tests/phase_m_first_slice_runtime_test_results.md) — 11/11 PASS.
 
+### PR M-first-slice-R1 — GPU-state ownership + no-readback correctness hardening — **Done**
+
+**Status:** **Landed** — remedial fix for no-readback hot path in opt-in `FirstSliceMappingSession`. Generic GPU buffer helpers on `StructuredFieldStencilOp`. **Not** wired into default `SimSession` pass graph.
+
+M-first-slice-R1 landed: GPU-state ownership/no-readback correctness hardening.
+The first-slice hot path now preserves caller-managed source propagation without CPU readback.
+Seed-only clearing is performed without discarding first-hop output.
+Hot-path reports no longer return placeholder parent/EML values.
+Invalid seeds reject cleanly.
+No atlas batching landed.
+No M-4A atlas masking landed.
+No active mask, perception, map residency, or behavioral source policy landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Test:** [`phase_m_first_slice_runtime_r1_no_readback_correctness_test_results.md`](tests/phase_m_first_slice_runtime_r1_no_readback_correctness_test_results.md) — 20/20 PASS (11 original + 9 R1).
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; parked at decision gate**
 
 **Status:** Phase M-4 design note is **parked** pending human + Opus sign-off. The design note defines the future contract only — it is **not** implementation authorization. **M-4 atlas packer implementation is not automatically next** unless sign-off occurs and Option A is explicitly chosen.

@@ -437,6 +437,83 @@ impl StructuredFieldStencilOp {
         Ok(())
     }
 
+    fn values_byte_len(&self) -> u64 {
+        (self.config.values_len() * std::mem::size_of::<f32>()) as u64
+    }
+
+    fn cell_byte_offset(&self, slot: u32, col: u32) -> u64 {
+        ((slot * self.config.n_dims + col) * std::mem::size_of::<f32>() as u32) as u64
+    }
+
+    /// Copy an entire values buffer (`src` → `dst`).
+    pub fn copy_values_buffer(&self, ctx: &GpuContext, src: &Buffer, dst: &Buffer) {
+        let bytes = self.values_byte_len();
+        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("structured_field_stencil_copy"),
+        });
+        encoder.copy_buffer_to_buffer(src, 0, dst, 0, bytes);
+        ctx.queue.submit(Some(encoder.finish()));
+    }
+
+    /// Copy output → input (after a single input→output dispatch).
+    pub fn copy_output_to_input(&self, ctx: &GpuContext) {
+        self.copy_values_buffer(ctx, &self.output_buffer, &self.input_buffer);
+    }
+
+    /// After `steps` ping-pong dispatches starting from input, ensure canonical state lives in input.
+    pub fn canonicalize_input_after_ping_pong(&self, ctx: &GpuContext, steps: u32) {
+        if steps % 2 == 1 {
+            self.copy_output_to_input(ctx);
+        }
+    }
+
+    /// Write specific `(slot, col)` values into a values buffer via queue writes.
+    pub fn write_cell_values(
+        &self,
+        ctx: &GpuContext,
+        buffer: &Buffer,
+        writes: &[(u32, u32, f32)],
+    ) -> Result<(), StructuredFieldStencilError> {
+        for &(slot, col, value) in writes {
+            if slot >= self.config.cells() || col >= self.config.n_dims {
+                return Err(StructuredFieldStencilError::BufferTooShort {
+                    actual: slot as usize,
+                    required: self.config.cells() as usize,
+                });
+            }
+            let offset = self.cell_byte_offset(slot, col);
+            ctx.queue
+                .write_buffer(buffer, offset, bytemuck::bytes_of(&value));
+        }
+        Ok(())
+    }
+
+    /// Zero specific `(slot, col)` entries in a values buffer via queue writes.
+    pub fn zero_cell_values(
+        &self,
+        ctx: &GpuContext,
+        buffer: &Buffer,
+        cells: &[(u32, u32)],
+    ) -> Result<(), StructuredFieldStencilError> {
+        let zero = 0.0f32;
+        for &(slot, col) in cells {
+            if slot >= self.config.cells() || col >= self.config.n_dims {
+                return Err(StructuredFieldStencilError::BufferTooShort {
+                    actual: slot as usize,
+                    required: self.config.cells() as usize,
+                });
+            }
+            let offset = self.cell_byte_offset(slot, col);
+            ctx.queue.write_buffer(buffer, offset, bytemuck::bytes_of(&zero));
+        }
+        Ok(())
+    }
+
+    /// Read back the canonical input buffer (current field state when canonicalized).
+    pub fn readback_input_buffer(&self, ctx: &GpuContext) -> Vec<f32> {
+        self.readback_buffer(ctx, &self.input_buffer)
+    }
+
     pub fn set_mask_mode(
         &mut self,
         ctx: &GpuContext,
