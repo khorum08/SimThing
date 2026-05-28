@@ -10,12 +10,12 @@ use simthing_gpu::{
 use simthing_sim::PipelineFlags;
 use simthing_spec::{
     admit_region_field_formula_class, compile_region_field_preview,
-    compile_region_field_stencil_config, deserialize_region_field_ron, GameModeSpec,
+    compile_region_field_stencil_config, deserialize_region_field_ron, CompiledFieldCadence,
+    CompiledRegionFieldMaskMode, CompiledRegionFieldOperator, CompiledRegionFieldSourcePolicy,
+    FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, GameModeSpec,
     MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
     RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
     RegionFieldSourcePolicySpec, RegionFieldSpec, ResourceFlowExecutionProfile, SpecError,
-    CompiledFieldCadence, CompiledRegionFieldMaskMode, CompiledRegionFieldOperator,
-    CompiledRegionFieldSourcePolicy,
 };
 
 fn standard_suppression_field() -> RegionFieldSpec {
@@ -36,6 +36,7 @@ fn standard_suppression_field() -> RegionFieldSpec {
         grid_profile: RegionFieldGridProfile::StandardSquare,
         reduction: None,
         parent_formula: None,
+        commitment: None,
         request_atlas_batching: false,
         max_region_field_vram_bytes: None,
     }
@@ -322,9 +323,13 @@ fn test_h_default_off_profile() {
         region_fields: vec![standard_suppression_field()],
         mapping_execution_profile: MappingExecutionProfile::Disabled,
     };
-    assert_eq!(mode.mapping_execution_profile, MappingExecutionProfile::Disabled);
+    assert_eq!(
+        mode.mapping_execution_profile,
+        MappingExecutionProfile::Disabled
+    );
     assert!(!mode.mapping_execution_profile.enables_execution());
-    compile_region_field_preview(&mode.region_fields[0]).expect("structure compiles without execution");
+    compile_region_field_preview(&mode.region_fields[0])
+        .expect("structure compiles without execution");
 }
 
 #[test]
@@ -375,6 +380,7 @@ fn test_j_first_slice_compile_preview_only() {
             formula_class: "field_urgency".into(),
             tree_id: Some(42),
         }),
+        commitment: None,
         request_atlas_batching: false,
         max_region_field_vram_bytes: None,
     };
@@ -383,7 +389,10 @@ fn test_j_first_slice_compile_preview_only() {
     assert_eq!(preview.grid_size, 10);
     assert_eq!(preview.stencil.width, 10);
     assert_eq!(preview.stencil.height, 10);
-    assert_eq!(preview.parent_formula_class.as_deref(), Some("field_urgency"));
+    assert_eq!(
+        preview.parent_formula_class.as_deref(),
+        Some("field_urgency")
+    );
     assert!(preview.reduction.is_some());
 
     let stencil_only = compile_region_field_stencil_config(&spec).expect("stencil config");
@@ -398,4 +407,47 @@ fn test_j_first_slice_compile_preview_only() {
     let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
     assert!(!sim_lib.contains("RegionField"));
     assert!(!sim_lib.contains("Mapping"));
+}
+
+#[test]
+fn test_k_first_slice_commitment_spec_admission() {
+    let mut spec = standard_suppression_field();
+    spec.n_dims = 8;
+    spec.reduction = Some(RegionFieldReductionSpec {
+        child_slot_start: 0,
+        child_slot_count: 100,
+        child_col: 0,
+        parent_slot: 100,
+        parent_col: 0,
+        order_band: 0,
+    });
+    spec.parent_formula = Some(RegionFieldFormulaBindingSpec {
+        formula_class: "field_urgency".into(),
+        tree_id: Some(7),
+    });
+    spec.commitment = Some(FirstSliceCommitmentSpec {
+        source_formula_class: "field_urgency".into(),
+        parent_slot: 100,
+        urgency_col: 4,
+        threshold: 5490.8657,
+        direction: FirstSliceCommitmentDirectionSpec::Upward,
+        event_kind: 0x5345_4144,
+    });
+
+    let preview = compile_region_field_preview(&spec).expect("commitment admits");
+    let commitment = preview.commitment.expect("compiled commitment");
+    assert_eq!(commitment.parent_slot, 100);
+    assert_eq!(commitment.urgency_col, 4);
+    assert_eq!(commitment.event_kind, 0x5345_4144);
+
+    let mut zero_event = spec.clone();
+    zero_event.commitment.as_mut().unwrap().event_kind = 0;
+    assert_region_field_err(&zero_event, "commitment event_kind must be nonzero");
+
+    let mut missing_formula = spec.clone();
+    missing_formula.parent_formula = None;
+    assert_region_field_err(
+        &missing_formula,
+        "commitment requires parent_formula field_urgency",
+    );
 }

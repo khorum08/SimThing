@@ -19,9 +19,10 @@ use simthing_gpu::{
 };
 use simthing_spec::{
     compile_region_field_preview, estimate_region_field_budget, CompiledFieldCadence,
-    CompiledRegionFieldOperator, CompiledRegionFieldPreview, CompiledRegionFieldStencilSpec,
-    MappingExecutionProfile, RegionFieldBudgetError, RegionFieldBudgetEstimate,
-    RegionFieldBudgetSpec, RegionFieldIsolationPolicyEstimate, RegionFieldSpec, SpecError,
+    CompiledFirstSliceCommitmentThreshold, CompiledRegionFieldOperator, CompiledRegionFieldPreview,
+    CompiledRegionFieldStencilSpec, MappingExecutionProfile, RegionFieldBudgetError,
+    RegionFieldBudgetEstimate, RegionFieldBudgetSpec, RegionFieldIsolationPolicyEstimate,
+    RegionFieldSpec, SpecError,
 };
 use thiserror::Error;
 
@@ -802,6 +803,22 @@ impl FirstSliceMappingSession {
             event_kind,
             threshold_events,
         })
+    }
+
+    pub fn tick_with_commitment_spec_fixture(
+        &mut self,
+        ctx: &GpuContext,
+        options: FirstSliceTickOptions,
+        eml_weights: (f32, f32),
+        commitment: &CompiledFirstSliceCommitmentThreshold,
+    ) -> Result<FirstSliceCommitmentReport, FirstSliceMappingError> {
+        self.tick_with_commitment_threshold_fixture(
+            ctx,
+            options,
+            eml_weights,
+            commitment.threshold,
+            commitment.event_kind,
+        )
     }
 
     /// Execute one mapping tick. No-op when profile Disabled.

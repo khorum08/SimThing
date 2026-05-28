@@ -63,6 +63,27 @@ resource column, fill helper, or GPU fill kernel after a separate measured desig
 
 See [`../tests/phase_m_first_slice_product_commitment_fixture_test_results.md`](../tests/phase_m_first_slice_product_commitment_fixture_test_results.md).
 
+## Phase M CommitmentSpec fixture (landed — opt-in)
+
+Phase M CommitmentSpec fixture landed. It moves the first-slice commitment threshold/event
+binding into a designer/spec-facing RON-admitted configuration while preserving the existing
+GPU-resident SEAD path: field propagation -> parent reduction -> field_urgency EvalEML ->
+Threshold + EmitEvent.
+
+Low-weight profile remains below the authored threshold; high-weight profile crosses and
+emits the authored event. No CPU-side AI planner was introduced.
+
+No atlas batching landed. No M-4A atlas masking landed. No active mask, perception,
+map residency, behavioral source policy, or source_mask landed. No semantic WGSL landed.
+simthing-sim remains map-free. Defaults unchanged.
+
+Known caveat: First-slice bridge uses queue writes for child resource values and parent
+weights. This is acceptable for the 10x10 first-slice and commitment fixtures. Future
+multi-field/atlas scale must replace per-slot resource writes with a generic preinitialized
+resource column, fill helper, or GPU fill kernel after a separate measured design step.
+
+See [`../tests/phase_m_first_slice_commitment_spec_test_results.md`](../tests/phase_m_first_slice_commitment_spec_test_results.md).
+
 ## Phase M-first-slice (landed — opt-in)
 
 Phase M-first-slice runtime landed behind explicit `MappingExecutionProfile::SparseRegionFieldV1` opt-in in `simthing-driver` (`FirstSliceMappingSession`). It exercises one bounded RegionField grid with `source_capped_normalized`, H≤8, caller-managed one-shot seed then zero, dirty skip, SlotRange Sum reduction, and parent `field_urgency` EvalEML.
@@ -105,6 +126,7 @@ The atlas packer remains deferred.
 | **B** | First-slice runtime wiring (single grid, no atlas) | **Done** — landed, hardened (R1/R2/R3), accepted. |
 | **Next** | Product-facing first-slice scenario fixture on the landed runtime | **Done** — landed as an opt-in product fixture; no atlas/active-mask/perception/source_mask/new-WGSL/default-on. |
 | **Next SEAD proof** | Threshold event over first-slice urgency | **Done** — landed as an opt-in commitment fixture; no CPU-side planner. |
+| **Next authoring proof** | Designer-facing commitment threshold binding | **Done** — landed as RON-admitted `FirstSliceCommitmentSpec`; no default wiring. |
 
 ## Landed Phase M natives
 
@@ -124,8 +146,8 @@ Historical sandbox source, candidate notes, revert reports, and full logs live u
 They remain valid evidence but are not active guidance.
 
 The opt-in first-slice runtime is landed and accepted as a stable base (R1/R2/R3), and the
-Option 3 product-facing first-slice scenario fixture plus threshold commitment fixture are now
-landed (single grid, no atlas).
+Option 3 product-facing first-slice scenario fixture plus threshold commitment fixture and
+RON-admitted CommitmentSpec binding are now landed (single grid, no atlas).
 It is **not** wired into the default session pass graph and `MappingExecutionProfile`
 default remains `Disabled`. Do not begin the M-4 atlas packer (Option 4): it waits for a
 named multi-theater scenario, an approved VRAM budget, and a §11-gate-passing M-4

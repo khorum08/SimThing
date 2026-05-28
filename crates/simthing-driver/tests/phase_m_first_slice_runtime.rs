@@ -56,6 +56,7 @@ fn first_slice_spec() -> RegionFieldSpec {
             formula_class: "field_urgency".into(),
             tree_id: Some(1),
         }),
+        commitment: None,
         request_atlas_batching: false,
         max_region_field_vram_bytes: None,
     }

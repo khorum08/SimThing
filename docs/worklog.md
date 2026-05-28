@@ -6,6 +6,14 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-28 — Phase M CommitmentSpec fixture
+
+- Phase M CommitmentSpec fixture landed. It moves the first-slice commitment threshold/event binding into a designer/spec-facing RON-admitted configuration while preserving the existing GPU-resident SEAD path: field propagation -> parent reduction -> field_urgency EvalEML -> Threshold + EmitEvent.
+- Low-weight profile remains below the authored threshold; high-weight profile crosses and emits the authored event. No CPU-side AI planner was introduced.
+- No atlas batching landed. No M-4A atlas masking landed. No active mask, perception, map residency, behavioral source policy, or source_mask landed. No semantic WGSL landed. simthing-sim remains map-free. Defaults unchanged.
+- Known caveat preserved: First-slice bridge uses queue writes for child resource values and parent weights. This is acceptable for the 10x10 first-slice and commitment fixtures. Future multi-field/atlas scale must replace per-slot resource writes with a generic preinitialized resource column, fill helper, or GPU fill kernel after a separate measured design step.
+- Test report: [`tests/phase_m_first_slice_commitment_spec_test_results.md`](tests/phase_m_first_slice_commitment_spec_test_results.md).
+
 # 2026-05-28 — Phase M product commitment fixture
 
 - Phase M product commitment fixture landed. It extends the product-facing first-slice fixture by using the existing threshold/event substrate over parent field_urgency, proving the SEAD commitment path: GPU-resident field propagation -> parent reduction -> EvalEML urgency -> threshold event.
