@@ -32,6 +32,9 @@ pub struct RegionFieldSpec {
     /// Atlas batching is provisional (M-4) and rejected at admission in M-3.
     #[serde(default)]
     pub request_atlas_batching: bool,
+    /// Optional designer-facing VRAM budget cap (bytes). Rejects compile preview when estimate exceeds cap.
+    #[serde(default)]
+    pub max_region_field_vram_bytes: Option<u64>,
 }
 
 /// Square grid admission profile (designer/spec layer).

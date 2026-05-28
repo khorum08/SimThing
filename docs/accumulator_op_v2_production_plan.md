@@ -1640,6 +1640,22 @@ EvalEML registrations with `simthing-sim` seeing only opaque ops.
 **Acceptance:** CI green. Spec/driver only. `PipelineFlags::default()` mapping
 execution remains false.
 
+### PR M-first-slice — First-slice mapping runtime + boundary/budget probe — **Done**
+
+**Status:** **Landed** — opt-in `FirstSliceMappingSession` in `simthing-driver`; RegionField budget estimator in `simthing-spec`. **Not** wired into default `SimSession` pass graph.
+
+Phase M-first-slice landed behind explicit `MappingExecutionProfile` opt-in.
+It exercises one bounded RegionField grid with source_capped_normalized, H≤8,
+caller-managed source protocol, dirty skip, SlotRange Sum reduction, and parent
+field_urgency EvalEML. Single-grid edge-boundary parity confirms invalid neighbors
+are nullified by generic boundary semantics, not semantic map code. RegionField
+budget preview estimates designer-facing VRAM footprint and rejects over-budget
+specs before runtime. No atlas batching landed. No M-4A algebraic atlas masking
+landed. No active mask, perception, map residency, or behavioral source policy
+landed. simthing-sim remains map-free. Defaults unchanged.
+
+**Test:** [`phase_m_first_slice_runtime_test_results.md`](tests/phase_m_first_slice_runtime_test_results.md) — 11/11 PASS.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; parked at decision gate**
 
 **Status:** Phase M-4 design note is **parked** pending human + Opus sign-off. The design note defines the future contract only — it is **not** implementation authorization. **M-4 atlas packer implementation is not automatically next** unless sign-off occurs and Option A is explicitly chosen.

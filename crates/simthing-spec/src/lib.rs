@@ -73,6 +73,8 @@ pub use compile::{
     ResourceFlowExpansionReport, ADMITTED_REGION_FIELD_FORMULA_CLASSES,
     REGION_FIELD_DEFAULT_HORIZON_CAP, REGION_FIELD_EXTENDED_HORIZON_CAP,
     REGION_FIELD_EXTENDED_MAX_GRID, REGION_FIELD_MAX_CELL_COUNT, REGION_FIELD_STANDARD_MAX_GRID,
+    estimate_region_field_budget, region_field_isolation_multiplier, RegionFieldBudgetError,
+    RegionFieldBudgetEstimate, RegionFieldBudgetSpec, RegionFieldIsolationPolicyEstimate,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;

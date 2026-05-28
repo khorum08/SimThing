@@ -19,6 +19,7 @@ pub mod overlay;
 pub mod property;
 pub mod resource_economy;
 pub mod region_field_admission;
+pub mod region_field_budget;
 pub mod resource_flow_admission;
 pub mod trigger;
 
@@ -42,6 +43,10 @@ pub use region_field_admission::{
     REGION_FIELD_DEFAULT_HORIZON_CAP, REGION_FIELD_EXTENDED_HORIZON_CAP,
     REGION_FIELD_EXTENDED_MAX_GRID, REGION_FIELD_MAX_CELL_COUNT,
     REGION_FIELD_STANDARD_MAX_GRID,
+};
+pub use region_field_budget::{
+    estimate_region_field_budget, region_field_isolation_multiplier, RegionFieldBudgetError,
+    RegionFieldBudgetEstimate, RegionFieldBudgetSpec, RegionFieldIsolationPolicyEstimate,
 };
 pub use resource_flow_admission::{
     compile_resource_flow_admission, CompiledArenaAdmission, CompiledCouplingAdmission,

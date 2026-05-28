@@ -20,6 +20,16 @@ Active read order:
 6. [`mapping_atlas_algebraic_mask_candidate_notes.md`](mapping_atlas_algebraic_mask_candidate_notes.md) (M-4A sandbox evidence — **candidate only, reverted**)
 7. Cited `docs/tests/` evidence before changing any classification
 
+## Phase M-first-slice (landed — opt-in)
+
+Phase M-first-slice runtime landed behind explicit `MappingExecutionProfile::SparseRegionFieldV1` opt-in in `simthing-driver` (`FirstSliceMappingSession`). It exercises one bounded RegionField grid with `source_capped_normalized`, H≤8, caller-managed one-shot seed then zero, dirty skip, SlotRange Sum reduction, and parent `field_urgency` EvalEML.
+
+Single-grid edge-boundary parity confirms invalid neighbors are nullified by generic boundary semantics (`BoundaryMode::Zero`), not semantic map code. RegionField budget preview estimates designer-facing VRAM footprint and rejects over-budget specs at compile preview.
+
+**Not** wired into default session pass graph. **No** atlas batching. **No** M-4A algebraic atlas masking. **No** active mask, perception, map residency, or behavioral source policy. M-4 remains parked at decision gate.
+
+See [`../tests/phase_m_first_slice_runtime_test_results.md`](../tests/phase_m_first_slice_runtime_test_results.md).
+
 ## Parked status (Phase M-4)
 
 Phase M-4 design note is **parked** pending human + Opus sign-off. Atlas batching remains provisional and unimplemented. The design note defines the **future contract only** — it is **not** implementation authorization:
@@ -52,6 +62,7 @@ Choose **one** explicitly — do not treat the design note as auto-authorization
 - **M-1.1 landed:** no-readback dispatch/report path for future schedulers; readback explicit for tests/diagnostics and readback-derived stats
 - **M-2 landed:** generic cadence scheduler and dirty macro-region skip helper
 - **M-2.1 landed:** FieldScheduler API hardening — region identity keyed by `(FieldId, FieldRegionId)`; visitor-based scheduled execution
+- **M-first-slice landed (opt-in):** [`FirstSliceMappingSession`](../../crates/simthing-driver/src/first_slice_mapping_runtime.rs) — explicit `MappingExecutionProfile::SparseRegionFieldV1` only; not default session wiring
 - **M-3 landed:** RegionFieldSpec RON + mapping admission framework — designer/spec structure only; compiles/previews to generic substrate configs; MappingExecutionProfile default Disabled
 - **M-4 design note landed (parked):** [`mapping_atlas_batching_isolation_design_note.md`](mapping_atlas_batching_isolation_design_note.md)
 
