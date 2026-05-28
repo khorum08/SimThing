@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** `329c51c` — SEAD tensor/stencil WGSL sandbox reverted to parked state (merged PR #207)  
-**Verification (last recorded):** E-11B regressions green; SEAD tensor/stencil sandbox test target removed
+**Master HEAD:** _(updated after revert merge PR #209)_  
+**Verification (last recorded):** E-11B regressions green; SEAD tensor/stencil refinement sandbox test target removed
 
 ---
 
@@ -38,6 +38,8 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 **SEAD operator toolkit sandbox:** **Reverted** — PR #204 probe merged then reverted to parked state. SEAD operator toolkit sandbox completed and was reverted to parked state. The sandbox source and decision-gate results are preserved in `docs/workshop` and `docs/tests`. No sandbox test/prototype remains in the production test suite. Overall probe verdict: **PARTIAL**. Mapping/location architecture remains provisional. Implementation remains parked until the mapping doc is ready or product names a concrete non-mapping scenario. No mapping runtime, Scatter/Gather, wavefront propagation, dynamic nested enrollment, D-2a, E-11B-5, new WGSL, new AccumulatorRole variants, CPU fallback, slot compaction, or simthing-sim arena awareness landed. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution.
 
 **SEAD tensor/stencil WGSL prototype sandbox:** **Reverted** — PR #206 probe merged then reverted to parked state. SEAD tensor/stencil WGSL prototype sandbox completed and was reverted to parked state. The sandbox source, WGSL prototype(s), notes, and decision-gate results are preserved in `docs/workshop` and `docs/tests`. No sandbox test/prototype remains in the production runtime/test suite. Overall probe verdict: **PARTIAL**. Mapping/location architecture remains provisional. Implementation remains parked until the mapping doc is ready or product names a concrete non-mapping scenario. No mapping runtime, Scatter/Gather, wavefront propagation, dynamic nested enrollment, D-2a, E-11B-5, production WGSL, new AccumulatorRole variants, CPU fallback, slot compaction, or simthing-sim arena awareness landed. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution.
+
+**SEAD tensor/stencil WGSL refinement sandbox:** **Reverted** — PR #208 probe merged then reverted to parked state. SEAD tensor/stencil WGSL refinement sandbox completed and was reverted to parked state. The sandbox source, WGSL prototype(s), notes, and decision-gate results are preserved in `docs/workshop` and `docs/tests`. No sandbox test/prototype remains in the production runtime/test suite. Overall probe verdict: **PARTIAL**. Mapping/location architecture remains provisional. Implementation remains parked until the mapping doc is ready or product names a concrete non-mapping scenario. No mapping runtime, Scatter/Gather, wavefront propagation, dynamic nested enrollment, D-2a, E-11B-5, production WGSL, new AccumulatorRole variants, CPU fallback, slot compaction, or simthing-sim arena awareness landed. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution.
 
 **E-2B status:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).** Dynamic fission enrollment via arena-root sibling append ([memo](../reviews/e2b5_dynamic_fission_enrollment_readiness.md), soak PR #178). `use_accumulator_resource_flow` **default false**.
 

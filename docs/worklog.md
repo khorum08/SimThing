@@ -6,6 +6,20 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — SEAD tensor/stencil WGSL refinement probe (reverted to parked state)
+
+- Ran fifth SEAD feasibility sandbox (PR #208): refinement probe for long-horizon stability, ping-pong correctness, directed-compatible setup, source injection policies, column-aware parent EML, active mask, and cost scaling. 12/12 PASS (`--test-threads=1`). Overall verdict **PARTIAL**.
+- Stability: **source_capped_normalized** and **normalized_horizon_cap_H8** bound H=24 amplification; plain normalized still blows up at H=32.
+- Ping-pong: GPU=CPU oracle max error 0.0 for H=1–8 (3×3 and 10×10).
+- Directed: prior failure was harness mismatch; **directed_mode=NW** + top-left source and **directed_mode=SE** + bottom-right source both directional at H=8.
+- Parent EML: urgency_A=571 urgency_B=2535 (ratio 4.44) when parent threat/resource reduced and aggression/risk bound; EvalEML on order band 1 after Sum.
+- EML admission: field_* classes rejected by legacy whitelist only; C-8 register_formula accepts (finding A).
+- Preserved at [`sead_tensor_stencil_refinement_sandbox_code_preserve.rs`](workshop/sead_tensor_stencil_refinement_sandbox_code_preserve.rs), [`sead_tensor_stencil_refinement_prototype.wgsl`](workshop/sead_tensor_stencil_refinement_prototype.wgsl), [`sead_tensor_stencil_refinement_sandbox_test_results.md`](tests/sead_tensor_stencil_refinement_sandbox_test_results.md).
+
+**Verification:** [`revert_sead_tensor_stencil_refinement_sandbox_to_parked_state_test_results.md`](tests/revert_sead_tensor_stencil_refinement_sandbox_to_parked_state_test_results.md)
+
+---
+
 ## 2026-05-19 — SEAD tensor/stencil WGSL prototype probe (reverted to parked state)
 
 - Ran fourth SEAD feasibility sandbox (PR #206): prototype WGSL structured 2D stencil kernel vs per-edge AccumulatorOp. 10/10 PASS (`--test-threads=1`). Overall verdict **PARTIAL**.
