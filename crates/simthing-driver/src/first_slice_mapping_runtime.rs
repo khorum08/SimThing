@@ -10,16 +10,18 @@ use simthing_core::{
     ScaleSpec, SourceSpec,
 };
 use simthing_gpu::{
-    accumulator_op::set_debug_readback_allowed, AccumulatorOpSession, EmlGpuProgramTable, GpuContext,
-    StructuredFieldExecutionOptions, StructuredFieldExecutionReport, StructuredFieldStencilBoundaryMode,
-    StructuredFieldStencilConfig, StructuredFieldStencilMaskMode, StructuredFieldStencilOp,
-    StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy,
+    accumulator_op::set_debug_readback_allowed, AccumulatorOpSession, EmlGpuProgramTable,
+    GpuContext, StructuredFieldExecutionOptions, StructuredFieldExecutionReport,
+    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
+    StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
+    StructuredFieldStencilSourcePolicy, ThresholdEvent, ThresholdRegistration, DIR_UPWARD,
+    THRESH_BUF_VALUES,
 };
 use simthing_spec::{
     compile_region_field_preview, estimate_region_field_budget, CompiledFieldCadence,
     CompiledRegionFieldOperator, CompiledRegionFieldPreview, CompiledRegionFieldStencilSpec,
-    MappingExecutionProfile, RegionFieldBudgetEstimate, RegionFieldBudgetError, RegionFieldBudgetSpec,
-    RegionFieldIsolationPolicyEstimate, RegionFieldSpec, SpecError,
+    MappingExecutionProfile, RegionFieldBudgetError, RegionFieldBudgetEstimate,
+    RegionFieldBudgetSpec, RegionFieldIsolationPolicyEstimate, RegionFieldSpec, SpecError,
 };
 use thiserror::Error;
 
@@ -165,6 +167,17 @@ pub struct FirstSliceMappingReport {
     /// Stencil field readbacks performed while preparing reduction/EML (0 on GPU-resident hot path).
     pub reduction_stencil_readbacks: u32,
     pub readiness: FirstSliceReadinessReport,
+}
+
+/// Narrow fixture report for Phase M commitment tests.
+///
+/// This is intentionally opt-in and remains outside the default SimSession pass graph.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FirstSliceCommitmentReport {
+    pub mapping: FirstSliceMappingReport,
+    pub threshold: f32,
+    pub event_kind: u32,
+    pub threshold_events: Vec<ThresholdEvent>,
 }
 
 impl FirstSliceMappingReport {
@@ -332,7 +345,9 @@ impl FirstSliceMappingSession {
     ) -> Result<Self, FirstSliceMappingError> {
         let enabled = profile.enables_execution();
         let gpu_config = compiled_stencil_to_gpu_config(&preview.stencil);
-        gpu_config.validate().map_err(FirstSliceMappingError::Stencil)?;
+        gpu_config
+            .validate()
+            .map_err(FirstSliceMappingError::Stencil)?;
 
         let reduction = preview
             .reduction
@@ -568,7 +583,8 @@ impl FirstSliceMappingSession {
 
         if self.seeds_applied_this_tick {
             let (writes, zeros) = self.seed_slot_col_writes();
-            self.stencil.write_cell_values(ctx, &self.stencil.input_buffer, &writes)?;
+            self.stencil
+                .write_cell_values(ctx, &self.stencil.input_buffer, &writes)?;
             source_setup_dispatches += self.stencil.dispatch_once(
                 ctx,
                 &self.stencil.input_buffer,
@@ -625,13 +641,7 @@ impl FirstSliceMappingSession {
 
         self.acc_session.zero_values_buffer(ctx);
         self.acc_session
-            .copy_values_prefix_from_buffer(
-                ctx,
-                &self.stencil.input_buffer,
-                0,
-                0,
-                prefix_bytes,
-            )
+            .copy_values_prefix_from_buffer(ctx, &self.stencil.input_buffer, 0, 0, prefix_bytes)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
 
         let mut resource_writes = Vec::with_capacity(cell_count as usize);
@@ -736,6 +746,64 @@ impl FirstSliceMappingSession {
         Ok((Some(threat), Some(urgency)))
     }
 
+    fn scan_commitment_threshold(
+        &mut self,
+        ctx: &GpuContext,
+        threshold: f32,
+        event_kind: u32,
+    ) -> Result<Vec<ThresholdEvent>, FirstSliceMappingError> {
+        let reduction = self.preview.reduction.as_ref().expect("validated at open");
+        let parent_slot = reduction.parent_slot;
+        let previous = vec![0.0f32; self.acc_session.values_len()];
+        self.acc_session.upload_previous_values(ctx, &previous);
+        self.acc_session.ensure_threshold_emission_capacity(ctx, 1);
+        self.acc_session
+            .upload_threshold_ops(
+                ctx,
+                &[ThresholdRegistration {
+                    slot: parent_slot,
+                    col: self.eml_output_col,
+                    threshold,
+                    direction: DIR_UPWARD,
+                    event_kind,
+                    buffer: THRESH_BUF_VALUES,
+                }],
+            )
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
+        self.acc_session
+            .tick(ctx, 0)
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
+        self.acc_session
+            .readback_threshold_events(ctx)
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))
+    }
+
+    /// Execute the first-slice fixture and scan one GPU threshold over parent `field_urgency`.
+    ///
+    /// The threshold decision is produced by the existing AccumulatorOp Threshold + EmitEvent
+    /// substrate. CPU readback is only used to inspect the emitted event after the GPU scan.
+    pub fn tick_with_commitment_threshold_fixture(
+        &mut self,
+        ctx: &GpuContext,
+        options: FirstSliceTickOptions,
+        eml_weights: (f32, f32),
+        threshold: f32,
+        event_kind: u32,
+    ) -> Result<FirstSliceCommitmentReport, FirstSliceMappingError> {
+        let mapping = self.tick(ctx, options, eml_weights)?;
+        let threshold_events = if mapping.enabled && mapping.scheduled && mapping.eml_executed {
+            self.scan_commitment_threshold(ctx, threshold, event_kind)?
+        } else {
+            Vec::new()
+        };
+        Ok(FirstSliceCommitmentReport {
+            mapping,
+            threshold,
+            event_kind,
+            threshold_events,
+        })
+    }
+
     /// Execute one mapping tick. No-op when profile Disabled.
     pub fn tick(
         &mut self,
@@ -781,18 +849,17 @@ impl FirstSliceMappingSession {
             field_values = stencil_result.report.values.clone();
         }
 
-        let (reduction_parent_value, eml_output, reduction_executed, eml_executed) =
-            if scheduled {
-                let (threat, urgency) = self.run_reduction_and_eml(
-                    ctx,
-                    options.readback_values,
-                    eml_weights.0,
-                    eml_weights.1,
-                )?;
-                (threat, urgency, true, true)
-            } else {
-                (None, None, false, false)
-            };
+        let (reduction_parent_value, eml_output, reduction_executed, eml_executed) = if scheduled {
+            let (threat, urgency) = self.run_reduction_and_eml(
+                ctx,
+                options.readback_values,
+                eml_weights.0,
+                eml_weights.1,
+            )?;
+            (threat, urgency, true, true)
+        } else {
+            (None, None, false, false)
+        };
 
         if scheduled {
             if let Some(region) = self
@@ -810,8 +877,7 @@ impl FirstSliceMappingSession {
         self.tick += 1;
 
         if let (Some(started), true) = (tick_started, scheduled && !options.readback_values) {
-            self.hot_path_wall_ms_observed =
-                Some(started.elapsed().as_secs_f64() * 1000.0);
+            self.hot_path_wall_ms_observed = Some(started.elapsed().as_secs_f64() * 1000.0);
         }
 
         let readiness = self.build_readiness_report(

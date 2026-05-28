@@ -7,8 +7,8 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Verification (last recorded):** Phase M product-facing first-slice scenario fixture — PASS; workspace green via serial full test pass
-**Next action:** **Phase M product-facing first-slice scenario fixture landed.** It exercises the accepted first-slice runtime from a product-style RegionFieldSpec/RON fixture (single grid, no atlas). The M-4 atlas packer is **not** next. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
+**Verification (last recorded):** Phase M product commitment fixture — PASS; workspace green via serial full test pass
+**Next action:** **Phase M product commitment fixture landed.** It extends the first-slice product fixture with an opt-in threshold event over parent field_urgency (single grid, no atlas, no planner). The M-4 atlas packer is **not** next. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
 
 ---
 
@@ -22,6 +22,7 @@ Opus ratified the M-4A isolation policy and accepted the first-slice runtime as 
 | **A** | Implement generic M-4 atlas packer | **Deferred / not next** — admissible only after a named multi-theater scenario needs batching, an approved VRAM budget exists, and an M-4 PR satisfies the §11 binding acceptance gate |
 | **B** | First-slice runtime wiring (one 10×10 grid, no atlas) | **Done** — landed and hardened through R1/R2/R3; accepted as stable base |
 | **Next** | Product-facing first-slice scenario fixture on the landed runtime (single grid, no atlas) | **Done** — landed as an opt-in product fixture |
+| **Next SEAD proof** | Threshold event over first-slice urgency | **Done** — landed as an opt-in commitment fixture; no CPU-side planner |
 
 Atlas batching remains **provisional and unimplemented**; `request_atlas_batching` stays
 rejected at admission. The M-4A ratification covers the **isolation policy only**, not
@@ -47,6 +48,8 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 **Mapping (Sparse RegionCell):** **ADR approved (architecture)** — see [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md), surfaced in [`design_v7_7.md`](../design_v7_7.md). **M-first-slice-R3 landed (opt-in)** — GPU-resident first-slice runtime with readiness/observability parking pass; ready for Opus/product review. Not default session wiring. M-4 design note **parked at decision gate**. simthing-sim remains map-free.
 
 **Phase M product fixture:** **Done (opt-in)** — small product-style RegionFieldSpec/RON fixture drives the accepted GPU-resident first-slice runtime: one grid, source_capped_normalized, H<=8, caller-managed seed-only clear, dirty scheduling, SlotRange Sum reduction, and parent field_urgency EvalEML. It proves default-off behavior, explicit SparseRegionFieldV1 opt-in, reduction_stencil_readbacks=0 on the hot path, finite propagated field values, and personality/weight-sensitive urgency. No atlas/M-4A/active mask/perception/residency/source_mask/semantic WGSL landed. Defaults unchanged. Caveat preserved: 10x10 bridge still uses queue writes for child resource values and parent weights.
+
+**Phase M product commitment fixture:** **Done (opt-in)** — extends the product first-slice fixture with the existing threshold/event substrate over parent field_urgency: GPU-resident field propagation -> parent reduction -> EvalEML urgency -> threshold event. Low-weight profile stays below threshold; high-weight profile crosses and emits the expected event. No CPU-side AI planner, atlas batching, M-4A atlas masking, active mask, perception, map residency, behavioral source policy, source_mask, semantic WGSL, simthing-sim map awareness, or default changes landed. Caveat preserved: 10x10 bridge still uses queue writes for child resource values and parent weights.
 
 **Product-priority selection:** **Done** — [`product_priority_vertical_slice_selection.md`](../reviews/product_priority_vertical_slice_selection.md). **Recommendation F:** pause implementation; gather product requirements. No named scenario for D-2a, E-11B-5, spec/RON rebuild, or new vertical slice. Continued flat-star soak remains green.
 

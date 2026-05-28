@@ -1737,6 +1737,33 @@ design step.
 
 **Test:** [`phase_m_first_slice_product_fixture_test_results.md`](tests/phase_m_first_slice_product_fixture_test_results.md) — PASS.
 
+### PR M-product-commitment-fixture — Threshold event over first-slice urgency — **Done**
+
+**Status:** **Landed** — narrow product-facing SEAD commitment fixture over the accepted
+first-slice product fixture. **Not** wired into default `SimSession` pass graph.
+
+Phase M product commitment fixture landed.
+It extends the product-facing first-slice fixture by using the existing threshold/event
+substrate over parent field_urgency, proving the SEAD commitment path: GPU-resident field
+propagation -> parent reduction -> EvalEML urgency -> threshold event.
+Low-weight profile stays below threshold; high-weight profile crosses and emits the
+expected event.
+No CPU-side AI planner was introduced.
+No atlas batching landed.
+No M-4A atlas masking landed.
+No active mask, perception, map residency, behavioral source policy, or source_mask landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Known scale caveat:** First-slice bridge uses queue writes for child resource values and
+parent weights. This is acceptable for the 10x10 first-slice and commitment fixtures.
+Future multi-field/atlas scale must replace per-slot resource writes with a generic
+preinitialized resource column, fill helper, or GPU fill kernel after a separate measured
+design step.
+
+**Test:** [`phase_m_first_slice_product_commitment_fixture_test_results.md`](tests/phase_m_first_slice_product_commitment_fixture_test_results.md) — PASS.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
 **Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. The first-slice product scenario fixture (Option 3, single grid, no atlas) has landed; **the atlas packer is still not next**.
