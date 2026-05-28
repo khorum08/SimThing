@@ -7,6 +7,7 @@ pub mod arena_registry;
 pub mod bench_limits;
 pub mod child_share_eml;
 pub mod field_scheduler;
+pub mod first_slice_mapping_runtime;
 pub mod install;
 pub mod resource_economy_burn_in;
 pub mod resource_economy_compile;
@@ -65,6 +66,11 @@ pub use field_scheduler::{
     FieldRegionRegistration, FieldScheduleState, FieldScheduler, FieldSchedulerError,
     FieldSchedulerReport, ScheduledRegionsExecutionSummary, ScheduledSingleStencilExecution,
     ScheduledStencilExecutionError,
+};
+pub use first_slice_mapping_runtime::{
+    compiled_cadence_to_field_cadence, compiled_stencil_to_gpu_config, estimate_first_slice_budget,
+    FirstSliceMappingError, FirstSliceMappingReport, FirstSliceMappingSession, FirstSliceSeed,
+    FirstSliceTickOptions,
 };
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,

@@ -382,6 +382,13 @@ provisional/deferred features. Atlas batching and active halo enter only at a
 later slice once a multi-theater scenario is named and the VRAM budget is
 approved.
 
+**Update (2026-05-19):** Phase **M-first-slice** runtime landed in `simthing-driver`
+(`FirstSliceMappingSession`) behind explicit `MappingExecutionProfile::SparseRegionFieldV1`
+opt-in. Single-grid edge-boundary parity and designer-facing RegionField budget preview
+landed. **Not** wired into default `SimSession` pass graph; `MappingExecutionProfile`
+default remains `Disabled`. Atlas batching (M-4) remains provisional and unimplemented.
+Classification unchanged.
+
 ---
 
 ## Read order for agents touching mapping

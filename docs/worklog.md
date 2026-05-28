@@ -6,6 +6,14 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — Phase M-first-slice runtime + boundary/budget probe
+
+- Landed opt-in `FirstSliceMappingSession` (`simthing-driver`) behind `MappingExecutionProfile::SparseRegionFieldV1`.
+- Landed RegionField VRAM budget preview (`simthing-spec`); optional `max_region_field_vram_bytes` on RegionFieldSpec.
+- 11/11 integration tests PASS: stencil, scheduler, reduction, EvalEML, edge-boundary parity, budget estimator.
+- Not wired into default session pass graph. No atlas. No M-4A atlas masking. M-4 remains parked.
+- Verification: [`phase_m_first_slice_runtime_test_results.md`](tests/phase_m_first_slice_runtime_test_results.md).
+
 ## 2026-05-19 — M-4A architectural implications doc update
 
 - Added §4 **Architectural Implications of Algebraic Tile-Local Masking** to [`mapping_atlas_batching_isolation_design_note.md`](workshop/mapping_atlas_batching_isolation_design_note.md): structural separation vs physical separation, general SimThing pattern (dense buffers + RON/spec masks + GPU transforms + EML), mask-fever warning, candidate domains table, dirty/residency complement, Opus decision checklist.

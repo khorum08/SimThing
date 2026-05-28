@@ -194,6 +194,10 @@ impl FieldScheduler {
         &self.regions
     }
 
+    pub fn regions_mut(&mut self) -> &mut [FieldRegionRegistration] {
+        &mut self.regions
+    }
+
     fn field_state(&self, field_id: FieldId) -> Option<&FieldScheduleState> {
         self.fields.iter().find(|f| f.field_id == field_id)
     }

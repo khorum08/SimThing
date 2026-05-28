@@ -4,6 +4,10 @@ use simthing_core::{
     ColumnAwareReductionCombine, ColumnAwareReductionSpec, WHITELISTED_FORMULA_CLASSES,
 };
 
+use crate::compile::region_field_budget::{
+    estimate_region_field_budget, RegionFieldBudgetError, RegionFieldBudgetSpec,
+    RegionFieldIsolationPolicyEstimate,
+};
 use crate::error::SpecError;
 use crate::spec::region_field::{
     RegionFieldCadenceSpec, RegionFieldGridProfile, RegionFieldOperatorSpec,
@@ -351,7 +355,7 @@ pub fn compile_region_field_preview(
         allow_extended_horizon: spec.allow_extended_horizon,
     };
 
-    Ok(CompiledRegionFieldPreview {
+    let preview = CompiledRegionFieldPreview {
         name: spec.name.clone(),
         grid_size: spec.grid_size,
         cell_count,
@@ -359,5 +363,33 @@ pub fn compile_region_field_preview(
         cadence,
         reduction,
         parent_formula_class,
+    };
+    validate_budget_preview(spec, &preview)?;
+    Ok(preview)
+}
+
+fn validate_budget_preview(spec: &RegionFieldSpec, preview: &CompiledRegionFieldPreview) -> Result<(), SpecError> {
+    let Some(max_bytes) = spec.max_region_field_vram_bytes else {
+        return Ok(());
+    };
+    let budget_spec = RegionFieldBudgetSpec {
+        grid_size: preview.grid_size,
+        column_count: preview.stencil.n_dims,
+        buffer_multiplier: 2.0,
+        copy_multiplier: 1.0,
+        tile_count: 1,
+        isolation_policy: RegionFieldIsolationPolicyEstimate::SingleGridNoAtlas,
+        max_region_field_vram_bytes: Some(max_bytes),
+    };
+    estimate_region_field_budget(&budget_spec)
+        .map(|_| ())
+        .map_err(|err: RegionFieldBudgetError| {
+        field_err(
+            &spec.name,
+            format!(
+                "VRAM budget exceeded: requested {} bytes, allowed {} bytes",
+                err.requested_bytes, err.allowed_bytes
+            ),
+        )
     })
 }
