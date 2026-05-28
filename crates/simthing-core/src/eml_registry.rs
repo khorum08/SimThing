@@ -14,8 +14,15 @@ pub use crate::eml_nodes::{opcode as eml_opcode, EmlNode as EmlNodeGpu};
 pub const MAX_EML_TREE_NODES: u32 = 32;
 
 /// Formula classes admitted under the C-8 `ExactDeterministic` baseline policy.
-pub const WHITELISTED_FORMULA_CLASSES: &[&str] =
-    &["intensity_update", "emission_formula", "conversion_rate"];
+pub const WHITELISTED_FORMULA_CLASSES: &[&str] = &[
+    "intensity_update",
+    "emission_formula",
+    "conversion_rate",
+    "field_pressure",
+    "field_urgency",
+    "field_decay",
+    "bounded_field_update",
+];
 
 /// Stable identifier for a registered EML expression tree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]

@@ -1,9 +1,15 @@
-# SimThing — Design v7.5
+# SimThing — Design v7.6
 
 > **Status:** Active specification. Living document updated by each migration
 > PR. Supersedes `design_v6.md` §10 (GPU pipeline). All other sections of
 > `design_v6.md` and `design_v6.5.md` remain authoritative until explicitly
 > superseded here.
+>
+> **v7.6 bump (2026-05-19):** StructuredFieldStencilOp promoted as live generic
+> GPU primitive; WGSL guardrail relaxed to "no semantic/map-specific WGSL";
+> deterministic field EML classes admitted at designer/spec policy layer.
+> See [`design_v7_6.md`](design_v7_6.md) for amendment detail. Prior v7.5 text
+> below remains correct unless amended in v7.6 doc.
 >
 > **v7.5 bump (2026-05-26):** Resource Flow Substrate adopted via
 > `docs/adr/resource_flow_substrate.md`. New constitutional clause (§2), new
@@ -15,6 +21,7 @@
 > - `docs/adr_accumulator_op_v2.md` — AccumulatorOp v2 decision rationale
 > - `docs/adr/resource_flow_substrate.md` — Resource Flow substrate ADR
 > - `docs/accumulator_op_v2_production_plan.md` — PR ladder (E-7 through E-11 land Resource Flow)
+> - `docs/design_v7_6.md` — V7.6 amendment (StructuredFieldStencilOp, guardrail relaxation)
 > - `docs/design_v6.md` — previous specification (§10 superseded)
 > - `docs/design_v6.5.md` — session parking doc (unchanged)
 > - `docs/workshop/resource_flow_adr_shaping.md` — Resource Flow design rationale + implementation detail

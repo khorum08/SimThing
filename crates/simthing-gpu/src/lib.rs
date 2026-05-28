@@ -4,6 +4,7 @@
 //! reads or writes. CPU-side preparation, compute pipelines, and the GPU pass
 //! sequencer build on top of `WorldGpuState`.
 
+pub mod structured_field_stencil;
 pub mod accumulator_op;
 pub mod context;
 pub mod emission_accumulator;
@@ -19,6 +20,12 @@ pub mod transfer_accumulator;
 pub mod velocity_accumulator;
 pub mod world_state;
 
+pub use structured_field_stencil::{
+    cpu_horizon, cpu_stencil_step, params_from_config, FieldStencilParamsGpu,
+    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig, StructuredFieldStencilError,
+    StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
+    StructuredFieldStencilSourcePolicy, DEFAULT_HORIZON_CAP, EXTENDED_HORIZON_CAP,
+};
 pub use accumulator_op::{
     eval_eml_cpu, execute_ops_cpu, execute_threshold_ops_cpu, set_debug_readback_allowed,
     summaries_from_values, emit_on_threshold_registrations_to_gpu,
