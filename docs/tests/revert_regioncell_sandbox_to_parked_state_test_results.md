@@ -3,7 +3,7 @@
 **Date/time:** 2026-05-27 (recovered after session crash)  
 **Base HEAD (before revert branch):** `416c6fc` — RegionCell sandbox merge + workshop HEAD update (PR #197)  
 **Revert branch commits:** `08f43e9` (revert workshop HEAD), `b454221` (revert PR #197 merge)  
-**Final commit SHA:** _(pending docs commit)_  
+**Final commit SHA:** `ee33e89`  
 **rustc:** `rustc 1.95.0 (59807616e 2026-04-14)`  
 **cargo:** `cargo 1.95.0 (f2d3ce0bd 2026-03-21)`  
 **Platform/OS:** Windows 10 (win32 10.0.26200), PowerShell  
@@ -26,7 +26,7 @@
 | `cargo test -p simthing-driver --test e11b_nested_fission_gap -- --nocapture` | **PASS** — 13/13 |
 | `cargo check --workspace` | **PASS** |
 | `cargo test -p simthing-driver --test mapping_regioncell_field_intelligence_sandbox` | **EXPECTED REMOVAL** — `no test target named mapping_regioncell_field_intelligence_sandbox` |
-| `cargo test --workspace` | _(running at report write; see log if needed)_ |
+| `cargo test --workspace` | **PASS** |
 
 ---
 
