@@ -200,7 +200,9 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Phase M-1:** **Done** — generic `StructuredFieldStencilOp::execute_configured` execution API and column-aware reduction convenience over existing `SlotRange` Sum.
 
-**Phase M-1.1:** **Done** — no-readback configured execution path; readback explicit for tests/diagnostics and readback-derived stats. No production mapping runtime; no pass graph wiring. Next coding task: **Phase M-2**.
+**Phase M-1.1:** **Done** — no-readback configured execution path.
+
+**Phase M-2:** **Done** — generic cadence scheduler and dirty macro-region skip helper. False schedules acceptable; false skips forbidden. Scheduled execution uses M-1.1 no-readback path by default. No production mapping runtime; no pass graph wiring. Next coding task: **Phase M-3**.
 
 **V7.6 StructuredFieldStencilOp:** **Live, opt-in, hardened, inert by default** — not mapping runtime; not wired into production passes.
 
