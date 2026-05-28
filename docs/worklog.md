@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-28 — Phase M-2.1 FieldScheduler API hardening
+
+- Region identity keyed by `(FieldId, FieldRegionId)`; same region ID may coexist under different fields.
+- Replaced unsafe multi-dispatch `execute_scheduled_stencil_regions` with `visit_scheduled_regions`, `execute_scheduled_regions_with`, and guarded `execute_single_scheduled_stencil_region`.
+- No production mapping runtime; no pass graph wiring. Next: **Phase M-3**.
+
+**Verification:** [`phase_m2_1_field_scheduler_api_hardening_test_results.md`](tests/phase_m2_1_field_scheduler_api_hardening_test_results.md)
+
+---
+
 ## 2026-05-28 — Phase M-2 cadence scheduler + dirty macro-region skip
 
 - Phase M-2 landed: generic `FieldScheduler` with cadence tiers (`EveryTick`, `EveryN`, `OnEvent`) and dirty macro-region skip. False schedules acceptable; false skips forbidden. Scheduled stencil execution uses M-1.1 no-readback default.

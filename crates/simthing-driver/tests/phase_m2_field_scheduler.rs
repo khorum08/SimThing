@@ -1,9 +1,10 @@
 //! Phase M-2: generic cadence scheduler and dirty macro-region skip.
 
 use simthing_driver::{
-    count_cadence_due_ticks, execute_scheduled_stencil_regions, DirtyRegionState, FieldCadence,
+    count_cadence_due_ticks, execute_single_scheduled_stencil_region, visit_scheduled_regions,
+    DirtyRegionState, FieldCadence, FieldDispatchDecision, FieldDispatchReason,
     FieldDispatchSchedule, FieldGridDescriptor, FieldId, FieldRegionId, FieldRegionRegistration,
-    FieldScheduleState, FieldScheduler, FieldSchedulerError,
+    FieldScheduleState, FieldScheduler, FieldSchedulerError, ScheduledStencilExecutionError,
 };
 use simthing_gpu::{
     GpuContext, StructuredFieldExecutionOptions, StructuredFieldStencilBoundaryMode,
@@ -33,7 +34,7 @@ fn assert_no_false_skips(
         let region = scheduler
             .regions()
             .iter()
-            .find(|r| r.region_id == decision.region_id)
+            .find(|r| r.field_id == decision.field_id && r.region_id == decision.region_id)
             .expect("region");
         let field = scheduler
             .fields()
@@ -200,13 +201,157 @@ fn test_c_dirty_skip_correctness_zero_false_skips() {
     assert_eq!(report.false_skip_count, 0);
     assert_no_false_skips(&scheduler, tick, &decisions);
 
-    for (region_id, _, _, expected) in cases {
+    for (region_id, field_id, _, expected) in cases {
         let decision = decisions
             .iter()
-            .find(|d| d.region_id == region_id)
+            .find(|d| d.region_id == region_id && d.field_id == field_id)
             .expect("decision");
         assert_eq!(decision.schedule, expected, "region {:?}", region_id);
     }
+}
+
+#[test]
+fn test_m2_1_region_identity_includes_field_identity() {
+    let mut scheduler = FieldScheduler::new();
+    scheduler.register_field(FieldScheduleState {
+        field_id: FieldId(1),
+        cadence: FieldCadence::EveryTick,
+        event_pending: false,
+    });
+    scheduler.register_field(FieldScheduleState {
+        field_id: FieldId(2),
+        cadence: FieldCadence::EveryTick,
+        event_pending: false,
+    });
+    scheduler.register_region(FieldRegionRegistration {
+        region_id: FieldRegionId(0),
+        field_id: FieldId(1),
+        dirty: DirtyRegionState::default(),
+    });
+    scheduler.register_region(FieldRegionRegistration {
+        region_id: FieldRegionId(0),
+        field_id: FieldId(2),
+        dirty: DirtyRegionState::default(),
+    });
+    assert_eq!(scheduler.regions().len(), 2);
+    let (decisions, _) = scheduler.decide_tick(0).unwrap();
+    assert_eq!(decisions.len(), 2);
+}
+
+#[test]
+fn test_m2_1_same_field_region_replacement() {
+    let mut scheduler = FieldScheduler::new();
+    scheduler.register_field(FieldScheduleState {
+        field_id: FieldId(1),
+        cadence: FieldCadence::EveryN { n: 100 },
+        event_pending: false,
+    });
+    scheduler.register_region(FieldRegionRegistration {
+        region_id: FieldRegionId(0),
+        field_id: FieldId(1),
+        dirty: DirtyRegionState::default(),
+    });
+    scheduler.register_region(FieldRegionRegistration {
+        region_id: FieldRegionId(0),
+        field_id: FieldId(1),
+        dirty: DirtyRegionState {
+            dirty_source_present: true,
+            ..Default::default()
+        },
+    });
+    assert_eq!(scheduler.regions().len(), 1);
+    let (decisions, _) = scheduler.decide_tick(1).unwrap();
+    assert_eq!(decisions.len(), 1);
+    assert!(matches!(
+        decisions[0].schedule,
+        FieldDispatchSchedule::Dispatch
+    ));
+}
+
+#[test]
+fn test_m2_1_scheduled_visitor_does_not_execute_skipped() {
+    let decisions = [
+        FieldDispatchDecision {
+            region_id: FieldRegionId(1),
+            field_id: FieldId(0),
+            schedule: FieldDispatchSchedule::Skip,
+            reasons: vec![],
+        },
+        FieldDispatchDecision {
+            region_id: FieldRegionId(2),
+            field_id: FieldId(0),
+            schedule: FieldDispatchSchedule::Dispatch,
+            reasons: vec![FieldDispatchReason::DirtySource],
+        },
+        FieldDispatchDecision {
+            region_id: FieldRegionId(3),
+            field_id: FieldId(1),
+            schedule: FieldDispatchSchedule::Dispatch,
+            reasons: vec![FieldDispatchReason::CadenceDue],
+        },
+    ];
+    let mut calls = 0u32;
+    let executed = visit_scheduled_regions(&decisions, |_d| {
+        calls += 1;
+        Ok::<(), ()>(())
+    })
+    .unwrap();
+    assert_eq!(calls, 2);
+    assert_eq!(
+        executed,
+        vec![(FieldId(0), FieldRegionId(2)), (FieldId(1), FieldRegionId(3))]
+    );
+}
+
+#[test]
+fn test_m2_1_single_op_guard_rejects_multiple_scheduled() {
+    let mut scheduler = FieldScheduler::new();
+    scheduler.register_field(FieldScheduleState {
+        field_id: FieldId(0),
+        cadence: FieldCadence::EveryTick,
+        event_pending: false,
+    });
+    scheduler.register_region(FieldRegionRegistration {
+        region_id: FieldRegionId(0),
+        field_id: FieldId(0),
+        dirty: DirtyRegionState::default(),
+    });
+    scheduler.register_region(FieldRegionRegistration {
+        region_id: FieldRegionId(1),
+        field_id: FieldId(0),
+        dirty: DirtyRegionState::default(),
+    });
+    let (decisions, _) = scheduler.decide_tick(0).unwrap();
+    with_gpu(|ctx| {
+        let config = StructuredFieldStencilConfig {
+            width: 3,
+            height: 3,
+            n_dims: 4,
+            source_col: 0,
+            target_col: 0,
+            horizon: 1,
+            alpha_self: 1.0,
+            gamma_neighbor: 0.8,
+            source_cap: None,
+            operator: StructuredFieldStencilOperator::Normalized,
+            source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
+            boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
+            mask_mode: StructuredFieldStencilMaskMode::All,
+            allow_extended_horizon: false,
+        };
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let err = execute_single_scheduled_stencil_region(
+            ctx,
+            &op,
+            &decisions,
+            StructuredFieldExecutionOptions::default(),
+        )
+        .unwrap_err();
+        assert!(matches!(
+            err,
+            ScheduledStencilExecutionError::MultipleScheduledRegionsForSingleOp { count: 2 }
+        ));
+    });
 }
 
 #[test]
@@ -292,19 +437,19 @@ fn test_e_scheduled_execution_uses_no_readback_default() {
         });
 
         let (decisions, _) = scheduler.decide_tick(1).unwrap();
-        let summary = execute_scheduled_stencil_regions(
+        let executed = execute_single_scheduled_stencil_region(
             ctx,
             &op,
             &decisions,
             StructuredFieldExecutionOptions::default(),
         )
-        .unwrap();
+        .unwrap()
+        .expect("one scheduled region");
 
-        assert_eq!(summary.executed.len(), 1);
-        assert_eq!(summary.executed[0], FieldRegionId(0));
-        assert_eq!(summary.reports.len(), 1);
-        assert!(summary.reports[0].values.is_none());
-        assert_eq!(summary.reports[0].debug.dispatch_count, 2);
+        assert_eq!(executed.field_id, FieldId(0));
+        assert_eq!(executed.region_id, FieldRegionId(0));
+        assert!(executed.report.values.is_none());
+        assert_eq!(executed.report.debug.dispatch_count, 2);
     });
 }
 
@@ -345,17 +490,19 @@ fn test_f_readback_only_for_oracle_debug() {
         });
 
         let (decisions, _) = scheduler.decide_tick(0).unwrap();
-        let no_readback = execute_scheduled_stencil_regions(
+        let no_readback = execute_single_scheduled_stencil_region(
             ctx,
             &op,
             &decisions,
             StructuredFieldExecutionOptions::default(),
         )
-        .unwrap();
-        assert!(no_readback.reports[0].values.is_none());
+        .unwrap()
+        .expect("scheduled");
+        assert!(no_readback.report.values.is_none());
+        assert!(!StructuredFieldExecutionOptions::default().readback_values);
 
         op.upload_values(ctx, &values).unwrap();
-        let with_readback = execute_scheduled_stencil_regions(
+        let with_readback = execute_single_scheduled_stencil_region(
             ctx,
             &op,
             &decisions,
@@ -364,8 +511,9 @@ fn test_f_readback_only_for_oracle_debug() {
                 ..Default::default()
             },
         )
-        .unwrap();
-        assert!(with_readback.reports[0].values.is_some());
+        .unwrap()
+        .expect("scheduled");
+        assert!(with_readback.report.values.is_some());
     });
 }
 

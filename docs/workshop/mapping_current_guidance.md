@@ -24,6 +24,7 @@ Current next work:
 - **M-1 landed:** generic `StructuredFieldStencilOp::execute_configured` execution API and column-aware reduction convenience over existing `SlotRange` Sum
 - **M-1.1 landed:** no-readback dispatch/report path for future schedulers; readback explicit for tests/diagnostics and readback-derived stats
 - **M-2 landed:** generic cadence scheduler and dirty macro-region skip helper
+- **M-2.1 landed:** FieldScheduler API hardening — region identity keyed by `(FieldId, FieldRegionId)`; visitor-based scheduled execution
 - Next implementation task: **M-3** RegionFieldSpec RON + mapping admission framework
 
 Historical sandbox source, candidate notes, revert reports, and full logs live under
