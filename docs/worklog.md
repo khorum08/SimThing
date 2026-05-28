@@ -6,6 +6,15 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — Phase M-first-slice-R3 GPU-resident readiness/observability parking
+
+- Readiness pass adds `FirstSliceReadinessReport` with dispatch, GPU bridge cost-shape, budget, and execution observability for Opus/product review.
+- Hot path remains GPU-resident; `reduction_stencil_readbacks=0` invariant locked. Informational hot-path wall-ms only (not a CI gate).
+- Documented scale caveat: per-slot resource queue writes acceptable for 10×10 first slice; future scale needs fill helper/kernel.
+- 28/28 first-slice integration tests PASS. Workspace green.
+- No atlas. No M-4A. No semantic WGSL. simthing-sim remains map-free. Defaults unchanged.
+- Verification: [`phase_m_first_slice_runtime_r3_readiness_test_results.md`](tests/phase_m_first_slice_runtime_r3_readiness_test_results.md).
+
 ## 2026-05-19 — Phase M-first-slice-R2 GPU-resident Layer 1→2→3 bridge
 
 - Remedial fix removes hidden GPU→CPU→GPU staging before Layer 2/3 reduction/EML on the hot path.

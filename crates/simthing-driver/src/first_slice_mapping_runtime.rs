@@ -116,6 +116,36 @@ impl FirstSliceTickOptions {
     }
 }
 
+/// Opus/product readiness summary for one first-slice tick (generic observability).
+#[derive(Clone, Debug, PartialEq)]
+pub struct FirstSliceReadinessReport {
+    pub mapping_enabled: bool,
+    pub scheduled: bool,
+    pub source_setup_dispatches: u32,
+    pub propagation_dispatches: u32,
+    pub total_dispatches: u32,
+    pub reduction_executed: bool,
+    pub eml_executed: bool,
+    pub reduction_stencil_readbacks: u32,
+    pub field_values_present: bool,
+    pub parent_reduction_present: bool,
+    pub eml_output_present: bool,
+    pub grid_size: u32,
+    pub cell_count: u32,
+    pub n_dims: u32,
+    pub horizon: u32,
+    pub operator: &'static str,
+    pub source_policy: &'static str,
+    pub boundary_mode: &'static str,
+    pub cadence: String,
+    pub budget_estimate_bytes: Option<u64>,
+    pub budget_limit_bytes: Option<u64>,
+    pub gpu_bridge_bytes_copied: u64,
+    pub gpu_bridge_slot_col_writes: u32,
+    /// Informational only; not a CI stability gate.
+    pub hot_path_wall_ms_observed: Option<f64>,
+}
+
 /// Per-tick mapping runtime report.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FirstSliceMappingReport {
@@ -134,6 +164,7 @@ pub struct FirstSliceMappingReport {
     pub eml_executed: bool,
     /// Stencil field readbacks performed while preparing reduction/EML (0 on GPU-resident hot path).
     pub reduction_stencil_readbacks: u32,
+    pub readiness: FirstSliceReadinessReport,
 }
 
 impl FirstSliceMappingReport {
@@ -153,6 +184,32 @@ impl FirstSliceMappingReport {
             reduction_executed: false,
             eml_executed: false,
             reduction_stencil_readbacks: 0,
+            readiness: FirstSliceReadinessReport {
+                mapping_enabled: false,
+                scheduled: false,
+                source_setup_dispatches: 0,
+                propagation_dispatches: 0,
+                total_dispatches: 0,
+                reduction_executed: false,
+                eml_executed: false,
+                reduction_stencil_readbacks: 0,
+                field_values_present: false,
+                parent_reduction_present: false,
+                eml_output_present: false,
+                grid_size: 0,
+                cell_count: 0,
+                n_dims: 0,
+                horizon: 0,
+                operator: "none",
+                source_policy: "none",
+                boundary_mode: "none",
+                cadence: "none".into(),
+                budget_estimate_bytes: None,
+                budget_limit_bytes: None,
+                gpu_bridge_bytes_copied: 0,
+                gpu_bridge_slot_col_writes: 0,
+                hot_path_wall_ms_observed: None,
+            },
         }
     }
 }
@@ -214,6 +271,16 @@ pub struct FirstSliceMappingSession {
     gpu_state_canonical: bool,
     host_values_valid: bool,
     reduction_stencil_readbacks_this_tick: u32,
+    gpu_bridge_bytes_copied_this_tick: u64,
+    gpu_bridge_slot_col_writes_this_tick: u32,
+    budget_estimate_bytes: Option<u64>,
+    budget_limit_bytes: Option<u64>,
+    hot_path_wall_ms_observed: Option<f64>,
+}
+
+struct GpuBridgeShape {
+    bytes_copied: u64,
+    slot_col_writes: u32,
 }
 
 struct StencilTickResult {
@@ -230,11 +297,18 @@ impl FirstSliceMappingSession {
         spec: &RegionFieldSpec,
     ) -> Result<Self, FirstSliceMappingError> {
         let preview = compile_region_field_preview(spec)?;
-        Self::open_preview(
+        let budget = estimate_first_slice_budget(
+            spec,
+            RegionFieldIsolationPolicyEstimate::SingleGridNoAtlas,
+        )
+        .ok();
+        Self::open_preview_with_budget(
             ctx,
             profile,
             preview,
             spec.parent_formula.as_ref().and_then(|f| f.tree_id),
+            budget.map(|b| b.estimated_bytes),
+            spec.max_region_field_vram_bytes,
         )
     }
 
@@ -244,6 +318,17 @@ impl FirstSliceMappingSession {
         profile: MappingExecutionProfile,
         preview: CompiledRegionFieldPreview,
         tree_id_override: Option<u32>,
+    ) -> Result<Self, FirstSliceMappingError> {
+        Self::open_preview_with_budget(ctx, profile, preview, tree_id_override, None, None)
+    }
+
+    fn open_preview_with_budget(
+        ctx: &GpuContext,
+        profile: MappingExecutionProfile,
+        preview: CompiledRegionFieldPreview,
+        tree_id_override: Option<u32>,
+        budget_estimate_bytes: Option<u64>,
+        budget_limit_bytes: Option<u64>,
     ) -> Result<Self, FirstSliceMappingError> {
         let enabled = profile.enables_execution();
         let gpu_config = compiled_stencil_to_gpu_config(&preview.stencil);
@@ -318,7 +403,66 @@ impl FirstSliceMappingSession {
             gpu_state_canonical: true,
             host_values_valid: true,
             reduction_stencil_readbacks_this_tick: 0,
+            gpu_bridge_bytes_copied_this_tick: 0,
+            gpu_bridge_slot_col_writes_this_tick: 0,
+            budget_estimate_bytes,
+            budget_limit_bytes,
+            hot_path_wall_ms_observed: None,
         })
+    }
+
+    fn cadence_label(cadence: CompiledFieldCadence) -> String {
+        match cadence {
+            CompiledFieldCadence::EveryTick => "EveryTick".into(),
+            CompiledFieldCadence::EveryN { n } => format!("EveryN({n})"),
+            CompiledFieldCadence::OnEvent => "OnEvent".into(),
+        }
+    }
+
+    fn operator_label(operator: CompiledRegionFieldOperator) -> &'static str {
+        match operator {
+            CompiledRegionFieldOperator::Normalized => "normalized",
+            CompiledRegionFieldOperator::SourceCappedNormalized => "source_capped_normalized",
+        }
+    }
+
+    fn build_readiness_report(
+        &self,
+        scheduled: bool,
+        source_setup_dispatches: u32,
+        propagation_dispatches: u32,
+        reduction_executed: bool,
+        eml_executed: bool,
+        field_values: &Option<Vec<f32>>,
+        reduction_parent_value: &Option<f32>,
+        eml_output: &Option<f32>,
+    ) -> FirstSliceReadinessReport {
+        FirstSliceReadinessReport {
+            mapping_enabled: self.enabled,
+            scheduled,
+            source_setup_dispatches,
+            propagation_dispatches,
+            total_dispatches: source_setup_dispatches + propagation_dispatches,
+            reduction_executed,
+            eml_executed,
+            reduction_stencil_readbacks: self.reduction_stencil_readbacks_this_tick,
+            field_values_present: field_values.is_some(),
+            parent_reduction_present: reduction_parent_value.is_some(),
+            eml_output_present: eml_output.is_some(),
+            grid_size: self.preview.grid_size,
+            cell_count: self.preview.cell_count,
+            n_dims: self.n_dims,
+            horizon: self.preview.stencil.horizon,
+            operator: Self::operator_label(self.preview.stencil.operator),
+            source_policy: "caller_managed_one_shot_seed_then_zero",
+            boundary_mode: "zero",
+            cadence: Self::cadence_label(self.preview.cadence),
+            budget_estimate_bytes: self.budget_estimate_bytes,
+            budget_limit_bytes: self.budget_limit_bytes,
+            gpu_bridge_bytes_copied: self.gpu_bridge_bytes_copied_this_tick,
+            gpu_bridge_slot_col_writes: self.gpu_bridge_slot_col_writes_this_tick,
+            hot_path_wall_ms_observed: self.hot_path_wall_ms_observed,
+        }
     }
 
     pub fn enabled(&self) -> bool {
@@ -473,7 +617,7 @@ impl FirstSliceMappingSession {
         ctx: &GpuContext,
         weight_a: f32,
         weight_b: f32,
-    ) -> Result<(), FirstSliceMappingError> {
+    ) -> Result<GpuBridgeShape, FirstSliceMappingError> {
         let reduction = self.preview.reduction.as_ref().expect("validated at open");
         let parent_slot = reduction.parent_slot;
         let cell_count = self.preview.cell_count;
@@ -506,7 +650,14 @@ impl FirstSliceMappingSession {
                 ],
             )
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
-        Ok(())
+
+        let shape = GpuBridgeShape {
+            bytes_copied: prefix_bytes,
+            slot_col_writes: cell_count + 2,
+        };
+        self.gpu_bridge_bytes_copied_this_tick = shape.bytes_copied;
+        self.gpu_bridge_slot_col_writes_this_tick = shape.slot_col_writes;
+        Ok(shape)
     }
 
     fn run_reduction_and_eml(
@@ -525,7 +676,7 @@ impl FirstSliceMappingSession {
         let cell_count = self.preview.cell_count;
 
         self.reduction_stencil_readbacks_this_tick = 0;
-        self.bridge_stencil_field_to_accumulator(ctx, weight_a, weight_b)?;
+        let _bridge = self.bridge_stencil_field_to_accumulator(ctx, weight_a, weight_b)?;
 
         let sum_resource_op = AccumulatorOp {
             source: SourceSpec::SlotRange {
@@ -600,6 +751,11 @@ impl FirstSliceMappingSession {
 
         self.apply_pending_seeds_to_host();
         self.reduction_stencil_readbacks_this_tick = 0;
+        self.gpu_bridge_bytes_copied_this_tick = 0;
+        self.gpu_bridge_slot_col_writes_this_tick = 0;
+        self.hot_path_wall_ms_observed = None;
+
+        let tick_started = (!options.readback_values).then(std::time::Instant::now);
 
         let (decisions, scheduler_report) = self.scheduler.decide_tick(tick)?;
         let scheduled = decisions.iter().any(|d| {
@@ -653,6 +809,22 @@ impl FirstSliceMappingSession {
 
         self.tick += 1;
 
+        if let (Some(started), true) = (tick_started, scheduled && !options.readback_values) {
+            self.hot_path_wall_ms_observed =
+                Some(started.elapsed().as_secs_f64() * 1000.0);
+        }
+
+        let readiness = self.build_readiness_report(
+            scheduled,
+            source_setup_dispatches,
+            propagation_dispatches,
+            reduction_executed,
+            eml_executed,
+            &field_values,
+            &reduction_parent_value,
+            &eml_output,
+        );
+
         Ok(FirstSliceMappingReport {
             enabled: true,
             tick,
@@ -668,6 +840,7 @@ impl FirstSliceMappingSession {
             reduction_executed,
             eml_executed,
             reduction_stencil_readbacks: self.reduction_stencil_readbacks_this_tick,
+            readiness,
         })
     }
 }

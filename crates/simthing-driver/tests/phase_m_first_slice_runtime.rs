@@ -740,7 +740,7 @@ fn test_r1_j_posture_preserved() {
     let runtime_src = include_str!("../src/first_slice_mapping_runtime.rs");
     assert!(!runtime_src.contains("ActiveOnlyExperimentalNoHalo"));
     assert!(!runtime_src.contains("source_mask"));
-    assert!(!runtime_src.contains("atlas"));
+    assert!(!runtime_src.contains("request_atlas_batching"));
     let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
     assert!(!sim_lib.contains("RegionField"));
 }
@@ -877,7 +877,123 @@ fn test_r2_g_posture_preserved() {
     let runtime_src = include_str!("../src/first_slice_mapping_runtime.rs");
     assert!(!runtime_src.contains("ActiveOnlyExperimentalNoHalo"));
     assert!(!runtime_src.contains("source_mask"));
-    assert!(!runtime_src.contains("atlas"));
+    assert!(!runtime_src.contains("request_atlas_batching"));
+    let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
+    assert!(!sim_lib.contains("RegionField"));
+}
+
+// --- M-first-slice-R3: readiness / observability parking ---
+
+#[test]
+fn test_r3_a_readiness_report_hot_path_shape() {
+    with_gpu(|ctx| {
+        let spec = first_slice_spec();
+        let mut session = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        session
+            .queue_seeds(&[FirstSliceSeed { row: 0, col: 0, value: 80.0 }])
+            .unwrap();
+        let report = session
+            .tick(ctx, FirstSliceTickOptions::hot_path(), (0.2, 0.1))
+            .unwrap();
+        let r = &report.readiness;
+
+        assert!(report.scheduled);
+        assert!(report.reduction_executed);
+        assert!(report.eml_executed);
+        assert_eq!(report.reduction_stencil_readbacks, 0);
+        assert!(report.field_values.is_none());
+        assert!(report.reduction_parent_value.is_none());
+        assert!(report.eml_output.is_none());
+        assert_eq!(report.source_setup_dispatches, 1);
+        assert_eq!(report.propagation_dispatches, spec.horizon);
+        assert_eq!(report.total_dispatches, spec.horizon + 1);
+
+        assert!(r.mapping_enabled);
+        assert_eq!(r.grid_size, 10);
+        assert_eq!(r.cell_count, 100);
+        assert_eq!(r.n_dims, spec.n_dims);
+        assert_eq!(r.horizon, spec.horizon);
+        assert_eq!(r.operator, "source_capped_normalized");
+        assert_eq!(r.source_policy, "caller_managed_one_shot_seed_then_zero");
+        assert_eq!(r.boundary_mode, "zero");
+        assert_eq!(r.gpu_bridge_bytes_copied, (r.cell_count * r.n_dims * 4) as u64);
+        assert_eq!(r.gpu_bridge_slot_col_writes, r.cell_count + 2);
+        assert!(r.budget_estimate_bytes.unwrap() > 0);
+        assert!(r.hot_path_wall_ms_observed.unwrap() > 0.0);
+    });
+}
+
+#[test]
+fn test_r3_b_debug_readback_explicit() {
+    with_gpu(|ctx| {
+        let spec = first_slice_spec();
+        let mut session = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        session
+            .queue_seeds(&[FirstSliceSeed { row: 2, col: 2, value: 90.0 }])
+            .unwrap();
+        let report = session
+            .tick(ctx, FirstSliceTickOptions::debug_readback(), (0.2, 0.1))
+            .unwrap();
+        let r = &report.readiness;
+
+        assert!(report.field_values.is_some());
+        assert!(report.reduction_parent_value.is_some());
+        assert!(report.eml_output.is_some());
+        assert_eq!(report.reduction_stencil_readbacks, 0);
+        assert!(r.field_values_present);
+        assert!(r.parent_reduction_present);
+        assert!(r.eml_output_present);
+        assert!(r.hot_path_wall_ms_observed.is_none());
+    });
+}
+
+#[test]
+fn test_r3_c_budget_readiness_summary() {
+    let spec = first_slice_spec();
+    let budget = estimate_first_slice_budget(
+        &spec,
+        RegionFieldIsolationPolicyEstimate::SingleGridNoAtlas,
+    )
+    .unwrap();
+    assert!((budget.isolation_multiplier - 1.0).abs() < 1e-9);
+    assert!(budget.estimated_bytes > 0);
+
+    let mut over = spec.clone();
+    over.max_region_field_vram_bytes = Some(4096);
+    let err = estimate_region_field_budget(&RegionFieldBudgetSpec {
+        grid_size: over.grid_size,
+        column_count: over.n_dims,
+        buffer_multiplier: 2.0,
+        copy_multiplier: 1.0,
+        tile_count: 1,
+        isolation_policy: RegionFieldIsolationPolicyEstimate::SingleGridNoAtlas,
+        max_region_field_vram_bytes: over.max_region_field_vram_bytes,
+    })
+    .unwrap_err();
+    assert!(err.requested_bytes > err.allowed_bytes);
+}
+
+#[test]
+fn test_r3_d_no_accidental_feature_expansion() {
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
+    assert!(!PipelineFlags::default().use_accumulator_resource_flow);
+    let runtime_src = include_str!("../src/first_slice_mapping_runtime.rs");
+    assert!(!runtime_src.contains("ActiveOnlyExperimentalNoHalo"));
+    assert!(!runtime_src.contains("source_mask"));
+    assert!(!runtime_src.contains("request_atlas_batching"));
     let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
     assert!(!sim_lib.contains("RegionField"));
 }
