@@ -5,8 +5,9 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 
 **Last updated:** 2026-05-19  
 **Design version:** **V7.6** — see [`design_v7_6.md`](../design_v7_6.md)  
-**Master HEAD:** _(updated after V7.6 promotion merge)_  
-**Verification (last recorded):** StructuredFieldStencilOp production tests; E-11B regressions green
+**Master HEAD:** `81647c5` (post guardrail hardening)  
+**Verification (last recorded):** StructuredFieldStencilOp production + hardening tests; E-11B regressions green  
+**Parked:** V7.6 StructuredFieldStencilOp implementation pending **Mapping ADR**
 
 ---
 
@@ -17,14 +18,14 @@ Two parallel tracks:
 | Track | Status | Canonical docs |
 |-------|--------|----------------|
 | **V6 spec / driver / session** | **Parked complete** — PRs 1–11, Opus P0 (O2/B3/I1) shipped | `design_v6.5.md`, `simthing_spec_progress_log.md` |
-| **AccumulatorOp v2 / design v7** | **Active (V7.6)** — Phases A–B done; C-1–C-8 landed; StructuredFieldStencilOp live generic primitive | `design_v7.md`, `design_v7_6.md`, `accumulator_op_v2_production_plan.md` |
+| **AccumulatorOp v2 / design v7** | **Active (V7.6), parked pending Mapping ADR** — Phases A–B done; C-1–C-8 landed; StructuredFieldStencilOp live generic primitive (opt-in; hardened) | `design_v7.md`, `design_v7_6.md`, `accumulator_op_v2_production_plan.md` |
 
 **Production direction:** AccumulatorOp v2 is the GPU execution path.
 Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Legacy threshold is deleted (S-6). Legacy velocity is deleted (S-5). Legacy intent is deleted (S-1). Snapshot is the only retained non-Accumulator operation.
 
 **E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed. FlatStarResourceFlow remains the accepted bounded production posture. `use_accumulator_resource_flow` **default false**. Generic semantic-free WGSL allowed (V7.6); no new AccumulatorRole variants; no CPU fallback; `simthing-sim` remains arena-ignorant.
 
-**V7.6 StructuredFieldStencilOp:** **Live** — generic GPU primitive in `simthing-gpu` (opt-in library API; not default pass graph). Ping-pong buffers, horizon cap H≤8 default, execution steps capped to configured horizon, caller-managed source policy, clamp-boundary parity, active mask provisional. Column-aware parent EML bridge tested. Mapping/location architecture remains provisional. No mapping runtime landed.
+**V7.6 StructuredFieldStencilOp:** **Live, parked** — generic GPU primitive in `simthing-gpu` (opt-in library API; not default pass graph). Promotion and guardrail hardening complete. Ping-pong buffers, horizon cap H≤8 default, execution steps capped to configured horizon, caller-managed source policy, clamp-boundary parity, active mask provisional (`ActiveOnlyExperimentalNoHalo`). Column-aware parent EML bridge tested. **Implementation parked pending Mapping ADR** — next work defines RegionCell fields, source policy, halo/frontier semantics, cadence tiers, and column-aware parent bindings; not runtime mapping implementation. No mapping runtime landed.
 
 **Product-priority selection:** **Done** — [`product_priority_vertical_slice_selection.md`](../reviews/product_priority_vertical_slice_selection.md). **Recommendation F:** pause implementation; gather product requirements. No named scenario for D-2a, E-11B-5, spec/RON rebuild, or new vertical slice. Continued flat-star soak remains green.
 

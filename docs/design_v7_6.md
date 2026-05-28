@@ -147,3 +147,51 @@ New GPU/EML work is allowed when:
 No mapping runtime is implemented. No production pass graph is wired to
 `StructuredFieldStencilOp` by default. Resource Flow defaults remain unchanged.
 `simthing-sim` remains semantic-free.
+
+---
+
+## 7. Parked state (2026-05-19)
+
+V7.6 `StructuredFieldStencilOp` **promotion and guardrail hardening are complete**.
+Further mapping-related implementation is **parked pending the Mapping ADR**.
+
+The next work item is **not** runtime mapping implementation. It is the **Mapping ADR**
+that defines RegionCell fields, source policy, active-mask halo/frontier semantics,
+cadence tiers, and column-aware parent bindings.
+
+### 7.1 Confirmed current posture
+
+```text
+V7.6 StructuredFieldStencilOp promotion and guardrail hardening are complete.
+
+StructuredFieldStencilOp is a live generic GPU toolkit primitive for structured 2D field
+propagation over flat buffers. It is not mapping runtime and contains no map/faction/AI
+semantics.
+
+The primitive is opt-in by direct API use only. Existing production pass graphs do not
+invoke it.
+
+Execution horizon guardrails are enforced:
+- default tactical horizon H <= 8
+- extended horizon H <= 16 only with allow_extended_horizon and stability/source policy
+- run_ping_pong / dispatch_ping_pong reject steps above config.horizon
+- run_configured_horizon is the preferred safe execution helper
+
+Source policy is caller-managed:
+- CallerManagedOneShotSeedThenZero means the caller seeds source cells once, clears the
+  source column after the initial hop, then runs configured-horizon propagation.
+- The primitive does not identify or clear source slots automatically.
+
+Active mask remains provisional:
+- ActiveOnlyExperimentalNoHalo is not production-authorized until halo/frontier semantics
+  are defined.
+
+Parent bridge is column-aware:
+- local stencil fields reduce upward through SlotRange into specific parent EML input columns
+- parent personality columns are populated separately
+- EvalEML runs on a later order band
+```
+
+**Evidence preserved:** [`v7_6_structured_field_stencil_promotion_test_results.md`](tests/v7_6_structured_field_stencil_promotion_test_results.md),
+[`v7_6_structured_field_stencil_guardrail_hardening_test_results.md`](tests/v7_6_structured_field_stencil_guardrail_hardening_test_results.md),
+[`v7_6_structured_field_stencil_parked_state_test_results.md`](tests/v7_6_structured_field_stencil_parked_state_test_results.md)

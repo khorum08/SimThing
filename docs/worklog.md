@@ -6,6 +6,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — V7.6 StructuredFieldStencilOp parked pending Mapping ADR
+
+- Docs-only parking pass after promotion (PR #210) and guardrail hardening (PR #211).
+- V7.6 live; `StructuredFieldStencilOp` remains generic opt-in toolkit code in `simthing-gpu`.
+- No mapping runtime; no production pass graph wiring; Resource Flow defaults unchanged.
+- Next work: **Mapping ADR** (not runtime mapping implementation).
+
+**Results:** [`v7_6_structured_field_stencil_parked_state_test_results.md`](tests/v7_6_structured_field_stencil_parked_state_test_results.md)
+
+---
+
 ## 2026-05-19 — V7.6 StructuredFieldStencilOp guardrail hardening
 
 - Enforced execution horizon: `run_ping_pong` / `dispatch_ping_pong` return `ExecutionHorizonExceedsConfig` when steps exceed configured horizon; added `run_configured_horizon`.
