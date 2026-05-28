@@ -7,7 +7,7 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Master HEAD:** *(pending M-first-slice-R2 merge)*  
+**Master HEAD:** `54d3884` (Phase M-first-slice-R2)  
 **Verification (last recorded):** Phase M-first-slice-R2 — 24/24 PASS; workspace green  
 **Next action:** **M-4 parked at decision gate** — human + Opus sign-off required before atlas implementation. M-first-slice-R2 landed GPU-resident Layer 1→2→3 bridge; still opt-in only; not default session wiring.
 
