@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** _(pending revert merge)_ — SEAD sandbox reverted to parked state  
+**Master HEAD:** `b45dace` — SEAD sandbox reverted to parked state (merged PR #201)  
 **Verification (last recorded):** E-11B regressions green; SEAD sandbox test target removed
 
 ---

@@ -3,7 +3,7 @@
 **Date/time:** 2026-05-19  
 **Base HEAD (before revert branch):** `79edd35` — SEAD field-intelligence feasibility probe merge (PR #200)  
 **Revert branch commit:** `84ecc99` — revert PR #200 merge  
-**Final commit SHA:** _(pending merge)_  
+**Final commit SHA:** `b45dace` (revert merge PR #201)  
 **rustc:** `rustc 1.95.0 (59807616e 2026-04-14)`  
 **cargo:** `cargo 1.95.0 (f2d3ce0bd 2026-03-21)`  
 **Platform/OS:** Windows 10 (win32 10.0.26200), PowerShell  
