@@ -1,7 +1,7 @@
 # Phase M-first-slice — Runtime Wiring + Boundary/Budget Probe — Test Results
 
 **Date:** 2026-05-19  
-**Final commit SHA:** `b77c813`
+**Final commit SHA:** `447adc1`
 
 ## Decision gate summary
 
