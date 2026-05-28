@@ -413,6 +413,15 @@ field propagation, and personality/weight-sensitive urgency. This is a landing n
 no atlas, M-4A masking, active mask, perception, map residency, source identity, semantic
 WGSL, default session wiring, or `simthing-sim` map awareness is authorized or landed.
 
+**Update (2026-05-28, product commitment fixture):** The product-facing commitment fixture
+landed as an opt-in test over the same first-slice RegionFieldSpec/RON fixture. It uses the
+existing threshold/event substrate over parent `field_urgency` to prove the SEAD commitment
+shape: GPU-resident field propagation -> parent reduction -> EvalEML urgency -> threshold
+event. Low-weight urgency stays below threshold; high-weight urgency crosses and emits the
+expected event. This is a landing note only: no CPU-side AI planner, atlas batching,
+M-4A masking, active mask, perception, map residency, source identity, semantic WGSL,
+default session wiring, or `simthing-sim` map awareness is authorized or landed.
+
 ---
 
 ## Read order for agents touching mapping
