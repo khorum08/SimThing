@@ -2,7 +2,7 @@
 
 **Date/time:** 2026-05-19  
 **Base HEAD (before sandbox branch):** `50dfcc0` — revert RegionCell verification re-run (PR #199)  
-**Final commit SHA:** _(pending merge)_  
+**Final commit SHA:** `79edd35` (sandbox merge PR #200)  
 **rustc:** `rustc 1.95.0 (59807616e 2026-04-14)`  
 **cargo:** `cargo 1.95.0 (f2d3ce0bd 2026-03-21)`  
 **Platform/OS:** Windows 10 (win32 10.0.26200), PowerShell  

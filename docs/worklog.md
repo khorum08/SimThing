@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — SEAD field-intelligence feasibility probe (reverted to parked state)
+
+- Ran staged SEAD / sparse RegionCell field-intelligence feasibility probe (PR #200). 13/13 sandbox tests PASS; overall decision-gate verdict **PARTIAL**.
+- Substrate-real: later-band-cascade AddToTarget propagation, GPU EvalEML personality-weighted urgency, ScaleTarget dissipation, SlotRange Sum faction reduction.
+- Gaps: velocity DEFERRED (no previous-value EML read); corridor gradient PARTIAL on 10×10; legacy whitelist rejects custom formula class names.
+- Reverted production test file to parked state; preserved source at [`sead_sandbox_code_preserve.rs`](workshop/sead_sandbox_code_preserve.rs) and results at [`sead_field_intelligence_sandbox_test_results.md`](tests/sead_field_intelligence_sandbox_test_results.md).
+- Mapping/location architecture remains provisional. No mapping runtime, Scatter/Gather, wavefront propagation, E-11B-5, D-2a, new WGSL, or simthing-sim changes.
+
+**Verification:** [`revert_sead_sandbox_to_parked_state_test_results.md`](tests/revert_sead_sandbox_to_parked_state_test_results.md)
+
+---
+
 ## 2026-05-27 — Revert RegionCell field-intelligence sandbox to parked state
 
 - Reverted PR #197 (sparse RegionCell field-intelligence sandbox). Implementation remains parked after E-11B-1 explicit nested participant materialization and E-11B static nested participant RON smoke.
