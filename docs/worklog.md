@@ -6,6 +6,20 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-27 — Revert RegionCell field-intelligence sandbox to parked state
+
+- Reverted PR #197 (sparse RegionCell field-intelligence sandbox). Implementation remains parked after E-11B-1 explicit nested participant materialization and E-11B static nested participant RON smoke.
+- Static deep hierarchy authoring via `parent_subtree_root_id` remains landed. RON-authored D=3/D=4 explicit nested participant specs reach `build_nested_layout`.
+- The sparse RegionCell field-intelligence sandbox was reverted after validating the concept externally; no sandbox test/prototype remains in the production repo.
+- Mapping/location architecture remains provisional. Do not implement mapping/location runtime until the mapping doc is ready. Do not open generic scenario templates, simthing-spec/RON/Designer guardrail rebuild, E-11B-5, D-2a, Scatter/Gather, wavefront propagation, or new WGSL.
+- FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Resource Flow remains separate from Phase T hard-currency transfer/recipe/emission. `simthing-sim` remains arena-ignorant and spec-free.
+
+**Verification:** [`revert_regioncell_sandbox_to_parked_state_test_results.md`](tests/revert_regioncell_sandbox_to_parked_state_test_results.md) — E-11B regressions green; sandbox test target removed; `cargo check --workspace` / `cargo test --workspace` PASS.
+
+**Next gate:** park until mapping direction is finalized enough to define the next narrow substrate slice, or product names a concrete non-mapping scenario.
+
+---
+
 ## 2026-05-27 — Paused-state docs hygiene after E-11B RON smoke
 
 - Paused-state docs hygiene checkpoint landed after E-11B static nested participant RON smoke. No runtime behavior changes. Implementation remains paused pending finalized mapping/product direction.
