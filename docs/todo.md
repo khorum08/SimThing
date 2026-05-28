@@ -196,9 +196,11 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **V7.7 Mapping ADR:** **Done** — [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md) approved at architecture level; surfaced in [`design_v7_7.md`](design_v7_7.md); invariants updated. Phase M generic natives unlocked. No mapping runtime authorized.
 
-**Docs cleanup (pre-Phase M):** **Done** — superseded mapping/SEAD sandbox source preserves, candidate notes, revert reports, and full logs archived under `docs/workshop/archive/` and `docs/tests/archive/`. Authoritative mapping guidance: ADR + V7.7 + invariants + [`mapping_current_guidance.md`](workshop/mapping_current_guidance.md). Next coding task: **Phase M-1**.
+**Docs cleanup (pre-Phase M):** **Done** — superseded artifacts archived; authoritative mapping guidance: ADR + V7.7 + invariants + [`mapping_current_guidance.md`](workshop/mapping_current_guidance.md).
 
-**V7.6 StructuredFieldStencilOp:** **Live, opt-in, hardened, inert by default** — not mapping runtime; not wired into production passes. Phase M-1 is next.
+**Phase M-1:** **Done** — generic `StructuredFieldStencilOp::execute_configured` execution API and column-aware reduction convenience over existing `SlotRange` Sum. StructuredFieldStencilOp remains live, opt-in, hardened, and inert by default. No production mapping runtime; no pass graph wiring. Next coding task: **Phase M-2**.
+
+**V7.6 StructuredFieldStencilOp:** **Live, opt-in, hardened, inert by default** — not mapping runtime; not wired into production passes.
 
 **Mapping optimization remedial sandbox:** **Reverted** — evidence archived; decision-gate summary [`mapping_optimization_remedial_sandbox_test_results.md`](tests/mapping_optimization_remedial_sandbox_test_results.md). Verdict **PARTIAL+** (incorporated into ADR).
 

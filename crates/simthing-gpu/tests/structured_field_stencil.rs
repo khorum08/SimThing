@@ -1,10 +1,10 @@
 //! StructuredFieldStencilOp GPU parity and stability tests (V7.6 promotion + hardening).
 
 use simthing_gpu::{
-    cpu_horizon, params_from_config, GpuContext, StructuredFieldStencilBoundaryMode,
-    StructuredFieldStencilConfig, StructuredFieldStencilError, StructuredFieldStencilMaskMode,
-    StructuredFieldStencilOp, StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy,
-    DEFAULT_HORIZON_CAP, EXTENDED_HORIZON_CAP,
+    cpu_horizon, params_from_config, GpuContext, StructuredFieldExecutionOptions,
+    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig, StructuredFieldStencilError,
+    StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
+    StructuredFieldStencilSourcePolicy, DEFAULT_HORIZON_CAP, EXTENDED_HORIZON_CAP,
 };
 use std::sync::Mutex;
 
@@ -317,4 +317,106 @@ fn structured_field_stencil_inert_by_default() {
 #[test]
 fn guard_no_production_pipeline_integration() {
     structured_field_stencil_inert_by_default();
+}
+
+#[test]
+fn test_m1_execute_configured_uses_horizon() {
+    with_gpu(|ctx| {
+        let config = normalized_config(3, 3, 4);
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let mut values = vec![0.0f32; op.config().values_len()];
+        values[idx(4, 0, 4)] = 100.0;
+        op.upload_values(ctx, &values).unwrap();
+        let report = op
+            .execute_configured(
+                ctx,
+                StructuredFieldExecutionOptions {
+                    collect_field_stats: false,
+                    steps: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(report.debug.dispatch_count, 4);
+        assert_eq!(report.debug.configured_horizon, 4);
+        assert_eq!(report.debug.executed_horizon, 4);
+        assert!(report.debug.field_max.is_none());
+        let params = params_from_config(op.config());
+        let cpu = cpu_horizon(&values, &params, 4);
+        let mut max_err = 0.0f32;
+        for i in 0..values.len() {
+            max_err = max_err.max((cpu[i] - report.values[i]).abs());
+        }
+        assert!(max_err < 1e-3, "execute_configured parity max_err={max_err}");
+    });
+}
+
+#[test]
+fn test_m1_execute_configured_rejects_steps_above_horizon() {
+    with_gpu(|ctx| {
+        let config = normalized_config(3, 3, 4);
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let err = op
+            .execute_configured(
+                ctx,
+                StructuredFieldExecutionOptions {
+                    collect_field_stats: false,
+                    steps: Some(8),
+                },
+            )
+            .unwrap_err();
+        assert_eq!(
+            err,
+            StructuredFieldStencilError::ExecutionHorizonExceedsConfig { steps: 8, horizon: 4 }
+        );
+    });
+}
+
+#[test]
+fn test_m1_debug_report_with_stats() {
+    with_gpu(|ctx| {
+        let config = normalized_config(3, 3, 2);
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let mut values = vec![0.0f32; op.config().values_len()];
+        values[idx(4, 0, 4)] = 100.0;
+        op.upload_values(ctx, &values).unwrap();
+
+        let no_stats = op
+            .execute_configured(
+                ctx,
+                StructuredFieldExecutionOptions {
+                    collect_field_stats: false,
+                    steps: None,
+                },
+            )
+            .unwrap();
+        assert!(no_stats.debug.field_max.is_none());
+        assert!(no_stats.debug.field_l1_norm.is_none());
+        assert!(no_stats.debug.active_mask_ratio.is_none());
+
+        op.upload_values(ctx, &values).unwrap();
+        let with_stats = op
+            .execute_configured(
+                ctx,
+                StructuredFieldExecutionOptions {
+                    collect_field_stats: true,
+                    steps: None,
+                },
+            )
+            .unwrap();
+        let d = &with_stats.debug;
+        assert_eq!(d.dispatch_count, 2);
+        assert_eq!(d.configured_horizon, 2);
+        assert_eq!(d.executed_horizon, 2);
+        assert_eq!(d.operator, StructuredFieldStencilOperator::Normalized);
+        assert_eq!(
+            d.source_policy,
+            StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero
+        );
+        assert_eq!(d.mask_mode, StructuredFieldStencilMaskMode::All);
+        assert_eq!(d.cell_count, 9);
+        assert_eq!(d.values_len, 36);
+        assert!(d.field_max.unwrap().is_finite());
+        assert!(d.field_l1_norm.unwrap().is_finite());
+        assert_eq!(d.active_mask_ratio, Some(1.0));
+    });
 }

@@ -21,7 +21,8 @@ Active read order:
 Current next work:
 
 - Phase M generic natives in [`../accumulator_op_v2_production_plan.md`](../accumulator_op_v2_production_plan.md)
-- Next implementation task: **M-1** RegionField execution API on `StructuredFieldStencilOp`
+- **M-1 landed:** generic `StructuredFieldStencilOp::execute_configured` execution API and column-aware reduction convenience over existing `SlotRange` Sum
+- Next implementation task: **M-2** cadence scheduler + dirty macro-region skip
 
 Historical sandbox source, candidate notes, revert reports, and full logs live under
 [`archive/mapping/`](archive/mapping/) and [`../tests/archive/`](../tests/archive/).

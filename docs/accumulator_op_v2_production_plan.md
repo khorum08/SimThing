@@ -1553,10 +1553,15 @@ The ADR's three-layer model already runs on shipped primitives. What is missing
 is the thin generic plumbing that lets a scheduler drive them efficiently and a
 designer declare a bounded field safely. That plumbing is Phase M.
 
-### PR M-1 — RegionField execution API on `StructuredFieldStencilOp` (generic)
+### PR M-1 — RegionField execution API on `StructuredFieldStencilOp` (generic) — **Done**
 
 **Model:** Composer 2.5  
-**Scope:** Harden the V7.6 primitive's caller-facing execution surface so a
+**Status:** **Landed** — generic execution API + column-aware reduction convenience; no mapping runtime.
+- `StructuredFieldStencilOp::execute_configured` with `StructuredFieldExecutionOptions` / `StructuredFieldStencilDebugReport`
+- `ColumnAwareReductionSpec` + `column_aware_reduction_op` over existing `SlotRange` Sum (`simthing-core`)
+- Tests: `structured_field_stencil.rs`, `structured_field_region_execution.rs`; existing stencil parity unchanged
+
+**Scope (original):** Harden the V7.6 primitive's caller-facing execution surface so a
 scheduler can drive it without re-implementing buffer management. Generic only —
 no RegionCell/map names in the primitive.
 - Confirm/strengthen ping-pong buffer binding and `run_configured_horizon` as the
@@ -1725,7 +1730,7 @@ Until then, caller-managed one-shot-seed-then-zero (v1) is the only source polic
 | S-6 | F | Codex 5.5 | Sunset threshold scan | **Done locally** |
 | G-1 | G | Codex 5.5 | Annotate design_v6.md §10 superseded | One commit |
 | **G-2** | **G** | **Opus** | **design_v7.md §4 final review** | **Human + Opus** |
-| M-1 | M | Composer 2.5 | RegionField execution API on StructuredFieldStencilOp (generic) | Stencil parity + reduce-into bit-exact |
+| M-1 | M | Composer 2.5 | RegionField execution API on StructuredFieldStencilOp (generic) | **Done** — stencil parity + reduce-into bit-exact |
 | M-2 | M | Composer 2.5 | Cadence scheduler + dirty macro-region skip (driver) | Determinism + zero false-skips |
 | M-3 | M | Composer 2.5 | `RegionFieldSpec` RON + mapping admission framework (designer-layer) | Rejection suite + opaque-op round-trip; default-off |
 | **M-4** | **M** | **Opus + Composer** | **Atlas batching isolation + VRAM accounting (provisional)** | **Opus design + human sign-off; provisional/opt-in** |

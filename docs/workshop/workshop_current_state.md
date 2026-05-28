@@ -9,7 +9,7 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
 **Master HEAD:** `4820319` (Mapping ADR merge)  
 **Verification (last recorded):** StructuredFieldStencilOp production + hardening tests; E-11B regressions green  
-**Next coding task:** Phase **M-1** generic natives (not mapping runtime / not first-slice session wiring)
+**Next coding task:** Phase **M-2** cadence scheduler + dirty macro-region skip (not mapping runtime / not first-slice session wiring)
 
 ---
 
@@ -27,9 +27,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed. FlatStarResourceFlow remains the accepted bounded production posture. `use_accumulator_resource_flow` **default false**. Generic semantic-free WGSL allowed (V7.6); no new AccumulatorRole variants; no CPU fallback; `simthing-sim` remains arena-ignorant.
 
-**V7.6 StructuredFieldStencilOp:** **Live, opt-in, hardened, inert by default** — generic GPU primitive in `simthing-gpu`. Not wired into default production pass graph. Mapping ADR approved (V7.7); Phase M generic natives are next; production mapping runtime remains gated.
+**V7.6 StructuredFieldStencilOp:** **Live, opt-in, hardened, inert by default** — generic GPU primitive in `simthing-gpu`. Not wired into default production pass graph. Phase M-1 landed: generic execution API + column-aware reduction convenience; production mapping runtime remains gated.
 
-**Mapping (Sparse RegionCell):** **ADR approved (architecture)** — see [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md), surfaced in [`design_v7_7.md`](../design_v7_7.md). Docs cleanup completed after ADR approval: superseded mapping/SEAD sandbox source preserves, candidate notes, revert reports, and full logs moved to `docs/workshop/archive/` and `docs/tests/archive/`. Authoritative mapping guidance is the ADR + V7.7 + invariants. V7.6 StructuredFieldStencilOp remains live, opt-in, hardened, and inert by default. Mapping runtime remains gated; next coding task is Phase M-1 generic natives, not first-slice session wiring.
+**Mapping (Sparse RegionCell):** **ADR approved (architecture)** — see [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md), surfaced in [`design_v7_7.md`](../design_v7_7.md). Phase M-1 landed: generic `StructuredFieldStencilOp::execute_configured` and column-aware `SlotRange` Sum helper; no production mapping runtime or pass graph wiring. StructuredFieldStencilOp remains live, opt-in, hardened, and inert by default. Mapping runtime remains gated; next coding task is Phase M-2 cadence scheduler + dirty macro-region skip, not first-slice session wiring.
 
 **Product-priority selection:** **Done** — [`product_priority_vertical_slice_selection.md`](../reviews/product_priority_vertical_slice_selection.md). **Recommendation F:** pause implementation; gather product requirements. No named scenario for D-2a, E-11B-5, spec/RON rebuild, or new vertical slice. Continued flat-star soak remains green.
 
