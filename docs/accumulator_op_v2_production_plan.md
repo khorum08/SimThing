@@ -1581,7 +1581,9 @@ new reduce-into convenience matches a manual `SlotRange` Sum bit-for-bit.
 ### PR M-2 — Cadence scheduler + dirty macro-region skip (driver, adopted opts) — **Done**
 
 **Model:** Composer 2.5  
-**Status:** **Landed** — generic `FieldScheduler`, cadence tiers, dirty skip, `execute_scheduled_stencil_regions` helper. Driver-only; no pass graph wiring.
+**Status:** **Landed** — generic `FieldScheduler`, cadence tiers, dirty skip. Driver-only; no pass graph wiring.
+
+**Update (M-2.1):** **Landed** — region identity `(FieldId, FieldRegionId)`; visitor-based scheduled execution orchestration; single-op guard prevents repeated same-buffer dispatch.
 
 **Scope (original):** A generic field scheduler in `simthing-driver` implementing the two
 **adopted** optimizations:

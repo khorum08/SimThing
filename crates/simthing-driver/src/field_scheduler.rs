@@ -13,7 +13,9 @@ use thiserror::Error;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FieldId(pub u32);
 
-/// Opaque macro-region identifier within a field.
+/// Opaque macro-region identifier local to a [`FieldId`].
+///
+/// Scheduler identity for a region is the pair `(FieldId, FieldRegionId)`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FieldRegionId(pub u32);
 
@@ -127,6 +129,14 @@ pub enum FieldSchedulerError {
     UnknownField(FieldId, FieldRegionId),
 }
 
+#[derive(Clone, Debug, Error, PartialEq)]
+pub enum ScheduledStencilExecutionError {
+    #[error("multiple scheduled regions ({count}) cannot share one StructuredFieldStencilOp")]
+    MultipleScheduledRegionsForSingleOp { count: u32 },
+    #[error(transparent)]
+    Stencil(#[from] StructuredFieldStencilError),
+}
+
 /// Generic cadence + dirty-region scheduler.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FieldScheduler {
@@ -167,11 +177,9 @@ impl FieldScheduler {
     }
 
     pub fn register_region(&mut self, region: FieldRegionRegistration) {
-        if let Some(existing) = self
-            .regions
-            .iter_mut()
-            .find(|r| r.region_id == region.region_id)
-        {
+        if let Some(existing) = self.regions.iter_mut().find(|r| {
+            r.field_id == region.field_id && r.region_id == region.region_id
+        }) {
             *existing = region;
         } else {
             self.regions.push(region);
@@ -321,30 +329,90 @@ pub fn count_cadence_due_ticks(
     Ok(due)
 }
 
-/// Execute scheduled regions using the M-1.1 no-readback default path.
-pub fn execute_scheduled_stencil_regions(
-    ctx: &GpuContext,
-    op: &StructuredFieldStencilOp,
+/// Invoke `visit` for each scheduled decision; skipped decisions are not visited.
+pub fn visit_scheduled_regions<F, E>(
     decisions: &[FieldDispatchDecision],
-    options: StructuredFieldExecutionOptions,
-) -> Result<ScheduledExecutionSummary, StructuredFieldStencilError> {
+    mut visit: F,
+) -> Result<Vec<(FieldId, FieldRegionId)>, E>
+where
+    F: FnMut(&FieldDispatchDecision) -> Result<(), E>,
+{
     let mut executed = Vec::new();
-    let mut reports = Vec::new();
     for decision in decisions {
         if matches!(decision.schedule, FieldDispatchSchedule::Skip) {
             continue;
         }
-        let report = op.execute_configured(ctx, options)?;
-        executed.push(decision.region_id);
-        reports.push(report);
+        visit(decision)?;
+        executed.push((decision.field_id, decision.region_id));
     }
-    Ok(ScheduledExecutionSummary { executed, reports })
+    Ok(executed)
+}
+
+/// Run caller-provided execution for each scheduled decision.
+///
+/// The scheduler does not map regions to GPU ops; the caller supplies execution
+/// behavior per `(FieldId, FieldRegionId)`.
+pub fn execute_scheduled_regions_with<F, E, T>(
+    decisions: &[FieldDispatchDecision],
+    mut execute_one: F,
+) -> Result<ScheduledRegionsExecutionSummary<T>, E>
+where
+    F: FnMut(&FieldDispatchDecision) -> Result<T, E>,
+{
+    let mut executed = Vec::new();
+    let mut results = Vec::new();
+    for decision in decisions {
+        if matches!(decision.schedule, FieldDispatchSchedule::Skip) {
+            continue;
+        }
+        results.push(execute_one(decision)?);
+        executed.push((decision.field_id, decision.region_id));
+    }
+    Ok(ScheduledRegionsExecutionSummary { executed, results })
+}
+
+/// Execute at most one scheduled region against a single `StructuredFieldStencilOp`.
+///
+/// Returns `None` when no region is scheduled. Errors when more than one scheduled
+/// region would advance the same op/buffer pair.
+pub fn execute_single_scheduled_stencil_region(
+    ctx: &GpuContext,
+    op: &StructuredFieldStencilOp,
+    decisions: &[FieldDispatchDecision],
+    options: StructuredFieldExecutionOptions,
+) -> Result<Option<ScheduledSingleStencilExecution>, ScheduledStencilExecutionError> {
+    let scheduled: Vec<_> = decisions
+        .iter()
+        .filter(|d| matches!(d.schedule, FieldDispatchSchedule::Dispatch))
+        .collect();
+    if scheduled.is_empty() {
+        return Ok(None);
+    }
+    if scheduled.len() > 1 {
+        return Err(ScheduledStencilExecutionError::MultipleScheduledRegionsForSingleOp {
+            count: scheduled.len() as u32,
+        });
+    }
+    let decision = scheduled[0];
+    let report = op.execute_configured(ctx, options)?;
+    Ok(Some(ScheduledSingleStencilExecution {
+        field_id: decision.field_id,
+        region_id: decision.region_id,
+        report,
+    }))
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ScheduledExecutionSummary {
-    pub executed: Vec<FieldRegionId>,
-    pub reports: Vec<StructuredFieldExecutionReport>,
+pub struct ScheduledRegionsExecutionSummary<T> {
+    pub executed: Vec<(FieldId, FieldRegionId)>,
+    pub results: Vec<T>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScheduledSingleStencilExecution {
+    pub field_id: FieldId,
+    pub region_id: FieldRegionId,
+    pub report: StructuredFieldExecutionReport,
 }
 
 #[cfg(test)]
@@ -381,6 +449,99 @@ mod unit_tests {
         assert_eq!(
             count_cadence_due_ticks(FieldCadence::OnEvent, ticks, &[5, 17, 42]).unwrap(),
             3
+        );
+    }
+
+    #[test]
+    fn region_identity_is_field_scoped() {
+        let mut scheduler = FieldScheduler::new();
+        scheduler.register_field(FieldScheduleState {
+            field_id: FieldId(1),
+            cadence: FieldCadence::EveryTick,
+            event_pending: false,
+        });
+        scheduler.register_field(FieldScheduleState {
+            field_id: FieldId(2),
+            cadence: FieldCadence::EveryTick,
+            event_pending: false,
+        });
+        scheduler.register_region(FieldRegionRegistration {
+            region_id: FieldRegionId(0),
+            field_id: FieldId(1),
+            dirty: DirtyRegionState::default(),
+        });
+        scheduler.register_region(FieldRegionRegistration {
+            region_id: FieldRegionId(0),
+            field_id: FieldId(2),
+            dirty: DirtyRegionState::default(),
+        });
+        assert_eq!(scheduler.regions().len(), 2);
+        let (decisions, _) = scheduler.decide_tick(0).unwrap();
+        assert_eq!(decisions.len(), 2);
+    }
+
+    #[test]
+    fn same_field_region_replacement_updates_state() {
+        let mut scheduler = FieldScheduler::new();
+        scheduler.register_field(FieldScheduleState {
+            field_id: FieldId(1),
+            cadence: FieldCadence::EveryN { n: 100 },
+            event_pending: false,
+        });
+        scheduler.register_region(FieldRegionRegistration {
+            region_id: FieldRegionId(0),
+            field_id: FieldId(1),
+            dirty: DirtyRegionState::default(),
+        });
+        scheduler.register_region(FieldRegionRegistration {
+            region_id: FieldRegionId(0),
+            field_id: FieldId(1),
+            dirty: DirtyRegionState {
+                dirty_source_present: true,
+                ..Default::default()
+            },
+        });
+        assert_eq!(scheduler.regions().len(), 1);
+        let (decisions, _) = scheduler.decide_tick(1).unwrap();
+        assert_eq!(decisions.len(), 1);
+        assert!(matches!(
+            decisions[0].schedule,
+            FieldDispatchSchedule::Dispatch
+        ));
+    }
+
+    #[test]
+    fn visit_scheduled_regions_skips_and_counts() {
+        let decisions = [
+            FieldDispatchDecision {
+                region_id: FieldRegionId(1),
+                field_id: FieldId(0),
+                schedule: FieldDispatchSchedule::Skip,
+                reasons: vec![],
+            },
+            FieldDispatchDecision {
+                region_id: FieldRegionId(2),
+                field_id: FieldId(0),
+                schedule: FieldDispatchSchedule::Dispatch,
+                reasons: vec![FieldDispatchReason::DirtySource],
+            },
+            FieldDispatchDecision {
+                region_id: FieldRegionId(3),
+                field_id: FieldId(1),
+                schedule: FieldDispatchSchedule::Dispatch,
+                reasons: vec![FieldDispatchReason::CadenceDue],
+            },
+        ];
+        let mut calls = 0u32;
+        let executed = visit_scheduled_regions(&decisions, |_d| {
+            calls += 1;
+            Ok::<(), ()>(())
+        })
+        .unwrap();
+        assert_eq!(calls, 2);
+        assert_eq!(
+            executed,
+            vec![(FieldId(0), FieldRegionId(2)), (FieldId(1), FieldRegionId(3))]
         );
     }
 }
