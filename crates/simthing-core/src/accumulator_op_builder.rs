@@ -25,6 +25,8 @@ pub enum AccumulatorOpBuilderError {
     NonPositiveUnitCost { slot: u32, col: u32 },
     #[error("conjunctive recipe throttle_hint_max_per_tick must be > 0")]
     InvalidThrottleHintMaxPerTick,
+    #[error("column-aware reduction child slot range must have count > 0")]
+    EmptyChildSlotRange,
 }
 
 /// One input channel for a conjunctive production recipe (E-3).
@@ -367,6 +369,73 @@ pub fn refresh_emit_on_threshold_debt_band(
     }
 }
 
+/// Combine function supported by [`column_aware_reduction_op`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ColumnAwareReductionCombine {
+    Sum,
+}
+
+/// Generic column-aware child→parent reduction registration (Layer 2 convenience).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ColumnAwareReductionSpec {
+    pub child_slot_start: u32,
+    pub child_slot_count: u32,
+    pub child_col: u32,
+    pub parent_slot: u32,
+    pub parent_col: u32,
+    pub combine: ColumnAwareReductionCombine,
+    pub order_band: u32,
+}
+
+/// Build a [`AccumulatorOp`] that reduces a child slot range into a parent column.
+///
+/// M-1 supports `Sum` only — a thin wrapper over existing `SlotRange` Sum semantics.
+pub fn column_aware_reduction_op(
+    spec: ColumnAwareReductionSpec,
+) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
+    if spec.child_slot_count == 0 {
+        return Err(AccumulatorOpBuilderError::EmptyChildSlotRange);
+    }
+    let combine = match spec.combine {
+        ColumnAwareReductionCombine::Sum => CombineFn::Sum,
+    };
+    Ok(AccumulatorOp {
+        source: SourceSpec::SlotRange {
+            start: spec.child_slot_start,
+            count: spec.child_slot_count,
+            col: spec.child_col,
+        },
+        combine,
+        gate: GateSpec::OrderBand(spec.order_band),
+        scale: ScaleSpec::Identity,
+        consume: ConsumeMode::ResetTarget,
+        targets: vec![(spec.parent_slot, spec.parent_col)],
+    })
+}
+
+/// Manual `SlotRange` Sum registration equivalent to [`column_aware_reduction_op`].
+pub fn manual_slot_range_sum_op(
+    child_slot_start: u32,
+    child_slot_count: u32,
+    child_col: u32,
+    parent_slot: u32,
+    parent_col: u32,
+    order_band: u32,
+) -> AccumulatorOp {
+    AccumulatorOp {
+        source: SourceSpec::SlotRange {
+            start: child_slot_start,
+            count: child_slot_count,
+            col: child_col,
+        },
+        combine: CombineFn::Sum,
+        gate: GateSpec::OrderBand(order_band),
+        scale: ScaleSpec::Identity,
+        consume: ConsumeMode::ResetTarget,
+        targets: vec![(parent_slot, parent_col)],
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -486,5 +555,22 @@ mod tests {
         let next = refresh_emit_on_threshold_debt_band(&reg, 8, 20.0);
         assert_eq!(next.threshold, debt_band_next_threshold(8, 20.0));
         assert_eq!(next.event_kind, reg.event_kind);
+    }
+
+    #[test]
+    fn column_aware_reduction_matches_manual_slot_range_sum() {
+        let spec = ColumnAwareReductionSpec {
+            child_slot_start: 2,
+            child_slot_count: 4,
+            child_col: 1,
+            parent_slot: 50,
+            parent_col: 3,
+            combine: ColumnAwareReductionCombine::Sum,
+            order_band: 0,
+        };
+        let helper = column_aware_reduction_op(spec).unwrap();
+        let manual = manual_slot_range_sum_op(2, 4, 1, 50, 3, 0);
+        assert_eq!(helper, manual);
+        helper.validate().unwrap();
     }
 }

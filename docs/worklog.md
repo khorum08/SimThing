@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-28 — Phase M-1 generic execution API
+
+- Phase M-1 landed: generic `StructuredFieldStencilOp::execute_configured` execution API with optional debug stats; `ColumnAwareReductionSpec` / `column_aware_reduction_op` convenience over existing `SlotRange` Sum in `simthing-core`.
+- StructuredFieldStencilOp remains live, opt-in, hardened, and inert by default. No production mapping runtime; no production pass graph wiring; no map/faction/AI semantics in `simthing-sim` or WGSL.
+- Next coding task: **Phase M-2** cadence scheduler + dirty macro-region skip.
+
+**Verification:** [`phase_m1_regionfield_execution_api_test_results.md`](tests/phase_m1_regionfield_execution_api_test_results.md)
+
+---
+
 ## 2026-05-28 — Docs cleanup pre-Phase M + Mapping ADR approved
 
 - Approved Mapping ADR at architecture level — [`mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md), surfaced in [`design_v7_7.md`](design_v7_7.md), invariants updated (PR #217).

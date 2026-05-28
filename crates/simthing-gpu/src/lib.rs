@@ -22,7 +22,9 @@ pub mod world_state;
 
 pub use structured_field_stencil::{
     cpu_horizon, cpu_stencil_step, params_from_config, FieldStencilParamsGpu,
-    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig, StructuredFieldStencilError,
+    StructuredFieldExecutionOptions, StructuredFieldExecutionReport,
+    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
+    StructuredFieldStencilDebugReport, StructuredFieldStencilError,
     StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
     StructuredFieldStencilSourcePolicy, DEFAULT_HORIZON_CAP, EXTENDED_HORIZON_CAP,
 };

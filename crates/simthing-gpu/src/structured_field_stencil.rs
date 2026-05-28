@@ -573,6 +573,140 @@ impl StructuredFieldStencilOp {
     ) -> Result<(Vec<f32>, u32), StructuredFieldStencilError> {
         self.run_ping_pong(ctx, self.config.horizon)
     }
+
+    /// Execute the configured structured field stencil and return a generic report.
+    ///
+    /// Uses [`Self::run_configured_horizon`] unless `options.steps` is set; optional
+    /// step overrides must not exceed `config.horizon`.
+    pub fn execute_configured(
+        &self,
+        ctx: &GpuContext,
+        options: StructuredFieldExecutionOptions,
+    ) -> Result<StructuredFieldExecutionReport, StructuredFieldStencilError> {
+        let steps = options.steps.unwrap_or(self.config.horizon);
+        if let Some(requested) = options.steps {
+            if requested > self.config.horizon {
+                return Err(StructuredFieldStencilError::ExecutionHorizonExceedsConfig {
+                    steps: requested,
+                    horizon: self.config.horizon,
+                });
+            }
+        }
+        self.validate_execution_steps(steps)?;
+        let dispatches = self.dispatch_ping_pong(ctx, steps)?;
+        let values = self.readback_after_ping_pong(ctx, steps);
+        let mut debug =
+            StructuredFieldStencilDebugReport::from_run(&self.config, steps, dispatches);
+        if options.collect_field_stats {
+            debug.apply_field_stats(&values, &self.config);
+            debug.active_mask_ratio = Some(match self.config.mask_mode {
+                StructuredFieldStencilMaskMode::All => 1.0,
+                StructuredFieldStencilMaskMode::ActiveOnlyExperimentalNoHalo => {
+                    self.readback_active_mask_ratio(ctx)?
+                }
+            });
+        }
+        Ok(StructuredFieldExecutionReport { values, debug })
+    }
+
+    fn readback_active_mask_ratio(&self, ctx: &GpuContext) -> Result<f32, StructuredFieldStencilError> {
+        let device = &ctx.device;
+        let queue = &ctx.queue;
+        let cells = self.config.cells() as usize;
+        let bytes = (cells * std::mem::size_of::<u32>()) as u64;
+        let staging = device.create_buffer(&BufferDescriptor {
+            label: Some("structured_field_stencil_mask_readback"),
+            size: bytes,
+            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("structured_field_stencil_mask_readback_enc"),
+        });
+        encoder.copy_buffer_to_buffer(&self.mask_buffer, 0, &staging, 0, bytes);
+        queue.submit(Some(encoder.finish()));
+        let slice = staging.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        device.poll(wgpu::Maintain::Wait);
+        let data = slice.get_mapped_range();
+        let mask: &[u32] = bytemuck::cast_slice(&data);
+        let active = mask.iter().filter(|&&v| v != 0).count();
+        drop(data);
+        staging.unmap();
+        Ok(active as f32 / cells as f32)
+    }
+}
+
+/// Options for [`StructuredFieldStencilOp::execute_configured`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct StructuredFieldExecutionOptions {
+    /// When true, read back target-column max/L1 and active-mask ratio.
+    pub collect_field_stats: bool,
+    /// Optional step override. Must be `<= config.horizon` when set.
+    pub steps: Option<u32>,
+}
+
+/// Result of a configured structured-field execution.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StructuredFieldExecutionReport {
+    pub values: Vec<f32>,
+    pub debug: StructuredFieldStencilDebugReport,
+}
+
+/// Generic debug/observability surface for structured field stencil runs.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StructuredFieldStencilDebugReport {
+    pub dispatch_count: u32,
+    pub configured_horizon: u32,
+    pub executed_horizon: u32,
+    pub operator: StructuredFieldStencilOperator,
+    pub source_policy: StructuredFieldStencilSourcePolicy,
+    pub boundary_mode: StructuredFieldStencilBoundaryMode,
+    pub mask_mode: StructuredFieldStencilMaskMode,
+    pub cell_count: u32,
+    pub values_len: usize,
+    pub field_max: Option<f32>,
+    pub field_l1_norm: Option<f32>,
+    pub active_mask_ratio: Option<f32>,
+}
+
+impl StructuredFieldStencilDebugReport {
+    fn from_run(
+        config: &StructuredFieldStencilConfig,
+        executed_horizon: u32,
+        dispatch_count: u32,
+    ) -> Self {
+        Self {
+            dispatch_count,
+            configured_horizon: config.horizon,
+            executed_horizon,
+            operator: config.operator,
+            source_policy: config.source_policy,
+            boundary_mode: config.boundary_mode,
+            mask_mode: config.mask_mode,
+            cell_count: config.cells(),
+            values_len: config.values_len(),
+            field_max: None,
+            field_l1_norm: None,
+            active_mask_ratio: None,
+        }
+    }
+
+    fn apply_field_stats(&mut self, values: &[f32], config: &StructuredFieldStencilConfig) {
+        let col = config.target_col;
+        let nd = config.n_dims;
+        let mut max_v = 0.0f32;
+        let mut l1 = 0.0f32;
+        for slot in 0..config.cells() {
+            let v = values[(slot * nd + col) as usize];
+            if v.is_finite() {
+                max_v = max_v.max(v);
+                l1 += v.abs();
+            }
+        }
+        self.field_max = Some(max_v);
+        self.field_l1_norm = Some(l1);
+    }
 }
 
 /// CPU oracle for parity tests (normalized / source-capped / directed modes).
@@ -710,5 +844,30 @@ mod unit_tests {
             err,
             StructuredFieldStencilError::ExecutionHorizonExceedsConfig { steps: 2, horizon: 1 }
         );
+    }
+
+    #[test]
+    fn debug_report_skips_stats_by_default() {
+        let config = base_config();
+        let report = StructuredFieldStencilDebugReport::from_run(&config, 1, 1);
+        assert_eq!(report.configured_horizon, 1);
+        assert_eq!(report.executed_horizon, 1);
+        assert_eq!(report.dispatch_count, 1);
+        assert!(report.field_max.is_none());
+        assert!(report.field_l1_norm.is_none());
+        assert!(report.active_mask_ratio.is_none());
+    }
+
+    #[test]
+    fn debug_report_field_stats_from_values() {
+        let config = base_config();
+        let mut report = StructuredFieldStencilDebugReport::from_run(&config, 1, 1);
+        let mut values = vec![0.0f32; config.values_len()];
+        values[4] = 1.0;
+        values[8] = 2.0;
+        values[12] = -3.0;
+        report.apply_field_stats(&values, &config);
+        assert_eq!(report.field_max, Some(2.0));
+        assert_eq!(report.field_l1_norm, Some(6.0));
     }
 }
