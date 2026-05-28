@@ -1,0 +1,31 @@
+# Mapping Current Guidance
+
+Authoritative decision:
+
+- [`../adr/mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md)
+
+Constitutional surfacing:
+
+- [`../design_v7_7.md`](../design_v7_7.md)
+- [`../design_v7_6.md`](../design_v7_6.md)
+- [`../invariants.md`](../invariants.md) — Mapping (Sparse RegionCell) rows
+
+Active read order:
+
+1. `docs/invariants.md`
+2. `docs/adr/mapping_sparse_regioncell.md`
+3. `docs/design_v7_6.md`
+4. `docs/design_v7_7.md`
+5. Cited `docs/tests/` evidence before changing any classification
+
+Current next work:
+
+- Phase M generic natives in [`../accumulator_op_v2_production_plan.md`](../accumulator_op_v2_production_plan.md)
+- Next implementation task: **M-1** RegionField execution API on `StructuredFieldStencilOp`
+
+Historical sandbox source, candidate notes, revert reports, and full logs live under
+[`archive/mapping/`](archive/mapping/) and [`../tests/archive/`](../tests/archive/).
+They remain valid evidence but are not active guidance.
+
+Do not implement production mapping runtime until first-slice session wiring is separately
+gated after Phase M natives land.

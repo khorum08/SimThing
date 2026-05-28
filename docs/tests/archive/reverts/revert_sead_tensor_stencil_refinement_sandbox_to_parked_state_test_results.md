@@ -42,12 +42,12 @@
 
 ## Preserved (unchanged by revert)
 
-- `docs/workshop/sead_tensor_stencil_refinement_sandbox_code_preserve.rs`
-- `docs/workshop/sead_tensor_stencil_refinement_prototype.wgsl`
-- `docs/workshop/sead_tensor_stencil_refinement_notes.md`
-- `docs/workshop/sead_tensor_stencil_*_refinement.wgsl` variant copies
+- `docs/workshop/archive/sead/sead_tensor_stencil_refinement_sandbox_code_preserve.rs`
+- `docs/workshop/archive/sead/sead_tensor_stencil_refinement_prototype.wgsl`
+- `docs/workshop/archive/sead/sead_tensor_stencil_refinement_notes.md`
+- `docs/workshop/archive/sead/sead_tensor_stencil_*_refinement.wgsl` variant copies
 - `docs/tests/sead_tensor_stencil_refinement_sandbox_test_results.md`
-- `docs/tests/sead_tensor_stencil_refinement_sandbox_full.log`
+- `docs/tests/archive/sead/sead_tensor_stencil_refinement_sandbox_full.log`
 - Prior SEAD probe preserved artifacts
 - E-11B-1 materialization + RON smoke + GPU parity + fission/gap tests
 

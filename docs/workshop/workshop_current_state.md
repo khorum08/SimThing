@@ -3,11 +3,13 @@
 **Purpose:** Single synthesis of **active workshop docs**, **production migration state**,
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
-**Last updated:** 2026-05-19  
-**Design version:** **V7.6** — see [`design_v7_6.md`](../design_v7_6.md)  
-**Master HEAD:** `81647c5` (post guardrail hardening)  
+**Last updated:** 2026-05-28  
+**Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
+**Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
+**Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
+**Master HEAD:** `4820319` (Mapping ADR merge)  
 **Verification (last recorded):** StructuredFieldStencilOp production + hardening tests; E-11B regressions green  
-**Parked:** V7.6 StructuredFieldStencilOp implementation pending **Mapping ADR**
+**Next coding task:** Phase **M-1** generic natives (not mapping runtime / not first-slice session wiring)
 
 ---
 
@@ -18,14 +20,16 @@ Two parallel tracks:
 | Track | Status | Canonical docs |
 |-------|--------|----------------|
 | **V6 spec / driver / session** | **Parked complete** — PRs 1–11, Opus P0 (O2/B3/I1) shipped | `design_v6.5.md`, `simthing_spec_progress_log.md` |
-| **AccumulatorOp v2 / design v7** | **Active (V7.6), parked pending Mapping ADR** — Phases A–B done; C-1–C-8 landed; StructuredFieldStencilOp live generic primitive (opt-in; hardened) | `design_v7.md`, `design_v7_6.md`, `accumulator_op_v2_production_plan.md` |
+| **AccumulatorOp v2 / design v7** | **Active (V7.7)** — Mapping ADR approved; Phase M natives unlocked; no mapping runtime | `design_v7.md`, `design_v7_6.md`, `design_v7_7.md`, `adr/mapping_sparse_regioncell.md`, `accumulator_op_v2_production_plan.md` |
 
 **Production direction:** AccumulatorOp v2 is the GPU execution path.
 Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy overlay is deleted (S-3). Legacy threshold is deleted (S-6). Legacy velocity is deleted (S-5). Legacy intent is deleted (S-1). Snapshot is the only retained non-Accumulator operation.
 
 **E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed. FlatStarResourceFlow remains the accepted bounded production posture. `use_accumulator_resource_flow` **default false**. Generic semantic-free WGSL allowed (V7.6); no new AccumulatorRole variants; no CPU fallback; `simthing-sim` remains arena-ignorant.
 
-**V7.6 StructuredFieldStencilOp:** **Live, parked** — generic GPU primitive in `simthing-gpu` (opt-in library API; not default pass graph). Promotion and guardrail hardening complete. Ping-pong buffers, horizon cap H≤8 default, execution steps capped to configured horizon, caller-managed source policy, clamp-boundary parity, active mask provisional (`ActiveOnlyExperimentalNoHalo`). Column-aware parent EML bridge tested. **Implementation parked pending Mapping ADR** — next work defines RegionCell fields, source policy, halo/frontier semantics, cadence tiers, and column-aware parent bindings; not runtime mapping implementation. No mapping runtime landed.
+**V7.6 StructuredFieldStencilOp:** **Live, opt-in, hardened, inert by default** — generic GPU primitive in `simthing-gpu`. Not wired into default production pass graph. Mapping ADR approved (V7.7); Phase M generic natives are next; production mapping runtime remains gated.
+
+**Mapping (Sparse RegionCell):** **ADR approved (architecture)** — see [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md), surfaced in [`design_v7_7.md`](../design_v7_7.md). Docs cleanup completed after ADR approval: superseded mapping/SEAD sandbox source preserves, candidate notes, revert reports, and full logs moved to `docs/workshop/archive/` and `docs/tests/archive/`. Authoritative mapping guidance is the ADR + V7.7 + invariants. V7.6 StructuredFieldStencilOp remains live, opt-in, hardened, and inert by default. Mapping runtime remains gated; next coding task is Phase M-1 generic natives, not first-slice session wiring.
 
 **Product-priority selection:** **Done** — [`product_priority_vertical_slice_selection.md`](../reviews/product_priority_vertical_slice_selection.md). **Recommendation F:** pause implementation; gather product requirements. No named scenario for D-2a, E-11B-5, spec/RON rebuild, or new vertical slice. Continued flat-star soak remains green.
 
@@ -35,7 +39,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **RegionCell field-intelligence sandbox:** **Reverted** — PR #197 sandbox removed after external concept validation. Implementation remains parked after E-11B-1 and E-11B RON smoke. Static deep hierarchy authoring via `parent_subtree_root_id` remains landed. The sparse RegionCell field-intelligence sandbox was reverted after validating the concept externally; no sandbox test/prototype remains in the production repo. Mapping/location architecture remains provisional. Do not implement mapping/location runtime until the mapping doc is ready. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. `simthing-sim` remains arena-ignorant and spec-free.
 
-**SEAD field-intelligence sandbox:** **Reverted** — PR #200 probe merged then reverted to parked state. SEAD field-intelligence sandbox completed and was reverted to parked state. The sandbox preserved its source at `docs/workshop/sead_sandbox_code_preserve.rs` and its decision-gate results at `docs/tests/sead_field_intelligence_sandbox_test_results.md`. No sandbox test/prototype remains in the production test suite. Overall probe verdict: **PARTIAL**. Mapping/location architecture remains provisional. Implementation remains parked until the mapping doc is ready or product names a concrete non-mapping scenario. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution.
+**SEAD field-intelligence sandbox:** **Reverted** — PR #200 probe merged then reverted to parked state. SEAD field-intelligence sandbox completed and was reverted to parked state. The sandbox preserved its source at `docs/workshop/archive/sead/sead_sandbox_code_preserve.rs` and its decision-gate results at `docs/tests/sead_field_intelligence_sandbox_test_results.md`. No sandbox test/prototype remains in the production test suite. Overall probe verdict: **PARTIAL**. Evidence informs the approved Mapping ADR. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution.
 
 **SEAD strategic horizon / velocity / PF-skip sandbox:** **Reverted** — PR #202 probe merged then reverted to parked state. SEAD strategic horizon / velocity / PF-skip feasibility sandbox completed and was reverted to parked state. The sandbox source and decision-gate results are preserved in `docs/workshop` and `docs/tests`. No sandbox test/prototype remains in the production test suite. Overall probe verdict: **PARTIAL**. Mapping/location architecture remains provisional. Implementation remains parked until the mapping doc is ready or product names a concrete non-mapping scenario. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution.
 
@@ -45,9 +49,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **SEAD tensor/stencil WGSL refinement sandbox:** **Reverted** — PR #208 probe merged then reverted to parked state. SEAD tensor/stencil WGSL refinement sandbox completed and was reverted to parked state. The sandbox source, WGSL prototype(s), notes, and decision-gate results are preserved in `docs/workshop` and `docs/tests`. No sandbox test/prototype remains in the production runtime/test suite. Overall probe verdict: **PARTIAL**. Mapping/location architecture remains provisional. Implementation remains parked until the mapping doc is ready or product names a concrete non-mapping scenario. No mapping runtime, Scatter/Gather, wavefront propagation, dynamic nested enrollment, D-2a, E-11B-5, production WGSL, new AccumulatorRole variants, CPU fallback, slot compaction, or simthing-sim arena awareness landed. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution.
 
-**Mapping optimization remedial sandbox:** **Reverted** — PR #215 probe merged then reverted to parked state. Mapping optimization remedial sandbox completed and was reverted to parked state. The sandbox source, candidate notes, and decision-gate results are preserved in `docs/workshop` and `docs/tests`. No sandbox test/prototype remains in the production test suite. Overall probe verdict: **PARTIAL+**. Combined stack with G=H gutter matches standalone oracle; behavioral source policy DEFERRED; VRAM tax documented. V7.6 StructuredFieldStencilOp remains live, opt-in, hardened, and inert by default. No mapping runtime landed. No production pass graph wiring landed. Implementation remains parked pending Mapping ADR.
+**Mapping optimization remedial sandbox:** **Reverted** — PR #215. Evidence archived under `docs/workshop/archive/mapping/` and `docs/tests/archive/`. Decision-gate summary: [`mapping_optimization_remedial_sandbox_test_results.md`](../tests/mapping_optimization_remedial_sandbox_test_results.md). Verdict **PARTIAL+** — incorporated into approved Mapping ADR.
 
-**Mapping optimization toolkit sandbox:** **Reverted** — PR #213 probe merged then reverted to parked state. Mapping optimization toolkit sandbox completed and was reverted to parked state. The sandbox source, candidate notes, and decision-gate results are preserved in `docs/workshop` and `docs/tests`. No sandbox test/prototype remains in the production test suite. Overall probe verdict: **PARTIAL**. Atlas batching dispatch speedup strong; gutter/isolation ADR required; cadence tiers and dirty macro-region skip adopt-ready; H-hop halo required for active masks. V7.6 StructuredFieldStencilOp remains live, opt-in, hardened, and inert by default. No mapping runtime landed. No production pass graph wiring landed. Implementation remains parked pending Mapping ADR.
+**Mapping optimization toolkit sandbox:** **Reverted** — PR #213. Evidence archived under `docs/workshop/archive/mapping/` and `docs/tests/archive/`. Decision-gate summary: [`mapping_optimization_toolkit_sandbox_test_results.md`](../tests/mapping_optimization_toolkit_sandbox_test_results.md). Verdict **PARTIAL** — incorporated into approved Mapping ADR.
 
 **E-2B status:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).** Dynamic fission enrollment via arena-root sibling append ([memo](../reviews/e2b5_dynamic_fission_enrollment_readiness.md), soak PR #178). `use_accumulator_resource_flow` **default false**.
 

@@ -54,5 +54,5 @@ Docs-only parking pass. No production code changes.
 
 ## Notes
 
-- Evidence retained: `v7_6_structured_field_stencil_promotion_test_results.md`, `v7_6_structured_field_stencil_promotion_full.log`, `v7_6_structured_field_stencil_guardrail_hardening_test_results.md`.
-- Next work item: **Mapping ADR** (RegionCell fields, source policy, active-mask halo/frontier semantics, cadence tiers, column-aware parent bindings).
+- Evidence retained: [`archive/v7_6/v7_6_structured_field_stencil_promotion_test_results.md`](archive/v7_6/v7_6_structured_field_stencil_promotion_test_results.md), [`archive/v7_6/v7_6_structured_field_stencil_promotion_full.log`](archive/v7_6/v7_6_structured_field_stencil_promotion_full.log), [`v7_6_structured_field_stencil_guardrail_hardening_test_results.md`](v7_6_structured_field_stencil_guardrail_hardening_test_results.md).
+- Next work item: **Phase M-1** (RegionField execution API on `StructuredFieldStencilOp`); mapping runtime remains gated.

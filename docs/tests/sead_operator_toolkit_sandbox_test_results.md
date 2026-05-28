@@ -18,7 +18,7 @@
 |---------|--------|
 | `cargo test -p simthing-driver --test sead_operator_toolkit_sandbox -- --nocapture --test-threads=1` | **PASS** — 11/11 |
 
-**Full log:** [`sead_operator_toolkit_sandbox_full.log`](sead_operator_toolkit_sandbox_full.log)
+**Full log:** [`archive/sead/sead_operator_toolkit_sandbox_full.log`](archive/sead/sead_operator_toolkit_sandbox_full.log)
 
 ---
 
@@ -179,7 +179,7 @@ Cost projected_30k_dirty_adjusted=3236.6ms budget=OVER BUDGET
 
 ## Preserved artifacts
 
-- Source: [`docs/workshop/sead_operator_toolkit_sandbox_code_preserve.rs`](../workshop/sead_operator_toolkit_sandbox_code_preserve.rs)
+- Source: [`docs/workshop/archive/sead/sead_operator_toolkit_sandbox_code_preserve.rs`](../workshop/archive/sead/sead_operator_toolkit_sandbox_code_preserve.rs)
 - This report + full log
 
 Production test file removed on revert to parked state.

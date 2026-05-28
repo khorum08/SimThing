@@ -35,14 +35,14 @@
 
 ## Preserved (restored after revert)
 
-- `docs/workshop/mapping_optimization_toolkit_sandbox_code_preserve.rs`
-- `docs/workshop/mapping_optimization_toolkit_candidate_notes.md`
-- `docs/workshop/mapping_atlas_batching_candidate.rs`
-- `docs/workshop/mapping_cadence_tiers_candidate.rs`
-- `docs/workshop/mapping_dirty_macro_region_candidate.rs`
-- `docs/workshop/mapping_active_frontier_halo_candidate.rs`
+- `docs/workshop/archive/mapping/mapping_optimization_toolkit_sandbox_code_preserve.rs`
+- `docs/workshop/archive/mapping/mapping_optimization_toolkit_candidate_notes.md`
+- `docs/workshop/archive/mapping/mapping_atlas_batching_candidate.rs`
+- `docs/workshop/archive/mapping/mapping_cadence_tiers_candidate.rs`
+- `docs/workshop/archive/mapping/mapping_dirty_macro_region_candidate.rs`
+- `docs/workshop/archive/mapping/mapping_active_frontier_halo_candidate.rs`
 - `docs/tests/mapping_optimization_toolkit_sandbox_test_results.md`
-- `docs/tests/mapping_optimization_toolkit_sandbox_full.log`
+- `docs/tests/archive/mapping/mapping_optimization_toolkit_sandbox_full.log`
 
 ---
 

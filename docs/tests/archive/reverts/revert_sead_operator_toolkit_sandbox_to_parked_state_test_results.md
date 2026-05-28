@@ -40,9 +40,9 @@
 
 ## Preserved (unchanged by revert)
 
-- `docs/workshop/sead_operator_toolkit_sandbox_code_preserve.rs`
+- `docs/workshop/archive/sead/sead_operator_toolkit_sandbox_code_preserve.rs`
 - `docs/tests/sead_operator_toolkit_sandbox_test_results.md`
-- `docs/tests/sead_operator_toolkit_sandbox_full.log`
+- `docs/tests/archive/sead/sead_operator_toolkit_sandbox_full.log`
 - Prior SEAD probe preserved artifacts (field-intelligence, strategic horizon)
 - E-11B-1 materialization + RON smoke + GPU parity + fission/gap tests
 

@@ -18,7 +18,7 @@
 |---------|--------|
 | `cargo test -p simthing-driver --test sead_tensor_stencil_wgsl_sandbox -- --nocapture --test-threads=1` | **PASS** — 10/10 |
 
-**Full log:** [`sead_tensor_stencil_wgsl_sandbox_full.log`](sead_tensor_stencil_wgsl_sandbox_full.log)
+**Full log:** [`archive/sead/sead_tensor_stencil_wgsl_sandbox_full.log`](archive/sead/sead_tensor_stencil_wgsl_sandbox_full.log)
 
 ---
 
@@ -145,10 +145,10 @@ Mask is expressible in prototype WGSL; measurable speedup at ~22% active cells o
 
 ## Preserved artifacts
 
-- Rust: [`docs/workshop/sead_tensor_stencil_wgsl_sandbox_code_preserve.rs`](../workshop/sead_tensor_stencil_wgsl_sandbox_code_preserve.rs)
-- WGSL: [`docs/workshop/sead_tensor_stencil_prototype.wgsl`](../workshop/sead_tensor_stencil_prototype.wgsl)
-- Variant copies: `sead_tensor_stencil_*_prototype.wgsl` under `docs/workshop/`
-- Notes: [`docs/workshop/sead_tensor_stencil_prototype_notes.md`](../workshop/sead_tensor_stencil_prototype_notes.md)
+- Rust: [`docs/workshop/archive/sead/sead_tensor_stencil_wgsl_sandbox_code_preserve.rs`](../workshop/archive/sead/sead_tensor_stencil_wgsl_sandbox_code_preserve.rs)
+- WGSL: [`docs/workshop/archive/sead/sead_tensor_stencil_prototype.wgsl`](../workshop/archive/sead/sead_tensor_stencil_prototype.wgsl)
+- Variant copies: `sead_tensor_stencil_*_prototype.wgsl` under `docs/workshop/archive/sead/`
+- Notes: [`docs/workshop/archive/sead/sead_tensor_stencil_prototype_notes.md`](../workshop/archive/sead/sead_tensor_stencil_prototype_notes.md)
 - This report + full log
 
 Production shader/test/runtime files removed on revert to parked state.

@@ -18,7 +18,7 @@
 |---------|--------|
 | `cargo test -p simthing-driver --test mapping_optimization_toolkit_sandbox -- --nocapture --test-threads=1` | **PASS** — 11/11 |
 
-**Full log:** [`mapping_optimization_toolkit_sandbox_full.log`](mapping_optimization_toolkit_sandbox_full.log)
+**Full log:** [`archive/mapping/mapping_optimization_toolkit_sandbox_full.log`](archive/mapping/mapping_optimization_toolkit_sandbox_full.log)
 
 ---
 
@@ -120,12 +120,12 @@ All projections are rough linear extrapolations from local GPU timings.
 
 ## Preserved artifacts
 
-- [`mapping_optimization_toolkit_sandbox_code_preserve.rs`](../workshop/mapping_optimization_toolkit_sandbox_code_preserve.rs)
-- [`mapping_optimization_toolkit_candidate_notes.md`](../workshop/mapping_optimization_toolkit_candidate_notes.md)
-- [`mapping_atlas_batching_candidate.rs`](../workshop/mapping_atlas_batching_candidate.rs)
-- [`mapping_cadence_tiers_candidate.rs`](../workshop/mapping_cadence_tiers_candidate.rs)
-- [`mapping_dirty_macro_region_candidate.rs`](../workshop/mapping_dirty_macro_region_candidate.rs)
-- [`mapping_active_frontier_halo_candidate.rs`](../workshop/mapping_active_frontier_halo_candidate.rs)
+- [`mapping_optimization_toolkit_sandbox_code_preserve.rs`](../workshop/archive/mapping/mapping_optimization_toolkit_sandbox_code_preserve.rs)
+- [`mapping_optimization_toolkit_candidate_notes.md`](../workshop/archive/mapping/mapping_optimization_toolkit_candidate_notes.md)
+- [`mapping_atlas_batching_candidate.rs`](../workshop/archive/mapping/mapping_atlas_batching_candidate.rs)
+- [`mapping_cadence_tiers_candidate.rs`](../workshop/archive/mapping/mapping_cadence_tiers_candidate.rs)
+- [`mapping_dirty_macro_region_candidate.rs`](../workshop/archive/mapping/mapping_dirty_macro_region_candidate.rs)
+- [`mapping_active_frontier_halo_candidate.rs`](../workshop/archive/mapping/mapping_active_frontier_halo_candidate.rs)
 
 ---
 

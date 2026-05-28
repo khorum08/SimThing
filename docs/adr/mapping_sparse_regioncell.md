@@ -9,7 +9,7 @@
 **Evidence cited (all `docs/tests/`):**
 - `mapping_optimization_toolkit_sandbox_test_results.md`
 - `mapping_optimization_remedial_sandbox_test_results.md`
-- `mapping_optimization_remedial_candidate_notes.md` (`docs/workshop/`)
+- `mapping_optimization_remedial_candidate_notes.md` (`docs/workshop/archive/mapping/`)
 - `v7_6_structured_field_stencil_guardrail_hardening_test_results.md`
 - `v7_6_structured_field_stencil_parked_state_test_results.md`
 - SEAD series: `sead_field_intelligence_sandbox_test_results.md`, `sead_operator_toolkit_sandbox_test_results.md`, `sead_strategic_horizon_sandbox_test_results.md`, `sead_tensor_stencil_wgsl_sandbox_test_results.md`, `sead_tensor_stencil_refinement_sandbox_test_results.md`

@@ -17,7 +17,7 @@
 | `cargo test -p simthing-driver --test sead_field_intelligence_sandbox -- --nocapture` | **PASS** — 13/13 |
 | `git rev-parse HEAD` | PASS — `50dfcc0` (pre-sandbox) |
 
-**Full log:** [`sead_field_intelligence_sandbox_full.log`](sead_field_intelligence_sandbox_full.log)
+**Full log:** [`archive/sead/sead_field_intelligence_sandbox_full.log`](archive/sead/sead_field_intelligence_sandbox_full.log)
 
 ---
 
@@ -131,7 +131,7 @@ This sandbox establishes technical viability only.
 
 ## Preserved artifacts
 
-- Source: [`docs/workshop/sead_sandbox_code_preserve.rs`](../workshop/sead_sandbox_code_preserve.rs)
+- Source: [`docs/workshop/archive/sead/sead_sandbox_code_preserve.rs`](../workshop/archive/sead/sead_sandbox_code_preserve.rs)
 - This report + full log (this directory)
 
 Production test file `crates/simthing-driver/tests/sead_field_intelligence_sandbox.rs` is removed on revert to parked state.

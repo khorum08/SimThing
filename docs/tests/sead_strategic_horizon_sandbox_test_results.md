@@ -18,7 +18,7 @@
 |---------|--------|
 | `cargo test -p simthing-driver --test sead_strategic_horizon_sandbox -- --nocapture --test-threads=1` | **PASS** — 11/11 |
 
-**Full log:** [`sead_strategic_horizon_sandbox_full.log`](sead_strategic_horizon_sandbox_full.log)
+**Full log:** [`archive/sead/sead_strategic_horizon_sandbox_full.log`](archive/sead/sead_strategic_horizon_sandbox_full.log)
 
 ---
 
@@ -117,7 +117,7 @@ Test8 H=16 decay threat[4][4]=108565; H=16 no_decay threat[4][4]=191195
 
 ## Preserved artifacts
 
-- Source: [`docs/workshop/sead_strategic_horizon_sandbox_code_preserve.rs`](../workshop/sead_strategic_horizon_sandbox_code_preserve.rs)
+- Source: [`docs/workshop/archive/sead/sead_strategic_horizon_sandbox_code_preserve.rs`](../workshop/archive/sead/sead_strategic_horizon_sandbox_code_preserve.rs)
 - This report + full log
 
 Production test file removed on revert to parked state.

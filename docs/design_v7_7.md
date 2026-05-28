@@ -247,7 +247,7 @@ simthing-sim remains semantic-free.
 ```
 
 **Evidence preserved:** the cited `docs/tests/` mapping and SEAD probe results
-(see ADR header) and `docs/workshop/mapping_optimization_remedial_candidate_notes.md`.
+(see ADR header) and `docs/workshop/archive/mapping/mapping_optimization_remedial_candidate_notes.md`.
 
 ---
 
