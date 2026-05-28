@@ -24,7 +24,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **E-11 status:** **Done (flat-star vertical slice)** — PR #159. **E-11R** PR #160. **Burn-in scaffold** PR #161. **Burn-in scenarios** PR #162. **Controlled opt-in CI soak** landed. FlatStarResourceFlow remains the accepted bounded production posture. `use_accumulator_resource_flow` **default false**. Generic semantic-free WGSL allowed (V7.6); no new AccumulatorRole variants; no CPU fallback; `simthing-sim` remains arena-ignorant.
 
-**V7.6 StructuredFieldStencilOp:** **Live** — generic GPU primitive in `simthing-gpu` (opt-in library API; not default pass graph). Ping-pong buffers, horizon cap H≤8 default, source_capped_normalized operator, column-aware parent EML bridge tested. Mapping/location architecture remains provisional. No mapping runtime landed.
+**V7.6 StructuredFieldStencilOp:** **Live** — generic GPU primitive in `simthing-gpu` (opt-in library API; not default pass graph). Ping-pong buffers, horizon cap H≤8 default, execution steps capped to configured horizon, caller-managed source policy, clamp-boundary parity, active mask provisional. Column-aware parent EML bridge tested. Mapping/location architecture remains provisional. No mapping runtime landed.
 
 **Product-priority selection:** **Done** — [`product_priority_vertical_slice_selection.md`](../reviews/product_priority_vertical_slice_selection.md). **Recommendation F:** pause implementation; gather product requirements. No named scenario for D-2a, E-11B-5, spec/RON rebuild, or new vertical slice. Continued flat-star soak remains green.
 

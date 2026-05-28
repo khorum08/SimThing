@@ -106,9 +106,10 @@ Mapping may later **consume** it; it is not mapping runtime.
 | Default operators | `normalized_stencil`, `source_capped_normalized` |
 | Default tactical horizon | H ≤ 8 |
 | Extended horizon | H ≤ 16 only with `allow_extended_horizon` + source cap/decay contract |
-| Source policy | one-shot seed then zero (validated safe default) |
+| Source policy | caller-managed one-shot seed then zero (`CallerManagedOneShotSeedThenZero`; primitive does not auto-clear sources) |
 | Buffers | ping-pong required for H > 1 |
-| Active mask | optional; not fully production-authorized until halo/frontier clarified |
+| Execution horizon | `run_ping_pong` / `dispatch_ping_pong` reject steps above `config.horizon`; use `run_configured_horizon` for the configured tactical hop count |
+| Active mask | `ActiveOnlyExperimentalNoHalo` — provisional; not production-authorized until halo/frontier clarified |
 | Parent AI bridge | column-aware SlotRange reduction → parent columns → EvalEML on later order band |
 
 ---
@@ -131,3 +132,18 @@ New GPU/EML work is allowed when:
 - No Resource Flow default-on.
 - No simthing-sim arena awareness.
 - No semantic WGSL.
+
+---
+
+## 6. V7.6 guardrail hardening (2026-05-19)
+
+`StructuredFieldStencilOp` remains a **generic opt-in toolkit primitive**. The hardening pass:
+
+- enforces execution horizon constraints (`ExecutionHorizonExceedsConfig` when steps exceed configured horizon)
+- fixes source-cap test indexing and clarifies source policy as **caller-managed**
+- adds CPU/GPU clamp-boundary parity for `BoundaryMode::Clamp`
+- marks active-mask behavior **provisional** via `ActiveOnlyExperimentalNoHalo`
+
+No mapping runtime is implemented. No production pass graph is wired to
+`StructuredFieldStencilOp` by default. Resource Flow defaults remain unchanged.
+`simthing-sim` remains semantic-free.
