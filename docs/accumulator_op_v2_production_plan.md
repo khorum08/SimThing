@@ -1632,7 +1632,10 @@ bounded_field_update are admitted at designer/spec policy layer without new EML
 opcodes. MappingExecutionProfile remains default Disabled; spec presence alone
 does not enable execution. No production mapping runtime landed. No production
 pass graph wiring landed. No map/faction/AI semantics entered simthing-sim or
-WGSL. Next Phase M task: **Option 3 — product-facing first-slice scenario fixture** (single grid, no atlas) on the landed, accepted first-slice runtime. The M-4 atlas packer (Option A/Option 4) is **not** next; it waits for a named multi-theater scenario, an approved VRAM budget, and a §11-gate-passing M-4 PR.
+WGSL. The follow-on Option 3 product-facing first-slice scenario fixture is now
+landed (single grid, no atlas). The M-4 atlas packer (Option A/Option 4) is
+**not** next; it waits for a named multi-theater scenario, an approved VRAM
+budget, and a §11-gate-passing M-4 PR.
 
 **Test:** A rejection suite (one case per banned/over-cap condition) plus a
 round-trip that a valid bounded field compiles to generic stencil + reduction +
@@ -1706,9 +1709,37 @@ Defaults unchanged.
 
 **Test:** [`phase_m_first_slice_runtime_r3_readiness_test_results.md`](tests/phase_m_first_slice_runtime_r3_readiness_test_results.md) — 28/28 PASS.
 
+### PR M-product-fixture — Product-facing first-slice scenario fixture — **Done**
+
+**Status:** **Landed** — small product-style RegionFieldSpec/RON fixture over the accepted
+GPU-resident first-slice runtime. **Not** wired into default `SimSession` pass graph.
+
+Phase M product-facing first-slice scenario fixture landed.
+It drives the accepted GPU-resident first-slice runtime from a small product-style
+RegionFieldSpec/RON fixture: one grid, source_capped_normalized, H<=8,
+caller-managed seed-only clear, dirty scheduling, SlotRange Sum reduction, and parent
+field_urgency EvalEML.
+The fixture proves default-off behavior, explicit SparseRegionFieldV1 opt-in,
+GPU-resident hot path with reduction_stencil_readbacks=0, finite propagated field
+values, and personality/weight-sensitive urgency.
+No atlas batching landed.
+No M-4A atlas masking landed.
+No active mask, perception, map residency, behavioral source policy, or source_mask landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Known scale caveat:** First-slice bridge uses queue writes for child resource values and
+parent weights. This is acceptable for the 10x10 first-slice fixture. Future
+multi-field/atlas scale must replace per-slot resource writes with a generic
+preinitialized resource column, fill helper, or GPU fill kernel after a separate measured
+design step.
+
+**Test:** [`phase_m_first_slice_product_fixture_test_results.md`](tests/phase_m_first_slice_product_fixture_test_results.md) — PASS.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
-**Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. **The named next mapping step is the first-slice product scenario fixture (Option 3, single grid, no atlas), not the atlas packer.**
+**Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. The first-slice product scenario fixture (Option 3, single grid, no atlas) has landed; **the atlas packer is still not next**.
 
 **Model:** Opus (design), Composer 2.5 (implementation)  
 **Why Opus:** Atlas batching is **provisional** in the ADR. The short-term policy
@@ -1743,8 +1774,8 @@ No map/faction/AI semantics entered simthing-sim or WGSL.
 **Decision gate (resolved 2026-05-28):** Option B was taken — the first-slice runtime
 landed and was hardened through R1/R2/R3 and **accepted by Opus as a stable base**
 ([`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)).
-The named next mapping step is **Option 3 — a product-facing first-slice scenario fixture**
-(single grid, no atlas). **Option A (atlas packer) is NOT next**; it is admissible only after
+Option 3 — a product-facing first-slice scenario fixture (single grid, no atlas) — has
+also landed. **Option A (atlas packer) is NOT next**; it is admissible only after
 (a) a named multi-theater scenario that needs batching, (b) an approved VRAM budget, and
 (c) a PR satisfying the §11 binding gate.
 
@@ -1756,7 +1787,8 @@ mapping profile; VRAM-multiplier reporting wired into the debug surface; refuses
 to pack unless exactly one admitted isolation policy is configured. **Blocked** — the
 isolation-policy sign-off is done (Opus 2026-05-28), but atlas code stays blocked until a
 named multi-theater scenario needs batching, an approved VRAM budget exists, and a PR
-satisfies the §11 binding gate. Atlas is **not** the next mapping step (Option 3 is).  
+satisfies the §11 binding gate. Atlas remains **not** the next mapping step even after
+the Option 3 fixture has landed.
 **Gate:** Opus design note committed and isolation policy ratified; a §11-gate-passing M-4 PR
 required before any atlas code. Atlas stays provisional, unimplemented, and opt-in;
 `request_atlas_batching` stays rejected at admission until that PR.  
@@ -1851,7 +1883,8 @@ Until then, caller-managed one-shot-seed-then-zero (v1) is the only source polic
 | M-1 | M | Composer 2.5 | RegionField execution API on StructuredFieldStencilOp (generic) | **Done** — stencil parity + reduce-into bit-exact |
 | M-2 | M | Composer 2.5 | Cadence scheduler + dirty macro-region skip (driver) | **Done** — determinism + zero false-skips |
 | M-3 | M | Composer 2.5 | `RegionFieldSpec` RON + mapping admission framework (designer-layer) | **Done** — rejection suite + RON roundtrip; default-off |
-| **M-4** | **M** | **Opus + Composer** | **Atlas batching isolation + VRAM accounting (provisional)** | **Design note Done; isolation ratified 2026-05-28** (algebraic G=0 mask preferred, gutter fallback, §11 binding gate). Atlas still unimplemented; implementation gated on a §11-passing PR. Next step is Option 3 first-slice fixture, not the packer. |
+| **M-product-fixture** | **M** | **Codex 5.5** | **Product-facing first-slice scenario fixture** | **Done** — product-style RegionFieldSpec/RON fixture over accepted GPU-resident first-slice runtime; default-off + explicit opt-in + no-readback hot path |
+| **M-4** | **M** | **Opus + Composer** | **Atlas batching isolation + VRAM accounting (provisional)** | **Design note Done; isolation ratified 2026-05-28** (algebraic G=0 mask preferred, gutter fallback, §11 binding gate). Atlas still unimplemented; implementation gated on a §11-passing PR. Option 3 fixture landed; atlas packer still not next. |
 | **M-4A** | **M** | **Composer 2.5** | **Algebraic tile-local atlas masking sandbox** | **Done; reverted** — [`mapping_atlas_algebraic_mask_sandbox_test_results.md`](tests/mapping_atlas_algebraic_mask_sandbox_test_results.md) |
 | M-5 | M | Composer 2.5 | Generic source-identity buffer (behavioral source policy) | **DEFERRED** — not scheduled until a scenario names the need |
 
