@@ -45,6 +45,16 @@ pub enum AccumulatorOpSessionError {
     EmissionOverflow { count: u32, capacity: u32 },
     #[error("threshold emission buffer overflow: count={count}, capacity={capacity}")]
     ThresholdEmissionOverflow { count: u32, capacity: u32 },
+    #[error("copy exceeds values buffer: offset={offset}, bytes={bytes}, capacity={capacity}")]
+    CopyOutOfBounds {
+        offset: u64,
+        bytes: u64,
+        capacity: u64,
+    },
+    #[error("invalid slot {slot} for n_slots={n_slots}")]
+    InvalidSlot { slot: u32, n_slots: u32 },
+    #[error("invalid column {col} for n_dims={n_dims}")]
+    InvalidColumn { col: u32, n_dims: u32 },
 }
 
 /// GPU-resident AccumulatorOp session (B-2 bootstrap + C-1 threshold scan).
@@ -387,6 +397,80 @@ impl AccumulatorOpSession {
         assert_eq!(values.len(), self.values_len());
         ctx.queue
             .write_buffer(&self.values_buffer, 0, bytemuck::cast_slice(values));
+    }
+
+    pub fn values_byte_len(&self) -> u64 {
+        (self.values_len() * std::mem::size_of::<f32>()) as u64
+    }
+
+    fn slot_col_byte_offset(&self, slot: u32, col: u32) -> u64 {
+        ((slot * self.n_dims + col) * std::mem::size_of::<f32>() as u32) as u64
+    }
+
+    /// Zero the entire values buffer via queue writes.
+    pub fn zero_values_buffer(&self, ctx: &GpuContext) {
+        let zeros = vec![0.0f32; self.values_len()];
+        ctx.queue
+            .write_buffer(&self.values_buffer, 0, bytemuck::cast_slice(&zeros));
+    }
+
+    /// Copy a prefix from an external GPU buffer into the values buffer.
+    pub fn copy_values_prefix_from_buffer(
+        &self,
+        ctx: &GpuContext,
+        src: &Buffer,
+        src_offset_bytes: u64,
+        dst_offset_bytes: u64,
+        bytes: u64,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        let capacity = self.values_byte_len();
+        if bytes == 0 {
+            return Ok(());
+        }
+        if dst_offset_bytes.saturating_add(bytes) > capacity {
+            return Err(AccumulatorOpSessionError::CopyOutOfBounds {
+                offset: dst_offset_bytes,
+                bytes,
+                capacity,
+            });
+        }
+        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("accumulator_values_prefix_copy"),
+        });
+        encoder.copy_buffer_to_buffer(src, src_offset_bytes, &self.values_buffer, dst_offset_bytes, bytes);
+        ctx.queue.submit(Some(encoder.finish()));
+        Ok(())
+    }
+
+    /// Write specific `(slot, col)` values into the values buffer via queue writes.
+    pub fn write_slot_col_values(
+        &self,
+        ctx: &GpuContext,
+        writes: &[(u32, u32, f32)],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        for &(slot, col, value) in writes {
+            if slot >= self.n_slots {
+                return Err(AccumulatorOpSessionError::InvalidSlot {
+                    slot,
+                    n_slots: self.n_slots,
+                });
+            }
+            if col >= self.n_dims {
+                return Err(AccumulatorOpSessionError::InvalidColumn {
+                    col,
+                    n_dims: self.n_dims,
+                });
+            }
+            let offset = self.slot_col_byte_offset(slot, col);
+            ctx.queue
+                .write_buffer(&self.values_buffer, offset, bytemuck::bytes_of(&value));
+        }
+        Ok(())
+    }
+
+    /// Generic values buffer for GPU-resident substrate bridges.
+    pub fn values_buffer(&self) -> &Buffer {
+        &self.values_buffer
     }
 
     /// Upload previous-tick values for threshold crossing tests.

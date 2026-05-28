@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — Phase M-first-slice-R2 GPU-resident Layer 1→2→3 bridge
+
+- Remedial fix removes hidden GPU→CPU→GPU staging before Layer 2/3 reduction/EML on the hot path.
+- Added generic `AccumulatorOpSession` GPU bridge helpers (copy prefix, slot/col writes, zero buffer).
+- `FirstSliceMappingSession` copies canonical stencil input → accumulator values buffer on GPU; resource/weight columns written via queue writes.
+- Hot path reports `reduction_stencil_readbacks=0`; debug/diagnostic readback remains explicit.
+- 24/24 first-slice integration tests PASS (20 prior + 4 R2). Workspace green.
+- No atlas. No M-4A. No semantic WGSL. simthing-sim remains map-free. Defaults unchanged.
+- Verification: [`phase_m_first_slice_runtime_r2_gpu_bridge_test_results.md`](tests/phase_m_first_slice_runtime_r2_gpu_bridge_test_results.md).
+
 ## 2026-05-19 — Phase M-first-slice-R1 no-readback correctness hardening
 
 - Remedial fix for `FirstSliceMappingSession` no-readback hot path: GPU-resident caller-managed source protocol preserves first-hop propagation without CPU readback.
