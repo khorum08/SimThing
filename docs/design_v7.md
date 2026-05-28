@@ -5,6 +5,13 @@
 > `design_v6.md` and `design_v6.5.md` remain authoritative until explicitly
 > superseded here.
 >
+> **v7.7 bump (2026-05-28):** Mapping (Sparse RegionCell) architecture decided in
+> [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md) and surfaced in
+> [`design_v7_7.md`](design_v7_7.md) (three-layer model, perception filters, SEAD
+> surfacing, optimization doctrine). No mapping runtime is authorized; Phase M in the
+> production plan lands the few generic natives. No primitive, default, or `simthing-sim`
+> change. Prior v7 text remains correct.
+>
 > **v7.6 bump (2026-05-19):** StructuredFieldStencilOp promoted as live generic
 > GPU primitive; WGSL guardrail relaxed to "no semantic/map-specific WGSL";
 > deterministic field EML classes admitted at designer/spec policy layer.
@@ -21,6 +28,8 @@
 > - `docs/adr_accumulator_op_v2.md` — AccumulatorOp v2 decision rationale
 > - `docs/adr/resource_flow_substrate.md` — Resource Flow substrate ADR
 > - `docs/accumulator_op_v2_production_plan.md` — PR ladder (E-7 through E-11 land Resource Flow)
+> - `docs/design_v7_7.md` — V7.7 amendment (Mapping Sparse RegionCell + SEAD surfacing)
+> - `docs/adr/mapping_sparse_regioncell.md` — the Mapping decision (architecture; no runtime)
 > - `docs/design_v7_6.md` — V7.6 amendment (StructuredFieldStencilOp, guardrail relaxation)
 > - `docs/design_v6.md` — previous specification (§10 superseded)
 > - `docs/design_v6.5.md` — session parking doc (unchanged)
