@@ -61,7 +61,3 @@ They remain valid evidence but are not active guidance.
 
 Do not implement production mapping runtime until first-slice session wiring is separately
 gated after an explicit Option A or Option B decision.
-
-**Next handoff (recommended):** [`mapping_first_slice_runtime_handoff.md`](mapping_first_slice_runtime_handoff.md) (Option B — first slice, no atlas).
-
-**Recommended next step (2026-05-19 evaluation):** Option B — [`mapping_first_slice_runtime_handoff.md`](mapping_first_slice_runtime_handoff.md).

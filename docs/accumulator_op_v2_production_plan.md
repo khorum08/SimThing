@@ -1632,8 +1632,7 @@ bounded_field_update are admitted at designer/spec policy layer without new EML
 opcodes. MappingExecutionProfile remains default Disabled; spec presence alone
 does not enable execution. No production mapping runtime landed. No production
 pass graph wiring landed. No map/faction/AI semantics entered simthing-sim or
-WGSL. **Next Phase M task:** explicit product decision — **Option B recommended:**
-first-slice runtime wiring (see [`mapping_first_slice_runtime_handoff.md`](workshop/mapping_first_slice_runtime_handoff.md)); **Option A** (M-4 atlas packer) gated on sign-off including M-4A amendment.
+WGSL. Next Phase M task: human + Opus sign-off at M-4 decision gate (Option A atlas packer **or** Option B first-slice runtime wiring as separate explicit decision). Neither path is auto-next.
 
 **Test:** A rejection suite (one case per banned/over-cap condition) plus a
 round-trip that a valid bounded field compiles to generic stencil + reduction +
@@ -1777,10 +1776,9 @@ Until then, caller-managed one-shot-seed-then-zero (v1) is the only source polic
 | M-3 | M | Composer 2.5 | `RegionFieldSpec` RON + mapping admission framework (designer-layer) | **Done** — rejection suite + RON roundtrip; default-off |
 | **M-4** | **M** | **Opus + Composer** | **Atlas batching isolation + VRAM accounting (provisional)** | **Design note Done; parked** — M-4A evidence favors algebraic G=0 mask; requires sign-off + Option A |
 | **M-4A** | **M** | **Composer 2.5** | **Algebraic tile-local atlas masking sandbox** | **Done; reverted** — [`mapping_atlas_algebraic_mask_sandbox_test_results.md`](tests/mapping_atlas_algebraic_mask_sandbox_test_results.md) |
-| **M-first-slice** | **M** | **Composer 2.5** | **First-slice mapping runtime (Option B)** | **Recommended next** — [`mapping_first_slice_runtime_handoff.md`](workshop/mapping_first_slice_runtime_handoff.md); explicit product authorization required |
 | M-5 | M | Composer 2.5 | Generic source-identity buffer (behavioral source policy) | **DEFERRED** — not scheduled until a scenario names the need |
 
-**Total: 44 active PRs** (38 prior + M-1..M-4 + M-4A + M-first-slice; M-5 deferred). Remaining
+**Total: 43 active PRs** (38 prior + M-1..M-4 + M-4A; M-5 deferred). Remaining
 Opus-gated: A-4, B-4, D-1 (memo), E-11, G-2, **M-4** — six. D-2 deferred
 indefinitely; M-5 deferred pending a named scenario. Resource Flow Substrate
 landing spans E-7 through E-11 per

@@ -8,7 +8,16 @@
 
 ## Verdict
 
-**PASS — commits consistent with V7.7, Mapping ADR discipline, SEAD principles, and production goals.** No code remedial required. One doc-drift gap (ADR classification table) addressed via **proposed-amendment** subsection (not auto-ratification). **Recommended next step:** Phase **M-first-slice** runtime wiring (ADR Option B).
+**PASS — commits consistent with V7.7, Mapping ADR discipline, SEAD principles, and production goals.** No code remedial required. M-4 remains **parked at decision gate**; no mapping runtime authorized.
+
+---
+
+## Posture (current)
+
+- M-4 design note + M-4A evidence: **parked** pending human + Opus sign-off.
+- No atlas packer landed. No first-slice mapping runtime landed.
+- Option A (atlas) and Option B (first-slice wiring) both require **explicit** product + architecture sign-off — neither is auto-next.
+- First-slice handoff (if ever needed) archived only: [`../workshop/archive/mapping/mapping_first_slice_runtime_handoff.md`](../workshop/archive/mapping/mapping_first_slice_runtime_handoff.md).
 
 ---
 
@@ -66,11 +75,9 @@ No test results deleted — all remain ADR-cited or M-4A active evidence.
 
 ---
 
-## Recommended next step
+## Decision gate (unchanged — parked)
 
-**Phase M-first-slice** — first-slice runtime wiring per ADR §First slice (Option B). The named first slice uses **one grid, no atlas, no active mask**; M-1..M-3 natives are green. M-4 atlas implementation (Option A) should wait for explicit product decision + Opus ratification of M-4A algebraic-mask amendment.
-
-Handoff: [`mapping_first_slice_runtime_handoff.md`](mapping_first_slice_runtime_handoff.md)
+No implementation path is authorized by this evaluation. M-4 remains at the Option A / Option B decision gate documented in [`mapping_current_guidance.md`](../workshop/mapping_current_guidance.md).
 
 ---
 

@@ -6,11 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-19 — M-4A post-merge evaluation + M-first-slice handoff
+## 2026-05-19 — Restore M-4 parked posture (cancel M-first-slice promotion)
+
+- No M-first-slice mapping runtime was implemented; cancelled doc promotion from evaluation PR #227.
+- First-slice handoff archived to [`archive/mapping/mapping_first_slice_runtime_handoff.md`](workshop/archive/mapping/mapping_first_slice_runtime_handoff.md) — not active guidance.
+- M-4 remains parked at decision gate; Option A and Option B both require explicit sign-off.
+
+## 2026-05-19 — M-4A post-merge evaluation
 
 - Evaluated PR #226 (`bf8c189`): **consistent** with V7.7, Mapping ADR, SEAD principles. No code remedial.
 - ADR: added M-4A evidence citation + proposed-amendment subsection (classification not auto-changed).
-- Next handoff: [`mapping_first_slice_runtime_handoff.md`](workshop/mapping_first_slice_runtime_handoff.md) (Option B recommended).
 - Evaluation: [`mapping_m4a_post_merge_evaluation_test_results.md`](tests/mapping_m4a_post_merge_evaluation_test_results.md).
 
 ## 2026-05-19 — Phase M-4A algebraic tile-local atlas masking sandbox

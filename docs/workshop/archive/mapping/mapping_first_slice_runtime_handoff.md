@@ -1,5 +1,7 @@
 # Cursor Handoff: Phase M-first-slice — GPU-Resident First-Slice Mapping Runtime
 
+**Status:** **Archived — not active guidance.** M-first-slice runtime promotion was cancelled; M-4 remains parked at decision gate. No mapping runtime was implemented.
+
 ## Goal
 
 Wire the **ADR-named first scenario-level mapping slice** into an opt-in production session pass graph. This is the **production runtime** step the Mapping ADR explicitly separates from Phase M generic natives (M-1..M-3). It exercises Layers 1–3 end-to-end on the GPU with **only adopted** optimizations.
