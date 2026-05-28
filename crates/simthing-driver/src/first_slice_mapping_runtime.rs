@@ -73,6 +73,26 @@ pub struct FirstSliceSeed {
     pub value: f32,
 }
 
+impl FirstSliceSeed {
+    pub fn validate(&self, width: u32, height: u32) -> Result<(), FirstSliceMappingError> {
+        if self.row >= height || self.col >= width {
+            return Err(FirstSliceMappingError::InvalidSeed {
+                row: self.row,
+                col: self.col,
+                width,
+                height,
+            });
+        }
+        if !self.value.is_finite() {
+            return Err(FirstSliceMappingError::NonFiniteSeedValue {
+                row: self.row,
+                col: self.col,
+            });
+        }
+        Ok(())
+    }
+}
+
 /// Per-tick execution options.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct FirstSliceTickOptions {
@@ -107,6 +127,11 @@ pub struct FirstSliceMappingReport {
     pub reduction_parent_value: Option<f32>,
     pub eml_output: Option<f32>,
     pub field_values: Option<Vec<f32>>,
+    pub source_setup_dispatches: u32,
+    pub propagation_dispatches: u32,
+    pub total_dispatches: u32,
+    pub reduction_executed: bool,
+    pub eml_executed: bool,
 }
 
 impl FirstSliceMappingReport {
@@ -120,6 +145,11 @@ impl FirstSliceMappingReport {
             reduction_parent_value: None,
             eml_output: None,
             field_values: None,
+            source_setup_dispatches: 0,
+            propagation_dispatches: 0,
+            total_dispatches: 0,
+            reduction_executed: false,
+            eml_executed: false,
         }
     }
 }
@@ -144,6 +174,15 @@ pub enum FirstSliceMappingError {
     EmlSetup(String),
     #[error("accumulator session error: {0}")]
     Accumulator(String),
+    #[error("invalid seed at row={row} col={col} for grid {width}x{height}")]
+    InvalidSeed {
+        row: u32,
+        col: u32,
+        width: u32,
+        height: u32,
+    },
+    #[error("non-finite seed value at row={row} col={col}")]
+    NonFiniteSeedValue { row: u32, col: u32 },
 }
 
 /// Opt-in first-slice mapping runtime session.
@@ -169,6 +208,14 @@ pub struct FirstSliceMappingSession {
     eml_output_col: u32,
     eml_resource_col: u32,
     seeds_applied_this_tick: bool,
+    gpu_state_canonical: bool,
+    host_values_valid: bool,
+}
+
+struct StencilTickResult {
+    report: StructuredFieldExecutionReport,
+    source_setup_dispatches: u32,
+    propagation_dispatches: u32,
 }
 
 impl FirstSliceMappingSession {
@@ -240,6 +287,8 @@ impl FirstSliceMappingSession {
 
         let acc_session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
 
+        stencil.upload_values(ctx, &values)?;
+
         Ok(Self {
             enabled,
             width: preview.grid_size,
@@ -262,6 +311,8 @@ impl FirstSliceMappingSession {
             eml_output_col,
             eml_resource_col,
             seeds_applied_this_tick: false,
+            gpu_state_canonical: true,
+            host_values_valid: true,
         })
     }
 
@@ -289,10 +340,31 @@ impl FirstSliceMappingSession {
         self.tick
     }
 
+    /// Diagnostic readback of canonical GPU field state (input buffer).
+    pub fn readback_canonical_field(&self, ctx: &GpuContext) -> Vec<f32> {
+        self.stencil.readback_input_buffer(ctx)
+    }
+
+    /// Diagnostic readback of Layer 2/3 results from current GPU field without re-running stencil.
+    pub fn diagnostic_readback_reduction_eml(
+        &mut self,
+        ctx: &GpuContext,
+        weights: (f32, f32),
+    ) -> Result<(f32, f32), FirstSliceMappingError> {
+        let (threat, urgency) = self.run_reduction_and_eml(ctx, true, weights.0, weights.1)?;
+        Ok((threat.unwrap(), urgency.unwrap()))
+    }
+
     /// Queue seeds for the next scheduled tick (caller-managed protocol).
-    pub fn queue_seeds(&mut self, seeds: &[FirstSliceSeed]) {
+    pub fn queue_seeds(&mut self, seeds: &[FirstSliceSeed]) -> Result<(), FirstSliceMappingError> {
+        let height = self.preview.stencil.height;
+        for seed in seeds {
+            seed.validate(self.width, height)?;
+        }
         self.pending_seeds.extend_from_slice(seeds);
+        self.apply_pending_seeds_to_host();
         self.mark_dirty_source();
+        Ok(())
     }
 
     fn mark_dirty_source(&mut self) {
@@ -310,44 +382,52 @@ impl FirstSliceMappingSession {
         (slot * self.n_dims + col) as usize
     }
 
-    fn apply_pending_seeds(&mut self) {
+    fn seed_slot_col_writes(&self) -> (Vec<(u32, u32, f32)>, Vec<(u32, u32)>) {
         let source_col = self.source_col;
-        let n_dims = self.n_dims;
         let width = self.width;
+        let mut writes = Vec::with_capacity(self.pending_seeds.len());
+        let mut zeros = Vec::with_capacity(self.pending_seeds.len());
         for seed in &self.pending_seeds {
             let slot = seed.row * width + seed.col;
-            let i = (slot * n_dims + source_col) as usize;
-            self.values[i] = seed.value;
+            writes.push((slot, source_col, seed.value));
+            zeros.push((slot, source_col));
         }
-        self.seeds_applied_this_tick = !self.pending_seeds.is_empty();
+        (writes, zeros)
     }
 
-    fn clear_seed_source_cells(&mut self) {
+    fn apply_pending_seeds_to_host(&mut self) {
         let source_col = self.source_col;
         let n_dims = self.n_dims;
         let width = self.width;
         for seed in &self.pending_seeds {
             let slot = seed.row * width + seed.col;
             let i = (slot * n_dims + source_col) as usize;
-            self.values[i] = 0.0;
+            if i < self.values.len() {
+                self.values[i] = seed.value;
+            }
         }
+        self.seeds_applied_this_tick = !self.pending_seeds.is_empty();
     }
 
     fn run_caller_managed_stencil(
         &mut self,
         ctx: &GpuContext,
         options: FirstSliceTickOptions,
-    ) -> Result<StructuredFieldExecutionReport, FirstSliceMappingError> {
-        self.stencil.upload_values(ctx, &self.values)?;
+    ) -> Result<StencilTickResult, FirstSliceMappingError> {
+        let horizon = self.stencil.config().horizon;
+        let mut source_setup_dispatches = 0u32;
 
         if self.seeds_applied_this_tick {
+            let (writes, zeros) = self.seed_slot_col_writes();
+            self.stencil.write_cell_values(ctx, &self.stencil.input_buffer, &writes)?;
+            source_setup_dispatches += self.stencil.dispatch_once(
+                ctx,
+                &self.stencil.input_buffer,
+                &self.stencil.output_buffer,
+            );
             self.stencil
-                .dispatch_once(ctx, &self.stencil.input_buffer, &self.stencil.output_buffer);
-            if options.readback_values {
-                self.values = self.stencil.readback_after_ping_pong(ctx, 1);
-            }
-            self.clear_seed_source_cells();
-            self.stencil.upload_values(ctx, &self.values)?;
+                .zero_cell_values(ctx, &self.stencil.output_buffer, &zeros)?;
+            self.stencil.copy_output_to_input(ctx);
             self.pending_seeds.clear();
             self.seeds_applied_this_tick = false;
         }
@@ -360,19 +440,46 @@ impl FirstSliceMappingSession {
                 steps: None,
             },
         )?;
-        if let Some(ref vals) = report.values {
-            self.values.clone_from(vals);
+        let propagation_dispatches = report.debug.dispatch_count;
+        self.stencil
+            .canonicalize_input_after_ping_pong(ctx, horizon);
+        self.gpu_state_canonical = true;
+
+        if options.readback_values {
+            if let Some(ref vals) = report.values {
+                self.values.clone_from(vals);
+            } else {
+                self.values = self.stencil.readback_input_buffer(ctx);
+            }
+            self.host_values_valid = true;
+        } else {
+            self.host_values_valid = false;
         }
-        Ok(report)
+
+        Ok(StencilTickResult {
+            report,
+            source_setup_dispatches,
+            propagation_dispatches,
+        })
+    }
+
+    fn field_values_for_reduction(&self, ctx: &GpuContext) -> Vec<f32> {
+        if self.gpu_state_canonical {
+            self.stencil.readback_input_buffer(ctx)
+        } else if self.host_values_valid {
+            self.values.clone()
+        } else {
+            self.stencil.readback_input_buffer(ctx)
+        }
     }
 
     fn run_reduction_and_eml(
         &mut self,
         ctx: &GpuContext,
-        readback: bool,
+        readback_report: bool,
         weight_a: f32,
         weight_b: f32,
-    ) -> Result<(f32, f32), FirstSliceMappingError> {
+    ) -> Result<(Option<f32>, Option<f32>), FirstSliceMappingError> {
         let reduction = self.preview.reduction.as_ref().expect("validated at open");
         let reduction_op = column_aware_reduction_op(reduction.clone())
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
@@ -380,7 +487,8 @@ impl FirstSliceMappingSession {
         let parent_slot = reduction.parent_slot;
         let parent_col = reduction.parent_col;
 
-        let mut pv = self.values.clone();
+        let field = self.field_values_for_reduction(ctx);
+        let mut pv = field;
         let cell_count = self.preview.cell_count;
         let needed = ((parent_slot + 1) * self.n_dims) as usize;
         if pv.len() < needed {
@@ -419,7 +527,7 @@ impl FirstSliceMappingSession {
             targets: vec![(parent_slot, self.eml_output_col)],
         };
 
-        if readback {
+        if readback_report {
             set_debug_readback_allowed(true);
         }
         self.acc_session.upload_values(ctx, &pv);
@@ -438,8 +546,8 @@ impl FirstSliceMappingSession {
             .tick_with_eml(ctx, 1, eml)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
 
-        if !readback {
-            return Ok((0.0, 0.0));
+        if !readback_report {
+            return Ok((None, None));
         }
 
         let out = self
@@ -448,7 +556,7 @@ impl FirstSliceMappingSession {
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         let threat = out[self.slot_idx(parent_slot, parent_col)];
         let urgency = out[self.slot_idx(parent_slot, self.eml_output_col)];
-        Ok((threat, urgency))
+        Ok((Some(threat), Some(urgency)))
     }
 
     /// Execute one mapping tick. No-op when profile Disabled.
@@ -464,7 +572,7 @@ impl FirstSliceMappingSession {
             return Ok(FirstSliceMappingReport::disabled(tick));
         }
 
-        self.apply_pending_seeds();
+        self.apply_pending_seeds_to_host();
 
         let (decisions, scheduler_report) = self.scheduler.decide_tick(tick)?;
         let scheduled = decisions.iter().any(|d| {
@@ -475,24 +583,33 @@ impl FirstSliceMappingSession {
 
         let mut stencil_execution = None;
         let mut field_values = None;
+        let mut source_setup_dispatches = 0u32;
+        let mut propagation_dispatches = 0u32;
 
         if scheduled {
-            let report = self.run_caller_managed_stencil(ctx, options)?;
+            let stencil_result = self.run_caller_managed_stencil(ctx, options)?;
+            source_setup_dispatches = stencil_result.source_setup_dispatches;
+            propagation_dispatches = stencil_result.propagation_dispatches;
             stencil_execution = Some(ScheduledSingleStencilExecution {
                 field_id: self.field_id,
                 region_id: self.region_id,
-                report: report.clone(),
+                report: stencil_result.report.clone(),
             });
-            field_values = report.values.clone();
+            field_values = stencil_result.report.values.clone();
         }
 
-        let (reduction_parent_value, eml_output) = if scheduled {
-            let (threat, urgency) =
-                self.run_reduction_and_eml(ctx, options.readback_values, eml_weights.0, eml_weights.1)?;
-            (Some(threat), Some(urgency))
-        } else {
-            (None, None)
-        };
+        let (reduction_parent_value, eml_output, reduction_executed, eml_executed) =
+            if scheduled {
+                let (threat, urgency) = self.run_reduction_and_eml(
+                    ctx,
+                    options.readback_values,
+                    eml_weights.0,
+                    eml_weights.1,
+                )?;
+                (threat, urgency, true, true)
+            } else {
+                (None, None, false, false)
+            };
 
         if scheduled {
             if let Some(region) = self
@@ -518,6 +635,11 @@ impl FirstSliceMappingSession {
             reduction_parent_value,
             eml_output,
             field_values,
+            source_setup_dispatches,
+            propagation_dispatches,
+            total_dispatches: source_setup_dispatches + propagation_dispatches,
+            reduction_executed,
+            eml_executed,
         })
     }
 }

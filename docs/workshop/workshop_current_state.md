@@ -7,9 +7,9 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Master HEAD:** `447adc1` (Phase M-first-slice runtime)  
-**Verification (last recorded):** Phase M-first-slice runtime — 11/11 PASS; workspace green  
-**Next action:** **M-4 parked at decision gate** — human + Opus sign-off required before atlas implementation. M-first-slice runtime landed opt-in only (`FirstSliceMappingSession`); not default session wiring.
+**Master HEAD:** *(pending M-first-slice-R1 merge)*  
+**Verification (last recorded):** Phase M-first-slice-R1 — 20/20 PASS (11 original + 9 R1); workspace green  
+**Next action:** **M-4 parked at decision gate** — human + Opus sign-off required before atlas implementation. M-first-slice-R1 landed GPU-resident no-readback correctness; still opt-in only (`FirstSliceMappingSession`); not default session wiring.
 
 ---
 
@@ -38,7 +38,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **V7.6 StructuredFieldStencilOp:** **Live, opt-in, hardened, inert by default** — generic GPU primitive in `simthing-gpu`. Not wired into default production pass graph. Phase M-1/M-1.1/M-2 landed: execution API, no-readback path, cadence scheduler + dirty skip; production mapping runtime remains gated.
 
-**Mapping (Sparse RegionCell):** **ADR approved (architecture)** — see [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md), surfaced in [`design_v7_7.md`](../design_v7_7.md). **M-first-slice runtime landed (opt-in)** — `FirstSliceMappingSession` behind explicit `MappingExecutionProfile::SparseRegionFieldV1`; not default session wiring. Phase M-4 design note **parked at decision gate** — atlas provisional and unimplemented; M-4A evidence pending sign-off. Phase M-3 landed: RegionFieldSpec RON + mapping admission + budget preview. simthing-sim remains map-free.
+**Mapping (Sparse RegionCell):** **ADR approved (architecture)** — see [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md), surfaced in [`design_v7_7.md`](../design_v7_7.md). **M-first-slice-R1 landed (opt-in)** — GPU-resident no-readback correctness hardening for `FirstSliceMappingSession` behind explicit `MappingExecutionProfile::SparseRegionFieldV1`; not default session wiring. Phase M-4 design note **parked at decision gate** — atlas provisional and unimplemented; M-4A evidence pending sign-off. Phase M-3 landed: RegionFieldSpec RON + mapping admission + budget preview. simthing-sim remains map-free.
 
 **Product-priority selection:** **Done** — [`product_priority_vertical_slice_selection.md`](../reviews/product_priority_vertical_slice_selection.md). **Recommendation F:** pause implementation; gather product requirements. No named scenario for D-2a, E-11B-5, spec/RON rebuild, or new vertical slice. Continued flat-star soak remains green.
 

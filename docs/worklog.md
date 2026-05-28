@@ -6,6 +6,15 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — Phase M-first-slice-R1 no-readback correctness hardening
+
+- Remedial fix for `FirstSliceMappingSession` no-readback hot path: GPU-resident caller-managed source protocol preserves first-hop propagation without CPU readback.
+- Added generic GPU buffer helpers on `StructuredFieldStencilOp` (copy/write/zero/canonicalize).
+- Hot-path reports no longer return placeholder parent/EML zeros; invalid seeds reject cleanly; dispatch counts distinguish source setup vs propagation.
+- 20/20 first-slice integration tests PASS (11 original + 9 R1). Workspace green.
+- No atlas. No M-4A atlas masking. No active mask/perception/residency/source_mask. simthing-sim remains map-free. Defaults unchanged.
+- Verification: [`phase_m_first_slice_runtime_r1_no_readback_correctness_test_results.md`](tests/phase_m_first_slice_runtime_r1_no_readback_correctness_test_results.md).
+
 ## 2026-05-19 — Phase M-first-slice runtime + boundary/budget probe
 
 - Landed opt-in `FirstSliceMappingSession` (`simthing-driver`) behind `MappingExecutionProfile::SparseRegionFieldV1`.

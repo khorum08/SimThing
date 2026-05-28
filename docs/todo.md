@@ -210,6 +210,8 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Phase M-first-slice:** **Done (opt-in)** — `FirstSliceMappingSession` in `simthing-driver`; explicit `MappingExecutionProfile::SparseRegionFieldV1` only; not default session wiring. RegionField VRAM budget preview in `simthing-spec`. See [`phase_m_first_slice_runtime_test_results.md`](tests/phase_m_first_slice_runtime_test_results.md). No atlas. No M-4A atlas masking. simthing-sim remains map-free.
 
+**Phase M-first-slice-R1:** **Done (opt-in remedial)** — GPU-state ownership/no-readback correctness hardening. Hot path preserves caller-managed source propagation without CPU readback; seed-only clear does not discard first-hop output; hot-path reports no longer return placeholder parent/EML values; invalid seeds reject cleanly. See [`phase_m_first_slice_runtime_r1_no_readback_correctness_test_results.md`](tests/phase_m_first_slice_runtime_r1_no_readback_correctness_test_results.md). No atlas batching. No M-4A atlas masking. No active mask/perception/residency/source_mask. Defaults unchanged.
+
 **Phase M-4 design note:** **Done; parked at decision gate** — see [`mapping_current_guidance.md`](workshop/mapping_current_guidance.md). **M-4A Done (reverted).** M-4 design note §4 captures architectural implications; pending human + Opus sign-off. **M-4 atlas implementation is not automatically next.** M-first-slice runtime is landed but not default-on. Current decision gate: **(A)** after human + Opus sign-off, implement generic M-4 atlas packer — **neither atlas nor default session wiring without explicit sign-off.**
 
 **V7.6 StructuredFieldStencilOp:** **Live, opt-in, hardened, inert by default** — not mapping runtime; not wired into production passes.

@@ -2,8 +2,8 @@
 
 use simthing_core::{manual_slot_range_sum_op, WHITELISTED_FORMULA_CLASSES};
 use simthing_driver::{
-    compiled_stencil_to_gpu_config, estimate_first_slice_budget, FirstSliceMappingSession,
-    FirstSliceSeed, FirstSliceTickOptions, FieldDispatchSchedule,
+    compiled_stencil_to_gpu_config, estimate_first_slice_budget, FirstSliceMappingError,
+    FirstSliceMappingSession, FirstSliceSeed, FirstSliceTickOptions, FieldDispatchSchedule,
 };
 use simthing_gpu::{
     cpu_horizon, params_from_config, GpuContext, StructuredFieldExecutionOptions,
@@ -102,18 +102,39 @@ fn run_caller_managed_cpu(
     seeds: &[(u32, u32, f32)],
     hops: u32,
 ) -> Vec<f32> {
+    run_caller_managed_cpu_ticks(config, &[seeds], hops)
+}
+
+fn run_caller_managed_cpu_ticks(
+    config: &StructuredFieldStencilConfig,
+    tick_seeds: &[&[(u32, u32, f32)]],
+    hops: u32,
+) -> Vec<f32> {
     let params = params_from_config(config);
     let n_dims = config.n_dims;
     let w = config.width;
     let mut values = vec![0.0f32; config.values_len()];
-    for &(r, c, v) in seeds {
-        values[idx(r * w + c, config.source_col, n_dims)] = v;
+    for seeds in tick_seeds {
+        for &(r, c, v) in *seeds {
+            values[idx(r * w + c, config.source_col, n_dims)] = v;
+        }
+        values = cpu_horizon(&values, &params, 1);
+        for &(r, c, _) in *seeds {
+            values[idx(r * w + c, config.source_col, n_dims)] = 0.0;
+        }
+        values = cpu_horizon(&values, &params, hops);
     }
-    values = cpu_horizon(&values, &params, 1);
-    for &(r, c, _) in seeds {
-        values[idx(r * w + c, config.source_col, n_dims)] = 0.0;
+    values
+}
+
+fn assert_fields_near(a: &[f32], b: &[f32], tol: f32, label: &str) {
+    assert_eq!(a.len(), b.len(), "{label} len");
+    for (i, (&x, &y)) in a.iter().zip(b.iter()).enumerate() {
+        assert!(
+            (x - y).abs() <= tol,
+            "{label} mismatch at {i}: {x} vs {y}"
+        );
     }
-    cpu_horizon(&values, &params, hops)
 }
 
 #[test]
@@ -164,7 +185,7 @@ fn test_2_single_tick_gpu_execution() {
         session.queue_seeds(&[
             FirstSliceSeed { row: 0, col: 0, value: 80.0 },
             FirstSliceSeed { row: 0, col: 1, value: 60.0 },
-        ]);
+        ]).unwrap();
         let report = session
             .tick(ctx, FirstSliceTickOptions::debug_readback(), (0.2, 0.1))
             .unwrap();
@@ -233,7 +254,7 @@ fn test_4_field_scheduler_integration() {
             &spec,
         )
         .unwrap();
-        session.queue_seeds(&[FirstSliceSeed { row: 5, col: 5, value: 50.0 }]);
+        session.queue_seeds(&[FirstSliceSeed { row: 5, col: 5, value: 50.0 }]).unwrap();
         let r1 = session.tick(ctx, FirstSliceTickOptions::hot_path(), (0.2, 0.1)).unwrap();
         assert!(r1.scheduled);
         assert_eq!(r1.scheduler_report.as_ref().unwrap().false_skip_count, 0);
@@ -258,7 +279,7 @@ fn test_5_layer2_sum_reduction() {
             &spec,
         )
         .unwrap();
-        session.queue_seeds(&[FirstSliceSeed { row: 4, col: 4, value: 80.0 }]);
+        session.queue_seeds(&[FirstSliceSeed { row: 4, col: 4, value: 80.0 }]).unwrap();
         let report = session
             .tick(ctx, FirstSliceTickOptions::debug_readback(), (0.0, 0.0))
             .unwrap();
@@ -289,11 +310,11 @@ fn test_6_layer3_eval_eml() {
             &spec,
         )
         .unwrap();
-        session.queue_seeds(&[FirstSliceSeed { row: 2, col: 2, value: 90.0 }]);
+        session.queue_seeds(&[FirstSliceSeed { row: 2, col: 2, value: 90.0 }]).unwrap();
         let low = session
             .tick(ctx, FirstSliceTickOptions::debug_readback(), (0.2, 0.1))
             .unwrap();
-        session.queue_seeds(&[FirstSliceSeed { row: 2, col: 2, value: 90.0 }]);
+        session.queue_seeds(&[FirstSliceSeed { row: 2, col: 2, value: 90.0 }]).unwrap();
         let high = session
             .tick(ctx, FirstSliceTickOptions::debug_readback(), (0.9, 0.1))
             .unwrap();
@@ -311,11 +332,18 @@ fn test_7_no_readback_hot_path() {
             &spec,
         )
         .unwrap();
-        session.queue_seeds(&[FirstSliceSeed { row: 3, col: 3, value: 70.0 }]);
+        session.queue_seeds(&[FirstSliceSeed { row: 3, col: 3, value: 70.0 }]).unwrap();
         let report = session
             .tick(ctx, FirstSliceTickOptions::hot_path(), (0.3, 0.2))
             .unwrap();
         assert!(report.field_values.is_none());
+        assert!(report.reduction_parent_value.is_none());
+        assert!(report.eml_output.is_none());
+        assert!(report.reduction_executed);
+        assert!(report.eml_executed);
+        assert_eq!(report.source_setup_dispatches, 1);
+        assert_eq!(report.propagation_dispatches, spec.horizon);
+        assert_eq!(report.total_dispatches, spec.horizon + 1);
         assert!(report.stencil_execution.as_ref().unwrap().report.values.is_none());
     });
 }
@@ -330,7 +358,7 @@ fn test_8_default_off_enforcement() {
             &spec,
         )
         .unwrap();
-        disabled.queue_seeds(&[FirstSliceSeed { row: 0, col: 0, value: 100.0 }]);
+        disabled.queue_seeds(&[FirstSliceSeed { row: 0, col: 0, value: 100.0 }]).unwrap();
         assert!(!disabled.tick(ctx, FirstSliceTickOptions::debug_readback(), (0.2, 0.1)).unwrap().scheduled);
 
         let mut enabled = FirstSliceMappingSession::open(
@@ -339,7 +367,7 @@ fn test_8_default_off_enforcement() {
             &spec,
         )
         .unwrap();
-        enabled.queue_seeds(&[FirstSliceSeed { row: 0, col: 0, value: 100.0 }]);
+        enabled.queue_seeds(&[FirstSliceSeed { row: 0, col: 0, value: 100.0 }]).unwrap();
         assert!(enabled.tick(ctx, FirstSliceTickOptions::debug_readback(), (0.2, 0.1)).unwrap().scheduled);
     });
 }
@@ -359,7 +387,7 @@ fn test_9_deterministic_replay() {
                 &spec,
             )
             .unwrap();
-            s.queue_seeds(&seeds);
+            s.queue_seeds(&seeds).unwrap();
             s.tick(ctx, FirstSliceTickOptions::debug_readback(), (0.5, 0.2))
                 .unwrap()
         };
@@ -397,4 +425,322 @@ fn test_10_region_field_budget_estimator() {
     })
     .unwrap_err();
     assert!(err.requested_bytes > err.allowed_bytes);
+}
+
+// --- M-first-slice-R1: no-readback correctness hardening ---
+
+#[test]
+fn test_r1_a_hot_path_matches_debug_with_diagnostic_readback() {
+    with_gpu(|ctx| {
+        let spec = first_slice_spec();
+        let seeds = [
+            FirstSliceSeed { row: 0, col: 0, value: 80.0 },
+            FirstSliceSeed { row: 0, col: 1, value: 60.0 },
+        ];
+        let weights = (0.2, 0.1);
+
+        let mut debug = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        debug.queue_seeds(&seeds).unwrap();
+        let debug_report = debug
+            .tick(ctx, FirstSliceTickOptions::debug_readback(), weights)
+            .unwrap();
+
+        let mut hot = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        hot.queue_seeds(&seeds).unwrap();
+        let hot_report = hot
+            .tick(ctx, FirstSliceTickOptions::hot_path(), weights)
+            .unwrap();
+        let hot_field = hot.readback_canonical_field(ctx);
+        let (hot_threat, hot_eml) = hot.diagnostic_readback_reduction_eml(ctx, weights).unwrap();
+
+        assert_fields_near(
+            debug_report.field_values.as_ref().unwrap(),
+            &hot_field,
+            1e-4,
+            "hot vs debug field",
+        );
+        assert!(
+            (debug_report.reduction_parent_value.unwrap() - hot_threat).abs() < 0.01,
+            "reduction mismatch"
+        );
+        assert!(
+            (debug_report.eml_output.unwrap() - hot_eml).abs() < 1e-4,
+            "eml mismatch"
+        );
+        assert!(hot_report.field_values.is_none());
+    });
+}
+
+#[test]
+fn test_r1_b_no_readback_preserves_first_hop_propagation() {
+    with_gpu(|ctx| {
+        let spec = first_slice_spec();
+        let seeds = [(0u32, 0u32, 100.0f32)];
+        let config = compiled_stencil_to_gpu_config(
+            &compile_region_field_preview(&spec).unwrap().stencil,
+        );
+        let cpu = run_caller_managed_cpu(&config, &seeds, spec.horizon);
+
+        let mut session = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        session
+            .queue_seeds(&[FirstSliceSeed { row: 0, col: 0, value: 100.0 }])
+            .unwrap();
+        session
+            .tick(ctx, FirstSliceTickOptions::hot_path(), (0.0, 0.0))
+            .unwrap();
+        let gpu = session.readback_canonical_field(ctx);
+        let nd = spec.n_dims;
+        let col = spec.source_col;
+
+        assert!(gpu[idx(1, col, nd)] > 0.0, "neighbor must receive first-hop propagation");
+        for slot in 0..100 {
+            assert!(
+                (cpu[idx(slot, col, nd)] - gpu[idx(slot, col, nd)]).abs() <= 0.0001,
+                "slot={slot}"
+            );
+        }
+    });
+}
+
+#[test]
+fn test_r1_c_no_readback_two_tick_persistence() {
+    with_gpu(|ctx| {
+        let spec = first_slice_spec();
+        let config = compiled_stencil_to_gpu_config(
+            &compile_region_field_preview(&spec).unwrap().stencil,
+        );
+        let seeds_a = [(1u32, 1u32, 55.0f32)];
+        let seeds_b = [(8u32, 8u32, 40.0f32)];
+        let cpu = run_caller_managed_cpu_ticks(&config, &[&seeds_a, &seeds_b], spec.horizon);
+
+        let mut session = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        session
+            .queue_seeds(&[FirstSliceSeed { row: 1, col: 1, value: 55.0 }])
+            .unwrap();
+        session
+            .tick(ctx, FirstSliceTickOptions::hot_path(), (0.0, 0.0))
+            .unwrap();
+        session
+            .queue_seeds(&[FirstSliceSeed { row: 8, col: 8, value: 40.0 }])
+            .unwrap();
+        session
+            .tick(ctx, FirstSliceTickOptions::hot_path(), (0.0, 0.0))
+            .unwrap();
+        let gpu = session.readback_canonical_field(ctx);
+        let col = spec.source_col;
+        let nd = spec.n_dims;
+        for slot in 0..100 {
+            assert!(
+                (cpu[idx(slot, col, nd)] - gpu[idx(slot, col, nd)]).abs() <= 0.0001,
+                "two-tick slot={slot}"
+            );
+        }
+    });
+}
+
+#[test]
+fn test_r1_d_seed_only_clear_gpu_resident() {
+    with_gpu(|ctx| {
+        let spec = first_slice_spec();
+        let seeds = [(0u32, 0u32, 100.0f32)];
+        let config = compiled_stencil_to_gpu_config(
+            &compile_region_field_preview(&spec).unwrap().stencil,
+        );
+        let cpu = run_caller_managed_cpu(&config, &seeds, spec.horizon);
+
+        let mut session = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        session
+            .queue_seeds(&[FirstSliceSeed { row: 0, col: 0, value: 100.0 }])
+            .unwrap();
+        let report = session
+            .tick(ctx, FirstSliceTickOptions::debug_readback(), (0.0, 0.0))
+            .unwrap();
+        let vals = report.field_values.as_ref().unwrap();
+        let col = spec.source_col;
+        let nd = spec.n_dims;
+        assert!(vals[idx(1, col, nd)] > 0.0, "propagated neighbor preserved");
+        assert!(vals[idx(10, col, nd)] > 0.0, "non-seed propagated cell preserved");
+        for slot in 0..100 {
+            assert!(
+                (cpu[idx(slot, col, nd)] - vals[idx(slot, col, nd)]).abs() <= 0.0001,
+                "seed-only clear protocol slot={slot}"
+            );
+        }
+    });
+}
+
+#[test]
+fn test_r1_e_hot_path_report_no_fake_values() {
+    with_gpu(|ctx| {
+        let spec = first_slice_spec();
+        let mut session = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        session
+            .queue_seeds(&[FirstSliceSeed { row: 3, col: 3, value: 70.0 }])
+            .unwrap();
+        let report = session
+            .tick(ctx, FirstSliceTickOptions::hot_path(), (0.3, 0.2))
+            .unwrap();
+        assert!(report.field_values.is_none());
+        assert!(report.reduction_parent_value.is_none());
+        assert!(report.eml_output.is_none());
+        assert!(report.reduction_executed);
+        assert!(report.eml_executed);
+    });
+}
+
+#[test]
+fn test_r1_f_debug_readback_still_returns_values() {
+    with_gpu(|ctx| {
+        let spec = first_slice_spec();
+        let mut session = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        session
+            .queue_seeds(&[FirstSliceSeed { row: 2, col: 2, value: 90.0 }])
+            .unwrap();
+        let report = session
+            .tick(ctx, FirstSliceTickOptions::debug_readback(), (0.2, 0.1))
+            .unwrap();
+        assert!(report.field_values.is_some());
+        assert!(report.reduction_parent_value.is_some());
+        assert!(report.eml_output.is_some());
+    });
+}
+
+#[test]
+fn test_r1_g_invalid_seed_rejected() {
+    with_gpu(|ctx| {
+        let spec = first_slice_spec();
+        let mut session = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+
+        let oob_row = session.queue_seeds(&[FirstSliceSeed {
+            row: 10,
+            col: 0,
+            value: 1.0,
+        }]);
+        assert!(matches!(oob_row, Err(FirstSliceMappingError::InvalidSeed { .. })));
+
+        let oob_col = session.queue_seeds(&[FirstSliceSeed {
+            row: 0,
+            col: 10,
+            value: 1.0,
+        }]);
+        assert!(matches!(oob_col, Err(FirstSliceMappingError::InvalidSeed { .. })));
+
+        let nan = session.queue_seeds(&[FirstSliceSeed {
+            row: 0,
+            col: 0,
+            value: f32::NAN,
+        }]);
+        assert!(matches!(
+            nan,
+            Err(FirstSliceMappingError::NonFiniteSeedValue { .. })
+        ));
+
+        let inf = session.queue_seeds(&[FirstSliceSeed {
+            row: 0,
+            col: 0,
+            value: f32::INFINITY,
+        }]);
+        assert!(matches!(
+            inf,
+            Err(FirstSliceMappingError::NonFiniteSeedValue { .. })
+        ));
+    });
+}
+
+#[test]
+fn test_r1_h_dispatch_count_honesty() {
+    with_gpu(|ctx| {
+        let spec = first_slice_spec();
+        let mut session = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &spec,
+        )
+        .unwrap();
+        session
+            .queue_seeds(&[FirstSliceSeed { row: 0, col: 0, value: 50.0 }])
+            .unwrap();
+        let with_seeds = session
+            .tick(ctx, FirstSliceTickOptions::hot_path(), (0.0, 0.0))
+            .unwrap();
+        assert_eq!(with_seeds.source_setup_dispatches, 1);
+        assert_eq!(with_seeds.propagation_dispatches, spec.horizon);
+        assert_eq!(with_seeds.total_dispatches, spec.horizon + 1);
+
+        let mut every_n = first_slice_spec();
+        every_n.cadence = RegionFieldCadenceSpec::EveryN(2);
+        let mut skip_session = FirstSliceMappingSession::open(
+            ctx,
+            MappingExecutionProfile::SparseRegionFieldV1,
+            &every_n,
+        )
+        .unwrap();
+        skip_session
+            .queue_seeds(&[FirstSliceSeed { row: 0, col: 0, value: 50.0 }])
+            .unwrap();
+        skip_session
+            .tick(ctx, FirstSliceTickOptions::hot_path(), (0.0, 0.0))
+            .unwrap();
+        let skipped = skip_session
+            .tick(ctx, FirstSliceTickOptions::hot_path(), (0.0, 0.0))
+            .unwrap();
+        assert!(!skipped.scheduled);
+        assert_eq!(skipped.source_setup_dispatches, 0);
+        assert_eq!(skipped.propagation_dispatches, 0);
+        assert_eq!(skipped.total_dispatches, 0);
+    });
+}
+
+#[test]
+fn test_r1_j_posture_preserved() {
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
+    let runtime_src = include_str!("../src/first_slice_mapping_runtime.rs");
+    assert!(!runtime_src.contains("ActiveOnlyExperimentalNoHalo"));
+    assert!(!runtime_src.contains("source_mask"));
+    assert!(!runtime_src.contains("atlas"));
+    let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
+    assert!(!sim_lib.contains("RegionField"));
 }
