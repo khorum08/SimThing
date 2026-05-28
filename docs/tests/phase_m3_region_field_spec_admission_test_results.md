@@ -3,7 +3,7 @@
 **Date/time:** 2026-05-28  
 **Base HEAD:** `7727913bd9c93aff5a292da53a883d3240903b5a` (Phase M-2.1 merge, PR #222)  
 **Branch:** `phase-m3-region-field-spec-admission`  
-**Final commit SHA:** `0139ae83b3164855aa4681287bb624818998e689` (phase-m3-region-field-spec-admission)  
+**Final commit SHA:** `09e6a2c457dd1c80391f1c7694c1bab9c1c8eb45` (phase-m3-region-field-spec-admission)  
 **rustc:** `rustc 1.95.0 (59807616e 2026-04-14)`  
 **cargo:** `cargo 1.95.0 (f2d3ce0bd 2026-03-21)`  
 **Platform/OS:** Windows 10 (win32 10.0.26200), PowerShell
