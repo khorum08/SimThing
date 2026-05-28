@@ -144,9 +144,143 @@ A future generic atlas packer (driver, behind mapping profile) must:
 - Refuse to pack when `gutter < effective_horizon` and no local-bounds isolation is configured.
 - Record the chosen isolation policy in debug/report output.
 
+### M-4 implementation posture (unchanged)
+
+```text
+M-4 implementation remains blocked pending human + Opus sign-off.
+If sign-off occurs, the implementation candidate is:
+  homogeneous square atlas batches
+  G=0 AlgebraicTileLocalMask
+  fixed-denominator zero-boundary normalization
+  full-tile protocol-oracle parity
+  PhysicalGutter fallback
+
+Mixed-size atlas metadata remains deferred.
+```
+
 ---
 
-## 4. Per-tile seed-clearing protocol
+## 4. Architectural Implications of Algebraic Tile-Local Masking
+
+M-4A is **active evidence**, not automatic ratification. The probe supports a broader SimThing design principle:
+
+```text
+Topology, separation, boundaries, and validity can often be represented as generic
+algebraic masks/gates over flat GPU fields, rather than as physical padding, CPU
+branching, semantic runtime objects, or map-specific WGSL.
+```
+
+This section captures Opus-facing implications. It does **not** authorize atlas implementation, production mapping runtime, semantic WGSL, or ADR reclassification.
+
+### 4.1 Structural separation does not always require physical separation
+
+M-4A proves that independent simulation regions do **not** always require physical separation in memory. The physical gutter model isolates packed tiles by allocating unused distance between them. **Algebraic tile-local masking** instead packs tiles flush and nullifies invalid cross-boundary contributions before they enter the accumulator.
+
+This means semantic/topological separation can be represented as **algebra over flat buffers**, provided runtime safety is preserved and the mask is generic.
+
+| Isolation mode | Correctness (M-4A) | VRAM multiplier (10×10, H=8) |
+|---|---|---|
+| **G=0 algebraic tile-local mask** | Full-tile protocol-oracle parity; WGSL masked error 0.0 in tested cases | **1.0×** |
+| **Physical G≥H gutter** | Correct fallback (remedial + M-4 contract) | **6.76×** |
+
+Physical gutter remains the conservative fallback when algebraic masking is not configured or not admitted.
+
+### 4.2 General SimThing design pattern
+
+This is a **design pattern**, not a new primitive:
+
+```text
+1. Pack state densely in flat GPU buffers.
+2. Author legal relationships, boundaries, and visibility at the RON/spec layer.
+3. Compile those relationships into generic masks, gates, or field coefficients.
+4. Run semantic-free GPU transforms.
+5. Reduce summaries upward through hierarchy.
+6. Interpret summaries with EML.
+```
+
+Meaning remains in RON/spec/admission. The GPU sees generic fields, masks, coefficients, and bounds — not map/faction/AI semantics.
+
+### 4.3 What this strengthens
+
+**Flat matrix, authored meaning**
+
+- Meaning remains in RON/spec/admission.
+- GPU sees generic fields, masks, coefficients, bounds.
+
+**RegionCell-as-SimThing**
+
+- RegionCell grids become more practical because physical adjacency in VRAM does **not** imply semantic adjacency in simulation.
+
+**V7.7 WGSL relaxation**
+
+- New WGSL can be admissible when it is generic, bounded, opt-in, and semantic-free.
+- Tile-local masking is not faction/map/AI logic; it is generic boundary math.
+
+**SEAD**
+
+- AI/strategy can rely on field summaries and algebraic gating without CPU-side planning.
+
+### 4.4 What this does not authorize
+
+```text
+M-4A does not authorize semantic WGSL.
+M-4A does not authorize atlas implementation by itself.
+M-4A does not authorize production mapping runtime.
+M-4A does not authorize mixed-size atlas metadata.
+M-4A does not authorize behavioral source policy.
+M-4A does not authorize ActiveOnlyExperimentalNoHalo.
+M-4A does not mean every subsystem should receive a custom mask shader.
+```
+
+**Avoid mask fever.**
+
+“Mask fever” is the tendency to add special-purpose masks for every gameplay concept. Masks are admissible only when they remain **generic, bounded, opt-in, and designer/RON-governed**.
+
+### 4.5 Candidate domains for future algebraic masks
+
+| Domain | Possible algebraic expression | Status |
+|---|---|---|
+| Atlas tile boundaries | tile-local valid-neighbor mask | M-4A preferred candidate, **pending sign-off** |
+| Fog/perception | perceived = true × visibility/confidence | Future mapping/perception work |
+| Supply reach | field × passability/connectivity mask | Future candidate |
+| Ownership/jurisdiction | influence × legal/control mask | Future candidate |
+| Source identity | source_mask / seed buffer | Deferred M-5 |
+| Active frontier | active mask + H-hop halo | Provisional; active-only banned |
+
+### 4.6 Relationship to dirty skipping and map residency
+
+Algebraic masking solves **wrong interaction between packed maps**. It prevents adjacent packed fields from contaminating each other.
+
+Dirty/residual/cadence skipping solves **unnecessary execution**. It prevents quiet maps from consuming GPU ticks.
+
+These are **complementary**. A skipped RegionField must still expose a valid summary state — fresh, cached, decayed, stale-with-confidence, or zero-if-empty — so hierarchy and parent EML can continue to inform strategic heatmaps without running every dense local map every tick.
+
+M-4A does **not** solve global map residency or field-column budget. It removes gutter overhead for active batched maps. A later **map residency / summary policy** should decide which maps are always resident, event-resident, cached, or cold.
+
+### 4.7 Opus decision implications
+
+Opus no longer needs to decide whether physical gutters are too expensive; M-4A demonstrates a better candidate for homogeneous square batches.
+
+**Opus still needs to decide:**
+
+1. Whether **AlgebraicTileLocalMask** is admissible as generic, semantic-free WGSL.
+2. Whether it becomes the **preferred M-4 isolation policy** for homogeneous square batches.
+3. Whether **PhysicalGutter** remains fallback.
+4. Whether mixed-size **LocalBoundsMetadata** remains deferred.
+5. Whether production implementation may start with modulo/division coordinate derivation or must use tile-local dispatch.
+6. Whether the acceptance gate is sufficient:
+   - full-tile protocol-oracle parity
+   - fixed-denominator zero-boundary normalization
+   - safe atlas-global bounds
+   - caller-managed seed-only clearing
+   - no column-wide `source_col` zeroing
+   - VRAM accounting
+
+Pending human + Opus sign-off, atlas batching remains **provisional and unimplemented**.
+
+---
+
+## 5. Per-tile seed-clearing protocol
 
 Required caller/packer protocol for `CallerManagedOneShotSeedThenZero` (v1 source policy):
 
@@ -175,7 +309,7 @@ Atlas runs must apply seed clearing **in every packed tile** after the initial h
 
 ---
 
-## 5. VRAM accounting
+## 6. VRAM accounting
 
 ### Required future debug/report fields
 
@@ -227,7 +361,7 @@ M-3 admission already rejects `request_atlas_batching: true` until M-4 implement
 
 ---
 
-## 6. CPU oracle acceptance gate
+## 7. CPU oracle acceptance gate
 
 ### Production acceptance criterion
 
@@ -267,7 +401,7 @@ The CPU oracle must model the **same protocol** the GPU atlas uses:
 
 ---
 
-## 7. Local-bounds metadata future path
+## 8. Local-bounds metadata future path
 
 ### Long-term preferred design
 
@@ -297,11 +431,11 @@ WGSL would sample neighbors only within declared local bounds (or equivalent til
 Local-bounds metadata is deferred and requires implementation ADR/PR before use.
 ```
 
-This design note does **not** authorize local-bounds implementation. Atlas implementation remains on the **gutter ≥ H** path until a separate API design is approved.
+This design note does **not** authorize local-bounds implementation. Until human + Opus sign-off, atlas implementation candidates are **AlgebraicTileLocalMask (G=0)** for homogeneous square batches with **PhysicalGutter (G≥H)** as fallback — not local-bounds metadata.
 
 ---
 
-## 8. Interaction with designer-facing square grid sizes (M-3)
+## 9. Interaction with designer-facing square grid sizes (M-3)
 
 M-3 admits designer-addressable `grid_size = N` (square only at spec admission).
 
@@ -323,7 +457,7 @@ compatible cadence.
 
 ---
 
-## 9. Interaction with active masks
+## 10. Interaction with active masks
 
 | Item | Posture |
 |------|---------|
@@ -340,7 +474,7 @@ Atlas batching **does not authorize** `ActiveOnlyExperimentalNoHalo`. Any future
 
 ---
 
-## 10. Future implementation acceptance checklist
+## 11. Future implementation acceptance checklist
 
 Required tests for a **future** M-4 implementation PR (names indicative):
 
@@ -359,7 +493,7 @@ Required tests for a **future** M-4 implementation PR (names indicative):
 
 ---
 
-## 11. Stop conditions for future implementation
+## 12. Stop conditions for future implementation
 
 Stop and escalate (do not land) if:
 

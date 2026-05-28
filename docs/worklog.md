@@ -6,6 +6,12 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — M-4A architectural implications doc update
+
+- Added §4 **Architectural Implications of Algebraic Tile-Local Masking** to [`mapping_atlas_batching_isolation_design_note.md`](workshop/mapping_atlas_batching_isolation_design_note.md): structural separation vs physical separation, general SimThing pattern (dense buffers + RON/spec masks + GPU transforms + EML), mask-fever warning, candidate domains table, dirty/residency complement, Opus decision checklist.
+- Updated production plan, mapping guidance, workshop state, todo. Atlas remains provisional and unimplemented; M-4A pending human + Opus sign-off.
+- Verification: [`m4a_architectural_implications_doc_update_test_results.md`](tests/m4a_architectural_implications_doc_update_test_results.md).
+
 ## 2026-05-19 — Restore M-4 parked posture (cancel M-first-slice promotion)
 
 - No M-first-slice mapping runtime was implemented; cancelled doc promotion from evaluation PR #227.
