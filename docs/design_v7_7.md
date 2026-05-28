@@ -107,9 +107,11 @@ Classifications are ratified in the ADR. Summary:
 - **Adopted (now):** cadence tiers (RON/Designer), dirty macro-region skipping
   (driver/scheduler), caller-managed one-shot-seed-then-zero source policy (v1
   runtime API).
-- **Provisional:** atlas batching (gutter ≥ H short-term, **6.76× VRAM multiplier
-  on 10×10 H=8**, VRAM-multiplier reporting mandatory; local-bounds metadata is
-  the long-term preferred isolation policy) and active frontier + H-hop/per-hop
+- **Provisional:** atlas batching (gutter ≥ H short-term fallback, **6.76× VRAM multiplier
+  on 10×10 H=8**, VRAM-multiplier reporting mandatory; **M-4A evidence proposes
+  algebraic tile-local mask G=0 as preferred path for homogeneous square batches —
+  pending Opus ADR amendment**; local-bounds metadata is the long-term preferred
+  isolation policy) and active frontier + H-hop/per-hop
   halo (CPU-oracle parity required; active-only **banned**).
 - **Deferred:** behavioral source policy (needs explicit `source_mask`/seed
   buffer; column-wide source zeroing **banned**).
