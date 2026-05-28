@@ -18,7 +18,7 @@
 |---------|--------|
 | `cargo test -p simthing-driver --test sead_tensor_stencil_refinement_sandbox -- --nocapture --test-threads=1` | **PASS** — 12/12 |
 
-**Full log:** [`sead_tensor_stencil_refinement_sandbox_full.log`](sead_tensor_stencil_refinement_sandbox_full.log)
+**Full log:** [`archive/sead/sead_tensor_stencil_refinement_sandbox_full.log`](archive/sead/sead_tensor_stencil_refinement_sandbox_full.log)
 
 ---
 
@@ -231,8 +231,8 @@ budget_label = MARGINAL
 
 ## Preserve locations
 
-- `docs/workshop/sead_tensor_stencil_refinement_sandbox_code_preserve.rs`
-- `docs/workshop/sead_tensor_stencil_refinement_prototype.wgsl`
-- `docs/workshop/sead_tensor_stencil_refinement_notes.md`
+- `docs/workshop/archive/sead/sead_tensor_stencil_refinement_sandbox_code_preserve.rs`
+- `docs/workshop/archive/sead/sead_tensor_stencil_refinement_prototype.wgsl`
+- `docs/workshop/archive/sead/sead_tensor_stencil_refinement_notes.md`
 - Variant WGSL copies (parametric kernel; variant selected by uniform)
 - This file and full log under `docs/tests/`

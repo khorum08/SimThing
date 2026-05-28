@@ -40,9 +40,9 @@
 
 ## Preserved (unchanged by revert)
 
-- `docs/workshop/sead_sandbox_code_preserve.rs`
+- `docs/workshop/archive/sead/sead_sandbox_code_preserve.rs`
 - `docs/tests/sead_field_intelligence_sandbox_test_results.md`
-- `docs/tests/sead_field_intelligence_sandbox_full.log`
+- `docs/tests/archive/sead/sead_field_intelligence_sandbox_full.log`
 - `ExplicitParticipantSpec.parent_subtree_root_id`
 - `materialize_arena_participants` nested topology
 - E-11B-1 materialization tests

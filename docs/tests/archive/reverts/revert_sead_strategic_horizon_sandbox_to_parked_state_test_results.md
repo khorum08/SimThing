@@ -39,9 +39,9 @@
 
 ## Preserved (unchanged by revert)
 
-- `docs/workshop/sead_strategic_horizon_sandbox_code_preserve.rs`
+- `docs/workshop/archive/sead/sead_strategic_horizon_sandbox_code_preserve.rs`
 - `docs/tests/sead_strategic_horizon_sandbox_test_results.md`
-- `docs/tests/sead_strategic_horizon_sandbox_full.log`
+- `docs/tests/archive/sead/sead_strategic_horizon_sandbox_full.log`
 - First SEAD probe preserved artifacts (`sead_sandbox_code_preserve.rs`, etc.)
 - E-11B-1 materialization + RON smoke + GPU parity + fission/gap tests
 

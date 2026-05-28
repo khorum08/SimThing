@@ -18,7 +18,7 @@
 |---------|--------|
 | `cargo test -p simthing-driver --test mapping_optimization_remedial_sandbox -- --nocapture --test-threads=1` | **PASS** — 10/10 |
 
-**Full log:** [`mapping_optimization_remedial_sandbox_full.log`](mapping_optimization_remedial_sandbox_full.log)
+**Full log:** [`archive/mapping/mapping_optimization_remedial_sandbox_full.log`](archive/mapping/mapping_optimization_remedial_sandbox_full.log)
 
 ---
 
@@ -177,10 +177,10 @@ VRAM_multiplier = 6.76× (10×10 H=8 G=8)
 
 ## Preserved artifacts
 
-- [`mapping_optimization_remedial_sandbox_code_preserve.rs`](../workshop/mapping_optimization_remedial_sandbox_code_preserve.rs)
-- [`mapping_atlas_isolation_candidate.rs`](../workshop/mapping_atlas_isolation_candidate.rs)
-- [`mapping_source_policy_candidate.rs`](../workshop/mapping_source_policy_candidate.rs)
-- [`mapping_optimization_remedial_candidate_notes.md`](../workshop/mapping_optimization_remedial_candidate_notes.md)
+- [`mapping_optimization_remedial_sandbox_code_preserve.rs`](../workshop/archive/mapping/mapping_optimization_remedial_sandbox_code_preserve.rs)
+- [`mapping_atlas_isolation_candidate.rs`](../workshop/archive/mapping/mapping_atlas_isolation_candidate.rs)
+- [`mapping_source_policy_candidate.rs`](../workshop/archive/mapping/mapping_source_policy_candidate.rs)
+- [`mapping_optimization_remedial_candidate_notes.md`](../workshop/archive/mapping/mapping_optimization_remedial_candidate_notes.md)
 
 ---
 

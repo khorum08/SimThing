@@ -2,7 +2,17 @@
 
 Running log of what's done and what's next, across sessions.
 
-**Canonical spec:** `docs/design_v7.md` (AccumulatorOp v2, V7.6) · `docs/design_v7_6.md` (V7.6 amendment) · `docs/design_v6.5.md` (v6 parking) · `docs/design_v6.md` (sim mechanics) | **Agent map:** `docs/agents.md` · **Workshop:** `docs/workshop/workshop_current_state.md`
+**Canonical spec:** `docs/design_v7.md` · `docs/design_v7_6.md` · `docs/design_v7_7.md` · `docs/design_v6.5.md` · `docs/design_v6.md` | **Agent map:** `docs/agents.md` · **Workshop:** `docs/workshop/workshop_current_state.md`
+
+---
+
+## 2026-05-28 — Docs cleanup pre-Phase M + Mapping ADR approved
+
+- Approved Mapping ADR at architecture level — [`mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md), surfaced in [`design_v7_7.md`](design_v7_7.md), invariants updated (PR #217).
+- Docs cleanup: superseded mapping/SEAD workshop preserves, candidate notes, revert reports, and full logs moved to `docs/workshop/archive/` and `docs/tests/archive/`. Active pointer: [`mapping_current_guidance.md`](workshop/mapping_current_guidance.md).
+- Next coding task: **Phase M-1** generic natives (`StructuredFieldStencilOp` execution API). No mapping runtime; no first-slice session wiring until after Phase M natives.
+
+**Verification:** [`docs_cleanup_pre_phase_m_test_results.md`](tests/docs_cleanup_pre_phase_m_test_results.md)
 
 ---
 
@@ -12,9 +22,9 @@ Running log of what's done and what's next, across sessions.
 - Combined stack with safe gutter: max_error_vs_oracle≈0.003, speedup≈18× (PASS). t44 cross-tile leak negligible with per-tile seed clearing.
 - Source policy: caller-managed required (growth_ratio≈2.13); behavioral WGSL DEFERRED — column-wide source_col zero unsafe without explicit source identity.
 - G≥H recommended for ADR; 10×10 VRAM multiplier 6.76× at H=8.
-- Preserved at [`mapping_optimization_remedial_sandbox_code_preserve.rs`](workshop/mapping_optimization_remedial_sandbox_code_preserve.rs), [`mapping_optimization_remedial_candidate_notes.md`](workshop/mapping_optimization_remedial_candidate_notes.md), [`mapping_optimization_remedial_sandbox_test_results.md`](tests/mapping_optimization_remedial_sandbox_test_results.md).
+- Preserved at [`mapping_optimization_remedial_sandbox_code_preserve.rs`](workshop/archive/mapping/mapping_optimization_remedial_sandbox_code_preserve.rs), [`mapping_optimization_remedial_candidate_notes.md`](workshop/archive/mapping/mapping_optimization_remedial_candidate_notes.md), [`mapping_optimization_remedial_sandbox_test_results.md`](tests/mapping_optimization_remedial_sandbox_test_results.md).
 
-**Verification:** [`revert_mapping_optimization_remedial_sandbox_to_parked_state_test_results.md`](tests/revert_mapping_optimization_remedial_sandbox_to_parked_state_test_results.md)
+**Verification:** [`revert_mapping_optimization_remedial_sandbox_to_parked_state_test_results.md`](tests/archive/reverts/revert_mapping_optimization_remedial_sandbox_to_parked_state_test_results.md)
 
 ---
 
@@ -23,9 +33,9 @@ Running log of what's done and what's next, across sessions.
 - Ran atlas batching, cadence tiers, dirty macro-region skipping, and active frontier+halo sandbox against live V7.6 `StructuredFieldStencilOp`. 11/11 PASS (`--test-threads=1`). Overall verdict **PARTIAL**.
 - Atlas batching: strong dispatch speedup (N=64 ~59.6×) but gutter=1 cross-tile coupling at H=8.
 - Cadence tiers: deterministic; dirty skip: 62.5% skip ratio, zero false skips; H-hop halo matches oracle.
-- Preserved at [`mapping_optimization_toolkit_sandbox_code_preserve.rs`](workshop/mapping_optimization_toolkit_sandbox_code_preserve.rs), [`mapping_optimization_toolkit_candidate_notes.md`](workshop/mapping_optimization_toolkit_candidate_notes.md), [`mapping_optimization_toolkit_sandbox_test_results.md`](tests/mapping_optimization_toolkit_sandbox_test_results.md).
+- Preserved at [`mapping_optimization_toolkit_sandbox_code_preserve.rs`](workshop/archive/mapping/mapping_optimization_toolkit_sandbox_code_preserve.rs), [`mapping_optimization_toolkit_candidate_notes.md`](workshop/archive/mapping/mapping_optimization_toolkit_candidate_notes.md), [`mapping_optimization_toolkit_sandbox_test_results.md`](tests/mapping_optimization_toolkit_sandbox_test_results.md).
 
-**Verification:** [`revert_mapping_optimization_toolkit_sandbox_to_parked_state_test_results.md`](tests/revert_mapping_optimization_toolkit_sandbox_to_parked_state_test_results.md)
+**Verification:** [`revert_mapping_optimization_toolkit_sandbox_to_parked_state_test_results.md`](tests/archive/reverts/mapping_optimization_toolkit_sandbox_to_parked_state_test_results.md)
 
 ---
 
@@ -72,9 +82,9 @@ Running log of what's done and what's next, across sessions.
 - Directed: prior failure was harness mismatch; **directed_mode=NW** + top-left source and **directed_mode=SE** + bottom-right source both directional at H=8.
 - Parent EML: urgency_A=571 urgency_B=2535 (ratio 4.44) when parent threat/resource reduced and aggression/risk bound; EvalEML on order band 1 after Sum.
 - EML admission: field_* classes rejected by legacy whitelist only; C-8 register_formula accepts (finding A).
-- Preserved at [`sead_tensor_stencil_refinement_sandbox_code_preserve.rs`](workshop/sead_tensor_stencil_refinement_sandbox_code_preserve.rs), [`sead_tensor_stencil_refinement_prototype.wgsl`](workshop/sead_tensor_stencil_refinement_prototype.wgsl), [`sead_tensor_stencil_refinement_sandbox_test_results.md`](tests/sead_tensor_stencil_refinement_sandbox_test_results.md).
+- Preserved at [`sead_tensor_stencil_refinement_sandbox_code_preserve.rs`](workshop/archive/sead/tensor_stencil_refinement_sandbox_code_preserve.rs), [`sead_tensor_stencil_refinement_prototype.wgsl`](workshop/archive/sead/tensor_stencil_refinement_prototype.wgsl), [`sead_tensor_stencil_refinement_sandbox_test_results.md`](tests/sead_tensor_stencil_refinement_sandbox_test_results.md).
 
-**Verification:** [`revert_sead_tensor_stencil_refinement_sandbox_to_parked_state_test_results.md`](tests/revert_sead_tensor_stencil_refinement_sandbox_to_parked_state_test_results.md)
+**Verification:** [`revert_sead_tensor_stencil_refinement_sandbox_to_parked_state_test_results.md`](tests/archive/reverts/sead_tensor_stencil_refinement_sandbox_to_parked_state_test_results.md)
 
 ---
 
@@ -86,9 +96,9 @@ Running log of what's done and what's next, across sessions.
 - Operator: **normalized_stencil** reaches [4][4] with correct gradient at H=8; raw blows up; decayed_normalized too weak at H≤16; directed fails with NSEW setup.
 - Hybrid: stencil + SlotRange Sum ~3× faster than lateral AccumulatorOp H=8 on 10×10; urgency EML needs parent personality columns.
 - ADR recommendation: add **StructuredFieldStencilOp** as future mapping ADR candidate primitive.
-- Preserved at [`sead_tensor_stencil_wgsl_sandbox_code_preserve.rs`](workshop/sead_tensor_stencil_wgsl_sandbox_code_preserve.rs), [`sead_tensor_stencil_prototype.wgsl`](workshop/sead_tensor_stencil_prototype.wgsl), [`sead_tensor_stencil_wgsl_sandbox_test_results.md`](tests/sead_tensor_stencil_wgsl_sandbox_test_results.md).
+- Preserved at [`sead_tensor_stencil_wgsl_sandbox_code_preserve.rs`](workshop/archive/sead/tensor_stencil_wgsl_sandbox_code_preserve.rs), [`sead_tensor_stencil_prototype.wgsl`](workshop/archive/sead/tensor_stencil_prototype.wgsl), [`sead_tensor_stencil_wgsl_sandbox_test_results.md`](tests/sead_tensor_stencil_wgsl_sandbox_test_results.md).
 
-**Verification:** [`revert_sead_tensor_stencil_wgsl_sandbox_to_parked_state_test_results.md`](tests/revert_sead_tensor_stencil_wgsl_sandbox_to_parked_state_test_results.md)
+**Verification:** [`revert_sead_tensor_stencil_wgsl_sandbox_to_parked_state_test_results.md`](tests/archive/reverts/sead_tensor_stencil_wgsl_sandbox_to_parked_state_test_results.md)
 
 ---
 
@@ -100,9 +110,9 @@ Running log of what's done and what's next, across sessions.
 - Dirty frontier skips ~37% cells at H=8; collapses at H=16 (96% dirty). Frontier multi-tick cadence loses/partially preserves direction at effective H=16.
 - Whitelist: field_* classes rejected by legacy gate; C-8 register_formula accepts (finding C — policy work).
 - Cost: projected 30k dirty-adjusted ~3237 ms — OVER BUDGET; hierarchy + cadence mandatory at scale.
-- Preserved at [`sead_operator_toolkit_sandbox_code_preserve.rs`](workshop/sead_operator_toolkit_sandbox_code_preserve.rs) and [`sead_operator_toolkit_sandbox_test_results.md`](tests/sead_operator_toolkit_sandbox_test_results.md).
+- Preserved at [`sead_operator_toolkit_sandbox_code_preserve.rs`](workshop/archive/sead/operator_toolkit_sandbox_code_preserve.rs) and [`sead_operator_toolkit_sandbox_test_results.md`](tests/sead_operator_toolkit_sandbox_test_results.md).
 
-**Verification:** [`revert_sead_operator_toolkit_sandbox_to_parked_state_test_results.md`](tests/revert_sead_operator_toolkit_sandbox_to_parked_state_test_results.md)
+**Verification:** [`revert_sead_operator_toolkit_sandbox_to_parked_state_test_results.md`](tests/archive/reverts/sead_operator_toolkit_sandbox_to_parked_state_test_results.md)
 
 ---
 
@@ -112,9 +122,9 @@ Running log of what's done and what's next, across sessions.
 - Strategic horizon: [4][4] directional at H=8 with directed SE propagation (first probe NSEW bidirectional unstable).
 - Velocity: explicit `threat_previous` + `threat_velocity` columns work on GPU (14.3% overhead at 196 cells).
 - PF skip: convergence measurable (ratio≈0.8); skip candidate threshold PARTIAL by tick 32.
-- Preserved at [`sead_strategic_horizon_sandbox_code_preserve.rs`](workshop/sead_strategic_horizon_sandbox_code_preserve.rs) and [`sead_strategic_horizon_sandbox_test_results.md`](tests/sead_strategic_horizon_sandbox_test_results.md).
+- Preserved at [`sead_strategic_horizon_sandbox_code_preserve.rs`](workshop/archive/sead/strategic_horizon_sandbox_code_preserve.rs) and [`sead_strategic_horizon_sandbox_test_results.md`](tests/sead_strategic_horizon_sandbox_test_results.md).
 
-**Verification:** [`revert_sead_strategic_horizon_sandbox_to_parked_state_test_results.md`](tests/revert_sead_strategic_horizon_sandbox_to_parked_state_test_results.md)
+**Verification:** [`revert_sead_strategic_horizon_sandbox_to_parked_state_test_results.md`](tests/archive/reverts/sead_strategic_horizon_sandbox_to_parked_state_test_results.md)
 
 ---
 
@@ -123,10 +133,10 @@ Running log of what's done and what's next, across sessions.
 - Ran staged SEAD / sparse RegionCell field-intelligence feasibility probe (PR #200). 13/13 sandbox tests PASS; overall decision-gate verdict **PARTIAL**.
 - Substrate-real: later-band-cascade AddToTarget propagation, GPU EvalEML personality-weighted urgency, ScaleTarget dissipation, SlotRange Sum faction reduction.
 - Gaps: velocity DEFERRED (no previous-value EML read); corridor gradient PARTIAL on 10×10; legacy whitelist rejects custom formula class names.
-- Reverted production test file to parked state; preserved source at [`sead_sandbox_code_preserve.rs`](workshop/sead_sandbox_code_preserve.rs) and results at [`sead_field_intelligence_sandbox_test_results.md`](tests/sead_field_intelligence_sandbox_test_results.md).
+- Reverted production test file to parked state; preserved source at [`sead_sandbox_code_preserve.rs`](workshop/archive/sead/sandbox_code_preserve.rs) and results at [`sead_field_intelligence_sandbox_test_results.md`](tests/sead_field_intelligence_sandbox_test_results.md).
 - Mapping/location architecture remains provisional. No mapping runtime, Scatter/Gather, wavefront propagation, E-11B-5, D-2a, new WGSL, or simthing-sim changes.
 
-**Verification:** [`revert_sead_sandbox_to_parked_state_test_results.md`](tests/revert_sead_sandbox_to_parked_state_test_results.md)
+**Verification:** [`revert_sead_sandbox_to_parked_state_test_results.md`](tests/archive/reverts/sead_sandbox_to_parked_state_test_results.md)
 
 ---
 
@@ -138,7 +148,7 @@ Running log of what's done and what's next, across sessions.
 - Mapping/location architecture remains provisional. Do not implement mapping/location runtime until the mapping doc is ready. Do not open generic scenario templates, simthing-spec/RON/Designer guardrail rebuild, E-11B-5, D-2a, Scatter/Gather, wavefront propagation, or new WGSL.
 - FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Resource Flow remains separate from Phase T hard-currency transfer/recipe/emission. `simthing-sim` remains arena-ignorant and spec-free.
 
-**Verification:** [`revert_regioncell_sandbox_to_parked_state_test_results.md`](tests/revert_regioncell_sandbox_to_parked_state_test_results.md) — E-11B regressions green; sandbox test target removed; `cargo check --workspace` / `cargo test --workspace` PASS.
+**Verification:** [`revert_regioncell_sandbox_to_parked_state_test_results.md`](tests/archive/reverts/regioncell_sandbox_to_parked_state_test_results.md) — E-11B regressions green; sandbox test target removed; `cargo check --workspace` / `cargo test --workspace` PASS.
 
 **Next gate:** park until mapping direction is finalized enough to define the next narrow substrate slice, or product names a concrete non-mapping scenario.
 

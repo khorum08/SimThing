@@ -40,12 +40,12 @@
 
 ## Preserved (restored after revert)
 
-- `docs/workshop/mapping_optimization_remedial_sandbox_code_preserve.rs`
-- `docs/workshop/mapping_optimization_remedial_candidate_notes.md`
-- `docs/workshop/mapping_atlas_isolation_candidate.rs`
-- `docs/workshop/mapping_source_policy_candidate.rs`
+- `docs/workshop/archive/mapping/mapping_optimization_remedial_sandbox_code_preserve.rs`
+- `docs/workshop/archive/mapping/mapping_optimization_remedial_candidate_notes.md`
+- `docs/workshop/archive/mapping/mapping_atlas_isolation_candidate.rs`
+- `docs/workshop/archive/mapping/mapping_source_policy_candidate.rs`
 - `docs/tests/mapping_optimization_remedial_sandbox_test_results.md`
-- `docs/tests/mapping_optimization_remedial_sandbox_full.log`
+- `docs/tests/archive/mapping/mapping_optimization_remedial_sandbox_full.log`
 
 ---
 
