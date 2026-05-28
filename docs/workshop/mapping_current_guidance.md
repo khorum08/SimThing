@@ -16,7 +16,8 @@ Active read order:
 2. `docs/adr/mapping_sparse_regioncell.md`
 3. `docs/design_v7_6.md`
 4. `docs/design_v7_7.md`
-5. Cited `docs/tests/` evidence before changing any classification
+5. [`mapping_atlas_batching_isolation_design_note.md`](mapping_atlas_batching_isolation_design_note.md) (M-4 atlas contract — provisional, unimplemented)
+6. Cited `docs/tests/` evidence before changing any classification
 
 Current next work:
 
@@ -26,9 +27,12 @@ Current next work:
 - **M-2 landed:** generic cadence scheduler and dirty macro-region skip helper
 - **M-2.1 landed:** FieldScheduler API hardening — region identity keyed by `(FieldId, FieldRegionId)`; visitor-based scheduled execution
 - **M-3 landed:** RegionFieldSpec RON + mapping admission framework — designer/spec structure only; compiles/previews to generic substrate configs; MappingExecutionProfile default Disabled
-- Next implementation task: **Opus-gated M-4** atlas batching isolation + VRAM accounting design (provisional), unless first-slice runtime wiring is explicitly selected after M-3 review
+- **M-4 design note landed:** [`mapping_atlas_batching_isolation_design_note.md`](mapping_atlas_batching_isolation_design_note.md) — atlas batching isolation + VRAM accounting contract; atlas remains provisional and unimplemented
+- Next step: **human + Opus sign-off** on M-4 design note, then either implement generic atlas packer or choose first-slice runtime wiring that avoids atlas entirely
 
 **Deferred (M-3):** Perception field enum/class names (`true_field`, `observed_field`, `confidence_field`, `deception_field`) remain admission-category placeholders only; no perception runtime or authoritative-column write guards until a later phase.
+
+**Atlas (M-4):** Short-term isolation `gutter >= effective_horizon`; local-bounds metadata deferred; full-tile protocol-oracle parity required for production acceptance (t44 alone insufficient); VRAM multiplier reporting mandatory.
 
 Historical sandbox source, candidate notes, revert reports, and full logs live under
 [`archive/mapping/`](archive/mapping/) and [`../tests/archive/`](../tests/archive/).

@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-28 — Phase M-4 atlas batching isolation + VRAM accounting design note
+
+- Phase M-4 design note landed: [`mapping_atlas_batching_isolation_design_note.md`](workshop/mapping_atlas_batching_isolation_design_note.md).
+- Atlas batching remains provisional and unimplemented. Short-term isolation: gutter >= effective horizon. Local-bounds metadata deferred.
+- Production atlas acceptance requires full-tile parity against an exact per-tile-protocol CPU oracle; t44/corridor agreement alone is insufficient.
+- Future implementation must report VRAM multiplier and refuse unsafe packing. No production mapping runtime; no pass graph wiring.
+- Next: human + Opus sign-off, then either generic atlas packer implementation or first-slice runtime wiring that avoids atlas entirely.
+
+**Verification:** [`phase_m4_atlas_isolation_design_note_test_results.md`](tests/phase_m4_atlas_isolation_design_note_test_results.md)
+
+---
+
 ## 2026-05-28 — Phase M-3 RegionFieldSpec RON + mapping admission framework
 
 - Phase M-3 landed: `RegionFieldSpec` RON + mapping admission/compile preview in `simthing-spec`.
