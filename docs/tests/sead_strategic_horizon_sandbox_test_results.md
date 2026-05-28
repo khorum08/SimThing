@@ -2,7 +2,7 @@
 
 **Date/time:** 2026-05-19  
 **Base HEAD (before sandbox branch):** `8b05ca4` — SEAD sandbox revert HEAD doc update  
-**Sandbox merge SHA:** _(pending PR merge)_  
+**Sandbox merge SHA:** `0878c39` (PR #202)  
 **rustc:** `rustc 1.95.0 (59807616e 2026-04-14)`  
 **cargo:** `cargo 1.95.0 (f2d3ce0bd 2026-03-21)`  
 **Platform/OS:** Windows 10 (win32 10.0.26200), PowerShell  
