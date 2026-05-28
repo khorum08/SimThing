@@ -3,7 +3,7 @@
 **Date/time:** 2026-05-19  
 **Base HEAD (before revert branch):** `ce44b92` — SEAD operator toolkit probe merge (PR #204)  
 **Revert branch commits:** `91c1afc` (merge SHA record) + `3c7dcf2` (revert PR #204 merge)  
-**Final commit SHA:** `3c7dcf2` _(updated after revert merge PR)_  
+**Final commit SHA:** `1c5a6c0` (revert merge PR #205)  
 **rustc:** `rustc 1.95.0 (59807616e 2026-04-14)`  
 **cargo:** `cargo 1.95.0 (f2d3ce0bd 2026-03-21)`  
 **Platform/OS:** Windows 10 (win32 10.0.26200), PowerShell  

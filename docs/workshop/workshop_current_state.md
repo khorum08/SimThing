@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** `3c7dcf2` — SEAD operator toolkit sandbox reverted to parked state (revert PR pending merge)  
+**Master HEAD:** `1c5a6c0` — SEAD operator toolkit sandbox reverted to parked state (merged PR #205)  
 **Verification (last recorded):** E-11B regressions green; SEAD operator toolkit sandbox test target removed
 
 ---
