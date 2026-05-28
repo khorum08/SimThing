@@ -6,6 +6,12 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — Phase M-4A algebraic tile-local atlas masking sandbox
+
+- M-4A sandbox probe completed and reverted to parked state. Candidate code preserved: [`mapping_atlas_algebraic_mask_sandbox_code_preserve.rs`](workshop/mapping_atlas_algebraic_mask_sandbox_code_preserve.rs), [`structured_field_stencil_atlas_mask_candidate.wgsl`](workshop/structured_field_stencil_atlas_mask_candidate.wgsl).
+- Results: [`mapping_atlas_algebraic_mask_sandbox_test_results.md`](tests/mapping_atlas_algebraic_mask_sandbox_test_results.md). **Verdict: YES** — G=0 algebraic tile-local masking preferred over physical G>=H for homogeneous square batches (VRAM 1.0× vs 6.76×; full-tile parity ≤ 0.000031), pending human + Opus sign-off. Physical gutter remains fallback.
+- No atlas implementation landed. No mapping runtime landed. StructuredFieldStencilOp unchanged.
+
 ## 2026-05-28 — Phase M-4 parked at decision gate
 
 - Phase M-4 design note is **parked** pending human + Opus sign-off. Atlas batching remains provisional and unimplemented. The design note defines the future contract only — not implementation authorization.
