@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** `a146462` — SEAD tensor/stencil WGSL sandbox reverted to parked state (merged PR #207)  
+**Master HEAD:** `0bf96ae` — SEAD tensor/stencil WGSL sandbox reverted to parked state (merged PR #207)  
 **Verification (last recorded):** E-11B regressions green; SEAD tensor/stencil sandbox test target removed
 
 ---
