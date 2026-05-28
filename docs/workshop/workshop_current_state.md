@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** _(pending merge — sparse RegionCell field-intelligence sandbox)_  
-**Verification (last recorded):** sandbox 10/10 + E-11B regression green — `cargo check --workspace` / `cargo test --workspace` PASS
+**Master HEAD:** `754f548` — paused-state docs hygiene after E-11B RON smoke (merged PR #196)  
+**Verification (last recorded):** docs-only — `cargo check --workspace` / `cargo test --workspace` PASS
 
 ---
 
@@ -28,8 +28,6 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 **Continued flat-star soak:** **Done** — `resource_flow_flat_star_continued_soak` (12 tests). Confidence/observability only. E-11B remains paused.
 
 **E-11B status:** **Paused (not abandoned)** — E-11B-1 explicit nested participant materialization landed (`parent_subtree_root_id`, nested `materialize_arena_participants`, depth-first contiguity). E-11B static nested participant RON smoke landed (serde roundtrip + RON-authored D=3/D=4 reach `build_nested_layout`; flat-star unchanged when field omitted). Static D=3/D=4 nested GPU parity remains green via existing `build_nested_layout` dispatch. Nested dynamic enrollment deferred until a named product scenario requires it. **E-11B-5 not authorized** without named scenario. Pending mapping/location remains provisional; no mapping runtime. E-11B remains an explicit nested extension, not Resource Flow global default-on.
-
-**Sparse RegionCell field-intelligence sandbox:** **Done** — [`mapping_regioncell_field_intelligence_sandbox.rs`](../crates/simthing-driver/tests/mapping_regioncell_field_intelligence_sandbox.rs) (10/10). Sparse RegionCell field-intelligence sandbox landed. The sandbox validates the AI-as-SimThing thesis in a controlled static 10×10 RegionCell hierarchy. RegionCells store narrow durable fields; strategic heatmaps are derived through EML pressure formulas. Changing faction personality weights changes derived attack/defense pressure over identical cell state. This proves the mapping/AI thesis can be tested without CPU-side AI, dynamic mapping, Scatter/Gather, wavefront propagation, or new WGSL. No mapping runtime behavior was implemented. No location schema was added. No dynamic nested enrollment was implemented. No Policy B Reevaluate, D-2a, CPU fallback, slot compaction, or new AccumulatorRole variants landed. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Static deep hierarchy authoring via `parent_subtree_root_id` remains available. `simthing-sim` remains arena-ignorant and spec-free. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Test/prototype only — implementation remains paused (F).
 
 **E-2B status:** **Done (static E-2B-1…4 + E-2B-5 Policy A + E-2B-5R + soak).** Dynamic fission enrollment via arena-root sibling append ([memo](../reviews/e2b5_dynamic_fission_enrollment_readiness.md), soak PR #178). `use_accumulator_resource_flow` **default false**.
 

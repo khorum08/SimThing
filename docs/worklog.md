@@ -6,19 +6,6 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-## 2026-05-27 — Sparse RegionCell field-intelligence sandbox
-
-- Added [`mapping_regioncell_field_intelligence_sandbox.rs`](../crates/simthing-driver/tests/mapping_regioncell_field_intelligence_sandbox.rs) (10 tests).
-- Sparse RegionCell field-intelligence sandbox landed. The sandbox validates the AI-as-SimThing thesis in a controlled static 10×10 RegionCell hierarchy (FactionRoot + 100 RegionCells via `ExplicitParticipantSpec::nested` / `parent_subtree_root_id`).
-- RegionCells store narrow durable fields (`presence`, `threat`, `opportunity`, `supply`, `control`); strategic heatmaps are derived through EML-equivalent pressure formulas (attack/defense/expansion). Changing faction personality weights changes derived attack/defense pressure over identical cell state. Hotspot threshold crossing proven via sandbox `AttackIntent`-equivalent commitment report (no EmitEvent wiring).
-- This proves the mapping/AI thesis can be tested without CPU-side AI, dynamic mapping, Scatter/Gather, wavefront propagation, or new WGSL. No mapping runtime behavior was implemented. No location schema was added. No dynamic nested enrollment was implemented. No Policy B Reevaluate, D-2a, CPU fallback, slot compaction, or new AccumulatorRole variants landed. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. Static deep hierarchy authoring via `parent_subtree_root_id` remains available. `simthing-sim` remains arena-ignorant and spec-free. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution.
-
-**Verification:** [`mapping_regioncell_field_intelligence_sandbox_test_results.md`](tests/mapping_regioncell_field_intelligence_sandbox_test_results.md) — sandbox 10/10; E-11B regression suites green; `cargo check --workspace` / `cargo test --workspace` PASS.
-
-**Next gate:** park until mapping direction is finalized enough to define the next narrow substrate slice, or product names a concrete non-mapping scenario.
-
----
-
 ## 2026-05-27 — Paused-state docs hygiene after E-11B RON smoke
 
 - Paused-state docs hygiene checkpoint landed after E-11B static nested participant RON smoke. No runtime behavior changes. Implementation remains paused pending finalized mapping/product direction.
