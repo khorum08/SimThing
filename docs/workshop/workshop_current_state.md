@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** _(pending merge — revert RegionCell sandbox to parked state)_  
+**Master HEAD:** `9d8aa2d` — revert RegionCell sandbox to parked state (merged PR #198)  
 **Verification (last recorded):** E-11B regressions green; sandbox removed — `cargo check --workspace` / `cargo test --workspace` PASS
 
 ---
