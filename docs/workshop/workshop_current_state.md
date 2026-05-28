@@ -4,8 +4,8 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-19  
-**Master HEAD:** `9e25d4f` — SEAD strategic horizon sandbox reverted to parked state (merged PR #203)  
-**Verification (last recorded):** E-11B regressions green; SEAD sandbox test target removed
+**Master HEAD:** `3c7dcf2` — SEAD operator toolkit sandbox reverted to parked state (revert PR pending merge)  
+**Verification (last recorded):** E-11B regressions green; SEAD operator toolkit sandbox test target removed
 
 ---
 
