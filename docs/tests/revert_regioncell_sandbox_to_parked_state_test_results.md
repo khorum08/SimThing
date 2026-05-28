@@ -64,3 +64,29 @@
 
 **PASS** — RegionCell sandbox removed; E-11B landed work intact; regressions green; repo returned to parked state.
 
+---
+
+## Re-run (2026-05-28 06:45:54 -05:00)
+
+**HEAD at re-run:** `f2807a1` — workshop HEAD update after revert merge (PR #198)  
+**Note:** Test result files preserved; this section appends a fresh verification pass.
+
+| Command | Result |
+|---------|--------|
+| `git status --short` | PASS — unrelated workshop report churn only |
+| `git rev-parse HEAD` | PASS — `f2807a1` |
+| `rustc --version` | PASS — `rustc 1.95.0 (59807616e 2026-04-14)` |
+| `cargo --version` | PASS — `cargo 1.95.0 (f2d3ce0bd 2026-03-21)` |
+| `cargo test -p simthing-spec --test resource_flow_nested_participant_roundtrip -- --nocapture` | **PASS** — 2/2 |
+| `cargo test -p simthing-driver --test e11b_nested_materialization_ron_session -- --nocapture` | **PASS** — 3/3 |
+| `cargo test -p simthing-driver --test e11b_nested_materialization -- --nocapture` | **PASS** — 10/10 |
+| `cargo test -p simthing-driver --test e11b_nested_hierarchy_gpu -- --nocapture` | **PASS** — 12/12 |
+| `cargo test -p simthing-driver --test e11b_nested_fission_gap -- --nocapture` | **PASS** — 13/13 |
+| `cargo check --workspace` | **PASS** |
+| `cargo test -p simthing-driver --test mapping_regioncell_field_intelligence_sandbox` | **EXPECTED REMOVAL** — `no test target named mapping_regioncell_field_intelligence_sandbox` |
+| `cargo test --workspace` | **PASS** (~206s) |
+
+**Full log:** [`revert_regioncell_sandbox_to_parked_state_full.log`](revert_regioncell_sandbox_to_parked_state_full.log)
+
+**Re-run verdict:** **PASS** — parked state confirmed; E-11B regressions 40/40; sandbox target still absent; workspace green.
+
