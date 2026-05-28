@@ -1,9 +1,17 @@
 # Phase M-4 Design Note: Atlas Batching Isolation + VRAM Accounting
 
-**Status:** Design note / Opus-gated prerequisite — **parked at decision gate** (pending human + Opus sign-off).  
+**Status:** Design note / Opus-gated prerequisite — **isolation policy ratified (Opus, 2026-05-28); implementation still gated.**  
 **This document does not implement atlas batching and does not authorize implementation.**  
-**Atlas batching remains provisional.**  
+**Atlas batching remains provisional and unimplemented.**  
 **This document does not authorize production mapping runtime.**
+
+> **Ratification (Opus, 2026-05-28, under human delegation — `../reviews/m4_m4a_first_slice_oversight_opus_review.md`):**
+> For homogeneous square batches, **algebraic tile-local mask (G=0) is the preferred
+> isolation candidate**; **physical gutter (G≥H) is the fallback**; mixed-size
+> **local-bounds metadata remains deferred**. The §11 checklist is now a **binding
+> acceptance gate**. Ratification chooses the isolation *design* an M-4 implementation PR
+> pursues first — it does **not** authorize implementation. Atlas stays Provisional, and
+> `request_atlas_batching` stays rejected at admission, until an M-4 PR passes that gate.
 
 **Related:** [`../adr/mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (Mapping ADR — atlas classified **Provisional**), [`../design_v7_7.md`](../design_v7_7.md), [`mapping_current_guidance.md`](mapping_current_guidance.md), Phase M-3 admission [`../tests/phase_m3_region_field_spec_admission_test_results.md`](../tests/phase_m3_region_field_spec_admission_test_results.md).
 
@@ -107,7 +115,7 @@ For production atlas batching **without** local-bounds metadata, short-term isol
 gutter >= effective_horizon
 ```
 
-**B. Algebraic tile-local mask (preferred candidate for homogeneous square batches — M-4A evidence, pending sign-off)**
+**B. Algebraic tile-local mask (preferred isolation candidate for homogeneous square batches — M-4A evidence, ratified Opus 2026-05-28)**
 
 ```text
 gutter = 0 (flush-packed tiles)
@@ -144,18 +152,24 @@ A future generic atlas packer (driver, behind mapping profile) must:
 - Refuse to pack when `gutter < effective_horizon` and no local-bounds isolation is configured.
 - Record the chosen isolation policy in debug/report output.
 
-### M-4 implementation posture (unchanged)
+### M-4 implementation posture (isolation ratified; implementation still gated)
 
 ```text
-M-4 implementation remains blocked pending human + Opus sign-off.
-If sign-off occurs, the implementation candidate is:
+Isolation policy: RATIFIED (Opus 2026-05-28) — preferred candidate is
   homogeneous square atlas batches
   G=0 AlgebraicTileLocalMask
   fixed-denominator zero-boundary normalization
   full-tile protocol-oracle parity
   PhysicalGutter fallback
-
 Mixed-size atlas metadata remains deferred.
+
+M-4 implementation remains BLOCKED. Ratifying the isolation policy is not
+authorization to implement the packer. An M-4 implementation PR is admissible
+only after (a) a named multi-theater scenario that needs batching, (b) an
+approved VRAM budget for it, and (c) the PR satisfying the §11 binding gate.
+Until then atlas stays Provisional and request_atlas_batching stays rejected
+at admission. The named next mapping step is the first-slice product scenario
+fixture (single grid, no atlas) — not atlas implementation.
 ```
 
 ---
@@ -240,7 +254,7 @@ M-4A does not mean every subsystem should receive a custom mask shader.
 
 | Domain | Possible algebraic expression | Status |
 |---|---|---|
-| Atlas tile boundaries | tile-local valid-neighbor mask | M-4A preferred candidate, **pending sign-off** |
+| Atlas tile boundaries | tile-local valid-neighbor mask | M-4A **ratified preferred candidate** (Opus 2026-05-28); implementation still gated |
 | Fog/perception | perceived = true × visibility/confidence | Future mapping/perception work |
 | Supply reach | field × passability/connectivity mask | Future candidate |
 | Ownership/jurisdiction | influence × legal/control mask | Future candidate |
@@ -257,26 +271,20 @@ These are **complementary**. A skipped RegionField must still expose a valid sum
 
 M-4A does **not** solve global map residency or field-column budget. It removes gutter overhead for active batched maps. A later **map residency / summary policy** should decide which maps are always resident, event-resident, cached, or cold.
 
-### 4.7 Opus decision implications
+### 4.7 Opus decisions (recorded 2026-05-28)
 
-Opus no longer needs to decide whether physical gutters are too expensive; M-4A demonstrates a better candidate for homogeneous square batches.
+Opus no longer needs to decide whether physical gutters are too expensive; M-4A demonstrates a better candidate for homogeneous square batches. The six open questions are now decided (full reasoning: `../reviews/m4_m4a_first_slice_oversight_opus_review.md`):
 
-**Opus still needs to decide:**
+1. **AlgebraicTileLocalMask admissible as generic, semantic-free WGSL? — YES** (boundary algebra over flat buffers; no map/faction/AI/sim semantics).
+2. **Preferred M-4 isolation policy for homogeneous square batches? — YES** (preferred candidate).
+3. **PhysicalGutter remains fallback? — YES.**
+4. **Mixed-size LocalBoundsMetadata remains deferred? — YES.**
+5. **Modulo/division vs tile-local dispatch for the first implementation? — EITHER**, gated on the acceptance test rather than the coordinatization method; bounds-check every load; report the chosen method and prefer measuring against tile-local dispatch.
+6. **Acceptance gate sufficient? — YES, ratified as binding** (§11), with fixed-denominator normalization, safe atlas-global bounds, caller-managed seed-only clearing, banned column-wide `source_col` zeroing, VRAM accounting, no semantic WGSL, no `simthing-sim` awareness, no default pass-graph wiring, and no t44-only acceptance.
 
-1. Whether **AlgebraicTileLocalMask** is admissible as generic, semantic-free WGSL.
-2. Whether it becomes the **preferred M-4 isolation policy** for homogeneous square batches.
-3. Whether **PhysicalGutter** remains fallback.
-4. Whether mixed-size **LocalBoundsMetadata** remains deferred.
-5. Whether production implementation may start with modulo/division coordinate derivation or must use tile-local dispatch.
-6. Whether the acceptance gate is sufficient:
-   - full-tile protocol-oracle parity
-   - fixed-denominator zero-boundary normalization
-   - safe atlas-global bounds
-   - caller-managed seed-only clearing
-   - no column-wide `source_col` zeroing
-   - VRAM accounting
+**Constitutional note:** the algebraic-mask representation carries no constitutional risk; the only risk is *mask fever* (a bespoke mask per gameplay concept). A new algebraic mask is admissible only when generic, bounded, opt-in, designer/RON-governed, semantic-free, and protocol-oracle-parity-tested. M-4A clears that bar for tile boundaries only; §4.5 domains each remain separately gated.
 
-Pending human + Opus sign-off, atlas batching remains **provisional and unimplemented**.
+Despite ratification of the isolation policy, atlas batching remains **provisional and unimplemented** — implementation is separately gated (see §M-4 implementation posture).
 
 ---
 
@@ -474,9 +482,10 @@ Atlas batching **does not authorize** `ActiveOnlyExperimentalNoHalo`. Any future
 
 ---
 
-## 11. Future implementation acceptance checklist
+## 11. Future implementation acceptance checklist — **BINDING GATE (Opus, 2026-05-28)**
 
-Required tests for a **future** M-4 implementation PR (names indicative):
+This checklist is the **binding acceptance gate** for any future M-4 implementation PR. A
+PR that does not satisfy **all** rows is not admissible. Required tests (names indicative):
 
 | Test | Requirement |
 |------|-------------|

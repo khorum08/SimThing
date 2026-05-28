@@ -9,7 +9,7 @@
 **Evidence cited (all `docs/tests/`):**
 - `mapping_optimization_toolkit_sandbox_test_results.md`
 - `mapping_optimization_remedial_sandbox_test_results.md`
-- `mapping_atlas_algebraic_mask_sandbox_test_results.md` (M-4A — **proposed amendment only; classification not yet changed**)
+- `mapping_atlas_algebraic_mask_sandbox_test_results.md` (M-4A — **ratified 2026-05-28: algebraic tile-local mask G=0 is the preferred isolation candidate for homogeneous square batches; physical gutter is fallback. Atlas remains Provisional/unimplemented.** See `docs/reviews/m4_m4a_first_slice_oversight_opus_review.md`.)
 - `mapping_optimization_remedial_candidate_notes.md` (`docs/workshop/archive/mapping/`)
 - `v7_6_structured_field_stencil_guardrail_hardening_test_results.md`
 - `v7_6_structured_field_stencil_parked_state_test_results.md`
@@ -284,17 +284,20 @@ are the sandbox probes' own ADR-adoption tables, ratified here.
 | **Cadence tiers** | **Adopted** | RON/Designer policy | Author a cadence tier per field class (EveryTick/4/10/60/Event); scheduler skips non-due fields. Deterministic, replay-safe (1580 dispatches avoided / 120 ticks, deterministic replay = YES, toolkit Test 3). Field-type quality depends on cap/decay authoring, not on the tier mechanism. |
 | **Dirty macro-region skipping** | **Adopted** | driver/scheduler | Skip clean macro-regions before command-buffer construction. 62.5% skip ratio, **false_skips = 0** (toolkit Test 5). Conservative false-schedules are acceptable; false-skips are not. Skip ratio collapses at long horizons (96% dirty at H=16, operator-toolkit Test 2) — pair with hierarchy-first refresh rather than long-horizon dense diffusion. |
 | **Caller-managed source policy** | **Adopted (v1)** | runtime substrate API | `CallerManagedOneShotSeedThenZero` is the v1 default: caller seeds once, clears the source column after the initial hop, runs configured horizon. Uncleared sources pump to cap (growth_ratio 2.13, remedial Test 4). The primitive does not identify or clear sources automatically. |
-| **Atlas batching** | **Provisional** | driver/scheduler + runtime substrate | Pack scheduled tiles into one atlas, one dispatch per atlas (N=64 speedup 59.6×, toolkit Test 2). **Gutter ≥ H is the short-term-safe isolation policy but expensive: 10×10 H=8 carries a 6.76× VRAM multiplier (576% overhead, remedial Test 2).** Per-tile seed clearing is mandatory. **Production acceptance requires bit-exact parity against an exact per-tile-protocol CPU oracle** (a CPU model that replays the same per-tile seed-clear + gutter + boundary protocol the GPU atlas uses), **not** corridor-t44 agreement alone: t44 ≤0.016 was the sandbox *tactical-signal* metric, but full-tile L∞ stayed ~409 vs a naive standalone oracle because the standalone oracle did not model the atlas protocol. The acceptance oracle must model that protocol so full-tile parity is meaningful. Local-bounds tile-rect metadata is the long-term preferred isolation policy (deferred pending API design, remedial Test 3). **Proposed (M-4A, not yet ratified):** for homogeneous square batches, algebraic tile-local mask at G=0 may become the preferred short-term path over physical gutter — see `mapping_atlas_algebraic_mask_sandbox_test_results.md` and [`mapping_atlas_batching_isolation_design_note.md`](../workshop/mapping_atlas_batching_isolation_design_note.md). Physical gutter remains fallback until Opus ratifies. |
+| **Atlas batching** | **Provisional** | driver/scheduler + runtime substrate | Pack scheduled tiles into one atlas, one dispatch per atlas (N=64 speedup 59.6×, toolkit Test 2). **Gutter ≥ H is the short-term-safe isolation policy but expensive: 10×10 H=8 carries a 6.76× VRAM multiplier (576% overhead, remedial Test 2).** Per-tile seed clearing is mandatory. **Production acceptance requires bit-exact parity against an exact per-tile-protocol CPU oracle** (a CPU model that replays the same per-tile seed-clear + gutter + boundary protocol the GPU atlas uses), **not** corridor-t44 agreement alone: t44 ≤0.016 was the sandbox *tactical-signal* metric, but full-tile L∞ stayed ~409 vs a naive standalone oracle because the standalone oracle did not model the atlas protocol. The acceptance oracle must model that protocol so full-tile parity is meaningful. Local-bounds tile-rect metadata is the long-term preferred isolation policy (deferred pending API design, remedial Test 3). **Ratified (M-4A, Opus 2026-05-28):** for homogeneous square batches, **algebraic tile-local mask at G=0 is the preferred isolation candidate** (full-tile protocol-oracle parity, 1.0× VRAM vs 6.76× for gutter); **physical gutter is the fallback** (required whenever masking is not configured/admitted or the layout is not homogeneous-square). Ratification governs *which isolation design an M-4 implementation PR pursues first*; it does **not** mark atlas Adopted and does **not** authorize implementation — atlas stays Provisional/unimplemented and `request_atlas_batching` stays rejected at admission until an M-4 PR satisfies the ratified acceptance gate. See `mapping_atlas_algebraic_mask_sandbox_test_results.md`, [`mapping_atlas_batching_isolation_design_note.md`](../workshop/mapping_atlas_batching_isolation_design_note.md), and `docs/reviews/m4_m4a_first_slice_oversight_opus_review.md`. |
 
-### Proposed amendments (evidence landed; classification unchanged)
-
-| Topic | Evidence | Proposed change | Status |
-|---|---|---|---|
-| Atlas isolation (homogeneous square) | M-4A sandbox (`mapping_atlas_algebraic_mask_sandbox_test_results.md`) | Add algebraic tile-local mask G=0 as preferred short-term path; physical G≥H becomes fallback | **Pending Opus + human sign-off** |
-
-Ratified classifications in the table above remain authoritative until this subsection is promoted via an explicit ADR amendment PR.
 | **Active frontier + halo** | **Provisional** | driver/scheduler + runtime substrate | H-hop / per-hop halo only, with CPU-oracle parity (halo_H8 max_error 0.0026 vs full grid, toolkit Test 7; 0.003 on safe atlas, remedial Test 6). Speedup is sparsity-dependent and modest on small grids (~1.5–1.9×); meaningful at ≥25% active on larger grids (refinement Test 7). |
 | **Behavioral source policy** | **Deferred** | runtime substrate API design | Requires explicit source identity (`source_mask` or separate seed buffer). CPU models of a seed buffer and a source-mask match the caller-managed baseline and are semantic-free (remedial Test 5 options A/B viable). **Column-wide `source_col` zeroing is banned** — it corrupts propagated state held in that column (option C rejected). No behavioral-policy WGSL until source identity lands. |
+
+### Ratified amendments
+
+| Topic | Evidence | Change | Status |
+|---|---|---|---|
+| Atlas isolation (homogeneous square) | M-4A sandbox (`mapping_atlas_algebraic_mask_sandbox_test_results.md`) | Algebraic tile-local mask G=0 is the **preferred isolation candidate**; physical G≥H is **fallback** | **Ratified (Opus, 2026-05-28)** under human delegation — `docs/reviews/m4_m4a_first_slice_oversight_opus_review.md`. Atlas remains **Provisional/unimplemented**; this ratifies the *isolation policy*, not implementation. |
+
+The acceptance gate a future M-4 atlas implementation PR must satisfy is **binding** and
+recorded in [`mapping_atlas_batching_isolation_design_note.md`](../workshop/mapping_atlas_batching_isolation_design_note.md) §11
+and in the oversight memo. Mixed-size `LocalBoundsMetadata` **remains deferred**.
 
 ### Hard prohibitions (the stop conditions, restated as doctrine)
 
@@ -388,6 +391,18 @@ opt-in. Single-grid edge-boundary parity and designer-facing RegionField budget 
 landed. **Not** wired into default `SimSession` pass graph; `MappingExecutionProfile`
 default remains `Disabled`. Atlas batching (M-4) remains provisional and unimplemented.
 Classification unchanged.
+
+**Update (2026-05-28):** First-slice runtime hardened through **R1** (no-readback GPU-state
+ownership), **R2** (GPU-resident Layer 1→2→3 bridge: `StructuredFieldStencilOp` →
+`AccumulatorOpSession` → `SlotRange` Sum → `EvalEML`, `reduction_stencil_readbacks=0` on the
+hot path), and **R3** (readiness/observability parking). **Opus accepted the R3 runtime as a
+stable base** (`docs/reviews/m4_m4a_first_slice_oversight_opus_review.md`; 28/28
+first-slice tests green, independently re-run on GPU). Default remains `Disabled`;
+`simthing-sim` remains map-free; no atlas/active-mask/perception/`source_mask` landed.
+Named next step: a product-facing first-slice scenario fixture (single grid, no atlas) —
+**not** atlas implementation. Known scale caveat: the bridge uses per-slot queue writes for
+resource/parent-weight columns (fine and reported at 10×10; must be redesigned and measured
+before atlas/multi-field scale).
 
 ---
 
