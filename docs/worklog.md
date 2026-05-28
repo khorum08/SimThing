@@ -6,6 +6,20 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-19 — SEAD tensor/stencil WGSL prototype probe (reverted to parked state)
+
+- Ran fourth SEAD feasibility sandbox (PR #206): prototype WGSL structured 2D stencil kernel vs per-edge AccumulatorOp. 10/10 PASS (`--test-threads=1`). Overall verdict **PARTIAL**.
+- Generality: **PASS** — flat buffers + dimensions + columns + kernel weights; no map/faction/AI semantics.
+- Cost: projected 30k ~285 ms (normalized) vs AccumulatorOp 3236.6 ms dirty-adjusted (~**11×** speedup); scales to 80–1200× on larger grids (rough).
+- Operator: **normalized_stencil** reaches [4][4] with correct gradient at H=8; raw blows up; decayed_normalized too weak at H≤16; directed fails with NSEW setup.
+- Hybrid: stencil + SlotRange Sum ~3× faster than lateral AccumulatorOp H=8 on 10×10; urgency EML needs parent personality columns.
+- ADR recommendation: add **StructuredFieldStencilOp** as future mapping ADR candidate primitive.
+- Preserved at [`sead_tensor_stencil_wgsl_sandbox_code_preserve.rs`](workshop/sead_tensor_stencil_wgsl_sandbox_code_preserve.rs), [`sead_tensor_stencil_prototype.wgsl`](workshop/sead_tensor_stencil_prototype.wgsl), [`sead_tensor_stencil_wgsl_sandbox_test_results.md`](tests/sead_tensor_stencil_wgsl_sandbox_test_results.md).
+
+**Verification:** [`revert_sead_tensor_stencil_wgsl_sandbox_to_parked_state_test_results.md`](tests/revert_sead_tensor_stencil_wgsl_sandbox_to_parked_state_test_results.md)
+
+---
+
 ## 2026-05-19 — SEAD operator toolkit probe (reverted to parked state)
 
 - Ran third SEAD feasibility sandbox (PR #204): stabilized propagation operators, dirty/frontier skip, cadence, whitelist admission, hierarchy-first awareness, hybrid model, PF/dirty comparison, cost projection. 11/11 PASS (`--test-threads=1`). Overall verdict **PARTIAL**.
