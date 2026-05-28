@@ -33,8 +33,9 @@
 | Item | Posture |
 |------|---------|
 | Atlas batching in Mapping ADR | **Provisional** — not production-authorized without this contract |
-| This design note | Specifies future API contracts and acceptance gates only |
-| Implementation | **Blocked** until human + Opus sign-off on this note |
+| This design note | Specifies the API contract and binding acceptance gate only |
+| Isolation policy sign-off | **Completed by Opus 2026-05-28** (`../reviews/m4_m4a_first_slice_oversight_opus_review.md`) — algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds deferred |
+| Implementation | **Blocked** — isolation-policy sign-off is done, but atlas implementation stays blocked until a named multi-theater scenario needs batching, an approved VRAM budget exists, **and** an M-4 PR satisfies the §11 binding acceptance gate. Atlas batching remains **Provisional and unimplemented**; this document does not itself implement atlas batching; `request_atlas_batching` remains rejected at admission |
 | Production mapping runtime | **Not authorized** by this note |
 | `StructuredFieldStencilOp` | Unchanged — live, opt-in, hardened, GPU-resident by default |
 | `RegionFieldSpec` (M-3) | Designer/spec structure only; `request_atlas_batching` rejected at admission until M-4 implementation lands |
@@ -107,24 +108,29 @@ Atlas batching is **promising** for dispatch amortization but **must**:
 
 ### Rule
 
-For production atlas batching **without** local-bounds metadata, short-term isolation may use **either**:
+For production atlas batching **without** local-bounds metadata, short-term isolation uses
+**exactly one** of the following two admitted policies (local-bounds metadata is the deferred
+third policy — see "Tile isolation requirement"):
 
-**A. Physical gutter (fallback / conservative)**
-
-```text
-gutter >= effective_horizon
-```
-
-**B. Algebraic tile-local mask (preferred isolation candidate for homogeneous square batches — M-4A evidence, ratified Opus 2026-05-28)**
+**A. Algebraic tile-local mask (preferred isolation candidate for homogeneous square batches — M-4A evidence, ratified Opus 2026-05-28)**
 
 ```text
 gutter = 0 (flush-packed tiles)
 shader applies tile-local valid-neighbor mask
 foreign-tile reads annihilated before accumulation
+fixed-denominator zero-boundary normalization
+safe atlas-global bounds before any neighbor load
 full-tile protocol-oracle parity required
 ```
 
-Physical gutter remains required when algebraic masking is not configured or not admitted.
+**B. Physical gutter (fallback / conservative)**
+
+```text
+gutter >= effective_horizon
+```
+
+Physical gutter is required when algebraic masking is not configured or not admitted, or when
+the layout is not homogeneous-square.
 
 Where:
 
@@ -134,9 +140,27 @@ effective_horizon = executed horizon for the atlas dispatch
 
 (i.e., the configured stencil hop count actually run in that atlas batch, not a larger authored cap unless explicitly executed.)
 
-### Tile gutter requirement
+### Tile isolation requirement
 
-Every packed tile must have a **zeroed/isolated gutter** of at least `effective_horizon` cells on **all sides**, unless a future local-bounds API provides equivalent isolation without full gutters.
+Every packed tile must declare **exactly one** admitted isolation policy:
+
+```text
+1. AlgebraicTileLocalMask:
+   preferred candidate for homogeneous square batches
+   gutter may be 0 (flush-packed tiles)
+   tile-local valid-neighbor mask nullifies invalid cross-boundary contributions
+   fixed-denominator zero-boundary normalization
+   safe atlas-global bounds checked before any neighbor load
+   full-tile protocol-oracle parity required
+
+2. PhysicalGutter:
+   fallback / conservative path
+   gutter >= effective_horizon (zeroed/isolated on all sides)
+
+3. LocalBoundsMetadata:
+   deferred future path
+   not authorized until a separate ADR/implementation PR
+```
 
 ### Rationale
 
@@ -147,10 +171,25 @@ Every packed tile must have a **zeroed/isolated gutter** of at least `effective_
 
 ### Future packer obligation
 
-A future generic atlas packer (driver, behind mapping profile) must:
+A future generic atlas packer (driver, behind mapping profile) must refuse to pack unless
+**exactly one** admitted isolation policy is configured, and must record the chosen policy in
+debug/report output:
 
-- Refuse to pack when `gutter < effective_horizon` and no local-bounds isolation is configured.
-- Record the chosen isolation policy in debug/report output.
+```text
+For AlgebraicTileLocalMask:
+  require homogeneous square batch
+  require safe atlas-global bounds
+  require fixed-denominator zero-boundary normalization
+  require full-tile protocol-oracle parity
+  require VRAM accounting
+  reject mixed-size batches
+
+For PhysicalGutter:
+  require gutter >= effective_horizon
+
+For LocalBoundsMetadata:
+  reject until separately admitted
+```
 
 ### M-4 implementation posture (isolation ratified; implementation still gated)
 
@@ -176,7 +215,10 @@ fixture (single grid, no atlas) — not atlas implementation.
 
 ## 4. Architectural Implications of Algebraic Tile-Local Masking
 
-M-4A is **active evidence**, not automatic ratification. The probe supports a broader SimThing design principle:
+M-4A began as sandbox evidence and is now **ratified by Opus 2026-05-28** as the preferred
+isolation candidate for homogeneous square atlas batches. This ratifies the isolation **design
+only**; it does **not** mark atlas Adopted, does **not** implement atlas, and does **not**
+authorize atlas execution. The probe supports a broader SimThing design principle:
 
 ```text
 Topology, separation, boundaries, and validity can often be represented as generic
@@ -439,7 +481,10 @@ WGSL would sample neighbors only within declared local bounds (or equivalent til
 Local-bounds metadata is deferred and requires implementation ADR/PR before use.
 ```
 
-This design note does **not** authorize local-bounds implementation. Until human + Opus sign-off, atlas implementation candidates are **AlgebraicTileLocalMask (G=0)** for homogeneous square batches with **PhysicalGutter (G≥H)** as fallback — not local-bounds metadata.
+This design note does **not** authorize local-bounds implementation. Per the ratified
+isolation policy (Opus 2026-05-28), atlas implementation candidates are
+**AlgebraicTileLocalMask (G=0)** (preferred, homogeneous square batches) with
+**PhysicalGutter (G≥H)** as fallback — **not** local-bounds metadata, which remains deferred.
 
 ---
 
@@ -490,7 +535,7 @@ PR that does not satisfy **all** rows is not admissible. Required tests (names i
 | Test | Requirement |
 |------|-------------|
 | `atlas_vram_accounting_reports_multiplier` | Reports `vram_multiplier`, `vram_overhead_percent`, `estimated_atlas_bytes` |
-| `atlas_refuses_without_isolation_policy` | Refuses pack when `gutter < effective_horizon` and no local-bounds config |
+| `atlas_refuses_without_isolation_policy` | Refuses pack unless exactly one admitted isolation policy is configured (AlgebraicTileLocalMask with full-tile parity + safe bounds + fixed-denominator normalization, or PhysicalGutter with `gutter ≥ effective_horizon`); LocalBoundsMetadata rejected until separately admitted |
 | `atlas_gutter_ge_h_prevents_cross_tile_sampling` | No cross-tile coupling at G ≥ H on standard fixture |
 | `atlas_per_tile_seed_clear_protocol_matches_cpu_oracle` | Seed-clear semantics match protocol oracle |
 | `atlas_full_tile_parity_against_protocol_oracle` | Full useful tile bit-exact (or approved tolerance) vs oracle |
