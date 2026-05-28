@@ -63,6 +63,8 @@ fn fission_inherit_game_mode(scenario: &simthing_driver::Scenario) -> GameModeSp
         }),
         resource_economy: None,
         resource_flow_execution_profile: Default::default(),
+        region_fields: vec![],
+        mapping_execution_profile: Default::default(),
     };
     fill_explicit_participants(&mut mode, scenario);
     mode
@@ -373,6 +375,8 @@ fn resource_flow_enrollment_without_opt_in_uses_install_target_only() {
         }),
         resource_economy: None,
         resource_flow_execution_profile: Default::default(),
+        region_fields: vec![],
+        mapping_execution_profile: Default::default(),
     };
 
     let session = SimSession::open_from_spec(scenario, &game_mode).expect("open");

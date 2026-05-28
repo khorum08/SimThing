@@ -33,4 +33,10 @@ pub struct GameModeSpec {
     /// not enable GPU from `ResourceFlowSpec` presence alone — arenas must be authored.
     #[serde(default)]
     pub resource_flow_execution_profile: super::resource_flow::ResourceFlowExecutionProfile,
+    /// Sparse RegionCell mapping field declarations (Phase M-3). Structure only; does not enable execution.
+    #[serde(default)]
+    pub region_fields: Vec<super::region_field::RegionFieldSpec>,
+    /// Mapping execution opt-in profile. Default Disabled; spec presence alone does not enable runtime.
+    #[serde(default)]
+    pub mapping_execution_profile: super::region_field::MappingExecutionProfile,
 }

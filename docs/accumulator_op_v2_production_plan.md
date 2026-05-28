@@ -1599,7 +1599,7 @@ new reduce-into convenience matches a manual `SlotRange` Sum bit-for-bit.
 asserting zero false-skips against a full-grid oracle.  
 **Acceptance:** CI green. Driver-only. No defaults changed.
 
-### PR M-3 — `RegionFieldSpec` RON + mapping admission framework (spec, designer-layer)
+### PR M-3 — `RegionFieldSpec` RON + mapping admission framework (spec, designer-layer) — **Done**
 
 **Model:** Composer 2.5  
 **Scope:** The designer-facing guardrail layer — the load-bearing safety surface.
@@ -1619,6 +1619,22 @@ In `simthing-spec`:
   the simulation.
 - Opt-in execution profile (`MappingExecutionProfile`), default-off; spec presence
   is structure, execution requires explicit opt-in (Resource Flow precedent).
+
+**Landed:** Phase M-3 RegionFieldSpec RON + mapping admission framework.
+RegionFieldSpec is designer/spec structure only and compiles/previews to generic
+substrate configs. Grid size is designer-addressable as square N; admission rejects
+N=0 and over-cap sizes. Square-only is enforced at spec admission, not in
+StructuredFieldStencilOp or simthing-sim. Source policy v1 remains
+CallerManagedOneShotSeedThenZero. Cadence maps to generic FieldCadence.
+Reduction bindings compile to existing ColumnAwareReductionSpec / SlotRange Sum
+semantics. Field formula classes field_pressure / field_urgency / field_decay /
+bounded_field_update are admitted at designer/spec policy layer without new EML
+opcodes. MappingExecutionProfile remains default Disabled; spec presence alone
+does not enable execution. No production mapping runtime landed. No production
+pass graph wiring landed. No map/faction/AI semantics entered simthing-sim or
+WGSL. Next Phase M task: Opus-gated M-4 atlas batching isolation + VRAM
+accounting design, unless first-slice runtime wiring is explicitly selected after
+M-3 review.
 
 **Test:** A rejection suite (one case per banned/over-cap condition) plus a
 round-trip that a valid bounded field compiles to generic stencil + reduction +
@@ -1738,7 +1754,7 @@ Until then, caller-managed one-shot-seed-then-zero (v1) is the only source polic
 | **G-2** | **G** | **Opus** | **design_v7.md §4 final review** | **Human + Opus** |
 | M-1 | M | Composer 2.5 | RegionField execution API on StructuredFieldStencilOp (generic) | **Done** — stencil parity + reduce-into bit-exact |
 | M-2 | M | Composer 2.5 | Cadence scheduler + dirty macro-region skip (driver) | **Done** — determinism + zero false-skips |
-| M-3 | M | Composer 2.5 | `RegionFieldSpec` RON + mapping admission framework (designer-layer) | Rejection suite + opaque-op round-trip; default-off |
+| M-3 | M | Composer 2.5 | `RegionFieldSpec` RON + mapping admission framework (designer-layer) | **Done** — rejection suite + RON roundtrip; default-off |
 | **M-4** | **M** | **Opus + Composer** | **Atlas batching isolation + VRAM accounting (provisional)** | **Opus design + human sign-off; provisional/opt-in** |
 | M-5 | M | Composer 2.5 | Generic source-identity buffer (behavioral source policy) | **DEFERRED** — not scheduled until a scenario names the need |
 

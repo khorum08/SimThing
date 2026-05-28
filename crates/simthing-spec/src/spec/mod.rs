@@ -7,6 +7,7 @@ pub mod install_target;
 pub mod overlay;
 pub mod property;
 pub mod resource_economy;
+pub mod region_field;
 pub mod resource_flow;
 pub mod scenario;
 pub mod script;
@@ -27,6 +28,11 @@ pub use resource_economy::{
     EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec,
     ResourceEconomyOptInMode, ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec,
     ResourceTransferSpec,
+};
+pub use region_field::{
+    MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
+    RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
+    RegionFieldSourcePolicySpec, RegionFieldSpec,
 };
 pub use resource_flow::{
     ArenaSpec, CouplingDelaySpec, CouplingSpec, EnrollmentSelectorSpec, ExplicitParticipantSpec,

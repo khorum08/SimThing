@@ -60,14 +60,19 @@ pub use boundary::{
     ScriptedEventDiagnosticKind,
 };
 pub use compile::{
-    compile_effect, compile_event, compile_overlay, compile_property, compile_resource_economy,
-    compile_resource_flow_admission, compile_trigger, CapabilityTreeBuildOutput,
+    compile_effect, compile_event, compile_overlay, compile_property, compile_region_field_preview,
+    compile_region_field_stencil_config, compile_resource_economy, compile_resource_flow_admission,
+    compile_trigger, admit_region_field_formula_class, CapabilityTreeBuildOutput,
     CapabilityTreeBuilder, CompileContext, CompiledArenaAdmission, CompiledCouplingAdmission,
-    CompiledCouplingDelay, CompiledEmissionFormula, CompiledEmitOnThreshold,
+    CompiledCouplingDelay, CompiledEmissionFormula, CompiledEmitOnThreshold, CompiledFieldCadence,
+    CompiledRegionFieldBoundaryMode, CompiledRegionFieldMaskMode, CompiledRegionFieldOperator,
+    CompiledRegionFieldPreview, CompiledRegionFieldSourcePolicy, CompiledRegionFieldStencilSpec,
     CompiledResourceEconomy, CompiledResourceEmission, CompiledResourceFlowAdmission,
     CompiledResourceRecipe, CompiledResourceRecipeInput, CompiledResourceTransfer,
     ResourceEconomyDiagnostic, ResourceEconomyExpansionReport, ResourceFlowDiagnostic,
-    ResourceFlowExpansionReport,
+    ResourceFlowExpansionReport, ADMITTED_REGION_FIELD_FORMULA_CLASSES,
+    REGION_FIELD_DEFAULT_HORIZON_CAP, REGION_FIELD_EXTENDED_HORIZON_CAP,
+    REGION_FIELD_EXTENDED_MAX_GRID, REGION_FIELD_MAX_CELL_COUNT, REGION_FIELD_STANDARD_MAX_GRID,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;
@@ -77,7 +82,9 @@ pub use preview::{
     preview_capability_effect, CapabilityPreviewDelta, CapabilityPreviewInput,
     CapabilityPreviewOverlayBreakdown, CapabilityPreviewReport,
 };
-pub use ron::{deserialize_capability_tree_ron, deserialize_game_mode_ron};
+pub use ron::{
+    deserialize_capability_tree_ron, deserialize_game_mode_ron, deserialize_region_field_ron,
+};
 pub use runtime::{
     CapabilityCategoryDefinition, CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
     CapabilityTreeDefinitionId, CapabilityTreeDiagnostic, CapabilityTreeInstance,
@@ -96,6 +103,11 @@ pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;
 pub use spec::overlay::OverlaySpec;
 pub use spec::property::PropertySpec;
+pub use spec::region_field::{
+    MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
+    RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
+    RegionFieldSourcePolicySpec, RegionFieldSpec,
+};
 pub use spec::resource_economy::{
     EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec,
     ResourceEconomyOptInMode, ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec,

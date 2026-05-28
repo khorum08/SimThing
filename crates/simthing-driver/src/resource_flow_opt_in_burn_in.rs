@@ -323,6 +323,8 @@ fn base_game_mode(id: &str) -> GameModeSpec {
         resource_flow: None,
         resource_economy: None,
         resource_flow_execution_profile: Default::default(),
+        region_fields: vec![],
+        mapping_execution_profile: Default::default(),
     }
 }
 

@@ -120,6 +120,8 @@ pub fn flat_star_game_mode(max_orderband_depth: u32) -> GameModeSpec {
         }),
         resource_economy: None,
         resource_flow_execution_profile: Default::default(),
+        region_fields: vec![],
+        mapping_execution_profile: Default::default(),
     }
 }
 

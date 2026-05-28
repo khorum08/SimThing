@@ -366,6 +366,8 @@ fn make_game_mode_spec(install: InstallTargetSpec) -> GameModeSpec {
         resource_flow: None,
         resource_economy: None,
         resource_flow_execution_profile: Default::default(),
+        region_fields: vec![],
+        mapping_execution_profile: Default::default(),
     }
 }
 
@@ -431,6 +433,8 @@ fn make_threshold_unlock_game_mode() -> GameModeSpec {
         resource_flow: None,
         resource_economy: None,
         resource_flow_execution_profile: Default::default(),
+        region_fields: vec![],
+        mapping_execution_profile: Default::default(),
     }
 }
 
@@ -1158,6 +1162,8 @@ fn open_from_spec_installs_one_scripted_event_instance_per_faction() {
         resource_flow: None,
         resource_economy: None,
         resource_flow_execution_profile: Default::default(),
+        region_fields: vec![],
+        mapping_execution_profile: Default::default(),
     };
 
     let session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
