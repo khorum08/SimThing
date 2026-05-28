@@ -91,6 +91,36 @@ continuous-flow arena substrate that builds on AccumulatorOp v2.
 
 ---
 
+## Mapping (Sparse RegionCell)
+
+Added by `docs/adr/mapping_sparse_regioncell.md`. These rules govern dense local
+spatial fields. They are designer-facing guardrails first: they reject dangerous
+scenarios at import/session-build so blowout never reaches the simulation.
+
+| Rule | Enforced by |
+|---|---|
+| No production mapping runtime without first-slice gating | The compute exists (StructuredFieldStencilOp kernel/WGSL/ping-pong/oracle live; Layers 2–3 are existing AccumulatorOp paths); "runtime" = wiring a RegionCell field into a production session pass graph at session open. That step is gated to the named first slice, after Phase M natives; until then fields are test/opt-in-driven only |
+| RegionCell is an authored mapping-role, not a core kind | RegionCell is a spec/RON-authored mapping-role/profile on a SimThing backed by a slot range + field columns; `simthing-core` gains no new `SimThingKind` variant |
+| Guardrail placement is two-layered | RON/Designer/spec owns expressive policy + rejects unsafe authoring at import; runtime enforces hard safety unconditionally (horizon execution caps, source-cap clamp, finite/column validation, ping-pong correctness, bounded field/perception clamps). Authoring is never trusted to have been safe |
+| `simthing-sim` is map-free | No RegionCell, atlas, gutter, cadence, halo, or field-formula concept appears in `simthing-sim`; it sees only flat columns and opaque `AccumulatorOp` registrations |
+| Dense local fields use the generic primitive only | RegionCell fields are evolved by `StructuredFieldStencilOp` over flat buffers/dimensions/columns/kernel weights; no semantic or map-specific WGSL is admitted |
+| Strategic awareness is hierarchy + parent EML, never dense global diffusion | Cell→parent `SlotRange` Sum reduction then `EvalEML` on a later order band; widening the stencil horizon for empire-scale awareness is rejected (over budget by evidence) |
+| Band ordering: reduce before interpret | Sum reduction band precedes parent `EvalEML` band within a tick; cross-cell propagation advances by later-band cascade, not same-band chaining |
+| Default stencil operators are stability-bounded | `normalized_stencil` / `source_capped_normalized` only; `raw_additive` (blows up) and `clamped_additive` (saturates, loses gradient) are not production operators |
+| Horizon is capped | Default tactical H ≤ 8; extended H ≤ 16 only with `allow_extended_horizon` plus a source-cap/decay stability contract; `run_ping_pong`/`dispatch_ping_pong` reject steps above `config.horizon` |
+| Ping-pong required for H > 1 | Proven GPU=CPU bit-exact; single-buffer multi-hop is a data race and is rejected |
+| Source policy is caller-managed (v1) | `CallerManagedOneShotSeedThenZero`; the primitive never auto-identifies or auto-clears sources; column-wide `source_col` zeroing is **banned** (corrupts propagated state) |
+| Active masks require a halo | `ActiveOnlyExperimentalNoHalo` is never production-authorized; only H-hop / per-hop halo with CPU-oracle parity is admitted |
+| Atlas batching requires isolation policy + VRAM reporting + protocol oracle | Gutter ≥ effective horizon H (short-term) with per-tile seed clearing; VRAM-multiplier reporting mandatory (6.76× on 10×10 H=8); **production acceptance requires bit-exact parity vs an exact per-tile-protocol CPU oracle, not corridor-t44 alone**; local-bounds tile-rect metadata is the long-term preferred isolation policy |
+| Behavioral source policy needs source identity | No shader-step source masking until a generic `source_mask` or separate seed buffer lands; deferred by ADR |
+| Velocity needs an explicit previous-value column | EML has no previous-buffer read opcode; trajectory pressures use an explicit previous column with a copy band scheduled before the threat-update band |
+| No CPU AI map planner | Strategic commitments emerge as `Threshold` + `EmitEvent` crossings over parent EML pressure columns; no CPU-side map traversal decides anything |
+| Perception write-boundary: perceived/deception never write back to true fields | Data flows true → perceived only; perceived/last-known/confidence/deception are bounded (`bounded_field_update`/`field_decay`) per-observer columns; the **only** path that updates authoritative state is an explicit gameplay event via the event/`BoundaryRequest` path; any op writing a perceived/deception column into a true column is rejected at spec admission |
+| Field formula-class admission is a designer-layer policy | `field_pressure`/`field_urgency`/`field_decay`/`bounded_field_update` are admitted at the RON/Designer/spec layer (C-8 `register_formula` is runtime-sufficient); legacy whitelist rejection was wrong-layer, not runtime safety |
+| Mapping is opt-in, bounded, default-off | Map-spec presence is structure; execution requires explicit scenario-class/profile opt-in (Resource Flow precedent); every field declares hard caps (grid bounds, horizon cap, source cap) |
+
+---
+
 ## The Proof Test
 
 `custom_layout_ethics_axis` in `property.rs` is the invariant proof for the

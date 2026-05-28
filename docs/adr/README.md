@@ -8,6 +8,7 @@
 | [scripted_event_scope_model.md](scripted_event_scope_model.md) | Accepted (O4 landed `8904522`) | Per-owner scripted event instances |
 | [spec_session_state_replay.md](spec_session_state_replay.md) | Accepted (O2 landed `2f2a7b5`) | Replay v3 — `SpecSnapshot`/`SpecDelta`, logical keys |
 | [install_clone_then_commit.md](install_clone_then_commit.md) | Accepted (I1 landed `6b8de81`) | `preview_install` / `install_atomic` / Studio preview |
+| [mapping_sparse_regioncell.md](mapping_sparse_regioncell.md) | Approved (architecture 2026-05-28; Phase M unlocked, no runtime) | Sparse RegionCell mapping — three-layer model, optimization doctrine, SEAD surfacing |
 
 AccumulatorOp v2: [`../adr_accumulator_op_v2.md`](../adr_accumulator_op_v2.md) (Proposed) · spec: [`../design_v7.md`](../design_v7.md)
 

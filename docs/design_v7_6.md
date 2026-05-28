@@ -159,6 +159,14 @@ The next work item is **not** runtime mapping implementation. It is the **Mappin
 that defines RegionCell fields, source policy, active-mask halo/frontier semantics,
 cadence tiers, and column-aware parent bindings.
 
+> **Update (2026-05-28):** The Mapping ADR is now **approved at the architecture
+> level** — see [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md)
+> and the [`design_v7_7.md`](design_v7_7.md) surfacing. Approval unlocks the
+> **Phase M** generic natives in the production plan and names the ADR's first
+> scenario-level slice. It still authorizes **no** mapping runtime (that remains a
+> separately-gated later track). V7.6's parked posture (StructuredFieldStencilOp
+> live, opt-in, hardened, inert by default) is unchanged.
+
 ### 7.1 Confirmed current posture
 
 ```text

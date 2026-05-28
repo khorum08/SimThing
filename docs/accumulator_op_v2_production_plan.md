@@ -1289,6 +1289,8 @@ OrderBand budget per arena: `2 × tree_depth` (reduction + allocation).
 
 **V7.6 StructuredFieldStencilOp status:** **Live, parked** — generic GPU primitive promoted from workshop evidence and guardrail-hardened. See [`docs/design_v7_6.md`](design_v7_6.md). Live code: [`structured_field_stencil.rs`](../crates/simthing-gpu/src/structured_field_stencil.rs), [`structured_field_stencil.wgsl`](../crates/simthing-gpu/src/shaders/structured_field_stencil.wgsl). Opt-in library API only — not wired into default production pass graph. **Implementation parked pending Mapping ADR.** Mapping optimization toolkit sandbox (PR #213, reverted) and remedial probe (PR #215, reverted) informed ADR: atlas batching adopt-provisional with G≥H gutter, cadence tiers adopt-now, dirty skip adopt-now, H-hop halo adopt-provisional, caller-managed source adopt-now, behavioral source defer pending source_mask API. See [`mapping_optimization_toolkit_sandbox_test_results.md`](tests/mapping_optimization_toolkit_sandbox_test_results.md) and [`mapping_optimization_remedial_sandbox_test_results.md`](tests/mapping_optimization_remedial_sandbox_test_results.md). No mapping runtime landed. `PipelineFlags::default().use_accumulator_resource_flow` remains false.
 
+**Update (2026-05-28):** Mapping ADR **approved at the architecture level** — [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md), surfaced in [`design_v7_7.md`](design_v7_7.md). Approval unlocks **Phase M** generic natives (M-1–M-4; M-5 deferred) and names the first scenario-level slice. No mapping runtime is authorized: the compute already exists (StructuredFieldStencilOp kernel/WGSL/ping-pong/oracle + existing AccumulatorOp Layers 2–3), so "runtime" is only first-slice session-graph wiring, gated after the Phase M natives. `simthing-sim` remains semantic-free; no default changed.
+
 **E-11B status:** **Paused** after kickoff + E-11B-4 fission/gap hardening + nested dynamic enrollment readiness review. E-11B paused after nested static GPU parity, fission/gap hardening, and nested dynamic enrollment readiness review. Nested D=3/D=4 static hierarchy materialization remains landed and GPU-parity covered. Nested reserved-gap children remain non-leaf unless explicitly admitted by a future nested enrollment gate. Nested dynamic enrollment is deferred until a named product scenario requires it. **E-11B-5 is not authorized** until product names a nested dynamic Resource Flow scenario. Future E-11B-5 must be narrow: explicit nested admission, contiguous extension or visible rejection, generation/sync reporting, replay/parity tests. FlatStarResourceFlow remains the accepted bounded production Resource Flow posture. E-11B remains an explicit nested extension and does not make Resource Flow global default-on. Global `PipelineFlags::default().use_accumulator_resource_flow` remains false. Presence of `ResourceFlowSpec` alone does not enable GPU execution. Policy B Reevaluate remains deferred. D-2a remains deferred until a named hard-currency product scenario needs sequential cross-band ordering. No WGSL changes. No new AccumulatorRole variants. No CPU production fallback. `simthing-sim` remains arena-ignorant. Resource Flow remains separate from hard-currency transfer. Designer-facing spec/RON guardrail rebuild remains deferred.
 
 **E-11B readiness status:** **Done** — [`docs/reviews/e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md). Nested hierarchy GPU execution/materialization current-state audit. No production code changes. Phase T remains complete. D-1 remains landed; D-2 GPU allocator remains deferred. `use_accumulator_resource_flow` remains default false.
@@ -1533,6 +1535,120 @@ as a doc-only PR.
 
 ---
 
+## Phase M — Mapping (Sparse RegionCell) natives
+
+> **Gate:** **Satisfied — `docs/adr/mapping_sparse_regioncell.md` approved
+> (architecture) 2026-05-28.** Phase M is unblocked. It implements **only the few
+> generic natives the ADR needs**; it does **not** implement a mapping runtime,
+> does **not** wire any production pass graph to mapping behavior, and changes
+> **no default**. Every native is a generic toolkit/driver/spec capability —
+> `simthing-sim` stays map-free. The mapping ADR is built on existing primitives
+> (`StructuredFieldStencilOp`, AccumulatorOp `SlotRange` Sum reduction, `EvalEML`,
+> `Threshold`+`EmitEvent`), so the new-native surface is intentionally small.
+
+The ADR's three-layer model already runs on shipped primitives. What is missing
+is the thin generic plumbing that lets a scheduler drive them efficiently and a
+designer declare a bounded field safely. That plumbing is Phase M.
+
+### PR M-1 — RegionField execution API on `StructuredFieldStencilOp` (generic)
+
+**Model:** Composer 2.5  
+**Scope:** Harden the V7.6 primitive's caller-facing execution surface so a
+scheduler can drive it without re-implementing buffer management. Generic only —
+no RegionCell/map names in the primitive.
+- Confirm/strengthen ping-pong buffer binding and `run_configured_horizon` as the
+  safe execution helper (V7.6 hardening already landed the horizon guards;
+  M-1 only adds the batch-friendly entry points).
+- Add a generic `column_aware_reduce_into(parent_slot, parent_col)` convenience
+  over the existing `SlotRange` Sum so Layer-2 reduction is one call.
+- Expose the debug surface fields the ADR requires: dispatch count, field max/L1,
+  configured vs executed horizon, source policy in effect, active-mask ratio.
+
+**Test:** Generic stencil parity unchanged (ping-pong GPU=CPU bit-exact retained);
+new reduce-into convenience matches a manual `SlotRange` Sum bit-for-bit.  
+**Acceptance:** CI green. `simthing-gpu` only. No new WGSL. No defaults changed.
+
+### PR M-2 — Cadence scheduler + dirty macro-region skip (driver, adopted opts)
+
+**Model:** Composer 2.5  
+**Scope:** A generic field scheduler in `simthing-driver` implementing the two
+**adopted** optimizations:
+- Cadence tiers (`EveryTick | EveryN | OnEvent`) per registered field; the
+  scheduler skips non-due fields before command-buffer construction. Deterministic
+  and replay-safe (toolkit Test 3).
+- Dirty macro-region skipping: skip clean macro-regions before dispatch;
+  conservative false-schedules allowed, **false-skips forbidden** (toolkit Test 5,
+  false_skips=0). The scheduler is field-generic; it does not know what a field
+  *means*.
+
+**Test:** Determinism/replay test on cadence skip; a dirty-skip correctness test
+asserting zero false-skips against a full-grid oracle.  
+**Acceptance:** CI green. Driver-only. No defaults changed.
+
+### PR M-3 — `RegionFieldSpec` RON + mapping admission framework (spec, designer-layer)
+
+**Model:** Composer 2.5  
+**Scope:** The designer-facing guardrail layer — the load-bearing safety surface.
+In `simthing-spec`:
+- `RegionFieldSpec` RON: grid bounds, field columns, operator
+  (`normalized_stencil` / `source_capped_normalized`), horizon cap, source cap,
+  cadence tier, source policy, optional perception-filter class.
+- Field formula-class admission for `field_pressure`/`field_urgency`/`field_decay`/
+  `bounded_field_update` at the **designer/spec policy layer** (C-8
+  `register_formula` is runtime-sufficient; this removes wrong-layer whitelist
+  rejection). Mirrors the V7.6 §1.2 EML guardrail relaxation.
+- Admission rejections at **import/session-build**: horizon over cap without
+  `allow_extended_horizon`+stability contract; `ActiveOnlyExperimentalNoHalo`
+  requested for production; atlas requested without gutter≥H + VRAM reporting;
+  behavioral source policy requested without a source-identity buffer; grid over
+  declared bounds. These rejections are the mechanism that keeps blowout out of
+  the simulation.
+- Opt-in execution profile (`MappingExecutionProfile`), default-off; spec presence
+  is structure, execution requires explicit opt-in (Resource Flow precedent).
+
+**Test:** A rejection suite (one case per banned/over-cap condition) plus a
+round-trip that a valid bounded field compiles to generic stencil + reduction +
+EvalEML registrations with `simthing-sim` seeing only opaque ops.  
+**Acceptance:** CI green. Spec/driver only. `PipelineFlags::default()` mapping
+execution remains false.
+
+### ⚠️ PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional)
+
+**Model:** Opus (design), Composer 2.5 (implementation)  
+**Why Opus:** Atlas batching is **provisional** in the ADR. The short-term policy
+(gutter ≥ H, per-tile seed clearing) carries a 6.76× VRAM multiplier on 10×10 H=8
+(remedial Test 2), and the long-term preferred policy (local-bounds tile-rect
+metadata) needs API design. The decision space — when to pay the gutter tax vs
+wait for local-bounds — is genuinely open and the cost of a wrong layout is
+architectural.
+
+**Opus task:** Specify the atlas isolation contract (gutter≥H now; local-bounds
+metadata path), the mandatory VRAM-multiplier accounting/reporting, the per-tile
+seed-clearing protocol, and the **production acceptance gate: bit-exact parity
+against an exact per-tile-protocol CPU oracle** that replays the same seed-clear
++ gutter + boundary protocol the GPU atlas uses — **not** corridor-t44 agreement
+alone (t44 was the sandbox tactical-signal metric; full-tile parity is only
+meaningful against a protocol-faithful oracle). Produce a design note.  
+**Implementation (Composer 2.5):** generic atlas packer in the driver behind the
+mapping profile; VRAM-multiplier reporting wired into the debug surface; refuses
+to pack without an isolation policy.  
+**Gate:** Opus design note committed; human + Opus sign-off. Atlas stays
+provisional and opt-in.  
+**Acceptance:** Design note committed; packer + VRAM reporting tests pass; refuses
+unsafe packing; **full-tile bit-exact parity against the exact per-tile-protocol
+CPU oracle** (t44-only acceptance is explicitly insufficient for production).
+
+### PR M-5 — Generic source-identity buffer (deferred — unblocks behavioral source policy)
+
+**Model:** Composer 2.5 (after a short Opus API note)  
+**Scope:** **Deferred** per ADR. When a named scenario requires behavioral source
+policy, add a generic `source_mask` / separate seed buffer to the primitive so
+sources have explicit identity. Column-wide `source_col` zeroing remains **banned**.
+Until then, caller-managed one-shot-seed-then-zero (v1) is the only source policy.  
+**Acceptance:** Not scheduled until a scenario names the need.
+
+---
+
 ## Updated PR ladder summary
 
 | PR | Phase | Model | Description | Gate |
@@ -1606,8 +1722,16 @@ as a doc-only PR.
 | S-6 | F | Codex 5.5 | Sunset threshold scan | **Done locally** |
 | G-1 | G | Codex 5.5 | Annotate design_v6.md §10 superseded | One commit |
 | **G-2** | **G** | **Opus** | **design_v7.md §4 final review** | **Human + Opus** |
+| M-1 | M | Composer 2.5 | RegionField execution API on StructuredFieldStencilOp (generic) | Stencil parity + reduce-into bit-exact |
+| M-2 | M | Composer 2.5 | Cadence scheduler + dirty macro-region skip (driver) | Determinism + zero false-skips |
+| M-3 | M | Composer 2.5 | `RegionFieldSpec` RON + mapping admission framework (designer-layer) | Rejection suite + opaque-op round-trip; default-off |
+| **M-4** | **M** | **Opus + Composer** | **Atlas batching isolation + VRAM accounting (provisional)** | **Opus design + human sign-off; provisional/opt-in** |
+| M-5 | M | Composer 2.5 | Generic source-identity buffer (behavioral source policy) | **DEFERRED** — not scheduled until a scenario names the need |
 
-**Total: 38 PRs.** Remaining Opus-gated: A-4, B-4, D-1 (memo), E-11, G-2 —
-five of thirty-eight. D-2 deferred indefinitely. Resource Flow Substrate
+**Total: 42 active PRs** (38 prior + M-1..M-4; M-5 deferred). Remaining
+Opus-gated: A-4, B-4, D-1 (memo), E-11, G-2, **M-4** — six. D-2 deferred
+indefinitely; M-5 deferred pending a named scenario. Resource Flow Substrate
 landing spans E-7 through E-11 per
-`docs/adr/resource_flow_substrate.md`.
+`docs/adr/resource_flow_substrate.md`. Phase M lands the few generic natives for
+`docs/adr/mapping_sparse_regioncell.md`; it authorizes no mapping runtime and
+changes no default.
