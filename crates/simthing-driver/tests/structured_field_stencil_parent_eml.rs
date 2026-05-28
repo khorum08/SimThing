@@ -186,7 +186,7 @@ fn test_e_column_aware_parent_eml() {
             gamma_neighbor: 0.8,
             source_cap: Some(500.0),
             operator: StructuredFieldStencilOperator::SourceCappedNormalized,
-            source_policy: StructuredFieldStencilSourcePolicy::OneShotSeedThenZero,
+            source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
             boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
             mask_mode: StructuredFieldStencilMaskMode::All,
             allow_extended_horizon: false,
@@ -204,7 +204,7 @@ fn test_e_column_aware_parent_eml() {
             grid[idx(r * GRID_W + c, COL_FIELD)] = 0.0;
         }
         op.upload_values(ctx, &grid).unwrap();
-        let (grid, _) = op.run_ping_pong(ctx, 8);
+        let (grid, _) = op.run_configured_horizon(ctx).unwrap();
 
         let sum_slots = PARENT_SLOT + 1;
         let mut session = AccumulatorOpSession::new(ctx, sum_slots, N_DIMS);
@@ -281,6 +281,10 @@ fn test_g_production_defaults_unaffected() {
     ] {
         assert!(WHITELISTED_FORMULA_CLASSES.contains(&class));
     }
-    let lib = include_str!("../../simthing-gpu/src/lib.rs");
-    assert!(!lib.contains("StructuredFieldStencilOp::new(&ctx"));
+    let gpu_lib = include_str!("../../simthing-gpu/src/lib.rs");
+    assert!(!gpu_lib.contains("StructuredFieldStencilOp::new(&ctx"));
+    let passes = include_str!("../../simthing-gpu/src/passes.rs");
+    assert!(!passes.contains("StructuredFieldStencilOp"));
+    let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
+    assert!(!sim_lib.contains("StructuredFieldStencilOp"));
 }

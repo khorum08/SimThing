@@ -45,8 +45,10 @@ pub enum StructuredFieldStencilOperator {
 /// Source injection policy between stencil hops.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StructuredFieldStencilSourcePolicy {
-    /// Seed once, propagate, do not re-inject (validated safe default).
-    OneShotSeedThenZero,
+    /// Validated safe default contract: caller seeds source cells once, clears `source_col`
+    /// after the initial hop, then runs configured-horizon propagation. The primitive does
+    /// not identify or zero source slots automatically.
+    CallerManagedOneShotSeedThenZero,
 }
 
 /// Boundary sampling mode for out-of-grid neighbors.
@@ -61,8 +63,9 @@ pub enum StructuredFieldStencilBoundaryMode {
 pub enum StructuredFieldStencilMaskMode {
     /// Process all cells (default).
     All,
-    /// Skip inactive cells; halo/frontier semantics not production-authorized yet.
-    ActiveOnly,
+    /// Experimental: skip inactive cells. Halo/frontier semantics are **not**
+    /// production-authorized; do not depend on this mode in production paths.
+    ActiveOnlyExperimentalNoHalo,
 }
 
 /// Configuration for a structured field stencil run.
@@ -149,6 +152,32 @@ impl StructuredFieldStencilConfig {
         }
         Ok(())
     }
+
+    /// Validate execution step count against this config's horizon and global caps.
+    pub fn validate_execution_steps(&self, steps: u32) -> Result<(), StructuredFieldStencilError> {
+        if steps < 1 {
+            return Err(StructuredFieldStencilError::InvalidHorizon(steps));
+        }
+        if steps > self.horizon {
+            return Err(StructuredFieldStencilError::ExecutionHorizonExceedsConfig {
+                steps,
+                horizon: self.horizon,
+            });
+        }
+        if steps > DEFAULT_HORIZON_CAP && !self.allow_extended_horizon {
+            return Err(StructuredFieldStencilError::HorizonCapExceeded {
+                horizon: steps,
+                cap: DEFAULT_HORIZON_CAP,
+            });
+        }
+        if steps > EXTENDED_HORIZON_CAP {
+            return Err(StructuredFieldStencilError::HorizonCapExceeded {
+                horizon: steps,
+                cap: EXTENDED_HORIZON_CAP,
+            });
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Copy, Debug, Error, PartialEq)]
@@ -177,6 +206,8 @@ pub enum StructuredFieldStencilError {
     MissingSourceCap,
     #[error("values buffer length {actual} < required {required}")]
     BufferTooShort { actual: usize, required: usize },
+    #[error("execution steps {steps} exceed configured horizon {horizon}")]
+    ExecutionHorizonExceedsConfig { steps: u32, horizon: u32 },
 }
 
 #[repr(C)]
@@ -240,7 +271,7 @@ impl FieldStencilParamsGpu {
             directed_mode,
             use_active_mask: u32::from(matches!(
                 config.mask_mode,
-                StructuredFieldStencilMaskMode::ActiveOnly
+                StructuredFieldStencilMaskMode::ActiveOnlyExperimentalNoHalo
             )),
             _pad: 0,
         }
@@ -376,6 +407,11 @@ impl StructuredFieldStencilOp {
         &self.config
     }
 
+    /// Validate execution step count against configured horizon and global caps.
+    pub fn validate_execution_steps(&self, steps: u32) -> Result<(), StructuredFieldStencilError> {
+        self.config.validate_execution_steps(steps)
+    }
+
     pub fn upload_values(&self, ctx: &GpuContext, values: &[f32]) -> Result<(), StructuredFieldStencilError> {
         let required = self.config.values_len();
         if values.len() < required {
@@ -407,7 +443,8 @@ impl StructuredFieldStencilOp {
         mode: StructuredFieldStencilMaskMode,
     ) -> Result<(), StructuredFieldStencilError> {
         self.config.mask_mode = mode;
-        self.params.use_active_mask = u32::from(matches!(mode, StructuredFieldStencilMaskMode::ActiveOnly));
+        self.params.use_active_mask =
+            u32::from(matches!(mode, StructuredFieldStencilMaskMode::ActiveOnlyExperimentalNoHalo));
         ctx.queue.write_buffer(
             &self.params_buffer,
             0,
@@ -466,7 +503,12 @@ impl StructuredFieldStencilOp {
     }
 
     /// Ping-pong dispatch for `steps` stencil hops (required for H > 1).
-    pub fn dispatch_ping_pong(&self, ctx: &GpuContext, steps: u32) -> u32 {
+    pub fn dispatch_ping_pong(
+        &self,
+        ctx: &GpuContext,
+        steps: u32,
+    ) -> Result<u32, StructuredFieldStencilError> {
+        self.validate_execution_steps(steps)?;
         let mut dispatches = 0u32;
         let mut read_input = true;
         for _ in 0..steps {
@@ -477,7 +519,7 @@ impl StructuredFieldStencilOp {
             }
             read_input = !read_input;
         }
-        dispatches
+        Ok(dispatches)
     }
 
     pub fn readback_buffer(&self, ctx: &GpuContext, src: &Buffer) -> Vec<f32> {
@@ -515,9 +557,21 @@ impl StructuredFieldStencilOp {
         self.readback_buffer(ctx, src)
     }
 
-    pub fn run_ping_pong(&self, ctx: &GpuContext, steps: u32) -> (Vec<f32>, u32) {
-        let dispatches = self.dispatch_ping_pong(ctx, steps);
-        (self.readback_after_ping_pong(ctx, steps), dispatches)
+    pub fn run_ping_pong(
+        &self,
+        ctx: &GpuContext,
+        steps: u32,
+    ) -> Result<(Vec<f32>, u32), StructuredFieldStencilError> {
+        let dispatches = self.dispatch_ping_pong(ctx, steps)?;
+        Ok((self.readback_after_ping_pong(ctx, steps), dispatches))
+    }
+
+    /// Run exactly `config.horizon` ping-pong hops (cannot bypass configured horizon).
+    pub fn run_configured_horizon(
+        &self,
+        ctx: &GpuContext,
+    ) -> Result<(Vec<f32>, u32), StructuredFieldStencilError> {
+        self.run_ping_pong(ctx, self.config.horizon)
     }
 }
 
@@ -531,10 +585,14 @@ pub fn cpu_stencil_step(values: &[f32], params: &FieldStencilParamsGpu) -> Vec<f
     let tc = params.target_col;
 
     let sample = |buf: &[f32], x: i32, y: i32| -> f32 {
-        if x < 0 || y < 0 || x >= w as i32 || y >= h as i32 {
+        let (sx, sy) = if params.boundary_mode == BOUNDARY_CLAMP {
+            (x.clamp(0, w as i32 - 1), y.clamp(0, h as i32 - 1))
+        } else if x < 0 || y < 0 || x >= w as i32 || y >= h as i32 {
             return 0.0;
-        }
-        let idx = y as u32 * w + x as u32;
+        } else {
+            (x, y)
+        };
+        let idx = sy as u32 * w + sx as u32;
         buf[(idx * nd + sc) as usize]
     };
 
@@ -609,7 +667,7 @@ mod unit_tests {
             gamma_neighbor: 0.16,
             source_cap: None,
             operator: StructuredFieldStencilOperator::Normalized,
-            source_policy: StructuredFieldStencilSourcePolicy::OneShotSeedThenZero,
+            source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
             boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
             mask_mode: StructuredFieldStencilMaskMode::All,
             allow_extended_horizon: false,
@@ -642,5 +700,15 @@ mod unit_tests {
         let mut c = base_config();
         c.operator = StructuredFieldStencilOperator::SourceCappedNormalized;
         assert_eq!(c.validate().unwrap_err(), StructuredFieldStencilError::MissingSourceCap);
+    }
+
+    #[test]
+    fn execution_steps_reject_above_configured_horizon() {
+        let config = base_config();
+        let err = config.validate_execution_steps(2).unwrap_err();
+        assert_eq!(
+            err,
+            StructuredFieldStencilError::ExecutionHorizonExceedsConfig { steps: 2, horizon: 1 }
+        );
     }
 }

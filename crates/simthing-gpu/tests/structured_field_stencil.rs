@@ -1,4 +1,4 @@
-//! StructuredFieldStencilOp GPU parity and stability tests (V7.6 promotion).
+//! StructuredFieldStencilOp GPU parity and stability tests (V7.6 promotion + hardening).
 
 use simthing_gpu::{
     cpu_horizon, params_from_config, GpuContext, StructuredFieldStencilBoundaryMode,
@@ -36,7 +36,7 @@ fn normalized_config(w: u32, h: u32, horizon: u32) -> StructuredFieldStencilConf
         gamma_neighbor: 0.8,
         source_cap: None,
         operator: StructuredFieldStencilOperator::Normalized,
-        source_policy: StructuredFieldStencilSourcePolicy::OneShotSeedThenZero,
+        source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
         boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
         mask_mode: StructuredFieldStencilMaskMode::All,
         allow_extended_horizon: horizon > DEFAULT_HORIZON_CAP,
@@ -55,12 +55,13 @@ fn source_capped_config(w: u32, h: u32, horizon: u32, cap: f32) -> StructuredFie
         gamma_neighbor: 0.8,
         source_cap: Some(cap),
         operator: StructuredFieldStencilOperator::SourceCappedNormalized,
-        source_policy: StructuredFieldStencilSourcePolicy::OneShotSeedThenZero,
+        source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
         boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
         mask_mode: StructuredFieldStencilMaskMode::All,
         allow_extended_horizon: horizon > DEFAULT_HORIZON_CAP,
     }
 }
+
 #[test]
 fn test_a_wgsl_compile_and_3x3_correctness() {
     with_gpu(|ctx| {
@@ -69,7 +70,7 @@ fn test_a_wgsl_compile_and_3x3_correctness() {
         let mut values = vec![0.0f32; op.config().values_len()];
         values[idx(4, 0, 4)] = 100.0;
         op.upload_values(ctx, &values).unwrap();
-        let (gpu, _) = op.run_ping_pong(ctx, 1);
+        let (gpu, _) = op.run_ping_pong(ctx, 1).unwrap();
         let params = params_from_config(op.config());
         let cpu = cpu_horizon(&values, &params, 1);
         let mut max_err = 0.0f32;
@@ -104,7 +105,7 @@ fn test_b_pingpong_correctness() {
             let params = params_from_config(op.config());
             for &steps in &[1u32, 2, 4, 8] {
                 op.upload_values(ctx, &values).unwrap();
-                let (gpu, _) = op.run_ping_pong(ctx, steps);
+                let (gpu, _) = op.run_ping_pong(ctx, steps).unwrap();
                 let cpu = cpu_horizon(&values, &params, steps);
                 let mut max_err = 0.0f32;
                 for i in 0..values.len() {
@@ -133,7 +134,7 @@ fn test_c_10x10_h8_tactical_horizon() {
             v[idx(r * 10 + c, 0, 4)] = 0.0;
         }
         op.upload_values(ctx, &v).unwrap();
-        let (out, _) = op.run_ping_pong(ctx, 8);
+        let (out, _) = op.run_configured_horizon(ctx).unwrap();
         let t44 = get(&out, 44, 0, 4);
         let gx = (get(&out, 45, 0, 4) - get(&out, 43, 0, 4)) / 2.0;
         let gy = (get(&out, 54, 0, 4) - get(&out, 34, 0, 4)) / 2.0;
@@ -156,11 +157,20 @@ fn test_d_source_cap_and_horizon_cap() {
     let capped = source_capped_config(10, 10, 16, 500.0);
     capped.validate().unwrap();
     let params = params_from_config(&capped);
+    let source_col = capped.source_col;
     let mut values = vec![0.0f32; capped.values_len()];
-    values[0] = 80.0;
-    values[1] = 60.0;
-    values[10] = 60.0;
-    values[11] = 40.0;
+    values[idx(0, source_col, 4)] = 80.0;
+    values[idx(1, source_col, 4)] = 60.0;
+    values[idx(10, source_col, 4)] = 60.0;
+    values[idx(11, source_col, 4)] = 40.0;
+    for slot in [0u32, 1, 10, 11] {
+        assert!(get(&values, slot, source_col, 4) > 0.0);
+        for col in 0..4 {
+            if col != source_col {
+                assert_eq!(get(&values, slot, col, 4), 0.0);
+            }
+        }
+    }
     let out = cpu_horizon(&values, &params, 16);
     let mut max_v = 0.0f32;
     for s in 0..100 {
@@ -194,9 +204,117 @@ fn test_d_source_cap_and_horizon_cap() {
 }
 
 #[test]
-fn guard_no_production_pipeline_integration() {
-    let lib = include_str!("../src/lib.rs");
-    assert!(!lib.contains("StructuredFieldStencilOp::new(&ctx"));
+fn structured_field_stencil_horizon_execution_rejects_steps_above_config() {
+    with_gpu(|ctx| {
+        let config = normalized_config(3, 3, 4);
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        assert_eq!(
+            op.run_ping_pong(ctx, 8).unwrap_err(),
+            StructuredFieldStencilError::ExecutionHorizonExceedsConfig { steps: 8, horizon: 4 }
+        );
+        assert_eq!(
+            op.dispatch_ping_pong(ctx, 5).unwrap_err(),
+            StructuredFieldStencilError::ExecutionHorizonExceedsConfig { steps: 5, horizon: 4 }
+        );
+    });
+}
+
+#[test]
+fn structured_field_stencil_source_policy_documented_or_enforced() {
+    with_gpu(|ctx| {
+        let config = normalized_config(3, 3, 2);
+        assert_eq!(
+            config.source_policy,
+            StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero
+        );
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let mut values = vec![0.0f32; op.config().values_len()];
+        values[idx(4, 0, 4)] = 100.0;
+        op.upload_values(ctx, &values).unwrap();
+        let (after_one, _) = op.run_ping_pong(ctx, 1).unwrap();
+        assert!(get(&after_one, 4, 0, 4) > 0.0, "center retains propagated value");
+        op.upload_values(ctx, &after_one).unwrap();
+        let (after_two, _) = op.run_ping_pong(ctx, 1).unwrap();
+        assert!(
+            get(&after_two, 4, 0, 4) > get(&after_one, 4, 0, 4),
+            "primitive does not auto-zero source; value grows without caller clearing"
+        );
+    });
+}
+
+#[test]
+fn structured_field_stencil_source_cap_cluster_indices_correct() {
+    let capped = source_capped_config(10, 10, 8, 100.0);
+    let source_col = capped.source_col;
+    let mut values = vec![0.0f32; capped.values_len()];
+    values[idx(0, source_col, 4)] = 80.0;
+    values[idx(1, source_col, 4)] = 60.0;
+    values[idx(10, source_col, 4)] = 60.0;
+    values[idx(11, source_col, 4)] = 40.0;
+    assert_eq!(get(&values, 0, source_col, 4), 80.0);
+    assert_eq!(get(&values, 1, source_col, 4), 60.0);
+    assert_eq!(get(&values, 10, source_col, 4), 60.0);
+    assert_eq!(get(&values, 11, source_col, 4), 40.0);
+}
+
+#[test]
+fn structured_field_stencil_clamp_boundary_gpu_cpu_parity() {
+    with_gpu(|ctx| {
+        let mut config = normalized_config(3, 3, 1);
+        config.boundary_mode = StructuredFieldStencilBoundaryMode::Clamp;
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let mut values = vec![0.0f32; op.config().values_len()];
+        values[idx(0, 0, 4)] = 50.0;
+        op.upload_values(ctx, &values).unwrap();
+        let (gpu, _) = op.run_ping_pong(ctx, 1).unwrap();
+        let params = params_from_config(op.config());
+        let cpu = cpu_horizon(&values, &params, 1);
+        let mut max_err = 0.0f32;
+        for i in 0..values.len() {
+            max_err = max_err.max((cpu[i] - gpu[i]).abs());
+        }
+        assert!(max_err < 1e-4, "clamp boundary max_err={max_err}");
+        assert!(get(&gpu, 1, 0, 4) > 0.0, "corner clamp feeds neighbor");
+    });
+}
+
+#[test]
+fn structured_field_stencil_active_mask_provisional() {
+    let mode = StructuredFieldStencilMaskMode::ActiveOnlyExperimentalNoHalo;
+    let config = StructuredFieldStencilConfig {
+        mask_mode: mode,
+        ..normalized_config(3, 3, 1)
+    };
+    assert!(matches!(
+        config.mask_mode,
+        StructuredFieldStencilMaskMode::ActiveOnlyExperimentalNoHalo
+    ));
+    let mode_name = format!("{mode:?}");
+    assert!(
+        mode_name.contains("Experimental") && mode_name.contains("NoHalo"),
+        "active mask must be explicitly provisional: {mode_name}"
+    );
+}
+
+#[test]
+fn structured_field_stencil_inert_by_default() {
     let passes = include_str!("../src/passes.rs");
+    assert!(!passes.contains("StructuredFieldStencilOp"));
     assert!(!passes.contains("structured_field_stencil"));
+
+    let gpu_lib = include_str!("../src/lib.rs");
+    assert!(!gpu_lib.contains("StructuredFieldStencilOp::new(&ctx"));
+
+    let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
+    assert!(!sim_lib.contains("StructuredFieldStencilOp"));
+    assert!(!sim_lib.contains("structured_field_stencil"));
+
+    let driver_session = include_str!("../../simthing-driver/src/session.rs");
+    assert!(!driver_session.contains("StructuredFieldStencilOp"));
+    assert!(!driver_session.contains("structured_field_stencil"));
+}
+
+#[test]
+fn guard_no_production_pipeline_integration() {
+    structured_field_stencil_inert_by_default();
 }
