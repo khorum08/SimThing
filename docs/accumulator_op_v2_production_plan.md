@@ -1557,6 +1557,8 @@ designer declare a bounded field safely. That plumbing is Phase M.
 
 **Model:** Composer 2.5  
 **Status:** **Landed** — generic execution API + column-aware reduction convenience; no mapping runtime.
+
+**Update (M-1.1):** **Landed** — configured execution now supports a no-readback dispatch/report path (`readback_values: false` default). Readback explicit for tests/diagnostics; stats remain readback-derived.
 - `StructuredFieldStencilOp::execute_configured` with `StructuredFieldExecutionOptions` / `StructuredFieldStencilDebugReport`
 - `ColumnAwareReductionSpec` + `column_aware_reduction_op` over existing `SlotRange` Sum (`simthing-core`)
 - Tests: `structured_field_stencil.rs`, `structured_field_region_execution.rs`; existing stencil parity unchanged

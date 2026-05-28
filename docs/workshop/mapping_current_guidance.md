@@ -22,6 +22,7 @@ Current next work:
 
 - Phase M generic natives in [`../accumulator_op_v2_production_plan.md`](../accumulator_op_v2_production_plan.md)
 - **M-1 landed:** generic `StructuredFieldStencilOp::execute_configured` execution API and column-aware reduction convenience over existing `SlotRange` Sum
+- **M-1.1 landed:** no-readback dispatch/report path for future schedulers; readback explicit for tests/diagnostics and readback-derived stats
 - Next implementation task: **M-2** cadence scheduler + dirty macro-region skip
 
 Historical sandbox source, candidate notes, revert reports, and full logs live under

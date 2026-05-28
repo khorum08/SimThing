@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-28 — Phase M-1.1 no-readback execution hardening
+
+- Phase M-1.1 landed: `execute_configured` defaults to GPU-resident dispatch (`readback_values: false`); `StructuredFieldExecutionReport.values` is `Option<Vec<f32>>`.
+- Readback remains explicit via `readback_values: true`; `collect_field_stats` still readback-derived. Column-aware reduction helper unchanged.
+- No production mapping runtime; no pass graph wiring. Next: **Phase M-2**.
+
+**Verification:** [`phase_m1_1_no_readback_execution_hardening_test_results.md`](tests/phase_m1_1_no_readback_execution_hardening_test_results.md)
+
+---
+
 ## 2026-05-28 — Phase M-1 generic execution API
 
 - Phase M-1 landed: generic `StructuredFieldStencilOp::execute_configured` execution API with optional debug stats; `ColumnAwareReductionSpec` / `column_aware_reduction_op` convenience over existing `SlotRange` Sum in `simthing-core`.

@@ -332,6 +332,7 @@ fn test_m1_execute_configured_uses_horizon() {
                 ctx,
                 StructuredFieldExecutionOptions {
                     collect_field_stats: false,
+                    readback_values: true,
                     steps: None,
                 },
             )
@@ -340,11 +341,12 @@ fn test_m1_execute_configured_uses_horizon() {
         assert_eq!(report.debug.configured_horizon, 4);
         assert_eq!(report.debug.executed_horizon, 4);
         assert!(report.debug.field_max.is_none());
+        let gpu = report.values.expect("readback_values requested");
         let params = params_from_config(op.config());
         let cpu = cpu_horizon(&values, &params, 4);
         let mut max_err = 0.0f32;
         for i in 0..values.len() {
-            max_err = max_err.max((cpu[i] - report.values[i]).abs());
+            max_err = max_err.max((cpu[i] - gpu[i]).abs());
         }
         assert!(max_err < 1e-3, "execute_configured parity max_err={max_err}");
     });
@@ -360,6 +362,7 @@ fn test_m1_execute_configured_rejects_steps_above_horizon() {
                 ctx,
                 StructuredFieldExecutionOptions {
                     collect_field_stats: false,
+                    readback_values: false,
                     steps: Some(8),
                 },
             )
@@ -372,7 +375,7 @@ fn test_m1_execute_configured_rejects_steps_above_horizon() {
 }
 
 #[test]
-fn test_m1_debug_report_with_stats() {
+fn test_m1_debug_report_with_stats_requires_readback() {
     with_gpu(|ctx| {
         let config = normalized_config(3, 3, 2);
         let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
@@ -385,13 +388,31 @@ fn test_m1_debug_report_with_stats() {
                 ctx,
                 StructuredFieldExecutionOptions {
                     collect_field_stats: false,
+                    readback_values: false,
                     steps: None,
                 },
             )
             .unwrap();
+        assert!(no_stats.values.is_none());
         assert!(no_stats.debug.field_max.is_none());
         assert!(no_stats.debug.field_l1_norm.is_none());
         assert!(no_stats.debug.active_mask_ratio.is_none());
+
+        op.upload_values(ctx, &values).unwrap();
+        let readback_only = op
+            .execute_configured(
+                ctx,
+                StructuredFieldExecutionOptions {
+                    collect_field_stats: false,
+                    readback_values: true,
+                    steps: None,
+                },
+            )
+            .unwrap();
+        assert!(readback_only.values.is_some());
+        assert!(readback_only.debug.field_max.is_none());
+        assert!(readback_only.debug.field_l1_norm.is_none());
+        assert!(readback_only.debug.active_mask_ratio.is_none());
 
         op.upload_values(ctx, &values).unwrap();
         let with_stats = op
@@ -399,11 +420,13 @@ fn test_m1_debug_report_with_stats() {
                 ctx,
                 StructuredFieldExecutionOptions {
                     collect_field_stats: true,
+                    readback_values: false,
                     steps: None,
                 },
             )
             .unwrap();
         let d = &with_stats.debug;
+        assert!(with_stats.values.is_some(), "stats path readback-derived");
         assert_eq!(d.dispatch_count, 2);
         assert_eq!(d.configured_horizon, 2);
         assert_eq!(d.executed_horizon, 2);
@@ -418,5 +441,53 @@ fn test_m1_debug_report_with_stats() {
         assert!(d.field_max.unwrap().is_finite());
         assert!(d.field_l1_norm.unwrap().is_finite());
         assert_eq!(d.active_mask_ratio, Some(1.0));
+    });
+}
+
+#[test]
+fn test_m1_1_execute_configured_no_readback_default() {
+    with_gpu(|ctx| {
+        let config = normalized_config(3, 3, 4);
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let values = vec![0.0f32; op.config().values_len()];
+        op.upload_values(ctx, &values).unwrap();
+
+        let report = op
+            .execute_configured(ctx, StructuredFieldExecutionOptions::default())
+            .unwrap();
+        assert_eq!(report.debug.dispatch_count, 4);
+        assert_eq!(report.debug.executed_horizon, 4);
+        assert!(report.values.is_none());
+        assert!(report.debug.field_max.is_none());
+        assert!(report.debug.field_l1_norm.is_none());
+        assert!(report.debug.active_mask_ratio.is_none());
+    });
+}
+
+#[test]
+fn test_m1_1_horizon_guard_on_no_readback_and_readback_paths() {
+    with_gpu(|ctx| {
+        let config = normalized_config(3, 3, 4);
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let values = vec![0.0f32; op.config().values_len()];
+        op.upload_values(ctx, &values).unwrap();
+
+        for readback_values in [false, true] {
+            op.upload_values(ctx, &values).unwrap();
+            let err = op
+                .execute_configured(
+                    ctx,
+                    StructuredFieldExecutionOptions {
+                        collect_field_stats: false,
+                        readback_values,
+                        steps: Some(8),
+                    },
+                )
+                .unwrap_err();
+            assert_eq!(
+                err,
+                StructuredFieldStencilError::ExecutionHorizonExceedsConfig { steps: 8, horizon: 4 }
+            );
+        }
     });
 }
