@@ -7,9 +7,9 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Master HEAD:** `4820319` (Mapping ADR merge)  
-**Verification (last recorded):** StructuredFieldStencilOp production + hardening tests; E-11B regressions green  
-**Next coding task:** Phase **M-3** RegionFieldSpec RON + mapping admission framework (not mapping runtime / not first-slice session wiring)
+**Master HEAD:** `7727913` (Phase M-2.1 merge)  
+**Verification (last recorded):** Phase M-3 RegionFieldSpec admission tests; E-11B regressions green  
+**Next coding task:** Phase **M-4** Opus-gated atlas batching isolation + VRAM accounting design (not mapping runtime / not first-slice session wiring unless explicitly selected)
 
 ---
 
@@ -29,7 +29,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **V7.6 StructuredFieldStencilOp:** **Live, opt-in, hardened, inert by default** — generic GPU primitive in `simthing-gpu`. Not wired into default production pass graph. Phase M-1/M-1.1/M-2 landed: execution API, no-readback path, cadence scheduler + dirty skip; production mapping runtime remains gated.
 
-**Mapping (Sparse RegionCell):** **ADR approved (architecture)** — see [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md), surfaced in [`design_v7_7.md`](../design_v7_7.md). Phase M-2/M-2.1 landed: cadence scheduler, dirty skip, and API hardening (region identity + visitor execution). StructuredFieldStencilOp execution remains GPU-resident by default. No production mapping runtime or pass graph wiring. Next coding task is Phase M-3 RegionFieldSpec RON + mapping admission framework, not first-slice session wiring.
+**Mapping (Sparse RegionCell):** **ADR approved (architecture)** — see [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md), surfaced in [`design_v7_7.md`](../design_v7_7.md). Phase M-3 landed: RegionFieldSpec RON + mapping admission framework (designer/spec structure only; compiles/previews to generic substrate configs; MappingExecutionProfile default Disabled). Phase M-2/M-2.1 landed: cadence scheduler, dirty skip, and API hardening. StructuredFieldStencilOp execution remains GPU-resident by default. No production mapping runtime or pass graph wiring. Next coding task is Opus-gated Phase M-4 atlas batching isolation + VRAM accounting design, not first-slice session wiring unless explicitly selected.
 
 **Product-priority selection:** **Done** — [`product_priority_vertical_slice_selection.md`](../reviews/product_priority_vertical_slice_selection.md). **Recommendation F:** pause implementation; gather product requirements. No named scenario for D-2a, E-11B-5, spec/RON rebuild, or new vertical slice. Continued flat-star soak remains green.
 

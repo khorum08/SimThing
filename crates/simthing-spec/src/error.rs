@@ -316,4 +316,8 @@ pub enum SpecError {
         first: String,
         second: String,
     },
+
+    // ── Region field mapping admission (Phase M-3) ───────────────────────────
+    #[error("region field `{field}`: {reason}")]
+    RegionFieldAdmission { field: String, reason: String },
 }

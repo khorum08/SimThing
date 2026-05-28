@@ -18,6 +18,7 @@ pub mod event;
 pub mod overlay;
 pub mod property;
 pub mod resource_economy;
+pub mod region_field_admission;
 pub mod resource_flow_admission;
 pub mod trigger;
 
@@ -32,6 +33,15 @@ pub use resource_economy::{
     CompiledResourceEconomy, CompiledResourceEmission, CompiledResourceRecipe,
     CompiledResourceRecipeInput, CompiledResourceTransfer, ResourceEconomyDiagnostic,
     ResourceEconomyExpansionReport,
+};
+pub use region_field_admission::{
+    compile_region_field_preview, compile_region_field_stencil_config, admit_region_field_formula_class,
+    CompiledFieldCadence, CompiledRegionFieldBoundaryMode, CompiledRegionFieldMaskMode,
+    CompiledRegionFieldOperator, CompiledRegionFieldPreview, CompiledRegionFieldSourcePolicy,
+    CompiledRegionFieldStencilSpec, ADMITTED_REGION_FIELD_FORMULA_CLASSES,
+    REGION_FIELD_DEFAULT_HORIZON_CAP, REGION_FIELD_EXTENDED_HORIZON_CAP,
+    REGION_FIELD_EXTENDED_MAX_GRID, REGION_FIELD_MAX_CELL_COUNT,
+    REGION_FIELD_STANDARD_MAX_GRID,
 };
 pub use resource_flow_admission::{
     compile_resource_flow_admission, CompiledArenaAdmission, CompiledCouplingAdmission,

@@ -6,6 +6,19 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-28 — Phase M-3 RegionFieldSpec RON + mapping admission framework
+
+- Phase M-3 landed: `RegionFieldSpec` RON + mapping admission/compile preview in `simthing-spec`.
+- RegionFieldSpec is designer/spec structure only and compiles/previews to generic substrate configs (`CompiledRegionFieldStencilSpec`, `CompiledFieldCadence`, `ColumnAwareReductionSpec`).
+- Grid size is designer-addressable as square N; admission rejects N=0 and over-cap sizes. Square-only enforced at spec admission, not in StructuredFieldStencilOp or simthing-sim.
+- Source policy v1 remains CallerManagedOneShotSeedThenZero. Cadence maps to generic FieldCadence. Reduction bindings compile to existing ColumnAwareReductionSpec / SlotRange Sum semantics.
+- Field formula classes field_pressure / field_urgency / field_decay / bounded_field_update / conversion_rate admitted at designer/spec policy layer without new EML opcodes.
+- MappingExecutionProfile remains default Disabled; spec presence alone does not enable execution. No production mapping runtime; no pass graph wiring. Next: **Opus-gated M-4** atlas batching isolation + VRAM accounting design.
+
+**Verification:** [`phase_m3_region_field_spec_admission_test_results.md`](tests/phase_m3_region_field_spec_admission_test_results.md)
+
+---
+
 ## 2026-05-28 — Phase M-2.1 FieldScheduler API hardening
 
 - Region identity keyed by `(FieldId, FieldRegionId)`; same region ID may coexist under different fields.

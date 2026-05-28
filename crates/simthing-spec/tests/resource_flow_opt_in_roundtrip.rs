@@ -95,6 +95,8 @@ fn resource_flow_execution_profile_roundtrips_ron() {
         }),
         resource_economy: None,
         resource_flow_execution_profile: ResourceFlowExecutionProfile::FlatStarResourceFlow,
+        region_fields: vec![],
+        mapping_execution_profile: Default::default(),
     };
 
     let ron = ron::ser::to_string(&spec).expect("serialize game mode");
