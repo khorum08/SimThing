@@ -1642,7 +1642,9 @@ EvalEML registrations with `simthing-sim` seeing only opaque ops.
 **Acceptance:** CI green. Spec/driver only. `PipelineFlags::default()` mapping
 execution remains false.
 
-### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done**
+### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; parked at decision gate**
+
+**Status:** Phase M-4 design note is **parked** pending human + Opus sign-off. The design note defines the future contract only — it is **not** implementation authorization. **M-4 atlas packer implementation is not automatically next** unless sign-off occurs and Option A is explicitly chosen.
 
 **Model:** Opus (design), Composer 2.5 (implementation)  
 **Why Opus:** Atlas batching is **provisional** in the ADR. The short-term policy
@@ -1661,23 +1663,25 @@ alone (t44 was the sandbox tactical-signal metric; full-tile parity is only
 meaningful against a protocol-faithful oracle). Produce a design note.  
 **Design note landed:** [`workshop/mapping_atlas_batching_isolation_design_note.md`](workshop/mapping_atlas_batching_isolation_design_note.md).
 
-Phase M-4 design note landed: atlas batching isolation + VRAM accounting contract.
-Atlas batching remains provisional and unimplemented. Short-term isolation policy:
-gutter >= effective horizon. Future local-bounds metadata remains deferred.
-Production atlas acceptance requires full-tile parity against an exact
-per-tile-protocol CPU oracle; t44/corridor agreement alone is insufficient.
-Future implementation must report VRAM multiplier and refuse unsafe packing.
+Phase M-4 design note is parked pending human + Opus sign-off.
+Atlas batching remains provisional and unimplemented.
+The design note defines the future contract only: gutter >= effective horizon,
+mandatory VRAM accounting, per-tile seed clearing, full-tile protocol-oracle
+parity, and t44/corridor agreement is insufficient for production acceptance.
 No production mapping runtime landed. No production pass graph wiring landed.
-No map/faction/AI semantics entered simthing-sim or WGSL. Next step: either
-implement the M-4 generic atlas packer after Opus/human sign-off, or deliberately
-choose first-slice runtime wiring that avoids atlas entirely.
+No map/faction/AI semantics entered simthing-sim or WGSL.
+
+**Current decision gate (choose one explicitly — do not auto-implement):**
+
+- **Option A:** After human + Opus sign-off, implement the generic M-4 atlas packer.
+- **Option B:** Defer atlas and proceed to first-slice runtime wiring, because the named first slice uses one grid and no atlas. First-slice runtime wiring is a **separate explicit gate** — not authorized by the M-4 design note alone.
 
 **Implementation (Composer 2.5):** generic atlas packer in the driver behind the
 mapping profile; VRAM-multiplier reporting wired into the debug surface; refuses
-to pack without an isolation policy. **Blocked until human + Opus sign-off.**  
-**Gate:** Opus design note committed; human + Opus sign-off. Atlas stays
+to pack without an isolation policy. **Blocked until human + Opus sign-off and explicit Option A selection.**  
+**Gate:** Opus design note committed; human + Opus sign-off required before any atlas code. Atlas stays
 provisional and opt-in.  
-**Acceptance:** Design note committed; packer + VRAM reporting tests pass; refuses
+**Acceptance (future implementation PR only):** Design note committed; packer + VRAM reporting tests pass; refuses
 unsafe packing; **full-tile bit-exact parity against the exact per-tile-protocol
 CPU oracle** (t44-only acceptance is explicitly insufficient for production).
 
@@ -1768,7 +1772,7 @@ Until then, caller-managed one-shot-seed-then-zero (v1) is the only source polic
 | M-1 | M | Composer 2.5 | RegionField execution API on StructuredFieldStencilOp (generic) | **Done** — stencil parity + reduce-into bit-exact |
 | M-2 | M | Composer 2.5 | Cadence scheduler + dirty macro-region skip (driver) | **Done** — determinism + zero false-skips |
 | M-3 | M | Composer 2.5 | `RegionFieldSpec` RON + mapping admission framework (designer-layer) | **Done** — rejection suite + RON roundtrip; default-off |
-| **M-4** | **M** | **Opus + Composer** | **Atlas batching isolation + VRAM accounting (provisional)** | **Design note Done** — [`mapping_atlas_batching_isolation_design_note.md`](workshop/mapping_atlas_batching_isolation_design_note.md); implementation blocked pending sign-off |
+| **M-4** | **M** | **Opus + Composer** | **Atlas batching isolation + VRAM accounting (provisional)** | **Design note Done; parked** — [`mapping_atlas_batching_isolation_design_note.md`](workshop/mapping_atlas_batching_isolation_design_note.md); implementation **not** auto-next; requires sign-off + Option A/B |
 | M-5 | M | Composer 2.5 | Generic source-identity buffer (behavioral source policy) | **DEFERRED** — not scheduled until a scenario names the need |
 
 **Total: 42 active PRs** (38 prior + M-1..M-4; M-5 deferred). Remaining

@@ -7,11 +7,20 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Master HEAD:** `f5f1dc6` (Phase M-3 merge + perception deferral note)  
-**Verification (last recorded):** Phase M-4 atlas design note; workspace check/test green  
-**Next coding task:** **Human + Opus sign-off** on M-4 atlas design note, then either generic atlas packer implementation or first-slice runtime wiring without atlas (not mapping runtime / not pass graph wiring by default)
+**Master HEAD:** `a9d8c8f` (Phase M-4 design note merge)  
+**Verification (last recorded):** Phase M-4 parking decision gate; workspace check/test green  
+**Next action:** **Parked at decision gate** — human + Opus sign-off required before atlas implementation (Option A), **or** explicit decision to proceed to first-slice runtime wiring without atlas (Option B). **Not** automatic implementation.
 
 ---
+
+## Current decision gate (Phase M-4)
+
+| Option | Action | Gate |
+|--------|--------|------|
+| **A** | Implement generic M-4 atlas packer | Human + Opus sign-off on [`mapping_atlas_batching_isolation_design_note.md`](mapping_atlas_batching_isolation_design_note.md) |
+| **B** | Defer atlas; first-slice runtime wiring (one 10×10 grid, no atlas) | Separate explicit product/architecture decision — **not** authorized by M-4 design note alone |
+
+Atlas batching remains **provisional and unimplemented**. The M-4 design note is a future contract only.
 
 ## 1. Executive summary
 
@@ -29,7 +38,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **V7.6 StructuredFieldStencilOp:** **Live, opt-in, hardened, inert by default** — generic GPU primitive in `simthing-gpu`. Not wired into default production pass graph. Phase M-1/M-1.1/M-2 landed: execution API, no-readback path, cadence scheduler + dirty skip; production mapping runtime remains gated.
 
-**Mapping (Sparse RegionCell):** **ADR approved (architecture)** — see [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md), surfaced in [`design_v7_7.md`](../design_v7_7.md). Phase M-4 design note landed: atlas batching isolation + VRAM accounting contract ([`mapping_atlas_batching_isolation_design_note.md`](mapping_atlas_batching_isolation_design_note.md)); atlas remains provisional and unimplemented. Phase M-3 landed: RegionFieldSpec RON + mapping admission. Phase M-2/M-2.1 landed: cadence scheduler, dirty skip, API hardening. StructuredFieldStencilOp execution remains GPU-resident by default. No production mapping runtime or pass graph wiring. Next: human + Opus sign-off on M-4 design note, then atlas packer implementation or first-slice wiring without atlas.
+**Mapping (Sparse RegionCell):** **ADR approved (architecture)** — see [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md), surfaced in [`design_v7_7.md`](../design_v7_7.md). Phase M-4 design note **parked at decision gate** — atlas provisional and unimplemented; sign-off required before atlas code (Option A) or explicit first-slice wiring without atlas (Option B). Phase M-3 landed: RegionFieldSpec RON + mapping admission. No production mapping runtime or pass graph wiring.
 
 **Product-priority selection:** **Done** — [`product_priority_vertical_slice_selection.md`](../reviews/product_priority_vertical_slice_selection.md). **Recommendation F:** pause implementation; gather product requirements. No named scenario for D-2a, E-11B-5, spec/RON rebuild, or new vertical slice. Continued flat-star soak remains green.
 

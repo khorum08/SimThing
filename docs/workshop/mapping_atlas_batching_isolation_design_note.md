@@ -1,8 +1,8 @@
 # Phase M-4 Design Note: Atlas Batching Isolation + VRAM Accounting
 
-**Status:** Design note / Opus-gated prerequisite.  
+**Status:** Design note / Opus-gated prerequisite — **parked at decision gate** (pending human + Opus sign-off).  
+**This document does not implement atlas batching and does not authorize implementation.**  
 **Atlas batching remains provisional.**  
-**This document does not implement atlas batching.**  
 **This document does not authorize production mapping runtime.**
 
 **Related:** [`../adr/mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (Mapping ADR — atlas classified **Provisional**), [`../design_v7_7.md`](../design_v7_7.md), [`mapping_current_guidance.md`](mapping_current_guidance.md), Phase M-3 admission [`../tests/phase_m3_region_field_spec_admission_test_results.md`](../tests/phase_m3_region_field_spec_admission_test_results.md).

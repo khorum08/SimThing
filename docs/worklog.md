@@ -6,6 +6,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+## 2026-05-28 — Phase M-4 parked at decision gate
+
+- Phase M-4 design note is **parked** pending human + Opus sign-off. Atlas batching remains provisional and unimplemented. The design note defines the future contract only — not implementation authorization.
+- Contract preserved: gutter >= effective horizon, mandatory VRAM accounting, per-tile seed clearing, full-tile protocol-oracle parity; t44/corridor agreement insufficient for production acceptance.
+- No production mapping runtime; no pass graph wiring; simthing-sim remains map-free.
+- **Decision gate:** **(A)** after sign-off, implement generic M-4 atlas packer; **(B)** defer atlas and proceed to first-slice runtime wiring (one grid, no atlas) as a separate explicit decision. M-4 implementation is **not** automatically next.
+
+**Verification:** [`phase_m4_parking_decision_gate_test_results.md`](tests/phase_m4_parking_decision_gate_test_results.md)
+
+---
+
 ## 2026-05-28 — Phase M-4 atlas batching isolation + VRAM accounting design note
 
 - Phase M-4 design note landed: [`mapping_atlas_batching_isolation_design_note.md`](workshop/mapping_atlas_batching_isolation_design_note.md).
