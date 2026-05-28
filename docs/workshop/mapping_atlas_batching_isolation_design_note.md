@@ -7,6 +7,11 @@
 
 **Related:** [`../adr/mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (Mapping ADR — atlas classified **Provisional**), [`../design_v7_7.md`](../design_v7_7.md), [`mapping_current_guidance.md`](mapping_current_guidance.md), Phase M-3 admission [`../tests/phase_m3_region_field_spec_admission_test_results.md`](../tests/phase_m3_region_field_spec_admission_test_results.md).
 
+**Evidence (M-4A sandbox):**
+
+- [`../tests/mapping_atlas_algebraic_mask_sandbox_test_results.md`](../tests/mapping_atlas_algebraic_mask_sandbox_test_results.md)
+- [`mapping_atlas_algebraic_mask_candidate_notes.md`](mapping_atlas_algebraic_mask_candidate_notes.md)
+
 **Evidence (archived sandbox):**
 
 - [`../tests/mapping_optimization_toolkit_sandbox_test_results.md`](../tests/mapping_optimization_toolkit_sandbox_test_results.md)
@@ -94,11 +99,24 @@ Atlas batching is **promising** for dispatch amortization but **must**:
 
 ### Rule
 
-For production atlas batching **without** local-bounds metadata:
+For production atlas batching **without** local-bounds metadata, short-term isolation may use **either**:
+
+**A. Physical gutter (fallback / conservative)**
 
 ```text
 gutter >= effective_horizon
 ```
+
+**B. Algebraic tile-local mask (preferred candidate for homogeneous square batches — M-4A evidence, pending sign-off)**
+
+```text
+gutter = 0 (flush-packed tiles)
+shader applies tile-local valid-neighbor mask
+foreign-tile reads annihilated before accumulation
+full-tile protocol-oracle parity required
+```
+
+Physical gutter remains required when algebraic masking is not configured or not admitted.
 
 Where:
 
@@ -116,6 +134,7 @@ Every packed tile must have a **zeroed/isolated gutter** of at least `effective_
 
 - Toolkit probe: `gutter=1` at `H=8` leaked across tiles.
 - Remedial probe: t44 passed at `G=0` on a narrow fixture with per-tile seed clearing, but conservative production policy still requires **G ≥ H** to guard worst-case stencil reach and packing layouts.
+- **M-4A probe (2026-05-19):** G=0 algebraic tile-local mask achieved full-tile protocol-oracle parity (max error ≤ 0.000031) with **1.0× VRAM** vs **6.76×** for G=H at N=10, H=8. Candidate preserved; runtime reverted. See [`../tests/mapping_atlas_algebraic_mask_sandbox_test_results.md`](../tests/mapping_atlas_algebraic_mask_sandbox_test_results.md).
 - Mapping ADR already classifies atlas as **Provisional** with this short-term policy.
 
 ### Future packer obligation

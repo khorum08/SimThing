@@ -1665,9 +1665,13 @@ meaningful against a protocol-faithful oracle). Produce a design note.
 
 Phase M-4 design note is parked pending human + Opus sign-off.
 Atlas batching remains provisional and unimplemented.
-The design note defines the future contract only: gutter >= effective horizon,
+The design note defines the future contract only: gutter >= effective horizon **or**
+algebraic tile-local mask for homogeneous square batches (M-4A evidence),
 mandatory VRAM accounting, per-tile seed clearing, full-tile protocol-oracle
 parity, and t44/corridor agreement is insufficient for production acceptance.
+**M-4A (2026-05-19):** Algebraic tile-local masking sandbox completed and reverted.
+G=0 mask is preferred candidate over physical G>=H (VRAM 1.0× vs 6.76×); physical gutter remains fallback.
+See [`tests/mapping_atlas_algebraic_mask_sandbox_test_results.md`](tests/mapping_atlas_algebraic_mask_sandbox_test_results.md).
 No production mapping runtime landed. No production pass graph wiring landed.
 No map/faction/AI semantics entered simthing-sim or WGSL.
 
