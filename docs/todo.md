@@ -194,6 +194,8 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **V7.6 StructuredFieldStencilOp guardrail hardening:** **Done** — enforces execution horizon constraints, fixes source-cap test indexing, clarifies caller-managed source policy, adds clamp-boundary parity, marks active mask provisional. No production pass graph wiring; Resource Flow defaults unchanged.
 
+**V7.6 StructuredFieldStencilOp parked state:** **Done** — promotion and guardrail hardening complete. Live generic opt-in toolkit primitive remains in `simthing-gpu`; not mapping runtime; not wired into production passes. **Implementation parked pending Mapping ADR.** Next work item is the Mapping ADR (RegionCell fields, source policy, active-mask halo/frontier semantics, cadence tiers, column-aware parent bindings) — not runtime mapping implementation. Resource Flow defaults unchanged; `simthing-sim` remains semantic-free.
+
 **Next (immediate):** **Pause implementation (F)** — park until mapping direction is finalized enough to define the next narrow substrate slice, or product names a concrete non-mapping scenario per [`product_priority_vertical_slice_selection.md`](reviews/product_priority_vertical_slice_selection.md). Global default-on remains deferred. **Mapping/location direction remains provisional** — must not trigger templates, simthing-spec/RON/Designer rebuild, or runtime mapping work until product finalizes direction.
 
 **Implementation posture:** AccumulatorOp is the production runtime substrate. Do not
