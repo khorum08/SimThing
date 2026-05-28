@@ -529,11 +529,16 @@ fn e11b_nested_no_new_wgsl() {
         .filter_map(|e| e.ok())
         .map(|e| e.file_name().to_string_lossy().into_owned())
         .collect();
-    let allowed = ["accumulator_op.wgsl", "snapshot.wgsl", "world_summary.wgsl"];
+    let allowed = [
+        "accumulator_op.wgsl",
+        "snapshot.wgsl",
+        "world_summary.wgsl",
+        "structured_field_stencil.wgsl",
+    ];
     for name in &entries {
         assert!(
             allowed.contains(&name.as_str()),
-            "unexpected WGSL file {name}; E-11B must not add shaders"
+            "unexpected WGSL file {name}; only V7.6-approved generic/accumulator shaders allowed"
         );
     }
 }

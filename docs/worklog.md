@@ -2,7 +2,19 @@
 
 Running log of what's done and what's next, across sessions.
 
-**Canonical spec:** `docs/design_v7.md` (AccumulatorOp v2) · `docs/design_v6.5.md` (v6 parking) · `docs/design_v6.md` (sim mechanics) | **Agent map:** `docs/agents.md` · **Workshop:** `docs/workshop/workshop_current_state.md`
+**Canonical spec:** `docs/design_v7.md` (AccumulatorOp v2, V7.6) · `docs/design_v7_6.md` (V7.6 amendment) · `docs/design_v6.5.md` (v6 parking) · `docs/design_v6.md` (sim mechanics) | **Agent map:** `docs/agents.md` · **Workshop:** `docs/workshop/workshop_current_state.md`
+
+---
+
+## 2026-05-19 — V7.6 constitution pivot + StructuredFieldStencilOp promotion
+
+- Promoted preserved generic WGSL stencil into live `StructuredFieldStencilOp` (`simthing-gpu`); not wired into default production pass graph.
+- V7.6 relaxes misplaced guardrails: "no semantic/map-specific WGSL" (not blanket no WGSL); field EML classes admitted at designer/spec whitelist layer.
+- EML whitelist extended: `field_pressure`, `field_urgency`, `field_decay`, `bounded_field_update`.
+- Production tests: gpu structured_field_stencil (A–D), driver parent EML (E,G), spec EML admission (F); E-11B regressions green.
+- Default posture unchanged: Resource Flow opt-in, simthing-sim semantic-free, no mapping runtime.
+
+**Results:** [`v7_6_structured_field_stencil_promotion_test_results.md`](tests/v7_6_structured_field_stencil_promotion_test_results.md)
 
 ---
 
