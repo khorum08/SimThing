@@ -4,7 +4,7 @@
 and **documentation routing**. Read this first when picking up GPU migration or workshop work.
 
 **Last updated:** 2026-05-27  
-**Master HEAD:** _(pending merge — sparse RegionCell field-intelligence sandbox)_  
+**Master HEAD:** `b35ad61` — sparse RegionCell field-intelligence sandbox (merged PR #197)  
 **Verification (last recorded):** sandbox 10/10 + E-11B regression green — `cargo check --workspace` / `cargo test --workspace` PASS
 
 ---
