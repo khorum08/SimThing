@@ -33,6 +33,8 @@ Phase M-4 design note is **parked** pending human + Opus sign-off. Atlas batchin
 
 **M-4A (2026-05-19):** Algebraic tile-local masking sandbox completed and was reverted to parked state. Candidate code/results are preserved under `docs/workshop/` and `docs/tests/mapping_atlas_algebraic_mask_sandbox_test_results.md`. For homogeneous square atlas batches, G=0 algebraic tile-local masking is now the **preferred M-4 implementation candidate** over physical G>=H gutters, pending human + Opus sign-off. Physical gutter remains fallback. No atlas implementation landed. No mapping runtime landed.
 
+For broader implications of M-4A algebraic masking, see the M-4 design note section **“Architectural Implications of Algebraic Tile-Local Masking.”**
+
 ## Current decision gate
 
 Choose **one** explicitly — do not treat the design note as auto-authorization:

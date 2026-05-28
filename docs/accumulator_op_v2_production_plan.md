@@ -1670,6 +1670,7 @@ parity, and t44/corridor agreement is insufficient for production acceptance.
 **M-4A (2026-05-19):** Algebraic tile-local masking sandbox completed and reverted.
 G=0 mask is preferred candidate over physical G>=H (VRAM 1.0× vs 6.76×); physical gutter remains fallback.
 See [`tests/mapping_atlas_algebraic_mask_sandbox_test_results.md`](tests/mapping_atlas_algebraic_mask_sandbox_test_results.md).
+**M-4A architectural implication captured:** algebraic tile-local masking supports the general SimThing pattern of dense flat buffers + designer-authored relationships compiled into generic algebraic masks/gates. This implication is documented for Opus review in [`mapping_atlas_batching_isolation_design_note.md`](workshop/mapping_atlas_batching_isolation_design_note.md) §4; it does **not** ratify implementation or change atlas provisional status.
 No production mapping runtime landed. No production pass graph wiring landed.
 No map/faction/AI semantics entered simthing-sim or WGSL.
 
