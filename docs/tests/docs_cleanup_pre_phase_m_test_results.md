@@ -3,7 +3,7 @@
 **Date/time:** 2026-05-19  
 **Base HEAD:** `48203193748c5cc88a18b174f5f8fcb0b3bb6900` (Mapping ADR merge, PR #217)  
 **Branch:** `docs-cleanup-pre-phase-m`  
-**Final commit SHA:** `715a334` (docs-cleanup-pre-phase-m)  
+**Final commit SHA:** `f0d9852` (docs-cleanup-pre-phase-m)  
 **Scope:** Docs-only — no production Rust/WGSL changes.
 
 ---
