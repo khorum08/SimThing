@@ -2476,6 +2476,10 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   sample — diagnostic/ranking hint only, not deterministic authoritative state. Production plan
   amended to avoid global exact-parity overclaim for observer outputs. Report:
   `docs/tests/phase_m_jit_grad0_spatial_observer_r1_test_results.md`.
+- **M-JIT-GRAD-1 — Done (PASS, test-only observer+formula fusion).** Fused semantic-free WGSL in one
+  dispatch: field sample → exact-authoritative `dx`/`dy`/descent → exact-subset score via `fma`;
+  10,000 observers; no `mag2` in score; no `sqrt`. Production observer scheduling/caching remains
+  deferred. Report: `docs/tests/phase_m_jit_grad1_observer_formula_fusion_test_results.md`.
 - **Production JIT caching/cohort dispatch — Deferred (separate gate).** Cohorting identical authored
   graphs, kernel caching/dispatch, multi-gadget chained-stack lowering, conditional (`CMP`/`SELECT`)
   lowering, batched multi-slot dispatch, and any production runtime/default wiring remain gated.
