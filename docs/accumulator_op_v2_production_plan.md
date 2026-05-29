@@ -2098,7 +2098,9 @@ Defaults unchanged.
 
 **Test:** [`phase_m_economy_sead_product_fixture_test_results.md`](tests/phase_m_economy_sead_product_fixture_test_results.md) — PASS.
 
-### PR M-product-fixture-chain-parking — Product-fixture chain review/parking packet — **Done**
+### PR M-product-fixture-chain-parking — Product-fixture chain review/parking packet — **Done; ACCEPTED 2026-05-29**
+
+**Acceptance:** **ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)** — [`reviews/phase_m_product_fixture_chain_acceptance_opus_review.md`](reviews/phase_m_product_fixture_chain_acceptance_opus_review.md). Accepted as a fixture-level product proof; the economy→SEAD link stays in `tests/support` orchestration (CPU selects authored EML weight profiles, never computes urgency or emits commitments; both stay GPU-resident). Binding row added to `docs/invariants.md` Mapping section. Next implementation step: authoring ergonomics R2 or another tiny non-map-substrate + SEAD product fixture — not a generic boundary-output packet (D), not the M-4 atlas packer (E). No production economy→mapping bridge authorized.
 
 **Status:** **Done (PASS)** — Phase M product-fixture chain parking packet landed.
 The repo now has a reviewed chain from abstract tick/boundary doctrine through discrete `ResourceEconomySpec` boundary banking, resource-economy authoring preview, and an Economy + SEAD product fixture where resolved treasury stress selects authored EML weights and the existing GPU-resident first-slice path emits or does not emit a SEAD commitment through Threshold + EmitEvent.

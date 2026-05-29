@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Opus/product acceptance: Phase M product-fixture chain
+
+- **ACCEPTED — PASS WITH CONDITIONS.** The chain (abstract boundary doctrine → Daily Economy Fixture V1 → Resource Economy Authoring Ergonomics V1 → Economy + SEAD Product Fixture V1) is accepted as a fixture-level product proof. Memo: [`reviews/phase_m_product_fixture_chain_acceptance_opus_review.md`](reviews/phase_m_product_fixture_chain_acceptance_opus_review.md).
+- Verified in code: the economy→SEAD link lives only in `tests/support/economy_sead_product_fixture.rs` (not exported). The CPU's sole step is `eml_weights_from_treasury_stress` selecting between two pre-authored weight profiles by resolved treasury; urgency and the SEAD commitment stay GPU-resident (field→reduction→`field_urgency` EvalEML→Threshold+EmitEvent; `reduction_stencil_readbacks == 0`). Designer/importer-layer guardrail real: `resource_economy_admission` rejects malformed specs at the spec stage.
+- Re-ran on GPU: economy+SEAD 6/6, authoring ergonomics 4/4, spec authoring preview 8/8.
+- Verdicts: chain ACCEPT WITH CONDITIONS · fixture-orchestration boundary ACCEPT · SEAD discipline PASS · boundary/economy doctrine PASS · non-authorizations kept binding.
+- Conditions: economy→SEAD link stays fixture-only (no production bridge without a separate gated decision); CPU may select authored profiles but never compute urgency / emit commitments; guardrails stay at the designer/importer/scenario-admission layer, not sim/boundary.
+- **Next implementation step: authoring ergonomics R2, or another tiny non-map-substrate + SEAD product fixture — not a generic boundary-output packet (D), not the M-4 atlas packer (E).**
+- Docs-only: new acceptance memo; review packet flipped to Accepted; binding row added to `invariants.md` Mapping section; mapping guidance, workshop state, production plan, todo updated. No code; defaults unchanged; simthing-sim map-free.
+
 # 2026-05-29 — Phase M product-fixture chain parking packet
 
 - Phase M product-fixture chain parking packet landed.
