@@ -6,6 +6,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-28 — Phase M FirstSliceScenarioSpec-R1 hygiene
+
+- Phase M FirstSliceScenarioSpec-R1 hygiene landed. The scenario-level RON wrapper remains opt-in and GPU-resident.
+- Moved `FirstSliceScenarioFixtureSession` from production `simthing-driver/src` to integration-test support code (`tests/support/first_slice_scenario_fixture.rs`). Production retains `FirstSliceMappingSession::open_from_scenario_preview` only.
+- Hardened `compile_first_slice_scenario_preview` budget estimate handling: estimator errors propagate as `SpecError` instead of silent `.ok()` drop.
+- Documented prior agent/tool crash interruptions during the original FirstSliceScenarioSpec landing and the final clean verification boundary.
+- No default SimSession wiring was introduced. No CPU-side AI planner was introduced.
+- No atlas batching landed. No M-4A atlas masking landed. No active mask, perception, map residency, behavioral source policy, or source_mask landed. No semantic WGSL landed. simthing-sim remains map-free. Defaults unchanged.
+- Known caveat preserved: First-slice bridge uses queue writes for child resource values and parent weights. This is acceptable for the 10x10 first-slice scenario fixture. Future multi-field/atlas scale must replace per-slot resource writes with a generic preinitialized resource column, fill helper, or GPU fill kernel after a separate measured design step.
+- Test report: [`tests/phase_m_first_slice_scenario_spec_r1_hygiene_test_results.md`](tests/phase_m_first_slice_scenario_spec_r1_hygiene_test_results.md).
+
 # 2026-05-28 — Phase M FirstSliceScenarioSpec fixture
 
 - Phase M FirstSliceScenarioSpec fixture landed. It wraps the accepted first-slice RegionFieldSpec + CommitmentSpec in a scenario-level RON authoring shape that includes explicit MappingExecutionProfile.

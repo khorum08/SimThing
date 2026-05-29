@@ -8,7 +8,6 @@ pub mod bench_limits;
 pub mod child_share_eml;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
-pub mod first_slice_scenario_fixture;
 pub mod install;
 pub mod resource_economy_burn_in;
 pub mod resource_economy_compile;
@@ -68,7 +67,6 @@ pub use field_scheduler::{
     FieldSchedulerReport, ScheduledRegionsExecutionSummary, ScheduledSingleStencilExecution,
     ScheduledStencilExecutionError,
 };
-pub use first_slice_scenario_fixture::FirstSliceScenarioFixtureSession;
 pub use first_slice_mapping_runtime::{
     compiled_cadence_to_field_cadence, compiled_stencil_to_gpu_config, estimate_first_slice_budget,
     FirstSliceCommitmentReport, FirstSliceMappingError, FirstSliceMappingReport,

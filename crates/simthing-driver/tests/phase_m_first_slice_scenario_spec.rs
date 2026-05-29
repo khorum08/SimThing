@@ -1,8 +1,9 @@
 //! Phase M FirstSliceScenarioSpec: scenario-level RON authoring wrapper for first-slice mapping + commitment.
 
+mod support;
+
 use simthing_driver::{
-    estimate_first_slice_budget, FirstSliceCommitmentReport, FirstSliceScenarioFixtureSession,
-    FirstSliceSeed, FirstSliceTickOptions,
+    estimate_first_slice_budget, FirstSliceCommitmentReport, FirstSliceSeed, FirstSliceTickOptions,
 };
 use simthing_gpu::GpuContext;
 use simthing_sim::PipelineFlags;
@@ -13,6 +14,8 @@ use simthing_spec::{
     RegionFieldSpec, SpecError,
 };
 use std::sync::Mutex;
+
+use support::first_slice_scenario_fixture::FirstSliceScenarioFixtureSession;
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
 
@@ -161,6 +164,11 @@ fn scenario_ron_admits() {
     .expect("budget preview passes");
     assert!(budget.estimated_bytes > 0);
     assert!(budget.estimated_bytes <= spec.region_field.max_region_field_vram_bytes.unwrap());
+    assert_eq!(
+        preview.budget_estimate_bytes,
+        Some(budget.estimated_bytes),
+        "scenario preview must retain budget estimate"
+    );
 }
 
 #[test]
@@ -361,9 +369,27 @@ fn invalid_scenario_specs_reject() {
         "commitment source_formula_class must be field_urgency",
     );
 
-    let mut over_budget = base;
+    let mut over_budget = base.clone();
     over_budget.region_field.max_region_field_vram_bytes = Some(64);
+    assert_scenario_err(&over_budget, "VRAM budget exceeded");
     assert_region_field_err(&over_budget.region_field, "VRAM budget exceeded");
+}
+
+#[test]
+fn scenario_production_test_boundary() {
+    let lib_src = include_str!("../src/lib.rs");
+    assert!(!lib_src.contains("first_slice_scenario_fixture"));
+    assert!(!lib_src.contains("FirstSliceScenarioFixtureSession"));
+
+    for source in [
+        include_str!("../src/lib.rs"),
+        include_str!("../src/first_slice_mapping_runtime.rs"),
+    ] {
+        assert!(
+            !source.contains("Test-only first-slice scenario fixture session"),
+            "production simthing-driver must not contain test-only scenario fixture session"
+        );
+    }
 }
 
 #[test]
@@ -387,6 +413,7 @@ fn scenario_posture_preserved() {
 
     let runtime_src = include_str!("../src/first_slice_mapping_runtime.rs");
     let fixture_src = include_str!("phase_m_first_slice_scenario_spec.rs");
+    let support_src = include_str!("support/first_slice_scenario_fixture.rs");
     let forbidden = [
         concat!("ActiveOnly", "ExperimentalNoHalo"),
         concat!("source_", "mask"),
@@ -396,8 +423,13 @@ fn scenario_posture_preserved() {
         concat!("atlas ", "packer"),
         concat!("semantic ", "WGSL"),
     ];
-    for source in [SCENARIO_FIXTURE_RON, SCENARIO_DISABLED_FIXTURE_RON, runtime_src, fixture_src]
-    {
+    for source in [
+        SCENARIO_FIXTURE_RON,
+        SCENARIO_DISABLED_FIXTURE_RON,
+        runtime_src,
+        fixture_src,
+        support_src,
+    ] {
         for needle in forbidden {
             assert!(!source.contains(needle));
         }

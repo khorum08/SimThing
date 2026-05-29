@@ -1,14 +1,13 @@
-//! Test-only first-slice scenario fixture session (opens mapping from admitted scenario preview).
+//! Acceptance-test helper for FirstSliceScenarioSpec (not exported from simthing-driver).
 
+use simthing_driver::{
+    FirstSliceCommitmentReport, FirstSliceMappingError, FirstSliceMappingReport,
+    FirstSliceMappingSession, FirstSliceSeed, FirstSliceTickOptions,
+};
 use simthing_gpu::GpuContext;
 use simthing_spec::{
     CompiledFirstSliceCommitmentThreshold, CompiledFirstSliceScenarioPreview,
     MappingExecutionProfile,
-};
-
-use crate::first_slice_mapping_runtime::{
-    FirstSliceCommitmentReport, FirstSliceMappingError, FirstSliceMappingReport,
-    FirstSliceMappingSession, FirstSliceSeed, FirstSliceTickOptions,
 };
 
 /// Scenario fixture session: mapping session + commitment binding from the same admitted preview.
@@ -32,15 +31,10 @@ impl FirstSliceScenarioFixtureSession {
         })
     }
 
-    pub fn mapping_execution_profile(&self) -> MappingExecutionProfile {
-        self.mapping_execution_profile
-    }
-
     pub fn queue_seeds(&mut self, seeds: &[FirstSliceSeed]) -> Result<(), FirstSliceMappingError> {
         self.session.queue_seeds(seeds)
     }
 
-    /// Execute one mapping tick without commitment threshold scan.
     pub fn tick_mapping(
         &mut self,
         ctx: &GpuContext,
@@ -50,7 +44,6 @@ impl FirstSliceScenarioFixtureSession {
         self.session.tick(ctx, options, eml_weights)
     }
 
-    /// Execute mapping tick plus GPU-resident commitment threshold scan from scenario preview binding.
     pub fn tick_with_scenario_commitment(
         &mut self,
         ctx: &GpuContext,

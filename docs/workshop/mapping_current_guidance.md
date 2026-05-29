@@ -108,6 +108,30 @@ resource column, fill helper, or GPU fill kernel after a separate measured desig
 
 See [`../tests/phase_m_first_slice_scenario_spec_test_results.md`](../tests/phase_m_first_slice_scenario_spec_test_results.md).
 
+## Phase M FirstSliceScenarioSpec-R1 hygiene (landed — opt-in)
+
+Phase M FirstSliceScenarioSpec-R1 hygiene landed.
+The scenario-level RON wrapper remains opt-in and GPU-resident. The public/test-only boundary
+was clarified (`FirstSliceScenarioFixtureSession` moved to integration-test support code;
+production retains `FirstSliceMappingSession::open_from_scenario_preview` only), scenario
+budget estimate handling was hardened (estimator errors propagate instead of `.ok()`), and
+the prior build/test crash history was documented with a final clean verification run.
+No default SimSession wiring was introduced.
+No CPU-side AI planner was introduced.
+No atlas batching landed.
+No M-4A atlas masking landed.
+No active mask, perception, map residency, behavioral source policy, or source_mask landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+Known caveat: First-slice bridge uses queue writes for child resource values and parent
+weights. This is acceptable for the 10x10 first-slice scenario fixture. Future
+multi-field/atlas scale must replace per-slot resource writes with a generic preinitialized
+resource column, fill helper, or GPU fill kernel after a separate measured design step.
+
+See [`../tests/phase_m_first_slice_scenario_spec_r1_hygiene_test_results.md`](../tests/phase_m_first_slice_scenario_spec_r1_hygiene_test_results.md).
+
 ## Phase M-first-slice (landed — opt-in)
 
 Phase M-first-slice runtime landed behind explicit `MappingExecutionProfile::SparseRegionFieldV1` opt-in in `simthing-driver` (`FirstSliceMappingSession`). It exercises one bounded RegionField grid with `source_capped_normalized`, H≤8, caller-managed one-shot seed then zero, dirty skip, SlotRange Sum reduction, and parent `field_urgency` EvalEML.

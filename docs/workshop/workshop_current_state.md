@@ -56,6 +56,8 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **Phase M FirstSliceScenarioSpec fixture:** **Done (opt-in)** — wraps the accepted first-slice RegionFieldSpec + CommitmentSpec in a scenario-level RON authoring shape with explicit MappingExecutionProfile. Disabled scenarios admit as structure but do not execute. SparseRegionFieldV1 scenarios execute the GPU-resident first-slice path and emit the authored commitment event only when field_urgency crosses the authored threshold. No CPU-side AI planner, default SimSession wiring, atlas batching, M-4A atlas masking, active mask, perception, map residency, behavioral source policy, source_mask, semantic WGSL, simthing-sim map awareness, or default changes landed. Caveat preserved: 10x10 bridge still uses queue writes for child resource values and parent weights.
 
+**Phase M FirstSliceScenarioSpec-R1 hygiene:** **Done (opt-in)** — clarifies public/test-only boundary (fixture session helper moved to integration-test support), hardens scenario budget estimate error propagation, documents prior crash/build-run history with final clean verification. No scope expansion.
+
 **Product-priority selection:** **Done** — [`product_priority_vertical_slice_selection.md`](../reviews/product_priority_vertical_slice_selection.md). **Recommendation F:** pause implementation; gather product requirements. No named scenario for D-2a, E-11B-5, spec/RON rebuild, or new vertical slice. Continued flat-star soak remains green.
 
 **Continued flat-star soak:** **Done** — `resource_flow_flat_star_continued_soak` (12 tests). Confidence/observability only. E-11B remains paused.
