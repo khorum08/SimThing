@@ -2,6 +2,7 @@ pub mod capability;
 pub mod domain_pack;
 pub mod effect;
 pub mod event;
+pub mod first_slice_scenario;
 pub mod game_mode;
 pub mod install_target;
 pub mod overlay;
@@ -24,6 +25,7 @@ pub use game_mode::GameModeSpec;
 pub use install_target::InstallTargetSpec;
 pub use overlay::OverlaySpec;
 pub use property::PropertySpec;
+pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use region_field::{
     FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, MappingExecutionProfile,
     RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec, RegionFieldGridProfile,

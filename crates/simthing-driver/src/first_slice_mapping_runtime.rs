@@ -19,10 +19,10 @@ use simthing_gpu::{
 };
 use simthing_spec::{
     compile_region_field_preview, estimate_region_field_budget, CompiledFieldCadence,
-    CompiledFirstSliceCommitmentThreshold, CompiledRegionFieldOperator, CompiledRegionFieldPreview,
-    CompiledRegionFieldStencilSpec, MappingExecutionProfile, RegionFieldBudgetError,
-    RegionFieldBudgetEstimate, RegionFieldBudgetSpec, RegionFieldIsolationPolicyEstimate,
-    RegionFieldSpec, SpecError,
+    CompiledFirstSliceCommitmentThreshold, CompiledFirstSliceScenarioPreview,
+    CompiledRegionFieldOperator, CompiledRegionFieldPreview, CompiledRegionFieldStencilSpec,
+    MappingExecutionProfile, RegionFieldBudgetError, RegionFieldBudgetEstimate,
+    RegionFieldBudgetSpec, RegionFieldIsolationPolicyEstimate, RegionFieldSpec, SpecError,
 };
 use thiserror::Error;
 
@@ -257,6 +257,8 @@ pub enum FirstSliceMappingError {
     },
     #[error("non-finite seed value at row={row} col={col}")]
     NonFiniteSeedValue { row: u32, col: u32 },
+    #[error("scenario preview missing commitment binding")]
+    MissingCommitmentBinding,
 }
 
 /// Opt-in first-slice mapping runtime session.
@@ -334,6 +336,21 @@ impl FirstSliceMappingSession {
         tree_id_override: Option<u32>,
     ) -> Result<Self, FirstSliceMappingError> {
         Self::open_preview_with_budget(ctx, profile, preview, tree_id_override, None, None)
+    }
+
+    /// Open from an admitted first-slice scenario compile preview.
+    pub fn open_from_scenario_preview(
+        ctx: &GpuContext,
+        preview: &CompiledFirstSliceScenarioPreview,
+    ) -> Result<Self, FirstSliceMappingError> {
+        Self::open_preview_with_budget(
+            ctx,
+            preview.mapping_execution_profile,
+            preview.region_field.clone(),
+            preview.parent_formula_tree_id,
+            preview.budget_estimate_bytes,
+            preview.budget_limit_bytes,
+        )
     }
 
     fn open_preview_with_budget(

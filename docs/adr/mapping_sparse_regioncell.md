@@ -430,6 +430,15 @@ only: no CPU-side AI planner, atlas batching, M-4A masking, active mask, percept
 residency, source identity, semantic WGSL, default session wiring, or `simthing-sim` map
 awareness is authorized or landed.
 
+**Update (2026-05-28, FirstSliceScenarioSpec fixture):** The first-slice mapping +
+CommitmentSpec path moved into a scenario-level RON-admitted `FirstSliceScenarioSpec`
+wrapper with explicit `MappingExecutionProfile`. Disabled scenarios admit as structure but
+do not execute; SparseRegionFieldV1 scenarios execute the GPU-resident first-slice path and
+emit the authored commitment event only when field_urgency crosses the authored threshold.
+This is a landing note only: no CPU-side AI planner, default session wiring, atlas batching,
+M-4A masking, active mask, perception, map residency, source identity, semantic WGSL, or
+`simthing-sim` map awareness is authorized or landed.
+
 ---
 
 ## Read order for agents touching mapping
