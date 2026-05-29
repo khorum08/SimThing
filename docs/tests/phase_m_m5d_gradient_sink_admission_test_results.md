@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `bdbd80bc68064fa4f85c017340ebaeae3d2cf0f1`  
-**Final commit SHA:** *(pending merge — see PR)*  
+**Final commit SHA:** `4805e6d` (M-5D-gradient implementation commit)  
 **Lane classification:** Tier-1 remedial admission-hardening pass (V7.7 §5)  
 **Verdict:** **PASS — M-5D-gradient landed**
 
