@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `b6447f5f15e5499e0f22688fe5d29922d3f3f946`  
-**Final commit SHA:** `1a1c39c` (implementation commit on `phase-m-jit-sqrt-0-candidate-battery`; squash/merge SHA recorded by PR merge)  
+**Final commit SHA:** _caveat: branch-local implementation SHA changed during commit-finalization amendments; authoritative final SHA is the PR merge commit recorded by GitHub_  
 **Lane classification:** Tier-2 JIT sqrt candidate battery (V7.7 §5)  
 **Decision:** **IMPLEMENTED — test-only native WGSL `sqrt` candidate battery**  
 **Verdict:** **PASS — `ApproximateJitOnly` classification**
