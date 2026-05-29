@@ -17,7 +17,7 @@ No new ConsumeMode was added.
 No WGSL or GPU kernel was added.
 No runtime gadget execution was introduced.
 No temporal gadget implementation landed.
-VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
+EML-GADGET-2A + R1 landed. 2B VelocityMonitor + Decay/EMA landed. 2C BoundedFeedback (strict clamp) landed. Hysteresis conditional/deferred. Acceleration + dense per-cell deferred. No runtime gadget execution, chained scheduling, new opcode, WGSL, sim semantics, production economy→mapping bridge, or default mapping wiring. No atlas/M-4A.
 No hidden previous-value read was introduced.
 Temporal memory remains explicit-column state.
 Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
@@ -34,7 +34,7 @@ No new ConsumeMode was added.
 No WGSL or GPU kernel was added.
 No runtime gadget execution was introduced.
 No temporal gadget implementation landed.
-VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
+EML-GADGET-2A + R1 landed. 2B VelocityMonitor + Decay/EMA landed. 2C BoundedFeedback (strict clamp) landed. Hysteresis conditional/deferred. Acceleration + dense per-cell deferred. No runtime gadget execution, chained scheduling, new opcode, WGSL, sim semantics, production economy→mapping bridge, or default mapping wiring. No atlas/M-4A.
 No hidden previous-value read was introduced.
 Temporal memory remains explicit-column state.
 Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
