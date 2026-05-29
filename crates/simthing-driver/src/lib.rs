@@ -71,7 +71,7 @@ pub use first_slice_mapping_runtime::{
     compiled_cadence_to_field_cadence, compiled_stencil_to_gpu_config, estimate_first_slice_budget,
     FirstSliceCommitmentReport, FirstSliceMappingError, FirstSliceMappingReport,
     FirstSliceMappingSession, FirstSliceReadinessReport, FirstSliceSeed, FirstSliceSummaryReport,
-    FirstSliceTickOptions,
+    FirstSliceSummaryStatus, FirstSliceTickOptions,
 };
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,

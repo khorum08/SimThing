@@ -38,6 +38,8 @@ Defaults unchanged.
 
 **Cached commitment scan:** deferred — threshold/event scan runs only when the dense path executes; cached ticks report validity metadata without CPU-side commitment emission.
 
+**V1-R1 hygiene (landed):** Runtime summary status (`FirstSliceSummaryStatus`) moved from `simthing-spec` into the driver runtime reporting layer. Designer-facing policy (`RegionFieldSummaryPolicySpec` / `CompiledRegionFieldSummaryPolicy`) remains in spec admission. No behavior change.
+
 **Known scale caveat:** resolve per-slot queue-write scale before any multi-field/atlas scaling (unchanged).
 
 **Test:** [`../tests/phase_m_first_slice_summary_validity_test_results.md`](../tests/phase_m_first_slice_summary_validity_test_results.md)

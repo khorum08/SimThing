@@ -23,7 +23,7 @@ use simthing_spec::{
     CompiledRegionFieldOperator, CompiledRegionFieldPreview, CompiledRegionFieldStencilSpec,
     CompiledRegionFieldSummaryPolicy, MappingExecutionProfile, RegionFieldBudgetError,
     RegionFieldBudgetEstimate, RegionFieldBudgetSpec, RegionFieldIsolationPolicyEstimate,
-    RegionFieldSpec, RegionFieldSummaryStatus, SpecError,
+    RegionFieldSpec, SpecError,
 };
 use thiserror::Error;
 
@@ -120,11 +120,28 @@ impl FirstSliceTickOptions {
     }
 }
 
+/// Runtime summary validity status for one first-slice tick (metadata only — not gameplay recomputation on CPU).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FirstSliceSummaryStatus {
+    FreshThisTick,
+    Cached { age_ticks: u32 },
+    ZeroInitial,
+    InvalidOrUnavailable,
+}
+
 /// Summary validity report for one first-slice tick (metadata only).
+///
+/// - `policy` = admitted/configured summary policy
+/// - `status` = actual validity state for this tick
+/// - `status` is authoritative
+/// - `policy` alone does not imply a valid summary
+///
+/// Cached ticks emit no threshold event. `summary_used_for_commitment_scan` stays false.
+/// GPU-substrate cached commitment scan is deferred in V1.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FirstSliceSummaryReport {
     pub policy: CompiledRegionFieldSummaryPolicy,
-    pub status: RegionFieldSummaryStatus,
+    pub status: FirstSliceSummaryStatus,
     pub age_ticks: u32,
     pub has_gpu_parent_summary: bool,
     pub last_fresh_tick: Option<u32>,
@@ -198,7 +215,7 @@ impl FirstSliceMappingReport {
     fn summary_invalid_or_unavailable() -> FirstSliceSummaryReport {
         FirstSliceSummaryReport {
             policy: CompiledRegionFieldSummaryPolicy::CachedUntilDirtyWithZeroInitial,
-            status: RegionFieldSummaryStatus::InvalidOrUnavailable,
+            status: FirstSliceSummaryStatus::InvalidOrUnavailable,
             age_ticks: 0,
             has_gpu_parent_summary: false,
             last_fresh_tick: None,
@@ -495,15 +512,15 @@ impl FirstSliceMappingSession {
         summary_used_for_commitment_scan: bool,
     ) -> FirstSliceSummaryReport {
         let status = if !self.enabled {
-            RegionFieldSummaryStatus::InvalidOrUnavailable
+            FirstSliceSummaryStatus::InvalidOrUnavailable
         } else if scheduled && reduction_executed {
-            RegionFieldSummaryStatus::FreshThisTick
+            FirstSliceSummaryStatus::FreshThisTick
         } else if self.has_gpu_parent_summary {
-            RegionFieldSummaryStatus::Cached {
+            FirstSliceSummaryStatus::Cached {
                 age_ticks: self.summary_age_ticks,
             }
         } else {
-            RegionFieldSummaryStatus::ZeroInitial
+            FirstSliceSummaryStatus::ZeroInitial
         };
 
         FirstSliceSummaryReport {

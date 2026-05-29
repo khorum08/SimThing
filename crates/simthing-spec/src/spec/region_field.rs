@@ -118,15 +118,6 @@ pub enum RegionFieldSummaryPolicySpec {
     CachedUntilDirtyWithZeroInitial,
 }
 
-/// Runtime summary validity status (metadata only — not gameplay recomputation on CPU).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RegionFieldSummaryStatus {
-    FreshThisTick,
-    Cached { age_ticks: u32 },
-    ZeroInitial,
-    InvalidOrUnavailable,
-}
-
 /// Admitted summary policy (compile layer).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum CompiledRegionFieldSummaryPolicy {

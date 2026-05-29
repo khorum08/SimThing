@@ -2,14 +2,15 @@
 
 mod support;
 
-use simthing_driver::{FirstSliceSeed, FirstSliceTickOptions};
+use simthing_driver::{
+    FirstSliceSeed, FirstSliceSummaryStatus, FirstSliceTickOptions,
+};
 use simthing_gpu::GpuContext;
 use simthing_sim::PipelineFlags;
 use simthing_spec::{
     compile_first_slice_scenario_preview, compile_region_field_preview,
     deserialize_first_slice_scenario_ron, CompiledRegionFieldSummaryPolicy, FirstSliceScenarioSpec,
     MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldSpec, RegionFieldSummaryPolicySpec,
-    RegionFieldSummaryStatus,
 };
 use std::sync::Mutex;
 
@@ -19,6 +20,8 @@ static GPU_MUTEX: Mutex<()> = Mutex::new(());
 
 const SUMMARY_SCENARIO_RON: &str =
     include_str!("fixtures/first_slice_product_summary_validity_scenario.ron");
+const DISABLED_SCENARIO_RON: &str =
+    include_str!("fixtures/first_slice_product_commitment_scenario_disabled.ron");
 const SEED: FirstSliceSeed = FirstSliceSeed {
     row: 4,
     col: 4,
@@ -74,6 +77,84 @@ fn summary_policy_ron_admits() {
     assert!(!MappingExecutionProfile::Disabled.enables_execution());
 }
 
+#[test]
+fn summary_status_is_driver_owned() {
+    let spec_src = include_str!("../../simthing-spec/src/spec/region_field.rs");
+    let spec_lib = include_str!("../../simthing-spec/src/lib.rs");
+    let spec_mod = include_str!("../../simthing-spec/src/spec/mod.rs");
+    let runtime_src = include_str!("../src/first_slice_mapping_runtime.rs");
+
+    assert!(
+        !spec_src.contains("RegionFieldSummaryStatus"),
+        "simthing-spec region_field.rs must not define runtime summary status"
+    );
+    assert!(
+        !spec_lib.contains("RegionFieldSummaryStatus"),
+        "simthing-spec lib.rs must not re-export RegionFieldSummaryStatus"
+    );
+    assert!(
+        !spec_mod.contains("RegionFieldSummaryStatus"),
+        "simthing-spec spec/mod.rs must not re-export RegionFieldSummaryStatus"
+    );
+    assert!(
+        runtime_src.contains("FirstSliceSummaryStatus"),
+        "simthing-driver first_slice_mapping_runtime.rs must own FirstSliceSummaryStatus"
+    );
+}
+
+#[test]
+fn disabled_summary_status_semantics() {
+    with_gpu(|ctx| {
+        let scenario =
+            deserialize_first_slice_scenario_ron(DISABLED_SCENARIO_RON).expect("disabled RON");
+        assert_eq!(
+            scenario.mapping_execution_profile,
+            MappingExecutionProfile::Disabled
+        );
+        let preview = compile_first_slice_scenario_preview(&scenario).expect("admit");
+        let mut session = FirstSliceScenarioFixtureSession::open(ctx, &preview).unwrap();
+        session.queue_seeds(&[SEED]).unwrap();
+        let report = session
+            .tick_mapping(ctx, FirstSliceTickOptions::hot_path(), LOW_WEIGHTS)
+            .unwrap();
+        assert_eq!(
+            report.summary.status,
+            FirstSliceSummaryStatus::InvalidOrUnavailable
+        );
+        assert!(!report.summary.has_gpu_parent_summary);
+        assert!(!report.summary.summary_used_for_commitment_scan);
+        assert_eq!(
+            report.summary.policy,
+            CompiledRegionFieldSummaryPolicy::CachedUntilDirtyWithZeroInitial
+        );
+    });
+}
+
+#[test]
+fn summary_policy_does_not_enable_execution() {
+    let scenario = summary_scenario();
+    assert_eq!(
+        scenario.region_field.summary_policy,
+        RegionFieldSummaryPolicySpec::CachedUntilDirtyWithZeroInitial
+    );
+    let mut disabled = scenario.clone();
+    disabled.mapping_execution_profile = MappingExecutionProfile::Disabled;
+    let preview = compile_first_slice_scenario_preview(&disabled).expect("admit with policy");
+
+    with_gpu(|ctx| {
+        let mut session = FirstSliceScenarioFixtureSession::open(ctx, &preview).unwrap();
+        session.queue_seeds(&[SEED]).unwrap();
+        let report = session
+            .tick_mapping(ctx, FirstSliceTickOptions::hot_path(), HIGH_WEIGHTS)
+            .unwrap();
+        assert_eq!(report.total_dispatches, 0);
+        assert_eq!(
+            report.summary.status,
+            FirstSliceSummaryStatus::InvalidOrUnavailable
+        );
+    });
+}
+
 fn zero_initial_spec() -> RegionFieldSpec {
     let mut spec = summary_scenario().region_field;
     spec.cadence = RegionFieldCadenceSpec::OnEvent;
@@ -95,7 +176,7 @@ fn zero_initial_skip_before_execution() {
             .unwrap();
         assert!(!report.scheduled);
         assert_eq!(report.total_dispatches, 0);
-        assert_eq!(report.summary.status, RegionFieldSummaryStatus::ZeroInitial);
+        assert_eq!(report.summary.status, FirstSliceSummaryStatus::ZeroInitial);
         assert!(!report.summary.has_gpu_parent_summary);
         assert_eq!(report.summary.age_ticks, 0);
         assert!(report.reduction_parent_value.is_none());
@@ -117,7 +198,7 @@ fn fresh_summary_after_executed_tick() {
         assert_eq!(report.total_dispatches, 9);
         assert!(report.reduction_executed);
         assert!(report.eml_executed);
-        assert_eq!(report.summary.status, RegionFieldSummaryStatus::FreshThisTick);
+        assert_eq!(report.summary.status, FirstSliceSummaryStatus::FreshThisTick);
         assert_eq!(report.summary.age_ticks, 0);
         assert!(report.summary.has_gpu_parent_summary);
         assert_eq!(report.reduction_stencil_readbacks, 0);
@@ -135,7 +216,7 @@ fn cached_summary_on_skipped_clean_tick() {
         let fresh = session
             .tick_mapping(ctx, FirstSliceTickOptions::hot_path(), HIGH_WEIGHTS)
             .unwrap();
-        assert_eq!(fresh.summary.status, RegionFieldSummaryStatus::FreshThisTick);
+        assert_eq!(fresh.summary.status, FirstSliceSummaryStatus::FreshThisTick);
 
         let cached1 = session
             .tick_mapping(ctx, FirstSliceTickOptions::hot_path(), HIGH_WEIGHTS)
@@ -144,7 +225,7 @@ fn cached_summary_on_skipped_clean_tick() {
         assert_eq!(cached1.total_dispatches, 0);
         assert_eq!(
             cached1.summary.status,
-            RegionFieldSummaryStatus::Cached { age_ticks: 1 }
+            FirstSliceSummaryStatus::Cached { age_ticks: 1 }
         );
         assert!(cached1.summary.has_gpu_parent_summary);
         assert!(cached1.field_values.is_none());
@@ -157,7 +238,7 @@ fn cached_summary_on_skipped_clean_tick() {
             .unwrap();
         assert_eq!(
             cached2.summary.status,
-            RegionFieldSummaryStatus::Cached { age_ticks: 2 }
+            FirstSliceSummaryStatus::Cached { age_ticks: 2 }
         );
     });
 }
@@ -170,14 +251,14 @@ fn dirty_seed_invalidates_cached_and_refreshes() {
         let fresh = session
             .tick_mapping(ctx, FirstSliceTickOptions::hot_path(), HIGH_WEIGHTS)
             .unwrap();
-        assert_eq!(fresh.summary.status, RegionFieldSummaryStatus::FreshThisTick);
+        assert_eq!(fresh.summary.status, FirstSliceSummaryStatus::FreshThisTick);
 
         let cached = session
             .tick_mapping(ctx, FirstSliceTickOptions::hot_path(), HIGH_WEIGHTS)
             .unwrap();
         assert_eq!(
             cached.summary.status,
-            RegionFieldSummaryStatus::Cached { age_ticks: 1 }
+            FirstSliceSummaryStatus::Cached { age_ticks: 1 }
         );
 
         session
@@ -194,7 +275,7 @@ fn dirty_seed_invalidates_cached_and_refreshes() {
         assert_eq!(refreshed.total_dispatches, 9);
         assert_eq!(
             refreshed.summary.status,
-            RegionFieldSummaryStatus::FreshThisTick
+            FirstSliceSummaryStatus::FreshThisTick
         );
         assert_eq!(refreshed.summary.age_ticks, 0);
     });
@@ -214,7 +295,7 @@ fn cached_summary_does_not_cpu_emit_event() {
             .unwrap();
         assert_eq!(
             cached.mapping.summary.status,
-            RegionFieldSummaryStatus::Cached { age_ticks: 1 }
+            FirstSliceSummaryStatus::Cached { age_ticks: 1 }
         );
         assert!(!cached.mapping.summary.summary_used_for_commitment_scan);
         assert!(cached.threshold_events.is_empty());
