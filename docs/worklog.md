@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-COHORT-0 deterministic kernel graph cohort grouping preview (Tier-2, landed)
+
+- **M-JIT-COHORT-0 (Tier-2, PASS):** `preview_kernel_graph_cohorts` groups admitted graph requests by stable identity; identical graphs cohort together; distinct graphs split; collision guard preserves canonical text; production registry/scheduler/cache/JIT dispatch remains deferred. Report: `docs/tests/phase_m_jit_cohort0_kernel_graph_cohort_preview_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-KEY-0 deterministic kernel graph identity/cache-key preview (Tier-2, landed)
 
 - **M-JIT-KEY-0 (Tier-2, PASS):** `KernelGraphIdentity` + `preview_kernel_graph_identity` produce stable canonical text/key for admitted graphs; identity stable under node/edge reorder; invalid graphs reject; production registry/scheduler/runtime cache remains deferred. Report: `docs/tests/phase_m_jit_key0_kernel_graph_identity_test_results.md`.
