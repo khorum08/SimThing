@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `855a83402f5fbd520634927bf4c61b5cf49f934e`  
-**Final commit SHA:** *(pending merge — see PR)*  
+**Final commit SHA:** `4f29758`  
 **Lane classification:** Tier-1 product fixture (V7.7 §5)  
 **Verdict:** **PASS — M-5E-gradient landed**
 
