@@ -317,6 +317,9 @@ pub enum SpecError {
         second: String,
     },
 
+    #[error("resource economy admission: {reason}")]
+    ResourceEconomyAdmission { reason: String },
+
     // ── Region field mapping admission (Phase M-3) ───────────────────────────
     #[error("region field `{field}`: {reason}")]
     RegionFieldAdmission { field: String, reason: String },

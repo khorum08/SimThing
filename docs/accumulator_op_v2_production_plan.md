@@ -2057,6 +2057,26 @@ authoring ergonomics, or an economy+SEAD product fixture — a generic boundary-
 tightly bounded (never `DailyResolutionBoundary` by another name), and **not** the M-4 atlas packer.
 Re-verified on GPU: boundary cadence 7/7, daily economy 7/7, admission 11/11. Docs-only acceptance.
 
+### PR M-resource-economy-authoring-ergonomics-v1 — Authoring preview + diagnostics — **Done**
+
+**Status:** **Done (PASS)** — Phase M Resource Economy Authoring Ergonomics V1 landed.
+It adds authoring preview/diagnostics for discrete `ResourceEconomySpec` fixtures so designers can inspect transfers, recipes, order bands, bindings, Resource Flow posture, and simple static net effects before runtime.
+No runtime economy behavior changed.
+No `DailyResolutionBoundary` primitive was introduced.
+No day/calendar/pause semantics were added to `simthing-sim`.
+Legible `day_index`/`ticks_per_day` naming remains unchanged.
+No Resource Flow default changed; Resource Flow E-11 remains continuous/high-frequency and default-off.
+No CPU-side economy executor or planner was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+No semantic WGSL landed.
+`simthing-sim` remains map-free.
+Defaults unchanged.
+
+**Implementation:** `compile_resource_economy_authoring_preview`, `compile_game_mode_resource_economy_authoring_preview`, `ResourceEconomyAuthoringPreview` / `ResourceEconomyPreviewReport` in `simthing-spec` admission layer; simple static transfer-only net per property/role for diagnostic metadata.
+
+**Test:** [`phase_m_resource_economy_authoring_ergonomics_test_results.md`](tests/phase_m_resource_economy_authoring_ergonomics_test_results.md) — PASS.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
 **Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. The first-slice product scenario fixture (Option 3, single grid, no atlas) has landed; **the atlas packer is still not next**.

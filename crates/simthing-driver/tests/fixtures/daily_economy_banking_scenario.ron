@@ -1,7 +1,7 @@
 GameModeSpec(
     id: "phase_m_daily_economy_banking",
     display_name: "Phase M Daily Economy Banking",
-    description: "Clausewitz-style daily banking via discrete resource economy over ticks_per_day=1 boundary cadence.",
+    description: "Example boundary banking fixture: host interprets ticks_per_day=1 as one day via discrete resource economy transfers/recipes.",
     spec_version: (major: 1, minor: 0, patch: 0),
     properties: [
         PropertySpec(
