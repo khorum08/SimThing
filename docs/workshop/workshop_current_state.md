@@ -7,7 +7,7 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Verification (last recorded):** Phase M SummaryValidity V1 — **landed 2026-05-28**; summary validity 8/8, scenario 9/9, runtime 28/28, admission 11/11, commitment 7/7, product 7/7, GPU bridge 2/2; workspace green
+**Verification (last recorded):** Phase M SummaryValidity V1-R1 parking verification — full targeted first-slice suites + workspace check green. Runtime status confirmed in driver only. All prior first-slice suites still pass.
 **Next action:** **SummaryValidity V1 landed** for the single-grid opt-in first-slice path. Next implementation handoff is **queue-write scale hardening or broader map residency** — **not** the M-4 atlas packer. Resolve the per-slot queue-write caveat before any multi-field/atlas scaling. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
 
 ---
@@ -52,7 +52,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **Phase M product commitment fixture:** **Done (opt-in)** — extends the product first-slice fixture with the existing threshold/event substrate over parent field_urgency: GPU-resident field propagation -> parent reduction -> EvalEML urgency -> threshold event.
 
-**Phase M SummaryValidity V1-R1 hygiene:** Runtime status moved from spec into driver reporting layer (`FirstSliceSummaryStatus`). Policy remains in spec. Behavior unchanged. Low-weight profile stays below threshold; high-weight profile crosses and emits the expected event. No CPU-side AI planner, atlas batching, M-4A atlas masking, active mask, perception, map residency, behavioral source policy, source_mask, semantic WGSL, simthing-sim map awareness, or default changes landed. Caveat preserved: 10x10 bridge still uses queue writes for child resource values and parent weights.
+**Phase M SummaryValidity V1-R1 hygiene + parking:** Runtime summary status moved out of simthing-spec into simthing-driver as FirstSliceSummaryStatus. Designer-facing summary policy remains in RegionFieldSpec/admission; compiled summary policy remains admission data. SummaryValidity behavior unchanged. Full targeted verification green. All V7.7 / Mapping ADR / SEAD guardrails intact. Queue-write scale caveat remains unresolved before any multi-field/atlas scaling.
 
 **Phase M CommitmentSpec fixture:** **Done (opt-in)** — moves the first-slice commitment threshold/event binding into designer/spec-facing RON admission while preserving the existing GPU-resident SEAD path: field propagation -> parent reduction -> field_urgency EvalEML -> Threshold + EmitEvent. Low-weight profile remains below the authored threshold; high-weight profile crosses and emits the authored event. No CPU-side AI planner, atlas batching, M-4A atlas masking, active mask, perception, map residency, behavioral source policy, source_mask, semantic WGSL, simthing-sim map awareness, or default changes landed. Caveat preserved: 10x10 bridge still uses queue writes for child resource values and parent weights.
 
@@ -60,7 +60,7 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **Phase M FirstSliceScenarioSpec-R1 hygiene:** **Done (opt-in)** — clarifies public/test-only boundary (fixture session helper moved to integration-test support), hardens scenario budget estimate error propagation, documents prior crash/build-run history with final clean verification. No scope expansion.
 
-**Phase M SummaryValidity V1:** **Done (opt-in)** — bounded first-slice summary validity policy/status for clean/skipped RegionFields. See [`../tests/phase_m_first_slice_summary_validity_test_results.md`](../tests/phase_m_first_slice_summary_validity_test_results.md).
+**Phase M SummaryValidity V1 + V1-R1 parking:** **Done (opt-in)** — bounded first-slice summary validity with runtime status hygiene parked. Full targeted verification green. See parking report.
 
 **Phase M first-slice vertical proof:** **ACCEPTED (Opus/product 2026-05-28, PASS WITH CONDITIONS)** — review packet summarizes complete landed chain from scenario RON through GPU-resident mapping and SEAD commitment. See [`phase_m_first_slice_vertical_proof_review_packet.md`](../reviews/phase_m_first_slice_vertical_proof_review_packet.md).
 

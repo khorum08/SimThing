@@ -38,7 +38,7 @@ Defaults unchanged.
 
 **Cached commitment scan:** deferred — threshold/event scan runs only when the dense path executes; cached ticks report validity metadata without CPU-side commitment emission.
 
-**V1-R1 hygiene (landed):** Runtime summary status (`FirstSliceSummaryStatus`) moved from `simthing-spec` into the driver runtime reporting layer. Designer-facing policy (`RegionFieldSummaryPolicySpec` / `CompiledRegionFieldSummaryPolicy`) remains in spec admission. No behavior change.
+**V1-R1 hygiene + parking verification (landed):** Runtime summary status moved out of `simthing-spec` into `simthing-driver` as `FirstSliceSummaryStatus`. Designer-facing summary policy (`RegionFieldSummaryPolicySpec`) and compiled admission data (`CompiledRegionFieldSummaryPolicy`) remain in spec. SummaryValidity behavior unchanged. Full targeted first-slice verification green. All V7.7 / Mapping ADR / SEAD guardrails intact.
 
 **Known scale caveat:** resolve per-slot queue-write scale before any multi-field/atlas scaling (unchanged).
 
