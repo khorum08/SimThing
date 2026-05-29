@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Phase M Resource Economy Authoring Ergonomics V1
+
+- Phase M Resource Economy Authoring Ergonomics V1 landed.
+- It adds authoring preview/diagnostics for discrete `ResourceEconomySpec` fixtures so designers can inspect transfers, recipes, order bands, bindings, Resource Flow posture, and simple static net effects before runtime.
+- **Implementation:** `simthing-spec` admission layer — `compile_resource_economy_authoring_preview`, `compile_game_mode_resource_economy_authoring_preview`, `ResourceEconomyAuthoringPreview` / `ResourceEconomyPreviewReport`; simple static transfer-only net per property/role (surplus treasury +7, deficit treasury −6).
+- **Tests:** `resource_economy_authoring_preview` (8/8 spec), `phase_m_resource_economy_authoring_ergonomics` (4/4 driver); regressions green.
+- No runtime economy behavior changed. No `DailyResolutionBoundary` primitive. No day/calendar/pause semantics in `simthing-sim`. Legible `day_index`/`ticks_per_day` naming unchanged. Resource Flow E-11 default-off. No CPU-side economy executor/planner. No default SimSession mapping wiring. No atlas batching. No semantic WGSL. `simthing-sim` map-free. Defaults unchanged.
+- Surplus fixture description softened (removed Clausewitz-style overclaim).
+- Test report: [`tests/phase_m_resource_economy_authoring_ergonomics_test_results.md`](tests/phase_m_resource_economy_authoring_ergonomics_test_results.md).
+
 # 2026-05-29 — Product naming preference: keep legible tick / boundary / day
 
 - **Product set the naming preference, reversing the R1/R2 abstract-cadence emphasis:** `tick`, `boundary`, `day`, `day_index`, and `ticks_per_day` are the **preferred, endorsed names for their legibility**. Do not churn them toward abstract/illegible alternatives ("boundary-index", "ticks-per-boundary-unit").

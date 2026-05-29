@@ -21,6 +21,7 @@ pub mod property;
 pub mod region_field_admission;
 pub mod region_field_budget;
 pub mod resource_economy;
+pub mod resource_economy_admission;
 pub mod resource_flow_admission;
 pub mod trigger;
 
@@ -53,6 +54,12 @@ pub use resource_economy::{
     CompiledResourceEconomy, CompiledResourceEmission, CompiledResourceRecipe,
     CompiledResourceRecipeInput, CompiledResourceTransfer, ResourceEconomyDiagnostic,
     ResourceEconomyExpansionReport,
+};
+pub use resource_economy_admission::{
+    compile_game_mode_resource_economy_authoring_preview,
+    compile_resource_economy_authoring_preview, RecipePreview, ResourceBindingPreview,
+    ResourceEconomyAuthoringPreview, ResourceEconomyPreviewReport, StaticPropertyNetPreview,
+    ThresholdEmitPreview, TransferPreview,
 };
 pub use resource_flow_admission::{
     compile_resource_flow_admission, CompiledArenaAdmission, CompiledCouplingAdmission,
