@@ -19,6 +19,7 @@ pub mod event;
 pub mod first_slice_scenario_admission;
 pub mod jit_kernel_descriptor_admission;
 pub mod jit_kernel_graph_admission;
+pub mod jit_kernel_graph_identity;
 pub mod overlay;
 pub mod property;
 pub mod region_field_admission;
@@ -44,6 +45,9 @@ pub use jit_kernel_descriptor_admission::{
 };
 pub use jit_kernel_graph_admission::{
     validate_kernel_graph_admission, KernelGraphEdgeSpec, KernelGraphSpec,
+};
+pub use jit_kernel_graph_identity::{
+    preview_kernel_graph_identity, KernelGraphIdentity,
 };
 pub use region_field_admission::{
     admit_region_field_formula_class, compile_region_field_preview,

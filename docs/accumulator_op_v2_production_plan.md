@@ -2496,6 +2496,11 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   scheduling; approximate outputs cannot feed exact inputs; cycles/self-edges reject. Production
   descriptor registry/scheduler/cache remains deferred. Report:
   `docs/tests/phase_m_jit_desc2_kernel_graph_admission_test_results.md`.
+- **M-JIT-KEY-0 — Done (PASS, deterministic kernel graph identity/cache-key preview).**
+  `KernelGraphIdentity` + `preview_kernel_graph_identity` produce stable canonical text/key for
+  admitted graphs; admission gate preserved; no runtime cache/scheduler/GPU dispatch. Production
+  registry/scheduler/cache remains deferred. Report:
+  `docs/tests/phase_m_jit_key0_kernel_graph_identity_test_results.md`.
 - **Production JIT caching/cohort dispatch — Deferred (separate gate).** Cohorting identical authored
   graphs, kernel caching/dispatch, multi-gadget chained-stack lowering, conditional (`CMP`/`SELECT`)
   lowering, batched multi-slot dispatch, and any production runtime/default wiring remain gated.
