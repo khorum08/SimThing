@@ -20,6 +20,27 @@ Active read order:
 6. [`mapping_atlas_algebraic_mask_candidate_notes.md`](mapping_atlas_algebraic_mask_candidate_notes.md) (M-4A sandbox evidence — **candidate only, reverted**)
 7. Cited `docs/tests/` evidence before changing any classification
 
+## Phase M Queue-Write Scale Hardening V1 (landed — opt-in)
+
+Phase M Queue-Write Scale Hardening V1 landed.
+The first-slice GPU bridge no longer uses per-child resource queue writes for the child resource column. It uses a generic bounded bulk/preinitialized fill path while preserving the GPU-resident stencil → accumulator → reduction → EML → threshold event flow.
+Parent scalar weight writes remain constant-size and acceptable for the single-grid first-slice path.
+No SummaryValidity behavior changed.
+No CPU-side gameplay cache was introduced.
+No default SimSession wiring was introduced.
+No atlas batching landed.
+No M-4A atlas masking landed.
+No active mask, perception, map residency expansion, behavioral source policy, or source_mask landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Implementation:** `AccumulatorOpSession::fill_slot_range_col` (generic substrate helper; bounds-checked; no CPU readback). First-slice bridge reports `gpu_bridge_bulk_col_fills=1`, `gpu_bridge_bulk_fill_values=cell_count`, `gpu_bridge_parent_scalar_writes=2` on executed ticks.
+
+**Remaining caveat:** V1 uses a generic GPU fill dispatch for strided column fills when count > 1 rather than a single contiguous buffer write. Parent weight/personality columns remain constant-size queue writes (O(1), not O(cell_count)).
+
+**Test:** [`../tests/phase_m_queue_write_scale_hardening_test_results.md`](../tests/phase_m_queue_write_scale_hardening_test_results.md)
+
 ## Phase M SummaryValidity V1 (landed — opt-in)
 
 Phase M SummaryValidity V1 landed.
@@ -40,7 +61,7 @@ Defaults unchanged.
 
 **V1-R1 hygiene + parking verification (landed):** Runtime summary status moved out of `simthing-spec` into `simthing-driver` as `FirstSliceSummaryStatus`. Designer-facing summary policy (`RegionFieldSummaryPolicySpec`) and compiled admission data (`CompiledRegionFieldSummaryPolicy`) remain in spec. SummaryValidity behavior unchanged. Full targeted first-slice verification green. All V7.7 / Mapping ADR / SEAD guardrails intact.
 
-**Known scale caveat:** resolve per-slot queue-write scale before any multi-field/atlas scaling (unchanged).
+**Known scale caveat:** child-resource per-slot queue writes resolved for first-slice via bulk fill; parent scalar writes remain O(1). Broader multi-field/atlas scaling still gated separately.
 
 **Test:** [`../tests/phase_m_first_slice_summary_validity_test_results.md`](../tests/phase_m_first_slice_summary_validity_test_results.md)
 

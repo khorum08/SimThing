@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Phase M Queue-Write Scale Hardening V1
+
+- Phase M Queue-Write Scale Hardening V1 landed.
+- The first-slice GPU bridge no longer uses per-child resource queue writes for the child resource column. It uses a generic bounded bulk/preinitialized fill path (`AccumulatorOpSession::fill_slot_range_col`) while preserving the GPU-resident stencil → accumulator → reduction → EML → threshold event flow.
+- Parent scalar weight writes remain constant-size O(1) queue writes (2 parent personality/weight columns) and are acceptable for the single-grid first-slice path.
+- Readiness counters now distinguish bulk column fills from parent scalar writes (`gpu_bridge_bulk_col_fills`, `gpu_bridge_bulk_fill_values`, `gpu_bridge_parent_scalar_writes`).
+- No SummaryValidity behavior changed. No CPU-side gameplay cache was introduced. No default SimSession wiring was introduced. No atlas batching landed. No M-4A atlas masking landed. No active mask, perception, map residency expansion, behavioral source policy, or source_mask landed. No semantic WGSL landed. simthing-sim remains map-free. Defaults unchanged.
+- Remaining caveat: V1 uses a generic GPU fill dispatch for strided column fills when count > 1 (not a pure single bulk buffer write for non-contiguous column layout). Parent weight/personality columns remain constant-size queue writes.
+- Test report: [`tests/phase_m_queue_write_scale_hardening_test_results.md`](tests/phase_m_queue_write_scale_hardening_test_results.md).
+
 # 2026-05-28 — Phase M SummaryValidity V1
 
 - Phase M SummaryValidity V1 landed.

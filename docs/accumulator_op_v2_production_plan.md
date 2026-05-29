@@ -1900,6 +1900,29 @@ preinitialized resource column, generic fill helper, or GPU fill kernel.
 
 **Test:** [`phase_m_first_slice_summary_validity_test_results.md`](tests/phase_m_first_slice_summary_validity_test_results.md) — PASS.
 
+### PR M-first-slice-queue-write-hardening — Queue-write scale hardening V1 — **Done**
+
+**Status:** **Landed** — generic bulk child resource fill on first-slice GPU bridge.
+
+Phase M Queue-Write Scale Hardening V1 landed.
+The first-slice GPU bridge no longer uses per-child resource queue writes for the child resource column. It uses a generic bounded bulk/preinitialized fill path while preserving the GPU-resident stencil → accumulator → reduction → EML → threshold event flow.
+Parent scalar weight writes remain constant-size and acceptable for the single-grid first-slice path.
+No SummaryValidity behavior changed.
+No CPU-side gameplay cache was introduced.
+No default SimSession wiring was introduced.
+No atlas batching landed.
+No M-4A atlas masking landed.
+No active mask, perception, map residency expansion, behavioral source policy, or source_mask landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Design:** `AccumulatorOpSession::fill_slot_range_col`; readiness counters `gpu_bridge_bulk_col_fills`, `gpu_bridge_bulk_fill_values`, `gpu_bridge_parent_scalar_writes`.
+
+**Remaining caveat:** V1 uses a generic GPU fill dispatch for strided column fills when count > 1. Parent weight/personality columns remain constant-size queue writes.
+
+**Test:** [`phase_m_queue_write_scale_hardening_test_results.md`](tests/phase_m_queue_write_scale_hardening_test_results.md) — PASS.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
 **Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. The first-slice product scenario fixture (Option 3, single grid, no atlas) has landed; **the atlas packer is still not next**.

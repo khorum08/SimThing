@@ -173,7 +173,14 @@ pub struct FirstSliceReadinessReport {
     pub budget_estimate_bytes: Option<u64>,
     pub budget_limit_bytes: Option<u64>,
     pub gpu_bridge_bytes_copied: u64,
+    /// Per-slot scalar queue writes (parent personality/weight columns only on V1 hot path).
     pub gpu_bridge_slot_col_writes: u32,
+    /// Bulk column fill operations (one per child resource column fill).
+    pub gpu_bridge_bulk_col_fills: u32,
+    /// Slot values written via bulk column fill helpers.
+    pub gpu_bridge_bulk_fill_values: u32,
+    /// Constant-size parent scalar queue writes (personality/weight columns).
+    pub gpu_bridge_parent_scalar_writes: u32,
     /// Informational only; not a CI stability gate.
     pub hot_path_wall_ms_observed: Option<f64>,
 }
@@ -263,6 +270,9 @@ impl FirstSliceMappingReport {
                 budget_limit_bytes: None,
                 gpu_bridge_bytes_copied: 0,
                 gpu_bridge_slot_col_writes: 0,
+                gpu_bridge_bulk_col_fills: 0,
+                gpu_bridge_bulk_fill_values: 0,
+                gpu_bridge_parent_scalar_writes: 0,
                 hot_path_wall_ms_observed: None,
             },
             summary: Self::summary_invalid_or_unavailable(),
@@ -331,6 +341,9 @@ pub struct FirstSliceMappingSession {
     reduction_stencil_readbacks_this_tick: u32,
     gpu_bridge_bytes_copied_this_tick: u64,
     gpu_bridge_slot_col_writes_this_tick: u32,
+    gpu_bridge_bulk_col_fills_this_tick: u32,
+    gpu_bridge_bulk_fill_values_this_tick: u32,
+    gpu_bridge_parent_scalar_writes_this_tick: u32,
     budget_estimate_bytes: Option<u64>,
     budget_limit_bytes: Option<u64>,
     hot_path_wall_ms_observed: Option<f64>,
@@ -342,6 +355,9 @@ pub struct FirstSliceMappingSession {
 
 struct GpuBridgeShape {
     bytes_copied: u64,
+    bulk_col_fills: u32,
+    bulk_fill_values: u32,
+    parent_scalar_writes: u32,
     slot_col_writes: u32,
 }
 
@@ -485,6 +501,9 @@ impl FirstSliceMappingSession {
             reduction_stencil_readbacks_this_tick: 0,
             gpu_bridge_bytes_copied_this_tick: 0,
             gpu_bridge_slot_col_writes_this_tick: 0,
+            gpu_bridge_bulk_col_fills_this_tick: 0,
+            gpu_bridge_bulk_fill_values_this_tick: 0,
+            gpu_bridge_parent_scalar_writes_this_tick: 0,
             budget_estimate_bytes,
             budget_limit_bytes,
             hot_path_wall_ms_observed: None,
@@ -583,6 +602,9 @@ impl FirstSliceMappingSession {
             budget_limit_bytes: self.budget_limit_bytes,
             gpu_bridge_bytes_copied: self.gpu_bridge_bytes_copied_this_tick,
             gpu_bridge_slot_col_writes: self.gpu_bridge_slot_col_writes_this_tick,
+            gpu_bridge_bulk_col_fills: self.gpu_bridge_bulk_col_fills_this_tick,
+            gpu_bridge_bulk_fill_values: self.gpu_bridge_bulk_fill_values_this_tick,
+            gpu_bridge_parent_scalar_writes: self.gpu_bridge_parent_scalar_writes_this_tick,
             hot_path_wall_ms_observed: self.hot_path_wall_ms_observed,
         }
     }
@@ -751,12 +773,9 @@ impl FirstSliceMappingSession {
             .copy_values_prefix_from_buffer(ctx, &self.stencil.input_buffer, 0, 0, prefix_bytes)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
 
-        let mut resource_writes = Vec::with_capacity(cell_count as usize);
-        for slot in 0..cell_count {
-            resource_writes.push((slot, self.eml_resource_col, 1.0));
-        }
+        let parent_scalar_writes = 2u32;
         self.acc_session
-            .write_slot_col_values(ctx, &resource_writes)
+            .fill_slot_range_col(ctx, 0, cell_count, self.eml_resource_col, 1.0)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         self.acc_session
             .write_slot_col_values(
@@ -770,10 +789,16 @@ impl FirstSliceMappingSession {
 
         let shape = GpuBridgeShape {
             bytes_copied: prefix_bytes,
-            slot_col_writes: cell_count + 2,
+            bulk_col_fills: 1,
+            bulk_fill_values: cell_count,
+            parent_scalar_writes,
+            slot_col_writes: parent_scalar_writes,
         };
         self.gpu_bridge_bytes_copied_this_tick = shape.bytes_copied;
         self.gpu_bridge_slot_col_writes_this_tick = shape.slot_col_writes;
+        self.gpu_bridge_bulk_col_fills_this_tick = shape.bulk_col_fills;
+        self.gpu_bridge_bulk_fill_values_this_tick = shape.bulk_fill_values;
+        self.gpu_bridge_parent_scalar_writes_this_tick = shape.parent_scalar_writes;
         Ok(shape)
     }
 
@@ -947,6 +972,9 @@ impl FirstSliceMappingSession {
         self.reduction_stencil_readbacks_this_tick = 0;
         self.gpu_bridge_bytes_copied_this_tick = 0;
         self.gpu_bridge_slot_col_writes_this_tick = 0;
+        self.gpu_bridge_bulk_col_fills_this_tick = 0;
+        self.gpu_bridge_bulk_fill_values_this_tick = 0;
+        self.gpu_bridge_parent_scalar_writes_this_tick = 0;
         self.hot_path_wall_ms_observed = None;
 
         let tick_started = (!options.readback_values).then(std::time::Instant::now);

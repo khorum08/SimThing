@@ -26,6 +26,19 @@ use super::types::{
 
 pub const WORKGROUP_SIZE: u32 = 64;
 
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct ValuesFillParams {
+    start_slot: u32,
+    count: u32,
+    col: u32,
+    n_dims: u32,
+    value: f32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+}
+
 static DEBUG_READBACK_ALLOWED: AtomicBool = AtomicBool::new(false);
 
 /// Allow `readback_full()` without emitting a warning (tests only).
@@ -55,6 +68,14 @@ pub enum AccumulatorOpSessionError {
     InvalidSlot { slot: u32, n_slots: u32 },
     #[error("invalid column {col} for n_dims={n_dims}")]
     InvalidColumn { col: u32, n_dims: u32 },
+    #[error("non-finite fill value")]
+    NonFiniteValue,
+    #[error("invalid slot range: start={start_slot}, count={count}, n_slots={n_slots}")]
+    InvalidSlotRange {
+        start_slot: u32,
+        count: u32,
+        n_slots: u32,
+    },
 }
 
 /// GPU-resident AccumulatorOp session (B-2 bootstrap + C-1 threshold scan).
@@ -85,6 +106,9 @@ pub struct AccumulatorOpSession {
     execute_pipeline: ComputePipeline,
     summary_layout: BindGroupLayout,
     summary_pipeline: ComputePipeline,
+    fill_uniform: Buffer,
+    fill_layout: BindGroupLayout,
+    fill_pipeline: ComputePipeline,
 
     timestamp_supported: bool,
     timestamp_query_set: Option<QuerySet>,
@@ -302,6 +326,39 @@ impl AccumulatorOpSession {
             cache: None,
         });
 
+        let fill_uniform = device.create_buffer(&BufferDescriptor {
+            label: Some("accumulator_values_fill_uniform"),
+            size: std::mem::size_of::<ValuesFillParams>() as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let fill_shader = device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("accumulator_values_fill"),
+            source: ShaderSource::Wgsl(include_str!("../shaders/values_fill.wgsl").into()),
+        });
+
+        let fill_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("accumulator_values_fill_layout"),
+            entries: &[
+                storage_entry(0, false),
+                uniform_entry(1),
+            ],
+        });
+
+        let fill_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("accumulator_values_fill_pipeline"),
+            layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("accumulator_values_fill_pl"),
+                bind_group_layouts: &[&fill_layout],
+                push_constant_ranges: &[],
+            })),
+            module: &fill_shader,
+            entry_point: "fill_slot_range_col",
+            compilation_options: Default::default(),
+            cache: None,
+        });
+
         let (timestamp_query_set, timestamp_resolve_buffer, timestamp_readback_buffer) =
             if ctx.timestamp_supported() {
                 let query_set = device.create_query_set(&QuerySetDescriptor {
@@ -349,6 +406,9 @@ impl AccumulatorOpSession {
             execute_pipeline,
             summary_layout,
             summary_pipeline,
+            fill_uniform,
+            fill_layout,
+            fill_pipeline,
             timestamp_supported: ctx.timestamp_supported(),
             timestamp_query_set,
             timestamp_resolve_buffer,
@@ -438,6 +498,99 @@ impl AccumulatorOpSession {
             label: Some("accumulator_values_prefix_copy"),
         });
         encoder.copy_buffer_to_buffer(src, src_offset_bytes, &self.values_buffer, dst_offset_bytes, bytes);
+        ctx.queue.submit(Some(encoder.finish()));
+        Ok(())
+    }
+
+    /// Fill `count` contiguous slots starting at `start_slot` in column `col` with `value`.
+    ///
+    /// Generic substrate helper: bounds-checked, finite-value validated, no CPU readback.
+    /// Uses a single scalar queue write when `count == 1`; otherwise one bulk GPU fill dispatch.
+    pub fn fill_slot_range_col(
+        &self,
+        ctx: &GpuContext,
+        start_slot: u32,
+        count: u32,
+        col: u32,
+        value: f32,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if count == 0 {
+            return Ok(());
+        }
+        if !value.is_finite() {
+            return Err(AccumulatorOpSessionError::NonFiniteValue);
+        }
+        if col >= self.n_dims {
+            return Err(AccumulatorOpSessionError::InvalidColumn {
+                col,
+                n_dims: self.n_dims,
+            });
+        }
+        if start_slot >= self.n_slots {
+            return Err(AccumulatorOpSessionError::InvalidSlot {
+                slot: start_slot,
+                n_slots: self.n_slots,
+            });
+        }
+        let end = start_slot.saturating_add(count);
+        if end > self.n_slots || end < start_slot {
+            return Err(AccumulatorOpSessionError::InvalidSlotRange {
+                start_slot,
+                count,
+                n_slots: self.n_slots,
+            });
+        }
+
+        if count == 1 {
+            let offset = self.slot_col_byte_offset(start_slot, col);
+            ctx.queue
+                .write_buffer(&self.values_buffer, offset, bytemuck::bytes_of(&value));
+            return Ok(());
+        }
+
+        let params = ValuesFillParams {
+            start_slot,
+            count,
+            col,
+            n_dims: self.n_dims,
+            value,
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
+        };
+        ctx.queue.write_buffer(
+            &self.fill_uniform,
+            0,
+            bytemuck::bytes_of(&params),
+        );
+
+        let bind_group = ctx.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("accumulator_values_fill_bind_group"),
+            layout: &self.fill_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: self.values_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: self.fill_uniform.as_entire_binding(),
+                },
+            ],
+        });
+
+        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("accumulator_values_fill_encoder"),
+        });
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("accumulator_values_fill_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.fill_pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups((count + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE, 1, 1);
+        }
         ctx.queue.submit(Some(encoder.finish()));
         Ok(())
     }

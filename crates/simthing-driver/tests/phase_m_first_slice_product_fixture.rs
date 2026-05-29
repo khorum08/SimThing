@@ -198,7 +198,10 @@ fn product_fixture_sparse_profile_executes_gpu_resident_hot_path() {
             readiness.gpu_bridge_bytes_copied,
             100 * spec.n_dims as u64 * 4
         );
-        assert_eq!(readiness.gpu_bridge_slot_col_writes, 102);
+        assert_eq!(readiness.gpu_bridge_bulk_col_fills, 1);
+        assert_eq!(readiness.gpu_bridge_bulk_fill_values, 100);
+        assert_eq!(readiness.gpu_bridge_parent_scalar_writes, 2);
+        assert_eq!(readiness.gpu_bridge_slot_col_writes, 2);
         assert_eq!(readiness.reduction_stencil_readbacks, 0);
         assert!(readiness.budget_estimate_bytes.unwrap() > 0);
     });

@@ -87,3 +87,46 @@ fn test_r2_bridge_bounds_validation() {
         assert!(matches!(err, AccumulatorOpSessionError::InvalidColumn { .. }));
     });
 }
+
+#[test]
+fn test_fill_slot_range_col_parity_and_bounds() {
+    with_gpu(|ctx| {
+        set_debug_readback_allowed(true);
+        let n_slots = 6u32;
+        let n_dims = 3u32;
+        let session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
+
+        session.zero_values_buffer(ctx);
+        session
+            .fill_slot_range_col(ctx, 1, 3, 2, 7.0)
+            .expect("bulk fill");
+
+        let vals = session.readback_full(ctx).unwrap();
+        for slot in 1..4 {
+            assert_eq!(vals[idx(slot, 2, n_dims)], 7.0);
+        }
+        assert_eq!(vals[idx(0, 2, n_dims)], 0.0);
+        assert_eq!(vals[idx(4, 2, n_dims)], 0.0);
+        assert_eq!(vals[idx(1, 0, n_dims)], 0.0);
+
+        let err = session
+            .fill_slot_range_col(ctx, 4, 3, 0, 1.0)
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            AccumulatorOpSessionError::InvalidSlotRange { .. }
+        ));
+
+        let err = session
+            .fill_slot_range_col(ctx, 0, 1, n_dims, 1.0)
+            .unwrap_err();
+        assert!(matches!(err, AccumulatorOpSessionError::InvalidColumn { .. }));
+
+        let err = session
+            .fill_slot_range_col(ctx, 0, 1, 0, f32::NAN)
+            .unwrap_err();
+        assert!(matches!(err, AccumulatorOpSessionError::NonFiniteValue));
+
+        session.fill_slot_range_col(ctx, 0, 0, 0, 1.0).unwrap();
+    });
+}

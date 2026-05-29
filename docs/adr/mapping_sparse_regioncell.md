@@ -447,10 +447,9 @@ single-grid, opt-in path** (`docs/reviews/phase_m_first_slice_vertical_proof_acc
 scenario 9/9, commitment 7/7, admission 11/11 re-run on GPU). The commitment admission rejects bad
 data at the designer/RON layer (non-finite threshold, zero event_kind, non-Upward direction,
 missing/wrong reduction/parent_formula, mismatched parent_slot, out-of-range urgency_col).
-Conditions: the per-slot queue-write scale caveat must be resolved before any multi-field/atlas
-scaling; all prohibitions hold. **SummaryValidity V1 landed (2026-05-28).** Named next
-implementation step: **queue-write scale hardening or broader map residency — not the M-4 atlas
-packer.** Default remains `Disabled`;
+Conditions: child-resource queue-write scaling resolved for first-slice via bulk fill; parent
+scalar writes remain O(1). **Queue-Write Scale Hardening V1 landed (2026-05-29).** Named next
+implementation step: **broader map residency — not the M-4 atlas packer.** Default remains `Disabled`;
 `simthing-sim` remains map-free; `request_atlas_batching` stays rejected at admission.
 
 ---
