@@ -2501,6 +2501,11 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   admitted graphs; admission gate preserved; no runtime cache/scheduler/GPU dispatch. Production
   registry/scheduler/cache remains deferred. Report:
   `docs/tests/phase_m_jit_key0_kernel_graph_identity_test_results.md`.
+- **M-JIT-COHORT-0 — Done (PASS, deterministic kernel graph cohort grouping preview).**
+  `preview_kernel_graph_cohorts` groups admitted graph requests by stable identity; identical graphs
+  cohort together; collision guard preserves canonical text; no runtime cache/scheduler/GPU dispatch.
+  Production registry/scheduler/cache/JIT dispatch remains deferred. Report:
+  `docs/tests/phase_m_jit_cohort0_kernel_graph_cohort_preview_test_results.md`.
 - **Production JIT caching/cohort dispatch — Deferred (separate gate).** Cohorting identical authored
   graphs, kernel caching/dispatch, multi-gadget chained-stack lowering, conditional (`CMP`/`SELECT`)
   lowering, batched multi-slot dispatch, and any production runtime/default wiring remain gated.

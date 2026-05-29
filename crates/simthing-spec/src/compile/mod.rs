@@ -20,6 +20,7 @@ pub mod first_slice_scenario_admission;
 pub mod jit_kernel_descriptor_admission;
 pub mod jit_kernel_graph_admission;
 pub mod jit_kernel_graph_identity;
+pub mod jit_kernel_cohort_preview;
 pub mod overlay;
 pub mod property;
 pub mod region_field_admission;
@@ -48,6 +49,10 @@ pub use jit_kernel_graph_admission::{
 };
 pub use jit_kernel_graph_identity::{
     preview_kernel_graph_identity, KernelGraphIdentity,
+};
+pub use jit_kernel_cohort_preview::{
+    preview_kernel_graph_cohorts, KernelGraphCohortPreview, KernelGraphCohortPreviewSet,
+    KernelGraphRequestSpec, test_group_cohort_previews_from_resolved,
 };
 pub use region_field_admission::{
     admit_region_field_formula_class, compile_region_field_preview,
