@@ -2121,9 +2121,9 @@ Defaults unchanged.
 
 **Test:** [`phase_m_product_fixture_chain_parking_test_results.md`](tests/phase_m_product_fixture_chain_parking_test_results.md) — PASS.
 
-### PR M-eml-gadget-library — EML Gadget Library — **EML-GADGET-1 + R1 + R2 landed; parked for review**
+### PR M-eml-gadget-library — EML Gadget Library — **EML-GADGET-1 + R1 + R2 landed; EML-GADGET-2 queued**
 
-**Status:** **Phase M EML-GADGET-1 + R1 + R2 landed; parked for Opus/product review.** Review packet: [`reviews/phase_m_eml_gadget_tier1_review_packet.md`](reviews/phase_m_eml_gadget_tier1_review_packet.md). Tier-1 stateless EML gadgets compile in `simthing-spec` to existing EvalEML node templates with mandatory CPU-oracle parity. R1 clarifies stack composition semantics; R2 corrects node-cap enforcement to per-gadget/single-tree only. Design note:
+**Status:** **Phase M EML-GADGET-1 + R1 + R2 landed.** Tier-1 stateless EML gadgets compile in `simthing-spec` to existing EvalEML node templates with mandatory CPU-oracle parity. R1 clarifies stack composition semantics; R2 corrects node-cap enforcement to per-gadget/single-tree only. Design note:
 [`workshop/eml_gadget_library_design_note.md`](workshop/eml_gadget_library_design_note.md).
 Designer-facing, RON-authored EML **gadgets** = named postfix node-template macros over the existing
 `EvalEML` opcode set (NOT new WGSL kernels), composed into the GPU-resident `EvalEML` path. Lives in
@@ -2190,35 +2190,10 @@ No atlas batching landed.
 simthing-sim remains map-free.
 Defaults unchanged.
 
-Defaults unchanged.
-
-Phase M EML-GADGET-1 parking packet landed.
-The repo now parks the Tier-1 stateless EML gadget library for Opus/product review: FieldSampler, WeightedAccumulator, and algebraic SoftStep live in simthing-spec as RON-authored node-template macros over existing EvalEML opcodes, with CPU-oracle parity.
-R1 clarified composition semantics and removed the misleading executable multi-gadget flatten surface.
-R2 corrected node-cap semantics so MAX_EML_TREE_NODES applies to each executable gadget/tree, while PerGadgetOnly multi-gadget totals may exceed the single-tree cap with diagnostics.
-No runtime gadget execution was introduced.
-No chained OrderBand runtime scheduling was introduced.
-No temporal memory was introduced.
-No new EML opcode was added.
-No WGSL or GPU kernel was added.
-No runtime economy behavior changed.
-No production economy→mapping bridge was introduced.
-No generic boundary-output packet was introduced.
-No DailyResolutionBoundary primitive was introduced.
-No day/calendar/pause semantics were added to simthing-sim.
-No Resource Flow default changed.
-No CPU-side economy executor, urgency computation, or AI planner was introduced.
-No default SimSession mapping wiring was introduced.
-No atlas batching landed.
-simthing-sim remains map-free.
-Defaults unchanged.
-
-**Review packet:** [`reviews/phase_m_eml_gadget_tier1_review_packet.md`](reviews/phase_m_eml_gadget_tier1_review_packet.md)
-
-**Tests:** [`tests/phase_m_eml_gadget_tier1_test_results.md`](tests/phase_m_eml_gadget_tier1_test_results.md), [`tests/phase_m_eml_gadget_tier1_r1_hygiene_test_results.md`](tests/phase_m_eml_gadget_tier1_r1_hygiene_test_results.md), [`tests/phase_m_eml_gadget_tier1_r2_node_cap_test_results.md`](tests/phase_m_eml_gadget_tier1_r2_node_cap_test_results.md), [`tests/phase_m_eml_gadget_tier1_parking_test_results.md`](tests/phase_m_eml_gadget_tier1_parking_test_results.md) — PASS.
+**Test:** [`tests/phase_m_eml_gadget_tier1_test_results.md`](tests/phase_m_eml_gadget_tier1_test_results.md) — PASS.
 
 **Sequencing (binding):** EML-GADGET-1 landed **before Phase M Resource Economy Authoring Ergonomics
-R2.** Do not implement EML-GADGET-2 or resume R2 until Opus/product accepts the parking packet.
+R2.** R2's designer-facing authoring must be able to expose and leverage the gadget library.
 
 **PR ladder:**
 
