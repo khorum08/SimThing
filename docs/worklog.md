@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Phase M abstract boundary-resolution + example economy review packet
+
+- Phase M abstract boundary-resolution + example economy review packet landed.
+- The repo now distinguishes abstract substrate boundary cadence from game-level daily interpretation. Current API names such as ticks_per_day/day_index remain historical names; their constitutional meaning is host-interpreted boundary cadence.
+- Daily Economy Fixture V1 remains a valid product/example fixture showing one game-level interpretation: one boundary as one day, with discrete ResourceEconomySpec banking.
+- No runtime behavior changed. No DailyResolutionBoundary primitive. No Day/Calendar/Pause in simthing-sim. No default mapping wiring. simthing-sim remains map-free. Defaults unchanged.
+- Recommended next: Option A (accept and park doctrine), then C or D; not B if it becomes DailyResolutionBoundary by another name; not E/M-4 atlas yet.
+- Review packet: [`reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`](reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md).
+- Test report: [`tests/phase_m_boundary_resolution_review_packet_test_results.md`](tests/phase_m_boundary_resolution_review_packet_test_results.md).
+
 # 2026-05-29 — Phase M Boundary Resolution Doctrine R1
 
 - Phase M Boundary Resolution Doctrine R1 landed.

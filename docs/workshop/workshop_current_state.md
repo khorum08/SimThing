@@ -7,8 +7,8 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Verification (last recorded):** Phase M Boundary Resolution Doctrine R1 — **landed 2026-05-29**; abstract boundary doctrine terminology corrected; boundary cadence 7/7, daily economy fixture 7/7; workspace check green  
-**Next action:** **Boundary Resolution Doctrine R1 landed** — active docs now frame tick/boundary cadence as abstract substrate machinery; daily economy fixture remains a product/example only. Next substrate slice TBD by product — **not** the M-4 atlas packer. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
+**Verification (last recorded):** Phase M boundary-resolution + example economy review packet — **landed 2026-05-29**; parking packet created; boundary cadence 7/7, daily economy 7/7, first-slice runtime 28/28; workspace check green  
+**Next action:** **Boundary resolution + example economy parked for Opus/product review** — accept abstract doctrine (Option A) before C/D product fixtures or D authoring ergonomics. **Not** the M-4 atlas packer. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
 
 ---
 
@@ -54,7 +54,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **Phase M Map Residency V1:** **Done (opt-in)** — first-slice residency status/reporting over accepted GPU-resident path. See [`../tests/phase_m_first_slice_map_residency_test_results.md`](../tests/phase_m_first_slice_map_residency_test_results.md).
 
-**Phase M Boundary Resolution Doctrine audit:** **Done (docs+test audit)** — abstract deterministic tick/boundary cadence confirmed via existing substrate machinery (`ticks_per_day`, `boundary_reached`, `day_index`, boundary handlers, persistent GPU values, discrete resource-economy transfers, summary-tier readback). Field names retain "day" for historical/API reasons; constitutional meaning is boundary index / host-interpreted cadence. No `DailyResolutionBoundary` runtime primitive. Day/calendar/pause remain host/spec/boundary-handler layer only. See [`../tests/phase_m_boundary_cadence_doctrine_audit.md`](../tests/phase_m_boundary_cadence_doctrine_audit.md).
+**Phase M abstract boundary-resolution + example economy review packet:** **Done (parked for review)** — Opus/product parking packet distinguishing abstract tick/boundary doctrine from game-level daily interpretation; Daily Economy Fixture V1 framed as example only. See [`../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`](../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md).
+
+**Phase M Boundary Resolution Doctrine audit:** **Done (docs+test audit)** — abstract deterministic tick/boundary cadence confirmed via existing substrate machinery (`ticks_per_day`, `boundary_reached`, `day_index`, boundary handlers, persistent GPU values, discrete resource-economy transfers, summary-tier readback). No `DailyResolutionBoundary` runtime primitive. Day/calendar/pause remain host/spec/boundary-handler layer only. See [`../tests/phase_m_boundary_cadence_doctrine_audit.md`](../tests/phase_m_boundary_cadence_doctrine_audit.md).
 
 **Phase M Boundary Resolution Doctrine R1:** **Done (docs terminology correction)** — active guidance reframed from Clausewitz/daily-canonical wording to abstract boundary resolution; daily economy fixture demoted to product/example fixture language. See [`../tests/phase_m_boundary_resolution_doctrine_r1_test_results.md`](../tests/phase_m_boundary_resolution_doctrine_r1_test_results.md).
 
