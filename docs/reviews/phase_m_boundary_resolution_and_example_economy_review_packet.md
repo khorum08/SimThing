@@ -30,15 +30,15 @@ No runtime behavior changed in this parking pass. No `DailyResolutionBoundary` p
 
 SimThing exposes **abstract deterministic tick/boundary resolution**:
 
-| Term | Constitutional meaning |
+| Term | Meaning |
 |---|---|
 | **tick** | Deterministic substrate advancement (`DispatchCoordinator::tick`) |
 | **boundary** | Synchronization point at which resolved summaries, events, and metadata may be consumed by host/spec/boundary-handler code |
-| **boundary index** | Currently exposed through historical/API names such as `day_index` |
-| **ticks_per_day** | Current API cadence field; constitutional meaning is **ticks-per-boundary-style cadence** |
-| **pause/speed** | Host/UI orchestration; the deterministic sim advances only when host code calls the next tick/boundary |
+| **day_index** | Current boundary counter / host-spec interpreted index |
+| **ticks_per_day** | Current cadence field controlling how many ticks occur before a boundary |
+| **pause/speed** | Host/UI orchestration; the sim advances only when the host requests ticks |
 
-**Historical/API naming caveat:** Current API names include `"day"` for historical reasons. Do **not** interpret that as a hardcoded calendar semantic inside the substrate. The field names are retained; their constitutional meaning is **host-interpreted boundary cadence**.
+**Naming caveat:** The current names `ticks_per_day` and `day_index` are retained because they are already legible and widely used in fixtures/tests. Constitutionally, they do **not** make "day" a hardcoded substrate semantic. A host may interpret `day_index` as a day, turn, frame, season, orbital step, market close, learning epoch, or other unit.
 
 **Allowed:**
 
@@ -200,7 +200,7 @@ Required acceptance wording if PASS:
 
 ```text
 Phase M abstract boundary-resolution + example economy review packet landed.
-The repo now distinguishes abstract substrate boundary cadence from game-level daily interpretation. Current API names such as ticks_per_day/day_index remain historical names; their constitutional meaning is host-interpreted boundary cadence.
+The repo now distinguishes abstract substrate tick/boundary cadence from game-level daily interpretation. `ticks_per_day` and `day_index` remain the legible API names for boundary cadence and the boundary counter; despite the names, day/calendar semantics are not part of `simthing-sim`.
 Daily Economy Fixture V1 remains a valid product/example fixture showing one game-level interpretation: one boundary as one day, with discrete ResourceEconomySpec banking.
 No runtime behavior changed.
 No DailyResolutionBoundary primitive was introduced.

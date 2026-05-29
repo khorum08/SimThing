@@ -6,10 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Phase M Boundary Resolution Doctrine R2
+
+- Phase M Boundary Resolution Doctrine R2 landed.
+- Active docs now use clearer tick/boundary/day_index/ticks_per_day vocabulary instead of over-abstract "boundary index" / "historical API names" phrasing.
+- Constitutional guardrail preserved: despite the names, `day_index` and `ticks_per_day` do not make day/calendar semantics part of simthing-sim; a host may interpret `day_index` as a day, turn, frame, season, or other unit.
+- Daily Economy Fixture V1 remains example/product fixture only. No runtime behavior changes. No public API renames.
+- Test report: [`tests/phase_m_boundary_resolution_doctrine_r2_terminology_test_results.md`](tests/phase_m_boundary_resolution_doctrine_r2_terminology_test_results.md).
+
 # 2026-05-29 — Phase M abstract boundary-resolution + example economy review packet
 
 - Phase M abstract boundary-resolution + example economy review packet landed.
-- The repo now distinguishes abstract substrate boundary cadence from game-level daily interpretation. Current API names such as ticks_per_day/day_index remain historical names; their constitutional meaning is host-interpreted boundary cadence.
+- The repo now distinguishes abstract substrate tick/boundary cadence from game-level daily interpretation. `ticks_per_day` and `day_index` remain the legible API names; despite the names, day/calendar semantics are not part of simthing-sim.
 - Daily Economy Fixture V1 remains a valid product/example fixture showing one game-level interpretation: one boundary as one day, with discrete ResourceEconomySpec banking.
 - No runtime behavior changed. No DailyResolutionBoundary primitive. No Day/Calendar/Pause in simthing-sim. No default mapping wiring. simthing-sim remains map-free. Defaults unchanged.
 - Recommended next: Option A (accept and park doctrine), then C or D; not B if it becomes DailyResolutionBoundary by another name; not E/M-4 atlas yet.
@@ -19,7 +27,7 @@ Running log of what's done and what's next, across sessions.
 # 2026-05-29 — Phase M Boundary Resolution Doctrine R1
 
 - Phase M Boundary Resolution Doctrine R1 landed.
-- Active docs now frame tick/boundary cadence as abstract substrate machinery: tick = deterministic advancement; boundary = synchronization point; boundary index (`day_index`) = host/spec interpretation.
+- Active docs now frame tick/boundary cadence as abstract substrate machinery: tick = deterministic advancement; boundary = synchronization point; `day_index` = current boundary counter / host-spec interpreted index; `ticks_per_day` = ticks before a boundary.
 - A game may interpret one boundary as a day, but that is not part of the simulation substrate. Other simulations may use turns, frames, seasons, orbital steps, or other semantic units.
 - Daily Economy Fixture V1 remains valid as a product/example fixture only; it does not make daily cadence canonical for SimThing.
 - No runtime behavior changes. No public API renames. No DailyResolutionBoundary primitive. No Day/Calendar/Pause in simthing-sim.
@@ -43,7 +51,7 @@ Running log of what's done and what's next, across sessions.
 
 - Phase M Boundary Resolution Doctrine audit landed.
 - The substrate exposes abstract deterministic tick/boundary cadence through machinery currently named `ticks_per_day`, `boundary_reached`, `day_index`, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
-- For historical/API reasons field names include "day"; constitutional meaning is boundary index / host-interpreted cadence, not a hardcoded calendar day.
+- For historical/API reasons field names include "day"; despite the names, day/calendar semantics are not part of simthing-sim.
 - No new `DailyResolutionBoundary` runtime primitive was introduced.
 - Day/calendar/month meaning remains host/spec/boundary-handler interpretation over `day_index`.
 - Pause/speed remain host/UI orchestration concerns: the deterministic sim advances only when the host requests the next tick/day.

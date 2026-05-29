@@ -22,7 +22,7 @@ Date: 2026-05-29
 
 [`docs/reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`](../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md)
 
-Sections: executive verdict, abstract boundary doctrine, historical/API naming caveat, example daily economy fixture, what proves / does not prove, ResourceEconomy vs Resource Flow, future-agent guardrails, evidence table, recommended next options (A first, then C or D).
+Sections: executive verdict, abstract boundary doctrine, naming caveat, example daily economy fixture, what proves / does not prove, ResourceEconomy vs Resource Flow, future-agent guardrails, evidence table, recommended next options (A first, then C or D).
 
 ## Commands run
 
@@ -57,9 +57,10 @@ Full workspace test omitted (docs/review packaging pass; targeted tests + check 
 
 - tick = deterministic substrate advancement
 - boundary = synchronization point for resolved summaries/events/metadata
-- boundary index = host/spec interpretation (API: `day_index`)
-- `ticks_per_day` = ticks-per-boundary cadence (historical "day" naming)
-- pause/speed = host/UI orchestration
+- day_index = current boundary counter / host-spec interpreted index
+- ticks_per_day = cadence field controlling how many ticks occur before a boundary
+- pause/speed = host/UI orchestration; sim advances only when host requests ticks
+- Despite the names, day/calendar semantics are not part of simthing-sim
 
 ## Daily fixture example summary
 

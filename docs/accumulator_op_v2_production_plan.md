@@ -1949,12 +1949,12 @@ Defaults unchanged.
 **Status:** **Landed** — docs+test audit confirming abstract deterministic tick/boundary cadence is expressible through existing substrate machinery.
 
 Phase M Boundary Resolution Doctrine audit landed.
-The substrate exposes abstract deterministic tick/boundary cadence through ticks_per_boundary-style machinery currently named ticks_per_day, boundary_reached, day_index, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
-For historical/API reasons the current field names include "day," but their constitutional meaning is boundary index / host-interpreted cadence, not a hardcoded calendar day.
+The substrate exposes abstract deterministic tick/boundary cadence through `ticks_per_day`, `boundary_reached`, `day_index`, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
+Despite the names, `day_index` and `ticks_per_day` do not make day/calendar semantics part of simthing-sim. A host may interpret `day_index` as a day, turn, frame, season, orbital step, market close, learning epoch, or other unit.
 No DailyResolutionBoundary runtime primitive was introduced.
 No Day/Calendar/Pause semantic was added to simthing-sim.
-Daily meaning remains only one possible host/spec interpretation over the boundary index.
-Pause/speed remain host/UI orchestration concerns: the deterministic sim advances only when the host requests the next tick/boundary.
+Daily meaning remains only one possible host/spec interpretation of `day_index`.
+Pause/speed remain host/UI orchestration concerns: the deterministic sim advances only when the host requests ticks.
 Example discrete boundary banking may use the discrete resource economy substrate, not the continuous Resource Flow substrate by default.
 The CPU boundary consumes resolved summaries/events/metadata at the boundary; it must not scan dense RegionCell grids by default, recompute gameplay state, or emit AI commitments via CPU planner logic.
 No default SimSession mapping wiring was introduced.
@@ -2015,7 +2015,7 @@ Defaults unchanged.
 **Status:** **Landed** — Opus/product review packet parking abstract boundary doctrine and example daily economy fixture; docs/review packaging only.
 
 Phase M abstract boundary-resolution + example economy review packet landed.
-The repo now distinguishes abstract substrate boundary cadence from game-level daily interpretation. Current API names such as ticks_per_day/day_index remain historical names; their constitutional meaning is host-interpreted boundary cadence.
+The repo now distinguishes abstract substrate tick/boundary cadence from game-level daily interpretation. `ticks_per_day` and `day_index` remain the legible API names; despite the names, day/calendar semantics are not part of simthing-sim.
 Daily Economy Fixture V1 remains a valid product/example fixture showing one game-level interpretation: one boundary as one day, with discrete ResourceEconomySpec banking.
 No runtime behavior changed.
 No DailyResolutionBoundary primitive was introduced.
@@ -2029,6 +2029,19 @@ Defaults unchanged.
 **Review packet:** [`reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`](reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md)
 
 **Test:** [`phase_m_boundary_resolution_review_packet_test_results.md`](tests/phase_m_boundary_resolution_review_packet_test_results.md) — PASS.
+
+### PR M-boundary-resolution-doctrine-r2 — Boundary Resolution Doctrine R2 — **Done**
+
+**Status:** **Landed** — narrow docs-only terminology correction restoring legible tick/boundary/day_index/ticks_per_day vocabulary; no runtime behavior changes.
+
+Phase M Boundary Resolution Doctrine R2 landed.
+Active docs now use the clearer tick/boundary/day_index/ticks_per_day vocabulary while preserving the constitutional guardrail that day/calendar meaning is host/spec interpretation, not a hardcoded simthing-sim semantic.
+Despite the names, `day_index` and `ticks_per_day` do not make day/calendar semantics part of simthing-sim.
+Daily Economy Fixture V1 remains a valid product/example fixture only.
+No runtime behavior changed. No public API renames. No DailyResolutionBoundary primitive. No Day/Calendar/Pause in simthing-sim.
+Resource Flow E-11 remains default-off. simthing-sim remains map-free. Defaults unchanged.
+
+**Test:** [`phase_m_boundary_resolution_doctrine_r2_terminology_test_results.md`](tests/phase_m_boundary_resolution_doctrine_r2_terminology_test_results.md) — PASS.
 
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
