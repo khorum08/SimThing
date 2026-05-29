@@ -41,7 +41,7 @@ fn tier2c_registry_contains_bounded_feedback() {
     assert!(kind.requires_temporal_memory());
 
     // Still-deferred items remain
-    assert!(DEFERRED_GADGET_KINDS.contains(&"Hysteresis"));
+    assert!(!DEFERRED_GADGET_KINDS.contains(&"Hysteresis"));
     assert!(DEFERRED_GADGET_KINDS.contains(&"Acceleration"));
 
     // BoundedFeedback is no longer in the deferred list

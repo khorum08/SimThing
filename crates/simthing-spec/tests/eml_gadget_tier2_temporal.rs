@@ -46,9 +46,9 @@ fn tier2_registry_contains_velocity_decay_ema() {
     assert!(EmlGadgetKind::parse("Decay").is_some());
     assert!(EmlGadgetKind::parse("Ema").is_some());
 
-    // BoundedFeedback landed in 2C. Only Hysteresis and Acceleration remain deferred.
+    // Hysteresis landed in 2D. Only Acceleration remains deferred.
     assert!(!DEFERRED_GADGET_KINDS.contains(&"BoundedFeedback"));
-    assert!(DEFERRED_GADGET_KINDS.contains(&"Hysteresis"));
+    assert!(!DEFERRED_GADGET_KINDS.contains(&"Hysteresis"));
     assert!(DEFERRED_GADGET_KINDS.contains(&"Acceleration"));
 
     // 2B kinds are ExactDeterministic and require temporal memory

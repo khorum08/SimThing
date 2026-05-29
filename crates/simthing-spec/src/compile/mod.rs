@@ -68,10 +68,10 @@ pub use resource_flow_admission::{
     ResourceFlowExpansionReport,
 };
 pub use eml_gadget::{
-    compile_eml_gadget_stack, eval_eml_postfix,
+    compile_eml_gadget, compile_eml_gadget_stack, eval_eml_postfix,
     oracle_field_sampler, oracle_soft_step, oracle_weighted_accumulator,
     oracle_velocity_monitor, oracle_decay, oracle_ema, oracle_bounded_feedback,
-    reject_unknown_gadget_kind,
+    oracle_hysteresis, reject_unknown_gadget_kind,
     CompiledEmlGadget, CompiledEmlGadgetStack, DEFERRED_GADGET_KINDS,
     EmlGadgetCompileOptions, EmlGadgetDiagnostic, EmlGadgetCompositionPlan,
     EmlGadgetKind, EmlGadgetPreviewReport, EmlGadgetRegistry,
