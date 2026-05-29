@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-EXEC-0 ProductionCandidatePreview-gated execution fixture (Tier-2, landed)
+
+- **M-JIT-EXEC-0 (Tier-2, PASS):** Default-off test fixture executes REG-1-admitted exact GRAD-1-style path over 10k observers with CPU/GPU oracle parity; mag2/sqrt reject before execution; production registry/scheduler/cache/JIT dispatch remains deferred. Report: `docs/tests/phase_m_jit_exec0_production_candidate_fixture_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-REG-1 production-candidate registry admission preview (Tier-2, landed)
 
 - **M-JIT-REG-1 (Tier-2, PASS):** `preview_production_candidate_registry_entry` gates TestOnly→ProductionCandidatePreview promotion; exact-only/semantic-free; mag2/sqrt/approx reject; production registry/scheduler/cache/JIT dispatch remains deferred. Report: `docs/tests/phase_m_jit_reg1_production_candidate_registry_admission_test_results.md`.
