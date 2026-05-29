@@ -4,6 +4,14 @@
 - Preflight: production plan Hysteresis/2abc parking status synced.
 - Report: [`tests/phase_m_eml_gadget_2e_acceleration_test_results.md`](tests/phase_m_eml_gadget_2e_acceleration_test_results.md).
 
+# 2026-05-29 — Gating & doc policy: stop the ceremony treadmill; M-5A/B-gradient un-gated
+
+- **New binding governance policy:** [`workshop/phase_m_gating_and_doc_policy.md`](workshop/phase_m_gating_and_doc_policy.md). Two lanes: **T1 fast lane** (within accepted design, generic substrate, opt-in/default-off, CPU-oracle parity, reversible → one PR + one test report + one status-row, no parking packet / review memo / R-series unless a defect) and **T2 gated** (touches a binding invariant, default-on, new architecture, open design question, or the prohibition list → full design-review→acceptance→impl). Drift protection retained: `invariants.md` stays binding (any change is T2), test reports + oracle parity + the prohibition list unchanged.
+- **Doc-burn fix:** posture asserted once per PR test report, not duplicated across 6–8 docs; active docs carry a compact status table, narrative lives in this worklog (append-only); no parking/consolidated packets for slices meant to be accepted; no reflexive R-series; anti-loop stop rule ("if writing a third meta-doc for one slice, ship instead").
+- **Applied immediately:** `mapping_current_guidance.md` now leads with the policy + a compact Phase M status table; collapsed ~35 lines of duplicated EML-GADGET-2A boilerplate to a pointer. `workshop_current_state.md` next-action collapsed (~37 lines → 5). **M-5A-gradient and M-5B-gradient flipped from "gated" to "approved for implementation (Tier-1 fast lane)"** in the production plan + guidance + state.
+- **Follow-up (collapse-when-touched, per policy):** `eml_gadget_library_design_note.md` still carries duplicated landing-note blocks; the next agent to touch it should collapse them rather than grow them. Not done now (no need to burn tokens reading it cold just to tidy).
+- Docs-only; no code; `invariants.md` binding rules unchanged; defaults unchanged; `simthing-sim` map-free.
+
 # 2026-05-29 — M-5-gradient remedial tightening: single-target staging + naming
 
 - **Remedial design tightening (Opus):** M-5A-gradient is staged as a **single-target, two-pass** gradient extension, not a dual-output kernel. `RegionFieldOperatorSpec::Gradient { axis: GradientAxisSpec, output_col }` (or `GradientX`/`GradientY`) — one output column per admitted gradient field. This preserves the existing single-`target_col` write contract: a gradient field is just per-direction weights with `alpha_self=0` writing one column. Verified against `structured_field_stencil.wgsl` (single output write).

@@ -8,41 +8,11 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
 **Verification (last recorded):** Phase M boundary-resolution (tick / boundary / day) + example economy — **ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)**; boundary cadence 7/7, daily economy 7/7, admission 11/11 re-run on GPU; guardrails made binding in `invariants.md`. **Naming preference (product 2026-05-29):** keep the legible `tick`/`boundary`/`day`/`day_index`/`ticks_per_day` names; guardrail is on Clausewitz/calendar *semantics*, not the names  
-**Next action:** EML-GADGET-2 ladder complete through 2E. 2D Hysteresis + 2D R1 exact CMP/SELECT compiler parity and 2E explicit velocity-column Acceleration are consolidated in [`../reviews/phase_m_eml_gadget_2de_temporal_derivative_parking_packet.md`](../reviews/phase_m_eml_gadget_2de_temporal_derivative_parking_packet.md). Runtime gadget execution, chained scheduling, dense per-cell temporal memory, position-history acceleration, atlas/M-4A, and production economy→mapping bridge remain separately gated. **M-5-gradient track approved (Opus 2026-05-29; remedially tightened):** a **single-target** `Gradient { axis, output_col }` operator variant for `StructuredFieldStencilOp` (per-direction weights replacing `gamma_neighbor`, single-output contract preserved) + L3 Strategic Pressure Composition Pattern. **Dual-output `GradientXY` deferred** to a separate gate. Naming `M-5-gradient`/`M-5A-gradient`/`M-5B-gradient` — distinct from the source-identity `M-5` track. Generic field-calculus tools with lateral benefit beyond AI (resource routing, migrant dispatch). Revised WGSL guardrail (generic kernel extensions with CPU-oracle parity, meaning pinned at the spec layer, are admissible). Design note: [`m5_gradient_extraction_design_note.md`](m5_gradient_extraction_design_note.md). Invariants and ADR updated. **Next implementation slice: M-5A-gradient** (single-target per-direction weights + `Gradient` axis spec/admission/CPU+GPU oracle; report `docs/tests/phase_m_m5a_gradient_single_target_test_results.md`). Dual-output GradientXY, L1 field coupling, and sqrt opcode remain separately gated.
+**Gating & doc policy (read first):** [`phase_m_gating_and_doc_policy.md`](phase_m_gating_and_doc_policy.md) — Tier-1 fast lane vs Tier-2 gated; compact status table lives in [`mapping_current_guidance.md`](mapping_current_guidance.md); per-slice narrative lives in `docs/worklog.md`.
 
-**Phase M EML-GADGET-2A snapshot/copy fixture proof landed.**
-It proves that temporal snapshot/copy bands can be authored using existing substrate primitives: Identity combine + ResetTarget at an earlier OrderBand, copying current_col into previous_col before the update band.
-No new EML opcode was added.
-No new ConsumeMode was added.
-No WGSL or GPU kernel was added.
-No runtime gadget execution was introduced.
-No temporal gadget implementation landed.
-EML-GADGET-2A + R1 landed. 2B VelocityMonitor + Decay/EMA landed. 2C BoundedFeedback (strict clamp) landed. 2D Hysteresis + 2D R1 exact CMP/SELECT compiler parity landed. 2E explicit velocity-column Acceleration landed. Position-history acceleration and dense per-cell temporal memory remain separately gated. No runtime gadget execution, chained scheduling, new opcode, WGSL, sim semantics, production economy→mapping bridge, or default mapping wiring. No atlas/M-4A.
-No hidden previous-value read was introduced.
-Temporal memory remains explicit-column state.
-Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
-No simthing-sim Gadget/Personality/Memory semantics were added.
-No production economy→mapping bridge was introduced.
-No default SimSession mapping wiring was introduced.
-No atlas batching landed.
-Defaults unchanged.
+**Next action:** EML-GADGET-2 ladder landed through 2E (explicit-column temporal memory). **Next implementation: M-5A-gradient + M-5B-gradient — approved for implementation (Tier-1 fast lane)** within the accepted single-target gradient design ([`m5_gradient_extraction_design_note.md`](m5_gradient_extraction_design_note.md)): each ships in one PR + one test report (`docs/tests/phase_m_m5a_gradient_single_target_test_results.md` for M-5A) + one status-row update — no parking packet, no separate review memo, no R-series unless a defect. Dual-output `GradientXY`, `sqrt`, L1 coupling, dense per-cell temporal memory, atlas/M-4A, source-mask (`M-5`), and the production economy→mapping bridge remain Tier-2/deferred.
 
-**Phase M EML-GADGET-2A R1 hygiene landed.**
-It keeps the original 2A snapshot/copy proof intact and cleans the multi-step sequence test/report so the evidence precisely shows previous_col capturing current_col before the update band while current_col advances afterward.
-No new EML opcode was added.
-No new ConsumeMode was added.
-No WGSL or GPU kernel was added.
-No runtime gadget execution was introduced.
-No temporal gadget implementation landed.
-EML-GADGET-2A + R1 landed. 2B VelocityMonitor + Decay/EMA landed. 2C BoundedFeedback (strict clamp) landed. 2D Hysteresis + 2D R1 exact CMP/SELECT compiler parity landed. 2E explicit velocity-column Acceleration landed. Position-history acceleration and dense per-cell temporal memory remain separately gated. No runtime gadget execution, chained scheduling, new opcode, WGSL, sim semantics, production economy→mapping bridge, or default mapping wiring. No atlas/M-4A.
-No hidden previous-value read was introduced.
-Temporal memory remains explicit-column state.
-Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
-No simthing-sim Gadget/Personality/Memory semantics were added.
-No production economy→mapping bridge was introduced.
-No default SimSession mapping wiring was introduced.
-No atlas batching landed.
-Defaults unchanged.
+> Per-slice landing history (EML-GADGET-2A…2E, boundary/economy) is in the `mapping_current_guidance.md` status table and `docs/worklog.md`. Standing posture ("no semantic WGSL / no default wiring / `simthing-sim` map-free / defaults unchanged") is binding from `invariants.md`, asserted once per PR test report — not restated per slice here.
 
 ---
 
