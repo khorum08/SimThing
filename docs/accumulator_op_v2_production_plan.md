@@ -2098,6 +2098,27 @@ Defaults unchanged.
 
 **Test:** [`phase_m_economy_sead_product_fixture_test_results.md`](tests/phase_m_economy_sead_product_fixture_test_results.md) — PASS.
 
+### PR M-product-fixture-chain-parking — Product-fixture chain review/parking packet — **Done**
+
+**Status:** **Done (PASS)** — Phase M product-fixture chain parking packet landed.
+The repo now has a reviewed chain from abstract tick/boundary doctrine through discrete `ResourceEconomySpec` boundary banking, resource-economy authoring preview, and an Economy + SEAD product fixture where resolved treasury stress selects authored EML weights and the existing GPU-resident first-slice path emits or does not emit a SEAD commitment through Threshold + EmitEvent.
+This remains fixture orchestration only.
+No production economy→mapping runtime bridge was introduced.
+No generic boundary-output packet was introduced.
+No `DailyResolutionBoundary` primitive was introduced.
+No day/calendar/pause semantics were added to `simthing-sim`.
+No Resource Flow default changed.
+No CPU-side economy executor or AI planner was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+No semantic WGSL landed.
+`simthing-sim` remains map-free.
+Defaults unchanged.
+
+**Review packet:** [`reviews/phase_m_product_fixture_chain_review_packet.md`](reviews/phase_m_product_fixture_chain_review_packet.md)
+
+**Test:** [`phase_m_product_fixture_chain_parking_test_results.md`](tests/phase_m_product_fixture_chain_parking_test_results.md) — PASS.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
 **Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. The first-slice product scenario fixture (Option 3, single grid, no atlas) has landed; **the atlas packer is still not next**.

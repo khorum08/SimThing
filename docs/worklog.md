@@ -6,6 +6,15 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Phase M product-fixture chain parking packet
+
+- Phase M product-fixture chain parking packet landed.
+- Review packet: [`reviews/phase_m_product_fixture_chain_review_packet.md`](reviews/phase_m_product_fixture_chain_review_packet.md).
+- Chain parked for review: abstract tick/boundary doctrine → Daily Economy Fixture V1 → Resource Economy Authoring Ergonomics V1 → Economy + SEAD Product Fixture V1.
+- Docs-only pass; no runtime behavior changes. Targeted product-chain tests re-run green.
+- Recommended next: Opus/product acceptance (Option A), then authoring ergonomics R2 or another tiny product fixture. Not generic boundary-output packet. Not M-4 atlas.
+- Test report: [`tests/phase_m_product_fixture_chain_parking_test_results.md`](tests/phase_m_product_fixture_chain_parking_test_results.md).
+
 # 2026-05-29 — Phase M Economy + SEAD Product Fixture V1
 
 - Phase M Economy + SEAD Product Fixture V1 landed.
