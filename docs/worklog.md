@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-KEY-0 deterministic kernel graph identity/cache-key preview (Tier-2, landed)
+
+- **M-JIT-KEY-0 (Tier-2, PASS):** `KernelGraphIdentity` + `preview_kernel_graph_identity` produce stable canonical text/key for admitted graphs; identity stable under node/edge reorder; invalid graphs reject; production registry/scheduler/runtime cache remains deferred. Report: `docs/tests/phase_m_jit_key0_kernel_graph_identity_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-DESC-2 spec-layer kernel graph composition admission preview (Tier-2, landed)
 
 - **M-JIT-DESC-2 (Tier-2, PASS):** `KernelGraphSpec` + `validate_kernel_graph_admission` validate descriptor edges without scheduling; approximate outputs cannot feed exact inputs; cycles/self-edges reject; production registry/scheduler/cache remains deferred. Report: `docs/tests/phase_m_jit_desc2_kernel_graph_admission_test_results.md`.
