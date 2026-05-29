@@ -111,10 +111,11 @@ pub use spec::overlay::OverlaySpec;
 pub use spec::property::PropertySpec;
 pub use spec::first_slice_scenario::FirstSliceScenarioSpec;
 pub use spec::region_field::{
-    FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, MappingExecutionProfile,
-    RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec, RegionFieldGridProfile,
-    RegionFieldOperatorSpec, RegionFieldReductionSpec, RegionFieldSourcePolicySpec,
-    RegionFieldSpec,
+    CompiledRegionFieldSummaryPolicy, FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec,
+    MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
+    RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
+    RegionFieldSourcePolicySpec, RegionFieldSpec, RegionFieldSummaryPolicySpec,
+    RegionFieldSummaryStatus,
 };
 pub use spec::resource_economy::{
     EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec,

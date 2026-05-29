@@ -59,6 +59,7 @@ fn first_slice_spec() -> RegionFieldSpec {
         commitment: None,
         request_atlas_batching: false,
         max_region_field_vram_bytes: None,
+        summary_policy: Default::default(),
     }
 }
 

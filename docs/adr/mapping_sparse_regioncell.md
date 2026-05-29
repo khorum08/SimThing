@@ -448,8 +448,9 @@ scenario 9/9, commitment 7/7, admission 11/11 re-run on GPU). The commitment adm
 data at the designer/RON layer (non-finite threshold, zero event_kind, non-Upward direction,
 missing/wrong reduction/parent_formula, mismatched parent_slot, out-of-range urgency_col).
 Conditions: the per-slot queue-write scale caveat must be resolved before any multi-field/atlas
-scaling; all prohibitions hold. Named next implementation step: **map residency / summary validity
-or queue-write scale hardening — not the M-4 atlas packer.** Default remains `Disabled`;
+scaling; all prohibitions hold. **SummaryValidity V1 landed (2026-05-28).** Named next
+implementation step: **queue-write scale hardening or broader map residency — not the M-4 atlas
+packer.** Default remains `Disabled`;
 `simthing-sim` remains map-free; `request_atlas_batching` stays rejected at admission.
 
 ---

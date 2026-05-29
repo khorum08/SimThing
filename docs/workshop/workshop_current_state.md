@@ -7,8 +7,8 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Verification (last recorded):** Phase M first-slice vertical proof — **ACCEPTED (Opus/product 2026-05-28, PASS WITH CONDITIONS)**; scenario 9/9, commitment 7/7, admission 11/11 re-run on GPU; workspace green
-**Next action:** **First-slice vertical proof accepted as complete for the single-grid opt-in SEAD path** ([`../reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md`](../reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md)). Next implementation handoff is **map residency / summary validity or queue-write scale hardening** — **not** the M-4 atlas packer. Resolve the per-slot queue-write caveat before any multi-field/atlas scaling. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
+**Verification (last recorded):** Phase M SummaryValidity V1 — **landed 2026-05-28**; summary validity 8/8, scenario 9/9, runtime 28/28, admission 11/11, commitment 7/7, product 7/7, GPU bridge 2/2; workspace green
+**Next action:** **SummaryValidity V1 landed** for the single-grid opt-in first-slice path. Next implementation handoff is **queue-write scale hardening or broader map residency** — **not** the M-4 atlas packer. Resolve the per-slot queue-write caveat before any multi-field/atlas scaling. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
 
 ---
 
@@ -58,7 +58,9 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **Phase M FirstSliceScenarioSpec-R1 hygiene:** **Done (opt-in)** — clarifies public/test-only boundary (fixture session helper moved to integration-test support), hardens scenario budget estimate error propagation, documents prior crash/build-run history with final clean verification. No scope expansion.
 
-**Phase M first-slice vertical proof:** **Parked (Opus/product review)** — review packet summarizes complete landed chain from scenario RON through GPU-resident mapping and SEAD commitment. No additional runtime behavior in parking pass. See [`phase_m_first_slice_vertical_proof_review_packet.md`](../reviews/phase_m_first_slice_vertical_proof_review_packet.md).
+**Phase M SummaryValidity V1:** **Done (opt-in)** — bounded first-slice summary validity policy/status for clean/skipped RegionFields. See [`../tests/phase_m_first_slice_summary_validity_test_results.md`](../tests/phase_m_first_slice_summary_validity_test_results.md).
+
+**Phase M first-slice vertical proof:** **ACCEPTED (Opus/product 2026-05-28, PASS WITH CONDITIONS)** — review packet summarizes complete landed chain from scenario RON through GPU-resident mapping and SEAD commitment. See [`phase_m_first_slice_vertical_proof_review_packet.md`](../reviews/phase_m_first_slice_vertical_proof_review_packet.md).
 
 **Product-priority selection:** **Done** — [`product_priority_vertical_slice_selection.md`](../reviews/product_priority_vertical_slice_selection.md). **Recommendation F:** pause implementation; gather product requirements. No named scenario for D-2a, E-11B-5, spec/RON rebuild, or new vertical slice. Continued flat-star soak remains green.
 

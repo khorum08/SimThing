@@ -39,9 +39,10 @@ pub use region_field_admission::{
     CompiledFirstSliceCommitmentDirection, CompiledFirstSliceCommitmentThreshold,
     CompiledRegionFieldBoundaryMode, CompiledRegionFieldMaskMode, CompiledRegionFieldOperator,
     CompiledRegionFieldPreview, CompiledRegionFieldSourcePolicy, CompiledRegionFieldStencilSpec,
-    ADMITTED_REGION_FIELD_FORMULA_CLASSES, FIRST_SLICE_FIELD_URGENCY_COL,
-    REGION_FIELD_DEFAULT_HORIZON_CAP, REGION_FIELD_EXTENDED_HORIZON_CAP,
-    REGION_FIELD_EXTENDED_MAX_GRID, REGION_FIELD_MAX_CELL_COUNT, REGION_FIELD_STANDARD_MAX_GRID,
+    CompiledRegionFieldSummaryPolicy, ADMITTED_REGION_FIELD_FORMULA_CLASSES,
+    FIRST_SLICE_FIELD_URGENCY_COL, REGION_FIELD_DEFAULT_HORIZON_CAP,
+    REGION_FIELD_EXTENDED_HORIZON_CAP, REGION_FIELD_EXTENDED_MAX_GRID,
+    REGION_FIELD_MAX_CELL_COUNT, REGION_FIELD_STANDARD_MAX_GRID,
 };
 pub use region_field_budget::{
     estimate_region_field_budget, region_field_isolation_multiplier, RegionFieldBudgetError,

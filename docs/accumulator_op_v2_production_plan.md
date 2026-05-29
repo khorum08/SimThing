@@ -1635,7 +1635,7 @@ pass graph wiring landed. No map/faction/AI semantics entered simthing-sim or
 WGSL. The follow-on Option 3 product-facing first-slice scenario fixture landed
 (single grid, no atlas), and the full first-slice vertical SEAD slice is now
 **ACCEPTED (Opus/product 2026-05-28, PASS WITH CONDITIONS)**. Next implementation
-handoff is **map residency / summary validity or queue-write scale hardening**.
+handoff is **queue-write scale hardening or broader map residency**.
 The M-4 atlas packer (Option A/Option 4) is **not** next; it waits for a named
 multi-theater scenario, an approved VRAM budget, and a §11-gate-passing M-4 PR.
 
@@ -1872,6 +1872,31 @@ resource column, fill helper, or GPU fill kernel after a separate measured desig
 **Review:** [`reviews/phase_m_first_slice_vertical_proof_review_packet.md`](reviews/phase_m_first_slice_vertical_proof_review_packet.md)
 
 **Test:** [`phase_m_first_slice_vertical_proof_parking_test_results.md`](tests/phase_m_first_slice_vertical_proof_parking_test_results.md) — PASS.
+
+### PR M-first-slice-summary-validity — Summary validity V1 — **Done**
+
+**Status:** **Landed** — opt-in first-slice summary validity policy/status for clean/skipped RegionFields.
+
+Phase M SummaryValidity V1 landed.
+It adds a bounded first-slice summary validity policy/status so a clean or skipped RegionField can report whether its strategic parent summary is fresh, cached, zero-initial, or unavailable without rerunning dense field propagation or rederiving gameplay state on CPU.
+The hot path remains GPU-resident; cached summaries retain GPU-resident parent summary values and report metadata only.
+No CPU-side AI planner was introduced.
+No default SimSession wiring was introduced.
+No atlas batching landed.
+No M-4A atlas masking landed.
+No active mask, perception, map residency system, behavioral source policy, or source_mask landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Design:** `RegionFieldSpec.summary_policy` (default `CachedUntilDirtyWithZeroInitial`); runtime `FirstSliceSummaryReport` with `FreshThisTick` / `Cached { age_ticks }` / `ZeroInitial` / `InvalidOrUnavailable`. Cached commitment threshold scan deferred.
+
+**Known scale caveat:** First-slice bridge uses queue writes for child resource values and
+parent weights. Before any multi-field, multi-map, atlas, or broader production scaling, replace
+per-slot resource/weight queue writes with a measured GPU-resident mechanism such as a
+preinitialized resource column, generic fill helper, or GPU fill kernel.
+
+**Test:** [`phase_m_first_slice_summary_validity_test_results.md`](tests/phase_m_first_slice_summary_validity_test_results.md) — PASS.
 
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 

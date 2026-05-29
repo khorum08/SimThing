@@ -39,6 +39,7 @@ fn standard_suppression_field() -> RegionFieldSpec {
         commitment: None,
         request_atlas_batching: false,
         max_region_field_vram_bytes: None,
+        summary_policy: Default::default(),
     }
 }
 
@@ -383,6 +384,7 @@ fn test_j_first_slice_compile_preview_only() {
         commitment: None,
         request_atlas_batching: false,
         max_region_field_vram_bytes: None,
+        summary_policy: Default::default(),
     };
 
     let preview = compile_region_field_preview(&spec).expect("first slice admit");

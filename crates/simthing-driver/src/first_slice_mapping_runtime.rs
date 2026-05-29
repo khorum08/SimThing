@@ -21,8 +21,9 @@ use simthing_spec::{
     compile_region_field_preview, estimate_region_field_budget, CompiledFieldCadence,
     CompiledFirstSliceCommitmentThreshold, CompiledFirstSliceScenarioPreview,
     CompiledRegionFieldOperator, CompiledRegionFieldPreview, CompiledRegionFieldStencilSpec,
-    MappingExecutionProfile, RegionFieldBudgetError, RegionFieldBudgetEstimate,
-    RegionFieldBudgetSpec, RegionFieldIsolationPolicyEstimate, RegionFieldSpec, SpecError,
+    CompiledRegionFieldSummaryPolicy, MappingExecutionProfile, RegionFieldBudgetError,
+    RegionFieldBudgetEstimate, RegionFieldBudgetSpec, RegionFieldIsolationPolicyEstimate,
+    RegionFieldSpec, RegionFieldSummaryStatus, SpecError,
 };
 use thiserror::Error;
 
@@ -119,6 +120,17 @@ impl FirstSliceTickOptions {
     }
 }
 
+/// Summary validity report for one first-slice tick (metadata only).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FirstSliceSummaryReport {
+    pub policy: CompiledRegionFieldSummaryPolicy,
+    pub status: RegionFieldSummaryStatus,
+    pub age_ticks: u32,
+    pub has_gpu_parent_summary: bool,
+    pub last_fresh_tick: Option<u32>,
+    pub summary_used_for_commitment_scan: bool,
+}
+
 /// Opus/product readiness summary for one first-slice tick (generic observability).
 #[derive(Clone, Debug, PartialEq)]
 pub struct FirstSliceReadinessReport {
@@ -168,6 +180,7 @@ pub struct FirstSliceMappingReport {
     /// Stencil field readbacks performed while preparing reduction/EML (0 on GPU-resident hot path).
     pub reduction_stencil_readbacks: u32,
     pub readiness: FirstSliceReadinessReport,
+    pub summary: FirstSliceSummaryReport,
 }
 
 /// Narrow fixture report for Phase M commitment tests.
@@ -182,6 +195,17 @@ pub struct FirstSliceCommitmentReport {
 }
 
 impl FirstSliceMappingReport {
+    fn summary_invalid_or_unavailable() -> FirstSliceSummaryReport {
+        FirstSliceSummaryReport {
+            policy: CompiledRegionFieldSummaryPolicy::CachedUntilDirtyWithZeroInitial,
+            status: RegionFieldSummaryStatus::InvalidOrUnavailable,
+            age_ticks: 0,
+            has_gpu_parent_summary: false,
+            last_fresh_tick: None,
+            summary_used_for_commitment_scan: false,
+        }
+    }
+
     fn disabled(tick: u32) -> Self {
         Self {
             enabled: false,
@@ -224,6 +248,7 @@ impl FirstSliceMappingReport {
                 gpu_bridge_slot_col_writes: 0,
                 hot_path_wall_ms_observed: None,
             },
+            summary: Self::summary_invalid_or_unavailable(),
         }
     }
 }
@@ -292,6 +317,10 @@ pub struct FirstSliceMappingSession {
     budget_estimate_bytes: Option<u64>,
     budget_limit_bytes: Option<u64>,
     hot_path_wall_ms_observed: Option<f64>,
+    summary_policy: CompiledRegionFieldSummaryPolicy,
+    summary_age_ticks: u32,
+    has_gpu_parent_summary: bool,
+    last_fresh_tick: Option<u32>,
 }
 
 struct GpuBridgeShape {
@@ -411,6 +440,7 @@ impl FirstSliceMappingSession {
 
         stencil.upload_values(ctx, &values)?;
 
+        let summary_policy = preview.summary_policy;
         Ok(Self {
             enabled,
             width: preview.grid_size,
@@ -441,7 +471,49 @@ impl FirstSliceMappingSession {
             budget_estimate_bytes,
             budget_limit_bytes,
             hot_path_wall_ms_observed: None,
+            summary_policy,
+            summary_age_ticks: 0,
+            has_gpu_parent_summary: false,
+            last_fresh_tick: None,
         })
+    }
+
+    fn update_summary_state(&mut self, tick: u32, scheduled: bool, reduction_executed: bool) {
+        if scheduled && reduction_executed {
+            self.has_gpu_parent_summary = true;
+            self.summary_age_ticks = 0;
+            self.last_fresh_tick = Some(tick);
+        } else if self.has_gpu_parent_summary {
+            self.summary_age_ticks = self.summary_age_ticks.saturating_add(1);
+        }
+    }
+
+    fn build_summary_report(
+        &self,
+        scheduled: bool,
+        reduction_executed: bool,
+        summary_used_for_commitment_scan: bool,
+    ) -> FirstSliceSummaryReport {
+        let status = if !self.enabled {
+            RegionFieldSummaryStatus::InvalidOrUnavailable
+        } else if scheduled && reduction_executed {
+            RegionFieldSummaryStatus::FreshThisTick
+        } else if self.has_gpu_parent_summary {
+            RegionFieldSummaryStatus::Cached {
+                age_ticks: self.summary_age_ticks,
+            }
+        } else {
+            RegionFieldSummaryStatus::ZeroInitial
+        };
+
+        FirstSliceSummaryReport {
+            policy: self.summary_policy,
+            status,
+            age_ticks: self.summary_age_ticks,
+            has_gpu_parent_summary: self.has_gpu_parent_summary,
+            last_fresh_tick: self.last_fresh_tick,
+            summary_used_for_commitment_scan,
+        }
     }
 
     fn cadence_label(cadence: CompiledFieldCadence) -> String {
@@ -809,11 +881,14 @@ impl FirstSliceMappingSession {
         event_kind: u32,
     ) -> Result<FirstSliceCommitmentReport, FirstSliceMappingError> {
         let mapping = self.tick(ctx, options, eml_weights)?;
-        let threshold_events = if mapping.enabled && mapping.scheduled && mapping.eml_executed {
-            self.scan_commitment_threshold(ctx, threshold, event_kind)?
-        } else {
-            Vec::new()
-        };
+        let mut threshold_events = Vec::new();
+        let mut summary_used_for_commitment_scan = false;
+        if mapping.enabled && mapping.scheduled && mapping.eml_executed {
+            threshold_events = self.scan_commitment_threshold(ctx, threshold, event_kind)?;
+            summary_used_for_commitment_scan = true;
+        }
+        let mut mapping = mapping;
+        mapping.summary.summary_used_for_commitment_scan = summary_used_for_commitment_scan;
         Ok(FirstSliceCommitmentReport {
             mapping,
             threshold,
@@ -908,6 +983,7 @@ impl FirstSliceMappingSession {
             }
         }
 
+        self.update_summary_state(tick, scheduled, reduction_executed);
         self.tick += 1;
 
         if let (Some(started), true) = (tick_started, scheduled && !options.readback_values) {
@@ -924,6 +1000,7 @@ impl FirstSliceMappingSession {
             &reduction_parent_value,
             &eml_output,
         );
+        let summary = self.build_summary_report(scheduled, reduction_executed, false);
 
         Ok(FirstSliceMappingReport {
             enabled: true,
@@ -941,6 +1018,7 @@ impl FirstSliceMappingSession {
             eml_executed,
             reduction_stencil_readbacks: self.reduction_stencil_readbacks_this_tick,
             readiness,
+            summary,
         })
     }
 }
