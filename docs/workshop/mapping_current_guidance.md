@@ -12,51 +12,34 @@ Constitutional surfacing:
 
 Active read order (authoritative path for agents):
 
-1. `docs/invariants.md`
-2. `docs/workshop/mapping_current_guidance.md`
-3. `docs/accumulator_op_v2_production_plan.md`
-4. `docs/workshop/eml_gadget_library_design_note.md`
-5. `docs/workshop/m5_gradient_extraction_design_note.md` (M-5-gradient: single-target `Gradient` op + L3 composition pattern; revised WGSL guardrail; dual-output `GradientXY` deferred)
-6. Current acceptance docs (e.g. `phase_m_eml_gadget_tier*_acceptance_opus_review.md`)
-7. Latest implementation/test report for the active slice
+1. [`phase_m_gating_and_doc_policy.md`](phase_m_gating_and_doc_policy.md) — **read first: which lane is your change, and how much doc does it need**
+2. `docs/invariants.md` (binding constraints)
+3. The compact status table below (where each slice is)
+4. `docs/accumulator_op_v2_production_plan.md` (PR ladder)
+5. `docs/workshop/eml_gadget_library_design_note.md`; `docs/workshop/m5_gradient_extraction_design_note.md`
+6. The single test report for the slice you're touching
 
-Historical/superseded artifacts live under `docs/workshop/archive/` (see `docs/workshop/archive/README.md`). Do not treat archived files as active authority.
+Historical/superseded artifacts live under `docs/workshop/archive/`. Do not treat archived files as active authority. **Per-policy:** the verbose per-slice narrative blocks further down this file are superseded by the status table; `docs/worklog.md` is the append-only history. Collapse verbose blocks when you touch this file (don't grow them).
 
-**Phase M EML-GADGET-2A snapshot/copy fixture proof landed.**
-It proves that temporal snapshot/copy bands can be authored using existing substrate primitives: Identity combine + ResetTarget at an earlier OrderBand, copying current_col into previous_col before the update band.
-No new EML opcode was added.
-No new ConsumeMode was added.
-No WGSL or GPU kernel was added.
-No runtime gadget execution was introduced.
-No temporal gadget implementation landed.
-2B VelocityMonitor + Decay/EMA, 2C BoundedFeedback, 2D Hysteresis (2D R1 exact CMP/SELECT compiler parity), and 2E explicit velocity-column Acceleration have landed in simthing-spec. Position-history acceleration and dense per-cell temporal memory remain separately gated. No runtime gadget execution, chained scheduling, new opcode/WGSL, simthing-sim semantics, production economy→mapping bridge, default mapping wiring, or atlas/M-4A landed.
-No hidden previous-value read was introduced.
-Temporal memory remains explicit-column state.
-Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
-No simthing-sim Gadget/Personality/Memory semantics were added.
-No production economy→mapping bridge was introduced.
-No default SimSession mapping wiring was introduced.
-No atlas batching landed.
-Defaults unchanged.
+## Phase M — compact status (single source of truth)
 
-**Phase M EML-GADGET-2A R1 hygiene landed.**
-It keeps the original 2A snapshot/copy proof intact and cleans the multi-step sequence test/report so the evidence precisely shows previous_col capturing current_col before the update band while current_col advances afterward.
-No new EML opcode was added.
-No new ConsumeMode was added.
-No WGSL or GPU kernel was added.
-No runtime gadget execution was introduced.
-No temporal gadget implementation landed.
-2B VelocityMonitor + Decay/EMA, 2C BoundedFeedback, 2D Hysteresis (2D R1 exact CMP/SELECT compiler parity), and 2E explicit velocity-column Acceleration have landed in simthing-spec. Position-history acceleration and dense per-cell temporal memory remain separately gated. No runtime gadget execution, chained scheduling, new opcode/WGSL, simthing-sim semantics, production economy→mapping bridge, default mapping wiring, or atlas/M-4A landed.
-No hidden previous-value read was introduced.
-Temporal memory remains explicit-column state.
-Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
-No simthing-sim Gadget/Personality/Memory semantics were added.
-No production economy→mapping bridge was introduced.
-No default SimSession mapping wiring was introduced.
-No atlas batching landed.
-Defaults unchanged.
+`Lane`: T1 = fast-lane (one PR + one test report + one row), T2 = gated (design-review → acceptance → impl). See the gating policy.
 
-**Next authorized step:** 2D Hysteresis + 2D R1 exact CMP/SELECT compiler parity and 2E explicit velocity-column Acceleration are consolidated in [`../reviews/phase_m_eml_gadget_2de_temporal_derivative_parking_packet.md`](../reviews/phase_m_eml_gadget_2de_temporal_derivative_parking_packet.md). Runtime gadget execution, chained scheduling, dense per-cell temporal memory, position-history acceleration, atlas/M-4A, and production economy→mapping bridge remain separately gated. **M-5-gradient candidate track approved (remedially tightened 2026-05-29)** — a **single-target** `Gradient { axis, output_col }` operator variant for `StructuredFieldStencilOp` (per-direction weights `weight_north/south/east/west` replacing `gamma_neighbor`, single-output contract preserved) + L3 Strategic Pressure Composition Pattern (RON fixture). **Dual-output `GradientXY` is deferred** to a separate optimization gate. Track naming is `M-5-gradient` / `M-5A-gradient` / `M-5B-gradient` — distinct from the source-identity `M-5` track. These are **generic field-calculus tools** with lateral benefit beyond AI (resource routing by need gradient, migrant dispatch by opportunity gradient). The "no new WGSL" guardrail is revised to "no new *semantic* WGSL": generic kernel extensions (per-direction weights with CPU-oracle parity, meaning pinned at the designer/spec layer) are admissible under the M-5A-gradient gate. See `docs/workshop/m5_gradient_extraction_design_note.md` and revised WGSL guardrail in `docs/invariants.md` ("Mapping (Sparse RegionCell)" row).
+| Slice | Lane | Status | Notes |
+|---|---|---|---|
+| First-slice runtime R1/R2/R3 | T2 | accepted | GPU-resident stencil→reduction→EML→threshold; opt-in, default-off |
+| Product fixture chain (economy + SEAD) | T2 | accepted | economy→SEAD link stays `tests/support` fixture-only |
+| Boundary resolution doctrine (tick/boundary/day) | T2 | accepted | legible names preferred; no calendar/pause sim semantics |
+| EML-GADGET-1 (Tier-1 stateless gadgets) | T2 | accepted | FieldSampler / WeightedAccumulator / SoftStep |
+| EML-GADGET-2 (temporal: 2A–2E) | T2 | landed | explicit-column memory; bounded-feedback admission; Acceleration via explicit velocity col |
+| **M-5A-gradient** (single-target Gradient op + per-direction weights) | **T1** | **approved-for-impl** | within accepted design; one PR + `phase_m_m5a_gradient_single_target_test_results.md` |
+| **M-5B-gradient** (L3 composition RON fixture) | **T1** | **approved-for-impl** | no new substrate; recommend landing before/with M-5A |
+| Dual-output `GradientXY`; `sqrt`; L1 coupling; dense per-cell temporal | T2 | deferred | separate gate each |
+| Atlas / M-4A; source-mask (`M-5`); economy→mapping bridge | T2 | deferred/prohibited | see prohibition list in gating policy |
+
+**Next authorized step:** **M-5A-gradient** and **M-5B-gradient** are **approved for implementation (Tier-1 fast lane)** — within the accepted single-target gradient design ([`m5_gradient_extraction_design_note.md`](m5_gradient_extraction_design_note.md)). Each ships in **one PR + one test report + one status-row update** per the gating policy — no parking packet, no separate review memo, no R-series unless a defect is found. Dual-output `GradientXY`, `sqrt`, L1 coupling, dense per-cell temporal memory, atlas/M-4A, source-mask (`M-5`), and the production economy→mapping bridge all remain Tier-2/deferred (see the status table and the prohibition list in the gating policy).
+
+> Per-slice landing history (EML-GADGET-2A…2E, boundary/economy, etc.) now lives in the status table above and in `docs/worklog.md`. The accepted designs and binding rules are in the design notes and `docs/invariants.md`. Standing posture ("no semantic WGSL / no default wiring / `simthing-sim` map-free / defaults unchanged") is binding from `invariants.md` and asserted once per PR test report — not restated per slice here.
 
 ## Phase M boundary-resolution (tick / boundary / day) + example economy (ACCEPTED — Opus/product 2026-05-29, PASS WITH CONDITIONS)
 

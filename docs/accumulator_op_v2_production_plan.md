@@ -2353,8 +2353,11 @@ Until then, caller-managed one-shot-seed-then-zero (v1) is the only source polic
 
 ### PR M-5-gradient — Gradient operator (single-target) + L3 Strategic Pressure Composition Pattern — **Approved candidate track (Opus 2026-05-29; remedially tightened)**
 
-**Status:** Design approved and **tightened to a single-target staging**. Implementation gated on
-M-5A-gradient (first PR below). See design note:
+**Status:** Design approved and tightened to single-target staging. **M-5A-gradient and
+M-5B-gradient are APPROVED FOR IMPLEMENTATION (Tier-1 fast lane)** per the gating policy
+([`workshop/phase_m_gating_and_doc_policy.md`](workshop/phase_m_gating_and_doc_policy.md)) — within
+the accepted design; each ships in **one PR + one test report + one status-row update**, no parking
+packet / separate review memo / R-series unless a defect is found. See design note:
 [`workshop/m5_gradient_extraction_design_note.md`](workshop/m5_gradient_extraction_design_note.md).
 
 M-5-gradient is approved as a **generic stencil-extension track, not a semantic WGSL track.**
