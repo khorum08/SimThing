@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `b7d201ddeefa54abf9d9957acbeb29dad212c184` (post R3)  
-**Final commit SHA:** `...` (to be updated post-push)  
+**Final commit SHA:** `a80df6c0e1aab40b90139d7b081697b88459b09f` (R4 commit; pushed)  
 **Verdict:** **PASS**
 
 ---
