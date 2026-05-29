@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-28 — Phase M first-slice vertical proof parking
+
+- Phase M first-slice vertical proof parked for Opus/product review.
+- Created review packet [`reviews/phase_m_first_slice_vertical_proof_review_packet.md`](reviews/phase_m_first_slice_vertical_proof_review_packet.md) summarizing the complete landed chain: scenario-level RON authoring with explicit MappingExecutionProfile, RegionFieldSpec, CommitmentSpec, GPU-resident field propagation, parent reduction, field_urgency EvalEML, and Threshold + EmitEvent commitment.
+- No additional runtime behavior landed in this parking pass.
+- No default SimSession wiring was introduced. No CPU-side AI planner was introduced.
+- No atlas batching landed. No M-4A atlas masking landed. No active mask, perception, map residency, behavioral source policy, or source_mask landed. No semantic WGSL landed. simthing-sim remains map-free. Defaults unchanged.
+- Known caveat preserved: First-slice bridge uses queue writes for child resource values and parent weights. This is acceptable for the 10x10 first-slice scenario fixture. Future multi-field/atlas scale must replace per-slot resource writes with a generic preinitialized resource column, fill helper, or GPU fill kernel after a separate measured design step.
+- Test report: [`tests/phase_m_first_slice_vertical_proof_parking_test_results.md`](tests/phase_m_first_slice_vertical_proof_parking_test_results.md).
+
 # 2026-05-28 — Phase M FirstSliceScenarioSpec-R1 hygiene
 
 - Phase M FirstSliceScenarioSpec-R1 hygiene landed. The scenario-level RON wrapper remains opt-in and GPU-resident.

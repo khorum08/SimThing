@@ -58,6 +58,8 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 
 **Phase M FirstSliceScenarioSpec-R1 hygiene:** **Done (opt-in)** — clarifies public/test-only boundary (fixture session helper moved to integration-test support), hardens scenario budget estimate error propagation, documents prior crash/build-run history with final clean verification. No scope expansion.
 
+**Phase M first-slice vertical proof:** **Parked (Opus/product review)** — review packet summarizes complete landed chain from scenario RON through GPU-resident mapping and SEAD commitment. No additional runtime behavior in parking pass. See [`phase_m_first_slice_vertical_proof_review_packet.md`](../reviews/phase_m_first_slice_vertical_proof_review_packet.md).
+
 **Product-priority selection:** **Done** — [`product_priority_vertical_slice_selection.md`](../reviews/product_priority_vertical_slice_selection.md). **Recommendation F:** pause implementation; gather product requirements. No named scenario for D-2a, E-11B-5, spec/RON rebuild, or new vertical slice. Continued flat-star soak remains green.
 
 **Continued flat-star soak:** **Done** — `resource_flow_flat_star_continued_soak` (12 tests). Confidence/observability only. E-11B remains paused.
