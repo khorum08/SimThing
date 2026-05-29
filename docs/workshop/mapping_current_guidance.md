@@ -35,6 +35,7 @@ Historical/superseded artifacts live under `docs/workshop/archive/`. Do not trea
 | **M-5A-gradient** (single-target Gradient op + per-direction weights) | **T1** | **landed** | [`phase_m_m5a_gradient_single_target_test_results.md`](../tests/phase_m_m5a_gradient_single_target_test_results.md) |
 | **M-5B-gradient** (L3 composition RON fixture) | **T1** | **landed** | [`phase_m_m5b_gradient_l3_composition_test_results.md`](../tests/phase_m_m5b_gradient_l3_composition_test_results.md); R1 integrated evidence: [`phase_m_m5b_gradient_l3_composition_r1_test_results.md`](../tests/phase_m_m5b_gradient_l3_composition_r1_test_results.md) |
 | **M-5C-gradient** (need/routing signal product fixture) | **T1** | **landed** | [`phase_m_m5c_gradient_need_signal_test_results.md`](../tests/phase_m_m5c_gradient_need_signal_test_results.md) |
+| **M-5D-gradient** (Input Validation Rule: gradient-sink / no within-frame self-feedback admission) | **T1** | **approved-for-impl (next)** | frame/scenario-level admission rejects a gradient `output_col` used as any field's same-frame `source_col`; design note §3, invariants row |
 | Dual-output `GradientXY`; `sqrt`; L1 coupling; dense per-cell temporal | T2 | deferred | separate gate each |
 | Atlas / M-4A; source-mask (`M-5`); economy→mapping bridge | T2 | deferred/prohibited | see prohibition list in gating policy |
 
