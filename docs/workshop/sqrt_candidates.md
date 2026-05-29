@@ -181,24 +181,13 @@ fn sqrt_cr_b(x: f32) -> f32 {
   subnormal inputs use exact power-of-two scaling; the `4097*y` split cannot overflow
   because `y = √x ≤ ~1.8e19 ≪ f32::MAX`.
 
-## 7. Candidate C — f64 compute-then-round *(oracle + opportunistic fast path)*
+> **Rejected (do not test): f64 compute-then-round, `f32(sqrt(f64(x)))`.** It is provably
+> correctly-rounded (Figueroa double-rounding theorem), but useless to us: WebGPU has no
+> `f64` and naga's `SHADER_F64` support is partial/non-portable, so it can never be the
+> production path; and as a cross-check it adds nothing the Rust `f32::sqrt` oracle does
+> not already provide. Eliminated up front so no effort is spent implementing or testing it.
 
-Where the adapter exposes the native `SHADER_F64` feature:
-
-```wgsl
-// requires native f64 feature; unavailable on WebGPU and many adapters
-fn sqrt_cr_c(x: f32) -> f32 { return f32(sqrt(f64(x))); }
-```
-
-- **Provably correctly-rounded** by Figueroa's double-rounding theorem: a correctly-rounded
-  f64 `sqrt` rounded to f32 equals the correctly-rounded f32 `sqrt`, because f64 carries
-  far more than 2 × 24 bits — no double-rounding hazard.
-- **Not portable** (no WebGPU f64; naga f64 support is partial), so it cannot be *the*
-  production path. It is the **cleanest exactness oracle** to cross-check A and B on
-  capable hardware, and a legitimate feature-gated fast path on native adapters that
-  expose f64.
-
-## 8. Special-value handling (must match CPU `f32::sqrt` bit-for-bit)
+## 7. Special-value handling (must match CPU `f32::sqrt` bit-for-bit)
 
 | Input | CPU `f32::sqrt` result | Candidate handling |
 |---|---|---|
@@ -213,13 +202,13 @@ The `!(x > 0.0)` guard funnels every non-normal-positive input to native `sqrt`,
 behavior on `0/-0/NaN/neg` already matches the CPU. Correction logic only runs on finite
 positive inputs.
 
-## 9. Verification — exhaustive, not sampled
+## 8. Verification — exhaustive, not sampled
 
 A new test battery `phase_m_jit_sqrt_exact_candidate_battery.rs` (test-only, mirroring the
 existing SQRT-0 harness and its `FORBIDDEN_SEMANTIC_TERMS` scan):
 
-1. **Three candidate variants** (`CorrectlyRoundedHwFma`, `CorrectlyRoundedNewtonTwoProduct`,
-   `F64RoundDown`) emitted as semantic-free WGSL.
+1. **Two candidate variants** (`CorrectlyRoundedHwFma`, `CorrectlyRoundedNewtonTwoProduct`)
+   emitted as semantic-free WGSL.
 2. **Oracle:** Rust `f32::sqrt` (correctly rounded). Compare GPU `to_bits()` vs oracle
    `to_bits()`.
 3. **Exhaustive sweep:** dispatch every finite non-negative f32 bit pattern in batches
@@ -232,14 +221,14 @@ existing SQRT-0 harness and its `FORBIDDEN_SEMANTIC_TERMS` scan):
    and whether any input remains off-by-one; a non-fused `fma` surfaces as nonzero ULP and
    fails A automatically.
 
-## 10. Promotion gate / classification ladder
+## 9. Promotion gate / classification ladder
 
 ```
 ApproximateJitOnly            ← native sqrt today (blocked from exact authority)
         │  candidate passes full exhaustive sweep, max_ulp == 0, all edge rows exact
         ▼
 ExactDeterministicCandidate   ← proven on this backend/corpus; cross-adapter not yet shown
-        │  (B) portability argument holds OR (A/C) confirmed on each target adapter
+        │  (B) portability argument holds OR (A) confirmed on each target adapter
         ▼
 ExactDeterministic            ← admission may grant exact-output authority to THIS kernel
 ```
@@ -250,12 +239,11 @@ ExactDeterministic            ← admission may grant exact-output authority to 
   exact score input — replacing the `mag2`-only workaround where exactness is needed.
 - **Expected outcome:** A passes and promotes fastest (Tier-1 once the exact-`sqrt`
   contract is accepted). B is retained as the portability/replay-hardened variant and is
-  the preferred default if cross-adapter determinism is required. C is oracle + native
-  fast path.
+  the preferred default if cross-adapter determinism is required.
 - Until a candidate is proven, the §3 guardrail is unchanged: native `sqrt` and `mag2`
   stay blocked from exact authority and admission keeps rejecting graphs that violate it.
 
-## 11. Constitutional posture
+## 10. Constitutional posture
 
 Generic semantic-free numeric kernel; opt-in; CPU-oracle parity (exhaustively proven, not
 sampled); no new GPU *primitive* beyond an EvalEML opcode/kernel mapping; no scheduler, no
@@ -263,11 +251,11 @@ cache, no default `SimSession` wiring, no economy→mapping bridge, no `simthing
 awareness, no semantic WGSL. Exactness authority is granted only at the spec-admission
 layer and only on exhaustive proof; the runtime remains the unconditional last line.
 
-## 12. Open decisions (design authority — Opus)
+## 11. Open decisions (design authority — Opus)
 
 1. **Default production candidate.** Lean **B** (portability/replay) as the default once
-   both pass, with **A** as the fast path where `fma` fusion is confirmed and `C` where
-   f64 is exposed. Decide after the sweep shows which pass on the target adapters.
+   both pass, with **A** as the fast path where `fma` fusion is confirmed. Decide after
+   the sweep shows which pass on the target adapters.
 2. **`fma` fusion on naga/DX12.** Resolve empirically via the A sweep; if non-fused,
    A is dropped in favor of B and the finding is recorded as a binding backend note.
 3. **Exhaustive-sweep budget.** Confirm the full 2³¹ sweep batches within CI/GPU time;
