@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `1d175d01f4369488481d986afd3fe6dfb6694bd9`  
-**Final commit SHA:** *(pending merge — see PR)*  
+**Final commit SHA:** `8454fea`  
 **Lane classification:** Tier-2 readiness gate (V7.7 §5)  
 **Decision:** **DEFER M-6A**  
 **Verdict:** **PASS — readiness gate completed; ActiveOnly mask admission remains deferred**
