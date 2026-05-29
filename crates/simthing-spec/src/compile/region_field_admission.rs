@@ -472,6 +472,9 @@ pub fn compile_region_field_preview(
 }
 
 fn compile_summary_policy(spec: &RegionFieldSpec) -> CompiledRegionFieldSummaryPolicy {
+    // V1 admits only CachedUntilDirtyWithZeroInitial.
+    // This policy is inert designer/admission structure; it does not enable execution.
+    // Additional policies must add explicit admission validation and tests.
     match spec.summary_policy {
         RegionFieldSummaryPolicySpec::CachedUntilDirtyWithZeroInitial => {
             CompiledRegionFieldSummaryPolicy::CachedUntilDirtyWithZeroInitial

@@ -115,7 +115,6 @@ pub use spec::region_field::{
     MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
     RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
     RegionFieldSourcePolicySpec, RegionFieldSpec, RegionFieldSummaryPolicySpec,
-    RegionFieldSummaryStatus,
 };
 pub use spec::resource_economy::{
     EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec,
