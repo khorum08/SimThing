@@ -2462,10 +2462,17 @@ The M-JIT track is **closed** at default-off `ProductionKernelRegistryShell` (`d
 - `docs/tests/phase_m_jit_grad0_spatial_observer_r1_test_results.md` — observer `mag2` classification
 - `docs/tests/phase_m_jit_grad1_observer_formula_fusion_test_results.md` — fused exact-subset score path
 
-**Follow-on tracks (separately gated):** shader/software sqrt exact path; production scheduler; runtime kernel cache; default SimSession wiring; production economy→mapping bridge; atlas/active mask/source identity; dual-output `GradientXY`; ClauseThing implementation.
+**Follow-on tracks (separately gated):** shader/software sqrt exact path ([`docs/workshop/sqrt_candidates.md`](workshop/sqrt_candidates.md)); production scheduler; runtime kernel cache; default SimSession wiring; production economy→mapping bridge; atlas/active mask/source identity; dual-output `GradientXY`; ClauseThing implementation.
 
-**Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); `sqrt`
-magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.
+**Shader/software exact sqrt follow-on:**
+- Design note: [`docs/workshop/sqrt_candidates.md`](workshop/sqrt_candidates.md)
+- Native sqrt remains `ApproximateJitOnly`.
+- Exact authority requires exhaustive `max_ulp == 0` proof against CPU `f32::sqrt`.
+- Candidate implementation/test battery is separate from JIT closure.
+- No scheduler/cache/default wiring/economy bridge/`simthing-sim` awareness authorized.
+
+**Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); production
+`sqrt` magnitude opcode (blocked until exhaustive proof); L1 cross-field coupling; dense per-cell gradient columns.
 
 **Stop conditions:** shader must not name "gradient"/"threat"/any semantic; CPU/GPU oracle parity
 must be exact; single-target path only (no dual-output kernel changes in M-5A-gradient); no

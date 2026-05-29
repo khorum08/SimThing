@@ -162,6 +162,7 @@ Runtime comments do not substitute for these rules.
 | Production registry admits validated candidates only | `ProductionKernelRegistryShell` registers `ProductionCandidatePreview` entries that pass `validate_production_candidate_preview_entry`; duplicate stable key idempotent when byte-identical, else reject |
 | Approximate outputs cannot feed exact inputs | `mag2` and other `ApproximateJitOnly` outputs reject as exact-authoritative score/state inputs at admission and execution gates |
 | Native sqrt is not exact-authoritative | Native WGSL `sqrt` remains `ApproximateJitOnly` until a separately accepted shader/software deterministic path lands; baseline runtime shader stays `sqrt`-free |
+| Exact sqrt authority requires exhaustive proof | A specific shader/software `sqrt` kernel may flip to `ExactDeterministic` output authority only after an exhaustive bit-exact proof (`max_ulp == 0` vs CPU `f32::sqrt`); until then admission rejects unproven `sqrt`/`mag2` as exact inputs via `validate_exact_inputs` / `validate_exact_kernel_inputs` |
 | No production economy→mapping bridge | Resolved treasury may select authored EML profiles in fixture orchestration only; CPU must not compute urgency or emit commitments |
 | No CPU-side AI planner / urgency emission | Strategic commitments emerge as GPU `Threshold` + `EmitEvent` crossings; no CPU map traversal or urgency planner |
 | `simthing-sim` remains map/Gadget/Personality/Memory-semantic-free | JIT/registry types live in `simthing-spec`; driver test fixtures opt in explicitly |

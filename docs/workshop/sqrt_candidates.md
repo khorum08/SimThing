@@ -12,11 +12,12 @@
 > **Tier-1** (within the accepted contract, generic, opt-in, oracle-parity-backed,
 > reversible).
 >
-> **Companions:** `design_v7_7.md` §5 (gating), `invariants.md` (I8 bit-exact parity;
-> Mapping/JIT exact-authority rows), `adr/mapping_sparse_regioncell.md`,
-> `tests/phase_m_jit_sqrt_candidate_battery_r1_test_results.md` (the blocker evidence),
-> `tests/phase_m_jit_desc0_kernel_descriptor_test_results.md` (exact-vs-approximate
-> output authority machinery this track feeds).
+> **Companions:** `design_v7_7.md` §5 (gating), [`../invariants.md`](../invariants.md) (I8 bit-exact parity;
+> Mapping/JIT exact-authority rows), [`../adr/mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md),
+> [`../tests/phase_m_jit_sqrt_candidate_battery_r1_test_results.md`](../tests/phase_m_jit_sqrt_candidate_battery_r1_test_results.md) (native sqrt blocker evidence),
+> [`../tests/phase_m_jit_grad0_spatial_observer_r1_test_results.md`](../tests/phase_m_jit_grad0_spatial_observer_r1_test_results.md) (`mag2` classification),
+> [`../tests/phase_m_jit_prod0_registry_shell_test_results.md`](../tests/phase_m_jit_prod0_registry_shell_test_results.md) (M-JIT closure authority),
+> [`mapping_current_guidance.md`](mapping_current_guidance.md) (active status table).
 
 ---
 
@@ -69,10 +70,11 @@ Bad numerics must be rejected *before* they reach the sim, not clamped after. Co
   output is `ExactDeterministic` only if it carries an admission-verified exactness
   proof. `sqrt` carries **no** such authority today and is admitted only as
   `ApproximateJitOnly`.
-- **`validate_exact_inputs` is the firewall.** The DESC-0/DESC-1 descriptor machinery
-  already rejects an approximate output wired into an exact input. A graph that feeds
-  native `sqrt` (or `mag2`) into an exact score is **rejected at session build**, with a
-  diagnostic, before any GPU dispatch. The sim never sees the bad edge.
+- **`validate_exact_inputs` is the firewall.** Production registry and kernel-graph admission
+  (`validate_exact_kernel_inputs` / `validate_exact_inputs` in `simthing-spec`) already reject
+  an approximate output wired into an exact input. A graph that feeds native `sqrt` (or `mag2`)
+  into an exact score is **rejected at session build**, with a diagnostic, before any GPU dispatch.
+  The sim never sees the bad edge.
 - **Promotion changes one admission bit, nothing downstream.** When a candidate here is
   exhaustively proven, the *only* change is that this specific kernel's descriptor flips
   to `ExactDeterministic` output authority. No runtime path is loosened; admission

@@ -1,3 +1,7 @@
+# 2026-05-29 — SQRT-DOC-0 R1 active guidance integration (Tier-2, landed)
+
+- SQRT-DOC-0 R1 integrated `sqrt_candidates.md` into active guidance, fixed stale deleted-report reference, preserved M-JIT closure and exact-authority guardrails. Report: `docs/tests/phase_m_sqrt_doc0_active_guidance_integration_results.md`.
+
 # 2026-05-29 — Phase M-JIT-DOC-CLOSEOUT R1 E11 stalled evidence restoration (Tier-2, landed)
 
 - M-JIT-DOC-CLOSEOUT R1 restored E11 stalled evidence files; no SHA hygiene loop; no guardrail weakening. Report: `docs/tests/phase_m_jit_doc_closeout_cleanup_results.md` (R1 correction section).
