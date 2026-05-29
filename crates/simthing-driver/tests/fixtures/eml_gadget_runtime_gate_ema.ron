@@ -1,0 +1,12 @@
+(
+    gadgets: [
+        (
+            kind: "Ema",
+            id: "runtime_gate_ema",
+            input_col: 3,
+            previous_col: 13,
+            output_col: 13,
+            decay: 0.85,
+        ),
+    ],
+)

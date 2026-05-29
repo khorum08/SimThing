@@ -1,0 +1,11 @@
+(
+    gadgets: [
+        (
+            kind: "WeightedAccumulator",
+            id: "runtime_gate_weighted_accumulator",
+            input_cols: [3, 4],
+            weight_cols: [20, 21],
+            output_col: 16,
+        ),
+    ],
+)

@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M EML-GADGET Runtime Execution Gate (Tier-2, fixture landed)
+
+- **EML-GADGET Runtime Execution Gate (Tier-2, PASS):** minimal opt-in fixture executes compiled WeightedAccumulator/Ema through existing EvalEML AccumulatorOp runtime with oracle parity; JIT not required; chained scheduling remains gated. Report: `docs/tests/phase_m_eml_gadget_runtime_execution_gate_test_results.md`.
+
 # 2026-05-29 — Phase M-5E-gradient scarcity/opportunity/logistics composite product fixture
 
 - **M-5E-gradient landed (Tier-1):** full-grid scarcity/opportunity/logistics composite RON fixture + integrated CPU-oracle test over M-5A/B/C/D substrate; 4-field frame with grouped strict-sink admission; no new WGSL/runtime wiring. Report: `docs/tests/phase_m_m5e_gradient_scarcity_opportunity_test_results.md`.

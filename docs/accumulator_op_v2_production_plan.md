@@ -2437,6 +2437,13 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   `compile_region_field_frame_preview`; integrated CPU-oracle + monotonic scarcity test; optional
   GPU parity. No new substrate/runtime wiring.
   Report: `docs/tests/phase_m_m5e_gradient_scarcity_opportunity_test_results.md`.
+- **EML-GADGET Runtime Execution Gate — **Done (PASS, fixture).** Minimal opt-in test fixture
+  executes compiled WeightedAccumulator/Ema gadget executables through existing C-8a EvalEML
+  AccumulatorOp runtime (`EmlExpressionRegistry` + `EmlGpuProgramTable` + `tick_with_eml`);
+  GPU runtime matches spec-layer `eval_eml_postfix` oracle. JIT not required. Chained
+  OrderBand scheduling, automatic snapshot/copy scheduling, and production gadget-stack runtime
+  wiring remain separately gated. No new opcode, no semantic WGSL, no default SimSession wiring.
+  Report: `docs/tests/phase_m_eml_gadget_runtime_execution_gate_test_results.md`.
 
 **Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); `sqrt`
 magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.
