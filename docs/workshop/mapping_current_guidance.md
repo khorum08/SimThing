@@ -20,6 +20,19 @@ Active read order:
 6. [`mapping_atlas_algebraic_mask_candidate_notes.md`](mapping_atlas_algebraic_mask_candidate_notes.md) (M-4A sandbox evidence — **candidate only, reverted**)
 7. Cited `docs/tests/` evidence before changing any classification
 
+## Phase M first-slice vertical proof (ACCEPTED — Opus/product 2026-05-28)
+
+The full first-slice vertical SEAD slice is **accepted as complete for the single-grid, opt-in
+path** (PASS WITH CONDITIONS): RON authoring (`FirstSliceScenarioSpec` / `RegionFieldSpec` /
+`FirstSliceCommitmentSpec`) → explicit `MappingExecutionProfile` opt-in → GPU-resident field
+propagation → parent `SlotRange` Sum → `field_urgency` EvalEML → Threshold + EmitEvent commitment.
+Acceptance memo: [`../reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md`](../reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md).
+
+**Conditions:** resolve the per-slot queue-write scale caveat before any multi-field/atlas scaling;
+all prohibitions hold (no atlas, no default wiring, no perception, no `source_mask`, no map
+residency until separately gated). **Named next implementation step:** map residency / summary
+validity, or queue-write scale hardening — **not** the M-4 atlas packer.
+
 ## Phase M product fixture (landed — opt-in)
 
 Phase M product-facing first-slice scenario fixture landed. It drives the accepted

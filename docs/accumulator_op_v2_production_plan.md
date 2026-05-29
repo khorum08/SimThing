@@ -1632,10 +1632,12 @@ bounded_field_update are admitted at designer/spec policy layer without new EML
 opcodes. MappingExecutionProfile remains default Disabled; spec presence alone
 does not enable execution. No production mapping runtime landed. No production
 pass graph wiring landed. No map/faction/AI semantics entered simthing-sim or
-WGSL. The follow-on Option 3 product-facing first-slice scenario fixture is now
-landed (single grid, no atlas). The M-4 atlas packer (Option A/Option 4) is
-**not** next; it waits for a named multi-theater scenario, an approved VRAM
-budget, and a §11-gate-passing M-4 PR.
+WGSL. The follow-on Option 3 product-facing first-slice scenario fixture landed
+(single grid, no atlas), and the full first-slice vertical SEAD slice is now
+**ACCEPTED (Opus/product 2026-05-28, PASS WITH CONDITIONS)**. Next implementation
+handoff is **map residency / summary validity or queue-write scale hardening**.
+The M-4 atlas packer (Option A/Option 4) is **not** next; it waits for a named
+multi-theater scenario, an approved VRAM budget, and a §11-gate-passing M-4 PR.
 
 **Test:** A rejection suite (one case per banned/over-cap condition) plus a
 round-trip that a valid bounded field compiles to generic stencil + reduction +
@@ -1908,9 +1910,15 @@ No map/faction/AI semantics entered simthing-sim or WGSL.
 **Decision gate (resolved 2026-05-28):** Option B was taken — the first-slice runtime
 landed and was hardened through R1/R2/R3 and **accepted by Opus as a stable base**
 ([`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)).
-Option 3 — a product-facing first-slice scenario fixture (single grid, no atlas) — has
-also landed. **Option A (atlas packer) is NOT next**; it is admissible only after
-(a) a named multi-theater scenario that needs batching, (b) an approved VRAM budget, and
+Option 3 — a product-facing first-slice scenario fixture (single grid, no atlas) — also
+landed, and the **full first-slice vertical SEAD slice is now ACCEPTED (Opus/product
+2026-05-28, PASS WITH CONDITIONS)**: RON → opt-in profile → GPU field → reduction →
+`field_urgency` EvalEML → Threshold + EmitEvent commitment
+([`reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md`](reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md)).
+**Next implementation handoff: map residency / summary validity, or queue-write scale
+hardening — NOT the atlas packer.** The per-slot queue-write caveat must be resolved before
+any multi-field/atlas scaling. **Option A (atlas packer) is NOT next**; it is admissible only
+after (a) a named multi-theater scenario that needs batching, (b) an approved VRAM budget, and
 (c) a PR satisfying the §11 binding gate.
 
 - **Option A (deferred):** Implement the generic M-4 atlas packer — only under the conditions above.
