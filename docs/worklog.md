@@ -6,6 +6,13 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Phase M EML-GADGET-1 parking packet
+
+- Phase M EML-GADGET-1 parking packet landed.
+- Review packet: [`reviews/phase_m_eml_gadget_tier1_review_packet.md`](reviews/phase_m_eml_gadget_tier1_review_packet.md).
+- Parks Tier-1 stateless gadget library (FieldSampler, WeightedAccumulator, algebraic SoftStep) for Opus/product acceptance after R1 composition hygiene and R2 node-cap hygiene.
+- Docs-only; no runtime behavior changes; defaults unchanged.
+
 # 2026-05-29 — Phase M EML-GADGET-1 R2 landed (per-gadget node cap hygiene)
 
 - **EML-GADGET-1 R2:** `MAX_EML_TREE_NODES` now enforced per executable gadget/single-tree only; multi-gadget `PerGadgetOnly` stacks no longer reject on informational `total_node_count > 32`; emit `stack_total_exceeds_inline_cap` diagnostic instead.
