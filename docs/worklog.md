@@ -6,6 +6,15 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-28 — Phase M FirstSliceScenarioSpec fixture
+
+- Phase M FirstSliceScenarioSpec fixture landed. It wraps the accepted first-slice RegionFieldSpec + CommitmentSpec in a scenario-level RON authoring shape that includes explicit MappingExecutionProfile.
+- Disabled scenarios admit as structure but do not execute. SparseRegionFieldV1 scenarios execute the GPU-resident first-slice path and emit the authored commitment event only when field_urgency crosses the authored threshold.
+- No CPU-side AI planner was introduced. No default SimSession wiring was introduced.
+- No atlas batching landed. No M-4A atlas masking landed. No active mask, perception, map residency, behavioral source policy, or source_mask landed. No semantic WGSL landed. simthing-sim remains map-free. Defaults unchanged.
+- Known caveat preserved: First-slice bridge uses queue writes for child resource values and parent weights. This is acceptable for the 10x10 first-slice scenario fixture. Future multi-field/atlas scale must replace per-slot resource writes with a generic preinitialized resource column, fill helper, or GPU fill kernel after a separate measured design step.
+- Test report: [`tests/phase_m_first_slice_scenario_spec_test_results.md`](tests/phase_m_first_slice_scenario_spec_test_results.md).
+
 # 2026-05-28 — Phase M CommitmentSpec fixture
 
 - Phase M CommitmentSpec fixture landed. It moves the first-slice commitment threshold/event binding into a designer/spec-facing RON-admitted configuration while preserving the existing GPU-resident SEAD path: field propagation -> parent reduction -> field_urgency EvalEML -> Threshold + EmitEvent.

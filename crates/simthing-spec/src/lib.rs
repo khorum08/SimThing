@@ -60,6 +60,7 @@ pub use boundary::{
     ScriptedEventDiagnosticKind,
 };
 pub use compile::{
+    compile_first_slice_scenario_preview, CompiledFirstSliceScenarioPreview,
     admit_region_field_formula_class, compile_effect, compile_event, compile_overlay,
     compile_property, compile_region_field_preview, compile_region_field_stencil_config,
     compile_resource_economy, compile_resource_flow_admission, compile_trigger,
@@ -87,7 +88,8 @@ pub use preview::{
     CapabilityPreviewOverlayBreakdown, CapabilityPreviewReport,
 };
 pub use ron::{
-    deserialize_capability_tree_ron, deserialize_game_mode_ron, deserialize_region_field_ron,
+    deserialize_capability_tree_ron, deserialize_first_slice_scenario_ron,
+    deserialize_game_mode_ron, deserialize_region_field_ron,
 };
 pub use runtime::{
     CapabilityCategoryDefinition, CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
@@ -107,6 +109,7 @@ pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;
 pub use spec::overlay::OverlaySpec;
 pub use spec::property::PropertySpec;
+pub use spec::first_slice_scenario::FirstSliceScenarioSpec;
 pub use spec::region_field::{
     FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, MappingExecutionProfile,
     RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec, RegionFieldGridProfile,

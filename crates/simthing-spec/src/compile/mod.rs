@@ -15,6 +15,7 @@ pub mod capability;
 pub mod context;
 pub mod effect;
 pub mod event;
+pub mod first_slice_scenario_admission;
 pub mod overlay;
 pub mod property;
 pub mod region_field_admission;
@@ -29,6 +30,9 @@ pub use effect::compile_effect;
 pub use event::compile_event;
 pub use overlay::compile_overlay;
 pub use property::compile_property;
+pub use first_slice_scenario_admission::{
+    compile_first_slice_scenario_preview, CompiledFirstSliceScenarioPreview,
+};
 pub use region_field_admission::{
     admit_region_field_formula_class, compile_region_field_preview,
     compile_region_field_stencil_config, CompiledFieldCadence,

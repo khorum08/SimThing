@@ -1791,6 +1791,34 @@ design step.
 
 **Test:** [`phase_m_first_slice_commitment_spec_test_results.md`](tests/phase_m_first_slice_commitment_spec_test_results.md) — PASS.
 
+### PR M-first-slice-scenario-spec — Scenario-level RON authoring wrapper — **Done**
+
+**Status:** **Landed** — narrow scenario-level RON wrapper for the first-slice mapping +
+CommitmentSpec path with explicit `MappingExecutionProfile`. **Not** wired into default
+`SimSession` pass graph. **Not** a general scenario engine.
+
+Phase M FirstSliceScenarioSpec fixture landed.
+It wraps the accepted first-slice RegionFieldSpec + CommitmentSpec in a scenario-level RON
+authoring shape that includes explicit MappingExecutionProfile.
+Disabled scenarios admit as structure but do not execute. SparseRegionFieldV1 scenarios
+execute the GPU-resident first-slice path and emit the authored commitment event only when
+field_urgency crosses the authored threshold.
+No CPU-side AI planner was introduced.
+No default SimSession wiring was introduced.
+No atlas batching landed.
+No M-4A atlas masking landed.
+No active mask, perception, map residency, behavioral source policy, or source_mask landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Known scale caveat:** First-slice bridge uses queue writes for child resource values and
+parent weights. This is acceptable for the 10x10 first-slice scenario fixture. Future
+multi-field/atlas scale must replace per-slot resource writes with a generic preinitialized
+resource column, fill helper, or GPU fill kernel after a separate measured design step.
+
+**Test:** [`phase_m_first_slice_scenario_spec_test_results.md`](tests/phase_m_first_slice_scenario_spec_test_results.md) — PASS.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
 **Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. The first-slice product scenario fixture (Option 3, single grid, no atlas) has landed; **the atlas packer is still not next**.
