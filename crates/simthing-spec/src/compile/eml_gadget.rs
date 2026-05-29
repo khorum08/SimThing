@@ -22,6 +22,8 @@ pub enum EmlGadgetKind {
     BoundedFeedback,
     // Tier-2 conditional (EML-GADGET-2D)
     Hysteresis,
+    // Tier-2 explicit velocity-column acceleration (EML-GADGET-2E)
+    Acceleration,
 }
 
 impl EmlGadgetKind {
@@ -35,6 +37,7 @@ impl EmlGadgetKind {
             Self::Ema => "Ema",
             Self::BoundedFeedback => "BoundedFeedback",
             Self::Hysteresis => "Hysteresis",
+            Self::Acceleration => "Acceleration",
         }
     }
 
@@ -44,7 +47,7 @@ impl EmlGadgetKind {
 
     pub fn requires_temporal_memory(self) -> bool {
         match self {
-            Self::VelocityMonitor | Self::Decay | Self::Ema | Self::BoundedFeedback | Self::Hysteresis => true,
+            Self::VelocityMonitor | Self::Decay | Self::Ema | Self::BoundedFeedback | Self::Hysteresis | Self::Acceleration => true,
             _ => false,
         }
     }
@@ -67,17 +70,16 @@ impl EmlGadgetKind {
             "Ema" => Some(Self::Ema),
             "BoundedFeedback" => Some(Self::BoundedFeedback),
             "Hysteresis" => Some(Self::Hysteresis),
+            "Acceleration" => Some(Self::Acceleration),
             _ => None,
         }
     }
 }
 
-/// Still-deferred Tier-2+ kinds (EML-GADGET-2D and beyond).
-/// BoundedFeedback is implemented in EML-GADGET-2C.
-pub const DEFERRED_GADGET_KINDS: &[&str] = &[
-    "Acceleration",
-    // Hysteresis (2D) implemented — conditional explicit-column with CMP+SELECT over existing EvalEML.
-];
+/// Still-deferred gadget kinds. Position-history acceleration (previous_previous_col) and dense
+/// per-cell temporal memory remain out of scope — not listed here as deferrals because they are
+/// separate gates, not admitted gadget kind strings.
+pub const DEFERRED_GADGET_KINDS: &[&str] = &[];
 
 /// Admission/compile options for gadget stacks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -304,6 +306,7 @@ fn kind_from_instance(instance: &EmlGadgetInstanceSpec) -> Result<EmlGadgetKind,
         EmlGadgetInstanceSpec::Ema { .. } => EmlGadgetKind::Ema,
         EmlGadgetInstanceSpec::BoundedFeedback { .. } => EmlGadgetKind::BoundedFeedback,
         EmlGadgetInstanceSpec::Hysteresis { .. } => EmlGadgetKind::Hysteresis,
+        EmlGadgetInstanceSpec::Acceleration { .. } => EmlGadgetKind::Acceleration,
     };
     Ok(kind)
 }
@@ -478,6 +481,30 @@ fn compile_gadget_instance(
             validate_hysteresis_params(*on_threshold, *off_threshold, *off_value, *on_value, &id)?;
             (
                 compile_hysteresis_nodes(*input_col, *previous_col, *on_threshold, *off_threshold, *off_value, *on_value),
+                *output_col,
+            )
+        }
+        EmlGadgetInstanceSpec::Acceleration {
+            current_velocity_col,
+            previous_velocity_col,
+            output_col,
+            dt,
+            ..
+        } => {
+            validate_col(*current_velocity_col, opts, &id, "current_velocity_col")?;
+            validate_col(*previous_velocity_col, opts, &id, "previous_velocity_col")?;
+            if let Some(col) = output_col {
+                validate_col(*col, opts, &id, "output_col")?;
+            }
+            if *current_velocity_col == *previous_velocity_col {
+                return Err(SpecError::EmlGadgetAdmission {
+                    gadget: id,
+                    reason: "Acceleration current_velocity_col and previous_velocity_col must be distinct".into(),
+                });
+            }
+            validate_velocity_params(*dt, &id)?;
+            (
+                compile_acceleration_nodes(*current_velocity_col, *previous_velocity_col, *dt),
                 *output_col,
             )
         }
@@ -959,7 +986,7 @@ pub fn reject_unknown_gadget_kind(kind: &str, gadget_id: &str) -> Result<EmlGadg
     EmlGadgetKind::parse(kind).ok_or_else(|| SpecError::EmlGadgetAdmission {
         gadget: gadget_id.to_string(),
         reason: format!(
-            "unknown gadget kind `{kind}`; available: FieldSampler, WeightedAccumulator, SoftStep, VelocityMonitor, Decay, Ema"
+            "unknown gadget kind `{kind}`; available: FieldSampler, WeightedAccumulator, SoftStep, VelocityMonitor, Decay, Ema, BoundedFeedback, Hysteresis, Acceleration"
         ),
     })
 }
@@ -1037,9 +1064,17 @@ fn compile_ema_nodes(input_col: u32, previous_col: u32, decay: f32) -> Vec<EmlNo
     ]
 }
 
+fn compile_acceleration_nodes(current_velocity_col: u32, previous_velocity_col: u32, dt: Option<f32>) -> Vec<EmlNode> {
+    compile_velocity_monitor_nodes(current_velocity_col, previous_velocity_col, dt)
+}
+
 // Public CPU oracles for stateful sequence parity tests (exported from spec crate)
 pub fn oracle_velocity_monitor(current: f32, previous: f32, dt: f32) -> f32 {
     (current - previous) / dt
+}
+
+pub fn oracle_acceleration(current_velocity: f32, previous_velocity: f32, dt: f32) -> f32 {
+    (current_velocity - previous_velocity) / dt
 }
 
 pub fn oracle_decay(state: f32, decay: f32) -> f32 {

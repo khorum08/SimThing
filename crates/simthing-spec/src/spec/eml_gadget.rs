@@ -95,6 +95,18 @@ pub enum EmlGadgetInstanceSpec {
         off_value: f32,
         on_value: f32,
     },
+    /// Tier-2 explicit velocity-column acceleration (EML-GADGET-2E): (current_velocity - previous_velocity) [/ dt]
+    /// Requires authored velocity columns only — no position history or previous_previous_col inference.
+    Acceleration {
+        id: String,
+        current_velocity_col: u32,
+        previous_velocity_col: u32,
+        #[serde(default)]
+        output_col: Option<u32>,
+        /// Optional positive finite dt for scaling. If None or 1.0, no division is emitted.
+        #[serde(default)]
+        dt: Option<f32>,
+    },
 }
 
 impl EmlGadgetInstanceSpec {
@@ -107,7 +119,8 @@ impl EmlGadgetInstanceSpec {
             | Self::Decay { id, .. }
             | Self::Ema { id, .. }
             | Self::BoundedFeedback { id, .. }
-            | Self::Hysteresis { id, .. } => id,
+            | Self::Hysteresis { id, .. }
+            | Self::Acceleration { id, .. } => id,
         }
     }
 
@@ -121,6 +134,7 @@ impl EmlGadgetInstanceSpec {
             Self::Ema { .. } => "Ema",
             Self::BoundedFeedback { .. } => "BoundedFeedback",
             Self::Hysteresis { .. } => "Hysteresis",
+            Self::Acceleration { .. } => "Acceleration",
         }
     }
 
@@ -134,6 +148,11 @@ impl EmlGadgetInstanceSpec {
             Self::Ema { input_col, previous_col, .. } => vec![*input_col, *previous_col],
             Self::BoundedFeedback { previous_col, input_col, .. } => vec![*previous_col, *input_col],
             Self::Hysteresis { input_col, previous_col, .. } => vec![*input_col, *previous_col],
+            Self::Acceleration {
+                current_velocity_col,
+                previous_velocity_col,
+                ..
+            } => vec![*current_velocity_col, *previous_velocity_col],
         }
     }
 
@@ -146,7 +165,8 @@ impl EmlGadgetInstanceSpec {
             | Self::Decay { output_col, .. }
             | Self::Ema { output_col, .. }
             | Self::BoundedFeedback { output_col, .. }
-            | Self::Hysteresis { output_col, .. } => *output_col,
+            | Self::Hysteresis { output_col, .. }
+            | Self::Acceleration { output_col, .. } => *output_col,
         }
     }
 }
