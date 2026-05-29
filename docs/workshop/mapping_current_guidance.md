@@ -16,7 +16,7 @@ Active read order (authoritative path for agents):
 2. `docs/workshop/mapping_current_guidance.md`
 3. `docs/accumulator_op_v2_production_plan.md`
 4. `docs/workshop/eml_gadget_library_design_note.md`
-5. `docs/workshop/m5_gradient_extraction_design_note.md` (M-5 GradientXY + L3 composition pattern; revised WGSL guardrail)
+5. `docs/workshop/m5_gradient_extraction_design_note.md` (M-5-gradient: single-target `Gradient` op + L3 composition pattern; revised WGSL guardrail; dual-output `GradientXY` deferred)
 6. Current acceptance docs (e.g. `phase_m_eml_gadget_tier*_acceptance_opus_review.md`)
 7. Latest implementation/test report for the active slice
 
@@ -56,7 +56,7 @@ No default SimSession mapping wiring was introduced.
 No atlas batching landed.
 Defaults unchanged.
 
-**Next authorized step:** 2D Hysteresis + 2D R1 exact CMP/SELECT compiler parity and 2E explicit velocity-column Acceleration are consolidated in [`../reviews/phase_m_eml_gadget_2de_temporal_derivative_parking_packet.md`](../reviews/phase_m_eml_gadget_2de_temporal_derivative_parking_packet.md). Runtime gadget execution, chained scheduling, dense per-cell temporal memory, position-history acceleration, atlas/M-4A, and production economy→mapping bridge remain separately gated. **M-5 GradientExtraction candidate track approved** — `GradientXY` operator variant for `RegionFieldSpec` + L3 Strategic Pressure Composition Pattern (RON fixture). The "no new WGSL" guardrail is revised to "no new *semantic* WGSL": generic kernel extensions (per-direction weights with CPU-oracle parity, meaning pinned at the designer/spec layer) are admissible under a separate M-5A gate. See `docs/workshop/m5_gradient_extraction_design_note.md` and revised WGSL guardrail in `docs/invariants.md` ("Mapping (Sparse RegionCell)" row).
+**Next authorized step:** 2D Hysteresis + 2D R1 exact CMP/SELECT compiler parity and 2E explicit velocity-column Acceleration are consolidated in [`../reviews/phase_m_eml_gadget_2de_temporal_derivative_parking_packet.md`](../reviews/phase_m_eml_gadget_2de_temporal_derivative_parking_packet.md). Runtime gadget execution, chained scheduling, dense per-cell temporal memory, position-history acceleration, atlas/M-4A, and production economy→mapping bridge remain separately gated. **M-5-gradient candidate track approved (remedially tightened 2026-05-29)** — a **single-target** `Gradient { axis, output_col }` operator variant for `StructuredFieldStencilOp` (per-direction weights `weight_north/south/east/west` replacing `gamma_neighbor`, single-output contract preserved) + L3 Strategic Pressure Composition Pattern (RON fixture). **Dual-output `GradientXY` is deferred** to a separate optimization gate. Track naming is `M-5-gradient` / `M-5A-gradient` / `M-5B-gradient` — distinct from the source-identity `M-5` track. These are **generic field-calculus tools** with lateral benefit beyond AI (resource routing by need gradient, migrant dispatch by opportunity gradient). The "no new WGSL" guardrail is revised to "no new *semantic* WGSL": generic kernel extensions (per-direction weights with CPU-oracle parity, meaning pinned at the designer/spec layer) are admissible under the M-5A-gradient gate. See `docs/workshop/m5_gradient_extraction_design_note.md` and revised WGSL guardrail in `docs/invariants.md` ("Mapping (Sparse RegionCell)" row).
 
 ## Phase M boundary-resolution (tick / boundary / day) + example economy (ACCEPTED — Opus/product 2026-05-29, PASS WITH CONDITIONS)
 

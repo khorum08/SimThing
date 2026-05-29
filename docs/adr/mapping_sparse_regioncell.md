@@ -109,12 +109,14 @@ weakens it:
   (`sead_tensor_stencil_wgsl_sandbox_test_results.md` Test 7,
   `sead_tensor_stencil_refinement_sandbox_test_results.md` Test 9). No new
   semantic kernel is admitted by this ADR. **Generic kernel extensions** — new
-  parameters (e.g. per-direction weights for a `GradientXY` operator variant)
-  that carry no map/faction/AI semantics, are paired with CPU-oracle parity, and
-  have meaning pinned at the designer/spec admission layer — are admissible under
-  a separate gate (see `docs/workshop/m5_gradient_extraction_design_note.md` and
-  the revised WGSL guardrail in `docs/invariants.md`). The shader sees generic
-  floats; gameplay concepts never enter WGSL.
+  parameters (e.g. per-direction weights for a single-target `Gradient { axis }`
+  operator variant) that carry no map/faction/AI semantics, are paired with
+  CPU-oracle parity, and have meaning pinned at the designer/spec admission layer —
+  are admissible under a separate gate (see
+  `docs/workshop/m5_gradient_extraction_design_note.md` and the revised WGSL
+  guardrail in `docs/invariants.md`). The shader sees generic floats; gameplay
+  concepts never enter WGSL. (Dual-output `GradientXY` is a deferred optimization
+  gate, not the admitted contract.)
 - **Deterministic bounded-field EML admitted at the RON/Designer layer.** The
   field formula classes (`field_pressure`, `field_urgency`, `field_decay`,
   `bounded_field_update`) are admissible at runtime through the C-8

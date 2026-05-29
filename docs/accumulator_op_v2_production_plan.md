@@ -2351,33 +2351,49 @@ Until then, caller-managed one-shot-seed-then-zero (v1) is the only source polic
 
 ---
 
-### PR M-5-gradient — GradientExtraction operator + L3 Strategic Pressure Composition Pattern — **Approved candidate track (Opus 2026-05-29)**
+### PR M-5-gradient — Gradient operator (single-target) + L3 Strategic Pressure Composition Pattern — **Approved candidate track (Opus 2026-05-29; remedially tightened)**
 
-**Status:** Design approved. Implementation gated on M-5A (first PR below). See design note:
+**Status:** Design approved and **tightened to a single-target staging**. Implementation gated on
+M-5A-gradient (first PR below). See design note:
 [`workshop/m5_gradient_extraction_design_note.md`](workshop/m5_gradient_extraction_design_note.md).
 
-**Revised WGSL guardrail (Opus 2026-05-29):** The ban is on **semantic** WGSL only. Generic kernel
+M-5-gradient is approved as a **generic stencil-extension track, not a semantic WGSL track.**
+M-5A-gradient should first implement per-direction weights plus a **single-target** `Gradient` axis
+admission/oracle. **Dual-output `GradientXY` is deferred** as a possible optimization gate. No
+atlas/M-4A, source-mask/source-identity work, L1 field coupling, `sqrt` opcode, default mapping
+wiring, `simthing-sim` awareness, or production economy→mapping bridge is authorized.
+
+These are **generic field-calculus primitives** with lateral benefit beyond AI: the same `Gradient`
+op routes resources down a scarcity gradient or dispatches migrants up an opportunity gradient
+(meaning authored at the spec layer; shader sees floats only).
+
+**Revised WGSL guardrail (Opus 2026-05-29):** the ban is on **semantic** WGSL only. Generic kernel
 extensions — new parameters carrying no map/faction/AI semantics, meaning pinned at the
 designer/spec admission layer, with CPU-oracle parity — are admissible. See `docs/invariants.md`
 ("Mapping (Sparse RegionCell)" row) and the design note §1.
 
 **PR ladder:**
 
-- **M-5A — GradientXY operator variant + stencil kernel per-direction weights (Composer/Codex).**
-  `RegionFieldOperatorSpec::GradientXY { output_col_x, output_col_y }` in `simthing-spec`;
-  `FieldStencilParams` gains `weight_north/south/east/west` (replacing single `gamma_neighbor`)
-  in the WGSL uniform and CPU struct; admission rules (column bounds, no self-source, no alias);
-  bit-exact CPU oracle (central-difference formula); parity tests. Default operator unchanged.
-  `simthing-sim` sees only flat columns; shader is generic floats only.
-- **M-5B — L3 Strategic Pressure Composition Pattern RON fixture (Codex).**
-  Reference RON fixture + test demonstrating multi-field L3 WeightedAccumulator + EMA over
-  gradient and threat/supply reductions. No new substrate. Pattern documentation.
+- **M-5A-gradient — single-target Gradient operator + per-direction stencil weights (Composer/Codex).**
+  `FieldStencilParams` gains generic `weight_north/south/east/west` (replacing single
+  `gamma_neighbor`), keeping the **single `target_col` output** write unchanged.
+  `RegionFieldOperatorSpec::Gradient { axis: GradientAxisSpec, output_col }` (or `GradientX`/
+  `GradientY`) in `simthing-spec`; one output column per admitted gradient field; admission (axis
+  explicit, output column valid, no self-gradient loop, no alias); bit-exact CPU oracle
+  `GradientX=(east−west)/2`, `GradientY=(south−north)/2`, boundary behavior matching existing
+  boundary mode; GPU parity on small grids. Default operator unchanged; shader generic floats only;
+  `simthing-sim` unchanged. Report: `docs/tests/phase_m_m5a_gradient_single_target_test_results.md`.
+- **M-5B-gradient — L3 Strategic Pressure Composition Pattern RON fixture (Codex).**
+  Reference RON fixture + test: multi-field L3 WeightedAccumulator + EMA over gradient + other
+  reductions. No new substrate. Pattern documentation (AI and resource/migration routing examples).
 
-**Deferred:** `sqrt` magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.
+**Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); `sqrt`
+magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.
 
-**Stop conditions:** shader must not name "gradient", "threat", or any semantic; CPU oracle parity
-required; no change to `simthing-sim`; per-direction weights admitted only through the
-`GradientXY` operator variant spec path.
+**Stop conditions:** shader must not name "gradient"/"threat"/any semantic; CPU/GPU oracle parity
+must be exact; single-target path only (no dual-output kernel changes in M-5A-gradient); no
+`simthing-sim` change; no source-mask/source-identity, atlas/M-4A, L1 coupling, `sqrt`, default
+mapping wiring, CPU planner/urgency, or economy→mapping bridge. SEAD commitment stays GPU-resident.
 
 ---
 
