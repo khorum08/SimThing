@@ -52,7 +52,7 @@ pub use jit_kernel_graph_identity::{
 };
 pub use jit_kernel_cohort_preview::{
     preview_kernel_graph_cohorts, KernelGraphCohortPreview, KernelGraphCohortPreviewSet,
-    KernelGraphRequestSpec, test_group_cohort_previews_from_resolved,
+    KernelGraphRequestSpec,
 };
 pub use region_field_admission::{
     admit_region_field_formula_class, compile_region_field_preview,

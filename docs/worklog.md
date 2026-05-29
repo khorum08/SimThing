@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-COHORT-0 R1 collision-test helper fence (Tier-2 remedial, landed)
+
+- **M-JIT-COHORT-0 R1 (Tier-2 remedial, PASS):** removed public re-export of injected-identity collision helper; helper moved test-local; public API is `preview_kernel_graph_cohorts` only; collision guard coverage preserved. Report: `docs/tests/phase_m_jit_cohort0_r1_collision_helper_fence_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-COHORT-0 deterministic kernel graph cohort grouping preview (Tier-2, landed)
 
 - **M-JIT-COHORT-0 (Tier-2, PASS):** `preview_kernel_graph_cohorts` groups admitted graph requests by stable identity; identical graphs cohort together; distinct graphs split; collision guard preserves canonical text; production registry/scheduler/cache/JIT dispatch remains deferred. Report: `docs/tests/phase_m_jit_cohort0_kernel_graph_cohort_preview_test_results.md`.

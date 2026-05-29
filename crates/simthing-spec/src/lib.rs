@@ -96,7 +96,7 @@ pub use compile::{
     validate_kernel_graph_admission, KernelGraphEdgeSpec, KernelGraphSpec,
     preview_kernel_graph_identity, KernelGraphIdentity,
     preview_kernel_graph_cohorts, KernelGraphCohortPreview, KernelGraphCohortPreviewSet,
-    KernelGraphRequestSpec, test_group_cohort_previews_from_resolved,
+    KernelGraphRequestSpec,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;

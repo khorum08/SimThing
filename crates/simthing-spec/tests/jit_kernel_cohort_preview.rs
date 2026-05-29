@@ -1,8 +1,10 @@
 //! Phase M-JIT-COHORT-0 — Spec-layer kernel graph cohort grouping preview.
 
+use std::collections::BTreeMap;
+
 use simthing_spec::{
-    preview_kernel_graph_cohorts, test_group_cohort_previews_from_resolved,
-    KernelDescriptorSpec, KernelGraphEdgeSpec, KernelGraphRequestSpec, KernelGraphSpec,
+    preview_kernel_graph_cohorts, KernelDescriptorSpec, KernelGraphCohortPreview,
+    KernelGraphCohortPreviewSet, KernelGraphEdgeSpec, KernelGraphRequestSpec, KernelGraphSpec,
     KernelLane, KernelOutputSpec, NativeMathClass, OutputAuthority, SpecError,
 };
 
@@ -126,6 +128,65 @@ fn assert_cohort_err(requests: &[KernelGraphRequestSpec], reason_substr: &str) {
         }
         other => panic!("unexpected error: {other:?}"),
     }
+}
+
+/// Test-local collision guard exercise: inject resolved identities without public API bypass.
+fn test_group_cohort_previews_from_resolved(
+    requests: &[KernelGraphRequestSpec],
+    resolved: &[(String, String)],
+) -> Result<KernelGraphCohortPreviewSet, SpecError> {
+    if requests.len() != resolved.len() {
+        return Err(SpecError::JitKernelDescriptorAdmission {
+            kernel: "cohort".into(),
+            reason: "request count must match resolved identity count".into(),
+        });
+    }
+
+    let mut seen_request_ids = std::collections::HashSet::new();
+    for request in requests {
+        if !seen_request_ids.insert(request.request_id.clone()) {
+            return Err(SpecError::JitKernelDescriptorAdmission {
+                kernel: request.request_id.clone(),
+                reason: format!("duplicate request id `{}`", request.request_id),
+            });
+        }
+    }
+
+    let mut groups: BTreeMap<String, (String, Vec<String>)> = BTreeMap::new();
+    for (request, (stable_key, canonical_text)) in requests.iter().zip(resolved.iter()) {
+        match groups.get_mut(stable_key) {
+            Some((existing_canonical, request_ids)) => {
+                if existing_canonical != canonical_text {
+                    return Err(SpecError::JitKernelDescriptorAdmission {
+                        kernel: "cohort".into(),
+                        reason: format!(
+                            "stable key `{stable_key}` maps to conflicting canonical text for request `{}`",
+                            request.request_id
+                        ),
+                    });
+                }
+                request_ids.push(request.request_id.clone());
+            }
+            None => {
+                groups.insert(
+                    stable_key.clone(),
+                    (canonical_text.clone(), vec![request.request_id.clone()]),
+                );
+            }
+        }
+    }
+
+    let mut cohorts = Vec::with_capacity(groups.len());
+    for (stable_key, (canonical_text, mut request_ids)) in groups {
+        request_ids.sort();
+        cohorts.push(KernelGraphCohortPreview {
+            stable_key,
+            canonical_text,
+            request_ids,
+        });
+    }
+
+    Ok(KernelGraphCohortPreviewSet { cohorts })
 }
 
 #[test]
@@ -332,7 +393,8 @@ fn jit_cohort0_preview_has_no_cache_scheduler_or_dispatch() {
     assert!(
         !source.contains("cache.insert")
             && !source.contains("KernelCache")
-            && !source.contains("HashMap"),
-        "cohort module must not implement runtime cache"
+            && !source.contains("HashMap")
+            && !source.contains("test_group_cohort_previews_from_resolved"),
+        "cohort module must not implement runtime cache or export collision-test helper"
     );
 }
