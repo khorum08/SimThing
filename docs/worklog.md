@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-EXEC-1 ProductionCandidatePreview-gated cohort execution fixture (Tier-2, landed)
+
+- **M-JIT-EXEC-1 (Tier-2, PASS):** Identical exact graph requests cohort into one REG-1-admitted entry; combined 20k-observer batch executes in one test dispatch with per-segment oracle parity; production registry/scheduler/cache/JIT dispatch remains deferred; ClauseThing untouched. Report: `docs/tests/phase_m_jit_exec1_cohort_execution_fixture_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-EXEC-0 ProductionCandidatePreview-gated execution fixture (Tier-2, landed)
 
 - **M-JIT-EXEC-0 (Tier-2, PASS):** Default-off test fixture executes REG-1-admitted exact GRAD-1-style path over 10k observers with CPU/GPU oracle parity; mag2/sqrt reject before execution; production registry/scheduler/cache/JIT dispatch remains deferred. Report: `docs/tests/phase_m_jit_exec0_production_candidate_fixture_test_results.md`.
