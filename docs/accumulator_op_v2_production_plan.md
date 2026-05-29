@@ -1944,6 +1944,31 @@ Defaults unchanged.
 
 **Test:** [`phase_m_first_slice_map_residency_test_results.md`](tests/phase_m_first_slice_map_residency_test_results.md) — PASS.
 
+### PR M-boundary-cadence-doctrine — Boundary Cadence Doctrine audit — **Done**
+
+**Status:** **Landed** — docs+test audit confirming Clausewitz-style daily resolution is expressible through existing boundary machinery.
+
+Phase M Boundary Cadence Doctrine audit landed.
+Clausewitz-style 1 tick/day resolution is represented by existing boundary cadence machinery: ticks_per_day, boundary_reached, day_index, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
+No new DailyResolutionBoundary runtime primitive was introduced.
+Day/calendar/month meaning remains host/spec/boundary-handler interpretation over day_index.
+Pause/speed remain host/UI orchestration concerns: the deterministic sim advances only when the host requests the next tick/day.
+Daily banking should use the discrete resource economy substrate, not the continuous Resource Flow substrate by default.
+The CPU boundary consumes resolved summaries/events/metadata at the boundary; it must not scan dense RegionCell grids by default, recompute gameplay state, or emit AI commitments via CPU planner logic.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+Queue-write child resource scale caveat addressed for first-slice by generic bulk fill.
+Parent scalar writes remain O(1).
+Multi-field, multi-map, atlas, perception, source identity, and broader production scaling remain separately gated.
+
+**Mechanisms confirmed:** `DispatchCoordinator` (`ticks_per_day`, `tick_in_day`, `boundary_reached`, `day_index`); `SimSession::run(max_days)` boundary loop; `BoundaryProtocol` + `can_skip_empty_boundary`; discrete `ResourceEconomySpec` / `CompiledResourceTransfer`; summary-tier readback at boundary.
+
+**Test:** [`phase_m_boundary_cadence_doctrine_audit.md`](tests/phase_m_boundary_cadence_doctrine_audit.md) — PASS.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
 **Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. The first-slice product scenario fixture (Option 3, single grid, no atlas) has landed; **the atlas packer is still not next**.
