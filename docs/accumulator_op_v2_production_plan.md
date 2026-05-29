@@ -2418,6 +2418,13 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   scenario is approved later, next handoff is **Phase M-4 — Algebraic Tile-Local Atlas Packer
   (Homogeneous Square Batches)** behind §11 gate + VRAM budget. No implementation in this pass.
   Report: `docs/tests/phase_m_m4a_atlas_readiness_gate_results.md`.
+- **M-6A Single-Grid Active Mask Readiness Gate — **Done (DEFER).** Tier-2 readiness pass:
+  generic GPU `active_mask` hook exists but `ActiveOnlyExperimentalNoHalo` is not
+  production-authorized per `invariants.md`; missing halo contract, CPU oracle, and GPU parity
+  for masked ping-pong/boundary/source-cap/gradient. No named product scenario today. If authorized
+  later, next handoff is **Phase M-6B — RegionField ActiveOnly Mask Admission** (halo-contract
+  required). No implementation in this pass.
+  Report: `docs/tests/phase_m_m6a_single_grid_active_mask_readiness_results.md`.
 
 **Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); `sqrt`
 magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.

@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-6A Single-Grid Active Mask Readiness Gate (Tier-2, DEFER)
+
+- **M-6A Single-Grid Active Mask Readiness Gate (Tier-2, DEFER):** evaluated generic GPU `active_mask` vs RegionField admission exposure; deferred — `ActiveOnlyExperimentalNoHalo` constitutionally blocked, missing halo contract + CPU/GPU parity, no named product scenario. Report: `docs/tests/phase_m_m6a_single_grid_active_mask_readiness_results.md`. Docs-only; no implementation.
+
 # 2026-05-29 — Phase M-4A Atlas Readiness Gate (Tier-2, DEFER)
 
 - **M-4A Atlas Readiness Gate (Tier-2, DEFER):** evaluated atlas/M-4A product need vs M-5-gradient substrate; no named multi-theater scenario; atlas batching remains deferred; future path is algebraic tile-local packer behind §11 gate. Report: `docs/tests/phase_m_m4a_atlas_readiness_gate_results.md`. Docs-only; no implementation.
