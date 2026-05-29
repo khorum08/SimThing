@@ -2121,22 +2121,42 @@ Defaults unchanged.
 
 **Test:** [`phase_m_product_fixture_chain_parking_test_results.md`](tests/phase_m_product_fixture_chain_parking_test_results.md) — PASS.
 
-### PR M-eml-gadget-library — EML Gadget Library — **Approved track (Opus 2026-05-29); NEXT — sequenced BEFORE Authoring Ergonomics R2**
+### PR M-eml-gadget-library — EML Gadget Library — **EML-GADGET-1 landed (2026-05-19); EML-GADGET-2 queued**
 
-**Status:** **Approved track, parked for implementation.** Design note:
+**Status:** **Phase M EML-GADGET-1 landed.** Tier-1 stateless EML gadgets now compile in `simthing-spec` to existing EvalEML node templates with mandatory CPU-oracle parity. Design note:
 [`workshop/eml_gadget_library_design_note.md`](workshop/eml_gadget_library_design_note.md).
 Designer-facing, RON-authored EML **gadgets** = named postfix node-template macros over the existing
 `EvalEML` opcode set (NOT new WGSL kernels), composed into the GPU-resident `EvalEML` path. Lives in
 `simthing-spec` (authoring/compiler); `simthing-gpu` stays generic; `simthing-sim` stays map-free.
 
-**Sequencing (binding):** This track lands **before Phase M Resource Economy Authoring Ergonomics
-R2.** R2's designer-facing authoring must be able to expose and leverage the gadget library, so the
-library must exist first.
+Phase M EML-GADGET-1 landed.
+It adds the Tier-1 stateless EML gadget library in simthing-spec: FieldSampler, WeightedAccumulator, and algebraic SoftStep as RON-authored node-template macros over existing EvalEML opcodes.
+Each Tier-1 gadget has CPU-oracle parity tests.
+SoftStep uses the ExactDeterministic algebraic form, not exp/logistic.
+No new EML opcode was added.
+No WGSL or GPU kernel was added.
+No runtime economy behavior changed.
+No production economy→mapping bridge was introduced.
+No generic boundary-output packet was introduced.
+No DailyResolutionBoundary primitive was introduced.
+No day/calendar/pause semantics were added to simthing-sim.
+No Resource Flow default changed.
+No CPU-side economy executor, urgency computation, or AI planner was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+Chained multi-gadget order-band execution is deferred; V1 supports inline flatten and/or compile-plan preview only.
+
+**Test:** [`tests/phase_m_eml_gadget_tier1_test_results.md`](tests/phase_m_eml_gadget_tier1_test_results.md) — PASS.
+
+**Sequencing (binding):** EML-GADGET-1 landed **before Phase M Resource Economy Authoring Ergonomics
+R2.** R2's designer-facing authoring must be able to expose and leverage the gadget library.
 
 **PR ladder:**
 
-- **EML-GADGET-1 — Tier-1 stateless gadgets (Composer/Codex).** Gadget descriptor + registry + RON
-  authoring + flatten/chain compiler + `FieldSampler`, `WeightedAccumulator`, `SoftStep` (bit-exact
+- **EML-GADGET-1 — Tier-1 stateless gadgets — DONE.** Gadget descriptor + registry + RON
+  authoring + flatten compiler + `FieldSampler`, `WeightedAccumulator`, `SoftStep` (bit-exact
   algebraic sigmoid). **Mandatory CPU-oracle parity per gadget.** `simthing-spec` only; no GPU/WGSL
   change; default-off; `ExactDeterministic`.
 - **EML-GADGET-2 — Tier-2 temporal-memory slice (Composer).** Generic snapshot/accumulate-band

@@ -14,6 +14,7 @@
 pub mod capability;
 pub mod context;
 pub mod effect;
+pub mod eml_gadget;
 pub mod event;
 pub mod first_slice_scenario_admission;
 pub mod overlay;
@@ -65,5 +66,11 @@ pub use resource_flow_admission::{
     compile_resource_flow_admission, CompiledArenaAdmission, CompiledCouplingAdmission,
     CompiledCouplingDelay, CompiledResourceFlowAdmission, ResourceFlowDiagnostic,
     ResourceFlowExpansionReport,
+};
+pub use eml_gadget::{
+    compile_eml_gadget_stack, eval_eml_postfix, oracle_field_sampler, oracle_soft_step,
+    oracle_weighted_accumulator, reject_unknown_gadget_kind, CompiledEmlGadget,
+    CompiledEmlGadgetStack, DEFERRED_GADGET_KINDS, EmlGadgetCompileOptions, EmlGadgetDiagnostic,
+    EmlGadgetKind, EmlGadgetPreviewReport, EmlGadgetRegistry,
 };
 pub use trigger::compile_trigger;

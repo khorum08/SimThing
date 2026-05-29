@@ -60,12 +60,15 @@ pub use boundary::{
     ScriptedEventDiagnosticKind,
 };
 pub use compile::{
-    compile_first_slice_scenario_preview, compile_game_mode_resource_economy_authoring_preview,
-    CompiledFirstSliceScenarioPreview,
+    compile_eml_gadget_stack, compile_first_slice_scenario_preview,
+    compile_game_mode_resource_economy_authoring_preview, CompiledFirstSliceScenarioPreview,
     admit_region_field_formula_class, compile_effect, compile_event, compile_overlay,
     compile_property, compile_region_field_preview, compile_region_field_stencil_config,
     compile_resource_economy, compile_resource_economy_authoring_preview,
-    compile_resource_flow_admission, compile_trigger,
+    compile_resource_flow_admission, compile_trigger, eval_eml_postfix, oracle_field_sampler,
+    oracle_soft_step, oracle_weighted_accumulator, reject_unknown_gadget_kind, CompiledEmlGadget,
+    CompiledEmlGadgetStack, DEFERRED_GADGET_KINDS, EmlGadgetCompileOptions, EmlGadgetDiagnostic,
+    EmlGadgetKind, EmlGadgetPreviewReport, EmlGadgetRegistry,
     estimate_region_field_budget, region_field_isolation_multiplier, CapabilityTreeBuildOutput,
     CapabilityTreeBuilder, CompileContext, CompiledArenaAdmission, CompiledCouplingAdmission,
     CompiledCouplingDelay, CompiledEmissionFormula, CompiledEmitOnThreshold, CompiledFieldCadence,
@@ -93,8 +96,8 @@ pub use preview::{
     CapabilityPreviewOverlayBreakdown, CapabilityPreviewReport,
 };
 pub use ron::{
-    deserialize_capability_tree_ron, deserialize_first_slice_scenario_ron,
-    deserialize_game_mode_ron, deserialize_region_field_ron,
+    deserialize_capability_tree_ron, deserialize_eml_gadget_stack_ron,
+    deserialize_first_slice_scenario_ron, deserialize_game_mode_ron, deserialize_region_field_ron,
 };
 pub use runtime::{
     CapabilityCategoryDefinition, CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
@@ -134,6 +137,7 @@ pub use spec::resource_flow::{
 pub use spec::script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };
+pub use spec::eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 pub use spec::trigger::{TriggerDirection, TriggerSpec};
 pub use validate::validate_capability_tree;
 pub use version::SpecVersion;
