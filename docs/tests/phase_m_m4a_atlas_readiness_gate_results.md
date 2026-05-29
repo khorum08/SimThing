@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `9bbcb39612be803b8af04af2ee7a9f26ff203060`  
-**Final commit SHA:** `753fbc8`  
+**Final commit SHA:** `b368071`  
 **Lane classification:** Tier-2 readiness gate (V7.7 §5)  
 **Decision:** **DEFER M-4A**  
 **Verdict:** **PASS — readiness gate completed; M-4A remains deferred**
