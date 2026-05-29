@@ -47,7 +47,7 @@ No new ConsumeMode was added.
 No WGSL or GPU kernel was added.
 No runtime gadget execution was introduced.
 No temporal gadget implementation landed.
-EML-GADGET-2A snapshot/copy fixture proof + R1 sequence hygiene landed. 2B VelocityMonitor + Decay/EMA landed. 2C BoundedFeedback (strict clamp-bounded) landed. Hysteresis remains conditional/deferred. Acceleration and dense per-cell temporal memory remain deferred. No runtime gadget execution or chained scheduling. No new opcode/WGSL. No simthing-sim semantics. No production economy→mapping bridge or default mapping wiring. No atlas/M-4A.
+EML-GADGET-2A snapshot/copy fixture proof + R1 sequence hygiene landed. 2B VelocityMonitor + Decay/EMA landed. 2C BoundedFeedback landed. 2D Hysteresis landed with 2D R1 exact CMP/SELECT compiler parity. 2E explicit velocity-column Acceleration landed in simthing-spec authoring/admission/compiler/oracle only. Dense per-cell temporal memory remains deferred. No runtime gadget execution or chained scheduling. No new opcode/WGSL/GPU kernel. No simthing-sim semantics. No production economy→mapping bridge or default mapping wiring. No atlas/M-4A.
 No hidden previous-value read was introduced.
 Temporal memory remains explicit-column state.
 Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
@@ -64,7 +64,7 @@ No new ConsumeMode was added.
 No WGSL or GPU kernel was added.
 No runtime gadget execution was introduced.
 No temporal gadget implementation landed.
-EML-GADGET-2A snapshot/copy fixture proof + R1 sequence hygiene landed. 2B VelocityMonitor + Decay/EMA landed. 2C BoundedFeedback (strict clamp-bounded) landed. Hysteresis remains conditional/deferred. Acceleration and dense per-cell temporal memory remain deferred. No runtime gadget execution or chained scheduling. No new opcode/WGSL. No simthing-sim semantics. No production economy→mapping bridge or default mapping wiring. No atlas/M-4A.
+EML-GADGET-2A snapshot/copy fixture proof + R1 sequence hygiene landed. 2B VelocityMonitor + Decay/EMA landed. 2C BoundedFeedback landed. 2D Hysteresis landed with 2D R1 exact CMP/SELECT compiler parity. 2E explicit velocity-column Acceleration landed in simthing-spec authoring/admission/compiler/oracle only. Dense per-cell temporal memory remains deferred. No runtime gadget execution or chained scheduling. No new opcode/WGSL/GPU kernel. No simthing-sim semantics. No production economy→mapping bridge or default mapping wiring. No atlas/M-4A.
 No hidden previous-value read was introduced.
 Temporal memory remains explicit-column state.
 Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
@@ -74,7 +74,7 @@ No default SimSession mapping wiring was introduced.
 No atlas batching landed.
 Defaults unchanged.
 
-**Consolidated parking packet:** `docs/reviews/phase_m_eml_gadget_2abc_temporal_substrate_parking_packet.md` now consolidates the full 2A snapshot/copy + R1 hygiene + 2B VelocityMonitor/Decay/EMA + 2C BoundedFeedback evidence for Opus/product review (review/parking only; binding posture: no Hysteresis/Acceleration/runtime execution/chained scheduling/atlas/economy bridge in this pass).
+**Consolidated EML-GADGET review state:** [`docs/reviews/phase_m_eml_gadget_2abc_temporal_substrate_parking_packet.md`](reviews/phase_m_eml_gadget_2abc_temporal_substrate_parking_packet.md) consolidates 2A/R1/2B/2C; 2D Hysteresis + 2D R1 exact CMP/SELECT compiler parity has since landed separately. Acceptance of these artifacts still does not authorize runtime gadget execution, chained scheduling, dense per-cell temporal memory, atlas/M-4A, or any production economy→mapping bridge. (Position-history acceleration remains a separate design gate.)
 
 ## Phase A — ADR, invariants, and skeleton (no GPU changes)
 
@@ -2096,7 +2096,9 @@ Re-verified on GPU: boundary cadence 7/7, daily economy 7/7, admission 11/11. Do
 ### PR M-resource-economy-authoring-ergonomics-v1 — Authoring preview + diagnostics — **Done**
 
 **Status:** **Done (PASS)** — Phase M Resource Economy Authoring Ergonomics V1 landed.
-**EML-GADGET-2D Hysteresis + 2D R1 landed (conditional explicit-column Tier-2 in simthing-spec only)** — finite on/off threshold admission (on > off for high-activates), stateful CPU oracle, and **exact CMP/SELECT compiler parity** over existing EvalEML primitives (2D R1 truth correction; initial 2D stub superseded). Spec/admission/compiler/oracle only. No runtime gadget execution, no chained scheduling, no WGSL/GPU/simthing-sim changes, no economy→mapping bridge. Acceleration and dense per-cell remain deferred. Test: [`tests/phase_m_eml_gadget_2d_hysteresis_r1_test_results.md`](tests/phase_m_eml_gadget_2d_hysteresis_r1_test_results.md).
+**EML-GADGET-2D Hysteresis + 2D R1 landed (conditional explicit-column Tier-2 in simthing-spec only)** — finite on/off threshold admission (on > off for high-activates), stateful CPU oracle, and **exact CMP/SELECT compiler parity** over existing EvalEML primitives (2D R1 truth correction; initial 2D stub superseded). Spec/admission/compiler/oracle only. No runtime gadget execution, no chained scheduling, no WGSL/GPU/simthing-sim changes, no economy→mapping bridge. Test: [`tests/phase_m_eml_gadget_2d_hysteresis_r1_test_results.md`](tests/phase_m_eml_gadget_2d_hysteresis_r1_test_results.md).
+
+**EML-GADGET-2E Acceleration landed (explicit velocity-column Tier-2 in simthing-spec only)** — `(current_velocity_col - previous_velocity_col) [/ dt]` over existing EvalEML SUB/DIV arithmetic only; no position-history acceleration, no previous_previous_col inference, no dense per-cell temporal memory. Spec/admission/compiler/oracle only. Test: [`tests/phase_m_eml_gadget_2e_acceleration_test_results.md`](tests/phase_m_eml_gadget_2e_acceleration_test_results.md).
 It adds authoring preview/diagnostics for discrete `ResourceEconomySpec` fixtures so designers can inspect transfers, recipes, order bands, bindings, Resource Flow posture, and simple static net effects before runtime.
 **R2 (narrow ergonomics, spec/admission/preview only):** Added `schedule_lines` helper to `ResourceEconomyPreviewReport` — compact designer-readable one-liners exposing the intended transfer/recipe/threshold schedule directly from the admitted authoring data. Pure preview; no runtime, no mapping coupling, no GPU changes.
 No runtime economy behavior changed.
@@ -2241,7 +2243,7 @@ R2.** R2's designer-facing authoring must be able to expose and leverage the gad
   authoring + flatten compiler + `FieldSampler`, `WeightedAccumulator`, `SoftStep` (bit-exact
   algebraic sigmoid). **Mandatory CPU-oracle parity per gadget.** `simthing-spec` only; no GPU/WGSL
   change; default-off; `ExactDeterministic`.
-- **EML-GADGET-2 — Tier-2 temporal-memory slice (Composer).** **Design review landed** — [`reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md`](reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md). Generic snapshot/accumulate-band primitive + temporal columns (`SlotRange`/Layer-3 scoped, not dense per-cell); `VelocityMonitor`, `Decay`/EMA, `BoundedFeedback`, conditional `Hysteresis`; **Acceleration deferred**; **bounded-feedback admission guardrail** (self-referential accumulator must declare decay<1 and/or clamp or admission rejects it). Implementation unauthorized until Opus/product accepts design + separate 2A–2D handoff.
+- **EML-GADGET-2 — Tier-2 temporal-memory slice (Composer).** **Landed through 2E** — 2A snapshot/copy, 2B VelocityMonitor + Decay/EMA, 2C BoundedFeedback, 2D Hysteresis (+ 2D R1 CMP/SELECT parity), **2E explicit velocity-column Acceleration**. Dense per-cell temporal memory and position-history acceleration remain separately gated. **Bounded-feedback admission guardrail** binding. Spec/admission/compiler/oracle only — no runtime gadget execution or chained scheduling.
 
 Phase M EML-GADGET-2 temporal-memory design review packet landed.
 It reviews Tier-2 temporal gadget candidates — VelocityMonitor, Decay/EMA, Acceleration, Hysteresis, and BoundedFeedback — without implementing them.

@@ -46,10 +46,9 @@ fn tier2_registry_contains_velocity_decay_ema() {
     assert!(EmlGadgetKind::parse("Decay").is_some());
     assert!(EmlGadgetKind::parse("Ema").is_some());
 
-    // Hysteresis landed in 2D. Only Acceleration remains deferred.
-    assert!(!DEFERRED_GADGET_KINDS.contains(&"BoundedFeedback"));
-    assert!(!DEFERRED_GADGET_KINDS.contains(&"Hysteresis"));
-    assert!(DEFERRED_GADGET_KINDS.contains(&"Acceleration"));
+    // Tier-2 explicit velocity-column gadgets landed through 2E; no deferred kind strings remain.
+    assert!(DEFERRED_GADGET_KINDS.is_empty());
+    assert!(!DEFERRED_GADGET_KINDS.contains(&"Acceleration"));
 
     // 2B kinds are ExactDeterministic and require temporal memory
     for name in ["VelocityMonitor", "Decay", "Ema"] {

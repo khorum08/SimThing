@@ -1,3 +1,9 @@
+# 2026-05-29 — Phase M EML-GADGET-2E Acceleration (explicit velocity-column)
+
+- **2E landed:** Acceleration as `(current_velocity_col - previous_velocity_col) [/ dt]` in `simthing-spec` only; 11/11 tests; no position-history, no previous_previous_col, no dense per-cell memory.
+- Preflight: production plan Hysteresis/2abc parking status synced.
+- Report: [`tests/phase_m_eml_gadget_2e_acceleration_test_results.md`](tests/phase_m_eml_gadget_2e_acceleration_test_results.md).
+
 # 2026-05-29 — Phase M EML-GADGET-2D R1 (Hysteresis exact CMP/SELECT compiler parity)
 
 - **2D R1 landed:** Hysteresis compiler emission matches CPU oracle via existing `CMP_GE`/`CMP_LE`/`CMP_EQ` + `SELECT` opcodes; 16/16 hysteresis tests; stateful compiled-node parity.

@@ -1,6 +1,9 @@
 # EML Gadget Library — Design Note (Phase M)
 
-**Status:** **EML-GADGET-1 ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)** — Tier-1 stateless gadgets (`FieldSampler`, `WeightedAccumulator`, algebraic `SoftStep`) compile in `simthing-spec` with mandatory CPU-oracle parity; R1 composition + R2 node-cap hygiene accepted. Acceptance memo: [`../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md). **EML-GADGET-2** temporal-memory **design ACCEPTED as a gate** (Opus/product 2026-05-29, PASS WITH CONDITIONS) — [`../reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md). **Ladder landed through 2D R1:** 2A snapshot/copy, 2B VelocityMonitor + Decay/EMA, 2C BoundedFeedback, 2D Hysteresis with **2D R1 exact CMP/SELECT compiler parity**. `Acceleration` + dense per-cell deferred. Report: [`../tests/phase_m_eml_gadget_2d_hysteresis_r1_test_results.md`](../tests/phase_m_eml_gadget_2d_hysteresis_r1_test_results.md).
+**Status:** **EML-GADGET-1 ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)** — Tier-1 stateless gadgets (`FieldSampler`, `WeightedAccumulator`, algebraic `SoftStep`) compile in `simthing-spec` with mandatory CPU-oracle parity; R1 composition + R2 node-cap hygiene accepted. Acceptance memo: [`../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md). **EML-GADGET-2** temporal-memory **design ACCEPTED as a gate** (Opus/product 2026-05-29, PASS WITH CONDITIONS) — [`../reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md). **Ladder landed through 2E:** 2A snapshot/copy, 2B VelocityMonitor + Decay/EMA, 2C BoundedFeedback, 2D Hysteresis (+ 2D R1 CMP/SELECT parity), **2E explicit velocity-column Acceleration**. Position-history acceleration + dense per-cell deferred. Report: [`../tests/phase_m_eml_gadget_2e_acceleration_test_results.md`](../tests/phase_m_eml_gadget_2e_acceleration_test_results.md).
+
+**Phase M EML-GADGET-2E Acceleration landed.**
+Explicit velocity-column Acceleration `(current_velocity_col - previous_velocity_col) [/ dt]` in simthing-spec authoring/admission/compiler/oracle only. No position-history acceleration, no previous_previous_col inference, no dense per-cell temporal memory, no runtime gadget execution, no chained scheduling, no new opcode/WGSL/GPU kernel, no simthing-sim semantics, no production economy→mapping bridge.
 
 **Phase M EML-GADGET-2D R1 landed.**
 Hysteresis compiler emission now matches the CPU oracle using existing EvalEML CMP_GE/CMP_LE/CMP_EQ + SELECT primitives with stateful compiled-node parity tests.
@@ -32,7 +35,7 @@ Decay/EMA require 0 <= decay < 1 by default and compile to existing arithmetic n
 
 **EML-GADGET-2C BoundedFeedback landed (strict clamp-bounded admission).** BoundedFeedback is the sanctioned bounded recurrent accumulator form: `clamp(previous * decay + input * gain, min, max)`. It requires explicit finite clamp bounds (min < max) and rejects unbounded recurrence at admission.
 
-Hysteresis + 2D R1 exact CMP/SELECT compiler parity landed. Acceleration and dense per-cell temporal memory remain deferred. Runtime gadget-stack execution and true chained OrderBand runtime scheduling remain unauthorized.
+Hysteresis + 2D R1 exact CMP/SELECT compiler parity landed. 2E explicit velocity-column Acceleration landed. Position-history acceleration and dense per-cell temporal memory remain separately gated. Runtime gadget-stack execution and true chained OrderBand runtime scheduling remain unauthorized.
 
 No new EML opcode was added.
 No new ConsumeMode was added.
@@ -66,7 +69,7 @@ Decay/EMA require 0 <= decay < 1 by default and compile to existing arithmetic n
 
 **EML-GADGET-2C BoundedFeedback landed (strict clamp-bounded admission).** BoundedFeedback is the sanctioned bounded recurrent accumulator form: `clamp(previous * decay + input * gain, min, max)`. It requires explicit finite clamp bounds (min < max) and rejects unbounded recurrence at admission.
 
-Hysteresis + 2D R1 exact CMP/SELECT compiler parity landed. Acceleration and dense per-cell temporal memory remain deferred. Runtime gadget-stack execution and true chained OrderBand runtime scheduling remain unauthorized.
+Hysteresis + 2D R1 exact CMP/SELECT compiler parity landed. 2E explicit velocity-column Acceleration landed. Position-history acceleration and dense per-cell temporal memory remain separately gated. Runtime gadget-stack execution and true chained OrderBand runtime scheduling remain unauthorized.
 
 No new EML opcode was added.
 No new ConsumeMode was added.
