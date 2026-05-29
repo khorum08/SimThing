@@ -53,6 +53,11 @@ fn surplus_fixture_authoring_preview() {
 
     assert_eq!(treasury_static_net(&preview), Some(7.0));
     assert!(report.warnings.is_empty());
+
+    // R2 ergonomics: schedule_lines helper exposes intended transfers clearly for designers
+    assert!(report.schedule_lines.iter().any(|s| s.contains("bank_daily_income")));
+    assert!(report.schedule_lines.iter().any(|s| s.contains("daily_upkeep")));
+    assert!(!report.schedule_lines.is_empty());
 }
 
 #[test]
@@ -79,6 +84,10 @@ fn deficit_fixture_authoring_preview() {
 
     assert_eq!(treasury_static_net(&preview), Some(-6.0));
     assert!(report.warnings.is_empty());
+
+    // R2 ergonomics coverage
+    assert!(report.schedule_lines.iter().any(|s| s.contains("low_storage_event")));
+    assert!(!report.schedule_lines.is_empty());
 }
 
 #[test]

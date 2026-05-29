@@ -37,6 +37,10 @@ pub struct ResourceEconomyPreviewReport {
     pub warnings: Vec<ResourceEconomyDiagnostic>,
     pub resource_flow_enabled: bool,
     pub simple_static_nets: Vec<StaticPropertyNetPreview>,
+    /// Designer-facing one-line schedule descriptions for every authored transfer,
+    /// recipe, and threshold emission. Pure preview ergonomics helper (R2);
+    /// derived only from admitted authoring data. No runtime semantics.
+    pub schedule_lines: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -206,6 +210,29 @@ fn build_preview_report(
 
     let simple_static_nets = compute_simple_static_nets(&transfers);
 
+    let mut schedule_lines: Vec<String> = Vec::new();
+    for t in &transfers {
+        let role_str = role_label(&t.target_role);
+        schedule_lines.push(format!(
+            "{}: {:+.1} {}/{} @ order_band {} (transfer)",
+            t.id, t.amount, t.target.namespace, role_str, t.order_band
+        ));
+    }
+    for r in &recipes {
+        let role_str = role_label(&r.target_role);
+        schedule_lines.push(format!(
+            "{}: recipe -> {}/{} ({} inputs, throttle_hint={})",
+            r.id, r.target.namespace, role_str, r.input_count, r.throttle_hint_max_per_tick
+        ));
+    }
+    for e in &threshold_emits {
+        let role_str = role_label(&e.source_role);
+        schedule_lines.push(format!(
+            "{}: threshold {:.1} -> event_kind {} (source {}/{})",
+            e.id, e.threshold, e.event_kind, e.source.namespace, role_str
+        ));
+    }
+
     ResourceEconomyPreviewReport {
         opt_in_mode: spec.opt_in_mode,
         transfer_count: compiled.transfers.len(),
@@ -220,6 +247,7 @@ fn build_preview_report(
         warnings: compiled.report.diagnostics.clone(),
         resource_flow_enabled,
         simple_static_nets,
+        schedule_lines,
     }
 }
 

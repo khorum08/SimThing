@@ -2097,6 +2097,7 @@ Re-verified on GPU: boundary cadence 7/7, daily economy 7/7, admission 11/11. Do
 
 **Status:** **Done (PASS)** — Phase M Resource Economy Authoring Ergonomics V1 landed.
 It adds authoring preview/diagnostics for discrete `ResourceEconomySpec` fixtures so designers can inspect transfers, recipes, order bands, bindings, Resource Flow posture, and simple static net effects before runtime.
+**R2 (narrow ergonomics, spec/admission/preview only):** Added `schedule_lines` helper to `ResourceEconomyPreviewReport` — compact designer-readable one-liners exposing the intended transfer/recipe/threshold schedule directly from the admitted authoring data. Pure preview; no runtime, no mapping coupling, no GPU changes.
 No runtime economy behavior changed.
 No `DailyResolutionBoundary` primitive was introduced.
 No day/calendar/pause semantics were added to `simthing-sim`.
