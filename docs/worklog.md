@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-GRAD-0 GPU-resident batched spatial field observer (Tier-2, test-only landed)
+
+- **M-JIT-GRAD-0 (Tier-2, PASS, test-only):** semantic-free observer WGSL prototype; 10,000 observers in one dispatch; central-difference `dx`/`dy`, descent, `mag2` (no `sqrt`); CPU/GPU oracle parity on small grid + sampled batch; no production observer scheduling/caching/wiring. Report: `docs/tests/phase_m_jit_grad0_spatial_observer_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-SQRT-0 R1 magnitude oracle-order correction (Tier-2, test-only remedial)
 
 - **M-JIT-SQRT-0 R1 (Tier-2, PASS, remedial):** vector magnitude CPU oracle aligned to generated WGSL shader-text order (`(x*x)+(y*y)` then `sqrt`) as primary; FMA/`mul_add` recorded diagnostic-only; overall `ApproximateJitOnly` preserved (direct scalar max ULP=1); no production opcode/admission/wiring changes. Report: `docs/tests/phase_m_jit_sqrt_candidate_battery_r1_test_results.md`.
