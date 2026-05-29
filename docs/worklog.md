@@ -6,7 +6,20 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-# 2026-05-19 — Phase M Boundary Cadence Doctrine audit
+# 2026-05-29 — Phase M Daily Economy Fixture V1
+
+- Phase M Daily Economy Fixture V1 landed.
+- It proves Clausewitz-style daily banking using existing boundary cadence and discrete resource economy authoring: ticks_per_day=1, boundary_reached/day_index, ResourceEconomySpec production, discrete transfers into storage, upkeep transfers out, and threshold/event checks over resolved storage.
+- No DailyResolutionBoundary runtime primitive was introduced.
+- No Day/Calendar/Pause semantic was added to simthing-sim.
+- Daily meaning remains host/spec interpretation over day_index.
+- The CPU boundary consumes resolved storage/events/metadata; it does not recompute economy state or emit planner decisions.
+- Resource Flow E-11 remains continuous/high-frequency oriented and default-off, not the daily banking substrate.
+- No default SimSession mapping wiring was introduced. No atlas batching landed. No semantic WGSL landed. simthing-sim remains map-free. Defaults unchanged.
+- Fixture uses TransferOnly discrete recipe + bank/upkeep transfers; C-8d emission (EmitEvent) is not used for hard-currency banking.
+- Test report: [`tests/phase_m_daily_economy_fixture_test_results.md`](tests/phase_m_daily_economy_fixture_test_results.md).
+
+# 2026-05-29 — Phase M Boundary Cadence Doctrine audit
 
 - Phase M Boundary Cadence Doctrine audit landed.
 - Clausewitz-style 1 tick/day resolution is represented by existing boundary cadence machinery: `ticks_per_day`, `boundary_reached`, `day_index`, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
