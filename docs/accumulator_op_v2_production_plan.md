@@ -2431,6 +2431,12 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   handoff: **Phase M-5E-gradient — Scarcity/Opportunity Composite Product Fixture** (Tier-1;
   no new WGSL/substrate). M-4A, M-6A, source-mask remain deferred.
   Report: `docs/tests/phase_m_product_scenario_selection_gate_results.md`.
+- **M-5E-gradient — Scarcity/Opportunity Composite Product Fixture — **Done (PASS).** Tier-1
+  full-grid fixture: scarcity scalar + price/labor/logistics Gradient X/Y → SlotRange Sum →
+  4× EMA + WeightedAccumulator composite; grouped strict-sink admission via
+  `compile_region_field_frame_preview`; integrated CPU-oracle + monotonic scarcity test; optional
+  GPU parity. No new substrate/runtime wiring.
+  Report: `docs/tests/phase_m_m5e_gradient_scarcity_opportunity_test_results.md`.
 
 **Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); `sqrt`
 magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.

@@ -1,0 +1,43 @@
+(
+    gadgets: [
+        (
+            kind: "Ema",
+            id: "ema_scarcity_unmet_demand",
+            input_col: 3,
+            previous_col: 13,
+            output_col: 13,
+            decay: 0.85,
+        ),
+        (
+            kind: "Ema",
+            id: "ema_price_differential_x",
+            input_col: 4,
+            previous_col: 14,
+            output_col: 14,
+            decay: 0.9,
+        ),
+        (
+            kind: "Ema",
+            id: "ema_labor_opportunity_y",
+            input_col: 5,
+            previous_col: 15,
+            output_col: 15,
+            decay: 0.9,
+        ),
+        (
+            kind: "Ema",
+            id: "ema_supply_reach_logistics_x",
+            input_col: 6,
+            previous_col: 16,
+            output_col: 16,
+            decay: 0.88,
+        ),
+        (
+            kind: "WeightedAccumulator",
+            id: "scarcity_opportunity_logistics_pressure",
+            input_cols: [13, 14, 15, 16],
+            weight_cols: [20, 21, 22, 23],
+            output_col: 17,
+        ),
+    ],
+)

@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-5E-gradient scarcity/opportunity/logistics composite product fixture
+
+- **M-5E-gradient landed (Tier-1):** full-grid scarcity/opportunity/logistics composite RON fixture + integrated CPU-oracle test over M-5A/B/C/D substrate; 4-field frame with grouped strict-sink admission; no new WGSL/runtime wiring. Report: `docs/tests/phase_m_m5e_gradient_scarcity_opportunity_test_results.md`.
+
 # 2026-05-29 — Phase M Product Scenario Selection Gate (Tier-2, SELECT → M-5E)
 
 - **Product Scenario Selection Gate (Tier-2, SELECT → M-5E):** no named scenario for atlas/active-mask/source-mask; selected Candidate D — full-grid scarcity/opportunity/logistics composite on landed M-5 substrate. Next: M-5E-gradient fixture (Tier-1). Report: `docs/tests/phase_m_product_scenario_selection_gate_results.md`. Docs-only; no implementation.
