@@ -74,7 +74,7 @@ No default SimSession mapping wiring was introduced.
 No atlas batching landed.
 Defaults unchanged.
 
-**Consolidated EML-GADGET review state:** [`docs/reviews/phase_m_eml_gadget_2abc_temporal_substrate_parking_packet.md`](reviews/phase_m_eml_gadget_2abc_temporal_substrate_parking_packet.md) consolidates 2A/R1/2B/2C; 2D Hysteresis + 2D R1 exact CMP/SELECT compiler parity has since landed separately. Acceptance of these artifacts still does not authorize runtime gadget execution, chained scheduling, dense per-cell temporal memory, atlas/M-4A, or any production economy→mapping bridge. (Position-history acceleration remains a separate design gate.)
+**Consolidated EML-GADGET review state:** 2D Hysteresis + 2D R1 exact CMP/SELECT compiler parity and 2E explicit velocity-column Acceleration are consolidated in [`docs/reviews/phase_m_eml_gadget_2de_temporal_derivative_parking_packet.md`](reviews/phase_m_eml_gadget_2de_temporal_derivative_parking_packet.md). [`docs/reviews/phase_m_eml_gadget_2abc_temporal_substrate_parking_packet.md`](reviews/phase_m_eml_gadget_2abc_temporal_substrate_parking_packet.md) consolidates 2A/R1/2B/2C. Runtime gadget execution, chained scheduling, dense per-cell temporal memory, position-history acceleration, atlas/M-4A, and production economy→mapping bridge remain separately gated.
 
 ## Phase A — ADR, invariants, and skeleton (no GPU changes)
 
