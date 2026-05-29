@@ -1,6 +1,25 @@
 # EML Gadget Library — Design Note (Phase M)
 
-**Status:** **EML-GADGET-1 ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)** — Tier-1 stateless gadgets (`FieldSampler`, `WeightedAccumulator`, algebraic `SoftStep`) compile in `simthing-spec` with mandatory CPU-oracle parity; R1 composition + R2 node-cap hygiene accepted. Acceptance memo: [`../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md). **EML-GADGET-2** temporal-memory **design ACCEPTED as a gate** (Opus/product 2026-05-29, PASS WITH CONDITIONS) — [`../reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md). Explicit-column temporal memory, Layer-3 default, authored snapshot/copy bands (`Identity`+`ResetTarget` — existing substrate; no new opcode), bounded-feedback admission contract. **Approved ladder:** 2A (snapshot/copy fixture proof) → 2B (`VelocityMonitor` + `Decay`/`EMA`) → 2C (`BoundedFeedback`, strict admission) → 2D (`Hysteresis`, conditional); `Acceleration` + dense per-cell deferred. **Implementation still unauthorized until the separate 2A handoff lands.** *(Note: the #262 parking packet was reverted off master; the acceptance memos are the authoritative artifacts.)*
+**Status:** **EML-GADGET-1 ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)** — Tier-1 stateless gadgets (`FieldSampler`, `WeightedAccumulator`, algebraic `SoftStep`) compile in `simthing-spec` with mandatory CPU-oracle parity; R1 composition + R2 node-cap hygiene accepted. Acceptance memo: [`../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md). **EML-GADGET-2** temporal-memory **design ACCEPTED as a gate** (Opus/product 2026-05-29, PASS WITH CONDITIONS) — [`../reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md). Explicit-column temporal memory, Layer-3 default, authored snapshot/copy bands (`Identity`+`ResetTarget` — existing substrate; no new opcode), bounded-feedback admission contract. **Approved ladder:** 2A (snapshot/copy fixture proof) → 2B (`VelocityMonitor` + `Decay`/`EMA`) → 2C (`BoundedFeedback`, strict admission) → 2D (`Hysteresis`, conditional); `Acceleration` + dense per-cell deferred. **EML-GADGET-2A landed (2026-05-29, PASS).**
+
+**Phase M EML-GADGET-2A snapshot/copy fixture proof landed.**
+It proves that temporal snapshot/copy bands can be authored using existing substrate primitives: Identity combine + ResetTarget at an earlier OrderBand, copying current_col into previous_col before the update band.
+No new EML opcode was added.
+No new ConsumeMode was added.
+No WGSL or GPU kernel was added.
+No runtime gadget execution was introduced.
+No temporal gadget implementation landed.
+VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
+No hidden previous-value read was introduced.
+Temporal memory remains explicit-column state.
+Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
+No simthing-sim Gadget/Personality/Memory semantics were added.
+No production economy→mapping bridge was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+Defaults unchanged.
+
+*(Note: the #262 parking packet was reverted off master; the acceptance memos are the authoritative artifacts.)*
 **Sequencing:** Lands **before Phase M Resource Economy Authoring Ergonomics R2** — R2's
 designer-facing authoring must be able to expose and leverage the gadget library, so the library
 must exist first.

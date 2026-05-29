@@ -21,7 +21,24 @@ Active read order:
 7. Cited `docs/tests/` evidence before changing any classification
 8. [`../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`](../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md) (boundary resolution + example economy — **accepted; binding guardrails in invariants**)
 9. [`../reviews/phase_m_product_fixture_chain_acceptance_opus_review.md`](../reviews/phase_m_product_fixture_chain_acceptance_opus_review.md) (product-fixture chain — **ACCEPTED**; packet: [`phase_m_product_fixture_chain_review_packet.md`](../reviews/phase_m_product_fixture_chain_review_packet.md))
-10. [`eml_gadget_library_design_note.md`](eml_gadget_library_design_note.md) (EML Gadget Library — **EML-GADGET-1 ACCEPTED** [`../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md); **EML-GADGET-2 design ACCEPTED as a gate** [`../reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md); next impl = EML-GADGET-2A snapshot/copy proof)
+10. [`eml_gadget_library_design_note.md`](eml_gadget_library_design_note.md) (EML Gadget Library — **EML-GADGET-1 ACCEPTED** [`../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md); **EML-GADGET-2 design ACCEPTED as a gate** [`../reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md); **EML-GADGET-2A landed (PASS 2026-05-29)** — snapshot/copy fixture proof; see [`../tests/phase_m_eml_gadget_2a_snapshot_copy_test_results.md`](../tests/phase_m_eml_gadget_2a_snapshot_copy_test_results.md))
+
+**Phase M EML-GADGET-2A snapshot/copy fixture proof landed.**
+It proves that temporal snapshot/copy bands can be authored using existing substrate primitives: Identity combine + ResetTarget at an earlier OrderBand, copying current_col into previous_col before the update band.
+No new EML opcode was added.
+No new ConsumeMode was added.
+No WGSL or GPU kernel was added.
+No runtime gadget execution was introduced.
+No temporal gadget implementation landed.
+VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
+No hidden previous-value read was introduced.
+Temporal memory remains explicit-column state.
+Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
+No simthing-sim Gadget/Personality/Memory semantics were added.
+No production economy→mapping bridge was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+Defaults unchanged.
 
 ## Phase M boundary-resolution (tick / boundary / day) + example economy (ACCEPTED — Opus/product 2026-05-29, PASS WITH CONDITIONS)
 

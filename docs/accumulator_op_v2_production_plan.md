@@ -40,6 +40,23 @@ PRs are Composer or Codex by default and may be reviewed by a human alone.
 
 ---
 
+**Phase M EML-GADGET-2A snapshot/copy fixture proof landed (2026-05-29, PASS).**
+It proves that temporal snapshot/copy bands can be authored using existing substrate primitives: Identity combine + ResetTarget at an earlier OrderBand, copying current_col into previous_col before the update band.
+No new EML opcode was added.
+No new ConsumeMode was added.
+No WGSL or GPU kernel was added.
+No runtime gadget execution was introduced.
+No temporal gadget implementation landed.
+VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
+No hidden previous-value read was introduced.
+Temporal memory remains explicit-column state.
+Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
+No simthing-sim Gadget/Personality/Memory semantics were added.
+No production economy→mapping bridge was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+Defaults unchanged.
+
 ## Phase A — ADR, invariants, and skeleton (no GPU changes)
 
 All PRs in Phase A are documentation or type-system additions only. No WGSL
