@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-SQRT-0 R1 magnitude oracle-order correction (Tier-2, test-only remedial)
+
+- **M-JIT-SQRT-0 R1 (Tier-2, PASS, remedial):** vector magnitude CPU oracle aligned to generated WGSL shader-text order (`(x*x)+(y*y)` then `sqrt`) as primary; FMA/`mul_add` recorded diagnostic-only; overall `ApproximateJitOnly` preserved (direct scalar max ULP=1); no production opcode/admission/wiring changes. Report: `docs/tests/phase_m_jit_sqrt_candidate_battery_r1_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-SQRT-0 native WGSL sqrt candidate battery (Tier-2, test-only landed)
 
 - **M-JIT-SQRT-0 (Tier-2, PASS, test-only):** native WGSL `sqrt` candidate battery landed with explicit classification `ApproximateJitOnly` on the local platform (direct scalar corpus max ULP=1 vs Rust `f32::sqrt()`; Euclidean and gradient magnitude corpora bit-exact for tested inputs); generated WGSL remains semantic-free; baseline `accumulator_op.wgsl` remains `sqrt`-free; no production opcode/admission/wiring changes. Report: `docs/tests/phase_m_jit_sqrt_candidate_battery_test_results.md`.

@@ -71,6 +71,20 @@ struct BatterySummary {
     classification: SqrtClassification,
 }
 
+/// Vector magnitude battery records both shader-order (primary) and FMA (diagnostic) oracles.
+#[derive(Debug, Clone, Copy)]
+struct VectorBatterySummary {
+    tested_cases: usize,
+    /// Primary: GPU vs shader-text order `(x*x) + (y*y)` then `sqrt`.
+    shader_order_exact: usize,
+    shader_order_max_ulp: u32,
+    shader_order_classification: SqrtClassification,
+    /// Diagnostic only: GPU vs `x.mul_add(x, y*y).sqrt()` — not the aligned oracle unless WGSL
+    /// intentionally emits FMA-equivalent behavior (it does not).
+    fma_diagnostic_exact: usize,
+    fma_diagnostic_max_ulp: u32,
+}
+
 fn classify(max_ulp: u32) -> SqrtClassification {
     if max_ulp == 0 {
         SqrtClassification::ExactDeterministicCandidate
@@ -308,15 +322,29 @@ fn classify_scalar_battery(ctx: &GpuContext) -> BatterySummary {
     }
 }
 
-fn classify_vec2_battery(ctx: &GpuContext, candidate: NativeSqrtCandidate) -> BatterySummary {
+/// Shader-text order oracle: matches generated WGSL `tmp_0 = x*x; tmp_1 = y*y; tmp_2 = tmp_0 + tmp_1; sqrt(tmp_2)`.
+fn cpu_magnitude_shader_order(x: f32, y: f32) -> f32 {
+    let sum_shader_order = (x * x) + (y * y);
+    sum_shader_order.sqrt()
+}
+
+/// FMA diagnostic oracle only — not the primary comparator unless WGSL emits fused behavior.
+fn cpu_magnitude_fma_diagnostic(x: f32, y: f32) -> f32 {
+    let sum_fma = x.mul_add(x, y * y);
+    sum_fma.sqrt()
+}
+
+fn classify_vec2_battery(ctx: &GpuContext, candidate: NativeSqrtCandidate) -> VectorBatterySummary {
     let wgsl = emit_sqrt_candidate_wgsl(candidate, N_DIMS);
-    let mut max_ulp = 0u32;
-    let mut exact = 0usize;
+    let mut shader_order_max_ulp = 0u32;
+    let mut shader_order_exact = 0usize;
+    let mut fma_diagnostic_max_ulp = 0u32;
+    let mut fma_diagnostic_exact = 0usize;
     let mut tested = 0usize;
 
     for (x, y) in vec2_corpus().into_iter() {
-        let sum = x.mul_add(x, y * y);
-        if !sum.is_finite() || sum < 0.0 {
+        let sum_shader_order = (x * x) + (y * y);
+        if !sum_shader_order.is_finite() || sum_shader_order < 0.0 {
             continue;
         }
         let mut values = vec![0.0f32; N_DIMS as usize];
@@ -324,20 +352,31 @@ fn classify_vec2_battery(ctx: &GpuContext, candidate: NativeSqrtCandidate) -> Ba
         set_col(&mut values, VEC_Y_COL, y);
         let out = run_jit_gpu(ctx, &wgsl, &values);
         let gpu = out[(EVAL_SLOT * N_DIMS + OUT_COL) as usize];
-        let cpu = sum.sqrt();
-        let ulp = ulp_distance(gpu, cpu);
-        max_ulp = max_ulp.max(ulp);
-        if ulp == 0 {
-            exact += 1;
+
+        let cpu_shader_order = cpu_magnitude_shader_order(x, y);
+        let ulp_shader = ulp_distance(gpu, cpu_shader_order);
+        shader_order_max_ulp = shader_order_max_ulp.max(ulp_shader);
+        if ulp_shader == 0 {
+            shader_order_exact += 1;
         }
+
+        let cpu_fma = cpu_magnitude_fma_diagnostic(x, y);
+        let ulp_fma = ulp_distance(gpu, cpu_fma);
+        fma_diagnostic_max_ulp = fma_diagnostic_max_ulp.max(ulp_fma);
+        if ulp_fma == 0 {
+            fma_diagnostic_exact += 1;
+        }
+
         tested += 1;
     }
 
-    BatterySummary {
+    VectorBatterySummary {
         tested_cases: tested,
-        exact_cases: exact,
-        max_ulp,
-        classification: classify(max_ulp),
+        shader_order_exact,
+        shader_order_max_ulp,
+        shader_order_classification: classify(shader_order_max_ulp),
+        fma_diagnostic_exact,
+        fma_diagnostic_max_ulp,
     }
 }
 
@@ -402,12 +441,17 @@ fn jit_sqrt_euclidean_magnitude_candidate_battery() {
             },
         );
         println!(
-            "euclidean_magnitude: tested={}, exact={}, max_ulp={}, classification={:?}",
-            summary.tested_cases, summary.exact_cases, summary.max_ulp, summary.classification
+            "euclidean_magnitude: tested={}, shader_order exact={}/max_ulp={}, fma_diagnostic exact={}/max_ulp={}, primary_classification={:?}",
+            summary.tested_cases,
+            summary.shader_order_exact,
+            summary.shader_order_max_ulp,
+            summary.fma_diagnostic_exact,
+            summary.fma_diagnostic_max_ulp,
+            summary.shader_order_classification
         );
         assert!(summary.tested_cases > 0);
         assert!(matches!(
-            summary.classification,
+            summary.shader_order_classification,
             SqrtClassification::ExactDeterministicCandidate
                 | SqrtClassification::ApproximateJitOnly
                 | SqrtClassification::RejectedDeferred
@@ -439,10 +483,64 @@ fn jit_sqrt_gradient_magnitude_candidate_battery() {
             },
         );
         println!(
-            "gradient_magnitude: tested={}, exact={}, max_ulp={}, classification={:?}",
-            summary.tested_cases, summary.exact_cases, summary.max_ulp, summary.classification
+            "gradient_magnitude: tested={}, shader_order exact={}/max_ulp={}, fma_diagnostic exact={}/max_ulp={}, primary_classification={:?}",
+            summary.tested_cases,
+            summary.shader_order_exact,
+            summary.shader_order_max_ulp,
+            summary.fma_diagnostic_exact,
+            summary.fma_diagnostic_max_ulp,
+            summary.shader_order_classification
         );
         assert!(summary.tested_cases > 0);
+    });
+}
+
+#[test]
+fn jit_sqrt_vector_oracle_order_is_explicit() {
+    // Generated WGSL uses separate multiply/add, not FMA.
+    let wgsl = emit_sqrt_candidate_wgsl(
+        NativeSqrtCandidate::EuclideanMagnitude {
+            x_col: VEC_X_COL,
+            y_col: VEC_Y_COL,
+            out_col: OUT_COL,
+        },
+        N_DIMS,
+    );
+    assert!(wgsl.contains("col_7 * col_7"));
+    assert!(wgsl.contains("col_8 * col_8"));
+    assert!(wgsl.contains("tmp_0 + tmp_1"));
+    assert!(!wgsl.contains("mul_add"), "WGSL must not claim FMA unless proven");
+
+    // Shader-order and FMA oracles can differ on some inputs (diagnostic separation).
+    let x = 0.30000004f32;
+    let y = 0.70000005f32;
+    let shader_order = cpu_magnitude_shader_order(x, y);
+    let fma = cpu_magnitude_fma_diagnostic(x, y);
+    // Primary oracle for classification is shader-order; FMA is diagnostic only.
+    assert_eq!(shader_order.to_bits(), ((x * x) + (y * y)).sqrt().to_bits());
+
+    with_gpu(|ctx| {
+        let euclidean = classify_vec2_battery(
+            ctx,
+            NativeSqrtCandidate::EuclideanMagnitude {
+                x_col: VEC_X_COL,
+                y_col: VEC_Y_COL,
+                out_col: OUT_COL,
+            },
+        );
+        // Classification must use shader-order primary oracle, not FMA diagnostic.
+        assert_eq!(
+            euclidean.shader_order_classification,
+            classify(euclidean.shader_order_max_ulp)
+        );
+        println!(
+            "oracle_policy: primary=shader_order max_ulp={} class={:?}; diagnostic=fma max_ulp={} (shader_order_cpu={:?} fma_cpu={:?})",
+            euclidean.shader_order_max_ulp,
+            euclidean.shader_order_classification,
+            euclidean.fma_diagnostic_max_ulp,
+            shader_order.to_bits(),
+            fma.to_bits()
+        );
     });
 }
 
@@ -505,7 +603,7 @@ fn jit_sqrt_result_classification_is_explicit() {
                 out_col: OUT_COL,
             },
         );
-        let final_classification = match (scalar.classification, magnitude.classification) {
+        let final_classification = match (scalar.classification, magnitude.shader_order_classification) {
             (SqrtClassification::RejectedDeferred, _)
             | (_, SqrtClassification::RejectedDeferred) => SqrtClassification::RejectedDeferred,
             (SqrtClassification::ApproximateJitOnly, _)
@@ -514,8 +612,11 @@ fn jit_sqrt_result_classification_is_explicit() {
         };
 
         println!(
-            "sqrt_candidate_final_classification={:?} (scalar max_ulp={}, magnitude max_ulp={})",
-            final_classification, scalar.max_ulp, magnitude.max_ulp
+            "sqrt_candidate_final_classification={:?} (scalar max_ulp={}, magnitude shader_order max_ulp={}, magnitude fma_diagnostic max_ulp={})",
+            final_classification,
+            scalar.max_ulp,
+            magnitude.shader_order_max_ulp,
+            magnitude.fma_diagnostic_max_ulp
         );
 
         // Explicitly one of exact / approximate / rejected, never implicit.

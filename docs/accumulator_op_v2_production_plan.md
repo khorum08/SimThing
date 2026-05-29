@@ -2461,6 +2461,11 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   `f32::sqrt()`; Euclidean/gradient magnitude corpora bit-exact for the tested inputs). Baseline
   runtime shader (`accumulator_op.wgsl`) remains `sqrt`-free and no production opcode/admission was
   added. Report: `docs/tests/phase_m_jit_sqrt_candidate_battery_test_results.md`.
+- **M-JIT-SQRT-0 R1 — Done (PASS, remedial oracle-order correction).** Vector magnitude batteries
+  now use shader-text-order CPU oracle as primary (`(x*x)+(y*y)` then `sqrt`); prior FMA/`mul_add`
+  comparator is diagnostic-only. Overall classification remains `ApproximateJitOnly`; production
+  exact `sqrt` admission remains separately gated/deferred. Report:
+  `docs/tests/phase_m_jit_sqrt_candidate_battery_r1_test_results.md`.
 - **Production JIT caching/cohort dispatch — Deferred (separate gate).** Cohorting identical authored
   graphs, kernel caching/dispatch, multi-gadget chained-stack lowering, conditional (`CMP`/`SELECT`)
   lowering, batched multi-slot dispatch, and any production runtime/default wiring remain gated.
