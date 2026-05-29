@@ -3,7 +3,7 @@
 //! RON/test-only: demonstrates multi-field L1 + L2 + L3 pattern over landed M-5A substrate.
 //! No new runtime wiring; no production economy→mapping bridge.
 
-use simthing_core::ColumnAwareReductionCombine;
+use simthing_core::{ColumnAwareReductionCombine, ColumnAwareReductionSpec};
 use simthing_driver::{
     compiled_stencil_to_gpu_config, FirstSliceMappingSession, FirstSliceSeed, FirstSliceTickOptions,
 };
@@ -41,6 +41,128 @@ fn idx(slot: u32, col: u32, n_dims: u32) -> usize {
 
 fn set_col(values: &mut [f32], col: u32, v: f32) {
     values[(EVAL_SLOT * N_DIMS + col) as usize] = v;
+}
+
+fn slot_range_sum(values: &[f32], n_dims: u32, reduction: &ColumnAwareReductionSpec) -> f32 {
+    (0..reduction.child_slot_count)
+        .map(|offset| {
+            values[idx(
+                reduction.child_slot_start + offset,
+                reduction.child_col,
+                n_dims,
+            )]
+        })
+        .sum()
+}
+
+fn run_field_cpu_oracle(
+    base: &[f32],
+    preview: &simthing_spec::CompiledRegionFieldPreview,
+) -> Vec<f32> {
+    let config = compiled_stencil_to_gpu_config(&preview.stencil);
+    let params = params_from_config(&config);
+    cpu_horizon(base, &params, config.horizon)
+}
+
+#[test]
+fn m5b_integrated_parent_columns_feed_l3_composite() {
+    let scalar_preview =
+        compile_region_field_preview(&deserialize_region_field_ron(SCALAR_FIELD_RON).unwrap())
+            .expect("scalar admits");
+    let gx_preview =
+        compile_region_field_preview(&deserialize_region_field_ron(GRADIENT_X_FIELD_RON).unwrap())
+            .expect("gx admits");
+    let gy_preview =
+        compile_region_field_preview(&deserialize_region_field_ron(GRADIENT_Y_FIELD_RON).unwrap())
+            .expect("gy admits");
+    let stack = deserialize_eml_gadget_stack_ron(L3_STACK_RON).expect("L3 stack RON");
+    let compiled_l3 = compile_eml_gadget_stack(&stack, EmlGadgetCompileOptions { max_col: 64 })
+        .expect("L3 stack compiles");
+
+    let n_dims = scalar_preview.stencil.n_dims;
+    let grid_size = scalar_preview.grid_size;
+    let slot_count = grid_size * grid_size;
+    let parent_slot = 100u32;
+    assert_eq!(gx_preview.stencil.n_dims, n_dims);
+    assert_eq!(gy_preview.stencil.n_dims, n_dims);
+
+    let mut base = vec![0.0f32; ((parent_slot + 1) * n_dims) as usize];
+    for row in 0..grid_size {
+        for col in 0..grid_size {
+            let slot = row * grid_size + col;
+            base[idx(slot, 0, n_dims)] = 5.0 + col as f32 * 3.0 + row as f32 * 1.5;
+        }
+    }
+
+    let scalar_out = run_field_cpu_oracle(&base, &scalar_preview);
+    let gx_out = run_field_cpu_oracle(&base, &gx_preview);
+    let gy_out = run_field_cpu_oracle(&base, &gy_preview);
+
+    let mut merged = base.clone();
+    for slot in 0..slot_count {
+        merged[idx(slot, 0, n_dims)] = scalar_out[idx(slot, 0, n_dims)];
+        merged[idx(slot, 1, n_dims)] = gx_out[idx(slot, 1, n_dims)];
+        merged[idx(slot, 2, n_dims)] = gy_out[idx(slot, 2, n_dims)];
+    }
+
+    let scalar_reduction = scalar_preview.reduction.as_ref().expect("scalar reduction");
+    let gx_reduction = gx_preview.reduction.as_ref().expect("gx reduction");
+    let gy_reduction = gy_preview.reduction.as_ref().expect("gy reduction");
+
+    let parent_scalar = slot_range_sum(&merged, n_dims, scalar_reduction);
+    let parent_gx = slot_range_sum(&merged, n_dims, gx_reduction);
+    let parent_gy = slot_range_sum(&merged, n_dims, gy_reduction);
+
+    assert!(parent_scalar.is_finite());
+    assert!(parent_gx.is_finite());
+    assert!(parent_gy.is_finite());
+    assert!(
+        parent_gx.abs() > 1e-6,
+        "gradient_x parent reduction should be nonzero on asymmetric grid, got {parent_gx}"
+    );
+    assert!(
+        parent_gy.abs() > 1e-6,
+        "gradient_y parent reduction should be nonzero on asymmetric grid, got {parent_gy}"
+    );
+
+    assert_eq!(scalar_reduction.parent_col, 3);
+    assert_eq!(gx_reduction.parent_col, 4);
+    assert_eq!(gy_reduction.parent_col, 5);
+    assert_eq!(scalar_reduction.parent_slot, parent_slot);
+
+    let mut values = vec![0.0f32; (N_DIMS * (EVAL_SLOT + 1)) as usize];
+    set_col(&mut values, 3, parent_scalar);
+    set_col(&mut values, 4, parent_gx);
+    set_col(&mut values, 5, parent_gy);
+    set_col(&mut values, 20, 0.5);
+    set_col(&mut values, 21, 0.3);
+    set_col(&mut values, 22, 0.2);
+    set_col(&mut values, 13, 0.0);
+
+    let ema_scalar = eval_eml_postfix(&compiled_l3.gadgets[0].nodes, EVAL_SLOT, &values, N_DIMS);
+    assert!((ema_scalar - oracle_ema(parent_scalar, 0.0, 0.8)).abs() < 1e-5);
+
+    set_col(&mut values, 13, ema_scalar);
+    set_col(&mut values, 14, 0.0);
+    let ema_gx = eval_eml_postfix(&compiled_l3.gadgets[1].nodes, EVAL_SLOT, &values, N_DIMS);
+    assert!((ema_gx - oracle_ema(parent_gx, 0.0, 0.9)).abs() < 1e-5);
+
+    set_col(&mut values, 14, ema_gx);
+    set_col(&mut values, 15, 0.0);
+    let ema_gy = eval_eml_postfix(&compiled_l3.gadgets[2].nodes, EVAL_SLOT, &values, N_DIMS);
+    assert!((ema_gy - oracle_ema(parent_gy, 0.0, 0.9)).abs() < 1e-5);
+
+    set_col(&mut values, 15, ema_gy);
+    let composite = eval_eml_postfix(&compiled_l3.gadgets[3].nodes, EVAL_SLOT, &values, N_DIMS);
+    let oracle_composite =
+        oracle_weighted_accumulator(&[ema_scalar, ema_gx, ema_gy], &[0.5, 0.3, 0.2]);
+    assert!((composite - oracle_composite).abs() < 1e-5);
+    assert!(composite.is_finite());
+
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
 }
 
 #[test]
