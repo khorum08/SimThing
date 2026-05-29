@@ -2466,9 +2466,9 @@ The M-JIT track is **closed** at default-off `ProductionKernelRegistryShell` (`d
 
 **Shader/software exact sqrt follow-on:**
 - Design note: [`docs/workshop/sqrt_candidates.md`](workshop/sqrt_candidates.md)
-- Native sqrt remains `ApproximateJitOnly`.
-- Exact authority requires exhaustive `max_ulp == 0` proof against CPU `f32::sqrt`.
-- Candidate implementation/test battery is separate from JIT closure.
+- **SQRT-EXACT-0 (PASS, test-only battery):** `phase_m_jit_sqrt_exact_candidate_battery.rs` — Candidates A (`CorrectlyRoundedHwFma`) and B (`CorrectlyRoundedNewtonTwoProduct`) only; Candidate C/f64 explicitly not implemented. Report: [`docs/tests/phase_m_jit_sqrt_exact_candidate_battery_results.md`](tests/phase_m_jit_sqrt_exact_candidate_battery_results.md).
+- Native sqrt remains `ApproximateJitOnly`; no production exact-authority promotion in this slice.
+- Exact authority requires exhaustive `max_ulp == 0` proof against CPU `f32::sqrt` (ignored full sweep available separately).
 - No scheduler/cache/default wiring/economy bridge/`simthing-sim` awareness authorized.
 
 **Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); production

@@ -1,3 +1,7 @@
+# 2026-05-29 — SQRT-EXACT-0 shader/software deterministic sqrt candidate battery (Tier-2, landed)
+
+- SQRT-EXACT-0 test-only GPU candidate battery for CorrectlyRoundedHwFma (A) and CorrectlyRoundedNewtonTwoProduct (B); Candidate C/f64 not implemented; no production sqrt admission; M-JIT closure unchanged. Report: `docs/tests/phase_m_jit_sqrt_exact_candidate_battery_results.md`.
+
 # 2026-05-29 — SQRT-DOC-0 R1 active guidance integration (Tier-2, landed)
 
 - SQRT-DOC-0 R1 integrated `sqrt_candidates.md` into active guidance, fixed stale deleted-report reference, preserved M-JIT closure and exact-authority guardrails. Report: `docs/tests/phase_m_sqrt_doc0_active_guidance_integration_results.md`.
