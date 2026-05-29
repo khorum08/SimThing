@@ -7,8 +7,8 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Verification (last recorded):** Phase M Boundary Resolution Doctrine R2 — **landed 2026-05-29**; legible tick/boundary/day_index/ticks_per_day vocabulary restored; boundary cadence 7/7, daily economy 7/7; workspace check green  
-**Next action:** **Boundary resolution + example economy parked for Opus/product review** — accept abstract doctrine (Option A) before C/D product fixtures or D authoring ergonomics. **Not** the M-4 atlas packer. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
+**Verification (last recorded):** Phase M abstract boundary-resolution + example economy — **ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)**; boundary cadence 7/7, daily economy 7/7, admission 11/11 re-run on GPU; guardrails made binding in `invariants.md`  
+**Next action:** **Boundary-resolution doctrine accepted; Daily Economy Fixture V1 accepted as example-only** ([`../reviews/phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md`](../reviews/phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md)). Next implementation handoff is **resource-economy authoring ergonomics, or an economy+SEAD product fixture** — a generic boundary-output packet only if tightly bounded (never `DailyResolutionBoundary` by another name), and **not** the M-4 atlas packer. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
 
 ---
 
