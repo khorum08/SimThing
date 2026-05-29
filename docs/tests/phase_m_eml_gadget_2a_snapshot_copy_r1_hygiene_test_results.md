@@ -3,7 +3,7 @@
 **Date:** 2026-05-29  
 **Authority:** Remedial hygiene handoff after original EML-GADGET-2A (narrow scope only).  
 **Base HEAD (start of R1):** `48eb49fa242529cccdd63db733c7f4b40cd5d178` (the pushed state after original 2A)  
-**Final commit SHA:** (to be filled post-commit; see end of report)  
+**Final commit SHA:** `8b5f451f3392f9db19b6123dca9831bb767c17a3` (pushed; this R1 hygiene commit is the accurate final SHA for the 2A R1 report)  
 **Verdict:** **PASS** — narrow hygiene only; core 2A proof untouched and still valid; sequence evidence made precise and defensible.
 
 ---
@@ -189,6 +189,6 @@ All 27 completion criteria satisfied. All stop conditions respected. Only Test 4
 **Post-commit SHA note (filled after push):**
 
 - Base at start of R1 session: `48eb49fa242529cccdd63db733c7f4b40cd5d178`
-- Final commit for this R1 hygiene pass: (see `git log` after merge)
+- Final commit for this R1 hygiene pass: `8b5f451f3392f9db19b6123dca9831bb767c17a3` (pushed and merged; this value is now authoritative)
 
 The original 2A report (`phase_m_eml_gadget_2a_snapshot_copy_test_results.md`) is left as historical; this R1 report is the authoritative record of the hygiene correction.

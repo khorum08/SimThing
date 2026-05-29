@@ -8,12 +8,16 @@ use crate::spec::eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 use simthing_core::eml_nodes::{self, EmlNode};
 use simthing_core::{EmlExecutionClass, MAX_EML_TREE_NODES};
 
-/// Tier-1 gadget kind identifier.
+/// Tier-1 + Tier-2 temporal gadget kind identifier.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EmlGadgetKind {
     FieldSampler,
     WeightedAccumulator,
     SoftStep,
+    // Tier-2 temporal (EML-GADGET-2B)
+    VelocityMonitor,
+    Decay,
+    Ema,
 }
 
 impl EmlGadgetKind {
@@ -22,6 +26,9 @@ impl EmlGadgetKind {
             Self::FieldSampler => "FieldSampler",
             Self::WeightedAccumulator => "WeightedAccumulator",
             Self::SoftStep => "SoftStep",
+            Self::VelocityMonitor => "VelocityMonitor",
+            Self::Decay => "Decay",
+            Self::Ema => "Ema",
         }
     }
 
@@ -30,7 +37,10 @@ impl EmlGadgetKind {
     }
 
     pub fn requires_temporal_memory(self) -> bool {
-        false
+        match self {
+            Self::VelocityMonitor | Self::Decay | Self::Ema => true,
+            _ => false,
+        }
     }
 
     pub fn all_tier1() -> &'static [EmlGadgetKind] {
@@ -46,18 +56,20 @@ impl EmlGadgetKind {
             "FieldSampler" => Some(Self::FieldSampler),
             "WeightedAccumulator" => Some(Self::WeightedAccumulator),
             "SoftStep" => Some(Self::SoftStep),
+            "VelocityMonitor" => Some(Self::VelocityMonitor),
+            "Decay" => Some(Self::Decay),
+            "Ema" => Some(Self::Ema),
             _ => None,
         }
     }
 }
 
-/// Deferred Tier-2+ kinds — rejected at admission in EML-GADGET-1.
+/// Still-deferred Tier-2+ kinds (EML-GADGET-2C/D and beyond).
+/// VelocityMonitor, Decay, and Ema are implemented in EML-GADGET-2B.
 pub const DEFERRED_GADGET_KINDS: &[&str] = &[
-    "VelocityMonitor",
-    "EMA",
+    "BoundedFeedback",
     "Acceleration",
     "Hysteresis",
-    "Decay",
 ];
 
 /// Admission/compile options for gadget stacks.
@@ -280,6 +292,9 @@ fn kind_from_instance(instance: &EmlGadgetInstanceSpec) -> Result<EmlGadgetKind,
         EmlGadgetInstanceSpec::FieldSampler { .. } => EmlGadgetKind::FieldSampler,
         EmlGadgetInstanceSpec::WeightedAccumulator { .. } => EmlGadgetKind::WeightedAccumulator,
         EmlGadgetInstanceSpec::SoftStep { .. } => EmlGadgetKind::SoftStep,
+        EmlGadgetInstanceSpec::VelocityMonitor { .. } => EmlGadgetKind::VelocityMonitor,
+        EmlGadgetInstanceSpec::Decay { .. } => EmlGadgetKind::Decay,
+        EmlGadgetInstanceSpec::Ema { .. } => EmlGadgetKind::Ema,
     };
     Ok(kind)
 }
@@ -336,6 +351,70 @@ fn compile_gadget_instance(
             }
             (
                 compile_weighted_accumulator_nodes(input_cols, weight_cols),
+                *output_col,
+            )
+        }
+        EmlGadgetInstanceSpec::VelocityMonitor {
+            current_col,
+            previous_col,
+            output_col,
+            dt,
+            ..
+        } => {
+            validate_col(*current_col, opts, &id, "current_col")?;
+            validate_col(*previous_col, opts, &id, "previous_col")?;
+            if let Some(col) = output_col {
+                validate_col(*col, opts, &id, "output_col")?;
+            }
+            if *current_col == *previous_col {
+                return Err(SpecError::EmlGadgetAdmission {
+                    gadget: id,
+                    reason: "VelocityMonitor current_col and previous_col must be distinct".into(),
+                });
+            }
+            validate_velocity_params(*dt, &id)?;
+            (
+                compile_velocity_monitor_nodes(*current_col, *previous_col, *dt),
+                *output_col,
+            )
+        }
+        EmlGadgetInstanceSpec::Decay {
+            state_col,
+            output_col,
+            decay,
+            ..
+        } => {
+            validate_col(*state_col, opts, &id, "state_col")?;
+            if let Some(col) = output_col {
+                validate_col(*col, opts, &id, "output_col")?;
+            }
+            validate_decay_params(*decay, &id)?;
+            (
+                compile_decay_nodes(*state_col, *decay),
+                *output_col,
+            )
+        }
+        EmlGadgetInstanceSpec::Ema {
+            input_col,
+            previous_col,
+            output_col,
+            decay,
+            ..
+        } => {
+            validate_col(*input_col, opts, &id, "input_col")?;
+            validate_col(*previous_col, opts, &id, "previous_col")?;
+            if let Some(col) = output_col {
+                validate_col(*col, opts, &id, "output_col")?;
+            }
+            if *input_col == *previous_col {
+                return Err(SpecError::EmlGadgetAdmission {
+                    gadget: id,
+                    reason: "Ema input_col and previous_col must be distinct".into(),
+                });
+            }
+            validate_decay_params(*decay, &id)?;
+            (
+                compile_ema_nodes(*input_col, *previous_col, *decay),
                 *output_col,
             )
         }
@@ -733,7 +812,97 @@ pub fn reject_unknown_gadget_kind(kind: &str, gadget_id: &str) -> Result<EmlGadg
     EmlGadgetKind::parse(kind).ok_or_else(|| SpecError::EmlGadgetAdmission {
         gadget: gadget_id.to_string(),
         reason: format!(
-            "unknown gadget kind `{kind}`; available: FieldSampler, WeightedAccumulator, SoftStep"
+            "unknown gadget kind `{kind}`; available: FieldSampler, WeightedAccumulator, SoftStep, VelocityMonitor, Decay, Ema"
         ),
     })
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tier-2 temporal gadget support (EML-GADGET-2B)
+// VelocityMonitor, Decay, Ema — explicit-column, existing EvalEML nodes only.
+// Stateful sequence CPU oracles. No runtime scheduling in this slice.
+// ─────────────────────────────────────────────────────────────────────────────
+
+fn validate_velocity_params(dt: Option<f32>, gadget: &str) -> Result<(), SpecError> {
+    if let Some(d) = dt {
+        if !d.is_finite() || d <= 0.0 {
+            return Err(SpecError::EmlGadgetAdmission {
+                gadget: gadget.to_string(),
+                reason: "VelocityMonitor dt must be finite and > 0 when provided".into(),
+            });
+        }
+    }
+    Ok(())
+}
+
+fn validate_decay_params(decay: f32, gadget: &str) -> Result<(), SpecError> {
+    if !decay.is_finite() {
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: gadget.to_string(),
+            reason: "decay must be finite".into(),
+        });
+    }
+    if !(0.0..1.0).contains(&decay) {
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: gadget.to_string(),
+            reason: "decay must satisfy 0 <= decay < 1 for EML-GADGET-2B".into(),
+        });
+    }
+    Ok(())
+}
+
+fn compile_velocity_monitor_nodes(current_col: u32, previous_col: u32, dt: Option<f32>) -> Vec<EmlNode> {
+    let mut nodes = vec![
+        node_slot(current_col),
+        node_slot(previous_col),
+        node_sub(),
+    ];
+    if let Some(d) = dt {
+        if (d - 1.0).abs() > 1e-9 {
+            nodes.push(node_literal(d));
+            nodes.push(node_div_safe());
+        }
+    }
+    nodes.push(node_return_top());
+    nodes
+}
+
+fn compile_decay_nodes(state_col: u32, decay: f32) -> Vec<EmlNode> {
+    vec![
+        node_slot(state_col),
+        node_literal(decay),
+        node_mul(),
+        node_return_top(),
+    ]
+}
+
+fn compile_ema_nodes(input_col: u32, previous_col: u32, decay: f32) -> Vec<EmlNode> {
+    let one_minus_decay = 1.0 - decay;
+    vec![
+        node_slot(previous_col),
+        node_literal(decay),
+        node_mul(),
+        node_slot(input_col),
+        node_literal(one_minus_decay),
+        node_mul(),
+        node_add(),
+        node_return_top(),
+    ]
+}
+
+// Public CPU oracles for stateful sequence parity tests (exported from spec crate)
+pub fn oracle_velocity_monitor(current: f32, previous: f32, dt: f32) -> f32 {
+    (current - previous) / dt
+}
+
+pub fn oracle_decay(state: f32, decay: f32) -> f32 {
+    state * decay
+}
+
+pub fn oracle_ema(input: f32, previous: f32, decay: f32) -> f32 {
+    previous * decay + input * (1.0 - decay)
+}
+
+// 2B node emission re-uses the existing private node_* helpers defined earlier in this file
+// (node_slot, node_literal, node_sub, node_mul, node_add, node_div_safe, node_return_top).
+// No duplication.

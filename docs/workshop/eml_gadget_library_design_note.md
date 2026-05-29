@@ -11,6 +11,27 @@ No runtime gadget execution was introduced.
 No temporal gadget implementation landed.
 VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
 No hidden previous-value read was introduced.
+
+**Phase M EML-GADGET-2B landed.**
+It adds VelocityMonitor and Decay/EMA as Tier-2 temporal EML gadgets in simthing-spec, with explicit-column authoring, existing EvalEML node templates, and stateful-sequence CPU oracle parity.
+VelocityMonitor computes current_col - previous_col, with optional positive finite dt scaling only if supported by existing opcodes.
+Decay/EMA require 0 <= decay < 1 by default and compile to existing arithmetic node templates.
+No BoundedFeedback implementation landed.
+No Hysteresis implementation landed.
+No Acceleration implementation landed.
+No new EML opcode was added.
+No new ConsumeMode was added.
+No WGSL or GPU kernel was added.
+No runtime gadget execution was introduced.
+No chained OrderBand runtime scheduling was introduced.
+No hidden previous-value read was introduced.
+Temporal memory remains explicit-column state.
+Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
+No simthing-sim Gadget/Personality/Memory semantics were added.
+No production economy→mapping bridge was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+Defaults unchanged.
 Temporal memory remains explicit-column state.
 Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
 No simthing-sim Gadget/Personality/Memory semantics were added.
@@ -28,6 +49,27 @@ No runtime gadget execution was introduced.
 No temporal gadget implementation landed.
 VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
 No hidden previous-value read was introduced.
+
+**Phase M EML-GADGET-2B landed.**
+It adds VelocityMonitor and Decay/EMA as Tier-2 temporal EML gadgets in simthing-spec, with explicit-column authoring, existing EvalEML node templates, and stateful-sequence CPU oracle parity.
+VelocityMonitor computes current_col - previous_col, with optional positive finite dt scaling only if supported by existing opcodes.
+Decay/EMA require 0 <= decay < 1 by default and compile to existing arithmetic node templates.
+No BoundedFeedback implementation landed.
+No Hysteresis implementation landed.
+No Acceleration implementation landed.
+No new EML opcode was added.
+No new ConsumeMode was added.
+No WGSL or GPU kernel was added.
+No runtime gadget execution was introduced.
+No chained OrderBand runtime scheduling was introduced.
+No hidden previous-value read was introduced.
+Temporal memory remains explicit-column state.
+Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
+No simthing-sim Gadget/Personality/Memory semantics were added.
+No production economy→mapping bridge was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+Defaults unchanged.
 Temporal memory remains explicit-column state.
 Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
 No simthing-sim Gadget/Personality/Memory semantics were added.

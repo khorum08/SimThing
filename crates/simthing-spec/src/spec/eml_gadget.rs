@@ -35,6 +35,35 @@ pub enum EmlGadgetInstanceSpec {
         #[serde(default)]
         output_col: Option<u32>,
     },
+    /// Tier-2 temporal: velocity = (current - previous) [ / dt ]
+    VelocityMonitor {
+        id: String,
+        current_col: u32,
+        previous_col: u32,
+        #[serde(default)]
+        output_col: Option<u32>,
+        /// Optional positive finite dt for scaling. If None or 1.0, no division is emitted.
+        #[serde(default)]
+        dt: Option<f32>,
+    },
+    /// Tier-2 temporal (pure in-place decay form): state_next = state * decay
+    /// The state column is its own memory; no separate previous_col required.
+    Decay {
+        id: String,
+        state_col: u32,
+        #[serde(default)]
+        output_col: Option<u32>,
+        decay: f32,
+    },
+    /// Tier-2 temporal (EMA / exponential smoothing): next = previous * decay + input * (1 - decay)
+    Ema {
+        id: String,
+        input_col: u32,
+        previous_col: u32,
+        #[serde(default)]
+        output_col: Option<u32>,
+        decay: f32,
+    },
 }
 
 impl EmlGadgetInstanceSpec {
@@ -42,7 +71,10 @@ impl EmlGadgetInstanceSpec {
         match self {
             Self::FieldSampler { id, .. }
             | Self::SoftStep { id, .. }
-            | Self::WeightedAccumulator { id, .. } => id,
+            | Self::WeightedAccumulator { id, .. }
+            | Self::VelocityMonitor { id, .. }
+            | Self::Decay { id, .. }
+            | Self::Ema { id, .. } => id,
         }
     }
 
@@ -51,6 +83,9 @@ impl EmlGadgetInstanceSpec {
             Self::FieldSampler { .. } => "FieldSampler",
             Self::SoftStep { .. } => "SoftStep",
             Self::WeightedAccumulator { .. } => "WeightedAccumulator",
+            Self::VelocityMonitor { .. } => "VelocityMonitor",
+            Self::Decay { .. } => "Decay",
+            Self::Ema { .. } => "Ema",
         }
     }
 
@@ -59,6 +94,9 @@ impl EmlGadgetInstanceSpec {
             Self::FieldSampler { input_col, .. } => vec![*input_col],
             Self::SoftStep { input_col, .. } => vec![*input_col],
             Self::WeightedAccumulator { input_cols, .. } => input_cols.clone(),
+            Self::VelocityMonitor { current_col, previous_col, .. } => vec![*current_col, *previous_col],
+            Self::Decay { state_col, .. } => vec![*state_col],
+            Self::Ema { input_col, previous_col, .. } => vec![*input_col, *previous_col],
         }
     }
 
@@ -66,7 +104,10 @@ impl EmlGadgetInstanceSpec {
         match self {
             Self::FieldSampler { output_col, .. }
             | Self::SoftStep { output_col, .. }
-            | Self::WeightedAccumulator { output_col, .. } => *output_col,
+            | Self::WeightedAccumulator { output_col, .. }
+            | Self::VelocityMonitor { output_col, .. }
+            | Self::Decay { output_col, .. }
+            | Self::Ema { output_col, .. } => *output_col,
         }
     }
 }
