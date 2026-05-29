@@ -1106,6 +1106,8 @@ dependencies = [
 name = "simthing-driver"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
+ "pollster",
  "ron",
  "serde",
  "serde_json",
@@ -1116,6 +1118,7 @@ dependencies = [
  "simthing-spec",
  "tempfile",
  "thiserror 2.0.18",
+ "wgpu",
 ]
 
 [[package]]

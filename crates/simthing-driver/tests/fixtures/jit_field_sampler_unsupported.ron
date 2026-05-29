@@ -1,0 +1,11 @@
+(
+    gadgets: [
+        (
+            kind: "FieldSampler",
+            id: "jit_field_sampler_unsupported_demo",
+            input_col: 3,
+            output_col: 16,
+            cap: 120.0,
+        ),
+    ],
+)

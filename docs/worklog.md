@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-0 generic EvalEML WGSL emission prototype (Tier-2, test-only landed)
+
+- **M-JIT-0 (Tier-2, PASS, test-only):** admitted WeightedAccumulator/Ema gadget graphs lower to deterministic semantic-free straight-line WGSL (subset `LITERAL_F32`/`SLOT_VALUE`/`ADD`/`SUB`/`MUL`/`RETURN_TOP`), compile through wgpu, and match `eval_eml_postfix`/`eval_eml_cpu`/named oracles bit-exactly; unsupported opcodes reject; existing EvalEML interpreter runtime fixture stays green; production JIT caching/cohorting remains separately gated. Report: `docs/tests/phase_m_jit_evaleml_wgsl_prototype_test_results.md`.
+
 # 2026-05-29 — Phase M EML-GADGET Runtime Execution Gate (Tier-2, fixture landed)
 
 - **EML-GADGET Runtime Execution Gate (Tier-2, PASS):** minimal opt-in fixture executes compiled WeightedAccumulator/Ema through existing EvalEML AccumulatorOp runtime with oracle parity; JIT not required; chained scheduling remains gated. Report: `docs/tests/phase_m_eml_gadget_runtime_execution_gate_test_results.md`.

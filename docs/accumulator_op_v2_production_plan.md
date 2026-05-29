@@ -2445,6 +2445,19 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   wiring remain separately gated. No new opcode, no semantic WGSL, no default SimSession wiring.
   Report: `docs/tests/phase_m_eml_gadget_runtime_execution_gate_test_results.md`.
 
+**JIT ladder:**
+- **M-JIT-0 — Done (PASS, test-only).** Generic EvalEML WGSL emission prototype: admitted
+  `WeightedAccumulator`/`Ema` gadget node programs lower to deterministic, semantic-free,
+  straight-line WGSL over the existing opcode subset (`LITERAL_F32`/`SLOT_VALUE`/`ADD`/`SUB`/`MUL`/
+  `RETURN_TOP`), compile through `wgpu`, and match `eval_eml_postfix`/`eval_eml_cpu`/named oracles
+  bit-exactly; unsupported opcodes reject with a structured error. Test-only (no production/default
+  wiring); the existing EvalEML interpreter runtime path is unchanged. No new opcode, no `sqrt`, no
+  semantic WGSL, no chained scheduling. Report:
+  `docs/tests/phase_m_jit_evaleml_wgsl_prototype_test_results.md`.
+- **Production JIT caching/cohort dispatch — Deferred (separate gate).** Cohorting identical authored
+  graphs, kernel caching/dispatch, multi-gadget chained-stack lowering, conditional (`CMP`/`SELECT`)
+  lowering, batched multi-slot dispatch, and any production runtime/default wiring remain gated.
+
 **Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); `sqrt`
 magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.
 
