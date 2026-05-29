@@ -6,6 +6,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Phase M Economy + SEAD Product Fixture V1
+
+- Phase M Economy + SEAD Product Fixture V1 landed.
+- **Option A (test-level orchestration):** run discrete daily economy at boundary → read treasury → map stress to authored EML weight profiles → drive existing first-slice GPU commitment path.
+- Surplus (treasury 107): low stress → `(0.2, 0.1)` weights → urgency below threshold → 0 SEAD events.
+- Deficit (treasury 94): high stress → `(0.9, 0.1)` weights → urgency crosses threshold → 1 SEAD event (`0x53454144`) via Threshold+EmitEvent.
+- CPU reads economy storage and selects weight profiles only; CPU does not compute urgency or emit SEAD commitments.
+- This remains a product/acceptance fixture — not a production economy→mapping runtime bridge or general scenario engine.
+- Tests: `phase_m_economy_sead_product_fixture` (6/6); regressions green.
+- Test report: [`tests/phase_m_economy_sead_product_fixture_test_results.md`](tests/phase_m_economy_sead_product_fixture_test_results.md).
+
 # 2026-05-29 — Phase M Resource Economy Authoring Ergonomics V1
 
 - Phase M Resource Economy Authoring Ergonomics V1 landed.

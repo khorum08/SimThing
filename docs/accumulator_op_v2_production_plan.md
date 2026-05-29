@@ -2077,6 +2077,27 @@ Defaults unchanged.
 
 **Test:** [`phase_m_resource_economy_authoring_ergonomics_test_results.md`](tests/phase_m_resource_economy_authoring_ergonomics_test_results.md) — PASS.
 
+### PR M-economy-sead-product-fixture-v1 — Economy + SEAD product fixture — **Done**
+
+**Status:** **Done (PASS)** — Phase M Economy + SEAD Product Fixture V1 landed.
+It demonstrates that an accepted discrete resource-economy boundary result can influence an opt-in first-slice SEAD commitment fixture without adding runtime semantic coupling: economy remains `ResourceEconomySpec`/discrete/opt-in, SEAD remains GPU-resident field/reduction/EML/Threshold+EmitEvent, and the CPU does not compute urgency or emit commitments.
+This remains a product/acceptance fixture. It does not authorize a production economy→mapping runtime bridge or general scenario engine.
+No runtime economy behavior changed.
+No `DailyResolutionBoundary` primitive was introduced.
+No day/calendar/pause semantics were added to `simthing-sim`.
+Legible `day_index`/`ticks_per_day` naming remains unchanged.
+No Resource Flow default changed; Resource Flow E-11 remains continuous/high-frequency and default-off.
+No CPU-side economy executor or AI planner was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+No semantic WGSL landed.
+`simthing-sim` remains map-free.
+Defaults unchanged.
+
+**Integration strategy:** Option A — test-level orchestration. Run daily economy at boundary, read treasury, map stress to authored EML weight profiles `(0.2,0.1)` / `(0.9,0.1)`, drive existing `FirstSliceScenarioFixtureSession` commitment path.
+
+**Test:** [`phase_m_economy_sead_product_fixture_test_results.md`](tests/phase_m_economy_sead_product_fixture_test_results.md) — PASS.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
 **Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. The first-slice product scenario fixture (Option 3, single grid, no atlas) has landed; **the atlas packer is still not next**.
