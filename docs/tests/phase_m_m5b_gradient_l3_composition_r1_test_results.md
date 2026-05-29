@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `a233252ee11209534f272c5a450a2618d3165776` (M-5B merge)  
-**Final commit SHA:** *(pending merge — see PR)*  
+**Final commit SHA:** `d3286a3` (M-5B-gradient R1 implementation commit)  
 **Lane classification:** Tier-1 remedial evidence pass (V7.7 §5)  
 **Verdict:** **PASS — M-5B-gradient R1 landed (integrated evidence path)**
 
