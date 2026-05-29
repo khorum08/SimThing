@@ -2357,7 +2357,10 @@ Until then, caller-managed one-shot-seed-then-zero (v1) is the only source polic
 (`weight_north/south/east/west`) in `StructuredFieldStencilOp`; single-target
 `RegionFieldOperatorSpec::Gradient { axis, output_col }` admission/compiler in `simthing-spec`;
 CPU/GPU parity for GradientX/GradientY; Normalized and SourceCappedNormalized behavior preserved.
-**M-5B-gradient landed (2026-05-29, PASS).** L3 composition RON fixture over M-5A substrate. Dual-output
+**M-5B-gradient landed (2026-05-29, PASS).** L3 composition RON fixture over M-5A substrate.
+**M-5B-gradient R1 (2026-05-29, PASS):** integrated CPU-oracle test ties scalar + GradientX +
+GradientY parent reductions into L3 EMA + WeightedAccumulator; no new substrate or runtime wiring.
+Dual-output
 `GradientXY` remains deferred. No semantic WGSL; no default mapping wiring; no `simthing-sim`
 changes; no atlas/M-4A; no source-mask/source-identity; no L1 coupling; no `sqrt`; no production
 economy→mapping bridge. Report:
@@ -2390,6 +2393,10 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   Reference RON fixture + test: scalar + Gradient X/Y fields, SlotRange Sum reductions, 3× Ema +
   WeightedAccumulator composite signal; optional GPU-resident threshold commitment. No new substrate.
   Report: `docs/tests/phase_m_m5b_gradient_l3_composition_test_results.md`.
+- **M-5B-gradient R1 — integrated fixture evidence — **Done (PASS).**
+  `m5b_integrated_parent_columns_feed_l3_composite` ties L1 field CPU oracles → parent reductions →
+  L3 gadget stack in one test; no production multi-field runtime wiring added.
+  Report: `docs/tests/phase_m_m5b_gradient_l3_composition_r1_test_results.md`.
 
 **Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); `sqrt`
 magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.
