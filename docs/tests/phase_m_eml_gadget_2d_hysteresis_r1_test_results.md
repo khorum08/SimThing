@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `6638f84afe72077a7bf2b074b3557b29ea021af3`  
-**Final commit SHA:** `f0626f9`  
+**Final commit SHA:** `4af176c`  
 **Verdict:** **PASS — exact compiler parity path**
 
 ---
