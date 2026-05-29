@@ -1,3 +1,8 @@
+# 2026-05-29 — Phase M-5B-gradient L3 Strategic Pressure Composition RON fixture
+
+- **M-5B-gradient landed (Tier-1 fast lane):** reference RON fixtures + driver test demonstrating L1 independent fields (scalar + single-target Gradient X/Y), L2 SlotRange Sum reductions, L3 Ema + WeightedAccumulator composition, and optional GPU-resident threshold commitment over landed M-5A substrate. No new substrate, semantic WGSL, or simthing-sim changes.
+- Report: [`tests/phase_m_m5b_gradient_l3_composition_test_results.md`](tests/phase_m_m5b_gradient_l3_composition_test_results.md).
+
 # 2026-05-29 — Phase M EML-GADGET-2E Acceleration (explicit velocity-column)
 
 - **2E landed:** Acceleration as `(current_velocity_col - previous_velocity_col) [/ dt]` in `simthing-spec` only; 11/11 tests; no position-history, no previous_previous_col, no dense per-cell memory.
