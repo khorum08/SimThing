@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `c5d0ef526fa0502e065102fefc5773135da5774b`  
-**Final commit SHA:** *(pending merge — see PR)*  
+**Final commit SHA:** `678f353`  
 **Lane classification:** Tier-2 runtime execution gate (V7.7 §5)  
 **Decision:** **IMPLEMENTED — minimal opt-in runtime fixture**  
 **Verdict:** **PASS — runtime gadget execution gate landed**
