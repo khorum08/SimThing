@@ -226,6 +226,8 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Phase M Map Residency V1:** **Done (opt-in)** — first-slice residency status/reporting; metadata only; cached commitment scan deferred. See [`tests/phase_m_first_slice_map_residency_test_results.md`](tests/phase_m_first_slice_map_residency_test_results.md).
 
+**Phase M Boundary Cadence Doctrine audit:** **Done (docs+test audit)** — Clausewitz-style 1 tick/day resolution confirmed expressible via existing boundary cadence machinery; no `DailyResolutionBoundary` primitive; day/calendar/pause remain host layer; daily banking uses discrete resource economy not Resource Flow by default. See [`tests/phase_m_boundary_cadence_doctrine_audit.md`](tests/phase_m_boundary_cadence_doctrine_audit.md).
+
 **Phase M Queue-Write Scale Hardening V1:** **Done (opt-in)** — first-slice child resource column population uses generic `AccumulatorOpSession::fill_slot_range_col` bulk fill instead of O(cell_count) per-slot queue writes; parent scalar writes remain O(1). SummaryValidity and SEAD commitment behavior unchanged. See [`tests/phase_m_queue_write_scale_hardening_test_results.md`](tests/phase_m_queue_write_scale_hardening_test_results.md).
 
 **Phase M SummaryValidity V1-R1 hygiene:** **Done (opt-in)** — runtime summary status driver-owned; spec retains policy only. See [`tests/phase_m_first_slice_summary_validity_r1_boundary_hygiene_test_results.md`](tests/phase_m_first_slice_summary_validity_r1_boundary_hygiene_test_results.md).

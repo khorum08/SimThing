@@ -20,6 +20,27 @@ Active read order:
 6. [`mapping_atlas_algebraic_mask_candidate_notes.md`](mapping_atlas_algebraic_mask_candidate_notes.md) (M-4A sandbox evidence — **candidate only, reverted**)
 7. Cited `docs/tests/` evidence before changing any classification
 
+## Phase M Boundary Cadence Doctrine audit (landed — docs+test audit)
+
+Phase M Boundary Cadence Doctrine audit landed.
+Clausewitz-style 1 tick/day resolution is represented by existing boundary cadence machinery: ticks_per_day, boundary_reached, day_index, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
+No new DailyResolutionBoundary runtime primitive was introduced.
+Day/calendar/month meaning remains host/spec/boundary-handler interpretation over day_index.
+Pause/speed remain host/UI orchestration concerns: the deterministic sim advances only when the host requests the next tick/day.
+Daily banking should use the discrete resource economy substrate, not the continuous Resource Flow substrate by default.
+The CPU boundary consumes resolved summaries/events/metadata at the boundary; it must not scan dense RegionCell grids by default, recompute gameplay state, or emit AI commitments via CPU planner logic.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+Queue-write child resource scale caveat addressed for first-slice by generic bulk fill.
+Parent scalar writes remain O(1).
+Multi-field, multi-map, atlas, perception, source identity, and broader production scaling remain separately gated.
+
+**Audit:** [`../tests/phase_m_boundary_cadence_doctrine_audit.md`](../tests/phase_m_boundary_cadence_doctrine_audit.md)
+
 ## Phase M Map Residency V1 (landed — opt-in)
 
 Phase M Map Residency V1 landed.
