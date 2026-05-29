@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `d8c990d51a330e1a021acc7726dba51dc14a21c6` (post original cleanup)  
-**Final commit SHA:** (to be recorded by merge)  
+**Final commit SHA:** `e836617c3784c199979a558bc1505641b8e03a18` (pushed; "d8c990d..e836617 master -> master")  
 **Verdict:** **PASS**
 
 ---
@@ -68,14 +68,14 @@ No files were moved or deleted in this narrow R1 pass.
 | Missing 2026-05-29 pass in SUNSET | `docs/workshop/archive/SUNSET.md` | Added dedicated section + updated top date |
 | Cleanup report over-claim | `phase_m_docs_cleanup_archive_test_results.md` | Added accurate note that R1 addressed remaining active-report paper cuts |
 
-The 2B report already contained the correct final SHA (`5dc3cf2b279fc2c2fc57f6120a43483808cc0e6d`) at the start of this R1; no change was required.
+R1 focused on 2C and archive metadata. R2 also corrects the 2B report header final-SHA placeholder (which was still present as `...` in the active header at the time of R2) and ensures this R1 report's own scan command and 2B claim are self-consistent.
 
 ---
 
 ## Stale-Placeholder Scan Results (post-R1)
 
 ```bash
-rg "Final commit SHA: `...` |Final commit SHA: \(recorded by merge\) |to be recorded by merge |... \(full list as specified |\(proposed\)" docs/tests docs/workshop/docs/reviews
+rg "Final commit SHA: `\.\.\.`|Final commit SHA: \(recorded by merge\)|to be recorded by merge|\.\.\. \(full list as specified|\(proposed\)" docs/tests docs/workshop docs/reviews
 ```
 
 **Result after fixes:** No matches in active documentation for the problematic placeholder patterns. Historical matches inside archived files are expected and are properly identified by the updated SUNSET.md and archive README.
