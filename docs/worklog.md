@@ -1,3 +1,8 @@
+# 2026-05-29 — Phase M-5C-gradient product-facing need/routing signal fixture
+
+- **M-5C-gradient landed (Tier-1 fast lane):** product-facing RON fixtures + driver test demonstrating unmet-demand scalar + price/labor Gradient X/Y fields, SlotRange Sum reductions, L3 Ema + WeightedAccumulator `routing_signal` composite; CPU-oracle integrated test; no production economy→mapping bridge or ResourceEconomySpec→mapping coupling.
+- Report: [`tests/phase_m_m5c_gradient_need_signal_test_results.md`](tests/phase_m_m5c_gradient_need_signal_test_results.md).
+
 # 2026-05-29 — Phase M-5B-gradient R1 integrated fixture evidence
 
 - **M-5B-gradient R1 landed (Tier-1 remedial evidence pass):** added `m5b_integrated_parent_columns_feed_l3_composite` — scalar + GradientX + GradientY CPU-oracle field outputs reduced to parent cols 3/4/5 and fed into L3 Ema + WeightedAccumulator in one test; no new substrate or production multi-field runtime wiring.
