@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `e2244f4` (M-JIT-REG-1 merge on `master`)  
-**Final commit SHA:** _(set at commit; authoritative post-merge SHA is the GitHub squash-merge commit)_  
+**Final commit SHA:** `824f5b8` (branch `phase-m-jit-exec-0-production-candidate-fixture`; authoritative post-merge SHA is the GitHub squash-merge commit)  
 **Lane classification:** Tier-2 GPU/JIT production-candidate execution fixture (V7.7 §5)  
 **Decision:** **IMPLEMENTED — ProductionCandidatePreview-gated execution fixture**  
 **Verdict:** **PASS**
