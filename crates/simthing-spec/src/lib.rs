@@ -98,8 +98,13 @@ pub use compile::{
     preview_kernel_graph_cohorts, KernelGraphCohortPreview, KernelGraphCohortPreviewSet,
     KernelGraphRequestSpec,
     preview_kernel_registry_manifest, preview_production_candidate_registry_entry,
-    validate_kernel_registry_manifest_preview, KernelRegistryEntryPreview, KernelRegistryLane,
+    validate_kernel_registry_manifest_preview, validate_production_candidate_preview_entry,
+    KernelRegistryEntryPreview, KernelRegistryLane,
     KernelRegistryManifestPreview,
+};
+pub use compile::jit_kernel_production_registry_shell::{
+    ProductionKernelRegistryShell, ProductionKernelRegistryShellConfig,
+    RegisteredProductionCandidate,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;

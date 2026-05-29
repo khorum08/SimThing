@@ -167,21 +167,7 @@ fn request_ids_sorted(ids: &[String]) -> bool {
     ids.windows(2).all(|pair| pair[0] <= pair[1])
 }
 
-/// Admit a TestOnly registry entry to ProductionCandidatePreview (REG-1 gate).
-pub fn preview_production_candidate_registry_entry(
-    entry: &KernelRegistryEntryPreview,
-) -> Result<KernelRegistryEntryPreview, SpecError> {
-    validate_kernel_registry_manifest_preview(&KernelRegistryManifestPreview {
-        entries: vec![entry.clone()],
-    })?;
-
-    if entry.lane != KernelRegistryLane::TestOnlyPreview {
-        return Err(registry_err(
-            &entry.stable_key,
-            "production-candidate admission requires TestOnlyPreview source lane",
-        ));
-    }
-
+fn validate_production_candidate_entry_rules(entry: &KernelRegistryEntryPreview) -> Result<(), SpecError> {
     if entry.stable_key.is_empty() || !entry.stable_key.starts_with("jit-graph-v1:") {
         return Err(registry_err(
             &entry.stable_key,
@@ -241,6 +227,39 @@ pub fn preview_production_candidate_registry_entry(
             "production_wiring must remain false for production-candidate preview",
         ));
     }
+
+    Ok(())
+}
+
+/// Validate an already-admitted ProductionCandidatePreview entry (PROD-0 / execution gates).
+pub fn validate_production_candidate_preview_entry(
+    entry: &KernelRegistryEntryPreview,
+) -> Result<(), SpecError> {
+    if entry.lane != KernelRegistryLane::ProductionCandidatePreview {
+        return Err(registry_err(
+            &entry.stable_key,
+            "entry lane must be ProductionCandidatePreview",
+        ));
+    }
+    validate_production_candidate_entry_rules(entry)
+}
+
+/// Admit a TestOnly registry entry to ProductionCandidatePreview (REG-1 gate).
+pub fn preview_production_candidate_registry_entry(
+    entry: &KernelRegistryEntryPreview,
+) -> Result<KernelRegistryEntryPreview, SpecError> {
+    validate_kernel_registry_manifest_preview(&KernelRegistryManifestPreview {
+        entries: vec![entry.clone()],
+    })?;
+
+    if entry.lane != KernelRegistryLane::TestOnlyPreview {
+        return Err(registry_err(
+            &entry.stable_key,
+            "production-candidate admission requires TestOnlyPreview source lane",
+        ));
+    }
+
+    validate_production_candidate_entry_rules(entry)?;
 
     Ok(KernelRegistryEntryPreview {
         stable_key: entry.stable_key.clone(),
