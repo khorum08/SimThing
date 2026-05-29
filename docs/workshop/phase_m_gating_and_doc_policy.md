@@ -1,6 +1,7 @@
 # Phase M — Gating & Documentation Policy
 
-**Status:** Binding governance policy (Opus design authority, 2026-05-29).
+**Status:** **Constitutional (V7.7 §5, promoted 2026-05-29).** Binding governance policy; this file
+is the operational detail of `docs/design_v7_7.md` §5 "Gating & documentation governance."
 **Purpose:** Keep drift discipline **cheap and binding**, and stop the doc-ceremony treadmill that
 was burning tokens and looping the implementation agent. Read this **before** picking up any Phase M
 slice — it tells you which lane a change is in and exactly how much documentation it needs.
