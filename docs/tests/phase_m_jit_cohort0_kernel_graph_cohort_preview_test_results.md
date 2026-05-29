@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `4d6d856a8baacc5c66a904d7e284c93d1b66774b` (M-JIT-KEY-0 merge on `master`)  
-**Final commit SHA:** _(set at commit time; authoritative post-merge SHA is the GitHub squash-merge commit)_  
+**Final commit SHA:** _(set at commit; authoritative post-merge SHA is the GitHub squash-merge commit)_  
 **Lane classification:** Tier-2 GPU/JIT cohort grouping preview (V7.7 §5)  
 **Decision:** **IMPLEMENTED — spec-layer kernel graph cohort grouping preview**  
 **Verdict:** **PASS**
