@@ -3,6 +3,13 @@
 - **M-5C-gradient landed (Tier-1 fast lane):** product-facing RON fixtures + driver test demonstrating unmet-demand scalar + price/labor Gradient X/Y fields, SlotRange Sum reductions, L3 Ema + WeightedAccumulator `routing_signal` composite; CPU-oracle integrated test; no production economy→mapping bridge or ResourceEconomySpec→mapping coupling.
 - Report: [`tests/phase_m_m5c_gradient_need_signal_test_results.md`](tests/phase_m_m5c_gradient_need_signal_test_results.md).
 
+# 2026-05-29 — Input Validation Rule: gradient fields are strict sinks (admission guardrail)
+
+- **Codified a binding Input Validation Rule** (principal-directed) to prevent a foreseen within-frame feedback / read-after-write hazard: a field may not read its own immediate output column as a diffusion source within the same frame, and a **gradient/derivative field's `output_col` is a strict sink** — it may not be the `source_col` of any diffusion/stencil field in the same frame (consumed only downstream by reduction/EML/threshold), preserving the base field's within-frame immutability.
+- **Enforcement status (honest):** clause 1 (per-field `source_col != output_col`) is **already enforced** at single-spec admission (M-5A, `region_field_admission.rs`). Clause 2 (cross-field gradient-sink, within-frame) is **not yet enforced** — single-spec admission can't see cross-field wiring; it requires **frame/scenario-level** admission. The M-5B/M-5C fixtures respect the sink discipline by construction (gradient → reduction/EML, never → diffusion source), but nothing makes a malformed wiring un-admittable yet. That is the foreseen issue.
+- **Added M-5D-gradient (Tier-1 admission hardening) as the next slice:** frame/scenario-level admission rejects a gradient `output_col` used as any field's same-frame `source_col` (+ re-affirms the self-loop ban), with rejection-case + valid-sink test report. No new substrate, no runtime change.
+- Codified in: design note §3 (Input Validation Rule), `invariants.md` (new "gradient fields are strict sinks" row), production plan (M-5D-gradient ladder entry), guidance status table (M-5D approved-for-impl next). Docs-only; defaults unchanged; `simthing-sim` map-free.
+
 # 2026-05-29 — Phase M-5B-gradient R1 integrated fixture evidence
 
 - **M-5B-gradient R1 landed (Tier-1 remedial evidence pass):** added `m5b_integrated_parent_columns_feed_l3_composite` — scalar + GradientX + GradientY CPU-oracle field outputs reduced to parent cols 3/4/5 and fed into L3 Ema + WeightedAccumulator in one test; no new substrate or production multi-field runtime wiring.

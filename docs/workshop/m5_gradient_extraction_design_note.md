@@ -1,8 +1,12 @@
 # Phase M-5-gradient: Gradient Operator (single-target) + L3 Strategic Pressure Composition Pattern
 
-**Status:** **M-5A-gradient landed (2026-05-29).** Single-target `Gradient { axis, output_col }`
-admission + generic per-direction stencil weights in `simthing-spec` / `simthing-gpu`. Dual-output
-`GradientXY` remains deferred (§6). **Next: M-5B-gradient** (L3 composition RON fixture).
+**Status:** **M-5A/B/C-gradient landed (2026-05-29).** Single-target `Gradient { axis, output_col }`
+admission + generic per-direction stencil weights (M-5A); L3 composition RON fixture (M-5B+R1);
+need/routing signal fixture (M-5C). Dual-output `GradientXY` remains deferred (§6).
+**Next: M-5D-gradient** — frame/scenario-level admission enforcement of the **Input Validation Rule**
+(§3: gradient fields are strict sinks; no field reads its own immediate output as a diffusion source
+within the same frame). Tier-1 admission hardening; fixtures already respect it by construction, this
+makes a malformed wiring un-admittable.
 **Track naming:** `M-5-gradient` / `M-5A-gradient` / `M-5B-gradient` — **distinct from the existing
 `M-5` source-identity/source-mask track**. Do not call this bare `M-5A`.
 **Sequencing:** Candidate after the EML-GADGET-2 ladder, alongside Resource Economy Authoring
@@ -155,16 +159,44 @@ single-target, one-output-column contract is the binding requirement, not the ex
 **Admission rules (designer/spec layer):**
 - exactly **one** `output_col` per admitted gradient field, in range `[0, n_dims)`
 - explicit `axis`
-- `output_col != source_col` (no self-gradient write loop)
-- `output_col != target_col` where the field also runs a diffusion target (a pure gradient field's
-  `output_col` *is* its `target_col`; admission must forbid a field reading and writing the same
-  gradient column in a way that creates a read/write loop within a pass)
+- `output_col != source_col` (no self-gradient write loop) — **enforced today** (single-spec
+  admission, M-5A landed)
+- `output_col == target_col` for a pure gradient field (the gradient's output *is* its target) —
+  **enforced today**
 - per-direction weights resolved by the compiler from `axis`; the shader never receives "gradient"
 - CPU-oracle parity test required (see §5)
 
+### Input Validation Rule — gradient fields are strict sinks (binding; frame/scenario-level)
+
+A gradient (directional-derivative) field must act **strictly as a sink**. The base field it
+differentiates is **immutable within the frame** from the gradient's perspective: the gradient only
+*reads* the base column and *writes* its own derivative column; it never feeds back into a diffusion
+input within the same frame. Concretely, spec/scenario admission must **reject** any configuration where:
+
+1. **a field reads its own immediate output column as a diffusion source within the same frame**
+   (`source_col == output_col`/`target_col`) — the per-field self read-after-write hazard.
+   *(Already enforced at single-spec admission.)*
+2. **a gradient field's `output_col` is used as the `source_col` of any diffusion/stencil field in
+   the same frame** — i.e. the derivative is wired back as a diffusion input. The gradient output is
+   consumed only **downstream** (Layer-2 reduction, Layer-3 EML, thresholds), never as an upstream
+   diffusion source within the frame. *(New requirement; **not yet enforced** — single-spec admission
+   cannot see cross-field wiring. Must be enforced at the **frame/scenario-level** admission that
+   admits multiple fields together; see §5 / M-5B-gradient.)*
+
+Rationale: within-frame feedback (a field's derivative re-entering its own or the base field's
+diffusion in the same tick) breaks the base field's immutability, creates a read-after-write hazard,
+and violates the band-ordering invariant that feedback closes **across ticks, not within a tick's
+algebraic cycle**. Cross-tick coupling (this tick's gradient influencing next tick's field via an
+authored, ordered path) remains allowed; *same-frame* feedback into a diffusion source is rejected.
+
+**Status:** clause (1) enforced (M-5A). Clause (2) is a **binding forward mandate** on multi-field /
+scenario-level admission — the M-5B-gradient composition path (and any future multi-field RegionField
+scenario admission) must enforce it as a Tier-1 admission hardening within this accepted design.
+
 **What the designer gets:** one output column of the requested gradient component for each
 RegionCell, computed from the field every tick — a first-class Layer-1 column readable by the
-Layer-2 reduction and Layer-3 EML like any other field column.
+Layer-2 reduction and Layer-3 EML like any other field column, but **not** by a same-frame diffusion
+source.
 
 **`GradientXY` (dual-output) is NOT the M-5A-gradient contract.** It remains a possible future
 ergonomic alias / single-pass optimization — see §6.

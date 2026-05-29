@@ -2403,6 +2403,16 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   RON fixtures + test: unmet-demand scalar + price/labor Gradient X/Y → SlotRange Sum → EMA +
   WeightedAccumulator `routing_signal`; CPU-oracle integrated; no production bridge.
   Report: `docs/tests/phase_m_m5c_gradient_need_signal_test_results.md`.
+- **M-5D-gradient — Input Validation Rule: gradient-sink / no-within-frame-feedback admission — **Next (Tier-1 admission hardening).**
+  Enforce, at the **frame/scenario-level** admission that admits multiple RegionFields together,
+  the binding Input Validation Rule (design note §3; invariants "No within-frame field
+  self-feedback; gradient fields are strict sinks"): **reject** any scenario where a gradient
+  field's `output_col` is used as the `source_col` of any diffusion/stencil field in the same
+  frame, and (re-affirm) where any field's `source_col == output_col`. The fixtures (M-5B/M-5C)
+  already respect the sink discipline by construction (gradient → reduction/EML, never → diffusion
+  source); this slice makes a malformed wiring **un-admittable** rather than relying on author care.
+  One PR + one test report (rejection cases + a valid-sink positive case) + one status-row.
+  No new substrate; no runtime change. Report: `docs/tests/phase_m_m5d_gradient_sink_admission_test_results.md`.
 
 **Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); `sqrt`
 magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.
