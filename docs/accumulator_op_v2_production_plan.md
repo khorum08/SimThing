@@ -2454,6 +2454,13 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   wiring); the existing EvalEML interpreter runtime path is unchanged. No new opcode, no `sqrt`, no
   semantic WGSL, no chained scheduling. Report:
   `docs/tests/phase_m_jit_evaleml_wgsl_prototype_test_results.md`.
+- **M-JIT-SQRT-0 — Done (PASS, test-only candidate battery).** Native WGSL `sqrt` battery over
+  deterministic semantic-free generated shaders: direct scalar `sqrt(x)`, Euclidean
+  `sqrt(x*x + y*y)`, and generic-column gradient-magnitude candidate.
+  **Classification: `ApproximateJitOnly`** on this platform (direct scalar corpus max ULP=1 vs Rust
+  `f32::sqrt()`; Euclidean/gradient magnitude corpora bit-exact for the tested inputs). Baseline
+  runtime shader (`accumulator_op.wgsl`) remains `sqrt`-free and no production opcode/admission was
+  added. Report: `docs/tests/phase_m_jit_sqrt_candidate_battery_test_results.md`.
 - **Production JIT caching/cohort dispatch — Deferred (separate gate).** Cohorting identical authored
   graphs, kernel caching/dispatch, multi-gadget chained-stack lowering, conditional (`CMP`/`SELECT`)
   lowering, batched multi-slot dispatch, and any production runtime/default wiring remain gated.

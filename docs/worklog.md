@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-SQRT-0 native WGSL sqrt candidate battery (Tier-2, test-only landed)
+
+- **M-JIT-SQRT-0 (Tier-2, PASS, test-only):** native WGSL `sqrt` candidate battery landed with explicit classification `ApproximateJitOnly` on the local platform (direct scalar corpus max ULP=1 vs Rust `f32::sqrt()`; Euclidean and gradient magnitude corpora bit-exact for tested inputs); generated WGSL remains semantic-free; baseline `accumulator_op.wgsl` remains `sqrt`-free; no production opcode/admission/wiring changes. Report: `docs/tests/phase_m_jit_sqrt_candidate_battery_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-0 generic EvalEML WGSL emission prototype (Tier-2, test-only landed)
 
 - **M-JIT-0 (Tier-2, PASS, test-only):** admitted WeightedAccumulator/Ema gadget graphs lower to deterministic semantic-free straight-line WGSL (subset `LITERAL_F32`/`SLOT_VALUE`/`ADD`/`SUB`/`MUL`/`RETURN_TOP`), compile through wgpu, and match `eval_eml_postfix`/`eval_eml_cpu`/named oracles bit-exactly; unsupported opcodes reject; existing EvalEML interpreter runtime fixture stays green; production JIT caching/cohorting remains separately gated. Report: `docs/tests/phase_m_jit_evaleml_wgsl_prototype_test_results.md`.
