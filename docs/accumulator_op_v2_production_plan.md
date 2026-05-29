@@ -2508,6 +2508,10 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   `docs/tests/phase_m_jit_cohort0_kernel_graph_cohort_preview_test_results.md`.
   **R1 (PASS):** collision-test injected-identity helper fenced from public API; report:
   `docs/tests/phase_m_jit_cohort0_r1_collision_helper_fence_test_results.md`.
+- **M-JIT-REG-0 — Done (PASS, test-only kernel registry manifest preview).**
+  `preview_kernel_registry_manifest` builds TestOnly/default-off registry entries from cohort
+  previews; production registry/scheduler/cache/JIT dispatch remains deferred. Report:
+  `docs/tests/phase_m_jit_reg0_kernel_registry_manifest_test_results.md`.
 - **Production JIT caching/cohort dispatch — Deferred (separate gate).** Cohorting identical authored
   graphs, kernel caching/dispatch, multi-gadget chained-stack lowering, conditional (`CMP`/`SELECT`)
   lowering, batched multi-slot dispatch, and any production runtime/default wiring remain gated.
