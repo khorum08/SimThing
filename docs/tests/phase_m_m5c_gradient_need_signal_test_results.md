@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `d29e4eac997a1fb25ce50f75d7ca885f75ff5951` (M-5B R1 merge)  
-**Final commit SHA:** *(pending merge — see PR)*  
+**Final commit SHA:** `5e903a8` (M-5C-gradient implementation commit)  
 **Lane classification:** Tier-1 fast lane (V7.7 §5)  
 **Verdict:** **PASS — M-5C-gradient landed**
 
