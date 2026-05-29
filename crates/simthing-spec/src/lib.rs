@@ -66,6 +66,7 @@ pub use compile::{
     compile_game_mode_resource_economy_authoring_preview, CompiledFirstSliceScenarioPreview,
     admit_region_field_formula_class, compile_effect, compile_event, compile_overlay,
     compile_property, compile_region_field_preview, compile_region_field_stencil_config,
+    validate_region_field_frame_gradient_sinks,
     compile_resource_economy, compile_resource_economy_authoring_preview,
     compile_resource_flow_admission, compile_trigger, eval_eml_postfix, oracle_field_sampler,
     oracle_soft_step, oracle_weighted_accumulator, reject_unknown_gadget_kind, CompiledEmlGadget,

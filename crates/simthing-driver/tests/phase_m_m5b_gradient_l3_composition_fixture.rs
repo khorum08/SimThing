@@ -13,6 +13,7 @@ use simthing_spec::{
     compile_eml_gadget_stack, compile_first_slice_scenario_preview, compile_region_field_preview,
     deserialize_eml_gadget_stack_ron, deserialize_first_slice_scenario_ron,
     deserialize_region_field_ron, eval_eml_postfix, oracle_ema, oracle_weighted_accumulator,
+    validate_region_field_frame_gradient_sinks,
     CompiledGradientAxis, CompiledRegionFieldOperator, EmlGadgetCompileOptions, EmlGadgetKind,
     MappingExecutionProfile, RegionFieldOperatorSpec,
 };
@@ -163,6 +164,15 @@ fn m5b_integrated_parent_columns_feed_l3_composite() {
         MappingExecutionProfile::default(),
         MappingExecutionProfile::Disabled
     );
+}
+
+#[test]
+fn m5b_frame_gradient_sink_validation_admits() {
+    let scalar = deserialize_region_field_ron(SCALAR_FIELD_RON).expect("scalar RON");
+    let gx = deserialize_region_field_ron(GRADIENT_X_FIELD_RON).expect("gx RON");
+    let gy = deserialize_region_field_ron(GRADIENT_Y_FIELD_RON).expect("gy RON");
+    validate_region_field_frame_gradient_sinks(&[&scalar, &gx, &gy])
+        .expect("M-5B fixture frame admits under gradient strict-sink rule");
 }
 
 #[test]
