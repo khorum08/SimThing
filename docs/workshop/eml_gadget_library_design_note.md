@@ -9,7 +9,7 @@ No new ConsumeMode was added.
 No WGSL or GPU kernel was added.
 No runtime gadget execution was introduced.
 No temporal gadget implementation landed.
-VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
+VelocityMonitor + Decay/EMA (2B) and BoundedFeedback (2C) landed. Hysteresis (conditional) and Acceleration remain deferred.
 No hidden previous-value read was introduced.
 
 **Phase M EML-GADGET-2B landed.**
@@ -47,7 +47,7 @@ No new ConsumeMode was added.
 No WGSL or GPU kernel was added.
 No runtime gadget execution was introduced.
 No temporal gadget implementation landed.
-VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
+VelocityMonitor + Decay/EMA (2B) and BoundedFeedback (2C) landed. Hysteresis (conditional) and Acceleration remain deferred.
 No hidden previous-value read was introduced.
 
 **Phase M EML-GADGET-2B landed.**
