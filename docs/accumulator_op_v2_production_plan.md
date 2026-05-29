@@ -2410,7 +2410,8 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   `validate_region_field_frame_gradient_sinks` rejects gradient `output_col` used as same-frame
   `source_col`; `compile_region_field_frame_preview` validates then compiles frame groups; M-5B/M-5C
   valid-sink fixtures green. No runtime change.
-  Report: `docs/tests/phase_m_m5d_gradient_sink_admission_test_results.md`.
+  Report: `docs/tests/phase_m_m5d_gradient_sink_admission_test_results.md`; R1 grouped-helper evidence:
+  `docs/tests/phase_m_m5d_r1_gradient_frame_compile_helper_test_results.md`.
 
 **Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); `sqrt`
 magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.

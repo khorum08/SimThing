@@ -1,3 +1,7 @@
+# 2026-05-29 — M-5D R1 evidence closure: missing docs/tests report + status sync
+
+- **M-5D R1 evidence closure:** added missing `docs/tests/phase_m_m5d_r1_gradient_frame_compile_helper_test_results.md` and synced compact status references in mapping guidance and production plan; no code/runtime change beyond PR #278 grouped helper.
+
 # 2026-05-29 — Phase M-5D-gradient R1 frame compile helper + constitutional doc sync
 
 - **M-5D R1:** added `compile_region_field_frame_preview` (validate strict-sink rule then compile each field); M-5B/M-5C fixtures use it; synced design note §3 and `invariants.md` enforcement references to M-5D landed state.
