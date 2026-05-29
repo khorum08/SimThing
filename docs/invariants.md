@@ -143,6 +143,22 @@ they are legible.
 
 ---
 
+## EML Gadget Library
+
+Added by `docs/workshop/eml_gadget_library_design_note.md`; EML-GADGET-1 (Tier-1) accepted
+2026-05-29 — see `docs/reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`. Gadgets are a
+**designer-facing authoring layer**, not a new runtime.
+
+| Rule | Enforced by / meaning |
+|---|---|
+| Gadgets are spec-layer node-template macros | A gadget compiles to a postfix subgraph over the **existing** `EvalEML` opcode set — **no new WGSL, no per-gadget GPU kernel, no new opcode.** Registry/compiler live in `simthing-spec`; `simthing-gpu` stays the one generic interpreter; `simthing-sim` has no `Gadget`/`Personality` type |
+| Mandatory CPU-oracle parity per gadget | No gadget (any tier) is admitted without a CPU oracle + parity test; compiled postfix evaluation must match within tolerance (bit-exact for `ExactDeterministic`). SoftStep is `ExactDeterministic` because it is the **algebraic** sigmoid `0.5+0.5·u/(1+\|u\|)` — never `exp`/logistic/transcendental |
+| Composition is PerGadgetOnly; preview ≠ runtime | Per-gadget templates and a single-gadget `InlineFlattenPreview` may be executable previews; multi-gadget stacks are `PerGadgetOnly` (chained OrderBand runtime scheduling deferred). The flatten preview is **not** a runtime execution path — no driver/gpu/sim code consumes it. True inline multi-gadget flattening requires separately-proven intermediate column wiring |
+| Node cap is per executable tree | `MAX_EML_TREE_NODES` applies to each executable gadget/single-tree; a `PerGadgetOnly` multi-gadget stack may exceed that informational total (diagnostic only), since each gadget is its own tree |
+| Admission validates at the designer layer | Unknown/deferred kinds rejected; column bounds; finite/`>0` params; non-empty + matched input/weight counts. Tier-2 temporal gadgets (velocity/EMA/acceleration/hysteresis/decay) are rejected until the EML-GADGET-2 slice, which must carry the **bounded-feedback admission guardrail** (self-referential accumulator declares decay<1 and/or a clamp or admission rejects) |
+
+---
+
 ## The Proof Test
 
 `custom_layout_ethics_axis` in `property.rs` is the invariant proof for the

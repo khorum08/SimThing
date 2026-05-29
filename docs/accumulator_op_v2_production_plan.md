@@ -2121,7 +2121,9 @@ Defaults unchanged.
 
 **Test:** [`phase_m_product_fixture_chain_parking_test_results.md`](tests/phase_m_product_fixture_chain_parking_test_results.md) — PASS.
 
-### PR M-eml-gadget-library — EML Gadget Library — **EML-GADGET-1 + R1 + R2 landed; EML-GADGET-2 queued**
+### PR M-eml-gadget-library — EML Gadget Library — **EML-GADGET-1 ACCEPTED (Opus 2026-05-29); EML-GADGET-2 queued (design review next)**
+
+**Acceptance:** **EML-GADGET-1 ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)** — [`reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md). Tier-1 stateless gadgets (`FieldSampler`, `WeightedAccumulator`, algebraic `SoftStep`) accepted as `simthing-spec` node-template macros over existing `EvalEML` opcodes with CPU-oracle parity; R1 composition (per-gadget executable; multi-gadget `PerGadgetOnly`; preview ≠ runtime) and R2 node-cap (per executable tree) accepted. Binding rows added to `docs/invariants.md` ("EML Gadget Library"). Conditions: preview ≠ runtime (no driver/gpu/sim consumes the flatten preview); `PerGadgetOnly` is the only multi-gadget composition until intermediate wiring is separately gated; oracle-per-gadget binding for all future gadgets. Re-verified: eml_gadget_tier1 14/14, admission 11/11, authoring preview 8/8. **Next: EML-GADGET-2 temporal-memory design review (or designer preview UX), before implementation.** *(The #262 parking packet was reverted off master; the acceptance memo is the authoritative review artifact.)*
 
 **Status:** **Phase M EML-GADGET-1 + R1 + R2 landed.** Tier-1 stateless EML gadgets compile in `simthing-spec` to existing EvalEML node templates with mandatory CPU-oracle parity. R1 clarifies stack composition semantics; R2 corrects node-cap enforcement to per-gadget/single-tree only. Design note:
 [`workshop/eml_gadget_library_design_note.md`](workshop/eml_gadget_library_design_note.md).
