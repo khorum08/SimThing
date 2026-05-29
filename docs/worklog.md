@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M Product Scenario Selection Gate (Tier-2, SELECT → M-5E)
+
+- **Product Scenario Selection Gate (Tier-2, SELECT → M-5E):** no named scenario for atlas/active-mask/source-mask; selected Candidate D — full-grid scarcity/opportunity/logistics composite on landed M-5 substrate. Next: M-5E-gradient fixture (Tier-1). Report: `docs/tests/phase_m_product_scenario_selection_gate_results.md`. Docs-only; no implementation.
+
 # 2026-05-29 — Phase M-6A Single-Grid Active Mask Readiness Gate (Tier-2, DEFER)
 
 - **M-6A Single-Grid Active Mask Readiness Gate (Tier-2, DEFER):** evaluated generic GPU `active_mask` vs RegionField admission exposure; deferred — `ActiveOnlyExperimentalNoHalo` constitutionally blocked, missing halo contract + CPU/GPU parity, no named product scenario. Report: `docs/tests/phase_m_m6a_single_grid_active_mask_readiness_results.md`. Docs-only; no implementation.

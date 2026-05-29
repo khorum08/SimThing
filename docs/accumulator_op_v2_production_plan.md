@@ -2425,6 +2425,12 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   later, next handoff is **Phase M-6B — RegionField ActiveOnly Mask Admission** (halo-contract
   required). No implementation in this pass.
   Report: `docs/tests/phase_m_m6a_single_grid_active_mask_readiness_results.md`.
+- **Product Scenario Selection Gate — **Done (SELECT → M-5E).** Tier-2 product gate: no named
+  scenario for atlas (M-4A), active mask (M-6A), or source-mask; selected **Candidate D** —
+  full-grid scarcity/opportunity/logistics composite on existing M-5-gradient substrate. Next
+  handoff: **Phase M-5E-gradient — Scarcity/Opportunity Composite Product Fixture** (Tier-1;
+  no new WGSL/substrate). M-4A, M-6A, source-mask remain deferred.
+  Report: `docs/tests/phase_m_product_scenario_selection_gate_results.md`.
 
 **Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); `sqrt`
 magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.
