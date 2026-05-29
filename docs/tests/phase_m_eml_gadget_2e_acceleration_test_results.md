@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `a54be37176df2b7e81fb5fc735f5e55015923009` (2D R1 merge)  
-**Final commit SHA:** *(to be recorded after push/merge)*  
+**Final commit SHA:** `27718a4`  
 **Verdict:** **PASS — explicit velocity-column Acceleration landed**
 
 ---
