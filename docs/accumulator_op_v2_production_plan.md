@@ -1907,7 +1907,7 @@ resource column, fill helper, or GPU fill kernel after a separate measured desig
 
 **Review:** [`reviews/phase_m_first_slice_vertical_proof_review_packet.md`](reviews/phase_m_first_slice_vertical_proof_review_packet.md)
 
-**Test:** [`phase_m_first_slice_vertical_proof_parking_test_results.md`](tests/phase_m_first_slice_vertical_proof_parking_test_results.md) — PASS.
+**Test:** [`phase_m_first_slice_vertical_proof_review_packet.md`](reviews/phase_m_first_slice_vertical_proof_review_packet.md) — PASS (accepted Opus/product 2026-05-28).
 
 ### PR M-first-slice-summary-validity — Summary validity V1 — **Done**
 
@@ -2445,97 +2445,24 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   wiring remain separately gated. No new opcode, no semantic WGSL, no default SimSession wiring.
   Report: `docs/tests/phase_m_eml_gadget_runtime_execution_gate_test_results.md`.
 
-**JIT ladder:**
-- **M-JIT-0 — Done (PASS, test-only).** Generic EvalEML WGSL emission prototype: admitted
-  `WeightedAccumulator`/`Ema` gadget node programs lower to deterministic, semantic-free,
-  straight-line WGSL over the existing opcode subset (`LITERAL_F32`/`SLOT_VALUE`/`ADD`/`SUB`/`MUL`/
-  `RETURN_TOP`), compile through `wgpu`, and match `eval_eml_postfix`/`eval_eml_cpu`/named oracles
-  bit-exactly; unsupported opcodes reject with a structured error. Test-only (no production/default
-  wiring); the existing EvalEML interpreter runtime path is unchanged. No new opcode, no `sqrt`, no
-  semantic WGSL, no chained scheduling. Report:
-  `docs/tests/phase_m_jit_evaleml_wgsl_prototype_test_results.md`.
-- **M-JIT-SQRT-0 — Done (PASS, test-only candidate battery).** Native WGSL `sqrt` battery over
-  deterministic semantic-free generated shaders: direct scalar `sqrt(x)`, Euclidean
-  `sqrt(x*x + y*y)`, and generic-column gradient-magnitude candidate.
-  **Classification: `ApproximateJitOnly`** on this platform (direct scalar corpus max ULP=1 vs Rust
-  `f32::sqrt()`; Euclidean/gradient magnitude corpora bit-exact for the tested inputs). Baseline
-  runtime shader (`accumulator_op.wgsl`) remains `sqrt`-free and no production opcode/admission was
-  added. Report: `docs/tests/phase_m_jit_sqrt_candidate_battery_test_results.md`.
-- **M-JIT-SQRT-0 R1 — Done (PASS, remedial oracle-order correction).** Vector magnitude batteries
-  now use shader-text-order CPU oracle as primary (`(x*x)+(y*y)` then `sqrt`); prior FMA/`mul_add`
-  comparator is diagnostic-only. Overall classification remains `ApproximateJitOnly`; production
-  exact `sqrt` admission remains separately gated/deferred. Report:
-  `docs/tests/phase_m_jit_sqrt_candidate_battery_r1_test_results.md`.
-- **M-JIT-GRAD-0 — Done (PASS, test-only spatial observer proof).** GPU-resident batched spatial
-  field observer prototype: semantic-free WGSL; central-difference `dx`/`dy`, descent vectors, and
-  squared magnitude (`mag2`, no `sqrt`); 10,000 observers in one dispatch; exact-authoritative
-  outputs are `dx`/`dy`/descent. Production observer scheduling/caching remains deferred.
-  Report: `docs/tests/phase_m_jit_grad0_spatial_observer_test_results.md`.
-- **M-JIT-GRAD-0 R1 — Done (PASS, remedial output classification).** `mag2` primary shader-order CPU
-  oracle classification recorded: exact on small grid; `ApproximateJitOnly` (max ULP=1) on 10k batch
-  sample — diagnostic/ranking hint only, not deterministic authoritative state. Production plan
-  amended to avoid global exact-parity overclaim for observer outputs. Report:
-  `docs/tests/phase_m_jit_grad0_spatial_observer_r1_test_results.md`.
-- **M-JIT-GRAD-1 — Done (PASS, test-only observer+formula fusion).** Fused semantic-free WGSL in one
-  dispatch: field sample → exact-authoritative `dx`/`dy`/descent → exact-subset score via `fma`;
-  10,000 observers; no `mag2` in score; no `sqrt`. Production observer scheduling/caching remains
-  deferred. Report: `docs/tests/phase_m_jit_grad1_observer_formula_fusion_test_results.md`.
-- **M-JIT-DESC-0 — Done (PASS, test-only kernel descriptor manifest).** Test-layer
-  `KernelDescriptor` records reads/writes, exact vs approximate authority, native math class, and
-  default-off posture for M-JIT-0/SQRT/GRAD proof kernels; `validate_exact_inputs` rejects
-  approximate outputs (e.g. GRAD-0 `mag2`) as exact inputs. Production descriptor
-  registry/scheduler remains deferred. Report:
-  `docs/tests/phase_m_jit_desc0_kernel_descriptor_test_results.md`.
-- **M-JIT-DESC-1 — Done (PASS, spec-layer descriptor admission preview).** `simthing-spec`
-  `KernelDescriptorSpec` + `validate_kernel_descriptor_admission` / `validate_exact_kernel_inputs`
-  mirror DESC-0 landed descriptors as TestOnly; ProductionCandidate/production_wiring/default-on/
-  semantic names rejected at admission. Production descriptor registry/scheduler remains deferred.
-  Report: `docs/tests/phase_m_jit_desc1_kernel_descriptor_admission_test_results.md`.
-- **M-JIT-DESC-2 — Done (PASS, spec-layer kernel graph composition admission preview).**
-  `KernelGraphSpec` + `validate_kernel_graph_admission` validate descriptor edges without
-  scheduling; approximate outputs cannot feed exact inputs; cycles/self-edges reject. Production
-  descriptor registry/scheduler/cache remains deferred. Report:
-  `docs/tests/phase_m_jit_desc2_kernel_graph_admission_test_results.md`.
-- **M-JIT-KEY-0 — Done (PASS, deterministic kernel graph identity/cache-key preview).**
-  `KernelGraphIdentity` + `preview_kernel_graph_identity` produce stable canonical text/key for
-  admitted graphs; admission gate preserved; no runtime cache/scheduler/GPU dispatch. Production
-  registry/scheduler/cache remains deferred. Report:
-  `docs/tests/phase_m_jit_key0_kernel_graph_identity_test_results.md`.
-- **M-JIT-COHORT-0 — Done (PASS, deterministic kernel graph cohort grouping preview).**
-  `preview_kernel_graph_cohorts` groups admitted graph requests by stable identity; identical graphs
-  cohort together; collision guard preserves canonical text; no runtime cache/scheduler/GPU dispatch.
-  Production registry/scheduler/cache/JIT dispatch remains deferred. Report:
-  `docs/tests/phase_m_jit_cohort0_kernel_graph_cohort_preview_test_results.md`.
-  **R1 (PASS):** collision-test injected-identity helper fenced from public API; report:
-  `docs/tests/phase_m_jit_cohort0_r1_collision_helper_fence_test_results.md`.
-- **M-JIT-PROD-0 — Done (PASS, default-off production registry shell).**
-  `ProductionKernelRegistryShell` registers ProductionCandidatePreview entries only;
-  explicit opt-in registered exact cohort execution with CPU/GPU oracle parity;
-  duplicate stable key idempotent when byte-identical else reject; default wiring/scheduler/cache
-  remains deferred. Report: `docs/tests/phase_m_jit_prod0_registry_shell_test_results.md`.
-  Stale superseded M-JIT test reports deleted (no archive).
-- **M-JIT-EXEC-1 — Done (PASS, ProductionCandidatePreview-gated cohort execution fixture).**
-  Identical exact graph requests cohort into one REG-1-admitted entry; combined 20k-observer
-  batch executes in one test dispatch with per-segment oracle parity; distinct graphs refuse
-  mixed cohort; production registry/scheduler/cache/JIT dispatch remains deferred. Report:
-  `docs/tests/phase_m_jit_exec1_cohort_execution_fixture_test_results.md`.
-- **M-JIT-EXEC-0 — Done (PASS, ProductionCandidatePreview-gated execution fixture).**
-  Default-off test fixture executes REG-1-admitted exact GRAD-1-style path over 10k
-  observers with CPU/GPU oracle parity; mag2/sqrt reject before execution; production
-  registry/scheduler/cache/JIT dispatch remains deferred. Report:
-  `docs/tests/phase_m_jit_exec0_production_candidate_fixture_test_results.md`.
-- **M-JIT-REG-1 — Done (PASS, production-candidate registry admission preview).**
-  `preview_production_candidate_registry_entry` promotes TestOnly entries to
-  ProductionCandidatePreview when exact-only/semantic-free; mag2/sqrt/approx reject;
-  production registry/scheduler/cache/JIT dispatch remains deferred. Report:
-  `docs/tests/phase_m_jit_reg1_production_candidate_registry_admission_test_results.md`.
-- **M-JIT-REG-0 — Done (PASS, test-only kernel registry manifest preview).**
-  `preview_kernel_registry_manifest` builds TestOnly/default-off registry entries from cohort
-  previews; production registry/scheduler/cache/JIT dispatch remains deferred. Report:
-  `docs/tests/phase_m_jit_reg0_kernel_registry_manifest_test_results.md`.
-- **Production JIT caching/cohort dispatch — Deferred (separate gate).** Cohorting identical authored
-  graphs, kernel caching/dispatch, multi-gadget chained-stack lowering, conditional (`CMP`/`SELECT`)
-  lowering, batched multi-slot dispatch, and any production runtime/default wiring remain gated.
+**JIT ladder (closed at M-JIT-PROD-0):**
+
+The M-JIT track is **closed** at default-off `ProductionKernelRegistryShell` (`d62b09d`), pending/after Opus acceptance. Intermediate ladder reports were deleted in the M-JIT doc closeout; conclusions are summarized here and in `docs/invariants.md` (JIT Kernel Registry section).
+
+**Accepted (PROD-0):**
+- Default-off explicit registration via `ProductionKernelRegistryShell`
+- Explicit opt-in registered exact `ProductionCandidatePreview` cohort execution with CPU/GPU oracle parity
+- Duplicate stable-key idempotent when byte-identical; reject on collision with different canonical text
+- No runtime cache, no scheduler, no default wiring
+
+**Evidence retained for Opus review:**
+- `docs/tests/phase_m_jit_prod0_registry_shell_test_results.md` — closure authority
+- `docs/tests/phase_m_jit_exec1_cohort_execution_fixture_test_results.md` — cohort GPU execution proof
+- `docs/tests/phase_m_jit_sqrt_candidate_battery_r1_test_results.md` — native sqrt `ApproximateJitOnly`
+- `docs/tests/phase_m_jit_grad0_spatial_observer_r1_test_results.md` — observer `mag2` classification
+- `docs/tests/phase_m_jit_grad1_observer_formula_fusion_test_results.md` — fused exact-subset score path
+
+**Follow-on tracks (separately gated):** shader/software sqrt exact path; production scheduler; runtime kernel cache; default SimSession wiring; production economy→mapping bridge; atlas/active mask/source identity; dual-output `GradientXY`; ClauseThing implementation.
 
 **Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); `sqrt`
 magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.

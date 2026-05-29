@@ -43,18 +43,11 @@ Historical/superseded artifacts live under `docs/workshop/archive/`. Do not trea
 | **M-6A Single-Grid Active Mask Readiness Gate** | **T2** | **deferred** | missing halo contract + CPU/GPU parity; [`phase_m_m6a_single_grid_active_mask_readiness_results.md`](../tests/phase_m_m6a_single_grid_active_mask_readiness_results.md) |
 | **Product Scenario Selection Gate** | **T2** | **selected → M-5E** | full-grid scarcity/opportunity/logistics composite; no new substrate; [`phase_m_product_scenario_selection_gate_results.md`](../tests/phase_m_product_scenario_selection_gate_results.md) |
 | **EML-GADGET Runtime Execution Gate** | **T2** | **landed (fixture)** | per-gadget EvalEML runtime via existing AccumulatorOp; [`phase_m_eml_gadget_runtime_execution_gate_test_results.md`](../tests/phase_m_eml_gadget_runtime_execution_gate_test_results.md) |
-| **M-JIT-SQRT-0 R1** (native sqrt candidate battery) | **T2** | **landed (ApproximateJitOnly)** | [`phase_m_jit_sqrt_candidate_battery_r1_test_results.md`](../tests/phase_m_jit_sqrt_candidate_battery_r1_test_results.md) |
-| **M-JIT-GRAD-0 R1** (spatial observer classification) | **T2** | **landed (test-only)** | [`phase_m_jit_grad0_spatial_observer_r1_test_results.md`](../tests/phase_m_jit_grad0_spatial_observer_r1_test_results.md) |
-| **M-JIT-GRAD-1** (observer + exact formula fusion) | **T2** | **landed (test-only)** | [`phase_m_jit_grad1_observer_formula_fusion_test_results.md`](../tests/phase_m_jit_grad1_observer_formula_fusion_test_results.md) |
-| **M-JIT-DESC-2** (kernel graph composition admission) | **T2** | **landed** | [`phase_m_jit_desc2_kernel_graph_admission_test_results.md`](../tests/phase_m_jit_desc2_kernel_graph_admission_test_results.md) |
-| **M-JIT-KEY-0** (graph identity/cache-key preview) | **T2** | **landed** | [`phase_m_jit_key0_kernel_graph_identity_test_results.md`](../tests/phase_m_jit_key0_kernel_graph_identity_test_results.md) |
-| **M-JIT-COHORT-0 R1** (cohort grouping + helper fence) | **T2** | **landed** | [`phase_m_jit_cohort0_r1_collision_helper_fence_test_results.md`](../tests/phase_m_jit_cohort0_r1_collision_helper_fence_test_results.md) |
-| **M-JIT-REG-1** (production-candidate admission preview) | **T2** | **landed** | [`phase_m_jit_reg1_production_candidate_registry_admission_test_results.md`](../tests/phase_m_jit_reg1_production_candidate_registry_admission_test_results.md) |
-| **M-JIT-EXEC-0** (ProductionCandidatePreview execution fixture) | **T2** | **landed** | [`phase_m_jit_exec0_production_candidate_fixture_test_results.md`](../tests/phase_m_jit_exec0_production_candidate_fixture_test_results.md) |
-| **M-JIT-EXEC-1** (ProductionCandidatePreview cohort execution fixture) | **T2** | **landed** | [`phase_m_jit_exec1_cohort_execution_fixture_test_results.md`](../tests/phase_m_jit_exec1_cohort_execution_fixture_test_results.md) |
-| **M-JIT-PROD-0** (default-off production registry shell) | **T2** | **landed** | `ProductionKernelRegistryShell` + explicit opt-in registered exact cohort execution; default wiring/scheduler/cache remain gated; [`phase_m_jit_prod0_registry_shell_test_results.md`](../tests/phase_m_jit_prod0_registry_shell_test_results.md) |
+| **M-JIT track (closed at PROD-0)** | **T2** | **closed (pending Opus acceptance)** | Default-off `ProductionKernelRegistryShell` + explicit registered exact `ProductionCandidatePreview` cohort execution; intermediate ladder reports deleted — retained evidence: [`phase_m_jit_prod0_registry_shell_test_results.md`](../tests/phase_m_jit_prod0_registry_shell_test_results.md), [`phase_m_jit_exec1_cohort_execution_fixture_test_results.md`](../tests/phase_m_jit_exec1_cohort_execution_fixture_test_results.md), [`phase_m_jit_sqrt_candidate_battery_r1_test_results.md`](../tests/phase_m_jit_sqrt_candidate_battery_r1_test_results.md), [`phase_m_jit_grad0_spatial_observer_r1_test_results.md`](../tests/phase_m_jit_grad0_spatial_observer_r1_test_results.md), [`phase_m_jit_grad1_observer_formula_fusion_test_results.md`](../tests/phase_m_jit_grad1_observer_formula_fusion_test_results.md) |
 
-**Next authorized step:** **M-JIT-PROD-0 default-off production registry shell landed.** Explicit registered exact ProductionCandidatePreview cohort execution is open via test-invoked shell calls only. Default SimSession wiring, production scheduler, runtime kernel cache, production economy→mapping bridge, approximate `mag2` exact score input, native sqrt exactness, semantic WGSL, and ClauseThing implementation remain gated. ClauseThing remains proposal-only.
+**M-JIT status:** Track **closed at M-JIT-PROD-0** (`d62b09d`) pending/after Opus acceptance. Explicit registered exact `ProductionCandidatePreview` cohort execution is available only via test-invoked `ProductionKernelRegistryShell` calls (`production_wiring=false`, default-off). **Follow-on tracks remain gated:** shader/software sqrt exact path; production scheduler; runtime kernel cache; default SimSession wiring; production economy→mapping bridge; atlas/active mask/source identity; dual-output `GradientXY`; native sqrt exact authority; approximate `mag2` feeding exact score inputs; semantic WGSL; ClauseThing implementation (proposal-only).
+
+**E-phase / E11 / Resource Flow:** Reports documenting stalled or review-blocked E-phase work are intentionally retained. JIT doc closeout did not delete E-phase stalled evidence.
 
 > Per-slice landing history (EML-GADGET-2A…2E, boundary/economy, etc.) now lives in the status table above and in `docs/worklog.md`. The accepted designs and binding rules are in the design notes and `docs/invariants.md`. Standing posture ("no semantic WGSL / no default wiring / `simthing-sim` map-free / defaults unchanged") is binding from `invariants.md` and asserted once per PR test report — not restated per slice here.
 
@@ -326,9 +319,7 @@ weights. This is acceptable for the 10x10 first-slice scenario fixture. Future
 multi-field/atlas scale must replace per-slot resource writes with a generic preinitialized
 resource column, fill helper, or GPU fill kernel after a separate measured design step.
 
-Review packet: [`../reviews/phase_m_first_slice_vertical_proof_review_packet.md`](../reviews/phase_m_first_slice_vertical_proof_review_packet.md)
-
-Parking verification: [`../tests/phase_m_first_slice_vertical_proof_parking_test_results.md`](../tests/phase_m_first_slice_vertical_proof_parking_test_results.md)
+Review packet: [`../reviews/phase_m_first_slice_vertical_proof_review_packet.md`](../reviews/phase_m_first_slice_vertical_proof_review_packet.md) (accepted — Opus/product 2026-05-28)
 
 ## Phase M-first-slice (landed — opt-in)
 

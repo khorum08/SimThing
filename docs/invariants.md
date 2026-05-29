@@ -150,6 +150,26 @@ they are legible.
 
 ---
 
+## JIT Kernel Registry (Phase M-JIT, closed at PROD-0)
+
+Designer/spec-admission guardrails for the default-off production kernel registry shell.
+Runtime comments do not substitute for these rules.
+
+| Rule | Enforced by / meaning |
+|---|---|
+| No semantic WGSL | JIT kernels are semantic-free straight-line WGSL; gameplay/map/faction concepts never enter shader text — admission rejects semantic names |
+| `ProductionCandidatePreview` is default-off | `production_wiring=false`; no default SimSession mapping wiring; shell invoked only from explicit test/fixture paths until a separate gate authorizes production wiring |
+| Production registry admits validated candidates only | `ProductionKernelRegistryShell` registers `ProductionCandidatePreview` entries that pass `validate_production_candidate_preview_entry`; duplicate stable key idempotent when byte-identical, else reject |
+| Approximate outputs cannot feed exact inputs | `mag2` and other `ApproximateJitOnly` outputs reject as exact-authoritative score/state inputs at admission and execution gates |
+| Native sqrt is not exact-authoritative | Native WGSL `sqrt` remains `ApproximateJitOnly` until a separately accepted shader/software deterministic path lands; baseline runtime shader stays `sqrt`-free |
+| No production economy→mapping bridge | Resolved treasury may select authored EML profiles in fixture orchestration only; CPU must not compute urgency or emit commitments |
+| No CPU-side AI planner / urgency emission | Strategic commitments emerge as GPU `Threshold` + `EmitEvent` crossings; no CPU map traversal or urgency planner |
+| `simthing-sim` remains map/Gadget/Personality/Memory-semantic-free | JIT/registry types live in `simthing-spec`; driver test fixtures opt in explicitly |
+| Scheduler / cache / default wiring are separate follow-on tracks | PROD-0 provides explicit registered exact cohort execution only — no runtime cache, no scheduler, no default wiring |
+| ClauseThing remains proposal-only | No ClauseThing implementation without a separately accepted gate |
+
+---
+
 ## EML Gadget Library
 
 Added by `docs/workshop/eml_gadget_library_design_note.md`; EML-GADGET-1 (Tier-1) accepted

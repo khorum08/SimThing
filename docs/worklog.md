@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-DOC-CLOSEOUT documentation/evidence surface cleanup (Tier-2, landed)
+
+- JIT doc closeout cleanup landed; stale reports/workshop files deleted; active docs compacted; no SHA hygiene loop; E-phase stalled evidence preserved. Report: `docs/tests/phase_m_jit_doc_closeout_cleanup_results.md`.
+
 # 2026-05-29 — Phase M-JIT-PROD-0 default-off production registry shell + doc surface cleanup (Tier-2, landed)
 
 - **M-JIT-PROD-0 (Tier-2, PASS):** `ProductionKernelRegistryShell` + explicit opt-in registered exact cohort execution; stale superseded M-JIT test reports deleted. Report: `docs/tests/phase_m_jit_prod0_registry_shell_test_results.md`.
