@@ -56,8 +56,9 @@ pub use jit_kernel_cohort_preview::{
     KernelGraphRequestSpec,
 };
 pub use jit_kernel_registry_preview::{
-    preview_kernel_registry_manifest, validate_kernel_registry_manifest_preview,
-    KernelRegistryEntryPreview, KernelRegistryLane, KernelRegistryManifestPreview,
+    preview_kernel_registry_manifest, preview_production_candidate_registry_entry,
+    validate_kernel_registry_manifest_preview, KernelRegistryEntryPreview, KernelRegistryLane,
+    KernelRegistryManifestPreview,
 };
 pub use region_field_admission::{
     admit_region_field_formula_class, compile_region_field_preview,

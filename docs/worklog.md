@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-REG-1 production-candidate registry admission preview (Tier-2, landed)
+
+- **M-JIT-REG-1 (Tier-2, PASS):** `preview_production_candidate_registry_entry` gates TestOnly→ProductionCandidatePreview promotion; exact-only/semantic-free; mag2/sqrt/approx reject; production registry/scheduler/cache/JIT dispatch remains deferred. Report: `docs/tests/phase_m_jit_reg1_production_candidate_registry_admission_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-REG-0 test-only kernel registry manifest preview (Tier-2, landed)
 
 - **M-JIT-REG-0 (Tier-2, PASS):** `preview_kernel_registry_manifest` builds TestOnly/default-off registry entries from cohort previews; production registry/scheduler/cache/JIT dispatch remains deferred. Report: `docs/tests/phase_m_jit_reg0_kernel_registry_manifest_test_results.md`.
