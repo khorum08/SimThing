@@ -2480,6 +2480,12 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   dispatch: field sample → exact-authoritative `dx`/`dy`/descent → exact-subset score via `fma`;
   10,000 observers; no `mag2` in score; no `sqrt`. Production observer scheduling/caching remains
   deferred. Report: `docs/tests/phase_m_jit_grad1_observer_formula_fusion_test_results.md`.
+- **M-JIT-DESC-0 — Done (PASS, test-only kernel descriptor manifest).** Test-layer
+  `KernelDescriptor` records reads/writes, exact vs approximate authority, native math class, and
+  default-off posture for M-JIT-0/SQRT/GRAD proof kernels; `validate_exact_inputs` rejects
+  approximate outputs (e.g. GRAD-0 `mag2`) as exact inputs. Production descriptor
+  registry/scheduler remains deferred. Report:
+  `docs/tests/phase_m_jit_desc0_kernel_descriptor_test_results.md`.
 - **Production JIT caching/cohort dispatch — Deferred (separate gate).** Cohorting identical authored
   graphs, kernel caching/dispatch, multi-gadget chained-stack lowering, conditional (`CMP`/`SELECT`)
   lowering, batched multi-slot dispatch, and any production runtime/default wiring remain gated.
