@@ -20,6 +20,28 @@ Active read order:
 6. [`mapping_atlas_algebraic_mask_candidate_notes.md`](mapping_atlas_algebraic_mask_candidate_notes.md) (M-4A sandbox evidence — **candidate only, reverted**)
 7. Cited `docs/tests/` evidence before changing any classification
 
+## Phase M SummaryValidity V1 (landed — opt-in)
+
+Phase M SummaryValidity V1 landed.
+It adds a bounded first-slice summary validity policy/status so a clean or skipped RegionField can report whether its strategic parent summary is fresh, cached, zero-initial, or unavailable without rerunning dense field propagation or rederiving gameplay state on CPU.
+The hot path remains GPU-resident; cached summaries retain GPU-resident parent summary values and report metadata only.
+No CPU-side AI planner was introduced.
+No default SimSession wiring was introduced.
+No atlas batching landed.
+No M-4A atlas masking landed.
+No active mask, perception, map residency system, behavioral source policy, or source_mask landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Policy/status (V1):** `RegionFieldSummaryPolicySpec::CachedUntilDirtyWithZeroInitial` (default when omitted) → `FreshThisTick` on executed ticks; `Cached { age_ticks }` on clean skipped ticks after prior execution; `ZeroInitial` before any execution; `InvalidOrUnavailable` under Disabled profile. Summary metadata only — CPU does not recompute threat/urgency on skip.
+
+**Cached commitment scan:** deferred — threshold/event scan runs only when the dense path executes; cached ticks report validity metadata without CPU-side commitment emission.
+
+**Known scale caveat:** resolve per-slot queue-write scale before any multi-field/atlas scaling (unchanged).
+
+**Test:** [`../tests/phase_m_first_slice_summary_validity_test_results.md`](../tests/phase_m_first_slice_summary_validity_test_results.md)
+
 ## Phase M first-slice vertical proof (ACCEPTED — Opus/product 2026-05-28)
 
 The full first-slice vertical SEAD slice is **accepted as complete for the single-grid, opt-in
@@ -29,9 +51,10 @@ propagation → parent `SlotRange` Sum → `field_urgency` EvalEML → Threshold
 Acceptance memo: [`../reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md`](../reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md).
 
 **Conditions:** resolve the per-slot queue-write scale caveat before any multi-field/atlas scaling;
-all prohibitions hold (no atlas, no default wiring, no perception, no `source_mask`, no map
-residency until separately gated). **Named next implementation step:** map residency / summary
-validity, or queue-write scale hardening — **not** the M-4 atlas packer.
+all prohibitions hold (no atlas, no default wiring, no perception, no `source_mask`, no full map
+residency until separately gated). **SummaryValidity V1 landed (2026-05-28).** Named next
+implementation step: **queue-write scale hardening or broader map residency** — **not** the M-4
+atlas packer.
 
 ## Phase M product fixture (landed — opt-in)
 

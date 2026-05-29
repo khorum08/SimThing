@@ -12,8 +12,10 @@ use crate::error::SpecError;
 use crate::spec::region_field::{
     FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, RegionFieldCadenceSpec,
     RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
-    RegionFieldSourcePolicySpec, RegionFieldSpec,
+    RegionFieldSourcePolicySpec, RegionFieldSpec, RegionFieldSummaryPolicySpec,
 };
+
+pub use crate::spec::region_field::CompiledRegionFieldSummaryPolicy;
 
 pub const REGION_FIELD_STANDARD_MAX_GRID: u32 = 10;
 pub const REGION_FIELD_EXTENDED_MAX_GRID: u32 = 32;
@@ -88,6 +90,7 @@ pub struct CompiledRegionFieldPreview {
     pub reduction: Option<ColumnAwareReductionSpec>,
     pub parent_formula_class: Option<String>,
     pub commitment: Option<CompiledFirstSliceCommitmentThreshold>,
+    pub summary_policy: CompiledRegionFieldSummaryPolicy,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -462,9 +465,18 @@ pub fn compile_region_field_preview(
         reduction,
         parent_formula_class,
         commitment,
+        summary_policy: compile_summary_policy(spec),
     };
     validate_budget_preview(spec, &preview)?;
     Ok(preview)
+}
+
+fn compile_summary_policy(spec: &RegionFieldSpec) -> CompiledRegionFieldSummaryPolicy {
+    match spec.summary_policy {
+        RegionFieldSummaryPolicySpec::CachedUntilDirtyWithZeroInitial => {
+            CompiledRegionFieldSummaryPolicy::CachedUntilDirtyWithZeroInitial
+        }
+    }
 }
 
 fn validate_budget_preview(

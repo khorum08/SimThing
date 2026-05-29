@@ -6,6 +6,18 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-28 — Phase M SummaryValidity V1
+
+- Phase M SummaryValidity V1 landed.
+- It adds a bounded first-slice summary validity policy/status so a clean or skipped RegionField can report whether its strategic parent summary is fresh, cached, zero-initial, or unavailable without rerunning dense field propagation or rederiving gameplay state on CPU.
+- The hot path remains GPU-resident; cached summaries retain GPU-resident parent summary values and report metadata only.
+- Spec: `RegionFieldSummaryPolicySpec` / `RegionFieldSummaryStatus` on `RegionFieldSpec.summary_policy` (default `CachedUntilDirtyWithZeroInitial`); compiled into `CompiledRegionFieldPreview.summary_policy`.
+- Runtime: `FirstSliceSummaryReport` on `FirstSliceMappingReport.summary`; session tracks `summary_age_ticks`, `has_gpu_parent_summary`, `last_fresh_tick`. Executed tick → `FreshThisTick`; clean skip after execution → `Cached { age_ticks }`; skip before execution → `ZeroInitial`; Disabled profile → `InvalidOrUnavailable`.
+- Cached commitment threshold scan **deferred** — commitment scan runs only when dense path executes (`scheduled && eml_executed`); cached ticks report `summary_used_for_commitment_scan = false`.
+- No CPU-side AI planner was introduced. No default SimSession wiring was introduced. No atlas batching landed. No M-4A atlas masking landed. No active mask, perception, map residency system, behavioral source policy, or source_mask landed. No semantic WGSL landed. simthing-sim remains map-free. Defaults unchanged.
+- Known caveat preserved: First-slice bridge uses queue writes for child resource values and parent weights. Before any multi-field, multi-map, atlas, or broader production scaling, replace per-slot resource/weight queue writes with a measured GPU-resident mechanism such as a preinitialized resource column, generic fill helper, or GPU fill kernel.
+- Test report: [`tests/phase_m_first_slice_summary_validity_test_results.md`](tests/phase_m_first_slice_summary_validity_test_results.md).
+
 # 2026-05-28 — Opus/product acceptance: Phase M first-slice vertical proof
 
 - **ACCEPTED — PASS WITH CONDITIONS.** The full first-slice vertical SEAD slice (RON authoring → explicit `MappingExecutionProfile` opt-in → GPU-resident field propagation → parent `SlotRange` Sum → `field_urgency` EvalEML → Threshold + EmitEvent commitment) is accepted as complete for the single-grid, opt-in path. Memo: [`reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md`](reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md).

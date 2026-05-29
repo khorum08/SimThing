@@ -37,6 +37,9 @@ pub struct RegionFieldSpec {
     /// Optional designer-facing VRAM budget cap (bytes). Rejects compile preview when estimate exceeds cap.
     #[serde(default)]
     pub max_region_field_vram_bytes: Option<u64>,
+    /// Summary validity policy when dense field execution is skipped (Phase M SummaryValidity V1).
+    #[serde(default)]
+    pub summary_policy: RegionFieldSummaryPolicySpec,
 }
 
 /// Square grid admission profile (designer/spec layer).
@@ -104,6 +107,31 @@ pub struct FirstSliceCommitmentSpec {
 #[serde(rename_all = "PascalCase")]
 pub enum FirstSliceCommitmentDirectionSpec {
     Upward,
+}
+
+/// V1 summary validity policy for skipped/clean RegionField ticks (designer/spec layer).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum RegionFieldSummaryPolicySpec {
+    /// Retain last GPU-resident parent summary when clean/skipped; zero-initial before first execution.
+    #[default]
+    CachedUntilDirtyWithZeroInitial,
+}
+
+/// Runtime summary validity status (metadata only — not gameplay recomputation on CPU).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RegionFieldSummaryStatus {
+    FreshThisTick,
+    Cached { age_ticks: u32 },
+    ZeroInitial,
+    InvalidOrUnavailable,
+}
+
+/// Admitted summary policy (compile layer).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CompiledRegionFieldSummaryPolicy {
+    #[default]
+    CachedUntilDirtyWithZeroInitial,
 }
 
 /// Mapping execution opt-in profile (structure only in M-3).
