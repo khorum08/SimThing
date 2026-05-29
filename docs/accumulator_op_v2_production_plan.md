@@ -2468,9 +2468,14 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   `docs/tests/phase_m_jit_sqrt_candidate_battery_r1_test_results.md`.
 - **M-JIT-GRAD-0 — Done (PASS, test-only spatial observer proof).** GPU-resident batched spatial
   field observer prototype: semantic-free WGSL; central-difference `dx`/`dy`, descent vectors, and
-  squared magnitude (`mag2`, no `sqrt`); 10,000 observers in one dispatch; CPU/GPU oracle parity on
-  small grid and sampled batch subset. Production observer scheduling/caching remains deferred.
+  squared magnitude (`mag2`, no `sqrt`); 10,000 observers in one dispatch; exact-authoritative
+  outputs are `dx`/`dy`/descent. Production observer scheduling/caching remains deferred.
   Report: `docs/tests/phase_m_jit_grad0_spatial_observer_test_results.md`.
+- **M-JIT-GRAD-0 R1 — Done (PASS, remedial output classification).** `mag2` primary shader-order CPU
+  oracle classification recorded: exact on small grid; `ApproximateJitOnly` (max ULP=1) on 10k batch
+  sample — diagnostic/ranking hint only, not deterministic authoritative state. Production plan
+  amended to avoid global exact-parity overclaim for observer outputs. Report:
+  `docs/tests/phase_m_jit_grad0_spatial_observer_r1_test_results.md`.
 - **Production JIT caching/cohort dispatch — Deferred (separate gate).** Cohorting identical authored
   graphs, kernel caching/dispatch, multi-gadget chained-stack lowering, conditional (`CMP`/`SELECT`)
   lowering, batched multi-slot dispatch, and any production runtime/default wiring remain gated.
