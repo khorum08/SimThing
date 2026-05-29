@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `3c549a8218f2da63a887304e4fb828f788d3b467` (post R2)  
-**Final commit SHA:** (recorded by this push/merge; see git log for exact 2D commit)  
+**Final commit SHA:** `6638f84afe72077a7bf2b074b3557b29ea021af3` (2D commit; corrected during 2D R1 preflight)  
 **Verdict:** **PASS**
 
 ---
@@ -30,9 +30,8 @@ Hysteresis added as explicit-column Tier-2 conditional gadget (high-activates Sc
 - `Hysteresis { id, input_col, previous_col, output_col?, on_threshold, off_threshold, off_value, on_value }`
 - Admission: finite values, on_threshold > off_threshold (high-activates contract), distinct cols.
 
-**Compiler:**
-- Uses only existing EvalEML primitives: CMP_GE/LE/EQ + SELECT + arithmetic (mul/add for logic combination) + literals + slots + return (plus clamp for safety where useful).
-- No new opcode. CMP_* and SELECT are whitelisted in ExactDeterministic class (confirmed in eml_registry.rs and used in other core intensity paths). Stack discipline validated against MAX_EML_TREE_NODES.
+**Compiler (initial 2D landing — superseded by 2D R1):**
+2D initial landing added Hysteresis spec/admission/oracle and a safe bounded emission stub. Exact CMP/SELECT compiler parity was not yet implemented. 2D R1 resolves this mismatch by either implementing exact CMP/SELECT compilation and parity tests, or explicitly marking compiler emission as stub-only if exact compilation cannot be safely completed. **See [`phase_m_eml_gadget_2d_hysteresis_r1_test_results.md`](phase_m_eml_gadget_2d_hysteresis_r1_test_results.md) for the authoritative 2D R1 completion record.**
 
 **CPU Oracle:**
 - Exact state machine: off → on on crossing on_threshold; on → off on crossing off_threshold; hold in deadband. Matches compiler emission for parity tests.

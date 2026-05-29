@@ -60,8 +60,9 @@ pub use boundary::{
     ScriptedEventDiagnosticKind,
 };
 pub use compile::{
-    compile_eml_gadget_stack, compile_first_slice_scenario_preview,
+    compile_eml_gadget, compile_eml_gadget_stack, compile_first_slice_scenario_preview,
     oracle_velocity_monitor, oracle_decay, oracle_ema, oracle_bounded_feedback,
+    oracle_hysteresis,
     compile_game_mode_resource_economy_authoring_preview, CompiledFirstSliceScenarioPreview,
     admit_region_field_formula_class, compile_effect, compile_event, compile_overlay,
     compile_property, compile_region_field_preview, compile_region_field_stencil_config,

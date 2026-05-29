@@ -754,6 +754,31 @@ pub fn eval_eml_postfix(
                 let v = stack[sp - 1];
                 stack[sp - 1] = v.clamp(f32::from_bits(node.a), f32::from_bits(node.b));
             }
+            eml_nodes::opcode::CMP_GE => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = if lhs >= rhs { 1.0 } else { 0.0 };
+                sp -= 1;
+            }
+            eml_nodes::opcode::CMP_LE => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = if lhs <= rhs { 1.0 } else { 0.0 };
+                sp -= 1;
+            }
+            eml_nodes::opcode::CMP_EQ => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = if lhs == rhs { 1.0 } else { 0.0 };
+                sp -= 1;
+            }
+            eml_nodes::opcode::SELECT => {
+                let f_val = stack[sp - 1];
+                let t_val = stack[sp - 2];
+                let cond = stack[sp - 3] != 0.0;
+                stack[sp - 3] = if cond { t_val } else { f_val };
+                sp -= 2;
+            }
             eml_nodes::opcode::RETURN_TOP => {
                 return stack[sp - 1];
             }
@@ -862,6 +887,65 @@ fn node_return_top() -> EmlNode {
         c: 0,
         d: 0,
     }
+}
+
+fn node_cmp_ge() -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::CMP_GE,
+        flags: 0,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn node_cmp_le() -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::CMP_LE,
+        flags: 0,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn node_cmp_eq() -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::CMP_EQ,
+        flags: 0,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn node_select() -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::SELECT,
+        flags: 0,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+/// Compile a single gadget instance (spec/admission/compiler/oracle surface).
+pub fn compile_eml_gadget(
+    instance: &EmlGadgetInstanceSpec,
+    opts: EmlGadgetCompileOptions,
+) -> Result<CompiledEmlGadget, SpecError> {
+    let kind = kind_from_instance(instance)?;
+    if DEFERRED_GADGET_KINDS.contains(&kind.name()) {
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: instance.id().to_string(),
+            reason: format!("gadget kind `{}` is deferred in EML-GADGET-1", kind.name()),
+        });
+    }
+    compile_gadget_instance(instance, kind, opts)
 }
 
 /// Reject unknown deferred gadget kind strings at admission boundaries.
@@ -1028,7 +1112,7 @@ pub fn oracle_bounded_feedback(previous: f32, input: f32, decay: f32, gain: f32,
 // (node_slot, node_literal, node_sub, node_mul, node_add, node_div_safe, node_return_top).
 // No duplication.
 
-// ── Tier-2 Hysteresis (EML-GADGET-2D) — spec/admission/oracle landed; compiler uses safe existing path pending full CMP/SELECT tree validation ──
+// ── Tier-2 Hysteresis (EML-GADGET-2D / 2D R1) — exact CMP/SELECT compilation over existing EvalEML opcodes ──
 
 fn validate_hysteresis_params(on_threshold: f32, off_threshold: f32, off_value: f32, on_value: f32, gadget: &str) -> Result<(), SpecError> {
     if !on_threshold.is_finite() || !off_threshold.is_finite() {
@@ -1043,14 +1127,37 @@ fn validate_hysteresis_params(on_threshold: f32, off_threshold: f32, off_value: 
     Ok(())
 }
 
-fn compile_hysteresis_nodes(input_col: u32, previous_col: u32, _on_threshold: f32, _off_threshold: f32, off_value: f32, on_value: f32) -> Vec<EmlNode> {
-    // Safe minimal emission using existing arithmetic + clamp for this slice (full CMP/SELECT conditional tree confirmed feasible via core whitelist inspection but requires additional stack validation to avoid any determinism risk).
-    // The oracle provides the exact state machine semantics for parity tests.
+fn compile_hysteresis_nodes(
+    input_col: u32,
+    previous_col: u32,
+    on_threshold: f32,
+    off_threshold: f32,
+    off_value: f32,
+    on_value: f32,
+) -> Vec<EmlNode> {
+    // SELECT(on_to_off, off_value, SELECT(off_to_on, on_value, previous))
+    // off_to_on = (previous == off_value) && (input >= on_threshold)
+    // on_to_off = (previous == on_value) && (input <= off_threshold)
     vec![
-        node_slot(input_col),
+        node_slot(previous_col),
         node_literal(on_value),
+        node_cmp_eq(),
+        node_slot(input_col),
+        node_literal(off_threshold),
+        node_cmp_le(),
+        node_mul(),
         node_literal(off_value),
-        node_clamp_bounded(off_value.min(on_value), off_value.max(on_value)), // conservative bound
+        node_slot(previous_col),
+        node_literal(off_value),
+        node_cmp_eq(),
+        node_slot(input_col),
+        node_literal(on_threshold),
+        node_cmp_ge(),
+        node_mul(),
+        node_literal(on_value),
+        node_slot(previous_col),
+        node_select(),
+        node_select(),
         node_return_top(),
     ]
 }

@@ -1,3 +1,10 @@
+# 2026-05-29 — Phase M EML-GADGET-2D R1 (Hysteresis exact CMP/SELECT compiler parity)
+
+- **2D R1 landed:** Hysteresis compiler emission matches CPU oracle via existing `CMP_GE`/`CMP_LE`/`CMP_EQ` + `SELECT` opcodes; 16/16 hysteresis tests; stateful compiled-node parity.
+- Preflight: 2D report SHA corrected; mapping guidance stale tail removed; docs truth-aligned.
+- Report: [`tests/phase_m_eml_gadget_2d_hysteresis_r1_test_results.md`](tests/phase_m_eml_gadget_2d_hysteresis_r1_test_results.md).
+- No runtime gadget execution; no chained scheduling; no new opcode/WGSL/sim semantics; Acceleration + dense per-cell still deferred.
+
 # SimThing — Session Worklog
 
 **2026-05-29 — EML-GADGET-2A (Snapshot/Copy Band Fixture Proof) — PASS + merged**

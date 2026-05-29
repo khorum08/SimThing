@@ -8,7 +8,7 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
 **Verification (last recorded):** Phase M boundary-resolution (tick / boundary / day) + example economy — **ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)**; boundary cadence 7/7, daily economy 7/7, admission 11/11 re-run on GPU; guardrails made binding in `invariants.md`. **Naming preference (product 2026-05-29):** keep the legible `tick`/`boundary`/`day`/`day_index`/`ticks_per_day` names; guardrail is on Clausewitz/calendar *semantics*, not the names  
-**Next action (as of post-2C):** EML-GADGET-2C (BoundedFeedback) landed. Consolidated EML-GADGET-2A/B/C temporal substrate parking packet now available for Opus/product review (see `docs/reviews/phase_m_eml_gadget_2abc_temporal_substrate_parking_packet.md`). **Resource Economy Authoring Ergonomics R2 landed (narrow spec/admission/preview only)** — `schedule_lines` designer helper in the preview report for clear transfer schedule exposure; no runtime coupling. Next authorized slices (per ladder, post-review): 2D (Hysteresis, conditional) or further R2 authoring work (still no runtime coupling). Not M-4 atlas. See active guidance files and the latest 2A R1 / 2B / 2C reports for current evidence.
+**Next action (as of post-2D R1):** EML-GADGET-2D R1 landed — Hysteresis compiler emission now matches the CPU oracle using existing EvalEML CMP/SELECT primitives with stateful compiled-node parity. Consolidated EML-GADGET-2A/B/C parking packet available for Opus/product review ([`docs/reviews/phase_m_eml_gadget_2abc_temporal_substrate_parking_packet.md`](../reviews/phase_m_eml_gadget_2abc_temporal_substrate_parking_packet.md)). Resource Economy Authoring Ergonomics R2 landed (narrow spec/admission/preview only). Acceleration, runtime gadget execution, chained scheduling, atlas/M-4A, and dense per-cell temporal memory remain separately gated. Not M-4 atlas.
 
 **Phase M EML-GADGET-2A snapshot/copy fixture proof landed.**
 It proves that temporal snapshot/copy bands can be authored using existing substrate primitives: Identity combine + ResetTarget at an earlier OrderBand, copying current_col into previous_col before the update band.
@@ -17,7 +17,7 @@ No new ConsumeMode was added.
 No WGSL or GPU kernel was added.
 No runtime gadget execution was introduced.
 No temporal gadget implementation landed.
-EML-GADGET-2A + R1 landed. 2B VelocityMonitor + Decay/EMA landed. 2C BoundedFeedback (strict clamp) landed. Hysteresis conditional/deferred. Acceleration + dense per-cell deferred. No runtime gadget execution, chained scheduling, new opcode, WGSL, sim semantics, production economy→mapping bridge, or default mapping wiring. No atlas/M-4A.
+EML-GADGET-2A + R1 landed. 2B VelocityMonitor + Decay/EMA landed. 2C BoundedFeedback (strict clamp) landed. 2D Hysteresis + 2D R1 exact CMP/SELECT compiler parity landed. Acceleration + dense per-cell deferred. No runtime gadget execution, chained scheduling, new opcode, WGSL, sim semantics, production economy→mapping bridge, or default mapping wiring. No atlas/M-4A.
 No hidden previous-value read was introduced.
 Temporal memory remains explicit-column state.
 Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
@@ -34,7 +34,7 @@ No new ConsumeMode was added.
 No WGSL or GPU kernel was added.
 No runtime gadget execution was introduced.
 No temporal gadget implementation landed.
-EML-GADGET-2A + R1 landed. 2B VelocityMonitor + Decay/EMA landed. 2C BoundedFeedback (strict clamp) landed. Hysteresis conditional/deferred. Acceleration + dense per-cell deferred. No runtime gadget execution, chained scheduling, new opcode, WGSL, sim semantics, production economy→mapping bridge, or default mapping wiring. No atlas/M-4A.
+EML-GADGET-2A + R1 landed. 2B VelocityMonitor + Decay/EMA landed. 2C BoundedFeedback (strict clamp) landed. 2D Hysteresis + 2D R1 exact CMP/SELECT compiler parity landed. Acceleration + dense per-cell deferred. No runtime gadget execution, chained scheduling, new opcode, WGSL, sim semantics, production economy→mapping bridge, or default mapping wiring. No atlas/M-4A.
 No hidden previous-value read was introduced.
 Temporal memory remains explicit-column state.
 Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
