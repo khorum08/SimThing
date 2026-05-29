@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `7a711316d3c7b91e8147eca631aeb051031b1723` (M-JIT-DESC-0 merge on `master`)  
-**Final commit SHA:** `3992f02` (branch `phase-m-jit-desc-1-spec-admission`; authoritative post-merge SHA is the GitHub squash-merge commit)  
+**Final commit SHA:** `90790c7` (branch `phase-m-jit-desc-1-spec-admission`; authoritative post-merge SHA is the GitHub squash-merge commit)  
 **Lane classification:** Tier-2 GPU/JIT descriptor admission implementation (V7.7 §5)  
 **Decision:** **IMPLEMENTED — spec-layer kernel descriptor admission preview**  
 **Verdict:** **PASS**
