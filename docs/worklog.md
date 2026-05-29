@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-5D-gradient R1 frame compile helper + constitutional doc sync
+
+- **M-5D R1:** added `compile_region_field_frame_preview` (validate strict-sink rule then compile each field); M-5B/M-5C fixtures use it; synced design note §3 and `invariants.md` enforcement references to M-5D landed state.
+
 # 2026-05-29 — Phase M-5D-gradient frame/scenario-level gradient strict-sink admission
 
 - **M-5D-gradient landed (Tier-1 admission hardening):** added `validate_region_field_frame_gradient_sinks` — rejects gradient `output_col` used as any field's same-frame diffusion `source_col`; re-affirms self-loop ban; M-5B/M-5C fixtures exercise validator; cross-tick coupling out of scope. No runtime or substrate changes.

@@ -10,7 +10,8 @@ use simthing_gpu::{
 use simthing_sim::PipelineFlags;
 use simthing_spec::{
     admit_region_field_formula_class, compile_region_field_preview,
-    compile_region_field_stencil_config, deserialize_region_field_ron, validate_region_field_frame_gradient_sinks,
+    compile_region_field_stencil_config, deserialize_region_field_ron,
+    validate_region_field_frame_gradient_sinks, compile_region_field_frame_preview,
     CompiledFieldCadence,
     CompiledRegionFieldMaskMode, CompiledRegionFieldOperator, CompiledRegionFieldSourcePolicy,
     FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, GameModeSpec,
@@ -608,6 +609,16 @@ fn m5d_reaffirms_gradient_self_loop_at_frame_level() {
 }
 
 #[test]
+fn m5d_compile_region_field_frame_preview_admits_valid_group() {
+    let scalar = standard_suppression_field();
+    let grad_x = gradient_field(GradientAxisSpec::X, 1);
+    let grad_y = gradient_field(GradientAxisSpec::Y, 2);
+    let previews = compile_region_field_frame_preview(&[&scalar, &grad_x, &grad_y])
+        .expect("frame compiles");
+    assert_eq!(previews.len(), 3);
+}
+
+#[test]
 fn m5d_admits_m5b_style_valid_gradient_sinks() {
     let scalar = standard_suppression_field();
     let grad_x = gradient_field(GradientAxisSpec::X, 1);
@@ -633,8 +644,9 @@ fn m5d_admits_m5c_fixture_rons_under_frame_validation() {
         "../../simthing-driver/tests/fixtures/m5c_need_signal_gradient_y_field.ron"
     ))
     .expect("gy RON");
-    validate_region_field_frame_gradient_sinks(&[&scalar, &gx, &gy])
-        .expect("M-5C fixture frame admits");
+    let previews = compile_region_field_frame_preview(&[&scalar, &gx, &gy])
+        .expect("M-5C fixture frame compiles");
+    assert_eq!(previews.len(), 3);
 }
 
 #[test]

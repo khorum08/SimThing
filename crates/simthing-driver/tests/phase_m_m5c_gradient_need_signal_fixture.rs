@@ -10,7 +10,7 @@ use simthing_sim::PipelineFlags;
 use simthing_spec::{
     compile_eml_gadget_stack, compile_region_field_preview, deserialize_eml_gadget_stack_ron,
     deserialize_region_field_ron, eval_eml_postfix, oracle_ema, oracle_weighted_accumulator,
-    validate_region_field_frame_gradient_sinks,
+    compile_region_field_frame_preview,
     CompiledGradientAxis, CompiledRegionFieldOperator, EmlGadgetCompileOptions, EmlGadgetKind,
     MappingExecutionProfile, RegionFieldOperatorSpec,
 };
@@ -79,8 +79,9 @@ fn m5c_frame_gradient_sink_validation_admits() {
     let scalar = deserialize_region_field_ron(SCALAR_FIELD_RON).expect("scalar RON");
     let gx = deserialize_region_field_ron(GRADIENT_X_FIELD_RON).expect("gx RON");
     let gy = deserialize_region_field_ron(GRADIENT_Y_FIELD_RON).expect("gy RON");
-    validate_region_field_frame_gradient_sinks(&[&scalar, &gx, &gy])
+    let previews = compile_region_field_frame_preview(&[&scalar, &gx, &gy])
         .expect("M-5C fixture frame admits under gradient strict-sink rule");
+    assert_eq!(previews.len(), 3);
 }
 
 #[test]
