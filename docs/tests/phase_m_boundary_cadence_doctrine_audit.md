@@ -5,7 +5,7 @@ Date: 2026-05-19
 ## Base
 
 - Base HEAD: `296b8126b1df806b41e1d395ff7f9adcaf4e9f9c` (Map Residency V1)
-- Final commit SHA: recorded at merge
+- Final commit SHA: `338bcf5` (branch `phase-m-boundary-cadence-doctrine-audit`)
 
 ## Scope
 
