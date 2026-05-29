@@ -40,8 +40,9 @@ Historical/superseded artifacts live under `docs/workshop/archive/`. Do not trea
 | Atlas / M-4A; source-mask (`M-5`); economy→mapping bridge | T2 | deferred/prohibited | see prohibition list in gating policy |
 | **M-4A Atlas Readiness Gate** | **T2** | **deferred** | no concrete product need beyond M-5-gradient substrate; [`phase_m_m4a_atlas_readiness_gate_results.md`](../tests/phase_m_m4a_atlas_readiness_gate_results.md) |
 | **M-6A Single-Grid Active Mask Readiness Gate** | **T2** | **deferred** | missing halo contract + CPU/GPU parity; [`phase_m_m6a_single_grid_active_mask_readiness_results.md`](../tests/phase_m_m6a_single_grid_active_mask_readiness_results.md) |
+| **Product Scenario Selection Gate** | **T2** | **selected → M-5E** | full-grid scarcity/opportunity/logistics composite; no new substrate; [`phase_m_product_scenario_selection_gate_results.md`](../tests/phase_m_product_scenario_selection_gate_results.md) |
 
-**Next authorized step:** **M-5A/B/C/D-gradient + M-5D R1 landed.** M-5D strict-sink validator + `compile_region_field_frame_preview` grouped helper are the safe default for same-frame RegionField admission. Dual-output `GradientXY`, `sqrt`, L1 coupling, dense per-cell temporal memory, atlas/M-4A, source-mask (`M-5`), and production economy→mapping bridge remain Tier-2/deferred.
+**Next authorized step:** **M-5E-gradient — Scarcity/Opportunity Composite Product Fixture** (Tier-1; existing M-5 substrate only). Atlas/M-4A, active mask/M-6A, and source-mask remain deferred without named scenarios. M-5D strict-sink validator + `compile_region_field_frame_preview` remain the safe default for same-frame RegionField admission.
 
 > Per-slice landing history (EML-GADGET-2A…2E, boundary/economy, etc.) now lives in the status table above and in `docs/worklog.md`. The accepted designs and binding rules are in the design notes and `docs/invariants.md`. Standing posture ("no semantic WGSL / no default wiring / `simthing-sim` map-free / defaults unchanged") is binding from `invariants.md` and asserted once per PR test report — not restated per slice here.
 
