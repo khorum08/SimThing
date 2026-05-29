@@ -21,7 +21,9 @@ Active read order:
 7. Cited `docs/tests/` evidence before changing any classification
 8. [`../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`](../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md) (boundary resolution + example economy — **parked for review**)
 
-## Phase M abstract boundary-resolution + example economy review packet (landed — parked for review)
+## Phase M abstract boundary-resolution + example economy (ACCEPTED — Opus/product 2026-05-29, PASS WITH CONDITIONS)
+
+**Accepted** ([`../reviews/phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md`](../reviews/phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md)): abstract boundary doctrine accepted; Daily Economy Fixture V1 accepted as an example/product fixture only; the `ResourceEconomySpec` (discrete banking) vs Resource Flow E-11 (continuous, default-off) distinction accepted; the eleven future-agent guardrails made **binding** in [`../invariants.md`](../invariants.md) ("Boundary resolution (abstract cadence)"). **Condition C-1:** the "no day semantics in `simthing-sim`" guardrail is about *semantics* (no calendar arithmetic / `Calendar`/`Pause` types / `DailyResolutionBoundary`), **not** the legible `day`/`day_index`/"day boundary" naming that already pervades `simthing-sim`. **Next implementation step:** resource-economy authoring ergonomics, or an economy+SEAD product fixture — **not** a `DailyResolutionBoundary`-by-another-name boundary packet, and **not** the M-4 atlas packer.
 
 Phase M abstract boundary-resolution + example economy review packet landed.
 The repo now distinguishes abstract substrate tick/boundary cadence from game-level daily interpretation. `ticks_per_day` and `day_index` remain the legible API names; despite the names, day/calendar semantics are not part of simthing-sim.

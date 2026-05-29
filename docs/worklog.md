@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Opus/product acceptance: abstract boundary resolution + example economy
+
+- **ACCEPTED — PASS WITH CONDITIONS.** Abstract boundary-resolution doctrine accepted: `tick` = deterministic substrate advancement; `boundary` = synchronization point for resolved summaries/events/metadata; `day_index` = monotonic boundary counter / host-spec-interpreted index; `ticks_per_day` = cadence; pause/speed = host-layer. Legible names retained; no day/calendar semantics in `simthing-sim`. Memo: [`reviews/phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md`](reviews/phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md).
+- **Daily Economy Fixture V1 accepted as an example/product fixture only** — not canonical daily cadence. **`ResourceEconomySpec` (discrete banking, opt-in) vs Resource Flow E-11 (continuous, default-off) distinction accepted** — don't default to Resource Flow for discrete banking.
+- **Eleven future-agent guardrails made binding** in `docs/invariants.md` (new "Boundary resolution (abstract cadence)" section): no `DailyResolutionBoundary`, no day/calendar/pause *semantics* in `simthing-sim`, no CPU planner events, no CPU recompute at boundary, no default dense-grid boundary scan, no Resource Flow default-on, no atlas side-effect, no default SimSession mapping wiring, no semantic WGSL, no rename of `ticks_per_day`/`day_index` without product authorization.
+- **Verified in code:** `DailyResolutionBoundary` exists only in negative-assertion source-scan tests (never a real type); no calendar/pause types in the sim; economy opt-in (`TransferOnly`, `use_accumulator_resource_flow=false`). Re-ran on GPU: boundary cadence 7/7, daily economy 7/7, admission 11/11.
+- **Condition C-1 (terminology precision):** `simthing-sim` already uses "day boundary"/`day` naming throughout (predating the doctrine). The guardrail is "no calendar/pause *semantics*", **not** "no use of the word *day*". Extended the doctrine's naming caveat to say so explicitly, so it survives a source grep.
+- **Next implementation handoff:** resource-economy authoring ergonomics, or an economy+SEAD product fixture; a generic boundary-output packet only if tightly bounded (never `DailyResolutionBoundary` by another name); **not** the M-4 atlas packer.
+- Docs-only acceptance pass: flipped review-packet status to Accepted; added binding invariants section; updated mapping guidance, workshop state, production plan, todo. No production code changed; defaults unchanged; `simthing-sim` map-free; Resource Flow E-11 default-off.
+
 # 2026-05-29 — Phase M Boundary Resolution Doctrine R2
 
 - Phase M Boundary Resolution Doctrine R2 landed.

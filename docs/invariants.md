@@ -121,6 +121,25 @@ scenarios at import/session-build so blowout never reaches the simulation.
 
 ---
 
+## Boundary resolution (abstract cadence)
+
+Accepted as binding doctrine 2026-05-29 — see
+`docs/reviews/phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md`. SimThing
+exposes **abstract deterministic tick/boundary resolution**; "day" is one host/spec interpretation,
+never a substrate semantic.
+
+| Rule | Enforced by / meaning |
+|---|---|
+| Cadence is abstract | `tick` = deterministic substrate advancement; `boundary` = synchronization point for resolved summaries/events/metadata; `day_index` = monotonic boundary counter / host-spec-interpreted index; `ticks_per_day` = ticks-per-boundary cadence (`DispatchCoordinator`, `boundary_reached = tick_in_day >= ticks_per_day`) |
+| No calendar/pause **semantics** in `simthing-sim` | No calendar arithmetic, no `Calendar`/month/year/season type, no sim-side pause flag. The legible `day`/`day_index`/`ticks_per_day`/"day boundary" naming is allowed — it is a monotonic boundary counter, not a calendar. The ban is on *semantics*, not the word *day* |
+| No `DailyResolutionBoundary` | No runtime primitive that bakes "boundary == day"; absence is regression-guarded by source-scan tests. A future generic boundary-output packet is admissible only if it stays an abstract, read-only carrier of already-resolved values and never grows calendar fields / CPU recomputation / day arithmetic |
+| Pause/speed are host-layer | The sim never advances autonomously (no internal wall-clock scheduler); it advances only when the host requests a tick. Pausing at a boundary is a coherent save/snapshot point. No sim pause flag |
+| CPU boundary consumes, never recomputes | At the boundary the CPU consumes resolved summaries/events/metadata only; it must not recompute economy/threat/urgency, must not emit commitments via CPU planner logic (commitments are GPU `Threshold` + `EmitEvent` crossings), and must not scan dense RegionCell grids by default |
+| Discrete banking ≠ continuous flow | Discrete boundary banking uses the opt-in `ResourceEconomySpec` substrate (conservation-exact transfers/recipes, threshold emit; storage persists in GPU values across boundaries). Resource Flow E-11 is the continuous/high-frequency substrate, separately opt-in and **default-off** (`use_accumulator_resource_flow` false) — not the default discrete-banking answer |
+| Names are stable | `ticks_per_day` / `day_index` are not renamed in this track without explicit product authorization; Daily Economy Fixture V1 is an example/product fixture only and does not make daily cadence canonical |
+
+---
+
 ## The Proof Test
 
 `custom_layout_ethics_axis` in `property.rs` is the invariant proof for the

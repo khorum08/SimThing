@@ -1,7 +1,12 @@
 # Phase M Abstract Boundary Resolution + Example Economy — Review / Parking Packet
 
 > **Audience:** Opus / product review; future agents  
-> **Status:** **PARKED FOR REVIEW** — docs/review packaging only; no runtime behavior changes in this packet.  
+> **Status:** **ACCEPTED — PASS WITH CONDITIONS** (Opus 2026-05-29). Acceptance memo:
+> [`phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md`](phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md).
+> Abstract boundary doctrine accepted; Daily Economy Fixture V1 accepted as an example fixture only;
+> guardrails made binding in `docs/invariants.md`. Condition C-1: the "no day semantics in
+> `simthing-sim`" claim is about *semantics* (no calendar arithmetic / Calendar/Pause types /
+> `DailyResolutionBoundary`), **not** the legible "day"/`day_index` naming — see the naming caveat.  
 > **Date:** 2026-05-29  
 > **Master baseline at parking:** `1855ccd0a2c5e982d0976508842fb224dc7c85a9` (Boundary Resolution Doctrine R1)
 
@@ -39,6 +44,8 @@ SimThing exposes **abstract deterministic tick/boundary resolution**:
 | **pause/speed** | Host/UI orchestration; the sim advances only when the host requests ticks |
 
 **Naming caveat:** The current names `ticks_per_day` and `day_index` are retained because they are already legible and widely used in fixtures/tests. Constitutionally, they do **not** make "day" a hardcoded substrate semantic. A host may interpret `day_index` as a day, turn, frame, season, orbital step, market close, learning epoch, or other unit.
+
+**Naming caveat extends to pre-existing `simthing-sim` vocabulary (C-1, Opus 2026-05-29).** `simthing-sim` already uses "day boundary" / `day` naming throughout and predating this doctrine — e.g. `lib.rs` "day boundary orchestration", the numbered "step N of the day boundary" modules, `replay.rs` `day: u32`, and the Evaluation invariant "fission/fusion belong to day-boundary protocol". That naming is the **same legible monotonic-boundary-counter naming** as `day_index`/`ticks_per_day`; it carries **no** calendar arithmetic, no `Calendar`/month/year/season type, and no pause flag. The binding guardrail is therefore *"no day/calendar/pause **semantics** in `simthing-sim`"* — **not** "no use of the word *day*". This keeps the doctrine accurate against a source grep.
 
 **Allowed:**
 
