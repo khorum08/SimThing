@@ -1,6 +1,6 @@
 # EML Gadget Library — Design Note (Phase M)
 
-**Status:** **EML-GADGET-1 landed (2026-05-29). EML-GADGET-1 R1 landed (2026-05-29).** Tier-1 stateless gadgets compile in `simthing-spec`. **EML-GADGET-2** (temporal-memory slice) remains queued.
+**Status:** **EML-GADGET-1 + R1 + R2 landed (2026-05-29).** Tier-1 stateless gadgets compile in `simthing-spec`. **EML-GADGET-2** (temporal-memory slice) remains queued.
 **Sequencing:** Lands **before Phase M Resource Economy Authoring Ergonomics R2** — R2's
 designer-facing authoring must be able to expose and leverage the gadget library, so the library
 must exist first.
@@ -50,7 +50,7 @@ the no-semantic-WGSL constitution intact.
 
 Two modes; the compiler chooses per stack:
 
-- **(a) Inline flatten** — a single-gadget stack may expose an executable `InlineFlattenPreview`. Multi-gadget stacks with `output_col`/`input_col` chaining use `PerGadgetOnly` composition in V1; concatenated postfix without intermediate column wiring is **not** executable.
+- **(a) Inline flatten** — a single-gadget stack may expose an executable `InlineFlattenPreview` subject to `MAX_EML_TREE_NODES` per tree. Multi-gadget stacks with `output_col`/`input_col` chaining use `PerGadgetOnly` composition in V1; concatenated postfix without intermediate column wiring is **not** executable. **R2:** the node cap applies per gadget/tree, not to the informational `total_node_count` of a multi-gadget stack.
 - **(b) Chained gadget ops (preferred for multi-gadget stacks)** — each gadget is its own `EvalEML`
   op in its own `OrderBand`, writing an **intermediate output column**; the next gadget reads that
   column. This *is* the "stack of gadgets" and it sidesteps the node-budget entirely. **Deferred in EML-GADGET-1/R1** — proven only through manual/orchestrated per-gadget parity tests.

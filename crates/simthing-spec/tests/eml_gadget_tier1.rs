@@ -188,6 +188,87 @@ fn single_gadget_flatten_preview_executable() {
     }
 }
 
+// ── R2 Test 1 — multi-gadget total over cap admits as PerGadgetOnly ───────────
+
+#[test]
+fn multi_gadget_total_over_cap_admits_as_per_gadget_only() {
+    let spec = EmlGadgetStackSpec {
+        gadgets: vec![
+            EmlGadgetInstanceSpec::SoftStep {
+                id: "soft_a".into(),
+                input_col: 1,
+                output_col: Some(10),
+                center: 0.5,
+                steepness: 4.0,
+            },
+            EmlGadgetInstanceSpec::SoftStep {
+                id: "soft_b".into(),
+                input_col: 2,
+                output_col: Some(11),
+                center: 0.5,
+                steepness: 4.0,
+            },
+            EmlGadgetInstanceSpec::SoftStep {
+                id: "soft_c".into(),
+                input_col: 3,
+                output_col: Some(12),
+                center: 0.5,
+                steepness: 4.0,
+            },
+        ],
+    };
+    let compiled = compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions { max_col: 64 })
+        .expect("multi-gadget over-total-cap stack compiles");
+
+    for gadget in &compiled.gadgets {
+        assert!(gadget.nodes.len() <= MAX_EML_TREE_NODES as usize);
+    }
+    assert!(compiled.report.total_node_count > MAX_EML_TREE_NODES as usize);
+    assert!(!compiled.composition.flatten_preview_executable());
+    match &compiled.composition {
+        EmlGadgetCompositionPlan::PerGadgetOnly { .. } => {}
+        other => panic!("expected PerGadgetOnly, got {other:?}"),
+    }
+    assert!(
+        compiled
+            .report
+            .diagnostics
+            .iter()
+            .any(|d| d.code == "stack_total_exceeds_inline_cap"),
+        "expected stack_total_exceeds_inline_cap diagnostic"
+    );
+    assert!(
+        compiled.report.diagnostics.iter().any(|d| {
+            d.message.contains("PerGadgetOnly") && d.message.contains("deferred")
+        }),
+        "expected deferred scheduling message in diagnostics"
+    );
+}
+
+// ── R2 Test 2 — single gadget over cap still rejects ────────────────────────
+
+#[test]
+fn single_gadget_over_cap_rejects() {
+    let input_cols: Vec<u32> = (0..9).collect();
+    let weight_cols: Vec<u32> = (20..29).collect();
+    let spec = EmlGadgetStackSpec {
+        gadgets: vec![EmlGadgetInstanceSpec::WeightedAccumulator {
+            id: "too_many_inputs".into(),
+            input_cols,
+            weight_cols,
+            output_col: Some(40),
+        }],
+    };
+    let err = compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions { max_col: 64 })
+        .unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("exceeds EvalEML cap"),
+        "expected cap rejection, got `{msg}`"
+    );
+    assert!(msg.contains("too_many_inputs") || msg.contains("gadget"));
+}
+
 // ── Test 5 — RON gadget stack admits ─────────────────────────────────────────
 
 const TIER1_STACK_RON: &str = r#"
@@ -230,7 +311,6 @@ fn ron_gadget_stack_admits() {
         compiled.report.gadget_ids,
         vec!["sample_threat", "soft_desperation", "urgency"]
     );
-    assert!(compiled.report.total_node_count <= MAX_EML_TREE_NODES as usize);
 
     assert_eq!(
         MappingExecutionProfile::default(),
@@ -272,7 +352,6 @@ fn stack_composition_oracle_parity() {
     );
     assert_f32_eq(accumulated, manual, "stack composition");
     assert_eq!(compiled.report.execution_class, EmlExecutionClass::ExactDeterministic);
-    assert!(compiled.report.total_node_count <= MAX_EML_TREE_NODES as usize);
 
     // R1: multi-gadget chained stack must not expose executable flatten preview.
     assert!(!compiled.composition.flatten_preview_executable());
