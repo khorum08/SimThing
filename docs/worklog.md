@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-PROD-0 default-off production registry shell + doc surface cleanup (Tier-2, landed)
+
+- **M-JIT-PROD-0 (Tier-2, PASS):** `ProductionKernelRegistryShell` + explicit opt-in registered exact cohort execution; stale superseded M-JIT test reports deleted. Report: `docs/tests/phase_m_jit_prod0_registry_shell_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-EXEC-1 ProductionCandidatePreview-gated cohort execution fixture (Tier-2, landed)
 
 - **M-JIT-EXEC-1 (Tier-2, PASS):** Identical exact graph requests cohort into one REG-1-admitted entry; combined 20k-observer batch executes in one test dispatch with per-segment oracle parity; production registry/scheduler/cache/JIT dispatch remains deferred; ClauseThing untouched. Report: `docs/tests/phase_m_jit_exec1_cohort_execution_fixture_test_results.md`.

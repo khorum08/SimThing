@@ -2508,6 +2508,12 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   `docs/tests/phase_m_jit_cohort0_kernel_graph_cohort_preview_test_results.md`.
   **R1 (PASS):** collision-test injected-identity helper fenced from public API; report:
   `docs/tests/phase_m_jit_cohort0_r1_collision_helper_fence_test_results.md`.
+- **M-JIT-PROD-0 — Done (PASS, default-off production registry shell).**
+  `ProductionKernelRegistryShell` registers ProductionCandidatePreview entries only;
+  explicit opt-in registered exact cohort execution with CPU/GPU oracle parity;
+  duplicate stable key idempotent when byte-identical else reject; default wiring/scheduler/cache
+  remains deferred. Report: `docs/tests/phase_m_jit_prod0_registry_shell_test_results.md`.
+  Stale superseded M-JIT test reports deleted (no archive).
 - **M-JIT-EXEC-1 — Done (PASS, ProductionCandidatePreview-gated cohort execution fixture).**
   Identical exact graph requests cohort into one REG-1-admitted entry; combined 20k-observer
   batch executes in one test dispatch with per-segment oracle parity; distinct graphs refuse
