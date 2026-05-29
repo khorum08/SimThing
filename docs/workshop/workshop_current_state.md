@@ -10,7 +10,7 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Verification (last recorded):** Phase M boundary-resolution (tick / boundary / day) + example economy — **ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)**; boundary cadence 7/7, daily economy 7/7, admission 11/11 re-run on GPU; guardrails made binding in `invariants.md`. **Naming preference (product 2026-05-29):** keep the legible `tick`/`boundary`/`day`/`day_index`/`ticks_per_day` names; guardrail is on Clausewitz/calendar *semantics*, not the names  
 **Gating & doc policy (read first):** [`phase_m_gating_and_doc_policy.md`](phase_m_gating_and_doc_policy.md) — Tier-1 fast lane vs Tier-2 gated; compact status table lives in [`mapping_current_guidance.md`](mapping_current_guidance.md); per-slice narrative lives in `docs/worklog.md`.
 
-**Next action:** **M-JIT-DESC-1 spec-layer kernel descriptor admission preview landed** — exact vs approximate output authority enforced in `simthing-spec`; production descriptor registry and observer/JIT scheduling remain separately gated.
+**Next action:** **M-JIT-DESC-2 spec-layer kernel graph composition admission preview landed** — exact vs approximate authority enforced across descriptor edges; production descriptor registry/scheduler/cache and observer/JIT scheduling remain separately gated.
 
 > Per-slice landing history (EML-GADGET-2A…2E, boundary/economy) is in the `mapping_current_guidance.md` status table and `docs/worklog.md`. Standing posture ("no semantic WGSL / no default wiring / `simthing-sim` map-free / defaults unchanged") is binding from `invariants.md`, asserted once per PR test report — not restated per slice here.
 
