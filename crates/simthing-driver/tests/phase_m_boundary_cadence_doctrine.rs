@@ -136,10 +136,16 @@ fn host_pause_preserves_state_after_partial_advancement() {
 #[test]
 fn daily_resource_economy_fixture_uses_ticks_per_day_one() {
     let session_support = include_str!("support/resource_economy_session.rs");
+    let daily_economy_fixture = include_str!("phase_m_daily_economy_fixture.rs");
     let designer = include_str!("resource_economy_designer_ron_session.rs");
     assert!(
         session_support.contains("ticks_per_day: 1"),
         "resource economy session fixtures must use ticks_per_day: 1 for daily cadence"
+    );
+    assert!(
+        daily_economy_fixture.contains("daily_economy_scenario(1,")
+            && daily_economy_fixture.contains("open_daily_economy_session(&game_mode, 1,"),
+        "daily economy banking fixture must use ticks_per_day: 1"
     );
     assert!(
         designer.contains("ticks_per_day: 1"),

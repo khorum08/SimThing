@@ -1,6 +1,6 @@
 # Phase M Boundary Cadence Doctrine — Audit Report
 
-Date: 2026-05-19
+Date: 2026-05-29
 
 ## Base
 

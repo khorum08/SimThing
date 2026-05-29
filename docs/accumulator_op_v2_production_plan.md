@@ -1969,6 +1969,27 @@ Multi-field, multi-map, atlas, perception, source identity, and broader producti
 
 **Test:** [`phase_m_boundary_cadence_doctrine_audit.md`](tests/phase_m_boundary_cadence_doctrine_audit.md) — PASS.
 
+### PR M-daily-economy-fixture — Daily Economy Fixture V1 — **Done**
+
+**Status:** **Landed** — narrow product-facing fixture proving Clausewitz-style daily banking via existing boundary cadence and discrete `ResourceEconomySpec` authoring.
+
+Phase M Daily Economy Fixture V1 landed.
+It proves Clausewitz-style daily banking using existing boundary cadence and discrete resource economy authoring: ticks_per_day=1, boundary_reached/day_index, ResourceEconomySpec production, discrete transfers into storage, upkeep transfers out, and threshold/event checks over resolved storage.
+No DailyResolutionBoundary runtime primitive was introduced.
+No Day/Calendar/Pause semantic was added to simthing-sim.
+Daily meaning remains host/spec interpretation over day_index.
+The CPU boundary consumes resolved storage/events/metadata; it does not recompute economy state or emit planner decisions.
+Resource Flow E-11 remains continuous/high-frequency oriented and default-off, not the daily banking substrate.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Fixture design:** Surplus RON uses `TransferOnly` opt-in with `daily_income` conjunctive recipe (food/ore → producer), `bank_daily_income` producer→treasury transfer, and `daily_upkeep` treasury→upkeep_sink transfer at `ticks_per_day=1`. Deficit variant uses producer→treasury/upkeep transfers plus `EmitOnThreshold` low-storage event. Emission registrations are intentionally absent — C-8d emission is EmitEvent-shaped, not hard-currency banking.
+
+**Test:** [`phase_m_daily_economy_fixture_test_results.md`](tests/phase_m_daily_economy_fixture_test_results.md) — PASS.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
 **Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. The first-slice product scenario fixture (Option 3, single grid, no atlas) has landed; **the atlas packer is still not next**.
