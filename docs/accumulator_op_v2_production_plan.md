@@ -1923,6 +1923,27 @@ Defaults unchanged.
 
 **Test:** [`phase_m_queue_write_scale_hardening_test_results.md`](tests/phase_m_queue_write_scale_hardening_test_results.md) — PASS.
 
+### PR M-first-slice-map-residency — Map Residency V1 — **Done**
+
+**Status:** **Landed** — first-slice residency status/reporting (metadata only).
+
+Phase M Map Residency V1 landed.
+It adds first-slice residency status/reporting over the accepted GPU-resident path: HotExecutedThisTick, ResidentCached, ColdSkipped, and DisabledUnavailable.
+Residency status is metadata only. CPU does not recompute threat/urgency, emit commitment events, or mutate true field values for cached/skipped maps.
+ResidentCached preserves visibility of prior GPU parent summaries through metadata while cached commitment scans remain deferred in V1.
+No SummaryValidity behavior changed.
+No default SimSession wiring was introduced.
+No atlas batching landed.
+No M-4A atlas masking landed.
+No active mask, perception/fog, behavioral source policy, or source_mask landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Design:** `FirstSliceResidencyStatus` / `FirstSliceResidencyReport` on `FirstSliceMappingReport.residency`; derived from existing SummaryValidity GPU-parent-summary state; no new RON field.
+
+**Test:** [`phase_m_first_slice_map_residency_test_results.md`](tests/phase_m_first_slice_map_residency_test_results.md) — PASS.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
 **Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. The first-slice product scenario fixture (Option 3, single grid, no atlas) has landed; **the atlas packer is still not next**.
