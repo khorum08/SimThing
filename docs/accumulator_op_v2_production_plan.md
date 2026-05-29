@@ -2408,7 +2408,8 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   Report: `docs/tests/phase_m_m5c_gradient_need_signal_test_results.md`.
 - **M-5D-gradient — Input Validation Rule: gradient-sink / no-within-frame-feedback admission — **Done (PASS).**
   `validate_region_field_frame_gradient_sinks` rejects gradient `output_col` used as same-frame
-  `source_col`; re-affirms self-loop ban; M-5B/M-5C valid-sink fixtures green. No runtime change.
+  `source_col`; `compile_region_field_frame_preview` validates then compiles frame groups; M-5B/M-5C
+  valid-sink fixtures green. No runtime change.
   Report: `docs/tests/phase_m_m5d_gradient_sink_admission_test_results.md`.
 
 **Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); `sqrt`

@@ -38,7 +38,7 @@ pub use first_slice_scenario_admission::{
 pub use region_field_admission::{
     admit_region_field_formula_class, compile_region_field_preview,
     compile_region_field_stencil_config, validate_region_field_frame_gradient_sinks,
-    CompiledFieldCadence,
+    compile_region_field_frame_preview, CompiledFieldCadence,
     CompiledFirstSliceCommitmentDirection, CompiledFirstSliceCommitmentThreshold,
     CompiledRegionFieldBoundaryMode, CompiledRegionFieldMaskMode, CompiledRegionFieldOperator,
     CompiledRegionFieldPreview, CompiledRegionFieldSourcePolicy, CompiledRegionFieldStencilSpec,

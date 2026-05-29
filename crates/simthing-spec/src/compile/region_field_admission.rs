@@ -486,6 +486,17 @@ pub fn validate_region_field_frame_gradient_sinks(
     Ok(())
 }
 
+/// Validate frame-level gradient sinks, then compile each field in the same-frame group.
+pub fn compile_region_field_frame_preview(
+    fields: &[&RegionFieldSpec],
+) -> Result<Vec<CompiledRegionFieldPreview>, SpecError> {
+    validate_region_field_frame_gradient_sinks(fields)?;
+    fields
+        .iter()
+        .map(|spec| compile_region_field_preview(spec))
+        .collect()
+}
+
 /// Validate a field formula class for RegionFieldSpec parent bindings.
 pub fn admit_region_field_formula_class(
     spec: &RegionFieldSpec,
