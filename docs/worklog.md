@@ -6,6 +6,17 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Phase M Map Residency V1
+
+- Phase M Map Residency V1 landed.
+- It adds first-slice residency status/reporting over the accepted GPU-resident path: `HotExecutedThisTick`, `ResidentCached`, `ColdSkipped`, and `DisabledUnavailable`.
+- Residency status is metadata only. CPU does not recompute threat/urgency, emit commitment events, or mutate true field values for cached/skipped maps.
+- `FirstSliceResidencyReport` on `FirstSliceMappingReport.residency`; no new RON field (SummaryValidity policy implies V1 residency behavior).
+- ResidentCached preserves visibility of prior GPU parent summaries through metadata while cached commitment scans remain deferred in V1.
+- No SummaryValidity behavior changed. No default SimSession wiring was introduced. No atlas batching landed. No M-4A atlas masking landed. No active mask, perception/fog, behavioral source policy, or source_mask landed. No semantic WGSL landed. simthing-sim remains map-free. Defaults unchanged.
+- Queue-write child resource scale caveat addressed for first-slice by generic bulk fill; parent scalar writes remain O(1).
+- Test report: [`tests/phase_m_first_slice_map_residency_test_results.md`](tests/phase_m_first_slice_map_residency_test_results.md).
+
 # 2026-05-29 — Phase M Queue-Write Scale Hardening V1
 
 - Phase M Queue-Write Scale Hardening V1 landed.

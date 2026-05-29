@@ -148,6 +148,29 @@ pub struct FirstSliceSummaryReport {
     pub summary_used_for_commitment_scan: bool,
 }
 
+/// First-slice residency status for one tick (metadata only — not gameplay recomputation on CPU).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FirstSliceResidencyStatus {
+    HotExecutedThisTick,
+    ResidentCached,
+    ColdSkipped,
+    DisabledUnavailable,
+}
+
+/// Residency report for one first-slice tick (metadata only).
+///
+/// Residency status describes whether the opted-in field executed densely this tick, retained a
+/// prior GPU parent summary while skipped, was cold before first execution, or was unavailable
+/// under a Disabled profile. It does not rederive threat/urgency on CPU.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FirstSliceResidencyReport {
+    pub status: FirstSliceResidencyStatus,
+    pub summary_visible_to_parent: bool,
+    pub dense_field_executed: bool,
+    pub parent_summary_retained_on_gpu: bool,
+    pub cached_commitment_scan_supported: bool,
+}
+
 /// Opus/product readiness summary for one first-slice tick (generic observability).
 #[derive(Clone, Debug, PartialEq)]
 pub struct FirstSliceReadinessReport {
@@ -205,6 +228,7 @@ pub struct FirstSliceMappingReport {
     pub reduction_stencil_readbacks: u32,
     pub readiness: FirstSliceReadinessReport,
     pub summary: FirstSliceSummaryReport,
+    pub residency: FirstSliceResidencyReport,
 }
 
 /// Narrow fixture report for Phase M commitment tests.
@@ -227,6 +251,16 @@ impl FirstSliceMappingReport {
             has_gpu_parent_summary: false,
             last_fresh_tick: None,
             summary_used_for_commitment_scan: false,
+        }
+    }
+
+    fn residency_disabled_unavailable() -> FirstSliceResidencyReport {
+        FirstSliceResidencyReport {
+            status: FirstSliceResidencyStatus::DisabledUnavailable,
+            summary_visible_to_parent: false,
+            dense_field_executed: false,
+            parent_summary_retained_on_gpu: false,
+            cached_commitment_scan_supported: false,
         }
     }
 
@@ -276,6 +310,7 @@ impl FirstSliceMappingReport {
                 hot_path_wall_ms_observed: None,
             },
             summary: Self::summary_invalid_or_unavailable(),
+            residency: Self::residency_disabled_unavailable(),
         }
     }
 }
@@ -549,6 +584,33 @@ impl FirstSliceMappingSession {
             has_gpu_parent_summary: self.has_gpu_parent_summary,
             last_fresh_tick: self.last_fresh_tick,
             summary_used_for_commitment_scan,
+        }
+    }
+
+    fn build_residency_report(
+        &self,
+        scheduled: bool,
+        reduction_executed: bool,
+    ) -> FirstSliceResidencyReport {
+        let dense_field_executed = scheduled && reduction_executed;
+        let parent_summary_retained_on_gpu = self.has_gpu_parent_summary;
+        let summary_visible_to_parent = self.has_gpu_parent_summary;
+        let status = if !self.enabled {
+            FirstSliceResidencyStatus::DisabledUnavailable
+        } else if dense_field_executed {
+            FirstSliceResidencyStatus::HotExecutedThisTick
+        } else if self.has_gpu_parent_summary {
+            FirstSliceResidencyStatus::ResidentCached
+        } else {
+            FirstSliceResidencyStatus::ColdSkipped
+        };
+
+        FirstSliceResidencyReport {
+            status,
+            summary_visible_to_parent,
+            dense_field_executed,
+            parent_summary_retained_on_gpu,
+            cached_commitment_scan_supported: false,
         }
     }
 
@@ -1046,6 +1108,7 @@ impl FirstSliceMappingSession {
             &eml_output,
         );
         let summary = self.build_summary_report(scheduled, reduction_executed, false);
+        let residency = self.build_residency_report(scheduled, reduction_executed);
 
         Ok(FirstSliceMappingReport {
             enabled: true,
@@ -1064,6 +1127,7 @@ impl FirstSliceMappingSession {
             reduction_stencil_readbacks: self.reduction_stencil_readbacks_this_tick,
             readiness,
             summary,
+            residency,
         })
     }
 }
