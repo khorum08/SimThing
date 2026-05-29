@@ -31,9 +31,9 @@ No runtime behavior changed in this parking pass. No `DailyResolutionBoundary` p
 
 ---
 
-## 2. Abstract boundary doctrine
+## 2. Boundary doctrine (tick / boundary / day)
 
-SimThing exposes **abstract deterministic tick/boundary resolution**:
+SimThing exposes deterministic **tick / boundary / day** resolution:
 
 | Term | Meaning |
 |---|---|
@@ -43,9 +43,9 @@ SimThing exposes **abstract deterministic tick/boundary resolution**:
 | **ticks_per_day** | Current cadence field controlling how many ticks occur before a boundary |
 | **pause/speed** | Host/UI orchestration; the sim advances only when the host requests ticks |
 
-**Naming caveat:** The current names `ticks_per_day` and `day_index` are retained because they are already legible and widely used in fixtures/tests. Constitutionally, they do **not** make "day" a hardcoded substrate semantic. A host may interpret `day_index` as a day, turn, frame, season, orbital step, market close, learning epoch, or other unit.
+**Naming preference (product, 2026-05-29 — supersedes the R1/R2 "abstract cadence" framing):** `tick`, `boundary`, `day`, `day_index`, and `ticks_per_day` are the **preferred, endorsed names for their legibility**. The earlier R1/R2 pull toward abstract/illegible alternatives ("boundary-index", "ticks-per-boundary-unit") is reversed: keep the legible names. They do **not** make "day" a hardcoded substrate semantic — a host may interpret `day_index` as a day, turn, frame, season, orbital step, market close, learning epoch, or other unit — but the names themselves are what we want.
 
-**Naming caveat extends to pre-existing `simthing-sim` vocabulary (C-1, Opus 2026-05-29).** `simthing-sim` already uses "day boundary" / `day` naming throughout and predating this doctrine — e.g. `lib.rs` "day boundary orchestration", the numbered "step N of the day boundary" modules, `replay.rs` `day: u32`, and the Evaluation invariant "fission/fusion belong to day-boundary protocol". That naming is the **same legible monotonic-boundary-counter naming** as `day_index`/`ticks_per_day`; it carries **no** calendar arithmetic, no `Calendar`/month/year/season type, and no pause flag. The binding guardrail is therefore *"no day/calendar/pause **semantics** in `simthing-sim`"* — **not** "no use of the word *day*". This keeps the doctrine accurate against a source grep.
+**The guardrail is on *semantics*, not vocabulary.** `simthing-sim` already uses "day boundary" / `day` naming throughout, predating this doctrine — e.g. `lib.rs` "day boundary orchestration", the numbered "step N of the day boundary" modules, `replay.rs` `day: u32`, and the Evaluation invariant "fission/fusion belong to day-boundary protocol". That is the **same legible monotonic-boundary-counter naming** as `day_index`/`ticks_per_day`; it carries **no** calendar arithmetic, no `Calendar`/month/year/season type, no leap/date math, and no pause flag. The binding line is *"no Clausewitz/calendar/pause **semantics** in `simthing-sim`"* — **not** "no use of the word *day*". This both keeps the doctrine accurate against a source grep and endorses the legible naming.
 
 **Allowed:**
 
@@ -150,9 +150,13 @@ Discrete resource economy is the example substrate used by the daily economy fix
 When extending boundary or economy work, preserve:
 
 ```text
-Do not add Day/Calendar/Pause semantic to simthing-sim.
+PREFER the legible tick/boundary/day/day_index/ticks_per_day naming; do not churn it toward
+  abstract/illegible alternatives (product preference, 2026-05-29).
+Do not add Day/Calendar/Pause SEMANTICS to simthing-sim (no calendar arithmetic, Calendar/
+  month/year/season type, leap/date math, or sim pause flag) — the legible day-flavored names
+  are endorsed; the ban is on semantics, not the word day.
 Do not introduce DailyResolutionBoundary.
-Do not equate boundary with day in doctrine.
+Do not equate boundary with day in doctrine; day is one host/spec interpretation of day_index.
 Do not use CPU planner logic to emit events.
 Do not recompute economy/threat/urgency on CPU at boundary.
 Do not scan dense RegionCell grids at boundary by default.
@@ -160,7 +164,8 @@ Do not turn Resource Flow E-11 on by default.
 Do not implement atlas as a side effect of boundary/economy work.
 Do not add default SimSession mapping pass-graph wiring.
 Do not add semantic WGSL for day/economy/calendar.
-Do not rename ticks_per_day/day_index in this track without explicit product authorization.
+Do not rename tick/boundary/day/ticks_per_day/day_index in this track without explicit product
+  authorization (the standing preference is to keep them).
 ```
 
 **Constitutional posture (unchanged):**

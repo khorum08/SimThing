@@ -6,6 +6,12 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Product naming preference: keep legible tick / boundary / day
+
+- **Product set the naming preference, reversing the R1/R2 abstract-cadence emphasis:** `tick`, `boundary`, `day`, `day_index`, and `ticks_per_day` are the **preferred, endorsed names for their legibility**. Do not churn them toward abstract/illegible alternatives ("boundary-index", "ticks-per-boundary-unit").
+- **The guardrail is unchanged in substance but reframed:** the line is on *semantics*, not vocabulary — avoid Clausewitz/calendar semantics (calendar arithmetic, `Calendar`/month/year/season types, leap/date math, sim pause flag, `DailyResolutionBoundary`), **not** the legible day-flavored names.
+- Edited: `docs/invariants.md` (section renamed "Boundary resolution (tick / boundary / day)"; rows lead with the legibility preference), the acceptance memo, the review packet (§2 + §7), `mapping_current_guidance.md`, `workshop_current_state.md`, `todo.md`. Docs-only; no code; no behavior change; `simthing-sim` map-free; defaults unchanged.
+
 # 2026-05-29 — Opus/product acceptance: abstract boundary resolution + example economy
 
 - **ACCEPTED — PASS WITH CONDITIONS.** Abstract boundary-resolution doctrine accepted: `tick` = deterministic substrate advancement; `boundary` = synchronization point for resolved summaries/events/metadata; `day_index` = monotonic boundary counter / host-spec-interpreted index; `ticks_per_day` = cadence; pause/speed = host-layer. Legible names retained; no day/calendar semantics in `simthing-sim`. Memo: [`reviews/phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md`](reviews/phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md).

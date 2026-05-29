@@ -7,7 +7,7 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Verification (last recorded):** Phase M abstract boundary-resolution + example economy — **ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)**; boundary cadence 7/7, daily economy 7/7, admission 11/11 re-run on GPU; guardrails made binding in `invariants.md`  
+**Verification (last recorded):** Phase M boundary-resolution (tick / boundary / day) + example economy — **ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)**; boundary cadence 7/7, daily economy 7/7, admission 11/11 re-run on GPU; guardrails made binding in `invariants.md`. **Naming preference (product 2026-05-29):** keep the legible `tick`/`boundary`/`day`/`day_index`/`ticks_per_day` names; guardrail is on Clausewitz/calendar *semantics*, not the names  
 **Next action:** **Boundary-resolution doctrine accepted; Daily Economy Fixture V1 accepted as example-only** ([`../reviews/phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md`](../reviews/phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md)). Next implementation handoff is **resource-economy authoring ergonomics, or an economy+SEAD product fixture** — a generic boundary-output packet only if tightly bounded (never `DailyResolutionBoundary` by another name), and **not** the M-4 atlas packer. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
 
 ---
