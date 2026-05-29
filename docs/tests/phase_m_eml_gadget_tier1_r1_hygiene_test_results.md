@@ -6,7 +6,7 @@ Date: 2026-05-29
 
 - Base HEAD: `fec7eb2da8c586535aa42fe7ada4bdac4e0d893d`
 - Branch: `phase-m-eml-gadget-tier1-r1`
-- Final commit SHA: recorded at merge
+- Final commit SHA: `4a04a1d` (merge PR #260)
 
 ## Files Changed
 
@@ -91,3 +91,5 @@ Unchanged from EML-GADGET-1: no WGSL, no new opcode, no runtime gadget execution
 ## Final Verdict
 
 **PASS — Phase M EML-GADGET-1 R1 landed; Tier-1 gadget stack compile surfaces now clearly distinguish executable per-gadget node templates from deferred multi-gadget runtime composition, while preserving CPU-oracle parity, no new WGSL, no new EML opcode, no runtime gadget execution, no temporal memory, no production economy→mapping bridge, no DailyResolutionBoundary, no semantic simthing-sim changes, no Resource Flow default, no atlas/default mapping wiring, and simthing-sim map-freedom.**
+
+**Note (R2, 2026-05-29):** R1 stack-level `total_node_count` rejection was superseded by R2 per-gadget node-cap hygiene — see [`phase_m_eml_gadget_tier1_r2_node_cap_test_results.md`](phase_m_eml_gadget_tier1_r2_node_cap_test_results.md).

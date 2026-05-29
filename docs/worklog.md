@@ -6,6 +6,12 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Phase M EML-GADGET-1 R2 landed (per-gadget node cap hygiene)
+
+- **EML-GADGET-1 R2:** `MAX_EML_TREE_NODES` now enforced per executable gadget/single-tree only; multi-gadget `PerGadgetOnly` stacks no longer reject on informational `total_node_count > 32`; emit `stack_total_exceeds_inline_cap` diagnostic instead.
+- Tests: 14/14 in `eml_gadget_tier1.rs`.
+- Report: [`tests/phase_m_eml_gadget_tier1_r2_node_cap_test_results.md`](tests/phase_m_eml_gadget_tier1_r2_node_cap_test_results.md).
+
 # 2026-05-29 — Phase M EML-GADGET-1 R1 landed (flatten semantics hygiene)
 
 - **EML-GADGET-1 R1:** Replaced ambiguous `CompiledEmlGadgetStack::flattened_nodes` with `EmlGadgetCompositionPlan`. Single-gadget stacks may expose executable `InlineFlattenPreview`; multi-gadget `output_col`/`input_col` chained stacks emit `PerGadgetOnly` + `chained_runtime_deferred` diagnostic. No runtime gadget execution; no OrderBand scheduling.

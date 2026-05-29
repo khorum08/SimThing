@@ -8,7 +8,7 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
 **Verification (last recorded):** Phase M boundary-resolution (tick / boundary / day) + example economy — **ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)**; boundary cadence 7/7, daily economy 7/7, admission 11/11 re-run on GPU; guardrails made binding in `invariants.md`. **Naming preference (product 2026-05-29):** keep the legible `tick`/`boundary`/`day`/`day_index`/`ticks_per_day` names; guardrail is on Clausewitz/calendar *semantics*, not the names  
-**Next action:** **EML-GADGET-2 (Tier-2 temporal-memory slice)** or **Resource Economy Authoring Ergonomics R2**. **EML-GADGET-1 + R1 landed (2026-05-29):** Tier-1 gadgets with explicit `EmlGadgetCompositionPlan` (no executable multi-gadget flatten without proven wiring).
+**Next action:** **EML-GADGET-2 (Tier-2 temporal-memory slice)** or **Resource Economy Authoring Ergonomics R2**. **EML-GADGET-1 + R1 + R2 landed (2026-05-29):** composition plan + per-gadget node-cap semantics aligned.
 
 ---
 

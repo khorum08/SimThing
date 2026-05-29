@@ -2121,9 +2121,9 @@ Defaults unchanged.
 
 **Test:** [`phase_m_product_fixture_chain_parking_test_results.md`](tests/phase_m_product_fixture_chain_parking_test_results.md) — PASS.
 
-### PR M-eml-gadget-library — EML Gadget Library — **EML-GADGET-1 landed; EML-GADGET-1 R1 landed; EML-GADGET-2 queued**
+### PR M-eml-gadget-library — EML Gadget Library — **EML-GADGET-1 + R1 + R2 landed; EML-GADGET-2 queued**
 
-**Status:** **Phase M EML-GADGET-1 landed; EML-GADGET-1 R1 landed.** Tier-1 stateless EML gadgets compile in `simthing-spec` to existing EvalEML node templates with mandatory CPU-oracle parity. R1 clarifies stack composition semantics: per-gadget templates are executable; multi-gadget chained stacks use `PerGadgetOnly` composition (no executable inline flatten). Design note:
+**Status:** **Phase M EML-GADGET-1 + R1 + R2 landed.** Tier-1 stateless EML gadgets compile in `simthing-spec` to existing EvalEML node templates with mandatory CPU-oracle parity. R1 clarifies stack composition semantics; R2 corrects node-cap enforcement to per-gadget/single-tree only. Design note:
 [`workshop/eml_gadget_library_design_note.md`](workshop/eml_gadget_library_design_note.md).
 Designer-facing, RON-authored EML **gadgets** = named postfix node-template macros over the existing
 `EvalEML` opcode set (NOT new WGSL kernels), composed into the GPU-resident `EvalEML` path. Lives in
@@ -2152,6 +2152,27 @@ Chained multi-gadget order-band execution is deferred; V1 supports inline flatte
 
 Phase M EML-GADGET-1 R1 landed.
 It clarifies gadget stack compilation semantics: Tier-1 per-gadget node templates are executable and CPU-oracle proven; multi-gadget stack composition is proven through manual/orchestrated per-gadget chaining; executable flattened multi-gadget runtime output is not claimed in V1 and remains deferred unless a later gated compiler proves true intermediate wiring.
+No runtime gadget execution was introduced.
+No chained OrderBand runtime scheduling was introduced.
+No temporal memory was introduced.
+No new EML opcode was added.
+No WGSL or GPU kernel was added.
+No runtime economy behavior changed.
+No production economy→mapping bridge was introduced.
+No generic boundary-output packet was introduced.
+No DailyResolutionBoundary primitive was introduced.
+No day/calendar/pause semantics were added to simthing-sim.
+No Resource Flow default changed.
+No CPU-side economy executor, urgency computation, or AI planner was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**EML-GADGET-1 R2 (2026-05-29):** Node-cap semantics corrected — `MAX_EML_TREE_NODES` enforced per executable gadget/single-tree only; multi-gadget `PerGadgetOnly` stacks may exceed single-tree total with `stack_total_exceeds_inline_cap` diagnostic. Test: [`tests/phase_m_eml_gadget_tier1_r2_node_cap_test_results.md`](tests/phase_m_eml_gadget_tier1_r2_node_cap_test_results.md).
+
+Phase M EML-GADGET-1 R2 landed.
+It corrects node-cap semantics after R1: the EvalEML node cap applies to each executable gadget/tree, not to the informational total node count of a PerGadgetOnly multi-gadget stack. Multi-gadget stacks whose total node count exceeds the single-tree cap now admit as PerGadgetOnly with diagnostics, while chained runtime scheduling remains deferred.
 No runtime gadget execution was introduced.
 No chained OrderBand runtime scheduling was introduced.
 No temporal memory was introduced.

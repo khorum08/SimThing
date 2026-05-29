@@ -227,30 +227,52 @@ pub fn compile_eml_gadget_stack(
     let composition = build_composition_plan(&compiled_gadgets, &spec.gadgets, &mut report);
     report.gadget_count = compiled_gadgets.len();
 
-    if report.total_node_count > MAX_EML_TREE_NODES as usize {
-        return Err(SpecError::EmlGadgetAdmission {
-            gadget: "stack".into(),
-            reason: format!(
-                "gadget stack node count {report_total} exceeds EvalEML cap {MAX_EML_TREE_NODES}",
-                report_total = report.total_node_count
-            ),
-        });
-    }
-    if report.flatten_preview_node_count > MAX_EML_TREE_NODES as usize {
-        report.diagnostics.push(EmlGadgetDiagnostic {
-            code: "flatten_preview_exceeds_cap",
-            message: format!(
-                "inline flatten preview would use {} nodes; chained OrderBand execution deferred",
-                report.flatten_preview_node_count
-            ),
-        });
-    }
+    apply_stack_node_cap_policy(&composition, &mut report)?;
 
     Ok(CompiledEmlGadgetStack {
         gadgets: compiled_gadgets,
         composition,
         report,
     })
+}
+
+fn apply_stack_node_cap_policy(
+    composition: &EmlGadgetCompositionPlan,
+    report: &mut EmlGadgetPreviewReport,
+) -> Result<(), SpecError> {
+    match composition {
+        EmlGadgetCompositionPlan::InlineFlattenPreview { nodes, .. } => {
+            if nodes.len() > MAX_EML_TREE_NODES as usize {
+                return Err(SpecError::EmlGadgetAdmission {
+                    gadget: "stack".into(),
+                    reason: format!(
+                        "single-gadget inline tree node count {} exceeds EvalEML cap {MAX_EML_TREE_NODES}",
+                        nodes.len()
+                    ),
+                });
+            }
+            if report.flatten_preview_node_count > MAX_EML_TREE_NODES as usize {
+                report.diagnostics.push(EmlGadgetDiagnostic {
+                    code: "flatten_preview_exceeds_cap",
+                    message: format!(
+                        "inline flatten preview would use {} nodes; chained OrderBand execution deferred",
+                        report.flatten_preview_node_count
+                    ),
+                });
+            }
+        }
+        EmlGadgetCompositionPlan::PerGadgetOnly { .. } => {
+            if report.total_node_count > MAX_EML_TREE_NODES as usize {
+                report.diagnostics.push(EmlGadgetDiagnostic {
+                    code: "stack_total_exceeds_inline_cap",
+                    message: "total per-gadget node count exceeds single EvalEML tree cap; \
+                              composition remains PerGadgetOnly and chained runtime scheduling is deferred"
+                        .into(),
+                });
+            }
+        }
+    }
+    Ok(())
 }
 
 fn kind_from_instance(instance: &EmlGadgetInstanceSpec) -> Result<EmlGadgetKind, SpecError> {
