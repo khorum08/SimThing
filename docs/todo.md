@@ -226,7 +226,9 @@ C-INF-2 harness (2) + pivot-forward remedial (3) + B-4 world summary integrated 
 
 **Phase M Map Residency V1:** **Done (opt-in)** — first-slice residency status/reporting; metadata only; cached commitment scan deferred. See [`tests/phase_m_first_slice_map_residency_test_results.md`](tests/phase_m_first_slice_map_residency_test_results.md).
 
-**Phase M abstract boundary-resolution + example economy review packet:** **Done (parked for review)** — Opus/product parking packet; abstract boundary doctrine vs example daily economy fixture; recommended next options A then C/D. See [`reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`](reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md).
+**Phase M Boundary Resolution Doctrine R2:** **Done (docs terminology correction)** — restores legible tick/boundary/day_index/ticks_per_day vocabulary; day/calendar remains host/spec interpretation only. See [`tests/phase_m_boundary_resolution_doctrine_r2_terminology_test_results.md`](tests/phase_m_boundary_resolution_doctrine_r2_terminology_test_results.md).
+
+**Phase M abstract boundary-resolution + example economy review packet:** **Done (parked for review)** — Opus/product parking packet; recommended next options A then C/D. See [`reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`](reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md).
 
 **Phase M Boundary Resolution Doctrine audit:** **Done (docs+test audit)** — abstract deterministic tick/boundary cadence confirmed via existing substrate machinery; no `DailyResolutionBoundary` primitive; day/calendar/pause remain host layer only; example discrete banking may use resource economy not Resource Flow by default. See [`tests/phase_m_boundary_cadence_doctrine_audit.md`](tests/phase_m_boundary_cadence_doctrine_audit.md).
 

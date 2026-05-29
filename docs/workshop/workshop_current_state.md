@@ -7,7 +7,7 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Verification (last recorded):** Phase M boundary-resolution + example economy review packet — **landed 2026-05-29**; parking packet created; boundary cadence 7/7, daily economy 7/7, first-slice runtime 28/28; workspace check green  
+**Verification (last recorded):** Phase M Boundary Resolution Doctrine R2 — **landed 2026-05-29**; legible tick/boundary/day_index/ticks_per_day vocabulary restored; boundary cadence 7/7, daily economy 7/7; workspace check green  
 **Next action:** **Boundary resolution + example economy parked for Opus/product review** — accept abstract doctrine (Option A) before C/D product fixtures or D authoring ergonomics. **Not** the M-4 atlas packer. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
 
 ---
@@ -53,6 +53,8 @@ Legacy reduction is deleted (S-4). Legacy intensity is deleted (S-2). Legacy ove
 **Phase M product commitment fixture:** **Done (opt-in)** — extends the product first-slice fixture with the existing threshold/event substrate over parent field_urgency: GPU-resident field propagation -> parent reduction -> EvalEML urgency -> threshold event.
 
 **Phase M Map Residency V1:** **Done (opt-in)** — first-slice residency status/reporting over accepted GPU-resident path. See [`../tests/phase_m_first_slice_map_residency_test_results.md`](../tests/phase_m_first_slice_map_residency_test_results.md).
+
+**Phase M Boundary Resolution Doctrine R2:** **Done (docs terminology correction)** — restores legible tick/boundary/day_index/ticks_per_day vocabulary while preserving host/spec day interpretation guardrail. See [`../tests/phase_m_boundary_resolution_doctrine_r2_terminology_test_results.md`](../tests/phase_m_boundary_resolution_doctrine_r2_terminology_test_results.md).
 
 **Phase M abstract boundary-resolution + example economy review packet:** **Done (parked for review)** — Opus/product parking packet distinguishing abstract tick/boundary doctrine from game-level daily interpretation; Daily Economy Fixture V1 framed as example only. See [`../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`](../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md).
 

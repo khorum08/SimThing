@@ -24,7 +24,7 @@ Active read order:
 ## Phase M abstract boundary-resolution + example economy review packet (landed — parked for review)
 
 Phase M abstract boundary-resolution + example economy review packet landed.
-The repo now distinguishes abstract substrate boundary cadence from game-level daily interpretation. Current API names such as ticks_per_day/day_index remain historical names; their constitutional meaning is host-interpreted boundary cadence.
+The repo now distinguishes abstract substrate tick/boundary cadence from game-level daily interpretation. `ticks_per_day` and `day_index` remain the legible API names; despite the names, day/calendar semantics are not part of simthing-sim.
 Daily Economy Fixture V1 remains a valid product/example fixture showing one game-level interpretation: one boundary as one day, with discrete ResourceEconomySpec banking.
 No runtime behavior changed.
 No DailyResolutionBoundary primitive was introduced.
@@ -40,12 +40,12 @@ Defaults unchanged.
 ## Phase M Boundary Resolution Doctrine audit (landed — docs+test audit)
 
 Phase M Boundary Resolution Doctrine audit landed.
-The substrate exposes abstract deterministic tick/boundary cadence through ticks_per_boundary-style machinery currently named ticks_per_day, boundary_reached, day_index, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
-For historical/API reasons the current field names include "day," but their constitutional meaning is boundary index / host-interpreted cadence, not a hardcoded calendar day.
+The substrate exposes abstract deterministic tick/boundary cadence through `ticks_per_day`, `boundary_reached`, `day_index`, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
+Despite the names, `day_index` and `ticks_per_day` do not make day/calendar semantics part of simthing-sim. A host may interpret `day_index` as a day, turn, frame, season, orbital step, market close, learning epoch, or other unit.
 No DailyResolutionBoundary runtime primitive was introduced.
 No Day/Calendar/Pause semantic was added to simthing-sim.
-Daily meaning remains only one possible host/spec interpretation over the boundary index.
-Pause/speed remain host/UI orchestration concerns: the deterministic sim advances only when the host requests the next tick/boundary.
+Daily meaning remains only one possible host/spec interpretation of `day_index`.
+Pause/speed remain host/UI orchestration concerns: the deterministic sim advances only when the host requests ticks.
 Example discrete boundary banking may use the discrete resource economy substrate, not the continuous Resource Flow substrate by default.
 The CPU boundary consumes resolved summaries/events/metadata at the boundary; it must not scan dense RegionCell grids by default, recompute gameplay state, or emit AI commitments via CPU planner logic.
 No default SimSession mapping wiring was introduced.

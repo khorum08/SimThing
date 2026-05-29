@@ -27,7 +27,7 @@ Date: 2026-05-29
 | "Clausewitz-style daily resolution is represented by existing boundary cadence machinery" | "Abstract boundary resolution is represented by existing cadence machinery" |
 | "Clausewitz-style daily banking proven" (canonical tone) | "Daily Economy Fixture V1 landed as product/example fixture" |
 | "Daily banking should use discrete resource economy" (doctrine) | "Example discrete boundary banking may use discrete resource economy" |
-| Implicit boundary == day | Explicit: boundary index / host-interpreted cadence; day is one possible interpretation |
+| Implicit boundary == day | Explicit: `day_index` / `ticks_per_day` are legible API names; day is one possible host interpretation |
 
 Preserved allowed language:
 
@@ -69,8 +69,9 @@ Full workspace test omitted (docs-only pass; targeted tests + check sufficient).
 
 - **tick** = deterministic substrate advancement
 - **boundary** = synchronization point for resolved summaries/events/metadata
-- **boundary index** (`day_index` in current API) = host/spec interpretation, not a hardcoded calendar day
-- Games may interpret boundaries as days, turns, frames, seasons, orbital steps, etc.
+- **day_index** = current boundary counter / host-spec interpreted index
+- **ticks_per_day** = cadence field controlling how many ticks occur before a boundary
+- Games may interpret `day_index` as days, turns, frames, seasons, orbital steps, etc.
 - Pause/speed remain host/UI orchestration
 
 ## Daily fixture reframing summary

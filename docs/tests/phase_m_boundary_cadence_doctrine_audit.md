@@ -48,8 +48,8 @@ Date: 2026-05-29 (original audit); terminology reframed 2026-05-29 (R1)
 
 1. `doctrine_no_daily_resolution_boundary_primitive` — no forbidden runtime type
 2. `doctrine_pause_is_host_non_advancement` — coordinator idle until host invokes tick
-3. `ticks_per_day_one_boundary_every_tick` — N ticks → N boundaries, boundary index advances each tick
-4. `ticks_per_day_four_one_boundary_after_four_ticks` — 4 ticks → 1 boundary, boundary index advances once
+3. `ticks_per_day_one_boundary_every_tick` — N ticks → N boundaries, `day_index` advances each tick
+4. `ticks_per_day_four_one_boundary_after_four_ticks` — 4 ticks → 1 boundary, `day_index` advances once
 5. `host_pause_preserves_state_after_partial_advancement` — no tick call → frozen state
 6. `daily_resource_economy_fixture_uses_ticks_per_day_one` — example fixture uses boundary cadence of 1
 7. `doctrine_active_guidance_avoids_canonical_day_overclaims` — active guidance source scan (R1)
@@ -78,7 +78,8 @@ Full log: [`phase_m_boundary_cadence_doctrine_full.log`](phase_m_boundary_cadenc
 
 - **tick** = deterministic substrate advancement (`DispatchCoordinator::tick`)
 - **boundary** = existing synchronization point (`boundary_reached` when `tick_in_day >= ticks_per_day`)
-- **boundary index** = `day_index` in current API (historical naming; not a hardcoded calendar day)
+- **day_index** = current boundary counter / host-spec interpreted index
+- **ticks_per_day** = cadence field controlling how many ticks occur before a boundary
 - A game may interpret one boundary as a day, but that interpretation is not part of the simulation substrate
 - Other simulations may interpret boundaries as frames, seasons, turns, market closes, orbital steps, learning epochs, or other semantic units
 - `ticks_per_day=1` means every substrate tick is a boundary
