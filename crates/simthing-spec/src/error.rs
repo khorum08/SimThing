@@ -323,4 +323,8 @@ pub enum SpecError {
     // ── Region field mapping admission (Phase M-3) ───────────────────────────
     #[error("region field `{field}`: {reason}")]
     RegionFieldAdmission { field: String, reason: String },
+
+    // ── EML Gadget Library (Phase M EML-GADGET-1) ────────────────────────────
+    #[error("EML gadget `{gadget}`: {reason}")]
+    EmlGadgetAdmission { gadget: String, reason: String },
 }

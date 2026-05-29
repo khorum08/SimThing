@@ -1,6 +1,6 @@
 # EML Gadget Library — Design Note (Phase M)
 
-**Status:** **Approved track (Opus design authority, 2026-05-29); parked for implementation.**
+**Status:** **EML-GADGET-1 landed (2026-05-19).** Tier-1 stateless gadgets compile in `simthing-spec`. **EML-GADGET-2** (temporal-memory slice) remains queued.
 **Sequencing:** Lands **before Phase M Resource Economy Authoring Ergonomics R2** — R2's
 designer-facing authoring must be able to expose and leverage the gadget library, so the library
 must exist first.
@@ -74,7 +74,7 @@ Two modes; the compiler chooses per stack:
 
 ## 5. Tier 1 — stateless gadgets (land first; no substrate change)
 
-Pure node-templates over current opcodes. `ExactDeterministic`. Ship in `EML-GADGET-1`.
+Pure node-templates over current opcodes. `ExactDeterministic`. **Landed in EML-GADGET-1** (`simthing-spec`: registry, RON stack, compiler, CPU oracles, parity tests).
 
 | Gadget | Effect | Op stack (sketch) | Notes |
 |---|---|---|---|

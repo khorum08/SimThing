@@ -6,6 +6,14 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-19 — Phase M EML-GADGET-1 landed (Tier-1 stateless gadget library)
+
+- **Phase M EML-GADGET-1 landed** in `simthing-spec`: `FieldSampler`, `WeightedAccumulator`, `SoftStep` as RON-authored EvalEML node-template macros with registry, compiler, preview report, admission errors, and mandatory CPU-oracle parity tests (`tests/eml_gadget_tier1.rs`, 10/10).
+- SoftStep uses the ExactDeterministic algebraic form `0.5 + 0.5·u/(1+|u|)`; no exp/logistic; no new EML opcode; no WGSL/GPU/sim/runtime economy changes; defaults unchanged; `simthing-sim` map-free.
+- Chained multi-gadget order-band execution deferred; V1 supports per-gadget compile + inline-flatten preview only.
+- Test report: [`tests/phase_m_eml_gadget_tier1_test_results.md`](tests/phase_m_eml_gadget_tier1_test_results.md).
+- **Next:** EML-GADGET-2 (temporal-memory slice) or Authoring Ergonomics R2 (unblocked to expose Tier-1 gadgets).
+
 # 2026-05-29 — New track: EML Gadget Library (sequenced before Authoring Ergonomics R2)
 
 - **Approved a new PR track: the EML Gadget Library**, and **sequenced it BEFORE Phase M Resource Economy Authoring Ergonomics R2** (which Codex is starting) so R2's designer-facing authoring can expose and leverage gadgets. Design note: [`workshop/eml_gadget_library_design_note.md`](workshop/eml_gadget_library_design_note.md).

@@ -1,6 +1,7 @@
 pub mod capability;
 pub mod domain_pack;
 pub mod effect;
+pub mod eml_gadget;
 pub mod event;
 pub mod first_slice_scenario;
 pub mod game_mode;
@@ -45,4 +46,5 @@ pub use resource_flow::{
 pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };
+pub use eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 pub use trigger::{TriggerDirection, TriggerSpec};
