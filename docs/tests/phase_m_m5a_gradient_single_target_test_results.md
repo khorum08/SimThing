@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `67835d60d97042b5bd7c567a53ebbc9c1f540572` (post Opus V7.7 gating constitution)  
-**Final commit SHA:** *(to be recorded after push/merge)*  
+**Final commit SHA:** `6980248` (M-5A-gradient merge commit)  
 **Verdict:** **PASS — M-5A-gradient landed**
 
 ---
