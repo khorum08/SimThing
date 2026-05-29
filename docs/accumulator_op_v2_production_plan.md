@@ -2121,9 +2121,9 @@ Defaults unchanged.
 
 **Test:** [`phase_m_product_fixture_chain_parking_test_results.md`](tests/phase_m_product_fixture_chain_parking_test_results.md) — PASS.
 
-### PR M-eml-gadget-library — EML Gadget Library — **EML-GADGET-1 ACCEPTED (Opus 2026-05-29); EML-GADGET-2 queued (design review next)**
+### PR M-eml-gadget-library — EML Gadget Library — **EML-GADGET-1 ACCEPTED (Opus 2026-05-29); EML-GADGET-2 design review landed**
 
-**Acceptance:** **EML-GADGET-1 ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)** — [`reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md). Tier-1 stateless gadgets (`FieldSampler`, `WeightedAccumulator`, algebraic `SoftStep`) accepted as `simthing-spec` node-template macros over existing `EvalEML` opcodes with CPU-oracle parity; R1 composition (per-gadget executable; multi-gadget `PerGadgetOnly`; preview ≠ runtime) and R2 node-cap (per executable tree) accepted. Binding rows added to `docs/invariants.md` ("EML Gadget Library"). Conditions: preview ≠ runtime (no driver/gpu/sim consumes the flatten preview); `PerGadgetOnly` is the only multi-gadget composition until intermediate wiring is separately gated; oracle-per-gadget binding for all future gadgets. Re-verified: eml_gadget_tier1 14/14, admission 11/11, authoring preview 8/8. **Next: EML-GADGET-2 temporal-memory design review (or designer preview UX), before implementation.** *(The #262 parking packet was reverted off master; the acceptance memo is the authoritative review artifact.)*
+**Acceptance:** **EML-GADGET-1 ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)** — [`reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md). Tier-1 stateless gadgets (`FieldSampler`, `WeightedAccumulator`, algebraic `SoftStep`) accepted as `simthing-spec` node-template macros over existing `EvalEML` opcodes with CPU-oracle parity; R1 composition (per-gadget executable; multi-gadget `PerGadgetOnly`; preview ≠ runtime) and R2 node-cap (per executable tree) accepted. Binding rows added to `docs/invariants.md` ("EML Gadget Library"). Conditions: preview ≠ runtime (no driver/gpu/sim consumes the flatten preview); `PerGadgetOnly` is the only multi-gadget composition until intermediate wiring is separately gated; oracle-per-gadget binding for all future gadgets. Re-verified: eml_gadget_tier1 14/14, admission 11/11, authoring preview 8/8. **EML-GADGET-2 temporal-memory design review landed** — [`reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md`](reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md); Tier-2 gadgets remain unauthorized until Opus/product accepts the design and a separate implementation handoff lands. *(The #262 parking packet was reverted off master; the acceptance memo is the authoritative Tier-1 artifact.)*
 
 **Status:** **Phase M EML-GADGET-1 + R1 + R2 landed.** Tier-1 stateless EML gadgets compile in `simthing-spec` to existing EvalEML node templates with mandatory CPU-oracle parity. R1 clarifies stack composition semantics; R2 corrects node-cap enforcement to per-gadget/single-tree only. Design note:
 [`workshop/eml_gadget_library_design_note.md`](workshop/eml_gadget_library_design_note.md).
@@ -2203,10 +2203,26 @@ R2.** R2's designer-facing authoring must be able to expose and leverage the gad
   authoring + flatten compiler + `FieldSampler`, `WeightedAccumulator`, `SoftStep` (bit-exact
   algebraic sigmoid). **Mandatory CPU-oracle parity per gadget.** `simthing-spec` only; no GPU/WGSL
   change; default-off; `ExactDeterministic`.
-- **EML-GADGET-2 — Tier-2 temporal-memory slice (Composer).** Generic snapshot/accumulate-band
-  primitive + temporal columns (`SlotRange`/Layer-3 scoped, not dense per-cell); `VelocityMonitor`,
-  `Decay`/EMA, acceleration, hysteresis; **bounded-feedback admission guardrail** (self-referential
-  accumulator must declare decay<1 and/or clamp or admission rejects it). Separate gate.
+- **EML-GADGET-2 — Tier-2 temporal-memory slice (Composer).** **Design review landed** — [`reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md`](reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md). Generic snapshot/accumulate-band primitive + temporal columns (`SlotRange`/Layer-3 scoped, not dense per-cell); `VelocityMonitor`, `Decay`/EMA, `BoundedFeedback`, conditional `Hysteresis`; **Acceleration deferred**; **bounded-feedback admission guardrail** (self-referential accumulator must declare decay<1 and/or clamp or admission rejects it). Implementation unauthorized until Opus/product accepts design + separate 2A–2D handoff.
+
+Phase M EML-GADGET-2 temporal-memory design review packet landed.
+It reviews Tier-2 temporal gadget candidates — VelocityMonitor, Decay/EMA, Acceleration, Hysteresis, and BoundedFeedback — without implementing them.
+The review preserves EML-GADGET-1 acceptance conditions: gadgets remain simthing-spec node-template macros over existing EvalEML opcodes; preview is not runtime; PerGadgetOnly remains the only multi-gadget composition until separately gated; every gadget requires CPU-oracle parity.
+Temporal memory is explicit-column state with authored snapshot/copy bands, not hidden runtime memory.
+Temporal memory defaults to Layer-3 / parent/personality scope; dense per-cell temporal memory remains separately gated.
+Bounded feedback requires decay < 1 and/or explicit clamp, otherwise admission must reject.
+No runtime gadget execution was introduced.
+No chained OrderBand runtime scheduling was introduced.
+No temporal memory implementation landed.
+No new EML opcode was added.
+No WGSL or GPU kernel was added.
+No simthing-sim semantics were added.
+No production economy→mapping bridge was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+Defaults unchanged.
+
+**Test:** [`tests/phase_m_eml_gadget_tier2_design_review_test_results.md`](tests/phase_m_eml_gadget_tier2_design_review_test_results.md) — PASS.
 
 **Stop conditions:** no per-gadget WGSL; no new opcode (incl. transcendental) without a separate
 gate; no transcendental in `ExactDeterministic` gadgets; temporal memory stays Layer-3 scoped by

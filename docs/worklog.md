@@ -6,6 +6,15 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Phase M EML-GADGET-2 temporal-memory design review (docs only)
+
+- **Design review landed** — [`reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md`](reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md). Reviews Tier-2 candidates (`VelocityMonitor`, `Decay`/EMA, `BoundedFeedback`, conditional `Hysteresis`; `Acceleration` deferred) with explicit-column temporal state, snapshot/copy bands (A/B/C), bounded-feedback admission contract, CPU oracle parity plans, non-authorizations, and 2A–2D implementation ladder. **No implementation.**
+- Preserves EML-GADGET-1 C-1–C-4: preview ≠ runtime; `PerGadgetOnly`; oracle-per-gadget; acceptance memo authoritative over reverted #262 parking packet.
+- Temporal memory = explicit-column state with authored snapshot/copy bands, not hidden runtime memory; defaults Layer-3 parent/personality scope; dense per-cell separately gated.
+- Bounded feedback requires `decay < 1` and/or explicit clamp or admission rejects.
+- Report: [`tests/phase_m_eml_gadget_tier2_design_review_test_results.md`](tests/phase_m_eml_gadget_tier2_design_review_test_results.md).
+- **Next:** Opus/product decision on Tier-2 acceptance; then EML-GADGET-2A snapshot/copy fixture proof (separate handoff). No runtime gadget execution; no chained OrderBand scheduling; no new opcode/WGSL/sim semantics.
+
 # 2026-05-29 — Opus/product acceptance: Phase M EML-GADGET-1 (Tier-1 gadgets)
 
 - **ACCEPTED — PASS WITH CONDITIONS.** Tier-1 stateless EML gadgets (`FieldSampler`, `WeightedAccumulator`, algebraic `SoftStep`) accepted as `simthing-spec` node-template macros over the existing `EvalEML` opcodes, with mandatory CPU-oracle parity. R1 composition + R2 node-cap accepted. Memo: [`reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md).
