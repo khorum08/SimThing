@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `91f5b0df9375360d295a5d3cfd8fef7197dd0d79` (M-5A merge SHA record)  
-**Final commit SHA:** `af940c1` (M-5B-gradient implementation commit)  
+**Final commit SHA:** `ab739c0` (M-5B-gradient implementation commit)  
 **Lane classification:** Tier-1 fast lane (V7.7 §5 / `phase_m_gating_and_doc_policy.md`)  
 **Verdict:** **PASS — M-5B-gradient landed**
 
