@@ -64,6 +64,19 @@ pub enum EmlGadgetInstanceSpec {
         output_col: Option<u32>,
         decay: f32,
     },
+    /// Tier-2 temporal (BoundedFeedback): next = clamp(previous * decay + input * gain, min, max)
+    /// Strict clamp (min < max) is required; unbounded recurrence is rejected at admission.
+    BoundedFeedback {
+        id: String,
+        previous_col: u32,
+        input_col: u32,
+        #[serde(default)]
+        output_col: Option<u32>,
+        decay: f32,
+        gain: f32,
+        min: f32,
+        max: f32,
+    },
 }
 
 impl EmlGadgetInstanceSpec {
@@ -74,7 +87,8 @@ impl EmlGadgetInstanceSpec {
             | Self::WeightedAccumulator { id, .. }
             | Self::VelocityMonitor { id, .. }
             | Self::Decay { id, .. }
-            | Self::Ema { id, .. } => id,
+            | Self::Ema { id, .. }
+            | Self::BoundedFeedback { id, .. } => id,
         }
     }
 
@@ -86,6 +100,7 @@ impl EmlGadgetInstanceSpec {
             Self::VelocityMonitor { .. } => "VelocityMonitor",
             Self::Decay { .. } => "Decay",
             Self::Ema { .. } => "Ema",
+            Self::BoundedFeedback { .. } => "BoundedFeedback",
         }
     }
 
@@ -97,6 +112,7 @@ impl EmlGadgetInstanceSpec {
             Self::VelocityMonitor { current_col, previous_col, .. } => vec![*current_col, *previous_col],
             Self::Decay { state_col, .. } => vec![*state_col],
             Self::Ema { input_col, previous_col, .. } => vec![*input_col, *previous_col],
+            Self::BoundedFeedback { previous_col, input_col, .. } => vec![*previous_col, *input_col],
         }
     }
 
@@ -107,7 +123,8 @@ impl EmlGadgetInstanceSpec {
             | Self::WeightedAccumulator { output_col, .. }
             | Self::VelocityMonitor { output_col, .. }
             | Self::Decay { output_col, .. }
-            | Self::Ema { output_col, .. } => *output_col,
+            | Self::Ema { output_col, .. }
+            | Self::BoundedFeedback { output_col, .. } => *output_col,
         }
     }
 }

@@ -18,6 +18,8 @@ pub enum EmlGadgetKind {
     VelocityMonitor,
     Decay,
     Ema,
+    // Tier-2 temporal (EML-GADGET-2C)
+    BoundedFeedback,
 }
 
 impl EmlGadgetKind {
@@ -29,6 +31,7 @@ impl EmlGadgetKind {
             Self::VelocityMonitor => "VelocityMonitor",
             Self::Decay => "Decay",
             Self::Ema => "Ema",
+            Self::BoundedFeedback => "BoundedFeedback",
         }
     }
 
@@ -38,7 +41,7 @@ impl EmlGadgetKind {
 
     pub fn requires_temporal_memory(self) -> bool {
         match self {
-            Self::VelocityMonitor | Self::Decay | Self::Ema => true,
+            Self::VelocityMonitor | Self::Decay | Self::Ema | Self::BoundedFeedback => true,
             _ => false,
         }
     }
@@ -59,15 +62,15 @@ impl EmlGadgetKind {
             "VelocityMonitor" => Some(Self::VelocityMonitor),
             "Decay" => Some(Self::Decay),
             "Ema" => Some(Self::Ema),
+            "BoundedFeedback" => Some(Self::BoundedFeedback),
             _ => None,
         }
     }
 }
 
-/// Still-deferred Tier-2+ kinds (EML-GADGET-2C/D and beyond).
-/// VelocityMonitor, Decay, and Ema are implemented in EML-GADGET-2B.
+/// Still-deferred Tier-2+ kinds (EML-GADGET-2D and beyond).
+/// BoundedFeedback is implemented in EML-GADGET-2C.
 pub const DEFERRED_GADGET_KINDS: &[&str] = &[
-    "BoundedFeedback",
     "Acceleration",
     "Hysteresis",
 ];
@@ -295,6 +298,7 @@ fn kind_from_instance(instance: &EmlGadgetInstanceSpec) -> Result<EmlGadgetKind,
         EmlGadgetInstanceSpec::VelocityMonitor { .. } => EmlGadgetKind::VelocityMonitor,
         EmlGadgetInstanceSpec::Decay { .. } => EmlGadgetKind::Decay,
         EmlGadgetInstanceSpec::Ema { .. } => EmlGadgetKind::Ema,
+        EmlGadgetInstanceSpec::BoundedFeedback { .. } => EmlGadgetKind::BoundedFeedback,
     };
     Ok(kind)
 }
@@ -415,6 +419,33 @@ fn compile_gadget_instance(
             validate_decay_params(*decay, &id)?;
             (
                 compile_ema_nodes(*input_col, *previous_col, *decay),
+                *output_col,
+            )
+        }
+        EmlGadgetInstanceSpec::BoundedFeedback {
+            previous_col,
+            input_col,
+            output_col,
+            decay,
+            gain,
+            min,
+            max,
+            ..
+        } => {
+            validate_col(*previous_col, opts, &id, "previous_col")?;
+            validate_col(*input_col, opts, &id, "input_col")?;
+            if let Some(col) = output_col {
+                validate_col(*col, opts, &id, "output_col")?;
+            }
+            if *previous_col == *input_col {
+                return Err(SpecError::EmlGadgetAdmission {
+                    gadget: id,
+                    reason: "BoundedFeedback previous_col and input_col must be distinct".into(),
+                });
+            }
+            validate_bounded_feedback_params(*decay, *gain, *min, *max, &id)?;
+            (
+                compile_bounded_feedback_nodes(*previous_col, *input_col, *decay, *gain, *min, *max),
                 *output_col,
             )
         }
@@ -901,6 +932,64 @@ pub fn oracle_decay(state: f32, decay: f32) -> f32 {
 
 pub fn oracle_ema(input: f32, previous: f32, decay: f32) -> f32 {
     previous * decay + input * (1.0 - decay)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tier-2 BoundedFeedback (EML-GADGET-2C)
+// Requires explicit clamp (min < max). Strict admission rejects unbounded forms.
+// Uses existing CLAMP_BOUNDED support (already present for FieldSampler).
+// ─────────────────────────────────────────────────────────────────────────────
+
+fn validate_bounded_feedback_params(decay: f32, gain: f32, min: f32, max: f32, gadget: &str) -> Result<(), SpecError> {
+    if !decay.is_finite() {
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: gadget.to_string(),
+            reason: "BoundedFeedback decay must be finite".into(),
+        });
+    }
+    if !(0.0..1.0).contains(&decay) {
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: gadget.to_string(),
+            reason: "BoundedFeedback decay must satisfy 0 <= decay < 1".into(),
+        });
+    }
+    if !gain.is_finite() {
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: gadget.to_string(),
+            reason: "BoundedFeedback gain must be finite".into(),
+        });
+    }
+    if !min.is_finite() || !max.is_finite() {
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: gadget.to_string(),
+            reason: "BoundedFeedback min and max must be finite".into(),
+        });
+    }
+    if min >= max {
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: gadget.to_string(),
+            reason: "BoundedFeedback min must be < max".into(),
+        });
+    }
+    Ok(())
+}
+
+fn compile_bounded_feedback_nodes(previous_col: u32, input_col: u32, decay: f32, gain: f32, min: f32, max: f32) -> Vec<EmlNode> {
+    vec![
+        node_slot(previous_col),
+        node_literal(decay),
+        node_mul(),
+        node_slot(input_col),
+        node_literal(gain),
+        node_mul(),
+        node_add(),
+        node_clamp_bounded(min, max),
+        node_return_top(),
+    ]
+}
+
+pub fn oracle_bounded_feedback(previous: f32, input: f32, decay: f32, gain: f32, min: f32, max: f32) -> f32 {
+    (previous * decay + input * gain).clamp(min, max)
 }
 
 // 2B node emission re-uses the existing private node_* helpers defined earlier in this file

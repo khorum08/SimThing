@@ -46,8 +46,8 @@ fn tier2_registry_contains_velocity_decay_ema() {
     assert!(EmlGadgetKind::parse("Decay").is_some());
     assert!(EmlGadgetKind::parse("Ema").is_some());
 
-    // Still-deferred kinds remain rejected
-    assert!(DEFERRED_GADGET_KINDS.contains(&"BoundedFeedback"));
+    // BoundedFeedback landed in 2C. Only Hysteresis and Acceleration remain deferred.
+    assert!(!DEFERRED_GADGET_KINDS.contains(&"BoundedFeedback"));
     assert!(DEFERRED_GADGET_KINDS.contains(&"Hysteresis"));
     assert!(DEFERRED_GADGET_KINDS.contains(&"Acceleration"));
 
