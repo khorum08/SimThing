@@ -4,6 +4,15 @@
 - Preflight: production plan Hysteresis/2abc parking status synced.
 - Report: [`tests/phase_m_eml_gadget_2e_acceleration_test_results.md`](tests/phase_m_eml_gadget_2e_acceleration_test_results.md).
 
+# 2026-05-29 — M-5-gradient remedial tightening: single-target staging + naming
+
+- **Remedial design tightening (Opus):** M-5A-gradient is staged as a **single-target, two-pass** gradient extension, not a dual-output kernel. `RegionFieldOperatorSpec::Gradient { axis: GradientAxisSpec, output_col }` (or `GradientX`/`GradientY`) — one output column per admitted gradient field. This preserves the existing single-`target_col` write contract: a gradient field is just per-direction weights with `alpha_self=0` writing one column. Verified against `structured_field_stencil.wgsl` (single output write).
+- **Dual-output `GradientXY` deferred** to a separate optimization gate (widened output contract, dual-output oracle/parity, ping-pong/layout review, write-conflict admission). Not the M-5A-gradient default.
+- **Naming corrected:** `M-5-gradient` / `M-5A-gradient` / `M-5B-gradient`, distinct from the source-identity `M-5` track. No bare `M-5A`.
+- **Lateral generality framed (per product directive):** the gradient operator + EML gadgets are generic field-calculus tools beyond AI — same `Gradient`→reduction→EML→threshold chain routes resources down a scarcity gradient or dispatches migrants up an opportunity gradient. Meaning authored at the spec layer; shader sees floats. This strengthens the "generic, not semantic" placement.
+- Required eventual-implementation report: `docs/tests/phase_m_m5a_gradient_single_target_test_results.md` (files/tests/scans/GPU parity/log cleanup + explicit no-semantic-WGSL / no-default-wiring / no-sim-change / no-economy-bridge statements).
+- Docs: design note rewritten (single-target staging, lateral applications, deferred GradientXY §6, full stop conditions §7), production plan M-5-gradient entry tightened, mapping guidance + workshop state updated. No code; no WGSL changed; no implementation; `simthing-sim` map-free; defaults unchanged.
+
 # 2026-05-29 — M-5 GradientExtraction track approved; revised WGSL guardrail
 
 - **M-5-gradient track approved (Opus 2026-05-29):** `GradientXY` operator variant for `RegionFieldSpec` + L3 Strategic Pressure Composition Pattern (EMA+WeightedAccumulator over multi-field reductions). Design note: [`workshop/m5_gradient_extraction_design_note.md`](workshop/m5_gradient_extraction_design_note.md).
