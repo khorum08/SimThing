@@ -2121,6 +2121,40 @@ Defaults unchanged.
 
 **Test:** [`phase_m_product_fixture_chain_parking_test_results.md`](tests/phase_m_product_fixture_chain_parking_test_results.md) — PASS.
 
+### PR M-eml-gadget-library — EML Gadget Library — **Approved track (Opus 2026-05-29); NEXT — sequenced BEFORE Authoring Ergonomics R2**
+
+**Status:** **Approved track, parked for implementation.** Design note:
+[`workshop/eml_gadget_library_design_note.md`](workshop/eml_gadget_library_design_note.md).
+Designer-facing, RON-authored EML **gadgets** = named postfix node-template macros over the existing
+`EvalEML` opcode set (NOT new WGSL kernels), composed into the GPU-resident `EvalEML` path. Lives in
+`simthing-spec` (authoring/compiler); `simthing-gpu` stays generic; `simthing-sim` stays map-free.
+
+**Sequencing (binding):** This track lands **before Phase M Resource Economy Authoring Ergonomics
+R2.** R2's designer-facing authoring must be able to expose and leverage the gadget library, so the
+library must exist first.
+
+**PR ladder:**
+
+- **EML-GADGET-1 — Tier-1 stateless gadgets (Composer/Codex).** Gadget descriptor + registry + RON
+  authoring + flatten/chain compiler + `FieldSampler`, `WeightedAccumulator`, `SoftStep` (bit-exact
+  algebraic sigmoid). **Mandatory CPU-oracle parity per gadget.** `simthing-spec` only; no GPU/WGSL
+  change; default-off; `ExactDeterministic`.
+- **EML-GADGET-2 — Tier-2 temporal-memory slice (Composer).** Generic snapshot/accumulate-band
+  primitive + temporal columns (`SlotRange`/Layer-3 scoped, not dense per-cell); `VelocityMonitor`,
+  `Decay`/EMA, acceleration, hysteresis; **bounded-feedback admission guardrail** (self-referential
+  accumulator must declare decay<1 and/or clamp or admission rejects it). Separate gate.
+
+**Stop conditions:** no per-gadget WGSL; no new opcode (incl. transcendental) without a separate
+gate; no transcendental in `ExactDeterministic` gadgets; temporal memory stays Layer-3 scoped by
+default; feedback must be bounded; default-off; `simthing-sim` map-free. Every gadget ships with a
+CPU oracle.
+
+### PR M-resource-economy-authoring-ergonomics-r2 — Authoring Ergonomics R2 — **Sequenced AFTER the EML Gadget Library**
+
+**Status:** **Queued behind EML-GADGET-1/2.** R2 should expose and leverage the gadget library in the
+designer-facing resource-economy authoring/preview surface rather than re-inventing composition.
+Begin only after the gadget library is in place.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
 **Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. The first-slice product scenario fixture (Option 3, single grid, no atlas) has landed; **the atlas packer is still not next**.

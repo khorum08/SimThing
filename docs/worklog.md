@@ -6,6 +6,14 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — New track: EML Gadget Library (sequenced before Authoring Ergonomics R2)
+
+- **Approved a new PR track: the EML Gadget Library**, and **sequenced it BEFORE Phase M Resource Economy Authoring Ergonomics R2** (which Codex is starting) so R2's designer-facing authoring can expose and leverage gadgets. Design note: [`workshop/eml_gadget_library_design_note.md`](workshop/eml_gadget_library_design_note.md).
+- Gadgets = RON-authored EML **node-template macros** over the existing `EvalEML` opcode set (NOT new WGSL kernels), composed by inline-flatten or chained `EvalEML` ops across order bands. Lives in `simthing-spec`; `simthing-gpu` stays generic (one interpreter); `simthing-sim` map-free.
+- **EML-GADGET-1 (Tier-1, stateless, lands first):** `FieldSampler` (clamp+div normalize), `WeightedAccumulator` (= `field_urgency`), `SoftStep` (bit-exact **algebraic** sigmoid `0.5+0.5·u/(1+|u|)`, `u=k(x−c)` — `ExactDeterministic`, feeds a hard threshold directly; corrects the earlier "sigmoid needs soft class" note — only a true `exp` logistic would). Mandatory CPU-oracle parity per gadget; default-off; no GPU change.
+- **EML-GADGET-2 (Tier-2, temporal):** generic snapshot/accumulate-band primitive (Layer-3/`SlotRange`-scoped, not dense per-cell) enabling `VelocityMonitor` (`(cur−prev)/dt`), acceleration, `Decay`/EMA (decay already exists via `ScaleTarget`; EMA needs the snapshot), and **hysteresis** (satisfies the A-4 soft-aggregate guard). Adds the **bounded-feedback admission guardrail**: a self-referential accumulator column must declare decay<1 and/or a clamp or admission rejects it (prevents `raw_additive`-style divergence). Feedback loops close across ticks (band ordering forbids same-tick cycles).
+- Recorded the track in the production plan (PR ladder + R2-after note), mapping guidance (read order + next-step), workshop state, todo. Docs-only; no code; defaults unchanged; `simthing-sim` map-free.
+
 # 2026-05-29 — Opus/product acceptance: Phase M product-fixture chain
 
 - **ACCEPTED — PASS WITH CONDITIONS.** The chain (abstract boundary doctrine → Daily Economy Fixture V1 → Resource Economy Authoring Ergonomics V1 → Economy + SEAD Product Fixture V1) is accepted as a fixture-level product proof. Memo: [`reviews/phase_m_product_fixture_chain_acceptance_opus_review.md`](reviews/phase_m_product_fixture_chain_acceptance_opus_review.md).
