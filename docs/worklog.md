@@ -6,7 +6,13 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
-# 2026-05-19 — Phase M EML-GADGET-1 landed (Tier-1 stateless gadget library)
+# 2026-05-29 — Phase M EML-GADGET-1 R1 landed (flatten semantics hygiene)
+
+- **EML-GADGET-1 R1:** Replaced ambiguous `CompiledEmlGadgetStack::flattened_nodes` with `EmlGadgetCompositionPlan`. Single-gadget stacks may expose executable `InlineFlattenPreview`; multi-gadget `output_col`/`input_col` chained stacks emit `PerGadgetOnly` + `chained_runtime_deferred` diagnostic. No runtime gadget execution; no OrderBand scheduling.
+- Tests: 12/12 in `eml_gadget_tier1.rs` (added single-gadget executable, multi-gadget non-executable, no runtime flatten consumption source-scan).
+- Report: [`tests/phase_m_eml_gadget_tier1_r1_hygiene_test_results.md`](tests/phase_m_eml_gadget_tier1_r1_hygiene_test_results.md).
+
+# 2026-05-29 — Phase M EML-GADGET-1 landed (Tier-1 stateless gadget library)
 
 - **Phase M EML-GADGET-1 landed** in `simthing-spec`: `FieldSampler`, `WeightedAccumulator`, `SoftStep` as RON-authored EvalEML node-template macros with registry, compiler, preview report, admission errors, and mandatory CPU-oracle parity tests (`tests/eml_gadget_tier1.rs`, 10/10).
 - SoftStep uses the ExactDeterministic algebraic form `0.5 + 0.5·u/(1+|u|)`; no exp/logistic; no new EML opcode; no WGSL/GPU/sim/runtime economy changes; defaults unchanged; `simthing-sim` map-free.

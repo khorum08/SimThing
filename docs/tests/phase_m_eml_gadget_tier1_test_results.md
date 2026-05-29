@@ -1,12 +1,12 @@
 # Phase M EML-GADGET-1 — Tier-1 Stateless Gadget Library — Test Results
 
-Date: 2026-05-19
+Date: 2026-05-29
 
 ## Base
 
 - Base HEAD: `106537b2678259e17ae1f8db7aa91e82f501efe9`
 - Branch: `phase-m-eml-gadget-tier1`
-- Final commit SHA: recorded at merge
+- Final commit SHA: `fec7eb2` (merge PR #259)
 
 ## Files Changed
 
@@ -24,7 +24,7 @@ Date: 2026-05-19
 |---|---|
 | Registry | `EmlGadgetRegistry`, `EmlGadgetKind` — FieldSampler, WeightedAccumulator, SoftStep |
 | RON authoring | Tagged `kind` enum; `deserialize_eml_gadget_stack_ron` |
-| Compiler | `compile_eml_gadget_stack` → per-gadget nodes + inline-flatten preview |
+| Compiler | `compile_eml_gadget_stack` → per-gadget nodes + explicit `EmlGadgetCompositionPlan` |
 | CPU oracles | `oracle_field_sampler`, `oracle_weighted_accumulator`, `oracle_soft_step` |
 | Parity eval | `eval_eml_postfix` (spec-test postfix interpreter for Tier-1 opcodes) |
 | Preview | `EmlGadgetPreviewReport` (ids, kinds, node counts, diagnostics) |
@@ -46,6 +46,7 @@ Minimal stack RON with tagged `kind` per instance (`FieldSampler`, `SoftStep`, `
 - Per-gadget postfix `EmlNode` templates using existing opcodes only (`SLOT_VALUE`, `LITERAL_F32`, `ADD`, `SUB`, `MUL`, `DIV` safe, `ABS`, `CLAMP_BOUNDED`, `RETURN_TOP`)
 - Stack admission enforces duplicate-id rejection, column bounds, finite params, non-empty WeightedAccumulator inputs, matching input/weight counts, and total stack node count ≤ `MAX_EML_TREE_NODES` (32)
 - Inline flatten preview strips intermediate `RETURN_TOP` nodes; chained OrderBand runtime scheduling **deferred**
+- **R1 (2026-05-29):** `flattened_nodes` replaced by `EmlGadgetCompositionPlan`; multi-gadget stacks use `PerGadgetOnly`; see [`phase_m_eml_gadget_tier1_r1_hygiene_test_results.md`](phase_m_eml_gadget_tier1_r1_hygiene_test_results.md)
 
 ## CPU Oracle Parity Summary
 

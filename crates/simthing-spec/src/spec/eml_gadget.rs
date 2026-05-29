@@ -53,4 +53,20 @@ impl EmlGadgetInstanceSpec {
             Self::WeightedAccumulator { .. } => "WeightedAccumulator",
         }
     }
+
+    pub fn input_cols(&self) -> Vec<u32> {
+        match self {
+            Self::FieldSampler { input_col, .. } => vec![*input_col],
+            Self::SoftStep { input_col, .. } => vec![*input_col],
+            Self::WeightedAccumulator { input_cols, .. } => input_cols.clone(),
+        }
+    }
+
+    pub fn output_col(&self) -> Option<u32> {
+        match self {
+            Self::FieldSampler { output_col, .. }
+            | Self::SoftStep { output_col, .. }
+            | Self::WeightedAccumulator { output_col, .. } => *output_col,
+        }
+    }
 }

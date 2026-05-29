@@ -71,6 +71,7 @@ pub use eml_gadget::{
     compile_eml_gadget_stack, eval_eml_postfix, oracle_field_sampler, oracle_soft_step,
     oracle_weighted_accumulator, reject_unknown_gadget_kind, CompiledEmlGadget,
     CompiledEmlGadgetStack, DEFERRED_GADGET_KINDS, EmlGadgetCompileOptions, EmlGadgetDiagnostic,
+    EmlGadgetCompositionPlan,
     EmlGadgetKind, EmlGadgetPreviewReport, EmlGadgetRegistry,
 };
 pub use trigger::compile_trigger;
