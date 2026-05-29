@@ -1944,16 +1944,18 @@ Defaults unchanged.
 
 **Test:** [`phase_m_first_slice_map_residency_test_results.md`](tests/phase_m_first_slice_map_residency_test_results.md) — PASS.
 
-### PR M-boundary-cadence-doctrine — Boundary Cadence Doctrine audit — **Done**
+### PR M-boundary-cadence-doctrine — Boundary Resolution Doctrine audit — **Done**
 
-**Status:** **Landed** — docs+test audit confirming Clausewitz-style daily resolution is expressible through existing boundary machinery.
+**Status:** **Landed** — docs+test audit confirming abstract deterministic tick/boundary cadence is expressible through existing substrate machinery.
 
-Phase M Boundary Cadence Doctrine audit landed.
-Clausewitz-style 1 tick/day resolution is represented by existing boundary cadence machinery: ticks_per_day, boundary_reached, day_index, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
-No new DailyResolutionBoundary runtime primitive was introduced.
-Day/calendar/month meaning remains host/spec/boundary-handler interpretation over day_index.
-Pause/speed remain host/UI orchestration concerns: the deterministic sim advances only when the host requests the next tick/day.
-Daily banking should use the discrete resource economy substrate, not the continuous Resource Flow substrate by default.
+Phase M Boundary Resolution Doctrine audit landed.
+The substrate exposes abstract deterministic tick/boundary cadence through ticks_per_boundary-style machinery currently named ticks_per_day, boundary_reached, day_index, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
+For historical/API reasons the current field names include "day," but their constitutional meaning is boundary index / host-interpreted cadence, not a hardcoded calendar day.
+No DailyResolutionBoundary runtime primitive was introduced.
+No Day/Calendar/Pause semantic was added to simthing-sim.
+Daily meaning remains only one possible host/spec interpretation over the boundary index.
+Pause/speed remain host/UI orchestration concerns: the deterministic sim advances only when the host requests the next tick/boundary.
+Example discrete boundary banking may use the discrete resource economy substrate, not the continuous Resource Flow substrate by default.
 The CPU boundary consumes resolved summaries/events/metadata at the boundary; it must not scan dense RegionCell grids by default, recompute gameplay state, or emit AI commitments via CPU planner logic.
 No default SimSession mapping wiring was introduced.
 No atlas batching landed.
@@ -1971,15 +1973,16 @@ Multi-field, multi-map, atlas, perception, source identity, and broader producti
 
 ### PR M-daily-economy-fixture — Daily Economy Fixture V1 — **Done**
 
-**Status:** **Landed** — narrow product-facing fixture proving Clausewitz-style daily banking via existing boundary cadence and discrete `ResourceEconomySpec` authoring.
+**Status:** **Landed** — opt-in product/example fixture demonstrating discrete boundary banking when a host interprets one boundary as one day.
 
-Phase M Daily Economy Fixture V1 landed.
-It proves Clausewitz-style daily banking using existing boundary cadence and discrete resource economy authoring: ticks_per_day=1, boundary_reached/day_index, ResourceEconomySpec production, discrete transfers into storage, upkeep transfers out, and threshold/event checks over resolved storage.
+Phase M Daily Economy Fixture V1 landed as a product/example fixture.
+It proves that a game can interpret one abstract boundary as one day and run daily banking through existing discrete ResourceEconomySpec authoring: ticks_per_day=1, boundary_reached/day_index, ResourceEconomySpec production, discrete transfers into storage, upkeep transfers out, and threshold/event checks over resolved storage.
+This does not make daily cadence canonical for SimThing.
+Other simulations may interpret the same boundary machinery as turns, frames, months, seasons, orbital steps, or other semantic units.
 No DailyResolutionBoundary runtime primitive was introduced.
 No Day/Calendar/Pause semantic was added to simthing-sim.
-Daily meaning remains host/spec interpretation over day_index.
 The CPU boundary consumes resolved storage/events/metadata; it does not recompute economy state or emit planner decisions.
-Resource Flow E-11 remains continuous/high-frequency oriented and default-off, not the daily banking substrate.
+Resource Flow E-11 remains continuous/high-frequency oriented and default-off, not the default discrete boundary-banking substrate.
 No default SimSession mapping wiring was introduced.
 No atlas batching landed.
 No semantic WGSL landed.
@@ -1989,6 +1992,23 @@ Defaults unchanged.
 **Fixture design:** Surplus RON uses `TransferOnly` opt-in with `daily_income` conjunctive recipe (food/ore → producer), `bank_daily_income` producer→treasury transfer, and `daily_upkeep` treasury→upkeep_sink transfer at `ticks_per_day=1`. Deficit variant uses producer→treasury/upkeep transfers plus `EmitOnThreshold` low-storage event. Emission registrations are intentionally absent — C-8d emission is EmitEvent-shaped, not hard-currency banking.
 
 **Test:** [`phase_m_daily_economy_fixture_test_results.md`](tests/phase_m_daily_economy_fixture_test_results.md) — PASS.
+
+### PR M-boundary-resolution-doctrine-r1 — Boundary Resolution Doctrine R1 — **Done**
+
+**Status:** **Landed** — narrow docs/test-report terminology correction; no runtime behavior changes.
+
+Phase M Boundary Resolution Doctrine R1 landed.
+Active docs now frame tick/boundary cadence as abstract substrate machinery, with daily/Clausewitz semantics treated only as one host/spec example fixture rather than canonical SimThing semantics.
+SimThing exposes abstract deterministic tick/boundary resolution; a boundary is the synchronization point at which resolved summaries, events, and metadata may be consumed by host/spec/boundary-handler code.
+No DailyResolutionBoundary runtime primitive was introduced.
+No Day/Calendar/Pause semantic was added to simthing-sim.
+Daily Economy Fixture V1 remains valid as a product/example fixture only.
+Resource Flow E-11 remains default-off.
+No default SimSession mapping wiring was introduced.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Test:** [`phase_m_boundary_resolution_doctrine_r1_test_results.md`](tests/phase_m_boundary_resolution_doctrine_r1_test_results.md) — PASS.
 
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
