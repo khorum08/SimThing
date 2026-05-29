@@ -1,13 +1,24 @@
 # Phase M Product-Fixture Chain — Review / Parking Packet
 
 > **Audience:** Opus / product review; future agents  
-> **Status:** **Parked for review**  
+> **Status:** **ACCEPTED — PASS WITH CONDITIONS** (Opus 2026-05-29). Acceptance memo:
+> [`phase_m_product_fixture_chain_acceptance_opus_review.md`](phase_m_product_fixture_chain_acceptance_opus_review.md).
+> Accepted as a fixture-level product proof; the economy→SEAD link stays in `tests/support`
+> orchestration (CPU selects authored weight profiles, never computes urgency or emits commitments);
+> production economy→mapping bridge, boundary-output packet, `DailyResolutionBoundary`, atlas,
+> default mapping wiring, CPU planner, semantic WGSL, and Resource Flow default remain unauthorized.  
 > **Date:** 2026-05-29  
 > **Master baseline at parking:** `0265303f37793bd449968d94a3e666650d79fec3` (Economy + SEAD Product Fixture V1 merge)
 
 ---
 
 ## 1. Executive verdict
+
+**ACCEPTED — PASS WITH CONDITIONS (Opus 2026-05-29).** Phase M product-fixture chain accepted as a
+fixture-level product proof; see the acceptance memo
+[`phase_m_product_fixture_chain_acceptance_opus_review.md`](phase_m_product_fixture_chain_acceptance_opus_review.md)
+for verdicts, conditions (fixture-only link; CPU select-not-compute; designer/importer-layer
+guardrail placement), and stop conditions.
 
 **Phase M product-fixture chain is parked for review.**
 
