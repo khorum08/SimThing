@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-DESC-1 spec-layer kernel descriptor admission preview (Tier-2, landed)
+
+- **M-JIT-DESC-1 (Tier-2, PASS):** `simthing-spec` descriptor admission preview for landed M-JIT proof kernels; exact vs approximate authority enforced; ProductionCandidate/production wiring gated; production registry/scheduler remains deferred. Report: `docs/tests/phase_m_jit_desc1_kernel_descriptor_admission_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-DESC-0 kernel descriptor/admission manifest (Tier-2, test-only landed)
 
 - **M-JIT-DESC-0 (Tier-2, PASS, test-only):** kernel descriptor/admission manifest for landed M-JIT-0/SQRT/GRAD proof kernels; exact vs approximate output authority explicit; approximate-as-exact input rejected; production descriptor registry/scheduler remains deferred. Report: `docs/tests/phase_m_jit_desc0_kernel_descriptor_test_results.md`.

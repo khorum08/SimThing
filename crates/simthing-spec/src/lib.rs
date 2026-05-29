@@ -90,6 +90,9 @@ pub use compile::{
     FIRST_SLICE_FIELD_URGENCY_COL, REGION_FIELD_DEFAULT_HORIZON_CAP,
     REGION_FIELD_EXTENDED_HORIZON_CAP, REGION_FIELD_EXTENDED_MAX_GRID, REGION_FIELD_MAX_CELL_COUNT,
     REGION_FIELD_STANDARD_MAX_GRID,
+    landed_jit_kernel_descriptors, validate_exact_kernel_inputs,
+    validate_kernel_descriptor_admission, KernelDescriptorSpec, KernelLane, KernelOutputSpec,
+    NativeMathClass, OutputAuthority,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;

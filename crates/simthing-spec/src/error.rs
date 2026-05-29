@@ -327,4 +327,8 @@ pub enum SpecError {
     // ── EML Gadget Library (Phase M EML-GADGET-1) ────────────────────────────
     #[error("EML gadget `{gadget}`: {reason}")]
     EmlGadgetAdmission { gadget: String, reason: String },
+
+    // ── JIT kernel descriptor admission (Phase M-JIT-DESC-1) ─────────────────
+    #[error("jit kernel descriptor `{kernel}`: {reason}")]
+    JitKernelDescriptorAdmission { kernel: String, reason: String },
 }

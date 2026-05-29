@@ -17,6 +17,7 @@ pub mod effect;
 pub mod eml_gadget;
 pub mod event;
 pub mod first_slice_scenario_admission;
+pub mod jit_kernel_descriptor_admission;
 pub mod overlay;
 pub mod property;
 pub mod region_field_admission;
@@ -34,6 +35,11 @@ pub use overlay::compile_overlay;
 pub use property::compile_property;
 pub use first_slice_scenario_admission::{
     compile_first_slice_scenario_preview, CompiledFirstSliceScenarioPreview,
+};
+pub use jit_kernel_descriptor_admission::{
+    landed_jit_kernel_descriptors, validate_exact_kernel_inputs,
+    validate_kernel_descriptor_admission, KernelDescriptorSpec, KernelLane, KernelOutputSpec,
+    NativeMathClass, OutputAuthority,
 };
 pub use region_field_admission::{
     admit_region_field_formula_class, compile_region_field_preview,
