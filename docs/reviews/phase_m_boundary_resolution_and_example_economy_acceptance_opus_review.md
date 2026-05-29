@@ -16,19 +16,29 @@ reports `phase_m_boundary_resolution_doctrine_r2_terminology_test_results.md`,
 
 ## 1. Executive verdict
 
-**PASS WITH CONDITIONS.** The abstract boundary-resolution doctrine is **accepted**:
-SimThing exposes deterministic `tick`/`boundary` resolution; `day_index` is the boundary
-counter / host-spec-interpreted index; `ticks_per_day` is the cadence field; `pause`/`speed`
-are host/UI orchestration (the sim advances only when the host requests ticks). The legible names
-are retained and do **not** make day/calendar semantics part of `simthing-sim`. **Daily Economy
-Fixture V1 is accepted as one example/product fixture only** — it does not make daily cadence
-canonical. The `ResourceEconomySpec` (discrete boundary banking) vs Resource Flow E-11
-(continuous, default-off) distinction is accepted. The future-agent guardrails are made **binding**.
+**PASS WITH CONDITIONS.** The boundary-resolution doctrine is **accepted**:
+SimThing exposes deterministic `tick`/`boundary`/`day` resolution; `day_index` is the boundary
+counter (one host/spec interpretation is a calendar day); `ticks_per_day` is the cadence field;
+`pause`/`speed` are host/UI orchestration (the sim advances only when the host requests ticks).
 
-The single condition (below) is a **terminology-precision** fix, not a behavioral one: the
-doctrine's "no day semantics in `simthing-sim`" claim must be stated precisely, because
-`simthing-sim` already uses "day boundary" naming throughout. The substance is correct; the wording
-must not be falsifiable by a source grep.
+**Naming preference (product, 2026-05-29 — supersedes the R1/R2 "abstract cadence" framing):**
+`tick`, `boundary`, `day`, `day_index`, and `ticks_per_day` are the **preferred, endorsed names for
+their legibility**. We do **not** churn them toward abstract/illegible alternatives. The line we
+hold is on *semantics*, not vocabulary: avoid Clausewitz/calendar **semantics** (calendar
+arithmetic, `Calendar`/month/year/season types, leap/date math, a sim-side pause flag,
+`DailyResolutionBoundary`) — **not** the legible day-flavored names. Calendar/turn/frame/season
+*meaning* lives at the host/spec/boundary-handler layer.
+
+**Daily Economy Fixture V1 is accepted as one example/product fixture only** — it does not make
+daily cadence canonical. The `ResourceEconomySpec` (discrete boundary banking) vs Resource Flow
+E-11 (continuous, default-off) distinction is accepted. The future-agent guardrails are made
+**binding**.
+
+The condition (below) is a **terminology-precision** fix, not a behavioral one: the
+doctrine's "no day semantics in `simthing-sim`" claim must be stated precisely — it is about
+*semantics*, not the legible day-flavored names, which `simthing-sim` already uses throughout and
+which product now affirmatively **prefers**. The substance is correct; the wording must not be
+falsifiable by a source grep, and must not read as discouraging the legible names.
 
 ---
 
@@ -100,22 +110,27 @@ correct verification scope.
   `DailyResolutionBoundary`)," not "no use of the word day."** (Applied in this pass — see §8.)
 - **C-2 (prohibitions hold).** All §5 guardrails remain enforced; none relaxes except through its
   own separately-gated decision.
-- **C-3 (no rename churn).** `ticks_per_day` / `day_index` are retained as legible API names and must
-  not be renamed in this track without explicit product authorization (R1↔R2 already showed the cost
-  of vocabulary churn; stop here).
+- **C-3 (legible naming is the product preference).** `tick` / `boundary` / `day` / `day_index` /
+  `ticks_per_day` are the **preferred, endorsed names for their legibility** (product, 2026-05-29).
+  Do **not** churn them toward abstract/illegible alternatives, and do not rename them in this track
+  without explicit product authorization. The R1→R2→this-pass arc settled here: legible names are
+  preferred; only Clausewitz/calendar *semantics* are out of scope.
 
 ---
 
 ## 5. Binding guardrails
 
-Made binding (codified in `docs/invariants.md`, new "Boundary resolution (abstract cadence)"
+Made binding (codified in `docs/invariants.md`, "Boundary resolution (tick / boundary / day)"
 section):
 
 ```text
+PREFER the legible tick/boundary/day/day_index/ticks_per_day naming; do not churn it toward
+  abstract/illegible alternatives (product preference, 2026-05-29).
 Do not introduce DailyResolutionBoundary (or any equivalent runtime primitive).
 Do not add day/calendar/pause SEMANTICS to simthing-sim — no calendar arithmetic, no
-  Calendar/month/year/season type, no sim-side pause flag. (Legible "day"/day_index/
-  ticks_per_day naming is allowed; it is a monotonic boundary counter, not a calendar.)
+  Calendar/month/year/season type, no leap/date math, no sim-side pause flag. (The legible
+  day/day_index/ticks_per_day/"day boundary" naming is endorsed; day_index is a monotonic
+  boundary counter, not a calendar.)
 Do not equate boundary with day in doctrine; day is one host/spec interpretation of day_index.
 Do not use CPU planner logic to emit events; commitments are GPU Threshold + EmitEvent crossings.
 Do not recompute economy/threat/urgency on the CPU at the boundary; the CPU consumes resolved
@@ -126,7 +141,8 @@ Do not turn Resource Flow E-11 on by default; use the discrete ResourceEconomy s
 Do not implement atlas as a side effect of boundary/economy work.
 Do not add default SimSession mapping pass-graph wiring (MappingExecutionProfile default Disabled).
 Do not add semantic WGSL for day/economy/calendar.
-Do not rename ticks_per_day/day_index in this track without explicit product authorization.
+Do not rename tick/boundary/day/ticks_per_day/day_index in this track without explicit product
+  authorization (the standing preference is to keep them).
 ```
 
 ---
@@ -180,7 +196,7 @@ it has become the forbidden primitive and must be rejected.
 - **`docs/reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`** — status
   flipped to **ACCEPTED (PASS WITH CONDITIONS)**; naming caveat (§2) extended to cover the
   pre-existing `simthing-sim` "day"/"day boundary" vocabulary (C-1).
-- **`docs/invariants.md`** — new **"Boundary resolution (abstract cadence)"** binding section
+- **`docs/invariants.md`** — **"Boundary resolution (tick / boundary / day)"** binding section
   codifying the doctrine and the eleven guardrails (with the C-1 precision gloss).
 - **`docs/workshop/mapping_current_guidance.md`**, **`docs/workshop/workshop_current_state.md`**,
   **`docs/accumulator_op_v2_production_plan.md`**, **`docs/todo.md`** — status flipped from
