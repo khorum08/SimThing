@@ -39,6 +39,7 @@ Historical/superseded artifacts live under `docs/workshop/archive/`. Do not trea
 | Dual-output `GradientXY`; `sqrt`; L1 coupling; dense per-cell temporal | T2 | deferred | separate gate each |
 | Atlas / M-4A; source-mask (`M-5`); economy→mapping bridge | T2 | deferred/prohibited | see prohibition list in gating policy |
 | **M-4A Atlas Readiness Gate** | **T2** | **deferred** | no concrete product need beyond M-5-gradient substrate; [`phase_m_m4a_atlas_readiness_gate_results.md`](../tests/phase_m_m4a_atlas_readiness_gate_results.md) |
+| **M-6A Single-Grid Active Mask Readiness Gate** | **T2** | **deferred** | missing halo contract + CPU/GPU parity; [`phase_m_m6a_single_grid_active_mask_readiness_results.md`](../tests/phase_m_m6a_single_grid_active_mask_readiness_results.md) |
 
 **Next authorized step:** **M-5A/B/C/D-gradient + M-5D R1 landed.** M-5D strict-sink validator + `compile_region_field_frame_preview` grouped helper are the safe default for same-frame RegionField admission. Dual-output `GradientXY`, `sqrt`, L1 coupling, dense per-cell temporal memory, atlas/M-4A, source-mask (`M-5`), and production economy→mapping bridge remain Tier-2/deferred.
 
