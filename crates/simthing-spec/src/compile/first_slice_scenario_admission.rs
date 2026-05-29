@@ -40,7 +40,7 @@ pub fn compile_first_slice_scenario_preview(
         .and_then(|f| f.tree_id);
 
     let budget_limit_bytes = spec.region_field.max_region_field_vram_bytes;
-    let budget_estimate_bytes = estimate_region_field_budget(&RegionFieldBudgetSpec {
+    let budget = estimate_region_field_budget(&RegionFieldBudgetSpec {
         grid_size: region_field.grid_size,
         column_count: region_field.stencil.n_dims,
         buffer_multiplier: 2.0,
@@ -49,15 +49,20 @@ pub fn compile_first_slice_scenario_preview(
         isolation_policy: RegionFieldIsolationPolicyEstimate::SingleGridNoAtlas,
         max_region_field_vram_bytes: budget_limit_bytes,
     })
-    .ok()
-    .map(|b| b.estimated_bytes);
+    .map_err(|err| SpecError::RegionFieldAdmission {
+        field: spec.name.clone(),
+        reason: format!(
+            "scenario budget estimate failed: requested {} bytes, allowed {} bytes",
+            err.requested_bytes, err.allowed_bytes
+        ),
+    })?;
 
     Ok(CompiledFirstSliceScenarioPreview {
         name: spec.name.clone(),
         mapping_execution_profile: spec.mapping_execution_profile,
         region_field,
         parent_formula_tree_id,
-        budget_estimate_bytes,
+        budget_estimate_bytes: Some(budget.estimated_bytes),
         budget_limit_bytes,
     })
 }
