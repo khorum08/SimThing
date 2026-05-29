@@ -475,6 +475,7 @@ fn e11_no_new_wgsl() {
         "snapshot.wgsl",
         "world_summary.wgsl",
         "structured_field_stencil.wgsl",
+        "values_fill.wgsl",
     ];
     for name in &entries {
         assert!(

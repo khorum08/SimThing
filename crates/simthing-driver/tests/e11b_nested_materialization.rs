@@ -404,6 +404,7 @@ fn e11b_explicit_nested_materialization_no_new_wgsl() {
         "snapshot.wgsl",
         "world_summary.wgsl",
         "structured_field_stencil.wgsl",
+        "values_fill.wgsl",
     ];
     for name in &entries {
         assert!(

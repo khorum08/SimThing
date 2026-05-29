@@ -924,7 +924,10 @@ fn test_r3_a_readiness_report_hot_path_shape() {
         assert_eq!(r.source_policy, "caller_managed_one_shot_seed_then_zero");
         assert_eq!(r.boundary_mode, "zero");
         assert_eq!(r.gpu_bridge_bytes_copied, (r.cell_count * r.n_dims * 4) as u64);
-        assert_eq!(r.gpu_bridge_slot_col_writes, r.cell_count + 2);
+        assert_eq!(r.gpu_bridge_bulk_col_fills, 1);
+        assert_eq!(r.gpu_bridge_bulk_fill_values, r.cell_count);
+        assert_eq!(r.gpu_bridge_parent_scalar_writes, 2);
+        assert_eq!(r.gpu_bridge_slot_col_writes, 2);
         assert!(r.budget_estimate_bytes.unwrap() > 0);
         assert!(r.hot_path_wall_ms_observed.unwrap() > 0.0);
     });
