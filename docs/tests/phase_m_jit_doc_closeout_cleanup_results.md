@@ -84,9 +84,9 @@ E-phase, E11, Resource Flow, ResourceEconomySpec, economy boundary, treasury, an
 | `docs/tests/phase_m_resource_economy_authoring_ergonomics*.md` | **KEEP** — active/stalled evidence |
 | `docs/tests/phase_m_boundary_resolution_doctrine_r1/r2_*` | **KEEP** — referenced by active docs |
 | `docs/tests/phase_m_boundary_cadence_doctrine_audit.md` | **KEEP** — active/stalled evidence |
-| `docs/workshop/e11_hierarchical_allocation_design.md` | **KEEP** — active/stalled evidence |
-| `docs/workshop/e11_implementation_handoff.md` (untracked) | **KEEP** — ambiguous / stalled handoff |
-| `docs/workshop/e11_readiness_review.md` (untracked) | **KEEP** — ambiguous / stalled review |
+| `docs/workshop/e11_hierarchical_allocation_design.md` | **KEEP** — active/stalled evidence (tracked on `master`) |
+| `docs/workshop/e11_implementation_handoff.md` | **KEEP** — stalled E11 restart handoff (restored R1 from `eed008e`; was incorrectly absent from `master` after closeout) |
+| `docs/workshop/e11_readiness_review.md` | **KEEP** — stalled E11 readiness review (restored R1 from `eed008e`; was incorrectly absent from `master` after closeout) |
 | `docs/reviews/e11b_*`, `resource_flow_*`, `phase_m_boundary_resolution_and_example_economy_*` | **KEEP** — active/stalled evidence |
 | `docs/tests/sead_*_sandbox_test_results.md` | **KEEP** — stalled SEAD probe evidence |
 | `docs/adr/resource_flow_substrate.md` | **KEEP** — binding ADR |
@@ -156,10 +156,27 @@ Full `.log` files under `docs/tests/` are intentional test-run artifacts for non
 
 ## Workshop surface (`docs/workshop/` depth ≤ 2)
 
-Active workshop files remain; stale E11 handoffs on disk (`e11_implementation_handoff.md`, `e11_readiness_review.md`) intentionally kept as untracked stalled evidence. `docs/workshop/archive/` historical material untouched (not expanded).
+Active workshop files remain. E11 handoff/readiness files were **not** on GitHub `master` after the initial closeout despite being classified as kept — corrected by R1 (see below). `docs/workshop/archive/` historical material untouched (not expanded).
+
+---
+
+## R1 Correction — E11 Evidence Restored
+
+The initial closeout report incorrectly classified `docs/workshop/e11_implementation_handoff.md` and `docs/workshop/e11_readiness_review.md` as kept while they were not present on GitHub `master`. R1 restores both files from Git history (`eed008e7b822ab3fdf012bab5794a384f51a8c38`) because they document stalled/restartable E11 Resource Flow evidence. This was an evidence-retention correction, not SHA hygiene and not a new cleanup loop.
+
+**Restored files:**
+- `docs/workshop/e11_implementation_handoff.md` — flat-star D=2 execution landed; E11R hardening; nested GPU deferred; `use_accumulator_resource_flow` default false
+- `docs/workshop/e11_readiness_review.md` — prerequisites PASS; E-11 allocation execution authorized via narrowed handoff
+
+**R1 active-doc updates:** `mapping_current_guidance.md`, `workshop_current_state.md`, `worklog.md`, this report.
+
+**R1 scans (recorded):**
+- `docs/workshop/` depth-1 E11 files: `e11_hierarchical_allocation_design.md`, `e11_implementation_handoff.md`, `e11_readiness_review.md` — all present
+- No active doc references E11 files as untracked-only (prior error corrected)
+- `cargo check --workspace` — PASS
 
 ---
 
 ## Final verdict
 
-**PASS** — Phase M-JIT documentation closeout cleanup landed; stale docs/tests reports and stale hygiene/parking artifacts were deleted rather than archived, only Opus-needed JIT evidence remains (6 files including this report), active docs no longer reference deleted reports, guardrails remain binding at the designer/spec-admission layer, no SHA-mismatch hygiene loop was started, no production/default wiring or exact/approx authority discipline was weakened, required tests and `cargo check --workspace` are green, E-phase stalled evidence preserved, and V7.7 / Mapping ADR / SEAD posture remains intact.
+**PASS (R1)** — Phase M-JIT documentation closeout cleanup landed; stale docs/tests reports and stale hygiene/parking artifacts were deleted rather than archived, only Opus-needed JIT evidence remains (6 files including this report), active docs no longer reference deleted reports, guardrails remain binding at the designer/spec-admission layer, no SHA-mismatch hygiene loop was started, no production/default wiring or exact/approx authority discipline was weakened, required tests and `cargo check --workspace` are green, E-phase stalled evidence preserved on `master` (E11 handoff/readiness restored R1), and V7.7 / Mapping ADR / SEAD posture remains intact.

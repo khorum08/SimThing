@@ -47,7 +47,7 @@ Historical/superseded artifacts live under `docs/workshop/archive/`. Do not trea
 
 **M-JIT status:** Track **closed at M-JIT-PROD-0** (`d62b09d`) pending/after Opus acceptance. Explicit registered exact `ProductionCandidatePreview` cohort execution is available only via test-invoked `ProductionKernelRegistryShell` calls (`production_wiring=false`, default-off). **Follow-on tracks remain gated:** shader/software sqrt exact path; production scheduler; runtime kernel cache; default SimSession wiring; production economy→mapping bridge; atlas/active mask/source identity; dual-output `GradientXY`; native sqrt exact authority; approximate `mag2` feeding exact score inputs; semantic WGSL; ClauseThing implementation (proposal-only).
 
-**E-phase / E11 / Resource Flow:** Reports documenting stalled or review-blocked E-phase work are intentionally retained. JIT doc closeout did not delete E-phase stalled evidence.
+**E-phase / E11 / Resource Flow:** Reports documenting stalled or review-blocked E-phase work are intentionally retained on `master`. Restart evidence: [`e11_implementation_handoff.md`](e11_implementation_handoff.md), [`e11_readiness_review.md`](e11_readiness_review.md), [`e11_hierarchical_allocation_design.md`](e11_hierarchical_allocation_design.md). JIT doc closeout did not delete E-phase stalled evidence.
 
 > Per-slice landing history (EML-GADGET-2A…2E, boundary/economy, etc.) now lives in the status table above and in `docs/worklog.md`. The accepted designs and binding rules are in the design notes and `docs/invariants.md`. Standing posture ("no semantic WGSL / no default wiring / `simthing-sim` map-free / defaults unchanged") is binding from `invariants.md` and asserted once per PR test report — not restated per slice here.
 

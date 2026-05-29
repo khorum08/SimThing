@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-DOC-CLOSEOUT R1 E11 stalled evidence restoration (Tier-2, landed)
+
+- M-JIT-DOC-CLOSEOUT R1 restored E11 stalled evidence files; no SHA hygiene loop; no guardrail weakening. Report: `docs/tests/phase_m_jit_doc_closeout_cleanup_results.md` (R1 correction section).
+
 # 2026-05-29 — Phase M-JIT-DOC-CLOSEOUT documentation/evidence surface cleanup (Tier-2, landed)
 
 - JIT doc closeout cleanup landed; stale reports/workshop files deleted; active docs compacted; no SHA hygiene loop; E-phase stalled evidence preserved. Report: `docs/tests/phase_m_jit_doc_closeout_cleanup_results.md`.
