@@ -23,6 +23,29 @@ All 24 completion criteria met. 6/6 tests green. All mandated regressions green.
 
 (Implementation followed strict Cursor handoff guardrails; no stop conditions triggered; clean authoring possible with existing primitives only.)
 
+**2026-05-29 — EML-GADGET-2A R1 (Sequence Parity Cleanup + Report Accuracy) — PASS + merged**
+
+Phase M EML-GADGET-2A R1 hygiene landed.
+It keeps the original 2A snapshot/copy proof intact and cleans the multi-step sequence test/report so the evidence precisely shows previous_col capturing current_col before the update band while current_col advances afterward.
+No new EML opcode was added.
+No new ConsumeMode was added.
+No WGSL or GPU kernel was added.
+No runtime gadget execution was introduced.
+No temporal gadget implementation landed.
+VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
+No hidden previous-value read was introduced.
+Temporal memory remains explicit-column state.
+Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
+No simthing-sim Gadget/Personality/Memory semantics were added.
+No production economy→mapping bridge was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+Defaults unchanged.
+
+All 27 completion criteria met. Test 4 now has one coherent model + explicit oracle. All regressions + cargo check green. Original 2A proof untouched. Report: `docs/tests/phase_m_eml_gadget_2a_snapshot_copy_r1_hygiene_test_results.md`.
+
+(Strict narrow hygiene pass per remedial handoff; zero scope expansion.)
+
 Running log of what's done and what's next, across sessions.
 
 **Canonical spec:** `docs/design_v7.md` · `docs/design_v7_6.md` · `docs/design_v7_7.md` · `docs/design_v6.5.md` · `docs/design_v6.md` | **Agent map:** `docs/agents.md` · **Workshop:** `docs/workshop/workshop_current_state.md`

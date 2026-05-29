@@ -220,7 +220,21 @@ fn snapshot_happens_before_update_band() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Test 4 — multi-step sequence parity (stateful CPU-oracle trace)
+// Explicit CPU oracle for the snapshot-then-update primitive (Test 4 only)
+// This is scoped strictly to the authored OrderBand snapshot/copy behavior.
+// It is *not* a VelocityMonitor, EMA, or any Tier-2 gadget oracle.
+// ─────────────────────────────────────────────────────────────────────────────
+
+fn snapshot_then_update_oracle(current_before: f32, drive_update: f32) -> (f32, f32) {
+    // previous_col receives whatever was in current_col at the instant the snapshot band (OrderBand 0) runs.
+    // current_col is then independently advanced by whatever the later update band (OrderBand 1) writes.
+    let previous_after_snapshot = current_before;
+    let current_after_update = drive_update;
+    (previous_after_snapshot, current_after_update)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test 4 — multi-step sequence parity (clean, explicit oracle, visible lag)
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
@@ -228,96 +242,79 @@ fn multi_step_sequence_parity() {
     with_gpu(|ctx| {
         let mut session = AccumulatorOpSession::new(ctx, 2, N_DIMS);
 
-        // inputs represent the "recomputed / authored new value" that the update band will write each step
-        let inputs: [f32; 3] = [1.0, 1.5, 1.25];
+        // starting_current = the value present in CURRENT_COL at the *beginning* of each tick's band sequence.
+        // This is the value the snapshot band (OrderBand 0) must capture into previous_col.
+        let starting_current: [f32; 3] = [1.0, 1.5, 1.25];
 
-        let mut current = 0.0f32; // initial current before any snapshot
-        let mut prev = 0.0f32;
-        let mut trace = Vec::new();
+        // drive_updates = the independent new value written by the later update band (OrderBand 1).
+        // This demonstrates that current_col advances *after* the snapshot has already captured the prior value.
+        let drive_updates: [f32; 3] = [1.5, 1.25, 2.0];
 
-        for (step, &new_val) in inputs.iter().enumerate() {
+        let mut prev_carry = 0.0f32; // previous at the very start of the whole sequence
+        let mut observed_previous: Vec<f32> = Vec::new();
+        let mut observed_current: Vec<f32> = Vec::new();
+
+        for step in 0..3 {
             let mut values = make_initial_values();
-            set_col(&mut values, PERSONALITY_SLOT, CURRENT_COL, current); // incoming current (from prior update or 0)
-            set_col(&mut values, PERSONALITY_SLOT, PREV_COL, prev);
-            set_col(&mut values, PERSONALITY_SLOT, DRIVE_COL, new_val);   // the "update" target for this step
+            // State at the beginning of this tick's bands (what the snapshot band will see for "current")
+            set_col(&mut values, PERSONALITY_SLOT, CURRENT_COL, starting_current[step]);
+            set_col(&mut values, PERSONALITY_SLOT, PREV_COL, prev_carry);
+            // The independent "drive" value that the update band will write into current
+            set_col(&mut values, PERSONALITY_SLOT, DRIVE_COL, drive_updates[step]);
 
             let after = run_bands(ctx, &mut session, &snapshot_then_update_ops(), &values);
 
-            let prev_after_snapshot = get_col(&after, PERSONALITY_SLOT, PREV_COL);
-            let current_after = get_col(&after, PERSONALITY_SLOT, CURRENT_COL);
+            let prev_after = get_col(&after, PERSONALITY_SLOT, PREV_COL);
+            let curr_after = get_col(&after, PERSONALITY_SLOT, CURRENT_COL);
 
-            // Record the snapshot value captured *before* this step's update
-            trace.push((step, prev_after_snapshot, current_after));
+            observed_previous.push(prev_after);
+            observed_current.push(curr_after);
 
-            // For next step, the "current" state carries forward the just-written value
-            current = current_after;
-            prev = prev_after_snapshot;
+            // For the next step, the "previous" carry is whatever we just captured in this snapshot
+            prev_carry = prev_after;
+
+            // Compare to explicit CPU oracle for this primitive
+            let (oracle_prev, oracle_curr) =
+                snapshot_then_update_oracle(starting_current[step], drive_updates[step]);
+
+            assert!(
+                (prev_after - oracle_prev).abs() < 1e-6,
+                "step {step}: previous_after_snapshot mismatch oracle: got {prev_after}, oracle {oracle_prev}"
+            );
+            assert!(
+                (curr_after - oracle_curr).abs() < 1e-6,
+                "step {step}: current_after_update mismatch oracle: got {curr_after}, oracle {oracle_curr}"
+            );
+
+            println!(
+                "2A Test 4 step {}: before bands current={:.2} prev={:.2} | after snapshot prev={:.2} | after update current={:.2}",
+                step, starting_current[step], prev_carry, prev_after, curr_after
+            );
         }
 
-        // Explicit expected trace per handoff spec
-        // step 0: snapshot captures initial current (1.0) → previous=1.0; then update writes 1.0 (first input)
-        // step 1: snapshot captures the 1.0 (from step0 update) → previous=1.0; update writes 1.5
-        // step 2: snapshot captures the 1.5 → previous=1.5; update writes 1.25
-        //
-        // Hand-off specified "previous_after_snapshot" for the inputs sequence:
-        // step 0 previous_after_snapshot = 1.0
-        // step 1 previous_after_snapshot = 1.5   (wait: re-read handoff)
-        //
-        // Re-reading handoff carefully:
-        //   current inputs: [1.0, 1.5, 1.25]
-        //   step 0 previous_after_snapshot = 1.0
-        //   step 1 previous_after_snapshot = 1.5
-        //   step 2 previous_after_snapshot = 1.25
-        //
-        // This implies that at the *start* of step N the "current" already holds the N'th input value
-        // (i.e. the update band of prior step or external write has already placed it), then snapshot
-        // captures it, *then* a further update may advance it (but the captured previous is the input[N]).
-        //
-        // To match the literal numbers while still proving "snapshot before later update within tick":
-        // We adjust the drive for the snapshot capture point.
+        // Required traces per R1 hygiene spec (visible lag: previous captured the old value, current then advanced)
+        let expected_previous: [f32; 3] = [1.0, 1.5, 1.25];
+        let expected_current: [f32; 3] = [1.5, 1.25, 2.0];
 
-        // Simpler interpretation that still satisfies "before-update relation":
-        // Drive the "current" to the step input *before* the snapshot+update sequence for that step.
-        // Snapshot then captures that input value into previous.
-        // The "update" in the same tick can be a no-op or further transform; here we keep it as drive copy
-        // so current ends equal to the input (the "new current" for next).
-
-        // Re-execute with corrected drive-before-snapshot model to hit the exact numbers:
-        let mut prev2 = 0.0f32;
-        let mut trace2 = Vec::new();
-
-        for (step, &target) in inputs.iter().enumerate() {
-            let mut values = make_initial_values();
-            // For this model: "current" at start of step is set to the step's input (simulating prior update having landed it)
-            set_col(&mut values, PERSONALITY_SLOT, CURRENT_COL, target);
-            set_col(&mut values, PERSONALITY_SLOT, PREV_COL, prev2);
-            set_col(&mut values, PERSONALITY_SLOT, DRIVE_COL, target); // update band will keep it or could be different
-
-            let after = run_bands(ctx, &mut session, &snapshot_then_update_ops(), &values);
-
-            let p = get_col(&after, PERSONALITY_SLOT, PREV_COL);
-            let c = get_col(&after, PERSONALITY_SLOT, CURRENT_COL);
-            trace2.push((step, p, c));
-
-            prev2 = p;
+        for (i, &p) in observed_previous.iter().enumerate() {
+            assert!(
+                (p - expected_previous[i]).abs() < 1e-6,
+                "previous_after_snapshot[{}] = {:.2}, expected {:.2}",
+                i, p, expected_previous[i]
+            );
+        }
+        for (i, &c) in observed_current.iter().enumerate() {
+            assert!(
+                (c - expected_current[i]).abs() < 1e-6,
+                "current_after_update[{}] = {:.2}, expected {:.2}",
+                i, c, expected_current[i]
+            );
         }
 
-        println!("2A Test 4 sequence parity trace (model A - drive before snapshot):");
-        for (s, p, c) in &trace2 {
-            println!("  step {}: previous_after_snapshot={:.2}, current_after={:.2}", s, p, c);
-        }
-
-        // The literal handoff numbers are satisfied when we snapshot a current that already holds the step input:
-        assert!((trace2[0].1 - 1.0).abs() < 1e-6, "step0 previous_after_snapshot");
-        assert!((trace2[1].1 - 1.5).abs() < 1e-6, "step1 previous_after_snapshot");
-        assert!((trace2[2].1 - 1.25).abs() < 1e-6, "step2 previous_after_snapshot");
-
-        // Within-tick before-update relation still holds in the ops (snapshot band0 precedes update band1)
-        // even if in this drive model the final current equals the captured previous for the "no further change" case.
-        // The critical authoring (OrderBand ordering + Reset copy) is what 2A proves.
-
-        println!("2A Test 4: multi-step sequence parity green. previous trace: [{:.2}, {:.2}, {:.2}]",
-                 trace2[0].1, trace2[1].1, trace2[2].1);
+        println!(
+            "2A Test 4 clean sequence parity (with explicit oracle): previous_after_snapshot = {:?}, current_after_update = {:?}",
+            observed_previous, observed_current
+        );
     });
 }
 

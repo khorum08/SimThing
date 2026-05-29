@@ -27,6 +27,23 @@ No default SimSession mapping wiring was introduced.
 No atlas batching landed.
 Defaults unchanged.
 
+**Phase M EML-GADGET-2A R1 hygiene landed.**
+It keeps the original 2A snapshot/copy proof intact and cleans the multi-step sequence test/report so the evidence precisely shows previous_col capturing current_col before the update band while current_col advances afterward.
+No new EML opcode was added.
+No new ConsumeMode was added.
+No WGSL or GPU kernel was added.
+No runtime gadget execution was introduced.
+No temporal gadget implementation landed.
+VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
+No hidden previous-value read was introduced.
+Temporal memory remains explicit-column state.
+Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
+No simthing-sim Gadget/Personality/Memory semantics were added.
+No production economy→mapping bridge was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+Defaults unchanged.
+
 ---
 
 ## Current decision gate (Phase M-4) — resolved 2026-05-28

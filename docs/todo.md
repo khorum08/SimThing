@@ -17,6 +17,23 @@ No default SimSession mapping wiring was introduced.
 No atlas batching landed.
 Defaults unchanged.
 
+**Phase M EML-GADGET-2A R1 hygiene landed.**
+It keeps the original 2A snapshot/copy proof intact and cleans the multi-step sequence test/report so the evidence precisely shows previous_col capturing current_col before the update band while current_col advances afterward.
+No new EML opcode was added.
+No new ConsumeMode was added.
+No WGSL or GPU kernel was added.
+No runtime gadget execution was introduced.
+No temporal gadget implementation landed.
+VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
+No hidden previous-value read was introduced.
+Temporal memory remains explicit-column state.
+Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
+No simthing-sim Gadget/Personality/Memory semantics were added.
+No production economy→mapping bridge was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+Defaults unchanged.
+
 Current parking state: **`simthing-spec` PRs 1–11 complete**; v6 Opus P0 (O2/B3/I1) complete;
 **AccumulatorOp v2 Phases A–B** complete through B-3 (#95); **Phase C** in progress — C-1 (#97–#98),
 **C-2** (#99–#100), **C-3** (#105–#107), **pivot-forward policy + B-4I** (#108),
