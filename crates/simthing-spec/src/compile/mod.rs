@@ -18,6 +18,7 @@ pub mod eml_gadget;
 pub mod event;
 pub mod first_slice_scenario_admission;
 pub mod jit_kernel_descriptor_admission;
+pub mod jit_kernel_graph_admission;
 pub mod overlay;
 pub mod property;
 pub mod region_field_admission;
@@ -40,6 +41,9 @@ pub use jit_kernel_descriptor_admission::{
     landed_jit_kernel_descriptors, validate_exact_kernel_inputs,
     validate_kernel_descriptor_admission, KernelDescriptorSpec, KernelLane, KernelOutputSpec,
     NativeMathClass, OutputAuthority,
+};
+pub use jit_kernel_graph_admission::{
+    validate_kernel_graph_admission, KernelGraphEdgeSpec, KernelGraphSpec,
 };
 pub use region_field_admission::{
     admit_region_field_formula_class, compile_region_field_preview,

@@ -93,6 +93,7 @@ pub use compile::{
     landed_jit_kernel_descriptors, validate_exact_kernel_inputs,
     validate_kernel_descriptor_admission, KernelDescriptorSpec, KernelLane, KernelOutputSpec,
     NativeMathClass, OutputAuthority,
+    validate_kernel_graph_admission, KernelGraphEdgeSpec, KernelGraphSpec,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;

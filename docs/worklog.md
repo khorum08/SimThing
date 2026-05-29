@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-DESC-2 spec-layer kernel graph composition admission preview (Tier-2, landed)
+
+- **M-JIT-DESC-2 (Tier-2, PASS):** `KernelGraphSpec` + `validate_kernel_graph_admission` validate descriptor edges without scheduling; approximate outputs cannot feed exact inputs; cycles/self-edges reject; production registry/scheduler/cache remains deferred. Report: `docs/tests/phase_m_jit_desc2_kernel_graph_admission_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-DESC-1 spec-layer kernel descriptor admission preview (Tier-2, landed)
 
 - **M-JIT-DESC-1 (Tier-2, PASS):** `simthing-spec` descriptor admission preview for landed M-JIT proof kernels; exact vs approximate authority enforced; ProductionCandidate/production wiring gated; production registry/scheduler remains deferred. Report: `docs/tests/phase_m_jit_desc1_kernel_descriptor_admission_test_results.md`.
