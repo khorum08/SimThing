@@ -6,6 +6,14 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Opus/product acceptance: EML-GADGET-2 temporal-memory design (gate)
+
+- **ACCEPTED as a design gate — PASS WITH CONDITIONS.** Implementation remains unauthorized until a separate EML-GADGET-2A handoff. Memo: [`reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md`](reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md).
+- Core claims accepted: (1) temporal memory is **explicit-column state** (no implicit previous-value read; authored `current/previous/state/output` columns; runtime never infers/allocates); (2) **Layer-3 scoped by default** (dense per-cell separately gated); (3) snapshot/copy band model — **key question answered EXISTING SUBSTRATE SUFFICIENT**: verified `Identity`+`ResetTarget` cross-column copy at an authored `OrderBand` is already expressible (no new opcode), to be confirmed by a 2A fixture proof; (4) bounded-feedback admission contract — ACCEPT WITH CONDITIONS (V1 default `0 ≤ decay < 1`; clamp required when feeding a hard threshold; analytically-bounded escape must be admission-checkable; stateful-sequence oracle parity).
+- Candidates: **VelocityMonitor / Decay-EMA / BoundedFeedback accepted** (BoundedFeedback strict admission); **Hysteresis conditional** (2D, on demonstrated chatter need — it's the A-4 soft-aggregate guard); **Acceleration deferred**.
+- **Approved ladder: 2A (snapshot/copy fixture proof) → 2B (VelocityMonitor + Decay/EMA) → 2C (BoundedFeedback) → 2D (Hysteresis).** Acceleration + dense per-cell deferred. 2A lands first; Velocity/EMA wait on 2A; BoundedFeedback after 2B.
+- Docs-only acceptance: new memo; design-review packet → ACCEPTED; invariants "EML Gadget Library" temporal/bounded-feedback rows expanded to the accepted contract; design note + guidance + workshop state + production plan + todo updated. No code; no new opcode/WGSL; `simthing-gpu` generic; `simthing-sim` map-free; defaults unchanged.
+
 # 2026-05-29 — Phase M EML-GADGET-2 temporal-memory design review (docs only)
 
 - **Design review landed** — [`reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md`](reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md). Reviews Tier-2 candidates (`VelocityMonitor`, `Decay`/EMA, `BoundedFeedback`, conditional `Hysteresis`; `Acceleration` deferred) with explicit-column temporal state, snapshot/copy bands (A/B/C), bounded-feedback admission contract, CPU oracle parity plans, non-authorizations, and 2A–2D implementation ladder. **No implementation.**

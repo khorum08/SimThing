@@ -9,6 +9,13 @@
 
 ## 1. Executive verdict
 
+**ACCEPTED — design gate only (Opus/product 2026-05-29, PASS WITH CONDITIONS).** See the acceptance
+memo [`phase_m_eml_gadget_tier2_design_acceptance_opus_review.md`](phase_m_eml_gadget_tier2_design_acceptance_opus_review.md)
+for verdicts, conditions (incl. the bounded-feedback refinements §3.4), candidate classification, and
+the approved 2A→2D ladder. Implementation remains **unauthorized** until the separate EML-GADGET-2A
+handoff lands; the snapshot/copy band is judged expressible with existing primitives
+(`Identity + ResetTarget` at an authored `OrderBand`), to be confirmed by a 2A fixture-only proof.
+
 **Phase M EML-GADGET-2 temporal-memory design is under review.** EML-GADGET-1 is accepted; Tier-2 temporal gadgets remain **unauthorized until this design is accepted and a separate implementation handoff lands.**
 
 This packet reviews and proposes the design for Tier-2 temporal-memory gadgets — `VelocityMonitor`, `Decay` / `EMA`, `Acceleration`, `Hysteresis`, and `BoundedFeedback` — without implementing them. It preserves EML-GADGET-1 acceptance conditions **C-1 through C-4**:
