@@ -118,4 +118,4 @@ Full log: [`phase_m_daily_economy_fixture_full.log`](phase_m_daily_economy_fixtu
 
 ## Final verdict
 
-**PASS** — Phase M Daily Economy Fixture V1 landed; Clausewitz-style daily banking is now proven through existing ticks_per_day=1 boundary cadence and discrete ResourceEconomySpec transfers, with resolved storage/events visible at the CPU boundary and no new DailyResolutionBoundary primitive, semantic WGSL, Resource Flow default, map runtime expansion, or CPU-side planner introduced.
+**PASS** — Phase M Daily Economy Fixture V1 landed as a product/example fixture; it demonstrates that a game may interpret one abstract boundary as one day and run discrete banking through existing ticks_per_day=1 boundary cadence and ResourceEconomySpec transfers, with resolved storage/events visible at the CPU boundary. This does not make daily cadence canonical for SimThing. No new DailyResolutionBoundary primitive, semantic WGSL, Resource Flow default, map runtime expansion, or CPU-side planner was introduced.

@@ -1,7 +1,8 @@
-//! Phase M Boundary Cadence Doctrine — audit tests confirming Clausewitz-style
-//! daily resolution is expressible through existing boundary cadence machinery.
+//! Phase M Boundary Resolution Doctrine — audit tests confirming abstract
+//! tick/boundary cadence is expressible through existing substrate machinery.
 //!
 //! This is an audit pass only: no new `DailyResolutionBoundary` runtime primitive.
+//! Historical API field names include "day"; constitutional meaning is boundary index.
 
 use simthing_core::{DimensionRegistry, SimProperty, SimThing, SimThingKind};
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
@@ -157,6 +158,31 @@ fn daily_resource_economy_fixture_uses_ticks_per_day_one() {
     );
     assert!(
         session_support.contains("ResourceTransferSpec"),
-        "daily banking uses discrete transfers"
+        "example discrete banking fixtures use discrete transfers"
     );
+}
+
+#[test]
+fn doctrine_active_guidance_avoids_canonical_day_overclaims() {
+    let guidance_sources = [
+        include_str!("../../../docs/workshop/mapping_current_guidance.md"),
+        include_str!("../../../docs/workshop/workshop_current_state.md"),
+    ];
+    let forbidden = [
+        "boundary == day",
+        "SimThing day primitive",
+        "Calendar semantic",
+        "canonical play structure",
+        "Daily banking is the recommended model",
+        "Clausewitz-style daily resolution is represented",
+        "Clausewitz-style 1 tick/day resolution is represented",
+    ];
+    for text in guidance_sources {
+        for phrase in forbidden {
+            assert!(
+                !text.contains(phrase),
+                "active guidance must not overclaim day semantics: found `{phrase}`"
+            );
+        }
+    }
 }

@@ -6,10 +6,20 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Phase M Boundary Resolution Doctrine R1
+
+- Phase M Boundary Resolution Doctrine R1 landed.
+- Active docs now frame tick/boundary cadence as abstract substrate machinery: tick = deterministic advancement; boundary = synchronization point; boundary index (`day_index`) = host/spec interpretation.
+- A game may interpret one boundary as a day, but that is not part of the simulation substrate. Other simulations may use turns, frames, seasons, orbital steps, or other semantic units.
+- Daily Economy Fixture V1 remains valid as a product/example fixture only; it does not make daily cadence canonical for SimThing.
+- No runtime behavior changes. No public API renames. No DailyResolutionBoundary primitive. No Day/Calendar/Pause in simthing-sim.
+- Test report: [`tests/phase_m_boundary_resolution_doctrine_r1_test_results.md`](tests/phase_m_boundary_resolution_doctrine_r1_test_results.md).
+
 # 2026-05-29 — Phase M Daily Economy Fixture V1
 
-- Phase M Daily Economy Fixture V1 landed.
-- It proves Clausewitz-style daily banking using existing boundary cadence and discrete resource economy authoring: ticks_per_day=1, boundary_reached/day_index, ResourceEconomySpec production, discrete transfers into storage, upkeep transfers out, and threshold/event checks over resolved storage.
+- Phase M Daily Economy Fixture V1 landed as a product/example fixture.
+- It proves that a game can interpret one abstract boundary as one day and run daily banking through existing discrete ResourceEconomySpec authoring: ticks_per_day=1, boundary_reached/day_index, ResourceEconomySpec production, discrete transfers into storage, upkeep transfers out, and threshold/event checks over resolved storage.
+- This does not make daily cadence canonical for SimThing.
 - No DailyResolutionBoundary runtime primitive was introduced.
 - No Day/Calendar/Pause semantic was added to simthing-sim.
 - Daily meaning remains host/spec interpretation over day_index.
@@ -19,10 +29,11 @@ Running log of what's done and what's next, across sessions.
 - Fixture uses TransferOnly discrete recipe + bank/upkeep transfers; C-8d emission (EmitEvent) is not used for hard-currency banking.
 - Test report: [`tests/phase_m_daily_economy_fixture_test_results.md`](tests/phase_m_daily_economy_fixture_test_results.md).
 
-# 2026-05-29 — Phase M Boundary Cadence Doctrine audit
+# 2026-05-29 — Phase M Boundary Resolution Doctrine audit
 
-- Phase M Boundary Cadence Doctrine audit landed.
-- Clausewitz-style 1 tick/day resolution is represented by existing boundary cadence machinery: `ticks_per_day`, `boundary_reached`, `day_index`, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
+- Phase M Boundary Resolution Doctrine audit landed.
+- The substrate exposes abstract deterministic tick/boundary cadence through machinery currently named `ticks_per_day`, `boundary_reached`, `day_index`, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
+- For historical/API reasons field names include "day"; constitutional meaning is boundary index / host-interpreted cadence, not a hardcoded calendar day.
 - No new `DailyResolutionBoundary` runtime primitive was introduced.
 - Day/calendar/month meaning remains host/spec/boundary-handler interpretation over `day_index`.
 - Pause/speed remain host/UI orchestration concerns: the deterministic sim advances only when the host requests the next tick/day.

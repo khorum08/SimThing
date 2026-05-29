@@ -1,17 +1,18 @@
-# Phase M Boundary Cadence Doctrine — Audit Report
+# Phase M Boundary Resolution Doctrine — Audit Report
 
-Date: 2026-05-29
+Date: 2026-05-29 (original audit); terminology reframed 2026-05-29 (R1)
 
 ## Base
 
 - Base HEAD: `296b8126b1df806b41e1d395ff7f9adcaf4e9f9c` (Map Residency V1)
 - Final commit SHA: `338bcf5` (branch `phase-m-boundary-cadence-doctrine-audit`)
+- R1 terminology correction: see [`phase_m_boundary_resolution_doctrine_r1_test_results.md`](phase_m_boundary_resolution_doctrine_r1_test_results.md)
 
 ## Scope
 
 - **Type:** test + docs audit pass (no new runtime semantics)
-- **Files changed:**
-  - `crates/simthing-driver/tests/phase_m_boundary_cadence_doctrine.rs` — 6-test doctrine audit suite
+- **Files changed (original audit):**
+  - `crates/simthing-driver/tests/phase_m_boundary_cadence_doctrine.rs` — doctrine audit suite
   - `docs/accumulator_op_v2_production_plan.md`
   - `docs/workshop/mapping_current_guidance.md`
   - `docs/workshop/workshop_current_state.md`
@@ -23,11 +24,11 @@ Date: 2026-05-29
 
 | Mechanism | Location | Doctrine |
 |---|---|---|
-| `ticks_per_day`, `tick_in_day`, `boundary_reached`, `day_index` | `crates/simthing-feeder/src/dispatcher.rs` (`DispatchCoordinator::tick`) | `ticks_per_day=1` → every tick is a boundary; `ticks_per_day=N` → boundary after N substrate ticks; `day_index` advances at boundary cadence |
+| `ticks_per_day`, `tick_in_day`, `boundary_reached`, `day_index` | `crates/simthing-feeder/src/dispatcher.rs` (`DispatchCoordinator::tick`) | Abstract cadence: `ticks_per_day=1` → every tick is a boundary; `ticks_per_day=N` → boundary after N substrate ticks; `day_index` advances at boundary cadence (host may interpret as day, turn, frame, etc.) |
 | `SimSession::run(max_days)` | `crates/simthing-driver/src/session.rs` | Host-driven loop; advances only when host calls `run`/`tick_one` |
 | `BoundaryProtocol` + boundary hook | `crates/simthing-sim/src/boundary.rs` | CPU boundary sequence: GPU readback → hook → structural/lifecycle steps |
-| `can_skip_empty_boundary` | `crates/simthing-sim/src/boundary.rs`, used in `session.rs` | Static-day fast path when no events/pending work |
-| Discrete resource economy | `ResourceEconomySpec`, `CompiledResourceTransfer`, `CompiledResourceRecipe` | Daily banking via production recipes + discrete transfers |
+| `can_skip_empty_boundary` | `crates/simthing-sim/src/boundary.rs`, used in `session.rs` | Static-boundary fast path when no events/pending work |
+| Discrete resource economy | `ResourceEconomySpec`, `CompiledResourceTransfer`, `CompiledResourceRecipe` | Example fixtures may use production recipes + discrete transfers at boundary cadence |
 | Summary-tier readback | Boundary GPU value readback + threshold events + first-slice summary/residency metadata | CPU consumes compact resolved outputs at boundary |
 
 ## Existing Tests Identified
@@ -43,14 +44,15 @@ Date: 2026-05-29
 
 ## New Tests Added
 
-`crates/simthing-driver/tests/phase_m_boundary_cadence_doctrine.rs` (6 tests):
+`crates/simthing-driver/tests/phase_m_boundary_cadence_doctrine.rs`:
 
 1. `doctrine_no_daily_resolution_boundary_primitive` — no forbidden runtime type
 2. `doctrine_pause_is_host_non_advancement` — coordinator idle until host invokes tick
-3. `ticks_per_day_one_boundary_every_tick` — N ticks → N boundaries, `day_index` advances each tick
-4. `ticks_per_day_four_one_boundary_after_four_ticks` — 4 ticks → 1 boundary, `day_index` advances once
+3. `ticks_per_day_one_boundary_every_tick` — N ticks → N boundaries, boundary index advances each tick
+4. `ticks_per_day_four_one_boundary_after_four_ticks` — 4 ticks → 1 boundary, boundary index advances once
 5. `host_pause_preserves_state_after_partial_advancement` — no tick call → frozen state
-6. `daily_resource_economy_fixture_uses_ticks_per_day_one` — discrete economy fixtures cite daily cadence
+6. `daily_resource_economy_fixture_uses_ticks_per_day_one` — example fixture uses boundary cadence of 1
+7. `doctrine_active_guidance_avoids_canonical_day_overclaims` — active guidance source scan (R1)
 
 ## Commands Run
 
@@ -60,7 +62,7 @@ Date: 2026-05-29
 | `git rev-parse HEAD` | PASS; base `296b8126b1df806b41e1d395ff7f9adcaf4e9f9c` |
 | `rustc --version` | PASS; `rustc 1.95.0 (59807616e 2026-04-14)` |
 | `cargo --version` | PASS; `cargo 1.95.0 (f2d3ce0bd 2026-03-21)` |
-| `cargo test -p simthing-driver --test phase_m_boundary_cadence_doctrine -- --nocapture` | PASS; 6/6 |
+| `cargo test -p simthing-driver --test phase_m_boundary_cadence_doctrine -- --nocapture` | PASS; 6/6 (original); 7/7 after R1 |
 | `cargo test -p simthing-driver --test phase_m_first_slice_map_residency -- --nocapture` | PASS; 7/7 |
 | `cargo test -p simthing-driver --test phase_m_first_slice_queue_write_hardening -- --nocapture` | PASS; 4/4 |
 | `cargo test -p simthing-driver --test phase_m_first_slice_summary_validity -- --nocapture` | PASS; 11/11 |
@@ -72,13 +74,15 @@ Date: 2026-05-29
 
 Full log: [`phase_m_boundary_cadence_doctrine_full.log`](phase_m_boundary_cadence_doctrine_full.log)
 
-## Daily Cadence Doctrine Summary
+## Abstract Boundary Resolution Doctrine Summary
 
-- **day** = host/spec/calendar interpretation of a boundary index (`day_index`)
 - **tick** = deterministic substrate advancement (`DispatchCoordinator::tick`)
 - **boundary** = existing synchronization point (`boundary_reached` when `tick_in_day >= ticks_per_day`)
-- `ticks_per_day=1` means every substrate tick is a day boundary
-- `ticks_per_day=N` means N substrate ticks per day boundary
+- **boundary index** = `day_index` in current API (historical naming; not a hardcoded calendar day)
+- A game may interpret one boundary as a day, but that interpretation is not part of the simulation substrate
+- Other simulations may interpret boundaries as frames, seasons, turns, market closes, orbital steps, learning epochs, or other semantic units
+- `ticks_per_day=1` means every substrate tick is a boundary
+- `ticks_per_day=N` means N substrate ticks per boundary
 
 ## Pause / Boundary Doctrine Summary
 
@@ -87,15 +91,11 @@ Full log: [`phase_m_boundary_cadence_doctrine_full.log`](phase_m_boundary_cadenc
 - Pausing at a boundary is a coherent save/snapshot point (GPU values read back, boundary hook runs)
 - No sim pause flag was added
 
-## Resource-Economy Banking Doctrine Summary
+## Example Fixture Banking Summary
 
-- Clausewitz-style daily banking uses the **discrete resource economy** path:
-  - `ResourceEconomySpec` production recipes
-  - `CompiledResourceTransfer` into storage columns
-  - upkeep transfers out
-  - threshold/event checks (e.g. bankruptcy) via existing threshold substrate
+- The Daily Economy Fixture V1 demonstrates that a game **may** interpret one boundary as one day and run discrete banking through `ResourceEconomySpec` (production recipes, discrete transfers, threshold events)
+- This does **not** make daily cadence canonical for SimThing
 - **Resource Flow Substrate E-11** remains continuous/high-frequency oriented and separately opt-in (`use_accumulator_resource_flow` default false)
-- Existing fixtures use `ticks_per_day: 1` for daily cadence (`resource_economy_session.rs`, `resource_economy_designer_ron_session.rs`)
 
 ## CPU Boundary Discipline Summary
 
@@ -118,4 +118,4 @@ Preserved:
 
 ## Final Verdict
 
-**PASS** — Phase M Boundary Cadence Doctrine audit completed; Clausewitz-style daily resolution is expressible through existing boundary cadence machinery and discrete resource-economy authoring, with day/calendar/pause semantics kept at host/spec/boundary-handler layer and no new semantic DailyResolutionBoundary primitive introduced.
+**PASS** — Phase M Boundary Resolution Doctrine audit completed; abstract deterministic tick/boundary cadence is expressible through existing substrate machinery and discrete resource-economy example fixtures, with day/calendar/pause semantics kept at host/spec/boundary-handler layer only and no new semantic DailyResolutionBoundary primitive introduced.

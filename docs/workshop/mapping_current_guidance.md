@@ -20,14 +20,16 @@ Active read order:
 6. [`mapping_atlas_algebraic_mask_candidate_notes.md`](mapping_atlas_algebraic_mask_candidate_notes.md) (M-4A sandbox evidence — **candidate only, reverted**)
 7. Cited `docs/tests/` evidence before changing any classification
 
-## Phase M Boundary Cadence Doctrine audit (landed — docs+test audit)
+## Phase M Boundary Resolution Doctrine audit (landed — docs+test audit)
 
-Phase M Boundary Cadence Doctrine audit landed.
-Clausewitz-style 1 tick/day resolution is represented by existing boundary cadence machinery: ticks_per_day, boundary_reached, day_index, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
-No new DailyResolutionBoundary runtime primitive was introduced.
-Day/calendar/month meaning remains host/spec/boundary-handler interpretation over day_index.
-Pause/speed remain host/UI orchestration concerns: the deterministic sim advances only when the host requests the next tick/day.
-Daily banking should use the discrete resource economy substrate, not the continuous Resource Flow substrate by default.
+Phase M Boundary Resolution Doctrine audit landed.
+The substrate exposes abstract deterministic tick/boundary cadence through ticks_per_boundary-style machinery currently named ticks_per_day, boundary_reached, day_index, boundary handlers, persistent GPU values, discrete resource-economy transfers, and summary-tier readback.
+For historical/API reasons the current field names include "day," but their constitutional meaning is boundary index / host-interpreted cadence, not a hardcoded calendar day.
+No DailyResolutionBoundary runtime primitive was introduced.
+No Day/Calendar/Pause semantic was added to simthing-sim.
+Daily meaning remains only one possible host/spec interpretation over the boundary index.
+Pause/speed remain host/UI orchestration concerns: the deterministic sim advances only when the host requests the next tick/boundary.
+Example discrete boundary banking may use the discrete resource economy substrate, not the continuous Resource Flow substrate by default.
 The CPU boundary consumes resolved summaries/events/metadata at the boundary; it must not scan dense RegionCell grids by default, recompute gameplay state, or emit AI commitments via CPU planner logic.
 No default SimSession mapping wiring was introduced.
 No atlas batching landed.
@@ -39,15 +41,16 @@ Queue-write child resource scale caveat addressed for first-slice by generic bul
 Parent scalar writes remain O(1).
 Multi-field, multi-map, atlas, perception, source identity, and broader production scaling remain separately gated.
 
-## Phase M Daily Economy Fixture V1 (landed — opt-in product fixture)
+## Phase M Daily Economy Fixture V1 (landed — opt-in product/example fixture)
 
-Phase M Daily Economy Fixture V1 landed.
-It proves Clausewitz-style daily banking using existing boundary cadence and discrete resource economy authoring: ticks_per_day=1, boundary_reached/day_index, ResourceEconomySpec production, discrete transfers into storage, upkeep transfers out, and threshold/event checks over resolved storage.
+Phase M Daily Economy Fixture V1 landed as a product/example fixture.
+It proves that a game can interpret one abstract boundary as one day and run daily banking through existing discrete ResourceEconomySpec authoring: ticks_per_day=1, boundary_reached/day_index, ResourceEconomySpec production, discrete transfers into storage, upkeep transfers out, and threshold/event checks over resolved storage.
+This does not make daily cadence canonical for SimThing.
+Other simulations may interpret the same boundary machinery as turns, frames, months, seasons, orbital steps, or other semantic units.
 No DailyResolutionBoundary runtime primitive was introduced.
 No Day/Calendar/Pause semantic was added to simthing-sim.
-Daily meaning remains host/spec interpretation over day_index.
 The CPU boundary consumes resolved storage/events/metadata; it does not recompute economy state or emit planner decisions.
-Resource Flow E-11 remains continuous/high-frequency oriented and default-off, not the daily banking substrate.
+Resource Flow E-11 remains continuous/high-frequency oriented and default-off, not the default discrete boundary-banking substrate.
 No default SimSession mapping wiring was introduced.
 No atlas batching landed.
 No semantic WGSL landed.
