@@ -3,7 +3,7 @@
 **Date:** 2026-05-29  
 **Base HEAD:** `1a80ce6e7f15e8e224ad844653252808bc9a4751` (M-5D strict-sink validator merge)  
 **Landed PR #278 HEAD:** `8a2177a7c28ed12c98e23dc5eddfdba07c14bb67`  
-**Final commit SHA:** *(pending merge — see PR)*  
+**Final commit SHA:** `6ed8e0d` (M-5D R1 evidence closure commit)  
 **Lane classification:** Tier-1 admission-hardening evidence closure (V7.7 §5)  
 **Verdict:** **PASS — M-5D R1 evidence closure landed**
 
