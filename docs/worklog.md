@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-REG-0 test-only kernel registry manifest preview (Tier-2, landed)
+
+- **M-JIT-REG-0 (Tier-2, PASS):** `preview_kernel_registry_manifest` builds TestOnly/default-off registry entries from cohort previews; production registry/scheduler/cache/JIT dispatch remains deferred. Report: `docs/tests/phase_m_jit_reg0_kernel_registry_manifest_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-COHORT-0 R1 collision-test helper fence (Tier-2 remedial, landed)
 
 - **M-JIT-COHORT-0 R1 (Tier-2 remedial, PASS):** removed public re-export of injected-identity collision helper; helper moved test-local; public API is `preview_kernel_graph_cohorts` only; collision guard coverage preserved. Report: `docs/tests/phase_m_jit_cohort0_r1_collision_helper_fence_test_results.md`.
