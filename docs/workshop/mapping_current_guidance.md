@@ -21,7 +21,7 @@ Active read order:
 7. Cited `docs/tests/` evidence before changing any classification
 8. [`../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`](../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md) (boundary resolution + example economy — **accepted; binding guardrails in invariants**)
 9. [`../reviews/phase_m_product_fixture_chain_acceptance_opus_review.md`](../reviews/phase_m_product_fixture_chain_acceptance_opus_review.md) (product-fixture chain — **ACCEPTED**; packet: [`phase_m_product_fixture_chain_review_packet.md`](../reviews/phase_m_product_fixture_chain_review_packet.md))
-10. [`eml_gadget_library_design_note.md`](eml_gadget_library_design_note.md) (EML Gadget Library — **EML-GADGET-1 ACCEPTED**; memo: [`../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md); EML-GADGET-2 design review next)
+10. [`eml_gadget_library_design_note.md`](eml_gadget_library_design_note.md) (EML Gadget Library — **EML-GADGET-1 ACCEPTED**; memo: [`../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md); **EML-GADGET-2 design review landed**: [`../reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md`](../reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md))
 
 ## Phase M boundary-resolution (tick / boundary / day) + example economy (ACCEPTED — Opus/product 2026-05-29, PASS WITH CONDITIONS)
 

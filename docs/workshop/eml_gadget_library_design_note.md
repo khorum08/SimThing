@@ -1,6 +1,6 @@
 # EML Gadget Library — Design Note (Phase M)
 
-**Status:** **EML-GADGET-1 ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)** — Tier-1 stateless gadgets (`FieldSampler`, `WeightedAccumulator`, algebraic `SoftStep`) compile in `simthing-spec` with mandatory CPU-oracle parity; R1 composition + R2 node-cap hygiene accepted. Acceptance memo: [`../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md). **EML-GADGET-2** (temporal-memory slice) remains queued — next step is its **design review** (or designer preview UX), before implementation. *(Note: the #262 parking packet was reverted off master; the acceptance memo is the authoritative review artifact and the three landed test reports carry the evidence.)*
+**Status:** **EML-GADGET-1 ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)** — Tier-1 stateless gadgets (`FieldSampler`, `WeightedAccumulator`, algebraic `SoftStep`) compile in `simthing-spec` with mandatory CPU-oracle parity; R1 composition + R2 node-cap hygiene accepted. Acceptance memo: [`../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md). **EML-GADGET-2** temporal-memory design review packet landed — [`../reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md`](../reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md); Tier-2 gadgets remain **unauthorized until Opus/product accepts the design and a separate implementation handoff lands**. *(Note: the #262 parking packet was reverted off master; the acceptance memo is the authoritative Tier-1 artifact.)*
 **Sequencing:** Lands **before Phase M Resource Economy Authoring Ergonomics R2** — R2's
 designer-facing authoring must be able to expose and leverage the gadget library, so the library
 must exist first.
@@ -83,7 +83,9 @@ Pure node-templates over current opcodes. `ExactDeterministic`. **Landed in EML-
 
 ## 6. Tier 2 — temporal-memory primitive + stateful gadgets (separate gated slice)
 
-Ships in `EML-GADGET-2`. The enabling primitive is **generic temporal memory**, not a single gadget.
+**Design review (2026-05-29):** [`../reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md`](../reviews/phase_m_eml_gadget_tier2_temporal_memory_design_review.md) — reviews `VelocityMonitor`, `Decay`/EMA, `Acceleration`, `Hysteresis`, and `BoundedFeedback` with explicit-column temporal state, snapshot/copy bands, bounded-feedback admission, and CPU oracle parity plans. **No implementation in that packet.**
+
+Ships in `EML-GADGET-2` (after design acceptance + implementation handoff). The enabling primitive is **generic temporal memory**, not a single gadget.
 
 **Primitive — snapshot/accumulate band:** a generic, semantic-free op that copies/accumulates
 column `X → column Y` at a **declared band point** (`ResetTarget` copy / `ScaleTarget` / `AddToTarget`
