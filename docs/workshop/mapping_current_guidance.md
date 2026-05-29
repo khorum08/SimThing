@@ -19,6 +19,23 @@ Active read order:
 5. [`mapping_atlas_batching_isolation_design_note.md`](mapping_atlas_batching_isolation_design_note.md) (M-4 atlas contract — **provisional, unimplemented, parked**)
 6. [`mapping_atlas_algebraic_mask_candidate_notes.md`](mapping_atlas_algebraic_mask_candidate_notes.md) (M-4A sandbox evidence — **candidate only, reverted**)
 7. Cited `docs/tests/` evidence before changing any classification
+8. [`../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`](../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md) (boundary resolution + example economy — **parked for review**)
+
+## Phase M abstract boundary-resolution + example economy review packet (landed — parked for review)
+
+Phase M abstract boundary-resolution + example economy review packet landed.
+The repo now distinguishes abstract substrate boundary cadence from game-level daily interpretation. Current API names such as ticks_per_day/day_index remain historical names; their constitutional meaning is host-interpreted boundary cadence.
+Daily Economy Fixture V1 remains a valid product/example fixture showing one game-level interpretation: one boundary as one day, with discrete ResourceEconomySpec banking.
+No runtime behavior changed.
+No DailyResolutionBoundary primitive was introduced.
+No Day/Calendar/Pause semantic was added to simthing-sim.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Review packet:** [`../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`](../reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md)
 
 ## Phase M Boundary Resolution Doctrine audit (landed — docs+test audit)
 

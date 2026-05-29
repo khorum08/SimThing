@@ -2010,6 +2010,26 @@ Defaults unchanged.
 
 **Test:** [`phase_m_boundary_resolution_doctrine_r1_test_results.md`](tests/phase_m_boundary_resolution_doctrine_r1_test_results.md) — PASS.
 
+### PR M-boundary-resolution-review-packet — Abstract Boundary + Example Economy Parking Packet — **Done**
+
+**Status:** **Landed** — Opus/product review packet parking abstract boundary doctrine and example daily economy fixture; docs/review packaging only.
+
+Phase M abstract boundary-resolution + example economy review packet landed.
+The repo now distinguishes abstract substrate boundary cadence from game-level daily interpretation. Current API names such as ticks_per_day/day_index remain historical names; their constitutional meaning is host-interpreted boundary cadence.
+Daily Economy Fixture V1 remains a valid product/example fixture showing one game-level interpretation: one boundary as one day, with discrete ResourceEconomySpec banking.
+No runtime behavior changed.
+No DailyResolutionBoundary primitive was introduced.
+No Day/Calendar/Pause semantic was added to simthing-sim.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+**Review packet:** [`reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`](reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md)
+
+**Test:** [`phase_m_boundary_resolution_review_packet_test_results.md`](tests/phase_m_boundary_resolution_review_packet_test_results.md) — PASS.
+
 ### PR M-4 — Opus design: atlas batching isolation + VRAM accounting (provisional) — **Design note Done; isolation policy ratified 2026-05-28; implementation still gated**
 
 **Status:** Phase M-4 isolation policy is **ratified** (Opus, 2026-05-28, under human delegation — [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)): algebraic tile-local mask G=0 preferred for homogeneous square batches; physical gutter fallback; local-bounds metadata deferred; §11 checklist is a **binding acceptance gate**. **Atlas batching itself remains Provisional and unimplemented** — ratifying the isolation policy is **not** implementation authorization. `request_atlas_batching` stays rejected at admission until a §11-gate-passing M-4 PR. The first-slice product scenario fixture (Option 3, single grid, no atlas) has landed; **the atlas packer is still not next**.
