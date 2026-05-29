@@ -2351,6 +2351,36 @@ Until then, caller-managed one-shot-seed-then-zero (v1) is the only source polic
 
 ---
 
+### PR M-5-gradient — GradientExtraction operator + L3 Strategic Pressure Composition Pattern — **Approved candidate track (Opus 2026-05-29)**
+
+**Status:** Design approved. Implementation gated on M-5A (first PR below). See design note:
+[`workshop/m5_gradient_extraction_design_note.md`](workshop/m5_gradient_extraction_design_note.md).
+
+**Revised WGSL guardrail (Opus 2026-05-29):** The ban is on **semantic** WGSL only. Generic kernel
+extensions — new parameters carrying no map/faction/AI semantics, meaning pinned at the
+designer/spec admission layer, with CPU-oracle parity — are admissible. See `docs/invariants.md`
+("Mapping (Sparse RegionCell)" row) and the design note §1.
+
+**PR ladder:**
+
+- **M-5A — GradientXY operator variant + stencil kernel per-direction weights (Composer/Codex).**
+  `RegionFieldOperatorSpec::GradientXY { output_col_x, output_col_y }` in `simthing-spec`;
+  `FieldStencilParams` gains `weight_north/south/east/west` (replacing single `gamma_neighbor`)
+  in the WGSL uniform and CPU struct; admission rules (column bounds, no self-source, no alias);
+  bit-exact CPU oracle (central-difference formula); parity tests. Default operator unchanged.
+  `simthing-sim` sees only flat columns; shader is generic floats only.
+- **M-5B — L3 Strategic Pressure Composition Pattern RON fixture (Codex).**
+  Reference RON fixture + test demonstrating multi-field L3 WeightedAccumulator + EMA over
+  gradient and threat/supply reductions. No new substrate. Pattern documentation.
+
+**Deferred:** `sqrt` magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.
+
+**Stop conditions:** shader must not name "gradient", "threat", or any semantic; CPU oracle parity
+required; no change to `simthing-sim`; per-direction weights admitted only through the
+`GradientXY` operator variant spec path.
+
+---
+
 ## Updated PR ladder summary
 
 | PR | Phase | Model | Description | Gate |

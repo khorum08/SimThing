@@ -4,6 +4,13 @@
 - Preflight: production plan Hysteresis/2abc parking status synced.
 - Report: [`tests/phase_m_eml_gadget_2e_acceleration_test_results.md`](tests/phase_m_eml_gadget_2e_acceleration_test_results.md).
 
+# 2026-05-29 — M-5 GradientExtraction track approved; revised WGSL guardrail
+
+- **M-5-gradient track approved (Opus 2026-05-29):** `GradientXY` operator variant for `RegionFieldSpec` + L3 Strategic Pressure Composition Pattern (EMA+WeightedAccumulator over multi-field reductions). Design note: [`workshop/m5_gradient_extraction_design_note.md`](workshop/m5_gradient_extraction_design_note.md).
+- **Revised WGSL guardrail:** the ban is on *semantic* WGSL, not on generic kernel extensions. Per-direction stencil weights (`weight_north/south/east/west` replacing `gamma_neighbor`) are admissible — the shader sees generic floats; meaning is pinned at the `RegionFieldOperatorSpec::GradientXY` designer/spec admission layer. CPU-oracle parity required; `simthing-sim` stays map-free; shader never names "gradient" or any semantic. Codified in `docs/invariants.md` and `docs/adr/mapping_sparse_regioncell.md`.
+- Rationale: the existing `structured_field_stencil.wgsl` already has `variant` and `directed_mode` extension fields — it was designed for this. Gradient extraction requires per-direction weights but not new semantics. Magnitude approximation uses existing `ABS+ADD` (Manhattan) or `MUL+ADD` (squared), both `ExactDeterministic`.
+- Docs: new design note, invariants revised, ADR updated, production plan M-5-gradient entry added, mapping guidance read order + next-step updated, workshop state updated. No code changed; no WGSL changed yet; no new opcodes; defaults unchanged; `simthing-sim` map-free.
+
 # 2026-05-29 — Phase M EML-GADGET-2D R1 (Hysteresis exact CMP/SELECT compiler parity)
 
 - **2D R1 landed:** Hysteresis compiler emission matches CPU oracle via existing `CMP_GE`/`CMP_LE`/`CMP_EQ` + `SELECT` opcodes; 16/16 hysteresis tests; stateful compiled-node parity.

@@ -16,8 +16,9 @@ Active read order (authoritative path for agents):
 2. `docs/workshop/mapping_current_guidance.md`
 3. `docs/accumulator_op_v2_production_plan.md`
 4. `docs/workshop/eml_gadget_library_design_note.md`
-5. Current acceptance docs (e.g. `phase_m_eml_gadget_tier*_acceptance_opus_review.md`)
-6. Latest implementation/test report for the active slice
+5. `docs/workshop/m5_gradient_extraction_design_note.md` (M-5 GradientXY + L3 composition pattern; revised WGSL guardrail)
+6. Current acceptance docs (e.g. `phase_m_eml_gadget_tier*_acceptance_opus_review.md`)
+7. Latest implementation/test report for the active slice
 
 Historical/superseded artifacts live under `docs/workshop/archive/` (see `docs/workshop/archive/README.md`). Do not treat archived files as active authority.
 
@@ -55,7 +56,7 @@ No default SimSession mapping wiring was introduced.
 No atlas batching landed.
 Defaults unchanged.
 
-**Next authorized step:** EML-GADGET-2E explicit velocity-column Acceleration landed. Position-history acceleration and dense per-cell temporal memory remain separately gated. No runtime gadget execution, chained scheduling, atlas/M-4A, or production economy→mapping bridge.
+**Next authorized step:** EML-GADGET-2E explicit velocity-column Acceleration landed. **M-5 GradientExtraction candidate track approved** — `GradientXY` operator variant for `RegionFieldSpec` + L3 Strategic Pressure Composition Pattern (RON fixture). The "no new WGSL" guardrail is revised to "no new *semantic* WGSL": generic kernel extensions (per-direction weights with CPU-oracle parity, meaning pinned at the designer/spec layer) are admissible under a separate M-5A gate. See `docs/workshop/m5_gradient_extraction_design_note.md` and revised WGSL guardrail in `docs/invariants.md` ("Mapping (Sparse RegionCell)" row). Position-history acceleration and dense per-cell temporal memory remain separately gated. No runtime gadget execution, chained scheduling, atlas/M-4A, or production economy→mapping bridge.
 
 ## Phase M boundary-resolution (tick / boundary / day) + example economy (ACCEPTED — Opus/product 2026-05-29, PASS WITH CONDITIONS)
 
