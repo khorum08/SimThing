@@ -14,13 +14,13 @@ Running log of what's done and what's next, across sessions.
 - Spec: `RegionFieldSummaryPolicySpec` / `RegionFieldSummaryStatus` on `RegionFieldSpec.summary_policy` (default `CachedUntilDirtyWithZeroInitial`); compiled into `CompiledRegionFieldPreview.summary_policy`.
 - Runtime: `FirstSliceSummaryReport` on `FirstSliceMappingReport.summary`; session tracks `summary_age_ticks`, `has_gpu_parent_summary`, `last_fresh_tick`. Executed tick → `FreshThisTick`; clean skip after execution → `Cached { age_ticks }`; skip before execution → `ZeroInitial`; Disabled profile → `InvalidOrUnavailable`.
 
-**2026-05-29 — Phase M SummaryValidity V1-R1 hygiene (Grok completion of Cursor handoff)**
-- Runtime status enum renamed `FirstSliceSummaryStatus` and fully owned by `simthing-driver`.
-- Removed from `simthing-spec` (no definition, no re-exports).
-- Designer policy (`RegionFieldSummaryPolicySpec` + `CompiledRegionFieldSummaryPolicy`) correctly remains in spec.
-- All V1 behavior and tests preserved.
-- Boundary posture test strengthened.
-- `cargo check --workspace` and key first-slice suites green.
+**2026-05-29 — Phase M SummaryValidity V1-R1 hygiene + parking verification**
+- Full targeted verification set executed (summary validity, scenario spec, product fixtures, runtime, spec admission, GPU bridge).
+- `cargo check --workspace` green.
+- Runtime status confirmed driver-owned; spec retains policy only.
+- Docs updated with parking language across production plan, guidance, current state, todo, and worklog.
+- Parking report created.
+- All V7.7 / Mapping ADR guardrails preserved. Parked cleanly.
 - Cached commitment threshold scan **deferred** — commitment scan runs only when dense path executes (`scheduled && eml_executed`); cached ticks report `summary_used_for_commitment_scan = false`.
 - No CPU-side AI planner was introduced. No default SimSession wiring was introduced. No atlas batching landed. No M-4A atlas masking landed. No active mask, perception, map residency system, behavioral source policy, or source_mask landed. No semantic WGSL landed. simthing-sim remains map-free. Defaults unchanged.
 - Known caveat preserved: First-slice bridge uses queue writes for child resource values and parent weights. Before any multi-field, multi-map, atlas, or broader production scaling, replace per-slot resource/weight queue writes with a measured GPU-resident mechanism such as a preinitialized resource column, generic fill helper, or GPU fill kernel.

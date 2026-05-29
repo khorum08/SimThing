@@ -1889,6 +1889,8 @@ No semantic WGSL landed.
 simthing-sim remains map-free.
 Defaults unchanged.
 
+**V1-R1 hygiene + parking verification:** Runtime summary status moved from simthing-spec into simthing-driver as `FirstSliceSummaryStatus`. Designer-facing policy remains in spec admission. Full targeted first-slice verification + workspace check passed. Behavior unchanged. All V7.7 guardrails preserved.
+
 **Design:** `RegionFieldSpec.summary_policy` (default `CachedUntilDirtyWithZeroInitial`); runtime `FirstSliceSummaryReport` with `FreshThisTick` / `Cached { age_ticks }` / `ZeroInitial` / `InvalidOrUnavailable`. Cached commitment threshold scan deferred.
 
 **Known scale caveat:** First-slice bridge uses queue writes for child resource values and

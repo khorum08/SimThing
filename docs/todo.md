@@ -21,7 +21,7 @@ EvalEML is the only production intensity path.
 **S-4 landed:** legacy reduction shader/pipeline/fallback removed; AccumulatorOp covers all
 reduction rules; CPU oracle retained for test golden only.
 
-**Phase M SummaryValidity V1-R1 hygiene (completed):** Runtime status enum moved from simthing-spec into driver. Policy remains in spec. Layering corrected while preserving V1 behavior.
+**Phase M SummaryValidity V1-R1 hygiene + parking verification (completed):** Full targeted first-slice verification + workspace check green. Runtime status confirmed driver-owned (`FirstSliceSummaryStatus`). Designer policy remains in spec. All V7.7 guardrails intact. Parked.
 
 **S-2 landed:** legacy intensity shader/pipeline deleted; EvalEML intensity only.
 
