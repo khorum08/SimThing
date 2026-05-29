@@ -10,7 +10,8 @@ use simthing_gpu::{
 use simthing_sim::PipelineFlags;
 use simthing_spec::{
     admit_region_field_formula_class, compile_region_field_preview,
-    compile_region_field_stencil_config, deserialize_region_field_ron, CompiledFieldCadence,
+    compile_region_field_stencil_config, deserialize_region_field_ron, validate_region_field_frame_gradient_sinks,
+    CompiledFieldCadence,
     CompiledRegionFieldMaskMode, CompiledRegionFieldOperator, CompiledRegionFieldSourcePolicy,
     FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, GameModeSpec,
     GradientAxisSpec, MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
@@ -552,4 +553,107 @@ fn m5a_normalized_behavior_unchanged() {
 #[test]
 fn m5a_mapping_execution_profile_default_disabled() {
     assert!(!MappingExecutionProfile::default().enables_execution());
+}
+
+fn assert_frame_gradient_sink_err(fields: &[&RegionFieldSpec], reason_substr: &str) {
+    let err = validate_region_field_frame_gradient_sinks(fields).expect_err("expected rejection");
+    match err {
+        SpecError::RegionFieldAdmission { reason, .. } => {
+            assert!(
+                reason.contains(reason_substr),
+                "expected `{reason_substr}` in `{reason}`"
+            );
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+}
+
+#[test]
+fn m5d_rejects_normalized_field_using_gradient_output_as_source_col() {
+    let grad = gradient_field(GradientAxisSpec::X, 1);
+    let mut consumer = standard_suppression_field();
+    consumer.name = "consumer_field".into();
+    consumer.source_col = 1;
+    assert_frame_gradient_sink_err(&[&grad, &consumer], "cannot be used as same-frame source_col");
+}
+
+#[test]
+fn m5d_rejects_gradient_field_using_another_gradient_output_as_source_col() {
+    let grad_x = gradient_field(GradientAxisSpec::X, 1);
+    let mut grad_y = gradient_field(GradientAxisSpec::Y, 2);
+    grad_y.name = "grad_y_consumer".into();
+    grad_y.source_col = 1;
+    assert_frame_gradient_sink_err(&[&grad_x, &grad_y], "gradient output_col 1 from `grad_field`");
+}
+
+#[test]
+fn m5d_rejects_base_field_using_gradient_output_as_source_col() {
+    let grad = gradient_field(GradientAxisSpec::X, 1);
+    let mut base = standard_suppression_field();
+    base.name = "base_diffusion".into();
+    base.source_col = 1;
+    assert_frame_gradient_sink_err(&[&grad, &base], "cannot be used as same-frame source_col");
+}
+
+#[test]
+fn m5d_reaffirms_gradient_self_loop_at_frame_level() {
+    let mut grad = gradient_field(GradientAxisSpec::X, 1);
+    grad.source_col = 1;
+    grad.target_col = 1;
+    grad.operator = RegionFieldOperatorSpec::Gradient {
+        axis: GradientAxisSpec::X,
+        output_col: 1,
+    };
+    assert_frame_gradient_sink_err(&[&grad], "same-pass read/write loop");
+}
+
+#[test]
+fn m5d_admits_m5b_style_valid_gradient_sinks() {
+    let scalar = standard_suppression_field();
+    let grad_x = gradient_field(GradientAxisSpec::X, 1);
+    let grad_y = gradient_field(GradientAxisSpec::Y, 2);
+    validate_region_field_frame_gradient_sinks(&[&scalar, &grad_x, &grad_y])
+        .expect("M-5B-style frame admits");
+    for spec in [&scalar, &grad_x, &grad_y] {
+        compile_region_field_preview(spec).expect("each field admits individually");
+    }
+}
+
+#[test]
+fn m5d_admits_m5c_fixture_rons_under_frame_validation() {
+    let scalar = deserialize_region_field_ron(include_str!(
+        "../../simthing-driver/tests/fixtures/m5c_need_signal_scalar_field.ron"
+    ))
+    .expect("scalar RON");
+    let gx = deserialize_region_field_ron(include_str!(
+        "../../simthing-driver/tests/fixtures/m5c_need_signal_gradient_x_field.ron"
+    ))
+    .expect("gx RON");
+    let gy = deserialize_region_field_ron(include_str!(
+        "../../simthing-driver/tests/fixtures/m5c_need_signal_gradient_y_field.ron"
+    ))
+    .expect("gy RON");
+    validate_region_field_frame_gradient_sinks(&[&scalar, &gx, &gy])
+        .expect("M-5C fixture frame admits");
+}
+
+#[test]
+fn m5d_validator_checks_same_frame_only_not_cross_tick() {
+    // Tick N frame: scalar source 0, gradients sink to 1/2 — valid.
+    let scalar = standard_suppression_field();
+    let grad_x = gradient_field(GradientAxisSpec::X, 1);
+    let grad_y = gradient_field(GradientAxisSpec::Y, 2);
+    validate_region_field_frame_gradient_sinks(&[&scalar, &grad_x, &grad_y])
+        .expect("same-frame valid sinks");
+
+    // Tick N+1 authored as a separate frame group may use source_col 1 without this
+    // validator inspecting cross-tick wiring — only same-frame source_col is rejected.
+    let tick_n_plus_1 = {
+        let mut delayed = standard_suppression_field();
+        delayed.name = "delayed_consumer".into();
+        delayed.source_col = 1;
+        delayed
+    };
+    validate_region_field_frame_gradient_sinks(&[&tick_n_plus_1])
+        .expect("isolated next-tick frame group is not cross-checked against prior gradient sinks");
 }

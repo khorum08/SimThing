@@ -442,6 +442,50 @@ fn compile_commitment(
     })
 }
 
+/// Frame/scenario-level Input Validation Rule: gradient output columns are strict sinks.
+///
+/// Within a same-frame field group, no field may use a gradient field's `output_col` as its
+/// diffusion/stencil `source_col`. Cross-tick coupling is out of scope — only same-frame
+/// `source_col` wiring is checked.
+pub fn validate_region_field_frame_gradient_sinks(
+    fields: &[&RegionFieldSpec],
+) -> Result<(), SpecError> {
+    let mut gradient_sinks: Vec<(u32, &str)> = Vec::new();
+    for spec in fields {
+        if let RegionFieldOperatorSpec::Gradient { output_col, .. } = spec.operator {
+            if output_col == spec.source_col {
+                return Err(field_err(
+                    &spec.name,
+                    format!(
+                        "gradient output_col {output_col} must differ from source_col (same-pass read/write loop)"
+                    ),
+                ));
+            }
+            gradient_sinks.push((output_col, spec.name.as_str()));
+        }
+    }
+
+    if gradient_sinks.is_empty() {
+        return Ok(());
+    }
+
+    for spec in fields {
+        for &(sink_col, gradient_name) in &gradient_sinks {
+            if spec.source_col == sink_col {
+                return Err(field_err(
+                    &spec.name,
+                    format!(
+                        "gradient output_col {sink_col} from `{gradient_name}` cannot be used as same-frame source_col by `{}`",
+                        spec.name
+                    ),
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
 /// Validate a field formula class for RegionFieldSpec parent bindings.
 pub fn admit_region_field_formula_class(
     spec: &RegionFieldSpec,

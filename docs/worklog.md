@@ -1,3 +1,8 @@
+# 2026-05-29 — Phase M-5D-gradient frame/scenario-level gradient strict-sink admission
+
+- **M-5D-gradient landed (Tier-1 admission hardening):** added `validate_region_field_frame_gradient_sinks` — rejects gradient `output_col` used as any field's same-frame diffusion `source_col`; re-affirms self-loop ban; M-5B/M-5C fixtures exercise validator; cross-tick coupling out of scope. No runtime or substrate changes.
+- Report: [`tests/phase_m_m5d_gradient_sink_admission_test_results.md`](tests/phase_m_m5d_gradient_sink_admission_test_results.md).
+
 # 2026-05-29 — Phase M-5C-gradient product-facing need/routing signal fixture
 
 - **M-5C-gradient landed (Tier-1 fast lane):** product-facing RON fixtures + driver test demonstrating unmet-demand scalar + price/labor Gradient X/Y fields, SlotRange Sum reductions, L3 Ema + WeightedAccumulator `routing_signal` composite; CPU-oracle integrated test; no production economy→mapping bridge or ResourceEconomySpec→mapping coupling.
