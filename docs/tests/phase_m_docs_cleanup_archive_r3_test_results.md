@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `3ad9a53046196b918ff7c60d49b2a649eba807f7` (post R2)  
-**Final commit SHA:** `...` (to be updated post-push by follow-up if needed)  
+**Final commit SHA:** `b7d201ddeefa54abf9d9957acbeb29dad212c184` (R3 commit; corrected by R4)  
 **Verdict:** **PASS** (targeted, honest remediation of real remaining authority issues)
 
 ---
@@ -11,9 +11,10 @@
 
 Deep file-by-file review before this R3:
 
-- R2 report already contained the correct R2 commit SHA (`3ad9a53...`).
-- Active 2B report header already contained the correct final SHA (`5dc3cf2...`).
-- Active EML design note 2B section had already been cleaned of the most blatant "No BoundedFeedback implementation landed" contradictions in prior passes.
+- R2 report final SHA was incorrect at the time of R3 (showed old value); corrected in R4.
+- Active 2B report header still had a placeholder SHA at the time of R3 evaluation; this was corrected in R4.
+- Active EML design note still contained "No BoundedFeedback implementation landed" in active text; this was corrected in R4.
+- R3 primarily fixed the production plan and workshop current state stale sentences. R4 completes the remaining active-authority fixes.
 
 However, two critical production guidance files still contained the exact stale language the R3 handoff correctly identified:
 

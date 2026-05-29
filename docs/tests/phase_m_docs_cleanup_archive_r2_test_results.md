@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `e836617c3784c199979a558bc1505641b8e03a18` (post R1)  
-**Final commit SHA:** `e836617c3784c199979a558bc1505641b8e03a18` (this R2 commit; updated post-push)  
+**Final commit SHA:** `3ad9a53046196b918ff7c60d49b2a649eba807f7` (R2 commit; corrected by R4)  
 **Verdict:** **PASS**
 
 ---

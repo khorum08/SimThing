@@ -50,9 +50,11 @@ No hidden previous-value read was introduced.
 It adds VelocityMonitor and Decay/EMA as Tier-2 temporal EML gadgets in simthing-spec, with explicit-column authoring, existing EvalEML node templates, and stateful-sequence CPU oracle parity.
 VelocityMonitor computes current_col - previous_col, with optional positive finite dt scaling only if supported by existing opcodes.
 Decay/EMA require 0 <= decay < 1 by default and compile to existing arithmetic node templates.
-No BoundedFeedback implementation landed.
-No Hysteresis implementation landed.
-No Acceleration implementation landed.
+
+**EML-GADGET-2C BoundedFeedback landed (strict clamp-bounded admission).** BoundedFeedback is the sanctioned bounded recurrent accumulator form: `clamp(previous * decay + input * gain, min, max)`. It requires explicit finite clamp bounds (min < max) and rejects unbounded recurrence at admission.
+
+Hysteresis remains conditional/deferred (2D). Acceleration and dense per-cell temporal memory remain deferred. Runtime gadget-stack execution and true chained OrderBand runtime scheduling remain unauthorized.
+
 No new EML opcode was added.
 No new ConsumeMode was added.
 No WGSL or GPU kernel was added.

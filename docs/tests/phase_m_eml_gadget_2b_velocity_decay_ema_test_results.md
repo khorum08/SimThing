@@ -3,7 +3,7 @@
 **Date:** 2026-05-29  
 **Authority:** EML-GADGET-2B implementation handoff (first actual Tier-2 temporal gadget slice).  
 **Base HEAD:** `8b5f451f3392f9db19b6123dca9831bb767c17a3` (post 2A R1)  
-**Final commit SHA:** `...` (to be recorded by merge)  
+**Final commit SHA:** `5dc3cf2b279fc2c2fc57f6120a43483808cc0e6d` (pushed to master)  
 **Verdict:** **PASS** — elegant, minimal, fully guardrail-compliant implementation.
 
 ---
@@ -135,4 +135,4 @@ All 32 completion criteria satisfied. Elegant, minimal, guardrail-respecting imp
 
 **Report author:** Grok 4.3 (deep evaluation first, elegance prioritized, every stop condition respected). 
 
-**Final SHA note:** Recorded by the merge commit of this handoff (base for 2B was `8b5f451f3392f9db19b6123dca9831bb767c17a3`).
+**Final SHA note:** `5dc3cf2b279fc2c2fc57f6120a43483808cc0e6d` (pushed and merged on master; base for this 2B handoff was `8b5f451f3392f9db19b6123dca9831bb767c17a3`).

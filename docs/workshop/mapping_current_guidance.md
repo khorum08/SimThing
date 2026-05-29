@@ -28,7 +28,7 @@ No new ConsumeMode was added.
 No WGSL or GPU kernel was added.
 No runtime gadget execution was introduced.
 No temporal gadget implementation landed.
-VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
+2B VelocityMonitor + Decay/EMA and 2C BoundedFeedback have landed in simthing-spec as explicit-column Tier-2 temporal EML gadgets. Hysteresis remains conditional/deferred; Acceleration and dense per-cell temporal memory remain deferred. No runtime gadget execution, chained scheduling, new opcode/WGSL, simthing-sim semantics, production economy→mapping bridge, default mapping wiring, or atlas/M-4A landed.
 No hidden previous-value read was introduced.
 Temporal memory remains explicit-column state.
 Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
@@ -45,7 +45,7 @@ No new ConsumeMode was added.
 No WGSL or GPU kernel was added.
 No runtime gadget execution was introduced.
 No temporal gadget implementation landed.
-VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis, and Acceleration remain unimplemented.
+2B VelocityMonitor + Decay/EMA and 2C BoundedFeedback have landed in simthing-spec as explicit-column Tier-2 temporal EML gadgets. Hysteresis remains conditional/deferred; Acceleration and dense per-cell temporal memory remain deferred. No runtime gadget execution, chained scheduling, new opcode/WGSL, simthing-sim semantics, production economy→mapping bridge, default mapping wiring, or atlas/M-4A landed.
 No hidden previous-value read was introduced.
 Temporal memory remains explicit-column state.
 Temporal memory remains Layer-3 scoped by default; dense per-cell temporal memory remains separately gated.
