@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-JIT-GRAD-1 observer+exact-formula fusion (Tier-2, test-only landed)
+
+- **M-JIT-GRAD-1 (Tier-2, PASS, test-only):** fused GPU-resident observer+exact-subset score in one dispatch for 10,000 observers; score uses exact-authoritative descent only (no `mag2`, no `sqrt`); production observer scheduling/caching remains deferred. Report: `docs/tests/phase_m_jit_grad1_observer_formula_fusion_test_results.md`.
+
 # 2026-05-29 — Phase M-JIT-GRAD-0 R1 observer mag2 determinism classification (Tier-2, test-only remedial)
 
 - **M-JIT-GRAD-0 R1 (Tier-2, PASS, remedial):** explicit observer output classification; `dx`/`dy`/descent exact-authoritative; `mag2` `ApproximateJitOnly` on batch corpus (max ULP=1, diagnostic only); production plan amended to avoid mag2 exactness overclaim; no production wiring. Report: `docs/tests/phase_m_jit_grad0_spatial_observer_r1_test_results.md`.
