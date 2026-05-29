@@ -2486,6 +2486,11 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   approximate outputs (e.g. GRAD-0 `mag2`) as exact inputs. Production descriptor
   registry/scheduler remains deferred. Report:
   `docs/tests/phase_m_jit_desc0_kernel_descriptor_test_results.md`.
+- **M-JIT-DESC-1 — Done (PASS, spec-layer descriptor admission preview).** `simthing-spec`
+  `KernelDescriptorSpec` + `validate_kernel_descriptor_admission` / `validate_exact_kernel_inputs`
+  mirror DESC-0 landed descriptors as TestOnly; ProductionCandidate/production_wiring/default-on/
+  semantic names rejected at admission. Production descriptor registry/scheduler remains deferred.
+  Report: `docs/tests/phase_m_jit_desc1_kernel_descriptor_admission_test_results.md`.
 - **Production JIT caching/cohort dispatch — Deferred (separate gate).** Cohorting identical authored
   graphs, kernel caching/dispatch, multi-gadget chained-stack lowering, conditional (`CMP`/`SELECT`)
   lowering, batched multi-slot dispatch, and any production runtime/default wiring remain gated.
