@@ -86,7 +86,7 @@ pub struct EmlGadgetPreviewReport {
     pub gadget_ids: Vec<String>,
     pub gadget_kinds: Vec<String>,
     pub total_node_count: usize,
-    pub flattened_node_count: usize,
+    pub flatten_preview_node_count: usize,
     pub execution_class: EmlExecutionClass,
     pub diagnostics: Vec<EmlGadgetDiagnostic>,
 }
@@ -98,7 +98,7 @@ impl Default for EmlGadgetPreviewReport {
             gadget_ids: Vec::new(),
             gadget_kinds: Vec::new(),
             total_node_count: 0,
-            flattened_node_count: 0,
+            flatten_preview_node_count: 0,
             execution_class: EmlExecutionClass::ExactDeterministic,
             diagnostics: Vec::new(),
         }
@@ -115,11 +115,45 @@ pub struct CompiledEmlGadget {
     pub output_col: Option<u32>,
 }
 
-/// Compiled gadget stack (inline-flatten preview + per-gadget nodes).
+/// How a compiled gadget stack may be composed at runtime.
+///
+/// Per-gadget node templates are always executable. Multi-gadget inline flatten is never
+/// claimed executable unless intermediate column wiring is proven (not implemented in V1).
+#[derive(Clone, Debug, PartialEq)]
+pub enum EmlGadgetCompositionPlan {
+    /// Only per-gadget templates are valid output; chained runtime is deferred.
+    PerGadgetOnly {
+        reason: String,
+    },
+    /// Optional non-executable or single-gadget flatten preview for inspection.
+    InlineFlattenPreview {
+        nodes: Vec<EmlNode>,
+        executable: bool,
+        reason: String,
+    },
+}
+
+impl EmlGadgetCompositionPlan {
+    pub fn flatten_preview_executable(&self) -> bool {
+        match self {
+            Self::PerGadgetOnly { .. } => false,
+            Self::InlineFlattenPreview { executable, .. } => *executable,
+        }
+    }
+
+    pub fn flatten_preview_nodes(&self) -> Option<&[EmlNode]> {
+        match self {
+            Self::PerGadgetOnly { .. } => None,
+            Self::InlineFlattenPreview { nodes, .. } => Some(nodes),
+        }
+    }
+}
+
+/// Compiled gadget stack (per-gadget templates + explicit composition plan).
 #[derive(Clone, Debug, PartialEq)]
 pub struct CompiledEmlGadgetStack {
     pub gadgets: Vec<CompiledEmlGadget>,
-    pub flattened_nodes: Vec<EmlNode>,
+    pub composition: EmlGadgetCompositionPlan,
     pub report: EmlGadgetPreviewReport,
 }
 
@@ -190,8 +224,7 @@ pub fn compile_eml_gadget_stack(
         compiled_gadgets.push(compiled);
     }
 
-    let flattened_nodes = flatten_gadget_stack(&compiled_gadgets)?;
-    report.flattened_node_count = flattened_nodes.len();
+    let composition = build_composition_plan(&compiled_gadgets, &spec.gadgets, &mut report);
     report.gadget_count = compiled_gadgets.len();
 
     if report.total_node_count > MAX_EML_TREE_NODES as usize {
@@ -203,19 +236,19 @@ pub fn compile_eml_gadget_stack(
             ),
         });
     }
-    if report.flattened_node_count > MAX_EML_TREE_NODES as usize {
+    if report.flatten_preview_node_count > MAX_EML_TREE_NODES as usize {
         report.diagnostics.push(EmlGadgetDiagnostic {
-            code: "flatten_exceeds_cap",
+            code: "flatten_preview_exceeds_cap",
             message: format!(
-                "inline flatten would use {} nodes; chained OrderBand execution deferred",
-                report.flattened_node_count
+                "inline flatten preview would use {} nodes; chained OrderBand execution deferred",
+                report.flatten_preview_node_count
             ),
         });
     }
 
     Ok(CompiledEmlGadgetStack {
         gadgets: compiled_gadgets,
-        flattened_nodes,
+        composition,
         report,
     })
 }
@@ -305,21 +338,65 @@ fn compile_gadget_instance(
     })
 }
 
-fn flatten_gadget_stack(gadgets: &[CompiledEmlGadget]) -> Result<Vec<EmlNode>, SpecError> {
-    let mut out = Vec::new();
-    for gadget in gadgets {
-        let mut nodes = gadget.nodes.clone();
-        if let Some(last) = nodes.last_mut() {
-            if last.opcode == eml_nodes::opcode::RETURN_TOP {
-                nodes.pop();
-            }
+fn build_composition_plan(
+    gadgets: &[CompiledEmlGadget],
+    instances: &[EmlGadgetInstanceSpec],
+    report: &mut EmlGadgetPreviewReport,
+) -> EmlGadgetCompositionPlan {
+    if gadgets.is_empty() {
+        return EmlGadgetCompositionPlan::PerGadgetOnly {
+            reason: "empty gadget stack".into(),
+        };
+    }
+
+    if gadgets.len() == 1 {
+        let nodes = gadgets[0].nodes.clone();
+        report.flatten_preview_node_count = nodes.len();
+        return EmlGadgetCompositionPlan::InlineFlattenPreview {
+            nodes,
+            executable: true,
+            reason: "single-gadget stack; per-gadget EvalEML template is directly executable"
+                .into(),
+        };
+    }
+
+    let chained = stack_uses_column_chaining(gadgets, instances);
+    let reason: String = if chained {
+        "multi-gadget output_col/input_col chaining requires per-gadget OrderBand execution; \
+         inline flatten does not wire intermediate columns and runtime scheduling is deferred"
+            .into()
+    } else {
+        "multi-gadget stack has no proven inline intermediate wiring; use per-gadget templates \
+         only; chained runtime scheduling is deferred"
+            .into()
+    };
+
+    report.diagnostics.push(EmlGadgetDiagnostic {
+        code: "chained_runtime_deferred",
+        message: reason.clone(),
+    });
+
+    EmlGadgetCompositionPlan::PerGadgetOnly { reason }
+}
+
+fn stack_uses_column_chaining(
+    gadgets: &[CompiledEmlGadget],
+    instances: &[EmlGadgetInstanceSpec],
+) -> bool {
+    let mut prior_outputs = std::collections::HashSet::new();
+    for (compiled, instance) in gadgets.iter().zip(instances.iter()) {
+        if instance
+            .input_cols()
+            .iter()
+            .any(|col| prior_outputs.contains(col))
+        {
+            return true;
         }
-        out.extend(nodes);
+        if let Some(out) = compiled.output_col {
+            prior_outputs.insert(out);
+        }
     }
-    if !out.is_empty() {
-        out.push(node_return_top());
-    }
-    Ok(out)
+    false
 }
 
 fn validate_col(col: u32, opts: EmlGadgetCompileOptions, gadget: &str, field: &str) -> Result<(), SpecError> {

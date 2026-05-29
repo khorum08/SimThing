@@ -2121,9 +2121,9 @@ Defaults unchanged.
 
 **Test:** [`phase_m_product_fixture_chain_parking_test_results.md`](tests/phase_m_product_fixture_chain_parking_test_results.md) — PASS.
 
-### PR M-eml-gadget-library — EML Gadget Library — **EML-GADGET-1 landed (2026-05-19); EML-GADGET-2 queued**
+### PR M-eml-gadget-library — EML Gadget Library — **EML-GADGET-1 landed; EML-GADGET-1 R1 landed; EML-GADGET-2 queued**
 
-**Status:** **Phase M EML-GADGET-1 landed.** Tier-1 stateless EML gadgets now compile in `simthing-spec` to existing EvalEML node templates with mandatory CPU-oracle parity. Design note:
+**Status:** **Phase M EML-GADGET-1 landed; EML-GADGET-1 R1 landed.** Tier-1 stateless EML gadgets compile in `simthing-spec` to existing EvalEML node templates with mandatory CPU-oracle parity. R1 clarifies stack composition semantics: per-gadget templates are executable; multi-gadget chained stacks use `PerGadgetOnly` composition (no executable inline flatten). Design note:
 [`workshop/eml_gadget_library_design_note.md`](workshop/eml_gadget_library_design_note.md).
 Designer-facing, RON-authored EML **gadgets** = named postfix node-template macros over the existing
 `EvalEML` opcode set (NOT new WGSL kernels), composed into the GPU-resident `EvalEML` path. Lives in
@@ -2147,6 +2147,27 @@ No atlas batching landed.
 simthing-sim remains map-free.
 Defaults unchanged.
 Chained multi-gadget order-band execution is deferred; V1 supports inline flatten and/or compile-plan preview only.
+
+**EML-GADGET-1 R1 (2026-05-29):** Replaced ambiguous `flattened_nodes` with `EmlGadgetCompositionPlan`. Multi-gadget `output_col`/`input_col` chained stacks emit `PerGadgetOnly` + `chained_runtime_deferred` diagnostic; single-gadget stacks may expose executable `InlineFlattenPreview`. No runtime gadget execution introduced. Test: [`tests/phase_m_eml_gadget_tier1_r1_hygiene_test_results.md`](tests/phase_m_eml_gadget_tier1_r1_hygiene_test_results.md).
+
+Phase M EML-GADGET-1 R1 landed.
+It clarifies gadget stack compilation semantics: Tier-1 per-gadget node templates are executable and CPU-oracle proven; multi-gadget stack composition is proven through manual/orchestrated per-gadget chaining; executable flattened multi-gadget runtime output is not claimed in V1 and remains deferred unless a later gated compiler proves true intermediate wiring.
+No runtime gadget execution was introduced.
+No chained OrderBand runtime scheduling was introduced.
+No temporal memory was introduced.
+No new EML opcode was added.
+No WGSL or GPU kernel was added.
+No runtime economy behavior changed.
+No production economy→mapping bridge was introduced.
+No generic boundary-output packet was introduced.
+No DailyResolutionBoundary primitive was introduced.
+No day/calendar/pause semantics were added to simthing-sim.
+No Resource Flow default changed.
+No CPU-side economy executor, urgency computation, or AI planner was introduced.
+No default SimSession mapping wiring was introduced.
+No atlas batching landed.
+simthing-sim remains map-free.
+Defaults unchanged.
 
 **Test:** [`tests/phase_m_eml_gadget_tier1_test_results.md`](tests/phase_m_eml_gadget_tier1_test_results.md) — PASS.
 

@@ -5,9 +5,9 @@ use simthing_sim::PipelineFlags;
 use simthing_spec::{
     compile_eml_gadget_stack, deserialize_eml_gadget_stack_ron, eval_eml_postfix,
     oracle_field_sampler, oracle_soft_step, oracle_weighted_accumulator, reject_unknown_gadget_kind,
-    CompiledEmlGadgetStack, DEFERRED_GADGET_KINDS, EmlGadgetCompileOptions, EmlGadgetInstanceSpec,
-    EmlGadgetKind, EmlGadgetRegistry, EmlGadgetStackSpec, MappingExecutionProfile,
-    ResourceFlowExecutionProfile, SpecError,
+    CompiledEmlGadgetStack, DEFERRED_GADGET_KINDS, EmlGadgetCompileOptions, EmlGadgetCompositionPlan,
+    EmlGadgetInstanceSpec, EmlGadgetKind, EmlGadgetRegistry, EmlGadgetStackSpec,
+    MappingExecutionProfile, ResourceFlowExecutionProfile, SpecError,
 };
 
 const N_DIMS: u32 = 64;
@@ -163,6 +163,31 @@ fn soft_step_oracle_parity() {
     assert!(oracle_soft_step(-100.0, center, steepness) >= 0.0);
 }
 
+// ── R1 Test 1 — single-gadget flatten preview is executable ─────────────────
+
+#[test]
+fn single_gadget_flatten_preview_executable() {
+    let spec = EmlGadgetStackSpec {
+        gadgets: vec![EmlGadgetInstanceSpec::FieldSampler {
+            id: "solo".into(),
+            input_col: 5,
+            output_col: Some(10),
+            cap: 50.0,
+        }],
+    };
+    let compiled = compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions::default())
+        .expect("single gadget compiles");
+
+    assert!(compiled.composition.flatten_preview_executable());
+    match &compiled.composition {
+        EmlGadgetCompositionPlan::InlineFlattenPreview { executable, nodes, .. } => {
+            assert!(*executable);
+            assert_eq!(nodes.len(), compiled.gadgets[0].nodes.len());
+        }
+        other => panic!("expected InlineFlattenPreview for single gadget, got {other:?}"),
+    }
+}
+
 // ── Test 5 — RON gadget stack admits ─────────────────────────────────────────
 
 const TIER1_STACK_RON: &str = r#"
@@ -248,6 +273,75 @@ fn stack_composition_oracle_parity() {
     assert_f32_eq(accumulated, manual, "stack composition");
     assert_eq!(compiled.report.execution_class, EmlExecutionClass::ExactDeterministic);
     assert!(compiled.report.total_node_count <= MAX_EML_TREE_NODES as usize);
+
+    // R1: multi-gadget chained stack must not expose executable flatten preview.
+    assert!(!compiled.composition.flatten_preview_executable());
+    assert!(compiled.composition.flatten_preview_nodes().is_none());
+    match &compiled.composition {
+        EmlGadgetCompositionPlan::PerGadgetOnly { reason } => {
+            assert!(reason.contains("OrderBand") || reason.contains("deferred"));
+        }
+        other => panic!("expected PerGadgetOnly for chained stack, got {other:?}"),
+    }
+    assert!(
+        compiled
+            .report
+            .diagnostics
+            .iter()
+            .any(|d| d.code == "chained_runtime_deferred"),
+        "expected chained_runtime_deferred diagnostic"
+    );
+}
+
+// ── R1 Test 3 — no runtime consumption of flatten preview ────────────────────
+
+#[test]
+fn no_runtime_flatten_preview_consumption() {
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let scan_paths = [
+        "crates/simthing-driver/src",
+        "crates/simthing-driver/tests/support",
+        "crates/simthing-gpu/src",
+        "crates/simthing-sim/src",
+    ];
+    let forbidden = [
+        "flattened_nodes",
+        "flatten_preview_nodes",
+        "CompiledEmlGadgetStack",
+        "compile_eml_gadget_stack",
+    ];
+    for rel in scan_paths {
+        let dir = repo_root.join(rel);
+        if !dir.is_dir() {
+            continue;
+        }
+        for entry in walkdir_light(&dir) {
+            let text = std::fs::read_to_string(&entry).unwrap_or_default();
+            for needle in forbidden {
+                assert!(
+                    !text.contains(needle),
+                    "{} must not reference gadget flatten stack `{needle}`",
+                    entry.display()
+                );
+            }
+        }
+    }
+}
+
+fn walkdir_light(root: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.extension().is_some_and(|e| e == "rs") {
+                out.push(path);
+            }
+        }
+    }
+    out
 }
 
 // ── Test 7 — invalid unknown gadget rejects ──────────────────────────────────
@@ -404,4 +498,13 @@ fn posture_preservation() {
     assert!(opcode_count > 0, "opcode table present");
     assert!(!core_nodes.contains("EXP"));
     assert!(!core_nodes.contains("LOGISTIC"));
+
+    // R1 posture: economy→SEAD remains fixture-only; no flatten runtime wiring.
+    let economy_sead = std::fs::read_to_string(
+        repo_root.join("crates/simthing-driver/tests/support/economy_sead_product_fixture.rs"),
+    )
+    .expect("economy_sead_product_fixture.rs");
+    assert!(!economy_sead.contains("CompiledEmlGadgetStack"));
+    assert!(!economy_sead.contains("flattened_nodes"));
+    assert!(!economy_sead.contains("compile_eml_gadget_stack"));
 }
