@@ -46,12 +46,20 @@ pub fn compiled_stencil_to_gpu_config(
         horizon: compiled.horizon,
         alpha_self: compiled.alpha_self,
         gamma_neighbor: compiled.gamma_neighbor,
+        weight_north: compiled.weight_north,
+        weight_south: compiled.weight_south,
+        weight_east: compiled.weight_east,
+        weight_west: compiled.weight_west,
         source_cap: compiled.source_cap,
         operator: match compiled.operator {
             CompiledRegionFieldOperator::Normalized => StructuredFieldStencilOperator::Normalized,
             CompiledRegionFieldOperator::SourceCappedNormalized => {
                 StructuredFieldStencilOperator::SourceCappedNormalized
             }
+            CompiledRegionFieldOperator::Gradient { axis } => match axis {
+                simthing_spec::CompiledGradientAxis::X => StructuredFieldStencilOperator::GradientX,
+                simthing_spec::CompiledGradientAxis::Y => StructuredFieldStencilOperator::GradientY,
+            },
         },
         source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
         boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
@@ -626,6 +634,10 @@ impl FirstSliceMappingSession {
         match operator {
             CompiledRegionFieldOperator::Normalized => "normalized",
             CompiledRegionFieldOperator::SourceCappedNormalized => "source_capped_normalized",
+            CompiledRegionFieldOperator::Gradient { axis } => match axis {
+                simthing_spec::CompiledGradientAxis::X => "gradient_x",
+                simthing_spec::CompiledGradientAxis::Y => "gradient_y",
+            },
         }
     }
 

@@ -32,12 +32,12 @@ Historical/superseded artifacts live under `docs/workshop/archive/`. Do not trea
 | Boundary resolution doctrine (tick/boundary/day) | T2 | accepted | legible names preferred; no calendar/pause sim semantics |
 | EML-GADGET-1 (Tier-1 stateless gadgets) | T2 | accepted | FieldSampler / WeightedAccumulator / SoftStep |
 | EML-GADGET-2 (temporal: 2A–2E) | T2 | landed | explicit-column memory; bounded-feedback admission; Acceleration via explicit velocity col |
-| **M-5A-gradient** (single-target Gradient op + per-direction weights) | **T1** | **approved-for-impl** | within accepted design; one PR + `phase_m_m5a_gradient_single_target_test_results.md` |
+| **M-5A-gradient** (single-target Gradient op + per-direction weights) | **T1** | **landed** | [`phase_m_m5a_gradient_single_target_test_results.md`](../tests/phase_m_m5a_gradient_single_target_test_results.md) |
 | **M-5B-gradient** (L3 composition RON fixture) | **T1** | **approved-for-impl** | no new substrate; recommend landing before/with M-5A |
 | Dual-output `GradientXY`; `sqrt`; L1 coupling; dense per-cell temporal | T2 | deferred | separate gate each |
 | Atlas / M-4A; source-mask (`M-5`); economy→mapping bridge | T2 | deferred/prohibited | see prohibition list in gating policy |
 
-**Next authorized step:** **M-5A-gradient** and **M-5B-gradient** are **approved for implementation (Tier-1 fast lane)** — within the accepted single-target gradient design ([`m5_gradient_extraction_design_note.md`](m5_gradient_extraction_design_note.md)). Each ships in **one PR + one test report + one status-row update** per the gating policy — no parking packet, no separate review memo, no R-series unless a defect is found. Dual-output `GradientXY`, `sqrt`, L1 coupling, dense per-cell temporal memory, atlas/M-4A, source-mask (`M-5`), and the production economy→mapping bridge all remain Tier-2/deferred (see the status table and the prohibition list in the gating policy).
+**Next authorized step:** **M-5A-gradient landed.** Single-target `Gradient { axis, output_col }` + generic per-direction stencil weights in `simthing-spec`/`simthing-gpu`. **Next: M-5B-gradient** (L3 composition RON fixture). Dual-output `GradientXY`, `sqrt`, L1 coupling, dense per-cell temporal memory, atlas/M-4A, source-mask (`M-5`), and production economy→mapping bridge remain Tier-2/deferred.
 
 > Per-slice landing history (EML-GADGET-2A…2E, boundary/economy, etc.) now lives in the status table above and in `docs/worklog.md`. The accepted designs and binding rules are in the design notes and `docs/invariants.md`. Standing posture ("no semantic WGSL / no default wiring / `simthing-sim` map-free / defaults unchanged") is binding from `invariants.md` and asserted once per PR test report — not restated per slice here.
 

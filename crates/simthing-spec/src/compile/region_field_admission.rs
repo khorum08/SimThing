@@ -10,9 +10,10 @@ use crate::compile::region_field_budget::{
 };
 use crate::error::SpecError;
 use crate::spec::region_field::{
-    FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, RegionFieldCadenceSpec,
-    RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
-    RegionFieldSourcePolicySpec, RegionFieldSpec, RegionFieldSummaryPolicySpec,
+    FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, GradientAxisSpec,
+    RegionFieldCadenceSpec, RegionFieldGridProfile, RegionFieldOperatorSpec,
+    RegionFieldReductionSpec, RegionFieldSourcePolicySpec, RegionFieldSpec,
+    RegionFieldSummaryPolicySpec,
 };
 
 pub use crate::spec::region_field::CompiledRegionFieldSummaryPolicy;
@@ -37,6 +38,13 @@ pub const ADMITTED_REGION_FIELD_FORMULA_CLASSES: &[&str] = &[
 pub enum CompiledRegionFieldOperator {
     Normalized,
     SourceCappedNormalized,
+    Gradient { axis: CompiledGradientAxis },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CompiledGradientAxis {
+    X,
+    Y,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -72,6 +80,10 @@ pub struct CompiledRegionFieldStencilSpec {
     pub horizon: u32,
     pub alpha_self: f32,
     pub gamma_neighbor: f32,
+    pub weight_north: f32,
+    pub weight_south: f32,
+    pub weight_east: f32,
+    pub weight_west: f32,
     pub source_cap: Option<f32>,
     pub operator: CompiledRegionFieldOperator,
     pub source_policy: CompiledRegionFieldSourcePolicy,
@@ -165,6 +177,18 @@ fn validate_columns(spec: &RegionFieldSpec) -> Result<(), SpecError> {
     Ok(())
 }
 
+fn gradient_weights(axis: CompiledGradientAxis) -> (f32, f32, f32, f32) {
+    match axis {
+        CompiledGradientAxis::X => (0.0, 0.0, 0.5, -0.5),
+        CompiledGradientAxis::Y => (-0.5, 0.5, 0.0, 0.0),
+    }
+}
+
+fn isotropic_weights(gamma: f32) -> (f32, f32, f32, f32) {
+    let w = gamma / 4.0;
+    (w, w, w, w)
+}
+
 fn validate_operator_and_source(spec: &RegionFieldSpec) -> Result<(), SpecError> {
     match spec.operator {
         RegionFieldOperatorSpec::Normalized => {
@@ -181,6 +205,47 @@ fn validate_operator_and_source(spec: &RegionFieldSpec) -> Result<(), SpecError>
             })?;
             if !cap.is_finite() || cap <= 0.0 {
                 return Err(field_err(&spec.name, "source_cap must be finite and > 0"));
+            }
+        }
+        RegionFieldOperatorSpec::Gradient { output_col, .. } => {
+            if spec.source_cap.is_some() {
+                return Err(field_err(
+                    &spec.name,
+                    "source_cap is not allowed with Gradient",
+                ));
+            }
+            if output_col >= spec.n_dims {
+                return Err(field_err(
+                    &spec.name,
+                    format!("gradient output_col {output_col} out of range for n_dims {}", spec.n_dims),
+                ));
+            }
+            if output_col == spec.source_col {
+                return Err(field_err(
+                    &spec.name,
+                    "gradient output_col must differ from source_col (same-pass read/write loop)",
+                ));
+            }
+            if spec.target_col != output_col {
+                return Err(field_err(
+                    &spec.name,
+                    format!(
+                        "gradient target_col {} must equal operator output_col {output_col}",
+                        spec.target_col
+                    ),
+                ));
+            }
+            if spec.horizon != 1 {
+                return Err(field_err(
+                    &spec.name,
+                    "Gradient operator requires horizon == 1 (single-pass extraction)",
+                ));
+            }
+            if spec.allow_extended_horizon {
+                return Err(field_err(
+                    &spec.name,
+                    "allow_extended_horizon is not allowed with Gradient",
+                ));
             }
         }
     }
@@ -229,6 +294,9 @@ fn validate_horizon(spec: &RegionFieldSpec) -> Result<(), SpecError> {
             &spec.name,
             "extended horizon requires SourceCappedNormalized with source_cap stability contract",
         ));
+    }
+    if matches!(spec.operator, RegionFieldOperatorSpec::Gradient { .. }) {
+        return Ok(());
     }
     if spec.allow_extended_horizon
         && spec.horizon > REGION_FIELD_DEFAULT_HORIZON_CAP
@@ -412,12 +480,54 @@ pub fn compile_region_field_preview(
         ));
     }
 
-    let operator = match spec.operator {
-        RegionFieldOperatorSpec::Normalized => CompiledRegionFieldOperator::Normalized,
-        RegionFieldOperatorSpec::SourceCappedNormalized => {
-            CompiledRegionFieldOperator::SourceCappedNormalized
-        }
-    };
+    let (operator, alpha_self, gamma_neighbor, weight_north, weight_south, weight_east, weight_west, target_col) =
+        match spec.operator {
+            RegionFieldOperatorSpec::Normalized => {
+                let (wn, ws, we, ww) = isotropic_weights(spec.gamma_neighbor);
+                (
+                    CompiledRegionFieldOperator::Normalized,
+                    spec.alpha_self,
+                    spec.gamma_neighbor,
+                    wn,
+                    ws,
+                    we,
+                    ww,
+                    spec.target_col,
+                )
+            }
+            RegionFieldOperatorSpec::SourceCappedNormalized => {
+                let (wn, ws, we, ww) = isotropic_weights(spec.gamma_neighbor);
+                (
+                    CompiledRegionFieldOperator::SourceCappedNormalized,
+                    spec.alpha_self,
+                    spec.gamma_neighbor,
+                    wn,
+                    ws,
+                    we,
+                    ww,
+                    spec.target_col,
+                )
+            }
+            RegionFieldOperatorSpec::Gradient { axis, output_col } => {
+                let compiled_axis = match axis {
+                    GradientAxisSpec::X => CompiledGradientAxis::X,
+                    GradientAxisSpec::Y => CompiledGradientAxis::Y,
+                };
+                let (wn, ws, we, ww) = gradient_weights(compiled_axis);
+                (
+                    CompiledRegionFieldOperator::Gradient {
+                        axis: compiled_axis,
+                    },
+                    0.0,
+                    0.0,
+                    wn,
+                    ws,
+                    we,
+                    ww,
+                    output_col,
+                )
+            }
+        };
 
     let cadence = compile_cadence(spec)?;
     let reduction = spec
@@ -444,10 +554,14 @@ pub fn compile_region_field_preview(
         height: spec.grid_size,
         n_dims: spec.n_dims,
         source_col: spec.source_col,
-        target_col: spec.target_col,
+        target_col,
         horizon: spec.horizon,
-        alpha_self: spec.alpha_self,
-        gamma_neighbor: spec.gamma_neighbor,
+        alpha_self,
+        gamma_neighbor,
+        weight_north,
+        weight_south,
+        weight_east,
+        weight_west,
         source_cap: spec.source_cap,
         operator,
         source_policy: CompiledRegionFieldSourcePolicy::CallerManagedOneShotSeedThenZero,

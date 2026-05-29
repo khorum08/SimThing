@@ -58,6 +58,20 @@ pub enum RegionFieldGridProfile {
 pub enum RegionFieldOperatorSpec {
     Normalized,
     SourceCappedNormalized,
+    Gradient {
+        axis: GradientAxisSpec,
+        output_col: u32,
+    },
+}
+
+/// Single-target gradient axis (M-5A-gradient). One output column per admitted field.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum GradientAxisSpec {
+    /// `(east − west) / 2`
+    X,
+    /// `(south − north) / 2`
+    Y,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

@@ -34,6 +34,10 @@ fn normalized_config(w: u32, h: u32, horizon: u32) -> StructuredFieldStencilConf
         horizon,
         alpha_self: 1.0,
         gamma_neighbor: 0.8,
+        weight_north: 0.0,
+        weight_south: 0.0,
+        weight_east: 0.0,
+        weight_west: 0.0,
         source_cap: None,
         operator: StructuredFieldStencilOperator::Normalized,
         source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
@@ -53,6 +57,10 @@ fn source_capped_config(w: u32, h: u32, horizon: u32, cap: f32) -> StructuredFie
         horizon,
         alpha_self: 1.0,
         gamma_neighbor: 0.8,
+        weight_north: 0.0,
+        weight_south: 0.0,
+        weight_east: 0.0,
+        weight_west: 0.0,
         source_cap: Some(cap),
         operator: StructuredFieldStencilOperator::SourceCappedNormalized,
         source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
@@ -537,4 +545,166 @@ fn assert_fields_near_helper(a: &[f32], b: &[f32], tol: f32) {
     for (i, (&x, &y)) in a.iter().zip(b.iter()).enumerate() {
         assert!((x - y).abs() <= tol, "mismatch at {i}: {x} vs {y}");
     }
+}
+
+fn gradient_x_config(w: u32, h: u32) -> StructuredFieldStencilConfig {
+    StructuredFieldStencilConfig {
+        width: w,
+        height: h,
+        n_dims: 4,
+        source_col: 0,
+        target_col: 1,
+        horizon: 1,
+        alpha_self: 0.0,
+        gamma_neighbor: 0.0,
+        weight_north: 0.0,
+        weight_south: 0.0,
+        weight_east: 0.5,
+        weight_west: -0.5,
+        source_cap: None,
+        operator: StructuredFieldStencilOperator::GradientX,
+        source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
+        boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
+        mask_mode: StructuredFieldStencilMaskMode::All,
+        allow_extended_horizon: false,
+    }
+}
+
+fn gradient_y_config(w: u32, h: u32) -> StructuredFieldStencilConfig {
+    StructuredFieldStencilConfig {
+        width: w,
+        height: h,
+        n_dims: 4,
+        source_col: 0,
+        target_col: 1,
+        horizon: 1,
+        alpha_self: 0.0,
+        gamma_neighbor: 0.0,
+        weight_north: -0.5,
+        weight_south: 0.5,
+        weight_east: 0.0,
+        weight_west: 0.0,
+        source_cap: None,
+        operator: StructuredFieldStencilOperator::GradientY,
+        source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
+        boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
+        mask_mode: StructuredFieldStencilMaskMode::All,
+        allow_extended_horizon: false,
+    }
+}
+
+#[test]
+fn m5a_cpu_oracle_isotropic_weights_match_legacy_gamma() {
+    let config = normalized_config(3, 3, 1);
+    let (wn, _, we, _) = config.resolved_directional_weights();
+    assert!((wn - 0.2).abs() < 1e-6);
+    assert!((we - 0.2).abs() < 1e-6);
+    let params = params_from_config(&config);
+    let mut values = vec![0.0f32; config.values_len()];
+    values[idx(4, 0, 4)] = 100.0;
+    let cpu = cpu_horizon(&values, &params, 1);
+    assert!((cpu[idx(1, 0, 4)] - 20.0).abs() < 1e-5);
+}
+
+#[test]
+fn m5a_cpu_oracle_gradient_x_on_small_grid() {
+    let config = gradient_x_config(3, 3);
+    let params = params_from_config(&config);
+    let mut values = vec![0.0f32; config.values_len()];
+    values[idx(5, 0, 4)] = 10.0;
+    values[idx(3, 0, 4)] = 0.0;
+    let cpu = cpu_horizon(&values, &params, 1);
+    let gx = cpu[idx(4, 1, 4)];
+    assert!((gx - 5.0).abs() < 1e-5, "GradientX center got {gx}");
+}
+
+#[test]
+fn m5a_cpu_oracle_gradient_y_on_small_grid() {
+    let config = gradient_y_config(3, 3);
+    let params = params_from_config(&config);
+    let mut values = vec![0.0f32; config.values_len()];
+    values[idx(7, 0, 4)] = 8.0;
+    values[idx(1, 0, 4)] = 0.0;
+    let cpu = cpu_horizon(&values, &params, 1);
+    let gy = cpu[idx(4, 1, 4)];
+    assert!((gy - 4.0).abs() < 1e-5, "GradientY center got {gy}");
+}
+
+#[test]
+fn m5a_gpu_parity_gradient_x() {
+    with_gpu(|ctx| {
+        let config = gradient_x_config(3, 3);
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let mut values = vec![0.0f32; op.config().values_len()];
+        values[idx(5, 0, 4)] = 10.0;
+        values[idx(3, 0, 4)] = 0.0;
+        op.upload_values(ctx, &values).unwrap();
+        let (gpu, _) = op.run_ping_pong(ctx, 1).unwrap();
+        let params = params_from_config(op.config());
+        let cpu = cpu_horizon(&values, &params, 1);
+        assert_fields_near_helper(&cpu, &gpu, 1e-4);
+        assert!((get(&gpu, 4, 1, 4) - 5.0).abs() < 1e-3);
+    });
+}
+
+#[test]
+fn m5a_gpu_parity_gradient_y() {
+    with_gpu(|ctx| {
+        let config = gradient_y_config(3, 3);
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let mut values = vec![0.0f32; op.config().values_len()];
+        values[idx(7, 0, 4)] = 8.0;
+        values[idx(1, 0, 4)] = 0.0;
+        op.upload_values(ctx, &values).unwrap();
+        let (gpu, _) = op.run_ping_pong(ctx, 1).unwrap();
+        let params = params_from_config(op.config());
+        let cpu = cpu_horizon(&values, &params, 1);
+        assert_fields_near_helper(&cpu, &gpu, 1e-4);
+        assert!((get(&gpu, 4, 1, 4) - 4.0).abs() < 1e-3);
+    });
+}
+
+#[test]
+fn m5a_gpu_parity_normalized_after_directional_weight_refactor() {
+    with_gpu(|ctx| {
+        let config = normalized_config(3, 3, 1);
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let mut values = vec![0.0f32; op.config().values_len()];
+        values[idx(4, 0, 4)] = 100.0;
+        op.upload_values(ctx, &values).unwrap();
+        let (gpu, _) = op.run_ping_pong(ctx, 1).unwrap();
+        let params = params_from_config(op.config());
+        let cpu = cpu_horizon(&values, &params, 1);
+        assert_fields_near_helper(&cpu, &gpu, 1e-4);
+    });
+}
+
+#[test]
+fn m5a_gpu_parity_source_capped_after_directional_weight_refactor() {
+    with_gpu(|ctx| {
+        let config = source_capped_config(3, 3, 1, 50.0);
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let mut values = vec![0.0f32; op.config().values_len()];
+        values[idx(4, 0, 4)] = 100.0;
+        op.upload_values(ctx, &values).unwrap();
+        let (gpu, _) = op.run_ping_pong(ctx, 1).unwrap();
+        let params = params_from_config(op.config());
+        let cpu = cpu_horizon(&values, &params, 1);
+        assert_fields_near_helper(&cpu, &gpu, 1e-4);
+    });
+}
+
+#[test]
+fn m5a_single_target_output_contract_preserved() {
+    with_gpu(|ctx| {
+        let config = gradient_x_config(3, 3);
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let mut values = vec![1.0f32; op.config().values_len()];
+        values[idx(5, 0, 4)] = 10.0;
+        op.upload_values(ctx, &values).unwrap();
+        let (gpu, _) = op.run_ping_pong(ctx, 1).unwrap();
+        assert!((get(&gpu, 4, 0, 4) - 1.0).abs() < 1e-4, "source col unchanged");
+        assert!((get(&gpu, 4, 1, 4)).abs() > 0.0, "target col written");
+        assert!((get(&gpu, 4, 2, 4) - 1.0).abs() < 1e-4, "other cols passthrough");
+    });
 }

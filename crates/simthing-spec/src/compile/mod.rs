@@ -41,6 +41,7 @@ pub use region_field_admission::{
     CompiledFirstSliceCommitmentDirection, CompiledFirstSliceCommitmentThreshold,
     CompiledRegionFieldBoundaryMode, CompiledRegionFieldMaskMode, CompiledRegionFieldOperator,
     CompiledRegionFieldPreview, CompiledRegionFieldSourcePolicy, CompiledRegionFieldStencilSpec,
+    CompiledGradientAxis,
     CompiledRegionFieldSummaryPolicy, ADMITTED_REGION_FIELD_FORMULA_CLASSES,
     FIRST_SLICE_FIELD_URGENCY_COL, REGION_FIELD_DEFAULT_HORIZON_CAP,
     REGION_FIELD_EXTENDED_HORIZON_CAP, REGION_FIELD_EXTENDED_MAX_GRID,
