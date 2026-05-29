@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `c3728419a9af22ac2427c68f79c45b4d813db39c`  
-**Final commit SHA:** *(pending merge — see PR)*  
+**Final commit SHA:** `9a4812a`  
 **Lane classification:** Tier-2 product/readiness gate (V7.7 §5)  
 **Decision:** **Candidate D — Existing M-5-gradient product fixture expansion**  
 **Verdict:** **PASS — mapping scenario selected; no new substrate authorized**
