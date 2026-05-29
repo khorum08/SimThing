@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `a4de82af78025e7acdc946ac600004944e2c8bf3` (post 2C)  
-**Final commit SHA:** (to be recorded by merge)  
+**Final commit SHA:** `d8c990d51a330e1a021acc7726dba51dc14a21c6` (pushed; "a4de82a..d8c990d master -> master")  
 **Verdict:** **PASS**
 
 ---
@@ -13,7 +13,8 @@ Docs-only hygiene pass to reduce confusion for future agents by:
 - Moving superseded/historical artifacts to `docs/workshop/archive/`.
 - Improving the active read path in key guidance files.
 - Preserving all useful history.
-- Fixing minor stale language/SHA issues in active reports.
+- Fixing minor stale language in active guidance.
+- R1 (this remedial pass) later addressed remaining active-report SHA and command-list paper cuts that the original cleanup left behind.
 
 No code/runtime changes.
 

@@ -18,11 +18,13 @@ Historical artifacts live under `docs/workshop/archive/` (and `docs/tests/archiv
 |---|---|
 | [`mapping/`](mapping/) | Pre-ADR mapping optimization sandbox preserves and candidate notes |
 | [`sead/`](sead/) | Pre-V7.6 SEAD sandbox preserves and prototype WGSL |
-| [`tests/`](tests/) (proposed) | Superseded Phase M test reports, old parking packets, and full logs |
-| [`reviews/`](reviews/) (proposed) | Superseded review packets and parking packets |
+| [`tests/`](tests/) | Superseded Phase M test reports, old parking packets, and historical full logs (primary archive for recent Phase M EML-GADGET and first-slice evidence). |
+| [`reviews/`](reviews/) | Superseded review packets and parking packets. |
 
 **Current state:** [`../workshop_current_state.md`](../workshop_current_state.md) · **Mapping guidance:** [`../mapping_current_guidance.md`](../mapping_current_guidance.md)
 
 See [`SUNSET.md`](SUNSET.md) for the file manifest and canonical replacements.
+
+Historical artifacts live under `docs/workshop/archive/`. Archived files are **not** active implementation authority. `docs/tests/archive/` contains older supplementary historical material.
 
 **Do not implement from archived files.**

@@ -3,7 +3,7 @@
 **Date:** 2026-05-29  
 **Authority:** EML-GADGET-2C implementation handoff.  
 **Base HEAD:** `5dc3cf2b279fc2c2fc57f6120a43483808cc0e6d` (post 2B)  
-**Final commit SHA:** (recorded by merge)  
+**Final commit SHA:** `a4de82af78025e7acdc946ac600004944e2c8bf3` (pushed; "5dc3cf2..a4de82a master -> master")  
 **Verdict:** **PASS**
 
 ---
@@ -19,7 +19,15 @@ cargo --version
 cargo test -p simthing-spec --test eml_gadget_tier2_bounded_feedback -- --nocapture
 cargo test -p simthing-spec --test eml_gadget_tier2_temporal -- --nocapture
 cargo test -p simthing-driver --test phase_m_eml_gadget_2a_snapshot_copy -- --nocapture
-... (full list as specified in handoff)
+cargo test -p simthing-spec --test eml_gadget_tier2_bounded_feedback -- --nocapture
+cargo test -p simthing-spec --test eml_gadget_tier2_temporal -- --nocapture
+cargo test -p simthing-driver --test phase_m_eml_gadget_2a_snapshot_copy -- --nocapture
+cargo test -p simthing-spec --test eml_gadget_tier1 -- --nocapture
+cargo test -p simthing-spec --test resource_economy_authoring_preview -- --nocapture
+cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture -- --nocapture
+cargo test -p simthing-driver --test phase_m_first_slice_runtime -- --nocapture
+cargo test -p simthing-spec --test region_field_spec_admission -- --nocapture
+cargo test -p simthing-gpu --test accumulator_op_session_gpu_bridge -- --nocapture
 cargo check --workspace
 ```
 

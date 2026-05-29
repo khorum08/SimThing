@@ -3,7 +3,7 @@
 **Status:** These files are **superseded** and kept for archaeology only.  
 **Do not implement from them.** Use the canonical sources listed below.
 
-**Sunset policy updated:** 2026-05-19  
+**Sunset policy updated:** 2026-05-29  
 **Superseding synthesis:** [`../workshop_current_state.md`](../workshop_current_state.md)
 
 ---
@@ -42,3 +42,18 @@ Archive bodies may be deleted locally once this manifest is committed, if disk s
 matters. Prefer keeping them in git for teammate archaeology.
 
 No code or tests reference filenames in this folder directly.
+
+---
+
+## Phase M documentation cleanup archive pass (2026-05-29)
+
+This pass moved superseded Phase M parking packets, old review packets, the original 2A report (superseded by its R1 hygiene successor), and other clearly historical artifacts into `docs/workshop/archive/tests/` and `docs/workshop/archive/reviews/`.
+
+| Archived file/class | Was | Read instead |
+|---|---|---|
+| Old `phase_m_*_parking_test_results.md` (first-slice vertical, product fixture chain, summary validity R1, etc.) | Parking/test reports superseded by Opus acceptance memos or later implementation evidence | Active guidance + latest relevant acceptance memo or implementation report (e.g. 2A R1, 2B, 2C reports) |
+| Superseded `phase_m_*_review_packet.md` files (where an `acceptance_opus_review` counterpart exists) | Review packets superseded by the corresponding acceptance memo | The `*_acceptance_opus_review.md` file |
+| Original `phase_m_eml_gadget_2a_snapshot_copy_test_results.md` | Original 2A report containing sequence-evidence caveats later corrected in R1 | `phase_m_eml_gadget_2a_snapshot_copy_r1_hygiene_test_results.md` |
+| Various unreferenced or superseded full logs from early Phase M sandboxes | Historical logs | Latest active test report for the relevant milestone or the archive README |
+
+The 2026-05-29 pass also improved active guidance files and archive metadata for clarity (see `phase_m_docs_cleanup_archive_test_results.md` and the R1 follow-up report).
