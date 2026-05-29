@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `ee0d2e33dcbe87cb2e029b3b25aab5837e6051f1` (M-JIT-REG-0 merge on `master`)  
-**Final commit SHA:** `9545a4d` (branch `phase-m-jit-reg-1-production-candidate-admission`; authoritative post-merge SHA is the GitHub squash-merge commit)  
+**Final commit SHA:** `37d2366` (branch `phase-m-jit-reg-1-production-candidate-admission`; authoritative post-merge SHA is the GitHub squash-merge commit)  
 **Lane classification:** Tier-2 GPU/JIT production-candidate registry admission preview (V7.7 §5)  
 **Decision:** **IMPLEMENTED — ProductionCandidatePreview admission gate**  
 **Verdict:** **PASS**
