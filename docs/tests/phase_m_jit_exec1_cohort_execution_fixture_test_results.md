@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `c5d8f31` (M-JIT-EXEC-0 + ClauseThing workshop strategy on `master`)  
-**Final commit SHA:** _(set at commit; authoritative post-merge SHA is the GitHub squash-merge commit)_  
+**Final commit SHA:** `761ff2f` (branch `phase-m-jit-exec-1-cohort-execution-fixture`; authoritative post-merge SHA is the GitHub squash-merge commit)  
 **Lane classification:** Tier-2 GPU/JIT production-candidate cohort execution fixture (V7.7 §5)  
 **Decision:** **IMPLEMENTED — ProductionCandidatePreview-gated cohort execution fixture**  
 **Verdict:** **PASS**
