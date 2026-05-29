@@ -29,7 +29,7 @@ pub use property::PropertySpec;
 pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use region_field::{
     CompiledRegionFieldSummaryPolicy, FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec,
-    MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
+    GradientAxisSpec, MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
     RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
     RegionFieldSourcePolicySpec, RegionFieldSpec, RegionFieldSummaryPolicySpec,
 };

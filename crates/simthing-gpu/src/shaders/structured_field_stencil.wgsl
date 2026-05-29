@@ -7,7 +7,10 @@ struct FieldStencilParams {
     source_col: u32,
     target_col: u32,
     alpha_self_decay: f32,
-    gamma_neighbor: f32,
+    weight_north: f32,
+    weight_south: f32,
+    weight_east: f32,
+    weight_west: f32,
     cap: f32,
     source_cap: f32,
     boundary_mode: u32,
@@ -68,30 +71,11 @@ fn stencil_step(@builtin(global_invocation_id) gid: vec3<u32>) {
     let west = sample_source(ix - 1, iy);
     let east = sample_source(ix + 1, iy);
 
-    var neighbor_sum = 0.0;
-    var neighbor_count = 0.0;
-
-    if params.variant == 2u {
-        if params.directed_mode == 0u {
-            neighbor_sum = south + east;
-            neighbor_count = 2.0;
-        } else {
-            neighbor_sum = north + west;
-            neighbor_count = 2.0;
-        }
-    } else {
-        neighbor_sum = north + south + east + west;
-        neighbor_count = 4.0;
-    }
-
-    var next = params.alpha_self_decay * center;
-    if params.variant == 1u || params.variant == 4u || params.variant == 5u {
-        if neighbor_count > 0.0 {
-            next = next + params.gamma_neighbor * (neighbor_sum / neighbor_count);
-        }
-    } else {
-        next = next + params.gamma_neighbor * neighbor_sum;
-    }
+    var next = params.alpha_self_decay * center
+        + params.weight_north * north
+        + params.weight_south * south
+        + params.weight_east * east
+        + params.weight_west * west;
 
     if params.variant == 3u && params.cap > 0.0 {
         next = min(params.cap, max(0.0, next));

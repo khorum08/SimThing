@@ -1,8 +1,8 @@
 # Phase M-5-gradient: Gradient Operator (single-target) + L3 Strategic Pressure Composition Pattern
 
-**Status:** Approved candidate track (Opus design authority, 2026-05-29). **Remedial tightening
-2026-05-29:** M-5A-gradient is staged as a **single-target, two-pass** gradient extension.
-Dual-output `GradientXY` is **deferred** to a separate optimization gate (§6).
+**Status:** **M-5A-gradient landed (2026-05-29).** Single-target `Gradient { axis, output_col }`
+admission + generic per-direction stencil weights in `simthing-spec` / `simthing-gpu`. Dual-output
+`GradientXY` remains deferred (§6). **Next: M-5B-gradient** (L3 composition RON fixture).
 **Track naming:** `M-5-gradient` / `M-5A-gradient` / `M-5B-gradient` — **distinct from the existing
 `M-5` source-identity/source-mask track**. Do not call this bare `M-5A`.
 **Sequencing:** Candidate after the EML-GADGET-2 ladder, alongside Resource Economy Authoring

@@ -77,6 +77,7 @@ pub use compile::{
     CompiledFirstSliceCommitmentDirection, CompiledFirstSliceCommitmentThreshold,
     CompiledRegionFieldBoundaryMode, CompiledRegionFieldMaskMode, CompiledRegionFieldOperator,
     CompiledRegionFieldPreview, CompiledRegionFieldSourcePolicy, CompiledRegionFieldStencilSpec,
+    CompiledGradientAxis,
     CompiledResourceEconomy, CompiledResourceEmission, CompiledResourceFlowAdmission,
     CompiledResourceRecipe, CompiledResourceRecipeInput, CompiledResourceTransfer,
     RecipePreview, ResourceBindingPreview, ResourceEconomyAuthoringPreview,
@@ -124,6 +125,7 @@ pub use spec::region_field::{
     CompiledRegionFieldSummaryPolicy, FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec,
     MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
     RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
+    GradientAxisSpec,
     RegionFieldSourcePolicySpec, RegionFieldSpec, RegionFieldSummaryPolicySpec,
 };
 pub use spec::resource_economy::{

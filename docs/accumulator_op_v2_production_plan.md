@@ -2353,12 +2353,15 @@ Until then, caller-managed one-shot-seed-then-zero (v1) is the only source polic
 
 ### PR M-5-gradient — Gradient operator (single-target) + L3 Strategic Pressure Composition Pattern — **Approved candidate track (Opus 2026-05-29; remedially tightened)**
 
-**Status:** Design approved and tightened to single-target staging. **M-5A-gradient and
-M-5B-gradient are APPROVED FOR IMPLEMENTATION (Tier-1 fast lane)** per the gating policy
-([`workshop/phase_m_gating_and_doc_policy.md`](workshop/phase_m_gating_and_doc_policy.md)) — within
-the accepted design; each ships in **one PR + one test report + one status-row update**, no parking
-packet / separate review memo / R-series unless a defect is found. See design note:
-[`workshop/m5_gradient_extraction_design_note.md`](workshop/m5_gradient_extraction_design_note.md).
+**Status:** **M-5A-gradient landed (2026-05-29, PASS).** Generic per-direction stencil weights
+(`weight_north/south/east/west`) in `StructuredFieldStencilOp`; single-target
+`RegionFieldOperatorSpec::Gradient { axis, output_col }` admission/compiler in `simthing-spec`;
+CPU/GPU parity for GradientX/GradientY; Normalized and SourceCappedNormalized behavior preserved.
+**M-5B-gradient APPROVED FOR IMPLEMENTATION (Tier-1 fast lane)** per gating policy. Dual-output
+`GradientXY` remains deferred. No semantic WGSL; no default mapping wiring; no `simthing-sim`
+changes; no atlas/M-4A; no source-mask/source-identity; no L1 coupling; no `sqrt`; no production
+economy→mapping bridge. Report:
+[`tests/phase_m_m5a_gradient_single_target_test_results.md`](tests/phase_m_m5a_gradient_single_target_test_results.md).
 
 M-5-gradient is approved as a **generic stencil-extension track, not a semantic WGSL track.**
 M-5A-gradient should first implement per-direction weights plus a **single-target** `Gradient` axis
@@ -2377,15 +2380,12 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
 
 **PR ladder:**
 
-- **M-5A-gradient — single-target Gradient operator + per-direction stencil weights (Composer/Codex).**
-  `FieldStencilParams` gains generic `weight_north/south/east/west` (replacing single
-  `gamma_neighbor`), keeping the **single `target_col` output** write unchanged.
-  `RegionFieldOperatorSpec::Gradient { axis: GradientAxisSpec, output_col }` (or `GradientX`/
-  `GradientY`) in `simthing-spec`; one output column per admitted gradient field; admission (axis
-  explicit, output column valid, no self-gradient loop, no alias); bit-exact CPU oracle
-  `GradientX=(east−west)/2`, `GradientY=(south−north)/2`, boundary behavior matching existing
-  boundary mode; GPU parity on small grids. Default operator unchanged; shader generic floats only;
-  `simthing-sim` unchanged. Report: `docs/tests/phase_m_m5a_gradient_single_target_test_results.md`.
+- **M-5A-gradient — single-target Gradient operator + per-direction stencil weights — **Done (PASS).**
+  Generic `weight_north/south/east/west` in `FieldStencilParamsGpu` and WGSL; single `target_col`
+  output unchanged. `RegionFieldOperatorSpec::Gradient { axis, output_col }` in `simthing-spec`;
+  CPU oracle `GradientX=(east−west)/2`, `GradientY=(south−north)/2`; GPU parity on small grids.
+  Normalized/SourceCappedNormalized preserved via isotropic weight mapping. Report:
+  `docs/tests/phase_m_m5a_gradient_single_target_test_results.md`.
 - **M-5B-gradient — L3 Strategic Pressure Composition Pattern RON fixture (Codex).**
   Reference RON fixture + test: multi-field L3 WeightedAccumulator + EMA over gradient + other
   reductions. No new substrate. Pattern documentation (AI and resource/migration routing examples).

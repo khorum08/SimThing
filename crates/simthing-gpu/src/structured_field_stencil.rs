@@ -40,6 +40,10 @@ pub enum StructuredFieldStencilOperator {
     SourceCappedNormalized,
     /// Optional; requires explicit orientation metadata at call sites.
     Directed { northwest: bool },
+    /// Single-target axis-X extraction: `(east − west) / 2` via per-direction weights.
+    GradientX,
+    /// Single-target axis-Y extraction: `(south − north) / 2` via per-direction weights.
+    GradientY,
 }
 
 /// Source injection policy between stencil hops.
@@ -78,7 +82,12 @@ pub struct StructuredFieldStencilConfig {
     pub target_col: u32,
     pub horizon: u32,
     pub alpha_self: f32,
+    /// Legacy scalar neighbor coefficient; isotropic operators derive equal per-direction weights as `gamma_neighbor / 4`.
     pub gamma_neighbor: f32,
+    pub weight_north: f32,
+    pub weight_south: f32,
+    pub weight_east: f32,
+    pub weight_west: f32,
     pub source_cap: Option<f32>,
     pub operator: StructuredFieldStencilOperator,
     pub source_policy: StructuredFieldStencilSourcePolicy,
@@ -89,12 +98,62 @@ pub struct StructuredFieldStencilConfig {
 }
 
 impl StructuredFieldStencilConfig {
+    /// Per-direction weights default to zero; isotropic operators derive from `gamma_neighbor` at resolve time.
+    pub fn zero_directional_weights() -> (f32, f32, f32, f32) {
+        (0.0, 0.0, 0.0, 0.0)
+    }
+
     pub fn cells(&self) -> u32 {
         self.width * self.height
     }
 
     pub fn values_len(&self) -> usize {
         (self.cells() * self.n_dims) as usize
+    }
+
+    /// Resolve per-direction weights for GPU/CPU oracle (operator + explicit weights + legacy gamma).
+    pub fn resolved_directional_weights(&self) -> (f32, f32, f32, f32) {
+        if matches!(
+            self.operator,
+            StructuredFieldStencilOperator::GradientX | StructuredFieldStencilOperator::GradientY
+        ) || (self.weight_north != 0.0
+            || self.weight_south != 0.0
+            || self.weight_east != 0.0
+            || self.weight_west != 0.0)
+        {
+            return (
+                self.weight_north,
+                self.weight_south,
+                self.weight_east,
+                self.weight_west,
+            );
+        }
+        match self.operator {
+            StructuredFieldStencilOperator::Directed { northwest } => {
+                if northwest {
+                    (
+                        self.gamma_neighbor / 2.0,
+                        0.0,
+                        0.0,
+                        self.gamma_neighbor / 2.0,
+                    )
+                } else {
+                    (
+                        0.0,
+                        self.gamma_neighbor / 2.0,
+                        self.gamma_neighbor / 2.0,
+                        0.0,
+                    )
+                }
+            }
+            StructuredFieldStencilOperator::GradientX => (0.0, 0.0, 0.5, -0.5),
+            StructuredFieldStencilOperator::GradientY => (-0.5, 0.5, 0.0, 0.0),
+            StructuredFieldStencilOperator::Normalized
+            | StructuredFieldStencilOperator::SourceCappedNormalized => {
+                let w = self.gamma_neighbor / 4.0;
+                (w, w, w, w)
+            }
+        }
     }
 
     pub fn validate(&self) -> Result<(), StructuredFieldStencilError> {
@@ -129,8 +188,25 @@ impl StructuredFieldStencilConfig {
                 cap: EXTENDED_HORIZON_CAP,
             });
         }
-        if !self.alpha_self.is_finite() || !self.gamma_neighbor.is_finite() {
+        if !self.alpha_self.is_finite() {
             return Err(StructuredFieldStencilError::NonFiniteCoefficients);
+        }
+        if !matches!(
+            self.operator,
+            StructuredFieldStencilOperator::GradientX | StructuredFieldStencilOperator::GradientY
+        ) && !self.gamma_neighbor.is_finite()
+        {
+            return Err(StructuredFieldStencilError::NonFiniteCoefficients);
+        }
+        for w in [
+            self.weight_north,
+            self.weight_south,
+            self.weight_east,
+            self.weight_west,
+        ] {
+            if !w.is_finite() {
+                return Err(StructuredFieldStencilError::NonFiniteCoefficients);
+            }
         }
         if let Some(cap) = self.source_cap {
             if !cap.is_finite() || cap <= 0.0 {
@@ -219,7 +295,10 @@ pub struct FieldStencilParamsGpu {
     source_col: u32,
     target_col: u32,
     alpha_self_decay: f32,
-    gamma_neighbor: f32,
+    weight_north: f32,
+    weight_south: f32,
+    weight_east: f32,
+    weight_west: f32,
     cap: f32,
     source_cap: f32,
     boundary_mode: u32,
@@ -231,10 +310,15 @@ pub struct FieldStencilParamsGpu {
 
 impl FieldStencilParamsGpu {
     pub fn from_config(config: &StructuredFieldStencilConfig) -> Self {
+        let (weight_north, weight_south, weight_east, weight_west) =
+            config.resolved_directional_weights();
         let variant = match config.operator {
             StructuredFieldStencilOperator::Normalized => VARIANT_NORMALIZED,
             StructuredFieldStencilOperator::SourceCappedNormalized => VARIANT_SOURCE_CAPPED,
             StructuredFieldStencilOperator::Directed { .. } => VARIANT_DIRECTED,
+            StructuredFieldStencilOperator::GradientX | StructuredFieldStencilOperator::GradientY => {
+                VARIANT_NORMALIZED
+            }
         };
         let directed_mode = match config.operator {
             StructuredFieldStencilOperator::Directed { northwest } => {
@@ -253,7 +337,10 @@ impl FieldStencilParamsGpu {
             source_col: config.source_col,
             target_col: config.target_col,
             alpha_self_decay: config.alpha_self,
-            gamma_neighbor: config.gamma_neighbor,
+            weight_north,
+            weight_south,
+            weight_east,
+            weight_west,
             cap: 0.0,
             source_cap: if matches!(
                 config.operator,
@@ -843,27 +930,11 @@ pub fn cpu_stencil_step(values: &[f32], params: &FieldStencilParamsGpu) -> Vec<f
             let west = sample(values, ix - 1, iy);
             let east = sample(values, ix + 1, iy);
 
-            let (neighbor_sum, neighbor_count) = if params.variant == VARIANT_DIRECTED {
-                if params.directed_mode == DIRECTED_SE {
-                    (south + east, 2.0f32)
-                } else {
-                    (north + west, 2.0f32)
-                }
-            } else {
-                (north + south + east + west, 4.0f32)
-            };
-
-            let mut next = params.alpha_self_decay * center;
-            if params.variant == VARIANT_NORMALIZED
-                || params.variant == 4
-                || params.variant == VARIANT_SOURCE_CAPPED
-            {
-                if neighbor_count > 0.0 {
-                    next += params.gamma_neighbor * (neighbor_sum / neighbor_count);
-                }
-            } else {
-                next += params.gamma_neighbor * neighbor_sum;
-            }
+            let mut next = params.alpha_self_decay * center
+                + params.weight_north * north
+                + params.weight_south * south
+                + params.weight_east * east
+                + params.weight_west * west;
 
             if params.variant == VARIANT_SOURCE_CAPPED && params.source_cap > 0.0 {
                 next = next.clamp(0.0, params.source_cap);
@@ -901,6 +972,10 @@ mod unit_tests {
             horizon: 1,
             alpha_self: 0.8,
             gamma_neighbor: 0.16,
+            weight_north: 0.0,
+            weight_south: 0.0,
+            weight_east: 0.0,
+            weight_west: 0.0,
             source_cap: None,
             operator: StructuredFieldStencilOperator::Normalized,
             source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,

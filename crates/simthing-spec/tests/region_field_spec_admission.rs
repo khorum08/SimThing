@@ -13,7 +13,7 @@ use simthing_spec::{
     compile_region_field_stencil_config, deserialize_region_field_ron, CompiledFieldCadence,
     CompiledRegionFieldMaskMode, CompiledRegionFieldOperator, CompiledRegionFieldSourcePolicy,
     FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, GameModeSpec,
-    MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
+    GradientAxisSpec, MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
     RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
     RegionFieldSourcePolicySpec, RegionFieldSpec, ResourceFlowExecutionProfile, SpecError,
 };
@@ -55,12 +55,20 @@ fn to_gpu_stencil_config(
         horizon: compiled.horizon,
         alpha_self: compiled.alpha_self,
         gamma_neighbor: compiled.gamma_neighbor,
+        weight_north: compiled.weight_north,
+        weight_south: compiled.weight_south,
+        weight_east: compiled.weight_east,
+        weight_west: compiled.weight_west,
         source_cap: compiled.source_cap,
         operator: match compiled.operator {
             CompiledRegionFieldOperator::Normalized => StructuredFieldStencilOperator::Normalized,
             CompiledRegionFieldOperator::SourceCappedNormalized => {
                 StructuredFieldStencilOperator::SourceCappedNormalized
             }
+            CompiledRegionFieldOperator::Gradient { axis } => match axis {
+                simthing_spec::CompiledGradientAxis::X => StructuredFieldStencilOperator::GradientX,
+                simthing_spec::CompiledGradientAxis::Y => StructuredFieldStencilOperator::GradientY,
+            },
         },
         source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
         boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
@@ -452,4 +460,96 @@ fn test_k_first_slice_commitment_spec_admission() {
         &missing_formula,
         "commitment requires parent_formula field_urgency",
     );
+}
+
+fn gradient_field(axis: GradientAxisSpec, output_col: u32) -> RegionFieldSpec {
+    RegionFieldSpec {
+        name: "grad_field".into(),
+        grid_size: 3,
+        n_dims: 4,
+        source_col: 0,
+        target_col: output_col,
+        operator: RegionFieldOperatorSpec::Gradient { axis, output_col },
+        horizon: 1,
+        allow_extended_horizon: false,
+        alpha_self: 0.0,
+        gamma_neighbor: 0.0,
+        source_cap: None,
+        source_policy: RegionFieldSourcePolicySpec::CallerManagedOneShotSeedThenZero,
+        cadence: RegionFieldCadenceSpec::EveryTick,
+        grid_profile: RegionFieldGridProfile::StandardSquare,
+        reduction: None,
+        parent_formula: None,
+        commitment: None,
+        request_atlas_batching: false,
+        max_region_field_vram_bytes: None,
+        summary_policy: Default::default(),
+    }
+}
+
+#[test]
+fn m5a_admits_gradient_x() {
+    let spec = gradient_field(GradientAxisSpec::X, 1);
+    let preview = compile_region_field_preview(&spec).expect("gradient X admits");
+    assert_eq!(preview.stencil.target_col, 1);
+    assert_eq!(preview.stencil.weight_east, 0.5);
+    assert_eq!(preview.stencil.weight_west, -0.5);
+    assert_eq!(preview.stencil.weight_north, 0.0);
+    assert_eq!(preview.stencil.weight_south, 0.0);
+    assert_eq!(preview.stencil.alpha_self, 0.0);
+}
+
+#[test]
+fn m5a_admits_gradient_y() {
+    let spec = gradient_field(GradientAxisSpec::Y, 2);
+    let preview = compile_region_field_preview(&spec).expect("gradient Y admits");
+    assert_eq!(preview.stencil.target_col, 2);
+    assert_eq!(preview.stencil.weight_north, -0.5);
+    assert_eq!(preview.stencil.weight_south, 0.5);
+}
+
+#[test]
+fn m5a_rejects_gradient_output_col_out_of_range() {
+    let mut spec = gradient_field(GradientAxisSpec::X, 1);
+    spec.operator = RegionFieldOperatorSpec::Gradient {
+        axis: GradientAxisSpec::X,
+        output_col: 4,
+    };
+    assert_region_field_err(&spec, "out of range");
+}
+
+#[test]
+fn m5a_rejects_gradient_same_pass_read_write_loop() {
+    let mut spec = gradient_field(GradientAxisSpec::X, 1);
+    spec.source_col = 1;
+    spec.target_col = 1;
+    spec.operator = RegionFieldOperatorSpec::Gradient {
+        axis: GradientAxisSpec::X,
+        output_col: 1,
+    };
+    assert_region_field_err(&spec, "same-pass read/write loop");
+}
+
+#[test]
+fn m5a_rejects_gradient_target_col_mismatch() {
+    let mut spec = gradient_field(GradientAxisSpec::X, 1);
+    spec.target_col = 2;
+    assert_region_field_err(&spec, "must equal operator output_col");
+}
+
+#[test]
+fn m5a_normalized_behavior_unchanged() {
+    let preview = compile_region_field_preview(&standard_suppression_field()).expect("admit");
+    let w = preview.stencil.gamma_neighbor / 4.0;
+    assert!((preview.stencil.weight_north - w).abs() < 1e-6);
+    assert!((preview.stencil.weight_east - w).abs() < 1e-6);
+    assert!(matches!(
+        preview.stencil.operator,
+        CompiledRegionFieldOperator::SourceCappedNormalized
+    ));
+}
+
+#[test]
+fn m5a_mapping_execution_profile_default_disabled() {
+    assert!(!MappingExecutionProfile::default().enables_execution());
 }
