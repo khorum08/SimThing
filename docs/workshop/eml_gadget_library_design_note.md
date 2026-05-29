@@ -1,6 +1,6 @@
 # EML Gadget Library — Design Note (Phase M)
 
-**Status:** **EML-GADGET-1 + R1 + R2 landed (2026-05-29).** Tier-1 stateless gadgets compile in `simthing-spec`. **EML-GADGET-2** (temporal-memory slice) remains queued.
+**Status:** **EML-GADGET-1 ACCEPTED (Opus/product 2026-05-29, PASS WITH CONDITIONS)** — Tier-1 stateless gadgets (`FieldSampler`, `WeightedAccumulator`, algebraic `SoftStep`) compile in `simthing-spec` with mandatory CPU-oracle parity; R1 composition + R2 node-cap hygiene accepted. Acceptance memo: [`../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](../reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md). **EML-GADGET-2** (temporal-memory slice) remains queued — next step is its **design review** (or designer preview UX), before implementation. *(Note: the #262 parking packet was reverted off master; the acceptance memo is the authoritative review artifact and the three landed test reports carry the evidence.)*
 **Sequencing:** Lands **before Phase M Resource Economy Authoring Ergonomics R2** — R2's
 designer-facing authoring must be able to expose and leverage the gadget library, so the library
 must exist first.

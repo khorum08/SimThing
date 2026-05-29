@@ -6,6 +6,15 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-29 — Opus/product acceptance: Phase M EML-GADGET-1 (Tier-1 gadgets)
+
+- **ACCEPTED — PASS WITH CONDITIONS.** Tier-1 stateless EML gadgets (`FieldSampler`, `WeightedAccumulator`, algebraic `SoftStep`) accepted as `simthing-spec` node-template macros over the existing `EvalEML` opcodes, with mandatory CPU-oracle parity. R1 composition + R2 node-cap accepted. Memo: [`reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`](reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md).
+- Verified in code: spec-only (no new WGSL/opcode/kernel/runtime); admission rejects deferred Tier-2 kinds + bad params + out-of-bounds columns; `EmlGadgetCompositionPlan` = `PerGadgetOnly` for multi-gadget (chained OrderBand deferred) and `InlineFlattenPreview` (preview, not runtime) for single; R2 node cap applies per executable tree (multi-gadget `PerGadgetOnly` stack admits over total with a diagnostic); `SoftStep` is the **algebraic** sigmoid (no `exp`), `ExactDeterministic`. Re-ran: eml_gadget_tier1 14/14, region_field_spec_admission 11/11, resource_economy_authoring_preview 8/8.
+- **Reconciliation:** PR #262 (the parking packet) was **reverted off master** (`87665e0`) — docs-only; the gadget code + the three substantive test reports are intact. The acceptance memo is the authoritative review artifact; the reverted parking report is not required for acceptance.
+- Conditions: preview ≠ runtime (no driver/gpu/sim consumes the flatten preview); `PerGadgetOnly` is the only multi-gadget composition until intermediate wiring is separately gated; oracle-per-gadget binding for all future gadgets. Added binding "EML Gadget Library" rows to `invariants.md`.
+- **Next: EML-GADGET-2 temporal-memory design review (or designer preview UX), before implementation.** Resource Economy Authoring Ergonomics R2 unblocked only with no runtime coupling. Not the M-4 atlas packer.
+- Docs-only acceptance pass; no code; defaults unchanged; `simthing-gpu` generic; `simthing-sim` map-free.
+
 # 2026-05-29 — Phase M EML-GADGET-1 R2 landed (per-gadget node cap hygiene)
 
 - **EML-GADGET-1 R2:** `MAX_EML_TREE_NODES` now enforced per executable gadget/single-tree only; multi-gadget `PerGadgetOnly` stacks no longer reject on informational `total_node_count > 32`; emit `stack_total_exceeds_inline_cap` diagnostic instead.
