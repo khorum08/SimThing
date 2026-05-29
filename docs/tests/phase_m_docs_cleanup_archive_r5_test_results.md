@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-29  
 **Base HEAD:** `214651dd5c09243c25c4ea1b8d61f03ecbaa4ab0` (post R4)  
-**Final commit SHA:** `...` (to be updated post-push)  
+**Final commit SHA:** `d1eea1760102369a198e7cc6839ecfec61bb7508` (R5 commit; corrected during 2A/B/C parking preflight)
 **Verdict:** **PASS** (with honest state assessment)
 
 ---

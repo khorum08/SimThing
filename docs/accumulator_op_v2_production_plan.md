@@ -74,6 +74,8 @@ No default SimSession mapping wiring was introduced.
 No atlas batching landed.
 Defaults unchanged.
 
+**Consolidated parking packet:** `docs/reviews/phase_m_eml_gadget_2abc_temporal_substrate_parking_packet.md` now consolidates the full 2A snapshot/copy + R1 hygiene + 2B VelocityMonitor/Decay/EMA + 2C BoundedFeedback evidence for Opus/product review (review/parking only; binding posture: no Hysteresis/Acceleration/runtime execution/chained scheduling/atlas/economy bridge in this pass).
+
 ## Phase A — ADR, invariants, and skeleton (no GPU changes)
 
 All PRs in Phase A are documentation or type-system additions only. No WGSL

@@ -80,6 +80,7 @@ Defaults unchanged.
 **Sequencing:** Lands **before Phase M Resource Economy Authoring Ergonomics R2** — R2's
 designer-facing authoring must be able to expose and leverage the gadget library, so the library
 must exist first.
+**Consolidated review artifact:** See `docs/reviews/phase_m_eml_gadget_2abc_temporal_substrate_parking_packet.md` for the full 2A + R1 + 2B + 2C evidence (review/parking only; no further implementation authorized by this packet).
 **Layer:** `simthing-spec` (authoring + compiler) over the existing generic `EvalEML` interpreter
 in `simthing-gpu`. **No new WGSL. No new GPU kernels.**
 **Related:** `docs/reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md`,
