@@ -46,6 +46,12 @@ Neither adds a new GPU primitive, a new WGSL kernel, a new `AccumulatorRole`, or
 default change. Both compile onto the V7.6 `StructuredFieldStencilOp` primitive and
 the existing AccumulatorOp v2 reduction/EML/threshold substrate.
 
+**Governance amendment (promoted 2026-05-29):** V7.7 also makes **gating & documentation
+governance** constitutional (§5) — a two-tier model (fast lane vs gated) plus documentation
+discipline that keeps drift protection binding while removing the per-slice ceremony that was
+stalling implementation. It adds no primitive and relaxes no enforcement; it governs *process*, not
+substrate.
+
 ---
 
 ## 2. Mapping (Sparse RegionCell)
@@ -195,7 +201,48 @@ sandbox evidence.
 
 ---
 
-## 5. Explicit non-goals (V7.7)
+## 5. Gating & documentation governance (V7.7 constitutional — promoted 2026-05-29)
+
+The admission criteria in §4 say *what* may be built. This section is constitutional on *how much
+process and documentation a change carries* — so drift discipline stays binding without the
+ceremony treadmill that stalls implementation and burns effort. The operational detail lives in
+[`workshop/phase_m_gating_and_doc_policy.md`](workshop/phase_m_gating_and_doc_policy.md); the binding
+principles are here.
+
+**Two lanes, classified before work starts:**
+
+- **Tier-1 (fast lane).** A change that is *within an already-accepted design*, *generic substrate*
+  (no semantic WGSL, no `simthing-sim` map/Gadget/Personality awareness), *opt-in / default-off*,
+  *CPU-oracle-parity-backed where it touches compute*, and *reversible* ships in **one PR + one test
+  report + one compact status-table update**. No separate design-review memo, no acceptance memo, no
+  parking packet, no consolidated review packet, and no R-series hygiene pass unless a real defect is
+  found. Any Opus/design review is post-hoc and non-blocking.
+- **Tier-2 (gated).** A change that touches a **binding invariant** (`docs/invariants.md`),
+  introduces **default-on behavior** or default `SimSession` pass-graph wiring, is **new architecture
+  / irreversible** or carries a **genuinely open design question**, or is on the **standing
+  prohibition list**, keeps the full cadence: design review → Opus/product acceptance →
+  implementation. This is where the real safety lives; it is not shortcut.
+
+**Documentation discipline (constitutional):**
+
+- Standing posture ("no semantic WGSL / no default wiring / `simthing-sim` map-free / defaults
+  unchanged") is **asserted once** per PR in its test report — not duplicated across the production
+  plan, guidance, state, design notes, todo, and worklog. The binding rules live once in
+  `docs/invariants.md`.
+- Active guidance/state docs carry a **compact status table**; per-slice narrative history lives in
+  the append-only `docs/worklog.md`. Verbose per-slice blocks are collapsed when a file is touched,
+  never grown.
+- No packet proliferation; no reflexive R-series. **Anti-loop stop rule:** an agent about to write a
+  *third* meta-document for one slice is in the ceremony loop and must ship the code instead.
+
+**What is explicitly retained (drift protection is not relaxed):** `invariants.md` stays binding and
+**any change to it is Tier-2**; test reports with oracle parity and a single posture attestation stay
+mandatory (that is the real, cheap safety); the standing prohibition list (§6) is unchanged. The
+trade is precise — remove **redundant narration and redundant gates**, never **enforcement**.
+
+---
+
+## 6. Explicit non-goals (V7.7)
 
 - **No mapping/location runtime from this amendment.** Surfacing ≠ runtime.
 - No production pass graph wired to mapping behavior by default.
@@ -209,7 +256,7 @@ sandbox evidence.
 
 ---
 
-## 6. Parked state (2026-05-28)
+## 7. Parked state (2026-05-28)
 
 The Mapping ADR is **drafted and accepted at the architecture level**. The next
 work item is the **Phase M natives** (the few generic primitives mapping needs —
@@ -219,7 +266,7 @@ adopted-only optimizations). No mapping runtime is implemented. No production
 pass graph is wired. Resource Flow defaults remain unchanged. `simthing-sim`
 remains semantic-free.
 
-### 6.1 Confirmed current posture
+### 7.1 Confirmed current posture
 
 ```text
 Mapping (Sparse RegionCell) is decided at the architecture level in
@@ -259,12 +306,13 @@ simthing-sim remains semantic-free.
 
 ---
 
-## 7. Read order (v7.7 addition)
+## 8. Read order (v7.7 addition)
 
 Insert after `design_v7_6.md` in the V7 read order:
 
 1. `docs/invariants.md` — including the new Mapping rows.
 2. `docs/adr/mapping_sparse_regioncell.md` — the decision.
-3. `docs/design_v7_7.md` — this amendment (surfacing).
-4. The cited `docs/tests/` mapping + SEAD evidence before changing any
+3. `docs/design_v7_7.md` — this amendment (surfacing + §5 gating governance).
+4. `docs/workshop/phase_m_gating_and_doc_policy.md` — operational gating/doc policy (constitutional per §5); read before picking up any slice.
+5. The cited `docs/tests/` mapping + SEAD evidence before changing any
    classification.

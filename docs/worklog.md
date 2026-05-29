@@ -4,6 +4,13 @@
 - Preflight: production plan Hysteresis/2abc parking status synced.
 - Report: [`tests/phase_m_eml_gadget_2e_acceleration_test_results.md`](tests/phase_m_eml_gadget_2e_acceleration_test_results.md).
 
+# 2026-05-29 — Gating & doc policy promoted into the V7.7 constitution
+
+- **Promoted the gating & documentation policy to constitutional status** as `design_v7_7.md` **§5 "Gating & documentation governance"** (renumbered the following sections: Explicit non-goals →6, Parked state →7, Read order →8). §1 now notes the governance amendment; §8 read order includes the policy doc; `phase_m_gating_and_doc_policy.md` status marked "Constitutional (V7.7 §5)" as its operational detail.
+- `invariants.md` gains a top-of-file process-governance pointer: review/doc weight is set by V7.7 §5 (Tier-1 fast lane vs Tier-2 gated); **any change to invariants.md is itself Tier-2.** Structural invariants unchanged — only redundant process removed, never enforcement.
+- Tier model (constitutional): Tier-1 fast lane (within accepted design, generic substrate, opt-in/default-off, CPU-oracle parity, reversible → one PR + one test report + one status row); Tier-2 gated (binding-invariant change / default-on / new architecture / open design question / prohibition list → full cadence). Doc discipline: posture once per PR, compact status tables, narrative in worklog, no packet proliferation, no reflexive R-series, anti-loop stop rule.
+- Docs-only; no code; structural invariants and the prohibition list unchanged; defaults unchanged; `simthing-sim` map-free.
+
 # 2026-05-29 — Gating & doc policy: stop the ceremony treadmill; M-5A/B-gradient un-gated
 
 - **New binding governance policy:** [`workshop/phase_m_gating_and_doc_policy.md`](workshop/phase_m_gating_and_doc_policy.md). Two lanes: **T1 fast lane** (within accepted design, generic substrate, opt-in/default-off, CPU-oracle parity, reversible → one PR + one test report + one status-row, no parking packet / review memo / R-series unless a defect) and **T2 gated** (touches a binding invariant, default-on, new architecture, open design question, or the prohibition list → full design-review→acceptance→impl). Drift protection retained: `invariants.md` stays binding (any change is T2), test reports + oracle parity + the prohibition list unchanged.

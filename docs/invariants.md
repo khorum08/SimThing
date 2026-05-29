@@ -4,6 +4,12 @@ These rules are enforced by the type system and code structure, not by conventio
 A violation is either a compile error or a test failure. If you find yourself
 working around one of these, stop and reconsider the design.
 
+> **Process governance:** how much review/documentation a change carries is set by the constitutional
+> **gating & documentation policy** (`docs/design_v7_7.md` §5 + `docs/workshop/phase_m_gating_and_doc_policy.md`):
+> Tier-1 fast lane vs Tier-2 gated. **Any change to this invariants file is Tier-2** (full
+> design-review → acceptance → implementation). These structural invariants themselves are unchanged
+> by that policy — only redundant process was removed, never enforcement.
+
 ---
 
 ## Property Layout
