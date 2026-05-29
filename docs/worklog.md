@@ -1,3 +1,7 @@
+# 2026-05-29 — Phase M-4A Atlas Readiness Gate (Tier-2, DEFER)
+
+- **M-4A Atlas Readiness Gate (Tier-2, DEFER):** evaluated atlas/M-4A product need vs M-5-gradient substrate; no named multi-theater scenario; atlas batching remains deferred; future path is algebraic tile-local packer behind §11 gate. Report: `docs/tests/phase_m_m4a_atlas_readiness_gate_results.md`. Docs-only; no implementation.
+
 # 2026-05-29 — M-5D R1 evidence closure: missing docs/tests report + status sync
 
 - **M-5D R1 evidence closure:** added missing `docs/tests/phase_m_m5d_r1_gradient_frame_compile_helper_test_results.md` and synced compact status references in mapping guidance and production plan; no code/runtime change beyond PR #278 grouped helper.

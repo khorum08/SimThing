@@ -2412,6 +2412,12 @@ designer/spec admission layer, with CPU-oracle parity — are admissible. See `d
   valid-sink fixtures green. No runtime change.
   Report: `docs/tests/phase_m_m5d_gradient_sink_admission_test_results.md`; R1 grouped-helper evidence:
   `docs/tests/phase_m_m5d_r1_gradient_frame_compile_helper_test_results.md`.
+- **M-4A Atlas Readiness Gate — **Done (DEFER).** Tier-2 readiness pass: no named multi-theater
+  product scenario requires atlas batching; M-5-gradient substrate satisfies current paths;
+  source-mask (`M-5`), single-grid sparse mask, and L1 coupling remain separate gates. If a named
+  scenario is approved later, next handoff is **Phase M-4 — Algebraic Tile-Local Atlas Packer
+  (Homogeneous Square Batches)** behind §11 gate + VRAM budget. No implementation in this pass.
+  Report: `docs/tests/phase_m_m4a_atlas_readiness_gate_results.md`.
 
 **Deferred (separate gates):** dual-output `GradientXY` (one-pass, widened output contract); `sqrt`
 magnitude opcode; L1 cross-field coupling; dense per-cell gradient columns.
