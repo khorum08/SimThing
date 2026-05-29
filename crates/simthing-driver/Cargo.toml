@@ -21,3 +21,8 @@ thiserror       = { workspace = true }
 
 [dev-dependencies]
 tempfile         = "3"
+# Test-only: Phase M-JIT-0 generic EvalEML WGSL emission prototype compiles/runs generated
+# shaders through wgpu. Not used by the production binary (no production JIT wiring).
+wgpu             = { workspace = true }
+bytemuck         = { workspace = true }
+pollster         = { workspace = true }

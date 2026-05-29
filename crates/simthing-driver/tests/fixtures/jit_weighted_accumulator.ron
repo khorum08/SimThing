@@ -1,0 +1,11 @@
+(
+    gadgets: [
+        (
+            kind: "WeightedAccumulator",
+            id: "jit_weighted_accumulator_demo",
+            input_cols: [3, 4],
+            weight_cols: [20, 21],
+            output_col: 16,
+        ),
+    ],
+)
