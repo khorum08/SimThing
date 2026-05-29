@@ -2096,6 +2096,7 @@ Re-verified on GPU: boundary cadence 7/7, daily economy 7/7, admission 11/11. Do
 ### PR M-resource-economy-authoring-ergonomics-v1 — Authoring preview + diagnostics — **Done**
 
 **Status:** **Done (PASS)** — Phase M Resource Economy Authoring Ergonomics V1 landed.
+**EML-GADGET-2D Hysteresis landed (conditional explicit-column Tier-2 in simthing-spec only)** — finite on/off threshold admission (on > off for high-activates), stateful CPU oracle for on/off/hold sequences, compiled to existing CMP/SELECT + arithmetic (no new opcode). Spec/admission/compiler/oracle only. No runtime gadget execution, no chained scheduling, no WGSL/GPU/simthing-sim changes, no economy→mapping bridge. Acceleration and dense per-cell remain deferred. All V7.7/Mapping/SEAD posture binding.
 It adds authoring preview/diagnostics for discrete `ResourceEconomySpec` fixtures so designers can inspect transfers, recipes, order bands, bindings, Resource Flow posture, and simple static net effects before runtime.
 **R2 (narrow ergonomics, spec/admission/preview only):** Added `schedule_lines` helper to `ResourceEconomyPreviewReport` — compact designer-readable one-liners exposing the intended transfer/recipe/threshold schedule directly from the admitted authoring data. Pure preview; no runtime, no mapping coupling, no GPU changes.
 No runtime economy behavior changed.

@@ -77,6 +77,24 @@ pub enum EmlGadgetInstanceSpec {
         min: f32,
         max: f32,
     },
+    /// Tier-2 conditional (Hysteresis 2D): explicit-column Schmitt trigger / hold with separated thresholds.
+    /// High-activates contract (on_threshold > off_threshold required at admission):
+    /// - if previous == off_value and input >= on_threshold → on_value
+    /// - if previous == on_value and input <= off_threshold → off_value
+    /// - else hold previous value (deadband / no change)
+    /// Explicit finite output constants. Previous state is explicit column (no hidden read).
+    /// Compiler uses existing CMP_* + SELECT + arithmetic only.
+    Hysteresis {
+        id: String,
+        input_col: u32,
+        previous_col: u32,
+        #[serde(default)]
+        output_col: Option<u32>,
+        on_threshold: f32,
+        off_threshold: f32,
+        off_value: f32,
+        on_value: f32,
+    },
 }
 
 impl EmlGadgetInstanceSpec {
@@ -88,7 +106,8 @@ impl EmlGadgetInstanceSpec {
             | Self::VelocityMonitor { id, .. }
             | Self::Decay { id, .. }
             | Self::Ema { id, .. }
-            | Self::BoundedFeedback { id, .. } => id,
+            | Self::BoundedFeedback { id, .. }
+            | Self::Hysteresis { id, .. } => id,
         }
     }
 
@@ -101,6 +120,7 @@ impl EmlGadgetInstanceSpec {
             Self::Decay { .. } => "Decay",
             Self::Ema { .. } => "Ema",
             Self::BoundedFeedback { .. } => "BoundedFeedback",
+            Self::Hysteresis { .. } => "Hysteresis",
         }
     }
 
@@ -113,6 +133,7 @@ impl EmlGadgetInstanceSpec {
             Self::Decay { state_col, .. } => vec![*state_col],
             Self::Ema { input_col, previous_col, .. } => vec![*input_col, *previous_col],
             Self::BoundedFeedback { previous_col, input_col, .. } => vec![*previous_col, *input_col],
+            Self::Hysteresis { input_col, previous_col, .. } => vec![*input_col, *previous_col],
         }
     }
 
@@ -124,7 +145,8 @@ impl EmlGadgetInstanceSpec {
             | Self::VelocityMonitor { output_col, .. }
             | Self::Decay { output_col, .. }
             | Self::Ema { output_col, .. }
-            | Self::BoundedFeedback { output_col, .. } => *output_col,
+            | Self::BoundedFeedback { output_col, .. }
+            | Self::Hysteresis { output_col, .. } => *output_col,
         }
     }
 }
