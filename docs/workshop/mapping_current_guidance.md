@@ -132,6 +132,31 @@ resource column, fill helper, or GPU fill kernel after a separate measured desig
 
 See [`../tests/phase_m_first_slice_scenario_spec_r1_hygiene_test_results.md`](../tests/phase_m_first_slice_scenario_spec_r1_hygiene_test_results.md).
 
+## Phase M first-slice vertical proof (parked — Opus/product review)
+
+Phase M first-slice vertical proof parked for Opus/product review.
+The landed chain now covers scenario-level RON authoring with explicit MappingExecutionProfile,
+RegionFieldSpec, CommitmentSpec, GPU-resident field propagation, parent reduction, field_urgency
+EvalEML, and Threshold + EmitEvent commitment.
+No additional runtime behavior landed in this parking pass.
+No default SimSession wiring was introduced.
+No CPU-side AI planner was introduced.
+No atlas batching landed.
+No M-4A atlas masking landed.
+No active mask, perception, map residency, behavioral source policy, or source_mask landed.
+No semantic WGSL landed.
+simthing-sim remains map-free.
+Defaults unchanged.
+
+Known caveat: First-slice bridge uses queue writes for child resource values and parent
+weights. This is acceptable for the 10x10 first-slice scenario fixture. Future
+multi-field/atlas scale must replace per-slot resource writes with a generic preinitialized
+resource column, fill helper, or GPU fill kernel after a separate measured design step.
+
+Review packet: [`../reviews/phase_m_first_slice_vertical_proof_review_packet.md`](../reviews/phase_m_first_slice_vertical_proof_review_packet.md)
+
+Parking verification: [`../tests/phase_m_first_slice_vertical_proof_parking_test_results.md`](../tests/phase_m_first_slice_vertical_proof_parking_test_results.md)
+
 ## Phase M-first-slice (landed — opt-in)
 
 Phase M-first-slice runtime landed behind explicit `MappingExecutionProfile::SparseRegionFieldV1` opt-in in `simthing-driver` (`FirstSliceMappingSession`). It exercises one bounded RegionField grid with `source_capped_normalized`, H≤8, caller-managed one-shot seed then zero, dirty skip, SlotRange Sum reduction, and parent `field_urgency` EvalEML.
@@ -176,6 +201,7 @@ The atlas packer remains deferred.
 | **Next SEAD proof** | Threshold event over first-slice urgency | **Done** — landed as an opt-in commitment fixture; no CPU-side planner. |
 | **Next authoring proof** | Designer-facing commitment threshold binding | **Done** — landed as RON-admitted `FirstSliceCommitmentSpec`; no default wiring. |
 | **Next scenario wrapper** | Scenario-level RON with explicit execution profile | **Done** — landed as `FirstSliceScenarioSpec`; disabled admits without execution; SparseRegionFieldV1 executes GPU-resident path. |
+| **Vertical proof parking** | Opus/product review packet | **Done** — parked; see [`../reviews/phase_m_first_slice_vertical_proof_review_packet.md`](../reviews/phase_m_first_slice_vertical_proof_review_packet.md). |
 
 ## Landed Phase M natives
 
