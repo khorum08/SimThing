@@ -7,8 +7,8 @@ and **documentation routing**. Read this first when picking up GPU migration or 
 **Design version:** **V7.7** — see [`design_v7_7.md`](../design_v7_7.md)  
 **Mapping ADR:** [`mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (approved architecture)  
 **Active mapping guidance:** [`mapping_current_guidance.md`](mapping_current_guidance.md)  
-**Verification (last recorded):** Phase M CommitmentSpec fixture — PASS; workspace green via serial full test pass
-**Next action:** **Phase M CommitmentSpec fixture landed.** It moves the first-slice commitment threshold/event binding into RON-admitted spec structure while preserving the GPU-resident field_urgency -> Threshold + EmitEvent path. The M-4 atlas packer is **not** next. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
+**Verification (last recorded):** Phase M first-slice vertical proof — **ACCEPTED (Opus/product 2026-05-28, PASS WITH CONDITIONS)**; scenario 9/9, commitment 7/7, admission 11/11 re-run on GPU; workspace green
+**Next action:** **First-slice vertical proof accepted as complete for the single-grid opt-in SEAD path** ([`../reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md`](../reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md)). Next implementation handoff is **map residency / summary validity or queue-write scale hardening** — **not** the M-4 atlas packer. Resolve the per-slot queue-write caveat before any multi-field/atlas scaling. Not default session wiring; `MappingExecutionProfile` default remains `Disabled`.
 
 ---
 

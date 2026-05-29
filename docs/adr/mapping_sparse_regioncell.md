@@ -439,6 +439,19 @@ This is a landing note only: no CPU-side AI planner, default session wiring, atl
 M-4A masking, active mask, perception, map residency, source identity, semantic WGSL, or
 `simthing-sim` map awareness is authorized or landed.
 
+**Acceptance (2026-05-28, Opus/product — PASS WITH CONDITIONS):** The full first-slice vertical
+SEAD slice — RON authoring (`FirstSliceScenarioSpec` / `RegionFieldSpec` / `FirstSliceCommitmentSpec`)
+→ explicit `MappingExecutionProfile` opt-in → GPU-resident field propagation → parent `SlotRange`
+Sum → `field_urgency` EvalEML → Threshold + EmitEvent commitment — is **accepted as complete for the
+single-grid, opt-in path** (`docs/reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md`;
+scenario 9/9, commitment 7/7, admission 11/11 re-run on GPU). The commitment admission rejects bad
+data at the designer/RON layer (non-finite threshold, zero event_kind, non-Upward direction,
+missing/wrong reduction/parent_formula, mismatched parent_slot, out-of-range urgency_col).
+Conditions: the per-slot queue-write scale caveat must be resolved before any multi-field/atlas
+scaling; all prohibitions hold. Named next implementation step: **map residency / summary validity
+or queue-write scale hardening — not the M-4 atlas packer.** Default remains `Disabled`;
+`simthing-sim` remains map-free; `request_atlas_batching` stays rejected at admission.
+
 ---
 
 ## Read order for agents touching mapping

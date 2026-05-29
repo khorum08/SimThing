@@ -6,6 +6,16 @@ Running log of what's done and what's next, across sessions.
 
 ---
 
+# 2026-05-28 — Opus/product acceptance: Phase M first-slice vertical proof
+
+- **ACCEPTED — PASS WITH CONDITIONS.** The full first-slice vertical SEAD slice (RON authoring → explicit `MappingExecutionProfile` opt-in → GPU-resident field propagation → parent `SlotRange` Sum → `field_urgency` EvalEML → Threshold + EmitEvent commitment) is accepted as complete for the single-grid, opt-in path. Memo: [`reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md`](reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md).
+- Verified guardrails in code: commitment admission rejects non-finite threshold / zero event_kind / non-Upward direction / missing-or-wrong reduction & parent_formula / mismatched parent_slot / out-of-range urgency_col. `open_from_scenario_preview` honors the profile (Disabled ⇒ inert). Commitment uses the existing Threshold + EmitEvent substrate (no new opcode, no CPU planner). `request_atlas_batching` still rejected at admission.
+- Re-ran on GPU: scenario 9/9, product commitment 7/7, region-field admission 11/11. Parking pass recorded full-workspace green.
+- **SEAD discipline: PASS.** **Boundary discipline: ACCEPT WITH WATCHLIST** (added W-1: the `*_fixture` commitment methods on the production session must not accrete general runtime responsibilities; promote to a bounded API or keep behind a clearer boundary before any non-test caller).
+- **Known caveat: YES with condition** — per-slot queue writes acceptable at 10×10; must be replaced with a measured GPU-resident mechanism before any multi-field/atlas scaling.
+- **Next implementation handoff: map residency / summary validity, or queue-write scale hardening — NOT the M-4 atlas packer.**
+- Docs-only acceptance pass: flipped the review-packet status to Accepted; added an ADR first-slice acceptance note; updated mapping guidance, workshop state, production plan, todo. No production code changed; defaults unchanged; simthing-sim map-free.
+
 # 2026-05-28 — Phase M first-slice vertical proof parking
 
 - Phase M first-slice vertical proof parked for Opus/product review.

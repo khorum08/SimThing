@@ -1,7 +1,11 @@
 # Phase M First-Slice Vertical Proof — Review / Parking Packet
 
 > **Audience:** Opus / product review  
-> **Status:** Parked for acceptance review (docs-only parking pass)  
+> **Status:** **ACCEPTED — PASS WITH CONDITIONS** (Opus 2026-05-28). Acceptance memo:
+> [`phase_m_first_slice_vertical_proof_acceptance_opus_review.md`](phase_m_first_slice_vertical_proof_acceptance_opus_review.md).
+> Accepted as complete for the single-grid opt-in SEAD path; atlas / default wiring / perception /
+> `source_mask` / map residency remain separately gated. Queue-write scale caveat must be resolved
+> before scaling.  
 > **Date:** 2026-05-28  
 > **Master baseline at parking:** `29e95246865cea4c8672c19f2aa5c72c3b18e7b7`
 
@@ -9,7 +13,10 @@
 
 ## 1. Executive verdict
 
-Phase M first-slice vertical proof is parked and ready for Opus/product review.
+**ACCEPTED — PASS WITH CONDITIONS (Opus 2026-05-28).** Phase M first-slice vertical proof is
+accepted as complete for the single-grid, opt-in, GPU-resident mapping + SEAD commitment path. See
+the acceptance memo for verdicts, conditions, and watchlist:
+[`phase_m_first_slice_vertical_proof_acceptance_opus_review.md`](phase_m_first_slice_vertical_proof_acceptance_opus_review.md).
 
 It proves a single-grid, opt-in, GPU-resident mapping + SEAD commitment path.
 
@@ -211,6 +218,13 @@ First-slice bridge uses queue writes for child resource values and parent weight
 | **E — M-4 atlas packer** | Deferred until named multi-theater scenario, approved VRAM budget, §11-gate-passing implementation PR | **Do not start yet** |
 
 **Recommended order:** A first. Then either C or D. Do not start E yet.
+
+**Decision (Opus 2026-05-28):** **A done** — accepted (PASS WITH CONDITIONS). Next implementation
+handoff is **C (map residency / summary validity)** as the next substrate slice, with **D
+(queue-write scale hardening)** as a hard prerequisite before any multi-field/atlas scaling. **E
+(atlas packer) is not next.** (Note: this packet's option letters differ from the acceptance memo's
+A–E list, where queue-write hardening is option B; the substance is identical — map residency or
+queue-write hardening next, not atlas.)
 
 ---
 
