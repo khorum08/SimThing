@@ -1,6 +1,6 @@
 # EML Gadget Library — Design Note (Phase M)
 
-**Status:** **EML-GADGET-1 + R1 + R2 landed (2026-05-29).** Tier-1 stateless gadgets compile in `simthing-spec`. **EML-GADGET-2** (temporal-memory slice) remains queued.
+**Status:** **EML-GADGET-1 + R1 + R2 landed; parked for Opus/product review (2026-05-29).** Review packet: [`../reviews/phase_m_eml_gadget_tier1_review_packet.md`](../reviews/phase_m_eml_gadget_tier1_review_packet.md). **EML-GADGET-2** (temporal-memory slice) remains queued pending acceptance.
 **Sequencing:** Lands **before Phase M Resource Economy Authoring Ergonomics R2** — R2's
 designer-facing authoring must be able to expose and leverage the gadget library, so the library
 must exist first.
