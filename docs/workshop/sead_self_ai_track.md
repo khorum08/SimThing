@@ -291,3 +291,52 @@ FrontierV2-3 extended the default-off FrontierV2 closed-loop consumer by applyin
 ### FrontierV2-4 result
 
 FrontierV2-4 combined fixture-only movement and structural feedback paths in the default-off FrontierV2 closed-loop consumer. Own-column movement shadow and BoundaryRequest structural shadow both feed downstream ticks without cross-entity writes, production commitment emission, simthing-sim semantic state, or SEAD ladder reopening. This remains fixture/test support only: no ClauseThing implementation, no default runtime wiring, and no phase closure.
+
+## 11. Design-authority ruling: FrontierV2 ACCEPT + open `CLAUSE-SPEC-0` (Opus, 2026-05-30)
+
+**ACCEPT (Option A).** Verified against the fixture code, not just the reports:
+`FrontierV2OwnColumnShadow`/`FrontierV2BoundaryRequestShadow` are fixture-only structs (explicitly
+"not production state / not production commitment"); `validate_movement_write_target` rejects
+cross-entity writes (`source_unit_id != shadow.unit_id`); structural applies to a *shadow*
+BoundaryRequest queue, not a production commitment; and `apply_combined_feedback_to_config`
+carries shadow state into the next tick so the loop is **real** (mapping hashes change
+tick1→2→3, not replayed). FrontierV2-0..4 therefore complete the **bounded multi-tick closed-loop
+consumer proof at fixture/test-support level**, honestly classified, with all hard guardrails
+intact (own-column-only, allocator-routed dispatch, no production commitment, no `simthing-sim`
+awareness, no ladder reopening, no closure declared).
+
+**Review answers:** (1) yes — V2-4 completes the Forward Horizon consumer proof at fixture level;
+(2) yes — combined movement+structural feedback is sufficient to **stop the V2 prooflet ladder**;
+(3) yes — guardrails preserved; (4) yes — movement/structural are fixture-only shadows, not
+production runtime; (5) **no FrontierV2-5** — it would be a hygiene loop; (6) **yes — the next gate
+moves to the designer/spec-admission layer**; (7) no separate doc-only roadmap reset (that is the
+hygiene loop we avoid — this ruling does the orientation inline); (8) status below.
+
+**Status (design authority):** FrontierV2-0..4 = **ACCEPTED — bounded multi-tick closed-loop
+consumer proof complete (fixture/test-support level).** Movement + structural feedback are
+fixture-only shadows. No FrontierV2-5 unless a future product need names a concrete gap.
+
+### Next gate: `CLAUSE-SPEC-0` — Designer-Facing FrontierV2 Spec Admission
+
+The consumer is proven; the substrate is closed. The next named gate is the **designer/spec-
+admission layer** — the ClauseThing horizon, where (per the standing product directive) guardrails
+*optimally* live. `CLAUSE-SPEC-0` is the first concrete ClauseThing-facing step:
+
+- **Goal:** admit a **designer-authored FrontierV2 scenario description** through `simthing-spec`
+  and compile it to the *same* accepted FrontierV2 runtime artifacts the fixtures use. RON-first
+  now; ClauseScript-shaped later (the parked `ClauseThing_Spec` is the eventual front-end design —
+  archived under `workshop/archive/`, full copy in the owner's `Clauser/`).
+- **Guardrails relocate, they do not relax away.** The doctrine "guardrails at the designer-facing
+  horizon" means the FrontierV2 fixtures' hard-coded protections become **admission rejections**:
+  cross-entity movement writes, production commitment emission, Resource-Flow bypass, shared-pool
+  tick writes, unbounded fanout, and `simthing-sim` semantic leakage are **rejected at import**,
+  with diagnostics, before any GPU dispatch. The runtime stays the unconditional last line. This is
+  the Mapping/Resource-Flow ADR firewall pattern applied to scenario authoring.
+- **Scope/limits:** `CLAUSE-SPEC-0` is the designer-facing *spec admission* slice (validation +
+  compile to accepted artifacts), **not** the ClauseScript parser/front-end (that is the separate
+  ClauseThing track, still parked) and **not** production `SimSession` wiring. Default-off; opt-in;
+  CPU-oracle-parity where exact. No ACT/EVENT/OBS/PIPE ladder, no semantic WGSL, no scheduler/cache.
+- **Why this, not another fixture:** it is the first rung where the work stops being internal
+  prooflets and becomes a *designer-facing surface* — the on-ramp to ClauseThing and the natural
+  home for the guardrails. It gives the implementer a forward horizon at the authoring layer, not
+  another hygiene pass.

@@ -2591,6 +2591,18 @@ FrontierV2-3 extends the default-off FrontierV2 fixture by applying a structural
 
 FrontierV2-4 combines fixture-only own-column movement feedback and fixture-only BoundaryRequest structural feedback inside the default-off FrontierV2 consumer. It runs multiple ticks, applies both feedback paths, records CPU oracle parity and replay reproducibility, rejects cross-entity movement writes and invalid structural routes, and keeps all movement/structural behavior fixture/test-support only. It does not implement ClauseThing, production scenario runtime, production commitment emission, default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner/urgency/commitment emission, simthing-sim semantic awareness, parallel fixture economy, shared-pool tick writes, or SEAD ACT/EVENT/OBS/PIPE ladder expansion.
 
+**FrontierV2-0..4 — ACCEPTED by design authority (Opus, 2026-05-30; code-verified).** The bounded
+multi-tick closed-loop consumer proof is complete at fixture/test-support level: combined
+own-column movement + BoundaryRequest structural feedback feed downstream ticks (real loop —
+mapping hashes change across ticks), cross-entity writes and invalid routes rejected, no production
+commitment, dispatch through the Resource Flow allocator, deterministic replay. Movement/structural
+remain fixture-only shadows. **No FrontierV2-5** unless a future product need names a concrete gap.
+**Next named gate: `CLAUSE-SPEC-0` — Designer-Facing FrontierV2 Spec Admission** (admit a
+designer-authored FrontierV2 scenario through `simthing-spec`, compile to the *same* accepted
+runtime artifacts; RON-first, ClauseScript/ClauseThing later; the fixture guardrails **relocate to
+admission rejections**; not the ClauseScript parser, not production `SimSession` wiring). Ruling:
+[`docs/workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md) §11.
+
 Further SEAD actionability work must either: (1) produce a reusable numeric substrate consumed by Phase E fixtures, (2) directly close a Phase M/E blocker, or (3) be paused until a named product scenario requires runtime integration.
 - Native sqrt remains `ApproximateJitOnly`; F exact path requires artifact-backed descriptor admission.
 - Exact authority requires exhaustive `max_ulp == 0` proof against CPU `f32::sqrt` (ignored full sweep available separately).
