@@ -1,3 +1,7 @@
+# 2026-05-30 — FrontierV2-3 structural BoundaryRequest feedback application (Tier-2, landed)
+
+- FrontierV2-3 landed fixture-only structural BoundaryRequest feedback application across ticks inside the default-off FrontierV2 consumer, without production commitment emission, ClauseThing, or phase closure. Replay fingerprint `0ad0e0d7c80316ee`. Report: [`phase_m_frontier_v2_3_structural_feedback_application_results.md`](tests/phase_m_frontier_v2_3_structural_feedback_application_results.md).
+
 # 2026-05-30 — FrontierV2-2 own-column movement feedback application (Tier-2, landed)
 
 - FrontierV2-2 landed fixture-only own-column movement feedback application across ticks inside the default-off FrontierV2 consumer, without implementing ClauseThing or declaring phase closure. Replay fingerprint `6c01851a4afdfcbf`. Report: [`phase_m_frontier_v2_2_movement_feedback_application_results.md`](tests/phase_m_frontier_v2_2_movement_feedback_application_results.md).
