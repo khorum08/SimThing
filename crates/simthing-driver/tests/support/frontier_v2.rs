@@ -9,6 +9,8 @@ pub const FRONTIER_V2_FIXTURE_ID: &str = "frontier_v2_0_closed_loop_consumer_v1"
 pub const FRONTIER_V2_1_FIXTURE_ID: &str = "frontier_v2_1_candidate_evolution_v1";
 pub const FRONTIER_V2_2_FIXTURE_ID: &str = "frontier_v2_2_movement_feedback_application_v1";
 pub const FRONTIER_V2_3_FIXTURE_ID: &str = "frontier_v2_3_structural_feedback_application_v1";
+pub const FRONTIER_V2_4_FIXTURE_ID: &str = "frontier_v2_4_combined_feedback_loop_v1";
+pub const FRONTIER_V2_4_COMBINED_FEEDBACK_TICKS: u32 = 4;
 pub const FRONTIER_V2_CLOSED_LOOP_TICKS: u32 = 2;
 pub const FRONTIER_V2_2_MOVEMENT_FEEDBACK_TICKS: u32 = 3;
 
@@ -622,4 +624,92 @@ pub fn empty_boundary_request_shadow(source_unit_id: u32) -> FrontierV2BoundaryR
         tick_index: 0,
         applied: false,
     }
+}
+
+/// Apply closed-loop feedback plus structural shadow modifier (fixture-only).
+pub fn apply_combined_feedback_to_config(
+    base: &FrontierV1FixtureConfig,
+    prior_feedback: &FrontierV1LiveSelfAiFeedbackCandidate,
+    boundary_shadow: &FrontierV2BoundaryRequestShadow,
+) -> (FrontierV1FixtureConfig, u32) {
+    let with_loop = apply_feedback_to_config(base, prior_feedback);
+    let structural_feedback_code = derive_next_tick_structural_feedback_code(boundary_shadow);
+    let seed_delta_a = (structural_feedback_code % 5).saturating_add(2);
+    let seed_delta_b = (structural_feedback_code % 3).saturating_add(1);
+    let config = FrontierV1FixtureConfig {
+        district_output_a: with_loop
+            .district_output_a
+            .saturating_add(seed_delta_a)
+            .min(with_loop.source_cap),
+        district_output_b: with_loop
+            .district_output_b
+            .saturating_add(seed_delta_b)
+            .min(with_loop.source_cap),
+        ..with_loop
+    };
+    (config, structural_feedback_code)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontierV2CombinedFeedbackSummary {
+    pub tick0_movement_hash: u64,
+    pub tick1_movement_hash: u64,
+    pub tick0_structural_hash: u64,
+    pub tick1_structural_hash: u64,
+    pub movement_shadow_before_hash: u64,
+    pub movement_shadow_after_hash: u64,
+    pub boundary_shadow_before_hash: u64,
+    pub boundary_shadow_after_hash: u64,
+    pub combined_feedback_code: u32,
+    pub tick1_mapping_hash: u64,
+    pub tick2_mapping_hash: u64,
+    pub tick3_mapping_hash: u64,
+    pub tick2_proposal_dispatch_hash: u64,
+    pub tick3_proposal_dispatch_hash: u64,
+    pub combined_feedback_delta_hash: u64,
+    pub overflow_flags: u32,
+    pub tick0_resource_route_status: FrontierV2FieldStatus,
+    pub tick1_resource_route_status: FrontierV2FieldStatus,
+    pub tick2_resource_route_status: FrontierV2FieldStatus,
+    pub tick3_resource_route_status: FrontierV2FieldStatus,
+    pub movement_application_status: FrontierV2WriteClassification,
+    pub structural_application_status: FrontierV2WriteClassification,
+    pub combined_feedback_status: FrontierV2FieldStatus,
+    pub clause_thing_status: FrontierV2ClauseThingStatus,
+    pub phase_closure_status: FrontierV2PhaseClosureStatus,
+}
+
+impl FrontierV2CombinedFeedbackSummary {
+    pub fn combined_hex(&self) -> String {
+        let combined = fnv_mix(self.movement_shadow_after_hash)
+            ^ fnv_mix(self.boundary_shadow_after_hash)
+            ^ fnv_mix(self.tick2_mapping_hash)
+            ^ fnv_mix(self.tick3_mapping_hash)
+            ^ fnv_mix(self.combined_feedback_delta_hash)
+            ^ fnv_mix(u64::from(self.overflow_flags))
+            ^ fnv_mix(u64::from(self.combined_feedback_code));
+        format!("{:016x}", combined & 0xFFFF_FFFF_FFFF_FFFF)
+    }
+}
+
+pub fn hash_combined_feedback_delta(
+    movement_shadow: FrontierV2OwnColumnShadow,
+    boundary_shadow: FrontierV2BoundaryRequestShadow,
+    combined_feedback_code: u32,
+    tick1_mapping_hash: u64,
+    tick2_mapping_hash: u64,
+    tick3_mapping_hash: u64,
+) -> u64 {
+    let mut h = fnv64(b"frontier_v2_4_combined_feedback_delta");
+    h = fnv_append_u32(h, movement_shadow.row);
+    h = fnv_append_u32(h, movement_shadow.col);
+    h = fnv_append_u32(h, boundary_shadow.boundary_request_code);
+    h = fnv_append_u32(h, combined_feedback_code);
+    h = fnv_append_u32(h, tick1_mapping_hash as u32);
+    h = fnv_append_u32(h, (tick1_mapping_hash >> 32) as u32);
+    h = fnv_append_u32(h, tick2_mapping_hash as u32);
+    h = fnv_append_u32(h, (tick2_mapping_hash >> 32) as u32);
+    h = fnv_append_u32(h, tick3_mapping_hash as u32);
+    h = fnv_append_u32(h, (tick3_mapping_hash >> 32) as u32);
+    h
 }

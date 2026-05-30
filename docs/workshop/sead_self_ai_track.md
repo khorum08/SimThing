@@ -287,3 +287,7 @@ FrontierV2-2 extended the default-off FrontierV2 closed-loop consumer by applyin
 ### FrontierV2-3 result
 
 FrontierV2-3 extended the default-off FrontierV2 closed-loop consumer by applying fixture-only structural candidates to a BoundaryRequest shadow queue across ticks. The structural shadow context feeds the next tick without production commitment emission or simthing-sim semantic state. This remains fixture/test support only: no ClauseThing implementation, no default runtime wiring, no phase closure, and no SEAD ladder reopening.
+
+### FrontierV2-4 result
+
+FrontierV2-4 combined fixture-only movement and structural feedback paths in the default-off FrontierV2 closed-loop consumer. Own-column movement shadow and BoundaryRequest structural shadow both feed downstream ticks without cross-entity writes, production commitment emission, simthing-sim semantic state, or SEAD ladder reopening. This remains fixture/test support only: no ClauseThing implementation, no default runtime wiring, and no phase closure.
