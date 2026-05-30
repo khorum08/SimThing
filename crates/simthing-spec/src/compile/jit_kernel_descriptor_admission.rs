@@ -3,6 +3,9 @@
 //! Formalizes exact vs approximate output authority for landed M-JIT proof kernels.
 //! No production scheduler, no default wiring, no GPU runtime dispatch.
 
+use crate::compile::jit_exact_sqrt_artifact_admission::{
+    validate_exact_pre_sqrt_contract, ExactPreSqrtInputContract,
+};
 use crate::compile::jit_exact_sqrt_artifact_admission::validate_exact_sqrt_artifact_admission;
 use crate::error::SpecError;
 
@@ -60,6 +63,8 @@ pub struct KernelDescriptorSpec {
     pub production_wiring: bool,
     /// Artifact-backed exact sqrt binding (Candidate F only when hash-valid).
     pub exact_sqrt_artifact: Option<crate::compile::jit_exact_sqrt_artifact_admission::ExactSqrtArtifactDescriptor>,
+    /// Pre-sqrt input contract for F-backed magnitude kernels (SQRT-MAG-0 R1).
+    pub pre_sqrt_contract: Option<crate::compile::jit_exact_sqrt_artifact_admission::ExactPreSqrtInputContract>,
 }
 
 #[derive(Debug, Clone)]
@@ -186,6 +191,40 @@ pub fn validate_exact_kernel_inputs(
     for name in required_exact_inputs {
         if *name == "sqrt_out" || *name == "mag" {
             validate_exact_sqrt_artifact_admission(producer)?;
+            if *name == "mag"
+                && producer.pre_sqrt_contract
+                    != Some(ExactPreSqrtInputContract::ExactMag2Bits)
+            {
+                return Err(admission_err(
+                    &producer.id,
+                    "exact-authoritative mag requires ExactMag2Bits pre-sqrt contract",
+                ));
+            }
+        }
+        if *name == "mag2" {
+            match output_authority(producer, name) {
+                Some(OutputAuthority::ExactAuthoritative) => {
+                    validate_exact_pre_sqrt_contract(producer)?;
+                }
+                Some(OutputAuthority::ApproximateDiagnostic) => {
+                    return Err(admission_err(
+                        &producer.id,
+                        "output `mag2` is approximate/diagnostic, not exact-authoritative",
+                    ));
+                }
+                Some(OutputAuthority::RejectedDeferred) => {
+                    return Err(admission_err(
+                        &producer.id,
+                        "output `mag2` is rejected/deferred",
+                    ));
+                }
+                None => {
+                    return Err(admission_err(
+                        &producer.id,
+                        "output `mag2` not produced by kernel",
+                    ));
+                }
+            }
         }
         match output_authority(producer, name) {
             Some(OutputAuthority::ExactAuthoritative) => {}
@@ -244,6 +283,7 @@ fn test_only_descriptor(
         default_off: true,
         production_wiring: false,
         exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
     }
 }
 
@@ -293,6 +333,7 @@ pub fn landed_jit_kernel_descriptors() -> Vec<KernelDescriptorSpec> {
             NativeMathClass::None,
         ),
         crate::compile::jit_exact_sqrt_artifact_admission::sqrt_f_exact_kernel_descriptor(),
-        crate::compile::jit_exact_sqrt_artifact_admission::mag_f_exact_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::mag_f_from_exact_mag2_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::mag_f_from_dxdy_probe_kernel_descriptor(),
     ]
 }

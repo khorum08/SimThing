@@ -98,6 +98,7 @@ fn grad0_exact_only() -> KernelDescriptorSpec {
         default_off: true,
         production_wiring: false,
         exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
     }
 }
 
@@ -115,6 +116,7 @@ fn grad1_style_scorer() -> KernelDescriptorSpec {
         default_off: true,
         production_wiring: false,
         exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
     }
 }
 
@@ -773,6 +775,7 @@ fn jit_exec0_rejects_approximate_candidate_before_execution() {
         default_off: true,
         production_wiring: false,
         exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
     };
     let sqrt_err = try_execute_rejected_candidate(&sqrt_entry);
     match sqrt_err {

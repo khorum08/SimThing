@@ -29,6 +29,7 @@ fn grad1_style_scorer() -> KernelDescriptorSpec {
         default_off: true,
         production_wiring: false,
         exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
     }
 }
 
@@ -46,6 +47,7 @@ fn grad1_style_scorer_with_bias_read() -> KernelDescriptorSpec {
         default_off: true,
         production_wiring: false,
         exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
     }
 }
 
@@ -266,6 +268,7 @@ fn jit_cohort0_invalid_graph_rejects() {
         default_off: true,
         production_wiring: false,
         exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
     };
     let node_b = KernelDescriptorSpec {
         id: "m_jit_cycle_b".into(),
@@ -280,6 +283,7 @@ fn jit_cohort0_invalid_graph_rejects() {
         default_off: true,
         production_wiring: false,
         exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
     };
     let cycle = KernelGraphRequestSpec {
         request_id: "cycle_bad".into(),

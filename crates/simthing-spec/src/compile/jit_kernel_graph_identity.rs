@@ -39,6 +39,20 @@ fn format_native_math(native_math: NativeMathClass) -> &'static str {
     }
 }
 
+fn format_pre_sqrt_contract(
+    contract: Option<crate::compile::jit_exact_sqrt_artifact_admission::ExactPreSqrtInputContract>,
+) -> &'static str {
+    match contract {
+        None => "None",
+        Some(crate::compile::jit_exact_sqrt_artifact_admission::ExactPreSqrtInputContract::ExactMag2Bits) => {
+            "ExactMag2Bits"
+        }
+        Some(crate::compile::jit_exact_sqrt_artifact_admission::ExactPreSqrtInputContract::RawDxDyProbe) => {
+            "RawDxDyProbe"
+        }
+    }
+}
+
 fn format_bool(value: bool) -> &'static str {
     if value {
         "true"
@@ -55,13 +69,14 @@ fn canonicalize_node(node: &KernelDescriptorSpec) -> String {
     writes.sort_by(|a, b| a.name.cmp(&b.name));
 
     let mut lines = vec![format!(
-        "node id={} lane={} native_math={} semantic_free={} default_off={} production_wiring={}",
+        "node id={} lane={} native_math={} semantic_free={} default_off={} production_wiring={} pre_sqrt_contract={}",
         node.id,
         format_lane(node.lane),
         format_native_math(node.native_math),
         format_bool(node.semantic_free),
         format_bool(node.default_off),
         format_bool(node.production_wiring),
+        format_pre_sqrt_contract(node.pre_sqrt_contract),
     )];
 
     for read in reads {

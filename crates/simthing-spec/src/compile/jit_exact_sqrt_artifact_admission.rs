@@ -36,8 +36,19 @@ pub const SQRT_F_PROOF_REPORT: &str =
     "docs/tests/phase_m_jit_sqrt_exact5f_exhaustive_sweep_results.md";
 pub const SQRT_F_DOMAIN: &str = "0x0000_0000..=0x7F7F_FFFF";
 
-pub const MAG_F_DESCRIPTOR_ID: &str = "m_jit_mag_f_exact";
-pub const MAG_F_LABEL: &str = "ExactEuclideanMagnitudeF";
+pub const MAG_F_FROM_MAG2_DESCRIPTOR_ID: &str = "m_jit_mag_f_from_exact_mag2";
+pub const MAG_F_FROM_DXDY_PROBE_DESCRIPTOR_ID: &str = "m_jit_mag_f_from_dxdy_probe";
+pub const MAG_F_FROM_MAG2_LABEL: &str = "ExactEuclideanMagnitudeFFromExactMag2";
+pub const MAG_F_FROM_DXDY_PROBE_LABEL: &str = "RawDxDyMagnitudeFProbe";
+
+/// Pre-sqrt input contract for F-backed magnitude kernels (SQRT-MAG-0 R1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExactPreSqrtInputContract {
+    /// F sqrt over already exact-authoritative non-negative `mag2` bits.
+    ExactMag2Bits,
+    /// Raw `dx`/`dy` f32 multiply-add benchmark probe — not exact-authoritative `mag`.
+    RawDxDyProbe,
+}
 
 fn artifact_err(kernel: &str, reason: impl Into<String>) -> SpecError {
     SpecError::JitKernelDescriptorAdmission {
@@ -165,9 +176,17 @@ pub fn validate_exact_sqrt_artifact_binding(
     Ok(())
 }
 
-/// True when the descriptor is the landed F-backed exact Euclidean magnitude kernel.
-pub fn is_exact_mag_f_descriptor(spec: &KernelDescriptorSpec) -> bool {
-    spec.id == MAG_F_DESCRIPTOR_ID && spec.exact_sqrt_artifact.is_some()
+/// True when the descriptor is the landed F-backed exact magnitude-from-mag2 kernel.
+pub fn is_exact_mag_f_from_mag2_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == MAG_F_FROM_MAG2_DESCRIPTOR_ID
+        && spec.exact_sqrt_artifact.is_some()
+        && spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::ExactMag2Bits)
+}
+
+/// True when the descriptor is the raw dx/dy magnitude probe (non-exact mag output).
+pub fn is_mag_f_dxdy_probe_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == MAG_F_FROM_DXDY_PROBE_DESCRIPTOR_ID
+        && spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::RawDxDyProbe)
 }
 
 fn has_exact_f_authoritative_output(spec: &KernelDescriptorSpec) -> bool {
@@ -175,6 +194,85 @@ fn has_exact_f_authoritative_output(spec: &KernelDescriptorSpec) -> bool {
         out.authority == OutputAuthority::ExactAuthoritative
             && (out.name == "sqrt_out" || out.name == "mag")
     })
+}
+
+/// Validate pre-sqrt contract rules (SQRT-MAG-0 R1).
+pub fn validate_exact_pre_sqrt_contract(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
+    match spec.pre_sqrt_contract {
+        Some(ExactPreSqrtInputContract::ExactMag2Bits) => {
+            if !spec.reads.iter().any(|read| read == "mag2") {
+                return Err(artifact_err(
+                    &spec.id,
+                    "ExactMag2Bits contract requires reading exact-authoritative mag2 input",
+                ));
+            }
+            if spec.exact_sqrt_artifact.is_none() {
+                return Err(artifact_err(
+                    &spec.id,
+                    "ExactMag2Bits magnitude requires artifact-backed Candidate F binding",
+                ));
+            }
+            match spec
+                .writes
+                .iter()
+                .find(|out| out.name == "mag")
+                .map(|out| out.authority)
+            {
+                Some(OutputAuthority::ExactAuthoritative) => {}
+                _ => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        "ExactMag2Bits contract requires exact-authoritative mag output",
+                    ));
+                }
+            }
+        }
+        Some(ExactPreSqrtInputContract::RawDxDyProbe) => {
+            if !spec.reads.iter().any(|read| read == "dx")
+                || !spec.reads.iter().any(|read| read == "dy")
+            {
+                return Err(artifact_err(
+                    &spec.id,
+                    "RawDxDyProbe contract requires dx and dy reads",
+                ));
+            }
+            if spec
+                .writes
+                .iter()
+                .any(|out| out.name == "mag" && out.authority == OutputAuthority::ExactAuthoritative)
+            {
+                return Err(artifact_err(
+                    &spec.id,
+                    "raw dx/dy multiply-add probe cannot claim exact-authoritative mag output",
+                ));
+            }
+            match spec
+                .writes
+                .iter()
+                .find(|out| out.name == "mag")
+                .map(|out| out.authority)
+            {
+                Some(OutputAuthority::ApproximateDiagnostic) => {}
+                _ => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        "RawDxDyProbe contract requires approximate/diagnostic mag output",
+                    ));
+                }
+            }
+        }
+        None => {
+            if spec.writes.iter().any(|out| {
+                out.name == "mag" && out.authority == OutputAuthority::ExactAuthoritative
+            }) {
+                return Err(artifact_err(
+                    &spec.id,
+                    "exact-authoritative mag requires an ExactPreSqrtInputContract",
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
@@ -194,7 +292,7 @@ pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Re
                 ));
             }
         }
-        (Some(binding), _) => {
+        (Some(binding), has_exact) => {
             validate_exact_sqrt_artifact_binding(&spec.id, binding)?;
             if spec.native_math == NativeMathClass::ApproximateJitOnly {
                 return Err(artifact_err(
@@ -202,7 +300,9 @@ pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Re
                     "artifact-backed exact sqrt cannot use ApproximateJitOnly native math",
                 ));
             }
-            if !has_exact_f_out {
+            let is_dxdy_probe = spec.pre_sqrt_contract
+                == Some(ExactPreSqrtInputContract::RawDxDyProbe);
+            if !has_exact && !is_dxdy_probe {
                 return Err(artifact_err(
                     &spec.id,
                     "artifact-backed exact sqrt descriptor must declare exact-authoritative sqrt_out or mag",
@@ -211,6 +311,8 @@ pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Re
         }
         (None, false) => {}
     }
+
+    validate_exact_pre_sqrt_contract(spec)?;
 
     Ok(())
 }
@@ -222,18 +324,42 @@ fn exact_out(name: &str) -> KernelOutputSpec {
     }
 }
 
-/// Build the landed F-backed exact Euclidean magnitude kernel descriptor.
-pub fn mag_f_exact_kernel_descriptor() -> KernelDescriptorSpec {
+fn approx_out(name: &str) -> KernelOutputSpec {
+    KernelOutputSpec {
+        name: name.to_string(),
+        authority: OutputAuthority::ApproximateDiagnostic,
+    }
+}
+
+/// F-backed exact magnitude when `mag2` input is already exact-authoritative.
+pub fn mag_f_from_exact_mag2_kernel_descriptor() -> KernelDescriptorSpec {
     KernelDescriptorSpec {
-        id: MAG_F_DESCRIPTOR_ID.to_string(),
+        id: MAG_F_FROM_MAG2_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
-        reads: vec!["dx".to_string(), "dy".to_string()],
+        reads: vec!["mag2".to_string()],
         writes: vec![exact_out("mag")],
         native_math: NativeMathClass::None,
         semantic_free: true,
         default_off: true,
         production_wiring: false,
         exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
+        pre_sqrt_contract: Some(ExactPreSqrtInputContract::ExactMag2Bits),
+    }
+}
+
+/// Raw dx/dy multiply-add magnitude probe — F sqrt stage, non-exact mag authority.
+pub fn mag_f_from_dxdy_probe_kernel_descriptor() -> KernelDescriptorSpec {
+    KernelDescriptorSpec {
+        id: MAG_F_FROM_DXDY_PROBE_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads: vec!["dx".to_string(), "dy".to_string()],
+        writes: vec![approx_out("mag")],
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
+        pre_sqrt_contract: Some(ExactPreSqrtInputContract::RawDxDyProbe),
     }
 }
 
@@ -249,5 +375,6 @@ pub fn sqrt_f_exact_kernel_descriptor() -> KernelDescriptorSpec {
         default_off: true,
         production_wiring: false,
         exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
+        pre_sqrt_contract: None,
     }
 }

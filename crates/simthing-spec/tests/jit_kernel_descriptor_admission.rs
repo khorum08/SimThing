@@ -131,6 +131,7 @@ fn jit_desc1_rejects_approximate_native_math_exact_output() {
         default_off: true,
         production_wiring: false,
         exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
     };
     assert_admission_err(&desc, "approximate native math");
 }
