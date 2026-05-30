@@ -93,7 +93,7 @@ no phase closure declared. Ruling: [`workshop/sead_self_ai_track.md`](workshop/s
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| L1-0 | _(reserved — first simthing-spec buildout slice)_ | Pending | — | — | — |
+| L1-0 | Designer admission substrate preflight: shared diagnostics + guardrail rejection vocabulary + accepted FrontierV2 artifact target names | Done | — | — | [`phase_m_l1_0_designer_admission_substrate_results.md`](tests/phase_m_l1_0_designer_admission_substrate_results.md) |
 
 ## 5. L2 — CLAUSE-SPEC (parked, downstream of L1)
 

@@ -1,0 +1,422 @@
+//! Stable designer-facing admission diagnostic vocabulary.
+
+/// High-level guardrail bucket surfaced to designers at import/admission time.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum DesignerFacingGuardrailClass {
+    DefaultOff,
+    ResourceFlowRouting,
+    MovementWriteBoundary,
+    CommitmentEmission,
+    TickTimeContention,
+    EconomySubstrate,
+    CpuDecisionPath,
+    ShaderSemantics,
+    RuntimeWiring,
+    SimSemanticLeakage,
+    MappingExpansion,
+    ResourceFlowExpansion,
+    DiscreteOrderingExpansion,
+    AuthoringFrontEnd,
+    ConsumerProofLadder,
+}
+
+/// Specific rejection reason within the designer admission substrate.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum DesignerAdmissionRejectionKind {
+    DefaultOnRequest,
+    ResourceFlowBypass,
+    CrossEntityMovementWrite,
+    ProductionMovementWrite,
+    ProductionCommitmentEmission,
+    SharedPoolTickWrite,
+    ParallelFixtureEconomy,
+    CpuPlanner,
+    CpuUrgency,
+    CpuCommitmentEmission,
+    SemanticWgslRequest,
+    SchedulerCacheRequest,
+    SimthingSimSemanticStateRequest,
+    AtlasWithoutGate,
+    ActiveMaskWithoutGate,
+    PerceptionFogWithoutGate,
+    SourceIdentityWithoutGate,
+    NestedE11BWithoutNamedScenario,
+    E11B5WithoutNamedScenario,
+    D2aWithoutNamedScenario,
+    ClauseScriptParserParked,
+    ClauseThingRuntimeParked,
+    FrontierV2FiveRejected,
+    SeadLadderReopenRejected,
+}
+
+/// Stable diagnostic code string for designer admission rejections.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum DesignerAdmissionDiagnosticCode {
+    DefaultOnRejected,
+    ResourceFlowBypassRejected,
+    CrossEntityMovementWriteRejected,
+    ProductionMovementWriteRejected,
+    ProductionCommitmentEmissionRejected,
+    SharedPoolTickWriteRejected,
+    ParallelFixtureEconomyRejected,
+    CpuPlannerRejected,
+    CpuUrgencyRejected,
+    CpuCommitmentEmissionRejected,
+    SemanticWgslRequestRejected,
+    SchedulerCacheRequestRejected,
+    SimthingSimSemanticStateRequestRejected,
+    AtlasRequestedWithoutGate,
+    ActiveMaskRequestedWithoutGate,
+    PerceptionFogRequestedWithoutGate,
+    SourceIdentityRequestedWithoutGate,
+    NestedE11BRequestedWithoutNamedScenario,
+    E11B5RequestedWithoutNamedScenario,
+    D2aRequestedWithoutNamedScenario,
+    ClauseScriptParserRequestParked,
+    ClauseThingRuntimeRequestParked,
+    FrontierV2FiveRequestRejected,
+    ActEventObsPipeLadderReopenRejected,
+}
+
+impl DesignerAdmissionDiagnosticCode {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::DefaultOnRejected => "L1-0-DEFAULT-ON-REJECTED",
+            Self::ResourceFlowBypassRejected => "L1-0-RESOURCE-FLOW-BYPASS-REJECTED",
+            Self::CrossEntityMovementWriteRejected => "L1-0-CROSS-ENTITY-MOVEMENT-WRITE-REJECTED",
+            Self::ProductionMovementWriteRejected => "L1-0-PRODUCTION-MOVEMENT-WRITE-REJECTED",
+            Self::ProductionCommitmentEmissionRejected => {
+                "L1-0-PRODUCTION-COMMITMENT-EMISSION-REJECTED"
+            }
+            Self::SharedPoolTickWriteRejected => "L1-0-SHARED-POOL-TICK-WRITE-REJECTED",
+            Self::ParallelFixtureEconomyRejected => "L1-0-PARALLEL-FIXTURE-ECONOMY-REJECTED",
+            Self::CpuPlannerRejected => "L1-0-CPU-PLANNER-REJECTED",
+            Self::CpuUrgencyRejected => "L1-0-CPU-URGENCY-REJECTED",
+            Self::CpuCommitmentEmissionRejected => "L1-0-CPU-COMMITMENT-EMISSION-REJECTED",
+            Self::SemanticWgslRequestRejected => "L1-0-SEMANTIC-WGSL-REQUEST-REJECTED",
+            Self::SchedulerCacheRequestRejected => "L1-0-SCHEDULER-CACHE-REQUEST-REJECTED",
+            Self::SimthingSimSemanticStateRequestRejected => {
+                "L1-0-SIMTHING-SIM-SEMANTIC-STATE-REQUEST-REJECTED"
+            }
+            Self::AtlasRequestedWithoutGate => "L1-0-ATLAS-REQUESTED-WITHOUT-GATE",
+            Self::ActiveMaskRequestedWithoutGate => "L1-0-ACTIVE-MASK-REQUESTED-WITHOUT-GATE",
+            Self::PerceptionFogRequestedWithoutGate => {
+                "L1-0-PERCEPTION-FOG-REQUESTED-WITHOUT-GATE"
+            }
+            Self::SourceIdentityRequestedWithoutGate => {
+                "L1-0-SOURCE-IDENTITY-REQUESTED-WITHOUT-GATE"
+            }
+            Self::NestedE11BRequestedWithoutNamedScenario => {
+                "L1-0-NESTED-E11B-REQUESTED-WITHOUT-NAMED-SCENARIO"
+            }
+            Self::E11B5RequestedWithoutNamedScenario => {
+                "L1-0-E11B5-REQUESTED-WITHOUT-NAMED-SCENARIO"
+            }
+            Self::D2aRequestedWithoutNamedScenario => {
+                "L1-0-D2A-REQUESTED-WITHOUT-NAMED-SCENARIO"
+            }
+            Self::ClauseScriptParserRequestParked => "L1-0-CLAUSESCRIPT-PARSER-REQUEST-PARKED",
+            Self::ClauseThingRuntimeRequestParked => "L1-0-CLAUSETHING-RUNTIME-REQUEST-PARKED",
+            Self::FrontierV2FiveRequestRejected => "L1-0-FRONTIERV2-5-REQUEST-REJECTED",
+            Self::ActEventObsPipeLadderReopenRejected => {
+                "L1-0-ACT-EVENT-OBS-PIPE-LADDER-REOPEN-REJECTED"
+            }
+        }
+    }
+
+    pub fn guardrail_class(self) -> DesignerFacingGuardrailClass {
+        match self {
+            Self::DefaultOnRejected => DesignerFacingGuardrailClass::DefaultOff,
+            Self::ResourceFlowBypassRejected => DesignerFacingGuardrailClass::ResourceFlowRouting,
+            Self::CrossEntityMovementWriteRejected
+            | Self::ProductionMovementWriteRejected => {
+                DesignerFacingGuardrailClass::MovementWriteBoundary
+            }
+            Self::ProductionCommitmentEmissionRejected => {
+                DesignerFacingGuardrailClass::CommitmentEmission
+            }
+            Self::SharedPoolTickWriteRejected => DesignerFacingGuardrailClass::TickTimeContention,
+            Self::ParallelFixtureEconomyRejected => DesignerFacingGuardrailClass::EconomySubstrate,
+            Self::CpuPlannerRejected
+            | Self::CpuUrgencyRejected
+            | Self::CpuCommitmentEmissionRejected => DesignerFacingGuardrailClass::CpuDecisionPath,
+            Self::SemanticWgslRequestRejected => DesignerFacingGuardrailClass::ShaderSemantics,
+            Self::SchedulerCacheRequestRejected => DesignerFacingGuardrailClass::RuntimeWiring,
+            Self::SimthingSimSemanticStateRequestRejected => {
+                DesignerFacingGuardrailClass::SimSemanticLeakage
+            }
+            Self::AtlasRequestedWithoutGate
+            | Self::ActiveMaskRequestedWithoutGate
+            | Self::PerceptionFogRequestedWithoutGate
+            | Self::SourceIdentityRequestedWithoutGate => {
+                DesignerFacingGuardrailClass::MappingExpansion
+            }
+            Self::NestedE11BRequestedWithoutNamedScenario
+            | Self::E11B5RequestedWithoutNamedScenario => {
+                DesignerFacingGuardrailClass::ResourceFlowExpansion
+            }
+            Self::D2aRequestedWithoutNamedScenario => {
+                DesignerFacingGuardrailClass::DiscreteOrderingExpansion
+            }
+            Self::ClauseScriptParserRequestParked
+            | Self::ClauseThingRuntimeRequestParked => {
+                DesignerFacingGuardrailClass::AuthoringFrontEnd
+            }
+            Self::FrontierV2FiveRequestRejected
+            | Self::ActEventObsPipeLadderReopenRejected => {
+                DesignerFacingGuardrailClass::ConsumerProofLadder
+            }
+        }
+    }
+
+    pub fn rejection_kind(self) -> DesignerAdmissionRejectionKind {
+        match self {
+            Self::DefaultOnRejected => DesignerAdmissionRejectionKind::DefaultOnRequest,
+            Self::ResourceFlowBypassRejected => DesignerAdmissionRejectionKind::ResourceFlowBypass,
+            Self::CrossEntityMovementWriteRejected => {
+                DesignerAdmissionRejectionKind::CrossEntityMovementWrite
+            }
+            Self::ProductionMovementWriteRejected => {
+                DesignerAdmissionRejectionKind::ProductionMovementWrite
+            }
+            Self::ProductionCommitmentEmissionRejected => {
+                DesignerAdmissionRejectionKind::ProductionCommitmentEmission
+            }
+            Self::SharedPoolTickWriteRejected => DesignerAdmissionRejectionKind::SharedPoolTickWrite,
+            Self::ParallelFixtureEconomyRejected => {
+                DesignerAdmissionRejectionKind::ParallelFixtureEconomy
+            }
+            Self::CpuPlannerRejected => DesignerAdmissionRejectionKind::CpuPlanner,
+            Self::CpuUrgencyRejected => DesignerAdmissionRejectionKind::CpuUrgency,
+            Self::CpuCommitmentEmissionRejected => {
+                DesignerAdmissionRejectionKind::CpuCommitmentEmission
+            }
+            Self::SemanticWgslRequestRejected => DesignerAdmissionRejectionKind::SemanticWgslRequest,
+            Self::SchedulerCacheRequestRejected => {
+                DesignerAdmissionRejectionKind::SchedulerCacheRequest
+            }
+            Self::SimthingSimSemanticStateRequestRejected => {
+                DesignerAdmissionRejectionKind::SimthingSimSemanticStateRequest
+            }
+            Self::AtlasRequestedWithoutGate => DesignerAdmissionRejectionKind::AtlasWithoutGate,
+            Self::ActiveMaskRequestedWithoutGate => {
+                DesignerAdmissionRejectionKind::ActiveMaskWithoutGate
+            }
+            Self::PerceptionFogRequestedWithoutGate => {
+                DesignerAdmissionRejectionKind::PerceptionFogWithoutGate
+            }
+            Self::SourceIdentityRequestedWithoutGate => {
+                DesignerAdmissionRejectionKind::SourceIdentityWithoutGate
+            }
+            Self::NestedE11BRequestedWithoutNamedScenario => {
+                DesignerAdmissionRejectionKind::NestedE11BWithoutNamedScenario
+            }
+            Self::E11B5RequestedWithoutNamedScenario => {
+                DesignerAdmissionRejectionKind::E11B5WithoutNamedScenario
+            }
+            Self::D2aRequestedWithoutNamedScenario => {
+                DesignerAdmissionRejectionKind::D2aWithoutNamedScenario
+            }
+            Self::ClauseScriptParserRequestParked => {
+                DesignerAdmissionRejectionKind::ClauseScriptParserParked
+            }
+            Self::ClauseThingRuntimeRequestParked => {
+                DesignerAdmissionRejectionKind::ClauseThingRuntimeParked
+            }
+            Self::FrontierV2FiveRequestRejected => {
+                DesignerAdmissionRejectionKind::FrontierV2FiveRejected
+            }
+            Self::ActEventObsPipeLadderReopenRejected => {
+                DesignerAdmissionRejectionKind::SeadLadderReopenRejected
+            }
+        }
+    }
+}
+
+/// Designer-facing admission diagnostic emitted at import/admission time.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DesignerAdmissionDiagnostic {
+    pub code: DesignerAdmissionDiagnosticCode,
+    pub guardrail_class: DesignerFacingGuardrailClass,
+    pub rejection_kind: DesignerAdmissionRejectionKind,
+    pub message: String,
+    pub hint: Option<String>,
+}
+
+impl DesignerAdmissionDiagnostic {
+    pub fn code_str(&self) -> &'static str {
+        self.code.as_str()
+    }
+}
+
+pub fn designer_admission_diagnostic(
+    code: DesignerAdmissionDiagnosticCode,
+    message: impl Into<String>,
+    hint: Option<&str>,
+) -> DesignerAdmissionDiagnostic {
+    DesignerAdmissionDiagnostic {
+        guardrail_class: code.guardrail_class(),
+        rejection_kind: code.rejection_kind(),
+        code,
+        message: message.into(),
+        hint: hint.map(str::to_owned),
+    }
+}
+
+pub fn designer_admission_diagnostic_for_rejection(
+    kind: DesignerAdmissionRejectionKind,
+) -> DesignerAdmissionDiagnostic {
+    let (code, message, hint) = match kind {
+        DesignerAdmissionRejectionKind::DefaultOnRequest => (
+            DesignerAdmissionDiagnosticCode::DefaultOnRejected,
+            "default-on execution or SimSession wiring is rejected at designer admission",
+            Some("keep scenarios opt-in/default-off until a separately gated product decision authorizes default wiring"),
+        ),
+        DesignerAdmissionRejectionKind::ResourceFlowBypass => (
+            DesignerAdmissionDiagnosticCode::ResourceFlowBypassRejected,
+            "resource dispatch must route through the accepted Resource Flow allocator substrate",
+            Some("use OrderBand sweeps with AddToTarget on independent participant columns; do not bypass the allocator"),
+        ),
+        DesignerAdmissionRejectionKind::CrossEntityMovementWrite => (
+            DesignerAdmissionDiagnosticCode::CrossEntityMovementWriteRejected,
+            "cross-entity movement writes are rejected at designer admission",
+            Some("movement feedback may update own-column fixture shadows only; source_unit_id must match shadow.unit_id"),
+        ),
+        DesignerAdmissionRejectionKind::ProductionMovementWrite => (
+            DesignerAdmissionDiagnosticCode::ProductionMovementWriteRejected,
+            "production movement writes are rejected at designer admission",
+            Some("FrontierV2 movement remains fixture-only shadow state until a separately gated runtime decision lands"),
+        ),
+        DesignerAdmissionRejectionKind::ProductionCommitmentEmission => (
+            DesignerAdmissionDiagnosticCode::ProductionCommitmentEmissionRejected,
+            "production commitment emission is rejected at designer admission",
+            Some("structural feedback uses BoundaryRequest fixture shadows only; Threshold+EmitEvent remains GPU-resident and separately gated for production"),
+        ),
+        DesignerAdmissionRejectionKind::SharedPoolTickWrite => (
+            DesignerAdmissionDiagnosticCode::SharedPoolTickWriteRejected,
+            "shared-pool tick-time writes are rejected at designer admission",
+            Some("Resource Flow uses independent participant columns with no shared-pool contention at tick time"),
+        ),
+        DesignerAdmissionRejectionKind::ParallelFixtureEconomy => (
+            DesignerAdmissionDiagnosticCode::ParallelFixtureEconomyRejected,
+            "parallel fixture-local economies are rejected at designer admission",
+            Some("economy influence must route through accepted discrete ResourceEconomySpec or Resource Flow substrates, not fixture-local parallel ledgers"),
+        ),
+        DesignerAdmissionRejectionKind::CpuPlanner => (
+            DesignerAdmissionDiagnosticCode::CpuPlannerRejected,
+            "CPU-side map or AI planner requests are rejected at designer admission",
+            Some("decisions emerge as GPU Threshold+EmitEvent crossings; CPU consumes resolved summaries at boundaries only"),
+        ),
+        DesignerAdmissionRejectionKind::CpuUrgency => (
+            DesignerAdmissionDiagnosticCode::CpuUrgencyRejected,
+            "CPU-side urgency computation is rejected at designer admission",
+            Some("urgency stays GPU-resident via field→reduction→EvalEML→Threshold"),
+        ),
+        DesignerAdmissionRejectionKind::CpuCommitmentEmission => (
+            DesignerAdmissionDiagnosticCode::CpuCommitmentEmissionRejected,
+            "CPU-side commitment emission is rejected at designer admission",
+            Some("commitments are GPU Threshold+EmitEvent crossings; CPU must not emit structural commitments"),
+        ),
+        DesignerAdmissionRejectionKind::SemanticWgslRequest => (
+            DesignerAdmissionDiagnosticCode::SemanticWgslRequestRejected,
+            "semantic WGSL requests are rejected at designer admission",
+            Some("only generic semantic-free shader extensions with CPU-oracle parity and admission-pinned meaning are admissible"),
+        ),
+        DesignerAdmissionRejectionKind::SchedulerCacheRequest => (
+            DesignerAdmissionDiagnosticCode::SchedulerCacheRequestRejected,
+            "scheduler/cache/default SimSession wiring requests are rejected at designer admission",
+            Some("PROD-0 provides explicit registered exact cohort execution only; scheduler/cache remain separately gated"),
+        ),
+        DesignerAdmissionRejectionKind::SimthingSimSemanticStateRequest => (
+            DesignerAdmissionDiagnosticCode::SimthingSimSemanticStateRequestRejected,
+            "simthing-sim semantic/map/Gadget/Personality state requests are rejected at designer admission",
+            Some("semantics compile away in simthing-spec/driver to flat AccumulatorOp registrations"),
+        ),
+        DesignerAdmissionRejectionKind::AtlasWithoutGate => (
+            DesignerAdmissionDiagnosticCode::AtlasRequestedWithoutGate,
+            "atlas batching is rejected until a named multi-theater scenario, VRAM budget, and §11-gate PR pass",
+            Some("request_atlas_batching stays rejected at admission; see v7.8 Line C"),
+        ),
+        DesignerAdmissionRejectionKind::ActiveMaskWithoutGate => (
+            DesignerAdmissionDiagnosticCode::ActiveMaskRequestedWithoutGate,
+            "active-mask halo execution is rejected without a separately gated contract",
+            Some("ActiveOnlyExperimentalNoHalo is never production-authorized"),
+        ),
+        DesignerAdmissionRejectionKind::PerceptionFogWithoutGate => (
+            DesignerAdmissionDiagnosticCode::PerceptionFogRequestedWithoutGate,
+            "perception/fog/deception fields are rejected without a separately gated scenario",
+            Some("perceived columns may not write back into authoritative true fields except via explicit gameplay events"),
+        ),
+        DesignerAdmissionRejectionKind::SourceIdentityWithoutGate => (
+            DesignerAdmissionDiagnosticCode::SourceIdentityRequestedWithoutGate,
+            "behavioral source identity/source_mask is rejected without a separately gated track",
+            Some("column-wide source_col zeroing is banned; source identity remains deferred under the Mapping ADR"),
+        ),
+        DesignerAdmissionRejectionKind::NestedE11BWithoutNamedScenario => (
+            DesignerAdmissionDiagnosticCode::NestedE11BRequestedWithoutNamedScenario,
+            "nested E-11B hierarchical allocation is rejected without a named depth>2 economy scenario",
+            Some("FlatStarResourceFlow remains the accepted bounded posture; see v7.8 Line A"),
+        ),
+        DesignerAdmissionRejectionKind::E11B5WithoutNamedScenario => (
+            DesignerAdmissionDiagnosticCode::E11B5RequestedWithoutNamedScenario,
+            "E-11B-5 dynamic enrollment is rejected without a named depth>2 economy scenario",
+            Some("nested arena enrollment remains parked behind v7.8 Line A"),
+        ),
+        DesignerAdmissionRejectionKind::D2aWithoutNamedScenario => (
+            DesignerAdmissionDiagnosticCode::D2aRequestedWithoutNamedScenario,
+            "D-2a boundary transaction scheduling is rejected without a named hard-currency contention scenario",
+            Some("discrete AccumulatorOp transfer/recipe/emission remains the standing path; see v7.8 Line B"),
+        ),
+        DesignerAdmissionRejectionKind::ClauseScriptParserParked => (
+            DesignerAdmissionDiagnosticCode::ClauseScriptParserRequestParked,
+            "ClauseScript parser/front-end requests are parked until L3 ClauseThing authorization",
+            Some("L1 builds simthing-spec admission substrate; CLAUSE-SPEC-0 is L2 and remains downstream"),
+        ),
+        DesignerAdmissionRejectionKind::ClauseThingRuntimeParked => (
+            DesignerAdmissionDiagnosticCode::ClauseThingRuntimeRequestParked,
+            "ClauseThing runtime/front-end requests are parked until L2 CLAUSE-SPEC lands and L3 is explicitly authorized",
+            Some("ClauseThing remains proposal-only; do not implement the parser in L1"),
+        ),
+        DesignerAdmissionRejectionKind::FrontierV2FiveRejected => (
+            DesignerAdmissionDiagnosticCode::FrontierV2FiveRequestRejected,
+            "FrontierV2-5 requests are rejected; the bounded multi-tick consumer proof is complete at fixture level",
+            Some("next gate is L1 simthing-spec buildout, then L2 CLAUSE-SPEC-0"),
+        ),
+        DesignerAdmissionRejectionKind::SeadLadderReopenRejected => (
+            DesignerAdmissionDiagnosticCode::ActEventObsPipeLadderReopenRejected,
+            "ACT-5/EVENT-3/OBS-5/PIPE-1 ladder reopen requests are rejected",
+            Some("SEAD Self-AI Proposal Pipeline V1 is consolidated and closed; further stages require a separately named scenario"),
+        ),
+    };
+    designer_admission_diagnostic(code, message, hint)
+}
+
+/// All stable diagnostic codes in deterministic order.
+pub fn all_designer_admission_diagnostic_codes() -> &'static [DesignerAdmissionDiagnosticCode] {
+    &[
+        DesignerAdmissionDiagnosticCode::DefaultOnRejected,
+        DesignerAdmissionDiagnosticCode::ResourceFlowBypassRejected,
+        DesignerAdmissionDiagnosticCode::CrossEntityMovementWriteRejected,
+        DesignerAdmissionDiagnosticCode::ProductionMovementWriteRejected,
+        DesignerAdmissionDiagnosticCode::ProductionCommitmentEmissionRejected,
+        DesignerAdmissionDiagnosticCode::SharedPoolTickWriteRejected,
+        DesignerAdmissionDiagnosticCode::ParallelFixtureEconomyRejected,
+        DesignerAdmissionDiagnosticCode::CpuPlannerRejected,
+        DesignerAdmissionDiagnosticCode::CpuUrgencyRejected,
+        DesignerAdmissionDiagnosticCode::CpuCommitmentEmissionRejected,
+        DesignerAdmissionDiagnosticCode::SemanticWgslRequestRejected,
+        DesignerAdmissionDiagnosticCode::SchedulerCacheRequestRejected,
+        DesignerAdmissionDiagnosticCode::SimthingSimSemanticStateRequestRejected,
+        DesignerAdmissionDiagnosticCode::AtlasRequestedWithoutGate,
+        DesignerAdmissionDiagnosticCode::ActiveMaskRequestedWithoutGate,
+        DesignerAdmissionDiagnosticCode::PerceptionFogRequestedWithoutGate,
+        DesignerAdmissionDiagnosticCode::SourceIdentityRequestedWithoutGate,
+        DesignerAdmissionDiagnosticCode::NestedE11BRequestedWithoutNamedScenario,
+        DesignerAdmissionDiagnosticCode::E11B5RequestedWithoutNamedScenario,
+        DesignerAdmissionDiagnosticCode::D2aRequestedWithoutNamedScenario,
+        DesignerAdmissionDiagnosticCode::ClauseScriptParserRequestParked,
+        DesignerAdmissionDiagnosticCode::ClauseThingRuntimeRequestParked,
+        DesignerAdmissionDiagnosticCode::FrontierV2FiveRequestRejected,
+        DesignerAdmissionDiagnosticCode::ActEventObsPipeLadderReopenRejected,
+    ]
+}

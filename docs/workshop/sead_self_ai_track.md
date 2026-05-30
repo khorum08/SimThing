@@ -340,3 +340,11 @@ admission layer** — the ClauseThing horizon, where (per the standing product d
   prooflets and becomes a *designer-facing surface* — the on-ramp to ClauseThing and the natural
   home for the guardrails. It gives the implementer a forward horizon at the authoring layer, not
   another hygiene pass.
+
+### L1-0 clarification
+
+The immediate next implementation gate after FrontierV2 acceptance is **L1 simthing-spec buildout**
+(`design_v7_8_production_track.md` §4). **`CLAUSE-SPEC-0` remains the L2 designer-authored FrontierV2
+scenario admission step, parked until L1 lands.** L1-0 adds the shared designer-facing admission
+diagnostics and artifact-target vocabulary; it does not implement ClauseThing, ClauseScript, or
+production runtime wiring.

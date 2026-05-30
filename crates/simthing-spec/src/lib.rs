@@ -43,6 +43,7 @@
 
 pub mod boundary;
 pub mod compile;
+pub mod designer_admission;
 pub mod diagnostics;
 pub mod error;
 pub mod keys;
@@ -173,6 +174,15 @@ pub use compile::{
 pub use compile::jit_kernel_production_registry_shell::{
     ProductionKernelRegistryShell, ProductionKernelRegistryShellConfig,
     RegisteredProductionCandidate,
+};
+pub use designer_admission::{
+    accepted_frontier_v2_artifact_target_ids, accepted_frontier_v2_artifact_targets,
+    all_designer_admission_diagnostic_codes, designer_admission_diagnostic,
+    designer_admission_diagnostic_for_rejection, evaluate_designer_admission_request,
+    resolve_frontier_artifact_target_id, AcceptedFrontierArtifactTarget,
+    DesignerAdmissionDiagnostic, DesignerAdmissionDiagnosticCode,
+    DesignerAdmissionPreflightReport, DesignerAdmissionRejectionKind,
+    DesignerAdmissionRequest, DesignerFacingGuardrailClass, SeadLadderStage,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;

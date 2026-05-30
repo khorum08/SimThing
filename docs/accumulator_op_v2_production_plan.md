@@ -16,6 +16,7 @@
 > scope* is built; the deferred set is the bounded posture, unblocked only by a named scenario.
 > Next track (per product direction, gated behind this closure): **simthing-spec buildout to prep
 > for ClauseThing** → then the ClauseThing-facing designer/spec-admission work (`CLAUSE-SPEC-0`).
+> PR ladders for v7.8 forward work live in [`design_v7_8_production_track.md`](design_v7_8_production_track.md).
 > Companion to `adr_accumulator_op_v2.md`.
 >
 > The PR ladder below is the authoritative sequencing (historical record). Phases A–D are not
