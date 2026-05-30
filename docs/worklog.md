@@ -1,3 +1,7 @@
+# 2026-05-30 — FrontierV1-2 GPU-resident execution and replay acceptance (Tier-2, landed)
+
+- FrontierV1-2 added GPU-resident execution/replay acceptance evidence for the default-off FrontierV1 fixture, preserving explicit opt-in, accepted routing substrates, and no default runtime wiring.
+
 # 2026-05-30 — FrontierV1-1 opt-in end-to-end fixture wiring (Tier-2, landed)
 
 - FrontierV1-1 wired the default-off FrontierV1 fixture through first-slice mapping, flat-star Resource Flow, and SEAD Self-AI routing in driver/spec space; no default runtime wiring added.
