@@ -386,3 +386,15 @@ production commitment emission, shared-pool tick writes, simthing-sim semantic l
 FrontierV2-5, ACT/EVENT/OBS/PIPE reopen, ClauseScript, and ClauseThing requests are rejected.
 This remains spec/admission and fixture-support only: no ClauseThing runtime, no ClauseScript
 parser, no production SimSession wiring, no phase closure.
+
+### CLAUSE-SPEC-0 — design-authority ruling: ACCEPT (Opus, 2026-05-30)
+
+**ACCEPT.** Code-verified (not just the report): `admit_clause_spec_frontier_v2_scenario` reuses the
+L1 preflight (`preview_designer_admission_preflight`), routes every guardrail-request field into L1
+rejection, lowers **metadata-only** to accepted FrontierV2 artifact targets, and creates no runtime
+object; `simthing-sim` carries no FrontierV2/SEAD/ClauseThing awareness; the L1 diagnostic nit is
+fixed (`MalformedManifest` / `UnknownArtifactTarget`). This is the v7.8 §2.1 relocate-to-admission
+doctrine realized. `cargo check --workspace` green. Acceptance of record:
+[`../tests/phase_m_clause_spec0_acceptance_review_results.md`](../tests/phase_m_clause_spec0_acceptance_review_results.md).
+**L2 is accepted; L3 (ClauseThing / ClauseScript) stays parked pending separate product
+authorization** — the track is at a clean rest point with no open implementation gate.

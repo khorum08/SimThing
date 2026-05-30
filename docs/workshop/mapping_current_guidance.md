@@ -18,14 +18,16 @@ Constitutional surfacing:
 > accepted FrontierV2 artifact targets are the designer/spec admission substrate. **L2 implementation
 > has landed and is pending design-authority review: `CLAUSE-SPEC-0` — Designer-Facing FrontierV2
 > Spec Admission** — admits a designer-authored FrontierV2 scenario through `simthing-spec` and
-> compiles it to the *same* accepted runtime artifacts,
-> with guardrails **relocated to spec admission** (cross-entity writes, production commitment,
-> Resource-Flow bypass, unbounded fanout, `simthing-sim` leakage rejected at import; runtime is the
-> last line). **L2 scope is spec admission + compile only — do NOT implement the ClauseScript
-> parser/front-end (separate parked ClauseThing/L3 track) or production `SimSession` wiring.** Do not reopen closed
-> phases, self-accept, or spawn `ACT-N`/`FrontierV2-5`/atlas/nested prooflets (all deferred behind
-> named scenarios). Closure/acceptance memos are **design-authority + product only**. (Charter:
-> [`sead_self_ai_track.md`](sead_self_ai_track.md) §11; closure: [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md), [`../design_v7_7.md`](../design_v7_7.md).)
+> compiles it metadata-only to the *same* accepted runtime artifacts, with guardrails **relocated to
+> spec admission** (cross-entity writes, production commitment, Resource-Flow bypass, unbounded
+> fanout, `simthing-sim` leakage rejected at import; runtime is the last line). **L2 / CLAUSE-SPEC-0
+> is now ACCEPTED (Opus design authority, 2026-05-30; code-verified — [`../tests/phase_m_clause_spec0_acceptance_review_results.md`](../tests/phase_m_clause_spec0_acceptance_review_results.md)).**
+> **The track is at a clean rest point: there is no open implementation gate.** **L3 — ClauseThing /
+> ClauseScript — is parked pending separate product authorization; do NOT start the ClauseScript
+> parser/front-end or production `SimSession` wiring.** v7.8 Lines A/B/C stay parked behind named
+> scenarios. Do not reopen closed phases, self-accept, or spawn `ACT-N`/`FrontierV2-5`/atlas/nested
+> prooflets. Closure/acceptance memos are **design-authority + product only**. (Charter:
+> [`sead_self_ai_track.md`](sead_self_ai_track.md) §11; track: [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md); closure: [`../design_v7_7.md`](../design_v7_7.md).)
 
 Active read order (authoritative path for agents):
 

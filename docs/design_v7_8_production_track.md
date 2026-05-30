@@ -47,8 +47,8 @@ Per-step narrative lives in `worklog.md`; this file keeps the compact ladder tab
 |---|---|---|---|---|
 | **L0 — Frontier consumer** | Bounded multi-tick closed-loop self-AI consumer proof | T2 | **landed + ACCEPTED** (V1-5 → V2-0..4) | none — complete at fixture/test-support level; **no FrontierV2-5** |
 | **L1 — simthing-spec buildout** | Designer-facing spec admission substrate (prep for ClauseThing) | T2 | **landed + ACCEPTED** (L1-0, L1-1; L1-ACCEPT-0) | none — sufficient to open L2 |
-| **L2 — CLAUSE-SPEC** | Designer-authored FrontierV2 scenario admitted through `simthing-spec` → same accepted runtime artifacts | T2 | **implementation landed; pending design-authority review** (`CLAUSE-SPEC-0`) | design-authority + product review; do not open L3 automatically |
-| **L3 — ClauseThing** | ClauseScript-facing authoring front-end | T2 | **parked (separate track)** | L2 landed; explicit ClauseThing authorization |
+| **L2 — CLAUSE-SPEC** | Designer-authored FrontierV2 scenario admitted through `simthing-spec` → same accepted runtime artifacts | T2 | **ACCEPTED (Opus design authority, 2026-05-30; code-verified)** (`CLAUSE-SPEC-0`) — [`phase_m_clause_spec0_acceptance_review_results.md`](tests/phase_m_clause_spec0_acceptance_review_results.md) | L3 stays parked unless product separately authorizes ClauseThing |
+| **L3 — ClauseThing** | ClauseScript-facing authoring front-end | T2 | **parked (separate track) — pending separate product authorization** | explicit ClauseThing authorization (NOT opened by L2 acceptance) |
 | **A — Nested Resource Flow** | E-11B / E-11B-5 hierarchical allocation (depth > 2) | T2 | **parked** (flat-star is the posture) | named economy needing depth > 2 fanout |
 | **B — Discrete hard-currency ordering** | D-2 / D-2a sequential cross-band ordering | T2 | **parked** (discrete AccumulatorOp path stands) | named multi-transaction hard-currency workload |
 | **C — Atlas / multi-theater mapping** | M-4 / M-4A atlas batching | T2 | **provisional/unimplemented** (isolation ratified) | named multi-theater scenario + VRAM budget + §11-gate PR |
@@ -98,24 +98,29 @@ no phase closure declared. Ruling: [`workshop/sead_self_ai_track.md`](workshop/s
 | L1-1 | Designer admission RON preflight manifest + diagnostic preview | Done | — | — | [`phase_m_l1_1_designer_preflight_manifest_results.md`](tests/phase_m_l1_1_designer_preflight_manifest_results.md) |
 | L1-ACCEPT-0 | Design-authority closure: L1 sufficient to open L2 / CLAUSE-SPEC-0 (one non-blocking preview.rs diagnostic-code nit noted for L2) | Accepted | — | — | [`phase_m_l1_acceptance_review_results.md`](tests/phase_m_l1_acceptance_review_results.md) |
 
-## 5. L2 — CLAUSE-SPEC (implementation landed; pending review)
+## 5. L2 — CLAUSE-SPEC (ACCEPTED)
 
 - **What:** `CLAUSE-SPEC-0` — Designer-Facing FrontierV2 Spec Admission: admit a **designer-authored**
   FrontierV2 scenario through `simthing-spec` and compile it to the **same accepted runtime artifacts**
   the L0 fixtures exercised (RON-first; ClauseScript/ClauseThing later). The fixture guardrails
   **relocate to admission rejections** here, consuming the L1-0 diagnostic vocabulary and L1-1
   preflight manifest substrate.
-- **Status:** **Implementation landed; pending design-authority review (`CLAUSE-SPEC-0`).** L1 is
-  accepted and L2 has the first RON-first designer-authored FrontierV2 admission/lowering path.
-  Scope remains designer-authored FrontierV2 scenario admission + compile-to-accepted-artifacts
-  only — **not** the ClauseScript parser/front-end (that is L3, still parked) and **not** production
-  `SimSession` wiring. Default-off, opt-in, CPU-oracle-parity where exact. This does not mark L2
-  accepted and does not open L3.
+- **Status: ACCEPTED (Opus design authority, 2026-05-30; code-verified).** Acceptance of record:
+  [`tests/phase_m_clause_spec0_acceptance_review_results.md`](tests/phase_m_clause_spec0_acceptance_review_results.md).
+  The RON-first scenario admits, **reuses L1 preflight/diagnostics** (`preview_designer_admission_preflight`),
+  lowers **metadata-only** to accepted FrontierV2 artifact targets, and enforces **all** guardrails at
+  admission (Resource-Flow bypass, cross-entity/production movement, production commitment, shared-pool
+  tick writes, nested E-11B / E-11B-5 / D-2a, CPU planner/urgency/commitment, scheduler/cache, semantic
+  WGSL, `simthing-sim` semantic leakage, FrontierV2-5, ACT/EVENT/OBS/PIPE reopen, ClauseScript/ClauseThing
+  — each rejected). The L1 diagnostic nit is resolved (`MalformedManifest` + `UnknownArtifactTarget`).
+  Scope is designer-authored FrontierV2 admission + compile-to-accepted-artifacts only — **not** the
+  ClauseScript parser/front-end (L3, still parked) and **not** production `SimSession` wiring.
+  Default-off, opt-in. **This acceptance does NOT open L3.**
 - **Ladder:**
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| CLAUSE-SPEC-0 | Admit designer-authored FrontierV2 scenario → accepted runtime artifacts | Done; pending review | — | — | [`phase_m_clause_spec0_frontier_v2_admission_results.md`](tests/phase_m_clause_spec0_frontier_v2_admission_results.md) |
+| CLAUSE-SPEC-0 | Admit designer-authored FrontierV2 scenario → accepted runtime artifacts | **ACCEPTED (design authority)** | — | — | impl: [`phase_m_clause_spec0_frontier_v2_admission_results.md`](tests/phase_m_clause_spec0_frontier_v2_admission_results.md); acceptance: [`phase_m_clause_spec0_acceptance_review_results.md`](tests/phase_m_clause_spec0_acceptance_review_results.md) |
 
 ## 6. L3 — ClauseThing (parked, separate track)
 
