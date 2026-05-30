@@ -223,8 +223,8 @@ themselves.
 ## Cleanup / evidence hygiene
 
 V7.8-CLEAN-0 preserved authoritative evidence and, at the time, confirmed L1 as the next gate.
-Since then L1/L2 have been accepted and **C-0 is now the open implementation gate** (landed,
-pending Opus review).
+Since then L1/L2 were accepted, C-0/C-1/C-2 were accepted, and Line C/M map batching closed at the
+designer surface. The cleanup pass remains historical evidence only.
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
@@ -238,7 +238,7 @@ Cross-cutting generic GPU-resident performance work authorized after WGSL-GUARD-
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| AO-WGSL-0 | Generic AccumulatorOp WGSL performance path: semantic-free named-gate fast path with CPU/oracle parity and benchmark report | Pending Opus Review | — | PR | [`phase_ao_wgsl0_accumulator_op_performance_results.md`](tests/phase_ao_wgsl0_accumulator_op_performance_results.md) |
+| AO-WGSL-0 | Generic AccumulatorOp WGSL performance path: semantic-free named-gate fast path with CPU/oracle parity and benchmark report | **ACCEPTED — Generic GPU performance option** (AO-WGSL-0-ACCEPT, 2026-05-30; one narrow perf remediation folded in: dynamic-offset uniform + single bind group removes O(n_bands) per-tick allocation churn) | — | #362 | impl: [`phase_ao_wgsl0_accumulator_op_performance_results.md`](tests/phase_ao_wgsl0_accumulator_op_performance_results.md); acceptance: [`phase_ao_wgsl0_acceptance_review_results.md`](tests/phase_ao_wgsl0_acceptance_review_results.md) |
 
 ---
 
