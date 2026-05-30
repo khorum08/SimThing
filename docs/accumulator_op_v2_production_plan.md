@@ -2500,6 +2500,7 @@ Further SEAD work remains allowed only when it advances a usable SEAD toolset or
 - **SEAD-ACT-3 — Economic V1-style fixture substrate records (PASS):** `m_jit_sead_act3_economic_fixture_records`; consumes ACT-2 admission_record; fixed integer lookup table; fixture record ExactAuthoritative under mapping/overflow contract; 34k bucket→reduce→propose→consume→admit→fixture warm ~1.19 ms/pipeline; no CPU planner/scheduler/cache/default wiring/bridge. Report: [`docs/tests/phase_m_sead_act3_economic_fixture_records_results.md`](tests/phase_m_sead_act3_economic_fixture_records_results.md).
 - **SEAD-ACT-4 — Economic V1-style fixture validation corpus (PASS):** `sead_act4_economic_fixture_validation_corpus_v1`; validates ACT-3 fixture records against 18-row authorable expected-output corpus via CPU oracle; no new WGSL/descriptor/runtime gate. Report: [`docs/tests/phase_m_sead_act4_economic_fixture_validation_corpus_results.md`](tests/phase_m_sead_act4_economic_fixture_validation_corpus_results.md).
 - **SEAD-V1-CONSOLIDATE-0 — SEAD Self-AI Proposal Pipeline V1 (PASS, docs-only):** consolidated OBS-0..4 + EVENT-0..2 + PIPE-0 + ACT-0..2 as V1 core; ACT-3/ACT-4 supporting evidence; ladder closed; FrontierV1-0 next. Report: [`docs/tests/phase_m_sead_v1_consolidation_results.md`](tests/phase_m_sead_v1_consolidation_results.md).
+- **FrontierV1-0 — opt-in scenario skeleton and admission contract (PASS):** default-off `FrontierV1` skeleton + admission validator; 8 tests; no runtime wiring. Report: [`docs/tests/phase_m_frontier_v1_0_scenario_skeleton_results.md`](tests/phase_m_frontier_v1_0_scenario_skeleton_results.md).
 
 **SEAD-ACT-1 — Phase E-style numeric proposal consumer**
 
@@ -2524,6 +2525,10 @@ The SEAD self-AI fixture ladder is consolidated at Proposal Pipeline V1 per [`do
 The next implementation step is FrontierV1-0: a bounded opt-in/default-off scenario combining first-slice mapping, flat-star Resource Flow, and SEAD self-AI proposal routing through accepted substrates. M and E close when FrontierV1 integration is green and accepted.
 
 M-JIT-PROD-0 is accepted by the SEAD self-AI charter. Atlas, active mask, perception, source identity, nested E-11B, E-11B-5, D-2a, hard-currency ordering, and ClauseThing implementation remain deferred.
+
+**FrontierV1-0 — opt-in scenario skeleton and admission contract**
+
+FrontierV1-0 defines the default-off FrontierV1 scenario skeleton and validates the admission envelope for the named M/E closing vertical: one ≤32×32 first-slice RegionCell theater, flat-star depth-2 Resource Flow economy, and SEAD Self-AI Proposal Pipeline V1 routing through accepted substrates. It adds no runtime wiring, no semantic WGSL, no scheduler/cache/default SimSession behavior, no simthing-sim semantic awareness, and no generic production economy→mapping bridge. Next step is FrontierV1-1 end-to-end opt-in fixture wiring.
 
 Further SEAD actionability work must either: (1) produce a reusable numeric substrate consumed by Phase E fixtures, (2) directly close a Phase M/E blocker, or (3) be paused until a named product scenario requires runtime integration.
 - Native sqrt remains `ApproximateJitOnly`; F exact path requires artifact-backed descriptor admission.
