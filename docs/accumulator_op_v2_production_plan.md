@@ -2506,6 +2506,7 @@ Further SEAD work remains allowed only when it advances a usable SEAD toolset or
 - **FrontierV1-3 — GPU flat-star Resource Flow integration (PASS):** GPU flat-star allocation + V1-1 CPU oracle parity; replay fingerprint `7bacf7921b807bee`; route classification cpu_oracle_only. Report: [`docs/tests/phase_m_frontier_v1_3_gpu_resource_flow_results.md`](tests/phase_m_frontier_v1_3_gpu_resource_flow_results.md).
 - **FrontierV1-4 — SEAD V1 route replay acceptance (PASS):** integrated SEAD V1 route replay after GPU mapping+RF; replay fingerprint `4382ec7ef93c9174`; route/PIPE-0 replay_accepted. Report: [`docs/tests/phase_m_frontier_v1_4_sead_route_replay_results.md`](tests/phase_m_frontier_v1_4_sead_route_replay_results.md).
 - **FrontierV1-ACCEPT-0 — M/E closure acceptance (PASS):** FrontierV1 accepted as named M/E closing vertical; Phase M/E closed for FrontierV1 scope. Report: [`docs/tests/phase_m_frontier_v1_acceptance_review_results.md`](tests/phase_m_frontier_v1_acceptance_review_results.md).
+- **FrontierV1-POSTACCEPT-0 — post-acceptance roadmap reset (PASS):** roadmap aligned after M/E closure; next gate remains Pause (F). Report: [`docs/tests/phase_m_frontier_v1_post_acceptance_roadmap_results.md`](tests/phase_m_frontier_v1_post_acceptance_roadmap_results.md).
 
 **SEAD-ACT-1 — Phase E-style numeric proposal consumer**
 
@@ -2554,6 +2555,10 @@ FrontierV1-4 integrates accepted SEAD Self-AI Proposal Pipeline V1 route replay 
 **FrontierV1-ACCEPT-0 — M/E closure acceptance**
 
 FrontierV1-ACCEPT-0 accepts FrontierV1 as the named M/E closing vertical. Mapping first-slice and flat-star Resource Flow are GPU-verified; SEAD Self-AI Proposal Pipeline V1 and route contracts are replay-accepted against accepted evidence; replay fingerprints are stable; all hard guardrails remain intact. Phase M and Phase E are closed for FrontierV1 scope. Deferred items remain non-blocking: atlas, active mask, perception/fog, source identity, nested E-11B/E-11B-5, D-2a, ClauseThing, and any broader production integration outside FrontierV1.
+
+**FrontierV1-POSTACCEPT-0 — post-acceptance roadmap reset**
+
+FrontierV1 is accepted as the named M/E closing vertical; Phase M and Phase E are closed for FrontierV1 scope. FrontierV1-5, ACT-5, EVENT-3, OBS-5, and PIPE-1 are not authorized. Full PIPE-0 GPU re-run inside FrontierV1 remains optional only and requires a separately named product need. Deferred items remain non-blocking: atlas, active mask, perception/fog, source identity, nested E-11B/E-11B-5, D-2a, ClauseThing, and broader production integration outside FrontierV1. Next work must begin from a separately named production gate and preserve V7.7 / Mapping ADR / Resource Flow ADR / SEAD charter guardrails. Next named gate: **Pause implementation (F)** per [`product_priority_vertical_slice_selection.md`](reviews/product_priority_vertical_slice_selection.md).
 
 Further SEAD actionability work must either: (1) produce a reusable numeric substrate consumed by Phase E fixtures, (2) directly close a Phase M/E blocker, or (3) be paused until a named product scenario requires runtime integration.
 - Native sqrt remains `ApproximateJitOnly`; F exact path requires artifact-backed descriptor admission.
