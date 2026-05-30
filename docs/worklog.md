@@ -1,3 +1,7 @@
+# 2026-05-30 — SEAD-OBS-3 fixed-point aggregate score for multi-layer observer overlay (Tier-2, landed)
+
+- SEAD-OBS-3 added default-off `m_jit_sead_obs3_multilayer_fixed_score` descriptor with `ExactQ16WeightedSum` Q16.16 score accumulation; per-layer mag exact; OBS-2 f32 score unchanged; 34k benchmarks recorded; no production wiring added.
+
 # 2026-05-30 — SEAD-OBS-2 multi-layer GPU-resident observer overlay score (Tier-2, landed)
 
 - SEAD-OBS-2 added default-off 4-layer multilayer overlay score fixture and `m_jit_sead_obs2_multilayer_overlay_score` descriptor; per-layer mag exact, score ApproximateDiagnosticF32; 34k benchmarks recorded; no production wiring added.

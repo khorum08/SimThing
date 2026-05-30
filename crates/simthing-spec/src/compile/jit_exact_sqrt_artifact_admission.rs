@@ -73,6 +73,8 @@ pub enum ExactPreSqrtInputContract {
 pub enum ScoreAuthorityContract {
     /// `score = bias + weight * mag` via f32 multiply/add — diagnostic only.
     ApproximateDiagnosticF32,
+    /// `score_fixed = bias + Σ q16_mul(weight, mag_fixed)` — pinned Q16.16 accumulation (SEAD-OBS-3).
+    ExactQ16WeightedSum,
 }
 
 pub const SEAD_OBS0_DESCRIPTOR_ID: &str = "m_jit_sead_obs0_overlay_score";
@@ -81,6 +83,10 @@ pub const SEAD_OBS0_LABEL: &str = "SeadObserverOverlayScore";
 pub const SEAD_OBS2_DESCRIPTOR_ID: &str = "m_jit_sead_obs2_multilayer_overlay_score";
 pub const SEAD_OBS2_LABEL: &str = "SeadMultilayerOverlayScore";
 pub const SEAD_OBS2_LAYER_COUNT: u32 = 4;
+
+pub const SEAD_OBS3_DESCRIPTOR_ID: &str = "m_jit_sead_obs3_multilayer_fixed_score";
+pub const SEAD_OBS3_LABEL: &str = "SeadMultilayerFixedScore";
+pub const SEAD_OBS3_LAYER_COUNT: u32 = SEAD_OBS2_LAYER_COUNT;
 
 fn artifact_err(kernel: &str, reason: impl Into<String>) -> SpecError {
     SpecError::JitKernelDescriptorAdmission {
@@ -243,6 +249,22 @@ pub fn is_sead_obs2_multilayer_overlay_score_descriptor(spec: &KernelDescriptorS
         && spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt)
         && spec.score_authority_contract == Some(ScoreAuthorityContract::ApproximateDiagnosticF32)
         && multilayer_exact_mag_bits_outputs(spec) == SEAD_OBS2_LAYER_COUNT
+}
+
+/// True when the descriptor is the landed SEAD multilayer fixed-point score kernel.
+pub fn is_sead_obs3_multilayer_fixed_score_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == SEAD_OBS3_DESCRIPTOR_ID
+        && spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt)
+        && spec.score_authority_contract == Some(ScoreAuthorityContract::ExactQ16WeightedSum)
+        && multilayer_exact_mag_bits_outputs(spec) == SEAD_OBS3_LAYER_COUNT
+        && spec
+            .writes
+            .iter()
+            .any(|out| out.name == "score_fixed" && out.authority == OutputAuthority::ExactAuthoritative)
+}
+
+fn is_multilayer_overlay_descriptor_id(id: &str) -> bool {
+    id == SEAD_OBS2_DESCRIPTOR_ID || id == SEAD_OBS3_DESCRIPTOR_ID
 }
 
 fn multilayer_exact_mag_bits_outputs(spec: &KernelDescriptorSpec) -> u32 {
@@ -471,7 +493,7 @@ pub fn validate_mag2_source_contract(spec: &KernelDescriptorSpec) -> Result<(), 
             }
         }
         (Some(Mag2SourceContract::ExactFixedPointDxDy { .. }), false) => {
-            let multilayer = spec.id == SEAD_OBS2_DESCRIPTOR_ID
+            let multilayer = is_multilayer_overlay_descriptor_id(&spec.id)
                 && multilayer_exact_mag_bits_outputs(spec) == SEAD_OBS2_LAYER_COUNT;
             if !multilayer {
                 return Err(artifact_err(
@@ -504,23 +526,37 @@ pub fn validate_score_authority_contract(spec: &KernelDescriptorSpec) -> Result<
     let score_out = spec
         .writes
         .iter()
-        .find(|out| out.name == "score_bits")
-        .map(|out| out.authority);
+        .find(|out| out.name == "score_bits" || out.name == "score_fixed")
+        .map(|out| (out.name.as_str(), out.authority));
 
     match spec.score_authority_contract {
         Some(ScoreAuthorityContract::ApproximateDiagnosticF32) => {
             match score_out {
-                Some(OutputAuthority::ApproximateDiagnostic) => {}
-                Some(OutputAuthority::ExactAuthoritative) => {
+                Some(("score_bits", OutputAuthority::ApproximateDiagnostic)) => {}
+                Some(("score_fixed", _)) => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        "ApproximateDiagnosticF32 score contract requires score_bits output, not score_fixed",
+                    ));
+                }
+                Some((_, OutputAuthority::ExactAuthoritative)) => {
                     return Err(artifact_err(
                         &spec.id,
                         "score_bits cannot be ExactAuthoritative under ApproximateDiagnosticF32 score contract",
                     ));
                 }
-                Some(OutputAuthority::RejectedDeferred) => {
+                Some((_, OutputAuthority::RejectedDeferred)) => {
                     return Err(artifact_err(
                         &spec.id,
                         "score_bits is rejected/deferred under ApproximateDiagnosticF32 score contract",
+                    ));
+                }
+                Some((name, OutputAuthority::ApproximateDiagnostic)) => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        format!(
+                            "ApproximateDiagnosticF32 score contract requires score_bits output, not `{name}`"
+                        ),
                     ));
                 }
                 None => {
@@ -531,20 +567,71 @@ pub fn validate_score_authority_contract(spec: &KernelDescriptorSpec) -> Result<
                 }
             }
         }
+        Some(ScoreAuthorityContract::ExactQ16WeightedSum) => {
+            match score_out {
+                Some(("score_fixed", OutputAuthority::ExactAuthoritative)) => {}
+                Some(("score_bits", OutputAuthority::ExactAuthoritative)) => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        "score_bits cannot be ExactAuthoritative under ExactQ16WeightedSum; use score_fixed",
+                    ));
+                }
+                Some(("score_fixed", OutputAuthority::ApproximateDiagnostic)) => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        "score_fixed must be ExactAuthoritative under ExactQ16WeightedSum score contract",
+                    ));
+                }
+                Some((_, OutputAuthority::RejectedDeferred)) => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        "score_fixed is rejected/deferred under ExactQ16WeightedSum score contract",
+                    ));
+                }
+                Some(("score_bits", OutputAuthority::ApproximateDiagnostic)) => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        "ExactQ16WeightedSum score contract requires score_fixed output, not score_bits",
+                    ));
+                }
+                Some((name, OutputAuthority::ApproximateDiagnostic)) => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        format!(
+                            "score_fixed must be ExactAuthoritative under ExactQ16WeightedSum; got approximate `{name}`"
+                        ),
+                    ));
+                }
+                Some((name, OutputAuthority::ExactAuthoritative)) => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        format!(
+                            "ExactQ16WeightedSum score contract requires score_fixed output, not `{name}`"
+                        ),
+                    ));
+                }
+                None => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        "ExactQ16WeightedSum score contract requires score_fixed output",
+                    ));
+                }
+            }
+        }
         None => {
-            if score_out == Some(OutputAuthority::ExactAuthoritative) {
+            if score_out.map(|(_, auth)| auth) == Some(OutputAuthority::ExactAuthoritative) {
                 return Err(artifact_err(
                     &spec.id,
-                    "score_bits cannot be ExactAuthoritative without a pinned score authority contract",
+                    "score output cannot be ExactAuthoritative without a pinned score authority contract",
                 ));
             }
         }
     }
 
-    if score_out == Some(OutputAuthority::ExactAuthoritative)
-        && spec.score_authority_contract != Some(ScoreAuthorityContract::ApproximateDiagnosticF32)
+    if score_out.map(|(_, auth)| auth) == Some(OutputAuthority::ExactAuthoritative)
+        && spec.score_authority_contract.is_none()
     {
-        // Only ApproximateDiagnosticF32 is implemented; any exact score without a future pinned contract rejects above.
+        // covered above
     }
 
     Ok(())
@@ -626,6 +713,63 @@ pub fn validate_sead_obs2_multilayer_overlay_score_contract(
     Ok(())
 }
 
+/// Validate landed SEAD-OBS-3 multilayer fixed-point score descriptor pins.
+pub fn validate_sead_obs3_multilayer_fixed_score_contract(
+    spec: &KernelDescriptorSpec,
+) -> Result<(), SpecError> {
+    if spec.id != SEAD_OBS3_DESCRIPTOR_ID {
+        return Ok(());
+    }
+    match spec.mag2_source_contract {
+        Some(Mag2SourceContract::ExactFixedPointDxDy { fraction_bits })
+            if fraction_bits == MAG2_Q16_FRAC_BITS => {}
+        _ => {
+            return Err(artifact_err(
+                &spec.id,
+                "SEAD multilayer fixed score requires Q16.16 ExactFixedPointDxDy mag2 contract",
+            ));
+        }
+    }
+    if spec.pre_sqrt_contract != Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD multilayer fixed score requires InlineFixedPointMag2Sqrt pre-sqrt contract",
+        ));
+    }
+    if spec.score_authority_contract != Some(ScoreAuthorityContract::ExactQ16WeightedSum) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD multilayer fixed score requires ExactQ16WeightedSum score contract",
+        ));
+    }
+    if multilayer_exact_mag_bits_outputs(spec) != SEAD_OBS3_LAYER_COUNT {
+        return Err(artifact_err(
+            &spec.id,
+            format!(
+                "SEAD multilayer fixed score requires {SEAD_OBS3_LAYER_COUNT} exact layer mag_bits outputs"
+            ),
+        ));
+    }
+    if !has_multilayer_fixed_reads(spec) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD multilayer fixed score requires layer gx/gy/weight reads and bias_fixed",
+        ));
+    }
+    let score_fixed = spec
+        .writes
+        .iter()
+        .find(|out| out.name == "score_fixed")
+        .map(|out| out.authority);
+    if score_fixed != Some(OutputAuthority::ExactAuthoritative) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD multilayer fixed score requires exact-authoritative score_fixed output",
+        ));
+    }
+    Ok(())
+}
+
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
 pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
     let has_exact_f_out = has_exact_f_authoritative_output(spec);
@@ -668,6 +812,7 @@ pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Re
     validate_score_authority_contract(spec)?;
     validate_sead_obs0_overlay_score_contract(spec)?;
     validate_sead_obs2_multilayer_overlay_score_contract(spec)?;
+    validate_sead_obs3_multilayer_fixed_score_contract(spec)?;
 
     Ok(())
 }
@@ -804,6 +949,41 @@ pub fn sead_obs2_multilayer_overlay_score_kernel_descriptor() -> KernelDescripto
             fraction_bits: MAG2_Q16_FRAC_BITS,
         }),
         score_authority_contract: Some(ScoreAuthorityContract::ApproximateDiagnosticF32),
+    }
+}
+
+/// Build the landed SEAD multilayer fixed-point score kernel descriptor (SEAD-OBS-3).
+pub fn sead_obs3_multilayer_fixed_score_kernel_descriptor() -> KernelDescriptorSpec {
+    let mut reads = Vec::new();
+    for layer in 0..SEAD_OBS3_LAYER_COUNT {
+        reads.push(format!("layer{layer}_gx_fixed"));
+        reads.push(format!("layer{layer}_gy_fixed"));
+        reads.push(format!("layer{layer}_w_fixed"));
+    }
+    reads.push("bias_fixed".to_string());
+
+    let mut writes = Vec::new();
+    for layer in 0..SEAD_OBS3_LAYER_COUNT {
+        writes.push(exact_out(&format!("layer{layer}_mag_bits")));
+    }
+    writes.push(exact_out("score_fixed"));
+    writes.push(approx_out("flags"));
+
+    KernelDescriptorSpec {
+        id: SEAD_OBS3_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads,
+        writes,
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
+        pre_sqrt_contract: Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt),
+        mag2_source_contract: Some(Mag2SourceContract::ExactFixedPointDxDy {
+            fraction_bits: MAG2_Q16_FRAC_BITS,
+        }),
+        score_authority_contract: Some(ScoreAuthorityContract::ExactQ16WeightedSum),
     }
 }
 
