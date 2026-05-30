@@ -151,7 +151,7 @@ safety. These stay binding regardless:
   `FlatStarResourceFlow` remains the accepted production posture;
   `PipelineFlags::default().use_accumulator_resource_flow` stays `false`; hard-currency stays Phase T.
   **E-11B-5 dynamic enrollment is NOT opened by A-0** — it stays parked behind a separate named
-  product scenario.
+  product scenario. E-11B-5 dynamic enrollment is not a blocker to v7.8 M/E/T closure. It remains parked behind a future named product scenario. A safe v1 is feasible only as explicit nested admission under an already-enrolled parent that preserves per-parent contiguous child SlotRange or rejects visibly. It must not include Policy B, selector rerun, wildcard expansion, gap-child auto-promotion, slot compaction, indirection-list SlotRange, default-on Resource Flow, hard-currency through Resource Flow, CPU fallback, or simthing-sim semantic awareness.
 - **Readiness already landed:** [`reviews/e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md),
   [`reviews/e11b_nested_dynamic_enrollment_readiness.md`](reviews/e11b_nested_dynamic_enrollment_readiness.md),
   [`workshop/e11_hierarchical_allocation_design.md`](workshop/e11_hierarchical_allocation_design.md),
@@ -260,14 +260,10 @@ in-progress → accepted), which is a Tier-2 design-authority + product action.
 |---|---|---|---|---|
 | A — Nested Resource Flow | E-11B / E-11B-5 | **A-0 ACCEPTED — static nested CLOSED at first slice** (E-11B-5 dynamic enrollment still parked) | future nested dynamic enrollment (E-11B-5) named scenario | production track §7 |
 | B — Discrete hard-currency ordering | D-2 / D-2a | **B-0 ACCEPTED — CLOSED at narrow smoke level** (D-2 still deferred) | future mixed-kind/multi-band ordering or all-band-union contention policy | production track §8 |
-| C — Atlas / multi-theater mapping | M-4 / M-4A | provisional/unimplemented (isolation policy ratified) | named multi-theater scenario + approved VRAM budget + §11-gate PR | production track §9 |
+| C — Atlas / multi-theater mapping | M-4 / M-4A | **C-0/C-1/C-2 ACCEPTED — map batching CLOSED at the designer surface** (production atlas runtime / sparse-residency scheduler parked behind separate named scenario) | future named multi-theater scenario (production runtime gate) | production track §9 |
 
 The forward edge that is expected to *name* the scenarios above is the
 **simthing-spec → CLAUSE-SPEC → ClauseThing** chain, whose ladders (and the landed Frontier consumer
 ladder that precedes them) are tracked in the production track file (§3–§6).
 
-**V7.8-MET-SCENARIO-0 note (2026-05-30):** named consumer scenarios were proposed
-for Lines A/B/C through the accepted CLAUSE-SPEC / simthing-spec layer: nested
-Resource Flow fanout, hard-currency contention ordering, and multi-theater atlas
-mapping. Constitutional state remains parked/provisional until design-authority
-and product accept a line start.
+**V7.8-MET-CLOSEOUT-0 note (2026-05-30):** A-0/B-0/C-2 accepted for the current named M/E/T consumer scenarios (static nested Resource Flow first slice; narrow hard-currency ordering smoke; map batching closed at designer surface). All promoted v7.8 M/E/T lines are closed for current named scenarios; no implementation gate remains open. E-11B-5 dynamic enrollment, atlas production runtime/sparse-residency scheduler, mixed-kind hard-currency ordering, and ClauseThing/L3 remain parked behind future named scenarios/product authorization.

@@ -345,6 +345,7 @@ admission layer** — the ClauseThing horizon, where (per the standing product d
   closed for their current named scenarios. This does not open E-11B-5 dynamic enrollment, alter SEAD
   self-AI posture, ClauseThing/L3, or designer semantic-WGSL rejection; `simthing-sim` stays
   arena/Resource-Flow-ignorant.
+  E-11B-5 dynamic enrollment is not a blocker to v7.8 M/E/T closure. It remains parked behind a future named product scenario. A safe v1 is feasible only as explicit nested admission under an already-enrolled parent that preserves per-parent contiguous child SlotRange or rejects visibly. It must not include Policy B, selector rerun, wildcard expansion, gap-child auto-promotion, slot compaction, indirection-list SlotRange, default-on Resource Flow, hard-currency through Resource Flow, CPU fallback, or simthing-sim semantic awareness.
 - **Why this, not another fixture:** it is the first rung where the work stops being internal
   prooflets and becomes a *designer-facing surface* — the on-ramp to ClauseThing and the natural
   home for the guardrails. It gives the implementer a forward horizon at the authoring layer, not
