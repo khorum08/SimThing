@@ -117,6 +117,10 @@ pub const SEAD_EVENT1_DESCRIPTOR_ID: &str = "m_jit_sead_event1_code_bucketing";
 pub const SEAD_EVENT1_LABEL: &str = "SeadEventCodeBucketing";
 pub const SEAD_EVENT1_CODE_COUNT: u32 = 4;
 
+pub const SEAD_EVENT2_DESCRIPTOR_ID: &str = "m_jit_sead_event2_bucket_reductions";
+pub const SEAD_EVENT2_LABEL: &str = "SeadBucketReductions";
+pub const SEAD_EVENT2_CODE_COUNT: u32 = SEAD_EVENT1_CODE_COUNT;
+
 /// Compacted event membership authority (SEAD-EVENT-0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventCompactionMembershipAuthority {
@@ -142,6 +146,20 @@ pub enum EventCodeBucketMembershipAuthority {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventCodeBucketOrderAuthority {
     /// Atomic slot assignment does not guarantee order within a bucket.
+    UnspecifiedAtomicOrder,
+}
+
+/// Event-bucket reduction membership authority (SEAD-EVENT-2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventBucketReductionInputAuthority {
+    /// Reduction input records form an exact multiset per code under capacity.
+    ExactAuthoritativeUnordered,
+}
+
+/// Event-bucket reduction ordering authority (SEAD-EVENT-2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventBucketReductionOrderAuthority {
+    /// Reductions are order-invariant; bucket record order remains unspecified.
     UnspecifiedAtomicOrder,
 }
 
@@ -1158,8 +1176,77 @@ pub fn validate_sead_event1_code_bucketing_contract(
     Ok(())
 }
 
+fn has_event_bucket_reduction_reads(spec: &KernelDescriptorSpec) -> bool {
+    spec.reads.iter().any(|read| read == "bucket_counts")
+        && spec.reads.iter().any(|read| read == "bucket_record")
+}
+
+/// True when the descriptor is the landed SEAD event-bucket reductions kernel.
+pub fn is_sead_event2_bucket_reductions_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == SEAD_EVENT2_DESCRIPTOR_ID
+        && has_event_bucket_reduction_reads(spec)
+        && spec.writes.iter().any(|out| out.name == "reduction_count")
+        && spec.writes.iter().any(|out| out.name == "sum_score")
+        && spec.writes.iter().any(|out| out.name == "min_score")
+        && spec.writes.iter().any(|out| out.name == "max_score")
+        && spec.writes.iter().any(|out| out.name == "reduction_overflow_flag")
+}
+
+/// Validate landed SEAD-EVENT-2 bucket reductions descriptor pins.
+pub fn validate_sead_event2_bucket_reductions_contract(
+    spec: &KernelDescriptorSpec,
+) -> Result<(), SpecError> {
+    if spec.id != SEAD_EVENT2_DESCRIPTOR_ID {
+        return Ok(());
+    }
+    if !has_event_bucket_reduction_reads(spec) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD bucket reductions requires bucket_counts and bucket_record reads",
+        ));
+    }
+    if spec.exact_sqrt_artifact.is_some() {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD bucket reductions must not bind sqrt artifact",
+        ));
+    }
+    if spec.score_authority_contract.is_some() {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD bucket reductions must not declare score authority contract",
+        ));
+    }
+    for (name, msg) in [
+        ("reduction_count", "exact-authoritative reduction_count"),
+        ("sum_score", "exact-authoritative sum_score"),
+        ("min_score", "exact-authoritative min_score"),
+        ("max_score", "exact-authoritative max_score"),
+        ("reduction_overflow_flag", "exact-authoritative reduction_overflow_flag"),
+    ] {
+        match spec
+            .writes
+            .iter()
+            .find(|out| out.name == name)
+            .map(|out| out.authority)
+        {
+            Some(OutputAuthority::ExactAuthoritative) => {}
+            _ => {
+                return Err(artifact_err(
+                    &spec.id,
+                    format!("SEAD bucket reductions requires {msg}"),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
 pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
+    if spec.id == SEAD_EVENT2_DESCRIPTOR_ID {
+        return validate_sead_event2_bucket_reductions_contract(spec);
+    }
     if spec.id == SEAD_EVENT1_DESCRIPTOR_ID {
         return validate_sead_event1_code_bucketing_contract(spec);
     }
@@ -1511,6 +1598,30 @@ pub fn sead_event1_code_bucketing_kernel_descriptor() -> KernelDescriptorSpec {
             exact_out("bucket_overflow"),
             exact_out("bucket_record"),
             exact_out("invalid_code_count"),
+        ],
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
+        mag2_source_contract: None,
+        score_authority_contract: None,
+    }
+}
+
+/// Build the landed SEAD event-bucket reductions kernel descriptor (SEAD-EVENT-2).
+pub fn sead_event2_bucket_reductions_kernel_descriptor() -> KernelDescriptorSpec {
+    KernelDescriptorSpec {
+        id: SEAD_EVENT2_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads: vec!["bucket_counts".to_string(), "bucket_record".to_string()],
+        writes: vec![
+            exact_out("reduction_count"),
+            exact_out("sum_score"),
+            exact_out("min_score"),
+            exact_out("max_score"),
+            exact_out("reduction_overflow_flag"),
         ],
         native_math: NativeMathClass::None,
         semantic_free: true,
