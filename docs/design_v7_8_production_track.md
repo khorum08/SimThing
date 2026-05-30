@@ -50,7 +50,7 @@ Per-step narrative lives in `worklog.md`; this file keeps the compact ladder tab
 | **L2 — CLAUSE-SPEC** | Designer-authored FrontierV2 scenario admitted through `simthing-spec` → same accepted runtime artifacts | T2 | **ACCEPTED (Opus design authority, 2026-05-30; code-verified)** (`CLAUSE-SPEC-0`) — [`phase_m_clause_spec0_acceptance_review_results.md`](tests/phase_m_clause_spec0_acceptance_review_results.md) | L3 stays parked unless product separately authorizes ClauseThing |
 | **L3 — ClauseThing** | ClauseScript-facing authoring front-end | T2 | **parked (separate track) — pending separate product authorization** | explicit ClauseThing authorization (NOT opened by L2 acceptance) |
 | **A — Nested Resource Flow** | E-11B / E-11B-5 hierarchical allocation (depth > 2) | T2 | **NamedScenarioAccepted (V7.8-MET-SCENARIO-ACCEPT-0, 2026-05-30); A-0 QUEUED** (not opened — product priority is C first) | open A-0 when product schedules it |
-| **B — Discrete hard-currency ordering** | D-2 / D-2a sequential cross-band ordering | T2 | **NamedScenarioAccepted; B-0 landed — pending Opus review** | design-authority acceptance of B-0 |
+| **B — Discrete hard-currency ordering** | D-2 / D-2a sequential cross-band ordering | T2 | **B-0 ACCEPTED (B-0-ACCEPT-0, 2026-05-30) — Line B CLOSED at narrow smoke level** | **none** — no B-1; future mixed-kind/multi-band ordering needs a named scenario |
 | **C — Atlas / multi-theater mapping** | M-4 / M-4A atlas batching | T2 | **C-0/C-1/C-2 ACCEPTED (C-2-ACCEPT-0, 2026-05-30) — map batching CLOSED at the designer surface** (proof + scale model + atlas admission relaxation) — VRAM budget 1.5 GiB default, configurable, no hard cap | **none** — production atlas runtime / sparse-residency scheduler is a separate later gate (not open) |
 
 ---
@@ -169,17 +169,23 @@ themselves.
 |---|---|---|---|---|---|
 | A-0 | _(queued — first nested-arena slice; open when product schedules)_ | Queued | — | — | — |
 
-## 8. Line B — Discrete hard-currency ordering ladder (D-2 / D-2a) — **NamedScenarioAccepted; B-0 landed (pending review)**
+## 8. Line B — Discrete hard-currency ordering ladder (D-2 / D-2a) — **B-0 ACCEPTED; Line B CLOSED at narrow smoke level**
 
-- **Current state:** **NamedScenarioAccepted** (`HardCurrencyContentionOrdering`) — see
-  [`phase_m_v7_8_met_scenario_acceptance_review_results.md`](tests/phase_m_v7_8_met_scenario_acceptance_review_results.md).
-  **B-0 implementation evidence landed** (narrow driver-only D-2a ordering smoke); **pending Opus/design-authority review** — not accepted yet.
-- **B-0 scope:** narrow driver-only D-2a hard-currency ordering smoke; not a global scheduler.
+- **Current state:** **B-0 ACCEPTED (B-0-ACCEPT-0, Opus design authority, 2026-05-30; code+test
+  verified)** — [`phase_t_b0_acceptance_review_results.md`](tests/phase_t_b0_acceptance_review_results.md).
+  Authored `order_band` → existing AccumulatorOp `GateSpec::OrderBand(n)` execution; cross-band
+  same-source sequential debits deterministic with exact CPU-oracle parity; same-band double-debit
+  rejection preserved (per-band); Resource Flow not used for hard-currency; no new WGSL/role/CPU
+  fallback/global scheduler. **Line B/T is closed at the narrow smoke level for the current named
+  scenario; no B-1 opens.**
+- **Future (named-scenario-gated only):** mixed-kind (transfer/recipe/emission) multi-band ordering
+  or an all-band-union contention policy — the schedule key already carries `kind_rank`, but
+  exercising it needs a named scenario, not a speculative B-1.
 - **Ladder:**
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| B-0 | Narrow driver-only D-2a hard-currency ordering smoke: authored order_band wiring + deterministic boundary schedule + exact oracle parity | Done / Pending Opus Review | — | #357 | [`phase_t_b0_d2a_hard_currency_ordering_results.md`](tests/phase_t_b0_d2a_hard_currency_ordering_results.md) |
+| B-0 | Narrow driver-only D-2a hard-currency ordering smoke: authored order_band wiring + deterministic boundary schedule + exact oracle parity | **ACCEPTED (design authority)** — GpuVerified + exact CPU parity | — | #357 | impl: [`phase_t_b0_d2a_hard_currency_ordering_results.md`](tests/phase_t_b0_d2a_hard_currency_ordering_results.md); acceptance: [`phase_t_b0_acceptance_review_results.md`](tests/phase_t_b0_acceptance_review_results.md) |
 
 ## 9. Line C — Atlas / multi-theater mapping ladder (M-4 / M-4A) — **NamedScenarioAccepted; C-0 OPEN (priority)**
 
@@ -236,6 +242,8 @@ L2 / CLAUSE-SPEC-0 is **ACCEPTED**. L3 ClauseThing remains parked unless product
 authorizes it. **Line C / M (map batching) is CLOSED at the designer surface: C-0, C-1, and C-2 are
 all ACCEPTED** (proof + 2000-star scale model + bounded algebraic-G=0 atlas admission relaxation).
 The atlas **production runtime / sparse-residency scheduler** is a separate later gate and is **not
-open**. **A-0 remains queued** (NamedScenarioAccepted, not opened); **B-0 implementation landed — pending review**; ClauseThing/ClauseScript
-stay parked until explicitly authorized. The AccumulatorOp v2 production plan stays **CLOSED**; v7.7
+open**. **Line B/T (discrete hard-currency ordering) is CLOSED at the narrow smoke level: B-0 is
+ACCEPTED (B-0-ACCEPT-0); no B-1 opens.** **A-0 remains the only accepted, queued M/E/T line not yet
+implemented** (NamedScenarioAccepted, not opened) — opening it is a product decision;
+ClauseThing/ClauseScript stay parked until explicitly authorized. The AccumulatorOp v2 production plan stays **CLOSED**; v7.7
 stays the **binding baseline**; the three lines live in v7.8.

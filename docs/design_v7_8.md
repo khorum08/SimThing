@@ -159,10 +159,15 @@ safety. These stay binding regardless:
   (construction commits, treaty payments, emergency spend) at contention scales that the per-tick
   parallel rate-reduction substrate does not address — i.e., a GPU hot-pool allocator (D-2) and/or
   boundary transaction scheduling (D-2a).
-- **Status:** **NamedScenarioAccepted (2026-05-30); B-0 implementation evidence landed — pending design-authority review.**
-  B-0 implementation evidence landed for narrow D-2a hard-currency ordering; Line B remains pending design-authority review until accepted. Hard-currency transfers remain **exact discrete AccumulatorOp
-  transfer/recipe/emission** (Phase T, accepted) as the posture; D-2 still deferred
-  indefinitely; D-2a narrow driver-only slice is implemented in B-0 pending acceptance.
+- **Status:** **B-0 ACCEPTED (B-0-ACCEPT-0, design authority, 2026-05-30); Line B CLOSED at the
+  narrow smoke level — no B-1.** B-0 wired authored `order_band` → existing AccumulatorOp
+  `GateSpec::OrderBand(n)` execution with deterministic boundary scheduling, cross-band same-source
+  sequential debits, exact CPU-oracle parity, and preserved per-band double-debit rejection — see
+  [`tests/phase_t_b0_acceptance_review_results.md`](tests/phase_t_b0_acceptance_review_results.md).
+  Hard-currency transfers remain **exact discrete AccumulatorOp transfer/recipe/emission** (Phase T,
+  accepted) as the posture; D-2 (GPU hot-pool allocator) still deferred indefinitely; D-2a is closed
+  at the narrow driver-only smoke level. A future mixed-kind/multi-band ordering or all-band-union
+  contention policy needs a new named scenario, not a speculative B-1.
 - **Readiness already landed:** [`reviews/d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md),
   [`reviews/d2a_boundary_transaction_scheduling_readiness.md`](reviews/d2a_boundary_transaction_scheduling_readiness.md).
 - **Named-scenario gate to unblock:** a scenario with a **multi-transaction hard-currency
@@ -243,7 +248,7 @@ in-progress → accepted), which is a Tier-2 design-authority + product action.
 | Line | Promoted from | Current state | Unblocking named scenario | Ladder |
 |---|---|---|---|---|
 | A — Nested Resource Flow | E-11B / E-11B-5 | parked (flat-star is the posture) | economy needing depth > 2 hierarchical fanout | production track §7 |
-| B — Discrete hard-currency ordering | D-2 / D-2a | parked (discrete AccumulatorOp path stands) | multi-transaction hard-currency workload needing sequential cross-band ordering | production track §8 |
+| B — Discrete hard-currency ordering | D-2 / D-2a | **B-0 ACCEPTED — CLOSED at narrow smoke level** (D-2 still deferred) | future mixed-kind/multi-band ordering or all-band-union contention policy | production track §8 |
 | C — Atlas / multi-theater mapping | M-4 / M-4A | provisional/unimplemented (isolation policy ratified) | named multi-theater scenario + approved VRAM budget + §11-gate PR | production track §9 |
 
 The forward edge that is expected to *name* the scenarios above is the
