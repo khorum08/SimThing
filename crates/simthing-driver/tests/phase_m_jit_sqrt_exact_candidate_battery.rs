@@ -1,7 +1,8 @@
-//! Phase M-JIT-SQRT-EXACT-0 — Shader/software deterministic sqrt candidate battery (Tier-2, test-only).
+//! Phase M-JIT-SQRT-EXACT-0/1D — Shader/software deterministic sqrt candidate battery (Tier-2, test-only).
 //!
-//! Probes Candidate A (`CorrectlyRoundedHwFma`) and Candidate B (`CorrectlyRoundedNewtonTwoProduct`)
-//! for bit-exact `f32::sqrt` parity. Candidate C / f64 / `F64RoundDown` are explicitly out of scope.
+//! SQRT-EXACT-0: Candidates A (legacy/dead on DX12) and B (fallback).
+//! SQRT-EXACT-1D: Candidate D (`CorrectlyRoundedHwBitmask`) — lead candidate.
+//! Candidate C / f64 / `F64RoundDown` are explicitly out of scope.
 //! No production sqrt admission, no exact-authority promotion in this slice.
 
 use std::sync::Mutex;
@@ -41,6 +42,7 @@ const FORBIDDEN_EXACT0_TERMS: &[&str] = &["f64", "F64RoundDown", "SHADER_F64", "
 enum ExactSqrtCandidate {
     CorrectlyRoundedHwFma,
     CorrectlyRoundedNewtonTwoProduct,
+    CorrectlyRoundedHwBitmask,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,12 +67,24 @@ struct FmaProbeSummary {
     max_ulp: u32,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct DProbeSummary {
+    tested: usize,
+    native_mismatch: usize,
+    d_mismatch: usize,
+    correction_count: usize,
+    up_count: usize,
+    down_count: usize,
+    d_changes_vs_native: usize,
+}
+
 fn candidate_label(candidate: ExactSqrtCandidate) -> &'static str {
     match candidate {
         ExactSqrtCandidate::CorrectlyRoundedHwFma => "CorrectlyRoundedHwFma",
         ExactSqrtCandidate::CorrectlyRoundedNewtonTwoProduct => {
             "CorrectlyRoundedNewtonTwoProduct"
         }
+        ExactSqrtCandidate::CorrectlyRoundedHwBitmask => "CorrectlyRoundedHwBitmask",
     }
 }
 
@@ -176,6 +190,86 @@ fn sqrt_cr_b(x: f32) -> f32 {
 "#
 }
 
+fn emit_sqrt_cr_d_fn() -> &'static str {
+    r#"fn is_non_finite_positive_or_nonpositive(x: f32) -> bool {
+    if (!(x > 0.0)) { return true; }
+    return (bitcast<u32>(x) & 0x7f800000u) >= 0x7f800000u;
+}
+
+fn pow2_i32(exp: i32) -> f32 {
+    return bitcast<f32>(u32(exp + 127) << 23u);
+}
+
+fn snap_directional(y: f32, r: f32) -> f32 {
+    let u_up = abs(bitcast<f32>(bitcast<u32>(y) + 1u) - y);
+    let u_dn = abs(y - bitcast<f32>(bitcast<u32>(y) - 1u));
+    if (r >  (y * u_up + 0.25 * u_up * u_up)) {
+        return bitcast<f32>(bitcast<u32>(y) + 1u);
+    }
+    if (r < -(y * u_dn - 0.25 * u_dn * u_dn)) {
+        return bitcast<f32>(bitcast<u32>(y) - 1u);
+    }
+    return y;
+}
+
+fn dekker_residual_hardened(y: f32, s: f32) -> f32 {
+    let y_bits = bitcast<u32>(y);
+    let y_hi = bitcast<f32>(y_bits & 0xFFFFF000u);
+    let y_lo = y - y_hi;
+    let p = y * y;
+    let yhi_yhi = y_hi * y_hi;
+    let term1 = yhi_yhi - p;
+    let two_yhi_ylo = 2.0 * y_hi * y_lo;
+    let ylo_ylo = y_lo * y_lo;
+    let e_part1 = term1 + two_yhi_ylo;
+    let e = e_part1 + ylo_ylo;
+    let sp = s - p;
+    return sp - e;
+}
+
+fn sqrt_positive_finite_normal(s: f32) -> f32 {
+    let y = sqrt(s);
+    let r = dekker_residual_hardened(y, s);
+    return snap_directional(y, r);
+}
+
+fn sqrt_cr_d_subnormal_integer(x_bits: u32) -> f32 {
+    var mant = x_bits & 0x007fffffu;
+    var k = 0u;
+    while (k < 24u && mant < 0x00800000u) {
+        mant = mant << 1u;
+        k = k + 1u;
+    }
+    var exp_field = 1u + k - 23u;
+    var norm_mant = mant & 0x007fffffu;
+    if (exp_field == 0u) {
+        exp_field = 1u;
+        norm_mant = (mant >> 1u) & 0x007fffffu;
+    }
+    let s_bits = (exp_field << 23u) | norm_mant;
+    let s = bitcast<f32>(s_bits);
+    let y = sqrt_positive_finite_normal(s);
+    let half_k = i32(k >> 1u);
+    var scale = pow2_i32(-half_k);
+    if ((k & 1u) != 0u) {
+        scale = scale * 0.7071067811865476;
+    }
+    return y * scale;
+}
+
+fn sqrt_cr_d(x: f32) -> f32 {
+    if (is_non_finite_positive_or_nonpositive(x)) { return sqrt(x); }
+    let x_bits = bitcast<u32>(x);
+    let exp = x_bits >> 23u;
+    let mant = x_bits & 0x007fffffu;
+    if (exp == 0u && mant != 0u) {
+        return sqrt_cr_d_subnormal_integer(x_bits);
+    }
+    return sqrt_positive_finite_normal(x);
+}
+"#
+}
+
 fn emit_batch_wgsl(candidate: ExactSqrtCandidate, batch_count: u32) -> String {
     let sqrt_fn = match candidate {
         ExactSqrtCandidate::CorrectlyRoundedHwFma => {
@@ -184,10 +278,14 @@ fn emit_batch_wgsl(candidate: ExactSqrtCandidate, batch_count: u32) -> String {
         ExactSqrtCandidate::CorrectlyRoundedNewtonTwoProduct => {
             format!("{}\n", emit_sqrt_cr_b_fn())
         }
+        ExactSqrtCandidate::CorrectlyRoundedHwBitmask => {
+            format!("{}\n", emit_sqrt_cr_d_fn())
+        }
     };
     let call = match candidate {
         ExactSqrtCandidate::CorrectlyRoundedHwFma => "sqrt_cr_a",
         ExactSqrtCandidate::CorrectlyRoundedNewtonTwoProduct => "sqrt_cr_b",
+        ExactSqrtCandidate::CorrectlyRoundedHwBitmask => "sqrt_cr_d",
     };
 
     format!(
@@ -242,6 +340,52 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
 }}
 "#,
         a = emit_sqrt_cr_a_fn(),
+        batch_count = batch_count
+    )
+}
+
+fn emit_d_probe_wgsl(batch_count: u32) -> String {
+    format!(
+        r#"{d}
+@group(0) @binding(0) var<storage, read_write> data: array<f32>;
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
+    let i = gid.x;
+    if (i >= {batch_count}u) {{ return; }}
+    let base = i * 6u;
+    let x = data[base];
+    let native_y = sqrt(x);
+    data[base + 1u] = native_y;
+    let d_y = sqrt_cr_d(x);
+    data[base + 2u] = d_y;
+    var corrected = 0.0;
+    var up_snap = 0.0;
+    var down_snap = 0.0;
+    if (!(is_non_finite_positive_or_nonpositive(x))) {{
+        let x_bits = bitcast<u32>(x);
+        let exp = x_bits >> 23u;
+        let mant = x_bits & 0x007fffffu;
+        if (exp != 0u || mant == 0u) {{
+            let y = sqrt(x);
+            let r = dekker_residual_hardened(y, x);
+            let u_up = abs(bitcast<f32>(bitcast<u32>(y) + 1u) - y);
+            let u_dn = abs(y - bitcast<f32>(bitcast<u32>(y) - 1u));
+            if (r > (y * u_up + 0.25 * u_up * u_up)) {{
+                corrected = 1.0;
+                up_snap = 1.0;
+            }} else if (r < -(y * u_dn - 0.25 * u_dn * u_dn)) {{
+                corrected = 1.0;
+                down_snap = 1.0;
+            }}
+        }}
+    }}
+    data[base + 3u] = corrected;
+    data[base + 4u] = up_snap;
+    data[base + 5u] = down_snap;
+}}
+"#,
+        d = emit_sqrt_cr_d_fn(),
         batch_count = batch_count
     )
 }
@@ -484,6 +628,7 @@ fn sqrt_exact0_candidates_compile_semantic_free_wgsl() {
         assert!(wgsl.contains(match candidate {
             ExactSqrtCandidate::CorrectlyRoundedHwFma => "sqrt_cr_a",
             ExactSqrtCandidate::CorrectlyRoundedNewtonTwoProduct => "sqrt_cr_b",
+            ExactSqrtCandidate::CorrectlyRoundedHwBitmask => unreachable!("SQRT-EXACT-0 loop excludes D"),
         }));
         with_gpu(|ctx| {
             let out = run_candidate_batch(ctx, candidate, &[4.0]);
@@ -756,4 +901,403 @@ fn sqrt_exact0_no_promotion_yet() {
 
     let baseline = include_str!("../../simthing-gpu/src/shaders/accumulator_op.wgsl");
     assert!(!baseline.contains("sqrt("));
+}
+
+// --- SQRT-EXACT-1D: Candidate D (`CorrectlyRoundedHwBitmask`) ---
+
+fn edge_rows_1d() -> Vec<(&'static str, f32)> {
+    let mut rows = edge_rows();
+    rows.extend([
+        ("pow2_half", 0.5f32),
+        ("pow2_two", 2.0),
+        ("pow2_256", 256.0),
+        ("pow2_largest_normal_pow2", f32::from_bits(0x7f00_0000)),
+        ("ab_fail_neighbor_lo", f32::from_bits(0x3f7f_fffe)),
+        ("ab_fail_neighbor_hi", f32::from_bits(0x3f80_0002)),
+    ]);
+    rows.sort_by(|a, b| a.1.to_bits().cmp(&b.1.to_bits()));
+    rows.dedup_by(|a, b| a.1.to_bits() == b.1.to_bits());
+    rows
+}
+
+fn subnormal_corpus() -> Vec<f32> {
+    let mut out = Vec::new();
+    for bits in 1u32..=1024 {
+        out.push(f32::from_bits(bits));
+    }
+    for i in 0..1024 {
+        out.push(f32::from_bits(0x007F_FFFF - i));
+    }
+    for shift in 0..23 {
+        out.push(f32::from_bits(1u32 << shift));
+    }
+    let mut state = 0x1234_5678u32;
+    for _ in 0..512 {
+        state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+        let mant = (state & 0x007F_FFFF) | 1;
+        out.push(f32::from_bits(mant));
+    }
+    out.sort_by(|a, b| a.to_bits().cmp(&b.to_bits()));
+    out.dedup_by(|a, b| a.to_bits() == b.to_bits());
+    out
+}
+
+fn ab_failure_neighborhood() -> Vec<f32> {
+    let seeds = [
+        f32::from_bits(0x3f80_0001),
+        f32::from_bits(0x3f7f_ffff),
+        f32::from_bits(0x3f7f_fffe),
+        f32::from_bits(0x3f80_0002),
+    ];
+    let mut out = Vec::new();
+    for s in seeds {
+        let b = s.to_bits();
+        for delta in -8i32..=8 {
+            let nb = (b as i64 + i64::from(delta)).clamp(0, 0x7F7F_FFFF as i64) as u32;
+            out.push(f32::from_bits(nb));
+        }
+    }
+    out.sort_by(|a, b| a.to_bits().cmp(&b.to_bits()));
+    out.dedup_by(|a, b| a.to_bits() == b.to_bits());
+    out
+}
+
+fn dense_normal_corpus_1d() -> Vec<f32> {
+    let mut out = dense_stratified_corpus();
+    out.extend(ab_failure_neighborhood());
+    out.retain(|x| *x == 0.0 || x.is_normal() || x.is_infinite());
+    out.sort_by(|a, b| a.to_bits().cmp(&b.to_bits()));
+    out.dedup_by(|a, b| a.to_bits() == b.to_bits());
+    out
+}
+
+fn positive_finite_normal_inputs(inputs: &[f32]) -> Vec<f32> {
+    inputs
+        .iter()
+        .copied()
+        .filter(|x| x.is_finite() && *x > 0.0 && x.is_normal())
+        .collect()
+}
+
+#[derive(Debug, Clone)]
+struct DenseSweepDetail {
+    summary: SweepSummary,
+    correction_count: usize,
+    up_count: usize,
+    down_count: usize,
+    worst: Vec<(f32, f32, f32, u32)>,
+}
+
+fn run_d_probe(ctx: &GpuContext, inputs: &[f32]) -> DProbeSummary {
+    let n = inputs.len() as u32;
+    let wgsl = emit_d_probe_wgsl(n);
+    let raw = run_batch_gpu(ctx, &wgsl, inputs, 6);
+    let mut native_mismatch = 0usize;
+    let mut d_mismatch = 0usize;
+    let mut correction_count = 0usize;
+    let mut up_count = 0usize;
+    let mut down_count = 0usize;
+    let mut d_changes_vs_native = 0usize;
+    for (i, x) in inputs.iter().enumerate() {
+        let base = i * 6;
+        let native_y = raw[base + 1];
+        let d_y = raw[base + 2];
+        let corrected = raw[base + 3];
+        let up = raw[base + 4];
+        let down = raw[base + 5];
+        let cpu = x.sqrt();
+        if !cpu.is_nan() && native_y.to_bits() != cpu.to_bits() {
+            native_mismatch += 1;
+        }
+        if !cpu.is_nan() && d_y.to_bits() != cpu.to_bits() {
+            d_mismatch += 1;
+        }
+        if corrected > 0.0 {
+            correction_count += 1;
+        }
+        if up > 0.0 {
+            up_count += 1;
+        }
+        if down > 0.0 {
+            down_count += 1;
+        }
+        if d_y.to_bits() != native_y.to_bits() {
+            d_changes_vs_native += 1;
+        }
+    }
+    DProbeSummary {
+        tested: inputs.len(),
+        native_mismatch,
+        d_mismatch,
+        correction_count,
+        up_count,
+        down_count,
+        d_changes_vs_native,
+    }
+}
+
+fn sweep_d_dense_with_probe(ctx: &GpuContext, inputs: &[f32]) -> DenseSweepDetail {
+    let summary = sweep_candidate(ctx, ExactSqrtCandidate::CorrectlyRoundedHwBitmask, inputs);
+    let probe = run_d_probe(ctx, &positive_finite_normal_inputs(inputs));
+    let outputs = run_candidate_batch(ctx, ExactSqrtCandidate::CorrectlyRoundedHwBitmask, inputs);
+    let mut worst = Vec::new();
+    for (x, gpu) in inputs.iter().zip(outputs.iter()) {
+        let cpu = x.sqrt();
+        let ulp = if cpu.is_nan() && gpu.is_nan() {
+            0
+        } else {
+            ulp_distance(*gpu, cpu)
+        };
+        if ulp > 0 {
+            worst.push((*x, *gpu, cpu, ulp));
+        }
+    }
+    worst.sort_by(|a, b| b.3.cmp(&a.3));
+    worst.truncate(8);
+    DenseSweepDetail {
+        summary,
+        correction_count: probe.correction_count,
+        up_count: probe.up_count,
+        down_count: probe.down_count,
+        worst,
+    }
+}
+
+#[derive(Debug, Clone)]
+struct SubnormalSweepDetail {
+    tested: usize,
+    exact_bits: usize,
+    max_ulp: u32,
+    integer_path_used: usize,
+    flush_count: usize,
+    worst: Vec<(f32, f32, f32, u32)>,
+}
+
+fn sweep_d_subnormal(ctx: &GpuContext, inputs: &[f32]) -> SubnormalSweepDetail {
+    let outputs = run_candidate_batch(ctx, ExactSqrtCandidate::CorrectlyRoundedHwBitmask, inputs);
+    let mut max_ulp = 0u32;
+    let mut exact_bits = 0usize;
+    let mut integer_path_used = 0usize;
+    let mut flush_count = 0usize;
+    let mut worst = Vec::new();
+    for (x, gpu) in inputs.iter().zip(outputs.iter()) {
+        if is_subnormal(*x) && *x > 0.0 {
+            integer_path_used += 1;
+        }
+        let cpu = x.sqrt();
+        let ulp = ulp_distance(*gpu, cpu);
+        max_ulp = max_ulp.max(ulp);
+        if gpu.to_bits() == cpu.to_bits() {
+            exact_bits += 1;
+        }
+        if gpu.to_bits() == 0 && cpu.to_bits() != 0 {
+            flush_count += 1;
+        }
+        if ulp > 0 {
+            worst.push((*x, *gpu, cpu, ulp));
+        }
+    }
+    worst.sort_by(|a, b| b.3.cmp(&a.3));
+    worst.truncate(8);
+    SubnormalSweepDetail {
+        tested: inputs.len(),
+        exact_bits,
+        max_ulp,
+        integer_path_used,
+        flush_count,
+        worst,
+    }
+}
+
+#[test]
+fn sqrt_exact1d_candidate_d_wgsl_compiles_semantic_free() {
+    let wgsl = emit_batch_wgsl(ExactSqrtCandidate::CorrectlyRoundedHwBitmask, 1);
+    assert_semantic_free(&wgsl);
+    assert_exact0_forbidden(&wgsl);
+    assert!(wgsl.contains("sqrt_cr_d"));
+    assert!(wgsl.contains("dekker_residual_hardened"));
+    assert!(wgsl.contains("sqrt_cr_d_subnormal_integer"));
+    assert!(!wgsl.contains("sqrt_cr_c"));
+    assert!(!wgsl.contains("fma("));
+    with_gpu(|ctx| {
+        let out = run_candidate_batch(ctx, ExactSqrtCandidate::CorrectlyRoundedHwBitmask, &[4.0]);
+        assert_eq!(out[0].to_bits(), 2.0f32.to_bits());
+    });
+}
+
+#[test]
+fn sqrt_exact1d_candidate_d_edge_rows() {
+    with_gpu(|ctx| {
+        let mut exact = 0usize;
+        let mut normal_exact = 0usize;
+        let mut normal_max_ulp = 0u32;
+        let mut subnormal_exact = 0usize;
+        let mut nan_ok = 0usize;
+        for (name, x) in edge_rows_1d() {
+            let gpu = run_candidate_batch(ctx, ExactSqrtCandidate::CorrectlyRoundedHwBitmask, &[x])[0];
+            let cpu = x.sqrt();
+            if cpu.is_nan() && gpu.is_nan() {
+                nan_ok += 1;
+                println!(
+                    "D edge `{name}`: both NaN (gpu={:#x} cpu={:#x})",
+                    gpu.to_bits(),
+                    cpu.to_bits()
+                );
+                continue;
+            }
+            let ulp = ulp_distance(gpu, cpu);
+            let bits_match = gpu.to_bits() == cpu.to_bits();
+            if bits_match {
+                exact += 1;
+            }
+            if is_subnormal(x) {
+                if bits_match {
+                    subnormal_exact += 1;
+                }
+            } else {
+                normal_max_ulp = normal_max_ulp.max(ulp);
+                if bits_match {
+                    normal_exact += 1;
+                }
+            }
+            if !bits_match {
+                println!(
+                    "D edge `{name}` x={x:?} gpu={gpu:?} cpu={cpu:?} ulp={ulp}"
+                );
+            }
+        }
+        println!(
+            "D edge_rows: total={} exact={} normal_exact={} normal_max_ulp={} subnormal_exact={} nan_ok={}",
+            edge_rows_1d().len(),
+            exact,
+            normal_exact,
+            normal_max_ulp,
+            subnormal_exact,
+            nan_ok
+        );
+        assert!(edge_rows_1d().len() >= 15);
+    });
+}
+
+#[test]
+fn sqrt_exact1d_candidate_d_dense_normal_sweep() {
+    with_gpu(|ctx| {
+        let corpus = dense_normal_corpus_1d();
+        let detail = sweep_d_dense_with_probe(ctx, &corpus);
+        println!(
+            "D dense_normal: tested={} exact_bits={} max_ulp={} class={:?} corrections={} up={} down={}",
+            detail.summary.tested,
+            detail.summary.exact_bits,
+            detail.summary.max_ulp,
+            detail.summary.classification,
+            detail.correction_count,
+            detail.up_count,
+            detail.down_count
+        );
+        for (x, gpu, cpu, ulp) in &detail.worst {
+            println!("D dense worst x={x:?} gpu={gpu:?} cpu={cpu:?} ulp={ulp}");
+        }
+        assert!(detail.summary.tested > 100);
+    });
+}
+
+#[test]
+fn sqrt_exact1d_candidate_d_subnormal_sweep() {
+    with_gpu(|ctx| {
+        let corpus = subnormal_corpus();
+        let detail = sweep_d_subnormal(ctx, &corpus);
+        println!(
+            "D subnormal: tested={} exact_bits={} max_ulp={} integer_path={} flush={}",
+            detail.tested,
+            detail.exact_bits,
+            detail.max_ulp,
+            detail.integer_path_used,
+            detail.flush_count
+        );
+        for (x, gpu, cpu, ulp) in &detail.worst {
+            println!(
+                "D subnormal worst x={x:?} ({:#x}) gpu={gpu:?} cpu={cpu:?} ulp={ulp}",
+                x.to_bits()
+            );
+        }
+        assert!(detail.tested > 2000);
+        assert_eq!(detail.integer_path_used, detail.tested);
+    });
+}
+
+#[test]
+fn sqrt_exact1d_candidate_d_contraction_barrier_probe() {
+    with_gpu(|ctx| {
+        let mut corpus = ab_failure_neighborhood();
+        corpus.extend(positive_finite_normal_inputs(&dense_stratified_corpus()));
+        corpus.sort_by(|a, b| a.to_bits().cmp(&b.to_bits()));
+        corpus.dedup_by(|a, b| a.to_bits() == b.to_bits());
+        let probe = run_d_probe(ctx, &corpus);
+        println!(
+            "D contraction_barrier: tested={} native_mismatch={} d_mismatch={} corrections={} up={} down={} d_changes_vs_native={}",
+            probe.tested,
+            probe.native_mismatch,
+            probe.d_mismatch,
+            probe.correction_count,
+            probe.up_count,
+            probe.down_count,
+            probe.d_changes_vs_native
+        );
+        assert!(probe.tested > 50);
+    });
+}
+
+#[test]
+fn sqrt_exact1d_candidate_b_fallback_still_classified() {
+    let wgsl = emit_batch_wgsl(ExactSqrtCandidate::CorrectlyRoundedNewtonTwoProduct, 1);
+    assert!(wgsl.contains("sqrt_cr_b"));
+    assert!(!wgsl.contains("sqrt_cr_d"));
+    with_gpu(|ctx| {
+        let corpus = dense_normal_corpus_1d();
+        let summary = sweep_candidate(ctx, ExactSqrtCandidate::CorrectlyRoundedNewtonTwoProduct, &corpus);
+        println!(
+            "B fallback still present: tested={} exact_bits={} max_ulp={} class={:?}",
+            summary.tested,
+            summary.exact_bits,
+            summary.max_ulp,
+            summary.classification
+        );
+        assert!(summary.tested > 100);
+    });
+}
+
+#[test]
+fn sqrt_exact1d_no_exact_authority_promotion() {
+    let sqrt0 = sqrt0_descriptor();
+    assert_eq!(sqrt0.native_math, NativeMathClass::ApproximateJitOnly);
+    assert!(
+        sqrt0
+            .writes
+            .iter()
+            .all(|out| out.authority == OutputAuthority::ApproximateDiagnostic)
+    );
+
+    let grad0 = grad0_descriptor();
+    let mag2 = grad0
+        .writes
+        .iter()
+        .find(|out| out.name == "mag2")
+        .expect("mag2 output");
+    assert_eq!(mag2.authority, OutputAuthority::ApproximateDiagnostic);
+
+    assert!(matches!(
+        validate_exact_kernel_inputs(&sqrt0, &["sqrt_out"]),
+        Err(SpecError::JitKernelDescriptorAdmission { .. })
+    ));
+    assert!(matches!(
+        validate_exact_kernel_inputs(&grad0, &["mag2"]),
+        Err(SpecError::JitKernelDescriptorAdmission { .. })
+    ));
+
+    assert!(
+        !landed_jit_kernel_descriptors()
+            .iter()
+            .any(|desc| desc.id.contains("sqrt_exact")),
+        "no exact sqrt kernel descriptor admitted yet"
+    );
 }

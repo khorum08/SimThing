@@ -355,20 +355,22 @@ layer and only on exhaustive proof; the runtime remains the unconditional last l
 
 ## 11. Open decisions (design authority — Opus)
 
-**Status after SQRT-EXACT-0 (#305):** A and B were implemented and probed; **both stuck at
+**Status after SQRT-EXACT-0 (#305) and SQRT-EXACT-1D:** A and B were implemented and probed; **both stuck at
 ≥1 ULP on DX12/naga** (A's correction never fired; B failed normal-range boundaries), and
 both flushed subnormals to 0. Root cause is **backend FP contraction/reassociation + flush-
-to-zero**, not the underlying math. The next probe is **Candidate D**, whose integer bitmask
-split is opaque to that optimizer.
+to-zero**, not the underlying math. **Candidate D (#SQRT-EXACT-1D) is now probed:** bitmask-
+split + hardened Dekker residual **fires corrections on DX12** (117 on dense normal vs A's 0)
+and normal edge rows are bit-exact, but **subnormal outputs still flush to 0.0** (final f32
+store/scale FTZ) and dense normal **max ULP = 1** — not promotable without exhaustive proof
+and subnormal output fix.
 
-1. **Next candidate to land: D**, with both #305-surfaced hardening requirements baked in
-   from the start — (a) a contraction barrier (or integer-domain residual) on the Dekker
-   error term, and (b) integer bit-manipulation for the subnormal path (FP scaling flushes).
-   Add it as a third variant (`CorrectlyRoundedHwBitmask`) in the existing battery.
-2. **Contingency — Candidate E (integer-only).** If D's FP error term still cannot survive
-   DXC contraction, escalate to a fully integer mantissa algorithm (integer Newton / digit-
-   recurrence on the significand), which is immune to FP contraction *and* flush-to-zero.
-   Heavier, but the guaranteed-correct backstop. Decide only if D's contraction barrier fails.
+1. **D landed as lead candidate probe** with contraction barrier (split helpers) and integer
+   subnormal *input* normalization. Classification: **ApproximateJitOnly** on this backend;
+   subnormal output path **unresolved**.
+2. **Contingency — Candidate E (integer-only).** **Now recommended for subnormal output FTZ**
+   if D cannot construct result bits without f32 subnormal storage. Fully integer mantissa
+   algorithm remains the guaranteed-correct backstop. Decide when subnormal corpus reaches
+   zero exact bits with integer output construction.
 3. **`fma` shortcut is dead on this backend.** #305 confirms naga/DX12 does not fuse `fma`
    for residual purposes — do not spend further effort on the A/`fma` form unless a *different*
    adapter is proven to fuse. Recorded as a binding backend note.

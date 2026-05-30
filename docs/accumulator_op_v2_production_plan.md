@@ -2467,6 +2467,7 @@ The M-JIT track is **closed** at default-off `ProductionKernelRegistryShell` (`d
 **Shader/software exact sqrt follow-on:**
 - Design note: [`docs/workshop/sqrt_candidates.md`](workshop/sqrt_candidates.md)
 - **SQRT-EXACT-0 (PASS, test-only battery):** `phase_m_jit_sqrt_exact_candidate_battery.rs` — Candidates A (`CorrectlyRoundedHwFma`) and B (`CorrectlyRoundedNewtonTwoProduct`) only; Candidate C/f64 explicitly not implemented. Report: [`docs/tests/phase_m_jit_sqrt_exact_candidate_battery_results.md`](tests/phase_m_jit_sqrt_exact_candidate_battery_results.md).
+- **SQRT-EXACT-1D (PASS, Candidate D probe):** same battery file — Candidate D (`CorrectlyRoundedHwBitmask`) with bitmask-split Dekker residual hardening + integer subnormal input normalization; corrections fire on DX12 (117 on dense normal) where A never fired; normal edge rows bit-exact; subnormal output FTZ unresolved (`max_ulp` still ≥1 on dense normal). Report: [`docs/tests/phase_m_jit_sqrt_exact1d_candidate_d_results.md`](tests/phase_m_jit_sqrt_exact1d_candidate_d_results.md). No ignored exhaustive sweep added.
 - Native sqrt remains `ApproximateJitOnly`; no production exact-authority promotion in this slice.
 - Exact authority requires exhaustive `max_ulp == 0` proof against CPU `f32::sqrt` (ignored full sweep available separately).
 - No scheduler/cache/default wiring/economy bridge/`simthing-sim` awareness authorized.
