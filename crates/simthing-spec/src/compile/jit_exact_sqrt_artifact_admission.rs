@@ -132,6 +132,9 @@ pub const SEAD_ACT1_ADMITTED_TABLE_SIZE: u32 = 16;
 pub const SEAD_ACT2_DESCRIPTOR_ID: &str = "m_jit_sead_act2_proposal_admission_records";
 pub const SEAD_ACT2_LABEL: &str = "SeadProposalAdmissionRecords";
 pub const SEAD_ACT2_ADMISSION_RECORD_STRIDE: u32 = 7;
+pub const SEAD_ACT3_DESCRIPTOR_ID: &str = "m_jit_sead_act3_economic_fixture_records";
+pub const SEAD_ACT3_LABEL: &str = "SeadEconomicFixtureRecords";
+pub const SEAD_ACT3_FIXTURE_RECORD_STRIDE: u32 = 10;
 
 /// Compacted event membership authority (SEAD-EVENT-0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -207,6 +210,13 @@ pub enum PhaseEProposalSummaryOrderAuthority {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PhaseEFixtureProposalAdmissionAuthority {
     /// Admission records are exact under fixed integer threshold contracts.
+    ExactAuthoritative,
+}
+
+/// Economic V1-style fixture substrate record authority (SEAD-ACT-3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PhaseEEconomicFixtureRecordAuthority {
+    /// Fixture records are exact under fixed integer mapping contracts.
     ExactAuthoritative,
 }
 
@@ -1417,6 +1427,65 @@ pub fn validate_sead_act1_phase_e_proposal_consumer_contract(
     Ok(())
 }
 
+fn has_economic_fixture_reads(spec: &KernelDescriptorSpec) -> bool {
+    spec.reads.iter().any(|read| read == "admission_record")
+}
+
+/// True when the descriptor is the landed SEAD Economic V1 fixture records kernel.
+pub fn is_sead_act3_economic_fixture_records_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == SEAD_ACT3_DESCRIPTOR_ID
+        && has_economic_fixture_reads(spec)
+        && spec.writes.iter().any(|out| out.name == "fixture_record")
+        && spec.writes.iter().any(|out| out.name == "record_code")
+}
+
+/// Validate landed SEAD-ACT-3 Economic V1 fixture records descriptor pins.
+pub fn validate_sead_act3_economic_fixture_records_contract(
+    spec: &KernelDescriptorSpec,
+) -> Result<(), SpecError> {
+    if spec.id != SEAD_ACT3_DESCRIPTOR_ID {
+        return Ok(());
+    }
+    if !has_economic_fixture_reads(spec) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD Economic V1 fixture records require admission_record read",
+        ));
+    }
+    if spec.exact_sqrt_artifact.is_some() {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD Economic V1 fixture records must not bind sqrt artifact",
+        ));
+    }
+    if spec.score_authority_contract.is_some() {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD Economic V1 fixture records must not declare score authority contract",
+        ));
+    }
+    for (name, msg) in [
+        ("fixture_record", "exact-authoritative fixture_record"),
+        ("record_code", "exact-authoritative record_code"),
+    ] {
+        match spec
+            .writes
+            .iter()
+            .find(|out| out.name == name)
+            .map(|out| out.authority)
+        {
+            Some(OutputAuthority::ExactAuthoritative) => {}
+            _ => {
+                return Err(artifact_err(
+                    &spec.id,
+                    format!("SEAD Economic V1 fixture records require {msg}"),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 fn has_proposal_admission_reads(spec: &KernelDescriptorSpec) -> bool {
     spec.reads.iter().any(|read| read == "proposal_summary")
 }
@@ -1478,6 +1547,9 @@ pub fn validate_sead_act2_proposal_admission_records_contract(
 
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
 pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
+    if spec.id == SEAD_ACT3_DESCRIPTOR_ID {
+        return validate_sead_act3_economic_fixture_records_contract(spec);
+    }
     if spec.id == SEAD_ACT2_DESCRIPTOR_ID {
         return validate_sead_act2_proposal_admission_records_contract(spec);
     }
@@ -1914,6 +1986,27 @@ pub fn sead_act2_proposal_admission_records_kernel_descriptor() -> KernelDescrip
         writes: vec![
             exact_out("admission_record"),
             exact_out("admission_code"),
+        ],
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
+        mag2_source_contract: None,
+        score_authority_contract: None,
+    }
+}
+
+/// Build the landed SEAD Economic V1 fixture records kernel descriptor (SEAD-ACT-3).
+pub fn sead_act3_economic_fixture_records_kernel_descriptor() -> KernelDescriptorSpec {
+    KernelDescriptorSpec {
+        id: SEAD_ACT3_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads: vec!["admission_record".to_string()],
+        writes: vec![
+            exact_out("fixture_record"),
+            exact_out("record_code"),
         ],
         native_math: NativeMathClass::None,
         semantic_free: true,

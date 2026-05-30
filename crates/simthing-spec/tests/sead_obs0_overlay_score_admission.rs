@@ -24,6 +24,8 @@ use simthing_spec::{
     sead_act1_phase_e_proposal_consumer_kernel_descriptor,
     SEAD_ACT2_DESCRIPTOR_ID,
     sead_act2_proposal_admission_records_kernel_descriptor,
+    SEAD_ACT3_DESCRIPTOR_ID,
+    sead_act3_economic_fixture_records_kernel_descriptor,
     SpecError, MAG2_Q16_FRAC_BITS, SQRT_F_ARTIFACT_HASH,
     is_sead_obs2_multilayer_overlay_score_descriptor,
     is_sead_obs3_multilayer_fixed_score_descriptor,
@@ -35,6 +37,7 @@ use simthing_spec::{
     is_sead_act0_numeric_proposals_descriptor,
     is_sead_act1_phase_e_proposal_consumer_descriptor,
     is_sead_act2_proposal_admission_records_descriptor,
+    is_sead_act3_economic_fixture_records_descriptor,
 };
 
 fn obs2() -> KernelDescriptorSpec {
@@ -105,6 +108,13 @@ fn act2() -> KernelDescriptorSpec {
         .into_iter()
         .find(|desc| desc.id == SEAD_ACT2_DESCRIPTOR_ID)
         .expect("sead act2 descriptor")
+}
+
+fn act3() -> KernelDescriptorSpec {
+    landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|desc| desc.id == SEAD_ACT3_DESCRIPTOR_ID)
+        .expect("sead act3 descriptor")
 }
 
 fn obs0() -> KernelDescriptorSpec {
@@ -527,6 +537,26 @@ fn sead_act2_descriptor_admits_proposal_admission_records() {
 #[test]
 fn sead_act2_rejects_sqrt_artifact_binding() {
     let mut bad = sead_act2_proposal_admission_records_kernel_descriptor();
+    bad.exact_sqrt_artifact = Some(exact_sqrt_f_artifact_descriptor());
+    assert_admission_err(&bad, "must not bind sqrt artifact");
+}
+
+#[test]
+fn sead_act3_descriptor_admits_economic_fixture_records() {
+    let desc = act3();
+    assert_eq!(desc.id, SEAD_ACT3_DESCRIPTOR_ID);
+    assert!(desc.default_off);
+    assert!(!desc.production_wiring);
+    assert!(is_sead_act3_economic_fixture_records_descriptor(&desc));
+    validate_kernel_descriptor_admission(&desc).expect("act3 admits");
+    println!(
+        "sead_act3_descriptor: id={SEAD_ACT3_DESCRIPTOR_ID} fixture=ExactAuthoritative default_off=true"
+    );
+}
+
+#[test]
+fn sead_act3_rejects_sqrt_artifact_binding() {
+    let mut bad = sead_act3_economic_fixture_records_kernel_descriptor();
     bad.exact_sqrt_artifact = Some(exact_sqrt_f_artifact_descriptor());
     assert_admission_err(&bad, "must not bind sqrt artifact");
 }

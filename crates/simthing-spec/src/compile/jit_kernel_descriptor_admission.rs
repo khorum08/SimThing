@@ -360,5 +360,6 @@ pub fn landed_jit_kernel_descriptors() -> Vec<KernelDescriptorSpec> {
         crate::compile::jit_exact_sqrt_artifact_admission::sead_act0_numeric_proposals_kernel_descriptor(),
         crate::compile::jit_exact_sqrt_artifact_admission::sead_act1_phase_e_proposal_consumer_kernel_descriptor(),
         crate::compile::jit_exact_sqrt_artifact_admission::sead_act2_proposal_admission_records_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::sead_act3_economic_fixture_records_kernel_descriptor(),
     ]
 }
