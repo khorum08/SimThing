@@ -10,18 +10,20 @@ Constitutional surfacing:
 - [`../design_v7_6.md`](../design_v7_6.md)
 - [`../invariants.md`](../invariants.md) — Mapping (Sparse RegionCell) rows
 
-> **▶ FORWARD HORIZON — build toward this, not hygiene passes:** FrontierV2 (the multi-tick
-> closed-loop consumer) is **ACCEPTED** (Opus, 2026-05-30) — the self-AI loop is proven at fixture
-> level, so the horizon now **advances to the designer-facing layer: `CLAUSE-SPEC-0` — Designer-Facing
-> FrontierV2 Spec Admission.** Goal: admit a designer-authored FrontierV2 scenario through
-> `simthing-spec` and compile it to the *same* accepted runtime artifacts (RON-first; ClauseScript/
-> ClauseThing later). **Guardrails relocate to admission, they do not relax away:** cross-entity
-> writes, production commitment, Resource-Flow bypass, unbounded fanout, and `simthing-sim` leakage
-> are **rejected at import**, with the runtime as the last line. If you find yourself looping on
-> hygiene/closure or stalling for "no consumer," **orient to `CLAUSE-SPEC-0`** — do not self-accept a
-> phase, spawn another `ACT-N`/`FrontierV2-5` prooflet, or implement the ClauseScript parser (that is
-> the separate parked ClauseThing track). Closure/acceptance memos are **design-authority + product
-> only**. (Charter + gate: [`sead_self_ai_track.md`](sead_self_ai_track.md) §11.)
+> **▶ FORWARD HORIZON (updated 2026-05-30):** **v7.7 is CLOSED** and the **AccumulatorOp v2
+> production plan is CLOSED** — Phase M and Phase E are closed at their accepted bounded postures
+> (Frontier substrate + SEAD Self-AI Proposal Pipeline V1; `FlatStarResourceFlow`). FrontierV2-0..4
+> (multi-tick closed-loop consumer) are accepted at fixture level. **Next track (product-sequenced):
+> the `simthing-spec` buildout to prep for ClauseThing** — author/admit designer-facing scenario
+> specs (starting from Frontier) that compile to the *same* accepted runtime artifacts, with
+> guardrails **relocated to spec admission** (cross-entity writes, production commitment,
+> Resource-Flow bypass, unbounded fanout, `simthing-sim` leakage rejected at import; runtime is the
+> last line). **`CLAUSE-SPEC-0` (Designer-Facing FrontierV2 Spec Admission) is the ClauseThing-facing
+> slice *downstream* of the simthing-spec buildout — do NOT start it before that buildout, and do NOT
+> implement the ClauseScript parser (separate parked ClauseThing track).** Do not reopen closed
+> phases, self-accept, or spawn `ACT-N`/`FrontierV2-5`/atlas/nested prooflets (all deferred behind
+> named scenarios). Closure/acceptance memos are **design-authority + product only**. (Charter:
+> [`sead_self_ai_track.md`](sead_self_ai_track.md) §11; closure: [`../accumulator_op_v2_production_plan.md`](../accumulator_op_v2_production_plan.md), [`../design_v7_7.md`](../design_v7_7.md).)
 
 Active read order (authoritative path for agents):
 

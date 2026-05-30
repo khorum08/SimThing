@@ -700,6 +700,11 @@ Unchanged from v5. See v5 §9.
 
 ## 10. The GPU Pipeline
 
+> ⚠️ SUPERSEDED — The GPU pipeline specification in this section is superseded
+> by `docs/adr_accumulator_op_v2.md` and `docs/design_v7.md` §4.
+> This section is retained for historical reference only.
+> Do not implement from this section. (G-1, AccumulatorOp v2 production plan.)
+
 Unchanged from v5. See v5 §10. Suspended overlays are invisible to all
 GPU passes — `build_overlay_deltas` filters them before upload, so the
 shader never sees them.

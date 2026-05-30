@@ -1,6 +1,20 @@
 # SimThing — Design v7.7 Amendment
 
-> **Status:** Active amendment (2026-05-28). Surfaces the **Mapping (Sparse RegionCell)**
+> **Status: CLOSED / settled (design authority — Opus, 2026-05-30).** v7.7's parked work is
+> complete: the Phase M generic natives (M-1..M-3) landed, the first scenario-level slice
+> (Frontier) landed and was accepted as a vertical (mapping + flat-star Resource Flow + SEAD
+> Self-AI Proposal Pipeline V1; multi-tick closed-loop consumer proven at fixture level), the
+> exact-`sqrt` authority was released (artifact-backed Candidate F), and the AccumulatorOp v2
+> production plan is **CLOSED**. v7.7 remains the **binding constitutional baseline** (it is
+> settled, not deleted); its guardrails and §5 gating governance stay in force. No mapping
+> *production runtime* beyond the accepted opt-in/default-off Frontier vertical is authorized;
+> the deferred set (atlas/M-4A, active-mask/M-6A, nested E-11B, perception, source identity)
+> stays parked behind named scenarios. **Next track (gated behind this closure):** simthing-spec
+> buildout to prep for ClauseThing, then the ClauseThing-facing designer/spec-admission work. See
+> [`accumulator_op_v2_production_plan.md`](accumulator_op_v2_production_plan.md) (CLOSED) and
+> [`workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md).
+>
+> *Originally:* Active amendment (2026-05-28). Surfaces the **Mapping (Sparse RegionCell)**
 > architecture and the **SEAD field-intelligence** surfacing. Supersedes nothing in the
 > V7.5 constitutional core or the V7.6 amendment; it **extends** them with the architectural
 > decision recorded in [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md).

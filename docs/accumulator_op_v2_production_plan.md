@@ -1,7 +1,22 @@
 # AccumulatorOp v2 — Production Plan
 
-> **Status:** Active planning document. Companion to `adr_accumulator_op_v2.md`.
-> The PR ladder below is the authoritative sequencing. Phases A–D are not
+> **Status: CLOSED (design authority — Opus, 2026-05-30).** The AccumulatorOp v2 production
+> ladder is complete at its bounded posture: Phases A–C (substrate + operation-family
+> migration), the S-series legacy sunsets (deleted), Phase E + Resource Flow flat-star
+> (E-7..E-11), Phase T (transfer/emission, T-1..T-6), Phase D-1 (contention memo), Phase F
+> (old-pipeline sunset), Phase G (design finalization, below), and the Phase M generic natives
+> (M-1..M-3) all landed. **Phase M closed** at the accepted Frontier substrate + SEAD Self-AI
+> Proposal Pipeline V1 (see `workshop/sead_self_ai_track.md`); **Phase E closed** at
+> `FlatStarResourceFlow`. Out-of-scope items remain **explicitly deferred behind named
+> scenarios** — they are parked, not incomplete: nested Resource Flow (E-11B / E-11B-5),
+> hard-currency discrete ordering (D-2 / D-2a), atlas (M-4 / M-4A), source identity (M-5). This
+> closes the substrate side of **design_v7_7**. Closure ≠ "everything built": everything *in
+> scope* is built; the deferred set is the bounded posture, unblocked only by a named scenario.
+> Next track (per product direction, gated behind this closure): **simthing-spec buildout to prep
+> for ClauseThing** → then the ClauseThing-facing designer/spec-admission work (`CLAUSE-SPEC-0`).
+> Companion to `adr_accumulator_op_v2.md`.
+>
+> The PR ladder below is the authoritative sequencing (historical record). Phases A–D are not
 > calendar quarters; they are completion-gated sequences. A phase does not
 > begin until all PRs in the prior phase are green and merged.
 >
@@ -1568,6 +1583,18 @@ consistent with the invariants doc and the ADR. Produces any needed corrections
 as a doc-only PR.
 
 **Gate:** Human + Opus sign-off before G-2 merges.
+
+**G-1 status: Done (2026-05-30)** — `design_v6.md` §10 annotated SUPERSEDED by
+`adr_accumulator_op_v2.md` + `design_v7.md` §4.
+
+**G-2 status: Done — Opus design-finalization review PASS (2026-05-30).** Confirmed `design_v7`
+§4 describes AccumulatorOp v2 as the unified gather/combine/gate/scatter primitive with every
+operation family (reduction, intensity, overlay, threshold, velocity, intent) migrated; the
+migration-progress note records the legacy passes **deleted** (S-1..S-6), so no old-pass
+description remains active; and §4 is consistent with `docs/invariants.md` and
+`adr_accumulator_op_v2.md`. The v7.5 / v7.6 / v7.7 amendment chain is the finalized design of
+record and supersedes the narrower original G-2 target. **Phase G complete → AccumulatorOp v2
+production plan CLOSED (see header).**
 
 ---
 
