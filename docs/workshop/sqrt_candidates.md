@@ -320,7 +320,32 @@ ExactDeterministic            ← admission may grant exact-output authority to 
 - Until a candidate is proven, the §3 guardrail is unchanged: native `sqrt` and `mag2`
   stay blocked from exact authority and admission keeps rejecting graphs that violate it.
 
-## 9. Constitutional posture
+## 9. Where the promoted kernel lives
+
+A promoted candidate **must** be WGSL — the runtime evaluates on GPU, so shader text is the
+only place it can execute. There is no Rust/CPU runtime path for it; the CPU side appears
+only as the *oracle* at test time. Concretely:
+
+- **GPU side — a fixed, audited WGSL intrinsic.** The correctly-rounded routine lives as a
+  generic semantic-free WGSL function (`fn sqrt_cr(x: f32) -> f32 { … }`) that the EvalEML
+  `sqrt`/`mag` opcode **lowers to** — included verbatim in the emitted/runtime shader wherever
+  the opcode appears. The lowering chain is: `EvalEML sqrt opcode → audited sqrt_cr WGSL
+  function → shader text`.
+- **It is a frozen intrinsic, not freely re-composed text.** D's correctness depends on the
+  exact operation ordering surviving naga → DXC; uncontrolled re-emission would let the
+  compiler reassociate/contract the Dekker error term and break exactness — exactly the
+  failure mode that killed A and B in #305. So the proven kernel is referenced as a
+  **known-good, contraction-audited primitive** (verified at the generated-HLSL level), never
+  reconstructed per formula by general EvalEML emission.
+- **CPU side stays trivial.** The oracle is plain `f32::sqrt` (already correctly rounded).
+  The CPU does **not** reimplement Markstein/bitmask; the entire parity claim is
+  "GPU `sqrt_cr` bits == `f32::sqrt` bits."
+- **Until promotion, it stays out of baseline shaders.** Today it is test-only WGSL in the
+  battery; `accumulator_op.wgsl` remains `sqrt`-free. On promotion, the *only* runtime change
+  is that the `sqrt`/`mag` opcode's descriptor flips to `ExactDeterministic` and points at the
+  audited intrinsic — admission then stops rejecting graphs that use it as an exact source.
+
+## 10. Constitutional posture
 
 Generic semantic-free numeric kernel; opt-in; CPU-oracle parity (exhaustively proven, not
 sampled); no new GPU *primitive* beyond an EvalEML opcode/kernel mapping; no scheduler, no
@@ -328,7 +353,7 @@ cache, no default `SimSession` wiring, no economy→mapping bridge, no `simthing
 awareness, no semantic WGSL. Exactness authority is granted only at the spec-admission
 layer and only on exhaustive proof; the runtime remains the unconditional last line.
 
-## 10. Open decisions (design authority — Opus)
+## 11. Open decisions (design authority — Opus)
 
 **Status after SQRT-EXACT-0 (#305):** A and B were implemented and probed; **both stuck at
 ≥1 ULP on DX12/naga** (A's correction never fired; B failed normal-range boundaries), and
