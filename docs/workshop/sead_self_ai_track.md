@@ -246,3 +246,28 @@ gate would *re-create that consumer-less stall*. So:
 ### FrontierV1-5 result
 
 FrontierV1-5 executed one live GPU-resident integrated self-AI resource-dispatch route inside the default-off FrontierV1 fixture, satisfying the §10 requirement for a live score→threshold→proposal→dispatch run for the bounded single-tick smoke route. It also produced a fixture-only feedback candidate shape for the named FrontierV2 closed-loop consumer. This does not reopen the SEAD ladder, does not implement FrontierV2, does not declare phase closure, and does not authorize default runtime wiring. Structural and movement routes remain ReplayAccepted unless separately proven.
+
+### FrontierV1-5 — design-authority ruling: ACCEPT (Opus, 2026-05-30)
+
+**ACCEPT.** Verified against the fixture code, not just the report: `run_pipe0_gpu` and
+`run_act2_chain_gpu` build real compute pipelines and `dispatch_workgroups` (score→threshold→
+compact, then bucket→reduce→propose→consume→admit) with readback, and resource dispatch routes
+through the `FlatStarResourceFlow` allocator (the V1-3 GPU-verified pattern). So the live
+score→threshold→proposal→dispatch loop is **genuinely GPU-resident, not replay/CPU** — the §10
+requirement is met for the bounded single-tick resource-dispatch route. CPU-oracle parity exact;
+replay fingerprint `1653b84847be2dd2`. Structural and movement routes are **correctly left
+`ReplayAccepted`** (honest, not overclaimed); the feedback candidate is **`FixtureOnly`**; no
+ladder reopening; all hard guardrails preserved; no implementer closure declared.
+
+**Status change (design authority):** the FrontierV1 self-AI **resource-dispatch** loop is
+**`GpuVerified` for the bounded single-tick route.** Structural/movement remain `ReplayAccepted`.
+
+**Next gate: `FrontierV2-0`** — the multi-tick closed-loop consumer (field-derived proposals
+drive movement/dispatch that feeds back into field/economy next tick). Per the relax-toward-the-
+ClauseThing-horizon doctrine, FrontierV2 is **not** gated on standalone structural/movement
+live-route proofs: it is the consumer that exercises them (commits = reinforce/withdraw across
+ticks; movement = units actually moving), so those routes are proven *within* V2, not as separate
+hygiene gates. FrontierV2 is also where the bounded economy↔field + proposal→action relaxation
+extends to the closed loop, and where **ClauseThing** becomes the natural authoring front-end for
+the scenario — guardrails placed at that designer/spec-admission layer, per the charter. No phase
+closure is declared by implementer fixtures; design authority records the status change above.
