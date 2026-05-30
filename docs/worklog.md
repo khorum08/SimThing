@@ -1,3 +1,7 @@
+# 2026-05-30 — FrontierV1-0 opt-in scenario skeleton and admission contract (Tier-2, landed)
+
+- FrontierV1-0 defined the default-off FrontierV1 scenario skeleton and admission envelope for M/E closure: first-slice mapping, flat-star Resource Flow, and SEAD Self-AI routing through accepted substrates; no runtime wiring added.
+
 # 2026-05-30 — SEAD-V1-CONSOLIDATE-0 SEAD Self-AI Proposal Pipeline V1 (Tier-2, docs-only)
 
 - SEAD-V1-CONSOLIDATE-0 ingested `sead_self_ai_track.md`, consolidated OBS/EVENT/PIPE/ACT evidence into SEAD Self-AI Proposal Pipeline V1, retained ACT-3/ACT-4 as supporting Economic V1 fixture evidence, stopped ACT-N expansion, and set FrontierV1 opt-in integration as the next M/E closure step.
