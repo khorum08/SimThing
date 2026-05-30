@@ -106,6 +106,13 @@ pub struct AccumulatorOpSession {
     execute_pipeline: ComputePipeline,
     /// AO-WGSL-0: fused multi-band OrderBand fast path (`execute_orderband_bands`).
     orderband_fast_pipeline: ComputePipeline,
+    /// AO-WGSL-0: dynamic-offset bind layout for the fast path (binding 4 dynamic).
+    orderband_fast_layout: BindGroupLayout,
+    /// AO-WGSL-0: growable band-params uniform; one buffer/bind-group per encode,
+    /// dynamic-offset indexed per band. Avoids O(n_bands) allocation churn.
+    orderband_fast_uniform: Buffer,
+    /// Band capacity of `orderband_fast_uniform` at the device uniform stride.
+    orderband_fast_uniform_bands: u32,
     summary_layout: BindGroupLayout,
     summary_pipeline: ComputePipeline,
     fill_uniform: Buffer,
@@ -306,17 +313,43 @@ impl AccumulatorOpSession {
             cache: None,
         });
 
+        let orderband_fast_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("accumulator_ao_wgsl0_fast_layout"),
+            entries: &[
+                storage_entry(0, true),
+                storage_entry(1, false),
+                storage_entry(2, false),
+                storage_entry(3, false),
+                uniform_entry_dynamic(4),
+                storage_entry(5, true),
+                storage_entry(6, false),
+                storage_entry(7, false),
+                storage_entry(8, true),
+                storage_entry(9, true),
+                storage_entry(10, true),
+                storage_entry(11, true),
+                storage_entry(12, true),
+            ],
+        });
+
         let orderband_fast_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
             label: Some("accumulator_ao_wgsl0_fast_pipeline"),
             layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: Some("accumulator_ao_wgsl0_fast_pl"),
-                bind_group_layouts: &[&execute_layout],
+                bind_group_layouts: &[&orderband_fast_layout],
                 push_constant_ranges: &[],
             })),
             module: &shader,
             entry_point: super::wgsl_path::AO_WGSL0_ENTRY_POINT,
             compilation_options: Default::default(),
             cache: None,
+        });
+
+        let orderband_fast_uniform = device.create_buffer(&BufferDescriptor {
+            label: Some("accumulator_ao_wgsl0_fast_uniform"),
+            size: ao_wgsl0_uniform_stride(device),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
 
         let summary_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -420,6 +453,9 @@ impl AccumulatorOpSession {
             execute_layout,
             execute_pipeline,
             orderband_fast_pipeline,
+            orderband_fast_layout,
+            orderband_fast_uniform,
+            orderband_fast_uniform_bands: 1,
             summary_layout,
             summary_pipeline,
             fill_uniform,
@@ -1278,12 +1314,15 @@ impl AccumulatorOpSession {
         drop(band_uniforms);
     }
 
-    /// AO-WGSL-0: encode OrderBand ops with reduced per-band allocation overhead.
+    /// AO-WGSL-0: encode OrderBand ops through the generic semantic-free fast path.
     ///
-    /// Uses the dedicated `execute_orderband_bands` pipeline entry (semantic-free
-    /// generic AO kernel) while preserving global band ordering: one band per
-    /// dispatch, sequential bands in one compute pass. `tick_params._pad1` stores
-    /// total band count for harness reporting.
+    /// Uses the dedicated `execute_orderband_bands` pipeline entry while preserving
+    /// global band ordering: one band per dispatch, sequential bands in one compute
+    /// pass. Performance: a single growable dynamic-offset uniform holds every band's
+    /// params and a single bind group is reused across bands via per-band dynamic
+    /// offsets — this avoids the O(n_bands) per-tick GPU buffer/bind-group allocation
+    /// churn that dominates at endgame scale (deep hierarchies → many bands per tick).
+    /// `tick_params._pad1` stores total band count for harness reporting.
     pub fn encode_orderband_fast_into(
         &mut self,
         ctx: &GpuContext,
@@ -1299,13 +1338,11 @@ impl AccumulatorOpSession {
         }
         self.last_pass_time_us = None;
 
-        let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
-        let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-            label: Some("accumulator_ao_wgsl0_fast_pass"),
-            timestamp_writes: None,
-        });
-        pass.set_pipeline(&self.orderband_fast_pipeline);
+        let stride = ao_wgsl0_uniform_stride(&ctx.device);
+        self.ensure_orderband_fast_uniform(ctx, n_bands, stride);
 
+        let params_size = std::mem::size_of::<AccumulatorTickParams>();
+        let mut params_bytes = vec![0u8; (stride * n_bands as u64) as usize];
         for band in 0..n_bands {
             let tick_params = AccumulatorTickParams {
                 n_ops: self.n_ops,
@@ -1317,24 +1354,119 @@ impl AccumulatorOpSession {
                 dt_bits: dt.to_bits(),
                 _pad1: n_bands,
             };
-            let tick_uniform = ctx
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("accumulator_ao_wgsl0_fast_uniform"),
-                    contents: bytemuck::bytes_of(&tick_params),
-                    usage: BufferUsages::UNIFORM,
-                });
-            let execute_bind_group = self.create_execute_bind_group_with_uniform(
-                ctx,
-                values,
-                previous_values,
-                &tick_uniform,
-                eml,
-                None,
-            );
-            pass.set_bind_group(0, &execute_bind_group, &[]);
+            let off = (band as u64 * stride) as usize;
+            params_bytes[off..off + params_size].copy_from_slice(bytemuck::bytes_of(&tick_params));
+        }
+        ctx.queue
+            .write_buffer(&self.orderband_fast_uniform, 0, &params_bytes);
+
+        let bind_group = self.create_orderband_fast_bind_group(ctx, values, previous_values, eml);
+
+        let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
+        let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+            label: Some("accumulator_ao_wgsl0_fast_pass"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.orderband_fast_pipeline);
+        for band in 0..n_bands {
+            let dyn_offset = (band as u64 * stride) as u32;
+            pass.set_bind_group(0, &bind_group, &[dyn_offset]);
             pass.dispatch_workgroups(groups, 1, 1);
         }
+    }
+
+    /// Grow the AO-WGSL-0 fast-path band-params uniform to hold `n_bands` entries.
+    fn ensure_orderband_fast_uniform(&mut self, ctx: &GpuContext, n_bands: u32, stride: u64) {
+        if self.orderband_fast_uniform_bands >= n_bands {
+            return;
+        }
+        self.orderband_fast_uniform = ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("accumulator_ao_wgsl0_fast_uniform"),
+            size: stride * n_bands as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        self.orderband_fast_uniform_bands = n_bands;
+    }
+
+    /// Build the single AO-WGSL-0 fast-path bind group. Binding 4 is a dynamic-offset
+    /// view of `orderband_fast_uniform` (one `AccumulatorTickParams` window). Bindings
+    /// match the resource-flow execute layout exactly (previous/output values aliased
+    /// to `previous_values`), so semantics are identical to the legacy path.
+    fn create_orderband_fast_bind_group(
+        &self,
+        ctx: &GpuContext,
+        values: &Buffer,
+        previous_values: &Buffer,
+        eml: Option<(&Buffer, &Buffer)>,
+    ) -> wgpu::BindGroup {
+        let (eml_nodes, eml_ranges) = self.resolve_eml_buffers(eml);
+        let uniform_binding = wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+            buffer: &self.orderband_fast_uniform,
+            offset: 0,
+            size: Some(
+                std::num::NonZeroU64::new(std::mem::size_of::<AccumulatorTickParams>() as u64)
+                    .expect("AccumulatorTickParams is non-empty"),
+            ),
+        });
+        ctx.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("accumulator_ao_wgsl0_fast_bg"),
+            layout: &self.orderband_fast_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: self.op_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: self.emission_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 3,
+                    resource: self.emission_count.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 4,
+                    resource: uniform_binding,
+                },
+                BindGroupEntry {
+                    binding: 5,
+                    resource: previous_values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 6,
+                    resource: self.threshold_emission_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 7,
+                    resource: self.threshold_emission_count.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 8,
+                    resource: eml_nodes.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 9,
+                    resource: eml_ranges.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 10,
+                    resource: self.input_list_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 11,
+                    resource: previous_values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 12,
+                    resource: previous_values.as_entire_binding(),
+                },
+            ],
+        })
     }
 
     /// Encode C-5 soft-reduction OrderBand ops against `output_vectors`.
@@ -2072,6 +2204,29 @@ fn uniform_entry(binding: u32) -> BindGroupLayoutEntry {
         },
         count: None,
     }
+}
+
+/// AO-WGSL-0: uniform binding with per-band dynamic offsets (fast-path layout).
+fn uniform_entry_dynamic(binding: u32) -> BindGroupLayoutEntry {
+    BindGroupLayoutEntry {
+        binding,
+        visibility: ShaderStages::COMPUTE,
+        ty: BindingType::Buffer {
+            ty: BufferBindingType::Uniform,
+            has_dynamic_offset: true,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
+/// AO-WGSL-0: device-aligned stride for one `AccumulatorTickParams` window in the
+/// dynamic-offset band-params uniform. Dynamic offsets must be multiples of the
+/// device `min_uniform_buffer_offset_alignment`.
+fn ao_wgsl0_uniform_stride(device: &wgpu::Device) -> u64 {
+    let align = device.limits().min_uniform_buffer_offset_alignment.max(1) as u64;
+    let size = std::mem::size_of::<AccumulatorTickParams>() as u64;
+    size.div_ceil(align) * align
 }
 
 fn mk_dummy_input_list_buffer(device: &wgpu::Device) -> Buffer {

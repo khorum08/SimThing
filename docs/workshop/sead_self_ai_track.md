@@ -337,8 +337,9 @@ admission layer** — the ClauseThing horizon, where (per the standing product d
   compile to accepted artifacts), **not** the ClauseScript parser/front-end (that is the separate
   ClauseThing track, still parked) and **not** production `SimSession` wiring. Default-off; opt-in;
   CPU-oracle-parity where exact. No ACT/EVENT/OBS/PIPE ladder, no semantic WGSL, no scheduler/cache.
-- **AO-WGSL-0** is generic AO GPU performance work. It does not alter SEAD self-AI posture,
-  ClauseThing/L3, or designer semantic-WGSL rejection.
+- **AO-WGSL-0** is generic AO GPU performance work, **ACCEPTED (AO-WGSL-0-ACCEPT, 2026-05-30)** as a
+  generic GPU performance option. It does not alter SEAD self-AI posture, ClauseThing/L3, or designer
+  semantic-WGSL rejection.
 - **Why this, not another fixture:** it is the first rung where the work stops being internal
   prooflets and becomes a *designer-facing surface* — the on-ramp to ClauseThing and the natural
   home for the guardrails. It gives the implementer a forward horizon at the authoring layer, not
