@@ -1,3 +1,7 @@
+# 2026-05-30 — FrontierV1-ACCEPT-0 M/E closure acceptance review (Tier-2, landed)
+
+- FrontierV1-ACCEPT-0 completed FrontierV1 M/E acceptance review; decision recorded in production plan and tests report.
+
 # 2026-05-30 — FrontierV1-4 SEAD V1 route replay acceptance (Tier-2, landed)
 
 - FrontierV1-4 integrated SEAD V1 route replay into the default-off FrontierV1 fixture, preserving accepted routing substrates and all guardrails.
