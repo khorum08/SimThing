@@ -1,3 +1,7 @@
+# 2026-05-29 — SEAD-ACT-1 Phase E-style numeric proposal consumer (Tier-2, landed)
+
+- SEAD-ACT-1 added default-off `m_jit_sead_act1_phase_e_proposal_consumer` fixture; ACT-0 proposal records → numeric proposal_summary under fixed admitted-code table and overflow contracts; accepted/ignored/invalid/summary/max exact; order-invariant summary; 34k/warm benchmarks and ACT-0/full-chain smokes recorded; no CPU planner or production wiring added.
+
 # 2026-05-29 — SEAD-ACT-0 GPU-resident numeric action proposals (Tier-2, landed)
 
 - SEAD-ACT-0 added default-off `m_jit_sead_act0_numeric_proposals` probe; EVENT-2 reductions → bounded numeric proposal records under fixed integer rule/capacity contracts; proposal count/membership/overflow exact when capacity sufficient; order UnspecifiedAtomicOrder; 34k/warm benchmarks and EVENT-2/PIPE smokes recorded; no CPU planner or production wiring added.
