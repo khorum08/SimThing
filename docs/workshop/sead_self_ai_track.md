@@ -242,3 +242,7 @@ gate would *re-create that consumer-less stall*. So:
   natural stepping-stone to authoring the same scenario in **ClauseThing** later.
 - Until `FrontierV2`, the self-AI loop stays honestly `ReplayAccepted` and **M/E "substrate closed,
   move on" stands.** This is not a re-block — it is replacing a hygiene gate with a consumer.
+
+### FrontierV1-5 result
+
+FrontierV1-5 executed one live GPU-resident integrated self-AI resource-dispatch route inside the default-off FrontierV1 fixture, satisfying the §10 requirement for a live score→threshold→proposal→dispatch run for the bounded single-tick smoke route. It also produced a fixture-only feedback candidate shape for the named FrontierV2 closed-loop consumer. This does not reopen the SEAD ladder, does not implement FrontierV2, does not declare phase closure, and does not authorize default runtime wiring. Structural and movement routes remain ReplayAccepted unless separately proven.
