@@ -16,6 +16,8 @@ use simthing_spec::{
     SEAD_PIPE0_DESCRIPTOR_ID,
     SEAD_EVENT1_DESCRIPTOR_ID,
     sead_event1_code_bucketing_kernel_descriptor,
+    SEAD_EVENT2_DESCRIPTOR_ID,
+    sead_event2_bucket_reductions_kernel_descriptor,
     SpecError, MAG2_Q16_FRAC_BITS, SQRT_F_ARTIFACT_HASH,
     is_sead_obs2_multilayer_overlay_score_descriptor,
     is_sead_obs3_multilayer_fixed_score_descriptor,
@@ -23,6 +25,7 @@ use simthing_spec::{
     is_sead_event0_compaction_descriptor,
     is_sead_pipe0_observer_event_pipeline_descriptor,
     is_sead_event1_code_bucketing_descriptor,
+    is_sead_event2_bucket_reductions_descriptor,
 };
 
 fn obs2() -> KernelDescriptorSpec {
@@ -65,6 +68,13 @@ fn event1() -> KernelDescriptorSpec {
         .into_iter()
         .find(|desc| desc.id == SEAD_EVENT1_DESCRIPTOR_ID)
         .expect("sead event1 descriptor")
+}
+
+fn event2() -> KernelDescriptorSpec {
+    landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|desc| desc.id == SEAD_EVENT2_DESCRIPTOR_ID)
+        .expect("sead event2 descriptor")
 }
 
 fn obs0() -> KernelDescriptorSpec {
@@ -409,4 +419,24 @@ fn sead_event1_rejects_sqrt_artifact_binding() {
     let mut bad = sead_event1_code_bucketing_kernel_descriptor();
     bad.exact_sqrt_artifact = Some(exact_sqrt_f_artifact_descriptor());
     assert_admission_err(&bad, "must not bind sqrt artifact");
+}
+
+#[test]
+fn sead_event2_descriptor_admits_bucket_reductions() {
+    let desc = event2();
+    assert_eq!(desc.id, SEAD_EVENT2_DESCRIPTOR_ID);
+    assert!(desc.default_off);
+    assert!(!desc.production_wiring);
+    assert!(is_sead_event2_bucket_reductions_descriptor(&desc));
+    validate_kernel_descriptor_admission(&desc).expect("event2 admits");
+    println!(
+        "sead_event2_descriptor: id={SEAD_EVENT2_DESCRIPTOR_ID} reductions=order-invariant order=UnspecifiedAtomicOrder"
+    );
+}
+
+#[test]
+fn sead_event2_rejects_missing_sum_score_output() {
+    let mut bad = sead_event2_bucket_reductions_kernel_descriptor();
+    bad.writes.retain(|out| out.name != "sum_score");
+    assert_admission_err(&bad, "exact-authoritative sum_score");
 }

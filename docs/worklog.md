@@ -1,3 +1,7 @@
+# 2026-05-29 — SEAD-EVENT-2 GPU-resident per-bucket reductions (Tier-2, landed)
+
+- SEAD-EVENT-2 added default-off `m_jit_sead_event2_bucket_reductions` probe; per-code count/sum/min/max with i64 sum overflow flag and empty-bucket contract; order-invariant reductions over unordered buckets; 34k/warm benchmarks and integrated smokes recorded; no CPU planner or production wiring added.
+
 # 2026-05-29 — SEAD-EVENT-1 GPU-resident event-code bucketing (Tier-2, landed)
 
 - SEAD-EVENT-1 added default-off `m_jit_sead_event1_code_bucketing` probe; compact unordered event records bucket by numeric event code with exact per-code counts/membership under capacity; invalid-code accounting and overflow exact; ordering UnspecifiedAtomicOrder; 34k distribution/warm benchmarks and integrated PIPE-0→bucket smoke recorded; no CPU planner or production wiring added.

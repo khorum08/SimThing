@@ -356,5 +356,6 @@ pub fn landed_jit_kernel_descriptors() -> Vec<KernelDescriptorSpec> {
         crate::compile::jit_exact_sqrt_artifact_admission::sead_event0_compaction_kernel_descriptor(),
         crate::compile::jit_exact_sqrt_artifact_admission::sead_pipe0_observer_event_pipeline_kernel_descriptor(),
         crate::compile::jit_exact_sqrt_artifact_admission::sead_event1_code_bucketing_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::sead_event2_bucket_reductions_kernel_descriptor(),
     ]
 }
