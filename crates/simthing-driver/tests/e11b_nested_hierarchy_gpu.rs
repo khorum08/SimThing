@@ -524,12 +524,6 @@ fn e11b_nested_no_simthing_sim_arena_imports() {
 }
 
 #[test]
-fn e11b_nested_rejects_designer_semantic_wgsl() {
-    // Semantic WGSL guard lives in simthing-spec designer admission (SemanticWgsl request).
-    // Global filename-based "no new WGSL" bans were removed in WGSL-GUARD-0 as stale.
-}
-
-#[test]
 fn e11b_nested_flag_default_false() {
     assert!(!PipelineFlags::default().use_accumulator_resource_flow);
 }

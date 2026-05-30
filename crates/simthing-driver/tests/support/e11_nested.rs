@@ -403,9 +403,8 @@ pub fn open_nested_session(
     }
 }
 
-// WGSL-GUARD-0 removed the global filename-based "no new WGSL" guard.
-// Semantic WGSL rejection is enforced at the simthing-spec designer admission layer.
-// A-0 itself added no WGSL (historical fact preserved in its report).
+// WGSL-GUARD-0 / R1: Global filename WGSL bans removed. Semantic rejection lives in simthing-spec designer admission.
+// A-0 itself added no WGSL (see its report).
 
 pub fn integration_band_for_layout(layout: &ArenaTreeLayout) -> u32 {
     max_disbursement_band(layout) + 1

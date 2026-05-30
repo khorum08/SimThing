@@ -465,11 +465,6 @@ fn e11_rejects_missing_allocated_flow() {
 }
 
 #[test]
-fn e11_rejects_designer_semantic_wgsl() {
-    // Semantic guard lives in simthing-spec.
-}
-
-#[test]
 fn e11_no_simthing_sim_arena_imports() {
     let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
     let boundary = include_str!("../../simthing-sim/src/boundary.rs");
