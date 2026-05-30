@@ -1752,6 +1752,51 @@ fn exhaustive_range_from_env() -> ExhaustiveRange {
     }
 }
 
+fn exhaustive_range_from_env_with_prefix(prefix: &str) -> ExhaustiveRange {
+    const DOMAIN_START: u32 = 0x0000_0000;
+    const DOMAIN_END: u32 = 0x7F7F_FFFF;
+    const DOMAIN_LEN: u64 = (DOMAIN_END as u64) - (DOMAIN_START as u64) + 1;
+
+    let total_name = format!("{prefix}_TOTAL_SPLITS");
+    let split_name = format!("{prefix}_SPLIT_INDEX");
+    let start_name = format!("{prefix}_RANGE_START");
+    let end_name = format!("{prefix}_RANGE_END");
+
+    let total_splits = parse_u32_env(&total_name);
+    let split_index = parse_u32_env(&split_name);
+    if let (Some(total), Some(index)) = (total_splits, split_index) {
+        assert!(total > 0, "{total_name} must be > 0");
+        assert!(index < total, "{split_name} must be < {total_name}");
+        let total_u64 = total as u64;
+        let index_u64 = index as u64;
+        let base_len = DOMAIN_LEN / total_u64;
+        let rem = DOMAIN_LEN % total_u64;
+        let prefix_extra = index_u64.min(rem);
+        let start_offset = index_u64 * base_len + prefix_extra;
+        let len = base_len + u64::from(index_u64 < rem);
+        assert!(len > 0, "split length must be positive");
+        let start = DOMAIN_START.wrapping_add(start_offset as u32);
+        let end = start.wrapping_add((len - 1) as u32);
+        return ExhaustiveRange {
+            start,
+            end,
+            split_index: Some(index),
+            total_splits: Some(total),
+        };
+    }
+
+    let start = parse_u32_env(&start_name).unwrap_or(DOMAIN_START);
+    let end = parse_u32_env(&end_name).unwrap_or(DOMAIN_END);
+    assert!(start <= end, "{start_name} must be <= {end_name}");
+    assert!(end <= DOMAIN_END, "{end_name} must be <= 0x7F7F_FFFF");
+    ExhaustiveRange {
+        start,
+        end,
+        split_index: None,
+        total_splits: None,
+    }
+}
+
 #[test]
 fn sqrt_exact3e_candidate_e_wgsl_compiles_semantic_free() {
     assert!(!SQRT_CR_E_WGSL.is_empty(), "E WGSL artifact must be non-empty");
@@ -2480,38 +2525,102 @@ fn sqrt_exact4f_perf_is_not_authority() {
 
 #[test]
 #[ignore = "full 2^31 finite non-negative f32 sweep for Candidate F; run with --ignored explicitly"]
-fn sqrt_exact4f_candidate_f_full_exhaustive_sweep() {
+fn sqrt_exact5f_candidate_f_full_exhaustive_sweep() {
     with_gpu(|ctx| {
-        let batch = parse_u32_env("SIMTHING_SQRT_F4_BATCH")
+        const DOMAIN_END: u32 = 0x7F7F_FFFF;
+        let range = exhaustive_range_from_env_with_prefix("SIMTHING_SQRT_F");
+        let batch = parse_u32_env("SIMTHING_SQRT_F_BATCH")
             .unwrap_or(1_048_576)
             .max(1);
-        let mut bits = 0u32;
+        let progress_every = parse_u32_env("SIMTHING_SQRT_F_PROGRESS_EVERY")
+            .unwrap_or(64)
+            .max(1);
+        let mut bits = range.start;
         let mut tested: u64 = 0;
         let mut exact_bits: u64 = 0;
+        let mut flush_count: u64 = 0;
         let mut max_ulp = 0u32;
-        while bits <= 0x7F7F_FFFF {
-            let end = bits.saturating_add(batch - 1).min(0x7F7F_FFFF);
+        let mut worst: Option<(u32, u32, u32, u32)> = None;
+        let mut batch_idx = 0u64;
+        while bits <= range.end {
+            let end = bits.saturating_add(batch - 1).min(range.end);
             let batch_bits: Vec<u32> = (bits..=end).collect();
             let rows = run_candidate_f_bits(ctx, &batch_bits);
             for (x_bits, out_bits, _, _) in rows {
                 let cpu = f32::from_bits(x_bits).sqrt();
                 let cpu_bits = cpu.to_bits();
+                let ulp = ulp_distance(f32::from_bits(out_bits), cpu);
                 if out_bits == cpu_bits {
                     exact_bits += 1;
                 }
-                max_ulp = max_ulp.max(ulp_distance(f32::from_bits(out_bits), cpu));
+                if out_bits == 0 && cpu_bits != 0 {
+                    flush_count += 1;
+                }
+                if worst.as_ref().is_none_or(|w| ulp > w.3) && ulp > 0 {
+                    worst = Some((x_bits, out_bits, cpu_bits, ulp));
+                }
+                max_ulp = max_ulp.max(ulp);
                 tested += 1;
+            }
+            batch_idx += 1;
+            if batch_idx.is_multiple_of(progress_every as u64) || end == range.end {
+                println!(
+                    "F exhaustive progress: start={:#010x} end={:#010x} tested={} max_ulp={} flush_count={} exact_bits={}",
+                    range.start, range.end, tested, max_ulp, flush_count, exact_bits
+                );
             }
             bits = end.saturating_add(1);
             if bits == 0 {
                 break;
             }
         }
-        println!(
-            "F exhaustive: tested={} exact_bits={} max_ulp={}",
-            tested, exact_bits, max_ulp
-        );
-        assert_eq!(tested, 0x7F80_0000u64);
+
+        let expected = (range.end as u64) - (range.start as u64) + 1;
+        assert_eq!(tested, expected, "range coverage mismatch for F exhaustive sweep");
+        assert_eq!(flush_count, 0, "F exhaustive sweep must have flush_count == 0");
         assert_eq!(max_ulp, 0, "Candidate F exhaustive promotion requires max_ulp == 0");
+        assert_eq!(
+            exact_bits, tested,
+            "Candidate F exhaustive promotion requires exact_bits == tested"
+        );
+
+        let split_tag = match (range.split_index, range.total_splits) {
+            (Some(idx), Some(total)) => format!("split={idx}/{total}"),
+            _ => "split=full_or_explicit_range".to_string(),
+        };
+        let worst_tag = if let Some((x_bits, out_bits, cpu_bits, ulp)) = worst {
+            format!(
+                "worst=x:{:#010x},out:{:#010x},cpu:{:#010x},ulp:{}",
+                x_bits, out_bits, cpu_bits, ulp
+            )
+        } else {
+            "worst=none".to_string()
+        };
+        println!(
+            "F exhaustive summary: {split_tag} start={:#010x} end={:#010x} tested={} exact_bits={} max_ulp={} flush_count={} {}",
+            range.start, range.end, tested, exact_bits, max_ulp, flush_count, worst_tag
+        );
+
+        let log_line = format!(
+            "split_tag={} start={:#010x} end={:#010x} tested={} exact_bits={} max_ulp={} flush_count={} {}\n",
+            split_tag, range.start, range.end, tested, exact_bits, max_ulp, flush_count, worst_tag
+        );
+        let repo_docs_tests = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/tests");
+        std::fs::create_dir_all(&repo_docs_tests).expect("repo docs/tests must exist");
+        let batch_log_path = repo_docs_tests.join("phase_m_jit_sqrt_exact5f_exhaustive_batches.log");
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&batch_log_path)
+            .expect("open F exhaustive batch log");
+        use std::io::Write;
+        file.write_all(log_line.as_bytes())
+            .expect("write F exhaustive batch log");
+
+        assert!(
+            range.end <= DOMAIN_END,
+            "F exhaustive range end must stay in finite non-negative domain"
+        );
     });
 }
