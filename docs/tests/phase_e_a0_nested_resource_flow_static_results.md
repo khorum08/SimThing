@@ -163,15 +163,19 @@ Resource Flow remains opt-in; no hard-currency substitution; no new WGSL in A-0 
 
 ## Test results
 
+> **A-0-R1 correction (2026-05-30):** A stale E-11B no-new-WGSL whitelist failed after accepted C-0 atlas WGSL (`structured_field_stencil_atlas_mask.wgsl`). Remediation updated the shared baseline; required E-11B regressions now pass. See [`phase_e_a0_r1_wgsl_whitelist_remediation_results.md`](phase_e_a0_r1_wgsl_whitelist_remediation_results.md).
+
 ```text
 cargo test -p simthing-driver --test phase_e_a0_nested_resource_flow_static -- --nocapture
 → 19 passed; 0 failed
 
 cargo test -p simthing-driver --test e11b_nested_hierarchy_gpu -- --nocapture
 → 11 passed; 1 failed (e11b_nested_no_new_wgsl — pre-existing: atlas_mask.wgsl from C-0 not in E-11B whitelist)
+→ [A-0-R1] 12 passed; 0 failed
 
 cargo test -p simthing-driver --test e11b_nested_fission_gap -- --nocapture
 → 12 passed; 1 failed (same atlas_mask whitelist — pre-existing)
+→ [A-0-R1] 13 passed; 0 failed
 
 cargo test -p simthing-spec --test v7_8_met_consumer_scenarios -- --nocapture
 → 10 passed; 0 failed

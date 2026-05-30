@@ -1,3 +1,7 @@
+# 2026-05-30 — A-0-R1 E-11B WGSL whitelist remediation (verification-only)
+
+- A-0-R1 fixed stale E-11B WGSL whitelist verification after accepted C-0 atlas WGSL, reran A-0/E-11B regressions cleanly, and left A-0 pending design-authority review. Report: [`phase_e_a0_r1_wgsl_whitelist_remediation_results.md`](tests/phase_e_a0_r1_wgsl_whitelist_remediation_results.md).
+
 # 2026-05-30 — A-0 static nested Resource Flow first slice (Tier-2, landed / Pending Opus Review)
 
 - A-0 landed static nested Resource Flow evidence: nested arena materialization, per-parent contiguous SlotRange proof, and D=3/D=4 GPU/CPU oracle parity without new WGSL, new roles, default-on Resource Flow, or dynamic enrollment. Tests: A-0 19/19, `cargo check` green. Report: [`phase_e_a0_nested_resource_flow_static_results.md`](tests/phase_e_a0_nested_resource_flow_static_results.md). **Pending Opus/design-authority review — not accepted.**

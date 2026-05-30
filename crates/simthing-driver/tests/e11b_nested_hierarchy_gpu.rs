@@ -3,6 +3,9 @@
 #[path = "support/e11_flat_star.rs"]
 mod e11_flat_star;
 
+#[path = "support/accepted_wgsl_baseline.rs"]
+mod accepted_wgsl_baseline;
+
 use simthing_core::{
     AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry,
     EmlExpressionRegistry, LogTier, SimThing, SimThingId, SimThingKind, SubFieldRole, SubFieldSpec,
@@ -523,25 +526,7 @@ fn e11b_nested_no_simthing_sim_arena_imports() {
 
 #[test]
 fn e11b_nested_no_new_wgsl() {
-    let wgsl_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../simthing-gpu/src/shaders");
-    let entries: Vec<_> = std::fs::read_dir(&wgsl_root)
-        .expect("shaders dir")
-        .filter_map(|e| e.ok())
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .collect();
-    let allowed = [
-        "accumulator_op.wgsl",
-        "snapshot.wgsl",
-        "world_summary.wgsl",
-        "structured_field_stencil.wgsl",
-        "values_fill.wgsl",
-    ];
-    for name in &entries {
-        assert!(
-            allowed.contains(&name.as_str()),
-            "unexpected WGSL file {name}; only V7.6-approved generic/accumulator shaders allowed"
-        );
-    }
+    accepted_wgsl_baseline::assert_only_accepted_project_wgsl_shaders();
 }
 
 #[test]
