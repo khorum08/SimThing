@@ -529,7 +529,7 @@ layer and only on exhaustive proof; the runtime remains the unconditional last l
 
 ## 11. Open decisions (design authority — Opus)
 
-**Status after SQRT-EXACT-0 (#305), SQRT-EXACT-1D, SQRT-EXACT-1D-R1, SQRT-EXACT-2E, SQRT-EXACT-3E, and SQRT-EXACT-4E:** A and B were implemented and probed; **both stuck at
+**Status after SQRT-EXACT-0 (#305), SQRT-EXACT-1D, SQRT-EXACT-1D-R1, SQRT-EXACT-2E, SQRT-EXACT-3E, SQRT-EXACT-4E, and SQRT-EXACT-4F:** A and B were implemented and probed; **both stuck at
 ≥1 ULP on DX12/naga** (A's correction never fired; B failed normal-range boundaries), and
 both flushed subnormals to 0. Root cause is **backend FP contraction/reassociation + flush-
 to-zero**, not the underlying math. **Candidate D** was frozen as verbatim WGSL and still
@@ -539,19 +539,22 @@ now runs via integer-domain `u32` bit-IO. 2E removed D-style subnormal flush but
 integer mantissa core and reached zero ULP on edge/dense/subnormal sweeps. 4E then ran the full
 finite non-negative exhaustive sweep (`0x0000_0000..=0x7F7F_FFFF`) with `max_ulp=0`,
 `exact_bits=2,139,095,040`, and `flush_count=0`, moving E to `ExactDeterministicCandidate`
-pending a separate descriptor/admission promotion slice.
+pending a separate descriptor/admission promotion slice. **Candidate F** is now built as a
+standalone verbatim WGSL artifact with `u32` bit-IO in SQRT-EXACT-4F; edge/dense/subnormal
+corpora and F-vs-E3 checks are currently `max_ulp=0`, contraction probe is clean on this backend,
+and smoke throughput favors F over E3 at 34k rows. F still requires its own exhaustive proof gate.
 
 1. **E3 is the proven exact candidate.** Candidate E now has full-domain finite non-negative
    proof at `max_ulp == 0` with zero flush. Production authority flip remains a separate explicit
    admission/descriptors pass.
-2. **Candidate F remains a performance alternative only.** F stays documented in §5.0 for future
-   throughput-oriented exploration if needed, but it is not the active build target and was not
-   implemented in the exhaustive proof slice.
+2. **Candidate F is now an active hot-path candidate pending exhaustive proof.** F is implemented
+   as standalone verbatim WGSL (`sqrt_cr_f_candidate.wgsl`) with authoritative `u32` bit IO and
+   currently classifies as `ExactCandidatePendingExhaustiveSweep` on sampled corpora.
 3. **`fma` shortcut is still dead on this backend.** #305 confirms naga/DX12 does not fuse `fma`
    for residual purposes. Any future fast-path work must preserve bit-exact proof obligations and
    avoid reintroducing unproven `fma` assumptions.
-4. **Exhaustive gate is satisfied for E3.** The ignored 2^31 finite non-negative gate has been
-   executed green; no sampled corpus is used for exact-candidate classification.
+4. **Exhaustive gate is satisfied for E3, and still required for F.** E3's ignored 2^31 finite
+   non-negative gate has executed green; F has not yet run its full-domain ignored sweep.
 5. **Promotion remains gated at admission.** Exact-candidate status does not itself change runtime
    authority; descriptor/admission flip is intentionally separate.
 6. **`mag` re-enablement.** Once `sqrt` is `ExactDeterministic`, open the follow-on to let
