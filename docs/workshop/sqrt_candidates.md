@@ -471,26 +471,37 @@ existing SQRT-0 harness and its `FORBIDDEN_SEMANTIC_TERMS` scan):
 
 ## 8. Promotion gate / classification ladder
 
+> **Gate satisfied — design authority has released the exact-sqrt guardrail (Opus, 2026-05-29).**
+> Candidate F passed the full-domain exhaustive proof (SQRT-EXACT-5F: 2,139,095,040 values,
+> `max_ulp == 0`, flush 0, ~47 s, hash `e2e9e27601ee2e13`) → `ExactDeterministicCandidate`.
+> On that proof, the binding invariant now **accepts the artifact-backed Candidate F as the
+> exact hot-path `sqrt` authority** (see `invariants.md` "Exact sqrt authority is artifact-backed
+> (Candidate F)"). The release is surgical: authority binds to the F **artifact hash** (any
+> change requires renewed proof); native/raw `sqrt`, Candidate D, `mag2`, and Candidate C/f64
+> stay non-exact; E3 stays the exact cross-adapter fallback; **no** semantic WGSL, default
+> wiring, scheduler/cache, or economy bridge is authorized. The remaining work is the
+> mechanical **SQRT-PROMOTE-0** slice: wire the descriptor/admission representation + hash guard
+> + tests to this released authority (implementer task, not a further design decision).
+
 ```
-ApproximateJitOnly            ← native sqrt today (blocked from exact authority)
-        │  candidate passes full exhaustive sweep, max_ulp == 0, all edge rows exact
+ApproximateJitOnly            ← native/raw sqrt (stays here — never exact-authoritative)
+        │  candidate passes full exhaustive sweep, max_ulp == 0, all rows exact
         ▼
-ExactDeterministicCandidate   ← proven on this backend/corpus; cross-adapter not yet shown
-        │  (B) portability argument holds OR (D) confirmed on each target adapter
+ExactDeterministicCandidate   ← E3 (4E) and F (5F) both proven over the full domain
+        │  design-authority release on the proof + artifact-hash pinning
         ▼
-ExactDeterministic            ← admission may grant exact-output authority to THIS kernel
+ExactDeterministic            ← admission grants exact-output authority to the F ARTIFACT
+                                (hash e2e9e27601ee2e13), via SQRT-PROMOTE-0 descriptor wiring
 ```
 
-- The first candidate that is exhaustively `max_ulp == 0` with all edge rows exact is
-  reclassified and its DESC descriptor flips to `ExactDeterministic` output authority.
-  That single bit is what lets admission permit `sqrt` (and true Euclidean `mag`) as an
-  exact score input — replacing the `mag2`-only workaround where exactness is needed.
-- **Expected outcome:** D passes and promotes fastest (Tier-1 once the exact-`sqrt`
-  contract is accepted) — fast hardware seed, exact bitmask residual, no `fma` trust. B is
-  retained as the portability/replay-hardened fallback and is the preferred default where
-  cross-adapter determinism (including a poor native `sqrt` seed) must be guaranteed.
-- Until a candidate is proven, the §3 guardrail is unchanged: native `sqrt` and `mag2`
-  stay blocked from exact authority and admission keeps rejecting graphs that violate it.
+- **Outcome (landed):** F is the released exact hot-path authority (loop-free, hardware-seeded,
+  beats E3 0.70× at 34k); E3 is the exact cross-adapter fallback. Flipping F's descriptor to
+  `ExactDeterministic` is the single admission bit that lets graphs use exact `sqrt` (and true
+  Euclidean `mag`) as a score input — replacing the `mag2`-only workaround where exactness is
+  needed. That bit is wired by SQRT-PROMOTE-0; nothing in the runtime loosens.
+- The §3 guardrail holds for everything else: native/raw `sqrt`, D, and `mag2` stay blocked
+  from exact authority; admission keeps rejecting graphs that route them into exact inputs
+  unless the value comes through the proven F artifact descriptor.
 
 ## 9. Where the promoted kernel lives
 

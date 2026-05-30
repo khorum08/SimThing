@@ -1,3 +1,7 @@
+# 2026-05-30 — SQRT-PROMOTE-0 guardrail release (design authority, Opus)
+
+- On the SQRT-EXACT-5F exhaustive proof (F: 2,139,095,040 values, `max_ulp=0`, flush 0, hash `e2e9e27601ee2e13`), the design authority **released the exact-`sqrt` guardrail** for the artifact-backed Candidate F path: `invariants.md` now accepts F as the exact hot-path `sqrt` authority **only** when admitted through the descriptor/admission surface and **only** by matching artifact hash (change ⇒ renewed proof). Native/raw `sqrt`, Candidate D, `mag2`, and Candidate C/f64 stay non-exact; E3 stays the exact cross-adapter fallback. No semantic WGSL, default `SimSession`/scheduler/cache wiring, or economy→mapping bridge authorized. Implementation of the descriptor/admission representation + hash guard + tests + status-doc updates is the mechanical SQRT-PROMOTE-0 slice (implementer task) against this released invariant.
+
 # 2026-05-30 — SQRT-EXACT-5F exhaustive Candidate F proof gate (Tier-2, landed)
 
 - SQRT-EXACT-5F ran the full finite non-negative exhaustive sweep for Candidate F (`0x0000_0000..=0x7F7F_FFFF`) and recorded `max_ulp=0`, `exact_bits=2,139,095,040`, `flush_count=0`; F is now `ExactDeterministicCandidate` pending a separate descriptor/admission flip; Candidate C/f64 remains unimplemented and no production sqrt/`mag2` authority change was made.
