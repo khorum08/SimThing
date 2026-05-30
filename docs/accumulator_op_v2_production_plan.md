@@ -2496,12 +2496,17 @@ SEAD-ACT-0 extends the default-off SEAD observer/event proof stack from event ob
 Further SEAD work remains allowed only when it advances a usable SEAD toolset or directly supports M/E closure. Each SEAD slice must update the production plan with M/E closure relevance.
 
 - **SEAD-ACT-1 — Phase E-style numeric proposal consumer (PASS):** `m_jit_sead_act1_phase_e_proposal_consumer`; consumes ACT-0 proposal records; fixed integer admitted-code table; accepted/ignored/invalid/summary/max ExactAuthoritative under overflow contract; summary order-invariant; 34k bucket→reduce→propose→consume warm ~1.35 ms/pipeline; no CPU planner/scheduler/cache/default wiring/bridge. Report: [`docs/tests/phase_m_sead_act1_phase_e_proposal_consumer_results.md`](tests/phase_m_sead_act1_phase_e_proposal_consumer_results.md).
+- **SEAD-ACT-2 — fixture-local proposal admission records (PASS):** `m_jit_sead_act2_proposal_admission_records`; consumes ACT-1 proposal_summary; fixed integer admission thresholds; admission record ExactAuthoritative under rule/overflow contract; 34k bucket→reduce→propose→consume→admit warm ~1.59 ms/pipeline; no CPU planner/scheduler/cache/default wiring/bridge. Report: [`docs/tests/phase_m_sead_act2_proposal_admission_records_results.md`](tests/phase_m_sead_act2_proposal_admission_records_results.md).
 
 **SEAD-ACT-1 — Phase E-style numeric proposal consumer**
 
 SEAD-ACT-1 verifies that numeric proposal records from the SEAD actionability stack can be consumed by a default-off Phase E-style fixture as generic numeric candidate inputs. This supports future Economic V1 / SEAD-economics integration without adding production runtime wiring, semantic WGSL, CPU planner behavior, scheduler/cache, simthing-sim awareness, or economy bridge wiring.
 
-Further SEAD actionability work must either: (1) produce a reusable numeric substrate consumed by Phase E fixtures, or (2) directly close a Phase M/E blocker.
+**SEAD-ACT-2 — fixture-local proposal admission records**
+
+SEAD-ACT-2 verifies that Phase E-style numeric proposal summaries can be converted into fixture-local admission records under fixed integer contracts. This supports future Economic V1 / SEAD-economics authoring by providing an admitted-candidate artifact shape, but it does not add production runtime wiring, semantic WGSL, CPU planner behavior, scheduler/cache, simthing-sim awareness, or economy bridge wiring.
+
+Further SEAD actionability work must either: (1) produce a reusable numeric substrate consumed by Phase E fixtures, (2) directly close a Phase M/E blocker, or (3) be paused until a named product scenario requires runtime integration.
 - Native sqrt remains `ApproximateJitOnly`; F exact path requires artifact-backed descriptor admission.
 - Exact authority requires exhaustive `max_ulp == 0` proof against CPU `f32::sqrt` (ignored full sweep available separately).
 - No scheduler/cache/default wiring/economy bridge/`simthing-sim` awareness authorized.
