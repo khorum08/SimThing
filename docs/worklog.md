@@ -1,3 +1,7 @@
+# 2026-05-30 — FrontierV1-3 GPU flat-star Resource Flow integration (Tier-2, landed)
+
+- FrontierV1-3 GPU-verified flat-star Resource Flow allocation inside the default-off FrontierV1 fixture, preserving allocator routing and all guardrails.
+
 # 2026-05-30 — FrontierV1-2 GPU-resident execution and replay acceptance (Tier-2, landed)
 
 - FrontierV1-2 added GPU-resident execution/replay acceptance evidence for the default-off FrontierV1 fixture, preserving explicit opt-in, accepted routing substrates, and no default runtime wiring.
