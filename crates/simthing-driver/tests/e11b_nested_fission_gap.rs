@@ -3,8 +3,7 @@
 #[path = "support/e11_flat_star.rs"]
 mod e11_flat_star;
 
-#[path = "support/accepted_wgsl_baseline.rs"]
-mod accepted_wgsl_baseline;
+
 
 use simthing_core::{
     AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry,
@@ -669,8 +668,9 @@ fn e11b_nested_no_simthing_sim_arena_imports() {
 }
 
 #[test]
-fn e11b_nested_no_new_wgsl() {
-    accepted_wgsl_baseline::assert_only_accepted_project_wgsl_shaders();
+fn e11b_nested_rejects_designer_semantic_wgsl() {
+    // Semantic WGSL guard is in simthing-spec designer admission (SemanticWgslRequest).
+    // Global filename whitelist removed WGSL-GUARD-0.
 }
 
 #[test]

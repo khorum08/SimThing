@@ -137,6 +137,15 @@ fn c2_does_not_open_a0_b0_l3_frontierv2_5() {
     let _spec = make_typical_huge_commodity_spec();
 }
 
+#[test]
+fn designer_admission_rejects_raw_wgsl_source() {
+    // Core v7.8 / WGSL-GUARD-0 posture: designer/spec layer rejects semantic/raw WGSL.
+    // This is the authoritative guard (not global filename lists).
+    use simthing_spec::designer_admission::{evaluate_designer_admission_request, DesignerAdmissionRequest};
+    let report = evaluate_designer_admission_request(DesignerAdmissionRequest::SemanticWgsl);
+    assert!(!report.admitted);
+}
+
 fn make_typical_huge_commodity_spec() -> AtlasAdmissionSpec {
     AtlasAdmissionSpec {
         request_atlas_batching: true,

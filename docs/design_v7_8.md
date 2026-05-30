@@ -216,7 +216,7 @@ safety. These stay binding regardless:
   scenario + VRAM budget are now satisfied; the §11 implementation PR is the remaining gate.
 - **Constraints carried:** `ActiveOnlyExperimentalNoHalo` is **never** production-authorized
   (halo mandatory); atlas never without explicit isolation policy **and** VRAM-multiplier
-  reporting; no semantic/map-specific WGSL; `simthing-sim` stays map-free.
+  reporting; no semantic/map-specific WGSL from designer/spec admission (generic GPU kernels allowed only via named production gates per WGSL-GUARD-0); `simthing-sim` stays map-free.
 - **Not promoted (stay deferred in place):** active-mask halo (**M-6A**) and behavioral source
   identity (**M-5 / `source_mask`**) are *not* part of v7.8 — they remain separately deferred
   under the Mapping ADR until their own named needs arise.

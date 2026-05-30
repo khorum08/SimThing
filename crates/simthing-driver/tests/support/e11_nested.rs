@@ -403,12 +403,9 @@ pub fn open_nested_session(
     }
 }
 
-#[path = "accepted_wgsl_baseline.rs"]
-mod accepted_wgsl_baseline;
-
-pub fn assert_no_new_wgsl() {
-    accepted_wgsl_baseline::assert_only_accepted_project_wgsl_shaders();
-}
+// WGSL-GUARD-0 removed the global filename-based "no new WGSL" guard.
+// Semantic WGSL rejection is enforced at the simthing-spec designer admission layer.
+// A-0 itself added no WGSL (historical fact preserved in its report).
 
 pub fn integration_band_for_layout(layout: &ArenaTreeLayout) -> u32 {
     max_disbursement_band(layout) + 1
