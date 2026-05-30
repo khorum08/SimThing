@@ -68,6 +68,9 @@ pub struct KernelDescriptorSpec {
     pub pre_sqrt_contract: Option<crate::compile::jit_exact_sqrt_artifact_admission::ExactPreSqrtInputContract>,
     /// Exact mag2 construction source contract (SQRT-MAG2-0).
     pub mag2_source_contract: Option<Mag2SourceContract>,
+    /// Score output authority contract for observer overlay kernels (SEAD-OBS-1).
+    pub score_authority_contract:
+        Option<crate::compile::jit_exact_sqrt_artifact_admission::ScoreAuthorityContract>,
 }
 
 #[derive(Debug, Clone)]
@@ -293,6 +296,7 @@ fn test_only_descriptor(
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
         mag2_source_contract: None,
+        score_authority_contract: None,
     }
 }
 
@@ -345,5 +349,6 @@ pub fn landed_jit_kernel_descriptors() -> Vec<KernelDescriptorSpec> {
         crate::compile::jit_exact_sqrt_artifact_admission::mag_f_from_exact_mag2_kernel_descriptor(),
         crate::compile::jit_exact_sqrt_artifact_admission::mag_f_from_dxdy_probe_kernel_descriptor(),
         crate::compile::jit_exact_sqrt_artifact_admission::mag2_fixed_exact_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::sead_obs0_overlay_score_kernel_descriptor(),
     ]
 }
