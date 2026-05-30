@@ -1,3 +1,7 @@
+# 2026-05-30 — SEAD-OBS-0 GPU-resident mobile observer overlay score probe (Tier-2, landed)
+
+- SEAD-OBS-0 added default-off/test-only GPU overlay score fixture (Q16.16 mag2 + F exact mag, f32 diagnostic score); 34k benchmark and 50k-row dense corpus recorded; no production wiring added.
+
 # 2026-05-30 — SQRT-MAG2-PERF-0 exact mag2 + F sqrt performance decomposition (Tier-2, landed)
 
 - SQRT-MAG2-PERF-0 decomposed 34k exact hot-path cost (readback baseline, mag2-only, F-only, combined); evaluated Q12.12/lo-only/split/no-readback probes; retained Q16.16 combined single-kernel candidate; no production wiring added.
