@@ -485,6 +485,9 @@ existing SQRT-0 harness and its `FORBIDDEN_SEMANTIC_TERMS` scan):
 > **Update (SQRT-PROMOTE-0 landed):** F is mechanically promoted via descriptor/admission
 > (`m_jit_sqrt_f_exact`, hash `e2e9e27601ee2e13`); any F artifact change invalidates authority
 > until renewed exhaustive proof; native sqrt remains non-exact.
+> **Update (SQRT-MAG-0 landed):** F is consumed by exact Euclidean magnitude candidate
+> (`m_jit_mag_f_exact` / `ExactEuclideanMagnitudeF`); F artifact hash remains binding;
+> approximate performance mode is still not authorized.
 
 ```
 ApproximateJitOnly            ← native/raw sqrt (stays here — never exact-authoritative)

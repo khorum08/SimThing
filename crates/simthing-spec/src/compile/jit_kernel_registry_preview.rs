@@ -200,7 +200,9 @@ fn validate_production_candidate_entry_rules(entry: &KernelRegistryEntryPreview)
         }
     }
 
-    if entry.canonical_text.contains("write=sqrt_out authority=ExactAuthoritative") {
+    if entry.canonical_text.contains("write=sqrt_out authority=ExactAuthoritative")
+        || entry.canonical_text.contains("write=mag authority=ExactAuthoritative")
+    {
         if !entry.canonical_text.contains(SQRT_F_ARTIFACT_HASH) {
             return Err(registry_err(
                 &entry.stable_key,

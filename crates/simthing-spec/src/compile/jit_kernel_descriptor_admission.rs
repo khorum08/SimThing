@@ -184,7 +184,7 @@ pub fn validate_exact_kernel_inputs(
     required_exact_inputs: &[&str],
 ) -> Result<(), SpecError> {
     for name in required_exact_inputs {
-        if *name == "sqrt_out" {
+        if *name == "sqrt_out" || *name == "mag" {
             validate_exact_sqrt_artifact_admission(producer)?;
         }
         match output_authority(producer, name) {
@@ -293,5 +293,6 @@ pub fn landed_jit_kernel_descriptors() -> Vec<KernelDescriptorSpec> {
             NativeMathClass::None,
         ),
         crate::compile::jit_exact_sqrt_artifact_admission::sqrt_f_exact_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::mag_f_exact_kernel_descriptor(),
     ]
 }
