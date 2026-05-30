@@ -23,6 +23,8 @@ pub enum DesignerFacingGuardrailClass {
 /// Specific rejection reason within the designer admission substrate.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DesignerAdmissionRejectionKind {
+    MalformedManifest,
+    UnknownArtifactTarget,
     DefaultOnRequest,
     ResourceFlowBypass,
     CrossEntityMovementWrite,
@@ -52,6 +54,8 @@ pub enum DesignerAdmissionRejectionKind {
 /// Stable diagnostic code string for designer admission rejections.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DesignerAdmissionDiagnosticCode {
+    MalformedManifestRejected,
+    UnknownArtifactTargetRejected,
     DefaultOnRejected,
     ResourceFlowBypassRejected,
     CrossEntityMovementWriteRejected,
@@ -81,6 +85,8 @@ pub enum DesignerAdmissionDiagnosticCode {
 impl DesignerAdmissionDiagnosticCode {
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::MalformedManifestRejected => "L1-0-MALFORMED-MANIFEST-REJECTED",
+            Self::UnknownArtifactTargetRejected => "L1-0-UNKNOWN-ARTIFACT-TARGET-REJECTED",
             Self::DefaultOnRejected => "L1-0-DEFAULT-ON-REJECTED",
             Self::ResourceFlowBypassRejected => "L1-0-RESOURCE-FLOW-BYPASS-REJECTED",
             Self::CrossEntityMovementWriteRejected => "L1-0-CROSS-ENTITY-MOVEMENT-WRITE-REJECTED",
@@ -100,9 +106,7 @@ impl DesignerAdmissionDiagnosticCode {
             }
             Self::AtlasRequestedWithoutGate => "L1-0-ATLAS-REQUESTED-WITHOUT-GATE",
             Self::ActiveMaskRequestedWithoutGate => "L1-0-ACTIVE-MASK-REQUESTED-WITHOUT-GATE",
-            Self::PerceptionFogRequestedWithoutGate => {
-                "L1-0-PERCEPTION-FOG-REQUESTED-WITHOUT-GATE"
-            }
+            Self::PerceptionFogRequestedWithoutGate => "L1-0-PERCEPTION-FOG-REQUESTED-WITHOUT-GATE",
             Self::SourceIdentityRequestedWithoutGate => {
                 "L1-0-SOURCE-IDENTITY-REQUESTED-WITHOUT-GATE"
             }
@@ -112,9 +116,7 @@ impl DesignerAdmissionDiagnosticCode {
             Self::E11B5RequestedWithoutNamedScenario => {
                 "L1-0-E11B5-REQUESTED-WITHOUT-NAMED-SCENARIO"
             }
-            Self::D2aRequestedWithoutNamedScenario => {
-                "L1-0-D2A-REQUESTED-WITHOUT-NAMED-SCENARIO"
-            }
+            Self::D2aRequestedWithoutNamedScenario => "L1-0-D2A-REQUESTED-WITHOUT-NAMED-SCENARIO",
             Self::ClauseScriptParserRequestParked => "L1-0-CLAUSESCRIPT-PARSER-REQUEST-PARKED",
             Self::ClauseThingRuntimeRequestParked => "L1-0-CLAUSETHING-RUNTIME-REQUEST-PARKED",
             Self::FrontierV2FiveRequestRejected => "L1-0-FRONTIERV2-5-REQUEST-REJECTED",
@@ -126,10 +128,12 @@ impl DesignerAdmissionDiagnosticCode {
 
     pub fn guardrail_class(self) -> DesignerFacingGuardrailClass {
         match self {
+            Self::MalformedManifestRejected | Self::UnknownArtifactTargetRejected => {
+                DesignerFacingGuardrailClass::AuthoringFrontEnd
+            }
             Self::DefaultOnRejected => DesignerFacingGuardrailClass::DefaultOff,
             Self::ResourceFlowBypassRejected => DesignerFacingGuardrailClass::ResourceFlowRouting,
-            Self::CrossEntityMovementWriteRejected
-            | Self::ProductionMovementWriteRejected => {
+            Self::CrossEntityMovementWriteRejected | Self::ProductionMovementWriteRejected => {
                 DesignerFacingGuardrailClass::MovementWriteBoundary
             }
             Self::ProductionCommitmentEmissionRejected => {
@@ -158,12 +162,10 @@ impl DesignerAdmissionDiagnosticCode {
             Self::D2aRequestedWithoutNamedScenario => {
                 DesignerFacingGuardrailClass::DiscreteOrderingExpansion
             }
-            Self::ClauseScriptParserRequestParked
-            | Self::ClauseThingRuntimeRequestParked => {
+            Self::ClauseScriptParserRequestParked | Self::ClauseThingRuntimeRequestParked => {
                 DesignerFacingGuardrailClass::AuthoringFrontEnd
             }
-            Self::FrontierV2FiveRequestRejected
-            | Self::ActEventObsPipeLadderReopenRejected => {
+            Self::FrontierV2FiveRequestRejected | Self::ActEventObsPipeLadderReopenRejected => {
                 DesignerFacingGuardrailClass::ConsumerProofLadder
             }
         }
@@ -171,6 +173,10 @@ impl DesignerAdmissionDiagnosticCode {
 
     pub fn rejection_kind(self) -> DesignerAdmissionRejectionKind {
         match self {
+            Self::MalformedManifestRejected => DesignerAdmissionRejectionKind::MalformedManifest,
+            Self::UnknownArtifactTargetRejected => {
+                DesignerAdmissionRejectionKind::UnknownArtifactTarget
+            }
             Self::DefaultOnRejected => DesignerAdmissionRejectionKind::DefaultOnRequest,
             Self::ResourceFlowBypassRejected => DesignerAdmissionRejectionKind::ResourceFlowBypass,
             Self::CrossEntityMovementWriteRejected => {
@@ -182,7 +188,9 @@ impl DesignerAdmissionDiagnosticCode {
             Self::ProductionCommitmentEmissionRejected => {
                 DesignerAdmissionRejectionKind::ProductionCommitmentEmission
             }
-            Self::SharedPoolTickWriteRejected => DesignerAdmissionRejectionKind::SharedPoolTickWrite,
+            Self::SharedPoolTickWriteRejected => {
+                DesignerAdmissionRejectionKind::SharedPoolTickWrite
+            }
             Self::ParallelFixtureEconomyRejected => {
                 DesignerAdmissionRejectionKind::ParallelFixtureEconomy
             }
@@ -191,7 +199,9 @@ impl DesignerAdmissionDiagnosticCode {
             Self::CpuCommitmentEmissionRejected => {
                 DesignerAdmissionRejectionKind::CpuCommitmentEmission
             }
-            Self::SemanticWgslRequestRejected => DesignerAdmissionRejectionKind::SemanticWgslRequest,
+            Self::SemanticWgslRequestRejected => {
+                DesignerAdmissionRejectionKind::SemanticWgslRequest
+            }
             Self::SchedulerCacheRequestRejected => {
                 DesignerAdmissionRejectionKind::SchedulerCacheRequest
             }
@@ -267,6 +277,16 @@ pub fn designer_admission_diagnostic_for_rejection(
     kind: DesignerAdmissionRejectionKind,
 ) -> DesignerAdmissionDiagnostic {
     let (code, message, hint) = match kind {
+        DesignerAdmissionRejectionKind::MalformedManifest => (
+            DesignerAdmissionDiagnosticCode::MalformedManifestRejected,
+            "designer admission manifest/scenario is malformed",
+            Some("provide non-empty ids, FrontierV2 profile, bounded grid/ticks, and required fixture artifact targets"),
+        ),
+        DesignerAdmissionRejectionKind::UnknownArtifactTarget => (
+            DesignerAdmissionDiagnosticCode::UnknownArtifactTargetRejected,
+            "unknown FrontierV2 artifact target requested",
+            Some("use accepted FrontierV2 artifact target identifiers from the L1 vocabulary"),
+        ),
         DesignerAdmissionRejectionKind::DefaultOnRequest => (
             DesignerAdmissionDiagnosticCode::DefaultOnRejected,
             "default-on execution or SimSession wiring is rejected at designer admission",
@@ -394,6 +414,8 @@ pub fn designer_admission_diagnostic_for_rejection(
 /// All stable diagnostic codes in deterministic order.
 pub fn all_designer_admission_diagnostic_codes() -> &'static [DesignerAdmissionDiagnosticCode] {
     &[
+        DesignerAdmissionDiagnosticCode::MalformedManifestRejected,
+        DesignerAdmissionDiagnosticCode::UnknownArtifactTargetRejected,
         DesignerAdmissionDiagnosticCode::DefaultOnRejected,
         DesignerAdmissionDiagnosticCode::ResourceFlowBypassRejected,
         DesignerAdmissionDiagnosticCode::CrossEntityMovementWriteRejected,

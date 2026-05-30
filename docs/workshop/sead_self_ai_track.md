@@ -376,3 +376,13 @@ same accepted FrontierV2 fixture artifacts. No L1-2 required (one non-blocking `
 diagnostic-code labeling nit is noted for L2 to refine inline). **ClauseThing and ClauseScript
 remain parked; FrontierV2-5 and ACT-5/EVENT-3/OBS-5/PIPE-1 remain unauthorized; no cleanup or
 SHA-hygiene loop was started.** Review: [`../tests/phase_m_l1_acceptance_review_results.md`](../tests/phase_m_l1_acceptance_review_results.md).
+
+### CLAUSE-SPEC-0 result
+
+CLAUSE-SPEC-0 implemented designer-authored FrontierV2 scenario admission through simthing-spec.
+The RON-first scenario lowers to accepted FrontierV2 fixture artifact targets, with guardrails
+enforced as admission diagnostics: Resource Flow bypass, cross-entity/production movement writes,
+production commitment emission, shared-pool tick writes, simthing-sim semantic leakage,
+FrontierV2-5, ACT/EVENT/OBS/PIPE reopen, ClauseScript, and ClauseThing requests are rejected.
+This remains spec/admission and fixture-support only: no ClauseThing runtime, no ClauseScript
+parser, no production SimSession wiring, no phase closure.

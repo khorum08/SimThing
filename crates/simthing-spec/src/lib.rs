@@ -177,14 +177,20 @@ pub use compile::jit_kernel_production_registry_shell::{
 };
 pub use designer_admission::{
     accepted_frontier_v2_artifact_target_ids, accepted_frontier_v2_artifact_targets,
-    all_designer_admission_diagnostic_codes, designer_admission_diagnostic,
-    designer_admission_diagnostic_for_rejection, evaluate_designer_admission_request,
-    preview_accepted_artifact_targets, preview_designer_admission_preflight,
-    resolve_frontier_artifact_target_id, AcceptedFrontierArtifactTarget,
-    DesignerAdmissionDiagnostic, DesignerAdmissionDiagnosticCode,
-    DesignerAdmissionPreflightManifest, DesignerAdmissionPreflightReport,
-    DesignerAdmissionPreviewReport, DesignerAdmissionRejectionKind,
-    DesignerAdmissionRequest, DesignerFacingGuardrailClass, SeadLadderStage,
+    admit_clause_spec_frontier_v2_scenario, all_designer_admission_diagnostic_codes,
+    designer_admission_diagnostic, designer_admission_diagnostic_for_rejection,
+    evaluate_designer_admission_request, preview_accepted_artifact_targets,
+    preview_designer_admission_preflight, resolve_frontier_artifact_target_id,
+    AcceptedFrontierArtifactTarget, ClauseSpecArtifactTargets, ClauseSpecFaction,
+    ClauseSpecFrontierV2Admission, ClauseSpecFrontierV2LoweringSummary,
+    ClauseSpecFrontierV2Scenario, ClauseSpecGrid, ClauseSpecMapping, ClauseSpecMovementFeedback,
+    ClauseSpecMovementFeedbackMode, ClauseSpecResourceFlow, ClauseSpecResourceFlowRoute,
+    ClauseSpecStructuralFeedback, ClauseSpecStructuralFeedbackMode, DesignerAdmissionDiagnostic,
+    DesignerAdmissionDiagnosticCode, DesignerAdmissionPreflightManifest,
+    DesignerAdmissionPreflightReport, DesignerAdmissionPreviewReport,
+    DesignerAdmissionRejectionKind, DesignerAdmissionRequest, DesignerFacingGuardrailClass,
+    SeadLadderStage, CLAUSE_SPEC_FRONTIER_V2_GRID_CAP, CLAUSE_SPEC_FRONTIER_V2_MIN_TICKS,
+    CLAUSE_SPEC_FRONTIER_V2_PROFILE,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;
@@ -195,9 +201,10 @@ pub use preview::{
     CapabilityPreviewOverlayBreakdown, CapabilityPreviewReport,
 };
 pub use ron::{
-    deserialize_capability_tree_ron, deserialize_designer_admission_preflight_manifest_ron,
-    deserialize_eml_gadget_stack_ron, deserialize_first_slice_scenario_ron,
-    deserialize_game_mode_ron, deserialize_region_field_ron,
+    deserialize_capability_tree_ron, deserialize_clause_spec_frontier_v2_scenario_ron,
+    deserialize_designer_admission_preflight_manifest_ron, deserialize_eml_gadget_stack_ron,
+    deserialize_first_slice_scenario_ron, deserialize_game_mode_ron, deserialize_region_field_ron,
+    serialize_clause_spec_frontier_v2_scenario_ron,
     serialize_designer_admission_preflight_manifest_ron,
 };
 pub use runtime::{

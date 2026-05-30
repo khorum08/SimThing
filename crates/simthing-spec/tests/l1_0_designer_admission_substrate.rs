@@ -10,7 +10,7 @@ use simthing_spec::{
 #[test]
 fn l1_0_guardrail_diagnostic_codes_are_stable() {
     let codes = all_designer_admission_diagnostic_codes();
-    assert_eq!(codes.len(), 24, "expected 24 stable diagnostic codes");
+    assert_eq!(codes.len(), 26, "expected 26 stable diagnostic codes");
 
     let mut seen = std::collections::BTreeSet::new();
     for code in codes {
@@ -19,6 +19,14 @@ fn l1_0_guardrail_diagnostic_codes_are_stable() {
         assert!(seen.insert(s), "duplicate diagnostic code: {s}");
     }
 
+    assert_eq!(
+        DesignerAdmissionDiagnosticCode::MalformedManifestRejected.as_str(),
+        "L1-0-MALFORMED-MANIFEST-REJECTED"
+    );
+    assert_eq!(
+        DesignerAdmissionDiagnosticCode::UnknownArtifactTargetRejected.as_str(),
+        "L1-0-UNKNOWN-ARTIFACT-TARGET-REJECTED"
+    );
     assert_eq!(
         DesignerAdmissionDiagnosticCode::ResourceFlowBypassRejected.as_str(),
         "L1-0-RESOURCE-FLOW-BYPASS-REJECTED"
@@ -48,24 +56,22 @@ fn l1_0_rejects_act_event_obs_pipe_ladder_reopen() {
         SeadLadderStage::Obs5,
         SeadLadderStage::Pipe1,
     ] {
-        let report = evaluate_designer_admission_request(DesignerAdmissionRequest::SeadLadderReopen {
-            stage,
-        });
+        let report =
+            evaluate_designer_admission_request(DesignerAdmissionRequest::SeadLadderReopen {
+                stage,
+            });
         assert!(!report.accepted, "expected rejection for {}", stage.label());
         assert_eq!(
             report.diagnostics[0].code,
             DesignerAdmissionDiagnosticCode::ActEventObsPipeLadderReopenRejected
         );
-        assert!(report.diagnostics[0]
-            .message
-            .contains(stage.label()));
+        assert!(report.diagnostics[0].message.contains(stage.label()));
     }
 }
 
 #[test]
 fn l1_0_rejects_resource_flow_bypass() {
-    let report =
-        evaluate_designer_admission_request(DesignerAdmissionRequest::ResourceFlowBypass);
+    let report = evaluate_designer_admission_request(DesignerAdmissionRequest::ResourceFlowBypass);
     assert!(!report.accepted);
     assert_eq!(
         report.diagnostics[0].code,
@@ -75,33 +81,30 @@ fn l1_0_rejects_resource_flow_bypass() {
 
 #[test]
 fn l1_0_rejects_cross_entity_movement_write() {
-    let rejected = evaluate_designer_admission_request(
-        DesignerAdmissionRequest::CrossEntityMovementWrite {
+    let rejected =
+        evaluate_designer_admission_request(DesignerAdmissionRequest::CrossEntityMovementWrite {
             source_unit_id: 1,
             target_unit_id: 2,
-        },
-    );
+        });
     assert!(!rejected.accepted);
     assert_eq!(
         rejected.diagnostics[0].code,
         DesignerAdmissionDiagnosticCode::CrossEntityMovementWriteRejected
     );
 
-    let admitted = evaluate_designer_admission_request(
-        DesignerAdmissionRequest::CrossEntityMovementWrite {
+    let admitted =
+        evaluate_designer_admission_request(DesignerAdmissionRequest::CrossEntityMovementWrite {
             source_unit_id: 7,
             target_unit_id: 7,
-        },
-    );
+        });
     assert!(admitted.accepted);
     assert!(admitted.diagnostics.is_empty());
 }
 
 #[test]
 fn l1_0_rejects_production_commitment_emission() {
-    let report = evaluate_designer_admission_request(
-        DesignerAdmissionRequest::ProductionCommitmentEmission,
-    );
+    let report =
+        evaluate_designer_admission_request(DesignerAdmissionRequest::ProductionCommitmentEmission);
     assert!(!report.accepted);
     assert_eq!(
         report.diagnostics[0].code,
@@ -111,8 +114,7 @@ fn l1_0_rejects_production_commitment_emission() {
 
 #[test]
 fn l1_0_rejects_shared_pool_tick_write() {
-    let report =
-        evaluate_designer_admission_request(DesignerAdmissionRequest::SharedPoolTickWrite);
+    let report = evaluate_designer_admission_request(DesignerAdmissionRequest::SharedPoolTickWrite);
     assert!(!report.accepted);
     assert_eq!(
         report.diagnostics[0].code,
@@ -122,8 +124,7 @@ fn l1_0_rejects_shared_pool_tick_write() {
 
 #[test]
 fn l1_0_rejects_clausething_runtime_request() {
-    let report =
-        evaluate_designer_admission_request(DesignerAdmissionRequest::ClauseThingRuntime);
+    let report = evaluate_designer_admission_request(DesignerAdmissionRequest::ClauseThingRuntime);
     assert!(!report.accepted);
     assert_eq!(
         report.diagnostics[0].code,
@@ -133,8 +134,7 @@ fn l1_0_rejects_clausething_runtime_request() {
 
 #[test]
 fn l1_0_rejects_clause_script_parser_request() {
-    let report =
-        evaluate_designer_admission_request(DesignerAdmissionRequest::ClauseScriptParser);
+    let report = evaluate_designer_admission_request(DesignerAdmissionRequest::ClauseScriptParser);
     assert!(!report.accepted);
     assert_eq!(
         report.diagnostics[0].code,
@@ -186,14 +186,14 @@ fn l1_0_no_simthing_sim_semantic_awareness() {
         "src/designer_admission/artifact_target.rs",
         "src/designer_admission/preflight.rs",
     ] {
-        let contents = std::fs::read_to_string(format!(
-            "{}/{}",
-            env!("CARGO_MANIFEST_DIR"),
-            path
-        ))
-        .expect("read designer_admission source");
-        for forbidden in ["use simthing_sim", "use simthing-sim", "simthing_sim::", "simthing-sim::"]
-        {
+        let contents = std::fs::read_to_string(format!("{}/{}", env!("CARGO_MANIFEST_DIR"), path))
+            .expect("read designer_admission source");
+        for forbidden in [
+            "use simthing_sim",
+            "use simthing-sim",
+            "simthing_sim::",
+            "simthing-sim::",
+        ] {
             assert!(
                 !contents.contains(forbidden),
                 "{path} must not import {forbidden}"
@@ -209,12 +209,8 @@ fn l1_0_no_implementer_self_acceptance() {
         "src/designer_admission/artifact_target.rs",
         "src/designer_admission/preflight.rs",
     ] {
-        let contents = std::fs::read_to_string(format!(
-            "{}/{}",
-            env!("CARGO_MANIFEST_DIR"),
-            path
-        ))
-        .expect("read designer_admission source");
+        let contents = std::fs::read_to_string(format!("{}/{}", env!("CARGO_MANIFEST_DIR"), path))
+            .expect("read designer_admission source");
         for forbidden in [
             "Phase M closed",
             "Phase E closed",
@@ -223,7 +219,9 @@ fn l1_0_no_implementer_self_acceptance() {
             "self-acceptance",
         ] {
             assert!(
-                !contents.to_ascii_lowercase().contains(&forbidden.to_ascii_lowercase()),
+                !contents
+                    .to_ascii_lowercase()
+                    .contains(&forbidden.to_ascii_lowercase()),
                 "{path} must not declare closure: {forbidden}"
             );
         }

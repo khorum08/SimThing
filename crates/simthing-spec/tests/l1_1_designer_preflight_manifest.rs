@@ -1,9 +1,9 @@
 //! L1-1 — Designer admission RON preflight manifest + diagnostic preview tests.
 
 use simthing_spec::{
-    deserialize_designer_admission_preflight_manifest_ron,
-    preview_designer_admission_preflight, serialize_designer_admission_preflight_manifest_ron,
-    DesignerAdmissionDiagnosticCode, DesignerAdmissionPreflightManifest,
+    deserialize_designer_admission_preflight_manifest_ron, preview_designer_admission_preflight,
+    serialize_designer_admission_preflight_manifest_ron, DesignerAdmissionDiagnosticCode,
+    DesignerAdmissionPreflightManifest,
 };
 
 const HAPPY_PATH_RON: &str = r#"(
@@ -77,6 +77,31 @@ fn l1_1_preflight_preview_accepts_frontier_v2_targets() {
             "FrontierV2CombinedFeedbackFixture",
             "ResourceFlowAllocatorRoute",
         ]
+    );
+}
+
+#[test]
+fn l1_1_preflight_preview_reports_structural_manifest_diagnostics() {
+    let mut malformed = DesignerAdmissionPreflightManifest::frontier_v2_happy_path();
+    malformed.manifest_id.clear();
+    malformed.profile_name.clear();
+    let preview = preview_designer_admission_preflight(&malformed);
+    preview_rejects_code(
+        &preview,
+        DesignerAdmissionDiagnosticCode::MalformedManifestRejected,
+    );
+    assert!(!preview.diagnostics.iter().any(
+        |d| d.code == DesignerAdmissionDiagnosticCode::SimthingSimSemanticStateRequestRejected
+    ));
+
+    let mut unknown = DesignerAdmissionPreflightManifest::frontier_v2_happy_path();
+    unknown
+        .requested_artifact_targets
+        .push("UnknownFrontierArtifact".into());
+    let preview = preview_designer_admission_preflight(&unknown);
+    preview_rejects_code(
+        &preview,
+        DesignerAdmissionDiagnosticCode::UnknownArtifactTargetRejected,
     );
 }
 
@@ -206,10 +231,7 @@ fn l1_1_preflight_preview_rejects_parked_v7_8_lines() {
 
 #[test]
 fn l1_1_no_runtime_wiring_or_simthing_sim_awareness() {
-    let manifest_path = format!(
-        "{}/Cargo.toml",
-        env!("CARGO_MANIFEST_DIR")
-    );
+    let manifest_path = format!("{}/Cargo.toml", env!("CARGO_MANIFEST_DIR"));
     let manifest = std::fs::read_to_string(manifest_path).expect("read Cargo.toml");
     let deps_section = manifest
         .split("[dev-dependencies]")
@@ -221,14 +243,17 @@ fn l1_1_no_runtime_wiring_or_simthing_sim_awareness() {
         "src/designer_admission/manifest.rs",
         "src/designer_admission/preview.rs",
     ] {
-        let contents = std::fs::read_to_string(format!(
-            "{}/{}",
-            env!("CARGO_MANIFEST_DIR"),
-            path
-        ))
-        .expect("read source");
-        for forbidden in ["use simthing_sim", "use simthing-sim", "simthing_sim::", "simthing-sim::", "simthing-gpu", "simthing_gpu::", "GpuSession"]
-        {
+        let contents = std::fs::read_to_string(format!("{}/{}", env!("CARGO_MANIFEST_DIR"), path))
+            .expect("read source");
+        for forbidden in [
+            "use simthing_sim",
+            "use simthing-sim",
+            "simthing_sim::",
+            "simthing-sim::",
+            "simthing-gpu",
+            "simthing_gpu::",
+            "GpuSession",
+        ] {
             assert!(
                 !contents.contains(forbidden),
                 "{path} must not reference runtime wiring {forbidden}"
@@ -243,12 +268,8 @@ fn l1_1_no_implementer_self_acceptance() {
         "src/designer_admission/manifest.rs",
         "src/designer_admission/preview.rs",
     ] {
-        let contents = std::fs::read_to_string(format!(
-            "{}/{}",
-            env!("CARGO_MANIFEST_DIR"),
-            path
-        ))
-        .expect("read source");
+        let contents = std::fs::read_to_string(format!("{}/{}", env!("CARGO_MANIFEST_DIR"), path))
+            .expect("read source");
         for forbidden in [
             "Phase M closed",
             "Phase E closed",
@@ -256,7 +277,9 @@ fn l1_1_no_implementer_self_acceptance() {
             "self-acceptance",
         ] {
             assert!(
-                !contents.to_ascii_lowercase().contains(&forbidden.to_ascii_lowercase()),
+                !contents
+                    .to_ascii_lowercase()
+                    .contains(&forbidden.to_ascii_lowercase()),
                 "{path} must not declare closure"
             );
         }
