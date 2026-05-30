@@ -1475,7 +1475,7 @@ fn edge_rows_2e_bits() -> Vec<(&'static str, u32)> {
 }
 
 #[test]
-fn sqrt_exact2e_candidate_e_wgsl_compiles_semantic_free() {
+fn sqrt_exact3e_candidate_e_wgsl_compiles_semantic_free() {
     assert!(!SQRT_CR_E_WGSL.is_empty(), "E WGSL artifact must be non-empty");
     assert_semantic_free(SQRT_CR_E_WGSL);
     assert_exact0_forbidden(SQRT_CR_E_WGSL);
@@ -1490,8 +1490,11 @@ fn sqrt_exact2e_candidate_e_wgsl_compiles_semantic_free() {
 }
 
 #[test]
-fn sqrt_exact2e_candidate_e_uses_u32_bit_io() {
+fn sqrt_exact3e_candidate_e_no_authoritative_fp_path() {
     assert!(SQRT_CR_E_WGSL.contains("sqrt_cr_e_bits"));
+    assert!(!SQRT_CR_E_WGSL.contains("sqrt("));
+    assert!(!SQRT_CR_E_WGSL.contains("fma("));
+    assert!(!SQRT_CR_E_WGSL.contains("array<f32>"));
     let wgsl = emit_e_batch_wgsl(1);
     assert!(wgsl.contains("array<u32>"));
     assert!(!wgsl.contains("array<f32>"));
@@ -1503,17 +1506,29 @@ fn sqrt_exact2e_candidate_e_uses_u32_bit_io() {
 }
 
 #[test]
-fn sqrt_exact2e_candidate_e_artifact_hash_recorded() {
+fn sqrt_exact3e_candidate_e_uses_u32_bit_io() {
+    assert!(SQRT_CR_E_WGSL.contains("sqrt_cr_e_bits"));
+    let wgsl = emit_e_batch_wgsl(1);
+    assert!(wgsl.contains("array<u32>"));
+    with_gpu(|ctx| {
+        let rows = run_candidate_e_bits(ctx, &[1.0f32.to_bits()]);
+        let (_, out_bits, _, _) = rows[0];
+        assert_eq!(out_bits, 1.0f32.to_bits());
+    });
+}
+
+#[test]
+fn sqrt_exact3e_candidate_e_artifact_hash_recorded() {
     let hash = fnv1a64_hex(SQRT_CR_E_WGSL);
     println!(
-        "sqrt_exact2e_candidate_e_artifact_hash_fnv1a64={hash} path=crates/simthing-driver/tests/wgsl/sqrt_cr_e_candidate.wgsl bytes={}",
+        "sqrt_exact3e_candidate_e_artifact_hash_fnv1a64={hash} path=crates/simthing-driver/tests/wgsl/sqrt_cr_e_candidate.wgsl bytes={}",
         SQRT_CR_E_WGSL.len()
     );
     assert_eq!(hash.len(), 16);
 }
 
 #[test]
-fn sqrt_exact2e_candidate_e_edge_rows() {
+fn sqrt_exact3e_candidate_e_edge_rows() {
     with_gpu(|ctx| {
         let rows = edge_rows_2e_bits();
         let outputs = run_candidate_e_bits(ctx, &rows.iter().map(|(_, b)| *b).collect::<Vec<_>>());
@@ -1578,7 +1593,7 @@ fn sqrt_exact2e_candidate_e_edge_rows() {
 }
 
 #[test]
-fn sqrt_exact2e_candidate_e_subnormal_sweep() {
+fn sqrt_exact3e_candidate_e_subnormal_sweep() {
     with_gpu(|ctx| {
         let bits: Vec<u32> = subnormal_corpus().into_iter().map(f32::to_bits).collect();
         let detail = sweep_e_bits(ctx, &bits);
@@ -1601,7 +1616,7 @@ fn sqrt_exact2e_candidate_e_subnormal_sweep() {
 }
 
 #[test]
-fn sqrt_exact2e_candidate_e_dense_normal_sweep() {
+fn sqrt_exact3e_candidate_e_dense_normal_sweep() {
     with_gpu(|ctx| {
         let bits = positive_finite_normal_bits(&dense_normal_corpus_1d());
         let detail = sweep_e_bits(ctx, &bits);
@@ -1625,7 +1640,7 @@ fn sqrt_exact2e_candidate_e_dense_normal_sweep() {
 }
 
 #[test]
-fn sqrt_exact2e_candidate_e_compared_to_d() {
+fn sqrt_exact3e_candidate_e_compared_to_d_and_e2() {
     with_gpu(|ctx| {
         let dense = positive_finite_normal_inputs(&dense_normal_corpus_1d());
         let dense_bits: Vec<u32> = dense.iter().map(|x| x.to_bits()).collect();
@@ -1658,16 +1673,18 @@ fn sqrt_exact2e_candidate_e_compared_to_d() {
             .filter(|(x, (_, e_bits, _, _))| *e_bits == 0 && x.sqrt().to_bits() != 0)
             .count();
 
+        let e2_dense_mismatch = 788usize;
+        let e2_sub_flush = 0usize;
         println!(
-            "E_vs_D: dense_d_mismatch={} dense_e_mismatch={} sub_d_flush={} sub_e_flush={}",
-            d_mismatch, e_mismatch, d_sub_flush, e_sub_flush
+            "E3_vs_E2_vs_D: dense_d_mismatch={} dense_e2_mismatch={} dense_e3_mismatch={} sub_d_flush={} sub_e2_flush={} sub_e3_flush={}",
+            d_mismatch, e2_dense_mismatch, e_mismatch, d_sub_flush, e2_sub_flush, e_sub_flush
         );
         assert!(dense.len() > 100);
     });
 }
 
 #[test]
-fn sqrt_exact2e_no_exact_authority_promotion() {
+fn sqrt_exact3e_no_exact_authority_promotion() {
     let sqrt0 = sqrt0_descriptor();
     assert_eq!(sqrt0.native_math, NativeMathClass::ApproximateJitOnly);
     assert!(
@@ -1703,4 +1720,34 @@ fn sqrt_exact2e_no_exact_authority_promotion() {
 
     let baseline = include_str!("../../simthing-gpu/src/shaders/accumulator_op.wgsl");
     assert!(!baseline.contains("sqrt("));
+}
+
+#[test]
+#[ignore = "full 2^31 finite non-negative f32 sweep for Candidate E; run with --ignored explicitly"]
+fn sqrt_exact3e_candidate_e_full_exhaustive_sweep() {
+    with_gpu(|ctx| {
+        const BATCH: u32 = 65536;
+        let mut bits = 0u32;
+        let mut max_ulp = 0u32;
+        while bits <= 0x7F7F_FFFF {
+            let end = bits.saturating_add(BATCH - 1).min(0x7F7F_FFFF);
+            let batch_bits: Vec<u32> = (bits..=end).collect();
+            let rows = run_candidate_e_bits(ctx, &batch_bits);
+            for (x_bits, out_bits, _, _) in rows {
+                let x = f32::from_bits(x_bits);
+                let cpu = x.sqrt();
+                if cpu.is_nan() {
+                    assert!(f32::from_bits(out_bits).is_nan());
+                } else {
+                    max_ulp = max_ulp.max(ulp_distance(f32::from_bits(out_bits), cpu));
+                }
+            }
+            bits = end.saturating_add(1);
+            if bits == 0 {
+                break;
+            }
+        }
+        println!("E exhaustive: max_ulp={max_ulp}");
+        assert_eq!(max_ulp, 0, "Candidate E exhaustive promotion requires max_ulp == 0");
+    });
 }
