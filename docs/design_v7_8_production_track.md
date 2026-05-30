@@ -46,8 +46,8 @@ Per-step narrative lives in `worklog.md`; this file keeps the compact ladder tab
 | Ladder | Capability | Lane | Status | Gate to advance |
 |---|---|---|---|---|
 | **L0 — Frontier consumer** | Bounded multi-tick closed-loop self-AI consumer proof | T2 | **landed + ACCEPTED** (V1-5 → V2-0..4) | none — complete at fixture/test-support level; **no FrontierV2-5** |
-| **L1 — simthing-spec buildout** | Designer-facing spec admission substrate (prep for ClauseThing) | T2 | **next / active gate** | product start + design-authority acceptance |
-| **L2 — CLAUSE-SPEC** | Designer-authored FrontierV2 scenario admitted through `simthing-spec` → same accepted runtime artifacts | T2 | **parked (downstream of L1)** | L1 landed; `CLAUSE-SPEC-0` accepted |
+| **L1 — simthing-spec buildout** | Designer-facing spec admission substrate (prep for ClauseThing) | T2 | **landed + ACCEPTED** (L1-0, L1-1; L1-ACCEPT-0) | none — sufficient to open L2 |
+| **L2 — CLAUSE-SPEC** | Designer-authored FrontierV2 scenario admitted through `simthing-spec` → same accepted runtime artifacts | T2 | **OPEN — next gate** (L1-ACCEPT-0, 2026-05-30) | `CLAUSE-SPEC-0` implementation |
 | **L3 — ClauseThing** | ClauseScript-facing authoring front-end | T2 | **parked (separate track)** | L2 landed; explicit ClauseThing authorization |
 | **A — Nested Resource Flow** | E-11B / E-11B-5 hierarchical allocation (depth > 2) | T2 | **parked** (flat-star is the posture) | named economy needing depth > 2 fanout |
 | **B — Discrete hard-currency ordering** | D-2 / D-2a sequential cross-band ordering | T2 | **parked** (discrete AccumulatorOp path stands) | named multi-transaction hard-currency workload |
@@ -87,28 +87,33 @@ no phase closure declared. Ruling: [`workshop/sead_self_ai_track.md`](workshop/s
   rejections** (cross-entity writes, production commitment emission, Resource-Flow bypass, unbounded
   fanout, `simthing-sim` semantic leakage rejected at import; runtime stays the unconditional last
   line, per `design_v7_8.md` §2.1).
-- **Status:** **Next named track per product direction.** Do **not** jump ahead to ClauseScript
-  parsing or production wiring.
-- **Ladder (to be filled as steps land):**
+- **Status:** **Landed + ACCEPTED (L1-ACCEPT-0, design authority, 2026-05-30).** L1-0 + L1-1 are the
+  sufficient designer/spec admission substrate; L2 / `CLAUSE-SPEC-0` is now open. Do **not** jump
+  ahead to ClauseScript parsing or production wiring.
+- **Ladder:**
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
 | L1-0 | Designer admission substrate preflight: shared diagnostics + guardrail rejection vocabulary + accepted FrontierV2 artifact target names | Done | — | — | [`phase_m_l1_0_designer_admission_substrate_results.md`](tests/phase_m_l1_0_designer_admission_substrate_results.md) |
 | L1-1 | Designer admission RON preflight manifest + diagnostic preview | Done | — | — | [`phase_m_l1_1_designer_preflight_manifest_results.md`](tests/phase_m_l1_1_designer_preflight_manifest_results.md) |
+| L1-ACCEPT-0 | Design-authority closure: L1 sufficient to open L2 / CLAUSE-SPEC-0 (one non-blocking preview.rs diagnostic-code nit noted for L2) | Accepted | — | — | [`phase_m_l1_acceptance_review_results.md`](tests/phase_m_l1_acceptance_review_results.md) |
 
 ## 5. L2 — CLAUSE-SPEC (parked, downstream of L1)
 
 - **What:** `CLAUSE-SPEC-0` — Designer-Facing FrontierV2 Spec Admission: admit a **designer-authored**
   FrontierV2 scenario through `simthing-spec` and compile it to the **same accepted runtime artifacts**
   the L0 fixtures exercised (RON-first; ClauseScript/ClauseThing later). The fixture guardrails
-  **relocate to admission rejections** here.
-- **Status:** **Parked — starts only after L1 lands.** Do not start before the simthing-spec buildout;
-  do not implement the ClauseScript parser (that is L3, a separate track).
-- **Ladder (to be filled):**
+  **relocate to admission rejections** here, consuming the L1-0 diagnostic vocabulary and L1-1
+  preflight manifest substrate.
+- **Status:** **OPEN — next implementation gate (L1-ACCEPT-0, 2026-05-30).** L1 is accepted; L2 may
+  start. Scope is designer-authored FrontierV2 scenario admission + compile-to-accepted-artifacts
+  only — **not** the ClauseScript parser/front-end (that is L3, still parked) and **not** production
+  `SimSession` wiring. Default-off, opt-in, CPU-oracle-parity where exact.
+- **Ladder:**
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| CLAUSE-SPEC-0 | Admit designer-authored FrontierV2 scenario → accepted runtime artifacts | Pending | — | — | — |
+| CLAUSE-SPEC-0 | Admit designer-authored FrontierV2 scenario → accepted runtime artifacts | Open (next gate) | — | — | — |
 
 ## 6. L3 — ClauseThing (parked, separate track)
 
@@ -181,8 +186,10 @@ remains **L1 simthing-spec buildout**.
 
 ## 10. Sequencing summary
 
-L0 is **done and accepted**. The live forward edge is **L1 (simthing-spec buildout)**, then
-**L2 (CLAUSE-SPEC)**, then **L3 (ClauseThing)** — that chain is the expected source of the **named
-scenarios** that unblock Lines A/B/C. Do not start any line speculatively or to escape a
-hygiene/closure loop; start a step only when its gate passes. The AccumulatorOp v2 production plan
-stays **CLOSED**; v7.7 stays the **binding baseline**; the three lines live in v7.8.
+L0 is **done and accepted**. L1 (simthing-spec buildout) is **done and accepted** (L1-ACCEPT-0).
+The live forward edge is now **L2 (CLAUSE-SPEC-0 — designer-authored FrontierV2 scenario admission)**,
+then **L3 (ClauseThing)** — that chain is the expected source of the **named scenarios** that unblock
+Lines A/B/C. Do not start any line speculatively or to escape a hygiene/closure loop; start a step
+only when its gate passes. ClauseThing/ClauseScript stay parked until L2 lands and ClauseThing is
+explicitly authorized. The AccumulatorOp v2 production plan stays **CLOSED**; v7.7 stays the
+**binding baseline**; the three lines live in v7.8.

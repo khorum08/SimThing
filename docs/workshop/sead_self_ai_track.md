@@ -361,3 +361,18 @@ L1-1 added a RON-first designer admission preflight manifest and diagnostic prev
 the L1-0 guardrail vocabulary. It is still L1 simthing-spec buildout: no full FrontierV2 scenario
 admission, no CLAUSE-SPEC-0, no ClauseThing runtime, no ClauseScript parser, no default runtime
 wiring, and no phase closure.
+
+### L1-ACCEPT-0 ruling: ACCEPT L1, open L2 / CLAUSE-SPEC-0 (design authority, 2026-05-30)
+
+**ACCEPT (Option A).** Verified against the `simthing-spec/src/designer_admission/` code, not just
+the reports: L1-0 ships the shared guardrail diagnostic vocabulary (24 stable `L1-0-*` codes, 14
+guardrail classes, 24 rejection kinds, preflight request evaluation) and five accepted FrontierV2
+artifact targets; L1-1 ships the RON preflight manifest + `preview_designer_admission_preflight`
+report that composes those diagnostics from shallow designer-authored input. Together they are the
+sufficient designer/spec admission substrate — the import-time firewall L2 needs, matching the
+Mapping/Resource-Flow ADR pattern. **L2 / `CLAUSE-SPEC-0` is now OPEN** as the next implementation
+gate: admit a designer-authored FrontierV2 scenario through `simthing-spec` and compile it to the
+same accepted FrontierV2 fixture artifacts. No L1-2 required (one non-blocking `preview.rs`
+diagnostic-code labeling nit is noted for L2 to refine inline). **ClauseThing and ClauseScript
+remain parked; FrontierV2-5 and ACT-5/EVENT-3/OBS-5/PIPE-1 remain unauthorized; no cleanup or
+SHA-hygiene loop was started.** Review: [`../tests/phase_m_l1_acceptance_review_results.md`](../tests/phase_m_l1_acceptance_review_results.md).
