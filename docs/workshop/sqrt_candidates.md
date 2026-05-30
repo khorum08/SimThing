@@ -486,8 +486,11 @@ existing SQRT-0 harness and its `FORBIDDEN_SEMANTIC_TERMS` scan):
 > (`m_jit_sqrt_f_exact`, hash `e2e9e27601ee2e13`); any F artifact change invalidates authority
 > until renewed exhaustive proof; native sqrt remains non-exact.
 > **Update (SQRT-MAG-0 landed):** F is consumed by exact Euclidean magnitude candidate
-> (`m_jit_mag_f_exact` / `ExactEuclideanMagnitudeF`); F artifact hash remains binding;
+> (`m_jit_mag_f_from_exact_mag2` / `ExactEuclideanMagnitudeFFromExactMag2` when mag2 is exact;
+> raw dx/dy probe `m_jit_mag_f_from_dxdy_probe`); F artifact hash remains binding;
 > approximate performance mode is still not authorized.
+> **Update (SQRT-MAG-0 R1):** F proves sqrt exactness over input bits. It does not by itself prove
+> dx²+dy² construction exactness across CPU/GPU operation order.
 
 ```
 ApproximateJitOnly            ← native/raw sqrt (stays here — never exact-authoritative)

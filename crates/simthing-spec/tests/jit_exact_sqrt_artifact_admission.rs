@@ -1,17 +1,21 @@
 //! SQRT-PROMOTE-0 — Artifact-backed Candidate F exact sqrt descriptor/admission tests.
 
 use simthing_spec::{
-    exact_sqrt_f_artifact_descriptor, fnv1a64_hex, is_exact_sqrt_f_descriptor,
-    landed_jit_kernel_descriptors, preview_kernel_graph_identity,
+    exact_sqrt_f_artifact_descriptor, fnv1a64_hex, is_exact_mag_f_from_mag2_descriptor,
+    is_exact_sqrt_f_descriptor, is_mag_f_dxdy_probe_descriptor,
+    landed_jit_kernel_descriptors, mag_f_from_dxdy_probe_kernel_descriptor,
+    mag_f_from_exact_mag2_kernel_descriptor, preview_kernel_graph_identity,
     preview_kernel_registry_manifest, preview_production_candidate_registry_entry,
     sqrt_f_exact_kernel_descriptor, validate_exact_kernel_inputs,
     validate_exact_sqrt_artifact_binding,
     validate_kernel_descriptor_admission, validate_kernel_graph_admission,
-    ExactSqrtArtifactDescriptor, ExactSqrtAuthorityClass, KernelDescriptorSpec, KernelGraphEdgeSpec,
-    KernelGraphRequestSpec, KernelGraphSpec, KernelLane, KernelOutputSpec, KernelRegistryLane,
-    MappingExecutionProfile, NativeMathClass, OutputAuthority, SpecError, SQRT_F_ARTIFACT_HASH,
-    SQRT_F_ARTIFACT_PATH, SQRT_F_DESCRIPTOR_ID, SQRT_F_DOMAIN, SQRT_F_ENTRYPOINT,
-    SQRT_F_IO_CONTRACT, SQRT_F_PROOF_REPORT,
+    ExactPreSqrtInputContract, ExactSqrtArtifactDescriptor, ExactSqrtAuthorityClass,
+    KernelDescriptorSpec, KernelGraphEdgeSpec, KernelGraphRequestSpec, KernelGraphSpec,
+    KernelLane, KernelOutputSpec, KernelRegistryLane, MappingExecutionProfile, NativeMathClass,
+    OutputAuthority, SpecError, MAG_F_FROM_DXDY_PROBE_DESCRIPTOR_ID,
+    MAG_F_FROM_MAG2_DESCRIPTOR_ID, SQRT_F_ARTIFACT_HASH, SQRT_F_ARTIFACT_PATH,
+    SQRT_F_DESCRIPTOR_ID, SQRT_F_DOMAIN, SQRT_F_ENTRYPOINT, SQRT_F_IO_CONTRACT,
+    SQRT_F_PROOF_REPORT,
 };
 
 fn sqrt0() -> KernelDescriptorSpec {
@@ -35,6 +39,20 @@ fn grad0() -> KernelDescriptorSpec {
         .expect("grad0 descriptor")
 }
 
+fn mag_from_mag2() -> KernelDescriptorSpec {
+    landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|desc| desc.id == MAG_F_FROM_MAG2_DESCRIPTOR_ID)
+        .expect("mag from mag2 descriptor")
+}
+
+fn mag_dxdy_probe() -> KernelDescriptorSpec {
+    landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|desc| desc.id == MAG_F_FROM_DXDY_PROBE_DESCRIPTOR_ID)
+        .expect("mag dx/dy probe descriptor")
+}
+
 fn grad1_style_scorer() -> KernelDescriptorSpec {
     KernelDescriptorSpec {
         id: "m_jit_grad_1_scorer".into(),
@@ -49,6 +67,7 @@ fn grad1_style_scorer() -> KernelDescriptorSpec {
         default_off: true,
         production_wiring: false,
         exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
     }
 }
 
@@ -298,4 +317,48 @@ fn sqrt_promote0_no_runtime_default_wiring() {
             "exact sqrt admission module must not reference `{forbidden}`"
         );
     }
+}
+
+#[test]
+fn sqrt_mag0_r1_mag_from_exact_mag2_admits_exact_mag() {
+    let from_mag2 = mag_from_mag2();
+    assert!(is_exact_mag_f_from_mag2_descriptor(&from_mag2));
+    validate_kernel_descriptor_admission(&from_mag2).expect("from_mag2 admits");
+    validate_exact_kernel_inputs(&from_mag2, &["mag"]).expect("exact mag from mag2");
+    assert_eq!(
+        from_mag2.pre_sqrt_contract,
+        Some(ExactPreSqrtInputContract::ExactMag2Bits)
+    );
+}
+
+#[test]
+fn sqrt_mag0_r1_raw_dxdy_probe_rejects_exact_mag_authority() {
+    let probe = mag_dxdy_probe();
+    assert!(is_mag_f_dxdy_probe_descriptor(&probe));
+    validate_kernel_descriptor_admission(&probe).expect("probe admits");
+    assert_eq!(
+        probe.pre_sqrt_contract,
+        Some(ExactPreSqrtInputContract::RawDxDyProbe)
+    );
+    assert_exact_input_err(&probe, &["mag"], "ExactMag2Bits pre-sqrt contract");
+
+    let mut bad = mag_f_from_dxdy_probe_kernel_descriptor();
+    bad.writes = vec![KernelOutputSpec {
+        name: "mag".into(),
+        authority: OutputAuthority::ExactAuthoritative,
+    }];
+    assert_admission_err(
+        &bad,
+        "raw dx/dy multiply-add probe cannot claim exact-authoritative mag output",
+    );
+}
+
+#[test]
+fn sqrt_mag0_r1_exact_mag_requires_pre_sqrt_contract() {
+    let mut no_contract = mag_f_from_exact_mag2_kernel_descriptor();
+    no_contract.pre_sqrt_contract = None;
+    assert_admission_err(
+        &no_contract,
+        "exact-authoritative mag requires an ExactPreSqrtInputContract",
+    );
 }

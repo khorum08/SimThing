@@ -1,3 +1,7 @@
+# 2026-05-30 — SQRT-MAG-0 R1 pre-sqrt exactness contract for F-backed magnitude (Tier-2, landed)
+
+- SQRT-MAG-0 R1 split magnitude descriptors (`m_jit_mag_f_from_exact_mag2`, `m_jit_mag_f_from_dxdy_probe`), added `ExactPreSqrtInputContract` metadata, reproduced 40/784 mag2 mismatch rows, retained 34k raw dx/dy probe; F sqrt authority unchanged; no production wiring/scheduler/cache/bridge added.
+
 # 2026-05-30 — SQRT-MAG-0 F-backed exact Euclidean magnitude SEAD hot-path probe (Tier-2, landed)
 
 - SQRT-MAG-0 added default-off/test-only exact magnitude path `m_jit_mag_f_exact` routing `sqrt_cr_f_bits` over let-sequenced `dx²+dy²`; edge/dense corpora and 34k mobile-simthing benchmark recorded; native sqrt and diagnostic `mag2` remain non-exact; no production wiring/scheduler/cache/bridge added.
