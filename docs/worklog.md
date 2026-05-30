@@ -1,3 +1,7 @@
+# 2026-05-30 — SEAD-OBS-2 multi-layer GPU-resident observer overlay score (Tier-2, landed)
+
+- SEAD-OBS-2 added default-off 4-layer multilayer overlay score fixture and `m_jit_sead_obs2_multilayer_overlay_score` descriptor; per-layer mag exact, score ApproximateDiagnosticF32; 34k benchmarks recorded; no production wiring added.
+
 # 2026-05-30 — SEAD-OBS-1 descriptor/admission for mobile observer overlay score (Tier-2, landed)
 
 - SEAD-OBS-1 added default-off `m_jit_sead_obs0_overlay_score` descriptor/admission with exact mag2/mag and ApproximateDiagnosticF32 score; warm 34k benchmark recorded; no production wiring added.
