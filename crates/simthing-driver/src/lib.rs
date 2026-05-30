@@ -40,8 +40,9 @@ pub use arena_allocation_sync::{
 };
 pub use arena_hierarchy::{
     build_custom_layout, build_execution_plan, build_flat_star_layout, build_nested_layout,
-    resolve_node_columns, total_bands_for_depth, ArenaBandLayout, ArenaExecutionPlan,
-    ArenaTreeLayout, HierarchyError, HierarchyNode, NodeColumnRefs,
+    nested_hierarchy_materialization_report, resolve_node_columns, total_bands_for_depth,
+    ArenaBandLayout, ArenaExecutionPlan, ArenaTreeLayout, HierarchyError, HierarchyNode,
+    NestedHierarchyMaterializationReport, NodeColumnRefs,
 };
 pub use arena_participant::{
     all_reserved_gap_slots, arena_participant_sibling_slots, commit_dynamic_arena_root_append,

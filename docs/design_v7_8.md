@@ -138,9 +138,9 @@ safety. These stay binding regardless:
   dynamic enrollment on fission cascades. The reverse-OrderBand allocation sweep and the
   approximate-deterministic conservation contract are decided in
   [`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md).
-- **Status:** **NamedScenarioAccepted (2026-05-30); A-0 QUEUED** (not opened — product priority is
-  Line C / map batching first). `FlatStarResourceFlow` remains the accepted posture;
-  `PipelineFlags::default().use_accumulator_resource_flow` stays `false` until A-0 opens.
+- **Status:** **NamedScenarioAccepted (2026-05-30); A-0 implementation evidence landed — pending design-authority review.**
+  A-0 implementation evidence landed for static nested Resource Flow; Line A remains pending design-authority review until accepted. `FlatStarResourceFlow` remains the accepted posture;
+  `PipelineFlags::default().use_accumulator_resource_flow` stays `false`.
 - **Readiness already landed:** [`reviews/e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md),
   [`reviews/e11b_nested_dynamic_enrollment_readiness.md`](reviews/e11b_nested_dynamic_enrollment_readiness.md),
   [`workshop/e11_hierarchical_allocation_design.md`](workshop/e11_hierarchical_allocation_design.md),
