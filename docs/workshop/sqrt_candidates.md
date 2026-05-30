@@ -68,11 +68,14 @@ is sharp: the adversary is **backend FP contraction/reassociation + flush-to-zer
 math. SQRT-EXACT-1D then proved the bitmask split beats contraction (D fired 117 corrections
 where A fired 0, all normal edges exact) but still lost to FTZ on tiny terms (12 near-min-
 normal misses) and subnormal store; SQRT-EXACT-2E proved a `u32` bit-IO contract kills the
-flush but its weak integer root regressed accuracy. **SQRT-EXACT-3E then remediated E's integer
-core to `max_ulp == 0` on every sweep** (pure integer, no `sqrt`/`fma`/f32 — FTZ/contraction
-immune by construction) → it is the exact leader, pending only the exhaustive sweep. Candidate
-F (§5.0) — D's residual on a [1,4)-normalized mantissa with `u32` IO — is a documented
-hardware-seeded *performance alternative*, not the current build target. See §5.0 and §11.
+flush but its weak integer root regressed accuracy. **SQRT-EXACT-3E then made E's pure-integer
+core `max_ulp == 0` on every sweep** — correct and FTZ/contraction-immune by construction, but
+its rounding is a **data-dependent integer loop** (~24 iterations) which **cannot meet the
+34,000-AI-entity hot-path budget** (op count + warp divergence across 34k lanes). So E3 is the
+**slow correctness reference / fallback**, not the production kernel. **The hot-path target is
+Candidate F (§5.0): loop-free, fixed-op-count, hardware-`sqrt`-seeded** — D's residual on a
+[1,4)-normalized mantissa with `u32` IO, which removes D's FTZ misses and subnormal flush. F is
+the shader to build and test standalone. See §5.0 and §11.
 
 ## 3. Guardrail doctrine — exactness authority lives at the designer/spec-admission layer
 
@@ -128,52 +131,49 @@ and that choice is what separates the candidates:
   rounding, the residual collapses to `r = fma(-y, y, x)`. This was the original Candidate A;
   it is now just an optional fast form of D's residual, not a separate candidate.
 
-## 5. Candidates (E/3E is the exact leader; F is a documented fast-path alternative; D/B prior)
+## 5. Candidates (F is the hot-path target — loop-free, hardware-sqrt; E3 is the slow correctness reference)
 
-**The current exact leader is Candidate E (3E integer core), not F.** While F was being
-designed, SQRT-EXACT-3E remediated E's integer mantissa core (`u32` limb-pair `vec2<u32>`
-arithmetic, exact 24-bit square, integer binary-search floor + exact integer nearest-even
-rounding — **no `sqrt`, `fma`, or f32 in the finite path**) and it now reports `max_ulp == 0`
-on edge, dense-normal (1043/1043), and subnormal (2572/2572, flush 0) sweeps →
-`ExactCandidatePendingExhaustiveSweep`. Being pure integer, E3 is immune to the FTZ and FP
-contraction that defeated A/B/D *by construction*. **The next action is running E3's
-`#[ignore]` exhaustive 2³¹ sweep; a green sweep promotes E3.** Do **not** build F ahead of that.
+**Performance requirement is decisive: the target is 34,000 AI entities, evaluated on the hot
+path. An integer sqrt cannot meet it.** E3 is correct, but its correctness comes from a
+**data-dependent integer loop** — ~24 limb-pair multiply+compare iterations per element. At 34k
+lanes that is both a large op-count and a *warp-divergence* problem (lanes finish their search
+at different iteration counts, serializing the workgroup). The same objection sinks the F′
+hybrid: its ±1 correction is still a divergent integer loop over `compare_sq_to_x`. **The
+production `sqrt` must be loop-free, fixed-op-count, and use the hardware sqrt ALU.** That is
+**Candidate F**, and it is the build/test target. E3 stays admitted only as the slow, portable
+correctness reference / fallback — never the hot-path kernel.
 
-**Candidate F (§5.0) is a performance alternative, not the current build target.** It uses a
-hardware `sqrt` seed (one instruction + ~15 ops) instead of E3's integer search, so it may be
-cheaper per element — but it reintroduces a dependence on hardware-seed quality that E3 does
-not have. Build F **only if** E3's integer core is measured too slow in production (unlikely at
-GPU integer-op cost). It is kept here, fully specified, so that option is ready without
-re-derivation. D and B follow as the earlier probes E3 and F both improve on.
+F must be **tested as its own standalone WGSL shader** — its own artifact and battery variant,
+*not* folded into E3's integer machinery. Freeze it as
+`crates/simthing-driver/tests/wgsl/sqrt_cr_f_candidate.wgsl`, `include_str!` it, and run the
+`u32` bit-IO edge/dense/subnormal **and** exhaustive sweeps against `f32::sqrt`, exactly as E
+was tested. Authoritative entry `sqrt_cr_f_bits(x_bits: u32) -> u32`; `sqrt_cr_f` is the f32
+opcode-boundary wrapper.
 
-### 5.0 Candidate F — verbatim WGSL artifact (fast-path alternative; build only if E3 too slow)
-
-If built, freeze this as `crates/simthing-driver/tests/wgsl/sqrt_cr_f_candidate.wgsl` and
-`include_str!` it, exactly as E was frozen. The authoritative entry is
-`sqrt_cr_f_bits(x_bits: u32) -> u32` (test it via `array<u32>` bit-IO against `f32::sqrt`); the
-`sqrt_cr_f` f32 wrapper is the opcode-boundary form.
+### 5.0 Candidate F — standalone WGSL shader (hot-path target)
 
 ```wgsl
-// Candidate F — correctly-rounded f32 sqrt, FTZ- and contraction-safe.
+// Candidate F — correctly-rounded f32 sqrt. Loop-free, fixed op count, hardware-sqrt seed.
 //
-// Strategy: decode bits in the integer domain; fold the exponent so the work runs on a
-// significand m in [1,4) (sqrt(x) = sqrt(m) * 2^k, k integer); seed with the hardware
-// sqrt; get the EXACT residual via a bitmask-split Dekker TwoProduct (no fma); snap to
-// correctly-rounded with a directional Markstein test; reconstruct the result exponent
-// with integer ops and return the BIT PATTERN. Every live f32 value stays in [1,4) or
-// [1,2), i.e. always normal — flush-to-zero never touches a residual term — and the
-// result is emitted as u32 so no subnormal f32 store/load can flush.
+// Built for the 34k-entity hot path: NO data-dependent loop (uniform cost across all lanes,
+// no warp divergence), one hardware `sqrt` + straight-line ops. Correctness strategy: decode
+// bits in the integer domain; fold the exponent so the work runs on a significand m in [1,4)
+// (sqrt(x) = sqrt(m) * 2^k, k integer); seed with the hardware sqrt; get the EXACT residual
+// via a bitmask-split Dekker TwoProduct (no fma); snap to correctly-rounded with a directional
+// Markstein test; reconstruct the result exponent with integer ops and return the BIT PATTERN.
+// Every live f32 value stays in [1,4) or [1,2) — always normal, so FTZ never touches a
+// residual term — and the result is emitted as u32 so no subnormal f32 store/load can flush.
 //
 // Authoritative entry:  sqrt_cr_f_bits(x_bits: u32) -> u32
 // CPU oracle for parity: f32::sqrt (already correctly rounded).
 //
 // Contraction safety: the split is a bitwise AND the FP optimizer cannot rewrite, and the
-// residual contains NO `a*b + c` fma candidates — every product is materialized into a
-// `let` and `p` is read twice, so naga/DXC cannot fuse or reassociate the residual. The
-// snap thresholds MAY be contracted harmlessly (a 1-ULP error there cannot flip a decision,
-// since sqrt has no exact ties). If a backend is later found to reassociate the residual
-// sum anyway, the documented fallback is an integer-domain residual (exact mantissa-integer
-// products); the [1,4) normalization and u32 IO stay unchanged.
+// residual has NO `a*b + c` fma candidates — every product is materialized into a `let` and
+// `p` is read twice, so naga/DXC cannot fuse it. The snap thresholds may be contracted
+// harmlessly (a 1-ULP error there cannot flip a decision; sqrt has no exact ties). The one
+// open question the standalone exhaustive sweep must settle is whether DXC reassociates the
+// error-term SUM despite the let-sequencing; if it does, the fix is a contraction barrier on
+// those ~4 lines — NOT a switch to an integer loop (which would forfeit the 34k budget).
 
 const F_QNAN: u32 = 0x7FC00000u;
 const F_PINF: u32 = 0x7F800000u;
@@ -226,7 +226,8 @@ fn sqrt_cr_f_bits(x_bits: u32) -> u32 {
     if (x_bits == 0x80000000u) { return 0x80000000u; }   // -0 -> -0
     if (sign == 1u) { return F_QNAN; }                   // negative finite -> NaN
 
-    // Recover significand M2 in [1,2) (as bits) and unbiased exponent E2.
+    // Recover significand M2 in [1,2) (as bits) and unbiased exponent E2. (countLeadingZeros
+    // is a fixed-latency intrinsic, not a loop — no divergence.)
     var m2_bits: u32;
     var e2: i32;
     if (exp == 0u) {
@@ -257,29 +258,30 @@ fn sqrt_cr_f_bits(x_bits: u32) -> u32 {
 
 // Opcode-boundary wrapper. PRODUCTION RULE: feed the input column's RAW u32 bits to
 // sqrt_cr_f_bits — do NOT load the column as an f32 register first, because DAZ can flush a
-// subnormal input on load. This wrapper is correct only when `x` reached it without an
-// f32 load-flush; prefer wiring sqrt_cr_f_bits directly to the raw column bits.
+// subnormal input on load. Prefer wiring sqrt_cr_f_bits directly to the raw column bits.
 fn sqrt_cr_f(x: f32) -> f32 {
     return bitcast<f32>(sqrt_cr_f_bits(bitcast<u32>(x)));
 }
 ```
 
-**Why F fixes both failure modes the probes exposed:**
-- **The 12 near-min-normal D misses go away.** Those were `y_lo² ≈ 2⁻¹⁴⁸` underflowing to a
-  subnormal and being flushed. In [1,4), `y_lo² ≈ 2⁻²⁴` — comfortably normal — so the
-  residual is exact for every input, not just mid-range ones.
-- **The subnormal flush goes away.** Input is read as `u32` (no DAZ load-flush), all work is
-  in [1,4), and the result is emitted as `u32` bits (no subnormal f32 store). E proved this
-  IO contract eliminates the flush (`flush_count = 0`); F keeps it and adds D's accuracy.
-- **Contraction stays beaten.** Same integer bitmask split that made D fire 117 corrections
-  where A fired 0, plus a residual with zero fma candidates.
+**Why F is the hot-path kernel (and E3 is not):**
+- **Loop-free, uniform cost.** ~1 hardware `sqrt` + ~30 straight-line ops, zero data-dependent
+  iteration — identical work on every one of the 34k lanes, no warp divergence. E3 (~24-iter
+  search) and F′ (±1 correction loop) both diverge across lanes and inflate op count; neither
+  is viable at this scale.
+- **FTZ defeated by construction.** All residual work runs on a [1,4)-normalized significand
+  (`y_lo² ≈ 2⁻²⁴`, always normal), and the result is emitted as `u32` bits — so neither the
+  near-min-normal misses nor the subnormal flush that hit D can recur.
+- **Uses the hardware sqrt ALU** rather than re-deriving the root in the integer pipe.
 
-**Test (only if pursued):** add `CorrectlyRoundedHwBitmaskNormalized` (F) to the battery with
-`u32` bit-IO edge/dense/subnormal sweeps against `f32::sqrt`, then benchmark F vs E3. F is
-promotable only if it *also* reaches `max_ulp == 0` on the exhaustive sweep **and** beats E3 on
-GPU cost by a margin worth the hardware-seed dependence. Absent that, **E3 is the candidate to
-promote** — its exhaustive sweep is the live next step, and a green sweep flips the
-`sqrt`/`mag` descriptor to `ExactDeterministic` regardless of whether F is ever built.
+**Test + promote (standalone):** add an F variant (`CorrectlyRoundedHwBitmaskNormalized`) backed
+by the standalone `sqrt_cr_f_candidate.wgsl`, with `u32` bit-IO edge/dense/subnormal sweeps and
+the `#[ignore]` exhaustive `0x0000_0000..=0x7F7F_FFFF` sweep, all against `f32::sqrt`. F is
+promotable when its **own** exhaustive sweep is `max_ulp == 0`; that flips the `sqrt`/`mag`
+descriptor to `ExactDeterministic` pointing at the F artifact, with E3 retained only as the slow
+portable fallback. The single risk to watch in the sweep is DXC reassociating the error-term
+sum; if it appears, fix it with a contraction barrier on those lines — do not fall back to a
+loop.
 
 ### 5.1 Prior probes (context — superseded by F)
 
@@ -305,7 +307,7 @@ fn snap_cr(y: f32, r: f32) -> f32 {   // r = exact residual (s - y*y)
 }
 ```
 
-### Candidate D — hardware seed + bitmask-split exact residual *(primary; recommended)*
+### Candidate D — hardware seed + bitmask-split exact residual *(prior probe; matured into F)*
 
 Contributed and adopted as the lead. It keeps the within-1-ULP hardware `sqrt` seed (no
 Newton), and computes the **exact** residual with a single bitwise mask — no `fma`-fusion
@@ -537,21 +539,29 @@ now runs via integer-domain `u32` bit-IO. 2E removed D-style subnormal flush but
 integer mantissa core and now reaches zero ULP on edge/dense/subnormal sweeps in the battery,
 moving E to `ExactCandidatePendingExhaustiveSweep` pending full ignored exhaustive proof.
 
-1. **D landed as lead candidate probe** with contraction barrier (split helpers) and integer
-   subnormal *input* normalization. Classification: **ApproximateJitOnly** on this backend;
-   subnormal output path **unresolved**.
-2. **Contingency — Candidate E (integer-only).** Implemented and remediated through SQRT-EXACT-2E
-   and SQRT-EXACT-3E with verbatim WGSL `sqrt_cr_e_bits(x_bits: u32) -> u32` and authoritative
-   `array<u32>` harness. The 3E core uses `u32` limb-pair widened arithmetic with exact integer
-   nearest-even rounding, removing 2E's dense-normal error and yielding `max_ulp=0` in current
-   edge/dense/subnormal sweeps. Promotion is still gated on ignored exhaustive sweep.
-3. **`fma` shortcut is dead on this backend.** #305 confirms naga/DX12 does not fuse `fma`
-   for residual purposes — do not spend further effort on the A/`fma` form unless a *different*
-   adapter is proven to fuse. Recorded as a binding backend note.
-4. **Exhaustive-sweep budget.** The full 2³¹ sweep exists as an `#[ignore]` gate in the
-   battery; promotion still requires running it to `max_ulp == 0`. Confirm it batches within
-   GPU time when D is ready; the dense stratified sweep stays the default-run signal.
-5. **`mag` re-enablement.** Once `sqrt` is `ExactDeterministic`, open the follow-on to let
+1. **Hot-path target = Candidate F, tested as a standalone WGSL shader.** The 34,000-AI-entity
+   budget rules out any data-dependent integer loop (op count + warp divergence). F (§5.0) is
+   loop-free, fixed-op-count, hardware-`sqrt`-seeded; build `sqrt_cr_f_candidate.wgsl` and run
+   its own `u32` bit-IO edge/dense/subnormal **and** exhaustive sweeps against `f32::sqrt`. F
+   promotes when its own exhaustive sweep is `max_ulp == 0`. **This is the live next step.**
+2. **E3 = slow correctness reference / portable fallback, NOT the production kernel.** Its
+   integer `u32` limb-pair core is `max_ulp == 0` on edge/dense/subnormal (pending exhaustive)
+   and FTZ/contraction-immune, so it is the trustworthy oracle and the fallback for any adapter
+   where F's hardware seed is poor — but its ~24-iteration loop cannot meet the 34k budget, so
+   it does not ship on the hot path. **F′ (hardware seed + E3 integer correction loop) is also
+   rejected for the hot path** — its ±1 correction is still a divergent integer loop. D is
+   legacy (`ApproximateJitOnly`; its FTZ misses are what F's [1,4) normalization fixes).
+3. **`fma` shortcut is dead on this backend.** #305 confirms naga/DX12 does not fuse `fma` for
+   residual purposes — F therefore uses the bitmask Dekker residual, not `fma`. Do not revisit
+   the `fma` form unless a *different* adapter is proven to fuse.
+4. **Contraction is F's one open risk.** F's residual has no `a*b+c` fma candidates and uses an
+   integer bitmask split, but the error-term *sum* could still be reassociated by DXC. The
+   standalone exhaustive sweep settles it; if it bites, fix with a contraction barrier on those
+   ~4 lines — **never** by reintroducing an integer loop.
+5. **Exhaustive-sweep budget.** The full 2³¹ sweep is an `#[ignore]` gate; promotion requires
+   running it to `max_ulp == 0`. Confirm it batches within GPU time when F is ready; the dense
+   stratified sweep stays the default-run signal.
+6. **`mag` re-enablement.** Once `sqrt` is `ExactDeterministic`, open the follow-on to let
    true Euclidean `mag` replace `mag2` where exactness (not just ordering) is required —
    separate slice, separate row.
 
