@@ -41,6 +41,22 @@ pub const MAG_F_FROM_DXDY_PROBE_DESCRIPTOR_ID: &str = "m_jit_mag_f_from_dxdy_pro
 pub const MAG_F_FROM_MAG2_LABEL: &str = "ExactEuclideanMagnitudeFFromExactMag2";
 pub const MAG_F_FROM_DXDY_PROBE_LABEL: &str = "RawDxDyMagnitudeFProbe";
 
+pub const MAG2_FIXED_DESCRIPTOR_ID: &str = "m_jit_mag2_fixed_exact";
+pub const MAG2_FIXED_LABEL: &str = "ExactFixedPointMag2";
+/// Q16.16 fixed-point fraction bits for SEAD gradient magnitude probe.
+pub const MAG2_Q16_FRAC_BITS: u32 = 16;
+pub const MAG2_Q16_SCALE: u32 = 1 << MAG2_Q16_FRAC_BITS;
+pub const MAG2_Q16_SCALE_SQ: u64 = (MAG2_Q16_SCALE as u64) * (MAG2_Q16_SCALE as u64);
+/// Bounded SEAD gradient component range (±16.0) under Q16.16.
+pub const MAG2_Q16_COMPONENT_MAX: f32 = 16.0;
+
+/// Source contract for exact-authoritative pre-sqrt mag2 construction (SQRT-MAG2-0).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mag2SourceContract {
+    /// Signed fixed-point `dx_fixed`/`dy_fixed` with integer `dx²+dy²` then pinned f32 conversion.
+    ExactFixedPointDxDy { fraction_bits: u32 },
+}
+
 /// Pre-sqrt input contract for F-backed magnitude kernels (SQRT-MAG-0 R1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExactPreSqrtInputContract {
@@ -189,6 +205,15 @@ pub fn is_mag_f_dxdy_probe_descriptor(spec: &KernelDescriptorSpec) -> bool {
         && spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::RawDxDyProbe)
 }
 
+/// True when the descriptor is the landed exact fixed-point mag2 construction kernel.
+pub fn is_exact_mag2_fixed_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == MAG2_FIXED_DESCRIPTOR_ID
+        && spec.mag2_source_contract
+            == Some(Mag2SourceContract::ExactFixedPointDxDy {
+                fraction_bits: MAG2_Q16_FRAC_BITS,
+            })
+}
+
 fn has_exact_f_authoritative_output(spec: &KernelDescriptorSpec) -> bool {
     spec.writes.iter().any(|out| {
         out.authority == OutputAuthority::ExactAuthoritative
@@ -275,6 +300,87 @@ pub fn validate_exact_pre_sqrt_contract(spec: &KernelDescriptorSpec) -> Result<(
     Ok(())
 }
 
+/// Validate exact mag2 source contract rules (SQRT-MAG2-0).
+pub fn validate_mag2_source_contract(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
+    let exact_mag2_out = spec.writes.iter().any(|out| {
+        (out.name == "mag2_bits" || out.name == "mag2")
+            && out.authority == OutputAuthority::ExactAuthoritative
+    });
+
+    match (&spec.mag2_source_contract, exact_mag2_out) {
+        (Some(Mag2SourceContract::ExactFixedPointDxDy { fraction_bits }), true) => {
+            if *fraction_bits == 0 {
+                return Err(artifact_err(
+                    &spec.id,
+                    "ExactFixedPointDxDy fraction_bits must be non-zero",
+                ));
+            }
+            if !spec.reads.iter().any(|read| read == "dx_fixed")
+                || !spec.reads.iter().any(|read| read == "dy_fixed")
+            {
+                return Err(artifact_err(
+                    &spec.id,
+                    "ExactFixedPointDxDy contract requires dx_fixed and dy_fixed reads",
+                ));
+            }
+            if spec.reads.iter().any(|read| read == "dx" || read == "dy") {
+                return Err(artifact_err(
+                    &spec.id,
+                    "exact fixed-point mag2 cannot read raw f32 dx/dy",
+                ));
+            }
+            match spec
+                .writes
+                .iter()
+                .find(|out| out.name == "mag2_bits" || out.name == "mag2")
+                .map(|out| out.authority)
+            {
+                Some(OutputAuthority::ExactAuthoritative) => {}
+                _ => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        "ExactFixedPointDxDy contract requires exact-authoritative mag2_bits output",
+                    ));
+                }
+            }
+        }
+        (None, true) => {
+            if spec
+                .writes
+                .iter()
+                .any(|out| out.name == "mag2_bits" && out.authority == OutputAuthority::ExactAuthoritative)
+            {
+                return Err(artifact_err(
+                    &spec.id,
+                    "exact-authoritative mag2_bits requires a Mag2SourceContract",
+                ));
+            }
+        }
+        (Some(Mag2SourceContract::ExactFixedPointDxDy { .. }), false) => {
+            return Err(artifact_err(
+                &spec.id,
+                "Mag2SourceContract declared without exact-authoritative mag2_bits output",
+            ));
+        }
+        (None, false) => {}
+    }
+
+    if spec.reads.iter().any(|read| read == "dx" || read == "dy")
+        && spec.writes.iter().any(|out| {
+            (out.name == "mag2_bits" || out.name == "mag2")
+                && out.authority == OutputAuthority::ExactAuthoritative
+        })
+        && spec.mag2_source_contract.is_none()
+    {
+        return Err(artifact_err(
+            &spec.id,
+            "raw f32 dx/dy cannot produce exact-authoritative mag2 without Mag2SourceContract",
+        ));
+    }
+
+    Ok(())
+}
+
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
 pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
     let has_exact_f_out = has_exact_f_authoritative_output(spec);
@@ -313,6 +419,7 @@ pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Re
     }
 
     validate_exact_pre_sqrt_contract(spec)?;
+    validate_mag2_source_contract(spec)?;
 
     Ok(())
 }
@@ -344,6 +451,7 @@ pub fn mag_f_from_exact_mag2_kernel_descriptor() -> KernelDescriptorSpec {
         production_wiring: false,
         exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
         pre_sqrt_contract: Some(ExactPreSqrtInputContract::ExactMag2Bits),
+        mag2_source_contract: None,
     }
 }
 
@@ -360,6 +468,26 @@ pub fn mag_f_from_dxdy_probe_kernel_descriptor() -> KernelDescriptorSpec {
         production_wiring: false,
         exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
         pre_sqrt_contract: Some(ExactPreSqrtInputContract::RawDxDyProbe),
+        mag2_source_contract: None,
+    }
+}
+
+/// Exact fixed-point pre-sqrt mag2 from signed Q16.16 gradient components.
+pub fn mag2_fixed_exact_kernel_descriptor() -> KernelDescriptorSpec {
+    KernelDescriptorSpec {
+        id: MAG2_FIXED_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads: vec!["dx_fixed".to_string(), "dy_fixed".to_string()],
+        writes: vec![exact_out("mag2_bits")],
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
+        mag2_source_contract: Some(Mag2SourceContract::ExactFixedPointDxDy {
+            fraction_bits: MAG2_Q16_FRAC_BITS,
+        }),
     }
 }
 
@@ -376,5 +504,6 @@ pub fn sqrt_f_exact_kernel_descriptor() -> KernelDescriptorSpec {
         production_wiring: false,
         exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
         pre_sqrt_contract: None,
+        mag2_source_contract: None,
     }
 }

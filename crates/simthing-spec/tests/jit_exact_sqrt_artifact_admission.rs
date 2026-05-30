@@ -1,7 +1,8 @@
 //! SQRT-PROMOTE-0 — Artifact-backed Candidate F exact sqrt descriptor/admission tests.
 
 use simthing_spec::{
-    exact_sqrt_f_artifact_descriptor, fnv1a64_hex, is_exact_mag_f_from_mag2_descriptor,
+    exact_sqrt_f_artifact_descriptor, fnv1a64_hex, is_exact_mag2_fixed_descriptor,
+    is_exact_mag_f_from_mag2_descriptor,
     is_exact_sqrt_f_descriptor, is_mag_f_dxdy_probe_descriptor,
     landed_jit_kernel_descriptors, mag_f_from_dxdy_probe_kernel_descriptor,
     mag_f_from_exact_mag2_kernel_descriptor, preview_kernel_graph_identity,
@@ -12,7 +13,7 @@ use simthing_spec::{
     ExactPreSqrtInputContract, ExactSqrtArtifactDescriptor, ExactSqrtAuthorityClass,
     KernelDescriptorSpec, KernelGraphEdgeSpec, KernelGraphRequestSpec, KernelGraphSpec,
     KernelLane, KernelOutputSpec, KernelRegistryLane, MappingExecutionProfile, NativeMathClass,
-    OutputAuthority, SpecError, MAG_F_FROM_DXDY_PROBE_DESCRIPTOR_ID,
+    OutputAuthority, SpecError, MAG2_FIXED_DESCRIPTOR_ID, MAG_F_FROM_DXDY_PROBE_DESCRIPTOR_ID,
     MAG_F_FROM_MAG2_DESCRIPTOR_ID, SQRT_F_ARTIFACT_HASH, SQRT_F_ARTIFACT_PATH,
     SQRT_F_DESCRIPTOR_ID, SQRT_F_DOMAIN, SQRT_F_ENTRYPOINT, SQRT_F_IO_CONTRACT,
     SQRT_F_PROOF_REPORT,
@@ -68,6 +69,7 @@ fn grad1_style_scorer() -> KernelDescriptorSpec {
         production_wiring: false,
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
+        mag2_source_contract: None,
     }
 }
 
@@ -361,4 +363,18 @@ fn sqrt_mag0_r1_exact_mag_requires_pre_sqrt_contract() {
         &no_contract,
         "exact-authoritative mag requires an ExactPreSqrtInputContract",
     );
+}
+
+#[test]
+fn sqrt_mag2_0_fixed_mag2_descriptor_admits_exact_mag2_bits() {
+    let fixed = landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|desc| desc.id == MAG2_FIXED_DESCRIPTOR_ID)
+        .expect("mag2 fixed");
+    assert!(is_exact_mag2_fixed_descriptor(&fixed));
+    validate_kernel_descriptor_admission(&fixed).expect("fixed mag2 admits");
+    validate_exact_kernel_inputs(&fixed, &["mag2_bits"]).expect("mag2_bits exact");
+
+    let grad0 = grad0();
+    assert_exact_input_err(&grad0, &["mag2"], "approximate/diagnostic");
 }
