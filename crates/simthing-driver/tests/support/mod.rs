@@ -4,4 +4,5 @@ pub mod e11_burn_in_scenarios;
 pub mod e11_flat_star;
 pub mod e11_resource_flow_soak;
 pub mod e2b5_dynamic_enrollment_soak;
+pub mod frontier_v1;
 pub mod first_slice_scenario_fixture;

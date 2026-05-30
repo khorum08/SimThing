@@ -1,3 +1,7 @@
+# 2026-05-30 — FrontierV1-1 opt-in end-to-end fixture wiring (Tier-2, landed)
+
+- FrontierV1-1 wired the default-off FrontierV1 fixture through first-slice mapping, flat-star Resource Flow, and SEAD Self-AI routing in driver/spec space; no default runtime wiring added.
+
 # 2026-05-30 — FrontierV1-0 opt-in scenario skeleton and admission contract (Tier-2, landed)
 
 - FrontierV1-0 defined the default-off FrontierV1 scenario skeleton and admission envelope for M/E closure: first-slice mapping, flat-star Resource Flow, and SEAD Self-AI routing through accepted substrates; no runtime wiring added.
