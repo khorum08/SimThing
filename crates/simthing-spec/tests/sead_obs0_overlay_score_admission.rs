@@ -5,13 +5,16 @@ use simthing_spec::{
     landed_jit_kernel_descriptors, sead_obs0_overlay_score_kernel_descriptor,
     sead_obs2_multilayer_overlay_score_kernel_descriptor,
     sead_obs3_multilayer_fixed_score_kernel_descriptor,
+    sead_obs4_threshold_event_kernel_descriptor,
     validate_kernel_descriptor_admission, ExactPreSqrtInputContract,
     KernelDescriptorSpec, Mag2SourceContract, NativeMathClass, OutputAuthority,
     ScoreAuthorityContract, SEAD_OBS0_DESCRIPTOR_ID, SEAD_OBS0_LABEL, SEAD_OBS2_DESCRIPTOR_ID,
     SEAD_OBS2_LABEL, SEAD_OBS2_LAYER_COUNT, SEAD_OBS3_DESCRIPTOR_ID, SEAD_OBS3_LABEL,
+    SEAD_OBS4_DESCRIPTOR_ID, SEAD_OBS4_LABEL,
     SpecError, MAG2_Q16_FRAC_BITS, SQRT_F_ARTIFACT_HASH,
     is_sead_obs2_multilayer_overlay_score_descriptor,
     is_sead_obs3_multilayer_fixed_score_descriptor,
+    is_sead_obs4_threshold_event_descriptor,
 };
 
 fn obs2() -> KernelDescriptorSpec {
@@ -26,6 +29,13 @@ fn obs3() -> KernelDescriptorSpec {
         .into_iter()
         .find(|desc| desc.id == SEAD_OBS3_DESCRIPTOR_ID)
         .expect("sead obs3 descriptor")
+}
+
+fn obs4() -> KernelDescriptorSpec {
+    landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|desc| desc.id == SEAD_OBS4_DESCRIPTOR_ID)
+        .expect("sead obs4 descriptor")
 }
 
 fn obs0() -> KernelDescriptorSpec {
@@ -263,4 +273,47 @@ fn sead_obs3_f32_score_exact_still_rejects() {
     let mut wrong_mag2 = sead_obs3_multilayer_fixed_score_kernel_descriptor();
     wrong_mag2.mag2_source_contract = None;
     assert_admission_err(&wrong_mag2, "Mag2SourceContract");
+}
+
+#[test]
+fn sead_obs4_descriptor_admits_threshold_event() {
+    let desc = obs4();
+    assert_eq!(desc.id, SEAD_OBS4_DESCRIPTOR_ID);
+    assert!(desc.default_off);
+    assert!(!desc.production_wiring);
+    assert!(is_sead_obs4_threshold_event_descriptor(&desc));
+    validate_kernel_descriptor_admission(&desc).expect("obs4 admits");
+    let state = desc
+        .writes
+        .iter()
+        .find(|out| out.name == "state_u32")
+        .expect("state_u32");
+    let event = desc
+        .writes
+        .iter()
+        .find(|out| out.name == "event_code_u32")
+        .expect("event_code_u32");
+    assert_eq!(state.authority, OutputAuthority::ExactAuthoritative);
+    assert_eq!(event.authority, OutputAuthority::ExactAuthoritative);
+    assert_eq!(
+        desc.score_authority_contract,
+        Some(ScoreAuthorityContract::ExactQ16WeightedSum)
+    );
+    println!(
+        "sead_obs4_descriptor: id={SEAD_OBS4_DESCRIPTOR_ID} label={SEAD_OBS4_LABEL} threshold=ExactQ16Threshold event=ExactDeterministicEventFlag"
+    );
+}
+
+#[test]
+fn sead_obs4_rejects_approximate_event_outputs() {
+    let mut bad = sead_obs4_threshold_event_kernel_descriptor();
+    for out in &mut bad.writes {
+        if out.name == "event_code_u32" {
+            out.authority = OutputAuthority::ApproximateDiagnostic;
+        }
+    }
+    assert_admission_err(
+        &bad,
+        "SEAD threshold event requires exact-authoritative event_code_u32",
+    );
 }

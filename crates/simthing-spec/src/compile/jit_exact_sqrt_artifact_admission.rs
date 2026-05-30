@@ -88,6 +88,24 @@ pub const SEAD_OBS3_DESCRIPTOR_ID: &str = "m_jit_sead_obs3_multilayer_fixed_scor
 pub const SEAD_OBS3_LABEL: &str = "SeadMultilayerFixedScore";
 pub const SEAD_OBS3_LAYER_COUNT: u32 = SEAD_OBS2_LAYER_COUNT;
 
+pub const SEAD_OBS4_DESCRIPTOR_ID: &str = "m_jit_sead_obs4_threshold_event";
+pub const SEAD_OBS4_LABEL: &str = "SeadThresholdEvent";
+pub const SEAD_OBS4_LAYER_COUNT: u32 = SEAD_OBS3_LAYER_COUNT;
+
+/// Threshold operand contract for observer event kernels (SEAD-OBS-4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ThresholdAuthorityContract {
+    /// `threshold_fixed` / `hysteresis_fixed` are Q16.16 signed integers compared to `score_fixed`.
+    ExactQ16Threshold,
+}
+
+/// Event output authority contract for observer event kernels (SEAD-OBS-4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventAuthorityContract {
+    /// `state_u32` / `event_code_u32` are exact deterministic under fixed score + threshold operands.
+    ExactDeterministicEventFlag,
+}
+
 fn artifact_err(kernel: &str, reason: impl Into<String>) -> SpecError {
     SpecError::JitKernelDescriptorAdmission {
         kernel: kernel.to_string(),
@@ -263,8 +281,29 @@ pub fn is_sead_obs3_multilayer_fixed_score_descriptor(spec: &KernelDescriptorSpe
             .any(|out| out.name == "score_fixed" && out.authority == OutputAuthority::ExactAuthoritative)
 }
 
+/// True when the descriptor is the landed SEAD threshold event kernel.
+pub fn is_sead_obs4_threshold_event_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == SEAD_OBS4_DESCRIPTOR_ID
+        && spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt)
+        && spec.score_authority_contract == Some(ScoreAuthorityContract::ExactQ16WeightedSum)
+        && multilayer_exact_mag_bits_outputs(spec) == SEAD_OBS4_LAYER_COUNT
+        && has_threshold_event_reads(spec)
+        && spec.writes.iter().any(|out| {
+            out.name == "state_u32" && out.authority == OutputAuthority::ExactAuthoritative
+        })
+        && spec.writes.iter().any(|out| {
+            out.name == "event_code_u32" && out.authority == OutputAuthority::ExactAuthoritative
+        })
+}
+
 fn is_multilayer_overlay_descriptor_id(id: &str) -> bool {
-    id == SEAD_OBS2_DESCRIPTOR_ID || id == SEAD_OBS3_DESCRIPTOR_ID
+    id == SEAD_OBS2_DESCRIPTOR_ID || id == SEAD_OBS3_DESCRIPTOR_ID || id == SEAD_OBS4_DESCRIPTOR_ID
+}
+
+fn has_threshold_event_reads(spec: &KernelDescriptorSpec) -> bool {
+    spec.reads.iter().any(|read| read == "threshold_fixed")
+        && spec.reads.iter().any(|read| read == "hysteresis_fixed")
+        && spec.reads.iter().any(|read| read == "prior_state_u32")
 }
 
 fn multilayer_exact_mag_bits_outputs(spec: &KernelDescriptorSpec) -> u32 {
@@ -770,6 +809,91 @@ pub fn validate_sead_obs3_multilayer_fixed_score_contract(
     Ok(())
 }
 
+/// Validate landed SEAD-OBS-4 threshold event descriptor pins.
+pub fn validate_sead_obs4_threshold_event_contract(
+    spec: &KernelDescriptorSpec,
+) -> Result<(), SpecError> {
+    if spec.id != SEAD_OBS4_DESCRIPTOR_ID {
+        return Ok(());
+    }
+    match spec.mag2_source_contract {
+        Some(Mag2SourceContract::ExactFixedPointDxDy { fraction_bits })
+            if fraction_bits == MAG2_Q16_FRAC_BITS => {}
+        _ => {
+            return Err(artifact_err(
+                &spec.id,
+                "SEAD threshold event requires Q16.16 ExactFixedPointDxDy mag2 contract",
+            ));
+        }
+    }
+    if spec.pre_sqrt_contract != Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD threshold event requires InlineFixedPointMag2Sqrt pre-sqrt contract",
+        ));
+    }
+    if spec.score_authority_contract != Some(ScoreAuthorityContract::ExactQ16WeightedSum) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD threshold event requires ExactQ16WeightedSum score contract",
+        ));
+    }
+    if multilayer_exact_mag_bits_outputs(spec) != SEAD_OBS4_LAYER_COUNT {
+        return Err(artifact_err(
+            &spec.id,
+            format!(
+                "SEAD threshold event requires {SEAD_OBS4_LAYER_COUNT} exact layer mag_bits outputs"
+            ),
+        ));
+    }
+    if !has_multilayer_fixed_reads(spec) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD threshold event requires layer gx/gy/weight reads and bias_fixed",
+        ));
+    }
+    let score_fixed = spec
+        .writes
+        .iter()
+        .find(|out| out.name == "score_fixed")
+        .map(|out| out.authority);
+    if score_fixed != Some(OutputAuthority::ExactAuthoritative) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD threshold event requires exact-authoritative score_fixed output",
+        ));
+    }
+    if !has_threshold_event_reads(spec) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD threshold event requires threshold_fixed, hysteresis_fixed, and prior_state_u32 reads",
+        ));
+    }
+    let state = spec
+        .writes
+        .iter()
+        .find(|out| out.name == "state_u32")
+        .map(|out| out.authority);
+    let event = spec
+        .writes
+        .iter()
+        .find(|out| out.name == "event_code_u32")
+        .map(|out| out.authority);
+    if state != Some(OutputAuthority::ExactAuthoritative) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD threshold event requires exact-authoritative state_u32 under ExactDeterministicEventFlag",
+        ));
+    }
+    if event != Some(OutputAuthority::ExactAuthoritative) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD threshold event requires exact-authoritative event_code_u32 under ExactDeterministicEventFlag",
+        ));
+    }
+    Ok(())
+}
+
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
 pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
     let has_exact_f_out = has_exact_f_authoritative_output(spec);
@@ -813,6 +937,7 @@ pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Re
     validate_sead_obs0_overlay_score_contract(spec)?;
     validate_sead_obs2_multilayer_overlay_score_contract(spec)?;
     validate_sead_obs3_multilayer_fixed_score_contract(spec)?;
+    validate_sead_obs4_threshold_event_contract(spec)?;
 
     Ok(())
 }
@@ -971,6 +1096,46 @@ pub fn sead_obs3_multilayer_fixed_score_kernel_descriptor() -> KernelDescriptorS
 
     KernelDescriptorSpec {
         id: SEAD_OBS3_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads,
+        writes,
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
+        pre_sqrt_contract: Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt),
+        mag2_source_contract: Some(Mag2SourceContract::ExactFixedPointDxDy {
+            fraction_bits: MAG2_Q16_FRAC_BITS,
+        }),
+        score_authority_contract: Some(ScoreAuthorityContract::ExactQ16WeightedSum),
+    }
+}
+
+/// Build the landed SEAD threshold event kernel descriptor (SEAD-OBS-4).
+pub fn sead_obs4_threshold_event_kernel_descriptor() -> KernelDescriptorSpec {
+    let mut reads = Vec::new();
+    for layer in 0..SEAD_OBS4_LAYER_COUNT {
+        reads.push(format!("layer{layer}_gx_fixed"));
+        reads.push(format!("layer{layer}_gy_fixed"));
+        reads.push(format!("layer{layer}_w_fixed"));
+    }
+    reads.push("bias_fixed".to_string());
+    reads.push("threshold_fixed".to_string());
+    reads.push("hysteresis_fixed".to_string());
+    reads.push("prior_state_u32".to_string());
+
+    let mut writes = Vec::new();
+    for layer in 0..SEAD_OBS4_LAYER_COUNT {
+        writes.push(exact_out(&format!("layer{layer}_mag_bits")));
+    }
+    writes.push(exact_out("score_fixed"));
+    writes.push(exact_out("state_u32"));
+    writes.push(exact_out("event_code_u32"));
+    writes.push(approx_out("flags"));
+
+    KernelDescriptorSpec {
+        id: SEAD_OBS4_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads,
         writes,

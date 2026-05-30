@@ -1,3 +1,7 @@
+# 2026-05-30 — SEAD-OBS-4 GPU-resident threshold event emission from exact observer scores (Tier-2, landed)
+
+- SEAD-OBS-4 added default-off `m_jit_sead_obs4_threshold_event` probe; exact Q16.16 score + threshold/hysteresis → deterministic state/event codes; warm 34k benchmark recorded; no CPU planner or production wiring added.
+
 # 2026-05-30 — SEAD-OBS-3 fixed-point aggregate score for multi-layer observer overlay (Tier-2, landed)
 
 - SEAD-OBS-3 added default-off `m_jit_sead_obs3_multilayer_fixed_score` descriptor with `ExactQ16WeightedSum` Q16.16 score accumulation; per-layer mag exact; OBS-2 f32 score unchanged; 34k benchmarks recorded; no production wiring added.
