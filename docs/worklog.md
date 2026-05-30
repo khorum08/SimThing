@@ -1,3 +1,7 @@
+# 2026-05-30 — SQRT-EXACT-4E exhaustive E3 proof gate (Tier-2, landed)
+
+- SQRT-EXACT-4E ran Candidate E3's full finite non-negative exhaustive sweep (`0x0000_0000..=0x7F7F_FFFF`) and recorded `max_ulp=0`, `exact_bits=2,139,095,040`, `flush_count=0`; E3 is now `ExactDeterministicCandidate` pending a separate descriptor/admission flip; Candidate F/C were not implemented and no production sqrt or `mag2` authority changes were made.
+
 # 2026-05-29 — SQRT-EXACT-3E Candidate E correctly-rounded integer mantissa core (Tier-2, landed)
 
 - SQRT-EXACT-3E replaced Candidate E’s weak integer approximation with an integer-limb correctly-rounded core while preserving verbatim WGSL + `u32` bit IO; edge/dense/subnormal sweeps now hit `max_ulp=0` and `flush_count=0`, classification `ExactCandidatePendingExhaustiveSweep` pending ignored exhaustive proof; no production sqrt admission or `mag2` authority change.

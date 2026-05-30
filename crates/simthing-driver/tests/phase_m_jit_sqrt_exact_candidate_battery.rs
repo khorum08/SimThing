@@ -1474,6 +1474,73 @@ fn edge_rows_2e_bits() -> Vec<(&'static str, u32)> {
         .collect()
 }
 
+#[derive(Debug, Clone, Copy)]
+struct ExhaustiveRange {
+    start: u32,
+    end: u32,
+    split_index: Option<u32>,
+    total_splits: Option<u32>,
+}
+
+fn parse_u32_env(name: &str) -> Option<u32> {
+    let raw = std::env::var(name).ok()?;
+    let trimmed = raw.trim();
+    if let Some(hex) = trimmed.strip_prefix("0x").or_else(|| trimmed.strip_prefix("0X")) {
+        u32::from_str_radix(hex, 16).ok()
+    } else {
+        trimmed.parse::<u32>().ok()
+    }
+}
+
+fn exhaustive_range_from_env() -> ExhaustiveRange {
+    const DOMAIN_START: u32 = 0x0000_0000;
+    const DOMAIN_END: u32 = 0x7F7F_FFFF;
+    const DOMAIN_LEN: u64 = (DOMAIN_END as u64) - (DOMAIN_START as u64) + 1;
+
+    let total_splits = parse_u32_env("SIMTHING_SQRT_E4_TOTAL_SPLITS");
+    let split_index = parse_u32_env("SIMTHING_SQRT_E4_SPLIT_INDEX");
+    if let (Some(total), Some(index)) = (total_splits, split_index) {
+        assert!(total > 0, "SIMTHING_SQRT_E4_TOTAL_SPLITS must be > 0");
+        assert!(
+            index < total,
+            "SIMTHING_SQRT_E4_SPLIT_INDEX must be < SIMTHING_SQRT_E4_TOTAL_SPLITS"
+        );
+        let total_u64 = total as u64;
+        let index_u64 = index as u64;
+        let base_len = DOMAIN_LEN / total_u64;
+        let rem = DOMAIN_LEN % total_u64;
+        let prefix_extra = index_u64.min(rem);
+        let start_offset = index_u64 * base_len + prefix_extra;
+        let len = base_len + u64::from(index_u64 < rem);
+        assert!(len > 0, "split length must be positive");
+        let start = DOMAIN_START.wrapping_add(start_offset as u32);
+        let end = start.wrapping_add((len - 1) as u32);
+        return ExhaustiveRange {
+            start,
+            end,
+            split_index: Some(index),
+            total_splits: Some(total),
+        };
+    }
+
+    let start = parse_u32_env("SIMTHING_SQRT_E4_RANGE_START").unwrap_or(DOMAIN_START);
+    let end = parse_u32_env("SIMTHING_SQRT_E4_RANGE_END").unwrap_or(DOMAIN_END);
+    assert!(
+        start <= end,
+        "SIMTHING_SQRT_E4_RANGE_START must be <= SIMTHING_SQRT_E4_RANGE_END"
+    );
+    assert!(
+        end <= DOMAIN_END,
+        "SIMTHING_SQRT_E4_RANGE_END must be <= 0x7F7F_FFFF"
+    );
+    ExhaustiveRange {
+        start,
+        end,
+        split_index: None,
+        total_splits: None,
+    }
+}
+
 #[test]
 fn sqrt_exact3e_candidate_e_wgsl_compiles_semantic_free() {
     assert!(!SQRT_CR_E_WGSL.is_empty(), "E WGSL artifact must be non-empty");
@@ -1726,28 +1793,97 @@ fn sqrt_exact3e_no_exact_authority_promotion() {
 #[ignore = "full 2^31 finite non-negative f32 sweep for Candidate E; run with --ignored explicitly"]
 fn sqrt_exact3e_candidate_e_full_exhaustive_sweep() {
     with_gpu(|ctx| {
-        const BATCH: u32 = 65536;
-        let mut bits = 0u32;
+        const DOMAIN_END: u32 = 0x7F7F_FFFF;
+        let range = exhaustive_range_from_env();
+        let batch = parse_u32_env("SIMTHING_SQRT_E4_BATCH").unwrap_or(1_048_576).max(1);
+        let progress_every = parse_u32_env("SIMTHING_SQRT_E4_PROGRESS_EVERY")
+            .unwrap_or(64)
+            .max(1);
+        let mut bits = range.start;
+        let mut tested: u64 = 0;
+        let mut exact_bits: u64 = 0;
+        let mut flush_count: u64 = 0;
         let mut max_ulp = 0u32;
-        while bits <= 0x7F7F_FFFF {
-            let end = bits.saturating_add(BATCH - 1).min(0x7F7F_FFFF);
+        let mut worst: Option<(u32, u32, u32, u32)> = None;
+        let mut batch_idx = 0u64;
+        while bits <= range.end {
+            let end = bits.saturating_add(batch - 1).min(range.end);
             let batch_bits: Vec<u32> = (bits..=end).collect();
             let rows = run_candidate_e_bits(ctx, &batch_bits);
             for (x_bits, out_bits, _, _) in rows {
                 let x = f32::from_bits(x_bits);
                 let cpu = x.sqrt();
-                if cpu.is_nan() {
-                    assert!(f32::from_bits(out_bits).is_nan());
-                } else {
-                    max_ulp = max_ulp.max(ulp_distance(f32::from_bits(out_bits), cpu));
+                let cpu_bits = cpu.to_bits();
+                let ulp = ulp_distance(f32::from_bits(out_bits), cpu);
+                if out_bits == cpu_bits {
+                    exact_bits += 1;
+                } else if worst.as_ref().is_none_or(|w| ulp > w.3) {
+                    worst = Some((x_bits, out_bits, cpu_bits, ulp));
                 }
+                if out_bits == 0 && cpu_bits != 0 {
+                    flush_count += 1;
+                }
+                max_ulp = max_ulp.max(ulp);
+                tested += 1;
+            }
+            batch_idx += 1;
+            if batch_idx.is_multiple_of(progress_every as u64) || end == range.end {
+                println!(
+                    "E exhaustive progress: start={:#010x} end={:#010x} tested={} max_ulp={} flush_count={} exact_bits={}",
+                    range.start, range.end, tested, max_ulp, flush_count, exact_bits
+                );
             }
             bits = end.saturating_add(1);
             if bits == 0 {
                 break;
             }
         }
-        println!("E exhaustive: max_ulp={max_ulp}");
+
+        let expected = (range.end as u64) - (range.start as u64) + 1;
+        assert_eq!(
+            tested, expected,
+            "range coverage mismatch for exhaustive sweep"
+        );
+        assert_eq!(flush_count, 0, "exhaustive sweep must have flush_count == 0");
         assert_eq!(max_ulp, 0, "Candidate E exhaustive promotion requires max_ulp == 0");
+
+        let split_tag = match (range.split_index, range.total_splits) {
+            (Some(idx), Some(total)) => format!("split={idx}/{total}"),
+            _ => "split=full_or_explicit_range".to_string(),
+        };
+        let worst_tag = if let Some((x_bits, out_bits, cpu_bits, ulp)) = worst {
+            format!(
+                "worst=x:{:#010x},out:{:#010x},cpu:{:#010x},ulp:{}",
+                x_bits, out_bits, cpu_bits, ulp
+            )
+        } else {
+            "worst=none".to_string()
+        };
+        println!(
+            "E exhaustive summary: {split_tag} start={:#010x} end={:#010x} tested={} exact_bits={} max_ulp={} flush_count={} {}",
+            range.start, range.end, tested, exact_bits, max_ulp, flush_count, worst_tag
+        );
+
+        let log_line = format!(
+            "split_tag={} start={:#010x} end={:#010x} tested={} exact_bits={} max_ulp={} flush_count={} {}\n",
+            split_tag, range.start, range.end, tested, exact_bits, max_ulp, flush_count, worst_tag
+        );
+        let repo_docs_tests = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/tests");
+        std::fs::create_dir_all(&repo_docs_tests).expect("repo docs/tests must exist");
+        let batch_log_path = repo_docs_tests.join("phase_m_jit_sqrt_exact4e_exhaustive_batches.log");
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&batch_log_path)
+            .expect("open exhaustive batch log");
+        use std::io::Write;
+        file.write_all(log_line.as_bytes())
+            .expect("write exhaustive batch log");
+
+        assert!(
+            range.end <= DOMAIN_END,
+            "exhaustive range end must stay in finite non-negative domain"
+        );
     });
 }

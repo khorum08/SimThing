@@ -529,38 +529,31 @@ layer and only on exhaustive proof; the runtime remains the unconditional last l
 
 ## 11. Open decisions (design authority — Opus)
 
-**Status after SQRT-EXACT-0 (#305), SQRT-EXACT-1D, SQRT-EXACT-1D-R1, SQRT-EXACT-2E, and SQRT-EXACT-3E:** A and B were implemented and probed; **both stuck at
+**Status after SQRT-EXACT-0 (#305), SQRT-EXACT-1D, SQRT-EXACT-1D-R1, SQRT-EXACT-2E, SQRT-EXACT-3E, and SQRT-EXACT-4E:** A and B were implemented and probed; **both stuck at
 ≥1 ULP on DX12/naga** (A's correction never fired; B failed normal-range boundaries), and
 both flushed subnormals to 0. Root cause is **backend FP contraction/reassociation + flush-
 to-zero**, not the underlying math. **Candidate D** was frozen as verbatim WGSL and still
 remains `ApproximateJitOnly` (dense normal max ULP = 1; subnormal flush unresolved). **Candidate E**
 now runs via integer-domain `u32` bit-IO. 2E removed D-style subnormal flush but was
 `RejectedDeferred` (`max_ulp=119`). 3E replaced the weak approximation with a correctly-rounded
-integer mantissa core and now reaches zero ULP on edge/dense/subnormal sweeps in the battery,
-moving E to `ExactCandidatePendingExhaustiveSweep` pending full ignored exhaustive proof.
+integer mantissa core and reached zero ULP on edge/dense/subnormal sweeps. 4E then ran the full
+finite non-negative exhaustive sweep (`0x0000_0000..=0x7F7F_FFFF`) with `max_ulp=0`,
+`exact_bits=2,139,095,040`, and `flush_count=0`, moving E to `ExactDeterministicCandidate`
+pending a separate descriptor/admission promotion slice.
 
-1. **Hot-path target = Candidate F, tested as a standalone WGSL shader.** The 34,000-AI-entity
-   budget rules out any data-dependent integer loop (op count + warp divergence). F (§5.0) is
-   loop-free, fixed-op-count, hardware-`sqrt`-seeded; build `sqrt_cr_f_candidate.wgsl` and run
-   its own `u32` bit-IO edge/dense/subnormal **and** exhaustive sweeps against `f32::sqrt`. F
-   promotes when its own exhaustive sweep is `max_ulp == 0`. **This is the live next step.**
-2. **E3 = slow correctness reference / portable fallback, NOT the production kernel.** Its
-   integer `u32` limb-pair core is `max_ulp == 0` on edge/dense/subnormal (pending exhaustive)
-   and FTZ/contraction-immune, so it is the trustworthy oracle and the fallback for any adapter
-   where F's hardware seed is poor — but its ~24-iteration loop cannot meet the 34k budget, so
-   it does not ship on the hot path. **F′ (hardware seed + E3 integer correction loop) is also
-   rejected for the hot path** — its ±1 correction is still a divergent integer loop. D is
-   legacy (`ApproximateJitOnly`; its FTZ misses are what F's [1,4) normalization fixes).
-3. **`fma` shortcut is dead on this backend.** #305 confirms naga/DX12 does not fuse `fma` for
-   residual purposes — F therefore uses the bitmask Dekker residual, not `fma`. Do not revisit
-   the `fma` form unless a *different* adapter is proven to fuse.
-4. **Contraction is F's one open risk.** F's residual has no `a*b+c` fma candidates and uses an
-   integer bitmask split, but the error-term *sum* could still be reassociated by DXC. The
-   standalone exhaustive sweep settles it; if it bites, fix with a contraction barrier on those
-   ~4 lines — **never** by reintroducing an integer loop.
-5. **Exhaustive-sweep budget.** The full 2³¹ sweep is an `#[ignore]` gate; promotion requires
-   running it to `max_ulp == 0`. Confirm it batches within GPU time when F is ready; the dense
-   stratified sweep stays the default-run signal.
+1. **E3 is the proven exact candidate.** Candidate E now has full-domain finite non-negative
+   proof at `max_ulp == 0` with zero flush. Production authority flip remains a separate explicit
+   admission/descriptors pass.
+2. **Candidate F remains a performance alternative only.** F stays documented in §5.0 for future
+   throughput-oriented exploration if needed, but it is not the active build target and was not
+   implemented in the exhaustive proof slice.
+3. **`fma` shortcut is still dead on this backend.** #305 confirms naga/DX12 does not fuse `fma`
+   for residual purposes. Any future fast-path work must preserve bit-exact proof obligations and
+   avoid reintroducing unproven `fma` assumptions.
+4. **Exhaustive gate is satisfied for E3.** The ignored 2^31 finite non-negative gate has been
+   executed green; no sampled corpus is used for exact-candidate classification.
+5. **Promotion remains gated at admission.** Exact-candidate status does not itself change runtime
+   authority; descriptor/admission flip is intentionally separate.
 6. **`mag` re-enablement.** Once `sqrt` is `ExactDeterministic`, open the follow-on to let
    true Euclidean `mag` replace `mag2` where exactness (not just ordering) is required —
    separate slice, separate row.
