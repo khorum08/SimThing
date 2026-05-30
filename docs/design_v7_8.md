@@ -1,20 +1,30 @@
-# SimThing — Design v7.8 Production Track (Bounded-Posture Expansion)
+# SimThing — Design v7.8 Constitution (Bounded-Posture Expansion)
 
-> **Status:** **Open track, fully parked (2026-05-30).** v7.8 is the production track that
-> carries forward the **deferred capability lines** promoted out of the now-**CLOSED**
-> AccumulatorOp v2 production plan. Each line is **default-off, unimplemented, and gated behind a
-> named product scenario** — v7.8 *tracks* them; it authorizes no implementation by itself.
+> **Status:** **Open track, fully parked (2026-05-30).** v7.8 is the **constitution** for the
+> bounded-posture *expansion* — it carries forward the **deferred capability lines** promoted out of
+> the now-**CLOSED** AccumulatorOp v2 production plan, and holds the operating doctrine and each line's
+> current state. The **sequenced PR ladders** live in the companion
+> [`design_v7_8_production_track.md`](design_v7_8_production_track.md). Each line is **default-off,
+> unimplemented, and gated behind a named product scenario** — v7.8 *tracks* them; it authorizes no
+> implementation by itself.
 > **Opened by:** project owner (product direction, 2026-05-30); design authority Opus 4.8.
 > **Relationship to v7.7:** v7.7 is CLOSED at the **bounded posture** — single-theater mapping,
 > `FlatStarResourceFlow`, single-tick discrete economy. v7.8 is where that posture **expands**;
 > it inherits the v7.7 constitutional baseline and **relaxes nothing** until a line's named
 > scenario lands.
 >
-> **Companions:** [`design_v7_7.md`](design_v7_7.md) (CLOSED constitution amendment) ·
+> **Companions:** [`design_v7_8_production_track.md`](design_v7_8_production_track.md) (**the PR-ladder
+> track — this constitution authorizes; that file sequences**) ·
+> [`design_v7_7.md`](design_v7_7.md) (CLOSED constitution amendment) ·
 > [`accumulator_op_v2_production_plan.md`](accumulator_op_v2_production_plan.md) (CLOSED — these
 > lines were promoted out of it) · [`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md) ·
 > [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md) · [`invariants.md`](invariants.md) ·
 > [`workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md).
+>
+> **▶ Where the PR ladders live.** This file is the **constitution**: operating doctrine (§2) and the
+> *current parked state* of each capability line (§3–§5). The **sequenced PR ladders — landed, active,
+> and all future** — live in [`design_v7_8_production_track.md`](design_v7_8_production_track.md). When
+> you are about to build, go there; when you need the rules and the line state, stay here.
 >
 > **▶ Operating doctrine — §2 (read first).** Guardrails live at the designer/spec-admission layer;
 > the WGSL ban is on *semantic* WGSL only (generic non-semantic WGSL is admissible with CPU-oracle
@@ -202,10 +212,20 @@ A–C. Do **not** start any v7.8 line speculatively or to escape a hygiene/closu
 line only when its named scenario exists and its gate passes. The AccumulatorOp v2 production plan
 stays **CLOSED** — these three lines live here now.
 
-## 8. Tracking table
+## 8. Line-state tracking (current state)
 
-| Line | Promoted from | Status | Unblocking named scenario |
-|---|---|---|---|
-| A — Nested Resource Flow | E-11B / E-11B-5 | parked (flat-star is the posture) | economy needing depth > 2 hierarchical fanout |
-| B — Discrete hard-currency ordering | D-2 / D-2a | parked (discrete AccumulatorOp path stands) | multi-transaction hard-currency workload needing sequential cross-band ordering |
-| C — Atlas / multi-theater mapping | M-4 / M-4A | provisional/unimplemented (isolation policy ratified) | named multi-theater scenario + approved VRAM budget + §11-gate PR |
+This constitution owns the **current state** of each line (below). The **PR ladders** that will move a
+line forward — landed, active, and future — live in
+[`design_v7_8_production_track.md`](design_v7_8_production_track.md), not here. Update the production
+track when a step lands; update this table only when a line's *constitutional state* changes (parked →
+in-progress → accepted), which is a Tier-2 design-authority + product action.
+
+| Line | Promoted from | Current state | Unblocking named scenario | Ladder |
+|---|---|---|---|---|
+| A — Nested Resource Flow | E-11B / E-11B-5 | parked (flat-star is the posture) | economy needing depth > 2 hierarchical fanout | production track §7 |
+| B — Discrete hard-currency ordering | D-2 / D-2a | parked (discrete AccumulatorOp path stands) | multi-transaction hard-currency workload needing sequential cross-band ordering | production track §8 |
+| C — Atlas / multi-theater mapping | M-4 / M-4A | provisional/unimplemented (isolation policy ratified) | named multi-theater scenario + approved VRAM budget + §11-gate PR | production track §9 |
+
+The forward edge that is expected to *name* the scenarios above is the
+**simthing-spec → CLAUSE-SPEC → ClauseThing** chain, whose ladders (and the landed Frontier consumer
+ladder that precedes them) are tracked in the production track file (§3–§6).
