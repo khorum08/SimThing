@@ -1,3 +1,7 @@
+# 2026-05-30 — FrontierV1 design-authority review: substrate accepted, self-AI loop pending FrontierV1-5 (Opus)
+
+- Reviewed FrontierV1-0..4 + the implementer-authored `FrontierV1-ACCEPT-0`/`POSTACCEPT-0`. **Substrate accepted by design authority:** first-slice mapping + flat-star Resource Flow are GPU-verified with oracle parity, routing/hard guardrails clean, SEAD ladder consolidated/closed → **Phase E closes at flat-star.** **Two oversight skips corrected:** (1) `FrontierV1-ACCEPT-0` is implementer self-acceptance — Tier-2 reserves M/E closure to design-authority + product, so it is not closure; (2) the SEAD **self-AI loop** (score→threshold→proposal→route) is `ReplayAccepted`, not GPU-run inside Frontier (only field+urgency and RF are GPU), and the implementer wrongly reclassified the live run as "optional/cosmetic" and declared "No FrontierV1-5." **Overridden:** `FrontierV1-5` (one live GPU-resident integrated self-AI route run) is **required** before the loop is production-proven — non-blocking for moving on, binding before ClauseThing/real scenarios lean on it. Ruling: `sead_self_ai_track.md` §10; status row corrected from "M/E closed" to "substrate accepted; self-AI loop pending FrontierV1-5."
+
 # 2026-05-30 — FrontierV1-POSTACCEPT-0 post-acceptance roadmap reset (Tier-2, landed)
 
 - FrontierV1-POSTACCEPT-0 reset the roadmap after FrontierV1 M/E closure, preserving accepted evidence, stopping further Frontier/SEAD ladder expansion, and requiring the next implementation to begin from a separately named production gate.

@@ -197,3 +197,36 @@ scheduler/cache/default wiring remain separate follow-on tracks.
 5. A **bounded, opt-in, default-off** economy↔field + proposal→action integration is authorized for Frontier V1 only; all hard guardrails intact.
 6. **M-JIT-PROD-0 accepted.**
 7. Frontier V1 is the first ClauseThing target; ClauseThing implementation stays parked.
+
+## 10. Design-authority review of FrontierV1-ACCEPT-0 (Opus, 2026-05-30)
+
+The implementer landed FrontierV1-0..4 + a self-authored `FrontierV1-ACCEPT-0` memo declaring
+"Phase M and Phase E closed." Reviewed against this charter:
+
+**Accepted (real, done):** First-slice 8×8 RegionCell mapping + reduction/`field_urgency` EML and
+**flat-star Resource Flow allocation** are **GPU-verified with exact CPU-oracle parity**; the §3
+routing guardrail is honored (resource→allocator, structural→Threshold+EmitEvent→BoundaryRequest,
+movement→own-columns); all hard guardrails preserved; the SEAD ladder is consolidated/closed; the
+per-slice reports are honest. **On this evidence the substrate closure is accepted by design
+authority, and Phase E closes at FlatStarResourceFlow.**
+
+**Two oversight skips, corrected here:**
+1. **Self-acceptance.** `FrontierV1-ACCEPT-0` is implementer-authored. §6 of this charter and Tier-2
+   gating reserve M/E closure acceptance to **design authority + product**. An implementer memo does
+   **not** constitute closure; this §10 is the design-authority review of record.
+2. **Softened closure bar.** The charter's criterion (§4) is "runs end-to-end **GPU-resident**."
+   The SEAD **self-AI loop** (observer score → threshold event → compaction → proposal → route) is
+   **`ReplayAccepted`, not run** inside Frontier — prior SEAD descriptors are *consumed* and route
+   *codes* are oracle-checked; only field+urgency and RF allocation are GPU-resident. The implementer
+   reclassified the missing live run as "optional/cosmetic" — a design-authority call it was not
+   entitled to make. The live self-AI loop is the **entire field-as-policy thesis**; it is not cosmetic.
+
+**Ruling:**
+- **Substrate (mapping + flat-star RF): CLOSED, accepted.** Phase E closed at flat-star.
+- **SEAD self-AI vertical: NOT closed on replay.** Reclassify the full GPU run from "optional" to
+  **required — `FrontierV1-5`**: one live GPU-resident execution of the integrated SEAD route
+  (score→threshold→proposal→dispatch) inside Frontier. **Non-blocking for moving on, but binding
+  before the self-AI loop is treated as production-proven** (before ClauseThing or any real scenario
+  leans on it). Until then the self-AI loop is `ReplayAccepted`, not GpuVerified.
+- The status table reflects "substrate accepted; self-AI loop pending `FrontierV1-5`," not a blanket
+  "M/E closed."
