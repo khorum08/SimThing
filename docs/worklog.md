@@ -1,3 +1,7 @@
+# 2026-05-30 — L1-ACCEPT-0 simthing-spec buildout closure / L2 gate opened (Tier-2, design authority)
+
+- L1-ACCEPT-0 accepted the L1 simthing-spec buildout as sufficient to open L2 / CLAUSE-SPEC-0. L1-0 diagnostics, L1-1 RON preflight manifest, and accepted FrontierV2 artifact target vocabulary are the designer/spec admission substrate. L2 may start only as designer-authored FrontierV2 scenario admission through simthing-spec; ClauseThing/ClauseScript remain parked, FrontierV2-5 and ACT/EVENT/OBS/PIPE expansion remain unauthorized, and no cleanup/SHA-hygiene loop was started. One non-blocking preview.rs diagnostic-code nit noted for L2. Report: [`phase_m_l1_acceptance_review_results.md`](tests/phase_m_l1_acceptance_review_results.md).
+
 # 2026-05-30 — V7.8-CLEAN-0 active-docs slimming and archive cleanup (Tier-2, landed)
 
 - V7.8-CLEAN-0 archived closed/superseded design, workshop, and production docs; pruned stale test/evidence clutter; preserved authoritative L0/L1 and E-phase evidence; and confirmed v7.8 production track as the ladder home. Report: [`phase_m_v7_8_cleanup_track_prune_results.md`](tests/phase_m_v7_8_cleanup_track_prune_results.md).
