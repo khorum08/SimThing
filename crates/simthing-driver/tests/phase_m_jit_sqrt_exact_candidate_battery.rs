@@ -17,6 +17,7 @@ use simthing_spec::MappingExecutionProfile;
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
 const SQRT_CR_D_WGSL: &str = include_str!("wgsl/sqrt_cr_d_candidate.wgsl");
 const SQRT_CR_E_WGSL: &str = include_str!("wgsl/sqrt_cr_e_candidate.wgsl");
+const SQRT_CR_F_WGSL: &str = include_str!("wgsl/sqrt_cr_f_candidate.wgsl");
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
     "faction",
@@ -46,6 +47,7 @@ enum ExactSqrtCandidate {
     CorrectlyRoundedNewtonTwoProduct,
     CorrectlyRoundedHwBitmask,
     CorrectlyRoundedIntegerOnly,
+    CorrectlyRoundedHwBitmaskNormalized,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,6 +91,9 @@ fn candidate_label(candidate: ExactSqrtCandidate) -> &'static str {
         }
         ExactSqrtCandidate::CorrectlyRoundedHwBitmask => "CorrectlyRoundedHwBitmask",
         ExactSqrtCandidate::CorrectlyRoundedIntegerOnly => "CorrectlyRoundedIntegerOnly",
+        ExactSqrtCandidate::CorrectlyRoundedHwBitmaskNormalized => {
+            "CorrectlyRoundedHwBitmaskNormalized"
+        }
     }
 }
 
@@ -206,12 +211,16 @@ fn emit_batch_wgsl(candidate: ExactSqrtCandidate, batch_count: u32) -> String {
         ExactSqrtCandidate::CorrectlyRoundedIntegerOnly => {
             panic!("Candidate E uses dedicated u32 bit-IO wrapper")
         }
+        ExactSqrtCandidate::CorrectlyRoundedHwBitmaskNormalized => {
+            panic!("Candidate F uses dedicated u32 bit-IO wrapper")
+        }
     };
     let call = match candidate {
         ExactSqrtCandidate::CorrectlyRoundedHwFma => "sqrt_cr_a",
         ExactSqrtCandidate::CorrectlyRoundedNewtonTwoProduct => "sqrt_cr_b",
         ExactSqrtCandidate::CorrectlyRoundedHwBitmask => "sqrt_cr_d",
         ExactSqrtCandidate::CorrectlyRoundedIntegerOnly => "sqrt_cr_e_bits",
+        ExactSqrtCandidate::CorrectlyRoundedHwBitmaskNormalized => "sqrt_cr_f_bits",
     };
 
     format!(
@@ -334,6 +343,68 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
 }}
 "#,
         e = SQRT_CR_E_WGSL,
+        batch_count = batch_count
+    )
+}
+
+fn emit_f_batch_wgsl(batch_count: u32) -> String {
+    format!(
+        r#"{f}
+@group(0) @binding(0) var<storage, read_write> data: array<u32>;
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
+    let i = gid.x;
+    if (i >= {batch_count}u) {{ return; }}
+    let base = i * 4u;
+    let input_bits = data[base];
+    let output_bits = sqrt_cr_f_bits(input_bits);
+    data[base + 1u] = output_bits;
+    data[base + 2u] = 0u;
+    data[base + 3u] = 0u;
+}}
+"#,
+        f = SQRT_CR_F_WGSL,
+        batch_count = batch_count
+    )
+}
+
+fn emit_f_probe_wgsl(batch_count: u32) -> String {
+    format!(
+        r#"{f}
+@group(0) @binding(0) var<storage, read_write> data: array<u32>;
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
+    let i = gid.x;
+    if (i >= {batch_count}u) {{ return; }}
+    let base = i * 6u;
+    let input_bits = data[base];
+    let x = bitcast<f32>(input_bits);
+    let native_bits = bitcast<u32>(sqrt(x));
+    let output_bits = sqrt_cr_f_bits(input_bits);
+    data[base + 1u] = output_bits;
+    data[base + 2u] = native_bits;
+    var corrected = 0u;
+    var up = 0u;
+    var down = 0u;
+    let exp = (input_bits >> 23u) & 0xffu;
+    let sign = input_bits >> 31u;
+    let finite_positive = (exp != 0xffu) && (sign == 0u) && (input_bits != 0u);
+    if (finite_positive && output_bits != native_bits) {{
+        corrected = 1u;
+        if (output_bits > native_bits) {{
+            up = 1u;
+        }} else {{
+            down = 1u;
+        }}
+    }}
+    data[base + 3u] = corrected;
+    data[base + 4u] = up;
+    data[base + 5u] = down;
+}}
+"#,
+        f = SQRT_CR_F_WGSL,
         batch_count = batch_count
     )
 }
@@ -572,6 +643,88 @@ fn run_candidate_e_bits(ctx: &GpuContext, input_bits: &[u32]) -> Vec<(u32, u32, 
         .collect()
 }
 
+fn run_candidate_f_bits(ctx: &GpuContext, input_bits: &[u32]) -> Vec<(u32, u32, u32, u32)> {
+    let n = input_bits.len() as u32;
+    let wgsl = emit_f_batch_wgsl(n);
+    let raw = run_batch_gpu_u32(ctx, &wgsl, input_bits, 4);
+    (0..input_bits.len())
+        .map(|i| {
+            let base = i * 4;
+            (raw[base], raw[base + 1], raw[base + 2], raw[base + 3])
+        })
+        .collect()
+}
+
+#[derive(Debug, Clone, Copy)]
+struct FProbeSummary {
+    tested: usize,
+    native_mismatch: usize,
+    f_mismatch: usize,
+    correction_count: usize,
+    up_count: usize,
+    down_count: usize,
+    f_changes_vs_native: usize,
+}
+
+fn run_candidate_f_probe(
+    ctx: &GpuContext,
+    input_bits: &[u32],
+) -> (FProbeSummary, Vec<(u32, u32, u32, u32, u32, u32)>) {
+    let n = input_bits.len() as u32;
+    let wgsl = emit_f_probe_wgsl(n);
+    let raw = run_batch_gpu_u32(ctx, &wgsl, input_bits, 6);
+    let mut native_mismatch = 0usize;
+    let mut f_mismatch = 0usize;
+    let mut correction_count = 0usize;
+    let mut up_count = 0usize;
+    let mut down_count = 0usize;
+    let mut f_changes_vs_native = 0usize;
+    let mut rows = Vec::with_capacity(input_bits.len());
+    for i in 0..input_bits.len() {
+        let base = i * 6;
+        let x_bits = raw[base];
+        let out_bits = raw[base + 1];
+        let native_bits = raw[base + 2];
+        let corrected = raw[base + 3];
+        let up = raw[base + 4];
+        let down = raw[base + 5];
+        let x = f32::from_bits(x_bits);
+        let cpu = x.sqrt();
+        if !cpu.is_nan() && native_bits != cpu.to_bits() {
+            native_mismatch += 1;
+        }
+        if !cpu.is_nan() && out_bits != cpu.to_bits() {
+            f_mismatch += 1;
+        }
+        if corrected != 0 {
+            correction_count += 1;
+        }
+        if up != 0 {
+            up_count += 1;
+        }
+        if down != 0 {
+            down_count += 1;
+        }
+        if out_bits != native_bits {
+            f_changes_vs_native += 1;
+        }
+        rows.push((x_bits, out_bits, native_bits, corrected, up, down));
+    }
+
+    (
+        FProbeSummary {
+            tested: input_bits.len(),
+            native_mismatch,
+            f_mismatch,
+            correction_count,
+            up_count,
+            down_count,
+            f_changes_vs_native,
+        },
+        rows,
+    )
+}
+
 fn sweep_candidate(ctx: &GpuContext, candidate: ExactSqrtCandidate, inputs: &[f32]) -> SweepSummary {
     let outputs = run_candidate_batch(ctx, candidate, inputs);
     let mut max_ulp = 0u32;
@@ -697,6 +850,9 @@ fn sqrt_exact0_candidates_compile_semantic_free_wgsl() {
             ExactSqrtCandidate::CorrectlyRoundedHwBitmask => unreachable!("SQRT-EXACT-0 loop excludes D"),
             ExactSqrtCandidate::CorrectlyRoundedIntegerOnly => {
                 unreachable!("SQRT-EXACT-0 loop excludes E")
+            }
+            ExactSqrtCandidate::CorrectlyRoundedHwBitmaskNormalized => {
+                unreachable!("SQRT-EXACT-0 loop excludes F")
             }
         }));
         with_gpu(|ctx| {
@@ -1458,6 +1614,48 @@ fn sweep_e_bits(ctx: &GpuContext, input_bits: &[u32]) -> EBitSweepDetail {
     }
 }
 
+fn sweep_f_bits(ctx: &GpuContext, input_bits: &[u32]) -> EBitSweepDetail {
+    let rows = run_candidate_f_bits(ctx, input_bits);
+    let mut exact_bits = 0usize;
+    let mut max_ulp = 0u32;
+    let mut flush_count = 0usize;
+    let mut nan_class_only = 0usize;
+    let mut worst = Vec::new();
+    for (x_bits, out_bits, _, _) in rows {
+        let x = f32::from_bits(x_bits);
+        let cpu = x.sqrt();
+        let gpu = f32::from_bits(out_bits);
+        if cpu.is_nan() {
+            if gpu.is_nan() {
+                nan_class_only += 1;
+            } else {
+                worst.push((x_bits, out_bits, cpu.to_bits(), u32::MAX));
+            }
+            continue;
+        }
+        if out_bits == cpu.to_bits() {
+            exact_bits += 1;
+        } else {
+            let ulp = ulp_distance(gpu, cpu);
+            max_ulp = max_ulp.max(ulp);
+            worst.push((x_bits, out_bits, cpu.to_bits(), ulp));
+        }
+        if out_bits == 0 && cpu.to_bits() != 0 {
+            flush_count += 1;
+        }
+    }
+    worst.sort_by(|a, b| b.3.cmp(&a.3));
+    worst.truncate(10);
+    EBitSweepDetail {
+        tested: input_bits.len(),
+        exact_bits,
+        max_ulp,
+        flush_count,
+        nan_class_only,
+        worst,
+    }
+}
+
 fn positive_finite_normal_bits(inputs: &[f32]) -> Vec<u32> {
     inputs
         .iter()
@@ -1472,6 +1670,19 @@ fn edge_rows_2e_bits() -> Vec<(&'static str, u32)> {
         .into_iter()
         .map(|(name, x)| (name, x.to_bits()))
         .collect()
+}
+
+fn candidate_e2_failure_rows_bits() -> Vec<u32> {
+    vec![
+        0x3f7f_fffe,
+        0x3f7f_ffff,
+        0x3f80_0001,
+        0x3f80_0002,
+        0x0080_0000,
+        0x0100_0000,
+        0x3fff_ffff,
+        0x4000_0001,
+    ]
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1885,5 +2096,422 @@ fn sqrt_exact3e_candidate_e_full_exhaustive_sweep() {
             range.end <= DOMAIN_END,
             "exhaustive range end must stay in finite non-negative domain"
         );
+    });
+}
+
+// --- SQRT-EXACT-4F: Candidate F (`CorrectlyRoundedHwBitmaskNormalized`) ---
+
+#[test]
+fn sqrt_exact4f_candidate_f_wgsl_compiles_semantic_free() {
+    assert!(!SQRT_CR_F_WGSL.is_empty(), "F WGSL artifact must be non-empty");
+    assert_semantic_free(SQRT_CR_F_WGSL);
+    assert_exact0_forbidden(SQRT_CR_F_WGSL);
+    assert!(SQRT_CR_F_WGSL.contains("fn sqrt_cr_f_bits("));
+    assert!(!SQRT_CR_F_WGSL.contains("sqrt_cr_c"));
+    let source = include_str!("phase_m_jit_sqrt_exact_candidate_battery.rs");
+    let no_dynamic_name = ["emit_sqrt_cr_f", "_fn"].concat();
+    assert!(!source.contains(&no_dynamic_name));
+    let no_dynamic_def = ["fn emit_", "sqrt_cr_f("].concat();
+    assert!(!source.contains(&no_dynamic_def));
+    let wgsl = emit_f_batch_wgsl(1);
+    assert_semantic_free(&wgsl);
+    assert_exact0_forbidden(&wgsl);
+    with_gpu(|ctx| {
+        let rows = run_candidate_f_bits(ctx, &[4.0f32.to_bits()]);
+        assert_eq!(rows[0].1, 2.0f32.to_bits());
+    });
+}
+
+#[test]
+fn sqrt_exact4f_candidate_f_uses_verbatim_wgsl_artifact() {
+    assert!(SQRT_CR_F_WGSL.contains("fn sqrt_cr_f_bits("));
+    let batch = emit_f_batch_wgsl(1);
+    let probe = emit_f_probe_wgsl(1);
+    assert!(
+        batch.contains(SQRT_CR_F_WGSL),
+        "F batch wrapper must include verbatim artifact as contiguous substring"
+    );
+    assert!(
+        probe.contains(SQRT_CR_F_WGSL),
+        "F probe wrapper must include verbatim artifact as contiguous substring"
+    );
+    assert_eq!(batch.matches(SQRT_CR_F_WGSL).count(), 1);
+    assert_eq!(probe.matches(SQRT_CR_F_WGSL).count(), 1);
+    let hash = fnv1a64_hex(SQRT_CR_F_WGSL);
+    println!(
+        "sqrt_exact4f_candidate_f_artifact_hash_fnv1a64={hash} path=crates/simthing-driver/tests/wgsl/sqrt_cr_f_candidate.wgsl bytes={}",
+        SQRT_CR_F_WGSL.len()
+    );
+    assert_eq!(hash.len(), 16);
+}
+
+#[test]
+fn sqrt_exact4f_candidate_f_uses_u32_bit_io() {
+    assert!(SQRT_CR_F_WGSL.contains("fn sqrt_cr_f_bits("));
+    let wgsl = emit_f_batch_wgsl(1);
+    assert!(wgsl.contains("array<u32>"));
+    assert!(!wgsl.contains("array<f32>"));
+    with_gpu(|ctx| {
+        let rows = run_candidate_f_bits(ctx, &[1.0f32.to_bits()]);
+        assert_eq!(rows[0].0, 1.0f32.to_bits());
+        assert_eq!(rows[0].1, 1.0f32.to_bits());
+    });
+}
+
+#[test]
+fn sqrt_exact4f_candidate_f_edge_rows() {
+    with_gpu(|ctx| {
+        let mut rows: Vec<(String, u32)> = edge_rows_2e_bits()
+            .into_iter()
+            .map(|(name, bits)| (name.to_string(), bits))
+            .collect();
+        rows.extend(
+            candidate_e2_failure_rows_bits()
+                .into_iter()
+                .map(|bits| (format!("e2_failure_{bits:08x}"), bits)),
+        );
+        rows.sort_by(|a, b| a.1.cmp(&b.1));
+        rows.dedup_by(|a, b| a.1 == b.1);
+        let input_bits: Vec<u32> = rows.iter().map(|(_, bits)| *bits).collect();
+        let outputs = run_candidate_f_bits(ctx, &input_bits);
+        let mut exact = 0usize;
+        let mut normal_exact = 0usize;
+        let mut normal_max_ulp = 0u32;
+        let mut subnormal_exact = 0usize;
+        let mut nan_class_only = 0usize;
+        for ((name, x_bits), (_, out_bits, _, _)) in rows.iter().zip(outputs.iter()) {
+            let x = f32::from_bits(*x_bits);
+            let cpu = x.sqrt();
+            let gpu = f32::from_bits(*out_bits);
+            if cpu.is_nan() {
+                assert!(gpu.is_nan(), "F edge `{name}` expected NaN class parity");
+                nan_class_only += 1;
+                println!(
+                    "F edge `{name}` NaN class parity: out={:#x} cpu={:#x}",
+                    out_bits,
+                    cpu.to_bits()
+                );
+                continue;
+            }
+            let bits_match = *out_bits == cpu.to_bits();
+            if bits_match {
+                exact += 1;
+            }
+            let ulp = ulp_distance(gpu, cpu);
+            if is_subnormal(x) {
+                if bits_match {
+                    subnormal_exact += 1;
+                }
+            } else {
+                normal_max_ulp = normal_max_ulp.max(ulp);
+                if bits_match {
+                    normal_exact += 1;
+                }
+            }
+            if !bits_match {
+                println!(
+                    "F edge mismatch `{name}` x={:#x} out={:#x} cpu={:#x} ulp={}",
+                    x_bits,
+                    out_bits,
+                    cpu.to_bits(),
+                    ulp
+                );
+            }
+        }
+        println!(
+            "F edge_rows: total={} exact={} normal_exact={} normal_max_ulp={} subnormal_exact={} nan_class_only={}",
+            rows.len(),
+            exact,
+            normal_exact,
+            normal_max_ulp,
+            subnormal_exact,
+            nan_class_only
+        );
+        assert!(rows.len() >= 21);
+    });
+}
+
+#[test]
+fn sqrt_exact4f_candidate_f_subnormal_sweep() {
+    with_gpu(|ctx| {
+        let bits: Vec<u32> = subnormal_corpus().into_iter().map(f32::to_bits).collect();
+        let detail = sweep_f_bits(ctx, &bits);
+        println!(
+            "F subnormal: tested={} exact_bits={} max_ulp={} flush_count={} worst_rows={}",
+            detail.tested,
+            detail.exact_bits,
+            detail.max_ulp,
+            detail.flush_count,
+            detail.worst.len()
+        );
+        for (x_bits, out_bits, cpu_bits, ulp) in &detail.worst {
+            println!(
+                "F subnormal worst x={:#x} out={:#x} cpu={:#x} ulp={}",
+                x_bits, out_bits, cpu_bits, ulp
+            );
+        }
+        assert!(detail.tested > 2000);
+    });
+}
+
+#[test]
+fn sqrt_exact4f_candidate_f_dense_normal_sweep() {
+    with_gpu(|ctx| {
+        let mut bits = positive_finite_normal_bits(&dense_normal_corpus_1d());
+        bits.extend(candidate_e2_failure_rows_bits());
+        bits.sort_unstable();
+        bits.dedup();
+        let detail = sweep_f_bits(ctx, &bits);
+        let (probe, _) = run_candidate_f_probe(ctx, &bits);
+        println!(
+            "F dense_normal: tested={} exact_bits={} max_ulp={} flush_count={} correction_count={} up={} down={} class={:?}",
+            detail.tested,
+            detail.exact_bits,
+            detail.max_ulp,
+            detail.flush_count,
+            probe.correction_count,
+            probe.up_count,
+            probe.down_count,
+            classify(detail.max_ulp)
+        );
+        for (x_bits, out_bits, cpu_bits, ulp) in &detail.worst {
+            println!(
+                "F dense worst x={:#x} out={:#x} cpu={:#x} ulp={}",
+                x_bits, out_bits, cpu_bits, ulp
+            );
+        }
+        assert!(detail.tested > 100);
+    });
+}
+
+#[test]
+fn sqrt_exact4f_candidate_f_compared_to_e3() {
+    with_gpu(|ctx| {
+        let mut dense_bits = positive_finite_normal_bits(&dense_normal_corpus_1d());
+        dense_bits.extend(candidate_e2_failure_rows_bits());
+        dense_bits.sort_unstable();
+        dense_bits.dedup();
+        let sub_bits: Vec<u32> = subnormal_corpus().into_iter().map(f32::to_bits).collect();
+
+        let dense_e = sweep_e_bits(ctx, &dense_bits);
+        let dense_f = sweep_f_bits(ctx, &dense_bits);
+        let sub_e = sweep_e_bits(ctx, &sub_bits);
+        let sub_f = sweep_f_bits(ctx, &sub_bits);
+
+        let e_dense_rows = run_candidate_e_bits(ctx, &dense_bits);
+        let f_dense_rows = run_candidate_f_bits(ctx, &dense_bits);
+        let mut e_dense_mismatch = 0usize;
+        let mut f_dense_mismatch = 0usize;
+        let mut f_fails_e_pass_rows = Vec::new();
+        for (((x_bits, e_bits, _, _), (_, f_bits, _, _)), x_bits_ref) in e_dense_rows
+            .iter()
+            .zip(f_dense_rows.iter())
+            .zip(dense_bits.iter())
+        {
+            let cpu_bits = f32::from_bits(*x_bits_ref).sqrt().to_bits();
+            let e_ok = *e_bits == cpu_bits;
+            let f_ok = *f_bits == cpu_bits;
+            if !e_ok {
+                e_dense_mismatch += 1;
+            }
+            if !f_ok {
+                f_dense_mismatch += 1;
+            }
+            if !f_ok && e_ok {
+                f_fails_e_pass_rows.push((*x_bits, *f_bits, cpu_bits));
+            }
+        }
+        f_fails_e_pass_rows.truncate(8);
+        println!(
+            "F_vs_E3: dense_e3_max_ulp={} dense_f_max_ulp={} sub_e3_max_ulp={} sub_f_max_ulp={} dense_e3_mismatch={} dense_f_mismatch={} f_fails_e3_pass_rows={}",
+            dense_e.max_ulp,
+            dense_f.max_ulp,
+            sub_e.max_ulp,
+            sub_f.max_ulp,
+            e_dense_mismatch,
+            f_dense_mismatch,
+            f_fails_e_pass_rows.len()
+        );
+        for (x_bits, f_bits, cpu_bits) in &f_fails_e_pass_rows {
+            println!(
+                "F fails / E3 passes row x={:#x} f={:#x} cpu={:#x}",
+                x_bits, f_bits, cpu_bits
+            );
+        }
+        assert!(dense_bits.len() > 100);
+        assert!(sub_bits.len() > 2000);
+    });
+}
+
+#[test]
+fn sqrt_exact4f_candidate_f_contraction_probe() {
+    with_gpu(|ctx| {
+        let mut bits = positive_finite_normal_bits(&dense_normal_corpus_1d());
+        bits.extend(candidate_e2_failure_rows_bits());
+        bits.sort_unstable();
+        bits.dedup();
+        let (probe, rows) = run_candidate_f_probe(ctx, &bits);
+        let mut reassociation_rows = Vec::new();
+        for (x_bits, out_bits, native_bits, _, _, _) in rows {
+            let cpu_bits = f32::from_bits(x_bits).sqrt().to_bits();
+            if out_bits != cpu_bits && native_bits != cpu_bits {
+                reassociation_rows.push((x_bits, out_bits, native_bits, cpu_bits));
+            }
+        }
+        reassociation_rows.truncate(8);
+        println!(
+            "F contraction_probe: tested={} native_mismatch={} f_mismatch={} corrections={} up={} down={} f_changes_vs_native={} residual_reassociation_rows={}",
+            probe.tested,
+            probe.native_mismatch,
+            probe.f_mismatch,
+            probe.correction_count,
+            probe.up_count,
+            probe.down_count,
+            probe.f_changes_vs_native,
+            reassociation_rows.len()
+        );
+        for (x_bits, out_bits, native_bits, cpu_bits) in reassociation_rows {
+            println!(
+                "F contraction row x={:#x} f={:#x} native={:#x} cpu={:#x}",
+                x_bits, out_bits, native_bits, cpu_bits
+            );
+        }
+        assert!(probe.tested > 100);
+    });
+}
+
+#[test]
+fn sqrt_exact4f_no_exact_authority_promotion() {
+    let sqrt0 = sqrt0_descriptor();
+    assert_eq!(sqrt0.native_math, NativeMathClass::ApproximateJitOnly);
+    assert!(
+        sqrt0
+            .writes
+            .iter()
+            .all(|out| out.authority == OutputAuthority::ApproximateDiagnostic)
+    );
+
+    let grad0 = grad0_descriptor();
+    let mag2 = grad0
+        .writes
+        .iter()
+        .find(|out| out.name == "mag2")
+        .expect("mag2 output");
+    assert_eq!(mag2.authority, OutputAuthority::ApproximateDiagnostic);
+
+    assert!(matches!(
+        validate_exact_kernel_inputs(&sqrt0, &["sqrt_out"]),
+        Err(SpecError::JitKernelDescriptorAdmission { .. })
+    ));
+    assert!(matches!(
+        validate_exact_kernel_inputs(&grad0, &["mag2"]),
+        Err(SpecError::JitKernelDescriptorAdmission { .. })
+    ));
+
+    assert!(
+        !landed_jit_kernel_descriptors()
+            .iter()
+            .any(|desc| desc.id.contains("sqrt_exact")),
+        "no exact sqrt kernel descriptor admitted yet"
+    );
+
+    let baseline = include_str!("../../simthing-gpu/src/shaders/accumulator_op.wgsl");
+    assert!(!baseline.contains("sqrt("));
+}
+
+#[test]
+fn sqrt_exact4f_perf_e3_vs_f_smoke() {
+    use std::time::Instant;
+    with_gpu(|ctx| {
+        let mut state = 0xA1B2_C3D4u32;
+        let mut build_bits = |n: usize| -> Vec<u32> {
+            let mut out = Vec::with_capacity(n);
+            for _ in 0..n {
+                state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                let exp = 1u32 + ((state >> 24) % 253u32);
+                let mant = state & 0x007f_ffff;
+                out.push((exp << 23) | mant);
+            }
+            out
+        };
+        for size in [1_000usize, 10_000, 34_000, 100_000] {
+            let bits = build_bits(size);
+            let t0 = Instant::now();
+            let e_rows = run_candidate_e_bits(ctx, &bits);
+            let e_elapsed = t0.elapsed();
+            let t1 = Instant::now();
+            let f_rows = run_candidate_f_bits(ctx, &bits);
+            let f_elapsed = t1.elapsed();
+            assert_eq!(e_rows.len(), size);
+            assert_eq!(f_rows.len(), size);
+            let ratio = if e_elapsed.as_nanos() == 0 {
+                0.0
+            } else {
+                f_elapsed.as_secs_f64() / e_elapsed.as_secs_f64()
+            };
+            println!(
+                "F perf_smoke: inputs={} dispatch_count=1 includes_readback=true e3_time_ms={:.3} f_time_ms={:.3} f_over_e3_ratio={:.4}",
+                size,
+                e_elapsed.as_secs_f64() * 1000.0,
+                f_elapsed.as_secs_f64() * 1000.0,
+                ratio
+            );
+        }
+        println!(
+            "F perf_smoke_note: optional ignored large run not executed by default (suggested size=1000000)"
+        );
+    });
+}
+
+#[test]
+fn sqrt_exact4f_perf_is_not_authority() {
+    let sqrt0 = sqrt0_descriptor();
+    assert_eq!(sqrt0.native_math, NativeMathClass::ApproximateJitOnly);
+    assert!(
+        !landed_jit_kernel_descriptors()
+            .iter()
+            .any(|desc| desc.id.contains("sqrt_exact")),
+        "performance measurements must not promote exact authority"
+    );
+    println!(
+        "F perf_not_authority: throughput evidence is not admission authority; exhaustive max_ulp==0 proof is still required and approximate performance mode is a separate product-policy gate"
+    );
+}
+
+#[test]
+#[ignore = "full 2^31 finite non-negative f32 sweep for Candidate F; run with --ignored explicitly"]
+fn sqrt_exact4f_candidate_f_full_exhaustive_sweep() {
+    with_gpu(|ctx| {
+        let batch = parse_u32_env("SIMTHING_SQRT_F4_BATCH")
+            .unwrap_or(1_048_576)
+            .max(1);
+        let mut bits = 0u32;
+        let mut tested: u64 = 0;
+        let mut exact_bits: u64 = 0;
+        let mut max_ulp = 0u32;
+        while bits <= 0x7F7F_FFFF {
+            let end = bits.saturating_add(batch - 1).min(0x7F7F_FFFF);
+            let batch_bits: Vec<u32> = (bits..=end).collect();
+            let rows = run_candidate_f_bits(ctx, &batch_bits);
+            for (x_bits, out_bits, _, _) in rows {
+                let cpu = f32::from_bits(x_bits).sqrt();
+                let cpu_bits = cpu.to_bits();
+                if out_bits == cpu_bits {
+                    exact_bits += 1;
+                }
+                max_ulp = max_ulp.max(ulp_distance(f32::from_bits(out_bits), cpu));
+                tested += 1;
+            }
+            bits = end.saturating_add(1);
+            if bits == 0 {
+                break;
+            }
+        }
+        println!(
+            "F exhaustive: tested={} exact_bits={} max_ulp={}",
+            tested, exact_bits, max_ulp
+        );
+        assert_eq!(tested, 0x7F80_0000u64);
+        assert_eq!(max_ulp, 0, "Candidate F exhaustive promotion requires max_ulp == 0");
     });
 }
