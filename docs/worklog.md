@@ -1,3 +1,7 @@
+# 2026-05-30 — FrontierV1-POSTACCEPT-0 post-acceptance roadmap reset (Tier-2, landed)
+
+- FrontierV1-POSTACCEPT-0 reset the roadmap after FrontierV1 M/E closure, preserving accepted evidence, stopping further Frontier/SEAD ladder expansion, and requiring the next implementation to begin from a separately named production gate.
+
 # 2026-05-30 — FrontierV1-ACCEPT-0 M/E closure acceptance review (Tier-2, landed)
 
 - FrontierV1-ACCEPT-0 completed FrontierV1 M/E acceptance review; decision recorded in production plan and tests report.
