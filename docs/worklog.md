@@ -1,3 +1,7 @@
+# 2026-05-29 — SEAD-ACT-0 GPU-resident numeric action proposals (Tier-2, landed)
+
+- SEAD-ACT-0 added default-off `m_jit_sead_act0_numeric_proposals` probe; EVENT-2 reductions → bounded numeric proposal records under fixed integer rule/capacity contracts; proposal count/membership/overflow exact when capacity sufficient; order UnspecifiedAtomicOrder; 34k/warm benchmarks and EVENT-2/PIPE smokes recorded; no CPU planner or production wiring added.
+
 # 2026-05-29 — SEAD-EVENT-2 GPU-resident per-bucket reductions (Tier-2, landed)
 
 - SEAD-EVENT-2 added default-off `m_jit_sead_event2_bucket_reductions` probe; per-code count/sum/min/max with i64 sum overflow flag and empty-bucket contract; order-invariant reductions over unordered buckets; 34k/warm benchmarks and integrated smokes recorded; no CPU planner or production wiring added.
