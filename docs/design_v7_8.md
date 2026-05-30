@@ -180,11 +180,14 @@ safety. These stay binding regardless:
   The isolation policy is **ratified** ([`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)):
   algebraic tile-local mask `G=0` is the preferred isolation candidate (1.0× VRAM), physical
   gutter `G≥H` the fallback (6.76× VRAM, mandatory VRAM-multiplier reporting).
-- **Status:** **NamedScenarioAccepted + C-0 OPEN (priority, 2026-05-30).** `MultiTheaterAtlasMapping`
-  is accepted ([`tests/phase_m_v7_8_met_scenario_acceptance_review_results.md`](tests/phase_m_v7_8_met_scenario_acceptance_review_results.md))
-  and C-0 is the open priority gate (product: close out map batching first). `request_atlas_batching`
-  stays **rejected at admission** and `MappingExecutionProfile` default stays `Disabled` until C-0
-  lands its §11 gate.
+- **Status:** **C-0/C-1 ACCEPTED (C-ACCEPT-0, 2026-05-30); C-2 OPEN.** C-0 (first §11-gate M-4 atlas
+  slice — real packed-atlas GPU path, algebraic G=0, full-tile protocol-oracle parity,
+  `GpuVerifiedApproximate`) and C-1 (2000-star budget envelope) are accepted
+  ([`tests/phase_m_c_acceptance_review_results.md`](tests/phase_m_c_acceptance_review_results.md)).
+  Next gate **C-2 = atlas admission relaxation (algebraic-G=0 only).** `request_atlas_batching` stays
+  **rejected at admission** and `MappingExecutionProfile` default stays `Disabled` until C-2 lands its
+  bounded admission scope; the atlas **production runtime / sparse-residency scheduler** (C-1's noted
+  need at true 2000-star scale) is a **separate later gate**, not C-2.
 - **VRAM budget (set 2026-05-30, design authority/product):** **1.5 GiB default ceiling**
   (`V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES = 1_610_612_736`), **configurable, no architectural hard
   cap** — dedicated/headless servers and larger-VRAM cards raise `max_bytes` far beyond 1.5 GiB;

@@ -22,13 +22,16 @@ Constitutional surfacing:
 > spec admission** (cross-entity writes, production commitment, Resource-Flow bypass, unbounded
 > fanout, `simthing-sim` leakage rejected at import; runtime is the last line). **L2 / CLAUSE-SPEC-0
 > is now ACCEPTED (Opus design authority, 2026-05-30; code-verified — [`../tests/phase_m_clause_spec0_acceptance_review_results.md`](../tests/phase_m_clause_spec0_acceptance_review_results.md)).**
-> **V7.8-MET-SCENARIO-ACCEPT-0 (2026-05-30): all three M/E/T named scenarios ACCEPTED; `C-0`
-> (map batching / atlas) is the OPEN priority gate** (product: close out map batching first).
-> **VRAM budget set: 1.5 GiB default, configurable, no architectural hard cap** (raise for
-> headless/dedicated/big-VRAM) — typed `V78AtlasVramBudget`. **C-0 = first §11-gate M-4 slice
-> (full-tile protocol-oracle parity + VRAM-multiplier report); build that next.** **A-0 (nested RF)
-> and B-0 (hard-currency ordering) are QUEUED — accepted scenarios, gates NOT open; do not start
-> them.** **L3 — ClauseThing / ClauseScript — is parked pending separate product authorization;
+> **C-ACCEPT-0 (2026-05-30): C-0 + C-1 ACCEPTED** — first §11-gate M-4 atlas slice (real packed-atlas
+> GPU path, algebraic tile-local mask G=0, full-tile protocol-oracle parity `GpuVerifiedApproximate`,
+> fingerprint `a974fe44e20620f3`) and the 2000-star budget envelope (algebraic ≈0.862 GiB fits the
+> 1.5 GiB default; gutter ≈5.826 GiB needs a raised profile). **`C-2` is the OPEN gate — atlas
+> admission relaxation (algebraic-G=0 only): designer/spec admits bounded atlas specs that are
+> homogeneous-square, protocol-oracle-backed, fit the active `V78AtlasVramBudget`, with mandatory
+> multiplier reporting. Build that next.** `request_atlas_batching` stays rejected and
+> `MappingExecutionProfile` default stays `Disabled` until C-2; atlas **production runtime /
+> sparse-residency scheduler** is a separate later gate (not C-2). **A-0 (nested RF) and B-0
+> (hard-currency ordering) remain QUEUED — accepted scenarios, gates NOT open; do not start them.** **L3 — ClauseThing / ClauseScript — is parked pending separate product authorization;
 > do NOT start the ClauseScript parser/front-end or production `SimSession` wiring.** Do not reopen closed phases, self-accept, or spawn `ACT-N`/`FrontierV2-5`/atlas/nested
 > prooflets. Closure/acceptance memos are **design-authority + product only**. (Charter:
 > [`sead_self_ai_track.md`](sead_self_ai_track.md) §11; track: [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md); closure: [`../design_v7_7.md`](../design_v7_7.md).)
