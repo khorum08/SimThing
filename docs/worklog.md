@@ -1,3 +1,7 @@
+# 2026-05-30 — FrontierV1-4 SEAD V1 route replay acceptance (Tier-2, landed)
+
+- FrontierV1-4 integrated SEAD V1 route replay into the default-off FrontierV1 fixture, preserving accepted routing substrates and all guardrails.
+
 # 2026-05-30 — FrontierV1-3 GPU flat-star Resource Flow integration (Tier-2, landed)
 
 - FrontierV1-3 GPU-verified flat-star Resource Flow allocation inside the default-off FrontierV1 fixture, preserving allocator routing and all guardrails.
