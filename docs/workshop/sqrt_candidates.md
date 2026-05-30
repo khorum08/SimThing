@@ -77,6 +77,12 @@ Candidate F (§5.0): loop-free, fixed-op-count, hardware-`sqrt`-seeded** — D's
 [1,4)-normalized mantissa with `u32` IO, which removes D's FTZ misses and subnormal flush. F is
 the shader to build and test standalone. See §5.0 and §11.
 
+**Update (SQRT-EXACT-4E / 4F).** E3 is now exhaustively proven (`ExactDeterministicCandidate`),
+and F — built verbatim from §5.0 — passed every sampled/contraction probe, matched E3 on every
+tested row, and beat E3 on throughput at 34k. F's own exhaustive run is the single remaining
+gate before promotion. So the "exact sqrt vs abandon determinism for scale" dilemma resolves in
+favor of *exact **and** fast*. Full numbers and the live next step are in §11.
+
 ## 3. Guardrail doctrine — exactness authority lives at the designer/spec-admission layer
 
 **This is the load-bearing principle of the track, and it is where the safety lives.**
