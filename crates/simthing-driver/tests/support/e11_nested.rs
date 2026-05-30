@@ -403,27 +403,11 @@ pub fn open_nested_session(
     }
 }
 
+#[path = "accepted_wgsl_baseline.rs"]
+mod accepted_wgsl_baseline;
+
 pub fn assert_no_new_wgsl() {
-    let gpu_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("../simthing-gpu/src");
-    let allowed = [
-        "accumulator_op.wgsl",
-        "accumulator_op_intent.wgsl",
-        "accumulator_op_threshold.wgsl",
-        "atlas_mask.wgsl",
-        "snapshot.wgsl",
-        "world_summary.wgsl",
-    ];
-    for entry in std::fs::read_dir(&gpu_src).expect("gpu src") {
-        let path = entry.expect("entry").path();
-        if path.extension().and_then(|e| e.to_str()) != Some("wgsl") {
-            continue;
-        }
-        let name = path.file_name().unwrap().to_str().unwrap();
-        assert!(
-            allowed.contains(&name),
-            "unexpected WGSL file {name}"
-        );
-    }
+    accepted_wgsl_baseline::assert_only_accepted_project_wgsl_shaders();
 }
 
 pub fn integration_band_for_layout(layout: &ArenaTreeLayout) -> u32 {
