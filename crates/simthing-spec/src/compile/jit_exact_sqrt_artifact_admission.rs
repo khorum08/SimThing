@@ -36,6 +36,9 @@ pub const SQRT_F_PROOF_REPORT: &str =
     "docs/tests/phase_m_jit_sqrt_exact5f_exhaustive_sweep_results.md";
 pub const SQRT_F_DOMAIN: &str = "0x0000_0000..=0x7F7F_FFFF";
 
+pub const MAG_F_DESCRIPTOR_ID: &str = "m_jit_mag_f_exact";
+pub const MAG_F_LABEL: &str = "ExactEuclideanMagnitudeF";
+
 fn artifact_err(kernel: &str, reason: impl Into<String>) -> SpecError {
     SpecError::JitKernelDescriptorAdmission {
         kernel: kernel.to_string(),
@@ -162,18 +165,34 @@ pub fn validate_exact_sqrt_artifact_binding(
     Ok(())
 }
 
+/// True when the descriptor is the landed F-backed exact Euclidean magnitude kernel.
+pub fn is_exact_mag_f_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == MAG_F_DESCRIPTOR_ID && spec.exact_sqrt_artifact.is_some()
+}
+
+fn has_exact_f_authoritative_output(spec: &KernelDescriptorSpec) -> bool {
+    spec.writes.iter().any(|out| {
+        out.authority == OutputAuthority::ExactAuthoritative
+            && (out.name == "sqrt_out" || out.name == "mag")
+    })
+}
+
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
 pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
-    let has_exact_sqrt_out = spec.writes.iter().any(|out| {
-        out.name == "sqrt_out" && out.authority == OutputAuthority::ExactAuthoritative
-    });
+    let has_exact_f_out = has_exact_f_authoritative_output(spec);
 
-    match (&spec.exact_sqrt_artifact, has_exact_sqrt_out) {
+    match (&spec.exact_sqrt_artifact, has_exact_f_out) {
         (None, true) => {
-            return Err(artifact_err(
-                &spec.id,
-                "exact-authoritative sqrt_out requires artifact-backed Candidate F binding",
-            ));
+            let needs_binding = spec.writes.iter().any(|out| {
+                out.authority == OutputAuthority::ExactAuthoritative
+                    && (out.name == "sqrt_out" || out.name == "mag")
+            });
+            if needs_binding {
+                return Err(artifact_err(
+                    &spec.id,
+                    "exact-authoritative sqrt_out or mag requires artifact-backed Candidate F binding",
+                ));
+            }
         }
         (Some(binding), _) => {
             validate_exact_sqrt_artifact_binding(&spec.id, binding)?;
@@ -183,10 +202,10 @@ pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Re
                     "artifact-backed exact sqrt cannot use ApproximateJitOnly native math",
                 ));
             }
-            if !has_exact_sqrt_out {
+            if !has_exact_f_out {
                 return Err(artifact_err(
                     &spec.id,
-                    "artifact-backed exact sqrt descriptor must declare exact-authoritative sqrt_out",
+                    "artifact-backed exact sqrt descriptor must declare exact-authoritative sqrt_out or mag",
                 ));
             }
         }
@@ -200,6 +219,21 @@ fn exact_out(name: &str) -> KernelOutputSpec {
     KernelOutputSpec {
         name: name.to_string(),
         authority: OutputAuthority::ExactAuthoritative,
+    }
+}
+
+/// Build the landed F-backed exact Euclidean magnitude kernel descriptor.
+pub fn mag_f_exact_kernel_descriptor() -> KernelDescriptorSpec {
+    KernelDescriptorSpec {
+        id: MAG_F_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads: vec!["dx".to_string(), "dy".to_string()],
+        writes: vec![exact_out("mag")],
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
     }
 }
 

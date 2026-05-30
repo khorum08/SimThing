@@ -1,3 +1,7 @@
+# 2026-05-30 — SQRT-MAG-0 F-backed exact Euclidean magnitude SEAD hot-path probe (Tier-2, landed)
+
+- SQRT-MAG-0 added default-off/test-only exact magnitude path `m_jit_mag_f_exact` routing `sqrt_cr_f_bits` over let-sequenced `dx²+dy²`; edge/dense corpora and 34k mobile-simthing benchmark recorded; native sqrt and diagnostic `mag2` remain non-exact; no production wiring/scheduler/cache/bridge added.
+
 # 2026-05-30 — SQRT-PROMOTE-0 artifact-backed Candidate F descriptor/admission (Tier-2, landed)
 
 - SQRT-PROMOTE-0 wired the proven Candidate F artifact into spec-layer descriptor/admission as `m_jit_sqrt_f_exact` with hash pin `e2e9e27601ee2e13`, entrypoint `sqrt_cr_f_bits`, and `u32` bit IO; native/raw sqrt remains `ApproximateJitOnly`; `mag2` stays blocked as exact input unless routed through exact F; no production scheduler/cache/default wiring/bridge added.
