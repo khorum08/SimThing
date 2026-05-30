@@ -65,8 +65,14 @@ Two structural facts make this tractable and let us *prove* rather than *sample*
 Newton) were built and probed on DX12/naga and **both stuck at ≥1 ULP** — A's correction
 never fired, B failed normal-range boundaries, and both flushed subnormals to 0. The lesson
 is sharp: the adversary is **backend FP contraction/reassociation + flush-to-zero**, not the
-math. That is exactly why the lead candidate (**D**, §5) does its splitting with an integer
-**bitmask** the FP optimizer cannot rewrite. See §5 and §10.
+math. SQRT-EXACT-1D then proved the bitmask split beats contraction (D fired 117 corrections
+where A fired 0, all normal edges exact) but still lost to FTZ on tiny terms (12 near-min-
+normal misses) and subnormal store; SQRT-EXACT-2E proved a `u32` bit-IO contract kills the
+flush but its weak integer root regressed accuracy. **SQRT-EXACT-3E then remediated E's integer
+core to `max_ulp == 0` on every sweep** (pure integer, no `sqrt`/`fma`/f32 — FTZ/contraction
+immune by construction) → it is the exact leader, pending only the exhaustive sweep. Candidate
+F (§5.0) — D's residual on a [1,4)-normalized mantissa with `u32` IO — is a documented
+hardware-seeded *performance alternative*, not the current build target. See §5.0 and §11.
 
 ## 3. Guardrail doctrine — exactness authority lives at the designer/spec-admission layer
 
@@ -122,9 +128,167 @@ and that choice is what separates the candidates:
   rounding, the residual collapses to `r = fma(-y, y, x)`. This was the original Candidate A;
   it is now just an optional fast form of D's residual, not a separate candidate.
 
-## 5. The two candidates (D primary, B fallback)
+## 5. Candidates (E/3E is the exact leader; F is a documented fast-path alternative; D/B prior)
 
-**Shared correctly-rounded snap (directional ULP).** Both candidates end with the same
+**The current exact leader is Candidate E (3E integer core), not F.** While F was being
+designed, SQRT-EXACT-3E remediated E's integer mantissa core (`u32` limb-pair `vec2<u32>`
+arithmetic, exact 24-bit square, integer binary-search floor + exact integer nearest-even
+rounding — **no `sqrt`, `fma`, or f32 in the finite path**) and it now reports `max_ulp == 0`
+on edge, dense-normal (1043/1043), and subnormal (2572/2572, flush 0) sweeps →
+`ExactCandidatePendingExhaustiveSweep`. Being pure integer, E3 is immune to the FTZ and FP
+contraction that defeated A/B/D *by construction*. **The next action is running E3's
+`#[ignore]` exhaustive 2³¹ sweep; a green sweep promotes E3.** Do **not** build F ahead of that.
+
+**Candidate F (§5.0) is a performance alternative, not the current build target.** It uses a
+hardware `sqrt` seed (one instruction + ~15 ops) instead of E3's integer search, so it may be
+cheaper per element — but it reintroduces a dependence on hardware-seed quality that E3 does
+not have. Build F **only if** E3's integer core is measured too slow in production (unlikely at
+GPU integer-op cost). It is kept here, fully specified, so that option is ready without
+re-derivation. D and B follow as the earlier probes E3 and F both improve on.
+
+### 5.0 Candidate F — verbatim WGSL artifact (fast-path alternative; build only if E3 too slow)
+
+If built, freeze this as `crates/simthing-driver/tests/wgsl/sqrt_cr_f_candidate.wgsl` and
+`include_str!` it, exactly as E was frozen. The authoritative entry is
+`sqrt_cr_f_bits(x_bits: u32) -> u32` (test it via `array<u32>` bit-IO against `f32::sqrt`); the
+`sqrt_cr_f` f32 wrapper is the opcode-boundary form.
+
+```wgsl
+// Candidate F — correctly-rounded f32 sqrt, FTZ- and contraction-safe.
+//
+// Strategy: decode bits in the integer domain; fold the exponent so the work runs on a
+// significand m in [1,4) (sqrt(x) = sqrt(m) * 2^k, k integer); seed with the hardware
+// sqrt; get the EXACT residual via a bitmask-split Dekker TwoProduct (no fma); snap to
+// correctly-rounded with a directional Markstein test; reconstruct the result exponent
+// with integer ops and return the BIT PATTERN. Every live f32 value stays in [1,4) or
+// [1,2), i.e. always normal — flush-to-zero never touches a residual term — and the
+// result is emitted as u32 so no subnormal f32 store/load can flush.
+//
+// Authoritative entry:  sqrt_cr_f_bits(x_bits: u32) -> u32
+// CPU oracle for parity: f32::sqrt (already correctly rounded).
+//
+// Contraction safety: the split is a bitwise AND the FP optimizer cannot rewrite, and the
+// residual contains NO `a*b + c` fma candidates — every product is materialized into a
+// `let` and `p` is read twice, so naga/DXC cannot fuse or reassociate the residual. The
+// snap thresholds MAY be contracted harmlessly (a 1-ULP error there cannot flip a decision,
+// since sqrt has no exact ties). If a backend is later found to reassociate the residual
+// sum anyway, the documented fallback is an integer-domain residual (exact mantissa-integer
+// products); the [1,4) normalization and u32 IO stay unchanged.
+
+const F_QNAN: u32 = 0x7FC00000u;
+const F_PINF: u32 = 0x7F800000u;
+
+// Correctly-rounded sqrt of m in [1,4); result in [1,2]. All intermediates stay normal.
+fn sqrt_cr_f_core(m: f32) -> f32 {
+    let y0 = sqrt(m);                                       // hardware seed, ~1 ULP, in [1,2)
+
+    // Bitmask split: clear the low 12 mantissa bits. y_hi has 12 significant bits, so
+    // y_hi*y_hi is <=24 bits and EXACT in f32. (Integer AND — optimizer cannot touch it.)
+    let y_hi = bitcast<f32>(bitcast<u32>(y0) & 0xFFFFF000u);
+    let y_lo = y0 - y_hi;
+
+    // Exact residual r = m - y0*y0 (Dekker TwoProduct). No fma candidates anywhere.
+    let p           = y0 * y0;          // read twice below -> compiler must materialize it
+    let yhi_yhi     = y_hi * y_hi;      // exact
+    let yhi_ylo     = y_hi * y_lo;      // exact
+    let two_yhi_ylo = yhi_ylo + yhi_ylo;
+    let ylo_ylo     = y_lo * y_lo;      // exact
+    let e0 = yhi_yhi - p;               // exact (Sterbenz)
+    let e1 = e0 + two_yhi_ylo;
+    let e  = e1 + ylo_ylo;              // e == y0*y0 - p exactly
+    let sp = m - p;                     // exact (Sterbenz)
+    let r  = sp - e;                    // EXACT residual m - y0*y0
+
+    // Directional Markstein snap (sqrt has no exact ties -> strict comparison is safe).
+    let y_up = bitcast<f32>(bitcast<u32>(y0) + 1u);
+    let y_dn = bitcast<f32>(bitcast<u32>(y0) - 1u);
+    let u_up = y_up - y0;               // gap above
+    let u_dn = y0 - y_dn;               // gap below (half of u_up at a power of two)
+    let t_up = (y0 * u_up) + (0.25 * u_up * u_up);
+    let t_dn = (y0 * u_dn) - (0.25 * u_dn * u_dn);
+    if (r >  t_up) { return y_up; }
+    if (r < -t_dn) { return y_dn; }
+    return y0;
+}
+
+fn sqrt_cr_f_bits(x_bits: u32) -> u32 {
+    let sign = x_bits >> 31u;
+    let exp  = (x_bits >> 23u) & 0xFFu;
+    let mant = x_bits & 0x7FFFFFu;
+
+    // Special values, bit-exact with f32::sqrt.
+    if (exp == 0xFFu) {
+        if (mant != 0u) { return F_QNAN; }          // NaN -> NaN
+        if (sign == 0u) { return F_PINF; }          // +inf -> +inf
+        return F_QNAN;                              // -inf -> NaN
+    }
+    if (x_bits == 0x00000000u) { return 0x00000000u; }   // +0 -> +0
+    if (x_bits == 0x80000000u) { return 0x80000000u; }   // -0 -> -0
+    if (sign == 1u) { return F_QNAN; }                   // negative finite -> NaN
+
+    // Recover significand M2 in [1,2) (as bits) and unbiased exponent E2.
+    var m2_bits: u32;
+    var e2: i32;
+    if (exp == 0u) {
+        // Subnormal: normalize the leading 1 to the hidden-bit position via integer shift.
+        let lz   = countLeadingZeros(mant);          // mant in [1, 2^23-1] -> lz in [9, 31]
+        let sh   = lz - 8u;                           // move leading 1 to bit 23
+        let frac = (mant << sh) & 0x7FFFFFu;
+        m2_bits = 0x3F800000u | frac;
+        e2 = -118 - i32(lz);                          // E2 = (31 - lz) - 149
+    } else {
+        m2_bits = 0x3F800000u | mant;
+        e2 = i32(exp) - 127;
+    }
+
+    // Fold to an EVEN exponent: x = m * 2^(2k), m in [1,4). sqrt(x) = sqrt(m) * 2^k.
+    let k      = e2 >> 1u;                            // floor(E2/2), arithmetic shift
+    let parity = bitcast<u32>(e2) & 1u;              // 0 -> m in [1,2); 1 -> m in [2,4)
+    let m      = bitcast<f32>(m2_bits) * f32(1u << parity);   // *1 or *2, exact
+
+    let root = sqrt_cr_f_core(m);                     // correctly rounded, in [1,2]
+
+    // Reconstruct: final exponent = root's exponent field + k. Result is always normal
+    // (sqrt domain [2^-74.5, 2^64)), so this never overflows/underflows.
+    let root_bits = bitcast<u32>(root);
+    let final_exp = i32((root_bits >> 23u) & 0xFFu) + k;
+    return (u32(final_exp) << 23u) | (root_bits & 0x7FFFFFu);
+}
+
+// Opcode-boundary wrapper. PRODUCTION RULE: feed the input column's RAW u32 bits to
+// sqrt_cr_f_bits — do NOT load the column as an f32 register first, because DAZ can flush a
+// subnormal input on load. This wrapper is correct only when `x` reached it without an
+// f32 load-flush; prefer wiring sqrt_cr_f_bits directly to the raw column bits.
+fn sqrt_cr_f(x: f32) -> f32 {
+    return bitcast<f32>(sqrt_cr_f_bits(bitcast<u32>(x)));
+}
+```
+
+**Why F fixes both failure modes the probes exposed:**
+- **The 12 near-min-normal D misses go away.** Those were `y_lo² ≈ 2⁻¹⁴⁸` underflowing to a
+  subnormal and being flushed. In [1,4), `y_lo² ≈ 2⁻²⁴` — comfortably normal — so the
+  residual is exact for every input, not just mid-range ones.
+- **The subnormal flush goes away.** Input is read as `u32` (no DAZ load-flush), all work is
+  in [1,4), and the result is emitted as `u32` bits (no subnormal f32 store). E proved this
+  IO contract eliminates the flush (`flush_count = 0`); F keeps it and adds D's accuracy.
+- **Contraction stays beaten.** Same integer bitmask split that made D fire 117 corrections
+  where A fired 0, plus a residual with zero fma candidates.
+
+**Test (only if pursued):** add `CorrectlyRoundedHwBitmaskNormalized` (F) to the battery with
+`u32` bit-IO edge/dense/subnormal sweeps against `f32::sqrt`, then benchmark F vs E3. F is
+promotable only if it *also* reaches `max_ulp == 0` on the exhaustive sweep **and** beats E3 on
+GPU cost by a margin worth the hardware-seed dependence. Absent that, **E3 is the candidate to
+promote** — its exhaustive sweep is the live next step, and a green sweep flips the
+`sqrt`/`mag` descriptor to `ExactDeterministic` regardless of whether F is ever built.
+
+### 5.1 Prior probes (context — superseded by F)
+
+D and B below are the probes F synthesizes. **D** got the residual math right (normal edges
+bit-exact, corrections fire) but let tiny terms and subnormal outputs reach FTZ; **B** is the
+fully-portable-seed fallback but its Veltkamp split was reassociated by DXC. Neither is the
+build target now — F is.
+
+**Shared correctly-rounded snap (directional ULP).** Both prior candidates end with the same
 Markstein correction. The threshold must use the **directional** ULP — the gap above `y`
 for an up-snap, the gap below for a down-snap — because at an exact power of two those gaps
 differ by 2× and the tie term flips sign. `sqrt` has no exact ties, so the `y·u` term
