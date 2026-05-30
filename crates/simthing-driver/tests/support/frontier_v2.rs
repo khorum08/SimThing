@@ -6,6 +6,7 @@ mod frontier_v1;
 pub use frontier_v1::*;
 
 pub const FRONTIER_V2_FIXTURE_ID: &str = "frontier_v2_0_closed_loop_consumer_v1";
+pub const FRONTIER_V2_1_FIXTURE_ID: &str = "frontier_v2_1_candidate_evolution_v1";
 pub const FRONTIER_V2_CLOSED_LOOP_TICKS: u32 = 2;
 
 /// Per-field status for FrontierV2-0 closed-loop reporting.
@@ -163,6 +164,101 @@ pub fn build_structural_candidate(
         route_code: FRONTIER_V1_STRUCTURAL_ROUTE_CODE,
         dispatch_count: feedback.dispatch_count,
     }
+}
+
+/// Tick-aware movement candidate evolution tied to closed-loop field/urgency feedback.
+pub fn build_evolved_movement_candidate(
+    feedback: &FrontierV1LiveSelfAiFeedbackCandidate,
+    mapping_hash: u64,
+    urgency: f32,
+    tick_index: u32,
+) -> FrontierV2MovementCandidate {
+    let imbalance =
+        feedback.faction_a_allocation as i32 - feedback.faction_b_allocation as i32;
+    let row_delta = imbalance.signum() + tick_index as i32;
+    let urgency_bucket = (urgency * 10.0).round() as u32;
+    let col_delta = feedback
+        .dispatch_count
+        .saturating_add((mapping_hash & 0x7) as u32)
+        .saturating_add(urgency_bucket % 4)
+        .saturating_add(tick_index);
+    FrontierV2MovementCandidate {
+        source_unit_id: feedback.source_unit_id,
+        delta_row: row_delta,
+        delta_col: col_delta as i32,
+        route_code: FRONTIER_V1_MOVEMENT_ROUTE_CODE,
+        dispatch_count: feedback.dispatch_count,
+    }
+}
+
+/// Tick-aware structural candidate evolution tied to closed-loop allocator/field feedback.
+pub fn build_evolved_structural_candidate(
+    feedback: &FrontierV1LiveSelfAiFeedbackCandidate,
+    mapping_hash: u64,
+    tick_index: u32,
+) -> FrontierV2StructuralCandidate {
+    let reinforce_bucket = feedback
+        .allocator_total
+        .saturating_div(10)
+        .saturating_add(((mapping_hash >> 8) & 0xF) as u32)
+        .saturating_add(tick_index.saturating_mul(100));
+    FrontierV2StructuralCandidate {
+        proposal_code: feedback.proposal_code.wrapping_add(tick_index),
+        boundary_request_code: feedback
+            .field_feedback_code
+            .wrapping_add(reinforce_bucket),
+        route_code: FRONTIER_V1_STRUCTURAL_ROUTE_CODE,
+        dispatch_count: feedback.dispatch_count,
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontierV2CandidateEvolutionSummary {
+    pub tick0_movement_hash: u64,
+    pub tick1_movement_hash: u64,
+    pub tick0_structural_hash: u64,
+    pub tick1_structural_hash: u64,
+    pub candidate_delta_hash: u64,
+    pub closed_loop_delta_hash: u64,
+    pub overflow_flags: u32,
+    pub tick0_resource_route_status: FrontierV2FieldStatus,
+    pub tick1_resource_route_status: FrontierV2FieldStatus,
+    pub movement_evolution_status: FrontierV2FieldStatus,
+    pub structural_evolution_status: FrontierV2FieldStatus,
+    pub closed_loop_feedback_status: FrontierV2FieldStatus,
+    pub clause_thing_status: FrontierV2ClauseThingStatus,
+    pub phase_closure_status: FrontierV2PhaseClosureStatus,
+}
+
+impl FrontierV2CandidateEvolutionSummary {
+    pub fn combined_hex(&self) -> String {
+        let combined = fnv_mix(self.tick0_movement_hash)
+            ^ fnv_mix(self.tick1_movement_hash)
+            ^ fnv_mix(self.tick0_structural_hash)
+            ^ fnv_mix(self.tick1_structural_hash)
+            ^ fnv_mix(self.candidate_delta_hash)
+            ^ fnv_mix(self.closed_loop_delta_hash)
+            ^ fnv_mix(u64::from(self.overflow_flags));
+        format!("{:016x}", combined & 0xFFFF_FFFF_FFFF_FFFF)
+    }
+}
+
+pub fn hash_candidate_pair_delta(
+    tick0_movement: FrontierV2MovementCandidate,
+    tick1_movement: FrontierV2MovementCandidate,
+    tick0_structural: FrontierV2StructuralCandidate,
+    tick1_structural: FrontierV2StructuralCandidate,
+) -> u64 {
+    let mut h = fnv64(b"frontier_v2_1_candidate_delta");
+    h = fnv_append_u32(h, tick0_movement.delta_row as u32);
+    h = fnv_append_u32(h, tick1_movement.delta_row as u32);
+    h = fnv_append_u32(h, tick0_movement.delta_col as u32);
+    h = fnv_append_u32(h, tick1_movement.delta_col as u32);
+    h = fnv_append_u32(h, tick0_structural.boundary_request_code);
+    h = fnv_append_u32(h, tick1_structural.boundary_request_code);
+    h = fnv_append_u32(h, tick0_structural.proposal_code);
+    h = fnv_append_u32(h, tick1_structural.proposal_code);
+    h
 }
 
 pub fn hash_tick_proposal_dispatch(

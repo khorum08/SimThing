@@ -2575,6 +2575,10 @@ FrontierV2-0 implements the named Forward Horizon consumer from `docs/workshop/m
 
 FrontierV2-0 proves the first bounded multi-tick closed-loop consumer fixture. Further FrontierV2 work may expand structural/movement candidates only through named product gates and designer/spec-admission guardrails.
 
+**FrontierV2-1 — closed-loop movement/structural candidate evolution**
+
+FrontierV2-1 extends the default-off FrontierV2 fixture by deriving movement and structural FixtureCandidates from the closed-loop feedback path across at least two ticks. It consumes FrontierV2-0's live route and feedback loop, records CPU oracle parity and replay reproducibility, and keeps all candidate outputs fixture/test-support only. It does not implement ClauseThing, production scenario runtime, default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner/urgency/commitment emission, simthing-sim semantic awareness, parallel fixture economy, shared-pool tick writes, or SEAD ACT/EVENT/OBS/PIPE ladder expansion.
+
 Further SEAD actionability work must either: (1) produce a reusable numeric substrate consumed by Phase E fixtures, (2) directly close a Phase M/E blocker, or (3) be paused until a named product scenario requires runtime integration.
 - Native sqrt remains `ApproximateJitOnly`; F exact path requires artifact-backed descriptor admission.
 - Exact authority requires exhaustive `max_ulp == 0` proof against CPU `f32::sqrt` (ignored full sweep available separately).
