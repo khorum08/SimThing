@@ -491,6 +491,8 @@ existing SQRT-0 harness and its `FORBIDDEN_SEMANTIC_TERMS` scan):
 > approximate performance mode is still not authorized.
 > **Update (SQRT-MAG-0 R1):** F proves sqrt exactness over input bits. It does not by itself prove
 > dx²+dy² construction exactness across CPU/GPU operation order.
+> **Update (SQRT-MAG2-0):** F sqrt is exact over input bits. Full Euclidean magnitude exactness now
+> depends on exact mag2 construction; SQRT-MAG2-0 provides the first fixed-point path if landed.
 
 ```
 ApproximateJitOnly            ← native/raw sqrt (stays here — never exact-authoritative)

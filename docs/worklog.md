@@ -1,3 +1,7 @@
+# 2026-05-30 — SQRT-MAG2-0 exact fixed-point pre-sqrt mag2 for gradient hot path (Tier-2, landed)
+
+- SQRT-MAG2-0 added `m_jit_mag2_fixed_exact` Q16.16 integer mag2 construction feeding F sqrt; 784/784 dense corpus exact (incl. prior 40 raw f32 mismatch rows); 34k benchmark recorded; raw f32 dx/dy probe unchanged; no production wiring/scheduler/cache/bridge added.
+
 # 2026-05-30 — SQRT-MAG-0 R1 pre-sqrt exactness contract for F-backed magnitude (Tier-2, landed)
 
 - SQRT-MAG-0 R1 split magnitude descriptors (`m_jit_mag_f_from_exact_mag2`, `m_jit_mag_f_from_dxdy_probe`), added `ExactPreSqrtInputContract` metadata, reproduced 40/784 mag2 mismatch rows, retained 34k raw dx/dy probe; F sqrt authority unchanged; no production wiring/scheduler/cache/bridge added.

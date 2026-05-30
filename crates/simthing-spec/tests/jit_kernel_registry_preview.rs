@@ -29,6 +29,7 @@ fn grad1_style_scorer() -> KernelDescriptorSpec {
         production_wiring: false,
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
+        mag2_source_contract: None,
     }
 }
 
@@ -47,6 +48,7 @@ fn grad1_style_scorer_with_bias_read() -> KernelDescriptorSpec {
         production_wiring: false,
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
+        mag2_source_contract: None,
     }
 }
 
@@ -175,6 +177,7 @@ fn sample_entry(stable_key: &str) -> KernelRegistryEntryPreview {
         production_wiring: false,
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
+        mag2_source_contract: None,
     }
 }
 
@@ -249,6 +252,7 @@ fn jit_reg0_invalid_graph_rejects_before_manifest() {
         production_wiring: false,
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
+        mag2_source_contract: None,
     };
     let node_b = KernelDescriptorSpec {
         id: "m_jit_cycle_b".into(),
@@ -264,6 +268,7 @@ fn jit_reg0_invalid_graph_rejects_before_manifest() {
         production_wiring: false,
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
+        mag2_source_contract: None,
     };
     let cycle = vec![KernelGraphRequestSpec {
         request_id: "cycle_bad".into(),

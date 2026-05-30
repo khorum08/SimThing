@@ -39,6 +39,17 @@ fn format_native_math(native_math: NativeMathClass) -> &'static str {
     }
 }
 
+fn format_mag2_source_contract(
+    contract: Option<crate::compile::jit_exact_sqrt_artifact_admission::Mag2SourceContract>,
+) -> String {
+    match contract {
+        None => "None".to_string(),
+        Some(crate::compile::jit_exact_sqrt_artifact_admission::Mag2SourceContract::ExactFixedPointDxDy {
+            fraction_bits,
+        }) => format!("ExactFixedPointDxDy(fraction_bits={fraction_bits})"),
+    }
+}
+
 fn format_pre_sqrt_contract(
     contract: Option<crate::compile::jit_exact_sqrt_artifact_admission::ExactPreSqrtInputContract>,
 ) -> &'static str {
@@ -69,7 +80,7 @@ fn canonicalize_node(node: &KernelDescriptorSpec) -> String {
     writes.sort_by(|a, b| a.name.cmp(&b.name));
 
     let mut lines = vec![format!(
-        "node id={} lane={} native_math={} semantic_free={} default_off={} production_wiring={} pre_sqrt_contract={}",
+        "node id={} lane={} native_math={} semantic_free={} default_off={} production_wiring={} pre_sqrt_contract={} m2src_contract={}",
         node.id,
         format_lane(node.lane),
         format_native_math(node.native_math),
@@ -77,6 +88,7 @@ fn canonicalize_node(node: &KernelDescriptorSpec) -> String {
         format_bool(node.default_off),
         format_bool(node.production_wiring),
         format_pre_sqrt_contract(node.pre_sqrt_contract),
+        format_mag2_source_contract(node.mag2_source_contract),
     )];
 
     for read in reads {

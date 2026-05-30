@@ -4,7 +4,8 @@
 //! No production scheduler, no default wiring, no GPU runtime dispatch.
 
 use crate::compile::jit_exact_sqrt_artifact_admission::{
-    validate_exact_pre_sqrt_contract, ExactPreSqrtInputContract,
+    validate_mag2_source_contract, ExactPreSqrtInputContract,
+    Mag2SourceContract,
 };
 use crate::compile::jit_exact_sqrt_artifact_admission::validate_exact_sqrt_artifact_admission;
 use crate::error::SpecError;
@@ -65,6 +66,8 @@ pub struct KernelDescriptorSpec {
     pub exact_sqrt_artifact: Option<crate::compile::jit_exact_sqrt_artifact_admission::ExactSqrtArtifactDescriptor>,
     /// Pre-sqrt input contract for F-backed magnitude kernels (SQRT-MAG-0 R1).
     pub pre_sqrt_contract: Option<crate::compile::jit_exact_sqrt_artifact_admission::ExactPreSqrtInputContract>,
+    /// Exact mag2 construction source contract (SQRT-MAG2-0).
+    pub mag2_source_contract: Option<Mag2SourceContract>,
 }
 
 #[derive(Debug, Clone)]
@@ -201,27 +204,32 @@ pub fn validate_exact_kernel_inputs(
                 ));
             }
         }
-        if *name == "mag2" {
-            match output_authority(producer, name) {
+        if *name == "mag2" || *name == "mag2_bits" {
+            let out_name = if *name == "mag2_bits" {
+                "mag2_bits"
+            } else {
+                "mag2"
+            };
+            match output_authority(producer, out_name) {
                 Some(OutputAuthority::ExactAuthoritative) => {
-                    validate_exact_pre_sqrt_contract(producer)?;
+                    validate_mag2_source_contract(producer)?;
                 }
                 Some(OutputAuthority::ApproximateDiagnostic) => {
                     return Err(admission_err(
                         &producer.id,
-                        "output `mag2` is approximate/diagnostic, not exact-authoritative",
+                        format!("output `{out_name}` is approximate/diagnostic, not exact-authoritative"),
                     ));
                 }
                 Some(OutputAuthority::RejectedDeferred) => {
                     return Err(admission_err(
                         &producer.id,
-                        "output `mag2` is rejected/deferred",
+                        format!("output `{out_name}` is rejected/deferred"),
                     ));
                 }
                 None => {
                     return Err(admission_err(
                         &producer.id,
-                        "output `mag2` not produced by kernel",
+                        format!("output `{out_name}` not produced by kernel"),
                     ));
                 }
             }
@@ -284,6 +292,7 @@ fn test_only_descriptor(
         production_wiring: false,
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
+        mag2_source_contract: None,
     }
 }
 
@@ -335,5 +344,6 @@ pub fn landed_jit_kernel_descriptors() -> Vec<KernelDescriptorSpec> {
         crate::compile::jit_exact_sqrt_artifact_admission::sqrt_f_exact_kernel_descriptor(),
         crate::compile::jit_exact_sqrt_artifact_admission::mag_f_from_exact_mag2_kernel_descriptor(),
         crate::compile::jit_exact_sqrt_artifact_admission::mag_f_from_dxdy_probe_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::mag2_fixed_exact_kernel_descriptor(),
     ]
 }

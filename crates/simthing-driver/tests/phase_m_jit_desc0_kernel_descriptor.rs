@@ -108,6 +108,7 @@ const M_JIT_0_WEIGHTED_ACCUMULATOR: KernelDescriptor = KernelDescriptor {
     production_wiring: false,
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
+        mag2_source_contract: None,
 };
 
 const M_JIT_0_EMA: KernelDescriptor = KernelDescriptor {
@@ -121,6 +122,7 @@ const M_JIT_0_EMA: KernelDescriptor = KernelDescriptor {
     production_wiring: false,
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
+        mag2_source_contract: None,
 };
 
 const M_JIT_SQRT_0_CANDIDATE: KernelDescriptor = KernelDescriptor {
@@ -137,6 +139,7 @@ const M_JIT_SQRT_0_CANDIDATE: KernelDescriptor = KernelDescriptor {
     production_wiring: false,
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
+        mag2_source_contract: None,
 };
 
 const M_JIT_GRAD_0_OBSERVER: KernelDescriptor = KernelDescriptor {
@@ -156,6 +159,7 @@ const M_JIT_GRAD_0_OBSERVER: KernelDescriptor = KernelDescriptor {
     production_wiring: false,
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
+        mag2_source_contract: None,
 };
 
 const M_JIT_GRAD_1_OBSERVER_SCORE: KernelDescriptor = KernelDescriptor {
@@ -175,6 +179,7 @@ const M_JIT_GRAD_1_OBSERVER_SCORE: KernelDescriptor = KernelDescriptor {
     production_wiring: false,
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
+        mag2_source_contract: None,
 };
 
 fn all_descriptors() -> Vec<&'static KernelDescriptor> {
