@@ -3,10 +3,20 @@
 use simthing_spec::{
     exact_sqrt_f_artifact_descriptor, is_sead_obs0_overlay_score_descriptor,
     landed_jit_kernel_descriptors, sead_obs0_overlay_score_kernel_descriptor,
-    validate_kernel_descriptor_admission, ExactPreSqrtInputContract, KernelDescriptorSpec,
-    Mag2SourceContract, NativeMathClass, OutputAuthority, ScoreAuthorityContract, SEAD_OBS0_DESCRIPTOR_ID,
-    SEAD_OBS0_LABEL, SpecError, MAG2_Q16_FRAC_BITS, SQRT_F_ARTIFACT_HASH,
+    sead_obs2_multilayer_overlay_score_kernel_descriptor,
+    validate_kernel_descriptor_admission, ExactPreSqrtInputContract,
+    KernelDescriptorSpec, Mag2SourceContract, NativeMathClass, OutputAuthority,
+    ScoreAuthorityContract, SEAD_OBS0_DESCRIPTOR_ID, SEAD_OBS0_LABEL, SEAD_OBS2_DESCRIPTOR_ID,
+    SEAD_OBS2_LABEL, SEAD_OBS2_LAYER_COUNT, SpecError, MAG2_Q16_FRAC_BITS, SQRT_F_ARTIFACT_HASH,
+    is_sead_obs2_multilayer_overlay_score_descriptor,
 };
+
+fn obs2() -> KernelDescriptorSpec {
+    landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|desc| desc.id == SEAD_OBS2_DESCRIPTOR_ID)
+        .expect("sead obs2 descriptor")
+}
 
 fn obs0() -> KernelDescriptorSpec {
     landed_jit_kernel_descriptors()
@@ -150,4 +160,31 @@ fn sead_obs1_builder_matches_landed_registry() {
     assert_eq!(built.reads, landed.reads);
     assert_eq!(built.writes.len(), landed.writes.len());
     validate_kernel_descriptor_admission(&built).expect("builder admits");
+}
+
+#[test]
+fn sead_obs2_descriptor_admits_default_off_multilayer_score() {
+    let desc = obs2();
+    assert_eq!(desc.id, SEAD_OBS2_DESCRIPTOR_ID);
+    assert!(desc.default_off);
+    assert!(!desc.production_wiring);
+    assert!(is_sead_obs2_multilayer_overlay_score_descriptor(&desc));
+    validate_kernel_descriptor_admission(&desc).expect("obs2 admits");
+    println!(
+        "sead_obs2_descriptor: id={SEAD_OBS2_DESCRIPTOR_ID} label={SEAD_OBS2_LABEL} layers={SEAD_OBS2_LAYER_COUNT}"
+    );
+}
+
+#[test]
+fn sead_obs2_rejects_exact_score_for_f32_score_arithmetic() {
+    let mut bad = sead_obs2_multilayer_overlay_score_kernel_descriptor();
+    for out in &mut bad.writes {
+        if out.name == "score_bits" {
+            out.authority = OutputAuthority::ExactAuthoritative;
+        }
+    }
+    assert_admission_err(
+        &bad,
+        "score_bits cannot be ExactAuthoritative under ApproximateDiagnosticF32",
+    );
 }

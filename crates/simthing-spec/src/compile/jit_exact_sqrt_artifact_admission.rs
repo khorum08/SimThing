@@ -78,6 +78,10 @@ pub enum ScoreAuthorityContract {
 pub const SEAD_OBS0_DESCRIPTOR_ID: &str = "m_jit_sead_obs0_overlay_score";
 pub const SEAD_OBS0_LABEL: &str = "SeadObserverOverlayScore";
 
+pub const SEAD_OBS2_DESCRIPTOR_ID: &str = "m_jit_sead_obs2_multilayer_overlay_score";
+pub const SEAD_OBS2_LABEL: &str = "SeadMultilayerOverlayScore";
+pub const SEAD_OBS2_LAYER_COUNT: u32 = 4;
+
 fn artifact_err(kernel: &str, reason: impl Into<String>) -> SpecError {
     SpecError::JitKernelDescriptorAdmission {
         kernel: kernel.to_string(),
@@ -233,6 +237,35 @@ pub fn is_sead_obs0_overlay_score_descriptor(spec: &KernelDescriptorSpec) -> boo
         && spec.score_authority_contract == Some(ScoreAuthorityContract::ApproximateDiagnosticF32)
 }
 
+/// True when the descriptor is the landed SEAD multilayer overlay score kernel.
+pub fn is_sead_obs2_multilayer_overlay_score_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == SEAD_OBS2_DESCRIPTOR_ID
+        && spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt)
+        && spec.score_authority_contract == Some(ScoreAuthorityContract::ApproximateDiagnosticF32)
+        && multilayer_exact_mag_bits_outputs(spec) == SEAD_OBS2_LAYER_COUNT
+}
+
+fn multilayer_exact_mag_bits_outputs(spec: &KernelDescriptorSpec) -> u32 {
+    (0..SEAD_OBS2_LAYER_COUNT)
+        .filter(|layer| {
+            spec.writes.iter().any(|out| {
+                out.name == format!("layer{layer}_mag_bits")
+                    && out.authority == OutputAuthority::ExactAuthoritative
+            })
+        })
+        .count() as u32
+}
+
+fn has_multilayer_fixed_reads(spec: &KernelDescriptorSpec) -> bool {
+    (0..SEAD_OBS2_LAYER_COUNT).all(|layer| {
+        spec.reads.iter().any(|read| read == &format!("layer{layer}_gx_fixed"))
+            && spec.reads.iter().any(|read| read == &format!("layer{layer}_gy_fixed"))
+            && spec.reads
+                .iter()
+                .any(|read| read == &format!("layer{layer}_w_fixed"))
+    }) && spec.reads.iter().any(|read| read == "bias_fixed")
+}
+
 fn has_fixed_point_gradient_reads(spec: &KernelDescriptorSpec) -> bool {
     (spec.reads.iter().any(|read| read == "dx_fixed")
         && spec.reads.iter().any(|read| read == "dy_fixed"))
@@ -257,7 +290,10 @@ fn has_exact_mag_bits_output(spec: &KernelDescriptorSpec) -> bool {
 fn has_exact_f_authoritative_output(spec: &KernelDescriptorSpec) -> bool {
     spec.writes.iter().any(|out| {
         out.authority == OutputAuthority::ExactAuthoritative
-            && (out.name == "sqrt_out" || out.name == "mag" || out.name == "mag_bits")
+            && (out.name == "sqrt_out"
+                || out.name == "mag"
+                || out.name == "mag_bits"
+                || (out.name.starts_with("layer") && out.name.ends_with("_mag_bits")))
     })
 }
 
@@ -333,10 +369,10 @@ pub fn validate_exact_pre_sqrt_contract(spec: &KernelDescriptorSpec) -> Result<(
                     "InlineFixedPointMag2Sqrt requires Mag2SourceContract",
                 ));
             }
-            if !has_fixed_point_gradient_reads(spec) {
+            if !has_fixed_point_gradient_reads(spec) && !has_multilayer_fixed_reads(spec) {
                 return Err(artifact_err(
                     &spec.id,
-                    "InlineFixedPointMag2Sqrt requires gx_fixed/gy_fixed or dx_fixed/dy_fixed reads",
+                    "InlineFixedPointMag2Sqrt requires gx_fixed/gy_fixed, dx_fixed/dy_fixed, or multilayer fixed reads",
                 ));
             }
             if spec.exact_sqrt_artifact.is_none() {
@@ -345,16 +381,23 @@ pub fn validate_exact_pre_sqrt_contract(spec: &KernelDescriptorSpec) -> Result<(
                     "InlineFixedPointMag2Sqrt requires artifact-backed Candidate F binding",
                 ));
             }
-            if !has_exact_mag2_bits_output(spec) {
+            let multilayer = multilayer_exact_mag_bits_outputs(spec) == SEAD_OBS2_LAYER_COUNT;
+            if !has_exact_mag2_bits_output(spec) && !multilayer {
                 return Err(artifact_err(
                     &spec.id,
                     "InlineFixedPointMag2Sqrt requires exact-authoritative mag2_bits output",
                 ));
             }
-            if !has_exact_mag_bits_output(spec) {
+            if !has_exact_mag_bits_output(spec) && !multilayer {
                 return Err(artifact_err(
                     &spec.id,
                     "InlineFixedPointMag2Sqrt requires exact-authoritative mag_bits output",
+                ));
+            }
+            if multilayer && multilayer_exact_mag_bits_outputs(spec) != SEAD_OBS2_LAYER_COUNT {
+                return Err(artifact_err(
+                    &spec.id,
+                    "multilayer InlineFixedPointMag2Sqrt requires all layer mag_bits outputs",
                 ));
             }
         }
@@ -428,10 +471,14 @@ pub fn validate_mag2_source_contract(spec: &KernelDescriptorSpec) -> Result<(), 
             }
         }
         (Some(Mag2SourceContract::ExactFixedPointDxDy { .. }), false) => {
-            return Err(artifact_err(
-                &spec.id,
-                "Mag2SourceContract declared without exact-authoritative mag2_bits output",
-            ));
+            let multilayer = spec.id == SEAD_OBS2_DESCRIPTOR_ID
+                && multilayer_exact_mag_bits_outputs(spec) == SEAD_OBS2_LAYER_COUNT;
+            if !multilayer {
+                return Err(artifact_err(
+                    &spec.id,
+                    "Mag2SourceContract declared without exact-authoritative mag2_bits output",
+                ));
+            }
         }
         (None, false) => {}
     }
@@ -533,6 +580,52 @@ pub fn validate_sead_obs0_overlay_score_contract(spec: &KernelDescriptorSpec) ->
     Ok(())
 }
 
+/// Validate landed SEAD-OBS-2 multilayer overlay score descriptor pins.
+pub fn validate_sead_obs2_multilayer_overlay_score_contract(
+    spec: &KernelDescriptorSpec,
+) -> Result<(), SpecError> {
+    if spec.id != SEAD_OBS2_DESCRIPTOR_ID {
+        return Ok(());
+    }
+    match spec.mag2_source_contract {
+        Some(Mag2SourceContract::ExactFixedPointDxDy { fraction_bits })
+            if fraction_bits == MAG2_Q16_FRAC_BITS => {}
+        _ => {
+            return Err(artifact_err(
+                &spec.id,
+                "SEAD multilayer overlay score requires Q16.16 ExactFixedPointDxDy mag2 contract",
+            ));
+        }
+    }
+    if spec.pre_sqrt_contract != Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD multilayer overlay score requires InlineFixedPointMag2Sqrt pre-sqrt contract",
+        ));
+    }
+    if spec.score_authority_contract != Some(ScoreAuthorityContract::ApproximateDiagnosticF32) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD multilayer overlay score requires ApproximateDiagnosticF32 score contract",
+        ));
+    }
+    if multilayer_exact_mag_bits_outputs(spec) != SEAD_OBS2_LAYER_COUNT {
+        return Err(artifact_err(
+            &spec.id,
+            format!(
+                "SEAD multilayer overlay score requires {SEAD_OBS2_LAYER_COUNT} exact layer mag_bits outputs"
+            ),
+        ));
+    }
+    if !has_multilayer_fixed_reads(spec) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD multilayer overlay score requires layer gx/gy/weight reads and bias_fixed",
+        ));
+    }
+    Ok(())
+}
+
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
 pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
     let has_exact_f_out = has_exact_f_authoritative_output(spec);
@@ -574,6 +667,7 @@ pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Re
     validate_mag2_source_contract(spec)?;
     validate_score_authority_contract(spec)?;
     validate_sead_obs0_overlay_score_contract(spec)?;
+    validate_sead_obs2_multilayer_overlay_score_contract(spec)?;
 
     Ok(())
 }
@@ -665,6 +759,41 @@ pub fn sead_obs0_overlay_score_kernel_descriptor() -> KernelDescriptorSpec {
             approx_out("score_bits"),
             approx_out("flags"),
         ],
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
+        pre_sqrt_contract: Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt),
+        mag2_source_contract: Some(Mag2SourceContract::ExactFixedPointDxDy {
+            fraction_bits: MAG2_Q16_FRAC_BITS,
+        }),
+        score_authority_contract: Some(ScoreAuthorityContract::ApproximateDiagnosticF32),
+    }
+}
+
+/// Build the landed SEAD multilayer observer overlay score kernel descriptor (SEAD-OBS-2).
+pub fn sead_obs2_multilayer_overlay_score_kernel_descriptor() -> KernelDescriptorSpec {
+    let mut reads = Vec::new();
+    for layer in 0..SEAD_OBS2_LAYER_COUNT {
+        reads.push(format!("layer{layer}_gx_fixed"));
+        reads.push(format!("layer{layer}_gy_fixed"));
+        reads.push(format!("layer{layer}_w_fixed"));
+    }
+    reads.push("bias_fixed".to_string());
+
+    let mut writes = Vec::new();
+    for layer in 0..SEAD_OBS2_LAYER_COUNT {
+        writes.push(exact_out(&format!("layer{layer}_mag_bits")));
+    }
+    writes.push(approx_out("score_bits"));
+    writes.push(approx_out("flags"));
+
+    KernelDescriptorSpec {
+        id: SEAD_OBS2_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads,
+        writes,
         native_math: NativeMathClass::None,
         semantic_free: true,
         default_off: true,
