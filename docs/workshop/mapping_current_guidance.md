@@ -10,6 +10,16 @@ Constitutional surfacing:
 - [`../design_v7_6.md`](../design_v7_6.md)
 - [`../invariants.md`](../invariants.md) — Mapping (Sparse RegionCell) rows
 
+> **▶ FORWARD HORIZON — build toward this, not hygiene passes:** the next named **consumer**
+> scenario is **`FrontierV2`** — a multi-tick *closed-loop* run where field-derived SEAD self-AI
+> proposals drive unit movement/dispatch that feeds back into the field/economy next tick
+> (observed for emergent behavior). It is the consumer that proves the self-AI loop GPU-resident
+> for free, and the stepping-stone to authoring the scenario in **ClauseThing** later. If you find
+> yourself stalling on "no consumer" or looping on hygiene/closure handoffs, **orient to the named
+> consumer above** — do not self-accept a phase or spawn another `ACT-N`/hygiene pass. Closure and
+> acceptance memos are **design-authority + product only**; implementer fixtures may report
+> `ReplayAccepted`/`GpuVerified` but may not declare a phase closed. (Charter: [`sead_self_ai_track.md`](sead_self_ai_track.md).)
+
 Active read order (authoritative path for agents):
 
 1. [`phase_m_gating_and_doc_policy.md`](phase_m_gating_and_doc_policy.md) — **read first: which lane is your change, and how much doc does it need**
