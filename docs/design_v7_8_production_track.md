@@ -232,6 +232,16 @@ pending Opus review).
 
 ---
 
+## Generic GPU performance gates
+
+Cross-cutting generic GPU-resident performance work authorized after WGSL-GUARD-0/R1. These gates do **not** accept capability lines (A/B/C) and do **not** alter designer semantic-WGSL rejection.
+
+| Step | Intent | Class | Fingerprint | PR | Report |
+|---|---|---|---|---|---|
+| AO-WGSL-0 | Generic AccumulatorOp WGSL performance path: semantic-free named-gate fast path with CPU/oracle parity and benchmark report | Pending Opus Review | — | PR | [`phase_ao_wgsl0_accumulator_op_performance_results.md`](tests/phase_ao_wgsl0_accumulator_op_performance_results.md) |
+
+---
+
 ## 10. Sequencing summary
 
 L0 is **done and accepted**. L1 (simthing-spec buildout) is **done and accepted** (L1-ACCEPT-0).

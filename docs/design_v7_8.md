@@ -84,6 +84,9 @@ only floats/indices). See `invariants.md` "Dense local fields use the generic pr
 EvalEML WGSL emission and the artifact-backed exact `sqrt` (Candidate F, hash `e2e9e27601ee2e13`,
 admitted through the descriptor surface). New generic WGSL is a Tier-2 gate, not a prohibition.
 
+**AO-WGSL-0** is an authorized named gate for generic AccumulatorOp WGSL. This does not alter the
+semantic-WGSL guardrail: designer/spec admission still rejects raw or semantic WGSL.
+
 ### 2.3 EML gadgets are admissible at the designer layer (relaxed from the legacy whitelist)
 
 The legacy `EmlExpressionRegistry` whitelist rejection was a **wrong-layer** decision, not a runtime

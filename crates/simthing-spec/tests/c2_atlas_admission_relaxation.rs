@@ -143,7 +143,7 @@ fn designer_admission_rejects_raw_wgsl_source() {
     // This is the authoritative guard (not global filename lists).
     use simthing_spec::designer_admission::{evaluate_designer_admission_request, DesignerAdmissionRequest};
     let report = evaluate_designer_admission_request(DesignerAdmissionRequest::SemanticWgsl);
-    assert!(!report.admitted);
+    assert!(!report.accepted);
 }
 
 fn make_typical_huge_commodity_spec() -> AtlasAdmissionSpec {

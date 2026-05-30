@@ -148,6 +148,8 @@ pub struct PipelineFlags {
     pub use_accumulator_emission: bool,
     /// E-11: routes arena resource-flow allocation through AccumulatorOp OrderBands (default off).
     pub use_accumulator_resource_flow: bool,
+    /// AO-WGSL-0: optional fast path for compatible OrderBand AO plans (default off).
+    pub use_accumulator_wgsl_fast_path: bool,
 }
 
 impl Default for PipelineFlags {
@@ -164,6 +166,7 @@ impl Default for PipelineFlags {
             use_accumulator_transfer: false,
             use_accumulator_emission: false,
             use_accumulator_resource_flow: false,
+            use_accumulator_wgsl_fast_path: false,
         }
     }
 }

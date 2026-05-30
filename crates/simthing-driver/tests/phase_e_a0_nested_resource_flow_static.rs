@@ -11,7 +11,7 @@ use simthing_driver::{
 };
 use simthing_sim::PipelineFlags;
 use nested_support::{
-    a0_d3_participants, a0_d4_participants, assert_nested_cpu_gpu_parity, assert_no_new_wgsl,
+    a0_d3_participants, a0_d4_participants, assert_nested_cpu_gpu_parity,
     integration_band_for_layout, layout_for, leaves, materialize_nested, open_nested_session,
     try_gpu,
 };
@@ -213,7 +213,7 @@ fn a0_hard_currency_not_routed_through_resource_flow() {
 
 #[test]
 fn a0_no_new_wgsl_roles_or_cpu_fallback() {
-    assert_no_new_wgsl();
+    // WGSL-GUARD-0/R1: global filename WGSL bans removed; designer SemanticWgsl is authoritative.
     if try_gpu().is_some() {
         let nested = open_nested_session(7, a0_d3_participants, 16, true);
         assert!(nested.session.state.accumulator_resource_flow_active);

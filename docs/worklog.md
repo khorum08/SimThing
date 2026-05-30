@@ -1,3 +1,7 @@
+# 2026-05-30 — AO-WGSL-0 generic AccumulatorOp WGSL performance path (Tier-2, landed / Pending Opus Review)
+
+- AO-WGSL-0 landed a generic semantic-free AccumulatorOp WGSL performance option with parity and benchmark evidence; designer-authored semantic WGSL remains rejected. Feature-gated fast path (`use_accumulator_wgsl_fast_path`, default off) for compatible OrderBand plans; fallback to legacy path. Tests: AO-WGSL-0 12/12, A-0 19/19, E-11B 11+12, B-0 11/11, C-2 15/15, `cargo check` green. Report: [`phase_ao_wgsl0_accumulator_op_performance_results.md`](tests/phase_ao_wgsl0_accumulator_op_performance_results.md). **Pending Opus review — not accepted.**
+
 # 2026-05-30 — A-0-R1 E-11B WGSL whitelist remediation (verification-only)
 
 - A-0-R1 fixed stale E-11B WGSL whitelist verification after accepted C-0 atlas WGSL, reran A-0/E-11B regressions cleanly, and left A-0 pending design-authority review. Report: [`phase_e_a0_r1_wgsl_whitelist_remediation_results.md`](tests/phase_e_a0_r1_wgsl_whitelist_remediation_results.md).

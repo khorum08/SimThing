@@ -778,31 +778,56 @@ impl WorldGpuState {
 
     /// Dispatch uploaded E-11 resource-flow OrderBand ops (test/session helper).
     pub fn run_resource_flow_bands(&mut self, n_bands: u32, dt: f32) {
+        self.run_resource_flow_bands_with_fast_path(n_bands, dt, false);
+    }
+
+    /// AO-WGSL-0: dispatch with fused multi-band fast path when compatible.
+    pub fn run_resource_flow_bands_with_fast_path(
+        &mut self,
+        n_bands: u32,
+        dt: f32,
+        prefer_fast_path: bool,
+    ) {
         if !self.accumulator_resource_flow_active || n_bands == 0 {
             return;
         }
         let Some(mut runtime) = self.accumulator_runtime.take() else {
             return;
         };
+        let use_fast = prefer_fast_path
+            && crate::accumulator_op::ao_wgsl0_fast_path_compatible(runtime.resource_flow_gpu_ops());
         let Some(mut session) = runtime.take_resource_flow_session() else {
             self.accumulator_runtime = Some(runtime);
             return;
         };
         let eml = runtime.eml_bind_buffers();
-        let mut encoder = self.ctx.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+        let mut encoder = self
+            .ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("resource_flow_bands_encoder"),
-            },
-        );
-        session.encode_orderband_with_eml_into(
-            &self.ctx,
-            &mut encoder,
-            &self.values,
-            &self.previous_values,
-            n_bands,
-            dt,
-            eml,
-        );
+            });
+        if use_fast {
+            session.encode_orderband_fast_into(
+                &self.ctx,
+                &mut encoder,
+                &self.values,
+                &self.previous_values,
+                n_bands,
+                dt,
+                eml,
+            );
+        } else {
+            session.encode_orderband_with_eml_into(
+                &self.ctx,
+                &mut encoder,
+                &self.values,
+                &self.previous_values,
+                n_bands,
+                dt,
+                eml,
+            );
+        }
         self.ctx.queue.submit(Some(encoder.finish()));
         let _ = self.ctx.device.poll(wgpu::Maintain::Wait);
         runtime.restore_resource_flow_session(Some(session));

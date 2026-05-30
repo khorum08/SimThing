@@ -362,7 +362,7 @@ fn amount_at_ceiling(kind: u32, hi: f32, x: f32) -> bool {
     return false;
 }
 
-fn gate_matches_bandwise(op: AccumulatorOpGpu) -> bool {
+fn gate_matches_for_band(op: AccumulatorOpGpu, current_band: u32) -> bool {
     // Band-wise gating only — threshold ops are handled by their own dispatch
     // path in `execute_ops`. Keeping the two gate families separate at the
     // dispatch level avoids the misleading "always-true" return for threshold
@@ -370,7 +370,11 @@ fn gate_matches_bandwise(op: AccumulatorOpGpu) -> bool {
     if (op.gate_kind == GATE_ALWAYS) {
         return true;
     }
-    return op.gate_kind == GATE_ORDER_BAND && op.gate_a == tick_params.current_band;
+    return op.gate_kind == GATE_ORDER_BAND && op.gate_a == current_band;
+}
+
+fn gate_matches_bandwise(op: AccumulatorOpGpu) -> bool {
+    return gate_matches_for_band(op, tick_params.current_band);
 }
 
 fn threshold_crossed(prev: f32, curr: f32, threshold: f32, direction: u32) -> bool {
@@ -647,15 +651,7 @@ fn maybe_emit_event(op_idx: u32, write_value: f32, op: AccumulatorOpGpu) {
     }
 }
 
-@compute @workgroup_size(64)
-fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let op_idx = gid.x;
-    if (op_idx >= tick_params.n_ops) {
-        return;
-    }
-
-    let op = ops[op_idx];
-
+fn dispatch_one_op_for_band(op_idx: u32, op: AccumulatorOpGpu, current_band: u32) {
     // C-2 folded intent deltas: direct affine update on one cell, no targets.
     if (op.combine_kind == COMBINE_AFFINE_INTENT) {
         let idx = linear_idx(op.source_slot, op.source_col);
@@ -724,7 +720,7 @@ fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
 
-    if (!gate_matches_bandwise(op)) {
+    if (!gate_matches_for_band(op, current_band)) {
         return;
     }
 
@@ -737,6 +733,31 @@ fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
     apply_targets(target_value, op);
     apply_consume(write_value, op);
     maybe_emit_event(op_idx, write_value, op);
+}
+
+@compute @workgroup_size(64)
+fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let op_idx = gid.x;
+    if (op_idx >= tick_params.n_ops) {
+        return;
+    }
+
+    let op = ops[op_idx];
+    dispatch_one_op_for_band(op_idx, op, tick_params.current_band);
+}
+
+// AO-WGSL-0: semantic-free generic OrderBand entry (single band per dispatch).
+// Multi-band sequences are driven from Rust with preserved global band order.
+// Band count for batching lives in `tick_params._pad1` for harness reporting only.
+@compute @workgroup_size(64)
+fn execute_orderband_bands(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let op_idx = gid.x;
+    if (op_idx >= tick_params.n_ops) {
+        return;
+    }
+
+    let op = ops[op_idx];
+    dispatch_one_op_for_band(op_idx, op, tick_params.current_band);
 }
 
 @group(0) @binding(0) var<storage, read_write> summary_values: array<atomic<i32>>;

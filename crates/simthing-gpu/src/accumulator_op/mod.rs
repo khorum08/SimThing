@@ -12,6 +12,7 @@ mod input_list_table;
 mod runtime;
 mod session;
 mod types;
+mod wgsl_path;
 mod world_summary;
 
 pub use cpu_oracle::{
@@ -35,6 +36,10 @@ pub use runtime::{
 };
 pub use session::{
     set_debug_readback_allowed, AccumulatorOpSession, AccumulatorOpSessionError, WORKGROUP_SIZE,
+};
+pub use wgsl_path::{
+    classify_ao_wgsl0_plan, ao_wgsl0_fast_path_compatible, AoWgsl0Compatibility,
+    AoWgsl0FallbackReason, AoWgsl0PlanShape, AO_WGSL0_ENTRY_POINT, AO_WGSL0_N_BANDS_UNIFORM_FIELD,
 };
 pub use types::AccumulatorOpGpu;
 pub use types::{
