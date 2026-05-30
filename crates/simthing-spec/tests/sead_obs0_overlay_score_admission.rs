@@ -560,3 +560,13 @@ fn sead_act3_rejects_sqrt_artifact_binding() {
     bad.exact_sqrt_artifact = Some(exact_sqrt_f_artifact_descriptor());
     assert_admission_err(&bad, "must not bind sqrt artifact");
 }
+
+#[test]
+fn sead_act4_does_not_add_runtime_descriptor() {
+    let act4 = landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|desc| desc.id.contains("act4") || desc.id.contains("validation_corpus"));
+    assert!(act4.is_none(), "ACT-4 corpus must not add a landed kernel descriptor");
+    assert!(act3().default_off);
+    println!("sead_act4_spec: corpus_only=true no_runtime_descriptor=true");
+}

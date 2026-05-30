@@ -1,3 +1,7 @@
+# 2026-05-29 — SEAD-ACT-4 Economic V1-style fixture validation corpus (Tier-2, landed)
+
+- SEAD-ACT-4 added default-off authorable validation corpus `sead_act4_economic_fixture_validation_corpus_v1` (18 rows) over ACT-3 numeric fixture records; CPU oracle exact; stable fingerprint; no new WGSL, descriptor, or runtime wiring.
+
 # 2026-05-29 — SEAD-ACT-3 Economic V1-style fixture substrate records (Tier-2, landed)
 
 - SEAD-ACT-3 added default-off `m_jit_sead_act3_economic_fixture_records` fixture; ACT-2 admission_record → Economic V1-style fixture_record under fixed integer lookup/overflow contracts; record_code/priority/tier/flags exact; 6-pass ACT-2/full-chain smokes and 34k/warm benchmarks recorded; no CPU planner or production wiring added.
