@@ -164,7 +164,7 @@ themselves.
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| A-0 | Static nested Resource Flow first slice: nested arena materialization + D=3/D=4 GPU parity + per-parent contiguous SlotRange proof | Done / Pending Opus Review | — | PR | [`phase_e_a0_nested_resource_flow_static_results.md`](tests/phase_e_a0_nested_resource_flow_static_results.md) |
+| A-0 | Static nested Resource Flow first slice: nested arena materialization + D=3/D=4 GPU parity + per-parent contiguous SlotRange proof | Done / Pending Opus Review | — | #358 | [`phase_e_a0_nested_resource_flow_static_results.md`](tests/phase_e_a0_nested_resource_flow_static_results.md) |
 
 ## 8. Line B — Discrete hard-currency ordering ladder (D-2 / D-2a) — **B-0 ACCEPTED; Line B CLOSED at narrow smoke level**
 

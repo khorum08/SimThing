@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-30  
 **Base HEAD:** `3bda84077e346101f875ce0e787212b840d119fb` (post B-0-ACCEPT-0)  
-**Branch:** `a0-nested-resource-flow-static`  
+**PR:** #358 (merged to `master`)  
 **Class:** GpuVerifiedApproximate (leaf allocated_flow bit-exact in fixtures)  
 **Verdict:** **PASS — implemented; pending Opus/design-authority review** (not accepted)
 
