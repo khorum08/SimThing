@@ -1433,54 +1433,63 @@ impl AccumulatorOpSession {
     }
 
     /// Encode C-8c transfer ops into the caller's command encoder (after intensity, before overlay).
+    /// Dispatches `n_bands` OrderBand passes in ascending order within the encoder.
     pub fn encode_transfer_into(
         &mut self,
         ctx: &GpuContext,
         encoder: &mut wgpu::CommandEncoder,
         values: &Buffer,
         previous_values: &Buffer,
+        n_bands: u32,
         eml: Option<(&Buffer, &Buffer)>,
         input_list: Option<&Buffer>,
     ) {
-        if self.n_ops == 0 {
+        if self.n_ops == 0 || n_bands == 0 {
             return;
         }
         self.last_pass_time_us = None;
 
-        let tick_params = AccumulatorTickParams {
-            n_ops: self.n_ops,
-            current_band: 0,
-            n_slots: self.n_slots,
-            n_dims: self.n_dims,
-            emission_capacity: self.emission_capacity,
-            threshold_emission_capacity: self.threshold_emission_capacity,
-            dt_bits: 0,
-            _pad1: 0,
-        };
-        let tick_uniform = ctx
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("accumulator_transfer_tick_uniform"),
-                contents: bytemuck::bytes_of(&tick_params),
-                usage: BufferUsages::UNIFORM,
-            });
-        let execute_bind_group = self.create_execute_bind_group_with_uniform(
-            ctx,
-            values,
-            previous_values,
-            &tick_uniform,
-            eml,
-            input_list,
-        );
-
-        let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-            label: Some("accumulator_transfer_pass"),
-            timestamp_writes: None,
-        });
-        pass.set_pipeline(&self.execute_pipeline);
-        pass.set_bind_group(0, &execute_bind_group, &[]);
         let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
-        pass.dispatch_workgroups(groups, 1, 1);
+        let mut band_uniforms = Vec::with_capacity(n_bands as usize);
+
+        for band in 0..n_bands {
+            let tick_params = AccumulatorTickParams {
+                n_ops: self.n_ops,
+                current_band: band,
+                n_slots: self.n_slots,
+                n_dims: self.n_dims,
+                emission_capacity: self.emission_capacity,
+                threshold_emission_capacity: self.threshold_emission_capacity,
+                dt_bits: 0,
+                _pad1: 0,
+            };
+            let tick_uniform = ctx
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("accumulator_transfer_tick_uniform"),
+                    contents: bytemuck::bytes_of(&tick_params),
+                    usage: BufferUsages::UNIFORM,
+                });
+            let execute_bind_group = self.create_execute_bind_group_with_uniform(
+                ctx,
+                values,
+                previous_values,
+                &tick_uniform,
+                eml,
+                input_list,
+            );
+            band_uniforms.push(tick_uniform);
+
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("accumulator_transfer_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.execute_pipeline);
+            pass.set_bind_group(0, &execute_bind_group, &[]);
+            pass.dispatch_workgroups(groups, 1, 1);
+        }
+
+        drop(band_uniforms);
     }
 
     /// Encode C-8d emission ops into the caller's command encoder (after transfer, before overlay).

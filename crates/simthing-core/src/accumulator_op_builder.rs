@@ -62,6 +62,9 @@ pub struct DiscreteTransferRegistration {
     pub target_slot: u32,
     pub target_col: u32,
     pub amount: f32,
+    /// Authored D-2a OrderBand gate identity (default 0).
+    #[serde(default)]
+    pub order_band: u32,
 }
 
 fn validate_discrete_transfer_amount(amount: f32) -> Result<(), AccumulatorOpBuilderError> {
@@ -308,13 +311,24 @@ pub fn rebuild_conjunctive_recipe_ops(
 pub fn discrete_transfer_registration_to_op(
     reg: &DiscreteTransferRegistration,
 ) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
-    AccumulatorOpBuilder::resource_transfer_discrete(
+    validate_discrete_transfer_amount(reg.amount)?;
+    validate_discrete_transfer_cells(
         reg.source_slot,
         reg.source_col,
         reg.target_slot,
         reg.target_col,
-        reg.amount,
-    )
+    )?;
+    Ok(AccumulatorOp {
+        source: SourceSpec::SlotValue {
+            slot: reg.source_slot,
+            col: reg.source_col,
+        },
+        combine: CombineFn::Identity,
+        gate: GateSpec::OrderBand(reg.order_band),
+        scale: ScaleSpec::Constant(reg.amount),
+        consume: ConsumeMode::SubtractFromSource,
+        targets: vec![(reg.target_slot, reg.target_col)],
+    })
 }
 
 /// Session-open / boundary refresh: compile discrete transfer registrations.
@@ -492,6 +506,7 @@ mod tests {
                 target_slot: 0,
                 target_col: 1,
                 amount: 3.0,
+                order_band: 0,
             },
             DiscreteTransferRegistration {
                 source_slot: 1,
@@ -499,6 +514,7 @@ mod tests {
                 target_slot: 2,
                 target_col: 0,
                 amount: 7.0,
+                order_band: 0,
             },
         ];
         let ops = rebuild_discrete_transfer_ops(&regs).unwrap();

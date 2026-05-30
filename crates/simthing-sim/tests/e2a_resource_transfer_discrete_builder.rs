@@ -93,6 +93,7 @@ fn e2a_builder_matches_c8c_transfer_planner_shape() {
         target_slot: 0,
         target_col: 1,
         amount: 25.0,
+        order_band: 0,
     };
     let builder_op = try_resource_transfer_discrete(
         reg.source_slot,
@@ -128,6 +129,7 @@ fn e2a_transfer_executes_through_accumulator_op() {
         target_slot: 0,
         target_col: 1,
         amount: 25.0,
+        order_band: 0,
     };
     let op = try_resource_transfer_discrete(
         reg.source_slot,

@@ -26,7 +26,7 @@ fn max_transfer_band(
 ) -> u32 {
     transfers
         .iter()
-        .map(|_| 0u32)
+        .map(|t| t.order_band)
         .chain(recipes.iter().map(|_| 0u32))
         .max()
         .unwrap_or(0)
@@ -129,6 +129,7 @@ mod tests {
             target_slot: 1,
             target_col: 0,
             amount: 1.0,
+            order_band: 0,
         }];
         let mut flat = vec![5.0, 0.0];
         let before = flat.clone();

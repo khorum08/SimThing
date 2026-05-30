@@ -438,6 +438,7 @@ impl Pipelines {
                     &mut encoder,
                     &state.values,
                     &state.previous_values,
+                    state.accumulator_transfer_bands,
                     eml,
                     input_list,
                 );

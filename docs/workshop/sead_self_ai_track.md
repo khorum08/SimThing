@@ -125,7 +125,7 @@ required — first-slice mapping, gradients, EML gadgets, and exact sqrt are all
 |---|---|---|
 | E-11B nested paused | Paused on "no named scenario" | Frontier V1 uses **flat-star depth-2**, so nested is **not needed** → E closes at the accepted FlatStarResourceFlow posture |
 | E-11B-5 dynamic nested enrollment | Requires a named nested scenario | Stays deferred — Frontier V1 doesn't need it |
-| D-2a hard-currency ordering | Requires a named hard-currency scenario | Stays deferred |
+| D-2a hard-currency ordering | B-0 Line B/T evidence landed (pending review) | B-0 does not alter SEAD self-AI, ClauseThing/L3, Line A, or Line C runtime posture |
 
 **E closes when:** Frontier V1's flat-star economy runs as part of the integrated scenario,
 confirming **FlatStarResourceFlow is sufficient for the first named scenario**. E is then closed
