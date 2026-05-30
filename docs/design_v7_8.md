@@ -15,6 +15,13 @@
 > lines were promoted out of it) · [`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md) ·
 > [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md) · [`invariants.md`](invariants.md) ·
 > [`workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md).
+>
+> **▶ Operating doctrine — §2 (read first).** Guardrails live at the designer/spec-admission layer;
+> the WGSL ban is on *semantic* WGSL only (generic non-semantic WGSL is admissible with CPU-oracle
+> parity); EML gadgets/formula classes are admitted at the designer layer; Tier-1/Tier-2 gating +
+> doc hygiene + anti-loop apply; and the §2.5 non-negotiables (oracle parity, `simthing-sim`
+> semantic-free, opt-in/default-off, artifact-backed exact authority, no CPU planner) are untouched.
+> These govern all v7.8 work **and** the simthing-spec → ClauseThing buildout.
 
 ---
 
@@ -36,7 +43,86 @@ as designers author richer scenarios (multi-theater maps, deep economic hierarch
 ordering), they will *name the need* that unblocks the matching v7.8 line. Until then, v7.8 stays
 parked and the bounded posture holds.
 
-## 2. Line A — Nested Resource Flow (promotes **E-11B / E-11B-5**)
+## 2. Operating doctrine — read before any v7.8 / simthing-spec / ClauseThing work
+
+These rules govern all v7.8 work **and** the downstream simthing-spec → ClauseThing buildout. They
+are **surfaced here for immediate visibility**; the binding homes are `invariants.md` and
+`design_v7_7.md` §5 (cited per item). The throughline: **as work moves to the designer-facing
+surface, guardrails relocate to spec admission — they do not disappear, and they do not stay as
+hard-coded runtime/fixture special-cases.**
+
+### 2.1 Guardrails live at the designer/spec-admission layer (the doctrine)
+
+**Guardrail placement is two-layered** (`invariants.md` "Guardrail placement is two-layered"): the
+**RON/Designer/spec layer owns expressive policy and rejects unsafe *authoring* at import**
+(unbounded fanout, cross-entity writes, production commitment emission, Resource-Flow bypass,
+coupling cycles without delay, semantic leakage, out-of-class formulas); the **runtime enforces
+hard safety unconditionally** (horizon caps, source-cap clamp, finite/column validation, ping-pong
+correctness, bounded clamps) as the *unconditional last line*. Authoring is never trusted to have
+been safe. **This is the optimal home for guardrails** — reject early at the designer surface with
+good diagnostics; the runtime catches anything that slips. The CLAUSE-SPEC work makes this literal:
+the Frontier fixtures' hard-coded protections become **admission rejections**.
+
+### 2.2 The WGSL ban is on *semantic* WGSL only — generic non-semantic WGSL is admissible
+
+There is **no blanket WGSL ban.** What is banned is **semantic WGSL**: gameplay/map/faction/AI
+concepts in shader text (`invariants.md` "No semantic WGSL"). **Generic, semantic-free shader
+extensions are admissible** — new parameters, operator variants, JIT-emitted straight-line kernels —
+**when** (a) they carry no map/faction/AI semantics, (b) they are paired with **CPU-oracle parity**,
+and (c) their meaning is **pinned entirely at the designer/spec admission layer** (the shader sees
+only floats/indices). See `invariants.md` "Dense local fields use the generic primitive only" +
+`workshop/m5_gradient_extraction_design_note.md` §1, and the proven precedents: the M-JIT generic
+EvalEML WGSL emission and the artifact-backed exact `sqrt` (Candidate F, hash `e2e9e27601ee2e13`,
+admitted through the descriptor surface). New generic WGSL is a Tier-2 gate, not a prohibition.
+
+### 2.3 EML gadgets are admissible at the designer layer (relaxed from the legacy whitelist)
+
+The legacy `EmlExpressionRegistry` whitelist rejection was a **wrong-layer** decision, not a runtime
+safety property (`invariants.md` "Field formula-class admission is a designer-layer policy"). So:
+- **Formula classes** (`field_pressure` / `field_urgency` / `field_decay` / `bounded_field_update`)
+  are admitted at the **RON/Designer/spec layer** (C-8 `register_formula` is runtime-sufficient).
+- **EML gadgets** compile to a postfix subgraph over the **existing `EvalEML` opcode set** — **no
+  new WGSL, no per-gadget GPU kernel, no new opcode** (`invariants.md` "Gadgets are spec-layer
+  node-template macros"). Tier-1 stateless (FieldSampler / WeightedAccumulator / algebraic SoftStep)
+  and Tier-2 temporal (VelocityMonitor / Decay-EMA / BoundedFeedback / Hysteresis / explicit-velocity
+  Acceleration) are admitted per the accepted EML-GADGET-1/2 gates.
+- Admission validates at the designer layer (kinds, column bounds, finite/`>0` params, matched
+  input/weight counts) and a **bounded-feedback contract** governs any recurrent gadget
+  (default `0 ≤ decay < 1`, explicit clamp when feeding a hard threshold, no positive unbounded
+  recurrence) — plus **stateful-sequence CPU-oracle parity**. See `workshop/eml_gadget_library_design_note.md`.
+
+### 2.4 Gating & documentation hygiene (constitutional, `design_v7_7.md` §5)
+
+- **Two lanes:** **Tier-1 fast lane** (within accepted design, generic substrate, opt-in/default-off,
+  oracle-parity-backed, reversible) ships as **one PR + one test report + one status-table row**.
+  **Tier-2 gated** (touches a binding invariant, introduces default-on/default wiring, new
+  architecture, open design question, or prohibition-list item) keeps design-review → acceptance →
+  impl. **Any change to `invariants.md` is Tier-2.** Closure/acceptance memos are **design-authority
+  + product only** — implementer fixtures may report `ReplayAccepted`/`GpuVerified` but may not
+  declare a phase closed.
+- **Doc discipline:** standing posture asserted **once** per PR test report, not duplicated across
+  files; active docs carry a compact status table, append-only history in `worklog.md`; collapse
+  verbose blocks when touched.
+- **Anti-loop stop rule:** an agent about to write a *third* meta-document for one slice, or spawn a
+  consumer-less hygiene/prooflet pass, is in the ceremony loop — **ship the code / orient to the
+  named consumer instead.** Operational detail: `workshop/phase_m_gating_and_doc_policy.md`.
+
+### 2.5 Non-negotiable rigor (relaxation does **not** touch these)
+
+The relaxations above are about *where* rules live and *what* is admissible — never about dropping
+safety. These stay binding regardless:
+- **CPU-oracle bit-exact parity** where a kernel claims `ExactDeterministic`; honest classification
+  (`ApproximateJitOnly` / `ReplayAccepted` / `GpuVerified`) otherwise — no overclaiming.
+- **`simthing-sim` stays semantic-/arena-/map-/Gadget-/Personality-free.** All semantics compile away
+  at the spec/driver layer to flat `AccumulatorOp` / overlay / threshold registrations.
+- **Opt-in / default-off.** No default `SimSession` wiring, scheduler, cache, or economy→mapping
+  production bridge without its own named gate.
+- **Exact authority is artifact-backed and proof-gated** (the `sqrt` Candidate F precedent): exactness
+  is earned by exhaustive proof, hash-pinned, granted at admission — not asserted.
+- **No CPU planner / CPU urgency / CPU commitment emission.** AI is a SimThing: decisions are
+  GPU-resident threshold crossings.
+
+## 3. Line A — Nested Resource Flow (promotes **E-11B / E-11B-5**)
 
 - **What:** hierarchical allocation deeper than the accepted flat-star `depth-2`
   (`faction → district`): true nested arenas (`faction → planet → district → factory`), with
@@ -57,7 +143,7 @@ parked and the bounded posture holds.
   `Balance`), incremental subtree-scoped registry refresh on fission, `simthing-sim` stays
   arena-ignorant, no new `AccumulatorRole`, no CPU fallback.
 
-## 3. Line B — Discrete hot-pool / hard-currency ordering (promotes **D-2 / D-2a**)
+## 4. Line B — Discrete hot-pool / hard-currency ordering (promotes **D-2 / D-2a**)
 
 - **What:** sequential cross-band ordering for **discrete** hard-currency transactions
   (construction commits, treaty payments, emergency spend) at contention scales that the per-tick
@@ -77,7 +163,7 @@ parked and the bounded posture holds.
   global Resource-Flow default-on; no new `AccumulatorRole`; no CPU production fallback;
   `simthing-sim` stays spec-free.
 
-## 4. Line C — Atlas / multi-theater mapping (promotes **M-4 / M-4A**)
+## 5. Line C — Atlas / multi-theater mapping (promotes **M-4 / M-4A**)
 
 - **What:** atlas batching — packing many scheduled RegionCell tiles into one atlas with one
   dispatch — to scale mapping beyond the accepted **single ≤32×32 theater** to multi-theater.
@@ -100,16 +186,14 @@ parked and the bounded posture holds.
   identity (**M-5 / `source_mask`**) are *not* part of v7.8 — they remain separately deferred
   under the Mapping ADR until their own named needs arise.
 
-## 5. Constitutional posture (inherited from v7.7, unchanged)
+## 6. Constitutional posture
 
-v7.8 relaxes nothing on its own. Every line, when it eventually starts, stays inside the v7.7
-baseline: opt-in / default-off; `simthing-sim` semantic-/arena-/map-free; no semantic WGSL; no new
-`AccumulatorRole`; CPU-oracle bit-exact parity where exact; and — per the v7.7 doctrine —
-**guardrails placed at the designer/spec-admission layer** (unsafe authoring rejected at import,
-runtime as the unconditional last line). Promotion to v7.8 changes a line's *home and visibility*,
-not its authorization: each remains Tier-2 and gated on its named scenario + acceptance.
+The full operating doctrine is **§2** (read it first). In short: v7.8 relaxes nothing on its own —
+each line stays inside the v7.7 baseline and the §2.5 non-negotiables, with guardrails at the
+designer/spec-admission layer (§2.1). Promotion to v7.8 changes a line's *home and visibility*, not
+its authorization: each remains Tier-2 and gated on its named scenario + acceptance.
 
-## 6. Sequencing
+## 7. Sequencing
 
 v7.8 runs **parallel to and mostly downstream of** the simthing-spec / ClauseThing direction
 (`sead_self_ai_track.md` §11 → simthing-spec buildout → ClauseThing-facing authoring). The
@@ -118,7 +202,7 @@ A–C. Do **not** start any v7.8 line speculatively or to escape a hygiene/closu
 line only when its named scenario exists and its gate passes. The AccumulatorOp v2 production plan
 stays **CLOSED** — these three lines live here now.
 
-## 7. Tracking table
+## 8. Tracking table
 
 | Line | Promoted from | Status | Unblocking named scenario |
 |---|---|---|---|
