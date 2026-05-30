@@ -125,6 +125,10 @@ pub const SEAD_ACT0_DESCRIPTOR_ID: &str = "m_jit_sead_act0_numeric_proposals";
 pub const SEAD_ACT0_LABEL: &str = "SeadNumericProposals";
 pub const SEAD_ACT0_CODE_COUNT: u32 = SEAD_EVENT2_CODE_COUNT;
 
+pub const SEAD_ACT1_DESCRIPTOR_ID: &str = "m_jit_sead_act1_phase_e_proposal_consumer";
+pub const SEAD_ACT1_LABEL: &str = "SeadPhaseEProposalConsumer";
+pub const SEAD_ACT1_ADMITTED_TABLE_SIZE: u32 = 16;
+
 /// Compacted event membership authority (SEAD-EVENT-0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventCompactionMembershipAuthority {
@@ -179,6 +183,20 @@ pub enum NumericProposalMembershipAuthority {
 pub enum NumericProposalOrderAuthority {
     /// Atomic slot assignment does not guarantee proposal order.
     UnspecifiedAtomicOrder,
+}
+
+/// Phase E proposal consumer input authority (SEAD-ACT-1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PhaseEProposalConsumerInputAuthority {
+    /// Proposal records form an exact multiset under capacity; order is not specified.
+    ExactAuthoritativeUnordered,
+}
+
+/// Phase E proposal summary ordering authority (SEAD-ACT-1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PhaseEProposalSummaryOrderAuthority {
+    /// Summary reductions are order-invariant over scanned proposal records.
+    OrderInvariantExact,
 }
 
 fn artifact_err(kernel: &str, reason: impl Into<String>) -> SpecError {
@@ -1323,8 +1341,76 @@ pub fn validate_sead_act0_numeric_proposals_contract(
     Ok(())
 }
 
+fn has_phase_e_proposal_consumer_reads(spec: &KernelDescriptorSpec) -> bool {
+    spec.reads.iter().any(|read| read == "proposal_count")
+        && spec.reads.iter().any(|read| read == "proposal_overflow_flag")
+        && spec.reads.iter().any(|read| read == "proposal_record")
+}
+
+/// True when the descriptor is the landed SEAD Phase E proposal consumer kernel.
+pub fn is_sead_act1_phase_e_proposal_consumer_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == SEAD_ACT1_DESCRIPTOR_ID
+        && has_phase_e_proposal_consumer_reads(spec)
+        && spec.writes.iter().any(|out| out.name == "accepted_count")
+        && spec.writes.iter().any(|out| out.name == "proposal_summary")
+}
+
+/// Validate landed SEAD-ACT-1 Phase E proposal consumer descriptor pins.
+pub fn validate_sead_act1_phase_e_proposal_consumer_contract(
+    spec: &KernelDescriptorSpec,
+) -> Result<(), SpecError> {
+    if spec.id != SEAD_ACT1_DESCRIPTOR_ID {
+        return Ok(());
+    }
+    if !has_phase_e_proposal_consumer_reads(spec) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD Phase E proposal consumer requires proposal_count, proposal_overflow_flag, proposal_record reads",
+        ));
+    }
+    if spec.exact_sqrt_artifact.is_some() {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD Phase E proposal consumer must not bind sqrt artifact",
+        ));
+    }
+    if spec.score_authority_contract.is_some() {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD Phase E proposal consumer must not declare score authority contract",
+        ));
+    }
+    for (name, msg) in [
+        ("accepted_count", "exact-authoritative accepted_count"),
+        ("ignored_count", "exact-authoritative ignored_count"),
+        ("invalid_count", "exact-authoritative invalid_count"),
+        ("summary_score", "exact-authoritative summary_score"),
+        ("max_score", "exact-authoritative max_score"),
+        ("proposal_summary", "exact-authoritative proposal_summary"),
+    ] {
+        match spec
+            .writes
+            .iter()
+            .find(|out| out.name == name)
+            .map(|out| out.authority)
+        {
+            Some(OutputAuthority::ExactAuthoritative) => {}
+            _ => {
+                return Err(artifact_err(
+                    &spec.id,
+                    format!("SEAD Phase E proposal consumer requires {msg}"),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
 pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
+    if spec.id == SEAD_ACT1_DESCRIPTOR_ID {
+        return validate_sead_act1_phase_e_proposal_consumer_contract(spec);
+    }
     if spec.id == SEAD_ACT0_DESCRIPTOR_ID {
         return validate_sead_act0_numeric_proposals_contract(spec);
     }
@@ -1734,6 +1820,35 @@ pub fn sead_act0_numeric_proposals_kernel_descriptor() -> KernelDescriptorSpec {
             exact_out("proposal_count"),
             exact_out("proposal_overflow_flag"),
             exact_out("proposal_record"),
+        ],
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
+        mag2_source_contract: None,
+        score_authority_contract: None,
+    }
+}
+
+/// Build the landed SEAD Phase E numeric proposal consumer kernel descriptor (SEAD-ACT-1).
+pub fn sead_act1_phase_e_proposal_consumer_kernel_descriptor() -> KernelDescriptorSpec {
+    KernelDescriptorSpec {
+        id: SEAD_ACT1_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads: vec![
+            "proposal_count".to_string(),
+            "proposal_overflow_flag".to_string(),
+            "proposal_record".to_string(),
+        ],
+        writes: vec![
+            exact_out("accepted_count"),
+            exact_out("ignored_count"),
+            exact_out("invalid_count"),
+            exact_out("summary_score"),
+            exact_out("max_score"),
+            exact_out("proposal_summary"),
         ],
         native_math: NativeMathClass::None,
         semantic_free: true,
