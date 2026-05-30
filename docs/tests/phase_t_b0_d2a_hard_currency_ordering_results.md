@@ -3,6 +3,7 @@
 **Date:** 2026-05-30  
 **Base HEAD (pre-B-0 branch):** `ce99eafa3d61909b0fb33576156a47632fc44978` (C-2-ACCEPT-0)  
 **Branch:** `b0-d2a-hard-currency-ordering`  
+**PR:** #357 (merged to `master`)  
 **Class:** GpuVerified (transfer OrderBand path) + exact CPU oracle parity  
 **Verdict:** **PASS — implemented; pending Opus/design-authority review** (not accepted)
 

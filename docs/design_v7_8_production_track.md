@@ -179,7 +179,7 @@ themselves.
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| B-0 | Narrow driver-only D-2a hard-currency ordering smoke: authored order_band wiring + deterministic boundary schedule + exact oracle parity | Done / Pending Opus Review | — | PR | [`phase_t_b0_d2a_hard_currency_ordering_results.md`](tests/phase_t_b0_d2a_hard_currency_ordering_results.md) |
+| B-0 | Narrow driver-only D-2a hard-currency ordering smoke: authored order_band wiring + deterministic boundary schedule + exact oracle parity | Done / Pending Opus Review | — | #357 | [`phase_t_b0_d2a_hard_currency_ordering_results.md`](tests/phase_t_b0_d2a_hard_currency_ordering_results.md) |
 
 ## 9. Line C — Atlas / multi-theater mapping ladder (M-4 / M-4A) — **NamedScenarioAccepted; C-0 OPEN (priority)**
 
