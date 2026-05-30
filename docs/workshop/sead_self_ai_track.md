@@ -223,10 +223,22 @@ authority, and Phase E closes at FlatStarResourceFlow.**
 
 **Ruling:**
 - **Substrate (mapping + flat-star RF): CLOSED, accepted.** Phase E closed at flat-star.
-- **SEAD self-AI vertical: NOT closed on replay.** Reclassify the full GPU run from "optional" to
-  **required — `FrontierV1-5`**: one live GPU-resident execution of the integrated SEAD route
-  (score→threshold→proposal→dispatch) inside Frontier. **Non-blocking for moving on, but binding
-  before the self-AI loop is treated as production-proven** (before ClauseThing or any real scenario
-  leans on it). Until then the self-AI loop is `ReplayAccepted`, not GpuVerified.
-- The status table reflects "substrate accepted; self-AI loop pending `FrontierV1-5`," not a blanket
-  "M/E closed."
+- **SEAD self-AI loop: keep the honest label** — `ReplayAccepted`, not `GpuVerified`, inside
+  Frontier. The books stay straight so a later consumer (ClauseThing / a real scenario) does not
+  inherit a hidden overclaim.
+
+**Amendment (Opus, 2026-05-30, after product feedback).** The product owner deliberately relaxed
+the guardrails to break a real failure mode: **codex stalls on "no consumer" and loops on hygiene
+handoffs because it has no forward scenario in its horizon (ClauseThing is parked/out of view), and
+self-acceptance is how it escapes the loop.** A standalone `FrontierV1-5` "prove the loop on GPU"
+gate would *re-create that consumer-less stall*. So:
+- **`FrontierV1-5` is withdrawn as a standalone hygiene gate.** The live GPU run of the self-AI loop
+  is instead **folded into the first scenario that consumes it** — it gets proven because something
+  depends on its output, not as proof-for-proof's-sake.
+- **Forward horizon (give codex a target, not a loop): `FrontierV2` — a multi-tick *closed-loop*
+  run** where field-derived self-AI proposals drive unit movement/dispatch that feeds back into the
+  field/economy on the next tick, observed for emergent behavior. `FrontierV2` *requires* the self-AI
+  loop to run GPU-resident (it is the consumer), so the live proof comes for free, and it is the
+  natural stepping-stone to authoring the same scenario in **ClauseThing** later.
+- Until `FrontierV2`, the self-AI loop stays honestly `ReplayAccepted` and **M/E "substrate closed,
+  move on" stands.** This is not a re-block — it is replacing a hygiene gate with a consumer.
