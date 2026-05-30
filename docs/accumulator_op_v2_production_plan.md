@@ -2498,6 +2498,7 @@ Further SEAD work remains allowed only when it advances a usable SEAD toolset or
 - **SEAD-ACT-1 — Phase E-style numeric proposal consumer (PASS):** `m_jit_sead_act1_phase_e_proposal_consumer`; consumes ACT-0 proposal records; fixed integer admitted-code table; accepted/ignored/invalid/summary/max ExactAuthoritative under overflow contract; summary order-invariant; 34k bucket→reduce→propose→consume warm ~1.35 ms/pipeline; no CPU planner/scheduler/cache/default wiring/bridge. Report: [`docs/tests/phase_m_sead_act1_phase_e_proposal_consumer_results.md`](tests/phase_m_sead_act1_phase_e_proposal_consumer_results.md).
 - **SEAD-ACT-2 — fixture-local proposal admission records (PASS):** `m_jit_sead_act2_proposal_admission_records`; consumes ACT-1 proposal_summary; fixed integer admission thresholds; admission record ExactAuthoritative under rule/overflow contract; 34k bucket→reduce→propose→consume→admit warm ~1.59 ms/pipeline; no CPU planner/scheduler/cache/default wiring/bridge. Report: [`docs/tests/phase_m_sead_act2_proposal_admission_records_results.md`](tests/phase_m_sead_act2_proposal_admission_records_results.md).
 - **SEAD-ACT-3 — Economic V1-style fixture substrate records (PASS):** `m_jit_sead_act3_economic_fixture_records`; consumes ACT-2 admission_record; fixed integer lookup table; fixture record ExactAuthoritative under mapping/overflow contract; 34k bucket→reduce→propose→consume→admit→fixture warm ~1.19 ms/pipeline; no CPU planner/scheduler/cache/default wiring/bridge. Report: [`docs/tests/phase_m_sead_act3_economic_fixture_records_results.md`](tests/phase_m_sead_act3_economic_fixture_records_results.md).
+- **SEAD-ACT-4 — Economic V1-style fixture validation corpus (PASS):** `sead_act4_economic_fixture_validation_corpus_v1`; validates ACT-3 fixture records against 18-row authorable expected-output corpus via CPU oracle; no new WGSL/descriptor/runtime gate. Report: [`docs/tests/phase_m_sead_act4_economic_fixture_validation_corpus_results.md`](tests/phase_m_sead_act4_economic_fixture_validation_corpus_results.md).
 
 **SEAD-ACT-1 — Phase E-style numeric proposal consumer**
 
@@ -2510,6 +2511,10 @@ SEAD-ACT-2 verifies that Phase E-style numeric proposal summaries can be convert
 **SEAD-ACT-3 — Economic V1-style fixture substrate records**
 
 SEAD-ACT-3 verifies that fixture-local proposal admission records can be converted into Economic V1-style numeric substrate records under fixed integer mapping contracts. This supports future Economic V1 / SEAD-economics authoring by providing a reusable numeric fixture artifact shape, but it does not add production runtime wiring, semantic WGSL, CPU planner behavior, scheduler/cache, simthing-sim awareness, or economy bridge wiring.
+
+**SEAD-ACT-4 — Economic V1-style fixture validation corpus**
+
+SEAD-ACT-4 validates already-landed ACT-3 numeric fixture records against a stable authorable expected-output corpus. This is fixture-authoring evidence for future Phase E/Economic V1 work, not runtime implementation. No production wiring, semantic WGSL, scheduler/cache/default SimSession behavior, simthing-sim awareness, or economy bridge wiring is authorized. ACT-4 does not open a new runtime implementation gate.
 
 Further SEAD actionability work must either: (1) produce a reusable numeric substrate consumed by Phase E fixtures, (2) directly close a Phase M/E blocker, or (3) be paused until a named product scenario requires runtime integration.
 - Native sqrt remains `ApproximateJitOnly`; F exact path requires artifact-backed descriptor admission.
