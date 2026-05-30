@@ -2579,6 +2579,10 @@ FrontierV2-0 proves the first bounded multi-tick closed-loop consumer fixture. F
 
 FrontierV2-1 extends the default-off FrontierV2 fixture by deriving movement and structural FixtureCandidates from the closed-loop feedback path across at least two ticks. It consumes FrontierV2-0's live route and feedback loop, records CPU oracle parity and replay reproducibility, and keeps all candidate outputs fixture/test-support only. It does not implement ClauseThing, production scenario runtime, default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner/urgency/commitment emission, simthing-sim semantic awareness, parallel fixture economy, shared-pool tick writes, or SEAD ACT/EVENT/OBS/PIPE ladder expansion.
 
+**FrontierV2-2 — own-column movement feedback application**
+
+FrontierV2-2 extends the default-off FrontierV2 fixture by applying a movement FixtureCandidate to a fixture-only own-column shadow state, then feeding the updated source placement into the next tick. It consumes FrontierV2-1 candidate evolution, records CPU oracle parity and replay reproducibility, rejects cross-entity movement writes, and keeps all movement application fixture/test-support only. It does not implement ClauseThing, production scenario runtime, default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner/urgency/commitment emission, simthing-sim semantic awareness, parallel fixture economy, shared-pool tick writes, or SEAD ACT/EVENT/OBS/PIPE ladder expansion.
+
 Further SEAD actionability work must either: (1) produce a reusable numeric substrate consumed by Phase E fixtures, (2) directly close a Phase M/E blocker, or (3) be paused until a named product scenario requires runtime integration.
 - Native sqrt remains `ApproximateJitOnly`; F exact path requires artifact-backed descriptor admission.
 - Exact authority requires exhaustive `max_ulp == 0` proof against CPU `f32::sqrt` (ignored full sweep available separately).

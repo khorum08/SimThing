@@ -279,3 +279,7 @@ FrontierV2-0 implemented the first bounded default-off multi-tick closed-loop co
 ### FrontierV2-1 result
 
 FrontierV2-1 extended the default-off FrontierV2 closed-loop consumer by deriving fixture-only movement and structural candidates across ticks from the live self-AI feedback path. Candidate outputs remain fixture/test support only: no ClauseThing implementation, no default runtime wiring, no phase closure, and no SEAD ladder reopening.
+
+### FrontierV2-2 result
+
+FrontierV2-2 extended the default-off FrontierV2 closed-loop consumer by applying fixture-only movement candidates to an own-column shadow state across ticks. The updated shadow position feeds the next tick's source placement without writing another entity's authoritative state. This remains fixture/test support only: no ClauseThing implementation, no default runtime wiring, no phase closure, and no SEAD ladder reopening.

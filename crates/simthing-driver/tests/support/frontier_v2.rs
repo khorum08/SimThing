@@ -7,7 +7,9 @@ pub use frontier_v1::*;
 
 pub const FRONTIER_V2_FIXTURE_ID: &str = "frontier_v2_0_closed_loop_consumer_v1";
 pub const FRONTIER_V2_1_FIXTURE_ID: &str = "frontier_v2_1_candidate_evolution_v1";
+pub const FRONTIER_V2_2_FIXTURE_ID: &str = "frontier_v2_2_movement_feedback_application_v1";
 pub const FRONTIER_V2_CLOSED_LOOP_TICKS: u32 = 2;
+pub const FRONTIER_V2_2_MOVEMENT_FEEDBACK_TICKS: u32 = 3;
 
 /// Per-field status for FrontierV2-0 closed-loop reporting.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,6 +30,27 @@ pub enum FrontierV2PhaseClosureStatus {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FrontierV2ClauseThingStatus {
     NotImplemented,
+}
+
+/// Classification for fixture-only movement writes (not production SimThing state).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FrontierV2WriteClassification {
+    OwnColumnShadowWrite,
+    RejectedCrossEntity,
+}
+
+/// Fixture-only own-column shadow position (not production simthing-sim state).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontierV2OwnColumnShadow {
+    pub unit_id: u32,
+    pub row: u32,
+    pub col: u32,
+    pub tick_index: u32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FrontierV2MovementWriteError {
+    CrossEntityTarget { source_unit_id: u32, shadow_unit_id: u32 },
 }
 
 /// Fixture-only movement candidate tied to closed-loop feedback.
@@ -330,4 +353,123 @@ fn fnv_append_u32(mut hash: u64, v: u32) -> u64 {
 
 fn fnv_mix(v: u64) -> u64 {
     v.wrapping_mul(0x9E3779B97F4A7C15)
+}
+
+pub fn initial_own_column_shadow(unit_id: u32) -> FrontierV2OwnColumnShadow {
+    FrontierV2OwnColumnShadow {
+        unit_id,
+        row: 0,
+        col: 0,
+        tick_index: 0,
+    }
+}
+
+pub fn validate_movement_write_target(
+    movement: &FrontierV2MovementCandidate,
+    shadow: &FrontierV2OwnColumnShadow,
+) -> Result<(), FrontierV2MovementWriteError> {
+    if movement.source_unit_id != shadow.unit_id {
+        return Err(FrontierV2MovementWriteError::CrossEntityTarget {
+            source_unit_id: movement.source_unit_id,
+            shadow_unit_id: shadow.unit_id,
+        });
+    }
+    Ok(())
+}
+
+pub fn clamp_grid_coord(value: i32, grid_size: u32) -> u32 {
+    let max = grid_size.saturating_sub(1) as i32;
+    value.clamp(0, max) as u32
+}
+
+/// Apply movement candidate to own-column shadow state (fixture-only, not production state).
+pub fn apply_movement_to_own_column_shadow(
+    shadow: &FrontierV2OwnColumnShadow,
+    movement: &FrontierV2MovementCandidate,
+    grid_size: u32,
+    tick_index: u32,
+) -> Result<FrontierV2OwnColumnShadow, FrontierV2MovementWriteError> {
+    validate_movement_write_target(movement, shadow)?;
+    Ok(FrontierV2OwnColumnShadow {
+        unit_id: shadow.unit_id,
+        row: clamp_grid_coord(shadow.row as i32 + movement.delta_row, grid_size),
+        col: clamp_grid_coord(shadow.col as i32 + movement.delta_col, grid_size),
+        tick_index,
+    })
+}
+
+pub fn source_seed_placement(
+    config: &FrontierV1FixtureConfig,
+    shadow: Option<&FrontierV2OwnColumnShadow>,
+) -> ((u32, u32), (u32, u32)) {
+    let row_b = config.grid_size.saturating_sub(1);
+    let col_b = config.grid_size.saturating_sub(1);
+    match shadow {
+        Some(s) => ((s.row, s.col), (row_b, col_b)),
+        None => ((0, 0), (row_b, col_b)),
+    }
+}
+
+pub fn hash_own_column_shadow(shadow: FrontierV2OwnColumnShadow) -> u64 {
+    let mut h = fnv64(b"frontier_v2_2_own_column_shadow");
+    h = fnv_append_u32(h, shadow.unit_id);
+    h = fnv_append_u32(h, shadow.row);
+    h = fnv_append_u32(h, shadow.col);
+    h = fnv_append_u32(h, shadow.tick_index);
+    h
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontierV2MovementFeedbackSummary {
+    pub tick0_movement_hash: u64,
+    pub tick1_movement_hash: u64,
+    pub shadow_before_hash: u64,
+    pub shadow_after_hash: u64,
+    pub tick1_mapping_hash: u64,
+    pub tick2_mapping_hash: u64,
+    pub tick1_proposal_dispatch_hash: u64,
+    pub tick2_proposal_dispatch_hash: u64,
+    pub movement_feedback_delta_hash: u64,
+    pub overflow_flags: u32,
+    pub tick0_resource_route_status: FrontierV2FieldStatus,
+    pub tick1_resource_route_status: FrontierV2FieldStatus,
+    pub tick2_resource_route_status: FrontierV2FieldStatus,
+    pub movement_evolution_status: FrontierV2FieldStatus,
+    pub movement_application_status: FrontierV2WriteClassification,
+    pub closed_loop_feedback_status: FrontierV2FieldStatus,
+    pub structural_candidate_status: FrontierV2FieldStatus,
+    pub clause_thing_status: FrontierV2ClauseThingStatus,
+    pub phase_closure_status: FrontierV2PhaseClosureStatus,
+}
+
+impl FrontierV2MovementFeedbackSummary {
+    pub fn combined_hex(&self) -> String {
+        let combined = fnv_mix(self.tick0_movement_hash)
+            ^ fnv_mix(self.tick1_movement_hash)
+            ^ fnv_mix(self.shadow_before_hash)
+            ^ fnv_mix(self.shadow_after_hash)
+            ^ fnv_mix(self.tick1_mapping_hash)
+            ^ fnv_mix(self.tick2_mapping_hash)
+            ^ fnv_mix(self.movement_feedback_delta_hash)
+            ^ fnv_mix(u64::from(self.overflow_flags));
+        format!("{:016x}", combined & 0xFFFF_FFFF_FFFF_FFFF)
+    }
+}
+
+pub fn hash_movement_feedback_delta(
+    shadow_before: FrontierV2OwnColumnShadow,
+    shadow_after: FrontierV2OwnColumnShadow,
+    tick1_mapping_hash: u64,
+    tick2_mapping_hash: u64,
+) -> u64 {
+    let mut h = fnv64(b"frontier_v2_2_movement_feedback_delta");
+    h = fnv_append_u32(h, shadow_before.row);
+    h = fnv_append_u32(h, shadow_before.col);
+    h = fnv_append_u32(h, shadow_after.row);
+    h = fnv_append_u32(h, shadow_after.col);
+    h = fnv_append_u32(h, tick1_mapping_hash as u32);
+    h = fnv_append_u32(h, (tick1_mapping_hash >> 32) as u32);
+    h = fnv_append_u32(h, tick2_mapping_hash as u32);
+    h = fnv_append_u32(h, (tick2_mapping_hash >> 32) as u32);
+    h
 }
