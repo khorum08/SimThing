@@ -106,6 +106,23 @@ pub enum EventAuthorityContract {
     ExactDeterministicEventFlag,
 }
 
+pub const SEAD_EVENT0_DESCRIPTOR_ID: &str = "m_jit_sead_event0_compaction";
+pub const SEAD_EVENT0_LABEL: &str = "SeadEventCompaction";
+
+/// Compacted event membership authority (SEAD-EVENT-0).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventCompactionMembershipAuthority {
+    /// Event records form an exact multiset under capacity; order is not specified.
+    ExactAuthoritativeUnordered,
+}
+
+/// Compacted event ordering authority (SEAD-EVENT-0).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventCompactionOrderAuthority {
+    /// Atomic slot assignment does not guarantee cross-workgroup order.
+    UnspecifiedAtomicOrder,
+}
+
 fn artifact_err(kernel: &str, reason: impl Into<String>) -> SpecError {
     SpecError::JitKernelDescriptorAdmission {
         kernel: kernel.to_string(),
@@ -894,8 +911,96 @@ pub fn validate_sead_obs4_threshold_event_contract(
     Ok(())
 }
 
+/// True when the descriptor is the landed SEAD event compaction kernel.
+pub fn is_sead_event0_compaction_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == SEAD_EVENT0_DESCRIPTOR_ID
+        && has_event_compaction_reads(spec)
+        && spec.writes.iter().any(|out| {
+            out.name == "event_count" && out.authority == OutputAuthority::ExactAuthoritative
+        })
+        && spec.writes.iter().any(|out| {
+            out.name == "overflow_flag" && out.authority == OutputAuthority::ExactAuthoritative
+        })
+        && spec.writes.iter().any(|out| {
+            out.name == "event_record" && out.authority == OutputAuthority::ExactAuthoritative
+        })
+}
+
+fn has_event_compaction_reads(spec: &KernelDescriptorSpec) -> bool {
+    spec.reads.iter().any(|read| read == "observer_index_u32")
+        && spec.reads.iter().any(|read| read == "event_code_u32")
+        && spec.reads.iter().any(|read| read == "state_u32")
+        && spec.reads.iter().any(|read| read == "score_fixed")
+        && spec.reads.iter().any(|read| read == "flags_u32")
+}
+
+/// Validate landed SEAD-EVENT-0 event compaction descriptor pins.
+pub fn validate_sead_event0_compaction_contract(
+    spec: &KernelDescriptorSpec,
+) -> Result<(), SpecError> {
+    if spec.id != SEAD_EVENT0_DESCRIPTOR_ID {
+        return Ok(());
+    }
+    if !has_event_compaction_reads(spec) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD event compaction requires observer_index_u32, event_code_u32, state_u32, score_fixed, flags_u32 reads",
+        ));
+    }
+    if spec.exact_sqrt_artifact.is_some() {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD event compaction must not bind sqrt artifact",
+        ));
+    }
+    if spec.score_authority_contract.is_some() {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD event compaction must not declare score authority contract",
+        ));
+    }
+    let event_count = spec
+        .writes
+        .iter()
+        .find(|out| out.name == "event_count")
+        .map(|out| out.authority);
+    let overflow = spec
+        .writes
+        .iter()
+        .find(|out| out.name == "overflow_flag")
+        .map(|out| out.authority);
+    let record = spec
+        .writes
+        .iter()
+        .find(|out| out.name == "event_record")
+        .map(|out| out.authority);
+    if event_count != Some(OutputAuthority::ExactAuthoritative) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD event compaction requires exact-authoritative event_count",
+        ));
+    }
+    if overflow != Some(OutputAuthority::ExactAuthoritative) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD event compaction requires exact-authoritative overflow_flag",
+        ));
+    }
+    if record != Some(OutputAuthority::ExactAuthoritative) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD event compaction requires exact-authoritative event_record (unordered membership)",
+        ));
+    }
+    Ok(())
+}
+
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
 pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
+    if spec.id == SEAD_EVENT0_DESCRIPTOR_ID {
+        return validate_sead_event0_compaction_contract(spec);
+    }
+
     let has_exact_f_out = has_exact_f_authoritative_output(spec);
 
     match (&spec.exact_sqrt_artifact, has_exact_f_out) {
@@ -1149,6 +1254,34 @@ pub fn sead_obs4_threshold_event_kernel_descriptor() -> KernelDescriptorSpec {
             fraction_bits: MAG2_Q16_FRAC_BITS,
         }),
         score_authority_contract: Some(ScoreAuthorityContract::ExactQ16WeightedSum),
+    }
+}
+
+/// Build the landed SEAD event compaction kernel descriptor (SEAD-EVENT-0).
+pub fn sead_event0_compaction_kernel_descriptor() -> KernelDescriptorSpec {
+    KernelDescriptorSpec {
+        id: SEAD_EVENT0_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads: vec![
+            "observer_index_u32".to_string(),
+            "event_code_u32".to_string(),
+            "state_u32".to_string(),
+            "score_fixed".to_string(),
+            "flags_u32".to_string(),
+        ],
+        writes: vec![
+            exact_out("event_count"),
+            exact_out("overflow_flag"),
+            exact_out("event_record"),
+        ],
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
+        mag2_source_contract: None,
+        score_authority_contract: None,
     }
 }
 

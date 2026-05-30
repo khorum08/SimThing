@@ -353,5 +353,6 @@ pub fn landed_jit_kernel_descriptors() -> Vec<KernelDescriptorSpec> {
         crate::compile::jit_exact_sqrt_artifact_admission::sead_obs2_multilayer_overlay_score_kernel_descriptor(),
         crate::compile::jit_exact_sqrt_artifact_admission::sead_obs3_multilayer_fixed_score_kernel_descriptor(),
         crate::compile::jit_exact_sqrt_artifact_admission::sead_obs4_threshold_event_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::sead_event0_compaction_kernel_descriptor(),
     ]
 }
