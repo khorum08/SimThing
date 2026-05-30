@@ -14,12 +14,15 @@ use simthing_spec::{
     sead_event0_compaction_kernel_descriptor,
     sead_pipe0_observer_event_pipeline_kernel_descriptor,
     SEAD_PIPE0_DESCRIPTOR_ID,
+    SEAD_EVENT1_DESCRIPTOR_ID,
+    sead_event1_code_bucketing_kernel_descriptor,
     SpecError, MAG2_Q16_FRAC_BITS, SQRT_F_ARTIFACT_HASH,
     is_sead_obs2_multilayer_overlay_score_descriptor,
     is_sead_obs3_multilayer_fixed_score_descriptor,
     is_sead_obs4_threshold_event_descriptor,
     is_sead_event0_compaction_descriptor,
     is_sead_pipe0_observer_event_pipeline_descriptor,
+    is_sead_event1_code_bucketing_descriptor,
 };
 
 fn obs2() -> KernelDescriptorSpec {
@@ -55,6 +58,13 @@ fn pipe0() -> KernelDescriptorSpec {
         .into_iter()
         .find(|desc| desc.id == SEAD_PIPE0_DESCRIPTOR_ID)
         .expect("sead pipe0 descriptor")
+}
+
+fn event1() -> KernelDescriptorSpec {
+    landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|desc| desc.id == SEAD_EVENT1_DESCRIPTOR_ID)
+        .expect("sead event1 descriptor")
 }
 
 fn obs0() -> KernelDescriptorSpec {
@@ -379,4 +389,24 @@ fn sead_pipe0_rejects_missing_event_record_output() {
     let mut bad = sead_pipe0_observer_event_pipeline_kernel_descriptor();
     bad.writes.retain(|out| out.name != "event_record");
     assert_admission_err(&bad, "exact-authoritative event_record");
+}
+
+#[test]
+fn sead_event1_descriptor_admits_code_bucketing() {
+    let desc = event1();
+    assert_eq!(desc.id, SEAD_EVENT1_DESCRIPTOR_ID);
+    assert!(desc.default_off);
+    assert!(!desc.production_wiring);
+    assert!(is_sead_event1_code_bucketing_descriptor(&desc));
+    validate_kernel_descriptor_admission(&desc).expect("event1 admits");
+    println!(
+        "sead_event1_descriptor: id={SEAD_EVENT1_DESCRIPTOR_ID} membership=ExactAuthoritativeUnordered order=UnspecifiedAtomicOrder"
+    );
+}
+
+#[test]
+fn sead_event1_rejects_sqrt_artifact_binding() {
+    let mut bad = sead_event1_code_bucketing_kernel_descriptor();
+    bad.exact_sqrt_artifact = Some(exact_sqrt_f_artifact_descriptor());
+    assert_admission_err(&bad, "must not bind sqrt artifact");
 }

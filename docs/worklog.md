@@ -1,3 +1,7 @@
+# 2026-05-29 — SEAD-EVENT-1 GPU-resident event-code bucketing (Tier-2, landed)
+
+- SEAD-EVENT-1 added default-off `m_jit_sead_event1_code_bucketing` probe; compact unordered event records bucket by numeric event code with exact per-code counts/membership under capacity; invalid-code accounting and overflow exact; ordering UnspecifiedAtomicOrder; 34k distribution/warm benchmarks and integrated PIPE-0→bucket smoke recorded; no CPU planner or production wiring added.
+
 # 2026-05-29 — SEAD-PIPE-0 integrated GPU observer-event pipeline (Tier-2, landed)
 
 - SEAD-PIPE-0 added default-off `m_jit_sead_pipe0_observer_event_pipeline` two-pass GPU fixture; OBS-4 threshold rows feed EVENT-0 compaction without CPU filtering; count/membership exact under capacity; ordering UnspecifiedAtomicOrder; 34k integrated/warm benchmarks recorded; no CPU planner or production wiring added.
