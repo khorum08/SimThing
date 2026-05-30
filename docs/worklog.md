@@ -1,3 +1,7 @@
+# 2026-05-29 — SQRT-EXACT-1D Candidate D bitmask-split sqrt probe (Tier-2, landed)
+
+- SQRT-EXACT-1D test-only Candidate D (`CorrectlyRoundedHwBitmask`) in exact candidate battery; hardened Dekker residual fires on DX12; subnormal output FTZ unresolved; C/f64 not implemented; A legacy dead; B fallback; no production sqrt admission. Report: `docs/tests/phase_m_jit_sqrt_exact1d_candidate_d_results.md`.
+
 # 2026-05-29 — SQRT-EXACT-0 shader/software deterministic sqrt candidate battery (Tier-2, landed)
 
 - SQRT-EXACT-0 test-only GPU candidate battery for CorrectlyRoundedHwFma (A) and CorrectlyRoundedNewtonTwoProduct (B); Candidate C/f64 not implemented; no production sqrt admission; M-JIT closure unchanged. Report: `docs/tests/phase_m_jit_sqrt_exact_candidate_battery_results.md`.
