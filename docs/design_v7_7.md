@@ -9,7 +9,9 @@
 > settled, not deleted); its guardrails and §5 gating governance stay in force. No mapping
 > *production runtime* beyond the accepted opt-in/default-off Frontier vertical is authorized;
 > the deferred set (atlas/M-4A, active-mask/M-6A, nested E-11B, perception, source identity)
-> stays parked behind named scenarios. **Next track (gated behind this closure):** simthing-spec
+> stays parked behind named scenarios. The three **expansion lines** (E-11 nested, D-2 discrete
+> ordering, M-4 atlas) are promoted forward to the **[`design_v7_8.md`](design_v7_8.md)** production
+> track. **Next track (gated behind this closure):** simthing-spec
 > buildout to prep for ClauseThing, then the ClauseThing-facing designer/spec-admission work. See
 > [`accumulator_op_v2_production_plan.md`](accumulator_op_v2_production_plan.md) (CLOSED) and
 > [`workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md).

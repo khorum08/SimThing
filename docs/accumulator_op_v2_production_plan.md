@@ -10,7 +10,9 @@
 > `FlatStarResourceFlow`. Out-of-scope items remain **explicitly deferred behind named
 > scenarios** — they are parked, not incomplete: nested Resource Flow (E-11B / E-11B-5),
 > hard-currency discrete ordering (D-2 / D-2a), atlas (M-4 / M-4A), source identity (M-5). This
-> closes the substrate side of **design_v7_7**. Closure ≠ "everything built": everything *in
+> closes the substrate side of **design_v7_7**. **Promotion (2026-05-30):** the three expansion
+> lines — **E-11 nested, D-2 discrete ordering, M-4 atlas** — are promoted forward to the new
+> **[`design_v7_8.md`](design_v7_8.md)** production track (this plan stays CLOSED; do not reopen). Closure ≠ "everything built": everything *in
 > scope* is built; the deferred set is the bounded posture, unblocked only by a named scenario.
 > Next track (per product direction, gated behind this closure): **simthing-spec buildout to prep
 > for ClauseThing** → then the ClauseThing-facing designer/spec-admission work (`CLAUSE-SPEC-0`).
