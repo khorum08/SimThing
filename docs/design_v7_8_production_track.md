@@ -49,7 +49,7 @@ Per-step narrative lives in `worklog.md`; this file keeps the compact ladder tab
 | **L1 — simthing-spec buildout** | Designer-facing spec admission substrate (prep for ClauseThing) | T2 | **landed + ACCEPTED** (L1-0, L1-1; L1-ACCEPT-0) | none — sufficient to open L2 |
 | **L2 — CLAUSE-SPEC** | Designer-authored FrontierV2 scenario admitted through `simthing-spec` → same accepted runtime artifacts | T2 | **ACCEPTED (Opus design authority, 2026-05-30; code-verified)** (`CLAUSE-SPEC-0`) — [`phase_m_clause_spec0_acceptance_review_results.md`](tests/phase_m_clause_spec0_acceptance_review_results.md) | L3 stays parked unless product separately authorizes ClauseThing |
 | **L3 — ClauseThing** | ClauseScript-facing authoring front-end | T2 | **parked (separate track) — pending separate product authorization** | explicit ClauseThing authorization (NOT opened by L2 acceptance) |
-| **A — Nested Resource Flow** | E-11B / E-11B-5 hierarchical allocation (depth > 2) | T2 | **NamedScenarioAccepted; A-0 landed — pending Opus review** | design-authority acceptance of A-0 |
+| **A — Nested Resource Flow** | E-11B / E-11B-5 hierarchical allocation (depth > 2) | T2 | **A-0 ACCEPTED (A-0-ACCEPT-0, 2026-05-30) — Line A static nested Resource Flow CLOSED at first slice** | **none** — E-11B-5 dynamic enrollment needs a separate named scenario |
 | **B — Discrete hard-currency ordering** | D-2 / D-2a sequential cross-band ordering | T2 | **B-0 ACCEPTED (B-0-ACCEPT-0, 2026-05-30) — Line B CLOSED at narrow smoke level** | **none** — no B-1; future mixed-kind/multi-band ordering needs a named scenario |
 | **C — Atlas / multi-theater mapping** | M-4 / M-4A atlas batching | T2 | **C-0/C-1/C-2 ACCEPTED (C-2-ACCEPT-0, 2026-05-30) — map batching CLOSED at the designer surface** (proof + scale model + atlas admission relaxation) — VRAM budget 1.5 GiB default, configurable, no hard cap | **none** — production atlas runtime / sparse-residency scheduler is a separate later gate (not open) |
 
@@ -154,17 +154,25 @@ themselves.
 
 ---
 
-## 7. Line A — Nested Resource Flow ladder (E-11B / E-11B-5) — **NamedScenarioAccepted; A-0 landed (pending review)**
+## 7. Line A — Nested Resource Flow ladder (E-11B / E-11B-5) — **A-0 ACCEPTED; Line A static nested CLOSED at first slice**
 
-- **Current state:** **NamedScenarioAccepted** (`NestedResourceFlowDepthFanout`, depth 4) — see
-  [`phase_m_v7_8_met_scenario_acceptance_review_results.md`](tests/phase_m_v7_8_met_scenario_acceptance_review_results.md).
-  **A-0 implementation evidence landed** (static nested arena materialization + D=3/D=4 GPU parity); **pending Opus/design-authority review** — not accepted yet. `FlatStarResourceFlow` remains the bounded production posture; `PipelineFlags::default().use_accumulator_resource_flow` stays `false`.
-- **A-0 scope:** first nested-arena slice — static nested materialization + per-parent contiguous SlotRange + D=3/D=4 GPU/CPU oracle parity; not default-on Resource Flow; not E-11B-5 dynamic enrollment.
+- **Current state:** **A-0 ACCEPTED (A-0-ACCEPT-0, Opus design authority, 2026-05-30; code+test
+  verified)** — [`phase_e_a0_acceptance_review_results.md`](tests/phase_e_a0_acceptance_review_results.md).
+  Authored nested participants materialize into D=3/D=4 Resource Flow layouts; `build_execution_plan`
+  selects `build_nested_layout` only when nested participants exist; per-parent contiguous SlotRange
+  enforced (and re-verified in `plan_arena_allocation`) with non-contiguous rejection and **no
+  compaction**; reserved-gap slots stay outside active SlotRanges and the sibling range; depth-generic
+  AccumulatorOp OrderBands run on the existing AccumulatorOp v2 GPU path with **bit-exact** D=3/D=4
+  GPU/CPU oracle parity. `FlatStarResourceFlow` remains the bounded production posture;
+  `PipelineFlags::default().use_accumulator_resource_flow` stays `false`; hard-currency stays Phase T.
+- **A-0 scope (CLOSED at first slice):** static nested materialization + per-parent contiguous
+  SlotRange + reserved-gap exclusion + D=3/D=4 GPU/CPU oracle parity; **not** default-on Resource
+  Flow; **not** E-11B-5 dynamic enrollment (parked behind a separate named scenario).
 - **Ladder:**
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| A-0 | Static nested Resource Flow first slice: nested arena materialization + D=3/D=4 GPU parity + per-parent contiguous SlotRange proof. WGSL-GUARD-0 removed stale global filename bans; WGSL-GUARD-R1 cleaned stray artifacts and no-op placeholders. | Done / Pending Opus Review | — | #358 | impl: [`phase_e_a0_nested_resource_flow_static_results.md`](tests/phase_e_a0_nested_resource_flow_static_results.md); A-0-R1 + R1 cleanup: [`phase_e_wgsl_guardrail_r1_cleanup_results.md`](tests/phase_e_wgsl_guardrail_r1_cleanup_results.md) |
+| A-0 | Static nested Resource Flow first slice: nested arena materialization + D=3/D=4 GPU parity + per-parent contiguous SlotRange proof + reserved-gap exclusion. WGSL-GUARD-0 removed stale global filename bans; WGSL-GUARD-R1 cleaned stray artifacts; AO-WGSL-0 added a default-off generic fast path (semantics-preserving). | **ACCEPTED (design authority)** — GpuVerifiedApproximate (D=3/D=4 max_abs_error = 0.0) | — | #358 | impl: [`phase_e_a0_nested_resource_flow_static_results.md`](tests/phase_e_a0_nested_resource_flow_static_results.md); acceptance: [`phase_e_a0_acceptance_review_results.md`](tests/phase_e_a0_acceptance_review_results.md) |
 
 ## 8. Line B — Discrete hard-currency ordering ladder (D-2 / D-2a) — **B-0 ACCEPTED; Line B CLOSED at narrow smoke level**
 
@@ -250,6 +258,13 @@ authorizes it. **Line C / M (map batching) is CLOSED at the designer surface: C-
 all ACCEPTED** (proof + 2000-star scale model + bounded algebraic-G=0 atlas admission relaxation).
 The atlas **production runtime / sparse-residency scheduler** is a separate later gate and is **not
 open**. **Line B/T (discrete hard-currency ordering) is CLOSED at the narrow smoke level: B-0 is
-ACCEPTED (B-0-ACCEPT-0); no B-1 opens.** **A-0 implementation landed — pending Opus/design-authority review** (static nested Resource Flow first slice; not accepted yet). E-11B-5 dynamic enrollment remains deferred;
-ClauseThing/ClauseScript stay parked until explicitly authorized. The AccumulatorOp v2 production plan stays **CLOSED**; v7.7
-stays the **binding baseline**; the three lines live in v7.8.
+ACCEPTED (B-0-ACCEPT-0); no B-1 opens.** **Line A/E (nested Resource Flow) is CLOSED at the first
+nested slice: A-0 is ACCEPTED (A-0-ACCEPT-0, 2026-05-30)** — static nested D=3/D=4 materialization,
+per-parent contiguous SlotRange, reserved-gap exclusion, and bit-exact GPU/CPU oracle parity over the
+existing AccumulatorOp OrderBand path; Resource Flow stays opt-in/default-off; hard-currency stays
+Phase T. **All promoted v7.8 M/E/T lines are now closed for their current named scenarios; no
+implementation gate remains open.** AO-WGSL-0 is the accepted optional default-off generic GPU
+performance path (semantics-preserving). **E-11B-5 dynamic enrollment, the atlas production runtime /
+sparse-residency scheduler, mixed-kind/multi-band hard-currency ordering, and ClauseThing/L3 all
+require separate named scenarios / product authorization.** The AccumulatorOp v2 production plan stays
+**CLOSED**; v7.7 stays the **binding baseline**; the three lines live in v7.8.
