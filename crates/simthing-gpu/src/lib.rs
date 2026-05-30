@@ -5,6 +5,7 @@
 //! sequencer build on top of `WorldGpuState`.
 
 pub mod structured_field_stencil;
+pub mod atlas_mask;
 pub mod accumulator_op;
 pub mod context;
 pub mod emission_accumulator;
@@ -20,6 +21,14 @@ pub mod transfer_accumulator;
 pub mod velocity_accumulator;
 pub mod world_state;
 
+pub use atlas_mask::{
+    atlas_config, atlas_dims, atlas_side, atlas_slot_xy, atlas_cell_index, build_flush_atlas,
+    combined_fingerprint_hex, corridor_t44_max_error, cpu_caller_managed_atlas_protocol,
+    cpu_atlas_horizon, fnv64_hash_f32, full_tile_l_inf, make_atlas_mask_params,
+    max_full_tile_error, tile_origin, vram_multiplier, AtlasIsolationMode,
+    AtlasIsolationPolicy, AtlasMaskGpuOp, AtlasMaskParamsGpu, AtlasNormalizeVariant,
+    C0AtlasFixtureShape, C0_DEFAULT_N_DIMS,
+};
 pub use structured_field_stencil::{
     cpu_horizon, cpu_stencil_step, params_from_config, FieldStencilParamsGpu,
     StructuredFieldExecutionOptions, StructuredFieldExecutionReport,

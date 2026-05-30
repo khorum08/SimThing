@@ -403,3 +403,8 @@ authorization** — the track is at a clean rest point with no open implementati
 
 V7.8-MET-SCENARIO-0 keeps ClauseThing/L3 parked and uses the accepted CLAUSE-SPEC admission layer
 only to define the minimum named scenarios needed to unblock M/E/T v7.8 lines.
+
+### C-0 note
+
+C-0 remains mapping-line work under v7.8; it does not open ClauseThing/L3 or alter SEAD self-AI
+posture. Atlas batching proof is fixture/test-support only.

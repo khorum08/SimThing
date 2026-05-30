@@ -195,7 +195,11 @@ safety. These stay binding regardless:
   (§11 binding acceptance gate), [`tests/mapping_atlas_algebraic_mask_sandbox_test_results.md`](tests/mapping_atlas_algebraic_mask_sandbox_test_results.md),
   [`tests/phase_m_m4a_atlas_readiness_gate_results.md`](tests/phase_m_m4a_atlas_readiness_gate_results.md),
   [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md).
-- **C-0 gate (now open):** the §11-gate-passing M-4 implementation PR — full-tile protocol-oracle
+- **C-0 gate (landed, pending Opus review):** first §11-gate M-4 atlas slice evidence at
+  fixture/test-support level — [`tests/phase_m_c0_m4_atlas_protocol_oracle_results.md`](tests/phase_m_c0_m4_atlas_protocol_oracle_results.md).
+  `request_atlas_batching` stays rejected at admission until C-0 is accepted; production mapping
+  runtime remains separately gated. Active-mask/source-identity remain deferred.
+- **C-0 gate (originally opened 2026-05-30):** the §11-gate-passing M-4 implementation PR — full-tile protocol-oracle
   parity (not corridor agreement alone) + VRAM-multiplier report against the active budget. Named
   scenario + VRAM budget are now satisfied; the §11 implementation PR is the remaining gate.
 - **Constraints carried:** `ActiveOnlyExperimentalNoHalo` is **never** production-authorized

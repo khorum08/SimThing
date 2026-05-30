@@ -51,7 +51,7 @@ Per-step narrative lives in `worklog.md`; this file keeps the compact ladder tab
 | **L3 — ClauseThing** | ClauseScript-facing authoring front-end | T2 | **parked (separate track) — pending separate product authorization** | explicit ClauseThing authorization (NOT opened by L2 acceptance) |
 | **A — Nested Resource Flow** | E-11B / E-11B-5 hierarchical allocation (depth > 2) | T2 | **NamedScenarioAccepted (V7.8-MET-SCENARIO-ACCEPT-0, 2026-05-30); A-0 QUEUED** (not opened — product priority is C first) | open A-0 when product schedules it |
 | **B — Discrete hard-currency ordering** | D-2 / D-2a sequential cross-band ordering | T2 | **NamedScenarioAccepted (V7.8-MET-SCENARIO-ACCEPT-0, 2026-05-30); B-0 QUEUED** (not opened — product priority is C first) | open B-0 when product schedules it |
-| **C — Atlas / multi-theater mapping** | M-4 / M-4A atlas batching | T2 | **NamedScenarioAccepted + C-0 OPEN (priority; Opus design authority + product, 2026-05-30)** — VRAM budget set: **1.5 GiB default, configurable, no architectural hard cap** | C-0 lands the §11 M-4 full-tile protocol-oracle-parity + VRAM-multiplier report |
+| **C — Atlas / multi-theater mapping** | M-4 / M-4A atlas batching | T2 | **NamedScenarioAccepted; C-0 landed / Pending Opus Review** — VRAM budget 1.5 GiB default, configurable | Opus acceptance of C-0 gate |
 
 ---
 
@@ -206,16 +206,15 @@ themselves.
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| C-0 | First §11-gate M-4 atlas slice: full-tile protocol-oracle parity + VRAM-multiplier report vs active budget (1.5 GiB default, configurable) | **OPEN** | — | — | — |
+| C-0 | First §11-gate M-4 atlas slice: full-tile protocol-oracle parity + VRAM-multiplier report vs active budget (1.5 GiB default, configurable) | **Done / Pending Opus Review** (GpuVerifiedApproximate) | `a974fe44e20620f3` | — | [`phase_m_c0_m4_atlas_protocol_oracle_results.md`](tests/phase_m_c0_m4_atlas_protocol_oracle_results.md) |
 
 ---
 
 ## Cleanup / evidence hygiene
 
-V7.8-CLEAN-0 classified old docs/tests/workshop evidence against the v7.8 production track, archived
-closed or superseded design/workshop/production docs, deleted scratch/tmp/stale superseded evidence,
-preserved authoritative L0/L1 and E-phase evidence, and confirmed the next implementation gate
-remains **L1 simthing-spec buildout**.
+V7.8-CLEAN-0 preserved authoritative evidence and, at the time, confirmed L1 as the next gate.
+Since then L1/L2 have been accepted and **C-0 is now the open implementation gate** (landed,
+pending Opus review).
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
@@ -227,8 +226,7 @@ remains **L1 simthing-spec buildout**.
 
 L0 is **done and accepted**. L1 (simthing-spec buildout) is **done and accepted** (L1-ACCEPT-0).
 L2 / CLAUSE-SPEC-0 is **ACCEPTED**. L3 ClauseThing remains parked unless product separately
-authorizes it. The accepted CLAUSE-SPEC layer is now available to name the scenarios that unblock
-Lines A/B/C. V7.8-MET-SCENARIO-0 proposes those named M/E/T scenarios, but implementation starts
-only after the relevant line gate passes and design-authority + product accept A-0/B-0/C-0.
+authorizes it. **C-0 (Line C / M atlas)** is the priority implementation gate — landed at
+fixture/test-support level, pending Opus design-authority review. A-0 and B-0 remain queued.
 ClauseThing/ClauseScript stay parked until explicitly authorized. The AccumulatorOp v2 production
 plan stays **CLOSED**; v7.7 stays the **binding baseline**; the three lines live in v7.8.
