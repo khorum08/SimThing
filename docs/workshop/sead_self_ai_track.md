@@ -398,3 +398,8 @@ doctrine realized. `cargo check --workspace` green. Acceptance of record:
 [`../tests/phase_m_clause_spec0_acceptance_review_results.md`](../tests/phase_m_clause_spec0_acceptance_review_results.md).
 **L2 is accepted; L3 (ClauseThing / ClauseScript) stays parked pending separate product
 authorization** — the track is at a clean rest point with no open implementation gate.
+
+### V7.8-MET-SCENARIO-0 note
+
+V7.8-MET-SCENARIO-0 keeps ClauseThing/L3 parked and uses the accepted CLAUSE-SPEC admission layer
+only to define the minimum named scenarios needed to unblock M/E/T v7.8 lines.

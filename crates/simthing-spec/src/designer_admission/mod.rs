@@ -10,6 +10,7 @@ mod diagnostic;
 mod manifest;
 mod preflight;
 mod preview;
+mod v7_8_line_scenarios;
 
 pub use artifact_target::{
     accepted_frontier_v2_artifact_target_ids, accepted_frontier_v2_artifact_targets,
@@ -37,4 +38,12 @@ pub use preflight::{
 pub use preview::{
     preview_accepted_artifact_targets, preview_designer_admission_preflight,
     DesignerAdmissionPreviewReport,
+};
+pub use v7_8_line_scenarios::{
+    admit_v7_8_line_scenario_pack, v7_8_met_consumer_scenario_pack,
+    V78HardCurrencyContentionOrderingClaim, V78LineGateStatus, V78LineScenario,
+    V78LineScenarioClaim, V78LineScenarioPack, V78LineScenarioPackAdmission,
+    V78LineScenarioStatusRecord, V78MultiTheaterAtlasMappingClaim,
+    V78NamedConsumerScenario, V78NestedResourceFlowDepthFanoutClaim, V78PromotedLine,
+    V78_MET_SCENARIO_PACK_ID,
 };

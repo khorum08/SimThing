@@ -189,8 +189,13 @@ pub use designer_admission::{
     DesignerAdmissionDiagnosticCode, DesignerAdmissionPreflightManifest,
     DesignerAdmissionPreflightReport, DesignerAdmissionPreviewReport,
     DesignerAdmissionRejectionKind, DesignerAdmissionRequest, DesignerFacingGuardrailClass,
-    SeadLadderStage, CLAUSE_SPEC_FRONTIER_V2_GRID_CAP, CLAUSE_SPEC_FRONTIER_V2_MIN_TICKS,
-    CLAUSE_SPEC_FRONTIER_V2_PROFILE,
+    SeadLadderStage, V78HardCurrencyContentionOrderingClaim, V78LineGateStatus,
+    V78LineScenario, V78LineScenarioClaim, V78LineScenarioPack,
+    V78LineScenarioPackAdmission, V78LineScenarioStatusRecord, V78MultiTheaterAtlasMappingClaim,
+    V78NamedConsumerScenario, V78NestedResourceFlowDepthFanoutClaim, V78PromotedLine,
+    CLAUSE_SPEC_FRONTIER_V2_GRID_CAP, CLAUSE_SPEC_FRONTIER_V2_MIN_TICKS,
+    CLAUSE_SPEC_FRONTIER_V2_PROFILE, V78_MET_SCENARIO_PACK_ID, admit_v7_8_line_scenario_pack,
+    v7_8_met_consumer_scenario_pack,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;
@@ -204,8 +209,9 @@ pub use ron::{
     deserialize_capability_tree_ron, deserialize_clause_spec_frontier_v2_scenario_ron,
     deserialize_designer_admission_preflight_manifest_ron, deserialize_eml_gadget_stack_ron,
     deserialize_first_slice_scenario_ron, deserialize_game_mode_ron, deserialize_region_field_ron,
-    serialize_clause_spec_frontier_v2_scenario_ron,
+    deserialize_v7_8_line_scenario_pack_ron, serialize_clause_spec_frontier_v2_scenario_ron,
     serialize_designer_admission_preflight_manifest_ron,
+    serialize_v7_8_line_scenario_pack_ron,
 };
 pub use runtime::{
     CapabilityCategoryDefinition, CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,

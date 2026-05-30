@@ -1,4 +1,6 @@
-use crate::designer_admission::{ClauseSpecFrontierV2Scenario, DesignerAdmissionPreflightManifest};
+use crate::designer_admission::{
+    ClauseSpecFrontierV2Scenario, DesignerAdmissionPreflightManifest, V78LineScenarioPack,
+};
 use crate::error::SpecError;
 use crate::spec::capability::CapabilityTreeSpec;
 use crate::spec::eml_gadget::EmlGadgetStackSpec;
@@ -44,6 +46,19 @@ pub fn serialize_clause_spec_frontier_v2_scenario_ron(
     scenario: &ClauseSpecFrontierV2Scenario,
 ) -> Result<String, SpecError> {
     ron::ser::to_string_pretty(scenario, ron::ser::PrettyConfig::default())
+        .map_err(|e| SpecError::RonParse(e.to_string()))
+}
+
+pub fn deserialize_v7_8_line_scenario_pack_ron(
+    text: &str,
+) -> Result<V78LineScenarioPack, SpecError> {
+    ron::from_str(text).map_err(|e| SpecError::RonParse(e.to_string()))
+}
+
+pub fn serialize_v7_8_line_scenario_pack_ron(
+    pack: &V78LineScenarioPack,
+) -> Result<String, SpecError> {
+    ron::ser::to_string_pretty(pack, ron::ser::PrettyConfig::default())
         .map_err(|e| SpecError::RonParse(e.to_string()))
 }
 
