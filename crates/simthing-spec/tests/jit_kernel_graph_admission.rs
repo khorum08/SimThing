@@ -43,6 +43,7 @@ fn grad1_style_scorer() -> KernelDescriptorSpec {
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
         mag2_source_contract: None,
+        score_authority_contract: None,
     }
 }
 
@@ -185,6 +186,7 @@ fn jit_desc2_rejects_cycles() {
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
         mag2_source_contract: None,
+        score_authority_contract: None,
     };
     let node_b = KernelDescriptorSpec {
         id: "m_jit_cycle_b".into(),
@@ -201,6 +203,7 @@ fn jit_desc2_rejects_cycles() {
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
         mag2_source_contract: None,
+        score_authority_contract: None,
     };
     let graph = KernelGraphSpec {
         nodes: vec![node_a, node_b],

@@ -64,7 +64,19 @@ pub enum ExactPreSqrtInputContract {
     ExactMag2Bits,
     /// Raw `dx`/`dy` f32 multiply-add benchmark probe — not exact-authoritative `mag`.
     RawDxDyProbe,
+    /// Inline fixed-point gx/gy → exact mag2 → F sqrt (SEAD-OBS-1).
+    InlineFixedPointMag2Sqrt,
 }
+
+/// Score output authority contract for observer overlay kernels (SEAD-OBS-1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScoreAuthorityContract {
+    /// `score = bias + weight * mag` via f32 multiply/add — diagnostic only.
+    ApproximateDiagnosticF32,
+}
+
+pub const SEAD_OBS0_DESCRIPTOR_ID: &str = "m_jit_sead_obs0_overlay_score";
+pub const SEAD_OBS0_LABEL: &str = "SeadObserverOverlayScore";
 
 fn artifact_err(kernel: &str, reason: impl Into<String>) -> SpecError {
     SpecError::JitKernelDescriptorAdmission {
@@ -214,10 +226,38 @@ pub fn is_exact_mag2_fixed_descriptor(spec: &KernelDescriptorSpec) -> bool {
             })
 }
 
+/// True when the descriptor is the landed SEAD observer overlay score kernel.
+pub fn is_sead_obs0_overlay_score_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == SEAD_OBS0_DESCRIPTOR_ID
+        && spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt)
+        && spec.score_authority_contract == Some(ScoreAuthorityContract::ApproximateDiagnosticF32)
+}
+
+fn has_fixed_point_gradient_reads(spec: &KernelDescriptorSpec) -> bool {
+    (spec.reads.iter().any(|read| read == "dx_fixed")
+        && spec.reads.iter().any(|read| read == "dy_fixed"))
+        || (spec.reads.iter().any(|read| read == "gx_fixed")
+            && spec.reads.iter().any(|read| read == "gy_fixed"))
+}
+
+fn has_exact_mag2_bits_output(spec: &KernelDescriptorSpec) -> bool {
+    spec.writes.iter().any(|out| {
+        (out.name == "mag2_bits" || out.name == "mag2")
+            && out.authority == OutputAuthority::ExactAuthoritative
+    })
+}
+
+fn has_exact_mag_bits_output(spec: &KernelDescriptorSpec) -> bool {
+    spec.writes.iter().any(|out| {
+        (out.name == "mag" || out.name == "mag_bits")
+            && out.authority == OutputAuthority::ExactAuthoritative
+    })
+}
+
 fn has_exact_f_authoritative_output(spec: &KernelDescriptorSpec) -> bool {
     spec.writes.iter().any(|out| {
         out.authority == OutputAuthority::ExactAuthoritative
-            && (out.name == "sqrt_out" || out.name == "mag")
+            && (out.name == "sqrt_out" || out.name == "mag" || out.name == "mag_bits")
     })
 }
 
@@ -286,9 +326,42 @@ pub fn validate_exact_pre_sqrt_contract(spec: &KernelDescriptorSpec) -> Result<(
                 }
             }
         }
+        Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt) => {
+            if spec.mag2_source_contract.is_none() {
+                return Err(artifact_err(
+                    &spec.id,
+                    "InlineFixedPointMag2Sqrt requires Mag2SourceContract",
+                ));
+            }
+            if !has_fixed_point_gradient_reads(spec) {
+                return Err(artifact_err(
+                    &spec.id,
+                    "InlineFixedPointMag2Sqrt requires gx_fixed/gy_fixed or dx_fixed/dy_fixed reads",
+                ));
+            }
+            if spec.exact_sqrt_artifact.is_none() {
+                return Err(artifact_err(
+                    &spec.id,
+                    "InlineFixedPointMag2Sqrt requires artifact-backed Candidate F binding",
+                ));
+            }
+            if !has_exact_mag2_bits_output(spec) {
+                return Err(artifact_err(
+                    &spec.id,
+                    "InlineFixedPointMag2Sqrt requires exact-authoritative mag2_bits output",
+                ));
+            }
+            if !has_exact_mag_bits_output(spec) {
+                return Err(artifact_err(
+                    &spec.id,
+                    "InlineFixedPointMag2Sqrt requires exact-authoritative mag_bits output",
+                ));
+            }
+        }
         None => {
             if spec.writes.iter().any(|out| {
-                out.name == "mag" && out.authority == OutputAuthority::ExactAuthoritative
+                (out.name == "mag" || out.name == "mag_bits")
+                    && out.authority == OutputAuthority::ExactAuthoritative
             }) {
                 return Err(artifact_err(
                     &spec.id,
@@ -315,12 +388,10 @@ pub fn validate_mag2_source_contract(spec: &KernelDescriptorSpec) -> Result<(), 
                     "ExactFixedPointDxDy fraction_bits must be non-zero",
                 ));
             }
-            if !spec.reads.iter().any(|read| read == "dx_fixed")
-                || !spec.reads.iter().any(|read| read == "dy_fixed")
-            {
+            if !has_fixed_point_gradient_reads(spec) {
                 return Err(artifact_err(
                     &spec.id,
-                    "ExactFixedPointDxDy contract requires dx_fixed and dy_fixed reads",
+                    "ExactFixedPointDxDy contract requires dx_fixed/dy_fixed or gx_fixed/gy_fixed reads",
                 ));
             }
             if spec.reads.iter().any(|read| read == "dx" || read == "dy") {
@@ -381,6 +452,87 @@ pub fn validate_mag2_source_contract(spec: &KernelDescriptorSpec) -> Result<(), 
     Ok(())
 }
 
+/// Validate score output authority contract (SEAD-OBS-1).
+pub fn validate_score_authority_contract(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
+    let score_out = spec
+        .writes
+        .iter()
+        .find(|out| out.name == "score_bits")
+        .map(|out| out.authority);
+
+    match spec.score_authority_contract {
+        Some(ScoreAuthorityContract::ApproximateDiagnosticF32) => {
+            match score_out {
+                Some(OutputAuthority::ApproximateDiagnostic) => {}
+                Some(OutputAuthority::ExactAuthoritative) => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        "score_bits cannot be ExactAuthoritative under ApproximateDiagnosticF32 score contract",
+                    ));
+                }
+                Some(OutputAuthority::RejectedDeferred) => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        "score_bits is rejected/deferred under ApproximateDiagnosticF32 score contract",
+                    ));
+                }
+                None => {
+                    return Err(artifact_err(
+                        &spec.id,
+                        "ApproximateDiagnosticF32 score contract requires score_bits output",
+                    ));
+                }
+            }
+        }
+        None => {
+            if score_out == Some(OutputAuthority::ExactAuthoritative) {
+                return Err(artifact_err(
+                    &spec.id,
+                    "score_bits cannot be ExactAuthoritative without a pinned score authority contract",
+                ));
+            }
+        }
+    }
+
+    if score_out == Some(OutputAuthority::ExactAuthoritative)
+        && spec.score_authority_contract != Some(ScoreAuthorityContract::ApproximateDiagnosticF32)
+    {
+        // Only ApproximateDiagnosticF32 is implemented; any exact score without a future pinned contract rejects above.
+    }
+
+    Ok(())
+}
+
+/// Validate landed SEAD-OBS-0 overlay score descriptor pins (SEAD-OBS-1).
+pub fn validate_sead_obs0_overlay_score_contract(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
+    if spec.id != SEAD_OBS0_DESCRIPTOR_ID {
+        return Ok(());
+    }
+    match spec.mag2_source_contract {
+        Some(Mag2SourceContract::ExactFixedPointDxDy { fraction_bits })
+            if fraction_bits == MAG2_Q16_FRAC_BITS => {}
+        _ => {
+            return Err(artifact_err(
+                &spec.id,
+                "SEAD observer overlay score requires Q16.16 ExactFixedPointDxDy mag2 contract",
+            ));
+        }
+    }
+    if spec.pre_sqrt_contract != Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD observer overlay score requires InlineFixedPointMag2Sqrt pre-sqrt contract",
+        ));
+    }
+    if spec.score_authority_contract != Some(ScoreAuthorityContract::ApproximateDiagnosticF32) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD observer overlay score requires ApproximateDiagnosticF32 score contract",
+        ));
+    }
+    Ok(())
+}
+
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
 pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
     let has_exact_f_out = has_exact_f_authoritative_output(spec);
@@ -420,6 +572,8 @@ pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Re
 
     validate_exact_pre_sqrt_contract(spec)?;
     validate_mag2_source_contract(spec)?;
+    validate_score_authority_contract(spec)?;
+    validate_sead_obs0_overlay_score_contract(spec)?;
 
     Ok(())
 }
@@ -452,6 +606,7 @@ pub fn mag_f_from_exact_mag2_kernel_descriptor() -> KernelDescriptorSpec {
         exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
         pre_sqrt_contract: Some(ExactPreSqrtInputContract::ExactMag2Bits),
         mag2_source_contract: None,
+        score_authority_contract: None,
     }
 }
 
@@ -469,6 +624,7 @@ pub fn mag_f_from_dxdy_probe_kernel_descriptor() -> KernelDescriptorSpec {
         exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
         pre_sqrt_contract: Some(ExactPreSqrtInputContract::RawDxDyProbe),
         mag2_source_contract: None,
+        score_authority_contract: None,
     }
 }
 
@@ -488,6 +644,37 @@ pub fn mag2_fixed_exact_kernel_descriptor() -> KernelDescriptorSpec {
         mag2_source_contract: Some(Mag2SourceContract::ExactFixedPointDxDy {
             fraction_bits: MAG2_Q16_FRAC_BITS,
         }),
+        score_authority_contract: None,
+    }
+}
+
+/// Build the landed SEAD observer overlay score kernel descriptor (SEAD-OBS-1).
+pub fn sead_obs0_overlay_score_kernel_descriptor() -> KernelDescriptorSpec {
+    KernelDescriptorSpec {
+        id: SEAD_OBS0_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads: vec![
+            "gx_fixed".to_string(),
+            "gy_fixed".to_string(),
+            "w_mag_fixed".to_string(),
+            "bias_fixed".to_string(),
+        ],
+        writes: vec![
+            exact_out("mag2_bits"),
+            exact_out("mag_bits"),
+            approx_out("score_bits"),
+            approx_out("flags"),
+        ],
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
+        pre_sqrt_contract: Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt),
+        mag2_source_contract: Some(Mag2SourceContract::ExactFixedPointDxDy {
+            fraction_bits: MAG2_Q16_FRAC_BITS,
+        }),
+        score_authority_contract: Some(ScoreAuthorityContract::ApproximateDiagnosticF32),
     }
 }
 
@@ -505,5 +692,6 @@ pub fn sqrt_f_exact_kernel_descriptor() -> KernelDescriptorSpec {
         exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
         pre_sqrt_contract: None,
         mag2_source_contract: None,
+        score_authority_contract: None,
     }
 }

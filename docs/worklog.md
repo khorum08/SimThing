@@ -1,3 +1,7 @@
+# 2026-05-30 — SEAD-OBS-1 descriptor/admission for mobile observer overlay score (Tier-2, landed)
+
+- SEAD-OBS-1 added default-off `m_jit_sead_obs0_overlay_score` descriptor/admission with exact mag2/mag and ApproximateDiagnosticF32 score; warm 34k benchmark recorded; no production wiring added.
+
 # 2026-05-30 — SEAD-OBS-0 GPU-resident mobile observer overlay score probe (Tier-2, landed)
 
 - SEAD-OBS-0 added default-off/test-only GPU overlay score fixture (Q16.16 mag2 + F exact mag, f32 diagnostic score); 34k benchmark and 50k-row dense corpus recorded; no production wiring added.

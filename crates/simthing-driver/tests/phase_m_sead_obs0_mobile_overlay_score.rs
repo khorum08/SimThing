@@ -9,9 +9,10 @@ use std::time::Instant;
 
 use simthing_gpu::GpuContext;
 use simthing_spec::{
-    fnv1a64_hex, is_exact_mag2_fixed_descriptor, landed_jit_kernel_descriptors,
-    validate_kernel_descriptor_admission, MAG2_FIXED_DESCRIPTOR_ID, MAG2_Q16_COMPONENT_MAX,
-    MAG2_Q16_SCALE, MappingExecutionProfile, SQRT_F_ARTIFACT_HASH,
+    fnv1a64_hex, is_exact_mag2_fixed_descriptor, is_sead_obs0_overlay_score_descriptor,
+    landed_jit_kernel_descriptors, validate_kernel_descriptor_admission, MAG2_FIXED_DESCRIPTOR_ID,
+    MAG2_Q16_COMPONENT_MAX, MAG2_Q16_SCALE, MappingExecutionProfile, SEAD_OBS0_DESCRIPTOR_ID,
+    SQRT_F_ARTIFACT_HASH,
 };
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
@@ -216,6 +217,15 @@ fn init_buffer(rows: &[ObsRow]) -> Vec<u32> {
 }
 
 fn run_overlay_score_batch(ctx: &GpuContext, rows: &[ObsRow]) -> Vec<ObsOutput> {
+    run_overlay_score_batch_repeated(ctx, rows, 1, true).outputs
+}
+
+fn run_overlay_score_batch_repeated(
+    ctx: &GpuContext,
+    rows: &[ObsRow],
+    repeat_dispatches: u32,
+    do_readback: bool,
+) -> WarmRunOutcome {
     use wgpu::util::DeviceExt;
     let n = rows.len() as u32;
     let wgsl = emit_overlay_score_wgsl(n);
@@ -267,19 +277,32 @@ fn run_overlay_score_batch(ctx: &GpuContext, rows: &[ObsRow]) -> Vec<ObsOutput> 
             resource: storage.as_entire_binding(),
         }],
     });
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("sead_obs0_enc"),
-    });
-    {
-        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("sead_obs0_pass"),
-            timestamp_writes: None,
+    let t0 = Instant::now();
+    for _ in 0..repeat_dispatches {
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("sead_obs0_enc"),
         });
-        pass.set_pipeline(&pipeline);
-        pass.set_bind_group(0, &bg, &[]);
-        pass.dispatch_workgroups(n.div_ceil(64), 1, 1);
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("sead_obs0_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.dispatch_workgroups(n.div_ceil(64), 1, 1);
+        }
+        queue.submit(Some(encoder.finish()));
     }
-    queue.submit(Some(encoder.finish()));
+    let elapsed = t0.elapsed();
+
+    if !do_readback {
+        return WarmRunOutcome {
+            outputs: Vec::new(),
+            elapsed,
+            dispatches: repeat_dispatches,
+            includes_readback: false,
+        };
+    }
 
     let staging = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("sead_obs0_readback"),
@@ -300,7 +323,8 @@ fn run_overlay_score_batch(ctx: &GpuContext, rows: &[ObsRow]) -> Vec<ObsOutput> 
     drop(mapped);
     staging.unmap();
 
-    rows.iter()
+    let outputs = rows
+        .iter()
         .enumerate()
         .map(|(i, _)| {
             let base = i * ROW_STRIDE as usize;
@@ -313,7 +337,21 @@ fn run_overlay_score_batch(ctx: &GpuContext, rows: &[ObsRow]) -> Vec<ObsOutput> 
                 flags: out[base + 9],
             }
         })
-        .collect()
+        .collect();
+
+    WarmRunOutcome {
+        outputs,
+        elapsed,
+        dispatches: repeat_dispatches,
+        includes_readback: true,
+    }
+}
+
+struct WarmRunOutcome {
+    outputs: Vec<ObsOutput>,
+    elapsed: std::time::Duration,
+    dispatches: u32,
+    includes_readback: bool,
 }
 
 fn gradient_samples() -> Vec<f32> {
@@ -596,15 +634,77 @@ fn sead_obs0_no_default_runtime_wiring() {
         );
     }
 
-    let registry_has_obs = landed_jit_kernel_descriptors()
-        .iter()
-        .any(|d| d.id == "m_jit_sead_obs0_overlay_score");
-    assert!(
-        !registry_has_obs,
-        "SEAD-OBS-0 remains driver fixture; descriptor follow-up deferred"
-    );
+    let obs = landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|d| d.id == SEAD_OBS0_DESCRIPTOR_ID)
+        .expect("sead obs0 descriptor");
+    assert!(is_sead_obs0_overlay_score_descriptor(&obs));
+    validate_kernel_descriptor_admission(&obs).expect("obs0 descriptor admits");
+    assert!(obs.default_off);
+    assert!(!obs.production_wiring);
 
-    println!("sead_obs0_wiring: default_off=true production_wiring=false descriptor=deferred");
+    let wgsl = emit_overlay_score_wgsl(1);
+    for forbidden in [
+        "SimSession",
+        "ResourceEconomySpec",
+        "simthing-sim",
+        "KernelCache",
+        "cache.insert",
+        "scheduler",
+        "SemanticWGSL",
+    ] {
+        assert!(
+            !wgsl.contains(forbidden),
+            "overlay WGSL must not reference `{forbidden}`"
+        );
+    }
+
+    println!("sead_obs0_wiring: default_off=true production_wiring=false descriptor=landed");
+}
+
+#[test]
+fn sead_obs1_perf_34k_warm_repeated_dispatch() {
+    with_gpu(|ctx| {
+        const N: usize = 34_000;
+        const REPEAT: u32 = 32;
+        let rows = mobile_observer_rows(N);
+        // Warmup dispatch without timing readback.
+        let _ = run_overlay_score_batch_repeated(ctx, &rows, 1, false);
+        let outcome = run_overlay_score_batch_repeated(ctx, &rows, REPEAT, true);
+        assert_eq!(outcome.outputs.len(), N);
+
+        let mut spot_mag_ulp = 0u32;
+        for (out, row) in outcome.outputs.iter().take(512).zip(rows.iter().take(512)) {
+            spot_mag_ulp = spot_mag_ulp.max(ulp_distance(out.mag_bits, cpu_mag_bits(row.gx, row.gy)));
+        }
+        assert_eq!(spot_mag_ulp, 0);
+
+        let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
+        let per_dispatch_ms = total_ms / REPEAT as f64;
+        let per_row_us = outcome.elapsed.as_secs_f64() * 1_000_000.0 / (N as f64 * REPEAT as f64);
+        println!(
+            "sead_obs1_warm_34k: rows={N} dispatches={REPEAT} includes_readback=true total_ms={total_ms:.3} per_dispatch_ms={per_dispatch_ms:.3} per_row_us={per_row_us:.4} spot_mag_max_ulp={spot_mag_ulp} score_authority=ApproximateDiagnosticF32"
+        );
+        println!(
+            "sead_obs1_warm_compare: SEAD-OBS-0 cold ~15.6 ms; SQRT-MAG2-PERF-0 combined ~1.7 ms"
+        );
+    });
+}
+
+#[test]
+fn sead_obs1_no_default_runtime_wiring() {
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
+    let obs = landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|d| d.id == SEAD_OBS0_DESCRIPTOR_ID)
+        .expect("sead obs0 descriptor");
+    assert!(obs.default_off);
+    assert!(!obs.production_wiring);
+    validate_kernel_descriptor_admission(&obs).expect("obs0 admits");
+    println!("sead_obs1_wiring: descriptor=landed no_scheduler_no_bridge");
 }
 
 #[test]

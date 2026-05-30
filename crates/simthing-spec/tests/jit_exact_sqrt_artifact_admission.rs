@@ -70,6 +70,7 @@ fn grad1_style_scorer() -> KernelDescriptorSpec {
         exact_sqrt_artifact: None,
         pre_sqrt_contract: None,
         mag2_source_contract: None,
+        score_authority_contract: None,
     }
 }
 

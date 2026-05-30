@@ -61,6 +61,9 @@ fn format_pre_sqrt_contract(
         Some(crate::compile::jit_exact_sqrt_artifact_admission::ExactPreSqrtInputContract::RawDxDyProbe) => {
             "RawDxDyProbe"
         }
+        Some(crate::compile::jit_exact_sqrt_artifact_admission::ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt) => {
+            "InlineFixedPointMag2Sqrt"
+        }
     }
 }
 
