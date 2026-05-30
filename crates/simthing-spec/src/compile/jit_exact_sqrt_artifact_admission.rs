@@ -113,6 +113,10 @@ pub const SEAD_PIPE0_DESCRIPTOR_ID: &str = "m_jit_sead_pipe0_observer_event_pipe
 pub const SEAD_PIPE0_LABEL: &str = "SeadObserverEventPipeline";
 pub const SEAD_PIPE0_LAYER_COUNT: u32 = SEAD_OBS4_LAYER_COUNT;
 
+pub const SEAD_EVENT1_DESCRIPTOR_ID: &str = "m_jit_sead_event1_code_bucketing";
+pub const SEAD_EVENT1_LABEL: &str = "SeadEventCodeBucketing";
+pub const SEAD_EVENT1_CODE_COUNT: u32 = 4;
+
 /// Compacted event membership authority (SEAD-EVENT-0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventCompactionMembershipAuthority {
@@ -124,6 +128,20 @@ pub enum EventCompactionMembershipAuthority {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventCompactionOrderAuthority {
     /// Atomic slot assignment does not guarantee cross-workgroup order.
+    UnspecifiedAtomicOrder,
+}
+
+/// Event-code bucket membership authority (SEAD-EVENT-1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventCodeBucketMembershipAuthority {
+    /// Bucket records form an exact multiset per code under capacity; order is not specified.
+    ExactAuthoritativeUnordered,
+}
+
+/// Event-code bucket ordering authority (SEAD-EVENT-1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventCodeBucketOrderAuthority {
+    /// Atomic slot assignment does not guarantee order within a bucket.
     UnspecifiedAtomicOrder,
 }
 
@@ -1074,8 +1092,77 @@ pub fn validate_sead_pipe0_observer_event_pipeline_contract(
     Ok(())
 }
 
+fn has_event_bucket_reads(spec: &KernelDescriptorSpec) -> bool {
+    spec.reads.iter().any(|read| read == "source_index_u32")
+        && spec.reads.iter().any(|read| read == "event_code_u32")
+        && spec.reads.iter().any(|read| read == "state_u32")
+        && spec.reads.iter().any(|read| read == "score_fixed")
+}
+
+/// True when the descriptor is the landed SEAD event-code bucketing kernel.
+pub fn is_sead_event1_code_bucketing_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == SEAD_EVENT1_DESCRIPTOR_ID
+        && has_event_bucket_reads(spec)
+        && spec.writes.iter().any(|out| out.name == "bucket_counts")
+        && spec.writes.iter().any(|out| out.name == "bucket_overflow")
+        && spec.writes.iter().any(|out| out.name == "bucket_record")
+        && spec.writes.iter().any(|out| out.name == "invalid_code_count")
+}
+
+/// Validate landed SEAD-EVENT-1 event-code bucketing descriptor pins.
+pub fn validate_sead_event1_code_bucketing_contract(
+    spec: &KernelDescriptorSpec,
+) -> Result<(), SpecError> {
+    if spec.id != SEAD_EVENT1_DESCRIPTOR_ID {
+        return Ok(());
+    }
+    if !has_event_bucket_reads(spec) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD event-code bucketing requires source_index_u32, event_code_u32, state_u32, score_fixed reads",
+        ));
+    }
+    if spec.exact_sqrt_artifact.is_some() {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD event-code bucketing must not bind sqrt artifact",
+        ));
+    }
+    if spec.score_authority_contract.is_some() {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD event-code bucketing must not declare score authority contract",
+        ));
+    }
+    for (name, msg) in [
+        ("bucket_counts", "exact-authoritative bucket_counts"),
+        ("bucket_overflow", "exact-authoritative bucket_overflow"),
+        ("bucket_record", "exact-authoritative bucket_record"),
+        ("invalid_code_count", "exact-authoritative invalid_code_count"),
+    ] {
+        match spec
+            .writes
+            .iter()
+            .find(|out| out.name == name)
+            .map(|out| out.authority)
+        {
+            Some(OutputAuthority::ExactAuthoritative) => {}
+            _ => {
+                return Err(artifact_err(
+                    &spec.id,
+                    format!("SEAD event-code bucketing requires {msg}"),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
 pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
+    if spec.id == SEAD_EVENT1_DESCRIPTOR_ID {
+        return validate_sead_event1_code_bucketing_contract(spec);
+    }
     if spec.id == SEAD_PIPE0_DESCRIPTOR_ID {
         validate_exact_sqrt_artifact_binding(
             &spec.id,
@@ -1405,6 +1492,34 @@ pub fn sead_pipe0_observer_event_pipeline_kernel_descriptor() -> KernelDescripto
             fraction_bits: MAG2_Q16_FRAC_BITS,
         }),
         score_authority_contract: Some(ScoreAuthorityContract::ExactQ16WeightedSum),
+    }
+}
+
+/// Build the landed SEAD event-code bucketing kernel descriptor (SEAD-EVENT-1).
+pub fn sead_event1_code_bucketing_kernel_descriptor() -> KernelDescriptorSpec {
+    KernelDescriptorSpec {
+        id: SEAD_EVENT1_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads: vec![
+            "source_index_u32".to_string(),
+            "event_code_u32".to_string(),
+            "state_u32".to_string(),
+            "score_fixed".to_string(),
+        ],
+        writes: vec![
+            exact_out("bucket_counts"),
+            exact_out("bucket_overflow"),
+            exact_out("bucket_record"),
+            exact_out("invalid_code_count"),
+        ],
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
+        mag2_source_contract: None,
+        score_authority_contract: None,
     }
 }
 
