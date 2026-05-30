@@ -1,3 +1,7 @@
+# 2026-05-30 — SQRT-MAG2-PERF-0 exact mag2 + F sqrt performance decomposition (Tier-2, landed)
+
+- SQRT-MAG2-PERF-0 decomposed 34k exact hot-path cost (readback baseline, mag2-only, F-only, combined); evaluated Q12.12/lo-only/split/no-readback probes; retained Q16.16 combined single-kernel candidate; no production wiring added.
+
 # 2026-05-30 — SQRT-MAG2-0 exact fixed-point pre-sqrt mag2 for gradient hot path (Tier-2, landed)
 
 - SQRT-MAG2-0 added `m_jit_mag2_fixed_exact` Q16.16 integer mag2 construction feeding F sqrt; 784/784 dense corpus exact (incl. prior 40 raw f32 mismatch rows); 34k benchmark recorded; raw f32 dx/dy probe unchanged; no production wiring/scheduler/cache/bridge added.

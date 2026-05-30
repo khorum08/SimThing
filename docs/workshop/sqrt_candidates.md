@@ -493,6 +493,8 @@ existing SQRT-0 harness and its `FORBIDDEN_SEMANTIC_TERMS` scan):
 > dx²+dy² construction exactness across CPU/GPU operation order.
 > **Update (SQRT-MAG2-0):** F sqrt is exact over input bits. Full Euclidean magnitude exactness now
 > depends on exact mag2 construction; SQRT-MAG2-0 provides the first fixed-point path if landed.
+> **Update (SQRT-MAG2-PERF-0):** F remains exact hot-path sqrt. End-to-end exact magnitude cost is
+> dominated by pre-sqrt mag2 construction unless optimized; see SQRT-MAG2-PERF-0.
 
 ```
 ApproximateJitOnly            ← native/raw sqrt (stays here — never exact-authoritative)
