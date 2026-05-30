@@ -210,7 +210,7 @@ themselves.
 |---|---|---|---|---|---|
 | C-0 | First §11-gate M-4 atlas slice: full-tile protocol-oracle parity + VRAM-multiplier report vs active budget (1.5 GiB default, configurable) | **ACCEPTED (design authority)** — GpuVerifiedApproximate (3.05e-5 ≤ 1e-4) | `a974fe44e20620f3` | — | impl: [`phase_m_c0_m4_atlas_protocol_oracle_results.md`](tests/phase_m_c0_m4_atlas_protocol_oracle_results.md); acceptance: [`phase_m_c_acceptance_review_results.md`](tests/phase_m_c_acceptance_review_results.md) |
 | C-1 | 2000-star atlas scale model: budget fit for algebraic G=0 and gutter fallback estimate | **ACCEPTED (design authority)** | — | — | impl: [`phase_m_c1_atlas_2000_star_scale_model_results.md`](tests/phase_m_c1_atlas_2000_star_scale_model_results.md); acceptance: [`phase_m_c_acceptance_review_results.md`](tests/phase_m_c_acceptance_review_results.md) |
-| C-2 | Atlas admission relaxation (designer/spec): admit bounded **algebraic-G=0** atlas specs that are homogeneous-square, protocol-oracle-backed, fit the active `V78AtlasVramBudget`, and carry multiplier reporting. `request_atlas_batching` relaxed only through this scope. No production runtime / default wiring / default-on / scheduler. | **OPEN** | — | — | — |
+| C-2 | Atlas admission relaxation (designer/spec): admit bounded **algebraic-G=0** atlas specs that are homogeneous-square, protocol-oracle-backed, fit the active `V78AtlasVramBudget`, and carry multiplier reporting. `request_atlas_batching` relaxed only through this scope. No production runtime / default wiring / default-on / scheduler. | **Done / Pending Opus Review** | — | — | impl: [`phase_m_c2_atlas_admission_relaxation_results.md`](tests/phase_m_c2_atlas_admission_relaxation_results.md) |
 
 ---
 
