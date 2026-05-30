@@ -22,6 +22,8 @@ use simthing_spec::{
     sead_act0_numeric_proposals_kernel_descriptor,
     SEAD_ACT1_DESCRIPTOR_ID,
     sead_act1_phase_e_proposal_consumer_kernel_descriptor,
+    SEAD_ACT2_DESCRIPTOR_ID,
+    sead_act2_proposal_admission_records_kernel_descriptor,
     SpecError, MAG2_Q16_FRAC_BITS, SQRT_F_ARTIFACT_HASH,
     is_sead_obs2_multilayer_overlay_score_descriptor,
     is_sead_obs3_multilayer_fixed_score_descriptor,
@@ -32,6 +34,7 @@ use simthing_spec::{
     is_sead_event2_bucket_reductions_descriptor,
     is_sead_act0_numeric_proposals_descriptor,
     is_sead_act1_phase_e_proposal_consumer_descriptor,
+    is_sead_act2_proposal_admission_records_descriptor,
 };
 
 fn obs2() -> KernelDescriptorSpec {
@@ -95,6 +98,13 @@ fn act1() -> KernelDescriptorSpec {
         .into_iter()
         .find(|desc| desc.id == SEAD_ACT1_DESCRIPTOR_ID)
         .expect("sead act1 descriptor")
+}
+
+fn act2() -> KernelDescriptorSpec {
+    landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|desc| desc.id == SEAD_ACT2_DESCRIPTOR_ID)
+        .expect("sead act2 descriptor")
 }
 
 fn obs0() -> KernelDescriptorSpec {
@@ -499,4 +509,24 @@ fn sead_act1_rejects_missing_proposal_summary_output() {
     let mut bad = sead_act1_phase_e_proposal_consumer_kernel_descriptor();
     bad.writes.retain(|out| out.name != "proposal_summary");
     assert_admission_err(&bad, "exact-authoritative proposal_summary");
+}
+
+#[test]
+fn sead_act2_descriptor_admits_proposal_admission_records() {
+    let desc = act2();
+    assert_eq!(desc.id, SEAD_ACT2_DESCRIPTOR_ID);
+    assert!(desc.default_off);
+    assert!(!desc.production_wiring);
+    assert!(is_sead_act2_proposal_admission_records_descriptor(&desc));
+    validate_kernel_descriptor_admission(&desc).expect("act2 admits");
+    println!(
+        "sead_act2_descriptor: id={SEAD_ACT2_DESCRIPTOR_ID} admission=ExactAuthoritative default_off=true"
+    );
+}
+
+#[test]
+fn sead_act2_rejects_sqrt_artifact_binding() {
+    let mut bad = sead_act2_proposal_admission_records_kernel_descriptor();
+    bad.exact_sqrt_artifact = Some(exact_sqrt_f_artifact_descriptor());
+    assert_admission_err(&bad, "must not bind sqrt artifact");
 }

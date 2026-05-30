@@ -129,6 +129,10 @@ pub const SEAD_ACT1_DESCRIPTOR_ID: &str = "m_jit_sead_act1_phase_e_proposal_cons
 pub const SEAD_ACT1_LABEL: &str = "SeadPhaseEProposalConsumer";
 pub const SEAD_ACT1_ADMITTED_TABLE_SIZE: u32 = 16;
 
+pub const SEAD_ACT2_DESCRIPTOR_ID: &str = "m_jit_sead_act2_proposal_admission_records";
+pub const SEAD_ACT2_LABEL: &str = "SeadProposalAdmissionRecords";
+pub const SEAD_ACT2_ADMISSION_RECORD_STRIDE: u32 = 7;
+
 /// Compacted event membership authority (SEAD-EVENT-0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventCompactionMembershipAuthority {
@@ -197,6 +201,13 @@ pub enum PhaseEProposalConsumerInputAuthority {
 pub enum PhaseEProposalSummaryOrderAuthority {
     /// Summary reductions are order-invariant over scanned proposal records.
     OrderInvariantExact,
+}
+
+/// Fixture-local proposal admission record authority (SEAD-ACT-2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PhaseEFixtureProposalAdmissionAuthority {
+    /// Admission records are exact under fixed integer threshold contracts.
+    ExactAuthoritative,
 }
 
 fn artifact_err(kernel: &str, reason: impl Into<String>) -> SpecError {
@@ -1406,8 +1417,70 @@ pub fn validate_sead_act1_phase_e_proposal_consumer_contract(
     Ok(())
 }
 
+fn has_proposal_admission_reads(spec: &KernelDescriptorSpec) -> bool {
+    spec.reads.iter().any(|read| read == "proposal_summary")
+}
+
+/// True when the descriptor is the landed SEAD fixture proposal admission kernel.
+pub fn is_sead_act2_proposal_admission_records_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == SEAD_ACT2_DESCRIPTOR_ID
+        && has_proposal_admission_reads(spec)
+        && spec.writes.iter().any(|out| out.name == "admission_record")
+        && spec.writes.iter().any(|out| out.name == "admission_code")
+}
+
+/// Validate landed SEAD-ACT-2 proposal admission records descriptor pins.
+pub fn validate_sead_act2_proposal_admission_records_contract(
+    spec: &KernelDescriptorSpec,
+) -> Result<(), SpecError> {
+    if spec.id != SEAD_ACT2_DESCRIPTOR_ID {
+        return Ok(());
+    }
+    if !has_proposal_admission_reads(spec) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD proposal admission requires proposal_summary read",
+        ));
+    }
+    if spec.exact_sqrt_artifact.is_some() {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD proposal admission must not bind sqrt artifact",
+        ));
+    }
+    if spec.score_authority_contract.is_some() {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD proposal admission must not declare score authority contract",
+        ));
+    }
+    for (name, msg) in [
+        ("admission_record", "exact-authoritative admission_record"),
+        ("admission_code", "exact-authoritative admission_code"),
+    ] {
+        match spec
+            .writes
+            .iter()
+            .find(|out| out.name == name)
+            .map(|out| out.authority)
+        {
+            Some(OutputAuthority::ExactAuthoritative) => {}
+            _ => {
+                return Err(artifact_err(
+                    &spec.id,
+                    format!("SEAD proposal admission requires {msg}"),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
 pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
+    if spec.id == SEAD_ACT2_DESCRIPTOR_ID {
+        return validate_sead_act2_proposal_admission_records_contract(spec);
+    }
     if spec.id == SEAD_ACT1_DESCRIPTOR_ID {
         return validate_sead_act1_phase_e_proposal_consumer_contract(spec);
     }
@@ -1820,6 +1893,27 @@ pub fn sead_act0_numeric_proposals_kernel_descriptor() -> KernelDescriptorSpec {
             exact_out("proposal_count"),
             exact_out("proposal_overflow_flag"),
             exact_out("proposal_record"),
+        ],
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: None,
+        pre_sqrt_contract: None,
+        mag2_source_contract: None,
+        score_authority_contract: None,
+    }
+}
+
+/// Build the landed SEAD fixture proposal admission records kernel descriptor (SEAD-ACT-2).
+pub fn sead_act2_proposal_admission_records_kernel_descriptor() -> KernelDescriptorSpec {
+    KernelDescriptorSpec {
+        id: SEAD_ACT2_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads: vec!["proposal_summary".to_string()],
+        writes: vec![
+            exact_out("admission_record"),
+            exact_out("admission_code"),
         ],
         native_math: NativeMathClass::None,
         semantic_free: true,
