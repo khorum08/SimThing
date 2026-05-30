@@ -1,3 +1,7 @@
+# 2026-05-30 — FrontierV2-4 combined movement + structural feedback loop (Tier-2, landed)
+
+- FrontierV2-4 landed combined fixture-only movement + structural feedback across ticks inside the default-off FrontierV2 consumer, without production commitment emission, ClauseThing, or phase closure. Replay fingerprint `dbb54b952f9face8`. Report: [`phase_m_frontier_v2_4_combined_feedback_loop_results.md`](tests/phase_m_frontier_v2_4_combined_feedback_loop_results.md).
+
 # 2026-05-30 — FrontierV2-3 structural BoundaryRequest feedback application (Tier-2, landed)
 
 - FrontierV2-3 landed fixture-only structural BoundaryRequest feedback application across ticks inside the default-off FrontierV2 consumer, without production commitment emission, ClauseThing, or phase closure. Replay fingerprint `0ad0e0d7c80316ee`. Report: [`phase_m_frontier_v2_3_structural_feedback_application_results.md`](tests/phase_m_frontier_v2_3_structural_feedback_application_results.md).

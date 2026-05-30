@@ -2587,6 +2587,10 @@ FrontierV2-2 extends the default-off FrontierV2 fixture by applying a movement F
 
 FrontierV2-3 extends the default-off FrontierV2 fixture by applying a structural FixtureCandidate to a fixture-only BoundaryRequest shadow queue, then feeding structural context into the next tick. It consumes FrontierV2-2 movement feedback application, records CPU oracle parity and replay reproducibility, rejects invalid structural routes, and keeps all structural application fixture/test-support only. It does not implement ClauseThing, production scenario runtime, production commitment emission, default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner/urgency/commitment emission, simthing-sim semantic awareness, parallel fixture economy, shared-pool tick writes, or SEAD ACT/EVENT/OBS/PIPE ladder expansion.
 
+**FrontierV2-4 — combined movement + structural feedback loop**
+
+FrontierV2-4 combines fixture-only own-column movement feedback and fixture-only BoundaryRequest structural feedback inside the default-off FrontierV2 consumer. It runs multiple ticks, applies both feedback paths, records CPU oracle parity and replay reproducibility, rejects cross-entity movement writes and invalid structural routes, and keeps all movement/structural behavior fixture/test-support only. It does not implement ClauseThing, production scenario runtime, production commitment emission, default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner/urgency/commitment emission, simthing-sim semantic awareness, parallel fixture economy, shared-pool tick writes, or SEAD ACT/EVENT/OBS/PIPE ladder expansion.
+
 Further SEAD actionability work must either: (1) produce a reusable numeric substrate consumed by Phase E fixtures, (2) directly close a Phase M/E blocker, or (3) be paused until a named product scenario requires runtime integration.
 - Native sqrt remains `ApproximateJitOnly`; F exact path requires artifact-backed descriptor admission.
 - Exact authority requires exhaustive `max_ulp == 0` proof against CPU `f32::sqrt` (ignored full sweep available separately).
