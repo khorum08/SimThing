@@ -124,6 +124,7 @@ pub fn materialize_resource_economy_registrations_with_slots(
             target_slot,
             target_col: transfer.target_col,
             amount: transfer.amount,
+            order_band: transfer.order_band,
         };
         discrete_transfer_registration_to_op(&reg)?;
         transfers.push(reg);

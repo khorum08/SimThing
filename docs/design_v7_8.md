@@ -159,10 +159,10 @@ safety. These stay binding regardless:
   (construction commits, treaty payments, emergency spend) at contention scales that the per-tick
   parallel rate-reduction substrate does not address — i.e., a GPU hot-pool allocator (D-2) and/or
   boundary transaction scheduling (D-2a).
-- **Status:** **NamedScenarioAccepted (2026-05-30); B-0 QUEUED** (not opened — product priority is
-  Line C / map batching first). Hard-currency transfers remain **exact discrete AccumulatorOp
-  transfer/recipe/emission** (Phase T, accepted) as the posture until B-0 opens; D-2 still deferred
-  indefinitely, D-2a is the narrow driver-only first slice when B-0 opens.
+- **Status:** **NamedScenarioAccepted (2026-05-30); B-0 implementation evidence landed — pending design-authority review.**
+  B-0 implementation evidence landed for narrow D-2a hard-currency ordering; Line B remains pending design-authority review until accepted. Hard-currency transfers remain **exact discrete AccumulatorOp
+  transfer/recipe/emission** (Phase T, accepted) as the posture; D-2 still deferred
+  indefinitely; D-2a narrow driver-only slice is implemented in B-0 pending acceptance.
 - **Readiness already landed:** [`reviews/d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md),
   [`reviews/d2a_boundary_transaction_scheduling_readiness.md`](reviews/d2a_boundary_transaction_scheduling_readiness.md).
 - **Named-scenario gate to unblock:** a scenario with a **multi-transaction hard-currency

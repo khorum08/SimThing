@@ -24,6 +24,8 @@ pub struct TransferRegistration {
     /// Single-source fixed transfer cap (Identity + SubtractFromSource path).
     pub max_transfer: Option<f32>,
     pub tree_id: Option<EmlTreeId>,
+    /// Authored D-2a OrderBand gate identity (default 0).
+    pub order_band: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -117,13 +119,16 @@ pub fn plan_transfer_ops(
 ) -> Result<TransferPlan, TransferPlanError> {
     let mut ops = Vec::with_capacity(registrations.len());
     let mut input_lists = Vec::with_capacity(registrations.len());
-    let mut seen_consumed = HashSet::new();
+    let mut seen_consumed: HashSet<(u32, u32, u32)> = HashSet::new();
+    let mut n_bands = 0u32;
 
     for reg in registrations {
         validate_registration(reg)?;
+        n_bands = n_bands.max(reg.order_band + 1);
 
         for (slot, col) in consumed_cells(reg) {
-            if !seen_consumed.insert((slot, col)) {
+            let key = (reg.order_band, slot, col);
+            if !seen_consumed.insert(key) {
                 return Err(TransferPlanError::ContendedConsumedInput { slot, col });
             }
         }
@@ -136,7 +141,7 @@ pub fn plan_transfer_ops(
                     col: inp.col,
                 },
                 combine: CombineFn::Identity,
-                gate: GateSpec::OrderBand(0),
+                gate: GateSpec::OrderBand(reg.order_band),
                 scale: ScaleSpec::Constant(reg.max_transfer.unwrap()),
                 consume: ConsumeMode::SubtractFromSource,
                 targets: vec![(reg.target_slot, reg.target_col)],
@@ -155,7 +160,7 @@ pub fn plan_transfer_ops(
             ops.push(AccumulatorOp {
                 source: SourceSpec::ConjunctiveCrossing { inputs },
                 combine: CombineFn::MinAcrossInputs,
-                gate: GateSpec::OrderBand(0),
+                gate: GateSpec::OrderBand(reg.order_band),
                 scale: if reg.output_scale == 1.0 {
                     ScaleSpec::Identity
                 } else {
@@ -168,7 +173,7 @@ pub fn plan_transfer_ops(
         }
     }
     Ok(TransferPlan {
-        n_bands: if ops.is_empty() { 0 } else { 1 },
+        n_bands,
         ops,
         input_lists,
     })
@@ -218,6 +223,7 @@ pub fn conjunctive_recipe_registration_to_transfer(
         output_scale: 1.0,
         max_transfer: None,
         tree_id: None,
+        order_band: 0,
     }
 }
 
@@ -247,6 +253,7 @@ pub fn discrete_transfer_registration_to_transfer(
         output_scale: 1.0,
         max_transfer: Some(reg.amount),
         tree_id: None,
+        order_band: reg.order_band,
     }
 }
 
@@ -276,6 +283,7 @@ mod tests {
             output_scale: 1.0,
             max_transfer: Some(3.0),
             tree_id: None,
+            order_band: 0,
         }];
         let plan = plan_transfer_ops(&regs).unwrap();
         assert_eq!(plan.ops.len(), 1);
@@ -306,6 +314,7 @@ mod tests {
             output_scale: 1.0,
             max_transfer: None,
             tree_id: None,
+            order_band: 0,
         }];
         let plan = plan_transfer_ops(&regs).unwrap();
         assert_eq!(plan.input_lists[0].len(), 2);
@@ -326,6 +335,7 @@ mod tests {
                 output_scale: 1.0,
                 max_transfer: Some(4.0),
                 tree_id: None,
+            order_band: 0,
             },
             TransferRegistration {
                 inputs: vec![TransferInputRef {
@@ -338,6 +348,7 @@ mod tests {
                 output_scale: 1.0,
                 max_transfer: Some(4.0),
                 tree_id: None,
+            order_band: 0,
             },
         ];
         assert_eq!(
@@ -367,6 +378,7 @@ mod tests {
                 output_scale: 1.0,
                 max_transfer: None,
                 tree_id: None,
+            order_band: 0,
             },
             TransferRegistration {
                 inputs: vec![
@@ -386,6 +398,7 @@ mod tests {
                 output_scale: 1.0,
                 max_transfer: None,
                 tree_id: None,
+            order_band: 0,
             },
         ];
         assert_eq!(
@@ -407,11 +420,48 @@ mod tests {
             output_scale: 1.0,
             max_transfer: Some(1.0),
             tree_id: None,
+            order_band: 0,
         }];
         assert!(matches!(
             plan_transfer_ops(&regs),
             Err(TransferPlanError::NonPositiveUnitCost { .. })
         ));
+    }
+
+    #[test]
+    fn allows_same_source_in_different_order_bands() {
+        let regs = vec![
+            TransferRegistration {
+                inputs: vec![TransferInputRef {
+                    slot: 0,
+                    col: 0,
+                    unit_cost: 1.0,
+                }],
+                target_slot: 0,
+                target_col: 1,
+                output_scale: 1.0,
+                max_transfer: Some(3.0),
+                tree_id: None,
+                order_band: 0,
+            },
+            TransferRegistration {
+                inputs: vec![TransferInputRef {
+                    slot: 0,
+                    col: 0,
+                    unit_cost: 1.0,
+                }],
+                target_slot: 0,
+                target_col: 2,
+                output_scale: 1.0,
+                max_transfer: Some(4.0),
+                tree_id: None,
+                order_band: 1,
+            },
+        ];
+        let plan = plan_transfer_ops(&regs).unwrap();
+        assert_eq!(plan.n_bands, 2);
+        assert!(matches!(plan.ops[0].gate, GateSpec::OrderBand(0)));
+        assert!(matches!(plan.ops[1].gate, GateSpec::OrderBand(1)));
     }
 
     #[test]
@@ -427,6 +477,7 @@ mod tests {
             output_scale: 2.0,
             max_transfer: Some(1.0),
             tree_id: None,
+            order_band: 0,
         }];
         assert_eq!(
             plan_transfer_ops(&regs),

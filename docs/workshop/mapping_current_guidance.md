@@ -31,8 +31,7 @@ Constitutional surfacing:
 > multiplier reporting; physical gutter / active mask / source identity / production runtime /
 > default-on all stay rejected. `MappingExecutionProfile` default stays `Disabled`. **The atlas
 > production runtime / sparse-residency scheduler is a SEPARATE LATER GATE — not open. There is no
-> open Line C implementation gate.** **A-0 (nested RF) and B-0 (hard-currency ordering) remain
-> QUEUED — accepted scenarios, gates NOT open; open only by product decision.** **L3 — ClauseThing / ClauseScript — is parked pending separate product authorization;
+> open Line C implementation gate.** **A-0 (nested RF) remains QUEUED.** **B-0 (hard-currency ordering) implementation evidence landed — pending Opus review:** narrow driver-only D-2a smoke; authored `order_band` wired through boundary scheduling to existing AccumulatorOp OrderBand execution; no new WGSL, no Resource Flow substitution, no global scheduler. **L3 — ClauseThing / ClauseScript — is parked pending separate product authorization;
 > do NOT start the ClauseScript parser/front-end or production `SimSession` wiring.** Do not reopen closed phases, self-accept, or spawn `ACT-N`/`FrontierV2-5`/atlas/nested
 > prooflets. Closure/acceptance memos are **design-authority + product only**. (Charter:
 > [`sead_self_ai_track.md`](sead_self_ai_track.md) §11; track: [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md); closure: [`../design_v7_7.md`](../design_v7_7.md).)

@@ -35,9 +35,11 @@ fn resource_economy_materializes_valid_transfer_registration() {
     assert_eq!(t.source_col, 0);
     assert_eq!(t.target_col, 1);
     assert_eq!(t.amount, 3.5);
+    assert_eq!(t.order_band, 2);
 
     let op = discrete_transfer_registration_to_op(t).unwrap();
     assert_eq!(op.consume, ConsumeMode::SubtractFromSource);
+    assert!(matches!(op.gate, simthing_core::GateSpec::OrderBand(2)));
     assert_eq!(materialized.report.transfer_ids, vec!["t1".to_string()]);
     assert_eq!(materialized.report.transfer_order_band_by_id.get("t1"), Some(&2));
 }

@@ -9,6 +9,7 @@ pub mod child_share_eml;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
 pub mod install;
+pub mod resource_economy_boundary_schedule;
 pub mod resource_economy_burn_in;
 pub mod resource_economy_compile;
 pub mod resource_economy_oracle;
@@ -76,6 +77,10 @@ pub use first_slice_mapping_runtime::{
 };
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
+};
+pub use resource_economy_boundary_schedule::{
+    BoundaryScheduleEntry, BoundaryScheduleKey, ResourceEconomyBoundaryScheduleReport,
+    KIND_RANK_RECIPE, KIND_RANK_TRANSFER,
 };
 pub use resource_economy_burn_in::{
     run_emission_burn_in, run_transfer_recipe_burn_in, ResourceEconomyBurnInReport,
