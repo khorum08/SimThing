@@ -1,3 +1,7 @@
+# 2026-05-30 — CLAUSE-SPEC-0 designer-authored FrontierV2 scenario admission (Tier-2, landed)
+
+- CLAUSE-SPEC-0 landed designer-authored FrontierV2 scenario admission through simthing-spec, lowering RON-first specs to accepted FrontierV2 fixture artifacts while keeping ClauseThing, ClauseScript, and production runtime parked. Report: [`phase_m_clause_spec0_frontier_v2_admission_results.md`](tests/phase_m_clause_spec0_frontier_v2_admission_results.md).
+
 # 2026-05-30 — L1-ACCEPT-0 simthing-spec buildout closure / L2 gate opened (Tier-2, design authority)
 
 - L1-ACCEPT-0 accepted the L1 simthing-spec buildout as sufficient to open L2 / CLAUSE-SPEC-0. L1-0 diagnostics, L1-1 RON preflight manifest, and accepted FrontierV2 artifact target vocabulary are the designer/spec admission substrate. L2 may start only as designer-authored FrontierV2 scenario admission through simthing-spec; ClauseThing/ClauseScript remain parked, FrontierV2-5 and ACT/EVENT/OBS/PIPE expansion remain unauthorized, and no cleanup/SHA-hygiene loop was started. One non-blocking preview.rs diagnostic-code nit noted for L2. Report: [`phase_m_l1_acceptance_review_results.md`](tests/phase_m_l1_acceptance_review_results.md).

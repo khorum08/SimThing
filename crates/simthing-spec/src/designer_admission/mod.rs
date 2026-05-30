@@ -5,6 +5,7 @@
 //! runtime, or wire production `SimSession` behavior.
 
 mod artifact_target;
+mod clause_spec;
 mod diagnostic;
 mod manifest;
 mod preflight;
@@ -14,11 +15,19 @@ pub use artifact_target::{
     accepted_frontier_v2_artifact_target_ids, accepted_frontier_v2_artifact_targets,
     AcceptedFrontierArtifactTarget,
 };
+pub use clause_spec::{
+    admit_clause_spec_frontier_v2_scenario, ClauseSpecArtifactTargets, ClauseSpecFaction,
+    ClauseSpecFrontierV2Admission, ClauseSpecFrontierV2LoweringSummary,
+    ClauseSpecFrontierV2Scenario, ClauseSpecGrid, ClauseSpecMapping, ClauseSpecMovementFeedback,
+    ClauseSpecMovementFeedbackMode, ClauseSpecResourceFlow, ClauseSpecResourceFlowRoute,
+    ClauseSpecStructuralFeedback, ClauseSpecStructuralFeedbackMode,
+    CLAUSE_SPEC_FRONTIER_V2_GRID_CAP, CLAUSE_SPEC_FRONTIER_V2_MIN_TICKS,
+    CLAUSE_SPEC_FRONTIER_V2_PROFILE,
+};
 pub use diagnostic::{
     all_designer_admission_diagnostic_codes, designer_admission_diagnostic,
     designer_admission_diagnostic_for_rejection, DesignerAdmissionDiagnostic,
-    DesignerAdmissionDiagnosticCode, DesignerAdmissionRejectionKind,
-    DesignerFacingGuardrailClass,
+    DesignerAdmissionDiagnosticCode, DesignerAdmissionRejectionKind, DesignerFacingGuardrailClass,
 };
 pub use manifest::DesignerAdmissionPreflightManifest;
 pub use preflight::{

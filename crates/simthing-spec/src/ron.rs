@@ -1,9 +1,9 @@
+use crate::designer_admission::{ClauseSpecFrontierV2Scenario, DesignerAdmissionPreflightManifest};
 use crate::error::SpecError;
-use crate::designer_admission::DesignerAdmissionPreflightManifest;
 use crate::spec::capability::CapabilityTreeSpec;
 use crate::spec::eml_gadget::EmlGadgetStackSpec;
-use crate::spec::game_mode::GameModeSpec;
 use crate::spec::first_slice_scenario::FirstSliceScenarioSpec;
+use crate::spec::game_mode::GameModeSpec;
 use crate::spec::region_field::RegionFieldSpec;
 
 pub fn deserialize_game_mode_ron(text: &str) -> Result<GameModeSpec, SpecError> {
@@ -18,7 +18,9 @@ pub fn deserialize_region_field_ron(text: &str) -> Result<RegionFieldSpec, SpecE
     ron::from_str(text).map_err(|e| SpecError::RonParse(e.to_string()))
 }
 
-pub fn deserialize_first_slice_scenario_ron(text: &str) -> Result<FirstSliceScenarioSpec, SpecError> {
+pub fn deserialize_first_slice_scenario_ron(
+    text: &str,
+) -> Result<FirstSliceScenarioSpec, SpecError> {
     ron::from_str(text).map_err(|e| SpecError::RonParse(e.to_string()))
 }
 
@@ -30,6 +32,19 @@ pub fn deserialize_designer_admission_preflight_manifest_ron(
     text: &str,
 ) -> Result<DesignerAdmissionPreflightManifest, SpecError> {
     ron::from_str(text).map_err(|e| SpecError::RonParse(e.to_string()))
+}
+
+pub fn deserialize_clause_spec_frontier_v2_scenario_ron(
+    text: &str,
+) -> Result<ClauseSpecFrontierV2Scenario, SpecError> {
+    ron::from_str(text).map_err(|e| SpecError::RonParse(e.to_string()))
+}
+
+pub fn serialize_clause_spec_frontier_v2_scenario_ron(
+    scenario: &ClauseSpecFrontierV2Scenario,
+) -> Result<String, SpecError> {
+    ron::ser::to_string_pretty(scenario, ron::ser::PrettyConfig::default())
+        .map_err(|e| SpecError::RonParse(e.to_string()))
 }
 
 pub fn serialize_designer_admission_preflight_manifest_ron(

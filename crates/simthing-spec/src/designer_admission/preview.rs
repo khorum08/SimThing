@@ -35,7 +35,7 @@ pub fn preview_designer_admission_preflight(
 
     if manifest.manifest_id.trim().is_empty() {
         diagnostics.push(designer_admission_diagnostic(
-            DesignerAdmissionDiagnosticCode::SimthingSimSemanticStateRequestRejected,
+            DesignerAdmissionDiagnosticCode::MalformedManifestRejected,
             "manifest_id must be non-empty",
             Some("assign a stable manifest_id for preflight tracing"),
         ));
@@ -43,7 +43,7 @@ pub fn preview_designer_admission_preflight(
 
     if manifest.profile_name.trim().is_empty() {
         diagnostics.push(designer_admission_diagnostic(
-            DesignerAdmissionDiagnosticCode::SimthingSimSemanticStateRequestRejected,
+            DesignerAdmissionDiagnosticCode::MalformedManifestRejected,
             "profile_name must be non-empty",
             Some("name the requested scenario posture profile"),
         ));
@@ -63,7 +63,7 @@ pub fn preview_designer_admission_preflight(
             }
             None => {
                 diagnostics.push(designer_admission_diagnostic(
-                    DesignerAdmissionDiagnosticCode::SimthingSimSemanticStateRequestRejected,
+                    DesignerAdmissionDiagnosticCode::UnknownArtifactTargetRejected,
                     format!("unknown requested_artifact_target: {target_id}"),
                     Some(
                         "use accepted FrontierV2 artifact target identifiers from L1-0 vocabulary",
@@ -75,7 +75,10 @@ pub fn preview_designer_admission_preflight(
 
     collect_feature_tokens(manifest, |token| {
         for request in feature_token_to_requests(token, manifest) {
-            push_request_diagnostics(&mut diagnostics, evaluate_designer_admission_request(request));
+            push_request_diagnostics(
+                &mut diagnostics,
+                evaluate_designer_admission_request(request),
+            );
         }
     });
 
