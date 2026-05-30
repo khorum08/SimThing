@@ -572,6 +572,34 @@ fn hosted_for_slot(
         .unwrap_or_default()
 }
 
+/// Driver/test diagnostic for static nested hierarchy materialization (A-0).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NestedHierarchyMaterializationReport {
+    pub max_depth: u32,
+    pub participant_root_count: usize,
+    pub total_bands: u32,
+    pub integration_band: u32,
+    pub all_parents_contiguous: bool,
+}
+
+/// Summarize a nested [`ArenaTreeLayout`] for boundary/materialization reporting.
+pub fn nested_hierarchy_materialization_report(
+    layout: &ArenaTreeLayout,
+) -> NestedHierarchyMaterializationReport {
+    let all_parents_contiguous = layout
+        .iter_all()
+        .into_iter()
+        .filter(|node| !node.children.is_empty())
+        .all(|node| node.verify_child_contiguity().is_ok());
+    NestedHierarchyMaterializationReport {
+        max_depth: layout.max_depth,
+        participant_root_count: layout.participant_roots.len(),
+        total_bands: layout.band_layout.total_bands_used,
+        integration_band: layout.band_layout.integration_band,
+        all_parents_contiguous,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

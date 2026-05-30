@@ -49,7 +49,7 @@ Per-step narrative lives in `worklog.md`; this file keeps the compact ladder tab
 | **L1 — simthing-spec buildout** | Designer-facing spec admission substrate (prep for ClauseThing) | T2 | **landed + ACCEPTED** (L1-0, L1-1; L1-ACCEPT-0) | none — sufficient to open L2 |
 | **L2 — CLAUSE-SPEC** | Designer-authored FrontierV2 scenario admitted through `simthing-spec` → same accepted runtime artifacts | T2 | **ACCEPTED (Opus design authority, 2026-05-30; code-verified)** (`CLAUSE-SPEC-0`) — [`phase_m_clause_spec0_acceptance_review_results.md`](tests/phase_m_clause_spec0_acceptance_review_results.md) | L3 stays parked unless product separately authorizes ClauseThing |
 | **L3 — ClauseThing** | ClauseScript-facing authoring front-end | T2 | **parked (separate track) — pending separate product authorization** | explicit ClauseThing authorization (NOT opened by L2 acceptance) |
-| **A — Nested Resource Flow** | E-11B / E-11B-5 hierarchical allocation (depth > 2) | T2 | **NamedScenarioAccepted (V7.8-MET-SCENARIO-ACCEPT-0, 2026-05-30); A-0 QUEUED** (not opened — product priority is C first) | open A-0 when product schedules it |
+| **A — Nested Resource Flow** | E-11B / E-11B-5 hierarchical allocation (depth > 2) | T2 | **NamedScenarioAccepted; A-0 landed — pending Opus review** | design-authority acceptance of A-0 |
 | **B — Discrete hard-currency ordering** | D-2 / D-2a sequential cross-band ordering | T2 | **B-0 ACCEPTED (B-0-ACCEPT-0, 2026-05-30) — Line B CLOSED at narrow smoke level** | **none** — no B-1; future mixed-kind/multi-band ordering needs a named scenario |
 | **C — Atlas / multi-theater mapping** | M-4 / M-4A atlas batching | T2 | **C-0/C-1/C-2 ACCEPTED (C-2-ACCEPT-0, 2026-05-30) — map batching CLOSED at the designer surface** (proof + scale model + atlas admission relaxation) — VRAM budget 1.5 GiB default, configurable, no hard cap | **none** — production atlas runtime / sparse-residency scheduler is a separate later gate (not open) |
 
@@ -154,20 +154,17 @@ themselves.
 
 ---
 
-## 7. Line A — Nested Resource Flow ladder (E-11B / E-11B-5) — **NamedScenarioAccepted; A-0 QUEUED**
+## 7. Line A — Nested Resource Flow ladder (E-11B / E-11B-5) — **NamedScenarioAccepted; A-0 landed (pending review)**
 
 - **Current state:** **NamedScenarioAccepted** (`NestedResourceFlowDepthFanout`, depth 4) — see
   [`phase_m_v7_8_met_scenario_acceptance_review_results.md`](tests/phase_m_v7_8_met_scenario_acceptance_review_results.md).
-  **A-0 is QUEUED, not opened** (product priority is C first). `FlatStarResourceFlow` remains the
-  posture; `PipelineFlags::default().use_accumulator_resource_flow` stays `false`. No E-11B/E-11B-5
-  implementation is authorized until A-0 is opened.
-- **A-0 scope (when opened):** first nested-arena slice — nested-arena metadata + subtree-scoped
-  registry refresh proof; not default-on Resource Flow.
+  **A-0 implementation evidence landed** (static nested arena materialization + D=3/D=4 GPU parity); **pending Opus/design-authority review** — not accepted yet. `FlatStarResourceFlow` remains the bounded production posture; `PipelineFlags::default().use_accumulator_resource_flow` stays `false`.
+- **A-0 scope:** first nested-arena slice — static nested materialization + per-parent contiguous SlotRange + D=3/D=4 GPU/CPU oracle parity; not default-on Resource Flow; not E-11B-5 dynamic enrollment.
 - **Ladder:**
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| A-0 | _(queued — first nested-arena slice; open when product schedules)_ | Queued | — | — | — |
+| A-0 | Static nested Resource Flow first slice: nested arena materialization + D=3/D=4 GPU parity + per-parent contiguous SlotRange proof | Done / Pending Opus Review | — | PR | [`phase_e_a0_nested_resource_flow_static_results.md`](tests/phase_e_a0_nested_resource_flow_static_results.md) |
 
 ## 8. Line B — Discrete hard-currency ordering ladder (D-2 / D-2a) — **B-0 ACCEPTED; Line B CLOSED at narrow smoke level**
 
@@ -243,7 +240,6 @@ authorizes it. **Line C / M (map batching) is CLOSED at the designer surface: C-
 all ACCEPTED** (proof + 2000-star scale model + bounded algebraic-G=0 atlas admission relaxation).
 The atlas **production runtime / sparse-residency scheduler** is a separate later gate and is **not
 open**. **Line B/T (discrete hard-currency ordering) is CLOSED at the narrow smoke level: B-0 is
-ACCEPTED (B-0-ACCEPT-0); no B-1 opens.** **A-0 remains the only accepted, queued M/E/T line not yet
-implemented** (NamedScenarioAccepted, not opened) — opening it is a product decision;
+ACCEPTED (B-0-ACCEPT-0); no B-1 opens.** **A-0 implementation landed — pending Opus/design-authority review** (static nested Resource Flow first slice; not accepted yet). E-11B-5 dynamic enrollment remains deferred;
 ClauseThing/ClauseScript stay parked until explicitly authorized. The AccumulatorOp v2 production plan stays **CLOSED**; v7.7
 stays the **binding baseline**; the three lines live in v7.8.
