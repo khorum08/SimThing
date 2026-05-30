@@ -1,3 +1,7 @@
+# 2026-05-30 — L1-1 designer admission RON preflight manifest + diagnostic preview (Tier-2, landed)
+
+- L1-1 added a RON-first designer admission preflight manifest and diagnostic preview surface, exercising L1-0 guardrail diagnostics while keeping CLAUSE-SPEC-0 and ClauseThing parked. Report: [`phase_m_l1_1_designer_preflight_manifest_results.md`](tests/phase_m_l1_1_designer_preflight_manifest_results.md).
+
 # 2026-05-30 — L1-0 simthing-spec designer admission substrate preflight (Tier-2, landed)
 
 - L1-0 began the v7.8 simthing-spec designer admission substrate buildout: shared guardrail diagnostics and accepted FrontierV2 artifact target vocabulary, with CLAUSE-SPEC-0 remaining parked downstream. Report: [`phase_m_l1_0_designer_admission_substrate_results.md`](tests/phase_m_l1_0_designer_admission_substrate_results.md).

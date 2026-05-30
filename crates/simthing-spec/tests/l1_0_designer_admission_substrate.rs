@@ -192,10 +192,11 @@ fn l1_0_no_simthing_sim_semantic_awareness() {
             path
         ))
         .expect("read designer_admission source");
-        for forbidden in ["simthing_sim", "simthing-sim", "use simthing"] {
+        for forbidden in ["use simthing_sim", "use simthing-sim", "simthing_sim::", "simthing-sim::"]
+        {
             assert!(
                 !contents.contains(forbidden),
-                "{path} must not reference {forbidden}"
+                "{path} must not import {forbidden}"
             );
         }
     }

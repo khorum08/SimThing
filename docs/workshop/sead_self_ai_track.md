@@ -348,3 +348,10 @@ The immediate next implementation gate after FrontierV2 acceptance is **L1 simth
 scenario admission step, parked until L1 lands.** L1-0 adds the shared designer-facing admission
 diagnostics and artifact-target vocabulary; it does not implement ClauseThing, ClauseScript, or
 production runtime wiring.
+
+### L1-1 clarification
+
+L1-1 added a RON-first designer admission preflight manifest and diagnostic preview surface using
+the L1-0 guardrail vocabulary. It is still L1 simthing-spec buildout: no full FrontierV2 scenario
+admission, no CLAUSE-SPEC-0, no ClauseThing runtime, no ClauseScript parser, no default runtime
+wiring, and no phase closure.
