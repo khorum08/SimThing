@@ -363,23 +363,24 @@ layer and only on exhaustive proof; the runtime remains the unconditional last l
 
 ## 11. Open decisions (design authority — Opus)
 
-**Status after SQRT-EXACT-0 (#305), SQRT-EXACT-1D, SQRT-EXACT-1D-R1, and SQRT-EXACT-2E:** A and B were implemented and probed; **both stuck at
+**Status after SQRT-EXACT-0 (#305), SQRT-EXACT-1D, SQRT-EXACT-1D-R1, SQRT-EXACT-2E, and SQRT-EXACT-3E:** A and B were implemented and probed; **both stuck at
 ≥1 ULP on DX12/naga** (A's correction never fired; B failed normal-range boundaries), and
 both flushed subnormals to 0. Root cause is **backend FP contraction/reassociation + flush-
 to-zero**, not the underlying math. **Candidate D** was frozen as verbatim WGSL and still
 remains `ApproximateJitOnly` (dense normal max ULP = 1; subnormal flush unresolved). **Candidate E**
-now runs via integer-domain `u32` bit-IO and removes D-style subnormal flush on this backend,
-but dense-normal accuracy is currently far from promotion (`max_ulp=119`) and E is
-`RejectedDeferred` in its current form.
+now runs via integer-domain `u32` bit-IO. 2E removed D-style subnormal flush but was
+`RejectedDeferred` (`max_ulp=119`). 3E replaced the weak approximation with a correctly-rounded
+integer mantissa core and now reaches zero ULP on edge/dense/subnormal sweeps in the battery,
+moving E to `ExactCandidatePendingExhaustiveSweep` pending full ignored exhaustive proof.
 
 1. **D landed as lead candidate probe** with contraction barrier (split helpers) and integer
    subnormal *input* normalization. Classification: **ApproximateJitOnly** on this backend;
    subnormal output path **unresolved**.
-2. **Contingency — Candidate E (integer-only).** Implemented as SQRT-EXACT-2E with verbatim WGSL
-   `sqrt_cr_e_bits(x_bits: u32) -> u32` and authoritative `array<u32>` harness. It confirms the
-   **bit-IO path fixes subnormal flush behavior**, but current integer mantissa approximation is
-   not close to exact dense-normal parity (`max_ulp=119`), so E remains deferred until a stronger
-   integer rounding core lands.
+2. **Contingency — Candidate E (integer-only).** Implemented and remediated through SQRT-EXACT-2E
+   and SQRT-EXACT-3E with verbatim WGSL `sqrt_cr_e_bits(x_bits: u32) -> u32` and authoritative
+   `array<u32>` harness. The 3E core uses `u32` limb-pair widened arithmetic with exact integer
+   nearest-even rounding, removing 2E's dense-normal error and yielding `max_ulp=0` in current
+   edge/dense/subnormal sweeps. Promotion is still gated on ignored exhaustive sweep.
 3. **`fma` shortcut is dead on this backend.** #305 confirms naga/DX12 does not fuse `fma`
    for residual purposes — do not spend further effort on the A/`fma` form unless a *different*
    adapter is proven to fuse. Recorded as a binding backend note.

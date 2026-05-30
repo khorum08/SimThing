@@ -1,3 +1,7 @@
+# 2026-05-29 — SQRT-EXACT-3E Candidate E correctly-rounded integer mantissa core (Tier-2, landed)
+
+- SQRT-EXACT-3E replaced Candidate E’s weak integer approximation with an integer-limb correctly-rounded core while preserving verbatim WGSL + `u32` bit IO; edge/dense/subnormal sweeps now hit `max_ulp=0` and `flush_count=0`, classification `ExactCandidatePendingExhaustiveSweep` pending ignored exhaustive proof; no production sqrt admission or `mag2` authority change.
+
 # 2026-05-29 — SQRT-EXACT-2E integer-only Candidate E bit-IO probe (Tier-2, landed)
 
 - SQRT-EXACT-2E added standalone `sqrt_cr_e_candidate.wgsl` with authoritative `u32` bit-pattern IO (`sqrt_cr_e_bits`); E removes D-style subnormal flush on DX12 but is `RejectedDeferred` on dense-normal accuracy (`max_ulp=119`); no production sqrt admission or `mag2` authority change.
