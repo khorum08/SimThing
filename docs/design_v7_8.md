@@ -228,3 +228,9 @@ in-progress → accepted), which is a Tier-2 design-authority + product action.
 The forward edge that is expected to *name* the scenarios above is the
 **simthing-spec → CLAUSE-SPEC → ClauseThing** chain, whose ladders (and the landed Frontier consumer
 ladder that precedes them) are tracked in the production track file (§3–§6).
+
+**V7.8-MET-SCENARIO-0 note (2026-05-30):** named consumer scenarios were proposed
+for Lines A/B/C through the accepted CLAUSE-SPEC / simthing-spec layer: nested
+Resource Flow fanout, hard-currency contention ordering, and multi-theater atlas
+mapping. Constitutional state remains parked/provisional until design-authority
+and product accept a line start.

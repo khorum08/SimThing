@@ -49,9 +49,9 @@ Per-step narrative lives in `worklog.md`; this file keeps the compact ladder tab
 | **L1 — simthing-spec buildout** | Designer-facing spec admission substrate (prep for ClauseThing) | T2 | **landed + ACCEPTED** (L1-0, L1-1; L1-ACCEPT-0) | none — sufficient to open L2 |
 | **L2 — CLAUSE-SPEC** | Designer-authored FrontierV2 scenario admitted through `simthing-spec` → same accepted runtime artifacts | T2 | **ACCEPTED (Opus design authority, 2026-05-30; code-verified)** (`CLAUSE-SPEC-0`) — [`phase_m_clause_spec0_acceptance_review_results.md`](tests/phase_m_clause_spec0_acceptance_review_results.md) | L3 stays parked unless product separately authorizes ClauseThing |
 | **L3 — ClauseThing** | ClauseScript-facing authoring front-end | T2 | **parked (separate track) — pending separate product authorization** | explicit ClauseThing authorization (NOT opened by L2 acceptance) |
-| **A — Nested Resource Flow** | E-11B / E-11B-5 hierarchical allocation (depth > 2) | T2 | **parked** (flat-star is the posture) | named economy needing depth > 2 fanout |
-| **B — Discrete hard-currency ordering** | D-2 / D-2a sequential cross-band ordering | T2 | **parked** (discrete AccumulatorOp path stands) | named multi-transaction hard-currency workload |
-| **C — Atlas / multi-theater mapping** | M-4 / M-4A atlas batching | T2 | **provisional/unimplemented** (isolation ratified) | named multi-theater scenario + VRAM budget + §11-gate PR |
+| **A — Nested Resource Flow** | E-11B / E-11B-5 hierarchical allocation (depth > 2) | T2 | **named scenario proposed; awaiting design-authority/product acceptance for A-0** (flat-star is the posture) | A-0 acceptance |
+| **B — Discrete hard-currency ordering** | D-2 / D-2a sequential cross-band ordering | T2 | **named scenario proposed; awaiting design-authority/product acceptance for B-0** (discrete AccumulatorOp path stands) | B-0 acceptance |
+| **C — Atlas / multi-theater mapping** | M-4 / M-4A atlas batching | T2 | **named scenario proposed; awaiting design-authority/product acceptance for C-0** (provisional/unimplemented; isolation ratified) | named scenario acceptance + VRAM budget + §11-gate PR |
 
 ---
 
@@ -136,12 +136,32 @@ no phase closure declared. Ruling: [`workshop/sead_self_ai_track.md`](workshop/s
 
 ---
 
+## M/E/T named consumer scenarios
+
+V7.8-MET-SCENARIO-0 creates the minimum named consumer scenario pack for the promoted M/E/T
+lines:
+
+- E / Line A: nested Resource Flow fanout scenario.
+- T / Line B: hard-currency contention ordering scenario.
+- M / Line C: multi-theater atlas mapping scenario.
+
+These scenarios name the need and prepare the gates. They do not authorize implementation by
+themselves.
+
+| Step | Intent | Class | Fingerprint | PR | Report |
+|---|---|---|---|---|---|
+| V7.8-MET-SCENARIO-0 | Named consumer scenario pack for promoted M/E/T lines | Done | — | — | [`phase_m_v7_8_met_consumer_scenarios_results.md`](tests/phase_m_v7_8_met_consumer_scenarios_results.md) |
+
+---
+
 ## 7. Line A — Nested Resource Flow ladder (E-11B / E-11B-5) — parked
 
 - **Current state:** see [`design_v7_8.md`](design_v7_8.md) §3. `FlatStarResourceFlow` is the accepted
   posture; `PipelineFlags::default().use_accumulator_resource_flow` stays `false`. Readiness landed.
 - **Unblocking named scenario:** an economy needing depth > 2 hierarchical fanout
   (`factions(1) → planets(100) → districts(1000) → factories(100000)`).
+- **V7.8-MET-SCENARIO-0:** named scenario proposed; awaiting design-authority/product acceptance
+  for A-0. This does not authorize E-11B/E-11B-5 implementation.
 - **Ladder (to be filled when the scenario is named and accepted):**
 
 | Step | Intent | Class | Fingerprint | PR | Report |
@@ -155,6 +175,8 @@ no phase closure declared. Ruling: [`workshop/sead_self_ai_track.md`](workshop/s
 - **Unblocking named scenario:** a multi-transaction hard-currency workload needing sequential
   cross-band ordering at a scale the discrete path cannot meet; a narrow driver-only ladder
   (D-2a review) is the first step *if* approved.
+- **V7.8-MET-SCENARIO-0:** named scenario proposed; awaiting design-authority/product acceptance
+  for B-0. This does not authorize D-2/D-2a implementation.
 - **Ladder (to be filled when the scenario is named and accepted):**
 
 | Step | Intent | Class | Fingerprint | PR | Report |
@@ -168,6 +190,9 @@ no phase closure declared. Ruling: [`workshop/sead_self_ai_track.md`](workshop/s
   (algebraic tile-local mask `G=0` preferred at 1.0× VRAM; physical gutter `G≥H` fallback at 6.76×).
 - **Unblocking named scenario:** a named multi-theater scenario **+** approved VRAM budget **+** a
   §11-gate-passing M-4 implementation PR (full-tile protocol-oracle parity). All three required.
+- **V7.8-MET-SCENARIO-0:** named scenario proposed; awaiting design-authority/product acceptance
+  for C-0, approved VRAM budget, and a §11-gate M-4 PR. This does not authorize atlas
+  implementation.
 - **Not in this ladder:** active-mask halo (**M-6A**) and source identity (**M-5 / `source_mask`**)
   stay deferred in place under the Mapping ADR.
 - **Ladder (to be filled when all three gate conditions are met):**
@@ -194,9 +219,9 @@ remains **L1 simthing-spec buildout**.
 ## 10. Sequencing summary
 
 L0 is **done and accepted**. L1 (simthing-spec buildout) is **done and accepted** (L1-ACCEPT-0).
-L2 implementation (`CLAUSE-SPEC-0`) has landed and is **pending design-authority review**; L3
-ClauseThing opens only after explicit authorization. That chain is the expected source of the **named scenarios** that unblock
-Lines A/B/C. Do not start any line speculatively or to escape a hygiene/closure loop; start a step
-only when its gate passes. ClauseThing/ClauseScript stay parked until L2 lands and ClauseThing is
-explicitly authorized. The AccumulatorOp v2 production plan stays **CLOSED**; v7.7 stays the
-**binding baseline**; the three lines live in v7.8.
+L2 / CLAUSE-SPEC-0 is **ACCEPTED**. L3 ClauseThing remains parked unless product separately
+authorizes it. The accepted CLAUSE-SPEC layer is now available to name the scenarios that unblock
+Lines A/B/C. V7.8-MET-SCENARIO-0 proposes those named M/E/T scenarios, but implementation starts
+only after the relevant line gate passes and design-authority + product accept A-0/B-0/C-0.
+ClauseThing/ClauseScript stay parked until explicitly authorized. The AccumulatorOp v2 production
+plan stays **CLOSED**; v7.7 stays the **binding baseline**; the three lines live in v7.8.
