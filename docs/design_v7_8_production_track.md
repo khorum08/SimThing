@@ -207,6 +207,7 @@ themselves.
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
 | C-0 | First §11-gate M-4 atlas slice: full-tile protocol-oracle parity + VRAM-multiplier report vs active budget (1.5 GiB default, configurable) | **Done / Pending Opus Review** (GpuVerifiedApproximate) | `a974fe44e20620f3` | — | [`phase_m_c0_m4_atlas_protocol_oracle_results.md`](tests/phase_m_c0_m4_atlas_protocol_oracle_results.md) |
+| C-1 | 2000-star atlas scale model: budget fit for algebraic G=0 and gutter fallback estimate | **Done / Pending Opus Review** | — | — | [`phase_m_c1_atlas_2000_star_scale_model_results.md`](tests/phase_m_c1_atlas_2000_star_scale_model_results.md) |
 
 ---
 

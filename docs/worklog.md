@@ -5733,3 +5733,5 @@ Patcher + Dispatch Coordinator per design_v4.md section 11.
 **Open questions for the next session (low-priority, can be deferred):**
 - Should `upload_overlay_deltas` reuse a staging buffer rather than recreating `overlay_deltas` each grow? At realistic overlay churn this rarely fires, so probably fine as-is.
 - Pass 3's per-thread loop has variable length per slot. If some slots have very long stacks and most have none, GPU warps will idle. At our scale this is not a concern, but worth profiling once we have realistic overlay loads.
+
+C-1 modeled the 2000-star atlas target envelope and compared algebraic G=0 and physical-gutter VRAM footprints against the active configurable budget. Algebraic fits 1.5 GiB default; gutter requires raised budget. Pure model, no production changes, all posture constraints preserved.

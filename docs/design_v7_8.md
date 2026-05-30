@@ -199,6 +199,7 @@ safety. These stay binding regardless:
   fixture/test-support level — [`tests/phase_m_c0_m4_atlas_protocol_oracle_results.md`](tests/phase_m_c0_m4_atlas_protocol_oracle_results.md).
   `request_atlas_batching` stays rejected at admission until C-0 is accepted; production mapping
   runtime remains separately gated. Active-mask/source-identity remain deferred.
+- **C-1 (scale model, pending Opus review):** modeled the exact 2000-star target envelope against the active `V78AtlasVramBudget`. Algebraic G=0 fits the 1.5 GiB default; physical gutter fallback requires raised budget. No production runtime or posture relaxation. See [`tests/phase_m_c1_atlas_2000_star_scale_model_results.md`](tests/phase_m_c1_atlas_2000_star_scale_model_results.md).
 - **C-0 gate (originally opened 2026-05-30):** the §11-gate-passing M-4 implementation PR — full-tile protocol-oracle
   parity (not corridor agreement alone) + VRAM-multiplier report against the active budget. Named
   scenario + VRAM budget are now satisfied; the §11 implementation PR is the remaining gate.
