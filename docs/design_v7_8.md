@@ -184,10 +184,7 @@ safety. These stay binding regardless:
   slice — real packed-atlas GPU path, algebraic G=0, full-tile protocol-oracle parity,
   `GpuVerifiedApproximate`) and C-1 (2000-star budget envelope) are accepted
   ([`tests/phase_m_c_acceptance_review_results.md`](tests/phase_m_c_acceptance_review_results.md)).
-  Next gate **C-2 = atlas admission relaxation (algebraic-G=0 only).** `request_atlas_batching` stays
-  **rejected at admission** and `MappingExecutionProfile` default stays `Disabled` until C-2 lands its
-  bounded admission scope; the atlas **production runtime / sparse-residency scheduler** (C-1's noted
-  need at true 2000-star scale) is a **separate later gate**, not C-2.
+  Next gate **C-2 = atlas admission relaxation (algebraic-G=0 only)** — implemented. Bounded homogeneous-square algebraic-G=0 specs with active budget fit and multiplier reporting now admit at the designer/spec layer. `request_atlas_batching` relaxed only through C-2 scope. Production runtime / sparse-residency scheduler remains a separate later gate. See C-2 report.
 - **VRAM budget (set 2026-05-30, design authority/product):** **1.5 GiB default ceiling**
   (`V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES = 1_610_612_736`), **configurable, no architectural hard
   cap** — dedicated/headless servers and larger-VRAM cards raise `max_bytes` far beyond 1.5 GiB;

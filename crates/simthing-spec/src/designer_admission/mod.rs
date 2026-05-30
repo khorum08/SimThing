@@ -5,6 +5,7 @@
 //! runtime, or wire production `SimSession` behavior.
 
 mod artifact_target;
+mod atlas;
 mod clause_spec;
 mod diagnostic;
 mod manifest;
@@ -38,6 +39,10 @@ pub use preflight::{
 pub use preview::{
     preview_accepted_artifact_targets, preview_designer_admission_preflight,
     DesignerAdmissionPreviewReport,
+};
+pub use atlas::{
+    AtlasAdmissionDecision, AtlasAdmissionProfile, AtlasAdmissionSpec,
+    AtlasIsolationAdmissionMode,
 };
 pub use v7_8_line_scenarios::{
     admit_v7_8_line_scenario_pack, v7_8_met_consumer_scenario_pack, V78AtlasVramBudget,
