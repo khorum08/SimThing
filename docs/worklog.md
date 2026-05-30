@@ -1,3 +1,7 @@
+# 2026-05-30 — FrontierV1-5 live GPU self-AI resource route toward FrontierV2 (Tier-2, landed)
+
+- FrontierV1-5 executed the required live GPU-resident integrated self-AI resource route inside default-off FrontierV1 and shaped the output as a fixture-only feedback candidate for the named FrontierV2 closed-loop consumer, without reopening the SEAD ladder or declaring phase closure. Replay fingerprint `1653b84847be2dd2`. Report: [`phase_m_frontier_v1_5_live_self_ai_route_results.md`](tests/phase_m_frontier_v1_5_live_self_ai_route_results.md).
+
 # 2026-05-30 — FrontierV1 review amendment: FrontierV1-5 withdrawn, consumer (FrontierV2) is the horizon (Opus, after product feedback)
 
 - Product feedback: the guardrails were deliberately relaxed because codex **stalls on "no consumer" and loops on hygiene handoffs without a forward scenario in its horizon** (ClauseThing parked); self-acceptance is how it escapes. A standalone `FrontierV1-5` proof gate would re-create that stall. **Amended ruling:** withdraw `FrontierV1-5` as a hygiene gate; keep the honest `ReplayAccepted` label on the self-AI loop; fold its live GPU run into the **first consumer, `FrontierV2`** (multi-tick closed-loop: field-derived proposals drive movement/dispatch that feeds back into field/economy — the ClauseThing stepping-stone). Substrate closure stands ("move on"). `FrontierV2` is the forward horizon for codex; build toward it, not hygiene passes. `sead_self_ai_track.md` §10 amendment.

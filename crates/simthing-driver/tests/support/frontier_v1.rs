@@ -13,6 +13,12 @@ pub const FRONTIER_V1_FIXTURE_ID: &str = "frontier_v1_1_opt_in_fixture_v1";
 pub const FRONTIER_V1_GPU_FIXTURE_ID: &str = "frontier_v1_2_gpu_replay_acceptance_v1";
 pub const FRONTIER_V1_GPU_RF_FIXTURE_ID: &str = "frontier_v1_3_gpu_resource_flow_v1";
 pub const FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_sead_route_replay_v1";
+pub const FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID: &str = "frontier_v1_5_live_self_ai_route_v1";
+
+/// SEAD ACT-2 `proposal_code` for resource-dispatch (event_code 1 max-rule emission).
+pub const FRONTIER_V1_RESOURCE_PROPOSAL_CODE: u32 = 1001;
+/// SEAD event bucket code for resource-side threshold events.
+pub const FRONTIER_V1_RESOURCE_EVENT_CODE: u32 = 1;
 
 /// Accepted Resource Flow allocator route code for FrontierV1 resource dispatch.
 pub const FRONTIER_V1_ALLOCATOR_ROUTE_CODE: u32 = 1;
@@ -167,6 +173,81 @@ pub enum FrontierV1FieldStatus {
     CpuOracleOnly,
     ReplayAccepted,
     PendingGpu,
+}
+
+/// Named consumer scenario status (FrontierV2 not implemented in V1-5).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FrontierV2Status {
+    NotImplemented,
+}
+
+/// Honest per-field status for FrontierV1-5 live self-AI route reporting.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FrontierV1LiveSelfAiFieldStatus {
+    GpuVerified,
+    PartialGpuVerified,
+    ReplayAccepted,
+    CpuOracleOnly,
+    FixtureOnly,
+    OutOfScopeForV1_5,
+    Pending,
+}
+
+/// Fixture-only next-tick feedback payload shape for the named FrontierV2 consumer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontierV1LiveSelfAiFeedbackCandidate {
+    pub tick_index: u32,
+    pub source_unit_id: u32,
+    pub route_code: u32,
+    pub proposal_code: u32,
+    pub dispatch_count: u32,
+    pub allocator_total: u32,
+    pub faction_a_allocation: u32,
+    pub faction_b_allocation: u32,
+    pub field_feedback_code: u32,
+    pub overflow_flags: u32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontierV1LiveSelfAiSummary {
+    pub mapping_summary_hash: u64,
+    pub resource_flow_summary_hash: u64,
+    pub self_ai_summary_hash: u64,
+    pub feedback_candidate_hash: u64,
+    pub route_summary_hash: u64,
+    pub overflow_flags: u32,
+    pub mapping_status: FrontierV1LiveSelfAiFieldStatus,
+    pub resource_flow_status: FrontierV1LiveSelfAiFieldStatus,
+    pub self_ai_resource_route_status: FrontierV1LiveSelfAiFieldStatus,
+    pub feedback_candidate_status: FrontierV1LiveSelfAiFieldStatus,
+    pub full_sead_pipe_status: FrontierV1LiveSelfAiFieldStatus,
+    pub structural_route_status: FrontierV1LiveSelfAiFieldStatus,
+    pub movement_route_status: FrontierV1LiveSelfAiFieldStatus,
+    pub frontier_v2_status: FrontierV2Status,
+}
+
+impl FrontierV1LiveSelfAiSummary {
+    pub fn combined_hex(&self) -> String {
+        let combined = fnv_mix(self.mapping_summary_hash)
+            ^ fnv_mix(self.resource_flow_summary_hash)
+            ^ fnv_mix(self.self_ai_summary_hash)
+            ^ fnv_mix(self.feedback_candidate_hash)
+            ^ fnv_mix(self.route_summary_hash)
+            ^ fnv_mix(u64::from(self.overflow_flags));
+        format!("{:016x}", combined & 0xFFFF_FFFF_FFFF_FFFF)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontierV1LiveSelfAiOracleOutput {
+    pub resource_route_code: u32,
+    pub resource_route_count: u32,
+    pub invalid_route_count: u32,
+    pub allocator_total: u32,
+    pub faction_a_allocation: u32,
+    pub faction_b_allocation: u32,
+    pub feedback: FrontierV1LiveSelfAiFeedbackCandidate,
+    pub overflow_flags: u32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -451,6 +532,129 @@ pub fn hash_route_replay_detail(summary: FrontierV1RouteReplaySummary) -> u64 {
     h = fnv_append_u32(h, summary.structural_route_count);
     h = fnv_append_u32(h, summary.movement_route_count);
     h
+}
+
+pub fn hash_live_self_ai_gpu_execution(
+    event_count: u32,
+    pipe_overflow: u32,
+    proposal_count: u32,
+    proposal_overflow: u32,
+    admission_code: u32,
+    admission_flags: u32,
+) -> u64 {
+    let mut h = fnv64(b"frontier_v1_5_self_ai_gpu");
+    h = fnv_append_u32(h, event_count);
+    h = fnv_append_u32(h, pipe_overflow);
+    h = fnv_append_u32(h, proposal_count);
+    h = fnv_append_u32(h, proposal_overflow);
+    h = fnv_append_u32(h, admission_code);
+    h = fnv_append_u32(h, admission_flags);
+    h
+}
+
+pub fn hash_live_self_ai_feedback_candidate(c: FrontierV1LiveSelfAiFeedbackCandidate) -> u64 {
+    let mut h = fnv64(b"frontier_v1_5_feedback");
+    h = fnv_append_u32(h, c.tick_index);
+    h = fnv_append_u32(h, c.source_unit_id);
+    h = fnv_append_u32(h, c.route_code);
+    h = fnv_append_u32(h, c.proposal_code);
+    h = fnv_append_u32(h, c.dispatch_count);
+    h = fnv_append_u32(h, c.allocator_total);
+    h = fnv_append_u32(h, c.faction_a_allocation);
+    h = fnv_append_u32(h, c.faction_b_allocation);
+    h = fnv_append_u32(h, c.field_feedback_code);
+    h = fnv_append_u32(h, c.overflow_flags);
+    h
+}
+
+pub fn hash_live_self_ai_summary(summary: FrontierV1LiveSelfAiSummary) -> u64 {
+    let mut h = fnv64(b"frontier_v1_5_live_self_ai");
+    h = fnv_append_u32(h, summary.mapping_summary_hash as u32);
+    h = fnv_append_u32(h, (summary.mapping_summary_hash >> 32) as u32);
+    h = fnv_append_u32(h, summary.resource_flow_summary_hash as u32);
+    h = fnv_append_u32(h, (summary.resource_flow_summary_hash >> 32) as u32);
+    h = fnv_append_u32(h, summary.self_ai_summary_hash as u32);
+    h = fnv_append_u32(h, (summary.self_ai_summary_hash >> 32) as u32);
+    h = fnv_append_u32(h, summary.feedback_candidate_hash as u32);
+    h = fnv_append_u32(h, (summary.feedback_candidate_hash >> 32) as u32);
+    h = fnv_append_u32(h, summary.route_summary_hash as u32);
+    h = fnv_append_u32(h, (summary.route_summary_hash >> 32) as u32);
+    h = fnv_append_u32(h, summary.overflow_flags);
+    h = fnv_append_u32(h, live_self_ai_field_status_code(summary.mapping_status));
+    h = fnv_append_u32(h, live_self_ai_field_status_code(summary.resource_flow_status));
+    h = fnv_append_u32(h, live_self_ai_field_status_code(summary.self_ai_resource_route_status));
+    h = fnv_append_u32(h, live_self_ai_field_status_code(summary.feedback_candidate_status));
+    h = fnv_append_u32(h, live_self_ai_field_status_code(summary.full_sead_pipe_status));
+    h = fnv_append_u32(h, live_self_ai_field_status_code(summary.structural_route_status));
+    h = fnv_append_u32(h, live_self_ai_field_status_code(summary.movement_route_status));
+    h = fnv_append_u32(h, u32::from(summary.frontier_v2_status == FrontierV2Status::NotImplemented));
+    h
+}
+
+pub fn build_feedback_candidate(
+    tick_index: u32,
+    source_unit_id: u32,
+    route_code: u32,
+    proposal_code: u32,
+    dispatch_count: u32,
+    gpu_rf: GpuResourceFlowAllocationSummary,
+    field_feedback_code: u32,
+    overflow_flags: u32,
+) -> FrontierV1LiveSelfAiFeedbackCandidate {
+    FrontierV1LiveSelfAiFeedbackCandidate {
+        tick_index,
+        source_unit_id,
+        route_code,
+        proposal_code,
+        dispatch_count,
+        allocator_total: gpu_rf.allocator_total,
+        faction_a_allocation: gpu_rf.faction_a_allocation,
+        faction_b_allocation: gpu_rf.faction_b_allocation,
+        field_feedback_code,
+        overflow_flags,
+    }
+}
+
+pub fn cpu_live_self_ai_oracle(
+    skeleton: &FrontierV1ScenarioSkeleton,
+    config: &FrontierV1FixtureConfig,
+    tick_index: u32,
+    source_unit_id: u32,
+    dispatch_count: u32,
+    field_feedback_code: u32,
+) -> FrontierV1LiveSelfAiOracleOutput {
+    let cpu = run_frontier_v1_fixture(skeleton, config);
+    let gpu_rf = gpu_resource_flow_from_cpu_oracle(cpu.resource_flow, FRONTIER_V1_ALLOCATOR_ROUTE_CODE);
+    let mut overflow_flags = 0u32;
+    if cpu.mapping.overflow {
+        overflow_flags |= 1;
+    }
+    if cpu.resource_flow.overflow {
+        overflow_flags |= 2;
+    }
+    if gpu_rf.resource_overflow_flags != 0 {
+        overflow_flags |= 4;
+    }
+    let feedback = build_feedback_candidate(
+        tick_index,
+        source_unit_id,
+        FRONTIER_V1_ALLOCATOR_ROUTE_CODE,
+        FRONTIER_V1_RESOURCE_PROPOSAL_CODE,
+        dispatch_count,
+        gpu_rf,
+        field_feedback_code,
+        overflow_flags,
+    );
+    FrontierV1LiveSelfAiOracleOutput {
+        resource_route_code: FRONTIER_V1_ALLOCATOR_ROUTE_CODE,
+        resource_route_count: cpu.routes.resource_route_count,
+        invalid_route_count: cpu.routes.rejected_route_count,
+        allocator_total: gpu_rf.allocator_total,
+        faction_a_allocation: gpu_rf.faction_a_allocation,
+        faction_b_allocation: gpu_rf.faction_b_allocation,
+        feedback,
+        overflow_flags,
+    }
 }
 
 pub fn hash_sead_replay_summary(summary: FrontierV1SeadReplaySummary) -> u64 {
@@ -983,4 +1187,16 @@ fn fnv_append_u32(mut hash: u64, v: u32) -> u64 {
 
 fn fnv_mix(v: u64) -> u64 {
     fnv_append_u32(fnv64(b"mix"), v as u32) ^ (v >> 32)
+}
+
+fn live_self_ai_field_status_code(s: FrontierV1LiveSelfAiFieldStatus) -> u32 {
+    match s {
+        FrontierV1LiveSelfAiFieldStatus::GpuVerified => 0,
+        FrontierV1LiveSelfAiFieldStatus::PartialGpuVerified => 1,
+        FrontierV1LiveSelfAiFieldStatus::ReplayAccepted => 2,
+        FrontierV1LiveSelfAiFieldStatus::CpuOracleOnly => 3,
+        FrontierV1LiveSelfAiFieldStatus::FixtureOnly => 4,
+        FrontierV1LiveSelfAiFieldStatus::OutOfScopeForV1_5 => 5,
+        FrontierV1LiveSelfAiFieldStatus::Pending => 6,
+    }
 }
