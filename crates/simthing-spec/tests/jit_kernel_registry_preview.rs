@@ -27,6 +27,7 @@ fn grad1_style_scorer() -> KernelDescriptorSpec {
         semantic_free: true,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     }
 }
 
@@ -43,6 +44,7 @@ fn grad1_style_scorer_with_bias_read() -> KernelDescriptorSpec {
         semantic_free: true,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     }
 }
 
@@ -169,6 +171,7 @@ fn sample_entry(stable_key: &str) -> KernelRegistryEntryPreview {
         lane: KernelRegistryLane::TestOnlyPreview,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     }
 }
 
@@ -241,6 +244,7 @@ fn jit_reg0_invalid_graph_rejects_before_manifest() {
         semantic_free: true,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     };
     let node_b = KernelDescriptorSpec {
         id: "m_jit_cycle_b".into(),
@@ -254,6 +258,7 @@ fn jit_reg0_invalid_graph_rejects_before_manifest() {
         semantic_free: true,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     };
     let cycle = vec![KernelGraphRequestSpec {
         request_id: "cycle_bad".into(),

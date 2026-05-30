@@ -35,6 +35,7 @@ fn grad0_exact_only() -> KernelDescriptorSpec {
         semantic_free: true,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     }
 }
 
@@ -51,6 +52,7 @@ fn grad1_style_scorer() -> KernelDescriptorSpec {
         semantic_free: true,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     }
 }
 
@@ -181,6 +183,7 @@ fn jit_reg1_rejects_sqrt_candidate() {
         lane: KernelRegistryLane::TestOnlyPreview,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     };
     assert_candidate_err(&entry, "m_jit_sqrt_0_candidate");
 }

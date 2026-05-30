@@ -40,6 +40,7 @@ fn grad1_style_scorer() -> KernelDescriptorSpec {
         semantic_free: true,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     }
 }
 
@@ -179,6 +180,7 @@ fn jit_desc2_rejects_cycles() {
         semantic_free: true,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     };
     let node_b = KernelDescriptorSpec {
         id: "m_jit_cycle_b".into(),
@@ -192,6 +194,7 @@ fn jit_desc2_rejects_cycles() {
         semantic_free: true,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     };
     let graph = KernelGraphSpec {
         nodes: vec![node_a, node_b],

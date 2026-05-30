@@ -3,6 +3,7 @@
 //! Builds a deterministic registry-shaped manifest from admitted graph cohort previews.
 //! No production registry, no runtime cache, no scheduler, no GPU dispatch, no WGSL.
 
+use crate::compile::jit_exact_sqrt_artifact_admission::SQRT_F_ARTIFACT_HASH;
 use crate::compile::jit_kernel_cohort_preview::{
     preview_kernel_graph_cohorts, KernelGraphRequestSpec,
 };
@@ -148,7 +149,6 @@ const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
 
 const PRODUCTION_CANDIDATE_FORBIDDEN_CANONICAL_MARKERS: &[&str] = &[
     "m_jit_sqrt_0_candidate",
-    "sqrt_out",
     "magnitude_out",
     "mag2",
     "ApproximateJitOnly",
@@ -196,6 +196,21 @@ fn validate_production_candidate_entry_rules(entry: &KernelRegistryEntryPreview)
                 format!(
                     "production-candidate admission rejects canonical marker `{marker}`"
                 ),
+            ));
+        }
+    }
+
+    if entry.canonical_text.contains("write=sqrt_out authority=ExactAuthoritative") {
+        if !entry.canonical_text.contains(SQRT_F_ARTIFACT_HASH) {
+            return Err(registry_err(
+                &entry.stable_key,
+                "exact sqrt_out requires artifact-backed Candidate F hash pin",
+            ));
+        }
+        if entry.canonical_text.contains("m_jit_sqrt_0_candidate") {
+            return Err(registry_err(
+                &entry.stable_key,
+                "native sqrt candidate cannot supply exact-authoritative sqrt_out",
             ));
         }
     }

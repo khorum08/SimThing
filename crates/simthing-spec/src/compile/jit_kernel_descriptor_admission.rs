@@ -3,6 +3,7 @@
 //! Formalizes exact vs approximate output authority for landed M-JIT proof kernels.
 //! No production scheduler, no default wiring, no GPU runtime dispatch.
 
+use crate::compile::jit_exact_sqrt_artifact_admission::validate_exact_sqrt_artifact_admission;
 use crate::error::SpecError;
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
@@ -57,6 +58,8 @@ pub struct KernelDescriptorSpec {
     pub semantic_free: bool,
     pub default_off: bool,
     pub production_wiring: bool,
+    /// Artifact-backed exact sqrt binding (Candidate F only when hash-valid).
+    pub exact_sqrt_artifact: Option<crate::compile::jit_exact_sqrt_artifact_admission::ExactSqrtArtifactDescriptor>,
 }
 
 #[derive(Debug, Clone)]
@@ -170,6 +173,8 @@ pub fn validate_kernel_descriptor_admission(spec: &KernelDescriptorSpec) -> Resu
         }
     }
 
+    validate_exact_sqrt_artifact_admission(spec)?;
+
     Ok(())
 }
 
@@ -179,6 +184,9 @@ pub fn validate_exact_kernel_inputs(
     required_exact_inputs: &[&str],
 ) -> Result<(), SpecError> {
     for name in required_exact_inputs {
+        if *name == "sqrt_out" {
+            validate_exact_sqrt_artifact_admission(producer)?;
+        }
         match output_authority(producer, name) {
             Some(OutputAuthority::ExactAuthoritative) => {}
             Some(OutputAuthority::ApproximateDiagnostic) => {
@@ -235,6 +243,7 @@ fn test_only_descriptor(
         semantic_free: true,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     }
 }
 
@@ -283,5 +292,6 @@ pub fn landed_jit_kernel_descriptors() -> Vec<KernelDescriptorSpec> {
             ],
             NativeMathClass::None,
         ),
+        crate::compile::jit_exact_sqrt_artifact_admission::sqrt_f_exact_kernel_descriptor(),
     ]
 }

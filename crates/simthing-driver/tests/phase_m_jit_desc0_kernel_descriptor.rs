@@ -106,6 +106,7 @@ const M_JIT_0_WEIGHTED_ACCUMULATOR: KernelDescriptor = KernelDescriptor {
     semantic_free: true,
     default_off: true,
     production_wiring: false,
+        exact_sqrt_artifact: None,
 };
 
 const M_JIT_0_EMA: KernelDescriptor = KernelDescriptor {
@@ -117,6 +118,7 @@ const M_JIT_0_EMA: KernelDescriptor = KernelDescriptor {
     semantic_free: true,
     default_off: true,
     production_wiring: false,
+        exact_sqrt_artifact: None,
 };
 
 const M_JIT_SQRT_0_CANDIDATE: KernelDescriptor = KernelDescriptor {
@@ -131,6 +133,7 @@ const M_JIT_SQRT_0_CANDIDATE: KernelDescriptor = KernelDescriptor {
     semantic_free: true,
     default_off: true,
     production_wiring: false,
+        exact_sqrt_artifact: None,
 };
 
 const M_JIT_GRAD_0_OBSERVER: KernelDescriptor = KernelDescriptor {
@@ -148,6 +151,7 @@ const M_JIT_GRAD_0_OBSERVER: KernelDescriptor = KernelDescriptor {
     semantic_free: true,
     default_off: true,
     production_wiring: false,
+        exact_sqrt_artifact: None,
 };
 
 const M_JIT_GRAD_1_OBSERVER_SCORE: KernelDescriptor = KernelDescriptor {
@@ -165,6 +169,7 @@ const M_JIT_GRAD_1_OBSERVER_SCORE: KernelDescriptor = KernelDescriptor {
     semantic_free: true,
     default_off: true,
     production_wiring: false,
+        exact_sqrt_artifact: None,
 };
 
 fn all_descriptors() -> Vec<&'static KernelDescriptor> {
