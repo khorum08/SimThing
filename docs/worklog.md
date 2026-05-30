@@ -1,3 +1,7 @@
+# 2026-05-30 — FrontierV2-1 closed-loop movement/structural FixtureCandidate evolution (Tier-2, landed)
+
+- FrontierV2-1 landed closed-loop movement/structural FixtureCandidate evolution across ticks inside the default-off FrontierV2 consumer, without implementing ClauseThing or declaring phase closure. Replay fingerprint `2d6e78a06d19736a`. Report: [`phase_m_frontier_v2_1_candidate_evolution_results.md`](tests/phase_m_frontier_v2_1_candidate_evolution_results.md).
+
 # 2026-05-30 — FrontierV2-0 multi-tick closed-loop consumer fixture (Tier-2, landed)
 
 - FrontierV2-0 landed the first default-off multi-tick closed-loop self-AI consumer fixture, consuming FrontierV1-5 feedback candidates across two ticks without implementing ClauseThing or declaring phase closure. Replay fingerprint `0238c18ce3b559da`. Report: [`phase_m_frontier_v2_0_closed_loop_consumer_results.md`](tests/phase_m_frontier_v2_0_closed_loop_consumer_results.md).

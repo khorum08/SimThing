@@ -275,3 +275,7 @@ closure is declared by implementer fixtures; design authority records the status
 ### FrontierV2-0 result
 
 FrontierV2-0 implemented the first bounded default-off multi-tick closed-loop consumer fixture. It consumed the FrontierV1-5 feedback candidate shape, ran at least two ticks, and verified that field-derived SEAD self-AI proposal output can feed back into the next tick's field/economy fixture input. This remains fixture/test support only: no ClauseThing implementation, no default runtime wiring, no phase closure, and no SEAD ladder reopening.
+
+### FrontierV2-1 result
+
+FrontierV2-1 extended the default-off FrontierV2 closed-loop consumer by deriving fixture-only movement and structural candidates across ticks from the live self-AI feedback path. Candidate outputs remain fixture/test support only: no ClauseThing implementation, no default runtime wiring, no phase closure, and no SEAD ladder reopening.
