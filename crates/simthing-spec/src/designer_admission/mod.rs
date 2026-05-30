@@ -6,7 +6,9 @@
 
 mod artifact_target;
 mod diagnostic;
+mod manifest;
 mod preflight;
+mod preview;
 
 pub use artifact_target::{
     accepted_frontier_v2_artifact_target_ids, accepted_frontier_v2_artifact_targets,
@@ -18,7 +20,12 @@ pub use diagnostic::{
     DesignerAdmissionDiagnosticCode, DesignerAdmissionRejectionKind,
     DesignerFacingGuardrailClass,
 };
+pub use manifest::DesignerAdmissionPreflightManifest;
 pub use preflight::{
     evaluate_designer_admission_request, resolve_frontier_artifact_target_id,
     DesignerAdmissionPreflightReport, DesignerAdmissionRequest, SeadLadderStage,
+};
+pub use preview::{
+    preview_accepted_artifact_targets, preview_designer_admission_preflight,
+    DesignerAdmissionPreviewReport,
 };

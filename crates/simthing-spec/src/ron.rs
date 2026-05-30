@@ -1,4 +1,5 @@
 use crate::error::SpecError;
+use crate::designer_admission::DesignerAdmissionPreflightManifest;
 use crate::spec::capability::CapabilityTreeSpec;
 use crate::spec::eml_gadget::EmlGadgetStackSpec;
 use crate::spec::game_mode::GameModeSpec;
@@ -23,4 +24,17 @@ pub fn deserialize_first_slice_scenario_ron(text: &str) -> Result<FirstSliceScen
 
 pub fn deserialize_eml_gadget_stack_ron(text: &str) -> Result<EmlGadgetStackSpec, SpecError> {
     ron::from_str(text).map_err(|e| SpecError::RonParse(e.to_string()))
+}
+
+pub fn deserialize_designer_admission_preflight_manifest_ron(
+    text: &str,
+) -> Result<DesignerAdmissionPreflightManifest, SpecError> {
+    ron::from_str(text).map_err(|e| SpecError::RonParse(e.to_string()))
+}
+
+pub fn serialize_designer_admission_preflight_manifest_ron(
+    manifest: &DesignerAdmissionPreflightManifest,
+) -> Result<String, SpecError> {
+    ron::ser::to_string_pretty(manifest, ron::ser::PrettyConfig::default())
+        .map_err(|e| SpecError::RonParse(e.to_string()))
 }

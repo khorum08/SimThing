@@ -179,9 +179,11 @@ pub use designer_admission::{
     accepted_frontier_v2_artifact_target_ids, accepted_frontier_v2_artifact_targets,
     all_designer_admission_diagnostic_codes, designer_admission_diagnostic,
     designer_admission_diagnostic_for_rejection, evaluate_designer_admission_request,
+    preview_accepted_artifact_targets, preview_designer_admission_preflight,
     resolve_frontier_artifact_target_id, AcceptedFrontierArtifactTarget,
     DesignerAdmissionDiagnostic, DesignerAdmissionDiagnosticCode,
-    DesignerAdmissionPreflightReport, DesignerAdmissionRejectionKind,
+    DesignerAdmissionPreflightManifest, DesignerAdmissionPreflightReport,
+    DesignerAdmissionPreviewReport, DesignerAdmissionRejectionKind,
     DesignerAdmissionRequest, DesignerFacingGuardrailClass, SeadLadderStage,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
@@ -193,8 +195,10 @@ pub use preview::{
     CapabilityPreviewOverlayBreakdown, CapabilityPreviewReport,
 };
 pub use ron::{
-    deserialize_capability_tree_ron, deserialize_eml_gadget_stack_ron,
-    deserialize_first_slice_scenario_ron, deserialize_game_mode_ron, deserialize_region_field_ron,
+    deserialize_capability_tree_ron, deserialize_designer_admission_preflight_manifest_ron,
+    deserialize_eml_gadget_stack_ron, deserialize_first_slice_scenario_ron,
+    deserialize_game_mode_ron, deserialize_region_field_ron,
+    serialize_designer_admission_preflight_manifest_ron,
 };
 pub use runtime::{
     CapabilityCategoryDefinition, CapabilityDefinition, CapabilityPrereq, CapabilityTreeDefinition,
