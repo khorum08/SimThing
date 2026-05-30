@@ -331,12 +331,20 @@ only as the *oracle* at test time. Concretely:
   `sqrt`/`mag` opcode **lowers to** — included verbatim in the emitted/runtime shader wherever
   the opcode appears. The lowering chain is: `EvalEML sqrt opcode → audited sqrt_cr WGSL
   function → shader text`.
+- **Current canonical text under test (SQRT-EXACT-1D-R1).** Candidate D is now frozen as a
+  standalone test artifact at
+  `crates/simthing-driver/tests/wgsl/sqrt_cr_d_candidate.wgsl`, consumed by the battery via
+  `include_str!` (`SQRT_CR_D_WGSL`). Batch/probe wrappers prepend this artifact verbatim and do
+  not regenerate D from Rust helper text.
 - **It is a frozen intrinsic, not freely re-composed text.** D's correctness depends on the
   exact operation ordering surviving naga → DXC; uncontrolled re-emission would let the
   compiler reassociate/contract the Dekker error term and break exactness — exactly the
   failure mode that killed A and B in #305. So the proven kernel is referenced as a
   **known-good, contraction-audited primitive** (verified at the generated-HLSL level), never
   reconstructed per formula by general EvalEML emission.
+- **Future promoted location rule unchanged.** If/when D (or successor) reaches exhaustive
+  `max_ulp == 0`, production lowering must reference the audited intrinsic verbatim from its
+  accepted runtime location; promotion does not authorize expression recomposition.
 - **CPU side stays trivial.** The oracle is plain `f32::sqrt` (already correctly rounded).
   The CPU does **not** reimplement Markstein/bitmask; the entire parity claim is
   "GPU `sqrt_cr` bits == `f32::sqrt` bits."

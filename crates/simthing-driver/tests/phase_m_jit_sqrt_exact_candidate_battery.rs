@@ -15,6 +15,7 @@ use simthing_spec::{
 use simthing_spec::MappingExecutionProfile;
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
+const SQRT_CR_D_WGSL: &str = include_str!("wgsl/sqrt_cr_d_candidate.wgsl");
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
     "faction",
@@ -190,86 +191,6 @@ fn sqrt_cr_b(x: f32) -> f32 {
 "#
 }
 
-fn emit_sqrt_cr_d_fn() -> &'static str {
-    r#"fn is_non_finite_positive_or_nonpositive(x: f32) -> bool {
-    if (!(x > 0.0)) { return true; }
-    return (bitcast<u32>(x) & 0x7f800000u) >= 0x7f800000u;
-}
-
-fn pow2_i32(exp: i32) -> f32 {
-    return bitcast<f32>(u32(exp + 127) << 23u);
-}
-
-fn snap_directional(y: f32, r: f32) -> f32 {
-    let u_up = abs(bitcast<f32>(bitcast<u32>(y) + 1u) - y);
-    let u_dn = abs(y - bitcast<f32>(bitcast<u32>(y) - 1u));
-    if (r >  (y * u_up + 0.25 * u_up * u_up)) {
-        return bitcast<f32>(bitcast<u32>(y) + 1u);
-    }
-    if (r < -(y * u_dn - 0.25 * u_dn * u_dn)) {
-        return bitcast<f32>(bitcast<u32>(y) - 1u);
-    }
-    return y;
-}
-
-fn dekker_residual_hardened(y: f32, s: f32) -> f32 {
-    let y_bits = bitcast<u32>(y);
-    let y_hi = bitcast<f32>(y_bits & 0xFFFFF000u);
-    let y_lo = y - y_hi;
-    let p = y * y;
-    let yhi_yhi = y_hi * y_hi;
-    let term1 = yhi_yhi - p;
-    let two_yhi_ylo = 2.0 * y_hi * y_lo;
-    let ylo_ylo = y_lo * y_lo;
-    let e_part1 = term1 + two_yhi_ylo;
-    let e = e_part1 + ylo_ylo;
-    let sp = s - p;
-    return sp - e;
-}
-
-fn sqrt_positive_finite_normal(s: f32) -> f32 {
-    let y = sqrt(s);
-    let r = dekker_residual_hardened(y, s);
-    return snap_directional(y, r);
-}
-
-fn sqrt_cr_d_subnormal_integer(x_bits: u32) -> f32 {
-    var mant = x_bits & 0x007fffffu;
-    var k = 0u;
-    while (k < 24u && mant < 0x00800000u) {
-        mant = mant << 1u;
-        k = k + 1u;
-    }
-    var exp_field = 1u + k - 23u;
-    var norm_mant = mant & 0x007fffffu;
-    if (exp_field == 0u) {
-        exp_field = 1u;
-        norm_mant = (mant >> 1u) & 0x007fffffu;
-    }
-    let s_bits = (exp_field << 23u) | norm_mant;
-    let s = bitcast<f32>(s_bits);
-    let y = sqrt_positive_finite_normal(s);
-    let half_k = i32(k >> 1u);
-    var scale = pow2_i32(-half_k);
-    if ((k & 1u) != 0u) {
-        scale = scale * 0.7071067811865476;
-    }
-    return y * scale;
-}
-
-fn sqrt_cr_d(x: f32) -> f32 {
-    if (is_non_finite_positive_or_nonpositive(x)) { return sqrt(x); }
-    let x_bits = bitcast<u32>(x);
-    let exp = x_bits >> 23u;
-    let mant = x_bits & 0x007fffffu;
-    if (exp == 0u && mant != 0u) {
-        return sqrt_cr_d_subnormal_integer(x_bits);
-    }
-    return sqrt_positive_finite_normal(x);
-}
-"#
-}
-
 fn emit_batch_wgsl(candidate: ExactSqrtCandidate, batch_count: u32) -> String {
     let sqrt_fn = match candidate {
         ExactSqrtCandidate::CorrectlyRoundedHwFma => {
@@ -278,9 +199,7 @@ fn emit_batch_wgsl(candidate: ExactSqrtCandidate, batch_count: u32) -> String {
         ExactSqrtCandidate::CorrectlyRoundedNewtonTwoProduct => {
             format!("{}\n", emit_sqrt_cr_b_fn())
         }
-        ExactSqrtCandidate::CorrectlyRoundedHwBitmask => {
-            format!("{}\n", emit_sqrt_cr_d_fn())
-        }
+        ExactSqrtCandidate::CorrectlyRoundedHwBitmask => format!("{SQRT_CR_D_WGSL}\n"),
     };
     let call = match candidate {
         ExactSqrtCandidate::CorrectlyRoundedHwFma => "sqrt_cr_a",
@@ -385,9 +304,18 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
     data[base + 5u] = down_snap;
 }}
 "#,
-        d = emit_sqrt_cr_d_fn(),
+        d = SQRT_CR_D_WGSL,
         batch_count = batch_count
     )
+}
+
+fn fnv1a64_hex(input: &str) -> String {
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for b in input.as_bytes() {
+        hash ^= u64::from(*b);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    format!("{hash:016x}")
 }
 
 fn with_gpu<F: FnOnce(&GpuContext)>(f: F) {
@@ -1110,7 +1038,30 @@ fn sweep_d_subnormal(ctx: &GpuContext, inputs: &[f32]) -> SubnormalSweepDetail {
 }
 
 #[test]
-fn sqrt_exact1d_candidate_d_wgsl_compiles_semantic_free() {
+fn sqrt_exact1d_r1_candidate_d_uses_verbatim_wgsl_artifact() {
+    assert!(!SQRT_CR_D_WGSL.is_empty(), "verbatim D WGSL artifact must be non-empty");
+    assert!(SQRT_CR_D_WGSL.contains("fn sqrt_cr_d("));
+    assert!(SQRT_CR_D_WGSL.contains("fn snap_directional("));
+    assert!(SQRT_CR_D_WGSL.contains("fn dekker_residual_hardened("));
+    assert!(SQRT_CR_D_WGSL.contains("fn sqrt_cr_d_subnormal_integer("));
+    let batch = emit_batch_wgsl(ExactSqrtCandidate::CorrectlyRoundedHwBitmask, 1);
+    let probe = emit_d_probe_wgsl(1);
+    assert!(
+        batch.contains(SQRT_CR_D_WGSL),
+        "D batch wrapper must include verbatim artifact as contiguous substring"
+    );
+    assert!(
+        probe.contains(SQRT_CR_D_WGSL),
+        "D probe wrapper must include verbatim artifact as contiguous substring"
+    );
+    assert_eq!(batch.matches(SQRT_CR_D_WGSL).count(), 1);
+    assert_eq!(probe.matches(SQRT_CR_D_WGSL).count(), 1);
+}
+
+#[test]
+fn sqrt_exact1d_r1_verbatim_d_wgsl_compiles_semantic_free() {
+    assert_semantic_free(SQRT_CR_D_WGSL);
+    assert_exact0_forbidden(SQRT_CR_D_WGSL);
     let wgsl = emit_batch_wgsl(ExactSqrtCandidate::CorrectlyRoundedHwBitmask, 1);
     assert_semantic_free(&wgsl);
     assert_exact0_forbidden(&wgsl);
@@ -1123,6 +1074,16 @@ fn sqrt_exact1d_candidate_d_wgsl_compiles_semantic_free() {
         let out = run_candidate_batch(ctx, ExactSqrtCandidate::CorrectlyRoundedHwBitmask, &[4.0]);
         assert_eq!(out[0].to_bits(), 2.0f32.to_bits());
     });
+}
+
+#[test]
+fn sqrt_exact1d_r1_verbatim_d_artifact_hash_recorded() {
+    let hash = fnv1a64_hex(SQRT_CR_D_WGSL);
+    println!(
+        "sqrt_exact1d_r1_verbatim_d_artifact_hash_fnv1a64={hash} path=crates/simthing-driver/tests/wgsl/sqrt_cr_d_candidate.wgsl bytes={}",
+        SQRT_CR_D_WGSL.len()
+    );
+    assert_eq!(hash.len(), 16);
 }
 
 #[test]
