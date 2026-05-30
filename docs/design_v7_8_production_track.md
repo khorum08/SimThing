@@ -49,9 +49,9 @@ Per-step narrative lives in `worklog.md`; this file keeps the compact ladder tab
 | **L1 — simthing-spec buildout** | Designer-facing spec admission substrate (prep for ClauseThing) | T2 | **landed + ACCEPTED** (L1-0, L1-1; L1-ACCEPT-0) | none — sufficient to open L2 |
 | **L2 — CLAUSE-SPEC** | Designer-authored FrontierV2 scenario admitted through `simthing-spec` → same accepted runtime artifacts | T2 | **ACCEPTED (Opus design authority, 2026-05-30; code-verified)** (`CLAUSE-SPEC-0`) — [`phase_m_clause_spec0_acceptance_review_results.md`](tests/phase_m_clause_spec0_acceptance_review_results.md) | L3 stays parked unless product separately authorizes ClauseThing |
 | **L3 — ClauseThing** | ClauseScript-facing authoring front-end | T2 | **parked (separate track) — pending separate product authorization** | explicit ClauseThing authorization (NOT opened by L2 acceptance) |
-| **A — Nested Resource Flow** | E-11B / E-11B-5 hierarchical allocation (depth > 2) | T2 | **named scenario proposed; awaiting design-authority/product acceptance for A-0** (flat-star is the posture) | A-0 acceptance |
-| **B — Discrete hard-currency ordering** | D-2 / D-2a sequential cross-band ordering | T2 | **named scenario proposed; awaiting design-authority/product acceptance for B-0** (discrete AccumulatorOp path stands) | B-0 acceptance |
-| **C — Atlas / multi-theater mapping** | M-4 / M-4A atlas batching | T2 | **named scenario proposed; awaiting design-authority/product acceptance for C-0** (provisional/unimplemented; isolation ratified) | named scenario acceptance + VRAM budget + §11-gate PR |
+| **A — Nested Resource Flow** | E-11B / E-11B-5 hierarchical allocation (depth > 2) | T2 | **NamedScenarioAccepted (V7.8-MET-SCENARIO-ACCEPT-0, 2026-05-30); A-0 QUEUED** (not opened — product priority is C first) | open A-0 when product schedules it |
+| **B — Discrete hard-currency ordering** | D-2 / D-2a sequential cross-band ordering | T2 | **NamedScenarioAccepted (V7.8-MET-SCENARIO-ACCEPT-0, 2026-05-30); B-0 QUEUED** (not opened — product priority is C first) | open B-0 when product schedules it |
+| **C — Atlas / multi-theater mapping** | M-4 / M-4A atlas batching | T2 | **NamedScenarioAccepted + C-0 OPEN (priority; Opus design authority + product, 2026-05-30)** — VRAM budget set: **1.5 GiB default, configurable, no architectural hard cap** | C-0 lands the §11 M-4 full-tile protocol-oracle-parity + VRAM-multiplier report |
 
 ---
 
@@ -154,52 +154,59 @@ themselves.
 
 ---
 
-## 7. Line A — Nested Resource Flow ladder (E-11B / E-11B-5) — parked
+## 7. Line A — Nested Resource Flow ladder (E-11B / E-11B-5) — **NamedScenarioAccepted; A-0 QUEUED**
 
-- **Current state:** see [`design_v7_8.md`](design_v7_8.md) §3. `FlatStarResourceFlow` is the accepted
-  posture; `PipelineFlags::default().use_accumulator_resource_flow` stays `false`. Readiness landed.
-- **Unblocking named scenario:** an economy needing depth > 2 hierarchical fanout
-  (`factions(1) → planets(100) → districts(1000) → factories(100000)`).
-- **V7.8-MET-SCENARIO-0:** named scenario proposed; awaiting design-authority/product acceptance
-  for A-0. This does not authorize E-11B/E-11B-5 implementation.
-- **Ladder (to be filled when the scenario is named and accepted):**
-
-| Step | Intent | Class | Fingerprint | PR | Report |
-|---|---|---|---|---|---|
-| A-0 | _(reserved — first nested-arena slice, post-named-scenario)_ | Pending | — | — | — |
-
-## 8. Line B — Discrete hard-currency ordering ladder (D-2 / D-2a) — parked
-
-- **Current state:** see [`design_v7_8.md`](design_v7_8.md) §4. Discrete AccumulatorOp transfer/recipe/
-  emission (Phase T, accepted) stands; D-2 deferred indefinitely, D-2a defer-until-needed.
-- **Unblocking named scenario:** a multi-transaction hard-currency workload needing sequential
-  cross-band ordering at a scale the discrete path cannot meet; a narrow driver-only ladder
-  (D-2a review) is the first step *if* approved.
-- **V7.8-MET-SCENARIO-0:** named scenario proposed; awaiting design-authority/product acceptance
-  for B-0. This does not authorize D-2/D-2a implementation.
-- **Ladder (to be filled when the scenario is named and accepted):**
+- **Current state:** **NamedScenarioAccepted** (`NestedResourceFlowDepthFanout`, depth 4) — see
+  [`phase_m_v7_8_met_scenario_acceptance_review_results.md`](tests/phase_m_v7_8_met_scenario_acceptance_review_results.md).
+  **A-0 is QUEUED, not opened** (product priority is C first). `FlatStarResourceFlow` remains the
+  posture; `PipelineFlags::default().use_accumulator_resource_flow` stays `false`. No E-11B/E-11B-5
+  implementation is authorized until A-0 is opened.
+- **A-0 scope (when opened):** first nested-arena slice — nested-arena metadata + subtree-scoped
+  registry refresh proof; not default-on Resource Flow.
+- **Ladder:**
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| B-0 | _(reserved — first narrow driver-only D-2a slice, post-named-scenario)_ | Pending | — | — | — |
+| A-0 | _(queued — first nested-arena slice; open when product schedules)_ | Queued | — | — | — |
 
-## 9. Line C — Atlas / multi-theater mapping ladder (M-4 / M-4A) — provisional
+## 8. Line B — Discrete hard-currency ordering ladder (D-2 / D-2a) — **NamedScenarioAccepted; B-0 QUEUED**
 
-- **Current state:** see [`design_v7_8.md`](design_v7_8.md) §5. `request_atlas_batching` stays rejected
-  at admission; `MappingExecutionProfile` default stays `Disabled`. Isolation policy ratified
-  (algebraic tile-local mask `G=0` preferred at 1.0× VRAM; physical gutter `G≥H` fallback at 6.76×).
-- **Unblocking named scenario:** a named multi-theater scenario **+** approved VRAM budget **+** a
-  §11-gate-passing M-4 implementation PR (full-tile protocol-oracle parity). All three required.
-- **V7.8-MET-SCENARIO-0:** named scenario proposed; awaiting design-authority/product acceptance
-  for C-0, approved VRAM budget, and a §11-gate M-4 PR. This does not authorize atlas
-  implementation.
+- **Current state:** **NamedScenarioAccepted** (`HardCurrencyContentionOrdering`) — see
+  [`phase_m_v7_8_met_scenario_acceptance_review_results.md`](tests/phase_m_v7_8_met_scenario_acceptance_review_results.md).
+  **B-0 is QUEUED, not opened** (product priority is C first). Discrete AccumulatorOp transfer/recipe/
+  emission (Phase T) stands as the posture; no D-2/D-2a implementation is authorized until B-0 is opened.
+- **B-0 scope (when opened):** narrow driver-only D-2a hard-currency ordering smoke; not a global scheduler.
+- **Ladder:**
+
+| Step | Intent | Class | Fingerprint | PR | Report |
+|---|---|---|---|---|---|
+| B-0 | _(queued — first narrow driver-only D-2a slice; open when product schedules)_ | Queued | — | — | — |
+
+## 9. Line C — Atlas / multi-theater mapping ladder (M-4 / M-4A) — **NamedScenarioAccepted; C-0 OPEN (priority)**
+
+- **Current state:** **NamedScenarioAccepted** (`MultiTheaterAtlasMapping`) and **C-0 OPEN** — the
+  priority line (product: close out map batching first). Acceptance:
+  [`phase_m_v7_8_met_scenario_acceptance_review_results.md`](tests/phase_m_v7_8_met_scenario_acceptance_review_results.md).
+  Until C-0 lands its gate, `request_atlas_batching` stays rejected at admission and
+  `MappingExecutionProfile` default stays `Disabled`. Isolation policy ratified (algebraic
+  tile-local mask `G=0` preferred at 1.0× VRAM; physical gutter `G≥H` fallback at 6.76×).
+- **VRAM budget (set by design authority/product, 2026-05-30):** **1.5 GiB default ceiling**
+  (`V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES = 1_610_612_736`), **configurable, no architectural hard
+  cap** — dedicated/headless servers and bigger-VRAM cards raise `max_bytes` far beyond the default;
+  **VRAM-multiplier reporting mandatory** (occupancy checked against the *active* budget, not a
+  constant). Typed term: `V78AtlasVramBudget` in `simthing-spec`.
+- **C-0 scope (bounded):** first **§11-gate M-4 slice** — full-tile protocol-oracle parity (vs an
+  exact per-tile-protocol CPU oracle, not corridor-t44 alone) **+** a VRAM-multiplier report against
+  the active budget. Algebraic mask `G=0` preferred; physical gutter `G≥H` fallback. Opt-in,
+  default-off; no semantic WGSL; `simthing-sim` stays map-free. **C-0 is opened for implementation;
+  the scenario-acceptance pass did not implement M-4.**
 - **Not in this ladder:** active-mask halo (**M-6A**) and source identity (**M-5 / `source_mask`**)
   stay deferred in place under the Mapping ADR.
-- **Ladder (to be filled when all three gate conditions are met):**
+- **Ladder:**
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| C-0 | _(reserved — first §11-gate M-4 slice, post-named-scenario + VRAM budget)_ | Pending | — | — | — |
+| C-0 | First §11-gate M-4 atlas slice: full-tile protocol-oracle parity + VRAM-multiplier report vs active budget (1.5 GiB default, configurable) | **OPEN** | — | — | — |
 
 ---
 

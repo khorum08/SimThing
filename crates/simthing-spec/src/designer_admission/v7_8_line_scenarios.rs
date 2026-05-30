@@ -120,9 +120,45 @@ pub struct V78MultiTheaterAtlasMappingClaim {
     pub single_32x32_theater_insufficient: bool,
     pub requires_atlas_batching: bool,
     pub vram_budget_declared: bool,
+    pub vram_budget: V78AtlasVramBudget,
     pub preferred_isolation: String,
     pub fallback_isolation: String,
     pub requires_full_tile_protocol_oracle_parity: bool,
+}
+
+/// 1.5 GiB — the default C-0 atlas VRAM ceiling (commodity-GPU starting budget).
+pub const V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES: u64 = 1_610_612_736;
+
+/// VRAM budget term for the Line C atlas gate (`C-0`), set by design authority/product.
+///
+/// The default ceiling is **1.5 GiB** so the first multi-theater slice fits commodity GPUs,
+/// but the budget is **configurable** with **no architectural hard cap**: dedicated/headless
+/// servers and larger-VRAM cards raise `max_bytes` far beyond the default. VRAM-multiplier
+/// reporting is mandatory (algebraic tile-local mask G=0 ≈ 1.0×; physical gutter G≥H ≈ 6.76×),
+/// so admitted atlas occupancy is always checked against the *active* budget, not a constant.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct V78AtlasVramBudget {
+    /// Active ceiling in bytes. Default `V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES` (1.5 GiB); a
+    /// deployment profile may set this far higher.
+    pub max_bytes: u64,
+    /// The budget is a profile/config parameter, raised for bigger-VRAM / headless deployments.
+    pub configurable: bool,
+    /// No fixed architectural ceiling; only the active (raisable) `max_bytes` binds.
+    pub architectural_hard_cap: bool,
+    /// VRAM-multiplier reporting against the active budget is mandatory (admission + runtime).
+    pub multiplier_reporting_required: bool,
+}
+
+impl V78AtlasVramBudget {
+    /// Default C-0 budget: 1.5 GiB ceiling, configurable, no architectural hard cap, reporting on.
+    pub fn default_1p5_gib() -> Self {
+        Self {
+            max_bytes: V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES,
+            configurable: true,
+            architectural_hard_cap: false,
+            multiplier_reporting_required: true,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -236,6 +272,7 @@ pub fn v7_8_met_consumer_scenario_pack() -> V78LineScenarioPack {
                         single_32x32_theater_insufficient: true,
                         requires_atlas_batching: true,
                         vram_budget_declared: true,
+                        vram_budget: V78AtlasVramBudget::default_1p5_gib(),
                         preferred_isolation: "AlgebraicTileLocalMaskG0".into(),
                         fallback_isolation: "PhysicalGutterGteH".into(),
                         requires_full_tile_protocol_oracle_parity: true,
@@ -355,6 +392,17 @@ fn validate_line_scenario(
             {
                 diagnostics.push(malformed(
                     "Line C scenario must require multi-theater atlas batching and VRAM review",
+                ));
+            }
+            // VRAM budget must be a real, configurable term with no architectural hard cap and
+            // mandatory multiplier reporting (default 1.5 GiB; raisable for headless/big-VRAM).
+            if claim.vram_budget.max_bytes == 0
+                || !claim.vram_budget.configurable
+                || claim.vram_budget.architectural_hard_cap
+                || !claim.vram_budget.multiplier_reporting_required
+            {
+                diagnostics.push(malformed(
+                    "Line C VRAM budget must be a configurable, hard-cap-free term with multiplier reporting",
                 ));
             }
         }

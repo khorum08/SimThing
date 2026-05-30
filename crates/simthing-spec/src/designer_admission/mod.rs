@@ -40,10 +40,10 @@ pub use preview::{
     DesignerAdmissionPreviewReport,
 };
 pub use v7_8_line_scenarios::{
-    admit_v7_8_line_scenario_pack, v7_8_met_consumer_scenario_pack,
+    admit_v7_8_line_scenario_pack, v7_8_met_consumer_scenario_pack, V78AtlasVramBudget,
     V78HardCurrencyContentionOrderingClaim, V78LineGateStatus, V78LineScenario,
     V78LineScenarioClaim, V78LineScenarioPack, V78LineScenarioPackAdmission,
     V78LineScenarioStatusRecord, V78MultiTheaterAtlasMappingClaim,
     V78NamedConsumerScenario, V78NestedResourceFlowDepthFanoutClaim, V78PromotedLine,
-    V78_MET_SCENARIO_PACK_ID,
+    V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES, V78_MET_SCENARIO_PACK_ID,
 };

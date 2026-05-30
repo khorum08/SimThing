@@ -138,8 +138,9 @@ safety. These stay binding regardless:
   dynamic enrollment on fission cascades. The reverse-OrderBand allocation sweep and the
   approximate-deterministic conservation contract are decided in
   [`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md).
-- **Status:** **Deferred / parked.** `FlatStarResourceFlow` is the accepted bounded posture;
-  `PipelineFlags::default().use_accumulator_resource_flow` stays `false`.
+- **Status:** **NamedScenarioAccepted (2026-05-30); A-0 QUEUED** (not opened — product priority is
+  Line C / map batching first). `FlatStarResourceFlow` remains the accepted posture;
+  `PipelineFlags::default().use_accumulator_resource_flow` stays `false` until A-0 opens.
 - **Readiness already landed:** [`reviews/e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md),
   [`reviews/e11b_nested_dynamic_enrollment_readiness.md`](reviews/e11b_nested_dynamic_enrollment_readiness.md),
   [`workshop/e11_hierarchical_allocation_design.md`](workshop/e11_hierarchical_allocation_design.md),
@@ -158,10 +159,10 @@ safety. These stay binding regardless:
   (construction commits, treaty payments, emergency spend) at contention scales that the per-tick
   parallel rate-reduction substrate does not address — i.e., a GPU hot-pool allocator (D-2) and/or
   boundary transaction scheduling (D-2a).
-- **Status:** **Deferred.** D-2 deferred indefinitely; D-2a recommendation is *defer implementation*
-  until needed. Hard-currency transfers remain **exact discrete AccumulatorOp transfer/recipe/
-  emission** (Phase T, accepted), which is sufficient at realistic discrete scales (O(10²)
-  decisions/faction/boundary).
+- **Status:** **NamedScenarioAccepted (2026-05-30); B-0 QUEUED** (not opened — product priority is
+  Line C / map batching first). Hard-currency transfers remain **exact discrete AccumulatorOp
+  transfer/recipe/emission** (Phase T, accepted) as the posture until B-0 opens; D-2 still deferred
+  indefinitely, D-2a is the narrow driver-only first slice when B-0 opens.
 - **Readiness already landed:** [`reviews/d1_discrete_transaction_contention_memo.md`](reviews/d1_discrete_transaction_contention_memo.md),
   [`reviews/d2a_boundary_transaction_scheduling_readiness.md`](reviews/d2a_boundary_transaction_scheduling_readiness.md).
 - **Named-scenario gate to unblock:** a scenario with a **multi-transaction hard-currency
@@ -179,15 +180,24 @@ safety. These stay binding regardless:
   The isolation policy is **ratified** ([`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md)):
   algebraic tile-local mask `G=0` is the preferred isolation candidate (1.0× VRAM), physical
   gutter `G≥H` the fallback (6.76× VRAM, mandatory VRAM-multiplier reporting).
-- **Status:** **Provisional / unimplemented.** `request_atlas_batching` stays **rejected at
-  admission**; `MappingExecutionProfile` default stays `Disabled`.
+- **Status:** **NamedScenarioAccepted + C-0 OPEN (priority, 2026-05-30).** `MultiTheaterAtlasMapping`
+  is accepted ([`tests/phase_m_v7_8_met_scenario_acceptance_review_results.md`](tests/phase_m_v7_8_met_scenario_acceptance_review_results.md))
+  and C-0 is the open priority gate (product: close out map batching first). `request_atlas_batching`
+  stays **rejected at admission** and `MappingExecutionProfile` default stays `Disabled` until C-0
+  lands its §11 gate.
+- **VRAM budget (set 2026-05-30, design authority/product):** **1.5 GiB default ceiling**
+  (`V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES = 1_610_612_736`), **configurable, no architectural hard
+  cap** — dedicated/headless servers and larger-VRAM cards raise `max_bytes` far beyond 1.5 GiB;
+  VRAM-multiplier reporting mandatory (algebraic mask G=0 ≈ 1.0×; gutter G≥H ≈ 6.76×). Typed term
+  `V78AtlasVramBudget` in `simthing-spec`; atlas occupancy is checked against the *active* budget,
+  never a constant.
 - **Readiness already landed:** [`workshop/mapping_atlas_batching_isolation_design_note.md`](workshop/mapping_atlas_batching_isolation_design_note.md)
   (§11 binding acceptance gate), [`tests/mapping_atlas_algebraic_mask_sandbox_test_results.md`](tests/mapping_atlas_algebraic_mask_sandbox_test_results.md),
   [`tests/phase_m_m4a_atlas_readiness_gate_results.md`](tests/phase_m_m4a_atlas_readiness_gate_results.md),
   [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md).
-- **Named-scenario gate to unblock:** a **named multi-theater scenario** *and* an approved VRAM
-  budget *and* a §11-gate-passing M-4 implementation PR (full-tile protocol-oracle parity, not
-  corridor agreement alone). All three required; single-grid scenarios never need atlas.
+- **C-0 gate (now open):** the §11-gate-passing M-4 implementation PR — full-tile protocol-oracle
+  parity (not corridor agreement alone) + VRAM-multiplier report against the active budget. Named
+  scenario + VRAM budget are now satisfied; the §11 implementation PR is the remaining gate.
 - **Constraints carried:** `ActiveOnlyExperimentalNoHalo` is **never** production-authorized
   (halo mandatory); atlas never without explicit isolation policy **and** VRAM-multiplier
   reporting; no semantic/map-specific WGSL; `simthing-sim` stays map-free.

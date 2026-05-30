@@ -86,6 +86,15 @@ fn v7_8_line_c_multi_theater_scenario_matches_constitution_gate() {
     assert!(claim.single_32x32_theater_insufficient);
     assert!(claim.requires_atlas_batching);
     assert!(claim.vram_budget_declared);
+    // VRAM budget: 1.5 GiB default ceiling, configurable, no architectural hard cap.
+    assert_eq!(
+        claim.vram_budget.max_bytes,
+        simthing_spec::V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES
+    );
+    assert_eq!(claim.vram_budget.max_bytes, 1_610_612_736);
+    assert!(claim.vram_budget.configurable);
+    assert!(!claim.vram_budget.architectural_hard_cap);
+    assert!(claim.vram_budget.multiplier_reporting_required);
     assert_eq!(claim.preferred_isolation, "AlgebraicTileLocalMaskG0");
     assert_eq!(claim.fallback_isolation, "PhysicalGutterGteH");
     assert!(claim.requires_full_tile_protocol_oracle_parity);

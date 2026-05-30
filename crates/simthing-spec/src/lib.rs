@@ -189,13 +189,13 @@ pub use designer_admission::{
     DesignerAdmissionDiagnosticCode, DesignerAdmissionPreflightManifest,
     DesignerAdmissionPreflightReport, DesignerAdmissionPreviewReport,
     DesignerAdmissionRejectionKind, DesignerAdmissionRequest, DesignerFacingGuardrailClass,
-    SeadLadderStage, V78HardCurrencyContentionOrderingClaim, V78LineGateStatus,
+    SeadLadderStage, V78AtlasVramBudget, V78HardCurrencyContentionOrderingClaim, V78LineGateStatus,
     V78LineScenario, V78LineScenarioClaim, V78LineScenarioPack,
     V78LineScenarioPackAdmission, V78LineScenarioStatusRecord, V78MultiTheaterAtlasMappingClaim,
     V78NamedConsumerScenario, V78NestedResourceFlowDepthFanoutClaim, V78PromotedLine,
     CLAUSE_SPEC_FRONTIER_V2_GRID_CAP, CLAUSE_SPEC_FRONTIER_V2_MIN_TICKS,
-    CLAUSE_SPEC_FRONTIER_V2_PROFILE, V78_MET_SCENARIO_PACK_ID, admit_v7_8_line_scenario_pack,
-    v7_8_met_consumer_scenario_pack,
+    CLAUSE_SPEC_FRONTIER_V2_PROFILE, V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES, V78_MET_SCENARIO_PACK_ID,
+    admit_v7_8_line_scenario_pack, v7_8_met_consumer_scenario_pack,
 };
 pub use diagnostics::{DiagnosticSeverity, SpecDiagnostic, SpecDiagnostics, SpecResult};
 pub use error::SpecError;

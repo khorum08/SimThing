@@ -22,11 +22,14 @@ Constitutional surfacing:
 > spec admission** (cross-entity writes, production commitment, Resource-Flow bypass, unbounded
 > fanout, `simthing-sim` leakage rejected at import; runtime is the last line). **L2 / CLAUSE-SPEC-0
 > is now ACCEPTED (Opus design authority, 2026-05-30; code-verified — [`../tests/phase_m_clause_spec0_acceptance_review_results.md`](../tests/phase_m_clause_spec0_acceptance_review_results.md)).**
-> **V7.8-MET-SCENARIO-0 has proposed the M/E/T named consumer scenarios through the accepted
-> CLAUSE-SPEC layer; no implementation is authorized yet.** **L3 — ClauseThing /
-> ClauseScript — is parked pending separate product authorization; do NOT start the ClauseScript
-> parser/front-end or production `SimSession` wiring.** v7.8 Lines A/B/C stay parked behind named
-> scenarios. Do not reopen closed phases, self-accept, or spawn `ACT-N`/`FrontierV2-5`/atlas/nested
+> **V7.8-MET-SCENARIO-ACCEPT-0 (2026-05-30): all three M/E/T named scenarios ACCEPTED; `C-0`
+> (map batching / atlas) is the OPEN priority gate** (product: close out map batching first).
+> **VRAM budget set: 1.5 GiB default, configurable, no architectural hard cap** (raise for
+> headless/dedicated/big-VRAM) — typed `V78AtlasVramBudget`. **C-0 = first §11-gate M-4 slice
+> (full-tile protocol-oracle parity + VRAM-multiplier report); build that next.** **A-0 (nested RF)
+> and B-0 (hard-currency ordering) are QUEUED — accepted scenarios, gates NOT open; do not start
+> them.** **L3 — ClauseThing / ClauseScript — is parked pending separate product authorization;
+> do NOT start the ClauseScript parser/front-end or production `SimSession` wiring.** Do not reopen closed phases, self-accept, or spawn `ACT-N`/`FrontierV2-5`/atlas/nested
 > prooflets. Closure/acceptance memos are **design-authority + product only**. (Charter:
 > [`sead_self_ai_track.md`](sead_self_ai_track.md) §11; track: [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md); closure: [`../design_v7_7.md`](../design_v7_7.md).)
 
