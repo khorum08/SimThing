@@ -1,3 +1,7 @@
+# 2026-05-29 — SEAD-PIPE-0 integrated GPU observer-event pipeline (Tier-2, landed)
+
+- SEAD-PIPE-0 added default-off `m_jit_sead_pipe0_observer_event_pipeline` two-pass GPU fixture; OBS-4 threshold rows feed EVENT-0 compaction without CPU filtering; count/membership exact under capacity; ordering UnspecifiedAtomicOrder; 34k integrated/warm benchmarks recorded; no CPU planner or production wiring added.
+
 # 2026-05-30 — SEAD-EVENT-0 GPU-resident event compaction from threshold event rows (Tier-2, landed)
 
 - SEAD-EVENT-0 added default-off `m_jit_sead_event0_compaction` probe; atomic GPU compaction of exact OBS-4 event codes with exact count/membership under capacity contract; ordering UnspecifiedAtomicOrder; 34k density benchmarks recorded; no CPU planner or production wiring added.

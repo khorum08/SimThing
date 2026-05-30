@@ -109,6 +109,10 @@ pub enum EventAuthorityContract {
 pub const SEAD_EVENT0_DESCRIPTOR_ID: &str = "m_jit_sead_event0_compaction";
 pub const SEAD_EVENT0_LABEL: &str = "SeadEventCompaction";
 
+pub const SEAD_PIPE0_DESCRIPTOR_ID: &str = "m_jit_sead_pipe0_observer_event_pipeline";
+pub const SEAD_PIPE0_LABEL: &str = "SeadObserverEventPipeline";
+pub const SEAD_PIPE0_LAYER_COUNT: u32 = SEAD_OBS4_LAYER_COUNT;
+
 /// Compacted event membership authority (SEAD-EVENT-0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventCompactionMembershipAuthority {
@@ -995,8 +999,92 @@ pub fn validate_sead_event0_compaction_contract(
     Ok(())
 }
 
+/// True when the descriptor is the landed integrated observer-event pipeline kernel.
+pub fn is_sead_pipe0_observer_event_pipeline_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == SEAD_PIPE0_DESCRIPTOR_ID
+        && has_multilayer_fixed_reads(spec)
+        && has_threshold_event_reads(spec)
+        && spec.score_authority_contract == Some(ScoreAuthorityContract::ExactQ16WeightedSum)
+        && spec.writes.iter().any(|out| out.name == "event_count")
+        && spec.writes.iter().any(|out| out.name == "overflow_flag")
+        && spec.writes.iter().any(|out| out.name == "event_record")
+}
+
+/// Validate landed SEAD-PIPE-0 integrated observer-event pipeline descriptor pins.
+pub fn validate_sead_pipe0_observer_event_pipeline_contract(
+    spec: &KernelDescriptorSpec,
+) -> Result<(), SpecError> {
+    if spec.id != SEAD_PIPE0_DESCRIPTOR_ID {
+        return Ok(());
+    }
+    match spec.mag2_source_contract {
+        Some(Mag2SourceContract::ExactFixedPointDxDy { fraction_bits })
+            if fraction_bits == MAG2_Q16_FRAC_BITS => {}
+        _ => {
+            return Err(artifact_err(
+                &spec.id,
+                "SEAD observer-event pipeline requires Q16.16 ExactFixedPointDxDy mag2 contract",
+            ));
+        }
+    }
+    if spec.pre_sqrt_contract != Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD observer-event pipeline requires InlineFixedPointMag2Sqrt pre-sqrt contract",
+        ));
+    }
+    if spec.score_authority_contract != Some(ScoreAuthorityContract::ExactQ16WeightedSum) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD observer-event pipeline requires ExactQ16WeightedSum score contract",
+        ));
+    }
+    if spec.exact_sqrt_artifact.is_none() {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD observer-event pipeline requires artifact-backed Candidate F binding",
+        ));
+    }
+    if !has_multilayer_fixed_reads(spec) || !has_threshold_event_reads(spec) {
+        return Err(artifact_err(
+            &spec.id,
+            "SEAD observer-event pipeline requires multilayer observer and threshold reads",
+        ));
+    }
+    for (name, msg) in [
+        ("event_count", "exact-authoritative event_count"),
+        ("overflow_flag", "exact-authoritative overflow_flag"),
+        ("event_record", "exact-authoritative event_record"),
+    ] {
+        match spec
+            .writes
+            .iter()
+            .find(|out| out.name == name)
+            .map(|out| out.authority)
+        {
+            Some(OutputAuthority::ExactAuthoritative) => {}
+            _ => {
+                return Err(artifact_err(
+                    &spec.id,
+                    format!("SEAD observer-event pipeline requires {msg}"),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
 pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
+    if spec.id == SEAD_PIPE0_DESCRIPTOR_ID {
+        validate_exact_sqrt_artifact_binding(
+            &spec.id,
+            spec.exact_sqrt_artifact.as_ref().ok_or_else(|| {
+                artifact_err(&spec.id, "SEAD observer-event pipeline requires F artifact")
+            })?,
+        )?;
+        return validate_sead_pipe0_observer_event_pipeline_contract(spec);
+    }
     if spec.id == SEAD_EVENT0_DESCRIPTOR_ID {
         return validate_sead_event0_compaction_contract(spec);
     }
@@ -1282,6 +1370,41 @@ pub fn sead_event0_compaction_kernel_descriptor() -> KernelDescriptorSpec {
         pre_sqrt_contract: None,
         mag2_source_contract: None,
         score_authority_contract: None,
+    }
+}
+
+/// Build the landed integrated observer-event pipeline descriptor (SEAD-PIPE-0).
+pub fn sead_pipe0_observer_event_pipeline_kernel_descriptor() -> KernelDescriptorSpec {
+    let mut reads = Vec::new();
+    for layer in 0..SEAD_PIPE0_LAYER_COUNT {
+        reads.push(format!("layer{layer}_gx_fixed"));
+        reads.push(format!("layer{layer}_gy_fixed"));
+        reads.push(format!("layer{layer}_w_fixed"));
+    }
+    reads.push("bias_fixed".to_string());
+    reads.push("threshold_fixed".to_string());
+    reads.push("hysteresis_fixed".to_string());
+    reads.push("prior_state_u32".to_string());
+
+    KernelDescriptorSpec {
+        id: SEAD_PIPE0_DESCRIPTOR_ID.to_string(),
+        lane: KernelLane::TestOnly,
+        reads,
+        writes: vec![
+            exact_out("event_count"),
+            exact_out("overflow_flag"),
+            exact_out("event_record"),
+        ],
+        native_math: NativeMathClass::None,
+        semantic_free: true,
+        default_off: true,
+        production_wiring: false,
+        exact_sqrt_artifact: Some(exact_sqrt_f_artifact_descriptor()),
+        pre_sqrt_contract: Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt),
+        mag2_source_contract: Some(Mag2SourceContract::ExactFixedPointDxDy {
+            fraction_bits: MAG2_Q16_FRAC_BITS,
+        }),
+        score_authority_contract: Some(ScoreAuthorityContract::ExactQ16WeightedSum),
     }
 }
 
