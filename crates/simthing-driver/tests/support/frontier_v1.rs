@@ -15,6 +15,9 @@ pub const FRONTIER_V1_GPU_RF_FIXTURE_ID: &str = "frontier_v1_3_gpu_resource_flow
 pub const FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_sead_route_replay_v1";
 pub const FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID: &str = "frontier_v1_5_live_self_ai_route_v1";
 
+/// Named multi-tick closed-loop consumer profile (FrontierV2-0 fixture).
+pub const FRONTIER_V2_PROFILE_NAME: &str = "FrontierV2";
+
 /// SEAD ACT-2 `proposal_code` for resource-dispatch (event_code 1 max-rule emission).
 pub const FRONTIER_V1_RESOURCE_PROPOSAL_CODE: u32 = 1001;
 /// SEAD event bucket code for resource-side threshold events.
@@ -942,8 +945,10 @@ fn validate_default_off(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Ve
         rejected.push("profile must not be enabled by default");
         ok = false;
     }
-    if skeleton.profile_name != FRONTIER_V1_PROFILE_NAME {
-        rejected.push("profile_name must be FrontierV1");
+    if skeleton.profile_name != FRONTIER_V1_PROFILE_NAME
+        && skeleton.profile_name != FRONTIER_V2_PROFILE_NAME
+    {
+        rejected.push("profile_name must be FrontierV1 or FrontierV2");
         ok = false;
     }
     if skeleton.enabled_by_default
@@ -1115,9 +1120,11 @@ fn validate_sead_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut V
 fn validate_coupling(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
     let c = skeleton.coupling;
     let mut ok = true;
-    if skeleton.profile_name != FRONTIER_V1_PROFILE_NAME {
+    let coupling_profile_ok = skeleton.profile_name == FRONTIER_V1_PROFILE_NAME
+        || skeleton.profile_name == FRONTIER_V2_PROFILE_NAME;
+    if !coupling_profile_ok {
         if c.coupling_requested {
-            rejected.push("economy↔field coupling allowed only for FrontierV1 profile");
+            rejected.push("economy↔field coupling allowed only for FrontierV1/FrontierV2 profiles");
             ok = false;
         }
         return ok;
