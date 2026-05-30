@@ -2499,6 +2499,7 @@ Further SEAD work remains allowed only when it advances a usable SEAD toolset or
 - **SEAD-ACT-2 — fixture-local proposal admission records (PASS):** `m_jit_sead_act2_proposal_admission_records`; consumes ACT-1 proposal_summary; fixed integer admission thresholds; admission record ExactAuthoritative under rule/overflow contract; 34k bucket→reduce→propose→consume→admit warm ~1.59 ms/pipeline; no CPU planner/scheduler/cache/default wiring/bridge. Report: [`docs/tests/phase_m_sead_act2_proposal_admission_records_results.md`](tests/phase_m_sead_act2_proposal_admission_records_results.md).
 - **SEAD-ACT-3 — Economic V1-style fixture substrate records (PASS):** `m_jit_sead_act3_economic_fixture_records`; consumes ACT-2 admission_record; fixed integer lookup table; fixture record ExactAuthoritative under mapping/overflow contract; 34k bucket→reduce→propose→consume→admit→fixture warm ~1.19 ms/pipeline; no CPU planner/scheduler/cache/default wiring/bridge. Report: [`docs/tests/phase_m_sead_act3_economic_fixture_records_results.md`](tests/phase_m_sead_act3_economic_fixture_records_results.md).
 - **SEAD-ACT-4 — Economic V1-style fixture validation corpus (PASS):** `sead_act4_economic_fixture_validation_corpus_v1`; validates ACT-3 fixture records against 18-row authorable expected-output corpus via CPU oracle; no new WGSL/descriptor/runtime gate. Report: [`docs/tests/phase_m_sead_act4_economic_fixture_validation_corpus_results.md`](tests/phase_m_sead_act4_economic_fixture_validation_corpus_results.md).
+- **SEAD-V1-CONSOLIDATE-0 — SEAD Self-AI Proposal Pipeline V1 (PASS, docs-only):** consolidated OBS-0..4 + EVENT-0..2 + PIPE-0 + ACT-0..2 as V1 core; ACT-3/ACT-4 supporting evidence; ladder closed; FrontierV1-0 next. Report: [`docs/tests/phase_m_sead_v1_consolidation_results.md`](tests/phase_m_sead_v1_consolidation_results.md).
 
 **SEAD-ACT-1 — Phase E-style numeric proposal consumer**
 
@@ -2515,6 +2516,14 @@ SEAD-ACT-3 verifies that fixture-local proposal admission records can be convert
 **SEAD-ACT-4 — Economic V1-style fixture validation corpus**
 
 SEAD-ACT-4 validates already-landed ACT-3 numeric fixture records against a stable authorable expected-output corpus. This is fixture-authoring evidence for future Phase E/Economic V1 work, not runtime implementation. No production wiring, semantic WGSL, scheduler/cache/default SimSession behavior, simthing-sim awareness, or economy bridge wiring is authorized. ACT-4 does not open a new runtime implementation gate.
+
+**SEAD-V1-CONSOLIDATE-0 — SEAD Self-AI Proposal Pipeline V1**
+
+The SEAD self-AI fixture ladder is consolidated at Proposal Pipeline V1 per [`docs/workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md). OBS-0..4, EVENT-0..2, PIPE-0, and ACT-0..2 form the accepted V1 core. ACT-3 and ACT-4 are retained as supporting Economic V1 fixture evidence: ACT-3 provides fixture-local numeric substrate records; ACT-4 provides an authorable validation corpus over those records. No ACT-5, EVENT-3, OBS-5, or PIPE-1 is authorized.
+
+The next implementation step is FrontierV1-0: a bounded opt-in/default-off scenario combining first-slice mapping, flat-star Resource Flow, and SEAD self-AI proposal routing through accepted substrates. M and E close when FrontierV1 integration is green and accepted.
+
+M-JIT-PROD-0 is accepted by the SEAD self-AI charter. Atlas, active mask, perception, source identity, nested E-11B, E-11B-5, D-2a, hard-currency ordering, and ClauseThing implementation remain deferred.
 
 Further SEAD actionability work must either: (1) produce a reusable numeric substrate consumed by Phase E fixtures, (2) directly close a Phase M/E blocker, or (3) be paused until a named product scenario requires runtime integration.
 - Native sqrt remains `ApproximateJitOnly`; F exact path requires artifact-backed descriptor admission.

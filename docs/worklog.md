@@ -1,3 +1,7 @@
+# 2026-05-30 — SEAD-V1-CONSOLIDATE-0 SEAD Self-AI Proposal Pipeline V1 (Tier-2, docs-only)
+
+- SEAD-V1-CONSOLIDATE-0 ingested `sead_self_ai_track.md`, consolidated OBS/EVENT/PIPE/ACT evidence into SEAD Self-AI Proposal Pipeline V1, retained ACT-3/ACT-4 as supporting Economic V1 fixture evidence, stopped ACT-N expansion, and set FrontierV1 opt-in integration as the next M/E closure step.
+
 # 2026-05-29 — SEAD-ACT-4 Economic V1-style fixture validation corpus (Tier-2, landed)
 
 - SEAD-ACT-4 added default-off authorable validation corpus `sead_act4_economic_fixture_validation_corpus_v1` (18 rows) over ACT-3 numeric fixture records; CPU oracle exact; stable fingerprint; no new WGSL, descriptor, or runtime wiring.
