@@ -156,6 +156,8 @@ pub struct WorldAccumulatorRuntime {
     transfer_session: Option<AccumulatorOpSession>,
     emission_session: Option<AccumulatorOpSession>,
     resource_flow_session: Option<AccumulatorOpSession>,
+    /// Last uploaded resource-flow GPU ops (AO-WGSL-0 compatibility classification).
+    resource_flow_gpu_ops: Vec<AccumulatorOpGpu>,
     pub summary: Option<WorldSummaryRuntime>,
     pub overlay_compile_cache: Option<OverlayCompileCache>,
 
@@ -242,6 +244,7 @@ impl WorldAccumulatorRuntime {
             transfer_session: None,
             emission_session: None,
             resource_flow_session: None,
+            resource_flow_gpu_ops: Vec::new(),
             summary: None,
             overlay_compile_cache: None,
             intensity_tree_ids: Vec::new(),
@@ -976,6 +979,7 @@ impl WorldAccumulatorRuntime {
 
     pub fn clear_resource_flow(&mut self) {
         self.resource_flow_session = None;
+        self.resource_flow_gpu_ops.clear();
         self.resource_flow_ops = OpSetHandle {
             family: OperationFamily::ResourceFlow,
             exactness: ExactnessClass::Exact,
@@ -991,6 +995,7 @@ impl WorldAccumulatorRuntime {
     ) -> Result<(), AccumulatorOpSessionError> {
         if let Some(session) = self.resource_flow_session.as_mut() {
             session.upload_gpu_ops(ctx, ops)?;
+            self.resource_flow_gpu_ops = ops.to_vec();
             self.resource_flow_ops = OpSetHandle {
                 family: OperationFamily::ResourceFlow,
                 offset: 0,
@@ -1009,6 +1014,10 @@ impl WorldAccumulatorRuntime {
 
     pub fn restore_resource_flow_session(&mut self, session: Option<AccumulatorOpSession>) {
         self.resource_flow_session = session;
+    }
+
+    pub fn resource_flow_gpu_ops(&self) -> &[AccumulatorOpGpu] {
+        &self.resource_flow_gpu_ops
     }
 
     pub fn resource_flow_session_mut(&mut self) -> Option<&mut AccumulatorOpSession> {

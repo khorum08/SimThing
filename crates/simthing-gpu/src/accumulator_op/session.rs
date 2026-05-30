@@ -104,6 +104,8 @@ pub struct AccumulatorOpSession {
 
     execute_layout: BindGroupLayout,
     execute_pipeline: ComputePipeline,
+    /// AO-WGSL-0: fused multi-band OrderBand fast path (`execute_orderband_bands`).
+    orderband_fast_pipeline: ComputePipeline,
     summary_layout: BindGroupLayout,
     summary_pipeline: ComputePipeline,
     fill_uniform: Buffer,
@@ -304,6 +306,19 @@ impl AccumulatorOpSession {
             cache: None,
         });
 
+        let orderband_fast_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("accumulator_ao_wgsl0_fast_pipeline"),
+            layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("accumulator_ao_wgsl0_fast_pl"),
+                bind_group_layouts: &[&execute_layout],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: super::wgsl_path::AO_WGSL0_ENTRY_POINT,
+            compilation_options: Default::default(),
+            cache: None,
+        });
+
         let summary_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("accumulator_summary_layout"),
             entries: &[
@@ -404,6 +419,7 @@ impl AccumulatorOpSession {
             input_list_buffer,
             execute_layout,
             execute_pipeline,
+            orderband_fast_pipeline,
             summary_layout,
             summary_pipeline,
             fill_uniform,
@@ -1260,6 +1276,65 @@ impl AccumulatorOpSession {
         }
 
         drop(band_uniforms);
+    }
+
+    /// AO-WGSL-0: encode OrderBand ops with reduced per-band allocation overhead.
+    ///
+    /// Uses the dedicated `execute_orderband_bands` pipeline entry (semantic-free
+    /// generic AO kernel) while preserving global band ordering: one band per
+    /// dispatch, sequential bands in one compute pass. `tick_params._pad1` stores
+    /// total band count for harness reporting.
+    pub fn encode_orderband_fast_into(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+        previous_values: &Buffer,
+        n_bands: u32,
+        dt: f32,
+        eml: Option<(&Buffer, &Buffer)>,
+    ) {
+        if self.n_ops == 0 || n_bands == 0 {
+            return;
+        }
+        self.last_pass_time_us = None;
+
+        let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
+        let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+            label: Some("accumulator_ao_wgsl0_fast_pass"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.orderband_fast_pipeline);
+
+        for band in 0..n_bands {
+            let tick_params = AccumulatorTickParams {
+                n_ops: self.n_ops,
+                current_band: band,
+                n_slots: self.n_slots,
+                n_dims: self.n_dims,
+                emission_capacity: self.emission_capacity,
+                threshold_emission_capacity: self.threshold_emission_capacity,
+                dt_bits: dt.to_bits(),
+                _pad1: n_bands,
+            };
+            let tick_uniform = ctx
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("accumulator_ao_wgsl0_fast_uniform"),
+                    contents: bytemuck::bytes_of(&tick_params),
+                    usage: BufferUsages::UNIFORM,
+                });
+            let execute_bind_group = self.create_execute_bind_group_with_uniform(
+                ctx,
+                values,
+                previous_values,
+                &tick_uniform,
+                eml,
+                None,
+            );
+            pass.set_bind_group(0, &execute_bind_group, &[]);
+            pass.dispatch_workgroups(groups, 1, 1);
+        }
     }
 
     /// Encode C-5 soft-reduction OrderBand ops against `output_vectors`.
