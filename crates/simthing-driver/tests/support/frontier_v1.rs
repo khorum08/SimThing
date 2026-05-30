@@ -12,9 +12,14 @@ pub const FRONTIER_V1_SKELETON_ID: &str = "frontier_v1_0_scenario_skeleton_v1";
 pub const FRONTIER_V1_FIXTURE_ID: &str = "frontier_v1_1_opt_in_fixture_v1";
 pub const FRONTIER_V1_GPU_FIXTURE_ID: &str = "frontier_v1_2_gpu_replay_acceptance_v1";
 pub const FRONTIER_V1_GPU_RF_FIXTURE_ID: &str = "frontier_v1_3_gpu_resource_flow_v1";
+pub const FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_sead_route_replay_v1";
 
 /// Accepted Resource Flow allocator route code for FrontierV1 resource dispatch.
 pub const FRONTIER_V1_ALLOCATOR_ROUTE_CODE: u32 = 1;
+/// Accepted structural route code (Threshold+EmitEvent → BoundaryRequest).
+pub const FRONTIER_V1_STRUCTURAL_ROUTE_CODE: u32 = 2;
+/// Accepted movement route code (own-column-only writes).
+pub const FRONTIER_V1_MOVEMENT_ROUTE_CODE: u32 = 3;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SeadPipelineVersion {
@@ -160,6 +165,7 @@ pub struct FrontierV1FixtureFingerprint {
 pub enum FrontierV1FieldStatus {
     GpuVerified,
     CpuOracleOnly,
+    ReplayAccepted,
     PendingGpu,
 }
 
@@ -167,6 +173,7 @@ pub enum FrontierV1FieldStatus {
 pub struct FrontierV1GpuReplaySummary {
     pub mapping_summary_hash: u64,
     pub resource_flow_summary_hash: u64,
+    pub sead_summary_hash: u64,
     pub proposal_summary_hash: u64,
     pub route_summary_hash: u64,
     pub overflow_flags: u32,
@@ -174,19 +181,49 @@ pub struct FrontierV1GpuReplaySummary {
     pub mapping_status: FrontierV1FieldStatus,
     pub resource_flow_status: FrontierV1FieldStatus,
     pub sead_routing_status: FrontierV1FieldStatus,
+    pub sead_pipe_status: FrontierV1FieldStatus,
     pub route_status: FrontierV1FieldStatus,
     pub gpu_reduction_eml_executed: bool,
 }
 
 impl FrontierV1GpuReplaySummary {
     pub fn combined_hex(&self) -> String {
-        let combined = fnv_mix(self.mapping_summary_hash)
-            ^ fnv_mix(self.resource_flow_summary_hash)
-            ^ fnv_mix(self.proposal_summary_hash)
-            ^ fnv_mix(self.route_summary_hash)
-            ^ fnv_mix(u64::from(self.overflow_flags));
+        let combined = if self.sead_summary_hash == 0 {
+            fnv_mix(self.mapping_summary_hash)
+                ^ fnv_mix(self.resource_flow_summary_hash)
+                ^ fnv_mix(self.proposal_summary_hash)
+                ^ fnv_mix(self.route_summary_hash)
+                ^ fnv_mix(u64::from(self.overflow_flags))
+        } else {
+            fnv_mix(self.mapping_summary_hash)
+                ^ fnv_mix(self.resource_flow_summary_hash)
+                ^ fnv_mix(self.sead_summary_hash)
+                ^ fnv_mix(self.proposal_summary_hash)
+                ^ fnv_mix(self.route_summary_hash)
+                ^ fnv_mix(u64::from(self.overflow_flags))
+        };
         format!("{:016x}", combined & 0xFFFF_FFFF_FFFF_FFFF)
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontierV1RouteReplaySummary {
+    pub resource_route_code: u32,
+    pub structural_route_code: u32,
+    pub movement_route_code: u32,
+    pub route_overflow_flags: u32,
+    pub invalid_route_count: u32,
+    pub resource_route_count: u32,
+    pub structural_route_count: u32,
+    pub movement_route_count: u32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontierV1SeadReplaySummary {
+    pub event_count: u32,
+    pub proposal_count: u32,
+    pub admission_count: u32,
+    pub sead_overflow_flags: u32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -357,18 +394,96 @@ pub fn frontier_v1_flat_star_weights() -> (f32, f32) {
     (3.0, 2.0)
 }
 
+pub fn proposal_route_to_code(route: ProposalRoute) -> Option<u32> {
+    match route {
+        ProposalRoute::ResourceFlowAllocator => Some(FRONTIER_V1_ALLOCATOR_ROUTE_CODE),
+        ProposalRoute::ThresholdEmitBoundaryRequest => Some(FRONTIER_V1_STRUCTURAL_ROUTE_CODE),
+        ProposalRoute::OwnColumnsOnly => Some(FRONTIER_V1_MOVEMENT_ROUTE_CODE),
+        ProposalRoute::Rejected => None,
+    }
+}
+
+pub fn build_route_replay_summary(
+    config: &FrontierV1FixtureConfig,
+    skeleton: &FrontierV1ScenarioSkeleton,
+) -> FrontierV1RouteReplaySummary {
+    let mut resource_route_count = 0u32;
+    let mut structural_route_count = 0u32;
+    let mut movement_route_count = 0u32;
+    let mut invalid_route_count = 0u32;
+    for kind in config.proposals {
+        match classify_proposal_route(kind, skeleton) {
+            ProposalRoute::ResourceFlowAllocator => resource_route_count += 1,
+            ProposalRoute::ThresholdEmitBoundaryRequest => structural_route_count += 1,
+            ProposalRoute::OwnColumnsOnly => movement_route_count += 1,
+            ProposalRoute::Rejected => invalid_route_count += 1,
+        }
+    }
+    FrontierV1RouteReplaySummary {
+        resource_route_code: FRONTIER_V1_ALLOCATOR_ROUTE_CODE,
+        structural_route_code: FRONTIER_V1_STRUCTURAL_ROUTE_CODE,
+        movement_route_code: FRONTIER_V1_MOVEMENT_ROUTE_CODE,
+        route_overflow_flags: 0,
+        invalid_route_count,
+        resource_route_count,
+        structural_route_count,
+        movement_route_count,
+    }
+}
+
+pub fn build_sead_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1SeadReplaySummary {
+    FrontierV1SeadReplaySummary {
+        event_count: cpu_output.event_count,
+        proposal_count: cpu_output.proposal_count,
+        admission_count: cpu_output.routes.structural_route_count,
+        sead_overflow_flags: 0,
+    }
+}
+
+pub fn hash_route_replay_detail(summary: FrontierV1RouteReplaySummary) -> u64 {
+    let mut h = fnv64(b"route_replay");
+    h = fnv_append_u32(h, summary.resource_route_code);
+    h = fnv_append_u32(h, summary.structural_route_code);
+    h = fnv_append_u32(h, summary.movement_route_code);
+    h = fnv_append_u32(h, summary.route_overflow_flags);
+    h = fnv_append_u32(h, summary.invalid_route_count);
+    h = fnv_append_u32(h, summary.resource_route_count);
+    h = fnv_append_u32(h, summary.structural_route_count);
+    h = fnv_append_u32(h, summary.movement_route_count);
+    h
+}
+
+pub fn hash_sead_replay_summary(summary: FrontierV1SeadReplaySummary) -> u64 {
+    let mut h = fnv64(b"sead_replay");
+    h = fnv_append_u32(h, summary.event_count);
+    h = fnv_append_u32(h, summary.proposal_count);
+    h = fnv_append_u32(h, summary.admission_count);
+    h = fnv_append_u32(h, summary.sead_overflow_flags);
+    h
+}
+
 pub fn build_gpu_replay_summary(
     mapping_summary_hash: u64,
     cpu_output: &FrontierV1FixtureOutput,
     gpu_reduction_eml_executed: bool,
 ) -> FrontierV1GpuReplaySummary {
-    build_gpu_replay_summary_with_rf(
+    let mut summary = build_frontier_v1_4_replay_summary(
         mapping_summary_hash,
         cpu_output.fingerprint.resource_flow_summary_hash,
+        0,
         cpu_output,
         FrontierV1FieldStatus::CpuOracleOnly,
+        if gpu_reduction_eml_executed {
+            FrontierV1FieldStatus::GpuVerified
+        } else {
+            FrontierV1FieldStatus::CpuOracleOnly
+        },
+        FrontierV1FieldStatus::CpuOracleOnly,
+        FrontierV1FieldStatus::CpuOracleOnly,
         gpu_reduction_eml_executed,
-    )
+    );
+    summary.sead_summary_hash = 0;
+    summary
 }
 
 pub fn build_gpu_replay_summary_with_rf(
@@ -376,6 +491,36 @@ pub fn build_gpu_replay_summary_with_rf(
     resource_flow_summary_hash: u64,
     cpu_output: &FrontierV1FixtureOutput,
     resource_flow_status: FrontierV1FieldStatus,
+    gpu_reduction_eml_executed: bool,
+) -> FrontierV1GpuReplaySummary {
+    let mut summary = build_frontier_v1_4_replay_summary(
+        mapping_summary_hash,
+        resource_flow_summary_hash,
+        0,
+        cpu_output,
+        resource_flow_status,
+        if gpu_reduction_eml_executed {
+            FrontierV1FieldStatus::GpuVerified
+        } else {
+            FrontierV1FieldStatus::CpuOracleOnly
+        },
+        FrontierV1FieldStatus::CpuOracleOnly,
+        FrontierV1FieldStatus::CpuOracleOnly,
+        gpu_reduction_eml_executed,
+    );
+    summary.sead_summary_hash = 0;
+    summary
+}
+
+pub fn build_frontier_v1_4_replay_summary(
+    mapping_summary_hash: u64,
+    resource_flow_summary_hash: u64,
+    sead_summary_hash: u64,
+    cpu_output: &FrontierV1FixtureOutput,
+    resource_flow_status: FrontierV1FieldStatus,
+    sead_routing_status: FrontierV1FieldStatus,
+    sead_pipe_status: FrontierV1FieldStatus,
+    route_status: FrontierV1FieldStatus,
     gpu_reduction_eml_executed: bool,
 ) -> FrontierV1GpuReplaySummary {
     let mut overflow_flags = 0u32;
@@ -388,18 +533,16 @@ pub fn build_gpu_replay_summary_with_rf(
     FrontierV1GpuReplaySummary {
         mapping_summary_hash,
         resource_flow_summary_hash,
+        sead_summary_hash,
         proposal_summary_hash: cpu_output.fingerprint.proposal_summary_hash,
         route_summary_hash: cpu_output.fingerprint.route_summary_hash,
         overflow_flags,
         accepted: cpu_output.admission_accepted,
         mapping_status: FrontierV1FieldStatus::GpuVerified,
         resource_flow_status,
-        sead_routing_status: if gpu_reduction_eml_executed {
-            FrontierV1FieldStatus::GpuVerified
-        } else {
-            FrontierV1FieldStatus::CpuOracleOnly
-        },
-        route_status: FrontierV1FieldStatus::CpuOracleOnly,
+        sead_routing_status,
+        sead_pipe_status,
+        route_status,
         gpu_reduction_eml_executed,
     }
 }
