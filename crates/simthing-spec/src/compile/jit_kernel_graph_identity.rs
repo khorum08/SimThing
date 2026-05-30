@@ -74,6 +74,19 @@ fn canonicalize_node(node: &KernelDescriptorSpec) -> String {
         ));
     }
 
+    if let Some(artifact) = &node.exact_sqrt_artifact {
+        lines.push(format!("  artifact_path={}", artifact.artifact_path));
+        lines.push(format!(
+            "  artifact_hash_fnv1a64={}",
+            artifact.artifact_hash_fnv1a64
+        ));
+        lines.push(format!("  artifact_entrypoint={}", artifact.entrypoint));
+        lines.push(format!("  artifact_io_contract={}", artifact.io_contract));
+        lines.push(format!("  artifact_proof_report={}", artifact.proof_report));
+        lines.push(format!("  artifact_domain={}", artifact.domain));
+        lines.push("  artifact_authority_class=ExactDeterministic".to_string());
+    }
+
     lines.join("\n")
 }
 

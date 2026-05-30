@@ -97,6 +97,7 @@ fn grad0_exact_only() -> KernelDescriptorSpec {
         semantic_free: true,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     }
 }
 
@@ -113,6 +114,7 @@ fn grad1_style_scorer() -> KernelDescriptorSpec {
         semantic_free: true,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     }
 }
 
@@ -770,6 +772,7 @@ fn jit_exec0_rejects_approximate_candidate_before_execution() {
         lane: KernelRegistryLane::TestOnlyPreview,
         default_off: true,
         production_wiring: false,
+        exact_sqrt_artifact: None,
     };
     let sqrt_err = try_execute_rejected_candidate(&sqrt_entry);
     match sqrt_err {

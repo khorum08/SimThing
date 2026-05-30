@@ -482,6 +482,9 @@ existing SQRT-0 harness and its `FORBIDDEN_SEMANTIC_TERMS` scan):
 > wiring, scheduler/cache, or economy bridge is authorized. The remaining work is the
 > mechanical **SQRT-PROMOTE-0** slice: wire the descriptor/admission representation + hash guard
 > + tests to this released authority (implementer task, not a further design decision).
+> **Update (SQRT-PROMOTE-0 landed):** F is mechanically promoted via descriptor/admission
+> (`m_jit_sqrt_f_exact`, hash `e2e9e27601ee2e13`); any F artifact change invalidates authority
+> until renewed exhaustive proof; native sqrt remains non-exact.
 
 ```
 ApproximateJitOnly            ← native/raw sqrt (stays here — never exact-authoritative)
@@ -492,6 +495,7 @@ ExactDeterministicCandidate   ← E3 (4E) and F (5F) both proven over the full d
         ▼
 ExactDeterministic            ← admission grants exact-output authority to the F ARTIFACT
                                 (hash e2e9e27601ee2e13), via SQRT-PROMOTE-0 descriptor wiring
+                                **LANDED** — `m_jit_sqrt_f_exact` in landed descriptors
 ```
 
 - **Outcome (landed):** F is the released exact hot-path authority (loop-free, hardware-seeded,

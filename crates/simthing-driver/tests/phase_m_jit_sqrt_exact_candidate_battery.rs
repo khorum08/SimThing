@@ -9,8 +9,8 @@ use std::sync::Mutex;
 
 use simthing_gpu::GpuContext;
 use simthing_spec::{
-    landed_jit_kernel_descriptors, validate_exact_kernel_inputs, NativeMathClass, OutputAuthority,
-    SpecError,
+    is_exact_sqrt_f_descriptor, landed_jit_kernel_descriptors, validate_exact_kernel_inputs,
+    NativeMathClass, OutputAuthority, SQRT_F_ARTIFACT_HASH, SQRT_F_DESCRIPTOR_ID, SpecError,
 };
 use simthing_spec::MappingExecutionProfile;
 
@@ -828,6 +828,13 @@ fn sqrt0_descriptor() -> simthing_spec::KernelDescriptorSpec {
         .expect("sqrt0 descriptor")
 }
 
+fn sqrt_f_descriptor() -> simthing_spec::KernelDescriptorSpec {
+    landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|desc| desc.id == SQRT_F_DESCRIPTOR_ID)
+        .expect("sqrt F exact descriptor")
+}
+
 fn grad0_descriptor() -> simthing_spec::KernelDescriptorSpec {
     landed_jit_kernel_descriptors()
         .into_iter()
@@ -1096,6 +1103,23 @@ fn sqrt_exact0_no_promotion_yet() {
             .all(|out| out.authority == OutputAuthority::ApproximateDiagnostic)
     );
 
+    let sqrt_f = sqrt_f_descriptor();
+    assert!(is_exact_sqrt_f_descriptor(&sqrt_f));
+    let sqrt_out = sqrt_f
+        .writes
+        .iter()
+        .find(|out| out.name == "sqrt_out")
+        .expect("F sqrt_out");
+    assert_eq!(sqrt_out.authority, OutputAuthority::ExactAuthoritative);
+    assert_eq!(
+        sqrt_f
+            .exact_sqrt_artifact
+            .as_ref()
+            .map(|a| a.artifact_hash_fnv1a64.as_str()),
+        Some(SQRT_F_ARTIFACT_HASH)
+    );
+    validate_exact_kernel_inputs(&sqrt_f, &["sqrt_out"]).expect("F sqrt_out exact");
+
     let grad0 = grad0_descriptor();
     let mag2 = grad0
         .writes
@@ -1113,12 +1137,6 @@ fn sqrt_exact0_no_promotion_yet() {
         Err(SpecError::JitKernelDescriptorAdmission { .. })
     ));
 
-    assert!(
-        !landed_jit_kernel_descriptors()
-            .iter()
-            .any(|desc| desc.id.contains("sqrt_exact")),
-        "no exact sqrt kernel descriptor admitted yet"
-    );
     assert_eq!(
         MappingExecutionProfile::default(),
         MappingExecutionProfile::Disabled
@@ -1555,8 +1573,9 @@ fn sqrt_exact1d_no_exact_authority_promotion() {
     assert!(
         !landed_jit_kernel_descriptors()
             .iter()
-            .any(|desc| desc.id.contains("sqrt_exact")),
-        "no exact sqrt kernel descriptor admitted yet"
+            .any(|desc| desc.id == "m_jit_sqrt_0_candidate"
+                && desc.writes.iter().any(|o| o.authority == OutputAuthority::ExactAuthoritative)),
+        "native sqrt must not claim exact authority"
     );
 }
 
@@ -2037,8 +2056,9 @@ fn sqrt_exact3e_no_exact_authority_promotion() {
     assert!(
         !landed_jit_kernel_descriptors()
             .iter()
-            .any(|desc| desc.id.contains("sqrt_exact")),
-        "no exact sqrt kernel descriptor admitted yet"
+            .any(|desc| desc.id == "m_jit_sqrt_0_candidate"
+                && desc.writes.iter().any(|o| o.authority == OutputAuthority::ExactAuthoritative)),
+        "native sqrt must not claim exact authority"
     );
 
     let baseline = include_str!("../../simthing-gpu/src/shaders/accumulator_op.wgsl");
@@ -2453,12 +2473,9 @@ fn sqrt_exact4f_no_exact_authority_promotion() {
         Err(SpecError::JitKernelDescriptorAdmission { .. })
     ));
 
-    assert!(
-        !landed_jit_kernel_descriptors()
-            .iter()
-            .any(|desc| desc.id.contains("sqrt_exact")),
-        "no exact sqrt kernel descriptor admitted yet"
-    );
+    let sqrt_f = sqrt_f_descriptor();
+    assert!(is_exact_sqrt_f_descriptor(&sqrt_f));
+    validate_exact_kernel_inputs(&sqrt_f, &["sqrt_out"]).expect("F descriptor exact after PROMOTE-0");
 
     let baseline = include_str!("../../simthing-gpu/src/shaders/accumulator_op.wgsl");
     assert!(!baseline.contains("sqrt("));
@@ -2513,13 +2530,11 @@ fn sqrt_exact4f_perf_is_not_authority() {
     let sqrt0 = sqrt0_descriptor();
     assert_eq!(sqrt0.native_math, NativeMathClass::ApproximateJitOnly);
     assert!(
-        !landed_jit_kernel_descriptors()
-            .iter()
-            .any(|desc| desc.id.contains("sqrt_exact")),
-        "performance measurements must not promote exact authority"
+        !is_exact_sqrt_f_descriptor(&sqrt0),
+        "native sqrt must not be artifact-backed F exact descriptor"
     );
     println!(
-        "F perf_not_authority: throughput evidence is not admission authority; exhaustive max_ulp==0 proof is still required and approximate performance mode is a separate product-policy gate"
+        "F perf_not_authority: throughput evidence is not admission authority; exhaustive max_ulp==0 proof and SQRT-PROMOTE-0 descriptor admission are separate gates; approximate performance mode is a separate product-policy gate"
     );
 }
 

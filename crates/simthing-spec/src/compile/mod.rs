@@ -17,6 +17,7 @@ pub mod effect;
 pub mod eml_gadget;
 pub mod event;
 pub mod first_slice_scenario_admission;
+pub mod jit_exact_sqrt_artifact_admission;
 pub mod jit_kernel_descriptor_admission;
 pub mod jit_kernel_graph_admission;
 pub mod jit_kernel_graph_identity;
@@ -40,6 +41,13 @@ pub use overlay::compile_overlay;
 pub use property::compile_property;
 pub use first_slice_scenario_admission::{
     compile_first_slice_scenario_preview, CompiledFirstSliceScenarioPreview,
+};
+pub use jit_exact_sqrt_artifact_admission::{
+    exact_sqrt_f_artifact_descriptor, fnv1a64_hex, is_exact_sqrt_f_descriptor,
+    sqrt_f_exact_kernel_descriptor, validate_exact_sqrt_artifact_admission,
+    validate_exact_sqrt_artifact_binding, ExactSqrtArtifactDescriptor,
+    ExactSqrtAuthorityClass, SQRT_F_ARTIFACT_HASH, SQRT_F_ARTIFACT_PATH, SQRT_F_DESCRIPTOR_ID,
+    SQRT_F_DOMAIN, SQRT_F_ENTRYPOINT, SQRT_F_IO_CONTRACT, SQRT_F_PROOF_REPORT,
 };
 pub use jit_kernel_descriptor_admission::{
     landed_jit_kernel_descriptors, validate_exact_kernel_inputs,
