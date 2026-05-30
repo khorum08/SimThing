@@ -3,7 +3,7 @@
 //! These tests validate that C-2 correctly admits only the narrow bounded algebraic G=0 case
 //! while continuing to reject everything outside that scope.
 
-use simthing_spec::designer_admission::atlas::{
+use simthing_spec::designer_admission::{
     AtlasAdmissionProfile, AtlasAdmissionSpec, AtlasIsolationAdmissionMode,
 };
 use simthing_spec::V78AtlasVramBudget;

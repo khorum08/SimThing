@@ -113,6 +113,23 @@ impl DesignerAdmissionDiagnosticCode {
                 "L1-0-SIMTHING-SIM-SEMANTIC-STATE-REQUEST-REJECTED"
             }
             Self::AtlasRequestedWithoutGate => "L1-0-ATLAS-REQUESTED-WITHOUT-GATE",
+            Self::AtlasSpecNotHomogeneousSquareRejected => {
+                "C-2-ATLAS-SPEC-NOT-HOMOGENEOUS-SQUARE-REJECTED"
+            }
+            Self::AtlasSpecUnsupportedIsolationRejected => {
+                "C-2-ATLAS-SPEC-UNSUPPORTED-ISOLATION-REJECTED"
+            }
+            Self::AtlasSpecMissingProtocolOracleRejected => {
+                "C-2-ATLAS-SPEC-MISSING-PROTOCOL-ORACLE-REJECTED"
+            }
+            Self::AtlasSpecOverActiveBudgetRejected => "C-2-ATLAS-SPEC-OVER-ACTIVE-BUDGET-REJECTED",
+            Self::AtlasSpecMissingMultiplierReportingRejected => {
+                "C-2-ATLAS-SPEC-MISSING-MULTIPLIER-REPORTING-REJECTED"
+            }
+            Self::AtlasSpecPhysicalGutterRequiresRaisedGateRejected => {
+                "C-2-ATLAS-SPEC-PHYSICAL-GUTTER-REQUIRES-RAISED-GATE-REJECTED"
+            }
+            Self::AtlasProductionRuntimeRejected => "C-2-ATLAS-PRODUCTION-RUNTIME-REJECTED",
             Self::ActiveMaskRequestedWithoutGate => "L1-0-ACTIVE-MASK-REQUESTED-WITHOUT-GATE",
             Self::PerceptionFogRequestedWithoutGate => "L1-0-PERCEPTION-FOG-REQUESTED-WITHOUT-GATE",
             Self::SourceIdentityRequestedWithoutGate => {
@@ -153,11 +170,19 @@ impl DesignerAdmissionDiagnosticCode {
             | Self::CpuUrgencyRejected
             | Self::CpuCommitmentEmissionRejected => DesignerFacingGuardrailClass::CpuDecisionPath,
             Self::SemanticWgslRequestRejected => DesignerFacingGuardrailClass::ShaderSemantics,
-            Self::SchedulerCacheRequestRejected => DesignerFacingGuardrailClass::RuntimeWiring,
+            Self::SchedulerCacheRequestRejected | Self::AtlasProductionRuntimeRejected => {
+                DesignerFacingGuardrailClass::RuntimeWiring
+            }
             Self::SimthingSimSemanticStateRequestRejected => {
                 DesignerFacingGuardrailClass::SimSemanticLeakage
             }
             Self::AtlasRequestedWithoutGate
+            | Self::AtlasSpecNotHomogeneousSquareRejected
+            | Self::AtlasSpecUnsupportedIsolationRejected
+            | Self::AtlasSpecMissingProtocolOracleRejected
+            | Self::AtlasSpecOverActiveBudgetRejected
+            | Self::AtlasSpecMissingMultiplierReportingRejected
+            | Self::AtlasSpecPhysicalGutterRequiresRaisedGateRejected
             | Self::ActiveMaskRequestedWithoutGate
             | Self::PerceptionFogRequestedWithoutGate
             | Self::SourceIdentityRequestedWithoutGate => {
@@ -216,7 +241,16 @@ impl DesignerAdmissionDiagnosticCode {
             Self::SimthingSimSemanticStateRequestRejected => {
                 DesignerAdmissionRejectionKind::SimthingSimSemanticStateRequest
             }
-            Self::AtlasRequestedWithoutGate => DesignerAdmissionRejectionKind::AtlasWithoutGate,
+            Self::AtlasRequestedWithoutGate
+            | Self::AtlasSpecNotHomogeneousSquareRejected
+            | Self::AtlasSpecUnsupportedIsolationRejected
+            | Self::AtlasSpecMissingProtocolOracleRejected
+            | Self::AtlasSpecOverActiveBudgetRejected
+            | Self::AtlasSpecMissingMultiplierReportingRejected
+            | Self::AtlasSpecPhysicalGutterRequiresRaisedGateRejected
+            | Self::AtlasProductionRuntimeRejected => {
+                DesignerAdmissionRejectionKind::AtlasWithoutGate
+            }
             Self::ActiveMaskRequestedWithoutGate => {
                 DesignerAdmissionRejectionKind::ActiveMaskWithoutGate
             }

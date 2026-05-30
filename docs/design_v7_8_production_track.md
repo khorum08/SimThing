@@ -51,7 +51,7 @@ Per-step narrative lives in `worklog.md`; this file keeps the compact ladder tab
 | **L3 — ClauseThing** | ClauseScript-facing authoring front-end | T2 | **parked (separate track) — pending separate product authorization** | explicit ClauseThing authorization (NOT opened by L2 acceptance) |
 | **A — Nested Resource Flow** | E-11B / E-11B-5 hierarchical allocation (depth > 2) | T2 | **NamedScenarioAccepted (V7.8-MET-SCENARIO-ACCEPT-0, 2026-05-30); A-0 QUEUED** (not opened — product priority is C first) | open A-0 when product schedules it |
 | **B — Discrete hard-currency ordering** | D-2 / D-2a sequential cross-band ordering | T2 | **NamedScenarioAccepted (V7.8-MET-SCENARIO-ACCEPT-0, 2026-05-30); B-0 QUEUED** (not opened — product priority is C first) | open B-0 when product schedules it |
-| **C — Atlas / multi-theater mapping** | M-4 / M-4A atlas batching | T2 | **C-0/C-1 ACCEPTED (C-ACCEPT-0, 2026-05-30); C-2 OPEN — atlas admission relaxation (algebraic-G=0)** — VRAM budget 1.5 GiB default, configurable, no hard cap | C-2 lands bounded algebraic-G=0 atlas admission; production runtime is a separate later gate |
+| **C — Atlas / multi-theater mapping** | M-4 / M-4A atlas batching | T2 | **C-0/C-1/C-2 ACCEPTED (C-2-ACCEPT-0, 2026-05-30) — map batching CLOSED at the designer surface** (proof + scale model + atlas admission relaxation) — VRAM budget 1.5 GiB default, configurable, no hard cap | **none** — production atlas runtime / sparse-residency scheduler is a separate later gate (not open) |
 
 ---
 
@@ -184,14 +184,18 @@ themselves.
 
 ## 9. Line C — Atlas / multi-theater mapping ladder (M-4 / M-4A) — **NamedScenarioAccepted; C-0 OPEN (priority)**
 
-- **Current state:** **C-0/C-1 ACCEPTED (C-ACCEPT-0, Opus design authority + product, 2026-05-30;
-  code+test verified)** — [`phase_m_c_acceptance_review_results.md`](tests/phase_m_c_acceptance_review_results.md).
-  First §11-gate M-4 atlas slice proven (real packed-atlas GPU path, algebraic G=0, full-tile
-  protocol-oracle parity `GpuVerifiedApproximate`) and the 2000-star budget envelope validated.
-  **Next: C-2 OPEN — atlas admission relaxation** (algebraic-G=0 only). `request_atlas_batching`
-  stays rejected and `MappingExecutionProfile` default stays `Disabled` until C-2 lands its bounded
-  admission scope; production runtime stays a separate later gate. Isolation policy ratified
-  (algebraic tile-local mask `G=0` at 1.0× VRAM; physical gutter `G≥H` fallback at 6.76×).
+- **Current state:** **C-0/C-1/C-2 ACCEPTED — map batching CLOSED at the designer surface**
+  (C-2-ACCEPT-0, Opus design authority + product, 2026-05-30; code+test verified, 2 compile breaks
+  remediated inline) — [`phase_m_c2_acceptance_review_results.md`](tests/phase_m_c2_acceptance_review_results.md),
+  [`phase_m_c_acceptance_review_results.md`](tests/phase_m_c_acceptance_review_results.md).
+  Proof (C-0, real packed-atlas GPU path, algebraic G=0, full-tile protocol-oracle parity
+  `GpuVerifiedApproximate`) + 2000-star scale model (C-1) + **bounded algebraic-G=0 atlas admission
+  relaxation (C-2)**. `request_atlas_batching` now admits **only** bounded algebraic-G=0,
+  homogeneous-square, protocol-oracle-backed specs that fit the active budget with multiplier
+  reporting; everything else stays rejected. `MappingExecutionProfile` default stays `Disabled`.
+  **The atlas production runtime / sparse-residency scheduler is a separate later gate, not open.**
+  Isolation policy ratified (algebraic `G=0` at 1.0× VRAM; physical gutter `G≥H` fallback at 6.76×,
+  not a C-2 path).
 - **VRAM budget (set by design authority/product, 2026-05-30):** **1.5 GiB default ceiling**
   (`V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES = 1_610_612_736`), **configurable, no architectural hard
   cap** — dedicated/headless servers and bigger-VRAM cards raise `max_bytes` far beyond the default;
@@ -210,7 +214,7 @@ themselves.
 |---|---|---|---|---|---|
 | C-0 | First §11-gate M-4 atlas slice: full-tile protocol-oracle parity + VRAM-multiplier report vs active budget (1.5 GiB default, configurable) | **ACCEPTED (design authority)** — GpuVerifiedApproximate (3.05e-5 ≤ 1e-4) | `a974fe44e20620f3` | — | impl: [`phase_m_c0_m4_atlas_protocol_oracle_results.md`](tests/phase_m_c0_m4_atlas_protocol_oracle_results.md); acceptance: [`phase_m_c_acceptance_review_results.md`](tests/phase_m_c_acceptance_review_results.md) |
 | C-1 | 2000-star atlas scale model: budget fit for algebraic G=0 and gutter fallback estimate | **ACCEPTED (design authority)** | — | — | impl: [`phase_m_c1_atlas_2000_star_scale_model_results.md`](tests/phase_m_c1_atlas_2000_star_scale_model_results.md); acceptance: [`phase_m_c_acceptance_review_results.md`](tests/phase_m_c_acceptance_review_results.md) |
-| C-2 | Atlas admission relaxation (designer/spec): admit bounded **algebraic-G=0** atlas specs that are homogeneous-square, protocol-oracle-backed, fit the active `V78AtlasVramBudget`, and carry multiplier reporting. `request_atlas_batching` relaxed only through this scope. No production runtime / default wiring / default-on / scheduler. | **Done / Pending Opus Review** | — | — | impl: [`phase_m_c2_atlas_admission_relaxation_results.md`](tests/phase_m_c2_atlas_admission_relaxation_results.md) |
+| C-2 | Atlas admission relaxation (designer/spec): admit bounded **algebraic-G=0** atlas specs that are homogeneous-square, protocol-oracle-backed, fit the active `V78AtlasVramBudget`, and carry multiplier reporting. `request_atlas_batching` relaxed only through this scope. No production runtime / default wiring / default-on / scheduler. | **ACCEPTED (design authority)** — 2 compile breaks remediated inline (non-exhaustive match + private-import test) | — | — | impl: [`phase_m_c2_atlas_admission_relaxation_results.md`](tests/phase_m_c2_atlas_admission_relaxation_results.md); acceptance: [`phase_m_c2_acceptance_review_results.md`](tests/phase_m_c2_acceptance_review_results.md) |
 
 ---
 
@@ -230,7 +234,9 @@ pending Opus review).
 
 L0 is **done and accepted**. L1 (simthing-spec buildout) is **done and accepted** (L1-ACCEPT-0).
 L2 / CLAUSE-SPEC-0 is **ACCEPTED**. L3 ClauseThing remains parked unless product separately
-authorizes it. **C-0 (Line C / M atlas)** is the priority implementation gate — landed at
-fixture/test-support level, pending Opus design-authority review. A-0 and B-0 remain queued.
-ClauseThing/ClauseScript stay parked until explicitly authorized. The AccumulatorOp v2 production
-plan stays **CLOSED**; v7.7 stays the **binding baseline**; the three lines live in v7.8.
+authorizes it. **Line C / M (map batching) is CLOSED at the designer surface: C-0, C-1, and C-2 are
+all ACCEPTED** (proof + 2000-star scale model + bounded algebraic-G=0 atlas admission relaxation).
+The atlas **production runtime / sparse-residency scheduler** is a separate later gate and is **not
+open**. A-0 and B-0 remain **queued** (NamedScenarioAccepted, not opened); ClauseThing/ClauseScript
+stay parked until explicitly authorized. The AccumulatorOp v2 production plan stays **CLOSED**; v7.7
+stays the **binding baseline**; the three lines live in v7.8.
