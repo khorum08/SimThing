@@ -11,6 +11,10 @@ pub const FRONTIER_V1_PROFILE_NAME: &str = "FrontierV1";
 pub const FRONTIER_V1_SKELETON_ID: &str = "frontier_v1_0_scenario_skeleton_v1";
 pub const FRONTIER_V1_FIXTURE_ID: &str = "frontier_v1_1_opt_in_fixture_v1";
 pub const FRONTIER_V1_GPU_FIXTURE_ID: &str = "frontier_v1_2_gpu_replay_acceptance_v1";
+pub const FRONTIER_V1_GPU_RF_FIXTURE_ID: &str = "frontier_v1_3_gpu_resource_flow_v1";
+
+/// Accepted Resource Flow allocator route code for FrontierV1 resource dispatch.
+pub const FRONTIER_V1_ALLOCATOR_ROUTE_CODE: u32 = 1;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SeadPipelineVersion {
@@ -170,6 +174,7 @@ pub struct FrontierV1GpuReplaySummary {
     pub mapping_status: FrontierV1FieldStatus,
     pub resource_flow_status: FrontierV1FieldStatus,
     pub sead_routing_status: FrontierV1FieldStatus,
+    pub route_status: FrontierV1FieldStatus,
     pub gpu_reduction_eml_executed: bool,
 }
 
@@ -182,6 +187,15 @@ impl FrontierV1GpuReplaySummary {
             ^ fnv_mix(u64::from(self.overflow_flags));
         format!("{:016x}", combined & 0xFFFF_FFFF_FFFF_FFFF)
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GpuResourceFlowAllocationSummary {
+    pub faction_a_allocation: u32,
+    pub faction_b_allocation: u32,
+    pub allocator_total: u32,
+    pub resource_overflow_flags: u32,
+    pub allocator_route_code: u32,
 }
 
 impl FrontierV1FixtureFingerprint {
@@ -329,9 +343,39 @@ pub fn hash_gpu_field_values(values: &[f32]) -> u64 {
     h
 }
 
+pub fn hash_gpu_resource_flow(summary: GpuResourceFlowAllocationSummary) -> u64 {
+    let mut h = fnv64(b"gpu_resource_flow");
+    h = fnv_append_u32(h, summary.faction_a_allocation);
+    h = fnv_append_u32(h, summary.faction_b_allocation);
+    h = fnv_append_u32(h, summary.allocator_total);
+    h = fnv_append_u32(h, summary.resource_overflow_flags);
+    h = fnv_append_u32(h, summary.allocator_route_code);
+    h
+}
+
+pub fn frontier_v1_flat_star_weights() -> (f32, f32) {
+    (3.0, 2.0)
+}
+
 pub fn build_gpu_replay_summary(
     mapping_summary_hash: u64,
     cpu_output: &FrontierV1FixtureOutput,
+    gpu_reduction_eml_executed: bool,
+) -> FrontierV1GpuReplaySummary {
+    build_gpu_replay_summary_with_rf(
+        mapping_summary_hash,
+        cpu_output.fingerprint.resource_flow_summary_hash,
+        cpu_output,
+        FrontierV1FieldStatus::CpuOracleOnly,
+        gpu_reduction_eml_executed,
+    )
+}
+
+pub fn build_gpu_replay_summary_with_rf(
+    mapping_summary_hash: u64,
+    resource_flow_summary_hash: u64,
+    cpu_output: &FrontierV1FixtureOutput,
+    resource_flow_status: FrontierV1FieldStatus,
     gpu_reduction_eml_executed: bool,
 ) -> FrontierV1GpuReplaySummary {
     let mut overflow_flags = 0u32;
@@ -343,19 +387,33 @@ pub fn build_gpu_replay_summary(
     }
     FrontierV1GpuReplaySummary {
         mapping_summary_hash,
-        resource_flow_summary_hash: cpu_output.fingerprint.resource_flow_summary_hash,
+        resource_flow_summary_hash,
         proposal_summary_hash: cpu_output.fingerprint.proposal_summary_hash,
         route_summary_hash: cpu_output.fingerprint.route_summary_hash,
         overflow_flags,
         accepted: cpu_output.admission_accepted,
         mapping_status: FrontierV1FieldStatus::GpuVerified,
-        resource_flow_status: FrontierV1FieldStatus::CpuOracleOnly,
+        resource_flow_status,
         sead_routing_status: if gpu_reduction_eml_executed {
             FrontierV1FieldStatus::GpuVerified
         } else {
             FrontierV1FieldStatus::CpuOracleOnly
         },
+        route_status: FrontierV1FieldStatus::CpuOracleOnly,
         gpu_reduction_eml_executed,
+    }
+}
+
+pub fn gpu_resource_flow_from_cpu_oracle(
+    cpu_rf: ResourceFlowSummary,
+    route_code: u32,
+) -> GpuResourceFlowAllocationSummary {
+    GpuResourceFlowAllocationSummary {
+        faction_a_allocation: cpu_rf.allocated_a,
+        faction_b_allocation: cpu_rf.allocated_b,
+        allocator_total: cpu_rf.allocated_a.saturating_add(cpu_rf.allocated_b),
+        resource_overflow_flags: u32::from(cpu_rf.overflow),
+        allocator_route_code: route_code,
     }
 }
 

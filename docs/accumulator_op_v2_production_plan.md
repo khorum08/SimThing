@@ -2503,6 +2503,7 @@ Further SEAD work remains allowed only when it advances a usable SEAD toolset or
 - **FrontierV1-0 — opt-in scenario skeleton and admission contract (PASS):** default-off `FrontierV1` skeleton + admission validator; 8 tests; no runtime wiring. Report: [`docs/tests/phase_m_frontier_v1_0_scenario_skeleton_results.md`](tests/phase_m_frontier_v1_0_scenario_skeleton_results.md).
 - **FrontierV1-1 — opt-in end-to-end fixture wiring (PASS):** wires first-slice mapping + flat-star Resource Flow + SEAD V1 routing through CPU-oracle fixture; replay fingerprint `49d4c94ce1f52be5`; no default wiring. Report: [`docs/tests/phase_m_frontier_v1_1_opt_in_fixture_results.md`](tests/phase_m_frontier_v1_1_opt_in_fixture_results.md).
 - **FrontierV1-2 — GPU-resident execution and replay acceptance (PASS):** GPU first-slice mapping + reduction/EML; CPU-oracle RF/routes; replay fingerprint `42b0455e4d0b59ac`; RF GPU pending FrontierV1-3. Report: [`docs/tests/phase_m_frontier_v1_2_gpu_replay_acceptance_results.md`](tests/phase_m_frontier_v1_2_gpu_replay_acceptance_results.md).
+- **FrontierV1-3 — GPU flat-star Resource Flow integration (PASS):** GPU flat-star allocation + V1-1 CPU oracle parity; replay fingerprint `7bacf7921b807bee`; route classification cpu_oracle_only. Report: [`docs/tests/phase_m_frontier_v1_3_gpu_resource_flow_results.md`](tests/phase_m_frontier_v1_3_gpu_resource_flow_results.md).
 
 **SEAD-ACT-1 — Phase E-style numeric proposal consumer**
 
@@ -2539,6 +2540,10 @@ FrontierV1-1 wires the default-off FrontierV1 fixture through the accepted first
 **FrontierV1-2 — GPU-resident execution and replay acceptance**
 
 FrontierV1-2 executes the default-off FrontierV1 fixture through GPU-resident accepted substrates where available and records CPU-oracle parity plus replay reproducibility. It preserves explicit opt-in only, no default SimSession behavior, no scheduler/cache, no semantic WGSL, no simthing-sim awareness, no CPU planner/urgency/commitment emission, and no generic production economy→mapping bridge. Any Resource Flow component not yet GPU-verified remains explicitly pending and is not overclaimed. Next step is FrontierV1-3 to close any remaining GPU Resource Flow/proposal routing gap or, if all GPU coverage is complete, FrontierV1 acceptance review.
+
+**FrontierV1-3 — GPU flat-star Resource Flow integration**
+
+FrontierV1-3 verifies flat-star Resource Flow allocation on GPU inside the default-off FrontierV1 fixture and matches the CPU oracle exactly. Resource dispatch remains routed through the accepted Resource Flow allocator path; no parallel fixture economy, shared-pool tick writes, nested E-11B, E-11B-5, D-2a, default SimSession behavior, scheduler/cache, semantic WGSL, simthing-sim awareness, or CPU planner/urgency/commitment emission is added. Next step is FrontierV1 acceptance review if mapping, Resource Flow, and SEAD routing are all GPU-verified; otherwise FrontierV1-4 must close any explicitly remaining GPU coverage gap.
 
 Further SEAD actionability work must either: (1) produce a reusable numeric substrate consumed by Phase E fixtures, (2) directly close a Phase M/E blocker, or (3) be paused until a named product scenario requires runtime integration.
 - Native sqrt remains `ApproximateJitOnly`; F exact path requires artifact-backed descriptor admission.
