@@ -164,7 +164,7 @@ themselves.
 
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| A-0 | Static nested Resource Flow first slice: nested arena materialization + D=3/D=4 GPU parity + per-parent contiguous SlotRange proof. WGSL-GUARD-0 removed stale global filename WGSL bans (post A-0-R1) and replaced them with designer-layer semantic-WGSL guardrails. | Done / Pending Opus Review | — | #358 | impl: [`phase_e_a0_nested_resource_flow_static_results.md`](tests/phase_e_a0_nested_resource_flow_static_results.md); A-0-R1: [`phase_e_a0_r1_wgsl_whitelist_remediation_results.md`](tests/phase_e_a0_r1_wgsl_whitelist_remediation_results.md); WGSL-GUARD-0: [`phase_e_wgsl_guardrail_designer_layer_results.md`](tests/phase_e_wgsl_guardrail_designer_layer_results.md) |
+| A-0 | Static nested Resource Flow first slice: nested arena materialization + D=3/D=4 GPU parity + per-parent contiguous SlotRange proof. WGSL-GUARD-0 removed stale global filename bans; WGSL-GUARD-R1 cleaned stray artifacts and no-op placeholders. | Done / Pending Opus Review | — | #358 | impl: [`phase_e_a0_nested_resource_flow_static_results.md`](tests/phase_e_a0_nested_resource_flow_static_results.md); A-0-R1 + R1 cleanup: [`phase_e_wgsl_guardrail_r1_cleanup_results.md`](tests/phase_e_wgsl_guardrail_r1_cleanup_results.md) |
 
 ## 8. Line B — Discrete hard-currency ordering ladder (D-2 / D-2a) — **B-0 ACCEPTED; Line B CLOSED at narrow smoke level**
 

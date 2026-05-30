@@ -394,11 +394,6 @@ fn e11b_explicit_nested_materialization_no_simthing_sim_imports() {
 }
 
 #[test]
-fn e11b_explicit_nested_materialization_rejects_designer_semantic_wgsl() {
-    // Guard is now at designer/spec admission layer.
-}
-
-#[test]
 fn e11b_explicit_nested_materialization_global_flag_default_false() {
     assert!(!PipelineFlags::default().use_accumulator_resource_flow);
 }
