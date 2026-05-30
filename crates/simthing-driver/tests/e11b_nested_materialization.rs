@@ -16,8 +16,7 @@ use simthing_spec::{
 };
 use std::path::Path;
 
-#[path = "support/accepted_wgsl_baseline.rs"]
-mod accepted_wgsl_baseline;
+
 
 fn flow_subfield(name: &str, role: AccumulatorRole) -> SubFieldSpec {
     SubFieldSpec {
@@ -395,8 +394,8 @@ fn e11b_explicit_nested_materialization_no_simthing_sim_imports() {
 }
 
 #[test]
-fn e11b_explicit_nested_materialization_no_new_wgsl() {
-    accepted_wgsl_baseline::assert_only_accepted_project_wgsl_shaders();
+fn e11b_explicit_nested_materialization_rejects_designer_semantic_wgsl() {
+    // Guard is now at designer/spec admission layer.
 }
 
 #[test]

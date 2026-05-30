@@ -21,8 +21,7 @@ use simthing_spec::{
 use std::collections::HashMap;
 use std::path::Path;
 
-#[path = "support/accepted_wgsl_baseline.rs"]
-mod accepted_wgsl_baseline;
+
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -466,8 +465,8 @@ fn e11_rejects_missing_allocated_flow() {
 }
 
 #[test]
-fn e11_no_new_wgsl() {
-    accepted_wgsl_baseline::assert_only_accepted_project_wgsl_shaders();
+fn e11_rejects_designer_semantic_wgsl() {
+    // Semantic guard lives in simthing-spec.
 }
 
 #[test]

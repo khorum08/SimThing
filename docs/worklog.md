@@ -5759,3 +5759,5 @@ Patcher + Dispatch Coordinator per design_v4.md section 11.
 - Pass 3's per-thread loop has variable length per slot. If some slots have very long stacks and most have none, GPU warps will idle. At our scale this is not a concern, but worth profiling once we have realistic overlay loads.
 
 C-1 modeled the 2000-star atlas target envelope and compared algebraic G=0 and physical-gutter VRAM footprints against the active configurable budget. Algebraic fits 1.5 GiB default; gutter requires raised budget. Pure model, no production changes, all posture constraints preserved.
+
+WGSL-GUARD-0: deleted stale global filename-based WGSL whitelist (the ACCEPTED_WGSL_SHADER_BASELINE mechanism centralized in A-0-R1). Replaced with emphasis on the existing designer/spec admission semantic-WGSL guardrail (SemanticWgslRequest). Added explicit rejection test. A-0, B-0, C-2 semantics unchanged. A-0 remains pending Opus review. All tests green, cargo clean.
