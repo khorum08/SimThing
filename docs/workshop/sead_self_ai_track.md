@@ -340,6 +340,11 @@ admission layer** — the ClauseThing horizon, where (per the standing product d
 - **AO-WGSL-0** is generic AO GPU performance work, **ACCEPTED (AO-WGSL-0-ACCEPT, 2026-05-30)** as a
   generic GPU performance option. It does not alter SEAD self-AI posture, ClauseThing/L3, or designer
   semantic-WGSL rejection.
+- **A-0 is ACCEPTED (A-0-ACCEPT-0, 2026-05-30)** — static nested Resource Flow first slice; Line A/E
+  closed at the first nested slice. Together with B-0 and C-2, all promoted v7.8 M/E/T lines are
+  closed for their current named scenarios. This does not open E-11B-5 dynamic enrollment, alter SEAD
+  self-AI posture, ClauseThing/L3, or designer semantic-WGSL rejection; `simthing-sim` stays
+  arena/Resource-Flow-ignorant.
 - **Why this, not another fixture:** it is the first rung where the work stops being internal
   prooflets and becomes a *designer-facing surface* — the on-ramp to ClauseThing and the natural
   home for the guardrails. It gives the implementer a forward horizon at the authoring layer, not

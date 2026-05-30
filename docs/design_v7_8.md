@@ -143,9 +143,15 @@ safety. These stay binding regardless:
   dynamic enrollment on fission cascades. The reverse-OrderBand allocation sweep and the
   approximate-deterministic conservation contract are decided in
   [`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md).
-- **Status:** **NamedScenarioAccepted (2026-05-30); A-0 implementation evidence landed — pending design-authority review.**
-  A-0 implementation evidence landed for static nested Resource Flow; Line A remains pending design-authority review until accepted. `FlatStarResourceFlow` remains the accepted posture;
-  `PipelineFlags::default().use_accumulator_resource_flow` stays `false`.
+- **Status:** **A-0 ACCEPTED (A-0-ACCEPT-0, 2026-05-30) — Line A static nested Resource Flow CLOSED
+  at the first nested slice.** Authored nested participants materialize into D=3/D=4 Resource Flow
+  layouts; per-parent contiguous SlotRange enforcement (non-contiguous rejects, no compaction),
+  reserved-gap exclusion, and bit-exact GPU/CPU oracle parity over the existing AccumulatorOp
+  OrderBand path are proven — [`tests/phase_e_a0_acceptance_review_results.md`](tests/phase_e_a0_acceptance_review_results.md).
+  `FlatStarResourceFlow` remains the accepted production posture;
+  `PipelineFlags::default().use_accumulator_resource_flow` stays `false`; hard-currency stays Phase T.
+  **E-11B-5 dynamic enrollment is NOT opened by A-0** — it stays parked behind a separate named
+  product scenario.
 - **Readiness already landed:** [`reviews/e11b_nested_hierarchy_gpu_readiness_review.md`](reviews/e11b_nested_hierarchy_gpu_readiness_review.md),
   [`reviews/e11b_nested_dynamic_enrollment_readiness.md`](reviews/e11b_nested_dynamic_enrollment_readiness.md),
   [`workshop/e11_hierarchical_allocation_design.md`](workshop/e11_hierarchical_allocation_design.md),
@@ -252,7 +258,7 @@ in-progress → accepted), which is a Tier-2 design-authority + product action.
 
 | Line | Promoted from | Current state | Unblocking named scenario | Ladder |
 |---|---|---|---|---|
-| A — Nested Resource Flow | E-11B / E-11B-5 | parked (flat-star is the posture) | economy needing depth > 2 hierarchical fanout | production track §7 |
+| A — Nested Resource Flow | E-11B / E-11B-5 | **A-0 ACCEPTED — static nested CLOSED at first slice** (E-11B-5 dynamic enrollment still parked) | future nested dynamic enrollment (E-11B-5) named scenario | production track §7 |
 | B — Discrete hard-currency ordering | D-2 / D-2a | **B-0 ACCEPTED — CLOSED at narrow smoke level** (D-2 still deferred) | future mixed-kind/multi-band ordering or all-band-union contention policy | production track §8 |
 | C — Atlas / multi-theater mapping | M-4 / M-4A | provisional/unimplemented (isolation policy ratified) | named multi-theater scenario + approved VRAM budget + §11-gate PR | production track §9 |
 
