@@ -8,6 +8,7 @@ pub use frontier_v1::*;
 pub const FRONTIER_V2_FIXTURE_ID: &str = "frontier_v2_0_closed_loop_consumer_v1";
 pub const FRONTIER_V2_1_FIXTURE_ID: &str = "frontier_v2_1_candidate_evolution_v1";
 pub const FRONTIER_V2_2_FIXTURE_ID: &str = "frontier_v2_2_movement_feedback_application_v1";
+pub const FRONTIER_V2_3_FIXTURE_ID: &str = "frontier_v2_3_structural_feedback_application_v1";
 pub const FRONTIER_V2_CLOSED_LOOP_TICKS: u32 = 2;
 pub const FRONTIER_V2_2_MOVEMENT_FEEDBACK_TICKS: u32 = 3;
 
@@ -32,10 +33,11 @@ pub enum FrontierV2ClauseThingStatus {
     NotImplemented,
 }
 
-/// Classification for fixture-only movement writes (not production SimThing state).
+/// Classification for fixture-only movement/structural writes (not production SimThing state).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FrontierV2WriteClassification {
     OwnColumnShadowWrite,
+    BoundaryRequestShadowWrite,
     RejectedCrossEntity,
 }
 
@@ -51,6 +53,23 @@ pub struct FrontierV2OwnColumnShadow {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FrontierV2MovementWriteError {
     CrossEntityTarget { source_unit_id: u32, shadow_unit_id: u32 },
+}
+
+/// Fixture-only BoundaryRequest shadow record (not production commitment emission).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontierV2BoundaryRequestShadow {
+    pub source_unit_id: u32,
+    pub proposal_code: u32,
+    pub boundary_request_code: u32,
+    pub route_code: u32,
+    pub dispatch_count: u32,
+    pub tick_index: u32,
+    pub applied: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FrontierV2StructuralWriteError {
+    InvalidRoute { route_code: u32 },
 }
 
 /// Fixture-only movement candidate tied to closed-loop feedback.
@@ -472,4 +491,135 @@ pub fn hash_movement_feedback_delta(
     h = fnv_append_u32(h, tick2_mapping_hash as u32);
     h = fnv_append_u32(h, (tick2_mapping_hash >> 32) as u32);
     h
+}
+
+pub fn apply_structural_to_boundary_request_shadow(
+    structural: &FrontierV2StructuralCandidate,
+    source_unit_id: u32,
+    tick_index: u32,
+) -> Result<FrontierV2BoundaryRequestShadow, FrontierV2StructuralWriteError> {
+    if structural.route_code != FRONTIER_V1_STRUCTURAL_ROUTE_CODE {
+        return Err(FrontierV2StructuralWriteError::InvalidRoute {
+            route_code: structural.route_code,
+        });
+    }
+    Ok(FrontierV2BoundaryRequestShadow {
+        source_unit_id,
+        proposal_code: structural.proposal_code,
+        boundary_request_code: structural.boundary_request_code,
+        route_code: structural.route_code,
+        dispatch_count: structural.dispatch_count,
+        tick_index,
+        applied: true,
+    })
+}
+
+pub fn derive_next_tick_structural_feedback_code(
+    shadow: &FrontierV2BoundaryRequestShadow,
+) -> u32 {
+    shadow
+        .boundary_request_code
+        .wrapping_add(shadow.proposal_code)
+        .wrapping_add(shadow.dispatch_count)
+}
+
+/// Apply fixture-only structural feedback as economy seed delta modifier (not production state).
+pub fn apply_structural_feedback_to_config(
+    base: &FrontierV1FixtureConfig,
+    structural_feedback_code: u32,
+) -> FrontierV1FixtureConfig {
+    let seed_delta_a = (structural_feedback_code % 19).saturating_add(6);
+    let seed_delta_b = (structural_feedback_code % 11).saturating_add(4);
+    FrontierV1FixtureConfig {
+        district_output_a: base
+            .district_output_a
+            .saturating_add(seed_delta_a)
+            .min(base.source_cap),
+        district_output_b: base
+            .district_output_b
+            .saturating_add(seed_delta_b)
+            .min(base.source_cap),
+        ..*base
+    }
+}
+
+pub fn hash_boundary_request_shadow(shadow: FrontierV2BoundaryRequestShadow) -> u64 {
+    let mut h = fnv64(b"frontier_v2_3_boundary_request_shadow");
+    h = fnv_append_u32(h, shadow.source_unit_id);
+    h = fnv_append_u32(h, shadow.proposal_code);
+    h = fnv_append_u32(h, shadow.boundary_request_code);
+    h = fnv_append_u32(h, shadow.route_code);
+    h = fnv_append_u32(h, shadow.dispatch_count);
+    h = fnv_append_u32(h, shadow.tick_index);
+    h = fnv_append_u32(h, u32::from(shadow.applied));
+    h
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontierV2StructuralFeedbackSummary {
+    pub tick0_structural_hash: u64,
+    pub tick1_structural_hash: u64,
+    pub shadow_before_hash: u64,
+    pub shadow_after_hash: u64,
+    pub tick2_structural_feedback_code: u32,
+    pub tick1_mapping_hash: u64,
+    pub tick2_mapping_hash: u64,
+    pub tick1_proposal_dispatch_hash: u64,
+    pub tick2_proposal_dispatch_hash: u64,
+    pub structural_feedback_delta_hash: u64,
+    pub overflow_flags: u32,
+    pub tick0_resource_route_status: FrontierV2FieldStatus,
+    pub tick1_resource_route_status: FrontierV2FieldStatus,
+    pub tick2_resource_route_status: FrontierV2FieldStatus,
+    pub structural_evolution_status: FrontierV2FieldStatus,
+    pub structural_application_status: FrontierV2WriteClassification,
+    pub closed_loop_feedback_status: FrontierV2FieldStatus,
+    pub movement_candidate_status: FrontierV2FieldStatus,
+    pub clause_thing_status: FrontierV2ClauseThingStatus,
+    pub phase_closure_status: FrontierV2PhaseClosureStatus,
+}
+
+impl FrontierV2StructuralFeedbackSummary {
+    pub fn combined_hex(&self) -> String {
+        let combined = fnv_mix(self.tick0_structural_hash)
+            ^ fnv_mix(self.tick1_structural_hash)
+            ^ fnv_mix(self.shadow_before_hash)
+            ^ fnv_mix(self.shadow_after_hash)
+            ^ fnv_mix(self.tick1_mapping_hash)
+            ^ fnv_mix(self.tick2_mapping_hash)
+            ^ fnv_mix(self.structural_feedback_delta_hash)
+            ^ fnv_mix(u64::from(self.overflow_flags))
+            ^ fnv_mix(u64::from(self.tick2_structural_feedback_code));
+        format!("{:016x}", combined & 0xFFFF_FFFF_FFFF_FFFF)
+    }
+}
+
+pub fn hash_structural_feedback_delta(
+    shadow_before: FrontierV2BoundaryRequestShadow,
+    shadow_after: FrontierV2BoundaryRequestShadow,
+    structural_feedback_code: u32,
+    tick1_mapping_hash: u64,
+    tick2_mapping_hash: u64,
+) -> u64 {
+    let mut h = fnv64(b"frontier_v2_3_structural_feedback_delta");
+    h = fnv_append_u32(h, shadow_before.boundary_request_code);
+    h = fnv_append_u32(h, shadow_after.boundary_request_code);
+    h = fnv_append_u32(h, structural_feedback_code);
+    h = fnv_append_u32(h, tick1_mapping_hash as u32);
+    h = fnv_append_u32(h, (tick1_mapping_hash >> 32) as u32);
+    h = fnv_append_u32(h, tick2_mapping_hash as u32);
+    h = fnv_append_u32(h, (tick2_mapping_hash >> 32) as u32);
+    h
+}
+
+pub fn empty_boundary_request_shadow(source_unit_id: u32) -> FrontierV2BoundaryRequestShadow {
+    FrontierV2BoundaryRequestShadow {
+        source_unit_id,
+        proposal_code: 0,
+        boundary_request_code: 0,
+        route_code: 0,
+        dispatch_count: 0,
+        tick_index: 0,
+        applied: false,
+    }
 }
