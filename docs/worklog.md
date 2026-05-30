@@ -1,3 +1,7 @@
+# 2026-05-29 — SQRT-EXACT-2E integer-only Candidate E bit-IO probe (Tier-2, landed)
+
+- SQRT-EXACT-2E added standalone `sqrt_cr_e_candidate.wgsl` with authoritative `u32` bit-pattern IO (`sqrt_cr_e_bits`); E removes D-style subnormal flush on DX12 but is `RejectedDeferred` on dense-normal accuracy (`max_ulp=119`); no production sqrt admission or `mag2` authority change.
+
 # 2026-05-29 — SQRT-EXACT-1D-R1 verbatim WGSL intrinsic harness for Candidate D (Tier-2, landed)
 
 - SQRT-EXACT-1D-R1 froze Candidate D as standalone `sqrt_cr_d_candidate.wgsl` and switched the battery to `include_str!` verbatim inclusion with recorded artifact hash; D remains `ApproximateJitOnly` (dense max ULP=1, subnormal FTZ unresolved); no production sqrt admission or `mag2` authority change.
