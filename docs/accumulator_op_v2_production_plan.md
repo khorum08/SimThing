@@ -2502,6 +2502,7 @@ Further SEAD work remains allowed only when it advances a usable SEAD toolset or
 - **SEAD-V1-CONSOLIDATE-0 — SEAD Self-AI Proposal Pipeline V1 (PASS, docs-only):** consolidated OBS-0..4 + EVENT-0..2 + PIPE-0 + ACT-0..2 as V1 core; ACT-3/ACT-4 supporting evidence; ladder closed; FrontierV1-0 next. Report: [`docs/tests/phase_m_sead_v1_consolidation_results.md`](tests/phase_m_sead_v1_consolidation_results.md).
 - **FrontierV1-0 — opt-in scenario skeleton and admission contract (PASS):** default-off `FrontierV1` skeleton + admission validator; 8 tests; no runtime wiring. Report: [`docs/tests/phase_m_frontier_v1_0_scenario_skeleton_results.md`](tests/phase_m_frontier_v1_0_scenario_skeleton_results.md).
 - **FrontierV1-1 — opt-in end-to-end fixture wiring (PASS):** wires first-slice mapping + flat-star Resource Flow + SEAD V1 routing through CPU-oracle fixture; replay fingerprint `49d4c94ce1f52be5`; no default wiring. Report: [`docs/tests/phase_m_frontier_v1_1_opt_in_fixture_results.md`](tests/phase_m_frontier_v1_1_opt_in_fixture_results.md).
+- **FrontierV1-2 — GPU-resident execution and replay acceptance (PASS):** GPU first-slice mapping + reduction/EML; CPU-oracle RF/routes; replay fingerprint `42b0455e4d0b59ac`; RF GPU pending FrontierV1-3. Report: [`docs/tests/phase_m_frontier_v1_2_gpu_replay_acceptance_results.md`](tests/phase_m_frontier_v1_2_gpu_replay_acceptance_results.md).
 
 **SEAD-ACT-1 — Phase E-style numeric proposal consumer**
 
@@ -2534,6 +2535,10 @@ FrontierV1-0 defines the default-off FrontierV1 scenario skeleton and validates 
 **FrontierV1-1 — opt-in end-to-end fixture wiring**
 
 FrontierV1-1 wires the default-off FrontierV1 fixture through the accepted first-slice Mapping, flat-star Resource Flow, and SEAD Self-AI Proposal Pipeline V1 substrates. It proves explicit opt-in fixture integration and routing through accepted substrates without default SimSession behavior, scheduler/cache, semantic WGSL, simthing-sim awareness, CPU planner/urgency/commitment emission, or a generic production economy→mapping bridge. Next step is FrontierV1-2 GPU-resident execution + replay acceptance, if FrontierV1-1 passes.
+
+**FrontierV1-2 — GPU-resident execution and replay acceptance**
+
+FrontierV1-2 executes the default-off FrontierV1 fixture through GPU-resident accepted substrates where available and records CPU-oracle parity plus replay reproducibility. It preserves explicit opt-in only, no default SimSession behavior, no scheduler/cache, no semantic WGSL, no simthing-sim awareness, no CPU planner/urgency/commitment emission, and no generic production economy→mapping bridge. Any Resource Flow component not yet GPU-verified remains explicitly pending and is not overclaimed. Next step is FrontierV1-3 to close any remaining GPU Resource Flow/proposal routing gap or, if all GPU coverage is complete, FrontierV1 acceptance review.
 
 Further SEAD actionability work must either: (1) produce a reusable numeric substrate consumed by Phase E fixtures, (2) directly close a Phase M/E blocker, or (3) be paused until a named product scenario requires runtime integration.
 - Native sqrt remains `ApproximateJitOnly`; F exact path requires artifact-backed descriptor admission.

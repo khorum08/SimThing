@@ -1,13 +1,16 @@
 //! FrontierV1 scenario skeleton, admission validator, and opt-in fixture CPU oracle (test-only).
 
 use simthing_spec::{
-    MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldOperatorSpec,
+    MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
+    RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
+    RegionFieldSourcePolicySpec, RegionFieldSpec, RegionFieldSummaryPolicySpec,
     ResourceFlowExecutionProfile, ResourceFlowOptInMode,
 };
 
 pub const FRONTIER_V1_PROFILE_NAME: &str = "FrontierV1";
 pub const FRONTIER_V1_SKELETON_ID: &str = "frontier_v1_0_scenario_skeleton_v1";
 pub const FRONTIER_V1_FIXTURE_ID: &str = "frontier_v1_1_opt_in_fixture_v1";
+pub const FRONTIER_V1_GPU_FIXTURE_ID: &str = "frontier_v1_2_gpu_replay_acceptance_v1";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SeadPipelineVersion {
@@ -149,6 +152,38 @@ pub struct FrontierV1FixtureFingerprint {
     pub route_summary_hash: u64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FrontierV1FieldStatus {
+    GpuVerified,
+    CpuOracleOnly,
+    PendingGpu,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontierV1GpuReplaySummary {
+    pub mapping_summary_hash: u64,
+    pub resource_flow_summary_hash: u64,
+    pub proposal_summary_hash: u64,
+    pub route_summary_hash: u64,
+    pub overflow_flags: u32,
+    pub accepted: bool,
+    pub mapping_status: FrontierV1FieldStatus,
+    pub resource_flow_status: FrontierV1FieldStatus,
+    pub sead_routing_status: FrontierV1FieldStatus,
+    pub gpu_reduction_eml_executed: bool,
+}
+
+impl FrontierV1GpuReplaySummary {
+    pub fn combined_hex(&self) -> String {
+        let combined = fnv_mix(self.mapping_summary_hash)
+            ^ fnv_mix(self.resource_flow_summary_hash)
+            ^ fnv_mix(self.proposal_summary_hash)
+            ^ fnv_mix(self.route_summary_hash)
+            ^ fnv_mix(u64::from(self.overflow_flags));
+        format!("{:016x}", combined & 0xFFFF_FFFF_FFFF_FFFF)
+    }
+}
+
 impl FrontierV1FixtureFingerprint {
     pub fn combined(&self) -> u64 {
         fnv_mix(self.mapping_summary_hash)
@@ -247,6 +282,80 @@ pub fn frontier_v1_1_fixture_config() -> FrontierV1FixtureConfig {
             ProposalKind::StructuralCommit,
             ProposalKind::Movement,
         ],
+    }
+}
+
+/// Admitted 8×8 first-slice RegionCell field for FrontierV1 GPU mapping execution.
+pub fn frontier_v1_mapping_field_spec() -> RegionFieldSpec {
+    RegionFieldSpec {
+        name: "frontier_v1_theater".into(),
+        grid_size: 8,
+        n_dims: 8,
+        source_col: 0,
+        target_col: 0,
+        operator: RegionFieldOperatorSpec::SourceCappedNormalized,
+        horizon: 8,
+        allow_extended_horizon: false,
+        alpha_self: 1.0,
+        gamma_neighbor: 0.8,
+        source_cap: Some(500.0),
+        source_policy: RegionFieldSourcePolicySpec::default(),
+        cadence: RegionFieldCadenceSpec::EveryTick,
+        grid_profile: RegionFieldGridProfile::StandardSquare,
+        reduction: Some(RegionFieldReductionSpec {
+            child_slot_start: 0,
+            child_slot_count: 64,
+            child_col: 0,
+            parent_slot: 100,
+            parent_col: 0,
+            order_band: 0,
+        }),
+        parent_formula: Some(RegionFieldFormulaBindingSpec {
+            formula_class: "field_urgency".into(),
+            tree_id: Some(7),
+        }),
+        commitment: None,
+        request_atlas_batching: false,
+        max_region_field_vram_bytes: Some(65536),
+        summary_policy: RegionFieldSummaryPolicySpec::default(),
+    }
+}
+
+pub fn hash_gpu_field_values(values: &[f32]) -> u64 {
+    let mut h = fnv64(b"gpu_field");
+    for v in values {
+        h = fnv_append_u32(h, v.to_bits());
+    }
+    h
+}
+
+pub fn build_gpu_replay_summary(
+    mapping_summary_hash: u64,
+    cpu_output: &FrontierV1FixtureOutput,
+    gpu_reduction_eml_executed: bool,
+) -> FrontierV1GpuReplaySummary {
+    let mut overflow_flags = 0u32;
+    if cpu_output.mapping.overflow {
+        overflow_flags |= 1;
+    }
+    if cpu_output.resource_flow.overflow {
+        overflow_flags |= 2;
+    }
+    FrontierV1GpuReplaySummary {
+        mapping_summary_hash,
+        resource_flow_summary_hash: cpu_output.fingerprint.resource_flow_summary_hash,
+        proposal_summary_hash: cpu_output.fingerprint.proposal_summary_hash,
+        route_summary_hash: cpu_output.fingerprint.route_summary_hash,
+        overflow_flags,
+        accepted: cpu_output.admission_accepted,
+        mapping_status: FrontierV1FieldStatus::GpuVerified,
+        resource_flow_status: FrontierV1FieldStatus::CpuOracleOnly,
+        sead_routing_status: if gpu_reduction_eml_executed {
+            FrontierV1FieldStatus::GpuVerified
+        } else {
+            FrontierV1FieldStatus::CpuOracleOnly
+        },
+        gpu_reduction_eml_executed,
     }
 }
 
