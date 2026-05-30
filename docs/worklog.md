@@ -1,3 +1,7 @@
+# 2026-05-30 — V7.8-CLEAN-0 active-docs slimming and archive cleanup (Tier-2, landed)
+
+- V7.8-CLEAN-0 archived closed/superseded design, workshop, and production docs; pruned stale test/evidence clutter; preserved authoritative L0/L1 and E-phase evidence; and confirmed v7.8 production track as the ladder home. Report: [`phase_m_v7_8_cleanup_track_prune_results.md`](tests/phase_m_v7_8_cleanup_track_prune_results.md).
+
 # 2026-05-30 — L1-1 designer admission RON preflight manifest + diagnostic preview (Tier-2, landed)
 
 - L1-1 added a RON-first designer admission preflight manifest and diagnostic preview surface, exercising L1-0 guardrail diagnostics while keeping CLAUSE-SPEC-0 and ClauseThing parked. Report: [`phase_m_l1_1_designer_preflight_manifest_results.md`](tests/phase_m_l1_1_designer_preflight_manifest_results.md).

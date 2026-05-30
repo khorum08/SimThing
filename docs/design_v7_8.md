@@ -16,8 +16,7 @@
 > **Companions:** [`design_v7_8_production_track.md`](design_v7_8_production_track.md) (**the PR-ladder
 > track — this constitution authorizes; that file sequences**) ·
 > [`design_v7_7.md`](design_v7_7.md) (CLOSED constitution amendment) ·
-> [`accumulator_op_v2_production_plan.md`](accumulator_op_v2_production_plan.md) (CLOSED — these
-> lines were promoted out of it) · [`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md) ·
+> [`accumulator_op_v2_production_plan.md`](accumulator_op_v2_production_plan.md) (CLOSED — archived stub; see [`archive/closed_production/accumulator_op_v2_production_plan.md`](archive/closed_production/accumulator_op_v2_production_plan.md)) · [`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md) ·
 > [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md) · [`invariants.md`](invariants.md) ·
 > [`workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md).
 >

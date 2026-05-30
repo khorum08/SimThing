@@ -15,7 +15,7 @@
 >
 > **Companions:** [`design_v7_8.md`](design_v7_8.md) (constitution) ·
 > [`design_v7_7.md`](design_v7_7.md) (CLOSED baseline) ·
-> [`accumulator_op_v2_production_plan.md`](accumulator_op_v2_production_plan.md) (CLOSED) ·
+> [`accumulator_op_v2_production_plan.md`](accumulator_op_v2_production_plan.md) (CLOSED stub — archived full plan under [`archive/closed_production/`](archive/closed_production/)) ·
 > [`workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md) (SEAD/self-AI charter §10–§11) ·
 > [`workshop/mapping_current_guidance.md`](workshop/mapping_current_guidance.md) (status table) ·
 > [`worklog.md`](worklog.md) (append-only history).
@@ -163,6 +163,19 @@ no phase closure declared. Ruling: [`workshop/sead_self_ai_track.md`](workshop/s
 | Step | Intent | Class | Fingerprint | PR | Report |
 |---|---|---|---|---|---|
 | C-0 | _(reserved — first §11-gate M-4 slice, post-named-scenario + VRAM budget)_ | Pending | — | — | — |
+
+---
+
+## Cleanup / evidence hygiene
+
+V7.8-CLEAN-0 classified old docs/tests/workshop evidence against the v7.8 production track, archived
+closed or superseded design/workshop/production docs, deleted scratch/tmp/stale superseded evidence,
+preserved authoritative L0/L1 and E-phase evidence, and confirmed the next implementation gate
+remains **L1 simthing-spec buildout**.
+
+| Step | Intent | Class | Fingerprint | PR | Report |
+|---|---|---|---|---|---|
+| V7.8-CLEAN-0 | Active-docs slimming, archive move, and stale evidence prune | Docs-only | — | — | [`phase_m_v7_8_cleanup_track_prune_results.md`](tests/phase_m_v7_8_cleanup_track_prune_results.md) |
 
 ---
 

@@ -349,6 +349,12 @@ scenario admission step, parked until L1 lands.** L1-0 adds the shared designer-
 diagnostics and artifact-target vocabulary; it does not implement ClauseThing, ClauseScript, or
 production runtime wiring.
 
+### V7.8-CLEAN-0 cleanup note
+
+V7.8-CLEAN-0 archived closed/superseded docs against the v7.8 production track. It did not reopen
+Frontier, SEAD, CLAUSE-SPEC, or ClauseThing implementation. L0 remains accepted, L1 remains active,
+and L2/L3 remain parked.
+
 ### L1-1 clarification
 
 L1-1 added a RON-first designer admission preflight manifest and diagnostic preview surface using
