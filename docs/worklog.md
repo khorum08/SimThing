@@ -1,3 +1,7 @@
+# 2026-05-30 — SQRT-EXACT-5F exhaustive Candidate F proof gate (Tier-2, landed)
+
+- SQRT-EXACT-5F ran the full finite non-negative exhaustive sweep for Candidate F (`0x0000_0000..=0x7F7F_FFFF`) and recorded `max_ulp=0`, `exact_bits=2,139,095,040`, `flush_count=0`; F is now `ExactDeterministicCandidate` pending a separate descriptor/admission flip; Candidate C/f64 remains unimplemented and no production sqrt/`mag2` authority change was made.
+
 # 2026-05-30 — SQRT-EXACT-4F verbatim Candidate F hot-path probe (Tier-2, landed)
 
 - SQRT-EXACT-4F added standalone verbatim `sqrt_cr_f_candidate.wgsl` consumed via `include_str!` with authoritative `u32` bit-IO tests/probes/34k perf smoke; F is `ExactCandidatePendingExhaustiveSweep` (sampled `max_ulp=0`), Candidate C/f64 remains unimplemented, and no production sqrt/`mag2` authority flip occurred.
