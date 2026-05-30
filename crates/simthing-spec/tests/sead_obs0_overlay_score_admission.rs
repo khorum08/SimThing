@@ -10,11 +10,13 @@ use simthing_spec::{
     KernelDescriptorSpec, Mag2SourceContract, NativeMathClass, OutputAuthority,
     ScoreAuthorityContract, SEAD_OBS0_DESCRIPTOR_ID, SEAD_OBS0_LABEL, SEAD_OBS2_DESCRIPTOR_ID,
     SEAD_OBS2_LABEL, SEAD_OBS2_LAYER_COUNT, SEAD_OBS3_DESCRIPTOR_ID, SEAD_OBS3_LABEL,
-    SEAD_OBS4_DESCRIPTOR_ID, SEAD_OBS4_LABEL,
+    SEAD_OBS4_DESCRIPTOR_ID, SEAD_OBS4_LABEL, SEAD_EVENT0_DESCRIPTOR_ID,
+    sead_event0_compaction_kernel_descriptor,
     SpecError, MAG2_Q16_FRAC_BITS, SQRT_F_ARTIFACT_HASH,
     is_sead_obs2_multilayer_overlay_score_descriptor,
     is_sead_obs3_multilayer_fixed_score_descriptor,
     is_sead_obs4_threshold_event_descriptor,
+    is_sead_event0_compaction_descriptor,
 };
 
 fn obs2() -> KernelDescriptorSpec {
@@ -36,6 +38,13 @@ fn obs4() -> KernelDescriptorSpec {
         .into_iter()
         .find(|desc| desc.id == SEAD_OBS4_DESCRIPTOR_ID)
         .expect("sead obs4 descriptor")
+}
+
+fn event0() -> KernelDescriptorSpec {
+    landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|desc| desc.id == SEAD_EVENT0_DESCRIPTOR_ID)
+        .expect("sead event0 descriptor")
 }
 
 fn obs0() -> KernelDescriptorSpec {
@@ -316,4 +325,24 @@ fn sead_obs4_rejects_approximate_event_outputs() {
         &bad,
         "SEAD threshold event requires exact-authoritative event_code_u32",
     );
+}
+
+#[test]
+fn sead_event0_descriptor_admits_compaction() {
+    let desc = event0();
+    assert_eq!(desc.id, SEAD_EVENT0_DESCRIPTOR_ID);
+    assert!(desc.default_off);
+    assert!(!desc.production_wiring);
+    assert!(is_sead_event0_compaction_descriptor(&desc));
+    validate_kernel_descriptor_admission(&desc).expect("event0 admits");
+    println!(
+        "sead_event0_descriptor: id={SEAD_EVENT0_DESCRIPTOR_ID} membership=ExactAuthoritativeUnordered order=UnspecifiedAtomicOrder"
+    );
+}
+
+#[test]
+fn sead_event0_rejects_sqrt_artifact_binding() {
+    let mut bad = sead_event0_compaction_kernel_descriptor();
+    bad.exact_sqrt_artifact = Some(exact_sqrt_f_artifact_descriptor());
+    assert_admission_err(&bad, "SEAD event compaction must not bind sqrt artifact");
 }
