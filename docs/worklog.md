@@ -1,3 +1,7 @@
+# 2026-06-02 - PRODUCTION-PATH-0080-0 opening spec authored
+
+- Authored the docs-only opening spec for **Local Patrol Economy**: [`production_path_0080_0_opening_spec.md`](production_paths/production_path_0080_0_opening_spec.md). The spec scopes the future implementation to a first non-test-support default `SimSession` path for Local Patrol Economy using the 0.0.7.9 mobility/transfer substrate, with patrol relocation sourced from accepted GPU-resident SEAD `Threshold` + `EmitEvent` -> `BoundaryRequest`. No implementation, production wiring, default schedule, gameplay, semantic WGSL, ClauseThing implementation, invariant edit, or passive proof wrapper. Visibility report: [`phase_production_path_0080_0_opening_spec_results.md`](tests/phase_production_path_0080_0_opening_spec_results.md).
+
 # 2026-06-02 — SCENARIO-0080-0-ACCEPTANCE-0: accept Local Patrol Economy; open PRODUCTION-PATH-0080-0 (Opus design authority + product, docs-only)
 
 - Accepted **Local Patrol Economy** as the first 0.0.8.0 consumer-pulled scenario. `SCENARIO-0080-0` → ACCEPTED; `PRODUCTION-PATH-0080-0` → OPEN as a docs/design gate (no implementation), scoped to *first non-test-support default `SimSession` path for Local Patrol Economy on the 0.0.7.9 mobility/transfer substrate*. Pulls exactly one parked substrate (mobility/transfer).
