@@ -217,14 +217,10 @@ safety. These stay binding regardless:
   (§11 binding acceptance gate), [`tests/mapping_atlas_algebraic_mask_sandbox_test_results.md`](tests/mapping_atlas_algebraic_mask_sandbox_test_results.md),
   [`tests/phase_m_m4a_atlas_readiness_gate_results.md`](tests/phase_m_m4a_atlas_readiness_gate_results.md),
   [`reviews/m4_m4a_first_slice_oversight_opus_review.md`](reviews/m4_m4a_first_slice_oversight_opus_review.md).
-- **C-0 gate (landed, pending Opus review):** first §11-gate M-4 atlas slice evidence at
-  fixture/test-support level — [`tests/phase_m_c0_m4_atlas_protocol_oracle_results.md`](tests/phase_m_c0_m4_atlas_protocol_oracle_results.md).
-  `request_atlas_batching` stays rejected at admission until C-0 is accepted; production mapping
-  runtime remains separately gated. Active-mask/source-identity remain deferred.
-- **C-1 (scale model, pending Opus review):** modeled the exact 2000-star target envelope against the active `V78AtlasVramBudget`. Algebraic G=0 fits the 1.5 GiB default; physical gutter fallback requires raised budget. No production runtime or posture relaxation. See [`tests/phase_m_c1_atlas_2000_star_scale_model_results.md`](tests/phase_m_c1_atlas_2000_star_scale_model_results.md).
-- **C-0 gate (originally opened 2026-05-30):** the §11-gate-passing M-4 implementation PR — full-tile protocol-oracle
-  parity (not corridor agreement alone) + VRAM-multiplier report against the active budget. Named
-  scenario + VRAM budget are now satisfied; the §11 implementation PR is the remaining gate.
+- **Accepted evidence (design authority, 2026-05-30):** C-0 — [`tests/phase_m_c0_m4_atlas_protocol_oracle_results.md`](tests/phase_m_c0_m4_atlas_protocol_oracle_results.md);
+  C-1 — [`tests/phase_m_c1_atlas_2000_star_scale_model_results.md`](tests/phase_m_c1_atlas_2000_star_scale_model_results.md);
+  C-2 — [`tests/phase_m_c2_acceptance_review_results.md`](tests/phase_m_c2_acceptance_review_results.md).
+  No Line C implementation gate remains open at the designer surface.
 - **Constraints carried:** `ActiveOnlyExperimentalNoHalo` is **never** production-authorized
   (halo mandatory); atlas never without explicit isolation policy **and** VRAM-multiplier
   reporting; no semantic/map-specific WGSL from designer/spec admission (generic GPU kernels allowed only via named production gates per WGSL-GUARD-0); `simthing-sim` stays map-free.
@@ -268,7 +264,7 @@ ladder that precedes them) are tracked in the production track file (§3–§6).
 
 **V7.8-MET-CLOSEOUT-0 note (2026-05-30):** A-0/B-0/C-2 accepted for the current named M/E/T consumer scenarios (static nested Resource Flow first slice; narrow hard-currency ordering smoke; map batching closed at designer surface). All promoted v7.8 M/E/T lines are closed for current named scenarios; no implementation gate remains open. E-11B-5 dynamic enrollment, atlas production runtime/sparse-residency scheduler, mixed-kind hard-currency ordering, and ClauseThing/L3 remain parked behind future named scenarios/product authorization.
 
-## 6. Forward workshop territory (parked — no implementation gate open)
+## 9. Forward workshop territory (parked — no implementation gate open)
 
 A full architectural analysis of the next named-scenario territory was completed in a design-authority
 workshop session (2026-05-31 / 2026-06-01) and recorded in
