@@ -9,6 +9,7 @@ pub mod child_share_eml;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
 pub mod install;
+pub mod production_path_0080_0;
 pub mod resource_economy_boundary_schedule;
 pub mod resource_economy_burn_in;
 pub mod resource_economy_compile;
@@ -78,6 +79,14 @@ pub use first_slice_mapping_runtime::{
 };
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
+};
+pub use production_path_0080_0::{
+    replay_production_path_0080_0, run_production_path_0080_0, LocalPatrolEconomyCell,
+    LocalPatrolEconomyScenario, ProductionPath0080ForbiddenRequests, ProductionPath0080Gate,
+    ProductionPath0080Input, ProductionPath0080Report, ProductionPath0080Surface,
+    PRODUCTION_PATH_0080_0_ALLOWED_ECONOMY_VALUES, PRODUCTION_PATH_0080_0_ID,
+    PRODUCTION_PATH_0080_0_SCENARIO, PRODUCTION_PATH_0080_0_STATUS_PASS,
+    SCENARIO_0080_0_GATE_ID,
 };
 pub use resource_economy_boundary_schedule::{
     BoundaryScheduleEntry, BoundaryScheduleKey, ResourceEconomyBoundaryScheduleReport,

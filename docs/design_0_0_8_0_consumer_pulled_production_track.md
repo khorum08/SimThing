@@ -1,10 +1,11 @@
 # SimThing — Design 0.0.8.0 Consumer-Pulled Production Track
 
 > **Status:** OPEN. `SCENARIO-0080-0` (Local Patrol Economy) **ACCEPTED** (2026-06-02);
-> `PRODUCTION-PATH-0080-0` **OPEN** as a docs/design gate (scoped to Local Patrol Economy on the
-> 0.0.7.9 mobility/transfer substrate); opening spec authored:
+> `PRODUCTION-PATH-0080-0` **IMPLEMENTED / PASS** as a Local Patrol Economy opt-in production path
+> scoped to Local Patrol Economy on the 0.0.7.9 mobility/transfer substrate; opening spec:
 > [`production_paths/production_path_0080_0_opening_spec.md`](production_paths/production_path_0080_0_opening_spec.md).
-> **No implementation landed.**
+> Implementation report:
+> [`tests/phase_production_path_0080_0_impl_results.md`](tests/phase_production_path_0080_0_impl_results.md).
 >
 > **Active constitution:** [`design_0_0_8_0.md`](design_0_0_8_0.md).
 >
@@ -152,15 +153,15 @@ Reject the scenario if it requires any of:
 | Gate | Description | Status |
 |---|---|---|
 | `SCENARIO-0080-0` | Scenario/admission packet (Local Patrol Economy) | **ACCEPTED (2026-06-02)** |
-| `PRODUCTION-PATH-0080-0` | First substrate production-path gate | **OPEN (docs/design gate; no implementation)** — scoped to: *first non-test-support default `SimSession` path for Local Patrol Economy using the 0.0.7.9 mobility/transfer substrate*, patrol relocate decision sourced from the accepted GPU-resident SEAD `Threshold`+`EmitEvent`→`BoundaryRequest` path (mobility/transfer is the only substrate wired; no CPU planner; no new SEAD production gate) |
+| `PRODUCTION-PATH-0080-0` | First substrate production-path gate | **IMPLEMENTED / PASS - Local Patrol Economy opt-in production path** — scoped to: *Local Patrol Economy using the 0.0.7.9 mobility/transfer substrate*, patrol relocate decision sourced from the accepted GPU-resident SEAD `Threshold`+`EmitEvent`→`BoundaryRequest` path (mobility/transfer is the only substrate wired; no CPU planner; no new SEAD production gate; no global default schedule) |
 | `GAMEPLAY-0080-0` | Gameplay-facing integration | **CLOSED** |
 | `SEMANTIC-WGSL-0080-0` | Semantic shader surface | **CLOSED** |
 | `CLAUSETHING-L3-0080-0` | Front-end / parser / product authoring surface | **PARKED** pending product authorization |
 
 Opening spec of record: [`production_path_0080_0_opening_spec.md`](production_paths/production_path_0080_0_opening_spec.md).
-`PRODUCTION-PATH-0080-0` remains an opening-spec / no-implementation gate: gameplay, semantic WGSL,
-ClauseThing/L3, Hybrid-Strata/faction-index scaling, atlas runtime, E-11B-5, B-1, FrontierV2-5, and
-ACT/EVENT/OBS/PIPE remain closed/parked.
+Implementation report: [`phase_production_path_0080_0_impl_results.md`](tests/phase_production_path_0080_0_impl_results.md).
+Gameplay, semantic WGSL, ClauseThing/L3, Hybrid-Strata/faction-index scaling, atlas runtime,
+E-11B-5, B-1, FrontierV2-5, DEFAULT-SCHEDULE-0080-0, and ACT/EVENT/OBS/PIPE remain closed/parked.
 
 ---
 
@@ -173,6 +174,9 @@ ACT/EVENT/OBS/PIPE remain closed/parked.
 - **PRODUCTION-PATH-0080-0 opening spec:** one compact visibility report:
   [`docs/tests/phase_production_path_0080_0_opening_spec_results.md`](tests/phase_production_path_0080_0_opening_spec_results.md)
   — **authored**; no implementation.
+- **PRODUCTION-PATH-0080-0 implementation:** one compact implementation report:
+  [`docs/tests/phase_production_path_0080_0_impl_results.md`](tests/phase_production_path_0080_0_impl_results.md)
+  — **PASS**; opt-in/default-off Local Patrol Economy only.
 - Do not create reports for passive proof wrappers.
 - Do not create per-slice ceremony.
 
