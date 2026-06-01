@@ -1,3 +1,7 @@
+# 2026-06-02 — MOBILITY-RUNTIME-1B: implement non-scheduled GPU pass-graph node registration PASS
+
+- Implemented opt-in/default-off non-scheduled GPU pass-graph node registration in `simthing-driver` test/support, delegating to the green RUNTIME-1A CPU driver fixture. Registers named node `mobility_runtime1b_non_scheduled_composition_node` when explicitly opted in; no scheduled dispatch, no WGSL/shader, no default schedule, no gameplay, no default `SimSession` lib path. 21-test floor/guardrail/soak battery green. **VERDICT: PASS / non-scheduled GPU pass-graph node registration.** RUNTIME-1B-DISPATCH (real scheduled GPU dispatch), non-test-support default production path, default schedule, and gameplay integration remain closed; no invariant edits. Report: [`phase_mobility_runtime1b_results.md`](tests/phase_mobility_runtime1b_results.md).
+
 # 2026-06-02 — MOBILITY-RUNTIME-1B-OPEN-0: GPU pass-graph registration gate (Opus + product, Tier-2, docs-only)
 
 - **Real Tier-2 gate** (GPU pass-graph registration is one of the two named Tier-2 thresholds per v7.9 §2.1 — not ceremony). **Verdict: OPEN WITH NARROWING → non-scheduled GPU pass-graph *node registration* in `simthing-driver` test/support, opt-in/default-off, delegating to the green RUNTIME-1A CPU fixture; no scheduled GPU dispatch, no new/semantic/raw WGSL, no default schedule, no gameplay, no default path.** No implementation in this PR.
