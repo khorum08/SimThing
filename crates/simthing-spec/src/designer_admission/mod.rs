@@ -9,6 +9,7 @@ mod atlas;
 mod clause_spec;
 mod diagnostic;
 mod manifest;
+mod mobility_audit0;
 mod mobility_scenario0;
 mod preflight;
 mod preview;
@@ -33,6 +34,14 @@ pub use diagnostic::{
     DesignerAdmissionDiagnosticCode, DesignerAdmissionRejectionKind, DesignerFacingGuardrailClass,
 };
 pub use manifest::DesignerAdmissionPreflightManifest;
+pub use mobility_audit0::{
+    audit_mobility_owner_band_budget, audit_mobility_owner_band_budget_with_ceiling,
+    mobility_audit0_family_budgets, mobility_audit0_packet_matches_accepted_constants,
+    mobility_audit0_required_orderband_depth, MobilityAudit0CirculationFamily,
+    MobilityAudit0FamilyBudget, MobilityAudit0Report, MobilityAudit0ScenarioConstants,
+    MobilityAudit0Verdict, MOBILITY_AUDIT0_CURRENT_MAX_ORDERBAND_DEPTH, MOBILITY_AUDIT0_ID,
+    MOBILITY_AUDIT0_NARROWING_CEILING,
+};
 pub use mobility_scenario0::{
     admit_mobility_scenario0_packet, mobility_scenario0_packet, MobilityAllocationBounds,
     MobilityBlockadeSemantics, MobilityIdentityBoundary, MobilityIdentityChannelBudget,
