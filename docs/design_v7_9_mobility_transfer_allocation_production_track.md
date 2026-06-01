@@ -1,6 +1,6 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); MOBILITY-IDROUTE-0 PASS + R1 hardened; **MOBILITY-ECON-0 PASS (substrate only): session-clearinghouse + subsidiarity economy clearinghouse-circulation first slice implemented and tested.** OWNER remains proposed/parked; the Hybrid-Strata/faction-index ECON scaling layer is a later slice; no production runtime integration gate is open.
+> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); MOBILITY-IDROUTE-0 PASS + R1 hardened; MOBILITY-ECON-0 PASS (substrate, clearinghouse-circulation first slice); **MOBILITY-OWNER-0 OPEN (MOBILITY-OWNER-0-OPEN-0, 2026-06-02) — authorized for the owner-relations + latched modifier overlay substrate only, not yet implemented (final v7.9 substrate ladder).** Production runtime integration remains a separate, currently-closed gate; the Hybrid-Strata/faction-index ECON scaling layer remains a later ECON slice; no production runtime integration gate is open.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -20,7 +20,7 @@ The project is at a clean post-v7.8 closeout state.
 | ClauseThing / L3                        | Parked.                                                                                                       |
 | FrontierV2-5 / ACT / EVENT / OBS / PIPE | Rejected / no ladder reopen.                                                                                  |
 
-MOBILITY-ALLOC-0 and MOBILITY-REENROLL-0 are green at the deterministic slab + bulk-accounting allocator and bilateral re-enrollment substrate layers. No downstream implementation gate is open unless explicitly authorized by this or a future opening review.
+MOBILITY-ALLOC-0, MOBILITY-REENROLL-0, MOBILITY-IDROUTE-0 (+R1), and MOBILITY-ECON-0 are green at substrate level (deterministic slab + bulk-accounting allocator; bilateral re-enrollment; local D=2 identity routing; session-clearinghouse + subsidiarity economy clearinghouse-circulation first slice). MOBILITY-OWNER-0 — the final v7.9 substrate ladder — is **OPEN (authorized, not implemented)** by MOBILITY-OWNER-0-OPEN-0. Production runtime integration remains a separate, currently-closed gate; no downstream implementation gate is open unless explicitly authorized by this or a future opening review.
 
 ---
 
@@ -118,7 +118,7 @@ cargo check --workspace
 | REENROLL | Reparenting / bilateral arena re-enrollment    | ALLOC green                                       | **PASS (MOBILITY-REENROLL-0, substrate only)** | Complete; substrate floor + performance bars green |
 | IDROUTE  | D=2 identity-routing overlay                   | ALLOC + REENROLL green                            | **PASS + R1 hardened (MOBILITY-IDROUTE-0-R1, 2026-06-02)** — local D=2 substrate floor + explicit battery green | ECON/OWNER remain parked  |
 | ECON     | Session clearinghouse + subsidiarity economy   | ALLOC + REENROLL green; owner-band audit complete | **PASS (MOBILITY-ECON-0, substrate only)** | Complete; substrate floor + performance bars green |
-| OWNER    | Owner-relations + latched modifier overlays    | ECON green                                        | Proposed | OWNER substrate floor + performance bars green    |
+| OWNER    | Owner-relations + latched modifier overlays    | ECON green                                        | **OPEN (MOBILITY-OWNER-0-OPEN-0, 2026-06-02) — overlay substrate authorized, not implemented** | OWNER substrate floor + performance bars green    |
 
 ---
 
@@ -435,35 +435,74 @@ docs/tests/phase_mobility_econ0_results.md
 
 ---
 
-## 10. OWNER — owner-relations + modifier overlays
+## 10. OWNER — owner-relations + latched modifier overlays
 
-**Entry gate:** ECON green.
+**Status:** **OPEN (MOBILITY-OWNER-0-OPEN-0, design authority + product, 2026-06-02) — overlay
+substrate authorized, not implemented.** This is the **final v7.9 substrate ladder**. Authorized scope
+is the owner-overlay substrate: owner relations as columns/overlays (never spatial parents), capture
+as owner-column flip (never reparenting), latched blockade-immune modifier overlays down-broadcast to
+local records **without spawning arena columns**, deterministic application order, generation/resync
+on owner-column change with no-silent-rebind. **Production runtime integration remains a separate,
+currently-closed gate; the Hybrid-Strata/faction-index ECON scaling layer remains a later ECON slice
+— both out of OWNER-0.** See
+[`phase_mobility_owner0_opening_review_results.md`](tests/phase_mobility_owner0_opening_review_results.md).
+No OWNER test is green until implemented and run in a later PR.
 
-**Purpose:** Prove latched, blockade-immune owner overlays and multi-owner cohort filtering.
+**Entry gate:** ECON green (all prior substrates PASS; OWNER-0's modifier-down band is already inside
+the audited 13 ≤ ceiling 16).
+
+**Purpose:** Prove latched, blockade-immune owner overlays applied by owner-column over the
+ALLOC/REENROLL/IDROUTE/ECON substrates.
 
 **Scope:**
 
-* owner subscription by owner-column presence;
-* species and faction are structurally the same owner-entity mechanism;
-* SpeciesRegistry is a session-peer grouping node;
-* capability trees resolve to overlays and instantiation gates;
-* instantiation is gated fission;
-* modifier overlays are DirtyOnly and blockade-immune;
-* pop cohorts remain homogeneous; partial changes fission a new cohort.
+* owner relations as explicit columns/overlays, never spatial parents (faction/species/blueprint/tech
+  per MOBILITY-SCENARIO-0); subscription by owner-column presence;
+* capture = owner-column flip, never reparenting;
+* latched, DirtyOnly, blockade-immune modifier overlays down-broadcast to local records;
+* down-broadcast overlays never spawn arena/aggregation columns (only flow-pooling relations do —
+  proven separate in ECON-0);
+* deterministic overlay application order; generation/resync only on owner-column change with explicit
+  no-silent-rebind;
+* CPU/driver substrate accounting + parity proxy.
 
-### OWNER substrate floor
+### OWNER-0 substrate floor (authorized by MOBILITY-OWNER-0-OPEN-0)
 
-| Test                                   | Must prove                                                           |
-| -------------------------------------- | -------------------------------------------------------------------- |
-| `owner_cohort_homogeneity_via_fission` | Partial defection/assimilation splits a new cohort; no mixed cohort. |
+| Test                                          | Must prove                                                              |
+| --------------------------------------------- | ----------------------------------------------------------------------- |
+| `owner_column_overlay_applies_deterministically` | Owner-column overlays apply in a deterministic order.                |
+| `owner_capture_is_column_flip_not_reparenting`| Capture flips an owner column; no spatial reparenting.                  |
+| `owner_latched_modifier_overlay_persists`     | A latched modifier persists until its owner-set changes (DirtyOnly).    |
+| `owner_blockade_immune_modifier_stays_latched`| Blockade does not drop a latched modifier (knowledge ≠ goods).          |
+| `owner_down_broadcast_does_not_spawn_arena_columns` | Down-broadcast overlays never create aggregation/arena columns.   |
+| `owner_generation_resync_on_owner_column_change` | Owner-column change resyncs deterministically; no silent rebind.     |
+| `owner_cpu_gpu_parity_layout`                 | Post-overlay layout is bit-exact GPU/CPU.                               |
+| `owner_cohort_homogeneity_via_fission`        | Partial defection/assimilation fissions a new cohort; no mixed cohort.  |
 
-### OWNER performance bars
+### OWNER-0 guardrails (designer/scenario admission)
 
-| Test                        | Must prove                                                                |
-| --------------------------- | ------------------------------------------------------------------------- |
-| `owner_dirtyonly_amortized` | No owner-set changes → zero modifier dispersal cost.                      |
-| `owner_band_budget_audit`   | Interleaved circulations fit `max_orderband_depth` at target depth.       |
-| `owner_scale_soak_34k`      | 34k entities with faction+species owners, unlocks/captures; bounded cost. |
+| Test                                          | Must prove                                              |
+| --------------------------------------------- | ------------------------------------------------------- |
+| `owner_rejects_owner_as_spatial_parent`       | No owner-entity becomes a spatial parent.               |
+| `owner_rejects_capture_as_reparenting`        | Capture stays an owner-column flip.                     |
+| `owner_rejects_nested_arena_reparenting`      | No nested arena reparenting.                            |
+| `owner_rejects_default_on_resource_flow`      | No default-on Resource Flow.                            |
+| `owner_rejects_hard_currency_through_resource_flow` | Hard currency never routes through soft Resource Flow. |
+| `owner_rejects_production_simsession_wiring`  | No production `SimSession` wiring.                      |
+| `owner_rejects_semantic_or_raw_wgsl`          | Semantic/raw WGSL remains rejected.                     |
+| `owner_rejects_cpu_planner_urgency_commitment`| No CPU planner / urgency / commitment emission.         |
+| `owner_rejects_hybrid_strata_or_faction_index_scaling_layer` | Hybrid-Strata/faction-index scaling stays a later ECON slice. |
+| `owner_keeps_production_runtime_integration_parked` | Production runtime integration stays closed.      |
+
+### OWNER-0 performance bars
+
+| Test                            | Must prove                                                                |
+| ------------------------------- | ------------------------------------------------------------------------- |
+| `owner_overlay_multi_cell_scale`| Owner overlays apply across many cells within budget.                     |
+| `owner_concentration_one_owner` | One heavily-loaded owner maintains bounded cost.                          |
+| `owner_dirtyonly_amortized`     | No owner-set changes → zero modifier dispersal cost.                      |
+| `owner_band_budget_audit`       | Interleaved circulations (incl. modifier-down) fit `max_orderband_depth`. |
+| `owner_scale_soak_34k`          | 34k entities with faction+species owners, unlocks/captures; bounded cost. |
 
 **Report:**
 
@@ -540,7 +579,7 @@ Scenario accepted by MOBILITY-SCENARIO-0-ACCEPT-0. MOBILITY-AUDIT-0 passed, MOBI
 
 ## 14. Final track posture
 
-This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, MOBILITY-ALLOC-0 is green for the deterministic slab + bulk-accounting allocator substrate, MOBILITY-REENROLL-0 is PASS for bilateral arena re-enrollment substrate only, MOBILITY-IDROUTE-0 is PASS + R1 hardened for local D=2 identity-routing substrate only, and **MOBILITY-ECON-0 is PASS for session-clearinghouse/subsidiarity economy substrate only; Hybrid-Strata/faction-index scaling is a later ECON slice.** OWNER remains parked until product/design authority explicitly opens it.
+This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, and MOBILITY-ALLOC-0 / REENROLL-0 / IDROUTE-0(+R1) / ECON-0 are all green at substrate level. **MOBILITY-OWNER-0 — the final v7.9 substrate ladder — is OPEN (authorized for the owner-relations + latched modifier overlay substrate only, not yet implemented).** Once OWNER-0 is implemented and green, the v7.9 mobility/transfer substrate is complete and the only remaining mobility work is **production runtime integration**, a separate gate that remains closed. The Hybrid-Strata/faction-index ECON scaling layer also remains a later, separately-gated ECON slice.
 
 Expected initial row:
 
@@ -560,3 +599,4 @@ Expected initial row:
 | MOBILITY-IDROUTE-0-R1 | Remedial hardening for local-k admission, global-vector rejection, directed disburse atomic-or-immutable coverage, and exact battery reporting | **PASS / substrate-only hardening** | [`phase_mobility_idroute0_r1_results.md`](tests/phase_mobility_idroute0_r1_results.md) |
 | MOBILITY-ECON-0-OPEN-0 | Design-authority/product opening review for session-clearinghouse + subsidiarity economy substrate (clearinghouse-circulation first slice) | **OPEN / docs-only authorization** | [`phase_mobility_econ0_opening_review_results.md`](tests/phase_mobility_econ0_opening_review_results.md) |
 | MOBILITY-ECON-0 | Session-clearinghouse + subsidiarity economy substrate; no OWNER, Hybrid-Strata/faction-index scaling, or downstream runtime integration | **PASS / substrate-only** | [`phase_mobility_econ0_results.md`](tests/phase_mobility_econ0_results.md) |
+| MOBILITY-OWNER-0-OPEN-0 | Design-authority/product opening review for owner-relations + latched modifier overlay substrate (final v7.9 substrate ladder) | **OPEN / docs-only authorization** | [`phase_mobility_owner0_opening_review_results.md`](tests/phase_mobility_owner0_opening_review_results.md) |
