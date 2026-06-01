@@ -1,3 +1,7 @@
+# 2026-06-02 — GPU-EXEC-0: prove semantic-free GPU execution readiness PASS
+
+- Implemented opt-in/default-off semantic-free GPU execution readiness in `simthing-driver` test/support: built-in identity-buffer pass (not mobility, not designer WGSL), CPU oracle + GPU checksum, exact parity or honest `GpuUnavailable`. 13-test floor/guardrail battery green. **VERDICT: PASS / generic GPU execution readiness.** RUNTIME-1B-DISPATCH (mobility shader + scheduled dispatch), default schedule, gameplay, and default `SimSession` lib path remain closed; no invariant edits. Report: [`phase_gpu_exec0_results.md`](tests/phase_gpu_exec0_results.md).
+
 # 2026-06-02 — MOBILITY-RUNTIME-1B: implement non-scheduled GPU pass-graph node registration PASS
 
 - Implemented opt-in/default-off non-scheduled GPU pass-graph node registration in `simthing-driver` test/support, delegating to the green RUNTIME-1A CPU driver fixture. Registers named node `mobility_runtime1b_non_scheduled_composition_node` when explicitly opted in; no scheduled dispatch, no WGSL/shader, no default schedule, no gameplay, no default `SimSession` lib path. 21-test floor/guardrail/soak battery green. **VERDICT: PASS / non-scheduled GPU pass-graph node registration.** RUNTIME-1B-DISPATCH (real scheduled GPU dispatch), non-test-support default production path, default schedule, and gameplay integration remain closed; no invariant edits. Report: [`phase_mobility_runtime1b_results.md`](tests/phase_mobility_runtime1b_results.md).
