@@ -50,6 +50,13 @@ Constitutional surfacing:
 > currency/markets/trade/`ai_budget`, nested Resource Flow, ClauseThing dependency, or invariant edit.
 > Spec: [`../production_paths/production_path_0080_0_opening_spec.md`](../production_paths/production_path_0080_0_opening_spec.md);
 > report: [`../tests/phase_production_path_0080_0_impl_results.md`](../tests/phase_production_path_0080_0_impl_results.md).
+> `DEFAULT-SCHEDULE-0080-0` opening spec authored / ready for implementation authorization;
+> scenario-scoped only (deterministic opt-in step driver for Local Patrol Economy routing GPU-resident
+> SEAD threshold/event/`BoundaryRequest` decisions into `run_production_path_0080_0`); no global default
+> schedule. Authorized future slice includes a bounded pirate/patrol predator loop (pirate = second
+> IDROUTE identity, not a second economy owner), sub-sliced 1A (schedule+patrol) / 1B (pirate) for pace;
+> no implementation in this PR. Spec:
+> [`../production_paths/default_schedule_0080_0_opening_spec.md`](../production_paths/default_schedule_0080_0_opening_spec.md).
 
 Active read order (authoritative path for agents):
 
