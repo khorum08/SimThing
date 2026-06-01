@@ -462,3 +462,4 @@ Expected initial row:
 | Step             | Intent                                                                       | Status               | Report                             |
 | ---------------- | ---------------------------------------------------------------------------- | -------------------- | ---------------------------------- |
 | MOBILITY-TRACK-0 | Create parked v7.9 mobility/transfer production track from workshop findings | **Done / docs-only** | — |
+| V7.8/V7.9-DOC-R1 | Reconcile stale v7.8 Line C “pending/remaining gate” language in active docs   | **Done / docs-only** | [`phase_v7_8_v7_9_doc_r1_results.md`](tests/phase_v7_8_v7_9_doc_r1_results.md) |
