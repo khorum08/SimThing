@@ -16,6 +16,7 @@ mod mobility_idroute0;
 mod mobility_owner0;
 mod mobility_reenroll0;
 mod mobility_runtime0;
+mod mobility_runtime1a;
 mod mobility_scenario0;
 mod preflight;
 mod preview;
@@ -78,6 +79,12 @@ pub use mobility_runtime0::{
     compose_mobility_runtime0, MobilityRuntime0CompositionInput,
     MobilityRuntime0CompositionReport, MobilityRuntime0ForbiddenPathRequests,
     MobilityRuntime0HarnessConfig, MOBILITY_RUNTIME0_ID, MOBILITY_RUNTIME0_ORDER,
+};
+pub use mobility_runtime1a::{
+    run_mobility_runtime1a_production_fixture, MobilityRuntime1aFixtureGate,
+    MobilityRuntime1aForbiddenPathRequests, MobilityRuntime1aProductionFixtureInput,
+    MobilityRuntime1aProductionFixtureReport, MobilityRuntime1aSimSessionSurface,
+    MOBILITY_RUNTIME1A_ID, MOBILITY_RUNTIME1A_NAMED_GATE,
 };
 pub use mobility_audit0::{
     audit_mobility_owner_band_budget, audit_mobility_owner_band_budget_with_ceiling,
