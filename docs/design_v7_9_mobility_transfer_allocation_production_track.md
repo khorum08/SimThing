@@ -1,6 +1,6 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); **MOBILITY-IDROUTE-0 PASS (2026-06-02)** — local D=2 identity-routing substrate green. ECON/OWNER remain proposed/parked; no production runtime integration gate is open.
+> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); **MOBILITY-IDROUTE-0 PASS + R1 hardened (2026-06-02)** — local D=2 identity-routing substrate green. ECON/OWNER remain proposed/parked; no production runtime integration gate is open.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -116,7 +116,7 @@ cargo check --workspace
 | AUDIT    | Owner/OrderBand depth budget                   | Scenario accepted                                 | **PASS (MOBILITY-AUDIT-0, 2026-06-01)** | Complete; first slice fits current ceiling |
 | ALLOC    | Deterministic slab + bulk-accounting allocator | Scenario accepted; A-0 baseline                   | **PASS (MOBILITY-ALLOC-0, substrate only)** | Complete; substrate floor + performance bars green |
 | REENROLL | Reparenting / bilateral arena re-enrollment    | ALLOC green                                       | **PASS (MOBILITY-REENROLL-0, substrate only)** | Complete; substrate floor + performance bars green |
-| IDROUTE  | D=2 identity-routing overlay                   | ALLOC + REENROLL green                            | **PASS (MOBILITY-IDROUTE-0, 2026-06-02)** — local D=2 substrate floor + battery green | ECON/OWNER remain parked  |
+| IDROUTE  | D=2 identity-routing overlay                   | ALLOC + REENROLL green                            | **PASS + R1 hardened (MOBILITY-IDROUTE-0-R1, 2026-06-02)** — local D=2 substrate floor + explicit battery green | ECON/OWNER remain parked  |
 | ECON     | Session clearinghouse + subsidiarity economy   | ALLOC + REENROLL green; owner-band audit complete | Proposed | ECON substrate floor + performance bars green     |
 | OWNER    | Owner-relations + latched modifier overlays    | ECON green                                        | Proposed | OWNER substrate floor + performance bars green    |
 
@@ -297,6 +297,8 @@ docs/tests/phase_mobility_reenroll0_results.md
 
 **Entry gate:** ALLOC + REENROLL green.
 
+**Status:** **PASS + R1 hardened (MOBILITY-IDROUTE-0-R1, 2026-06-02).** Local D=2 identity-routing substrate is green with explicit per-cell `max_factions_per_cell` admission, explicit global-vector rejection, immutable/report-only directed disburse, and 20/20 explicit substrate/guardrail/performance tests. ECON/OWNER remain proposed/parked and require separate opening.
+
 **Purpose:** Prove local D=2 identity routing using masked reduction + directed disburse.
 
 Identity is a column, not tree structure.
@@ -322,6 +324,25 @@ masked gather → per-identity parent columns → directed disburse → integrat
 | `idroute_masked_sum_correct`         | Per-identity masked Sum equals exact per-identity total. |
 | `idroute_multi_term_sum_determinism` | Multi-term routing Sum uses fixed sorted op order.       |
 | `idroute_argmax_packed_key_unique`   | Packed-key Max has deterministic unique winner.          |
+| `idroute_directed_disburse_correct`  | Directed disburse output is complete and deterministic.  |
+| `idroute_directed_disburse_atomic_or_immutable` | Disburse is report-only immutable or rejected with no partial target state. |
+| `idroute_identity_column_not_tree_structure` | Identity remains a local column, not tree structure. |
+| `idroute_cpu_gpu_parity_layout`      | Local layout remains CPU/GPU-proxy parity-testable.      |
+
+### IDROUTE guardrails
+
+| Test | Must prove |
+| --- | --- |
+| `idroute_rejects_global_faction_vector` | Explicit global dense faction vectors are rejected. |
+| `idroute_accepts_many_cells_with_local_k_bound` | Many cells are accepted when each cell respects local `k <= 4`. |
+| `idroute_rejects_one_cell_exceeding_max_factions_per_cell` | Any single over-wide cell is rejected. |
+| `idroute_rejects_owner_as_spatial_parent` | Owner-entities are not spatial parents. |
+| `idroute_rejects_capture_as_reparenting` | Capture is not reparenting. |
+| `idroute_rejects_econ_owner_runtime` | ECON/OWNER runtime is not part of IDROUTE. |
+| `idroute_keeps_econ_owner_parked` | ECON/OWNER remain parked. |
+| `idroute_does_not_authorize_production_simsession_wiring` | No production `SimSession` wiring is authorized. |
+| `idroute_does_not_enable_default_on_behavior` | No default-on behavior is authorized. |
+| `idroute_rejects_semantic_or_raw_wgsl` | Semantic/raw WGSL remains rejected. |
 
 ### IDROUTE performance bars
 
@@ -335,6 +356,7 @@ masked gather → per-identity parent columns → directed disburse → integrat
 
 ```text
 docs/tests/phase_mobility_idroute0_results.md
+docs/tests/phase_mobility_idroute0_r1_results.md
 ```
 
 ---
@@ -490,7 +512,7 @@ Scenario accepted by MOBILITY-SCENARIO-0-ACCEPT-0. MOBILITY-AUDIT-0 passed, MOBI
 
 ## 14. Final track posture
 
-This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, MOBILITY-ALLOC-0 is green for the deterministic slab + bulk-accounting allocator substrate, **MOBILITY-REENROLL-0 is PASS for bilateral arena re-enrollment substrate only.** IDROUTE/ECON/OWNER remain parked until product/design authority explicitly opens them.
+This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, MOBILITY-ALLOC-0 is green for the deterministic slab + bulk-accounting allocator substrate, MOBILITY-REENROLL-0 is PASS for bilateral arena re-enrollment substrate only, and MOBILITY-IDROUTE-0 is PASS + R1 hardened for local D=2 identity-routing substrate only. ECON/OWNER remain parked until product/design authority explicitly opens them.
 
 Expected initial row:
 
@@ -505,3 +527,6 @@ Expected initial row:
 | MOBILITY-ALLOC-0 | Deterministic per-parent/key slab allocation + bulk accounting substrate; no downstream runtime integration | **PASS / substrate-only** | [`phase_mobility_alloc0_results.md`](tests/phase_mobility_alloc0_results.md) |
 | MOBILITY-REENROLL-0-OPEN-0 | Design-authority/product opening review for bilateral arena re-enrollment substrate | **OPEN / docs-only authorization** | [`phase_mobility_reenroll0_opening_review_results.md`](tests/phase_mobility_reenroll0_opening_review_results.md) |
 | MOBILITY-REENROLL-0 | Bilateral arena re-enrollment substrate on MOBILITY-ALLOC-0; no downstream runtime integration | **PASS / substrate-only** | [`phase_mobility_reenroll0_results.md`](tests/phase_mobility_reenroll0_results.md) |
+| MOBILITY-IDROUTE-0-OPEN-0 | Design-authority/product opening review for local D=2 identity-routing substrate | **OPEN / docs-only authorization** | [`phase_mobility_idroute0_opening_review_results.md`](tests/phase_mobility_idroute0_opening_review_results.md) |
+| MOBILITY-IDROUTE-0 | Local D=2 identity-routing substrate; no ECON/OWNER or downstream runtime integration | **PASS / substrate-only** | [`phase_mobility_idroute0_results.md`](tests/phase_mobility_idroute0_results.md) |
+| MOBILITY-IDROUTE-0-R1 | Remedial hardening for local-k admission, global-vector rejection, directed disburse atomic-or-immutable coverage, and exact battery reporting | **PASS / substrate-only hardening** | [`phase_mobility_idroute0_r1_results.md`](tests/phase_mobility_idroute0_r1_results.md) |

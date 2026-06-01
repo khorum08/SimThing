@@ -1,6 +1,10 @@
+# 2026-06-02 - MOBILITY-IDROUTE-0-R1: harden identity-routing substrate admission
+
+- Remedial hardening for the landed local D=2 IDROUTE substrate before any ECON opening review. Replaced cross-cell global-vector heuristics with explicit per-cell local `max_factions_per_cell` admission, added report fields for local D=2 / identity-column / immutable disburse posture, split the battery into 20 explicit tests (7 substrate floor + 10 guardrails + 3 performance bars), and recorded global-vector/local-k plus directed-disburse atomic-or-immutable evidence. **VERDICT: PASS / substrate-only hardening.** ECON/OWNER remain parked; no production runtime, production `SimSession` wiring, semantic/raw WGSL, default-on behavior, global faction vector, CPU planner/urgency/commit emission, or invariant edits. Report: [`phase_mobility_idroute0_r1_results.md`](tests/phase_mobility_idroute0_r1_results.md).
+
 # 2026-06-02 - MOBILITY-IDROUTE-0: implement local D=2 identity-routing substrate
 
-- Implemented the authorized local D=2 identity-routing overlay substrate in `simthing-spec`: per-cell masked Sum (hard exact + soft), deterministic multi-term Sum, packed-key argmax with unique winner, directed disburse (immutable-by-construction), CPU/GPU-proxy checksums, and full guardrail rejection battery. 13 new tests green including 34k soak. **VERDICT: PASS / substrate only.** ECON/OWNER remain proposed/parked. No production `SimSession` wiring, no semantic/raw WGSL, no default-on, no CPU planner. Report: [`phase_mobility_idroute0_results.md`](tests/phase_mobility_idroute0_results.md).
+- Implemented the authorized local D=2 identity-routing overlay substrate in `simthing-spec`: per-cell masked Sum (hard exact + soft), deterministic multi-term Sum, packed-key argmax with unique winner, directed disburse (immutable-by-construction), CPU/GPU-proxy checksums, and guardrail rejection coverage. The R1 entry above reconciles the final explicit 20-test battery. **VERDICT: PASS / substrate only.** ECON/OWNER remain proposed/parked. No production `SimSession` wiring, no semantic/raw WGSL, no default-on, no CPU planner. Report: [`phase_mobility_idroute0_results.md`](tests/phase_mobility_idroute0_results.md).
 
 # 2026-06-02 - MOBILITY-IDROUTE-0-OPEN-0: authorize identity-routing overlay gate
 
