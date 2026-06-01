@@ -24,6 +24,10 @@ speculatively.
 
 This is not implementation. This is not a substrate track. This is not another proof wrapper.
 
+**ClauseThing / ClauseScript** remains a horizontal future authoring surface. Scenario admission
+must not assume ClauseThing support, but should avoid choices that would make a future ClauseThing
+front-end impossible.
+
 ---
 
 ## 2. Operating doctrine summary
@@ -41,7 +45,22 @@ This is not implementation. This is not a substrate track. This is not another p
 
 ---
 
-## 3. Parked substrate inventory
+## 3. ClauseThing horizon non-goal
+
+ClauseThing / ClauseScript is a **horizontal future designer-facing aspiration** — not active
+scope for this track.
+
+- This track does **not** open ClauseThing.
+- This track does **not** require ClauseScript expressiveness.
+- This track does **not** alter `simthing-spec`.
+- Scenario packets should target the **current accepted `simthing-spec` admission surface**
+  (L0/L1/L2 / CLAUSE-SPEC).
+- Future ClauseThing compatibility is a **non-blocking horizon concern only** — avoid admission
+  choices that would foreclose a later front-end, but do not design for ClauseScript now.
+
+---
+
+## 4. Parked substrate inventory
 
 Compact reference only — do not re-litigate. Each row is **complete or accepted at first slice,
 opt-in/default-off, parked** until a named scenario pulls it.
@@ -58,7 +77,7 @@ opt-in/default-off, parked** until a named scenario pulls it.
 
 ---
 
-## 4. First gate: SCENARIO-0080-0
+## 5. First gate: SCENARIO-0080-0
 
 | Field | Value |
 |---|---|
@@ -74,7 +93,7 @@ opt-in/default-off, parked** until a named scenario pulls it.
 
 ---
 
-## 5. SCENARIO-0080-0 admission packet — required declarations
+## 6. SCENARIO-0080-0 admission packet — required declarations
 
 The admission packet must declare:
 
@@ -97,7 +116,7 @@ Acceptance is **design-authority + product only**. No self-acceptance.
 
 ---
 
-## 6. Recommended first candidate (not authorization)
+## 7. Recommended first candidate (not authorization)
 
 **Most-ready candidate:** 0.0.7.9 mobility/transfer substrate.
 
@@ -110,7 +129,7 @@ scenario discipline).
 
 ---
 
-## 7. Stop conditions
+## 8. Stop conditions
 
 Reject the scenario if it requires any of:
 
@@ -126,7 +145,7 @@ Reject the scenario if it requires any of:
 
 ---
 
-## 8. Ladder index
+## 9. Ladder index
 
 | Gate | Description | Status |
 |---|---|---|
@@ -138,7 +157,7 @@ Reject the scenario if it requires any of:
 
 ---
 
-## 9. Evidence / test-report policy
+## 10. Evidence / test-report policy
 
 - **This track file:** no test report required.
 - **Future SCENARIO-0080-0 admission:** one compact admission report only:
@@ -149,7 +168,7 @@ Reject the scenario if it requires any of:
 
 ---
 
-## 10. Pointers
+## 11. Pointers
 
 - Active constitution: [`design_0_0_8_0.md`](design_0_0_8_0.md)
 - Parked 0.0.7.9 mobility/transfer track: [`design_v7_9_mobility_transfer_allocation_production_track.md`](design_v7_9_mobility_transfer_allocation_production_track.md)

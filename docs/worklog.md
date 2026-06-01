@@ -1,6 +1,6 @@
 # 2026-06-02 — DESIGN-0.0.8.0-PRODUCTION-TRACK-0: 0.0.8.0 consumer-pulled production track created
 
-- Created [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md) — the **SCENARIO-FIRST** production track for the consumer-pulled phase. Docs-only; no implementation; no production wiring; no default `SimSession`, default schedule, gameplay, or semantic WGSL. First gate **`SCENARIO-0080-0`** (Tier-2 scenario/admission only) is OPEN; `PRODUCTION-PATH-0080-0` stays CLOSED until a named scenario accepts. 0.0.7.9 mobility/transfer substrate remains COMPLETE and PARKED. No passive proof wrappers. Updated mapping read order.
+- Created [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md) — the **SCENARIO-FIRST** production track for the consumer-pulled phase. Docs-only; no implementation; no production wiring; no default `SimSession`, default schedule, gameplay, or semantic WGSL. First gate **`SCENARIO-0080-0`** (Tier-2 scenario/admission only) is OPEN; `PRODUCTION-PATH-0080-0` stays CLOSED until a named scenario accepts. 0.0.7.9 mobility/transfer substrate remains COMPLETE and PARKED. **ClauseThing / ClauseScript remains horizon-only** — not active scope; scenario packets target accepted `simthing-spec` admission. No passive proof wrappers. Updated mapping read order.
 
 # 2026-06-02 — DESIGN-0.0.8.0-CONSTITUTION-0: open 0.0.8.0 as active constitution (consumer-pulled phase) (Opus design authority, docs-only)
 
