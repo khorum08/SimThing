@@ -13,6 +13,7 @@ mod mobility_alloc0;
 mod mobility_audit0;
 mod mobility_econ0;
 mod mobility_idroute0;
+mod mobility_owner0;
 mod mobility_reenroll0;
 mod mobility_scenario0;
 mod preflight;
@@ -62,6 +63,15 @@ pub use mobility_idroute0::{
     plan_mobility_idroute0, DirectedDisburse, IdentityLane, MobilityIdroute0ForbiddenPathRequests,
     MobilityIdroute0LocalRecord, MobilityIdroute0PlanInput, MobilityIdroute0PlanReport,
     PerIdentitySum, MOBILITY_IDROUTE0_ID,
+};
+pub use mobility_owner0::{
+    mobility_owner0_layout_checksum_cpu, mobility_owner0_layout_checksum_gpu_proxy,
+    plan_mobility_owner0, MobilityOwner0AppliedOverlay, MobilityOwner0ColumnKind,
+    MobilityOwner0ColumnValue, MobilityOwner0FissionResult, MobilityOwner0ForbiddenPathRequests,
+    MobilityOwner0GenerationResync, MobilityOwner0LocalRecord, MobilityOwner0Overlay,
+    MobilityOwner0OwnerChange, MobilityOwner0PlanInput, MobilityOwner0PlanReport,
+    MOBILITY_OWNER0_CURRENT_MAX_ORDERBAND_DEPTH, MOBILITY_OWNER0_ID,
+    MOBILITY_OWNER0_REQUIRED_ORDERBAND_DEPTH,
 };
 pub use mobility_audit0::{
     audit_mobility_owner_band_budget, audit_mobility_owner_band_budget_with_ceiling,
