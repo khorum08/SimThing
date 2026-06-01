@@ -115,3 +115,33 @@ the row in place, don't append a narrative block. "Evidence" links the single te
 - Tier 2 cadence is unchanged for anything genuinely uncertain or constitutional.
 
 The trade is precise: we remove **redundant narration and redundant gates**, not **enforcement**.
+
+---
+
+## 6. The proven-capability stop rule (anti-recombination loop)
+
+**Constitutional, added by design authority 2026-06-02.** Sibling of `invariants.md`'s "one principle
+per class — no per-slice accretion": this is its runtime/test analog. It exists because a landed,
+green capability kept attracting ever-more-elaborate *recombination* work (e.g. a proven GPU kernel
+re-wrapped as soak → replay-soak → multi-frame-stream-soak → throughput-summary → budget-assertions-
+over-the-summary), each shipping a fixture + a report but **no new code path and no new failure
+mode**. That is a hygiene loop wearing a test-fixture costume.
+
+**A capability is *reasonably proven* once** (a) its substrate floor is green (the determinism /
+parity / invariants it must hold), and (b) **one** representative scale/soak + parity run is green.
+
+**Once proven, further variants that only recombine the proven primitive are NOT authorized** —
+additional soaks, replays, multi-frame/stream/batch permutations, Nth scale runs, accounting-over-
+accounting, or assertions-over-summaries. The **only** authorized next artifacts are one of:
+
+1. **Close a dangling path** — mark the capability complete, reconcile the track / guidance / worklog
+   to reality, and stop.
+2. **Escalate a design direction** — a one-paragraph proposal to design authority for the next
+   *distinct* path/gate. If that next path is a Tier-2 threshold (default-on, default schedule /
+   pass-graph wiring, gameplay surface, semantic WGSL, invariant change, closed-ladder reopen),
+   **stop and wait for the gate** — do not fill the wait with more recombination variants.
+
+**The test before adding the N+1th variant:** *does it exercise a code path or failure mode the proven
+set does not?* If no, it is a recombination loop — close the path or escalate instead. **Proven once,
+not proven N times.** An agent that has shipped two same-shape recombination variants in a row is in
+the loop and must switch to (1) or (2).

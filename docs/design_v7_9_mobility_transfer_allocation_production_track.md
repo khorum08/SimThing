@@ -71,6 +71,29 @@ the Tier-1/Tier-2 split above + v7.8 §2.5 non-negotiables (oracle parity, seman
 prohibition per descriptor or per ladder step. A CPU/default-off/test-fixture slice that re-asks an
 already-settled principle is fast-lane, not a Tier-2 gate.
 
+### 2.2 GPU kernel substrate COMPLETE — halt the soak-variant loop (design authority, 2026-06-02)
+
+Applying the **proven-capability stop rule** (`phase_m_gating_and_doc_policy.md` §6): the semantic-free
+GPU kernel substrate is **reasonably proven and CLOSED**. Proven set — KERNEL-0 (semantic-free
+column kernel + CPU-oracle bit-exact parity), KERNEL-1 (registered-node dispatch), KERNEL-2 (34k
+scale), KERNEL-3/4 (composition→GPU-column projection), KERNEL-5 (second kernel), KERNEL-6
+(ordered multi-kernel chain). KERNEL-7→11 (replay soak, varied-input soak, multi-frame-stream soak,
+throughput summary, budget-assertions-over-the-summary) were **recombination of the proven primitive
+— no new code path or failure mode**, i.e. the loop.
+
+**Halt: no further KERNEL soak/replay/accounting/manifest variants are authorized.** KERNEL-12
+(buffer-layout manifest), if in flight, is the **last**; do not start KERNEL-13. Each adds a fixture
++ a report and zero coverage. The GPU kernel substrate is done: kernel + parity + dispatch + 34k
+scale + projection + multi-kernel chain + replay determinism are green and need no more variants.
+
+**The next move is a design decision, not another fixture** — exactly one of:
+1. **Park** the GPU kernel substrate as complete until a named scenario needs it (close the path); or
+2. **Open the Tier-2 production-path gate** — a one-paragraph design-authority opening review for the
+   first **non-test-support default `SimSession` path / default schedule**, which is the genuine next
+   threshold. (Gameplay surface and semantic mobility shader remain separately closed.)
+
+Do not fill the gap between here and that decision with more default-off soak variants.
+
 ---
 
 ## 3. Scenario gate
