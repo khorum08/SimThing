@@ -62,10 +62,14 @@ classified once here so it does **not** get a per-slice opening-review PR:
   pass-graph registration or any semantic surface** (prohibition list). Everything between here and
   those two is fast-lane.
 
-The Phase-M mapping/SEAD invariant rows (e.g. `invariants.md` mapping-runtime / economy→mapping /
-`ProductionCandidatePreview`) bind **their** subsystems; the mobility track is governed by the Tier-1/
-Tier-2 split above plus v7.8 §2.5 non-negotiables (opt-in/default-off, semantic-free runtime, no CPU
-planner/urgency/commitment, oracle parity). Do **not** re-litigate the mapping rows per mobility slice.
+This ruling is the direct application of the **`invariants.md` governing doctrine (2026-06-02):**
+guardrails live at the designer/spec-admission barrier, and a constraint is stated **once per class —
+no per-slice accretion.** The opt-in/default-off + no-default-wiring posture and the no-CPU-planner
+posture are each a single invariant, not a fresh gate per slice. So the mobility track is governed by
+the Tier-1/Tier-2 split above + v7.8 §2.5 non-negotiables (oracle parity, semantic-free
+`simthing-sim`, opt-in/default-off, no CPU planner/urgency/commitment) — **not** by re-deriving a
+prohibition per descriptor or per ladder step. A CPU/default-off/test-fixture slice that re-asks an
+already-settled principle is fast-lane, not a Tier-2 gate.
 
 ---
 
