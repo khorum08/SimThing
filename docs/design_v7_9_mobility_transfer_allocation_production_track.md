@@ -1,6 +1,6 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); MOBILITY-IDROUTE-0 PASS + R1 hardened; MOBILITY-ECON-0 PASS (substrate); MOBILITY-OWNER-0 PASS + R1 hardened (substrate). **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 PASS (test-only, default-off substrate-composition harness).** **MOBILITY-RUNTIME-1A PASS (CPU-only, default-off `simthing-spec` production-fixture model; no real runtime crate or GPU pass graph).** **MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE OPEN WITH NARROWING (MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE-OPEN-0, 2026-06-02) → `simthing-driver` test/support CPU-only default-off fixture delegating to the spec RUNTIME-1A model; not implemented.** A non-test-support production `SimSession` default-path surface and RUNTIME-1B GPU pass-graph registration remain separate, currently-closed later gates. The Hybrid-Strata/faction-index ECON scaling layer remains a later ECON slice.
+> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); MOBILITY-IDROUTE-0 PASS + R1 hardened; MOBILITY-ECON-0 PASS (substrate); MOBILITY-OWNER-0 PASS + R1 hardened (substrate). **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 PASS (test-only, default-off substrate-composition harness).** **MOBILITY-RUNTIME-1A PASS (CPU-only, default-off `simthing-spec` production-fixture model).** **MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE PASS (`simthing-driver` test/support CPU-only default-off fixture delegating to spec; no default lib/session path).** A non-test-support production `SimSession` default-path surface and RUNTIME-1B GPU pass-graph registration remain separate, currently-closed later gates. The Hybrid-Strata/faction-index ECON scaling layer remains a later ECON slice.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -146,7 +146,7 @@ cargo check --workspace
 | OWNER    | Owner-relations + latched modifier overlays    | ECON green                                        | **PASS + R1 hardened (MOBILITY-OWNER-0-R1, substrate only)** | Complete; substrate floor + performance bars green; isolated down-broadcast coverage explicit |
 | RUNTIME  | Production runtime integration (post-substrate) | All substrates green                              | **PASS (MOBILITY-RUNTIME-0, test-only composition harness)** | Composition harness green |
 | RUNTIME-1A | CPU-only `simthing-spec` production-fixture model (composition → fixture surface model) | RUNTIME-0 green | **PASS (MOBILITY-RUNTIME-1A, CPU-only default-off `simthing-spec` fixture model)** | Complete; floor + soak bars green; no runtime crate wiring |
-| RUNTIME-1A-RUNTIME-FIXTURE | Actual runtime-crate `SimSession` fixture wiring (delegates to spec RUNTIME-1A model) | RUNTIME-1A green | **OPEN WITH NARROWING (MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE-OPEN-0, 2026-06-02) — `simthing-driver` test/support, CPU-only, default-off, delegates to spec; no default lib/session path, no GPU pass-graph** | Floor + soak bars green |
+| RUNTIME-1A-RUNTIME-FIXTURE | `simthing-driver` test/support CPU fixture (delegates to spec RUNTIME-1A model) | RUNTIME-1A green | **PASS (MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE, CPU-only default-off driver test/support fixture)** | Complete; floor + soak bars green; no default lib/session path |
 | RUNTIME-1B | GPU pass-graph registration (opt-in, non-default) | RUNTIME-1A green | **Closed (separate later gate)** | — |
 
 ---
@@ -640,13 +640,29 @@ hybrid_strata_or_faction_index_scaling, closed_ladder_reopen, unscoped_gpu_passg
 
 **Report:** `docs/tests/phase_mobility_runtime1_results.md`.
 
-**MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE — OPEN WITH NARROWING (MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE-OPEN-0,
-2026-06-02):** authorized as a **`simthing-driver` test/support, CPU-only, default-off fixture** that
-**delegates** to the spec RUNTIME-1A model — no default lib/session path, no GPU pass-graph, no default
-schedule, no gameplay. Design-authority floor addition `runtime1a_runtime_fixture_confined_to_driver_test_support`
-enforces the test/support confinement + driver→spec dependency direction. See
-[`phase_mobility_runtime1a_runtime_fixture_opening_review_results.md`](tests/phase_mobility_runtime1a_runtime_fixture_opening_review_results.md).
-Not implemented; no test green until a later PR.
+**MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE — PASS (MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE, 2026-06-02).**
+`simthing-driver` test/support, CPU-only, default-off fixture delegating to the spec RUNTIME-1A model.
+No default lib/session path, no GPU pass-graph, no default schedule, no gameplay. See
+[`phase_mobility_runtime1a_runtime_fixture_results.md`](tests/phase_mobility_runtime1a_runtime_fixture_results.md).
+
+**Floor:** `runtime1a_runtime_fixture_explicit_opt_in_only`,
+`runtime1a_runtime_fixture_default_simsession_unchanged`,
+`runtime1a_runtime_fixture_registers_named_cpu_fixture`,
+`runtime1a_runtime_fixture_no_default_passgraph_schedule`,
+`runtime1a_runtime_fixture_cpu_only_no_gpu_passgraph`,
+`runtime1a_runtime_fixture_confined_to_driver_test_support`,
+`runtime1a_runtime_fixture_delegates_to_spec_fixture_model`,
+`runtime1a_runtime_fixture_preserves_runtime0_composition_order`,
+`runtime1a_runtime_fixture_preserves_deterministic_replay`,
+`runtime1a_runtime_fixture_preserves_owner_overlay_isolated_unit`,
+`runtime1a_runtime_fixture_preserves_econ_owner_separation`,
+`runtime1a_runtime_fixture_no_hard_soft_silent_mix`.
+**Guardrails:** `runtime1a_runtime_fixture_rejects_{default_on_behavior, semantic_or_raw_wgsl,
+cpu_planner_urgency_commitment, gpu_passgraph_registration, closed_ladder_reopen}`.
+**Perf/soak:** `runtime1a_runtime_fixture_no_default_runtime_cost_when_disabled`,
+`runtime1a_runtime_fixture_34k_cpu_fixture_soak`,
+`runtime1a_runtime_fixture_mobility_churn_with_owner_overlay_and_econ_clearinghouse`,
+`runtime1a_runtime_fixture_dirty_owner_modifier_steady_state_zero_redisperse`.
 
 **Deferred (separate, currently-closed gates):** a **non-test-support production `SimSession`
 default-path surface**; **RUNTIME-1B** — GPU pass-graph registration (opt-in/non-default). A default
@@ -721,7 +737,7 @@ Scenario accepted by MOBILITY-SCENARIO-0-ACCEPT-0. MOBILITY-AUDIT-0 passed, MOBI
 
 ## 14. Final track posture
 
-This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, and MOBILITY-ALLOC-0 / REENROLL-0 / IDROUTE-0(+R1) / ECON-0 / OWNER-0(+R1) are all green at substrate level. **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 is PASS (test-only composition harness); MOBILITY-RUNTIME-1A is PASS (CPU-only, default-off `simthing-spec` production-fixture model — no real runtime crate or GPU pass graph).** **MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE is OPEN WITH NARROWING → a `simthing-driver` test/support CPU-only default-off fixture delegating to the spec model (not implemented).** A non-test-support production `SimSession` default-path surface and GPU pass-graph wiring (RUNTIME-1B) remain separate, currently-closed later gates. The Hybrid-Strata/faction-index ECON scaling layer also remains a later, separately-gated ECON slice.
+This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, and MOBILITY-ALLOC-0 / REENROLL-0 / IDROUTE-0(+R1) / ECON-0 / OWNER-0(+R1) are all green at substrate level. **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 is PASS (test-only composition harness); MOBILITY-RUNTIME-1A is PASS (CPU-only, default-off `simthing-spec` production-fixture model); MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE is PASS (`simthing-driver` test/support CPU-only default-off fixture delegating to spec).** A non-test-support production `SimSession` default-path surface and GPU pass-graph wiring (RUNTIME-1B) remain separate, currently-closed later gates. The Hybrid-Strata/faction-index ECON scaling layer also remains a later, separately-gated ECON slice.
 
 Expected initial row:
 
@@ -750,4 +766,4 @@ Expected initial row:
 | MOBILITY-RUNTIME-1A | CPU-only default-off `simthing-spec` production-fixture model wiring RUNTIME-0 composition into `MobilityRuntime1aSimSessionSurface`; no runtime crate or GPU pass-graph | **PASS / CPU-only `simthing-spec` fixture model** | [`phase_mobility_runtime1_results.md`](tests/phase_mobility_runtime1_results.md); boundary: [`phase_mobility_runtime1a_r1_results.md`](tests/phase_mobility_runtime1a_r1_results.md) |
 | MOBILITY-RUNTIME-1A-R1 | Verify production-fixture boundary; reconcile RUNTIME-1A status language | **PASS WITH NARROWING / docs + test hardening** | [`phase_mobility_runtime1a_r1_results.md`](tests/phase_mobility_runtime1a_r1_results.md) |
 | MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE-OPEN-0 | Opening review for actual runtime-crate `SimSession` fixture wiring | **OPEN WITH NARROWING / docs-only authorization** → `simthing-driver` test/support CPU-only default-off fixture (no default path, no GPU pass-graph) | [`phase_mobility_runtime1a_runtime_fixture_opening_review_results.md`](tests/phase_mobility_runtime1a_runtime_fixture_opening_review_results.md) |
-| MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE | Actual production runtime crate `SimSession` fixture wiring | **Closed (separate later gate)** | — |
+| MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE | `simthing-driver` test/support CPU-only default-off fixture delegating to spec RUNTIME-1A model; no default lib/session path | **PASS / driver test/support CPU fixture** | [`phase_mobility_runtime1a_runtime_fixture_results.md`](tests/phase_mobility_runtime1a_runtime_fixture_results.md) |
