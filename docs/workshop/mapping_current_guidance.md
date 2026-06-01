@@ -39,9 +39,9 @@ Constitutional surfacing:
 > economy, and related mechanisms — the territory any future named M/E/T expansion scenario will
 > draw from. All six architectural gaps resolved; `owner_band_budget_audit` is PASS for the accepted
 > MOBILITY-SCENARIO-0 first slice; MOBILITY-ALLOC-0 is PASS for deterministic slab + bulk-accounting
-> allocator substrate only; **MOBILITY-REENROLL-0 is PASS; MOBILITY-IDROUTE-0 is PASS + R1 hardened** for local D=2 identity-routing overlay substrate.
+> allocator substrate only; **MOBILITY-REENROLL-0 is PASS; MOBILITY-IDROUTE-0 is PASS + R1 hardened** for local D=2 identity-routing overlay substrate; **MOBILITY-ECON-0 is OPEN (clearinghouse-circulation substrate authorized, not implemented; Hybrid-Strata/faction-index a later slice).**
 > Parked PR ladder: [`../design_v7_9_mobility_transfer_allocation_production_track.md`](../design_v7_9_mobility_transfer_allocation_production_track.md)
-> (ALLOC + REENROLL green; IDROUTE substrate green + R1 hardened; ECON/OWNER parked). (Charter:
+> (ALLOC + REENROLL green; IDROUTE substrate green + R1 hardened; ECON-0 clearinghouse-circulation substrate authorized; OWNER parked). (Charter:
 > [`sead_self_ai_track.md`](sead_self_ai_track.md) §11; track: [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md); closure: [`../design_v7_7.md`](../design_v7_7.md).)
 
 Active read order (authoritative path for agents):

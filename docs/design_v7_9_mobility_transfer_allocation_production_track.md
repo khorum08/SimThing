@@ -1,6 +1,6 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); **MOBILITY-IDROUTE-0 PASS + R1 hardened (2026-06-02)** — local D=2 identity-routing substrate green. ECON/OWNER remain proposed/parked; no production runtime integration gate is open.
+> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); MOBILITY-IDROUTE-0 PASS + R1 hardened; **MOBILITY-ECON-0 OPEN (MOBILITY-ECON-0-OPEN-0, 2026-06-02) — authorized for the session-clearinghouse + subsidiarity economy substrate (clearinghouse-circulation first slice) only, not yet implemented.** OWNER remains proposed/parked; the Hybrid-Strata/faction-index ECON scaling layer is a later slice; no production runtime integration gate is open.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -117,7 +117,7 @@ cargo check --workspace
 | ALLOC    | Deterministic slab + bulk-accounting allocator | Scenario accepted; A-0 baseline                   | **PASS (MOBILITY-ALLOC-0, substrate only)** | Complete; substrate floor + performance bars green |
 | REENROLL | Reparenting / bilateral arena re-enrollment    | ALLOC green                                       | **PASS (MOBILITY-REENROLL-0, substrate only)** | Complete; substrate floor + performance bars green |
 | IDROUTE  | D=2 identity-routing overlay                   | ALLOC + REENROLL green                            | **PASS + R1 hardened (MOBILITY-IDROUTE-0-R1, 2026-06-02)** — local D=2 substrate floor + explicit battery green | ECON/OWNER remain parked  |
-| ECON     | Session clearinghouse + subsidiarity economy   | ALLOC + REENROLL green; owner-band audit complete | Proposed | ECON substrate floor + performance bars green     |
+| ECON     | Session clearinghouse + subsidiarity economy   | ALLOC + REENROLL green; owner-band audit complete | **OPEN (MOBILITY-ECON-0-OPEN-0, 2026-06-02) — clearinghouse-circulation substrate authorized, not implemented** | ECON substrate floor + performance bars green     |
 | OWNER    | Owner-relations + latched modifier overlays    | ECON green                                        | Proposed | OWNER substrate floor + performance bars green    |
 
 ---
@@ -363,41 +363,71 @@ docs/tests/phase_mobility_idroute0_r1_results.md
 
 ## 9. ECON — session clearinghouse + subsidiarity economy
 
-**Entry gate:** ALLOC + REENROLL green; `owner_band_budget_audit` complete.
+**Status:** **OPEN (MOBILITY-ECON-0-OPEN-0, design authority + product, 2026-06-02) — clearinghouse-
+circulation substrate authorized, not implemented.** ECON-0's authorized first slice is the
+clearinghouse-circulation + subsidiarity + Band-Alpha/Beta-separation core (battery below). The
+**Hybrid-Strata channel partitioning** and **generational faction-index slab** are the broader ECON
+scaling architecture and are **NOT part of ECON-0** — they are a later ECON slice. OWNER remains
+proposed/parked; no production runtime / `SimSession` / default-on. See
+[`phase_mobility_econ0_opening_review_results.md`](tests/phase_mobility_econ0_opening_review_results.md).
+No ECON test is green until implemented and run in a later PR.
 
-**Purpose:** Prove global/misaligned owner routing through the session clearinghouse and spatial spine.
+**Entry gate:** ALLOC + REENROLL green; `owner_band_budget_audit` complete (all PASS; ECON-0 ≈ 9
+OrderBands ≤ ceiling 16).
 
-**Core doctrine:**
+**Purpose:** Prove the session-clearinghouse circulation (local-cell up-aggregation → subsidiarity
+balance → down-disburse) at substrate level, with hard/soft band separation.
 
-* `GameSession` root has owner-entities, `SpeciesRegistry`, and `worldStateMap` as siblings.
-* Owner-entities are never spatial parents.
-* Capture is owner-column flip.
-* Economy is a blockable per-tick Resource Flow.
-* Modifiers are latched, blockade-immune overlays.
-* Hybrid Strata: local anonymous channels → dense N-wide vector near root.
-* Faction index is generational slab with Ghost-Node zeroing.
-* Band Alpha hard fixed-point runs before Band Beta soft float.
+**Core doctrine (ECON-0 slice):**
 
-### ECON substrate floor
+* `GameSession` root; owner-entities are never spatial parents; capture is owner-column flip.
+* Local cell outputs from ALLOC/REENROLL/IDROUTE are admissible inputs.
+* Subsidiarity balance at the clearinghouse boundary; self-sufficient subtrees do not escalate.
+* Balance decisions in I64 fixed-point (no float structural gate).
+* Band Alpha (hard fixed-point) runs before Band Beta (soft float); one-directional Alpha→Beta;
+  explicit conservation-class separation; no hard/soft silent mix.
+* Deterministic multi-cell up/down ordering; GPU-consumable parity-testable layouts.
 
-| Test                                    | Must prove                                                                       |
-| --------------------------------------- | -------------------------------------------------------------------------------- |
-| `econ_rooting_no_spatial_owner`         | No owner-entity is a spatial-containment parent.                                 |
-| `econ_circulation_parity`               | Up-sweep + hub clearing + down-sweep is bit-exact GPU/CPU at spatial depth.      |
-| `econ_shared_binding_merge_correct`     | Elementwise channel Sum only under parent-imposed shared binding.                |
-| `econ_channel_binding_deterministic`    | Binding sorted by `faction_id`, not arrival order.                               |
-| `econ_balance_test_fixed_point`         | Balance decisions use I64 fixed-point.                                           |
-| `econ_band_alpha_before_beta`           | Hard exact band precedes soft float band.                                        |
-| `econ_faction_index_static_during_tick` | Faction index immutable during GPU tick; Ghost Node zeroing preserves alignment. |
+### ECON-0 substrate floor (authorized by MOBILITY-ECON-0-OPEN-0)
 
-### ECON performance bars
+| Test                                          | Must prove                                                                        |
+| --------------------------------------------- | --------------------------------------------------------------------------------- |
+| `econ_session_clearinghouse_aggregates_local_cells` | Local cell/block outputs aggregate into clearinghouse columns.              |
+| `econ_subsidiarity_balance_conservation`      | Balance at the clearinghouse boundary conserves; self-sufficient subtrees do not escalate. |
+| `econ_hard_band_alpha_before_soft_band_beta`  | Hard fixed-point Band Alpha runs before soft float Band Beta (Beta reads finalized Alpha). |
+| `econ_rejects_hard_soft_silent_mix`           | Hard and soft quantities never mix in one pass.                                   |
+| `econ_deterministic_up_down_disburse`         | Up-aggregation + down-disburse ordering is deterministic; arrival order not significant. |
+| `econ_cpu_gpu_parity_layout`                  | Post-circulation layout is bit-exact GPU/CPU.                                     |
 
-| Test                              | Must prove                                                                           |
-| --------------------------------- | ------------------------------------------------------------------------------------ |
-| `econ_local_clears_cheap`         | Self-sufficient subtrees do not escalate to full root.                               |
-| `econ_dense_frontier_stays_local` | Dense N-wide frontier remains near high nodes under spatial-local contestation.      |
-| `econ_leaf_is_fixed_width_sum`    | Leaf aggregation is fixed-width `SlotRange Sum`; no GPU indirection.                 |
-| `econ_scale_soak_34k`             | 34k owned entities with blockades/shortages; bounded per-tick cost; stable M5 field. |
+### ECON-0 guardrails (designer/scenario admission)
+
+| Test                                          | Must prove                                              |
+| --------------------------------------------- | ------------------------------------------------------- |
+| `econ_rejects_owner_overlay_runtime`          | No owner-relation/latched-modifier overlay runtime.     |
+| `econ_keeps_owner_parked`                     | OWNER remains parked.                                   |
+| `econ_rejects_default_on_resource_flow`       | No default-on Resource Flow.                            |
+| `econ_rejects_hard_currency_through_resource_flow` | Hard currency never routes through soft Resource Flow. |
+| `econ_rejects_float_structural_gate`          | No float value gates a structural transition.           |
+| `econ_rejects_production_simsession_wiring`   | No production `SimSession` wiring.                      |
+| `econ_rejects_semantic_or_raw_wgsl`           | Semantic/raw WGSL remains rejected.                     |
+| `econ_rejects_cpu_planner_urgency_commitment` | No CPU planner / urgency / commitment emission.         |
+| `econ_rejects_owner_as_spatial_parent`        | No owner-entity becomes a spatial parent.               |
+| `econ_rejects_capture_as_reparenting`         | Capture stays an owner-column flip, never reparenting.  |
+
+### ECON-0 performance bars
+
+| Test                                | Must prove                                                              |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| `econ_multi_cell_clearinghouse_scale` | Many cells aggregate/disburse through the clearinghouse within budget. |
+| `econ_concentration_one_session`    | One heavily-loaded session maintains bounded cost.                      |
+| `econ_scale_soak_34k`               | 34k entities with blockades/shortages; bounded per-tick cost.           |
+
+### Broader ECON architecture (later slice — NOT authorized by ECON-0-OPEN-0)
+
+These come from the workshop Hybrid-Strata / faction-index scaling layer and are a separate later
+ECON slice; do not implement under the ECON-0 gate: `econ_shared_binding_merge_correct`,
+`econ_channel_binding_deterministic`, `econ_dense_frontier_stays_local`, `econ_leaf_is_fixed_width_sum`,
+`econ_faction_index_static_during_tick`, `econ_local_clears_cheap`.
 
 **Report:**
 
@@ -512,7 +542,7 @@ Scenario accepted by MOBILITY-SCENARIO-0-ACCEPT-0. MOBILITY-AUDIT-0 passed, MOBI
 
 ## 14. Final track posture
 
-This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, MOBILITY-ALLOC-0 is green for the deterministic slab + bulk-accounting allocator substrate, MOBILITY-REENROLL-0 is PASS for bilateral arena re-enrollment substrate only, and MOBILITY-IDROUTE-0 is PASS + R1 hardened for local D=2 identity-routing substrate only. ECON/OWNER remain parked until product/design authority explicitly opens them.
+This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, MOBILITY-ALLOC-0 is green for the deterministic slab + bulk-accounting allocator substrate, MOBILITY-REENROLL-0 is PASS for bilateral arena re-enrollment substrate only, MOBILITY-IDROUTE-0 is PASS + R1 hardened for local D=2 identity-routing substrate only, and **MOBILITY-ECON-0 is OPEN (authorized for the session-clearinghouse + subsidiarity economy clearinghouse-circulation substrate only, not yet implemented; Hybrid-Strata/faction-index scaling is a later ECON slice).** OWNER remains parked until product/design authority explicitly opens it.
 
 Expected initial row:
 
@@ -530,3 +560,4 @@ Expected initial row:
 | MOBILITY-IDROUTE-0-OPEN-0 | Design-authority/product opening review for local D=2 identity-routing substrate | **OPEN / docs-only authorization** | [`phase_mobility_idroute0_opening_review_results.md`](tests/phase_mobility_idroute0_opening_review_results.md) |
 | MOBILITY-IDROUTE-0 | Local D=2 identity-routing substrate; no ECON/OWNER or downstream runtime integration | **PASS / substrate-only** | [`phase_mobility_idroute0_results.md`](tests/phase_mobility_idroute0_results.md) |
 | MOBILITY-IDROUTE-0-R1 | Remedial hardening for local-k admission, global-vector rejection, directed disburse atomic-or-immutable coverage, and exact battery reporting | **PASS / substrate-only hardening** | [`phase_mobility_idroute0_r1_results.md`](tests/phase_mobility_idroute0_r1_results.md) |
+| MOBILITY-ECON-0-OPEN-0 | Design-authority/product opening review for session-clearinghouse + subsidiarity economy substrate (clearinghouse-circulation first slice) | **OPEN / docs-only authorization** | [`phase_mobility_econ0_opening_review_results.md`](tests/phase_mobility_econ0_opening_review_results.md) |
