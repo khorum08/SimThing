@@ -39,9 +39,9 @@ Constitutional surfacing:
 > economy, and related mechanisms — the territory any future named M/E/T expansion scenario will
 > draw from. All six architectural gaps resolved; `owner_band_budget_audit` is PASS for the accepted
 > MOBILITY-SCENARIO-0 first slice; MOBILITY-ALLOC-0 is PASS for deterministic slab + bulk-accounting
-> allocator substrate only; **MOBILITY-REENROLL-0 is PASS; MOBILITY-IDROUTE-0 is PASS + R1 hardened** for local D=2 identity-routing overlay substrate; **MOBILITY-ECON-0 is PASS** for the session-clearinghouse/subsidiarity economy clearinghouse-circulation substrate; Hybrid-Strata/faction-index remains a later ECON slice.
+> allocator substrate only; **MOBILITY-REENROLL-0 is PASS; MOBILITY-IDROUTE-0 is PASS + R1 hardened** for local D=2 identity-routing overlay substrate; **MOBILITY-ECON-0 is PASS** for the session-clearinghouse/subsidiarity economy clearinghouse-circulation substrate; **MOBILITY-OWNER-0 is OPEN (final v7.9 substrate ladder; owner-relations + latched modifier overlay substrate authorized, not implemented).** Hybrid-Strata/faction-index and production runtime integration remain later/closed gates.
 > Parked PR ladder: [`../design_v7_9_mobility_transfer_allocation_production_track.md`](../design_v7_9_mobility_transfer_allocation_production_track.md)
-> (ALLOC + REENROLL green; IDROUTE substrate green + R1 hardened; ECON-0 clearinghouse-circulation substrate green; OWNER parked). (Charter:
+> (ALLOC + REENROLL + IDROUTE(+R1) + ECON-0 substrate green; OWNER-0 overlay substrate authorized; production runtime integration closed). (Charter:
 > [`sead_self_ai_track.md`](sead_self_ai_track.md) §11; track: [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md); closure: [`../design_v7_7.md`](../design_v7_7.md).)
 
 Active read order (authoritative path for agents):
