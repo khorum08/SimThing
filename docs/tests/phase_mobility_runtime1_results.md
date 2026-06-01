@@ -8,8 +8,9 @@ Date: 2026-06-02
 
 MOBILITY-RUNTIME-1A implements the narrowed CPU-only, default-off production fixture authorized by
 MOBILITY-RUNTIME-1-OPEN-0. The fixture wires the green RUNTIME-0 composition harness into a
-production `SimSession` surface model behind an explicit named gate. No GPU pass-graph registration,
-default schedule, or gameplay integration.
+`MobilityRuntime1aSimSessionSurface` **model in `simthing-spec`** behind an explicit named gate — not
+into production runtime crates. No GPU pass-graph registration, default schedule, or gameplay integration.
+Boundary clarification: [`phase_mobility_runtime1a_r1_results.md`](phase_mobility_runtime1a_r1_results.md).
 
 ## Files Touched
 

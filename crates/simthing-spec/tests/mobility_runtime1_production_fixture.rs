@@ -13,7 +13,7 @@ use simthing_spec::{
     MobilityRuntime0HarnessConfig, MobilityRuntime1aFixtureGate,
     MobilityRuntime1aForbiddenPathRequests, MobilityRuntime1aProductionFixtureInput,
     MobilityRuntime1aSimSessionSurface, MOBILITY_RUNTIME0_ORDER, MOBILITY_RUNTIME1A_ID,
-    MOBILITY_RUNTIME1A_NAMED_GATE,
+    MOBILITY_RUNTIME1A_NAMED_GATE, MOBILITY_RUNTIME1A_RUNTIME_FIXTURE_GATE,
 };
 
 fn key(parent_id: u64, key_id: u64) -> MobilityAlloc0ParentKey {
@@ -494,4 +494,29 @@ fn runtime1_no_default_runtime_cost_when_disabled() {
     assert!(!report.fixture_invoked);
     assert_eq!(report.composition_invocations, 0);
     assert!(report.composition.is_none());
+}
+
+#[test]
+fn runtime1a_declares_fixture_model_not_runtime_crate_wiring() {
+    let report = run_mobility_runtime1a_production_fixture(&fixture_input());
+    assert!(report.admitted, "{:?}", report.diagnostics);
+    assert!(report.simthing_spec_fixture_model_only);
+    assert!(!report.real_simsession_runtime_crate_wiring_present);
+    assert!(report.runtime_crate_fixture_gate_closed);
+    assert_eq!(
+        MOBILITY_RUNTIME1A_RUNTIME_FIXTURE_GATE,
+        "mobility_runtime1a_runtime_crate_fixture_closed"
+    );
+}
+
+#[test]
+fn runtime1a_real_simsession_runtime_wiring_remains_absent() {
+    let report = run_mobility_runtime1a_production_fixture(&fixture_input());
+    assert!(report.admitted, "{:?}", report.diagnostics);
+    assert!(!report.simsession_passgraph_wiring_present);
+    assert!(!report.gpu_passgraph_registered);
+    assert!(!report.gpu_hook_or_pass_graph_present);
+    assert!(!report.real_simsession_runtime_crate_wiring_present);
+    assert!(report.runtime1b_gpu_gate_closed);
+    assert!(report.runtime_crate_fixture_gate_closed);
 }
