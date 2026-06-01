@@ -1,3 +1,7 @@
+# 2026-06-02 — DESIGN-0.0.8.0-PRODUCTION-TRACK-0: 0.0.8.0 consumer-pulled production track created
+
+- Created [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md) — the **SCENARIO-FIRST** production track for the consumer-pulled phase. Docs-only; no implementation; no production wiring; no default `SimSession`, default schedule, gameplay, or semantic WGSL. First gate **`SCENARIO-0080-0`** (Tier-2 scenario/admission only) is OPEN; `PRODUCTION-PATH-0080-0` stays CLOSED until a named scenario accepts. 0.0.7.9 mobility/transfer substrate remains COMPLETE and PARKED. No passive proof wrappers. Updated mapping read order.
+
 # 2026-06-02 — DESIGN-0.0.8.0-CONSTITUTION-0: open 0.0.8.0 as active constitution (consumer-pulled phase) (Opus design authority, docs-only)
 
 - Authored `docs/design_0_0_8_0.md` as the **active constitution**, superseding v7.8 as the operating constitution (v7.8 kept as historical record with a forward banner; v7.7 stays the closed baseline; invariants.md + gating policy stay the binding homes). Consolidated the durable doctrine: guardrails at the designer-facing barrier (§2.1); two-track fastlane Tier-1/Tier-2 (§2.2); semantic-only WGSL ban (§2.3); EML gadgets at the designer layer (§2.4); the **anti-loop discipline** — no opening-review treadmill + the proven-capability stop rule + one-principle-per-class (§2.5); and the §2.5 non-negotiables verbatim (§2.6).
