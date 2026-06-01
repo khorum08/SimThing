@@ -1,3 +1,7 @@
+# 2026-06-02 — MOBILITY-GPU-KERNEL-2: add 34k registered-node column dispatch soak PASS
+
+- Implemented deterministic 34k-row column soak through MOBILITY-GPU-KERNEL-1 registered-node dispatch in driver test/support. Edge/sparse/dense move-mask clusters; CPU oracle complete; reuses KERNEL-0 built-in WGSL (no new shader text); 21-test floor/guardrail battery green. **VERDICT: PASS / 34k registered-node column dispatch soak.** Default production scheduling, gameplay, default `SimSession` lib path, and mobility scheduled dispatch remain closed; no invariant edits. Report: [`phase_mobility_gpu_kernel2_results.md`](tests/phase_mobility_gpu_kernel2_results.md).
+
 # 2026-06-02 — MOBILITY-GPU-KERNEL-1: dispatch mobility column kernel through registered node PASS
 
 - Implemented opt-in/default-off test/support dispatch of MOBILITY-GPU-KERNEL-0 column-transform through the green RUNTIME-1B registered pass-graph node. Registration non-executing until dispatch explicitly invoked; reuses KERNEL-0 built-in WGSL; 18-test floor/guardrail battery green. **VERDICT: PASS / registered-node dispatch of semantic-free mobility column-transform fixture.** Default production scheduling, gameplay, default `SimSession` lib path, and mobility scheduled dispatch (RUNTIME-1B-DISPATCH) remain closed; no invariant edits. Report: [`phase_mobility_gpu_kernel1_results.md`](tests/phase_mobility_gpu_kernel1_results.md).
