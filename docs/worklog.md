@@ -1,3 +1,7 @@
+# 2026-06-02 — MOBILITY-GPU-KERNEL-3: project runtime composition into GPU columns PASS
+
+- Implemented driver test/support projection of accepted RUNTIME-0 composition outputs into generic GPU column buffers and dispatch through MOBILITY-GPU-KERNEL-1 registered-node path. Four fixture rows (1 moved, 3 unmoved); owner/econ in composition fixture but not shader semantics; deterministic row order; reuses KERNEL-0 built-in WGSL (no new shader text); 23-test floor/guardrail battery green. **VERDICT: PASS / composition-output-to-generic-GPU-column projection + registered-node dispatch.** Default production scheduling, gameplay, default `SimSession` lib path, and mobility scheduled dispatch remain closed; no invariant edits. Report: [`phase_mobility_gpu_kernel3_results.md`](tests/phase_mobility_gpu_kernel3_results.md).
+
 # 2026-06-02 — MOBILITY-GPU-KERNEL-2: add 34k registered-node column dispatch soak PASS
 
 - Implemented deterministic 34k-row column soak through MOBILITY-GPU-KERNEL-1 registered-node dispatch in driver test/support. Edge/sparse/dense move-mask clusters; CPU oracle complete; reuses KERNEL-0 built-in WGSL (no new shader text); 21-test floor/guardrail battery green. **VERDICT: PASS / 34k registered-node column dispatch soak.** Default production scheduling, gameplay, default `SimSession` lib path, and mobility scheduled dispatch remain closed; no invariant edits. Report: [`phase_mobility_gpu_kernel2_results.md`](tests/phase_mobility_gpu_kernel2_results.md).
