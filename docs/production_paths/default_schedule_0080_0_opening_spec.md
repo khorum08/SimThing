@@ -49,8 +49,18 @@ GPU-resident SEAD posture, same bounded economy values):
 - **Per tick** at the pirate's current location: pirate **raises `disruption`** and **consumes
   `local_supply` by an amount proportional to local `disruption`**.
 - **Pirate relocation** is GPU-resident threshold-driven: when local `disruption ≥ 0.5 × local_supply`,
-  the pirate emits a `Threshold`+`EmitEvent`→`BoundaryRequest` to relocate toward a more attractive
-  (higher-supply / lower-disruption) location.
+  the pirate emits a `Threshold`+`EmitEvent`→`BoundaryRequest` to relocate toward the **most attractive
+  reachable location**, scored over the **existing bounded economy values** as
+  *highest `supply` · lowest `disruption` · lowest `local_security`*. `local_security` is the
+  patrol-influence proxy (patrol presence raises it where it sits), so this third term makes the pirate
+  **prefer systems with the least patrol influence** — it evades the patrol rather than merely chasing
+  supply. No new field, no new substrate: it is an argmax over GPU-resident fields, same posture as SEAD
+  (not a CPU planner).
+- **Emergent cat-and-mouse (design intent, not scripted).** Because the patrol relocates toward
+  depleted/contested supply and raises `local_security` where it sits, while the pirate scores *against*
+  `local_security` and *toward* supply, a pursuit/evasion movement pattern is expected to **emerge** from
+  the two independent GPU-resident threshold rules — neither mover is given the other's plan or an
+  explicit chase/flee script. The dynamic is observed, not authored.
 - **Patrol** reduces `disruption` per tick at its current location; when its current location's supply
   is depleted (or another location's disruption crosses the patrol's response threshold), it emits a
   threshold-driven `BoundaryRequest` to relocate toward the depleted/contested location.
@@ -61,7 +71,12 @@ GPU-resident SEAD posture, same bounded economy values):
 the enrichment never stalls cadence:
 - **1A (minimal):** the deterministic schedule + the patrol threshold loop driving the production path.
   Sufficient to close the gate's core contract.
-- **1B (the loop):** the pirate disruptor + the predator/patrol dynamic above.
+- **1B (the loop):** the pirate disruptor + the predator/patrol dynamic above. The pirate's
+  target score is additive: a minimal pirate (highest-`supply` · lowest-`disruption`) is correct on its
+  own, and the **`local_security` patrol-avoidance term is the final additive increment** that makes the
+  cat-and-mouse emerge. Per design authority, that evasion term **may be deferred to the tail of 1B if it
+  would otherwise impair production pace** — it is a refinement of an already-correct target rule, not a
+  prerequisite.
 The opening spec authorizes **both**; if pace demands, 1A ships first and 1B is the immediate
 follow-on. Neither sub-slice introduces new substrate, a new shader, or a new gate.
 
@@ -94,6 +109,12 @@ The future implementation PR **may**:
 - emit zero or one `BoundaryRequest` per mover per step depending on threshold state;
 - preserve identity, owner overlay continuity, and economy reassociation on relocation;
 - record deterministic per-step reports.
+
+**WGSL discipline (binding for this slice).** Pirate/patrol per-tick arithmetic and the target-attraction
+score must be expressed over the **existing `EvalEML` opcode set** (invariants row 194). New shader text
+is a **stop-and-escalate**, not an implementation choice — there is no admission path for semantic/raw
+WGSL here, and the bounded arithmetic (add/subtract/scale + argmax over `supply`/`disruption`/`local_security`)
+is already within the generic interpreter's reach.
 
 It **must not**:
 - register a global default schedule;
@@ -132,7 +153,9 @@ It **must not**:
 `default_schedule_0080_0_pirate_relocates_when_disruption_ge_half_supply`,
 `default_schedule_0080_0_patrol_reduces_disruption_and_relocates_to_depleted_supply`,
 `default_schedule_0080_0_pirate_is_second_identity_not_second_economy_owner`,
-`default_schedule_0080_0_predator_patrol_loop_replay_deterministic`.
+`default_schedule_0080_0_predator_patrol_loop_replay_deterministic`,
+`default_schedule_0080_0_pirate_prefers_low_patrol_influence_high_supply_target`,
+`default_schedule_0080_0_cat_and_mouse_pattern_emerges_deterministically`.
 
 ---
 

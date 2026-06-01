@@ -38,12 +38,22 @@ reduces `disruption` per tick and relocates toward depleted supply — all GPU-r
 through the same mobility/transfer substrate. **1A** (schedule + patrol loop) may ship first; **1B**
 (pirate disruptor) is the immediate follow-on so pace is never blocked. No new substrate/shader/gate.
 
+**Design-authority refinement (2026-06-02, R1):** the pirate's relocation target is scored over the
+**existing** bounded values as *highest `supply` · lowest `disruption` · lowest `local_security`*, where
+`local_security` is the patrol-influence proxy — so the pirate **prefers least-patrolled, highest-supply
+targets** and a **cat-and-mouse pursuit/evasion pattern emerges** from the two independent threshold
+rules (not scripted). No new field/substrate. The `local_security` evasion term is the **final additive
+increment of 1B** and may be deferred to 1B's tail if it would impair pace. WGSL discipline made binding:
+the arithmetic/argmax must use the existing `EvalEML` opcode set (invariants row 194); new shader text is
+stop-and-escalate.
+
 ## Future test list summary
 
 17 schedule-contract tests named (opt-in, no-global-default, threshold true/false → boundary request,
 routing to production path, no CPU planner, identity/owner/economy preservation, bounded economy,
 replay determinism, gameplay/WGSL/hard-currency/nested-RF/ClauseThing rejections, docs-status match) +
-5 pirate-loop (1B) tests named. **None implemented.**
+7 pirate-loop (1B) tests named (incl. low-patrol-influence/high-supply target preference and
+deterministic cat-and-mouse emergence). **None implemented.**
 
 ## Confirmations
 
