@@ -1,6 +1,16 @@
 # SCENARIO-0080-0 — Local Patrol Economy Admission Packet
 
-> **Status:** PROPOSED / ADMISSION ONLY — no runtime implementation, no production wiring.
+> **Status: ACCEPTED (SCENARIO-0080-0-ACCEPTANCE-0, design authority + product, 2026-06-02)** — with a
+> design-authority enrichment: the patrol relocate/patrol decision is sourced from the **accepted
+> GPU-resident SEAD posture** (`Threshold`+`EmitEvent`→`BoundaryRequest`), not an externally-scripted
+> `move_request` and not a CPU planner — so the scenario exercises **SEAD + Ownership + Flow** together.
+> This pulls no new substrate (SEAD V1 is an accepted decision mechanism; mobility/transfer remains the
+> single substrate wired). `PRODUCTION-PATH-0080-0` is now OPEN, scoped to this scenario on the 0.0.7.9
+> mobility/transfer substrate. Acceptance review:
+> [`../tests/phase_scenario_0080_0_acceptance_review_results.md`](../tests/phase_scenario_0080_0_acceptance_review_results.md).
+> Acceptance does **not** itself implement the production path.
+
+> **Original admission status:** PROPOSED / ADMISSION ONLY — no runtime implementation, no production wiring.
 >
 > **0.0.8.0** is the active constitution ([`../design_0_0_8_0.md`](../design_0_0_8_0.md)).
 > This packet is the **first consumer-pulled scenario gate** on the 0.0.8.0 production track
@@ -32,6 +42,13 @@ In product terms:
 - A **patrol unit** belongs to an **owner**.
 - The patrol **consumes upkeep or supply** from the location where it is currently stationed.
 - The patrol may provide a **local economic/security effect**, such as reducing local disruption or increasing local route safety.
+- **Decision source (design-authority enrichment, accepted 2026-06-02):** the patrol's relocate/patrol
+  decision is **GPU-resident** — a `disruption`/`local_security` `Threshold` crossing → `EmitEvent` →
+  `BoundaryRequest` (the accepted SEAD Self-AI Proposal Pipeline V1 posture). The `move_request` is the
+  materialized form of that proposal. **Not** a CPU planner; **not** an externally-scripted request.
+  This makes the scenario exercise SEAD (decision) + mobility (move) + Ownership/Flow (coherence)
+  together. It pulls no new substrate — SEAD V1 is an accepted mechanism, not a newly-pulled substrate.
+
 - When the patrol moves from **Location A** to **Location B**:
 
   - its **entity identity is preserved**;

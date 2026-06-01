@@ -1,6 +1,8 @@
 # SimThing — Design 0.0.8.0 Consumer-Pulled Production Track
 
-> **Status:** OPEN as track definition; no implementation gate open.
+> **Status:** OPEN. `SCENARIO-0080-0` (Local Patrol Economy) **ACCEPTED** (2026-06-02);
+> `PRODUCTION-PATH-0080-0` **OPEN** as a docs/design gate (scoped to Local Patrol Economy on the
+> 0.0.7.9 mobility/transfer substrate). **No implementation landed.**
 >
 > **Active constitution:** [`design_0_0_8_0.md`](design_0_0_8_0.md).
 >
@@ -84,13 +86,10 @@ opt-in/default-off, parked** until a named scenario pulls it.
 | **Gate ID** | `SCENARIO-0080-0` |
 | **Type** | Tier-2 scenario/admission gate |
 | **Deliverable** | Named product-scenario / admission packet |
-| **Proposed packet** | [`scenarios/scenario_0080_0_admission_packet.md`](scenarios/scenario_0080_0_admission_packet.md) — **Local Patrol Economy** (PROPOSED; not accepted) |
+| **Packet** | [`scenarios/scenario_0080_0_admission_packet.md`](scenarios/scenario_0080_0_admission_packet.md) — **Local Patrol Economy** — **ACCEPTED 2026-06-02** ([acceptance review](tests/phase_scenario_0080_0_acceptance_review_results.md)) |
+| **Design-authority enrichment** | Patrol relocate decision sourced from the accepted GPU-resident SEAD `Threshold`+`EmitEvent`→`BoundaryRequest` posture (not a CPU planner; no new substrate pulled) — scenario exercises SEAD + Ownership + Flow |
 | **Runtime implementation** | **No** |
-| **Production wiring** | **No** |
-| **Default `SimSession`** | **No** |
-| **Default schedule** | **No** |
-| **Gameplay surface** | **No** |
-| **On acceptance** | Opens **only** the named substrate's already-defined production-path gate |
+| **On acceptance** | Opened **only** the mobility/transfer production-path gate (`PRODUCTION-PATH-0080-0`, below) |
 
 ---
 
@@ -150,8 +149,8 @@ Reject the scenario if it requires any of:
 
 | Gate | Description | Status |
 |---|---|---|
-| `SCENARIO-0080-0` | Scenario/admission packet | **OPEN** — first gate; no implementation |
-| `PRODUCTION-PATH-0080-0` | First substrate production-path gate | **CLOSED** until SCENARIO-0080-0 accepts a named consumer |
+| `SCENARIO-0080-0` | Scenario/admission packet (Local Patrol Economy) | **ACCEPTED (2026-06-02)** |
+| `PRODUCTION-PATH-0080-0` | First substrate production-path gate | **OPEN (docs/design gate; no implementation)** — scoped to: *first non-test-support default `SimSession` path for Local Patrol Economy using the 0.0.7.9 mobility/transfer substrate*, patrol relocate decision sourced from the accepted GPU-resident SEAD `Threshold`+`EmitEvent`→`BoundaryRequest` path (mobility/transfer is the only substrate wired; no CPU planner; no new SEAD production gate) |
 | `GAMEPLAY-0080-0` | Gameplay-facing integration | **CLOSED** |
 | `SEMANTIC-WGSL-0080-0` | Semantic shader surface | **CLOSED** |
 | `CLAUSETHING-L3-0080-0` | Front-end / parser / product authoring surface | **PARKED** pending product authorization |
