@@ -1,8 +1,11 @@
-//! MOBILITY-RUNTIME-1A: CPU-only default-off production fixture wiring.
+//! MOBILITY-RUNTIME-1A: CPU-only default-off production-fixture model in `simthing-spec`.
 //!
-//! Wires the green RUNTIME-0 composition harness into a production `SimSession`
-//! fixture surface behind an explicit named gate. CPU-only; no GPU pass-graph
-//! registration, default schedule, or gameplay integration.
+//! Models the authorized production `SimSession` fixture surface and delegates to the
+//! green RUNTIME-0 composition harness when explicitly opted in. This is a designer/spec
+//! admission fixture model only — it does **not** wire `simthing-driver`, `simthing-gpu`,
+//! or any production runtime crate. CPU-only; no GPU pass-graph registration, default
+//! schedule, or gameplay integration. Actual runtime-crate fixture wiring is a separate,
+//! currently-closed gate (MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE).
 
 use super::mobility_runtime0::{
     compose_mobility_runtime0, MobilityRuntime0CompositionInput,
@@ -12,6 +15,9 @@ use super::mobility_runtime0::{
 
 pub const MOBILITY_RUNTIME1A_ID: &str = "mobility_runtime1a_cpu_only_production_fixture";
 pub const MOBILITY_RUNTIME1A_NAMED_GATE: &str = "mobility_runtime1a_explicit_opt_in_gate";
+/// Closed follow-on gate for actual `simthing-driver` / production runtime crate fixture wiring.
+pub const MOBILITY_RUNTIME1A_RUNTIME_FIXTURE_GATE: &str =
+    "mobility_runtime1a_runtime_crate_fixture_closed";
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct MobilityRuntime1aFixtureGate {
@@ -28,7 +34,8 @@ impl MobilityRuntime1aFixtureGate {
     }
 }
 
-/// Production `SimSession` fixture surface model. Default-off until the named gate opts in.
+/// Production `SimSession` fixture surface **model** in `simthing-spec`. Default-off until the
+/// named gate opts in. Does not mutate or register hooks in production runtime crates.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct MobilityRuntime1aSimSessionSurface {
     pub gate: MobilityRuntime1aFixtureGate,
@@ -80,6 +87,9 @@ pub struct MobilityRuntime1aProductionFixtureReport {
     pub production_fixture_wiring_authorized: bool,
     pub runtime1b_gpu_gate_closed: bool,
     pub runtime0_harness_delegated: bool,
+    pub simthing_spec_fixture_model_only: bool,
+    pub real_simsession_runtime_crate_wiring_present: bool,
+    pub runtime_crate_fixture_gate_closed: bool,
 
     pub substrate_order: Vec<&'static str>,
     pub composition: Option<MobilityRuntime0CompositionReport>,
@@ -202,6 +212,9 @@ fn disabled_no_op_report(
         production_fixture_wiring_authorized: false,
         runtime1b_gpu_gate_closed: true,
         runtime0_harness_delegated: false,
+        simthing_spec_fixture_model_only: true,
+        real_simsession_runtime_crate_wiring_present: false,
+        runtime_crate_fixture_gate_closed: true,
         substrate_order: MOBILITY_RUNTIME0_ORDER.to_vec(),
         composition: None,
         composed_cpu_checksum: 0,
@@ -244,6 +257,9 @@ fn rejected_report(
         production_fixture_wiring_authorized: false,
         runtime1b_gpu_gate_closed: true,
         runtime0_harness_delegated: false,
+        simthing_spec_fixture_model_only: true,
+        real_simsession_runtime_crate_wiring_present: false,
+        runtime_crate_fixture_gate_closed: true,
         substrate_order: MOBILITY_RUNTIME0_ORDER.to_vec(),
         composition: None,
         composed_cpu_checksum: 0,
@@ -286,6 +302,9 @@ fn admitted_report(
         production_fixture_wiring_authorized: true,
         runtime1b_gpu_gate_closed: true,
         runtime0_harness_delegated: true,
+        simthing_spec_fixture_model_only: true,
+        real_simsession_runtime_crate_wiring_present: false,
+        runtime_crate_fixture_gate_closed: true,
         substrate_order: composition.substrate_order.clone(),
         composed_cpu_checksum: composition.composed_cpu_checksum,
         composed_gpu_proxy_checksum: composition.composed_gpu_proxy_checksum,

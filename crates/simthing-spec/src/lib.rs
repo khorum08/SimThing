@@ -223,6 +223,7 @@ pub use designer_admission::{
     MobilityRuntime1aFixtureGate, MobilityRuntime1aForbiddenPathRequests,
     MobilityRuntime1aProductionFixtureInput, MobilityRuntime1aProductionFixtureReport,
     MobilityRuntime1aSimSessionSurface, MOBILITY_RUNTIME1A_ID, MOBILITY_RUNTIME1A_NAMED_GATE,
+    MOBILITY_RUNTIME1A_RUNTIME_FIXTURE_GATE,
     MobilityAllocationBounds, MobilityBlockadeSemantics, MobilityIdentityBoundary,
     MobilityIdentityChannelBudget, MobilityOwnerColumn, MobilityOwnerRelationDiscipline,
     MobilityOwnerRelationKind, MobilityQuantityClasses, MobilityRoutingMode,

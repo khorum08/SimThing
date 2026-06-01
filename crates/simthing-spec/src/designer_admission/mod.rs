@@ -84,7 +84,7 @@ pub use mobility_runtime1a::{
     run_mobility_runtime1a_production_fixture, MobilityRuntime1aFixtureGate,
     MobilityRuntime1aForbiddenPathRequests, MobilityRuntime1aProductionFixtureInput,
     MobilityRuntime1aProductionFixtureReport, MobilityRuntime1aSimSessionSurface,
-    MOBILITY_RUNTIME1A_ID, MOBILITY_RUNTIME1A_NAMED_GATE,
+    MOBILITY_RUNTIME1A_ID, MOBILITY_RUNTIME1A_NAMED_GATE, MOBILITY_RUNTIME1A_RUNTIME_FIXTURE_GATE,
 };
 pub use mobility_audit0::{
     audit_mobility_owner_band_budget, audit_mobility_owner_band_budget_with_ceiling,
