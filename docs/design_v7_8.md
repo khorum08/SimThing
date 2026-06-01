@@ -1,5 +1,11 @@
 # SimThing — Design v7.8 Constitution (Bounded-Posture Expansion)
 
+> **⚠ Superseded as the active constitution by [`design_0_0_8_0.md`](design_0_0_8_0.md) (2026-06-02).**
+> The operating doctrine (§2) is **consolidated and carried forward** into 0.0.8.0; read 0.0.8.0 for the
+> active rules and the next track. v7.8 remains as the **historical record** of the M/E/T expansion and
+> its line states (A-0/B-0/C-2 accepted at first slices). Its §2 non-negotiables are unchanged and
+> reproduced in 0.0.8.0 §2.6.
+
 > **Status:** **Open track, fully parked (2026-05-30).** v7.8 is the **constitution** for the
 > bounded-posture *expansion* — it carries forward the **deferred capability lines** promoted out of
 > the now-**CLOSED** AccumulatorOp v2 production plan, and holds the operating doctrine and each line's

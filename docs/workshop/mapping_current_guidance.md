@@ -45,10 +45,11 @@ Constitutional surfacing:
 
 Active read order (authoritative path for agents):
 
-1. [`phase_m_gating_and_doc_policy.md`](phase_m_gating_and_doc_policy.md) — **read first: which lane is your change, and how much doc does it need**
-2. `docs/invariants.md` (binding constraints)
-3. The compact status table below (where each slice is)
-4. [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md) (**PR ladder home**)
+1. [`../design_0_0_8_0.md`](../design_0_0_8_0.md) — **ACTIVE constitution (consumer-pulled phase): operating doctrine, parked inventory, next track**
+2. [`phase_m_gating_and_doc_policy.md`](phase_m_gating_and_doc_policy.md) — **which lane is your change (Tier-1/Tier-2), and how much doc does it need; §6 proven-capability stop rule**
+3. `docs/invariants.md` (binding constraints)
+4. The compact status table below (where each slice is)
+5. [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md) (historical M/E/T PR ladder)
 5. [`../accumulator_op_v2_production_plan.md`](../accumulator_op_v2_production_plan.md) (closed — archive pointer only)
 6. `docs/workshop/eml_gadget_library_design_note.md`; `docs/workshop/m5_gradient_extraction_design_note.md`
 7. The single test report for the slice you're touching
