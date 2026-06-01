@@ -1,7 +1,12 @@
-# SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
+# SimThing — Design 0.0.7.9 Mobility / Transfer Allocation Production Track
+
+> **Canonical version:** 0.0.7.9 (formerly tracked as v7.9). Closed and parked as 0.0.7.9 after
+> MOBILITY-GPU-SUBSTRATE-DIRECTION-0 Option A — PARK. The next phase begins at **0.0.8.0** (not this
+> track; requires a named product scenario and design-authority/product authorization before any scope
+> is defined).
 
 > **Status: COMPLETE and PARKED (MOBILITY-GPU-SUBSTRATE-DIRECTION-0 → Option A, 2026-06-02).** The
-> full v7.9 mobility/transfer substrate is green at substrate/test level and parked, opt-in /
+> full 0.0.7.9 mobility/transfer substrate is green at substrate/test level and parked, opt-in /
 > default-off: SCENARIO-0 accepted; AUDIT-0 PASS; ALLOC-0, REENROLL-0, IDROUTE-0(+R1), ECON-0,
 > OWNER-0(+R1) substrates PASS; RUNTIME-0 composition harness, RUNTIME-1A spec fixture model,
 > RUNTIME-1A-RUNTIME-FIXTURE driver test/support fixture, and RUNTIME-1B non-scheduled GPU
@@ -32,7 +37,7 @@ The project is at a clean post-v7.8 closeout state.
 | ClauseThing / L3                        | Parked.                                                                                                       |
 | FrontierV2-5 / ACT / EVENT / OBS / PIPE | Rejected / no ladder reopen.                                                                                  |
 
-MOBILITY-ALLOC-0, MOBILITY-REENROLL-0, MOBILITY-IDROUTE-0 (+R1), MOBILITY-ECON-0, and MOBILITY-OWNER-0 (+R1) are green at substrate level (deterministic slab + bulk-accounting allocator; bilateral re-enrollment; local D=2 identity routing; session-clearinghouse + subsidiarity economy clearinghouse-circulation first slice; owner-relations + latched modifier overlays, including isolated owned-record down-broadcast coverage). The v7.9 mobility/transfer substrate ladder is complete at substrate level. Production runtime integration remains a separate, currently-closed gate; no downstream implementation gate is open unless explicitly authorized by this or a future opening review.
+MOBILITY-ALLOC-0, MOBILITY-REENROLL-0, MOBILITY-IDROUTE-0 (+R1), MOBILITY-ECON-0, and MOBILITY-OWNER-0 (+R1) are green at substrate level (deterministic slab + bulk-accounting allocator; bilateral re-enrollment; local D=2 identity routing; session-clearinghouse + subsidiarity economy clearinghouse-circulation first slice; owner-relations + latched modifier overlays, including isolated owned-record down-broadcast coverage). The 0.0.7.9 mobility/transfer substrate ladder is **COMPLETE and PARKED** (Option A — PARK, 2026-06-02). No open implementation or opening-review gate; see §2.2 and the top status block.
 
 ---
 
@@ -100,7 +105,7 @@ scale + projection + multi-kernel chain + replay determinism are green and need 
 Stop adding passive proof wrappers unless they unlock execution.
 
 **DECISION (MOBILITY-GPU-SUBSTRATE-DIRECTION-0, design authority, 2026-06-02): Option A — PARK.**
-The entire v7.9 mobility/transfer substrate — ALLOC, REENROLL, IDROUTE(+R1), ECON, OWNER(+R1),
+The entire 0.0.7.9 mobility/transfer substrate — ALLOC, REENROLL, IDROUTE(+R1), ECON, OWNER(+R1),
 RUNTIME-0/1A/1A-fixture/1B, and the semantic-free GPU kernel substrate (KERNEL-0..6 proven; 7..N were
 recombination) — is **COMPLETE and PARKED**, opt-in / default-off, reversible, ready to wire the
 moment a scenario needs it. **Nothing is lost by parking.**
@@ -528,7 +533,7 @@ docs/tests/phase_mobility_econ0_results.md
 ## 10. OWNER — owner-relations + latched modifier overlays
 
 **Status:** **PASS + R1 hardened (MOBILITY-OWNER-0-R1, substrate only).** This is the **final v7.9 substrate ladder**
-and is green with explicit isolated owned-record down-broadcast coverage; the v7.9 mobility/transfer substrate ladder is complete at substrate level.
+and is green with explicit isolated owned-record down-broadcast coverage; the 0.0.7.9 mobility/transfer substrate ladder is complete at substrate level.
 Implemented scope is the owner-overlay substrate: owner relations as columns/overlays (never spatial parents), capture
 as owner-column flip (never reparenting), latched blockade-immune modifier overlays down-broadcast to
 local records **without spawning arena columns**, deterministic application order, generation/resync
@@ -884,19 +889,7 @@ Scenario accepted by MOBILITY-SCENARIO-0-ACCEPT-0. MOBILITY-AUDIT-0 passed, MOBI
 
 ## 14. Final track posture
 
-This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, and MOBILITY-ALLOC-0 / REENROLL-0 / IDROUTE-0(+R1) / ECON-0 / OWNER-0(+R1) are all green at substrate level. **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 is PASS (test-only composition harness); MOBILITY-RUNTIME-1A is PASS (CPU-only, default-off `simthing-spec` production-fixture model); MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE is PASS (`simthing-driver` test/support CPU-only default-off fixture delegating to spec); MOBILITY-RUNTIME-1B is PASS (non-scheduled GPU pass-graph node registration in driver test/support); GPU-EXEC-0 is PASS (semantic-free generic GPU execution readiness in driver test/support); RUNTIME-1B-DISPATCH-0 is PASS (semantic-free GPU-EXEC probe dispatch through registered node in driver test/support); MOBILITY-GPU-KERNEL-0 is PASS (semantic-free mobility-shaped column-transform GPU kernel in driver test/support); MOBILITY-GPU-KERNEL-1 is PASS (registered-node dispatch of KERNEL-0 column-transform in driver test/support); MOBILITY-GPU-KERNEL-2 is PASS (34k deterministic registered-node column dispatch soak in driver test/support); MOBILITY-GPU-KERNEL-3 is PASS (composition-output-to-generic-GPU-column projection + registered-node dispatch in driver test/support); MOBILITY-GPU-KERNEL-4 is PASS (34k composition-derived projection + registered-node GPU column dispatch); MOBILITY-GPU-KERNEL-5 is PASS (second semantic-free 34k composition-derived GPU kernel through registered-node dispatch); MOBILITY-GPU-KERNEL-6 is PASS (ordered KERNEL-0 -> KERNEL-5 semantic-free multi-kernel chain over the 34k composition-derived projection); MOBILITY-GPU-KERNEL-7 is PASS (deterministic multi-dispatch replay soak over the KERNEL-6 chain); MOBILITY-GPU-KERNEL-8 is PASS (varied-input projection-batch replay soak over the KERNEL-6 chain); MOBILITY-GPU-KERNEL-9 is PASS (multi-frame projection-variant stream soak over the KERNEL-6 chain).** **RUNTIME-1B-DISPATCH is satisfied/green for the semantic-free registered-node dispatch path.** A non-test-support production `SimSession` default-path surface, default schedule, gameplay, semantic/default mobility shader, and the Hybrid-Strata/faction-index ECON scaling layer remain separate, closed/parked later gates.
-
-**MOBILITY-GPU-KERNEL-4 is PASS** as a 34k composition-derived projection + registered-node GPU column dispatch fixture in `simthing-driver` test/support. It adds no default schedule, gameplay/default `SimSession` path, designer/semantic WGSL, Hybrid-Strata/faction-index scaling, or invariant changes.
-
-**MOBILITY-GPU-KERNEL-5 is PASS** as a second semantic-free 34k composition-derived GPU kernel fixture in `simthing-driver` test/support. It adds no default schedule, gameplay/default `SimSession` path, designer/semantic WGSL, Hybrid-Strata/faction-index scaling, or invariant changes.
-
-**MOBILITY-GPU-KERNEL-6 is PASS** as an ordered KERNEL-0 -> KERNEL-5 semantic-free multi-kernel chain fixture in `simthing-driver` test/support. It adds no default schedule, gameplay/default `SimSession` path, designer/semantic WGSL, Hybrid-Strata/faction-index scaling, or invariant changes.
-
-**MOBILITY-GPU-KERNEL-7 is PASS** as a deterministic multi-dispatch replay soak over the KERNEL-6 semantic-free chain fixture in `simthing-driver` test/support. It adds no default schedule, gameplay/default `SimSession` path, designer/semantic WGSL, Hybrid-Strata/faction-index scaling, or invariant changes.
-
-**MOBILITY-GPU-KERNEL-8 is PASS** as a varied-input projection-batch replay soak over the KERNEL-6 semantic-free chain in `simthing-driver` test/support. It adds no default schedule, gameplay/default `SimSession` path, designer/semantic WGSL, Hybrid-Strata/faction-index scaling, or invariant changes.
-
-**MOBILITY-GPU-KERNEL-9 is PASS** as a multi-frame projection-variant stream soak over the KERNEL-6 semantic-free chain in `simthing-driver` test/support. It adds no default schedule, gameplay/default `SimSession` path, designer/semantic WGSL, Hybrid-Strata/faction-index scaling, or invariant changes.
+This production track (0.0.7.9 — formerly v7.9) is **COMPLETE and PARKED** (MOBILITY-GPU-SUBSTRATE-DIRECTION-0 → Option A, 2026-06-02). The full 0.0.7.9 mobility/transfer substrate is green at substrate/test level, opt-in/default-off, reversible, and parked: all ladders (ALLOC/REENROLL/IDROUTE+R1/ECON/OWNER+R1) + RUNTIME-0/1A/1A-fixture/1B + the semantic-free GPU kernel substrate (GPU-EXEC-0 + RUNTIME-1B-DISPATCH-0 + KERNEL-0..6 proven; KERNEL-7..N were recombination soaks, halted per §2.2/§6). **No open implementation or opening-review gate. 0.0.8.0 is the next phase — not this track.** The first non-test-support default `SimSession` path / default schedule opens only when a named product scenario pulls it (design-authority + product).
 
 Expected initial row:
 
