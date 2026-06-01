@@ -1,3 +1,7 @@
+# 2026-06-01 — MOBILITY-TRACK-0: parked v7.9 mobility/transfer production track (docs-only, no gate open)
+
+- Landed `docs/design_v7_9_mobility_transfer_allocation_production_track.md` — parked future production track for spatial mobility, reparenting-triggered arena re-enrollment, slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays. Consumes `design_v7_8.md` §6 and `workshop/mobility_and_transfer_allocation.md`. Performance-led, scenario-gated, designer-admission guarded; five battery tracks (ALLOC, REENROLL, IDROUTE, ECON, OWNER). **No implementation gate open;** first actionable step remains `MOBILITY-SCENARIO-0` (scenario/admission only). v7.8 M/E/T closeout and POST-V7.8-CLOSEOUT-0 PAUSE posture unchanged. No code, no invariant change.
+
 # 2026-06-01 — MOBILITY-WORKSHOP-0: spatial mobility + ownership architecture — all gaps resolved (Opus, docs-only, no gate open)
 
 - Design-authority workshop session (2026-05-31/2026-06-01). Produced `docs/workshop/mobility_and_transfer_allocation.md` — the resolved architectural record for the next named-scenario territory. **No implementation gate open; no code changed; entirely parked behind a named scenario.**

@@ -38,7 +38,8 @@ Constitutional surfacing:
 > is the resolved architectural record for spatial mobility, faction-ownership topology, subsidiarity
 > economy, and related mechanisms — the territory any future named M/E/T expansion scenario will
 > draw from. All six architectural gaps resolved; one open audit (`owner_band_budget_audit`); parked
-> behind a named scenario. (Charter:
+> behind a named scenario. Parked PR ladder: [`../design_v7_9_mobility_transfer_allocation_production_track.md`](../design_v7_9_mobility_transfer_allocation_production_track.md)
+> (no implementation gate; `MOBILITY-SCENARIO-0` scenario/admission first). (Charter:
 > [`sead_self_ai_track.md`](sead_self_ai_track.md) §11; track: [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md); closure: [`../design_v7_7.md`](../design_v7_7.md).)
 
 Active read order (authoritative path for agents):
