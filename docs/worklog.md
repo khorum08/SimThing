@@ -1,3 +1,7 @@
+# 2026-06-02 — MOBILITY-GPU-KERNEL-0: add semantic-free mobility column kernel fixture PASS
+
+- Implemented opt-in/default-off test/support semantic-free mobility-shaped GPU column-transform kernel over generic columns (`src_parent`, `dst_parent`, `entity_id`, `move_mask` → `out_parent`, `out_changed`). Built-in WGSL only; CPU oracle + GPU checksum; 16-test floor/guardrail battery green. **VERDICT: PASS / semantic-free mobility column-transform kernel fixture.** Default production scheduling, gameplay, default `SimSession` lib path, and mobility scheduled dispatch (RUNTIME-1B-DISPATCH) remain closed; no invariant edits. Report: [`phase_mobility_gpu_kernel0_results.md`](tests/phase_mobility_gpu_kernel0_results.md).
+
 # 2026-06-02 — RUNTIME-1B-DISPATCH-0: dispatch semantic-free GPU probe through registered node PASS
 
 - Implemented opt-in/default-off test/support dispatch of the GPU-EXEC-0 semantic-free identity-buffer probe through the green RUNTIME-1B registered pass-graph node. Registration non-executing until dispatch explicitly invoked; 15-test floor/guardrail battery green. **VERDICT: PASS / semantic-free GPU-EXEC probe dispatch through registered node.** Mobility GPU dispatch (RUNTIME-1B-DISPATCH), default schedule, gameplay, and default `SimSession` lib path remain closed; no invariant edits. Report: [`phase_mobility_runtime1b_dispatch_results.md`](tests/phase_mobility_runtime1b_dispatch_results.md).
