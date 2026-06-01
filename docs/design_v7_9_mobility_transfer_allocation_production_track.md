@@ -1,6 +1,6 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** MOBILITY-SCENARIO-0 ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01); MOBILITY-AUDIT-0 PASS (2026-06-01); MOBILITY-ALLOC-0 PASS (2026-06-01) for deterministic slab + bulk-accounting allocator substrate only; **MOBILITY-REENROLL-0 OPEN (MOBILITY-REENROLL-0-OPEN-0, 2026-06-01) — authorized for bilateral arena re-enrollment substrate only, not yet implemented.** IDROUTE/ECON/OWNER remain proposed/parked; no production runtime integration gate is open.
+> **Status:** MOBILITY-SCENARIO-0 ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01); MOBILITY-AUDIT-0 PASS (2026-06-01); MOBILITY-ALLOC-0 PASS (2026-06-01) for deterministic slab + bulk-accounting allocator substrate only; **MOBILITY-REENROLL-0 PASS (2026-06-01) for bilateral arena re-enrollment substrate only.** IDROUTE/ECON/OWNER remain proposed/parked; no production runtime integration gate is open.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -115,7 +115,7 @@ cargo check --workspace
 | SCENARIO | Product scenario / admission packet            | Product/design authority                          | **ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01)** | — (accepted) |
 | AUDIT    | Owner/OrderBand depth budget                   | Scenario accepted                                 | **PASS (MOBILITY-AUDIT-0, 2026-06-01)** | Complete; first slice fits current ceiling |
 | ALLOC    | Deterministic slab + bulk-accounting allocator | Scenario accepted; A-0 baseline                   | **PASS (MOBILITY-ALLOC-0, substrate only)** | Complete; substrate floor + performance bars green |
-| REENROLL | Reparenting / bilateral arena re-enrollment    | ALLOC green                                       | **OPEN (MOBILITY-REENROLL-0-OPEN-0, 2026-06-01) — substrate authorized, not implemented** | REENROLL substrate floor + performance bars green |
+| REENROLL | Reparenting / bilateral arena re-enrollment    | ALLOC green                                       | **PASS (MOBILITY-REENROLL-0, substrate only)** | Complete; substrate floor + performance bars green |
 | IDROUTE  | D=2 identity-routing overlay                   | ALLOC + REENROLL green                            | Proposed | IDROUTE substrate floor + performance bars green  |
 | ECON     | Session clearinghouse + subsidiarity economy   | ALLOC + REENROLL green; owner-band audit complete | Proposed | ECON substrate floor + performance bars green     |
 | OWNER    | Owner-relations + latched modifier overlays    | ECON green                                        | Proposed | OWNER substrate floor + performance bars green    |
@@ -220,13 +220,11 @@ docs/tests/phase_mobility_alloc0_results.md
 
 ## 7. REENROLL — reparenting / bilateral arena re-enrollment
 
-**Status:** **OPEN (MOBILITY-REENROLL-0-OPEN-0, design authority + product, 2026-06-01) — substrate
-authorized, not implemented.** Only the bilateral arena re-enrollment substrate floor + performance
-bars below are authorized, built on the MOBILITY-ALLOC-0 deterministic slab substrate. Scope is the
-first-slice-narrowed flat-star/spatial-only/no-nested/no-capture slice in this section; IDROUTE/ECON/
-OWNER remain proposed/parked; no production runtime / `SimSession` / default-on. See
-[`phase_mobility_reenroll0_opening_review_results.md`](tests/phase_mobility_reenroll0_opening_review_results.md).
-No REENROLL test is green until implemented and run in a later PR.
+**Status:** **PASS (MOBILITY-REENROLL-0, 2026-06-01).** Bilateral arena re-enrollment substrate
+implemented and tested on MOBILITY-ALLOC-0. Flat-star cell arenas, spatial movement only, atomic
+commit-or-reject, no live compaction, arrival order not replay-significant. IDROUTE/ECON/OWNER remain
+proposed/parked; no production runtime / `SimSession` / default-on. See
+[`phase_mobility_reenroll0_results.md`](tests/phase_mobility_reenroll0_results.md).
 
 **Entry gate:** ALLOC green.
 
@@ -492,7 +490,7 @@ Scenario accepted by MOBILITY-SCENARIO-0-ACCEPT-0. MOBILITY-AUDIT-0 passed, MOBI
 
 ## 14. Final track posture
 
-This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, MOBILITY-ALLOC-0 is green for the deterministic slab + bulk-accounting allocator substrate, and **MOBILITY-REENROLL-0 is OPEN (authorized for the bilateral arena re-enrollment substrate only, not yet implemented).** IDROUTE/ECON/OWNER remain parked until product/design authority explicitly opens them.
+This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, MOBILITY-ALLOC-0 is green for the deterministic slab + bulk-accounting allocator substrate, **MOBILITY-REENROLL-0 is PASS for bilateral arena re-enrollment substrate only.** IDROUTE/ECON/OWNER remain parked until product/design authority explicitly opens them.
 
 Expected initial row:
 
@@ -506,3 +504,4 @@ Expected initial row:
 | MOBILITY-ALLOC-0-OPEN-0 | Design-authority/product opening review for deterministic slab + bulk-accounting allocator substrate | **OPEN / docs-only authorization** | [`phase_mobility_alloc0_opening_review_results.md`](tests/phase_mobility_alloc0_opening_review_results.md) |
 | MOBILITY-ALLOC-0 | Deterministic per-parent/key slab allocation + bulk accounting substrate; no downstream runtime integration | **PASS / substrate-only** | [`phase_mobility_alloc0_results.md`](tests/phase_mobility_alloc0_results.md) |
 | MOBILITY-REENROLL-0-OPEN-0 | Design-authority/product opening review for bilateral arena re-enrollment substrate | **OPEN / docs-only authorization** | [`phase_mobility_reenroll0_opening_review_results.md`](tests/phase_mobility_reenroll0_opening_review_results.md) |
+| MOBILITY-REENROLL-0 | Bilateral arena re-enrollment substrate on MOBILITY-ALLOC-0; no downstream runtime integration | **PASS / substrate-only** | [`phase_mobility_reenroll0_results.md`](tests/phase_mobility_reenroll0_results.md) |

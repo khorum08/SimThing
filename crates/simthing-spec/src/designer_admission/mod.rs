@@ -11,6 +11,7 @@ mod diagnostic;
 mod manifest;
 mod mobility_alloc0;
 mod mobility_audit0;
+mod mobility_reenroll0;
 mod mobility_scenario0;
 mod preflight;
 mod preview;
@@ -41,6 +42,12 @@ pub use mobility_alloc0::{
     MobilityAlloc0BoundaryEvent, MobilityAlloc0BoundaryEventKind,
     MobilityAlloc0ForbiddenPathRequests, MobilityAlloc0LiveSlice, MobilityAlloc0ParentKey,
     MobilityAlloc0PlanInput, MobilityAlloc0PlanReport, MOBILITY_ALLOC0_ID,
+};
+pub use mobility_reenroll0::{
+    mobility_reenroll0_layout_checksum_cpu, mobility_reenroll0_layout_checksum_gpu_proxy,
+    plan_mobility_reenroll0, MobilityReenroll0CommittedMove, MobilityReenroll0ForbiddenPathRequests,
+    MobilityReenroll0Move, MobilityReenroll0PlanInput, MobilityReenroll0PlanReport,
+    MobilityReenroll0RegistryState, MOBILITY_REENROLL0_ID,
 };
 pub use mobility_audit0::{
     audit_mobility_owner_band_budget, audit_mobility_owner_band_budget_with_ceiling,
