@@ -1,3 +1,7 @@
+# 2026-06-02 — DOCS-0.0.7.9-FILENAME-REFS-0: reconcile all active nav docs to 0.0.7.9 closed/parked status (docs-only)
+
+- Scanned README, agents.md, design_v7_8.md §6, mapping_current_guidance.md, sead_self_ai_track.md for live v7.9/design_v7_9 navigation refs. README and agents.md had none. sead_self_ai_track.md had none. design_v7_8.md §6 production-track pointer still implied the track was open/in-progress — updated to "0.0.7.9 COMPLETE and PARKED / no open gate / 0.0.8.0 is next phase." No filename changes (path stays stable per closure handoff). No code, no invariant edits.
+
 # 2026-06-02 — VERSION-0.0.7.9-CLOSURE-0: preserve former v7.9 as canonical 0.0.7.9; reserve 0.0.8.0 for next phase (docs-only)
 
 - Version normalization. The former "v7.9" mobility/transfer substrate track is now canonically **0.0.7.9**. No renames of historical report filenames or PR titles. Track doc title updated to "Design 0.0.7.9" with a canonical-version note. Active status language updated from "v7.9" to "0.0.7.9" in the track doc and mapping guidance. Stale KERNEL-4..10 accreted litany in mapping guidance collapsed into the parked-complete summary. **0.0.8.0 is the next phase — not a renaming of 0.0.7.9; requires a named product scenario and design-authority/product authorization before any scope is defined.** Option A — PARK remains the decision of record. No code, no tests, no invariant edit, no new capability work, no open gate.
