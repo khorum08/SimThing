@@ -1,3 +1,7 @@
+# 2026-06-02 - MOBILITY-IDROUTE-0: implement local D=2 identity-routing substrate
+
+- Implemented the authorized local D=2 identity-routing overlay substrate in `simthing-spec`: per-cell masked Sum (hard exact + soft), deterministic multi-term Sum, packed-key argmax with unique winner, directed disburse (immutable-by-construction), CPU/GPU-proxy checksums, and full guardrail rejection battery. 13 new tests green including 34k soak. **VERDICT: PASS / substrate only.** ECON/OWNER remain proposed/parked. No production `SimSession` wiring, no semantic/raw WGSL, no default-on, no CPU planner. Report: [`phase_mobility_idroute0_results.md`](tests/phase_mobility_idroute0_results.md).
+
 # 2026-06-02 - MOBILITY-IDROUTE-0-OPEN-0: authorize identity-routing overlay gate
 
 - Design-authority/product opening review for the next v7.9 ladder after accepted MOBILITY-SCENARIO-0, passing MOBILITY-AUDIT-0, passing MOBILITY-ALLOC-0 (substrate), and passing MOBILITY-REENROLL-0 (substrate). **VERDICT: OPEN (Option A).** Authorizes only MOBILITY-IDROUTE-0 local D=2 identity-routing overlay substrate (masked reduction + directed disburse on cell arenas provided by prior substrates; identity as column; no global vector; no ECON/OWNER; no production `SimSession` wiring, no semantic/raw WGSL, no default-on, no CPU planner). IDROUTE substrate implementation, ECON, and OWNER remain for later PRs. All required cargo commands green. Report: [`phase_mobility_idroute0_opening_review_results.md`](tests/phase_mobility_idroute0_opening_review_results.md). No runtime code in this PR.
