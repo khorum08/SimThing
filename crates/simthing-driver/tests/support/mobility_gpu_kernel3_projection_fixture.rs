@@ -18,7 +18,7 @@ use simthing_spec::{
 
 pub use mobility_gpu_kernel1_dispatch_fixture::{
     cpu_column_transform_oracle, MobilityGpuKernel0ColumnProbe, MobilityGpuKernel0FixtureInput,
-    MobilityGpuKernel0Gate, MobilityGpuKernel0ParityClassification,
+    MobilityGpuKernel0Gate, MobilityGpuKernel0OracleOutput, MobilityGpuKernel0ParityClassification,
     MobilityRuntime1aDriverFixtureInput, MobilityRuntime1bPassgraphFixtureInput,
     MobilityRuntime1bPassgraphGate, MOBILITY_GPU_KERNEL0_KERNEL_ID,
     MOBILITY_GPU_KERNEL1_FIXTURE_ID, MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,

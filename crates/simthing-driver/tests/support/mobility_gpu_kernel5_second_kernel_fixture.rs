@@ -15,10 +15,11 @@ use mobility_gpu_kernel4_34k_projection_fixture::{
 };
 
 pub use mobility_gpu_kernel4_34k_projection_fixture::{
-    MobilityGpuKernel0ColumnProbe, MobilityGpuKernel0ParityClassification,
-    MobilityRuntime1bPassgraphFixtureInput, MOBILITY_GPU_KERNEL0_KERNEL_ID,
-    MOBILITY_GPU_KERNEL1_FIXTURE_ID, MOBILITY_GPU_KERNEL4_FIXTURE_ID,
-    MOBILITY_GPU_KERNEL4_ROW_COUNT, MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
+    cpu_column_transform_oracle, MobilityGpuKernel0ColumnProbe, MobilityGpuKernel0OracleOutput,
+    MobilityGpuKernel0ParityClassification, MobilityRuntime1bPassgraphFixtureInput,
+    MOBILITY_GPU_KERNEL0_KERNEL_ID, MOBILITY_GPU_KERNEL1_FIXTURE_ID,
+    MOBILITY_GPU_KERNEL4_FIXTURE_ID, MOBILITY_GPU_KERNEL4_ROW_COUNT,
+    MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
 };
 
 use simthing_gpu::{fnv64_hash_f32, GpuContext};
