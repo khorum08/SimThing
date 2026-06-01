@@ -1,6 +1,6 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** MOBILITY-SCENARIO-0 ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01). Only the next narrow gate — `MOBILITY-AUDIT-0 / owner_band_budget_audit` — is open. ALLOC/REENROLL/IDROUTE/ECON/OWNER remain proposed/parked; no runtime implementation gate is open.
+> **Status:** MOBILITY-SCENARIO-0 ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01); MOBILITY-AUDIT-0 PASS (2026-06-01). ALLOC/REENROLL/IDROUTE/ECON/OWNER remain proposed/parked; no runtime implementation gate is open.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -55,7 +55,8 @@ Strong guardrails live at the designer/scenario-facing layer.
 **Status:** **ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, design authority + product, 2026-06-01).**
 Scenario/admission only — no implementation authorized. The accepted packet is intrinsically
 first-slice-narrowed: routing is `NarrowedAdversarialFirstSlice`, spatial depth 4, `max_factions_per_cell`
-4, 48 cells, 34k soak. Acceptance opens only `MOBILITY-AUDIT-0 / owner_band_budget_audit`. See
+4, 48 cells, 34k soak. Acceptance opened only `MOBILITY-AUDIT-0 / owner_band_budget_audit`;
+that audit now passes without narrowing. See
 [`phase_mobility_scenario0_acceptance_review_results.md`](tests/phase_mobility_scenario0_acceptance_review_results.md).
 
 **Purpose:** Define the product scenario that justifies opening the mobility/transfer allocation track.
@@ -112,7 +113,7 @@ cargo check --workspace
 | Ladder   | Capability                                     | Entry gate                                        | Status   | Advance condition                                 |
 | -------- | ---------------------------------------------- | ------------------------------------------------- | -------- | ------------------------------------------------- |
 | SCENARIO | Product scenario / admission packet            | Product/design authority                          | **ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01)** | — (accepted) |
-| AUDIT    | Owner/OrderBand depth budget                   | Scenario accepted                                 | **Open (next gate)** | `owner_band_budget_audit` passes or narrows scope |
+| AUDIT    | Owner/OrderBand depth budget                   | Scenario accepted                                 | **PASS (MOBILITY-AUDIT-0, 2026-06-01)** | Complete; first slice fits current ceiling |
 | ALLOC    | Deterministic slab + bulk-accounting allocator | Scenario accepted; A-0 baseline                   | Proposed | ALLOC substrate floor + performance bars green    |
 | REENROLL | Reparenting / bilateral arena re-enrollment    | ALLOC green                                       | Proposed | REENROLL substrate floor + performance bars green |
 | IDROUTE  | D=2 identity-routing overlay                   | ALLOC + REENROLL green                            | Proposed | IDROUTE substrate floor + performance bars green  |
@@ -123,7 +124,7 @@ cargo check --workspace
 
 ## 5. AUDIT — owner_band_budget_audit
 
-**Status:** Proposed early audit. No runtime implementation.
+**Status:** **PASS (MOBILITY-AUDIT-0, 2026-06-01).** No runtime implementation.
 
 **Purpose:** Determine whether the interleaved circulations fit within `max_orderband_depth` at target spatial depth before ECON/OWNER implementation.
 
@@ -142,6 +143,12 @@ Audit these circulation families:
 * target spatial depth fits the current OrderBand ceiling; or
 * track must narrow scenario depth; or
 * separate OrderBand-depth expansion scenario is required.
+
+**Result:** Accepted scenario constants require 13 OrderBands under the audit model:
+modifier-down (1), hard Band Alpha (1), economy-up (3), economy-down (3), research-up (3),
+thresholds (1), and soft Band Beta (1). Current `max_orderband_depth` is 16, leaving slack 3.
+Verdict: **PASS**. No narrowing or OrderBand-depth expansion scenario is required. ALLOC is the next
+candidate ladder by sequence, but this audit does not open ALLOC or any runtime implementation gate.
 
 **Report:**
 
@@ -459,7 +466,7 @@ No implementation opened until design-authority acceptance.
 
 ## 14. Final track posture
 
-This production track is landed as a parked future track (MOBILITY-TRACK-0). It should not be handed to Cursor as implementation until product/design authority explicitly opens `MOBILITY-SCENARIO-0`.
+This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted and MOBILITY-AUDIT-0 passes, but implementation should not be handed to Cursor until product/design authority explicitly opens a downstream ladder. The next candidate by sequence is ALLOC.
 
 Expected initial row:
 
@@ -467,5 +474,6 @@ Expected initial row:
 | ---------------- | ---------------------------------------------------------------------------- | -------------------- | ---------------------------------- |
 | MOBILITY-TRACK-0 | Create parked v7.9 mobility/transfer production track from workshop findings | **Done / docs-only** | — |
 | V7.8/V7.9-DOC-R1 | Reconcile stale v7.8 Line C “pending/remaining gate” language in active docs   | **Done / docs-only** | [`phase_v7_8_v7_9_doc_r1_results.md`](tests/phase_v7_8_v7_9_doc_r1_results.md) |
-| MOBILITY-SCENARIO-0 | Add typed scenario/admission metadata and rejection coverage for the first v7.9 mobility/transfer scenario packet; no runtime implementation or implementation gate opened | **Landed / awaiting design-authority + product acceptance** | [`phase_mobility_scenario0_results.md`](tests/phase_mobility_scenario0_results.md) |
+| MOBILITY-SCENARIO-0 | Add typed scenario/admission metadata and rejection coverage for the first v7.9 mobility/transfer scenario packet; no runtime implementation or implementation gate opened | **Accepted by MOBILITY-SCENARIO-0-ACCEPT-0; implementation closed** | [`phase_mobility_scenario0_results.md`](tests/phase_mobility_scenario0_results.md) |
 | MOBILITY-SCENARIO-0-ACCEPT-0 | Design-authority/product acceptance of the v7.9 mobility scenario; accept Option A and open only `MOBILITY-AUDIT-0`; docs-only | **Accepted / docs-only** | [`phase_mobility_scenario0_acceptance_review_results.md`](tests/phase_mobility_scenario0_acceptance_review_results.md) |
+| MOBILITY-AUDIT-0 | Audit accepted v7.9 mobility owner/OrderBand depth budget; no runtime implementation or implementation gate opened | **PASS / audit-only** | [`phase_mobility_owner_band_budget_audit_results.md`](tests/phase_mobility_owner_band_budget_audit_results.md) |

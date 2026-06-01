@@ -176,6 +176,7 @@ pub use compile::jit_kernel_production_registry_shell::{
     RegisteredProductionCandidate,
 };
 pub use designer_admission::{
+    audit_mobility_owner_band_budget, audit_mobility_owner_band_budget_with_ceiling,
     accepted_frontier_v2_artifact_target_ids, accepted_frontier_v2_artifact_targets,
     admit_clause_spec_frontier_v2_scenario, admit_mobility_scenario0_packet,
     all_designer_admission_diagnostic_codes, designer_admission_diagnostic,
@@ -196,6 +197,11 @@ pub use designer_admission::{
     MobilityRoutingPolicy, MobilityScenario0Admission, MobilityScenario0GuardrailRequests,
     MobilityScenario0Packet, MobilityScenario0ParameterSummary, MobilityScenario0Status,
     MobilitySoakProfile, MobilitySupplyScope, MobilityTheaterScale, MobilityTheaterShape,
+    mobility_audit0_family_budgets, mobility_audit0_packet_matches_accepted_constants,
+    mobility_audit0_required_orderband_depth, MobilityAudit0CirculationFamily,
+    MobilityAudit0FamilyBudget, MobilityAudit0Report, MobilityAudit0ScenarioConstants,
+    MobilityAudit0Verdict, MOBILITY_AUDIT0_CURRENT_MAX_ORDERBAND_DEPTH, MOBILITY_AUDIT0_ID,
+    MOBILITY_AUDIT0_NARROWING_CEILING,
     SeadLadderStage, V78AtlasVramBudget, V78HardCurrencyContentionOrderingClaim, V78LineGateStatus,
     V78LineScenario, V78LineScenarioClaim, V78LineScenarioPack,
     V78LineScenarioPackAdmission, V78LineScenarioStatusRecord, V78MultiTheaterAtlasMappingClaim,
