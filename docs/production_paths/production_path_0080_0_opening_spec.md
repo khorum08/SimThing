@@ -1,6 +1,6 @@
 # PRODUCTION-PATH-0080-0 - Local Patrol Economy Production-Path Opening Spec
 
-**Status:** `OPENING SPEC / NO IMPLEMENTATION`
+**Status:** `IMPLEMENTED / PASS - Local Patrol Economy opt-in production path`
 
 | Field | Value |
 |---|---|
@@ -10,11 +10,22 @@
 | Consumed substrate | `0.0.7.9 mobility/transfer substrate` |
 | Decision source | Accepted GPU-resident SEAD `Threshold` + `EmitEvent` -> `BoundaryRequest` |
 | Runtime target | First non-test-support default `SimSession` path, scoped only to Local Patrol Economy |
-| Implementation status | Not implemented in this PR |
+| Implementation status | Implemented in `PRODUCTION-PATH-0080-0` implementation PR |
 
-`SCENARIO-0080-0` is accepted. `PRODUCTION-PATH-0080-0` is open as a docs/design gate. This spec
-authorizes the next implementation slice only after this opening spec merges. This PR does not
-implement the slice.
+`SCENARIO-0080-0` is accepted. `PRODUCTION-PATH-0080-0` is implemented as a narrow,
+opt-in/default-off Local Patrol Economy production path. The implementation report is
+[`../tests/phase_production_path_0080_0_impl_results.md`](../tests/phase_production_path_0080_0_impl_results.md).
+This update does not expand the opening scope.
+
+## Implementation Result
+
+The implementation adds a `simthing-driver` production-path surface for Local Patrol Economy. It
+instantiates only under explicit opt-in, accepts a SEAD `Threshold` + `EmitEvent` ->
+`BoundaryRequest`, delegates relocation through the 0.0.7.9 mobility/transfer substrate, preserves
+patrol identity and owner overlay continuity, and updates bounded local economy participation.
+`DEFAULT-SCHEDULE-0080-0`, gameplay, semantic WGSL, ClauseThing/L3, hard currency, markets/trade,
+`ai_budget`, nested Resource Flow, capture-as-reparenting, owner-entity-as-spatial-parent, invariant
+edits, and passive proof wrappers remain closed.
 
 ## Product Scenario Summary
 
@@ -147,6 +158,7 @@ This docs PR is complete when:
 - scope is Local Patrol Economy only
 - implementation slice is named but not implemented
 - required future tests are named
-- production track marks `PRODUCTION-PATH-0080-0` as open with this opening spec linked
+- production track marks `PRODUCTION-PATH-0080-0` as implemented/pass with this spec and the
+  implementation report linked
 - mapping guidance and worklog are updated
 - no code changed
