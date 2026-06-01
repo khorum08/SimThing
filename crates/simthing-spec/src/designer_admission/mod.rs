@@ -9,6 +9,7 @@ mod atlas;
 mod clause_spec;
 mod diagnostic;
 mod manifest;
+mod mobility_scenario0;
 mod preflight;
 mod preview;
 mod v7_8_line_scenarios;
@@ -32,6 +33,16 @@ pub use diagnostic::{
     DesignerAdmissionDiagnosticCode, DesignerAdmissionRejectionKind, DesignerFacingGuardrailClass,
 };
 pub use manifest::DesignerAdmissionPreflightManifest;
+pub use mobility_scenario0::{
+    admit_mobility_scenario0_packet, mobility_scenario0_packet, MobilityAllocationBounds,
+    MobilityBlockadeSemantics, MobilityIdentityBoundary, MobilityIdentityChannelBudget,
+    MobilityOwnerColumn, MobilityOwnerRelationDiscipline, MobilityOwnerRelationKind,
+    MobilityQuantityClasses, MobilityRoutingMode, MobilityRoutingPolicy,
+    MobilityScenario0Admission, MobilityScenario0GuardrailRequests, MobilityScenario0Packet,
+    MobilityScenario0ParameterSummary, MobilityScenario0Status, MobilitySoakProfile,
+    MobilitySupplyScope, MobilityTheaterScale, MobilityTheaterShape,
+    MOBILITY_SCENARIO0_ENTITY_TARGET, MOBILITY_SCENARIO0_ID,
+};
 pub use preflight::{
     evaluate_designer_admission_request, resolve_frontier_artifact_target_id,
     DesignerAdmissionPreflightReport, DesignerAdmissionRequest, SeadLadderStage,

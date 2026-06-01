@@ -177,9 +177,10 @@ pub use compile::jit_kernel_production_registry_shell::{
 };
 pub use designer_admission::{
     accepted_frontier_v2_artifact_target_ids, accepted_frontier_v2_artifact_targets,
-    admit_clause_spec_frontier_v2_scenario, all_designer_admission_diagnostic_codes,
-    designer_admission_diagnostic, designer_admission_diagnostic_for_rejection,
-    evaluate_designer_admission_request, preview_accepted_artifact_targets,
+    admit_clause_spec_frontier_v2_scenario, admit_mobility_scenario0_packet,
+    all_designer_admission_diagnostic_codes, designer_admission_diagnostic,
+    designer_admission_diagnostic_for_rejection, evaluate_designer_admission_request,
+    mobility_scenario0_packet, preview_accepted_artifact_targets,
     preview_designer_admission_preflight, resolve_frontier_artifact_target_id,
     AcceptedFrontierArtifactTarget, ClauseSpecArtifactTargets, ClauseSpecFaction,
     ClauseSpecFrontierV2Admission, ClauseSpecFrontierV2LoweringSummary,
@@ -189,12 +190,19 @@ pub use designer_admission::{
     DesignerAdmissionDiagnosticCode, DesignerAdmissionPreflightManifest,
     DesignerAdmissionPreflightReport, DesignerAdmissionPreviewReport,
     DesignerAdmissionRejectionKind, DesignerAdmissionRequest, DesignerFacingGuardrailClass,
+    MobilityAllocationBounds, MobilityBlockadeSemantics, MobilityIdentityBoundary,
+    MobilityIdentityChannelBudget, MobilityOwnerColumn, MobilityOwnerRelationDiscipline,
+    MobilityOwnerRelationKind, MobilityQuantityClasses, MobilityRoutingMode,
+    MobilityRoutingPolicy, MobilityScenario0Admission, MobilityScenario0GuardrailRequests,
+    MobilityScenario0Packet, MobilityScenario0ParameterSummary, MobilityScenario0Status,
+    MobilitySoakProfile, MobilitySupplyScope, MobilityTheaterScale, MobilityTheaterShape,
     SeadLadderStage, V78AtlasVramBudget, V78HardCurrencyContentionOrderingClaim, V78LineGateStatus,
     V78LineScenario, V78LineScenarioClaim, V78LineScenarioPack,
     V78LineScenarioPackAdmission, V78LineScenarioStatusRecord, V78MultiTheaterAtlasMappingClaim,
     V78NamedConsumerScenario, V78NestedResourceFlowDepthFanoutClaim, V78PromotedLine,
     CLAUSE_SPEC_FRONTIER_V2_GRID_CAP, CLAUSE_SPEC_FRONTIER_V2_MIN_TICKS,
-    CLAUSE_SPEC_FRONTIER_V2_PROFILE, V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES, V78_MET_SCENARIO_PACK_ID,
+    CLAUSE_SPEC_FRONTIER_V2_PROFILE, MOBILITY_SCENARIO0_ENTITY_TARGET, MOBILITY_SCENARIO0_ID,
+    V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES, V78_MET_SCENARIO_PACK_ID,
     admit_v7_8_line_scenario_pack, v7_8_met_consumer_scenario_pack,
     // C-2 atlas admission
     AtlasAdmissionDecision, AtlasAdmissionProfile, AtlasAdmissionSpec, AtlasIsolationAdmissionMode,
@@ -210,9 +218,10 @@ pub use preview::{
 pub use ron::{
     deserialize_capability_tree_ron, deserialize_clause_spec_frontier_v2_scenario_ron,
     deserialize_designer_admission_preflight_manifest_ron, deserialize_eml_gadget_stack_ron,
-    deserialize_first_slice_scenario_ron, deserialize_game_mode_ron, deserialize_region_field_ron,
+    deserialize_first_slice_scenario_ron, deserialize_game_mode_ron,
+    deserialize_mobility_scenario0_packet_ron, deserialize_region_field_ron,
     deserialize_v7_8_line_scenario_pack_ron, serialize_clause_spec_frontier_v2_scenario_ron,
-    serialize_designer_admission_preflight_manifest_ron,
+    serialize_designer_admission_preflight_manifest_ron, serialize_mobility_scenario0_packet_ron,
     serialize_v7_8_line_scenario_pack_ron,
 };
 pub use runtime::{
