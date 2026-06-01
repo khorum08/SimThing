@@ -334,6 +334,7 @@ fn kernel6_input(input: &MobilityGpuKernel7FixtureInput) -> MobilityGpuKernel6Fi
             closed_ladder_reopen: input.forbidden.closed_ladder_reopen,
         },
         passgraph: MobilityGpuKernel6FixtureInput::default_chain().passgraph,
+        columns_override: None,
     }
 }
 
