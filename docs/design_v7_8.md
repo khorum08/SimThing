@@ -312,3 +312,7 @@ ceiling when all circulations interleave on one spine).
 
 **Do not implement any of the above without a separate named scenario + design-authority
 implementation gate.** This section is architectural record only.
+
+**Production track (parked):** the sequenced PR ladder for this territory lives in
+[`design_v7_9_mobility_transfer_allocation_production_track.md`](design_v7_9_mobility_transfer_allocation_production_track.md)
+(MOBILITY-TRACK-0 landed; first gate remains `MOBILITY-SCENARIO-0` scenario/admission only).
