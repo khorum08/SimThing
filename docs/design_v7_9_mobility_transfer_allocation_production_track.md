@@ -46,6 +46,27 @@ All richer correctness rules should be enforced at designer/scenario admission a
 
 Strong guardrails live at the designer/scenario-facing layer.
 
+### 2.1 Gate cadence — stop the opening-review treadmill (design authority, 2026-06-02)
+
+The substrate ladder and CPU composition are accepted and green. Per the gating policy
+(`phase_m_gating_and_doc_policy.md` §1/§3 anti-loop), the remaining mobility runtime work is
+classified once here so it does **not** get a per-slice opening-review PR:
+
+- **Tier-1 fast-lane (no opening review):** any CPU-only, default-off, test/fixture mobility runtime
+  integration that is within this accepted design, generic/semantic-free, parity-backed, and
+  reversible — including the `simthing-driver` test/support fixture (RUNTIME-1A-RUNTIME-FIXTURE) and
+  further CPU/test-fixture refinement. Ships as **one implementation PR + one test report + one
+  status-row update.**
+- **Tier-2 gated (genuine opening review required):** only two thresholds remain — (a) the first
+  **default-path / default-schedule** production wiring (changes a production default), and (b) **GPU
+  pass-graph registration or any semantic surface** (prohibition list). Everything between here and
+  those two is fast-lane.
+
+The Phase-M mapping/SEAD invariant rows (e.g. `invariants.md` mapping-runtime / economy→mapping /
+`ProductionCandidatePreview`) bind **their** subsystems; the mobility track is governed by the Tier-1/
+Tier-2 split above plus v7.8 §2.5 non-negotiables (opt-in/default-off, semantic-free runtime, no CPU
+planner/urgency/commitment, oracle parity). Do **not** re-litigate the mapping rows per mobility slice.
+
 ---
 
 ## 3. Scenario gate
