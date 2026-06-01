@@ -81,10 +81,11 @@ scale), KERNEL-3/4 (composition→GPU-column projection), KERNEL-5 (second kerne
 throughput summary, budget-assertions-over-the-summary) were **recombination of the proven primitive
 — no new code path or failure mode**, i.e. the loop.
 
-**Halt: no further KERNEL soak/replay/accounting/manifest variants are authorized.** KERNEL-12
-(buffer-layout manifest), if in flight, is the **last**; do not start KERNEL-13. Each adds a fixture
+**Halt: no further KERNEL soak/replay/accounting/manifest variants are authorized.** Each adds a fixture
 + a report and zero coverage. The GPU kernel substrate is done: kernel + parity + dispatch + 34k
 scale + projection + multi-kernel chain + replay determinism are green and need no more variants.
+
+Stop adding passive proof wrappers unless they unlock execution.
 
 **The next move is a design decision, not another fixture** — exactly one of:
 1. **Park** the GPU kernel substrate as complete until a named scenario needs it (close the path); or
