@@ -248,6 +248,74 @@ fn owner_down_broadcast_does_not_spawn_arena_columns() {
 }
 
 #[test]
+fn owner_down_broadcast_reaches_every_owned_including_isolated() {
+    let faction_owner = owner(MobilityOwner0ColumnKind::Faction, 7);
+    let records = vec![
+        rec(1, 100, 16, vec![faction_owner], 0, false, 10),
+        rec(2, 801, 1, vec![faction_owner], 0, false, 0),
+        rec(
+            3,
+            802,
+            1,
+            vec![owner(MobilityOwner0ColumnKind::Species, 7)],
+            0,
+            false,
+            1,
+        ),
+    ];
+    let overlays = vec![overlay(MobilityOwner0ColumnKind::Faction, 7, 42, 11, 0)];
+    let steady_report = plan_mobility_owner0(&input(records.clone(), overlays.clone()));
+
+    assert!(steady_report.admitted, "{:?}", steady_report.diagnostics);
+    assert_eq!(steady_report.applied_overlays.len(), 2);
+    assert!(steady_report
+        .applied_overlays
+        .iter()
+        .any(|applied| applied.entity_id == 1 && applied.cell_key == key(100, 0)));
+    assert!(steady_report
+        .applied_overlays
+        .iter()
+        .any(|applied| applied.entity_id == 2
+            && applied.cell_key == key(801, 0)
+            && applied.owner == faction_owner
+            && applied.modifier_id == 42
+            && applied.modifier_amount == 11));
+    assert!(!steady_report
+        .applied_overlays
+        .iter()
+        .any(|applied| applied.entity_id == 3));
+    assert_eq!(steady_report.spawned_arena_column_count, 0);
+    assert_eq!(steady_report.spawned_aggregation_column_count, 0);
+    assert!(!steady_report.owner_columns_are_spatial_parents);
+    assert!(!steady_report.capture_reparented);
+    assert_eq!(steady_report.modifier_dispersal_count, 0);
+    assert_eq!(steady_report.dirtyonly_noop_count, 2);
+
+    let dirty_report = plan_mobility_owner0(&MobilityOwner0PlanInput {
+        records,
+        overlays,
+        owner_changes: vec![MobilityOwner0OwnerChange {
+            entity_id: 1,
+            kind: MobilityOwner0ColumnKind::Faction,
+            from_owner_id: 7,
+            to_owner_id: 9,
+            changed_count: 16,
+            new_entity_id: None,
+            capture: false,
+            arrival_order: 0,
+        }],
+        forbidden: MobilityOwner0ForbiddenPathRequests::default(),
+    });
+
+    assert!(dirty_report.admitted, "{:?}", dirty_report.diagnostics);
+    assert_eq!(dirty_report.applied_overlays.len(), 2);
+    assert_eq!(dirty_report.modifier_dispersal_count, 2);
+    assert_eq!(dirty_report.dirtyonly_noop_count, 0);
+    assert_eq!(dirty_report.spawned_arena_column_count, 0);
+    assert_eq!(dirty_report.spawned_aggregation_column_count, 0);
+}
+
+#[test]
 fn owner_generation_resync_on_owner_column_change() {
     let report = plan_mobility_owner0(&MobilityOwner0PlanInput {
         records: vec![rec(
