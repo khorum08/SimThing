@@ -1,3 +1,7 @@
+# 2026-06-02 — RUNTIME-1B-DISPATCH-0: dispatch semantic-free GPU probe through registered node PASS
+
+- Implemented opt-in/default-off test/support dispatch of the GPU-EXEC-0 semantic-free identity-buffer probe through the green RUNTIME-1B registered pass-graph node. Registration non-executing until dispatch explicitly invoked; 15-test floor/guardrail battery green. **VERDICT: PASS / semantic-free GPU-EXEC probe dispatch through registered node.** Mobility GPU dispatch (RUNTIME-1B-DISPATCH), default schedule, gameplay, and default `SimSession` lib path remain closed; no invariant edits. Report: [`phase_mobility_runtime1b_dispatch_results.md`](tests/phase_mobility_runtime1b_dispatch_results.md).
+
 # 2026-06-02 — GPU-EXEC-0: prove semantic-free GPU execution readiness PASS
 
 - Implemented opt-in/default-off semantic-free GPU execution readiness in `simthing-driver` test/support: built-in identity-buffer pass (not mobility, not designer WGSL), CPU oracle + GPU checksum, exact parity or honest `GpuUnavailable`. 13-test floor/guardrail battery green. **VERDICT: PASS / generic GPU execution readiness.** RUNTIME-1B-DISPATCH (mobility shader + scheduled dispatch), default schedule, gameplay, and default `SimSession` lib path remain closed; no invariant edits. Report: [`phase_gpu_exec0_results.md`](tests/phase_gpu_exec0_results.md).
