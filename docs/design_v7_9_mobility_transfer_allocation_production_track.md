@@ -1,6 +1,6 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); MOBILITY-IDROUTE-0 PASS + R1 hardened; MOBILITY-ECON-0 PASS (substrate); MOBILITY-OWNER-0 PASS + R1 hardened (substrate). **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 OPEN WITH NARROWING (MOBILITY-RUNTIME-0-OPEN-0, 2026-06-02) — authorized for a test-only, default-off substrate-composition harness only; real `SimSession`/GPU pass-graph wiring is deferred to a separate, currently-closed later gate.** The Hybrid-Strata/faction-index ECON scaling layer remains a later ECON slice.
+> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); MOBILITY-IDROUTE-0 PASS + R1 hardened; MOBILITY-ECON-0 PASS (substrate); MOBILITY-OWNER-0 PASS + R1 hardened (substrate). **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 PASS (test-only, default-off substrate-composition harness).** Real `SimSession`/GPU pass-graph wiring is deferred to a separate, currently-closed later gate. The Hybrid-Strata/faction-index ECON scaling layer remains a later ECON slice.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -119,7 +119,7 @@ cargo check --workspace
 | IDROUTE  | D=2 identity-routing overlay                   | ALLOC + REENROLL green                            | **PASS + R1 hardened (MOBILITY-IDROUTE-0-R1, 2026-06-02)** — local D=2 substrate floor + explicit battery green | ECON/OWNER remain parked  |
 | ECON     | Session clearinghouse + subsidiarity economy   | ALLOC + REENROLL green; owner-band audit complete | **PASS (MOBILITY-ECON-0, substrate only)** | Complete; substrate floor + performance bars green |
 | OWNER    | Owner-relations + latched modifier overlays    | ECON green                                        | **PASS + R1 hardened (MOBILITY-OWNER-0-R1, substrate only)** | Complete; substrate floor + performance bars green; isolated down-broadcast coverage explicit |
-| RUNTIME  | Production runtime integration (post-substrate) | All substrates green                              | **OPEN WITH NARROWING (MOBILITY-RUNTIME-0-OPEN-0, 2026-06-02) — test-only, default-off composition harness only; real `SimSession`/GPU pass-graph wiring deferred to a separate later gate** | RUNTIME-0 composition-harness floor + soak bars green |
+| RUNTIME  | Production runtime integration (post-substrate) | All substrates green                              | **PASS (MOBILITY-RUNTIME-0, test-only composition harness)** | Composition harness green; real `SimSession`/GPU pass-graph wiring remains a separate later gate |
 
 ---
 
@@ -518,12 +518,11 @@ docs/tests/phase_mobility_owner0_r1_results.md
 
 ## 10A. RUNTIME — production runtime integration (post-substrate gate)
 
-**Status:** **OPEN WITH NARROWING (MOBILITY-RUNTIME-0-OPEN-0, design authority + product,
-2026-06-02).** Authorized as a **test-only, default-off substrate-composition harness only** — **not**
+**Status:** **PASS (MOBILITY-RUNTIME-0, test-only composition harness).** Implemented as a **test-only, default-off substrate-composition harness only** — **not**
 production `SimSession`/GPU pass-graph wiring, which remains a separate, currently-closed later gate
 (per `invariants.md` lines 108/128/161/184). See
-[`phase_mobility_runtime0_opening_review_results.md`](tests/phase_mobility_runtime0_opening_review_results.md).
-No RUNTIME-0 test is green until implemented and run in a later PR.
+[`phase_mobility_runtime0_opening_review_results.md`](tests/phase_mobility_runtime0_opening_review_results.md) and
+[`phase_mobility_runtime0_results.md`](tests/phase_mobility_runtime0_results.md).
 
 **Entry gate:** all v7.9 substrates green (ALLOC/REENROLL/IDROUTE(+R1)/ECON/OWNER(+R1)).
 
@@ -657,7 +656,7 @@ Scenario accepted by MOBILITY-SCENARIO-0-ACCEPT-0. MOBILITY-AUDIT-0 passed, MOBI
 
 ## 14. Final track posture
 
-This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, and MOBILITY-ALLOC-0 / REENROLL-0 / IDROUTE-0(+R1) / ECON-0 / OWNER-0(+R1) are all green at substrate level. **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 is OPEN WITH NARROWING (test-only, default-off substrate-composition harness only, not implemented); real `SimSession`/GPU pass-graph wiring remains a separate, currently-closed later gate.** The Hybrid-Strata/faction-index ECON scaling layer also remains a later, separately-gated ECON slice.
+This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, and MOBILITY-ALLOC-0 / REENROLL-0 / IDROUTE-0(+R1) / ECON-0 / OWNER-0(+R1) are all green at substrate level. **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 is PASS as a test-only, default-off substrate-composition harness; real `SimSession`/GPU pass-graph wiring remains a separate, currently-closed later gate.** The Hybrid-Strata/faction-index ECON scaling layer also remains a later, separately-gated ECON slice.
 
 Expected initial row:
 
@@ -681,3 +680,4 @@ Expected initial row:
 | MOBILITY-OWNER-0 | Owner-relations + latched modifier overlay substrate; final v7.9 substrate ladder; no production runtime integration | **PASS / substrate-only** | [`phase_mobility_owner0_results.md`](tests/phase_mobility_owner0_results.md) |
 | MOBILITY-OWNER-0-R1 | Hardening for isolated owner-overlay down-broadcast completeness and dirty/no-op cost decomposition | **PASS / substrate-only hardening** | [`phase_mobility_owner0_r1_results.md`](tests/phase_mobility_owner0_r1_results.md) |
 | MOBILITY-RUNTIME-0-OPEN-0 | Design-authority/product opening review for production runtime integration of the completed substrate ladder | **OPEN WITH NARROWING / docs-only authorization** (test-only default-off composition harness; real `SimSession`/GPU wiring deferred) | [`phase_mobility_runtime0_opening_review_results.md`](tests/phase_mobility_runtime0_opening_review_results.md) |
+| MOBILITY-RUNTIME-0 | Default-off substrate-composition harness for ALLOC -> REENROLL -> IDROUTE -> ECON -> OWNER; no production `SimSession`/GPU wiring | **PASS / test-only composition harness** | [`phase_mobility_runtime0_results.md`](tests/phase_mobility_runtime0_results.md) |
