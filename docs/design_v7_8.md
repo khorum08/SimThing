@@ -267,3 +267,48 @@ The forward edge that is expected to *name* the scenarios above is the
 ladder that precedes them) are tracked in the production track file (§3–§6).
 
 **V7.8-MET-CLOSEOUT-0 note (2026-05-30):** A-0/B-0/C-2 accepted for the current named M/E/T consumer scenarios (static nested Resource Flow first slice; narrow hard-currency ordering smoke; map batching closed at designer surface). All promoted v7.8 M/E/T lines are closed for current named scenarios; no implementation gate remains open. E-11B-5 dynamic enrollment, atlas production runtime/sparse-residency scheduler, mixed-kind hard-currency ordering, and ClauseThing/L3 remain parked behind future named scenarios/product authorization.
+
+## 6. Forward workshop territory (parked — no implementation gate open)
+
+A full architectural analysis of the next named-scenario territory was completed in a design-authority
+workshop session (2026-05-31 / 2026-06-01) and recorded in
+[`workshop/mobility_and_transfer_allocation.md`](workshop/mobility_and_transfer_allocation.md). It
+covers **spatial mobility, the session-clearinghouse / faction-ownership topology, owner-relations,
+subsidiarity economy, and the mechanisms needed to scale faction-directed allocation to galactic
+scope** — the territory that any future named scenario involving fleet movement, multi-faction
+combat, population ownership, or empire-scale economy will need to traverse.
+
+**Current status: all six architectural gaps resolved; one open question (OrderBand depth budget
+audit); no implementation gate open; entirely parked behind a named scenario.**
+
+Key resolved design decisions recorded there (not to be re-derived):
+- **Session clearinghouse topology:** `GameSession` root → faction-entities + `SpeciesRegistry` +
+  `worldStateMap` as sibling children. Owner-entities are session-descendants, never spatial parents.
+  Capture = column flip, never reparenting.
+- **Identity routing (D=2 masked reduction):** identity is a column read by a masked reduction, never
+  tree structure. Adversarial / cooperative / directed routing are one mechanism; the relation
+  predicate selects the permutation.
+- **Hybrid Strata (Gap #1):** leaf anonymous channels (`c=4`, the same layer as `max_factions_per_cell`)
+  → dense N-wide vector at the root. `faction_id→channel` binding resolved on CPU at enrollment; GPU
+  does only fixed-width elementwise `SlotRange Sum`. No new GPU primitive.
+- **Fixed-point keystone + conservation bands (Gaps #4/#5):** I64 fixed-point for
+  conserved/decision columns; Band Alpha (hard, first) → Band Beta (soft/float, second,
+  one-directional read). Subsidiarity balance test exact on Alpha; quantized `Hysteresis` deadband
+  prevents escalation thrash.
+- **Selective routing / bracketed reduction (Gap #2):** `Max` over packed `(deficit<<k)|~slot_id`
+  key + equality match; single-pass argmax with built-in deterministic tie-break. No new primitive.
+- **Faction-index stability (Gap #3):** generational slab with Ghost-Node zeroing; reclaim only at
+  CPU Session Boundary Break. Index immutable during GPU ticks.
+- **Pop cohorts + species/blueprints (Gap #6):** cohort = SimThing (fungible members are a `count`
+  column); homogeneity via fission-on-partial-change; **down-broadcast overlay relations (species,
+  blueprints, tech, policy) never spawn an arena column** — only flow-pooling relations (faction
+  economy) get Hybrid-Strata channels.
+
+**Testing battery** (§13 of the workshop doc, performance-led with guardrails at the
+designer/scenario admission layer): five tracks — ALLOC, REENROLL, IDROUTE, ECON, OWNER — each with
+a minimal ★ substrate floor (determinism/I8, no-compaction, no spatial owner-parent) and a
+34k-entity soak performance ceiling. One open audit: `owner_band_budget_audit` (OrderBand depth
+ceiling when all circulations interleave on one spine).
+
+**Do not implement any of the above without a separate named scenario + design-authority
+implementation gate.** This section is architectural record only.
