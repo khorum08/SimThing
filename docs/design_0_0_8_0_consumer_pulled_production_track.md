@@ -84,6 +84,7 @@ opt-in/default-off, parked** until a named scenario pulls it.
 | **Gate ID** | `SCENARIO-0080-0` |
 | **Type** | Tier-2 scenario/admission gate |
 | **Deliverable** | Named product-scenario / admission packet |
+| **Proposed packet** | [`scenarios/scenario_0080_0_admission_packet.md`](scenarios/scenario_0080_0_admission_packet.md) — **Local Patrol Economy** (PROPOSED; not accepted) |
 | **Runtime implementation** | **No** |
 | **Production wiring** | **No** |
 | **Default `SimSession`** | **No** |
@@ -162,7 +163,7 @@ Reject the scenario if it requires any of:
 - **This track file:** no test report required.
 - **Future SCENARIO-0080-0 admission:** one compact admission report only:
   [`docs/tests/phase_scenario_0080_0_admission_results.md`](tests/phase_scenario_0080_0_admission_results.md)
-  (create when the admission packet is authored — not in this PR).
+  — **authored** for Local Patrol Economy proposal; verdict PROPOSED / READY-FOR-DESIGN-AUTHORITY.
 - Do not create reports for passive proof wrappers.
 - Do not create per-slice ceremony.
 
