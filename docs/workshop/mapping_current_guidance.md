@@ -54,8 +54,10 @@ Constitutional surfacing:
 > scenario-scoped only (deterministic opt-in step driver for Local Patrol Economy routing GPU-resident
 > SEAD threshold/event/`BoundaryRequest` decisions into `run_production_path_0080_0`); no global default
 > schedule. Authorized future slice includes a bounded pirate/patrol predator loop (pirate = second
-> IDROUTE identity, not a second economy owner), sub-sliced 1A (schedule+patrol) / 1B (pirate) for pace;
-> no implementation in this PR. Spec:
+> IDROUTE identity, not a second economy owner) with emergent cat-and-mouse (pirate prefers
+> least-patrolled/highest-supply targets via a `local_security` evasion term), sub-sliced 1A
+> (schedule+patrol) / 1B (pirate; evasion term deferrable for pace) over the existing `EvalEML` opcode
+> set; no implementation in this PR. Spec:
 > [`../production_paths/default_schedule_0080_0_opening_spec.md`](../production_paths/default_schedule_0080_0_opening_spec.md).
 
 Active read order (authoritative path for agents):
