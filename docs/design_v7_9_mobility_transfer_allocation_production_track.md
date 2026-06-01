@@ -1,6 +1,6 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); MOBILITY-IDROUTE-0 PASS + R1 hardened; MOBILITY-ECON-0 PASS (substrate); MOBILITY-OWNER-0 PASS + R1 hardened (substrate). **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 PASS (test-only, default-off substrate-composition harness).** **MOBILITY-RUNTIME-1 OPEN WITH NARROWING (MOBILITY-RUNTIME-1-OPEN-0, 2026-06-02) → RUNTIME-1A only: a CPU-only, default-off production fixture behind an explicit named gate; GPU pass-graph wiring (RUNTIME-1B) split out as a separate, currently-closed later gate.** The Hybrid-Strata/faction-index ECON scaling layer remains a later ECON slice.
+> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); MOBILITY-IDROUTE-0 PASS + R1 hardened; MOBILITY-ECON-0 PASS (substrate); MOBILITY-OWNER-0 PASS + R1 hardened (substrate). **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 PASS (test-only, default-off substrate-composition harness).** **MOBILITY-RUNTIME-1A PASS (CPU-only, default-off production fixture wiring).** RUNTIME-1B GPU pass-graph registration remains a separate, currently-closed later gate. The Hybrid-Strata/faction-index ECON scaling layer remains a later ECON slice.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -120,7 +120,7 @@ cargo check --workspace
 | ECON     | Session clearinghouse + subsidiarity economy   | ALLOC + REENROLL green; owner-band audit complete | **PASS (MOBILITY-ECON-0, substrate only)** | Complete; substrate floor + performance bars green |
 | OWNER    | Owner-relations + latched modifier overlays    | ECON green                                        | **PASS + R1 hardened (MOBILITY-OWNER-0-R1, substrate only)** | Complete; substrate floor + performance bars green; isolated down-broadcast coverage explicit |
 | RUNTIME  | Production runtime integration (post-substrate) | All substrates green                              | **PASS (MOBILITY-RUNTIME-0, test-only composition harness)** | Composition harness green |
-| RUNTIME-1A | CPU-only production fixture wiring (composition → `SimSession`) | RUNTIME-0 green | **OPEN WITH NARROWING (MOBILITY-RUNTIME-1-OPEN-0, 2026-06-02) — CPU-only default-off named-gate fixture; no GPU pass-graph, no default schedule** | RUNTIME-1A floor + soak bars green |
+| RUNTIME-1A | CPU-only production fixture wiring (composition → `SimSession`) | RUNTIME-0 green | **PASS (MOBILITY-RUNTIME-1A, CPU-only default-off production fixture)** | Complete; floor + soak bars green |
 | RUNTIME-1B | GPU pass-graph registration (opt-in, non-default) | RUNTIME-1A green | **Closed (separate later gate)** | — |
 
 ---
@@ -587,13 +587,11 @@ docs/tests/phase_mobility_runtime0_results.md
 
 ### 10A.1 RUNTIME-1A — CPU-only production fixture wiring
 
-**Status:** **OPEN WITH NARROWING (MOBILITY-RUNTIME-1-OPEN-0, design authority + product,
-2026-06-02).** Authorized as a **CPU-only production fixture** wiring the green RUNTIME-0 composition
-into a production `SimSession` surface behind an **explicit, default-off named gate** — **no GPU
-pass-graph wiring, no default schedule, no gameplay-facing integration.** GPU pass-graph registration
-is **split out as RUNTIME-1B**, a separate currently-closed later gate. See
-[`phase_mobility_runtime1_opening_review_results.md`](tests/phase_mobility_runtime1_opening_review_results.md).
-No RUNTIME-1 test is green until implemented and run in a later PR.
+**Status:** **PASS (MOBILITY-RUNTIME-1A, 2026-06-02).** CPU-only, default-off production fixture
+wiring the green RUNTIME-0 composition into a production `SimSession` surface behind an explicit
+named gate. No GPU pass-graph registration, no default schedule, no gameplay-facing integration.
+RUNTIME-1B remains a separate, currently-closed later gate. See
+[`phase_mobility_runtime1_results.md`](tests/phase_mobility_runtime1_results.md).
 
 **Floor:** `runtime1_explicit_opt_in_only`, `runtime1_default_simsession_behavior_unchanged`,
 `runtime1_registers_named_mobility_composition_fixture`, `runtime1_no_default_passgraph_schedule`,
@@ -685,7 +683,7 @@ Scenario accepted by MOBILITY-SCENARIO-0-ACCEPT-0. MOBILITY-AUDIT-0 passed, MOBI
 
 ## 14. Final track posture
 
-This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, and MOBILITY-ALLOC-0 / REENROLL-0 / IDROUTE-0(+R1) / ECON-0 / OWNER-0(+R1) are all green at substrate level. **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 is PASS (test-only composition harness); MOBILITY-RUNTIME-1 is OPEN WITH NARROWING → RUNTIME-1A only (CPU-only, default-off, named-gate production fixture), with GPU pass-graph wiring (RUNTIME-1B) split out as a separate, currently-closed later gate.** The Hybrid-Strata/faction-index ECON scaling layer also remains a later, separately-gated ECON slice.
+This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, and MOBILITY-ALLOC-0 / REENROLL-0 / IDROUTE-0(+R1) / ECON-0 / OWNER-0(+R1) are all green at substrate level. **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 is PASS (test-only composition harness); MOBILITY-RUNTIME-1A is PASS (CPU-only, default-off production fixture).** GPU pass-graph wiring (RUNTIME-1B) remains a separate, currently-closed later gate. The Hybrid-Strata/faction-index ECON scaling layer also remains a later, separately-gated ECON slice.
 
 Expected initial row:
 
@@ -711,3 +709,4 @@ Expected initial row:
 | MOBILITY-RUNTIME-0-OPEN-0 | Design-authority/product opening review for production runtime integration of the completed substrate ladder | **OPEN WITH NARROWING / docs-only authorization** (test-only default-off composition harness; real `SimSession`/GPU wiring deferred) | [`phase_mobility_runtime0_opening_review_results.md`](tests/phase_mobility_runtime0_opening_review_results.md) |
 | MOBILITY-RUNTIME-0 | Default-off substrate-composition harness for ALLOC -> REENROLL -> IDROUTE -> ECON -> OWNER; no production `SimSession`/GPU wiring | **PASS / test-only composition harness** | [`phase_mobility_runtime0_results.md`](tests/phase_mobility_runtime0_results.md) |
 | MOBILITY-RUNTIME-1-OPEN-0 | Design-authority/product opening review for production `SimSession`/GPU pass-graph wiring | **OPEN WITH NARROWING / docs-only authorization** → RUNTIME-1A only (CPU-only default-off named-gate fixture; GPU pass-graph split out as RUNTIME-1B, closed) | [`phase_mobility_runtime1_opening_review_results.md`](tests/phase_mobility_runtime1_opening_review_results.md) |
+| MOBILITY-RUNTIME-1A | CPU-only default-off production fixture wiring RUNTIME-0 composition into `SimSession` surface; no GPU pass-graph | **PASS / CPU-only production fixture** | [`phase_mobility_runtime1_results.md`](tests/phase_mobility_runtime1_results.md) |
