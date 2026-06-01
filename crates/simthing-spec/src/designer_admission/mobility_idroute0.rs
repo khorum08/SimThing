@@ -5,7 +5,7 @@
 //! It does not implement ECON, OWNER, global faction vectors, production
 //! `SimSession` wiring, semantic/raw WGSL, GPU kernels, or default-on behavior.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::mobility_alloc0::MobilityAlloc0ParentKey;
 
@@ -71,6 +71,10 @@ pub struct MobilityIdroute0PlanReport {
 
     pub touched_cell_count: u32,
     pub unique_identities_used: u32,
+    pub max_local_identities_used: u32,
+    pub local_d2_cell_admission: bool,
+    pub identity_lanes_are_local_columns: bool,
+    pub directed_disburse_immutable: bool,
     pub cpu_gpu_parity_checksum: u64,
 
     pub runtime_implementation_authorized: bool,
@@ -82,26 +86,31 @@ pub fn plan_mobility_idroute0(input: &MobilityIdroute0PlanInput) -> MobilityIdro
 
     let k = input.max_factions_per_cell;
 
-    // Guard: exceeding max_factions_per_cell
-    let max_identity = input.records.iter().map(|r| r.identity.0).max().unwrap_or(0);
-    if max_identity >= k {
+    // Group first so admission is explicitly local cell-level D=2. The same
+    // lane ids may repeat across cells without implying any global vector.
+    let mut by_cell: BTreeMap<MobilityAlloc0ParentKey, Vec<&MobilityIdroute0LocalRecord>> =
+        BTreeMap::new();
+    for rec in &input.records {
+        by_cell.entry(rec.parent_key).or_default().push(rec);
+    }
+
+    if k == 0 {
         diagnostics.push("exceeding_max_factions_per_cell");
     }
 
-    // Guard: reject global faction vector style input (heuristic: too many distinct identities across cells)
-    let distinct_identities: std::collections::BTreeSet<_> = input.records.iter().map(|r| r.identity.0).collect();
-    if distinct_identities.len() > k as usize * 2 {
-        diagnostics.push("global_faction_vector");
+    let mut max_local_identities_used = 0u32;
+    let mut local_lane_values = BTreeSet::new();
+    for recs in by_cell.values() {
+        let lanes = recs.iter().map(|r| r.identity.0).collect::<BTreeSet<_>>();
+        if lanes.len() as u32 > k || lanes.iter().any(|lane| *lane >= k) {
+            diagnostics.push("exceeding_max_factions_per_cell");
+        }
+        max_local_identities_used = max_local_identities_used.max(lanes.len() as u32);
+        local_lane_values.extend(lanes);
     }
 
     if !diagnostics.is_empty() {
-        return rejected_report(&input, diagnostics);
-    }
-
-    // Group by cell for local D=2 processing
-    let mut by_cell: BTreeMap<MobilityAlloc0ParentKey, Vec<&MobilityIdroute0LocalRecord>> = BTreeMap::new();
-    for rec in &input.records {
-        by_cell.entry(rec.parent_key).or_default().push(rec);
+        return rejected_report(input, diagnostics, max_local_identities_used);
     }
 
     let mut per_identity_sums: BTreeMap<IdentityLane, (i64, f32)> = BTreeMap::new();
@@ -156,7 +165,11 @@ pub fn plan_mobility_idroute0(input: &MobilityIdroute0PlanInput) -> MobilityIdro
 
     let final_sums: Vec<PerIdentitySum> = per_identity_sums
         .into_iter()
-        .map(|(id, (h, s))| PerIdentitySum { identity: id, hard_sum: h, soft_sum: s })
+        .map(|(id, (h, s))| PerIdentitySum {
+            identity: id,
+            hard_sum: h,
+            soft_sum: s,
+        })
         .collect();
 
     let checksum = compute_idroute_checksum(&input.records, &final_sums);
@@ -169,24 +182,51 @@ pub fn plan_mobility_idroute0(input: &MobilityIdroute0PlanInput) -> MobilityIdro
         argmax_winner,
         directed_disburses: all_disburses,
         touched_cell_count: touched,
-        unique_identities_used: distinct_identities.len() as u32,
+        unique_identities_used: local_lane_values.len() as u32,
+        max_local_identities_used,
+        local_d2_cell_admission: true,
+        identity_lanes_are_local_columns: true,
+        directed_disburse_immutable: true,
         cpu_gpu_parity_checksum: checksum,
         runtime_implementation_authorized: false,
     }
 }
 
-fn validate_forbidden(forbidden: &MobilityIdroute0ForbiddenPathRequests, diags: &mut Vec<&'static str>) {
-    if forbidden.global_faction_vector { diags.push("global_faction_vector"); }
-    if forbidden.owner_as_spatial_parent { diags.push("owner_as_spatial_parent"); }
-    if forbidden.capture_as_reparenting { diags.push("capture_as_reparenting"); }
-    if forbidden.econ_owner_runtime { diags.push("econ_owner_runtime"); }
-    if forbidden.production_simsession_wiring { diags.push("production_simsession_wiring"); }
-    if forbidden.default_on_behavior { diags.push("default_on_behavior"); }
-    if forbidden.semantic_or_raw_wgsl { diags.push("semantic_or_raw_wgsl"); }
-    if forbidden.exceeding_max_factions_per_cell { diags.push("exceeding_max_factions_per_cell"); }
+fn validate_forbidden(
+    forbidden: &MobilityIdroute0ForbiddenPathRequests,
+    diags: &mut Vec<&'static str>,
+) {
+    if forbidden.global_faction_vector {
+        diags.push("global_faction_vector");
+    }
+    if forbidden.owner_as_spatial_parent {
+        diags.push("owner_as_spatial_parent");
+    }
+    if forbidden.capture_as_reparenting {
+        diags.push("capture_as_reparenting");
+    }
+    if forbidden.econ_owner_runtime {
+        diags.push("econ_owner_runtime");
+    }
+    if forbidden.production_simsession_wiring {
+        diags.push("production_simsession_wiring");
+    }
+    if forbidden.default_on_behavior {
+        diags.push("default_on_behavior");
+    }
+    if forbidden.semantic_or_raw_wgsl {
+        diags.push("semantic_or_raw_wgsl");
+    }
+    if forbidden.exceeding_max_factions_per_cell {
+        diags.push("exceeding_max_factions_per_cell");
+    }
 }
 
-fn rejected_report(_input: &MobilityIdroute0PlanInput, diagnostics: Vec<&'static str>) -> MobilityIdroute0PlanReport {
+fn rejected_report(
+    _input: &MobilityIdroute0PlanInput,
+    diagnostics: Vec<&'static str>,
+    max_local_identities_used: u32,
+) -> MobilityIdroute0PlanReport {
     MobilityIdroute0PlanReport {
         substrate_id: MOBILITY_IDROUTE0_ID,
         admitted: false,
@@ -196,12 +236,19 @@ fn rejected_report(_input: &MobilityIdroute0PlanInput, diagnostics: Vec<&'static
         directed_disburses: vec![],
         touched_cell_count: 0,
         unique_identities_used: 0,
+        max_local_identities_used,
+        local_d2_cell_admission: false,
+        identity_lanes_are_local_columns: true,
+        directed_disburse_immutable: true,
         cpu_gpu_parity_checksum: 0,
         runtime_implementation_authorized: false,
     }
 }
 
-fn compute_idroute_checksum(records: &[MobilityIdroute0LocalRecord], sums: &[PerIdentitySum]) -> u64 {
+fn compute_idroute_checksum(
+    records: &[MobilityIdroute0LocalRecord],
+    sums: &[PerIdentitySum],
+) -> u64 {
     // Simple deterministic checksum (FNV-like) for substrate parity proxy
     let mut h: u64 = 0xcbf29ce484222325;
     for r in records {
