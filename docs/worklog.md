@@ -1,3 +1,7 @@
+# 2026-06-02 — MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE: implement driver test/support CPU fixture PASS
+
+- Tier-1 fast-lane implementation (not an opening review): `simthing-driver` test/support CPU-only default-off fixture delegating to the green `simthing-spec` RUNTIME-1A model via `run_mobility_runtime1a_production_fixture`. Explicit opt-in named gate; default `SimSession` lib path unchanged; no GPU pass-graph, default schedule, or gameplay integration. 21-test floor/guardrail/soak battery green. **VERDICT: PASS / driver test/support CPU fixture.** RUNTIME-1B GPU pass-graph, non-test-support default production path, default schedule, and gameplay integration remain closed; no invariant edits. Report: [`phase_mobility_runtime1a_runtime_fixture_results.md`](tests/phase_mobility_runtime1a_runtime_fixture_results.md).
+
 # 2026-06-02 — CONSTITUTION-DEBLOAT-0: prune stale/redundant invariants; encode anti-accretion doctrine (Opus design authority, Tier-2 docs-only)
 
 - Tier-2 constitutional cleanup of `docs/invariants.md` under two principles: **guardrails live at the designer/spec-admission barrier**, and **one principle per class — no per-slice accretion**. Added a governing-doctrine preamble stating both (a change that adds an Nth restatement of an existing principle is rejected as redundant).
