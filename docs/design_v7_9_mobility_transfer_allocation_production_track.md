@@ -1,6 +1,6 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** MOBILITY-SCENARIO-0 ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01); MOBILITY-AUDIT-0 PASS (2026-06-01). ALLOC/REENROLL/IDROUTE/ECON/OWNER remain proposed/parked; no runtime implementation gate is open.
+> **Status:** MOBILITY-SCENARIO-0 ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01); MOBILITY-AUDIT-0 PASS (2026-06-01); MOBILITY-ALLOC-0 OPEN (2026-06-01) for deterministic slab + bulk-accounting allocator substrate only. REENROLL/IDROUTE/ECON/OWNER remain proposed/parked; no production runtime integration gate is open.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -20,7 +20,7 @@ The project is at a clean post-v7.8 closeout state.
 | ClauseThing / L3                        | Parked.                                                                                                       |
 | FrontierV2-5 / ACT / EVENT / OBS / PIPE | Rejected / no ladder reopen.                                                                                  |
 
-No implementation gate is open.
+MOBILITY-ALLOC-0 is the only open implementation gate, limited to deterministic slab + bulk-accounting allocator substrate.
 
 ---
 
@@ -114,7 +114,7 @@ cargo check --workspace
 | -------- | ---------------------------------------------- | ------------------------------------------------- | -------- | ------------------------------------------------- |
 | SCENARIO | Product scenario / admission packet            | Product/design authority                          | **ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01)** | — (accepted) |
 | AUDIT    | Owner/OrderBand depth budget                   | Scenario accepted                                 | **PASS (MOBILITY-AUDIT-0, 2026-06-01)** | Complete; first slice fits current ceiling |
-| ALLOC    | Deterministic slab + bulk-accounting allocator | Scenario accepted; A-0 baseline                   | Proposed | ALLOC substrate floor + performance bars green    |
+| ALLOC    | Deterministic slab + bulk-accounting allocator | Scenario accepted; A-0 baseline                   | **OPEN (MOBILITY-ALLOC-0, substrate only)** | ALLOC substrate floor + performance bars green    |
 | REENROLL | Reparenting / bilateral arena re-enrollment    | ALLOC green                                       | Proposed | REENROLL substrate floor + performance bars green |
 | IDROUTE  | D=2 identity-routing overlay                   | ALLOC + REENROLL green                            | Proposed | IDROUTE substrate floor + performance bars green  |
 | ECON     | Session clearinghouse + subsidiarity economy   | ALLOC + REENROLL green; owner-band audit complete | Proposed | ECON substrate floor + performance bars green     |
@@ -165,6 +165,8 @@ cargo check --workspace
 ---
 
 ## 6. ALLOC — deterministic slab + bulk-accounting allocator
+
+**Status:** **OPEN (MOBILITY-ALLOC-0-OPEN-0, 2026-06-01).** Authorized for deterministic slab + bulk-accounting allocator substrate only. No REENROLL, IDROUTE, ECON, OWNER, production `SimSession` wiring, default-on behavior, semantic/raw WGSL, GPU semaphore, or runtime gameplay integration is authorized.
 
 **Entry gate:** MOBILITY-SCENARIO-0 accepted.
 
@@ -466,7 +468,7 @@ No implementation opened until design-authority acceptance.
 
 ## 14. Final track posture
 
-This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted and MOBILITY-AUDIT-0 passes, but implementation should not be handed to Cursor until product/design authority explicitly opens a downstream ladder. The next candidate by sequence is ALLOC.
+This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, and MOBILITY-ALLOC-0 is open for the deterministic slab + bulk-accounting allocator substrate. Downstream ladders remain parked until product/design authority explicitly opens them.
 
 Expected initial row:
 
@@ -477,3 +479,4 @@ Expected initial row:
 | MOBILITY-SCENARIO-0 | Add typed scenario/admission metadata and rejection coverage for the first v7.9 mobility/transfer scenario packet; no runtime implementation or implementation gate opened | **Accepted by MOBILITY-SCENARIO-0-ACCEPT-0; implementation closed** | [`phase_mobility_scenario0_results.md`](tests/phase_mobility_scenario0_results.md) |
 | MOBILITY-SCENARIO-0-ACCEPT-0 | Design-authority/product acceptance of the v7.9 mobility scenario; accept Option A and open only `MOBILITY-AUDIT-0`; docs-only | **Accepted / docs-only** | [`phase_mobility_scenario0_acceptance_review_results.md`](tests/phase_mobility_scenario0_acceptance_review_results.md) |
 | MOBILITY-AUDIT-0 | Audit accepted v7.9 mobility owner/OrderBand depth budget; no runtime implementation or implementation gate opened | **PASS / audit-only** | [`phase_mobility_owner_band_budget_audit_results.md`](tests/phase_mobility_owner_band_budget_audit_results.md) |
+| MOBILITY-ALLOC-0-OPEN-0 | Design-authority/product opening review for deterministic slab + bulk-accounting allocator substrate | **OPEN / docs-only authorization** | [`phase_mobility_alloc0_opening_review_results.md`](tests/phase_mobility_alloc0_opening_review_results.md) |
