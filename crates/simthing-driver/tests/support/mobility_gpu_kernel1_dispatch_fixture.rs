@@ -15,8 +15,8 @@ use mobility_runtime1b_fixture::{
 pub use mobility_gpu_kernel0_fixture::{
     cpu_column_transform_oracle, run_mobility_gpu_kernel0_fixture, MobilityGpuKernel0FixtureInput,
     MobilityGpuKernel0ColumnProbe, MobilityGpuKernel0FixtureReport, MobilityGpuKernel0Gate,
-    MobilityGpuKernel0ParityClassification, MOBILITY_GPU_KERNEL0_FIXTURE_ID,
-    MOBILITY_GPU_KERNEL0_KERNEL_ID,
+    MobilityGpuKernel0OracleOutput, MobilityGpuKernel0ParityClassification,
+    MOBILITY_GPU_KERNEL0_FIXTURE_ID, MOBILITY_GPU_KERNEL0_KERNEL_ID,
 };
 pub use mobility_runtime1b_fixture::{
     MobilityRuntime1aDriverFixtureInput, MobilityRuntime1bPassgraphFixtureInput,

@@ -17,10 +17,11 @@ use mobility_gpu_kernel3_projection_fixture::{
 pub use mobility_gpu_kernel3_projection_fixture::{
     cpu_column_transform_oracle, encode_parent_key_for_projection,
     project_runtime_composition_input_to_columns, MobilityGpuKernel0ColumnProbe,
-    MobilityGpuKernel0ParityClassification, MobilityRuntime1aDriverFixtureInput,
-    MobilityRuntime1bPassgraphFixtureInput, MobilityRuntime1bPassgraphGate,
-    MOBILITY_GPU_KERNEL0_KERNEL_ID, MOBILITY_GPU_KERNEL1_FIXTURE_ID,
-    MOBILITY_GPU_KERNEL3_GENERIC_COLUMNS, MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
+    MobilityGpuKernel0OracleOutput, MobilityGpuKernel0ParityClassification,
+    MobilityRuntime1aDriverFixtureInput, MobilityRuntime1bPassgraphFixtureInput,
+    MobilityRuntime1bPassgraphGate, MOBILITY_GPU_KERNEL0_KERNEL_ID,
+    MOBILITY_GPU_KERNEL1_FIXTURE_ID, MOBILITY_GPU_KERNEL3_GENERIC_COLUMNS,
+    MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
 };
 
 use simthing_spec::{
