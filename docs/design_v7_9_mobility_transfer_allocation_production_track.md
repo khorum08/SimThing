@@ -1,6 +1,6 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** Parked future production track (MOBILITY-TRACK-0 landed, 2026-06-01). No implementation gate is open until product/design authority names and accepts the scenario.
+> **Status:** MOBILITY-SCENARIO-0 ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01). Only the next narrow gate — `MOBILITY-AUDIT-0 / owner_band_budget_audit` — is open. ALLOC/REENROLL/IDROUTE/ECON/OWNER remain proposed/parked; no runtime implementation gate is open.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -52,7 +52,11 @@ Strong guardrails live at the designer/scenario-facing layer.
 
 ### MOBILITY-SCENARIO-0 — Named scenario and admission packet
 
-**Status:** Proposed first gate. Scenario/admission only. No implementation.
+**Status:** **ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, design authority + product, 2026-06-01).**
+Scenario/admission only — no implementation authorized. The accepted packet is intrinsically
+first-slice-narrowed: routing is `NarrowedAdversarialFirstSlice`, spatial depth 4, `max_factions_per_cell`
+4, 48 cells, 34k soak. Acceptance opens only `MOBILITY-AUDIT-0 / owner_band_budget_audit`. See
+[`phase_mobility_scenario0_acceptance_review_results.md`](tests/phase_mobility_scenario0_acceptance_review_results.md).
 
 **Purpose:** Define the product scenario that justifies opening the mobility/transfer allocation track.
 
@@ -107,8 +111,8 @@ cargo check --workspace
 
 | Ladder   | Capability                                     | Entry gate                                        | Status   | Advance condition                                 |
 | -------- | ---------------------------------------------- | ------------------------------------------------- | -------- | ------------------------------------------------- |
-| SCENARIO | Product scenario / admission packet            | Product/design authority                          | Landed as admission metadata; awaiting design-authority/product acceptance | MOBILITY-SCENARIO-0 accepted                      |
-| AUDIT    | Owner/OrderBand depth budget                   | Scenario accepted                                 | Proposed | `owner_band_budget_audit` passes or narrows scope |
+| SCENARIO | Product scenario / admission packet            | Product/design authority                          | **ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01)** | — (accepted) |
+| AUDIT    | Owner/OrderBand depth budget                   | Scenario accepted                                 | **Open (next gate)** | `owner_band_budget_audit` passes or narrows scope |
 | ALLOC    | Deterministic slab + bulk-accounting allocator | Scenario accepted; A-0 baseline                   | Proposed | ALLOC substrate floor + performance bars green    |
 | REENROLL | Reparenting / bilateral arena re-enrollment    | ALLOC green                                       | Proposed | REENROLL substrate floor + performance bars green |
 | IDROUTE  | D=2 identity-routing overlay                   | ALLOC + REENROLL green                            | Proposed | IDROUTE substrate floor + performance bars green  |
@@ -464,3 +468,4 @@ Expected initial row:
 | MOBILITY-TRACK-0 | Create parked v7.9 mobility/transfer production track from workshop findings | **Done / docs-only** | — |
 | V7.8/V7.9-DOC-R1 | Reconcile stale v7.8 Line C “pending/remaining gate” language in active docs   | **Done / docs-only** | [`phase_v7_8_v7_9_doc_r1_results.md`](tests/phase_v7_8_v7_9_doc_r1_results.md) |
 | MOBILITY-SCENARIO-0 | Add typed scenario/admission metadata and rejection coverage for the first v7.9 mobility/transfer scenario packet; no runtime implementation or implementation gate opened | **Landed / awaiting design-authority + product acceptance** | [`phase_mobility_scenario0_results.md`](tests/phase_mobility_scenario0_results.md) |
+| MOBILITY-SCENARIO-0-ACCEPT-0 | Design-authority/product acceptance of the v7.9 mobility scenario; accept Option A and open only `MOBILITY-AUDIT-0`; docs-only | **Accepted / docs-only** | [`phase_mobility_scenario0_acceptance_review_results.md`](tests/phase_mobility_scenario0_acceptance_review_results.md) |
