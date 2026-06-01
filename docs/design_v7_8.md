@@ -309,6 +309,7 @@ ceiling when all circulations interleave on one spine).
 **Do not implement any of the above without a separate named scenario + design-authority
 implementation gate.** This section is architectural record only.
 
-**Production track (parked):** the sequenced PR ladder for this territory lives in
-[`design_v7_9_mobility_transfer_allocation_production_track.md`](design_v7_9_mobility_transfer_allocation_production_track.md)
-(MOBILITY-TRACK-0 landed; first gate remains `MOBILITY-SCENARIO-0` scenario/admission only).
+**Production track (0.0.7.9 — COMPLETE and PARKED):** the full ladder is in
+[`design_v7_9_mobility_transfer_allocation_production_track.md`](design_v7_9_mobility_transfer_allocation_production_track.md).
+Entire 0.0.7.9 substrate is green, opt-in/default-off, and parked (MOBILITY-GPU-SUBSTRATE-DIRECTION-0
+→ Option A, 2026-06-02). No open gate. 0.0.8.0 is the next phase — requires a named product scenario.
