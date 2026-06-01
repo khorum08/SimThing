@@ -1,6 +1,18 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); MOBILITY-IDROUTE-0 PASS + R1 hardened; MOBILITY-ECON-0 PASS (substrate); MOBILITY-OWNER-0 PASS + R1 hardened (substrate). **The v7.9 mobility/transfer substrate ladder is complete at substrate level.** **MOBILITY-RUNTIME-0 PASS (test-only, default-off substrate-composition harness).** **MOBILITY-RUNTIME-1A PASS (CPU-only, default-off `simthing-spec` production-fixture model).** **MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE PASS (`simthing-driver` test/support CPU-only default-off fixture delegating to spec).** **MOBILITY-RUNTIME-1B PASS (non-scheduled GPU pass-graph node registration in `simthing-driver` test/support, opt-in/default-off, delegating to RUNTIME-1A CPU fixture; no dispatch, no WGSL).** **GPU-EXEC-0 PASS (semantic-free generic GPU execution readiness in driver test/support; opt-in/default-off; CPU/GPU parity classification; no mobility dispatch).** **RUNTIME-1B-DISPATCH-0 PASS (semantic-free GPU-EXEC identity-probe dispatch through registered node in driver test/support; opt-in/default-off; no mobility shader).** **MOBILITY-GPU-KERNEL-0 PASS (semantic-free mobility-shaped column-transform GPU kernel in driver test/support; opt-in/default-off; built-in generic columns only).** **MOBILITY-GPU-KERNEL-1 PASS (registered-node dispatch of KERNEL-0 column-transform in driver test/support; opt-in/default-off; registration non-executing until invoked).** **MOBILITY-GPU-KERNEL-2 PASS (34k deterministic registered-node column dispatch soak in driver test/support; opt-in/default-off; no new shader text).** **MOBILITY-GPU-KERNEL-3 PASS (composition-output-to-generic-GPU-column projection + registered-node dispatch in driver test/support; opt-in/default-off; reuses KERNEL-0 WGSL).** **MOBILITY-GPU-KERNEL-4 PASS (34k composition-derived projection + registered-node GPU column dispatch in driver test/support; opt-in/default-off; no new shader text).** **MOBILITY-GPU-KERNEL-5 PASS (second semantic-free 34k composition-derived GPU kernel through registered-node dispatch in driver test/support; opt-in/default-off; built-in generic columns only).** **MOBILITY-GPU-KERNEL-6 PASS (ordered KERNEL-0 -> KERNEL-5 semantic-free multi-kernel chain over the 34k composition-derived projection in driver test/support; opt-in/default-off; no new shader text).** **MOBILITY-GPU-KERNEL-7 PASS (deterministic multi-dispatch replay soak over the KERNEL-6 chain in driver test/support; opt-in/default-off; no new shader text).** **MOBILITY-GPU-KERNEL-8 PASS (deterministic varied-input projection-batch replay soak over the KERNEL-6 chain in driver test/support; opt-in/default-off; no new shader text).** **MOBILITY-GPU-KERNEL-9 PASS (deterministic multi-frame projection-variant stream soak over the KERNEL-6 chain in driver test/support; opt-in/default-off; no new shader text).** **MOBILITY-GPU-KERNEL-10 PASS (deterministic throughput/accounting summary over the KERNEL-9 frame stream in driver test/support; opt-in/default-off; no new shader text; no wall-clock timing).** **MOBILITY-GPU-KERNEL-11 PASS (deterministic budget-envelope assertions over KERNEL-10 stream accounting in driver test/support; opt-in/default-off; no new shader text; no wall-clock timing).** **RUNTIME-1B-DISPATCH is satisfied/green for the semantic-free registered-node dispatch path; the closed-gate blocker -- no generic GPU exec path -- was resolved by GPU-EXEC-0 + the semantic-free KERNEL-0 path.** A non-test-support production `SimSession` default-path surface, default schedule, gameplay, semantic/default mobility shader, and the Hybrid-Strata/faction-index ECON scaling layer remain separate later gates.
+> **Status: COMPLETE and PARKED (MOBILITY-GPU-SUBSTRATE-DIRECTION-0 → Option A, 2026-06-02).** The
+> full v7.9 mobility/transfer substrate is green at substrate/test level and parked, opt-in /
+> default-off: SCENARIO-0 accepted; AUDIT-0 PASS; ALLOC-0, REENROLL-0, IDROUTE-0(+R1), ECON-0,
+> OWNER-0(+R1) substrates PASS; RUNTIME-0 composition harness, RUNTIME-1A spec fixture model,
+> RUNTIME-1A-RUNTIME-FIXTURE driver test/support fixture, and RUNTIME-1B non-scheduled GPU
+> pass-graph node registration PASS; the **semantic-free GPU kernel substrate is proven and CLOSED**
+> (GPU-EXEC-0 + RUNTIME-1B-DISPATCH-0 + KERNEL-0..6 — kernel + CPU/GPU bit-exact parity + dispatch +
+> 34k scale + composition→GPU-column projection + multi-kernel chain + replay determinism; KERNEL-7..N
+> were recombination soaks, halted per §2.2/§6). **No open implementation or opening-review gate.**
+> The only remaining work — the first **non-test-support default `SimSession` path / default
+> schedule** — opens **only when a named product scenario pulls it** (design-authority + product).
+> Gameplay surface, semantic/default mobility shader, and Hybrid-Strata/faction-index ECON scaling
+> remain separate, currently-closed later gates.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -87,13 +99,23 @@ scale + projection + multi-kernel chain + replay determinism are green and need 
 
 Stop adding passive proof wrappers unless they unlock execution.
 
-**The next move is a design decision, not another fixture** — exactly one of:
-1. **Park** the GPU kernel substrate as complete until a named scenario needs it (close the path); or
-2. **Open the Tier-2 production-path gate** — a one-paragraph design-authority opening review for the
-   first **non-test-support default `SimSession` path / default schedule**, which is the genuine next
-   threshold. (Gameplay surface and semantic mobility shader remain separately closed.)
+**DECISION (MOBILITY-GPU-SUBSTRATE-DIRECTION-0, design authority, 2026-06-02): Option A — PARK.**
+The entire v7.9 mobility/transfer substrate — ALLOC, REENROLL, IDROUTE(+R1), ECON, OWNER(+R1),
+RUNTIME-0/1A/1A-fixture/1B, and the semantic-free GPU kernel substrate (KERNEL-0..6 proven; 7..N were
+recombination) — is **COMPLETE and PARKED**, opt-in / default-off, reversible, ready to wire the
+moment a scenario needs it. **Nothing is lost by parking.**
 
-Do not fill the gap between here and that decision with more default-off soak variants.
+Rationale: there is **no named product scenario** that requires the mobility composition to run in the
+default `SimSession` path / default schedule. Opening that Tier-2 production-wiring gate now — the most
+heavily-gated step (default-on production behavior) — would be opening it **without a consumer**, the
+speculative-gate antipattern this track's §2.1/§6 rules exist to prevent. Production-path wiring opens
+**only when a named product scenario pulls it**, with design-authority + product sign-off.
+
+**Status: no open implementation or opening-review gate on this track.** The next action is a
+*product* decision (name a scenario that needs default-path mobility), not an engineering handoff. Do
+not open RUNTIME-1B-DISPATCH successors, KERNEL-12+, default-path wiring, or any further default-off
+variant. When a scenario lands, the gate to open is the **first non-test-support default `SimSession`
+path / default schedule** (gameplay surface and semantic mobility shader remain separately closed).
 
 ---
 
