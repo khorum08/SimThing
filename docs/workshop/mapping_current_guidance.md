@@ -43,6 +43,11 @@ Constitutional surfacing:
 > Closed track (0.0.7.9): [`../design_v7_9_mobility_transfer_allocation_production_track.md`](../design_v7_9_mobility_transfer_allocation_production_track.md) (Charter:
 > [`sead_self_ai_track.md`](sead_self_ai_track.md) §11; track: [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md); closure: [`../design_v7_7.md`](../design_v7_7.md).)
 
+> `PRODUCTION-PATH-0080-0` opening spec authored / ready for implementation authorization; no
+> implementation landed. Spec:
+> [`../production_paths/production_path_0080_0_opening_spec.md`](../production_paths/production_path_0080_0_opening_spec.md);
+> report: [`../tests/phase_production_path_0080_0_opening_spec_results.md`](../tests/phase_production_path_0080_0_opening_spec_results.md).
+
 Active read order (authoritative path for agents):
 
 1. [`../design_0_0_8_0.md`](../design_0_0_8_0.md) — **ACTIVE constitution (consumer-pulled phase): operating doctrine, parked inventory, next track**

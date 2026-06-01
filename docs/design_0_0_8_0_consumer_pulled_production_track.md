@@ -2,7 +2,9 @@
 
 > **Status:** OPEN. `SCENARIO-0080-0` (Local Patrol Economy) **ACCEPTED** (2026-06-02);
 > `PRODUCTION-PATH-0080-0` **OPEN** as a docs/design gate (scoped to Local Patrol Economy on the
-> 0.0.7.9 mobility/transfer substrate). **No implementation landed.**
+> 0.0.7.9 mobility/transfer substrate); opening spec authored:
+> [`production_paths/production_path_0080_0_opening_spec.md`](production_paths/production_path_0080_0_opening_spec.md).
+> **No implementation landed.**
 >
 > **Active constitution:** [`design_0_0_8_0.md`](design_0_0_8_0.md).
 >
@@ -155,6 +157,11 @@ Reject the scenario if it requires any of:
 | `SEMANTIC-WGSL-0080-0` | Semantic shader surface | **CLOSED** |
 | `CLAUSETHING-L3-0080-0` | Front-end / parser / product authoring surface | **PARKED** pending product authorization |
 
+Opening spec of record: [`production_path_0080_0_opening_spec.md`](production_paths/production_path_0080_0_opening_spec.md).
+`PRODUCTION-PATH-0080-0` remains an opening-spec / no-implementation gate: gameplay, semantic WGSL,
+ClauseThing/L3, Hybrid-Strata/faction-index scaling, atlas runtime, E-11B-5, B-1, FrontierV2-5, and
+ACT/EVENT/OBS/PIPE remain closed/parked.
+
 ---
 
 ## 10. Evidence / test-report policy
@@ -163,6 +170,9 @@ Reject the scenario if it requires any of:
 - **Future SCENARIO-0080-0 admission:** one compact admission report only:
   [`docs/tests/phase_scenario_0080_0_admission_results.md`](tests/phase_scenario_0080_0_admission_results.md)
   — **authored** for Local Patrol Economy proposal; verdict PROPOSED / READY-FOR-DESIGN-AUTHORITY.
+- **PRODUCTION-PATH-0080-0 opening spec:** one compact visibility report:
+  [`docs/tests/phase_production_path_0080_0_opening_spec_results.md`](tests/phase_production_path_0080_0_opening_spec_results.md)
+  — **authored**; no implementation.
 - Do not create reports for passive proof wrappers.
 - Do not create per-slice ceremony.
 
