@@ -1,6 +1,6 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** MOBILITY-SCENARIO-0 ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01); MOBILITY-AUDIT-0 PASS (2026-06-01); MOBILITY-ALLOC-0 OPEN (2026-06-01) for deterministic slab + bulk-accounting allocator substrate only. REENROLL/IDROUTE/ECON/OWNER remain proposed/parked; no production runtime integration gate is open.
+> **Status:** MOBILITY-SCENARIO-0 ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01); MOBILITY-AUDIT-0 PASS (2026-06-01); MOBILITY-ALLOC-0 PASS (2026-06-01) for deterministic slab + bulk-accounting allocator substrate only. REENROLL/IDROUTE/ECON/OWNER remain proposed/parked; no production runtime integration gate is open.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -20,7 +20,7 @@ The project is at a clean post-v7.8 closeout state.
 | ClauseThing / L3                        | Parked.                                                                                                       |
 | FrontierV2-5 / ACT / EVENT / OBS / PIPE | Rejected / no ladder reopen.                                                                                  |
 
-MOBILITY-ALLOC-0 is the only open implementation gate, limited to deterministic slab + bulk-accounting allocator substrate.
+MOBILITY-ALLOC-0 is implemented and green at the deterministic slab + bulk-accounting allocator substrate layer. No downstream implementation gate is open.
 
 ---
 
@@ -114,7 +114,7 @@ cargo check --workspace
 | -------- | ---------------------------------------------- | ------------------------------------------------- | -------- | ------------------------------------------------- |
 | SCENARIO | Product scenario / admission packet            | Product/design authority                          | **ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01)** | — (accepted) |
 | AUDIT    | Owner/OrderBand depth budget                   | Scenario accepted                                 | **PASS (MOBILITY-AUDIT-0, 2026-06-01)** | Complete; first slice fits current ceiling |
-| ALLOC    | Deterministic slab + bulk-accounting allocator | Scenario accepted; A-0 baseline                   | **OPEN (MOBILITY-ALLOC-0, substrate only)** | ALLOC substrate floor + performance bars green    |
+| ALLOC    | Deterministic slab + bulk-accounting allocator | Scenario accepted; A-0 baseline                   | **PASS (MOBILITY-ALLOC-0, substrate only)** | Complete; substrate floor + performance bars green |
 | REENROLL | Reparenting / bilateral arena re-enrollment    | ALLOC green                                       | Proposed | REENROLL substrate floor + performance bars green |
 | IDROUTE  | D=2 identity-routing overlay                   | ALLOC + REENROLL green                            | Proposed | IDROUTE substrate floor + performance bars green  |
 | ECON     | Session clearinghouse + subsidiarity economy   | ALLOC + REENROLL green; owner-band audit complete | Proposed | ECON substrate floor + performance bars green     |
@@ -147,8 +147,9 @@ Audit these circulation families:
 **Result:** Accepted scenario constants require 13 OrderBands under the audit model:
 modifier-down (1), hard Band Alpha (1), economy-up (3), economy-down (3), research-up (3),
 thresholds (1), and soft Band Beta (1). Current `max_orderband_depth` is 16, leaving slack 3.
-Verdict: **PASS**. No narrowing or OrderBand-depth expansion scenario is required. ALLOC is the next
-candidate ladder by sequence, but this audit does not open ALLOC or any runtime implementation gate.
+Verdict: **PASS**. No narrowing or OrderBand-depth expansion scenario is required. This audit did not
+open ALLOC or any runtime implementation gate; MOBILITY-ALLOC-0-OPEN-0 later opened only the
+deterministic slab + bulk-accounting substrate gate, and MOBILITY-ALLOC-0 is now green at that layer.
 
 **Report:**
 
@@ -166,7 +167,7 @@ cargo check --workspace
 
 ## 6. ALLOC — deterministic slab + bulk-accounting allocator
 
-**Status:** **OPEN (MOBILITY-ALLOC-0-OPEN-0, 2026-06-01).** Authorized for deterministic slab + bulk-accounting allocator substrate only. No REENROLL, IDROUTE, ECON, OWNER, production `SimSession` wiring, default-on behavior, semantic/raw WGSL, GPU semaphore, or runtime gameplay integration is authorized.
+**Status:** **PASS (MOBILITY-ALLOC-0, 2026-06-01).** Deterministic slab + bulk-accounting allocator substrate implemented and tested. No REENROLL, IDROUTE, ECON, OWNER, production `SimSession` wiring, default-on behavior, semantic/raw WGSL, GPU semaphore, or runtime gameplay integration is authorized.
 
 **Entry gate:** MOBILITY-SCENARIO-0 accepted.
 
@@ -439,15 +440,15 @@ Every implementation PR must:
 
 ---
 
-## 13. Suggested first actionable PR
+## 13. Historical first actionable PR
 
-The first PR should not be ALLOC implementation. It should be:
+The first PR was not ALLOC implementation. It was:
 
 ```text
 MOBILITY-SCENARIO-0 — Scenario/admission packet for mobility and transfer allocation
 ```
 
-**Why first:** the workshop resolved substrate architecture, but scenario/product parameters still determine bounds: `max_factions_per_cell`, block size, fleet density, 34k soak shape, entity identity boundary, quantity classes, and economy topology.
+**Why first:** the workshop resolved substrate architecture, but scenario/product parameters still determined bounds: `max_factions_per_cell`, block size, fleet density, 34k soak shape, entity identity boundary, quantity classes, and economy topology.
 
 **Deliverable:** scenario/admission doc + maybe `simthing-spec` metadata/rejection vocabulary if needed.
 
@@ -460,15 +461,14 @@ docs/tests/phase_mobility_scenario0_results.md
 **Status after PR:**
 
 ```text
-Scenario accepted or scenario rejected/narrowed.
-No implementation opened until design-authority acceptance.
+Scenario accepted by MOBILITY-SCENARIO-0-ACCEPT-0. MOBILITY-AUDIT-0 passed, MOBILITY-ALLOC-0-OPEN-0 opened only the deterministic slab + bulk-accounting substrate, and MOBILITY-ALLOC-0 is now green.
 ```
 
 ---
 
 ## 14. Final track posture
 
-This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, and MOBILITY-ALLOC-0 is open for the deterministic slab + bulk-accounting allocator substrate. Downstream ladders remain parked until product/design authority explicitly opens them.
+This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, and MOBILITY-ALLOC-0 is green for the deterministic slab + bulk-accounting allocator substrate. Downstream ladders remain parked until product/design authority explicitly opens them.
 
 Expected initial row:
 
@@ -480,3 +480,4 @@ Expected initial row:
 | MOBILITY-SCENARIO-0-ACCEPT-0 | Design-authority/product acceptance of the v7.9 mobility scenario; accept Option A and open only `MOBILITY-AUDIT-0`; docs-only | **Accepted / docs-only** | [`phase_mobility_scenario0_acceptance_review_results.md`](tests/phase_mobility_scenario0_acceptance_review_results.md) |
 | MOBILITY-AUDIT-0 | Audit accepted v7.9 mobility owner/OrderBand depth budget; no runtime implementation or implementation gate opened | **PASS / audit-only** | [`phase_mobility_owner_band_budget_audit_results.md`](tests/phase_mobility_owner_band_budget_audit_results.md) |
 | MOBILITY-ALLOC-0-OPEN-0 | Design-authority/product opening review for deterministic slab + bulk-accounting allocator substrate | **OPEN / docs-only authorization** | [`phase_mobility_alloc0_opening_review_results.md`](tests/phase_mobility_alloc0_opening_review_results.md) |
+| MOBILITY-ALLOC-0 | Deterministic per-parent/key slab allocation + bulk accounting substrate; no downstream runtime integration | **PASS / substrate-only** | [`phase_mobility_alloc0_results.md`](tests/phase_mobility_alloc0_results.md) |
