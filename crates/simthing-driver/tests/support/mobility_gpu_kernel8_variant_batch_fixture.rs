@@ -8,18 +8,16 @@
 #[path = "mobility_gpu_kernel6_chain_fixture.rs"]
 mod mobility_gpu_kernel6_chain_fixture;
 
-use mobility_gpu_kernel6_chain_fixture::{
-    cpu_chain_checksum_for_columns, run_mobility_gpu_kernel6_fixture,
-    MobilityGpuKernel6FixtureInput, MobilityGpuKernel6ForbiddenPathRequests, MobilityGpuKernel6Gate,
-    MOBILITY_GPU_KERNEL6_CHAIN_ID, MOBILITY_GPU_KERNEL6_FIXTURE_ID,
-};
-
 pub use mobility_gpu_kernel6_chain_fixture::{
-    cpu_chain_oracle, mobility_gpu_kernel6_chain_shader_text_has_domain_terms,
+    cpu_chain_checksum_for_columns, cpu_chain_oracle,
+    mobility_gpu_kernel6_chain_shader_text_has_domain_terms,
     projection_checksum_for_columns, projected_34k_columns_for_kernel6,
-    MobilityGpuKernel0ColumnProbe, MobilityGpuKernel0ParityClassification,
+    run_mobility_gpu_kernel6_fixture, MobilityGpuKernel0ColumnProbe,
+    MobilityGpuKernel0ParityClassification, MobilityGpuKernel6FixtureInput,
+    MobilityGpuKernel6ForbiddenPathRequests, MobilityGpuKernel6Gate,
     MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_END, MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_START,
     MOBILITY_GPU_KERNEL4_ROW_COUNT, MOBILITY_GPU_KERNEL4_SPARSE_STRIDE,
+    MOBILITY_GPU_KERNEL6_CHAIN_ID, MOBILITY_GPU_KERNEL6_FIXTURE_ID,
     MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
 };
 
