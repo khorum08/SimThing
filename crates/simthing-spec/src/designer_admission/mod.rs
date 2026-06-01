@@ -11,6 +11,7 @@ mod diagnostic;
 mod manifest;
 mod mobility_alloc0;
 mod mobility_audit0;
+mod mobility_idroute0;
 mod mobility_reenroll0;
 mod mobility_scenario0;
 mod preflight;
@@ -48,6 +49,12 @@ pub use mobility_reenroll0::{
     plan_mobility_reenroll0, MobilityReenroll0CommittedMove, MobilityReenroll0ForbiddenPathRequests,
     MobilityReenroll0Move, MobilityReenroll0PlanInput, MobilityReenroll0PlanReport,
     MobilityReenroll0RegistryState, MOBILITY_REENROLL0_ID,
+};
+pub use mobility_idroute0::{
+    mobility_idroute0_layout_checksum_cpu, mobility_idroute0_layout_checksum_gpu_proxy,
+    plan_mobility_idroute0, DirectedDisburse, IdentityLane, MobilityIdroute0ForbiddenPathRequests,
+    MobilityIdroute0LocalRecord, MobilityIdroute0PlanInput, MobilityIdroute0PlanReport,
+    PerIdentitySum, MOBILITY_IDROUTE0_ID,
 };
 pub use mobility_audit0::{
     audit_mobility_owner_band_budget, audit_mobility_owner_band_budget_with_ceiling,

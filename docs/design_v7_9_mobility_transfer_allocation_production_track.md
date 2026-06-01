@@ -1,6 +1,6 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** MOBILITY-SCENARIO-0 ACCEPTED (MOBILITY-SCENARIO-0-ACCEPT-0, 2026-06-01); MOBILITY-AUDIT-0 PASS (2026-06-01); MOBILITY-ALLOC-0 PASS (2026-06-01) for deterministic slab + bulk-accounting allocator substrate only; **MOBILITY-REENROLL-0 PASS (2026-06-01) for bilateral arena re-enrollment substrate only; MOBILITY-IDROUTE-0 OPEN (2026-06-02) for local D=2 identity-routing overlay substrate only.** ECON/OWNER remain proposed/parked; no production runtime integration gate is open.
+> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); **MOBILITY-IDROUTE-0 PASS (2026-06-02)** — local D=2 identity-routing substrate green. ECON/OWNER remain proposed/parked; no production runtime integration gate is open.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -116,7 +116,7 @@ cargo check --workspace
 | AUDIT    | Owner/OrderBand depth budget                   | Scenario accepted                                 | **PASS (MOBILITY-AUDIT-0, 2026-06-01)** | Complete; first slice fits current ceiling |
 | ALLOC    | Deterministic slab + bulk-accounting allocator | Scenario accepted; A-0 baseline                   | **PASS (MOBILITY-ALLOC-0, substrate only)** | Complete; substrate floor + performance bars green |
 | REENROLL | Reparenting / bilateral arena re-enrollment    | ALLOC green                                       | **PASS (MOBILITY-REENROLL-0, substrate only)** | Complete; substrate floor + performance bars green |
-| IDROUTE  | D=2 identity-routing overlay                   | ALLOC + REENROLL green                            | **OPEN (MOBILITY-IDROUTE-0-OPEN-0, 2026-06-02)** — substrate only; implementation in later PR | IDROUTE substrate floor + performance bars green  |
+| IDROUTE  | D=2 identity-routing overlay                   | ALLOC + REENROLL green                            | **PASS (MOBILITY-IDROUTE-0, 2026-06-02)** — local D=2 substrate floor + battery green | ECON/OWNER remain parked  |
 | ECON     | Session clearinghouse + subsidiarity economy   | ALLOC + REENROLL green; owner-band audit complete | Proposed | ECON substrate floor + performance bars green     |
 | OWNER    | Owner-relations + latched modifier overlays    | ECON green                                        | Proposed | OWNER substrate floor + performance bars green    |
 
