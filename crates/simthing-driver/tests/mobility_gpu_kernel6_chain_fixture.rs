@@ -30,6 +30,7 @@ fn mobility_gpu_kernel6_chain_explicit_opt_in_only() {
         gate: MobilityGpuKernel6Gate::default(),
         forbidden: MobilityGpuKernel6ForbiddenPathRequests::default(),
         passgraph: fixture_input().passgraph,
+        columns_override: None,
     });
     assert!(disabled.admitted);
     assert!(disabled.disabled_no_op);
@@ -51,6 +52,7 @@ fn mobility_gpu_kernel6_chain_default_disabled_noop() {
         gate: MobilityGpuKernel6Gate::default(),
         forbidden: MobilityGpuKernel6ForbiddenPathRequests::default(),
         passgraph: fixture_input().passgraph,
+        columns_override: None,
     });
     assert!(report.disabled_no_op);
     assert_eq!(report.row_count, 0);
@@ -72,6 +74,7 @@ fn mobility_gpu_kernel6_chain_registration_non_executing_until_invoked() {
         gate: MobilityGpuKernel6Gate::registration_only(),
         forbidden: MobilityGpuKernel6ForbiddenPathRequests::default(),
         passgraph: fixture_input().passgraph,
+        columns_override: None,
     });
     assert!(reg.admitted);
     assert!(reg.registration_non_executing);
@@ -275,6 +278,7 @@ fn mobility_gpu_kernel6_chain_no_default_runtime_cost_when_disabled() {
         gate: MobilityGpuKernel6Gate::default(),
         forbidden: MobilityGpuKernel6ForbiddenPathRequests::default(),
         passgraph: fixture_input().passgraph,
+        columns_override: None,
     });
     assert!(report.disabled_no_op);
     assert_eq!(report.fixture_id, MOBILITY_GPU_KERNEL6_FIXTURE_ID);

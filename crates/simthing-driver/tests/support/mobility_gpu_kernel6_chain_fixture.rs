@@ -11,17 +11,19 @@ mod mobility_gpu_kernel5_second_kernel_fixture;
 use mobility_gpu_kernel5_second_kernel_fixture::{
     cpu_column_transform_oracle, cpu_second_kernel_oracle,
     permuted_projected_34k_columns_for_kernel5, projected_34k_columns_for_kernel5,
-    run_mobility_gpu_kernel5_fixture, MobilityGpuKernel0ColumnProbe,
-    MobilityGpuKernel0OracleOutput, MobilityGpuKernel5FixtureInput,
-    MobilityGpuKernel5ForbiddenPathRequests, MobilityGpuKernel5Gate, MobilityGpuKernel5OracleOutput,
-    MobilityRuntime1bPassgraphFixtureInput,
+    run_mobility_gpu_kernel5_fixture, MobilityGpuKernel0OracleOutput,
+    MobilityGpuKernel5FixtureInput, MobilityGpuKernel5ForbiddenPathRequests,
+    MobilityGpuKernel5Gate, MobilityGpuKernel5OracleOutput, MobilityRuntime1bPassgraphFixtureInput,
     MOBILITY_GPU_KERNEL0_KERNEL_ID, MOBILITY_GPU_KERNEL1_FIXTURE_ID,
-    MOBILITY_GPU_KERNEL4_FIXTURE_ID, MOBILITY_GPU_KERNEL4_ROW_COUNT,
-    MOBILITY_GPU_KERNEL5_FIXTURE_ID, MOBILITY_GPU_KERNEL5_KERNEL_ID,
+    MOBILITY_GPU_KERNEL4_FIXTURE_ID, MOBILITY_GPU_KERNEL5_FIXTURE_ID,
+    MOBILITY_GPU_KERNEL5_KERNEL_ID,
 };
 
 pub use mobility_gpu_kernel5_second_kernel_fixture::{
-    MobilityGpuKernel0ParityClassification, MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
+    projection_checksum_for_columns, MobilityGpuKernel0ColumnProbe,
+    MobilityGpuKernel0ParityClassification, MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_END,
+    MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_START, MOBILITY_GPU_KERNEL4_ROW_COUNT,
+    MOBILITY_GPU_KERNEL4_SPARSE_STRIDE, MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
 };
 
 use simthing_gpu::fnv64_hash_f32;
@@ -81,6 +83,8 @@ pub struct MobilityGpuKernel6FixtureInput {
     pub gate: MobilityGpuKernel6Gate,
     pub forbidden: MobilityGpuKernel6ForbiddenPathRequests,
     pub passgraph: MobilityRuntime1bPassgraphFixtureInput,
+    /// When set, chain oracle and KERNEL-5 dispatch use these columns instead of the default 34k projection.
+    pub columns_override: Option<MobilityGpuKernel0ColumnProbe>,
 }
 
 impl MobilityGpuKernel6FixtureInput {
@@ -90,6 +94,7 @@ impl MobilityGpuKernel6FixtureInput {
             gate: MobilityGpuKernel6Gate::registration_and_dispatch(),
             forbidden: MobilityGpuKernel6ForbiddenPathRequests::default(),
             passgraph: kernel5.passgraph,
+            columns_override: None,
         }
     }
 }
@@ -177,7 +182,10 @@ pub fn run_mobility_gpu_kernel6_fixture(
         return registration_only_report(input, kernel5_report.uses_registered_node);
     }
 
-    let columns = projected_34k_columns_for_kernel5();
+    let columns = input
+        .columns_override
+        .clone()
+        .unwrap_or_else(projected_34k_columns_for_kernel5);
     let oracle = cpu_chain_oracle(&columns);
     let kernel0_cpu_checksum = checksum_kernel0_output(&oracle.kernel0);
     let kernel5_cpu_checksum = checksum_kernel5_output(&oracle.kernel5);
@@ -298,6 +306,7 @@ fn kernel5_input(input: &MobilityGpuKernel6FixtureInput) -> MobilityGpuKernel5Fi
             closed_ladder_reopen: input.forbidden.closed_ladder_reopen,
         },
         passgraph: input.passgraph.clone(),
+        columns_override: input.columns_override.clone(),
     }
 }
 
@@ -395,6 +404,10 @@ fn checksum_kernel5_output(output: &MobilityGpuKernel5OracleOutput) -> u64 {
         .flat_map(|(d, w)| [f32::from_bits(*d), f32::from_bits(*w)])
         .collect::<Vec<_>>();
     fnv64_hash_f32(&flat, KERNEL5_OUTPUT_CHECKSUM_SEED)
+}
+
+pub fn cpu_chain_checksum_for_columns(columns: &MobilityGpuKernel0ColumnProbe) -> u64 {
+    checksum_chain_output(&cpu_chain_oracle(columns))
 }
 
 fn checksum_chain_output(output: &MobilityGpuKernel6OracleOutput) -> u64 {

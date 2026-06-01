@@ -18,8 +18,9 @@ pub use mobility_gpu_kernel4_34k_projection_fixture::{
     cpu_column_transform_oracle, MobilityGpuKernel0ColumnProbe, MobilityGpuKernel0OracleOutput,
     MobilityGpuKernel0ParityClassification, MobilityRuntime1bPassgraphFixtureInput,
     MOBILITY_GPU_KERNEL0_KERNEL_ID, MOBILITY_GPU_KERNEL1_FIXTURE_ID,
+    MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_END, MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_START,
     MOBILITY_GPU_KERNEL4_FIXTURE_ID, MOBILITY_GPU_KERNEL4_ROW_COUNT,
-    MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
+    MOBILITY_GPU_KERNEL4_SPARSE_STRIDE, MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
 };
 
 use simthing_gpu::{fnv64_hash_f32, GpuContext};
@@ -115,6 +116,8 @@ pub struct MobilityGpuKernel5FixtureInput {
     pub gate: MobilityGpuKernel5Gate,
     pub forbidden: MobilityGpuKernel5ForbiddenPathRequests,
     pub passgraph: MobilityRuntime1bPassgraphFixtureInput,
+    /// When set, dispatch uses these columns instead of the KERNEL-4 projection output.
+    pub columns_override: Option<MobilityGpuKernel0ColumnProbe>,
 }
 
 impl MobilityGpuKernel5FixtureInput {
@@ -123,6 +126,7 @@ impl MobilityGpuKernel5FixtureInput {
             gate: MobilityGpuKernel5Gate::registration_and_dispatch(),
             forbidden: MobilityGpuKernel5ForbiddenPathRequests::default(),
             passgraph: MobilityGpuKernel4FixtureInput::default_34k_projection_soak().passgraph,
+            columns_override: None,
         }
     }
 }
@@ -227,11 +231,15 @@ pub fn run_mobility_gpu_kernel5_fixture(
         return registration_only_report(input, kernel4_report.uses_registered_node);
     }
 
-    let projection = match kernel4_report.projection {
-        Some(projection) => projection,
-        None => return rejected_report(input, vec!["kernel4_projection_missing"]),
+    let columns = if let Some(columns) = input.columns_override.clone() {
+        columns
+    } else {
+        let projection = match kernel4_report.projection {
+            Some(projection) => projection,
+            None => return rejected_report(input, vec!["kernel4_projection_missing"]),
+        };
+        projection.columns
     };
-    let columns = projection.columns;
     let oracle = cpu_second_kernel_oracle(&columns);
     let cpu_oracle_checksum = checksum_second_kernel_output(&oracle);
 
@@ -561,7 +569,7 @@ fn flatten_u32_outputs(out_digest: &[u32], out_weight: &[u32]) -> Vec<f32> {
         .collect()
 }
 
-fn projection_checksum(columns: &MobilityGpuKernel0ColumnProbe) -> u64 {
+pub fn projection_checksum_for_columns(columns: &MobilityGpuKernel0ColumnProbe) -> u64 {
     let mut hash = 0xcbf2_9ce4_8422_2325_u64;
     for values in [
         &columns.entity_id,
@@ -667,7 +675,7 @@ fn admitted_gpu_unavailable(
     report.reused_kernel4_projection = true;
     report.cpu_oracle_complete = cpu_oracle_checksum != 0 && columns.entity_id.len() == MOBILITY_GPU_KERNEL4_ROW_COUNT;
     report.cpu_oracle_checksum = cpu_oracle_checksum;
-    report.projection_checksum = projection_checksum(&columns);
+    report.projection_checksum = projection_checksum_for_columns(&columns);
     report.parity_classification = MobilityGpuKernel0ParityClassification::GpuUnavailable;
     report
 }
@@ -687,7 +695,7 @@ fn admitted_with_gpu(
     report.reused_kernel4_projection = true;
     report.cpu_oracle_complete = cpu_oracle_checksum != 0 && columns.entity_id.len() == MOBILITY_GPU_KERNEL4_ROW_COUNT;
     report.cpu_oracle_checksum = cpu_oracle_checksum;
-    report.projection_checksum = projection_checksum(columns);
+    report.projection_checksum = projection_checksum_for_columns(columns);
 
     match run_builtin_gpu_second_kernel(ctx, columns) {
         Ok(gpu_out) => {
