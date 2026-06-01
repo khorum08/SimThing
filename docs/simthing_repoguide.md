@@ -58,8 +58,11 @@ Multiple mobility substrates have been implemented in the `simthing-spec` design
 
 **Current concrete posture:**
 - `FlatStarResourceFlow` (depth-2) remains the production posture — opt-in only; global default false.
-- **A-0** (static nested Resource Flow D=3/D=4) implementation has landed (PR #358) — pending Opus review. Dynamic E-11B-5 enrollment is still deferred.
-- **B-0** (narrow D-2a hard-currency ordering) is ACCEPTED and closed at smoke level (B-0-ACCEPT-0). No B-1 open.
+- **A-0** (static nested Resource Flow D=3/D=4) is **ACCEPTED** (A-0-ACCEPT-0). Line A static nested Resource Flow is closed at the first slice. Dynamic E-11B-5 enrollment remains parked behind a future named product scenario.
+- **B-0** (narrow D-2a hard-currency ordering) is ACCEPTED and closed at smoke level (B-0-ACCEPT-0). No B-1 is open.
+- **C-2** is ACCEPTED — map batching closed at the designer surface. Production atlas runtime / sparse-residency scheduler is a separate later gate (not open).
+
+All promoted v7.8 M/E/T lines are now closed for their current named scenarios. No implementation gate remains open. See `docs/design_v7_8_production_track.md` for the authoritative status.
 
 See the v7.8 Production Track for the single authoritative status of all lines.
 

@@ -15,6 +15,7 @@ mod mobility_econ0;
 mod mobility_idroute0;
 mod mobility_owner0;
 mod mobility_reenroll0;
+mod mobility_runtime0;
 mod mobility_scenario0;
 mod preflight;
 mod preview;
@@ -72,6 +73,11 @@ pub use mobility_owner0::{
     MobilityOwner0OwnerChange, MobilityOwner0PlanInput, MobilityOwner0PlanReport,
     MOBILITY_OWNER0_CURRENT_MAX_ORDERBAND_DEPTH, MOBILITY_OWNER0_ID,
     MOBILITY_OWNER0_REQUIRED_ORDERBAND_DEPTH,
+};
+pub use mobility_runtime0::{
+    compose_mobility_runtime0, MobilityRuntime0CompositionInput,
+    MobilityRuntime0CompositionReport, MobilityRuntime0ForbiddenPathRequests,
+    MobilityRuntime0HarnessConfig, MOBILITY_RUNTIME0_ID, MOBILITY_RUNTIME0_ORDER,
 };
 pub use mobility_audit0::{
     audit_mobility_owner_band_budget, audit_mobility_owner_band_budget_with_ceiling,
