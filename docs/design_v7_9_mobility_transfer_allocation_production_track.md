@@ -1,6 +1,6 @@
 # SimThing — Design v7.9 Mobility / Transfer Allocation Production Track
 
-> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); MOBILITY-IDROUTE-0 PASS + R1 hardened; **MOBILITY-ECON-0 OPEN (MOBILITY-ECON-0-OPEN-0, 2026-06-02) — authorized for the session-clearinghouse + subsidiarity economy substrate (clearinghouse-circulation first slice) only, not yet implemented.** OWNER remains proposed/parked; the Hybrid-Strata/faction-index ECON scaling layer is a later slice; no production runtime integration gate is open.
+> **Status:** MOBILITY-SCENARIO-0 ACCEPTED; MOBILITY-AUDIT-0 PASS; MOBILITY-ALLOC-0 + REENROLL-0 PASS (substrate); MOBILITY-IDROUTE-0 PASS + R1 hardened; **MOBILITY-ECON-0 PASS (substrate only): session-clearinghouse + subsidiarity economy clearinghouse-circulation first slice implemented and tested.** OWNER remains proposed/parked; the Hybrid-Strata/faction-index ECON scaling layer is a later slice; no production runtime integration gate is open.
 > **Purpose:** Sequence the next named-scenario territory after v7.8 M/E/T closeout: spatial mobility, reparenting-triggered arena re-enrollment, deterministic slab/bulk allocation, identity-routing overlays, session clearinghouse economy, and owner-relation overlays.
 > **Authority:** This track consumes `docs/design_v7_8.md` §6 and `docs/workshop/mobility_and_transfer_allocation.md`. It does not supersede `docs/design_v7_8.md`, `docs/invariants.md`, or the v7.8 closeout.
 > **Posture:** Parked until scenario acceptance. No implementation by default.
@@ -117,7 +117,7 @@ cargo check --workspace
 | ALLOC    | Deterministic slab + bulk-accounting allocator | Scenario accepted; A-0 baseline                   | **PASS (MOBILITY-ALLOC-0, substrate only)** | Complete; substrate floor + performance bars green |
 | REENROLL | Reparenting / bilateral arena re-enrollment    | ALLOC green                                       | **PASS (MOBILITY-REENROLL-0, substrate only)** | Complete; substrate floor + performance bars green |
 | IDROUTE  | D=2 identity-routing overlay                   | ALLOC + REENROLL green                            | **PASS + R1 hardened (MOBILITY-IDROUTE-0-R1, 2026-06-02)** — local D=2 substrate floor + explicit battery green | ECON/OWNER remain parked  |
-| ECON     | Session clearinghouse + subsidiarity economy   | ALLOC + REENROLL green; owner-band audit complete | **OPEN (MOBILITY-ECON-0-OPEN-0, 2026-06-02) — clearinghouse-circulation substrate authorized, not implemented** | ECON substrate floor + performance bars green     |
+| ECON     | Session clearinghouse + subsidiarity economy   | ALLOC + REENROLL green; owner-band audit complete | **PASS (MOBILITY-ECON-0, substrate only)** | Complete; substrate floor + performance bars green |
 | OWNER    | Owner-relations + latched modifier overlays    | ECON green                                        | Proposed | OWNER substrate floor + performance bars green    |
 
 ---
@@ -363,14 +363,11 @@ docs/tests/phase_mobility_idroute0_r1_results.md
 
 ## 9. ECON — session clearinghouse + subsidiarity economy
 
-**Status:** **OPEN (MOBILITY-ECON-0-OPEN-0, design authority + product, 2026-06-02) — clearinghouse-
-circulation substrate authorized, not implemented.** ECON-0's authorized first slice is the
+**Status:** **PASS (MOBILITY-ECON-0, substrate only).** ECON-0 implements the
 clearinghouse-circulation + subsidiarity + Band-Alpha/Beta-separation core (battery below). The
 **Hybrid-Strata channel partitioning** and **generational faction-index slab** are the broader ECON
 scaling architecture and are **NOT part of ECON-0** — they are a later ECON slice. OWNER remains
-proposed/parked; no production runtime / `SimSession` / default-on. See
-[`phase_mobility_econ0_opening_review_results.md`](tests/phase_mobility_econ0_opening_review_results.md).
-No ECON test is green until implemented and run in a later PR.
+proposed/parked; no production runtime / `SimSession` / default-on. See [`phase_mobility_econ0_results.md`](tests/phase_mobility_econ0_results.md).
 
 **Entry gate:** ALLOC + REENROLL green; `owner_band_budget_audit` complete (all PASS; ECON-0 ≈ 9
 OrderBands ≤ ceiling 16).
@@ -413,6 +410,7 @@ balance → down-disburse) at substrate level, with hard/soft band separation.
 | `econ_rejects_cpu_planner_urgency_commitment` | No CPU planner / urgency / commitment emission.         |
 | `econ_rejects_owner_as_spatial_parent`        | No owner-entity becomes a spatial parent.               |
 | `econ_rejects_capture_as_reparenting`         | Capture stays an owner-column flip, never reparenting.  |
+| `econ_rejects_hybrid_strata_or_faction_index_scaling_layer` | Hybrid-Strata/faction-index scaling remains a later ECON slice. |
 
 ### ECON-0 performance bars
 
@@ -542,7 +540,7 @@ Scenario accepted by MOBILITY-SCENARIO-0-ACCEPT-0. MOBILITY-AUDIT-0 passed, MOBI
 
 ## 14. Final track posture
 
-This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, MOBILITY-ALLOC-0 is green for the deterministic slab + bulk-accounting allocator substrate, MOBILITY-REENROLL-0 is PASS for bilateral arena re-enrollment substrate only, MOBILITY-IDROUTE-0 is PASS + R1 hardened for local D=2 identity-routing substrate only, and **MOBILITY-ECON-0 is OPEN (authorized for the session-clearinghouse + subsidiarity economy clearinghouse-circulation substrate only, not yet implemented; Hybrid-Strata/faction-index scaling is a later ECON slice).** OWNER remains parked until product/design authority explicitly opens it.
+This production track is landed as a parked future track (MOBILITY-TRACK-0). MOBILITY-SCENARIO-0 is accepted, MOBILITY-AUDIT-0 passes, MOBILITY-ALLOC-0 is green for the deterministic slab + bulk-accounting allocator substrate, MOBILITY-REENROLL-0 is PASS for bilateral arena re-enrollment substrate only, MOBILITY-IDROUTE-0 is PASS + R1 hardened for local D=2 identity-routing substrate only, and **MOBILITY-ECON-0 is PASS for session-clearinghouse/subsidiarity economy substrate only; Hybrid-Strata/faction-index scaling is a later ECON slice.** OWNER remains parked until product/design authority explicitly opens it.
 
 Expected initial row:
 
@@ -561,3 +559,4 @@ Expected initial row:
 | MOBILITY-IDROUTE-0 | Local D=2 identity-routing substrate; no ECON/OWNER or downstream runtime integration | **PASS / substrate-only** | [`phase_mobility_idroute0_results.md`](tests/phase_mobility_idroute0_results.md) |
 | MOBILITY-IDROUTE-0-R1 | Remedial hardening for local-k admission, global-vector rejection, directed disburse atomic-or-immutable coverage, and exact battery reporting | **PASS / substrate-only hardening** | [`phase_mobility_idroute0_r1_results.md`](tests/phase_mobility_idroute0_r1_results.md) |
 | MOBILITY-ECON-0-OPEN-0 | Design-authority/product opening review for session-clearinghouse + subsidiarity economy substrate (clearinghouse-circulation first slice) | **OPEN / docs-only authorization** | [`phase_mobility_econ0_opening_review_results.md`](tests/phase_mobility_econ0_opening_review_results.md) |
+| MOBILITY-ECON-0 | Session-clearinghouse + subsidiarity economy substrate; no OWNER, Hybrid-Strata/faction-index scaling, or downstream runtime integration | **PASS / substrate-only** | [`phase_mobility_econ0_results.md`](tests/phase_mobility_econ0_results.md) |

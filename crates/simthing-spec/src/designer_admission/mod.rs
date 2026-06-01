@@ -11,6 +11,7 @@ mod diagnostic;
 mod manifest;
 mod mobility_alloc0;
 mod mobility_audit0;
+mod mobility_econ0;
 mod mobility_idroute0;
 mod mobility_reenroll0;
 mod mobility_scenario0;
@@ -49,6 +50,12 @@ pub use mobility_reenroll0::{
     plan_mobility_reenroll0, MobilityReenroll0CommittedMove, MobilityReenroll0ForbiddenPathRequests,
     MobilityReenroll0Move, MobilityReenroll0PlanInput, MobilityReenroll0PlanReport,
     MobilityReenroll0RegistryState, MOBILITY_REENROLL0_ID,
+};
+pub use mobility_econ0::{
+    mobility_econ0_layout_checksum_cpu, mobility_econ0_layout_checksum_gpu_proxy,
+    plan_mobility_econ0, MobilityEcon0DownDisburse, MobilityEcon0ForbiddenPathRequests,
+    MobilityEcon0LocalCellRecord, MobilityEcon0PlanInput, MobilityEcon0PlanReport,
+    MobilityEcon0SessionAggregate, MobilityEcon0SessionResourceKey, MOBILITY_ECON0_ID,
 };
 pub use mobility_idroute0::{
     mobility_idroute0_layout_checksum_cpu, mobility_idroute0_layout_checksum_gpu_proxy,
