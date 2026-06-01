@@ -107,7 +107,7 @@ cargo check --workspace
 
 | Ladder   | Capability                                     | Entry gate                                        | Status   | Advance condition                                 |
 | -------- | ---------------------------------------------- | ------------------------------------------------- | -------- | ------------------------------------------------- |
-| SCENARIO | Product scenario / admission packet            | Product/design authority                          | Proposed | MOBILITY-SCENARIO-0 accepted                      |
+| SCENARIO | Product scenario / admission packet            | Product/design authority                          | Landed as admission metadata; awaiting design-authority/product acceptance | MOBILITY-SCENARIO-0 accepted                      |
 | AUDIT    | Owner/OrderBand depth budget                   | Scenario accepted                                 | Proposed | `owner_band_budget_audit` passes or narrows scope |
 | ALLOC    | Deterministic slab + bulk-accounting allocator | Scenario accepted; A-0 baseline                   | Proposed | ALLOC substrate floor + performance bars green    |
 | REENROLL | Reparenting / bilateral arena re-enrollment    | ALLOC green                                       | Proposed | REENROLL substrate floor + performance bars green |
@@ -463,3 +463,4 @@ Expected initial row:
 | ---------------- | ---------------------------------------------------------------------------- | -------------------- | ---------------------------------- |
 | MOBILITY-TRACK-0 | Create parked v7.9 mobility/transfer production track from workshop findings | **Done / docs-only** | — |
 | V7.8/V7.9-DOC-R1 | Reconcile stale v7.8 Line C “pending/remaining gate” language in active docs   | **Done / docs-only** | [`phase_v7_8_v7_9_doc_r1_results.md`](tests/phase_v7_8_v7_9_doc_r1_results.md) |
+| MOBILITY-SCENARIO-0 | Add typed scenario/admission metadata and rejection coverage for the first v7.9 mobility/transfer scenario packet; no runtime implementation or implementation gate opened | **Landed / awaiting design-authority + product acceptance** | [`phase_mobility_scenario0_results.md`](tests/phase_mobility_scenario0_results.md) |

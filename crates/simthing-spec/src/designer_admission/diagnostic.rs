@@ -16,6 +16,7 @@ pub enum DesignerFacingGuardrailClass {
     MappingExpansion,
     ResourceFlowExpansion,
     DiscreteOrderingExpansion,
+    MobilityScenario,
     AuthoringFrontEnd,
     ConsumerProofLadder,
 }
@@ -45,6 +46,18 @@ pub enum DesignerAdmissionRejectionKind {
     NestedE11BWithoutNamedScenario,
     E11B5WithoutNamedScenario,
     D2aWithoutNamedScenario,
+    OwnerEntitySpatialParent,
+    CaptureAsReparenting,
+    GpuAllocatorSemaphore,
+    IndirectionBeforeSlab,
+    ArrivalOrderReplayOrdering,
+    HybridStrataSilentRebind,
+    HardSoftMixedPass,
+    FloatStructuralGate,
+    MaxFactionsPerCellExceeded,
+    RoutingEmlNodeBudgetExceeded,
+    HardCurrencyThroughResourceFlow,
+    ClosedLadderReopen,
     ClauseScriptParserParked,
     ClauseThingRuntimeParked,
     FrontierV2FiveRejected,
@@ -84,6 +97,18 @@ pub enum DesignerAdmissionDiagnosticCode {
     NestedE11BRequestedWithoutNamedScenario,
     E11B5RequestedWithoutNamedScenario,
     D2aRequestedWithoutNamedScenario,
+    MobilityOwnerSpatialParentRejected,
+    MobilityCaptureAsReparentingRejected,
+    MobilityGpuAllocatorSemaphoreRejected,
+    MobilityIndirectionBeforeSlabRejected,
+    MobilityArrivalOrderReplayOrderingRejected,
+    MobilityHybridStrataSilentRebindRejected,
+    MobilityHardSoftMixedPassRejected,
+    MobilityFloatStructuralGateRejected,
+    MobilityMaxFactionsPerCellExceeded,
+    MobilityRoutingEmlNodeBudgetExceeded,
+    MobilityHardCurrencyThroughResourceFlowRejected,
+    MobilityClosedLadderReopenRejected,
     ClauseScriptParserRequestParked,
     ClauseThingRuntimeRequestParked,
     FrontierV2FiveRequestRejected,
@@ -142,6 +167,42 @@ impl DesignerAdmissionDiagnosticCode {
                 "L1-0-E11B5-REQUESTED-WITHOUT-NAMED-SCENARIO"
             }
             Self::D2aRequestedWithoutNamedScenario => "L1-0-D2A-REQUESTED-WITHOUT-NAMED-SCENARIO",
+            Self::MobilityOwnerSpatialParentRejected => {
+                "MOBILITY-SCENARIO-0-OWNER-SPATIAL-PARENT-REJECTED"
+            }
+            Self::MobilityCaptureAsReparentingRejected => {
+                "MOBILITY-SCENARIO-0-CAPTURE-AS-REPARENTING-REJECTED"
+            }
+            Self::MobilityGpuAllocatorSemaphoreRejected => {
+                "MOBILITY-SCENARIO-0-GPU-ALLOCATOR-SEMAPHORE-REJECTED"
+            }
+            Self::MobilityIndirectionBeforeSlabRejected => {
+                "MOBILITY-SCENARIO-0-INDIRECTION-BEFORE-SLAB-REJECTED"
+            }
+            Self::MobilityArrivalOrderReplayOrderingRejected => {
+                "MOBILITY-SCENARIO-0-ARRIVAL-ORDER-REPLAY-ORDERING-REJECTED"
+            }
+            Self::MobilityHybridStrataSilentRebindRejected => {
+                "MOBILITY-SCENARIO-0-HYBRID-STRATA-SILENT-REBIND-REJECTED"
+            }
+            Self::MobilityHardSoftMixedPassRejected => {
+                "MOBILITY-SCENARIO-0-HARD-SOFT-MIXED-PASS-REJECTED"
+            }
+            Self::MobilityFloatStructuralGateRejected => {
+                "MOBILITY-SCENARIO-0-FLOAT-STRUCTURAL-GATE-REJECTED"
+            }
+            Self::MobilityMaxFactionsPerCellExceeded => {
+                "MOBILITY-SCENARIO-0-MAX-FACTIONS-PER-CELL-EXCEEDED"
+            }
+            Self::MobilityRoutingEmlNodeBudgetExceeded => {
+                "MOBILITY-SCENARIO-0-ROUTING-EML-NODE-BUDGET-EXCEEDED"
+            }
+            Self::MobilityHardCurrencyThroughResourceFlowRejected => {
+                "MOBILITY-SCENARIO-0-HARD-CURRENCY-THROUGH-RESOURCE-FLOW-REJECTED"
+            }
+            Self::MobilityClosedLadderReopenRejected => {
+                "MOBILITY-SCENARIO-0-CLOSED-LADDER-REOPEN-REJECTED"
+            }
             Self::ClauseScriptParserRequestParked => "L1-0-CLAUSESCRIPT-PARSER-REQUEST-PARKED",
             Self::ClauseThingRuntimeRequestParked => "L1-0-CLAUSETHING-RUNTIME-REQUEST-PARKED",
             Self::FrontierV2FiveRequestRejected => "L1-0-FRONTIERV2-5-REQUEST-REJECTED",
@@ -194,6 +255,20 @@ impl DesignerAdmissionDiagnosticCode {
             }
             Self::D2aRequestedWithoutNamedScenario => {
                 DesignerFacingGuardrailClass::DiscreteOrderingExpansion
+            }
+            Self::MobilityOwnerSpatialParentRejected
+            | Self::MobilityCaptureAsReparentingRejected
+            | Self::MobilityGpuAllocatorSemaphoreRejected
+            | Self::MobilityIndirectionBeforeSlabRejected
+            | Self::MobilityArrivalOrderReplayOrderingRejected
+            | Self::MobilityHybridStrataSilentRebindRejected
+            | Self::MobilityHardSoftMixedPassRejected
+            | Self::MobilityFloatStructuralGateRejected
+            | Self::MobilityMaxFactionsPerCellExceeded
+            | Self::MobilityRoutingEmlNodeBudgetExceeded
+            | Self::MobilityHardCurrencyThroughResourceFlowRejected
+            | Self::MobilityClosedLadderReopenRejected => {
+                DesignerFacingGuardrailClass::MobilityScenario
             }
             Self::ClauseScriptParserRequestParked | Self::ClauseThingRuntimeRequestParked => {
                 DesignerFacingGuardrailClass::AuthoringFrontEnd
@@ -268,6 +343,42 @@ impl DesignerAdmissionDiagnosticCode {
             }
             Self::D2aRequestedWithoutNamedScenario => {
                 DesignerAdmissionRejectionKind::D2aWithoutNamedScenario
+            }
+            Self::MobilityOwnerSpatialParentRejected => {
+                DesignerAdmissionRejectionKind::OwnerEntitySpatialParent
+            }
+            Self::MobilityCaptureAsReparentingRejected => {
+                DesignerAdmissionRejectionKind::CaptureAsReparenting
+            }
+            Self::MobilityGpuAllocatorSemaphoreRejected => {
+                DesignerAdmissionRejectionKind::GpuAllocatorSemaphore
+            }
+            Self::MobilityIndirectionBeforeSlabRejected => {
+                DesignerAdmissionRejectionKind::IndirectionBeforeSlab
+            }
+            Self::MobilityArrivalOrderReplayOrderingRejected => {
+                DesignerAdmissionRejectionKind::ArrivalOrderReplayOrdering
+            }
+            Self::MobilityHybridStrataSilentRebindRejected => {
+                DesignerAdmissionRejectionKind::HybridStrataSilentRebind
+            }
+            Self::MobilityHardSoftMixedPassRejected => {
+                DesignerAdmissionRejectionKind::HardSoftMixedPass
+            }
+            Self::MobilityFloatStructuralGateRejected => {
+                DesignerAdmissionRejectionKind::FloatStructuralGate
+            }
+            Self::MobilityMaxFactionsPerCellExceeded => {
+                DesignerAdmissionRejectionKind::MaxFactionsPerCellExceeded
+            }
+            Self::MobilityRoutingEmlNodeBudgetExceeded => {
+                DesignerAdmissionRejectionKind::RoutingEmlNodeBudgetExceeded
+            }
+            Self::MobilityHardCurrencyThroughResourceFlowRejected => {
+                DesignerAdmissionRejectionKind::HardCurrencyThroughResourceFlow
+            }
+            Self::MobilityClosedLadderReopenRejected => {
+                DesignerAdmissionRejectionKind::ClosedLadderReopen
             }
             Self::ClauseScriptParserRequestParked => {
                 DesignerAdmissionRejectionKind::ClauseScriptParserParked
@@ -429,6 +540,66 @@ pub fn designer_admission_diagnostic_for_rejection(
             "D-2a boundary transaction scheduling is rejected without a named hard-currency contention scenario",
             Some("discrete AccumulatorOp transfer/recipe/emission remains the standing path; see v7.8 Line B"),
         ),
+        DesignerAdmissionRejectionKind::OwnerEntitySpatialParent => (
+            DesignerAdmissionDiagnosticCode::MobilityOwnerSpatialParentRejected,
+            "owner-entities may not be spatial parents in MOBILITY-SCENARIO-0",
+            Some("model factions/species/blueprints as owner columns and session-descendant owner-entities, never spatial containment"),
+        ),
+        DesignerAdmissionRejectionKind::CaptureAsReparenting => (
+            DesignerAdmissionDiagnosticCode::MobilityCaptureAsReparentingRejected,
+            "capture must be an owner-column flip, not spatial reparenting",
+            Some("only physical movement reparents; political ownership changes update columns"),
+        ),
+        DesignerAdmissionRejectionKind::GpuAllocatorSemaphore => (
+            DesignerAdmissionDiagnosticCode::MobilityGpuAllocatorSemaphoreRejected,
+            "GPU-side allocator semaphores or nondeterministic atomics are rejected",
+            Some("slot accounting is deterministic CPU/driver boundary work; a future GPU variant would need deterministic scan"),
+        ),
+        DesignerAdmissionRejectionKind::IndirectionBeforeSlab => (
+            DesignerAdmissionDiagnosticCode::MobilityIndirectionBeforeSlabRejected,
+            "indirection buffers are rejected before the slab/block path is attempted",
+            Some("use deterministic slab/block reservation and bulk accounting first"),
+        ),
+        DesignerAdmissionRejectionKind::ArrivalOrderReplayOrdering => (
+            DesignerAdmissionDiagnosticCode::MobilityArrivalOrderReplayOrderingRejected,
+            "arrival order may not be replay-significant",
+            Some("canonicalize boundary event ordering and use deterministic lowest-free-first allocation"),
+        ),
+        DesignerAdmissionRejectionKind::HybridStrataSilentRebind => (
+            DesignerAdmissionDiagnosticCode::MobilityHybridStrataSilentRebindRejected,
+            "Hybrid Strata channel rebinding requires generation bump/resync",
+            Some("channel bindings are CPU enrollment metadata; silent rebinding would break replay"),
+        ),
+        DesignerAdmissionRejectionKind::HardSoftMixedPass => (
+            DesignerAdmissionDiagnosticCode::MobilityHardSoftMixedPassRejected,
+            "hard fixed-point and soft float quantities may not silently mix in one pass",
+            Some("run hard Band Alpha before soft Band Beta and require explicit class boundaries"),
+        ),
+        DesignerAdmissionRejectionKind::FloatStructuralGate => (
+            DesignerAdmissionDiagnosticCode::MobilityFloatStructuralGateRejected,
+            "float values may not gate structural transitions",
+            Some("structural-decision variables must be hard fixed-point / exact-authoritative"),
+        ),
+        DesignerAdmissionRejectionKind::MaxFactionsPerCellExceeded => (
+            DesignerAdmissionDiagnosticCode::MobilityMaxFactionsPerCellExceeded,
+            "scenario exceeds max_factions_per_cell",
+            Some("narrow the first slice or raise the declared bound through a later accepted scenario"),
+        ),
+        DesignerAdmissionRejectionKind::RoutingEmlNodeBudgetExceeded => (
+            DesignerAdmissionDiagnosticCode::MobilityRoutingEmlNodeBudgetExceeded,
+            "routing EML node budget is exceeded",
+            Some("max_factions_per_cell must fit the directed-disburse EML budget for the first slice"),
+        ),
+        DesignerAdmissionRejectionKind::HardCurrencyThroughResourceFlow => (
+            DesignerAdmissionDiagnosticCode::MobilityHardCurrencyThroughResourceFlowRejected,
+            "hard currency may not route through Resource Flow",
+            Some("hard fixed-point/discrete quantities stay in Band Alpha / Phase T paths, not continuous Resource Flow"),
+        ),
+        DesignerAdmissionRejectionKind::ClosedLadderReopen => (
+            DesignerAdmissionDiagnosticCode::MobilityClosedLadderReopenRejected,
+            "MOBILITY-SCENARIO-0 may not reopen closed or parked ladders",
+            Some("do not reopen A/B/C, FrontierV2-5, ACT/EVENT/OBS/PIPE, ClauseThing/L3, atlas runtime, or E-11B-5"),
+        ),
         DesignerAdmissionRejectionKind::ClauseScriptParserParked => (
             DesignerAdmissionDiagnosticCode::ClauseScriptParserRequestParked,
             "ClauseScript parser/front-end requests are parked until L3 ClauseThing authorization",
@@ -478,6 +649,18 @@ pub fn all_designer_admission_diagnostic_codes() -> &'static [DesignerAdmissionD
         DesignerAdmissionDiagnosticCode::NestedE11BRequestedWithoutNamedScenario,
         DesignerAdmissionDiagnosticCode::E11B5RequestedWithoutNamedScenario,
         DesignerAdmissionDiagnosticCode::D2aRequestedWithoutNamedScenario,
+        DesignerAdmissionDiagnosticCode::MobilityOwnerSpatialParentRejected,
+        DesignerAdmissionDiagnosticCode::MobilityCaptureAsReparentingRejected,
+        DesignerAdmissionDiagnosticCode::MobilityGpuAllocatorSemaphoreRejected,
+        DesignerAdmissionDiagnosticCode::MobilityIndirectionBeforeSlabRejected,
+        DesignerAdmissionDiagnosticCode::MobilityArrivalOrderReplayOrderingRejected,
+        DesignerAdmissionDiagnosticCode::MobilityHybridStrataSilentRebindRejected,
+        DesignerAdmissionDiagnosticCode::MobilityHardSoftMixedPassRejected,
+        DesignerAdmissionDiagnosticCode::MobilityFloatStructuralGateRejected,
+        DesignerAdmissionDiagnosticCode::MobilityMaxFactionsPerCellExceeded,
+        DesignerAdmissionDiagnosticCode::MobilityRoutingEmlNodeBudgetExceeded,
+        DesignerAdmissionDiagnosticCode::MobilityHardCurrencyThroughResourceFlowRejected,
+        DesignerAdmissionDiagnosticCode::MobilityClosedLadderReopenRejected,
         DesignerAdmissionDiagnosticCode::ClauseScriptParserRequestParked,
         DesignerAdmissionDiagnosticCode::ClauseThingRuntimeRequestParked,
         DesignerAdmissionDiagnosticCode::FrontierV2FiveRequestRejected,
