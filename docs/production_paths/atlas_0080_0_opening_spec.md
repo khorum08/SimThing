@@ -1,11 +1,11 @@
 # ATLAS-0080-0 — Atlas Production Runtime / Sparse-Residency Nested Mapping Opening Spec
 
-> **Status: OPENING SPEC / NO IMPLEMENTATION.**
+> **Status: IMPLEMENTED / PASS - scenario-scoped sparse-residency nested mapping runtime for Nested Starmap.**
 > - Opened by the named multi-theater scenario **`SCENARIO-0080-1`** (Nested Starmap).
 > - This is the *named first slice* the invariant *"No production mapping runtime without first-slice
 >   gating"* contemplates — previously parked (M-4A territory).
 > - All wiring is **opt-in / default-off**; **no default session pass-graph wiring** (that is Tier-2).
-> - **This PR does not implement the atlas runtime.**
+> - Implementation report: [`../tests/phase_atlas_0080_0_impl_results.md`](../tests/phase_atlas_0080_0_impl_results.md).
 
 ---
 
@@ -46,11 +46,13 @@ structure (~2,100 location simthings) that genuinely needs **sparse residency** 
 
 ---
 
-## 4. Future implementation slice (not implemented here)
+## 4. Implementation result
 
-A future PR **may**: add an opt-in sparse-residency nested-mapping runtime for `SCENARIO-0080-1`;
-materialize/evict theater cells deterministically; support bounded descent/ascent between
-starmap/starsystem/planet; preserve I8 parity; record deterministic per-step residency reports.
+The implementation adds an opt-in sparse-residency nested-mapping runtime for `SCENARIO-0080-1`;
+materializes/evicts theater cells deterministically; supports bounded descent/ascent between
+starmap/starsystem/planet; preserves I8 parity; and records deterministic per-step residency reports.
+
+Report: [`../tests/phase_atlas_0080_0_impl_results.md`](../tests/phase_atlas_0080_0_impl_results.md).
 
 It **must not**: wire the starmap into the **default** session pass graph at session open (Tier-2); add a
 real-time loop; add a global mapping scheduler; introduce semantic/raw WGSL or a semantically-named
@@ -63,10 +65,12 @@ text. New semantic shader = stop-and-escalate.
 
 ---
 
-## 5. Future required tests (named, not implemented)
+## 5. Required tests implemented / PASS
 
 - `atlas_0080_0_explicit_opt_in_only`
 - `atlas_0080_0_default_session_has_no_residency_runtime`
+- `atlas_0080_0_nested_starmap_shape_bounded`
+- `atlas_0080_0_deterministic_starsystem_seed_selection`
 - `atlas_0080_0_sparse_residency_only_active_theaters`
 - `atlas_0080_0_nested_descent_ascent_deterministic`
 - `atlas_0080_0_residency_is_value_noop_parity_bit_exact`
@@ -78,6 +82,8 @@ text. New semantic shader = stop-and-escalate.
 - `atlas_0080_0_no_semantic_or_raw_wgsl`
 - `atlas_0080_0_no_clausething_dependency`
 - `atlas_0080_0_docs_status_matches_gate`
+
+Report: [`../tests/phase_atlas_0080_0_impl_results.md`](../tests/phase_atlas_0080_0_impl_results.md).
 
 ---
 
@@ -93,11 +99,11 @@ ClauseThing; invariant edits; or a general mapping runtime beyond this scenario.
 
 ## 7. Exit criteria (this opening PR)
 
-- [x] Opening spec exists; `ATLAS-0080-0` marked OPEN as a docs/design gate.
+- [x] Opening spec exists; `ATLAS-0080-0` marked IMPLEMENTED / PASS.
 - [x] Scope is `SCENARIO-0080-1` only; sparse-residency nested mapping; opt-in/default-off.
-- [x] Future implementation slice named, not implemented.
+- [x] Implementation slice named and implemented.
 - [x] Invariant *"first-slice gating"* satisfied by this named opening; no invariant edit.
-- [x] No code changed.
+- [x] Code changed only in the scenario-scoped driver/tests; no invariant edits.
 
 ---
 

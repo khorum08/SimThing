@@ -83,17 +83,18 @@ Constitutional surfacing:
 > (2026-06-02): nested session→starmap(10×10)→10 starsystems(10×10)→planet(10×10) with owner overlays
 > inheriting personality/policy weights broadcast from faction-owner simthings; ownership up-aggregation
 > (planet→starsystem) as a derived overlay; pirate admitted as a **full economy faction**. Deliberately
-> opens two parked substrate gates as docs/design only: **`ATLAS-0080-0`** (sparse-residency nested
-> mapping — the named multi-theater first-slice) and **`ECON-SCALE-0080-0`** (faction-index ECON scaling
-> for adversarial resource flow). Opt-in/default-off; no implementation; no default session pass-graph
-> wiring; no hard currency/nested RF; SEAD-sourced decisions. Packet:
+> opens two parked substrate gates: **`ATLAS-0080-0`** implemented/pass as scenario-scoped sparse-residency
+> nested mapping runtime (the named multi-theater first-slice) and **`ECON-SCALE-0080-0`** remains
+> next/open for faction-index ECON scaling for adversarial resource flow. Opt-in/default-off; no default
+> session pass-graph wiring; no hard currency/nested RF; SEAD-sourced decisions. Packet:
 > [`../scenarios/scenario_0080_1_admission_packet.md`](../scenarios/scenario_0080_1_admission_packet.md);
 > specs: [`../production_paths/atlas_0080_0_opening_spec.md`](../production_paths/atlas_0080_0_opening_spec.md),
 > [`../production_paths/econ_scale_0080_0_opening_spec.md`](../production_paths/econ_scale_0080_0_opening_spec.md).
+> ATLAS report: [`../tests/phase_atlas_0080_0_impl_results.md`](../tests/phase_atlas_0080_0_impl_results.md).
 > **Codex development sequence:** see the `SCENARIO-0080-1` **PR ladder** (production track §11) — 10
 > rungs, Opus authors/adjudicates every OPEN + ACCEPT gate, Codex develops IMPL rungs and stop-and-escalates
 > on any stop-condition. Initial conditions pinned in the scenario packet §4.1 (6/10 stars Terran, 3 Terran
-> ships + 3 pirate ships; pirate owns only its ships). Start rung: `ATLAS-0080-0-IMPL-0`.
+> ships + 3 pirate ships; pirate owns only its ships). Current rung: `ECON-SCALE-0080-0-IMPL-0`; `PRODUCTION-PATH-0080-1` not yet open.
 
 Active read order (authoritative path for agents):
 
