@@ -64,6 +64,10 @@ Constitutional surfacing:
 > default schedule remain CLOSED. Impl:
 > [`../tests/phase_gameplay_0080_0_impl_results.md`](../tests/phase_gameplay_0080_0_impl_results.md).
 > Spec: [`../gameplay/gameplay_0080_0_opening_spec.md`](../gameplay/gameplay_0080_0_opening_spec.md).
+> `GAMEPLAY-0080-1` implemented/pass as read-only Nested Starmap observation/export; consumes
+> `DEFAULT-SCHEDULE-0080-1`, exports atlas residency, faction-index ECON, owner-overlay/up-aggregation,
+> SEAD movement trace, and Terran/Pirate movement rows. Control/demo for `0080-1` not opened. Impl:
+> [`../tests/phase_gameplay_0080_1_impl_results.md`](../tests/phase_gameplay_0080_1_impl_results.md).
 > `CONTROL-0080-0` **IMPLEMENTED / PASS** as bounded Local Patrol Economy command admission
 > (`admit_control_0080_0`; writes only `DefaultSchedule0080Input` bounded values/config, then
 > schedule→observation path; movement remains SEAD-sourced). Direct movement/control/UI/realtime remain

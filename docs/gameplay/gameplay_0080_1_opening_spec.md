@@ -1,13 +1,13 @@
 # GAMEPLAY-0080-1 — Nested Starmap Read-Only Observation Opening Spec
 
-> **Status: OPENING SPEC / NO IMPLEMENTATION.**
+> **Status: IMPLEMENTED / PASS - read-only Nested Starmap observation/export.**
 > - `SCENARIO-0080-1` (Nested Starmap) is **ACCEPTED**.
 > - `ATLAS-0080-0` is **IMPLEMENTED / PASS** (`run_atlas_0080_0`).
 > - `ECON-SCALE-0080-0` is **IMPLEMENTED / PASS** (`run_econ_scale_0080_0`).
 > - `PRODUCTION-PATH-0080-1` is **IMPLEMENTED / PASS** (`run_production_path_0080_1`).
 > - `DEFAULT-SCHEDULE-0080-1` is **IMPLEMENTED / PASS** (`run_default_schedule_0080_1`).
-> - `GAMEPLAY-0080-1` is **OPEN only as a read-only observation/export gate**.
-> - **This PR does not implement observation.**
+> - `GAMEPLAY-0080-1` is implemented only as a read-only observation/export gate.
+> - Implementation result: [`../tests/phase_gameplay_0080_1_impl_results.md`](../tests/phase_gameplay_0080_1_impl_results.md).
 >
 > Verdict: **OPEN WITH NARROWING (Option A)** — read-only, opt-in/default-off, scenario-scoped,
 > non-interactive observation over the schedule run report. **Observation only — not control.**
