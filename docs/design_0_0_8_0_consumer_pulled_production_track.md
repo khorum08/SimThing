@@ -161,6 +161,7 @@ Reject the scenario if it requires any of:
 | `DEFAULT-SCHEDULE-0080-0` | Scenario-scoped schedule for Local Patrol Economy | **IMPLEMENTED / PASS - 1A schedule + patrol and 1B bounded pirate loop** — deterministic opt-in step driver routes GPU-resident SEAD threshold/event/`BoundaryRequest` decisions into `PRODUCTION-PATH-0080-0`; pirate is a second IDROUTE identity, not a second economy owner; pirate disruption, supply drain, threshold relocation, `local_security` evasion scoring, and deterministic cat-and-mouse assertions are implemented; **not a global default schedule**. Spec: [`production_paths/default_schedule_0080_0_opening_spec.md`](production_paths/default_schedule_0080_0_opening_spec.md); reports: [`tests/phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md), [`tests/phase_default_schedule_0080_0_impl_1b_results.md`](tests/phase_default_schedule_0080_0_impl_1b_results.md). |
 | `GAMEPLAY-0080-0` | Read-only Local Patrol Economy observation surface | **IMPLEMENTED / PASS — read-only Local Patrol Economy observation export** — consumes `DefaultSchedule0080RunReport`; exports deterministic tick transcript + summary via `observe_gameplay_0080_0`; explicit opt-in/default-off. **Player control / command input / UI framework / real-time loop remain CLOSED.** Spec: [`gameplay/gameplay_0080_0_opening_spec.md`](gameplay/gameplay_0080_0_opening_spec.md); impl: [`tests/phase_gameplay_0080_0_impl_results.md`](tests/phase_gameplay_0080_0_impl_results.md). |
 | `CONTROL-0080-0` | Bounded Local Patrol Economy command admission | **IMPLEMENTED / PASS — bounded Local Patrol Economy command admission** — opt-in/default-off command vocabulary writes only existing `DefaultSchedule0080Input` bounded values/config, then runs schedule→`observe_gameplay_0080_0`; commands never move a mover, emit a `BoundaryRequest`, or bypass SEAD. **Direct movement control / player command loop / UI framework / real-time loop remain CLOSED.** Spec: [`gameplay/control_0080_0_opening_spec.md`](gameplay/control_0080_0_opening_spec.md); impl: [`tests/phase_control_0080_0_impl_results.md`](tests/phase_control_0080_0_impl_results.md). |
+| `DEMO-0080-0` | Headless Local Patrol Economy demo/export packaging | **OPEN WITH NARROWING — headless Local Patrol Economy demo/export packaging; no implementation** — deterministic opt-in/default-off, headless, non-interactive library helper that applies a canonical bounded `CONTROL-0080-0` command batch and runs the existing `admit_control_0080_0` → `run_default_schedule_0080_0` → `observe_gameplay_0080_0` path, emitting the existing deterministic transcript/export. Packaging of the completed slice; no new simulation behavior. **CLI decision: `No CLI binary`.** UI framework, real-time loop, player command loop, direct movement control, and global default schedule remain CLOSED. Spec: [`gameplay/demo_0080_0_opening_spec.md`](gameplay/demo_0080_0_opening_spec.md); review: [`tests/phase_demo_0080_0_opening_review_results.md`](tests/phase_demo_0080_0_opening_review_results.md). |
 | `SEMANTIC-WGSL-0080-0` | Semantic shader surface | **CLOSED** |
 | `CLAUSETHING-L3-0080-0` | Front-end / parser / product authoring surface | **PARKED** pending product authorization |
 
@@ -176,10 +177,12 @@ impl: [`tests/phase_gameplay_0080_0_impl_results.md`](tests/phase_gameplay_0080_
 (spec: [`gameplay/control_0080_0_opening_spec.md`](gameplay/control_0080_0_opening_spec.md);
 impl: [`tests/phase_control_0080_0_impl_results.md`](tests/phase_control_0080_0_impl_results.md)) —
 commands write only existing bounded scenario input/config and never bypass SEAD or move a mover.
-**Direct movement control / externally-scripted move requests / player command loop**, UI
-framework, real-time loop, semantic WGSL, **global default schedule**, new shader/GPU kernel,
-ClauseThing/L3, Hybrid-Strata/faction-index scaling, atlas runtime, E-11B-5, B-1, FrontierV2-5, and
-ACT/EVENT/OBS/PIPE remain closed/parked.
+`DEMO-0080-0` is **OPEN WITH NARROWING** as a headless demo/export packaging gate over the completed
+slice (spec: [`gameplay/demo_0080_0_opening_spec.md`](gameplay/demo_0080_0_opening_spec.md); CLI decision
+`No CLI binary`; no implementation). **Direct movement control / externally-scripted move requests /
+player command loop**, UI framework, real-time loop, CLI binary, semantic WGSL, **global default
+schedule**, new shader/GPU kernel, ClauseThing/L3, Hybrid-Strata/faction-index scaling, atlas runtime,
+E-11B-5, B-1, FrontierV2-5, and ACT/EVENT/OBS/PIPE remain closed/parked.
 
 ---
 
