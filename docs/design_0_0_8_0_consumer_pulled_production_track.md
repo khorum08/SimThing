@@ -1,5 +1,10 @@
 # SimThing — Design 0.0.8.0 Consumer-Pulled Production Track
 
+> **Local Patrol Economy 0.0.8.0 vertical slice COMPLETE / PARKED after `DEMO-0080-0`** (2026-06-02).
+> Scenario → production path → schedule → observation → control → demo/export are all IMPLEMENTED / PASS.
+> **No further work opens on this slice without a new named product scenario or explicit product
+> authorization.** Closeout: [`tests/phase_local_patrol_economy_0080_closeout_results.md`](tests/phase_local_patrol_economy_0080_closeout_results.md).
+>
 > **Status:** OPEN. `SCENARIO-0080-0` (Local Patrol Economy) **ACCEPTED** (2026-06-02);
 > `PRODUCTION-PATH-0080-0` **IMPLEMENTED / PASS** as a Local Patrol Economy opt-in production path
 > scoped to Local Patrol Economy on the 0.0.7.9 mobility/transfer substrate; opening spec:
