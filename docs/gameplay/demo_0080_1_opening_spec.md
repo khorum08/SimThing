@@ -1,6 +1,6 @@
 # DEMO-0080-1 — Nested Starmap Headless Demo / Export Opening Spec
 
-> **Status: OPENING SPEC / NO IMPLEMENTATION.**
+> **Status: IMPLEMENTED / PASS.**
 > - `SCENARIO-0080-1` (Nested Starmap) is **ACCEPTED**.
 > - `ATLAS-0080-0` is **IMPLEMENTED / PASS** (`run_atlas_0080_0`).
 > - `ECON-SCALE-0080-0` is **IMPLEMENTED / PASS** (`run_econ_scale_0080_0`).
@@ -8,12 +8,13 @@
 > - `DEFAULT-SCHEDULE-0080-1` is **IMPLEMENTED / PASS** (`run_default_schedule_0080_1`).
 > - `GAMEPLAY-0080-1` is **IMPLEMENTED / PASS** (`observe_gameplay_0080_1`).
 > - `CONTROL-0080-1` is **IMPLEMENTED / PASS** (bounded command admission).
-> - `DEMO-0080-1` is **OPEN only as a headless demo/export packaging gate**.
-> - **This PR does not implement the demo.**
+> - `DEMO-0080-1` is **IMPLEMENTED / PASS** (`run_demo_0080_1`; headless Nested Starmap demo/export library helper).
 >
 > Verdict: **OPEN WITH NARROWING (Option A)** — deterministic, opt-in, headless, non-interactive
 > packaging over the *already-implemented* path. **CLI decision: `No CLI binary`. No new simulation
 > behavior.**
+>
+> Implementation result: [`../tests/phase_demo_0080_1_impl_results.md`](../tests/phase_demo_0080_1_impl_results.md) — **24/24 PASS**.
 
 ---
 

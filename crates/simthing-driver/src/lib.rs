@@ -12,6 +12,7 @@ pub mod control_0080_1;
 pub mod default_schedule_0080_0;
 pub mod default_schedule_0080_1;
 pub mod demo_0080_0;
+pub mod demo_0080_1;
 pub mod econ_scale_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
@@ -129,6 +130,11 @@ pub use demo_0080_0::{
     canonical_control_input, replay_demo_0080_0, run_demo_0080_0, Demo0080ForbiddenRequests,
     Demo0080Gate, Demo0080Input, Demo0080MovementDay, Demo0080MovementRecord, Demo0080Report,
     Demo0080Surface, DEMO_0080_0_ID, DEMO_0080_0_SCENARIO, DEMO_0080_0_STATUS_PASS,
+};
+pub use demo_0080_1::{
+    canonical_control_input_0080_1, replay_demo_0080_1, run_demo_0080_1, Demo0081CommandRow,
+    Demo0081ForbiddenRequests, Demo0081Gate, Demo0081Input, Demo0081MovementRow, Demo0081Report,
+    Demo0081Surface, DEMO_0080_1_ID, DEMO_0080_1_SCENARIO, DEMO_0080_1_STATUS_PASS,
 };
 pub use econ_scale_0080_0::{
     replay_econ_scale_0080_0, run_econ_scale_0080_0, EconScale0080ClearingInput,
