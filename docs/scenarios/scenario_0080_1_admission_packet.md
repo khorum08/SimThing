@@ -64,6 +64,27 @@ of the closed slice.
 - This adversarial multi-faction resource flow is what opens **`ECON-SCALE-0080-0`** (Hybrid-Strata /
   faction-index ECON scaling), previously parked.
 
+### 4.1 Initial conditions (this scenario instance)
+
+Deterministically seeded; the 10 starsystems are the 10 starmap cells chosen by the scenario seed.
+
+- **Star ownership:** **6 of the 10 stars are owned by the Terran (patrol) faction; the other 4 are
+  neutral (unowned).** A star is Terran-owned because its planet is Terran-owned, propagated up by the
+  ownership up-aggregation rule (§3); neutral stars have unowned planets.
+- **Terran faction:** owns the 6 Terran stars; fields **3 Terran ships**, each initially sited at **3
+  distinct stars chosen from its 6** (the remaining 3 Terran stars start without a ship).
+- **Pirate faction:** **owns no stars** — it owns **only its 3 pirate ships**. Each **pirate ship starts
+  at a distinct neutral star** (3 of the 4 neutral stars host a pirate ship at start).
+- **Ships are mover simthings** with an owner overlay inheriting their faction's personality/policy
+  weights (Terran ships ← Terran owner simthing; pirate ships ← Pirate owner simthing). A pirate ship
+  that **enters a starsystem's grid** becomes an adversarial participant in that starsystem's resource
+  flow (§4).
+
+| Faction | Stars owned | Ships | Ship start locations |
+|---|---|---|---|
+| Terran (patrol) | 6 of 10 | 3 | 3 distinct Terran stars (of its 6) |
+| Pirate | 0 | 3 | 3 distinct neutral stars (of the 4) |
+
 ---
 
 ## 5. Decision model (instantiates the 2026-06-02 design conversation)

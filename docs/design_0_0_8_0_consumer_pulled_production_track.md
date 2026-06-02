@@ -225,7 +225,41 @@ E-11B-5, B-1, FrontierV2-5, and ACT/EVENT/OBS/PIPE remain closed/parked.
 
 ---
 
-## 11. Pointers
+## 11. SCENARIO-0080-1 PR ladder (Codex develops; Opus design-authority at the gates)
+
+**Gate protocol.** Opus (design authority) authors/adjudicates every **OPEN** rung (the opening spec is
+the gate: scope, bounds, stop conditions, named-but-unimplemented tests) and adjudicates every
+**ACCEPT** review. Codex develops the **IMPL** rungs between gates. Each IMPL rung must: implement only
+within the accepted opening spec; keep all prior `0080-0` and `0080-1` regression suites green; hold
+CPU-oracle bit-exact parity (I8) for any GPU-resident field; ship one compact impl report; update the
+ladder index + mapping guidance + worklog; and **stop-and-escalate to Opus** on any stop-condition
+crossing (default-on session wiring, real-time loop, UI framework, direct movement control, hard
+currency/markets/trade/`ai_budget`, nested Resource Flow depth, semantic/raw WGSL, capture-as-reparenting,
+owner-as-spatial-parent, ClauseThing, invariant edit) rather than proceeding. Openings are docs-only;
+implementations are opt-in/default-off and reversible.
+
+| Rung | PR id | Deliverable (Codex, unless OPEN) | Gate (Opus) | Depends on |
+|---|---|---|---|---|
+| 1 | `ATLAS-0080-0-IMPL-0` | Opt-in sparse-residency nested-mapping runtime **+ deterministic nested structure scaffold** (`session → starmap(10×10) → 10 seeded starsystems(10×10) → one planet(10×10 submap) each`); theater descent/ascent; residency a strict value no-op with I8 parity; no default session pass-graph wiring | **ACCEPT** vs `atlas_0080_0_opening_spec.md` | ATLAS opening spec (merged) |
+| 2 | `ECON-SCALE-0080-0-IMPL-0` | Opt-in faction-indexed contended resource flow; bounded fixed faction set; subsidiarity preserved; I8 parity; no hard currency / nested RF | **ACCEPT** vs `econ_scale_0080_0_opening_spec.md` | rung 1 |
+| 3 | `PRODUCTION-PATH-0080-1-OPEN-0` | *(Opus authors)* Opening spec: initial conditions (§ scenario packet), owner overlays + personality/policy down-broadcast, ownership up-aggregation (planet→starsystem, derived overlay), ships-as-movers, pirate adversarial RF on starsystem entry, SEAD-sourced composite-gap decisions | **OPEN** (author + adjudicate) | rungs 1–2 |
+| 4 | `PRODUCTION-PATH-0080-1-IMPL-0` | Implement the scenario production path per rung-3 spec (opt-in) | **ACCEPT** vs rung-3 spec | rung 3 |
+| 5 | `DEFAULT-SCHEDULE-0080-1-OPEN-0` | *(Opus authors)* Opening spec: deterministic multi-tick schedule (ships move, pirates raid/contend, ownership + up-aggregation update per tick) | **OPEN** (author + adjudicate) | rung 4 |
+| 6 | `DEFAULT-SCHEDULE-0080-1-IMPL-0` | Implement the deterministic schedule (bounded steps, deterministic replay) | **ACCEPT** vs rung-5 spec | rung 5 |
+| 7 | `GAMEPLAY-0080-1-IMPL-0` | Read-only observation/export of the nested-starmap run (reuse the proven `observe_*` pattern; opening folded — pattern already proven at `0080-0`) | **ACCEPT** | rung 6 |
+| 8 | `CONTROL-0080-1-OPEN-0` *(optional)* | *(Opus authors)* Opening spec: bounded command admission **+ player-orders as a weighted overlay term** on the action vector (never direct-move, never the currency mechanism) | **OPEN** (author + adjudicate) | rung 7 |
+| 9 | `DEMO-0080-1-IMPL-0` | Headless demo/export library helper (default **No CLI binary**) | **ACCEPT** | rung 7 (or 8) |
+| 10 | `SCENARIO-0080-1-CLOSE-0` | *(Opus adjudicates)* Closeout / park review of the full vertical slice | **OPEN** (adjudicate close/park) | rungs complete |
+
+**Sequencing note (design authority):** implement the two parked substrates **serially, not in parallel** —
+rung 1 (atlas) is the structural prerequisite the scenario needs to exist at all; rung 2 (econ-scale) is the
+heavier lift. If pace demands, rungs 3–7 may prove out the nested structure + inherited-overlay decisions on
+atlas first, and fold the pirate's **full-economy** contention (rung 2's consumer) into a later production-path
+sub-slice — keeping each parity surface clean.
+
+---
+
+## 12. Pointers
 
 - Active constitution: [`design_0_0_8_0.md`](design_0_0_8_0.md)
 - Parked 0.0.7.9 mobility/transfer track: [`design_v7_9_mobility_transfer_allocation_production_track.md`](design_v7_9_mobility_transfer_allocation_production_track.md)
