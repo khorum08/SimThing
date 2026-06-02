@@ -1,17 +1,18 @@
 # DEFAULT-SCHEDULE-0080-0 — Local Patrol Economy Scenario-Scoped Schedule Opening Spec
 
-> **Status: IMPLEMENTED / PASS - 1A scenario-scoped schedule + patrol loop.**
+> **Status: IMPLEMENTED / PASS - 1A schedule + patrol and 1B bounded pirate loop.**
 > - `SCENARIO-0080-0` (Local Patrol Economy) is **ACCEPTED**.
 > - `PRODUCTION-PATH-0080-0` is **IMPLEMENTED / PASS** (opt-in/default-off; `run_production_path_0080_0`).
 > - `DEFAULT-SCHEDULE-0080-0` 1A is **IMPLEMENTED / PASS** as a scenario-scoped schedule + patrol loop.
-> - 1B pirate behavior remains **OPEN / FUTURE / NOT IMPLEMENTED**.
+> - `DEFAULT-SCHEDULE-0080-0` 1B is **IMPLEMENTED / PASS** as the bounded pirate loop.
 >
-> Verdict: **OPEN WITH NARROWING (Option A)** — scenario-scoped, opt-in, reversible, non-gameplay,
+> Verdict: **IMPLEMENTED / PASS** — scenario-scoped, opt-in, reversible, non-gameplay,
 > **not** a global default schedule.
 
-Implementation result for 1A:
-[`../tests/phase_default_schedule_0080_0_impl_1a_results.md`](../tests/phase_default_schedule_0080_0_impl_1a_results.md).
-This result does not implement or close the 1B pirate-loop sub-slice.
+Implementation results:
+- 1A: [`../tests/phase_default_schedule_0080_0_impl_1a_results.md`](../tests/phase_default_schedule_0080_0_impl_1a_results.md).
+- 1B: [`../tests/phase_default_schedule_0080_0_impl_1b_results.md`](../tests/phase_default_schedule_0080_0_impl_1b_results.md).
+No 1B-tail deferral remains: the `local_security` evasion term and deterministic cat-and-mouse assertions are included.
 
 ---
 
@@ -103,17 +104,24 @@ are scenario-authored values within the bounded economy — not new architecture
 
 ---
 
-## 4. Implementation result and remaining slice
+## 4. Implementation result
 
-The 1A implementation PR adds:
-- add a `DEFAULT-SCHEDULE-0080-0` **opt-in** schedule surface for Local Patrol Economy;
-- call `run_production_path_0080_0` from deterministic scheduled steps;
-- advance patrol-side scenario state with changing `disruption`;
-- emit zero or one patrol `BoundaryRequest` per step depending on threshold state;
-- preserve identity, owner overlay continuity, and economy reassociation on relocation;
-- record deterministic per-step reports.
+The 1A implementation adds:
+- a `DEFAULT-SCHEDULE-0080-0` **opt-in** schedule surface for Local Patrol Economy;
+- calls to `run_production_path_0080_0` from deterministic scheduled steps;
+- patrol-side scenario state advancement with changing `disruption`;
+- zero or one patrol `BoundaryRequest` per step depending on threshold state;
+- identity, owner overlay continuity, and economy reassociation preservation on relocation;
+- deterministic per-step reports.
 
-The 1B pirate driver remains future/not implemented.
+The 1B implementation adds:
+- a pirate as a second IDROUTE identity, explicitly **not** a second economy owner;
+- per-step pirate disruption increase and supply drain using only bounded Local Patrol Economy values;
+- pirate threshold relocation when disruption reaches at least half remaining local supply;
+- target scoring over `supply`, `disruption`, and `local_security`, including patrol-influence evasion;
+- deterministic predator/patrol replay and observed cat-and-mouse assertions.
+
+Report: [`../tests/phase_default_schedule_0080_0_impl_1b_results.md`](../tests/phase_default_schedule_0080_0_impl_1b_results.md).
 
 **WGSL discipline (binding for this slice).** Pirate/patrol per-tick arithmetic and the target-attraction
 score must be expressed over the **existing `EvalEML` opcode set** (invariants row 194). New shader text
@@ -156,14 +164,16 @@ It **must not**:
 The 1A tests above are implemented in
 [`../tests/phase_default_schedule_0080_0_impl_1a_results.md`](../tests/phase_default_schedule_0080_0_impl_1a_results.md).
 
-**Pirate/loop sub-slice (1B) future tests, named but not implemented:**
-`default_schedule_0080_0_pirate_raises_disruption_and_drains_supply_per_tick`,
+**Pirate/loop sub-slice (1B) tests implemented / PASS:**
+`default_schedule_0080_0_pirate_raises_disruption_and_consumes_supply`,
 `default_schedule_0080_0_pirate_relocates_when_disruption_ge_half_supply`,
 `default_schedule_0080_0_patrol_reduces_disruption_and_relocates_to_depleted_supply`,
 `default_schedule_0080_0_pirate_is_second_identity_not_second_economy_owner`,
 `default_schedule_0080_0_predator_patrol_loop_replay_deterministic`,
 `default_schedule_0080_0_pirate_prefers_low_patrol_influence_high_supply_target`,
 `default_schedule_0080_0_cat_and_mouse_pattern_emerges_deterministically`.
+
+Report: [`../tests/phase_default_schedule_0080_0_impl_1b_results.md`](../tests/phase_default_schedule_0080_0_impl_1b_results.md).
 
 ---
 
@@ -183,12 +193,12 @@ production mobility runtime; or reopening any closed ladder.
 - [x] Opening spec exists.
 - [x] Scope is Local Patrol Economy only (patrol + bounded pirate enrichment; one economic owner).
 - [x] 1A schedule implementation is named and implemented.
-- [x] 1B pirate loop remains named but not implemented.
-- [x] Production track marks `DEFAULT-SCHEDULE-0080-0` 1A as implemented/pass.
+- [x] 1B pirate loop is named and implemented.
+- [x] Production track marks `DEFAULT-SCHEDULE-0080-0` 1A + 1B as implemented/pass.
 - [x] `PRODUCTION-PATH-0080-0` remains IMPLEMENTED / PASS.
 - [x] Gameplay and semantic WGSL remain closed.
 - [x] Mapping guidance + worklog updated.
-- [x] No code changed.
+- [x] Code changed only in the scenario-scoped driver/tests; no invariant edits.
 
 ---
 

@@ -6,9 +6,10 @@
 > [`production_paths/production_path_0080_0_opening_spec.md`](production_paths/production_path_0080_0_opening_spec.md).
 > Implementation report:
 > [`tests/phase_production_path_0080_0_impl_results.md`](tests/phase_production_path_0080_0_impl_results.md).
-> `DEFAULT-SCHEDULE-0080-0` 1A is **IMPLEMENTED / PASS** as a scenario-scoped schedule + patrol loop
-> (report: [`tests/phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md));
-> 1B pirate loop remains future/not implemented; **not** a global default schedule.
+> `DEFAULT-SCHEDULE-0080-0` is **IMPLEMENTED / PASS - 1A schedule + patrol and 1B bounded pirate loop**
+> as a scenario-scoped schedule (reports: [`tests/phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md),
+> [`tests/phase_default_schedule_0080_0_impl_1b_results.md`](tests/phase_default_schedule_0080_0_impl_1b_results.md));
+> **not** a global default schedule.
 >
 > **Active constitution:** [`design_0_0_8_0.md`](design_0_0_8_0.md).
 >
@@ -157,16 +158,17 @@ Reject the scenario if it requires any of:
 |---|---|---|
 | `SCENARIO-0080-0` | Scenario/admission packet (Local Patrol Economy) | **ACCEPTED (2026-06-02)** |
 | `PRODUCTION-PATH-0080-0` | First substrate production-path gate | **IMPLEMENTED / PASS - Local Patrol Economy opt-in production path** — scoped to: *Local Patrol Economy using the 0.0.7.9 mobility/transfer substrate*, patrol relocate decision sourced from the accepted GPU-resident SEAD `Threshold`+`EmitEvent`→`BoundaryRequest` path (mobility/transfer is the only substrate wired; no CPU planner; no new SEAD production gate; no global default schedule) |
-| `DEFAULT-SCHEDULE-0080-0` | Scenario-scoped schedule for Local Patrol Economy | **IMPLEMENTED / PASS - 1A scenario-scoped schedule + patrol loop** — deterministic opt-in step driver routes GPU-resident SEAD threshold/event/`BoundaryRequest` decisions into `PRODUCTION-PATH-0080-0`; **not a global default schedule**. 1B pirate loop remains **OPEN / FUTURE / NOT IMPLEMENTED** (pirate disruptor, target heuristic, evasion term, and cat-and-mouse assertions). Spec: [`production_paths/default_schedule_0080_0_opening_spec.md`](production_paths/default_schedule_0080_0_opening_spec.md); report: [`tests/phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md). |
+| `DEFAULT-SCHEDULE-0080-0` | Scenario-scoped schedule for Local Patrol Economy | **IMPLEMENTED / PASS - 1A schedule + patrol and 1B bounded pirate loop** — deterministic opt-in step driver routes GPU-resident SEAD threshold/event/`BoundaryRequest` decisions into `PRODUCTION-PATH-0080-0`; pirate is a second IDROUTE identity, not a second economy owner; pirate disruption, supply drain, threshold relocation, `local_security` evasion scoring, and deterministic cat-and-mouse assertions are implemented; **not a global default schedule**. Spec: [`production_paths/default_schedule_0080_0_opening_spec.md`](production_paths/default_schedule_0080_0_opening_spec.md); reports: [`tests/phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md), [`tests/phase_default_schedule_0080_0_impl_1b_results.md`](tests/phase_default_schedule_0080_0_impl_1b_results.md). |
 | `GAMEPLAY-0080-0` | Gameplay-facing integration | **CLOSED** |
 | `SEMANTIC-WGSL-0080-0` | Semantic shader surface | **CLOSED** |
 | `CLAUSETHING-L3-0080-0` | Front-end / parser / product authoring surface | **PARKED** pending product authorization |
 
 Opening spec of record: [`production_path_0080_0_opening_spec.md`](production_paths/production_path_0080_0_opening_spec.md).
 Implementation report: [`phase_production_path_0080_0_impl_results.md`](tests/phase_production_path_0080_0_impl_results.md).
-`DEFAULT-SCHEDULE-0080-0` 1A is **IMPLEMENTED / PASS** as an opt-in scenario-scoped schedule + patrol
-loop (report: [`phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md)).
-1B pirate loop remains future/not implemented. Gameplay, semantic WGSL, **global default schedule**,
+`DEFAULT-SCHEDULE-0080-0` is **IMPLEMENTED / PASS - 1A schedule + patrol and 1B bounded pirate loop**
+as an opt-in scenario-scoped schedule (reports: [`phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md),
+[`phase_default_schedule_0080_0_impl_1b_results.md`](tests/phase_default_schedule_0080_0_impl_1b_results.md)).
+Gameplay, semantic WGSL, **global default schedule**,
 ClauseThing/L3, Hybrid-Strata/faction-index scaling, atlas runtime, E-11B-5, B-1, FrontierV2-5, and
 ACT/EVENT/OBS/PIPE remain closed/parked.
 
@@ -186,7 +188,10 @@ ACT/EVENT/OBS/PIPE remain closed/parked.
   — **PASS**; opt-in/default-off Local Patrol Economy only.
 - **DEFAULT-SCHEDULE-0080-0 implementation 1A:** one compact implementation report:
   [`docs/tests/phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md)
-  — **PASS**; scenario-scoped schedule + patrol loop only; 1B pirate loop future.
+  — **PASS**; scenario-scoped schedule + patrol loop only.
+- **DEFAULT-SCHEDULE-0080-0 implementation 1B:** one compact implementation report:
+  [`docs/tests/phase_default_schedule_0080_0_impl_1b_results.md`](tests/phase_default_schedule_0080_0_impl_1b_results.md)
+  — **PASS**; bounded pirate loop, second IDROUTE identity only, `local_security` evasion, deterministic cat-and-mouse included.
 - Do not create reports for passive proof wrappers.
 - Do not create per-slice ceremony.
 
