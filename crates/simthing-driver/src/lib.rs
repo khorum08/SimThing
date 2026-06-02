@@ -6,6 +6,7 @@ pub mod arena_participant;
 pub mod arena_registry;
 pub mod bench_limits;
 pub mod child_share_eml;
+pub mod default_schedule_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
 pub mod install;
@@ -62,6 +63,13 @@ pub use arena_registry::{
 };
 pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};
+pub use default_schedule_0080_0::{
+    replay_default_schedule_0080_0, run_default_schedule_0080_0, DefaultSchedule0080ForbiddenRequests,
+    DefaultSchedule0080Gate, DefaultSchedule0080Input, DefaultSchedule0080RunReport,
+    DefaultSchedule0080Step, DefaultSchedule0080StepReport, DefaultSchedule0080Surface,
+    DEFAULT_SCHEDULE_0080_0_ID, DEFAULT_SCHEDULE_0080_0_SCENARIO,
+    DEFAULT_SCHEDULE_0080_0_STATUS_1A_PASS,
+};
 pub use field_scheduler::{
     count_cadence_due_ticks, execute_scheduled_regions_with, execute_single_scheduled_stencil_region,
     visit_scheduled_regions, DirtyRegionState, FieldCadence, FieldDispatchDecision,
