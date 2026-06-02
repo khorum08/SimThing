@@ -126,12 +126,14 @@ Constitutional surfacing:
 > command loop, UI, real-time loop, demo, and global default schedule remain CLOSED. Spec:
 > [`../gameplay/control_0080_1_opening_spec.md`](../gameplay/control_0080_1_opening_spec.md);
 > report: [`../tests/phase_control_0080_1_impl_results.md`](../tests/phase_control_0080_1_impl_results.md).
-> `DEMO-0080-1` **opened as a docs/design gate only** for headless Nested Starmap demo/export packaging
-> (deterministic opt-in **library helper** applies a canonical bounded `CONTROL-0080-1` command batch and
-> runs the existing control→schedule→observation/export path, emitting the existing transcript/export + a
-> compact demo report; **CLI decision: `No CLI binary`**; no new behavior/substrate). Next rung:
-> `DEMO-0080-1-IMPL-0` (Codex), then `SCENARIO-0080-1-CLOSE-0`. Spec:
-> [`../gameplay/demo_0080_1_opening_spec.md`](../gameplay/demo_0080_1_opening_spec.md).
+> `DEMO-0080-1` **IMPLEMENTED / PASS** — headless Nested Starmap demo/export library helper
+> (`run_demo_0080_1`; opt-in/default-off; canonical `Control0081CommandBatch::canonical_run()`; existing
+> control→schedule→observation/export path; compact demo report with atlas residency, faction-index ECON,
+> owner-overlay/up-aggregation, SEAD movement trace, Terran/Pirate movement rows, command transcript, and
+> replay checksum; **No CLI binary**; 24/24 tests PASS). Spec:
+> [`../gameplay/demo_0080_1_opening_spec.md`](../gameplay/demo_0080_1_opening_spec.md); report:
+> [`../tests/phase_demo_0080_1_impl_results.md`](../tests/phase_demo_0080_1_impl_results.md).
+> Next rung: `SCENARIO-0080-1-CLOSE-0` (Opus design authority adjudicates close/park).
 
 Active read order (authoritative path for agents):
 
