@@ -64,6 +64,12 @@ Constitutional surfacing:
 > default schedule remain CLOSED. Impl:
 > [`../tests/phase_gameplay_0080_0_impl_results.md`](../tests/phase_gameplay_0080_0_impl_results.md).
 > Spec: [`../gameplay/gameplay_0080_0_opening_spec.md`](../gameplay/gameplay_0080_0_opening_spec.md).
+> `CONTROL-0080-0` opening review: **OPEN WITH NARROWING** as a bounded Local Patrol Economy
+> command-admission gate (opt-in deterministic vocabulary writes only existing `DefaultSchedule0080Input`
+> bounded values/config, then runs the existing schedule→`observe_gameplay_0080_0` path; commands never
+> move a mover or bypass SEAD). Ready for implementation authorization; no implementation in this PR.
+> Direct movement control, player command loop, UI framework, real-time loop, and global default schedule
+> remain CLOSED. Spec: [`../gameplay/control_0080_0_opening_spec.md`](../gameplay/control_0080_0_opening_spec.md).
 
 Active read order (authoritative path for agents):
 
