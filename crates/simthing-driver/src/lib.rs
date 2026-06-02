@@ -16,6 +16,7 @@ pub mod first_slice_mapping_runtime;
 pub mod gameplay_0080_0;
 pub mod install;
 pub mod production_path_0080_0;
+pub mod production_path_0080_1;
 pub mod resource_economy_boundary_schedule;
 pub mod resource_economy_burn_in;
 pub mod resource_economy_compile;
@@ -138,6 +139,14 @@ pub use production_path_0080_0::{
     PRODUCTION_PATH_0080_0_ALLOWED_ECONOMY_VALUES, PRODUCTION_PATH_0080_0_ID,
     PRODUCTION_PATH_0080_0_SCENARIO, PRODUCTION_PATH_0080_0_STATUS_PASS,
     SCENARIO_0080_0_GATE_ID,
+};
+pub use production_path_0080_1::{
+    replay_production_path_0080_1, run_production_path_0080_1,
+    ProductionPath0081ForbiddenRequests, ProductionPath0081Gate, ProductionPath0081Input,
+    ProductionPath0081OwnerOverlaySummary, ProductionPath0081OwnershipAggregationSummary,
+    ProductionPath0081Report, ProductionPath0081Scenario, ProductionPath0081SeadCompositeGapTerms,
+    ProductionPath0081Surface, PRODUCTION_PATH_0080_1_ID, PRODUCTION_PATH_0080_1_SCENARIO,
+    PRODUCTION_PATH_0080_1_STATUS_PASS, SCENARIO_0080_1_GATE_ID,
 };
 pub use resource_economy_boundary_schedule::{
     BoundaryScheduleEntry, BoundaryScheduleKey, ResourceEconomyBoundaryScheduleReport,

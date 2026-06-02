@@ -87,8 +87,8 @@ Constitutional surfacing:
 > nested mapping runtime (the named multi-theater first-slice) and **`ECON-SCALE-0080-0`** **implemented/pass**
 > as bounded Terran/Pirate faction-indexed contended ECON scaling (pirate is a full economy faction; deterministic
 > clearing with CPU parity oracle; subsidiarity preserved; no hard currency/nested RF/unbounded factions; default
-> single-owner ECON unchanged). **Both substrate gates are now IMPLEMENTED/PASS → `PRODUCTION-PATH-0080-1` is the
-> next gate (rung 3; Opus authors the OPEN spec).** Opt-in/default-off; no default
+> single-owner ECON unchanged). **`PRODUCTION-PATH-0080-1` is implemented/pass** as the opt-in Nested
+> Starmap composition of `ATLAS-0080-0` + `ECON-SCALE-0080-0`; schedule/movement not opened. Opt-in/default-off; no default
 > session pass-graph wiring; SEAD-sourced decisions. Packet:
 > [`../scenarios/scenario_0080_1_admission_packet.md`](../scenarios/scenario_0080_1_admission_packet.md);
 > specs: [`../production_paths/atlas_0080_0_opening_spec.md`](../production_paths/atlas_0080_0_opening_spec.md),
@@ -98,10 +98,11 @@ Constitutional surfacing:
 > rungs, Opus authors/adjudicates every OPEN + ACCEPT gate, Codex develops IMPL rungs and stop-and-escalates
 > on any stop-condition. Initial conditions pinned in the scenario packet §4.1 (6/10 stars Terran, 3 Terran
 > ships + 3 pirate ships; pirate owns only its ships). `PRODUCTION-PATH-0080-1` **opened as a docs/design
-> gate only** for the Nested Starmap composition of `ATLAS-0080-0` + `ECON-SCALE-0080-0` (owner-overlay
+> gate** for the Nested Starmap composition of `ATLAS-0080-0` + `ECON-SCALE-0080-0` (owner-overlay
 > inheritance + ownership up-aggregation as numeric summaries; read-only SEAD composite-gap terms; no
-> schedule/movement; no new substrate); no implementation. Next rung: `PRODUCTION-PATH-0080-1-IMPL-0`
-> (Codex). Spec: [`../production_paths/production_path_0080_1_opening_spec.md`](../production_paths/production_path_0080_1_opening_spec.md).
+> schedule/movement; no new substrate); implementation report:
+> [`../tests/phase_production_path_0080_1_impl_results.md`](../tests/phase_production_path_0080_1_impl_results.md).
+> Next rung remains unopened: `DEFAULT-SCHEDULE-0080-1-OPEN-0`. Spec: [`../production_paths/production_path_0080_1_opening_spec.md`](../production_paths/production_path_0080_1_opening_spec.md).
 
 Active read order (authoritative path for agents):
 

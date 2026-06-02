@@ -1,11 +1,11 @@
 # PRODUCTION-PATH-0080-1 — Nested Starmap Production Path Opening Spec
 
-> **Status: OPENING SPEC / NO IMPLEMENTATION.**
+> **Status: IMPLEMENTED / PASS.**
 > - `SCENARIO-0080-1` (Nested Starmap) is **ACCEPTED**.
 > - `ATLAS-0080-0` is **IMPLEMENTED / PASS** (`run_atlas_0080_0`).
 > - `ECON-SCALE-0080-0` is **IMPLEMENTED / PASS** (`run_econ_scale_0080_0`).
-> - `PRODUCTION-PATH-0080-1` is **OPEN only as an opt-in/default-off Nested Starmap production-path gate**.
-> - **This PR does not implement the production path.**
+> - `PRODUCTION-PATH-0080-1` is implemented as an opt-in/default-off Nested Starmap production-path gate.
+> - Implementation result: [`../tests/phase_production_path_0080_1_impl_results.md`](../tests/phase_production_path_0080_1_impl_results.md).
 >
 > Verdict: **OPEN WITH NARROWING (Option A)** — composition of two already-green substrates for one named
 > scenario; opt-in, deterministic, reversible. **No schedule, no movement, no new substrate.**
@@ -38,22 +38,22 @@ named scenario. Movement (schedule) is explicitly a later slice.
 
 ---
 
-## 3. Required future implementation behavior (not implemented here)
+## 3. Required implementation behavior
 
-The future implementation **may**:
-- add a narrow `production_path_0080_1` module (`simthing-driver`);
-- instantiate the accepted Nested Starmap scenario (§4.1 of the admission packet: 6/10 Terran stars,
+The implementation:
+- adds a narrow `production_path_0080_1` module (`simthing-driver`);
+- instantiates the accepted Nested Starmap scenario (§4.1 of the admission packet: 6/10 Terran stars,
   4 neutral; 3 Terran ships at 3 distinct Terran stars; 3 pirate ships at distinct neutral stars; pirate
   owns only its ships);
-- call `run_atlas_0080_0` with explicit opt-in;
-- call `run_econ_scale_0080_0` with explicit opt-in;
-- validate that **both** reports are `admitted` and implemented/pass; **reject** if either substrate
+- calls `run_atlas_0080_0` with explicit opt-in;
+- calls `run_econ_scale_0080_0` with explicit opt-in;
+- validates that **both** reports are `admitted` and implemented/pass; **rejects** if either substrate
   report is disabled / rejected / not admitted;
-- compose a scenario-level report: starmap shape; starsystem/planet structure; active/resident theaters;
+- composes a scenario-level report: starmap shape; starsystem/planet structure; active/resident theaters;
   Terran/Pirate fixed faction set; pirate full-economy participation; contended clearing reports; derived
   ownership up-aggregation summary; inherited overlay weight summary; SEAD composite-gap read-only term
   summary; deterministic replay checksum;
-- keep all substrate reports intact and inspectable.
+- keeps all substrate reports intact and inspectable.
 
 It **must not**: implement schedule/observation/control/demo for `0080-1`; emit movement; add a default
 session pass-graph wiring; or anything in §10.
@@ -100,7 +100,7 @@ session pass-graph wiring; or anything in §10.
 
 ---
 
-## 8. Future required tests (named, not implemented)
+## 8. Required tests (implemented)
 
 - `production_path_0080_1_explicit_opt_in_only`
 - `production_path_0080_1_requires_atlas_and_econ_scale_admitted`
@@ -144,11 +144,12 @@ scenario.
 - [x] Design authority chose **Option A** (open with narrowing).
 - [x] Opening spec exists; `PRODUCTION-PATH-0080-1` marked OPEN WITH NARROWING.
 - [x] Scope is `SCENARIO-0080-1` only; composition of `ATLAS-0080-0` + `ECON-SCALE-0080-0`.
-- [x] Future implementation slice named, not implemented.
+- [x] Implementation slice landed as `PRODUCTION-PATH-0080-1-IMPL-0`.
 - [x] `ATLAS-0080-0` and `ECON-SCALE-0080-0` remain IMPLEMENTED / PASS.
 - [x] Schedule/observation/control/demo for `0080-1` remain not opened.
+- [x] Implementation report linked.
 - [x] Mapping guidance + worklog updated.
-- [x] No code changed.
+- [x] Code changed only in the narrow `simthing-driver` composition module/export/tests.
 
 ---
 
@@ -157,5 +158,6 @@ scenario.
 - Atlas spec / impl: [`atlas_0080_0_opening_spec.md`](atlas_0080_0_opening_spec.md), [`../tests/phase_atlas_0080_0_impl_results.md`](../tests/phase_atlas_0080_0_impl_results.md)
 - ECON-scale spec / impl: [`econ_scale_0080_0_opening_spec.md`](econ_scale_0080_0_opening_spec.md), [`../tests/phase_econ_scale_0080_0_impl_results.md`](../tests/phase_econ_scale_0080_0_impl_results.md)
 - Production track + PR ladder: [`../design_0_0_8_0_consumer_pulled_production_track.md`](../design_0_0_8_0_consumer_pulled_production_track.md)
+- Implementation report: [`../tests/phase_production_path_0080_1_impl_results.md`](../tests/phase_production_path_0080_1_impl_results.md)
 - Binding rules: [`../invariants.md`](../invariants.md)
 - Visibility report: [`../tests/phase_production_path_0080_1_opening_review_results.md`](../tests/phase_production_path_0080_1_opening_review_results.md)
