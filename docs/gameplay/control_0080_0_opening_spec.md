@@ -1,15 +1,14 @@
 # CONTROL-0080-0 — Local Patrol Economy Bounded Command Admission Opening Spec
 
-> **Status: OPENING SPEC / NO IMPLEMENTATION.**
+> **Status: IMPLEMENTED / PASS — bounded command admission (`admit_control_0080_0`).**
 > - `SCENARIO-0080-0` (Local Patrol Economy) is **ACCEPTED**.
 > - `PRODUCTION-PATH-0080-0` is **IMPLEMENTED / PASS** (`run_production_path_0080_0`).
 > - `DEFAULT-SCHEDULE-0080-0` is **IMPLEMENTED / PASS** (1A schedule + patrol, 1B bounded pirate loop).
 > - `GAMEPLAY-0080-0` is **IMPLEMENTED / PASS** — read-only observation export (`observe_gameplay_0080_0`).
-> - `CONTROL-0080-0` is **OPEN only as a bounded command/admission gate** (docs/design).
-> - **This PR does not implement control.** A separate authorized PR may implement the named slice.
+> - `CONTROL-0080-0` is **IMPLEMENTED / PASS** — bounded command admission.
+> - **Direct movement control / player command loop / UI framework / real-time loop remain CLOSED.**
 >
-> Verdict: **OPEN WITH NARROWING (Option A)** — bounded, opt-in, deterministic, parameter-admission only.
-> **Not** free-form gameplay control, not a CPU planner, not direct movement.
+> Implementation report: [`../tests/phase_control_0080_0_impl_results.md`](../tests/phase_control_0080_0_impl_results.md).
 
 ---
 
