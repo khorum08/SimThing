@@ -10,6 +10,7 @@ pub mod child_share_eml;
 pub mod control_0080_0;
 pub mod default_schedule_0080_0;
 pub mod demo_0080_0;
+pub mod econ_scale_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
 pub mod gameplay_0080_0;
@@ -102,6 +103,15 @@ pub use demo_0080_0::{
     canonical_control_input, replay_demo_0080_0, run_demo_0080_0, Demo0080ForbiddenRequests,
     Demo0080Gate, Demo0080Input, Demo0080MovementDay, Demo0080MovementRecord, Demo0080Report,
     Demo0080Surface, DEMO_0080_0_ID, DEMO_0080_0_SCENARIO, DEMO_0080_0_STATUS_PASS,
+};
+pub use econ_scale_0080_0::{
+    replay_econ_scale_0080_0, run_econ_scale_0080_0, EconScale0080ClearingInput,
+    EconScale0080ClearingReport, EconScale0080Faction, EconScale0080FactionIndex,
+    EconScale0080ForbiddenRequests, EconScale0080Gate, EconScale0080Input, EconScale0080Participant,
+    EconScale0080RunReport, EconScale0080Scenario, EconScale0080StarsystemEconomy,
+    EconScale0080Surface, ECON_SCALE_0080_0_DEFAULT_SEED, ECON_SCALE_0080_0_FACTION_COUNT,
+    ECON_SCALE_0080_0_ID, ECON_SCALE_0080_0_MAX_PARTICIPANTS_PER_STARSYSTEM,
+    ECON_SCALE_0080_0_SCENARIO, ECON_SCALE_0080_0_STATUS_PASS,
 };
 pub use field_scheduler::{
     count_cadence_due_ticks, execute_scheduled_regions_with, execute_single_scheduled_stencil_region,

@@ -84,9 +84,12 @@ Constitutional surfacing:
 > inheriting personality/policy weights broadcast from faction-owner simthings; ownership up-aggregation
 > (planet→starsystem) as a derived overlay; pirate admitted as a **full economy faction**. Deliberately
 > opens two parked substrate gates: **`ATLAS-0080-0`** implemented/pass as scenario-scoped sparse-residency
-> nested mapping runtime (the named multi-theater first-slice) and **`ECON-SCALE-0080-0`** remains
-> next/open for faction-index ECON scaling for adversarial resource flow. Opt-in/default-off; no default
-> session pass-graph wiring; no hard currency/nested RF; SEAD-sourced decisions. Packet:
+> nested mapping runtime (the named multi-theater first-slice) and **`ECON-SCALE-0080-0`** **implemented/pass**
+> as bounded Terran/Pirate faction-indexed contended ECON scaling (pirate is a full economy faction; deterministic
+> clearing with CPU parity oracle; subsidiarity preserved; no hard currency/nested RF/unbounded factions; default
+> single-owner ECON unchanged). **Both substrate gates are now IMPLEMENTED/PASS → `PRODUCTION-PATH-0080-1` is the
+> next gate (rung 3; Opus authors the OPEN spec).** Opt-in/default-off; no default
+> session pass-graph wiring; SEAD-sourced decisions. Packet:
 > [`../scenarios/scenario_0080_1_admission_packet.md`](../scenarios/scenario_0080_1_admission_packet.md);
 > specs: [`../production_paths/atlas_0080_0_opening_spec.md`](../production_paths/atlas_0080_0_opening_spec.md),
 > [`../production_paths/econ_scale_0080_0_opening_spec.md`](../production_paths/econ_scale_0080_0_opening_spec.md).
