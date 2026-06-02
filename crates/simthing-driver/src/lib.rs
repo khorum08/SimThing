@@ -13,6 +13,7 @@ pub mod default_schedule_0080_0;
 pub mod default_schedule_0080_1;
 pub mod demo_0080_0;
 pub mod demo_0080_1;
+pub mod compound_field_0080_2;
 pub mod disruption_decay_0080_2;
 pub mod econ_scale_0080_0;
 pub mod field_scheduler;
@@ -136,6 +137,13 @@ pub use demo_0080_1::{
     canonical_control_input_0080_1, replay_demo_0080_1, run_demo_0080_1, Demo0081CommandRow,
     Demo0081ForbiddenRequests, Demo0081Gate, Demo0081Input, Demo0081MovementRow, Demo0081Report,
     Demo0081Surface, DEMO_0080_1_ID, DEMO_0080_1_SCENARIO, DEMO_0080_1_STATUS_PASS,
+};
+pub use compound_field_0080_2::{
+    replay_compound_field_0080_2, run_compound_field_0080_2, BASE_DESIRABILITY,
+    CompoundField0082ForbiddenRequests, CompoundField0082Gate, CompoundField0082Input,
+    CompoundField0082NodePos, CompoundField0082Report, CompoundField0082Surface,
+    CompoundField0082TickSnapshot, CompoundField0082Weights, COMPOUND_FIELD_0080_2_ID,
+    COMPOUND_FIELD_0080_2_SCENARIO, COMPOUND_FIELD_0080_2_STATUS_PASS, DESIRABILITY_MAX,
 };
 pub use disruption_decay_0080_2::{
     replay_disruption_decay_0080_2, run_disruption_decay_0080_2, DisruptionDecay0082DecayWeights,
