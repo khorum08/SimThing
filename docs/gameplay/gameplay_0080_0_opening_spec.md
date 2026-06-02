@@ -1,16 +1,14 @@
 # GAMEPLAY-0080-0 — Local Patrol Economy Read-Only Observation Opening Spec
 
-> **Status: OPENING SPEC / NO IMPLEMENTATION.**
+> **Status: IMPLEMENTED / PASS — read-only observation export (`observe_gameplay_0080_0`).**
 > - `SCENARIO-0080-0` (Local Patrol Economy) is **ACCEPTED**.
 > - `PRODUCTION-PATH-0080-0` is **IMPLEMENTED / PASS** (`run_production_path_0080_0`).
 > - `DEFAULT-SCHEDULE-0080-0` is **IMPLEMENTED / PASS** (1A schedule + patrol, 1B bounded pirate loop;
 >   deterministic cat-and-mouse).
-> - `GAMEPLAY-0080-0` is **OPEN only as a narrowed read-only observation gate** (docs/design).
-> - **This PR does not implement the observation surface.** A separate authorized PR may implement the
->   named slice.
+> - `GAMEPLAY-0080-0` is **IMPLEMENTED / PASS** — read-only Local Patrol Economy observation export.
+> - **Player control / command input / UI framework / real-time loop remain CLOSED.**
 >
-> Verdict: **OPEN WITH NARROWING (Option A)** — read-only, scenario-scoped, opt-in, reversible,
-> non-interactive. **Not gameplay-as-control.**
+> Implementation report: [`../tests/phase_gameplay_0080_0_impl_results.md`](../tests/phase_gameplay_0080_0_impl_results.md).
 
 ---
 

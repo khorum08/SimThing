@@ -9,6 +9,7 @@ pub mod child_share_eml;
 pub mod default_schedule_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
+pub mod gameplay_0080_0;
 pub mod install;
 pub mod production_path_0080_0;
 pub mod resource_economy_boundary_schedule;
@@ -71,6 +72,13 @@ pub use default_schedule_0080_0::{
     DefaultSchedule0080Surface,
     DEFAULT_SCHEDULE_0080_0_ID, DEFAULT_SCHEDULE_0080_0_SCENARIO,
     DEFAULT_SCHEDULE_0080_0_STATUS_1A_PASS, DEFAULT_SCHEDULE_0080_0_STATUS_1B_PASS,
+};
+pub use gameplay_0080_0::{
+    export_gameplay_0080_text, observe_gameplay_0080_0, replay_observe_gameplay_0080_0,
+    Gameplay0080ForbiddenRequests, Gameplay0080LocationSummary, Gameplay0080ObservationGate,
+    Gameplay0080ObservationInput, Gameplay0080ObservationReport, Gameplay0080ObservationSurface,
+    Gameplay0080StepTranscript, Gameplay0080Transcript, GAMEPLAY_0080_0_ID,
+    GAMEPLAY_0080_0_SCENARIO, GAMEPLAY_0080_0_STATUS_PASS,
 };
 pub use field_scheduler::{
     count_cadence_due_ticks, execute_scheduled_regions_with, execute_single_scheduled_stencil_region,
