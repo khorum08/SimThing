@@ -9,6 +9,7 @@ pub mod bench_limits;
 pub mod child_share_eml;
 pub mod control_0080_0;
 pub mod default_schedule_0080_0;
+pub mod default_schedule_0080_1;
 pub mod demo_0080_0;
 pub mod econ_scale_0080_0;
 pub mod field_scheduler;
@@ -86,6 +87,14 @@ pub use default_schedule_0080_0::{
     DefaultSchedule0080Surface,
     DEFAULT_SCHEDULE_0080_0_ID, DEFAULT_SCHEDULE_0080_0_SCENARIO,
     DEFAULT_SCHEDULE_0080_0_STATUS_1A_PASS, DEFAULT_SCHEDULE_0080_0_STATUS_1B_PASS,
+};
+pub use default_schedule_0080_1::{
+    replay_default_schedule_0080_1, run_default_schedule_0080_1,
+    DefaultSchedule0081BoundaryDecision, DefaultSchedule0081ForbiddenRequests,
+    DefaultSchedule0081Gate, DefaultSchedule0081Input, DefaultSchedule0081MovementOutcome,
+    DefaultSchedule0081RunReport, DefaultSchedule0081ShipFaction, DefaultSchedule0081Step,
+    DefaultSchedule0081StepReport, DefaultSchedule0081Surface, DEFAULT_SCHEDULE_0080_1_ID,
+    DEFAULT_SCHEDULE_0080_1_SCENARIO, DEFAULT_SCHEDULE_0080_1_STATUS_PASS,
 };
 pub use gameplay_0080_0::{
     export_gameplay_0080_text, observe_gameplay_0080_0, replay_observe_gameplay_0080_0,

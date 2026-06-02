@@ -1,14 +1,14 @@
 # DEFAULT-SCHEDULE-0080-1 — Nested Starmap Schedule / Movement Opening Spec
 
-> **Status: OPENING SPEC / NO IMPLEMENTATION.**
+> **Status: IMPLEMENTED / PASS.**
 > - `SCENARIO-0080-1` (Nested Starmap) is **ACCEPTED**.
 > - `ATLAS-0080-0` is **IMPLEMENTED / PASS** (`run_atlas_0080_0`).
 > - `ECON-SCALE-0080-0` is **IMPLEMENTED / PASS** (`run_econ_scale_0080_0`).
 > - `PRODUCTION-PATH-0080-1` is **IMPLEMENTED / PASS** (`run_production_path_0080_1`).
-> - `DEFAULT-SCHEDULE-0080-1` is **OPEN only as a scenario-scoped opt-in schedule/movement gate**.
-> - **This PR does not implement schedule/movement.**
+> - `DEFAULT-SCHEDULE-0080-1` is **IMPLEMENTED / PASS as a scenario-scoped opt-in schedule/movement gate**.
+> - Implementation report: [`../tests/phase_default_schedule_0080_1_impl_results.md`](../tests/phase_default_schedule_0080_1_impl_results.md).
 >
-> Verdict: **OPEN WITH NARROWING (Option A)** — deterministic, opt-in/default-off, scenario-scoped
+> Verdict: **IMPLEMENTED / PASS** - deterministic, opt-in/default-off, scenario-scoped
 > SEAD-sourced movement cadence over the composed Nested Starmap report. **No new substrate; no direct
 > movement; no observation/control/demo.**
 
@@ -42,7 +42,7 @@ only through the accepted `Threshold + EmitEvent → BoundaryRequest` posture.
 
 ## 3. Movement scope
 
-The future implementation **may**:
+The implementation:
 - move **Terran ships** between Terran-owned or contended starsystems;
 - move **Pirate ships** between neutral or weakly-defended starsystems;
 - use the **composite-gap terms** (already reported read-only by `PRODUCTION-PATH-0080-1`) to choose a
@@ -94,7 +94,7 @@ substrate.**
 
 ---
 
-## 8. Future required tests (named, not implemented)
+## 8. Required implementation tests
 
 - `default_schedule_0080_1_explicit_opt_in_only`
 - `default_schedule_0080_1_requires_production_path_admitted`
@@ -124,6 +124,10 @@ substrate.**
 - `default_schedule_0080_1_no_clausething_dependency`
 - `default_schedule_0080_1_docs_status_matches_gate`
 
+Implemented in `crates/simthing-driver/tests/default_schedule_0080_1.rs`; see
+[`../tests/phase_default_schedule_0080_1_impl_results.md`](../tests/phase_default_schedule_0080_1_impl_results.md)
+for the exact command transcript and canonical movement table.
+
 ---
 
 ## 9. Stop conditions
@@ -137,16 +141,17 @@ ClauseThing; invariant edit; passive proof wrapper; or a general scheduler beyon
 
 ---
 
-## 10. Exit criteria (this opening PR)
+## 10. Exit criteria (implemented PR)
 
 - [x] Design authority chose **Option A** (open with narrowing).
-- [x] Opening spec exists; `DEFAULT-SCHEDULE-0080-1` marked OPEN WITH NARROWING.
+- [x] Opening spec exists; `DEFAULT-SCHEDULE-0080-1` marked IMPLEMENTED / PASS.
 - [x] Scope is `SCENARIO-0080-1` only; consumes `PRODUCTION-PATH-0080-1`; SEAD-sourced movement.
-- [x] Future implementation slice named, not implemented.
+- [x] Implementation slice landed in `crates/simthing-driver/src/default_schedule_0080_1.rs`.
+- [x] Compact implementation report landed.
 - [x] `PRODUCTION-PATH-0080-1`, `ATLAS-0080-0`, `ECON-SCALE-0080-0` remain IMPLEMENTED / PASS.
 - [x] Observation/control/demo for `0080-1` remain not opened.
 - [x] Mapping guidance + worklog updated.
-- [x] No code changed.
+- [x] No invariant edit.
 
 ---
 
@@ -158,3 +163,4 @@ ClauseThing; invariant edit; passive proof wrapper; or a general scheduler beyon
 - Production track + PR ladder: [`../design_0_0_8_0_consumer_pulled_production_track.md`](../design_0_0_8_0_consumer_pulled_production_track.md)
 - Binding rules: [`../invariants.md`](../invariants.md)
 - Visibility report: [`../tests/phase_default_schedule_0080_1_opening_review_results.md`](../tests/phase_default_schedule_0080_1_opening_review_results.md)
+- Implementation report: [`../tests/phase_default_schedule_0080_1_impl_results.md`](../tests/phase_default_schedule_0080_1_impl_results.md)
