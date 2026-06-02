@@ -664,6 +664,116 @@ fn m5a_gpu_parity_gradient_y() {
     });
 }
 
+fn gradient_xy_config(w: u32, h: u32) -> StructuredFieldStencilConfig {
+    StructuredFieldStencilConfig {
+        width: w,
+        height: h,
+        n_dims: 4,
+        source_col: 0,
+        target_col: 1, // axis-X output
+        horizon: 1,
+        alpha_self: 0.0,
+        gamma_neighbor: 0.0,
+        weight_north: -0.5,
+        weight_south: 0.5,
+        weight_east: 0.5,
+        weight_west: -0.5,
+        source_cap: None,
+        operator: StructuredFieldStencilOperator::GradientXY { target_col_y: 2 }, // axis-Y output
+        source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
+        boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
+        mask_mode: StructuredFieldStencilMaskMode::All,
+        allow_extended_horizon: false,
+    }
+}
+
+#[test]
+fn gradient_xy_cpu_oracle_writes_both_axes_one_pass() {
+    let config = gradient_xy_config(3, 3);
+    let params = params_from_config(&config);
+    let mut values = vec![0.0f32; config.values_len()];
+    // east of center (slot 5) = 10, west (slot 3) = 0 -> gx = 5
+    values[idx(5, 0, 4)] = 10.0;
+    values[idx(3, 0, 4)] = 0.0;
+    // south of center (slot 7) = 8, north (slot 1) = 0 -> gy = 4
+    values[idx(7, 0, 4)] = 8.0;
+    values[idx(1, 0, 4)] = 0.0;
+    let cpu = cpu_horizon(&values, &params, 1);
+    let gx = cpu[idx(4, 1, 4)];
+    let gy = cpu[idx(4, 2, 4)];
+    assert!((gx - 5.0).abs() < 1e-5, "GradientXY axis-X center got {gx}");
+    assert!((gy - 4.0).abs() < 1e-5, "GradientXY axis-Y center got {gy}");
+    // source column is untouched.
+    assert_eq!(cpu[idx(4, 0, 4)], 0.0);
+}
+
+#[test]
+fn gradient_xy_cpu_oracle_matches_two_single_axis_passes() {
+    // Dual-output GradientXY must equal running GradientX then GradientY into separate columns.
+    let mut values = vec![0.0f32; 3 * 3 * 4];
+    values[idx(5, 0, 4)] = 10.0;
+    values[idx(3, 0, 4)] = 2.0;
+    values[idx(7, 0, 4)] = 8.0;
+    values[idx(1, 0, 4)] = 1.0;
+
+    let xy = cpu_horizon(&values, &params_from_config(&gradient_xy_config(3, 3)), 1);
+    let gx_only = cpu_horizon(&values, &params_from_config(&gradient_x_config(3, 3)), 1);
+    let gy_only = cpu_horizon(&values, &params_from_config(&gradient_y_config(3, 3)), 1);
+
+    for slot in 0..9u32 {
+        // GradientX writes col 1; GradientXY writes axis-X to col 1.
+        assert!((xy[idx(slot, 1, 4)] - gx_only[idx(slot, 1, 4)]).abs() < 1e-6);
+        // GradientY writes col 1; GradientXY writes axis-Y to col 2.
+        assert!((xy[idx(slot, 2, 4)] - gy_only[idx(slot, 1, 4)]).abs() < 1e-6);
+    }
+}
+
+#[test]
+fn gradient_xy_aliased_output_columns_rejected() {
+    let mut config = gradient_xy_config(3, 3);
+    config.operator = StructuredFieldStencilOperator::GradientXY { target_col_y: 1 }; // == target_col
+    assert_eq!(
+        config.validate(),
+        Err(StructuredFieldStencilError::GradientXyAliasedOutputs {
+            target_col: 1,
+            target_col_y: 1,
+        })
+    );
+}
+
+#[test]
+fn gradient_xy_target_y_out_of_range_rejected() {
+    let mut config = gradient_xy_config(3, 3);
+    config.operator = StructuredFieldStencilOperator::GradientXY { target_col_y: 4 }; // n_dims = 4
+    assert_eq!(
+        config.validate(),
+        Err(StructuredFieldStencilError::GradientXyTargetYOutOfRange {
+            target_col_y: 4,
+            n_dims: 4,
+        })
+    );
+}
+
+#[test]
+fn gradient_xy_gpu_parity_both_axes() {
+    with_gpu(|ctx| {
+        let config = gradient_xy_config(3, 3);
+        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
+        let mut values = vec![0.0f32; op.config().values_len()];
+        values[idx(5, 0, 4)] = 10.0;
+        values[idx(3, 0, 4)] = 0.0;
+        values[idx(7, 0, 4)] = 8.0;
+        values[idx(1, 0, 4)] = 0.0;
+        op.upload_values(ctx, &values).unwrap();
+        let (gpu, _) = op.run_ping_pong(ctx, 1).unwrap();
+        let params = params_from_config(op.config());
+        let cpu = cpu_horizon(&values, &params, 1);
+        assert_fields_near_helper(&cpu, &gpu, 1e-4);
+        assert!((get(&gpu, 4, 1, 4) - 5.0).abs() < 1e-3, "axis-X");
+        assert!((get(&gpu, 4, 2, 4) - 4.0).abs() < 1e-3, "axis-Y");
+    });
+}
+
 #[test]
 fn m5a_gpu_parity_normalized_after_directional_weight_refactor() {
     with_gpu(|ctx| {

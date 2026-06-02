@@ -26,6 +26,7 @@ pub const EXTENDED_HORIZON_CAP: u32 = 16;
 const VARIANT_NORMALIZED: u32 = 1;
 const VARIANT_DIRECTED: u32 = 2;
 const VARIANT_SOURCE_CAPPED: u32 = 5;
+const VARIANT_GRADIENT_XY: u32 = 6;
 
 const BOUNDARY_ZERO: u32 = 0;
 const BOUNDARY_CLAMP: u32 = 1;
@@ -44,6 +45,10 @@ pub enum StructuredFieldStencilOperator {
     GradientX,
     /// Single-target axis-Y extraction: `(south − north) / 2` via per-direction weights.
     GradientY,
+    /// Dual-output extraction in one dispatch: axis-X gradient → `target_col` (E/W weights),
+    /// axis-Y gradient → `target_col_y` (N/S weights). The two output columns must differ
+    /// (no-aliasing admission). Optimization of running `GradientX` then `GradientY`.
+    GradientXY { target_col_y: u32 },
 }
 
 /// Source injection policy between stencil hops.
@@ -115,7 +120,9 @@ impl StructuredFieldStencilConfig {
     pub fn resolved_directional_weights(&self) -> (f32, f32, f32, f32) {
         if matches!(
             self.operator,
-            StructuredFieldStencilOperator::GradientX | StructuredFieldStencilOperator::GradientY
+            StructuredFieldStencilOperator::GradientX
+                | StructuredFieldStencilOperator::GradientY
+                | StructuredFieldStencilOperator::GradientXY { .. }
         ) || (self.weight_north != 0.0
             || self.weight_south != 0.0
             || self.weight_east != 0.0
@@ -148,6 +155,7 @@ impl StructuredFieldStencilConfig {
             }
             StructuredFieldStencilOperator::GradientX => (0.0, 0.0, 0.5, -0.5),
             StructuredFieldStencilOperator::GradientY => (-0.5, 0.5, 0.0, 0.0),
+            StructuredFieldStencilOperator::GradientXY { .. } => (-0.5, 0.5, 0.5, -0.5),
             StructuredFieldStencilOperator::Normalized
             | StructuredFieldStencilOperator::SourceCappedNormalized => {
                 let w = self.gamma_neighbor / 4.0;
@@ -193,10 +201,26 @@ impl StructuredFieldStencilConfig {
         }
         if !matches!(
             self.operator,
-            StructuredFieldStencilOperator::GradientX | StructuredFieldStencilOperator::GradientY
+            StructuredFieldStencilOperator::GradientX
+                | StructuredFieldStencilOperator::GradientY
+                | StructuredFieldStencilOperator::GradientXY { .. }
         ) && !self.gamma_neighbor.is_finite()
         {
             return Err(StructuredFieldStencilError::NonFiniteCoefficients);
+        }
+        if let StructuredFieldStencilOperator::GradientXY { target_col_y } = self.operator {
+            if target_col_y >= self.n_dims {
+                return Err(StructuredFieldStencilError::GradientXyTargetYOutOfRange {
+                    target_col_y,
+                    n_dims: self.n_dims,
+                });
+            }
+            if target_col_y == self.target_col {
+                return Err(StructuredFieldStencilError::GradientXyAliasedOutputs {
+                    target_col: self.target_col,
+                    target_col_y,
+                });
+            }
         }
         for w in [
             self.weight_north,
@@ -284,6 +308,10 @@ pub enum StructuredFieldStencilError {
     BufferTooShort { actual: usize, required: usize },
     #[error("execution steps {steps} exceed configured horizon {horizon}")]
     ExecutionHorizonExceedsConfig { steps: u32, horizon: u32 },
+    #[error("GradientXY target_col_y {target_col_y} out of range (n_dims={n_dims})")]
+    GradientXyTargetYOutOfRange { target_col_y: u32, n_dims: u32 },
+    #[error("GradientXY output columns must differ (no aliasing): target_col={target_col} target_col_y={target_col_y}")]
+    GradientXyAliasedOutputs { target_col: u32, target_col_y: u32 },
 }
 
 #[repr(C)]
@@ -305,7 +333,7 @@ pub struct FieldStencilParamsGpu {
     variant: u32,
     directed_mode: u32,
     use_active_mask: u32,
-    _pad: u32,
+    target_col_y: u32,
 }
 
 impl FieldStencilParamsGpu {
@@ -319,6 +347,7 @@ impl FieldStencilParamsGpu {
             StructuredFieldStencilOperator::GradientX | StructuredFieldStencilOperator::GradientY => {
                 VARIANT_NORMALIZED
             }
+            StructuredFieldStencilOperator::GradientXY { .. } => VARIANT_GRADIENT_XY,
         };
         let directed_mode = match config.operator {
             StructuredFieldStencilOperator::Directed { northwest } => {
@@ -360,7 +389,10 @@ impl FieldStencilParamsGpu {
                 config.mask_mode,
                 StructuredFieldStencilMaskMode::ActiveOnlyExperimentalNoHalo
             )),
-            _pad: 0,
+            target_col_y: match config.operator {
+                StructuredFieldStencilOperator::GradientXY { target_col_y } => target_col_y,
+                _ => 0,
+            },
         }
     }
 }
@@ -929,6 +961,15 @@ pub fn cpu_stencil_step(values: &[f32], params: &FieldStencilParamsGpu) -> Vec<f
             let south = sample(values, ix, iy + 1);
             let west = sample(values, ix - 1, iy);
             let east = sample(values, ix + 1, iy);
+
+            if params.variant == VARIANT_GRADIENT_XY {
+                // Dual-output: axis-X gradient (E/W weights) → tc, axis-Y gradient (N/S) → tc_y.
+                let gx = params.weight_east * east + params.weight_west * west;
+                let gy = params.weight_north * north + params.weight_south * south;
+                out[(idx * nd + tc) as usize] = gx;
+                out[(idx * nd + params.target_col_y) as usize] = gy;
+                continue;
+            }
 
             let mut next = params.alpha_self_decay * center
                 + params.weight_north * north

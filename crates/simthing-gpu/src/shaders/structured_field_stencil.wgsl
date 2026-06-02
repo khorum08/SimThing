@@ -17,7 +17,7 @@ struct FieldStencilParams {
     variant: u32,
     directed_mode: u32,
     use_active_mask: u32,
-    _pad: u32,
+    target_col_y: u32,
 }
 
 @group(0) @binding(0) var<uniform> params: FieldStencilParams;
@@ -70,6 +70,18 @@ fn stencil_step(@builtin(global_invocation_id) gid: vec3<u32>) {
     let south = sample_source(ix, iy + 1);
     let west = sample_source(ix - 1, iy);
     let east = sample_source(ix + 1, iy);
+
+    // Dual-output gradient: axis-X (E/W weights) -> target_col, axis-Y (N/S weights) -> target_col_y.
+    if params.variant == 6u {
+        let gx = params.weight_east * east + params.weight_west * west;
+        let gy = params.weight_north * north + params.weight_south * south;
+        for (var d = 0u; d < params.n_dims; d = d + 1u) {
+            output_values[base + d] = input_values[base + d];
+        }
+        output_values[base + params.target_col] = gx;
+        output_values[base + params.target_col_y] = gy;
+        return;
+    }
 
     var next = params.alpha_self_decay * center
         + params.weight_north * north
