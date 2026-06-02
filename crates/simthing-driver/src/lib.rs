@@ -4,6 +4,7 @@ pub mod arena_allocation_sync;
 pub mod arena_hierarchy;
 pub mod arena_participant;
 pub mod arena_registry;
+pub mod atlas_0080_0;
 pub mod bench_limits;
 pub mod child_share_eml;
 pub mod control_0080_0;
@@ -63,6 +64,15 @@ pub use arena_registry::{
     ArenaCoupling, ArenaDiagnostic, ArenaExpansionReport, ArenaIdx, ArenaParticipant,
     ArenaRefreshReport, ArenaRegistry, ArenaRegistryBuilder, ArenaRegistryError, CouplingDelay,
     FissionPolicy, GpuArenaDescriptor, SlotId,
+};
+pub use atlas_0080_0::{
+    replay_atlas_0080_0, run_atlas_0080_0, Atlas0080Cell, Atlas0080DescentAscentReport,
+    Atlas0080ForbiddenRequests, Atlas0080Gate, Atlas0080Input, Atlas0080Report,
+    Atlas0080ResidencyReport, Atlas0080ResidencyRequest, Atlas0080ResidencyState,
+    Atlas0080Scenario, Atlas0080Surface, Atlas0080TheaterId, ATLAS_0080_0_DEFAULT_SEED,
+    ATLAS_0080_0_ID, ATLAS_0080_0_LOGICAL_LOCATION_COUNT, ATLAS_0080_0_PLANET_SIDE,
+    ATLAS_0080_0_SCENARIO, ATLAS_0080_0_STARMAP_SIDE, ATLAS_0080_0_STARSYSTEM_COUNT,
+    ATLAS_0080_0_STARSYSTEM_SIDE, ATLAS_0080_0_STATUS_PASS,
 };
 pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};
