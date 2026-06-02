@@ -8,6 +8,7 @@ pub mod atlas_0080_0;
 pub mod bench_limits;
 pub mod child_share_eml;
 pub mod control_0080_0;
+pub mod control_0080_1;
 pub mod default_schedule_0080_0;
 pub mod default_schedule_0080_1;
 pub mod demo_0080_0;
@@ -116,6 +117,13 @@ pub use control_0080_0::{
     Control0080AdmissionReport, Control0080Command, Control0080CommandBatch, Control0080ForbiddenRequests,
     Control0080Gate, Control0080RejectedCommand, Control0080Surface, CONTROL_0080_0_ID,
     CONTROL_0080_0_SCENARIO, CONTROL_0080_0_STATUS_PASS,
+};
+pub use control_0080_1::{
+    admit_control_0080_1, replay_admit_control_0080_1, Control0081AdmissionInput,
+    Control0081AdmissionReport, Control0081BoundedConfig, Control0081Command,
+    Control0081CommandBatch, Control0081CommandTranscriptRow, Control0081ForbiddenRequests,
+    Control0081Gate, Control0081RejectedCommand, Control0081Surface, CONTROL_0080_1_ID,
+    CONTROL_0080_1_SCENARIO, CONTROL_0080_1_STATUS_PASS,
 };
 pub use demo_0080_0::{
     canonical_control_input, replay_demo_0080_0, run_demo_0080_0, Demo0080ForbiddenRequests,

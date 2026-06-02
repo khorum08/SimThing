@@ -118,12 +118,14 @@ Constitutional surfacing:
 > trace, Terran/Pirate movement rows; opt-in/default-off; mutates nothing). Observation only.
 > Spec: [`../gameplay/gameplay_0080_1_opening_spec.md`](../gameplay/gameplay_0080_1_opening_spec.md);
 > report: [`../tests/phase_gameplay_0080_1_impl_results.md`](../tests/phase_gameplay_0080_1_impl_results.md).
-> `CONTROL-0080-1` **opened as a docs/design gate only** for bounded Nested Starmap command admission
-> (opt-in deterministic vocabulary writes only existing `DefaultSchedule0081Input` bounded scenario/config
-> values, then runs the existing schedule→`observe_gameplay_0080_1` path; commands never move a ship or
-> bypass SEAD). Direct movement control, player command loop, UI, real-time loop, demo, and global default
-> schedule remain CLOSED; no implementation. Next rung: `CONTROL-0080-1-IMPL-0` (Codex). Spec:
-> [`../gameplay/control_0080_1_opening_spec.md`](../gameplay/control_0080_1_opening_spec.md).
+> `CONTROL-0080-1` **implemented/pass** as bounded Nested Starmap command admission
+> (`admit_control_0080_1`; opt-in deterministic vocabulary writes only existing
+> `DefaultSchedule0081Input` bounded schedule values plus bounded Nested Starmap control config,
+> then runs the existing `DEFAULT-SCHEDULE-0080-1` -> `GAMEPLAY-0080-1` path; commands never move
+> a ship, emit an external `BoundaryRequest`, or bypass SEAD). Direct movement control, player
+> command loop, UI, real-time loop, demo, and global default schedule remain CLOSED. Spec:
+> [`../gameplay/control_0080_1_opening_spec.md`](../gameplay/control_0080_1_opening_spec.md);
+> report: [`../tests/phase_control_0080_1_impl_results.md`](../tests/phase_control_0080_1_impl_results.md).
 
 Active read order (authoritative path for agents):
 

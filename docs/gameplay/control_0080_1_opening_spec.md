@@ -1,16 +1,16 @@
 # CONTROL-0080-1 — Nested Starmap Bounded Command Admission Opening Spec
 
-> **Status: OPENING SPEC / NO IMPLEMENTATION.**
+> **Status: IMPLEMENTED / PASS - bounded command admission.**
 > - `SCENARIO-0080-1` (Nested Starmap) is **ACCEPTED**.
 > - `ATLAS-0080-0` is **IMPLEMENTED / PASS** (`run_atlas_0080_0`).
 > - `ECON-SCALE-0080-0` is **IMPLEMENTED / PASS** (`run_econ_scale_0080_0`).
 > - `PRODUCTION-PATH-0080-1` is **IMPLEMENTED / PASS** (`run_production_path_0080_1`).
 > - `DEFAULT-SCHEDULE-0080-1` is **IMPLEMENTED / PASS** (`run_default_schedule_0080_1`).
 > - `GAMEPLAY-0080-1` is **IMPLEMENTED / PASS** — read-only observation/export (`observe_gameplay_0080_1`).
-> - `CONTROL-0080-1` is **OPEN only as a bounded command-admission gate**.
-> - **This PR does not implement command admission.**
+> - `CONTROL-0080-1` is **IMPLEMENTED / PASS only as a bounded command-admission gate**.
+> - Implementation report: [`../tests/phase_control_0080_1_impl_results.md`](../tests/phase_control_0080_1_impl_results.md).
 >
-> Verdict: **OPEN WITH NARROWING (Option A)** — bounded, opt-in, deterministic, parameter-admission only.
+> Verdict: **IMPLEMENTED / PASS (Option A)** — bounded, opt-in, deterministic, parameter-admission only.
 > **Not** player control, not a CPU planner, not direct movement, not a general command system.
 
 ---
@@ -53,7 +53,7 @@ command bus, and not ClauseThing.
 
 ---
 
-## 3. Candidate minimal command vocabulary (named, not implemented)
+## 3. Implemented minimal command vocabulary
 
 Each targets an existing `DefaultSchedule0081Input` / Nested Starmap bounded value/config field:
 
@@ -88,13 +88,13 @@ edit invariants; reopen closed ladders; or add passive proof wrappers.
 
 ---
 
-## 5. Future implementation slice (if opened)
+## 5. Implementation slice
 
-The next handoff **may**: add a narrow `control_0080_1` module; accept a tiny validated command list (§3);
-mutate only allowed `DefaultSchedule0081Input` / Nested Starmap bounded input/config values; invoke the
-existing `DEFAULT-SCHEDULE-0080-1` → `GAMEPLAY-0080-1` path; return the existing read-only observation
-export after admitted commands; preserve all schedule/observation/production/atlas/econ regressions; add
-rejection tests for forbidden direct-control paths.
+The implementation adds a narrow `control_0080_1` module; accepts the tiny validated command list (§3);
+mutates only allowed `DefaultSchedule0081Input` / Nested Starmap bounded input/config values; invokes the
+existing `DEFAULT-SCHEDULE-0080-1` → `GAMEPLAY-0080-1` path; returns the existing read-only observation
+export after admitted commands; preserves all schedule/observation/production/atlas/econ regressions; and
+adds rejection tests for forbidden direct-control paths.
 
 It **must not**: implement direct movement control; implement external boundary requests; implement
 gameplay UI; implement a real-time loop; create a general command system; create a general scenario
@@ -106,7 +106,7 @@ remains the sole mover-decision source.
 
 ---
 
-## 6. Future required tests (named, not implemented)
+## 6. Required tests (implemented)
 
 - `control_0080_1_explicit_opt_in_only`
 - `control_0080_1_accepts_bounded_schedule_value_commands`
@@ -145,13 +145,13 @@ edit; passive proof wrapper; or a general command system / scenario editor.
 ## 8. Exit criteria (this opening PR)
 
 - [x] Design authority chose **Option A** (open with narrowing).
-- [x] Opening spec exists; `CONTROL-0080-1` marked OPEN WITH NARROWING (bounded command admission).
+- [x] Opening spec exists; `CONTROL-0080-1` marked IMPLEMENTED / PASS (bounded command admission).
 - [x] Scope is `SCENARIO-0080-1` only; writes only `DefaultSchedule0081Input` bounded values/config.
-- [x] Future implementation slice named, not implemented.
+- [x] Implementation slice landed in `control_0080_1`.
 - [x] `GAMEPLAY-0080-1` and all prior `0080-1` gates remain IMPLEMENTED / PASS.
 - [x] Demo for `0080-1` remains not opened.
 - [x] Mapping guidance + worklog updated.
-- [x] No code changed.
+- [x] Code changed only for bounded command admission and tests.
 
 ---
 
@@ -163,3 +163,4 @@ edit; passive proof wrapper; or a general command system / scenario editor.
 - Production track + PR ladder: [`../design_0_0_8_0_consumer_pulled_production_track.md`](../design_0_0_8_0_consumer_pulled_production_track.md)
 - Binding rules: [`../invariants.md`](../invariants.md)
 - Visibility report: [`../tests/phase_control_0080_1_opening_review_results.md`](../tests/phase_control_0080_1_opening_review_results.md)
+- Implementation report: [`../tests/phase_control_0080_1_impl_results.md`](../tests/phase_control_0080_1_impl_results.md)
