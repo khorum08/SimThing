@@ -79,6 +79,17 @@ Constitutional surfacing:
 > product authorization**. Closed concerns (CLI/UI/realtime/player-control/global-schedule/semantic-WGSL/
 > ClauseThing/broader-economy) remain closed. Closeout:
 > [`../tests/phase_local_patrol_economy_0080_closeout_results.md`](../tests/phase_local_patrol_economy_0080_closeout_results.md).
+> **Second scenario `SCENARIO-0080-1` (Nested Starmap, Terran/Pirate multi-theater) ACCEPTED**
+> (2026-06-02): nested session→starmap(10×10)→10 starsystems(10×10)→planet(10×10) with owner overlays
+> inheriting personality/policy weights broadcast from faction-owner simthings; ownership up-aggregation
+> (planet→starsystem) as a derived overlay; pirate admitted as a **full economy faction**. Deliberately
+> opens two parked substrate gates as docs/design only: **`ATLAS-0080-0`** (sparse-residency nested
+> mapping — the named multi-theater first-slice) and **`ECON-SCALE-0080-0`** (faction-index ECON scaling
+> for adversarial resource flow). Opt-in/default-off; no implementation; no default session pass-graph
+> wiring; no hard currency/nested RF; SEAD-sourced decisions. Packet:
+> [`../scenarios/scenario_0080_1_admission_packet.md`](../scenarios/scenario_0080_1_admission_packet.md);
+> specs: [`../production_paths/atlas_0080_0_opening_spec.md`](../production_paths/atlas_0080_0_opening_spec.md),
+> [`../production_paths/econ_scale_0080_0_opening_spec.md`](../production_paths/econ_scale_0080_0_opening_spec.md).
 
 Active read order (authoritative path for agents):
 
