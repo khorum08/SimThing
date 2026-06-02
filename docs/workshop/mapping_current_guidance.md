@@ -58,6 +58,11 @@ Constitutional surfacing:
 > [`../production_paths/default_schedule_0080_0_opening_spec.md`](../production_paths/default_schedule_0080_0_opening_spec.md);
 > reports: [`../tests/phase_default_schedule_0080_0_impl_1a_results.md`](../tests/phase_default_schedule_0080_0_impl_1a_results.md),
 > [`../tests/phase_default_schedule_0080_0_impl_1b_results.md`](../tests/phase_default_schedule_0080_0_impl_1b_results.md).
+> `GAMEPLAY-0080-0` opening review: **OPEN WITH NARROWING** as a **read-only** Local Patrol Economy
+> observation surface (consumes `DefaultSchedule0080RunReport`; tick transcript/export/summary);
+> ready for implementation authorization. Observation only — player control/command input, UI framework,
+> real-time loop, and global default schedule remain CLOSED. No implementation in this PR. Spec:
+> [`../gameplay/gameplay_0080_0_opening_spec.md`](../gameplay/gameplay_0080_0_opening_spec.md).
 
 Active read order (authoritative path for agents):
 
