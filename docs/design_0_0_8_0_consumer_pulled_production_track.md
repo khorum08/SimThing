@@ -5,12 +5,15 @@
 > **No further work opens on this slice without a new named product scenario or explicit product
 > authorization.** Closeout: [`tests/phase_local_patrol_economy_0080_closeout_results.md`](tests/phase_local_patrol_economy_0080_closeout_results.md).
 >
-> **Second scenario opened:** `SCENARIO-0080-1` — **Nested Starmap (Terran/Pirate multi-theater)** —
-> ACCEPTED (2026-06-02). It deliberately opens two previously-parked substrate gates:
-> `ATLAS-0080-0` (atlas production runtime / sparse-residency nested mapping) is **IMPLEMENTED / PASS**;
-> `ECON-SCALE-0080-0` (multi-faction faction-index ECON scaling, pirate as full economy faction) is
-> **IMPLEMENTED / PASS**; `PRODUCTION-PATH-0080-1` is **IMPLEMENTED / PASS** as an opt-in/default-off
-> composition of those reports. Packet: [`scenarios/scenario_0080_1_admission_packet.md`](scenarios/scenario_0080_1_admission_packet.md);
+> **Second scenario COMPLETE / PARKED after `SCENARIO-0080-1-CLOSE-0`** (2026-06-02).
+> `SCENARIO-0080-1` — **Nested Starmap (Terran/Pirate multi-theater)** — is complete end-to-end:
+> scenario → atlas → econ-scale → production path → schedule → observation → control → demo/export are all
+> IMPLEMENTED / PASS (155-test chain green at close). It opened and resolved two previously-parked substrate
+> gates: `ATLAS-0080-0` (sparse-residency nested mapping) and `ECON-SCALE-0080-0` (faction-index ECON,
+> pirate as full economy faction), both **IMPLEMENTED / PASS**. **No further work opens on this slice
+> without a new named product scenario or explicit product authorization.** Closeout:
+> [`tests/phase_scenario_0080_1_closeout_results.md`](tests/phase_scenario_0080_1_closeout_results.md).
+> Packet: [`scenarios/scenario_0080_1_admission_packet.md`](scenarios/scenario_0080_1_admission_packet.md);
 > review: [`tests/phase_scenario_0080_1_opening_review_results.md`](tests/phase_scenario_0080_1_opening_review_results.md).
 >
 > **Status:** OPEN. `SCENARIO-0080-0` (Local Patrol Economy) **ACCEPTED** (2026-06-02);

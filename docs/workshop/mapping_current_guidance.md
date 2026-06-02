@@ -133,7 +133,11 @@ Constitutional surfacing:
 > replay checksum; **No CLI binary**; 24/24 tests PASS). Spec:
 > [`../gameplay/demo_0080_1_opening_spec.md`](../gameplay/demo_0080_1_opening_spec.md); report:
 > [`../tests/phase_demo_0080_1_impl_results.md`](../tests/phase_demo_0080_1_impl_results.md).
-> Next rung: `SCENARIO-0080-1-CLOSE-0` (Opus design authority adjudicates close/park).
+> **`SCENARIO-0080-1` is COMPLETE / PARKED** after `SCENARIO-0080-1-CLOSE-0` (2026-06-02) — the full
+> Nested Starmap vertical slice (scenario → atlas → econ-scale → production path → schedule → observation →
+> control → demo/export) is IMPLEMENTED / PASS with a 155-test chain green at close. **No further work
+> opens on this slice without a new named product scenario or explicit product authorization.** Closeout:
+> [`../tests/phase_scenario_0080_1_closeout_results.md`](../tests/phase_scenario_0080_1_closeout_results.md).
 
 Active read order (authoritative path for agents):
 
