@@ -8,6 +8,7 @@ pub mod bench_limits;
 pub mod child_share_eml;
 pub mod control_0080_0;
 pub mod default_schedule_0080_0;
+pub mod demo_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
 pub mod gameplay_0080_0;
@@ -86,6 +87,11 @@ pub use control_0080_0::{
     Control0080AdmissionReport, Control0080Command, Control0080CommandBatch, Control0080ForbiddenRequests,
     Control0080Gate, Control0080RejectedCommand, Control0080Surface, CONTROL_0080_0_ID,
     CONTROL_0080_0_SCENARIO, CONTROL_0080_0_STATUS_PASS,
+};
+pub use demo_0080_0::{
+    canonical_control_input, replay_demo_0080_0, run_demo_0080_0, Demo0080ForbiddenRequests,
+    Demo0080Gate, Demo0080Input, Demo0080MovementDay, Demo0080MovementRecord, Demo0080Report,
+    Demo0080Surface, DEMO_0080_0_ID, DEMO_0080_0_SCENARIO, DEMO_0080_0_STATUS_PASS,
 };
 pub use field_scheduler::{
     count_cadence_due_ticks, execute_scheduled_regions_with, execute_single_scheduled_stencil_region,

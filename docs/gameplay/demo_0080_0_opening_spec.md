@@ -1,16 +1,15 @@
 # DEMO-0080-0 — Local Patrol Economy Headless Demo / Export Opening Spec
 
-> **Status: OPENING SPEC / NO IMPLEMENTATION.**
+> **Status: IMPLEMENTED / PASS — headless demo/export library helper (`run_demo_0080_0`).**
 > - `SCENARIO-0080-0` (Local Patrol Economy) is **ACCEPTED**.
 > - `PRODUCTION-PATH-0080-0` is **IMPLEMENTED / PASS** (`run_production_path_0080_0`).
 > - `DEFAULT-SCHEDULE-0080-0` is **IMPLEMENTED / PASS** (1A schedule + patrol, 1B bounded pirate loop).
 > - `GAMEPLAY-0080-0` is **IMPLEMENTED / PASS** — read-only observation export (`observe_gameplay_0080_0`).
 > - `CONTROL-0080-0` is **IMPLEMENTED / PASS** — bounded command admission (`admit_control_0080_0`).
-> - `DEMO-0080-0` is **OPEN only as a headless demo/export packaging gate** (docs/design).
-> - **This PR does not implement the demo.** A separate authorized PR may implement the named slice.
+> - `DEMO-0080-0` is **IMPLEMENTED / PASS** — headless demo/export library helper.
+> - **No CLI binary.** UI framework, real-time loop, player command loop, direct movement control remain CLOSED.
 >
-> Verdict: **OPEN WITH NARROWING (Option A)** — deterministic, opt-in, headless, non-interactive
-> packaging over the *already-implemented* slice. **No new simulation behavior.**
+> Implementation report: [`../tests/phase_demo_0080_0_impl_results.md`](../tests/phase_demo_0080_0_impl_results.md).
 
 ---
 

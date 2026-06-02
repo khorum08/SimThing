@@ -1,3 +1,7 @@
+# 2026-06-02 — DEMO-0080-0-IMPL-0: headless Local Patrol Economy demo/export library helper
+
+- Implemented `run_demo_0080_0` / `replay_demo_0080_0` in `crates/simthing-driver/src/demo_0080_0.rs` — explicit opt-in headless demo/export helper applying canonical `Control0080CommandBatch::canonical_run()` through existing `admit_control_0080_0` → schedule → `observe_gameplay_0080_0` path; emits observation export plus companion `MOVEMENT|` day-to-day patrol/pirate record derived from observation transcript. No CLI binary, direct movement, player command loop, UI framework, real-time loop, or global default schedule. Report: [`tests/phase_demo_0080_0_impl_results.md`](tests/phase_demo_0080_0_impl_results.md). Updated production track, demo spec, mapping.
+
 # 2026-06-02 — DEMO-0080-0-OPEN-0: open headless Local Patrol Economy demo/export gate (Opus design authority, docs-only)
 
 - **Decision: Option A — OPEN WITH NARROWING.** The Local Patrol Economy vertical slice is now complete and implemented/pass end-to-end: bounded command admission (`admit_control_0080_0`, `Control0080CommandBatch::canonical_run`) → schedule (`run_default_schedule_0080_0`) → read-only observation export (`observe_gameplay_0080_0`). Opened **`DEMO-0080-0`** as a headless demo/export **packaging** gate (docs/design only; NO IMPLEMENTATION): a future deterministic, opt-in, headless, non-interactive **library helper** that applies a canonical bounded command batch and runs the existing control→schedule→observation path, emitting the existing deterministic transcript/export.
