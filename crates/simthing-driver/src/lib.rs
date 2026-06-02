@@ -13,6 +13,7 @@ pub mod default_schedule_0080_0;
 pub mod default_schedule_0080_1;
 pub mod demo_0080_0;
 pub mod demo_0080_1;
+pub mod disruption_decay_0080_2;
 pub mod econ_scale_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
@@ -135,6 +136,14 @@ pub use demo_0080_1::{
     canonical_control_input_0080_1, replay_demo_0080_1, run_demo_0080_1, Demo0081CommandRow,
     Demo0081ForbiddenRequests, Demo0081Gate, Demo0081Input, Demo0081MovementRow, Demo0081Report,
     Demo0081Surface, DEMO_0080_1_ID, DEMO_0080_1_SCENARIO, DEMO_0080_1_STATUS_PASS,
+};
+pub use disruption_decay_0080_2::{
+    replay_disruption_decay_0080_2, run_disruption_decay_0080_2, DisruptionDecay0082DecayWeights,
+    DisruptionDecay0082ForbiddenRequests, DisruptionDecay0082Gate, DisruptionDecay0082Input,
+    DisruptionDecay0082Presence, DisruptionDecay0082RetentionFactor, DisruptionDecay0082Report,
+    DisruptionDecay0082Row, DisruptionDecay0082Surface, DISRUPTION_DECAY_0080_2_ID,
+    DISRUPTION_DECAY_0080_2_SCENARIO, DISRUPTION_DECAY_0080_2_STATUS_PASS, DISRUPTION_MAX,
+    DISRUPTION_SCALE,
 };
 pub use econ_scale_0080_0::{
     replay_econ_scale_0080_0, run_econ_scale_0080_0, EconScale0080ClearingInput,
