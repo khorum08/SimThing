@@ -15,6 +15,7 @@ pub mod econ_scale_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
 pub mod gameplay_0080_0;
+pub mod gameplay_0080_1;
 pub mod install;
 pub mod production_path_0080_0;
 pub mod production_path_0080_1;
@@ -102,6 +103,13 @@ pub use gameplay_0080_0::{
     Gameplay0080ObservationInput, Gameplay0080ObservationReport, Gameplay0080ObservationSurface,
     Gameplay0080StepTranscript, Gameplay0080Transcript, GAMEPLAY_0080_0_ID,
     GAMEPLAY_0080_0_SCENARIO, GAMEPLAY_0080_0_STATUS_PASS,
+};
+pub use gameplay_0080_1::{
+    export_gameplay_0080_1_text, observe_gameplay_0080_1, replay_observe_gameplay_0080_1,
+    Gameplay0081AtlasSummary, Gameplay0081FactionEconSummary, Gameplay0081ForbiddenRequests,
+    Gameplay0081Gate, Gameplay0081Input, Gameplay0081MovementRow, Gameplay0081ObservationReport,
+    Gameplay0081StarmapShape, Gameplay0081Summary, Gameplay0081Surface, Gameplay0081Transcript,
+    GAMEPLAY_0080_1_ID, GAMEPLAY_0080_1_SCENARIO, GAMEPLAY_0080_1_STATUS_PASS,
 };
 pub use control_0080_0::{
     admit_control_0080_0, replay_admit_control_0080_0, Control0080AdmissionInput,
