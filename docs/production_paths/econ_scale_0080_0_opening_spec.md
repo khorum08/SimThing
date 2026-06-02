@@ -7,6 +7,9 @@
 > - This is the previously-parked **Hybrid-Strata / faction-index ECON scaling**, opened by a named
 >   consumer.
 > - All wiring is **opt-in / default-off**. **This PR does not implement the scaling.**
+> - **Implementation result (2026-06-02): IMPLEMENTED / PASS** — `ECON-SCALE-0080-0-IMPL-0`, 17 tests;
+>   see [`../tests/phase_econ_scale_0080_0_impl_results.md`](../tests/phase_econ_scale_0080_0_impl_results.md).
+>   Scope unchanged.
 
 ---
 
