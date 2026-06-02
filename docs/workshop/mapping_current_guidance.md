@@ -112,12 +112,18 @@ Constitutional surfacing:
 > preserves identity + owner overlays and updates membership without reparenting; no observation/control/demo;
 > no global default schedule; no new substrate). Spec: [`../production_paths/default_schedule_0080_1_opening_spec.md`](../production_paths/default_schedule_0080_1_opening_spec.md);
 > report: [`../tests/phase_default_schedule_0080_1_impl_results.md`](../tests/phase_default_schedule_0080_1_impl_results.md).
-> `GAMEPLAY-0080-1` **opened as a docs/design gate only** for read-only Nested Starmap observation/export
-> (read-only consumer of `DefaultSchedule0081RunReport` → deterministic transcript: atlas residency,
-> faction-index ECON, owner-overlay + up-aggregation summaries, SEAD movement trace, Terran/Pirate
-> movement rows; opt-in/default-off; mutates nothing). Observation only — control/command/UI/realtime
-> remain CLOSED (`CONTROL-0080-1` is a separate later gate); no implementation. Next rung:
-> `GAMEPLAY-0080-1-IMPL-0` (Codex). Spec: [`../gameplay/gameplay_0080_1_opening_spec.md`](../gameplay/gameplay_0080_1_opening_spec.md).
+> `GAMEPLAY-0080-1` **implemented/pass** as read-only Nested Starmap observation/export
+> (`observe_gameplay_0080_1`; read-only consumer of `DefaultSchedule0081RunReport` → deterministic
+> transcript: atlas residency, faction-index ECON, owner-overlay + up-aggregation summaries, SEAD movement
+> trace, Terran/Pirate movement rows; opt-in/default-off; mutates nothing). Observation only.
+> Spec: [`../gameplay/gameplay_0080_1_opening_spec.md`](../gameplay/gameplay_0080_1_opening_spec.md);
+> report: [`../tests/phase_gameplay_0080_1_impl_results.md`](../tests/phase_gameplay_0080_1_impl_results.md).
+> `CONTROL-0080-1` **opened as a docs/design gate only** for bounded Nested Starmap command admission
+> (opt-in deterministic vocabulary writes only existing `DefaultSchedule0081Input` bounded scenario/config
+> values, then runs the existing schedule→`observe_gameplay_0080_1` path; commands never move a ship or
+> bypass SEAD). Direct movement control, player command loop, UI, real-time loop, demo, and global default
+> schedule remain CLOSED; no implementation. Next rung: `CONTROL-0080-1-IMPL-0` (Codex). Spec:
+> [`../gameplay/control_0080_1_opening_spec.md`](../gameplay/control_0080_1_opening_spec.md).
 
 Active read order (authoritative path for agents):
 
