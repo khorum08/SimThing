@@ -69,6 +69,13 @@ Constitutional surfacing:
 > schedule→observation path; movement remains SEAD-sourced). Direct movement/control/UI/realtime remain
 > CLOSED. Impl: [`../tests/phase_control_0080_0_impl_results.md`](../tests/phase_control_0080_0_impl_results.md).
 > Spec: [`../gameplay/control_0080_0_opening_spec.md`](../gameplay/control_0080_0_opening_spec.md).
+> `DEMO-0080-0` opening review: **OPEN WITH NARROWING** as a headless Local Patrol Economy demo/export
+> packaging gate — deterministic opt-in library helper applies a canonical bounded `CONTROL-0080-0`
+> command batch and runs the existing `admit_control_0080_0`→`run_default_schedule_0080_0`→
+> `observe_gameplay_0080_0` path, emitting the existing transcript/export. Packaging only; no new
+> behavior. **CLI decision: `No CLI binary`.** Ready for implementation authorization; no implementation
+> in this PR. UI framework, real-time loop, player command loop, direct movement control, and global
+> default schedule remain CLOSED. Spec: [`../gameplay/demo_0080_0_opening_spec.md`](../gameplay/demo_0080_0_opening_spec.md).
 
 Active read order (authoritative path for agents):
 
