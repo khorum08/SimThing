@@ -74,6 +74,11 @@ Constitutional surfacing:
 > patrol/pirate movement record in impl report). **No CLI binary.** Direct movement/control/UI/realtime
 > remain CLOSED. Impl: [`../tests/phase_demo_0080_0_impl_results.md`](../tests/phase_demo_0080_0_impl_results.md).
 > Spec: [`../gameplay/demo_0080_0_opening_spec.md`](../gameplay/demo_0080_0_opening_spec.md).
+> **0.0.8.0 Local Patrol Economy COMPLETE / PARKED** (scenario → production path → schedule → observation
+> → control → demo/export all IMPLEMENTED / PASS); next work requires a **new named scenario or explicit
+> product authorization**. Closed concerns (CLI/UI/realtime/player-control/global-schedule/semantic-WGSL/
+> ClauseThing/broader-economy) remain closed. Closeout:
+> [`../tests/phase_local_patrol_economy_0080_closeout_results.md`](../tests/phase_local_patrol_economy_0080_closeout_results.md).
 
 Active read order (authoritative path for agents):
 
