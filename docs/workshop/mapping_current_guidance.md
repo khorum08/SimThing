@@ -90,6 +90,10 @@ Constitutional surfacing:
 > [`../scenarios/scenario_0080_1_admission_packet.md`](../scenarios/scenario_0080_1_admission_packet.md);
 > specs: [`../production_paths/atlas_0080_0_opening_spec.md`](../production_paths/atlas_0080_0_opening_spec.md),
 > [`../production_paths/econ_scale_0080_0_opening_spec.md`](../production_paths/econ_scale_0080_0_opening_spec.md).
+> **Codex development sequence:** see the `SCENARIO-0080-1` **PR ladder** (production track §11) — 10
+> rungs, Opus authors/adjudicates every OPEN + ACCEPT gate, Codex develops IMPL rungs and stop-and-escalates
+> on any stop-condition. Initial conditions pinned in the scenario packet §4.1 (6/10 stars Terran, 3 Terran
+> ships + 3 pirate ships; pirate owns only its ships). Start rung: `ATLAS-0080-0-IMPL-0`.
 
 Active read order (authoritative path for agents):
 
