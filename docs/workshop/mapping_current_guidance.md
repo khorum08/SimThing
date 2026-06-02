@@ -102,7 +102,11 @@ Constitutional surfacing:
 > inheritance + ownership up-aggregation as numeric summaries; read-only SEAD composite-gap terms; no
 > schedule/movement; no new substrate); implementation report:
 > [`../tests/phase_production_path_0080_1_impl_results.md`](../tests/phase_production_path_0080_1_impl_results.md).
-> Next rung remains unopened: `DEFAULT-SCHEDULE-0080-1-OPEN-0`. Spec: [`../production_paths/production_path_0080_1_opening_spec.md`](../production_paths/production_path_0080_1_opening_spec.md).
+> `DEFAULT-SCHEDULE-0080-1` **opened as a docs/design gate only** for Nested Starmap SEAD-sourced
+> schedule/movement (consumes `run_production_path_0080_1`; read-only composite-gap terms →
+> `Threshold + EmitEvent → BoundaryRequest` → existing mobility/transfer substrate; opt-in/default-off;
+> no observation/control/demo; no global default schedule; no new substrate); no implementation. Next
+> rung: `DEFAULT-SCHEDULE-0080-1-IMPL-0` (Codex). Spec: [`../production_paths/default_schedule_0080_1_opening_spec.md`](../production_paths/default_schedule_0080_1_opening_spec.md).
 
 Active read order (authoritative path for agents):
 
