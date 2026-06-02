@@ -1,13 +1,17 @@
 # DEFAULT-SCHEDULE-0080-0 — Local Patrol Economy Scenario-Scoped Schedule Opening Spec
 
-> **Status: OPENING SPEC / NO IMPLEMENTATION.**
+> **Status: IMPLEMENTED / PASS - 1A scenario-scoped schedule + patrol loop.**
 > - `SCENARIO-0080-0` (Local Patrol Economy) is **ACCEPTED**.
 > - `PRODUCTION-PATH-0080-0` is **IMPLEMENTED / PASS** (opt-in/default-off; `run_production_path_0080_0`).
-> - `DEFAULT-SCHEDULE-0080-0` is **OPEN only as a scenario-scoped schedule gate** (docs/design).
-> - **This PR does not implement the schedule.** A separate authorized PR may implement the named slice.
+> - `DEFAULT-SCHEDULE-0080-0` 1A is **IMPLEMENTED / PASS** as a scenario-scoped schedule + patrol loop.
+> - 1B pirate behavior remains **OPEN / FUTURE / NOT IMPLEMENTED**.
 >
 > Verdict: **OPEN WITH NARROWING (Option A)** — scenario-scoped, opt-in, reversible, non-gameplay,
 > **not** a global default schedule.
+
+Implementation result for 1A:
+[`../tests/phase_default_schedule_0080_0_impl_1a_results.md`](../tests/phase_default_schedule_0080_0_impl_1a_results.md).
+This result does not implement or close the 1B pirate-loop sub-slice.
 
 ---
 
@@ -99,16 +103,17 @@ are scenario-authored values within the bounded economy — not new architecture
 
 ---
 
-## 4. Implementation slice to authorize next (not implemented here)
+## 4. Implementation result and remaining slice
 
-The future implementation PR **may**:
+The 1A implementation PR adds:
 - add a `DEFAULT-SCHEDULE-0080-0` **opt-in** schedule surface for Local Patrol Economy;
 - call `run_production_path_0080_0` from deterministic scheduled steps;
-- advance scenario state with changing `disruption` / `local_security` / `supply` (incl. the pirate
-  driver in slice 1B);
-- emit zero or one `BoundaryRequest` per mover per step depending on threshold state;
+- advance patrol-side scenario state with changing `disruption`;
+- emit zero or one patrol `BoundaryRequest` per step depending on threshold state;
 - preserve identity, owner overlay continuity, and economy reassociation on relocation;
 - record deterministic per-step reports.
+
+The 1B pirate driver remains future/not implemented.
 
 **WGSL discipline (binding for this slice).** Pirate/patrol per-tick arithmetic and the target-attraction
 score must be expressed over the **existing `EvalEML` opcode set** (invariants row 194). New shader text
@@ -128,7 +133,7 @@ It **must not**:
 
 ---
 
-## 5. Future required tests (named, not implemented)
+## 5. Required tests
 
 `default_schedule_0080_0_explicit_opt_in_only`,
 `default_schedule_0080_0_default_path_has_no_schedule`,
@@ -148,7 +153,10 @@ It **must not**:
 `default_schedule_0080_0_rejects_clausething_dependency`,
 `default_schedule_0080_0_docs_status_matches_gate`.
 
-**Pirate/loop sub-slice (1B) future tests, named:**
+The 1A tests above are implemented in
+[`../tests/phase_default_schedule_0080_0_impl_1a_results.md`](../tests/phase_default_schedule_0080_0_impl_1a_results.md).
+
+**Pirate/loop sub-slice (1B) future tests, named but not implemented:**
 `default_schedule_0080_0_pirate_raises_disruption_and_drains_supply_per_tick`,
 `default_schedule_0080_0_pirate_relocates_when_disruption_ge_half_supply`,
 `default_schedule_0080_0_patrol_reduces_disruption_and_relocates_to_depleted_supply`,
@@ -174,8 +182,9 @@ production mobility runtime; or reopening any closed ladder.
 
 - [x] Opening spec exists.
 - [x] Scope is Local Patrol Economy only (patrol + bounded pirate enrichment; one economic owner).
-- [x] Future schedule implementation slice is named but not implemented (1A minimal / 1B pirate loop).
-- [x] Production track marks `DEFAULT-SCHEDULE-0080-0` as OPEN docs/design gate only.
+- [x] 1A schedule implementation is named and implemented.
+- [x] 1B pirate loop remains named but not implemented.
+- [x] Production track marks `DEFAULT-SCHEDULE-0080-0` 1A as implemented/pass.
 - [x] `PRODUCTION-PATH-0080-0` remains IMPLEMENTED / PASS.
 - [x] Gameplay and semantic WGSL remain closed.
 - [x] Mapping guidance + worklog updated.

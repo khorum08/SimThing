@@ -6,9 +6,9 @@
 > [`production_paths/production_path_0080_0_opening_spec.md`](production_paths/production_path_0080_0_opening_spec.md).
 > Implementation report:
 > [`tests/phase_production_path_0080_0_impl_results.md`](tests/phase_production_path_0080_0_impl_results.md).
-> `DEFAULT-SCHEDULE-0080-0` is **OPEN as a scenario-scoped docs/design gate** (no implementation;
-> opening spec: [`production_paths/default_schedule_0080_0_opening_spec.md`](production_paths/default_schedule_0080_0_opening_spec.md)) —
-> a deterministic opt-in step driver for Local Patrol Economy; **not** a global default schedule.
+> `DEFAULT-SCHEDULE-0080-0` 1A is **IMPLEMENTED / PASS** as a scenario-scoped schedule + patrol loop
+> (report: [`tests/phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md));
+> 1B pirate loop remains future/not implemented; **not** a global default schedule.
 >
 > **Active constitution:** [`design_0_0_8_0.md`](design_0_0_8_0.md).
 >
@@ -157,18 +157,18 @@ Reject the scenario if it requires any of:
 |---|---|---|
 | `SCENARIO-0080-0` | Scenario/admission packet (Local Patrol Economy) | **ACCEPTED (2026-06-02)** |
 | `PRODUCTION-PATH-0080-0` | First substrate production-path gate | **IMPLEMENTED / PASS - Local Patrol Economy opt-in production path** — scoped to: *Local Patrol Economy using the 0.0.7.9 mobility/transfer substrate*, patrol relocate decision sourced from the accepted GPU-resident SEAD `Threshold`+`EmitEvent`→`BoundaryRequest` path (mobility/transfer is the only substrate wired; no CPU planner; no new SEAD production gate; no global default schedule) |
-| `DEFAULT-SCHEDULE-0080-0` | Scenario-scoped schedule for Local Patrol Economy | **OPEN as scenario-scoped docs/design gate; no implementation** — deterministic opt-in step driver that routes GPU-resident SEAD threshold/event/`BoundaryRequest` decisions into `PRODUCTION-PATH-0080-0`; **not a global default schedule**. Authorized future slice incl. a bounded pirate/patrol predator loop (pirate = second IDROUTE identity, not a second economy owner) with **emergent cat-and-mouse** (pirate scores targets as highest-`supply`/lowest-`disruption`/lowest-`local_security`, i.e. prefers least-patrolled systems), sub-sliced 1A (schedule+patrol) / 1B (pirate; evasion term deferrable to tail for pace) over the existing `EvalEML` opcode set only. Spec: [`production_paths/default_schedule_0080_0_opening_spec.md`](production_paths/default_schedule_0080_0_opening_spec.md). |
+| `DEFAULT-SCHEDULE-0080-0` | Scenario-scoped schedule for Local Patrol Economy | **IMPLEMENTED / PASS - 1A scenario-scoped schedule + patrol loop** — deterministic opt-in step driver routes GPU-resident SEAD threshold/event/`BoundaryRequest` decisions into `PRODUCTION-PATH-0080-0`; **not a global default schedule**. 1B pirate loop remains **OPEN / FUTURE / NOT IMPLEMENTED** (pirate disruptor, target heuristic, evasion term, and cat-and-mouse assertions). Spec: [`production_paths/default_schedule_0080_0_opening_spec.md`](production_paths/default_schedule_0080_0_opening_spec.md); report: [`tests/phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md). |
 | `GAMEPLAY-0080-0` | Gameplay-facing integration | **CLOSED** |
 | `SEMANTIC-WGSL-0080-0` | Semantic shader surface | **CLOSED** |
 | `CLAUSETHING-L3-0080-0` | Front-end / parser / product authoring surface | **PARKED** pending product authorization |
 
 Opening spec of record: [`production_path_0080_0_opening_spec.md`](production_paths/production_path_0080_0_opening_spec.md).
 Implementation report: [`phase_production_path_0080_0_impl_results.md`](tests/phase_production_path_0080_0_impl_results.md).
-`DEFAULT-SCHEDULE-0080-0` is **OPEN as a scenario-scoped docs/design gate** (opening spec:
-[`default_schedule_0080_0_opening_spec.md`](production_paths/default_schedule_0080_0_opening_spec.md);
-no implementation). Gameplay, semantic WGSL, **global default schedule**, ClauseThing/L3,
-Hybrid-Strata/faction-index scaling, atlas runtime, E-11B-5, B-1, FrontierV2-5, and ACT/EVENT/OBS/PIPE
-remain closed/parked.
+`DEFAULT-SCHEDULE-0080-0` 1A is **IMPLEMENTED / PASS** as an opt-in scenario-scoped schedule + patrol
+loop (report: [`phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md)).
+1B pirate loop remains future/not implemented. Gameplay, semantic WGSL, **global default schedule**,
+ClauseThing/L3, Hybrid-Strata/faction-index scaling, atlas runtime, E-11B-5, B-1, FrontierV2-5, and
+ACT/EVENT/OBS/PIPE remain closed/parked.
 
 ---
 
@@ -184,6 +184,9 @@ remain closed/parked.
 - **PRODUCTION-PATH-0080-0 implementation:** one compact implementation report:
   [`docs/tests/phase_production_path_0080_0_impl_results.md`](tests/phase_production_path_0080_0_impl_results.md)
   — **PASS**; opt-in/default-off Local Patrol Economy only.
+- **DEFAULT-SCHEDULE-0080-0 implementation 1A:** one compact implementation report:
+  [`docs/tests/phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md)
+  — **PASS**; scenario-scoped schedule + patrol loop only; 1B pirate loop future.
 - Do not create reports for passive proof wrappers.
 - Do not create per-slice ceremony.
 
