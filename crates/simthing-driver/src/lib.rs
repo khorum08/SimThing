@@ -6,6 +6,7 @@ pub mod arena_participant;
 pub mod arena_registry;
 pub mod bench_limits;
 pub mod child_share_eml;
+pub mod control_0080_0;
 pub mod default_schedule_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
@@ -79,6 +80,12 @@ pub use gameplay_0080_0::{
     Gameplay0080ObservationInput, Gameplay0080ObservationReport, Gameplay0080ObservationSurface,
     Gameplay0080StepTranscript, Gameplay0080Transcript, GAMEPLAY_0080_0_ID,
     GAMEPLAY_0080_0_SCENARIO, GAMEPLAY_0080_0_STATUS_PASS,
+};
+pub use control_0080_0::{
+    admit_control_0080_0, replay_admit_control_0080_0, Control0080AdmissionInput,
+    Control0080AdmissionReport, Control0080Command, Control0080CommandBatch, Control0080ForbiddenRequests,
+    Control0080Gate, Control0080RejectedCommand, Control0080Surface, CONTROL_0080_0_ID,
+    CONTROL_0080_0_SCENARIO, CONTROL_0080_0_STATUS_PASS,
 };
 pub use field_scheduler::{
     count_cadence_due_ticks, execute_scheduled_regions_with, execute_single_scheduled_stencil_region,
