@@ -97,7 +97,11 @@ Constitutional surfacing:
 > **Codex development sequence:** see the `SCENARIO-0080-1` **PR ladder** (production track §11) — 10
 > rungs, Opus authors/adjudicates every OPEN + ACCEPT gate, Codex develops IMPL rungs and stop-and-escalates
 > on any stop-condition. Initial conditions pinned in the scenario packet §4.1 (6/10 stars Terran, 3 Terran
-> ships + 3 pirate ships; pirate owns only its ships). Current rung: `ECON-SCALE-0080-0-IMPL-0`; `PRODUCTION-PATH-0080-1` not yet open.
+> ships + 3 pirate ships; pirate owns only its ships). `PRODUCTION-PATH-0080-1` **opened as a docs/design
+> gate only** for the Nested Starmap composition of `ATLAS-0080-0` + `ECON-SCALE-0080-0` (owner-overlay
+> inheritance + ownership up-aggregation as numeric summaries; read-only SEAD composite-gap terms; no
+> schedule/movement; no new substrate); no implementation. Next rung: `PRODUCTION-PATH-0080-1-IMPL-0`
+> (Codex). Spec: [`../production_paths/production_path_0080_1_opening_spec.md`](../production_paths/production_path_0080_1_opening_spec.md).
 
 Active read order (authoritative path for agents):
 
