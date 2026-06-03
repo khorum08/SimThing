@@ -269,6 +269,34 @@ sub-slice — keeping each parity surface clean.
 
 ## 12. Next track: full-vertical SimThing dress rehearsal (SCENARIO-0080-2 → engine)
 
+### 12.0 Harness handoff — canonical citations (cite on every handoff)
+
+**Codex cites these two files on every rung handoff; everything else is reachable from them:**
+1. **[`design_0_0_8_0.md`](design_0_0_8_0.md) §0** — the transient constitution (maximal SimThing
+   conformance; all conflict is resource flow; allocation is always recursive; endgame scale never
+   prohibited). It points to [`invariants.md`](invariants.md) for the binding structural rules, incl.
+   **"Scenario Proof."**
+2. **This file, §12–§12.4** — the rehearsal + pre-rehearsal design (architecture, EC1/EC2, nested-grid
+   hierarchy, ATLAS-BATCH-0, OWNER routing). §12.4 links the OWNER design of record and the parked code.
+
+**Established decisions (do not re-derive — implement within these):**
+- `Location` is the SEAD field primitive (gridcell); **non-`Location` SimThings participate in resource
+  flow normally.** `StarSystem`/`Station` are **deprecated — do not use.** `kind` is an install-time
+  selector only, never a runtime branch (§0.1).
+- A Location arranges its gridcell children's flow data in **dense, grid-ordered 2-D cells**
+  (`cell(x,y) = map_base + y·width + x`); the buffer-is-the-map view is free (§12.2).
+- The **cell is its own slot**; a planet (feature) and patrol/pirate (movers) are **occupants** that
+  contribute *into* it — **per-channel/per-owner, never merged** (§12.3 EC-A3).
+- Multi-owner routing at a cell = the **OWNER masked reduction** (mask-then-sum per identity); a
+  faction's overlays mask **down** from the GameSession owner-entities; **capture = owner-column flip,
+  never reparenting** (§12.4). **The 2-D arrangement does not alter the OWNER directives — addressing
+  (where a cell sits) and identity/masking (how flows route) compose; they do not conflict.**
+- Dense field/heatmap + **sparse REENROLL movers**; settling depth is **emergent** (§0.2).
+- Build atlas batch allocation on a **static** map first (ATLAS-BATCH-0, §12.3); the **sparse-residency
+  scheduler (M-4A) and REENROLL stay parked.**
+
+---
+
 **Why.** Every 0080 slice so far — `0080-0` Local Patrol Economy, `0080-1` Nested Starmap, and the
 `SCENARIO-0080-2` Pirate Gradient Pathfinding rung ladder — was **proven at the math/behavioral
 layer**: the recurrences, fields, dual-output gradient, SEAD threshold-gated movement, and bit-exact
