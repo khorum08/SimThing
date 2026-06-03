@@ -23,6 +23,31 @@
 > track, parked inventory, and operating mechanics below §0 are not carried forward automatically; §0
 > is. If a future version omits §0, that version is defective.
 
+### 0.0 Purpose — the unitary vision (why §0 is transient)
+Maximal SimThing conformance is in the transient constitution for **one** reason: it is the mechanism
+by which **conflict, opportunity, ambition, and exploitation collapse into a single generic,
+GPU-resident SimThing.** Each is the *same* mechanism wearing a different label —
+- **conflict** → combat (`HP/Damage` arena), disruption (decaying accumulator);
+- **opportunity** → desirability fields and gradients (where to go);
+- **ambition** → faction drives, expansion, fight-or-flight (threshold-gated value decisions);
+- **exploitation** → resource extraction, raiding, the production/energy economy —
+
+and all of them reduce to: **accumulation/flow, reduced up and masked down the one recursive tree,
+resolved by threshold crossings on the resulting field.** There is no combat engine, no economy engine,
+no AI engine — there is one *accumulate → reduce → mask → threshold* loop that resolves all of them in
+the same GPU pass.
+
+The payoff, and the entire point, is that **resolution lives as GPU automata in a SEAD model.**
+Decisions — engage/withdraw, move, raid, expand, allocate — are not computed by a CPU planner; they
+**emerge as GPU-resident threshold crossings over the resolved, masked field**, exactly as combat,
+movement, and engage/withdraw fall out of a single pass (§0.2, §0.3). The moment any behavior is modeled
+as a privileged *structural* special-case — the rejected **D=3 ownership-node** is the canonical
+example: ownership smuggled back in as a bespoke tree shape instead of a decaying owner overlay — it
+leaves the generic substrate, can no longer be resolved as uniform GPU automata, and the unitary vision
+breaks. That is why conformance is non-negotiable and carries forward across every version: it is not a
+style preference, it is the **precondition** for the whole simulation being one GPU-resident SEAD
+automaton rather than a federation of bespoke subsystems.
+
 ### 0.1 Maximal SimThing conformance (the founding premise)
 **Everything is a SimThing.** There are no privileged engine-side special cases for game concepts:
 gamesession, factions, worldstate, starmap, star systems, planets, grid cells, fleets, and cohorts are
