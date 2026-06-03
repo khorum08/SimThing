@@ -9,10 +9,20 @@ use std::collections::HashMap;
 pub enum SimThingKind {
     World,
     Faction,
+    /// **DEPRECATED — DO NOT USE (design authority, 2026-06-03).** `StarSystem` was added
+    /// without a consuming scenario and violates maximal SimThing conformance
+    /// (`design_0_0_8_0.md` §0.1): a star system is a `Location` SimThing carrying the relevant
+    /// properties / overlays / arena enrollments, not a privileged kind. Retained only so legacy
+    /// serialized data and the exhaustive `kind_matches` / `kind_tag_to_kind` arms still compile.
+    /// Do not author new entities of this kind.
     StarSystem,
     Location,
     Cohort,
     Fleet,
+    /// **DEPRECATED — DO NOT USE (design authority, 2026-06-03).** Same disposition as
+    /// `StarSystem`: model a station as a `Location` / `Cohort` SimThing with the appropriate
+    /// properties / overlays. Retained only for compile-compatibility; do not author new entities
+    /// of this kind.
     Station,
     /// Driver/session topology marker for arena-participant wrapper nodes (E-10R2).
     /// Not a spatial entity; `simthing-sim` must not branch on this variant.
