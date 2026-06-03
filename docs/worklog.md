@@ -1,3 +1,8 @@
+# 2026-06-03 - CONSTITUTION-TRANSIENT-DOCTRINE-3: relax §0.5 harness to 4-5 high-signal links (design-authority directive)
+
+- Relaxed §0.5 Rule 1 from "at most two file links" to **cite the 4–5 most relevant links (up to 5–6 when an extra genuinely improves outcomes), never more.** Always includes constitution §0 + the track's one canonical design file; the rest are the highest-signal design/code surfaces. **Every link must be load-bearing** (if a reader wouldn't open it on a typical rung, demote it into the canonical design file). Discipline reframed as **high-signal density, not link count** — keep the header one screen, prune what a low-context agent wouldn't use.
+- Updated the §12.0 worked example to the 5-link high-signal set so it still demonstrates the rule: (1) `design_0_0_8_0.md` §0; (2) `invariants.md` (Scenario Proof); (3) this file §12–§12.4; (4) `workshop/mobility_and_transfer_allocation.md` §11 (OWNER design of record); (5) `crates/simthing-spec/src/designer_admission/mobility_owner0.rs` (parked OWNER code, which links `accumulator_op.rs`). Docs-only.
+
 # 2026-06-03 - CONSTITUTION-TRANSIENT-DOCTRINE-2: add §0.5 track-harness discipline (design-authority directive)
 
 - Added **§0.5 "Track harness discipline — the base every production PR track carries"** to the transient constitution. Diagnoses the §0 drift (math-in-a-vacuum, kind-as-behavior, D=3 special-case) as a **context-harness failure, not a doctrine failure**: low-context agents (Codex/Cursor/Grok) with no tight harness re-derive from conventional priors and drift.

@@ -103,11 +103,15 @@ agents (Codex/Cursor/Grok) had no tight harness, so they re-derived architecture
 priors and drifted. The fix is a **fixed, small, citable base harness on every production PR track** —
 and a discipline that keeps it from bloating back into a doc-treadmill no agent reads.
 
-- **Rule 1 — every track opens with a fixed-size harness header.** **At most two file links:** (a) this
-  constitution **§0**, and (b) the **one canonical design file** for that track. Everything else must be
-  reachable transitively from those two — no third primary link. Plus a **one-screen** "established
-  decisions / do-not-re-derive" checklist for that track. If the checklist outgrows one screen, the
-  track is overburdened: split it or move detail behind the links.
+- **Rule 1 — every track opens with a fixed-size harness header citing the high-signal set.** Cite the
+  **4–5 most relevant links** (up to **5–6** when an extra genuinely improves outcomes), never more. The
+  header always includes (a) this constitution **§0** and (b) the track's **one canonical design file**;
+  the rest are the highest-signal design/code surfaces (e.g. the binding invariants, the
+  design-of-record for the mechanism, the parked code being pulled). **Every link must be load-bearing** —
+  if a reader wouldn't open it on a typical rung, it does not belong in the header; demote it into the
+  canonical design file. Plus a **one-screen** "established decisions / do-not-re-derive" checklist. The
+  discipline is **high-signal density, not link count**: keep the header to one screen and prune anything
+  a low-context agent wouldn't actually use.
 - **Rule 2 — every rung handoff cites the harness and self-checks the diff against the base principles
   below**, stating in one line that the change holds them. A handoff that cannot cite the harness is rejected.
 - **Rule 3 — link out, never inline.** Detail lives in the canonical design file and the linked code;
