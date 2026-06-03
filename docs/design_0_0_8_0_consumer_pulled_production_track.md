@@ -502,6 +502,7 @@ are distinguished and **must not be collapsed into one figure**:
 - **EC-A3:** a Location stores its gridcell children's flow results in the correct `(x,y)` map slots, and
   **co-located children at one `(x,y)` are preserved per-channel/per-owner and never merged** — explicit
   test: planet + patrol + pirate in one cell → three distinct channel figures, verified vs CPU oracle.
+  **This is the OWNER masked reduction applied to co-located occupants — see §12.4 (established substrate).**
 - **EC-A4:** the residency scheduler (M-4A) and REENROLL remain unbuilt/parked — the slice is static.
 
 **Rungs (provisional):**
@@ -510,6 +511,51 @@ are distinguished and **must not be collapsed into one figure**:
 3. `ATLAS-BATCH-0-PACK` — atlas batch allocation + `G=0` mask + VRAM-multiplier + batched dispatch + CPU parity.
 4. `ATLAS-BATCH-0-STORE` — children's flow results into 2-D map slots; the co-located-not-merged test (EC-A3).
 5. `ATLAS-BATCH-0-CLOSE` — design-authority accept; confirm residency scheduler + REENROLL stay parked.
+
+### 12.4 Established mechanism — OWNER routing (multi-owner flows in one cell)
+
+> **Already-designed + parked substrate; the harness pulls it, does not re-derive it.** This is the
+> routing mechanism for resource flows from multiple owners sharing one spatial location, and it is
+> what implements §12.3 EC-A3 ("co-located children never merged").
+
+**Design of record:** [`workshop/mobility_and_transfer_allocation.md`](workshop/mobility_and_transfer_allocation.md)
+**§11** — *"the identity/ownership overlay: directing flows by property, not by structure"* (esp. **§11.1**
+the masked reduction; **§11.5** the session clearinghouse topology). Acceptance review:
+[`reviews/transfer_emission_registration_ownership_opus_review.md`](reviews/transfer_emission_registration_ownership_opus_review.md).
+**Parked substrate code:**
+[`../crates/simthing-spec/src/designer_admission/mobility_owner0.rs`](../crates/simthing-spec/src/designer_admission/mobility_owner0.rs)
+(`MOBILITY-OWNER-0` — owner relations as explicit columns `{Faction, Species, Blueprint, Tech}`, latched
+modifier overlays via deterministic owner-column matching; metadata/testable substrate, no production
+runtime). Masked-reduction primitives:
+[`../crates/simthing-core/src/accumulator_op.rs`](../crates/simthing-core/src/accumulator_op.rs)
+(`EvalEML` select/`CMP_EQ` + `Sum` + `ScaleSpec::ByColumn` — **no new WGSL / `CombineFn` /
+`AccumulatorRole`**).
+
+**How it works (as designed — do not reinvent):**
+- **Owner-entities live under the GameSession root, not in the spatial tree** (§11.5):
+  `GameSession → { Faction A, Faction B, …, SpeciesRegistry, WorldStateMap }`. A faction owner-entity
+  holds its capability trees, policies, stockpile, and **effective overlay set**; the WorldStateMap is
+  pure spatial containment; cells/holdings/cohorts carry **owner-columns**. **Capture = owner-column
+  flip, never reparenting.**
+- **Modifier overlays mask down by owner-column matching** (latched, `DirtyOnly`, per-owner layered):
+  a faction's effective overlays (combat bonus, tech, fight-or-flight policy) broadcast from its
+  GameSession-level owner-entity onto each spatial SimThing's owner overlay, applied where the
+  owner-column matches. This **is** the "inherited from the gamesession, masked onto each simthing's
+  ownership overlay" path.
+- **Flows route by masked reduction, not by structure** (§11.1): for each identity `F` present in a
+  cell, `masked = value · (owner_column == F)` via an `EvalEML` select/`CMP_EQ` mask, then a contiguous
+  `SlotRange Sum` of the masked values into a **per-identity column** on the cell. A planet, a patrol,
+  and a pirate in one `(x,y)` are summed **per owner-identity into distinct columns** — never collapsed.
+  EC-A3 *is* this masked reduction applied to co-located occupants.
+- **Where the flow balances is emergent** (§0.2): the masked reduction climbs the spine to wherever
+  supply meets demand (combat nets at the cell; an empire economy nets at the GameSession root) — one
+  mechanism, emergent settling depth, not a per-relation `D` assignment.
+
+**Harness establishes:** ATLAS-BATCH-0 (§12.3) materializes owner-columns on cells and proves the masked
+per-owner reduction keeps co-located occupants distinct (EC-A3); the dress rehearsal (§12) reuses the
+same OWNER routing for disruption / combat / economy flows. **Parked, not pulled here:** OWNER
+*production-runtime gameplay*, Hybrid-Strata/faction-index ECON scaling, and any capture beyond
+column-flip — each its own gate.
 
 ---
 
