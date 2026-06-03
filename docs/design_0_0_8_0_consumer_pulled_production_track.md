@@ -541,7 +541,13 @@ are distinguished and **must not be collapsed into one figure**:
 
 **Exit criteria (provisional):**
 - **EC-A1:** the static generator deterministically produces the fixed atlas (galactic 100×100 + ~1000
-  star 10×10 subgrids + planet/moon subgrids).
+  star 10×10 subgrids + planet/moon subgrids). **Clarification (2026-06-03):** the **closed**
+  `SCENARIO-0080-2 ATLAS-BATCH-0-GEN` fixture is the **economy-rehearsal live map descriptor** from
+  [`scenarios/scenario_0080_2_dress_rehearsal_spec.md`](scenarios/scenario_0080_2_dress_rehearsal_spec.md):
+  **20×20 galactic grid, 13 systems (10 Terran + 3 Pirate)**, 10×10 system/planet surfaces — not the
+  100×100 / ~1000-star stress atlas. The older 100×100 language remains a **stress/scale atlas-batching
+  target** for PACK and M-4 acceptance; LOC/PACK/STORE for the dress rehearsal must consume the **20×20 /
+  13-system** descriptor unless Opus authors a separate scale-stress fixture contract.
 - **EC-A2:** the batcher packs the homogeneous tiles with `G=0` masking within `V78AtlasVramBudget`,
   reports the VRAM multiplier, and one batched stencil dispatch over all tiles matches the CPU oracle
   bit-exactly.
@@ -557,6 +563,15 @@ are distinguished and **must not be collapsed into one figure**:
 3. `ATLAS-BATCH-0-PACK` — atlas batch allocation + `G=0` mask + VRAM-multiplier + batched dispatch + CPU parity.
 4. `ATLAS-BATCH-0-STORE` — children's flow results into 2-D map slots; the co-located-not-merged test (EC-A3).
 5. `ATLAS-BATCH-0-CLOSE` — design-authority accept; confirm residency scheduler + REENROLL stay parked.
+
+> **`ATLAS-BATCH-0-GEN` closure (2026-06-03).** `SCENARIO-0080-2` GEN is **closed / PASS** as a pure
+> 20×20 / 13-system dress-rehearsal topology descriptor (no GPU, no `Location` materialization, no
+> production wiring). Evidence:
+> [`crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_gen.rs`](../crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_gen.rs);
+> [`crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_gen.rs`](../crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_gen.rs);
+> [`tests/scenario_0080_2_atlas_batch_0_gen_report.md`](tests/scenario_0080_2_atlas_batch_0_gen_report.md);
+> [`tests/scenario_0080_2_atlas_batch_0_gen_cargo_test_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_gen_cargo_test_2026_06_03.txt).
+> Command: `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_gen` → **6 passed; 0 failed**.
 
 ### 12.4 Established mechanism — OWNER routing (multi-owner flows in one cell)
 
@@ -607,6 +622,10 @@ column-flip — each its own gate.
 
 > **First Codex handoff issued (2026-06-03):** [`handoffs/dress_rehearsal_codex_handoff_0.md`](handoffs/dress_rehearsal_codex_handoff_0.md)
 > — orientation (harness + locked process) + the first IMPL rung **`ATLAS-BATCH-0-GEN`** (static map generator).
+>
+> **GEN status (2026-06-03):** `ATLAS-BATCH-0-GEN` is **closed / PASS** for `SCENARIO-0080-2` (see §12.3
+> closure note + raw test log). **Next implementation gate:** `ATLAS-BATCH-0-LOC`, gated on an
+> Opus-authored LOC contract — do not improvise LOC.
 >
 > **Sequencing discipline (§0.5, §5):** one parked phase proved-and-closed per rung. The rehearsal is
 > the **convergent consumer that retires the parked backlog one rung at a time** — not a big-bang pull.

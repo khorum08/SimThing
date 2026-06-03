@@ -1,3 +1,10 @@
+# 2026-06-03 — ATLAS-BATCH-0-GEN-CLOSE: raw test evidence + production-track closure
+
+- Re-ran `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_gen`; result **6 passed / 0 failed**. Raw output saved under [`tests/scenario_0080_2_atlas_batch_0_gen_cargo_test_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_gen_cargo_test_2026_06_03.txt).
+- Updated GEN report/status row to reference raw evidence.
+- Updated production track §12.3/§12.5 to mark `SCENARIO-0080-2` GEN closed/PASS and clarify 20×20 live-economy descriptor vs older 100×100 stress-fixture language.
+- No runtime wiring, no `Location` materialization, no GPU/economy/owner-column logic.
+
 # 2026-06-03 - ATLAS-BATCH-0-GEN VALIDATION + REMEDIAL HANDOFF 1 (design authority)
 
 - **Validated Codex's GEN implementation** (commits `59227a9..5e44924`: descriptor module + tests + report + status row). Ran `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_gen` → **4 passed, 1 FAILED**.
