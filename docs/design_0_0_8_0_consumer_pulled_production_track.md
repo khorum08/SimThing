@@ -378,6 +378,74 @@ open atlas production runtime, nested-RF depth, hard currency, ClauseThing/L3, o
   **not** a hand-seeded field or a registration-only stand-in. The field → gradient → SEAD → action loop
   is closed end-to-end through real SimThings.
 
+### 12.2 Key concept — the recursive nested-grid field hierarchy (design note)
+
+> **Status: PROVISIONAL design note (2026-06-03).** The substrate concept the EC1/EC2 exit criteria
+> build on. Not yet a gate.
+
+**The idea.** `Location`-kind SimThings are the SEAD field primitives ("gridcells"). Any non-Location
+SimThing participates in resource flow like everything else. A gridcell knows its `(x, y)` within its
+parent's grid; every gridcell enrolls in the `location_val` flow arena. **Every gridcell that is a
+parent of gridcells maintains a 2-D map siloing its children's reduced values at each child's `(x, y)`.**
+Aggregate / velocity evaluation happens at that tier on the 2-D map, and a summary reduces up to the
+parent (gridcell or not). It is **sparse** — only gridcells with gridcell children materialize a map —
+and **recursive**: planet surface → planet/moon map → star system → galactic starmap share one
+reduction/evaluation behavior.
+
+**The "for free" property (storage), and its one condition.** The value buffer is
+`n_slots × n_dims × 4 B` and the stencil addresses cells as `slot = base + row·width + col`. **If slots
+are laid out to mirror topology, the buffer *is* the nested 2-D maps — a view, not extra memory.** A
+system's 100 child cells as one contiguous row-major block already *is* its 10×10 map; the 2000 system
+slots in galactic-grid order already *are* the galactic map. So nested 2-D legibility is free in
+**storage**, conditioned on **slot layout mirroring grid topology at every tier**.
+
+**VRAM at 2000+ systems × 10×10 (the field is not the constraint):** ~200K leaf cells + ~2K systems ≈
+202K field slots.
+
+| `n_dims`/cell | Single buffer | Ping-pong (×2) |
+|---|---|---|
+| 8 | 6.4 MB | 12.8 MB |
+| 16 | 12.9 MB | 25.6 MB |
+| 32 | 25.6 MB | 51.2 MB |
+| 64 | 51.2 MB | 102 MB |
+
+A realistic cell (~16–24 cols) puts the whole galactic field at **~25–80 MB double-buffered** — trivial.
+**Breadth (2000 systems) is free; depth (recursion) is the cost:** full recursion (a 10×10 planet
+surface under *every* leaf) is ~20M cells ≈ 1.3 GB — which is exactly why **sparsity (only occupied
+interior nodes materialize a deeper grid)** is the binding cost lever, not VRAM at the top tier.
+
+**What is *not* free:** (a) the rigid grid-ordered contiguous slot layout — reserves full dense tiles
+even when mostly empty, and resists REENROLL slot recycling; (b) per-tier compute (stencil / `GradientXY`
+/ reduction / velocity passes) — cheap and parallel, but real; (c) reducing children to the parent
+collapses 2-D to a scalar, so the parent keeps **both** the child block (free 2-D map) **and** a +1
+summary column.
+
+**Proven/parked service map:**
+- per-system 10×10 tiles batched in one buffer = the parked **ATLAS** substrate (C-2 closed the
+  designer surface for bounded **algebraic tile-local G=0**, homogeneous-square tiles — exactly 2000
+  homogeneous 10×10 masked tiles). **This design is the named multi-theater consumer that opens the
+  parked atlas production-runtime gate (§4).**
+- fine atlas (leaf cells) + coarse galactic grid (system reductions) = the multi-resolution pair; both
+  are single-grid stencil fields.
+- `StructuredFieldStencilOp` diffusion, `GradientXY`, `SlotRange` reduction, `field_urgency` EvalEML,
+  `VelocityMonitor` (explicit prev-column) — **all proven, reusable.**
+- **One genuinely new primitive:** the reduction target is *a cell `(x,y)` in the coarser parent grid*
+  (not a free-standing scalar), applied recursively — "silo the child block into the parent's 2-D map."
+
+**Decision that determines everything — slot layout fork:**
+- **Dense, grid-ordered, contiguous** (recommended default): free 2-D view, cheap slot-arithmetic
+  stencil, atlas-batchable — but reserves full grids and resists REENROLL.
+- **Sparse with explicit `(x,y)` coordinate columns:** saves slots, REENROLL-friendly — but needs a
+  scatter/gather to assemble the 2-D map and forfeits slot-arithmetic neighboring.
+- **Recommended split:** the **field/heatmap is dense** (per materialized tier, atlas-batched, free 2-D
+  view), the **movers (fleets) are sparse** and REENROLL between cells, layered on top of the dense
+  field. Sparsity lives at *which tiles materialize at all*, not within a tile.
+
+**Conformance note:** binding `Location` ⇒ field-primitive is conformant **iff** `kind` is only the
+install-time selector (which cells get `location_val` + the 2-D-map column when they have gridcell
+children); the runtime still reads behavior from properties/overlays/arena registrations and never
+branches on `Location` (§0.0/§0.1).
+
 ---
 
 ## 13. Pointers
