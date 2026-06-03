@@ -620,8 +620,10 @@ column-flip — each its own gate.
 
 ### 12.5 Rehearsal rung ladder + parked-phase retirement map
 
-> **First Codex handoff issued (2026-06-03):** [`handoffs/dress_rehearsal_codex_handoff_0.md`](handoffs/dress_rehearsal_codex_handoff_0.md)
-> — orientation (harness + locked process) + the first IMPL rung **`ATLAS-BATCH-0-GEN`** (static map generator).
+> **Handoffs (2026-06-03):** [`handoffs/dress_rehearsal_codex_handoff_0.md`](handoffs/dress_rehearsal_codex_handoff_0.md)
+> (orientation + **`ATLAS-BATCH-0-GEN`** — closed/PASS) · [`handoffs/dress_rehearsal_codex_handoff_1_remedial.md`](handoffs/dress_rehearsal_codex_handoff_1_remedial.md)
+> (GEN spacing-band remedial — resolved) · [`handoffs/dress_rehearsal_codex_handoff_2_atlas_batch_0_loc.md`](handoffs/dress_rehearsal_codex_handoff_2_atlas_batch_0_loc.md)
+> (**`ATLAS-BATCH-0-LOC`** contract — authored + accepted; Cursor to implement).
 >
 > **GEN status (2026-06-03):** `ATLAS-BATCH-0-GEN` is **closed / PASS** for `SCENARIO-0080-2` (see §12.3
 > closure note + raw test log). **Next implementation gate:** `ATLAS-BATCH-0-LOC`, gated on an
