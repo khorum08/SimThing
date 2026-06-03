@@ -604,9 +604,10 @@ column-flip — each its own gate.
 
 | Rung | Deliverable | Parked phase proved / closed | Pulls |
 |---|---|---|---|
+| **Open — scenario admission** | admit the rehearsal scenario through the accepted simthing-spec / CLAUSE-SPEC **L0/L1/L2** designer-admission layer (scenario spec, bounds, rejection vocabulary) — the Tier-2 gate that opens the rehearsal | **simthing-spec / CLAUSE-SPEC (L0/L1/L2)** consumed as the authoring engine | CLAUSE-SPEC admission |
 | **Pre — `ATLAS-BATCH-0`** (§12.3) | static map gen + Location gridcell primitive + atlas batch allocation + 2-D-map storage | **Atlas batch allocation (C / M-4)**; OWNER masked-reduction storage | atlas runtime; `mobility_owner0` masked reduction |
 | **R1 — Disruption heatmap (EC1)** | pirate/patrol presence → `disruption` column on gridcell SimThings → BoundedFeedback decay → diffuse to `location_status` → reduce up to the starmap heatmap; vs CPU oracle; emitted artifact | **EML Tier-2 `BoundedFeedback`/`Decay`** (first real consumer); EC1 | EML temporal gadgets; stencil diffusion; SlotRange reduce |
-| **R2 — Recursive nested reduction** | galactic→system→planet tier reductions; each tier's 2-D map reduces a summary into its parent's cell; `field_urgency` at each parent | **A-0 nested Resource Flow (depth>2)** off `FlatStarResourceFlow`; `field_urgency` critical-path | A-0 nested RF; `field_urgency` EvalEML |
+| **R2 — Recursive nested reduction + faction economy** | galactic→system→planet tier reductions (each tier's 2-D map reduces a summary into its parent's cell; `field_urgency` at each parent); **faction stockpile collects surplus + disburses to deficit systems; Terran/Pirate contention at blockaded/diverted cells** | **A-0 nested Resource Flow (depth>2)** off `FlatStarResourceFlow`; `field_urgency`; **ECON clearinghouse (subsidiarity) + faction-index contention (ECON-SCALE reuse)** | A-0 nested RF; `field_urgency` EvalEML; ECON Balance ledger / faction-index |
 | **R3 — Capability-tree mask-down** | Terran/Pirate techtrees resolve → modifier overlays (decay resistance, patrol suppression, combat bonus) masked **down** by owner-column onto cells/occupants | **Capability-tree → modifier-overlay substrate** (first real consumer); OWNER mask-down end-to-end | capability-tree substrate; OWNER latched overlays |
 | **R4 — SEAD field-consumption + exact sqrt (EC2)** | a moving child (fleet/patrol) reads the parent grid heatmap **at its own cell** — a composite intersecting **patrol-presence × disruption × its own (masked) disposition** — computes the gradient, evaluates **Euclidean magnitude via exact sqrt Candidate F**, and threshold-gates: **sit still vs step to the next opportunity** | **SEAD ladder field-consumption (EC2)** — closes the audit gap; **exact sqrt Candidate F** (named consumer for the orphaned artifact) | SEAD OBS/EVENT/PIPE/ACT; `m_jit_mag2_fixed_exact` → `m_jit_mag_f_from_exact_mag2` (Candidate F); `GradientXY` |
 | **R5 — Movement: REENROLL + mobility substrate (+ ship fission)** | the R4 move event (`Threshold`+`EmitEvent`→`BoundaryRequest`) relocates the mover — deregister from cell A's arenas, register into cell B's — routed through the 0.0.7.9 mobility/transfer substrate, in an **opt-in/default-off `SimSession` pass**; **starport→ship emission instantiates a new `Fleet` via gated fission** and enrolls it | **REENROLL**; **full 0.0.7.9 mobility/transfer substrate in a default `SimSession` path** (first non-test-support consumer); **E-2B-5 fission-enrollment** (starport ship instantiation) | REENROLL; mobility ALLOC/IDROUTE/OWNER + GPU kernel; `resource_flow_fission_enrollment` |
@@ -630,8 +631,30 @@ materializes a `BoundaryRequest` that re-enrolls the mover (REENROLL) and routes
 "first non-test-support default `SimSession` path" the mobility gate was mapped to — coincident with the
 movement rung rather than a standalone slice.
 
-**Parked, not pulled by any rung (stay gated):** B-1 hard currency, ClauseThing/L3, dense per-cell
-temporal memory, atlas sparse-residency scheduler, FrontierV2-5, Hybrid-Strata/faction-index ECON scaling.
+**Parked-inventory coverage audit (every constitution §3 parked track has a test home or a reason to stay parked):**
+
+| Parked track (constitution §3 / §4) | Test home |
+|---|---|
+| 0.0.7.9 mobility/transfer: REENROLL, ALLOC, IDROUTE, GPU kernel, RUNTIME | **R5** |
+| 0.0.7.9 mobility/transfer: OWNER | **ATLAS-BATCH-0** (masked-reduction storage) + **R3** (mask-down) |
+| 0.0.7.9 mobility/transfer: ECON (clearinghouse + faction-index contention) | **R2** |
+| Line A — nested Resource Flow (A-0, depth>2) | **R2** |
+| Line C — atlas / multi-theater (batch allocation) | **ATLAS-BATCH-0** |
+| simthing-spec / CLAUSE-SPEC (L0/L1/L2) | **Open** (scenario admission) |
+| EML Tier-2 temporal (`BoundedFeedback`/`Decay`, `VelocityMonitor`) | **R1** |
+| `field_urgency` / `field_pressure` | **R2** |
+| Capability-tree → modifier-overlay | **R3** |
+| SEAD ladder field-consumption (OBS/EVENT/PIPE/ACT) | **R4** |
+| Exact sqrt Candidate F (+ `mag2_fixed_exact`) | **R4** |
+| `GradientXY` (landed) | **R1 / R4** (consumed) |
+| E-11B-5 / E-2B-5 fission-enrollment | **R5** (starport→ship) |
+| Conflict-as-resource-flow (combat HP/Damage) | **R6** |
+| Closeout integrity (FrontierV1, mapping first-slice) | **R7** |
+
+**Stay gated — no consumer in this scenario (correct to leave parked):** B-1 hard currency (no hard
+currency); ClauseThing/ClauseScript L3 (no front-end); dense per-cell temporal memory (bounded-feedback
+per-cell, not dense temporal); atlas sparse-residency scheduler / M-4A (static map); FrontierV2-5;
+Hybrid-Strata ECON scaling beyond the 2-faction set (Terran/Pirate ECON-SCALE is reused, not extended).
 
 ---
 
