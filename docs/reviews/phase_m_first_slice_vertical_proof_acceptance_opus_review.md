@@ -1,5 +1,13 @@
 # Opus/Product Acceptance Review — Phase M First-Slice Vertical Proof
 
+> **Closure status revised — 2026-06-03 (design authority).** This acceptance proved the first-slice
+> **numeric pipeline** (stencil → reduction → `field_urgency` → threshold) at CPU-oracle parity on a
+> **hand-seeded** field. It did **not** prove a heatmap produced from gameplay, demoed/exported, or
+> consumed by SEAD. Under the later `invariants.md` "Scenario Proof" bar (2026-06-02) it is reclassified
+> **numeric-proven; consumption-proof pending** the dress-rehearsal **R7** (production track
+> `design_0_0_8_0_consumer_pulled_production_track.md` §12.5, EC1/EC2). The pipeline correctness below
+> **stands and is reused**; end-to-end consumption is what R7 proves. **Dated evidence below is unaltered.**
+
 **Date:** 2026-05-28
 **Authority:** Opus 4.8, mapping/SEAD design authority under human delegation (authority to raise
 guardrails up to the Designer-facing / RON / Scenario layer).

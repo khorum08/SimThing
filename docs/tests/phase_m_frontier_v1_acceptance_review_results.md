@@ -1,5 +1,13 @@
 # FrontierV1-ACCEPT-0 — Formal FrontierV1 Acceptance Review and M/E Closure Decision
 
+> **Closure status revised — 2026-06-03 (design authority).** The 2026-06-03 audit found the FrontierV1
+> "SEAD route" (`validate_sead_v1_consumed`) only asserts that two kernel descriptors are **registered** —
+> the diffused field is computed in the same fixture but **never consumed by SEAD to derive an action**.
+> Under `invariants.md` "Scenario Proof" (2026-06-02) this acceptance is reclassified
+> **numeric/registration-proven; consumption-proof pending** the dress-rehearsal **R4/R7** (production
+> track `design_0_0_8_0_consumer_pulled_production_track.md` §12.5). The landed substrate **stands and is
+> reused**; the field → SEAD → action loop is what R4 proves. **Dated evidence below is unaltered.**
+
 ## Base HEAD
 
 `eaf78b7` (post-FrontierV1-4 merge, pre-FrontierV1-ACCEPT-0)
