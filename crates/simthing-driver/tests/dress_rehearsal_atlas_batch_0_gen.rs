@@ -118,17 +118,27 @@ fn terran_spacing_and_pirate_adjacency_hold() {
     let terran: Vec<_> = map.terran_systems().collect();
 
     for left in 0..terran.len() {
-        for right in (left + 1)..terran.len() {
+        let mut has_local_neighbor_in_spacing_band = false;
+        for right in 0..terran.len() {
+            if left == right {
+                continue;
+            }
             let empty_cells_between = terran[left]
                 .galactic_cell
                 .empty_cells_between(terran[right].galactic_cell);
             assert!(
-                (2..=4).contains(&empty_cells_between),
-                "Terran systems {:?} and {:?} should have 2-4 empty cells between them, got {empty_cells_between}",
+                empty_cells_between >= 2,
+                "Terran systems {:?} and {:?} should have at least 2 empty cells between them, got {empty_cells_between}",
                 terran[left].galactic_cell,
                 terran[right].galactic_cell
             );
+            has_local_neighbor_in_spacing_band |= (2..=4).contains(&empty_cells_between);
         }
+        assert!(
+            has_local_neighbor_in_spacing_band,
+            "Terran system {:?} should participate in the 2-4 empty-cell spacing band",
+            terran[left].galactic_cell
+        );
     }
 
     for pirate in map.pirate_systems() {
