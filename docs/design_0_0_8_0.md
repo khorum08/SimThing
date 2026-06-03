@@ -290,6 +290,16 @@ wired. Two proposed hard exit criteria (EC1 heatmap reduced over real cells from
 SEAD action is a function of the diffused gradient at its own cell, vs CPU oracle) are recorded there.
 **Status: PROVISIONAL — to be firmed up before the dress rehearsal opens as a gate.**
 
+**Immediate next concrete work — `ATLAS-BATCH-0` pre-Rehearsal track** (production track §12.3): a
+Tier-2 slice that builds + validates **atlas batch allocation** on a *static* pre-generated galaxy
+(100×100 + ~1000 star 10×10 subgrids + planet/moon subgrids), establishing the Location-kind gridcell
+primitive and the 2-D-map storage. This is the long-awaited **named multi-theater consumer that opens
+the parked M-4/M-4A atlas production-runtime gate** (§4) — batch allocation only; the **sparse-residency
+scheduler and REENROLL stay parked** (a static map exercises neither). Binding constraint set down: a
+Location may hold **multiple children at the same `(x,y)`** (planet + patrol + pirate in one cell); the
+batcher keeps them **per-channel/per-owner and never merges their figures** — which corrects §12.2's
+"child is the cell" to "the cell is a slot; features and movers are occupants that contribute in."
+
 ---
 
 ## 6. Pointers
