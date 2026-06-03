@@ -267,7 +267,66 @@ sub-slice — keeping each parity surface clean.
 
 ---
 
-## 12. Pointers
+## 12. Next track: full-vertical SimThing dress rehearsal (SCENARIO-0080-2 → engine)
+
+**Why.** Every 0080 slice so far — `0080-0` Local Patrol Economy, `0080-1` Nested Starmap, and the
+`SCENARIO-0080-2` Pirate Gradient Pathfinding rung ladder — was **proven at the math/behavioral
+layer**: the recurrences, fields, dual-output gradient, SEAD threshold-gated movement, and bit-exact
+deterministic replay all hold and remain valid as **CPU oracles**. Under the constitution's
+`invariants.md` "Scenario Proof" bar, none is yet proven **through a real SimThing reduction** — they
+run on plain `Vec`/struct math with no `SimThing`/`SimProperty`/`Overlay`/`BoundaryProtocol`. This
+track closes exactly that gap and validates SimThing **verticality in totality** in one assembled,
+opt-in/default-off session.
+
+**Tree under test:**
+
+```
+gamesession (root simthing)
+  ├─ Terran faction       (+ techtree capability tree)
+  ├─ worldstate
+  │     └─ starmap gridcell simthings   (disruption + desirability columns live here)
+  └─ Pirate faction       (+ techtree capability tree)
+```
+
+- **gamesession (root):** carries the global decay parameters as a root **overlay** — read-side
+  weights the opt-in columns READ, not a column-wide write and not a global default schedule (the
+  approved "gravity to zero" posture). Owns the boundary cadence.
+- **worldstate → gridcell simthings:** the starmap. `disruption` is a real `SimProperty` **column on
+  each gridcell simthing**, advanced by `AccumulatorOp` (pirate presence emits +, patrol presence
+  emits −, root overlay decays it, clamp ceiling). The compound **desirability** is a derived column
+  read-only over `disruption`; the **`GradientXY`** kernel runs over the worldstate gridcell slot range.
+- **Terran faction (+ techtree):** capability-tree unlocks contribute **retention / suppression
+  modifiers** as read-side overlay weights (≤1, acceleration-only on decay) and patrol presence —
+  validating capability tree → overlay → column influence with no destructive writes.
+- **Pirate faction (+ techtree):** the mover. Movement **emerges** from the gridcell desirability
+  gradient via `Threshold`+`EmitEvent`→`BoundaryRequest` (exactly one step per boundary, no CPU
+  planner); its techtree modifies disruption emission and movement threshold.
+
+**Principles carried from 0080 (proved as math; to be re-proved through the engine):**
+
+| Principle (0080 origin) | Re-validated through the engine as… |
+|---|---|
+| BoundedFeedback disruption decay (0080-2 rung 1) | `disruption` `SimProperty` column on gridcell simthings; `AccumulatorOp` recurrence; root-overlay decay weight |
+| Decay/patrol modifiers as read-side params (0080-2 rung 1) | faction **techtree capability** → overlay weights composed onto the column (≤1, acceleration-only) |
+| Compound desirability field (0080-2 rung 2) | derived desirability column, read-only over `disruption`, per gridcell |
+| Dual-output `GradientXY` (0080-2 rung 3) | `StructuredFieldStencilOp::GradientXY` over the worldstate gridcell slot range, now wired into a session |
+| SEAD field-as-policy movement (0080-2 rung 4; 0080-0/1 patrol/ship SEAD) | pirate movement via `Threshold`+`EmitEvent`→`BoundaryRequest`, one step/boundary, no CPU planner |
+| Disruption/desirability as faction-economy signals (0080-0/0080-1) | gridcell columns read by faction overlays; pirate as adversarial participant |
+| Deterministic replay / I8 bit-exact parity | same inputs → identical resolved GPU/CPU values across two runs of the assembled session |
+
+**This is the first scenario authored to satisfy the new "Scenario Proof" gate.** Tier-2 (new
+assembled session; gridcell columns wired into a session pass graph). §8 stop conditions still bind:
+it pulls the mapping/RegionCell + AccumulatorOp + SEAD substrates through one tree; it does **not**
+open atlas production runtime, nested-RF depth, hard currency, ClauseThing/L3, or a real-time/UI loop.
+
+> Dense per-cell temporal memory stays separately gated. The gridcell `disruption` column here is
+> per-cell **state advanced across boundaries** by the standard AccumulatorOp + root-overlay decay
+> (the bounded-feedback contract) — i.e. the sparse-per-node math of 0080-2 now expressed over real
+> cell simthings, **not** the deferred dense-temporal VRAM gate.
+
+---
+
+## 13. Pointers
 
 - Active constitution: [`design_0_0_8_0.md`](design_0_0_8_0.md)
 - Parked 0.0.7.9 mobility/transfer track: [`design_v7_9_mobility_transfer_allocation_production_track.md`](design_v7_9_mobility_transfer_allocation_production_track.md)

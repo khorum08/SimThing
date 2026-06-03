@@ -1,3 +1,12 @@
+// ── SCENARIO-0080-2 proof status (note 2026-06-02, design authority) ─────────────────
+// PROVEN at the math/behavioral layer (rung 2: compound desirability field — patrol
+// repulsion + disruption penalty, read-only over rung 1, deterministic ordering).
+// These remain valid as CPU ORACLES. They are NOT yet proven through a real SimThing
+// reduction (no SimThing/SimProperty/Overlay/BoundaryProtocol) — the bar set by
+// invariants.md "Scenario Proof". Scheduled for full-vertical re-validation in the
+// gamesession dress rehearsal (docs/design_0_0_8_0_consumer_pulled_production_track.md
+// §12): desirability becomes a derived column on worldstate gridcell simthings, read-only
+// over the `disruption` column. Oracle here, engine there.
 use simthing_driver::{
     replay_compound_field_0080_2, run_compound_field_0080_2, CompoundField0082Input,
     CompoundField0082Report, CompoundField0082Weights, BASE_DESIRABILITY, COMPOUND_FIELD_0080_2_ID,
