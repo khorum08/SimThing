@@ -271,13 +271,19 @@ sub-slice — keeping each parity surface clean.
 
 ### 12.0 Harness handoff — canonical citations (cite on every handoff)
 
-**Codex cites these two files on every rung handoff; everything else is reachable from them:**
-1. **[`design_0_0_8_0.md`](design_0_0_8_0.md) §0** — the transient constitution (maximal SimThing
+**Codex cites this high-signal set on every rung handoff (keep to these; everything else is reachable
+from them):**
+1. **[`design_0_0_8_0.md`](design_0_0_8_0.md) §0** — transient constitution (maximal SimThing
    conformance; all conflict is resource flow; allocation is always recursive; endgame scale never
-   prohibited). It points to [`invariants.md`](invariants.md) for the binding structural rules, incl.
-   **"Scenario Proof."**
-2. **This file, §12–§12.4** — the rehearsal + pre-rehearsal design (architecture, EC1/EC2, nested-grid
-   hierarchy, ATLAS-BATCH-0, OWNER routing). §12.4 links the OWNER design of record and the parked code.
+   prohibited; **§0.5 harness discipline**).
+2. **[`invariants.md`](invariants.md)** — binding structural rules, incl. **"Scenario Proof."**
+3. **This file, §12–§12.4** — the rehearsal + pre-rehearsal design (architecture, EC1/EC2, nested-grid
+   hierarchy, ATLAS-BATCH-0, OWNER routing).
+4. **[`workshop/mobility_and_transfer_allocation.md`](workshop/mobility_and_transfer_allocation.md) §11**
+   — the OWNER identity/ownership-overlay design of record (masked reduction; session clearinghouse).
+5. **[`../crates/simthing-spec/src/designer_admission/mobility_owner0.rs`](../crates/simthing-spec/src/designer_admission/mobility_owner0.rs)**
+   — the parked OWNER substrate code being pulled (owner-columns + latched modifier overlays; it links
+   the masked-reduction primitives in `accumulator_op.rs`).
 
 **Established decisions (do not re-derive — implement within these):**
 - `Location` is the SEAD field primitive (gridcell); **non-`Location` SimThings participate in resource
