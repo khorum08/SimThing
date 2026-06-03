@@ -79,7 +79,7 @@ classified once here so it does **not** get a per-slice opening-review PR:
   pass-graph registration or any semantic surface** (prohibition list). Everything between here and
   those two is fast-lane.
 
-This ruling is the direct application of the **`invariants.md` governing doctrine (2026-06-02):**
+This ruling is the direct application of the **0.0.8.0 anti-loop doctrine (`design_0_0_8_0.md` §2.5):**
 guardrails live at the designer/spec-admission barrier, and a constraint is stated **once per class —
 no per-slice accretion.** The opt-in/default-off + no-default-wiring posture and the no-CPU-planner
 posture are each a single invariant, not a fresh gate per slice. So the mobility track is governed by

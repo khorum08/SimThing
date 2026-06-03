@@ -66,7 +66,7 @@ front-end impossible.
   semantic WGSL, invariant edits, new architecture, or closed-ladder reopen.
 - **Proven-capability stop rule** — no passive proof wrappers unless they unlock execution
   (`phase_m_gating_and_doc_policy.md` §6; 0.0.7.9 track §2.2).
-- **One principle per class; no per-slice accretion** (`invariants.md` governing doctrine).
+- **One principle per class; no per-slice accretion** (`design_0_0_8_0.md` §2.5).
 
 ---
 
