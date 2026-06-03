@@ -605,6 +605,9 @@ column-flip — each its own gate.
 
 ### 12.5 Rehearsal rung ladder + parked-phase retirement map
 
+> **First Codex handoff issued (2026-06-03):** [`handoffs/dress_rehearsal_codex_handoff_0.md`](handoffs/dress_rehearsal_codex_handoff_0.md)
+> — orientation (harness + locked process) + the first IMPL rung **`ATLAS-BATCH-0-GEN`** (static map generator).
+>
 > **Sequencing discipline (§0.5, §5):** one parked phase proved-and-closed per rung. The rehearsal is
 > the **convergent consumer that retires the parked backlog one rung at a time** — not a big-bang pull.
 > ATLAS-BATCH-0 (§12.3) is the pre-rehearsal prerequisite; R1–R7 are the full rehearsal. Each rung is
