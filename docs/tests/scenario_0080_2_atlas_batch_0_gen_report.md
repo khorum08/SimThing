@@ -44,20 +44,25 @@ cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_gen
 
 ## Execution status
 
-```text
+**Command:**
+
+```bash
 cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_gen
-Result: 6 passed; 0 failed
 ```
 
-(Includes remedial spacing-band fix and `docs_status_matches_gate`.)
+**Result:** `6 passed; 0 failed`
 
-Pre-existing workspace warnings only (`simthing-core` EML deprecations; unrelated `simthing-driver` soak import). No dead-code warnings from this rung after hygiene.
+**Raw evidence:** [`scenario_0080_2_atlas_batch_0_gen_cargo_test_2026_06_03.txt`](scenario_0080_2_atlas_batch_0_gen_cargo_test_2026_06_03.txt) (full Cargo output captured 2026-06-03).
+
+**Closeout (2026-06-03):** `ATLAS-BATCH-0-GEN-CLOSE` — remedial spacing-band layout fix closed the prior `terran_spacing_and_pirate_adjacency_hold` failure; suite re-run with raw log saved.
+
+**Warnings (pre-existing / unrelated to GEN):** `simthing-core` EML deprecations (`EmlTreeMeta`, `EmlConsumerKind`); `simthing-driver` unused `RF_CONTINUED_STATIC_512` in soak module. No dead-code warnings from this rung after hygiene.
 
 ## Status row
 
 | Rung | Status | Evidence | Notes |
 |---|---|---|---|
-| `ATLAS-BATCH-0-GEN` | IMPLEMENTED / PASS | `dress_rehearsal_atlas_batch_0_gen.rs`; test target above | Pure descriptor fixture only; no production wiring; LOC/PACK/STORE remain untouched. |
+| `ATLAS-BATCH-0-GEN` | IMPLEMENTED / PASS | `dress_rehearsal_atlas_batch_0_gen.rs`; test target above; raw log `scenario_0080_2_atlas_batch_0_gen_cargo_test_2026_06_03.txt` | Pure descriptor fixture only; no production wiring; GEN closed — LOC gated on Opus contract. |
 
 ## §0.5 posture line
 
