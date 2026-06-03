@@ -164,9 +164,10 @@ sub-step identically.
 
 | Part of this scenario | Rung |
 |---|---|
+| Scenario admission through CLAUSE-SPEC (L0/L1/L2) | **Open** |
 | Topology, surfaces, building placement, atlas | **ATLAS-BATCH-0** |
 | Disruption heatmap + **blockade ≥100 + production diversion** | **R1** (+ R1/R2 coupling for divert) |
-| Labor/production economy, factory recipe, faction redistribution, starport need | **R2** |
+| Labor/production economy, factory recipe, faction redistribution (ECON clearinghouse), Terran/Pirate contention, starport need | **R2** |
 | Faction techtree dispositions / bonuses | **R3** |
 | Fleet pathing by disposition (overmatch / suppress) via exact-sqrt gradient | **R4** |
 | Fleet movement (REENROLL + mobility) **and starport→ship fission (E-2B-5)** | **R5** |

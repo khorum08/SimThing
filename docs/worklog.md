@@ -1,3 +1,9 @@
+# 2026-06-03 - PARKED-INVENTORY-COVERAGE-AUDIT-0: every orphaned parked track has a test home (design-authority directive)
+
+- Audited the full constitution §3/§4 parked inventory against the §12.5 rung map. Found and closed **two coverage gaps**: (1) **ECON clearinghouse** (faction surplus→deficit subsidiarity + Terran/Pirate faction-index contention) was used by the scenario (§7) but untagged → folded into **R2** ("Recursive nested reduction + faction economy"); (2) **CLAUSE-SPEC L0/L1/L2** (the authoring engine the scenario is admitted through) had no rung → added an **Open — scenario admission** row (the Tier-2 gate that opens the rehearsal).
+- Added a **parked-inventory coverage audit table** to §12.5: every §3 parked track now maps to a rung — mobility REENROLL/ALLOC/IDROUTE/GPU/RUNTIME → R5; OWNER → ATLAS-BATCH-0 + R3; ECON → R2; A-0 nested RF → R2; atlas → ATLAS-BATCH-0; CLAUSE-SPEC → Open; EML Tier-2 temporal → R1; field_urgency → R2; capability-tree → R3; SEAD OBS/EVENT/PIPE/ACT → R4; exact sqrt F → R4; GradientXY → R1/R4; E-11B-5/E-2B-5 fission → R5; combat → R6; closeout integrity → R7.
+- **Stay-gated (no consumer, correct to leave parked):** B-1 hard currency, ClauseThing/L3, dense per-cell temporal, atlas sparse-residency scheduler (M-4A), FrontierV2-5, Hybrid-Strata ECON scaling beyond the reused 2-faction set. Scenario §10 rung-map updated (Open admission + ECON in R2). Docs-only.
+
 # 2026-06-03 - REHEARSAL-SCENARIO-SPEC-2: Terran spacing 2-4 cells + per-faction fleet speed (design-authority directive)
 
 - **Terran system spacing** widened to **≥ 2–4 galactic cells apart** (was 1–2) — more falloff room (§4.1); Pirate-within-1-cell-of-Terran unchanged.
