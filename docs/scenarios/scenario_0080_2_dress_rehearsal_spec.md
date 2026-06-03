@@ -1,0 +1,151 @@
+# SCENARIO-0080-2 Dress Rehearsal — Scenario Specification
+
+> **Status: PROVISIONAL scenario spec (2026-06-03, design authority).** Detail behind the rehearsal
+> track; the rungs implement it. **Harness (cite on handoff):** `design_0_0_8_0.md` §0 (transient
+> constitution); `invariants.md` (Scenario Proof); `design_0_0_8_0_consumer_pulled_production_track.md`
+> §12–§12.5 (rehearsal design + retirement map); `workshop/mobility_and_transfer_allocation.md` §11
+> (OWNER); `crates/simthing-spec/src/designer_admission/mobility_owner0.rs`. This file is the **concrete
+> scenario** §12.x abstracts. Everything is SimThings + properties + overlays + `AccumulatorOp` (§0.1).
+
+---
+
+## 1. Scale — two distinct grids
+
+- **ATLAS-BATCH-0 stress fixture (§12.3):** galactic 100×100, ~1000 stars — proves *batch allocation* of
+  the primitive at scale. Static, no economy.
+- **Economy rehearsal (this spec):** **13 live systems** (10 Terran + 3 Pirate) on a compact galactic
+  grid (proposed **16×16**), spaced per §2. Same Location/atlas primitive, small live scale so the
+  economy and combat loop is legible. Surfaces/subgrids are **10×10** throughout.
+
+## 2. Topology + placement constraints (deterministic map generator)
+
+```
+GameSession (root)
+├── Terran faction        (+ techtree)         — stockpile, redistribution, disposition
+├── Pirate faction        (+ techtree)         — stockpile, redistribution, disposition
+└── WorldStateMap
+    └── Galactic starmap (Location, 16×16)
+        └── Star system (Location, 10×10)  ×13   ← occupies one galactic cell each
+            ├── Starport (building, child of the system gridcell, at center cell (5,5))   [×4]
+            └── Planet (Location, 10×10 surface)
+                └── Planet surface (10×10)
+                    ├── Factory district (building, a surface cell)
+                    └── Pop cohort (building, a surface cell)
+```
+
+- **Terran:** 10 systems, each with 1 planet → 1 factory + 1 pop cohort.
+- **Pirate:** 3 systems, each with 1 planet → 1 factory + 1 pop cohort (parallel economy).
+- **Starports:** 3 in Terran systems, 1 in a Pirate system (4 total), each at the **center cell** of its
+  star system's 10×10 subgrid; a **child of the star system gridcell** (not on the planet surface).
+- **Placement rules (generator constraints, not fixed coords):** Terran systems ≥ **1–2 empty galactic
+  cells** apart; each Pirate system within **1 empty cell** of a Terran system (so raiding is local).
+  Deterministic placement, seeded.
+- **Starting fleets (movers):** Pirate **10 ships**; Terran **3 patrol ships**. Sparse occupants,
+  REENROLL between cells (R5).
+
+## 3. SimThing kinds used
+
+- `Location` (field primitive): galactic starmap, star system, planet, planet surface — each a gridded
+  Location carrying its 2-D map (§12.2).
+- Buildings (dense occupants, fixed): `Custom("Starport")`, `Custom("FactoryDistrict")`,
+  `Custom("PopCohort")`.
+- Movers (sparse, REENROLL): `Fleet` (patrol / pirate), owner-column distinguishes faction.
+- `Faction` owner-entities under GameSession (Terran, Pirate). **No `StarSystem`/`Station`** (deprecated).
+- `kind` is the install-time selector only — never a runtime branch (§0.1).
+
+## 4. Arenas (everything is resource flow — §0.3)
+
+| Arena | Source (IntrinsicFlow) | Consumer | Reduces up to |
+|---|---|---|---|
+| **labor** | Pop cohort: **+10 labor/tick** | Factory district | nets locally (planet/surface) |
+| **production** | Factory: **10 labor → 1 production** (recipe) | Starport (100/ship); faction stockpile | Terran/Pirate faction stockpile (climbs) |
+| **disruption** | Pirate/patrol presence (BoundedFeedback accumulate/decay) | patrol suppression | starmap heatmap; **gates flow at ≥100 (§6)** |
+
+- **Factory recipe:** `ConjunctiveCrossing`(labor) → `CrossingFormula{unit_cost:10}` → emit `production`,
+  `SubtractFromAllInputs` consumes 10 labor per 1 production. Existing AccumulatorOp machinery, no new op.
+- **Per-owner channels at a cell:** co-located factory (production channel) + pop cohort (labor channel)
+  stay distinct via the OWNER masked reduction (§12.4, EC-A3) — never merged.
+
+## 5. Starport → ship (production sink + gated fission)
+
+- A Starport carries a **production "need" of `−100 × queued_ship_count`** — every queued fleet adds a
+  −100 demand. Production flowing into the starport pays the need down.
+- **Multi-ship-per-tick via the OrderBand emission bands** (C-8d emission substrate): on the emission
+  band, `CrossingFormula{unit_cost:100}` emits `floor(production / 100)` ships in one tick and subtracts
+  `ships × 100` from accumulated production. So a starport sitting on 250 production with ≥2 queued emits
+  **2 ships this tick**, carries 50 forward.
+- **Ship emission = gated fission** (`instantiation = gated fission`, §11): each emitted ship instantiates
+  a new `Fleet` SimThing at the starport's cell, owner-column = the starport's faction, enrolled into the
+  disruption / combat / movement arenas. **This pulls the parked E-2B-5 fission-enrollment substrate** —
+  add to the retirement map (R5-adjacent).
+
+## 6. Disruption as blockade + production diversion (revised mechanic)
+
+- Disruption accumulates on a location as before (BoundedFeedback). **At `disruption ≥ 100` the location
+  is *blockaded*:** its outbound flow (production/labor) is **suppressed** — gated off from its normal
+  reduction up the tree.
+- **Diversion:** the blockaded location's production does not vanish — it is **diverted to the blockading
+  side.** Mechanically, the production-outflow's destination **owner-column flips from owner → blockader**
+  for that location (a `Threshold{≥100}`-gated mask on the OWNER masked reduction). A pirate-blockaded
+  Terran system's production sums under the **Pirate** owner-column into the **Pirate** stockpile.
+- Conformant: it is a threshold gate + an owner-masked re-route of an existing flow — no special-case
+  logic, no new op (§0.1/§0.3).
+
+## 7. Faction redistribution (subsidiarity clearinghouse — ECON)
+
+- Each Faction owner-entity collects **surplus** production (Balance ledger) and **disburses to systems
+  with a production deficit** (e.g. a starport with unmet ship-need) — the reduce-up / disburse-down
+  sweep (§0.2). Pulls the ECON clearinghouse + Balance carryforward substrate.
+
+## 8. Strategic dispositions (SEAD value decisions — R4)
+
+The faction disposition is the masked-down weight vector the movers read off the heatmap (R4):
+
+- **Pirate "fleet-overmatch need":** maintain `pirate_ships − terran_ships ≥ margin`. While ahead, pirates
+  weight **raiding** (move toward Terran systems, raise disruption → blockade + divert production) to deny
+  the Terran production advantage. Expressed as a faction-level need that biases pirate fleet gradients
+  toward high-value, low-patrol Terran systems.
+- **Terran "build-while-low-disruption":** weight **suppressing disruption** (patrol toward disrupted
+  systems to push them back under 100) **and** out-producing (3 starports, ~3.3:1 production). Terran
+  fleets weight toward disrupted owned systems.
+
+**The core tension:** Terran has the production advantage (10 systems, 3 starports, ~10 prod/tick vs
+pirate ~3/tick); Pirate has the fleet head start (10 vs 3) and the blockade-divert lever. Pirates must
+raid fast enough to blockade+divert Terran production and hold overmatch before Terran out-builds them.
+
+## 9. Economy reference numbers
+
+| Quantity | Value |
+|---|---|
+| Pop cohort output | 10 labor / tick |
+| Factory conversion | 10 labor → 1 production |
+| Ship cost (patrol or pirate) | 100 production |
+| Starport need | −100 × queued_ship_count |
+| Terran factories / starports | 10 / 3 |
+| Pirate factories / starports | 3 / 1 |
+| Terran production (all fed) | ~10 / tick |
+| Pirate production (all fed) | ~3 / tick |
+| Blockade threshold | disruption ≥ 100 |
+| Starting fleets | Pirate 10, Terran 3 |
+
+## 10. Rung mapping (which rung proves which part — §12.5)
+
+| Part of this scenario | Rung |
+|---|---|
+| Topology, surfaces, building placement, atlas | **ATLAS-BATCH-0** |
+| Disruption heatmap + **blockade ≥100 + production diversion** | **R1** (+ R1/R2 coupling for divert) |
+| Labor/production economy, factory recipe, faction redistribution, starport need | **R2** |
+| Faction techtree dispositions / bonuses | **R3** |
+| Fleet pathing by disposition (overmatch / suppress) via exact-sqrt gradient | **R4** |
+| Fleet movement (REENROLL + mobility) **and starport→ship fission (E-2B-5)** | **R5** |
+| Combat resolution when fleets co-locate | **R6** |
+| Close + closeout integrity | **R7** |
+
+## 11. Open parameters (confirm before opening a gate)
+
+- Galactic grid size for the economy rehearsal (proposed **16×16**).
+- Pirate fleet-overmatch **margin** (how far ahead pirates try to stay).
+- Disruption gain/decay rates and patrol suppression-per-ship (sets raid/suppress tempo).
+- Whether labor also climbs to the faction (a galaxy-wide labor pool) or strictly nets locally
+  (proposed: **labor nets locally; production climbs**).
+- Starting ship placement (which cells the 10 pirate / 3 Terran fleets begin in).
