@@ -299,7 +299,8 @@ from them):**
   (where a cell sits) and identity/masking (how flows route) compose; they do not conflict.**
 - Dense field/heatmap + **sparse REENROLL movers**; settling depth is **emergent** (§0.2).
 - Build atlas batch allocation on a **static** map first (ATLAS-BATCH-0, §12.3); the **sparse-residency
-  scheduler (M-4A) and REENROLL stay parked.**
+  scheduler (M-4A) and REENROLL stay parked** until R5.
+- **Rung sequence + which parked phase each rung proves/closes: §12.5** (one parked phase per rung).
 
 ---
 
@@ -590,6 +591,44 @@ per-owner reduction keeps co-located occupants distinct (EC-A3); the dress rehea
 same OWNER routing for disruption / combat / economy flows. **Parked, not pulled here:** OWNER
 *production-runtime gameplay*, Hybrid-Strata/faction-index ECON scaling, and any capture beyond
 column-flip — each its own gate.
+
+### 12.5 Rehearsal rung ladder + parked-phase retirement map
+
+> **Sequencing discipline (§0.5, §5):** one parked phase proved-and-closed per rung. The rehearsal is
+> the **convergent consumer that retires the parked backlog one rung at a time** — not a big-bang pull.
+> ATLAS-BATCH-0 (§12.3) is the pre-rehearsal prerequisite; R1–R7 are the full rehearsal. Each rung is
+> proven **through a real reduction** (Scenario Proof), CPU-oracle parity, opt-in/default-off.
+
+| Rung | Deliverable | Parked phase proved / closed | Pulls |
+|---|---|---|---|
+| **Pre — `ATLAS-BATCH-0`** (§12.3) | static map gen + Location gridcell primitive + atlas batch allocation + 2-D-map storage | **Atlas batch allocation (C / M-4)**; OWNER masked-reduction storage | atlas runtime; `mobility_owner0` masked reduction |
+| **R1 — Disruption heatmap (EC1)** | pirate/patrol presence → `disruption` column on gridcell SimThings → BoundedFeedback decay → diffuse to `location_status` → reduce up to the starmap heatmap; vs CPU oracle; emitted artifact | **EML Tier-2 `BoundedFeedback`/`Decay`** (first real consumer); EC1 | EML temporal gadgets; stencil diffusion; SlotRange reduce |
+| **R2 — Recursive nested reduction** | galactic→system→planet tier reductions; each tier's 2-D map reduces a summary into its parent's cell; `field_urgency` at each parent | **A-0 nested Resource Flow (depth>2)** off `FlatStarResourceFlow`; `field_urgency` critical-path | A-0 nested RF; `field_urgency` EvalEML |
+| **R3 — Capability-tree mask-down** | Terran/Pirate techtrees resolve → modifier overlays (decay resistance, patrol suppression, combat bonus) masked **down** by owner-column onto cells/occupants | **Capability-tree → modifier-overlay substrate** (first real consumer); OWNER mask-down end-to-end | capability-tree substrate; OWNER latched overlays |
+| **R4 — SEAD field-consumption + exact sqrt (EC2)** | a moving child (fleet/patrol) reads the parent grid heatmap **at its own cell** — a composite intersecting **patrol-presence × disruption × its own (masked) disposition** — computes the gradient, evaluates **Euclidean magnitude via exact sqrt Candidate F**, and threshold-gates: **sit still vs step to the next opportunity** | **SEAD ladder field-consumption (EC2)** — closes the audit gap; **exact sqrt Candidate F** (named consumer for the orphaned artifact) | SEAD OBS/EVENT/PIPE/ACT; `m_jit_mag2_fixed_exact` → `m_jit_mag_f_from_exact_mag2` (Candidate F); `GradientXY` |
+| **R5 — Movement: REENROLL + mobility substrate** | the R4 move event (`Threshold`+`EmitEvent`→`BoundaryRequest`) relocates the mover — deregister from cell A's arenas, register into cell B's — routed through the 0.0.7.9 mobility/transfer substrate, in an **opt-in/default-off `SimSession` pass** | **REENROLL** (bilateral re-enrollment); **full 0.0.7.9 mobility/transfer substrate in a default `SimSession` path** (first non-test-support consumer) | REENROLL; mobility ALLOC/IDROUTE/OWNER + GPU kernel |
+| **R6 — Combat as HP/Damage arena** | co-located hostile fleets in one cell resolve combat via the masked (per-owner) HP/Damage arena: `SubtractFromSource` damage, zero-HP → `Threshold`+`EmitEvent` → removal | **§0.3 all-conflict-is-resource-flow** — combat instance proven through a real reduction | combat arena; masked reduction (the live form of ATLAS-BATCH-0 EC-A3) |
+| **R7 — CLOSE + closeout integrity** | design-authority vertical-proof acceptance; reconcile prior **numeric-only** closures (FrontierV1 "SEAD route", mapping first-slice heatmap) to **"consumption-proven"** | the **closeout-integrity** meta-opportunity | — |
+
+**R4 detail (exact-sqrt chain — design authority).** The SEAD gradient magnitude must be
+**exact-authoritative** so move/sit decisions are deterministic across GPU adapters (I8). Chain:
+fixed-point `dx/dy` → **exact pre-sqrt mag2** (`m_jit_mag2_fixed_exact` / `ExactFixedPointDxDy`) →
+**Candidate F sqrt** (`m_jit_mag_f_from_exact_mag2`, artifact hash `e2e9e27601ee2e13`) → exact Euclidean
+magnitude → threshold. Raw f32 `dx/dy` magnitude is `ApproximateDiagnostic` and **may not gate the
+commitment** (invariants: "Exact Euclidean magnitude requires exact pre-sqrt mag2"; "Exact sqrt authority
+is artifact-backed (Candidate F)"). The composite the mover reads is the **multi-channel cell weighted by
+its masked-down disposition** (R3): a pirate weights low-patrol + high-opportunity (move toward clean
+systems, through disruption it can pass); a patrol weights high-disruption (move *toward* it to suppress).
+Same machinery — disposition is just the weight vector; sit-still is the below-threshold case.
+
+**R5 detail.** Movement *is* the mobility substrate exercised in a real session pass: the SEAD event
+materializes a `BoundaryRequest` that re-enrolls the mover (REENROLL) and routes it via the parked
+0.0.7.9 mobility/transfer substrate (IDROUTE identity preserved, no reparenting). This is the
+"first non-test-support default `SimSession` path" the mobility gate was mapped to — coincident with the
+movement rung rather than a standalone slice.
+
+**Parked, not pulled by any rung (stay gated):** B-1 hard currency, ClauseThing/L3, dense per-cell
+temporal memory, atlas sparse-residency scheduler, FrontierV2-5, Hybrid-Strata/faction-index ECON scaling.
 
 ---
 
