@@ -39,11 +39,12 @@ GameSession (root)
 - **Pirate:** 3 systems, each with 1 planet → 1 factory + 1 pop cohort (parallel economy).
 - **Starports:** 3 in Terran systems, 1 in a Pirate system (4 total), each at the **center cell** of its
   star system's 10×10 subgrid; a **child of the star system gridcell** (not on the planet surface).
-- **Placement rules (generator constraints, not fixed coords):** Terran systems ≥ **1–2 empty galactic
-  cells** apart; each Pirate system within **1 empty cell** of a Terran system (so raiding is local).
-  Deterministic placement, seeded.
+- **Placement rules (generator constraints, not fixed coords):** Terran systems ≥ **2–4 empty galactic
+  cells** apart (room for galactic-tier gradient falloff, §4.1); each Pirate system within **1 empty
+  cell** of a Terran system (so raiding is local). Deterministic placement, seeded.
 - **Starting fleets (movers):** Pirate **10 ships**; Terran **3 patrol ships**. Sparse occupants,
-  REENROLL between cells (R5).
+  REENROLL between cells (R5). **Movement speed: Pirate 3 galactic cells/tick; Patrol 2 cells/tick** —
+  as up-to-N greedy SEAD steps per tick (§8), **not** pathfinding.
 
 ## 3. SimThing kinds used
 
@@ -128,8 +129,18 @@ The faction disposition is the masked-down weight vector the movers read off the
   fleets weight toward disrupted owned systems.
 
 **The core tension:** Terran has the production advantage (10 systems, 3 starports, ~10 prod/tick vs
-pirate ~3/tick); Pirate has the fleet head start (10 vs 3) and the blockade-divert lever. Pirates must
-raid fast enough to blockade+divert Terran production and hold overmatch before Terran out-builds them.
+pirate ~3/tick); Pirate has the fleet head start (10 vs 3), the blockade-divert lever, **and a speed
+edge (3 vs 2 cells/tick)**. Pirates must raid fast enough to blockade+divert Terran production and hold
+overmatch before Terran out-builds them; patrols are slower to respond, reinforcing the raiding lever.
+
+**Movement speed — multi-step movement, NOT multi-step *pathfinding*.** A fleet takes **up to its speed
+in greedy SEAD steps per tick** (Pirate 3, Patrol 2, galactic cells). Each sub-step is a **fresh local
+gradient read + threshold** at the fleet's current cell (re-enroll → re-evaluate → step, or **stop early**
+if the gradient flattens below threshold) — it is **never** a planned route, search, or lookahead
+(`multi_step_pathfinding` stays rejected; §0.5 SEAD). This **generalizes the 0080-2 "single step per
+tick"** to a per-faction speed. Per-step re-enrollment means a transiting fleet **can be intercepted in
+an intermediate cell** (so speed is also exposure). The exact-sqrt gradient magnitude (R4) gates each
+sub-step identically.
 
 ## 9. Economy reference numbers
 
@@ -145,6 +156,9 @@ raid fast enough to blockade+divert Terran production and hold overmatch before 
 | Pirate production (all fed) | ~3 / tick |
 | Blockade threshold | disruption ≥ 100 |
 | Starting fleets | Pirate 10, Terran 3 |
+| Pirate fleet speed | 3 galactic cells / tick (≤3 greedy SEAD steps) |
+| Patrol fleet speed | 2 galactic cells / tick (≤2 greedy SEAD steps) |
+| Terran system spacing | ≥ 2–4 galactic cells apart |
 
 ## 10. Rung mapping (which rung proves which part — §12.5)
 

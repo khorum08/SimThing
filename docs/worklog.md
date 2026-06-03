@@ -1,3 +1,8 @@
+# 2026-06-03 - REHEARSAL-SCENARIO-SPEC-2: Terran spacing 2-4 cells + per-faction fleet speed (design-authority directive)
+
+- **Terran system spacing** widened to **≥ 2–4 galactic cells apart** (was 1–2) — more falloff room (§4.1); Pirate-within-1-cell-of-Terran unchanged.
+- **Per-faction fleet speed:** Pirate **3 galactic cells/tick**, Patrol **2/tick** — specified as **multi-step movement, NOT multi-step pathfinding**: up to N **greedy SEAD sub-steps** per tick, each a fresh local gradient read + exact-sqrt threshold (re-enroll → re-evaluate → step, or stop early below threshold); `multi_step_pathfinding`/lookahead stays rejected (§0.5). **Generalizes the 0080-2 "single step per tick"** to a per-faction speed. Per-step re-enrollment ⇒ a transiting fleet **can be intercepted in an intermediate cell** (speed = exposure). Strategic effect: faster pirates raid before slower patrols respond, reinforcing the raiding lever vs the Terran production advantage. Numbers table updated. Docs-only.
+
 # 2026-06-03 - REHEARSAL-SCENARIO-SPEC-1: pin galactic grid 20x20 + galactic-tier heatmaps (design-authority directive)
 
 - Pinned the economy-rehearsal **galactic grid at 20×20** (was proposed 16×16) so the galactic-tier heatmap has room for **meaningful gradient falloff** (a 13-system field on a cramped grid saturates and the gradient carries no direction).
