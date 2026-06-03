@@ -96,6 +96,41 @@ reuses a free slot. Pool growth, when the global population itself rises, happen
 never per tick — the load-bearing "no per-tick device creation" invariant is preserved. Pulling REENROLL
 into a production path is the named-consumer gate that opens it.
 
+### 0.5 Track harness discipline — the base every production PR track carries
+The §0 drift (math-in-a-vacuum, kind-as-behavior, structural special-cases like the rejected D=3
+ownership-node) was a **context-harness failure, not a doctrine failure**: low-context implementation
+agents (Codex/Cursor/Grok) had no tight harness, so they re-derived architecture from conventional
+priors and drifted. The fix is a **fixed, small, citable base harness on every production PR track** —
+and a discipline that keeps it from bloating back into a doc-treadmill no agent reads.
+
+- **Rule 1 — every track opens with a fixed-size harness header.** **At most two file links:** (a) this
+  constitution **§0**, and (b) the **one canonical design file** for that track. Everything else must be
+  reachable transitively from those two — no third primary link. Plus a **one-screen** "established
+  decisions / do-not-re-derive" checklist for that track. If the checklist outgrows one screen, the
+  track is overburdened: split it or move detail behind the links.
+- **Rule 2 — every rung handoff cites the harness and self-checks the diff against the base principles
+  below**, stating in one line that the change holds them. A handoff that cannot cite the harness is rejected.
+- **Rule 3 — link out, never inline.** Detail lives in the canonical design file and the linked code;
+  the header points, it does not restate. Restating is what overburdened the old tracks.
+
+**The base SimThing principles — the harness checklist, every track, every rung:**
+1. **Everything is a SimThing** (§0.1). New behavior = SimThings + properties + overlays + `AccumulatorOp`
+   registrations — never a subsystem outside the tree, never a runtime `match kind`.
+2. **All conflict/opportunity/ambition/exploitation is resource flow** (§0.0, §0.3):
+   `accumulate → reduce → mask → threshold`. No combat / economy / AI engine.
+3. **Allocation is recursive; settling depth is emergent** (§0.2). Reduce-up / disburse-down through the
+   one tree. No per-relation depth assignment, no flat-star special case.
+4. **Decisions are GPU-resident threshold crossings — SEAD, not a CPU planner** (§0.0, §2.6):
+   `Threshold` + `EmitEvent` → `BoundaryRequest`.
+5. **`simthing-sim` is semantic-free; exact claims carry CPU-oracle bit-exact parity** (§2.6). Semantics
+   compile away to flat `AccumulatorOp` / overlay / threshold registrations.
+6. **Proven only through a real reduction** (`invariants.md` "Scenario Proof"); **opt-in / default-off**,
+   no default wiring without a gate. A CPU math module is an oracle, never the proof.
+
+If a change cannot be expressed within 1–6, that is the signal to **escalate to design authority** — not
+to add a special case. The checklist is six lines on purpose: a low-context agent will hold six lines and
+drift past sixty. (`SCENARIO-0080-2` §12.0 in the production track is the worked example of this header.)
+
 ---
 
 ## 1. What 0.0.8.0 is — and the lesson it encodes
