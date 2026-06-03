@@ -112,6 +112,15 @@ and a discipline that keeps it from bloating back into a doc-treadmill no agent 
   canonical design file. Plus a **one-screen** "established decisions / do-not-re-derive" checklist. The
   discipline is **high-signal density, not link count**: keep the header to one screen and prune anything
   a low-context agent wouldn't actually use.
+  - **Two layers — fixed base + rung-local.** The 4–6 links above are the **fixed base harness**: the
+    same set on *every* handoff — capped, durable, the anchor against drift. A handoff MAY add a short
+    **rung-local** citation list — the artifacts *that* rung directly consumes (the immediately-upstream
+    rung's test report / status row, a bespoke note, the prior result it builds on). Rung-local rules:
+    (a) only what this rung directly consumes (a reader opens it *for this task*, not generally);
+    (b) keep it to **≤ 3**; (c) it is **ephemeral** — it does not carry to the next handoff and **never
+    accretes into the fixed base**. The base controls drift; the rung-local layer carries task detail.
+    If a rung-local link proves durable across rungs, **promote it into the canonical design file** —
+    do not grow the base.
 - **Rule 2 — every rung handoff cites the harness and self-checks the diff against the base principles
   below**, stating in one line that the change holds them. A handoff that cannot cite the harness is rejected.
 - **Rule 3 — link out, never inline.** Detail lives in the canonical design file and the linked code;
