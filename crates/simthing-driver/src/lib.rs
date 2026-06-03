@@ -18,6 +18,7 @@ pub mod disruption_decay_0080_2;
 pub mod econ_scale_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
+pub mod gradient_follow_0080_2;
 pub mod gameplay_0080_0;
 pub mod gameplay_0080_1;
 pub mod install;
@@ -176,6 +177,12 @@ pub use first_slice_mapping_runtime::{
     FirstSliceMappingSession, FirstSliceReadinessReport, FirstSliceResidencyReport,
     FirstSliceResidencyStatus, FirstSliceSeed, FirstSliceSummaryReport, FirstSliceSummaryStatus,
     FirstSliceTickOptions,
+};
+pub use gradient_follow_0080_2::{
+    replay_gradient_follow_0080_2, run_gradient_follow_0080_2, GradientFollow0082ForbiddenRequests,
+    GradientFollow0082Gate, GradientFollow0082Input, GradientFollow0082MoveRow,
+    GradientFollow0082Report, GradientFollow0082Surface, GRADIENT_FOLLOW_0080_2_ID,
+    GRADIENT_FOLLOW_0080_2_SCENARIO, GRADIENT_FOLLOW_0080_2_STATUS_PASS,
 };
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,

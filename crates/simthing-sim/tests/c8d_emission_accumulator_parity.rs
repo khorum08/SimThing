@@ -420,6 +420,7 @@ fn c8d_transfer_conservation_still_rejects_soft_formula() {
         output_scale: 1.0,
         max_transfer: Some(1.0),
         tree_id: Some(id),
+        order_band: 0,
     }];
     assert!(plan_transfer_ops(&transfer_regs).is_ok());
 }
@@ -648,6 +649,7 @@ fn c8d_combined_c1_c2_c4_s4_c7_c8b_c8c_c8d_all_flags_on() {
         output_scale: 1.0,
         max_transfer: Some(1.0),
         tree_id: None,
+        order_band: 0,
     }];
     state
         .sync_transfer_accumulator(&transfer_regs)
