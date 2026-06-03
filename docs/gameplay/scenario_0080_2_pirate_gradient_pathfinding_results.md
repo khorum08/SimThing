@@ -4,6 +4,24 @@
 
 ---
 
+> **Proof status (2026-06-02, design authority).** Everything below **was proven** — the
+> disruption recurrence, the compound desirability field, the dual-output gradient, the SEAD
+> threshold-gated single-step movement, and bit-exact deterministic replay all hold. That proof
+> is at the **math / behavioral** layer: the test battery is a set of CPU **oracles** that
+> establish the numbers and the logic are correct, and they remain valid as such.
+>
+> Under the project's "Scenario Proof" invariant these results are **not yet proven through a
+> full SimThing reduction** — they run as standalone math, not over real
+> `SimThing` / `SimProperty` / `Overlay` state advanced by the engine's boundary protocol. The
+> **next track is a full-vertical dress rehearsal** that re-validates these same principles
+> through one assembled game session (a `gamesession` root with Terran-faction, worldstate +
+> starmap gridcell, and Pirate-faction children, both factions carrying techtree capability
+> trees). See `docs/design_0_0_8_0_consumer_pulled_production_track.md` §12 for the architecture
+> and the principle-by-principle carry-forward. **Nothing here is discarded — it becomes the
+> oracle the dress rehearsal is checked against.**
+
+---
+
 ## What this scenario proves
 
 This test battery proves that a pirate faction AI can navigate a multi-system starmap using
