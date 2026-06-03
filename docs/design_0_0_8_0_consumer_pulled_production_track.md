@@ -573,6 +573,18 @@ are distinguished and **must not be collapsed into one figure**:
 > [`tests/scenario_0080_2_atlas_batch_0_gen_cargo_test_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_gen_cargo_test_2026_06_03.txt).
 > Command: `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_gen` → **6 passed; 0 failed**.
 
+> **`ATLAS-BATCH-0-LOC` closure (2026-06-03).** `SCENARIO-0080-2` LOC is **implemented / PASS** as
+> fixture-only gridcell-primitive layout + occupant placement + typed channel descriptors (27 Locations,
+> 56 occupants, `total_cell_slots = 3000`, single `cell_index` home). Does **not** implement PACK, STORE,
+> GPU dispatch, owner masked-reduction runtime, economy, SEAD movement, or `simthing-sim` semantics.
+> Evidence:
+> [`crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_loc.rs`](../crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_loc.rs);
+> [`crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_loc.rs`](../crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_loc.rs);
+> [`tests/scenario_0080_2_atlas_batch_0_loc_report.md`](tests/scenario_0080_2_atlas_batch_0_loc_report.md);
+> [`tests/scenario_0080_2_atlas_batch_0_loc_cargo_test_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_loc_cargo_test_2026_06_03.txt).
+> Command: `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_loc` → **9 passed; 0 failed**.
+> **PACK and STORE remain unimplemented.** Sparse-residency scheduler (M-4A) and REENROLL remain parked.
+
 ### 12.4 Established mechanism — OWNER routing (multi-owner flows in one cell)
 
 > **Already-designed + parked substrate; the harness pulls it, does not re-derive it.** This is the
@@ -623,11 +635,12 @@ column-flip — each its own gate.
 > **Handoffs (2026-06-03):** [`handoffs/dress_rehearsal_codex_handoff_0.md`](handoffs/dress_rehearsal_codex_handoff_0.md)
 > (orientation + **`ATLAS-BATCH-0-GEN`** — closed/PASS) · [`handoffs/dress_rehearsal_codex_handoff_1_remedial.md`](handoffs/dress_rehearsal_codex_handoff_1_remedial.md)
 > (GEN spacing-band remedial — resolved) · [`handoffs/dress_rehearsal_codex_handoff_2_atlas_batch_0_loc.md`](handoffs/dress_rehearsal_codex_handoff_2_atlas_batch_0_loc.md)
-> (**`ATLAS-BATCH-0-LOC`** contract — authored + accepted; Cursor to implement).
+> (**`ATLAS-BATCH-0-LOC`** — closed/PASS).
 >
-> **GEN status (2026-06-03):** `ATLAS-BATCH-0-GEN` is **closed / PASS** for `SCENARIO-0080-2` (see §12.3
-> closure note + raw test log). **Next implementation gate:** `ATLAS-BATCH-0-LOC`, gated on an
-> Opus-authored LOC contract — do not improvise LOC.
+> **ATLAS-BATCH-0 status (2026-06-03):** `GEN` and `LOC` are **closed / PASS** for `SCENARIO-0080-2`
+> (see §12.3 closure notes + raw test logs). **Next implementation gate:** `ATLAS-BATCH-0-PACK` (atlas
+> batch allocation). **PACK and STORE remain unimplemented.** M-4A sparse-residency scheduler and
+> REENROLL remain parked.
 >
 > **Sequencing discipline (§0.5, §5):** one parked phase proved-and-closed per rung. The rehearsal is
 > the **convergent consumer that retires the parked backlog one rung at a time** — not a big-bang pull.
