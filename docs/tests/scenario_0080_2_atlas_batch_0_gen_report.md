@@ -22,9 +22,14 @@
   - Plain owner fields on systems, planets, surface occupants, starports, and fleets.
   - Deterministic coordinate transform chosen from the seed; no runtime behavior, no slot allocation, no `Location` materialization.
 
+## Remedial (2026-06-03)
+
+Corrected `TERRAN_BASE_CELLS` / `PIRATE_BASE_CELLS` so every Terran system has an in-band neighbor at 2–4 empty cells (Chebyshev 3..=5). The prior layout left y=8 and y=14 rows ~6 cells apart (5 empty cells between), failing `terran_spacing_and_pirate_adjacency_hold`.
+
 ## Test artifact
 
 - `crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_gen.rs`
+  - Gate id/status consts.
   - Determinism: same seed produces identical descriptor.
   - Shape/counts: 20×20 galaxy; 13 systems; 10 Terran + 3 Pirate; 13 planets; 13 factories; 13 pop cohorts; 4 starports; 10 pirate ships + 3 patrol ships.
   - Bounds: every system grid is 10×10; every planet surface is 10×10; generated system, planet, factory, and pop cells are in bounds; galactic system cells are unique.
@@ -39,13 +44,20 @@ cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_gen
 
 ## Execution status
 
-Not executed locally in this connector session: the GitHub connector allowed repository writes, but a sandbox `git clone` could not resolve `github.com`, so there was no local checkout to run Cargo against. The Rust test target above is the intended verification command for CI/local execution.
+```text
+cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_gen
+Result: 6 passed; 0 failed
+```
+
+(Includes remedial spacing-band fix and `docs_status_matches_gate`.)
+
+Pre-existing workspace warnings only (`simthing-core` EML deprecations; unrelated `simthing-driver` soak import). No dead-code warnings from this rung after hygiene.
 
 ## Status row
 
 | Rung | Status | Evidence | Notes |
 |---|---|---|---|
-| `ATLAS-BATCH-0-GEN` | IMPLEMENTED / TESTS ADDED — execution pending | `dress_rehearsal_atlas_batch_0_gen.rs`; integration test target above | Pure descriptor fixture only; no production wiring; LOC/PACK/STORE remain untouched. |
+| `ATLAS-BATCH-0-GEN` | IMPLEMENTED / PASS | `dress_rehearsal_atlas_batch_0_gen.rs`; test target above | Pure descriptor fixture only; no production wiring; LOC/PACK/STORE remain untouched. |
 
 ## §0.5 posture line
 

@@ -5,10 +5,20 @@ use std::collections::HashSet;
 
 use dress_rehearsal_atlas_batch_0_gen::{
     BuildingKind, DressRehearsalMap, FleetKind, GridCell, Owner, GALAXY_SIDE,
+    DRESS_REHEARSAL_ATLAS_BATCH_0_GEN_ID, DRESS_REHEARSAL_ATLAS_BATCH_0_GEN_STATUS_PASS,
     PIRATE_STARTING_SHIPS, PIRATE_STARPORT_COUNT, PIRATE_SYSTEM_COUNT, PLANET_SURFACE_SIDE,
     SYSTEM_CENTER_CELL, SYSTEM_COUNT, SYSTEM_SIDE, TERRAN_PATROL_STARTING_SHIPS,
     TERRAN_STARPORT_COUNT, TERRAN_SYSTEM_COUNT,
 };
+
+#[test]
+fn docs_status_matches_gate() {
+    assert_eq!(DRESS_REHEARSAL_ATLAS_BATCH_0_GEN_ID, "ATLAS-BATCH-0-GEN");
+    assert!(
+        DRESS_REHEARSAL_ATLAS_BATCH_0_GEN_STATUS_PASS.contains("IMPLEMENTED / PASS"),
+        "{DRESS_REHEARSAL_ATLAS_BATCH_0_GEN_STATUS_PASS}"
+    );
+}
 
 #[test]
 fn same_seed_produces_identical_descriptor() {
@@ -23,6 +33,11 @@ fn descriptor_shape_and_counts_hold() {
 
     assert_eq!(map.galaxy_dims.width, GALAXY_SIDE);
     assert_eq!(map.galaxy_dims.height, GALAXY_SIDE);
+    assert_eq!(
+        map.galaxy_dims.cell_count(),
+        GALAXY_SIDE * GALAXY_SIDE,
+        "galactic tier is a full 20×20 grid"
+    );
     assert_eq!(map.systems.len(), SYSTEM_COUNT);
     assert_eq!(map.terran_systems().count(), TERRAN_SYSTEM_COUNT);
     assert_eq!(map.pirate_systems().count(), PIRATE_SYSTEM_COUNT);
@@ -115,6 +130,13 @@ fn system_and_surface_cells_are_bounded_and_unique_at_galactic_tier() {
 #[test]
 fn terran_spacing_and_pirate_adjacency_hold() {
     let map = DressRehearsalMap::canonical();
+    let min_terran_spacing = map
+        .minimum_terran_empty_spacing()
+        .expect("canonical map has Terran systems");
+    assert!(
+        min_terran_spacing >= 2,
+        "closest Terran pair must leave at least 2 empty cells, got {min_terran_spacing}"
+    );
     let terran: Vec<_> = map.terran_systems().collect();
 
     for left in 0..terran.len() {
