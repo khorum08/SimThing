@@ -224,22 +224,22 @@ impl DressRehearsalMap {
 }
 
 const TERRAN_BASE_CELLS: [GridCell; TERRAN_SYSTEM_COUNT] = [
-    GridCell::new(2, 2),
-    GridCell::new(7, 2),
-    GridCell::new(12, 2),
-    GridCell::new(17, 3),
-    GridCell::new(3, 8),
-    GridCell::new(9, 8),
-    GridCell::new(15, 8),
-    GridCell::new(5, 14),
-    GridCell::new(11, 14),
-    GridCell::new(17, 14),
+    GridCell::new(2, 3),
+    GridCell::new(6, 3),
+    GridCell::new(10, 3),
+    GridCell::new(14, 3),
+    GridCell::new(18, 3),
+    GridCell::new(2, 12),
+    GridCell::new(6, 12),
+    GridCell::new(10, 12),
+    GridCell::new(14, 12),
+    GridCell::new(18, 12),
 ];
 
 const PIRATE_BASE_CELLS: [GridCell; PIRATE_SYSTEM_COUNT] = [
-    GridCell::new(4, 3),
-    GridCell::new(10, 10),
-    GridCell::new(16, 16),
+    GridCell::new(4, 5),
+    GridCell::new(12, 10),
+    GridCell::new(16, 10),
 ];
 
 fn terran_starport_indices() -> [usize; TERRAN_STARPORT_COUNT] {
