@@ -394,6 +394,9 @@ This ADR explicitly does NOT commit to:
 - **Combat as a Flow arena.** Combat is a downstream application of
   the substrate, not a constitutional concern. Separate ADR if and
   when designed.
+  > **Superseded by `design_0_0_8_0.md` §0.3 (2026-06-03):** combat, diplomacy, and trade are now
+  > **in scope as resource-flow arenas** under the "all conflict is resource flow" directive. This
+  > out-of-scope deferral no longer holds.
 - **Diplomacy as a Flow arena.** Same disposition.
 - **Multi-faction trade as a Flow arena.** Same.
 - **EML classes beyond `ExactDeterministic`** for arena allocation

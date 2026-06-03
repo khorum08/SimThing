@@ -15,6 +15,64 @@
 
 ---
 
+## 0. Transient constitution — carry-forward doctrine (MUST propagate to every future version)
+
+> **This section is transient by design and is the cross-version spine.** It holds doctrine that
+> outlives any single constitution version. **Every future constitution version MUST copy §0 forward
+> verbatim**, amending only by *addition* — never silent removal or weakening. The version-specific
+> track, parked inventory, and operating mechanics below §0 are not carried forward automatically; §0
+> is. If a future version omits §0, that version is defective.
+
+### 0.1 Maximal SimThing conformance (the founding premise)
+**Everything is a SimThing.** There are no privileged engine-side special cases for game concepts:
+gamesession, factions, worldstate, starmap, star systems, planets, grid cells, fleets, and cohorts are
+all SimThings in one recursive `{properties, overlays, children}` tree. New behavior is modeled by
+adding SimThings, properties, overlays, and `AccumulatorOp` registrations — **never** by a bespoke
+subsystem sitting outside the tree. When a design seems to need special-case logic, the correct move is
+almost always to express it as *more SimThing*. (This is the antidote to the math-in-a-vacuum drift that
+`invariants.md` "Scenario Proof" now also guards: behavior is proved through the tree, not beside it.)
+
+### 0.2 Allocation is always recursive (overrides the flat-star carve-out)
+Resource flow is **one** mechanism: reduction **up** the tree (each parent reduces its children's flow
+into a surplus or deficit and passes it to its parent) and disbursement **down** the tree (the
+gamesession root sends flow down; factions hold the stockpiled values, resolve deficits from the
+stockpile, and the resolved values sweep back up to the root and down again). **"Flat-star" vs "nested"
+is not a structural fork:** local balance is simply where a masked flow nets to zero at a *leaf level*
+of the one recursive hierarchy — same machinery, different settling depth. This **explicitly overrides**
+the "combat is flat-star within the cell, nesting lives only above" carve-out in
+`docs/workshop/mobility_and_transfer_allocation.md` §3.2: a cell-local arena is the leaf-most level of
+the recursive hierarchy, not a different mechanism.
+> *Implementation note (not a weakening of the doctrine):* the **proven** production slice today is
+> D=2 (`FlatStarResourceFlow`); recursion to greater depth is the parked nested path (A-0, §3/§4) pulled
+> by a named scenario. §0.2 is the **target doctrine**, not a claim that arbitrary depth is already wired.
+
+### 0.3 All conflict is resource flow
+**Every adversarial interaction is expressed as resource-flow dynamics** — accumulation, reduction, and
+threshold crossings over SimThing participants — never as bespoke conflict logic. Binding named instances:
+- **Combat** is an `HP/Damage` resource-flow arena: fleet/ship cohorts are participants; damage is a
+  `SubtractFromSource` transfer; HP recovery is `governed_by` integration; a cohort crossing zero HP
+  fires `Threshold` + `EmitEvent` → boundary removal.
+- **Disruption** is a resource-flow arena whose value accumulates and decays as a location SimThing's
+  `disruption` property (the BoundedFeedback recurrence); patrols and pirates are participants
+  (suppress / emit); the disruption vector reduces up to the starmap, where it accumulates as the heatmap.
+
+Diplomacy, trade, and any future adversarial system follow the same law. This **supersedes** the
+"Combat / Diplomacy / Trade as a Flow arena — out of scope" deferral in
+`docs/adr/resource_flow_substrate.md` §"Out of scope": those are now **in scope, as arenas**, by this
+directive. The substrate stays semantic-free — these names live at the spec/driver layer and compile
+away to generic `AccumulatorOp` registrations; `simthing-sim` never learns the word "combat."
+
+### 0.4 Substrate consequence — endgame scale is never prohibited
+Large-scale concurrency (e.g. one cell hosting a very large fleet count at endgame) is **never** solved
+by prohibiting scale. The participant cap is on **concurrent** participants (bounded by the global
+cohort population), **not** cumulative and **not** cells × capacity. Slots recycle through the REENROLL
+free-list — deregister marks a slot inactive (consistent with the no-compaction rule); a new enrollment
+reuses a free slot. Pool growth, when the global population itself rises, happens at a **boundary**,
+never per tick — the load-bearing "no per-tick device creation" invariant is preserved. Pulling REENROLL
+into a production path is the named-consumer gate that opens it.
+
+---
+
 ## 1. What 0.0.8.0 is — and the lesson it encodes
 
 By the end of 0.0.7.9 the project had built a **large, correct, proven, and entirely parked**
