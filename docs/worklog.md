@@ -1,3 +1,11 @@
+# 2026-06-03 - ATLAS-BATCH-0-PACK ACCEPTED (design-authority validation)
+
+- **Validated Cursor's PACK handback and ACCEPT.** Ran `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_pack` → **9 passed, 0 failed** (confirmed, not taken on report). Checks: no forbidden imports (no simthing-gpu/sim/core/wgpu — pure CPU/std); `#[path]`-includes LOC; **not exported from lib.rs** (fixture-only); single transform home (`pack_coord`/`unpack_coord`); G=0 no-bleed oracle test passes.
+- **VRAM report genuine, not trivial:** multiplier **1.0** is the correct G=0-algebraic outcome — 13× 10×10 tiles strip-packed to 130×10 = zero rectangle padding, zero gutter; bytes derived from real per-class channel counts (galactic 5ch=20B/cell, system/surface 2ch=8B/cell → 28800B total), `budget_pass` numeric vs `V78AtlasVramBudget`.
+- **Honest closure confirmed:** production doc records EC-A2a PASS; **EC-A2b (batched GPU dispatch + bit-exact parity) deferred to `ATLAS-BATCH-0-PACK-GPU`, explicitly NOT proven**; STORE unimplemented; M-4A + REENROLL parked; no economy/disruption/SEAD.
+- **Deviation affirmed:** `unpack_coord`/`g_zero_sample` take `class_id` — a sound consequence of the keep-classes-separate decision (each class is its own atlas coordinate space); more rigorous than the contract's single-`(ax,ay)` signature.
+- **Verdict: ATLAS-BATCH-0-PACK ACCEPTED for EC-A2a.** Pending gates: `ATLAS-BATCH-0-STORE` (next ladder rung; Opus authors its contract when the orchestrator requests) and the deferred `ATLAS-BATCH-0-PACK-GPU` (EC-A2b — the first genuinely GPU-touching slice; its own gate). Docs-only on my side.
+
 # 2026-06-03 - ATLAS-BATCH-0-PACK CONTRACT authored (design authority → Cursor)
 
 - Authored `docs/handoffs/dress_rehearsal_codex_handoff_3_atlas_batch_0_pack.md` — the accepted Cursor contract for the PACK rung (after closed GEN + LOC).
