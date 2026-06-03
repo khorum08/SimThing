@@ -446,6 +446,71 @@ install-time selector (which cells get `location_val` + the 2-D-map column when 
 children); the runtime still reads behavior from properties/overlays/arena registrations and never
 branches on `Location` (§0.0/§0.1).
 
+### 12.3 Pre-Rehearsal track — `ATLAS-BATCH-0` (build + validate before the dress rehearsal)
+
+> **Status: PROVISIONAL track definition (2026-06-03), design authority. Tier-2** (opens the parked
+> atlas production-runtime gate — **batch allocation only**). To be laddered and accepted before the
+> dress rehearsal (§12) opens.
+
+**Purpose.** Stand up and prove **atlas batch allocation** on a **static, pre-generated** multi-theater
+map — the named multi-theater consumer the M-4 / M-4A atlas runtime gate was parked for (constitution
+§4; C-0/C-1/C-2 closed the designer surface). The static map deliberately **isolates batch allocation**
+from the **sparse-residency scheduler (M-4A)** and from **REENROLL** — both stay parked (a static map
+exercises neither). Establishes the Location-kind gridcell primitive and the 2-D-map storage that the
+dress-rehearsal EC1/EC2 build on.
+
+**Scope — what this track builds:**
+1. **Simple static map generator (simulated).** Produces a fixed atlas at game start: a galactic
+   **100×100 grid with ~1000 stars** dispersed (random or galaxy-shaped algorithm); each star system's
+   **10×10 subgrid** with planet-system positions; each planet system's subgrid with moon/orbital
+   positions. **All static at game start.** No procedural-generation runtime — it is a test/fixture
+   producer the batcher consumes.
+2. **Location-kind gridcell primitive.** `Location` SimThings carry grid `(x,y)` and a `width×height`
+   dense map; grid-placement allocation reserves a dense contiguous cell-slot range with
+   `cell(x,y) = map_base + y·width + x` (the free 2-D view, §12.2). Sparse by tier (only Locations with
+   gridcell children materialize a map). `Location` is an **install-time selector only** — the runtime
+   never branches on kind (§0.1).
+3. **Atlas batch allocation.** Pack the ~1000 homogeneous 10×10 star tiles (+ planet/moon tiles, batched
+   per homogeneous size-class) into batched buffers with **algebraic tile-local `G=0` masking** (no
+   inter-tile bleed; systems couple only via the galactic-tier reduction), within the declared
+   `V78AtlasVramBudget`, with **mandatory VRAM-multiplier reporting**. One batched stencil dispatch flows
+   over all tiles of a class; CPU-oracle bit-exact parity.
+4. **2-D-map storage of children's flow results** (the §12.2 reduction-target-is-a-cell primitive,
+   refined by the binding constraint below).
+
+**BINDING CONSTRAINT — co-located children are never merged.** A Location MAY have **multiple children
+at the same `(x,y)`** (e.g. a planet, a patrol fleet, and a pirate fleet in one cell). This **refines and
+corrects §12.2's "child is the cell" simplification**: the **cell is its own dense map slot** (the
+position); features and movers are **occupants** that contribute *into* the cell. Co-located occupants
+are distinguished and **must not be collapsed into one figure**:
+- The cell is **multi-channel** (and where needed **owner/faction-indexed**): a planet writes
+  food/labor channels; a patrol writes patrol-presence; a pirate writes pirate-presence/disruption —
+  distinct channels at the same `(x,y)`.
+- The batcher's reduction is **per-channel (and per-owner), never a blind sum-by-position.** Two pirate
+  fleets in one cell *do* sum within the pirate-presence channel (correct — more presence); a planet and
+  a pirate in one cell **never** sum across their channels.
+- Therefore: dense **cell** slots (the map, grid-ordered) + **occupant** children (features + movers)
+  that scatter/reduce into the cell's appropriate channel keyed on `(x,y)` + role/owner. This is the
+  dense-field / sparse-occupant split, with the **planet now correctly an occupant, not the cell.**
+
+**Exit criteria (provisional):**
+- **EC-A1:** the static generator deterministically produces the fixed atlas (galactic 100×100 + ~1000
+  star 10×10 subgrids + planet/moon subgrids).
+- **EC-A2:** the batcher packs the homogeneous tiles with `G=0` masking within `V78AtlasVramBudget`,
+  reports the VRAM multiplier, and one batched stencil dispatch over all tiles matches the CPU oracle
+  bit-exactly.
+- **EC-A3:** a Location stores its gridcell children's flow results in the correct `(x,y)` map slots, and
+  **co-located children at one `(x,y)` are preserved per-channel/per-owner and never merged** — explicit
+  test: planet + patrol + pirate in one cell → three distinct channel figures, verified vs CPU oracle.
+- **EC-A4:** the residency scheduler (M-4A) and REENROLL remain unbuilt/parked — the slice is static.
+
+**Rungs (provisional):**
+1. `ATLAS-BATCH-0-GEN` — static map generator (fixture producer).
+2. `ATLAS-BATCH-0-LOC` — Location-kind gridcell primitive + grid-placement slot allocation + multi-channel cell.
+3. `ATLAS-BATCH-0-PACK` — atlas batch allocation + `G=0` mask + VRAM-multiplier + batched dispatch + CPU parity.
+4. `ATLAS-BATCH-0-STORE` — children's flow results into 2-D map slots; the co-located-not-merged test (EC-A3).
+5. `ATLAS-BATCH-0-CLOSE` — design-authority accept; confirm residency scheduler + REENROLL stay parked.
+
 ---
 
 ## 13. Pointers
