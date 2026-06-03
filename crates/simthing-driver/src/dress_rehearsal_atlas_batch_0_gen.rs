@@ -27,15 +27,6 @@ pub enum SystemKind {
     Pirate,
 }
 
-impl SystemKind {
-    pub fn owner(self) -> Owner {
-        match self {
-            Self::Terran => Owner::Terran,
-            Self::Pirate => Owner::Pirate,
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum FleetKind {
     Patrol,
@@ -343,7 +334,10 @@ fn build_fleets(systems: &[SystemDescriptor]) -> Vec<FleetPlacement> {
 
 fn deterministic_subgrid_cell(seed: u64, index: u64, salt: u64, transform: Symmetry) -> GridCell {
     let mixed = stable_mix(seed ^ index.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ salt);
-    let cell = GridCell::new((mixed % u64::from(SYSTEM_SIDE)) as u32, ((mixed / 17) % u64::from(SYSTEM_SIDE)) as u32);
+    let cell = GridCell::new(
+        (mixed % u64::from(SYSTEM_SIDE)) as u32,
+        ((mixed / 17) % u64::from(SYSTEM_SIDE)) as u32,
+    );
     transform.apply(cell, SYSTEM_SIDE)
 }
 
