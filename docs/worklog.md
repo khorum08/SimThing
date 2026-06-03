@@ -1,3 +1,8 @@
+# 2026-06-03 - REHEARSAL-SCENARIO-SPEC-1: pin galactic grid 20x20 + galactic-tier heatmaps (design-authority directive)
+
+- Pinned the economy-rehearsal **galactic grid at 20×20** (was proposed 16×16) so the galactic-tier heatmap has room for **meaningful gradient falloff** (a 13-system field on a cramped grid saturates and the gradient carries no direction).
+- Added **§4.1 Galactic-tier heatmaps** to the scenario spec: the 20×20 galactic starmap carries two diffused channels — **`fleet_strength` (per owner)** and **`disruption`** (reduced up from systems) — the **coarse tier of the multi-resolution field** (§12.2). Fleets read the galactic gradient at their own system cell for **strategic pathing** (Pirate → weakly-defended high-value Terran systems; Terran → disrupted owned systems); the **diffusion horizon H is the strategic sight radius**; the galactic gradient **composes with** the fine in-system gradient (R4). Updated open params: grid size resolved (20×20); added H as a parameter that sets both raid tempo and sight radius. Docs-only.
+
 # 2026-06-03 - REHEARSAL-SCENARIO-SPEC-0: factory/pop/starport economy + disruption-as-blockade (design-authority directive)
 
 - Authored **`docs/scenarios/scenario_0080_2_dress_rehearsal_spec.md`** — the concrete dress-rehearsal scenario the rungs implement. Linked from §12.0 (6th high-signal harness link).

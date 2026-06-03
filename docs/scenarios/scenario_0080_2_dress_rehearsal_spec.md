@@ -13,9 +13,11 @@
 
 - **ATLAS-BATCH-0 stress fixture (§12.3):** galactic 100×100, ~1000 stars — proves *batch allocation* of
   the primitive at scale. Static, no economy.
-- **Economy rehearsal (this spec):** **13 live systems** (10 Terran + 3 Pirate) on a compact galactic
-  grid (proposed **16×16**), spaced per §2. Same Location/atlas primitive, small live scale so the
-  economy and combat loop is legible. Surfaces/subgrids are **10×10** throughout.
+- **Economy rehearsal (this spec):** **13 live systems** (10 Terran + 3 Pirate) on a **20×20 galactic
+  grid**, spaced per §2. Same Location/atlas primitive, small live scale so the economy and combat loop
+  is legible. Surfaces/subgrids are **10×10** throughout. The grid is **20×20 (not tighter) so the
+  galactic-tier heatmap has room for meaningful gradient falloff** between systems (§4.1) — a 13-system
+  field on a cramped grid saturates and the gradient carries no direction.
 
 ## 2. Topology + placement constraints (deterministic map generator)
 
@@ -24,7 +26,7 @@ GameSession (root)
 ├── Terran faction        (+ techtree)         — stockpile, redistribution, disposition
 ├── Pirate faction        (+ techtree)         — stockpile, redistribution, disposition
 └── WorldStateMap
-    └── Galactic starmap (Location, 16×16)
+    └── Galactic starmap (Location, 20×20)
         └── Star system (Location, 10×10)  ×13   ← occupies one galactic cell each
             ├── Starport (building, child of the system gridcell, at center cell (5,5))   [×4]
             └── Planet (Location, 10×10 surface)
@@ -65,6 +67,22 @@ GameSession (root)
   `SubtractFromAllInputs` consumes 10 labor per 1 production. Existing AccumulatorOp machinery, no new op.
 - **Per-owner channels at a cell:** co-located factory (production channel) + pop cohort (labor channel)
   stay distinct via the OWNER masked reduction (§12.4, EC-A3) — never merged.
+
+### 4.1 Galactic-tier heatmaps (the 20×20 coarse field — why the grid is 20×20)
+
+The galactic starmap (20×20) carries two **diffused heatmap channels**, reduced up from the systems and
+spread by the stencil (gradient falloff):
+- **`fleet_strength`** — per-owner (Terran / Pirate), the diffused presence×strength of fleets; a Terran
+  fleet at a system radiates Terran strength to nearby galactic cells, decaying with distance (horizon H).
+- **`disruption`** — the system-level disruption reduced up to the galactic tier (the raid heatmap).
+
+This is the **coarse tier of the multi-resolution field** (§12.2): a fleet reads the galactic gradient of
+`fleet_strength`/`disruption` **at its own system cell** to choose *which system* to move toward
+(strategic pathing) — Pirate gradients ascend toward weakly-defended, high-value Terran systems; Terran
+gradients ascend toward disrupted owned systems. The **diffusion horizon H is the strategic sight radius**
+(§12.2): on a 20×20 grid the falloff spans several cells so the gradient actually points somewhere; a
+tighter grid saturates. This galactic gradient **composes with** the fine in-system gradient (R4) —
+multi-resolution, one local read, no map traversal.
 
 ## 5. Starport → ship (production sink + gated fission)
 
@@ -143,9 +161,10 @@ raid fast enough to blockade+divert Terran production and hold overmatch before 
 
 ## 11. Open parameters (confirm before opening a gate)
 
-- Galactic grid size for the economy rehearsal (proposed **16×16**).
+- ~~Galactic grid size~~ **PINNED: 20×20** (2026-06-03) — for galactic-tier heatmap gradient falloff (§4.1).
 - Pirate fleet-overmatch **margin** (how far ahead pirates try to stay).
-- Disruption gain/decay rates and patrol suppression-per-ship (sets raid/suppress tempo).
+- Disruption gain/decay rates, patrol suppression-per-ship, **and the galactic-tier diffusion horizon H**
+  (sets both raid/suppress tempo and the strategic sight radius, §4.1).
 - Whether labor also climbs to the faction (a galaxy-wide labor pool) or strictly nets locally
   (proposed: **labor nets locally; production climbs**).
 - Starting ship placement (which cells the 10 pirate / 3 Terran fleets begin in).
