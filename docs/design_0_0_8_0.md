@@ -271,6 +271,25 @@ by this proposal.
 layer is Tier-1 fast-lane; a new scenario *gate*, a new architecture, or any production-path wiring is
 Tier-2.
 
+### 5.1 Active next scenario — full-vertical dress rehearsal (tracking; work-in-progress)
+
+The concrete next named scenario is the **full-vertical SimThing dress rehearsal** —
+`gamesession → {Terran faction (+techtree), worldstate → starmap → 100 gridcell SimThings, Pirate
+faction (+techtree)}` — which exists to prove §0 end-to-end through a real reduction. **Design and
+exit criteria are being authored in the production track §12 / §12.1; not yet opened as a gate.**
+
+**Provisional findings from the 2026-06-03 audit (full detail + proposed exit criteria in
+[`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md)
+§12.1):** prior work satisfied the two ends of the SEAD loop separately and **never the connection** —
+(a) 0080 modeled no spatial structure (a 1-D scalar line; "heatmap" appears nowhere in code); (b) the
+mapping track built real 2-D field machinery (parity-proven) but **hand-seeded, never demoed as a
+heatmap, never run through SimThing cells**; (c) **SEAD never consumed a heatmap for pathing/critical
+path** (it scores an entity's own overlays; FrontierV1's "SEAD route" only asserts descriptors are
+registered); (d) the loop **field → diffuse → gradient → SEAD reads local cell → action** was never
+wired. Two proposed hard exit criteria (EC1 heatmap reduced over real cells from gameplay; EC2 mover
+SEAD action is a function of the diffused gradient at its own cell, vs CPU oracle) are recorded there.
+**Status: PROVISIONAL — to be firmed up before the dress rehearsal opens as a gate.**
+
 ---
 
 ## 6. Pointers

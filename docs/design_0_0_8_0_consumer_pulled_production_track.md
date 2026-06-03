@@ -324,6 +324,60 @@ open atlas production runtime, nested-RF depth, hard currency, ClauseThing/L3, o
 > (the bounded-feedback contract) — i.e. the sparse-per-node math of 0080-2 now expressed over real
 > cell simthings, **not** the deferred dense-temporal VRAM gate.
 
+### 12.1 Provisional findings (2026-06-03 audit — to be firmed up before the dress-rehearsal opens)
+
+> **Status: PROVISIONAL.** Captured from a design-authority audit of the prior mapping/SEAD/0080 work.
+> Not yet ratified into spec; the dress rehearsal exists to resolve them. Work continues here next.
+
+**Gap findings — what prior "passing" work did and did not do:**
+
+- **F1 — 0080 modeled no spatial structure.** The 0080 scenarios ran a **1-D line of 4–5 scalar nodes**
+  (source comment: *"simple 1-D line"*; `y` always 0). No grid, no field, no heatmap. The token
+  "heatmap" appears **nowhere** in the code.
+- **F2 — the mapping track built real 2-D field machinery but never demoed a heatmap.** 10×10 grid,
+  stencil diffusion, gradient extraction (M-5A–E), 100-cell→parent reduction via `field_urgency`, all
+  **GPU/CPU bit-exact**. But the field was **hand-seeded** (`CallerManagedOneShotSeedThenZero`, not
+  gameplay-produced), **never exported/rendered/demoed** as a heatmap (deliverable = parity asserts),
+  and **never run through SimThing cells** (flat slot-range `0..100 → 100`, not children of a starmap
+  SimThing). The acceptance bar was *numeric-pipeline correctness*, not a heatmap artifact.
+- **F3 — engine and consumer never met.** Mapping proved the machinery and closed at "primitive proven,
+  unconsumed"; the consumer that should have pulled it (0080-2) **bypassed it with the 1-D toy**.
+- **F4 — SEAD never consumed a heatmap for pathing/critical-path.** SEAD-OBS scores an entity's **own
+  overlays** (`ExactQ16WeightedSum`), not a spatial field; SEAD-EVENT/PIPE/ACT are event→proposal
+  downstream; FrontierV1-4's "SEAD route" `validate_sead_v1_consumed()` only **asserts two kernel
+  descriptors are registered** (field computed in the same fixture but never read by SEAD); 0080
+  "pathing" was a scalar `supply*100 − disruption*10 − security` over 2 nodes. `field_urgency`
+  critical-path existed as plumbing over hand-seeds, never a gameplay-driven agent decision.
+- **F5 — the connecting tissue was never implemented.** Both halves (*field → heatmap* and *SEAD →
+  action*) were built and "proven" separately; the loop **field → diffuse → gradient → SEAD reads local
+  cell → action** was never wired. Every prior "pass" satisfied the two ends and never the connection.
+
+**Provisional design resolutions (from the §12 discussion — confirm tomorrow):**
+
+- Falloff is **stencil diffusion**, not arena enrollment; **two-column model** — `disruption` (source,
+  arena accumulator, BoundedFeedback decay) → `location_status` (sink, stencil-written falloff,
+  strict-sink `source_col != target_col`). Neighbors are **not enrolled**; the dense pass sweeps the
+  whole grid. Falloff is a property field, **not** an overlay (the decaying *ownership* signal is the overlay).
+- **Sparse arenas + dense diffusion**: arenas instance only on occupied cells; one stencil pass covers
+  all 100 cells; they meet at the `disruption` column.
+- **Diffusion horizon = SEAD sight radius** (myopic local read sees H hops because diffusion pre-bakes
+  distant info into the local gradient); **recursion (reduce-up / broadcast-down) = multi-resolution
+  escape from local optima** (coarse starmap field biases the fine cell gradient).
+- Grid-of-simthings requires **contiguous, row-major slot allocation** for the stencil's neighbor
+  arithmetic — prerequisite to confirm/build in `SlotAllocator`.
+- Ownership is a **decaying owner overlay** (D=2), not an ownership tree-node (rejected D=3 — the
+  canonical §0.0 conformance violation).
+
+**Proposed hard exit criteria (provisional — these would have failed every prior "pass"):**
+
+- **EC1 (heatmap):** the starmap SimThing holds a **non-trivial reduced disruption field over its 100
+  child gridcell SimThings**, produced by **pirate/patrol presence (not hand-seeded)**, verified against
+  a CPU oracle, and **emitted as an inspectable heatmap artifact**.
+- **EC2 (SEAD consumption):** a mover's SEAD evaluation **reads the diffused heatmap gradient at its own
+  cell**, and the **emitted action is a function of that gradient** (verified against a CPU oracle) —
+  **not** a hand-seeded field or a registration-only stand-in. The field → gradient → SEAD → action loop
+  is closed end-to-end through real SimThings.
+
 ---
 
 ## 13. Pointers
