@@ -142,6 +142,25 @@ tick"** to a per-faction speed. Per-step re-enrollment means a transiting fleet 
 an intermediate cell** (so speed is also exposure). The exact-sqrt gradient magnitude (R4) gates each
 sub-step identically.
 
+### 8.1 Anticipated emergent behaviors (the R7 report verifies which actually emerged)
+
+None of these is scripted — they should **emerge** from the flow / threshold / masked-reduction dynamics
+alone (no CPU planner). The closing report (R7) records which appeared, which did not, and why:
+- **Pirate raiding waves** toward weakly-defended, high-value Terran systems (galactic gradient ascent, §4.1).
+- **Self-disruption migration:** a pirate raids, saturates a system's disruption, and the gradient pushes
+  it onward to the next clean target — movement *as a consequence of its own effect on the field*.
+- **Terran patrol redistribution** toward disrupted owned systems (drive them back under the 100 line).
+- **Blockade-divert ownership flips:** contested Terran systems crossing `disruption ≥ 100` divert their
+  production to the Pirate stockpile — visible as production swinging between faction ledgers.
+- **Interception / attrition:** transiting fleets meeting in an intermediate cell resolve combat (speed = exposure).
+- **The headline emergent question — the race equilibrium:** does Pirate fleet-overmatch hold, or does the
+  Terran ~10:3 production advantage + 3 starports out-build the raiding? **Not pre-determined; the point of
+  the rehearsal is to see which the dynamics produce.**
+- **Front / standoff formation:** stable contested boundaries where patrol suppression ≈ pirate disruption.
+
+If an anticipated behavior does **not** emerge, that is a finding (a parameter or a model gap), not a
+failure to paper over — the report states it plainly.
+
 ## 9. Economy reference numbers
 
 | Quantity | Value |
@@ -172,7 +191,7 @@ sub-step identically.
 | Fleet pathing by disposition (overmatch / suppress) via exact-sqrt gradient | **R4** |
 | Fleet movement (REENROLL + mobility) **and starport→ship fission (E-2B-5)** | **R5** |
 | Combat resolution when fleets co-locate | **R6** |
-| Close + closeout integrity | **R7** |
+| Close + closeout integrity + **human/layman report (what proved + which §8.1 behaviors emerged)** | **R7** |
 
 ## 11. Open parameters (confirm before opening a gate)
 

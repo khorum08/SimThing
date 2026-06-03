@@ -272,21 +272,29 @@ sub-slice — keeping each parity surface clean.
 ### 12.0 Harness handoff — canonical citations (cite on every handoff)
 
 **Codex cites this high-signal set on every rung handoff (keep to these; everything else is reachable
-from them):**
-1. **[`design_0_0_8_0.md`](design_0_0_8_0.md) §0** — transient constitution (maximal SimThing
-   conformance; all conflict is resource flow; allocation is always recursive; endgame scale never
-   prohibited; **§0.5 harness discipline**).
-2. **[`invariants.md`](invariants.md)** — binding structural rules, incl. **"Scenario Proof."**
-3. **This file, §12–§12.4** — the rehearsal + pre-rehearsal design (architecture, EC1/EC2, nested-grid
-   hierarchy, ATLAS-BATCH-0, OWNER routing).
-4. **[`workshop/mobility_and_transfer_allocation.md`](workshop/mobility_and_transfer_allocation.md) §11**
-   — the OWNER identity/ownership-overlay design of record (masked reduction; session clearinghouse).
-5. **[`../crates/simthing-spec/src/designer_admission/mobility_owner0.rs`](../crates/simthing-spec/src/designer_admission/mobility_owner0.rs)**
-   — the parked OWNER substrate code being pulled (owner-columns + latched modifier overlays; it links
-   the masked-reduction primitives in `accumulator_op.rs`).
-6. **[`scenarios/scenario_0080_2_dress_rehearsal_spec.md`](scenarios/scenario_0080_2_dress_rehearsal_spec.md)**
-   — the **concrete scenario** the rungs implement (13 systems, factory/pop/starport economy, the
-   numbers, disruption-as-blockade, dispositions).
+from them). They anchor each handoff to the three things that must not drift — SEAD principles, the
+GPU-resident Accumulator resource-flow notion, and the anticipated emergent behaviors:**
+1. **[`design_0_0_8_0.md`](design_0_0_8_0.md) §0** — transient constitution: conformance; **all conflict
+   is resource flow**; recursive allocation; **SEAD = GPU-resident threshold crossings, no CPU planner**
+   (§0.0, §0.5 #4); §0.5 harness discipline.
+2. **[`invariants.md`](invariants.md)** — binding rules: **"Scenario Proof"**; **AccumulatorOp v2** +
+   **Resource Flow Substrate** sections (the GPU-resident flow contract); SEAD/JIT closure-posture.
+3. **This file, §12–§12.5** — rehearsal + pre-rehearsal design (architecture, EC1/EC2, nested-grid,
+   ATLAS-BATCH-0, retirement map + coverage). **§12.4 links the OWNER design of record + parked
+   `mobility_owner0.rs`** (masked reduction — reachable here, not duplicated as a top-level link).
+4. **[`scenarios/scenario_0080_2_dress_rehearsal_spec.md`](scenarios/scenario_0080_2_dress_rehearsal_spec.md)**
+   — the **concrete scenario** (13 systems, factory/pop/starport economy, numbers, disruption-as-blockade)
+   **and the anticipated emergent behaviors (§8.1)** the closing report verifies.
+5. **[`../crates/simthing-core/src/accumulator_op.rs`](../crates/simthing-core/src/accumulator_op.rs)** —
+   the **GPU-resident Accumulator primitive**: `SourceSpec` / `CombineFn` / `GateSpec` / `ScaleSpec` /
+   `ConsumeMode` — the vocabulary every arena (labor / production / disruption / combat) compiles down to.
+6. **[`workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md)** — the **SEAD charter /
+   principles**: field-as-policy; decisions are GPU-resident threshold crossings → `BoundaryRequest`;
+   no CPU planner.
+
+**Anchors (every handoff holds all three):** **SEAD principles** → links 1, 2, 6; **GPU-resident
+Accumulator resource flow** → links 1, 2, 5; **anticipated emergence** → link 4 (§8.1). OWNER masked
+reduction is reachable via §12.4 (link 3).
 
 **Established decisions (do not re-derive — implement within these):**
 - `Location` is the SEAD field primitive (gridcell); **non-`Location` SimThings participate in resource
@@ -612,7 +620,7 @@ column-flip — each its own gate.
 | **R4 — SEAD field-consumption + exact sqrt (EC2)** | a moving child (fleet/patrol) reads the parent grid heatmap **at its own cell** — a composite intersecting **patrol-presence × disruption × its own (masked) disposition** — computes the gradient, evaluates **Euclidean magnitude via exact sqrt Candidate F**, and threshold-gates: **sit still vs step to the next opportunity** | **SEAD ladder field-consumption (EC2)** — closes the audit gap; **exact sqrt Candidate F** (named consumer for the orphaned artifact) | SEAD OBS/EVENT/PIPE/ACT; `m_jit_mag2_fixed_exact` → `m_jit_mag_f_from_exact_mag2` (Candidate F); `GradientXY` |
 | **R5 — Movement: REENROLL + mobility substrate (+ ship fission)** | the R4 move event (`Threshold`+`EmitEvent`→`BoundaryRequest`) relocates the mover — deregister from cell A's arenas, register into cell B's — routed through the 0.0.7.9 mobility/transfer substrate, in an **opt-in/default-off `SimSession` pass**; **starport→ship emission instantiates a new `Fleet` via gated fission** and enrolls it | **REENROLL**; **full 0.0.7.9 mobility/transfer substrate in a default `SimSession` path** (first non-test-support consumer); **E-2B-5 fission-enrollment** (starport ship instantiation) | REENROLL; mobility ALLOC/IDROUTE/OWNER + GPU kernel; `resource_flow_fission_enrollment` |
 | **R6 — Combat as HP/Damage arena** | co-located hostile fleets in one cell resolve combat via the masked (per-owner) HP/Damage arena: `SubtractFromSource` damage, zero-HP → `Threshold`+`EmitEvent` → removal | **§0.3 all-conflict-is-resource-flow** — combat instance proven through a real reduction | combat arena; masked reduction (the live form of ATLAS-BATCH-0 EC-A3) |
-| **R7 — CLOSE + closeout integrity** | design-authority vertical-proof acceptance; reconcile prior **numeric-only** closures (FrontierV1 "SEAD route", mapping first-slice heatmap) to **"consumption-proven"** | the **closeout-integrity** meta-opportunity | — |
+| **R7 — CLOSE + closeout integrity + report** | design-authority vertical-proof acceptance; reconcile prior **numeric-only** closures (FrontierV1 "SEAD route", mapping first-slice heatmap) to **"consumption-proven"**; **produce a detailed human/layman-facing report — what each rung proved AND which anticipated emergent behaviors (scenario §8.1) actually emerged** (plain language, in the style of `docs/gameplay/scenario_0080_2_pirate_gradient_pathfinding_results.md`; states non-emergence plainly as a finding) | the **closeout-integrity** meta-opportunity; the **proof+emergence narrative** | — |
 
 **R4 detail (exact-sqrt chain — design authority).** The SEAD gradient magnitude must be
 **exact-authoritative** so move/sit decisions are deterministic across GPU adapters (I8). Chain:
