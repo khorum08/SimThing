@@ -586,7 +586,19 @@ are distinguished and **must not be collapsed into one figure**:
 > [`tests/scenario_0080_2_atlas_batch_0_loc_report.md`](tests/scenario_0080_2_atlas_batch_0_loc_report.md);
 > [`tests/scenario_0080_2_atlas_batch_0_loc_cargo_test_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_loc_cargo_test_2026_06_03.txt).
 > Command: `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_loc` → **9 passed; 0 failed**.
-> **PACK and STORE remain unimplemented.** Sparse-residency scheduler (M-4A) and REENROLL remain parked.
+
+> **`ATLAS-BATCH-0-PACK` closure (2026-06-03) — EC-A2a only.** `SCENARIO-0080-2` PACK is **implemented /
+> PASS** for **EC-A2a**: CPU pack-plan descriptor (3 homogeneous tile classes, 27 packed tiles), algebraic
+> tile-local **G=0** CPU oracle (`g_zero_sample`), and numeric **VRAM report** (multiplier **1.0**,
+> `budget_pass` vs `V78AtlasVramBudget`). **Does NOT** implement batched GPU dispatch or GPU=CPU bit-exact
+> parity — that is **EC-A2b**, deferred to **`ATLAS-BATCH-0-PACK-GPU`**. Does not implement STORE, owner
+> masked-reduction runtime, economy, or SEAD. Evidence:
+> [`crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_pack.rs`](../crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_pack.rs);
+> [`crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_pack.rs`](../crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_pack.rs);
+> [`tests/scenario_0080_2_atlas_batch_0_pack_report.md`](tests/scenario_0080_2_atlas_batch_0_pack_report.md);
+> [`tests/scenario_0080_2_atlas_batch_0_pack_cargo_test_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_pack_cargo_test_2026_06_03.txt).
+> Command: `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_pack` → **9 passed; 0 failed**.
+> **STORE remains unimplemented.** Sparse-residency scheduler (M-4A) and REENROLL remain parked.
 
 ### 12.4 Established mechanism — OWNER routing (multi-owner flows in one cell)
 
@@ -639,12 +651,12 @@ column-flip — each its own gate.
 > (orientation + **`ATLAS-BATCH-0-GEN`** — closed/PASS) · [`handoffs/dress_rehearsal_codex_handoff_1_remedial.md`](handoffs/dress_rehearsal_codex_handoff_1_remedial.md)
 > (GEN spacing-band remedial — resolved) · [`handoffs/dress_rehearsal_codex_handoff_2_atlas_batch_0_loc.md`](handoffs/dress_rehearsal_codex_handoff_2_atlas_batch_0_loc.md)
 > (**`ATLAS-BATCH-0-LOC`** — closed/PASS) · [`handoffs/dress_rehearsal_codex_handoff_3_atlas_batch_0_pack.md`](handoffs/dress_rehearsal_codex_handoff_3_atlas_batch_0_pack.md)
-> (**`ATLAS-BATCH-0-PACK`** contract — authored + accepted, CPU-only; EC-A2a in scope, EC-A2b/GPU deferred; Cursor to implement).
+> (**`ATLAS-BATCH-0-PACK`** — closed/PASS for EC-A2a; EC-A2b/GPU deferred).
 >
-> **ATLAS-BATCH-0 status (2026-06-03):** `GEN` and `LOC` are **closed / PASS** for `SCENARIO-0080-2`
-> (see §12.3 closure notes + raw test logs). **Next implementation gate:** `ATLAS-BATCH-0-PACK` (atlas
-> batch allocation). **PACK and STORE remain unimplemented.** M-4A sparse-residency scheduler and
-> REENROLL remain parked.
+> **ATLAS-BATCH-0 status (2026-06-03):** `GEN`, `LOC`, and `PACK` (EC-A2a) are **closed / PASS** for
+> `SCENARIO-0080-2` (see §12.3 closure notes + raw test logs). **Next gates:** `ATLAS-BATCH-0-PACK-GPU`
+> (EC-A2b batched dispatch + CPU parity), then `ATLAS-BATCH-0-STORE`. **STORE remains unimplemented.**
+> M-4A sparse-residency scheduler and REENROLL remain parked.
 >
 > **Sequencing discipline (§0.5, §5):** one parked phase proved-and-closed per rung. The rehearsal is
 > the **convergent consumer that retires the parked backlog one rung at a time** — not a big-bang pull.

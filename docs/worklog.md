@@ -19,6 +19,12 @@
 
 - Relaxed §0.5 Rule 1 into **two layers**: the **fixed base harness** (the 4–6 capped, durable, every-handoff links — the anti-drift anchor) **+** an **ephemeral rung-local** citation list a handoff MAY add for the artifacts that rung directly consumes (immediately-upstream test report/status row, bespoke notes, the prior result it builds on). Rung-local rules: (a) only what this rung directly consumes; (b) **≤ 3**; (c) **ephemeral** — does not carry to the next handoff, never accretes into the base. If a rung-local link proves durable across rungs, **promote it into the canonical design file**, don't grow the base. Lets Codex cite task-specific evidence as it moves down the ladder while the base keeps drift controlled. Docs-only.
 
+# 2026-06-03 — ATLAS-BATCH-0-PACK: CPU pack plan + G=0 oracle + VRAM (EC-A2a)
+
+- Implemented fixture-only `AtlasBatchPlan` from green LOC: 3 tile classes (Galactic20x20×1, StarSystem10x10×13, PlanetSurface10x10×13), row-major packing, `pack_coord`/`unpack_coord`, `g_zero_sample` CPU oracle, VRAM multiplier **1.0** / `budget_pass=true`.
+- Ran `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_pack`; **9 passed / 0 failed**. Raw: [`tests/scenario_0080_2_atlas_batch_0_pack_cargo_test_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_pack_cargo_test_2026_06_03.txt).
+- **EC-A2b** (GPU batched dispatch + bit-exact parity) explicitly **not** claimed — deferred to `ATLAS-BATCH-0-PACK-GPU`. No lib.rs export, no GPU/core/sim wiring, STORE unimplemented.
+
 # 2026-06-03 — ATLAS-BATCH-0-LOC: descriptor materialization implemented
 
 - Implemented fixture-only LOC descriptor materialization from the green GEN descriptor: 27 Locations, 56 occupants, deterministic cell ranges (`total_cell_slots = 3000`), single row-major `cell_index` home, typed channel descriptors only.
