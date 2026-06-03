@@ -45,6 +45,12 @@ spec admission** — they do not disappear and they do not stay as hard-coded ru
 special-cases. This is the optimal home: reject early with good diagnostics; the runtime catches
 anything that slips.
 
+**Demotion (2026-06-02, design authority): admission rejection is a guardrail, not a proof.** A scenario
+demonstrates correctness by running its behavior through a **real SimThing reduction** (`invariants.md`
+"Scenario Proof"), never by accumulating rejection assertions. Reject-bad-authoring tests are a thin net
+around a scenario that is *already* proven through the engine — they are not its primary evidence, and a
+scenario must never re-litigate the standing prohibition list as a matrix of per-module local flags.
+
 ### 2.2 Two-track fastlane (Tier-1 / Tier-2)
 Classify every change first (`phase_m_gating_and_doc_policy.md` §1).
 - **Tier-1 fast lane** — within an accepted design, generic/semantic-free, opt-in/default-off,
@@ -79,10 +85,17 @@ Three rules, each a single principle covering its whole class:
   Nth scale runs, accounting-over-accounting). The only authorized next moves are: **(1) close the
   dangling path**, or **(2) escalate one paragraph toward the next distinct gate** (and stop if it is
   Tier-2). *Proven once, not proven N times.*
-- **One principle per class — no per-slice accretion** (`invariants.md` governing doctrine). A
-  constraint is stated once; a change that adds an Nth restatement of an existing principle is rejected
-  as redundant. Active docs carry a **compact status table**; per-slice narrative is a one-line worklog
-  entry, never an accreting litany.
+- **One principle per class — no per-slice accretion.** A constraint is stated once; a change that adds
+  an Nth restatement of an existing principle is rejected as redundant. Active docs carry a **compact
+  status table**; per-slice narrative is a one-line worklog entry, never an accreting litany.
+- **No per-scenario `Gate`/`Surface`/`ForbiddenRequests` boilerplate (retired 2026-06-02, design
+  authority).** The convention of cloning a `Gate`/`Surface`/`ForbiddenRequests` triple per scenario —
+  re-declaring the standing prohibition list as struct fields and asserting each rejection per module —
+  is **retired**. The standing prohibitions live once (gating policy §2 + `invariants.md`); a scenario
+  does not re-encode them as local flags. Opt-in/default-off is expressed at the accepted
+  spec-admission layer, and a scenario's evidence is its **reduction** (`invariants.md` "Scenario
+  Proof"), not a forbidden-flag matrix. This was the literal self-feeding boilerplate that let scenario
+  tracks ship as math-in-a-vacuum.
 
 ### 2.6 Non-negotiable rigor (relaxation never touches these)
 Verbatim from v7.8 §2.5 — binding regardless of any relaxation above:
@@ -151,10 +164,14 @@ L3) and let that scenario **pull exactly one parked substrate** into a real prod
 This is the deliberate off-ramp from the substrate-loop: the next artifact is a *scenario*, and a
 substrate's production-path gate opens **only because a named scenario consumes it** — never speculatively.
 
-**First gate — `SCENARIO-0080-0` (Tier-2, scenario/admission only):**
-- Deliverable: a named product-scenario / admission packet (the discipline that worked for
-  MOBILITY-SCENARIO-0) — declares the scenario, the one parked substrate it consumes, the bounds, and
-  the rejection vocabulary. **No runtime implementation; no production wiring.**
+**First gate — `SCENARIO-0080-0` (Tier-2, scenario gate):**
+- Deliverable: a named product-scenario that **demonstrates its behavior through a real SimThing
+  reduction** (`invariants.md` "Scenario Proof") — an opt-in test that constructs real
+  `SimThing` / `SimProperty` / `Overlay` state and advances it through `BoundaryProtocol` (or the
+  accepted spec→`AccumulatorOp` lowering), pulling **exactly one** parked substrate into that path and
+  asserting behavior on the resolved GPU/CPU values. It declares the scenario, the substrate it
+  consumes, the bounds, and the rejection vocabulary. A standalone CPU math module is an **oracle** for
+  the parity check, **never** a substitute for the reduction.
 - It must name which parked substrate it pulls (most-ready candidate: the 0.0.7.9 mobility substrate,
   whose production-path gate is already mapped — "first non-test-support default `SimSession` path").
 - Acceptance opens **only** that substrate's already-defined production-path gate — nothing else.

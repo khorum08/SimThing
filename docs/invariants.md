@@ -4,22 +4,13 @@ These rules are enforced by the type system and code structure, not by conventio
 A violation is either a compile error or a test failure. If you find yourself
 working around one of these, stop and reconsider the design.
 
-> **Process governance:** how much review/documentation a change carries is set by the constitutional
-> **gating & documentation policy** (`docs/design_v7_7.md` §5 + `docs/workshop/phase_m_gating_and_doc_policy.md`):
-> Tier-1 fast lane vs Tier-2 gated. **Any change to this invariants file is Tier-2.**
->
-> **Governing doctrine (2026-06-02, design authority).** Two rules keep this file from bloating into a
-> hygiene treadmill:
-> 1. **Guardrails live at the designer/spec-admission barrier.** This file holds the *structural
->    floor* enforced by the type system + the genuine substrate-correctness invariants. Expressive
->    policy (what a scenario may author) is rejected at spec import, not encoded as proliferating
->    runtime rows.
-> 2. **One principle per class — no per-slice accretion.** A constraint is stated **once** and covers
->    its whole class. We do **not** add a new prohibition row per descriptor, per ladder, or per
->    slice. The opt-in/default-off + no-default-wiring posture, the "no CPU planner/urgency/commitment"
->    posture, and the "exact authority requires pinned/proven arithmetic" posture are each **a single
->    rule**, not restated per subsystem. A change that would add an Nth restatement of an existing
->    principle is rejected as redundant.
+---
+
+## Scenario Proof
+
+| Rule | Enforced by |
+|---|---|
+| A scenario is proven only through a real reduction | A scenario/feature is not "done" until an opt-in test constructs real `SimThing` / `SimProperty` / `Overlay` state and advances it through `BoundaryProtocol` (or the accepted spec→`AccumulatorOp` lowering), asserting behavior on the resulting GPU/CPU-resolved values. A standalone CPU math module is an **oracle**, not a proof: it may stand in for the GPU side under bit-exact parity, but a scenario gate may **not** close on admission-rejection tests plus a `Vec`-based math loop with no engine reduction on either side of the parity. |
 
 ---
 
@@ -116,7 +107,7 @@ scenarios at import/session-build so blowout never reaches the simulation.
 |---|---|
 | No production mapping runtime without first-slice gating | The compute exists (StructuredFieldStencilOp kernel/WGSL/ping-pong/oracle live; Layers 2–3 are existing AccumulatorOp paths); "runtime" = wiring a RegionCell field into a production session pass graph at session open. That step is gated to the named first slice, after Phase M natives; until then fields are test/opt-in-driven only |
 | RegionCell is an authored mapping-role, not a core kind | RegionCell is a spec/RON-authored mapping-role/profile on a SimThing backed by a slot range + field columns; `simthing-core` gains no new `SimThingKind` variant |
-| Guardrail placement is two-layered | RON/Designer/spec owns expressive policy + rejects unsafe authoring at import; runtime enforces hard safety unconditionally (horizon execution caps, source-cap clamp, finite/column validation, ping-pong correctness, bounded field/perception clamps). Authoring is never trusted to have been safe |
+| Guardrail placement is two-layered | RON/Designer/spec owns expressive policy + rejects unsafe authoring at import; runtime enforces hard safety unconditionally (horizon execution caps, source-cap clamp, finite/column validation, ping-pong correctness, bounded field/perception clamps). Authoring is never trusted to have been safe. **Admission rejection is a guardrail, not a scenario proof** (see "Scenario Proof"): it is a thin net around behavior already proven through a real reduction — never a scenario's primary evidence, and never re-litigated as per-module rejection flags |
 | `simthing-sim` is map-free | No RegionCell, atlas, gutter, cadence, halo, or field-formula concept appears in `simthing-sim`; it sees only flat columns and opaque `AccumulatorOp` registrations |
 | Dense local fields use the generic primitive only | RegionCell fields are evolved by `StructuredFieldStencilOp` over flat buffers/dimensions/columns/kernel weights; **no *semantic* WGSL** is admitted. Generic shader extensions — new parameters (per-direction weights, new operator variants) that carry no map/faction/AI semantics and are paired with CPU-oracle parity — are admissible when meaning is pinned entirely at the designer/spec admission layer. The shader sees only floats/indices; gameplay concepts never enter WGSL. See `docs/workshop/m5_gradient_extraction_design_note.md` §1 |
 | No within-frame field self-feedback; gradient fields are strict sinks | A field may not read its own immediate output column as a diffusion source within the same frame (`source_col != output_col`/`target_col`) — enforced at single-spec admission. A gradient/derivative field's `output_col` is a **strict sink**: it may not be the `source_col` of any diffusion/stencil field in the same frame; the derivative is consumed only downstream (reduction/EML/threshold), preserving the base field's within-frame immutability. Feedback closes **across ticks, not within a tick's algebraic cycle**. The cross-field clause is enforced at frame/scenario-level admission (`validate_region_field_frame_gradient_sinks`; M-5D-gradient). See `docs/workshop/m5_gradient_extraction_design_note.md` §3 |
@@ -127,14 +118,12 @@ scenarios at import/session-build so blowout never reaches the simulation.
 | Ping-pong required for H > 1 | Proven GPU=CPU bit-exact; single-buffer multi-hop is a data race and is rejected |
 | Source policy is caller-managed (v1) | `CallerManagedOneShotSeedThenZero`; the primitive never auto-identifies or auto-clears sources; column-wide `source_col` zeroing is **banned** (corrupts propagated state) |
 | Active masks require a halo | `ActiveOnlyExperimentalNoHalo` is never production-authorized; only H-hop / per-hop halo with CPU-oracle parity is admitted |
-| Atlas batching: designer-surface admission CLOSED (C-2); production runtime is a separate later gate | **Map batching is closed at the designer surface (C-0/C-1/C-2 ACCEPTED).** `request_atlas_batching` **admits** bounded **algebraic tile-local mask G=0**, homogeneous-square, protocol-oracle-backed specs that fit the active `V78AtlasVramBudget` with mandatory VRAM-multiplier reporting; physical gutter G≥H is the rejected-as-a-C-2-path fallback; column-wide `source_col` zeroing banned. The atlas **production runtime / sparse-residency scheduler** is a separate later gate (not the designer admission). |
 | Behavioral source policy needs source identity | No shader-step source masking until a generic `source_mask` or separate seed buffer lands; deferred by ADR |
 | Velocity needs an explicit previous-value column | EML has no previous-buffer read opcode; trajectory pressures use an explicit previous column with a copy band scheduled before the threat-update band |
 | No CPU AI map planner | Strategic commitments emerge as `Threshold` + `EmitEvent` crossings over parent EML pressure columns; no CPU-side map traversal decides anything |
 | Perception write-boundary: perceived/deception never write back to true fields | Data flows true → perceived only; perceived/last-known/confidence/deception are bounded (`bounded_field_update`/`field_decay`) per-observer columns; the **only** path that updates authoritative state is an explicit gameplay event via the event/`BoundaryRequest` path; any op writing a perceived/deception column into a true column is rejected at spec admission |
 | Field formula-class admission is a designer-layer policy | `field_pressure`/`field_urgency`/`field_decay`/`bounded_field_update` are admitted at the RON/Designer/spec layer (C-8 `register_formula` is runtime-sufficient); legacy whitelist rejection was wrong-layer, not runtime safety |
 | Mapping is opt-in, bounded, default-off | Map-spec presence is structure; execution requires explicit scenario-class/profile opt-in (Resource Flow precedent); every field declares hard caps (grid bounds, horizon cap, source cap) |
-| Economy→mapping influence is fixture-orchestration-only | A resolved `ResourceEconomySpec` boundary result may influence a SEAD commitment **only** by selecting authored, admitted EML weight profiles in `tests/support` fixture orchestration (the CPU reads resolved storage and *selects*, it never *computes* urgency or *emits* the commitment — urgency and the event stay GPU-resident via field→reduction→`field_urgency` EvalEML→Threshold+EmitEvent). A production economy→mapping runtime bridge is **not** authorized without a separate gated decision; guardrails for this coupling live at the designer/importer/scenario-admission layer, not the sim/boundary layer (accepted 2026-05-29 — `docs/reviews/phase_m_product_fixture_chain_acceptance_opus_review.md`) |
 
 ---
 
