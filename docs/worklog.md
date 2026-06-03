@@ -12,6 +12,12 @@
 
 - Relaxed §0.5 Rule 1 into **two layers**: the **fixed base harness** (the 4–6 capped, durable, every-handoff links — the anti-drift anchor) **+** an **ephemeral rung-local** citation list a handoff MAY add for the artifacts that rung directly consumes (immediately-upstream test report/status row, bespoke notes, the prior result it builds on). Rung-local rules: (a) only what this rung directly consumes; (b) **≤ 3**; (c) **ephemeral** — does not carry to the next handoff, never accretes into the base. If a rung-local link proves durable across rungs, **promote it into the canonical design file**, don't grow the base. Lets Codex cite task-specific evidence as it moves down the ladder while the base keeps drift controlled. Docs-only.
 
+# 2026-06-03 — ATLAS-BATCH-0-LOC: descriptor materialization implemented
+
+- Implemented fixture-only LOC descriptor materialization from the green GEN descriptor: 27 Locations, 56 occupants, deterministic cell ranges (`total_cell_slots = 3000`), single row-major `cell_index` home, typed channel descriptors only.
+- Ran `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_loc`; result **9 passed / 0 failed**. Raw output: [`tests/scenario_0080_2_atlas_batch_0_loc_cargo_test_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_loc_cargo_test_2026_06_03.txt).
+- Updated LOC report/status row and production track §12.3/§12.5. No `lib.rs` export, no runtime wiring, no GPU/economy/owner-column logic.
+
 # 2026-06-03 — ATLAS-BATCH-0-GEN-CLOSE: raw test evidence + production-track closure
 
 - Re-ran `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_gen`; result **6 passed / 0 failed**. Raw output saved under [`tests/scenario_0080_2_atlas_batch_0_gen_cargo_test_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_gen_cargo_test_2026_06_03.txt).
