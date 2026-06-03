@@ -548,9 +548,12 @@ are distinguished and **must not be collapsed into one figure**:
   100×100 / ~1000-star stress atlas. The older 100×100 language remains a **stress/scale atlas-batching
   target** for PACK and M-4 acceptance; LOC/PACK/STORE for the dress rehearsal must consume the **20×20 /
   13-system** descriptor unless Opus authors a separate scale-stress fixture contract.
-- **EC-A2:** the batcher packs the homogeneous tiles with `G=0` masking within `V78AtlasVramBudget`,
-  reports the VRAM multiplier, and one batched stencil dispatch over all tiles matches the CPU oracle
-  bit-exactly.
+- **EC-A2 (split by design authority 2026-06-03):**
+  - **EC-A2a (PACK, CPU-provable):** the batcher packs the homogeneous tiles with `G=0` algebraic
+    masking within `V78AtlasVramBudget`, reports a **numeric** VRAM multiplier, and a **CPU oracle**
+    proves the `G=0` no-inter-tile-bleed property + tile-local↔atlas coordinate round-trip.
+  - **EC-A2b (PACK-GPU, deferred):** one **batched GPU dispatch** over all tiles matches the CPU oracle
+    **bit-exactly**. A separate later slice; PACK must **not** claim it.
 - **EC-A3:** a Location stores its gridcell children's flow results in the correct `(x,y)` map slots, and
   **co-located children at one `(x,y)` are preserved per-channel/per-owner and never merged** — explicit
   test: planet + patrol + pirate in one cell → three distinct channel figures, verified vs CPU oracle.
@@ -635,7 +638,8 @@ column-flip — each its own gate.
 > **Handoffs (2026-06-03):** [`handoffs/dress_rehearsal_codex_handoff_0.md`](handoffs/dress_rehearsal_codex_handoff_0.md)
 > (orientation + **`ATLAS-BATCH-0-GEN`** — closed/PASS) · [`handoffs/dress_rehearsal_codex_handoff_1_remedial.md`](handoffs/dress_rehearsal_codex_handoff_1_remedial.md)
 > (GEN spacing-band remedial — resolved) · [`handoffs/dress_rehearsal_codex_handoff_2_atlas_batch_0_loc.md`](handoffs/dress_rehearsal_codex_handoff_2_atlas_batch_0_loc.md)
-> (**`ATLAS-BATCH-0-LOC`** — closed/PASS).
+> (**`ATLAS-BATCH-0-LOC`** — closed/PASS) · [`handoffs/dress_rehearsal_codex_handoff_3_atlas_batch_0_pack.md`](handoffs/dress_rehearsal_codex_handoff_3_atlas_batch_0_pack.md)
+> (**`ATLAS-BATCH-0-PACK`** contract — authored + accepted, CPU-only; EC-A2a in scope, EC-A2b/GPU deferred; Cursor to implement).
 >
 > **ATLAS-BATCH-0 status (2026-06-03):** `GEN` and `LOC` are **closed / PASS** for `SCENARIO-0080-2`
 > (see §12.3 closure notes + raw test logs). **Next implementation gate:** `ATLAS-BATCH-0-PACK` (atlas
