@@ -2,7 +2,7 @@
 
 Current scenario status:
 
-- `SCENARIO-0080-2` R3 implemented/pass as capability-tree modifier overlays masked down by owner-column; R4-R7 remain unopened.
+- `SCENARIO-0080-2` R4 implemented/pass as SEAD field-consumption + exact sqrt EC2; R5-R7 remain unopened.
 
 Authoritative decision:
 
