@@ -55,8 +55,14 @@ fn surplus_fixture_authoring_preview() {
     assert!(report.warnings.is_empty());
 
     // R2 ergonomics: schedule_lines helper exposes intended transfers clearly for designers
-    assert!(report.schedule_lines.iter().any(|s| s.contains("bank_daily_income")));
-    assert!(report.schedule_lines.iter().any(|s| s.contains("daily_upkeep")));
+    assert!(report
+        .schedule_lines
+        .iter()
+        .any(|s| s.contains("bank_daily_income")));
+    assert!(report
+        .schedule_lines
+        .iter()
+        .any(|s| s.contains("daily_upkeep")));
     assert!(!report.schedule_lines.is_empty());
 }
 
@@ -79,14 +85,21 @@ fn deficit_fixture_authoring_preview() {
     assert!(transfer_ids.contains(&"bank_daily_income"));
     assert!(transfer_ids.contains(&"daily_upkeep"));
 
-    let threshold_ids: Vec<_> = report.threshold_emits.iter().map(|e| e.id.as_str()).collect();
+    let threshold_ids: Vec<_> = report
+        .threshold_emits
+        .iter()
+        .map(|e| e.id.as_str())
+        .collect();
     assert!(threshold_ids.contains(&"low_storage_event"));
 
     assert_eq!(treasury_static_net(&preview), Some(-6.0));
     assert!(report.warnings.is_empty());
 
     // R2 ergonomics coverage
-    assert!(report.schedule_lines.iter().any(|s| s.contains("low_storage_event")));
+    assert!(report
+        .schedule_lines
+        .iter()
+        .any(|s| s.contains("low_storage_event")));
     assert!(!report.schedule_lines.is_empty());
 }
 

@@ -3,9 +3,9 @@
 #![allow(dead_code)]
 
 use simthing_core::{
-    ClampBehavior, DimensionRegistry, EmlConsumerMask, EmlExecutionClass,
-    EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, PropertyLayout, SimProperty,
-    SimPropertyId, SubFieldRole, SubFieldSpec,
+    ClampBehavior, DimensionRegistry, EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry,
+    EmlFormulaMeta, EmlNodeGpu, EmlTreeId, PropertyLayout, SimProperty, SimPropertyId,
+    SubFieldRole, SubFieldSpec,
 };
 use simthing_spec::{PropertyKey, ResourceTransferSpec};
 
@@ -13,7 +13,11 @@ pub fn empty_registry() -> DimensionRegistry {
     DimensionRegistry::new()
 }
 
-pub fn register_amount_property(reg: &mut DimensionRegistry, ns: &str, name: &str) -> SimPropertyId {
+pub fn register_amount_property(
+    reg: &mut DimensionRegistry,
+    ns: &str,
+    name: &str,
+) -> SimPropertyId {
     reg.register(SimProperty {
         namespace: ns.into(),
         name: name.into(),

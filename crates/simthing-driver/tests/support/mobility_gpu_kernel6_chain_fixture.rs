@@ -30,8 +30,7 @@ use simthing_gpu::fnv64_hash_f32;
 
 pub const MOBILITY_GPU_KERNEL6_FIXTURE_ID: &str =
     "mobility_gpu_kernel6_semantic_free_ordered_chain_fixture";
-pub const MOBILITY_GPU_KERNEL6_NAMED_GATE: &str =
-    "mobility_gpu_kernel6_chain_explicit_opt_in_gate";
+pub const MOBILITY_GPU_KERNEL6_NAMED_GATE: &str = "mobility_gpu_kernel6_chain_explicit_opt_in_gate";
 pub const MOBILITY_GPU_KERNEL6_CHAIN_ID: &str = "mobility_gpu_kernel6_kernel0_then_kernel5_chain";
 
 const KERNEL0_OUTPUT_CHECKSUM_SEED: &[u8] = b"mobility_gpu_kernel0_output";
@@ -202,17 +201,19 @@ pub fn run_mobility_gpu_kernel6_fixture(
         && kernel0_cpu_checksum != 0
         && kernel5_cpu_checksum != 0
         && columns.entity_id.len() == MOBILITY_GPU_KERNEL4_ROW_COUNT;
-    report.outputs_match_cpu_oracle =
-        kernel5_report.parity_classification != MobilityGpuKernel0ParityClassification::GpuExecutionFailed;
+    report.outputs_match_cpu_oracle = kernel5_report.parity_classification
+        != MobilityGpuKernel0ParityClassification::GpuExecutionFailed;
     report.gpu_dispatch_occurred = kernel5_report.gpu_dispatch_occurred;
     report.kernel0_cpu_checksum = kernel0_cpu_checksum;
     report.kernel5_cpu_checksum = kernel5_cpu_checksum;
     report.cpu_chain_checksum = cpu_chain_checksum;
-    report.kernel0_gpu_checksum = Some(kernel0_cpu_checksum)
-        .filter(|_| kernel5_report.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity);
+    report.kernel0_gpu_checksum = Some(kernel0_cpu_checksum).filter(|_| {
+        kernel5_report.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity
+    });
     report.kernel5_gpu_checksum = kernel5_report.gpu_result_checksum;
-    report.gpu_chain_checksum = Some(cpu_chain_checksum)
-        .filter(|_| kernel5_report.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity);
+    report.gpu_chain_checksum = Some(cpu_chain_checksum).filter(|_| {
+        kernel5_report.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity
+    });
     report.parity_classification = kernel5_report.parity_classification;
     report.projection_checksum = kernel5_report.projection_checksum;
     report
@@ -331,7 +332,10 @@ fn shell(input: &MobilityGpuKernel6FixtureInput) -> MobilityGpuKernel6FixtureRep
         kernel4_fixture_id: MOBILITY_GPU_KERNEL4_FIXTURE_ID,
         kernel5_fixture_id: MOBILITY_GPU_KERNEL5_FIXTURE_ID,
         kernel1_fixture_id: MOBILITY_GPU_KERNEL1_FIXTURE_ID,
-        ordered_kernel_ids: vec![MOBILITY_GPU_KERNEL0_KERNEL_ID, MOBILITY_GPU_KERNEL5_KERNEL_ID],
+        ordered_kernel_ids: vec![
+            MOBILITY_GPU_KERNEL0_KERNEL_ID,
+            MOBILITY_GPU_KERNEL5_KERNEL_ID,
+        ],
         kernel0_before_kernel5: true,
         builtin_semantic_free_kernels_only: true,
         shader_text_has_domain_terms: mobility_gpu_kernel6_chain_shader_text_has_domain_terms(),
@@ -359,7 +363,9 @@ fn shell(input: &MobilityGpuKernel6FixtureInput) -> MobilityGpuKernel6FixtureRep
     }
 }
 
-fn disabled_no_op_report(input: &MobilityGpuKernel6FixtureInput) -> MobilityGpuKernel6FixtureReport {
+fn disabled_no_op_report(
+    input: &MobilityGpuKernel6FixtureInput,
+) -> MobilityGpuKernel6FixtureReport {
     let mut report = shell(input);
     report.admitted = true;
     report.disabled_no_op = true;

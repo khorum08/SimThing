@@ -23,9 +23,7 @@ pub use crate::resource_flow_opt_in_burn_in::{
     RF_T5_PROFILE_STATIC_128, RF_T5_PROFILE_STATIC_256,
 };
 
-pub fn open_profile_session(
-    fixture: &RfT2BurnInFixture,
-) -> Result<RfT2OptInSession, SessionError> {
+pub fn open_profile_session(fixture: &RfT2BurnInFixture) -> Result<RfT2OptInSession, SessionError> {
     open_fixture_session_with_execution_profile(
         fixture,
         ResourceFlowExecutionProfile::FlatStarResourceFlow,
@@ -88,8 +86,14 @@ pub fn run_profile_soak_with_telemetry(
 
 pub fn run_profile_multi_session_replay(
     fixture: &RfT2BurnInFixture,
-) -> Result<(RfT2BurnInReport, RfT2BurnInReport, ResourceFlowOptInTelemetryReport), SessionError>
-{
+) -> Result<
+    (
+        RfT2BurnInReport,
+        RfT2BurnInReport,
+        ResourceFlowOptInTelemetryReport,
+    ),
+    SessionError,
+> {
     let mut fx_a = open_profile_session(fixture)?;
     let telemetry = profile_telemetry_for_open_session(&fx_a, fixture, None);
     assert_profile_telemetry_contract(&telemetry, fixture);

@@ -51,7 +51,12 @@ pub fn run_arena_allocation_oracle(
 
     // Phase 0 — reset allocated_flow and per-tick internal columns.
     for node in layout.iter_all() {
-        set(values, node.participant_slot, node.cols.allocated_flow_col, 0.0);
+        set(
+            values,
+            node.participant_slot,
+            node.cols.allocated_flow_col,
+            0.0,
+        );
         set(
             values,
             node.participant_slot,
@@ -94,7 +99,11 @@ pub fn run_arena_allocation_oracle(
             let mut i_f_sum = 0.0_f32;
             let mut weight_sum = 0.0_f32;
             for child in &parent.children {
-                i_f_sum += get(values, child.participant_slot, child.cols.intrinsic_flow_col);
+                i_f_sum += get(
+                    values,
+                    child.participant_slot,
+                    child.cols.intrinsic_flow_col,
+                );
                 weight_sum += get(values, child.participant_slot, child.cols.weight_col);
             }
             set(
@@ -120,7 +129,11 @@ pub fn run_arena_allocation_oracle(
                 continue;
             }
             let p_if = if depth == 0 {
-                get(values, parent.participant_slot, parent.cols.intrinsic_flow_col)
+                get(
+                    values,
+                    parent.participant_slot,
+                    parent.cols.intrinsic_flow_col,
+                )
             } else {
                 get(
                     values,
@@ -193,11 +206,7 @@ pub fn run_arena_allocation_oracle(
     trace
 }
 
-fn integrate_balance(
-    layout: &ArenaTreeLayout,
-    values: &mut HashMap<CellKey, f32>,
-    dt: f32,
-) {
+fn integrate_balance(layout: &ArenaTreeLayout, values: &mut HashMap<CellKey, f32>, dt: f32) {
     for node in layout.iter_all() {
         if let Some(balance_col) = node.cols.balance_col {
             let i_f = get(values, node.participant_slot, node.cols.intrinsic_flow_col);
@@ -272,15 +281,7 @@ mod tests {
             cols: c,
             gap_used: 0,
         };
-        build_custom_layout(
-            0,
-            &arena_desc(16),
-            c,
-            Default::default(),
-            9,
-            vec![root],
-        )
-        .unwrap()
+        build_custom_layout(0, &arena_desc(16), c, Default::default(), 9, vec![root]).unwrap()
     }
 
     #[test]
@@ -305,7 +306,13 @@ mod tests {
         set(&mut values, 11, c.weight_col, 0.0);
         set(&mut values, 12, c.weight_col, 0.0);
         run_arena_allocation_oracle(&layout, &mut values, 1.0);
-        assert_eq!(get(&values, 11, c.allocated_flow_col).to_bits(), 0.0_f32.to_bits());
-        assert_eq!(get(&values, 12, c.allocated_flow_col).to_bits(), 0.0_f32.to_bits());
+        assert_eq!(
+            get(&values, 11, c.allocated_flow_col).to_bits(),
+            0.0_f32.to_bits()
+        );
+        assert_eq!(
+            get(&values, 12, c.allocated_flow_col).to_bits(),
+            0.0_f32.to_bits()
+        );
     }
 }

@@ -4,20 +4,17 @@ use simthing_core::{EmlExecutionClass, MAX_EML_TREE_NODES};
 use simthing_sim::PipelineFlags;
 use simthing_spec::{
     compile_eml_gadget_stack, deserialize_eml_gadget_stack_ron, eval_eml_postfix,
-    oracle_field_sampler, oracle_soft_step, oracle_weighted_accumulator, reject_unknown_gadget_kind,
-    CompiledEmlGadgetStack, DEFERRED_GADGET_KINDS, EmlGadgetCompileOptions, EmlGadgetCompositionPlan,
-    EmlGadgetInstanceSpec, EmlGadgetKind, EmlGadgetRegistry, EmlGadgetStackSpec,
-    MappingExecutionProfile, ResourceFlowExecutionProfile, SpecError,
+    oracle_field_sampler, oracle_soft_step, oracle_weighted_accumulator,
+    reject_unknown_gadget_kind, CompiledEmlGadgetStack, EmlGadgetCompileOptions,
+    EmlGadgetCompositionPlan, EmlGadgetInstanceSpec, EmlGadgetKind, EmlGadgetRegistry,
+    EmlGadgetStackSpec, MappingExecutionProfile, ResourceFlowExecutionProfile, SpecError,
+    DEFERRED_GADGET_KINDS,
 };
 
 const N_DIMS: u32 = 64;
 const EVAL_SLOT: u32 = 0;
 
-fn eval_gadget(
-    stack: &CompiledEmlGadgetStack,
-    gadget_index: usize,
-    values: &[f32],
-) -> f32 {
+fn eval_gadget(stack: &CompiledEmlGadgetStack, gadget_index: usize, values: &[f32]) -> f32 {
     let gadget = &stack.gadgets[gadget_index];
     eval_eml_postfix(&gadget.nodes, EVAL_SLOT, values, N_DIMS)
 }
@@ -44,14 +41,16 @@ fn tier1_registry_contains_all_gadgets() {
     let registry = EmlGadgetRegistry::new();
     for kind in registry.tier1_kinds() {
         assert!(registry.is_registered(*kind));
-        assert_eq!(kind.execution_class(), EmlExecutionClass::ExactDeterministic);
+        assert_eq!(
+            kind.execution_class(),
+            EmlExecutionClass::ExactDeterministic
+        );
         assert!(!kind.requires_temporal_memory());
     }
-    assert_eq!(registry.available_names(), vec![
-        "FieldSampler",
-        "WeightedAccumulator",
-        "SoftStep",
-    ]);
+    assert_eq!(
+        registry.available_names(),
+        vec!["FieldSampler", "WeightedAccumulator", "SoftStep",]
+    );
 }
 
 // ── Test 2 — FieldSampler oracle parity ──────────────────────────────────────
@@ -69,7 +68,13 @@ fn field_sampler_oracle_parity() {
     let compiled = compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions::default())
         .expect("FieldSampler compiles");
 
-    let cases = [(-10.0, 0.0), (0.0, 0.0), (60.0, 0.5), (120.0, 1.0), (180.0, 1.0)];
+    let cases = [
+        (-10.0, 0.0),
+        (0.0, 0.0),
+        (60.0, 0.5),
+        (120.0, 1.0),
+        (180.0, 1.0),
+    ];
     for (input, expected) in cases {
         let mut values = vec![0.0; (N_DIMS * (EVAL_SLOT + 1)) as usize];
         set_col(&mut values, 12, input);
@@ -144,15 +149,11 @@ fn soft_step_oracle_parity() {
         assert_f32_eq(got, oracle, &format!("x={x}"));
     }
 
-    let at_center = eval_gadget(
-        &compiled,
-        0,
-        &{
-            let mut v = vec![0.0; N_DIMS as usize];
-            set_col(&mut v, 20, center);
-            v
-        },
-    );
+    let at_center = eval_gadget(&compiled, 0, &{
+        let mut v = vec![0.0; N_DIMS as usize];
+        set_col(&mut v, 20, center);
+        v
+    });
     assert_f32_eq(at_center, 0.5, "center");
 
     let below = oracle_soft_step(center - 0.2, center, steepness);
@@ -180,7 +181,9 @@ fn single_gadget_flatten_preview_executable() {
 
     assert!(compiled.composition.flatten_preview_executable());
     match &compiled.composition {
-        EmlGadgetCompositionPlan::InlineFlattenPreview { executable, nodes, .. } => {
+        EmlGadgetCompositionPlan::InlineFlattenPreview {
+            executable, nodes, ..
+        } => {
             assert!(*executable);
             assert_eq!(nodes.len(), compiled.gadgets[0].nodes.len());
         }
@@ -238,9 +241,11 @@ fn multi_gadget_total_over_cap_admits_as_per_gadget_only() {
         "expected stack_total_exceeds_inline_cap diagnostic"
     );
     assert!(
-        compiled.report.diagnostics.iter().any(|d| {
-            d.message.contains("PerGadgetOnly") && d.message.contains("deferred")
-        }),
+        compiled
+            .report
+            .diagnostics
+            .iter()
+            .any(|d| { d.message.contains("PerGadgetOnly") && d.message.contains("deferred") }),
         "expected deferred scheduling message in diagnostics"
     );
 }
@@ -259,8 +264,7 @@ fn single_gadget_over_cap_rejects() {
             output_col: Some(40),
         }],
     };
-    let err = compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions { max_col: 64 })
-        .unwrap_err();
+    let err = compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions { max_col: 64 }).unwrap_err();
     let msg = err.to_string();
     assert!(
         msg.contains("exceeds EvalEML cap"),
@@ -351,7 +355,10 @@ fn stack_composition_oracle_parity() {
         &[get_col(&values, 30), get_col(&values, 31)],
     );
     assert_f32_eq(accumulated, manual, "stack composition");
-    assert_eq!(compiled.report.execution_class, EmlExecutionClass::ExactDeterministic);
+    assert_eq!(
+        compiled.report.execution_class,
+        EmlExecutionClass::ExactDeterministic
+    );
 
     // R1: multi-gadget chained stack must not expose executable flatten preview.
     assert!(!compiled.composition.flatten_preview_executable());
@@ -566,13 +573,16 @@ fn posture_preservation() {
         let path = entry.expect("dir entry").path();
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
         assert!(
-            !name.contains("gadget") && !name.contains("field_sampler") && !name.contains("soft_step"),
+            !name.contains("gadget")
+                && !name.contains("field_sampler")
+                && !name.contains("soft_step"),
             "unexpected gadget WGSL: {name}"
         );
     }
 
-    let core_nodes = std::fs::read_to_string(repo_root.join("crates/simthing-core/src/eml_nodes.rs"))
-        .expect("eml_nodes.rs");
+    let core_nodes =
+        std::fs::read_to_string(repo_root.join("crates/simthing-core/src/eml_nodes.rs"))
+            .expect("eml_nodes.rs");
     let opcode_count = core_nodes.matches("pub const ").count();
     assert!(opcode_count > 0, "opcode table present");
     assert!(!core_nodes.contains("EXP"));

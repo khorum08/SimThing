@@ -3,6 +3,11 @@
 #[path = "support/e11_nested.rs"]
 mod nested_support;
 
+use nested_support::{
+    a0_d3_participants, a0_d4_participants, assert_nested_cpu_gpu_parity,
+    integration_band_for_layout, layout_for, leaves, materialize_nested, open_nested_session,
+    try_gpu,
+};
 use simthing_core::SimThingKind;
 use simthing_driver::{
     build_execution_plan, nested_fission_gap_report, nested_hierarchy_materialization_report,
@@ -10,11 +15,6 @@ use simthing_driver::{
     total_bands_for_depth, ArenaBandLayout, FissionPolicy,
 };
 use simthing_sim::PipelineFlags;
-use nested_support::{
-    a0_d3_participants, a0_d4_participants, assert_nested_cpu_gpu_parity,
-    integration_band_for_layout, layout_for, leaves, materialize_nested, open_nested_session,
-    try_gpu,
-};
 
 fn assert_all_parents_contiguous(f: &nested_support::MaterializedNestedFixture) {
     let layout = layout_for(f);
@@ -115,15 +115,8 @@ fn a0_reserved_gap_slots_excluded_from_active_slotranges() {
     let interiors = layout.interior_participant_slots();
     reserve_gap_pools_for_parent_slots(&mut f.scaffold, &mut f.alloc, &interiors, 1);
     let parent = layout.participant_roots[0].children[0].participant_slot;
-    let active = layout.participant_roots[0].children[0]
-        .active_child_slots();
-    let report = nested_fission_gap_report(
-        parent,
-        &active,
-        &f.scaffold,
-        None,
-        0,
-    );
+    let active = layout.participant_roots[0].children[0].active_child_slots();
+    let report = nested_fission_gap_report(parent, &active, &f.scaffold, None, 0);
     assert!(report.gap_outside_active_child_span);
     assert!(report.active_children_contiguous);
     for gap in report.reserved_gap_slots {
@@ -137,7 +130,10 @@ fn a0_d3_orderband_budget_and_integration_band() {
     let layout = layout_for(&f);
     let bands = ArenaBandLayout::for_depth(3);
     assert_eq!(layout.band_layout.total_bands_used, bands.total_bands_used);
-    assert_eq!(layout.band_layout.total_bands_used, total_bands_for_depth(3));
+    assert_eq!(
+        layout.band_layout.total_bands_used,
+        total_bands_for_depth(3)
+    );
     assert_eq!(integration_band_for_layout(&layout), bands.integration_band);
     assert_eq!(bands.total_bands_used, 8);
 }
@@ -148,7 +144,10 @@ fn a0_d4_orderband_budget_and_integration_band() {
     let layout = layout_for(&f);
     let bands = ArenaBandLayout::for_depth(4);
     assert_eq!(layout.band_layout.total_bands_used, bands.total_bands_used);
-    assert_eq!(layout.band_layout.total_bands_used, total_bands_for_depth(4));
+    assert_eq!(
+        layout.band_layout.total_bands_used,
+        total_bands_for_depth(4)
+    );
     assert_eq!(integration_band_for_layout(&layout), bands.integration_band);
     assert_eq!(bands.total_bands_used, 11);
 }
@@ -223,7 +222,10 @@ fn a0_no_new_wgsl_roles_or_cpu_fallback() {
 #[test]
 fn a0_no_dynamic_enrollment_policy_b_selector_rerun_or_compaction() {
     let nested = open_nested_session(7, a0_d3_participants, 16, true);
-    assert!(nested.session.last_resource_flow_dynamic_enrollment_report.is_none());
+    assert!(nested
+        .session
+        .last_resource_flow_dynamic_enrollment_report
+        .is_none());
     let src = include_str!("../src/resource_flow_fission_enrollment.rs");
     assert!(!src.contains("Policy B Reevaluate"));
     assert!(!src.contains("selector re-run"));

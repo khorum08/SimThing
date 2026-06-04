@@ -129,13 +129,23 @@ fn emit_sqrt_candidate_wgsl(candidate: NativeSqrtCandidate, n_dims: u32) -> Stri
 
     match candidate {
         NativeSqrtCandidate::DirectScalar { input_col, out_col } => {
-            wgsl.push_str(&format!("    let col_{input_col} = values[base + {input_col}u];\n"));
+            wgsl.push_str(&format!(
+                "    let col_{input_col} = values[base + {input_col}u];\n"
+            ));
             wgsl.push_str(&format!("    let tmp_0 = sqrt(col_{input_col});\n"));
             wgsl.push_str(&format!("    let out_col = {out_col}u;\n"));
             wgsl.push_str("    values[base + out_col] = tmp_0;\n");
         }
-        NativeSqrtCandidate::EuclideanMagnitude { x_col, y_col, out_col }
-        | NativeSqrtCandidate::GradientMagnitude { x_col, y_col, out_col } => {
+        NativeSqrtCandidate::EuclideanMagnitude {
+            x_col,
+            y_col,
+            out_col,
+        }
+        | NativeSqrtCandidate::GradientMagnitude {
+            x_col,
+            y_col,
+            out_col,
+        } => {
             wgsl.push_str(&format!("    let col_{x_col} = values[base + {x_col}u];\n"));
             wgsl.push_str(&format!("    let col_{y_col} = values[base + {y_col}u];\n"));
             wgsl.push_str(&format!("    let tmp_0 = col_{x_col} * col_{x_col};\n"));
@@ -187,11 +197,13 @@ fn run_jit_gpu(ctx: &GpuContext, wgsl: &str, values_in: &[f32]) -> Vec<f32> {
 
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("jit_sqrt_candidate_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("jit_sqrt_candidate_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("jit_sqrt_candidate_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -300,7 +312,10 @@ fn classify_scalar_battery(ctx: &GpuContext) -> BatterySummary {
     let mut exact = 0usize;
     let mut tested = 0usize;
 
-    for x in scalar_corpus().into_iter().filter(|v| is_admissible_positive_scalar(*v)) {
+    for x in scalar_corpus()
+        .into_iter()
+        .filter(|v| is_admissible_positive_scalar(*v))
+    {
         let mut values = vec![0.0f32; N_DIMS as usize];
         set_col(&mut values, SQRT_INPUT_COL, x);
         let out = run_jit_gpu(ctx, &wgsl, &values);
@@ -509,7 +524,10 @@ fn jit_sqrt_vector_oracle_order_is_explicit() {
     assert!(wgsl.contains("col_7 * col_7"));
     assert!(wgsl.contains("col_8 * col_8"));
     assert!(wgsl.contains("tmp_0 + tmp_1"));
-    assert!(!wgsl.contains("mul_add"), "WGSL must not claim FMA unless proven");
+    assert!(
+        !wgsl.contains("mul_add"),
+        "WGSL must not claim FMA unless proven"
+    );
 
     // Shader-order and FMA oracles can differ on some inputs (diagnostic separation).
     let x = 0.30000004f32;
@@ -603,13 +621,16 @@ fn jit_sqrt_result_classification_is_explicit() {
                 out_col: OUT_COL,
             },
         );
-        let final_classification = match (scalar.classification, magnitude.shader_order_classification) {
-            (SqrtClassification::RejectedDeferred, _)
-            | (_, SqrtClassification::RejectedDeferred) => SqrtClassification::RejectedDeferred,
-            (SqrtClassification::ApproximateJitOnly, _)
-            | (_, SqrtClassification::ApproximateJitOnly) => SqrtClassification::ApproximateJitOnly,
-            _ => SqrtClassification::ExactDeterministicCandidate,
-        };
+        let final_classification =
+            match (scalar.classification, magnitude.shader_order_classification) {
+                (SqrtClassification::RejectedDeferred, _)
+                | (_, SqrtClassification::RejectedDeferred) => SqrtClassification::RejectedDeferred,
+                (SqrtClassification::ApproximateJitOnly, _)
+                | (_, SqrtClassification::ApproximateJitOnly) => {
+                    SqrtClassification::ApproximateJitOnly
+                }
+                _ => SqrtClassification::ExactDeterministicCandidate,
+            };
 
         println!(
             "sqrt_candidate_final_classification={:?} (scalar max_ulp={}, magnitude shader_order max_ulp={}, magnitude fma_diagnostic max_ulp={})",

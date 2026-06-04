@@ -9,9 +9,9 @@ use simthing_gpu::GpuContext;
 use simthing_sim::PipelineFlags;
 use simthing_spec::{
     compile_first_slice_scenario_preview, compile_region_field_preview,
-    deserialize_first_slice_scenario_ron, CompiledFirstSliceScenarioPreview, FirstSliceScenarioSpec,
-    MappingExecutionProfile, RegionFieldFormulaBindingSpec, RegionFieldIsolationPolicyEstimate,
-    RegionFieldSpec, SpecError,
+    deserialize_first_slice_scenario_ron, CompiledFirstSliceScenarioPreview,
+    FirstSliceScenarioSpec, MappingExecutionProfile, RegionFieldFormulaBindingSpec,
+    RegionFieldIsolationPolicyEstimate, RegionFieldSpec, SpecError,
 };
 use std::sync::Mutex;
 
@@ -188,7 +188,11 @@ fn disabled_scenario_admits_but_does_not_execute() {
     with_gpu(|ctx| {
         let mut session = open_seeded_scenario(ctx, &preview);
         let report = session
-            .tick_with_scenario_commitment(ctx, FirstSliceTickOptions::debug_readback(), LOW_WEIGHTS)
+            .tick_with_scenario_commitment(
+                ctx,
+                FirstSliceTickOptions::debug_readback(),
+                LOW_WEIGHTS,
+            )
             .unwrap();
         assert!(!report.mapping.enabled);
         assert!(!report.mapping.scheduled);
@@ -319,11 +323,21 @@ fn invalid_scenario_specs_reject() {
 
     let base = scenario_spec();
     let mut nan_threshold = base.clone();
-    nan_threshold.region_field.commitment.as_mut().unwrap().threshold = f32::NAN;
+    nan_threshold
+        .region_field
+        .commitment
+        .as_mut()
+        .unwrap()
+        .threshold = f32::NAN;
     assert_scenario_err(&nan_threshold, "commitment threshold must be finite");
 
     let mut zero_event = base.clone();
-    zero_event.region_field.commitment.as_mut().unwrap().event_kind = 0;
+    zero_event
+        .region_field
+        .commitment
+        .as_mut()
+        .unwrap()
+        .event_kind = 0;
     assert_scenario_err(&zero_event, "commitment event_kind must be nonzero");
 
     let mut wrong_parent_slot = base.clone();

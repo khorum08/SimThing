@@ -4,12 +4,8 @@
 mod support;
 
 use simthing_driver::materialize_resource_economy_registrations;
-use simthing_spec::{
-    EmissionFormulaSpec, PropertyKey, ResourceEconomySpec, ResourceEmissionSpec,
-};
-use support::{
-    amount_transfer, compile_fixture, exact_eml_registry, register_amount_property,
-};
+use simthing_spec::{EmissionFormulaSpec, PropertyKey, ResourceEconomySpec, ResourceEmissionSpec};
+use support::{amount_transfer, compile_fixture, exact_eml_registry, register_amount_property};
 
 fn emission_spec(id: &str) -> ResourceEmissionSpec {
     ResourceEmissionSpec {

@@ -35,10 +35,7 @@ pub fn plan_velocity_integration(pairs: &[GovernedPair], n_slots: u32) -> Veloci
 }
 
 /// E-7: compile arbitrary `governed_by` pairs to `IntegrateWithClamp` ops.
-pub fn plan_governed_integration(
-    pairs: &[GovernedPair],
-    n_slots: u32,
-) -> GovernedIntegrationPlan {
+pub fn plan_governed_integration(pairs: &[GovernedPair], n_slots: u32) -> GovernedIntegrationPlan {
     let mut ops = Vec::with_capacity(pairs.len() * n_slots as usize);
     for slot in 0..n_slots {
         for pair in pairs {
@@ -76,12 +73,7 @@ pub fn plan_governed_integration_at_band(
     Ok(GovernedIntegrationPlan { ops, n_bands })
 }
 
-fn pair_to_gpu_op(
-    slot: u32,
-    pair: &GovernedPair,
-    gate: u32,
-    gate_a: u32,
-) -> AccumulatorOpGpu {
+fn pair_to_gpu_op(slot: u32, pair: &GovernedPair, gate: u32, gate_a: u32) -> AccumulatorOpGpu {
     AccumulatorOpGpu {
         source_kind: source_kind::SLOT_VALUE,
         source_slot: slot,

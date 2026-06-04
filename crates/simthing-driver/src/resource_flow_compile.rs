@@ -98,9 +98,9 @@ fn map_coupling_delay(delay: &CompiledCouplingDelay) -> CouplingDelay {
     match delay {
         CompiledCouplingDelay::Algebraic => CouplingDelay::Algebraic,
         CompiledCouplingDelay::OneTickDelay => CouplingDelay::OneTickDelay,
-        CompiledCouplingDelay::BoundaryStage { stage } => CouplingDelay::BoundaryStage {
-            stage: *stage,
-        },
+        CompiledCouplingDelay::BoundaryStage { stage } => {
+            CouplingDelay::BoundaryStage { stage: *stage }
+        }
         CompiledCouplingDelay::AccumulatorState { property_id } => {
             CouplingDelay::AccumulatorState {
                 property: *property_id,
@@ -125,15 +125,16 @@ fn expansion_report_from_registry(registry: &ArenaRegistry) -> ResourceFlowExpan
         per_arena_participant_counts.push((arena.name.clone(), arena.participant_range.1));
         let fanout = out_fanout[idx].max(in_fanout[idx]);
         per_arena_coupling_fanout.push((arena.name.clone(), fanout));
-        total_orderband_depth_reserved = total_orderband_depth_reserved
-            .saturating_add(arena.reserved_orderband_depth);
+        total_orderband_depth_reserved =
+            total_orderband_depth_reserved.saturating_add(arena.reserved_orderband_depth);
     }
 
     let participant_count = registry.participants.len();
     let coupling_count = registry.couplings.len();
-    let total_registration_estimate = u32::try_from(participant_count.saturating_add(coupling_count))
-        .ok()
-        .map(|n| n);
+    let total_registration_estimate =
+        u32::try_from(participant_count.saturating_add(coupling_count))
+            .ok()
+            .map(|n| n);
 
     ResourceFlowExpansionReport {
         arena_count: registry.arenas.len(),

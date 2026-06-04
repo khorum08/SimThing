@@ -6,8 +6,7 @@
 
 use crate::error::SpecError;
 use crate::spec::resource_flow::{
-    CouplingDelaySpec, CouplingSpec, FissionPolicySpec, ResourceFlowSpec,
-    WildcardAdmissionSpec,
+    CouplingDelaySpec, CouplingSpec, FissionPolicySpec, ResourceFlowSpec, WildcardAdmissionSpec,
 };
 use crate::spec::script::PropertyKey;
 use simthing_core::{
@@ -132,7 +131,10 @@ pub fn compile_resource_flow_admission(
             .map(|p| (p.slot, p.subtree_root_id))
             .collect();
 
-        let wildcard_max_expansion = arena.wildcard_admission.as_ref().and_then(|w| w.max_expansion);
+        let wildcard_max_expansion = arena
+            .wildcard_admission
+            .as_ref()
+            .and_then(|w| w.max_expansion);
 
         compiled_arenas.push(CompiledArenaAdmission {
             name: arena.name.clone(),
@@ -254,7 +256,10 @@ fn validate_balance_num_count_sources(registry: &DimensionRegistry) -> Result<()
         let property_key = format!("{}::{}", prop.namespace, prop.name);
         for sf in &prop.layout.sub_fields {
             let Some(AccumulatorSpec {
-                role: AccumulatorRole::Balance(BalanceSpec { num_count_source, .. }),
+                role:
+                    AccumulatorRole::Balance(BalanceSpec {
+                        num_count_source, ..
+                    }),
                 ..
             }) = &sf.accumulator_spec
             else {
@@ -327,15 +332,22 @@ fn validate_duplicate_role_bindings(
     Ok(())
 }
 
-fn validate_wildcard(arena: &str, wildcard: Option<&WildcardAdmissionSpec>) -> Result<(), SpecError> {
+fn validate_wildcard(
+    arena: &str,
+    wildcard: Option<&WildcardAdmissionSpec>,
+) -> Result<(), SpecError> {
     let Some(w) = wildcard else {
         return Ok(());
     };
     let Some(max) = w.max_expansion else {
-        return Err(SpecError::UnboundedWildcardAdmission { arena: arena.into() });
+        return Err(SpecError::UnboundedWildcardAdmission {
+            arena: arena.into(),
+        });
     };
     if max == 0 {
-        return Err(SpecError::UnboundedWildcardAdmission { arena: arena.into() });
+        return Err(SpecError::UnboundedWildcardAdmission {
+            arena: arena.into(),
+        });
     }
     if w.expanded_count > max {
         return Err(SpecError::WildcardExpansionExceedsCap {
@@ -384,18 +396,23 @@ fn compile_coupling_delay(
         CouplingDelaySpec::BoundaryStage { stage } => {
             CompiledCouplingDelay::BoundaryStage { stage: *stage }
         }
-        CouplingDelaySpec::AccumulatorState { property } => CompiledCouplingDelay::AccumulatorState {
-            property_id: resolve_property(registry, property)?,
-        },
+        CouplingDelaySpec::AccumulatorState { property } => {
+            CompiledCouplingDelay::AccumulatorState {
+                property_id: resolve_property(registry, property)?,
+            }
+        }
     })
 }
 
-fn resolve_property(registry: &DimensionRegistry, key: &PropertyKey) -> Result<SimPropertyId, SpecError> {
-    registry
-        .id_of(&key.namespace, &key.name)
-        .ok_or_else(|| SpecError::UnknownResourceFlowProperty {
+fn resolve_property(
+    registry: &DimensionRegistry,
+    key: &PropertyKey,
+) -> Result<SimPropertyId, SpecError> {
+    registry.id_of(&key.namespace, &key.name).ok_or_else(|| {
+        SpecError::UnknownResourceFlowProperty {
             property: format_property_key(key),
-        })
+        }
+    })
 }
 
 fn format_property_key(key: &PropertyKey) -> String {

@@ -12,19 +12,38 @@ use simthing_spec::{
     exact_sqrt_f_artifact_descriptor, fnv1a64_hex, is_exact_mag_f_from_mag2_descriptor,
     is_mag_f_dxdy_probe_descriptor, landed_jit_kernel_descriptors, validate_exact_kernel_inputs,
     validate_kernel_descriptor_admission, ExactPreSqrtInputContract, ExactSqrtArtifactDescriptor,
-    ExactSqrtAuthorityClass, KernelDescriptorSpec, MAG_F_FROM_DXDY_PROBE_DESCRIPTOR_ID,
-    MAG_F_FROM_DXDY_PROBE_LABEL, MAG_F_FROM_MAG2_DESCRIPTOR_ID, MAG_F_FROM_MAG2_LABEL,
-    MappingExecutionProfile, NativeMathClass, OutputAuthority, SQRT_F_ARTIFACT_HASH,
-    SQRT_F_ARTIFACT_PATH, SQRT_F_DESCRIPTOR_ID, SQRT_F_ENTRYPOINT, SQRT_F_PROOF_REPORT, SpecError,
+    ExactSqrtAuthorityClass, KernelDescriptorSpec, MappingExecutionProfile, NativeMathClass,
+    OutputAuthority, SpecError, MAG_F_FROM_DXDY_PROBE_DESCRIPTOR_ID, MAG_F_FROM_DXDY_PROBE_LABEL,
+    MAG_F_FROM_MAG2_DESCRIPTOR_ID, MAG_F_FROM_MAG2_LABEL, SQRT_F_ARTIFACT_HASH,
+    SQRT_F_ARTIFACT_PATH, SQRT_F_DESCRIPTOR_ID, SQRT_F_ENTRYPOINT, SQRT_F_PROOF_REPORT,
 };
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
 const SQRT_CR_F_WGSL: &str = include_str!("wgsl/sqrt_cr_f_candidate.wgsl");
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
-    "faction", "ownership", "owner", "AI", "threat", "scarcity", "opportunity", "labor",
-    "price", "logistics", "routing", "need", "demand", "supply", "personality", "drone", "SEAD",
-    "ResourceEconomySpec", "SimSession", "Gadget", "Personality", "Memory",
+    "faction",
+    "ownership",
+    "owner",
+    "AI",
+    "threat",
+    "scarcity",
+    "opportunity",
+    "labor",
+    "price",
+    "logistics",
+    "routing",
+    "need",
+    "demand",
+    "supply",
+    "personality",
+    "drone",
+    "SEAD",
+    "ResourceEconomySpec",
+    "SimSession",
+    "Gadget",
+    "Personality",
+    "Memory",
 ];
 
 /// Row stride: dx_bits, dy_bits, mag_bits, mag2_bits, weight_bits
@@ -139,11 +158,13 @@ fn run_mag_f_batch(ctx: &GpuContext, pairs: &[(u32, u32)]) -> Vec<(u32, u32, u32
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("jit_mag_f_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("jit_mag_f_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("jit_mag_f_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -203,12 +224,7 @@ fn run_mag_f_batch(ctx: &GpuContext, pairs: &[(u32, u32)]) -> Vec<(u32, u32, u32
         .enumerate()
         .map(|(i, _)| {
             let base = i * ROW_STRIDE as usize;
-            (
-                out[base],
-                out[base + 1],
-                out[base + 2],
-                out[base + 3],
-            )
+            (out[base], out[base + 1], out[base + 2], out[base + 3])
         })
         .collect()
 }
@@ -262,11 +278,13 @@ fn run_mag_from_mag2_batch(ctx: &GpuContext, mag2_bits: &[u32]) -> Vec<(u32, u32
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("jit_mag_f_from_mag2_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("jit_mag_f_from_mag2_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("jit_mag_f_from_mag2_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -564,7 +582,9 @@ fn sqrt_mag0_dense_corpus_match_cpu_oracle() {
             }
         }
         if let Some((dx, dy, gpu, cpu, ulp)) = worst {
-            println!("sqrt_mag0_dense_worst: dx={dx:#x} dy={dy:#x} gpu={gpu:#x} cpu={cpu:#x} ulp={ulp}");
+            println!(
+                "sqrt_mag0_dense_worst: dx={dx:#x} dy={dy:#x} gpu={gpu:#x} cpu={cpu:#x} ulp={ulp}"
+            );
         }
         println!(
             "sqrt_mag0_dense: tested={} mag2_match={mag2_match} exact={exact} max_ulp={max_ulp}",
@@ -587,13 +607,18 @@ fn sqrt_mag0_perf_34k_mobile_simthing_hot_path() {
         assert_eq!(outputs.len(), N);
 
         let mut spot_max_ulp = 0u32;
-        for ((_, _, mag, mag2_gpu), (dx, dy)) in outputs.iter().take(512).zip(pairs.iter().take(512)) {
+        for ((_, _, mag, mag2_gpu), (dx, dy)) in
+            outputs.iter().take(512).zip(pairs.iter().take(512))
+        {
             if *mag2_gpu != cpu_mag2_bits(*dx, *dy) {
                 continue;
             }
             spot_max_ulp = spot_max_ulp.max(ulp_distance(*mag, cpu_mag_bits(*dx, *dy)));
         }
-        assert_eq!(spot_max_ulp, 0, "34k spot-check requires max_ulp==0 on mag2-matched rows");
+        assert_eq!(
+            spot_max_ulp, 0,
+            "34k spot-check requires max_ulp==0 on mag2-matched rows"
+        );
 
         let ms = elapsed.as_secs_f64() * 1000.0;
         let per_entity_us = elapsed.as_secs_f64() * 1_000_000.0 / N as f64;
@@ -635,7 +660,13 @@ fn sqrt_mag0_no_default_runtime_wiring() {
     assert!(!probe.production_wiring);
 
     let wgsl = emit_mag_f_batch_wgsl(1);
-    for forbidden in ["SimSession", "ResourceEconomySpec", "simthing-sim", "KernelCache", "cache.insert"] {
+    for forbidden in [
+        "SimSession",
+        "ResourceEconomySpec",
+        "simthing-sim",
+        "KernelCache",
+        "cache.insert",
+    ] {
         assert!(
             !wgsl.contains(forbidden),
             "mag0 WGSL must not reference production `{forbidden}`"
@@ -667,7 +698,10 @@ fn sqrt_mag0_r1_accepts_f_sqrt_over_exact_mag2() {
             let cpu = cpu_sqrt_f_bits(*mag2_in);
             assert_eq!(*mag_out, cpu, "mag2_in={mag2_in:#x}");
         }
-        println!("sqrt_mag0_r1_from_mag2: rows={} max_ulp=0", mag2_inputs.len());
+        println!(
+            "sqrt_mag0_r1_from_mag2: rows={} max_ulp=0",
+            mag2_inputs.len()
+        );
     });
 }
 
@@ -687,7 +721,9 @@ fn sqrt_mag0_r1_raw_dxdy_mag_requires_exact_mag2_contract() {
         let rows = vec![(3.0f32.to_bits(), 4.0f32.to_bits())];
         let outputs = run_mag_f_batch(ctx, &rows);
         assert_eq!(outputs.len(), 1);
-        println!("sqrt_mag0_r1_raw_dxdy_probe: executes as benchmark probe, mag authority approximate");
+        println!(
+            "sqrt_mag0_r1_raw_dxdy_probe: executes as benchmark probe, mag authority approximate"
+        );
     });
 }
 

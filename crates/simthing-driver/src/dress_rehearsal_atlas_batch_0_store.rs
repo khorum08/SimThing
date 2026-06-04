@@ -216,9 +216,10 @@ pub fn aggregate_contributions(contributions: &[ChildContribution]) -> Vec<Store
             .0
             .cmp(&right.key.location_id.0)
             .then(left.key.cell_index.cmp(&right.key.cell_index))
-            .then(store_key_channel_rank(left.key.channel).cmp(&store_key_channel_rank(
-                right.key.channel,
-            )))
+            .then(
+                store_key_channel_rank(left.key.channel)
+                    .cmp(&store_key_channel_rank(right.key.channel)),
+            )
             .then(store_key_owner_rank(left.key.owner).cmp(&store_key_owner_rank(right.key.owner)))
     });
     entries
@@ -244,9 +245,7 @@ fn store_key_owner_rank(owner: Owner) -> u8 {
     }
 }
 
-pub fn store_oracle_from_materialization(
-    materialization: &LocationMaterialization,
-) -> StoreOracle {
+pub fn store_oracle_from_materialization(materialization: &LocationMaterialization) -> StoreOracle {
     let contributions = child_contributions_from_materialization(materialization);
     let entries = aggregate_contributions(&contributions);
     StoreOracle {
@@ -340,9 +339,7 @@ pub fn entries_at_cell_index(
     oracle
         .entries
         .iter()
-        .filter(|entry| {
-            entry.key.location_id == location_id && entry.key.cell_index == cell_index
-        })
+        .filter(|entry| entry.key.location_id == location_id && entry.key.cell_index == cell_index)
         .collect()
 }
 
@@ -395,12 +392,7 @@ pub fn canonical_pirate_shared_galactic_cell(
         first.cell.x,
         first.cell.y,
     );
-    (
-        first.location_id,
-        first.cell.x,
-        first.cell.y,
-        cell_index,
-    )
+    (first.location_id, first.cell.x, first.cell.y, cell_index)
 }
 
 pub fn pirate_fleet_source_ids(materialization: &LocationMaterialization) -> Vec<String> {

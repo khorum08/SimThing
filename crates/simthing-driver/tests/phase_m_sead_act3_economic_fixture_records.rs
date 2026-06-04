@@ -10,7 +10,7 @@ use simthing_gpu::GpuContext;
 use simthing_spec::{
     is_sead_act3_economic_fixture_records_descriptor, landed_jit_kernel_descriptors,
     validate_kernel_descriptor_admission, MappingExecutionProfile,
-    PhaseEEconomicFixtureRecordAuthority, SEAD_ACT3_DESCRIPTOR_ID, SEAD_ACT1_ADMITTED_TABLE_SIZE,
+    PhaseEEconomicFixtureRecordAuthority, SEAD_ACT1_ADMITTED_TABLE_SIZE, SEAD_ACT3_DESCRIPTOR_ID,
     SEAD_EVENT1_CODE_COUNT,
 };
 
@@ -47,10 +47,38 @@ const FLAG_FIX_SUM_OVF: u32 = 16;
 const ORDERING_CLASS: &str = "OrderInvariantExact";
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
-    "faction", "ownership", "owner", "AI", "threat", "scarcity", "opportunity", "labor", "price",
-    "logistics", "routing", "need", "demand", "supply", "personality", "drone", "SEAD", "economy",
-    "planner", "resource", "map", "urgency", "commitment", "order", "route", "buy", "sell", "ship",
-    "factory", "decision", "allocate", "production",
+    "faction",
+    "ownership",
+    "owner",
+    "AI",
+    "threat",
+    "scarcity",
+    "opportunity",
+    "labor",
+    "price",
+    "logistics",
+    "routing",
+    "need",
+    "demand",
+    "supply",
+    "personality",
+    "drone",
+    "SEAD",
+    "economy",
+    "planner",
+    "resource",
+    "map",
+    "urgency",
+    "commitment",
+    "order",
+    "route",
+    "buy",
+    "sell",
+    "ship",
+    "factory",
+    "decision",
+    "allocate",
+    "production",
 ];
 
 const FORBIDDEN_EXACT_TERMS: &[&str] = &["f64", "F64RoundDown", "SHADER_F64", "sqrt_cr_c"];
@@ -796,7 +824,10 @@ fn cpu_propose(
                 flags: FLAG_RULE_MAX | (r.flags & FLAG_RED_SUM_OVERFLOW),
             });
         }
-        if rule.enable_sum_rule != 0 && r.flags & FLAG_RED_SUM_OVERFLOW == 0 && r.count >= rule.min_count {
+        if rule.enable_sum_rule != 0
+            && r.flags & FLAG_RED_SUM_OVERFLOW == 0
+            && r.count >= rule.min_count
+        {
             let sum = limbs_to_i64(r.sum_hi, r.sum_lo);
             let thr = limbs_to_i64(rule.threshold_sum_hi as i32, rule.threshold_sum_lo);
             if sum >= thr {
@@ -902,7 +933,8 @@ fn summary_eq(got: ProposalSummary, exp: ProposalSummary) -> bool {
         return false;
     }
     if exp.flags & FLAG_SUM_OVERFLOW == 0 {
-        return limbs_to_i64(got.summary_hi, got.summary_lo) == limbs_to_i64(exp.summary_hi, exp.summary_lo);
+        return limbs_to_i64(got.summary_hi, got.summary_lo)
+            == limbs_to_i64(exp.summary_hi, exp.summary_lo);
     }
     true
 }
@@ -1213,11 +1245,13 @@ fn run_consume_gpu(
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_act1_consume"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_act1_consume_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_act1_consume_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "consume_pass",
         compilation_options: Default::default(),
@@ -1267,7 +1301,8 @@ fn run_consume_gpu(
 
     let t0 = Instant::now();
     for _ in 0..repeat_dispatches {
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("consume"),
@@ -1283,7 +1318,13 @@ fn run_consume_gpu(
 
     let sum_staging = staging_buf(device, (SUMMARY_STRIDE * 4) as u64);
     let mut enc2 = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    enc2.copy_buffer_to_buffer(&summary_buf, 0, &sum_staging, 0, (SUMMARY_STRIDE * 4) as u64);
+    enc2.copy_buffer_to_buffer(
+        &summary_buf,
+        0,
+        &sum_staging,
+        0,
+        (SUMMARY_STRIDE * 4) as u64,
+    );
     queue.submit(Some(enc2.finish()));
     let words = read_u32s(device, &sum_staging, SUMMARY_STRIDE as usize);
     ConsumerOutcome {
@@ -1311,19 +1352,17 @@ fn run_admit_gpu(
     });
     let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("sead_act2_admit_bgl"),
-        entries: &[
-            storage_ro(0),
-            storage_rw(1),
-            uniform_entry(2),
-        ],
+        entries: &[storage_ro(0), storage_rw(1), uniform_entry(2)],
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_act2_admit"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_act2_admit_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_act2_admit_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "admit_pass",
         compilation_options: Default::default(),
@@ -1358,7 +1397,8 @@ fn run_admit_gpu(
 
     let t0 = Instant::now();
     for _ in 0..repeat_dispatches {
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("admit"),
@@ -1414,11 +1454,13 @@ fn run_fixture_gpu(
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_act3_fixture"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_act3_fixture_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_act3_fixture_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "fixture_pass",
         compilation_options: Default::default(),
@@ -1459,7 +1501,8 @@ fn run_fixture_gpu(
 
     let t0 = Instant::now();
     for _ in 0..repeat_dispatches {
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("fixture"),
@@ -1518,11 +1561,13 @@ fn run_proposals_gpu(
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_act0_propose"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_act0_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_act0_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "propose_pass",
         compilation_options: Default::default(),
@@ -1542,7 +1587,9 @@ fn run_proposals_gpu(
     let meta_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("proposal_meta"),
         contents: &[0u8; 8],
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_SRC
+            | wgpu::BufferUsages::COPY_DST,
     });
     let prop_words = (proposal_capacity.max(1) * PROP_STRIDE) as usize;
     let prop_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -1570,7 +1617,8 @@ fn run_proposals_gpu(
     let t0 = Instant::now();
     for _ in 0..repeat_dispatches {
         queue.write_buffer(&meta_buf, 0, &[0u8; 8]);
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("propose"),
@@ -1725,11 +1773,7 @@ fn run_bucket_reduce_propose_consume_gpu(
     });
     let admit_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("admit_bgl"),
-        entries: &[
-            storage_ro(0),
-            storage_rw(1),
-            uniform_entry(2),
-        ],
+        entries: &[storage_ro(0), storage_rw(1), uniform_entry(2)],
     });
     let fixture_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("fixture_bgl"),
@@ -1744,11 +1788,13 @@ fn run_bucket_reduce_propose_consume_gpu(
     let mk_pipe = |mod_: &wgpu::ShaderModule, bgl: &wgpu::BindGroupLayout, entry: &str| {
         device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some(entry),
-            layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some(entry),
-                bind_group_layouts: &[bgl],
-                push_constant_ranges: &[],
-            })),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some(entry),
+                    bind_group_layouts: &[bgl],
+                    push_constant_ranges: &[],
+                }),
+            ),
             module: mod_,
             entry_point: entry,
             compilation_options: Default::default(),
@@ -1780,7 +1826,9 @@ fn run_bucket_reduce_propose_consume_gpu(
     let counts_atomic = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("counts_atomic"),
         contents: &[0u8; CODE_COUNT * 4],
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_SRC
+            | wgpu::BufferUsages::COPY_DST,
     });
     let overflow_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("overflow"),
@@ -1806,7 +1854,9 @@ fn run_bucket_reduce_propose_consume_gpu(
     let counts_read = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("counts_read"),
         contents: &[0u8; CODE_COUNT * 4],
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_DST
+            | wgpu::BufferUsages::COPY_SRC,
     });
     let red_init = vec![0u32; (CODE_COUNT as u32 * RED_OUT_STRIDE) as usize];
     let red_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -1827,7 +1877,9 @@ fn run_bucket_reduce_propose_consume_gpu(
     let prop_meta = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("prop_meta"),
         contents: &[0u8; 8],
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_SRC
+            | wgpu::BufferUsages::COPY_DST,
     });
     let prop_words = (proposal_capacity.max(1) * PROP_STRIDE) as usize;
     let prop_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -1952,7 +2004,8 @@ fn run_bucket_reduce_propose_consume_gpu(
     for _ in 0..repeat_dispatches {
         queue.write_buffer(&counts_atomic, 0, &[0u8; CODE_COUNT * 4]);
         queue.write_buffer(&prop_meta, 0, &[0u8; 8]);
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("bucket"),
@@ -2018,11 +2071,35 @@ fn run_bucket_reduce_propose_consume_gpu(
     let admit_staging = staging_buf(device, (ADMIT_STRIDE * 4) as u64);
     let fixture_staging = staging_buf(device, (FIXTURE_STRIDE * 4) as u64);
     let mut enc2 = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    enc2.copy_buffer_to_buffer(&red_buf, 0, &red_staging, 0, (CODE_COUNT as u32 * RED_OUT_STRIDE * 4) as u64);
+    enc2.copy_buffer_to_buffer(
+        &red_buf,
+        0,
+        &red_staging,
+        0,
+        (CODE_COUNT as u32 * RED_OUT_STRIDE * 4) as u64,
+    );
     enc2.copy_buffer_to_buffer(&prop_meta, 0, &meta_staging, 0, 8);
-    enc2.copy_buffer_to_buffer(&summary_buf, 0, &sum_staging, 0, (SUMMARY_STRIDE * 4) as u64);
-    enc2.copy_buffer_to_buffer(&admission_buf, 0, &admit_staging, 0, (ADMIT_STRIDE * 4) as u64);
-    enc2.copy_buffer_to_buffer(&fixture_buf, 0, &fixture_staging, 0, (FIXTURE_STRIDE * 4) as u64);
+    enc2.copy_buffer_to_buffer(
+        &summary_buf,
+        0,
+        &sum_staging,
+        0,
+        (SUMMARY_STRIDE * 4) as u64,
+    );
+    enc2.copy_buffer_to_buffer(
+        &admission_buf,
+        0,
+        &admit_staging,
+        0,
+        (ADMIT_STRIDE * 4) as u64,
+    );
+    enc2.copy_buffer_to_buffer(
+        &fixture_buf,
+        0,
+        &fixture_staging,
+        0,
+        (FIXTURE_STRIDE * 4) as u64,
+    );
     queue.submit(Some(enc2.finish()));
 
     let red_vec = read_u32s(device, &red_staging, CODE_COUNT * RED_OUT_STRIDE as usize);
@@ -2099,7 +2176,10 @@ fn cpu_reduce(records: &[EventRecord]) -> ReductionResult {
     }
 }
 
-fn cpu_bucket_from_compact(records: &[EventRecord], capacity: u32) -> (Vec<Vec<EventRecord>>, [u32; CODE_COUNT]) {
+fn cpu_bucket_from_compact(
+    records: &[EventRecord],
+    capacity: u32,
+) -> (Vec<Vec<EventRecord>>, [u32; CODE_COUNT]) {
     let mut buckets: [Vec<EventRecord>; CODE_COUNT] = std::array::from_fn(|_| Vec::new());
     let mut counts = [0u32; CODE_COUNT];
     for rec in records {
@@ -2116,7 +2196,11 @@ fn cpu_bucket_from_compact(records: &[EventRecord], capacity: u32) -> (Vec<Vec<E
     (buckets.to_vec(), counts)
 }
 
-fn reductions_from_buckets(buckets: &[Vec<EventRecord>], counts: [u32; CODE_COUNT], cap: u32) -> [ReductionResult; CODE_COUNT] {
+fn reductions_from_buckets(
+    buckets: &[Vec<EventRecord>],
+    counts: [u32; CODE_COUNT],
+    cap: u32,
+) -> [ReductionResult; CODE_COUNT] {
     let mut out = [ReductionResult {
         count: 0,
         sum_lo: 0,
@@ -2243,7 +2327,9 @@ fn verify_chain_fixture(
     let (buckets, counts) = cpu_bucket_from_compact(compact, cap);
     let exp_reds = reductions_from_buckets(&buckets, counts, cap);
     let (exp_count, exp_ovf, exp_props) = cpu_propose(&exp_reds, rules, prop_cap);
-    let exp_summary = cpu_consume(exp_count, exp_ovf, &exp_props, prop_cap, admitted, admitted_n);
+    let exp_summary = cpu_consume(
+        exp_count, exp_ovf, &exp_props, prop_cap, admitted, admitted_n,
+    );
     let exp_admission = cpu_admit(exp_summary, admission_rules);
     let exp_fixture = cpu_fixture(exp_admission, mapping_table, mapping_n);
     assert_eq!(outcome.proposal_count, exp_count);
@@ -2297,10 +2383,7 @@ fn sead_act3_dense_fixture_record_corpus() {
             let exp = cpu_fixture(admission, &table, mapping_n);
             assert!(fixture_eq(outcome.fixture, exp), "dense[{idx}]");
         }
-        println!(
-            "sead_act3_dense: rows={} ordering={ORDERING_CLASS}",
-            64
-        );
+        println!("sead_act3_dense: rows={} ordering={ORDERING_CLASS}", 64);
     });
 }
 
@@ -2321,28 +2404,11 @@ fn sead_act3_act2_to_fixture_record_smoke() {
         let cap = 256u32;
         let prop_cap = 64u32;
         let outcome = run_bucket_reduce_propose_consume_gpu(
-            ctx,
-            &compact,
-            cap,
-            &rules,
-            prop_cap,
-            &admitted,
-            admitted_n,
-            &adm_rules,
-            &mapping,
-            mapping_n,
-            1,
+            ctx, &compact, cap, &rules, prop_cap, &admitted, admitted_n, &adm_rules, &mapping,
+            mapping_n, 1,
         );
         verify_chain_fixture(
-            &outcome,
-            &compact,
-            cap,
-            &rules,
-            prop_cap,
-            &admitted,
-            admitted_n,
-            &adm_rules,
-            &mapping,
+            &outcome, &compact, cap, &rules, prop_cap, &admitted, admitted_n, &adm_rules, &mapping,
             mapping_n,
         );
         println!(
@@ -2368,28 +2434,11 @@ fn sead_act3_full_chain_fixture_record_smoke() {
     let mapping_n = mapping_count();
     with_gpu(|ctx| {
         let outcome = run_bucket_reduce_propose_consume_gpu(
-            ctx,
-            &compact,
-            512,
-            &rules,
-            64,
-            &admitted,
-            admitted_n,
-            &adm_rules,
-            &mapping,
-            mapping_n,
+            ctx, &compact, 512, &rules, 64, &admitted, admitted_n, &adm_rules, &mapping, mapping_n,
             1,
         );
         verify_chain_fixture(
-            &outcome,
-            &compact,
-            512,
-            &rules,
-            64,
-            &admitted,
-            admitted_n,
-            &adm_rules,
-            &mapping,
+            &outcome, &compact, 512, &rules, 64, &admitted, admitted_n, &adm_rules, &mapping,
             mapping_n,
         );
         let (_, counts) = cpu_bucket_from_compact(&compact, 512);
@@ -2421,17 +2470,8 @@ fn sead_act3_perf_34k_fixture_records() {
     let mapping_n = mapping_count();
     with_gpu(|ctx| {
         let outcome = run_bucket_reduce_propose_consume_gpu(
-            ctx,
-            &records,
-            4096,
-            &rules,
-            64,
-            &admitted,
-            admitted_n,
-            &adm_rules,
-            &mapping,
-            mapping_n,
-            1,
+            ctx, &records, 4096, &rules, 64, &admitted, admitted_n, &adm_rules, &mapping,
+            mapping_n, 1,
         );
         let elapsed_ms = outcome.elapsed.as_secs_f64() * 1000.0;
         let per_record_us = elapsed_ms * 1000.0 / N as f64;
@@ -2457,17 +2497,8 @@ fn sead_act3_perf_34k_warm_repeated_dispatch() {
     let mapping_n = mapping_count();
     with_gpu(|ctx| {
         let outcome = run_bucket_reduce_propose_consume_gpu(
-            ctx,
-            &records,
-            4096,
-            &rules,
-            64,
-            &admitted,
-            admitted_n,
-            &adm_rules,
-            &mapping,
-            mapping_n,
-            REPEATS,
+            ctx, &records, 4096, &rules, 64, &admitted, admitted_n, &adm_rules, &mapping,
+            mapping_n, REPEATS,
         );
         let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
         let per_pipeline_ms = total_ms / REPEATS as f64;
@@ -2482,7 +2513,10 @@ fn sead_act3_perf_34k_warm_repeated_dispatch() {
 
 #[test]
 fn sead_act3_no_default_runtime_wiring() {
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
     let desc = landed_jit_kernel_descriptors()
         .into_iter()
         .find(|d| d.id == SEAD_ACT3_DESCRIPTOR_ID)

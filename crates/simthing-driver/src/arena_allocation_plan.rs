@@ -31,13 +31,12 @@ pub fn plan_arena_allocation(
     n_slots: u32,
 ) -> Result<ArenaAllocationPlan, AllocationPlanError> {
     for node in layout.iter_all() {
-        node.verify_child_contiguity()
-            .map_err(|e| match e {
-                HierarchyError::NonContiguousChildren { parent_slot } => {
-                    AllocationPlanError::NonContiguousChildren { parent_slot }
-                }
-                other => AllocationPlanError::Hierarchy(other),
-            })?;
+        node.verify_child_contiguity().map_err(|e| match e {
+            HierarchyError::NonContiguousChildren { parent_slot } => {
+                AllocationPlanError::NonContiguousChildren { parent_slot }
+            }
+            other => AllocationPlanError::Hierarchy(other),
+        })?;
     }
 
     let mut ops_cpu = Vec::new();
@@ -362,11 +361,10 @@ mod tests {
             .count();
         assert!(broadcast > 0);
         assert!(disburse > 0);
-        assert!(
-            plan.cpu_ops
-                .iter()
-                .any(|op| matches!(op.combine, CombineFn::EvalEML { .. }))
-        );
+        assert!(plan
+            .cpu_ops
+            .iter()
+            .any(|op| matches!(op.combine, CombineFn::EvalEML { .. })));
     }
 
     #[test]

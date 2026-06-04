@@ -173,7 +173,10 @@ fn summary_validity_unaffected_by_bulk_fill() {
         let refresh = session
             .tick_mapping(ctx, FirstSliceTickOptions::hot_path(), HIGH_WEIGHTS)
             .unwrap();
-        assert_eq!(refresh.summary.status, FirstSliceSummaryStatus::FreshThisTick);
+        assert_eq!(
+            refresh.summary.status,
+            FirstSliceSummaryStatus::FreshThisTick
+        );
         assert_eq!(refresh.readiness.gpu_bridge_bulk_col_fills, 1);
     });
 }

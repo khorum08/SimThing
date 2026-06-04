@@ -6,6 +6,10 @@ mod materialize_support;
 #[path = "support/resource_economy_session.rs"]
 mod session_support;
 
+use materialize_support::{
+    amount_transfer, compile_fixture, empty_registry, exact_eml_registry, register_amount_property,
+};
+use session_support::{amount_col, base_game_mode, try_gpu};
 use simthing_core::{discrete_transfer_registration_to_op, GateSpec, SimThing, SimThingKind};
 use simthing_driver::{
     materialize_resource_economy_registrations, run_transfer_recipe_burn_in,
@@ -14,11 +18,6 @@ use simthing_driver::{
 };
 use simthing_gpu::{discrete_transfer_registrations_to_transfer, plan_transfer_ops, GpuContext};
 use simthing_spec::{compile_resource_economy, ResourceEconomySpec, SpecError};
-use materialize_support::{
-    amount_transfer, compile_fixture, empty_registry, exact_eml_registry,
-    register_amount_property,
-};
-use session_support::{amount_col, base_game_mode, try_gpu};
 
 const TREASURY_INITIAL: f32 = 10.0;
 const TRANSFER_X: f32 = 3.0;
@@ -49,8 +48,14 @@ fn b0_scenario() -> simthing_driver::Scenario {
         treasury,
         simthing_core::PropertyValue::from_layout(&treasury_layout),
     );
-    world.add_property(sink0, simthing_core::PropertyValue::from_layout(&sink0_layout));
-    world.add_property(sink1, simthing_core::PropertyValue::from_layout(&sink1_layout));
+    world.add_property(
+        sink0,
+        simthing_core::PropertyValue::from_layout(&sink0_layout),
+    );
+    world.add_property(
+        sink1,
+        simthing_core::PropertyValue::from_layout(&sink1_layout),
+    );
 
     simthing_driver::Scenario {
         name: "b0_hard_currency_ordering".into(),
@@ -100,8 +105,7 @@ fn b0_order_band_wires_authored_transfer_bands() {
     register_amount_property(&mut reg, "core", "sink_1");
     let eml = exact_eml_registry(&[]);
     let compiled = compile_fixture(&b0_transfer_spec(), &reg, &eml);
-    let materialized =
-        materialize_resource_economy_registrations(&compiled, &reg, &eml).unwrap();
+    let materialized = materialize_resource_economy_registrations(&compiled, &reg, &eml).unwrap();
 
     assert_eq!(materialized.transfers[0].order_band, 0);
     assert_eq!(materialized.transfers[1].order_band, 1);
@@ -156,7 +160,10 @@ fn b0_cross_band_same_source_sequential_debit_succeeds_when_funds_sufficient() {
     )
     .expect("burn-in");
 
-    assert_eq!(report.max_abs_conservation_error.to_bits(), 0.0_f32.to_bits());
+    assert_eq!(
+        report.max_abs_conservation_error.to_bits(),
+        0.0_f32.to_bits()
+    );
     let out = state.read_values();
     assert_eq!(
         out[(0 * n_dims + treasury_col) as usize].to_bits(),
@@ -277,8 +284,7 @@ fn b0_gpu_cpu_oracle_parity_exact() {
     };
 
     let mut cpu_flat = flat.clone();
-    run_transfer_recipe_cpu_oracle(&mut cpu_flat, n_dims, &transfers, &[])
-        .expect("cpu oracle");
+    run_transfer_recipe_cpu_oracle(&mut cpu_flat, n_dims, &transfers, &[]).expect("cpu oracle");
 
     for &(slot, col) in &[(0, treasury_col), (0, sink0_col), (0, sink1_col)] {
         let idx = (slot * n_dims + col) as usize;
@@ -326,7 +332,10 @@ fn b0_replay_reproducibility_exact() {
     let b = run_once();
     assert!(a.replay_bit_exact);
     assert!(b.replay_bit_exact);
-    assert_eq!(a.max_abs_conservation_error.to_bits(), b.max_abs_conservation_error.to_bits());
+    assert_eq!(
+        a.max_abs_conservation_error.to_bits(),
+        b.max_abs_conservation_error.to_bits()
+    );
 }
 
 #[test]

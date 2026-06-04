@@ -53,7 +53,9 @@ pub fn collect_resource_flow_opt_in_telemetry(
     boundary_metrics: Option<&DynamicEnrollmentBoundaryMetrics>,
     extra_sync_count: u32,
 ) -> ResourceFlowOptInTelemetryReport {
-    let enrollment = session.last_resource_flow_dynamic_enrollment_report.as_ref();
+    let enrollment = session
+        .last_resource_flow_dynamic_enrollment_report
+        .as_ref();
     let metrics = boundary_metrics.cloned().unwrap_or_default();
 
     let dynamic_admissions = enrollment
@@ -86,9 +88,9 @@ pub fn collect_resource_flow_opt_in_telemetry(
         .unwrap_or(0);
     let n_bands = session.state.accumulator_resource_flow_bands;
     let max_abs_error = burn.map(|b| b.max_abs_error).unwrap_or(0.0);
-    let replay_bit_exact = burn.map(|b| b.replay_bit_exact).unwrap_or_else(|| {
-        max_abs_error.to_bits() == 0.0_f32.to_bits()
-    });
+    let replay_bit_exact = burn
+        .map(|b| b.replay_bit_exact)
+        .unwrap_or_else(|| max_abs_error.to_bits() == 0.0_f32.to_bits());
 
     ResourceFlowOptInTelemetryReport {
         scenario_name: scenario_name.into(),

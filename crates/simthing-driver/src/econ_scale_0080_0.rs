@@ -540,7 +540,11 @@ fn validate_scenario(scenario: &EconScale0080Scenario, diagnostics: &mut Vec<&'s
             diagnostics.push("participants_exceed_bounded_max");
         }
         for participant in &economy.participants {
-            if !scenario.faction_index.factions.contains(&participant.faction) {
+            if !scenario
+                .faction_index
+                .factions
+                .contains(&participant.faction)
+            {
                 diagnostics.push("participant_faction_out_of_bounded_set");
             }
             if participant.faction_index != participant.faction.faction_index() {
@@ -550,7 +554,10 @@ fn validate_scenario(scenario: &EconScale0080Scenario, diagnostics: &mut Vec<&'s
     }
 }
 
-fn validate_forbidden(forbidden: &EconScale0080ForbiddenRequests, diagnostics: &mut Vec<&'static str>) {
+fn validate_forbidden(
+    forbidden: &EconScale0080ForbiddenRequests,
+    diagnostics: &mut Vec<&'static str>,
+) {
     if forbidden.hard_currency {
         diagnostics.push("hard_currency");
     }
@@ -639,7 +646,9 @@ fn base_report(
     let subsidiarity_preserved = clearing_reports
         .iter()
         .all(|report| report.subsidiarity_preserved);
-    let parity_bit_exact = clearing_reports.iter().all(|report| report.parity_bit_exact);
+    let parity_bit_exact = clearing_reports
+        .iter()
+        .all(|report| report.parity_bit_exact);
 
     let mut report = EconScale0080RunReport {
         econ_scale_id: ECON_SCALE_0080_0_ID,

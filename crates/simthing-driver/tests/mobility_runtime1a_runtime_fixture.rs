@@ -5,8 +5,8 @@ mod mobility_runtime1a_fixture;
 
 use mobility_runtime1a_fixture::{
     run_mobility_runtime1a_driver_fixture, MobilityRuntime1aDriverFixtureInput,
-    MobilityRuntime1aDriverFixtureSession,
-    MOBILITY_RUNTIME1A_DRIVER_FIXTURE_ID, MOBILITY_RUNTIME1A_DRIVER_NAMED_GATE,
+    MobilityRuntime1aDriverFixtureSession, MOBILITY_RUNTIME1A_DRIVER_FIXTURE_ID,
+    MOBILITY_RUNTIME1A_DRIVER_NAMED_GATE,
 };
 use simthing_spec::{
     IdentityLane, MobilityAlloc0BlockSpec, MobilityAlloc0ForbiddenPathRequests,
@@ -43,7 +43,12 @@ fn live(parent_id: u64, key_id: u64, entity_id: u64, slot: u32) -> MobilityAlloc
     }
 }
 
-fn mv(entity_id: u64, origin_key: u64, destination_key: u64, arrival_order: u64) -> MobilityReenroll0Move {
+fn mv(
+    entity_id: u64,
+    origin_key: u64,
+    destination_key: u64,
+    arrival_order: u64,
+) -> MobilityReenroll0Move {
     MobilityReenroll0Move {
         entity_id,
         origin: key(1, origin_key),
@@ -173,7 +178,12 @@ fn composition_fixture() -> MobilityRuntime0CompositionInput {
         },
         owner: MobilityOwner0PlanInput {
             records: vec![
-                orec(100, 20, 1, vec![owner(MobilityOwner0ColumnKind::Faction, 7)]),
+                orec(
+                    100,
+                    20,
+                    1,
+                    vec![owner(MobilityOwner0ColumnKind::Faction, 7)],
+                ),
                 orec(2, 30, 1, vec![owner(MobilityOwner0ColumnKind::Faction, 7)]),
                 orec(3, 31, 1, vec![owner(MobilityOwner0ColumnKind::Species, 7)]),
             ],
@@ -193,13 +203,17 @@ fn fixture_input() -> MobilityRuntime1aDriverFixtureInput {
     }
 }
 
-fn rejected_with(forbidden: MobilityRuntime1aForbiddenPathRequests) -> mobility_runtime1a_fixture::MobilityRuntime1aDriverFixtureReport {
+fn rejected_with(
+    forbidden: MobilityRuntime1aForbiddenPathRequests,
+) -> mobility_runtime1a_fixture::MobilityRuntime1aDriverFixtureReport {
     let mut input = fixture_input();
     input.forbidden = forbidden;
     run_mobility_runtime1a_driver_fixture(&input)
 }
 
-fn spec_report(report: &mobility_runtime1a_fixture::MobilityRuntime1aDriverFixtureReport) -> &simthing_spec::MobilityRuntime1aProductionFixtureReport {
+fn spec_report(
+    report: &mobility_runtime1a_fixture::MobilityRuntime1aDriverFixtureReport,
+) -> &simthing_spec::MobilityRuntime1aProductionFixtureReport {
     report.spec_report.as_ref().expect("spec report present")
 }
 
@@ -250,8 +264,14 @@ fn runtime1a_runtime_fixture_default_simsession_unchanged() {
 fn runtime1a_runtime_fixture_registers_named_cpu_fixture() {
     let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
     assert!(report.admitted);
-    assert_eq!(report.driver_fixture_id, MOBILITY_RUNTIME1A_DRIVER_FIXTURE_ID);
-    assert_eq!(report.driver_named_gate, MOBILITY_RUNTIME1A_DRIVER_NAMED_GATE);
+    assert_eq!(
+        report.driver_fixture_id,
+        MOBILITY_RUNTIME1A_DRIVER_FIXTURE_ID
+    );
+    assert_eq!(
+        report.driver_named_gate,
+        MOBILITY_RUNTIME1A_DRIVER_NAMED_GATE
+    );
     assert!(report.fixture_invoked);
     assert_eq!(report.spec_fixture_id, MOBILITY_RUNTIME1A_ID);
     assert_eq!(report.spec_named_gate, MOBILITY_RUNTIME1A_NAMED_GATE);
@@ -300,7 +320,10 @@ fn runtime1a_runtime_fixture_delegates_to_spec_fixture_model() {
 fn runtime1a_runtime_fixture_preserves_runtime0_composition_order() {
     let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
     assert!(report.admitted);
-    assert_eq!(spec_report(&report).substrate_order, MOBILITY_RUNTIME0_ORDER);
+    assert_eq!(
+        spec_report(&report).substrate_order,
+        MOBILITY_RUNTIME0_ORDER
+    );
 }
 
 #[test]
@@ -369,7 +392,9 @@ fn runtime1a_runtime_fixture_rejects_cpu_planner_urgency_commitment() {
     forbidden.cpu_planner_urgency_commitment = true;
     let report = rejected_with(forbidden);
     assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"cpu_planner_urgency_commitment"));
+    assert!(report
+        .diagnostics
+        .contains(&"cpu_planner_urgency_commitment"));
 }
 
 #[test]
@@ -378,7 +403,9 @@ fn runtime1a_runtime_fixture_rejects_gpu_passgraph_registration() {
     forbidden.gpu_pass_graph_wiring = true;
     let report = rejected_with(forbidden);
     assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"unscoped_gpu_passgraph_wiring"));
+    assert!(report
+        .diagnostics
+        .contains(&"unscoped_gpu_passgraph_wiring"));
 }
 
 #[test]

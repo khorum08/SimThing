@@ -41,7 +41,8 @@ fn assert_admission_err(spec: &KernelDescriptorSpec, reason_substr: &str) {
 }
 
 fn assert_exact_input_err(producer: &KernelDescriptorSpec, inputs: &[&str], reason_substr: &str) {
-    let err = validate_exact_kernel_inputs(producer, inputs).expect_err("expected exact-input failure");
+    let err =
+        validate_exact_kernel_inputs(producer, inputs).expect_err("expected exact-input failure");
     match err {
         SpecError::JitKernelDescriptorAdmission { reason, .. } => {
             assert!(
@@ -76,10 +77,7 @@ fn jit_desc1_rejects_approximate_output_as_exact_input() {
     validate_exact_kernel_inputs(&grad1(), &["score"]).expect("score exact");
 
     assert!(
-        grad1()
-            .writes
-            .iter()
-            .all(|out| out.name != "mag2"),
+        grad1().writes.iter().all(|out| out.name != "mag2"),
         "GRAD-1 must not write mag2"
     );
 }

@@ -137,10 +137,7 @@ fn rf_t5_default_profile_populated_spec_stays_inactive() {
         telemetry.execution_profile_name,
         ResourceFlowExecutionProfile::DefaultDisabled.as_str()
     );
-    assert_eq!(
-        telemetry.participants_planned,
-        fixture.participant_count
-    );
+    assert_eq!(telemetry.participants_planned, fixture.participant_count);
 }
 
 #[test]

@@ -3,10 +3,10 @@
 //! Integrates accepted SEAD Self-AI Proposal Pipeline V1 route replay into the default-off
 //! FrontierV1 fixture after GPU mapping and GPU flat-star Resource Flow verification.
 
-#[path = "support/frontier_v1.rs"]
-mod frontier_v1;
 #[path = "support/e11_flat_star.rs"]
 mod e11_flat_star;
+#[path = "support/frontier_v1.rs"]
+mod frontier_v1;
 #[path = "support/sead_v1_route_replay.rs"]
 mod sead_v1_route_replay;
 
@@ -246,12 +246,9 @@ fn run_frontier_v1_sead_route_replay(
     assert!(sead_consumed.act2_registered);
 
     let spec = frontier_v1_mapping_field_spec();
-    let mut mapping_session = FirstSliceMappingSession::open(
-        ctx,
-        MappingExecutionProfile::SparseRegionFieldV1,
-        &spec,
-    )
-    .expect("mapping session opens");
+    let mut mapping_session =
+        FirstSliceMappingSession::open(ctx, MappingExecutionProfile::SparseRegionFieldV1, &spec)
+            .expect("mapping session opens");
     mapping_session
         .queue_seeds(&frontier_v1_gpu_seeds(config))
         .expect("queue seeds");
@@ -279,8 +276,14 @@ fn run_frontier_v1_sead_route_replay(
     let mut fx = open_frontier_v1_flat_star_gpu();
     let gpu_rf = run_gpu_flat_star_allocation(&mut fx, allocator_total);
 
-    assert_eq!(gpu_rf.faction_a_allocation, cpu_output.resource_flow.allocated_a);
-    assert_eq!(gpu_rf.faction_b_allocation, cpu_output.resource_flow.allocated_b);
+    assert_eq!(
+        gpu_rf.faction_a_allocation,
+        cpu_output.resource_flow.allocated_a
+    );
+    assert_eq!(
+        gpu_rf.faction_b_allocation,
+        cpu_output.resource_flow.allocated_b
+    );
     assert_eq!(gpu_rf.allocator_total, allocator_total);
 
     let route_replay = build_route_replay_summary(config, skeleton);
@@ -288,12 +291,18 @@ fn run_frontier_v1_sead_route_replay(
     let rf_hash = hash_gpu_resource_flow(gpu_rf);
     let sead_hash = hash_sead_replay_summary(sead_replay);
 
-    assert_eq!(route_replay.resource_route_code, FRONTIER_V1_ALLOCATOR_ROUTE_CODE);
+    assert_eq!(
+        route_replay.resource_route_code,
+        FRONTIER_V1_ALLOCATOR_ROUTE_CODE
+    );
     assert_eq!(
         route_replay.structural_route_code,
         FRONTIER_V1_STRUCTURAL_ROUTE_CODE
     );
-    assert_eq!(route_replay.movement_route_code, FRONTIER_V1_MOVEMENT_ROUTE_CODE);
+    assert_eq!(
+        route_replay.movement_route_code,
+        FRONTIER_V1_MOVEMENT_ROUTE_CODE
+    );
     assert_eq!(route_replay.route_overflow_flags, 0);
     assert_eq!(route_replay.invalid_route_count, 0);
     assert_eq!(
@@ -338,7 +347,10 @@ fn frontier_v1_4_happy_path_sead_route_replay_runs() {
         let run = run_frontier_v1_sead_route_replay(ctx, &skeleton, &config);
 
         assert!(run.summary.accepted);
-        assert_eq!(run.summary.mapping_status, FrontierV1FieldStatus::GpuVerified);
+        assert_eq!(
+            run.summary.mapping_status,
+            FrontierV1FieldStatus::GpuVerified
+        );
         assert_eq!(
             run.summary.resource_flow_status,
             FrontierV1FieldStatus::GpuVerified
@@ -347,7 +359,10 @@ fn frontier_v1_4_happy_path_sead_route_replay_runs() {
             run.summary.sead_pipe_status,
             FrontierV1FieldStatus::ReplayAccepted
         );
-        assert_eq!(run.summary.route_status, FrontierV1FieldStatus::ReplayAccepted);
+        assert_eq!(
+            run.summary.route_status,
+            FrontierV1FieldStatus::ReplayAccepted
+        );
         assert!(!skeleton.enabled_by_default);
         assert!(run.sead_consumed.pipe0_registered);
         assert!(run.sead_consumed.act2_registered);
@@ -394,7 +409,10 @@ fn frontier_v1_4_route_replay_cpu_oracle_parity() {
             run.route_replay.movement_route_count,
             run.cpu_output.routes.movement_route_count
         );
-        assert_eq!(run.sead_replay.proposal_count, run.cpu_output.proposal_count);
+        assert_eq!(
+            run.sead_replay.proposal_count,
+            run.cpu_output.proposal_count
+        );
         assert_eq!(run.sead_replay.event_count, run.cpu_output.event_count);
         assert_eq!(
             classify_proposal_route(ProposalKind::ResourceDispatch, &skeleton),
@@ -441,8 +459,14 @@ fn frontier_v1_4_route_replay_reproducibility() {
 
 #[test]
 fn frontier_v1_4_defaults_remain_disabled() {
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
-    assert_eq!(ResourceFlowOptInMode::default(), ResourceFlowOptInMode::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
+    assert_eq!(
+        ResourceFlowOptInMode::default(),
+        ResourceFlowOptInMode::Disabled
+    );
     assert_eq!(
         ResourceFlowExecutionProfile::default(),
         ResourceFlowExecutionProfile::DefaultDisabled
@@ -454,7 +478,9 @@ fn frontier_v1_4_defaults_remain_disabled() {
     ));
     assert!(!sim_lib.contains("FrontierV1"));
 
-    println!("frontier_v1_4_defaults: disabled=true fixture_id={FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID}");
+    println!(
+        "frontier_v1_4_defaults: disabled=true fixture_id={FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID}"
+    );
 }
 
 #[test]
@@ -517,7 +543,9 @@ fn frontier_v1_4_coupling_rejects_non_frontier_profile() {
     assert!(!other.coupling_ok);
     assert!(!other.accepted);
 
-    println!("frontier_v1_4_coupling: frontier_only=true fixture_id={FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID}");
+    println!(
+        "frontier_v1_4_coupling: frontier_only=true fixture_id={FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID}"
+    );
     let _ = config;
 }
 
@@ -525,13 +553,22 @@ fn frontier_v1_4_coupling_rejects_non_frontier_profile() {
 fn frontier_v1_4_deferred_features_reject() {
     let deferred: [(&str, Box<dyn Fn(&mut FrontierV1ScenarioSkeleton)>); 10] = [
         ("atlas", Box::new(|s| s.theater.request_atlas = true)),
-        ("active_mask", Box::new(|s| s.theater.request_active_mask = true)),
-        ("perception", Box::new(|s| s.theater.request_perception = true)),
+        (
+            "active_mask",
+            Box::new(|s| s.theater.request_active_mask = true),
+        ),
+        (
+            "perception",
+            Box::new(|s| s.theater.request_perception = true),
+        ),
         (
             "source_identity",
             Box::new(|s| s.theater.request_source_identity = true),
         ),
-        ("nested_e11b", Box::new(|s| s.resource_flow.nested_e11b = true)),
+        (
+            "nested_e11b",
+            Box::new(|s| s.resource_flow.nested_e11b = true),
+        ),
         (
             "e11b_5",
             Box::new(|s| s.resource_flow.e11b_5_dynamic_enrollment = true),
@@ -575,17 +612,20 @@ fn frontier_v1_4_no_simthing_sim_semantic_awareness() {
         "proposal",
         "ResourceFlow",
     ] {
-        assert!(!sim_lib.contains(needle), "simthing-sim must not contain `{needle}`");
+        assert!(
+            !sim_lib.contains(needle),
+            "simthing-sim must not contain `{needle}`"
+        );
     }
-    println!("frontier_v1_4_sim: semantic_free=true fixture_id={FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID}");
+    println!(
+        "frontier_v1_4_sim: semantic_free=true fixture_id={FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID}"
+    );
 }
 
 #[test]
 fn frontier_v1_4_no_unauthorized_gpu_primitive() {
     let frontier_descriptor = landed_jit_kernel_descriptors().into_iter().find(|d| {
-        d.id.contains("frontier")
-            || d.id.contains("FrontierV1")
-            || d.id.contains("frontier_v1_4")
+        d.id.contains("frontier") || d.id.contains("FrontierV1") || d.id.contains("frontier_v1_4")
     });
     assert!(frontier_descriptor.is_none());
 
@@ -598,8 +638,14 @@ fn frontier_v1_4_no_unauthorized_gpu_primitive() {
                 .and_then(|n| n.to_str())
                 .unwrap_or_default()
                 .to_ascii_lowercase();
-            assert!(!name.contains("frontier"), "no Frontier WGSL: {}", path.display());
+            assert!(
+                !name.contains("frontier"),
+                "no Frontier WGSL: {}",
+                path.display()
+            );
         }
     }
-    println!("frontier_v1_4_gpu: no_new_primitive=true fixture_id={FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID}");
+    println!(
+        "frontier_v1_4_gpu: no_new_primitive=true fixture_id={FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID}"
+    );
 }

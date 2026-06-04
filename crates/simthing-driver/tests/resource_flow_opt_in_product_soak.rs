@@ -78,7 +78,10 @@ fn rf_t3_product_multi_session_replay_same_seed() {
     };
     let fixture = fixture_product_multi_session_replay();
     let (report_a, report_b) = run_multi_session_replay(&fixture).expect("replay");
-    assert_eq!(report_a.max_abs_error.to_bits(), report_b.max_abs_error.to_bits());
+    assert_eq!(
+        report_a.max_abs_error.to_bits(),
+        report_b.max_abs_error.to_bits()
+    );
     assert_eq!(report_a.ticks_checked, report_b.ticks_checked);
     assert!(report_a.replay_bit_exact);
     assert!(report_b.replay_bit_exact);
@@ -110,10 +113,7 @@ fn rf_t3_disabled_populated_spec_inactive_but_reported() {
     let telemetry = simthing_driver::telemetry_for_open_session(&fx, &fixture, None);
     assert_eq!(telemetry.scenario_name, RF_T3_PRODUCT_DISABLED);
     assert!(!telemetry.resource_flow_enabled);
-    assert_eq!(
-        telemetry.participants_planned,
-        fixture.participant_count
-    );
+    assert_eq!(telemetry.participants_planned, fixture.participant_count);
 }
 
 #[test]

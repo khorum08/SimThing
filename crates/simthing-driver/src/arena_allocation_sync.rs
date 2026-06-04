@@ -4,7 +4,9 @@ use simthing_core::{DimensionRegistry, EmlExpressionRegistry};
 use simthing_gpu::{build_governed_pairs, WorldGpuState};
 
 use crate::arena_allocation_plan::{plan_arena_allocation, ArenaAllocationPlan};
-use crate::arena_hierarchy::{build_execution_plan, resolve_node_columns, ArenaExecutionPlan, HierarchyError};
+use crate::arena_hierarchy::{
+    build_execution_plan, resolve_node_columns, ArenaExecutionPlan, HierarchyError,
+};
 use crate::arena_participant::ArenaParticipantScaffold;
 use crate::arena_registry::ArenaRegistry;
 use crate::child_share_eml::register_child_share_formula;
@@ -56,7 +58,10 @@ pub fn sync_resource_flow_accumulator(
     let mut eml_registry = EmlExpressionRegistry::new();
     for arena in &plan.arenas {
         let layout = registry.property(arena.flow_property_id).layout.clone();
-        let cols = resolve_node_columns(&layout, &arena_registry.arenas[arena.arena_idx as usize].name)?;
+        let cols = resolve_node_columns(
+            &layout,
+            &arena_registry.arenas[arena.arena_idx as usize].name,
+        )?;
         register_child_share_formula(&mut eml_registry, cols).expect("child_share EML registers");
     }
 
@@ -64,8 +69,8 @@ pub fn sync_resource_flow_accumulator(
     let mut combined_cpu = Vec::new();
     let mut max_bands = 0u32;
     for arena in &plan.arenas {
-        let alloc = plan_arena_allocation(arena, &governed, state.n_slots)
-            .map_err(|e| match e {
+        let alloc =
+            plan_arena_allocation(arena, &governed, state.n_slots).map_err(|e| match e {
                 crate::arena_allocation_plan::AllocationPlanError::Hierarchy(h) => h,
                 _ => HierarchyError::EmptyParticipants {
                     arena: arena_registry.arenas[arena.arena_idx as usize].name.clone(),
@@ -75,8 +80,7 @@ pub fn sync_resource_flow_accumulator(
         combined_cpu.extend(alloc.cpu_ops);
     }
 
-    state
-        .sync_resource_flow_ops_from_cpu(&combined_cpu, max_bands, &eml_registry)?;
+    state.sync_resource_flow_ops_from_cpu(&combined_cpu, max_bands, &eml_registry)?;
 
     Ok(ResourceFlowSyncReport {
         arenas_planned: plan.arenas.len() as u32,

@@ -37,10 +37,6 @@ pub use runtime::{
 pub use session::{
     set_debug_readback_allowed, AccumulatorOpSession, AccumulatorOpSessionError, WORKGROUP_SIZE,
 };
-pub use wgsl_path::{
-    classify_ao_wgsl0_plan, ao_wgsl0_fast_path_compatible, AoWgsl0Compatibility,
-    AoWgsl0FallbackReason, AoWgsl0PlanShape, AO_WGSL0_ENTRY_POINT, AO_WGSL0_N_BANDS_UNIFORM_FIELD,
-};
 pub use types::AccumulatorOpGpu;
 pub use types::{
     combine_kind, consume_kind, gate_kind, group_checksums, scale_kind, slot_checksum, source_kind,
@@ -48,5 +44,9 @@ pub use types::{
     EmissionRecord, EmissionRecordGpu, EmlTreeRangeGpu, SlotSummary, SlotSummaryGpu,
     ThresholdEmission, ThresholdEmissionGpu, DEFAULT_EMISSION_CAPACITY,
     DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+};
+pub use wgsl_path::{
+    ao_wgsl0_fast_path_compatible, classify_ao_wgsl0_plan, AoWgsl0Compatibility,
+    AoWgsl0FallbackReason, AoWgsl0PlanShape, AO_WGSL0_ENTRY_POINT, AO_WGSL0_N_BANDS_UNIFORM_FIELD,
 };
 pub use world_summary::WorldSummaryRuntime;

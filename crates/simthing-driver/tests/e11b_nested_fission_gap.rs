@@ -3,8 +3,6 @@
 #[path = "support/e11_flat_star.rs"]
 mod e11_flat_star;
 
-
-
 use simthing_core::{
     AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry,
     EmlExpressionRegistry, LogTier, SimThing, SimThingId, SimThingKind, SubFieldRole, SubFieldSpec,
@@ -250,12 +248,8 @@ fn layout_from_fixture(f: &NestedFixture) -> simthing_driver::ArenaTreeLayout {
 fn install_nested_gaps(f: &mut NestedFixture, gap_k: u32) {
     let layout = layout_from_fixture(f);
     let interiors = layout.interior_participant_slots();
-    let gap_block_first = reserve_gap_pools_for_parent_slots(
-        &mut f.scaffold,
-        &mut f.alloc,
-        &interiors,
-        gap_k,
-    );
+    let gap_block_first =
+        reserve_gap_pools_for_parent_slots(&mut f.scaffold, &mut f.alloc, &interiors, gap_k);
     let siblings = arena_participant_sibling_slots(&f.root, f.arena_root_id, &f.alloc);
     f.scaffold.reports.push(ArenaParticipantAllocationReport {
         arena: "food".into(),
@@ -422,7 +416,11 @@ fn e11b_nested_gap_child_does_not_become_allocation_leaf() {
     assert_eq!(leaves_before, leaves_after);
     assert!(!layout_after.participant_slots().contains(&gap_slot));
     let (first, count) = arena_sibling_range(&f);
-    assert!(!slot_in_participant_sibling_range(first.unwrap(), count, gap_slot));
+    assert!(!slot_in_participant_sibling_range(
+        first.unwrap(),
+        count,
+        gap_slot
+    ));
 }
 
 #[test]
@@ -571,10 +569,7 @@ fn e11b_nested_replay_same_seed_same_gap_state() {
     install_nested_gaps(&mut f, 2);
     let mid_slot = f.alloc.slot_of(f.mid_ids.node_id).unwrap();
 
-    fn claim_sequence(
-        f: &mut NestedFixture,
-        mid_slot: u32,
-    ) -> (HashMap<u32, Vec<u32>>, Vec<u32>) {
+    fn claim_sequence(f: &mut NestedFixture, mid_slot: u32) -> (HashMap<u32, Vec<u32>>, Vec<u32>) {
         try_alloc_participant_child_in_gap(
             &mut f.scaffold,
             mid_slot,
@@ -611,7 +606,9 @@ fn e11b_nested_flat_star_gap_regression_unchanged() {
     let participants: Vec<_> = root
         .children
         .iter()
-        .map(|child| ExplicitParticipantSpec::flat(alloc.slot_of(child.id).unwrap(), child.id.raw()))
+        .map(|child| {
+            ExplicitParticipantSpec::flat(alloc.slot_of(child.id).unwrap(), child.id.raw())
+        })
         .collect();
     let spec = ResourceFlowSpec {
         arenas: vec![ArenaSpec {

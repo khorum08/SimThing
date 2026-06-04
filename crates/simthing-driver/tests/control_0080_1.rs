@@ -17,9 +17,7 @@ fn rejected_with(
     admit_control_0080_1(&input)
 }
 
-fn with_commands(
-    commands: Vec<Control0081Command>,
-) -> simthing_driver::Control0081AdmissionReport {
+fn with_commands(commands: Vec<Control0081Command>) -> simthing_driver::Control0081AdmissionReport {
     let mut input = Control0081AdmissionInput::explicit_opt_in();
     input.commands = Control0081CommandBatch { commands };
     admit_control_0080_1(&input)
@@ -138,7 +136,9 @@ fn control_0080_1_rejects_direct_terran_move() {
 
     let rejected = rejected_with(|forbidden| forbidden.direct_terran_move = true);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"direct_terran_move_rejected"));
+    assert!(rejected
+        .diagnostics
+        .contains(&"direct_terran_move_rejected"));
 }
 
 #[test]

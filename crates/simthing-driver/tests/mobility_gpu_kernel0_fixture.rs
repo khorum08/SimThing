@@ -6,9 +6,10 @@ mod mobility_gpu_kernel0_fixture;
 use mobility_gpu_kernel0_fixture::{
     cpu_column_transform_oracle, mobility_gpu_kernel0_builtin_wgsl_is_semantic_free,
     run_mobility_gpu_kernel0_fixture, MobilityGpuKernel0ColumnProbe,
-    MobilityGpuKernel0FixtureInput, MobilityGpuKernel0ForbiddenPathRequests, MobilityGpuKernel0Gate,
-    MobilityGpuKernel0ParityClassification, MOBILITY_GPU_KERNEL0_FIXTURE_ID,
-    MOBILITY_GPU_KERNEL0_KERNEL_ID, MOBILITY_GPU_KERNEL0_NAMED_GATE,
+    MobilityGpuKernel0FixtureInput, MobilityGpuKernel0ForbiddenPathRequests,
+    MobilityGpuKernel0Gate, MobilityGpuKernel0ParityClassification,
+    MOBILITY_GPU_KERNEL0_FIXTURE_ID, MOBILITY_GPU_KERNEL0_KERNEL_ID,
+    MOBILITY_GPU_KERNEL0_NAMED_GATE,
 };
 
 fn fixture_input() -> MobilityGpuKernel0FixtureInput {
@@ -39,7 +40,9 @@ fn mobility_gpu_kernel0_explicit_opt_in_only() {
     default_on.gate.enabled_by_default = true;
     let rejected = run_mobility_gpu_kernel0_fixture(&default_on);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"mobility_gpu_kernel0_default_on_rejected"));
+    assert!(rejected
+        .diagnostics
+        .contains(&"mobility_gpu_kernel0_default_on_rejected"));
 
     let report = run_mobility_gpu_kernel0_fixture(&fixture_input());
     assert!(report.admitted);
@@ -86,7 +89,9 @@ fn mobility_gpu_kernel0_rejects_designer_authored_shader_input() {
     forbidden.designer_authored_shader_input = true;
     let report = rejected_with(forbidden);
     assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"designer_authored_shader_input"));
+    assert!(report
+        .diagnostics
+        .contains(&"designer_authored_shader_input"));
 }
 
 #[test]
@@ -154,7 +159,10 @@ fn mobility_gpu_kernel0_classifies_exact_parity_or_honest_unavailable() {
             | MobilityGpuKernel0ParityClassification::GpuUnavailable
     ));
     if report.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity {
-        assert_eq!(report.cpu_oracle_checksum, report.gpu_result_checksum.unwrap());
+        assert_eq!(
+            report.cpu_oracle_checksum,
+            report.gpu_result_checksum.unwrap()
+        );
     }
 }
 

@@ -88,10 +88,8 @@ fn load_m5e_specs() -> [simthing_spec::RegionFieldSpec; 4] {
 
 fn compile_m5e_frame() -> Vec<simthing_spec::CompiledRegionFieldPreview> {
     let specs = load_m5e_specs();
-    compile_region_field_frame_preview(&[
-        &specs[0], &specs[1], &specs[2], &specs[3],
-    ])
-    .expect("M-5E frame admits under gradient strict-sink rule")
+    compile_region_field_frame_preview(&[&specs[0], &specs[1], &specs[2], &specs[3]])
+        .expect("M-5E frame admits under gradient strict-sink rule")
 }
 
 struct ParentColumns {
@@ -164,8 +162,7 @@ fn eval_m5e_pressure(parents: &ParentColumns) -> f32 {
     set_col(&mut values, 15, 0.0);
     set_col(&mut values, 16, 0.0);
 
-    let ema_scarcity =
-        eval_eml_postfix(&compiled.gadgets[0].nodes, EVAL_SLOT, &values, N_DIMS);
+    let ema_scarcity = eval_eml_postfix(&compiled.gadgets[0].nodes, EVAL_SLOT, &values, N_DIMS);
     set_col(&mut values, 13, ema_scarcity);
     let ema_price = eval_eml_postfix(&compiled.gadgets[1].nodes, EVAL_SLOT, &values, N_DIMS);
     set_col(&mut values, 14, ema_price);
@@ -254,9 +251,8 @@ fn m5e_fields_use_single_target_gradients_and_slotrange_sum() {
         );
     }
 
-    let fixture_blob = format!(
-        "{SCALAR_FIELD_RON}{PRICE_GX_RON}{LABOR_GY_RON}{LOGISTICS_GX_RON}{L3_STACK_RON}"
-    );
+    let fixture_blob =
+        format!("{SCALAR_FIELD_RON}{PRICE_GX_RON}{LABOR_GY_RON}{LOGISTICS_GX_RON}{L3_STACK_RON}");
     assert!(!fixture_blob.contains("GradientXY"));
     assert!(!fixture_blob.contains("output_col_x"));
     assert!(!fixture_blob.contains("output_col_y"));
@@ -330,8 +326,7 @@ fn m5e_integrated_pressure_signal_is_finite_and_deterministic() {
     set_col(&mut values, 15, 0.0);
     set_col(&mut values, 16, 0.0);
 
-    let ema_scarcity =
-        eval_eml_postfix(&compiled.gadgets[0].nodes, EVAL_SLOT, &values, N_DIMS);
+    let ema_scarcity = eval_eml_postfix(&compiled.gadgets[0].nodes, EVAL_SLOT, &values, N_DIMS);
     assert!((ema_scarcity - oracle_ema(parents.scarcity, 0.0, 0.85)).abs() < 1e-5);
     set_col(&mut values, 13, ema_scarcity);
 
@@ -347,8 +342,7 @@ fn m5e_integrated_pressure_signal_is_finite_and_deterministic() {
     assert!((ema_logistics - oracle_ema(parents.logistics_gx, 0.0, 0.88)).abs() < 1e-5);
     set_col(&mut values, 16, ema_logistics);
 
-    let pressure =
-        eval_eml_postfix(&compiled.gadgets[4].nodes, EVAL_SLOT, &values, N_DIMS);
+    let pressure = eval_eml_postfix(&compiled.gadgets[4].nodes, EVAL_SLOT, &values, N_DIMS);
     let oracle_pressure = oracle_weighted_accumulator(
         &[ema_scarcity, ema_price, ema_labor, ema_logistics],
         &PRESSURE_WEIGHTS,
@@ -396,18 +390,9 @@ fn m5e_pressure_rises_with_higher_scarcity_seed() {
 fn m5e_gradient_fields_gpu_parity_single_target() {
     with_gpu(|ctx| {
         for (ron, expected_op) in [
-            (
-                PRICE_GX_RON,
-                StructuredFieldStencilOperator::GradientX,
-            ),
-            (
-                LABOR_GY_RON,
-                StructuredFieldStencilOperator::GradientY,
-            ),
-            (
-                LOGISTICS_GX_RON,
-                StructuredFieldStencilOperator::GradientX,
-            ),
+            (PRICE_GX_RON, StructuredFieldStencilOperator::GradientX),
+            (LABOR_GY_RON, StructuredFieldStencilOperator::GradientY),
+            (LOGISTICS_GX_RON, StructuredFieldStencilOperator::GradientX),
         ] {
             let spec = deserialize_region_field_ron(ron).expect("parse");
             let preview = compile_region_field_preview(&spec).expect("admit");

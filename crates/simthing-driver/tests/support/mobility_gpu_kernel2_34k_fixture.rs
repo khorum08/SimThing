@@ -7,8 +7,9 @@
 mod mobility_gpu_kernel1_dispatch_fixture;
 
 use mobility_gpu_kernel1_dispatch_fixture::{
-    run_mobility_gpu_kernel1_fixture, MobilityGpuKernel1FixtureInput, MobilityGpuKernel1FixtureReport,
-    MobilityGpuKernel1ForbiddenPathRequests, MobilityGpuKernel1Gate,
+    run_mobility_gpu_kernel1_fixture, MobilityGpuKernel1FixtureInput,
+    MobilityGpuKernel1FixtureReport, MobilityGpuKernel1ForbiddenPathRequests,
+    MobilityGpuKernel1Gate,
 };
 
 pub use mobility_gpu_kernel1_dispatch_fixture::{
@@ -152,7 +153,9 @@ fn move_mask_for_row(i: usize) -> bool {
     if i % MOBILITY_GPU_KERNEL2_SPARSE_STRIDE == 0 {
         return true;
     }
-    if (MOBILITY_GPU_KERNEL2_DENSE_CLUSTER_START..MOBILITY_GPU_KERNEL2_DENSE_CLUSTER_END).contains(&i) {
+    if (MOBILITY_GPU_KERNEL2_DENSE_CLUSTER_START..MOBILITY_GPU_KERNEL2_DENSE_CLUSTER_END)
+        .contains(&i)
+    {
         return true;
     }
     if (20_000..20_100).contains(&i) {
@@ -179,7 +182,10 @@ fn to_kernel1_forbidden(
     }
 }
 
-fn kernel1_input(input: &MobilityGpuKernel2FixtureInput, columns: Option<MobilityGpuKernel0ColumnProbe>) -> MobilityGpuKernel1FixtureInput {
+fn kernel1_input(
+    input: &MobilityGpuKernel2FixtureInput,
+    columns: Option<MobilityGpuKernel0ColumnProbe>,
+) -> MobilityGpuKernel1FixtureInput {
     MobilityGpuKernel1FixtureInput {
         gate: to_kernel1_gate(input.gate),
         forbidden: to_kernel1_forbidden(&input.forbidden),
@@ -275,7 +281,9 @@ fn shell(input: &MobilityGpuKernel2FixtureInput) -> MobilityGpuKernel2FixtureRep
     }
 }
 
-fn disabled_no_op_report(input: &MobilityGpuKernel2FixtureInput) -> MobilityGpuKernel2FixtureReport {
+fn disabled_no_op_report(
+    input: &MobilityGpuKernel2FixtureInput,
+) -> MobilityGpuKernel2FixtureReport {
     let mut report = shell(input);
     report.admitted = true;
     report.disabled_no_op = true;

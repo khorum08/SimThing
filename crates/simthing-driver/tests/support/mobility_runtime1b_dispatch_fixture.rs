@@ -15,7 +15,7 @@ use mobility_runtime1b_fixture::{
     run_mobility_runtime1b_passgraph_fixture, MobilityRuntime1bPassgraphFixtureReport,
 };
 
-pub use gpu_exec0_fixture::{GpuExec0ParityClassification, GpuExec0FixtureReport};
+pub use gpu_exec0_fixture::{GpuExec0FixtureReport, GpuExec0ParityClassification};
 pub use mobility_runtime1b_fixture::{
     MobilityRuntime1aDriverFixtureInput, MobilityRuntime1bForbiddenPathRequests,
     MobilityRuntime1bPassgraphFixtureInput, MobilityRuntime1bPassgraphGate,
@@ -71,9 +71,7 @@ pub struct MobilityRuntime1bDispatch0FixtureInput {
 }
 
 impl MobilityRuntime1bDispatch0FixtureInput {
-    pub fn default_dispatch_probe(
-        passgraph: MobilityRuntime1bPassgraphFixtureInput,
-    ) -> Self {
+    pub fn default_dispatch_probe(passgraph: MobilityRuntime1bPassgraphFixtureInput) -> Self {
         Self {
             gate: MobilityRuntime1bDispatch0Gate::registration_and_dispatch(),
             forbidden: MobilityRuntime1bDispatch0ForbiddenPathRequests::default(),
@@ -178,7 +176,9 @@ fn validate_forbidden(
     }
 }
 
-fn shell(input: &MobilityRuntime1bDispatch0FixtureInput) -> MobilityRuntime1bDispatch0FixtureReport {
+fn shell(
+    input: &MobilityRuntime1bDispatch0FixtureInput,
+) -> MobilityRuntime1bDispatch0FixtureReport {
     MobilityRuntime1bDispatch0FixtureReport {
         fixture_id: MOBILITY_RUNTIME1B_DISPATCH0_FIXTURE_ID,
         named_gate: MOBILITY_RUNTIME1B_DISPATCH0_NAMED_GATE,

@@ -12,14 +12,14 @@ use crate::resource_flow_opt_in_burn_in::{
     RF_CONTINUED_DYNAMIC_POLICY_A, RF_CONTINUED_MULTI_ARENA, RF_CONTINUED_REPLAY,
     RF_CONTINUED_STATIC_512, RF_CONTINUED_STATIC_SKEWED,
 };
+use crate::resource_flow_opt_in_telemetry::{
+    collect_resource_flow_opt_in_telemetry, ResourceFlowFlagSource,
+    ResourceFlowOptInTelemetryReport,
+};
 use crate::resource_flow_scenario_class_burn_in::{
     assert_profile_telemetry_contract, fixture_profile_dynamic_fission_cadence,
     fixture_profile_multi_arena_no_coupling, fixture_profile_multi_session_replay,
     open_profile_session, run_profile_soak_with_telemetry,
-};
-use crate::resource_flow_opt_in_telemetry::{
-    collect_resource_flow_opt_in_telemetry, ResourceFlowFlagSource,
-    ResourceFlowOptInTelemetryReport,
 };
 use crate::session::SessionError;
 
@@ -102,8 +102,14 @@ pub fn fixture_continued_replay() -> RfT2BurnInFixture {
 
 pub fn run_continued_soak_with_summary(
     fixture: &RfT2BurnInFixture,
-) -> Result<(FlatStarContinuedSoakSummary, RfT2BurnInReport, ResourceFlowOptInTelemetryReport), SessionError>
-{
+) -> Result<
+    (
+        FlatStarContinuedSoakSummary,
+        RfT2BurnInReport,
+        ResourceFlowOptInTelemetryReport,
+    ),
+    SessionError,
+> {
     let (burn, telemetry) = run_profile_soak_with_telemetry(fixture)?;
     let summary = FlatStarContinuedSoakSummary::from_reports(fixture, &burn, &telemetry);
     Ok((summary, burn, telemetry))

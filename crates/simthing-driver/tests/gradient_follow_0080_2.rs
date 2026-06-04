@@ -81,7 +81,11 @@ fn gradient_follow_0080_2_pirate_migrates_from_start() {
         "max distance {}",
         admitted.max_distance_from_start
     );
-    assert!(admitted.visited_nodes.len() >= 4, "visited {:?}", admitted.visited_nodes);
+    assert!(
+        admitted.visited_nodes.len() >= 4,
+        "visited {:?}",
+        admitted.visited_nodes
+    );
     assert!(admitted.total_moves >= 4);
 }
 
@@ -205,7 +209,9 @@ fn gradient_follow_0080_2_rejects_unbounded_decay() {
     input.decay_weights.base_retain_den = 10; // retention == 1 → unbounded
     let rejected = run_gradient_follow_0080_2(&input);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"unbounded_decay_coefficient"));
+    assert!(rejected
+        .diagnostics
+        .contains(&"unbounded_decay_coefficient"));
 }
 
 #[test]

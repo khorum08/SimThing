@@ -1,9 +1,8 @@
 //! E-10 — Resource Flow admission framework tests.
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry,
-    LogTier, NumCountSource, PropertyLayout, SimProperty, SimPropertyId, SubFieldRole,
-    SubFieldSpec,
+    AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry, LogTier,
+    NumCountSource, PropertyLayout, SimProperty, SimPropertyId, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::compile_and_materialize_resource_flow;
 use simthing_spec::{
@@ -99,7 +98,7 @@ fn e10_rejects_implicit_participation() {
     let spec = ResourceFlowSpec {
         arenas: vec![arena],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let err = compile_resource_flow_admission(&spec, &reg).unwrap_err();
     assert!(matches!(err, SpecError::ImplicitParticipation { .. }));
@@ -133,7 +132,7 @@ fn e10_rejects_unknown_arena_role_reference() {
     let flow_spec = ResourceFlowSpec {
         arenas: vec![food_arena_spec(4)],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let err = compile_resource_flow_admission(&flow_spec, &reg).unwrap_err();
     assert!(matches!(
@@ -154,7 +153,7 @@ fn e10_rejects_unbounded_wildcard_without_cap() {
     let spec = ResourceFlowSpec {
         arenas: vec![arena],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let err = compile_resource_flow_admission(&spec, &reg).unwrap_err();
     assert!(matches!(err, SpecError::UnboundedWildcardAdmission { .. }));
@@ -164,11 +163,13 @@ fn e10_rejects_unbounded_wildcard_without_cap() {
 fn e10_enforces_max_participants() {
     let reg = setup_two_arena_registry();
     let mut arena = food_arena_spec(1);
-    arena.explicit_participants.push(ExplicitParticipantSpec::flat(2, 99));
+    arena
+        .explicit_participants
+        .push(ExplicitParticipantSpec::flat(2, 99));
     let spec = ResourceFlowSpec {
         arenas: vec![arena],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let err = compile_and_materialize_resource_flow(&spec, &reg).unwrap_err();
     assert!(matches!(err, SpecError::MaxParticipantsExceeded { .. }));
@@ -263,7 +264,7 @@ fn e10_rejects_orderband_budget_excess() {
     let spec = ResourceFlowSpec {
         arenas: vec![arena],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let err = compile_and_materialize_resource_flow(&spec, &reg).unwrap_err();
     assert!(matches!(err, SpecError::MaxOrderBandDepthExceeded { .. }));
@@ -298,7 +299,7 @@ fn e10_rejects_unresolved_balance_num_count_source() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena_spec(4)],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let err = compile_resource_flow_admission(&spec, &reg).unwrap_err();
     assert!(matches!(
@@ -374,7 +375,7 @@ fn e10_rejects_property_possession_without_explicit_admission() {
     let spec = ResourceFlowSpec {
         arenas: vec![arena],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let err = compile_resource_flow_admission(&spec, &reg).unwrap_err();
     assert!(matches!(
@@ -426,7 +427,7 @@ fn e10_rejects_duplicate_arena_role_binding_on_same_property() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena_spec(4)],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let err = compile_resource_flow_admission(&spec, &reg).unwrap_err();
     assert!(matches!(err, SpecError::DuplicateArenaRoleBinding { .. }));

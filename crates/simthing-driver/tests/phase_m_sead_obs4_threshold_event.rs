@@ -9,9 +9,9 @@ use std::time::Instant;
 use simthing_gpu::GpuContext;
 use simthing_spec::{
     fnv1a64_hex, is_sead_obs4_threshold_event_descriptor, landed_jit_kernel_descriptors,
-    validate_kernel_descriptor_admission, EventAuthorityContract, MAG2_Q16_SCALE,
-    MappingExecutionProfile, SEAD_OBS4_DESCRIPTOR_ID, SEAD_OBS4_LAYER_COUNT,
-    SQRT_F_ARTIFACT_HASH, ThresholdAuthorityContract,
+    validate_kernel_descriptor_admission, EventAuthorityContract, MappingExecutionProfile,
+    ThresholdAuthorityContract, MAG2_Q16_SCALE, SEAD_OBS4_DESCRIPTOR_ID, SEAD_OBS4_LAYER_COUNT,
+    SQRT_F_ARTIFACT_HASH,
 };
 
 use simthing_spec::OutputAuthority;
@@ -35,9 +35,29 @@ const FLAGS_OFF: u32 = EVENT_CODE_OFF + 1;
 const Q16_SCALE_F: f32 = MAG2_Q16_SCALE as f32;
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
-    "faction", "ownership", "owner", "AI", "threat", "scarcity", "opportunity", "labor", "price",
-    "logistics", "routing", "need", "demand", "supply", "personality", "drone", "SEAD", "economy",
-    "planner", "resource", "map", "urgency", "commitment",
+    "faction",
+    "ownership",
+    "owner",
+    "AI",
+    "threat",
+    "scarcity",
+    "opportunity",
+    "labor",
+    "price",
+    "logistics",
+    "routing",
+    "need",
+    "demand",
+    "supply",
+    "personality",
+    "drone",
+    "SEAD",
+    "economy",
+    "planner",
+    "resource",
+    "map",
+    "urgency",
+    "commitment",
 ];
 
 const FORBIDDEN_EXACT_TERMS: &[&str] = &["f64", "F64RoundDown", "SHADER_F64", "sqrt_cr_c"];
@@ -310,11 +330,13 @@ fn run_threshold_batch(
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_obs4_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_obs4_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_obs4_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -530,11 +552,7 @@ fn dense_threshold_rows() -> Vec<ThresholdRow> {
                             let gi = (pair_idx + layer * 3) % grads.len();
                             let gj = (pair_idx + layer * 2 + 1) % grads.len();
                             let wi = (pair_idx + layer + ti) % weights.len();
-                            layer_input(
-                                grads[gi],
-                                grads[gj],
-                                weights[wi],
-                            )
+                            layer_input(grads[gi], grads[gj], weights[wi])
                         });
                         out.push(ThresholdRow {
                             layers,
@@ -641,8 +659,7 @@ fn sead_obs4_threshold_edge_rows() {
         let cases = edge_threshold_rows();
         let rows: Vec<ThresholdRow> = cases.iter().map(|(row, _)| row.clone()).collect();
         let outputs = run_threshold_batch(ctx, &rows, 1, true).outputs;
-        let (score_exact, state_exact, event_exact, overflow, _) =
-            verify_outputs(&outputs, &rows);
+        let (score_exact, state_exact, event_exact, overflow, _) = verify_outputs(&outputs, &rows);
         println!(
             "sead_obs4_edge: cases={} score_exact={score_exact}/{} state_exact={state_exact}/{} event_exact={event_exact}/{} overflow={overflow}",
             cases.len(),
@@ -728,8 +745,7 @@ fn sead_obs4_perf_34k_warm_repeated_dispatch() {
 
         let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
         let per_dispatch_ms = total_ms / REPEAT as f64;
-        let per_row_us =
-            outcome.elapsed.as_secs_f64() * 1_000_000.0 / (N as f64 * REPEAT as f64);
+        let per_row_us = outcome.elapsed.as_secs_f64() * 1_000_000.0 / (N as f64 * REPEAT as f64);
         println!(
             "sead_obs4_warm_34k: rows={N} dispatches={REPEAT} includes_readback=true total_ms={total_ms:.3} per_dispatch_ms={per_dispatch_ms:.3} per_row_us={per_row_us:.4} spot_exact=512/512 events_up_sample={events_up} event_authority=ExactDeterministicEventFlag"
         );

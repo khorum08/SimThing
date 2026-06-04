@@ -1,9 +1,9 @@
 //! Encode CPU-side [`AccumulatorOp`] registrations into GPU layout structs.
 
 use simthing_core::{
-    eml_nodes::execution_class_to_u32, AccumulatorOp, CombineFn, ConsumeMode, EmlExecutionClass,
-    EmlExpressionRegistry, EmlTreeId, EmitOnThresholdBuffer, EmitOnThresholdRegistration,
-    GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
+    eml_nodes::execution_class_to_u32, AccumulatorOp, CombineFn, ConsumeMode,
+    EmitOnThresholdBuffer, EmitOnThresholdRegistration, EmlExecutionClass, EmlExpressionRegistry,
+    EmlTreeId, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
 };
 
 use crate::world_state::{

@@ -12,13 +12,14 @@ mod flat_star_support;
 use flat_star_support::{
     flat_star_cell_inputs, leaf_slots, open_flat_star_session, root_slot, try_gpu as try_gpu_flat,
 };
+use materialize_support::{empty_registry, register_amount_property};
 use nested_support::{
     a0_d3_participants, a0_d4_participants, layout_for, leaves, materialize_nested, try_gpu,
 };
 use simthing_core::EmlExpressionRegistry;
 use simthing_driver::{
-    child_share_cpu, plan_arena_allocation, register_child_share_formula, run_arena_allocation_oracle,
-    total_bands_for_depth,
+    child_share_cpu, plan_arena_allocation, register_child_share_formula,
+    run_arena_allocation_oracle, total_bands_for_depth,
 };
 use simthing_gpu::{
     ao_wgsl0_fast_path_compatible, classify_ao_wgsl0_plan, encode_transfer_plan, plan_transfer_ops,
@@ -26,8 +27,9 @@ use simthing_gpu::{
     ThresholdRegistration, TransferRegistration, WorldGpuState, DIR_UPWARD,
 };
 use simthing_sim::PipelineFlags;
-use materialize_support::{empty_registry, register_amount_property};
-use simthing_spec::designer_admission::{evaluate_designer_admission_request, DesignerAdmissionRequest};
+use simthing_spec::designer_admission::{
+    evaluate_designer_admission_request, DesignerAdmissionRequest,
+};
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -227,8 +229,7 @@ fn ao_wgsl0_generic_kernel_matches_existing_ao_for_a0_d4_nested_resource_flow() 
 
     let mut fast = WorldGpuState::new(gpu, &f.reg, n_slots);
     fast.write_values(&flat);
-    fast
-        .sync_resource_flow_ops_from_cpu(&plan.cpu_ops, plan.n_bands, &eml)
+    fast.sync_resource_flow_ops_from_cpu(&plan.cpu_ops, plan.n_bands, &eml)
         .unwrap();
     fast.run_resource_flow_bands_with_fast_path(plan.n_bands, 1.0, true);
     let fast_vals = fast.read_values();
@@ -293,11 +294,13 @@ fn ao_wgsl0_generic_kernel_matches_existing_ao_for_b0_transfer_orderband_if_supp
         state.sync_transfer_accumulator(&regs).unwrap();
         let mut runtime = state.accumulator_runtime.take().unwrap();
         let mut session = runtime.take_transfer_session().unwrap();
-        let mut encoder = state.ctx.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
-                label: Some("ao_wgsl0_transfer_test"),
-            },
-        );
+        let mut encoder =
+            state
+                .ctx
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("ao_wgsl0_transfer_test"),
+                });
         if fast {
             session.encode_orderband_fast_into(
                 &state.ctx,
@@ -391,7 +394,13 @@ fn ao_wgsl0_replay_reproducibility() {
 fn ao_wgsl0_no_designer_authored_wgsl() {
     let wgsl = include_str!("../../simthing-gpu/src/shaders/accumulator_op.wgsl");
     let generic = include_str!("../../simthing-gpu/src/shaders/accumulator_op_generic.wgsl");
-    for forbidden in ["faction", "planet", "ClauseThing", "ClauseScript", "scenario"] {
+    for forbidden in [
+        "faction",
+        "planet",
+        "ClauseThing",
+        "ClauseScript",
+        "scenario",
+    ] {
         assert!(
             !wgsl_contains_forbidden_semantic_token(wgsl, forbidden),
             "accumulator_op.wgsl must not embed {forbidden}"
@@ -410,7 +419,10 @@ fn ao_wgsl0_semantic_wgsl_still_rejected_at_designer_layer() {
 #[test]
 fn ao_wgsl0_no_simthing_sim_awareness() {
     let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
-    assert!(!wgsl_contains_forbidden_semantic_token(sim_lib, "execute_orderband_bands"));
+    assert!(!wgsl_contains_forbidden_semantic_token(
+        sim_lib,
+        "execute_orderband_bands"
+    ));
     let boundary = include_str!("../../simthing-sim/src/boundary.rs");
     assert!(boundary.contains("use_accumulator_wgsl_fast_path"));
 }

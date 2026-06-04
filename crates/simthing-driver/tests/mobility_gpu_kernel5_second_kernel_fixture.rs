@@ -71,7 +71,10 @@ fn mobility_gpu_kernel5_uses_registered_node() {
     assert!(report.uses_registered_node);
     assert_eq!(report.kernel4_fixture_id, MOBILITY_GPU_KERNEL4_FIXTURE_ID);
     assert_eq!(report.kernel1_fixture_id, MOBILITY_GPU_KERNEL1_FIXTURE_ID);
-    assert_eq!(MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID, "mobility_runtime1b_non_scheduled_composition_node");
+    assert_eq!(
+        MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
+        "mobility_runtime1b_non_scheduled_composition_node"
+    );
 }
 
 #[test]
@@ -148,7 +151,10 @@ fn mobility_gpu_kernel5_classifies_exact_parity_or_honest_unavailable() {
             | MobilityGpuKernel0ParityClassification::GpuUnavailable
     ));
     if report.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity {
-        assert_eq!(report.cpu_oracle_checksum, report.gpu_result_checksum.unwrap());
+        assert_eq!(
+            report.cpu_oracle_checksum,
+            report.gpu_result_checksum.unwrap()
+        );
     }
 }
 
@@ -203,7 +209,9 @@ fn mobility_gpu_kernel5_no_default_schedule() {
     assert!(!report.default_production_scheduling_wired);
     let mut forbidden = MobilityGpuKernel5ForbiddenPathRequests::default();
     forbidden.default_schedule = true;
-    assert!(rejected_with(forbidden).diagnostics.contains(&"default_schedule"));
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"default_schedule"));
 }
 
 #[test]
@@ -224,7 +232,9 @@ fn mobility_gpu_kernel5_no_gameplay_path() {
     assert!(report.confined_to_driver_test_support);
     let mut forbidden = MobilityGpuKernel5ForbiddenPathRequests::default();
     forbidden.gameplay_path = true;
-    assert!(rejected_with(forbidden).diagnostics.contains(&"gameplay_path"));
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"gameplay_path"));
 }
 
 #[test]

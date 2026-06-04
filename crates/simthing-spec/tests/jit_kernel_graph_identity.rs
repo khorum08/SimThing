@@ -1,9 +1,9 @@
 //! Phase M-JIT-KEY-0 — Spec-layer deterministic kernel graph identity preview.
 
 use simthing_spec::{
-    landed_jit_kernel_descriptors, preview_kernel_graph_identity,
-    validate_kernel_graph_admission, KernelDescriptorSpec, KernelGraphEdgeSpec, KernelGraphSpec,
-    KernelLane, KernelOutputSpec, NativeMathClass, OutputAuthority, SpecError,
+    landed_jit_kernel_descriptors, preview_kernel_graph_identity, validate_kernel_graph_admission,
+    KernelDescriptorSpec, KernelGraphEdgeSpec, KernelGraphSpec, KernelLane, KernelOutputSpec,
+    NativeMathClass, OutputAuthority, SpecError,
 };
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
@@ -141,7 +141,8 @@ fn jit_key0_identity_stable_across_node_and_edge_order() {
 
 #[test]
 fn jit_key0_identity_changes_when_output_authority_changes() {
-    let base = preview_kernel_graph_identity(&valid_grad0_to_scorer_graph()).expect("base identity");
+    let base =
+        preview_kernel_graph_identity(&valid_grad0_to_scorer_graph()).expect("base identity");
 
     let mut changed = valid_grad0_to_scorer_graph();
     for node in &mut changed.nodes {
@@ -173,7 +174,8 @@ fn jit_key0_identity_changes_when_output_authority_changes() {
 
 #[test]
 fn jit_key0_identity_changes_when_native_math_changes() {
-    let base = preview_kernel_graph_identity(&valid_grad0_to_scorer_graph()).expect("base identity");
+    let base =
+        preview_kernel_graph_identity(&valid_grad0_to_scorer_graph()).expect("base identity");
 
     let mut sqrt_graph = KernelGraphSpec {
         nodes: vec![sqrt0(), grad1_style_scorer()],

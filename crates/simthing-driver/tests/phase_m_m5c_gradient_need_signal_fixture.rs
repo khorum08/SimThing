@@ -8,11 +8,10 @@ use simthing_driver::compiled_stencil_to_gpu_config;
 use simthing_gpu::{cpu_horizon, params_from_config, GpuContext, StructuredFieldStencilOperator};
 use simthing_sim::PipelineFlags;
 use simthing_spec::{
-    compile_eml_gadget_stack, compile_region_field_preview, deserialize_eml_gadget_stack_ron,
-    deserialize_region_field_ron, eval_eml_postfix, oracle_ema, oracle_weighted_accumulator,
-    compile_region_field_frame_preview,
-    CompiledGradientAxis, CompiledRegionFieldOperator, EmlGadgetCompileOptions, EmlGadgetKind,
-    MappingExecutionProfile, RegionFieldOperatorSpec,
+    compile_eml_gadget_stack, compile_region_field_frame_preview, compile_region_field_preview,
+    deserialize_eml_gadget_stack_ron, deserialize_region_field_ron, eval_eml_postfix, oracle_ema,
+    oracle_weighted_accumulator, CompiledGradientAxis, CompiledRegionFieldOperator,
+    EmlGadgetCompileOptions, EmlGadgetKind, MappingExecutionProfile, RegionFieldOperatorSpec,
 };
 use std::sync::Mutex;
 
@@ -130,7 +129,8 @@ fn m5c_need_signal_fields_admit_with_single_target_gradients() {
         assert_eq!(reduction.parent_slot, 100);
     }
 
-    let fixture_blob = format!("{SCALAR_FIELD_RON}{GRADIENT_X_FIELD_RON}{GRADIENT_Y_FIELD_RON}{L3_STACK_RON}");
+    let fixture_blob =
+        format!("{SCALAR_FIELD_RON}{GRADIENT_X_FIELD_RON}{GRADIENT_Y_FIELD_RON}{L3_STACK_RON}");
     assert!(!fixture_blob.contains("GradientXY"));
     assert!(!fixture_blob.contains("output_col_x"));
     assert!(!fixture_blob.contains("output_col_y"));
@@ -241,8 +241,7 @@ fn m5c_integrated_need_routing_signal_is_finite_and_deterministic() {
     set_col(&mut values, 15, ema_gy);
     let routing_signal =
         eval_eml_postfix(&compiled_l3.gadgets[3].nodes, EVAL_SLOT, &values, N_DIMS);
-    let oracle_routing =
-        oracle_weighted_accumulator(&[ema_need, ema_gx, ema_gy], &ROUTING_WEIGHTS);
+    let oracle_routing = oracle_weighted_accumulator(&[ema_need, ema_gx, ema_gy], &ROUTING_WEIGHTS);
     assert!((routing_signal - oracle_routing).abs() < 1e-5);
     assert!(routing_signal.is_finite());
 

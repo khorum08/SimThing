@@ -8,8 +8,8 @@ use std::collections::HashMap;
 
 use crate::error::SpecError;
 use crate::spec::resource_economy::{
-    EmitBufferSpec, EmitOnThresholdSpec, EmissionFormulaSpec, RecipeInputSpec,
-    ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec, ResourceTransferSpec,
+    EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec, ResourceEconomySpec,
+    ResourceEmissionSpec, ResourceRecipeSpec, ResourceTransferSpec,
 };
 use crate::spec::script::PropertyKey;
 use crate::spec::trigger::TriggerDirection;
@@ -153,11 +153,7 @@ pub fn compile_resource_economy(
     let mut contention = ContentionTracker::new();
     let mut transfers = Vec::with_capacity(spec.transfers.len());
     for transfer in &spec.transfers {
-        transfers.push(compile_transfer(
-            transfer,
-            registry,
-            &mut contention,
-        )?);
+        transfers.push(compile_transfer(transfer, registry, &mut contention)?);
     }
 
     let mut recipes = Vec::with_capacity(spec.recipes.len());
@@ -216,9 +212,7 @@ fn validate_unique_authoring_ids(spec: &ResourceEconomySpec) -> Result<(), SpecE
     {
         if let Some(first) = seen.insert(id, kind) {
             let _ = first;
-            return Err(SpecError::DuplicateResourceEconomyId {
-                id: id.to_string(),
-            });
+            return Err(SpecError::DuplicateResourceEconomyId { id: id.to_string() });
         }
     }
     Ok(())
@@ -325,11 +319,7 @@ fn compile_recipe(
     let mut inputs = Vec::with_capacity(recipe.inputs.len());
     for (idx, input) in recipe.inputs.iter().enumerate() {
         inputs.push(compile_recipe_input(
-            recipe,
-            idx,
-            input,
-            registry,
-            contention,
+            recipe, idx, input, registry, contention,
         )?);
     }
 
@@ -424,12 +414,13 @@ fn compile_emission(
                     emission: emission.id.clone(),
                     formula_key: formula_key.clone(),
                 })?;
-            let meta = eml_registry
-                .get(tree_id)
-                .ok_or_else(|| SpecError::UnknownEmissionFormulaKey {
-                    emission: emission.id.clone(),
-                    formula_key: formula_key.clone(),
-                })?;
+            let meta =
+                eml_registry
+                    .get(tree_id)
+                    .ok_or_else(|| SpecError::UnknownEmissionFormulaKey {
+                        emission: emission.id.clone(),
+                        formula_key: formula_key.clone(),
+                    })?;
             if meta.execution_class != EmlExecutionClass::ExactDeterministic {
                 return Err(SpecError::EmissionEmlNotExactDeterministic {
                     emission: emission.id.clone(),
@@ -514,20 +505,16 @@ fn resolve_property_col(
 ) -> Result<(SimPropertyId, u32), SpecError> {
     let property_id = registry
         .id_of(&key.namespace, &key.name)
-        .ok_or_else(|| {
-            unknown_property(key.namespace.clone(), key.name.clone())
-        })?;
+        .ok_or_else(|| unknown_property(key.namespace.clone(), key.name.clone()))?;
     let layout = &registry.property(property_id).layout;
     let range = registry.column_range(property_id);
-    let col = range
-        .col_for_role(role, layout)
-        .ok_or_else(|| {
-            invalid_role(
-                context.to_string(),
-                format!("{}::{}", key.namespace, key.name),
-                format_role(role),
-            )
-        })? as u32;
+    let col = range.col_for_role(role, layout).ok_or_else(|| {
+        invalid_role(
+            context.to_string(),
+            format!("{}::{}", key.namespace, key.name),
+            format_role(role),
+        )
+    })? as u32;
     Ok((property_id, col))
 }
 
@@ -549,7 +536,11 @@ mod tests {
         SubFieldSpec,
     };
 
-    fn register_amount_property(reg: &mut DimensionRegistry, ns: &str, name: &str) -> SimPropertyId {
+    fn register_amount_property(
+        reg: &mut DimensionRegistry,
+        ns: &str,
+        name: &str,
+    ) -> SimPropertyId {
         reg.register(SimProperty {
             namespace: ns.into(),
             name: name.into(),
@@ -582,7 +573,8 @@ mod tests {
     fn compile_empty_spec_produces_empty_report() {
         let reg = DimensionRegistry::new();
         let eml = EmlExpressionRegistry::new();
-        let compiled = compile_resource_economy(&ResourceEconomySpec::default(), &reg, &eml).unwrap();
+        let compiled =
+            compile_resource_economy(&ResourceEconomySpec::default(), &reg, &eml).unwrap();
         assert!(compiled.transfers.is_empty());
         assert_eq!(compiled.report.transfer_count, 0);
     }

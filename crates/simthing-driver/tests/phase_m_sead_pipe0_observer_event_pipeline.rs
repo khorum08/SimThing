@@ -11,7 +11,7 @@ use simthing_gpu::GpuContext;
 use simthing_spec::{
     fnv1a64_hex, is_sead_pipe0_observer_event_pipeline_descriptor, landed_jit_kernel_descriptors,
     validate_kernel_descriptor_admission, EventCompactionMembershipAuthority,
-    EventCompactionOrderAuthority, MAG2_Q16_SCALE, MappingExecutionProfile,
+    EventCompactionOrderAuthority, MappingExecutionProfile, MAG2_Q16_SCALE,
     SEAD_PIPE0_DESCRIPTOR_ID, SEAD_PIPE0_LAYER_COUNT, SQRT_F_ARTIFACT_HASH,
 };
 
@@ -33,9 +33,31 @@ const Q16_SCALE_F: f32 = MAG2_Q16_SCALE as f32;
 const ORDERING_CLASS: &str = "UnspecifiedAtomicOrder";
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
-    "faction", "ownership", "owner", "AI", "threat", "scarcity", "opportunity", "labor", "price",
-    "logistics", "routing", "need", "demand", "supply", "personality", "drone", "SEAD", "economy",
-    "planner", "resource", "map", "urgency", "commitment", "order", "route",
+    "faction",
+    "ownership",
+    "owner",
+    "AI",
+    "threat",
+    "scarcity",
+    "opportunity",
+    "labor",
+    "price",
+    "logistics",
+    "routing",
+    "need",
+    "demand",
+    "supply",
+    "personality",
+    "drone",
+    "SEAD",
+    "economy",
+    "planner",
+    "resource",
+    "map",
+    "urgency",
+    "commitment",
+    "order",
+    "route",
 ];
 
 const FORBIDDEN_EXACT_TERMS: &[&str] = &["f64", "F64RoundDown", "SHADER_F64", "sqrt_cr_c"];
@@ -350,18 +372,12 @@ fn expected_records(event_rows: &[EventRow]) -> Vec<EventRecord> {
 
 fn sort_records(records: &mut [EventRecord]) {
     records.sort_by(|a, b| {
-        (
-            a.source_index,
-            a.event_code,
-            a.state,
-            a.score_fixed,
-        )
-            .cmp(&(
-                b.source_index,
-                b.event_code,
-                b.state,
-                b.score_fixed,
-            ))
+        (a.source_index, a.event_code, a.state, a.score_fixed).cmp(&(
+            b.source_index,
+            b.event_code,
+            b.state,
+            b.score_fixed,
+        ))
     });
 }
 
@@ -1089,7 +1105,10 @@ fn sead_pipe0_perf_34k_warm_repeated_dispatch() {
 
 #[test]
 fn sead_pipe0_no_default_runtime_wiring() {
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
     let desc = landed_jit_kernel_descriptors()
         .into_iter()
         .find(|d| d.id == SEAD_PIPE0_DESCRIPTOR_ID)

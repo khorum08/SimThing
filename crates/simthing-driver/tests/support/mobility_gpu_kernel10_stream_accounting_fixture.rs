@@ -16,9 +16,10 @@ pub use mobility_gpu_kernel9_frame_stream_fixture::{
 
 use mobility_gpu_kernel9_frame_stream_fixture::{
     mobility_gpu_kernel9_shader_text_has_domain_terms, MobilityGpuKernel9FixtureReport,
-    MobilityGpuKernel9ForbiddenPathRequests, MobilityGpuKernel9Gate, MobilityGpuKernel9FrameReport,
-    MOBILITY_GPU_KERNEL4_ROW_COUNT, MOBILITY_GPU_KERNEL9_FIXTURE_ID, MOBILITY_GPU_KERNEL9_FRAME_COUNT,
-    MOBILITY_GPU_KERNEL9_MIN_REPLAYS_PER_VARIANT, MOBILITY_GPU_KERNEL9_STREAM_ID,
+    MobilityGpuKernel9ForbiddenPathRequests, MobilityGpuKernel9FrameReport, MobilityGpuKernel9Gate,
+    MOBILITY_GPU_KERNEL4_ROW_COUNT, MOBILITY_GPU_KERNEL9_FIXTURE_ID,
+    MOBILITY_GPU_KERNEL9_FRAME_COUNT, MOBILITY_GPU_KERNEL9_MIN_REPLAYS_PER_VARIANT,
+    MOBILITY_GPU_KERNEL9_STREAM_ID,
 };
 
 pub const MOBILITY_GPU_KERNEL10_FIXTURE_ID: &str =
@@ -34,7 +35,8 @@ pub const MOBILITY_GPU_KERNEL10_EXPECTED_FRAME_COUNT: usize = MOBILITY_GPU_KERNE
 pub const MOBILITY_GPU_KERNEL10_EXPECTED_VARIANTS_PER_FRAME: usize = 4;
 pub const MOBILITY_GPU_KERNEL10_EXPECTED_REPLAYS_PER_VARIANT: usize =
     MOBILITY_GPU_KERNEL9_MIN_REPLAYS_PER_VARIANT;
-pub const MOBILITY_GPU_KERNEL10_EXPECTED_ROW_COUNT_PER_VARIANT: usize = MOBILITY_GPU_KERNEL4_ROW_COUNT;
+pub const MOBILITY_GPU_KERNEL10_EXPECTED_ROW_COUNT_PER_VARIANT: usize =
+    MOBILITY_GPU_KERNEL4_ROW_COUNT;
 pub const MOBILITY_GPU_KERNEL10_EXPECTED_VARIANT_DISPATCH_ATTEMPTS: usize =
     MOBILITY_GPU_KERNEL10_EXPECTED_FRAME_COUNT * MOBILITY_GPU_KERNEL10_EXPECTED_VARIANTS_PER_FRAME;
 pub const MOBILITY_GPU_KERNEL10_EXPECTED_REPLAY_DISPATCH_ATTEMPTS: usize =
@@ -178,9 +180,7 @@ pub fn stream_cpu_checksum_from_frames(frames: &[MobilityGpuKernel9FrameReport])
     hash
 }
 
-pub fn stream_gpu_checksum_from_frames(
-    frames: &[MobilityGpuKernel9FrameReport],
-) -> Option<u64> {
+pub fn stream_gpu_checksum_from_frames(frames: &[MobilityGpuKernel9FrameReport]) -> Option<u64> {
     if frames.iter().any(|frame| {
         frame.parity_classification != MobilityGpuKernel0ParityClassification::ExactParity
     }) {
@@ -223,37 +223,41 @@ pub fn compute_stream_accounting(
     let replays_per_variant = kernel9.replays_per_variant;
     let row_count_per_variant = kernel9.row_count;
 
-    let total_variant_dispatch_attempts = kernel9
+    let total_variant_dispatch_attempts =
+        kernel9.frames.iter().map(|frame| frame.variant_count).sum();
+    let total_replay_dispatch_attempts = kernel9
         .frames
         .iter()
-        .map(|frame| frame.variant_count)
+        .map(|frame| {
+            frame
+                .variants
+                .iter()
+                .map(|variant| variant.replays.len())
+                .sum::<usize>()
+        })
         .sum();
-    let total_replay_dispatch_attempts = kernel9.frames.iter().map(|frame| {
-        frame
-            .variants
-            .iter()
-            .map(|variant| variant.replays.len())
-            .sum::<usize>()
-    }).sum();
-    let total_rows_processed = kernel9.frames.iter().map(|frame| {
-        frame
-            .variants
-            .iter()
-            .map(|variant| variant.row_count * variant.replays.len())
-            .sum::<usize>()
-    }).sum();
+    let total_rows_processed = kernel9
+        .frames
+        .iter()
+        .map(|frame| {
+            frame
+                .variants
+                .iter()
+                .map(|variant| variant.row_count * variant.replays.len())
+                .sum::<usize>()
+        })
+        .sum();
     let total_cpu_oracle_rows = total_rows_processed;
-    let total_gpu_rows = if kernel9.parity_classification
-        == MobilityGpuKernel0ParityClassification::ExactParity
-    {
-        Some(total_rows_processed)
-    } else if kernel9.parity_classification
-        == MobilityGpuKernel0ParityClassification::GpuUnavailable
-    {
-        None
-    } else {
-        None
-    };
+    let total_gpu_rows =
+        if kernel9.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity {
+            Some(total_rows_processed)
+        } else if kernel9.parity_classification
+            == MobilityGpuKernel0ParityClassification::GpuUnavailable
+        {
+            None
+        } else {
+            None
+        };
 
     MobilityGpuKernel10StreamAccounting {
         frame_count,

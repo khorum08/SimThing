@@ -2,8 +2,8 @@
 
 use thiserror::Error;
 use wgpu::{
-    Adapter, Backends, Device, DeviceDescriptor, DeviceType, Features, Instance, InstanceDescriptor,
-    MemoryHints, PowerPreference, Queue, RequestAdapterOptions,
+    Adapter, Backends, Device, DeviceDescriptor, DeviceType, Features, Instance,
+    InstanceDescriptor, MemoryHints, PowerPreference, Queue, RequestAdapterOptions,
 };
 
 #[derive(Debug, Error)]

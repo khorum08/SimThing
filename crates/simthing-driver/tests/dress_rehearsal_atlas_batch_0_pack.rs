@@ -11,10 +11,7 @@ use dress_rehearsal_atlas_batch_0_pack::{
 
 #[test]
 fn docs_status_matches_gate() {
-    assert_eq!(
-        DRESS_REHEARSAL_ATLAS_BATCH_0_PACK_ID,
-        "ATLAS-BATCH-0-PACK"
-    );
+    assert_eq!(DRESS_REHEARSAL_ATLAS_BATCH_0_PACK_ID, "ATLAS-BATCH-0-PACK");
     let status = DRESS_REHEARSAL_ATLAS_BATCH_0_PACK_STATUS_PASS;
     assert!(status.contains("IMPLEMENTED / PASS"));
     assert!(status.contains("EC-A2a"));
@@ -39,9 +36,7 @@ fn locations_group_into_expected_tile_classes() {
     assert_eq!(plan.classes.len(), 3);
     assert_eq!(plan.tiles.len(), 27);
 
-    let galactic = plan
-        .class(CLASS_GALACTIC_20X20)
-        .expect("galactic class");
+    let galactic = plan.class(CLASS_GALACTIC_20X20).expect("galactic class");
     assert_eq!(galactic.role, LocationRole::Galactic);
     assert_eq!(galactic.tile_width, 20);
     assert_eq!(galactic.tile_height, 20);
@@ -146,33 +141,13 @@ fn g_zero_mask_blocks_inter_tile_bleed() {
 
     let tile_a = plan.tiles_in_class(CLASS_STAR_SYSTEM_10X10)[0];
     let tile_b = plan.tiles_in_class(CLASS_STAR_SYSTEM_10X10)[1];
-    let (ax, ay) = (
-        tile_a.atlas_origin.0 + 5,
-        tile_a.atlas_origin.1 + 5,
-    );
-    let (bx, by) = (
-        tile_b.atlas_origin.0 + 5,
-        tile_b.atlas_origin.1 + 5,
-    );
+    let (ax, ay) = (tile_a.atlas_origin.0 + 5, tile_a.atlas_origin.1 + 5);
+    let (bx, by) = (tile_b.atlas_origin.0 + 5, tile_b.atlas_origin.1 + 5);
 
-    let in_tile = g_zero_sample(
-        &plan,
-        CLASS_STAR_SYSTEM_10X10,
-        ax,
-        ay,
-        (ax, ay),
-        &field,
-    );
+    let in_tile = g_zero_sample(&plan, CLASS_STAR_SYSTEM_10X10, ax, ay, (ax, ay), &field);
     assert!(in_tile > 0.0, "in-tile sample passes through");
 
-    let across_boundary = g_zero_sample(
-        &plan,
-        CLASS_STAR_SYSTEM_10X10,
-        ax,
-        ay,
-        (bx, by),
-        &field,
-    );
+    let across_boundary = g_zero_sample(&plan, CLASS_STAR_SYSTEM_10X10, ax, ay, (bx, by), &field);
     assert_eq!(across_boundary, 0.0, "cross-tile neighbor must be zeroed");
 }
 
@@ -201,9 +176,7 @@ fn channel_metadata_survives_pack() {
 
     for class in &plan.classes {
         for location_id in &class.source_location_ids {
-            let location = materialization
-                .location(*location_id)
-                .expect("location");
+            let location = materialization.location(*location_id).expect("location");
             assert!(
                 channel_set_matches(&class.channels, &location.channels),
                 "class {} must preserve channels for {:?}",
@@ -224,10 +197,7 @@ fn channel_metadata_survives_pack() {
     ));
 
     let surface = plan.class(CLASS_PLANET_SURFACE_10X10).unwrap();
-    assert!(channel_set_has_kind(
-        &surface.channels,
-        ChannelKind::Labor
-    ));
+    assert!(channel_set_has_kind(&surface.channels, ChannelKind::Labor));
     assert!(channel_set_has_kind(
         &surface.channels,
         ChannelKind::Production
@@ -243,8 +213,5 @@ fn owner_metadata_survives_pack_without_owner_runtime() {
         .channels
         .channels
         .iter()
-        .any(|channel| matches!(
-            channel.kind,
-            ChannelKind::FleetStrength(Owner::Pirate)
-        )));
+        .any(|channel| matches!(channel.kind, ChannelKind::FleetStrength(Owner::Pirate))));
 }

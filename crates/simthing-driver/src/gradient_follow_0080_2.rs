@@ -225,9 +225,7 @@ pub struct GradientFollow0082Report {
     pub deterministic_replay_checksum: u64,
 }
 
-pub fn run_gradient_follow_0080_2(
-    input: &GradientFollow0082Input,
-) -> GradientFollow0082Report {
+pub fn run_gradient_follow_0080_2(input: &GradientFollow0082Input) -> GradientFollow0082Report {
     let mut diagnostics = Vec::new();
     validate_surface(&input.surface, &mut diagnostics);
     validate_forbidden(&input.forbidden, &mut diagnostics);
@@ -555,7 +553,9 @@ fn base_report(
     };
 
     // Threshold gating is demonstrable iff some tick was below threshold OR all moves obeyed it.
-    let threshold_gated = move_rows.iter().all(|r| r.moved == (r.threshold_crossed && r.moved));
+    let threshold_gated = move_rows
+        .iter()
+        .all(|r| r.moved == (r.threshold_crossed && r.moved));
 
     let text_export = if !disabled_no_op && opt_in {
         render_export(input, &move_rows, final_node, total_moves, &visited_nodes)

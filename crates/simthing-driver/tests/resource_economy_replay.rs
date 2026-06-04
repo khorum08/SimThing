@@ -7,8 +7,8 @@ use simthing_driver::{
     open_replay_with_spec, read_spec_replay_file, run_transfer_recipe_burn_in, SimSession,
 };
 use support::{
-    amount_col, live_slot_game_mode, live_slot_scenario, open_live_transfer_session, transfer_game_mode,
-    try_gpu,
+    amount_col, live_slot_game_mode, live_slot_scenario, open_live_transfer_session,
+    transfer_game_mode, try_gpu,
 };
 
 #[test]
@@ -101,7 +101,10 @@ fn resource_economy_replay_records_spec_snapshot_with_resource_economy_registry(
         .resource_economy_registry
         .as_ref()
         .expect("replay reinstall must restore resource economy registry");
-    assert_eq!(replay_registry.registrations.transfers.len(), live_transfer_count);
+    assert_eq!(
+        replay_registry.registrations.transfers.len(),
+        live_transfer_count
+    );
     assert_eq!(replay_registry.generation, 1);
 }
 
@@ -117,8 +120,7 @@ fn resource_economy_replay_boundary_sync_deterministic() {
         let mut scenario = simthing_driver::Scenario::from_ron_str(ron).expect("scenario");
         scenario.max_days = 2;
         let game_mode = transfer_game_mode();
-        let mut session =
-            SimSession::open_from_spec(scenario.clone(), &game_mode).expect("open");
+        let mut session = SimSession::open_from_spec(scenario.clone(), &game_mode).expect("open");
         session.proto.flags.use_accumulator_transfer = true;
         session.sync_resource_economy_if_enabled().expect("sync");
         session.record_to_path(path, 2).expect("record");
@@ -145,7 +147,8 @@ fn resource_economy_replay_boundary_sync_deterministic() {
     let loaded_b = read_spec_replay_file(&path_b).expect("read b");
     assert_eq!(loaded_a.frames.len(), loaded_b.frames.len());
 
-    let (replay_a, _, _) = open_replay_with_spec(&path_a, &game_mode, scenario.clone()).expect("open a");
+    let (replay_a, _, _) =
+        open_replay_with_spec(&path_a, &game_mode, scenario.clone()).expect("open a");
     let (replay_b, _, _) = open_replay_with_spec(&path_b, &game_mode, scenario).expect("open b");
     assert_eq!(
         replay_a.spec_state.resource_economy_uploaded_generation(),

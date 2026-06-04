@@ -13,7 +13,9 @@ fn fixture_input() -> GpuExec0FixtureInput {
     GpuExec0FixtureInput::default_probe()
 }
 
-fn rejected_with(forbidden: GpuExec0ForbiddenPathRequests) -> gpu_exec0_fixture::GpuExec0FixtureReport {
+fn rejected_with(
+    forbidden: GpuExec0ForbiddenPathRequests,
+) -> gpu_exec0_fixture::GpuExec0FixtureReport {
     let mut input = fixture_input();
     input.forbidden = forbidden;
     run_gpu_exec0_fixture(&input)
@@ -35,7 +37,9 @@ fn gpu_exec0_explicit_opt_in_only() {
     default_on.gate.enabled_by_default = true;
     let rejected = run_gpu_exec0_fixture(&default_on);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"gpu_exec0_default_on_rejected"));
+    assert!(rejected
+        .diagnostics
+        .contains(&"gpu_exec0_default_on_rejected"));
 
     let report = run_gpu_exec0_fixture(&fixture_input());
     assert!(report.admitted);
@@ -81,7 +85,9 @@ fn gpu_exec0_rejects_designer_authored_shader_input() {
     forbidden.designer_authored_shader_input = true;
     let report = rejected_with(forbidden);
     assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"designer_authored_shader_input"));
+    assert!(report
+        .diagnostics
+        .contains(&"designer_authored_shader_input"));
 }
 
 #[test]
@@ -90,7 +96,10 @@ fn gpu_exec0_no_mobility_shader_or_dispatch() {
     assert!(report.admitted);
     assert!(!report.mobility_shader_present);
     assert!(report.runtime1b_dispatch_gate_closed);
-    assert_eq!(MOBILITY_RUNTIME1B_DISPATCH_GATE, "mobility_runtime1b_dispatch_closed");
+    assert_eq!(
+        MOBILITY_RUNTIME1B_DISPATCH_GATE,
+        "mobility_runtime1b_dispatch_closed"
+    );
 }
 
 #[test]
@@ -131,7 +140,10 @@ fn gpu_exec0_reports_gpu_checksum_or_unsupported() {
             assert!(report.gpu_result_checksum.is_none());
         }
         GpuExec0ParityClassification::GpuExecutionFailed => {
-            panic!("unexpected GpuExecutionFailed in readiness probe: {:?}", report);
+            panic!(
+                "unexpected GpuExecutionFailed in readiness probe: {:?}",
+                report
+            );
         }
     }
 }
@@ -145,7 +157,10 @@ fn gpu_exec0_classifies_exact_parity_or_honest_approximation() {
         GpuExec0ParityClassification::ExactParity | GpuExec0ParityClassification::GpuUnavailable
     ));
     if report.parity_classification == GpuExec0ParityClassification::ExactParity {
-        assert_eq!(report.cpu_oracle_checksum, report.gpu_result_checksum.unwrap());
+        assert_eq!(
+            report.cpu_oracle_checksum,
+            report.gpu_result_checksum.unwrap()
+        );
     }
 }
 

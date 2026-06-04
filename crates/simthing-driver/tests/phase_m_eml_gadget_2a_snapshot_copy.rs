@@ -13,12 +13,8 @@
 
 use std::sync::Mutex;
 
-use simthing_core::{
-    AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec,
-};
-use simthing_gpu::{
-    set_debug_readback_allowed, AccumulatorOpSession, GpuContext,
-};
+use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, GpuContext};
 use simthing_sim::PipelineFlags;
 use simthing_spec::MappingExecutionProfile;
 
@@ -127,15 +123,34 @@ fn snapshot_copy_admits_with_existing_substrate() {
     let snap = snapshot_op();
     let upd = update_from_drive_op();
 
-    assert_eq!(snap.combine, CombineFn::Identity, "must use Identity combine");
-    assert_eq!(snap.consume, ConsumeMode::ResetTarget, "must use ResetTarget for copy");
-    assert_eq!(snap.gate, GateSpec::OrderBand(0), "snapshot band must be earlier");
-    assert_eq!(upd.gate, GateSpec::OrderBand(1), "update band must follow snapshot");
+    assert_eq!(
+        snap.combine,
+        CombineFn::Identity,
+        "must use Identity combine"
+    );
+    assert_eq!(
+        snap.consume,
+        ConsumeMode::ResetTarget,
+        "must use ResetTarget for copy"
+    );
+    assert_eq!(
+        snap.gate,
+        GateSpec::OrderBand(0),
+        "snapshot band must be earlier"
+    );
+    assert_eq!(
+        upd.gate,
+        GateSpec::OrderBand(1),
+        "update band must follow snapshot"
+    );
 
     // Layer-3 / parent-personality scoped (SlotValue on personality slot, not dense grid cells)
     match snap.source {
         SourceSpec::SlotValue { slot, .. } => {
-            assert_eq!(slot, PERSONALITY_SLOT, "must target Layer-3 personality/parent slot");
+            assert_eq!(
+                slot, PERSONALITY_SLOT,
+                "must target Layer-3 personality/parent slot"
+            );
         }
         _ => panic!("snapshot source must be explicit SlotValue for Layer-3"),
     }
@@ -197,7 +212,7 @@ fn snapshot_happens_before_update_band() {
         let mut values = make_initial_values();
         set_col(&mut values, PERSONALITY_SLOT, CURRENT_COL, 1.0); // old current
         set_col(&mut values, PERSONALITY_SLOT, PREV_COL, 0.0);
-        set_col(&mut values, PERSONALITY_SLOT, DRIVE_COL, 1.5);   // new value to be written by update band
+        set_col(&mut values, PERSONALITY_SLOT, DRIVE_COL, 1.5); // new value to be written by update band
 
         let after = run_bands(ctx, &mut session, &snapshot_then_update_ops(), &values);
 
@@ -257,10 +272,20 @@ fn multi_step_sequence_parity() {
         for step in 0..3 {
             let mut values = make_initial_values();
             // State at the beginning of this tick's bands (what the snapshot band will see for "current")
-            set_col(&mut values, PERSONALITY_SLOT, CURRENT_COL, starting_current[step]);
+            set_col(
+                &mut values,
+                PERSONALITY_SLOT,
+                CURRENT_COL,
+                starting_current[step],
+            );
             set_col(&mut values, PERSONALITY_SLOT, PREV_COL, prev_carry);
             // The independent "drive" value that the update band will write into current
-            set_col(&mut values, PERSONALITY_SLOT, DRIVE_COL, drive_updates[step]);
+            set_col(
+                &mut values,
+                PERSONALITY_SLOT,
+                DRIVE_COL,
+                drive_updates[step],
+            );
 
             let after = run_bands(ctx, &mut session, &snapshot_then_update_ops(), &values);
 
@@ -300,14 +325,18 @@ fn multi_step_sequence_parity() {
             assert!(
                 (p - expected_previous[i]).abs() < 1e-6,
                 "previous_after_snapshot[{}] = {:.2}, expected {:.2}",
-                i, p, expected_previous[i]
+                i,
+                p,
+                expected_previous[i]
             );
         }
         for (i, &c) in observed_current.iter().enumerate() {
             assert!(
                 (c - expected_current[i]).abs() < 1e-6,
                 "current_after_update[{}] = {:.2}, expected {:.2}",
-                i, c, expected_current[i]
+                i,
+                c,
+                expected_current[i]
             );
         }
 
@@ -344,9 +373,9 @@ fn no_ad_hoc_runtime_gadget_execution() {
     // No VelocityMonitor / EMA / BoundedFeedback / Hysteresis / Acceleration implementation
     // code paths or registrations in this 2A slice.
     assert!(
-        !gpu_src.contains("VelocityMonitor") &&
-        !gpu_src.contains("fn velocity_monitor") &&
-        !sim_src.contains("VelocityMonitor"),
+        !gpu_src.contains("VelocityMonitor")
+            && !gpu_src.contains("fn velocity_monitor")
+            && !sim_src.contains("VelocityMonitor"),
         "VelocityMonitor etc must remain unimplemented in 2A"
     );
 
@@ -367,34 +396,34 @@ fn posture_preservation_2a() {
 
     // No new EML opcode for previous / temporal hidden read
     assert!(
-        !gpu_lib.contains("SNAPSHOT_PREVIOUS") &&
-        !gpu_lib.contains("COPY_PREV") &&
-        !gpu_lib.contains("EmlOp::Previous"),
+        !gpu_lib.contains("SNAPSHOT_PREVIOUS")
+            && !gpu_lib.contains("COPY_PREV")
+            && !gpu_lib.contains("EmlOp::Previous"),
         "no new EML opcode for previous-value"
     );
 
     // No WGSL / per-gadget GPU kernel for temporal gadgets
     assert!(
-        !gpu_lib.contains("temporal_gadget") &&
-        !gpu_lib.contains("gadget_velocity") &&
-        !gpu_lib.contains("eml_gadget.wgsl"),
+        !gpu_lib.contains("temporal_gadget")
+            && !gpu_lib.contains("gadget_velocity")
+            && !gpu_lib.contains("eml_gadget.wgsl"),
         "no per-gadget WGSL for temporal memory"
     );
 
     // No hidden previous-value read inside EML eval (use gpu lib as proxy; full eml interpreter lives under accumulator/passes)
     assert!(
-        !gpu_lib.contains("read_previous") &&
-        !gpu_lib.contains("previous_value_buffer") &&
-        !gpu_lib.contains("hidden prev"),
+        !gpu_lib.contains("read_previous")
+            && !gpu_lib.contains("previous_value_buffer")
+            && !gpu_lib.contains("hidden prev"),
         "EML must have no hidden previous-value read (explicit columns only)"
     );
 
     // simthing-sim has no Gadget/Personality/Memory semantics (binding invariant)
     assert!(
-        !sim_lib.contains("struct Gadget") &&
-        !sim_lib.contains("enum Personality") &&
-        !sim_lib.contains("MemoryBank") &&
-        !sim_lib.contains("temporal_memory"),
+        !sim_lib.contains("struct Gadget")
+            && !sim_lib.contains("enum Personality")
+            && !sim_lib.contains("MemoryBank")
+            && !sim_lib.contains("temporal_memory"),
         "simthing-sim must remain Gadget/Personality/Memory free"
     );
 
@@ -405,16 +434,22 @@ fn posture_preservation_2a() {
             "no DailyResolutionBoundary in simthing-sim"
         );
         assert!(
-            !text.contains("struct Calendar") &&
-            !text.contains("enum Calendar") &&
-            !text.contains("struct Season"),
+            !text.contains("struct Calendar")
+                && !text.contains("enum Calendar")
+                && !text.contains("struct Season"),
             "no calendar/season types in simthing-sim"
         );
     }
 
     // Defaults unchanged (binding)
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
-    assert!(!PipelineFlags::default().use_accumulator_resource_flow, "Resource Flow E-11 default-off");
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
+    assert!(
+        !PipelineFlags::default().use_accumulator_resource_flow,
+        "Resource Flow E-11 default-off"
+    );
 
     // No production economy→mapping bridge (fixture orchestration only)
     assert!(!PipelineFlags::default().use_accumulator_resource_flow);

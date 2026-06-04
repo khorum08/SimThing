@@ -1,14 +1,15 @@
 //! Phase M-1: generic structured-field execution API and column-aware reduction.
 
 use simthing_core::{
-    column_aware_reduction_op, manual_slot_range_sum_op, AccumulatorOp, ColumnAwareReductionCombine,
-    ColumnAwareReductionSpec, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec,
+    column_aware_reduction_op, manual_slot_range_sum_op, AccumulatorOp,
+    ColumnAwareReductionCombine, ColumnAwareReductionSpec, CombineFn, ConsumeMode, GateSpec,
+    ScaleSpec, SourceSpec,
 };
 use simthing_gpu::{
     accumulator_op::set_debug_readback_allowed, AccumulatorOpSession, GpuContext,
-    StructuredFieldExecutionOptions, StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
-    StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
-    StructuredFieldStencilSourcePolicy,
+    StructuredFieldExecutionOptions, StructuredFieldStencilBoundaryMode,
+    StructuredFieldStencilConfig, StructuredFieldStencilMaskMode, StructuredFieldStencilOp,
+    StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy,
 };
 use simthing_sim::PipelineFlags;
 use std::sync::Mutex;
@@ -239,7 +240,8 @@ fn test_d_column_aware_reduction_matches_manual_slot_range_sum() {
             order_band: 0,
         };
         let helper_op = column_aware_reduction_op(spec).unwrap();
-        let manual_op = manual_slot_range_sum_op(0, CHILD_SLOTS, CHILD_COL, PARENT_SLOT, PARENT_COL, 0);
+        let manual_op =
+            manual_slot_range_sum_op(0, CHILD_SLOTS, CHILD_COL, PARENT_SLOT, PARENT_COL, 0);
         assert_eq!(helper_op, manual_op);
 
         let helper_out = run_sum_ops(ctx, &[helper_op.clone()], &values, n_slots);
@@ -258,7 +260,11 @@ fn test_d_column_aware_reduction_matches_manual_slot_range_sum() {
         assert!(matches!(helper_op.combine, CombineFn::Sum));
         assert!(matches!(
             helper_op.source,
-            SourceSpec::SlotRange { start: 0, count: 9, col: 2 }
+            SourceSpec::SlotRange {
+                start: 0,
+                count: 9,
+                col: 2
+            }
         ));
         assert_eq!(helper_op.consume, ConsumeMode::ResetTarget);
         assert_eq!(helper_op.gate, GateSpec::OrderBand(0));

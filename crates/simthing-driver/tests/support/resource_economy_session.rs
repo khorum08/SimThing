@@ -9,9 +9,9 @@ use simthing_core::{
 use simthing_driver::Scenario;
 use simthing_gpu::{GpuContext, SlotAllocator};
 use simthing_spec::{
-    metadata::DisplayMeta, version::SpecVersion, EmissionFormulaSpec, GameModeSpec,
-    PropertyKey, PropertySpec, RecipeInputSpec, ResourceEconomySpec, ResourceEmissionSpec,
-    ResourceRecipeSpec, ResourceTransferSpec,
+    metadata::DisplayMeta, version::SpecVersion, EmissionFormulaSpec, GameModeSpec, PropertyKey,
+    PropertySpec, RecipeInputSpec, ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec,
+    ResourceTransferSpec,
 };
 
 pub fn try_gpu() -> bool {
@@ -134,8 +134,8 @@ pub fn amount_col(reg: &DimensionRegistry, ns: &str, name: &str) -> u32 {
 
 pub fn open_live_transfer_session() -> simthing_driver::SimSession {
     let scenario = live_slot_scenario();
-    let mut session =
-        simthing_driver::SimSession::open_from_spec(scenario, &live_slot_game_mode()).expect("open");
+    let mut session = simthing_driver::SimSession::open_from_spec(scenario, &live_slot_game_mode())
+        .expect("open");
     session.proto.flags.use_accumulator_transfer = true;
     session.sync_resource_economy_if_enabled().expect("sync");
     session
@@ -205,7 +205,11 @@ pub fn open_recipe_session() -> simthing_driver::SimSession {
     session
 }
 
-pub fn register_amount(reg: &mut DimensionRegistry, ns: &str, name: &str) -> simthing_core::SimPropertyId {
+pub fn register_amount(
+    reg: &mut DimensionRegistry,
+    ns: &str,
+    name: &str,
+) -> simthing_core::SimPropertyId {
     reg.register(SimProperty {
         namespace: ns.into(),
         name: name.into(),

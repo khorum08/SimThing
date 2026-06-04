@@ -10,11 +10,11 @@ use std::time::Instant;
 use bytemuck::{Pod, Zeroable};
 use simthing_gpu::GpuContext;
 use simthing_spec::{
-    preview_kernel_registry_manifest, preview_production_candidate_registry_entry,
-    preview_kernel_graph_identity, KernelDescriptorSpec, KernelGraphEdgeSpec,
+    preview_kernel_graph_identity, preview_kernel_registry_manifest,
+    preview_production_candidate_registry_entry, KernelDescriptorSpec, KernelGraphEdgeSpec,
     KernelGraphRequestSpec, KernelGraphSpec, KernelLane, KernelOutputSpec,
-    KernelRegistryEntryPreview, KernelRegistryLane, MappingExecutionProfile,
-    NativeMathClass, OutputAuthority, SpecError,
+    KernelRegistryEntryPreview, KernelRegistryLane, MappingExecutionProfile, NativeMathClass,
+    OutputAuthority, SpecError,
 };
 use wgpu::util::DeviceExt;
 
@@ -163,7 +163,10 @@ fn build_registry_entry(request_id: &str) -> Result<KernelRegistryEntryPreview, 
     if manifest.entries.len() != 1 {
         return Err(SpecError::JitKernelDescriptorAdmission {
             kernel: "exec0_registry".into(),
-            reason: format!("expected one registry entry, got {}", manifest.entries.len()),
+            reason: format!(
+                "expected one registry entry, got {}",
+                manifest.entries.len()
+            ),
         });
     }
     Ok(manifest.entries[0].clone())
@@ -476,11 +479,13 @@ fn run_fusion_gpu(
 
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("jit_exec0_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("jit_exec0_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("jit_exec0_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -563,12 +568,24 @@ fn assert_fusion_parity(
     gpu_outputs: &[ObserverScoreOutput],
     context: &str,
 ) {
-    assert_eq!(gpu_outputs.len(), observers.len(), "{context}: length mismatch");
+    assert_eq!(
+        gpu_outputs.len(),
+        observers.len(),
+        "{context}: length mismatch"
+    );
     for (i, obs) in observers.iter().enumerate() {
         let cpu = cpu_fusion_oracle(fields, width, height, n_dims, *obs);
         let gpu = gpu_outputs[i];
-        assert_eq!(gpu.dx.to_bits(), cpu.dx.to_bits(), "{context} observer {i} dx");
-        assert_eq!(gpu.dy.to_bits(), cpu.dy.to_bits(), "{context} observer {i} dy");
+        assert_eq!(
+            gpu.dx.to_bits(),
+            cpu.dx.to_bits(),
+            "{context} observer {i} dx"
+        );
+        assert_eq!(
+            gpu.dy.to_bits(),
+            cpu.dy.to_bits(),
+            "{context} observer {i} dy"
+        );
         assert_eq!(
             gpu.descent_x.to_bits(),
             cpu.descent_x.to_bits(),
@@ -579,7 +596,11 @@ fn assert_fusion_parity(
             cpu.descent_y.to_bits(),
             "{context} observer {i} descent_y"
         );
-        assert_eq!(gpu.score.to_bits(), cpu.score.to_bits(), "{context} observer {i} score");
+        assert_eq!(
+            gpu.score.to_bits(),
+            cpu.score.to_bits(),
+            "{context} observer {i} score"
+        );
     }
 }
 
@@ -597,7 +618,10 @@ fn execute_admitted_production_candidate(
     assert_eq!(entry.lane, KernelRegistryLane::TestOnlyPreview);
 
     let candidate = admit_production_candidate(&entry).expect("REG-1 candidate admission");
-    assert_eq!(candidate.lane, KernelRegistryLane::ProductionCandidatePreview);
+    assert_eq!(
+        candidate.lane,
+        KernelRegistryLane::ProductionCandidatePreview
+    );
     assert!(candidate.default_off);
     assert!(!candidate.production_wiring);
     assert!(!candidate.canonical_text.contains("mag2"));
@@ -622,7 +646,10 @@ fn jit_exec0_candidate_admission_gates_execution() {
 
     let entry = build_registry_entry("exec0_gate").expect("registry entry");
     let candidate = admit_production_candidate(&entry).expect("admission");
-    assert_eq!(candidate.lane, KernelRegistryLane::ProductionCandidatePreview);
+    assert_eq!(
+        candidate.lane,
+        KernelRegistryLane::ProductionCandidatePreview
+    );
 
     let mut mag2_entry = entry.clone();
     mag2_entry
@@ -682,16 +709,18 @@ fn jit_exec0_production_candidate_grad1_executes_with_oracle_parity() {
             n_dims,
         );
 
-        assert_eq!(candidate.lane, KernelRegistryLane::ProductionCandidatePreview);
+        assert_eq!(
+            candidate.lane,
+            KernelRegistryLane::ProductionCandidatePreview
+        );
         assert_eq!(result.outputs.len(), 10_000);
         assert_eq!(result.dispatch_count, 1);
 
         let sample_indices = oracle_sample_indices(observers.len());
-        let sampled_obs: Vec<ObserverInput> = sample_indices.iter().map(|&i| observers[i]).collect();
-        let sampled_out: Vec<ObserverScoreOutput> = sample_indices
-            .iter()
-            .map(|&i| result.outputs[i])
-            .collect();
+        let sampled_obs: Vec<ObserverInput> =
+            sample_indices.iter().map(|&i| observers[i]).collect();
+        let sampled_out: Vec<ObserverScoreOutput> =
+            sample_indices.iter().map(|&i| result.outputs[i]).collect();
         assert_fusion_parity(
             &fields,
             width,

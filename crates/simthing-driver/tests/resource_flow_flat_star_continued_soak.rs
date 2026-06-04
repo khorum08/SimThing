@@ -7,9 +7,9 @@ use simthing_driver::{
     fixture_continued_dynamic_policy_a, fixture_continued_multi_arena_no_coupling,
     fixture_continued_replay, fixture_continued_static_512_participants,
     fixture_continued_static_skewed_weights, fixture_profile_disabled_or_default,
-    open_continued_profile_session, open_default_profile_session, profile_telemetry_for_open_session,
-    run_continued_replay_pair, run_continued_soak_with_summary, ResourceFlowFlagSource,
-    RF_CONTINUED_STATIC_512,
+    open_continued_profile_session, open_default_profile_session,
+    profile_telemetry_for_open_session, run_continued_replay_pair, run_continued_soak_with_summary,
+    ResourceFlowFlagSource, RF_CONTINUED_STATIC_512,
 };
 use simthing_sim::PipelineFlags;
 use simthing_spec::{ResourceFlowExecutionProfile, ResourceFlowOptInMode};

@@ -10,15 +10,14 @@ mod mobility_gpu_kernel6_chain_fixture;
 
 pub use mobility_gpu_kernel6_chain_fixture::{
     cpu_chain_checksum_for_columns, cpu_chain_oracle,
-    mobility_gpu_kernel6_chain_shader_text_has_domain_terms,
-    projection_checksum_for_columns, projected_34k_columns_for_kernel6,
-    run_mobility_gpu_kernel6_fixture, MobilityGpuKernel0ColumnProbe,
-    MobilityGpuKernel0ParityClassification, MobilityGpuKernel6FixtureInput,
-    MobilityGpuKernel6ForbiddenPathRequests, MobilityGpuKernel6Gate,
-    MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_END, MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_START,
-    MOBILITY_GPU_KERNEL4_ROW_COUNT, MOBILITY_GPU_KERNEL4_SPARSE_STRIDE,
-    MOBILITY_GPU_KERNEL6_CHAIN_ID, MOBILITY_GPU_KERNEL6_FIXTURE_ID,
-    MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
+    mobility_gpu_kernel6_chain_shader_text_has_domain_terms, projected_34k_columns_for_kernel6,
+    projection_checksum_for_columns, run_mobility_gpu_kernel6_fixture,
+    MobilityGpuKernel0ColumnProbe, MobilityGpuKernel0ParityClassification,
+    MobilityGpuKernel6FixtureInput, MobilityGpuKernel6ForbiddenPathRequests,
+    MobilityGpuKernel6Gate, MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_END,
+    MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_START, MOBILITY_GPU_KERNEL4_ROW_COUNT,
+    MOBILITY_GPU_KERNEL4_SPARSE_STRIDE, MOBILITY_GPU_KERNEL6_CHAIN_ID,
+    MOBILITY_GPU_KERNEL6_FIXTURE_ID, MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
 };
 
 pub const MOBILITY_GPU_KERNEL8_FIXTURE_ID: &str =
@@ -166,10 +165,7 @@ pub fn build_projection_variants(
     baseline: &MobilityGpuKernel0ColumnProbe,
 ) -> Vec<(&'static str, MobilityGpuKernel0ColumnProbe)> {
     vec![
-        (
-            MOBILITY_GPU_KERNEL8_VARIANT_BASELINE,
-            baseline.clone(),
-        ),
+        (MOBILITY_GPU_KERNEL8_VARIANT_BASELINE, baseline.clone()),
         (
             MOBILITY_GPU_KERNEL8_VARIANT_SPARSE_DELTA,
             sparse_delta_variant(baseline),
@@ -205,7 +201,9 @@ pub fn dense_bulk_variant(base: &MobilityGpuKernel0ColumnProbe) -> MobilityGpuKe
     columns
 }
 
-pub fn parent_key_offset_variant(base: &MobilityGpuKernel0ColumnProbe) -> MobilityGpuKernel0ColumnProbe {
+pub fn parent_key_offset_variant(
+    base: &MobilityGpuKernel0ColumnProbe,
+) -> MobilityGpuKernel0ColumnProbe {
     let mut columns = base.clone();
     for i in 0..columns.src_parent.len() {
         columns.src_parent[i] = columns.src_parent[i].wrapping_add(3);
@@ -257,10 +255,8 @@ pub fn run_mobility_gpu_kernel8_fixture(
         let mut replays = Vec::with_capacity(replay_count);
 
         for replay in 0..replay_count {
-            let kernel6 = run_mobility_gpu_kernel6_fixture(&kernel6_input(
-                input,
-                Some(columns.clone()),
-            ));
+            let kernel6 =
+                run_mobility_gpu_kernel6_fixture(&kernel6_input(input, Some(columns.clone())));
             if !kernel6.admitted {
                 diagnostics.extend(kernel6.diagnostics);
                 break;
@@ -307,8 +303,10 @@ pub fn run_mobility_gpu_kernel8_fixture(
                 .all(|replay| replay.cpu_chain_checksum == variant.cpu_chain_checksum)
     });
     let gpu_checksums_match_or_unavailable = variant_reports.iter().all(|variant| {
-        variant.replays.iter().all(|replay| {
-            match replay.parity_classification {
+        variant
+            .replays
+            .iter()
+            .all(|replay| match replay.parity_classification {
                 MobilityGpuKernel0ParityClassification::ExactParity => {
                     replay.gpu_chain_checksum == variant.gpu_chain_checksum
                         && replay.gpu_chain_checksum.is_some()
@@ -317,8 +315,7 @@ pub fn run_mobility_gpu_kernel8_fixture(
                     !replay.gpu_dispatch_occurred && replay.gpu_chain_checksum.is_none()
                 }
                 MobilityGpuKernel0ParityClassification::GpuExecutionFailed => false,
-            }
-        })
+            })
     });
     let replay_stable_per_variant = variant_reports.iter().all(|variant| {
         variant.replays.windows(2).all(|pair| {
@@ -366,8 +363,8 @@ pub fn run_mobility_gpu_kernel8_fixture(
     report.gpu_checksums_match_or_unavailable = gpu_checksums_match_or_unavailable;
     report.replay_stable_per_variant = replay_stable_per_variant;
     report.distinct_variants_have_distinct_checksums = distinct_variants_have_distinct_checksums;
-    report.source_projection_unchanged =
-        source_before == source_after && projection_checksum_for_columns(&source_before) == source_checksum;
+    report.source_projection_unchanged = source_before == source_after
+        && projection_checksum_for_columns(&source_before) == source_checksum;
     report.gpu_dispatch_occurred = any_gpu_dispatch;
     report.parity_classification = parity_classification;
     report.variants = variant_reports;
@@ -381,10 +378,9 @@ pub fn mobility_gpu_kernel8_shader_text_has_domain_terms() -> bool {
 fn classify_variant_parity(
     replays: &[MobilityGpuKernel8ReplayReport],
 ) -> MobilityGpuKernel0ParityClassification {
-    if replays
-        .iter()
-        .all(|replay| replay.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity)
-    {
+    if replays.iter().all(|replay| {
+        replay.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity
+    }) {
         MobilityGpuKernel0ParityClassification::ExactParity
     } else if replays.iter().all(|replay| {
         replay.parity_classification == MobilityGpuKernel0ParityClassification::GpuUnavailable
@@ -516,7 +512,9 @@ fn shell(input: &MobilityGpuKernel8FixtureInput) -> MobilityGpuKernel8FixtureRep
     }
 }
 
-fn disabled_no_op_report(input: &MobilityGpuKernel8FixtureInput) -> MobilityGpuKernel8FixtureReport {
+fn disabled_no_op_report(
+    input: &MobilityGpuKernel8FixtureInput,
+) -> MobilityGpuKernel8FixtureReport {
     let mut report = shell(input);
     report.admitted = true;
     report.disabled_no_op = true;

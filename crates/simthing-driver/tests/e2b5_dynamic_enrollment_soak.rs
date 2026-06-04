@@ -77,14 +77,12 @@ fn e2b5_soak_reject_when_cap_full_no_partial_mutation() {
     assert_eq!(report.admissions_observed, 0);
     assert_eq!(report.rejections_observed, 1);
     assert_eq!(report.generation_start, report.generation_end);
-    assert!(
-        setup
-            .spec_state
-            .arena_participant_scaffold
-            .index
-            .participant_slot(setup.child_ids[0], 0)
-            .is_none()
-    );
+    assert!(setup
+        .spec_state
+        .arena_participant_scaffold
+        .index
+        .participant_slot(setup.child_ids[0], 0)
+        .is_none());
 }
 
 #[test]
@@ -95,14 +93,12 @@ fn e2b5_soak_contiguity_blocked_no_compaction() {
 
     assert_eq!(report.admissions_observed, 0);
     assert_eq!(report.rejections_observed, 1);
-    assert!(
-        setup
-            .spec_state
-            .arena_participant_scaffold
-            .index
-            .participant_slot(setup.child_ids[0], 0)
-            .is_none()
-    );
+    assert!(setup
+        .spec_state
+        .arena_participant_scaffold
+        .index
+        .participant_slot(setup.child_ids[0], 0)
+        .is_none());
 }
 
 #[test]
@@ -114,14 +110,13 @@ fn e2b5_soak_flag_off_updates_registry_but_no_gpu_sync() {
     assert_eq!(report.admissions_observed, 1);
     assert_eq!(report.resource_flow_syncs_observed, 0);
     assert!(!fx.session.state.accumulator_resource_flow_active);
-    assert!(
-        fx.session
-            .spec_state
-            .arena_participant_scaffold
-            .index
-            .participant_slot(fx.enrollment_report.admissions[0].child_id, 0)
-            .is_some()
-    );
+    assert!(fx
+        .session
+        .spec_state
+        .arena_participant_scaffold
+        .index
+        .participant_slot(fx.enrollment_report.admissions[0].child_id, 0)
+        .is_some());
     assert_sibling_contiguity_after_admission(&fx);
 }
 
@@ -139,7 +134,10 @@ fn e2b5_soak_replay_same_seed_same_dynamic_enrollment_frames() {
     let report_a = run_replay_burn_in(&mut fx_a, 10);
     let report_b = run_replay_burn_in(&mut fx_b, 10);
 
-    assert_eq!(report_a.max_abs_error.to_bits(), report_b.max_abs_error.to_bits());
+    assert_eq!(
+        report_a.max_abs_error.to_bits(),
+        report_b.max_abs_error.to_bits()
+    );
     assert_eq!(report_a.ticks_checked, report_b.ticks_checked);
     assert!(report_a.replay_bit_exact);
     assert!(report_b.replay_bit_exact);

@@ -113,13 +113,17 @@ pub enum ArenaRegistryError {
         declared: u32,
         computed: u32,
     },
-    #[error("arena `{arena}` exceeds max_coupling_fanout ({declared} declared, {computed} computed)")]
+    #[error(
+        "arena `{arena}` exceeds max_coupling_fanout ({declared} declared, {computed} computed)"
+    )]
     MaxCouplingFanoutExceeded {
         arena: ArenaName,
         declared: u32,
         computed: u32,
     },
-    #[error("arena `{arena}` exceeds max_orderband_depth ({declared} declared, {computed} computed)")]
+    #[error(
+        "arena `{arena}` exceeds max_orderband_depth ({declared} declared, {computed} computed)"
+    )]
     MaxOrderBandDepthExceeded {
         arena: ArenaName,
         declared: u32,
@@ -233,10 +237,7 @@ impl ArenaRegistry {
         }
         if participants_reevaluated > 0 {
             self.generation = self.generation.saturating_add(1);
-            *self
-                .subtree_generations
-                .entry(changed_root)
-                .or_insert(0) += 1;
+            *self.subtree_generations.entry(changed_root).or_insert(0) += 1;
         }
         let untouched_participant_count = self
             .participants
@@ -472,11 +473,7 @@ fn find_all_algebraic_cycle(couplings: &[ArenaCoupling]) -> Option<Vec<ArenaIdx>
                 let mut next_path = path.clone();
                 next_path.push(*next);
                 visiting.insert(*next);
-                stack.push((
-                    *next,
-                    next_path,
-                    all_algebraic && delay.is_algebraic(),
-                ));
+                stack.push((*next, next_path, all_algebraic && delay.is_algebraic()));
             }
         }
     }
@@ -579,7 +576,8 @@ mod tests {
         });
         b.admit_participant(research, 1, SimThingId::new()).unwrap();
         b.admit_participant(food, 2, SimThingId::new()).unwrap();
-        b.admit_participant(suppression, 3, SimThingId::new()).unwrap();
+        b.admit_participant(suppression, 3, SimThingId::new())
+            .unwrap();
         b.admit_participant(food, 4, SimThingId::new()).unwrap();
         let (reg, _) = b.build().unwrap();
 

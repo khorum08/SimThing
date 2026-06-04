@@ -72,7 +72,12 @@ pub fn open_scenario_session(fixture: &BurnInScenarioFixture) -> FlatStarSession
         "scenario {name} must explicitly enable resource flow",
         name = fixture.name
     );
-    assert_eq!(fx.layout.max_depth, 2, "scenario {name} must stay flat-star D=2", name = fixture.name);
+    assert_eq!(
+        fx.layout.max_depth,
+        2,
+        "scenario {name} must stay flat-star D=2",
+        name = fixture.name
+    );
     fx
 }
 
@@ -124,8 +129,8 @@ pub fn run_scenario_burn_in(
     );
 
     let mut report = ResourceFlowScenarioBurnInReport::from_parts(fixture.name, &sync, &burn);
-    report.replay_bit_exact = fixture.expect_bit_exact
-        && burn.max_abs_error.to_bits() == 0.0_f32.to_bits();
+    report.replay_bit_exact =
+        fixture.expect_bit_exact && burn.max_abs_error.to_bits() == 0.0_f32.to_bits();
     report
 }
 

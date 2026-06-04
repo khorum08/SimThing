@@ -174,7 +174,12 @@ pub fn admit_control_0080_0(input: &Control0080AdmissionInput) -> Control0080Adm
     validate_forbidden(&input.forbidden, &mut diagnostics);
 
     if !diagnostics.is_empty() {
-        return rejected_report(input, diagnostics, Vec::new(), input.base_schedule_input.clone());
+        return rejected_report(
+            input,
+            diagnostics,
+            Vec::new(),
+            input.base_schedule_input.clone(),
+        );
     }
 
     if !input.surface.gate.explicit_opt_in {
@@ -252,10 +257,7 @@ pub fn admit_control_0080_0(input: &Control0080AdmissionInput) -> Control0080Adm
 
 pub fn replay_admit_control_0080_0() -> (Control0080AdmissionReport, Control0080AdmissionReport) {
     let input = Control0080AdmissionInput::explicit_opt_in();
-    (
-        admit_control_0080_0(&input),
-        admit_control_0080_0(&input),
-    )
+    (admit_control_0080_0(&input), admit_control_0080_0(&input))
 }
 
 enum CommandApplyOutcome {
@@ -274,7 +276,11 @@ fn apply_command(
     match command {
         Control0080Command::SetSourceDisruption(value) => {
             if *value < 0 {
-                reject(rejected_commands, command_index, "negative_disruption_rejected");
+                reject(
+                    rejected_commands,
+                    command_index,
+                    "negative_disruption_rejected",
+                );
                 return CommandApplyOutcome::Rejected;
             }
             schedule_input.scenario.source.disruption = *value;
@@ -282,7 +288,11 @@ fn apply_command(
         }
         Control0080Command::SetDestinationDisruption(value) => {
             if *value < 0 {
-                reject(rejected_commands, command_index, "negative_disruption_rejected");
+                reject(
+                    rejected_commands,
+                    command_index,
+                    "negative_disruption_rejected",
+                );
                 return CommandApplyOutcome::Rejected;
             }
             schedule_input.scenario.destination.disruption = *value;
@@ -306,7 +316,11 @@ fn apply_command(
         }
         Control0080Command::SetSourceLocalSecurity(value) => {
             if *value < 0 {
-                reject(rejected_commands, command_index, "negative_local_security_rejected");
+                reject(
+                    rejected_commands,
+                    command_index,
+                    "negative_local_security_rejected",
+                );
                 return CommandApplyOutcome::Rejected;
             }
             schedule_input.scenario.source.local_security = *value;
@@ -314,7 +328,11 @@ fn apply_command(
         }
         Control0080Command::SetDestinationLocalSecurity(value) => {
             if *value < 0 {
-                reject(rejected_commands, command_index, "negative_local_security_rejected");
+                reject(
+                    rejected_commands,
+                    command_index,
+                    "negative_local_security_rejected",
+                );
                 return CommandApplyOutcome::Rejected;
             }
             schedule_input.scenario.destination.local_security = *value;
@@ -322,7 +340,11 @@ fn apply_command(
         }
         Control0080Command::SetStepCount(value) => {
             if *value > MAX_STEP_COUNT {
-                reject(rejected_commands, command_index, "invalid_step_count_rejected");
+                reject(
+                    rejected_commands,
+                    command_index,
+                    "invalid_step_count_rejected",
+                );
                 return CommandApplyOutcome::Rejected;
             }
             schedule_input.step_count = *value;
@@ -343,11 +365,19 @@ fn apply_command(
         Control0080Command::RunObservedScenario => CommandApplyOutcome::RunObservedScenario,
         Control0080Command::ExportTranscript => CommandApplyOutcome::ExportTranscript,
         Control0080Command::DirectPatrolMove => {
-            reject(rejected_commands, command_index, "direct_patrol_move_rejected");
+            reject(
+                rejected_commands,
+                command_index,
+                "direct_patrol_move_rejected",
+            );
             CommandApplyOutcome::Rejected
         }
         Control0080Command::DirectPirateMove => {
-            reject(rejected_commands, command_index, "direct_pirate_move_rejected");
+            reject(
+                rejected_commands,
+                command_index,
+                "direct_pirate_move_rejected",
+            );
             CommandApplyOutcome::Rejected
         }
         Control0080Command::ExternalBoundaryRequest => {

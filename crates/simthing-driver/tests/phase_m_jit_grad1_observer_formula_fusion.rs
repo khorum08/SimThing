@@ -200,7 +200,10 @@ fn assert_shader_semantic_free(wgsl: &str) {
             "fused WGSL must be semantic-free; found `{term}`"
         );
     }
-    assert!(!wgsl.contains("sqrt("), "fused exact path must not use sqrt");
+    assert!(
+        !wgsl.contains("sqrt("),
+        "fused exact path must not use sqrt"
+    );
 }
 
 fn field_index(x: u32, y: u32, width: u32, n_dims: u32, col: u32) -> usize {
@@ -371,11 +374,13 @@ fn run_fusion_gpu(
 
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("jit_grad1_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("jit_grad1_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("jit_grad1_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -458,12 +463,24 @@ fn assert_fusion_parity(
     gpu_outputs: &[ObserverScoreOutput],
     context: &str,
 ) {
-    assert_eq!(gpu_outputs.len(), observers.len(), "{context}: length mismatch");
+    assert_eq!(
+        gpu_outputs.len(),
+        observers.len(),
+        "{context}: length mismatch"
+    );
     for (i, obs) in observers.iter().enumerate() {
         let cpu = cpu_fusion_oracle(fields, width, height, n_dims, *obs);
         let gpu = gpu_outputs[i];
-        assert_eq!(gpu.dx.to_bits(), cpu.dx.to_bits(), "{context} observer {i} dx");
-        assert_eq!(gpu.dy.to_bits(), cpu.dy.to_bits(), "{context} observer {i} dy");
+        assert_eq!(
+            gpu.dx.to_bits(),
+            cpu.dx.to_bits(),
+            "{context} observer {i} dx"
+        );
+        assert_eq!(
+            gpu.dy.to_bits(),
+            cpu.dy.to_bits(),
+            "{context} observer {i} dy"
+        );
         assert_eq!(
             gpu.descent_x.to_bits(),
             cpu.descent_x.to_bits(),
@@ -474,7 +491,11 @@ fn assert_fusion_parity(
             cpu.descent_y.to_bits(),
             "{context} observer {i} descent_y"
         );
-        assert_eq!(gpu.score.to_bits(), cpu.score.to_bits(), "{context} observer {i} score");
+        assert_eq!(
+            gpu.score.to_bits(),
+            cpu.score.to_bits(),
+            "{context} observer {i} score"
+        );
     }
 }
 
@@ -534,7 +555,10 @@ fn jit_grad1_fused_observer_score_shader_is_semantic_free() {
     assert!(wgsl.contains("score"));
     assert!(wgsl.contains("descent_x"));
     assert!(wgsl.contains("bitcast<f32>"));
-    assert!(!wgsl.contains("mag2"), "exact fused path must not emit mag2");
+    assert!(
+        !wgsl.contains("mag2"),
+        "exact fused path must not emit mag2"
+    );
 }
 
 #[test]
@@ -584,11 +608,10 @@ fn jit_grad1_batches_10000_observer_scores_one_dispatch() {
         assert_eq!(result.dispatch_count, 1);
 
         let sample_indices = oracle_sample_indices(observers.len());
-        let sampled_obs: Vec<ObserverInput> = sample_indices.iter().map(|&i| observers[i]).collect();
-        let sampled_out: Vec<ObserverScoreOutput> = sample_indices
-            .iter()
-            .map(|&i| result.outputs[i])
-            .collect();
+        let sampled_obs: Vec<ObserverInput> =
+            sample_indices.iter().map(|&i| observers[i]).collect();
+        let sampled_out: Vec<ObserverScoreOutput> =
+            sample_indices.iter().map(|&i| result.outputs[i]).collect();
         assert_fusion_parity(
             &fields,
             width,

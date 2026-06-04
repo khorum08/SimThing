@@ -178,11 +178,7 @@ pub fn seed_cluster(values: &mut [f32], width: u32, origin_slot: u32, scale: f32
     }
 }
 
-pub fn build_flush_atlas(
-    tile_count: u32,
-    tile_size: u32,
-    n_dims: u32,
-) -> (Vec<f32>, u32, u32) {
+pub fn build_flush_atlas(tile_count: u32, tile_size: u32, n_dims: u32) -> (Vec<f32>, u32, u32) {
     let (aw, ah) = atlas_dims(tile_count, tile_size);
     let side = atlas_side(tile_count);
     let mut values = vec![0.0f32; (aw * ah * n_dims) as usize];
@@ -382,16 +378,10 @@ pub fn max_full_tile_error(
         let (ox, oy) = tile_origin(tc, tr, tile_size);
         for ly in 0..tile_size {
             for lx in 0..tile_size {
-                let a = got[atlas_cell_index(
-                    atlas_slot_xy(ox + lx, oy + ly, width),
-                    target_col,
-                    n_dims,
-                )];
-                let b = expected[atlas_cell_index(
-                    atlas_slot_xy(ox + lx, oy + ly, width),
-                    target_col,
-                    n_dims,
-                )];
+                let a = got
+                    [atlas_cell_index(atlas_slot_xy(ox + lx, oy + ly, width), target_col, n_dims)];
+                let b = expected
+                    [atlas_cell_index(atlas_slot_xy(ox + lx, oy + ly, width), target_col, n_dims)];
                 max_err = max_err.max((a - b).abs());
             }
         }
@@ -399,7 +389,14 @@ pub fn max_full_tile_error(
     max_err
 }
 
-pub fn full_tile_l_inf(got: &[f32], expected: &[f32], width: u32, tile_size: u32, tile_count: u32, n_dims: u32) -> f32 {
+pub fn full_tile_l_inf(
+    got: &[f32],
+    expected: &[f32],
+    width: u32,
+    tile_size: u32,
+    tile_count: u32,
+    n_dims: u32,
+) -> f32 {
     max_full_tile_error(got, expected, width, tile_size, tile_count, n_dims)
 }
 
@@ -412,23 +409,19 @@ pub fn corridor_t44_max_error(
     n_dims: u32,
 ) -> f32 {
     let side = atlas_side(tile_count);
-    let (px, py) = (4u32.min(tile_size.saturating_sub(1)), 4u32.min(tile_size.saturating_sub(1)));
+    let (px, py) = (
+        4u32.min(tile_size.saturating_sub(1)),
+        4u32.min(tile_size.saturating_sub(1)),
+    );
     let target_col = C0_DEFAULT_TARGET_COL;
     let mut max_err = 0.0f32;
     for rid in 0..tile_count {
         let tc = rid % side;
         let tr = rid / side;
         let (ox, oy) = tile_origin(tc, tr, tile_size);
-        let a = got[atlas_cell_index(
-            atlas_slot_xy(ox + px, oy + py, width),
-            target_col,
-            n_dims,
-        )];
-        let b = expected[atlas_cell_index(
-            atlas_slot_xy(ox + px, oy + py, width),
-            target_col,
-            n_dims,
-        )];
+        let a = got[atlas_cell_index(atlas_slot_xy(ox + px, oy + py, width), target_col, n_dims)];
+        let b =
+            expected[atlas_cell_index(atlas_slot_xy(ox + px, oy + py, width), target_col, n_dims)];
         max_err = max_err.max((a - b).abs());
     }
     max_err
@@ -452,7 +445,11 @@ pub fn make_atlas_mask_params(
         tile_size,
         alpha_self_decay: C0_DEFAULT_ALPHA,
         gamma_neighbor: C0_DEFAULT_GAMMA,
-        source_cap: if source_capped { C0_DEFAULT_SOURCE_CAP } else { 0.0 },
+        source_cap: if source_capped {
+            C0_DEFAULT_SOURCE_CAP
+        } else {
+            0.0
+        },
         variant: if source_capped { 5 } else { 1 },
         use_tile_local_mask: u32::from(use_tile_local_mask),
         renorm_valid_neighbors: u32::from(renorm == AtlasNormalizeVariant::ValidNeighborRenorm),
@@ -552,7 +549,12 @@ impl AtlasMaskGpuOp {
         }
     }
 
-    fn bind_group(&self, device: &wgpu::Device, input: &Buffer, output: &Buffer) -> wgpu::BindGroup {
+    fn bind_group(
+        &self,
+        device: &wgpu::Device,
+        input: &Buffer,
+        output: &Buffer,
+    ) -> wgpu::BindGroup {
         device.create_bind_group(&BindGroupDescriptor {
             label: Some("atlas_mask_bg"),
             layout: &self.bind_group_layout,

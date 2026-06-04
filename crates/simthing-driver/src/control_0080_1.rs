@@ -252,8 +252,7 @@ pub fn admit_control_0080_1(input: &Control0081AdmissionInput) -> Control0081Adm
 
     let mut schedule_input = input.base_schedule_input.clone();
     schedule_input.surface = DefaultSchedule0081Surface::with_explicit_opt_in();
-    schedule_input.production_path_input =
-        crate::ProductionPath0081Input::explicit_opt_in();
+    schedule_input.production_path_input = crate::ProductionPath0081Input::explicit_opt_in();
     let mut bounded_config = Control0081BoundedConfig::default();
     let mut rejected_commands = Vec::new();
     let mut command_transcript = Vec::new();
@@ -354,10 +353,7 @@ pub fn admit_control_0080_1(input: &Control0081AdmissionInput) -> Control0081Adm
 
 pub fn replay_admit_control_0080_1() -> (Control0081AdmissionReport, Control0081AdmissionReport) {
     let input = Control0081AdmissionInput::explicit_opt_in();
-    (
-        admit_control_0080_1(&input),
-        admit_control_0080_1(&input),
-    )
+    (admit_control_0080_1(&input), admit_control_0080_1(&input))
 }
 
 enum CommandApplyOutcome {
@@ -605,7 +601,14 @@ fn apply_i64_config(
     }
     let old = *target;
     *target = value;
-    push_applied(command_transcript, command_index, command, field, old, value);
+    push_applied(
+        command_transcript,
+        command_index,
+        command,
+        field,
+        old,
+        value,
+    );
     CommandApplyOutcome::Applied
 }
 
@@ -870,9 +873,7 @@ fn base_report(
         semantic_or_raw_wgsl_present: input.forbidden.semantic_or_raw_wgsl,
         new_shader_or_gpu_kernel: input.forbidden.new_shader_or_gpu_kernel,
         cpu_planner_used: false,
-        hard_currency_markets_trade_aibudget: input
-            .forbidden
-            .hard_currency_markets_trade_aibudget,
+        hard_currency_markets_trade_aibudget: input.forbidden.hard_currency_markets_trade_aibudget,
         nested_resource_flow: input.forbidden.nested_resource_flow,
         clausething_dependency_present: input.forbidden.clausething_dependency,
         closed_ladders_reopened: input.forbidden.closed_ladder_reopen,

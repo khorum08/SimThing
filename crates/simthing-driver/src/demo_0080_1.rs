@@ -339,14 +339,16 @@ fn base_report(
     let obs = control_report.observation_report.as_ref();
 
     let executed_step_count = obs.map(|o| o.executed_step_count).unwrap_or(0);
-    let terran_move_count = obs
-        .map(|o| o.summary.terran_movement_rows)
-        .unwrap_or(0);
-    let pirate_move_count = obs
-        .map(|o| o.summary.pirate_movement_rows)
-        .unwrap_or(0);
+    let terran_move_count = obs.map(|o| o.summary.terran_movement_rows).unwrap_or(0);
+    let pirate_move_count = obs.map(|o| o.summary.pirate_movement_rows).unwrap_or(0);
     let boundary_request_count = obs
-        .map(|o| o.transcript.rows.iter().filter(|r| r.boundary_request_materialized).count() as u32)
+        .map(|o| {
+            o.transcript
+                .rows
+                .iter()
+                .filter(|r| r.boundary_request_materialized)
+                .count() as u32
+        })
         .unwrap_or(0);
     let identity_preserved = obs
         .map(|o| o.transcript.rows.iter().all(|r| r.identity_preserved))
@@ -355,7 +357,12 @@ fn base_report(
         .map(|o| o.transcript.rows.iter().all(|r| r.owner_overlay_preserved))
         .unwrap_or(true);
     let membership_without_reparenting = obs
-        .map(|o| o.transcript.rows.iter().all(|r| r.membership_updated_without_reparenting))
+        .map(|o| {
+            o.transcript
+                .rows
+                .iter()
+                .all(|r| r.membership_updated_without_reparenting)
+        })
         .unwrap_or(true);
 
     let atlas_present = obs
@@ -441,7 +448,9 @@ fn base_report(
             && !input.forbidden.global_default_schedule,
         no_semantic_or_raw_wgsl: !input.forbidden.semantic_or_raw_wgsl,
         no_new_shader_or_gpu_kernel: !input.forbidden.new_shader_or_gpu_kernel,
-        no_hard_currency_markets_trade_aibudget: !input.forbidden.hard_currency_markets_trade_aibudget,
+        no_hard_currency_markets_trade_aibudget: !input
+            .forbidden
+            .hard_currency_markets_trade_aibudget,
         no_nested_resource_flow: !input.forbidden.nested_resource_flow,
         no_clausething_dependency: !input.forbidden.clausething_dependency,
         control_id: CONTROL_0080_1_ID,

@@ -305,8 +305,12 @@ fn build_movement_day(step: &Gameplay0080StepTranscript) -> Demo0080MovementDay 
             pirate_start,
             pirate_end,
             pirate_relocated: step.pirate_relocated,
-            pirate_relocation_source: step.pirate_relocated.then_some(pirate_start.unwrap_or("none")),
-            pirate_relocation_destination: step.pirate_relocated.then_some(pirate_end.unwrap_or("none")),
+            pirate_relocation_source: step
+                .pirate_relocated
+                .then_some(pirate_start.unwrap_or("none")),
+            pirate_relocation_destination: step
+                .pirate_relocated
+                .then_some(pirate_end.unwrap_or("none")),
             source_supply: step.source.supply,
             source_disruption: step.source.disruption,
             source_local_security: step.source.local_security,
@@ -333,7 +337,10 @@ fn patrol_location(at_source: bool, at_destination: bool) -> &'static str {
 
 fn render_demo_export(observation_export: &str, movement_days: &[Demo0080MovementDay]) -> String {
     let mut lines = vec![
-        format!("DEMO-0080-0|scenario={}|headless=true", DEMO_0080_0_SCENARIO),
+        format!(
+            "DEMO-0080-0|scenario={}|headless=true",
+            DEMO_0080_0_SCENARIO
+        ),
         observation_export.to_string(),
     ];
     lines.push("MOVEMENT|begin".to_string());

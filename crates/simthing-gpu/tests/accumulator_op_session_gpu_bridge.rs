@@ -30,19 +30,19 @@ fn test_r2_bridge_copy_and_slot_writes() {
         let mut session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
 
         let src_data = [1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-        let src = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("bridge_src"),
-            contents: bytemuck::cast_slice(&src_data),
-            usage: BufferUsages::COPY_SRC,
-        });
+        let src = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("bridge_src"),
+                contents: bytemuck::cast_slice(&src_data),
+                usage: BufferUsages::COPY_SRC,
+            });
 
         session.zero_values_buffer(ctx);
         session
             .copy_values_prefix_from_buffer(ctx, &src, 0, 0, 32)
             .unwrap();
-        session
-            .write_slot_col_values(ctx, &[(3, 1, 9.0)])
-            .unwrap();
+        session.write_slot_col_values(ctx, &[(3, 1, 9.0)]).unwrap();
 
         let vals = session.readback_full(ctx).unwrap();
         assert_eq!(vals, [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 9.0]);
@@ -74,7 +74,10 @@ fn test_r2_bridge_bounds_validation() {
         let err = session
             .copy_values_prefix_from_buffer(ctx, session.values_buffer(), 0, 0, 32)
             .unwrap_err();
-        assert!(matches!(err, AccumulatorOpSessionError::CopyOutOfBounds { .. }));
+        assert!(matches!(
+            err,
+            AccumulatorOpSessionError::CopyOutOfBounds { .. }
+        ));
 
         let err = session
             .write_slot_col_values(ctx, &[(2, 0, 1.0)])
@@ -84,7 +87,10 @@ fn test_r2_bridge_bounds_validation() {
         let err = session
             .write_slot_col_values(ctx, &[(0, 2, 1.0)])
             .unwrap_err();
-        assert!(matches!(err, AccumulatorOpSessionError::InvalidColumn { .. }));
+        assert!(matches!(
+            err,
+            AccumulatorOpSessionError::InvalidColumn { .. }
+        ));
     });
 }
 
@@ -109,9 +115,7 @@ fn test_fill_slot_range_col_parity_and_bounds() {
         assert_eq!(vals[idx(4, 2, n_dims)], 0.0);
         assert_eq!(vals[idx(1, 0, n_dims)], 0.0);
 
-        let err = session
-            .fill_slot_range_col(ctx, 4, 3, 0, 1.0)
-            .unwrap_err();
+        let err = session.fill_slot_range_col(ctx, 4, 3, 0, 1.0).unwrap_err();
         assert!(matches!(
             err,
             AccumulatorOpSessionError::InvalidSlotRange { .. }
@@ -120,7 +124,10 @@ fn test_fill_slot_range_col_parity_and_bounds() {
         let err = session
             .fill_slot_range_col(ctx, 0, 1, n_dims, 1.0)
             .unwrap_err();
-        assert!(matches!(err, AccumulatorOpSessionError::InvalidColumn { .. }));
+        assert!(matches!(
+            err,
+            AccumulatorOpSessionError::InvalidColumn { .. }
+        ));
 
         let err = session
             .fill_slot_range_col(ctx, 0, 1, 0, f32::NAN)

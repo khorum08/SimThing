@@ -2,8 +2,8 @@ use crate::diagnostics::{SpecDiagnostics, SpecResult};
 use crate::error::SpecError;
 use crate::spec::property::PropertySpec;
 use simthing_core::{
-    expand_arena_internal_columns, DimensionRegistry, PropertyLayout, SimProperty,
-    SimPropertyId, SubFieldRole,
+    expand_arena_internal_columns, DimensionRegistry, PropertyLayout, SimProperty, SimPropertyId,
+    SubFieldRole,
 };
 
 /// Compile a `PropertySpec` into a live `SimProperty` and register it with the

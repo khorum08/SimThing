@@ -9,13 +9,12 @@ use simthing_gpu::{
 };
 use simthing_sim::PipelineFlags;
 use simthing_spec::{
-    admit_region_field_formula_class, compile_region_field_preview,
-    compile_region_field_stencil_config, deserialize_region_field_ron,
-    validate_region_field_frame_gradient_sinks, compile_region_field_frame_preview,
-    CompiledFieldCadence,
+    admit_region_field_formula_class, compile_region_field_frame_preview,
+    compile_region_field_preview, compile_region_field_stencil_config,
+    deserialize_region_field_ron, validate_region_field_frame_gradient_sinks, CompiledFieldCadence,
     CompiledRegionFieldMaskMode, CompiledRegionFieldOperator, CompiledRegionFieldSourcePolicy,
-    FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, GameModeSpec,
-    GradientAxisSpec, MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
+    FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, GameModeSpec, GradientAxisSpec,
+    MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
     RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
     RegionFieldSourcePolicySpec, RegionFieldSpec, ResourceFlowExecutionProfile, SpecError,
 };
@@ -575,7 +574,10 @@ fn m5d_rejects_normalized_field_using_gradient_output_as_source_col() {
     let mut consumer = standard_suppression_field();
     consumer.name = "consumer_field".into();
     consumer.source_col = 1;
-    assert_frame_gradient_sink_err(&[&grad, &consumer], "cannot be used as same-frame source_col");
+    assert_frame_gradient_sink_err(
+        &[&grad, &consumer],
+        "cannot be used as same-frame source_col",
+    );
 }
 
 #[test]
@@ -584,7 +586,10 @@ fn m5d_rejects_gradient_field_using_another_gradient_output_as_source_col() {
     let mut grad_y = gradient_field(GradientAxisSpec::Y, 2);
     grad_y.name = "grad_y_consumer".into();
     grad_y.source_col = 1;
-    assert_frame_gradient_sink_err(&[&grad_x, &grad_y], "gradient output_col 1 from `grad_field`");
+    assert_frame_gradient_sink_err(
+        &[&grad_x, &grad_y],
+        "gradient output_col 1 from `grad_field`",
+    );
 }
 
 #[test]
@@ -613,8 +618,8 @@ fn m5d_compile_region_field_frame_preview_admits_valid_group() {
     let scalar = standard_suppression_field();
     let grad_x = gradient_field(GradientAxisSpec::X, 1);
     let grad_y = gradient_field(GradientAxisSpec::Y, 2);
-    let previews = compile_region_field_frame_preview(&[&scalar, &grad_x, &grad_y])
-        .expect("frame compiles");
+    let previews =
+        compile_region_field_frame_preview(&[&scalar, &grad_x, &grad_y]).expect("frame compiles");
     assert_eq!(previews.len(), 3);
 }
 

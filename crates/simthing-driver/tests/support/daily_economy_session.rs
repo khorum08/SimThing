@@ -9,11 +9,11 @@ use simthing_gpu::{
     DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 use simthing_spec::{
-    deserialize_game_mode_ron, GameModeSpec, MappingExecutionProfile,
-    ResourceFlowOptInMode,
+    deserialize_game_mode_ron, GameModeSpec, MappingExecutionProfile, ResourceFlowOptInMode,
 };
 pub const SURPLUS_RON: &str = include_str!("../fixtures/daily_economy_banking_scenario.ron");
-pub const DEFICIT_RON: &str = include_str!("../fixtures/daily_economy_banking_deficit_scenario.ron");
+pub const DEFICIT_RON: &str =
+    include_str!("../fixtures/daily_economy_banking_deficit_scenario.ron");
 
 pub const INITIAL_TREASURY: f32 = 100.0;
 pub const SURPLUS_DAILY_NET: f32 = 7.0;
@@ -80,8 +80,11 @@ pub fn sync_economy_threshold_emissions(session: &mut SimSession) {
     if registry.registrations.emit_on_threshold.is_empty() {
         return;
     }
-    let gpu_regs = emit_on_threshold_registrations_to_gpu(&registry.registrations.emit_on_threshold);
-    session.state.ensure_threshold_accumulator(DEFAULT_THRESHOLD_EMISSION_CAPACITY);
+    let gpu_regs =
+        emit_on_threshold_registrations_to_gpu(&registry.registrations.emit_on_threshold);
+    session
+        .state
+        .ensure_threshold_accumulator(DEFAULT_THRESHOLD_EMISSION_CAPACITY);
     session
         .state
         .upload_accumulator_threshold_ops(&gpu_regs)
@@ -193,7 +196,9 @@ pub fn run_days_collecting_events(
                 |ctx| spec_state.run_boundary_handlers(ctx),
             );
             boundaries_run += 1;
-            session.sync_resource_economy_if_enabled().expect("boundary sync");
+            session
+                .sync_resource_economy_if_enabled()
+                .expect("boundary sync");
         }
     }
 

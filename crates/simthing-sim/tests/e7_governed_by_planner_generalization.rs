@@ -260,7 +260,7 @@ fn e7_missing_governing_role_skipped_consistently() {
             governed_by: Some(SubFieldRole::Named("flow".into())),
             reduction_override: None,
             soft_aggregate_guard: None,
-                    accumulator_spec: None,
+            accumulator_spec: None,
         }],
     };
     let range = simthing_core::PropertyColumnRange {

@@ -26,6 +26,9 @@ pub use artifact_target::{
     accepted_frontier_v2_artifact_target_ids, accepted_frontier_v2_artifact_targets,
     AcceptedFrontierArtifactTarget,
 };
+pub use atlas::{
+    AtlasAdmissionDecision, AtlasAdmissionProfile, AtlasAdmissionSpec, AtlasIsolationAdmissionMode,
+};
 pub use clause_spec::{
     admit_clause_spec_frontier_v2_scenario, ClauseSpecArtifactTargets, ClauseSpecFaction,
     ClauseSpecFrontierV2Admission, ClauseSpecFrontierV2LoweringSummary,
@@ -48,11 +51,13 @@ pub use mobility_alloc0::{
     MobilityAlloc0ForbiddenPathRequests, MobilityAlloc0LiveSlice, MobilityAlloc0ParentKey,
     MobilityAlloc0PlanInput, MobilityAlloc0PlanReport, MOBILITY_ALLOC0_ID,
 };
-pub use mobility_reenroll0::{
-    mobility_reenroll0_layout_checksum_cpu, mobility_reenroll0_layout_checksum_gpu_proxy,
-    plan_mobility_reenroll0, MobilityReenroll0CommittedMove, MobilityReenroll0ForbiddenPathRequests,
-    MobilityReenroll0Move, MobilityReenroll0PlanInput, MobilityReenroll0PlanReport,
-    MobilityReenroll0RegistryState, MOBILITY_REENROLL0_ID,
+pub use mobility_audit0::{
+    audit_mobility_owner_band_budget, audit_mobility_owner_band_budget_with_ceiling,
+    mobility_audit0_family_budgets, mobility_audit0_packet_matches_accepted_constants,
+    mobility_audit0_required_orderband_depth, MobilityAudit0CirculationFamily,
+    MobilityAudit0FamilyBudget, MobilityAudit0Report, MobilityAudit0ScenarioConstants,
+    MobilityAudit0Verdict, MOBILITY_AUDIT0_CURRENT_MAX_ORDERBAND_DEPTH, MOBILITY_AUDIT0_ID,
+    MOBILITY_AUDIT0_NARROWING_CEILING,
 };
 pub use mobility_econ0::{
     mobility_econ0_layout_checksum_cpu, mobility_econ0_layout_checksum_gpu_proxy,
@@ -75,24 +80,22 @@ pub use mobility_owner0::{
     MOBILITY_OWNER0_CURRENT_MAX_ORDERBAND_DEPTH, MOBILITY_OWNER0_ID,
     MOBILITY_OWNER0_REQUIRED_ORDERBAND_DEPTH,
 };
+pub use mobility_reenroll0::{
+    mobility_reenroll0_layout_checksum_cpu, mobility_reenroll0_layout_checksum_gpu_proxy,
+    plan_mobility_reenroll0, MobilityReenroll0CommittedMove,
+    MobilityReenroll0ForbiddenPathRequests, MobilityReenroll0Move, MobilityReenroll0PlanInput,
+    MobilityReenroll0PlanReport, MobilityReenroll0RegistryState, MOBILITY_REENROLL0_ID,
+};
 pub use mobility_runtime0::{
-    compose_mobility_runtime0, MobilityRuntime0CompositionInput,
-    MobilityRuntime0CompositionReport, MobilityRuntime0ForbiddenPathRequests,
-    MobilityRuntime0HarnessConfig, MOBILITY_RUNTIME0_ID, MOBILITY_RUNTIME0_ORDER,
+    compose_mobility_runtime0, MobilityRuntime0CompositionInput, MobilityRuntime0CompositionReport,
+    MobilityRuntime0ForbiddenPathRequests, MobilityRuntime0HarnessConfig, MOBILITY_RUNTIME0_ID,
+    MOBILITY_RUNTIME0_ORDER,
 };
 pub use mobility_runtime1a::{
     run_mobility_runtime1a_production_fixture, MobilityRuntime1aFixtureGate,
     MobilityRuntime1aForbiddenPathRequests, MobilityRuntime1aProductionFixtureInput,
     MobilityRuntime1aProductionFixtureReport, MobilityRuntime1aSimSessionSurface,
     MOBILITY_RUNTIME1A_ID, MOBILITY_RUNTIME1A_NAMED_GATE, MOBILITY_RUNTIME1A_RUNTIME_FIXTURE_GATE,
-};
-pub use mobility_audit0::{
-    audit_mobility_owner_band_budget, audit_mobility_owner_band_budget_with_ceiling,
-    mobility_audit0_family_budgets, mobility_audit0_packet_matches_accepted_constants,
-    mobility_audit0_required_orderband_depth, MobilityAudit0CirculationFamily,
-    MobilityAudit0FamilyBudget, MobilityAudit0Report, MobilityAudit0ScenarioConstants,
-    MobilityAudit0Verdict, MOBILITY_AUDIT0_CURRENT_MAX_ORDERBAND_DEPTH, MOBILITY_AUDIT0_ID,
-    MOBILITY_AUDIT0_NARROWING_CEILING,
 };
 pub use mobility_scenario0::{
     admit_mobility_scenario0_packet, mobility_scenario0_packet, MobilityAllocationBounds,
@@ -112,15 +115,11 @@ pub use preview::{
     preview_accepted_artifact_targets, preview_designer_admission_preflight,
     DesignerAdmissionPreviewReport,
 };
-pub use atlas::{
-    AtlasAdmissionDecision, AtlasAdmissionProfile, AtlasAdmissionSpec,
-    AtlasIsolationAdmissionMode,
-};
 pub use v7_8_line_scenarios::{
     admit_v7_8_line_scenario_pack, v7_8_met_consumer_scenario_pack, V78AtlasVramBudget,
     V78HardCurrencyContentionOrderingClaim, V78LineGateStatus, V78LineScenario,
     V78LineScenarioClaim, V78LineScenarioPack, V78LineScenarioPackAdmission,
-    V78LineScenarioStatusRecord, V78MultiTheaterAtlasMappingClaim,
-    V78NamedConsumerScenario, V78NestedResourceFlowDepthFanoutClaim, V78PromotedLine,
-    V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES, V78_MET_SCENARIO_PACK_ID,
+    V78LineScenarioStatusRecord, V78MultiTheaterAtlasMappingClaim, V78NamedConsumerScenario,
+    V78NestedResourceFlowDepthFanoutClaim, V78PromotedLine, V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES,
+    V78_MET_SCENARIO_PACK_ID,
 };

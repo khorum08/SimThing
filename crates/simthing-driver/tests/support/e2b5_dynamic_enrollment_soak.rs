@@ -8,9 +8,10 @@ use simthing_core::{
 };
 use simthing_driver::{
     all_reserved_gap_slots, arena_participant_sibling_slots, build_execution_plan,
-    initial_dynamic_enrollment_sync, materialize_arena_participants, react_to_fission_resource_flow_enrollment,
-    resolve_node_columns, run_dynamic_enrollment_gpu_burn_in, run_dynamic_enrollment_resync_cycles,
-    slots_are_contiguous, validate_resource_flow_preflight, DynamicEnrollmentBoundaryMetrics,
+    initial_dynamic_enrollment_sync, materialize_arena_participants,
+    react_to_fission_resource_flow_enrollment, resolve_node_columns,
+    run_dynamic_enrollment_gpu_burn_in, run_dynamic_enrollment_resync_cycles, slots_are_contiguous,
+    validate_resource_flow_preflight, DynamicEnrollmentBoundaryMetrics,
     DynamicEnrollmentSoakReport, DynamicFissionEnrollmentReport, SimSession,
 };
 use simthing_gpu::SlotAllocator;
@@ -20,7 +21,7 @@ use simthing_spec::{
     PropertySpec, ResourceFlowSpec,
 };
 
-use super::e11_flat_star::{flat_star_scenario, flat_star_cell_inputs};
+use super::e11_flat_star::{flat_star_cell_inputs, flat_star_scenario};
 
 type CellKey = (u32, u32);
 
@@ -159,7 +160,9 @@ pub fn open_single_fission_setup(
         .children
         .iter()
         .take(parent_count)
-        .map(|hosted| ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw()))
+        .map(|hosted| {
+            ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw())
+        })
         .collect();
 
     let spec = ResourceFlowSpec {
@@ -225,7 +228,9 @@ fn open_multi_fission_setup(parent_count: usize, max_participants: u32) -> Enrol
     let explicit: Vec<ExplicitParticipantSpec> = root
         .children
         .iter()
-        .map(|hosted| ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw()))
+        .map(|hosted| {
+            ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw())
+        })
         .collect();
 
     let spec = ResourceFlowSpec {
@@ -298,7 +303,10 @@ fn open_two_arena_setup() -> EnrollmentSoakSetup {
             reserved_orderband_depth: 0,
             reserved_gap_per_intermediate: 0,
             expected_max_children_per_intermediate: 0,
-            explicit_participants: vec![ExplicitParticipantSpec::flat(alloc.slot_of(parent_id).unwrap(), parent_id.raw())],
+            explicit_participants: vec![ExplicitParticipantSpec::flat(
+                alloc.slot_of(parent_id).unwrap(),
+                parent_id.raw(),
+            )],
             enrollment: None,
             wildcard_admission: None,
         }],
@@ -325,7 +333,10 @@ fn open_two_arena_setup() -> EnrollmentSoakSetup {
             reserved_orderband_depth: 0,
             reserved_gap_per_intermediate: 0,
             expected_max_children_per_intermediate: 0,
-            explicit_participants: vec![ExplicitParticipantSpec::flat(alloc.slot_of(parent_id).unwrap(), parent_id.raw())],
+            explicit_participants: vec![ExplicitParticipantSpec::flat(
+                alloc.slot_of(parent_id).unwrap(),
+                parent_id.raw(),
+            )],
             enrollment: None,
             wildcard_admission: None,
         }],
@@ -475,8 +486,7 @@ pub fn run_enrollment_only_soak(
     fixture: &DynamicEnrollmentSoakFixture,
 ) -> DynamicEnrollmentSoakReport {
     let arena_root_id = setup.spec_state.arena_participant_scaffold.arena_root_ids[&0];
-    let siblings_before =
-        arena_participant_sibling_slots(&setup.root, arena_root_id, &setup.alloc);
+    let siblings_before = arena_participant_sibling_slots(&setup.root, arena_root_id, &setup.alloc);
     let participants_before = setup.spec_state.arena_registry.participants.clone();
     let index_before = setup.spec_state.arena_participant_scaffold.index.clone();
     let gen_before = setup.spec_state.arena_registry.generation;
@@ -494,25 +504,28 @@ pub fn run_enrollment_only_soak(
         &mut setup.alloc,
     );
 
-    let siblings_after =
-        arena_participant_sibling_slots(&setup.root, arena_root_id, &setup.alloc);
+    let siblings_after = arena_participant_sibling_slots(&setup.root, arena_root_id, &setup.alloc);
     assert_eq!(
-        siblings_before, siblings_after,
+        siblings_before,
+        siblings_after,
         "fixture {name} must not mutate sibling block",
         name = fixture.name
     );
     assert_eq!(
-        setup.spec_state.arena_registry.participants, participants_before,
+        setup.spec_state.arena_registry.participants,
+        participants_before,
         "fixture {name} must not mutate registry participants",
         name = fixture.name
     );
     assert_eq!(
-        setup.spec_state.arena_participant_scaffold.index, index_before,
+        setup.spec_state.arena_participant_scaffold.index,
+        index_before,
         "fixture {name} must not mutate scaffold index",
         name = fixture.name
     );
     assert_eq!(
-        setup.spec_state.arena_registry.generation, gen_before,
+        setup.spec_state.arena_registry.generation,
+        gen_before,
         "fixture {name} must not bump generation",
         name = fixture.name
     );
@@ -574,8 +587,9 @@ pub fn run_dynamic_enrollment_soak(
     );
 
     if fixture.sync_cycles > 0 && fixture.resource_flow_enabled {
-        let (syncs, _, _) = run_dynamic_enrollment_resync_cycles(&mut fx.session, fixture.sync_cycles)
-            .expect("resync cycles");
+        let (syncs, _, _) =
+            run_dynamic_enrollment_resync_cycles(&mut fx.session, fixture.sync_cycles)
+                .expect("resync cycles");
         fx.boundary_metrics.resource_flow_syncs_observed += syncs;
     }
 
@@ -705,11 +719,10 @@ pub fn dynamic_enrollment_repeated_resync() -> DynamicEnrollmentSoakFixture {
     }
 }
 
-pub fn open_fixture_session(
-    fixture: &DynamicEnrollmentSoakFixture,
-) -> EnrolledSoakSession {
+pub fn open_fixture_session(fixture: &DynamicEnrollmentSoakFixture) -> EnrolledSoakSession {
     match fixture.name {
-        "dynamic_enrollment_reject_when_cap_full" | "dynamic_enrollment_contiguity_blocked_no_compaction" => {
+        "dynamic_enrollment_reject_when_cap_full"
+        | "dynamic_enrollment_contiguity_blocked_no_compaction" => {
             panic!(
                 "fixture {name} uses run_enrollment_only_soak, not open_fixture_session",
                 name = fixture.name
@@ -740,17 +753,19 @@ pub fn open_fixture_session(
 }
 
 pub fn assert_reject_no_partial_mutation(fx: &EnrolledSoakSession, child_id: SimThingId) {
-    assert!(
-        fx.session
-            .spec_state
-            .arena_participant_scaffold
-            .index
-            .participant_slot(child_id, 0)
-            .is_none()
-    );
+    assert!(fx
+        .session
+        .spec_state
+        .arena_participant_scaffold
+        .index
+        .participant_slot(child_id, 0)
+        .is_none());
 }
 
-pub fn assert_contiguity_unchanged_on_reject(setup: &EnrollmentSoakSetup, fx: &EnrolledSoakSession) {
+pub fn assert_contiguity_unchanged_on_reject(
+    setup: &EnrollmentSoakSetup,
+    fx: &EnrolledSoakSession,
+) {
     let arena_root_id = setup.spec_state.arena_participant_scaffold.arena_root_ids[&0];
     let siblings = arena_participant_sibling_slots(
         &fx.session.proto.root,
@@ -794,7 +809,11 @@ pub fn run_replay_burn_in(fx: &mut EnrolledSoakSession, ticks: u32) -> DynamicEn
 }
 
 pub fn assert_sibling_contiguity_after_admission(fx: &EnrolledSoakSession) {
-    let arena_root_id = fx.session.spec_state.arena_participant_scaffold.arena_root_ids[&0];
+    let arena_root_id = fx
+        .session
+        .spec_state
+        .arena_participant_scaffold
+        .arena_root_ids[&0];
     let siblings = arena_participant_sibling_slots(
         &fx.session.proto.root,
         arena_root_id,

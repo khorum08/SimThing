@@ -388,10 +388,7 @@ impl AccumulatorOpSession {
 
         let fill_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("accumulator_values_fill_layout"),
-            entries: &[
-                storage_entry(0, false),
-                uniform_entry(1),
-            ],
+            entries: &[storage_entry(0, false), uniform_entry(1)],
         });
 
         let fill_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
@@ -546,10 +543,18 @@ impl AccumulatorOpSession {
                 capacity,
             });
         }
-        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("accumulator_values_prefix_copy"),
-        });
-        encoder.copy_buffer_to_buffer(src, src_offset_bytes, &self.values_buffer, dst_offset_bytes, bytes);
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("accumulator_values_prefix_copy"),
+            });
+        encoder.copy_buffer_to_buffer(
+            src,
+            src_offset_bytes,
+            &self.values_buffer,
+            dst_offset_bytes,
+            bytes,
+        );
         ctx.queue.submit(Some(encoder.finish()));
         Ok(())
     }
@@ -610,11 +615,8 @@ impl AccumulatorOpSession {
             _pad1: 0,
             _pad2: 0,
         };
-        ctx.queue.write_buffer(
-            &self.fill_uniform,
-            0,
-            bytemuck::bytes_of(&params),
-        );
+        ctx.queue
+            .write_buffer(&self.fill_uniform, 0, bytemuck::bytes_of(&params));
 
         let bind_group = ctx.device.create_bind_group(&BindGroupDescriptor {
             label: Some("accumulator_values_fill_bind_group"),
@@ -631,9 +633,11 @@ impl AccumulatorOpSession {
             ],
         });
 
-        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("accumulator_values_fill_encoder"),
-        });
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("accumulator_values_fill_encoder"),
+            });
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("accumulator_values_fill_pass"),

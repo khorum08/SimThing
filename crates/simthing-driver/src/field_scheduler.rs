@@ -5,7 +5,7 @@
 
 use simthing_gpu::{
     GpuContext, StructuredFieldExecutionOptions, StructuredFieldExecutionReport,
-    StructuredFieldStencilOp, StructuredFieldStencilError,
+    StructuredFieldStencilError, StructuredFieldStencilOp,
 };
 use thiserror::Error;
 
@@ -169,7 +169,11 @@ impl FieldScheduler {
     }
 
     pub fn register_field(&mut self, state: FieldScheduleState) {
-        if let Some(existing) = self.fields.iter_mut().find(|f| f.field_id == state.field_id) {
+        if let Some(existing) = self
+            .fields
+            .iter_mut()
+            .find(|f| f.field_id == state.field_id)
+        {
             *existing = state;
         } else {
             self.fields.push(state);
@@ -177,9 +181,11 @@ impl FieldScheduler {
     }
 
     pub fn register_region(&mut self, region: FieldRegionRegistration) {
-        if let Some(existing) = self.regions.iter_mut().find(|r| {
-            r.field_id == region.field_id && r.region_id == region.region_id
-        }) {
+        if let Some(existing) = self
+            .regions
+            .iter_mut()
+            .find(|r| r.field_id == region.field_id && r.region_id == region.region_id)
+        {
             *existing = region;
         } else {
             self.regions.push(region);
@@ -262,12 +268,12 @@ impl FieldScheduler {
         let mut false_skips = 0u32;
 
         for region in &self.regions {
-            let field = self
-                .field_state(region.field_id)
-                .ok_or(FieldSchedulerError::UnknownField(
-                    region.field_id,
-                    region.region_id,
-                ))?;
+            let field =
+                self.field_state(region.field_id)
+                    .ok_or(FieldSchedulerError::UnknownField(
+                        region.field_id,
+                        region.region_id,
+                    ))?;
             field.cadence.validate()?;
             let cadence_due = field.cadence.is_due(tick, field.event_pending)?;
             let event_triggered =
@@ -393,9 +399,11 @@ pub fn execute_single_scheduled_stencil_region(
         return Ok(None);
     }
     if scheduled.len() > 1 {
-        return Err(ScheduledStencilExecutionError::MultipleScheduledRegionsForSingleOp {
-            count: scheduled.len() as u32,
-        });
+        return Err(
+            ScheduledStencilExecutionError::MultipleScheduledRegionsForSingleOp {
+                count: scheduled.len() as u32,
+            },
+        );
     }
     let decision = scheduled[0];
     let report = op.execute_configured(ctx, options)?;
@@ -545,7 +553,10 @@ mod unit_tests {
         assert_eq!(calls, 2);
         assert_eq!(
             executed,
-            vec![(FieldId(0), FieldRegionId(2)), (FieldId(1), FieldRegionId(3))]
+            vec![
+                (FieldId(0), FieldRegionId(2)),
+                (FieldId(1), FieldRegionId(3))
+            ]
         );
     }
 }

@@ -79,7 +79,11 @@ fn e3_n8_recipe_validate_and_executes() {
     values[8] = 0.0;
     run_cpu_recipe(&mut values, &op);
     for col in 0..8 {
-        assert_eq!(values[col].to_bits(), 0.0_f32.to_bits(), "col {col} debited");
+        assert_eq!(
+            values[col].to_bits(),
+            0.0_f32.to_bits(),
+            "col {col} debited"
+        );
     }
     assert_eq!(values[8].to_bits(), 4.0_f32.to_bits());
 
@@ -121,7 +125,7 @@ fn e3_n8_recipe_validate_and_executes() {
             governed_by: None,
             reduction_override: None,
             soft_aggregate_guard: None,
-                    accumulator_spec: None,
+            accumulator_spec: None,
         })
         .collect();
     dim.register(SimProperty {
@@ -258,7 +262,7 @@ fn e3_max_per_tick_is_metadata_not_gpu_cap() {
             governed_by: None,
             reduction_override: None,
             soft_aggregate_guard: None,
-                    accumulator_spec: None,
+            accumulator_spec: None,
         })
         .collect();
     dim.register(SimProperty {

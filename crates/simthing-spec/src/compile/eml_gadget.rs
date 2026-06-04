@@ -47,7 +47,12 @@ impl EmlGadgetKind {
 
     pub fn requires_temporal_memory(self) -> bool {
         match self {
-            Self::VelocityMonitor | Self::Decay | Self::Ema | Self::BoundedFeedback | Self::Hysteresis | Self::Acceleration => true,
+            Self::VelocityMonitor
+            | Self::Decay
+            | Self::Ema
+            | Self::BoundedFeedback
+            | Self::Hysteresis
+            | Self::Acceleration => true,
             _ => false,
         }
     }
@@ -143,9 +148,7 @@ pub struct CompiledEmlGadget {
 #[derive(Clone, Debug, PartialEq)]
 pub enum EmlGadgetCompositionPlan {
     /// Only per-gadget templates are valid output; chained runtime is deferred.
-    PerGadgetOnly {
-        reason: String,
-    },
+    PerGadgetOnly { reason: String },
     /// Optional non-executable or single-gadget flatten preview for inspection.
     InlineFlattenPreview {
         nodes: Vec<EmlNode>,
@@ -329,10 +332,7 @@ fn compile_gadget_instance(
                 validate_col(*col, opts, &id, "output_col")?;
             }
             validate_field_sampler_params(*cap, &id)?;
-            (
-                compile_field_sampler_nodes(*input_col, *cap),
-                *output_col,
-            )
+            (compile_field_sampler_nodes(*input_col, *cap), *output_col)
         }
         EmlGadgetInstanceSpec::SoftStep {
             input_col,
@@ -401,10 +401,7 @@ fn compile_gadget_instance(
                 validate_col(*col, opts, &id, "output_col")?;
             }
             validate_decay_params(*decay, &id)?;
-            (
-                compile_decay_nodes(*state_col, *decay),
-                *output_col,
-            )
+            (compile_decay_nodes(*state_col, *decay), *output_col)
         }
         EmlGadgetInstanceSpec::Ema {
             input_col,
@@ -453,7 +450,14 @@ fn compile_gadget_instance(
             }
             validate_bounded_feedback_params(*decay, *gain, *min, *max, &id)?;
             (
-                compile_bounded_feedback_nodes(*previous_col, *input_col, *decay, *gain, *min, *max),
+                compile_bounded_feedback_nodes(
+                    *previous_col,
+                    *input_col,
+                    *decay,
+                    *gain,
+                    *min,
+                    *max,
+                ),
                 *output_col,
             )
         }
@@ -480,7 +484,14 @@ fn compile_gadget_instance(
             }
             validate_hysteresis_params(*on_threshold, *off_threshold, *off_value, *on_value, &id)?;
             (
-                compile_hysteresis_nodes(*input_col, *previous_col, *on_threshold, *off_threshold, *off_value, *on_value),
+                compile_hysteresis_nodes(
+                    *input_col,
+                    *previous_col,
+                    *on_threshold,
+                    *off_threshold,
+                    *off_value,
+                    *on_value,
+                ),
                 *output_col,
             )
         }
@@ -590,7 +601,12 @@ fn stack_uses_column_chaining(
     false
 }
 
-fn validate_col(col: u32, opts: EmlGadgetCompileOptions, gadget: &str, field: &str) -> Result<(), SpecError> {
+fn validate_col(
+    col: u32,
+    opts: EmlGadgetCompileOptions,
+    gadget: &str,
+    field: &str,
+) -> Result<(), SpecError> {
     if col >= opts.max_col {
         return Err(SpecError::EmlGadgetAdmission {
             gadget: gadget.to_string(),
@@ -717,11 +733,7 @@ pub fn oracle_field_sampler(input: f32, cap: f32) -> f32 {
 }
 
 pub fn oracle_weighted_accumulator(inputs: &[f32], weights: &[f32]) -> f32 {
-    inputs
-        .iter()
-        .zip(weights.iter())
-        .map(|(x, w)| x * w)
-        .sum()
+    inputs.iter().zip(weights.iter()).map(|(x, w)| x * w).sum()
 }
 
 pub fn oracle_soft_step(x: f32, center: f32, steepness: f32) -> f32 {
@@ -730,12 +742,7 @@ pub fn oracle_soft_step(x: f32, center: f32, steepness: f32) -> f32 {
 }
 
 /// Evaluate a postfix EvalEML node program for spec-layer parity tests.
-pub fn eval_eml_postfix(
-    nodes: &[EmlNode],
-    eval_slot: u32,
-    values: &[f32],
-    n_dims: u32,
-) -> f32 {
+pub fn eval_eml_postfix(nodes: &[EmlNode], eval_slot: u32, values: &[f32], n_dims: u32) -> f32 {
     let mut stack = [0.0f32; 32];
     let mut sp: usize = 0;
 
@@ -1025,12 +1032,12 @@ fn validate_decay_params(decay: f32, gadget: &str) -> Result<(), SpecError> {
     Ok(())
 }
 
-fn compile_velocity_monitor_nodes(current_col: u32, previous_col: u32, dt: Option<f32>) -> Vec<EmlNode> {
-    let mut nodes = vec![
-        node_slot(current_col),
-        node_slot(previous_col),
-        node_sub(),
-    ];
+fn compile_velocity_monitor_nodes(
+    current_col: u32,
+    previous_col: u32,
+    dt: Option<f32>,
+) -> Vec<EmlNode> {
+    let mut nodes = vec![node_slot(current_col), node_slot(previous_col), node_sub()];
     if let Some(d) = dt {
         if (d - 1.0).abs() > 1e-9 {
             nodes.push(node_literal(d));
@@ -1064,7 +1071,11 @@ fn compile_ema_nodes(input_col: u32, previous_col: u32, decay: f32) -> Vec<EmlNo
     ]
 }
 
-fn compile_acceleration_nodes(current_velocity_col: u32, previous_velocity_col: u32, dt: Option<f32>) -> Vec<EmlNode> {
+fn compile_acceleration_nodes(
+    current_velocity_col: u32,
+    previous_velocity_col: u32,
+    dt: Option<f32>,
+) -> Vec<EmlNode> {
     compile_velocity_monitor_nodes(current_velocity_col, previous_velocity_col, dt)
 }
 
@@ -1091,7 +1102,13 @@ pub fn oracle_ema(input: f32, previous: f32, decay: f32) -> f32 {
 // Uses existing CLAMP_BOUNDED support (already present for FieldSampler).
 // ─────────────────────────────────────────────────────────────────────────────
 
-fn validate_bounded_feedback_params(decay: f32, gain: f32, min: f32, max: f32, gadget: &str) -> Result<(), SpecError> {
+fn validate_bounded_feedback_params(
+    decay: f32,
+    gain: f32,
+    min: f32,
+    max: f32,
+    gadget: &str,
+) -> Result<(), SpecError> {
     if !decay.is_finite() {
         return Err(SpecError::EmlGadgetAdmission {
             gadget: gadget.to_string(),
@@ -1125,7 +1142,14 @@ fn validate_bounded_feedback_params(decay: f32, gain: f32, min: f32, max: f32, g
     Ok(())
 }
 
-fn compile_bounded_feedback_nodes(previous_col: u32, input_col: u32, decay: f32, gain: f32, min: f32, max: f32) -> Vec<EmlNode> {
+fn compile_bounded_feedback_nodes(
+    previous_col: u32,
+    input_col: u32,
+    decay: f32,
+    gain: f32,
+    min: f32,
+    max: f32,
+) -> Vec<EmlNode> {
     vec![
         node_slot(previous_col),
         node_literal(decay),
@@ -1139,7 +1163,14 @@ fn compile_bounded_feedback_nodes(previous_col: u32, input_col: u32, decay: f32,
     ]
 }
 
-pub fn oracle_bounded_feedback(previous: f32, input: f32, decay: f32, gain: f32, min: f32, max: f32) -> f32 {
+pub fn oracle_bounded_feedback(
+    previous: f32,
+    input: f32,
+    decay: f32,
+    gain: f32,
+    min: f32,
+    max: f32,
+) -> f32 {
     (previous * decay + input * gain).clamp(min, max)
 }
 
@@ -1149,15 +1180,31 @@ pub fn oracle_bounded_feedback(previous: f32, input: f32, decay: f32, gain: f32,
 
 // ── Tier-2 Hysteresis (EML-GADGET-2D / 2D R1) — exact CMP/SELECT compilation over existing EvalEML opcodes ──
 
-fn validate_hysteresis_params(on_threshold: f32, off_threshold: f32, off_value: f32, on_value: f32, gadget: &str) -> Result<(), SpecError> {
+fn validate_hysteresis_params(
+    on_threshold: f32,
+    off_threshold: f32,
+    off_value: f32,
+    on_value: f32,
+    gadget: &str,
+) -> Result<(), SpecError> {
     if !on_threshold.is_finite() || !off_threshold.is_finite() {
-        return Err(SpecError::EmlGadgetAdmission { gadget: gadget.to_string(), reason: "Hysteresis thresholds must be finite".into() });
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: gadget.to_string(),
+            reason: "Hysteresis thresholds must be finite".into(),
+        });
     }
     if on_threshold <= off_threshold {
-        return Err(SpecError::EmlGadgetAdmission { gadget: gadget.to_string(), reason: "Hysteresis on_threshold must be > off_threshold (high-activates contract)".into() });
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: gadget.to_string(),
+            reason: "Hysteresis on_threshold must be > off_threshold (high-activates contract)"
+                .into(),
+        });
     }
     if !off_value.is_finite() || !on_value.is_finite() {
-        return Err(SpecError::EmlGadgetAdmission { gadget: gadget.to_string(), reason: "Hysteresis on_value and off_value must be finite".into() });
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: gadget.to_string(),
+            reason: "Hysteresis on_value and off_value must be finite".into(),
+        });
     }
     Ok(())
 }
@@ -1197,7 +1244,14 @@ fn compile_hysteresis_nodes(
     ]
 }
 
-pub fn oracle_hysteresis(previous: f32, input: f32, on_threshold: f32, off_threshold: f32, off_value: f32, on_value: f32) -> f32 {
+pub fn oracle_hysteresis(
+    previous: f32,
+    input: f32,
+    on_threshold: f32,
+    off_threshold: f32,
+    off_value: f32,
+    on_value: f32,
+) -> f32 {
     // Exact high-activates hysteresis state machine (matches intended semantics).
     if previous == off_value && input >= on_threshold {
         on_value

@@ -1,14 +1,16 @@
 //! E-11 — arena participant hierarchy and band layout (driver-only).
 
 use simthing_core::{
-    expand_arena_internal_columns, AccumulatorRole, DimensionRegistry, PropertyLayout, SimPropertyId,
-    SimThing, SimThingId, SubFieldRole,
+    expand_arena_internal_columns, AccumulatorRole, DimensionRegistry, PropertyLayout,
+    SimPropertyId, SimThing, SimThingId, SubFieldRole,
 };
 use simthing_gpu::SlotAllocator;
 use std::collections::HashMap;
 use thiserror::Error;
 
-use crate::arena_participant::{arena_participant_sibling_slots, slots_are_contiguous, ArenaParticipantScaffold};
+use crate::arena_participant::{
+    arena_participant_sibling_slots, slots_are_contiguous, ArenaParticipantScaffold,
+};
 use crate::arena_registry::{ArenaIdx, GpuArenaDescriptor, SlotId};
 
 /// E-11 child-share EML tree id (one registration per session).
@@ -110,7 +112,8 @@ impl ArenaBandLayout {
     }
 
     pub fn disburse_band(&self, parent_depth: u32, max_depth: u32) -> u32 {
-        self.broadcast_band(parent_depth, max_depth).saturating_add(1)
+        self.broadcast_band(parent_depth, max_depth)
+            .saturating_add(1)
     }
 
     pub fn upsweep_band(&self, parent_depth: u32, max_depth: u32) -> u32 {
@@ -212,16 +215,26 @@ pub fn resolve_node_columns(
     let expanded = expand_arena_internal_columns(layout.clone());
     let arena = arena_name.to_string();
 
-    let intrinsic_flow_col = find_role_col(&expanded, |r| matches!(r, AccumulatorRole::IntrinsicFlow))
-        .ok_or_else(|| HierarchyError::MissingIntrinsicFlow {
-            arena: arena.clone(),
-        })?;
-    let allocated_flow_col =
-        find_role_col(&expanded, |r| matches!(r, AccumulatorRole::AllocatedFlow { arena: a } if a == arena_name))
-            .ok_or_else(|| HierarchyError::MissingAllocatedFlow { arena: arena.clone() })?;
-    let weight_col =
-        find_role_col(&expanded, |r| matches!(r, AccumulatorRole::AllocatorWeight { arena: a } if a == arena_name))
-            .ok_or_else(|| HierarchyError::MissingAllocatorWeight { arena: arena.clone() })?;
+    let intrinsic_flow_col =
+        find_role_col(&expanded, |r| matches!(r, AccumulatorRole::IntrinsicFlow)).ok_or_else(
+            || HierarchyError::MissingIntrinsicFlow {
+                arena: arena.clone(),
+            },
+        )?;
+    let allocated_flow_col = find_role_col(
+        &expanded,
+        |r| matches!(r, AccumulatorRole::AllocatedFlow { arena: a } if a == arena_name),
+    )
+    .ok_or_else(|| HierarchyError::MissingAllocatedFlow {
+        arena: arena.clone(),
+    })?;
+    let weight_col = find_role_col(
+        &expanded,
+        |r| matches!(r, AccumulatorRole::AllocatorWeight { arena: a } if a == arena_name),
+    )
+    .ok_or_else(|| HierarchyError::MissingAllocatorWeight {
+        arena: arena.clone(),
+    })?;
     let balance_col = find_role_col(&expanded, |r| matches!(r, AccumulatorRole::Balance(_)));
 
     let named = |s: &str| expanded.offset_of(&SubFieldRole::Named(s.into()));
@@ -232,19 +245,22 @@ pub fn resolve_node_columns(
         balance_col,
         weight_col,
         weight_sum_col: named("weight_sum").expect("E-8R column") as u32,
-        propagated_intrinsic_flow_col: named("propagated_intrinsic_flow").expect("E-8R column") as u32,
-        propagated_allocated_flow_col: named("propagated_allocated_flow").expect("E-8R column") as u32,
+        propagated_intrinsic_flow_col: named("propagated_intrinsic_flow").expect("E-8R column")
+            as u32,
+        propagated_allocated_flow_col: named("propagated_allocated_flow").expect("E-8R column")
+            as u32,
         propagated_weight_sum_col: named("propagated_weight_sum").expect("E-8R column") as u32,
         hosted_simthing_id_col: named("hosted_simthing_id").expect("E-8R column") as u32,
     })
 }
 
 fn find_role_col(layout: &PropertyLayout, pred: impl Fn(&AccumulatorRole) -> bool) -> Option<u32> {
-    layout
-        .sub_fields
-        .iter()
-        .enumerate()
-        .find_map(|(i, sf)| sf.accumulator_spec.as_ref().filter(|s| pred(&s.role)).map(|_| i as u32))
+    layout.sub_fields.iter().enumerate().find_map(|(i, sf)| {
+        sf.accumulator_spec
+            .as_ref()
+            .filter(|s| pred(&s.role))
+            .map(|_| i as u32)
+    })
 }
 
 /// Build a D=2 star hierarchy: first sibling participant is root, remainder are leaves.
@@ -257,12 +273,11 @@ pub fn build_flat_star_layout(
     scaffold: &ArenaParticipantScaffold,
     index: &HashMap<(SimThingId, ArenaIdx), SlotId>,
 ) -> Result<ArenaTreeLayout, HierarchyError> {
-    let arena_root_id = *scaffold
-        .arena_root_ids
-        .get(&arena_idx)
-        .ok_or_else(|| HierarchyError::EmptyParticipants {
+    let arena_root_id = *scaffold.arena_root_ids.get(&arena_idx).ok_or_else(|| {
+        HierarchyError::EmptyParticipants {
             arena: arena.name.clone(),
-        })?;
+        }
+    })?;
     let arena_root_slot = allocator
         .slot_of(arena_root_id)
         .expect("arena root allocated");
@@ -341,12 +356,11 @@ pub fn build_nested_layout(
     scaffold: &ArenaParticipantScaffold,
     index: &HashMap<(SimThingId, ArenaIdx), SlotId>,
 ) -> Result<ArenaTreeLayout, HierarchyError> {
-    let arena_root_id = *scaffold
-        .arena_root_ids
-        .get(&arena_idx)
-        .ok_or_else(|| HierarchyError::EmptyParticipants {
+    let arena_root_id = *scaffold.arena_root_ids.get(&arena_idx).ok_or_else(|| {
+        HierarchyError::EmptyParticipants {
             arena: arena.name.clone(),
-        })?;
+        }
+    })?;
     let arena_root_slot = allocator
         .slot_of(arena_root_id)
         .expect("arena root allocated");
@@ -410,7 +424,12 @@ pub fn build_custom_layout(
         for root in &roots {
             root.walk_subtree(&mut nodes);
         }
-        nodes.iter().map(|n| n.depth).max().unwrap_or(0).saturating_add(1)
+        nodes
+            .iter()
+            .map(|n| n.depth)
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1)
     };
     let bands = ArenaBandLayout::for_depth(max_depth);
     if bands.total_bands_used > arena.max_orderband_depth {
@@ -457,7 +476,10 @@ pub fn build_execution_plan(
 
     for (arena_idx, arena_desc) in arena_registry.iter().enumerate() {
         let arena_idx = arena_idx as ArenaIdx;
-        let layout = registry.property(arena_desc.flow_property_id).layout.clone();
+        let layout = registry
+            .property(arena_desc.flow_property_id)
+            .layout
+            .clone();
         let cols = resolve_node_columns(&layout, &arena_desc.name)?;
         let tree = if has_nested_participants(root, scaffold, arena_idx) {
             build_nested_layout(

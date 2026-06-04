@@ -70,11 +70,7 @@ impl ResourceEconomyBoundaryScheduleReport {
                     kind_rank: KIND_RANK_RECIPE,
                     authoring_id,
                 },
-                source_slot: recipe
-                    .inputs
-                    .first()
-                    .map(|i| i.slot)
-                    .unwrap_or(0),
+                source_slot: recipe.inputs.first().map(|i| i.slot).unwrap_or(0),
                 source_col: recipe.inputs.first().map(|i| i.col).unwrap_or(0),
                 target_slot: recipe.target_slot,
                 target_col: recipe.target_col,

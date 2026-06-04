@@ -627,7 +627,10 @@ fn sead_act4_act3_substrate_crosscheck() {
 
 #[test]
 fn sead_act4_no_new_runtime_wiring() {
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
     let act4_descriptor = landed_jit_kernel_descriptors()
         .into_iter()
         .find(|d| d.id.contains("act4") || d.id.contains("validation_corpus"));
@@ -651,7 +654,5 @@ fn sead_act4_no_new_runtime_wiring() {
 fn sead_act4_no_new_wgsl_or_gpu_primitive() {
     let corpus_only = true;
     assert!(corpus_only);
-    println!(
-        "sead_act4_gpu: new_wgsl=false new_descriptor=false corpus_id={SEAD_ACT4_CORPUS_ID}"
-    );
+    println!("sead_act4_gpu: new_wgsl=false new_descriptor=false corpus_id={SEAD_ACT4_CORPUS_ID}");
 }

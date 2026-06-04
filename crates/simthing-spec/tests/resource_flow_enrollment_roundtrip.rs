@@ -1,10 +1,10 @@
 //! E-2B — Resource Flow enrollment selector RON roundtrip.
 
-use simthing_spec::{
-    ArenaSpec, EnrollmentSelectorSpec, ExplicitParticipantSpec, FissionPolicySpec,
-    InstallTargetSpec, PropertyKey, ResourceFlowSpec, deserialize_game_mode_ron,
-};
 use simthing_spec::GameModeSpec;
+use simthing_spec::{
+    deserialize_game_mode_ron, ArenaSpec, EnrollmentSelectorSpec, ExplicitParticipantSpec,
+    FissionPolicySpec, InstallTargetSpec, PropertyKey, ResourceFlowSpec,
+};
 
 fn sample_arena_explicit_only() -> ArenaSpec {
     ArenaSpec {
@@ -48,7 +48,7 @@ fn resource_flow_enrollment_selector_roundtrips_ron() {
                 ..sample_arena_explicit_only()
             }],
             couplings: vec![],
-        ..Default::default()
+            ..Default::default()
         }),
         resource_economy: None,
         resource_flow_execution_profile: Default::default(),
@@ -73,10 +73,7 @@ fn resource_flow_enrollment_selector_roundtrips_ron() {
 #[test]
 fn resource_flow_enrollment_explicit_only_preserves_existing_explicit_participants() {
     let arena = sample_arena_explicit_only();
-    assert_eq!(
-        arena.enrollment,
-        Some(EnrollmentSelectorSpec::ExplicitOnly)
-    );
+    assert_eq!(arena.enrollment, Some(EnrollmentSelectorSpec::ExplicitOnly));
     assert_eq!(arena.explicit_participants.len(), 1);
     assert_eq!(arena.explicit_participants[0].subtree_root_id, 42);
 }

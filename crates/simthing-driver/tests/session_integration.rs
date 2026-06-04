@@ -239,7 +239,9 @@ fn spec_session_capability_unlock_activates_overlay_for_next_tick() {
         state,
         built.unlock_registrations,
     );
-    session.install_spec_state(spec_state).expect("install spec state");
+    session
+        .install_spec_state(spec_state)
+        .expect("install spec state");
 
     let summary = session.run(2).expect("session run");
     assert_eq!(summary.boundaries_run, 2);
@@ -919,7 +921,9 @@ fn open_from_spec_legacy_install_spec_state_still_works() {
     // install_spec_state with a fresh, empty state — no spec runtime, but the
     // entry point still validates and does its initial_gpu_sync.
     let mut session = session;
-    session.install_spec_state(SpecSessionState::new()).expect("install spec state");
+    session
+        .install_spec_state(SpecSessionState::new())
+        .expect("install spec state");
     assert!(session.spec_state.capability_instances.is_empty());
     assert!(session.spec_state.handler_errors.is_empty());
 }
@@ -1447,7 +1451,9 @@ fn b3_threshold_only_scripted_events_skip_quiet_boundaries() {
             .expect("world slot"),
     );
     spec_state.add_scripted_event(def);
-    session.install_spec_state(spec_state).expect("install spec state");
+    session
+        .install_spec_state(spec_state)
+        .expect("install spec state");
 
     let summary = session.run(4).expect("session run");
     assert_eq!(summary.boundaries_run, 4);
@@ -1499,7 +1505,9 @@ fn b3_predicate_scripted_event_blocks_boundary_skip() {
             .expect("world slot"),
     );
     spec_state.add_scripted_event(def);
-    session.install_spec_state(spec_state).expect("install spec state");
+    session
+        .install_spec_state(spec_state)
+        .expect("install spec state");
 
     let summary = session.run(4).expect("session run");
     assert_eq!(summary.boundaries_run, 4);
@@ -1593,7 +1601,9 @@ fn i1_apply_install_preview_matches_open_from_spec_shape() {
     let before_session_root_subtree = session_b.proto.root.subtree_size();
     let before_session_alloc_capacity = session_b.proto.allocator.capacity();
     // Commit.
-    session_b.apply_install_preview(preview).expect("apply install preview");
+    session_b
+        .apply_install_preview(preview)
+        .expect("apply install preview");
 
     // Path A vs B: shape equivalence after install (SimThingIds differ —
     // clones get fresh ids — so compare counts / structural shape).

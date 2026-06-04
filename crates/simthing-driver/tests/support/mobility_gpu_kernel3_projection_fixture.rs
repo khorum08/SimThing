@@ -7,8 +7,9 @@
 mod mobility_gpu_kernel1_dispatch_fixture;
 
 use mobility_gpu_kernel1_dispatch_fixture::{
-    run_mobility_gpu_kernel1_fixture, MobilityGpuKernel1FixtureInput, MobilityGpuKernel1FixtureReport,
-    MobilityGpuKernel1ForbiddenPathRequests, MobilityGpuKernel1Gate,
+    run_mobility_gpu_kernel1_fixture, MobilityGpuKernel1FixtureInput,
+    MobilityGpuKernel1FixtureReport, MobilityGpuKernel1ForbiddenPathRequests,
+    MobilityGpuKernel1Gate,
 };
 
 use simthing_spec::{
@@ -32,7 +33,12 @@ pub const MOBILITY_GPU_KERNEL3_NEW_SHADER_TEXT_ADDED: bool = false;
 
 /// Generic column vocabulary projected from composition (no owner/econ semantics).
 pub const MOBILITY_GPU_KERNEL3_GENERIC_COLUMNS: [&str; 6] = [
-    "entity_id", "src_parent", "dst_parent", "move_mask", "out_parent", "out_changed",
+    "entity_id",
+    "src_parent",
+    "dst_parent",
+    "move_mask",
+    "out_parent",
+    "out_changed",
 ];
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -146,11 +152,10 @@ pub fn encode_parent_key_for_projection(key: &MobilityAlloc0ParentKey) -> u32 {
         .wrapping_add(key.key_id) as u32
 }
 
-fn move_index(moves: &[MobilityReenroll0CommittedMove]) -> std::collections::BTreeMap<u64, &MobilityReenroll0CommittedMove> {
-    moves
-        .iter()
-        .map(|mv| (mv.entity_id, mv))
-        .collect()
+fn move_index(
+    moves: &[MobilityReenroll0CommittedMove],
+) -> std::collections::BTreeMap<u64, &MobilityReenroll0CommittedMove> {
+    moves.iter().map(|mv| (mv.entity_id, mv)).collect()
 }
 
 /// Project accepted RUNTIME-0 composition reenroll output into generic mobility columns.
@@ -228,7 +233,9 @@ fn fnv_append_u32(mut hash: u64, value: u32) -> u64 {
     hash
 }
 
-fn projection_report_from_columns(columns: &MobilityGpuKernel0ColumnProbe) -> MobilityGpuKernel3ProjectionReport {
+fn projection_report_from_columns(
+    columns: &MobilityGpuKernel0ColumnProbe,
+) -> MobilityGpuKernel3ProjectionReport {
     let moved_entity_count = columns.move_mask.iter().filter(|&&m| m != 0).count() as u32;
     let unmoved_entity_count = columns.move_mask.len() as u32 - moved_entity_count;
     MobilityGpuKernel3ProjectionReport {
@@ -365,7 +372,9 @@ fn shell(input: &MobilityGpuKernel3FixtureInput) -> MobilityGpuKernel3FixtureRep
     }
 }
 
-fn disabled_no_op_report(input: &MobilityGpuKernel3FixtureInput) -> MobilityGpuKernel3FixtureReport {
+fn disabled_no_op_report(
+    input: &MobilityGpuKernel3FixtureInput,
+) -> MobilityGpuKernel3FixtureReport {
     let mut report = shell(input);
     report.admitted = true;
     report.disabled_no_op = true;

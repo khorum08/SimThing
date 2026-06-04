@@ -209,7 +209,8 @@ impl DressRehearsalMap {
                 let spacing = terran[left]
                     .galactic_cell
                     .empty_cells_between(terran[right].galactic_cell);
-                min_spacing = Some(min_spacing.map_or(spacing, |current: u32| current.min(spacing)));
+                min_spacing =
+                    Some(min_spacing.map_or(spacing, |current: u32| current.min(spacing)));
             }
         }
         min_spacing
@@ -217,8 +218,14 @@ impl DressRehearsalMap {
 
     pub fn pirate_within_one_empty_cell_of_terran(&self, pirate: &SystemDescriptor) -> bool {
         self.terran_systems().any(|terran| {
-            let distance = pirate.galactic_cell.chebyshev_distance(terran.galactic_cell);
-            distance > 0 && pirate.galactic_cell.empty_cells_between(terran.galactic_cell) <= 1
+            let distance = pirate
+                .galactic_cell
+                .chebyshev_distance(terran.galactic_cell);
+            distance > 0
+                && pirate
+                    .galactic_cell
+                    .empty_cells_between(terran.galactic_cell)
+                    <= 1
         })
     }
 }

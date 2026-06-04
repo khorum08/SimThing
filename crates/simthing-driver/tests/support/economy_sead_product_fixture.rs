@@ -9,7 +9,7 @@
 use super::daily_economy::{
     deficit_game_mode, open_daily_economy_session, open_daily_economy_session_with_thresholds,
     run_days_collecting_events, run_days_with_full_boundary, surplus_game_mode, treasury_amount,
-    INITIAL_TREASURY, LOW_STORAGE_EVENT_KIND, SURPLUS_DAILY_NET, DEFICIT_DAILY_NET,
+    DEFICIT_DAILY_NET, INITIAL_TREASURY, LOW_STORAGE_EVENT_KIND, SURPLUS_DAILY_NET,
 };
 use super::first_slice_scenario_fixture::FirstSliceScenarioFixtureSession;
 use simthing_driver::{FirstSliceCommitmentReport, FirstSliceSeed, FirstSliceTickOptions};
@@ -150,11 +150,7 @@ pub fn run_sead_commitment_with_economy_weights(
         .expect("commitment binding");
     let mut session = open_seeded_commitment_session(ctx, preview);
     let report = session
-        .tick_with_scenario_commitment(
-            ctx,
-            FirstSliceTickOptions::hot_path(),
-            economy.eml_weights,
-        )
+        .tick_with_scenario_commitment(ctx, FirstSliceTickOptions::hot_path(), economy.eml_weights)
         .unwrap();
     assert!(report.mapping.enabled);
     assert!(report.mapping.scheduled);

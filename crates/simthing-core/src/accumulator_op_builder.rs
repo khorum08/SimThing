@@ -255,14 +255,8 @@ pub fn resource_transfer_discrete(
     target_col: u32,
     amount: f32,
 ) -> AccumulatorOp {
-    try_resource_transfer_discrete(
-        source_slot,
-        source_col,
-        target_slot,
-        target_col,
-        amount,
-    )
-    .expect("invalid discrete transfer registration")
+    try_resource_transfer_discrete(source_slot, source_col, target_slot, target_col, amount)
+        .expect("invalid discrete transfer registration")
 }
 
 /// Exact conjunctive recipe builder (E-3).
@@ -304,7 +298,9 @@ pub fn conjunctive_recipe_registration_to_op(
 pub fn rebuild_conjunctive_recipe_ops(
     regs: &[ConjunctiveRecipeRegistration],
 ) -> Result<Vec<AccumulatorOp>, AccumulatorOpBuilderError> {
-    regs.iter().map(conjunctive_recipe_registration_to_op).collect()
+    regs.iter()
+        .map(conjunctive_recipe_registration_to_op)
+        .collect()
 }
 
 /// Compile one discrete transfer registration into its AccumulatorOp shape.
@@ -335,7 +331,9 @@ pub fn discrete_transfer_registration_to_op(
 pub fn rebuild_discrete_transfer_ops(
     regs: &[DiscreteTransferRegistration],
 ) -> Result<Vec<AccumulatorOp>, AccumulatorOpBuilderError> {
-    regs.iter().map(discrete_transfer_registration_to_op).collect()
+    regs.iter()
+        .map(discrete_transfer_registration_to_op)
+        .collect()
 }
 
 /// Compile one registration into its AccumulatorOp shape.
@@ -519,11 +517,7 @@ mod tests {
         ];
         let ops = rebuild_discrete_transfer_ops(&regs).unwrap();
         assert_eq!(ops.len(), 2);
-        assert_eq!(
-            ops[0].scale,
-            ScaleSpec::Constant(3.0),
-            "order preserved"
-        );
+        assert_eq!(ops[0].scale, ScaleSpec::Constant(3.0), "order preserved");
     }
 
     #[test]

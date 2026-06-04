@@ -173,10 +173,7 @@ mod tests {
     fn existing_standard_property_layouts_unchanged() {
         let layout = PropertyLayout::standard(2);
         assert_eq!(layout.stride(), 5);
-        assert_eq!(
-            layout.default_data(),
-            vec![0.0, 0.0, 0.0, 0.0, 0.0]
-        );
+        assert_eq!(layout.default_data(), vec![0.0, 0.0, 0.0, 0.0, 0.0]);
         assert!(layout
             .sub_fields
             .iter()

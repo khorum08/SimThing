@@ -125,12 +125,9 @@ fn run_gpu_frontier_fixture(
     assert!(admission.accepted, "{:?}", admission.rejected_reasons);
 
     let seeds = frontier_v1_gpu_seeds(config);
-    let mut session = FirstSliceMappingSession::open(
-        ctx,
-        MappingExecutionProfile::SparseRegionFieldV1,
-        &spec,
-    )
-    .expect("mapping session opens");
+    let mut session =
+        FirstSliceMappingSession::open(ctx, MappingExecutionProfile::SparseRegionFieldV1, &spec)
+            .expect("mapping session opens");
     session.queue_seeds(&seeds).expect("queue seeds");
 
     let report = session
@@ -176,7 +173,10 @@ fn frontier_v1_2_happy_path_gpu_fixture_runs() {
             skeleton.mapping_execution_profile,
             MappingExecutionProfile::SparseRegionFieldV1
         );
-        assert_eq!(run.summary.mapping_status, FrontierV1FieldStatus::GpuVerified);
+        assert_eq!(
+            run.summary.mapping_status,
+            FrontierV1FieldStatus::GpuVerified
+        );
         assert_eq!(
             run.summary.resource_flow_status,
             FrontierV1FieldStatus::CpuOracleOnly
@@ -195,8 +195,14 @@ fn frontier_v1_2_happy_path_gpu_fixture_runs() {
 
 #[test]
 fn frontier_v1_2_defaults_remain_disabled() {
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
-    assert_eq!(ResourceFlowOptInMode::default(), ResourceFlowOptInMode::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
+    assert_eq!(
+        ResourceFlowOptInMode::default(),
+        ResourceFlowOptInMode::Disabled
+    );
     assert_eq!(
         ResourceFlowExecutionProfile::default(),
         ResourceFlowExecutionProfile::DefaultDisabled
@@ -210,12 +216,9 @@ fn frontier_v1_2_defaults_remain_disabled() {
 
     with_gpu(|ctx| {
         let spec = frontier_v1_mapping_field_spec();
-        let mut session = FirstSliceMappingSession::open(
-            ctx,
-            MappingExecutionProfile::Disabled,
-            &spec,
-        )
-        .expect("disabled session opens");
+        let mut session =
+            FirstSliceMappingSession::open(ctx, MappingExecutionProfile::Disabled, &spec)
+                .expect("disabled session opens");
         session
             .queue_seeds(&[FirstSliceSeed {
                 row: 0,
@@ -255,7 +258,10 @@ fn frontier_v1_2_gpu_cpu_oracle_parity() {
         assert_eq!(run.cpu_output.routes.resource_route_count, 1);
         assert_eq!(run.cpu_output.routes.structural_route_count, 1);
         assert_eq!(run.cpu_output.routes.movement_route_count, 1);
-        assert_eq!(run.summary.mapping_status, FrontierV1FieldStatus::GpuVerified);
+        assert_eq!(
+            run.summary.mapping_status,
+            FrontierV1FieldStatus::GpuVerified
+        );
         assert_eq!(
             run.summary.resource_flow_status,
             FrontierV1FieldStatus::CpuOracleOnly
@@ -280,7 +286,10 @@ fn frontier_v1_2_gpu_replay_reproducibility() {
         assert_eq!(run_a.threat.to_bits(), run_b.threat.to_bits());
         assert_eq!(run_a.urgency.to_bits(), run_b.urgency.to_bits());
         assert_eq!(run_a.summary.combined_hex(), run_b.summary.combined_hex());
-        assert_eq!(run_a.summary.combined_hex(), FRONTIER_V1_GPU_REPLAY_FINGERPRINT);
+        assert_eq!(
+            run_a.summary.combined_hex(),
+            FRONTIER_V1_GPU_REPLAY_FINGERPRINT
+        );
 
         println!(
             "frontier_v1_2_replay: fp={} fixture_id={FRONTIER_V1_GPU_FIXTURE_ID}",
@@ -329,13 +338,22 @@ fn frontier_v1_2_coupling_rejects_non_frontier_profile() {
 fn frontier_v1_2_deferred_features_reject() {
     let deferred: [(&str, Box<dyn Fn(&mut FrontierV1ScenarioSkeleton)>); 10] = [
         ("atlas", Box::new(|s| s.theater.request_atlas = true)),
-        ("active_mask", Box::new(|s| s.theater.request_active_mask = true)),
-        ("perception", Box::new(|s| s.theater.request_perception = true)),
+        (
+            "active_mask",
+            Box::new(|s| s.theater.request_active_mask = true),
+        ),
+        (
+            "perception",
+            Box::new(|s| s.theater.request_perception = true),
+        ),
         (
             "source_identity",
             Box::new(|s| s.theater.request_source_identity = true),
         ),
-        ("nested_e11b", Box::new(|s| s.resource_flow.nested_e11b = true)),
+        (
+            "nested_e11b",
+            Box::new(|s| s.resource_flow.nested_e11b = true),
+        ),
         (
             "e11b_5",
             Box::new(|s| s.resource_flow.e11b_5_dynamic_enrollment = true),
@@ -379,7 +397,10 @@ fn frontier_v1_2_no_simthing_sim_semantic_awareness() {
         "proposal",
         "ResourceFlow",
     ] {
-        assert!(!sim_lib.contains(needle), "simthing-sim must not contain `{needle}`");
+        assert!(
+            !sim_lib.contains(needle),
+            "simthing-sim must not contain `{needle}`"
+        );
     }
     println!("frontier_v1_2_sim: semantic_free=true fixture_id={FRONTIER_V1_GPU_FIXTURE_ID}");
 }
@@ -387,9 +408,7 @@ fn frontier_v1_2_no_simthing_sim_semantic_awareness() {
 #[test]
 fn frontier_v1_2_no_unauthorized_gpu_primitive() {
     let frontier_descriptor = landed_jit_kernel_descriptors().into_iter().find(|d| {
-        d.id.contains("frontier")
-            || d.id.contains("FrontierV1")
-            || d.id.contains("frontier_v1_2")
+        d.id.contains("frontier") || d.id.contains("FrontierV1") || d.id.contains("frontier_v1_2")
     });
     assert!(frontier_descriptor.is_none());
 
@@ -402,7 +421,11 @@ fn frontier_v1_2_no_unauthorized_gpu_primitive() {
                 .and_then(|n| n.to_str())
                 .unwrap_or_default()
                 .to_ascii_lowercase();
-            assert!(!name.contains("frontier"), "no Frontier WGSL: {}", path.display());
+            assert!(
+                !name.contains("frontier"),
+                "no Frontier WGSL: {}",
+                path.display()
+            );
         }
     }
     println!("frontier_v1_2_gpu: no_new_primitive=true fixture_id={FRONTIER_V1_GPU_FIXTURE_ID}");

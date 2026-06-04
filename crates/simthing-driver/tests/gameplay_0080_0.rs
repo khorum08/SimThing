@@ -45,9 +45,9 @@ fn gameplay_0080_0_readonly_observation_explicit_opt_in_only() {
 #[test]
 fn gameplay_0080_0_consumes_default_schedule_report() {
     let schedule = run_default_schedule_0080_0(&DefaultSchedule0080Input::explicit_opt_in());
-    let observed = observe_gameplay_0080_0(&Gameplay0080ObservationInput::explicit_opt_in_from_report(
-        schedule.clone(),
-    ));
+    let observed = observe_gameplay_0080_0(
+        &Gameplay0080ObservationInput::explicit_opt_in_from_report(schedule.clone()),
+    );
     assert!(observed.admitted);
     assert_eq!(observed.executed_step_count, schedule.executed_step_count);
     assert_eq!(
@@ -60,7 +60,10 @@ fn gameplay_0080_0_consumes_default_schedule_report() {
 #[test]
 fn gameplay_0080_0_exports_tick_transcript() {
     let admitted = report();
-    assert_eq!(admitted.transcript.steps.len(), admitted.executed_step_count as usize);
+    assert_eq!(
+        admitted.transcript.steps.len(),
+        admitted.executed_step_count as usize
+    );
     assert_eq!(admitted.transcript.steps.len(), 3);
     assert!(!admitted.text_export.is_empty());
     assert!(admitted.text_export.contains("GAMEPLAY-0080-0"));

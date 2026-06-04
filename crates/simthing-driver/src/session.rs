@@ -738,8 +738,7 @@ impl SimSession {
                 &self.proto.registry,
                 &mut self.proto.allocator,
             );
-        let should_sync = report.any_admissions()
-            && self.proto.flags.use_accumulator_resource_flow;
+        let should_sync = report.any_admissions() && self.proto.flags.use_accumulator_resource_flow;
         if !report.admissions.is_empty() || !report.rejections.is_empty() {
             self.last_resource_flow_dynamic_enrollment_report = Some(report);
         } else {

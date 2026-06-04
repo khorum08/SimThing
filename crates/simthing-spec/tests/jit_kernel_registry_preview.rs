@@ -2,8 +2,8 @@
 
 use simthing_spec::{
     preview_kernel_registry_manifest, validate_kernel_registry_manifest_preview,
-    KernelDescriptorSpec, KernelGraphEdgeSpec, KernelGraphRequestSpec, KernelGraphSpec,
-    KernelLane, KernelOutputSpec, KernelRegistryEntryPreview, KernelRegistryLane,
+    KernelDescriptorSpec, KernelGraphEdgeSpec, KernelGraphRequestSpec, KernelGraphSpec, KernelLane,
+    KernelOutputSpec, KernelRegistryEntryPreview, KernelRegistryLane,
     KernelRegistryManifestPreview, NativeMathClass, OutputAuthority, SpecError,
 };
 
@@ -182,8 +182,8 @@ fn sample_entry(stable_key: &str) -> KernelRegistryEntryPreview {
 
 #[test]
 fn jit_reg0_manifest_builds_from_cohort_preview() {
-    let manifest = preview_kernel_registry_manifest(&three_request_batch())
-        .expect("registry manifest");
+    let manifest =
+        preview_kernel_registry_manifest(&three_request_batch()).expect("registry manifest");
     assert_eq!(manifest.entries.len(), 2);
 
     let paired = manifest
@@ -211,11 +211,7 @@ fn jit_reg0_manifest_builds_from_cohort_preview() {
 #[test]
 fn jit_reg0_manifest_stable_under_request_order() {
     let batch_a = three_request_batch();
-    let batch_b = vec![
-        batch_a[2].clone(),
-        batch_a[0].clone(),
-        batch_a[1].clone(),
-    ];
+    let batch_b = vec![batch_a[2].clone(), batch_a[0].clone(), batch_a[1].clone()];
     let manifest_a = preview_kernel_registry_manifest(&batch_a).expect("manifest_a");
     let manifest_b = preview_kernel_registry_manifest(&batch_b).expect("manifest_b");
     assert_eq!(manifest_a, manifest_b);
@@ -301,8 +297,8 @@ fn jit_reg0_duplicate_request_ids_reject() {
 
 #[test]
 fn jit_reg0_entries_are_test_only_default_off_no_production_wiring() {
-    let manifest = preview_kernel_registry_manifest(&three_request_batch())
-        .expect("registry manifest");
+    let manifest =
+        preview_kernel_registry_manifest(&three_request_batch()).expect("registry manifest");
     for entry in &manifest.entries {
         assert_eq!(entry.lane, KernelRegistryLane::TestOnlyPreview);
         assert!(entry.default_off);

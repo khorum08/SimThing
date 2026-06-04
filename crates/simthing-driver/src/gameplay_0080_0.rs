@@ -1,6 +1,6 @@
 use crate::{
-    run_default_schedule_0080_0, LocalPatrolEconomyScenario, DefaultSchedule0080Input,
-    DefaultSchedule0080Location, DefaultSchedule0080RunReport, DefaultSchedule0080StepReport,
+    run_default_schedule_0080_0, DefaultSchedule0080Input, DefaultSchedule0080Location,
+    DefaultSchedule0080RunReport, DefaultSchedule0080StepReport, LocalPatrolEconomyScenario,
     DEFAULT_SCHEDULE_0080_0_SCENARIO,
 };
 
@@ -206,7 +206,8 @@ pub fn observe_gameplay_0080_0(
     admitted_report(input, schedule_report)
 }
 
-pub fn replay_observe_gameplay_0080_0() -> (Gameplay0080ObservationReport, Gameplay0080ObservationReport) {
+pub fn replay_observe_gameplay_0080_0(
+) -> (Gameplay0080ObservationReport, Gameplay0080ObservationReport) {
     let input = Gameplay0080ObservationInput::explicit_opt_in();
     (
         observe_gameplay_0080_0(&input),

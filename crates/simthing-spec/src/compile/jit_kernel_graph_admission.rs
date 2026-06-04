@@ -120,7 +120,10 @@ pub fn validate_kernel_graph_admission(graph: &KernelGraphSpec) -> Result<(), Sp
         let Some(&from_idx) = index.get(&edge.from_kernel) else {
             return Err(graph_err(
                 "graph",
-                format!("edge references missing producer node `{}`", edge.from_kernel),
+                format!(
+                    "edge references missing producer node `{}`",
+                    edge.from_kernel
+                ),
             ));
         };
         let Some(&to_idx) = index.get(&edge.to_kernel) else {

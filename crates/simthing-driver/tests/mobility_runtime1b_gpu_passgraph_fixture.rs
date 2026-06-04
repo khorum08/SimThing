@@ -43,7 +43,12 @@ fn live(parent_id: u64, key_id: u64, entity_id: u64, slot: u32) -> MobilityAlloc
     }
 }
 
-fn mv(entity_id: u64, origin_key: u64, destination_key: u64, arrival_order: u64) -> MobilityReenroll0Move {
+fn mv(
+    entity_id: u64,
+    origin_key: u64,
+    destination_key: u64,
+    arrival_order: u64,
+) -> MobilityReenroll0Move {
     MobilityReenroll0Move {
         entity_id,
         origin: key(1, origin_key),
@@ -173,7 +178,12 @@ fn composition_fixture() -> MobilityRuntime0CompositionInput {
         },
         owner: MobilityOwner0PlanInput {
             records: vec![
-                orec(100, 20, 1, vec![owner(MobilityOwner0ColumnKind::Faction, 7)]),
+                orec(
+                    100,
+                    20,
+                    1,
+                    vec![owner(MobilityOwner0ColumnKind::Faction, 7)],
+                ),
                 orec(2, 30, 1, vec![owner(MobilityOwner0ColumnKind::Faction, 7)]),
                 orec(3, 31, 1, vec![owner(MobilityOwner0ColumnKind::Species, 7)]),
             ],
@@ -216,10 +226,11 @@ fn spec_report(
 
 #[test]
 fn runtime1b_explicit_opt_in_only() {
-    let disabled = run_mobility_runtime1b_passgraph_fixture(&MobilityRuntime1bPassgraphFixtureInput {
-        gate: MobilityRuntime1bPassgraphGate::default(),
-        driver: fixture_input().driver,
-    });
+    let disabled =
+        run_mobility_runtime1b_passgraph_fixture(&MobilityRuntime1bPassgraphFixtureInput {
+            gate: MobilityRuntime1bPassgraphGate::default(),
+            driver: fixture_input().driver,
+        });
     assert!(disabled.admitted);
     assert!(disabled.disabled_no_op);
     assert!(!disabled.explicit_opt_in);
@@ -229,7 +240,9 @@ fn runtime1b_explicit_opt_in_only() {
     default_on.gate.enabled_by_default = true;
     let rejected = run_mobility_runtime1b_passgraph_fixture(&default_on);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"runtime1b_default_on_rejected"));
+    assert!(rejected
+        .diagnostics
+        .contains(&"runtime1b_default_on_rejected"));
 
     let report = run_mobility_runtime1b_passgraph_fixture(&fixture_input());
     assert!(report.admitted);
@@ -254,7 +267,10 @@ fn runtime1b_registers_named_gpu_passgraph_fixture() {
     assert!(report.gpu_passgraph_node_registered);
     let registry = report.passgraph_registry.as_ref().expect("registry");
     assert_eq!(registry.nodes.len(), 1);
-    assert_eq!(registry.nodes[0].node_id, MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID);
+    assert_eq!(
+        registry.nodes[0].node_id,
+        MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID
+    );
 }
 
 #[test]
@@ -277,7 +293,10 @@ fn runtime1b_non_scheduled_registration_no_gpu_dispatch() {
     assert!(!node.gpu_dispatch_enabled);
     assert!(!node.wgsl_shader_present);
     assert!(report.runtime1b_dispatch_gate_closed);
-    assert_eq!(MOBILITY_RUNTIME1B_DISPATCH_GATE, "mobility_runtime1b_dispatch_closed");
+    assert_eq!(
+        MOBILITY_RUNTIME1B_DISPATCH_GATE,
+        "mobility_runtime1b_dispatch_closed"
+    );
 }
 
 #[test]
@@ -294,7 +313,10 @@ fn runtime1b_delegates_to_runtime1a_fixture() {
 fn runtime1b_preserves_runtime0_composition_order() {
     let report = run_mobility_runtime1b_passgraph_fixture(&fixture_input());
     assert!(report.admitted);
-    assert_eq!(spec_report(&report).substrate_order, MOBILITY_RUNTIME0_ORDER);
+    assert_eq!(
+        spec_report(&report).substrate_order,
+        MOBILITY_RUNTIME0_ORDER
+    );
 }
 
 #[test]
@@ -303,8 +325,20 @@ fn runtime1b_preserves_deterministic_replay() {
     let mut permuted = fixture_input();
     permuted.driver.composition.alloc.blocks.reverse();
     permuted.driver.composition.alloc.live_slices.reverse();
-    permuted.driver.composition.reenroll.registry.blocks.reverse();
-    permuted.driver.composition.reenroll.registry.live_slices.reverse();
+    permuted
+        .driver
+        .composition
+        .reenroll
+        .registry
+        .blocks
+        .reverse();
+    permuted
+        .driver
+        .composition
+        .reenroll
+        .registry
+        .live_slices
+        .reverse();
     permuted.driver.composition.idroute.records.reverse();
     permuted.driver.composition.econ.records.reverse();
     permuted.driver.composition.owner.records.reverse();
@@ -372,7 +406,9 @@ fn runtime1b_rejects_cpu_planner_urgency_commitment() {
     forbidden.cpu_planner_urgency_commitment = true;
     let report = rejected_with(forbidden);
     assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"cpu_planner_urgency_commitment"));
+    assert!(report
+        .diagnostics
+        .contains(&"cpu_planner_urgency_commitment"));
 }
 
 #[test]
@@ -408,7 +444,9 @@ fn runtime1b_rejects_hard_currency_through_resource_flow() {
     forbidden.hard_currency_through_resource_flow = true;
     let report = rejected_with(forbidden);
     assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"hard_currency_through_resource_flow"));
+    assert!(report
+        .diagnostics
+        .contains(&"hard_currency_through_resource_flow"));
 }
 
 #[test]
@@ -433,10 +471,11 @@ fn runtime1b_rejects_closed_ladder_reopen() {
 
 #[test]
 fn runtime1b_no_default_runtime_cost_when_disabled() {
-    let report = run_mobility_runtime1b_passgraph_fixture(&MobilityRuntime1bPassgraphFixtureInput {
-        gate: MobilityRuntime1bPassgraphGate::default(),
-        driver: fixture_input().driver,
-    });
+    let report =
+        run_mobility_runtime1b_passgraph_fixture(&MobilityRuntime1bPassgraphFixtureInput {
+            gate: MobilityRuntime1bPassgraphGate::default(),
+            driver: fixture_input().driver,
+        });
     assert!(report.admitted);
     assert!(report.disabled_no_op);
     assert!(!report.gpu_passgraph_node_registered);

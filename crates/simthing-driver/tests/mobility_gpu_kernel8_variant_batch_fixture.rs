@@ -4,17 +4,19 @@
 mod mobility_gpu_kernel8_variant_batch_fixture;
 
 use mobility_gpu_kernel8_variant_batch_fixture::{
-    build_projection_variants, dense_bulk_variant, mobility_gpu_kernel8_shader_text_has_domain_terms,
-    parent_key_offset_variant, projection_checksum_for_columns, projected_34k_columns_for_kernel6,
+    build_projection_variants, dense_bulk_variant,
+    mobility_gpu_kernel8_shader_text_has_domain_terms, parent_key_offset_variant,
+    projected_34k_columns_for_kernel6, projection_checksum_for_columns,
     run_mobility_gpu_kernel8_fixture, sparse_delta_variant, MobilityGpuKernel0ParityClassification,
-    MobilityGpuKernel8FixtureInput, MobilityGpuKernel8ForbiddenPathRequests, MobilityGpuKernel8Gate,
-    MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_END, MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_START,
-    MOBILITY_GPU_KERNEL4_ROW_COUNT, MOBILITY_GPU_KERNEL4_SPARSE_STRIDE,
-    MOBILITY_GPU_KERNEL8_FIXTURE_ID, MOBILITY_GPU_KERNEL8_MIN_REPLAYS_PER_VARIANT,
-    MOBILITY_GPU_KERNEL8_NAMED_GATE, MOBILITY_GPU_KERNEL8_NEW_SHADER_TEXT_ADDED,
-    MOBILITY_GPU_KERNEL8_VARIANT_BASELINE, MOBILITY_GPU_KERNEL8_VARIANT_COUNT,
-    MOBILITY_GPU_KERNEL8_VARIANT_DENSE_BULK, MOBILITY_GPU_KERNEL8_VARIANT_PARENT_OFFSET,
-    MOBILITY_GPU_KERNEL8_VARIANT_SPARSE_DELTA, MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
+    MobilityGpuKernel8FixtureInput, MobilityGpuKernel8ForbiddenPathRequests,
+    MobilityGpuKernel8Gate, MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_END,
+    MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_START, MOBILITY_GPU_KERNEL4_ROW_COUNT,
+    MOBILITY_GPU_KERNEL4_SPARSE_STRIDE, MOBILITY_GPU_KERNEL8_FIXTURE_ID,
+    MOBILITY_GPU_KERNEL8_MIN_REPLAYS_PER_VARIANT, MOBILITY_GPU_KERNEL8_NAMED_GATE,
+    MOBILITY_GPU_KERNEL8_NEW_SHADER_TEXT_ADDED, MOBILITY_GPU_KERNEL8_VARIANT_BASELINE,
+    MOBILITY_GPU_KERNEL8_VARIANT_COUNT, MOBILITY_GPU_KERNEL8_VARIANT_DENSE_BULK,
+    MOBILITY_GPU_KERNEL8_VARIANT_PARENT_OFFSET, MOBILITY_GPU_KERNEL8_VARIANT_SPARSE_DELTA,
+    MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
 };
 
 fn fixture_input() -> MobilityGpuKernel8FixtureInput {
@@ -77,7 +79,10 @@ fn mobility_gpu_kernel8_variant_batch_default_disabled_noop() {
 fn mobility_gpu_kernel8_variant_batch_uses_registered_node() {
     let report = run_mobility_gpu_kernel8_fixture(&fixture_input());
     assert!(report.uses_registered_node);
-    assert_eq!(MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID, "mobility_runtime1b_non_scheduled_composition_node");
+    assert_eq!(
+        MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
+        "mobility_runtime1b_non_scheduled_composition_node"
+    );
 }
 
 #[test]
@@ -92,17 +97,23 @@ fn mobility_gpu_kernel8_variant_batch_registration_non_executing_until_invoked()
     assert_eq!(reg.variant_count, 0);
 
     let dispatched = run_mobility_gpu_kernel8_fixture(&fixture_input());
-    assert!(dispatched.gpu_dispatch_occurred || matches!(
-        dispatched.parity_classification,
-        MobilityGpuKernel0ParityClassification::GpuUnavailable
-    ));
+    assert!(
+        dispatched.gpu_dispatch_occurred
+            || matches!(
+                dispatched.parity_classification,
+                MobilityGpuKernel0ParityClassification::GpuUnavailable
+            )
+    );
 }
 
 #[test]
 fn mobility_gpu_kernel8_variant_batch_reuses_kernel6_chain() {
     let report = run_mobility_gpu_kernel8_fixture(&fixture_input());
     assert!(report.reuses_kernel6_chain);
-    assert_eq!(report.kernel6_chain_id, "mobility_gpu_kernel6_kernel0_then_kernel5_chain");
+    assert_eq!(
+        report.kernel6_chain_id,
+        "mobility_gpu_kernel6_kernel0_then_kernel5_chain"
+    );
 }
 
 #[test]
@@ -182,7 +193,10 @@ fn mobility_gpu_kernel8_variant_batch_gpu_checksums_match_or_unavailable() {
                 assert!(variant.gpu_chain_checksum.is_none());
             }
             MobilityGpuKernel0ParityClassification::GpuExecutionFailed => {
-                panic!("unexpected GpuExecutionFailed for variant {}", variant.variant_id);
+                panic!(
+                    "unexpected GpuExecutionFailed for variant {}",
+                    variant.variant_id
+                );
             }
         }
     }
@@ -228,7 +242,9 @@ fn mobility_gpu_kernel8_variant_batch_no_designer_authored_shader_input() {
     assert!(!report.designer_shader_input_present);
     let mut forbidden = MobilityGpuKernel8ForbiddenPathRequests::default();
     forbidden.designer_authored_shader_input = true;
-    assert!(rejected_with(forbidden).diagnostics.contains(&"designer_authored_shader_input"));
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"designer_authored_shader_input"));
 }
 
 #[test]
@@ -237,7 +253,9 @@ fn mobility_gpu_kernel8_variant_batch_no_semantic_or_raw_wgsl() {
     assert!(!report.semantic_or_raw_wgsl_present);
     let mut forbidden = MobilityGpuKernel8ForbiddenPathRequests::default();
     forbidden.semantic_or_raw_wgsl = true;
-    assert!(rejected_with(forbidden).diagnostics.contains(&"semantic_or_raw_wgsl"));
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"semantic_or_raw_wgsl"));
 }
 
 #[test]

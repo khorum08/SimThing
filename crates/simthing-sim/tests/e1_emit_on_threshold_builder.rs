@@ -4,8 +4,8 @@ use std::path::Path;
 
 use simthing_core::{
     debt_band_next_threshold, emit_on_threshold, emit_on_threshold_registration_to_op,
-    refresh_emit_on_threshold_debt_band, rebuild_emit_on_threshold_event_kinds,
-    rebuild_emit_on_threshold_ops, AccumulatorOpBuilder, EmitOnThresholdBuffer,
+    rebuild_emit_on_threshold_event_kinds, rebuild_emit_on_threshold_ops,
+    refresh_emit_on_threshold_debt_band, AccumulatorOpBuilder, EmitOnThresholdBuffer,
     EmitOnThresholdRegistration, ThresholdDirection,
 };
 use simthing_gpu::{
@@ -39,14 +39,7 @@ fn run_cpu_threshold_crossing(
         execute_threshold_ops_cpu(previous, &mut values, &ops, 1).expect("cpu threshold oracle");
     emissions
         .into_iter()
-        .map(|e| {
-            (
-                e.slot,
-                e.col,
-                e.value,
-                kinds[e.reg_idx as usize],
-            )
-        })
+        .map(|e| (e.slot, e.col, e.value, kinds[e.reg_idx as usize]))
         .collect()
 }
 

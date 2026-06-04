@@ -1,6 +1,6 @@
 use simthing_driver::{
-    replay_demo_0080_1, run_demo_0080_1, Demo0081ForbiddenRequests, Demo0081Input,
-    DEMO_0080_1_ID, DEMO_0080_1_SCENARIO, DEMO_0080_1_STATUS_PASS,
+    replay_demo_0080_1, run_demo_0080_1, Demo0081ForbiddenRequests, Demo0081Input, DEMO_0080_1_ID,
+    DEMO_0080_1_SCENARIO, DEMO_0080_1_STATUS_PASS,
 };
 
 fn report() -> simthing_driver::Demo0081Report {
@@ -28,7 +28,9 @@ fn demo_0080_1_explicit_opt_in_only() {
     default_on.surface.gate.enabled_by_default = true;
     let rejected = run_demo_0080_1(&default_on);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"demo_0080_1_default_on_behavior_rejected"));
+    assert!(rejected
+        .diagnostics
+        .contains(&"demo_0080_1_default_on_behavior_rejected"));
 
     let admitted = report();
     assert!(admitted.admitted, "{:?}", admitted.diagnostics);
@@ -73,9 +75,18 @@ fn demo_0080_1_includes_terran_and_pirate_movement_rows() {
     let admitted = report();
     assert!(!admitted.movement_rows.is_empty());
     assert!(admitted.terran_move_count > 0 || admitted.pirate_move_count > 0);
-    let has_terran = admitted.movement_rows.iter().any(|r| r.mover_faction == "Terran");
-    let has_pirate = admitted.movement_rows.iter().any(|r| r.mover_faction == "Pirate");
-    assert!(has_terran || has_pirate, "expected at least one Terran or Pirate row");
+    let has_terran = admitted
+        .movement_rows
+        .iter()
+        .any(|r| r.mover_faction == "Terran");
+    let has_pirate = admitted
+        .movement_rows
+        .iter()
+        .any(|r| r.mover_faction == "Pirate");
+    assert!(
+        has_terran || has_pirate,
+        "expected at least one Terran or Pirate row"
+    );
 }
 
 #[test]
@@ -101,7 +112,10 @@ fn demo_0080_1_includes_owner_overlay_and_up_aggregation_summary() {
 fn demo_0080_1_replay_deterministic() {
     let (a, b) = replay_demo_0080_1();
     assert_eq!(a, b);
-    assert_eq!(a.deterministic_replay_checksum, b.deterministic_replay_checksum);
+    assert_eq!(
+        a.deterministic_replay_checksum,
+        b.deterministic_replay_checksum
+    );
 }
 
 #[test]
@@ -213,7 +227,9 @@ fn demo_0080_1_no_hard_currency_markets_trade_aibudget() {
 
     let rejected = rejected_with(|f| f.hard_currency_markets_trade_aibudget = true);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"hard_currency_markets_trade_aibudget"));
+    assert!(rejected
+        .diagnostics
+        .contains(&"hard_currency_markets_trade_aibudget"));
 }
 
 #[test]

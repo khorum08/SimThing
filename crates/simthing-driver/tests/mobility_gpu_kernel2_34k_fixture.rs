@@ -5,14 +5,14 @@ mod mobility_gpu_kernel2_34k_fixture;
 
 use mobility_gpu_kernel2_34k_fixture::{
     cpu_column_transform_oracle, generate_34k_column_probe, run_mobility_gpu_kernel2_fixture,
-    MobilityGpuKernel2FixtureInput, MobilityGpuKernel2ForbiddenPathRequests, MobilityGpuKernel2Gate,
-    MobilityGpuKernel0ParityClassification, MobilityRuntime1aDriverFixtureInput,
-    MobilityRuntime1bPassgraphFixtureInput, MobilityRuntime1bPassgraphGate,
-    MOBILITY_GPU_KERNEL1_FIXTURE_ID, MOBILITY_GPU_KERNEL2_DENSE_CLUSTER_END,
-    MOBILITY_GPU_KERNEL2_DENSE_CLUSTER_START, MOBILITY_GPU_KERNEL2_FIXTURE_ID,
-    MOBILITY_GPU_KERNEL2_NAMED_GATE, MOBILITY_GPU_KERNEL2_NEW_SHADER_TEXT_ADDED,
-    MOBILITY_GPU_KERNEL2_ROW_COUNT, MOBILITY_GPU_KERNEL2_SPARSE_STRIDE,
-    MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
+    MobilityGpuKernel0ParityClassification, MobilityGpuKernel2FixtureInput,
+    MobilityGpuKernel2ForbiddenPathRequests, MobilityGpuKernel2Gate,
+    MobilityRuntime1aDriverFixtureInput, MobilityRuntime1bPassgraphFixtureInput,
+    MobilityRuntime1bPassgraphGate, MOBILITY_GPU_KERNEL1_FIXTURE_ID,
+    MOBILITY_GPU_KERNEL2_DENSE_CLUSTER_END, MOBILITY_GPU_KERNEL2_DENSE_CLUSTER_START,
+    MOBILITY_GPU_KERNEL2_FIXTURE_ID, MOBILITY_GPU_KERNEL2_NAMED_GATE,
+    MOBILITY_GPU_KERNEL2_NEW_SHADER_TEXT_ADDED, MOBILITY_GPU_KERNEL2_ROW_COUNT,
+    MOBILITY_GPU_KERNEL2_SPARSE_STRIDE, MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
 };
 use simthing_spec::{
     IdentityLane, MobilityAlloc0BlockSpec, MobilityAlloc0ForbiddenPathRequests,
@@ -47,7 +47,12 @@ fn live(parent_id: u64, key_id: u64, entity_id: u64, slot: u32) -> MobilityAlloc
     }
 }
 
-fn mv(entity_id: u64, origin_key: u64, destination_key: u64, arrival_order: u64) -> MobilityReenroll0Move {
+fn mv(
+    entity_id: u64,
+    origin_key: u64,
+    destination_key: u64,
+    arrival_order: u64,
+) -> MobilityReenroll0Move {
     MobilityReenroll0Move {
         entity_id,
         origin: key(1, origin_key),
@@ -177,7 +182,12 @@ fn composition_fixture() -> MobilityRuntime0CompositionInput {
         },
         owner: MobilityOwner0PlanInput {
             records: vec![
-                orec(100, 20, 1, vec![owner(MobilityOwner0ColumnKind::Faction, 7)]),
+                orec(
+                    100,
+                    20,
+                    1,
+                    vec![owner(MobilityOwner0ColumnKind::Faction, 7)],
+                ),
                 orec(2, 30, 1, vec![owner(MobilityOwner0ColumnKind::Faction, 7)]),
                 orec(3, 31, 1, vec![owner(MobilityOwner0ColumnKind::Species, 7)]),
             ],
@@ -248,7 +258,11 @@ fn mobility_gpu_kernel2_34k_uses_registered_node() {
     let report = run_mobility_gpu_kernel2_fixture(&fixture_input());
     assert!(report.uses_registered_node);
     assert_eq!(
-        report.kernel1_report.as_ref().unwrap().dispatched_through_node_id,
+        report
+            .kernel1_report
+            .as_ref()
+            .unwrap()
+            .dispatched_through_node_id,
         Some(MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID)
     );
 }
@@ -264,7 +278,13 @@ fn mobility_gpu_kernel2_34k_registration_non_executing_until_invoked() {
     assert!(!reg.gpu_dispatch_occurred);
 
     let dispatched = run_mobility_gpu_kernel2_fixture(&fixture_input());
-    assert!(dispatched.kernel1_report.as_ref().unwrap().kernel0_dispatched);
+    assert!(
+        dispatched
+            .kernel1_report
+            .as_ref()
+            .unwrap()
+            .kernel0_dispatched
+    );
 }
 
 #[test]
@@ -309,7 +329,10 @@ fn mobility_gpu_kernel2_34k_classifies_exact_parity_or_honest_unavailable() {
             | MobilityGpuKernel0ParityClassification::GpuUnavailable
     ));
     if report.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity {
-        assert_eq!(report.cpu_oracle_checksum, report.gpu_result_checksum.unwrap());
+        assert_eq!(
+            report.cpu_oracle_checksum,
+            report.gpu_result_checksum.unwrap()
+        );
     }
 }
 
@@ -343,7 +366,9 @@ fn mobility_gpu_kernel2_34k_no_designer_authored_shader_input() {
     assert!(!report.designer_shader_input_present);
     let mut forbidden = MobilityGpuKernel2ForbiddenPathRequests::default();
     forbidden.designer_authored_shader_input = true;
-    assert!(rejected_with(forbidden).diagnostics.contains(&"designer_authored_shader_input"));
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"designer_authored_shader_input"));
 }
 
 #[test]
@@ -352,7 +377,9 @@ fn mobility_gpu_kernel2_34k_no_semantic_or_raw_wgsl() {
     assert!(!report.semantic_or_raw_wgsl_present);
     let mut forbidden = MobilityGpuKernel2ForbiddenPathRequests::default();
     forbidden.semantic_or_raw_wgsl = true;
-    assert!(rejected_with(forbidden).diagnostics.contains(&"semantic_or_raw_wgsl"));
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"semantic_or_raw_wgsl"));
 }
 
 #[test]

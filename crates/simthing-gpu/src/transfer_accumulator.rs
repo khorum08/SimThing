@@ -335,7 +335,7 @@ mod tests {
                 output_scale: 1.0,
                 max_transfer: Some(4.0),
                 tree_id: None,
-            order_band: 0,
+                order_band: 0,
             },
             TransferRegistration {
                 inputs: vec![TransferInputRef {
@@ -348,7 +348,7 @@ mod tests {
                 output_scale: 1.0,
                 max_transfer: Some(4.0),
                 tree_id: None,
-            order_band: 0,
+                order_band: 0,
             },
         ];
         assert_eq!(
@@ -378,7 +378,7 @@ mod tests {
                 output_scale: 1.0,
                 max_transfer: None,
                 tree_id: None,
-            order_band: 0,
+                order_band: 0,
             },
             TransferRegistration {
                 inputs: vec![
@@ -398,7 +398,7 @@ mod tests {
                 output_scale: 1.0,
                 max_transfer: None,
                 tree_id: None,
-            order_band: 0,
+                order_band: 0,
             },
         ];
         assert_eq!(

@@ -130,7 +130,12 @@ fn test_c_10x10_h8_tactical_horizon() {
     with_gpu(|ctx| {
         let config = normalized_config(10, 10, 8);
         let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
-        let cluster = [(0u32, 0u32, 80.0f32), (0, 1, 60.0), (1, 0, 60.0), (1, 1, 40.0)];
+        let cluster = [
+            (0u32, 0u32, 80.0f32),
+            (0, 1, 60.0),
+            (1, 0, 60.0),
+            (1, 1, 40.0),
+        ];
         let mut values = vec![0.0f32; op.config().values_len()];
         for &(r, c, v) in &cluster {
             values[idx(r * 10 + c, 0, 4)] = v;
@@ -218,11 +223,17 @@ fn structured_field_stencil_horizon_execution_rejects_steps_above_config() {
         let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
         assert_eq!(
             op.run_ping_pong(ctx, 8).unwrap_err(),
-            StructuredFieldStencilError::ExecutionHorizonExceedsConfig { steps: 8, horizon: 4 }
+            StructuredFieldStencilError::ExecutionHorizonExceedsConfig {
+                steps: 8,
+                horizon: 4
+            }
         );
         assert_eq!(
             op.dispatch_ping_pong(ctx, 5).unwrap_err(),
-            StructuredFieldStencilError::ExecutionHorizonExceedsConfig { steps: 5, horizon: 4 }
+            StructuredFieldStencilError::ExecutionHorizonExceedsConfig {
+                steps: 5,
+                horizon: 4
+            }
         );
     });
 }
@@ -240,7 +251,10 @@ fn structured_field_stencil_source_policy_documented_or_enforced() {
         values[idx(4, 0, 4)] = 100.0;
         op.upload_values(ctx, &values).unwrap();
         let (after_one, _) = op.run_ping_pong(ctx, 1).unwrap();
-        assert!(get(&after_one, 4, 0, 4) > 0.0, "center retains propagated value");
+        assert!(
+            get(&after_one, 4, 0, 4) > 0.0,
+            "center retains propagated value"
+        );
         op.upload_values(ctx, &after_one).unwrap();
         let (after_two, _) = op.run_ping_pong(ctx, 1).unwrap();
         assert!(
@@ -356,7 +370,10 @@ fn test_m1_execute_configured_uses_horizon() {
         for i in 0..values.len() {
             max_err = max_err.max((cpu[i] - gpu[i]).abs());
         }
-        assert!(max_err < 1e-3, "execute_configured parity max_err={max_err}");
+        assert!(
+            max_err < 1e-3,
+            "execute_configured parity max_err={max_err}"
+        );
     });
 }
 
@@ -377,7 +394,10 @@ fn test_m1_execute_configured_rejects_steps_above_horizon() {
             .unwrap_err();
         assert_eq!(
             err,
-            StructuredFieldStencilError::ExecutionHorizonExceedsConfig { steps: 8, horizon: 4 }
+            StructuredFieldStencilError::ExecutionHorizonExceedsConfig {
+                steps: 8,
+                horizon: 4
+            }
         );
     });
 }
@@ -494,7 +514,10 @@ fn test_m1_1_horizon_guard_on_no_readback_and_readback_paths() {
                 .unwrap_err();
             assert_eq!(
                 err,
-                StructuredFieldStencilError::ExecutionHorizonExceedsConfig { steps: 8, horizon: 4 }
+                StructuredFieldStencilError::ExecutionHorizonExceedsConfig {
+                    steps: 8,
+                    horizon: 4
+                }
             );
         }
     });
@@ -523,10 +546,14 @@ fn test_r1_gpu_buffer_copy_and_cell_write_helpers() {
         let after = op.readback_input_buffer(ctx);
         assert!(after[idx(5, 0, n_dims)].abs() < 1e-6);
         assert!(after[idx(10, 0, n_dims)].abs() < 1e-6);
-        assert!(after[idx(6, 0, n_dims)] > 0.0, "neighbor propagation preserved");
+        assert!(
+            after[idx(6, 0, n_dims)] > 0.0,
+            "neighbor propagation preserved"
+        );
 
         op.upload_values(ctx, &zeros).unwrap();
-        op.write_cell_values(ctx, &op.input_buffer, &[(0, 0, 100.0)]).unwrap();
+        op.write_cell_values(ctx, &op.input_buffer, &[(0, 0, 100.0)])
+            .unwrap();
         for _ in 0..3 {
             op.dispatch_once(ctx, &op.input_buffer, &op.output_buffer);
             op.copy_output_to_input(ctx);
@@ -813,8 +840,14 @@ fn m5a_single_target_output_contract_preserved() {
         values[idx(5, 0, 4)] = 10.0;
         op.upload_values(ctx, &values).unwrap();
         let (gpu, _) = op.run_ping_pong(ctx, 1).unwrap();
-        assert!((get(&gpu, 4, 0, 4) - 1.0).abs() < 1e-4, "source col unchanged");
+        assert!(
+            (get(&gpu, 4, 0, 4) - 1.0).abs() < 1e-4,
+            "source col unchanged"
+        );
         assert!((get(&gpu, 4, 1, 4)).abs() > 0.0, "target col written");
-        assert!((get(&gpu, 4, 2, 4) - 1.0).abs() < 1e-4, "other cols passthrough");
+        assert!(
+            (get(&gpu, 4, 2, 4) - 1.0).abs() < 1e-4,
+            "other cols passthrough"
+        );
     });
 }

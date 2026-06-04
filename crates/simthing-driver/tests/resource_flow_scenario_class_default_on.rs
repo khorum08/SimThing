@@ -3,23 +3,22 @@
 mod support;
 
 use simthing_driver::{
-    clone_for_replay, collect_resource_flow_opt_in_telemetry,
-    fixture_disabled_populated_spec, fixture_dynamic_single_fission,
-    fixture_product_rejection_telemetry, fixture_static_flat_star_10_participants,
-    fixture_wildcard_rejected, open_fixture_session,
-    open_fixture_session_with_execution_profile, run_opt_in_burn_in,
-    ResourceFlowFlagSource,
+    clone_for_replay, collect_resource_flow_opt_in_telemetry, fixture_disabled_populated_spec,
+    fixture_dynamic_single_fission, fixture_product_rejection_telemetry,
+    fixture_static_flat_star_10_participants, fixture_wildcard_rejected, open_fixture_session,
+    open_fixture_session_with_execution_profile, run_opt_in_burn_in, ResourceFlowFlagSource,
 };
 use simthing_sim::PipelineFlags;
 use simthing_spec::{ResourceFlowExecutionProfile, ResourceFlowOptInMode};
 
 use support::e11_burn_in_scenarios::assert_flat_star_only_no_nested_claims;
 use support::e11_flat_star::{
-    fill_explicit_participants, flat_star_game_mode, flat_star_scenario, try_gpu,
-    FlatStarSession,
+    fill_explicit_participants, flat_star_game_mode, flat_star_scenario, try_gpu, FlatStarSession,
 };
 
-fn open_scenario_class(fixture: &simthing_driver::RfT2BurnInFixture) -> simthing_driver::RfT2OptInSession {
+fn open_scenario_class(
+    fixture: &simthing_driver::RfT2BurnInFixture,
+) -> simthing_driver::RfT2OptInSession {
     open_fixture_session_with_execution_profile(
         fixture,
         ResourceFlowExecutionProfile::FlatStarResourceFlow,
@@ -92,7 +91,10 @@ fn rf_t4_scenario_class_records_profile_name() {
         0,
     );
     assert_eq!(telemetry.execution_profile_name, "FlatStarResourceFlow");
-    assert_eq!(telemetry.flag_source, ResourceFlowFlagSource::ScenarioClassDefaultOn);
+    assert_eq!(
+        telemetry.flag_source,
+        ResourceFlowFlagSource::ScenarioClassDefaultOn
+    );
 }
 
 #[test]
@@ -202,12 +204,15 @@ fn rf_t4_scenario_class_replay_same_seed_same_telemetry() {
         Some(&fx_b.boundary_metrics),
         0,
     );
-    assert_eq!(tel_a.flag_source, ResourceFlowFlagSource::ScenarioClassDefaultOn);
-    assert_eq!(tel_b.flag_source, ResourceFlowFlagSource::ScenarioClassDefaultOn);
     assert_eq!(
-        tel_a.max_abs_error.to_bits(),
-        tel_b.max_abs_error.to_bits()
+        tel_a.flag_source,
+        ResourceFlowFlagSource::ScenarioClassDefaultOn
     );
+    assert_eq!(
+        tel_b.flag_source,
+        ResourceFlowFlagSource::ScenarioClassDefaultOn
+    );
+    assert_eq!(tel_a.max_abs_error.to_bits(), tel_b.max_abs_error.to_bits());
     assert_eq!(report_a.ticks_checked, report_b.ticks_checked);
 }
 
@@ -226,7 +231,10 @@ fn rf_t4_scenario_class_rejection_telemetry_visible() {
     );
     assert_eq!(telemetry.dynamic_rejections, 1);
     assert_eq!(telemetry.dynamic_admissions, 0);
-    assert_eq!(telemetry.flag_source, ResourceFlowFlagSource::ScenarioClassDefaultOn);
+    assert_eq!(
+        telemetry.flag_source,
+        ResourceFlowFlagSource::ScenarioClassDefaultOn
+    );
 }
 
 #[test]
@@ -282,10 +290,8 @@ fn rf_t4_spec_opt_in_precedence_over_scenario_class() {
     };
     let scenario = flat_star_scenario(3, 32);
     let mut game_mode = flat_star_game_mode(16);
-    game_mode.resource_flow.as_mut().unwrap().opt_in_mode =
-        ResourceFlowOptInMode::FlatStarOptIn;
-    game_mode.resource_flow_execution_profile =
-        ResourceFlowExecutionProfile::FlatStarResourceFlow;
+    game_mode.resource_flow.as_mut().unwrap().opt_in_mode = ResourceFlowOptInMode::FlatStarOptIn;
+    game_mode.resource_flow_execution_profile = ResourceFlowExecutionProfile::FlatStarResourceFlow;
     fill_explicit_participants(&mut game_mode, &scenario);
     let session = simthing_driver::SimSession::open_from_spec(scenario, &game_mode).expect("open");
     assert_eq!(

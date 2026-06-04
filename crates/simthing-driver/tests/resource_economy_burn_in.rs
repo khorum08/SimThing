@@ -51,7 +51,10 @@ fn resource_economy_transfer_100_ticks_conserves_source_target_total() {
     .expect("transfer burn-in");
 
     assert_eq!(report.ticks_checked, 100);
-    assert_eq!(report.max_abs_conservation_error.to_bits(), 0.0_f32.to_bits());
+    assert_eq!(
+        report.max_abs_conservation_error.to_bits(),
+        0.0_f32.to_bits()
+    );
     assert!(report.replay_bit_exact);
 }
 
@@ -86,20 +89,15 @@ fn resource_economy_recipe_100_ticks_conserves_inputs_and_outputs_as_expected() 
     let watched = [(0, food_col), (0, ore_col), (0, product_col)];
 
     let mut state = session.state;
-    let report = run_transfer_recipe_burn_in(
-        &mut state,
-        n_dims,
-        &flat,
-        &[],
-        &recipes,
-        &watched,
-        100,
-        1.0,
-    )
-    .expect("recipe burn-in");
+    let report =
+        run_transfer_recipe_burn_in(&mut state, n_dims, &flat, &[], &recipes, &watched, 100, 1.0)
+            .expect("recipe burn-in");
 
     assert_eq!(report.ticks_checked, 100);
-    assert_eq!(report.max_abs_conservation_error.to_bits(), 0.0_f32.to_bits());
+    assert_eq!(
+        report.max_abs_conservation_error.to_bits(),
+        0.0_f32.to_bits()
+    );
     assert!(report.replay_bit_exact);
 }
 
@@ -129,18 +127,14 @@ fn resource_economy_emission_100_ticks_matches_oracle() {
     flat[((cohort_slot * n_dims + food_col) as usize)] = 7.75;
 
     let mut state = session.state;
-    let report = run_emission_burn_in(
-        &mut state,
-        n_dims,
-        &flat,
-        &emissions,
-        100,
-        1.0,
-    )
-    .expect("emission burn-in");
+    let report = run_emission_burn_in(&mut state, n_dims, &flat, &emissions, 100, 1.0)
+        .expect("emission burn-in");
 
     assert_eq!(report.ticks_checked, 100);
-    assert_eq!(report.max_abs_conservation_error.to_bits(), 0.0_f32.to_bits());
+    assert_eq!(
+        report.max_abs_conservation_error.to_bits(),
+        0.0_f32.to_bits()
+    );
     assert!(report.replay_bit_exact);
 }
 

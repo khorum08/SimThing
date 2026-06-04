@@ -11,10 +11,7 @@ use dress_rehearsal_atlas_batch_0_loc::{
 
 #[test]
 fn docs_status_matches_gate() {
-    assert_eq!(
-        DRESS_REHEARSAL_ATLAS_BATCH_0_LOC_ID,
-        "ATLAS-BATCH-0-LOC"
-    );
+    assert_eq!(DRESS_REHEARSAL_ATLAS_BATCH_0_LOC_ID, "ATLAS-BATCH-0-LOC");
     assert!(
         DRESS_REHEARSAL_ATLAS_BATCH_0_LOC_STATUS_PASS.contains("IMPLEMENTED / PASS"),
         "{DRESS_REHEARSAL_ATLAS_BATCH_0_LOC_STATUS_PASS}"
@@ -228,10 +225,7 @@ fn channel_descriptors_present_per_tier() {
     let materialization = LocationMaterialization::canonical();
 
     for surface in materialization.locations_by_role(LocationRole::PlanetSurface) {
-        assert!(channel_set_has_kind(
-            &surface.channels,
-            ChannelKind::Labor
-        ));
+        assert!(channel_set_has_kind(&surface.channels, ChannelKind::Labor));
         assert!(channel_set_has_kind(
             &surface.channels,
             ChannelKind::Production
@@ -303,7 +297,9 @@ fn planet_links_to_its_surface_location() {
         assert_eq!(surface.parent, Some(planet.location_id));
 
         let galactic_id = system.parent.expect("system parent is galactic");
-        let galactic = materialization.location(galactic_id).expect("galactic location");
+        let galactic = materialization
+            .location(galactic_id)
+            .expect("galactic location");
         assert_eq!(galactic.role, LocationRole::Galactic);
         assert!(galactic.parent.is_none());
     }

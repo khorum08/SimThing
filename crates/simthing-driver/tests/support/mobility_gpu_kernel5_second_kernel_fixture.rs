@@ -11,7 +11,8 @@ mod mobility_gpu_kernel4_34k_projection_fixture;
 use mobility_gpu_kernel4_34k_projection_fixture::{
     generate_34k_runtime_composition_input, generate_permuted_34k_runtime_composition_input,
     project_runtime_composition_input_to_columns, run_mobility_gpu_kernel4_fixture,
-    MobilityGpuKernel4FixtureInput, MobilityGpuKernel4ForbiddenPathRequests, MobilityGpuKernel4Gate,
+    MobilityGpuKernel4FixtureInput, MobilityGpuKernel4ForbiddenPathRequests,
+    MobilityGpuKernel4Gate,
 };
 
 pub use mobility_gpu_kernel4_34k_projection_fixture::{
@@ -277,7 +278,10 @@ pub fn cpu_second_kernel_oracle(
 }
 
 fn mix_u32(a: u32, b: u32) -> u32 {
-    let mut x = a ^ b.wrapping_add(0x9E37_79B9).wrapping_add(a << 6).wrapping_add(a >> 2);
+    let mut x = a ^ b
+        .wrapping_add(0x9E37_79B9)
+        .wrapping_add(a << 6)
+        .wrapping_add(a >> 2);
     x ^= x >> 16;
     x = x.wrapping_mul(0x7FEB_352D);
     x ^= x >> 15;
@@ -625,7 +629,8 @@ fn shell(input: &MobilityGpuKernel5FixtureInput) -> MobilityGpuKernel5FixtureRep
         default_production_scheduling_wired: false,
         hybrid_strata_or_faction_index_scaling: false,
         closed_ladders_reopened: false,
-        runtime1b_dispatch_status_reconciled: MOBILITY_GPU_KERNEL5_RUNTIME1B_DISPATCH_STATUS_RECONCILED,
+        runtime1b_dispatch_status_reconciled:
+            MOBILITY_GPU_KERNEL5_RUNTIME1B_DISPATCH_STATUS_RECONCILED,
         cpu_oracle_complete: false,
         gpu_dispatch_occurred: false,
         cpu_oracle_checksum: 0,
@@ -635,7 +640,9 @@ fn shell(input: &MobilityGpuKernel5FixtureInput) -> MobilityGpuKernel5FixtureRep
     }
 }
 
-fn disabled_no_op_report(input: &MobilityGpuKernel5FixtureInput) -> MobilityGpuKernel5FixtureReport {
+fn disabled_no_op_report(
+    input: &MobilityGpuKernel5FixtureInput,
+) -> MobilityGpuKernel5FixtureReport {
     let mut report = shell(input);
     report.admitted = true;
     report.disabled_no_op = true;
@@ -673,7 +680,8 @@ fn admitted_gpu_unavailable(
     report.uses_registered_node = true;
     report.registration_non_executing = false;
     report.reused_kernel4_projection = true;
-    report.cpu_oracle_complete = cpu_oracle_checksum != 0 && columns.entity_id.len() == MOBILITY_GPU_KERNEL4_ROW_COUNT;
+    report.cpu_oracle_complete =
+        cpu_oracle_checksum != 0 && columns.entity_id.len() == MOBILITY_GPU_KERNEL4_ROW_COUNT;
     report.cpu_oracle_checksum = cpu_oracle_checksum;
     report.projection_checksum = projection_checksum_for_columns(&columns);
     report.parity_classification = MobilityGpuKernel0ParityClassification::GpuUnavailable;
@@ -693,7 +701,8 @@ fn admitted_with_gpu(
     report.uses_registered_node = true;
     report.registration_non_executing = false;
     report.reused_kernel4_projection = true;
-    report.cpu_oracle_complete = cpu_oracle_checksum != 0 && columns.entity_id.len() == MOBILITY_GPU_KERNEL4_ROW_COUNT;
+    report.cpu_oracle_complete =
+        cpu_oracle_checksum != 0 && columns.entity_id.len() == MOBILITY_GPU_KERNEL4_ROW_COUNT;
     report.cpu_oracle_checksum = cpu_oracle_checksum;
     report.projection_checksum = projection_checksum_for_columns(columns);
 
@@ -709,7 +718,8 @@ fn admitted_with_gpu(
             };
         }
         Err(_) => {
-            report.parity_classification = MobilityGpuKernel0ParityClassification::GpuExecutionFailed;
+            report.parity_classification =
+                MobilityGpuKernel0ParityClassification::GpuExecutionFailed;
         }
     }
     report

@@ -3,8 +3,8 @@
 #![allow(dead_code)]
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry, EmlExpressionRegistry,
-    LogTier, SimThing, SimThingId, SimThingKind, SubFieldRole, SubFieldSpec,
+    AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry,
+    EmlExpressionRegistry, LogTier, SimThing, SimThingId, SimThingKind, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
     build_execution_plan, install_atomic, materialize_arena_participants, max_disbursement_band,
@@ -106,7 +106,10 @@ pub fn hosted_cohorts(count: usize) -> (SimThing, Vec<SimThingId>) {
 }
 
 /// Handoff D=3: FactionRoot → Planet_A/B → two factories each.
-pub fn a0_d3_participants(hosted: &[SimThingId], alloc: &SlotAllocator) -> Vec<ExplicitParticipantSpec> {
+pub fn a0_d3_participants(
+    hosted: &[SimThingId],
+    alloc: &SlotAllocator,
+) -> Vec<ExplicitParticipantSpec> {
     let slot = |id: SimThingId| alloc.slot_of(id).unwrap();
     let raw = |id: SimThingId| id.raw();
     let parent = |id: SimThingId| id.raw() as u64;
@@ -122,7 +125,10 @@ pub fn a0_d3_participants(hosted: &[SimThingId], alloc: &SlotAllocator) -> Vec<E
 }
 
 /// Proven D=4 topology (E-11B): one depth-4 branch plus a second shallow root.
-pub fn a0_d4_participants(hosted: &[SimThingId], alloc: &SlotAllocator) -> Vec<ExplicitParticipantSpec> {
+pub fn a0_d4_participants(
+    hosted: &[SimThingId],
+    alloc: &SlotAllocator,
+) -> Vec<ExplicitParticipantSpec> {
     let slot = |id: SimThingId| alloc.slot_of(id).unwrap();
     let raw = |id: SimThingId| id.raw();
     let parent = |id: SimThingId| id.raw() as u64;
@@ -370,7 +376,9 @@ pub fn open_nested_session(
     )
     .expect("install");
     session.proto.flags.use_accumulator_resource_flow = flag_enabled;
-    session.install_spec_state(spec_state).expect("install spec");
+    session
+        .install_spec_state(spec_state)
+        .expect("install spec");
     if flag_enabled {
         session.sync_resource_flow_if_enabled().expect("sync rf");
     }

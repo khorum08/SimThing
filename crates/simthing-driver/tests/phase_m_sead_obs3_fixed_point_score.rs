@@ -10,7 +10,7 @@ use simthing_gpu::GpuContext;
 use simthing_spec::{
     fnv1a64_hex, is_sead_obs2_multilayer_overlay_score_descriptor,
     is_sead_obs3_multilayer_fixed_score_descriptor, landed_jit_kernel_descriptors,
-    validate_kernel_descriptor_admission, MAG2_Q16_SCALE, MappingExecutionProfile,
+    validate_kernel_descriptor_admission, MappingExecutionProfile, MAG2_Q16_SCALE,
     SEAD_OBS2_DESCRIPTOR_ID, SEAD_OBS3_DESCRIPTOR_ID, SEAD_OBS3_LAYER_COUNT, SQRT_F_ARTIFACT_HASH,
 };
 
@@ -28,9 +28,28 @@ const FLAGS_OFF: u32 = SCORE_FIXED_OFF + 1;
 const Q16_SCALE_F: f32 = MAG2_Q16_SCALE as f32;
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
-    "faction", "ownership", "owner", "AI", "threat", "scarcity", "opportunity", "labor", "price",
-    "logistics", "routing", "need", "demand", "supply", "personality", "drone", "SEAD", "economy",
-    "planner", "resource", "map", "threat",
+    "faction",
+    "ownership",
+    "owner",
+    "AI",
+    "threat",
+    "scarcity",
+    "opportunity",
+    "labor",
+    "price",
+    "logistics",
+    "routing",
+    "need",
+    "demand",
+    "supply",
+    "personality",
+    "drone",
+    "SEAD",
+    "economy",
+    "planner",
+    "resource",
+    "map",
+    "threat",
 ];
 
 const FORBIDDEN_EXACT_TERMS: &[&str] = &["f64", "F64RoundDown", "SHADER_F64", "sqrt_cr_c"];
@@ -280,11 +299,13 @@ fn run_multilayer_batch_repeated(
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_obs3_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_obs3_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_obs3_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -477,7 +498,12 @@ fn edge_multilayer_rows() -> Vec<(MultiLayerRow, &'static str)> {
         ),
         (
             MultiLayerRow {
-                layers: [axis(16.0, 0.0, 1.0), zero_layer(0.0), zero_layer(0.0), zero_layer(0.0)],
+                layers: [
+                    axis(16.0, 0.0, 1.0),
+                    zero_layer(0.0),
+                    zero_layer(0.0),
+                    zero_layer(0.0),
+                ],
                 bias: f32_to_q16(2.0),
             },
             "single_active_layer",
@@ -655,8 +681,7 @@ fn sead_obs3_perf_34k_warm_repeated_dispatch() {
 
         let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
         let per_dispatch_ms = total_ms / REPEAT as f64;
-        let per_row_us =
-            outcome.elapsed.as_secs_f64() * 1_000_000.0 / (N as f64 * REPEAT as f64);
+        let per_row_us = outcome.elapsed.as_secs_f64() * 1_000_000.0 / (N as f64 * REPEAT as f64);
         let per_layer_mag_us = per_row_us / LAYER_COUNT as f64;
         println!(
             "sead_obs3_warm_34k: rows={N} layers={LAYER_COUNT} dispatches={REPEAT} includes_readback=true total_ms={total_ms:.3} per_dispatch_ms={per_dispatch_ms:.3} per_row_us={per_row_us:.4} per_layer_mag_us={per_layer_mag_us:.4} spot_mag_max_ulp={spot_mag_ulp} score_authority=ExactQ16WeightedSum"

@@ -6,10 +6,10 @@ use simthing_driver::{run_flat_star_burn_in, ResourceFlowScenarioBurnInReport};
 use simthing_sim::PipelineFlags;
 
 use support::e11_burn_in_scenarios::{
-    assert_flat_star_only_no_nested_claims, open_scenario_session, run_scenario_burn_in,
-    small_flat_star_equal_weights, small_flat_star_repeated_boundary_sync,
-    small_flat_star_skewed_weights, small_flat_star_zero_weights, assert_no_nan_in_leaf_allocated,
-    scenario_cell_inputs,
+    assert_flat_star_only_no_nested_claims, assert_no_nan_in_leaf_allocated, open_scenario_session,
+    run_scenario_burn_in, scenario_cell_inputs, small_flat_star_equal_weights,
+    small_flat_star_repeated_boundary_sync, small_flat_star_skewed_weights,
+    small_flat_star_zero_weights,
 };
 use support::e11_flat_star::{leaf_slots, try_gpu};
 

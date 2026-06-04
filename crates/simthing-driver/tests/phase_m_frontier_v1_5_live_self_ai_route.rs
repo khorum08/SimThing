@@ -3,10 +3,10 @@
 //! Executes one live GPU-resident integrated self-AI chain inside default-off FrontierV1:
 //! score → threshold → proposal → dispatch (resource route via Resource Flow allocator).
 
-#[path = "support/frontier_v1.rs"]
-mod frontier_v1;
 #[path = "support/e11_flat_star.rs"]
 mod e11_flat_star;
+#[path = "support/frontier_v1.rs"]
+mod frontier_v1;
 #[path = "support/sead_v1_live_pipeline.rs"]
 mod sead_v1_live_pipeline;
 #[path = "support/sead_v1_route_replay.rs"]
@@ -21,9 +21,9 @@ use e11_flat_star::{
 use frontier_v1::*;
 use sead_v1_live_pipeline::{
     cpu_pipe0_expected_records, cpu_propose, cpu_threshold_state_event, default_admitted_count,
-    default_admitted_table, frontier_field_observer_rows,
-    pipe0_records_to_act2, reductions_from_buckets, rules_for_smoke, run_act2_chain_gpu,
-    run_pipe0_gpu, smoke_admission_rules, verify_act2_chain_admission, ObserverRow,
+    default_admitted_table, frontier_field_observer_rows, pipe0_records_to_act2,
+    reductions_from_buckets, rules_for_smoke, run_act2_chain_gpu, run_pipe0_gpu,
+    smoke_admission_rules, verify_act2_chain_admission, ObserverRow,
 };
 use sead_v1_route_replay::validate_sead_v1_consumed;
 use simthing_driver::{
@@ -246,9 +246,15 @@ struct FrontierV1LiveSelfAiRun {
 fn assert_observer_rows_cpu_oracle(rows: &[ObserverRow]) {
     for (i, row) in rows.iter().enumerate() {
         let (state, event_code, score) = cpu_threshold_state_event(row);
-        assert_eq!(event_code, FRONTIER_V1_RESOURCE_EVENT_CODE, "row {i} event_code");
+        assert_eq!(
+            event_code, FRONTIER_V1_RESOURCE_EVENT_CODE,
+            "row {i} event_code"
+        );
         assert_eq!(state, 1, "row {i} state");
-        assert!(score >= 500, "row {i} score {score} must meet ACT-2 threshold_max");
+        assert!(
+            score >= 500,
+            "row {i} score {score} must meet ACT-2 threshold_max"
+        );
     }
 }
 
@@ -262,12 +268,9 @@ fn run_frontier_v1_live_self_ai(ctx: &GpuContext) -> FrontierV1LiveSelfAiRun {
     assert!(sead_consumed.act2_registered);
 
     let spec = frontier_v1_mapping_field_spec();
-    let mut mapping_session = FirstSliceMappingSession::open(
-        ctx,
-        MappingExecutionProfile::SparseRegionFieldV1,
-        &spec,
-    )
-    .expect("mapping session opens");
+    let mut mapping_session =
+        FirstSliceMappingSession::open(ctx, MappingExecutionProfile::SparseRegionFieldV1, &spec)
+            .expect("mapping session opens");
     mapping_session
         .queue_seeds(&frontier_v1_gpu_seeds(&config))
         .expect("queue seeds");
@@ -294,9 +297,8 @@ fn run_frontier_v1_live_self_ai(ctx: &GpuContext) -> FrontierV1LiveSelfAiRun {
 
     let pipe_capacity = observer_rows.len() as u32;
     let pipe0 = run_pipe0_gpu(ctx, &observer_rows, pipe_capacity, 1, true);
-    let expected_records = cpu_pipe0_expected_records(&sead_v1_live_pipeline::cpu_event_rows(
-        &observer_rows,
-    ));
+    let expected_records =
+        cpu_pipe0_expected_records(&sead_v1_live_pipeline::cpu_event_rows(&observer_rows));
     assert_eq!(pipe0.event_count(), expected_records.len() as u32);
     assert_eq!(pipe0.overflow(), 0);
     assert!(sead_v1_live_pipeline::cpu_pipe0_membership_exact(
@@ -312,32 +314,16 @@ fn run_frontier_v1_live_self_ai(ctx: &GpuContext) -> FrontierV1LiveSelfAiRun {
     let bucket_cap = 8u32;
     let prop_cap = 8u32;
     let act2 = run_act2_chain_gpu(
-        ctx,
-        &compact,
-        bucket_cap,
-        &rules,
-        prop_cap,
-        &admitted,
-        admitted_n,
-        &adm_rules,
-        1,
+        ctx, &compact, bucket_cap, &rules, prop_cap, &admitted, admitted_n, &adm_rules, 1,
     );
     verify_act2_chain_admission(
-        &act2,
-        &compact,
-        bucket_cap,
-        &rules,
-        prop_cap,
-        &admitted,
-        admitted_n,
-        &adm_rules,
+        &act2, &compact, bucket_cap, &rules, prop_cap, &admitted, admitted_n, &adm_rules,
     );
     assert!(act2.proposal_count() >= 1);
     assert_eq!(act2.proposal_overflow(), 0);
     assert!(act2.admission().admitted());
 
-    let (buckets, counts) =
-        sead_v1_live_pipeline::cpu_bucket_from_compact(&compact, bucket_cap);
+    let (buckets, counts) = sead_v1_live_pipeline::cpu_bucket_from_compact(&compact, bucket_cap);
     let reductions = reductions_from_buckets(&buckets, counts, bucket_cap);
     let (_, _, props) = cpu_propose(&reductions, &rules, prop_cap);
     assert!(
@@ -356,10 +342,19 @@ fn run_frontier_v1_live_self_ai(ctx: &GpuContext) -> FrontierV1LiveSelfAiRun {
 
     let mut fx = open_frontier_v1_flat_star_gpu();
     let gpu_rf = run_gpu_flat_star_allocation(&mut fx, allocator_total);
-    assert_eq!(gpu_rf.faction_a_allocation, cpu_output.resource_flow.allocated_a);
-    assert_eq!(gpu_rf.faction_b_allocation, cpu_output.resource_flow.allocated_b);
+    assert_eq!(
+        gpu_rf.faction_a_allocation,
+        cpu_output.resource_flow.allocated_a
+    );
+    assert_eq!(
+        gpu_rf.faction_b_allocation,
+        cpu_output.resource_flow.allocated_b
+    );
     assert_eq!(gpu_rf.allocator_total, allocator_total);
-    assert_eq!(gpu_rf.allocator_route_code, FRONTIER_V1_ALLOCATOR_ROUTE_CODE);
+    assert_eq!(
+        gpu_rf.allocator_route_code,
+        FRONTIER_V1_ALLOCATOR_ROUTE_CODE
+    );
     assert_eq!(gpu_rf.resource_overflow_flags, 0);
 
     let mut overflow_flags = 0u32;
@@ -419,7 +414,14 @@ fn run_frontier_v1_live_self_ai(ctx: &GpuContext) -> FrontierV1LiveSelfAiRun {
         frontier_v2_status: FrontierV2Status::NotImplemented,
     };
 
-    let cpu_oracle = cpu_live_self_ai_oracle(&skeleton, &config, 0, 0, dispatch_count, field_feedback_code);
+    let cpu_oracle = cpu_live_self_ai_oracle(
+        &skeleton,
+        &config,
+        0,
+        0,
+        dispatch_count,
+        field_feedback_code,
+    );
 
     FrontierV1LiveSelfAiRun {
         summary,
@@ -453,13 +455,19 @@ fn frontier_v1_5_happy_path_live_self_ai_resource_route_runs() {
             FrontierV1LiveSelfAiFieldStatus::GpuVerified
         );
         assert_eq!(run.feedback.route_code, FRONTIER_V1_ALLOCATOR_ROUTE_CODE);
-        assert_eq!(run.feedback.proposal_code, FRONTIER_V1_RESOURCE_PROPOSAL_CODE);
+        assert_eq!(
+            run.feedback.proposal_code,
+            FRONTIER_V1_RESOURCE_PROPOSAL_CODE
+        );
         assert!(run.feedback.dispatch_count >= 1);
         assert_eq!(
             run.summary.feedback_candidate_status,
             FrontierV1LiveSelfAiFieldStatus::FixtureOnly
         );
-        assert_eq!(run.summary.frontier_v2_status, FrontierV2Status::NotImplemented);
+        assert_eq!(
+            run.summary.frontier_v2_status,
+            FrontierV2Status::NotImplemented
+        );
         assert!(!skeleton.enabled_by_default);
         assert!(run.admission_admitted);
         assert_eq!(run.feedback.overflow_flags, run.summary.overflow_flags);
@@ -484,14 +492,8 @@ fn frontier_v1_5_live_self_ai_cpu_oracle_parity() {
             run.cpu_oracle.resource_route_code,
             FRONTIER_V1_ALLOCATOR_ROUTE_CODE
         );
-        assert_eq!(
-            run.feedback.route_code,
-            run.cpu_oracle.resource_route_code
-        );
-        assert_eq!(
-            run.feedback.allocator_total,
-            run.cpu_oracle.allocator_total
-        );
+        assert_eq!(run.feedback.route_code, run.cpu_oracle.resource_route_code);
+        assert_eq!(run.feedback.allocator_total, run.cpu_oracle.allocator_total);
         assert_eq!(
             run.feedback.faction_a_allocation,
             run.cpu_oracle.faction_a_allocation
@@ -500,7 +502,10 @@ fn frontier_v1_5_live_self_ai_cpu_oracle_parity() {
             run.feedback.faction_b_allocation,
             run.cpu_oracle.faction_b_allocation
         );
-        assert_eq!(run.feedback.dispatch_count, run.cpu_oracle.feedback.dispatch_count);
+        assert_eq!(
+            run.feedback.dispatch_count,
+            run.cpu_oracle.feedback.dispatch_count
+        );
         assert_eq!(
             run.feedback.field_feedback_code,
             run.cpu_oracle.feedback.field_feedback_code
@@ -542,8 +547,14 @@ fn frontier_v1_5_live_self_ai_replay_reproducibility() {
 
 #[test]
 fn frontier_v1_5_defaults_remain_disabled() {
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
-    assert_eq!(ResourceFlowOptInMode::default(), ResourceFlowOptInMode::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
+    assert_eq!(
+        ResourceFlowOptInMode::default(),
+        ResourceFlowOptInMode::Disabled
+    );
     assert_eq!(
         ResourceFlowExecutionProfile::default(),
         ResourceFlowExecutionProfile::DefaultDisabled
@@ -593,9 +604,7 @@ fn frontier_v1_5_rejects_resource_route_bypass() {
     assert!(!validate_frontier_v1_admission(&commitment).accepted);
 
     let _ = config;
-    println!(
-        "frontier_v1_5_bypass: rejects=true fixture_id={FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID}"
-    );
+    println!("frontier_v1_5_bypass: rejects=true fixture_id={FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID}");
 }
 
 #[test]
@@ -619,13 +628,22 @@ fn frontier_v1_5_coupling_rejects_non_frontier_profile() {
 fn frontier_v1_5_deferred_features_reject() {
     let deferred: [(&str, Box<dyn Fn(&mut FrontierV1ScenarioSkeleton)>); 10] = [
         ("atlas", Box::new(|s| s.theater.request_atlas = true)),
-        ("active_mask", Box::new(|s| s.theater.request_active_mask = true)),
-        ("perception", Box::new(|s| s.theater.request_perception = true)),
+        (
+            "active_mask",
+            Box::new(|s| s.theater.request_active_mask = true),
+        ),
+        (
+            "perception",
+            Box::new(|s| s.theater.request_perception = true),
+        ),
         (
             "source_identity",
             Box::new(|s| s.theater.request_source_identity = true),
         ),
-        ("nested_e11b", Box::new(|s| s.resource_flow.nested_e11b = true)),
+        (
+            "nested_e11b",
+            Box::new(|s| s.resource_flow.nested_e11b = true),
+        ),
         (
             "e11b_5",
             Box::new(|s| s.resource_flow.e11b_5_dynamic_enrollment = true),
@@ -672,7 +690,10 @@ fn frontier_v1_5_no_simthing_sim_semantic_awareness() {
         "proposal",
         "ResourceFlow",
     ] {
-        assert!(!sim_lib.contains(needle), "simthing-sim must not contain `{needle}`");
+        assert!(
+            !sim_lib.contains(needle),
+            "simthing-sim must not contain `{needle}`"
+        );
     }
     println!(
         "frontier_v1_5_sim: semantic_free=true fixture_id={FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID}"
@@ -682,9 +703,7 @@ fn frontier_v1_5_no_simthing_sim_semantic_awareness() {
 #[test]
 fn frontier_v1_5_no_unauthorized_gpu_primitive() {
     let frontier_descriptor = landed_jit_kernel_descriptors().into_iter().find(|d| {
-        d.id.contains("frontier")
-            || d.id.contains("FrontierV1")
-            || d.id.contains("frontier_v1_5")
+        d.id.contains("frontier") || d.id.contains("FrontierV1") || d.id.contains("frontier_v1_5")
     });
     assert!(frontier_descriptor.is_none());
 

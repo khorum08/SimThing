@@ -13,8 +13,8 @@ use mobility_runtime1b_fixture::{
 };
 
 pub use mobility_gpu_kernel0_fixture::{
-    cpu_column_transform_oracle, run_mobility_gpu_kernel0_fixture, MobilityGpuKernel0FixtureInput,
-    MobilityGpuKernel0ColumnProbe, MobilityGpuKernel0FixtureReport, MobilityGpuKernel0Gate,
+    cpu_column_transform_oracle, run_mobility_gpu_kernel0_fixture, MobilityGpuKernel0ColumnProbe,
+    MobilityGpuKernel0FixtureInput, MobilityGpuKernel0FixtureReport, MobilityGpuKernel0Gate,
     MobilityGpuKernel0OracleOutput, MobilityGpuKernel0ParityClassification,
     MOBILITY_GPU_KERNEL0_FIXTURE_ID, MOBILITY_GPU_KERNEL0_KERNEL_ID,
 };
@@ -213,7 +213,9 @@ fn shell(input: &MobilityGpuKernel1FixtureInput) -> MobilityGpuKernel1FixtureRep
     }
 }
 
-fn disabled_no_op_report(input: &MobilityGpuKernel1FixtureInput) -> MobilityGpuKernel1FixtureReport {
+fn disabled_no_op_report(
+    input: &MobilityGpuKernel1FixtureInput,
+) -> MobilityGpuKernel1FixtureReport {
     let mut report = shell(input);
     report.admitted = true;
     report.disabled_no_op = true;

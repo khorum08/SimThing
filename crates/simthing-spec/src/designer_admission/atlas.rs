@@ -80,7 +80,9 @@ impl AtlasAdmissionSpec {
                 diagnostics: vec![designer_admission_diagnostic(
                     DesignerAdmissionDiagnosticCode::AtlasRequestedWithoutGate,
                     "atlas batching requested without C-2 gate",
-                    Some("use bounded algebraic-G=0 homogeneous square spec with budget fit for C-2"),
+                    Some(
+                        "use bounded algebraic-G=0 homogeneous square spec with budget fit for C-2",
+                    ),
                 )],
                 estimated_algebraic_bytes: None,
                 estimated_gutter_bytes: None,
