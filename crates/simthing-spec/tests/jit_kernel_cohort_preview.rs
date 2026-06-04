@@ -239,8 +239,18 @@ fn jit_cohort0_distinct_graphs_split() {
         preview.cohorts[0].canonical_text,
         preview.cohorts[1].canonical_text
     );
-    assert_eq!(preview.cohorts[0].request_ids, vec!["base"]);
-    assert_eq!(preview.cohorts[1].request_ids, vec!["variant"]);
+    // Cross-cohort order is canonical by `stable_key` (the preview groups via a `BTreeMap` keyed on
+    // stable_key, see `jit_kernel_cohort_preview`), so the base-vs-variant position is determined by
+    // graph-hash identity, not request/insertion order. Determinism of that order is proven by
+    // `jit_cohort0_output_stable_under_request_order_variation`; here we only assert the two distinct
+    // graphs split into separate single-request cohorts (membership), order-insensitively.
+    let mut request_id_groups: Vec<Vec<String>> =
+        preview.cohorts.iter().map(|c| c.request_ids.clone()).collect();
+    request_id_groups.sort();
+    assert_eq!(
+        request_id_groups,
+        vec![vec!["base".to_string()], vec!["variant".to_string()]],
+    );
 }
 
 #[test]

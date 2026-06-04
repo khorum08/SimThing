@@ -726,16 +726,14 @@ column-flip — each its own gate.
 > **Active gate:** `ATLAS-BATCH-0-CLOSE`. OWNER masked-reduction *runtime* + R3 remain parked (fixture-only
 > GPU proof). M-4A sparse-residency scheduler and REENROLL remain parked.
 >
-> > **⚠ Adapter-scope caveat (2026-06-03, design authority).** **All GPU parity to date ran on the
-> > Intel iGPU (RaptorLake-S) only** — `GpuContext::new_blocking()` requests `PowerPreference::default()`
-> > (→ integrated), with no adapter selection. The discrete **RTX 4080 has not been exercised, and
-> > cross-adapter parity is unproven.** Impact: **STORE-GPU** (integer masked sums, bit-exact L∞=0) is
-> > very likely adapter-independent; **PACK-GPU** and the legacy mapping/stencil **f32 `GpuVerified`
-> > tolerances are adapter-dependent and Intel-only**. Single-adapter ≠ the I8 cross-adapter determinism
-> > doctrine. **Open follow-on `GPU-ADAPTER-SELECT-0`:** add env-driven adapter selection to `GpuContext`
-> > (default unchanged) + re-validate the GPU rungs on the discrete adapter, ideally **dual-adapter
-> > parity**. `ATLAS-BATCH-0-CLOSE` must record this caveat (accept single-adapter scope explicitly, or
-> > require dual-adapter re-validation first).
+> > **✓ Adapter-scope caveat RESOLVED (2026-06-04, design authority).** `GpuContext` now **always selects
+> > a discrete GPU when present** (`context.rs`), and the **full NVIDIA RTX 4080 validation ladder is
+> > complete** — `docs/nvidia_fp_determinism_test.md` (Batteries 01–13). **`cargo test --workspace` is
+> > green on the discrete RTX 4080** (60 binaries, 0 failed); the priority f32 `GpuVerified` rungs
+> > (PACK-GPU, structured-field, m5 gradients, first-slice, f32 c-series) re-passed on the RTX, and
+> > STORE-GPU's integer bit-exact held cross-adapter. **`ATLAS-BATCH-0-CLOSE` may proceed without the
+> > adapter caveat.** *(Original caveat: prior to 2026-06-03 all GPU parity ran on the Intel iGPU because
+> > `PowerPreference::default()` selected integrated; now fixed + re-validated on the discrete target.)*
 >
 > **Sequencing discipline (§0.5, §5):** one parked phase proved-and-closed per rung. The rehearsal is
 > the **convergent consumer that retires the parked backlog one rung at a time** — not a big-bang pull.

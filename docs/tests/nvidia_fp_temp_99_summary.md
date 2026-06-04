@@ -3,7 +3,9 @@
 **Temporary file:** `docs/tests/nvidia_fp_temp_99_summary.md`  
 **Track:** `docs/nvidia_fp_determinism_test.md`  
 **Date:** 2026-06-03  
-**Status:** `PARKED / WAITING FOR OPUS TRIAGE`
+**Status:** `CLOSED / COMPLETE (2026-06-04, Opus)`
+
+> **Superseded (2026-06-04, Opus) — the content below is historical.** **Current state: the NVIDIA ladder is COMPLETE.** Battery 07 (stale doc guard; admission ordering), Battery 08 (missing doc include), Battery 11 (descriptor compile skew) → **Resolved by Battery 12.** The last Still-Open item, `simthing-spec jit_kernel_cohort_preview::jit_cohort0_distinct_graphs_split` → **Resolved by Battery 13** (test corrected to assert split membership order-insensitively; the cohort `BTreeMap` `stable_key` ordering is the intended determinism — impl unchanged). **Full `cargo test --workspace` is green on the discrete NVIDIA RTX 4080 — 60 binaries, 0 failed.** Adapter-scope caveat lifted. Closeout evidence: `nvidia_fp_temp_13_workspace_closeout.md`.
 
 NVIDIA RTX 4080 priority validation is substantially complete, but the sweep is parked rather than closed because four non-NVIDIA-FP triage items remain open.
 

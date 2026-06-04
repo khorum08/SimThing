@@ -6,7 +6,7 @@
 **Date opened:** 2026-06-03  
 **Temporary cleanup rule:** all result files created for this track must be named `docs/tests/nvidia_fp_temp*.md` so they can be deleted together when this sweep is closed.
 
-> **Parked status:** NVIDIA priority validation is substantially complete, but the sweep is not closed. Battery 12 resolved the parked Battery 07, Battery 08, and Battery 11 remedials; full workspace closure is still parked on `simthing-spec --test jit_kernel_cohort_preview::jit_cohort0_distinct_graphs_split`.
+> **CLOSED / COMPLETE (2026-06-04, Opus).** The NVIDIA RTX 4080 validation ladder is **complete**. Battery 12 resolved the parked Battery 07/08/11 remedials; **Battery 13 resolved the last blocker** — `simthing-spec jit_kernel_cohort_preview::jit_cohort0_distinct_graphs_split` (a stale positional assertion on canonically `stable_key`-ordered cohorts; cohort-preview impl unchanged, test corrected to be position-insensitive). **Full `cargo test --workspace` is green on the discrete RTX 4080** (60 test binaries, 0 failed). Adapter-scope caveat **lifted**. Closeout: `docs/tests/nvidia_fp_temp_13_workspace_closeout.md`.
 
 **Parked summary:** `docs/tests/nvidia_fp_temp_99_summary.md` — historical parked summary. Current remedial evidence: `docs/tests/nvidia_fp_temp_12_remedial_retest.md`.
 
