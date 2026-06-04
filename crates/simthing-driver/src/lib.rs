@@ -16,6 +16,7 @@ pub mod demo_0080_0;
 pub mod demo_0080_1;
 pub mod disruption_decay_0080_2;
 pub mod dress_rehearsal_r1_disruption_heatmap;
+pub mod dress_rehearsal_r2_recursive_allocation;
 pub mod econ_scale_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
@@ -155,6 +156,20 @@ pub use dress_rehearsal_r1_disruption_heatmap::{
     DRESS_REHEARSAL_R1_DISRUPTION_HEATMAP_ID, DRESS_REHEARSAL_R1_DISRUPTION_HEATMAP_STATUS_PASS,
     DRESS_REHEARSAL_R1_SCENARIO, FLOOR, GAIN, GALAXY_CELL_COUNT, GALAXY_SIDE, HOTSPOT_COUNT,
     H_WEIGHT, LOCATION_STATUS_COL, PATROL_SUPPRESS, PIRATE_EMIT, SYSTEM_COUNT,
+};
+pub use dress_rehearsal_r2_recursive_allocation::{
+    cpu_oracle_dress_rehearsal_r2_recursive_allocation, factory_recipe_production,
+    render_dress_rehearsal_r2_artifact, replay_dress_rehearsal_r2_recursive_allocation,
+    run_dress_rehearsal_r2_recursive_allocation, DressRehearsalR2AffectedSystemRow,
+    DressRehearsalR2Artifact, DressRehearsalR2DeficitDisbursementRow,
+    DressRehearsalR2DivertedProductionRow, DressRehearsalR2FactoryRecipe, DressRehearsalR2Input,
+    DressRehearsalR2OccupantPosition, DressRehearsalR2Oracle, DressRehearsalR2Owner,
+    DressRehearsalR2Report, DressRehearsalR2StockpileLedgerRow, DressRehearsalR2StockpileSeed,
+    DressRehearsalR2Summary, DressRehearsalR2SystemProductionRow, BLOCKADE_THRESHOLD,
+    DRESS_REHEARSAL_R2_RECURSIVE_ALLOCATION_ID,
+    DRESS_REHEARSAL_R2_RECURSIVE_ALLOCATION_STATUS_PASS, DRESS_REHEARSAL_R2_SCENARIO,
+    FACTORY_UNIT_COST_LABOR, POP_LABOR_PER_TICK, PRODUCTION_PER_RECIPE, STARPORT_PRODUCTION_NEED,
+    TOP_AFFECTED_COUNT,
 };
 pub use econ_scale_0080_0::{
     replay_econ_scale_0080_0, run_econ_scale_0080_0, EconScale0080ClearingInput,

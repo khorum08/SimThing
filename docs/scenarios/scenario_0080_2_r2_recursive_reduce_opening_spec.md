@@ -21,6 +21,11 @@
   unopened. No implementation in this PR.
 - **Authoring authority:** Opus. **Implementation recipient:** Cursor / Codex5.5max (§7).
 
+> **Implementation result (2026-06-04):** `SCENARIO-0080-2-R2-IMPL-0` is **IMPLEMENTED / PASS** within
+> this opening spec's scope. Evidence:
+> [`docs/tests/scenario_0080_2_r2_recursive_allocation_report.md`](../tests/scenario_0080_2_r2_recursive_allocation_report.md).
+> This note records the implementation result only; R3–R7 remain unopened/deferred as specified below.
+
 ## 2. Product purpose — why R2 matters
 
 R1 proved a *local* galactic-tier field: occupant presence → a disruption heatmap over real gridcell

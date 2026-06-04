@@ -2,7 +2,7 @@
 
 Current scenario status:
 
-- `SCENARIO-0080-2` R1 accepted/closed as implemented-pass; R2 opened as a docs/design gate only — recursive allocation (reduce-up + disburse-down) + faction economy + blockade/divert, single galactic tier; implementation not yet authorized.
+- `SCENARIO-0080-2` R2 implemented/pass as single-galactic-tier recursive allocation + faction economy + blockade/divert; R3-R7 remain unopened.
 
 Authoritative decision:
 
