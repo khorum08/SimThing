@@ -1,5 +1,9 @@
 # Mapping Current Guidance
 
+Current scenario status:
+
+- `SCENARIO-0080-2` R1 implemented/pass as an occupant-produced disruption heatmap over real 20×20 galactic gridcell SimThings; R2 recursive reduce-up remains deferred.
+
 Authoritative decision:
 
 - [`../adr/mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md)

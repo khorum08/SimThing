@@ -12,6 +12,11 @@
   unopened; no parked boundary is opened beyond what §4 names.
 - **Authoring authority:** Opus (design authority). **Implementation recipient:** Cursor / Codex5.5max (§13).
 
+> **Implementation result (2026-06-04):** `SCENARIO-0080-2-R1-IMPL-0` is **IMPLEMENTED / PASS** within
+> this opening spec's scope. Evidence:
+> [`docs/tests/scenario_0080_2_r1_disruption_heatmap_report.md`](../tests/scenario_0080_2_r1_disruption_heatmap_report.md).
+> This note records the implementation result only; R2–R7 remain unopened/deferred as specified below.
+
 ## 2. Canonical citations (§12.0 harness — cite on the implementation handoff)
 
 1. `docs/design_0_0_8_0.md` — §0 transient constitution: all conflict is resource flow (§0.3); recursive
