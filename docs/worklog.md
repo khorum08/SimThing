@@ -1,3 +1,11 @@
+# 2026-06-04 - SCENARIO-0080-2-R7-CLOSEOUT-0: dress rehearsal closed as vertical proof (docs-only)
+
+- **Opus closeout ruling (A):** `SCENARIO-0080-2` closes as a vertical *slice/proof*. The R1→R6B mechanism chain is consumption-proven (each rung consumes the prior rung's real artifact; checksums pinned). No bespoke combat/economy/movement subsystem — all `AccumulatorOp`/overlays.
+- **Claim boundary:** "loop" downgraded to "slice/chain"; single galactic tier, opt-in/default-off, CPU-oracle primary; pathfinding NOT solved (greedy local SEAD steps); combat is a Resource-Flow proof, not production-ready.
+- **Emergence:** §8.1 marquee behaviors (raiding waves, race equilibrium, interception, fronts, self-sustaining loop) recorded as **not yet emerged** — single-pass fixtures over a sparse one-hotspot field; a future multi-tick scenario, not a defect. R4 spatial bias = fixture tie-breaker.
+- **Numeric-only reconciled:** FrontierV1 "SEAD route" + mapping first-slice heatmap → consumption-proven via R1/R4/R5. GPU: only ATLAS STORE-GPU carries discrete-GPU evidence; rehearsal rungs are GPU-*shaped*, not kernels.
+- **Docs:** [`docs/tests/scenario_0080_2_r7_closeout_report.md`](tests/scenario_0080_2_r7_closeout_report.md); human-facing [`docs/gameplay/scenario_0080_2_pirate_gradient_pathfinding_results.md`](gameplay/scenario_0080_2_pirate_gradient_pathfinding_results.md). No code/invariant change.
+
 # 2026-06-04 - SCENARIO-0080-2-R6B-IMPL-0: GPU-shaped ship production reinforcement and friendly fusion implemented/pass
 
 - **R6B:** Construction threshold (`ship_cost=100`) emits `ship_count_delta`; masked owner/cell/profile cohort selection; local `num_ships` reinforcement without movement `BoundaryRequest`; ALLOC birth when no compatible cohort; friendly fusion/compaction with MOBILITY-ALLOC-0 Departure coherence; R6 consumes updated cohort overrides. Report: [`docs/tests/scenario_0080_2_r6b_ship_cohort_reinforcement_report.md`](tests/scenario_0080_2_r6b_ship_cohort_reinforcement_report.md).
