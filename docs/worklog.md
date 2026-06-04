@@ -1,3 +1,8 @@
+# 2026-06-04 - SCENARIO-0080-2-R6-IMPL-0: combat HP/Damage arena implemented/pass
+
+- **Implemented:** R6 dress-rehearsal combat as owner-masked HP/Damage resource-flow at R3 colocation cell `284` after R5 post-move membership; `SubtractFromSource` damage, zero-HP threshold/event, MOBILITY-ALLOC-0 defeated-fleet removal; identity/owner overlay preserved; CPU oracle parity; artifact checksum `59ee8f6e7a3b379`. Report: [`docs/tests/scenario_0080_2_r6_combat_hp_damage_report.md`](tests/scenario_0080_2_r6_combat_hp_damage_report.md).
+- **Verified:** R6 `15/0`; R5 `17/0`; R4 `16/0`; R3 `13/0`; R2 `13/0`; R1 `34/0`; ATLAS STORE CPU `11/0`; ATLAS STORE-GPU `10/0`; `mobility_reenroll0_substrate` `16/0`; `mobility_runtime0_composition` `23/0`; `cargo check --workspace` PASS. No R7 closeout, movement command, new BoundaryRequest, CPU planner, semantic WGSL/new shader, hard currency, ClauseThing, UI, or invariant edit.
+
 # 2026-06-04 - SCENARIO-0080-2-R5-IMPL-0: movement + REENROLL + mobility substrate implemented/pass
 
 - **Implemented R5** as an opt-in/default-off fixture helper: `crates/simthing-driver/src/dress_rehearsal_r5_movement_reenroll.rs` + `crates/simthing-driver/tests/dress_rehearsal_r5_movement_reenroll.rs`. Consumes R1–R4 pinned contracts and emits `docs/tests/scenario_0080_2_r5_movement_reenroll_report.md`.
