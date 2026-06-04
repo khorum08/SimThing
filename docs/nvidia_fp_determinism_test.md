@@ -40,6 +40,22 @@ These open items should not block continued evidence collection for unrelated ba
 
 Do not mark the full NVIDIA sweep complete until these are either accepted as non-blocking by Opus or remediated in a separate handoff.
 
+## Temporary sweep status table
+
+| Battery | Evidence file | Status | RTX adapter proven | Result | Notes |
+|---|---|---:|---:|---|---|
+| 01 | `docs/tests/nvidia_fp_temp_01_adapter_gate.md` | PASS | yes | STORE-GPU smoke/adapter gate passed | Integer exact smoke path |
+| 02 | `docs/tests/nvidia_fp_temp_02_pack_gpu.md` | PASS | yes | PACK-GPU EC-A2b GpuVerified passed | f32 tolerance path |
+| 03 | `docs/tests/nvidia_fp_temp_03_structured_field.md` | PASS | yes | structured-field batch passed | Direct adapter proof after remedial |
+| 04 | `docs/tests/nvidia_fp_temp_04_atlas_protocol_and_m5_gradients.md` | PASS | yes | atlas/M5 batch passed | Direct adapter proof after remedial |
+| 05 | `docs/tests/nvidia_fp_temp_05_first_slice.md` | PASS | yes | first-slice family passed | substitution recorded |
+| 06 | `docs/tests/nvidia_fp_temp_06_sim_f32_c_series.md` | PASS | yes | sim f32 C-series passed | exact integration binaries used |
+| 07 | `docs/tests/nvidia_fp_temp_07_robust_exact_jit.md` | FAIL / TRIAGE | yes | 150 pass / 2 fail / 3 ignored | likely stale doc guard + admission-ordering issue; not NVIDIA FP drift |
+| 08 | `docs/tests/nvidia_fp_temp_08_sead_boundary_scheduler.md` | PARTIAL / TRIAGE | yes | 105 pass / 0 fail / 0 ignored; 1 blocked | missing doc include blocks boundary cadence test |
+| 09 | `docs/tests/nvidia_fp_temp_09_runtime_eml_economy_nested.md` | PASS | yes | 106 pass / 0 fail / 0 ignored | runtime/EML/economy/nested/session passed |
+| 10 | `docs/tests/nvidia_fp_temp_10_sim_broad_integration.md` | PASS | yes | 106 pass / 0 fail / 1 ignored | broad simthing-sim sweep passed; ignored perf test not correctness failure |
+| 11 | `docs/tests/nvidia_fp_temp_11_feeder_workspace_sweep.md` | PARTIAL / KNOWN TRIAGE | yes | feeder 5/0/0; workspace compile stopped | feeder PASS; workspace incomplete (JIT descriptor compile + known triage family) |
+
 ## 1. Hard verification gate
 
 Every result file for this temporary track must show:
