@@ -1,3 +1,8 @@
+# 2026-06-03 - GPU-ADAPTER-SELECT VERIFIED LIVE on NVIDIA (design authority)
+
+- Confirmed the `GpuContext` discrete-GPU fix is **intact at HEAD `a3977e8`** (Codex had not merged over it) and **active**: a live run `SIMTHING_RUN_GPU_TESTS=1 cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store_gpu` now reports **`adapter/device: NVIDIA GeForce RTX 4080 Laptop GPU`** (was Intel RaptorLake-S), **9 passed; 0 failed; 0 ignored** in 1.15s.
+- **STORE-GPU is now NVIDIA-confirmed:** the EC-A3-gpu integer masked-sum parity held **bit-exact on the discrete GPU too** — its single-adapter caveat is effectively lifted (integer reduction is adapter-independent, as predicted). The f32 `GpuVerified` priority rungs (PACK-GPU, structured_field_stencil, m5 gradients, first-slice, f32 c-series) still want Codex's full NVIDIA re-run per `docs/tests/gpu_intel_run_inventory_2026_06_03.md`. Parked here.
+
 # 2026-06-03 - GPU-ADAPTER-SELECT: GpuContext now ALWAYS uses a discrete GPU when present (design-authority directive)
 
 - **Rewrote `crates/simthing-gpu/src/context.rs`** (`GpuContext::new`): enumerate adapters and **always select the first `DiscreteGpu` when one is present**; only fall back to `request_adapter(PowerPreference::HighPerformance)` when no discrete adapter exists (integrated-only / headless). Replaces the old `PowerPreference::default()` (which picked the iGPU). Compiles clean (`cargo build -p simthing-gpu`). Effect: every test through `GpuContext::new_blocking()` now routes to the discrete RTX 4080 on the principal's machine.
