@@ -6,6 +6,10 @@
 **Date opened:** 2026-06-03  
 **Temporary cleanup rule:** all result files created for this track must be named `docs/tests/nvidia_fp_temp*.md` so they can be deleted together when this sweep is closed.
 
+> **Parked status:** NVIDIA priority validation is substantially complete, but the sweep is not closed. Awaiting Opus review of Battery 07, Battery 08, and Battery 11 workspace compile triage.
+
+**Parked summary:** `docs/tests/nvidia_fp_temp_99_summary.md` — status `PARKED / WAITING FOR OPUS TRIAGE`
+
 ## 0. Purpose
 
 This temporary track validates GPU-dependent tests that previously ran on the Intel iGPU before `GpuContext::new_blocking()` was fixed to select the discrete adapter when present.
@@ -20,25 +24,105 @@ Known current state:
 
 - `GpuContext` now selects the discrete GPU when present.
 - `ATLAS-BATCH-0-STORE-GPU` has RTX 4080 evidence and is bit-exact for integer owner/channel masked reductions.
-- The remaining priority gap is the f32 / `GpuVerified` tolerance-sensitive suite, because adapter rounding / FMA behavior can differ between Intel and NVIDIA.
+- Priority f32 / `GpuVerified` batteries 01–06 and 09–10 executed on RTX 4080 with PASS (see status table).
+- NVIDIA RTX 4080 priority validation is substantially complete, but the sweep is **parked** rather than closed because four non-NVIDIA-FP triage items remain open.
 
-## Open Opus triage items discovered during NVIDIA sweep
+## Parked Opus triage index
 
-| Battery | Status | Item | Likely class | Evidence file | Relevant source/doc files | Why Opus must review |
-|---|---|---|---|---|---|---|
-| 07 | FAIL | `jit_grad0_mag2_not_overclaimed_if_approximate` | stale doc-hygiene / policy-string guard | `docs/tests/nvidia_fp_temp_07_robust_exact_jit.md` | `crates/simthing-driver/tests/phase_m_jit_grad0_spatial_observer.rs`; `docs/accumulator_op_v2_production_plan.md`; `docs/workshop/mapping_current_guidance.md`; active 0.0.8 docs | Test reads an archived/closed production plan as active policy. Shader path avoids `sqrt`; failure is not NVIDIA FP drift. Opus should decide whether to retarget this guard to active 0.0.8 guidance or replace it with code-level authority classification. |
-| 07 | FAIL | `jit_exec1_distinct_graphs_remain_separate_entries` | admission-ordering / harness guard | `docs/tests/nvidia_fp_temp_07_robust_exact_jit.md` | `crates/simthing-driver/tests/phase_m_jit_exec1_cohort_execution_fixture.rs` | Mixed/distinct cohort should reject before GPU execution helper is invoked. Failure is not native sqrt and not tolerance drift; Opus should decide whether the guard or admission ordering is wrong. |
-| 08 | PARTIAL | `phase_m_boundary_cadence_doctrine` | stale/missing doc-hygiene dependency | `docs/tests/nvidia_fp_temp_08_sead_boundary_scheduler.md` | `crates/simthing-driver/tests/phase_m_boundary_cadence_doctrine.rs`; missing `docs/workshop/workshop_current_state.md`; `docs/workshop/mapping_current_guidance.md` | Test cannot compile because it includes a missing workshop doc. Executed SEAD/scheduler tests passed on RTX; this block is not NVIDIA FP drift. Opus should decide whether to restore the missing doc, retarget to active 0.0.8 docs, or remove the doc-string guard. |
+Full detail: `docs/tests/nvidia_fp_temp_99_summary.md` §Parked Opus triage index.
+
+### Battery 07 — stale doc-hygiene guard
+
+```text
+Item:
+  jit_grad0_mag2_not_overclaimed_if_approximate
+
+Evidence:
+  docs/tests/nvidia_fp_temp_07_robust_exact_jit.md
+  crates/simthing-driver/tests/phase_m_jit_grad0_spatial_observer.rs
+  docs/accumulator_op_v2_production_plan.md
+  docs/workshop/mapping_current_guidance.md
+
+Current interpretation:
+  Likely stale policy/doc-string guard.
+  The test reads docs/accumulator_op_v2_production_plan.md, but that file is closed/archived and says not to use it as the active production track.
+  Shader path avoids sqrt and uses mag2.
+  This is not native sqrt and not NVIDIA FP tolerance drift.
+
+Opus decision needed:
+  Retarget guard to active 0.0.8 guidance, replace it with code-level authority classification, or remove stale doc-string guard.
+```
+
+### Battery 07 — admission-ordering guard
+
+```text
+Item:
+  jit_exec1_distinct_graphs_remain_separate_entries
+
+Evidence:
+  docs/tests/nvidia_fp_temp_07_robust_exact_jit.md
+  crates/simthing-driver/tests/phase_m_jit_exec1_cohort_execution_fixture.rs
+
+Current interpretation:
+  Likely admission-ordering / harness guard issue.
+  Mixed/distinct cohort should reject before GPU execution helper is invoked.
+  This is not native sqrt and not NVIDIA FP tolerance drift.
+
+Opus decision needed:
+  Decide whether the guard expectation is correct and where rejection should happen.
+```
+
+### Battery 08 — missing workshop doc include
+
+```text
+Item:
+  phase_m_boundary_cadence_doctrine
+
+Evidence:
+  docs/tests/nvidia_fp_temp_08_sead_boundary_scheduler.md
+  crates/simthing-driver/tests/phase_m_boundary_cadence_doctrine.rs
+  docs/workshop/mapping_current_guidance.md
+  missing docs/workshop/workshop_current_state.md
+
+Current interpretation:
+  Stale/missing doc-hygiene dependency.
+  Test cannot compile because it includes missing docs/workshop/workshop_current_state.md.
+  Executed SEAD/scheduler tests passed on RTX.
+  This is not NVIDIA FP drift and not SEAD runtime failure.
+
+Opus decision needed:
+  Restore missing doc, retarget guard to active 0.0.8 docs, or remove stale doc-string guard.
+```
+
+### Battery 11 — workspace compile skew
+
+```text
+Item:
+  phase_m_jit_desc0_kernel_descriptor workspace compile stop
+
+Evidence:
+  docs/tests/nvidia_fp_temp_11_feeder_workspace_sweep.md
+  crates/simthing-driver/tests/phase_m_jit_desc0_kernel_descriptor.rs
+  KernelDescriptor definition / descriptor call sites
+
+Current interpretation:
+  Workspace smoke stops at compile before a full workspace test tally.
+  Error includes KernelDescriptor field skew, including exact_sqrt_artifact.
+  simthing-feeder itself passed 5/0/0 on RTX.
+  This is not NVIDIA FP drift, but it prevents full workspace closure.
+
+Opus decision needed:
+  Decide whether descriptor test is stale relative to current KernelDescriptor shape, or whether descriptor struct/call sites need a design-authority remedial.
+```
 
 ### Current interpretation
 
-These open items should not block continued evidence collection for unrelated batteries. They should remain visible until Opus reviews them.
+These four items should remain visible until Opus reviews them. Do **not** mark the full NVIDIA sweep complete until they are accepted as non-blocking or remediated in a separate handoff.
 
-- Battery 07 `jit_grad0`: not native `sqrt`; no evidence of NVIDIA FP drift. The shader path uses `mag2` and forbids `sqrt`; the failure is a stale active-policy check.
-- Battery 07 `jit_exec1`: not native `sqrt`; no evidence of NVIDIA FP drift. The failure is an admission/harness ordering issue where a mixed cohort reached the GPU helper.
-- Battery 08 `phase_m_boundary_cadence_doctrine`: not NVIDIA FP drift. The test binary is blocked by a missing documentation include.
-
-Do not mark the full NVIDIA sweep complete until these are either accepted as non-blocking by Opus or remediated in a separate handoff.
+- Battery 07 `jit_grad0`: not native `sqrt`; stale active-policy check; not NVIDIA FP drift.
+- Battery 07 `jit_exec1`: admission/harness ordering; not NVIDIA FP drift.
+- Battery 08 `phase_m_boundary_cadence_doctrine`: missing doc include; not NVIDIA FP drift.
+- Battery 11 `phase_m_jit_desc0_kernel_descriptor`: workspace compile skew; feeder PASS on RTX; not NVIDIA FP drift.
 
 ## Temporary sweep status table
 
