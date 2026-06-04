@@ -565,9 +565,9 @@ are distinguished and **must not be collapsed into one figure**:
   preserved per-channel/per-owner and never blind-summed by position** — proven on a CPU oracle (the
   10-pirate-shared-cell case + a constructed planet+patrol+pirate cell). *(Design-authority split
   2026-06-03: STORE = CPU storage-shape proof; the **live OWNER masked-reduction runtime** — `EvalEML`
-  `CMP_EQ` + `Sum` over owner-indexed columns — is split out as **EC-A3-gpu / `ATLAS-BATCH-0-STORE-GPU`,
-  DEFERRED**, pulling the AccumulatorOp GPU runtime; its own gate. The OWNER masked-reduction runtime
-  stays parked until then / R3.)* Contract: [`handoffs/dress_rehearsal_codex_handoff_5_atlas_batch_0_store.md`](handoffs/dress_rehearsal_codex_handoff_5_atlas_batch_0_store.md).
+  `CMP_EQ` + `Sum` over owner-indexed columns — is proven on GPU as **EC-A3-gpu /
+  `ATLAS-BATCH-0-STORE-GPU` (PASS, fixture composition only)**; the OWNER masked-reduction *runtime*
+  and R3 remain parked.)* Contract: [`handoffs/dress_rehearsal_codex_handoff_5_atlas_batch_0_store.md`](handoffs/dress_rehearsal_codex_handoff_5_atlas_batch_0_store.md).
   The CPU oracle here is the reference the STORE-GPU slice checks against (§12.4 OWNER masked reduction).
 - **EC-A4:** the residency scheduler (M-4A) and REENROLL remain unbuilt/parked — the slice is static.
 
@@ -642,6 +642,22 @@ are distinguished and **must not be collapsed into one figure**:
 > Command: `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store` → **11 passed; 0 failed**.
 > M-4A sparse-residency scheduler and REENROLL remain parked.
 
+> **`ATLAS-BATCH-0-STORE-GPU` closure (2026-06-03) — EC-A3-gpu ExactDeterministic bit-exact.** `SCENARIO-0080-2`
+> STORE-GPU is **implemented / PASS** for **EC-A3-gpu**: whitelisted `EvalEML` (`CMP_EQ`/`SELECT`)
+> owner+channel mask + contiguous `Sum` on `AccumulatorOpSession` matches the accepted CPU **`StoreOracle`**
+> (**38/38** entries, `f32::to_bits()`). Proven on GPU: **10-pirate shared cell**; **constructed
+> planet+patrol+pirate**. **Fixture composition only** — OWNER masked-reduction is **not** wired into a
+> session pass graph; **R3/runtime remains parked**. Parity standard: **ExactDeterministic bit-exact** (no
+> GpuVerified fallback). Does not implement R1/R2/R3/R4, economy, disruption, SEAD, movement, combat, or
+> M-4A/REENROLL. Evidence:
+> [`crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_store_gpu.rs`](../crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_store_gpu.rs);
+> [`crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_store_gpu.rs`](../crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_store_gpu.rs);
+> [`tests/scenario_0080_2_atlas_batch_0_store_gpu_report.md`](tests/scenario_0080_2_atlas_batch_0_store_gpu_report.md);
+> [`tests/scenario_0080_2_atlas_batch_0_store_gpu_cargo_test_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_store_gpu_cargo_test_2026_06_03.txt);
+> [`tests/scenario_0080_2_atlas_batch_0_store_gpu_parity_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_store_gpu_parity_2026_06_03.txt).
+> Command: `$env:SIMTHING_RUN_GPU_TESTS=1; cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store_gpu`
+> → **9 passed; 0 failed; 0 ignored** (GPU tier ran; adapter **Intel(R) RaptorLake-S Mobile Graphics Controller**).
+
 ### 12.4 Established mechanism — OWNER routing (multi-owner flows in one cell)
 
 > **Already-designed + parked substrate; the harness pulls it, does not re-derive it.** This is the
@@ -704,10 +720,10 @@ column-flip — each its own gate.
 > `AccumulatorOp`/`EvalEML CMP_EQ`/`Sum` masked reduction; bit-exact (ExactDeterministic) parity over
 > integer masked sums vs the STORE oracle, GpuVerified fallback; OWNER masked-reduction *runtime* + R3 stay parked).
 >
-> **ATLAS-BATCH-0 status (2026-06-03):** `GEN`, `LOC`, `PACK` (EC-A2a), **`PACK-GPU` (EC-A2b)**, and
-> **`STORE` (EC-A3)** are **closed / PASS** for `SCENARIO-0080-2`. **Active gate:** `ATLAS-BATCH-0-STORE-GPU`
-> (EC-A3-gpu — OWNER/channel masked-reduction parity vs the STORE oracle, fixture composition only).
-> Then `ATLAS-BATCH-0-CLOSE`. M-4A sparse-residency scheduler and REENROLL remain parked.
+> **ATLAS-BATCH-0 status (2026-06-03):** `GEN`, `LOC`, `PACK` (EC-A2a), **`PACK-GPU` (EC-A2b)**,
+> **`STORE` (EC-A3)**, and **`STORE-GPU` (EC-A3-gpu)** are **closed / PASS** for `SCENARIO-0080-2`.
+> **Active gate:** `ATLAS-BATCH-0-CLOSE`. OWNER masked-reduction *runtime* + R3 remain parked (fixture-only
+> GPU proof). M-4A sparse-residency scheduler and REENROLL remain parked.
 >
 > **Sequencing discipline (§0.5, §5):** one parked phase proved-and-closed per rung. The rehearsal is
 > the **convergent consumer that retires the parked backlog one rung at a time** — not a big-bang pull.

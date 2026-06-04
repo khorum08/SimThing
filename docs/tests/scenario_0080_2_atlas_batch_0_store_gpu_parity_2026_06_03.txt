@@ -1,0 +1,16 @@
+adapter/device: Intel(R) RaptorLake-S Mobile Graphics Controller
+device_name: simthing-gpu device
+gpu_tier_ran: true
+command: $env:SIMTHING_RUN_GPU_TESTS=1; cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store_gpu -- --nocapture
+cpu_oracle_entry_count: 38
+gpu_output_entry_count: 38
+co-location cases tested:
+  ten_pirate_shared_cell: true
+  constructed_planet_patrol_pirate: true
+parity_standard: ExactDeterministic bit-exact (f32::to_bits)
+exact_match: 38/38 entries bit-exact; mismatches=0
+L_inf: 0 (bit-exact; no GpuVerified fallback)
+owner_channel_leakage_checks: blind_sum_guard=true
+EC-A3-gpu_closed: true
+skipped_gpu_tests: none (tier ran)
+mask_path: EvalEML CMP_EQ/SELECT owner+channel mask (OrderBand 0) + SlotRange Sum (OrderBand 1); ScaleSpec::ByColumn documented as conceptual mask column (GPU encode uses Identity + EML mask)

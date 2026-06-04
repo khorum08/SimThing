@@ -1,3 +1,7 @@
+# 2026-06-03 - ATLAS-BATCH-0-STORE-GPU implemented (EC-A3-gpu PASS, ExactDeterministic bit-exact)
+
+- Implemented `dress_rehearsal_atlas_batch_0_store_gpu.rs` + 9 tests: `EvalEML` CMP_EQ/SELECT owner+channel mask (OrderBand 0) + `Sum` (OrderBand 1) on `AccumulatorOpSession` vs CPU `StoreOracle` (38/38 `to_bits` match). GPU: `$env:SIMTHING_RUN_GPU_TESTS=1; cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store_gpu` → **9 passed; 0 failed; 0 ignored**; adapter Intel RaptorLake-S. Co-location cases on GPU: 10-pirate; constructed planet+patrol+pirate. Fixture only; R3/session wiring parked. Evidence under `docs/tests/scenario_0080_2_atlas_batch_0_store_gpu_*`.
+
 # 2026-06-03 - ATLAS-BATCH-0-STORE-GPU CONTRACT authored (design authority → Cursor)
 
 - Confirmed STORE landed green on master (#489, EC-A3 CPU). Authored `docs/handoffs/dress_rehearsal_codex_handoff_7_atlas_batch_0_store_gpu.md` after verifying the GPU masked-reduction surface in code.
