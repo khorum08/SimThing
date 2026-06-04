@@ -1,269 +1,123 @@
-# SCENARIO-0080-2: Pirate Gradient Pathfinding — Results Report
+# Pirate Gradient Pathfinding — What the Dress Rehearsal Actually Did
 
-*For players, modders, and scenario designers. No engine internals assumed.*
+*A plain-language results report for SCENARIO-0080-2. Companion to the formal closeout
+[`../tests/scenario_0080_2_r7_closeout_report.md`](../tests/scenario_0080_2_r7_closeout_report.md).*
 
----
+> **Supersedes the 2026-06-02 pre-rehearsal version of this file.** That earlier report proved the
+> disruption recurrence, compound field, dual-output gradient, and SEAD single-step movement at the
+> **math / CPU-oracle layer** and explicitly flagged that they were *not yet proven through a full
+> SimThing reduction* — naming this dress rehearsal as the successor. The rehearsal (R1–R6B) has now
+> run; this version records what it actually demonstrated, and what it did not.
 
-> **Proof status (2026-06-02, design authority).** Everything below **was proven** — the
-> disruption recurrence, the compound desirability field, the dual-output gradient, the SEAD
-> threshold-gated single-step movement, and bit-exact deterministic replay all hold. That proof
-> is at the **math / behavioral** layer: the test battery is a set of CPU **oracles** that
-> establish the numbers and the logic are correct, and they remain valid as such.
->
-> Under the project's "Scenario Proof" invariant these results are **not yet proven through a
-> full SimThing reduction** — they run as standalone math, not over real
-> `SimThing` / `SimProperty` / `Overlay` state advanced by the engine's boundary protocol. The
-> **next track is a full-vertical dress rehearsal** that re-validates these same principles
-> through one assembled game session (a `gamesession` root with Terran-faction, worldstate +
-> starmap gridcell, and Pirate-faction children, both factions carrying techtree capability
-> trees). See `docs/design_0_0_8_0_consumer_pulled_production_track.md` §12 for the architecture
-> and the principle-by-principle carry-forward. **Nothing here is discarded — it becomes the
-> oracle the dress rehearsal is checked against.**
+This document describes **what the simulation did**, in order, and is careful to separate **what genuinely
+fell out of the rules** from **what was set up by hand to prove a mechanism worked**. Where something did
+*not* happen yet, it says so plainly — that is a finding, not a failure to hide.
 
 ---
 
-## What this scenario proves
+## The setup
 
-This test battery proves that a pirate faction AI can navigate a multi-system starmap using
-**nothing but field readings and a threshold trigger** — no scripted routes, no target lists,
-no pathfinding algorithm, no awareness of game rules. Direction emerges from the shape of a
-numeric field. The pirate is drawn toward undisrupted, unpatrolled systems and leaves a fading
-trail of disruption behind it that continually pushes it onward.
+A small corner of a galaxy: a **20×20 starmap** with **13 star systems** — 10 Terran, 3 Pirate. Terran
+out-produces (10 systems, 3 starports, ~10 production/tick) but the Pirates start with the bigger fleet
+(10 ships vs 3 patrols) and a blockade lever. Every actor — the galaxy, the factions, the systems, the
+planets, the fleets, even the individual ships inside a fleet — is the **same kind of thing**: a SimThing
+with properties and overlays. Nothing in here is a special "combat engine" or "economy engine" bolted on
+the side. Combat, trade, raiding, and shipbuilding are all the *same* underlying operation — resources
+flowing up and down a tree and crossing thresholds.
 
-The scenario also proves the **disruption property itself** — a new value column that attaches
-to any location (starsystem, planet, grid cell) and accumulates when a fleet is present, decays
-when it leaves, can be suppressed by a patrol fleet, and feeds back into AI decisions without
-requiring special-case code anywhere.
-
----
-
-## The four things this battery tested
-
-### 1 — Disruption is a real, persistent, decaying property on locations
-
-Every location in the sim can carry a **disruption value** — an integer that rises when hostile
-forces are present and falls when they leave. This battery tested four distinct node cases in
-isolation over 20 ticks:
-
-| Node | Conditions | What it proves |
-|---|---|---|
-| **Node 0** | Pirate present ticks 0–5, then quiet, then patrol arrives ticks 12–19 | Accumulate → natural decay → patrol-accelerated decay |
-| **Node 1** | Nobody ever visits | Disruption stays zero; a clean system is clean |
-| **Node 2** | Patrol always present, pirate never arrives | A guarded system stays at zero; patrols are a deterrent |
-| **Node 3** | Pirate present every tick | Disruption saturates at the hard ceiling and never overflows |
-
-**What passed:**
-- Disruption rises proportionally to presence and falls geometrically when the pirate leaves.
-- A patrol removes disruption faster than natural decay alone — patrol bonuses are meaningful.
-- A system no one touches stays at zero permanently.
-- A continuously raided system caps out, not overflows — the ceiling is a hard guarantee.
-- Two identical 20-tick runs produce identical numbers down to the last integer (deterministic replay).
-
-**What this means for modders:** The disruption property is tunable per-scenario via three
-parameters — base decay rate, gain per raider unit, suppression per patrol unit — and any of
-those can be further modified by faction tech unlocks or starsystem natural bonuses (broadcast
-down as read-side weights, not as direct column writes).
+That uniformity is the whole point. The rehearsal exists to prove that an entire 4X-flavored vertical —
+field, economy, doctrine, pathing, movement, combat, production — can be expressed as one substrate
+without ever inventing a bespoke subsystem.
 
 ---
 
-### 2 — A compound desirability field correctly translates game-state into navigable terrain
+## What happened, step by step
 
-Every location has a **desirability score** derived from its current disruption level and the
-patrol presence there. This is the "map" the pirate reads when it decides where to go.
+**1. The raid lit up the map.** Ten Pirate ships sitting on one system pushed that cell's **disruption**
+to its ceiling (100). Patrols, where present, pushed disruption *down*. The disruption spread to
+neighboring cells with falloff. → *This is real arithmetic, but it was a hand-placed hotspot — one bright
+spot on an otherwise dark map.*
 
-The formula tested:
+**2. The economy felt it.** Production flowed up from factories into per-faction stockpiles, kept strictly
+separate by owner (Terran money never silently merged with Pirate money), then was disbursed back down to
+systems that needed it. The blockaded system crossed the disruption line and its production was **diverted
+to the blockader** — the Pirates effectively stole a Terran system's output by changing *which owner the
+flow counted for*, without moving or reparenting anything. → *Proven, cleanly, at one cell, for one tick.*
 
-```
-desirability = BASE (50 000) − patrol_repulsion × patrols − disruption_penalty × disruption_units
-               clamped to [0, max]
-```
+**3. The factions brought their personalities.** Terran and Pirate capability trees resolved into
+modifier overlays — patrol-suppression doctrine, raiding logistics, a combat bonus — and those overlays
+masked down onto the cells and ships of the owning faction only. → *Proven. Later consumed for real by
+combat, where the Pirate combat bonus actually changed damage output.*
 
-| Node conditions | Desirability | What it proves |
-|---|---|---|
-| No patrol, no disruption | 50 000 (maximum) | Untouched systems are most attractive |
-| 1 patrol, no disruption | 35 000 | Patrols strongly reduce attractiveness |
-| 3+ patrols | Floors to 0 | Heavily guarded systems are off-limits |
-| Max disruption, no patrol | ~20 000 | Disrupted systems are still passable corridors |
+**4. A fleet read the field and decided.** A fleet looked at the galaxy gradient **at its own cell** — a
+blend of disruption, patrol presence, opportunity, and its own faction's doctrine — measured the slope
+with an exact, deterministic square-root, and asked one question: *is the pull strong enough to move?* If
+yes, it picked the most attractive neighbor. → *This is the closest thing to genuine emergence in the
+rehearsal: a real field read and a real threshold decision. With one honest asterisk (see below).*
 
-**What passed:**
-- Patrolled systems are consistently below base — patrols actually change AI behaviour.
-- A maximally-disrupted system still has positive desirability — it is a corridor, not a wall.
-  The AI can transit through systems it has previously raided to reach a clean one beyond.
-- Clean (untouched, unguarded) systems always reach the full base score.
-- At the end of 20 ticks the desirability ordering matches the designed intent:
-  `clean node > recovering node > disrupted node > patrolled node`.
+**5. The fleet actually moved.** A "yes" decision turned into an event, the event into a boundary request,
+and the request relocated the fleet — deregistering it from its old cell and enrolling it in the new one —
+while keeping its identity and its owner stamp intact. No teleporting, no rewriting the tree. → *Real
+movement, driven by the decision in step 4, not by a script.*
 
-**What this means for modders:** The two penalty weights (`patrol_repulsion` and
-`disruption_penalty`) are the primary tuning knobs. A high disruption penalty makes pirates
-strongly route around their own trail. A low penalty lets them re-enter previously raided
-systems quickly — piracy becomes more persistent and concentrated. Patrol repulsion tuning
-determines how much fleet presence is needed to make a system truly off-limits.
+**6. Fleets fought as crowds of ships, not as hit-point bars.** Where a Terran fleet and Pirate fleets
+shared a cell, combat ran as **resource flow**: each side's damage output (ships × per-ship damage, tuned
+by the faction combat bonus) was pooled by owner, aimed only at the enemy, and the incoming damage was
+converted into **whole ships lost** — 500 damage against 100-HP ships removes exactly 5 ships. A fleet is
+only destroyed when its **last** ship dies, not when some abstract HP bar hits zero. → *The attrition math
+genuinely emerges from the flow. The fight itself, though, was staged: the two sides were placed together
+to prove the mechanism.*
 
----
-
-### 3 — The gradient kernel extracts movement direction directly from field shape
-
-A **gradient** is a direction arrow computed at each location: it points toward higher
-desirability. This test battery proved that a single GPU kernel pass can extract both the
-east-west and north-south components simultaneously (the `GradientXY` feature).
-
-**What passed:**
-- The dual-output kernel writes both direction components (X and Y) in one pass — proven to
-  produce identical numbers to running two single-axis passes separately.
-- The CPU calculation and the GPU hardware calculation agree within measurement tolerance —
-  the AI behaviour is the same whether it runs on the CPU reference or the GPU.
-- Producing two outputs from one dispatch never corrupts either output (no-aliasing proven).
-- Bad configuration is caught at load time: if both outputs were pointed at the same column,
-  the engine rejects it before the scenario starts.
-
-**What this means for modders:** You don't need to think about the gradient kernel. It is
-infrastructure. What matters is that the desirability field you define (through disruption
-weights, patrol penalties, tech modifiers) *is* the AI's navigation map — shaping the field
-is shaping the AI.
+**7. Shipyards refilled the fleets.** Production accumulated toward a build threshold; crossing it emitted
+a **ship-count delta**. That delta found a compatible friendly fleet in the same cell and **grew it** (10
+ships → 11, with hit-points-to-kill and damage output recomputed to match), or, if there was no suitable
+fleet, **birthed a new one** locally. Two friendly fleets sharing a cell could **fuse** into one larger
+cohort (7 + 7 → 14). All of this without any movement order. → *The reinforcement of a real, previously
+spawned fleet is a genuine chain; the fusion and birth demonstrations used hand-placed fleets.*
 
 ---
 
-### 4 — The pirate navigates by reading its local gradient, not by planning a route
+## The honest asterisk: the tie-breaker
 
-The full 20-tick scenario runs a pirate across a five-system line. The pirate has no list of
-targets, no route, no memory of where it has been. Each tick it simply reads the direction
-arrow at its current location and asks: *"Is the slope steep enough to move?"* If yes, it
-takes one step. If no, it stays.
-
-**What passed:**
-
-**Self-disruption drives migration (the core AI loop):**
-The pirate starts at system 0. Tick 0: it raids system 0, raising disruption there. The
-disruption lowers system 0's desirability. The gradient now points east toward the still-clean
-system 1. The threshold is crossed, an event fires, and the pirate steps east. It then raids
-system 1, which starts to degrade, and the gradient shifts east again. Over 20 ticks the pirate
-migrates across the line — not because it was told to, but because it keeps making each system
-less desirable than the one ahead.
-
-- Pirate travels at least 3 systems from its start position over 20 ticks.
-- Visits at least 4 distinct systems.
-- Takes at least 4 distinct movement steps.
-
-**Threshold gating (commitment is meaningful):**
-With the movement threshold raised to an extreme value, the gradient never crosses it and the
-pirate never moves — it raids system 0 indefinitely as disruption saturates. This proves the
-threshold is a real gate, not a formality. Lowering the threshold makes the AI more reactive;
-raising it makes it more inertial.
-
-**Patrols alter the trajectory:**
-With a patrol stationed at system 2 (mid-line), the pirate's 20-tick path is measurably
-different. The repulsion from system 2's reduced desirability reshapes the gradient and
-produces a distinct final position and checksum — patrols have proven causal effect on AI
-navigation.
-
-**Every move is exactly one step:**
-No tick produces a teleport or a multi-system jump. Each committed move crosses into a single
-adjacent system only. The AI can move at most once per tick.
-
-**Deterministic replay:**
-Two identical 20-tick runs produce identical move sequences, positions, and checksums.
+The canonical test field is **sparse** — essentially one bright hotspot. On a field that flat, a pure
+gradient can point nowhere in particular. To keep the movement decision well-defined, R4 adds a tiny
+deterministic spatial nudge (a function of the cell's position). **This nudge is a fixture tie-breaker,
+not gameplay.** It must never be read as "the Pirates chose to go there because the simulation wanted them
+to." A richer map with several competing hotspots should either remove the nudge entirely or prove the
+real field signal overwhelms it. Until then, treat fleet *direction* in this rehearsal as "validly
+decided" but not "strategically meaningful."
 
 ---
 
-## The AI principles this battery demonstrates
+## What did **not** emerge (yet)
 
-### Principle 1 — The field is the policy
+The marquee questions this scenario was built to eventually ask **were not answered**, because the
+rehearsal is a chain of single-pass demonstrations wired together — not a clock ticking forward over many
+turns:
 
-The pirate has no scripted behaviour and no awareness of game concepts like "patrol" or
-"disruption." It reads a number at each neighbouring location and moves toward the higher one
-when the difference is large enough. All of the interesting behaviour — route choice, patrol
-avoidance, migration patterns — is a consequence of how the field is shaped by the game state.
-Changing the field changes the AI without touching any AI logic.
+- **Raiding waves** sweeping toward soft, rich Terran systems — *not shown.*
+- **The race:** does Pirate fleet-overmatch hold, or does the Terran production edge out-build it? — *not
+  shown; this needs many ticks.*
+- **Interception:** two fleets meeting in transit and fighting because of where movement took them — *not
+  shown; the one fight was staged.*
+- **Fronts / standoffs** where patrol suppression balances Pirate disruption — *not shown.*
+- **A self-sustaining pressure loop** (raid → disrupt → divert → build → raid again) — *not shown.*
 
-### Principle 2 — Self-disruption is an emergent migration driver
-
-The pirate is not given a "move on after raiding" instruction. It moves because raiding makes
-its current position less desirable than the next one. This means:
-- Raid intensity controls migration speed (heavier raiding degrades the location faster).
-- Decay rate controls how long a raided system stays "hot" before becoming attractive again.
-- The pirate naturally avoids freshly-raided systems — not by rule, but because the gradient
-  doesn't point back until the disruption has faded.
-
-### Principle 3 — Patrols work by shaping terrain, not by scripted chase logic
-
-A patrol fleet makes its location repulsive in the desirability field. The pirate routes around
-it because the gradient points away from it — not because there is any "flee from patrol" code.
-This means:
-- Patrol placement determines which routes the pirate avoids.
-- A patrol that moves changes the shape of the field, which changes the AI's path.
-- Multiple patrols cooperate naturally: they jointly suppress a region of the field without any
-  coordination code.
-
-### Principle 4 — Threshold gating makes commitment visible and tunable
-
-Movement only happens when the desirability difference between a location and its neighbours
-exceeds a tunable threshold. Below that threshold the pirate holds still even if there is a
-gradient. This produces natural AI inertia — a pirate that has just moved into a fresh system
-does not immediately move again until that system has degraded enough to open a gradient steep
-enough to commit. The threshold is a designer-facing knob.
-
-### Principle 5 — No CPU planner, no lookahead, no rules engine
-
-Every movement decision is made with only local information: the desirability at adjacent
-nodes this tick, compared to the threshold. The AI cannot see around corners, cannot predict
-where patrols will be, and does not search for an optimal path. This is a feature, not a
-limitation — it means the AI scales to arbitrarily large maps, costs the same per tick
-regardless of map size, and produces behaviour that players can learn to predict and
-strategically exploit.
+None of these are broken. They are simply **not yet exercised**: the parts have each been proven to work;
+they have not yet been left running together long enough to produce a story. That is the next scenario's
+job — a multi-tick closed loop over a richer field.
 
 ---
 
-## What is proven vs. what was explicitly not implemented
+## What this proved (the durable result)
 
-### Proven and in the engine
+- A complete vertical **mechanism chain** works, and **each stage genuinely consumes the previous stage's
+  real output** — not a stand-in number copied by hand.
+- **Combat, economy, disruption, movement, and shipbuilding are all the same substrate** (SimThings +
+  overlays + accumulate/threshold/emit). No bespoke engine was added for any of them. For a modder, that
+  means a new adversarial or economic system is "more SimThing," not new engine code.
+- Fleets are **cohorts of ships**, and both **losing** ships (combat) and **gaining** ships (production)
+  are the same kind of threshold-driven count change on that cohort.
 
-- Disruption accumulation, natural decay, patrol-accelerated decay, saturation ceiling.
-- Compound desirability field (patrol repulsion + disruption penalty, configurable weights).
-- Dual-output gradient kernel (both spatial direction components from one GPU pass).
-- Gradient-follow movement: field-sourced, threshold-gated, one step per tick.
-- Deterministic replay: same inputs → same outputs, always.
-- Tech-modifier channel: decay rate can be tuned by faction tech unlock (broadcast as an
-  overlay weight, not a direct column write).
-- Decay-acceleration tech is admission-safe by construction; persistence-increasing tech
-  requires explicit bounds check.
-
-### Deliberately not in this scenario (each requires its own gate)
-
-| Feature | Why not here |
-|---|---|
-| Up-aggregation (planet disruption rolls up to starsystem) | Architecture is correct; no scenario has pulled it yet |
-| Down-broadcast (starsystem disruption shadows children) | Same — parked pending a named consumer |
-| Dense per-cell temporal memory | Expensive VRAM gate; this scenario uses per-node (sparse) state only |
-| Multi-step pathfinding / lookahead | Explicitly tested and rejected — the engine refuses this at admission |
-| CPU planner / urgency computation | Same — refused at admission |
-| UI, real-time loop, player command loop | Not in scope; would be a separate gate |
-| Disruption affecting trade / happiness / culture | Named as a future scenario; the column exists, the penalty just needs a consumer |
-
----
-
-## How to use this in a scenario you are designing
-
-**To make pirates migrate predictably:** keep the disruption penalty high relative to the patrol
-repulsion. Pirates will leave quickly after raiding and won't return until disruption fades.
-
-**To make pirates persistent and concentrated:** lower the disruption penalty. Raided systems
-remain attractive for longer; pirates circle back.
-
-**To make patrols hard deterrents:** raise patrol repulsion. A single patrol fleet makes a
-system effectively invisible to pirate gradients.
-
-**To give a faction "disruption resistance" tech:** implement a tech unlock that contributes a
-retention modifier ≤ 1 on the decay weight (a negative percentage on the ownership overlay).
-This makes disruption fade faster on that faction's holdings. The engine validates that it can
-only accelerate decay, never make it slower — the field stays bounded.
-
-**To create piracy hotspots:** place systems with very low natural desirability (e.g. a
-permanently patrolled bottleneck on one side, high disruption from prior raids on the other).
-The gradient will funnel pirate traffic through adjacent gaps without any scripting.
-
----
-
-*Scenario: SCENARIO-0080-2 "Pirate Gradient Pathfinding" — implementation COMPLETE.*
-*Test summary: 17 + 18 + 30 + 17 = 82 tests, 0 failures across all four rungs.*
-*GPU hardware parity verified (rung 3 dual-output gradient kernel).*
-*Deterministic replay verified at every layer.*
+This is the substrate doing what the constitution promises. The *game* — the emergent, open-ended pressure
+between two factions — is the next thing to switch on, now that every part has been shown to run.

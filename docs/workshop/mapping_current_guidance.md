@@ -2,7 +2,7 @@
 
 Current scenario status:
 
-- `SCENARIO-0080-2` R6B implemented/pass as GPU-shaped threshold emission into fleet-cohort reinforcement/fusion; R7 closeout remains unopened.
+- `SCENARIO-0080-2` **R7 CLOSED / PASS (2026-06-04)** — dress rehearsal closes as a vertical *proof*: R1→R6B mechanism chain consumption-proven; §8.1 gameplay emergence (raiding waves, race equilibrium, interception, fronts, self-sustaining loop) recorded as not-yet-emerged (future multi-tick scenario). Closeout: [`../tests/scenario_0080_2_r7_closeout_report.md`](../tests/scenario_0080_2_r7_closeout_report.md); results: [`../gameplay/scenario_0080_2_pirate_gradient_pathfinding_results.md`](../gameplay/scenario_0080_2_pirate_gradient_pathfinding_results.md).
 
 Authoritative decision:
 
