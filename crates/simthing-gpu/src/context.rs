@@ -2,7 +2,7 @@
 
 use thiserror::Error;
 use wgpu::{
-    Adapter, Backends, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor,
+    Adapter, Backends, Device, DeviceDescriptor, DeviceType, Features, Instance, InstanceDescriptor,
     MemoryHints, PowerPreference, Queue, RequestAdapterOptions,
 };
 
@@ -35,14 +35,27 @@ impl GpuContext {
             ..Default::default()
         });
 
-        let adapter = instance
-            .request_adapter(&RequestAdapterOptions {
-                power_preference: PowerPreference::default(),
-                force_fallback_adapter: false,
-                compatible_surface: None,
-            })
-            .await
-            .ok_or(GpuInitError::NoAdapter)?;
+        // ALWAYS use a discrete GPU when one is present. Do not silently fall back to the
+        // integrated adapter: `PowerPreference::default()` (the old behavior) selected the iGPU on
+        // dual-GPU machines, so every GPU parity test ran on integrated graphics and never on the
+        // discrete/target device — undermining cross-adapter determinism (I8) and real-target
+        // fidelity. Enumerate first and prefer the first `DiscreteGpu`; only if none exists fall
+        // back to a high-performance adapter request (integrated-only or headless hosts).
+        let adapter = match instance
+            .enumerate_adapters(Backends::PRIMARY)
+            .into_iter()
+            .find(|a| a.get_info().device_type == DeviceType::DiscreteGpu)
+        {
+            Some(discrete) => discrete,
+            None => instance
+                .request_adapter(&RequestAdapterOptions {
+                    power_preference: PowerPreference::HighPerformance,
+                    force_fallback_adapter: false,
+                    compatible_surface: None,
+                })
+                .await
+                .ok_or(GpuInitError::NoAdapter)?,
+        };
 
         let timestamp_supported = adapter.features().contains(Features::TIMESTAMP_QUERY);
         let required_features = if timestamp_supported {
