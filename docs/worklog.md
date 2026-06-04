@@ -1,3 +1,7 @@
+# 2026-06-03 - ATLAS-BATCH-0-STORE implemented (EC-A3 CPU storage shape PASS)
+
+- Implemented `dress_rehearsal_atlas_batch_0_store.rs` + 11 tests; CPU-only `(location_id, cell_index, channel, owner)` oracle; 10-pirate-shared-cell + constructed planet/patrol/pirate co-location proven. `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store` → **11 passed; 0 failed** (foreground; no `2>&1`). STORE-GPU / live masked reduction deferred. Rule added: `.cursor/rules/no-background-final-tests.mdc`.
+
 # 2026-06-03 - STORE REMEDIAL 6: Cursor "crash" diagnosed = compile error + logic bug (design authority)
 
 - Cursor reported repeated crashes on `cargo test ... 2>&1`. **Diagnosed by running the suite directly — it is NOT a crash:** (1) PowerShell 5.1 `2>&1` on a native exe wraps cargo stderr as `NativeCommandError` + non-zero exit reads as a crash, masking the real compiler output (fix: use `*>&1`/`Tee-Object` or Bash); (2) **compile error** — `dress_rehearsal_atlas_batch_0_store.rs:222` calls `store_key_owner_rank`, only `store_key_channel_rank` defined; (3) after that, **1 logic failure** — `owner_indexed_entries_do_not_blind_sum_by_position`.

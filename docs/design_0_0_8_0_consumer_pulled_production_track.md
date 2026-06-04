@@ -628,6 +628,20 @@ are distinguished and **must not be collapsed into one figure**:
 > → **8 passed; 0 failed** (GPU tier ran; adapter **Intel(R) RaptorLake-S Mobile Graphics Controller**).
 > **STORE remains unimplemented.** M-4A sparse-residency scheduler and REENROLL remain parked.
 
+> **`ATLAS-BATCH-0-STORE` closure (2026-06-03) — EC-A3 CPU storage shape.** `SCENARIO-0080-2` STORE is
+> **implemented / PASS** for **EC-A3**: generic child contributions aggregate into dense
+> `(location_id, cell_index, channel, owner)` slots via LOC `cell_index`; co-located occupants never
+> blind-summed by position. Proven: **10 canonical pirate fleets** on one galactic cell (pirate channels
+> only); **constructed planet+patrol+pirate** at one system cell (distinct channel/owner entries). **CPU-only**
+> — does **not** run live OWNER masked reduction (**STORE-GPU deferred**; runtime remains parked until
+> STORE-GPU / R3). Does not implement R1/R2/R3/R4, economy, disruption, SEAD, or combat. Evidence:
+> [`crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_store.rs`](../crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_store.rs);
+> [`crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_store.rs`](../crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_store.rs);
+> [`tests/scenario_0080_2_atlas_batch_0_store_report.md`](tests/scenario_0080_2_atlas_batch_0_store_report.md);
+> [`tests/scenario_0080_2_atlas_batch_0_store_cargo_test_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_store_cargo_test_2026_06_03.txt).
+> Command: `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store` → **11 passed; 0 failed**.
+> M-4A sparse-residency scheduler and REENROLL remain parked.
+
 ### 12.4 Established mechanism — OWNER routing (multi-owner flows in one cell)
 
 > **Already-designed + parked substrate; the harness pulls it, does not re-derive it.** This is the
@@ -681,11 +695,13 @@ column-flip — each its own gate.
 > (**`ATLAS-BATCH-0-LOC`** — closed/PASS) · [`handoffs/dress_rehearsal_codex_handoff_3_atlas_batch_0_pack.md`](handoffs/dress_rehearsal_codex_handoff_3_atlas_batch_0_pack.md)
 > (**`ATLAS-BATCH-0-PACK`** — closed/PASS for EC-A2a; EC-A2b/GPU deferred) ·
 > [`handoffs/dress_rehearsal_codex_handoff_4_atlas_batch_0_pack_gpu.md`](handoffs/dress_rehearsal_codex_handoff_4_atlas_batch_0_pack_gpu.md)
-> (**`ATLAS-BATCH-0-PACK-GPU`** — closed/PASS for EC-A2b GpuVerified; EC-A2b-exact deferred).
+> (**`ATLAS-BATCH-0-PACK-GPU`** — closed/PASS for EC-A2b GpuVerified; EC-A2b-exact deferred) ·
+> [`handoffs/dress_rehearsal_codex_handoff_5_atlas_batch_0_store.md`](handoffs/dress_rehearsal_codex_handoff_5_atlas_batch_0_store.md)
+> (**`ATLAS-BATCH-0-STORE`** — closed/PASS for EC-A3 CPU storage shape; STORE-GPU deferred).
 >
-> **ATLAS-BATCH-0 status (2026-06-03):** `GEN`, `LOC`, `PACK` (EC-A2a), and **`PACK-GPU` (EC-A2b)** are
-> **closed / PASS** for `SCENARIO-0080-2` (see §12.3 closure notes + raw test logs). **Next gate:**
-> `ATLAS-BATCH-0-STORE`. **STORE remains unimplemented.** M-4A sparse-residency scheduler and REENROLL
+> **ATLAS-BATCH-0 status (2026-06-03):** `GEN`, `LOC`, `PACK` (EC-A2a), **`PACK-GPU` (EC-A2b)**, and
+> **`STORE` (EC-A3)** are **closed / PASS** for `SCENARIO-0080-2`. **Next:** `ATLAS-BATCH-0-STORE-GPU`
+> (OWNER masked-reduction parity) and/or `ATLAS-BATCH-0-CLOSE`. M-4A sparse-residency scheduler and REENROLL
 > remain parked.
 >
 > **Sequencing discipline (§0.5, §5):** one parked phase proved-and-closed per rung. The rehearsal is
