@@ -1,0 +1,33 @@
+SCENARIO-0080-2 — ATLAS-BATCH-0-PACK-GPU parity report (EC-A2b GpuVerified)
+Date: 2026-06-03
+
+adapter_name: Intel(R) RaptorLake-S Mobile Graphics Controller
+device_name: simthing-gpu device
+gpu_tier_ran: true
+tests_skipped: none (SIMTHING_RUN_GPU_TESTS=1; all 8 tests executed)
+
+tile_classes_tested: Galactic20x20, StarSystem10x10, PlanetSurface10x10
+
+class=Galactic20x20
+  tile_count: 1
+  atlas: 20x20
+  output_element_count: 1600
+  full_tile_Linf: 0.000004
+  passed_Linf_le_1e-4: true
+
+class=StarSystem10x10
+  tile_count: 13
+  atlas: 130x10
+  output_element_count: 5200
+  full_tile_Linf: 0.000031
+  passed_Linf_le_1e-4: true
+
+class=PlanetSurface10x10
+  tile_count: 13
+  atlas: 130x10
+  output_element_count: 5200
+  full_tile_Linf: 0.000031
+  passed_Linf_le_1e-4: true
+
+EC-A2b_GpuVerified_closed: true
+EC-A2b-exact: deferred (not bit-exact; not f32::to_bits)

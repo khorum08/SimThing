@@ -606,6 +606,23 @@ are distinguished and **must not be collapsed into one figure**:
 > Command: `cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_pack` → **9 passed; 0 failed**.
 > **STORE remains unimplemented.** Sparse-residency scheduler (M-4A) and REENROLL remain parked.
 
+> **`ATLAS-BATCH-0-PACK-GPU` closure (2026-06-03) — EC-A2b GpuVerified.** `SCENARIO-0080-2` PACK-GPU is
+> **implemented / PASS** for **EC-A2b**: one batched `AtlasMaskGpuOp` dispatch path per homogeneous tile class
+> (`Galactic20x20`, `StarSystem10x10`, `PlanetSurface10x10`) with `TileLocalMaskG0` matches the
+> caller-managed CPU oracle within **`GpuVerified` tolerance (full-tile L∞ ≤ 1e-4)**; `G=0` cross-tile /
+> out-of-atlas isolation proven. Uses existing `simthing-gpu/src/atlas_mask.rs` only (no new WGSL). **Does
+> NOT** claim bit-exact / `f32::to_bits()` parity — **EC-A2b-exact remains DEFERRED** (pinned fixed-point
+> stencil track). Does not implement STORE, owner masked-reduction runtime, economy, disruption, or SEAD.
+> Evidence:
+> [`crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_pack_gpu.rs`](../crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_pack_gpu.rs);
+> [`crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_pack_gpu.rs`](../crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_pack_gpu.rs);
+> [`tests/scenario_0080_2_atlas_batch_0_pack_gpu_report.md`](tests/scenario_0080_2_atlas_batch_0_pack_gpu_report.md);
+> [`tests/scenario_0080_2_atlas_batch_0_pack_gpu_cargo_test_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_pack_gpu_cargo_test_2026_06_03.txt);
+> [`tests/scenario_0080_2_atlas_batch_0_pack_gpu_parity_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_pack_gpu_parity_2026_06_03.txt).
+> Command: `$env:SIMTHING_RUN_GPU_TESTS=1; cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_pack_gpu`
+> → **8 passed; 0 failed** (GPU tier ran; adapter **Intel(R) RaptorLake-S Mobile Graphics Controller**).
+> **STORE remains unimplemented.** M-4A sparse-residency scheduler and REENROLL remain parked.
+
 ### 12.4 Established mechanism — OWNER routing (multi-owner flows in one cell)
 
 > **Already-designed + parked substrate; the harness pulls it, does not re-derive it.** This is the
@@ -657,12 +674,14 @@ column-flip — each its own gate.
 > (orientation + **`ATLAS-BATCH-0-GEN`** — closed/PASS) · [`handoffs/dress_rehearsal_codex_handoff_1_remedial.md`](handoffs/dress_rehearsal_codex_handoff_1_remedial.md)
 > (GEN spacing-band remedial — resolved) · [`handoffs/dress_rehearsal_codex_handoff_2_atlas_batch_0_loc.md`](handoffs/dress_rehearsal_codex_handoff_2_atlas_batch_0_loc.md)
 > (**`ATLAS-BATCH-0-LOC`** — closed/PASS) · [`handoffs/dress_rehearsal_codex_handoff_3_atlas_batch_0_pack.md`](handoffs/dress_rehearsal_codex_handoff_3_atlas_batch_0_pack.md)
-> (**`ATLAS-BATCH-0-PACK`** — closed/PASS for EC-A2a; EC-A2b/GPU deferred).
+> (**`ATLAS-BATCH-0-PACK`** — closed/PASS for EC-A2a; EC-A2b/GPU deferred) ·
+> [`handoffs/dress_rehearsal_codex_handoff_4_atlas_batch_0_pack_gpu.md`](handoffs/dress_rehearsal_codex_handoff_4_atlas_batch_0_pack_gpu.md)
+> (**`ATLAS-BATCH-0-PACK-GPU`** — closed/PASS for EC-A2b GpuVerified; EC-A2b-exact deferred).
 >
-> **ATLAS-BATCH-0 status (2026-06-03):** `GEN`, `LOC`, and `PACK` (EC-A2a) are **closed / PASS** for
-> `SCENARIO-0080-2` (see §12.3 closure notes + raw test logs). **Next gates:** `ATLAS-BATCH-0-PACK-GPU`
-> (EC-A2b batched dispatch + CPU parity), then `ATLAS-BATCH-0-STORE`. **STORE remains unimplemented.**
-> M-4A sparse-residency scheduler and REENROLL remain parked.
+> **ATLAS-BATCH-0 status (2026-06-03):** `GEN`, `LOC`, `PACK` (EC-A2a), and **`PACK-GPU` (EC-A2b)** are
+> **closed / PASS** for `SCENARIO-0080-2` (see §12.3 closure notes + raw test logs). **Next gate:**
+> `ATLAS-BATCH-0-STORE`. **STORE remains unimplemented.** M-4A sparse-residency scheduler and REENROLL
+> remain parked.
 >
 > **Sequencing discipline (§0.5, §5):** one parked phase proved-and-closed per rung. The rehearsal is
 > the **convergent consumer that retires the parked backlog one rung at a time** — not a big-bang pull.

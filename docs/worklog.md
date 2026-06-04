@@ -1,3 +1,7 @@
+# 2026-06-03 - ATLAS-BATCH-0-PACK-GPU implemented (EC-A2b GpuVerified PASS)
+
+- Implemented `dress_rehearsal_atlas_batch_0_pack_gpu.rs` + tests per handoff 4: existing `AtlasMaskGpuOp` / `cpu_caller_managed_atlas_protocol` (PACK row-major origins for 13-tile classes); `SIMTHING_RUN_GPU_TESTS=1` → **8 passed; 0 failed**; adapter **Intel(R) RaptorLake-S Mobile Graphics Controller**; full-tile L∞ galactic **0.000004**, star-system **0.000031**, planet-surface **0.000031** (all ≤ 1e-4). EC-A2b-exact deferred; STORE/M-4A/REENROLL still parked. Evidence: `docs/tests/scenario_0080_2_atlas_batch_0_pack_gpu_*`.
+
 # 2026-06-03 - ATLAS-BATCH-0-PACK-GPU CONTRACT authored + EC-A2b corrected (design authority → Cursor)
 
 - Authored `docs/handoffs/dress_rehearsal_codex_handoff_4_atlas_batch_0_pack_gpu.md` — Cursor-ready PACK-GPU contract — after verifying the GPU surface in code.
