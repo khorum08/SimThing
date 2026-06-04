@@ -17,6 +17,7 @@ pub mod demo_0080_1;
 pub mod disruption_decay_0080_2;
 pub mod dress_rehearsal_r1_disruption_heatmap;
 pub mod dress_rehearsal_r2_recursive_allocation;
+pub mod dress_rehearsal_r3_capability_mask_down;
 pub mod econ_scale_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
@@ -170,6 +171,20 @@ pub use dress_rehearsal_r2_recursive_allocation::{
     DRESS_REHEARSAL_R2_RECURSIVE_ALLOCATION_STATUS_PASS, DRESS_REHEARSAL_R2_SCENARIO,
     FACTORY_UNIT_COST_LABOR, POP_LABOR_PER_TICK, PRODUCTION_PER_RECIPE, STARPORT_PRODUCTION_NEED,
     TOP_AFFECTED_COUNT,
+};
+pub use dress_rehearsal_r3_capability_mask_down::{
+    apply_modifier_bps, cpu_oracle_dress_rehearsal_r3_capability_mask_down,
+    render_dress_rehearsal_r3_artifact, replay_dress_rehearsal_r3_capability_mask_down,
+    run_dress_rehearsal_r3_capability_mask_down, DressRehearsalR3Artifact,
+    DressRehearsalR3CapabilityRow, DressRehearsalR3Input, DressRehearsalR3ModifiedEconomySignalRow,
+    DressRehearsalR3ModifiedR1SignalRow, DressRehearsalR3ModifierOverlayRow,
+    DressRehearsalR3Oracle, DressRehearsalR3Owner, DressRehearsalR3OwnerMaskApplicationRow,
+    DressRehearsalR3Report, DressRehearsalR3Summary, BLOCKADE_DIVERT_MODIFIER, BPS_ONE,
+    COMBAT_BONUS_PLACEHOLDER_MODIFIER, DEFENSIVE_LOGISTICS_MODIFIER, DISRUPTION_DECAY_MODIFIER,
+    DRESS_REHEARSAL_R3_CAPABILITY_MASK_DOWN_ID,
+    DRESS_REHEARSAL_R3_CAPABILITY_MASK_DOWN_STATUS_PASS, DRESS_REHEARSAL_R3_SCENARIO,
+    MAX_MODIFIER_BPS, MIN_MODIFIER_BPS, PATROL_SUPPRESSION_MODIFIER, PIRATE_EMISSION_MODIFIER,
+    RAIDING_LOGISTICS_MODIFIER,
 };
 pub use econ_scale_0080_0::{
     replay_econ_scale_0080_0, run_econ_scale_0080_0, EconScale0080ClearingInput,

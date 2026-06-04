@@ -2,7 +2,7 @@
 
 Current scenario status:
 
-- `SCENARIO-0080-2` R2 implemented/pass as single-galactic-tier recursive allocation + faction economy + blockade/divert; R3-R7 remain unopened.
+- `SCENARIO-0080-2` R3 implemented/pass as capability-tree modifier overlays masked down by owner-column; R4-R7 remain unopened.
 
 Authoritative decision:
 
