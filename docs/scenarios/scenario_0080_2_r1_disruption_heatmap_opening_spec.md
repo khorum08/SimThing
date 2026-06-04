@@ -16,6 +16,14 @@
 > this opening spec's scope. Evidence:
 > [`docs/tests/scenario_0080_2_r1_disruption_heatmap_report.md`](../tests/scenario_0080_2_r1_disruption_heatmap_report.md).
 > This note records the implementation result only; R2–R7 remain unopened/deferred as specified below.
+>
+> **Acceptance (2026-06-04, Opus / `SCENARIO-0080-2-R1-ACCEPT-0`):** R1 **ACCEPTED / CLOSED /
+> IMPLEMENTED-PASS.** EC1 satisfied (occupant-produced heatmap over real gridcell SimThings, CPU-oracle
+> verified, deterministic artifact); all test evidence re-run by the acceptance authority; no §11 stop
+> condition crossed. Review:
+> [`docs/tests/scenario_0080_2_r1_acceptance_review.md`](../tests/scenario_0080_2_r1_acceptance_review.md).
+> R1 scope is **not** expanded by acceptance; the next gate is a distinct `R2-OPEN` (recursive reduce-up /
+> faction-economy coupling), not yet opened.
 
 ## 2. Canonical citations (§12.0 harness — cite on the implementation handoff)
 
