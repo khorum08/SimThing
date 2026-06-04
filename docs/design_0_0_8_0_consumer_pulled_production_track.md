@@ -576,7 +576,7 @@ are distinguished and **must not be collapsed into one figure**:
 2. `ATLAS-BATCH-0-LOC` — Location-kind gridcell primitive + grid-placement slot allocation + multi-channel cell.
 3. `ATLAS-BATCH-0-PACK` — atlas batch allocation + `G=0` mask + VRAM-multiplier + batched dispatch + CPU parity.
 4. `ATLAS-BATCH-0-STORE` — children's flow results into 2-D map slots; the co-located-not-merged test (EC-A3).
-5. `ATLAS-BATCH-0-CLOSE` — design-authority accept; confirm residency scheduler + REENROLL stay parked.
+5. `ATLAS-BATCH-0-CLOSE` — **CLOSED / PASS (2026-06-04)**; design-authority accept; residency scheduler + REENROLL confirmed parked. Report: [`tests/scenario_0080_2_atlas_batch_0_close_report.md`](tests/scenario_0080_2_atlas_batch_0_close_report.md).
 
 > **`ATLAS-BATCH-0-GEN` closure (2026-06-03).** `SCENARIO-0080-2` GEN is **closed / PASS** as a pure
 > 20×20 / 13-system dress-rehearsal topology descriptor (no GPU, no `Location` materialization, no
@@ -721,9 +721,12 @@ column-flip — each its own gate.
 > `AccumulatorOp`/`EvalEML CMP_EQ`/`Sum` masked reduction; bit-exact (ExactDeterministic) parity over
 > integer masked sums vs the STORE oracle, GpuVerified fallback; OWNER masked-reduction *runtime* + R3 stay parked).
 >
-> **ATLAS-BATCH-0 status (2026-06-03):** `GEN`, `LOC`, `PACK` (EC-A2a), **`PACK-GPU` (EC-A2b)**,
-> **`STORE` (EC-A3)**, and **`STORE-GPU` (EC-A3-gpu)** are **closed / PASS** for `SCENARIO-0080-2`.
-> **Active gate:** `ATLAS-BATCH-0-CLOSE`. OWNER masked-reduction *runtime* + R3 remain parked (fixture-only
+> **ATLAS-BATCH-0 — COMPLETE (CLOSED / PASS, `ATLAS-BATCH-0-CLOSE` 2026-06-04).** `GEN`, `LOC`,
+> `PACK` (EC-A2a), **`PACK-GPU` (EC-A2b GpuVerified)**, **`STORE` (EC-A3)**, **`STORE-GPU` (EC-A3-gpu
+> ExactDeterministic)** all closed/PASS, NVIDIA RTX 4080-validated, full workspace green. Closeout:
+> [`tests/scenario_0080_2_atlas_batch_0_close_report.md`](tests/scenario_0080_2_atlas_batch_0_close_report.md).
+> **Next gate: `R1-OPEN`** — Disruption-heatmap / EC1 *opening spec* (Opus authors; opening-spec only,
+> not implementation). OWNER masked-reduction *runtime* + R3 remain parked (fixture-only
 > GPU proof). M-4A sparse-residency scheduler and REENROLL remain parked.
 >
 > > **✓ Adapter-scope caveat RESOLVED (2026-06-04, design authority).** `GpuContext` now **always selects

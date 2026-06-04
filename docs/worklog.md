@@ -1,3 +1,11 @@
+# 2026-06-04 - ATLAS-BATCH-0-CLOSE: pre-rehearsal atlas prerequisite CLOSED / PASS (design authority)
+
+- **Adjudicated `ATLAS-BATCH-0-CLOSE` → PASS** (no new code; design-authority close/park review). All six rungs closed/PASS and first-hand-validated as they landed: GEN (post spacing-remedial), LOC, PACK (EC-A2a), PACK-GPU (EC-A2b GpuVerified, **not** bit-exact), STORE (EC-A3, post compile/logic remedial), STORE-GPU (EC-A3-gpu ExactDeterministic, 38/38 bit-exact). NVIDIA RTX 4080-validated; full `cargo test --workspace` green (60 binaries, 0 failed).
+- **NVIDIA adapter disposition (caveat lifted):** PACK-GPU = GpuVerified f32 tolerance on RTX (not bit-exact); STORE-GPU = ExactDeterministic bit-exact, held cross-adapter; **EC-A2b-exact remains deferred** (pinned fixed-point stencil track). `GpuContext` always-discrete.
+- **Parked boundaries confirmed unchanged:** OWNER masked-reduction *runtime*, R3, M-4A sparse-residency, REENROLL, R1–R7 — none opened. No CPU planner, semantic WGSL, hard currency, ClauseThing/L3, UI/realtime, default schedule.
+- **Remaining deferred:** EC-A2b-exact; **GPU throughput unmeasured** (correctness ≠ perf — separate timestamp-query benchmark track needed before any game-time perf claim; runtime architected to avoid the test-harness costs but unbenchmarked); the masked-reduction runtime (R3) + rehearsal rungs.
+- **Created** `docs/tests/scenario_0080_2_atlas_batch_0_close_report.md`; **updated** production track §12.3/§12.5 (ATLAS-BATCH-0 COMPLETE; active gate → `R1-OPEN`). **Authorized next gate: `R1-OPEN`** — Disruption-heatmap / EC1 *opening spec* (Opus authors; opening-spec only, not implementation). The full-vertical rehearsal ladder is now unblocked at R1.
+
 # 2026-06-04 - NVIDIA FP LADDER COMPLETE: last blocker fixed, full workspace green on RTX 4080 (design authority)
 
 - **Resolved the last NVIDIA-ladder blocker** (the user's "last jit performance issue" — actually a spec/manifest cohort-ordering assertion, not GPU/perf): `simthing-spec jit_kernel_cohort_preview::jit_cohort0_distinct_graphs_split` (`left: ["variant"], right: ["base"]`).
