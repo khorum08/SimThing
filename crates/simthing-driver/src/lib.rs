@@ -18,6 +18,7 @@ pub mod disruption_decay_0080_2;
 pub mod dress_rehearsal_r1_disruption_heatmap;
 pub mod dress_rehearsal_r2_recursive_allocation;
 pub mod dress_rehearsal_r3_capability_mask_down;
+pub mod dress_rehearsal_r4_sead_field_consumption;
 pub mod econ_scale_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
@@ -185,6 +186,17 @@ pub use dress_rehearsal_r3_capability_mask_down::{
     DRESS_REHEARSAL_R3_CAPABILITY_MASK_DOWN_STATUS_PASS, DRESS_REHEARSAL_R3_SCENARIO,
     MAX_MODIFIER_BPS, MIN_MODIFIER_BPS, PATROL_SUPPRESSION_MODIFIER, PIRATE_EMISSION_MODIFIER,
     RAIDING_LOGISTICS_MODIFIER,
+};
+pub use dress_rehearsal_r4_sead_field_consumption::{
+    cpu_mag2_sum, cpu_oracle_dress_rehearsal_r4_sead_field_consumption,
+    exact_mag2_bits_from_fixed, f32_to_q16, mag2_u64_q16_to_f32_bits,
+    render_dress_rehearsal_r4_artifact, replay_dress_rehearsal_r4_sead_field_consumption,
+    run_dress_rehearsal_r4_sead_field_consumption, sqrt_cr_f_bits, DressRehearsalR4Artifact,
+    DressRehearsalR4CompositeComponentRow, DressRehearsalR4Decision, DressRehearsalR4ExactMagnitudeRow,
+    DressRehearsalR4Input, DressRehearsalR4MoverDecisionRow, DressRehearsalR4Oracle,
+    DressRehearsalR4Owner, DressRehearsalR4Report, DressRehearsalR4Summary,
+    DRESS_REHEARSAL_R4_SCENARIO, DRESS_REHEARSAL_R4_SEAD_FIELD_CONSUMPTION_ID,
+    DRESS_REHEARSAL_R4_SEAD_FIELD_CONSUMPTION_STATUS_PASS, MOVEMENT_THRESHOLD_MAG_BITS,
 };
 pub use econ_scale_0080_0::{
     replay_econ_scale_0080_0, run_econ_scale_0080_0, EconScale0080ClearingInput,
