@@ -2,7 +2,7 @@
 
 Current scenario status:
 
-- `SCENARIO-0080-2` R5 implemented/pass as movement through BoundaryRequest + REENROLL + mobility substrate; R6–R7 remain unopened.
+- `SCENARIO-0080-2` R6 implemented/pass as combat HP/Damage resource-flow arena; R7 closeout remains unopened.
 
 Authoritative decision:
 

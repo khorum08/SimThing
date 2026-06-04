@@ -793,14 +793,14 @@ fn entity_owner_map(r1: &DressRehearsalR1Report) -> BTreeMap<u64, DressRehearsal
     map
 }
 
-fn cell_key(cell_index: u32) -> MobilityAlloc0ParentKey {
+pub fn cell_key(cell_index: u32) -> MobilityAlloc0ParentKey {
     MobilityAlloc0ParentKey {
         parent_id: GALACTIC_PARENT_ID,
         key_id: u64::from(cell_index),
     }
 }
 
-fn entity_id_for_mover(mover_id: &str) -> u64 {
+pub fn entity_id_for_mover(mover_id: &str) -> u64 {
     let mut hash = 0xcbf29ce484222325u64;
     for byte in mover_id.as_bytes() {
         hash ^= u64::from(*byte);
