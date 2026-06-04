@@ -19,6 +19,7 @@ pub mod dress_rehearsal_r1_disruption_heatmap;
 pub mod dress_rehearsal_r2_recursive_allocation;
 pub mod dress_rehearsal_r3_capability_mask_down;
 pub mod dress_rehearsal_r4_sead_field_consumption;
+pub mod dress_rehearsal_r5_movement_reenroll;
 pub mod econ_scale_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
@@ -197,6 +198,16 @@ pub use dress_rehearsal_r4_sead_field_consumption::{
     DressRehearsalR4Owner, DressRehearsalR4Report, DressRehearsalR4Summary,
     DRESS_REHEARSAL_R4_SCENARIO, DRESS_REHEARSAL_R4_SEAD_FIELD_CONSUMPTION_ID,
     DRESS_REHEARSAL_R4_SEAD_FIELD_CONSUMPTION_STATUS_PASS, MOVEMENT_THRESHOLD_MAG_BITS,
+};
+pub use dress_rehearsal_r5_movement_reenroll::{
+    cpu_oracle_dress_rehearsal_r5_movement_reenroll, render_dress_rehearsal_r5_artifact,
+    replay_dress_rehearsal_r5_movement_reenroll, run_dress_rehearsal_r5_movement_reenroll,
+    DressRehearsalR5Artifact, DressRehearsalR5BoundaryRequestRow, DressRehearsalR5FissionRow,
+    DressRehearsalR5Input, DressRehearsalR5MovementRow, DressRehearsalR5Oracle,
+    DressRehearsalR5Owner, DressRehearsalR5Report, DressRehearsalR5SitStillRow,
+    DressRehearsalR5Summary, DRESS_REHEARSAL_R5_MOVEMENT_REENROLL_ID,
+    DRESS_REHEARSAL_R5_MOVEMENT_REENROLL_STATUS_PASS, DRESS_REHEARSAL_R5_SCENARIO,
+    GALACTIC_STRUCTURAL_PARENT,
 };
 pub use econ_scale_0080_0::{
     replay_econ_scale_0080_0, run_econ_scale_0080_0, EconScale0080ClearingInput,
