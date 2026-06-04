@@ -390,11 +390,13 @@ fn run_observers_gpu(
 
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("jit_grad0_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("jit_grad0_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("jit_grad0_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -572,8 +574,16 @@ fn assert_exact_outputs_bit_exact(
     for (i, obs) in observers.iter().enumerate() {
         let cpu = cpu_observer_oracle(fields, width, height, n_dims, *obs);
         let gpu = gpu_outputs[i];
-        assert_eq!(gpu.dx.to_bits(), cpu.dx.to_bits(), "{context} observer {i} dx");
-        assert_eq!(gpu.dy.to_bits(), cpu.dy.to_bits(), "{context} observer {i} dy");
+        assert_eq!(
+            gpu.dx.to_bits(),
+            cpu.dx.to_bits(),
+            "{context} observer {i} dx"
+        );
+        assert_eq!(
+            gpu.dy.to_bits(),
+            cpu.dy.to_bits(),
+            "{context} observer {i} dy"
+        );
         assert_eq!(
             gpu.descent_x.to_bits(),
             cpu.descent_x.to_bits(),
@@ -722,14 +732,10 @@ fn jit_grad0_batches_10000_observers_one_dispatch() {
         assert_eq!(result.dispatch_count, 1);
 
         let sample_indices = oracle_sample_indices(observers.len());
-        let sampled_obs: Vec<ObserverInput> = sample_indices
-            .iter()
-            .map(|&i| observers[i])
-            .collect();
-        let sampled_out: Vec<ObserverOutput> = sample_indices
-            .iter()
-            .map(|&i| result.outputs[i])
-            .collect();
+        let sampled_obs: Vec<ObserverInput> =
+            sample_indices.iter().map(|&i| observers[i]).collect();
+        let sampled_out: Vec<ObserverOutput> =
+            sample_indices.iter().map(|&i| result.outputs[i]).collect();
         assert_outputs_match(
             &fields,
             width,
@@ -811,10 +817,8 @@ fn run_batch_10000_sample_classification(ctx: &GpuContext) -> ObserverOutputClas
     let result = run_observers_gpu(ctx, &fields, &observers, width, height, n_dims);
     let sample_indices = oracle_sample_indices(observers.len());
     let sampled_obs: Vec<ObserverInput> = sample_indices.iter().map(|&i| observers[i]).collect();
-    let sampled_out: Vec<ObserverOutput> = sample_indices
-        .iter()
-        .map(|&i| result.outputs[i])
-        .collect();
+    let sampled_out: Vec<ObserverOutput> =
+        sample_indices.iter().map(|&i| result.outputs[i]).collect();
     classify_observer_outputs(&fields, width, height, n_dims, &sampled_obs, &sampled_out)
 }
 
@@ -909,16 +913,33 @@ fn jit_grad0_mag2_not_overclaimed_if_approximate() {
         let mag2_class = batch.mag2_shader_order.classification;
 
         if mag2_class != OutputClassification::ExactDeterministicCandidate {
-            let guidance =
-                include_str!("../../../docs/workshop/mapping_current_guidance.md");
-            let plan = include_str!("../../../docs/accumulator_op_v2_production_plan.md");
+            let design = include_str!("../../../docs/design_0_0_8_0.md");
+            let invariants = include_str!("../../../docs/invariants.md");
+            let track =
+                include_str!("../../../docs/design_0_0_8_0_consumer_pulled_production_track.md");
             assert!(
-                guidance.contains("approximate") || guidance.contains("diagnostic"),
-                "mapping guidance must not overclaim mag2 exactness when approximate"
+                !OBSERVER_WGSL.contains("sqrt("),
+                "mag2 observer path must not use native sqrt when classified approximate"
             );
             assert!(
-                plan.contains("approximate") || plan.contains("diagnostic"),
-                "production plan must not overclaim mag2 exactness when approximate"
+                OBSERVER_WGSL.contains("out.mag2 = dx * dx + dy * dy;"),
+                "observer shader must expose squared magnitude as mag2, not magnitude"
+            );
+            assert!(
+                design.contains("exact claims carry CPU-oracle bit-exact parity"),
+                "active 0.0.8 constitution must retain exact-claim parity discipline"
+            );
+            assert!(
+                invariants.contains("ApproximateJitOnly")
+                    && invariants.contains("mag2")
+                    && invariants.contains("Exact pre-sqrt mag2 requires pinned construction"),
+                "active invariants must keep unpinned mag2 out of exact-authoritative claims"
+            );
+            assert!(
+                track.contains("fixed-point `dx/dy`")
+                    && track.contains("exact pre-sqrt mag2")
+                    && track.contains("Raw f32"),
+                "active production track must keep exact magnitude tied to pinned fixed-point mag2"
             );
             assert_eq!(
                 mag2_class,
