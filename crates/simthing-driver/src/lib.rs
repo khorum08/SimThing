@@ -7,20 +7,21 @@ pub mod arena_registry;
 pub mod atlas_0080_0;
 pub mod bench_limits;
 pub mod child_share_eml;
+pub mod compound_field_0080_2;
 pub mod control_0080_0;
 pub mod control_0080_1;
 pub mod default_schedule_0080_0;
 pub mod default_schedule_0080_1;
 pub mod demo_0080_0;
 pub mod demo_0080_1;
-pub mod compound_field_0080_2;
 pub mod disruption_decay_0080_2;
+pub mod dress_rehearsal_r1_disruption_heatmap;
 pub mod econ_scale_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
-pub mod gradient_follow_0080_2;
 pub mod gameplay_0080_0;
 pub mod gameplay_0080_1;
+pub mod gradient_follow_0080_2;
 pub mod install;
 pub mod production_path_0080_0;
 pub mod production_path_0080_1;
@@ -85,14 +86,34 @@ pub use atlas_0080_0::{
 };
 pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};
+pub use compound_field_0080_2::{
+    replay_compound_field_0080_2, run_compound_field_0080_2, CompoundField0082ForbiddenRequests,
+    CompoundField0082Gate, CompoundField0082Input, CompoundField0082NodePos,
+    CompoundField0082Report, CompoundField0082Surface, CompoundField0082TickSnapshot,
+    CompoundField0082Weights, BASE_DESIRABILITY, COMPOUND_FIELD_0080_2_ID,
+    COMPOUND_FIELD_0080_2_SCENARIO, COMPOUND_FIELD_0080_2_STATUS_PASS, DESIRABILITY_MAX,
+};
+pub use control_0080_0::{
+    admit_control_0080_0, replay_admit_control_0080_0, Control0080AdmissionInput,
+    Control0080AdmissionReport, Control0080Command, Control0080CommandBatch,
+    Control0080ForbiddenRequests, Control0080Gate, Control0080RejectedCommand, Control0080Surface,
+    CONTROL_0080_0_ID, CONTROL_0080_0_SCENARIO, CONTROL_0080_0_STATUS_PASS,
+};
+pub use control_0080_1::{
+    admit_control_0080_1, replay_admit_control_0080_1, Control0081AdmissionInput,
+    Control0081AdmissionReport, Control0081BoundedConfig, Control0081Command,
+    Control0081CommandBatch, Control0081CommandTranscriptRow, Control0081ForbiddenRequests,
+    Control0081Gate, Control0081RejectedCommand, Control0081Surface, CONTROL_0080_1_ID,
+    CONTROL_0080_1_SCENARIO, CONTROL_0080_1_STATUS_PASS,
+};
 pub use default_schedule_0080_0::{
-    replay_default_schedule_0080_0, run_default_schedule_0080_0, DefaultSchedule0080ForbiddenRequests,
-    DefaultSchedule0080Gate, DefaultSchedule0080Input, DefaultSchedule0080Location,
-    DefaultSchedule0080PirateState, DefaultSchedule0080PirateStepReport,
-    DefaultSchedule0080RunReport, DefaultSchedule0080Step, DefaultSchedule0080StepReport,
-    DefaultSchedule0080Surface,
-    DEFAULT_SCHEDULE_0080_0_ID, DEFAULT_SCHEDULE_0080_0_SCENARIO,
-    DEFAULT_SCHEDULE_0080_0_STATUS_1A_PASS, DEFAULT_SCHEDULE_0080_0_STATUS_1B_PASS,
+    replay_default_schedule_0080_0, run_default_schedule_0080_0,
+    DefaultSchedule0080ForbiddenRequests, DefaultSchedule0080Gate, DefaultSchedule0080Input,
+    DefaultSchedule0080Location, DefaultSchedule0080PirateState,
+    DefaultSchedule0080PirateStepReport, DefaultSchedule0080RunReport, DefaultSchedule0080Step,
+    DefaultSchedule0080StepReport, DefaultSchedule0080Surface, DEFAULT_SCHEDULE_0080_0_ID,
+    DEFAULT_SCHEDULE_0080_0_SCENARIO, DEFAULT_SCHEDULE_0080_0_STATUS_1A_PASS,
+    DEFAULT_SCHEDULE_0080_0_STATUS_1B_PASS,
 };
 pub use default_schedule_0080_1::{
     replay_default_schedule_0080_1, run_default_schedule_0080_1,
@@ -101,6 +122,64 @@ pub use default_schedule_0080_1::{
     DefaultSchedule0081RunReport, DefaultSchedule0081ShipFaction, DefaultSchedule0081Step,
     DefaultSchedule0081StepReport, DefaultSchedule0081Surface, DEFAULT_SCHEDULE_0080_1_ID,
     DEFAULT_SCHEDULE_0080_1_SCENARIO, DEFAULT_SCHEDULE_0080_1_STATUS_PASS,
+};
+pub use demo_0080_0::{
+    canonical_control_input, replay_demo_0080_0, run_demo_0080_0, Demo0080ForbiddenRequests,
+    Demo0080Gate, Demo0080Input, Demo0080MovementDay, Demo0080MovementRecord, Demo0080Report,
+    Demo0080Surface, DEMO_0080_0_ID, DEMO_0080_0_SCENARIO, DEMO_0080_0_STATUS_PASS,
+};
+pub use demo_0080_1::{
+    canonical_control_input_0080_1, replay_demo_0080_1, run_demo_0080_1, Demo0081CommandRow,
+    Demo0081ForbiddenRequests, Demo0081Gate, Demo0081Input, Demo0081MovementRow, Demo0081Report,
+    Demo0081Surface, DEMO_0080_1_ID, DEMO_0080_1_SCENARIO, DEMO_0080_1_STATUS_PASS,
+};
+pub use disruption_decay_0080_2::{
+    replay_disruption_decay_0080_2, run_disruption_decay_0080_2, DisruptionDecay0082DecayWeights,
+    DisruptionDecay0082ForbiddenRequests, DisruptionDecay0082Gate, DisruptionDecay0082Input,
+    DisruptionDecay0082Presence, DisruptionDecay0082Report, DisruptionDecay0082RetentionFactor,
+    DisruptionDecay0082Row, DisruptionDecay0082Surface, DISRUPTION_DECAY_0080_2_ID,
+    DISRUPTION_DECAY_0080_2_SCENARIO, DISRUPTION_DECAY_0080_2_STATUS_PASS, DISRUPTION_MAX,
+    DISRUPTION_SCALE,
+};
+pub use dress_rehearsal_r1_disruption_heatmap::{
+    bounded_feedback_next, cell_index as dress_rehearsal_r1_cell_index,
+    cpu_oracle_dress_rehearsal_r1_disruption_heatmap, render_dress_rehearsal_r1_artifact,
+    replay_dress_rehearsal_r1_disruption_heatmap, run_dress_rehearsal_r1_disruption_heatmap,
+    DressRehearsalR1Artifact, DressRehearsalR1ArtifactRow, DressRehearsalR1CellInput,
+    DressRehearsalR1CellInputEntry, DressRehearsalR1Channel, DressRehearsalR1DiffusionRow,
+    DressRehearsalR1ForbiddenRequests, DressRehearsalR1Gate, DressRehearsalR1GridCell,
+    DressRehearsalR1Hotspot, DressRehearsalR1Input, DressRehearsalR1OccupantContribution,
+    DressRehearsalR1OccupantKind, DressRehearsalR1Oracle, DressRehearsalR1Owner,
+    DressRehearsalR1RecurrenceRow, DressRehearsalR1Report, DressRehearsalR1Scenario,
+    DressRehearsalR1Summary, DressRehearsalR1Surface, CEILING, DECAY, DISRUPTION_COL,
+    DRESS_REHEARSAL_R1_DISRUPTION_HEATMAP_ID, DRESS_REHEARSAL_R1_DISRUPTION_HEATMAP_STATUS_PASS,
+    DRESS_REHEARSAL_R1_SCENARIO, FLOOR, GAIN, GALAXY_CELL_COUNT, GALAXY_SIDE, HOTSPOT_COUNT,
+    H_WEIGHT, LOCATION_STATUS_COL, PATROL_SUPPRESS, PIRATE_EMIT, SYSTEM_COUNT,
+};
+pub use econ_scale_0080_0::{
+    replay_econ_scale_0080_0, run_econ_scale_0080_0, EconScale0080ClearingInput,
+    EconScale0080ClearingReport, EconScale0080Faction, EconScale0080FactionIndex,
+    EconScale0080ForbiddenRequests, EconScale0080Gate, EconScale0080Input,
+    EconScale0080Participant, EconScale0080RunReport, EconScale0080Scenario,
+    EconScale0080StarsystemEconomy, EconScale0080Surface, ECON_SCALE_0080_0_DEFAULT_SEED,
+    ECON_SCALE_0080_0_FACTION_COUNT, ECON_SCALE_0080_0_ID,
+    ECON_SCALE_0080_0_MAX_PARTICIPANTS_PER_STARSYSTEM, ECON_SCALE_0080_0_SCENARIO,
+    ECON_SCALE_0080_0_STATUS_PASS,
+};
+pub use field_scheduler::{
+    count_cadence_due_ticks, execute_scheduled_regions_with,
+    execute_single_scheduled_stencil_region, visit_scheduled_regions, DirtyRegionState,
+    FieldCadence, FieldDispatchDecision, FieldDispatchReason, FieldDispatchSchedule,
+    FieldGridDescriptor, FieldId, FieldRegionId, FieldRegionRegistration, FieldScheduleState,
+    FieldScheduler, FieldSchedulerError, FieldSchedulerReport, ScheduledRegionsExecutionSummary,
+    ScheduledSingleStencilExecution, ScheduledStencilExecutionError,
+};
+pub use first_slice_mapping_runtime::{
+    compiled_cadence_to_field_cadence, compiled_stencil_to_gpu_config, estimate_first_slice_budget,
+    FirstSliceCommitmentReport, FirstSliceMappingError, FirstSliceMappingReport,
+    FirstSliceMappingSession, FirstSliceReadinessReport, FirstSliceResidencyReport,
+    FirstSliceResidencyStatus, FirstSliceSeed, FirstSliceSummaryReport, FirstSliceSummaryStatus,
+    FirstSliceTickOptions,
 };
 pub use gameplay_0080_0::{
     export_gameplay_0080_text, observe_gameplay_0080_0, replay_observe_gameplay_0080_0,
@@ -116,68 +195,6 @@ pub use gameplay_0080_1::{
     Gameplay0081StarmapShape, Gameplay0081Summary, Gameplay0081Surface, Gameplay0081Transcript,
     GAMEPLAY_0080_1_ID, GAMEPLAY_0080_1_SCENARIO, GAMEPLAY_0080_1_STATUS_PASS,
 };
-pub use control_0080_0::{
-    admit_control_0080_0, replay_admit_control_0080_0, Control0080AdmissionInput,
-    Control0080AdmissionReport, Control0080Command, Control0080CommandBatch, Control0080ForbiddenRequests,
-    Control0080Gate, Control0080RejectedCommand, Control0080Surface, CONTROL_0080_0_ID,
-    CONTROL_0080_0_SCENARIO, CONTROL_0080_0_STATUS_PASS,
-};
-pub use control_0080_1::{
-    admit_control_0080_1, replay_admit_control_0080_1, Control0081AdmissionInput,
-    Control0081AdmissionReport, Control0081BoundedConfig, Control0081Command,
-    Control0081CommandBatch, Control0081CommandTranscriptRow, Control0081ForbiddenRequests,
-    Control0081Gate, Control0081RejectedCommand, Control0081Surface, CONTROL_0080_1_ID,
-    CONTROL_0080_1_SCENARIO, CONTROL_0080_1_STATUS_PASS,
-};
-pub use demo_0080_0::{
-    canonical_control_input, replay_demo_0080_0, run_demo_0080_0, Demo0080ForbiddenRequests,
-    Demo0080Gate, Demo0080Input, Demo0080MovementDay, Demo0080MovementRecord, Demo0080Report,
-    Demo0080Surface, DEMO_0080_0_ID, DEMO_0080_0_SCENARIO, DEMO_0080_0_STATUS_PASS,
-};
-pub use demo_0080_1::{
-    canonical_control_input_0080_1, replay_demo_0080_1, run_demo_0080_1, Demo0081CommandRow,
-    Demo0081ForbiddenRequests, Demo0081Gate, Demo0081Input, Demo0081MovementRow, Demo0081Report,
-    Demo0081Surface, DEMO_0080_1_ID, DEMO_0080_1_SCENARIO, DEMO_0080_1_STATUS_PASS,
-};
-pub use compound_field_0080_2::{
-    replay_compound_field_0080_2, run_compound_field_0080_2, BASE_DESIRABILITY,
-    CompoundField0082ForbiddenRequests, CompoundField0082Gate, CompoundField0082Input,
-    CompoundField0082NodePos, CompoundField0082Report, CompoundField0082Surface,
-    CompoundField0082TickSnapshot, CompoundField0082Weights, COMPOUND_FIELD_0080_2_ID,
-    COMPOUND_FIELD_0080_2_SCENARIO, COMPOUND_FIELD_0080_2_STATUS_PASS, DESIRABILITY_MAX,
-};
-pub use disruption_decay_0080_2::{
-    replay_disruption_decay_0080_2, run_disruption_decay_0080_2, DisruptionDecay0082DecayWeights,
-    DisruptionDecay0082ForbiddenRequests, DisruptionDecay0082Gate, DisruptionDecay0082Input,
-    DisruptionDecay0082Presence, DisruptionDecay0082RetentionFactor, DisruptionDecay0082Report,
-    DisruptionDecay0082Row, DisruptionDecay0082Surface, DISRUPTION_DECAY_0080_2_ID,
-    DISRUPTION_DECAY_0080_2_SCENARIO, DISRUPTION_DECAY_0080_2_STATUS_PASS, DISRUPTION_MAX,
-    DISRUPTION_SCALE,
-};
-pub use econ_scale_0080_0::{
-    replay_econ_scale_0080_0, run_econ_scale_0080_0, EconScale0080ClearingInput,
-    EconScale0080ClearingReport, EconScale0080Faction, EconScale0080FactionIndex,
-    EconScale0080ForbiddenRequests, EconScale0080Gate, EconScale0080Input, EconScale0080Participant,
-    EconScale0080RunReport, EconScale0080Scenario, EconScale0080StarsystemEconomy,
-    EconScale0080Surface, ECON_SCALE_0080_0_DEFAULT_SEED, ECON_SCALE_0080_0_FACTION_COUNT,
-    ECON_SCALE_0080_0_ID, ECON_SCALE_0080_0_MAX_PARTICIPANTS_PER_STARSYSTEM,
-    ECON_SCALE_0080_0_SCENARIO, ECON_SCALE_0080_0_STATUS_PASS,
-};
-pub use field_scheduler::{
-    count_cadence_due_ticks, execute_scheduled_regions_with, execute_single_scheduled_stencil_region,
-    visit_scheduled_regions, DirtyRegionState, FieldCadence, FieldDispatchDecision,
-    FieldDispatchReason, FieldDispatchSchedule, FieldGridDescriptor, FieldId, FieldRegionId,
-    FieldRegionRegistration, FieldScheduleState, FieldScheduler, FieldSchedulerError,
-    FieldSchedulerReport, ScheduledRegionsExecutionSummary, ScheduledSingleStencilExecution,
-    ScheduledStencilExecutionError,
-};
-pub use first_slice_mapping_runtime::{
-    compiled_cadence_to_field_cadence, compiled_stencil_to_gpu_config, estimate_first_slice_budget,
-    FirstSliceCommitmentReport, FirstSliceMappingError, FirstSliceMappingReport,
-    FirstSliceMappingSession, FirstSliceReadinessReport, FirstSliceResidencyReport,
-    FirstSliceResidencyStatus, FirstSliceSeed, FirstSliceSummaryReport, FirstSliceSummaryStatus,
-    FirstSliceTickOptions,
-};
 pub use gradient_follow_0080_2::{
     replay_gradient_follow_0080_2, run_gradient_follow_0080_2, GradientFollow0082ForbiddenRequests,
     GradientFollow0082Gate, GradientFollow0082Input, GradientFollow0082MoveRow,
@@ -192,16 +209,15 @@ pub use production_path_0080_0::{
     LocalPatrolEconomyScenario, ProductionPath0080ForbiddenRequests, ProductionPath0080Gate,
     ProductionPath0080Input, ProductionPath0080Report, ProductionPath0080Surface,
     PRODUCTION_PATH_0080_0_ALLOWED_ECONOMY_VALUES, PRODUCTION_PATH_0080_0_ID,
-    PRODUCTION_PATH_0080_0_SCENARIO, PRODUCTION_PATH_0080_0_STATUS_PASS,
-    SCENARIO_0080_0_GATE_ID,
+    PRODUCTION_PATH_0080_0_SCENARIO, PRODUCTION_PATH_0080_0_STATUS_PASS, SCENARIO_0080_0_GATE_ID,
 };
 pub use production_path_0080_1::{
-    replay_production_path_0080_1, run_production_path_0080_1,
-    ProductionPath0081ForbiddenRequests, ProductionPath0081Gate, ProductionPath0081Input,
-    ProductionPath0081OwnerOverlaySummary, ProductionPath0081OwnershipAggregationSummary,
-    ProductionPath0081Report, ProductionPath0081Scenario, ProductionPath0081SeadCompositeGapTerms,
-    ProductionPath0081Surface, PRODUCTION_PATH_0080_1_ID, PRODUCTION_PATH_0080_1_SCENARIO,
-    PRODUCTION_PATH_0080_1_STATUS_PASS, SCENARIO_0080_1_GATE_ID,
+    replay_production_path_0080_1, run_production_path_0080_1, ProductionPath0081ForbiddenRequests,
+    ProductionPath0081Gate, ProductionPath0081Input, ProductionPath0081OwnerOverlaySummary,
+    ProductionPath0081OwnershipAggregationSummary, ProductionPath0081Report,
+    ProductionPath0081Scenario, ProductionPath0081SeadCompositeGapTerms, ProductionPath0081Surface,
+    PRODUCTION_PATH_0080_1_ID, PRODUCTION_PATH_0080_1_SCENARIO, PRODUCTION_PATH_0080_1_STATUS_PASS,
+    SCENARIO_0080_1_GATE_ID,
 };
 pub use resource_economy_boundary_schedule::{
     BoundaryScheduleEntry, BoundaryScheduleKey, ResourceEconomyBoundaryScheduleReport,
