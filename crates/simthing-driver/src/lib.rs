@@ -21,6 +21,7 @@ pub mod dress_rehearsal_r3_capability_mask_down;
 pub mod dress_rehearsal_r4_sead_field_consumption;
 pub mod dress_rehearsal_r5_movement_reenroll;
 pub mod dress_rehearsal_r6_combat_hp_damage;
+pub mod dress_rehearsal_r6b_ship_cohort_reinforcement;
 pub mod econ_scale_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
@@ -220,6 +221,19 @@ pub use dress_rehearsal_r6_combat_hp_damage::{
     DressRehearsalR6Summary, DressRehearsalR6SurvivorRow, DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_ID,
     DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_STATUS_PASS, DRESS_REHEARSAL_R6_SCENARIO,
     FLEET_COHORT_NUM_SHIPS, FLEET_DAMAGE_PER_SHIP_PER_TICK, FLEET_HP_PER_SHIP,
+    DressRehearsalR6FleetCohortOverride,
+};
+pub use dress_rehearsal_r6b_ship_cohort_reinforcement::{
+    construction_threshold_emission, cpu_oracle_dress_rehearsal_r6b_ship_cohort_reinforcement,
+    fleet_cohort_overrides_from_report, replay_dress_rehearsal_r6b_ship_cohort_reinforcement,
+    run_dress_rehearsal_r6b_ship_cohort_reinforcement, run_r6_combat_with_r6b_cohorts,
+    DressRehearsalR6bBirthRow, DressRehearsalR6bConstructionRow, DressRehearsalR6bCohortRow,
+    DressRehearsalR6bFusionRow, DressRehearsalR6bInput, DressRehearsalR6bOracle,
+    DressRehearsalR6bOwner, DressRehearsalR6bReinforcementRow, DressRehearsalR6bReport,
+    DressRehearsalR6bSummary, DRESS_REHEARSAL_R6B_SCENARIO,
+    DRESS_REHEARSAL_R6B_SHIP_COHORT_REINFORCEMENT_ID,
+    DRESS_REHEARSAL_R6B_SHIP_COHORT_REINFORCEMENT_STATUS_PASS, R6B_FUSION_FIXTURE_CELL,
+    R6B_FUSION_LEFT_ID, R6B_FUSION_RIGHT_ID, SHIP_COST,
 };
 pub use econ_scale_0080_0::{
     replay_econ_scale_0080_0, run_econ_scale_0080_0, EconScale0080ClearingInput,

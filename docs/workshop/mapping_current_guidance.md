@@ -2,7 +2,7 @@
 
 Current scenario status:
 
-- `SCENARIO-0080-2` R6 corrected/pass as fleet-cohort adversarial Resource Flow combat with emission-band ship attrition; R7 closeout remains unopened.
+- `SCENARIO-0080-2` R6B implemented/pass as GPU-shaped threshold emission into fleet-cohort reinforcement/fusion; R7 closeout remains unopened.
 
 Authoritative decision:
 
