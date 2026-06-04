@@ -1,3 +1,11 @@
+# 2026-06-04 - SCENARIO-0080-2-R5-IMPL-0: movement + REENROLL + mobility substrate implemented/pass
+
+- **Implemented R5** as an opt-in/default-off fixture helper: `crates/simthing-driver/src/dress_rehearsal_r5_movement_reenroll.rs` + `crates/simthing-driver/tests/dress_rehearsal_r5_movement_reenroll.rs`. Consumes R1–R4 pinned contracts and emits `docs/tests/scenario_0080_2_r5_movement_reenroll_report.md`.
+- **Movement landed:** R4 `StepOpportunity` rows only → threshold/event → bounded `BoundaryRequest` → `compose_mobility_runtime0` (ALLOC/REENROLL/IDROUTE/OWNER) with flat-star cell arenas (`galactic-location-0`). Movers REENROLL from source cell to R4 candidate target; IDROUTE identity lane and OWNER faction preserved; structural parent unchanged.
+- **Fission landed:** first canonical starport with `production_generated > 0` spawns a new Fleet via `plan_mobility_alloc0` `Arrival` at the starport cell with owner overlay (not blocked).
+- **R4 bias carry-forward:** R5 consumes R4 decision rows as authority and does not re-derive movement from the R4 composite spatial bias; R7 must not attribute emergence to that tie-breaker.
+- **Verified:** R5 `17/0`; R4 `16/0`; R3 `13/0`; R2 `13/0`; R1 `34/0`; ATLAS STORE CPU `11/0`; ATLAS STORE-GPU `10/0`; `mobility_reenroll0_substrate` `16/0`; `mobility_runtime0_composition` `23/0`; `cargo check --workspace` PASS. CPU oracle parity true; artifact checksum `5308a1eb1b7ae5fb`. No R6/R7, direct movement command, external BoundaryRequest, CPU planner, semantic WGSL/new shader, global default schedule, default-on SimSession wiring, combat, hard currency, ClauseThing, UI, or invariant edit.
+
 # 2026-06-04 - SCENARIO-0080-2-R2-R4-OVERSIGHT-1: Opus drift check on fast-lane rungs — PROCEED
 
 - **Ruling (Opus, design authority): A — Proceed.** R2 (PR #514), R3 (PR #516), and R4 (PR #517) are acceptable fast-lane capability rungs. No Tier-2 crossing, no scope violation, no new gate, no acceptance-review PR. Continue to R5 implementation handoff.
