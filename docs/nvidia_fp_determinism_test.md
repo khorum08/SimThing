@@ -22,6 +22,24 @@ Known current state:
 - `ATLAS-BATCH-0-STORE-GPU` has RTX 4080 evidence and is bit-exact for integer owner/channel masked reductions.
 - The remaining priority gap is the f32 / `GpuVerified` tolerance-sensitive suite, because adapter rounding / FMA behavior can differ between Intel and NVIDIA.
 
+## Open Opus triage items discovered during NVIDIA sweep
+
+| Battery | Status | Item | Likely class | Evidence file | Relevant source/doc files | Why Opus must review |
+|---|---|---|---|---|---|---|
+| 07 | FAIL | `jit_grad0_mag2_not_overclaimed_if_approximate` | stale doc-hygiene / policy-string guard | `docs/tests/nvidia_fp_temp_07_robust_exact_jit.md` | `crates/simthing-driver/tests/phase_m_jit_grad0_spatial_observer.rs`; `docs/accumulator_op_v2_production_plan.md`; `docs/workshop/mapping_current_guidance.md`; active 0.0.8 docs | Test reads an archived/closed production plan as active policy. Shader path avoids `sqrt`; failure is not NVIDIA FP drift. Opus should decide whether to retarget this guard to active 0.0.8 guidance or replace it with code-level authority classification. |
+| 07 | FAIL | `jit_exec1_distinct_graphs_remain_separate_entries` | admission-ordering / harness guard | `docs/tests/nvidia_fp_temp_07_robust_exact_jit.md` | `crates/simthing-driver/tests/phase_m_jit_exec1_cohort_execution_fixture.rs` | Mixed/distinct cohort should reject before GPU execution helper is invoked. Failure is not native sqrt and not tolerance drift; Opus should decide whether the guard or admission ordering is wrong. |
+| 08 | PARTIAL | `phase_m_boundary_cadence_doctrine` | stale/missing doc-hygiene dependency | `docs/tests/nvidia_fp_temp_08_sead_boundary_scheduler.md` | `crates/simthing-driver/tests/phase_m_boundary_cadence_doctrine.rs`; missing `docs/workshop/workshop_current_state.md`; `docs/workshop/mapping_current_guidance.md` | Test cannot compile because it includes a missing workshop doc. Executed SEAD/scheduler tests passed on RTX; this block is not NVIDIA FP drift. Opus should decide whether to restore the missing doc, retarget to active 0.0.8 docs, or remove the doc-string guard. |
+
+### Current interpretation
+
+These open items should not block continued evidence collection for unrelated batteries. They should remain visible until Opus reviews them.
+
+- Battery 07 `jit_grad0`: not native `sqrt`; no evidence of NVIDIA FP drift. The shader path uses `mag2` and forbids `sqrt`; the failure is a stale active-policy check.
+- Battery 07 `jit_exec1`: not native `sqrt`; no evidence of NVIDIA FP drift. The failure is an admission/harness ordering issue where a mixed cohort reached the GPU helper.
+- Battery 08 `phase_m_boundary_cadence_doctrine`: not NVIDIA FP drift. The test binary is blocked by a missing documentation include.
+
+Do not mark the full NVIDIA sweep complete until these are either accepted as non-blocking by Opus or remediated in a separate handoff.
+
 ## 1. Hard verification gate
 
 Every result file for this temporary track must show:
