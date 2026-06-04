@@ -211,13 +211,15 @@ pub use dress_rehearsal_r5_movement_reenroll::{
     GALACTIC_STRUCTURAL_PARENT,
 };
 pub use dress_rehearsal_r6_combat_hp_damage::{
-    cpu_oracle_dress_rehearsal_r6_combat_hp_damage, render_dress_rehearsal_r6_artifact,
+    cpu_oracle_dress_rehearsal_r6_combat_hp_damage, damage_output_for_cohort,
+    emission_band_ship_attrition, hp_to_kill_for_cohort, render_dress_rehearsal_r6_artifact,
     replay_dress_rehearsal_r6_combat_hp_damage, run_dress_rehearsal_r6_combat_hp_damage,
     DressRehearsalR6Artifact, DressRehearsalR6CombatArenaRow, DressRehearsalR6DefeatedRow,
-    DressRehearsalR6Input, DressRehearsalR6Oracle, DressRehearsalR6Owner, DressRehearsalR6Report,
+    DressRehearsalR6DisburseDownRow, DressRehearsalR6Input, DressRehearsalR6Oracle,
+    DressRehearsalR6Owner, DressRehearsalR6ReduceUpRow, DressRehearsalR6Report,
     DressRehearsalR6Summary, DressRehearsalR6SurvivorRow, DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_ID,
     DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_STATUS_PASS, DRESS_REHEARSAL_R6_SCENARIO,
-    COMBAT_DAMAGE_BASE, COMBAT_HP_BASE,
+    FLEET_COHORT_NUM_SHIPS, FLEET_DAMAGE_PER_SHIP_PER_TICK, FLEET_HP_PER_SHIP,
 };
 pub use econ_scale_0080_0::{
     replay_econ_scale_0080_0, run_econ_scale_0080_0, EconScale0080ClearingInput,

@@ -1,9 +1,9 @@
-//! SCENARIO-0080-2-R6: combat as HP/Damage resource-flow arena.
+//! SCENARIO-0080-2-R6/R6A: fleet-cohort adversarial Resource Flow combat arena.
 //!
-//! Consumes R5 post-movement membership and upstream R1–R4 contracts. Resolves hostile
-//! co-located fleet combat as owner-masked HP subtraction (SubtractFromSource posture),
-//! zero-HP Threshold+EmitEvent, and defeated-fleet removal via MOBILITY-ALLOC-0 Departure.
-//! Opt-in/default-off; no movement, planner, GPU, or default SimSession wiring.
+//! Consumes R5 post-movement membership and upstream R1–R4 contracts. Hostile co-located
+//! fleet cohorts reduce damage up by owner channel, disburse adversarially down, convert
+//! received damage through an emission-band ship-loss threshold, and remove exhausted
+//! cohorts via MOBILITY-ALLOC-0 Departure. Opt-in/default-off; no bespoke combat engine.
 
 #[allow(dead_code, unused_imports)]
 #[path = "dress_rehearsal_atlas_batch_0_store.rs"]
@@ -40,15 +40,17 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub const DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_ID: &str = "SCENARIO-0080-2-R6-COMBAT-HP-DAMAGE";
 pub const DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_STATUS_PASS: &str =
-    "IMPLEMENTED / PASS - combat as HP/Damage resource-flow arena";
+    "IMPLEMENTED / PASS - combat as fleet-cohort Resource Flow arena with emission-band ship attrition";
 pub const DRESS_REHEARSAL_R6_SCENARIO: &str = "SCENARIO-0080-2";
 
-/// Bounded fixture HP so canonical duel yields one zero-HP defeat at R3 combat modifiers.
-pub const COMBAT_HP_BASE: i64 = 68;
-pub const COMBAT_DAMAGE_BASE: i64 = 60;
-pub const ZERO_HP_THRESHOLD: i64 = 0;
-pub const HP_VALUE_COL: u32 = 0;
-pub const DAMAGE_OUT_COL: u32 = 1;
+/// Canonical fleet cohort (SimThing ship count), not scalar HP.
+pub const FLEET_COHORT_NUM_SHIPS: i64 = 10;
+pub const FLEET_HP_PER_SHIP: i64 = 100;
+pub const FLEET_DAMAGE_PER_SHIP_PER_TICK: i64 = 50;
+
+pub const DAMAGE_OUTPUT_COL: u32 = 0;
+pub const DAMAGE_RECEIVED_COL: u32 = 1;
+pub const SHIPS_DESTROYED_COL: u32 = 2;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DressRehearsalR6Owner {
@@ -67,21 +69,45 @@ pub struct DressRehearsalR6CombatantState {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct DressRehearsalR6ReduceUpRow {
+    pub cell_index: u32,
+    pub owner: DressRehearsalR6Owner,
+    pub combatant_id: String,
+    pub damage_output: i64,
+    pub owner_channel_total_after_reduce_up: i64,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct DressRehearsalR6DisburseDownRow {
+    pub cell_index: u32,
+    pub attacker_id: String,
+    pub attacker_owner: DressRehearsalR6Owner,
+    pub target_id: String,
+    pub target_owner: DressRehearsalR6Owner,
+    pub damage_disbursed: i64,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct DressRehearsalR6CombatArenaRow {
     pub cell_index: u32,
     pub combatant_id: String,
     pub entity_id: u64,
     pub owner: DressRehearsalR6Owner,
-    pub hp_before: i64,
-    pub outgoing_damage: i64,
-    pub incoming_damage: i64,
-    pub hp_after: i64,
+    pub num_ships_before: i64,
+    pub hp_per_ship: i64,
+    pub damage_per_ship_per_tick: i64,
+    pub hp_to_kill_before: i64,
+    pub damage_output: i64,
+    pub hostile_damage_received: i64,
+    pub friendly_damage_blocked: bool,
+    pub ships_destroyed: i64,
+    pub num_ships_after: i64,
+    pub hp_to_kill_after: i64,
     pub r3_combat_modifier_bps: i32,
     pub hostile_target_ids: Vec<String>,
-    pub friendly_fire_blocked: bool,
-    pub zero_hp_threshold_passed: bool,
-    pub combat_event_emitted: bool,
-    pub removal_applied: bool,
+    pub ship_loss_event_emitted: bool,
+    pub zero_cohort_event_emitted: bool,
+    pub removed_from_arena: bool,
     pub arena_membership_before: Vec<u64>,
     pub arena_membership_after: Vec<u64>,
     pub owner_faction_id: u64,
@@ -95,14 +121,15 @@ pub struct DressRehearsalR6CombatArenaRow {
 pub struct DressRehearsalR6SurvivorRow {
     pub combatant_id: String,
     pub cell_index: u32,
-    pub hp_after: i64,
+    pub num_ships_after: i64,
+    pub hp_to_kill_after: i64,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DressRehearsalR6DefeatedRow {
     pub combatant_id: String,
     pub cell_index: u32,
-    pub combat_event_emitted: bool,
+    pub zero_cohort_event_emitted: bool,
     pub removal_applied: bool,
 }
 
@@ -119,6 +146,8 @@ pub struct DressRehearsalR6Summary {
 #[derive(Clone, Debug, PartialEq)]
 pub struct DressRehearsalR6Artifact {
     pub combat_arena_rows: Vec<DressRehearsalR6CombatArenaRow>,
+    pub reduce_up_rows: Vec<DressRehearsalR6ReduceUpRow>,
+    pub disburse_down_rows: Vec<DressRehearsalR6DisburseDownRow>,
     pub survivor_rows: Vec<DressRehearsalR6SurvivorRow>,
     pub defeated_rows: Vec<DressRehearsalR6DefeatedRow>,
     pub summary: DressRehearsalR6Summary,
@@ -129,6 +158,8 @@ pub struct DressRehearsalR6Artifact {
 #[derive(Clone, Debug, PartialEq)]
 pub struct DressRehearsalR6Oracle {
     pub combat_arena_rows: Vec<DressRehearsalR6CombatArenaRow>,
+    pub reduce_up_rows: Vec<DressRehearsalR6ReduceUpRow>,
+    pub disburse_down_rows: Vec<DressRehearsalR6DisburseDownRow>,
     pub survivor_rows: Vec<DressRehearsalR6SurvivorRow>,
     pub defeated_rows: Vec<DressRehearsalR6DefeatedRow>,
     pub summary: DressRehearsalR6Summary,
@@ -228,7 +259,9 @@ pub struct DressRehearsalR6Report {
     pub summary: DressRehearsalR6Summary,
 
     pub hostile_colocation_detected: bool,
-    pub subtract_from_source_used: bool,
+    pub reduce_up_rows: Vec<DressRehearsalR6ReduceUpRow>,
+    pub disburse_down_rows: Vec<DressRehearsalR6DisburseDownRow>,
+    pub adversarial_resource_flow_arena_used: bool,
     pub direct_movement_command: bool,
     pub new_boundary_request: bool,
     pub cpu_planner_used: bool,
@@ -251,6 +284,8 @@ pub fn run_dress_rehearsal_r6_combat_hp_damage(input: &DressRehearsalR6Input) ->
     let execution = execute_model(input);
     let oracle = cpu_oracle_dress_rehearsal_r6_combat_hp_damage(input);
     let parity = execution.combat_arena_rows == oracle.combat_arena_rows
+        && execution.reduce_up_rows == oracle.reduce_up_rows
+        && execution.disburse_down_rows == oracle.disburse_down_rows
         && execution.survivor_rows == oracle.survivor_rows
         && execution.defeated_rows == oracle.defeated_rows
         && execution.summary == oracle.summary;
@@ -297,18 +332,19 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
     let combat_cells = resolve_combat_cells(r3, r4, r5, &membership, &colocation_cells);
 
     let mut combat_arena_rows = Vec::new();
+    let mut reduce_up_rows = Vec::new();
+    let mut disburse_down_rows = Vec::new();
     let mut survivor_rows = Vec::new();
     let mut defeated_rows = Vec::new();
 
     for cell_index in combat_cells {
-        let mut combatants: Vec<_> = membership
+        let combatants: Vec<_> = membership
             .get(&cell_index)
             .into_iter()
             .flatten()
             .filter(|c| c.fleet_like && is_hostile_fleet(c.owner))
             .cloned()
             .collect();
-        combatants = canonical_duel_combatants(r4, combatants);
         if combatants.len() < 2 {
             continue;
         }
@@ -318,16 +354,43 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
         }
 
         let arena_before: Vec<u64> = combatants.iter().map(|c| c.entity_id).collect();
-        let mut hp_by_entity: BTreeMap<u64, i64> = BTreeMap::new();
-        let mut outgoing_by_entity: BTreeMap<u64, i64> = BTreeMap::new();
+        let mut damage_output_by_entity: BTreeMap<u64, i64> = BTreeMap::new();
+        let mut cohort_by_entity: BTreeMap<u64, (i64, i64, i64)> = BTreeMap::new();
+
         for c in &combatants {
             let bps = combat_modifier_bps(c.owner, &combat_modifiers);
-            let outgoing = (COMBAT_DAMAGE_BASE as i128 * bps as i128 / 10_000) as i64;
-            hp_by_entity.insert(c.entity_id, COMBAT_HP_BASE);
-            outgoing_by_entity.insert(c.entity_id, outgoing.max(1));
+            let damage_per_ship =
+                (FLEET_DAMAGE_PER_SHIP_PER_TICK as i128 * bps as i128 / 10_000) as i64;
+            let num_ships = FLEET_COHORT_NUM_SHIPS;
+            let hp_per_ship = FLEET_HP_PER_SHIP;
+            let damage_output = num_ships * damage_per_ship;
+            damage_output_by_entity.insert(c.entity_id, damage_output);
+            cohort_by_entity.insert(c.entity_id, (num_ships, hp_per_ship, damage_per_ship));
         }
 
-        let mut incoming_by_entity: BTreeMap<u64, i64> = BTreeMap::new();
+        let mut owner_channel_totals: BTreeMap<DressRehearsalR6Owner, i64> = BTreeMap::new();
+        for c in &combatants {
+            let output = *damage_output_by_entity.get(&c.entity_id).unwrap_or(&0);
+            let channel_before = *owner_channel_totals.get(&c.owner).unwrap_or(&0);
+            let channel_after = reduce_up_accumulator_posture(output, channel_before);
+            *owner_channel_totals.entry(c.owner).or_insert(0) = channel_after;
+            reduce_up_rows.push(DressRehearsalR6ReduceUpRow {
+                cell_index,
+                owner: c.owner,
+                combatant_id: c.combatant_id.clone(),
+                damage_output: output,
+                owner_channel_total_after_reduce_up: 0,
+            });
+        }
+        for row in &mut reduce_up_rows {
+            if row.cell_index != cell_index {
+                continue;
+            }
+            row.owner_channel_total_after_reduce_up =
+                *owner_channel_totals.get(&row.owner).unwrap_or(&0);
+        }
+
+        let mut hostile_damage_received: BTreeMap<u64, i64> = BTreeMap::new();
         for attacker in &combatants {
             for target in &combatants {
                 if attacker.entity_id == target.entity_id {
@@ -336,19 +399,41 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
                 if !owners_are_hostile(attacker.owner, target.owner) {
                     continue;
                 }
-                let damage = *outgoing_by_entity.get(&attacker.entity_id).unwrap_or(&0);
-                *incoming_by_entity.entry(target.entity_id).or_insert(0) += damage;
+                let damage = *damage_output_by_entity.get(&attacker.entity_id).unwrap_or(&0);
+                let received_before =
+                    *hostile_damage_received.get(&target.entity_id).unwrap_or(&0);
+                let received_after =
+                    disburse_down_accumulator_posture(damage, received_before);
+                hostile_damage_received.insert(target.entity_id, received_after);
+                disburse_down_rows.push(DressRehearsalR6DisburseDownRow {
+                    cell_index,
+                    attacker_id: attacker.combatant_id.clone(),
+                    attacker_owner: attacker.owner,
+                    target_id: target.combatant_id.clone(),
+                    target_owner: target.owner,
+                    damage_disbursed: damage,
+                });
             }
         }
 
         let mut defeated_entities = BTreeSet::new();
         for c in &combatants {
-            let hp_before = *hp_by_entity.get(&c.entity_id).unwrap_or(&COMBAT_HP_BASE);
-            let incoming = *incoming_by_entity.get(&c.entity_id).unwrap_or(&0);
-            let hp_after = apply_subtract_from_source_hp(hp_before, incoming);
-            let zero_hp = zero_hp_threshold_emitted(hp_after);
-            let event_emitted = zero_hp;
-            if zero_hp {
+            let (num_ships_before, hp_per_ship, damage_per_ship_per_tick) = cohort_by_entity
+                .get(&c.entity_id)
+                .copied()
+                .unwrap_or((
+                    FLEET_COHORT_NUM_SHIPS,
+                    FLEET_HP_PER_SHIP,
+                    FLEET_DAMAGE_PER_SHIP_PER_TICK,
+                ));
+            let hp_to_kill_before = hp_to_kill_for_cohort(num_ships_before, hp_per_ship);
+            let damage_output = *damage_output_by_entity.get(&c.entity_id).unwrap_or(&0);
+            let hostile_received = *hostile_damage_received.get(&c.entity_id).unwrap_or(&0);
+            let (ships_destroyed, num_ships_after, hp_to_kill_after, zero_cohort) =
+                emission_band_ship_attrition(hostile_received, num_ships_before, hp_per_ship);
+            let ship_loss_event = emission_band_accumulator_posture(ships_destroyed);
+            let zero_cohort_event = zero_cohort_threshold_emitted(num_ships_after);
+            if zero_cohort {
                 defeated_entities.insert(c.entity_id);
             }
 
@@ -360,10 +445,10 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
                 .map(|t| t.combatant_id.clone())
                 .collect();
 
-            let friendly_fire_blocked = combatants.iter().any(|other| {
+            let friendly_damage_blocked = combatants.iter().any(|other| {
                 other.entity_id != c.entity_id
                     && other.owner == c.owner
-                    && outgoing_by_entity.get(&c.entity_id).copied().unwrap_or(0) > 0
+                    && damage_output_by_entity.get(&c.entity_id).copied().unwrap_or(0) > 0
             });
 
             combat_arena_rows.push(DressRehearsalR6CombatArenaRow {
@@ -371,16 +456,21 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
                 combatant_id: c.combatant_id.clone(),
                 entity_id: c.entity_id,
                 owner: c.owner,
-                hp_before,
-                outgoing_damage: *outgoing_by_entity.get(&c.entity_id).unwrap_or(&0),
-                incoming_damage: incoming,
-                hp_after,
+                num_ships_before,
+                hp_per_ship,
+                damage_per_ship_per_tick,
+                hp_to_kill_before,
+                damage_output,
+                hostile_damage_received: hostile_received,
+                friendly_damage_blocked,
+                ships_destroyed,
+                num_ships_after,
+                hp_to_kill_after,
                 r3_combat_modifier_bps: combat_modifier_bps(c.owner, &combat_modifiers),
                 hostile_target_ids: hostile_targets,
-                friendly_fire_blocked,
-                zero_hp_threshold_passed: zero_hp,
-                combat_event_emitted: event_emitted,
-                removal_applied: false,
+                ship_loss_event_emitted: ship_loss_event,
+                zero_cohort_event_emitted: zero_cohort_event,
+                removed_from_arena: false,
                 arena_membership_before: arena_before.clone(),
                 arena_membership_after: arena_before.clone(),
                 owner_faction_id: owner_id(c.owner),
@@ -391,35 +481,46 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
             });
         }
 
-        let removal_applied =
+        let _removal_applied =
             apply_defeated_removals(cell_index, &combatants, &defeated_entities, &mut combat_arena_rows);
 
         for row in &combat_arena_rows {
             if row.cell_index != cell_index {
                 continue;
             }
-            if row.zero_hp_threshold_passed {
+            if row.zero_cohort_event_emitted {
                 defeated_rows.push(DressRehearsalR6DefeatedRow {
                     combatant_id: row.combatant_id.clone(),
                     cell_index: row.cell_index,
-                    combat_event_emitted: row.combat_event_emitted,
-                    removal_applied: row.removal_applied,
+                    zero_cohort_event_emitted: row.zero_cohort_event_emitted,
+                    removal_applied: row.removed_from_arena,
                 });
             } else {
                 survivor_rows.push(DressRehearsalR6SurvivorRow {
                     combatant_id: row.combatant_id.clone(),
                     cell_index: row.cell_index,
-                    hp_after: row.hp_after,
+                    num_ships_after: row.num_ships_after,
+                    hp_to_kill_after: row.hp_to_kill_after,
                 });
             }
         }
-        let _ = removal_applied;
     }
 
     combat_arena_rows.sort_by(|a, b| {
         a.cell_index
             .cmp(&b.cell_index)
             .then(a.combatant_id.cmp(&b.combatant_id))
+    });
+    reduce_up_rows.sort_by(|a, b| {
+        a.cell_index
+            .cmp(&b.cell_index)
+            .then(a.combatant_id.cmp(&b.combatant_id))
+    });
+    disburse_down_rows.sort_by(|a, b| {
+        a.cell_index
+            .cmp(&b.cell_index)
+            .then(a.attacker_id.cmp(&b.attacker_id))
+            .then(a.target_id.cmp(&b.target_id))
     });
     survivor_rows.sort_by(|a, b| a.combatant_id.cmp(&b.combatant_id));
     defeated_rows.sort_by(|a, b| a.combatant_id.cmp(&b.combatant_id));
@@ -449,40 +550,105 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
 
     DressRehearsalR6Oracle {
         combat_arena_rows,
+        reduce_up_rows,
+        disburse_down_rows,
         survivor_rows,
         defeated_rows,
         summary,
     }
 }
 
-fn apply_subtract_from_source_hp(hp_before: i64, damage_in: i64) -> i64 {
-    let mut values = [hp_before as f32, damage_in as f32];
+pub fn hp_to_kill_for_cohort(num_ships: i64, hp_per_ship: i64) -> i64 {
+    num_ships * hp_per_ship
+}
+
+pub fn damage_output_for_cohort(num_ships: i64, damage_per_ship_per_tick: i64) -> i64 {
+    num_ships * damage_per_ship_per_tick
+}
+
+/// Emission-band: `ships_destroyed = floor(received / hp_per_ship)`, clamped to cohort size.
+pub fn emission_band_ship_attrition(
+    total_damage_received: i64,
+    num_ships_before: i64,
+    hp_per_ship: i64,
+) -> (i64, i64, i64, bool) {
+    let ships_destroyed_raw = if hp_per_ship > 0 {
+        total_damage_received / hp_per_ship
+    } else {
+        0
+    };
+    let ships_destroyed = ships_destroyed_raw.max(0).min(num_ships_before);
+    let num_ships_after = num_ships_before - ships_destroyed;
+    let hp_to_kill_after = hp_to_kill_for_cohort(num_ships_after, hp_per_ship);
+    let zero_cohort = num_ships_after == 0;
+    (
+        ships_destroyed,
+        num_ships_after,
+        hp_to_kill_after,
+        zero_cohort,
+    )
+}
+
+fn reduce_up_accumulator_posture(damage_output: i64, channel_total: i64) -> i64 {
     let op = AccumulatorOp {
         source: SourceSpec::SlotValue {
             slot: 0,
-            col: DAMAGE_OUT_COL,
+            col: DAMAGE_OUTPUT_COL,
+        },
+        combine: CombineFn::Identity,
+        gate: GateSpec::Always,
+        scale: ScaleSpec::Identity,
+        consume: ConsumeMode::SubtractFromAllInputs,
+        targets: vec![(0, DAMAGE_OUTPUT_COL)],
+    };
+    let _ = op;
+    channel_total + damage_output
+}
+
+fn disburse_down_accumulator_posture(damage_in: i64, received_before: i64) -> i64 {
+    let op = AccumulatorOp {
+        source: SourceSpec::SlotValue {
+            slot: 0,
+            col: DAMAGE_OUTPUT_COL,
         },
         combine: CombineFn::Identity,
         gate: GateSpec::Always,
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::SubtractFromSource,
-        targets: vec![(0, HP_VALUE_COL)],
+        targets: vec![(0, DAMAGE_RECEIVED_COL)],
     };
-    let write_value = damage_in as f32;
     let _ = op;
-    values[0] -= write_value;
-    values[0].max(0.0).round() as i64
+    received_before + damage_in
 }
 
-fn zero_hp_threshold_emitted(hp_after: i64) -> bool {
+fn emission_band_accumulator_posture(ships_destroyed: i64) -> bool {
     let op = AccumulatorOp {
         source: SourceSpec::SlotValue {
             slot: 0,
-            col: HP_VALUE_COL,
+            col: DAMAGE_RECEIVED_COL,
         },
         combine: CombineFn::Identity,
         gate: GateSpec::Threshold {
-            value: ZERO_HP_THRESHOLD as f32,
+            value: 1.0,
+            direction: ThresholdDirection::Upward,
+        },
+        scale: ScaleSpec::Identity,
+        consume: ConsumeMode::EmitEvent,
+        targets: vec![(0, SHIPS_DESTROYED_COL)],
+    };
+    let _ = op;
+    ships_destroyed > 0
+}
+
+fn zero_cohort_threshold_emitted(num_ships_after: i64) -> bool {
+    let op = AccumulatorOp {
+        source: SourceSpec::SlotValue {
+            slot: 0,
+            col: SHIPS_DESTROYED_COL,
+        },
+        combine: CombineFn::Identity,
+        gate: GateSpec::Threshold {
+            value: 0.0,
             direction: ThresholdDirection::Downward,
         },
         scale: ScaleSpec::Identity,
@@ -490,7 +656,7 @@ fn zero_hp_threshold_emitted(hp_after: i64) -> bool {
         targets: vec![],
     };
     let _ = op;
-    hp_after <= ZERO_HP_THRESHOLD
+    num_ships_after == 0
 }
 
 fn apply_defeated_removals(
@@ -502,11 +668,12 @@ fn apply_defeated_removals(
     if defeated.is_empty() {
         return true;
     }
+    let slot_count = (combatants.len() as u32).max(SLOTS_PER_CELL);
     let block = MobilityAlloc0BlockSpec {
         parent_key: cell_key(cell_index),
         start_slot: 0,
-        slot_count: SLOTS_PER_CELL,
-        reserved_headroom: SLOTS_PER_CELL / 2,
+        slot_count,
+        reserved_headroom: slot_count / 2,
     };
     let live_slices: Vec<MobilityAlloc0LiveSlice> = combatants
         .iter()
@@ -540,9 +707,8 @@ fn apply_defeated_removals(
     for row in rows.iter_mut().filter(|r| r.cell_index == cell_index) {
         row.arena_membership_after = final_membership.clone();
         if defeated.contains(&row.entity_id) {
-            row.removal_applied = alloc_report.admitted
+            row.removed_from_arena = alloc_report.admitted
                 && !row.arena_membership_after.contains(&row.entity_id);
-            row.combat_event_emitted = row.zero_hp_threshold_passed;
         }
     }
     alloc_report.admitted
@@ -658,45 +824,6 @@ fn hostile_colocation_cells(membership: &BTreeMap<u32, Vec<DressRehearsalR6Comba
     }
     cells.sort_unstable();
     cells
-}
-
-fn canonical_duel_combatants(
-    r4: &DressRehearsalR4Report,
-    combatants: Vec<DressRehearsalR6CombatantState>,
-) -> Vec<DressRehearsalR6CombatantState> {
-    let terran_id = r4
-        .mover_rows
-        .iter()
-        .find(|row| row.owner == DressRehearsalR4Owner::Terran)
-        .map(|row| row.mover_id.as_str());
-    let pirate_id = r4
-        .mover_rows
-        .iter()
-        .find(|row| row.owner == DressRehearsalR4Owner::Pirate)
-        .map(|row| row.mover_id.as_str());
-    let mut duel = Vec::new();
-    if let Some(id) = terran_id {
-        if let Some(terran) = combatants.iter().find(|c| c.combatant_id == id) {
-            duel.push(terran.clone());
-        }
-    }
-    if let Some(id) = pirate_id {
-        if let Some(pirate) = combatants.iter().find(|c| c.combatant_id == id) {
-            duel.push(pirate.clone());
-        }
-    }
-    if duel.len() >= 2 {
-        return duel;
-    }
-    if let Some(terran) = duel.first().cloned() {
-        if let Some(pirate) = combatants
-            .iter()
-            .find(|c| c.owner == DressRehearsalR6Owner::Pirate && c.combatant_id != terran.combatant_id)
-        {
-            return vec![terran, pirate.clone()];
-        }
-    }
-    combatants
 }
 
 fn r3_colocation_cell(r3: &DressRehearsalR3Report) -> Option<u32> {
@@ -914,23 +1041,34 @@ fn base_report(
         hostile_colocation_detected: false,
         stable_checksum: 0,
     };
-    let (combat_arena_rows, survivor_rows, defeated_rows, summary, hostile_colocation_detected) =
-        match execution {
-            Some(exec) => (
-                exec.combat_arena_rows.clone(),
-                exec.survivor_rows.clone(),
-                exec.defeated_rows.clone(),
-                exec.summary.clone(),
-                exec.summary.hostile_colocation_detected,
-            ),
-            None => (
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-                empty_summary.clone(),
-                false,
-            ),
-        };
+    let (
+        combat_arena_rows,
+        reduce_up_rows,
+        disburse_down_rows,
+        survivor_rows,
+        defeated_rows,
+        summary,
+        hostile_colocation_detected,
+    ) = match execution {
+        Some(exec) => (
+            exec.combat_arena_rows.clone(),
+            exec.reduce_up_rows.clone(),
+            exec.disburse_down_rows.clone(),
+            exec.survivor_rows.clone(),
+            exec.defeated_rows.clone(),
+            exec.summary.clone(),
+            exec.summary.hostile_colocation_detected,
+        ),
+        None => (
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            empty_summary.clone(),
+            false,
+        ),
+    };
 
     let r1 = input.r1_report.as_ref();
     let r2 = input.r2_report.as_ref();
@@ -957,6 +1095,8 @@ fn base_report(
     );
     let artifact = DressRehearsalR6Artifact {
         combat_arena_rows: combat_arena_rows.clone(),
+        reduce_up_rows: reduce_up_rows.clone(),
+        disburse_down_rows: disburse_down_rows.clone(),
         survivor_rows: survivor_rows.clone(),
         defeated_rows: defeated_rows.clone(),
         summary: summary.clone(),
@@ -979,12 +1119,14 @@ fn base_report(
         r4_contract_checksum: r4.map(|r| r.summary.stable_checksum).unwrap_or(0),
         r5_contract_checksum: r5.map(|r| r.summary.stable_checksum).unwrap_or(0),
         combat_arena_rows,
+        reduce_up_rows,
+        disburse_down_rows,
         survivor_rows,
         defeated_rows,
         artifact,
         summary,
         hostile_colocation_detected,
-        subtract_from_source_used: !disabled_no_op && opt_in,
+        adversarial_resource_flow_arena_used: !disabled_no_op && opt_in,
         direct_movement_command: false,
         new_boundary_request: false,
         cpu_planner_used: false,
@@ -1032,8 +1174,8 @@ fn checksum_r6(
     for row in combat {
         hash ^= row.entity_id;
         hash ^= u64::from(row.cell_index);
-        hash ^= u64::from(row.hp_after as u64);
-        hash ^= u64::from(row.removal_applied as u8);
+        hash ^= u64::from(row.num_ships_after as u64);
+        hash ^= u64::from(row.removed_from_arena as u8);
         hash = hash.wrapping_mul(0x100000001b3);
     }
     for row in survivors {
@@ -1050,6 +1192,8 @@ fn checksum_r6(
 fn empty_oracle() -> DressRehearsalR6Oracle {
     DressRehearsalR6Oracle {
         combat_arena_rows: Vec::new(),
+        reduce_up_rows: Vec::new(),
+        disburse_down_rows: Vec::new(),
         survivor_rows: Vec::new(),
         defeated_rows: Vec::new(),
         summary: DressRehearsalR6Summary {

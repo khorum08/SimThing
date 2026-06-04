@@ -1,16 +1,19 @@
-# SCENARIO-0080-2-R6-IMPL-0 — Combat HP/Damage Report
+# SCENARIO-0080-2-R6A-IMPL-0 — Fleet-Cohort Resource Flow Combat Report
 
 **Verdict:** PASS  
 **Date:** 2026-06-04  
-**Gate:** R6 — Combat as HP/Damage resource-flow arena  
-**Implementation:** SCENARIO-0080-2-R6-COMBAT-HP-DAMAGE
+**Gate:** R6 / R6A — Combat as fleet-cohort adversarial Resource Flow arena  
+**Implementation:** SCENARIO-0080-2-R6-COMBAT-HP-DAMAGE (R6A corrective pass)
+
+## R6A Correction Note
+
+PR #520 implemented scalar `COMBAT_HP_BASE` subtraction and zero-scalar-HP removal. R6A replaces that with **fleet SimThing cohorts** (10 ships × 100 HP/ship × 50 damage/ship/tick) flowing through reduce-up / hostile disburse-down / emission-band ship attrition. Removal occurs only when `num_ships_after == 0`.
 
 ## Files Touched
 
 - `crates/simthing-driver/src/dress_rehearsal_r6_combat_hp_damage.rs`
 - `crates/simthing-driver/tests/dress_rehearsal_r6_combat_hp_damage.rs`
 - `crates/simthing-driver/src/lib.rs`
-- `crates/simthing-driver/src/dress_rehearsal_r5_movement_reenroll.rs` (`cell_key`, `entity_id_for_mover` exported)
 - `docs/tests/scenario_0080_2_r6_combat_hp_damage_report.md`
 - `docs/design_0_0_8_0_consumer_pulled_production_track.md`
 - `docs/worklog.md`
@@ -18,7 +21,7 @@
 
 ## Scope Confirmation
 
-R6 only. Opt-in/default-off fixture over the single galactic tier. Consumes implemented/pass R1–R5 contracts (checksums pinned). Hostile fleet co-location is resolved at the R3 `galactic-colocation-owner-mask` cell using R5 post-move membership plus a bounded fixture that enrolls the canonical Terran mover when R4 committed `StepOpportunity` without a greedy target. Combat is owner-masked HP subtraction (`SubtractFromSource` posture), zero-HP `Threshold`+`EmitEvent`, and defeated-fleet removal via `plan_mobility_alloc0` `Departure`. No movement, new `BoundaryRequest`, CPU planner, semantic WGSL/new shader, hard currency, UI/realtime, R7 closeout, or invariant edit.
+R6/R6A only. Opt-in/default-off fixture over the single galactic tier. Consumes R1–R5 contracts (checksums pinned). Hostile co-location at R3 colocation cell `284` with bounded Terran enrollment when R4 `StepOpportunity` lacks greedy target. No bespoke combat engine, movement, BoundaryRequest, planner, WGSL, hard currency, R7 closeout, or invariant edit.
 
 ## Upstream Checksums
 
@@ -30,56 +33,54 @@ R6 only. Opt-in/default-off fixture over the single galactic tier. Consumes impl
 | R4 | `f0acbe2ccb98badb` |
 | R5 | `5308a1eb1b7ae5fb` |
 
-## Hostile Co-Location Evidence
+## Resource Flow Arena (cell 284)
 
-- R3 colocation evidence cell `284` (`galactic-colocation-owner-mask`) hosts pirate fleets post-R1; R6 fixture enrolls `terran-patrol-02` at that cell for combat membership when R4 `StepOpportunity` has no greedy target.
-- Canonical duel at cell `284`: `terran-patrol-02` vs `pirate-ship-01` (pirate-ship-00 post-move at `304` per R5).
-- `hostile_colocation_detected = true`; combat arena row count `2`.
+| stage | evidence |
+|---|---|
+| reduce-up | per-fleet `damage_output` accumulated into owner/faction channel totals |
+| owner mask | Terran damage disburses only to Pirate cohorts; Pirate only to Terran |
+| disburse-down | one row per attacker→hostile-target damage transfer |
+| emission band | `ships_destroyed = floor(received / hp_per_ship)`, clamped to `num_ships_before` |
+| zero cohort | `num_ships_after == 0` → Threshold+EmitEvent → MOBILITY-ALLOC-0 Departure |
 
-## HP/Damage Arena Summary
+## Cohort Table (canonical values)
+
+| field | value |
+|---|---:|
+| num_ships_before | 10 |
+| hp_per_ship | 100 |
+| damage_per_ship_per_tick | 50 (× R3 modifier bps) |
+| damage_output | `num_ships × damage_per_ship_per_tick` |
+| hp_to_kill_before | `num_ships × hp_per_ship` = 1000 |
+
+## Emission-Band Proof
+
+| case | total_damage_received | ships_destroyed | num_ships_after |
+|---|---:|---:|---:|
+| partial (below threshold) | 75 | 0 | 10 |
+| canonical | 500 | 5 | 5 |
+| overkill (clamped) | 1200 | 10 | 0 |
+
+## Fixture Combat Outcome (cell 284)
+
+- `terran-patrol-02`: receives aggregated hostile disburse-down from co-located Pirate fleets → `num_ships_after == 0` → removed from arena.
+- `pirate-ship-*` survivors: each receives Terran `damage_output` (500) → 5 ships destroyed, 5 remain enrolled.
+
+## Artifact Summary
 
 | field | value |
 |---|---:|
 | combat_cell_count | 1 |
-| combat_arena_row_count | 2 |
-| survivor_count | 1 |
-| defeated_count | 1 |
-| COMBAT_HP_BASE | 68 |
-| subtract_from_source_used | true |
-| stable checksum | `59ee8f6e7a3b379` |
+| combat_arena_row_count | 10 (1 Terran + 9 Pirate at cell) |
+| reduce_up_rows | 10 |
+| disburse_down_rows | 90 (9×10 hostile pairs at cell) |
+| stable checksum | `68b5c8e2e8f3b801` |
 | CPU oracle parity | true |
-
-## R3 Combat Modifier Consumption
-
-| owner | modifier bps | outgoing_damage (base 60) |
-|---|---:|---:|
-| Terran | 10500 | 63 |
-| Pirate | 11500 | 69 |
-
-## Friendly-Fire Mask
-
-- Hostile target lists exclude same-owner combatants.
-- Same-owner pairs set `friendly_fire_blocked` where applicable; damage applies only across Terran/Pirate owners.
-
-## Zero-HP Threshold / Event
-
-- `terran-patrol-02`: `hp_before=68`, `incoming_damage=69`, `hp_after=0`, `zero_hp_threshold_passed=true`, `combat_event_emitted=true`.
-
-## Removal / Deregistration
-
-- Defeated `terran-patrol-02` removed from cell `284` arena via MOBILITY-ALLOC-0 `Departure` (`removal_applied=true`).
-- Survivor `pirate-ship-01` remains in `arena_membership_after`.
-
-## Survivor / Identity / Owner Preservation
-
-- Survivor retains owner overlay and IDROUTE identity lane.
-- Combat event log preserves `combatant_id` and `identity_lane` for defeated row.
-- `structural_parent` remains `galactic-location-0` (no reparenting).
 
 ## Test Commands (exact)
 
 ```text
-cargo test -p simthing-driver --test dress_rehearsal_r6_combat_hp_damage  → 15 passed; 0 failed
+cargo test -p simthing-driver --test dress_rehearsal_r6_combat_hp_damage  → 25 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r5_movement_reenroll  → 17 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r4_sead_field_consumption  → 16 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r3_capability_mask_down  → 13 passed; 0 failed
@@ -92,16 +93,10 @@ cargo test -p simthing-spec --test mobility_runtime0_composition  → 23 passed;
 cargo check --workspace  → PASS (pre-existing warnings only)
 ```
 
-## Artifact Excerpt — Combat Arena (cell 284)
+Nearest Resource Flow substrate tests: `mobility_reenroll0_substrate`, `mobility_runtime0_composition` (AllocatorOp reduce/disburse posture referenced in fixture).
 
-| combatant_id | owner | hp_before | incoming | hp_after | zero_hp | event | removal |
-|---|---|---:|---:|---:|---|---|---|
-| pirate-ship-01 | Pirate | 68 | 63 | 5 | false | false | false |
-| terran-patrol-02 | Terran | 68 | 69 | 0 | true | true | true |
+## Identity / Owner / No-Reparent
 
-## Artifact Excerpt — Membership
-
-| combatant | arena_before | arena_after |
-|---|---|---|
-| terran-patrol-02 | enrolled @284 | absent (defeated) |
-| pirate-ship-01 | enrolled @284 | enrolled @284 |
+- IDROUTE identity lane and owner overlay preserved on survivors and in combat rows.
+- Structural parent remains `galactic-location-0`.
+- No new `BoundaryRequest` or direct movement command.
