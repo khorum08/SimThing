@@ -4,22 +4,60 @@ mod dress_rehearsal_atlas_batch_0_store_gpu;
 use std::sync::{Mutex, OnceLock};
 
 use dress_rehearsal_atlas_batch_0_store_gpu::{
-    build_store_gpu_ops, canonical_materialization, canonical_pirate_shared_galactic_cell,
-    canonical_store_oracle, encode_channel_f32, encode_owner_f32, entries_at_cell_index,
-    fixture_inputs_are_semantic_free, format_parity_report, gpu_tests_requested,
-    mask_scale_spec, register_constructed_co_location_occupants,
-    store_oracle_constructed_planet_patrol_pirate, store_oracle_from_materialization, ChannelKind,
-    LocationId, Owner, DRESS_REHEARSAL_ATLAS_BATCH_0_STORE_GPU_ID,
+    adapter_name_is_discrete_rtx_target, build_store_gpu_fixture_layout, build_store_gpu_ops,
+    canonical_materialization, canonical_pirate_shared_galactic_cell, canonical_store_oracle,
+    encode_channel_f32, encode_owner_f32, entries_at_cell_index, fixture_inputs_are_semantic_free,
+    format_parity_report, gpu_tests_requested, mask_scale_spec,
+    register_constructed_co_location_occupants, requested_adapter_substring,
+    store_oracle_constructed_planet_patrol_pirate, store_oracle_from_materialization,
+    validate_adapter_selection, ChannelKind, LocationId, Owner, StoreGpuAdapterSelection,
+    StoreGpuParityReport, DRESS_REHEARSAL_ATLAS_BATCH_0_STORE_GPU_ID,
     DRESS_REHEARSAL_ATLAS_BATCH_0_STORE_GPU_STATUS_PASS,
 };
-use dress_rehearsal_atlas_batch_0_store_gpu::{
-    build_store_gpu_fixture_layout, fill_values_buffer, run_ec_a3_gpu_suite, StoreGpuParityReport,
-};
+use dress_rehearsal_atlas_batch_0_store_gpu::{fill_values_buffer, run_ec_a3_gpu_suite};
 use simthing_core::ScaleSpec;
 use simthing_gpu::GpuContext;
+use wgpu::{Backends, Instance, InstanceDescriptor};
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
 static GPU_PARITY: OnceLock<StoreGpuParityReport> = OnceLock::new();
+static GPU_ADAPTER: OnceLock<StoreGpuAdapterSelection> = OnceLock::new();
+
+fn wgpu_adapter_inventory() -> Vec<String> {
+    let instance = Instance::new(InstanceDescriptor {
+        backends: Backends::PRIMARY,
+        ..Default::default()
+    });
+    instance
+        .enumerate_adapters(Backends::PRIMARY)
+        .into_iter()
+        .map(|adapter| adapter.get_info().name)
+        .collect()
+}
+
+fn init_discrete_gpu_context() -> (GpuContext, StoreGpuAdapterSelection) {
+    if let Some(substring) = requested_adapter_substring() {
+        std::env::set_var("WGPU_ADAPTER_NAME", &substring);
+    }
+    let inventory = wgpu_adapter_inventory();
+    let ctx = GpuContext::new_blocking().expect(
+        "SIMTHING_RUN_GPU_TESTS=1 requires a GPU adapter; skipped GPU is not PASS evidence",
+    );
+    let selection = validate_adapter_selection(&ctx, &inventory)
+        .expect("STORE-GPU requires discrete RTX/NVIDIA adapter evidence");
+    (ctx, selection)
+}
+
+fn cached_gpu_adapter_selection() -> Option<&'static StoreGpuAdapterSelection> {
+    if !gpu_tests_requested() {
+        eprintln!("skipping GPU tests: SIMTHING_RUN_GPU_TESTS not set to 1");
+        return None;
+    }
+    Some(GPU_ADAPTER.get_or_init(|| {
+        let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        init_discrete_gpu_context().1
+    }))
+}
 
 fn cached_gpu_report() -> Option<&'static StoreGpuParityReport> {
     if !gpu_tests_requested() {
@@ -27,11 +65,9 @@ fn cached_gpu_report() -> Option<&'static StoreGpuParityReport> {
         return None;
     }
     Some(GPU_PARITY.get_or_init(|| {
-        let ctx = GpuContext::new_blocking().expect(
-            "SIMTHING_RUN_GPU_TESTS=1 requires a GPU adapter; skipped GPU is not PASS evidence",
-        );
         let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
-        run_ec_a3_gpu_suite(&ctx)
+        let (ctx, selection) = init_discrete_gpu_context();
+        run_ec_a3_gpu_suite(&ctx, &selection)
     }))
 }
 
@@ -48,6 +84,7 @@ fn store_gpu_status_matches_gate() {
     assert!(status.contains("STORE oracle"));
     assert!(status.contains("fixture composition only"));
     assert!(status.contains("R3/runtime parked"));
+    assert!(status.contains("RTX/NVIDIA adapter"));
     assert!(status.contains("ExactDeterministic bit-exact"));
     assert!(!status.contains("GpuVerified fallback"));
     assert!(!status.contains("R1") && !status.contains("R2") && !status.contains("R4"));
@@ -110,6 +147,19 @@ fn no_r1_r2_r3_r4_behavior() {
     let source = include_str!("../src/dress_rehearsal_atlas_batch_0_store_gpu.rs");
     for term in ["StructuredFieldStencilOp", "execute_configured", "RegionField", "simthing_sim"] {
         assert!(!source.contains(term), "must not wire {term}");
+    }
+}
+
+#[test]
+fn gpu_adapter_is_discrete_rtx_target() {
+    let Some(selection) = cached_gpu_adapter_selection() else {
+        return;
+    };
+    assert!(selection.selected_adapter_is_discrete_rtx);
+    assert!(adapter_name_is_discrete_rtx_target(&selection.selected_adapter_name));
+    assert!(!selection.selected_adapter_name.to_ascii_lowercase().contains("intel"));
+    if selection.require_adapter_match {
+        assert!(selection.adapter_target_matched);
     }
 }
 
