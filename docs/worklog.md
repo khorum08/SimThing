@@ -1,3 +1,15 @@
+# 2026-06-03 - ATLAS-BATCH-0-STORE-GPU ACCEPTED (design-authority validation; bit-exact verified)
+
+- **Verified Cursor's STORE-GPU — claims hold; ACCEPT (EC-A3-gpu, ExactDeterministic bit-exact).** Checks:
+  - **No forbidden edits:** diff vs the contract merge touched only `dress_rehearsal_atlas_batch_0_store_gpu.{rs,test}` + docs — no `simthing-gpu`/`-core`/`-sim`/`lib.rs`/prior-source/constitution/invariants edits.
+  - **Raw log genuine** (decoded UTF-16): `running 9 tests` → all 9 `ok`, **0 ignored**, adapter Intel RaptorLake-S named, 0.57s ⇒ GPU tier really ran (not a 0.00s soft-pass).
+  - **Bit-exact genuine:** parity report 38/38 entries bit-exact, mismatches=0, **L∞=0, no GpuVerified fallback** — the stronger ExactDeterministic standard met (integer masked sums). Independently recompiled + ran: 9/9.
+  - **Real masked-reduction composition:** whitelisted `EvalEML` `CMP_EQ`/`SELECT` owner+channel mask (`ExactDeterministic`) + `CombineFn::Sum` on a real `AccumulatorOpSession`, registered via `EmlExpressionRegistry::register_formula`; consumes the accepted STORE `StoreOracle`; `#[path]` STORE; **not exported from lib.rs**; honest status const.
+  - **Gating sound:** env-var=1 + no adapter hard-panics; closure evidence is the env-var=1 run.
+- **Deviation affirmed:** GPU AccumulatorOp encode **rejects `ScaleSpec::ByColumn`**; Cursor folded the mask into the whitelisted EML (CMP_EQ/SELECT → value-or-0) instead and kept `mask_scale_spec()` as a documented conceptual stub. Functionally equivalent, bit-exact, and — importantly — done **without editing `simthing-gpu`**. Sound.
+- **Forward note (for R3 / production OWNER masked-reduction runtime):** the GPU encode path does not support `ScaleSpec::ByColumn`; a production masked reduction must realize the owner/channel mask **inside the EML expression** (CMP_EQ/SELECT), not via ByColumn scaling — or that GPU-encode gap gets its own primitive gate. Not a blocker for the fixture.
+- **Verdict: ATLAS-BATCH-0-STORE-GPU ACCEPTED.** **The full ATLAS-BATCH-0 pre-rehearsal track is now closed/PASS:** GEN, LOC, PACK(EC-A2a), PACK-GPU(EC-A2b GpuVerified), STORE(EC-A3 CPU), STORE-GPU(EC-A3-gpu ExactDeterministic). **Next: `ATLAS-BATCH-0-CLOSE`** (design-authority close/park review of the whole pre-rehearsal track) — then the rehearsal R1–R7 economy/SEAD rungs open. `EC-A2b-exact`, M-4A sparse-residency, REENROLL, and the OWNER masked-reduction *runtime*/R3 remain parked. Docs-only on my side.
+
 # 2026-06-03 - ATLAS-BATCH-0-STORE-GPU implemented (EC-A3-gpu PASS, ExactDeterministic bit-exact)
 
 - Implemented `dress_rehearsal_atlas_batch_0_store_gpu.rs` + 9 tests: `EvalEML` CMP_EQ/SELECT owner+channel mask (OrderBand 0) + `Sum` (OrderBand 1) on `AccumulatorOpSession` vs CPU `StoreOracle` (38/38 `to_bits` match). GPU: `$env:SIMTHING_RUN_GPU_TESTS=1; cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store_gpu` → **9 passed; 0 failed; 0 ignored**; adapter Intel RaptorLake-S. Co-location cases on GPU: 10-pirate; constructed planet+patrol+pirate. Fixture only; R3/session wiring parked. Evidence under `docs/tests/scenario_0080_2_atlas_batch_0_store_gpu_*`.
