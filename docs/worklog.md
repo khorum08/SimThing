@@ -1,3 +1,10 @@
+# 2026-06-04 - SCENARIO-0080-2-R2-IMPL-0: recursive allocation + faction economy + blockade/divert implemented/pass
+
+- **Implemented R2** as an opt-in/default-off fixture helper: `crates/simthing-driver/src/dress_rehearsal_r2_recursive_allocation.rs` + `crates/simthing-driver/tests/dress_rehearsal_r2_recursive_allocation.rs`. It consumes the accepted R1 disruption heatmap contract (`final_disruption`, system owners/cells, channel partitions, checksum `17de0080304b3da7`) and emits `docs/tests/scenario_0080_2_r2_recursive_allocation_report.md`.
+- **M1/M2/M3 landed in one coupled unit:** pop labor `10` -> factory production `1` via the existing recipe posture; production reduces up into owner-masked Terran/Pirate stockpiles and disburses down deterministically to starport deficits; `disruption >= 100` gates outflow and diverts production by owner-column to the blockader.
+- **Owner-column flip evidence:** canonical R1 blockades the pirate starport row; the targeted R2 test vector feeds a R1-produced pirate-channel disruption at a Terran system and proves Terran -> Pirate production-owner-column flip with no reparenting, no occupant movement, and no `BoundaryRequest`.
+- **Verified:** R2 test battery `13/0`; R1 regression `34/0`; ATLAS STORE CPU `11/0`; ATLAS STORE-GPU `10/0`; `cargo check --workspace` PASS with existing warning noise only. No R3/R4/R5/R6, new op, shader/WGSL/GPU requirement, default session wiring, CPU planner, hard currency/markets/trade/`ai_budget`, ClauseThing, UI/realtime, or invariant edit.
+
 # 2026-06-04 - SCENARIO-0080-2-R2-OPEN-0: R2 opened (recursive allocation + faction economy + blockade/divert)
 
 - **Decision: Option A — R2 OPEN / AUTHORED** (docs/design gate only, no code, no invariant edit). R1 remains ACCEPTED / CLOSED / IMPLEMENTED-PASS. Spec: `docs/scenarios/scenario_0080_2_r2_recursive_reduce_opening_spec.md`; review: `docs/tests/scenario_0080_2_r2_opening_review.md`.
