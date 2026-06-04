@@ -1,0 +1,14 @@
+---
+description: Never run final verification tests in background shells
+alwaysApply: true
+---
+
+# Final tests run in foreground only
+
+When running **final** verification for a gate (e.g. `cargo test` that must pass before PASS docs, commit, or merge):
+
+- Run the command in the **foreground** with a normal blocking shell invocation (`block_until_ms` long enough for compile + test).
+- Do **not** use `block_until_ms: 0` or background mode for that final run.
+- On Windows PowerShell, avoid bare `2>&1` on `cargo` (stderr becomes `NativeCommandError`). Prefer plain `cargo test …` or `*>&1 | Tee-Object …`.
+
+Diagnostic or exploratory runs may use background only if the user explicitly asks.
