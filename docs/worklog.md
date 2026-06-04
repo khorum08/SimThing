@@ -1,3 +1,12 @@
+# 2026-06-03 - GPU-ADAPTER-SELECT: GpuContext now ALWAYS uses a discrete GPU when present (design-authority directive)
+
+- **Rewrote `crates/simthing-gpu/src/context.rs`** (`GpuContext::new`): enumerate adapters and **always select the first `DiscreteGpu` when one is present**; only fall back to `request_adapter(PowerPreference::HighPerformance)` when no discrete adapter exists (integrated-only / headless). Replaces the old `PowerPreference::default()` (which picked the iGPU). Compiles clean (`cargo build -p simthing-gpu`). Effect: every test through `GpuContext::new_blocking()` now routes to the discrete RTX 4080 on the principal's machine.
+- **Inventory of Intel-run GPU tests** (for Codex's NVIDIA re-run) recorded in `docs/tests/gpu_intel_run_inventory_2026_06_03.md`: essentially the **entire GPU-dependent test surface** (~70+ targets across simthing-gpu/driver/sim/feeder). Grouped by risk:
+  - **Priority (f32 GpuVerified tolerance — adapter-dependent):** `structured_field_stencil`, PACK-GPU, `structured_field_region_execution`, `structured_field_stencil_parent_eml`, `phase_m_first_slice_*`, `phase_m_m5b/c/e` gradients, `phase_m_c0_m4_atlas`, and the f32 c-series parity (`c1_scan`,`c2`,`c3`,`c4`,`c5_weighted_mean`,`c7`,`c8b`).
+  - **Robust (integer/ExactDeterministic — likely adapter-independent):** STORE-GPU, `c6_exact_reduction`, `c8c`,`c8d`, the `phase_m_jit_sqrt_*` exact batteries, JIT exec/grad/prod.
+  - Remainder (SEAD obs/event/act/pipe, eml gadgets, e11/e11b, mobility kernel fixtures, s-series, feeder) re-run via `cargo test --workspace`.
+- **Verification gate for the re-run:** raw logs / parity reports must now name the adapter as **NVIDIA RTX 4080**, not `Intel(R) RaptorLake-S`; a re-run still naming Intel didn't pick up the fix. (Codex owns the re-run handoff.) This is the `GPU-ADAPTER-SELECT-0` follow-on resolving in code.
+
 # 2026-06-03 - GPU-ADAPTER-SCOPE FINDING: all GPU parity ran on Intel iGPU, not the discrete RTX 4080 (design authority)
 
 - **Finding (design-authority, prompted by the principal):** every GPU parity test throughout (PACK-GPU, STORE-GPU, and the legacy mapping/structured-field/atlas-mask GPU tests) ran on the **Intel iGPU (RaptorLake-S)**, not the discrete **RTX 4080**. Root cause: `crates/simthing-gpu/src/context.rs:40` — `GpuContext::new_blocking()` requests `PowerPreference::default()` (→ integrated) with **no adapter selection / enumeration / env override**, and it is the only GPU-context constructor.
