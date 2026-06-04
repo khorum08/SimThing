@@ -27,8 +27,7 @@ pub struct ExactSqrtArtifactDescriptor {
 }
 
 pub const SQRT_F_DESCRIPTOR_ID: &str = "m_jit_sqrt_f_exact";
-pub const SQRT_F_ARTIFACT_PATH: &str =
-    "crates/simthing-driver/tests/wgsl/sqrt_cr_f_candidate.wgsl";
+pub const SQRT_F_ARTIFACT_PATH: &str = "crates/simthing-driver/tests/wgsl/sqrt_cr_f_candidate.wgsl";
 pub const SQRT_F_ARTIFACT_HASH: &str = "e2e9e27601ee2e13";
 pub const SQRT_F_ENTRYPOINT: &str = "sqrt_cr_f_bits";
 pub const SQRT_F_IO_CONTRACT: &str = "u32_bit_io";
@@ -389,10 +388,9 @@ pub fn is_sead_obs3_multilayer_fixed_score_descriptor(spec: &KernelDescriptorSpe
         && spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt)
         && spec.score_authority_contract == Some(ScoreAuthorityContract::ExactQ16WeightedSum)
         && multilayer_exact_mag_bits_outputs(spec) == SEAD_OBS3_LAYER_COUNT
-        && spec
-            .writes
-            .iter()
-            .any(|out| out.name == "score_fixed" && out.authority == OutputAuthority::ExactAuthoritative)
+        && spec.writes.iter().any(|out| {
+            out.name == "score_fixed" && out.authority == OutputAuthority::ExactAuthoritative
+        })
 }
 
 /// True when the descriptor is the landed SEAD threshold event kernel.
@@ -433,9 +431,15 @@ fn multilayer_exact_mag_bits_outputs(spec: &KernelDescriptorSpec) -> u32 {
 
 fn has_multilayer_fixed_reads(spec: &KernelDescriptorSpec) -> bool {
     (0..SEAD_OBS2_LAYER_COUNT).all(|layer| {
-        spec.reads.iter().any(|read| read == &format!("layer{layer}_gx_fixed"))
-            && spec.reads.iter().any(|read| read == &format!("layer{layer}_gy_fixed"))
-            && spec.reads
+        spec.reads
+            .iter()
+            .any(|read| read == &format!("layer{layer}_gx_fixed"))
+            && spec
+                .reads
+                .iter()
+                .any(|read| read == &format!("layer{layer}_gy_fixed"))
+            && spec
+                .reads
                 .iter()
                 .any(|read| read == &format!("layer{layer}_w_fixed"))
     }) && spec.reads.iter().any(|read| read == "bias_fixed")
@@ -512,11 +516,9 @@ pub fn validate_exact_pre_sqrt_contract(spec: &KernelDescriptorSpec) -> Result<(
                     "RawDxDyProbe contract requires dx and dy reads",
                 ));
             }
-            if spec
-                .writes
-                .iter()
-                .any(|out| out.name == "mag" && out.authority == OutputAuthority::ExactAuthoritative)
-            {
+            if spec.writes.iter().any(|out| {
+                out.name == "mag" && out.authority == OutputAuthority::ExactAuthoritative
+            }) {
                 return Err(artifact_err(
                     &spec.id,
                     "raw dx/dy multiply-add probe cannot claim exact-authoritative mag output",
@@ -634,11 +636,9 @@ pub fn validate_mag2_source_contract(spec: &KernelDescriptorSpec) -> Result<(), 
             }
         }
         (None, true) => {
-            if spec
-                .writes
-                .iter()
-                .any(|out| out.name == "mag2_bits" && out.authority == OutputAuthority::ExactAuthoritative)
-            {
+            if spec.writes.iter().any(|out| {
+                out.name == "mag2_bits" && out.authority == OutputAuthority::ExactAuthoritative
+            }) {
                 return Err(artifact_err(
                     &spec.id,
                     "exact-authoritative mag2_bits requires a Mag2SourceContract",
@@ -683,94 +683,90 @@ pub fn validate_score_authority_contract(spec: &KernelDescriptorSpec) -> Result<
         .map(|out| (out.name.as_str(), out.authority));
 
     match spec.score_authority_contract {
-        Some(ScoreAuthorityContract::ApproximateDiagnosticF32) => {
-            match score_out {
-                Some(("score_bits", OutputAuthority::ApproximateDiagnostic)) => {}
-                Some(("score_fixed", _)) => {
-                    return Err(artifact_err(
+        Some(ScoreAuthorityContract::ApproximateDiagnosticF32) => match score_out {
+            Some(("score_bits", OutputAuthority::ApproximateDiagnostic)) => {}
+            Some(("score_fixed", _)) => {
+                return Err(artifact_err(
                         &spec.id,
                         "ApproximateDiagnosticF32 score contract requires score_bits output, not score_fixed",
                     ));
-                }
-                Some((_, OutputAuthority::ExactAuthoritative)) => {
-                    return Err(artifact_err(
+            }
+            Some((_, OutputAuthority::ExactAuthoritative)) => {
+                return Err(artifact_err(
                         &spec.id,
                         "score_bits cannot be ExactAuthoritative under ApproximateDiagnosticF32 score contract",
                     ));
-                }
-                Some((_, OutputAuthority::RejectedDeferred)) => {
-                    return Err(artifact_err(
-                        &spec.id,
-                        "score_bits is rejected/deferred under ApproximateDiagnosticF32 score contract",
-                    ));
-                }
-                Some((name, OutputAuthority::ApproximateDiagnostic)) => {
-                    return Err(artifact_err(
+            }
+            Some((_, OutputAuthority::RejectedDeferred)) => {
+                return Err(artifact_err(
+                    &spec.id,
+                    "score_bits is rejected/deferred under ApproximateDiagnosticF32 score contract",
+                ));
+            }
+            Some((name, OutputAuthority::ApproximateDiagnostic)) => {
+                return Err(artifact_err(
                         &spec.id,
                         format!(
                             "ApproximateDiagnosticF32 score contract requires score_bits output, not `{name}`"
                         ),
                     ));
-                }
-                None => {
-                    return Err(artifact_err(
-                        &spec.id,
-                        "ApproximateDiagnosticF32 score contract requires score_bits output",
-                    ));
-                }
             }
-        }
-        Some(ScoreAuthorityContract::ExactQ16WeightedSum) => {
-            match score_out {
-                Some(("score_fixed", OutputAuthority::ExactAuthoritative)) => {}
-                Some(("score_bits", OutputAuthority::ExactAuthoritative)) => {
-                    return Err(artifact_err(
+            None => {
+                return Err(artifact_err(
+                    &spec.id,
+                    "ApproximateDiagnosticF32 score contract requires score_bits output",
+                ));
+            }
+        },
+        Some(ScoreAuthorityContract::ExactQ16WeightedSum) => match score_out {
+            Some(("score_fixed", OutputAuthority::ExactAuthoritative)) => {}
+            Some(("score_bits", OutputAuthority::ExactAuthoritative)) => {
+                return Err(artifact_err(
                         &spec.id,
                         "score_bits cannot be ExactAuthoritative under ExactQ16WeightedSum; use score_fixed",
                     ));
-                }
-                Some(("score_fixed", OutputAuthority::ApproximateDiagnostic)) => {
-                    return Err(artifact_err(
+            }
+            Some(("score_fixed", OutputAuthority::ApproximateDiagnostic)) => {
+                return Err(artifact_err(
                         &spec.id,
                         "score_fixed must be ExactAuthoritative under ExactQ16WeightedSum score contract",
                     ));
-                }
-                Some((_, OutputAuthority::RejectedDeferred)) => {
-                    return Err(artifact_err(
-                        &spec.id,
-                        "score_fixed is rejected/deferred under ExactQ16WeightedSum score contract",
-                    ));
-                }
-                Some(("score_bits", OutputAuthority::ApproximateDiagnostic)) => {
-                    return Err(artifact_err(
+            }
+            Some((_, OutputAuthority::RejectedDeferred)) => {
+                return Err(artifact_err(
+                    &spec.id,
+                    "score_fixed is rejected/deferred under ExactQ16WeightedSum score contract",
+                ));
+            }
+            Some(("score_bits", OutputAuthority::ApproximateDiagnostic)) => {
+                return Err(artifact_err(
                         &spec.id,
                         "ExactQ16WeightedSum score contract requires score_fixed output, not score_bits",
                     ));
-                }
-                Some((name, OutputAuthority::ApproximateDiagnostic)) => {
-                    return Err(artifact_err(
+            }
+            Some((name, OutputAuthority::ApproximateDiagnostic)) => {
+                return Err(artifact_err(
                         &spec.id,
                         format!(
                             "score_fixed must be ExactAuthoritative under ExactQ16WeightedSum; got approximate `{name}`"
                         ),
                     ));
-                }
-                Some((name, OutputAuthority::ExactAuthoritative)) => {
-                    return Err(artifact_err(
+            }
+            Some((name, OutputAuthority::ExactAuthoritative)) => {
+                return Err(artifact_err(
                         &spec.id,
                         format!(
                             "ExactQ16WeightedSum score contract requires score_fixed output, not `{name}`"
                         ),
                     ));
-                }
-                None => {
-                    return Err(artifact_err(
-                        &spec.id,
-                        "ExactQ16WeightedSum score contract requires score_fixed output",
-                    ));
-                }
             }
-        }
+            None => {
+                return Err(artifact_err(
+                    &spec.id,
+                    "ExactQ16WeightedSum score contract requires score_fixed output",
+                ));
+            }
+        },
         None => {
             if score_out.map(|(_, auth)| auth) == Some(OutputAuthority::ExactAuthoritative) {
                 return Err(artifact_err(
@@ -791,7 +787,9 @@ pub fn validate_score_authority_contract(spec: &KernelDescriptorSpec) -> Result<
 }
 
 /// Validate landed SEAD-OBS-0 overlay score descriptor pins (SEAD-OBS-1).
-pub fn validate_sead_obs0_overlay_score_contract(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
+pub fn validate_sead_obs0_overlay_score_contract(
+    spec: &KernelDescriptorSpec,
+) -> Result<(), SpecError> {
     if spec.id != SEAD_OBS0_DESCRIPTOR_ID {
         return Ok(());
     }
@@ -1181,7 +1179,10 @@ pub fn is_sead_event1_code_bucketing_descriptor(spec: &KernelDescriptorSpec) -> 
         && spec.writes.iter().any(|out| out.name == "bucket_counts")
         && spec.writes.iter().any(|out| out.name == "bucket_overflow")
         && spec.writes.iter().any(|out| out.name == "bucket_record")
-        && spec.writes.iter().any(|out| out.name == "invalid_code_count")
+        && spec
+            .writes
+            .iter()
+            .any(|out| out.name == "invalid_code_count")
 }
 
 /// Validate landed SEAD-EVENT-1 event-code bucketing descriptor pins.
@@ -1213,7 +1214,10 @@ pub fn validate_sead_event1_code_bucketing_contract(
         ("bucket_counts", "exact-authoritative bucket_counts"),
         ("bucket_overflow", "exact-authoritative bucket_overflow"),
         ("bucket_record", "exact-authoritative bucket_record"),
-        ("invalid_code_count", "exact-authoritative invalid_code_count"),
+        (
+            "invalid_code_count",
+            "exact-authoritative invalid_code_count",
+        ),
     ] {
         match spec
             .writes
@@ -1246,7 +1250,10 @@ pub fn is_sead_event2_bucket_reductions_descriptor(spec: &KernelDescriptorSpec) 
         && spec.writes.iter().any(|out| out.name == "sum_score")
         && spec.writes.iter().any(|out| out.name == "min_score")
         && spec.writes.iter().any(|out| out.name == "max_score")
-        && spec.writes.iter().any(|out| out.name == "reduction_overflow_flag")
+        && spec
+            .writes
+            .iter()
+            .any(|out| out.name == "reduction_overflow_flag")
 }
 
 /// Validate landed SEAD-EVENT-2 bucket reductions descriptor pins.
@@ -1279,7 +1286,10 @@ pub fn validate_sead_event2_bucket_reductions_contract(
         ("sum_score", "exact-authoritative sum_score"),
         ("min_score", "exact-authoritative min_score"),
         ("max_score", "exact-authoritative max_score"),
-        ("reduction_overflow_flag", "exact-authoritative reduction_overflow_flag"),
+        (
+            "reduction_overflow_flag",
+            "exact-authoritative reduction_overflow_flag",
+        ),
     ] {
         match spec
             .writes
@@ -1310,7 +1320,10 @@ pub fn is_sead_act0_numeric_proposals_descriptor(spec: &KernelDescriptorSpec) ->
     spec.id == SEAD_ACT0_DESCRIPTOR_ID
         && has_numeric_proposal_reads(spec)
         && spec.writes.iter().any(|out| out.name == "proposal_count")
-        && spec.writes.iter().any(|out| out.name == "proposal_overflow_flag")
+        && spec
+            .writes
+            .iter()
+            .any(|out| out.name == "proposal_overflow_flag")
         && spec.writes.iter().any(|out| out.name == "proposal_record")
 }
 
@@ -1341,7 +1354,10 @@ pub fn validate_sead_act0_numeric_proposals_contract(
     }
     for (name, msg) in [
         ("proposal_count", "exact-authoritative proposal_count"),
-        ("proposal_overflow_flag", "exact-authoritative proposal_overflow_flag"),
+        (
+            "proposal_overflow_flag",
+            "exact-authoritative proposal_overflow_flag",
+        ),
         ("proposal_record", "exact-authoritative proposal_record"),
     ] {
         match spec
@@ -1364,7 +1380,10 @@ pub fn validate_sead_act0_numeric_proposals_contract(
 
 fn has_phase_e_proposal_consumer_reads(spec: &KernelDescriptorSpec) -> bool {
     spec.reads.iter().any(|read| read == "proposal_count")
-        && spec.reads.iter().any(|read| read == "proposal_overflow_flag")
+        && spec
+            .reads
+            .iter()
+            .any(|read| read == "proposal_overflow_flag")
         && spec.reads.iter().any(|read| read == "proposal_record")
 }
 
@@ -1546,7 +1565,9 @@ pub fn validate_sead_act2_proposal_admission_records_contract(
 }
 
 /// Validate artifact-backed exact sqrt admission rules for a kernel descriptor.
-pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
+pub fn validate_exact_sqrt_artifact_admission(
+    spec: &KernelDescriptorSpec,
+) -> Result<(), SpecError> {
     if spec.id == SEAD_ACT3_DESCRIPTOR_ID {
         return validate_sead_act3_economic_fixture_records_contract(spec);
     }
@@ -1601,8 +1622,8 @@ pub fn validate_exact_sqrt_artifact_admission(spec: &KernelDescriptorSpec) -> Re
                     "artifact-backed exact sqrt cannot use ApproximateJitOnly native math",
                 ));
             }
-            let is_dxdy_probe = spec.pre_sqrt_contract
-                == Some(ExactPreSqrtInputContract::RawDxDyProbe);
+            let is_dxdy_probe =
+                spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::RawDxDyProbe);
             if !has_exact && !is_dxdy_probe {
                 return Err(artifact_err(
                     &spec.id,
@@ -1983,10 +2004,7 @@ pub fn sead_act2_proposal_admission_records_kernel_descriptor() -> KernelDescrip
         id: SEAD_ACT2_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads: vec!["proposal_summary".to_string()],
-        writes: vec![
-            exact_out("admission_record"),
-            exact_out("admission_code"),
-        ],
+        writes: vec![exact_out("admission_record"), exact_out("admission_code")],
         native_math: NativeMathClass::None,
         semantic_free: true,
         default_off: true,
@@ -2004,10 +2022,7 @@ pub fn sead_act3_economic_fixture_records_kernel_descriptor() -> KernelDescripto
         id: SEAD_ACT3_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads: vec!["admission_record".to_string()],
-        writes: vec![
-            exact_out("fixture_record"),
-            exact_out("record_code"),
-        ],
+        writes: vec![exact_out("fixture_record"), exact_out("record_code")],
         native_math: NativeMathClass::None,
         semantic_free: true,
         default_off: true,

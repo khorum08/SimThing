@@ -8,9 +8,8 @@
 //! currently-closed gate (MOBILITY-RUNTIME-1A-RUNTIME-FIXTURE).
 
 use super::mobility_runtime0::{
-    compose_mobility_runtime0, MobilityRuntime0CompositionInput,
-    MobilityRuntime0CompositionReport, MobilityRuntime0ForbiddenPathRequests,
-    MobilityRuntime0HarnessConfig, MOBILITY_RUNTIME0_ORDER,
+    compose_mobility_runtime0, MobilityRuntime0CompositionInput, MobilityRuntime0CompositionReport,
+    MobilityRuntime0ForbiddenPathRequests, MobilityRuntime0HarnessConfig, MOBILITY_RUNTIME0_ORDER,
 };
 
 pub const MOBILITY_RUNTIME1A_ID: &str = "mobility_runtime1a_cpu_only_production_fixture";

@@ -6,8 +6,8 @@ mod mobility_gpu_kernel1_dispatch_fixture;
 use mobility_gpu_kernel1_dispatch_fixture::{
     cpu_column_transform_oracle, run_mobility_gpu_kernel0_fixture,
     run_mobility_gpu_kernel1_fixture, MobilityGpuKernel0FixtureInput,
-    MobilityGpuKernel1FixtureInput, MobilityGpuKernel1ForbiddenPathRequests,
-    MobilityGpuKernel1Gate, MobilityGpuKernel0ParityClassification,
+    MobilityGpuKernel0ParityClassification, MobilityGpuKernel1FixtureInput,
+    MobilityGpuKernel1ForbiddenPathRequests, MobilityGpuKernel1Gate,
     MobilityRuntime1aDriverFixtureInput, MobilityRuntime1bPassgraphFixtureInput,
     MobilityRuntime1bPassgraphGate, MOBILITY_GPU_KERNEL0_FIXTURE_ID,
     MOBILITY_GPU_KERNEL0_KERNEL_ID, MOBILITY_GPU_KERNEL1_FIXTURE_ID,
@@ -47,7 +47,12 @@ fn live(parent_id: u64, key_id: u64, entity_id: u64, slot: u32) -> MobilityAlloc
     }
 }
 
-fn mv(entity_id: u64, origin_key: u64, destination_key: u64, arrival_order: u64) -> MobilityReenroll0Move {
+fn mv(
+    entity_id: u64,
+    origin_key: u64,
+    destination_key: u64,
+    arrival_order: u64,
+) -> MobilityReenroll0Move {
     MobilityReenroll0Move {
         entity_id,
         origin: key(1, origin_key),
@@ -177,7 +182,12 @@ fn composition_fixture() -> MobilityRuntime0CompositionInput {
         },
         owner: MobilityOwner0PlanInput {
             records: vec![
-                orec(100, 20, 1, vec![owner(MobilityOwner0ColumnKind::Faction, 7)]),
+                orec(
+                    100,
+                    20,
+                    1,
+                    vec![owner(MobilityOwner0ColumnKind::Faction, 7)],
+                ),
                 orec(2, 30, 1, vec![owner(MobilityOwner0ColumnKind::Faction, 7)]),
                 orec(3, 31, 1, vec![owner(MobilityOwner0ColumnKind::Species, 7)]),
             ],
@@ -229,7 +239,9 @@ fn mobility_gpu_kernel1_explicit_opt_in_only() {
     default_on.gate.enabled_by_default = true;
     let rejected = run_mobility_gpu_kernel1_fixture(&default_on);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"mobility_gpu_kernel1_default_on_rejected"));
+    assert!(rejected
+        .diagnostics
+        .contains(&"mobility_gpu_kernel1_default_on_rejected"));
 
     let report = run_mobility_gpu_kernel1_fixture(&fixture_input());
     assert!(report.admitted);
@@ -261,7 +273,10 @@ fn mobility_gpu_kernel1_uses_registered_node() {
         Some(MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID)
     );
     let registry = report.passgraph_registry.unwrap();
-    assert!(registry.nodes.iter().any(|n| n.node_id == MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID));
+    assert!(registry
+        .nodes
+        .iter()
+        .any(|n| n.node_id == MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID));
 }
 
 #[test]
@@ -331,7 +346,10 @@ fn mobility_gpu_kernel1_classifies_exact_parity_or_honest_unavailable() {
             | MobilityGpuKernel0ParityClassification::GpuUnavailable
     ));
     if report.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity {
-        assert_eq!(report.cpu_oracle_checksum, report.gpu_result_checksum.unwrap());
+        assert_eq!(
+            report.cpu_oracle_checksum,
+            report.gpu_result_checksum.unwrap()
+        );
     }
 }
 
@@ -345,7 +363,9 @@ fn mobility_gpu_kernel1_no_designer_authored_shader_input() {
     forbidden.designer_authored_shader_input = true;
     let rejected = rejected_with(forbidden);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"designer_authored_shader_input"));
+    assert!(rejected
+        .diagnostics
+        .contains(&"designer_authored_shader_input"));
 }
 
 #[test]
@@ -415,7 +435,10 @@ fn mobility_gpu_kernel1_preserves_closed_ladder_posture() {
     assert!(!report.default_production_scheduling_wired);
     assert!(!report.hybrid_strata_or_faction_index_scaling);
     let registration = report.registration_report.as_ref().unwrap();
-    assert_eq!(registration.fixture_id, MOBILITY_RUNTIME1B_PASSGRAPH_FIXTURE_ID);
+    assert_eq!(
+        registration.fixture_id,
+        MOBILITY_RUNTIME1B_PASSGRAPH_FIXTURE_ID
+    );
     assert!(registration.runtime1b_dispatch_gate_closed);
 }
 

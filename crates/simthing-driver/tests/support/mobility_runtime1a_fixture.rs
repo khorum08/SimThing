@@ -175,7 +175,8 @@ fn admitted_report(
     report.admitted = true;
     report.disabled_no_op = spec_report.disabled_no_op;
     report.fixture_invoked = spec_report.fixture_invoked;
-    report.default_simsession_behavior_unchanged = spec_report.default_simsession_behavior_unchanged;
+    report.default_simsession_behavior_unchanged =
+        spec_report.default_simsession_behavior_unchanged;
     report.delegated_to_spec = true;
     report.composition_invocations = spec_report.composition_invocations;
     report.spec_report = Some(spec_report);

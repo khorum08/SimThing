@@ -30,7 +30,7 @@ fn emission_registry_with_columns(cols: u32) -> DimensionRegistry {
             governed_by: None,
             reduction_override: None,
             soft_aggregate_guard: None,
-                    accumulator_spec: None,
+            accumulator_spec: None,
         })
         .collect();
     reg.register(SimProperty {

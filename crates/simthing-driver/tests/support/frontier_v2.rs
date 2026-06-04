@@ -54,7 +54,10 @@ pub struct FrontierV2OwnColumnShadow {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FrontierV2MovementWriteError {
-    CrossEntityTarget { source_unit_id: u32, shadow_unit_id: u32 },
+    CrossEntityTarget {
+        source_unit_id: u32,
+        shadow_unit_id: u32,
+    },
 }
 
 /// Fixture-only BoundaryRequest shadow record (not production commitment emission).
@@ -186,8 +189,7 @@ pub fn apply_feedback_to_config(
 pub fn build_movement_candidate(
     feedback: &FrontierV1LiveSelfAiFeedbackCandidate,
 ) -> FrontierV2MovementCandidate {
-    let imbalance =
-        feedback.faction_a_allocation as i32 - feedback.faction_b_allocation as i32;
+    let imbalance = feedback.faction_a_allocation as i32 - feedback.faction_b_allocation as i32;
     let delta_row = imbalance.signum();
     let delta_col = if feedback.dispatch_count > 0 { 1 } else { 0 };
     FrontierV2MovementCandidate {
@@ -217,8 +219,7 @@ pub fn build_evolved_movement_candidate(
     urgency: f32,
     tick_index: u32,
 ) -> FrontierV2MovementCandidate {
-    let imbalance =
-        feedback.faction_a_allocation as i32 - feedback.faction_b_allocation as i32;
+    let imbalance = feedback.faction_a_allocation as i32 - feedback.faction_b_allocation as i32;
     let row_delta = imbalance.signum() + tick_index as i32;
     let urgency_bucket = (urgency * 10.0).round() as u32;
     let col_delta = feedback
@@ -248,9 +249,7 @@ pub fn build_evolved_structural_candidate(
         .saturating_add(tick_index.saturating_mul(100));
     FrontierV2StructuralCandidate {
         proposal_code: feedback.proposal_code.wrapping_add(tick_index),
-        boundary_request_code: feedback
-            .field_feedback_code
-            .wrapping_add(reinforce_bucket),
+        boundary_request_code: feedback.field_feedback_code.wrapping_add(reinforce_bucket),
         route_code: FRONTIER_V1_STRUCTURAL_ROUTE_CODE,
         dispatch_count: feedback.dispatch_count,
     }
@@ -516,9 +515,7 @@ pub fn apply_structural_to_boundary_request_shadow(
     })
 }
 
-pub fn derive_next_tick_structural_feedback_code(
-    shadow: &FrontierV2BoundaryRequestShadow,
-) -> u32 {
+pub fn derive_next_tick_structural_feedback_code(shadow: &FrontierV2BoundaryRequestShadow) -> u32 {
     shadow
         .boundary_request_code
         .wrapping_add(shadow.proposal_code)

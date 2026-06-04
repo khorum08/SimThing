@@ -10,16 +10,26 @@ use simthing_spec::{MappingExecutionProfile, ResourceFlowOptInMode};
 use support::{
     assert_mapping_and_resource_flow_posture, daily_economy_scenario, deficit_game_mode,
     open_daily_economy_session, open_daily_economy_session_with_thresholds,
-    run_days_collecting_events, run_days_with_full_boundary, surplus_game_mode, treasury_amount, try_gpu, DEFICIT_DAILY_NET, INITIAL_TREASURY, LOW_STORAGE_EVENT_KIND,
-    SURPLUS_DAILY_NET, DEFICIT_RON, SURPLUS_RON,
+    run_days_collecting_events, run_days_with_full_boundary, surplus_game_mode, treasury_amount,
+    try_gpu, DEFICIT_DAILY_NET, DEFICIT_RON, INITIAL_TREASURY, LOW_STORAGE_EVENT_KIND,
+    SURPLUS_DAILY_NET, SURPLUS_RON,
 };
 
 #[test]
 fn daily_economy_ron_admits_and_compiles() {
     let game_mode = surplus_game_mode();
-    assert_eq!(game_mode.resource_economy.as_ref().unwrap().transfers.len(), 2);
-    assert_eq!(game_mode.resource_economy.as_ref().unwrap().recipes.len(), 1);
-    assert_eq!(game_mode.resource_economy.as_ref().unwrap().emissions.len(), 0);
+    assert_eq!(
+        game_mode.resource_economy.as_ref().unwrap().transfers.len(),
+        2
+    );
+    assert_eq!(
+        game_mode.resource_economy.as_ref().unwrap().recipes.len(),
+        1
+    );
+    assert_eq!(
+        game_mode.resource_economy.as_ref().unwrap().emissions.len(),
+        0
+    );
 
     let scenario = daily_economy_scenario(1, 5);
     assert_eq!(scenario.ticks_per_day, 1);
@@ -45,7 +55,10 @@ fn daily_economy_ron_admits_and_compiles() {
             .unwrap_or(ResourceFlowOptInMode::Disabled),
         ResourceFlowOptInMode::Disabled
     );
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
 }
 
 #[test]
@@ -218,5 +231,8 @@ fn posture_preserved_no_new_daily_semantics() {
 
     let flags = PipelineFlags::default();
     assert!(!flags.use_accumulator_resource_flow);
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
 }

@@ -1,10 +1,10 @@
 //! E-10R3 — Arena-local block reservation for participant siblings + gap pools.
 
+use simthing_core::ClampBehavior;
 use simthing_core::{
     AccumulatorRole, AccumulatorSpec, DimensionRegistry, LogTier, SimThing, SimThingKind,
     SubFieldRole, SubFieldSpec,
 };
-use simthing_core::ClampBehavior;
 use simthing_driver::{
     all_reserved_gap_slots, arena_participant_sibling_slots, compile_and_install,
     materialize_arena_participants, slot_in_participant_sibling_range, slots_are_contiguous,
@@ -62,7 +62,14 @@ fn food_arena(gap: u32, expected_children: u32) -> ArenaSpec {
     }
 }
 
-fn materialize_multi(n_hosted: usize, gap: u32) -> (SimThing, SlotAllocator, simthing_driver::ArenaParticipantScaffold) {
+fn materialize_multi(
+    n_hosted: usize,
+    gap: u32,
+) -> (
+    SimThing,
+    SlotAllocator,
+    simthing_driver::ArenaParticipantScaffold,
+) {
     let mut reg = DimensionRegistry::new();
     register_food_flow(&mut reg);
     let mut alloc = SlotAllocator::new();
@@ -75,7 +82,9 @@ fn materialize_multi(n_hosted: usize, gap: u32) -> (SimThing, SlotAllocator, sim
     let explicit_participants: Vec<ExplicitParticipantSpec> = root
         .children
         .iter()
-        .map(|hosted| ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw()))
+        .map(|hosted| {
+            ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw())
+        })
         .collect();
 
     let spec = ResourceFlowSpec {
@@ -84,7 +93,7 @@ fn materialize_multi(n_hosted: usize, gap: u32) -> (SimThing, SlotAllocator, sim
             ..food_arena(gap, gap)
         }],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     validate_resource_flow_preflight(&spec, &alloc).unwrap();
     let scaffold = materialize_arena_participants(&spec, &reg, &mut root, &mut alloc).unwrap();
@@ -213,7 +222,9 @@ fn e10r3_resource_flow_materialization_respects_scenario_slot_capacity() {
     let explicit_participants: Vec<ExplicitParticipantSpec> = root
         .children
         .iter()
-        .map(|hosted| ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw()))
+        .map(|hosted| {
+            ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw())
+        })
         .collect();
 
     let game_mode = GameModeSpec {
@@ -233,7 +244,7 @@ fn e10r3_resource_flow_materialization_respects_scenario_slot_capacity() {
                 ..food_arena(2, 2)
             }],
             couplings: vec![],
-        ..Default::default()
+            ..Default::default()
         }),
         resource_economy: None,
         resource_flow_execution_profile: Default::default(),
@@ -242,14 +253,8 @@ fn e10r3_resource_flow_materialization_respects_scenario_slot_capacity() {
     };
 
     // world + 3 hosted + arena_root + 3 participants + 6 gap slots = 14
-    let err = compile_and_install(
-        &game_mode,
-        &scenario,
-        &mut reg,
-        &mut root,
-        &mut alloc,
-    )
-    .unwrap_err();
+    let err =
+        compile_and_install(&game_mode, &scenario, &mut reg, &mut root, &mut alloc).unwrap_err();
     assert!(matches!(
         err,
         InstallError::ResourceFlowSlotOverflow { cap: 13, .. }

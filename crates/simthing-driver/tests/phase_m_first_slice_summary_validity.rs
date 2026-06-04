@@ -2,9 +2,7 @@
 
 mod support;
 
-use simthing_driver::{
-    FirstSliceSeed, FirstSliceSummaryStatus, FirstSliceTickOptions,
-};
+use simthing_driver::{FirstSliceSeed, FirstSliceSummaryStatus, FirstSliceTickOptions};
 use simthing_gpu::GpuContext;
 use simthing_sim::PipelineFlags;
 use simthing_spec::{
@@ -198,7 +196,10 @@ fn fresh_summary_after_executed_tick() {
         assert_eq!(report.total_dispatches, 9);
         assert!(report.reduction_executed);
         assert!(report.eml_executed);
-        assert_eq!(report.summary.status, FirstSliceSummaryStatus::FreshThisTick);
+        assert_eq!(
+            report.summary.status,
+            FirstSliceSummaryStatus::FreshThisTick
+        );
         assert_eq!(report.summary.age_ticks, 0);
         assert!(report.summary.has_gpu_parent_summary);
         assert_eq!(report.reduction_stencil_readbacks, 0);

@@ -121,7 +121,10 @@ fn compound_field_0080_2_final_field_ordering_correct() {
 #[test]
 fn compound_field_0080_2_desirability_never_exceeds_max() {
     let admitted = report();
-    assert!(admitted.snapshots.iter().all(|s| s.desirability <= DESIRABILITY_MAX));
+    assert!(admitted
+        .snapshots
+        .iter()
+        .all(|s| s.desirability <= DESIRABILITY_MAX));
     assert!(admitted.snapshots.iter().all(|s| s.desirability >= 0));
 }
 

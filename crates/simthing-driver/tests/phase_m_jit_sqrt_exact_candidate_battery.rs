@@ -8,11 +8,11 @@
 use std::sync::Mutex;
 
 use simthing_gpu::GpuContext;
+use simthing_spec::MappingExecutionProfile;
 use simthing_spec::{
     is_exact_sqrt_f_descriptor, landed_jit_kernel_descriptors, validate_exact_kernel_inputs,
-    NativeMathClass, OutputAuthority, SQRT_F_ARTIFACT_HASH, SQRT_F_DESCRIPTOR_ID, SpecError,
+    NativeMathClass, OutputAuthority, SpecError, SQRT_F_ARTIFACT_HASH, SQRT_F_DESCRIPTOR_ID,
 };
-use simthing_spec::MappingExecutionProfile;
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
 const SQRT_CR_D_WGSL: &str = include_str!("wgsl/sqrt_cr_d_candidate.wgsl");
@@ -86,9 +86,7 @@ struct DProbeSummary {
 fn candidate_label(candidate: ExactSqrtCandidate) -> &'static str {
     match candidate {
         ExactSqrtCandidate::CorrectlyRoundedHwFma => "CorrectlyRoundedHwFma",
-        ExactSqrtCandidate::CorrectlyRoundedNewtonTwoProduct => {
-            "CorrectlyRoundedNewtonTwoProduct"
-        }
+        ExactSqrtCandidate::CorrectlyRoundedNewtonTwoProduct => "CorrectlyRoundedNewtonTwoProduct",
         ExactSqrtCandidate::CorrectlyRoundedHwBitmask => "CorrectlyRoundedHwBitmask",
         ExactSqrtCandidate::CorrectlyRoundedIntegerOnly => "CorrectlyRoundedIntegerOnly",
         ExactSqrtCandidate::CorrectlyRoundedHwBitmaskNormalized => {
@@ -457,11 +455,13 @@ fn run_batch_gpu(ctx: &GpuContext, wgsl: &str, inputs: &[f32], stride: u32) -> V
 
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("jit_sqrt_exact_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("jit_sqrt_exact_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("jit_sqrt_exact_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -554,11 +554,13 @@ fn run_batch_gpu_u32(ctx: &GpuContext, wgsl: &str, inputs: &[u32], stride: u32) 
 
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("jit_sqrt_exact_pipeline_u32"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("jit_sqrt_exact_pl_u32"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("jit_sqrt_exact_pl_u32"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -626,9 +628,7 @@ fn run_candidate_batch(
     let n = inputs.len() as u32;
     let wgsl = emit_batch_wgsl(candidate, n);
     let raw = run_batch_gpu(ctx, &wgsl, inputs, 2);
-    (0..inputs.len())
-        .map(|i| raw[i * 2 + 1])
-        .collect()
+    (0..inputs.len()).map(|i| raw[i * 2 + 1]).collect()
 }
 
 fn run_candidate_e_bits(ctx: &GpuContext, input_bits: &[u32]) -> Vec<(u32, u32, u32, u32)> {
@@ -725,7 +725,11 @@ fn run_candidate_f_probe(
     )
 }
 
-fn sweep_candidate(ctx: &GpuContext, candidate: ExactSqrtCandidate, inputs: &[f32]) -> SweepSummary {
+fn sweep_candidate(
+    ctx: &GpuContext,
+    candidate: ExactSqrtCandidate,
+    inputs: &[f32],
+) -> SweepSummary {
     let outputs = run_candidate_batch(ctx, candidate, inputs);
     let mut max_ulp = 0u32;
     let mut exact_bits = 0usize;
@@ -854,7 +858,8 @@ fn sqrt_exact0_candidates_compile_semantic_free_wgsl() {
         assert!(wgsl.contains(match candidate {
             ExactSqrtCandidate::CorrectlyRoundedHwFma => "sqrt_cr_a",
             ExactSqrtCandidate::CorrectlyRoundedNewtonTwoProduct => "sqrt_cr_b",
-            ExactSqrtCandidate::CorrectlyRoundedHwBitmask => unreachable!("SQRT-EXACT-0 loop excludes D"),
+            ExactSqrtCandidate::CorrectlyRoundedHwBitmask =>
+                unreachable!("SQRT-EXACT-0 loop excludes D"),
             ExactSqrtCandidate::CorrectlyRoundedIntegerOnly => {
                 unreachable!("SQRT-EXACT-0 loop excludes E")
             }
@@ -1042,10 +1047,7 @@ fn sqrt_exact0_b_candidate_no_fma_dependency() {
         "Candidate B must not depend on fma fusion"
     );
     let body = emit_sqrt_cr_b_fn();
-    assert!(
-        !body.contains("fma("),
-        "Candidate B core must not use fma"
-    );
+    assert!(!body.contains("fma("), "Candidate B core must not use fma");
     // Native sqrt appears only in special-value passthrough guard.
     assert!(body.contains("is_non_finite_positive_or_nonpositive"));
     assert!(
@@ -1087,8 +1089,14 @@ fn sqrt_exact0_full_exhaustive_sweep_is_ignored_by_default() {
             "exhaustive_sweep: max_ulp_a={} max_ulp_b={}",
             max_ulp_a, max_ulp_b
         );
-        assert_eq!(max_ulp_a, 0, "Candidate A requires max_ulp == 0 for promotion");
-        assert_eq!(max_ulp_b, 0, "Candidate B requires max_ulp == 0 for promotion");
+        assert_eq!(
+            max_ulp_a, 0,
+            "Candidate A requires max_ulp == 0 for promotion"
+        );
+        assert_eq!(
+            max_ulp_b, 0,
+            "Candidate B requires max_ulp == 0 for promotion"
+        );
     });
 }
 
@@ -1096,12 +1104,10 @@ fn sqrt_exact0_full_exhaustive_sweep_is_ignored_by_default() {
 fn sqrt_exact0_no_promotion_yet() {
     let sqrt0 = sqrt0_descriptor();
     assert_eq!(sqrt0.native_math, NativeMathClass::ApproximateJitOnly);
-    assert!(
-        sqrt0
-            .writes
-            .iter()
-            .all(|out| out.authority == OutputAuthority::ApproximateDiagnostic)
-    );
+    assert!(sqrt0
+        .writes
+        .iter()
+        .all(|out| out.authority == OutputAuthority::ApproximateDiagnostic));
 
     let sqrt_f = sqrt_f_descriptor();
     assert!(is_exact_sqrt_f_descriptor(&sqrt_f));
@@ -1354,7 +1360,10 @@ fn sweep_d_subnormal(ctx: &GpuContext, inputs: &[f32]) -> SubnormalSweepDetail {
 
 #[test]
 fn sqrt_exact1d_r1_candidate_d_uses_verbatim_wgsl_artifact() {
-    assert!(!SQRT_CR_D_WGSL.is_empty(), "verbatim D WGSL artifact must be non-empty");
+    assert!(
+        !SQRT_CR_D_WGSL.is_empty(),
+        "verbatim D WGSL artifact must be non-empty"
+    );
     assert!(SQRT_CR_D_WGSL.contains("fn sqrt_cr_d("));
     assert!(SQRT_CR_D_WGSL.contains("fn snap_directional("));
     assert!(SQRT_CR_D_WGSL.contains("fn dekker_residual_hardened("));
@@ -1410,7 +1419,8 @@ fn sqrt_exact1d_candidate_d_edge_rows() {
         let mut subnormal_exact = 0usize;
         let mut nan_ok = 0usize;
         for (name, x) in edge_rows_1d() {
-            let gpu = run_candidate_batch(ctx, ExactSqrtCandidate::CorrectlyRoundedHwBitmask, &[x])[0];
+            let gpu =
+                run_candidate_batch(ctx, ExactSqrtCandidate::CorrectlyRoundedHwBitmask, &[x])[0];
             let cpu = x.sqrt();
             if cpu.is_nan() && gpu.is_nan() {
                 nan_ok += 1;
@@ -1437,9 +1447,7 @@ fn sqrt_exact1d_candidate_d_edge_rows() {
                 }
             }
             if !bits_match {
-                println!(
-                    "D edge `{name}` x={x:?} gpu={gpu:?} cpu={cpu:?} ulp={ulp}"
-                );
+                println!("D edge `{name}` x={x:?} gpu={gpu:?} cpu={cpu:?} ulp={ulp}");
             }
         }
         println!(
@@ -1530,13 +1538,14 @@ fn sqrt_exact1d_candidate_b_fallback_still_classified() {
     assert!(!wgsl.contains("sqrt_cr_d"));
     with_gpu(|ctx| {
         let corpus = dense_normal_corpus_1d();
-        let summary = sweep_candidate(ctx, ExactSqrtCandidate::CorrectlyRoundedNewtonTwoProduct, &corpus);
+        let summary = sweep_candidate(
+            ctx,
+            ExactSqrtCandidate::CorrectlyRoundedNewtonTwoProduct,
+            &corpus,
+        );
         println!(
             "B fallback still present: tested={} exact_bits={} max_ulp={} class={:?}",
-            summary.tested,
-            summary.exact_bits,
-            summary.max_ulp,
-            summary.classification
+            summary.tested, summary.exact_bits, summary.max_ulp, summary.classification
         );
         assert!(summary.tested > 100);
     });
@@ -1546,12 +1555,10 @@ fn sqrt_exact1d_candidate_b_fallback_still_classified() {
 fn sqrt_exact1d_no_exact_authority_promotion() {
     let sqrt0 = sqrt0_descriptor();
     assert_eq!(sqrt0.native_math, NativeMathClass::ApproximateJitOnly);
-    assert!(
-        sqrt0
-            .writes
-            .iter()
-            .all(|out| out.authority == OutputAuthority::ApproximateDiagnostic)
-    );
+    assert!(sqrt0
+        .writes
+        .iter()
+        .all(|out| out.authority == OutputAuthority::ApproximateDiagnostic));
 
     let grad0 = grad0_descriptor();
     let mag2 = grad0
@@ -1574,7 +1581,10 @@ fn sqrt_exact1d_no_exact_authority_promotion() {
         !landed_jit_kernel_descriptors()
             .iter()
             .any(|desc| desc.id == "m_jit_sqrt_0_candidate"
-                && desc.writes.iter().any(|o| o.authority == OutputAuthority::ExactAuthoritative)),
+                && desc
+                    .writes
+                    .iter()
+                    .any(|o| o.authority == OutputAuthority::ExactAuthoritative)),
         "native sqrt must not claim exact authority"
     );
 }
@@ -1715,7 +1725,10 @@ struct ExhaustiveRange {
 fn parse_u32_env(name: &str) -> Option<u32> {
     let raw = std::env::var(name).ok()?;
     let trimmed = raw.trim();
-    if let Some(hex) = trimmed.strip_prefix("0x").or_else(|| trimmed.strip_prefix("0X")) {
+    if let Some(hex) = trimmed
+        .strip_prefix("0x")
+        .or_else(|| trimmed.strip_prefix("0X"))
+    {
         u32::from_str_radix(hex, 16).ok()
     } else {
         trimmed.parse::<u32>().ok()
@@ -1818,7 +1831,10 @@ fn exhaustive_range_from_env_with_prefix(prefix: &str) -> ExhaustiveRange {
 
 #[test]
 fn sqrt_exact3e_candidate_e_wgsl_compiles_semantic_free() {
-    assert!(!SQRT_CR_E_WGSL.is_empty(), "E WGSL artifact must be non-empty");
+    assert!(
+        !SQRT_CR_E_WGSL.is_empty(),
+        "E WGSL artifact must be non-empty"
+    );
     assert_semantic_free(SQRT_CR_E_WGSL);
     assert_exact0_forbidden(SQRT_CR_E_WGSL);
     assert!(SQRT_CR_E_WGSL.contains("fn sqrt_cr_e_bits("));
@@ -2029,12 +2045,10 @@ fn sqrt_exact3e_candidate_e_compared_to_d_and_e2() {
 fn sqrt_exact3e_no_exact_authority_promotion() {
     let sqrt0 = sqrt0_descriptor();
     assert_eq!(sqrt0.native_math, NativeMathClass::ApproximateJitOnly);
-    assert!(
-        sqrt0
-            .writes
-            .iter()
-            .all(|out| out.authority == OutputAuthority::ApproximateDiagnostic)
-    );
+    assert!(sqrt0
+        .writes
+        .iter()
+        .all(|out| out.authority == OutputAuthority::ApproximateDiagnostic));
 
     let grad0 = grad0_descriptor();
     let mag2 = grad0
@@ -2057,7 +2071,10 @@ fn sqrt_exact3e_no_exact_authority_promotion() {
         !landed_jit_kernel_descriptors()
             .iter()
             .any(|desc| desc.id == "m_jit_sqrt_0_candidate"
-                && desc.writes.iter().any(|o| o.authority == OutputAuthority::ExactAuthoritative)),
+                && desc
+                    .writes
+                    .iter()
+                    .any(|o| o.authority == OutputAuthority::ExactAuthoritative)),
         "native sqrt must not claim exact authority"
     );
 
@@ -2071,7 +2088,9 @@ fn sqrt_exact3e_candidate_e_full_exhaustive_sweep() {
     with_gpu(|ctx| {
         const DOMAIN_END: u32 = 0x7F7F_FFFF;
         let range = exhaustive_range_from_env();
-        let batch = parse_u32_env("SIMTHING_SQRT_E4_BATCH").unwrap_or(1_048_576).max(1);
+        let batch = parse_u32_env("SIMTHING_SQRT_E4_BATCH")
+            .unwrap_or(1_048_576)
+            .max(1);
         let progress_every = parse_u32_env("SIMTHING_SQRT_E4_PROGRESS_EVERY")
             .unwrap_or(64)
             .max(1);
@@ -2120,8 +2139,14 @@ fn sqrt_exact3e_candidate_e_full_exhaustive_sweep() {
             tested, expected,
             "range coverage mismatch for exhaustive sweep"
         );
-        assert_eq!(flush_count, 0, "exhaustive sweep must have flush_count == 0");
-        assert_eq!(max_ulp, 0, "Candidate E exhaustive promotion requires max_ulp == 0");
+        assert_eq!(
+            flush_count, 0,
+            "exhaustive sweep must have flush_count == 0"
+        );
+        assert_eq!(
+            max_ulp, 0,
+            "Candidate E exhaustive promotion requires max_ulp == 0"
+        );
 
         let split_tag = match (range.split_index, range.total_splits) {
             (Some(idx), Some(total)) => format!("split={idx}/{total}"),
@@ -2144,10 +2169,11 @@ fn sqrt_exact3e_candidate_e_full_exhaustive_sweep() {
             "split_tag={} start={:#010x} end={:#010x} tested={} exact_bits={} max_ulp={} flush_count={} {}\n",
             split_tag, range.start, range.end, tested, exact_bits, max_ulp, flush_count, worst_tag
         );
-        let repo_docs_tests = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../docs/tests");
+        let repo_docs_tests =
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests");
         std::fs::create_dir_all(&repo_docs_tests).expect("repo docs/tests must exist");
-        let batch_log_path = repo_docs_tests.join("phase_m_jit_sqrt_exact4e_exhaustive_batches.log");
+        let batch_log_path =
+            repo_docs_tests.join("phase_m_jit_sqrt_exact4e_exhaustive_batches.log");
         let mut file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
@@ -2168,7 +2194,10 @@ fn sqrt_exact3e_candidate_e_full_exhaustive_sweep() {
 
 #[test]
 fn sqrt_exact4f_candidate_f_wgsl_compiles_semantic_free() {
-    assert!(!SQRT_CR_F_WGSL.is_empty(), "F WGSL artifact must be non-empty");
+    assert!(
+        !SQRT_CR_F_WGSL.is_empty(),
+        "F WGSL artifact must be non-empty"
+    );
     assert_semantic_free(SQRT_CR_F_WGSL);
     assert_exact0_forbidden(SQRT_CR_F_WGSL);
     assert!(SQRT_CR_F_WGSL.contains("fn sqrt_cr_f_bits("));
@@ -2449,12 +2478,10 @@ fn sqrt_exact4f_candidate_f_contraction_probe() {
 fn sqrt_exact4f_no_exact_authority_promotion() {
     let sqrt0 = sqrt0_descriptor();
     assert_eq!(sqrt0.native_math, NativeMathClass::ApproximateJitOnly);
-    assert!(
-        sqrt0
-            .writes
-            .iter()
-            .all(|out| out.authority == OutputAuthority::ApproximateDiagnostic)
-    );
+    assert!(sqrt0
+        .writes
+        .iter()
+        .all(|out| out.authority == OutputAuthority::ApproximateDiagnostic));
 
     let grad0 = grad0_descriptor();
     let mag2 = grad0
@@ -2475,7 +2502,8 @@ fn sqrt_exact4f_no_exact_authority_promotion() {
 
     let sqrt_f = sqrt_f_descriptor();
     assert!(is_exact_sqrt_f_descriptor(&sqrt_f));
-    validate_exact_kernel_inputs(&sqrt_f, &["sqrt_out"]).expect("F descriptor exact after PROMOTE-0");
+    validate_exact_kernel_inputs(&sqrt_f, &["sqrt_out"])
+        .expect("F descriptor exact after PROMOTE-0");
 
     let baseline = include_str!("../../simthing-gpu/src/shaders/accumulator_op.wgsl");
     assert!(!baseline.contains("sqrt("));
@@ -2591,9 +2619,18 @@ fn sqrt_exact5f_candidate_f_full_exhaustive_sweep() {
         }
 
         let expected = (range.end as u64) - (range.start as u64) + 1;
-        assert_eq!(tested, expected, "range coverage mismatch for F exhaustive sweep");
-        assert_eq!(flush_count, 0, "F exhaustive sweep must have flush_count == 0");
-        assert_eq!(max_ulp, 0, "Candidate F exhaustive promotion requires max_ulp == 0");
+        assert_eq!(
+            tested, expected,
+            "range coverage mismatch for F exhaustive sweep"
+        );
+        assert_eq!(
+            flush_count, 0,
+            "F exhaustive sweep must have flush_count == 0"
+        );
+        assert_eq!(
+            max_ulp, 0,
+            "Candidate F exhaustive promotion requires max_ulp == 0"
+        );
         assert_eq!(
             exact_bits, tested,
             "Candidate F exhaustive promotion requires exact_bits == tested"
@@ -2620,10 +2657,11 @@ fn sqrt_exact5f_candidate_f_full_exhaustive_sweep() {
             "split_tag={} start={:#010x} end={:#010x} tested={} exact_bits={} max_ulp={} flush_count={} {}\n",
             split_tag, range.start, range.end, tested, exact_bits, max_ulp, flush_count, worst_tag
         );
-        let repo_docs_tests = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../docs/tests");
+        let repo_docs_tests =
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests");
         std::fs::create_dir_all(&repo_docs_tests).expect("repo docs/tests must exist");
-        let batch_log_path = repo_docs_tests.join("phase_m_jit_sqrt_exact5f_exhaustive_batches.log");
+        let batch_log_path =
+            repo_docs_tests.join("phase_m_jit_sqrt_exact5f_exhaustive_batches.log");
         let mut file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)

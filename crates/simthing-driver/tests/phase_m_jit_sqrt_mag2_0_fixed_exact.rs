@@ -10,9 +10,9 @@ use std::time::Instant;
 use simthing_gpu::GpuContext;
 use simthing_spec::{
     is_exact_mag2_fixed_descriptor, landed_jit_kernel_descriptors, validate_exact_kernel_inputs,
-    validate_kernel_descriptor_admission, KernelDescriptorSpec, MAG2_FIXED_DESCRIPTOR_ID,
+    validate_kernel_descriptor_admission, KernelDescriptorSpec, Mag2SourceContract,
+    MappingExecutionProfile, OutputAuthority, SpecError, MAG2_FIXED_DESCRIPTOR_ID,
     MAG2_Q16_COMPONENT_MAX, MAG2_Q16_FRAC_BITS, MAG2_Q16_SCALE, MAG2_Q16_SCALE_SQ,
-    Mag2SourceContract, MappingExecutionProfile, OutputAuthority, SpecError,
 };
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
@@ -200,11 +200,13 @@ fn run_fixed_mag2_batch(
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("jit_mag2_fixed_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("jit_mag2_fixed_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("jit_mag2_fixed_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -457,7 +459,9 @@ fn sqrt_mag2_0_fixed_mag2_feeds_f_sqrt_dense_corpus() {
             }
         }
         if let Some((dx, dy, gpu, cpu, ulp)) = worst {
-            println!("sqrt_mag2_0_f_dense_worst: dx={dx} dy={dy} gpu={gpu:#x} cpu={cpu:#x} ulp={ulp}");
+            println!(
+                "sqrt_mag2_0_f_dense_worst: dx={dx} dy={dy} gpu={gpu:#x} cpu={cpu:#x} ulp={ulp}"
+            );
         }
         println!(
             "sqrt_mag2_0_f_dense: tested={} exact={exact} max_ulp={max_ulp}",
@@ -484,7 +488,8 @@ fn sqrt_mag2_0_perf_34k_fixed_mag2_plus_f_sqrt() {
         {
             let cpu_mag2 = cpu_mag2_bits_from_fixed(*dx, *dy);
             assert_eq!(*mag2_bits, cpu_mag2);
-            spot_max_ulp = spot_max_ulp.max(ulp_distance(*mag_bits, cpu_mag_bits_from_fixed(*dx, *dy)));
+            spot_max_ulp =
+                spot_max_ulp.max(ulp_distance(*mag_bits, cpu_mag_bits_from_fixed(*dx, *dy)));
         }
         assert_eq!(spot_max_ulp, 0);
 

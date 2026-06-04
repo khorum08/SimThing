@@ -9,15 +9,14 @@ mod mobility_gpu_kernel8_variant_batch_fixture;
 
 use mobility_gpu_kernel8_variant_batch_fixture::{
     build_projection_variants, run_mobility_gpu_kernel6_fixture, MobilityGpuKernel6FixtureInput,
-    MobilityGpuKernel6ForbiddenPathRequests, MobilityGpuKernel6Gate,
-    MOBILITY_GPU_KERNEL6_CHAIN_ID, MOBILITY_GPU_KERNEL6_FIXTURE_ID,
-    MOBILITY_GPU_KERNEL8_BATCH_ID, MOBILITY_GPU_KERNEL8_FIXTURE_ID,
-    MOBILITY_GPU_KERNEL8_MIN_REPLAYS_PER_VARIANT,
+    MobilityGpuKernel6ForbiddenPathRequests, MobilityGpuKernel6Gate, MOBILITY_GPU_KERNEL6_CHAIN_ID,
+    MOBILITY_GPU_KERNEL6_FIXTURE_ID, MOBILITY_GPU_KERNEL8_BATCH_ID,
+    MOBILITY_GPU_KERNEL8_FIXTURE_ID, MOBILITY_GPU_KERNEL8_MIN_REPLAYS_PER_VARIANT,
 };
 
 pub use mobility_gpu_kernel8_variant_batch_fixture::{
     cpu_chain_checksum_for_columns, mobility_gpu_kernel8_shader_text_has_domain_terms,
-    projection_checksum_for_columns, projected_34k_columns_for_kernel6,
+    projected_34k_columns_for_kernel6, projection_checksum_for_columns,
     MobilityGpuKernel0ColumnProbe, MobilityGpuKernel0ParityClassification,
     MOBILITY_GPU_KERNEL4_ROW_COUNT, MOBILITY_GPU_KERNEL8_VARIANT_BASELINE,
     MOBILITY_GPU_KERNEL8_VARIANT_DENSE_BULK, MOBILITY_GPU_KERNEL8_VARIANT_PARENT_OFFSET,
@@ -31,7 +30,8 @@ pub const MOBILITY_GPU_KERNEL9_NAMED_GATE: &str =
 pub const MOBILITY_GPU_KERNEL9_STREAM_ID: &str =
     "mobility_gpu_kernel9_projection_variant_frame_stream_soak";
 pub const MOBILITY_GPU_KERNEL9_FRAME_COUNT: usize = 4;
-pub const MOBILITY_GPU_KERNEL9_MIN_REPLAYS_PER_VARIANT: usize = MOBILITY_GPU_KERNEL8_MIN_REPLAYS_PER_VARIANT;
+pub const MOBILITY_GPU_KERNEL9_MIN_REPLAYS_PER_VARIANT: usize =
+    MOBILITY_GPU_KERNEL8_MIN_REPLAYS_PER_VARIANT;
 pub const MOBILITY_GPU_KERNEL9_NEW_SHADER_TEXT_ADDED: bool = false;
 
 pub const MOBILITY_GPU_KERNEL9_FRAME_CANONICAL: &str = "frame0_canonical_batch";
@@ -376,8 +376,10 @@ pub fn run_mobility_gpu_kernel9_fixture(
     });
     let gpu_checksums_match_or_unavailable = frame_reports.iter().all(|frame| {
         frame.variants.iter().all(|variant| {
-            variant.replays.iter().all(|replay| {
-                match replay.parity_classification {
+            variant
+                .replays
+                .iter()
+                .all(|replay| match replay.parity_classification {
                     MobilityGpuKernel0ParityClassification::ExactParity => {
                         replay.gpu_chain_checksum == variant.gpu_chain_checksum
                             && replay.gpu_chain_checksum.is_some()
@@ -386,8 +388,7 @@ pub fn run_mobility_gpu_kernel9_fixture(
                         !replay.gpu_dispatch_occurred && replay.gpu_chain_checksum.is_none()
                     }
                     MobilityGpuKernel0ParityClassification::GpuExecutionFailed => false,
-                }
-            })
+                })
         })
     });
     let replay_stable_per_frame = frame_reports.iter().all(|frame| {
@@ -406,9 +407,9 @@ pub fn run_mobility_gpu_kernel9_fixture(
         .iter()
         .map(|frame| frame.cpu_frame_checksum)
         .collect();
-    let distinct_frames_have_distinct_checksums =
-        distinct_cpu.len() >= 3 && frame_reports[0].cpu_frame_checksum != frame_reports[1].cpu_frame_checksum
-            && frame_reports[1].cpu_frame_checksum != frame_reports[3].cpu_frame_checksum;
+    let distinct_frames_have_distinct_checksums = distinct_cpu.len() >= 3
+        && frame_reports[0].cpu_frame_checksum != frame_reports[1].cpu_frame_checksum
+        && frame_reports[1].cpu_frame_checksum != frame_reports[3].cpu_frame_checksum;
     let parity_classification = if frame_reports.iter().all(|frame| {
         frame.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity
     }) {
@@ -440,8 +441,8 @@ pub fn run_mobility_gpu_kernel9_fixture(
     report.replay_stable_per_frame = replay_stable_per_frame;
     report.repeated_frames_have_identical_checksums = repeated_frames_have_identical_checksums;
     report.distinct_frames_have_distinct_checksums = distinct_frames_have_distinct_checksums;
-    report.source_projection_unchanged =
-        source_before == source_after && projection_checksum_for_columns(&source_before) == source_checksum;
+    report.source_projection_unchanged = source_before == source_after
+        && projection_checksum_for_columns(&source_before) == source_checksum;
     report.gpu_dispatch_occurred = any_gpu_dispatch;
     report.parity_classification = parity_classification;
     report.frames = frame_reports;
@@ -617,7 +618,9 @@ fn shell(input: &MobilityGpuKernel9FixtureInput) -> MobilityGpuKernel9FixtureRep
     }
 }
 
-fn disabled_no_op_report(input: &MobilityGpuKernel9FixtureInput) -> MobilityGpuKernel9FixtureReport {
+fn disabled_no_op_report(
+    input: &MobilityGpuKernel9FixtureInput,
+) -> MobilityGpuKernel9FixtureReport {
     let mut report = shell(input);
     report.admitted = true;
     report.disabled_no_op = true;

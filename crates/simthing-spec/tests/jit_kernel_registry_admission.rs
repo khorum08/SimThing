@@ -1,11 +1,10 @@
 //! Phase M-JIT-REG-1 — Production-candidate registry admission preview.
 
 use simthing_spec::{
-    preview_kernel_registry_manifest, preview_production_candidate_registry_entry,
-    preview_kernel_graph_identity, KernelDescriptorSpec, KernelGraphEdgeSpec,
+    preview_kernel_graph_identity, preview_kernel_registry_manifest,
+    preview_production_candidate_registry_entry, KernelDescriptorSpec, KernelGraphEdgeSpec,
     KernelGraphRequestSpec, KernelGraphSpec, KernelLane, KernelOutputSpec,
-    KernelRegistryEntryPreview, KernelRegistryLane, NativeMathClass, OutputAuthority,
-    SpecError,
+    KernelRegistryEntryPreview, KernelRegistryLane, NativeMathClass, OutputAuthority, SpecError,
 };
 
 fn grad0_exact_only() -> KernelDescriptorSpec {
@@ -126,7 +125,10 @@ fn jit_reg1_exact_grad1_style_entry_admits_as_production_candidate_preview() {
 
     let candidate =
         preview_production_candidate_registry_entry(&entry).expect("candidate admission");
-    assert_eq!(candidate.lane, KernelRegistryLane::ProductionCandidatePreview);
+    assert_eq!(
+        candidate.lane,
+        KernelRegistryLane::ProductionCandidatePreview
+    );
     assert!(candidate.default_off);
     assert!(!candidate.production_wiring);
     assert_eq!(candidate.stable_key, entry.stable_key);
@@ -167,7 +169,9 @@ fn jit_reg1_rejects_mag2_candidate() {
     }
 
     let mut entry = exact_grad0_to_scorer_entry();
-    entry.canonical_text.push_str("\n  write=mag2 authority=ApproximateDiagnostic");
+    entry
+        .canonical_text
+        .push_str("\n  write=mag2 authority=ApproximateDiagnostic");
     assert_candidate_err(&entry, "mag2");
 }
 
@@ -196,7 +200,9 @@ fn jit_reg1_rejects_sqrt_candidate() {
 #[test]
 fn jit_reg1_rejects_semantic_canonical_text() {
     let mut entry = exact_grad0_to_scorer_entry();
-    entry.canonical_text.push_str("\nnode id=m_jit_faction_observer");
+    entry
+        .canonical_text
+        .push_str("\nnode id=m_jit_faction_observer");
     assert_candidate_err(&entry, "forbidden semantic term");
 }
 

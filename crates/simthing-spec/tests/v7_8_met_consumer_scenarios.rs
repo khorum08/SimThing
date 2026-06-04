@@ -137,10 +137,9 @@ fn v7_8_scenarios_keep_nested_e11b_d2a_and_atlas_rejected_until_acceptance() {
 #[test]
 fn v7_8_scenarios_do_not_open_clausething_or_clausescript() {
     let pack = pack();
-    assert!(pack
-        .scenarios
-        .iter()
-        .all(|scenario| !scenario.first_implementation_gate_after_acceptance.contains("Clause")));
+    assert!(pack.scenarios.iter().all(|scenario| !scenario
+        .first_implementation_gate_after_acceptance
+        .contains("Clause")));
 
     let source = include_str!("../src/designer_admission/v7_8_line_scenarios.rs");
     assert!(source.contains("no E-11B"));
@@ -183,7 +182,12 @@ fn v7_8_scenarios_do_not_add_runtime_wiring_or_simthing_sim_semantics() {
     }
 
     let sim_source = std::fs::read_to_string("../simthing-sim/src/lib.rs").unwrap();
-    for token in ["V78LineScenario", "ClauseThing", "ClauseScript", "FrontierV2"] {
+    for token in [
+        "V78LineScenario",
+        "ClauseThing",
+        "ClauseScript",
+        "FrontierV2",
+    ] {
         assert!(!sim_source.contains(token));
     }
 }

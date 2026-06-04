@@ -1,8 +1,6 @@
 //! Controlled resource economy burn-in reporting (driver-only, test/reporting).
 
-use simthing_core::{
-    ConjunctiveRecipeRegistration, DiscreteTransferRegistration,
-};
+use simthing_core::{ConjunctiveRecipeRegistration, DiscreteTransferRegistration};
 use simthing_gpu::{
     set_debug_readback_allowed, AccumulatorPipelineSessions, EmissionRecord, EmissionRegistration,
     Pipelines, WorldGpuState,
@@ -34,11 +32,7 @@ impl ResourceEconomyBurnInReport {
         }
     }
 
-    pub fn note_sync_uploads(
-        &mut self,
-        state: &WorldGpuState,
-        sync: &ResourceEconomySyncReport,
-    ) {
+    pub fn note_sync_uploads(&mut self, state: &WorldGpuState, sync: &ResourceEconomySyncReport) {
         if let Some(runtime) = state.accumulator_runtime.as_ref() {
             self.transfer_ops_uploaded = runtime.transfer_op_upload_count() as u32;
             self.emission_ops_uploaded = runtime.emission_op_upload_count() as u32;
@@ -108,7 +102,10 @@ fn run_accumulator_emission(
             encode_world_summary: false,
         },
     );
-    let gpu_records = emission_session.as_ref().unwrap().readback_emissions(&state.ctx)?;
+    let gpu_records = emission_session
+        .as_ref()
+        .unwrap()
+        .readback_emissions(&state.ctx)?;
     state
         .accumulator_runtime
         .as_mut()

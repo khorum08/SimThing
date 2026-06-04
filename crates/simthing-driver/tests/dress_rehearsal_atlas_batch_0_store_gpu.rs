@@ -119,7 +119,13 @@ fn no_semantic_shader_or_gameplay_inputs() {
     assert_eq!(encode_owner_f32(Owner::Pirate), 1.0);
     assert_eq!(encode_channel_f32(ChannelKind::PiratePresence), 5.0);
     let source = include_str!("../src/dress_rehearsal_atlas_batch_0_store_gpu.rs");
-    for term in ["faction", "map_name", "gameplay", "BoundedFeedback", "diffusion"] {
+    for term in [
+        "faction",
+        "map_name",
+        "gameplay",
+        "BoundedFeedback",
+        "diffusion",
+    ] {
         assert!(
             !source.contains(term),
             "fixture must not embed gameplay semantics: {term}"
@@ -145,7 +151,12 @@ fn no_r1_r2_r3_r4_behavior() {
         assert!(!status.to_lowercase().contains(&term.to_lowercase()));
     }
     let source = include_str!("../src/dress_rehearsal_atlas_batch_0_store_gpu.rs");
-    for term in ["StructuredFieldStencilOp", "execute_configured", "RegionField", "simthing_sim"] {
+    for term in [
+        "StructuredFieldStencilOp",
+        "execute_configured",
+        "RegionField",
+        "simthing_sim",
+    ] {
         assert!(!source.contains(term), "must not wire {term}");
     }
 }
@@ -156,8 +167,13 @@ fn gpu_adapter_is_discrete_rtx_target() {
         return;
     };
     assert!(selection.selected_adapter_is_discrete_rtx);
-    assert!(adapter_name_is_discrete_rtx_target(&selection.selected_adapter_name));
-    assert!(!selection.selected_adapter_name.to_ascii_lowercase().contains("intel"));
+    assert!(adapter_name_is_discrete_rtx_target(
+        &selection.selected_adapter_name
+    ));
+    assert!(!selection
+        .selected_adapter_name
+        .to_ascii_lowercase()
+        .contains("intel"));
     if selection.require_adapter_match {
         assert!(selection.adapter_target_matched);
     }
@@ -170,10 +186,7 @@ fn gpu_parity_full_store_table() {
     };
     assert!(report.ec_a3_gpu_closed, "full table parity: {:?}", report);
     assert_eq!(report.bit_exact_mismatches, 0);
-    assert_eq!(
-        report.cpu_oracle_entry_count,
-        report.gpu_output_entry_count
-    );
+    assert_eq!(report.cpu_oracle_entry_count, report.gpu_output_entry_count);
     println!("{}", format_parity_report(report, true));
 }
 
@@ -185,8 +198,7 @@ fn gpu_preserves_10_pirate_shared_cell_channels() {
     assert!(report.ten_pirate_shared_cell_ok);
     let oracle = canonical_store_oracle();
     let materialization = canonical_materialization();
-    let (location_id, _, _, cell_index) =
-        canonical_pirate_shared_galactic_cell(&materialization);
+    let (location_id, _, _, cell_index) = canonical_pirate_shared_galactic_cell(&materialization);
     let at_cell = entries_at_cell_index(&oracle, location_id, cell_index);
     assert_eq!(at_cell.len(), 2);
     for entry in at_cell {
@@ -245,8 +257,10 @@ fn gpu_channel_entries_do_not_blind_sum_by_position() {
     assert!(report.owner_channel_no_blind_sum_ok);
     let oracle = canonical_store_oracle();
     let ops = build_store_gpu_ops(&oracle, &build_store_gpu_fixture_layout(&oracle));
-    assert!(ops.iter().any(|op| matches!(op.combine, simthing_core::CombineFn::Sum)));
-    assert!(ops.iter().any(|op| {
-        matches!(op.combine, simthing_core::CombineFn::EvalEML { .. })
-    }));
+    assert!(ops
+        .iter()
+        .any(|op| matches!(op.combine, simthing_core::CombineFn::Sum)));
+    assert!(ops
+        .iter()
+        .any(|op| { matches!(op.combine, simthing_core::CombineFn::EvalEML { .. }) }));
 }

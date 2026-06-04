@@ -16,8 +16,8 @@ pub const CLASS_PLANET_SURFACE_10X10: &str = "PlanetSurface10x10";
 mod loc;
 
 pub use loc::{
-    channel_set_has_kind, ChannelKind, ChannelSet, LocationId,
-    LocationMaterialization, LocationRole, Owner,
+    channel_set_has_kind, ChannelKind, ChannelSet, LocationId, LocationMaterialization,
+    LocationRole, Owner,
 };
 
 const GALAXY_SIDE: u32 = 20;
@@ -205,10 +205,7 @@ fn pack_class_row_major(
     });
 }
 
-fn build_g_zero_mask(
-    classes: &[TileClassDescriptor],
-    tiles: &[PackedTile],
-) -> GZeroMaskDescriptor {
+fn build_g_zero_mask(classes: &[TileClassDescriptor], tiles: &[PackedTile]) -> GZeroMaskDescriptor {
     let tile_bounds = tiles
         .iter()
         .map(|tile| TileMaskBounds {
@@ -274,7 +271,12 @@ fn bytes_per_cell_for_channels(channels: &ChannelSet) -> u64 {
     channels.channels.len() as u64 * 4
 }
 
-pub fn pack_coord(plan: &AtlasBatchPlan, location_id: LocationId, x: u32, y: u32) -> Option<(u32, u32)> {
+pub fn pack_coord(
+    plan: &AtlasBatchPlan,
+    location_id: LocationId,
+    x: u32,
+    y: u32,
+) -> Option<(u32, u32)> {
     let tile = plan
         .tiles
         .iter()
@@ -305,7 +307,12 @@ pub fn unpack_coord(
     None
 }
 
-fn tile_source_at_atlas(plan: &AtlasBatchPlan, class_id: &str, ax: u32, ay: u32) -> Option<LocationId> {
+fn tile_source_at_atlas(
+    plan: &AtlasBatchPlan,
+    class_id: &str,
+    ax: u32,
+    ay: u32,
+) -> Option<LocationId> {
     let class = plan.class(class_id)?;
     if ax >= class.atlas_width || ay >= class.atlas_height {
         return None;
@@ -341,7 +348,9 @@ pub fn g_zero_sample(
     if center_source != neighbor_source {
         return 0.0;
     }
-    let class = plan.class(class_id).expect("class_id validated by tile lookup");
+    let class = plan
+        .class(class_id)
+        .expect("class_id validated by tile lookup");
     let Some(index) = atlas_linear_index(class.atlas_width, nax, nay) else {
         return 0.0;
     };

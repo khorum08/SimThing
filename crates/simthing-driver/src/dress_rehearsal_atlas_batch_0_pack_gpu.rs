@@ -14,14 +14,14 @@ pub const PACK_GPU_HORIZON: u32 = 8;
 mod pack;
 
 pub use pack::{
-    AtlasBatchPlan, LocationMaterialization, PackedTile, TileClassDescriptor,
-    CLASS_GALACTIC_20X20, CLASS_PLANET_SURFACE_10X10, CLASS_STAR_SYSTEM_10X10,
+    AtlasBatchPlan, LocationMaterialization, PackedTile, TileClassDescriptor, CLASS_GALACTIC_20X20,
+    CLASS_PLANET_SURFACE_10X10, CLASS_STAR_SYSTEM_10X10,
 };
 
 use simthing_gpu::{
     atlas_cell_index, atlas_config, atlas_slot_xy, cpu_atlas_horizon,
-    cpu_caller_managed_atlas_protocol, make_atlas_mask_params, AtlasIsolationMode,
-    AtlasMaskGpuOp, AtlasMaskParamsGpu, AtlasNormalizeVariant, C0_DEFAULT_N_DIMS, GpuContext,
+    cpu_caller_managed_atlas_protocol, make_atlas_mask_params, AtlasIsolationMode, AtlasMaskGpuOp,
+    AtlasMaskParamsGpu, AtlasNormalizeVariant, GpuContext, C0_DEFAULT_N_DIMS,
 };
 
 const SOURCE_COL: u32 = 0;
@@ -47,10 +47,7 @@ pub struct PackGpuParitySummary {
 }
 
 pub fn gpu_tests_requested() -> bool {
-    std::env::var("SIMTHING_RUN_GPU_TESTS")
-        .ok()
-        .as_deref()
-        == Some("1")
+    std::env::var("SIMTHING_RUN_GPU_TESTS").ok().as_deref() == Some("1")
 }
 
 pub fn canonical_pack_plan() -> AtlasBatchPlan {
@@ -79,21 +76,11 @@ pub fn atlas_mask_params_are_semantic_free(params: &AtlasMaskParamsGpu) -> bool 
         && params.variant == 1
 }
 
-fn seed_cluster_at(
-    values: &mut [f32],
-    width: u32,
-    ox: u32,
-    oy: u32,
-    scale: f32,
-    n_dims: u32,
-) {
+fn seed_cluster_at(values: &mut [f32], width: u32, ox: u32, oy: u32, scale: f32, n_dims: u32) {
     for &(dx, dy, v) in &[(0u32, 0, 80.0f32), (1, 0, 60.0), (0, 1, 60.0), (1, 1, 40.0)] {
         if ox + dx < width {
-            values[atlas_cell_index(
-                atlas_slot_xy(ox + dx, oy + dy, width),
-                SOURCE_COL,
-                n_dims,
-            )] = v * scale;
+            values[atlas_cell_index(atlas_slot_xy(ox + dx, oy + dy, width), SOURCE_COL, n_dims)] =
+                v * scale;
         }
     }
 }
@@ -137,7 +124,9 @@ pub fn build_class_scalar_field(class: &TileClassDescriptor, tiles: &[&PackedTil
     values
 }
 
-fn atlas_config_for_class(class: &TileClassDescriptor) -> simthing_gpu::StructuredFieldStencilConfig {
+fn atlas_config_for_class(
+    class: &TileClassDescriptor,
+) -> simthing_gpu::StructuredFieldStencilConfig {
     atlas_config(
         class.atlas_width,
         class.atlas_height,
@@ -161,12 +150,7 @@ fn cpu_caller_managed_atlas_protocol_pack_origins(
     let mut cur = values.to_vec();
     cur = cpu_atlas_horizon(&cur, config, tile_size, mode, norm, 1);
     for &(ox, oy) in origins {
-        clear_seed_cells_only_local(
-            &mut cur,
-            width,
-            atlas_slot_xy(ox, oy, width),
-            n_dims,
-        );
+        clear_seed_cells_only_local(&mut cur, width, atlas_slot_xy(ox, oy, width), n_dims);
     }
     if config.horizon > 1 {
         cur = cpu_atlas_horizon(&cur, config, tile_size, mode, norm, config.horizon);
@@ -186,16 +170,10 @@ fn max_full_tile_error_pack_origins(
     for &(ox, oy) in origins {
         for ly in 0..tile_size {
             for lx in 0..tile_size {
-                let a = got[atlas_cell_index(
-                    atlas_slot_xy(ox + lx, oy + ly, width),
-                    TARGET_COL,
-                    n_dims,
-                )];
-                let b = expected[atlas_cell_index(
-                    atlas_slot_xy(ox + lx, oy + ly, width),
-                    TARGET_COL,
-                    n_dims,
-                )];
+                let a = got
+                    [atlas_cell_index(atlas_slot_xy(ox + lx, oy + ly, width), TARGET_COL, n_dims)];
+                let b = expected
+                    [atlas_cell_index(atlas_slot_xy(ox + lx, oy + ly, width), TARGET_COL, n_dims)];
                 max_err = max_err.max((a - b).abs());
             }
         }
@@ -237,12 +215,7 @@ fn gpu_caller_managed_atlas_protocol_pack_origins(
     let mut dispatches = 1u32;
 
     for &(ox, oy) in origins {
-        clear_seed_cells_only_local(
-            &mut cur,
-            width,
-            atlas_slot_xy(ox, oy, width),
-            n_dims,
-        );
+        clear_seed_cells_only_local(&mut cur, width, atlas_slot_xy(ox, oy, width), n_dims);
     }
     ctx.queue
         .write_buffer(&input, 0, bytemuck::cast_slice(&cur));
@@ -257,11 +230,7 @@ fn gpu_caller_managed_atlas_protocol_pack_origins(
         dispatches += 1;
         use_input = !use_input;
     }
-    let out_buf = if horizon % 2 == 1 {
-        &output
-    } else {
-        &input
-    };
+    let out_buf = if horizon % 2 == 1 { &output } else { &input };
     (op.readback(ctx, out_buf, len), dispatches)
 }
 
@@ -270,9 +239,7 @@ fn run_class_parity(
     class_id: &str,
     ctx: &GpuContext,
 ) -> PackGpuClassParityReport {
-    let class = plan
-        .class(class_id)
-        .expect("canonical plan includes class");
+    let class = plan.class(class_id).expect("canonical plan includes class");
     let tiles: Vec<_> = plan.tiles_in_class(class_id);
     let tile_count = tiles.len() as u32;
     let tile_size = class.tile_width;
@@ -283,22 +250,10 @@ fn run_class_parity(
     let norm = AtlasNormalizeVariant::FixedDenominator;
 
     let oracle = if tile_count == 1 && origins == [(0, 0)] {
-        cpu_caller_managed_atlas_protocol(
-            &values,
-            &config,
-            tile_size,
-            tile_count,
-            mode,
-            norm,
-        )
+        cpu_caller_managed_atlas_protocol(&values, &config, tile_size, tile_count, mode, norm)
     } else {
         cpu_caller_managed_atlas_protocol_pack_origins(
-            &values,
-            &config,
-            tile_size,
-            &origins,
-            mode,
-            norm,
+            &values, &config, tile_size, &origins, mode, norm,
         )
     };
 
@@ -422,7 +377,9 @@ pub fn format_parity_report(summary: &PackGpuParitySummary, gpu_tier_ran: bool) 
     lines.push(format!("adapter_name: {}", summary.adapter_name));
     lines.push(format!("device_name: {}", summary.device_name));
     lines.push(format!("gpu_tier_ran: {gpu_tier_ran}"));
-    lines.push("tile_classes_tested: Galactic20x20, StarSystem10x10, PlanetSurface10x10".to_string());
+    lines.push(
+        "tile_classes_tested: Galactic20x20, StarSystem10x10, PlanetSurface10x10".to_string(),
+    );
     for report in &summary.classes {
         lines.push(format!(
             "class={} tile_count={} atlas={}x{} output_elements={} full_tile_Linf={:.6} passed_Linf_le_1e-4={}",

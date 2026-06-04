@@ -283,9 +283,7 @@ pub fn v7_8_met_consumer_scenario_pack() -> V78LineScenarioPack {
     }
 }
 
-pub fn admit_v7_8_line_scenario_pack(
-    pack: &V78LineScenarioPack,
-) -> V78LineScenarioPackAdmission {
+pub fn admit_v7_8_line_scenario_pack(pack: &V78LineScenarioPack) -> V78LineScenarioPackAdmission {
     let mut diagnostics = Vec::new();
 
     if pack.pack_id.trim().is_empty() {

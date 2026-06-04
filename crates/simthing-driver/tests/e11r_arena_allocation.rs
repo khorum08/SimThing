@@ -6,11 +6,11 @@ use simthing_driver::{
     run_arena_allocation_oracle, HierarchyError, ResourceFlowSyncError, SessionError,
 };
 
+use simthing_driver::{install_atomic, SimSession};
 use support::e11_flat_star::{
     fill_explicit_participants, flat_star_game_mode, flat_star_scenario, open_flat_star_session,
     standard_flat_star_inputs, try_gpu,
 };
-use simthing_driver::{install_atomic, SimSession};
 
 #[test]
 fn e11r_resource_flow_sync_error_is_reported_when_flag_enabled() {
@@ -41,7 +41,9 @@ fn e11r_resource_flow_sync_error_is_reported_when_flag_enabled() {
         .expect_err("depth budget must fail when flag enabled");
     match err {
         SessionError::ResourceFlow(ResourceFlowSyncError::Hierarchy(
-            HierarchyError::OrderBandDepthExceeded { needed: 5, max: 4, .. },
+            HierarchyError::OrderBandDepthExceeded {
+                needed: 5, max: 4, ..
+            },
         )) => {}
         other => panic!("unexpected session error: {other:?}"),
     }
@@ -95,6 +97,10 @@ fn e11_resource_flow_flag_uploads_and_dispatches_flat_star_ops() {
             .copied()
             .unwrap_or(0.0);
         let gpu = gpu_out[idx(leaf, cols.allocated_flow_col)];
-        assert_eq!(cpu.to_bits(), gpu.to_bits(), "leaf {leaf} session-path aF parity");
+        assert_eq!(
+            cpu.to_bits(),
+            gpu.to_bits(),
+            "leaf {leaf} session-path aF parity"
+        );
     }
 }

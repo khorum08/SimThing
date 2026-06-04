@@ -105,15 +105,13 @@ pub fn compile_game_mode_resource_economy_authoring_preview(
     game_mode: &GameModeSpec,
     eml_registry: &EmlExpressionRegistry,
 ) -> Result<ResourceEconomyAuthoringPreview, SpecError> {
-    let economy = game_mode
-        .resource_economy
-        .as_ref()
-        .ok_or_else(|| SpecError::ResourceEconomyAdmission {
-            reason: format!(
-                "game mode `{}` has no resource_economy block",
-                game_mode.id
-            ),
-        })?;
+    let economy =
+        game_mode
+            .resource_economy
+            .as_ref()
+            .ok_or_else(|| SpecError::ResourceEconomyAdmission {
+                reason: format!("game mode `{}` has no resource_economy block", game_mode.id),
+            })?;
 
     let mut registry = DimensionRegistry::new();
     for property in &game_mode.properties {
@@ -251,7 +249,11 @@ fn build_preview_report(
     }
 }
 
-fn record_binding(set: &mut BTreeSet<ResourceBindingPreview>, key: &PropertyKey, role: &SubFieldRole) {
+fn record_binding(
+    set: &mut BTreeSet<ResourceBindingPreview>,
+    key: &PropertyKey,
+    role: &SubFieldRole,
+) {
     set.insert(ResourceBindingPreview {
         namespace: key.namespace.clone(),
         name: key.name.clone(),
@@ -289,11 +291,13 @@ fn compute_simple_static_nets(transfers: &[TransferPreview]) -> Vec<StaticProper
 
     nets.into_iter()
         .filter(|(_, net)| *net != 0.0)
-        .map(|((namespace, name, role), net_per_boundary)| StaticPropertyNetPreview {
-            namespace,
-            name,
-            role,
-            net_per_boundary,
-        })
+        .map(
+            |((namespace, name, role), net_per_boundary)| StaticPropertyNetPreview {
+                namespace,
+                name,
+                role,
+                net_per_boundary,
+            },
+        )
         .collect()
 }

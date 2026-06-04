@@ -133,7 +133,12 @@ fn test_c_dirty_skip_correctness_zero_false_skips() {
     });
 
     let cases = [
-        (FieldRegionId(0), FieldId(0), DirtyRegionState::default(), FieldDispatchSchedule::Skip),
+        (
+            FieldRegionId(0),
+            FieldId(0),
+            DirtyRegionState::default(),
+            FieldDispatchSchedule::Skip,
+        ),
         (
             FieldRegionId(1),
             FieldId(0),
@@ -299,7 +304,10 @@ fn test_m2_1_scheduled_visitor_does_not_execute_skipped() {
     assert_eq!(calls, 2);
     assert_eq!(
         executed,
-        vec![(FieldId(0), FieldRegionId(2)), (FieldId(1), FieldRegionId(3))]
+        vec![
+            (FieldId(0), FieldRegionId(2)),
+            (FieldId(1), FieldRegionId(3))
+        ]
     );
 }
 
@@ -570,11 +578,9 @@ fn test_g_alternate_square_size_fixtures_size_agnostic() {
         let schedules: Vec<_> = decisions.iter().map(|d| d.schedule).collect();
         if let Some(base) = &baseline {
             assert_eq!(
-                &schedules,
-                base,
+                &schedules, base,
                 "grid {}x{} must not change scheduler logic",
-                grid.width,
-                grid.height
+                grid.width, grid.height
             );
         } else {
             baseline = Some(schedules);

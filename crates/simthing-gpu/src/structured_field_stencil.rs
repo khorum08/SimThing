@@ -40,7 +40,9 @@ pub enum StructuredFieldStencilOperator {
     Normalized,
     SourceCappedNormalized,
     /// Optional; requires explicit orientation metadata at call sites.
-    Directed { northwest: bool },
+    Directed {
+        northwest: bool,
+    },
     /// Single-target axis-X extraction: `(east − west) / 2` via per-direction weights.
     GradientX,
     /// Single-target axis-Y extraction: `(south − north) / 2` via per-direction weights.
@@ -48,7 +50,9 @@ pub enum StructuredFieldStencilOperator {
     /// Dual-output extraction in one dispatch: axis-X gradient → `target_col` (E/W weights),
     /// axis-Y gradient → `target_col_y` (N/S weights). The two output columns must differ
     /// (no-aliasing admission). Optimization of running `GradientX` then `GradientY`.
-    GradientXY { target_col_y: u32 },
+    GradientXY {
+        target_col_y: u32,
+    },
 }
 
 /// Source injection policy between stencil hops.
@@ -344,9 +348,8 @@ impl FieldStencilParamsGpu {
             StructuredFieldStencilOperator::Normalized => VARIANT_NORMALIZED,
             StructuredFieldStencilOperator::SourceCappedNormalized => VARIANT_SOURCE_CAPPED,
             StructuredFieldStencilOperator::Directed { .. } => VARIANT_DIRECTED,
-            StructuredFieldStencilOperator::GradientX | StructuredFieldStencilOperator::GradientY => {
-                VARIANT_NORMALIZED
-            }
+            StructuredFieldStencilOperator::GradientX
+            | StructuredFieldStencilOperator::GradientY => VARIANT_NORMALIZED,
             StructuredFieldStencilOperator::GradientXY { .. } => VARIANT_GRADIENT_XY,
         };
         let directed_mode = match config.operator {
@@ -410,14 +413,19 @@ pub struct StructuredFieldStencilOp {
 }
 
 impl StructuredFieldStencilOp {
-    pub fn new(ctx: &GpuContext, config: StructuredFieldStencilConfig) -> Result<Self, StructuredFieldStencilError> {
+    pub fn new(
+        ctx: &GpuContext,
+        config: StructuredFieldStencilConfig,
+    ) -> Result<Self, StructuredFieldStencilError> {
         config.validate()?;
         let params = FieldStencilParamsGpu::from_config(&config);
         let device = &ctx.device;
 
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("structured_field_stencil"),
-            source: ShaderSource::Wgsl(include_str!("shaders/structured_field_stencil.wgsl").into()),
+            source: ShaderSource::Wgsl(
+                include_str!("shaders/structured_field_stencil.wgsl").into(),
+            ),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -531,7 +539,11 @@ impl StructuredFieldStencilOp {
         self.config.validate_execution_steps(steps)
     }
 
-    pub fn upload_values(&self, ctx: &GpuContext, values: &[f32]) -> Result<(), StructuredFieldStencilError> {
+    pub fn upload_values(
+        &self,
+        ctx: &GpuContext,
+        values: &[f32],
+    ) -> Result<(), StructuredFieldStencilError> {
         let required = self.config.values_len();
         if values.len() < required {
             return Err(StructuredFieldStencilError::BufferTooShort {
@@ -539,12 +551,19 @@ impl StructuredFieldStencilOp {
                 required,
             });
         }
-        ctx.queue
-            .write_buffer(&self.input_buffer, 0, bytemuck::cast_slice(&values[..required]));
+        ctx.queue.write_buffer(
+            &self.input_buffer,
+            0,
+            bytemuck::cast_slice(&values[..required]),
+        );
         Ok(())
     }
 
-    pub fn upload_mask(&self, ctx: &GpuContext, mask: &[u32]) -> Result<(), StructuredFieldStencilError> {
+    pub fn upload_mask(
+        &self,
+        ctx: &GpuContext,
+        mask: &[u32],
+    ) -> Result<(), StructuredFieldStencilError> {
         if mask.len() != self.config.cells() as usize {
             return Err(StructuredFieldStencilError::BufferTooShort {
                 actual: mask.len(),
@@ -567,9 +586,11 @@ impl StructuredFieldStencilOp {
     /// Copy an entire values buffer (`src` → `dst`).
     pub fn copy_values_buffer(&self, ctx: &GpuContext, src: &Buffer, dst: &Buffer) {
         let bytes = self.values_byte_len();
-        let mut encoder = ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("structured_field_stencil_copy"),
-        });
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("structured_field_stencil_copy"),
+            });
         encoder.copy_buffer_to_buffer(src, 0, dst, 0, bytes);
         ctx.queue.submit(Some(encoder.finish()));
     }
@@ -623,7 +644,8 @@ impl StructuredFieldStencilOp {
                 });
             }
             let offset = self.cell_byte_offset(slot, col);
-            ctx.queue.write_buffer(buffer, offset, bytemuck::bytes_of(&zero));
+            ctx.queue
+                .write_buffer(buffer, offset, bytemuck::bytes_of(&zero));
         }
         Ok(())
     }
@@ -639,17 +661,21 @@ impl StructuredFieldStencilOp {
         mode: StructuredFieldStencilMaskMode,
     ) -> Result<(), StructuredFieldStencilError> {
         self.config.mask_mode = mode;
-        self.params.use_active_mask =
-            u32::from(matches!(mode, StructuredFieldStencilMaskMode::ActiveOnlyExperimentalNoHalo));
-        ctx.queue.write_buffer(
-            &self.params_buffer,
-            0,
-            bytemuck::bytes_of(&self.params),
-        );
+        self.params.use_active_mask = u32::from(matches!(
+            mode,
+            StructuredFieldStencilMaskMode::ActiveOnlyExperimentalNoHalo
+        ));
+        ctx.queue
+            .write_buffer(&self.params_buffer, 0, bytemuck::bytes_of(&self.params));
         Ok(())
     }
 
-    fn bind_group(&self, device: &wgpu::Device, input: &Buffer, output: &Buffer) -> wgpu::BindGroup {
+    fn bind_group(
+        &self,
+        device: &wgpu::Device,
+        input: &Buffer,
+        output: &Buffer,
+    ) -> wgpu::BindGroup {
         device.create_bind_group(&BindGroupDescriptor {
             label: Some("structured_field_stencil_bg"),
             layout: &self.bind_group_layout,
@@ -817,7 +843,10 @@ impl StructuredFieldStencilOp {
         Ok(StructuredFieldExecutionReport { values, debug })
     }
 
-    fn readback_active_mask_ratio(&self, ctx: &GpuContext) -> Result<f32, StructuredFieldStencilError> {
+    fn readback_active_mask_ratio(
+        &self,
+        ctx: &GpuContext,
+    ) -> Result<f32, StructuredFieldStencilError> {
         let device = &ctx.device;
         let queue = &ctx.queue;
         let cells = self.config.cells() as usize;
@@ -1051,7 +1080,10 @@ mod unit_tests {
     fn source_capped_requires_cap() {
         let mut c = base_config();
         c.operator = StructuredFieldStencilOperator::SourceCappedNormalized;
-        assert_eq!(c.validate().unwrap_err(), StructuredFieldStencilError::MissingSourceCap);
+        assert_eq!(
+            c.validate().unwrap_err(),
+            StructuredFieldStencilError::MissingSourceCap
+        );
     }
 
     #[test]
@@ -1060,7 +1092,10 @@ mod unit_tests {
         let err = config.validate_execution_steps(2).unwrap_err();
         assert_eq!(
             err,
-            StructuredFieldStencilError::ExecutionHorizonExceedsConfig { steps: 2, horizon: 1 }
+            StructuredFieldStencilError::ExecutionHorizonExceedsConfig {
+                steps: 2,
+                horizon: 1
+            }
         );
     }
 

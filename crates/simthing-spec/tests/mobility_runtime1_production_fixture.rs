@@ -37,7 +37,12 @@ fn live(parent_id: u64, key_id: u64, entity_id: u64, slot: u32) -> MobilityAlloc
     }
 }
 
-fn mv(entity_id: u64, origin_key: u64, destination_key: u64, arrival_order: u64) -> MobilityReenroll0Move {
+fn mv(
+    entity_id: u64,
+    origin_key: u64,
+    destination_key: u64,
+    arrival_order: u64,
+) -> MobilityReenroll0Move {
     MobilityReenroll0Move {
         entity_id,
         origin: key(1, origin_key),
@@ -167,7 +172,12 @@ fn composition_fixture() -> MobilityRuntime0CompositionInput {
         },
         owner: MobilityOwner0PlanInput {
             records: vec![
-                orec(100, 20, 1, vec![owner(MobilityOwner0ColumnKind::Faction, 7)]),
+                orec(
+                    100,
+                    20,
+                    1,
+                    vec![owner(MobilityOwner0ColumnKind::Faction, 7)],
+                ),
                 orec(2, 30, 1, vec![owner(MobilityOwner0ColumnKind::Faction, 7)]),
                 orec(3, 31, 1, vec![owner(MobilityOwner0ColumnKind::Species, 7)]),
             ],
@@ -198,11 +208,12 @@ fn rejected_with(
 #[test]
 fn runtime1_explicit_opt_in_only() {
     let default_surface = MobilityRuntime1aSimSessionSurface::default_simsession();
-    let disabled = run_mobility_runtime1a_production_fixture(&MobilityRuntime1aProductionFixtureInput {
-        surface: default_surface,
-        composition: composition_fixture(),
-        forbidden: MobilityRuntime1aForbiddenPathRequests::default(),
-    });
+    let disabled =
+        run_mobility_runtime1a_production_fixture(&MobilityRuntime1aProductionFixtureInput {
+            surface: default_surface,
+            composition: composition_fixture(),
+            forbidden: MobilityRuntime1aForbiddenPathRequests::default(),
+        });
     assert!(disabled.admitted);
     assert!(disabled.disabled_no_op);
     assert!(!disabled.explicit_opt_in);
@@ -225,14 +236,18 @@ fn runtime1_explicit_opt_in_only() {
 #[test]
 fn runtime1_default_simsession_behavior_unchanged() {
     let default = MobilityRuntime1aSimSessionSurface::default_simsession();
-    let report = run_mobility_runtime1a_production_fixture(&MobilityRuntime1aProductionFixtureInput {
-        surface: default.clone(),
-        composition: composition_fixture(),
-        forbidden: MobilityRuntime1aForbiddenPathRequests::default(),
-    });
+    let report =
+        run_mobility_runtime1a_production_fixture(&MobilityRuntime1aProductionFixtureInput {
+            surface: default.clone(),
+            composition: composition_fixture(),
+            forbidden: MobilityRuntime1aForbiddenPathRequests::default(),
+        });
     assert!(report.default_simsession_behavior_unchanged);
     assert_eq!(report.composition_invocations, 0);
-    assert_eq!(default, MobilityRuntime1aSimSessionSurface::default_simsession());
+    assert_eq!(
+        default,
+        MobilityRuntime1aSimSessionSurface::default_simsession()
+    );
 }
 
 #[test]
@@ -298,7 +313,10 @@ fn runtime1_preserves_deterministic_replay() {
 fn runtime1_preserves_cpu_gpu_parity_proxy() {
     let report = run_mobility_runtime1a_production_fixture(&fixture_input());
     assert!(report.admitted, "{:?}", report.diagnostics);
-    assert_eq!(report.composed_cpu_checksum, report.composed_gpu_proxy_checksum);
+    assert_eq!(
+        report.composed_cpu_checksum,
+        report.composed_gpu_proxy_checksum
+    );
     assert!(report.cpu_gpu_parity_preserved);
 }
 
@@ -347,7 +365,9 @@ fn runtime1_rejects_cpu_planner_urgency_commitment() {
     forbidden.cpu_planner_urgency_commitment = true;
     let report = rejected_with(forbidden);
     assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"cpu_planner_urgency_commitment"));
+    assert!(report
+        .diagnostics
+        .contains(&"cpu_planner_urgency_commitment"));
 }
 
 #[test]
@@ -392,7 +412,9 @@ fn runtime1_rejects_hard_currency_through_resource_flow() {
     forbidden.hard_currency_through_resource_flow = true;
     let report = rejected_with(forbidden);
     assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"hard_currency_through_resource_flow"));
+    assert!(report
+        .diagnostics
+        .contains(&"hard_currency_through_resource_flow"));
 }
 
 #[test]
@@ -421,7 +443,9 @@ fn runtime1_rejects_unscoped_gpu_passgraph_wiring() {
     forbidden.gpu_pass_graph_wiring = true;
     let report = rejected_with(forbidden);
     assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"unscoped_gpu_passgraph_wiring"));
+    assert!(report
+        .diagnostics
+        .contains(&"unscoped_gpu_passgraph_wiring"));
 }
 
 #[test]
@@ -484,11 +508,12 @@ fn runtime1_mobility_churn_with_owner_overlay_and_econ_clearinghouse() {
 #[test]
 fn runtime1_no_default_runtime_cost_when_disabled() {
     let default = MobilityRuntime1aSimSessionSurface::default_simsession();
-    let report = run_mobility_runtime1a_production_fixture(&MobilityRuntime1aProductionFixtureInput {
-        surface: default,
-        composition: composition_fixture(),
-        forbidden: MobilityRuntime1aForbiddenPathRequests::default(),
-    });
+    let report =
+        run_mobility_runtime1a_production_fixture(&MobilityRuntime1aProductionFixtureInput {
+            surface: default,
+            composition: composition_fixture(),
+            forbidden: MobilityRuntime1aForbiddenPathRequests::default(),
+        });
     assert!(report.admitted);
     assert!(report.disabled_no_op);
     assert!(!report.fixture_invoked);

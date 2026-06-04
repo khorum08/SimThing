@@ -12,7 +12,9 @@
 //! Threshold registry / event_candidates buffers are deferred to Pass 7 work.
 
 use bytemuck::{Pod, Zeroable};
-use simthing_core::{ClampBehavior, DimensionRegistry, PropertyColumnRange, PropertyLayout, SimPropertyId};
+use simthing_core::{
+    ClampBehavior, DimensionRegistry, PropertyColumnRange, PropertyLayout, SimPropertyId,
+};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Maintain, MapMode};
 
 use crate::accumulator_op::DEFAULT_THRESHOLD_EMISSION_CAPACITY;
@@ -795,7 +797,9 @@ impl WorldGpuState {
             return;
         };
         let use_fast = prefer_fast_path
-            && crate::accumulator_op::ao_wgsl0_fast_path_compatible(runtime.resource_flow_gpu_ops());
+            && crate::accumulator_op::ao_wgsl0_fast_path_compatible(
+                runtime.resource_flow_gpu_ops(),
+            );
         let Some(mut session) = runtime.take_resource_flow_session() else {
             self.accumulator_runtime = Some(runtime);
             return;
@@ -1729,7 +1733,10 @@ fn transfer_registrations_generation(regs: &[crate::TransferRegistration]) -> u6
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simthing_core::{ClampBehavior, DimensionRegistry, IntensityBehavior, PropertyLayout, SimProperty, SubFieldRole, SubFieldSpec};
+    use simthing_core::{
+        ClampBehavior, DimensionRegistry, IntensityBehavior, PropertyLayout, SimProperty,
+        SubFieldRole, SubFieldSpec,
+    };
 
     fn try_gpu() -> Option<GpuContext> {
         GpuContext::new_blocking().ok()
@@ -1776,7 +1783,10 @@ mod tests {
                 },
             ],
         };
-        let range = PropertyColumnRange { start: 10, stride: 2 };
+        let range = PropertyColumnRange {
+            start: 10,
+            stride: 2,
+        };
         let pairs = governed_pairs_for_property(&range, &layout);
         assert_eq!(pairs.len(), 1);
         assert_eq!(pairs[0].governed_col, 11);
@@ -1798,10 +1808,13 @@ mod tests {
                 governed_by: Some(SubFieldRole::Named("flow".into())),
                 reduction_override: None,
                 soft_aggregate_guard: None,
-                    accumulator_spec: None,
+                accumulator_spec: None,
             }],
         };
-        let range = PropertyColumnRange { start: 0, stride: 1 };
+        let range = PropertyColumnRange {
+            start: 0,
+            stride: 1,
+        };
         assert!(governed_pairs_for_property(&range, &layout).is_empty());
     }
 

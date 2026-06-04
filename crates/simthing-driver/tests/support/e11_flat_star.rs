@@ -210,8 +210,10 @@ pub fn flat_star_cell_inputs(
     root_intrinsic_flow: f32,
     leaf_weights: &[f32],
 ) -> std::collections::HashMap<(u32, u32), f32> {
-    let mut inputs =
-        std::collections::HashMap::from([((root_slot, cols.intrinsic_flow_col), root_intrinsic_flow)]);
+    let mut inputs = std::collections::HashMap::from([(
+        (root_slot, cols.intrinsic_flow_col),
+        root_intrinsic_flow,
+    )]);
     for (slot, &weight) in leaf_slots.iter().zip(leaf_weights.iter()) {
         inputs.insert((*slot, cols.weight_col), weight);
     }

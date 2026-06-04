@@ -35,7 +35,9 @@ fn resource_economy_flag_on_transfer_uploads_existing_accumulator_path() {
     }
     let mut session = open_with(&transfer_game_mode());
     session.proto.flags.use_accumulator_transfer = true;
-    session.sync_resource_economy_if_enabled().expect("transfer sync");
+    session
+        .sync_resource_economy_if_enabled()
+        .expect("transfer sync");
     assert!(session.state.accumulator_transfer_active);
     let uploads = session
         .state
@@ -43,7 +45,10 @@ fn resource_economy_flag_on_transfer_uploads_existing_accumulator_path() {
         .as_ref()
         .map(|r| r.transfer_op_upload_count())
         .unwrap_or(0);
-    assert!(uploads >= 1, "expected transfer op upload via existing path");
+    assert!(
+        uploads >= 1,
+        "expected transfer op upload via existing path"
+    );
 }
 
 #[test]
@@ -55,7 +60,9 @@ fn resource_economy_flag_on_emission_uploads_existing_accumulator_path() {
     let mut session = open_with(&emission_game_mode());
     session.proto.flags.use_accumulator_eml = true;
     session.proto.flags.use_accumulator_emission = true;
-    session.sync_resource_economy_if_enabled().expect("emission sync");
+    session
+        .sync_resource_economy_if_enabled()
+        .expect("emission sync");
     assert!(session.state.accumulator_emission_active);
     let uploads = session
         .state
@@ -63,7 +70,10 @@ fn resource_economy_flag_on_emission_uploads_existing_accumulator_path() {
         .as_ref()
         .map(|r| r.emission_op_upload_count())
         .unwrap_or(0);
-    assert!(uploads >= 1, "expected emission op upload via existing path");
+    assert!(
+        uploads >= 1,
+        "expected emission op upload via existing path"
+    );
 }
 
 #[test]
@@ -74,21 +84,28 @@ fn resource_economy_generation_keyed_skip_avoids_reupload_when_unchanged() {
     }
     let mut session = open_with(&transfer_game_mode());
     session.proto.flags.use_accumulator_transfer = true;
-    session.sync_resource_economy_if_enabled().expect("first sync");
+    session
+        .sync_resource_economy_if_enabled()
+        .expect("first sync");
     let first = session
         .state
         .accumulator_runtime
         .as_ref()
         .map(|r| r.transfer_op_upload_count())
         .unwrap_or(0);
-    session.sync_resource_economy_if_enabled().expect("second sync");
+    session
+        .sync_resource_economy_if_enabled()
+        .expect("second sync");
     let second = session
         .state
         .accumulator_runtime
         .as_ref()
         .map(|r| r.transfer_op_upload_count())
         .unwrap_or(0);
-    assert_eq!(first, second, "generation-keyed skip should avoid re-upload");
+    assert_eq!(
+        first, second,
+        "generation-keyed skip should avoid re-upload"
+    );
     assert_eq!(session.spec_state.resource_economy_uploaded_generation(), 1);
 }
 
@@ -96,7 +113,10 @@ fn resource_economy_generation_keyed_skip_avoids_reupload_when_unchanged() {
 fn resource_economy_session_uses_live_slot_resolution_not_property_id_placeholder() {
     let scenario = live_slot_scenario();
     let cohort_slot = support::cohort_food_slot(&scenario);
-    assert_ne!(cohort_slot, 0, "cohort slot must differ from property-id placeholder 0");
+    assert_ne!(
+        cohort_slot, 0,
+        "cohort slot must differ from property-id placeholder 0"
+    );
 
     let session =
         SimSession::open_from_spec(scenario, &live_slot_game_mode()).expect("open_from_spec");

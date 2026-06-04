@@ -1,43 +1,31 @@
 //! SEAD-OBS-1 — Descriptor/admission for mobile observer overlay score.
 
 use simthing_spec::{
-    exact_sqrt_f_artifact_descriptor, is_sead_obs0_overlay_score_descriptor,
-    landed_jit_kernel_descriptors, sead_obs0_overlay_score_kernel_descriptor,
+    exact_sqrt_f_artifact_descriptor, is_sead_act0_numeric_proposals_descriptor,
+    is_sead_act1_phase_e_proposal_consumer_descriptor,
+    is_sead_act2_proposal_admission_records_descriptor,
+    is_sead_act3_economic_fixture_records_descriptor, is_sead_event0_compaction_descriptor,
+    is_sead_event1_code_bucketing_descriptor, is_sead_event2_bucket_reductions_descriptor,
+    is_sead_obs0_overlay_score_descriptor, is_sead_obs2_multilayer_overlay_score_descriptor,
+    is_sead_obs3_multilayer_fixed_score_descriptor, is_sead_obs4_threshold_event_descriptor,
+    is_sead_pipe0_observer_event_pipeline_descriptor, landed_jit_kernel_descriptors,
+    sead_act0_numeric_proposals_kernel_descriptor,
+    sead_act1_phase_e_proposal_consumer_kernel_descriptor,
+    sead_act2_proposal_admission_records_kernel_descriptor,
+    sead_act3_economic_fixture_records_kernel_descriptor, sead_event0_compaction_kernel_descriptor,
+    sead_event1_code_bucketing_kernel_descriptor, sead_event2_bucket_reductions_kernel_descriptor,
+    sead_obs0_overlay_score_kernel_descriptor,
     sead_obs2_multilayer_overlay_score_kernel_descriptor,
     sead_obs3_multilayer_fixed_score_kernel_descriptor,
     sead_obs4_threshold_event_kernel_descriptor,
-    validate_kernel_descriptor_admission, ExactPreSqrtInputContract,
-    KernelDescriptorSpec, Mag2SourceContract, NativeMathClass, OutputAuthority,
-    ScoreAuthorityContract, SEAD_OBS0_DESCRIPTOR_ID, SEAD_OBS0_LABEL, SEAD_OBS2_DESCRIPTOR_ID,
+    sead_pipe0_observer_event_pipeline_kernel_descriptor, validate_kernel_descriptor_admission,
+    ExactPreSqrtInputContract, KernelDescriptorSpec, Mag2SourceContract, NativeMathClass,
+    OutputAuthority, ScoreAuthorityContract, SpecError, MAG2_Q16_FRAC_BITS,
+    SEAD_ACT0_DESCRIPTOR_ID, SEAD_ACT1_DESCRIPTOR_ID, SEAD_ACT2_DESCRIPTOR_ID,
+    SEAD_ACT3_DESCRIPTOR_ID, SEAD_EVENT0_DESCRIPTOR_ID, SEAD_EVENT1_DESCRIPTOR_ID,
+    SEAD_EVENT2_DESCRIPTOR_ID, SEAD_OBS0_DESCRIPTOR_ID, SEAD_OBS0_LABEL, SEAD_OBS2_DESCRIPTOR_ID,
     SEAD_OBS2_LABEL, SEAD_OBS2_LAYER_COUNT, SEAD_OBS3_DESCRIPTOR_ID, SEAD_OBS3_LABEL,
-    SEAD_OBS4_DESCRIPTOR_ID, SEAD_OBS4_LABEL, SEAD_EVENT0_DESCRIPTOR_ID,
-    sead_event0_compaction_kernel_descriptor,
-    sead_pipe0_observer_event_pipeline_kernel_descriptor,
-    SEAD_PIPE0_DESCRIPTOR_ID,
-    SEAD_EVENT1_DESCRIPTOR_ID,
-    sead_event1_code_bucketing_kernel_descriptor,
-    SEAD_EVENT2_DESCRIPTOR_ID,
-    sead_event2_bucket_reductions_kernel_descriptor,
-    SEAD_ACT0_DESCRIPTOR_ID,
-    sead_act0_numeric_proposals_kernel_descriptor,
-    SEAD_ACT1_DESCRIPTOR_ID,
-    sead_act1_phase_e_proposal_consumer_kernel_descriptor,
-    SEAD_ACT2_DESCRIPTOR_ID,
-    sead_act2_proposal_admission_records_kernel_descriptor,
-    SEAD_ACT3_DESCRIPTOR_ID,
-    sead_act3_economic_fixture_records_kernel_descriptor,
-    SpecError, MAG2_Q16_FRAC_BITS, SQRT_F_ARTIFACT_HASH,
-    is_sead_obs2_multilayer_overlay_score_descriptor,
-    is_sead_obs3_multilayer_fixed_score_descriptor,
-    is_sead_obs4_threshold_event_descriptor,
-    is_sead_event0_compaction_descriptor,
-    is_sead_pipe0_observer_event_pipeline_descriptor,
-    is_sead_event1_code_bucketing_descriptor,
-    is_sead_event2_bucket_reductions_descriptor,
-    is_sead_act0_numeric_proposals_descriptor,
-    is_sead_act1_phase_e_proposal_consumer_descriptor,
-    is_sead_act2_proposal_admission_records_descriptor,
-    is_sead_act3_economic_fixture_records_descriptor,
+    SEAD_OBS4_DESCRIPTOR_ID, SEAD_OBS4_LABEL, SEAD_PIPE0_DESCRIPTOR_ID, SQRT_F_ARTIFACT_HASH,
 };
 
 fn obs2() -> KernelDescriptorSpec {
@@ -168,7 +156,11 @@ fn sead_obs1_output_authority_is_correct() {
         .iter()
         .find(|out| out.name == "score_bits")
         .expect("score_bits");
-    let flags = desc.writes.iter().find(|out| out.name == "flags").expect("flags");
+    let flags = desc
+        .writes
+        .iter()
+        .find(|out| out.name == "flags")
+        .expect("flags");
     assert_eq!(mag2.authority, OutputAuthority::ExactAuthoritative);
     assert_eq!(mag.authority, OutputAuthority::ExactAuthoritative);
     assert_eq!(score.authority, OutputAuthority::ApproximateDiagnostic);
@@ -195,9 +187,8 @@ fn sead_obs1_rejects_exact_score_for_f32_score_arithmetic() {
 #[test]
 fn sead_obs1_exact_mag_requires_q16_and_f_artifact() {
     let mut wrong_q = sead_obs0_overlay_score_kernel_descriptor();
-    wrong_q.mag2_source_contract = Some(Mag2SourceContract::ExactFixedPointDxDy {
-        fraction_bits: 12,
-    });
+    wrong_q.mag2_source_contract =
+        Some(Mag2SourceContract::ExactFixedPointDxDy { fraction_bits: 12 });
     assert_admission_err(&wrong_q, "Q16.16");
 
     let mut no_mag2_contract = sead_obs0_overlay_score_kernel_descriptor();
@@ -219,10 +210,7 @@ fn sead_obs1_exact_mag_requires_q16_and_f_artifact() {
     assert_admission_err(&native_sqrt, "approximate native math");
 
     let desc = obs0();
-    let binding = desc
-        .exact_sqrt_artifact
-        .as_ref()
-        .expect("F binding");
+    let binding = desc.exact_sqrt_artifact.as_ref().expect("F binding");
     assert_eq!(binding.artifact_hash_fnv1a64, SQRT_F_ARTIFACT_HASH);
     assert_eq!(
         desc.mag2_source_contract,
@@ -566,7 +554,10 @@ fn sead_act4_does_not_add_runtime_descriptor() {
     let act4 = landed_jit_kernel_descriptors()
         .into_iter()
         .find(|desc| desc.id.contains("act4") || desc.id.contains("validation_corpus"));
-    assert!(act4.is_none(), "ACT-4 corpus must not add a landed kernel descriptor");
+    assert!(
+        act4.is_none(),
+        "ACT-4 corpus must not add a landed kernel descriptor"
+    );
     assert!(act3().default_off);
     println!("sead_act4_spec: corpus_only=true no_runtime_descriptor=true");
 }

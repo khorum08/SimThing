@@ -6,8 +6,8 @@ use simthing_core::{
 };
 use simthing_gpu::{
     discrete_transfer_registration_to_transfer, discrete_transfer_registrations_to_transfer,
-    execute_ops_cpu, plan_transfer_ops, set_debug_readback_allowed, AccumulatorOpGpu,
-    GpuContext, WorldGpuState,
+    execute_ops_cpu, plan_transfer_ops, set_debug_readback_allowed, AccumulatorOpGpu, GpuContext,
+    WorldGpuState,
 };
 
 fn try_gpu() -> Option<GpuContext> {
@@ -21,13 +21,7 @@ fn run_cpu_transfer(values: &mut [f32], op: &simthing_core::AccumulatorOp) {
 #[test]
 fn e2a_builder_emits_subtract_from_source_op_shape() {
     let op = try_resource_transfer_discrete(1, 2, 3, 4, 25.0).unwrap();
-    assert_eq!(
-        op.source,
-        SourceSpec::SlotValue {
-            slot: 1,
-            col: 2
-        }
-    );
+    assert_eq!(op.source, SourceSpec::SlotValue { slot: 1, col: 2 });
     assert_eq!(op.combine, CombineFn::Identity);
     assert_eq!(op.gate, GateSpec::Always);
     assert_eq!(op.scale, ScaleSpec::Constant(25.0));
@@ -144,12 +138,16 @@ fn e2a_transfer_executes_through_accumulator_op() {
     run_cpu_transfer(&mut cpu_values, &op);
 
     let transfer_reg = discrete_transfer_registration_to_transfer(&reg);
-    let mut state = WorldGpuState::new(GpuContext::new_blocking().expect("gpu"), &{
-        use simthing_core::{DimensionRegistry, SimProperty};
-        let mut reg = DimensionRegistry::new();
-        reg.register(SimProperty::simple("core", "amount", 0));
-        reg
-    }, 1);
+    let mut state = WorldGpuState::new(
+        GpuContext::new_blocking().expect("gpu"),
+        &{
+            use simthing_core::{DimensionRegistry, SimProperty};
+            let mut reg = DimensionRegistry::new();
+            reg.register(SimProperty::simple("core", "amount", 0));
+            reg
+        },
+        1,
+    );
     state.write_values(&[100.0, 10.0, 0.0]);
     state
         .sync_transfer_accumulator(std::slice::from_ref(&transfer_reg))

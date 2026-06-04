@@ -28,8 +28,7 @@ use mobility_gpu_kernel10_stream_accounting_fixture::{
     MobilityGpuKernel10ForbiddenPathRequests, MobilityGpuKernel10Gate,
 };
 
-pub const MOBILITY_GPU_KERNEL11_FIXTURE_ID: &str =
-    "mobility_gpu_kernel11_budget_envelope_fixture";
+pub const MOBILITY_GPU_KERNEL11_FIXTURE_ID: &str = "mobility_gpu_kernel11_budget_envelope_fixture";
 pub const MOBILITY_GPU_KERNEL11_NAMED_GATE: &str =
     "mobility_gpu_kernel11_budget_envelope_explicit_opt_in_gate";
 pub const MOBILITY_GPU_KERNEL11_BUDGET_ID: &str =
@@ -255,7 +254,8 @@ pub fn evaluate_stream_budget_envelope(
     }
     if accounting.total_variant_dispatch_attempts > envelope.total_variant_dispatch_attempts {
         diagnostics.push("kernel11_budget_variant_dispatch_over_envelope");
-    } else if accounting.total_variant_dispatch_attempts != envelope.total_variant_dispatch_attempts {
+    } else if accounting.total_variant_dispatch_attempts != envelope.total_variant_dispatch_attempts
+    {
         diagnostics.push("kernel11_budget_variant_dispatch_under_envelope");
     }
     if accounting.total_replay_dispatch_attempts > envelope.total_replay_dispatch_attempts {
@@ -342,15 +342,14 @@ pub fn run_mobility_gpu_kernel11_fixture(
     }
 
     let accounting_before = kernel10_report.accounting.clone();
-    let envelope = if kernel10_report.disabled_no_op || kernel10_report.registration_only_zero_dispatches
-    {
-        zero_cost_budget_envelope()
-    } else {
-        active_stream_budget_envelope()
-    };
+    let envelope =
+        if kernel10_report.disabled_no_op || kernel10_report.registration_only_zero_dispatches {
+            zero_cost_budget_envelope()
+        } else {
+            active_stream_budget_envelope()
+        };
     let budget_evaluation = evaluate_stream_budget_envelope(&accounting_before, &envelope);
-    let evaluation_does_not_mutate_accounting =
-        accounting_before == kernel10_report.accounting;
+    let evaluation_does_not_mutate_accounting = accounting_before == kernel10_report.accounting;
 
     let preserves_kernel10_checksums = kernel10_report.stream_checksum_matches_kernel9
         && kernel10_report.accounting.aggregate_cpu_stream_checksum

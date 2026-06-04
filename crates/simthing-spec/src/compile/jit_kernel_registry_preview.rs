@@ -61,11 +61,7 @@ pub fn preview_kernel_registry_manifest(
         .cohorts
         .into_iter()
         .map(|cohort| {
-            cohort_to_registry_entry(
-                cohort.stable_key,
-                cohort.canonical_text,
-                cohort.request_ids,
-            )
+            cohort_to_registry_entry(cohort.stable_key, cohort.canonical_text, cohort.request_ids)
         })
         .collect();
     let manifest = KernelRegistryManifestPreview { entries };
@@ -78,7 +74,10 @@ pub fn validate_kernel_registry_manifest_preview(
     manifest: &KernelRegistryManifestPreview,
 ) -> Result<(), SpecError> {
     if manifest.entries.is_empty() {
-        return Err(registry_err("registry", "manifest must contain at least one entry"));
+        return Err(registry_err(
+            "registry",
+            "manifest must contain at least one entry",
+        ));
     }
 
     let mut seen_keys = std::collections::HashSet::new();
@@ -167,7 +166,9 @@ fn request_ids_sorted(ids: &[String]) -> bool {
     ids.windows(2).all(|pair| pair[0] <= pair[1])
 }
 
-fn validate_production_candidate_entry_rules(entry: &KernelRegistryEntryPreview) -> Result<(), SpecError> {
+fn validate_production_candidate_entry_rules(
+    entry: &KernelRegistryEntryPreview,
+) -> Result<(), SpecError> {
     if entry.stable_key.is_empty() || !entry.stable_key.starts_with("jit-graph-v1:") {
         return Err(registry_err(
             &entry.stable_key,
@@ -193,15 +194,17 @@ fn validate_production_candidate_entry_rules(entry: &KernelRegistryEntryPreview)
         if entry.canonical_text.contains(marker) {
             return Err(registry_err(
                 &entry.stable_key,
-                format!(
-                    "production-candidate admission rejects canonical marker `{marker}`"
-                ),
+                format!("production-candidate admission rejects canonical marker `{marker}`"),
             ));
         }
     }
 
-    if entry.canonical_text.contains("write=sqrt_out authority=ExactAuthoritative")
-        || entry.canonical_text.contains("write=mag authority=ExactAuthoritative")
+    if entry
+        .canonical_text
+        .contains("write=sqrt_out authority=ExactAuthoritative")
+        || entry
+            .canonical_text
+            .contains("write=mag authority=ExactAuthoritative")
     {
         if !entry.canonical_text.contains(SQRT_F_ARTIFACT_HASH) {
             return Err(registry_err(

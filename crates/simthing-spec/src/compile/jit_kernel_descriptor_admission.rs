@@ -3,11 +3,10 @@
 //! Formalizes exact vs approximate output authority for landed M-JIT proof kernels.
 //! No production scheduler, no default wiring, no GPU runtime dispatch.
 
-use crate::compile::jit_exact_sqrt_artifact_admission::{
-    validate_mag2_source_contract, ExactPreSqrtInputContract,
-    Mag2SourceContract,
-};
 use crate::compile::jit_exact_sqrt_artifact_admission::validate_exact_sqrt_artifact_admission;
+use crate::compile::jit_exact_sqrt_artifact_admission::{
+    validate_mag2_source_contract, ExactPreSqrtInputContract, Mag2SourceContract,
+};
 use crate::error::SpecError;
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
@@ -63,9 +62,11 @@ pub struct KernelDescriptorSpec {
     pub default_off: bool,
     pub production_wiring: bool,
     /// Artifact-backed exact sqrt binding (Candidate F only when hash-valid).
-    pub exact_sqrt_artifact: Option<crate::compile::jit_exact_sqrt_artifact_admission::ExactSqrtArtifactDescriptor>,
+    pub exact_sqrt_artifact:
+        Option<crate::compile::jit_exact_sqrt_artifact_admission::ExactSqrtArtifactDescriptor>,
     /// Pre-sqrt input contract for F-backed magnitude kernels (SQRT-MAG-0 R1).
-    pub pre_sqrt_contract: Option<crate::compile::jit_exact_sqrt_artifact_admission::ExactPreSqrtInputContract>,
+    pub pre_sqrt_contract:
+        Option<crate::compile::jit_exact_sqrt_artifact_admission::ExactPreSqrtInputContract>,
     /// Exact mag2 construction source contract (SQRT-MAG2-0).
     pub mag2_source_contract: Option<Mag2SourceContract>,
     /// Score output authority contract for observer overlay kernels (SEAD-OBS-1).
@@ -148,7 +149,10 @@ pub fn validate_kernel_descriptor_admission(spec: &KernelDescriptorSpec) -> Resu
     }
 
     if spec.writes.is_empty() {
-        return Err(admission_err(&spec.id, "descriptor must declare at least one output"));
+        return Err(admission_err(
+            &spec.id,
+            "descriptor must declare at least one output",
+        ));
     }
 
     let mut seen_outputs = std::collections::HashSet::new();
@@ -198,8 +202,7 @@ pub fn validate_exact_kernel_inputs(
         if *name == "sqrt_out" || *name == "mag" {
             validate_exact_sqrt_artifact_admission(producer)?;
             if *name == "mag"
-                && producer.pre_sqrt_contract
-                    != Some(ExactPreSqrtInputContract::ExactMag2Bits)
+                && producer.pre_sqrt_contract != Some(ExactPreSqrtInputContract::ExactMag2Bits)
             {
                 return Err(admission_err(
                     &producer.id,
@@ -242,9 +245,7 @@ pub fn validate_exact_kernel_inputs(
             Some(OutputAuthority::ApproximateDiagnostic) => {
                 return Err(admission_err(
                     &producer.id,
-                    format!(
-                        "output `{name}` is approximate/diagnostic, not exact-authoritative"
-                    ),
+                    format!("output `{name}` is approximate/diagnostic, not exact-authoritative"),
                 ));
             }
             Some(OutputAuthority::RejectedDeferred) => {

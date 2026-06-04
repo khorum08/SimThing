@@ -10,9 +10,8 @@ use simthing_gpu::{
 };
 use simthing_sim::PipelineFlags;
 use simthing_spec::{
-    compile_eml_gadget_stack, deserialize_eml_gadget_stack_ron, eval_eml_postfix,
-    oracle_ema, oracle_weighted_accumulator, EmlGadgetCompileOptions, EmlGadgetKind,
-    MappingExecutionProfile,
+    compile_eml_gadget_stack, deserialize_eml_gadget_stack_ron, eval_eml_postfix, oracle_ema,
+    oracle_weighted_accumulator, EmlGadgetCompileOptions, EmlGadgetKind, MappingExecutionProfile,
 };
 use std::sync::Mutex;
 
@@ -150,8 +149,8 @@ fn nodes_from_compiled(gadget_index: usize, ron: &str) -> (Vec<EmlNodeGpu>, u32)
 #[test]
 fn runtime_gate_weighted_accumulator_ron_loads_and_compiles() {
     let stack = deserialize_eml_gadget_stack_ron(WEIGHTED_ACC_RON).expect("RON load");
-    let compiled = compile_eml_gadget_stack(&stack, EmlGadgetCompileOptions { max_col: 64 })
-        .expect("compile");
+    let compiled =
+        compile_eml_gadget_stack(&stack, EmlGadgetCompileOptions { max_col: 64 }).expect("compile");
     assert_eq!(compiled.gadgets.len(), 1);
     assert_eq!(compiled.gadgets[0].kind, EmlGadgetKind::WeightedAccumulator);
 }
@@ -159,8 +158,8 @@ fn runtime_gate_weighted_accumulator_ron_loads_and_compiles() {
 #[test]
 fn runtime_gate_ema_ron_loads_and_compiles() {
     let stack = deserialize_eml_gadget_stack_ron(EMA_RON).expect("RON load");
-    let compiled = compile_eml_gadget_stack(&stack, EmlGadgetCompileOptions { max_col: 64 })
-        .expect("compile");
+    let compiled =
+        compile_eml_gadget_stack(&stack, EmlGadgetCompileOptions { max_col: 64 }).expect("compile");
     assert_eq!(compiled.gadgets.len(), 1);
     assert_eq!(compiled.gadgets[0].kind, EmlGadgetKind::Ema);
 }
@@ -182,7 +181,7 @@ fn runtime_gate_weighted_accumulator_gpu_matches_spec_oracle() {
             )
             .unwrap()
             .gadgets[0]
-            .nodes,
+                .nodes,
             EVAL_SLOT,
             &values,
             N_DIMS,
@@ -217,7 +216,7 @@ fn runtime_gate_ema_gpu_matches_spec_oracle() {
             )
             .unwrap()
             .gadgets[0]
-            .nodes,
+                .nodes,
             EVAL_SLOT,
             &values,
             N_DIMS,

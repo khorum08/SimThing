@@ -4,11 +4,11 @@ mod dress_rehearsal_atlas_batch_0_gen;
 use std::collections::HashSet;
 
 use dress_rehearsal_atlas_batch_0_gen::{
-    BuildingKind, DressRehearsalMap, FleetKind, GridCell, Owner, GALAXY_SIDE,
+    BuildingKind, DressRehearsalMap, FleetKind, GridCell, Owner,
     DRESS_REHEARSAL_ATLAS_BATCH_0_GEN_ID, DRESS_REHEARSAL_ATLAS_BATCH_0_GEN_STATUS_PASS,
-    PIRATE_STARTING_SHIPS, PIRATE_STARPORT_COUNT, PIRATE_SYSTEM_COUNT, PLANET_SURFACE_SIDE,
-    SYSTEM_CENTER_CELL, SYSTEM_COUNT, SYSTEM_SIDE, TERRAN_PATROL_STARTING_SHIPS,
-    TERRAN_STARPORT_COUNT, TERRAN_SYSTEM_COUNT,
+    GALAXY_SIDE, PIRATE_STARPORT_COUNT, PIRATE_STARTING_SHIPS, PIRATE_SYSTEM_COUNT,
+    PLANET_SURFACE_SIDE, SYSTEM_CENTER_CELL, SYSTEM_COUNT, SYSTEM_SIDE,
+    TERRAN_PATROL_STARTING_SHIPS, TERRAN_STARPORT_COUNT, TERRAN_SYSTEM_COUNT,
 };
 
 #[test]
@@ -189,6 +189,9 @@ fn starports_and_starting_fleets_use_owner_system_cells() {
         assert_eq!(fleet.owner, system.owner);
         assert_eq!(fleet.galactic_cell, system.galactic_cell);
         assert_eq!(fleet.system_cell, GridCell::new(5, 5));
-        assert!(system.starport.is_some(), "fleets start at owner starport systems");
+        assert!(
+            system.starport.is_some(),
+            "fleets start at owner starport systems"
+        );
     }
 }

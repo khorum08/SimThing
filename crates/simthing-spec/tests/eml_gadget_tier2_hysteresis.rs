@@ -28,11 +28,7 @@ fn hysteresis_spec(
     }
 }
 
-fn eval_hysteresis(
-    spec: &EmlGadgetInstanceSpec,
-    previous: f32,
-    input: f32,
-) -> f32 {
+fn eval_hysteresis(spec: &EmlGadgetInstanceSpec, previous: f32, input: f32) -> f32 {
     let opts = EmlGadgetCompileOptions { max_col: 8 };
     let compiled = compile_eml_gadget(spec, opts).expect("compiles");
     let mut values = vec![0.0f32; (N_DIMS * 2) as usize];

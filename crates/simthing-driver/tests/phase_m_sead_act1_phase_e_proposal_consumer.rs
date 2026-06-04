@@ -11,7 +11,7 @@ use simthing_spec::{
     is_sead_act1_phase_e_proposal_consumer_descriptor, landed_jit_kernel_descriptors,
     validate_kernel_descriptor_admission, MappingExecutionProfile,
     PhaseEProposalConsumerInputAuthority, PhaseEProposalSummaryOrderAuthority,
-    SEAD_ACT1_DESCRIPTOR_ID, SEAD_ACT1_ADMITTED_TABLE_SIZE, SEAD_EVENT1_CODE_COUNT,
+    SEAD_ACT1_ADMITTED_TABLE_SIZE, SEAD_ACT1_DESCRIPTOR_ID, SEAD_EVENT1_CODE_COUNT,
 };
 
 use simthing_spec::OutputAuthority;
@@ -33,10 +33,36 @@ const FLAG_INPUT_OVERFLOW: u32 = 2;
 const ORDERING_CLASS: &str = "OrderInvariantExact";
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
-    "faction", "ownership", "owner", "AI", "threat", "scarcity", "opportunity", "labor", "price",
-    "logistics", "routing", "need", "demand", "supply", "personality", "drone", "SEAD", "economy",
-    "planner", "resource", "map", "urgency", "commitment", "order", "route", "buy", "sell", "ship",
-    "factory", "decision",
+    "faction",
+    "ownership",
+    "owner",
+    "AI",
+    "threat",
+    "scarcity",
+    "opportunity",
+    "labor",
+    "price",
+    "logistics",
+    "routing",
+    "need",
+    "demand",
+    "supply",
+    "personality",
+    "drone",
+    "SEAD",
+    "economy",
+    "planner",
+    "resource",
+    "map",
+    "urgency",
+    "commitment",
+    "order",
+    "route",
+    "buy",
+    "sell",
+    "ship",
+    "factory",
+    "decision",
 ];
 
 const FORBIDDEN_EXACT_TERMS: &[&str] = &["f64", "F64RoundDown", "SHADER_F64", "sqrt_cr_c"];
@@ -533,7 +559,10 @@ fn cpu_propose(
                 flags: FLAG_RULE_MAX | (r.flags & FLAG_RED_SUM_OVERFLOW),
             });
         }
-        if rule.enable_sum_rule != 0 && r.flags & FLAG_RED_SUM_OVERFLOW == 0 && r.count >= rule.min_count {
+        if rule.enable_sum_rule != 0
+            && r.flags & FLAG_RED_SUM_OVERFLOW == 0
+            && r.count >= rule.min_count
+        {
             let sum = limbs_to_i64(r.sum_hi, r.sum_lo);
             let thr = limbs_to_i64(rule.threshold_sum_hi as i32, rule.threshold_sum_lo);
             if sum >= thr {
@@ -639,7 +668,8 @@ fn summary_eq(got: ProposalSummary, exp: ProposalSummary) -> bool {
         return false;
     }
     if exp.flags & FLAG_SUM_OVERFLOW == 0 {
-        return limbs_to_i64(got.summary_hi, got.summary_lo) == limbs_to_i64(exp.summary_hi, exp.summary_lo);
+        return limbs_to_i64(got.summary_hi, got.summary_lo)
+            == limbs_to_i64(exp.summary_hi, exp.summary_lo);
     }
     true
 }
@@ -793,11 +823,13 @@ fn run_consume_gpu(
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_act1_consume"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_act1_consume_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_act1_consume_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "consume_pass",
         compilation_options: Default::default(),
@@ -847,7 +879,8 @@ fn run_consume_gpu(
 
     let t0 = Instant::now();
     for _ in 0..repeat_dispatches {
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("consume"),
@@ -863,7 +896,13 @@ fn run_consume_gpu(
 
     let sum_staging = staging_buf(device, (SUMMARY_STRIDE * 4) as u64);
     let mut enc2 = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    enc2.copy_buffer_to_buffer(&summary_buf, 0, &sum_staging, 0, (SUMMARY_STRIDE * 4) as u64);
+    enc2.copy_buffer_to_buffer(
+        &summary_buf,
+        0,
+        &sum_staging,
+        0,
+        (SUMMARY_STRIDE * 4) as u64,
+    );
     queue.submit(Some(enc2.finish()));
     let words = read_u32s(device, &sum_staging, SUMMARY_STRIDE as usize);
     ConsumerOutcome {
@@ -908,11 +947,13 @@ fn run_proposals_gpu(
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_act0_propose"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_act0_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_act0_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "propose_pass",
         compilation_options: Default::default(),
@@ -932,7 +973,9 @@ fn run_proposals_gpu(
     let meta_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("proposal_meta"),
         contents: &[0u8; 8],
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_SRC
+            | wgpu::BufferUsages::COPY_DST,
     });
     let prop_words = (proposal_capacity.max(1) * PROP_STRIDE) as usize;
     let prop_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -960,7 +1003,8 @@ fn run_proposals_gpu(
     let t0 = Instant::now();
     for _ in 0..repeat_dispatches {
         queue.write_buffer(&meta_buf, 0, &[0u8; 8]);
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("propose"),
@@ -1106,11 +1150,13 @@ fn run_bucket_reduce_propose_consume_gpu(
     let mk_pipe = |mod_: &wgpu::ShaderModule, bgl: &wgpu::BindGroupLayout, entry: &str| {
         device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some(entry),
-            layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some(entry),
-                bind_group_layouts: &[bgl],
-                push_constant_ranges: &[],
-            })),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some(entry),
+                    bind_group_layouts: &[bgl],
+                    push_constant_ranges: &[],
+                }),
+            ),
             module: mod_,
             entry_point: entry,
             compilation_options: Default::default(),
@@ -1136,7 +1182,9 @@ fn run_bucket_reduce_propose_consume_gpu(
     let counts_atomic = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("counts_atomic"),
         contents: &[0u8; CODE_COUNT * 4],
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_SRC
+            | wgpu::BufferUsages::COPY_DST,
     });
     let overflow_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("overflow"),
@@ -1162,7 +1210,9 @@ fn run_bucket_reduce_propose_consume_gpu(
     let counts_read = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("counts_read"),
         contents: &[0u8; CODE_COUNT * 4],
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_DST
+            | wgpu::BufferUsages::COPY_SRC,
     });
     let red_init = vec![0u32; (CODE_COUNT as u32 * RED_OUT_STRIDE) as usize];
     let red_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -1183,7 +1233,9 @@ fn run_bucket_reduce_propose_consume_gpu(
     let prop_meta = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("prop_meta"),
         contents: &[0u8; 8],
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_SRC
+            | wgpu::BufferUsages::COPY_DST,
     });
     let prop_words = (proposal_capacity.max(1) * PROP_STRIDE) as usize;
     let prop_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -1262,7 +1314,8 @@ fn run_bucket_reduce_propose_consume_gpu(
     for _ in 0..repeat_dispatches {
         queue.write_buffer(&counts_atomic, 0, &[0u8; CODE_COUNT * 4]);
         queue.write_buffer(&prop_meta, 0, &[0u8; 8]);
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("bucket"),
@@ -1308,9 +1361,21 @@ fn run_bucket_reduce_propose_consume_gpu(
     let meta_staging = staging_buf(device, 8);
     let sum_staging = staging_buf(device, (SUMMARY_STRIDE * 4) as u64);
     let mut enc2 = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    enc2.copy_buffer_to_buffer(&red_buf, 0, &red_staging, 0, (CODE_COUNT as u32 * RED_OUT_STRIDE * 4) as u64);
+    enc2.copy_buffer_to_buffer(
+        &red_buf,
+        0,
+        &red_staging,
+        0,
+        (CODE_COUNT as u32 * RED_OUT_STRIDE * 4) as u64,
+    );
     enc2.copy_buffer_to_buffer(&prop_meta, 0, &meta_staging, 0, 8);
-    enc2.copy_buffer_to_buffer(&summary_buf, 0, &sum_staging, 0, (SUMMARY_STRIDE * 4) as u64);
+    enc2.copy_buffer_to_buffer(
+        &summary_buf,
+        0,
+        &sum_staging,
+        0,
+        (SUMMARY_STRIDE * 4) as u64,
+    );
     queue.submit(Some(enc2.finish()));
 
     let red_vec = read_u32s(device, &red_staging, CODE_COUNT * RED_OUT_STRIDE as usize);
@@ -1381,7 +1446,10 @@ fn cpu_reduce(records: &[EventRecord]) -> ReductionResult {
     }
 }
 
-fn cpu_bucket_from_compact(records: &[EventRecord], capacity: u32) -> (Vec<Vec<EventRecord>>, [u32; CODE_COUNT]) {
+fn cpu_bucket_from_compact(
+    records: &[EventRecord],
+    capacity: u32,
+) -> (Vec<Vec<EventRecord>>, [u32; CODE_COUNT]) {
     let mut buckets: [Vec<EventRecord>; CODE_COUNT] = std::array::from_fn(|_| Vec::new());
     let mut counts = [0u32; CODE_COUNT];
     for rec in records {
@@ -1398,7 +1466,11 @@ fn cpu_bucket_from_compact(records: &[EventRecord], capacity: u32) -> (Vec<Vec<E
     (buckets.to_vec(), counts)
 }
 
-fn reductions_from_buckets(buckets: &[Vec<EventRecord>], counts: [u32; CODE_COUNT], cap: u32) -> [ReductionResult; CODE_COUNT] {
+fn reductions_from_buckets(
+    buckets: &[Vec<EventRecord>],
+    counts: [u32; CODE_COUNT],
+    cap: u32,
+) -> [ReductionResult; CODE_COUNT] {
     let mut out = [ReductionResult {
         count: 0,
         sum_lo: 0,
@@ -1591,17 +1663,17 @@ fn edge_consumer_cases() -> Vec<(u32, u32, Vec<ProposalRecord>, u32, &'static st
 fn dense_proposals() -> (u32, u32, Vec<ProposalRecord>) {
     let mut props = Vec::new();
     for idx in 0..128u32 {
-        let code = if idx % 5 == 0 {
-            9999
-        } else {
-            1001 + (idx % 3)
-        };
+        let code = if idx % 5 == 0 { 9999 } else { 1001 + (idx % 3) };
         props.push(ProposalRecord {
             source_code: 1 + (idx % 3),
             proposal_code: code,
             count: 1 + idx % 4,
             score: (idx as i32).wrapping_mul(37),
-            flags: if idx % 2 == 0 { FLAG_RULE_MAX } else { FLAG_RULE_SUM },
+            flags: if idx % 2 == 0 {
+                FLAG_RULE_MAX
+            } else {
+                FLAG_RULE_SUM
+            },
         });
     }
     (props.len() as u32, 0, props)
@@ -1642,7 +1714,9 @@ fn verify_chain_summary(
     let (buckets, counts) = cpu_bucket_from_compact(compact, cap);
     let exp_reds = reductions_from_buckets(&buckets, counts, cap);
     let (exp_count, exp_ovf, exp_props) = cpu_propose(&exp_reds, rules, prop_cap);
-    let exp_summary = cpu_consume(exp_count, exp_ovf, &exp_props, prop_cap, admitted, admitted_n);
+    let exp_summary = cpu_consume(
+        exp_count, exp_ovf, &exp_props, prop_cap, admitted, admitted_n,
+    );
     assert_eq!(outcome.proposal_count, exp_count);
     assert_eq!(outcome.proposal_overflow, exp_ovf);
     assert!(summary_eq(outcome.summary, exp_summary));
@@ -1669,7 +1743,8 @@ fn sead_act1_consumer_edge_rows() {
     let admitted_n = admitted_count();
     with_gpu(|ctx| {
         for (count, overflow, props, cap, label) in edge_consumer_cases() {
-            let outcome = run_consume_gpu(ctx, count, overflow, &props, cap, &admitted, admitted_n, 1);
+            let outcome =
+                run_consume_gpu(ctx, count, overflow, &props, cap, &admitted, admitted_n, 1);
             let exp = cpu_consume(count, overflow, &props, cap, &admitted, admitted_n);
             assert!(summary_eq(outcome.summary, exp), "{label}");
             println!(
@@ -1717,7 +1792,9 @@ fn sead_act1_act0_to_phase_e_consumer_smoke() {
         let outcome = run_bucket_reduce_propose_consume_gpu(
             ctx, &compact, cap, &rules, prop_cap, &admitted, admitted_n, 1,
         );
-        verify_chain_summary(&outcome, &compact, cap, &rules, prop_cap, &admitted, admitted_n);
+        verify_chain_summary(
+            &outcome, &compact, cap, &rules, prop_cap, &admitted, admitted_n,
+        );
         println!(
             "sead_act1_act0_smoke: proposal_count={} accepted={} invalid={} overflow={} dispatches=4 ordering={ORDERING_CLASS}",
             outcome.proposal_count,
@@ -1741,7 +1818,9 @@ fn sead_act1_full_chain_phase_e_consumer_smoke() {
             ctx, &compact, cap, &rules, prop_cap, &admitted, admitted_n, 1,
         );
         let (buckets, counts) = cpu_bucket_from_compact(&compact, cap);
-        verify_chain_summary(&outcome, &compact, cap, &rules, prop_cap, &admitted, admitted_n);
+        verify_chain_summary(
+            &outcome, &compact, cap, &rules, prop_cap, &admitted, admitted_n,
+        );
         println!(
             "sead_act1_full_chain: compact={} event_count={} bucket_counts={counts:?} proposal_count={} accepted={} overflow={} ordering={ORDERING_CLASS}",
             compact.len(),
@@ -1770,7 +1849,9 @@ fn sead_act1_perf_34k_phase_e_consumer() {
         );
         let elapsed_ms = t0.elapsed().as_secs_f64() * 1000.0;
         let per_record_us = elapsed_ms * 1000.0 / N as f64;
-        verify_chain_summary(&outcome, &compact, CAP, &rules, PROP_CAP, &admitted, admitted_n);
+        verify_chain_summary(
+            &outcome, &compact, CAP, &rules, PROP_CAP, &admitted, admitted_n,
+        );
         println!(
             "sead_act1_34k: dispatches=4 elapsed_ms={elapsed_ms:.3} readback=true event_count={N} proposal_count={} accepted={} overflow={} per_record_us={per_record_us:.4} ordering={ORDERING_CLASS}",
             outcome.proposal_count,
@@ -1807,7 +1888,10 @@ fn sead_act1_perf_34k_warm_repeated_dispatch() {
 
 #[test]
 fn sead_act1_no_default_runtime_wiring() {
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
     let desc = landed_jit_kernel_descriptors()
         .into_iter()
         .find(|d| d.id == SEAD_ACT1_DESCRIPTOR_ID)
@@ -1823,5 +1907,3 @@ fn sead_act1_no_default_runtime_wiring() {
     let _ = PhaseEProposalSummaryOrderAuthority::OrderInvariantExact;
     println!("sead_act1_wiring: default_off=true descriptor={SEAD_ACT1_DESCRIPTOR_ID}");
 }
-
-

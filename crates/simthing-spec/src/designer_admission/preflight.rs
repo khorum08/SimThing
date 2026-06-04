@@ -11,7 +11,10 @@ use super::diagnostic::{
 pub enum DesignerAdmissionRequest {
     DefaultOn,
     ResourceFlowBypass,
-    CrossEntityMovementWrite { source_unit_id: u32, target_unit_id: u32 },
+    CrossEntityMovementWrite {
+        source_unit_id: u32,
+        target_unit_id: u32,
+    },
     ProductionMovementWrite,
     ProductionCommitmentEmission,
     SharedPoolTickWrite,
@@ -32,7 +35,9 @@ pub enum DesignerAdmissionRequest {
     ClauseScriptParser,
     ClauseThingRuntime,
     FrontierV2Five,
-    SeadLadderReopen { stage: SeadLadderStage },
+    SeadLadderReopen {
+        stage: SeadLadderStage,
+    },
 }
 
 /// SEAD ladder stage identifiers guarded against unauthorized reopen.
@@ -83,7 +88,9 @@ pub fn evaluate_designer_admission_request(
     request: DesignerAdmissionRequest,
 ) -> DesignerAdmissionPreflightReport {
     match request {
-        DesignerAdmissionRequest::DefaultOn => reject(DesignerAdmissionRejectionKind::DefaultOnRequest),
+        DesignerAdmissionRequest::DefaultOn => {
+            reject(DesignerAdmissionRejectionKind::DefaultOnRequest)
+        }
         DesignerAdmissionRequest::ResourceFlowBypass => {
             reject(DesignerAdmissionRejectionKind::ResourceFlowBypass)
         }
@@ -154,8 +161,9 @@ pub fn evaluate_designer_admission_request(
             reject(DesignerAdmissionRejectionKind::FrontierV2FiveRejected)
         }
         DesignerAdmissionRequest::SeadLadderReopen { stage } => {
-            let mut diagnostic =
-                designer_admission_diagnostic_for_rejection(DesignerAdmissionRejectionKind::SeadLadderReopenRejected);
+            let mut diagnostic = designer_admission_diagnostic_for_rejection(
+                DesignerAdmissionRejectionKind::SeadLadderReopenRejected,
+            );
             diagnostic.message = format!(
                 "{} ladder reopen request is rejected at designer admission",
                 stage.label()
@@ -172,9 +180,7 @@ fn reject(kind: DesignerAdmissionRejectionKind) -> DesignerAdmissionPreflightRep
 }
 
 /// Resolve an artifact target identifier string to the typed lowering target.
-pub fn resolve_frontier_artifact_target_id(
-    id: &str,
-) -> Option<AcceptedFrontierArtifactTarget> {
+pub fn resolve_frontier_artifact_target_id(id: &str) -> Option<AcceptedFrontierArtifactTarget> {
     match id {
         "AcceptedFrontierV2FixtureArtifacts" => {
             Some(AcceptedFrontierArtifactTarget::AcceptedFrontierV2FixtureArtifacts)
@@ -182,7 +188,9 @@ pub fn resolve_frontier_artifact_target_id(
         "FrontierV2CombinedFeedbackFixture" => {
             Some(AcceptedFrontierArtifactTarget::FrontierV2CombinedFeedbackFixture)
         }
-        "FrontierV2OwnColumnShadow" => Some(AcceptedFrontierArtifactTarget::FrontierV2OwnColumnShadow),
+        "FrontierV2OwnColumnShadow" => {
+            Some(AcceptedFrontierArtifactTarget::FrontierV2OwnColumnShadow)
+        }
         "FrontierV2BoundaryRequestShadow" => {
             Some(AcceptedFrontierArtifactTarget::FrontierV2BoundaryRequestShadow)
         }

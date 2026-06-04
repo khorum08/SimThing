@@ -2,17 +2,16 @@
 
 use simthing_spec::{
     exact_sqrt_f_artifact_descriptor, fnv1a64_hex, is_exact_mag2_fixed_descriptor,
-    is_exact_mag_f_from_mag2_descriptor,
-    is_exact_sqrt_f_descriptor, is_mag_f_dxdy_probe_descriptor,
-    landed_jit_kernel_descriptors, mag_f_from_dxdy_probe_kernel_descriptor,
-    mag_f_from_exact_mag2_kernel_descriptor, preview_kernel_graph_identity,
-    preview_kernel_registry_manifest, preview_production_candidate_registry_entry,
-    sqrt_f_exact_kernel_descriptor, validate_exact_kernel_inputs,
-    validate_exact_sqrt_artifact_binding,
+    is_exact_mag_f_from_mag2_descriptor, is_exact_sqrt_f_descriptor,
+    is_mag_f_dxdy_probe_descriptor, landed_jit_kernel_descriptors,
+    mag_f_from_dxdy_probe_kernel_descriptor, mag_f_from_exact_mag2_kernel_descriptor,
+    preview_kernel_graph_identity, preview_kernel_registry_manifest,
+    preview_production_candidate_registry_entry, sqrt_f_exact_kernel_descriptor,
+    validate_exact_kernel_inputs, validate_exact_sqrt_artifact_binding,
     validate_kernel_descriptor_admission, validate_kernel_graph_admission,
     ExactPreSqrtInputContract, ExactSqrtArtifactDescriptor, ExactSqrtAuthorityClass,
-    KernelDescriptorSpec, KernelGraphEdgeSpec, KernelGraphRequestSpec, KernelGraphSpec,
-    KernelLane, KernelOutputSpec, KernelRegistryLane, MappingExecutionProfile, NativeMathClass,
+    KernelDescriptorSpec, KernelGraphEdgeSpec, KernelGraphRequestSpec, KernelGraphSpec, KernelLane,
+    KernelOutputSpec, KernelRegistryLane, MappingExecutionProfile, NativeMathClass,
     OutputAuthority, SpecError, MAG2_FIXED_DESCRIPTOR_ID, MAG_F_FROM_DXDY_PROBE_DESCRIPTOR_ID,
     MAG_F_FROM_MAG2_DESCRIPTOR_ID, SQRT_F_ARTIFACT_HASH, SQRT_F_ARTIFACT_PATH,
     SQRT_F_DESCRIPTOR_ID, SQRT_F_DOMAIN, SQRT_F_ENTRYPOINT, SQRT_F_IO_CONTRACT,
@@ -98,7 +97,8 @@ fn assert_admission_err(spec: &KernelDescriptorSpec, reason_substr: &str) {
 }
 
 fn assert_exact_input_err(producer: &KernelDescriptorSpec, inputs: &[&str], reason_substr: &str) {
-    let err = validate_exact_kernel_inputs(producer, inputs).expect_err("expected exact-input failure");
+    let err =
+        validate_exact_kernel_inputs(producer, inputs).expect_err("expected exact-input failure");
     match err {
         SpecError::JitKernelDescriptorAdmission { reason, .. } => {
             assert!(
@@ -117,7 +117,10 @@ fn sqrt_promote0_f_descriptor_is_exact_deterministic() {
     validate_kernel_descriptor_admission(&f).expect("F descriptor should admit");
 
     let binding = f.exact_sqrt_artifact.as_ref().expect("artifact binding");
-    assert_eq!(binding.authority_class, ExactSqrtAuthorityClass::ExactDeterministic);
+    assert_eq!(
+        binding.authority_class,
+        ExactSqrtAuthorityClass::ExactDeterministic
+    );
     assert_eq!(binding.artifact_path, SQRT_F_ARTIFACT_PATH);
     assert_eq!(binding.artifact_hash_fnv1a64, SQRT_F_ARTIFACT_HASH);
     assert_eq!(binding.entrypoint, SQRT_F_ENTRYPOINT);
@@ -144,12 +147,10 @@ fn sqrt_promote0_native_sqrt_remains_approximate() {
     let sqrt0 = sqrt0();
     assert_eq!(sqrt0.native_math, NativeMathClass::ApproximateJitOnly);
     assert!(sqrt0.exact_sqrt_artifact.is_none());
-    assert!(
-        sqrt0
-            .writes
-            .iter()
-            .all(|out| out.authority == OutputAuthority::ApproximateDiagnostic)
-    );
+    assert!(sqrt0
+        .writes
+        .iter()
+        .all(|out| out.authority == OutputAuthority::ApproximateDiagnostic));
 
     for desc in landed_jit_kernel_descriptors() {
         if desc.native_math == NativeMathClass::ApproximateJitOnly {
@@ -248,7 +249,10 @@ fn sqrt_promote0_f_artifact_hash_guard() {
 
     let mut f_like_no_identity = sqrt_f_exact_kernel_descriptor();
     f_like_no_identity.exact_sqrt_artifact = None;
-    assert_admission_err(&f_like_no_identity, "requires artifact-backed Candidate F binding");
+    assert_admission_err(
+        &f_like_no_identity,
+        "requires artifact-backed Candidate F binding",
+    );
 }
 
 #[test]
@@ -277,7 +281,10 @@ fn sqrt_promote0_production_candidate_admission_accepts_f_exact_path() {
 
     let candidate =
         preview_production_candidate_registry_entry(entry).expect("F exact production candidate");
-    assert_eq!(candidate.lane, KernelRegistryLane::ProductionCandidatePreview);
+    assert_eq!(
+        candidate.lane,
+        KernelRegistryLane::ProductionCandidatePreview
+    );
     assert!(candidate.default_off);
     assert!(!candidate.production_wiring);
     println!(

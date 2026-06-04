@@ -4,9 +4,7 @@ use simthing_core::{
     rebuild_conjunctive_recipe_ops, rebuild_discrete_transfer_ops, AccumulatorOpBuilderError,
     ConjunctiveRecipeRegistration, DiscreteTransferRegistration,
 };
-use simthing_gpu::{
-    execute_ops_cpu, EmissionFormula, EmissionRecord, EmissionRegistration,
-};
+use simthing_gpu::{execute_ops_cpu, EmissionFormula, EmissionRecord, EmissionRegistration};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ResourceEconomyOracleError {
@@ -43,7 +41,8 @@ pub fn run_transfer_recipe_cpu_oracle(
     ops.extend(rebuild_conjunctive_recipe_ops(recipes)?);
     let max_band = max_transfer_band(transfers, recipes);
     for band in 0..=max_band {
-        execute_ops_cpu(flat, &ops, band, n_dims).map_err(|e| ResourceEconomyOracleError::Cpu(e.to_string()))?;
+        execute_ops_cpu(flat, &ops, band, n_dims)
+            .map_err(|e| ResourceEconomyOracleError::Cpu(e.to_string()))?;
     }
     Ok(())
 }

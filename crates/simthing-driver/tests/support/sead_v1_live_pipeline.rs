@@ -41,9 +41,31 @@ const Q16_SCALE_F: f32 = MAG2_Q16_SCALE as f32;
 pub const PIPE0_ORDERING_CLASS: &str = "UnspecifiedAtomicOrder";
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
-    "faction", "ownership", "owner", "AI", "threat", "scarcity", "opportunity", "labor", "price",
-    "logistics", "routing", "need", "demand", "supply", "personality", "drone", "SEAD", "economy",
-    "planner", "resource", "map", "urgency", "commitment", "order", "route",
+    "faction",
+    "ownership",
+    "owner",
+    "AI",
+    "threat",
+    "scarcity",
+    "opportunity",
+    "labor",
+    "price",
+    "logistics",
+    "routing",
+    "need",
+    "demand",
+    "supply",
+    "personality",
+    "drone",
+    "SEAD",
+    "economy",
+    "planner",
+    "resource",
+    "map",
+    "urgency",
+    "commitment",
+    "order",
+    "route",
 ];
 
 const FORBIDDEN_EXACT_TERMS: &[&str] = &["f64", "F64RoundDown", "SHADER_F64", "sqrt_cr_c"];
@@ -97,7 +119,6 @@ pub struct Pipe0Outcome {
     elapsed: std::time::Duration,
     dispatch_count: u32,
 }
-
 
 pub fn f32_to_q16(v: f32) -> i32 {
     (v * Q16_SCALE_F).round() as i32
@@ -353,18 +374,12 @@ pub fn cpu_pipe0_expected_records(event_rows: &[EventRow]) -> Vec<EventRecord> {
 
 fn sort_records(records: &mut [EventRecord]) {
     records.sort_by(|a, b| {
-        (
-            a.source_index,
-            a.event_code,
-            a.state,
-            a.score_fixed,
-        )
-            .cmp(&(
-                b.source_index,
-                b.event_code,
-                b.state,
-                b.score_fixed,
-            ))
+        (a.source_index, a.event_code, a.state, a.score_fixed).cmp(&(
+            b.source_index,
+            b.event_code,
+            b.state,
+            b.score_fixed,
+        ))
     });
 }
 
@@ -715,7 +730,10 @@ pub fn frontier_field_observer_rows(urgency: f32, threat: f32) -> Vec<ObserverRo
     layers[1] = layer_input(g1, 0.0, 2.0);
     let row = observer_row_from_layers(layers, 1.0, 1.0, 0, 0);
     let (_, event_code, _) = cpu_threshold_state_event(&row);
-    debug_assert_eq!(event_code, 1, "frontier observer row must emit event_code 1");
+    debug_assert_eq!(
+        event_code, 1,
+        "frontier observer row must emit event_code 1"
+    );
     vec![row.clone(), row]
 }
 
@@ -788,7 +806,6 @@ impl AdmissionRecord {
         self.flags & FLAG_ADM_ADMITTED != 0
     }
 }
-
 
 // --- ACT-2 (bucket -> reduce -> propose -> consume -> admit) ---
 
@@ -936,7 +953,6 @@ pub struct AdmitOutcome {
     elapsed: std::time::Duration,
 }
 
-
 pub fn default_rules() -> [ProposalRuleGpu; CODE_COUNT] {
     [
         ProposalRuleGpu {
@@ -1068,7 +1084,11 @@ fn admit_pass(@builtin(global_invocation_id) gid: vec3<u32>) {
 "#
 }
 
-pub fn is_admitted_proposal_code(code: u32, table: &[u32; ADMITTED_TABLE_SIZE], count: u32) -> bool {
+pub fn is_admitted_proposal_code(
+    code: u32,
+    table: &[u32; ADMITTED_TABLE_SIZE],
+    count: u32,
+) -> bool {
     for slot in 0..count as usize {
         if table[slot] == code {
             return true;
@@ -1398,7 +1418,10 @@ pub fn cpu_propose(
                 flags: FLAG_RULE_MAX | (r.flags & FLAG_RED_SUM_OVERFLOW),
             });
         }
-        if rule.enable_sum_rule != 0 && r.flags & FLAG_RED_SUM_OVERFLOW == 0 && r.count >= rule.min_count {
+        if rule.enable_sum_rule != 0
+            && r.flags & FLAG_RED_SUM_OVERFLOW == 0
+            && r.count >= rule.min_count
+        {
             let sum = limbs_to_i64(r.sum_hi, r.sum_lo);
             let thr = limbs_to_i64(rule.threshold_sum_hi as i32, rule.threshold_sum_lo);
             if sum >= thr {
@@ -1504,7 +1527,8 @@ pub fn summary_eq(got: ProposalSummary, exp: ProposalSummary) -> bool {
         return false;
     }
     if exp.flags & FLAG_SUM_OVERFLOW == 0 {
-        return limbs_to_i64(got.summary_hi, got.summary_lo) == limbs_to_i64(exp.summary_hi, exp.summary_lo);
+        return limbs_to_i64(got.summary_hi, got.summary_lo)
+            == limbs_to_i64(exp.summary_hi, exp.summary_lo);
     }
     true
 }
@@ -1730,11 +1754,13 @@ fn run_consume_gpu(
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_act1_consume"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_act1_consume_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_act1_consume_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "consume_pass",
         compilation_options: Default::default(),
@@ -1784,7 +1810,8 @@ fn run_consume_gpu(
 
     let t0 = Instant::now();
     for _ in 0..repeat_dispatches {
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("consume"),
@@ -1800,7 +1827,13 @@ fn run_consume_gpu(
 
     let sum_staging = staging_buf(device, (SUMMARY_STRIDE * 4) as u64);
     let mut enc2 = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    enc2.copy_buffer_to_buffer(&summary_buf, 0, &sum_staging, 0, (SUMMARY_STRIDE * 4) as u64);
+    enc2.copy_buffer_to_buffer(
+        &summary_buf,
+        0,
+        &sum_staging,
+        0,
+        (SUMMARY_STRIDE * 4) as u64,
+    );
     queue.submit(Some(enc2.finish()));
     let words = read_u32s(device, &sum_staging, SUMMARY_STRIDE as usize);
     ConsumerOutcome {
@@ -1828,19 +1861,17 @@ fn run_admit_gpu(
     });
     let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("sead_act2_admit_bgl"),
-        entries: &[
-            storage_ro(0),
-            storage_rw(1),
-            uniform_entry(2),
-        ],
+        entries: &[storage_ro(0), storage_rw(1), uniform_entry(2)],
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_act2_admit"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_act2_admit_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_act2_admit_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "admit_pass",
         compilation_options: Default::default(),
@@ -1875,7 +1906,8 @@ fn run_admit_gpu(
 
     let t0 = Instant::now();
     for _ in 0..repeat_dispatches {
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("admit"),
@@ -1934,11 +1966,13 @@ fn run_proposals_gpu(
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_act0_propose"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_act0_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_act0_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "propose_pass",
         compilation_options: Default::default(),
@@ -1958,7 +1992,9 @@ fn run_proposals_gpu(
     let meta_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("proposal_meta"),
         contents: &[0u8; 8],
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_SRC
+            | wgpu::BufferUsages::COPY_DST,
     });
     let prop_words = (proposal_capacity.max(1) * PROP_STRIDE) as usize;
     let prop_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -1986,7 +2022,8 @@ fn run_proposals_gpu(
     let t0 = Instant::now();
     for _ in 0..repeat_dispatches {
         queue.write_buffer(&meta_buf, 0, &[0u8; 8]);
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("propose"),
@@ -2135,21 +2172,19 @@ pub fn run_act2_chain_gpu(
     });
     let admit_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("admit_bgl"),
-        entries: &[
-            storage_ro(0),
-            storage_rw(1),
-            uniform_entry(2),
-        ],
+        entries: &[storage_ro(0), storage_rw(1), uniform_entry(2)],
     });
 
     let mk_pipe = |mod_: &wgpu::ShaderModule, bgl: &wgpu::BindGroupLayout, entry: &str| {
         device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some(entry),
-            layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some(entry),
-                bind_group_layouts: &[bgl],
-                push_constant_ranges: &[],
-            })),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some(entry),
+                    bind_group_layouts: &[bgl],
+                    push_constant_ranges: &[],
+                }),
+            ),
             module: mod_,
             entry_point: entry,
             compilation_options: Default::default(),
@@ -2176,7 +2211,9 @@ pub fn run_act2_chain_gpu(
     let counts_atomic = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("counts_atomic"),
         contents: &[0u8; CODE_COUNT * 4],
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_SRC
+            | wgpu::BufferUsages::COPY_DST,
     });
     let overflow_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("overflow"),
@@ -2202,7 +2239,9 @@ pub fn run_act2_chain_gpu(
     let counts_read = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("counts_read"),
         contents: &[0u8; CODE_COUNT * 4],
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_DST
+            | wgpu::BufferUsages::COPY_SRC,
     });
     let red_init = vec![0u32; (CODE_COUNT as u32 * RED_OUT_STRIDE) as usize];
     let red_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -2223,7 +2262,9 @@ pub fn run_act2_chain_gpu(
     let prop_meta = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("prop_meta"),
         contents: &[0u8; 8],
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_SRC
+            | wgpu::BufferUsages::COPY_DST,
     });
     let prop_words = (proposal_capacity.max(1) * PROP_STRIDE) as usize;
     let prop_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -2322,7 +2363,8 @@ pub fn run_act2_chain_gpu(
     for _ in 0..repeat_dispatches {
         queue.write_buffer(&counts_atomic, 0, &[0u8; CODE_COUNT * 4]);
         queue.write_buffer(&prop_meta, 0, &[0u8; 8]);
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("bucket"),
@@ -2378,10 +2420,28 @@ pub fn run_act2_chain_gpu(
     let sum_staging = staging_buf(device, (SUMMARY_STRIDE * 4) as u64);
     let admit_staging = staging_buf(device, (ADMIT_STRIDE * 4) as u64);
     let mut enc2 = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    enc2.copy_buffer_to_buffer(&red_buf, 0, &red_staging, 0, (CODE_COUNT as u32 * RED_OUT_STRIDE * 4) as u64);
+    enc2.copy_buffer_to_buffer(
+        &red_buf,
+        0,
+        &red_staging,
+        0,
+        (CODE_COUNT as u32 * RED_OUT_STRIDE * 4) as u64,
+    );
     enc2.copy_buffer_to_buffer(&prop_meta, 0, &meta_staging, 0, 8);
-    enc2.copy_buffer_to_buffer(&summary_buf, 0, &sum_staging, 0, (SUMMARY_STRIDE * 4) as u64);
-    enc2.copy_buffer_to_buffer(&admission_buf, 0, &admit_staging, 0, (ADMIT_STRIDE * 4) as u64);
+    enc2.copy_buffer_to_buffer(
+        &summary_buf,
+        0,
+        &sum_staging,
+        0,
+        (SUMMARY_STRIDE * 4) as u64,
+    );
+    enc2.copy_buffer_to_buffer(
+        &admission_buf,
+        0,
+        &admit_staging,
+        0,
+        (ADMIT_STRIDE * 4) as u64,
+    );
     queue.submit(Some(enc2.finish()));
 
     let red_vec = read_u32s(device, &red_staging, CODE_COUNT * RED_OUT_STRIDE as usize);
@@ -2455,7 +2515,10 @@ pub fn cpu_reduce(records: &[Act2EventRecord]) -> ReductionResult {
     }
 }
 
-pub fn cpu_bucket_from_compact(records: &[Act2EventRecord], capacity: u32) -> (Vec<Vec<Act2EventRecord>>, [u32; CODE_COUNT]) {
+pub fn cpu_bucket_from_compact(
+    records: &[Act2EventRecord],
+    capacity: u32,
+) -> (Vec<Vec<Act2EventRecord>>, [u32; CODE_COUNT]) {
     let mut buckets: [Vec<Act2EventRecord>; CODE_COUNT] = std::array::from_fn(|_| Vec::new());
     let mut counts = [0u32; CODE_COUNT];
     for rec in records {
@@ -2472,7 +2535,11 @@ pub fn cpu_bucket_from_compact(records: &[Act2EventRecord], capacity: u32) -> (V
     (buckets.to_vec(), counts)
 }
 
-pub fn reductions_from_buckets(buckets: &[Vec<Act2EventRecord>], counts: [u32; CODE_COUNT], cap: u32) -> [ReductionResult; CODE_COUNT] {
+pub fn reductions_from_buckets(
+    buckets: &[Vec<Act2EventRecord>],
+    counts: [u32; CODE_COUNT],
+    cap: u32,
+) -> [ReductionResult; CODE_COUNT] {
     let mut out = [ReductionResult {
         count: 0,
         sum_lo: 0,
@@ -2510,7 +2577,9 @@ pub fn verify_act2_chain_admission(
     let (buckets, counts) = cpu_bucket_from_compact(compact, cap);
     let exp_reds = reductions_from_buckets(&buckets, counts, cap);
     let (exp_count, exp_ovf, exp_props) = cpu_propose(&exp_reds, rules, prop_cap);
-    let exp_summary = cpu_consume(exp_count, exp_ovf, &exp_props, prop_cap, admitted, admitted_n);
+    let exp_summary = cpu_consume(
+        exp_count, exp_ovf, &exp_props, prop_cap, admitted, admitted_n,
+    );
     let exp_admission = cpu_admit(exp_summary, admission_rules);
     assert_eq!(outcome.proposal_count, exp_count);
     assert_eq!(outcome.proposal_overflow, exp_ovf);

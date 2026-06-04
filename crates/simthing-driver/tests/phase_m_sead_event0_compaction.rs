@@ -22,9 +22,31 @@ const RECORD_STRIDE: u32 = 5;
 const ORDERING_CLASS: &str = "UnspecifiedAtomicOrder";
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
-    "faction", "ownership", "owner", "AI", "threat", "scarcity", "opportunity", "labor", "price",
-    "logistics", "routing", "need", "demand", "supply", "personality", "drone", "SEAD", "economy",
-    "planner", "resource", "map", "urgency", "commitment", "order", "route",
+    "faction",
+    "ownership",
+    "owner",
+    "AI",
+    "threat",
+    "scarcity",
+    "opportunity",
+    "labor",
+    "price",
+    "logistics",
+    "routing",
+    "need",
+    "demand",
+    "supply",
+    "personality",
+    "drone",
+    "SEAD",
+    "economy",
+    "planner",
+    "resource",
+    "map",
+    "urgency",
+    "commitment",
+    "order",
+    "route",
 ];
 
 const FORBIDDEN_EXACT_TERMS: &[&str] = &["f64", "F64RoundDown", "SHADER_F64", "sqrt_cr_c"];
@@ -132,18 +154,12 @@ fn expected_nonzero(rows: &[EventInputRow]) -> Vec<EventRecord> {
 
 fn sort_records(records: &mut [EventRecord]) {
     records.sort_by(|a, b| {
-        (
-            a.source_index,
-            a.event_code,
-            a.state,
-            a.score_fixed,
-        )
-            .cmp(&(
-                b.source_index,
-                b.event_code,
-                b.state,
-                b.score_fixed,
-            ))
+        (a.source_index, a.event_code, a.state, a.score_fixed).cmp(&(
+            b.source_index,
+            b.event_code,
+            b.state,
+            b.score_fixed,
+        ))
     });
 }
 
@@ -228,11 +244,13 @@ fn run_compaction(
 
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_event0_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_event0_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_event0_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -344,9 +362,7 @@ fn run_compaction(
     meta_slice.map_async(wgpu::MapMode::Read, |_| {});
     device.poll(wgpu::Maintain::Wait);
     let meta_mapped = meta_slice.get_mapped_range();
-    let meta: [u32; 2] = bytemuck::cast_slice(&meta_mapped)[..2]
-        .try_into()
-        .unwrap();
+    let meta: [u32; 2] = bytemuck::cast_slice(&meta_mapped)[..2].try_into().unwrap();
     drop(meta_mapped);
     meta_staging.unmap();
 
@@ -392,16 +408,8 @@ fn row(index: u32, code: u32, state: u32, score: i32) -> EventInputRow {
 
 fn edge_compaction_cases() -> Vec<(Vec<EventInputRow>, u32, &'static str)> {
     vec![
-        (
-            vec![row(0, 0, 0, 0), row(1, 0, 0, 100)],
-            8,
-            "no_events",
-        ),
-        (
-            vec![row(3, 1, 1, 500)],
-            4,
-            "single_event",
-        ),
+        (vec![row(0, 0, 0, 0), row(1, 0, 0, 100)], 8, "no_events"),
+        (vec![row(3, 1, 1, 500)], 4, "single_event"),
         (
             (0..6)
                 .map(|i| row(i, if i % 2 == 0 { 1 } else { 2 }, i % 2, i as i32 * 100))
@@ -429,11 +437,7 @@ fn edge_compaction_cases() -> Vec<(Vec<EventInputRow>, u32, &'static str)> {
             4,
             "capacity_overflow",
         ),
-        (
-            vec![row(0, 1, 1, 1)],
-            0,
-            "zero_capacity",
-        ),
+        (vec![row(0, 1, 1, 1)], 0, "zero_capacity"),
     ]
 }
 
@@ -446,12 +450,7 @@ fn dense_event_rows() -> Vec<EventInputRow> {
             3 | 4 => 2,
             _ => 0,
         };
-        out.push(row(
-            idx,
-            code,
-            idx % 2,
-            (idx as i32).wrapping_mul(655),
-        ));
+        out.push(row(idx, code, idx % 2, (idx as i32).wrapping_mul(655)));
     }
     out
 }
@@ -463,7 +462,11 @@ fn density_rows(count: usize, density_pct: u32) -> Vec<EventInputRow> {
         state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
         let emit = (state % 100) < density_pct;
         let code = if emit {
-            if state & 1 == 0 { 1 } else { 2 }
+            if state & 1 == 0 {
+                1
+            } else {
+                2
+            }
         } else {
             0
         };
@@ -519,7 +522,11 @@ fn sead_event0_compaction_edge_rows() {
                 "{label} event_count"
             );
             assert_eq!(outcome.overflow, overflow_expected, "{label} overflow");
-            assert_eq!(written, outcome.event_count.min(capacity), "{label} written");
+            assert_eq!(
+                written,
+                outcome.event_count.min(capacity),
+                "{label} written"
+            );
             if overflow_expected == 0 {
                 assert!(
                     membership_exact(&expected, &outcome.records),
@@ -624,8 +631,7 @@ fn sead_event0_perf_34k_warm_repeated_dispatch() {
         assert!(membership_exact(&expected, &outcome.records));
         let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
         let per_dispatch_ms = total_ms / REPEAT as f64;
-        let per_row_us =
-            outcome.elapsed.as_secs_f64() * 1_000_000.0 / (N as f64 * REPEAT as f64);
+        let per_row_us = outcome.elapsed.as_secs_f64() * 1_000_000.0 / (N as f64 * REPEAT as f64);
         println!(
             "sead_event0_warm_34k: rows={N} density_pct={DENSITY} dispatches={REPEAT} total_ms={total_ms:.3} per_dispatch_ms={per_dispatch_ms:.3} per_row_us={per_row_us:.4} event_count={} overflow={} ordering={ORDERING_CLASS}",
             outcome.event_count,

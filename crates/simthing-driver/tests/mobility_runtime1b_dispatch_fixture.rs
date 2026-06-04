@@ -45,7 +45,12 @@ fn live(parent_id: u64, key_id: u64, entity_id: u64, slot: u32) -> MobilityAlloc
     }
 }
 
-fn mv(entity_id: u64, origin_key: u64, destination_key: u64, arrival_order: u64) -> MobilityReenroll0Move {
+fn mv(
+    entity_id: u64,
+    origin_key: u64,
+    destination_key: u64,
+    arrival_order: u64,
+) -> MobilityReenroll0Move {
     MobilityReenroll0Move {
         entity_id,
         origin: key(1, origin_key),
@@ -175,7 +180,12 @@ fn composition_fixture() -> MobilityRuntime0CompositionInput {
         },
         owner: MobilityOwner0PlanInput {
             records: vec![
-                orec(100, 20, 1, vec![owner(MobilityOwner0ColumnKind::Faction, 7)]),
+                orec(
+                    100,
+                    20,
+                    1,
+                    vec![owner(MobilityOwner0ColumnKind::Faction, 7)],
+                ),
                 orec(2, 30, 1, vec![owner(MobilityOwner0ColumnKind::Faction, 7)]),
                 orec(3, 31, 1, vec![owner(MobilityOwner0ColumnKind::Species, 7)]),
             ],
@@ -212,12 +222,13 @@ fn rejected_with(
 
 #[test]
 fn runtime1b_dispatch_explicit_opt_in_only() {
-    let disabled = run_mobility_runtime1b_dispatch0_fixture(&MobilityRuntime1bDispatch0FixtureInput {
-        gate: MobilityRuntime1bDispatch0Gate::default(),
-        forbidden: MobilityRuntime1bDispatch0ForbiddenPathRequests::default(),
-        passgraph: passgraph_input(),
-        gpu_exec0: fixture_input().gpu_exec0,
-    });
+    let disabled =
+        run_mobility_runtime1b_dispatch0_fixture(&MobilityRuntime1bDispatch0FixtureInput {
+            gate: MobilityRuntime1bDispatch0Gate::default(),
+            forbidden: MobilityRuntime1bDispatch0ForbiddenPathRequests::default(),
+            passgraph: passgraph_input(),
+            gpu_exec0: fixture_input().gpu_exec0,
+        });
     assert!(disabled.admitted);
     assert!(disabled.disabled_no_op);
     assert!(!disabled.explicit_opt_in);
@@ -227,7 +238,9 @@ fn runtime1b_dispatch_explicit_opt_in_only() {
     default_on.gate.enabled_by_default = true;
     let rejected = run_mobility_runtime1b_dispatch0_fixture(&default_on);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"runtime1b_dispatch0_default_on_rejected"));
+    assert!(rejected
+        .diagnostics
+        .contains(&"runtime1b_dispatch0_default_on_rejected"));
 
     let report = run_mobility_runtime1b_dispatch0_fixture(&fixture_input());
     assert!(report.admitted);
@@ -237,12 +250,13 @@ fn runtime1b_dispatch_explicit_opt_in_only() {
 
 #[test]
 fn runtime1b_dispatch_default_disabled_noop() {
-    let report = run_mobility_runtime1b_dispatch0_fixture(&MobilityRuntime1bDispatch0FixtureInput {
-        gate: MobilityRuntime1bDispatch0Gate::default(),
-        forbidden: MobilityRuntime1bDispatch0ForbiddenPathRequests::default(),
-        passgraph: passgraph_input(),
-        gpu_exec0: fixture_input().gpu_exec0,
-    });
+    let report =
+        run_mobility_runtime1b_dispatch0_fixture(&MobilityRuntime1bDispatch0FixtureInput {
+            gate: MobilityRuntime1bDispatch0Gate::default(),
+            forbidden: MobilityRuntime1bDispatch0ForbiddenPathRequests::default(),
+            passgraph: passgraph_input(),
+            gpu_exec0: fixture_input().gpu_exec0,
+        });
     assert!(report.admitted);
     assert!(report.disabled_no_op);
     assert_eq!(report.cpu_oracle_checksum, 0);
@@ -259,19 +273,21 @@ fn runtime1b_dispatch_uses_registered_node() {
         Some(MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID)
     );
     let registry = report.passgraph_registry.unwrap();
-    assert!(registry.nodes.iter().any(|n| n.node_id == MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID));
+    assert!(registry
+        .nodes
+        .iter()
+        .any(|n| n.node_id == MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID));
 }
 
 #[test]
 fn runtime1b_dispatch_registration_is_non_executing_until_invoked() {
-    let registration_only = run_mobility_runtime1b_dispatch0_fixture(
-        &MobilityRuntime1bDispatch0FixtureInput {
+    let registration_only =
+        run_mobility_runtime1b_dispatch0_fixture(&MobilityRuntime1bDispatch0FixtureInput {
             gate: MobilityRuntime1bDispatch0Gate::registration_only(),
             forbidden: MobilityRuntime1bDispatch0ForbiddenPathRequests::default(),
             passgraph: passgraph_input(),
             gpu_exec0: fixture_input().gpu_exec0,
-        },
-    );
+        });
     assert!(registration_only.admitted);
     assert!(registration_only.registration_non_executing);
     assert!(!registration_only.gpu_exec0_probe_dispatched);
@@ -287,8 +303,14 @@ fn runtime1b_dispatch_delegates_to_gpu_exec0_identity_probe() {
     let report = run_mobility_runtime1b_dispatch0_fixture(&fixture_input());
     assert!(report.admitted);
     assert!(report.delegates_to_gpu_exec0);
-    assert_eq!(report.gpu_exec0_fixture_id, "gpu_exec0_semantic_free_readiness_probe");
-    assert_eq!(report.gpu_exec0_pass_descriptor_id, "gpu_exec0_identity_buffer_pass");
+    assert_eq!(
+        report.gpu_exec0_fixture_id,
+        "gpu_exec0_semantic_free_readiness_probe"
+    );
+    assert_eq!(
+        report.gpu_exec0_pass_descriptor_id,
+        "gpu_exec0_identity_buffer_pass"
+    );
     assert!(report.gpu_exec0_report.is_some());
 }
 
@@ -298,7 +320,10 @@ fn runtime1b_dispatch_no_mobility_shader() {
     assert!(report.admitted);
     assert!(!report.mobility_shader_present);
     assert!(report.mobility_dispatch_gate_closed);
-    assert_eq!(MOBILITY_RUNTIME1B_DISPATCH_GATE, "mobility_runtime1b_dispatch_closed");
+    assert_eq!(
+        MOBILITY_RUNTIME1B_DISPATCH_GATE,
+        "mobility_runtime1b_dispatch_closed"
+    );
 }
 
 #[test]
@@ -320,7 +345,9 @@ fn runtime1b_dispatch_rejects_designer_authored_shader_input() {
     forbidden.designer_authored_shader_input = true;
     let report = rejected_with(forbidden);
     assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"designer_authored_shader_input"));
+    assert!(report
+        .diagnostics
+        .contains(&"designer_authored_shader_input"));
 }
 
 #[test]
@@ -377,7 +404,10 @@ fn runtime1b_dispatch_classifies_exact_parity_or_honest_unavailable() {
         GpuExec0ParityClassification::ExactParity | GpuExec0ParityClassification::GpuUnavailable
     ));
     if report.parity_classification == GpuExec0ParityClassification::ExactParity {
-        assert_eq!(report.cpu_oracle_checksum, report.gpu_result_checksum.unwrap());
+        assert_eq!(
+            report.cpu_oracle_checksum,
+            report.gpu_result_checksum.unwrap()
+        );
     }
 }
 
@@ -386,7 +416,10 @@ fn runtime1b_dispatch_preserves_runtime1b_node_registration_posture() {
     let report = run_mobility_runtime1b_dispatch0_fixture(&fixture_input());
     assert!(report.admitted);
     let registration = report.registration_report.as_ref().unwrap();
-    assert_eq!(registration.fixture_id, MOBILITY_RUNTIME1B_PASSGRAPH_FIXTURE_ID);
+    assert_eq!(
+        registration.fixture_id,
+        MOBILITY_RUNTIME1B_PASSGRAPH_FIXTURE_ID
+    );
     assert!(registration.gpu_passgraph_node_registered);
     assert!(registration.non_scheduled_registration_only);
     assert!(!registration.wgsl_shader_introduced);
@@ -395,12 +428,13 @@ fn runtime1b_dispatch_preserves_runtime1b_node_registration_posture() {
 
 #[test]
 fn runtime1b_dispatch_no_default_runtime_cost_when_disabled() {
-    let report = run_mobility_runtime1b_dispatch0_fixture(&MobilityRuntime1bDispatch0FixtureInput {
-        gate: MobilityRuntime1bDispatch0Gate::default(),
-        forbidden: MobilityRuntime1bDispatch0ForbiddenPathRequests::default(),
-        passgraph: passgraph_input(),
-        gpu_exec0: fixture_input().gpu_exec0,
-    });
+    let report =
+        run_mobility_runtime1b_dispatch0_fixture(&MobilityRuntime1bDispatch0FixtureInput {
+            gate: MobilityRuntime1bDispatch0Gate::default(),
+            forbidden: MobilityRuntime1bDispatch0ForbiddenPathRequests::default(),
+            passgraph: passgraph_input(),
+            gpu_exec0: fixture_input().gpu_exec0,
+        });
     assert!(report.admitted);
     assert!(report.disabled_no_op);
     assert!(!report.gpu_dispatch_occurred);

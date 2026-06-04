@@ -3,10 +3,10 @@
 //! Closes the Resource Flow GPU gap from FrontierV1-2 by verifying flat-star allocation
 //! through the accepted Resource Flow allocator path inside the default-off FrontierV1 fixture.
 
-#[path = "support/frontier_v1.rs"]
-mod frontier_v1;
 #[path = "support/e11_flat_star.rs"]
 mod e11_flat_star;
+#[path = "support/frontier_v1.rs"]
+mod frontier_v1;
 
 use std::sync::Mutex;
 
@@ -237,12 +237,9 @@ fn run_frontier_v1_gpu_full(
     assert!(admission.accepted, "{:?}", admission.rejected_reasons);
 
     let spec = frontier_v1_mapping_field_spec();
-    let mut mapping_session = FirstSliceMappingSession::open(
-        ctx,
-        MappingExecutionProfile::SparseRegionFieldV1,
-        &spec,
-    )
-    .expect("mapping session opens");
+    let mut mapping_session =
+        FirstSliceMappingSession::open(ctx, MappingExecutionProfile::SparseRegionFieldV1, &spec)
+            .expect("mapping session opens");
     mapping_session
         .queue_seeds(&frontier_v1_gpu_seeds(config))
         .expect("queue seeds");
@@ -269,13 +266,11 @@ fn run_frontier_v1_gpu_full(
     let gpu_rf = run_gpu_flat_star_allocation(&mut fx, allocator_total);
 
     assert_eq!(
-        gpu_rf.faction_a_allocation,
-        cpu_output.resource_flow.allocated_a,
+        gpu_rf.faction_a_allocation, cpu_output.resource_flow.allocated_a,
         "faction_a GPU/CPU oracle parity"
     );
     assert_eq!(
-        gpu_rf.faction_b_allocation,
-        cpu_output.resource_flow.allocated_b,
+        gpu_rf.faction_b_allocation, cpu_output.resource_flow.allocated_b,
         "faction_b GPU/CPU oracle parity"
     );
     assert_eq!(gpu_rf.allocator_total, allocator_total);
@@ -307,7 +302,10 @@ fn frontier_v1_3_happy_path_gpu_resource_flow_runs() {
         let run = run_frontier_v1_gpu_full(ctx, &skeleton, &config);
 
         assert!(run.summary.accepted);
-        assert_eq!(run.summary.mapping_status, FrontierV1FieldStatus::GpuVerified);
+        assert_eq!(
+            run.summary.mapping_status,
+            FrontierV1FieldStatus::GpuVerified
+        );
         assert_eq!(
             run.summary.resource_flow_status,
             FrontierV1FieldStatus::GpuVerified
@@ -384,8 +382,14 @@ fn frontier_v1_3_gpu_resource_flow_replay_reproducibility() {
 
 #[test]
 fn frontier_v1_3_defaults_remain_disabled() {
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
-    assert_eq!(ResourceFlowOptInMode::default(), ResourceFlowOptInMode::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
+    assert_eq!(
+        ResourceFlowOptInMode::default(),
+        ResourceFlowOptInMode::Disabled
+    );
     assert_eq!(
         ResourceFlowExecutionProfile::default(),
         ResourceFlowExecutionProfile::DefaultDisabled
@@ -452,7 +456,9 @@ fn frontier_v1_3_coupling_rejects_non_frontier_profile() {
     assert!(!other.coupling_ok);
     assert!(!other.accepted);
 
-    println!("frontier_v1_3_coupling: frontier_only=true fixture_id={FRONTIER_V1_GPU_RF_FIXTURE_ID}");
+    println!(
+        "frontier_v1_3_coupling: frontier_only=true fixture_id={FRONTIER_V1_GPU_RF_FIXTURE_ID}"
+    );
     let _ = config;
 }
 
@@ -460,13 +466,22 @@ fn frontier_v1_3_coupling_rejects_non_frontier_profile() {
 fn frontier_v1_3_deferred_features_reject() {
     let deferred: [(&str, Box<dyn Fn(&mut FrontierV1ScenarioSkeleton)>); 10] = [
         ("atlas", Box::new(|s| s.theater.request_atlas = true)),
-        ("active_mask", Box::new(|s| s.theater.request_active_mask = true)),
-        ("perception", Box::new(|s| s.theater.request_perception = true)),
+        (
+            "active_mask",
+            Box::new(|s| s.theater.request_active_mask = true),
+        ),
+        (
+            "perception",
+            Box::new(|s| s.theater.request_perception = true),
+        ),
         (
             "source_identity",
             Box::new(|s| s.theater.request_source_identity = true),
         ),
-        ("nested_e11b", Box::new(|s| s.resource_flow.nested_e11b = true)),
+        (
+            "nested_e11b",
+            Box::new(|s| s.resource_flow.nested_e11b = true),
+        ),
         (
             "e11b_5",
             Box::new(|s| s.resource_flow.e11b_5_dynamic_enrollment = true),
@@ -510,7 +525,10 @@ fn frontier_v1_3_no_simthing_sim_semantic_awareness() {
         "proposal",
         "ResourceFlow",
     ] {
-        assert!(!sim_lib.contains(needle), "simthing-sim must not contain `{needle}`");
+        assert!(
+            !sim_lib.contains(needle),
+            "simthing-sim must not contain `{needle}`"
+        );
     }
     println!("frontier_v1_3_sim: semantic_free=true fixture_id={FRONTIER_V1_GPU_RF_FIXTURE_ID}");
 }
@@ -518,9 +536,7 @@ fn frontier_v1_3_no_simthing_sim_semantic_awareness() {
 #[test]
 fn frontier_v1_3_no_unauthorized_gpu_primitive() {
     let frontier_descriptor = landed_jit_kernel_descriptors().into_iter().find(|d| {
-        d.id.contains("frontier")
-            || d.id.contains("FrontierV1")
-            || d.id.contains("frontier_v1_3")
+        d.id.contains("frontier") || d.id.contains("FrontierV1") || d.id.contains("frontier_v1_3")
     });
     assert!(frontier_descriptor.is_none());
 
@@ -533,7 +549,11 @@ fn frontier_v1_3_no_unauthorized_gpu_primitive() {
                 .and_then(|n| n.to_str())
                 .unwrap_or_default()
                 .to_ascii_lowercase();
-            assert!(!name.contains("frontier"), "no Frontier WGSL: {}", path.display());
+            assert!(
+                !name.contains("frontier"),
+                "no Frontier WGSL: {}",
+                path.display()
+            );
         }
     }
     println!("frontier_v1_3_gpu: no_new_primitive=true fixture_id={FRONTIER_V1_GPU_RF_FIXTURE_ID}");

@@ -27,8 +27,14 @@ fn frontier_v1_0_happy_path_skeleton_admits() {
     assert_eq!(skeleton.theater.horizon, 8);
     assert_eq!(skeleton.resource_flow.depth, 2);
     assert!(skeleton.resource_flow.resource_flow_allocator_only);
-    assert_eq!(skeleton.sead.pipeline_version, SeadPipelineVersion::ProposalPipelineV1);
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        skeleton.sead.pipeline_version,
+        SeadPipelineVersion::ProposalPipelineV1
+    );
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
     println!(
         "frontier_v1_0_happy: profile={} skeleton_id={FRONTIER_V1_SKELETON_ID} accepted=true",
         skeleton.profile_name
@@ -65,8 +71,14 @@ fn frontier_v1_0_rejects_out_of_bounds_mapping() {
         ("height_gt_32", Box::new(|s| s.theater.grid_height = 40)),
         ("horizon_gt_8", Box::new(|s| s.theater.horizon = 9)),
         ("atlas", Box::new(|s| s.theater.request_atlas = true)),
-        ("active_mask", Box::new(|s| s.theater.request_active_mask = true)),
-        ("perception", Box::new(|s| s.theater.request_perception = true)),
+        (
+            "active_mask",
+            Box::new(|s| s.theater.request_active_mask = true),
+        ),
+        (
+            "perception",
+            Box::new(|s| s.theater.request_perception = true),
+        ),
     ];
     for (label, mutate) in cases {
         let mut skeleton = frontier_v1_happy_path_skeleton();
@@ -93,7 +105,10 @@ fn frontier_v1_0_rejects_non_flat_star_resource_flow() {
             "children_gt_100",
             Box::new(|s| s.resource_flow.max_children_per_allocator = 101),
         ),
-        ("nested_e11b", Box::new(|s| s.resource_flow.nested_e11b = true)),
+        (
+            "nested_e11b",
+            Box::new(|s| s.resource_flow.nested_e11b = true),
+        ),
         (
             "e11b_5",
             Box::new(|s| s.resource_flow.e11b_5_dynamic_enrollment = true),
@@ -175,7 +190,9 @@ fn frontier_v1_0_coupling_scoped_to_frontier_only() {
     assert!(no_coupling_report.coupling_ok);
     assert!(no_coupling_report.accepted);
 
-    println!("frontier_v1_0_coupling_scope: frontier_only=true skeleton_id={FRONTIER_V1_SKELETON_ID}");
+    println!(
+        "frontier_v1_0_coupling_scope: frontier_only=true skeleton_id={FRONTIER_V1_SKELETON_ID}"
+    );
 }
 
 #[test]
@@ -197,7 +214,10 @@ fn frontier_v1_0_no_simthing_sim_semantic_awareness() {
             "simthing-sim must not contain semantic marker `{needle}`"
         );
     }
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
     println!("frontier_v1_0_sim: semantic_free=true skeleton_id={FRONTIER_V1_SKELETON_ID}");
 }
 
@@ -226,7 +246,10 @@ fn frontier_v1_0_no_new_gpu_primitive() {
             );
         }
     }
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
     println!(
         "frontier_v1_0_gpu: new_wgsl=false new_descriptor=false skeleton_id={FRONTIER_V1_SKELETON_ID}"
     );

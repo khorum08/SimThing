@@ -49,7 +49,10 @@ fn demo_0080_0_runs_canonical_control_batch() {
             .map(|control| control.applied_command_count),
         Some(3)
     );
-    assert_eq!(canonical_control_input().commands, Control0080CommandBatch::canonical_run());
+    assert_eq!(
+        canonical_control_input().commands,
+        Control0080CommandBatch::canonical_run()
+    );
 }
 
 #[test]
@@ -107,7 +110,10 @@ fn demo_0080_0_includes_day_to_day_patrol_and_pirate_movement_record() {
 fn demo_0080_0_movement_record_matches_observation_steps() {
     let admitted = report();
     let observation = admitted.observation_report.as_ref().expect("observation");
-    assert_eq!(admitted.movement_days.len(), observation.transcript.steps.len());
+    assert_eq!(
+        admitted.movement_days.len(),
+        observation.transcript.steps.len()
+    );
     for (day, step) in admitted
         .movement_days
         .iter()
@@ -131,10 +137,16 @@ fn demo_0080_0_no_direct_movement_command() {
     input.surface.direct_movement_control = true;
     let rejected = run_demo_0080_0(&input);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"direct_patrol_move_rejected"));
+    assert!(rejected
+        .diagnostics
+        .contains(&"direct_patrol_move_rejected"));
 
     let mut input = Demo0080Input::explicit_opt_in();
-    input.control_input.commands.commands.push(Control0080Command::DirectPatrolMove);
+    input
+        .control_input
+        .commands
+        .commands
+        .push(Control0080Command::DirectPatrolMove);
     let rejected = run_demo_0080_0(&input);
     assert!(!rejected.admitted);
 }

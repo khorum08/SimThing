@@ -21,17 +21,19 @@ pub use capability::{
 };
 pub use domain_pack::DomainPackSpec;
 pub use effect::EffectSpec;
+pub use eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 pub use event::{CooldownSpec, EventKey, EventPriority, EventSpec};
+pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use game_mode::GameModeSpec;
 pub use install_target::InstallTargetSpec;
 pub use overlay::OverlaySpec;
 pub use property::PropertySpec;
-pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use region_field::{
     CompiledRegionFieldSummaryPolicy, FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec,
-    GradientAxisSpec, MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
-    RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
-    RegionFieldSourcePolicySpec, RegionFieldSpec, RegionFieldSummaryPolicySpec,
+    GradientAxisSpec, MappingExecutionProfile, RegionFieldCadenceSpec,
+    RegionFieldFormulaBindingSpec, RegionFieldGridProfile, RegionFieldOperatorSpec,
+    RegionFieldReductionSpec, RegionFieldSourcePolicySpec, RegionFieldSpec,
+    RegionFieldSummaryPolicySpec,
 };
 pub use resource_economy::{
     EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec,
@@ -46,5 +48,4 @@ pub use resource_flow::{
 pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };
-pub use eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 pub use trigger::{TriggerDirection, TriggerSpec};

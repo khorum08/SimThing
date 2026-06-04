@@ -7,8 +7,8 @@ use mobility_gpu_kernel6_chain_fixture::{
     cpu_chain_oracle, mobility_gpu_kernel6_chain_shader_text_has_domain_terms,
     permuted_projected_34k_columns_for_kernel6, projected_34k_columns_for_kernel6,
     run_mobility_gpu_kernel6_fixture, MobilityGpuKernel0ParityClassification,
-    MobilityGpuKernel6FixtureInput, MobilityGpuKernel6ForbiddenPathRequests, MobilityGpuKernel6Gate,
-    MOBILITY_GPU_KERNEL6_CHAIN_ID, MOBILITY_GPU_KERNEL6_FIXTURE_ID,
+    MobilityGpuKernel6FixtureInput, MobilityGpuKernel6ForbiddenPathRequests,
+    MobilityGpuKernel6Gate, MOBILITY_GPU_KERNEL6_CHAIN_ID, MOBILITY_GPU_KERNEL6_FIXTURE_ID,
     MOBILITY_GPU_KERNEL6_NAMED_GATE, MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
 };
 
@@ -64,7 +64,10 @@ fn mobility_gpu_kernel6_chain_default_disabled_noop() {
 fn mobility_gpu_kernel6_chain_uses_registered_node() {
     let report = run_mobility_gpu_kernel6_fixture(&fixture_input());
     assert!(report.uses_registered_node);
-    assert_eq!(MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID, "mobility_runtime1b_non_scheduled_composition_node");
+    assert_eq!(
+        MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
+        "mobility_runtime1b_non_scheduled_composition_node"
+    );
     assert_eq!(report.chain_id, MOBILITY_GPU_KERNEL6_CHAIN_ID);
 }
 
@@ -153,7 +156,10 @@ fn mobility_gpu_kernel6_chain_outputs_match_cpu_oracle() {
     let report = run_mobility_gpu_kernel6_fixture(&fixture_input());
     assert!(report.outputs_match_cpu_oracle);
     if report.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity {
-        assert_eq!(report.cpu_chain_checksum, report.gpu_chain_checksum.unwrap());
+        assert_eq!(
+            report.cpu_chain_checksum,
+            report.gpu_chain_checksum.unwrap()
+        );
     }
 }
 
@@ -202,7 +208,9 @@ fn mobility_gpu_kernel6_chain_no_default_schedule() {
     assert!(!report.default_production_scheduling_wired);
     let mut forbidden = MobilityGpuKernel6ForbiddenPathRequests::default();
     forbidden.default_schedule = true;
-    assert!(rejected_with(forbidden).diagnostics.contains(&"default_schedule"));
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"default_schedule"));
 }
 
 #[test]
@@ -223,7 +231,9 @@ fn mobility_gpu_kernel6_chain_no_gameplay_path() {
     assert!(report.confined_to_driver_test_support);
     let mut forbidden = MobilityGpuKernel6ForbiddenPathRequests::default();
     forbidden.gameplay_path = true;
-    assert!(rejected_with(forbidden).diagnostics.contains(&"gameplay_path"));
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"gameplay_path"));
 }
 
 #[test]

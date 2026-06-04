@@ -12,7 +12,9 @@ use simthing_core::{
     DiscreteTransferRegistration, EmitOnThresholdBuffer, EmitOnThresholdRegistration,
     EmlExpressionRegistry, SimPropertyId, SimThing,
 };
-use simthing_gpu::{plan_emission_ops, EmissionFormula, EmissionPlanError, EmissionRegistration, SlotAllocator};
+use simthing_gpu::{
+    plan_emission_ops, EmissionFormula, EmissionPlanError, EmissionRegistration, SlotAllocator,
+};
 use simthing_spec::{
     CompiledEmissionFormula, CompiledResourceEconomy, CompiledResourceEmission, EmitBufferSpec,
 };
@@ -233,9 +235,8 @@ pub fn materialize_resource_economy_registry_for_session(
     root: &SimThing,
     allocator: &SlotAllocator,
 ) -> Result<ResourceEconomyRegistry, ResourceEconomyCompileError> {
-    let resolve = |property_id: SimPropertyId| {
-        resolve_live_property_slot(property_id, root, allocator)
-    };
+    let resolve =
+        |property_id: SimPropertyId| resolve_live_property_slot(property_id, root, allocator);
     Ok(ResourceEconomyRegistry {
         registrations: materialize_resource_economy_registrations_with_slots(
             compiled,
@@ -263,9 +264,7 @@ pub fn materialize_resource_economy_registry(
     })
 }
 
-fn assign_emission_reg_indices(
-    emissions: &[CompiledResourceEmission],
-) -> BTreeMap<String, u32> {
+fn assign_emission_reg_indices(emissions: &[CompiledResourceEmission]) -> BTreeMap<String, u32> {
     let mut ids: Vec<&str> = emissions.iter().map(|e| e.id.as_str()).collect();
     ids.sort_unstable();
     ids.dedup();
@@ -285,10 +284,9 @@ fn materialize_emission(
     ensure_property_known(registry, emission.source_property)?;
     let (formula, tree_id) = match &emission.formula {
         CompiledEmissionFormula::IdentityFloor => (EmissionFormula::IdentityFloor, None),
-        CompiledEmissionFormula::Constant(value) => (
-            EmissionFormula::Constant { value: *value },
-            None,
-        ),
+        CompiledEmissionFormula::Constant(value) => {
+            (EmissionFormula::Constant { value: *value }, None)
+        }
         CompiledEmissionFormula::EvalEml { tree_id, .. } => (
             EmissionFormula::EvalEml { tree_id: *tree_id },
             Some(*tree_id),
@@ -340,7 +338,10 @@ pub fn resolve_live_property_slot(
         })
 }
 
-pub fn find_property_owner(root: &SimThing, property_id: SimPropertyId) -> Option<simthing_core::SimThingId> {
+pub fn find_property_owner(
+    root: &SimThing,
+    property_id: SimPropertyId,
+) -> Option<simthing_core::SimThingId> {
     if root.properties.contains_key(&property_id) {
         return Some(root.id);
     }

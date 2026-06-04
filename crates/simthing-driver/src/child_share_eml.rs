@@ -2,8 +2,8 @@
 
 use simthing_core::eml_nodes::{self, EmlNode};
 use simthing_core::{
-    EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta,
-    EmlRegistryError, EmlTreeId,
+    EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlRegistryError,
+    EmlTreeId,
 };
 
 use crate::arena_hierarchy::{NodeColumnRefs, CHILD_SHARE_FORMULA_TREE_ID};
@@ -136,9 +136,18 @@ mod tests {
 
     #[test]
     fn child_share_cpu_zero_weight_is_zero_not_nan() {
-        assert_eq!(child_share_cpu(5.0, 0.0, 0.0, 0.0).to_bits(), 0.0_f32.to_bits());
-        assert_eq!(child_share_cpu(-5.0, 0.0, 0.0, 0.0).to_bits(), 0.0_f32.to_bits());
-        assert_eq!(child_share_cpu(0.0, 0.0, 0.0, 0.0).to_bits(), 0.0_f32.to_bits());
+        assert_eq!(
+            child_share_cpu(5.0, 0.0, 0.0, 0.0).to_bits(),
+            0.0_f32.to_bits()
+        );
+        assert_eq!(
+            child_share_cpu(-5.0, 0.0, 0.0, 0.0).to_bits(),
+            0.0_f32.to_bits()
+        );
+        assert_eq!(
+            child_share_cpu(0.0, 0.0, 0.0, 0.0).to_bits(),
+            0.0_f32.to_bits()
+        );
     }
 
     #[test]

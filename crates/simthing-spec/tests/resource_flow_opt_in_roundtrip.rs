@@ -1,8 +1,8 @@
 //! RF-T1 — Resource Flow execution opt-in RON roundtrip.
 
 use simthing_spec::{
-    ArenaSpec, FissionPolicySpec, PropertyKey, ResourceFlowExecutionProfile,
-    ResourceFlowOptInMode, ResourceFlowSpec, deserialize_game_mode_ron, GameModeSpec,
+    deserialize_game_mode_ron, ArenaSpec, FissionPolicySpec, GameModeSpec, PropertyKey,
+    ResourceFlowExecutionProfile, ResourceFlowOptInMode, ResourceFlowSpec,
 };
 
 fn sample_arena() -> ArenaSpec {
@@ -48,11 +48,7 @@ fn resource_flow_opt_in_mode_roundtrips_ron() {
     let ron = ron::ser::to_string(&spec).expect("serialize game mode");
     let parsed = deserialize_game_mode_ron(&ron).expect("parse game mode");
     assert_eq!(
-        parsed
-            .resource_flow
-            .as_ref()
-            .unwrap()
-            .opt_in_mode,
+        parsed.resource_flow.as_ref().unwrap().opt_in_mode,
         ResourceFlowOptInMode::FlatStarOptIn
     );
 }

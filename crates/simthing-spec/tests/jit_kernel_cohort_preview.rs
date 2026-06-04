@@ -244,8 +244,11 @@ fn jit_cohort0_distinct_graphs_split() {
     // graph-hash identity, not request/insertion order. Determinism of that order is proven by
     // `jit_cohort0_output_stable_under_request_order_variation`; here we only assert the two distinct
     // graphs split into separate single-request cohorts (membership), order-insensitively.
-    let mut request_id_groups: Vec<Vec<String>> =
-        preview.cohorts.iter().map(|c| c.request_ids.clone()).collect();
+    let mut request_id_groups: Vec<Vec<String>> = preview
+        .cohorts
+        .iter()
+        .map(|c| c.request_ids.clone())
+        .collect();
     request_id_groups.sort();
     assert_eq!(
         request_id_groups,

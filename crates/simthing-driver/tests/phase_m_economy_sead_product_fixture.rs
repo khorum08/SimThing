@@ -6,21 +6,23 @@
 
 #[path = "support/daily_economy_session.rs"]
 mod daily_economy;
-#[path = "support/first_slice_scenario_fixture.rs"]
-mod first_slice_scenario_fixture;
 #[path = "support/economy_sead_product_fixture.rs"]
 mod economy_sead_product_fixture;
+#[path = "support/first_slice_scenario_fixture.rs"]
+mod first_slice_scenario_fixture;
 
 use daily_economy::try_gpu;
 use economy_sead_product_fixture::{
     assert_deficit_economy_postconditions, assert_surplus_economy_postconditions,
-    compile_commitment_scenario, compile_residency_scenario, commitment_scenario_spec,
+    commitment_scenario_spec, compile_commitment_scenario, compile_residency_scenario,
     run_deficit_economy_boundary_day, run_sead_commitment_with_economy_weights,
     run_surplus_economy_boundary_day, ECONOMY_STRESS_TREASURY_THRESHOLD, HIGH_STRESS_EML_WEIGHTS,
     LOW_STRESS_EML_WEIGHTS, SEAD_COMMITMENT_EVENT_KIND, SEED,
 };
 use first_slice_scenario_fixture::FirstSliceScenarioFixtureSession;
-use simthing_driver::{FirstSliceResidencyStatus, FirstSliceSeed, FirstSliceSummaryStatus, FirstSliceTickOptions};
+use simthing_driver::{
+    FirstSliceResidencyStatus, FirstSliceSeed, FirstSliceSummaryStatus, FirstSliceTickOptions,
+};
 use simthing_gpu::GpuContext;
 use simthing_sim::PipelineFlags;
 use simthing_spec::{
@@ -298,21 +300,29 @@ fn economy_sead_product_fixture_posture_preserved() {
         );
     }
 
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
-    assert_eq!(ResourceFlowOptInMode::default(), ResourceFlowOptInMode::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
+    assert_eq!(
+        ResourceFlowOptInMode::default(),
+        ResourceFlowOptInMode::Disabled
+    );
     assert!(!PipelineFlags::default().use_accumulator_resource_flow);
 
-    let scenario = deserialize_first_slice_scenario_ron(
-        economy_sead_product_fixture::COMMITMENT_SCENARIO_RON,
-    )
-    .expect("scenario parses");
+    let scenario =
+        deserialize_first_slice_scenario_ron(economy_sead_product_fixture::COMMITMENT_SCENARIO_RON)
+            .expect("scenario parses");
     assert_eq!(
         scenario.mapping_execution_profile,
         MappingExecutionProfile::SparseRegionFieldV1
     );
     assert!(!scenario.region_field.request_atlas_batching);
 
-    assert!(daily_economy::SURPLUS_RON.contains("daily") || daily_economy::SURPLUS_RON.contains("ticks_per_day"));
+    assert!(
+        daily_economy::SURPLUS_RON.contains("daily")
+            || daily_economy::SURPLUS_RON.contains("ticks_per_day")
+    );
     assert!(!daily_economy::SURPLUS_RON.contains("DailyResolutionBoundary"));
 
     assert_eq!(ECONOMY_STRESS_TREASURY_THRESHOLD, 95.0);

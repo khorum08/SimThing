@@ -8,9 +8,7 @@ use simthing_driver::{
 };
 use simthing_sim::PipelineFlags;
 
-use support::e11_flat_star::{
-    open_flat_star_session, standard_flat_star_inputs, try_gpu,
-};
+use support::e11_flat_star::{open_flat_star_session, standard_flat_star_inputs, try_gpu};
 
 #[test]
 fn e11_burn_in_flat_star_two_ticks_replay_stable() {
@@ -127,7 +125,13 @@ fn e11_burn_in_flag_on_uploads_expected_op_count() {
 
     assert_eq!(sync.total_ops, expected);
     assert_eq!(
-        fx.session.state.accumulator_runtime.as_ref().unwrap().resource_flow_ops.count,
+        fx.session
+            .state
+            .accumulator_runtime
+            .as_ref()
+            .unwrap()
+            .resource_flow_ops
+            .count,
         expected
     );
 

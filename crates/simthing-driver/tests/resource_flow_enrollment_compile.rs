@@ -1,7 +1,9 @@
 //! E-2B — Resource Flow enrollment compile / resolution tests.
 
 use simthing_core::{SimThing, SimThingKind};
-use simthing_driver::{resolve_resource_flow_enrollment, validate_resource_flow_preflight, Scenario};
+use simthing_driver::{
+    resolve_resource_flow_enrollment, validate_resource_flow_preflight, Scenario,
+};
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
     ArenaSpec, EnrollmentSelectorSpec, ExplicitParticipantSpec, FissionPolicySpec,
@@ -59,20 +61,17 @@ fn resource_flow_enrollment_install_target_resolves_all_of_kind() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena(16)],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let resolved =
         resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).expect("resolve");
     assert_eq!(resolved.arenas[0].explicit_participants.len(), 3);
     for child in &root.children {
         let raw = child.id.raw();
-        assert!(
-            resolved
-                .arenas[0]
-                .explicit_participants
-                .iter()
-                .any(|p| p.subtree_root_id == raw)
-        );
+        assert!(resolved.arenas[0]
+            .explicit_participants
+            .iter()
+            .any(|p| p.subtree_root_id == raw));
     }
 }
 
@@ -82,7 +81,7 @@ fn resource_flow_enrollment_rejects_empty_resolution() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena(16)],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let err = resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).unwrap_err();
     assert!(matches!(
@@ -97,7 +96,7 @@ fn resource_flow_enrollment_rejects_over_max_participants() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena(2)],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let err = resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).unwrap_err();
     assert!(matches!(
@@ -113,13 +112,19 @@ fn resource_flow_enrollment_rejects_duplicate_hosted_simthing() {
         arenas: vec![ArenaSpec {
             enrollment: Some(EnrollmentSelectorSpec::ExplicitOnly),
             explicit_participants: vec![
-                ExplicitParticipantSpec::flat(alloc.slot_of(root.children[0].id).unwrap(), root.children[0].id.raw()),
-                ExplicitParticipantSpec::flat(alloc.slot_of(root.children[0].id).unwrap(), root.children[0].id.raw()),
+                ExplicitParticipantSpec::flat(
+                    alloc.slot_of(root.children[0].id).unwrap(),
+                    root.children[0].id.raw(),
+                ),
+                ExplicitParticipantSpec::flat(
+                    alloc.slot_of(root.children[0].id).unwrap(),
+                    root.children[0].id.raw(),
+                ),
             ],
             ..food_arena(16)
         }],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     spec.arenas[0].enrollment = Some(EnrollmentSelectorSpec::ExplicitOnly);
     let err = resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).unwrap_err();
@@ -135,7 +140,7 @@ fn resource_flow_enrollment_resolved_participants_pass_e10r_preflight() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena(16)],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let resolved =
         resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).expect("resolve");
@@ -163,7 +168,7 @@ fn resource_flow_enrollment_materializes_arena_participant_scaffold() {
     let spec = ResourceFlowSpec {
         arenas: vec![food_arena(16)],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let resolved =
         resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).expect("resolve");
@@ -178,7 +183,9 @@ fn resource_flow_enrollment_materializes_arena_participant_scaffold() {
 #[test]
 fn resource_flow_enrollment_preserves_sibling_contiguity() {
     use simthing_core::DimensionRegistry;
-    use simthing_driver::{arena_participant_sibling_slots, materialize_arena_participants, slots_are_contiguous};
+    use simthing_driver::{
+        arena_participant_sibling_slots, materialize_arena_participants, slots_are_contiguous,
+    };
     use simthing_spec::compile_property;
 
     let (scenario, mut root, mut alloc) = cohort_scenario(3);
@@ -197,7 +204,7 @@ fn resource_flow_enrollment_preserves_sibling_contiguity() {
         &ResourceFlowSpec {
             arenas: vec![food_arena(16)],
             couplings: vec![],
-        ..Default::default()
+            ..Default::default()
         },
         &scenario,
         &root,
@@ -229,7 +236,7 @@ fn resource_flow_enrollment_does_not_require_e11b_nested_gpu() {
         &ResourceFlowSpec {
             arenas: vec![food_arena(16)],
             couplings: vec![],
-        ..Default::default()
+            ..Default::default()
         },
         &scenario,
         &root,

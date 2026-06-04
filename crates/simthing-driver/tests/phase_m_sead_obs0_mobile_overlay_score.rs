@@ -10,8 +10,8 @@ use std::time::Instant;
 use simthing_gpu::GpuContext;
 use simthing_spec::{
     fnv1a64_hex, is_exact_mag2_fixed_descriptor, is_sead_obs0_overlay_score_descriptor,
-    landed_jit_kernel_descriptors, validate_kernel_descriptor_admission, MAG2_FIXED_DESCRIPTOR_ID,
-    MAG2_Q16_COMPONENT_MAX, MAG2_Q16_SCALE, MappingExecutionProfile, SEAD_OBS0_DESCRIPTOR_ID,
+    landed_jit_kernel_descriptors, validate_kernel_descriptor_admission, MappingExecutionProfile,
+    MAG2_FIXED_DESCRIPTOR_ID, MAG2_Q16_COMPONENT_MAX, MAG2_Q16_SCALE, SEAD_OBS0_DESCRIPTOR_ID,
     SQRT_F_ARTIFACT_HASH,
 };
 
@@ -251,11 +251,13 @@ fn run_overlay_score_batch_repeated(
     });
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_obs0_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_obs0_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_obs0_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -515,7 +517,8 @@ fn sead_obs0_perf_34k_mobile_overlay_score() {
         for (out, row) in outputs.iter().take(512).zip(rows.iter().take(512)) {
             assert_eq!(out.mag2_sum, cpu_mag2_sum(row.gx, row.gy));
             assert_eq!(out.mag2_bits, cpu_mag2_bits(row.gx, row.gy));
-            spot_mag_ulp = spot_mag_ulp.max(ulp_distance(out.mag_bits, cpu_mag_bits(row.gx, row.gy)));
+            spot_mag_ulp =
+                spot_mag_ulp.max(ulp_distance(out.mag_bits, cpu_mag_bits(row.gx, row.gy)));
         }
         assert_eq!(spot_mag_ulp, 0);
 
@@ -588,10 +591,7 @@ fn sead_obs0_dense_overlay_corpus() {
 
 #[test]
 fn sead_obs0_score_authority_matches_arithmetic() {
-    assert_eq!(
-        SCORE_AUTHORITY,
-        ScoreAuthority::ApproximateDiagnosticF32
-    );
+    assert_eq!(SCORE_AUTHORITY, ScoreAuthority::ApproximateDiagnosticF32);
     let wgsl = emit_overlay_score_wgsl(1);
     assert!(
         wgsl.contains("f32(bias)") && wgsl.contains("* mag_f"),
@@ -675,7 +675,8 @@ fn sead_obs1_perf_34k_warm_repeated_dispatch() {
 
         let mut spot_mag_ulp = 0u32;
         for (out, row) in outcome.outputs.iter().take(512).zip(rows.iter().take(512)) {
-            spot_mag_ulp = spot_mag_ulp.max(ulp_distance(out.mag_bits, cpu_mag_bits(row.gx, row.gy)));
+            spot_mag_ulp =
+                spot_mag_ulp.max(ulp_distance(out.mag_bits, cpu_mag_bits(row.gx, row.gy)));
         }
         assert_eq!(spot_mag_ulp, 0);
 

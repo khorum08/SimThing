@@ -100,17 +100,17 @@ fn econ_scale_0080_0_adversarial_contended_clearing_deterministic() {
 fn econ_scale_0080_0_parity_bit_exact() {
     let admitted = report();
     assert!(admitted.parity_bit_exact);
-    assert!(admitted
-        .clearing_reports
-        .iter()
-        .all(|r| r.parity_bit_exact));
+    assert!(admitted.clearing_reports.iter().all(|r| r.parity_bit_exact));
 }
 
 #[test]
 fn econ_scale_0080_0_replay_deterministic() {
     let (a, b) = replay_econ_scale_0080_0();
     assert_eq!(a, b);
-    assert_eq!(a.deterministic_replay_checksum, b.deterministic_replay_checksum);
+    assert_eq!(
+        a.deterministic_replay_checksum,
+        b.deterministic_replay_checksum
+    );
 }
 
 #[test]

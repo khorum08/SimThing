@@ -8,11 +8,11 @@
 #[path = "mobility_runtime1a_fixture.rs"]
 mod mobility_runtime1a_fixture;
 
+pub use mobility_runtime1a_fixture::MobilityRuntime1aDriverFixtureInput;
 use mobility_runtime1a_fixture::{
     run_mobility_runtime1a_driver_fixture, MobilityRuntime1aDriverFixtureReport,
     MobilityRuntime1aDriverFixtureSession, MOBILITY_RUNTIME1A_DRIVER_FIXTURE_ID,
 };
-pub use mobility_runtime1a_fixture::MobilityRuntime1aDriverFixtureInput;
 use simthing_spec::MobilityRuntime1aForbiddenPathRequests;
 
 pub const MOBILITY_RUNTIME1B_PASSGRAPH_FIXTURE_ID: &str =
@@ -120,7 +120,9 @@ pub fn run_mobility_runtime1b_passgraph_fixture(
     admitted_report(input, registry, driver_report)
 }
 
-fn shell(input: &MobilityRuntime1bPassgraphFixtureInput) -> MobilityRuntime1bPassgraphFixtureReport {
+fn shell(
+    input: &MobilityRuntime1bPassgraphFixtureInput,
+) -> MobilityRuntime1bPassgraphFixtureReport {
     MobilityRuntime1bPassgraphFixtureReport {
         fixture_id: MOBILITY_RUNTIME1B_PASSGRAPH_FIXTURE_ID,
         named_gate: MOBILITY_RUNTIME1B_NAMED_GATE,

@@ -155,7 +155,9 @@ fn disruption_decay_0080_2_rejects_unbounded_decay() {
     };
     let rejected = run_disruption_decay_0080_2(&input);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"unbounded_decay_coefficient"));
+    assert!(rejected
+        .diagnostics
+        .contains(&"unbounded_decay_coefficient"));
 }
 
 #[test]
@@ -228,5 +230,8 @@ fn disruption_decay_0080_2_rejects_presence_schedule_shape_mismatch() {
 fn disruption_decay_0080_2_runs_twenty_plus_ticks() {
     let admitted = report();
     assert!(admitted.tick_count >= 20);
-    assert_eq!(admitted.rows.len(), admitted.tick_count as usize * admitted.node_count);
+    assert_eq!(
+        admitted.rows.len(),
+        admitted.tick_count as usize * admitted.node_count
+    );
 }

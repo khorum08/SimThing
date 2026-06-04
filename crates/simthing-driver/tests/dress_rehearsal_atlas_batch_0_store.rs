@@ -3,12 +3,12 @@ mod dress_rehearsal_atlas_batch_0_store;
 
 use dress_rehearsal_atlas_batch_0_store::{
     aggregate_contributions, canonical_materialization, canonical_pack_plan,
-    canonical_pirate_shared_galactic_cell, child_contributions_from_materialization,
+    canonical_pirate_shared_galactic_cell, cell_index, child_contributions_from_materialization,
     entries_at_cell_index, fixture_contribution_value, pack_round_trip_cell,
     pirate_fleet_source_ids, register_constructed_co_location_occupants,
-    store_oracle_constructed_planet_patrol_pirate, store_oracle_from_materialization,
-    cell_index, ChannelKind, LocationId, LocationMaterialization, Owner,
-    DRESS_REHEARSAL_ATLAS_BATCH_0_STORE_ID, DRESS_REHEARSAL_ATLAS_BATCH_0_STORE_STATUS_PASS,
+    store_oracle_constructed_planet_patrol_pirate, store_oracle_from_materialization, ChannelKind,
+    LocationId, LocationMaterialization, Owner, DRESS_REHEARSAL_ATLAS_BATCH_0_STORE_ID,
+    DRESS_REHEARSAL_ATLAS_BATCH_0_STORE_STATUS_PASS,
 };
 
 #[test]
@@ -68,8 +68,7 @@ fn cell_target_uses_single_indexing_home() {
 fn co_located_pirate_fleets_sum_only_within_pirate_channels() {
     let materialization = canonical_materialization();
     let oracle = store_oracle_from_materialization(&materialization);
-    let (location_id, _x, _y, cell_index) =
-        canonical_pirate_shared_galactic_cell(&materialization);
+    let (location_id, _x, _y, cell_index) = canonical_pirate_shared_galactic_cell(&materialization);
     let at_cell = entries_at_cell_index(&oracle, location_id, cell_index);
 
     let pirate_presence: f32 = at_cell
@@ -122,7 +121,9 @@ fn co_located_pirate_fleets_sum_only_within_pirate_channels() {
         "no labor channel leakage"
     );
     assert!(
-        at_cell.iter().all(|e| e.key.channel != ChannelKind::Production),
+        at_cell
+            .iter()
+            .all(|e| e.key.channel != ChannelKind::Production),
         "no production channel leakage"
     );
 }
@@ -148,10 +149,7 @@ fn constructed_planet_patrol_pirate_same_cell_stays_distinct() {
     assert!(keys.contains(&(ChannelKind::ProductionPassThrough, Owner::Terran)));
     assert!(keys.contains(&(ChannelKind::PatrolPresence, Owner::Terran)));
     assert!(keys.contains(&(ChannelKind::PiratePresence, Owner::Pirate)));
-    assert!(keys.contains(&(
-        ChannelKind::FleetStrength(Owner::Pirate),
-        Owner::Pirate
-    )));
+    assert!(keys.contains(&(ChannelKind::FleetStrength(Owner::Pirate), Owner::Pirate)));
 
     let constructed_entries: Vec<_> = at_cell
         .iter()
@@ -195,10 +193,7 @@ fn channel_metadata_survives_store() {
             .iter()
             .find(|loc| loc.role == class.role)
         {
-            assert_eq!(
-                loc.channels.channels.len(),
-                class.channels.channels.len()
-            );
+            assert_eq!(loc.channels.channels.len(), class.channels.channels.len());
         }
     }
     let galactic = materialization
@@ -241,13 +236,16 @@ fn no_r1_r2_r3_r4_behavior() {
         "capability-tree",
     ];
     for term in forbidden {
-        assert!(
-            !status.contains(term),
-            "STORE status must not claim {term}"
-        );
+        assert!(!status.contains(term), "STORE status must not claim {term}");
     }
     let source = include_str!("../src/dress_rehearsal_atlas_batch_0_store.rs");
-    for term in ["simthing_gpu", "simthing_core", "simthing_sim", "AccumulatorOp", "EvalEML"] {
+    for term in [
+        "simthing_gpu",
+        "simthing_core",
+        "simthing_sim",
+        "AccumulatorOp",
+        "EvalEML",
+    ] {
         assert!(
             !source.contains(term),
             "STORE source must not reference {term}"

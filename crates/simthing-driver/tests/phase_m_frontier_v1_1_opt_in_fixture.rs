@@ -22,7 +22,10 @@ fn smoke_fixture() -> (FrontierV1ScenarioSkeleton, FrontierV1FixtureConfig) {
     )
 }
 
-fn cpu_oracle_expected(config: &FrontierV1FixtureConfig, skeleton: &FrontierV1ScenarioSkeleton) -> FrontierV1FixtureOutput {
+fn cpu_oracle_expected(
+    config: &FrontierV1FixtureConfig,
+    skeleton: &FrontierV1ScenarioSkeleton,
+) -> FrontierV1FixtureOutput {
     let mapping = cpu_mapping_oracle(config, skeleton);
     let resource_flow = cpu_resource_flow_oracle(config, mapping, skeleton);
     let routes = cpu_route_oracle(config, skeleton);
@@ -51,12 +54,18 @@ fn frontier_v1_1_happy_path_opt_in_fixture_runs() {
         skeleton.mapping_execution_profile,
         MappingExecutionProfile::SparseRegionFieldV1
     );
-    assert_eq!(skeleton.resource_flow_opt_in, ResourceFlowOptInMode::FlatStarOptIn);
+    assert_eq!(
+        skeleton.resource_flow_opt_in,
+        ResourceFlowOptInMode::FlatStarOptIn
+    );
     assert_eq!(
         skeleton.resource_flow_execution_profile,
         ResourceFlowExecutionProfile::FlatStarResourceFlow
     );
-    assert_eq!(skeleton.sead.pipeline_version, SeadPipelineVersion::ProposalPipelineV1);
+    assert_eq!(
+        skeleton.sead.pipeline_version,
+        SeadPipelineVersion::ProposalPipelineV1
+    );
     assert_eq!(skeleton.theater.grid_width, 8);
     assert_eq!(skeleton.theater.grid_height, 8);
     assert!(output.mapping.cell_sum > 0);
@@ -66,7 +75,10 @@ fn frontier_v1_1_happy_path_opt_in_fixture_runs() {
     assert_eq!(output.routes.resource_route_count, 1);
     assert_eq!(output.routes.structural_route_count, 1);
     assert_eq!(output.routes.movement_route_count, 1);
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
 
     println!(
         "frontier_v1_1_happy: fixture_id={FRONTIER_V1_FIXTURE_ID} fp={} mapping_sum={} alloc_a={} alloc_b={}",
@@ -79,15 +91,19 @@ fn frontier_v1_1_happy_path_opt_in_fixture_runs() {
 
 #[test]
 fn frontier_v1_1_defaults_remain_disabled() {
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
-    assert_eq!(ResourceFlowOptInMode::default(), ResourceFlowOptInMode::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
+    assert_eq!(
+        ResourceFlowOptInMode::default(),
+        ResourceFlowOptInMode::Disabled
+    );
     assert_eq!(
         ResourceFlowExecutionProfile::default(),
         ResourceFlowExecutionProfile::DefaultDisabled
     );
-    assert!(
-        !ResourceFlowExecutionProfile::default().enables_flat_star_resource_flow()
-    );
+    assert!(!ResourceFlowExecutionProfile::default().enables_flat_star_resource_flow());
 
     let sim_lib = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -155,13 +171,22 @@ fn frontier_v1_1_coupling_rejects_non_frontier_profile() {
 fn frontier_v1_1_deferred_features_reject() {
     let deferred: [(&str, Box<dyn Fn(&mut FrontierV1ScenarioSkeleton)>); 10] = [
         ("atlas", Box::new(|s| s.theater.request_atlas = true)),
-        ("active_mask", Box::new(|s| s.theater.request_active_mask = true)),
-        ("perception", Box::new(|s| s.theater.request_perception = true)),
+        (
+            "active_mask",
+            Box::new(|s| s.theater.request_active_mask = true),
+        ),
+        (
+            "perception",
+            Box::new(|s| s.theater.request_perception = true),
+        ),
         (
             "source_identity",
             Box::new(|s| s.theater.request_source_identity = true),
         ),
-        ("nested_e11b", Box::new(|s| s.resource_flow.nested_e11b = true)),
+        (
+            "nested_e11b",
+            Box::new(|s| s.resource_flow.nested_e11b = true),
+        ),
         (
             "e11b_5",
             Box::new(|s| s.resource_flow.e11b_5_dynamic_enrollment = true),
@@ -253,13 +278,9 @@ fn frontier_v1_1_no_simthing_sim_semantic_awareness() {
 
 #[test]
 fn frontier_v1_1_no_new_gpu_primitive() {
-    let frontier_descriptor = landed_jit_kernel_descriptors()
-        .into_iter()
-        .find(|d| {
-            d.id.contains("frontier")
-                || d.id.contains("FrontierV1")
-                || d.id.contains("frontier_v1_1")
-        });
+    let frontier_descriptor = landed_jit_kernel_descriptors().into_iter().find(|d| {
+        d.id.contains("frontier") || d.id.contains("FrontierV1") || d.id.contains("frontier_v1_1")
+    });
     assert!(
         frontier_descriptor.is_none(),
         "FrontierV1-1 must not add a landed kernel descriptor"

@@ -205,7 +205,11 @@ impl SlotAllocator {
     }
 
     /// Assign `id` to an exclusively reserved tombstoned slot.
-    pub fn claim_exclusive_slot(&mut self, slot: u32, id: SimThingId) -> Result<(), SlotAllocError> {
+    pub fn claim_exclusive_slot(
+        &mut self,
+        slot: u32,
+        id: SimThingId,
+    ) -> Result<(), SlotAllocError> {
         if self.by_id.contains_key(&id) {
             return Ok(());
         }

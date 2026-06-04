@@ -160,7 +160,10 @@ fn cpu_identity_oracle(values: &[f32]) -> Vec<f32> {
     values.to_vec()
 }
 
-fn run_builtin_gpu_identity_pass(ctx: &GpuContext, values: &[f32]) -> Result<Vec<f32>, &'static str> {
+fn run_builtin_gpu_identity_pass(
+    ctx: &GpuContext,
+    values: &[f32],
+) -> Result<Vec<f32>, &'static str> {
     let device = &ctx.device;
     let len = values.len() as u32;
     let shader = device.create_shader_module(ShaderModuleDescriptor {
@@ -272,7 +275,13 @@ fn run_builtin_gpu_identity_pass(ctx: &GpuContext, values: &[f32]) -> Result<Vec
     let mut readback_encoder = device.create_command_encoder(&CommandEncoderDescriptor {
         label: Some("gpu_exec0_readback_enc"),
     });
-    readback_encoder.copy_buffer_to_buffer(&output_buffer, 0, &staging, 0, (values.len() * 4) as u64);
+    readback_encoder.copy_buffer_to_buffer(
+        &output_buffer,
+        0,
+        &staging,
+        0,
+        (values.len() * 4) as u64,
+    );
     ctx.queue.submit(Some(readback_encoder.finish()));
     let slice = staging.slice(..);
     slice.map_async(wgpu::MapMode::Read, |_| {});
@@ -316,13 +325,19 @@ fn disabled_no_op_report(input: &GpuExec0FixtureInput) -> GpuExec0FixtureReport 
     report
 }
 
-fn rejected_report(input: &GpuExec0FixtureInput, diagnostics: Vec<&'static str>) -> GpuExec0FixtureReport {
+fn rejected_report(
+    input: &GpuExec0FixtureInput,
+    diagnostics: Vec<&'static str>,
+) -> GpuExec0FixtureReport {
     let mut report = shell(input);
     report.diagnostics = diagnostics;
     report
 }
 
-fn admitted_gpu_unavailable(input: &GpuExec0FixtureInput, cpu_oracle_checksum: u64) -> GpuExec0FixtureReport {
+fn admitted_gpu_unavailable(
+    input: &GpuExec0FixtureInput,
+    cpu_oracle_checksum: u64,
+) -> GpuExec0FixtureReport {
     let mut report = shell(input);
     report.admitted = true;
     report.gpu_execution_available = false;

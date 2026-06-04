@@ -128,7 +128,10 @@ fn hot_executed_tick() {
             report.residency.status,
             FirstSliceResidencyStatus::HotExecutedThisTick
         );
-        assert_eq!(report.summary.status, FirstSliceSummaryStatus::FreshThisTick);
+        assert_eq!(
+            report.summary.status,
+            FirstSliceSummaryStatus::FreshThisTick
+        );
         assert!(report.summary.has_gpu_parent_summary);
         assert!(report.residency.summary_visible_to_parent);
         assert!(report.residency.dense_field_executed);
@@ -200,7 +203,10 @@ fn dirty_refresh_from_cached() {
             refresh.residency.status,
             FirstSliceResidencyStatus::HotExecutedThisTick
         );
-        assert_eq!(refresh.summary.status, FirstSliceSummaryStatus::FreshThisTick);
+        assert_eq!(
+            refresh.summary.status,
+            FirstSliceSummaryStatus::FreshThisTick
+        );
         assert_eq!(refresh.summary.age_ticks, 0);
         assert!(refresh.scheduled);
         assert_eq!(refresh.readiness.gpu_bridge_bulk_col_fills, 1);

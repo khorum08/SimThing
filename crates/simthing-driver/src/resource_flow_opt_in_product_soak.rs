@@ -3,8 +3,8 @@
 use simthing_spec::ResourceFlowOptInMode;
 
 use crate::resource_flow_opt_in_burn_in::{
-    clone_for_replay, open_fixture_session, run_opt_in_burn_in, RfT2BurnInFixture, RfT2BurnInReport,
-    RfT2OptInSession,
+    clone_for_replay, open_fixture_session, run_opt_in_burn_in, RfT2BurnInFixture,
+    RfT2BurnInReport, RfT2OptInSession,
 };
 use crate::resource_flow_opt_in_telemetry::{
     collect_resource_flow_opt_in_telemetry, ResourceFlowOptInTelemetryReport,

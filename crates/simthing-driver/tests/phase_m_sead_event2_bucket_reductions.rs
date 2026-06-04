@@ -26,9 +26,31 @@ const FLAG_SUM_OVERFLOW: u32 = 2;
 const ORDERING_CLASS: &str = "UnspecifiedAtomicOrder";
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
-    "faction", "ownership", "owner", "AI", "threat", "scarcity", "opportunity", "labor", "price",
-    "logistics", "routing", "need", "demand", "supply", "personality", "drone", "SEAD", "economy",
-    "planner", "resource", "map", "urgency", "commitment", "order", "route",
+    "faction",
+    "ownership",
+    "owner",
+    "AI",
+    "threat",
+    "scarcity",
+    "opportunity",
+    "labor",
+    "price",
+    "logistics",
+    "routing",
+    "need",
+    "demand",
+    "supply",
+    "personality",
+    "drone",
+    "SEAD",
+    "economy",
+    "planner",
+    "resource",
+    "map",
+    "urgency",
+    "commitment",
+    "order",
+    "route",
 ];
 
 const FORBIDDEN_EXACT_TERMS: &[&str] = &["f64", "F64RoundDown", "SHADER_F64", "sqrt_cr_c"];
@@ -256,11 +278,13 @@ fn run_reductions(
 
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_event2_reduce"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_event2_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_event2_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "reduce_pass",
         compilation_options: Default::default(),
@@ -542,7 +566,12 @@ fn edge_reduction_cases() -> Vec<(Vec<Vec<EventRecord>>, [u32; CODE_COUNT], u32,
             "overflowed_input",
         ),
         (
-            vec![vec![], vec![rec(0, 1, 0, i32::MAX), rec(1, 1, 0, 1)], vec![], vec![]],
+            vec![
+                vec![],
+                vec![rec(0, 1, 0, i32::MAX), rec(1, 1, 0, 1)],
+                vec![],
+                vec![],
+            ],
             [0, 2, 0, 0],
             8,
             "sum_overflow",
@@ -554,12 +583,7 @@ fn dense_buckets() -> (Vec<Vec<EventRecord>>, [u32; CODE_COUNT]) {
     let mut buckets: [Vec<EventRecord>; CODE_COUNT] = std::array::from_fn(|_| Vec::new());
     for idx in 0..4096u32 {
         let code = 1 + (idx % 3);
-        buckets[code as usize].push(rec(
-            idx,
-            code,
-            idx % 2,
-            (idx as i32).wrapping_mul(655),
-        ));
+        buckets[code as usize].push(rec(idx, code, idx % 2, (idx as i32).wrapping_mul(655)));
     }
     let counts = [
         0,
@@ -581,12 +605,7 @@ fn balanced_12_records(count: usize) -> (Vec<Vec<EventRecord>>, [u32; CODE_COUNT
             (idx as i32).wrapping_mul(17),
         ));
     }
-    let counts = [
-        0,
-        buckets[1].len() as u32,
-        buckets[2].len() as u32,
-        0,
-    ];
+    let counts = [0, buckets[1].len() as u32, buckets[2].len() as u32, 0];
     (buckets.to_vec(), counts)
 }
 
@@ -763,7 +782,9 @@ fn run_bucket_then_reduce_gpu(
     let counts_read = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("counts_read"),
         contents: &[0u8; CODE_COUNT * 4],
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_DST
+            | wgpu::BufferUsages::COPY_SRC,
     });
     let red_init = vec![0u32; (CODE_COUNT as u32 * RED_OUT_STRIDE) as usize];
     let red_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -873,7 +894,10 @@ fn read_u32s(device: &wgpu::Device, buf: &wgpu::Buffer, count: usize) -> Vec<u32
     out
 }
 
-fn cpu_bucket_from_compact(records: &[EventRecord], capacity: u32) -> (Vec<Vec<EventRecord>>, [u32; CODE_COUNT]) {
+fn cpu_bucket_from_compact(
+    records: &[EventRecord],
+    capacity: u32,
+) -> (Vec<Vec<EventRecord>>, [u32; CODE_COUNT]) {
     let mut buckets: [Vec<EventRecord>; CODE_COUNT] = std::array::from_fn(|_| Vec::new());
     let mut counts = [0u32; CODE_COUNT];
     for rec in records {
@@ -929,15 +953,8 @@ fn sead_event2_reduction_dense_corpus() {
         let cap = 4096;
         let packed = pack_bucket_records(&buckets, cap);
         let outcome = run_reductions(ctx, counts, &packed, cap, 1, true);
-        assert!(verify_reductions(
-            &outcome.per_code,
-            &buckets,
-            counts,
-            cap
-        ));
-        println!(
-            "sead_event2_dense: counts={counts:?} sums_ok ordering={ORDERING_CLASS}"
-        );
+        assert!(verify_reductions(&outcome.per_code, &buckets, counts, cap));
+        println!("sead_event2_dense: counts={counts:?} sums_ok ordering={ORDERING_CLASS}");
     });
 }
 
@@ -999,12 +1016,7 @@ fn sead_event2_perf_34k_bucket_reductions() {
         let outcome = run_reductions(ctx, counts, &packed, CAP, 1, true);
         let elapsed_ms = t0.elapsed().as_secs_f64() * 1000.0;
         let per_record_us = elapsed_ms * 1000.0 / N as f64;
-        assert!(verify_reductions(
-            &outcome.per_code,
-            &buckets,
-            counts,
-            CAP
-        ));
+        assert!(verify_reductions(&outcome.per_code, &buckets, counts, CAP));
         println!(
             "sead_event2_34k: elapsed_ms={elapsed_ms:.3} per_record_us={per_record_us:.4} counts={counts:?} per_code={:?} ordering={ORDERING_CLASS}",
             outcome
@@ -1028,12 +1040,7 @@ fn sead_event2_perf_34k_warm_repeated_dispatch() {
         let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
         let per_dispatch_ms = total_ms / REPEATS as f64;
         let per_record_us = per_dispatch_ms * 1000.0 / N as f64;
-        assert!(verify_reductions(
-            &outcome.per_code,
-            &buckets,
-            counts,
-            CAP
-        ));
+        assert!(verify_reductions(&outcome.per_code, &buckets, counts, CAP));
         println!(
             "sead_event2_34k_warm: repeats={REPEATS} total_ms={total_ms:.3} per_dispatch_ms={per_dispatch_ms:.4} per_record_us={per_record_us:.4} counts={counts:?} ordering={ORDERING_CLASS}"
         );
@@ -1042,7 +1049,10 @@ fn sead_event2_perf_34k_warm_repeated_dispatch() {
 
 #[test]
 fn sead_event2_no_default_runtime_wiring() {
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
     let desc = landed_jit_kernel_descriptors()
         .into_iter()
         .find(|d| d.id == SEAD_EVENT2_DESCRIPTOR_ID)

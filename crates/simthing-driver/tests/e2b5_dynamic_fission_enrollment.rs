@@ -8,14 +8,13 @@ use simthing_core::{
 };
 use simthing_driver::{
     all_reserved_gap_slots, arena_participant_sibling_slots, build_execution_plan,
-    commit_dynamic_arena_root_append, materialize_arena_participants,
-    plan_arena_allocation, prepare_dynamic_arena_root_append,
-    react_to_fission_resource_flow_enrollment, run_flat_star_burn_in, slots_are_contiguous,
-    validate_resource_flow_preflight, ArenaRegistryBuilder, FissionPolicy, GpuArenaDescriptor,
-    SimSession,
+    commit_dynamic_arena_root_append, materialize_arena_participants, plan_arena_allocation,
+    prepare_dynamic_arena_root_append, react_to_fission_resource_flow_enrollment,
+    run_flat_star_burn_in, slots_are_contiguous, validate_resource_flow_preflight,
+    ArenaRegistryBuilder, FissionPolicy, GpuArenaDescriptor, SimSession,
 };
-use simthing_sim::BoundaryOutcome;
 use simthing_gpu::SlotAllocator;
+use simthing_sim::BoundaryOutcome;
 use simthing_sim::{FissionOutcome, PipelineFlags};
 use simthing_spec::{
     compile_property, ArenaSpec, ExplicitParticipantSpec, FissionPolicySpec, PropertyKey,
@@ -23,7 +22,7 @@ use simthing_spec::{
 };
 use std::collections::HashMap;
 
-use support::e11_flat_star::{try_gpu, standard_flat_star_inputs};
+use support::e11_flat_star::{standard_flat_star_inputs, try_gpu};
 
 fn flow_subfield(name: &str, role: AccumulatorRole) -> SubFieldSpec {
     SubFieldSpec {
@@ -130,7 +129,9 @@ fn open_enrollment_fixture(
         .children
         .iter()
         .take(parent_count)
-        .map(|hosted| ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw()))
+        .map(|hosted| {
+            ExplicitParticipantSpec::flat(alloc.slot_of(hosted.id).unwrap(), hosted.id.raw())
+        })
         .collect();
 
     let spec = ResourceFlowSpec {
@@ -150,7 +151,7 @@ fn open_enrollment_fixture(
             wildcard_admission: None,
         }],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
 
     validate_resource_flow_preflight(&spec, &alloc).unwrap();
@@ -206,13 +207,12 @@ fn e2b5_parent_enrolled_child_inherits_arena_membership() {
     assert!(report.rejections.is_empty());
     assert_eq!(report.admissions[0].child_id, fx.child_id);
     assert_eq!(report.generation_after, gen0 + 1);
-    assert!(
-        fx.spec_state
-            .arena_participant_scaffold
-            .index
-            .participant_slot(fx.child_id, 0)
-            .is_some()
-    );
+    assert!(fx
+        .spec_state
+        .arena_participant_scaffold
+        .index
+        .participant_slot(fx.child_id, 0)
+        .is_some());
 }
 
 #[test]
@@ -247,18 +247,30 @@ fn e2b5_parent_enrolled_in_two_arenas_child_inherits_both() {
             reserved_orderband_depth: 0,
             reserved_gap_per_intermediate: 0,
             expected_max_children_per_intermediate: 0,
-            explicit_participants: vec![ExplicitParticipantSpec::flat(alloc.slot_of(parent_id).unwrap(), parent_id.raw())],
+            explicit_participants: vec![ExplicitParticipantSpec::flat(
+                alloc.slot_of(parent_id).unwrap(),
+                parent_id.raw(),
+            )],
             enrollment: None,
             wildcard_admission: None,
         }],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     validate_resource_flow_preflight(&food_spec, &alloc).unwrap();
-    let mut scaffold = materialize_arena_participants(&food_spec, &reg, &mut root, &mut alloc).unwrap();
+    let mut scaffold =
+        materialize_arena_participants(&food_spec, &reg, &mut root, &mut alloc).unwrap();
 
-    let food_participant_slot = *scaffold.index.by_host_and_arena.get(&(parent_id, 0)).unwrap();
-    assert_eq!(food_participant_slot + 1, 12, "fixture layout: food sibling must end at 11");
+    let food_participant_slot = *scaffold
+        .index
+        .by_host_and_arena
+        .get(&(parent_id, 0))
+        .unwrap();
+    assert_eq!(
+        food_participant_slot + 1,
+        12,
+        "fixture layout: food sibling must end at 11"
+    );
 
     for _ in 0..8 {
         alloc.alloc(SimThing::new(SimThingKind::Cohort, 0).id);
@@ -276,12 +288,15 @@ fn e2b5_parent_enrolled_in_two_arenas_child_inherits_both() {
             reserved_orderband_depth: 0,
             reserved_gap_per_intermediate: 0,
             expected_max_children_per_intermediate: 0,
-            explicit_participants: vec![ExplicitParticipantSpec::flat(alloc.slot_of(parent_id).unwrap(), parent_id.raw())],
+            explicit_participants: vec![ExplicitParticipantSpec::flat(
+                alloc.slot_of(parent_id).unwrap(),
+                parent_id.raw(),
+            )],
             enrollment: None,
             wildcard_admission: None,
         }],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     validate_resource_flow_preflight(&research_only, &alloc).unwrap();
     let research_scaffold =
@@ -291,10 +306,7 @@ fn e2b5_parent_enrolled_in_two_arenas_child_inherits_both() {
         scaffold.arena_root_ids.insert(1, research_root);
     }
     for ((hosted, _), slot) in research_scaffold.index.by_host_and_arena {
-        scaffold
-            .index
-            .by_host_and_arena
-            .insert((hosted, 1), slot);
+        scaffold.index.by_host_and_arena.insert((hosted, 1), slot);
     }
     scaffold.gap_pools.extend(research_scaffold.gap_pools);
 
@@ -308,7 +320,7 @@ fn e2b5_parent_enrolled_in_two_arenas_child_inherits_both() {
     let full_spec = ResourceFlowSpec {
         arenas: vec![food_spec.arenas[0].clone(), research_only.arenas[0].clone()],
         couplings: vec![],
-    ..Default::default()
+        ..Default::default()
     };
     let (arena_registry, _) =
         simthing_driver::compile_and_materialize_resource_flow(&full_spec, &reg).unwrap();
@@ -328,20 +340,16 @@ fn e2b5_parent_enrolled_in_two_arenas_child_inherits_both() {
 
     assert_eq!(report.admissions.len(), 2);
     assert!(report.rejections.is_empty());
-    assert!(
-        spec_state
-            .arena_participant_scaffold
-            .index
-            .participant_slot(child_id, 0)
-            .is_some()
-    );
-    assert!(
-        spec_state
-            .arena_participant_scaffold
-            .index
-            .participant_slot(child_id, 1)
-            .is_some()
-    );
+    assert!(spec_state
+        .arena_participant_scaffold
+        .index
+        .participant_slot(child_id, 0)
+        .is_some());
+    assert!(spec_state
+        .arena_participant_scaffold
+        .index
+        .participant_slot(child_id, 1)
+        .is_some());
 }
 
 #[test]
@@ -351,13 +359,12 @@ fn e2b5_reject_policy_does_not_enroll_child() {
 
     assert!(report.admissions.is_empty());
     assert_eq!(report.rejections.len(), 1);
-    assert!(
-        fx.spec_state
-            .arena_participant_scaffold
-            .index
-            .participant_slot(fx.child_id, 0)
-            .is_none()
-    );
+    assert!(fx
+        .spec_state
+        .arena_participant_scaffold
+        .index
+        .participant_slot(fx.child_id, 0)
+        .is_none());
 }
 
 #[test]
@@ -374,16 +381,18 @@ fn e2b5_max_participants_exceeded_rejects_child_without_partial_mutation() {
     assert!(report.admissions.is_empty());
     assert_eq!(report.rejections.len(), 1);
     assert!(report.rejections[0].reason.contains("max_participants"));
-    assert!(
-        fx.spec_state
-            .arena_participant_scaffold
-            .index
-            .participant_slot(fx.child_id, 0)
-            .is_none()
-    );
+    assert!(fx
+        .spec_state
+        .arena_participant_scaffold
+        .index
+        .participant_slot(fx.child_id, 0)
+        .is_none());
     let siblings_after = arena_participant_sibling_slots(&fx.root, arena_root_id, &fx.alloc);
     assert_eq!(siblings_before, siblings_after);
-    assert_eq!(fx.spec_state.arena_registry.participants, participants_before);
+    assert_eq!(
+        fx.spec_state.arena_registry.participants,
+        participants_before
+    );
     assert_eq!(fx.spec_state.arena_registry.generation, gen_before);
     assert_eq!(fx.alloc.live_count(), live_before);
 }
@@ -427,20 +436,19 @@ fn e2b5_registry_rejection_does_not_mutate_scaffold_or_tree() {
         err,
         simthing_driver::DynamicEnrollmentError::RegistryAdmissionFailed { .. }
     ));
-    assert!(
-        fx.spec_state
-            .arena_participant_scaffold
-            .index
-            .participant_slot(fx.child_id, 0)
-            .is_none()
-    );
-    assert_eq!(
-        fx.spec_state.arena_participant_scaffold.index,
-        index_before
-    );
+    assert!(fx
+        .spec_state
+        .arena_participant_scaffold
+        .index
+        .participant_slot(fx.child_id, 0)
+        .is_none());
+    assert_eq!(fx.spec_state.arena_participant_scaffold.index, index_before);
     let siblings_after = arena_participant_sibling_slots(&fx.root, arena_root_id, &fx.alloc);
     assert_eq!(siblings_before, siblings_after);
-    assert_eq!(fx.spec_state.arena_registry.participants, participants_before);
+    assert_eq!(
+        fx.spec_state.arena_registry.participants,
+        participants_before
+    );
     assert_eq!(fx.spec_state.arena_registry.generation, gen_before);
     assert_eq!(fx.alloc.live_count(), live_before);
 }
@@ -489,7 +497,9 @@ fn e2b5_no_admission_does_not_change_resource_flow_upload_state() {
     session.proto.registry = fx.reg;
     session.spec_state = fx.spec_state;
     session.proto.flags.use_accumulator_resource_flow = true;
-    session.sync_resource_flow_if_enabled().expect("initial sync");
+    session
+        .sync_resource_flow_if_enabled()
+        .expect("initial sync");
     let ops_before = session
         .state
         .accumulator_runtime
@@ -572,7 +582,6 @@ fn e2b5_successful_admission_still_resyncs_when_flag_enabled() {
         expected_ops
     );
 }
-
 
 #[test]
 fn e2b5_contiguity_extension_impossible_rejects_no_compaction() {
@@ -738,7 +747,8 @@ fn e2b5_replay_same_seed_same_dynamic_enrollment() {
         spec_state: {
             let mut s = simthing_driver::SpecSessionState::new();
             s.arena_registry = fx_template.spec_state.arena_registry.clone();
-            s.arena_participant_scaffold = fx_template.spec_state.arena_participant_scaffold.clone();
+            s.arena_participant_scaffold =
+                fx_template.spec_state.arena_participant_scaffold.clone();
             s
         },
         parent_id: fx_template.parent_id,
@@ -751,7 +761,8 @@ fn e2b5_replay_same_seed_same_dynamic_enrollment() {
         spec_state: {
             let mut s = simthing_driver::SpecSessionState::new();
             s.arena_registry = fx_template.spec_state.arena_registry.clone();
-            s.arena_participant_scaffold = fx_template.spec_state.arena_participant_scaffold.clone();
+            s.arena_participant_scaffold =
+                fx_template.spec_state.arena_participant_scaffold.clone();
             s
         },
         parent_id: fx_template.parent_id,
@@ -809,13 +820,7 @@ fn e2b5_100_tick_flat_star_burn_in_after_dynamic_enrollment() {
         &session
             .proto
             .registry
-            .property(
-                session
-                    .proto
-                    .registry
-                    .id_of("core", "food_flow")
-                    .unwrap(),
-            )
+            .property(session.proto.registry.id_of("core", "food_flow").unwrap())
             .layout,
         "food",
     )

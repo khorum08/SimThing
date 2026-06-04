@@ -636,7 +636,7 @@ mod tests {
                 governed_by: None,
                 reduction_override: Some(ReductionRule::Sum),
                 soft_aggregate_guard: None,
-                    accumulator_spec: None,
+                accumulator_spec: None,
             }],
         };
         let mut prop = SimProperty::simple("core", "headcount", 0);
@@ -662,7 +662,7 @@ mod tests {
                 governed_by: None,
                 reduction_override: Some(ReductionRule::Sum),
                 soft_aggregate_guard: None,
-                    accumulator_spec: None,
+                accumulator_spec: None,
             }],
         };
         let mut reg = DimensionRegistry::new();

@@ -7,8 +7,7 @@ use simthing_driver::{
     fixture_dynamic_single_fission, fixture_repeated_resync, fixture_replay_static,
     fixture_static_flat_star_10_participants, fixture_static_flat_star_64_participants,
     fixture_static_flat_star_skewed_weights, fixture_two_arena_no_coupling,
-    fixture_wildcard_rejected, open_fixture_session, run_opt_in_burn_in,
-    RfT2BurnInFixture,
+    fixture_wildcard_rejected, open_fixture_session, run_opt_in_burn_in, RfT2BurnInFixture,
 };
 use simthing_sim::PipelineFlags;
 use simthing_spec::ResourceFlowOptInMode;
@@ -147,7 +146,10 @@ fn rf_t2_replay_same_seed_same_frames() {
     let mut fx_b = clone_for_replay(&fx_a, &fixture);
     let report_a = run_opt_in_burn_in(&mut fx_a, &fixture).expect("burn a");
     let report_b = run_opt_in_burn_in(&mut fx_b, &fixture).expect("burn b");
-    assert_eq!(report_a.max_abs_error.to_bits(), report_b.max_abs_error.to_bits());
+    assert_eq!(
+        report_a.max_abs_error.to_bits(),
+        report_b.max_abs_error.to_bits()
+    );
     assert_eq!(report_a.ticks_checked, report_b.ticks_checked);
     assert!(report_a.replay_bit_exact);
     assert!(report_b.replay_bit_exact);

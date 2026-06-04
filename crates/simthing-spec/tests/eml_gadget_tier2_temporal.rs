@@ -5,10 +5,9 @@
 
 use simthing_core::EmlExecutionClass;
 use simthing_spec::{
-    compile_eml_gadget_stack, eval_eml_postfix,
-    oracle_decay, oracle_ema, oracle_velocity_monitor,
-    CompiledEmlGadgetStack, DEFERRED_GADGET_KINDS, EmlGadgetCompileOptions,
-    EmlGadgetInstanceSpec, EmlGadgetKind, EmlGadgetRegistry, EmlGadgetStackSpec, SpecError,
+    compile_eml_gadget_stack, eval_eml_postfix, oracle_decay, oracle_ema, oracle_velocity_monitor,
+    CompiledEmlGadgetStack, EmlGadgetCompileOptions, EmlGadgetInstanceSpec, EmlGadgetKind,
+    EmlGadgetRegistry, EmlGadgetStackSpec, SpecError, DEFERRED_GADGET_KINDS,
 };
 
 const N_DIMS: u32 = 64;
@@ -53,7 +52,10 @@ fn tier2_registry_contains_velocity_decay_ema() {
     // 2B kinds are ExactDeterministic and require temporal memory
     for name in ["VelocityMonitor", "Decay", "Ema"] {
         let kind = EmlGadgetKind::parse(name).unwrap();
-        assert_eq!(kind.execution_class(), EmlExecutionClass::ExactDeterministic);
+        assert_eq!(
+            kind.execution_class(),
+            EmlExecutionClass::ExactDeterministic
+        );
         assert!(kind.requires_temporal_memory());
     }
 }
@@ -103,7 +105,9 @@ fn velocity_monitor_invalid_params_reject() {
         dt: Some(0.0),
     };
     let res = compile_eml_gadget_stack(
-        &EmlGadgetStackSpec { gadgets: vec![bad_dt] },
+        &EmlGadgetStackSpec {
+            gadgets: vec![bad_dt],
+        },
         EmlGadgetCompileOptions { max_col: 64 },
     );
     assert!(res.is_err());
@@ -116,7 +120,9 @@ fn velocity_monitor_invalid_params_reject() {
         dt: None,
     };
     let res = compile_eml_gadget_stack(
-        &EmlGadgetStackSpec { gadgets: vec![same_cols] },
+        &EmlGadgetStackSpec {
+            gadgets: vec![same_cols],
+        },
         EmlGadgetCompileOptions { max_col: 64 },
     );
     assert!(matches!(res, Err(SpecError::EmlGadgetAdmission { .. })));
@@ -164,7 +170,9 @@ fn decay_invalid_params_reject() {
         decay: 1.5,
     };
     let res = compile_eml_gadget_stack(
-        &EmlGadgetStackSpec { gadgets: vec![bad_decay] },
+        &EmlGadgetStackSpec {
+            gadgets: vec![bad_decay],
+        },
         EmlGadgetCompileOptions { max_col: 64 },
     );
     assert!(res.is_err());
@@ -183,8 +191,8 @@ fn ema_oracle_parity() {
             decay: 0.5,
         }],
     };
-    let compiled = compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions::default())
-        .expect("Ema compiles");
+    let compiled =
+        compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions::default()).expect("Ema compiles");
 
     let inputs = [0.0, 1.0, 1.0, 0.0];
     let expected = [0.0, 0.5, 0.75, 0.375];
@@ -217,7 +225,9 @@ fn ema_invalid_params_reject() {
         decay: -0.1,
     };
     let res = compile_eml_gadget_stack(
-        &EmlGadgetStackSpec { gadgets: vec![bad_decay] },
+        &EmlGadgetStackSpec {
+            gadgets: vec![bad_decay],
+        },
         EmlGadgetCompileOptions { max_col: 64 },
     );
     assert!(res.is_err());
@@ -230,7 +240,9 @@ fn no_runtime_gadget_execution_posture() {
     let lib = include_str!("../src/lib.rs");
     let compile = include_str!("../src/compile/eml_gadget.rs");
 
-    assert!(!lib.contains("runtime gadget stack") || compile.contains("deferred_runtime_execution"));
+    assert!(
+        !lib.contains("runtime gadget stack") || compile.contains("deferred_runtime_execution")
+    );
     // The key posture is already enforced by PerGadgetOnly composition plan and lack of
     // any driver/gpu/sim consumption of CompiledEmlGadgetStack for these kinds.
 }
@@ -252,7 +264,10 @@ fn two_a_snapshot_copy_regression_still_green() {
 fn posture_preservation_2b() {
     use simthing_spec::{MappingExecutionProfile, ResourceFlowExecutionProfile};
 
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
 
     // Resource Flow default-off is asserted via PipelineFlags in other tests;
     // we simply confirm the constant is still present and the 2B code does not touch it.

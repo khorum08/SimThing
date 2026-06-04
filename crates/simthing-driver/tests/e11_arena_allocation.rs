@@ -21,8 +21,6 @@ use simthing_spec::{
 use std::collections::HashMap;
 use std::path::Path;
 
-
-
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
 }

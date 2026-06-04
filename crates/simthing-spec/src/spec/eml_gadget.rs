@@ -143,11 +143,27 @@ impl EmlGadgetInstanceSpec {
             Self::FieldSampler { input_col, .. } => vec![*input_col],
             Self::SoftStep { input_col, .. } => vec![*input_col],
             Self::WeightedAccumulator { input_cols, .. } => input_cols.clone(),
-            Self::VelocityMonitor { current_col, previous_col, .. } => vec![*current_col, *previous_col],
+            Self::VelocityMonitor {
+                current_col,
+                previous_col,
+                ..
+            } => vec![*current_col, *previous_col],
             Self::Decay { state_col, .. } => vec![*state_col],
-            Self::Ema { input_col, previous_col, .. } => vec![*input_col, *previous_col],
-            Self::BoundedFeedback { previous_col, input_col, .. } => vec![*previous_col, *input_col],
-            Self::Hysteresis { input_col, previous_col, .. } => vec![*input_col, *previous_col],
+            Self::Ema {
+                input_col,
+                previous_col,
+                ..
+            } => vec![*input_col, *previous_col],
+            Self::BoundedFeedback {
+                previous_col,
+                input_col,
+                ..
+            } => vec![*previous_col, *input_col],
+            Self::Hysteresis {
+                input_col,
+                previous_col,
+                ..
+            } => vec![*input_col, *previous_col],
             Self::Acceleration {
                 current_velocity_col,
                 previous_velocity_col,

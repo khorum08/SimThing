@@ -165,7 +165,10 @@ pub fn run_dynamic_enrollment_resync_cycles(
                 .as_ref()
                 .map(|r| r.resource_flow_ops.count)
                 .unwrap_or(0);
-            assert_eq!(ops, initial_ops, "dynamic enrollment soak op count unstable");
+            assert_eq!(
+                ops, initial_ops,
+                "dynamic enrollment soak op count unstable"
+            );
             assert_eq!(
                 session.state.accumulator_resource_flow_bands, initial_bands,
                 "dynamic enrollment soak n_bands unstable"
@@ -179,7 +182,11 @@ pub fn run_dynamic_enrollment_resync_cycles(
         .as_ref()
         .map(|r| r.resource_flow_ops.count)
         .unwrap_or(0);
-    Ok((syncs_run, final_ops, session.state.accumulator_resource_flow_bands))
+    Ok((
+        syncs_run,
+        final_ops,
+        session.state.accumulator_resource_flow_bands,
+    ))
 }
 
 /// Initial sync via session wrapper; returns sync report when flag enabled.
@@ -188,11 +195,7 @@ pub fn initial_dynamic_enrollment_sync(
 ) -> Result<ResourceFlowSyncReport, crate::session::SessionError> {
     session.sync_resource_flow_if_enabled()?;
     Ok(ResourceFlowSyncReport {
-        arenas_planned: session
-            .spec_state
-            .arena_registry
-            .arenas
-            .len() as u32,
+        arenas_planned: session.spec_state.arena_registry.arenas.len() as u32,
         total_ops: session
             .state
             .accumulator_runtime

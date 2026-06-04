@@ -217,7 +217,10 @@ fn validate_operator_and_source(spec: &RegionFieldSpec) -> Result<(), SpecError>
             if output_col >= spec.n_dims {
                 return Err(field_err(
                     &spec.name,
-                    format!("gradient output_col {output_col} out of range for n_dims {}", spec.n_dims),
+                    format!(
+                        "gradient output_col {output_col} out of range for n_dims {}",
+                        spec.n_dims
+                    ),
                 ));
             }
             if output_col == spec.source_col {
@@ -535,54 +538,62 @@ pub fn compile_region_field_preview(
         ));
     }
 
-    let (operator, alpha_self, gamma_neighbor, weight_north, weight_south, weight_east, weight_west, target_col) =
-        match spec.operator {
-            RegionFieldOperatorSpec::Normalized => {
-                let (wn, ws, we, ww) = isotropic_weights(spec.gamma_neighbor);
-                (
-                    CompiledRegionFieldOperator::Normalized,
-                    spec.alpha_self,
-                    spec.gamma_neighbor,
-                    wn,
-                    ws,
-                    we,
-                    ww,
-                    spec.target_col,
-                )
-            }
-            RegionFieldOperatorSpec::SourceCappedNormalized => {
-                let (wn, ws, we, ww) = isotropic_weights(spec.gamma_neighbor);
-                (
-                    CompiledRegionFieldOperator::SourceCappedNormalized,
-                    spec.alpha_self,
-                    spec.gamma_neighbor,
-                    wn,
-                    ws,
-                    we,
-                    ww,
-                    spec.target_col,
-                )
-            }
-            RegionFieldOperatorSpec::Gradient { axis, output_col } => {
-                let compiled_axis = match axis {
-                    GradientAxisSpec::X => CompiledGradientAxis::X,
-                    GradientAxisSpec::Y => CompiledGradientAxis::Y,
-                };
-                let (wn, ws, we, ww) = gradient_weights(compiled_axis);
-                (
-                    CompiledRegionFieldOperator::Gradient {
-                        axis: compiled_axis,
-                    },
-                    0.0,
-                    0.0,
-                    wn,
-                    ws,
-                    we,
-                    ww,
-                    output_col,
-                )
-            }
-        };
+    let (
+        operator,
+        alpha_self,
+        gamma_neighbor,
+        weight_north,
+        weight_south,
+        weight_east,
+        weight_west,
+        target_col,
+    ) = match spec.operator {
+        RegionFieldOperatorSpec::Normalized => {
+            let (wn, ws, we, ww) = isotropic_weights(spec.gamma_neighbor);
+            (
+                CompiledRegionFieldOperator::Normalized,
+                spec.alpha_self,
+                spec.gamma_neighbor,
+                wn,
+                ws,
+                we,
+                ww,
+                spec.target_col,
+            )
+        }
+        RegionFieldOperatorSpec::SourceCappedNormalized => {
+            let (wn, ws, we, ww) = isotropic_weights(spec.gamma_neighbor);
+            (
+                CompiledRegionFieldOperator::SourceCappedNormalized,
+                spec.alpha_self,
+                spec.gamma_neighbor,
+                wn,
+                ws,
+                we,
+                ww,
+                spec.target_col,
+            )
+        }
+        RegionFieldOperatorSpec::Gradient { axis, output_col } => {
+            let compiled_axis = match axis {
+                GradientAxisSpec::X => CompiledGradientAxis::X,
+                GradientAxisSpec::Y => CompiledGradientAxis::Y,
+            };
+            let (wn, ws, we, ww) = gradient_weights(compiled_axis);
+            (
+                CompiledRegionFieldOperator::Gradient {
+                    axis: compiled_axis,
+                },
+                0.0,
+                0.0,
+                wn,
+                ws,
+                we,
+                ww,
+                output_col,
+            )
+        }
+    };
 
     let cadence = compile_cadence(spec)?;
     let reduction = spec

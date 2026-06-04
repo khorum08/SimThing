@@ -2709,7 +2709,7 @@ fn capability_unlock_fires_in_boundary_integration_test() {
                 governed_by: None,
                 reduction_override: Some(ReductionRule::Max),
                 soft_aggregate_guard: None,
-                    accumulator_spec: None,
+                accumulator_spec: None,
             }],
         },
         decay: None,

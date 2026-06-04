@@ -5,10 +5,9 @@
 
 use simthing_core::EmlExecutionClass;
 use simthing_spec::{
-    compile_eml_gadget_stack, eval_eml_postfix,
-    oracle_bounded_feedback,
-    CompiledEmlGadgetStack, DEFERRED_GADGET_KINDS, EmlGadgetCompileOptions,
-    EmlGadgetInstanceSpec, EmlGadgetKind, EmlGadgetStackSpec, SpecError,
+    compile_eml_gadget_stack, eval_eml_postfix, oracle_bounded_feedback, CompiledEmlGadgetStack,
+    EmlGadgetCompileOptions, EmlGadgetInstanceSpec, EmlGadgetKind, EmlGadgetStackSpec, SpecError,
+    DEFERRED_GADGET_KINDS,
 };
 
 const N_DIMS: u32 = 64;
@@ -37,7 +36,10 @@ fn tier2c_registry_contains_bounded_feedback() {
     assert!(EmlGadgetKind::parse("BoundedFeedback").is_some());
 
     let kind = EmlGadgetKind::parse("BoundedFeedback").unwrap();
-    assert_eq!(kind.execution_class(), EmlExecutionClass::ExactDeterministic);
+    assert_eq!(
+        kind.execution_class(),
+        EmlExecutionClass::ExactDeterministic
+    );
     assert!(kind.requires_temporal_memory());
 
     // Still-deferred items remain
@@ -104,8 +106,8 @@ fn bounded_feedback_clamp_edges() {
             max: 1.0,
         }],
     };
-    let compiled = compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions::default())
-        .expect("compiles");
+    let compiled =
+        compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions::default()).expect("compiles");
 
     // Upper clamp
     let mut values = vec![0.0; (N_DIMS * (EVAL_SLOT + 1)) as usize];
@@ -200,7 +202,9 @@ fn bounded_feedback_invalid_columns_reject() {
         max: 1.0,
     };
     let res = compile_eml_gadget_stack(
-        &EmlGadgetStackSpec { gadgets: vec![same] },
+        &EmlGadgetStackSpec {
+            gadgets: vec![same],
+        },
         EmlGadgetCompileOptions { max_col: 64 },
     );
     assert!(res.is_err());
@@ -249,5 +253,8 @@ fn prior_slices_still_green() {
 #[test]
 fn posture_preservation_2c() {
     use simthing_spec::MappingExecutionProfile;
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
 }

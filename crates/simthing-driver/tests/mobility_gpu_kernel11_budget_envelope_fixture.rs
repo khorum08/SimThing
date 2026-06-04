@@ -7,18 +7,17 @@ use mobility_gpu_kernel11_budget_envelope_fixture::{
     active_stream_budget_envelope, evaluate_stream_budget_envelope,
     fake_over_budget_dispatches_accounting, fake_over_budget_rows_accounting,
     mobility_gpu_kernel11_shader_text_has_domain_terms, run_mobility_gpu_kernel11_fixture,
-    stream_cpu_checksum_from_frames, MobilityGpuKernel0ParityClassification,
-    MobilityGpuKernel11FixtureInput, MobilityGpuKernel11ForbiddenPathRequests,
-    MobilityGpuKernel11Gate, MOBILITY_GPU_KERNEL11_ENVELOPE_FRAME_COUNT,
-    MOBILITY_GPU_KERNEL11_ENVELOPE_REPLAYS_PER_VARIANT,
+    stream_cpu_checksum_from_frames, zero_cost_budget_envelope,
+    MobilityGpuKernel0ParityClassification, MobilityGpuKernel11FixtureInput,
+    MobilityGpuKernel11ForbiddenPathRequests, MobilityGpuKernel11Gate,
+    MOBILITY_GPU_KERNEL11_ENVELOPE_FRAME_COUNT, MOBILITY_GPU_KERNEL11_ENVELOPE_REPLAYS_PER_VARIANT,
     MOBILITY_GPU_KERNEL11_ENVELOPE_REPLAY_DISPATCH_ATTEMPTS,
     MOBILITY_GPU_KERNEL11_ENVELOPE_ROW_COUNT_PER_VARIANT,
     MOBILITY_GPU_KERNEL11_ENVELOPE_TOTAL_ROWS_PROCESSED,
     MOBILITY_GPU_KERNEL11_ENVELOPE_VARIANTS_PER_FRAME,
-    MOBILITY_GPU_KERNEL11_ENVELOPE_VARIANT_DISPATCH_ATTEMPTS,
-    MOBILITY_GPU_KERNEL11_FIXTURE_ID, MOBILITY_GPU_KERNEL11_NAMED_GATE,
-    MOBILITY_GPU_KERNEL11_NEW_SHADER_TEXT_ADDED, MOBILITY_GPU_KERNEL11_USES_WALL_CLOCK,
-    MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID, zero_cost_budget_envelope,
+    MOBILITY_GPU_KERNEL11_ENVELOPE_VARIANT_DISPATCH_ATTEMPTS, MOBILITY_GPU_KERNEL11_FIXTURE_ID,
+    MOBILITY_GPU_KERNEL11_NAMED_GATE, MOBILITY_GPU_KERNEL11_NEW_SHADER_TEXT_ADDED,
+    MOBILITY_GPU_KERNEL11_USES_WALL_CLOCK, MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID,
 };
 
 fn fixture_input() -> MobilityGpuKernel11FixtureInput {
@@ -76,7 +75,13 @@ fn mobility_gpu_kernel11_budget_registration_only_zero_dispatches() {
     });
     assert!(report.registration_only_zero_dispatches);
     assert!(report.budget_evaluation.within_envelope);
-    assert_eq!(report.kernel10_report.accounting.total_replay_dispatch_attempts, 0);
+    assert_eq!(
+        report
+            .kernel10_report
+            .accounting
+            .total_replay_dispatch_attempts,
+        0
+    );
     assert_eq!(report.kernel10_report.accounting.total_rows_processed, 0);
 }
 
@@ -94,7 +99,10 @@ fn mobility_gpu_kernel11_budget_uses_registered_node() {
 fn mobility_gpu_kernel11_budget_reuses_kernel10_accounting() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
     assert!(report.reuses_kernel10_accounting);
-    assert_eq!(report.kernel10_fixture_id, "mobility_gpu_kernel10_stream_accounting_fixture");
+    assert_eq!(
+        report.kernel10_fixture_id,
+        "mobility_gpu_kernel10_stream_accounting_fixture"
+    );
     assert_eq!(
         report.kernel10_accounting_id,
         "mobility_gpu_kernel10_deterministic_stream_accounting_summary"
@@ -120,9 +128,18 @@ fn mobility_gpu_kernel11_budget_reuses_kernel9_frame_stream() {
 fn mobility_gpu_kernel11_budget_counts_match_expected_envelope() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
     let accounting = &report.kernel10_report.accounting;
-    assert_eq!(accounting.frame_count, MOBILITY_GPU_KERNEL11_ENVELOPE_FRAME_COUNT);
-    assert_eq!(accounting.variants_per_frame, MOBILITY_GPU_KERNEL11_ENVELOPE_VARIANTS_PER_FRAME);
-    assert_eq!(accounting.replays_per_variant, MOBILITY_GPU_KERNEL11_ENVELOPE_REPLAYS_PER_VARIANT);
+    assert_eq!(
+        accounting.frame_count,
+        MOBILITY_GPU_KERNEL11_ENVELOPE_FRAME_COUNT
+    );
+    assert_eq!(
+        accounting.variants_per_frame,
+        MOBILITY_GPU_KERNEL11_ENVELOPE_VARIANTS_PER_FRAME
+    );
+    assert_eq!(
+        accounting.replays_per_variant,
+        MOBILITY_GPU_KERNEL11_ENVELOPE_REPLAYS_PER_VARIANT
+    );
     assert!(report.budget_evaluation.within_envelope);
 }
 
@@ -144,11 +161,17 @@ fn mobility_gpu_kernel11_budget_rows_match_expected_envelope() {
 fn mobility_gpu_kernel11_budget_dispatch_attempts_match_expected_envelope() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
     assert_eq!(
-        report.kernel10_report.accounting.total_variant_dispatch_attempts,
+        report
+            .kernel10_report
+            .accounting
+            .total_variant_dispatch_attempts,
         MOBILITY_GPU_KERNEL11_ENVELOPE_VARIANT_DISPATCH_ATTEMPTS
     );
     assert_eq!(
-        report.kernel10_report.accounting.total_replay_dispatch_attempts,
+        report
+            .kernel10_report
+            .accounting
+            .total_replay_dispatch_attempts,
         MOBILITY_GPU_KERNEL11_ENVELOPE_REPLAY_DISPATCH_ATTEMPTS
     );
     assert!(report.budget_evaluation.within_envelope);
@@ -194,7 +217,10 @@ fn mobility_gpu_kernel11_budget_preserves_kernel10_checksums() {
     assert!(report.preserves_kernel10_checksums);
     assert!(report.kernel10_report.stream_checksum_matches_kernel9);
     assert_eq!(
-        report.kernel10_report.accounting.aggregate_cpu_stream_checksum,
+        report
+            .kernel10_report
+            .accounting
+            .aggregate_cpu_stream_checksum,
         stream_cpu_checksum_from_frames(&report.kernel10_report.kernel9_report.frames)
     );
 }
@@ -252,7 +278,9 @@ fn mobility_gpu_kernel11_budget_rejects_over_budget_fake_rows() {
     let fake = fake_over_budget_rows_accounting(&report.kernel10_report.accounting);
     let evaluation = evaluate_stream_budget_envelope(&fake, &active_stream_budget_envelope());
     assert!(!evaluation.within_envelope);
-    assert!(evaluation.diagnostics.contains(&"kernel11_budget_rows_over_envelope"));
+    assert!(evaluation
+        .diagnostics
+        .contains(&"kernel11_budget_rows_over_envelope"));
 }
 
 #[test]
@@ -270,7 +298,8 @@ fn mobility_gpu_kernel11_budget_rejects_over_budget_fake_dispatches() {
 fn mobility_gpu_kernel11_budget_failure_diagnostics_are_deterministic() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
     let fake_rows = fake_over_budget_rows_accounting(&report.kernel10_report.accounting);
-    let fake_dispatches = fake_over_budget_dispatches_accounting(&report.kernel10_report.accounting);
+    let fake_dispatches =
+        fake_over_budget_dispatches_accounting(&report.kernel10_report.accounting);
     let envelope = active_stream_budget_envelope();
     let rows_eval_a = evaluate_stream_budget_envelope(&fake_rows, &envelope);
     let rows_eval_b = evaluate_stream_budget_envelope(&fake_rows, &envelope);
@@ -319,7 +348,9 @@ fn mobility_gpu_kernel11_budget_no_semantic_or_raw_wgsl() {
     assert!(!run_mobility_gpu_kernel11_fixture(&fixture_input()).semantic_or_raw_wgsl_present);
     let mut forbidden = MobilityGpuKernel11ForbiddenPathRequests::default();
     forbidden.semantic_or_raw_wgsl = true;
-    assert!(rejected_with(forbidden).diagnostics.contains(&"semantic_or_raw_wgsl"));
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"semantic_or_raw_wgsl"));
 }
 
 #[test]

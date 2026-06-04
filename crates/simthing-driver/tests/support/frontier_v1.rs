@@ -515,7 +515,9 @@ pub fn build_route_replay_summary(
     }
 }
 
-pub fn build_sead_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1SeadReplaySummary {
+pub fn build_sead_replay_summary(
+    cpu_output: &FrontierV1FixtureOutput,
+) -> FrontierV1SeadReplaySummary {
     FrontierV1SeadReplaySummary {
         event_count: cpu_output.event_count,
         proposal_count: cpu_output.proposal_count,
@@ -584,13 +586,34 @@ pub fn hash_live_self_ai_summary(summary: FrontierV1LiveSelfAiSummary) -> u64 {
     h = fnv_append_u32(h, (summary.route_summary_hash >> 32) as u32);
     h = fnv_append_u32(h, summary.overflow_flags);
     h = fnv_append_u32(h, live_self_ai_field_status_code(summary.mapping_status));
-    h = fnv_append_u32(h, live_self_ai_field_status_code(summary.resource_flow_status));
-    h = fnv_append_u32(h, live_self_ai_field_status_code(summary.self_ai_resource_route_status));
-    h = fnv_append_u32(h, live_self_ai_field_status_code(summary.feedback_candidate_status));
-    h = fnv_append_u32(h, live_self_ai_field_status_code(summary.full_sead_pipe_status));
-    h = fnv_append_u32(h, live_self_ai_field_status_code(summary.structural_route_status));
-    h = fnv_append_u32(h, live_self_ai_field_status_code(summary.movement_route_status));
-    h = fnv_append_u32(h, u32::from(summary.frontier_v2_status == FrontierV2Status::NotImplemented));
+    h = fnv_append_u32(
+        h,
+        live_self_ai_field_status_code(summary.resource_flow_status),
+    );
+    h = fnv_append_u32(
+        h,
+        live_self_ai_field_status_code(summary.self_ai_resource_route_status),
+    );
+    h = fnv_append_u32(
+        h,
+        live_self_ai_field_status_code(summary.feedback_candidate_status),
+    );
+    h = fnv_append_u32(
+        h,
+        live_self_ai_field_status_code(summary.full_sead_pipe_status),
+    );
+    h = fnv_append_u32(
+        h,
+        live_self_ai_field_status_code(summary.structural_route_status),
+    );
+    h = fnv_append_u32(
+        h,
+        live_self_ai_field_status_code(summary.movement_route_status),
+    );
+    h = fnv_append_u32(
+        h,
+        u32::from(summary.frontier_v2_status == FrontierV2Status::NotImplemented),
+    );
     h
 }
 
@@ -627,7 +650,8 @@ pub fn cpu_live_self_ai_oracle(
     field_feedback_code: u32,
 ) -> FrontierV1LiveSelfAiOracleOutput {
     let cpu = run_frontier_v1_fixture(skeleton, config);
-    let gpu_rf = gpu_resource_flow_from_cpu_oracle(cpu.resource_flow, FRONTIER_V1_ALLOCATOR_ROUTE_CODE);
+    let gpu_rf =
+        gpu_resource_flow_from_cpu_oracle(cpu.resource_flow, FRONTIER_V1_ALLOCATOR_ROUTE_CODE);
     let mut overflow_flags = 0u32;
     if cpu.mapping.overflow {
         overflow_flags |= 1;
@@ -939,7 +963,10 @@ pub fn run_frontier_v1_fixture(
     }
 }
 
-fn validate_default_off(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
+fn validate_default_off(
+    skeleton: &FrontierV1ScenarioSkeleton,
+    rejected: &mut Vec<&'static str>,
+) -> bool {
     let mut ok = true;
     if skeleton.enabled_by_default {
         rejected.push("profile must not be enabled by default");
@@ -957,7 +984,9 @@ fn validate_default_off(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Ve
         rejected.push("mapping execution profile must not default-on");
         ok = false;
     }
-    if skeleton.enabled_by_default && skeleton.resource_flow_opt_in != ResourceFlowOptInMode::Disabled {
+    if skeleton.enabled_by_default
+        && skeleton.resource_flow_opt_in != ResourceFlowOptInMode::Disabled
+    {
         rejected.push("resource flow must not default-on");
         ok = false;
     }
@@ -972,7 +1001,10 @@ fn validate_default_off(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Ve
     ok
 }
 
-fn validate_mapping(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
+fn validate_mapping(
+    skeleton: &FrontierV1ScenarioSkeleton,
+    rejected: &mut Vec<&'static str>,
+) -> bool {
     let t = skeleton.theater;
     let mut ok = true;
     if t.theater_count != 1 {
@@ -1025,7 +1057,10 @@ fn validate_mapping(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'
     ok
 }
 
-fn validate_flat_star(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
+fn validate_flat_star(
+    skeleton: &FrontierV1ScenarioSkeleton,
+    rejected: &mut Vec<&'static str>,
+) -> bool {
     let rf = skeleton.resource_flow;
     let mut ok = true;
     if skeleton.factions.len() != 2 {
@@ -1075,7 +1110,10 @@ fn validate_flat_star(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<
     ok
 }
 
-fn validate_sead_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
+fn validate_sead_routing(
+    skeleton: &FrontierV1ScenarioSkeleton,
+    rejected: &mut Vec<&'static str>,
+) -> bool {
     let s = skeleton.sead;
     let mut ok = true;
     if s.pipeline_version != SeadPipelineVersion::ProposalPipelineV1 {
@@ -1117,7 +1155,10 @@ fn validate_sead_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut V
     ok
 }
 
-fn validate_coupling(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
+fn validate_coupling(
+    skeleton: &FrontierV1ScenarioSkeleton,
+    rejected: &mut Vec<&'static str>,
+) -> bool {
     let c = skeleton.coupling;
     let mut ok = true;
     let coupling_profile_ok = skeleton.profile_name == FRONTIER_V1_PROFILE_NAME

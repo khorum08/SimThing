@@ -10,8 +10,8 @@ mod mobility_gpu_kernel6_chain_fixture;
 
 use mobility_gpu_kernel6_chain_fixture::{
     run_mobility_gpu_kernel6_fixture, MobilityGpuKernel6FixtureInput,
-    MobilityGpuKernel6ForbiddenPathRequests, MobilityGpuKernel6Gate,
-    MOBILITY_GPU_KERNEL6_CHAIN_ID, MOBILITY_GPU_KERNEL6_FIXTURE_ID,
+    MobilityGpuKernel6ForbiddenPathRequests, MobilityGpuKernel6Gate, MOBILITY_GPU_KERNEL6_CHAIN_ID,
+    MOBILITY_GPU_KERNEL6_FIXTURE_ID,
 };
 
 pub use mobility_gpu_kernel6_chain_fixture::{
@@ -218,17 +218,18 @@ pub fn run_mobility_gpu_kernel7_fixture(
         && iteration_reports
             .iter()
             .all(|report| report.cpu_chain_checksum == cpu_chain_checksum);
-    let gpu_checksums_stable_or_unavailable = iteration_reports.iter().all(|report| {
-        match report.parity_classification {
-            MobilityGpuKernel0ParityClassification::ExactParity => {
-                report.gpu_chain_checksum == gpu_chain_checksum && gpu_chain_checksum.is_some()
-            }
-            MobilityGpuKernel0ParityClassification::GpuUnavailable => {
-                report.gpu_chain_checksum.is_none() && !report.gpu_dispatch_occurred
-            }
-            MobilityGpuKernel0ParityClassification::GpuExecutionFailed => false,
-        }
-    });
+    let gpu_checksums_stable_or_unavailable =
+        iteration_reports
+            .iter()
+            .all(|report| match report.parity_classification {
+                MobilityGpuKernel0ParityClassification::ExactParity => {
+                    report.gpu_chain_checksum == gpu_chain_checksum && gpu_chain_checksum.is_some()
+                }
+                MobilityGpuKernel0ParityClassification::GpuUnavailable => {
+                    report.gpu_chain_checksum.is_none() && !report.gpu_dispatch_occurred
+                }
+                MobilityGpuKernel0ParityClassification::GpuExecutionFailed => false,
+            });
     let parity_classification = if iteration_reports.iter().all(|report| {
         report.parity_classification == MobilityGpuKernel0ParityClassification::ExactParity
     }) {
@@ -383,7 +384,9 @@ fn shell(input: &MobilityGpuKernel7FixtureInput) -> MobilityGpuKernel7FixtureRep
     }
 }
 
-fn disabled_no_op_report(input: &MobilityGpuKernel7FixtureInput) -> MobilityGpuKernel7FixtureReport {
+fn disabled_no_op_report(
+    input: &MobilityGpuKernel7FixtureInput,
+) -> MobilityGpuKernel7FixtureReport {
     let mut report = shell(input);
     report.admitted = true;
     report.disabled_no_op = true;

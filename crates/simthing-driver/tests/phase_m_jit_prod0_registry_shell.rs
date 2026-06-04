@@ -447,10 +447,7 @@ fn build_combined_cohort_batch(
             len,
         });
     }
-    CohortObserverBatch {
-        combined,
-        segments,
-    }
+    CohortObserverBatch { combined, segments }
 }
 
 fn oracle_sample_indices(segment_len: usize) -> Vec<usize> {
@@ -475,7 +472,9 @@ fn run_fusion_gpu(
     height: u32,
     n_dims: u32,
 ) -> FusionRunResult {
-    let _exec_guard = EXECUTION_CHECK_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    let _exec_guard = EXECUTION_CHECK_MUTEX
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     EXECUTION_HELPER_INVOKED.store(true, Ordering::SeqCst);
 
     let device = &ctx.device;
@@ -573,11 +572,13 @@ fn run_fusion_gpu(
 
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("jit_prod0_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("jit_prod0_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("jit_prod0_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -660,12 +661,24 @@ fn assert_fusion_parity(
     gpu_outputs: &[ObserverScoreOutput],
     context: &str,
 ) {
-    assert_eq!(gpu_outputs.len(), observers.len(), "{context}: length mismatch");
+    assert_eq!(
+        gpu_outputs.len(),
+        observers.len(),
+        "{context}: length mismatch"
+    );
     for (i, obs) in observers.iter().enumerate() {
         let cpu = cpu_fusion_oracle(fields, width, height, n_dims, *obs);
         let gpu = gpu_outputs[i];
-        assert_eq!(gpu.dx.to_bits(), cpu.dx.to_bits(), "{context} observer {i} dx");
-        assert_eq!(gpu.dy.to_bits(), cpu.dy.to_bits(), "{context} observer {i} dy");
+        assert_eq!(
+            gpu.dx.to_bits(),
+            cpu.dx.to_bits(),
+            "{context} observer {i} dx"
+        );
+        assert_eq!(
+            gpu.dy.to_bits(),
+            cpu.dy.to_bits(),
+            "{context} observer {i} dy"
+        );
         assert_eq!(
             gpu.descent_x.to_bits(),
             cpu.descent_x.to_bits(),
@@ -676,7 +689,11 @@ fn assert_fusion_parity(
             cpu.descent_y.to_bits(),
             "{context} observer {i} descent_y"
         );
-        assert_eq!(gpu.score.to_bits(), cpu.score.to_bits(), "{context} observer {i} score");
+        assert_eq!(
+            gpu.score.to_bits(),
+            cpu.score.to_bits(),
+            "{context} observer {i} score"
+        );
     }
 }
 
@@ -691,14 +708,10 @@ fn assert_segment_parity(
     for segment in &batch.segments {
         let local_indices = oracle_sample_indices(segment.len);
         let global_indices: Vec<usize> = local_indices.iter().map(|&i| segment.start + i).collect();
-        let sampled_obs: Vec<ObserverInput> = global_indices
-            .iter()
-            .map(|&i| batch.combined[i])
-            .collect();
-        let sampled_out: Vec<ObserverScoreOutput> = global_indices
-            .iter()
-            .map(|&i| gpu_outputs[i])
-            .collect();
+        let sampled_obs: Vec<ObserverInput> =
+            global_indices.iter().map(|&i| batch.combined[i]).collect();
+        let sampled_out: Vec<ObserverScoreOutput> =
+            global_indices.iter().map(|&i| gpu_outputs[i]).collect();
         assert_fusion_parity(
             fields,
             width,
@@ -811,14 +824,14 @@ fn jit_prod0_registers_exact_production_candidate_default_off() {
     let manifest = build_registry_manifest(&requests).expect("cohort manifest");
     assert_eq!(manifest.entries.len(), 1);
     let entry = &manifest.entries[0];
-    assert_eq!(
-        entry.request_ids,
-        vec!["prod0_req_alpha", "prod0_req_beta"]
-    );
+    assert_eq!(entry.request_ids, vec!["prod0_req_alpha", "prod0_req_beta"]);
     assert_eq!(entry.lane, KernelRegistryLane::TestOnlyPreview);
 
     let candidate = admit_production_candidate(entry).expect("REG-1 promotion");
-    assert_eq!(candidate.lane, KernelRegistryLane::ProductionCandidatePreview);
+    assert_eq!(
+        candidate.lane,
+        KernelRegistryLane::ProductionCandidatePreview
+    );
     assert!(candidate.default_off);
     assert!(!candidate.production_wiring);
 
@@ -835,7 +848,9 @@ fn jit_prod0_registers_exact_production_candidate_default_off() {
 
 #[test]
 fn jit_prod0_rejects_approximate_mag2_and_sqrt_candidates() {
-    let _guard = EXECUTION_CHECK_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = EXECUTION_CHECK_MUTEX
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     EXECUTION_HELPER_INVOKED.store(false, Ordering::SeqCst);
     let mut shell = fresh_shell();
 
@@ -844,7 +859,8 @@ fn jit_prod0_rejects_approximate_mag2_and_sqrt_candidates() {
     test_only
         .canonical_text
         .push_str("\n  write=mag2 authority=ApproximateDiagnostic");
-    let promotion_err = admit_production_candidate(&test_only).expect_err("mag2 must reject at REG-1");
+    let promotion_err =
+        admit_production_candidate(&test_only).expect_err("mag2 must reject at REG-1");
     assert_shell_err(promotion_err, "mag2");
 
     let candidate = promote_single_cohort_candidate(&identical_cohort_requests()).expect("promote");
@@ -892,7 +908,9 @@ fn jit_prod0_rejects_approximate_mag2_and_sqrt_candidates() {
 
 #[test]
 fn jit_prod0_rejects_semantic_or_bad_canonical_text() {
-    let _guard = EXECUTION_CHECK_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = EXECUTION_CHECK_MUTEX
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     EXECUTION_HELPER_INVOKED.store(false, Ordering::SeqCst);
     let mut shell = fresh_shell();
 
@@ -970,15 +988,13 @@ fn jit_prod0_explicit_execution_requires_registered_candidate() {
     with_gpu(|ctx| {
         let mut shell = fresh_shell();
         let requests = identical_cohort_requests();
-        let batch = build_combined_cohort_batch(
-            &[("prod0_req_alpha", 0), ("prod0_req_beta", 1)],
-            8,
-            8,
-            0,
-        );
+        let batch =
+            build_combined_cohort_batch(&[("prod0_req_alpha", 0), ("prod0_req_beta", 1)], 8, 8, 0);
         let candidate = promote_single_cohort_candidate(&requests).expect("promote");
         {
-            let _guard = EXECUTION_CHECK_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+            let _guard = EXECUTION_CHECK_MUTEX
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             EXECUTION_HELPER_INVOKED.store(false, Ordering::SeqCst);
             let err = try_execute_registered_cohort(
                 &shell,
@@ -1035,14 +1051,7 @@ fn jit_prod0_registered_exact_cohort_executes_default_off() {
         assert_eq!(batch.combined.len(), 20_000);
 
         let (registered, result) = execute_registered_cohort(
-            &mut shell,
-            ctx,
-            &requests,
-            &fields,
-            &batch,
-            width,
-            height,
-            n_dims,
+            &mut shell, ctx, &requests, &fields, &batch, width, height, n_dims,
         );
 
         assert!(registered.default_off);

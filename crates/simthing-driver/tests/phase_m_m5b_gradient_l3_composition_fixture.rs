@@ -10,10 +10,10 @@ use simthing_driver::{
 use simthing_gpu::{cpu_horizon, params_from_config, GpuContext, StructuredFieldStencilOperator};
 use simthing_sim::PipelineFlags;
 use simthing_spec::{
-    compile_eml_gadget_stack, compile_first_slice_scenario_preview, compile_region_field_preview,
+    compile_eml_gadget_stack, compile_first_slice_scenario_preview,
+    compile_region_field_frame_preview, compile_region_field_preview,
     deserialize_eml_gadget_stack_ron, deserialize_first_slice_scenario_ron,
     deserialize_region_field_ron, eval_eml_postfix, oracle_ema, oracle_weighted_accumulator,
-    compile_region_field_frame_preview,
     CompiledGradientAxis, CompiledRegionFieldOperator, EmlGadgetCompileOptions, EmlGadgetKind,
     MappingExecutionProfile, RegionFieldOperatorSpec,
 };
@@ -227,7 +227,8 @@ fn m5b_field_rons_admit_with_single_target_gradients() {
     assert_eq!(gy_preview.stencil.weight_north, -0.5);
     assert_eq!(gy_preview.stencil.weight_south, 0.5);
 
-    let fixture_blob = format!("{SCALAR_FIELD_RON}{GRADIENT_X_FIELD_RON}{GRADIENT_Y_FIELD_RON}{L3_STACK_RON}");
+    let fixture_blob =
+        format!("{SCALAR_FIELD_RON}{GRADIENT_X_FIELD_RON}{GRADIENT_Y_FIELD_RON}{L3_STACK_RON}");
     assert!(!fixture_blob.contains("GradientXY"));
     assert!(!fixture_blob.contains("output_col_x"));
     assert!(!fixture_blob.contains("output_col_y"));

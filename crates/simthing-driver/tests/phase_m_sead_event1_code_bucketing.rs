@@ -8,11 +8,10 @@ use std::time::Instant;
 
 use simthing_gpu::GpuContext;
 use simthing_spec::{
-    is_sead_event1_code_bucketing_descriptor, landed_jit_kernel_descriptors,
+    fnv1a64_hex, is_sead_event1_code_bucketing_descriptor, landed_jit_kernel_descriptors,
     validate_kernel_descriptor_admission, EventCodeBucketMembershipAuthority,
-    EventCodeBucketOrderAuthority, MAG2_Q16_SCALE, MappingExecutionProfile,
-    SEAD_EVENT1_CODE_COUNT, SEAD_EVENT1_DESCRIPTOR_ID, SEAD_PIPE0_LAYER_COUNT,
-    SQRT_F_ARTIFACT_HASH, fnv1a64_hex,
+    EventCodeBucketOrderAuthority, MappingExecutionProfile, MAG2_Q16_SCALE, SEAD_EVENT1_CODE_COUNT,
+    SEAD_EVENT1_DESCRIPTOR_ID, SEAD_PIPE0_LAYER_COUNT, SQRT_F_ARTIFACT_HASH,
 };
 
 use simthing_spec::OutputAuthority;
@@ -34,9 +33,31 @@ const Q16_SCALE_F: f32 = MAG2_Q16_SCALE as f32;
 const ORDERING_CLASS: &str = "UnspecifiedAtomicOrder";
 
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
-    "faction", "ownership", "owner", "AI", "threat", "scarcity", "opportunity", "labor", "price",
-    "logistics", "routing", "need", "demand", "supply", "personality", "drone", "SEAD", "economy",
-    "planner", "resource", "map", "urgency", "commitment", "order", "route",
+    "faction",
+    "ownership",
+    "owner",
+    "AI",
+    "threat",
+    "scarcity",
+    "opportunity",
+    "labor",
+    "price",
+    "logistics",
+    "routing",
+    "need",
+    "demand",
+    "supply",
+    "personality",
+    "drone",
+    "SEAD",
+    "economy",
+    "planner",
+    "resource",
+    "map",
+    "urgency",
+    "commitment",
+    "order",
+    "route",
 ];
 
 const FORBIDDEN_EXACT_TERMS: &[&str] = &["f64", "F64RoundDown", "SHADER_F64", "sqrt_cr_c"];
@@ -148,18 +169,12 @@ fn pack_records(records: &[EventRecord]) -> Vec<u32> {
 
 fn sort_records(records: &mut [EventRecord]) {
     records.sort_by(|a, b| {
-        (
-            a.source_index,
-            a.event_code,
-            a.state,
-            a.score_fixed,
-        )
-            .cmp(&(
-                b.source_index,
-                b.event_code,
-                b.state,
-                b.score_fixed,
-            ))
+        (a.source_index, a.event_code, a.state, a.score_fixed).cmp(&(
+            b.source_index,
+            b.event_code,
+            b.state,
+            b.score_fixed,
+        ))
     });
 }
 
@@ -177,11 +192,15 @@ fn membership_exact(expected: &[EventRecord], got: &[EventRecord]) -> bool {
 fn cpu_bucket(
     records: &[EventRecord],
     capacity_per_code: u32,
-) -> ([u32; CODE_COUNT], [u32; CODE_COUNT], [Vec<EventRecord>; CODE_COUNT], u32) {
+) -> (
+    [u32; CODE_COUNT],
+    [u32; CODE_COUNT],
+    [Vec<EventRecord>; CODE_COUNT],
+    u32,
+) {
     let mut counts = [0u32; CODE_COUNT];
     let mut overflow = [0u32; CODE_COUNT];
-    let mut buckets: [Vec<EventRecord>; CODE_COUNT] =
-        std::array::from_fn(|_| Vec::new());
+    let mut buckets: [Vec<EventRecord>; CODE_COUNT] = std::array::from_fn(|_| Vec::new());
     let mut invalid = 0u32;
     for rec in records {
         if rec.event_code == 0 {
@@ -245,11 +264,13 @@ fn run_bucketing(
 
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("sead_event1_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sead_event1_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("sead_event1_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -391,7 +412,13 @@ fn read_bucket_outcome(
         label: Some("sead_event1_readback"),
     });
     enc.copy_buffer_to_buffer(counts_buf, 0, &counts_staging, 0, (CODE_COUNT * 4) as u64);
-    enc.copy_buffer_to_buffer(overflow_buf, 0, &overflow_staging, 0, (CODE_COUNT * 4) as u64);
+    enc.copy_buffer_to_buffer(
+        overflow_buf,
+        0,
+        &overflow_staging,
+        0,
+        (CODE_COUNT * 4) as u64,
+    );
     enc.copy_buffer_to_buffer(meta_buf, 0, &meta_staging, 0, 4);
     if bucket_words > 0 {
         enc.copy_buffer_to_buffer(bucket_buf, 0, &bucket_staging, 0, bucket_words);
@@ -443,9 +470,7 @@ fn storage_entry(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
         binding,
         visibility: wgpu::ShaderStages::COMPUTE,
         ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage {
-                read_only,
-            },
+            ty: wgpu::BufferBindingType::Storage { read_only },
             has_dynamic_offset: false,
             min_binding_size: None,
         },
@@ -512,11 +537,7 @@ fn edge_bucket_cases() -> Vec<(Vec<EventRecord>, u32, &'static str)> {
             8,
             "mixed_codes",
         ),
-        (
-            vec![rec(0, 0, 0, 5), rec(1, 1, 1, 10)],
-            8,
-            "code_0_ignored",
-        ),
+        (vec![rec(0, 0, 0, 5), rec(1, 1, 1, 10)], 8, "code_0_ignored"),
         (vec![rec(0, 4, 0, 1), rec(1, 1, 1, 2)], 8, "invalid_code"),
         (
             (0..4).map(|i| rec(i, 1, 1, i as i32)).collect(),
@@ -910,8 +931,7 @@ fn run_integrated_three_pass(
             | wgpu::BufferUsages::COPY_SRC
             | wgpu::BufferUsages::COPY_DST,
     });
-    let bucket_words =
-        (CODE_COUNT as u32 * capacity_per_code.max(1) * RECORD_STRIDE) as usize;
+    let bucket_words = (CODE_COUNT as u32 * capacity_per_code.max(1) * RECORD_STRIDE) as usize;
     let bucket_records_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("bucket_records"),
         contents: bytemuck::cast_slice(&vec![0u32; bucket_words]),
@@ -990,9 +1010,7 @@ fn run_integrated_three_pass(
 
     let compact_meta_staging = staging_buf(device, 8);
     let compact_staging = staging_buf(device, (compact_words * 4) as u64);
-    let mut enc2 = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: None,
-    });
+    let mut enc2 = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     enc2.copy_buffer_to_buffer(&compact_counters_buf, 0, &compact_meta_staging, 0, 8);
     enc2.copy_buffer_to_buffer(
         &compact_records_buf,
@@ -1145,11 +1163,8 @@ fn sead_event1_pipe0_to_bucket_smoke() {
         let compact_capacity = N as u32;
         let capacity_per_code = N as u32;
         let outcome = run_integrated_three_pass(ctx, &rows, compact_capacity, capacity_per_code);
-        let ok = verify_bucket_outcome(
-            &outcome.bucket,
-            &outcome.compact_records,
-            capacity_per_code,
-        );
+        let ok =
+            verify_bucket_outcome(&outcome.bucket, &outcome.compact_records, capacity_per_code);
         println!(
             "sead_event1_pipe0_smoke: rows={N} dispatches={} event_count={} compact_overflow={} counts={:?} invalid={} membership_ok={ok}",
             outcome.dispatch_count,
@@ -1221,7 +1236,10 @@ fn sead_event1_perf_34k_warm_repeated_dispatch() {
 
 #[test]
 fn sead_event1_no_default_runtime_wiring() {
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
     let desc = landed_jit_kernel_descriptors()
         .into_iter()
         .find(|d| d.id == SEAD_EVENT1_DESCRIPTOR_ID)
@@ -1235,7 +1253,5 @@ fn sead_event1_no_default_runtime_wiring() {
     }
     let _ = EventCodeBucketMembershipAuthority::ExactAuthoritativeUnordered;
     let _ = EventCodeBucketOrderAuthority::UnspecifiedAtomicOrder;
-    println!(
-        "sead_event1_wiring: default_off=true descriptor={SEAD_EVENT1_DESCRIPTOR_ID}"
-    );
+    println!("sead_event1_wiring: default_off=true descriptor={SEAD_EVENT1_DESCRIPTOR_ID}");
 }

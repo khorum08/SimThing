@@ -4,9 +4,7 @@
 mod support;
 
 use simthing_driver::{ResourceEconomySyncError, SessionError};
-use support::{
-    emission_game_mode, open_rebellion_transfer_session, transfer_game_mode, try_gpu,
-};
+use support::{emission_game_mode, open_rebellion_transfer_session, transfer_game_mode, try_gpu};
 
 #[test]
 fn resource_economy_boundary_refresh_runs_after_structural_boundary() {
@@ -25,7 +23,10 @@ fn resource_economy_boundary_refresh_runs_after_structural_boundary() {
     assert!(uploads_before >= 1, "install sync must upload transfer ops");
 
     let summary = session.run(1).expect("boundary run with transfer flag on");
-    assert!(summary.boundaries_run >= 1, "session must execute at least one boundary");
+    assert!(
+        summary.boundaries_run >= 1,
+        "session must execute at least one boundary"
+    );
     assert!(
         session.state.accumulator_transfer_active,
         "transfer dispatch must remain active after boundary refresh"
@@ -71,7 +72,9 @@ fn resource_economy_boundary_refresh_reuploads_after_generation_change() {
     }
 
     let mut session = open_rebellion_transfer_session();
-    session.sync_resource_economy_if_enabled().expect("initial sync");
+    session
+        .sync_resource_economy_if_enabled()
+        .expect("initial sync");
     {
         let registry = session
             .spec_state
@@ -80,7 +83,9 @@ fn resource_economy_boundary_refresh_reuploads_after_generation_change() {
             .expect("registry");
         registry.generation = 2;
     }
-    session.sync_resource_economy_if_enabled().expect("generation bump sync");
+    session
+        .sync_resource_economy_if_enabled()
+        .expect("generation bump sync");
     assert_eq!(
         session.spec_state.resource_economy_uploaded_generation(),
         2,

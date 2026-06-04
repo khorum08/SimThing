@@ -21,7 +21,10 @@ fn c2_accepts_horizon_stress_algebraic_g0_spec_under_default_budget() {
     let decision = spec.evaluate();
     // Note: for the full 7.23M cell stress profile, algebraic fits the default in the model.
     // In practice admission would use the scenario-provided cell count.
-    assert!(decision.admitted || decision.estimated_algebraic_bytes.unwrap_or(u64::MAX) <= 1_610_612_736);
+    assert!(
+        decision.admitted
+            || decision.estimated_algebraic_bytes.unwrap_or(u64::MAX) <= 1_610_612_736
+    );
 }
 
 #[test]
@@ -141,7 +144,9 @@ fn c2_does_not_open_a0_b0_l3_frontierv2_5() {
 fn designer_admission_rejects_raw_wgsl_source() {
     // Core v7.8 / WGSL-GUARD-0 posture: designer/spec layer rejects semantic/raw WGSL.
     // This is the authoritative guard (not global filename lists).
-    use simthing_spec::designer_admission::{evaluate_designer_admission_request, DesignerAdmissionRequest};
+    use simthing_spec::designer_admission::{
+        evaluate_designer_admission_request, DesignerAdmissionRequest,
+    };
     let report = evaluate_designer_admission_request(DesignerAdmissionRequest::SemanticWgsl);
     assert!(!report.accepted);
 }

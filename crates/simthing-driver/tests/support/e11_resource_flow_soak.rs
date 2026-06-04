@@ -85,7 +85,10 @@ pub fn assert_soak_opt_in(soak: &ResourceFlowSoakFixture) {
     );
 }
 
-pub fn run_flat_star_soak(fx: &mut FlatStarSession, soak: &ResourceFlowSoakFixture) -> ResourceFlowSoakSummaryReport {
+pub fn run_flat_star_soak(
+    fx: &mut FlatStarSession,
+    soak: &ResourceFlowSoakFixture,
+) -> ResourceFlowSoakSummaryReport {
     assert_soak_opt_in(soak);
 
     let leaves = leaf_slots(&fx.layout);
@@ -135,14 +138,16 @@ pub fn run_flat_star_soak(fx: &mut FlatStarSession, soak: &ResourceFlowSoakFixtu
     if soak.sync_cycles > 1 {
         for &ops in &ops_samples {
             assert_eq!(
-                ops, initial_ops,
+                ops,
+                initial_ops,
                 "soak {name} op count unstable",
                 name = soak.name
             );
         }
         for &bands in &band_samples {
             assert_eq!(
-                bands, initial_bands,
+                bands,
+                initial_bands,
                 "soak {name} n_bands unstable",
                 name = soak.name
             );

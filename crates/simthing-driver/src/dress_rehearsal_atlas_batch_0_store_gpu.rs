@@ -17,8 +17,8 @@ mod store;
 pub use store::{
     canonical_materialization, canonical_pirate_shared_galactic_cell, cell_index,
     entries_at_cell_index, register_constructed_co_location_occupants,
-    store_oracle_constructed_planet_patrol_pirate, store_oracle_from_materialization,
-    ChannelKind, ChildContribution, LocationId, Owner, StoreKey, StoreOracle,
+    store_oracle_constructed_planet_patrol_pirate, store_oracle_from_materialization, ChannelKind,
+    ChildContribution, LocationId, Owner, StoreKey, StoreOracle,
 };
 
 use std::collections::HashMap;
@@ -28,7 +28,8 @@ use simthing_core::{
     EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec, ScaleSpec, SourceSpec,
 };
 use simthing_gpu::{
-    accumulator_op::set_debug_readback_allowed, AccumulatorOpSession, EmlGpuProgramTable, GpuContext,
+    accumulator_op::set_debug_readback_allowed, AccumulatorOpSession, EmlGpuProgramTable,
+    GpuContext,
 };
 
 pub const STORE_GPU_N_DIMS: u32 = 8;
@@ -40,10 +41,7 @@ pub const COL_MASKED: u32 = 3;
 const TREE_BASE: u32 = 9000;
 
 pub fn gpu_tests_requested() -> bool {
-    std::env::var("SIMTHING_RUN_GPU_TESTS")
-        .ok()
-        .as_deref()
-        == Some("1")
+    std::env::var("SIMTHING_RUN_GPU_TESTS").ok().as_deref() == Some("1")
 }
 
 pub fn requested_adapter_substring() -> Option<String> {
@@ -58,10 +56,7 @@ pub fn requested_adapter_substring() -> Option<String> {
 }
 
 pub fn require_adapter_match() -> bool {
-    std::env::var(ENV_GPU_REQUIRE_ADAPTER_MATCH)
-        .ok()
-        .as_deref()
-        == Some("1")
+    std::env::var(ENV_GPU_REQUIRE_ADAPTER_MATCH).ok().as_deref() == Some("1")
 }
 
 pub fn adapter_name_is_intel(adapter_name: &str) -> bool {
@@ -104,9 +99,9 @@ pub fn validate_adapter_selection(
     let requested_adapter_substring = requested_adapter_substring();
     let require_adapter_match = require_adapter_match();
     let selected_adapter_name = ctx.adapter.get_info().name.clone();
-    let adapter_target_matched = requested_adapter_substring.as_ref().is_none_or(|substring| {
-        adapter_name_matches_substring(&selected_adapter_name, substring)
-    });
+    let adapter_target_matched = requested_adapter_substring
+        .as_ref()
+        .is_none_or(|substring| adapter_name_matches_substring(&selected_adapter_name, substring));
     let selected_adapter_is_discrete_rtx =
         adapter_name_is_discrete_rtx_target(&selected_adapter_name);
 
@@ -241,9 +236,7 @@ fn compile_owner_channel_mask_nodes(target_owner: f32, target_channel: f32) -> V
 }
 
 fn tree_id_for_key(key: &StoreKey) -> u32 {
-    TREE_BASE
-        + encode_owner_f32(key.owner) as u32 * 16
-        + encode_channel_f32(key.channel) as u32
+    TREE_BASE + encode_owner_f32(key.owner) as u32 * 16 + encode_channel_f32(key.channel) as u32
 }
 
 fn exact_meta(tree_id: u32, name: &str, node_count: u32) -> EmlFormulaMeta {
@@ -276,7 +269,9 @@ fn register_mask_trees(registry: &mut EmlExpressionRegistry, oracle: &StoreOracl
             encode_channel_f32(entry.key.channel),
         );
         let meta = exact_meta(id, "store_gpu_owner_channel_mask", nodes.len() as u32);
-        registry.register_formula(EmlTreeId(id), meta, nodes).unwrap();
+        registry
+            .register_formula(EmlTreeId(id), meta, nodes)
+            .unwrap();
     }
 }
 
@@ -407,7 +402,10 @@ pub fn fill_values_buffer(oracle: &StoreOracle, layout: &StoreGpuFixtureLayout) 
     values
 }
 
-pub fn build_store_gpu_ops(oracle: &StoreOracle, layout: &StoreGpuFixtureLayout) -> Vec<AccumulatorOp> {
+pub fn build_store_gpu_ops(
+    oracle: &StoreOracle,
+    layout: &StoreGpuFixtureLayout,
+) -> Vec<AccumulatorOp> {
     let mut ops = Vec::new();
     let mut key_ranges: HashMap<StoreKey, (u32, u32)> = HashMap::new();
 
@@ -534,7 +532,9 @@ pub fn format_parity_report(report: &StoreGpuParityReport, gpu_tier_ran: bool) -
     let sel = &report.adapter_selection;
     lines.push(format!(
         "requested_adapter_substring: {}",
-        sel.requested_adapter_substring.as_deref().unwrap_or("<none>")
+        sel.requested_adapter_substring
+            .as_deref()
+            .unwrap_or("<none>")
     ));
     lines.push(format!(
         "require_adapter_match: {}",
@@ -544,8 +544,14 @@ pub fn format_parity_report(report: &StoreGpuParityReport, gpu_tier_ran: bool) -
         "adapter_inventory: [{}]",
         sel.adapter_inventory.join(", ")
     ));
-    lines.push(format!("selected_adapter_name: {}", sel.selected_adapter_name));
-    lines.push(format!("adapter_target_matched: {}", sel.adapter_target_matched));
+    lines.push(format!(
+        "selected_adapter_name: {}",
+        sel.selected_adapter_name
+    ));
+    lines.push(format!(
+        "adapter_target_matched: {}",
+        sel.adapter_target_matched
+    ));
     lines.push(format!(
         "selected_adapter_is_discrete_rtx: {}",
         sel.selected_adapter_is_discrete_rtx
@@ -570,10 +576,7 @@ pub fn format_parity_report(report: &StoreGpuParityReport, gpu_tier_ran: bool) -
         "  constructed_planet_patrol_pirate: {}",
         report.constructed_co_location_ok
     ));
-    lines.push(format!(
-        "parity_standard: {}",
-        report.parity_standard
-    ));
+    lines.push(format!("parity_standard: {}", report.parity_standard));
     lines.push(format!(
         "exact_match: {}/{} entries bit-exact; mismatches={}",
         report.bit_exact_matches, report.cpu_oracle_entry_count, report.bit_exact_mismatches

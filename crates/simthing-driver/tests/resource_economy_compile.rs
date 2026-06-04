@@ -41,7 +41,10 @@ fn resource_economy_materializes_valid_transfer_registration() {
     assert_eq!(op.consume, ConsumeMode::SubtractFromSource);
     assert!(matches!(op.gate, simthing_core::GateSpec::OrderBand(2)));
     assert_eq!(materialized.report.transfer_ids, vec!["t1".to_string()]);
-    assert_eq!(materialized.report.transfer_order_band_by_id.get("t1"), Some(&2));
+    assert_eq!(
+        materialized.report.transfer_order_band_by_id.get("t1"),
+        Some(&2)
+    );
 }
 
 #[test]
@@ -108,7 +111,10 @@ fn resource_economy_materializes_identity_floor_emission_registration() {
     let materialized = materialize_resource_economy_registrations(&compiled, &reg, &eml).unwrap();
 
     assert_eq!(materialized.emissions.len(), 1);
-    assert_eq!(materialized.emissions[0].formula, EmissionFormula::IdentityFloor);
+    assert_eq!(
+        materialized.emissions[0].formula,
+        EmissionFormula::IdentityFloor
+    );
     assert_eq!(materialized.emissions[0].max_emit, None);
     plan_emission_ops(&materialized.emissions, Some(&eml)).unwrap();
 }
@@ -159,7 +165,10 @@ fn resource_economy_materializes_eval_eml_emission_registration() {
         EmissionFormula::EvalEml { tree_id } => assert_eq!(tree_id.0, 42),
         other => panic!("expected EvalEml, got {other:?}"),
     }
-    assert_eq!(materialized.emissions[0].tree_id, Some(simthing_core::EmlTreeId(42)));
+    assert_eq!(
+        materialized.emissions[0].tree_id,
+        Some(simthing_core::EmlTreeId(42))
+    );
     plan_emission_ops(&materialized.emissions, Some(&eml)).unwrap();
 }
 

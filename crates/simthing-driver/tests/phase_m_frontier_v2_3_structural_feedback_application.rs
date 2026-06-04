@@ -3,10 +3,10 @@
 //! Extends FrontierV2-2 by applying structural FixtureCandidates to a fixture-only
 //! BoundaryRequest shadow queue and feeding structural context into the next tick.
 
-#[path = "support/frontier_v2.rs"]
-mod frontier_v2;
 #[path = "support/e11_flat_star.rs"]
 mod e11_flat_star;
+#[path = "support/frontier_v2.rs"]
+mod frontier_v2;
 #[path = "support/sead_v1_live_pipeline.rs"]
 mod sead_v1_live_pipeline;
 #[path = "support/sead_v1_route_replay.rs"]
@@ -21,9 +21,9 @@ use e11_flat_star::{
 use frontier_v2::*;
 use sead_v1_live_pipeline::{
     cpu_pipe0_expected_records, cpu_threshold_state_event, default_admitted_count,
-    default_admitted_table, frontier_field_observer_rows, pipe0_records_to_act2,
-    rules_for_smoke, run_act2_chain_gpu, run_pipe0_gpu, smoke_admission_rules,
-    verify_act2_chain_admission, ObserverRow,
+    default_admitted_table, frontier_field_observer_rows, pipe0_records_to_act2, rules_for_smoke,
+    run_act2_chain_gpu, run_pipe0_gpu, smoke_admission_rules, verify_act2_chain_admission,
+    ObserverRow,
 };
 use sead_v1_route_replay::validate_sead_v1_consumed;
 use simthing_driver::{
@@ -51,10 +51,7 @@ fn with_gpu<F: FnOnce(&GpuContext)>(f: F) {
 }
 
 fn smoke_fixture() -> (FrontierV1ScenarioSkeleton, FrontierV1FixtureConfig) {
-    (
-        frontier_v2_smoke_skeleton(),
-        frontier_v1_1_fixture_config(),
-    )
+    (frontier_v2_smoke_skeleton(), frontier_v1_1_fixture_config())
 }
 
 fn idx(slot: u32, col: u32, n_dims: u32) -> usize {
@@ -226,7 +223,10 @@ fn run_gpu_flat_star_allocation(
 fn assert_observer_rows_cpu_oracle(rows: &[ObserverRow]) {
     for (i, row) in rows.iter().enumerate() {
         let (state, event_code, score) = cpu_threshold_state_event(row);
-        assert_eq!(event_code, FRONTIER_V1_RESOURCE_EVENT_CODE, "row {i} event_code");
+        assert_eq!(
+            event_code, FRONTIER_V1_RESOURCE_EVENT_CODE,
+            "row {i} event_code"
+        );
         assert_eq!(state, 1, "row {i} state");
         assert!(score >= 500, "row {i} score {score}");
     }
@@ -258,12 +258,9 @@ fn run_single_live_tick(
     source_unit_id: u32,
 ) -> FrontierV2TickRun {
     let spec = frontier_v1_mapping_field_spec();
-    let mut mapping_session = FirstSliceMappingSession::open(
-        ctx,
-        MappingExecutionProfile::SparseRegionFieldV1,
-        &spec,
-    )
-    .expect("mapping session opens");
+    let mut mapping_session =
+        FirstSliceMappingSession::open(ctx, MappingExecutionProfile::SparseRegionFieldV1, &spec)
+            .expect("mapping session opens");
     mapping_session
         .queue_seeds(&gpu_seeds(config))
         .expect("queue seeds");
@@ -288,9 +285,8 @@ fn run_single_live_tick(
 
     let pipe_capacity = observer_rows.len() as u32;
     let pipe0 = run_pipe0_gpu(ctx, &observer_rows, pipe_capacity, 1, true);
-    let expected_records = cpu_pipe0_expected_records(&sead_v1_live_pipeline::cpu_event_rows(
-        &observer_rows,
-    ));
+    let expected_records =
+        cpu_pipe0_expected_records(&sead_v1_live_pipeline::cpu_event_rows(&observer_rows));
     assert_eq!(pipe0.event_count(), expected_records.len() as u32);
     assert_eq!(pipe0.overflow(), 0);
     assert!(sead_v1_live_pipeline::cpu_pipe0_membership_exact(
@@ -306,25 +302,10 @@ fn run_single_live_tick(
     let bucket_cap = 8u32;
     let prop_cap = 8u32;
     let act2 = run_act2_chain_gpu(
-        ctx,
-        &compact,
-        bucket_cap,
-        &rules,
-        prop_cap,
-        &admitted,
-        admitted_n,
-        &adm_rules,
-        1,
+        ctx, &compact, bucket_cap, &rules, prop_cap, &admitted, admitted_n, &adm_rules, 1,
     );
     verify_act2_chain_admission(
-        &act2,
-        &compact,
-        bucket_cap,
-        &rules,
-        prop_cap,
-        &admitted,
-        admitted_n,
-        &adm_rules,
+        &act2, &compact, bucket_cap, &rules, prop_cap, &admitted, admitted_n, &adm_rules,
     );
 
     let cpu_output = run_frontier_v1_fixture(skeleton, config);
@@ -335,9 +316,18 @@ fn run_single_live_tick(
 
     let mut fx = open_flat_star_gpu();
     let gpu_rf = run_gpu_flat_star_allocation(&mut fx, allocator_total);
-    assert_eq!(gpu_rf.faction_a_allocation, cpu_output.resource_flow.allocated_a);
-    assert_eq!(gpu_rf.faction_b_allocation, cpu_output.resource_flow.allocated_b);
-    assert_eq!(gpu_rf.allocator_route_code, FRONTIER_V1_ALLOCATOR_ROUTE_CODE);
+    assert_eq!(
+        gpu_rf.faction_a_allocation,
+        cpu_output.resource_flow.allocated_a
+    );
+    assert_eq!(
+        gpu_rf.faction_b_allocation,
+        cpu_output.resource_flow.allocated_b
+    );
+    assert_eq!(
+        gpu_rf.allocator_route_code,
+        FRONTIER_V1_ALLOCATOR_ROUTE_CODE
+    );
 
     let mut overflow_flags = 0u32;
     if cpu_output.mapping.overflow {
@@ -380,8 +370,7 @@ fn run_single_live_tick(
         dispatch_count,
     );
     let movement = build_evolved_movement_candidate(&feedback, mapping_hash, urgency, tick_index);
-    let structural =
-        build_evolved_structural_candidate(&feedback, mapping_hash, tick_index);
+    let structural = build_evolved_structural_candidate(&feedback, mapping_hash, tick_index);
 
     FrontierV2TickRun {
         tick_index,
@@ -412,16 +401,14 @@ fn run_structural_feedback_application(ctx: &GpuContext) -> FrontierV2Structural
     let tick1_config = apply_feedback_to_config(&base_config, &tick0.feedback);
     let tick1 = run_single_live_tick(ctx, &skeleton, &tick1_config, 1, 0);
 
-    let shadow_after =
-        apply_structural_to_boundary_request_shadow(&tick1.structural, 0, 1)
-            .expect("BoundaryRequest shadow write");
+    let shadow_after = apply_structural_to_boundary_request_shadow(&tick1.structural, 0, 1)
+        .expect("BoundaryRequest shadow write");
     assert_eq!(shadow_after.route_code, FRONTIER_V1_STRUCTURAL_ROUTE_CODE);
     assert!(shadow_after.applied);
 
     let structural_feedback_code = derive_next_tick_structural_feedback_code(&shadow_after);
     let tick2_base = apply_feedback_to_config(&tick1_config, &tick1.feedback);
-    let tick2_config =
-        apply_structural_feedback_to_config(&tick2_base, structural_feedback_code);
+    let tick2_config = apply_structural_feedback_to_config(&tick2_base, structural_feedback_code);
     let tick2 = run_single_live_tick(ctx, &skeleton, &tick2_config, 2, 0);
 
     let structural_feedback_delta_hash = hash_structural_feedback_delta(
@@ -431,8 +418,9 @@ fn run_structural_feedback_application(ctx: &GpuContext) -> FrontierV2Structural
         tick1.mapping_hash,
         tick2.mapping_hash,
     );
-    let overflow_flags =
-        tick0.feedback.overflow_flags | tick1.feedback.overflow_flags | tick2.feedback.overflow_flags;
+    let overflow_flags = tick0.feedback.overflow_flags
+        | tick1.feedback.overflow_flags
+        | tick2.feedback.overflow_flags;
 
     let summary = FrontierV2StructuralFeedbackSummary {
         tick0_structural_hash: hash_structural_candidate(tick0.structural),
@@ -562,9 +550,7 @@ fn frontier_v2_3_rejects_invalid_structural_route() {
     ));
     assert!(!sim_lib.contains("FrontierV2BoundaryRequestShadow"));
 
-    println!(
-        "frontier_v2_3_invalid_route: rejected=true fixture_id={FRONTIER_V2_3_FIXTURE_ID}"
-    );
+    println!("frontier_v2_3_invalid_route: rejected=true fixture_id={FRONTIER_V2_3_FIXTURE_ID}");
 }
 
 #[test]
@@ -598,11 +584,8 @@ fn frontier_v2_3_cpu_oracle_parity() {
             (&run.tick1, tick1_config),
             (&run.tick2, tick2_config),
         ] {
-            let exp_structural = expected_evolved_structural(
-                &tick.feedback,
-                tick.mapping_hash,
-                tick.tick_index,
-            );
+            let exp_structural =
+                expected_evolved_structural(&tick.feedback, tick.mapping_hash, tick.tick_index);
             assert_eq!(tick.structural, exp_structural);
 
             let cpu = run_frontier_v1_fixture(&skeleton, &config);
@@ -620,17 +603,17 @@ fn frontier_v2_3_cpu_oracle_parity() {
                 tick.feedback.faction_a_allocation,
                 cpu.resource_flow.allocated_a
             );
-            assert_eq!(tick.feedback.faction_b_allocation, oracle.faction_b_allocation);
+            assert_eq!(
+                tick.feedback.faction_b_allocation,
+                oracle.faction_b_allocation
+            );
             assert_eq!(oracle.invalid_route_count, 0);
             assert_eq!(tick.feedback.overflow_flags, oracle.overflow_flags);
         }
 
-        let expected_shadow = apply_structural_to_boundary_request_shadow(
-            &run.tick1.structural,
-            0,
-            1,
-        )
-        .expect("oracle shadow write");
+        let expected_shadow =
+            apply_structural_to_boundary_request_shadow(&run.tick1.structural, 0, 1)
+                .expect("oracle shadow write");
         assert_eq!(run.shadow_after, expected_shadow);
         assert_eq!(
             run.structural_feedback_code,
@@ -672,8 +655,14 @@ fn frontier_v2_3_replay_reproducibility() {
 
 #[test]
 fn frontier_v2_3_defaults_remain_disabled() {
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
-    assert_eq!(ResourceFlowOptInMode::default(), ResourceFlowOptInMode::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
+    assert_eq!(
+        ResourceFlowOptInMode::default(),
+        ResourceFlowOptInMode::Disabled
+    );
     assert_eq!(
         ResourceFlowExecutionProfile::default(),
         ResourceFlowExecutionProfile::DefaultDisabled
@@ -721,22 +710,29 @@ fn frontier_v2_3_resource_route_stays_allocator_only() {
     assert!(!validate_frontier_v2_admission(&commitment).accepted);
 
     let _ = config;
-    println!(
-        "frontier_v2_3_allocator: rejects=true fixture_id={FRONTIER_V2_3_FIXTURE_ID}"
-    );
+    println!("frontier_v2_3_allocator: rejects=true fixture_id={FRONTIER_V2_3_FIXTURE_ID}");
 }
 
 #[test]
 fn frontier_v2_3_deferred_features_reject() {
     let deferred: [(&str, Box<dyn Fn(&mut FrontierV1ScenarioSkeleton)>); 10] = [
         ("atlas", Box::new(|s| s.theater.request_atlas = true)),
-        ("active_mask", Box::new(|s| s.theater.request_active_mask = true)),
-        ("perception", Box::new(|s| s.theater.request_perception = true)),
+        (
+            "active_mask",
+            Box::new(|s| s.theater.request_active_mask = true),
+        ),
+        (
+            "perception",
+            Box::new(|s| s.theater.request_perception = true),
+        ),
         (
             "source_identity",
             Box::new(|s| s.theater.request_source_identity = true),
         ),
-        ("nested_e11b", Box::new(|s| s.resource_flow.nested_e11b = true)),
+        (
+            "nested_e11b",
+            Box::new(|s| s.resource_flow.nested_e11b = true),
+        ),
         (
             "e11b_5",
             Box::new(|s| s.resource_flow.e11b_5_dynamic_enrollment = true),
@@ -763,9 +759,7 @@ fn frontier_v2_3_deferred_features_reject() {
             "{label} should reject"
         );
     }
-    println!(
-        "frontier_v2_3_deferred: rejects=true fixture_id={FRONTIER_V2_3_FIXTURE_ID}"
-    );
+    println!("frontier_v2_3_deferred: rejects=true fixture_id={FRONTIER_V2_3_FIXTURE_ID}");
 }
 
 #[test]
@@ -783,18 +777,19 @@ fn frontier_v2_3_no_simthing_sim_semantic_awareness() {
         "proposal",
         "ResourceFlow",
     ] {
-        assert!(!sim_lib.contains(needle), "simthing-sim must not contain `{needle}`");
+        assert!(
+            !sim_lib.contains(needle),
+            "simthing-sim must not contain `{needle}`"
+        );
     }
-    println!(
-        "frontier_v2_3_sim: semantic_free=true fixture_id={FRONTIER_V2_3_FIXTURE_ID}"
-    );
+    println!("frontier_v2_3_sim: semantic_free=true fixture_id={FRONTIER_V2_3_FIXTURE_ID}");
 }
 
 #[test]
 fn frontier_v2_3_no_unauthorized_gpu_primitive() {
-    let frontier_descriptor = landed_jit_kernel_descriptors().into_iter().find(|d| {
-        d.id.contains("frontier_v2_3") || d.id.contains("structural_feedback")
-    });
+    let frontier_descriptor = landed_jit_kernel_descriptors()
+        .into_iter()
+        .find(|d| d.id.contains("frontier_v2_3") || d.id.contains("structural_feedback"));
     assert!(frontier_descriptor.is_none());
 
     let wgsl_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/wgsl");
@@ -813,16 +808,13 @@ fn frontier_v2_3_no_unauthorized_gpu_primitive() {
             );
         }
     }
-    println!(
-        "frontier_v2_3_gpu: no_new_primitive=true fixture_id={FRONTIER_V2_3_FIXTURE_ID}"
-    );
+    println!("frontier_v2_3_gpu: no_new_primitive=true fixture_id={FRONTIER_V2_3_FIXTURE_ID}");
 }
 
 #[test]
 fn frontier_v2_3_no_implementer_self_acceptance() {
-    let report_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
-        "../../docs/tests/phase_m_frontier_v2_3_structural_feedback_application_results.md",
-    );
+    let report_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/tests/phase_m_frontier_v2_3_structural_feedback_application_results.md");
     let report = std::fs::read_to_string(&report_path).expect("V2-3 results report must exist");
     let forbidden = [
         "Phase M closed",
@@ -839,7 +831,5 @@ fn frontier_v2_3_no_implementer_self_acceptance() {
     }
     assert!(report.contains("NotImplemented") || report.contains("not implemented"));
     assert!(report.contains("BoundaryRequestShadowWrite"));
-    println!(
-        "frontier_v2_3_no_self_accept: report_ok=true fixture_id={FRONTIER_V2_3_FIXTURE_ID}"
-    );
+    println!("frontier_v2_3_no_self_accept: report_ok=true fixture_id={FRONTIER_V2_3_FIXTURE_ID}");
 }

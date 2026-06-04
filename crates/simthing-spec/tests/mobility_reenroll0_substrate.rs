@@ -89,9 +89,10 @@ fn reenroll_bilateral_origin_destination_accounting() {
         .final_live_slices
         .iter()
         .any(|slice| slice.entity_id == 100 && slice.parent_key == key(1, 10)));
-    assert!(report.final_live_slices.iter().any(|slice| {
-        slice.entity_id == 100 && slice.parent_key == key(1, 20)
-    }));
+    assert!(report
+        .final_live_slices
+        .iter()
+        .any(|slice| { slice.entity_id == 100 && slice.parent_key == key(1, 20) }));
     assert!(report
         .final_live_slices
         .iter()
@@ -358,17 +359,14 @@ fn reenroll_origin_destination_high_water_bound() {
         .map(|i| live(1, 10, i, i as u32))
         .chain((1_000..1_064).map(|i| live(1, 20, i, 96 + (i - 1_000) as u32)))
         .collect::<Vec<_>>();
-    let accepted_moves = (0..32)
-        .map(|i| mv(i, 1, 10, 1, 20, i))
-        .collect::<Vec<_>>();
-    let accepted = plan_mobility_reenroll0(&input(blocks.clone(), live_slices.clone(), accepted_moves));
+    let accepted_moves = (0..32).map(|i| mv(i, 1, 10, 1, 20, i)).collect::<Vec<_>>();
+    let accepted =
+        plan_mobility_reenroll0(&input(blocks.clone(), live_slices.clone(), accepted_moves));
     assert!(accepted.admitted, "{:?}", accepted.diagnostics);
     assert!(accepted.peak_pending_buffer_entries <= 64);
     assert!(accepted.peak_live_slots <= 128);
 
-    let rejected_moves = (0..33)
-        .map(|i| mv(i, 1, 10, 1, 20, i))
-        .collect::<Vec<_>>();
+    let rejected_moves = (0..33).map(|i| mv(i, 1, 10, 1, 20, i)).collect::<Vec<_>>();
     let rejected = plan_mobility_reenroll0(&input(blocks, live_slices, rejected_moves));
     assert!(!rejected.admitted);
     assert!(rejected
@@ -385,7 +383,12 @@ fn reenroll_scale_soak_34k_movement_churn() {
         .map(|i| {
             let cell = i % 48;
             let slot_in_cell = i / 48;
-            live(1, cell + 1, 100_000 + i, cell as u32 * 800 + slot_in_cell as u32)
+            live(
+                1,
+                cell + 1,
+                100_000 + i,
+                cell as u32 * 800 + slot_in_cell as u32,
+            )
         })
         .collect::<Vec<_>>();
     let moves = (0..34_000)

@@ -16,8 +16,6 @@ use simthing_spec::{
 };
 use std::path::Path;
 
-
-
 fn flow_subfield(name: &str, role: AccumulatorRole) -> SubFieldSpec {
     SubFieldSpec {
         role: SubFieldRole::Named(name.into()),

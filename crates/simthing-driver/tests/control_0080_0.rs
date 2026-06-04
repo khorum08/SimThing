@@ -1,7 +1,7 @@
 use simthing_driver::{
     admit_control_0080_0, replay_admit_control_0080_0, Control0080AdmissionInput,
-    Control0080Command, Control0080CommandBatch, Control0080ForbiddenRequests,
-    CONTROL_0080_0_ID, CONTROL_0080_0_SCENARIO, CONTROL_0080_0_STATUS_PASS,
+    Control0080Command, Control0080CommandBatch, Control0080ForbiddenRequests, CONTROL_0080_0_ID,
+    CONTROL_0080_0_SCENARIO, CONTROL_0080_0_STATUS_PASS,
 };
 
 fn report() -> simthing_driver::Control0080AdmissionReport {
@@ -16,9 +16,7 @@ fn rejected_with(
     admit_control_0080_0(&input)
 }
 
-fn with_commands(
-    commands: Vec<Control0080Command>,
-) -> simthing_driver::Control0080AdmissionReport {
+fn with_commands(commands: Vec<Control0080Command>) -> simthing_driver::Control0080AdmissionReport {
     let mut input = Control0080AdmissionInput::explicit_opt_in();
     input.commands = Control0080CommandBatch { commands };
     admit_control_0080_0(&input)

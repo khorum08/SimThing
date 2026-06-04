@@ -72,7 +72,11 @@ fn cpu_mag2_bits_q16(dx: i32, dy: i32) -> u32 {
 
 fn cpu_mag2_bits_q12(dx: i32, dy: i32) -> u32 {
     let sum = cpu_mag2_sum(dx, dy);
-    mag2_sum_to_f32_bits_hi_lo(sum as u32, (sum >> 32) as u32, (Q12_SCALE * Q12_SCALE) as f32)
+    mag2_sum_to_f32_bits_hi_lo(
+        sum as u32,
+        (sum >> 32) as u32,
+        (Q12_SCALE * Q12_SCALE) as f32,
+    )
 }
 
 fn cpu_mag_bits(mag2_bits: u32) -> u32 {
@@ -140,9 +144,7 @@ fn emit_wgsl(path: BenchPath, batch_count: u32) -> String {
     let limb = limb_arith_wgsl();
     let q12_scale_sq = (Q12_SCALE * Q12_SCALE) as f32;
     let body = match path {
-        BenchPath::ReadbackBaseline => {
-            "    data[base + 2u] = data[base];\n".to_string()
-        }
+        BenchPath::ReadbackBaseline => "    data[base + 2u] = data[base];\n".to_string(),
         BenchPath::Mag2OnlyQ16 => format!(
             r#"{limb}
 fn mag2_u64_q16_to_f32_bits(sum: vec2<u32>) -> u32 {{
@@ -636,7 +638,9 @@ fn sqrt_mag2_perf0_scaled_smoke() {
             let outcome = run_bench(ctx, &pairs, BenchPath::CombinedQ16, 1, true);
             print_timing("sqrt_mag2_perf0_scaled_smoke_combined", n, &outcome);
         }
-        println!("sqrt_mag2_perf0_scaled_smoke: 1_000_000 row run skipped by default (ignored optional)");
+        println!(
+            "sqrt_mag2_perf0_scaled_smoke: 1_000_000 row run skipped by default (ignored optional)"
+        );
     });
 }
 
@@ -689,14 +693,22 @@ fn sqrt_mag2_perf0_candidate_a_q12_dense_corpus() {
             1,
             true,
         );
-        print_timing("sqrt_mag2_perf0_candidate_a_q12_combined_34k", N34K, &outcome_34k);
+        print_timing(
+            "sqrt_mag2_perf0_candidate_a_q12_combined_34k",
+            N34K,
+            &outcome_34k,
+        );
         println!(
             "sqrt_mag2_perf0_candidate_a_q12: dense={} mag2_exact={exact_mag2} mag_exact={exact_mag} q12_vs_q16_mag2_diff={q12_vs_q16_mag2_diff}/784 precision_note=Q12.12_coarser_than_Q16.16",
             rows.len()
         );
         assert_eq!(exact_mag2, rows.len());
         assert_eq!(exact_mag, rows.len());
-        print_timing("sqrt_mag2_perf0_candidate_a_q12_combined_784", rows.len(), &outcome);
+        print_timing(
+            "sqrt_mag2_perf0_candidate_a_q12_combined_784",
+            rows.len(),
+            &outcome,
+        );
     });
 }
 
@@ -767,7 +779,10 @@ fn sqrt_mag2_perf0_correctness_edge_and_dense_q16() {
                 assert_eq!(*mag2, cpu_mag2_bits_q16(*dx, *dy));
                 assert_eq!(ulp_distance(*mag, cpu_mag_bits(*mag2)), 0);
             }
-            println!("sqrt_mag2_perf0_correctness_{label}: rows={} max_ulp=0", rows.len());
+            println!(
+                "sqrt_mag2_perf0_correctness_{label}: rows={} max_ulp=0",
+                rows.len()
+            );
         }
     });
 }

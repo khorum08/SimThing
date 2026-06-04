@@ -20,9 +20,9 @@ pub use accumulator_op::{
 pub use accumulator_op_builder::{
     column_aware_reduction_op, conjunctive_recipe_registration_to_op, debt_band_next_threshold,
     discrete_transfer_registration_to_op, emit_on_threshold, emit_on_threshold_registration_to_op,
-    manual_slot_range_sum_op, refresh_emit_on_threshold_debt_band,
-    rebuild_conjunctive_recipe_ops, rebuild_discrete_transfer_ops, rebuild_emit_on_threshold_event_kinds,
-    rebuild_emit_on_threshold_ops, resource_transfer_discrete, try_conjunctive_recipe,
+    manual_slot_range_sum_op, rebuild_conjunctive_recipe_ops, rebuild_discrete_transfer_ops,
+    rebuild_emit_on_threshold_event_kinds, rebuild_emit_on_threshold_ops,
+    refresh_emit_on_threshold_debt_band, resource_transfer_discrete, try_conjunctive_recipe,
     try_resource_transfer_discrete, AccumulatorOpBuilder, AccumulatorOpBuilderError,
     ColumnAwareReductionCombine, ColumnAwareReductionSpec, ConjunctiveRecipeInput,
     ConjunctiveRecipeRegistration, DiscreteTransferRegistration, EmitOnThresholdBuffer,

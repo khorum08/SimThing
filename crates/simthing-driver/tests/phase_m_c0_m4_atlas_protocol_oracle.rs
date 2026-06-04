@@ -69,7 +69,10 @@ fn run_c0_algebraic_atlas_parity() -> Option<(f32, f32, f32, u64, u64, String, u
             shape.horizon,
             shape.n_dims,
         );
-        assert!(dispatches >= 2, "atlas path must run multiple dispatches, not per-tile fake");
+        assert!(
+            dispatches >= 2,
+            "atlas path must run multiple dispatches, not per-tile fake"
+        );
         gpu_out = Some((out, dispatches));
     });
 
@@ -101,7 +104,15 @@ fn run_c0_algebraic_atlas_parity() -> Option<(f32, f32, f32, u64, u64, String, u
     );
     let fp = combined_fingerprint_hex(protocol_hash, gpu_hash);
     let cells = (shape.tile_count as u64) * (shape.tile_size() as u64) * (shape.tile_size() as u64);
-    Some((full_tile, l_inf, corridor, protocol_hash, gpu_hash, fp, cells as u32))
+    Some((
+        full_tile,
+        l_inf,
+        corridor,
+        protocol_hash,
+        gpu_hash,
+        fp,
+        cells as u32,
+    ))
 }
 
 #[test]
@@ -125,7 +136,10 @@ fn c0_full_tile_parity_not_corridor_only() {
         return;
     };
     println!("full_tile={full_tile} corridor_t44={corridor} (corridor non-authoritative)");
-    assert!(full_tile <= 0.0001, "acceptance is full-tile, not corridor-only");
+    assert!(
+        full_tile <= 0.0001,
+        "acceptance is full-tile, not corridor-only"
+    );
     // Corridor may agree even when full-tile fails — here both should pass; document corridor is diagnostic.
     assert!(corridor <= 0.0001);
 }
@@ -135,7 +149,10 @@ fn c0_vram_multiplier_report_uses_active_budget() {
     let shape = c0_fixture_shape();
     let report = build_c0_vram_budget_report(&shape);
     println!("VRAM report: {report:#?}");
-    assert_eq!(report.active_budget_bytes, V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES);
+    assert_eq!(
+        report.active_budget_bytes,
+        V78_ATLAS_DEFAULT_VRAM_BUDGET_BYTES
+    );
     assert!(report.multiplier_reporting_required);
     assert!(report.algebraic_mask_fits_active_budget);
     assert!(report.headroom_bytes > 0);
@@ -158,7 +175,10 @@ fn c0_physical_gutter_fallback_reports_6p76x_or_formula() {
     let report = build_c0_vram_budget_report(&shape);
     // For 8×8 tiles G=H=8: multiplier = (24²)/(8²) = 9.0. For 10×10 reference: 6.76×.
     let ref_10x10 = simthing_gpu::vram_multiplier(10, 8);
-    assert!((ref_10x10 - 6.76).abs() < 0.01, "10×10 G=H=8 reference ≈ 6.76×");
+    assert!(
+        (ref_10x10 - 6.76).abs() < 0.01,
+        "10×10 G=H=8 reference ≈ 6.76×"
+    );
     let tile8 = simthing_gpu::vram_multiplier(8, shape.horizon);
     assert!((report.physical_gutter_multiplier - tile8).abs() < 1e-9);
     assert!(report.physical_gutter_bytes > report.algebraic_mask_bytes);
@@ -239,7 +259,10 @@ fn c0_rejects_non_homogeneous_square_batch_for_g0_mask() {
     shape.tile_width = 8;
     shape.tile_height = 10;
     let result = std::panic::catch_unwind(|| shape.tile_size());
-    assert!(result.is_err(), "non-square tiles must not pass G=0 homogeneous batch");
+    assert!(
+        result.is_err(),
+        "non-square tiles must not pass G=0 homogeneous batch"
+    );
 }
 
 #[test]
@@ -263,5 +286,15 @@ fn c0_cpu_protocol_oracle_matches_itself() {
         AtlasIsolationMode::FlushTileLocalMask,
         AtlasNormalizeVariant::FixedDenominator,
     );
-    assert_eq!(max_full_tile_error(&a, &b, aw, shape.tile_size(), shape.tile_count, shape.n_dims), 0.0);
+    assert_eq!(
+        max_full_tile_error(
+            &a,
+            &b,
+            aw,
+            shape.tile_size(),
+            shape.tile_count,
+            shape.n_dims
+        ),
+        0.0
+    );
 }

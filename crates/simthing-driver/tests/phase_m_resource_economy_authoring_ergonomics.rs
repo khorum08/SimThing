@@ -43,13 +43,11 @@ fn deficit_daily_economy_fixture_authoring_preview() {
 
     assert!(!preview.report.resource_flow_enabled);
     assert_eq!(preview.report.threshold_emit_count, 1);
-    assert!(
-        preview
-            .report
-            .threshold_emits
-            .iter()
-            .any(|e| e.id == "low_storage_event")
-    );
+    assert!(preview
+        .report
+        .threshold_emits
+        .iter()
+        .any(|e| e.id == "low_storage_event"));
 
     let treasury_net = preview
         .report
@@ -80,8 +78,14 @@ fn doctrine_posture_preserved_for_authoring_ergonomics_track() {
         );
     }
 
-    assert_eq!(MappingExecutionProfile::default(), MappingExecutionProfile::Disabled);
-    assert_eq!(ResourceFlowOptInMode::default(), ResourceFlowOptInMode::Disabled);
+    assert_eq!(
+        MappingExecutionProfile::default(),
+        MappingExecutionProfile::Disabled
+    );
+    assert_eq!(
+        ResourceFlowOptInMode::default(),
+        ResourceFlowOptInMode::Disabled
+    );
     assert!(!PipelineFlags::default().use_accumulator_resource_flow);
 
     let surplus = daily_economy::surplus_game_mode();
@@ -97,7 +101,11 @@ fn doctrine_posture_preserved_for_authoring_ergonomics_track() {
     }
 
     let surplus_ron = daily_economy::SURPLUS_RON;
-    assert!(surplus_ron.contains("day_index") || surplus_ron.contains("ticks_per_day") || surplus_ron.contains("daily"));
+    assert!(
+        surplus_ron.contains("day_index")
+            || surplus_ron.contains("ticks_per_day")
+            || surplus_ron.contains("daily")
+    );
     assert!(!surplus_ron.contains("DailyResolutionBoundary"));
 }
 

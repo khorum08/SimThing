@@ -4,9 +4,9 @@ use std::collections::HashMap;
 
 use simthing_gpu::WorldGpuState;
 
+use crate::arena_allocation_oracle::run_arena_allocation_oracle;
 use crate::arena_allocation_sync::ResourceFlowSyncReport;
 use crate::arena_hierarchy::{ArenaTreeLayout, NodeColumnRefs};
-use crate::arena_allocation_oracle::run_arena_allocation_oracle;
 
 type CellKey = (u32, u32);
 

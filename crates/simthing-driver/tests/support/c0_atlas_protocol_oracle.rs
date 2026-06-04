@@ -64,7 +64,7 @@ pub fn build_c0_vram_budget_report(shape: &C0AtlasFixtureShape) -> C0VramBudgetR
     let algebraic_bytes = ((total_cells * bytes_per_cell) as f64
         * algebraic_multiplier
         * f64::from(buffer_multiplier))
-        .ceil() as u64;
+    .ceil() as u64;
 
     let gutter = shape.horizon;
     let physical_multiplier = vram_multiplier(tile_size, gutter);
@@ -73,9 +73,8 @@ pub fn build_c0_vram_budget_report(shape: &C0AtlasFixtureShape) -> C0VramBudgetR
     let gutter_aw = side * pitch;
     let gutter_ah = side * pitch;
     let gutter_total_cells = gutter_aw as u64 * gutter_ah as u64;
-    let physical_bytes = ((gutter_total_cells * bytes_per_cell) as f64
-        * f64::from(buffer_multiplier))
-        .ceil() as u64;
+    let physical_bytes =
+        ((gutter_total_cells * bytes_per_cell) as f64 * f64::from(buffer_multiplier)).ceil() as u64;
 
     let active = budget.max_bytes;
     let headroom = active as i64 - algebraic_bytes as i64;
@@ -169,7 +168,11 @@ pub fn build_c0_atlas_fixture_values(shape: &C0AtlasFixtureShape) -> (Vec<f32>, 
     build_flush_atlas(shape.tile_count, shape.tile_size(), shape.n_dims)
 }
 
-pub fn c0_atlas_config(width: u32, height: u32, shape: &C0AtlasFixtureShape) -> simthing_gpu::StructuredFieldStencilConfig {
+pub fn c0_atlas_config(
+    width: u32,
+    height: u32,
+    shape: &C0AtlasFixtureShape,
+) -> simthing_gpu::StructuredFieldStencilConfig {
     atlas_config(width, height, shape.horizon, shape.n_dims, false)
 }
 

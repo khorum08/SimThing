@@ -424,9 +424,12 @@ fn validate_params(input: &DisruptionDecay0082Input, diagnostics: &mut Vec<&'sta
         {
             diagnostics.push("presence_schedule_node_shape_mismatch");
         }
-        if input.presence_schedule.iter().flatten().any(|p| {
-            p.mover_presence_units < 0 || p.patrol_presence < 0
-        }) {
+        if input
+            .presence_schedule
+            .iter()
+            .flatten()
+            .any(|p| p.mover_presence_units < 0 || p.patrol_presence < 0)
+        {
             diagnostics.push("negative_presence");
         }
     }
@@ -450,8 +453,7 @@ fn run_ticks(input: &DisruptionDecay0082Input, retain_num: u64, retain_den: u64)
             let presence = presence_row[node];
             let before = disruption[node];
             // Single writer per band: this update is the sole producer of disruption[node].
-            let retained =
-                ((before as u128 * retain_num as u128) / retain_den as u128) as i64;
+            let retained = ((before as u128 * retain_num as u128) / retain_den as u128) as i64;
             let gained = presence
                 .mover_presence_units
                 .saturating_mul(input.gain_per_presence_unit);

@@ -6,8 +6,8 @@ use simthing_core::{DimensionRegistry, SimThing, SimThingKind};
 use simthing_driver::{build_execution_plan, SimSession};
 use simthing_sim::{BoundaryOutcome, FissionOutcome, PipelineFlags};
 use simthing_spec::{
-    ArenaSpec, EnrollmentSelectorSpec, FissionPolicySpec, InstallTargetSpec, PropertyKey,
-    ResourceFlowOptInMode, ResourceFlowSpec, GameModeSpec, SpecVersion, WildcardAdmissionSpec,
+    ArenaSpec, EnrollmentSelectorSpec, FissionPolicySpec, GameModeSpec, InstallTargetSpec,
+    PropertyKey, ResourceFlowOptInMode, ResourceFlowSpec, SpecVersion, WildcardAdmissionSpec,
 };
 use support::e11_burn_in_scenarios::assert_flat_star_only_no_nested_claims;
 use support::e11_flat_star::{
@@ -20,10 +20,7 @@ fn populated_flow_game_mode(opt_in: ResourceFlowOptInMode) -> GameModeSpec {
     mode
 }
 
-fn open_with_opt_in(
-    hosted_count: usize,
-    opt_in: ResourceFlowOptInMode,
-) -> SimSession {
+fn open_with_opt_in(hosted_count: usize, opt_in: ResourceFlowOptInMode) -> SimSession {
     let scenario = flat_star_scenario(hosted_count, 32);
     let mut game_mode = populated_flow_game_mode(opt_in);
     fill_explicit_participants(&mut game_mode, &scenario);
@@ -70,7 +67,11 @@ fn fission_inherit_game_mode(scenario: &simthing_driver::Scenario) -> GameModeSp
     mode
 }
 
-fn fission_scenario() -> (simthing_driver::Scenario, simthing_core::SimThingId, simthing_core::SimThingId) {
+fn fission_scenario() -> (
+    simthing_driver::Scenario,
+    simthing_core::SimThingId,
+    simthing_core::SimThingId,
+) {
     let mut root = SimThing::new(SimThingKind::World, 0);
     root.add_child(SimThing::new(SimThingKind::Cohort, 0));
     let parent_id = root.children[0].id;

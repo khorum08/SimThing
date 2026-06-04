@@ -12,8 +12,8 @@
 
 use simthing_core::eml_opcode;
 use simthing_spec::{
-    compile_eml_gadget_stack, deserialize_eml_gadget_stack_ron, eval_eml_postfix,
-    oracle_ema, oracle_weighted_accumulator, CompiledEmlGadget, EmlGadgetCompileOptions,
+    compile_eml_gadget_stack, deserialize_eml_gadget_stack_ron, eval_eml_postfix, oracle_ema,
+    oracle_weighted_accumulator, CompiledEmlGadget, EmlGadgetCompileOptions,
     MappingExecutionProfile,
 };
 use std::sync::Mutex;
@@ -34,8 +34,23 @@ const EVAL_SLOT: u32 = 0;
 // Semantic terms that must never appear in generated WGSL (designer/gameplay meaning stays at
 // the RON/spec/admission layer). Matched case-sensitively, mirroring the required `rg` scan.
 const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
-    "faction", "ownership", "owner", "AI", "threat", "scarcity", "opportunity", "labor",
-    "price", "logistics", "routing", "need", "demand", "supply", "personality", "drone", "SEAD",
+    "faction",
+    "ownership",
+    "owner",
+    "AI",
+    "threat",
+    "scarcity",
+    "opportunity",
+    "labor",
+    "price",
+    "logistics",
+    "routing",
+    "need",
+    "demand",
+    "supply",
+    "personality",
+    "drone",
+    "SEAD",
 ];
 
 // ── Test-only generic WGSL emitter ───────────────────────────────────────────────────────────
@@ -191,11 +206,13 @@ fn run_jit_gpu(ctx: &GpuContext, wgsl: &str, values_in: &[f32]) -> Vec<f32> {
 
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("jit_evaleml_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("jit_evaleml_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("jit_evaleml_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -303,9 +320,17 @@ fn jit_weighted_accumulator_gpu_matches_oracles() {
     with_gpu(|ctx| {
         let out = run_jit_gpu(ctx, &wgsl, &values);
         let gpu = out[(EVAL_SLOT * N_DIMS + out_col) as usize];
-        assert_eq!(gpu.to_bits(), cpu_postfix.to_bits(), "GPU vs eval_eml_postfix");
+        assert_eq!(
+            gpu.to_bits(),
+            cpu_postfix.to_bits(),
+            "GPU vs eval_eml_postfix"
+        );
         assert_eq!(gpu.to_bits(), cpu_interp.to_bits(), "GPU vs eval_eml_cpu");
-        assert_eq!(gpu.to_bits(), named.to_bits(), "GPU vs oracle_weighted_accumulator");
+        assert_eq!(
+            gpu.to_bits(),
+            named.to_bits(),
+            "GPU vs oracle_weighted_accumulator"
+        );
     });
 }
 
@@ -331,8 +356,15 @@ fn jit_ema_generates_semantic_free_wgsl() {
     // No hidden previous-value buffer — only the generic `values` storage is bound.
     assert!(wgsl.contains("values[base + 13u]"));
     assert!(wgsl.contains("let out_col = 13u;"));
-    assert!(wgsl.contains("bitcast<f32>("), "decay literals lowered via exact-bit bitcast");
-    assert_eq!(wgsl.matches("@binding").count(), 1, "only one generic storage binding");
+    assert!(
+        wgsl.contains("bitcast<f32>("),
+        "decay literals lowered via exact-bit bitcast"
+    );
+    assert_eq!(
+        wgsl.matches("@binding").count(),
+        1,
+        "only one generic storage binding"
+    );
 }
 
 // ── Test 4: Ema GPU output matches all oracles ────────────────────────────────────────────────
@@ -358,7 +390,11 @@ fn jit_ema_gpu_matches_oracles() {
     with_gpu(|ctx| {
         let out = run_jit_gpu(ctx, &wgsl, &values);
         let gpu = out[(EVAL_SLOT * N_DIMS + out_col) as usize];
-        assert_eq!(gpu.to_bits(), cpu_postfix.to_bits(), "GPU vs eval_eml_postfix");
+        assert_eq!(
+            gpu.to_bits(),
+            cpu_postfix.to_bits(),
+            "GPU vs eval_eml_postfix"
+        );
         assert_eq!(gpu.to_bits(), cpu_interp.to_bits(), "GPU vs eval_eml_cpu");
         assert_eq!(gpu.to_bits(), named.to_bits(), "GPU vs oracle_ema");
     });
@@ -397,8 +433,7 @@ fn jit_is_test_only_and_default_off() {
 
     // The generated shaders carry no production-coupling or simthing-sim semantics.
     let wa = compile_single_gadget(WEIGHTED_ACC_RON);
-    let wa_wgsl =
-        emit_evaleml_wgsl(&wa.nodes, wa.output_col.unwrap(), N_DIMS).expect("WA lowers");
+    let wa_wgsl = emit_evaleml_wgsl(&wa.nodes, wa.output_col.unwrap(), N_DIMS).expect("WA lowers");
     let ema = compile_single_gadget(EMA_RON);
     let ema_wgsl =
         emit_evaleml_wgsl(&ema.nodes, ema.output_col.unwrap(), N_DIMS).expect("Ema lowers");

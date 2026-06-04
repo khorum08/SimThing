@@ -32,9 +32,7 @@
 //! the CPU oracle chain a later GPU kernel is parity-checked against (I8 bit-exact parity).
 //! No gradient-follow movement (rung 4); no GPU kernel (rung 3); no CPU planner.
 
-use crate::{
-    run_disruption_decay_0080_2, DisruptionDecay0082Input, DISRUPTION_SCALE,
-};
+use crate::{run_disruption_decay_0080_2, DisruptionDecay0082Input, DISRUPTION_SCALE};
 
 pub const COMPOUND_FIELD_0080_2_ID: &str = "COMPOUND-FIELD-0080-2";
 pub const COMPOUND_FIELD_0080_2_SCENARIO: &str = "Pirate Gradient Pathfinding";
@@ -274,8 +272,7 @@ pub fn run_compound_field_0080_2(input: &CompoundField0082Input) -> CompoundFiel
     admitted_report(input, disruption_report)
 }
 
-pub fn replay_compound_field_0080_2()
--> (CompoundField0082Report, CompoundField0082Report) {
+pub fn replay_compound_field_0080_2() -> (CompoundField0082Report, CompoundField0082Report) {
     let input = CompoundField0082Input::explicit_opt_in();
     (
         run_compound_field_0080_2(&input),
@@ -540,15 +537,25 @@ fn base_report(
         Vec::new()
     };
 
-    let (patrol_repels, disrupted_still_passable, clean_node_reaches_base, final_field_ordering_correct) =
-        if !snapshots.is_empty() {
-            behavioural_diagnostics(&snapshots, node_count, tick_count)
-        } else {
-            (false, false, false, false)
-        };
+    let (
+        patrol_repels,
+        disrupted_still_passable,
+        clean_node_reaches_base,
+        final_field_ordering_correct,
+    ) = if !snapshots.is_empty() {
+        behavioural_diagnostics(&snapshots, node_count, tick_count)
+    } else {
+        (false, false, false, false)
+    };
 
     let text_export = if !disabled_no_op && opt_in {
-        render_export(input, &snapshots, &final_desirability, node_count, tick_count)
+        render_export(
+            input,
+            &snapshots,
+            &final_desirability,
+            node_count,
+            tick_count,
+        )
     } else {
         String::new()
     };
@@ -614,10 +621,7 @@ fn render_export(
         BASE_DESIRABILITY,
     ));
     for pos in &input.node_positions {
-        lines.push(format!(
-            "NODE_POS|x={}|y={}",
-            pos.x, pos.y,
-        ));
+        lines.push(format!("NODE_POS|x={}|y={}", pos.x, pos.y,));
     }
     for snap in snapshots {
         lines.push(format!(

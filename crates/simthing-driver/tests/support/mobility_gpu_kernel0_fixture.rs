@@ -485,7 +485,9 @@ fn shell(input: &MobilityGpuKernel0FixtureInput) -> MobilityGpuKernel0FixtureRep
     }
 }
 
-fn disabled_no_op_report(input: &MobilityGpuKernel0FixtureInput) -> MobilityGpuKernel0FixtureReport {
+fn disabled_no_op_report(
+    input: &MobilityGpuKernel0FixtureInput,
+) -> MobilityGpuKernel0FixtureReport {
     let mut report = shell(input);
     report.admitted = true;
     report.disabled_no_op = true;
@@ -535,7 +537,8 @@ fn admitted_with_gpu(
             };
         }
         Err(_) => {
-            report.parity_classification = MobilityGpuKernel0ParityClassification::GpuExecutionFailed;
+            report.parity_classification =
+                MobilityGpuKernel0ParityClassification::GpuExecutionFailed;
         }
     }
     report

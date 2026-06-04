@@ -9,27 +9,25 @@
 
 use simthing_core::DimensionRegistry;
 use simthing_core::{
-    kind_matches, Overlay, OverlayId, PropertyValue, SimThing, SimThingId,
-    SimThingKind,
+    kind_matches, Overlay, OverlayId, PropertyValue, SimThing, SimThingId, SimThingKind,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
     compile_event, compile_property, compile_resource_economy, CapabilityEntryKey,
-    CapabilityTreeBuildOutput, CapabilityTreeBuilder, CapabilityTreeInstance,
-    CapabilityTreeSpec, CapabilityTreeState, CapabilityUnlockRegistration, DomainPackSpec,
-    EffectTarget, EventSpec, GameModeSpec, InstallTargetSpec, PropertyKey, ResourceEconomySpec,
-    SpecError,
+    CapabilityTreeBuildOutput, CapabilityTreeBuilder, CapabilityTreeInstance, CapabilityTreeSpec,
+    CapabilityTreeState, CapabilityUnlockRegistration, DomainPackSpec, EffectTarget, EventSpec,
+    GameModeSpec, InstallTargetSpec, PropertyKey, ResourceEconomySpec, SpecError,
 };
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
+use crate::arena_participant::materialize_arena_participants;
 use crate::resource_economy_compile::{
     find_property_owner, materialize_resource_economy_registry_for_session,
     ResourceEconomyCompileError,
 };
 use crate::resource_flow_compile::compile_and_materialize_resource_flow;
 use crate::resource_flow_enrollment::resolve_resource_flow_enrollment;
-use crate::arena_participant::materialize_arena_participants;
 use crate::resource_flow_preflight::validate_resource_flow_preflight;
 use crate::scenario::Scenario;
 use crate::spec_session::SpecSessionState;
@@ -59,9 +57,7 @@ pub enum InstallError {
     #[error("slot allocation error: {0}")]
     SlotAlloc(#[from] simthing_gpu::SlotAllocError),
 
-    #[error(
-        "resource flow materialization exceeds scenario n_slots ({capacity} > {cap})"
-    )]
+    #[error("resource flow materialization exceeds scenario n_slots ({capacity} > {cap})")]
     ResourceFlowSlotOverflow { capacity: usize, cap: usize },
 
     #[error("resource economy compile: {0}")]
@@ -155,8 +151,7 @@ pub fn compile_and_install(
     // ── 4b. Resource Flow admission (E-10 + E-10R): spec compile after properties,
     //      identity preflight after live slot allocation, then materialize registry.
     if let Some(resource_flow) = &game_mode.resource_flow {
-        let resolved =
-            resolve_resource_flow_enrollment(resource_flow, scenario, root, allocator)?;
+        let resolved = resolve_resource_flow_enrollment(resource_flow, scenario, root, allocator)?;
         validate_resource_flow_preflight(&resolved, allocator)?;
         let scaffold = materialize_arena_participants(&resolved, registry, root, allocator)?;
         if allocator.capacity() > n_slots_cap {
@@ -165,8 +160,7 @@ pub fn compile_and_install(
                 cap: n_slots_cap,
             });
         }
-        let (arena_registry, _report) =
-            compile_and_materialize_resource_flow(&resolved, registry)?;
+        let (arena_registry, _report) = compile_and_materialize_resource_flow(&resolved, registry)?;
         state.arena_registry = arena_registry;
         state.arena_participant_scaffold = scaffold;
     }
@@ -257,7 +251,9 @@ fn resource_economy_property_keys(spec: &ResourceEconomySpec) -> Vec<PropertyKey
     for emit in &spec.emit_on_threshold {
         keys.push(emit.source.clone());
     }
-    keys.sort_by(|a, b| (a.namespace.as_str(), a.name.as_str()).cmp(&(b.namespace.as_str(), b.name.as_str())));
+    keys.sort_by(|a, b| {
+        (a.namespace.as_str(), a.name.as_str()).cmp(&(b.namespace.as_str(), b.name.as_str()))
+    });
     keys.dedup_by(|a, b| a.namespace == b.namespace && a.name == b.name);
     keys
 }

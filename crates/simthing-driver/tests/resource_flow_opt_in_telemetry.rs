@@ -3,11 +3,11 @@
 mod support;
 
 use simthing_driver::{
-    fixture_product_disabled_spec_diagnostics, RF_T3_PRODUCT_DISABLED,
-    fixture_product_dynamic_fission_cadence, fixture_product_rejection_telemetry,
-    fixture_static_flat_star_10_participants, open_fixture_session, open_product_session,
-    run_opt_in_burn_in, run_product_soak_with_telemetry, telemetry_for_open_session,
-    ResourceFlowFlagSource,
+    fixture_product_disabled_spec_diagnostics, fixture_product_dynamic_fission_cadence,
+    fixture_product_rejection_telemetry, fixture_static_flat_star_10_participants,
+    open_fixture_session, open_product_session, run_opt_in_burn_in,
+    run_product_soak_with_telemetry, telemetry_for_open_session, ResourceFlowFlagSource,
+    RF_T3_PRODUCT_DISABLED,
 };
 use simthing_spec::ResourceFlowOptInMode;
 
@@ -20,7 +20,10 @@ fn rf_t3_telemetry_disabled_spec_reports_default_disabled() {
     let telemetry = telemetry_for_open_session(&fx, &fixture, None);
     assert_eq!(telemetry.scenario_name, RF_T3_PRODUCT_DISABLED);
     assert_eq!(telemetry.opt_in_mode, ResourceFlowOptInMode::Disabled);
-    assert_eq!(telemetry.flag_source, ResourceFlowFlagSource::DefaultDisabled);
+    assert_eq!(
+        telemetry.flag_source,
+        ResourceFlowFlagSource::DefaultDisabled
+    );
     assert!(!telemetry.resource_flow_enabled);
     assert_eq!(telemetry.participants_planned, fixture.participant_count);
     assert_eq!(telemetry.total_ops, 0);
@@ -36,7 +39,10 @@ fn rf_t3_telemetry_flat_star_opt_in_reports_spec_source() {
     let fx = open_fixture_session(&fixture).expect("open");
     let telemetry = telemetry_for_open_session(&fx, &fixture, None);
     assert_eq!(telemetry.opt_in_mode, ResourceFlowOptInMode::FlatStarOptIn);
-    assert_eq!(telemetry.flag_source, ResourceFlowFlagSource::SpecFlatStarOptIn);
+    assert_eq!(
+        telemetry.flag_source,
+        ResourceFlowFlagSource::SpecFlatStarOptIn
+    );
     assert!(telemetry.resource_flow_enabled);
 }
 

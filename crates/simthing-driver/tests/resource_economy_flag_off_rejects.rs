@@ -3,7 +3,7 @@
 #[path = "support/resource_economy_session.rs"]
 mod support;
 
-use simthing_driver::{SimSession, ResourceEconomySyncError};
+use simthing_driver::{ResourceEconomySyncError, SimSession};
 use support::{emission_game_mode, transfer_game_mode};
 
 fn open_transfer_session() -> SimSession {

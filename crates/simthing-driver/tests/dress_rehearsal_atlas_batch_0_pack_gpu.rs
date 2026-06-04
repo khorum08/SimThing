@@ -6,10 +6,10 @@ use std::sync::{Mutex, OnceLock};
 use dress_rehearsal_atlas_batch_0_pack_gpu::{
     atlas_mask_params_are_semantic_free, atlas_mask_params_for_class, canonical_pack_plan,
     format_parity_report, gpu_tests_requested, run_ec_a2b_parity_all_classes,
-    verify_g_zero_blocks_cross_tile_and_out_of_atlas, AtlasBatchPlan, GPU_PARITY_TOLERANCE,
-    PackGpuParitySummary, CLASS_GALACTIC_20X20, CLASS_PLANET_SURFACE_10X10,
-    CLASS_STAR_SYSTEM_10X10, DRESS_REHEARSAL_ATLAS_BATCH_0_PACK_GPU_ID,
-    DRESS_REHEARSAL_ATLAS_BATCH_0_PACK_GPU_STATUS_PASS,
+    verify_g_zero_blocks_cross_tile_and_out_of_atlas, AtlasBatchPlan, PackGpuParitySummary,
+    CLASS_GALACTIC_20X20, CLASS_PLANET_SURFACE_10X10, CLASS_STAR_SYSTEM_10X10,
+    DRESS_REHEARSAL_ATLAS_BATCH_0_PACK_GPU_ID, DRESS_REHEARSAL_ATLAS_BATCH_0_PACK_GPU_STATUS_PASS,
+    GPU_PARITY_TOLERANCE,
 };
 use simthing_gpu::GpuContext;
 
@@ -59,7 +59,13 @@ fn gpu_fixture_uses_accepted_pack_plan() {
     assert_eq!(plan, canonical);
     assert_eq!(plan.classes.len(), 3);
     assert_eq!(plan.tiles.len(), 27);
-    assert_eq!(plan.class(CLASS_GALACTIC_20X20).unwrap().source_location_ids.len(), 1);
+    assert_eq!(
+        plan.class(CLASS_GALACTIC_20X20)
+            .unwrap()
+            .source_location_ids
+            .len(),
+        1
+    );
     assert_eq!(
         plan.class(CLASS_STAR_SYSTEM_10X10)
             .unwrap()
@@ -114,8 +120,7 @@ fn gpu_oracle_parity_galactic_20x20() {
     assert!(
         report.passed,
         "galactic full-tile Linf {} > {}",
-        report.full_tile_l_inf,
-        GPU_PARITY_TOLERANCE
+        report.full_tile_l_inf, GPU_PARITY_TOLERANCE
     );
     println!(
         "PACK-GPU galactic: Linf={} tiles={} adapter={}",
@@ -139,8 +144,7 @@ fn gpu_oracle_parity_star_system_10x10_batch() {
     assert!(
         report.passed,
         "star-system full-tile Linf {} > {}",
-        report.full_tile_l_inf,
-        GPU_PARITY_TOLERANCE
+        report.full_tile_l_inf, GPU_PARITY_TOLERANCE
     );
     println!(
         "PACK-GPU star-system batch: Linf={} atlas={}x{}",
@@ -162,8 +166,7 @@ fn gpu_oracle_parity_planet_surface_10x10_batch() {
     assert!(
         report.passed,
         "planet-surface full-tile Linf {} > {}",
-        report.full_tile_l_inf,
-        GPU_PARITY_TOLERANCE
+        report.full_tile_l_inf, GPU_PARITY_TOLERANCE
     );
     println!(
         "PACK-GPU planet-surface batch: Linf={}",

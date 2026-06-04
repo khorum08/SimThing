@@ -6,9 +6,10 @@ use simthing_core::{
     WHITELISTED_FORMULA_CLASSES,
 };
 use simthing_gpu::{
-    accumulator_op::set_debug_readback_allowed, AccumulatorOpSession, EmlGpuProgramTable, GpuContext,
-    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig, StructuredFieldStencilMaskMode,
-    StructuredFieldStencilOp, StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy,
+    accumulator_op::set_debug_readback_allowed, AccumulatorOpSession, EmlGpuProgramTable,
+    GpuContext, StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
+    StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
+    StructuredFieldStencilSourcePolicy,
 };
 use simthing_sim::PipelineFlags;
 use std::sync::Mutex;
@@ -146,7 +147,9 @@ impl Setup {
             .map(|(t, m, n)| (t, m.clone(), n.to_vec()))
             .collect();
         for (t, ri) in table.upload_trees(ctx, &trees).unwrap() {
-            registry.mark_tree_uploaded(t, ri, table.generation).unwrap();
+            registry
+                .mark_tree_uploaded(t, ri, table.generation)
+                .unwrap();
         }
         Self { registry, table }
     }
@@ -196,7 +199,12 @@ fn test_e_column_aware_parent_eml() {
             allow_extended_horizon: false,
         };
         let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
-        let cluster = [(0u32, 0u32, 80.0f32), (0, 1, 60.0), (1, 0, 60.0), (1, 1, 40.0)];
+        let cluster = [
+            (0u32, 0u32, 80.0f32),
+            (0, 1, 60.0),
+            (1, 0, 60.0),
+            (1, 1, 40.0),
+        ];
         let mut values = vec![0.0f32; op.config().values_len()];
         for &(r, c, v) in &cluster {
             values[idx(r * GRID_W + c, COL_FIELD)] = v;
