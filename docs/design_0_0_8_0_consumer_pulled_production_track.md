@@ -560,10 +560,15 @@ are distinguished and **must not be collapsed into one figure**:
     `simthing-gpu/src/atlas_mask.rs`.)* Contract: [`handoffs/dress_rehearsal_codex_handoff_4_atlas_batch_0_pack_gpu.md`](handoffs/dress_rehearsal_codex_handoff_4_atlas_batch_0_pack_gpu.md).
   - **EC-A2b-exact (DEFERRED — separate exact-arithmetic track):** true **bit-exact** (`f32::to_bits()`)
     GPU=CPU parity. Requires a **pinned fixed-point stencil**; not achievable on the f32 path. Not PACK-GPU.
-- **EC-A3:** a Location stores its gridcell children's flow results in the correct `(x,y)` map slots, and
-  **co-located children at one `(x,y)` are preserved per-channel/per-owner and never merged** — explicit
-  test: planet + patrol + pirate in one cell → three distinct channel figures, verified vs CPU oracle.
-  **This is the OWNER masked reduction applied to co-located occupants — see §12.4 (established substrate).**
+- **EC-A3 (STORE, CPU storage shape):** a Location stores its gridcell children's flow results in the
+  correct `(location, cell, channel, owner)` slots, and **co-located children at one `(x,y)` are
+  preserved per-channel/per-owner and never blind-summed by position** — proven on a CPU oracle (the
+  10-pirate-shared-cell case + a constructed planet+patrol+pirate cell). *(Design-authority split
+  2026-06-03: STORE = CPU storage-shape proof; the **live OWNER masked-reduction runtime** — `EvalEML`
+  `CMP_EQ` + `Sum` over owner-indexed columns — is split out as **EC-A3-gpu / `ATLAS-BATCH-0-STORE-GPU`,
+  DEFERRED**, pulling the AccumulatorOp GPU runtime; its own gate. The OWNER masked-reduction runtime
+  stays parked until then / R3.)* Contract: [`handoffs/dress_rehearsal_codex_handoff_5_atlas_batch_0_store.md`](handoffs/dress_rehearsal_codex_handoff_5_atlas_batch_0_store.md).
+  The CPU oracle here is the reference the STORE-GPU slice checks against (§12.4 OWNER masked reduction).
 - **EC-A4:** the residency scheduler (M-4A) and REENROLL remain unbuilt/parked — the slice is static.
 
 **Rungs (provisional):**
