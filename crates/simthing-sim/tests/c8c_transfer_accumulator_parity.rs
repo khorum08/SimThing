@@ -172,6 +172,7 @@ fn c8c_single_source_transfer_conserves_exactly() {
         output_scale: 1.0,
         max_transfer: Some(3.0),
         tree_id: None,
+        order_band: 0,
     }];
     state
         .sync_transfer_accumulator(&regs)
@@ -213,6 +214,7 @@ fn c8c_conjunctive_transfer_min_across_inputs() {
         output_scale: 1.0,
         max_transfer: None,
         tree_id: None,
+        order_band: 0,
     }];
     state
         .sync_transfer_accumulator(&regs)
@@ -250,6 +252,7 @@ fn c8c_transfer_does_not_produce_negative_inputs() {
         output_scale: 1.0,
         max_transfer: None,
         tree_id: None,
+        order_band: 0,
     }];
     state
         .sync_transfer_accumulator(&regs)
@@ -285,6 +288,7 @@ fn c8c_transfer_1000_factories_3_channels_100_ticks_conserves_exactly() {
             output_scale: 1.0,
             max_transfer: Some(1.0),
             tree_id: None,
+            order_band: 0,
         });
     }
     state
@@ -326,6 +330,7 @@ fn c8c_transfer_contention_same_target_conserves() {
             output_scale: 1.0,
             max_transfer: Some(2.0),
             tree_id: None,
+            order_band: 0,
         },
         TransferRegistration {
             inputs: vec![TransferInputRef {
@@ -338,6 +343,7 @@ fn c8c_transfer_contention_same_target_conserves() {
             output_scale: 1.0,
             max_transfer: Some(3.0),
             tree_id: None,
+            order_band: 0,
         },
     ];
     state
@@ -370,6 +376,7 @@ fn c8c_transfer_path_no_cpu_mediated_evaluation() {
         output_scale: 1.0,
         max_transfer: Some(1.0),
         tree_id: None,
+        order_band: 0,
     }];
     state
         .sync_transfer_accumulator(&regs)
@@ -396,6 +403,7 @@ fn c8c_transfer_does_not_reupload_input_lists_per_tick() {
         output_scale: 1.0,
         max_transfer: Some(1.0),
         tree_id: None,
+        order_band: 0,
     }];
     state
         .sync_transfer_accumulator(&regs)
@@ -434,6 +442,7 @@ fn c8c_cpu_oracle_matches_single_and_conjunctive_transfer() {
         output_scale: 1.0,
         max_transfer: Some(3.0),
         tree_id: None,
+        order_band: 0,
     }];
     let plan = plan_transfer_ops(&regs).unwrap();
     let mut values = vec![10.0, 2.0];
@@ -458,6 +467,7 @@ fn c8c_cpu_oracle_matches_single_and_conjunctive_transfer() {
         output_scale: 1.0,
         max_transfer: None,
         tree_id: None,
+        order_band: 0,
     }];
     let plan = plan_transfer_ops(&conj).unwrap();
     let mut values = vec![10.0, 9.0, 0.0];
@@ -486,6 +496,7 @@ fn c8c_combined_c1_c2_c4_s4_c7_c8b_c8c_all_flags_on() {
         output_scale: 1.0,
         max_transfer: Some(1.0),
         tree_id: None,
+        order_band: 0,
     }];
     state
         .sync_transfer_accumulator(&transfer_regs)
@@ -553,6 +564,7 @@ fn c8c_rejects_same_source_single_source_transfer_contention() {
             output_scale: 1.0,
             max_transfer: Some(4.0),
             tree_id: None,
+            order_band: 0,
         },
         TransferRegistration {
             inputs: vec![TransferInputRef {
@@ -565,6 +577,7 @@ fn c8c_rejects_same_source_single_source_transfer_contention() {
             output_scale: 1.0,
             max_transfer: Some(4.0),
             tree_id: None,
+            order_band: 0,
         },
     ];
     assert_eq!(
@@ -594,6 +607,7 @@ fn c8c_rejects_overlapping_conjunctive_input_contention() {
             output_scale: 1.0,
             max_transfer: None,
             tree_id: None,
+            order_band: 0,
         },
         TransferRegistration {
             inputs: vec![
@@ -613,6 +627,7 @@ fn c8c_rejects_overlapping_conjunctive_input_contention() {
             output_scale: 1.0,
             max_transfer: None,
             tree_id: None,
+            order_band: 0,
         },
     ];
     assert_eq!(
@@ -641,6 +656,7 @@ fn c8c_allows_same_target_different_sources() {
             output_scale: 1.0,
             max_transfer: Some(2.0),
             tree_id: None,
+            order_band: 0,
         },
         TransferRegistration {
             inputs: vec![TransferInputRef {
@@ -653,6 +669,7 @@ fn c8c_allows_same_target_different_sources() {
             output_scale: 1.0,
             max_transfer: Some(3.0),
             tree_id: None,
+            order_band: 0,
         },
     ];
     state
@@ -675,6 +692,7 @@ fn c8c_rejects_zero_or_negative_unit_cost() {
         output_scale: 1.0,
         max_transfer: Some(1.0),
         tree_id: None,
+        order_band: 0,
     }];
     assert!(matches!(
         plan_transfer_ops(&regs),
@@ -695,6 +713,7 @@ fn c8c_rejects_single_source_output_scale_until_supported() {
         output_scale: 2.0,
         max_transfer: Some(1.0),
         tree_id: None,
+        order_band: 0,
     }];
     assert_eq!(
         plan_transfer_ops(&regs),
@@ -715,6 +734,7 @@ fn c8c_rejects_nonfinite_transfer_values() {
         output_scale: 1.0,
         max_transfer: Some(f32::NAN),
         tree_id: None,
+        order_band: 0,
     }];
     assert_eq!(
         plan_transfer_ops(&regs),
@@ -787,6 +807,7 @@ fn c8c_transfer_with_governed_property_requires_accumulator_velocity_or_unbounde
         output_scale: 1.0,
         max_transfer: Some(3.0),
         tree_id: None,
+        order_band: 0,
     }];
     state
         .sync_transfer_accumulator(&transfer_regs)

@@ -177,6 +177,7 @@ fn transfer_regs(cohort_slot: u32, stock_col: u32, pool_col: u32) -> Vec<Transfe
         output_scale: 1.0,
         max_transfer: Some(1.0),
         tree_id: None,
+        order_band: 0,
     }]
 }
 
