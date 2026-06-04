@@ -1,3 +1,8 @@
+# 2026-06-04 - SCENARIO-0080-2-R6A-IMPL-0: fleet-cohort Resource Flow combat implemented/pass
+
+- **Corrected R6:** PR #520 scalar HP removal replaced with fleet SimThing cohorts (10 ships × 100 HP/ship, 50 damage/ship/tick). Adversarial Resource Flow: damage reduce-up by owner channel, hostile disburse-down, emission-band ship-loss conversion, ship-count decrement, zero-cohort removal via MOBILITY-ALLOC-0 Departure. Report: [`docs/tests/scenario_0080_2_r6_combat_hp_damage_report.md`](tests/scenario_0080_2_r6_combat_hp_damage_report.md).
+- **Verified:** R6 `25/0`; R5–R1 regressions; ATLAS STORE CPU/GPU; mobility substrate tests; `cargo check --workspace` PASS. Checksum `68b5c8e2e8f3b801`. No R7, movement, BoundaryRequest, planner, WGSL, hard currency, or invariant edit.
+
 # 2026-06-04 - SCENARIO-0080-2-R6-IMPL-0: combat HP/Damage arena implemented/pass
 
 - **Implemented:** R6 dress-rehearsal combat as owner-masked HP/Damage resource-flow at R3 colocation cell `284` after R5 post-move membership; `SubtractFromSource` damage, zero-HP threshold/event, MOBILITY-ALLOC-0 defeated-fleet removal; identity/owner overlay preserved; CPU oracle parity; artifact checksum `59ee8f6e7a3b379`. Report: [`docs/tests/scenario_0080_2_r6_combat_hp_damage_report.md`](tests/scenario_0080_2_r6_combat_hp_damage_report.md).
