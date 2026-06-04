@@ -1,3 +1,8 @@
+# 2026-06-04 - SCENARIO-0080-2-R6B-IMPL-0: GPU-shaped ship production reinforcement and friendly fusion implemented/pass
+
+- **R6B:** Construction threshold (`ship_cost=100`) emits `ship_count_delta`; masked owner/cell/profile cohort selection; local `num_ships` reinforcement without movement `BoundaryRequest`; ALLOC birth when no compatible cohort; friendly fusion/compaction with MOBILITY-ALLOC-0 Departure coherence; R6 consumes updated cohort overrides. Report: [`docs/tests/scenario_0080_2_r6b_ship_cohort_reinforcement_report.md`](tests/scenario_0080_2_r6b_ship_cohort_reinforcement_report.md).
+- **Verified:** R6B `24/24`; R6 `25/25`; upstream regressions; mobility substrate; `cargo check --workspace` PASS. Checksum `f9d334bd21ed5097`. R7 remains unopened.
+
 # 2026-06-04 - SCENARIO-0080-2-R6A-IMPL-0: fleet-cohort Resource Flow combat implemented/pass
 
 - **Corrected R6:** PR #520 scalar HP removal replaced with fleet SimThing cohorts (10 ships × 100 HP/ship, 50 damage/ship/tick). Adversarial Resource Flow: damage reduce-up by owner channel, hostile disburse-down, emission-band ship-loss conversion, ship-count decrement, zero-cohort removal via MOBILITY-ALLOC-0 Departure. Report: [`docs/tests/scenario_0080_2_r6_combat_hp_damage_report.md`](tests/scenario_0080_2_r6_combat_hp_damage_report.md).

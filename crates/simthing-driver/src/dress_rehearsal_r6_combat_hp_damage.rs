@@ -176,6 +176,16 @@ pub struct DressRehearsalR6Input {
     pub r5_report: Option<DressRehearsalR5Report>,
     /// When set, R4 uses this threshold before R5 (fixture-only tuning).
     pub r4_movement_threshold_mag_bits: Option<u32>,
+    /// Post-R6B fleet cohort sizes keyed by entity id (consumes R6B reinforcement/fusion).
+    pub fleet_cohort_overrides: Option<BTreeMap<u64, DressRehearsalR6FleetCohortOverride>>,
+}
+
+/// Cohort shape consumed by R6 combat after R6B reinforcement/fusion.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DressRehearsalR6FleetCohortOverride {
+    pub num_ships: i64,
+    pub hp_per_ship: i64,
+    pub damage_per_ship_per_tick: i64,
 }
 
 impl DressRehearsalR6Input {
@@ -189,7 +199,16 @@ impl DressRehearsalR6Input {
             r4_report: None,
             r5_report: None,
             r4_movement_threshold_mag_bits: None,
+            fleet_cohort_overrides: None,
         }
+    }
+
+    pub fn with_fleet_cohort_overrides(
+        mut self,
+        overrides: BTreeMap<u64, DressRehearsalR6FleetCohortOverride>,
+    ) -> Self {
+        self.fleet_cohort_overrides = Some(overrides);
+        self
     }
 
     pub fn explicit_opt_in() -> Self {
@@ -231,6 +250,7 @@ impl DressRehearsalR6Input {
             r5_report: Some(r5_report),
             // Reserved for alternate R4 threshold experiments; canonical R6 uses MOVEMENT_THRESHOLD_MAG_BITS.
             r4_movement_threshold_mag_bits: None,
+            fleet_cohort_overrides: None,
         }
     }
 }
@@ -359,10 +379,18 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
 
         for c in &combatants {
             let bps = combat_modifier_bps(c.owner, &combat_modifiers);
+            let (num_ships, hp_per_ship, base_damage_per_ship) = input
+                .fleet_cohort_overrides
+                .as_ref()
+                .and_then(|m| m.get(&c.entity_id))
+                .map(|o| (o.num_ships, o.hp_per_ship, o.damage_per_ship_per_tick))
+                .unwrap_or((
+                    FLEET_COHORT_NUM_SHIPS,
+                    FLEET_HP_PER_SHIP,
+                    FLEET_DAMAGE_PER_SHIP_PER_TICK,
+                ));
             let damage_per_ship =
-                (FLEET_DAMAGE_PER_SHIP_PER_TICK as i128 * bps as i128 / 10_000) as i64;
-            let num_ships = FLEET_COHORT_NUM_SHIPS;
-            let hp_per_ship = FLEET_HP_PER_SHIP;
+                (base_damage_per_ship as i128 * bps as i128 / 10_000) as i64;
             let damage_output = num_ships * damage_per_ship;
             damage_output_by_entity.insert(c.entity_id, damage_output);
             cohort_by_entity.insert(c.entity_id, (num_ships, hp_per_ship, damage_per_ship));
