@@ -697,12 +697,17 @@ column-flip — each its own gate.
 > [`handoffs/dress_rehearsal_codex_handoff_4_atlas_batch_0_pack_gpu.md`](handoffs/dress_rehearsal_codex_handoff_4_atlas_batch_0_pack_gpu.md)
 > (**`ATLAS-BATCH-0-PACK-GPU`** — closed/PASS for EC-A2b GpuVerified; EC-A2b-exact deferred) ·
 > [`handoffs/dress_rehearsal_codex_handoff_5_atlas_batch_0_store.md`](handoffs/dress_rehearsal_codex_handoff_5_atlas_batch_0_store.md)
-> (**`ATLAS-BATCH-0-STORE`** — closed/PASS for EC-A3 CPU storage shape; STORE-GPU deferred).
+> (**`ATLAS-BATCH-0-STORE`** — closed/PASS for EC-A3 CPU storage shape; STORE-GPU deferred) ·
+> [`handoffs/dress_rehearsal_codex_handoff_6_store_remedial.md`](handoffs/dress_rehearsal_codex_handoff_6_store_remedial.md)
+> (STORE remedial — resolved) · [`handoffs/dress_rehearsal_codex_handoff_7_atlas_batch_0_store_gpu.md`](handoffs/dress_rehearsal_codex_handoff_7_atlas_batch_0_store_gpu.md)
+> (**`ATLAS-BATCH-0-STORE-GPU`** contract — authored + accepted; Option B fixture harness over existing
+> `AccumulatorOp`/`EvalEML CMP_EQ`/`Sum` masked reduction; bit-exact (ExactDeterministic) parity over
+> integer masked sums vs the STORE oracle, GpuVerified fallback; OWNER masked-reduction *runtime* + R3 stay parked).
 >
 > **ATLAS-BATCH-0 status (2026-06-03):** `GEN`, `LOC`, `PACK` (EC-A2a), **`PACK-GPU` (EC-A2b)**, and
-> **`STORE` (EC-A3)** are **closed / PASS** for `SCENARIO-0080-2`. **Next:** `ATLAS-BATCH-0-STORE-GPU`
-> (OWNER masked-reduction parity) and/or `ATLAS-BATCH-0-CLOSE`. M-4A sparse-residency scheduler and REENROLL
-> remain parked.
+> **`STORE` (EC-A3)** are **closed / PASS** for `SCENARIO-0080-2`. **Active gate:** `ATLAS-BATCH-0-STORE-GPU`
+> (EC-A3-gpu — OWNER/channel masked-reduction parity vs the STORE oracle, fixture composition only).
+> Then `ATLAS-BATCH-0-CLOSE`. M-4A sparse-residency scheduler and REENROLL remain parked.
 >
 > **Sequencing discipline (§0.5, §5):** one parked phase proved-and-closed per rung. The rehearsal is
 > the **convergent consumer that retires the parked backlog one rung at a time** — not a big-bang pull.
