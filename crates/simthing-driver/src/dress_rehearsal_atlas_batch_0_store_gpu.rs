@@ -6,7 +6,10 @@
 pub const DRESS_REHEARSAL_ATLAS_BATCH_0_STORE_GPU_ID: &str = "ATLAS-BATCH-0-STORE-GPU";
 pub const DRESS_REHEARSAL_ATLAS_BATCH_0_STORE_GPU_STATUS_PASS: &str =
     "IMPLEMENTED / PASS - EC-A3-gpu OWNER/channel masked-reduction parity vs STORE oracle; \
-     fixture composition only; R3/runtime parked; ExactDeterministic bit-exact";
+     fixture composition only; R3/runtime parked; ExactDeterministic bit-exact on selected RTX/NVIDIA adapter";
+
+pub const ENV_GPU_ADAPTER_CONTAINS: &str = "SIMTHING_GPU_ADAPTER_CONTAINS";
+pub const ENV_GPU_REQUIRE_ADAPTER_MATCH: &str = "SIMTHING_GPU_REQUIRE_ADAPTER_MATCH";
 
 #[path = "dress_rehearsal_atlas_batch_0_store.rs"]
 mod store;
@@ -41,6 +44,108 @@ pub fn gpu_tests_requested() -> bool {
         .ok()
         .as_deref()
         == Some("1")
+}
+
+pub fn requested_adapter_substring() -> Option<String> {
+    std::env::var(ENV_GPU_ADAPTER_CONTAINS)
+        .ok()
+        .filter(|value| !value.is_empty())
+        .or_else(|| {
+            std::env::var("WGPU_ADAPTER_NAME")
+                .ok()
+                .filter(|value| !value.is_empty())
+        })
+}
+
+pub fn require_adapter_match() -> bool {
+    std::env::var(ENV_GPU_REQUIRE_ADAPTER_MATCH)
+        .ok()
+        .as_deref()
+        == Some("1")
+}
+
+pub fn adapter_name_is_intel(adapter_name: &str) -> bool {
+    let lower = adapter_name.to_ascii_lowercase();
+    lower.contains("intel")
+        || lower.contains("raptorlake")
+        || lower.contains("iris")
+        || lower.contains("uhd")
+        || lower.contains("arc(tm)")
+}
+
+pub fn adapter_name_is_discrete_rtx_target(adapter_name: &str) -> bool {
+    if adapter_name_is_intel(adapter_name) {
+        return false;
+    }
+    let lower = adapter_name.to_ascii_lowercase();
+    lower.contains("nvidia") || lower.contains("rtx") || lower.contains("4080")
+}
+
+pub fn adapter_name_matches_substring(adapter_name: &str, substring: &str) -> bool {
+    adapter_name
+        .to_ascii_lowercase()
+        .contains(&substring.to_ascii_lowercase())
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct StoreGpuAdapterSelection {
+    pub adapter_inventory: Vec<String>,
+    pub requested_adapter_substring: Option<String>,
+    pub require_adapter_match: bool,
+    pub selected_adapter_name: String,
+    pub adapter_target_matched: bool,
+    pub selected_adapter_is_discrete_rtx: bool,
+}
+
+pub fn validate_adapter_selection(
+    ctx: &GpuContext,
+    adapter_inventory: &[String],
+) -> Result<StoreGpuAdapterSelection, String> {
+    let requested_adapter_substring = requested_adapter_substring();
+    let require_adapter_match = require_adapter_match();
+    let selected_adapter_name = ctx.adapter.get_info().name.clone();
+    let adapter_target_matched = requested_adapter_substring.as_ref().is_none_or(|substring| {
+        adapter_name_matches_substring(&selected_adapter_name, substring)
+    });
+    let selected_adapter_is_discrete_rtx =
+        adapter_name_is_discrete_rtx_target(&selected_adapter_name);
+
+    println!("adapter_inventory: [{}]", adapter_inventory.join(", "));
+    println!(
+        "requested_adapter_substring: {}",
+        requested_adapter_substring.as_deref().unwrap_or("<none>")
+    );
+    println!("require_adapter_match: {require_adapter_match}");
+    println!("selected_adapter_name: {selected_adapter_name}");
+    println!("adapter_target_matched: {adapter_target_matched}");
+    println!("selected_adapter_is_discrete_rtx: {selected_adapter_is_discrete_rtx}");
+    println!("gpu_tier_ran: true");
+
+    if adapter_name_is_intel(&selected_adapter_name) {
+        return Err(format!(
+            "selected adapter is Intel iGPU ({selected_adapter_name}); discrete RTX/NVIDIA required"
+        ));
+    }
+    if !selected_adapter_is_discrete_rtx {
+        return Err(format!(
+            "selected adapter is not discrete RTX/NVIDIA ({selected_adapter_name})"
+        ));
+    }
+    if require_adapter_match && !adapter_target_matched {
+        return Err(format!(
+            "adapter_target_matched=false for substring {:?} on {}",
+            requested_adapter_substring, selected_adapter_name
+        ));
+    }
+
+    Ok(StoreGpuAdapterSelection {
+        adapter_inventory: adapter_inventory.to_vec(),
+        requested_adapter_substring,
+        require_adapter_match,
+        selected_adapter_name,
+        adapter_target_matched,
+        selected_adapter_is_discrete_rtx,
+    })
 }
 
 pub fn canonical_store_oracle() -> StoreOracle {
@@ -227,6 +332,7 @@ fn sum_masked_into_target(start: u32, count: u32, target_slot: u32) -> Accumulat
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct StoreGpuParityReport {
+    pub adapter_selection: StoreGpuAdapterSelection,
     pub adapter_name: String,
     pub device_name: String,
     pub cpu_oracle_entry_count: usize,
@@ -339,7 +445,11 @@ pub fn fixture_inputs_are_semantic_free(values: &[f32], layout: &StoreGpuFixture
     true
 }
 
-pub fn run_store_gpu_parity(ctx: &GpuContext, oracle: &StoreOracle) -> StoreGpuParityReport {
+pub fn run_store_gpu_parity(
+    ctx: &GpuContext,
+    oracle: &StoreOracle,
+    adapter_selection: &StoreGpuAdapterSelection,
+) -> StoreGpuParityReport {
     set_debug_readback_allowed(true);
     let layout = build_store_gpu_fixture_layout(oracle);
     let values = fill_values_buffer(oracle, &layout);
@@ -389,7 +499,8 @@ pub fn run_store_gpu_parity(ctx: &GpuContext, oracle: &StoreOracle) -> StoreGpuP
     });
 
     StoreGpuParityReport {
-        adapter_name: ctx.adapter.get_info().name,
+        adapter_selection: adapter_selection.clone(),
+        adapter_name: adapter_selection.selected_adapter_name.clone(),
         device_name: "simthing-gpu device".to_string(),
         cpu_oracle_entry_count: oracle.entries.len(),
         gpu_output_entry_count: oracle.entries.len(),
@@ -404,12 +515,15 @@ pub fn run_store_gpu_parity(ctx: &GpuContext, oracle: &StoreOracle) -> StoreGpuP
 }
 
 /// Full EC-A3-gpu suite: canonical STORE oracle + constructed co-location oracle.
-pub fn run_ec_a3_gpu_suite(ctx: &GpuContext) -> StoreGpuParityReport {
+pub fn run_ec_a3_gpu_suite(
+    ctx: &GpuContext,
+    adapter_selection: &StoreGpuAdapterSelection,
+) -> StoreGpuParityReport {
     let canonical = canonical_store_oracle();
-    let mut report = run_store_gpu_parity(ctx, &canonical);
+    let mut report = run_store_gpu_parity(ctx, &canonical, adapter_selection);
     let materialization = canonical_materialization();
     let constructed = store_oracle_constructed_planet_patrol_pirate(&materialization);
-    let constructed_report = run_store_gpu_parity(ctx, &constructed);
+    let constructed_report = run_store_gpu_parity(ctx, &constructed, adapter_selection);
     report.constructed_co_location_ok = constructed_report.ec_a3_gpu_closed;
     report.ec_a3_gpu_closed = report.ec_a3_gpu_closed && constructed_report.ec_a3_gpu_closed;
     report
@@ -417,6 +531,25 @@ pub fn run_ec_a3_gpu_suite(ctx: &GpuContext) -> StoreGpuParityReport {
 
 pub fn format_parity_report(report: &StoreGpuParityReport, gpu_tier_ran: bool) -> String {
     let mut lines = Vec::new();
+    let sel = &report.adapter_selection;
+    lines.push(format!(
+        "requested_adapter_substring: {}",
+        sel.requested_adapter_substring.as_deref().unwrap_or("<none>")
+    ));
+    lines.push(format!(
+        "require_adapter_match: {}",
+        sel.require_adapter_match
+    ));
+    lines.push(format!(
+        "adapter_inventory: [{}]",
+        sel.adapter_inventory.join(", ")
+    ));
+    lines.push(format!("selected_adapter_name: {}", sel.selected_adapter_name));
+    lines.push(format!("adapter_target_matched: {}", sel.adapter_target_matched));
+    lines.push(format!(
+        "selected_adapter_is_discrete_rtx: {}",
+        sel.selected_adapter_is_discrete_rtx
+    ));
     lines.push(format!("adapter/device: {}", report.adapter_name));
     lines.push(format!("device_name: {}", report.device_name));
     lines.push(format!("gpu_tier_ran: {gpu_tier_ran}"));

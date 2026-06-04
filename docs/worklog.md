@@ -30,6 +30,10 @@
 - **Forward note (for R3 / production OWNER masked-reduction runtime):** the GPU encode path does not support `ScaleSpec::ByColumn`; a production masked reduction must realize the owner/channel mask **inside the EML expression** (CMP_EQ/SELECT), not via ByColumn scaling — or that GPU-encode gap gets its own primitive gate. Not a blocker for the fixture.
 - **Verdict: ATLAS-BATCH-0-STORE-GPU ACCEPTED.** **The full ATLAS-BATCH-0 pre-rehearsal track is now closed/PASS:** GEN, LOC, PACK(EC-A2a), PACK-GPU(EC-A2b GpuVerified), STORE(EC-A3 CPU), STORE-GPU(EC-A3-gpu ExactDeterministic). **Next: `ATLAS-BATCH-0-CLOSE`** (design-authority close/park review of the whole pre-rehearsal track) — then the rehearsal R1–R7 economy/SEAD rungs open. `EC-A2b-exact`, M-4A sparse-residency, REENROLL, and the OWNER masked-reduction *runtime*/R3 remain parked. Docs-only on my side.
 
+# 2026-06-03 - ATLAS-BATCH-0-STORE-GPU discrete RTX evidence (EC-A3-gpu)
+
+- Re-ran STORE-GPU with `SIMTHING_GPU_ADAPTER_CONTAINS=RTX` + `SIMTHING_GPU_REQUIRE_ADAPTER_MATCH=1`; added `gpu_adapter_is_discrete_rtx_target` and adapter inventory/validation (Intel fails). Selected **NVIDIA GeForce RTX 4080 Laptop GPU**; 38/38 bit-exact. **10 passed; 0 failed; 0 ignored.** Prior Intel-only STORE-GPU cargo log superseded; PACK-GPU Intel evidence unchanged.
+
 # 2026-06-03 - ATLAS-BATCH-0-STORE-GPU implemented (EC-A3-gpu PASS, ExactDeterministic bit-exact)
 
 - Implemented `dress_rehearsal_atlas_batch_0_store_gpu.rs` + 9 tests: `EvalEML` CMP_EQ/SELECT owner+channel mask (OrderBand 0) + `Sum` (OrderBand 1) on `AccumulatorOpSession` vs CPU `StoreOracle` (38/38 `to_bits` match). GPU: `$env:SIMTHING_RUN_GPU_TESTS=1; cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store_gpu` → **9 passed; 0 failed; 0 ignored**; adapter Intel RaptorLake-S. Co-location cases on GPU: 10-pirate; constructed planet+patrol+pirate. Fixture only; R3/session wiring parked. Evidence under `docs/tests/scenario_0080_2_atlas_batch_0_store_gpu_*`.

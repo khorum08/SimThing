@@ -18,19 +18,32 @@
 ## Implemented artifacts
 
 - `crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_store_gpu.rs`
-- `crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_store_gpu.rs` — 9 tests
+- `crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_store_gpu.rs` — 10 tests
 
 ## Command
 
 ```powershell
-$env:SIMTHING_RUN_GPU_TESTS=1; cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store_gpu -- --nocapture *>&1 | Tee-Object docs/tests/scenario_0080_2_atlas_batch_0_store_gpu_cargo_test_2026_06_03.txt
+$env:SIMTHING_RUN_GPU_TESTS=1; $env:SIMTHING_GPU_ADAPTER_CONTAINS="RTX"; $env:SIMTHING_GPU_REQUIRE_ADAPTER_MATCH=1; cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store_gpu -- --nocapture *>&1 | Tee-Object docs/tests/scenario_0080_2_atlas_batch_0_store_gpu_cargo_test_2026_06_03.txt
 ```
+
+## Adapter selection
+
+| Field | Value |
+|---|---|
+| Requested substring | `RTX` (`SIMTHING_GPU_ADAPTER_CONTAINS`) |
+| Require match | `true` (`SIMTHING_GPU_REQUIRE_ADAPTER_MATCH=1`) |
+| Adapter inventory | Intel RaptorLake-S, **NVIDIA GeForce RTX 4080 Laptop GPU**, Intel UHD, Microsoft Basic Render Driver (see raw log) |
+| Selected adapter | **NVIDIA GeForce RTX 4080 Laptop GPU** |
+| Target matched | **true** |
+| Discrete RTX/NVIDIA (not Intel) | **true** |
+
+Prior committed STORE-GPU evidence that named Intel RaptorLake-S is superseded for EC-A3-gpu closure; PACK-GPU Intel evidence remains valid as Intel-only (EC-A2b).
 
 ## Execution status
 
-**Result:** `9 passed; 0 failed; 0 ignored`  
+**Result:** `10 passed; 0 failed; 0 ignored`  
 **GPU tier ran:** yes (`SIMTHING_RUN_GPU_TESTS=1`)  
-**Adapter:** Intel(R) RaptorLake-S Mobile Graphics Controller  
+**Selected adapter:** NVIDIA GeForce RTX 4080 Laptop GPU (discrete; not Intel)  
 **Raw evidence:** [`scenario_0080_2_atlas_batch_0_store_gpu_cargo_test_2026_06_03.txt`](scenario_0080_2_atlas_batch_0_store_gpu_cargo_test_2026_06_03.txt)  
 **Parity report:** [`scenario_0080_2_atlas_batch_0_store_gpu_parity_2026_06_03.txt`](scenario_0080_2_atlas_batch_0_store_gpu_parity_2026_06_03.txt)
 
@@ -53,7 +66,7 @@ $env:SIMTHING_RUN_GPU_TESTS=1; cargo test -p simthing-driver --test dress_rehear
 
 | Criterion | Status |
 |---|---|
-| **EC-A3-gpu** OWNER/channel masked-reduction vs STORE oracle | **PASS** (bit-exact) |
+| **EC-A3-gpu** OWNER/channel masked-reduction vs STORE oracle | **PASS** (bit-exact on RTX) |
 | OWNER runtime / session wiring | **parked** |
 | **R1/R2/R3/R4** | unimplemented |
 | **M-4A / REENROLL** | parked |

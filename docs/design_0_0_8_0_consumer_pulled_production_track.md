@@ -655,8 +655,9 @@ are distinguished and **must not be collapsed into one figure**:
 > [`tests/scenario_0080_2_atlas_batch_0_store_gpu_report.md`](tests/scenario_0080_2_atlas_batch_0_store_gpu_report.md);
 > [`tests/scenario_0080_2_atlas_batch_0_store_gpu_cargo_test_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_store_gpu_cargo_test_2026_06_03.txt);
 > [`tests/scenario_0080_2_atlas_batch_0_store_gpu_parity_2026_06_03.txt`](tests/scenario_0080_2_atlas_batch_0_store_gpu_parity_2026_06_03.txt).
-> Command: `$env:SIMTHING_RUN_GPU_TESTS=1; cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store_gpu`
-> → **9 passed; 0 failed; 0 ignored** (GPU tier ran; adapter **Intel(R) RaptorLake-S Mobile Graphics Controller**).
+> Command: `$env:SIMTHING_RUN_GPU_TESTS=1; $env:SIMTHING_GPU_ADAPTER_CONTAINS="RTX"; $env:SIMTHING_GPU_REQUIRE_ADAPTER_MATCH=1; cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store_gpu`
+> → **10 passed; 0 failed; 0 ignored** (GPU tier ran on discrete **NVIDIA GeForce RTX 4080 Laptop GPU**; `gpu_adapter_is_discrete_rtx_target` fails Intel).
+> **Prior Intel-only STORE-GPU log is superseded for EC-A3-gpu;** PACK-GPU Intel evidence remains Intel-only (EC-A2b).
 
 ### 12.4 Established mechanism — OWNER routing (multi-owner flows in one cell)
 
