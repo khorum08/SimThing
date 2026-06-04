@@ -12,11 +12,7 @@ fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
 }
 
-fn minimal_fixture() -> (
-    DimensionRegistry,
-    SlotAllocator,
-    u32,
-) {
+fn minimal_fixture() -> (DimensionRegistry, SlotAllocator, u32) {
     let mut reg = DimensionRegistry::new();
     reg.register(SimProperty::simple("core", "loyalty", 0));
     let mut alloc = SlotAllocator::new();
@@ -76,7 +72,10 @@ fn ticks_per_day_one_boundary_every_tick() {
             out.boundary_reached,
             "ticks_per_day=1 → every tick is a boundary (tick {i})"
         );
-        assert_eq!(out.day_index, i, "day_index advances each tick when ticks_per_day=1");
+        assert_eq!(
+            out.day_index, i,
+            "day_index advances each tick when ticks_per_day=1"
+        );
     }
 }
 
@@ -166,7 +165,9 @@ fn daily_resource_economy_fixture_uses_ticks_per_day_one() {
 fn doctrine_active_guidance_avoids_canonical_day_overclaims() {
     let guidance_sources = [
         include_str!("../../../docs/workshop/mapping_current_guidance.md"),
-        include_str!("../../../docs/workshop/workshop_current_state.md"),
+        include_str!("../../../docs/design_0_0_8_0.md"),
+        include_str!("../../../docs/design_0_0_8_0_consumer_pulled_production_track.md"),
+        include_str!("../../../docs/workshop/sead_self_ai_track.md"),
     ];
     let forbidden = [
         "boundary == day",

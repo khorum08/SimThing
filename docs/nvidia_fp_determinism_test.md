@@ -6,9 +6,9 @@
 **Date opened:** 2026-06-03  
 **Temporary cleanup rule:** all result files created for this track must be named `docs/tests/nvidia_fp_temp*.md` so they can be deleted together when this sweep is closed.
 
-> **Parked status:** NVIDIA priority validation is substantially complete, but the sweep is not closed. Awaiting Opus review of Battery 07, Battery 08, and Battery 11 workspace compile triage.
+> **Parked status:** NVIDIA priority validation is substantially complete, but the sweep is not closed. Battery 12 resolved the parked Battery 07, Battery 08, and Battery 11 remedials; full workspace closure is still parked on `simthing-spec --test jit_kernel_cohort_preview::jit_cohort0_distinct_graphs_split`.
 
-**Parked summary:** `docs/tests/nvidia_fp_temp_99_summary.md` — status `PARKED / WAITING FOR OPUS TRIAGE`
+**Parked summary:** `docs/tests/nvidia_fp_temp_99_summary.md` — historical parked summary. Current remedial evidence: `docs/tests/nvidia_fp_temp_12_remedial_retest.md`.
 
 ## 0. Purpose
 
@@ -25,11 +25,50 @@ Known current state:
 - `GpuContext` now selects the discrete GPU when present.
 - `ATLAS-BATCH-0-STORE-GPU` has RTX 4080 evidence and is bit-exact for integer owner/channel masked reductions.
 - Priority f32 / `GpuVerified` batteries 01–06 and 09–10 executed on RTX 4080 with PASS (see status table).
-- NVIDIA RTX 4080 priority validation is substantially complete, but the sweep is **parked** rather than closed because four non-NVIDIA-FP triage items remain open.
+- NVIDIA RTX 4080 priority validation is substantially complete. Battery 12 resolved the four previously parked non-NVIDIA-FP triage items.
+- The sweep remains **parked** rather than closed because the Battery 12 full workspace retest now stops in `simthing-spec --test jit_kernel_cohort_preview::jit_cohort0_distinct_graphs_split`, an out-of-scope cohort ordering assertion and not NVIDIA FP drift.
 
 ## Parked Opus triage index
 
 Full detail: `docs/tests/nvidia_fp_temp_99_summary.md` §Parked Opus triage index.
+
+### Resolved by Battery 12
+
+```text
+Evidence:
+  docs/tests/nvidia_fp_temp_12_remedial_retest.md
+
+Resolved:
+  Battery 07 jit_grad0 stale active-policy/doc guard.
+  Battery 07 jit_exec1 admission-before-GPU guard.
+  Battery 08 phase_m_boundary_cadence_doctrine missing doc include.
+  Battery 11 phase_m_jit_desc0_kernel_descriptor fixture-local descriptor field skew.
+
+Interpretation:
+  These four items were non-NVIDIA-FP harness/doc/compile blockers.
+  Targeted RTX-gated remedial retests passed.
+```
+
+### Still open after Battery 12
+
+```text
+Item:
+  cargo test --workspace -- --nocapture
+  simthing-spec --test jit_kernel_cohort_preview
+  jit_cohort0_distinct_graphs_split
+
+Evidence:
+  docs/tests/nvidia_fp_temp_12_remedial_retest.md
+
+Current interpretation:
+  Workspace retest advances past the Battery 07/08/11 blockers and then fails on a simthing-spec cohort preview ordering assertion:
+    left: ["variant"]
+    right: ["base"]
+  This is outside the four Battery 12 remedial files and outside NVIDIA FP tolerance/shader-math behavior.
+
+Decision needed:
+  Follow-up remedial or acceptance as pre-existing/out-of-scope before full NVIDIA sweep closure.
+```
 
 ### Battery 07 — stale doc-hygiene guard
 
@@ -117,12 +156,13 @@ Opus decision needed:
 
 ### Current interpretation
 
-These four items should remain visible until Opus reviews them. Do **not** mark the full NVIDIA sweep complete until they are accepted as non-blocking or remediated in a separate handoff.
+Battery 12 resolved the four previously parked Battery 07, Battery 08, and Battery 11 items. Keep the historical detail above visible for provenance. Do **not** mark the full NVIDIA sweep complete until the remaining `simthing-spec` workspace failure is accepted as non-blocking or remediated in a separate handoff.
 
-- Battery 07 `jit_grad0`: not native `sqrt`; stale active-policy check; not NVIDIA FP drift.
-- Battery 07 `jit_exec1`: admission/harness ordering; not NVIDIA FP drift.
-- Battery 08 `phase_m_boundary_cadence_doctrine`: missing doc include; not NVIDIA FP drift.
-- Battery 11 `phase_m_jit_desc0_kernel_descriptor`: workspace compile skew; feeder PASS on RTX; not NVIDIA FP drift.
+- Resolved: Battery 07 `jit_grad0`: not native `sqrt`; stale active-policy check; not NVIDIA FP drift.
+- Resolved: Battery 07 `jit_exec1`: admission/harness ordering; not NVIDIA FP drift.
+- Resolved: Battery 08 `phase_m_boundary_cadence_doctrine`: missing doc include; not NVIDIA FP drift.
+- Resolved: Battery 11 `phase_m_jit_desc0_kernel_descriptor`: workspace compile skew; feeder PASS on RTX; not NVIDIA FP drift.
+- Still open: `simthing-spec --test jit_kernel_cohort_preview::jit_cohort0_distinct_graphs_split`; workspace failure, not NVIDIA FP drift.
 
 ## Temporary sweep status table
 
@@ -139,6 +179,7 @@ These four items should remain visible until Opus reviews them. Do **not** mark 
 | 09 | `docs/tests/nvidia_fp_temp_09_runtime_eml_economy_nested.md` | PASS | yes | 106 pass / 0 fail / 0 ignored | runtime/EML/economy/nested/session passed |
 | 10 | `docs/tests/nvidia_fp_temp_10_sim_broad_integration.md` | PASS | yes | 106 pass / 0 fail / 1 ignored | broad simthing-sim sweep passed; ignored perf test not correctness failure |
 | 11 | `docs/tests/nvidia_fp_temp_11_feeder_workspace_sweep.md` | PARTIAL / KNOWN TRIAGE | yes | feeder 5/0/0; workspace compile stopped | feeder PASS; workspace incomplete (JIT descriptor compile + known triage family) |
+| 12 | `docs/tests/nvidia_fp_temp_12_remedial_retest.md` | PARTIAL / TARGETED PASS; WORKSPACE OPEN | yes | adapter 1/0/0; targeted remedials 25/0/0; workspace fails 1 simthing-spec test | Battery 07/08/11 blockers resolved; NVIDIA sweep remains parked pending `jit_cohort0_distinct_graphs_split` |
 
 ## 1. Hard verification gate
 

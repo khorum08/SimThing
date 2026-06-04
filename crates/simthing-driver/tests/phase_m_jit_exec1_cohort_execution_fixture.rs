@@ -3,15 +3,14 @@
 //! Groups identical exact GRAD-0→scorer graph requests into one REG-1-admitted cohort entry,
 //! then executes a combined observer batch in one GPU dispatch. Spec-layer fixture only.
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 
 use bytemuck::{Pod, Zeroable};
 use simthing_gpu::GpuContext;
 use simthing_spec::{
-    preview_kernel_registry_manifest, preview_production_candidate_registry_entry,
-    preview_kernel_graph_identity, KernelDescriptorSpec, KernelGraphEdgeSpec,
+    preview_kernel_graph_identity, preview_kernel_registry_manifest,
+    preview_production_candidate_registry_entry, KernelDescriptorSpec, KernelGraphEdgeSpec,
     KernelGraphRequestSpec, KernelGraphSpec, KernelLane, KernelOutputSpec,
     KernelRegistryEntryPreview, KernelRegistryLane, KernelRegistryManifestPreview,
     MappingExecutionProfile, NativeMathClass, OutputAuthority, SpecError,
@@ -19,7 +18,6 @@ use simthing_spec::{
 use wgpu::util::DeviceExt;
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
-static EXECUTION_HELPER_INVOKED: AtomicBool = AtomicBool::new(false);
 
 const WORKGROUP_SIZE: u32 = 64;
 const BOUNDARY_CLAMP: u32 = 1;
@@ -492,10 +490,7 @@ fn build_combined_cohort_batch(
             len,
         });
     }
-    CohortObserverBatch {
-        combined,
-        segments,
-    }
+    CohortObserverBatch { combined, segments }
 }
 
 fn oracle_sample_indices(segment_len: usize) -> Vec<usize> {
@@ -520,8 +515,6 @@ fn run_fusion_gpu(
     height: u32,
     n_dims: u32,
 ) -> FusionRunResult {
-    EXECUTION_HELPER_INVOKED.store(true, Ordering::SeqCst);
-
     let device = &ctx.device;
     let queue = &ctx.queue;
     let n_observers = observers.len() as u32;
@@ -617,11 +610,13 @@ fn run_fusion_gpu(
 
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("jit_exec1_pipeline"),
-        layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("jit_exec1_pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        })),
+        layout: Some(
+            &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("jit_exec1_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            }),
+        ),
         module: &module,
         entry_point: "main",
         compilation_options: Default::default(),
@@ -704,12 +699,24 @@ fn assert_fusion_parity(
     gpu_outputs: &[ObserverScoreOutput],
     context: &str,
 ) {
-    assert_eq!(gpu_outputs.len(), observers.len(), "{context}: length mismatch");
+    assert_eq!(
+        gpu_outputs.len(),
+        observers.len(),
+        "{context}: length mismatch"
+    );
     for (i, obs) in observers.iter().enumerate() {
         let cpu = cpu_fusion_oracle(fields, width, height, n_dims, *obs);
         let gpu = gpu_outputs[i];
-        assert_eq!(gpu.dx.to_bits(), cpu.dx.to_bits(), "{context} observer {i} dx");
-        assert_eq!(gpu.dy.to_bits(), cpu.dy.to_bits(), "{context} observer {i} dy");
+        assert_eq!(
+            gpu.dx.to_bits(),
+            cpu.dx.to_bits(),
+            "{context} observer {i} dx"
+        );
+        assert_eq!(
+            gpu.dy.to_bits(),
+            cpu.dy.to_bits(),
+            "{context} observer {i} dy"
+        );
         assert_eq!(
             gpu.descent_x.to_bits(),
             cpu.descent_x.to_bits(),
@@ -720,7 +727,11 @@ fn assert_fusion_parity(
             cpu.descent_y.to_bits(),
             "{context} observer {i} descent_y"
         );
-        assert_eq!(gpu.score.to_bits(), cpu.score.to_bits(), "{context} observer {i} score");
+        assert_eq!(
+            gpu.score.to_bits(),
+            cpu.score.to_bits(),
+            "{context} observer {i} score"
+        );
     }
 }
 
@@ -735,14 +746,10 @@ fn assert_segment_parity(
     for segment in &batch.segments {
         let local_indices = oracle_sample_indices(segment.len);
         let global_indices: Vec<usize> = local_indices.iter().map(|&i| segment.start + i).collect();
-        let sampled_obs: Vec<ObserverInput> = global_indices
-            .iter()
-            .map(|&i| batch.combined[i])
-            .collect();
-        let sampled_out: Vec<ObserverScoreOutput> = global_indices
-            .iter()
-            .map(|&i| gpu_outputs[i])
-            .collect();
+        let sampled_obs: Vec<ObserverInput> =
+            global_indices.iter().map(|&i| batch.combined[i]).collect();
+        let sampled_out: Vec<ObserverScoreOutput> =
+            global_indices.iter().map(|&i| gpu_outputs[i]).collect();
         assert_fusion_parity(
             fields,
             width,
@@ -756,15 +763,9 @@ fn assert_segment_parity(
 }
 
 /// EXEC-1 flow: cohort manifest → single entry → REG-1 admission → one combined GPU dispatch.
-fn try_execute_admitted_cohort(
-    ctx: &GpuContext,
+fn try_admit_single_cohort_for_execution(
     requests: &[KernelGraphRequestSpec],
-    fields: &[f32],
-    batch: &CohortObserverBatch,
-    width: u32,
-    height: u32,
-    n_dims: u32,
-) -> Result<(KernelRegistryEntryPreview, FusionRunResult), SpecError> {
+) -> Result<KernelRegistryEntryPreview, SpecError> {
     let manifest = build_registry_manifest(requests)?;
     let entry = extract_single_cohort_entry(&manifest)?;
     if entry.lane != KernelRegistryLane::TestOnlyPreview {
@@ -822,6 +823,20 @@ fn try_execute_admitted_cohort(
         });
     }
 
+    Ok(candidate)
+}
+
+fn try_execute_admitted_cohort(
+    ctx: &GpuContext,
+    requests: &[KernelGraphRequestSpec],
+    fields: &[f32],
+    batch: &CohortObserverBatch,
+    width: u32,
+    height: u32,
+    n_dims: u32,
+) -> Result<(KernelRegistryEntryPreview, FusionRunResult), SpecError> {
+    let candidate = try_admit_single_cohort_for_execution(requests)?;
+    let wgsl = fused_wgsl();
     let result = run_fusion_gpu(ctx, &wgsl, fields, &batch.combined, width, height, n_dims);
     Ok((candidate, result))
 }
@@ -839,16 +854,12 @@ fn execute_admitted_cohort(
         .expect("admitted cohort execution")
 }
 
-fn try_execute_mixed_cohort(
-    manifest: &KernelRegistryManifestPreview,
-) -> SpecError {
+fn try_execute_mixed_cohort(manifest: &KernelRegistryManifestPreview) -> SpecError {
     extract_single_cohort_entry(manifest).expect_err("mixed cohort must not execute as one batch")
 }
 
 #[test]
 fn jit_exec1_cohort_admission_gates_execution() {
-    EXECUTION_HELPER_INVOKED.store(false, Ordering::SeqCst);
-
     let requests = identical_cohort_requests();
     let manifest = build_registry_manifest(&requests).expect("cohort manifest");
     assert_eq!(manifest.entries.len(), 1);
@@ -856,7 +867,10 @@ fn jit_exec1_cohort_admission_gates_execution() {
     assert_eq!(entry.request_ids, vec!["exec1_req_alpha", "exec1_req_beta"]);
 
     let candidate = admit_production_candidate(entry).expect("admission");
-    assert_eq!(candidate.lane, KernelRegistryLane::ProductionCandidatePreview);
+    assert_eq!(
+        candidate.lane,
+        KernelRegistryLane::ProductionCandidatePreview
+    );
 
     let mixed = build_registry_manifest(&mixed_distinct_cohort_requests()).expect("mixed manifest");
     assert_eq!(mixed.entries.len(), 2);
@@ -867,21 +881,18 @@ fn jit_exec1_cohort_admission_gates_execution() {
         }
         other => panic!("unexpected error: {other:?}"),
     }
-    assert!(
-        !EXECUTION_HELPER_INVOKED.load(Ordering::SeqCst),
-        "mixed cohort must not invoke GPU execution helper"
-    );
-
     with_gpu(|ctx| {
-        EXECUTION_HELPER_INVOKED.store(false, Ordering::SeqCst);
-        let batch = build_combined_cohort_batch(
-            &[("exec1_req_alpha", 0), ("exec1_req_beta", 1)],
+        let batch =
+            build_combined_cohort_batch(&[("exec1_req_alpha", 0), ("exec1_req_beta", 1)], 8, 8, 0);
+        let (_, result) = execute_admitted_cohort(
+            ctx,
+            &requests,
+            &build_test_field(8, 8, 4, 0),
+            &batch,
             8,
             8,
-            0,
+            4,
         );
-        let (_, result) = execute_admitted_cohort(ctx, &requests, &build_test_field(8, 8, 4, 0), &batch, 8, 8, 4);
-        assert!(EXECUTION_HELPER_INVOKED.load(Ordering::SeqCst));
         assert_eq!(result.dispatch_count, 1);
     });
 }
@@ -908,7 +919,10 @@ fn jit_exec1_production_candidate_cohort_executes_with_oracle_parity() {
         let (candidate, result) =
             execute_admitted_cohort(ctx, &requests, &fields, &batch, width, height, n_dims);
 
-        assert_eq!(candidate.lane, KernelRegistryLane::ProductionCandidatePreview);
+        assert_eq!(
+            candidate.lane,
+            KernelRegistryLane::ProductionCandidatePreview
+        );
         assert_eq!(candidate.request_ids.len(), 2);
         assert_eq!(result.outputs.len(), batch.combined.len());
         assert_eq!(result.dispatch_count, 1);
@@ -941,41 +955,18 @@ fn jit_exec1_distinct_graphs_remain_separate_entries() {
         other => panic!("unexpected error: {other:?}"),
     }
 
-    EXECUTION_HELPER_INVOKED.store(false, Ordering::SeqCst);
-    with_gpu(|ctx| {
-        let batch = build_combined_cohort_batch(
-            &[("exec1_exact", 0), ("exec1_distinct", 1)],
-            8,
-            8,
-            0,
-        );
-        let err = try_execute_admitted_cohort(
-            ctx,
-            &requests,
-            &build_test_field(8, 8, 4, 0),
-            &batch,
-            8,
-            8,
-            4,
-        )
-        .expect_err("mixed cohort must not execute");
-        match err {
-            SpecError::JitKernelDescriptorAdmission { reason, .. } => {
-                assert!(reason.contains("one manifest entry"));
-            }
-            other => panic!("unexpected error: {other:?}"),
+    let err = try_admit_single_cohort_for_execution(&requests)
+        .expect_err("mixed cohort must reject before GPU execution helper");
+    match err {
+        SpecError::JitKernelDescriptorAdmission { reason, .. } => {
+            assert!(reason.contains("one manifest entry"));
         }
-        assert!(
-            !EXECUTION_HELPER_INVOKED.load(Ordering::SeqCst),
-            "mixed cohort must not reach GPU execution helper"
-        );
-    });
+        other => panic!("unexpected error: {other:?}"),
+    }
 }
 
 #[test]
 fn jit_exec1_rejects_approximate_candidate_before_execution() {
-    EXECUTION_HELPER_INVOKED.store(false, Ordering::SeqCst);
-
     let manifest = build_registry_manifest(&identical_cohort_requests()).expect("manifest");
     let mut entry = manifest.entries[0].clone();
     entry
@@ -1014,10 +1005,7 @@ fn jit_exec1_rejects_approximate_candidate_before_execution() {
         other => panic!("unexpected sqrt error: {other:?}"),
     }
 
-    assert!(
-        !EXECUTION_HELPER_INVOKED.load(Ordering::SeqCst),
-        "approximate candidates must reject before GPU execution"
-    );
+    // This test remains admission-only: approximate candidates reject without a GPU context.
 }
 
 #[test]

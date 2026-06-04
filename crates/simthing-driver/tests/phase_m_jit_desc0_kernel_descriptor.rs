@@ -106,10 +106,6 @@ const M_JIT_0_WEIGHTED_ACCUMULATOR: KernelDescriptor = KernelDescriptor {
     semantic_free: true,
     default_off: true,
     production_wiring: false,
-        exact_sqrt_artifact: None,
-        pre_sqrt_contract: None,
-        mag2_source_contract: None,
-        score_authority_contract: None,
 };
 
 const M_JIT_0_EMA: KernelDescriptor = KernelDescriptor {
@@ -121,10 +117,6 @@ const M_JIT_0_EMA: KernelDescriptor = KernelDescriptor {
     semantic_free: true,
     default_off: true,
     production_wiring: false,
-        exact_sqrt_artifact: None,
-        pre_sqrt_contract: None,
-        mag2_source_contract: None,
-        score_authority_contract: None,
 };
 
 const M_JIT_SQRT_0_CANDIDATE: KernelDescriptor = KernelDescriptor {
@@ -139,10 +131,6 @@ const M_JIT_SQRT_0_CANDIDATE: KernelDescriptor = KernelDescriptor {
     semantic_free: true,
     default_off: true,
     production_wiring: false,
-        exact_sqrt_artifact: None,
-        pre_sqrt_contract: None,
-        mag2_source_contract: None,
-        score_authority_contract: None,
 };
 
 const M_JIT_GRAD_0_OBSERVER: KernelDescriptor = KernelDescriptor {
@@ -160,10 +148,6 @@ const M_JIT_GRAD_0_OBSERVER: KernelDescriptor = KernelDescriptor {
     semantic_free: true,
     default_off: true,
     production_wiring: false,
-        exact_sqrt_artifact: None,
-        pre_sqrt_contract: None,
-        mag2_source_contract: None,
-        score_authority_contract: None,
 };
 
 const M_JIT_GRAD_1_OBSERVER_SCORE: KernelDescriptor = KernelDescriptor {
@@ -181,10 +165,6 @@ const M_JIT_GRAD_1_OBSERVER_SCORE: KernelDescriptor = KernelDescriptor {
     semantic_free: true,
     default_off: true,
     production_wiring: false,
-        exact_sqrt_artifact: None,
-        pre_sqrt_contract: None,
-        mag2_source_contract: None,
-        score_authority_contract: None,
 };
 
 fn all_descriptors() -> Vec<&'static KernelDescriptor> {
@@ -257,11 +237,8 @@ fn jit_desc0_rejects_approximate_output_as_exact_input() {
 
     validate_exact_inputs(&M_JIT_GRAD_0_OBSERVER, &["dx", "dy"])
         .expect("dx/dy are exact-authoritative");
-    validate_exact_inputs(
-        &M_JIT_GRAD_0_OBSERVER,
-        &["descent_x", "descent_y"],
-    )
-    .expect("descent outputs are exact-authoritative");
+    validate_exact_inputs(&M_JIT_GRAD_0_OBSERVER, &["descent_x", "descent_y"])
+        .expect("descent outputs are exact-authoritative");
     validate_exact_inputs(&M_JIT_GRAD_1_OBSERVER_SCORE, &["score"])
         .expect("score is exact-authoritative");
 
