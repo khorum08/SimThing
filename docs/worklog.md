@@ -1,3 +1,15 @@
+# 2026-06-03 - ATLAS-BATCH-0-PACK-GPU ACCEPTED (design-authority validation, GPU claims verified)
+
+- **Verified Cursor's PACK-GPU after its 3 GPU crashes — claims hold; ACCEPT (EC-A2b GpuVerified).** Did not take "8 passed" on report. Checks:
+  - **No forbidden edits:** diff vs the contract merge touched only `dress_rehearsal_atlas_batch_0_pack_gpu.{rs,test}` + docs — no `simthing-gpu`/`-core`/`-sim`/`lib.rs`/GEN/LOC/PACK/constitution/invariants edits.
+  - **Raw log is genuine** (UTF-16 from PowerShell `Tee-Object`): decoded → `running 8 tests` → `8 passed; 0 failed; 0 ignored`; the GPU-parity tests printed real adapter output (Intel RaptorLake-S) + **nonzero L∞** (galactic 3.8e-6, star/surface 3.05e-5) matching the parity report. **0 ignored ⇒ the GPU tier actually ran**, and nonzero L∞ ⇒ a real GPU path (a CPU stub would give L∞=0).
+  - **Independently compiled + ran** the suite here: 8/8 green.
+  - **Code conformant:** real `AtlasMaskGpuOp::dispatch_once` (with ping-pong), no hand-rolled GPU; **no `to_bits`**; status const + report + production doc all say **GpuVerified, NOT bit-exact**, EC-A2b-exact DEFERRED; `#[path]`-includes PACK, **not exported from lib.rs** (fixture-only). L∞ ≤ 1e-4 (GpuVerified tolerance) for all 3 classes.
+  - **Deviation affirmed:** the `..._pack_origins` CPU oracle helper **reuses the canonical `cpu_atlas_horizon` stencil** at PACK's row-major tile origins (and the galactic case anchors to canonical `cpu_caller_managed_atlas_protocol`) — faithful, not a re-derivation. Sound consequence of PACK's strip layout vs the primitive's square atlas.
+  - **Gating sound:** with `SIMTHING_RUN_GPU_TESTS=1` and no adapter the helper **hard-panics** ("skipped GPU is not PASS evidence") → EC-A2b cannot close without a real GPU run; the submitted closure evidence is exactly the env-var=1 run.
+- **Forward note (not a blocker):** without the env var the GPU tests soft-pass as `ok` (with a stderr "skipping" message) rather than visibly `ignored`. For future GPU rungs (e.g. a STORE-GPU), prefer a no-env path that cannot be read as GPU PASS in a casual "N passed" scan. Acceptable here because the env-var path is the hard gate and the closure evidence is the env-var=1 run.
+- **Verdict: ATLAS-BATCH-0-PACK-GPU ACCEPTED (EC-A2b GpuVerified).** Ladder: `GEN`, `LOC`, `PACK`(EC-A2a), `PACK-GPU`(EC-A2b) closed/PASS. Pending: `ATLAS-BATCH-0-STORE` (Opus authors when the orchestrator routes it); `EC-A2b-exact` (bit-exact) stays deferred to a separate pinned-fixed-point track. Docs-only on my side.
+
 # 2026-06-03 - ATLAS-BATCH-0-PACK-GPU implemented (EC-A2b GpuVerified PASS)
 
 - Implemented `dress_rehearsal_atlas_batch_0_pack_gpu.rs` + tests per handoff 4: existing `AtlasMaskGpuOp` / `cpu_caller_managed_atlas_protocol` (PACK row-major origins for 13-tile classes); `SIMTHING_RUN_GPU_TESTS=1` → **8 passed; 0 failed**; adapter **Intel(R) RaptorLake-S Mobile Graphics Controller**; full-tile L∞ galactic **0.000004**, star-system **0.000031**, planet-surface **0.000031** (all ≤ 1e-4). EC-A2b-exact deferred; STORE/M-4A/REENROLL still parked. Evidence: `docs/tests/scenario_0080_2_atlas_batch_0_pack_gpu_*`.
