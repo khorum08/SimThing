@@ -2,7 +2,7 @@
 
 Current scenario status:
 
-- `SCENARIO-0080-2` R1 implemented/pass as an occupant-produced disruption heatmap over real 20×20 galactic gridcell SimThings; R2 recursive reduce-up remains deferred.
+- `SCENARIO-0080-2` R1 accepted/closed as implemented-pass; R2 remains unopened pending Opus.
 
 Authoritative decision:
 

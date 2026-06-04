@@ -725,16 +725,21 @@ column-flip — each its own gate.
 > `PACK` (EC-A2a), **`PACK-GPU` (EC-A2b GpuVerified)**, **`STORE` (EC-A3)**, **`STORE-GPU` (EC-A3-gpu
 > ExactDeterministic)** all closed/PASS, NVIDIA RTX 4080-validated, full workspace green. Closeout:
 > [`tests/scenario_0080_2_atlas_batch_0_close_report.md`](tests/scenario_0080_2_atlas_batch_0_close_report.md).
-> **`R1` — IMPLEMENTED / PASS (2026-06-04).** Disruption-heatmap / EC1 implemented from the R1 opening
-> spec: [`scenarios/scenario_0080_2_r1_disruption_heatmap_opening_spec.md`](scenarios/scenario_0080_2_r1_disruption_heatmap_opening_spec.md).
-> Evidence: [`tests/scenario_0080_2_r1_disruption_heatmap_report.md`](tests/scenario_0080_2_r1_disruption_heatmap_report.md).
-> The fixture builds an occupant-produced disruption heatmap over the **galactic 20×20** gridcell
-> SimThings (fleets/systems as contributors), applies the pinned `BoundedFeedback` recurrence
-> (`clamp(prev*0.80 + input, 0, 100)`; `PIRATE_EMIT=20`, `PATROL_SUPPRESS=15`), diffuses into the strict
-> sink `location_status`, reduces a starmap summary, and emits a deterministic 400-cell artifact with
-> CPU-oracle parity. **CPU oracle primary; no new GPU/shader code; no f32 bit-exact claim.** Multi-tier
-> recursive reduce-up + blockade/divert remain deferred to R2; SEAD consumption remains deferred to R4.
-> OWNER masked-reduction *runtime* + R3 remain parked. M-4A sparse-residency scheduler and REENROLL remain parked.
+> **`R1` — ACCEPTED / CLOSED / IMPLEMENTED-PASS — Disruption Heatmap / EC1 (2026-06-04, Opus).**
+> `SCENARIO-0080-2-R1-IMPL-0` (PR #511) implemented from the R1 opening
+> spec: [`scenarios/scenario_0080_2_r1_disruption_heatmap_opening_spec.md`](scenarios/scenario_0080_2_r1_disruption_heatmap_opening_spec.md);
+> evidence [`tests/scenario_0080_2_r1_disruption_heatmap_report.md`](tests/scenario_0080_2_r1_disruption_heatmap_report.md);
+> **accepted** in [`tests/scenario_0080_2_r1_acceptance_review.md`](tests/scenario_0080_2_r1_acceptance_review.md)
+> (Opus re-ran all test evidence: R1 34/34, gen 6, loc 9, store 11, demo_0080_1 24, default_schedule_0080_1 30,
+> `cargo check --workspace` clean). The fixture builds an occupant-produced disruption heatmap over the
+> **galactic 20×20** gridcell SimThings (fleets/systems as contributors), applies the pinned
+> `BoundedFeedback` recurrence (`clamp(prev*0.80 + input, 0, 100)`; `PIRATE_EMIT=20`, `PATROL_SUPPRESS=15`),
+> diffuses into the strict sink `location_status`, reduces a starmap summary, and emits a deterministic
+> 400-cell artifact with CPU-oracle parity. **CPU oracle primary; no new GPU/shader code; no f32 bit-exact
+> claim.** Multi-tier recursive reduce-up + blockade/divert remain deferred to R2; SEAD consumption remains
+> deferred to R4. OWNER masked-reduction *runtime* + R3 remain parked. M-4A sparse-residency scheduler and
+> REENROLL remain parked. **Next gate: `R2-OPEN`** (recursive reduce-up / faction-economy coupling) — a
+> distinct Opus-authored opening-spec gate, **not yet opened**.
 >
 > > **✓ Adapter-scope caveat RESOLVED (2026-06-04, design authority).** `GpuContext` now **always selects
 > > a discrete GPU when present** (`context.rs`), and the **full NVIDIA RTX 4080 validation ladder is
@@ -754,7 +759,7 @@ column-flip — each its own gate.
 |---|---|---|---|
 | **Open — scenario admission** | admit the rehearsal scenario through the accepted simthing-spec / CLAUSE-SPEC **L0/L1/L2** designer-admission layer (scenario spec, bounds, rejection vocabulary) — the Tier-2 gate that opens the rehearsal | **simthing-spec / CLAUSE-SPEC (L0/L1/L2)** consumed as the authoring engine | CLAUSE-SPEC admission |
 | **Pre — `ATLAS-BATCH-0`** (§12.3) | static map gen + Location gridcell primitive + atlas batch allocation + 2-D-map storage | **Atlas batch allocation (C / M-4)**; OWNER masked-reduction storage | atlas runtime; `mobility_owner0` masked reduction |
-| **R1 — Disruption heatmap (EC1)** — *IMPLEMENTED / PASS 2026-06-04 ([spec](scenarios/scenario_0080_2_r1_disruption_heatmap_opening_spec.md), [report](tests/scenario_0080_2_r1_disruption_heatmap_report.md))* | pirate/patrol presence → `disruption` column on gridcell SimThings → BoundedFeedback decay → diffuse to `location_status` → reduce up to the starmap heatmap; vs CPU oracle; emitted deterministic artifact | **EML Tier-2 `BoundedFeedback`/`Decay`** (first real consumer); EC1 | EML temporal gadgets; stencil diffusion; SlotRange reduce |
+| **R1 — Disruption heatmap (EC1)** — *ACCEPTED / CLOSED / IMPLEMENTED-PASS 2026-06-04 ([spec](scenarios/scenario_0080_2_r1_disruption_heatmap_opening_spec.md), [report](tests/scenario_0080_2_r1_disruption_heatmap_report.md), [acceptance](tests/scenario_0080_2_r1_acceptance_review.md))* | pirate/patrol presence → `disruption` column on gridcell SimThings → BoundedFeedback decay → diffuse to `location_status` → reduce up to the starmap heatmap; vs CPU oracle; emitted deterministic artifact | **EML Tier-2 `BoundedFeedback`/`Decay`** (first real consumer); EC1 | EML temporal gadgets; stencil diffusion; SlotRange reduce |
 | **R2 — Recursive nested reduction + faction economy** | galactic→system→planet tier reductions (each tier's 2-D map reduces a summary into its parent's cell; `field_urgency` at each parent); **faction stockpile collects surplus + disburses to deficit systems; Terran/Pirate contention at blockaded/diverted cells** | **A-0 nested Resource Flow (depth>2)** off `FlatStarResourceFlow`; `field_urgency`; **ECON clearinghouse (subsidiarity) + faction-index contention (ECON-SCALE reuse)** | A-0 nested RF; `field_urgency` EvalEML; ECON Balance ledger / faction-index |
 | **R3 — Capability-tree mask-down** | Terran/Pirate techtrees resolve → modifier overlays (decay resistance, patrol suppression, combat bonus) masked **down** by owner-column onto cells/occupants | **Capability-tree → modifier-overlay substrate** (first real consumer); OWNER mask-down end-to-end | capability-tree substrate; OWNER latched overlays |
 | **R4 — SEAD field-consumption + exact sqrt (EC2)** | a moving child (fleet/patrol) reads the parent grid heatmap **at its own cell** — a composite intersecting **patrol-presence × disruption × its own (masked) disposition** — computes the gradient, evaluates **Euclidean magnitude via exact sqrt Candidate F**, and threshold-gates: **sit still vs step to the next opportunity** | **SEAD ladder field-consumption (EC2)** — closes the audit gap; **exact sqrt Candidate F** (named consumer for the orphaned artifact) | SEAD OBS/EVENT/PIPE/ACT; `m_jit_mag2_fixed_exact` → `m_jit_mag_f_from_exact_mag2` (Candidate F); `GradientXY` |
