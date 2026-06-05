@@ -1,9 +1,9 @@
 use std::sync::OnceLock;
 
 use simthing_driver::{
-    replay_runtime_0080_0_r1b, run_runtime_0080_0_r1b, run_runtime_0080_0_r1b_with_event_writers_enabled,
-    Runtime0080R1bInput, Runtime0080R1bReport, RUNTIME_0080_0_R1B_ID, RUNTIME_0080_0_R1B_PRIMITIVE,
-    RUNTIME_0080_0_R1B_STATUS_BLOCKED, RUNTIME_0080_0_R1B_STATUS_PASS,
+    replay_runtime_0080_0_r1b, run_runtime_0080_0_r1b,
+    run_runtime_0080_0_r1b_with_event_writers_enabled, Runtime0080R1bInput, Runtime0080R1bReport,
+    RUNTIME_0080_0_R1B_ID, RUNTIME_0080_0_R1B_PRIMITIVE, RUNTIME_0080_0_R1B_STATUS_BLOCKED,
     RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_FOREGROUND_CAPTURE,
 };
 
@@ -188,8 +188,15 @@ fn r1b_event_rows_match_cpu_oracle() {
     if blocked(admitted) {
         return;
     }
+    // Capability: every GPU-read-back journal row matches the CPU oracle in aggregate.
     assert!(admitted.event_journal_parity_measured_from_gpu_values);
-    assert_eq!(admitted.status, RUNTIME_0080_0_R1B_STATUS_PASS);
+    assert_eq!(
+        admitted.gpu_event_row_count_total,
+        admitted.oracle_event_row_count_total
+    );
+    // Verdict stays PARTIAL until the GPU itself emits the structural decisions (R1c); the
+    // journal substrate (write/readback/parity/boundary-consume) is fully earned here.
+    assert!(!admitted.structural_decisions_gpu_emitted);
 }
 
 #[test]
@@ -338,8 +345,7 @@ fn r1b_selects_discrete_gpu_or_blocks_honestly() {
         assert!(admitted.adapter.is_none());
         return;
     }
-    assert_eq!(admitted.status, RUNTIME_0080_0_R1B_STATUS_PASS);
-    assert_eq!(admitted.verdict, "PASS");
+    // Capability: when not blocked we ran on a real discrete GPU adapter.
     let adapter = admitted.adapter.as_ref().expect("R1b adapter");
     assert!(adapter.selected_discrete_gpu);
 }

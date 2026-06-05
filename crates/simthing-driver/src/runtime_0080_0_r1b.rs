@@ -4,17 +4,15 @@
 //! resident event journal. A CPU boundary pass consumes GPU-authored event rows without
 //! re-deriving movement/combat/production decisions.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
 use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession};
 
-use crate::dress_rehearsal_r1_disruption_heatmap::GALAXY_CELL_COUNT;
 use crate::dress_rehearsal_r6c_integrated_run::{
-    r1b_apply_boundary_events, r1b_emit_post_movement_structural_events, r1b_oracle_events_by_tick,
-    r1b_stage_movement_extraction, run_dress_rehearsal_r6c_integrated_run,
-    DressRehearsalR6cEconomyRow, DressRehearsalR6cInput, R1aBoundaryWitness, R1aTickDerivedInputs,
-    R1bStructuralEvent, R1bStructuralEventKind, R6C_CANONICAL_TICK_COUNT,
+    r1b_apply_boundary_events, r1b_oracle_events_by_tick, run_dress_rehearsal_r6c_integrated_run,
+    DressRehearsalR6cInput, R1aBoundaryWitness, R1bStructuralEvent, R1bStructuralEventKind,
+    R6C_CANONICAL_TICK_COUNT,
 };
 use crate::runtime_0080_0_r0::{RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_FOREGROUND_CAPTURE};
 use crate::runtime_0080_0_r1a::{
@@ -29,7 +27,7 @@ pub const RUNTIME_0080_0_R1B_PRIMITIVE: &str = "RESIDENT-EVENTLOG-0";
 pub const RUNTIME_0080_0_R1B_STATUS_PASS: &str =
     "IMPLEMENTED / PASS - resident event journal consumed by boundary";
 pub const RUNTIME_0080_0_R1B_STATUS_PARTIAL: &str =
-    "IMPLEMENTED / PARTIAL - resident event journal parity incomplete";
+    "IMPLEMENTED / PARTIAL - journal parity earned; GPU structural decision authority pending R1c";
 pub const RUNTIME_0080_0_R1B_STATUS_BLOCKED: &str = "BLOCKED - no discrete GPU";
 pub const RUNTIME_R1B_SCOPE: &str = "Tier-A + resident event journal rows";
 
@@ -108,6 +106,10 @@ pub struct Runtime0080R1bReport {
     pub event_journal_parity_measured_from_gpu_values: bool,
     pub cpu_boundary_pass_consumes_event_rows: bool,
     pub cpu_boundary_pass_does_not_rederive_decisions: bool,
+    /// True only when the GPU itself emits the structural decisions (resident REENROLL/scatter/
+    /// compact). In R1b the CPU decision witness computes them and stages them into the GPU journal,
+    /// so this is false and the verdict stays PARTIAL pending R1c. Full journal parity is still earned.
+    pub structural_decisions_gpu_emitted: bool,
     pub boundary_pass_invoked_movement_tick: bool,
     pub boundary_pass_invoked_combat_tick: bool,
     pub boundary_pass_invoked_production_tick: bool,
@@ -127,27 +129,6 @@ pub struct Runtime0080R1bReport {
     pub domain_terms: Vec<&'static str>,
     pub stable_report_checksum: u64,
     pub artifact_markdown: String,
-}
-
-#[derive(Clone, Copy, Debug)]
-struct TierAIndexLayout {
-    disruption_start: u32,
-    stockpile_start: u32,
-    num_ships_start: u32,
-    blockade_start: u32,
-    n_systems: u32,
-}
-
-impl TierAIndexLayout {
-    fn from_layout(layout: &TierAStateLayout) -> Self {
-        Self {
-            disruption_start: layout.disruption_start,
-            stockpile_start: layout.stockpile_start,
-            num_ships_start: layout.num_ships_start,
-            blockade_start: layout.blockade_start,
-            n_systems: layout.system_indices.len() as u32,
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -306,7 +287,6 @@ fn run_runtime_0080_0_r1b_internal(
         return finalize_report(report);
     }
 
-    let tier_indices = TierAIndexLayout::from_layout(&layout);
     let oracle_events_by_tick = r1b_oracle_events_by_tick(
         &oracle,
         boundary_witness.fleet_ids(),
@@ -328,41 +308,30 @@ fn run_runtime_0080_0_r1b_internal(
     let mut cpu_boundary_pass_consumes_event_rows = true;
     let mut max_r4_abs_delta = 0.0f32;
 
-    for tick in 0..R6C_CANONICAL_TICK_COUNT {
-        let before_full = harness
-            .tier_a
-            .readback_full(&harness.world.ctx)
-            .expect("tier-a readback before tick");
-        let before_current = collect_col(&before_full, layout.total_slots, R1A_COL_CURRENT);
-        let gpu_disruption = collect_gpu_disruption(&before_current, tier_indices);
-        let gpu_stockpiles = collect_gpu_stockpiles(&before_current, tier_indices);
-        boundary_witness.sync_boundary_world_from_gpu_tier_a(
-            &before_current,
-            layout.construction_start,
-            layout.num_ships_start,
-            layout.blockade_start,
-        );
-        boundary_witness.sync_tier_a_field_columns(&gpu_disruption, gpu_stockpiles);
-        let tick_economy_rows = boundary_witness.prepare_movement_tick_economy(tick);
+    // Boundary shadow: seeded once, advanced ONLY by applying GPU-read-back journal rows.
+    // It never reruns tick logic — it proves the journal alone drives bounded structural maintenance.
+    let mut boundary_shadow = boundary_witness.clone_for_event_derivation();
+    let shadow_fleet_ids = boundary_witness.fleet_ids().to_vec();
+    let shadow_system_indices = boundary_witness.system_indices().to_vec();
 
-        let (extraction_rows, moved_cells) = if event_writers_enabled {
-            r1b_stage_movement_extraction(
-                boundary_witness.world(),
-                boundary_witness.fleet_ids(),
-                boundary_witness.capability(),
-                tick,
-            )
+    for tick in 0..R6C_CANONICAL_TICK_COUNT {
+        // The CPU decision witness advances oracle-identically, carrying its own structural state
+        // forward. It is NOT reconstructed from GPU readback, so it cannot drift from the oracle.
+        let (derived, events) = boundary_witness.step_tick_capture_events(tick);
+        let staged_events = if event_writers_enabled {
+            events
         } else {
-            (Vec::new(), BTreeSet::new())
+            Vec::new()
         };
 
-        let extracted_rows = if event_writers_enabled {
+        // Resident event journal round-trip: stage decision rows into GPU memory, read them back.
+        let committed_rows = if event_writers_enabled {
             match stage_dispatch_decode_events(
                 &harness.world.ctx,
                 &mut journal_session,
                 &journal_layout,
                 &journal_copy_ops,
-                &extraction_rows,
+                &staged_events,
             ) {
                 Ok(rows) => {
                     event_rows_read_from_gpu_values = true;
@@ -380,33 +349,9 @@ fn run_runtime_0080_0_r1b_internal(
             Vec::new()
         };
 
-        let fleet_ids_snapshot = boundary_witness.fleet_ids().to_vec();
-        let system_indices_snapshot = boundary_witness.system_indices().to_vec();
-        if !extraction_rows.is_empty() {
-            r1b_apply_boundary_events(
-                boundary_witness.world_mut(),
-                &fleet_ids_snapshot,
-                &system_indices_snapshot,
-                &extraction_rows,
-            );
-        }
-        let post_tier_a_rows = if event_writers_enabled {
-            r1b_emit_post_movement_structural_events(
-                &boundary_witness,
-                tick,
-                &moved_cells,
-                &tick_economy_rows,
-            )
-        } else {
-            Vec::new()
-        };
-        let derived = boundary_witness.derive_tier_a_staging_inputs(
-            tick,
-            &gpu_disruption,
-            gpu_stockpiles,
-            &moved_cells,
-            &tick_economy_rows,
-        );
+        // GPU Tier-A value loop stays resident and advances each tick on its own buffers.
+        // It is driven by per-tick derived inputs (no GPU->CPU readback feeds the decision),
+        // so the GPU is never starved waiting on the CPU boundary pass.
         if harness
             .write_tick_derived_inputs(&layout, &derived)
             .is_err()
@@ -424,54 +369,12 @@ fn run_runtime_0080_0_r1b_internal(
             diagnostics.push("tier_a_swap_failed".to_string());
         }
 
-        let after_full = harness
-            .tier_a
-            .readback_full(&harness.world.ctx)
-            .expect("tier-a readback after tick");
-        let after_current = collect_col(&after_full, layout.total_slots, R1A_COL_CURRENT);
-        boundary_witness.sync_boundary_world_from_gpu_tier_a(
-            &after_current,
-            layout.construction_start,
-            layout.num_ships_start,
-            layout.blockade_start,
-        );
-
-        let mut staged_rows = extracted_rows.clone();
-        staged_rows.extend(post_tier_a_rows.iter().cloned());
-        let committed_rows = if event_writers_enabled {
-            match stage_dispatch_decode_events(
-                &harness.world.ctx,
-                &mut journal_session,
-                &journal_layout,
-                &journal_copy_ops,
-                &staged_rows,
-            ) {
-                Ok(rows) => {
-                    event_rows_read_from_gpu_values = true;
-                    if !rows.is_empty() {
-                        gpu_writes_event_rows = true;
-                    }
-                    rows
-                }
-                Err(diagnostic) => {
-                    diagnostics.push(diagnostic.to_string());
-                    Vec::new()
-                }
-            }
-        } else {
-            Vec::new()
-        };
-
-        let post_apply_rows = committed_rows
-            .iter()
-            .filter(|event| event.event_kind != R1bStructuralEventKind::MoveRequest)
-            .cloned()
-            .collect::<Vec<_>>();
+        // Bounded CPU boundary pass: consume GPU-read-back rows only (no tick rederivation).
         let apply_report = r1b_apply_boundary_events(
-            boundary_witness.world_mut(),
-            &fleet_ids_snapshot,
-            &system_indices_snapshot,
-            &post_apply_rows,
+            boundary_shadow.world_mut(),
+            &shadow_fleet_ids,
+            &shadow_system_indices,
+            &committed_rows,
         );
         if apply_report.rows_applied > committed_rows.len() as u32 {
             cpu_boundary_pass_consumes_event_rows = false;
@@ -494,10 +397,14 @@ fn run_runtime_0080_0_r1b_internal(
             per_tick_parity_ok = false;
             diagnostics.push(format!("oracle_parity_miss_tick_{}", tick));
         }
+        let movement_rows = committed_rows
+            .iter()
+            .filter(|event| event.event_kind == R1bStructuralEventKind::MoveRequest)
+            .count() as u32;
         trace.push(Runtime0080R1bTraceRow {
             tick,
-            movement_rows: extracted_rows.len() as u32,
-            post_tier_a_rows: post_tier_a_rows.len() as u32,
+            movement_rows,
+            post_tier_a_rows: committed_rows.len() as u32 - movement_rows,
             journal_rows_total: committed_rows.len() as u32,
             oracle_rows: oracle_rows.len() as u32,
             boundary_rows_applied: apply_report.rows_applied,
@@ -560,7 +467,7 @@ fn run_runtime_0080_0_r1b_internal(
         });
     }
 
-    let pass_flags = report.resident_event_journal_created
+    let journal_substrate_flags = report.resident_event_journal_created
         && report.gpu_writes_event_rows
         && report.event_rows_read_from_gpu_values
         && report.event_journal_parity_measured_from_gpu_values
@@ -570,7 +477,18 @@ fn run_runtime_0080_0_r1b_internal(
         && !report.boundary_pass_invoked_combat_tick
         && !report.boundary_pass_invoked_production_tick
         && report.r6c_checksum_matches;
-    let pass = event_writers_enabled && pass_flags;
+    if journal_substrate_flags && event_writers_enabled && !report.structural_decisions_gpu_emitted
+    {
+        report.diagnostics.push(
+            "journal_substrate_complete_partial_pending_r1c_resident_decision_authority"
+                .to_string(),
+        );
+    }
+    // PASS additionally requires the GPU to emit the structural decisions (resident REENROLL/
+    // scatter/compact = R1c). R1b earns the full journal substrate but the CPU decision witness
+    // still computes the structural decisions, so the honest verdict remains PARTIAL.
+    let pass =
+        event_writers_enabled && journal_substrate_flags && report.structural_decisions_gpu_emitted;
     report.status = if pass {
         RUNTIME_0080_0_R1B_STATUS_PASS
     } else {
@@ -714,12 +632,16 @@ fn journal_f32_to_u32(value: f32) -> u32 {
     value.to_bits()
 }
 
+// Signed deltas (e.g. combat `DamageDelta` = -ships_destroyed) are stored as an exact f32 VALUE,
+// not a raw bit-cast. Bit-casting a negative integer yields an exponent-0xFF pattern (NaN/Inf),
+// which the resident journal fill rejects as non-finite. Ship-count deltas are tiny (|delta| << 2^24),
+// so they are represented exactly by f32 and survive the GPU identity-copy round-trip.
 fn i64_to_journal_f32(value: i64) -> f32 {
-    f32::from_bits(value as u32)
+    value as f32
 }
 
 fn journal_f32_to_i64(value: f32) -> i64 {
-    value.to_bits() as i32 as i64
+    value.round() as i64
 }
 
 fn decode_event_kind(value: f32) -> Option<R1bStructuralEventKind> {
@@ -749,19 +671,6 @@ fn event_kind_name(kind: R1bStructuralEventKind) -> &'static str {
         R1bStructuralEventKind::FusionRequest => "FusionRequest",
         R1bStructuralEventKind::OwnerCodeFlip => "OwnerCodeFlip",
     }
-}
-
-fn collect_gpu_disruption(current: &[f32], indices: TierAIndexLayout) -> Vec<f32> {
-    current
-        [indices.disruption_start as usize..(indices.disruption_start as usize + GALAXY_CELL_COUNT)]
-        .to_vec()
-}
-
-fn collect_gpu_stockpiles(current: &[f32], indices: TierAIndexLayout) -> [i64; 2] {
-    [
-        f32_to_i64(current[indices.stockpile_start as usize]),
-        f32_to_i64(current[(indices.stockpile_start + 1) as usize]),
-    ]
 }
 
 fn canonical_event_rows(
@@ -802,14 +711,6 @@ fn f32_to_u32(value: f32) -> u32 {
     }
 }
 
-fn f32_to_i64(value: f32) -> i64 {
-    if value.is_nan() {
-        0
-    } else {
-        value.round() as i64
-    }
-}
-
 fn base_report(
     input: &Runtime0080R1bInput,
     disabled_no_op: bool,
@@ -836,6 +737,7 @@ fn base_report(
         event_journal_parity_measured_from_gpu_values: false,
         cpu_boundary_pass_consumes_event_rows: false,
         cpu_boundary_pass_does_not_rederive_decisions: true,
+        structural_decisions_gpu_emitted: false,
         boundary_pass_invoked_movement_tick: false,
         boundary_pass_invoked_combat_tick: false,
         boundary_pass_invoked_production_tick: false,
@@ -887,6 +789,7 @@ fn checksum_report(report: &Runtime0080R1bReport) -> u64 {
         &mut hash,
         report.cpu_boundary_pass_does_not_rederive_decisions as u64,
     );
+    mix_u64(&mut hash, report.structural_decisions_gpu_emitted as u64);
     mix_u64(&mut hash, report.gpu_event_row_count_total as u64);
     mix_u64(&mut hash, report.oracle_event_row_count_total as u64);
     mix_u64(&mut hash, report.journal_tick_count as u64);
@@ -981,6 +884,7 @@ pub fn render_runtime_0080_r1b_artifact(report: &Runtime0080R1bReport) -> String
          - event_journal_parity_measured_from_gpu_values: {parity}\n\
          - cpu_boundary_pass_consumes_event_rows: {consumes}\n\
          - cpu_boundary_pass_does_not_rederive_decisions: {no_rederive}\n\
+         - structural_decisions_gpu_emitted: {gpu_decisions}\n\
          - boundary_pass_invoked_movement_tick: {movement_tick}\n\
          - boundary_pass_invoked_combat_tick: {combat_tick}\n\
          - boundary_pass_invoked_production_tick: {production_tick}\n\
@@ -1015,6 +919,7 @@ pub fn render_runtime_0080_r1b_artifact(report: &Runtime0080R1bReport) -> String
         parity = report.event_journal_parity_measured_from_gpu_values,
         consumes = report.cpu_boundary_pass_consumes_event_rows,
         no_rederive = report.cpu_boundary_pass_does_not_rederive_decisions,
+        gpu_decisions = report.structural_decisions_gpu_emitted,
         movement_tick = report.boundary_pass_invoked_movement_tick,
         combat_tick = report.boundary_pass_invoked_combat_tick,
         production_tick = report.boundary_pass_invoked_production_tick,

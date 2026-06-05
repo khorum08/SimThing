@@ -3233,6 +3233,300 @@ impl R1aBoundaryWitness {
         }
     }
 
+    /// Advances the witness by one full R6C tick on the CPU (the oracle's exact per-tick sequence)
+    /// and captures the structural decision rows for the resident event journal.
+    ///
+    /// The witness carries its own structural state (fleet positions, ship counts, births,
+    /// removals, fusion lineage) forward across ticks — it is never reconstructed from partial
+    /// GPU Tier-A readback. That self-consistency is what keeps it in lockstep with the R6C oracle
+    /// and prevents the structural drift that an over-eager GPU-side per-tick reconstruction caused.
+    pub fn step_tick_capture_events(
+        &mut self,
+        tick: u32,
+    ) -> (R1aTickDerivedInputs, Vec<R1bStructuralEvent>) {
+        let disruption_input_by_cell = self.derive_disruption_inputs();
+
+        let mut disruption_rows = Vec::new();
+        run_disruption_tick(
+            tick,
+            &mut self.world,
+            &self.capability,
+            &mut disruption_rows,
+        );
+
+        let mut stockpile_ledger_rows = Vec::new();
+        let economy_rows = run_economy_tick(tick, &mut self.world, &mut stockpile_ledger_rows);
+        let ledger_value = |owner: DressRehearsalR6cOwner, disbursed: bool| {
+            stockpile_ledger_rows
+                .iter()
+                .find(|row| row.owner == owner)
+                .map(|row| {
+                    if disbursed {
+                        row.disbursed_down
+                    } else {
+                        row.reduced_in
+                    }
+                })
+                .unwrap_or(0)
+        };
+        let stockpile_reduced_in = [
+            ledger_value(DressRehearsalR6cOwner::Terran, false),
+            ledger_value(DressRehearsalR6cOwner::Pirate, false),
+        ];
+        let stockpile_disbursed_down = [
+            ledger_value(DressRehearsalR6cOwner::Terran, true),
+            ledger_value(DressRehearsalR6cOwner::Pirate, true),
+        ];
+
+        let mut field_rows = Vec::new();
+        let mut boundary_rows = Vec::new();
+        let mut movement_rows = Vec::new();
+        let moved_cells = run_movement_tick(
+            tick,
+            &mut self.world,
+            &self.capability,
+            &mut field_rows,
+            &mut boundary_rows,
+            &mut movement_rows,
+        );
+        let r4_gradients = field_rows
+            .iter()
+            .map(|row| (row.gradient_dx_f32, row.gradient_dy_f32))
+            .collect::<Vec<_>>();
+        let r4_magnitude_bits = field_rows
+            .iter()
+            .map(|row| row.real_signal_gradient_magnitude_bits)
+            .max()
+            .unwrap_or(0);
+
+        let mut combat_rows = Vec::new();
+        let mut reduce_rows = Vec::new();
+        let mut disburse_rows = Vec::new();
+        run_combat_tick(
+            tick,
+            &mut self.world,
+            &moved_cells,
+            &self.capability,
+            &mut combat_rows,
+            &mut reduce_rows,
+            &mut disburse_rows,
+        );
+        let mut combat_hostile_damage = vec![0i64; self.fleet_ids.len()];
+        let mut combat_hp_per_ship = vec![0i64; self.fleet_ids.len()];
+        for row in &combat_rows {
+            if let Some(idx) = self.fleet_ids.iter().position(|id| id == &row.combatant_id) {
+                combat_hostile_damage[idx] = row.hostile_damage_received;
+                combat_hp_per_ship[idx] = row.hp_per_ship;
+            }
+        }
+
+        let mut construction_rows = Vec::new();
+        let mut reinforcement_rows = Vec::new();
+        let mut birth_rows = Vec::new();
+        let mut fusion_rows = Vec::new();
+        run_production_tick(
+            tick,
+            &mut self.world,
+            &economy_rows,
+            &mut construction_rows,
+            &mut reinforcement_rows,
+            &mut birth_rows,
+            &mut fusion_rows,
+        );
+        refresh_membership(&mut self.world);
+
+        let mut construction_production = vec![0i64; self.system_indices.len()];
+        for row in &construction_rows {
+            if let Some(idx) = self
+                .system_indices
+                .iter()
+                .position(|s| *s == row.system_index)
+            {
+                construction_production[idx] = row.production_applied;
+            }
+        }
+        let mut reinforcement_delta = vec![0i64; self.fleet_ids.len()];
+        for row in &reinforcement_rows {
+            if let Some(idx) = self
+                .fleet_ids
+                .iter()
+                .position(|id| id == &row.target_fleet_id)
+            {
+                reinforcement_delta[idx] = row.ship_count_delta;
+            }
+        }
+        let mut fusion_delta = vec![0i64; self.fleet_ids.len()];
+        for row in &fusion_rows {
+            if let Some(idx) = self
+                .fleet_ids
+                .iter()
+                .position(|id| id == &row.surviving_fleet_id)
+            {
+                fusion_delta[idx] += row.right_num_ships;
+            }
+        }
+        let mut blockade_triggered_owner = vec![0.0f32; self.system_indices.len()];
+        for (idx, system_index) in self.system_indices.iter().enumerate() {
+            if let Some(row) = economy_rows
+                .iter()
+                .find(|r| r.system_index == *system_index)
+            {
+                blockade_triggered_owner[idx] = match row.blockader {
+                    Some(DressRehearsalR6cOwner::Terran) => 1.0,
+                    Some(DressRehearsalR6cOwner::Pirate) => 2.0,
+                    None => 0.0,
+                };
+            }
+        }
+
+        let mut events = Vec::new();
+        for row in &boundary_rows {
+            if !row.event_emitted {
+                continue;
+            }
+            let source_slot = self
+                .fleet_ids
+                .iter()
+                .position(|id| id == &row.mover_id)
+                .unwrap_or(0) as u32;
+            events.push(R1bStructuralEvent {
+                tick: row.tick,
+                event_kind: R1bStructuralEventKind::MoveRequest,
+                source_slot,
+                target_slot: 0,
+                source_cell: row.source_cell_index,
+                target_cell: row.destination_cell_index,
+                owner_code: 0,
+                amount_or_delta: 0,
+                threshold_code: row.threshold_input_mag_bits,
+            });
+        }
+        for row in &combat_rows {
+            let source_slot = self
+                .fleet_ids
+                .iter()
+                .position(|id| id == &row.combatant_id)
+                .unwrap_or(0) as u32;
+            if row.ship_loss_event_emitted {
+                events.push(R1bStructuralEvent {
+                    tick: row.tick,
+                    event_kind: R1bStructuralEventKind::DamageDelta,
+                    source_slot,
+                    target_slot: 0,
+                    source_cell: row.cell_index,
+                    target_cell: 0,
+                    owner_code: r1b_owner_code(row.owner),
+                    amount_or_delta: -row.ships_destroyed,
+                    threshold_code: 0,
+                });
+            }
+            if row.zero_cohort_event_emitted {
+                events.push(R1bStructuralEvent {
+                    tick: row.tick,
+                    event_kind: R1bStructuralEventKind::ZeroCohort,
+                    source_slot,
+                    target_slot: 0,
+                    source_cell: row.cell_index,
+                    target_cell: 0,
+                    owner_code: r1b_owner_code(row.owner),
+                    amount_or_delta: 0,
+                    threshold_code: 0,
+                });
+            }
+        }
+        for row in &reinforcement_rows {
+            let source_slot = self
+                .fleet_ids
+                .iter()
+                .position(|id| id == &row.target_fleet_id)
+                .unwrap_or(0) as u32;
+            events.push(R1bStructuralEvent {
+                tick: row.tick,
+                event_kind: R1bStructuralEventKind::ShipCountDelta,
+                source_slot,
+                target_slot: 0,
+                source_cell: row.cell_index,
+                target_cell: 0,
+                owner_code: r1b_owner_code(row.owner),
+                amount_or_delta: row.ship_count_delta,
+                threshold_code: 0,
+            });
+        }
+        for row in &birth_rows {
+            events.push(R1bStructuralEvent {
+                tick: row.tick,
+                event_kind: R1bStructuralEventKind::LocalBirthRequest,
+                source_slot: 0,
+                target_slot: 0,
+                source_cell: row.cell_index,
+                target_cell: 0,
+                owner_code: r1b_owner_code(row.owner),
+                amount_or_delta: row.num_ships,
+                threshold_code: 0,
+            });
+        }
+        for row in &fusion_rows {
+            let source_slot = self
+                .fleet_ids
+                .iter()
+                .position(|id| id == &row.surviving_fleet_id)
+                .unwrap_or(0) as u32;
+            let target_slot = self
+                .fleet_ids
+                .iter()
+                .position(|id| id == &row.absorbed_fleet_id)
+                .unwrap_or(0) as u32;
+            events.push(R1bStructuralEvent {
+                tick: row.tick,
+                event_kind: R1bStructuralEventKind::FusionRequest,
+                source_slot,
+                target_slot,
+                source_cell: row.cell_index,
+                target_cell: row.cell_index,
+                owner_code: r1b_owner_code(row.owner),
+                amount_or_delta: row.right_num_ships,
+                threshold_code: 0,
+            });
+        }
+        for row in &economy_rows {
+            if !row.owner_column_flipped {
+                continue;
+            }
+            let source_slot = self
+                .system_indices
+                .iter()
+                .position(|idx| *idx == row.system_index)
+                .unwrap_or(0) as u32;
+            events.push(R1bStructuralEvent {
+                tick,
+                event_kind: R1bStructuralEventKind::OwnerCodeFlip,
+                source_slot,
+                target_slot: 0,
+                source_cell: row.cell_index,
+                target_cell: 0,
+                owner_code: row.blockader.map(r1b_owner_code).unwrap_or(0),
+                amount_or_delta: 0,
+                threshold_code: 0,
+            });
+        }
+
+        let derived = R1aTickDerivedInputs {
+            disruption_input_by_cell,
+            stockpile_reduced_in,
+            stockpile_disbursed_down,
+            construction_production,
+            economy_rows,
+            combat_hostile_damage,
+            combat_hp_per_ship,
+            reinforcement_delta,
+            fusion_delta,
+            blockade_triggered_owner,
+            r4_gradients,
+            r4_magnitude_bits,
+        };
+        (derived, events)
+    }
+
     pub fn derive_tier_a_staging_inputs(
         &self,
         tick: u32,
