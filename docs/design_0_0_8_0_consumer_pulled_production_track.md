@@ -776,6 +776,22 @@ column-flip — each its own gate.
 > `GPU-conformant; GPU execution not yet measured`. No new semantic WGSL, no new op, no new invariant,
 > no pinned-number change, no default SimSession wiring, and no reopen of 0080-2.
 >
+> **Next named track: `RUNTIME-0080-0` — production runtime tick scheduler over sparse-resident GPU
+> shapes** (`GPU-MEASURE-0080-0-COMPLETE-0` ruling **C**; design opening:
+> [`production_paths/runtime_0080_0_opening_spec.md`](production_paths/runtime_0080_0_opening_spec.md);
+> implementation recipient Cursor/Codex5.5max after the opening lands). Realizes the parked **M-4A
+> sparse-residency scheduler / Atlas production runtime** and **subsumes the R6C whole-run GPU gap**,
+> which is a *runtime-substrate* gap (state held GPU-resident across ticks), not a measurement gap.
+> **First rung R0:** run the R6C 100-tick loop with world state GPU-resident across ticks for the
+> **single galactic tier**, dispatching the already-measured per-tick shapes through the accepted
+> ATLAS-0080-0 residency + GPU-EXEC/AccumulatorOp paths, asserting CPU-oracle parity (incl. R6C checksum
+> `1bba891c779190a4`) — converting R6C's whole-run posture to `GPU-measured` only if actually measured.
+> Stop-lines: stays single resident theater (no `request_atlas_batching` admission, gated until a §11 M-4
+> PR), no M-4A masking-at-scale, no new substrate primitive / semantic WGSL / op / invariant — any such
+> need escalates to Opus as a distinct rung. Report `docs/tests/runtime_0080_0_r0_results.md`. Candidates
+> A (richer emergence / `SCENARIO-0080-3`), D (multi-faction ECON), and E (system→planet recursion)
+> remain parked behind R0.
+>
 > > **✓ Adapter-scope caveat RESOLVED (2026-06-04, design authority).** `GpuContext` now **always selects
 > > a discrete GPU when present** (`context.rs`), and the **full NVIDIA RTX 4080 validation ladder is
 > > complete** — `docs/nvidia_fp_determinism_test.md` (Batteries 01–13). **`cargo test --workspace` is
