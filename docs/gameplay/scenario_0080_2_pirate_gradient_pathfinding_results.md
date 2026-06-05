@@ -1,123 +1,105 @@
-# Pirate Gradient Pathfinding — What the Dress Rehearsal Actually Did
+# Pirate Gradient Pathfinding - What the Dress Rehearsal Actually Did
 
 *A plain-language results report for SCENARIO-0080-2. Companion to the formal closeout
 [`../tests/scenario_0080_2_r7_closeout_report.md`](../tests/scenario_0080_2_r7_closeout_report.md).*
 
-> **Supersedes the 2026-06-02 pre-rehearsal version of this file.** That earlier report proved the
-> disruption recurrence, compound field, dual-output gradient, and SEAD single-step movement at the
-> **math / CPU-oracle layer** and explicitly flagged that they were *not yet proven through a full
-> SimThing reduction* — naming this dress rehearsal as the successor. The rehearsal (R1–R6B) has now
-> run; this version records what it actually demonstrated, and what it did not.
-
-This document describes **what the simulation did**, in order, and is careful to separate **what genuinely
-fell out of the rules** from **what was set up by hand to prove a mechanism worked**. Where something did
-*not* happen yet, it says so plainly — that is a finding, not a failure to hide.
+This version records the R6C integrated run, not just the earlier single-pass R1-R6B mechanism chain.
+The rehearsal now ticks one mutable world for 100 turns and observes which behaviors actually appear.
 
 ---
 
-## The setup
+## The Setup
 
-A small corner of a galaxy: a **20×20 starmap** with **13 star systems** — 10 Terran, 3 Pirate. Terran
-out-produces (10 systems, 3 starports, ~10 production/tick) but the Pirates start with the bigger fleet
-(10 ships vs 3 patrols) and a blockade lever. Every actor — the galaxy, the factions, the systems, the
-planets, the fleets, even the individual ships inside a fleet — is the **same kind of thing**: a SimThing
-with properties and overlays. Nothing in here is a special "combat engine" or "economy engine" bolted on
-the side. Combat, trade, raiding, and shipbuilding are all the *same* underlying operation — resources
-flowing up and down a tree and crossing thresholds.
+The map is a 20x20 starmap with 13 systems: 10 Terran and 3 Pirate. Terran owns the larger economy and
+three starports; Pirates begin with the larger fleet and a blockade lever. Fleets, systems, factions,
+ship cohorts, and grid cells are all represented as SimThings with properties and owner/channel overlays.
 
-That uniformity is the whole point. The rehearsal exists to prove that an entire 4X-flavored vertical —
-field, economy, doctrine, pathing, movement, combat, production — can be expressed as one substrate
-without ever inventing a bespoke subsystem.
+Combat, raiding pressure, economy, movement, and shipbuilding all use the same style of substrate:
+row-shaped data, owner masks, reduce/disburse flows, threshold crossings, and emitted events. There is no
+special combat engine, economy engine, or fleet manager hiding off to the side.
 
 ---
 
-## What happened, step by step
+## What Happened Over The Run
 
-**1. The raid lit up the map.** Ten Pirate ships sitting on one system pushed that cell's **disruption**
-to its ceiling (100). Patrols, where present, pushed disruption *down*. The disruption spread to
-neighboring cells with falloff. → *This is real arithmetic, but it was a hand-placed hotspot — one bright
-spot on an otherwise dark map.*
+**1. The raid pressure became a live field.** Pirate fleets produced disruption, patrol fleets suppressed
+it, and the bounded recurrence carried that disruption forward. Unlike the first closeout, this was no
+longer a one-shot hotspot only: fleet movement changed the next tick's disruption inputs.
 
-**2. The economy felt it.** Production flowed up from factories into per-faction stockpiles, kept strictly
-separate by owner (Terran money never silently merged with Pirate money), then was disbursed back down to
-systems that needed it. The blockaded system crossed the disruption line and its production was **diverted
-to the blockader** — the Pirates effectively stole a Terran system's output by changing *which owner the
-flow counted for*, without moving or reparenting anything. → *Proven, cleanly, at one cell, for one tick.*
+**2. The economy reacted every tick.** Production flowed up into owner-separated Terran and Pirate
+stockpiles, then down to systems. When disruption crossed the blockade line, production diverted by
+owner-column flip to the blockader. The first blockade/divert event appeared at tick 2, and blockaded
+systems continued appearing over the run.
 
-**3. The factions brought their personalities.** Terran and Pirate capability trees resolved into
-modifier overlays — patrol-suppression doctrine, raiding logistics, a combat bonus — and those overlays
-masked down onto the cells and ships of the owning faction only. → *Proven. Later consumed for real by
-combat, where the Pirate combat bonus actually changed damage output.*
+**3. Doctrine shaped the field reads.** Terran and Pirate capability overlays changed how fleets valued
+disruption, patrol pressure, opportunity, and combat. These overlays remained owner-masked data, not
+planner decisions.
 
-**4. A fleet read the field and decided.** A fleet looked at the galaxy gradient **at its own cell** — a
-blend of disruption, patrol presence, opportunity, and its own faction's doctrine — measured the slope
-with an exact, deterministic square-root, and asked one question: *is the pull strong enough to move?* If
-yes, it picked the most attractive neighbor. → *This is the closest thing to genuine emergence in the
-rehearsal: a real field read and a real threshold decision. With one honest asterisk (see below).*
+**4. Fleets moved by local SEAD, not route search.** Each mover read the composite field at its own cell,
+used exact magnitude thresholding, and stepped greedily to a neighboring cell when the field was strong
+enough. The run produced broad Pirate raiding dispersion: `pirate_distinct_destinations=28`.
 
-**5. The fleet actually moved.** A "yes" decision turned into an event, the event into a boundary request,
-and the request relocated the fleet — deregistering it from its old cell and enrolling it in the new one —
-while keeping its identity and its owner stamp intact. No teleporting, no rewriting the tree. → *Real
-movement, driven by the decision in step 4, not by a script.*
+**5. Combat came from movement-produced co-location.** The first movement-produced hostile co-location
+occurred at tick 44. Combat then ran as Resource Flow: damage reduced up by owner, disbursed down to
+hostile cohorts, and converted into whole ships destroyed.
 
-**6. Fleets fought as crowds of ships, not as hit-point bars.** Where a Terran fleet and Pirate fleets
-shared a cell, combat ran as **resource flow**: each side's damage output (ships × per-ship damage, tuned
-by the faction combat bonus) was pooled by owner, aimed only at the enemy, and the incoming damage was
-converted into **whole ships lost** — 500 damage against 100-HP ships removes exactly 5 ships. A fleet is
-only destroyed when its **last** ship dies, not when some abstract HP bar hits zero. → *The attrition math
-genuinely emerges from the flow. The fight itself, though, was staged: the two sides were placed together
-to prove the mechanism.*
+**6. Shipyards changed the fleet counts.** Construction crossed thresholds, reinforced existing compatible
+fleets, and birthed new local fleets. The first reinforcement appeared at tick 49. Friendly compatible
+fleets also fused into larger cohorts.
 
-**7. Shipyards refilled the fleets.** Production accumulated toward a build threshold; crossing it emitted
-a **ship-count delta**. That delta found a compatible friendly fleet in the same cell and **grew it** (10
-ships → 11, with hit-points-to-kill and damage output recomputed to match), or, if there was no suitable
-fleet, **birthed a new one** locally. Two friendly fleets sharing a cell could **fuse** into one larger
-cohort (7 + 7 → 14). All of this without any movement order. → *The reinforcement of a real, previously
-spawned fleet is a genuine chain; the fusion and birth demonstrations used hand-placed fleets.*
+**7. The production race became visible but not final.** Terran ships grew from 3 to 7 by tick 100, while
+Pirate ships grew from 10 to 12. The curve shows a real production/attrition race, but not a solved
+strategic equilibrium.
 
 ---
 
-## The honest asterisk: the tie-breaker
+## What Emerged
 
-The canonical test field is **sparse** — essentially one bright hotspot. On a field that flat, a pure
-gradient can point nowhere in particular. To keep the movement decision well-defined, R4 adds a tiny
-deterministic spatial nudge (a function of the cell's position). **This nudge is a fixture tie-breaker,
-not gameplay.** It must never be read as "the Pirates chose to go there because the simulation wanted them
-to." A richer map with several competing hotspots should either remove the nudge entirely or prove the
-real field signal overwhelms it. Until then, treat fleet *direction* in this rehearsal as "validly
-decided" but not "strategically meaningful."
+- Pirate raiding waves toward weakly defended, high-value Terran systems: emerged.
+- Blockade/divert affecting economy over time: emerged.
+- Movement-produced hostile co-location and combat: emerged at tick 44.
+- Fleet attrition as cohort ship loss: emerged.
+- Production reinforcement and fleet birth: emerged.
+- Friendly fleet fusion/cohort compaction: emerged.
+- Modder-facing expressibility: emerged; the whole run is row/mask/reduce/disburse/threshold machinery.
+
+## What Partially Emerged
+
+- Self-disruption migration: the Pirate field penalizes dirty targets and attracts cleaner ones, but this
+  is still greedy local stepping.
+- Race equilibrium: the race curve is real, but 100 ticks is evidence of pressure, not a final strategic
+  balance proof.
+- Front/standoff behavior: movement-produced combat appears, but persistent repeated fronts are only
+  partial.
+- Self-sustaining pirate pressure loop: raid -> divert -> production/attrition feedback is present, but
+  not yet a full open-ended loop.
+
+## What Did Not Emerge
+
+- Patrol response to disruption did not trigger as a detector, even though Terran field rows consumed
+  disruption and defensive logistics overlays.
+- Open-ended AI behavior did not emerge and was not intended to: there is no CPU planner, policy AI,
+  route search, or lookahead.
+- Production-engine/default-schedule gameplay was not switched on. R6C is an opt-in harness.
 
 ---
 
-## What did **not** emerge (yet)
+## The Pathfinding Boundary
 
-The marquee questions this scenario was built to eventually ask **were not answered**, because the
-rehearsal is a chain of single-pass demonstrations wired together — not a clock ticking forward over many
-turns:
+"Pathfinding" here means local field-following, not a route planner. A fleet can read the field under its
+feet, decide whether the gradient is strong enough, and step to the best neighboring cell. It does not
+plot a multi-step route, search around obstacles, or reason about future turns.
 
-- **Raiding waves** sweeping toward soft, rich Terran systems — *not shown.*
-- **The race:** does Pirate fleet-overmatch hold, or does the Terran production edge out-build it? — *not
-  shown; this needs many ticks.*
-- **Interception:** two fleets meeting in transit and fighting because of where movement took them — *not
-  shown; the one fight was staged.*
-- **Fronts / standoffs** where patrol suppression balances Pirate disruption — *not shown.*
-- **A self-sustaining pressure loop** (raid → disrupt → divert → build → raid again) — *not shown.*
-
-None of these are broken. They are simply **not yet exercised**: the parts have each been proven to work;
-they have not yet been left running together long enough to produce a story. That is the next scenario's
-job — a multi-tick closed loop over a richer field.
+That boundary is important and useful: the rehearsal proves field-as-policy movement can produce raiding,
+interception, and combat pressure without a planner. It does not claim a general pathfinding system.
 
 ---
 
-## What this proved (the durable result)
+## Durable Result
 
-- A complete vertical **mechanism chain** works, and **each stage genuinely consumes the previous stage's
-  real output** — not a stand-in number copied by hand.
-- **Combat, economy, disruption, movement, and shipbuilding are all the same substrate** (SimThings +
-  overlays + accumulate/threshold/emit). No bespoke engine was added for any of them. For a modder, that
-  means a new adversarial or economic system is "more SimThing," not new engine code.
-- Fleets are **cohorts of ships**, and both **losing** ships (combat) and **gaining** ships (production)
-  are the same kind of threshold-driven count change on that cohort.
+The R6C run is the first full SCENARIO-0080-2 rehearsal where the pieces are left running together.
+Disruption feeds economy, economy and doctrine feed movement fields, movement changes future disruption
+and combat opportunities, combat changes fleet cohorts, and production changes future combat capacity.
 
-This is the substrate doing what the constitution promises. The *game* — the emergent, open-ended pressure
-between two factions — is the next thing to switch on, now that every part has been shown to run.
+The game story is now visible in the substrate, while the claim remains bounded: single galactic tier,
+opt-in harness, CPU-oracle primary, greedy local movement, and no measured R6C GPU execution yet.
