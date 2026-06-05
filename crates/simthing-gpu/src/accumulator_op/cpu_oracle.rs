@@ -85,6 +85,9 @@ pub fn eval_eml_cpu(
             eml_opcode::ABS => {
                 stack[sp - 1] = stack[sp - 1].abs();
             }
+            eml_opcode::FLOOR => {
+                stack[sp - 1] = stack[sp - 1].floor();
+            }
             eml_opcode::CMP_LT => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];

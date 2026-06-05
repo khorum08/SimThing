@@ -24,35 +24,33 @@ fn r6b_consumes_r5_and_r6a_contracts() {
 #[test]
 fn r6b_ship_production_is_threshold_emission_band() {
     let admitted = report();
-    assert!(admitted.construction_rows.iter().any(|row| row.threshold_passed));
+    assert!(admitted
+        .construction_rows
+        .iter()
+        .any(|row| row.threshold_passed));
     assert!(admitted.gpu_substrate_posture_only);
 }
 
 #[test]
 fn r6b_construction_progress_emits_ship_count_delta() {
-    let (_, passed, delta, remainder) =
-        construction_threshold_emission(0, SHIP_COST, SHIP_COST);
+    let (_, passed, delta, remainder) = construction_threshold_emission(0, SHIP_COST, SHIP_COST);
     assert!(passed);
     assert_eq!(delta, 1);
     assert_eq!(remainder, 0);
     let admitted = report();
-    assert!(
-        admitted
-            .construction_rows
-            .iter()
-            .any(|row| row.ship_count_delta_emitted >= 1)
-    );
+    assert!(admitted
+        .construction_rows
+        .iter()
+        .any(|row| row.ship_count_delta_emitted >= 1));
 }
 
 #[test]
 fn r6b_starport_production_targets_starbase_gridcell() {
     let admitted = report();
-    assert!(
-        admitted
-            .construction_rows
-            .iter()
-            .all(|row| row.cell_index < 400)
-    );
+    assert!(admitted
+        .construction_rows
+        .iter()
+        .all(|row| row.cell_index < 400));
     assert!(!admitted.construction_rows.is_empty());
 }
 
@@ -61,7 +59,10 @@ fn r6b_masked_selection_finds_existing_compatible_friendly_fleet() {
     let admitted = report();
     assert!(!admitted.reinforcement_rows.is_empty());
     let row = &admitted.reinforcement_rows[0];
-    assert!(admitted.cohort_rows.iter().any(|c| c.fleet_id == row.target_fleet_id));
+    assert!(admitted
+        .cohort_rows
+        .iter()
+        .any(|c| c.fleet_id == row.target_fleet_id));
 }
 
 #[test]
@@ -69,7 +70,10 @@ fn r6b_reinforcement_increments_num_ships_without_boundary_request() {
     let admitted = report();
     for row in &admitted.reinforcement_rows {
         assert!(!row.movement_boundary_request_used);
-        assert_eq!(row.num_ships_after, row.num_ships_before + row.ship_count_delta);
+        assert_eq!(
+            row.num_ships_after,
+            row.num_ships_before + row.ship_count_delta
+        );
     }
     assert!(!admitted.movement_boundary_request_used);
 }
@@ -112,7 +116,10 @@ fn r6b_new_fleet_birth_only_when_no_compatible_cohort_exists() {
                     && c.fleet_id != birth.created_fleet_id
             })
             .count();
-        assert_eq!(compatible_before, 0, "birth implies no prior compatible cohort");
+        assert_eq!(
+            compatible_before, 0,
+            "birth implies no prior compatible cohort"
+        );
     }
 }
 
@@ -145,7 +152,10 @@ fn r6b_fusion_sums_num_ships() {
         .iter()
         .find(|row| row.surviving_fleet_id == R6B_FUSION_LEFT_ID)
         .expect("left survivor fusion");
-    assert_eq!(fusion.left_num_ships + fusion.right_num_ships, fusion.fused_num_ships);
+    assert_eq!(
+        fusion.left_num_ships + fusion.right_num_ships,
+        fusion.fused_num_ships
+    );
     assert_eq!(fusion.fused_num_ships, 14);
 }
 
@@ -170,23 +180,19 @@ fn r6b_fusion_recomputes_hp_to_kill_and_damage_output() {
 #[test]
 fn r6b_fusion_records_identity_lineage() {
     let admitted = report();
-    assert!(
-        admitted
-            .fusion_rows
-            .iter()
-            .all(|row| row.identity_lineage_recorded && !row.fusion_event_id.is_empty())
-    );
+    assert!(admitted
+        .fusion_rows
+        .iter()
+        .all(|row| row.identity_lineage_recorded && !row.fusion_event_id.is_empty()));
 }
 
 #[test]
 fn r6b_fusion_preserves_owner_overlay() {
     let admitted = report();
-    assert!(
-        admitted
-            .fusion_rows
-            .iter()
-            .all(|row| row.owner_overlay_preserved)
-    );
+    assert!(admitted
+        .fusion_rows
+        .iter()
+        .all(|row| row.owner_overlay_preserved));
 }
 
 #[test]
@@ -212,16 +218,12 @@ fn r6b_hostile_colocated_fleets_do_not_fuse() {
         .iter()
         .filter(|c| c.cell_index == R6B_FUSION_FIXTURE_CELL && !c.destroyed)
         .collect();
-    assert!(
-        at_fixture
-            .iter()
-            .any(|c| c.owner == DressRehearsalR6bOwner::Terran)
-    );
-    assert!(
-        at_fixture
-            .iter()
-            .any(|c| c.owner == DressRehearsalR6bOwner::Pirate)
-    );
+    assert!(at_fixture
+        .iter()
+        .any(|c| c.owner == DressRehearsalR6bOwner::Terran));
+    assert!(at_fixture
+        .iter()
+        .any(|c| c.owner == DressRehearsalR6bOwner::Pirate));
 }
 
 #[test]
@@ -314,8 +316,9 @@ fn r6b_deterministic_replay_and_cpu_oracle_parity() {
 
 #[test]
 fn r6b_opt_in_default_off() {
-    let default =
-        run_dress_rehearsal_r6b_ship_cohort_reinforcement(&DressRehearsalR6bInput::default_simsession());
+    let default = run_dress_rehearsal_r6b_ship_cohort_reinforcement(
+        &DressRehearsalR6bInput::default_simsession(),
+    );
     assert!(!default.explicit_opt_in);
     assert!(default.default_off);
     assert!(default.disabled_no_op);

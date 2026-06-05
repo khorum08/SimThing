@@ -1,3 +1,11 @@
+# 2026-06-05 - RUNTIME-0080-0-R1a Outcome A PASS: Tier-A GPU next-tick authority
+
+- **Implemented Outcome A:** `crates/simthing-driver/src/runtime_0080_0_r1a.rs` registers Tier-A transforms on production `WorldGpuState` + `Pipelines` with a resident 100-tick double-buffer loop, seed-once per-tick metadata from the R6C report, zero inter-tick Tier-A uploads, ordered diffusion bands, staged EvalEML stockpile/construction/combat transforms, GPU-side fusion deltas, and a GPU-to-GPU Candidate-F max-magnitude write into resident Tier-A state. Boundary readbacks are parity witnesses only; CPU oracle remains comparison-only.
+- **Section 4a primitives admitted:** generic semantic-free `Floor` EvalEML opcode for integer attrition and generic `CandidateFMaxMagnitude` WGSL helper for correctly-rounded gradient-pair magnitude reduction. Both are reusable substrate additions with CPU-oracle parity evidence; semantic WGSL/opcodes remain banned.
+- **Test gate:** `cargo test -p simthing-driver --test runtime_0080_0_r1a` -> 17 passed; 0 failed. Stable report checksum `f0244d3d9106900d` (`RUNTIME_R1A_EXPECTED_REPORT_CHECKSUM=17304040595085758477`). R6C checksum observed `1bba891c779190a4`.
+- **Broader verification:** R0 runtime, GPU-MEASURE, R1/R2/R3/R4/R5/R6/R6B/R6C dress rehearsals, `simthing-gpu`, and `cargo check --workspace` all passed. `cargo test -p simthing-spec` remains a non-R1a blocker in existing spec integration tests that compile without `std` plus `jit_kernel_registry_preview` `STATUS_STACK_BUFFER_OVERRUN`.
+- **Docs:** [`docs/tests/runtime_0080_0_r1a_next_tick_authority_results.md`](tests/runtime_0080_0_r1a_next_tick_authority_results.md) updated to PASS.
+
 # 2026-06-05 - RUNTIME-0080-0-R1a-REMEDIAL-0: fake PASS removed in code/report (Outcome B)
 
 - **Implemented remedial Outcome B:** Replaced the R1a IMPL-0 harness that injected CPU-computed Tier-A `state_N+1` into a private GPU journal with an honest audit harness. The old producer tokens (`build_tier_a_oracle_states`, `COL_JOURNAL_DELTA`, `write_slot_col_values`, `resident_double_buffer_ops`) are gone from `crates/simthing-driver/src/runtime_0080_0_r1a.rs`; all R1a authority/parity flags remain false until the production substrate actually computes `state_N+1`.

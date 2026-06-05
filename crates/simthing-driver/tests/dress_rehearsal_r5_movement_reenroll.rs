@@ -20,12 +20,10 @@ fn r5_consumes_r4_step_opportunity_contract() {
     assert!(admitted.admitted, "{:?}", admitted.diagnostics);
     assert_eq!(admitted.r4_contract_checksum, r4.summary.stable_checksum);
     assert_eq!(admitted.r4_contract_checksum, 0xf0ac_be2c_cb98_badb);
-    assert!(
-        admitted
-            .movement_rows
-            .iter()
-            .all(|row| row.r4_decision_consumed == "StepOpportunity")
-    );
+    assert!(admitted
+        .movement_rows
+        .iter()
+        .all(|row| row.r4_decision_consumed == "StepOpportunity"));
 }
 
 #[test]
@@ -46,12 +44,10 @@ fn r5_sit_still_rows_do_not_emit_boundary_request() {
                 .any(|row| row.mover_id == mover_id),
             "sit-still mover {mover_id} must not emit boundary request"
         );
-        assert!(
-            admitted
-                .sit_still_rows
-                .iter()
-                .any(|row| row.mover_id == mover_id)
-        );
+        assert!(admitted
+            .sit_still_rows
+            .iter()
+            .any(|row| row.mover_id == mover_id));
     }
 }
 
@@ -72,8 +68,7 @@ fn r5_routes_boundary_request_through_mobility_substrate() {
     assert!(
         admitted.mobility_substrate_admitted,
         "mobility diagnostics {:?} report {:?}",
-        admitted.mobility_substrate_diagnostics,
-        admitted.diagnostics
+        admitted.mobility_substrate_diagnostics, admitted.diagnostics
     );
     assert!(!admitted.direct_movement_command);
     assert!(!admitted.external_boundary_request);
@@ -85,15 +80,10 @@ fn r5_reenrolls_mover_from_source_cell_to_destination_cell() {
     for row in &admitted.movement_rows {
         assert!(row.movement_applied, "mover {}", row.mover_id);
         assert_eq!(row.post_move_cell_index, row.destination_cell_index);
-        assert!(
-            !row
-                .source_arena_membership_after
-                .contains(&row.entity_id)
-        );
-        assert!(
-            row.destination_arena_membership_after
-                .contains(&row.entity_id)
-        );
+        assert!(!row.source_arena_membership_after.contains(&row.entity_id));
+        assert!(row
+            .destination_arena_membership_after
+            .contains(&row.entity_id));
     }
 }
 
@@ -102,8 +92,7 @@ fn r5_preserves_idroute_identity() {
     let admitted = report();
     for row in &admitted.movement_rows {
         assert_eq!(
-            row.idroute_identity_before,
-            row.idroute_identity_after,
+            row.idroute_identity_before, row.idroute_identity_after,
             "{}",
             row.mover_id
         );
@@ -115,8 +104,7 @@ fn r5_preserves_owner_overlay() {
     let admitted = report();
     for row in &admitted.movement_rows {
         assert_eq!(
-            row.owner_faction_id_before,
-            row.owner_faction_id_after,
+            row.owner_faction_id_before, row.owner_faction_id_after,
             "{}",
             row.mover_id
         );
@@ -175,10 +163,7 @@ fn r5_starport_fission_emits_new_fleet_if_substrate_available() {
 #[test]
 fn r5_new_fleet_enrolled_with_owner_overlay_if_fission_available() {
     let admitted = report();
-    let row = admitted
-        .fission_rows
-        .first()
-        .expect("fission row");
+    let row = admitted.fission_rows.first().expect("fission row");
     assert!(row.fission_applied);
     assert!(row.owner_faction_id > 0);
     assert!(!row.starport_id.is_empty());
@@ -195,7 +180,8 @@ fn r5_deterministic_replay_and_cpu_oracle_parity() {
 
 #[test]
 fn r5_opt_in_default_off() {
-    let default = run_dress_rehearsal_r5_movement_reenroll(&DressRehearsalR5Input::default_simsession());
+    let default =
+        run_dress_rehearsal_r5_movement_reenroll(&DressRehearsalR5Input::default_simsession());
     assert!(!default.explicit_opt_in);
     assert!(default.default_off);
     assert!(default.disabled_no_op);
@@ -206,9 +192,7 @@ fn r5_opt_in_default_off() {
     assert!(admitted.default_off);
     assert!(!admitted.disabled_no_op);
     assert_eq!(admitted.id, DRESS_REHEARSAL_R5_MOVEMENT_REENROLL_ID);
-    assert!(
-        DRESS_REHEARSAL_R5_MOVEMENT_REENROLL_STATUS_PASS.contains("IMPLEMENTED / PASS")
-    );
+    assert!(DRESS_REHEARSAL_R5_MOVEMENT_REENROLL_STATUS_PASS.contains("IMPLEMENTED / PASS"));
 }
 
 #[test]

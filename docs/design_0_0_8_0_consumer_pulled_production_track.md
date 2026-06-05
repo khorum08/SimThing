@@ -788,29 +788,18 @@ column-flip — each its own gate.
 > `request_atlas_batching`, no M-4A masking-at-scale, no new semantic WGSL/op/invariant, no scenario
 > reopen. Adapter: RTX 4080 Laptop GPU.
 >
-> **`RUNTIME-0080-0-R1a` is IMPLEMENTED / PARTIAL (SCAFFOLD) — IMPL-0 PASS overclaimed and corrected
-> (`RUNTIME-0080-0-R1a-REMEDIAL-0` code/report corrected to honest PARTIAL, 2026-06-05)**
+> **`RUNTIME-0080-0-R1a` is IMPLEMENTED / PASS (Outcome A, 2026-06-05)** — Tier-A GPU-STATE-AUTH-0 resident
+> next-tick authority on `WorldGpuState` + `Pipelines`; per-column measured parity vs R6C oracle; negative
+> control earned; report checksum `f0244d3d9106900d`. See
+> [`docs/tests/runtime_0080_0_r1a_next_tick_authority_results.md`](tests/runtime_0080_0_r1a_next_tick_authority_results.md).
 > (design spec: [`production_paths/runtime_0080_0_r1_next_tick_authority_spec.md`](production_paths/runtime_0080_0_r1_next_tick_authority_spec.md) §14;
 > handoff: [`handoffs/runtime_0080_0_r1a_remedial_opening.md`](handoffs/runtime_0080_0_r1a_remedial_opening.md)).
 > R1 defines the substrate primitive **`GPU-STATE-AUTH-0`** — GPU-resident world state as the **input
-> authority for tick N+1**. **R1a-IMPL-0 did not earn the claim:** the CPU recomputes the full Tier-A
-> next-state and **injects it into the GPU each tick** (`COL_JOURNAL_DELTA`); the GPU "tick" is three
-> `Identity` copies + swap, so `gpu_state_feeds_next_tick == true` holds only mechanically while the CPU
-> remains the transition authority (the R0A gap in a costume), and `inter_tick_tier_a_upload_count = 0`
-> is inaccurate. **Downgraded to PARTIAL (SCAFFOLD), then corrected in code/report to remedial PARTIAL.** Report:
-> [`tests/runtime_0080_0_r1a_next_tick_authority_results.md`](tests/runtime_0080_0_r1a_next_tick_authority_results.md).
-> **Current remedial code posture:** the fake producer is deleted, all R1a per-column authority/parity
-> flags remain false, measured inter-tick Tier-A uploads/readbacks/dispatches/oracle writes-after-seed are
-> zero, and the report names the exact remaining gap: integrated `WorldGpuState`/`Pipelines` Tier-A
-> transition registration must compute `state_N+1` on GPU before the negative control can be earned.
-> **R1a-REMEDIAL re-scopes R1a onto the production substrate** (`WorldGpuState`/`Pipelines` Pass 0–7 +
-> `OverlayDelta`/`IntentDelta`/`ThresholdEvent`): the R6C Tier-A transforms (already GPU-measured in
-> GPU-MEASURE-0080-0) are registered as `AccumulatorOp`s/overlays so the **GPU computes `state_N+1`**, and
-> player (`PlayerIntentOverlay`) / AI (`AiIntentOverlay`) overlays, SEAD threshold acts, and the resident
-> next-tick transition unify on **one** substrate. Acceptance is gated by an **anti-faking oversight
-> protocol** (independence; negative control disabling the GPU transform must fail parity; measured
-> counters; earned per-column parity; source-shape guard) — a PASS reproducing the inject-and-copy pattern
-> is rejected; a correct PARTIAL/BLOCKED naming the gap is acceptance.
+> authority for tick N+1**. The accepted R1a implementation deletes the old CPU-injected journal producer
+> and registers the Tier-A R6C transforms as resident `AccumulatorOp` / generic GPU helper work on the
+> production substrate: the GPU computes `state_N+1`, tick-boundary swap promotes NEXT to CURRENT, and the
+> CPU oracle is comparison-only. The anti-faking protocol is earned by independence, negative control,
+> measured counters, per-column parity from GPU values, and source-shape guards.
 >
 > **Opcode/WGSL-gate clarification (Opus, 2026-06-05):** the remedial's blanket "no new WGSL/opcode"
 > stop-line was hygiene theater — stricter than `design_0_0_8_0.md` §2.3 (*"New generic WGSL is a Tier-2
@@ -819,7 +808,9 @@ column-flip — each its own gate.
 > semantic-free** `EvalEML` opcode / `AccumulatorOp` combine fn / kernel is **permitted** for Outcome A
 > (semantic-free, reusable, CPU-oracle bit-exact parity, opt-in/default-off). **Semantic** WGSL/opcodes
 > stay banned and the anti-faking protocol is unchanged — lifting the generic-op ban only changes *how* the
-> GPU may truly compute the transition, not the bar for proving it did.
+> GPU may truly compute the transition, not the bar for proving it did. R1a uses that gate for a generic
+> `Floor` EvalEML opcode and a generic Candidate-F max-magnitude WGSL helper; both are semantic-free,
+> reusable, opt-in/default-off, and parity-tested.
 > Per **SimThing Maximality**, any transition already expressed as
 > row/mask/reduce/disburse/threshold/emission-band is promoted toward resident execution; the CPU may
 > remain oracle/inspector/save-writer but may **not** be the hidden authority for state_N+1 when the
@@ -828,8 +819,8 @@ column-flip — each its own gate.
 > at the **tick boundary** (the save/pause/stable-state point). First IMPL sub-rung
 > **`RUNTIME-0080-0-R1a`** promotes the already-measured **Tier-A field columns** (disruption,
 > location_status, stockpiles, construction_progress, per-cohort `num_ships` value, blockade/divert code,
-> R4 magnitude) to a resident double-buffered next-tick authority — **no new op / WGSL / atlas batching /
-> M-4A**, glue only. **Tier-B** structural changes (REENROLL membership scatter, cohort birth/removal,
+> R4 magnitude) to a resident double-buffered next-tick authority — **no semantic op / semantic WGSL /
+> atlas batching / M-4A**. **Tier-B** structural changes (REENROLL membership scatter, cohort birth/removal,
 > fusion lineage) are applied by a **bounded CPU boundary-maintenance pass driven by a GPU-written event
 > journal** (the boundaryEvent dispatch), which is GPU-decided / CPU-applied — **not** a CPU planner.
 > **R0A is CLOSED as PARTIAL / informative** (correct honest outcome; no PR #531 change required).

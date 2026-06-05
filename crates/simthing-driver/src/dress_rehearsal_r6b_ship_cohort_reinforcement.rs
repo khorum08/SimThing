@@ -28,7 +28,9 @@ use crate::dress_rehearsal_r6_combat_hp_damage::{
     DressRehearsalR6FleetCohortOverride, DressRehearsalR6Input, DressRehearsalR6Report,
     FLEET_COHORT_NUM_SHIPS, FLEET_DAMAGE_PER_SHIP_PER_TICK, FLEET_HP_PER_SHIP,
 };
-use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection};
+use simthing_core::{
+    AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
+};
 use simthing_spec::{
     plan_mobility_alloc0, MobilityAlloc0BlockSpec, MobilityAlloc0BoundaryEvent,
     MobilityAlloc0BoundaryEventKind, MobilityAlloc0ForbiddenPathRequests, MobilityAlloc0LiveSlice,
@@ -201,29 +203,24 @@ impl DressRehearsalR6bInput {
         let r3_report = run_dress_rehearsal_r3_capability_mask_down(
             &DressRehearsalR3Input::with_reports(r1_report.clone(), r2_report.clone()),
         );
-        let r4_report = run_dress_rehearsal_r4_sead_field_consumption(
-            &DressRehearsalR4Input {
-                explicit_opt_in: true,
-                enabled_by_default: false,
-                movement_threshold_mag_bits: MOVEMENT_THRESHOLD_MAG_BITS,
-                r1_report: Some(r1_report.clone()),
-                r2_report: Some(r2_report.clone()),
-                r3_report: Some(r3_report.clone()),
-            },
-        );
-        let r5_report = run_dress_rehearsal_r5_movement_reenroll(
-            &DressRehearsalR5Input {
-                explicit_opt_in: true,
-                enabled_by_default: false,
-                r1_report: Some(r1_report.clone()),
-                r2_report: Some(r2_report.clone()),
-                r3_report: Some(r3_report.clone()),
-                r4_report: Some(r4_report.clone()),
-            },
-        );
-        let r6_report = run_dress_rehearsal_r6_combat_hp_damage(
-            &DressRehearsalR6Input::explicit_opt_in(),
-        );
+        let r4_report = run_dress_rehearsal_r4_sead_field_consumption(&DressRehearsalR4Input {
+            explicit_opt_in: true,
+            enabled_by_default: false,
+            movement_threshold_mag_bits: MOVEMENT_THRESHOLD_MAG_BITS,
+            r1_report: Some(r1_report.clone()),
+            r2_report: Some(r2_report.clone()),
+            r3_report: Some(r3_report.clone()),
+        });
+        let r5_report = run_dress_rehearsal_r5_movement_reenroll(&DressRehearsalR5Input {
+            explicit_opt_in: true,
+            enabled_by_default: false,
+            r1_report: Some(r1_report.clone()),
+            r2_report: Some(r2_report.clone()),
+            r3_report: Some(r3_report.clone()),
+            r4_report: Some(r4_report.clone()),
+        });
+        let r6_report =
+            run_dress_rehearsal_r6_combat_hp_damage(&DressRehearsalR6Input::explicit_opt_in());
         Self {
             explicit_opt_in: true,
             enabled_by_default: false,
@@ -316,9 +313,7 @@ pub fn fleet_cohort_overrides_from_report(
     report.fleet_cohort_overrides.clone()
 }
 
-pub fn run_r6_combat_with_r6b_cohorts(
-    r6b: &DressRehearsalR6bReport,
-) -> DressRehearsalR6Report {
+pub fn run_r6_combat_with_r6b_cohorts(r6b: &DressRehearsalR6bReport) -> DressRehearsalR6Report {
     let mut r6_input = DressRehearsalR6Input::explicit_opt_in();
     r6_input.fleet_cohort_overrides = Some(r6b.fleet_cohort_overrides.clone());
     run_dress_rehearsal_r6_combat_hp_damage(&r6_input)
@@ -328,12 +323,7 @@ pub fn construction_threshold_emission(
     progress_before: i64,
     production_applied: i64,
     ship_cost: i64,
-) -> (
-    i64,
-    bool,
-    i64,
-    i64,
-) {
+) -> (i64, bool, i64, i64) {
     let progress_after = progress_before + production_applied;
     let ship_count_delta = if ship_cost > 0 {
         progress_after / ship_cost
@@ -402,11 +392,7 @@ fn execute_model(input: &DressRehearsalR6bInput) -> DressRehearsalR6bOracle {
 
     apply_birth_fixture_construction(&mut cohort_rows, &mut construction_rows, &mut birth_rows);
 
-    run_friendly_fusion_pass(
-        &mut cohort_rows,
-        &mut fusion_rows,
-        &r5.fission_rows,
-    );
+    run_friendly_fusion_pass(&mut cohort_rows, &mut fusion_rows, &r5.fission_rows);
 
     cohort_rows.retain(|row| !row.destroyed);
     cohort_rows.sort_by(|a, b| a.fleet_id.cmp(&b.fleet_id));
@@ -604,9 +590,15 @@ fn fuse_compatible_at_indices(
         let left = fused_ships;
         let right = cohort_rows[idx].num_ships;
         fused_ships += right;
-        let event_id = format!("{fusion_tag}-{}-{}", cohort_rows[survivor].fleet_id, cohort_rows[idx].fleet_id);
-        let membership_after =
-            apply_fusion_shadow_table(cell_index, cohort_rows[survivor].entity_id, cohort_rows[idx].entity_id);
+        let event_id = format!(
+            "{fusion_tag}-{}-{}",
+            cohort_rows[survivor].fleet_id, cohort_rows[idx].fleet_id
+        );
+        let membership_after = apply_fusion_shadow_table(
+            cell_index,
+            cohort_rows[survivor].entity_id,
+            cohort_rows[idx].entity_id,
+        );
         cohort_rows[idx].destroyed = true;
         fusion_rows.push(DressRehearsalR6bFusionRow {
             fusion_event_id: event_id,
@@ -871,7 +863,9 @@ fn apply_birth_fixture_construction(
     }
 }
 
-fn starport_production_targets(r2: &DressRehearsalR2Report) -> Vec<DressRehearsalR2SystemProductionRow> {
+fn starport_production_targets(
+    r2: &DressRehearsalR2Report,
+) -> Vec<DressRehearsalR2SystemProductionRow> {
     let mut rows: Vec<_> = r2
         .production_rows
         .iter()
@@ -928,7 +922,10 @@ fn canonical_profile() -> DressRehearsalR6bCohortProfile {
     }
 }
 
-fn arena_membership_for_cell(cohort_rows: &[DressRehearsalR6bCohortRow], cell_index: u32) -> Vec<u64> {
+fn arena_membership_for_cell(
+    cohort_rows: &[DressRehearsalR6bCohortRow],
+    cell_index: u32,
+) -> Vec<u64> {
     let mut ids: Vec<u64> = cohort_rows
         .iter()
         .filter(|r| r.cell_index == cell_index && !r.destroyed && r.fleet_like)

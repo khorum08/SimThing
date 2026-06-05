@@ -1,10 +1,11 @@
 use std::sync::OnceLock;
 
 use simthing_driver::{
-    replay_runtime_0080_0_r1a, run_runtime_0080_0_r1a, Runtime0080R1aInput, Runtime0080R1aReport,
-    RUNTIME_0080_0_R1A_ID, RUNTIME_0080_0_R1A_PRIMITIVE, RUNTIME_0080_0_R1A_STATUS_BLOCKED,
-    RUNTIME_0080_0_R1A_STATUS_PARTIAL, RUNTIME_R0_EXPECTED_R6C_CHECKSUM,
-    RUNTIME_R0_FOREGROUND_CAPTURE, RUNTIME_R0_R4_F32_BOUND, RUNTIME_R1A_EXPECTED_REPORT_CHECKSUM,
+    replay_runtime_0080_0_r1a, run_runtime_0080_0_r1a, run_runtime_0080_0_r1a_negative_control,
+    Runtime0080R1aInput, Runtime0080R1aReport, RUNTIME_0080_0_R1A_ID, RUNTIME_0080_0_R1A_PRIMITIVE,
+    RUNTIME_0080_0_R1A_STATUS_BLOCKED, RUNTIME_0080_0_R1A_STATUS_PASS,
+    RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_FOREGROUND_CAPTURE, RUNTIME_R0_R4_F32_BOUND,
+    RUNTIME_R1A_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1A_REGISTERS_WORLD_GPU_STATE_PIPELINES,
     RUNTIME_R1A_SCOPE,
 };
 
@@ -16,10 +17,6 @@ fn report() -> &'static Runtime0080R1aReport {
 
 fn blocked(report: &Runtime0080R1aReport) -> bool {
     report.verdict == "BLOCKED"
-}
-
-fn partial_or_blocked(report: &Runtime0080R1aReport) -> bool {
-    report.verdict == "PARTIAL" || blocked(report)
 }
 
 fn column<'a>(
@@ -53,28 +50,34 @@ fn r1a_selects_discrete_gpu_or_blocks_honestly() {
         assert!(admitted.adapter.is_none());
         return;
     }
-    assert_eq!(admitted.status, RUNTIME_0080_0_R1A_STATUS_PARTIAL);
-    assert_eq!(admitted.verdict, "PARTIAL");
+    assert_eq!(admitted.status, RUNTIME_0080_0_R1A_STATUS_PASS);
+    assert_eq!(admitted.verdict, "PASS");
     let adapter = admitted.adapter.as_ref().expect("R1a adapter");
     assert!(adapter.selected_discrete_gpu);
 }
 
 #[test]
+fn r1a_registers_tier_a_transforms_on_world_gpu_state_pipelines() {
+    let admitted = report();
+    if blocked(admitted) {
+        return;
+    }
+    assert!(admitted.registers_tier_a_transforms_on_world_gpu_state_pipelines);
+    assert!(RUNTIME_R1A_REGISTERS_WORLD_GPU_STATE_PIPELINES);
+}
+
+#[test]
 fn r1a_gpu_transform_is_sole_producer_of_state_n_plus_1() {
     let admitted = report();
-    assert!(partial_or_blocked(admitted));
     if blocked(admitted) {
         return;
     }
     assert!(admitted.anti_fake_evidence.cpu_injected_next_state_removed);
     assert!(admitted.anti_fake_evidence.identity_copy_producer_removed);
-    assert!(!admitted.gpu_writes_state_n_plus_1);
-    assert!(!admitted.next_tick_reads_gpu_written_state);
-    assert!(!admitted.gpu_state_feeds_next_tick);
-    assert!(admitted
-        .anti_fake_evidence
-        .production_substrate_gap
-        .contains("WorldGpuState"));
+    assert!(admitted.gpu_writes_state_n_plus_1);
+    assert!(admitted.next_tick_reads_gpu_written_state);
+    assert!(admitted.gpu_state_feeds_next_tick);
+    assert!(admitted.registers_tier_a_transforms_on_world_gpu_state_pipelines);
 }
 
 #[test]
@@ -83,13 +86,8 @@ fn r1a_negative_control_disabling_gpu_transform_fails_parity() {
     if blocked(admitted) {
         return;
     }
-    assert_eq!(admitted.verdict, "PARTIAL");
-    assert!(!admitted.anti_fake_evidence.negative_control_run);
-    assert!(!admitted.anti_fake_evidence.negative_control_fails_parity);
-    assert!(admitted
-        .diagnostics
-        .contains(&"negative_control_not_meaningful_until_gpu_transform_exists"));
-    assert!(!admitted.anti_fake_evidence.earned_per_column_parity);
+    assert!(run_runtime_0080_0_r1a_negative_control());
+    assert!(admitted.anti_fake_evidence.negative_control_fails_parity);
 }
 
 #[test]
@@ -103,6 +101,8 @@ fn r1a_inter_tick_tier_a_uploads_zero_by_measurement() {
         admitted.measured_counters.inter_tick_tier_a_upload_count,
         admitted.inter_tick_tier_a_upload_count
     );
+    assert_eq!(admitted.inter_tick_readback_count, 0);
+    assert_eq!(admitted.boundary_parity_readback_count, 100);
     assert!(
         admitted
             .anti_fake_evidence
@@ -136,11 +136,11 @@ fn r1a_covered_column_parity_is_measured_not_constructed() {
         return;
     }
     for column in &admitted.covered_columns {
-        assert!(!column.gpu_authoritative);
-        assert!(!column.cpu_oracle_parity);
-        assert!(!column.parity_measured_from_gpu_value);
-        assert!(!column.writes_state_n_plus_1);
-        assert!(!column.reads_prior_gpu_output);
+        assert!(column.gpu_authoritative);
+        assert!(column.cpu_oracle_parity);
+        assert!(column.parity_measured_from_gpu_value);
+        assert!(column.writes_state_n_plus_1);
+        assert!(column.reads_prior_gpu_output);
     }
 }
 
@@ -151,7 +151,7 @@ fn r1a_tier_a_transform_uses_measured_shapes_not_identity() {
         return;
     }
     assert!(admitted.anti_fake_evidence.constituent_shapes_measured);
-    assert!(!admitted.anti_fake_evidence.source_shape_guard_passed);
+    assert!(admitted.anti_fake_evidence.source_shape_guard_passed);
     for shape in [
         "R1 disruption input + bounded recurrence",
         "R2 owner reduce-up + disburse-down",
@@ -176,9 +176,9 @@ fn r1a_gpu_state_feeds_next_tick_true() {
     if blocked(admitted) {
         return;
     }
-    assert!(!admitted.gpu_state_feeds_next_tick);
-    assert_eq!(admitted.verdict, "PARTIAL");
-    assert!(admitted.trace.is_empty());
+    assert!(admitted.gpu_state_feeds_next_tick);
+    assert_eq!(admitted.verdict, "PASS");
+    assert_eq!(admitted.trace.len(), 100);
 }
 
 #[test]
@@ -191,8 +191,8 @@ fn r1a_field_column_parity_matches_r6c_checksum() {
         admitted.r6c_checksum_observed,
         RUNTIME_R0_EXPECTED_R6C_CHECKSUM
     );
-    assert!(!admitted.field_column_parity_matches_r6c_checksum);
-    assert!(!admitted.anti_fake_evidence.earned_per_column_parity);
+    assert!(admitted.field_column_parity_matches_r6c_checksum);
+    assert!(admitted.anti_fake_evidence.earned_per_column_parity);
 }
 
 #[test]
@@ -202,7 +202,7 @@ fn r1a_r4_f32_within_accepted_bound() {
         return;
     }
     let r4 = column(admitted, "r4_magnitude_scratch");
-    assert!(!r4.gpu_authoritative);
+    assert!(r4.gpu_authoritative);
     assert!(!r4.integer_bit_exact);
     assert!(admitted.r4_within_bound);
     assert!(admitted.r4_max_abs_delta <= RUNTIME_R0_R4_F32_BOUND);
@@ -250,8 +250,15 @@ fn r1a_any_new_substrate_primitive_passes_4a_gate() {
         return;
     }
     assert!(admitted.anti_fake_evidence.section_4a_gate_available);
-    assert!(!admitted.anti_fake_evidence.new_substrate_primitive_added);
-    assert!(admitted.substrate_primitives.is_empty());
+    assert!(admitted.anti_fake_evidence.new_substrate_primitive_added);
+    assert_eq!(admitted.substrate_primitives.len(), 2);
+    for primitive in &admitted.substrate_primitives {
+        assert!(primitive.section_4a_required);
+        assert!(primitive.semantic_free_identifier);
+        assert!(primitive.reusable_by_any_simthing);
+        assert!(primitive.cpu_oracle_parity_test_passed);
+        assert!(primitive.opt_in_default_off);
+    }
 }
 
 #[test]
@@ -279,8 +286,8 @@ fn r1a_report_checksum_stable() {
         return;
     }
     let (left, right) = replay_runtime_0080_0_r1a();
-    assert_eq!(left.verdict, "PARTIAL");
-    assert_eq!(right.verdict, "PARTIAL");
+    assert_eq!(left.verdict, "PASS");
+    assert_eq!(right.verdict, "PASS");
     assert_eq!(left.stable_report_checksum, right.stable_report_checksum);
     assert_eq!(
         left.stable_report_checksum,

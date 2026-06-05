@@ -562,7 +562,8 @@ fn validate_stack_depth(nodes: &[EmlNode]) -> Result<u32, EmlRegistryError> {
             eml_nodes::opcode::NEG
             | eml_nodes::opcode::CLAMP_BOUNDED
             | eml_nodes::opcode::CLAMP_FLOORED
-            | eml_nodes::opcode::ABS => {}
+            | eml_nodes::opcode::ABS
+            | eml_nodes::opcode::FLOOR => {}
             eml_nodes::opcode::ADD
             | eml_nodes::opcode::SUB
             | eml_nodes::opcode::MUL
@@ -649,6 +650,7 @@ fn opcode_allowed_in_exact(op: u32) -> bool {
             | eml_nodes::opcode::CLAMP_BOUNDED
             | eml_nodes::opcode::CLAMP_FLOORED
             | eml_nodes::opcode::ABS
+            | eml_nodes::opcode::FLOOR
             | eml_nodes::opcode::CMP_LT
             | eml_nodes::opcode::CMP_LE
             | eml_nodes::opcode::CMP_GT

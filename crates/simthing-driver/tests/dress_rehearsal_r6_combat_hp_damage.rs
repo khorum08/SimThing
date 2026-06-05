@@ -139,9 +139,7 @@ fn r6_owner_mask_blocks_friendly_fire() {
 fn r6_non_fleet_occupants_are_combat_inert() {
     let admitted = report();
     for row in &admitted.combat_arena_rows {
-        assert!(
-            row.combatant_id.contains("patrol") || row.combatant_id.contains("pirate-ship")
-        );
+        assert!(row.combatant_id.contains("patrol") || row.combatant_id.contains("pirate-ship"));
     }
 }
 
@@ -160,10 +158,8 @@ fn r6_r3_combat_modifier_changes_bounded_damage_or_hp() {
         .expect("pirate combatant");
     assert_eq!(terran.r3_combat_modifier_bps, 10_500);
     assert_eq!(pirate.r3_combat_modifier_bps, 11_500);
-    let base_output = damage_output_for_cohort(
-        FLEET_COHORT_NUM_SHIPS,
-        FLEET_DAMAGE_PER_SHIP_PER_TICK,
-    );
+    let base_output =
+        damage_output_for_cohort(FLEET_COHORT_NUM_SHIPS, FLEET_DAMAGE_PER_SHIP_PER_TICK);
     assert!(terran.damage_output > base_output);
     assert!(pirate.damage_output > terran.damage_output);
 }
@@ -225,12 +221,10 @@ fn r6_partial_attrition_reduces_num_ships_without_removing_cohort() {
 #[test]
 fn r6_zero_remaining_ships_emits_removal_event() {
     let admitted = report();
-    assert!(
-        admitted
-            .combat_arena_rows
-            .iter()
-            .any(|row| row.zero_cohort_event_emitted && row.num_ships_after == 0)
-    );
+    assert!(admitted
+        .combat_arena_rows
+        .iter()
+        .any(|row| row.zero_cohort_event_emitted && row.num_ships_after == 0));
 }
 
 #[test]
@@ -306,7 +300,8 @@ fn r6_deterministic_replay_and_cpu_oracle_parity() {
 
 #[test]
 fn r6_opt_in_default_off() {
-    let default = run_dress_rehearsal_r6_combat_hp_damage(&DressRehearsalR6Input::default_simsession());
+    let default =
+        run_dress_rehearsal_r6_combat_hp_damage(&DressRehearsalR6Input::default_simsession());
     assert!(!default.explicit_opt_in);
     assert!(default.default_off);
     assert!(default.disabled_no_op);
@@ -315,9 +310,7 @@ fn r6_opt_in_default_off() {
     let admitted = report();
     assert!(admitted.explicit_opt_in);
     assert_eq!(admitted.id, DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_ID);
-    assert!(
-        DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_STATUS_PASS.contains("IMPLEMENTED / PASS")
-    );
+    assert!(DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_STATUS_PASS.contains("IMPLEMENTED / PASS"));
 }
 
 #[test]

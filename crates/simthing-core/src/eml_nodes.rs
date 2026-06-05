@@ -20,6 +20,7 @@ pub mod opcode {
     pub const CLAMP_BOUNDED: u32 = 22;
     pub const CLAMP_FLOORED: u32 = 23;
     pub const ABS: u32 = 24;
+    pub const FLOOR: u32 = 25;
 
     pub const CMP_LT: u32 = 30;
     pub const CMP_LE: u32 = 31;

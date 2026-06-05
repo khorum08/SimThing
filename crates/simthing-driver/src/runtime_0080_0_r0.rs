@@ -166,8 +166,7 @@ pub fn run_runtime_0080_0_r0(input: &Runtime0080R0Input) -> Runtime0080R0Report 
         scheduler: &mut scheduler,
         ctx: &ctx,
     };
-    let observed_checksum =
-        execute_model_with_gpu_hook(R6C_CANONICAL_TICK_COUNT, &mut gpu_hook);
+    let observed_checksum = execute_model_with_gpu_hook(R6C_CANONICAL_TICK_COUNT, &mut gpu_hook);
     let integer_bit_exact = observed_checksum == cpu_oracle.summary.stable_checksum
         && observed_checksum == RUNTIME_R0_EXPECTED_R6C_CHECKSUM;
     let r4_within_bound = scheduler.max_r4_abs_delta <= RUNTIME_R0_R4_F32_BOUND;
@@ -178,13 +177,7 @@ pub fn run_runtime_0080_0_r0(input: &Runtime0080R0Input) -> Runtime0080R0Report 
     let whole_run_measured =
         gpu_state_feeds_next_tick && scheduler.gpu_resident_across_ticks && cpu_oracle_parity;
 
-    let mut report = base_report(
-        input,
-        false,
-        Vec::new(),
-        Some(adapter),
-        whole_run_measured,
-    );
+    let mut report = base_report(input, false, Vec::new(), Some(adapter), whole_run_measured);
     report.verdict = if whole_run_measured {
         "PASS"
     } else if cpu_oracle_parity && scheduler.gpu_resident_across_ticks {
@@ -233,10 +226,7 @@ pub fn run_runtime_0080_0_r0(input: &Runtime0080R0Input) -> Runtime0080R0Report 
 
 pub fn replay_runtime_0080_0_r0() -> (Runtime0080R0Report, Runtime0080R0Report) {
     let input = Runtime0080R0Input::explicit_opt_in();
-    (
-        run_runtime_0080_0_r0(&input),
-        run_runtime_0080_0_r0(&input),
-    )
+    (run_runtime_0080_0_r0(&input), run_runtime_0080_0_r0(&input))
 }
 
 struct RuntimeGpuHook<'a> {
@@ -344,7 +334,11 @@ impl GpuResidentScheduler {
             self.col_stockpile,
             self.n_dims,
         )] = pirate;
-        for fleet in world.fleets.iter().filter(|f| !f.destroyed && f.num_ships > 0) {
+        for fleet in world
+            .fleets
+            .iter()
+            .filter(|f| !f.destroyed && f.num_ships > 0)
+        {
             let slot = fleet.cell_index.min(self.n_slots - 1);
             values[values_slot(slot, self.col_fleet_cell, self.n_dims)] = fleet.num_ships as f32;
         }
@@ -354,11 +348,10 @@ impl GpuResidentScheduler {
     fn dispatch_r1(&mut self, ctx: &GpuContext, world: &DressRehearsalR6cWorld) {
         let eml = Some((&self.eml_table.node_buffer, &self.eml_table.range_buffer));
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue {
-                slot: 0,
-                col: 0,
+            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            combine: CombineFn::EvalEML {
+                tree_id: R1_TREE_ID,
             },
-            combine: CombineFn::EvalEML { tree_id: R1_TREE_ID },
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
@@ -367,17 +360,16 @@ impl GpuResidentScheduler {
         let mut session = AccumulatorOpSession::new(ctx, 1, 2);
         session.upload_values(
             ctx,
-            &[
-                world.disruption[0],
-                fleet_disruption_input(world, 0),
-            ],
+            &[world.disruption[0], fleet_disruption_input(world, 0)],
         );
         session
             .upload_ops_with_eml(ctx, std::slice::from_ref(&op), Some(&self.eml_registry))
             .expect("R1 runtime ops");
         session.tick_with_eml(ctx, 0, eml).expect("R1 runtime tick");
         self.tick_boundary_readbacks += 1;
-        let _gpu = session.readback_full(ctx).expect("R1 residency boundary readback");
+        let _gpu = session
+            .readback_full(ctx)
+            .expect("R1 residency boundary readback");
         self.dispatch_r1_ticks += 1;
     }
 
@@ -454,20 +446,25 @@ impl GpuResidentScheduler {
 
     fn dispatch_r6(&mut self, ctx: &GpuContext, world: &DressRehearsalR6cWorld) {
         let mut damage_groups = Vec::new();
-        for owner in [DressRehearsalR6cOwner::Terran, DressRehearsalR6cOwner::Pirate] {
+        for owner in [
+            DressRehearsalR6cOwner::Terran,
+            DressRehearsalR6cOwner::Pirate,
+        ] {
             let total: i64 = world
                 .fleets
                 .iter()
                 .filter(|f| !f.destroyed && f.owner == owner && f.num_ships > 0)
-                .map(|f| {
-                    damage_output_for_cohort(f.num_ships, f.damage_per_ship_per_tick)
-                })
+                .map(|f| damage_output_for_cohort(f.num_ships, f.damage_per_ship_per_tick))
                 .sum();
             damage_groups.push(vec![total as f32]);
         }
         let _gpu = run_sum_groups_ephemeral(ctx, &damage_groups);
         self.tick_boundary_readbacks += 1;
-        if let Some(fleet) = world.fleets.iter().find(|f| !f.destroyed && f.num_ships > 0) {
+        if let Some(fleet) = world
+            .fleets
+            .iter()
+            .find(|f| !f.destroyed && f.num_ships > 0)
+        {
             let emit = run_single_attrition_emission(
                 ctx,
                 &self.eml_registry,
@@ -594,9 +591,7 @@ fn run_single_attrition_emission(
     session
         .upload_ops_with_eml(ctx, std::slice::from_ref(&op), Some(registry))
         .expect("attrition op");
-    session
-        .tick_with_eml(ctx, 0, eml)
-        .expect("attrition tick");
+    session.tick_with_eml(ctx, 0, eml).expect("attrition tick");
     session
         .readback_emissions(ctx)
         .ok()
@@ -646,14 +641,20 @@ fn register_tree(
 ) -> Result<(), &'static str> {
     let id = EmlTreeId(tree_id);
     registry
-        .register_formula(id, exact_meta(tree_id, display_name, nodes.len() as u32), nodes)
+        .register_formula(
+            id,
+            exact_meta(tree_id, display_name, nodes.len() as u32),
+            nodes,
+        )
         .map_err(|_| "eml_register_failed")?;
     let mut trees: Vec<_> = registry
         .formulas_for_gpu_upload()
         .map(|(tid, meta, nodes)| (tid, meta.clone(), nodes.to_vec()))
         .collect();
     trees.sort_by_key(|(id, _, _)| id.0);
-    let mapping = table.upload_trees(ctx, &trees).map_err(|_| "eml_upload_failed")?;
+    let mapping = table
+        .upload_trees(ctx, &trees)
+        .map_err(|_| "eml_upload_failed")?;
     for (tid, range_index) in mapping {
         registry
             .mark_tree_uploaded(tid, range_index, table.generation)
@@ -828,7 +829,11 @@ fn base_report(
         } else {
             "NOT RUN"
         },
-        verdict: if whole_run_measured { "PASS" } else { "NOT RUN" },
+        verdict: if whole_run_measured {
+            "PASS"
+        } else {
+            "NOT RUN"
+        },
         admitted,
         diagnostics,
         explicit_opt_in: input.explicit_opt_in,
