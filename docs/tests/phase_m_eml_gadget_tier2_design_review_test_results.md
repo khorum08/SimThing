@@ -38,7 +38,7 @@ Sections: executive verdict; Tier-2 candidate table; column model; band model (A
 | `cargo --version` | PASS; `cargo 1.95.0 (f2d3ce0bd 2026-03-21)` |
 | `cargo test -p simthing-spec --test eml_gadget_tier1 -- --nocapture` | PASS; **14/14** |
 | `cargo test -p simthing-spec --test resource_economy_authoring_preview -- --nocapture` | PASS; **8/8** |
-| `cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture -- --nocapture` | PASS; **6/6** |
+| `cargo test -p simthing-driver --test phase_m_economy_field_policy_product_fixture -- --nocapture` | PASS; **6/6** |
 | `cargo test -p simthing-driver --test phase_m_first_slice_runtime -- --nocapture` | PASS; **28/28** |
 | `cargo test -p simthing-spec --test region_field_spec_admission -- --nocapture` | PASS; **11/11** |
 | `cargo check --workspace` | PASS |
@@ -64,7 +64,7 @@ Sections: executive verdict; Tier-2 candidate table; column model; band model (A
 | `simthing-gpu` generic unchanged | PASS |
 | `simthing-sim` no Gadget/Personality/Memory semantics | PASS |
 | Resource Flow E-11 default-off preserved | PASS |
-| Economy→SEAD fixture-only preserved | PASS |
+| Economy→FIELD_POLICY fixture-only preserved | PASS |
 | No production economy→mapping bridge | PASS |
 | No default SimSession mapping wiring | PASS |
 | No atlas/M-4A work | PASS |

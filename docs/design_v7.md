@@ -7,7 +7,7 @@
 >
 > **v7.7 bump (2026-05-28):** Mapping (Sparse RegionCell) architecture decided in
 > [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md) and surfaced in
-> [`design_v7_7.md`](design_v7_7.md) (three-layer model, perception filters, SEAD
+> [`design_v7_7.md`](design_v7_7.md) (three-layer model, perception filters, FIELD_POLICY
 > surfacing, optimization doctrine). No mapping runtime is authorized; Phase M in the
 > production plan lands the few generic natives. No primitive, default, or `simthing-sim`
 > change. Prior v7 text remains correct.
@@ -28,7 +28,7 @@
 > - `docs/adr_accumulator_op_v2.md` — AccumulatorOp v2 decision rationale
 > - `docs/adr/resource_flow_substrate.md` — Resource Flow substrate ADR
 > - `docs/accumulator_op_v2_production_plan.md` — PR ladder (E-7 through E-11 land Resource Flow)
-> - `docs/design_v7_7.md` — V7.7 amendment (Mapping Sparse RegionCell + SEAD surfacing)
+> - `docs/design_v7_7.md` — V7.7 amendment (Mapping Sparse RegionCell + FIELD_POLICY surfacing)
 > - `docs/adr/mapping_sparse_regioncell.md` — the Mapping decision (architecture; no runtime)
 > - `docs/design_v7_6.md` — V7.6 amendment (StructuredFieldStencilOp, guardrail relaxation)
 > - `docs/design_v6.md` — previous specification (§10 superseded)
@@ -113,7 +113,7 @@ One mechanism for resource interaction at scale (v7.5):
     and arena-to-arena coupling. Built by simthing-spec at session open
     from designer-declared admission rules; refreshed at boundary structural
     mutations via incremental subtree-scoped selector re-evaluation;
-    consumed by simthing-driver as AccumulatorOp registrations targeting
+    consumed by simthing-driver as AccumulatorOp registrations selection
     the existing GPU substrate. simthing-sim never sees ArenaRegistry.
 
   Constitutional rule:

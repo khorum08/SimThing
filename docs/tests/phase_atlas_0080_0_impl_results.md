@@ -54,10 +54,10 @@ was added.
 - `cargo test -p simthing-spec --test mobility_runtime0_composition` - PASS
 - `cargo test -p simthing-spec --test mobility_runtime1_production_fixture` - PASS
 - `cargo test -p simthing-driver --test mobility_runtime1a_runtime_fixture` - PASS
-- `cargo test -p simthing-driver --test phase_m_sead_obs4_threshold_event` - PASS
-- `cargo test -p simthing-driver --test phase_m_sead_event0_compaction` - PASS
-- `cargo test -p simthing-driver --test phase_m_sead_pipe0_observer_event_pipeline` - PASS
-- `cargo test -p simthing-spec --test sead_obs0_overlay_score_admission` - PASS
+- `cargo test -p simthing-driver --test phase_m_field_policy_obs4_threshold_event` - PASS
+- `cargo test -p simthing-driver --test phase_m_field_policy_event0_compaction` - PASS
+- `cargo test -p simthing-driver --test phase_m_field_policy_pipe0_observer_event_pipeline` - PASS
+- `cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission` - PASS
 - `cargo check --workspace` - PASS
 
 No required tests were skipped. Existing workspace warnings remain unchanged.

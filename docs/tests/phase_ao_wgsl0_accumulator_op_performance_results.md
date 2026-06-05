@@ -23,7 +23,7 @@
 | `docs/design_v7_8_production_track.md` | Generic GPU performance gates row |
 | `docs/design_v7_8.md` | Compact AO-WGSL-0 doctrine note |
 | `docs/workshop/mapping_current_guidance.md` | Status row |
-| `docs/workshop/sead_self_ai_track.md` | Posture note |
+| `docs/workshop/field_policy_track.md` | Posture note |
 | `docs/worklog.md` | Append entry |
 
 ## Why this gate is authorized after WGSL-GUARD-0/R1

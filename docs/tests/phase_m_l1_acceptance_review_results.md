@@ -17,7 +17,7 @@ Design authority (Opus), 2026-05-30.
 | `docs/tests/phase_m_l1_0_designer_admission_substrate_results.md` | L1-0 evidence |
 | `docs/tests/phase_m_l1_1_designer_preflight_manifest_results.md` | L1-1 evidence |
 | `docs/tests/phase_m_v7_8_cleanup_track_prune_results.md` | V7.8-CLEAN-0 evidence |
-| `docs/workshop/sead_self_ai_track.md` | SEAD/Frontier charter §10–§11 |
+| `docs/workshop/field_policy_track.md` | FIELD_POLICY/Frontier charter §10–§11 |
 | `docs/workshop/mapping_current_guidance.md` | status table |
 | `docs/invariants.md` | binding constraints (read; unchanged) |
 | `docs/adr/mapping_sparse_regioncell.md` | governing Mapping ADR (firewall pattern) |
@@ -36,7 +36,7 @@ Archive consulted as reference only; not treated as active authority.
 | 3 | Does the current L1 substrate give L2 enough structure to admit a designer-authored FrontierV2 scenario? | **Yes — for the preflight/admission contract.** The shared vocabulary + RON input surface + preview report are exactly the import-time firewall L2 needs. L2 adds the full scenario graph and compile-to-artifacts path on top; the rejection contract it must enforce already exists. |
 | 4 | Are the accepted FrontierV2 artifact target identifiers sufficient for L2 lowering? | **Yes.** Five stable targets (`AcceptedFrontierV2FixtureArtifacts`, `FrontierV2CombinedFeedbackFixture`, `FrontierV2OwnColumnShadow`, `FrontierV2BoundaryRequestShadow`, `ResourceFlowAllocatorRoute`) with stable string ids + `resolve_frontier_artifact_target_id`. These name the same accepted L0 V1-5→V2-0..4 fixture artifacts L2 lowers to. |
 | 5 | Are guardrails now correctly represented at designer/spec admission? | **Yes.** Every hard-coded L0 fixture protection (default-on, RF bypass, cross-entity/production movement writes, production commitment, shared-pool tick writes, CPU planner/urgency/commitment, semantic WGSL, scheduler/cache, simthing-sim semantic leakage, atlas/mask/perception/source without gate, nested E-11B/E-11B-5/D-2a without named scenario, ClauseScript/ClauseThing parked, FrontierV2-5 rejected, ACT-5/EVENT-3/OBS-5/PIPE-1 reopen rejected) maps to a stable rejection code. Matches the Mapping/Resource-Flow ADR firewall pattern. |
-| 6 | Did V7.8-CLEAN-0 remove clutter without losing authoritative evidence? | **Yes.** L0 (V1-5→V2-0..4), L1-0/L1-1, SEAD V1, E-phase/E11, M-JIT retained evidence all remain active in `docs/tests/`. Only closed/superseded design/workshop/production docs archived and 13 scratch `.log` files deleted. No SHA/fingerprint reconciliation. |
+| 6 | Did V7.8-CLEAN-0 remove clutter without losing authoritative evidence? | **Yes.** L0 (V1-5→V2-0..4), L1-0/L1-1, FIELD_POLICY V1, E-phase/E11, M-JIT retained evidence all remain active in `docs/tests/`. Only closed/superseded design/workshop/production docs archived and 13 scratch `.log` files deleted. No SHA/fingerprint reconciliation. |
 | 7 | Is the AccumulatorOp v2 production plan correctly closed/stubbed/archived? | **Yes.** Active path is a 20-line CLOSED stub pointing to `design_v7_8_production_track.md`; full plan at `docs/archive/closed_production/`. |
 | 8 | Is any L1 gap concrete enough to require L1-2? | **No.** One non-blocking quality nit exists (see below) but no substrate gap blocks L2 admission. |
 | 9 | Should L2 / `CLAUSE-SPEC-0` open now? | **Yes.** |
@@ -77,7 +77,7 @@ L1-2 implementation required. ClauseThing and ClauseScript remain parked.
 |---|---|
 | `docs/design_v7_8_production_track.md` | L1 status → ACCEPTED; L2 status → **open/next gate**; L1-ACCEPT-0 row added |
 | `docs/workshop/mapping_current_guidance.md` | L1-ACCEPT-0 row; forward horizon → L2 open |
-| `docs/workshop/sead_self_ai_track.md` | L1-ACCEPT-0 ruling note under §11 |
+| `docs/workshop/field_policy_track.md` | L1-ACCEPT-0 ruling note under §11 |
 | `docs/worklog.md` | append-only L1-ACCEPT-0 line |
 
 ## Scans run

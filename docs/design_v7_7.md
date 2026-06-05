@@ -2,8 +2,8 @@
 
 > **Status: CLOSED / settled (design authority — Opus, 2026-05-30).** v7.7's parked work is
 > complete: the Phase M generic natives (M-1..M-3) landed, the first scenario-level slice
-> (Frontier) landed and was accepted as a vertical (mapping + flat-star Resource Flow + SEAD
-> Self-AI Proposal Pipeline V1; multi-tick closed-loop consumer proven at fixture level), the
+> (Frontier) landed and was accepted as a vertical (mapping + flat-star Resource Flow + FIELD_POLICY
+> Field agent Proposal Pipeline V1; multi-tick closed-loop consumer proven at fixture level), the
 > exact-`sqrt` authority was released (artifact-backed Candidate F), and the AccumulatorOp v2
 > production plan is **CLOSED**. v7.7 remains the **binding constitutional baseline** (it is
 > settled, not deleted); its guardrails and §5 gating governance stay in force. No mapping
@@ -14,10 +14,10 @@
 > track. **Next track (gated behind this closure):** simthing-spec
 > buildout to prep for ClauseThing, then the ClauseThing-facing designer/spec-admission work. See
 > [`accumulator_op_v2_production_plan.md`](accumulator_op_v2_production_plan.md) (CLOSED) and
-> [`workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md).
+> [`workshop/field_policy_track.md`](workshop/field_policy_track.md).
 >
 > *Originally:* Active amendment (2026-05-28). Surfaces the **Mapping (Sparse RegionCell)**
-> architecture and the **SEAD field-intelligence** surfacing. Supersedes nothing in the
+> architecture and the **FIELD_POLICY field-intelligence** surfacing. Supersedes nothing in the
 > V7.5 constitutional core or the V7.6 amendment; it **extends** them with the architectural
 > decision recorded in [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md).
 >
@@ -54,7 +54,7 @@ V7.7 adds exactly two surfaced concepts, both already evidenced and parked:
 1. **Mapping (Sparse RegionCell)** — the architectural decision for how dense
    local spatial fields are represented and evolved (§2). Decided in
    `adr/mapping_sparse_regioncell.md`.
-2. **SEAD field-intelligence surfacing** — the three-layer awareness model
+2. **FIELD_POLICY field-intelligence surfacing** — the three-layer awareness model
    (dense-local field → hierarchy reduction → parent EvalEML) and its
    commitments-as-threshold-crossings discipline (§3).
 
@@ -100,12 +100,12 @@ consumes the V7.6 primitive; it is not the primitive.
 | Layer | Mechanism | Why |
 |---|---|---|
 | 1 — Dense local field | `StructuredFieldStencilOp` over a RegionCell grid (`source_capped_normalized`, H≤8 tactical, ping-pong for H>1) | Tactical gradients (threat, suppression, supply, contamination) are local and bounded. |
-| 2 — Strategic awareness | `SlotRange` Sum reduction cell→parent threat/resource columns | ~15× cheaper than lateral H=8 diffusion for faction awareness (`sead_operator_toolkit_sandbox_test_results.md` Test 5: 1.45 ms vs 21.09 ms). |
-| 3 — Parent interpretation | Column-aware `EvalEML` on a **later order band** than the Sum | Personality-weighted urgency (aggression/risk → urgency ratio 4.44, `sead_tensor_stencil_refinement_sandbox_test_results.md` Test 5). |
+| 2 — Strategic awareness | `SlotRange` Sum reduction cell→parent threat/resource columns | ~15× cheaper than lateral H=8 diffusion for faction awareness (`field_policy_operator_toolkit_sandbox_test_results.md` Test 5: 1.45 ms vs 21.09 ms). |
+| 3 — Parent interpretation | Column-aware `EvalEML` on a **later order band** than the Sum | Personality-weighted urgency (aggression/risk → urgency ratio 4.44, `field_policy_tensor_stencil_refinement_sandbox_test_results.md` Test 5). |
 
-The load-bearing negative result from the SEAD probes: **dense, lateral,
+The load-bearing negative result from the FIELD_POLICY probes: **dense, lateral,
 long-horizon diffusion over the full grid is over budget** (~3236 ms/tick at 30k
-cells per-edge, `sead_operator_toolkit_sandbox_test_results.md` Test 8). The
+cells per-edge, `field_policy_operator_toolkit_sandbox_test_results.md` Test 8). The
 architecture is therefore local-and-bounded for fields, hierarchical-and-cheap
 for awareness — never dense-and-global.
 
@@ -159,9 +159,9 @@ Classifications are ratified in the ADR. Summary:
 
 ---
 
-## 3. SEAD field-intelligence surfacing
+## 3. FIELD_POLICY field-intelligence surfacing
 
-SEAD (the field-intelligence awareness probes) is the proving ground for the
+FIELD_POLICY (the field-intelligence awareness probes) is the proving ground for the
 three-layer model and the source of its discipline. V7.7 surfaces the awareness
 model as the canonical consumer of mapping.
 
@@ -179,7 +179,7 @@ designer EML formulas. This keeps the AI a SimThing and adds no decision machine
 
 | Fact | Evidence |
 |---|---|
-| Propagation advances by later-band cascade, not same-band chaining | `sead_field_intelligence_sandbox_test_results.md` Test 0 (`later-band-cascade`) |
+| Propagation advances by later-band cascade, not same-band chaining | `field_policy_intelligence_sandbox_test_results.md` Test 0 (`later-band-cascade`) |
 | GPU `EvalEML` urgency is bit-exact and personality-sensitive | field-intel Test 1; refinement Test 5 (ratio 4.44) |
 | Decay without erasure via `ScaleTarget` | field-intel Test 4 (monotone decay, tick20_max 0.12) |
 | Hierarchy reduction ≈15× cheaper than lateral diffusion | operator-toolkit Test 5 |
@@ -192,7 +192,7 @@ EML has **no previous-buffer read opcode** (`previous_values = NO`, field-intel
 Test 0). Trajectory/velocity pressures require an **explicit previous-value
 column** with a copy band scheduled before the threat-update band:
 `EvalEML` SUB + `ResetTarget` copy, ~14.3% overhead
-(`sead_strategic_horizon_sandbox_test_results.md` Test 4–5). Velocity-based
+(`field_policy_strategic_horizon_sandbox_test_results.md` Test 4–5). Velocity-based
 commitments are admissible only through this explicit-column pattern.
 
 ### 3.4 Honest limits
@@ -201,7 +201,7 @@ Long-range gradient quality past H≈8–16 and AI *decision* quality are gamepl
 evaluation questions the sandboxes explicitly cannot settle. PF-based boundary
 skip is observability-only until its epsilon/tick threshold is tuned (skip
 simulation barely failed epsilon: max_error 0.0106 > 0.01,
-`sead_strategic_horizon_sandbox_test_results.md` Test 7). V7.7 surfaces technical
+`field_policy_strategic_horizon_sandbox_test_results.md` Test 7). V7.7 surfaces technical
 viability and constitutional safety, not balance.
 
 ---
@@ -211,7 +211,7 @@ viability and constitutional safety, not balance.
 New GPU/EML work is allowed when it is a generic primitive (not scenario
 semantics), opt-in (no production default changes), does not impair Resource
 Flow / E-11B / Phase T / `simthing-sim` behavior, and is covered by regression
-tests with documented admission constraints. Mapping and SEAD surfacing meet
+tests with documented admission constraints. Mapping and FIELD_POLICY surfacing meet
 these: they add no primitive, change no default, and are covered by the cited
 sandbox evidence.
 
@@ -317,7 +317,7 @@ StructuredFieldStencilOp remains live, opt-in, hardened, inert by default.
 simthing-sim remains semantic-free.
 ```
 
-**Evidence preserved:** the cited `docs/tests/` mapping and SEAD probe results
+**Evidence preserved:** the cited `docs/tests/` mapping and FIELD_POLICY probe results
 (see ADR header) and `docs/workshop/archive/mapping/mapping_optimization_remedial_candidate_notes.md`.
 
 ---
@@ -330,5 +330,5 @@ Insert after `design_v7_6.md` in the V7 read order:
 2. `docs/adr/mapping_sparse_regioncell.md` — the decision.
 3. `docs/design_v7_7.md` — this amendment (surfacing + §5 gating governance).
 4. `docs/workshop/phase_m_gating_and_doc_policy.md` — operational gating/doc policy (constitutional per §5); read before picking up any slice.
-5. The cited `docs/tests/` mapping + SEAD evidence before changing any
+5. The cited `docs/tests/` mapping + FIELD_POLICY evidence before changing any
    classification.

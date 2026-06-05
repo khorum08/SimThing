@@ -21,13 +21,13 @@ Commands write only existing bounded schedule values or local bounded control co
 
 - `DefaultSchedule0081Input.step_count`, bounded to `0..=3`.
 - `DefaultSchedule0081Input.movement_threshold`, derived from admitted Terran/Pirate thresholds.
-- Bounded Nested Starmap control config values, including source/candidate starsystem selectors and SEAD gap terms.
+- Bounded Nested Starmap control config values, including source/candidate starsystem selectors and FIELD_POLICY gap terms.
 
 Observed runs use only the existing path:
 
 `CONTROL-0080-1` -> `DEFAULT-SCHEDULE-0080-1` -> `GAMEPLAY-0080-1`
 
-The command layer does not directly move ships, emit external `BoundaryRequest` records, bypass SEAD,
+The command layer does not directly move ships, emit external `BoundaryRequest` records, bypass FIELD_POLICY,
 add a CPU planner, create a player command loop, add UI/realtime/demo packaging, register a global
 default schedule, add semantic/raw WGSL, add a shader/kernel, add hard currency, add nested Resource
 Flow, alter `simthing-spec`, edit invariants, or implement ClauseThing.
@@ -59,7 +59,7 @@ Coverage includes:
 - bounded command admission and schedule/config value writes;
 - observed scenario invocation through `DEFAULT-SCHEDULE-0080-1` -> `GAMEPLAY-0080-1`;
 - deterministic transcript export and replay checksum;
-- rejection of direct Terran/Pirate movement, external boundary requests, SEAD bypass, CPU planner,
+- rejection of direct Terran/Pirate movement, external boundary requests, FIELD_POLICY bypass, CPU planner,
   player command loop, UI framework, realtime loop, global default schedule, semantic/raw WGSL,
   new shader/GPU kernel, hard currency/markets/trade/`ai_budget`, nested Resource Flow, and
   ClauseThing dependency.

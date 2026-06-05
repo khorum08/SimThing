@@ -137,7 +137,7 @@ cargo check --workspace
 
 ## Posture Attestation
 
-No new EML opcode, no semantic WGSL, no JIT/shader-generation implementation in this pass, no chained scheduling, no automatic snapshot/copy scheduling, no default mapping wiring, no simthing-sim Gadget/Personality/Memory semantics, no CPU planner/urgency/commitment emission, no production economy→mapping bridge; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+No new EML opcode, no semantic WGSL, no JIT/shader-generation implementation in this pass, no chained scheduling, no automatic snapshot/copy scheduling, no default mapping wiring, no simthing-sim Gadget/Personality/Memory semantics, no CPU planner/urgency/commitment emission, no production economy→mapping bridge; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.
 
 ---
 

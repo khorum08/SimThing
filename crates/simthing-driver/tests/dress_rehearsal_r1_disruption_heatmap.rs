@@ -538,12 +538,12 @@ fn r1_heatmap_artifact_suppressed_near_patrol() {
 }
 
 #[test]
-fn r1_no_sead_movement() {
+fn r1_no_field_policy_movement() {
     let admitted = report();
-    assert!(admitted.no_sead_movement);
-    let rejected = rejected_with(|forbidden| forbidden.sead_movement = true);
+    assert!(admitted.no_field_policy_movement);
+    let rejected = rejected_with(|forbidden| forbidden.field_policy_movement = true);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"sead_movement"));
+    assert!(rejected.diagnostics.contains(&"field_policy_movement"));
 }
 
 #[test]

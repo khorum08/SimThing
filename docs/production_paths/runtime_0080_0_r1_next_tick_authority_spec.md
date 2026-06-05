@@ -419,7 +419,7 @@ R2 reduce-up/disburse-down, R6 attrition decrement / R6B reinforcement increment
 blockade/divert code, R4 magnitude — all already GPU-measured in `GPU-MEASURE-0080-0`) as
 `AccumulatorOp`s / `OverlayDelta` / threshold registrations over a resident `values` buffer, and let the
 existing tick pipeline (`WorldGpuState` + `Pipelines` Pass 0–7) produce `state_N+1` on GPU — the same
-machinery that already applies player (`PlayerIntentOverlay`) / AI (`AiIntentOverlay`) overlays and SEAD
+machinery that already applies player (`PlayerIntentOverlay`) / AI (`AiIntentOverlay`) overlays and FIELD_POLICY
 thresholds (`ThresholdEvent → BoundaryRequest`). No new op, no semantic WGSL. The CPU oracle is
 comparison-only, read solely at the boundary parity check. Tier-B structural ops remain bounded CPU
 boundary maintenance driven by GPU-written `ThresholdEvent`s (the boundaryEvent dispatch).

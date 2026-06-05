@@ -118,7 +118,7 @@ Item:
   phase_m_boundary_cadence_doctrine
 
 Evidence:
-  docs/tests/nvidia_fp_temp_08_sead_boundary_scheduler.md
+  docs/tests/nvidia_fp_temp_08_field_policy_boundary_scheduler.md
   crates/simthing-driver/tests/phase_m_boundary_cadence_doctrine.rs
   docs/workshop/mapping_current_guidance.md
   missing docs/workshop/workshop_current_state.md
@@ -126,8 +126,8 @@ Evidence:
 Current interpretation:
   Stale/missing doc-hygiene dependency.
   Test cannot compile because it includes missing docs/workshop/workshop_current_state.md.
-  Executed SEAD/scheduler tests passed on RTX.
-  This is not NVIDIA FP drift and not SEAD runtime failure.
+  Executed FIELD_POLICY/scheduler tests passed on RTX.
+  This is not NVIDIA FP drift and not FIELD_POLICY runtime failure.
 
 Opus decision needed:
   Restore missing doc, retarget guard to active 0.0.8 docs, or remove stale doc-string guard.
@@ -175,7 +175,7 @@ Battery 12 resolved the four previously parked Battery 07, Battery 08, and Batte
 | 05 | `docs/tests/nvidia_fp_temp_05_first_slice.md` | PASS | yes | first-slice family passed | substitution recorded |
 | 06 | `docs/tests/nvidia_fp_temp_06_sim_f32_c_series.md` | PASS | yes | sim f32 C-series passed | exact integration binaries used |
 | 07 | `docs/tests/nvidia_fp_temp_07_robust_exact_jit.md` | FAIL / TRIAGE | yes | 150 pass / 2 fail / 3 ignored | likely stale doc guard + admission-ordering issue; not NVIDIA FP drift |
-| 08 | `docs/tests/nvidia_fp_temp_08_sead_boundary_scheduler.md` | PARTIAL / TRIAGE | yes | 105 pass / 0 fail / 0 ignored; 1 blocked | missing doc include blocks boundary cadence test |
+| 08 | `docs/tests/nvidia_fp_temp_08_field_policy_boundary_scheduler.md` | PARTIAL / TRIAGE | yes | 105 pass / 0 fail / 0 ignored; 1 blocked | missing doc include blocks boundary cadence test |
 | 09 | `docs/tests/nvidia_fp_temp_09_runtime_eml_economy_nested.md` | PASS | yes | 106 pass / 0 fail / 0 ignored | runtime/EML/economy/nested/session passed |
 | 10 | `docs/tests/nvidia_fp_temp_10_sim_broad_integration.md` | PASS | yes | 106 pass / 0 fail / 1 ignored | broad simthing-sim sweep passed; ignored perf test not correctness failure |
 | 11 | `docs/tests/nvidia_fp_temp_11_feeder_workspace_sweep.md` | PARTIAL / KNOWN TRIAGE | yes | feeder 5/0/0; workspace compile stopped | feeder PASS; workspace incomplete (JIT descriptor compile + known triage family) |

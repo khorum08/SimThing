@@ -81,7 +81,7 @@ micro-fixture wall-clock.
 | `docs/design_v7_8_production_track.md` | AO-WGSL-0 marked ACCEPTED; stale V7.8-CLEAN-0 note corrected |
 | `docs/design_v7_8.md` | Acceptance noted |
 | `docs/workshop/mapping_current_guidance.md` | Status updated to accepted |
-| `docs/workshop/sead_self_ai_track.md` | Acceptance note |
+| `docs/workshop/field_policy_track.md` | Acceptance note |
 | `docs/worklog.md` | Acceptance entry |
 | `docs/tests/phase_ao_wgsl0_acceptance_review_results.md` | This report |
 

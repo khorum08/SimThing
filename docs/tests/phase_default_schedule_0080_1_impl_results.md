@@ -1,13 +1,13 @@
 # DEFAULT-SCHEDULE-0080-1-IMPL-0 Results
 
-Verdict: **IMPLEMENTED / PASS** - scenario-scoped Nested Starmap SEAD-sourced schedule/movement.
+Verdict: **IMPLEMENTED / PASS** - scenario-scoped Nested Starmap FIELD_POLICY-sourced schedule/movement.
 
 ## Scope
 
 - Implemented `run_default_schedule_0080_1` / `replay_default_schedule_0080_1` in `crates/simthing-driver`.
 - Explicit opt-in/default-off. Disabled input is a no-op and does not run `PRODUCTION-PATH-0080-1`.
 - Consumes `run_production_path_0080_1`; rejects disabled, rejected, or non-admitted production-path posture.
-- Uses read-only `ProductionPath0081SeadCompositeGapTerms` as a deterministic threshold source.
+- Uses read-only `ProductionPath0081FieldPolicyCompositeGapTerms` as a deterministic threshold source.
 - Converts accepted threshold decisions into event emission and materialized `BoundaryRequest` records only.
 - Routes accepted requests through the existing mobility/transfer substrate posture; no direct movement command.
 - Bounded to three deterministic scenario-local steps for this implementation slice.
@@ -72,10 +72,10 @@ cargo test -p simthing-spec --test mobility_owner0_substrate
 cargo test -p simthing-spec --test mobility_runtime0_composition
 cargo test -p simthing-spec --test mobility_runtime1_production_fixture
 cargo test -p simthing-driver --test mobility_runtime1a_runtime_fixture
-cargo test -p simthing-driver --test phase_m_sead_obs4_threshold_event
-cargo test -p simthing-driver --test phase_m_sead_event0_compaction
-cargo test -p simthing-driver --test phase_m_sead_pipe0_observer_event_pipeline
-cargo test -p simthing-spec --test sead_obs0_overlay_score_admission
+cargo test -p simthing-driver --test phase_m_field_policy_obs4_threshold_event
+cargo test -p simthing-driver --test phase_m_field_policy_event0_compaction
+cargo test -p simthing-driver --test phase_m_field_policy_pipe0_observer_event_pipeline
+cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission
 cargo check --workspace
 ```
 

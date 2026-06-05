@@ -1879,7 +1879,7 @@ sqrt_mag2_perf0_candidate_a_q12_combined_34k: rows=34000 dispatches=1 includes_r
 sqrt_mag2_perf0_candidate_a_q12: dense=784 mag2_exact=784 mag_exact=784 q12_vs_q16_mag2_diff=551/784 precision_note=Q12.12_coarser_than_Q16.16
 sqrt_mag2_perf0_candidate_a_q12_combined_784: rows=784 dispatches=1 includes_readback=true elapsed_ms=1.744 per_entity_us=2.2240
 test sqrt_mag2_perf0_candidate_a_q12_dense_corpus ... ok
-sqrt_mag2_perf0_candidate_b: hi_nonzero=423/784 lo_only_mismatch=423 gpu_wrong=423 verdict=REJECTED_for_full_SEAD_range
+sqrt_mag2_perf0_candidate_b: hi_nonzero=423/784 lo_only_mismatch=423 gpu_wrong=423 verdict=REJECTED_for_full_FIELD_POLICY_range
 test sqrt_mag2_perf0_candidate_b_lo_only_conversion_rejected ... ok
 sqrt_mag2_perf0_correctness_edge: rows=3 max_ulp=0
 sqrt_mag2_perf0_correctness_dense: rows=784 max_ulp=0

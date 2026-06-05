@@ -41,10 +41,10 @@ Required verification for this PR:
 - `cargo test -p simthing-spec --test mobility_runtime0_composition`
 - `cargo test -p simthing-spec --test mobility_runtime1_production_fixture`
 - `cargo test -p simthing-driver --test mobility_runtime1a_runtime_fixture`
-- `cargo test -p simthing-driver --test phase_m_sead_obs4_threshold_event`
-- `cargo test -p simthing-driver --test phase_m_sead_event0_compaction`
-- `cargo test -p simthing-driver --test phase_m_sead_pipe0_observer_event_pipeline`
-- `cargo test -p simthing-spec --test sead_obs0_overlay_score_admission`
+- `cargo test -p simthing-driver --test phase_m_field_policy_obs4_threshold_event`
+- `cargo test -p simthing-driver --test phase_m_field_policy_event0_compaction`
+- `cargo test -p simthing-driver --test phase_m_field_policy_pipe0_observer_event_pipeline`
+- `cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission`
 - `cargo check --workspace`
 
 All commands PASS. Existing workspace warnings remain unchanged.

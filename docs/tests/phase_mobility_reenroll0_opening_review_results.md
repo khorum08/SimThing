@@ -24,7 +24,7 @@ only; it does **not** implement it, and it opens **no** other ladder.
 - `docs/design_v7_9_mobility_transfer_allocation_production_track.md`
 - `docs/workshop/mobility_and_transfer_allocation.md`
 - `docs/workshop/mapping_current_guidance.md`
-- `docs/workshop/sead_self_ai_track.md`
+- `docs/workshop/field_policy_track.md`
 - `docs/tests/phase_mobility_scenario0_results.md`, `phase_mobility_scenario0_acceptance_review_results.md`
 - `docs/tests/phase_mobility_owner_band_budget_audit_results.md`
 - `docs/tests/phase_mobility_alloc0_opening_review_results.md`, `phase_mobility_alloc0_results.md`
@@ -78,7 +78,7 @@ planner; no CPU urgency computation; no CPU commitment emission.
 | Testable at substrate level without runtime wiring | PASS |
 | Owner-entity never spatial parent | PASS (preserved; REENROLL is spatial movement only) |
 | Capture remains owner-column flip, not reparenting | PASS (explicit non-goal; scenario0 rejects capture-as-reparenting) |
-| Movement writes only the mover's own authoritative columns | PASS (SEAD principle preserved) |
+| Movement writes only the mover's own authoritative columns | PASS (FIELD_POLICY principle preserved) |
 | Arrival order not replay-significant | PASS (ALLOC substrate floor inherited) |
 | No live-slot compaction | PASS (ALLOC substrate floor inherited) |
 | No GPU semaphore / nondeterministic atomics | PASS (rejected) |
@@ -134,7 +134,7 @@ code, no GPU kernels, no production `SimSession` wiring, no default-on flags, no
 no `simthing-sim` semantic awareness, no CPU planner/urgency/commitment emission, no Resource Flow
 default-on, no hard-currency through Resource Flow, no invariant changes. Owner-entities remain
 non-spatial; capture remains an owner-column flip; arrival order remains non-authoritative; live-slot
-compaction stays forbidden; GPU semaphore/nondeterministic atomics stay rejected; SEAD decisions stay
+compaction stays forbidden; GPU semaphore/nondeterministic atomics stay rejected; FIELD_POLICY decisions stay
 GPU-resident threshold/event outputs. v7.8 M/E/T closure (A-0/B-0/C-2), AO-WGSL-0 default-off,
 ClauseThing/L3 parked, FrontierV2-5 rejected, ACT/EVENT/OBS/PIPE no reopen — all unchanged.
 IDROUTE/ECON/OWNER remain proposed/parked.

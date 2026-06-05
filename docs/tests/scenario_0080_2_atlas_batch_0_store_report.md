@@ -11,7 +11,7 @@
 - `docs/design_0_0_8_0_consumer_pulled_production_track.md` §12–§12.5
 - `docs/scenarios/scenario_0080_2_dress_rehearsal_spec.md`
 - `crates/simthing-core/src/accumulator_op.rs` (reference only)
-- `docs/workshop/sead_self_ai_track.md`
+- `docs/workshop/field_policy_track.md`
 - `docs/handoffs/dress_rehearsal_codex_handoff_5_atlas_batch_0_store.md`
 - `crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_loc.rs`, `dress_rehearsal_atlas_batch_0_pack.rs`
 

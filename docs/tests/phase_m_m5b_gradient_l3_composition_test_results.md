@@ -122,7 +122,7 @@ cargo test -p simthing-driver --test phase_m_first_slice_runtime -- --nocapture
 **Result:** **28 passed; 0 failed**
 
 ```bash
-cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture -- --nocapture
+cargo test -p simthing-driver --test phase_m_economy_field_policy_product_fixture -- --nocapture
 ```
 **Result:** **6 passed; 0 failed**
 
@@ -135,8 +135,8 @@ cargo check --workspace
 
 ## Posture Attestation
 
-No semantic WGSL, no default mapping wiring, no simthing-sim changes, no source-mask/source-identity work, no atlas/M-4A, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+No semantic WGSL, no default mapping wiring, no simthing-sim changes, no source-mask/source-identity work, no atlas/M-4A, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.
 
 ---
 
-**PASS** — Phase M-5B-gradient landed as a Tier-1 fast-lane L3 Strategic Pressure Composition fixture over the existing M-5A single-target Gradient substrate, using existing reduction and EvalEML/EML gadget composition with EMA smoothing, with one test report and compact status update only, no new substrate, no semantic WGSL, no dual-output GradientXY, no sqrt/new opcode, no L1 coupling, no source-mask/source-identity, no atlas/M-4A, no default mapping wiring, no simthing-sim changes, no production economy→mapping bridge, and V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+**PASS** — Phase M-5B-gradient landed as a Tier-1 fast-lane L3 Strategic Pressure Composition fixture over the existing M-5A single-target Gradient substrate, using existing reduction and EvalEML/EML gadget composition with EMA smoothing, with one test report and compact status update only, no new substrate, no semantic WGSL, no dual-output GradientXY, no sqrt/new opcode, no L1 coupling, no source-mask/source-identity, no atlas/M-4A, no default mapping wiring, no simthing-sim changes, no production economy→mapping bridge, and V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.

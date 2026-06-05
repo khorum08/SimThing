@@ -15,8 +15,8 @@ use crate::dress_rehearsal_r2_recursive_allocation::{
 use crate::dress_rehearsal_r3_capability_mask_down::{
     run_dress_rehearsal_r3_capability_mask_down, DressRehearsalR3Input, DressRehearsalR3Report,
 };
-use crate::dress_rehearsal_r4_sead_field_consumption::{
-    run_dress_rehearsal_r4_sead_field_consumption, DressRehearsalR4Input, DressRehearsalR4Report,
+use crate::dress_rehearsal_r4_field_policy_consumption::{
+    run_dress_rehearsal_r4_field_policy_consumption, DressRehearsalR4Input, DressRehearsalR4Report,
     MOVEMENT_THRESHOLD_MAG_BITS,
 };
 use crate::dress_rehearsal_r5_movement_reenroll::{
@@ -24,7 +24,7 @@ use crate::dress_rehearsal_r5_movement_reenroll::{
     DressRehearsalR5Report, SLOTS_PER_CELL,
 };
 use crate::dress_rehearsal_r6_combat_hp_damage::{
-    damage_output_for_cohort, hp_to_kill_for_cohort, run_dress_rehearsal_r6_combat_hp_damage,
+    damage_output_for_cohort, hp_to_retire_for_cohort, run_dress_rehearsal_r6_combat_hp_damage,
     DressRehearsalR6FleetCohortOverride, DressRehearsalR6Input, DressRehearsalR6Report,
     FLEET_COHORT_NUM_SHIPS, FLEET_DAMAGE_PER_SHIP_PER_TICK, FLEET_HP_PER_SHIP,
 };
@@ -105,7 +105,7 @@ pub struct DressRehearsalR6bReinforcementRow {
     pub num_ships_before: i64,
     pub ship_count_delta: i64,
     pub num_ships_after: i64,
-    pub hp_to_kill_after: i64,
+    pub hp_to_retire_after: i64,
     pub damage_output_after: i64,
     pub movement_boundary_request_used: bool,
     pub shadow_table_update_kind: &'static str,
@@ -136,7 +136,7 @@ pub struct DressRehearsalR6bFusionRow {
     pub fused_num_ships: i64,
     pub hp_per_ship: i64,
     pub damage_per_ship_per_tick: i64,
-    pub hp_to_kill_after: i64,
+    pub hp_to_retire_after: i64,
     pub damage_output_after: i64,
     pub identity_lineage_recorded: bool,
     pub owner_overlay_preserved: bool,
@@ -203,7 +203,7 @@ impl DressRehearsalR6bInput {
         let r3_report = run_dress_rehearsal_r3_capability_mask_down(
             &DressRehearsalR3Input::with_reports(r1_report.clone(), r2_report.clone()),
         );
-        let r4_report = run_dress_rehearsal_r4_sead_field_consumption(&DressRehearsalR4Input {
+        let r4_report = run_dress_rehearsal_r4_field_policy_consumption(&DressRehearsalR4Input {
             explicit_opt_in: true,
             enabled_by_default: false,
             movement_threshold_mag_bits: MOVEMENT_THRESHOLD_MAG_BITS,
@@ -478,7 +478,7 @@ fn apply_ship_delta(
         num_ships_before: before,
         ship_count_delta: ship_delta,
         num_ships_after: after,
-        hp_to_kill_after: hp_to_kill_for_cohort(after, profile.hp_per_ship),
+        hp_to_retire_after: hp_to_retire_for_cohort(after, profile.hp_per_ship),
         damage_output_after: damage_output_for_cohort(after, profile.damage_per_ship_per_tick),
         movement_boundary_request_used: false,
         shadow_table_update_kind: "CohortStateUpdate",
@@ -611,7 +611,7 @@ fn fuse_compatible_at_indices(
             fused_num_ships: fused_ships,
             hp_per_ship: profile.hp_per_ship,
             damage_per_ship_per_tick: profile.damage_per_ship_per_tick,
-            hp_to_kill_after: hp_to_kill_for_cohort(fused_ships, profile.hp_per_ship),
+            hp_to_retire_after: hp_to_retire_for_cohort(fused_ships, profile.hp_per_ship),
             damage_output_after: damage_output_for_cohort(
                 fused_ships,
                 profile.damage_per_ship_per_tick,

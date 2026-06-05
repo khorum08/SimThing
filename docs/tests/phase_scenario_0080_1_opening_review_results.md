@@ -20,7 +20,7 @@ Two product decisions (2026-06-02, via design-authority question) set scope:
    scaling), previously parked, now consumer-named by adversarial contended resource flow.
 
 The native/proven parts (nested `{children}` structure, OWNER overlay down-broadcast of personality/policy
-weights, SEAD-sourced composite-gap decision, read-only observability) require no new substrate. The two
+weights, FIELD_POLICY-sourced composite-gap decision, read-only observability) require no new substrate. The two
 gates above are the only parked substrates pulled; both are opened as **docs/design only**.
 
 ## Files touched
@@ -51,7 +51,7 @@ gates above are the only parked substrates pulled; both are opened as **docs/des
 Opt-in/default-off; bounded 10×10 grids and fixed small faction set; deterministic seed + replay;
 I8 CPU-oracle parity required of any GPU-resident field; owner-relation broadcast (not spatial
 reparenting / not owner-as-spatial-parent); player orders (if later) a weighted overlay term, not a
-direct-move and not the currency mechanism; SEAD-sourced decisions (no CPU planner); residency is a
+direct-move and not the currency mechanism; FIELD_POLICY-sourced decisions (no CPU planner); residency is a
 strict value no-op; adversarial economy modeled within Resource Flow / subsidiarity (no hard currency,
 no nested RF). Reversible. Any crossing is a stop-and-escalate.
 

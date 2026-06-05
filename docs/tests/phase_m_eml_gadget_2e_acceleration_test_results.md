@@ -101,7 +101,7 @@ rg "new EML opcode|new WGSL|runtime gadget execution|chained OrderBand runtime s
 | `cargo test -p simthing-spec --test eml_gadget_tier2_temporal -- --nocapture` | **10/10 PASS** |
 | `cargo test -p simthing-spec --test eml_gadget_tier1 -- --nocapture` | **14/14 PASS** |
 | `cargo test -p simthing-spec --test resource_economy_authoring_preview -- --nocapture` | **8/8 PASS** |
-| `cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture -- --nocapture` | **6/6 PASS** |
+| `cargo test -p simthing-driver --test phase_m_economy_field_policy_product_fixture -- --nocapture` | **6/6 PASS** |
 | `cargo test -p simthing-driver --test phase_m_first_slice_runtime -- --nocapture` | **28/28 PASS** |
 | `cargo test -p simthing-spec --test region_field_spec_admission -- --nocapture` | **11/11 PASS** |
 | `cargo check --workspace` | **PASS** |
@@ -124,10 +124,10 @@ Checked `docs/tests` for `*.log`, `*tmp*`, `*scratch*` files.
 - No runtime gadget execution or chained OrderBand scheduling.
 - No production economy→mapping bridge; no default SimSession mapping wiring.
 - Position-history acceleration and dense per-cell temporal memory remain separately gated.
-- V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+- V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.
 
 ---
 
 ## Final Verdict
 
-**PASS** — Phase M EML-GADGET-2E Acceleration landed as a narrow explicit velocity-column Tier-2 EML gadget in `simthing-spec` authoring/admission/compiler/oracle only, with finite dt admission, compiled-node parity over existing EvalEML arithmetic primitives, active docs and production plan updated, no hidden temporal reads, no dense temporal memory, no new opcode/WGSL/GPU/sim runtime behavior, no runtime gadget execution or chained scheduling, no production economy→mapping bridge, and V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+**PASS** — Phase M EML-GADGET-2E Acceleration landed as a narrow explicit velocity-column Tier-2 EML gadget in `simthing-spec` authoring/admission/compiler/oracle only, with finite dt admission, compiled-node parity over existing EvalEML arithmetic primitives, active docs and production plan updated, no hidden temporal reads, no dense temporal memory, no new opcode/WGSL/GPU/sim runtime behavior, no runtime gadget execution or chained scheduling, no production economy→mapping bridge, and V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.

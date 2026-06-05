@@ -89,7 +89,7 @@ fn store_gpu_status_matches_gate() {
     assert!(!status.contains("GpuVerified fallback"));
     assert!(!status.contains("R1") && !status.contains("R2") && !status.contains("R4"));
     assert!(!status.to_lowercase().contains("economy"));
-    assert!(!status.contains("SEAD"));
+    assert!(!status.contains("FIELD_POLICY"));
     assert!(!status.contains("REENROLL"));
     assert!(!status.contains("movement"));
     assert!(!status.contains("combat"));
@@ -141,7 +141,7 @@ fn no_r1_r2_r3_r4_behavior() {
         "diffusion",
         "economy",
         "stockpile",
-        "SEAD",
+        "FIELD_POLICY",
         "BoundaryRequest",
         "REENROLL",
         "combat",

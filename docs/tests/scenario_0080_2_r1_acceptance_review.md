@@ -93,7 +93,7 @@ hotspot near pirates, suppression near patrols") is fully met.
 
 ## 5. Stop-line confirmation (all held)
 
-No SEAD movement · no GradientXY consumption · no R2 recursive reduce-up · no R3 mask-down · no
+No FIELD_POLICY movement · no GradientXY consumption · no R2 recursive reduce-up · no R3 mask-down · no
 R4/R5/R6 · no REENROLL · no M-4A sparse-residency · no blockade/divert gate (the `CEILING=100` is field
 saturation only, not the §6 gate) · no default `SimSession` pass-graph change (opt-in/default-off fixture;
 `default_simsession()` is a no-op) · no new shader/WGSL/GPU kernel · no f32 bit-exact GPU claim. Each is

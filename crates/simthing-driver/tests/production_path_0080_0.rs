@@ -61,10 +61,10 @@ fn production_path_0080_0_instantiates_local_patrol_economy() {
 }
 
 #[test]
-fn production_path_0080_0_sead_threshold_emits_boundary_request() {
+fn production_path_0080_0_field_policy_threshold_emits_boundary_request() {
     let admitted = report();
-    assert!(admitted.sead_threshold_accepted);
-    assert!(admitted.sead_emit_event_emitted);
+    assert!(admitted.field_policy_threshold_accepted);
+    assert!(admitted.field_policy_emit_event_emitted);
     assert!(admitted.boundary_request_materialized);
     assert!(admitted.mobility_substrate_consumed_boundary_request);
 }

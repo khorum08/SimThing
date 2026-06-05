@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Active authority:** read [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md) first (PR ladder home), then [`mapping_current_guidance.md`](mapping_current_guidance.md) (status table) and [`sead_self_ai_track.md`](sead_self_ai_track.md) (SEAD/Frontier charter).
+**Active authority:** read [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md) first (PR ladder home), then [`mapping_current_guidance.md`](mapping_current_guidance.md) (status table) and [`field_policy_track.md`](field_policy_track.md) (FIELD_POLICY/Frontier charter).
 
 **Archive:** superseded workshop handoffs (`workshop_current_state.md`, `todo.md`, `simthing_spec_progress_log.md`, historical mapping narrative) live under [`../archive/superseded_workshop/`](../archive/superseded_workshop/). Do not treat archived files as active authority.
 
@@ -11,7 +11,7 @@
 | Document | Role |
 |----------|------|
 | [`mapping_current_guidance.md`](mapping_current_guidance.md) | **Status table** — Phase M compact posture |
-| [`sead_self_ai_track.md`](sead_self_ai_track.md) | **SEAD/Frontier charter** — §10–§11 |
+| [`field_policy_track.md`](field_policy_track.md) | **FIELD_POLICY/Frontier charter** — §10–§11 |
 | [`phase_m_gating_and_doc_policy.md`](phase_m_gating_and_doc_policy.md) | Lane gating and doc policy |
 | [`eml_gadget_library_design_note.md`](eml_gadget_library_design_note.md) | EML-GADGET design |
 | [`m5_gradient_extraction_design_note.md`](m5_gradient_extraction_design_note.md) | M-5 gradient design |

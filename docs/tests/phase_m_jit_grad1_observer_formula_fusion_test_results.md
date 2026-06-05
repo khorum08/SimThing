@@ -144,7 +144,7 @@ rg "sqrt\(" crates/simthing-driver/tests/phase_m_jit_grad1_observer_formula_fusi
 **Result:** no `sqrt(` in GRAD-1 fused path, GRAD-0 observer path, or baseline runtime shaders; `sqrt(` only in M-JIT-SQRT candidate test context.
 
 ```
-rg "faction|ownership|owner|AI|threat|scarcity|opportunity|labor|price|logistics|routing|need|demand|supply|personality|drone|SEAD|simthing-sim|ResourceEconomySpec|SimSession" crates/simthing-driver/tests/phase_m_jit_grad1_observer_formula_fusion.rs crates/simthing-gpu/src/shaders docs/tests/phase_m_jit_grad1_observer_formula_fusion_test_results.md
+rg "faction|ownership|owner|AI|threat|scarcity|opportunity|labor|price|logistics|routing|need|demand|supply|personality|drone|FIELD_POLICY|simthing-sim|ResourceEconomySpec|SimSession" crates/simthing-driver/tests/phase_m_jit_grad1_observer_formula_fusion.rs crates/simthing-gpu/src/shaders docs/tests/phase_m_jit_grad1_observer_formula_fusion_test_results.md
 ```
 
 **Result:** fused WGSL semantic-free; forbidden terms only in guardrail context.
@@ -192,4 +192,4 @@ find docs/tests -maxdepth 1 -type f \( -name "*.log" -o -name "*tmp*" -o -name "
 
 ## Posture Attestation
 
-No semantic WGSL, no sqrt in the fused exact observer path, no approximate mag2 used as exact score input, no production JIT wiring, no production observer scheduling/caching, no default mapping wiring, no simthing-sim Gadget/Personality/Memory semantics, no new production EML opcode, no production sqrt admission, no chained scheduling, no automatic snapshot/copy scheduling, no CPU planner/urgency/commitment emission, no production economy→mapping bridge; M-JIT-GRAD-1 is a test-only GPU-resident observer+exact-formula fusion proof; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+No semantic WGSL, no sqrt in the fused exact observer path, no approximate mag2 used as exact score input, no production JIT wiring, no production observer scheduling/caching, no default mapping wiring, no simthing-sim Gadget/Personality/Memory semantics, no new production EML opcode, no production sqrt admission, no chained scheduling, no automatic snapshot/copy scheduling, no CPU planner/urgency/commitment emission, no production economy→mapping bridge; M-JIT-GRAD-1 is a test-only GPU-resident observer+exact-formula fusion proof; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.

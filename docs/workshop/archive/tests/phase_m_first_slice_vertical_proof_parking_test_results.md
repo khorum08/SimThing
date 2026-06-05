@@ -26,7 +26,7 @@ No runtime code changes.
 Summarizes for Opus/product review:
 
 1. What the vertical proof proves and does not prove
-2. Landed chain (scenario RON → GPU-resident mapping → SEAD commitment)
+2. Landed chain (scenario RON → GPU-resident mapping → FIELD_POLICY commitment)
 3. Evidence table (9 prior test reports + this parking pass)
 4. Active code surfaces (production vs acceptance-test support)
 5. Default-off / opt-in posture and M-4 atlas boundary

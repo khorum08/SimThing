@@ -103,7 +103,7 @@ assert the product signal. `reduction_stencil_readbacks == 0`.
 ## Posture Summary
 
 Phase M CommitmentSpec fixture landed.
-It moves the first-slice commitment threshold/event binding into a designer/spec-facing RON-admitted configuration while preserving the existing GPU-resident SEAD path: field propagation -> parent reduction -> field_urgency EvalEML -> Threshold + EmitEvent.
+It moves the first-slice commitment threshold/event binding into a designer/spec-facing RON-admitted configuration while preserving the existing GPU-resident FIELD_POLICY path: field propagation -> parent reduction -> field_urgency EvalEML -> Threshold + EmitEvent.
 Low-weight profile remains below the authored threshold; high-weight profile crosses and emits the authored event.
 No CPU-side AI planner was introduced.
 No atlas batching landed.
@@ -119,4 +119,4 @@ First-slice bridge uses queue writes for child resource values and parent weight
 
 ## Final Verdict
 
-PASS — Phase M CommitmentSpec fixture landed; the first-slice SEAD commitment threshold/event binding is now designer/spec-authored and admitted from RON, while the commitment decision remains GPU-resident through field_urgency -> Threshold + EmitEvent with no atlas, semantic WGSL, source_mask, perception, map residency, or CPU-side AI planning.
+PASS — Phase M CommitmentSpec fixture landed; the first-slice FIELD_POLICY commitment threshold/event binding is now designer/spec-authored and admitted from RON, while the commitment decision remains GPU-resident through field_urgency -> Threshold + EmitEvent with no atlas, semantic WGSL, source_mask, perception, map residency, or CPU-side AI planning.

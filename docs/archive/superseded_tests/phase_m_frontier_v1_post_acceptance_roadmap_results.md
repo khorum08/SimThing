@@ -20,7 +20,7 @@
 | Question | Answer |
 |---|---|
 | **1. What did FrontierV1-ACCEPT-0 close?** | Phase M and Phase E for FrontierV1 scope; accepted FrontierV1 as the named M/E closing vertical |
-| **2. Authoritative evidence** | FrontierV1-0..4 fixture reports; FrontierV1-ACCEPT-0 review; SEAD-V1 consolidation; stable replay fingerprints |
+| **2. Authoritative evidence** | FrontierV1-0..4 fixture reports; FrontierV1-ACCEPT-0 review; FIELD_POLICY-V1 consolidation; stable replay fingerprints |
 | **3. Deferred non-blocking** | Atlas/M-4A; active mask/M-6A; perception/fog; source identity; dual-output GradientXY; L1 coupling; nested E-11B/E-11B-5; D-2a; ClauseThing; broader production SimSession integration |
 | **4. Explicitly not authorized** | FrontierV1-5; ACT-5/EVENT-3/OBS-5/PIPE-1; default SimSession; scheduler/cache; semantic WGSL; CPU planner/urgency/commitment; simthing-sim awareness; parallel fixture economy; shared-pool tick writes |
 | **5. Does production plan name next gate?** | **Yes** — global next gate remains **Pause implementation (F)** per [`product_priority_vertical_slice_selection.md`](../reviews/product_priority_vertical_slice_selection.md) |
@@ -45,12 +45,12 @@
 
 | Slice | Report | Fingerprint (where applicable) |
 |---|---|---|
-| SEAD-V1 consolidation | [`phase_m_sead_v1_consolidation_results.md`](phase_m_sead_v1_consolidation_results.md) | — |
+| FIELD_POLICY-V1 consolidation | [`phase_m_field_policy_v1_consolidation_results.md`](phase_m_field_policy_v1_consolidation_results.md) | — |
 | FrontierV1-0 | [`phase_m_frontier_v1_0_scenario_skeleton_results.md`](phase_m_frontier_v1_0_scenario_skeleton_results.md) | — |
 | FrontierV1-1 | [`phase_m_frontier_v1_1_opt_in_fixture_results.md`](phase_m_frontier_v1_1_opt_in_fixture_results.md) | `49d4c94ce1f52be5` |
 | FrontierV1-2 | [`phase_m_frontier_v1_2_gpu_replay_acceptance_results.md`](phase_m_frontier_v1_2_gpu_replay_acceptance_results.md) | `42b0455e4d0b59ac` |
 | FrontierV1-3 | [`phase_m_frontier_v1_3_gpu_resource_flow_results.md`](phase_m_frontier_v1_3_gpu_resource_flow_results.md) | `7bacf7921b807bee` |
-| FrontierV1-4 | [`phase_m_frontier_v1_4_sead_route_replay_results.md`](phase_m_frontier_v1_4_sead_route_replay_results.md) | `4382ec7ef93c9174` |
+| FrontierV1-4 | [`phase_m_frontier_v1_4_field_policy_route_replay_results.md`](phase_m_frontier_v1_4_field_policy_route_replay_results.md) | `4382ec7ef93c9174` |
 | FrontierV1-ACCEPT-0 | [`phase_m_frontier_v1_acceptance_review_results.md`](phase_m_frontier_v1_acceptance_review_results.md) | — |
 
 ## Explicitly not authorized
@@ -58,7 +58,7 @@
 | Item | Status |
 |---|---|
 | FrontierV1-5 | Not authorized unless separately named product need |
-| ACT-5 / EVENT-3 / OBS-5 / PIPE-1 | Not authorized — SEAD ladder closed |
+| ACT-5 / EVENT-3 / OBS-5 / PIPE-1 | Not authorized — FIELD_POLICY ladder closed |
 | Default SimSession wiring | Not authorized |
 | Scheduler / kernel cache | Not authorized |
 | Semantic WGSL | Not authorized |
@@ -93,7 +93,7 @@ The production plan already names the global next gate:
 
 > **Next gate:** **Pause implementation (F)** per [`product_priority_vertical_slice_selection.md`](../reviews/product_priority_vertical_slice_selection.md) — gather product requirements and name a scenario before authorizing D-2a, E-11B-5, spec/RON rebuild, new vertical slice, or additional soak.
 
-With FrontierV1 M/E closure complete, the FrontierV1-specific implementation ladder is **finished**. No new Frontier/SEAD fixture slice is authorized by default. Future runtime work must begin from a **separately named production gate** that preserves V7.7 / Mapping ADR / Resource Flow ADR / SEAD charter guardrails.
+With FrontierV1 M/E closure complete, the FrontierV1-specific implementation ladder is **finished**. No new Frontier/FIELD_POLICY fixture slice is authorized by default. Future runtime work must begin from a **separately named production gate** that preserves V7.7 / Mapping ADR / Resource Flow ADR / FIELD_POLICY charter guardrails.
 
 **Next named gate: Pause implementation (F).**
 
@@ -137,4 +137,4 @@ No GPU test rerun (documentation-only pass).
 
 ## Final verdict
 
-**PASS** — FrontierV1-POSTACCEPT-0 reset the roadmap after FrontierV1 acceptance; preserved the accepted M/E evidence chain; recorded that Phase M and Phase E are closed for FrontierV1 scope; explicitly blocked FrontierV1-5 and ACT/EVENT/OBS/PIPE ladder expansion absent a separately named product need; clarified that the next named gate remains **Pause implementation (F)** with candidate tracks A–E requiring human selection; updated active docs and production plan; saved results in `docs/tests`; added no code/runtime wiring; and kept V7.7 / Mapping ADR / Resource Flow ADR / SEAD charter posture intact.
+**PASS** — FrontierV1-POSTACCEPT-0 reset the roadmap after FrontierV1 acceptance; preserved the accepted M/E evidence chain; recorded that Phase M and Phase E are closed for FrontierV1 scope; explicitly blocked FrontierV1-5 and ACT/EVENT/OBS/PIPE ladder expansion absent a separately named product need; clarified that the next named gate remains **Pause implementation (F)** with candidate tracks A–E requiring human selection; updated active docs and production plan; saved results in `docs/tests`; added no code/runtime wiring; and kept V7.7 / Mapping ADR / Resource Flow ADR / FIELD_POLICY charter posture intact.

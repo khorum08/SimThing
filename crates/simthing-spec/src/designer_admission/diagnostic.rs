@@ -61,7 +61,7 @@ pub enum DesignerAdmissionRejectionKind {
     ClauseScriptParserParked,
     ClauseThingRuntimeParked,
     FrontierV2FiveRejected,
-    SeadLadderReopenRejected,
+    FieldPolicyLadderReopenRejected,
 }
 
 /// Stable diagnostic code string for designer admission rejections.
@@ -390,7 +390,7 @@ impl DesignerAdmissionDiagnosticCode {
                 DesignerAdmissionRejectionKind::FrontierV2FiveRejected
             }
             Self::ActEventObsPipeLadderReopenRejected => {
-                DesignerAdmissionRejectionKind::SeadLadderReopenRejected
+                DesignerAdmissionRejectionKind::FieldPolicyLadderReopenRejected
             }
         }
     }
@@ -615,10 +615,10 @@ pub fn designer_admission_diagnostic_for_rejection(
             "FrontierV2-5 requests are rejected; the bounded multi-tick consumer proof is complete at fixture level",
             Some("next gate is L1 simthing-spec buildout, then L2 CLAUSE-SPEC-0"),
         ),
-        DesignerAdmissionRejectionKind::SeadLadderReopenRejected => (
+        DesignerAdmissionRejectionKind::FieldPolicyLadderReopenRejected => (
             DesignerAdmissionDiagnosticCode::ActEventObsPipeLadderReopenRejected,
             "ACT-5/EVENT-3/OBS-5/PIPE-1 ladder reopen requests are rejected",
-            Some("SEAD Self-AI Proposal Pipeline V1 is consolidated and closed; further stages require a separately named scenario"),
+            Some("FIELD_POLICY Field agent Proposal Pipeline V1 is consolidated and closed; further stages require a separately named scenario"),
         ),
     };
     designer_admission_diagnostic(code, message, hint)

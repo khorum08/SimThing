@@ -79,7 +79,7 @@ cargo check --workspace                                                         
 cargo test -p simthing-driver --test dress_rehearsal_r6b_ship_cohort_reinforcement  -> 24 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r6_combat_hp_damage            -> 25 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r5_movement_reenroll           -> 17 passed; 0 failed
-cargo test -p simthing-driver --test dress_rehearsal_r4_sead_field_consumption      -> 16 passed; 0 failed
+cargo test -p simthing-driver --test dress_rehearsal_r4_field_policy_consumption      -> 16 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r3_capability_mask_down         -> 13 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r2_recursive_allocation        -> 13 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r1_disruption_heatmap          -> 34 passed; 0 failed

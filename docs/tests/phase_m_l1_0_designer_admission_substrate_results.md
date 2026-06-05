@@ -16,7 +16,7 @@
 | `crates/simthing-spec/tests/l1_0_designer_admission_substrate.rs` | **New** — 12 L1-0 tests |
 | `docs/design_v7_8_production_track.md` | L1-0 row marked Done |
 | `docs/workshop/mapping_current_guidance.md` | L1-0 status row |
-| `docs/workshop/sead_self_ai_track.md` | L1-0 clarification under §11 |
+| `docs/workshop/field_policy_track.md` | L1-0 clarification under §11 |
 | `docs/accumulator_op_v2_production_plan.md` | Pointer to v7.8 production track |
 | `docs/worklog.md` | Append-only L1-0 milestone |
 | `docs/tests/phase_m_l1_0_designer_admission_substrate_results.md` | **New** — this report |
@@ -33,7 +33,7 @@ Standing posture: no semantic WGSL / no default wiring / `simthing-sim` map-free
 | **2. Why is L1 active before L2 / CLAUSE-SPEC-0?** | L0 proved the consumer at fixture level; guardrails must **relocate to spec admission** before a designer-authored scenario can be admitted. L1 builds the shared substrate; L2 consumes it for full FrontierV2 scenario admission. |
 | **3. What does L1 need to provide for L2?** | Shared `DesignerAdmissionDiagnostic` vocabulary, stable rejection codes, guardrail classes, and `AcceptedFrontierArtifactTarget` lowering identifiers — without admitting a full scenario or invoking runtime. |
 | **4. Which guardrails must become designer/spec admission diagnostics?** | Default-on, RF bypass, cross-entity/production movement writes, production commitment emission, shared-pool tick writes, CPU planner/urgency/commitment, semantic WGSL, scheduler/cache, simthing-sim semantic leakage, atlas/mask/perception/source without gates, nested E-11B/E-11B-5/D-2a without named scenarios, ClauseScript/ClauseThing parked, FrontierV2-5 rejected, ACT-5/EVENT-3/OBS-5/PIPE-1 rejected. |
-| **5. Which docs still risk implying CLAUSE-SPEC-0 starts immediately?** | `sead_self_ai_track.md` §11 names CLAUSE-SPEC-0 as the *design* next gate; clarified by new L1-0 subsection and production-track sequencing (L1 before L2). `mapping_current_guidance.md` forward horizon updated to L1-first. |
+| **5. Which docs still risk implying CLAUSE-SPEC-0 starts immediately?** | `field_policy_track.md` §11 names CLAUSE-SPEC-0 as the *design* next gate; clarified by new L1-0 subsection and production-track sequencing (L1 before L2). `mapping_current_guidance.md` forward horizon updated to L1-first. |
 | **6. What must remain parked?** | L2 CLAUSE-SPEC-0, L3 ClauseThing/ClauseScript, Lines A/B/C, FrontierV2-5, ACT-5/EVENT-3/OBS-5/PIPE-1, atlas/active mask/perception/source identity/nested E-11B/D-2a, production SimSession wiring, scheduler/cache. |
 | **7. Why this is not another hygiene loop?** | L1-0 ships **designer-facing admission substrate code** that L2 will consume — not a third meta-doc or consumer-less prooflet. It is the first rung of the simthing-spec buildout named in the v7.8 production track. |
 
@@ -86,7 +86,7 @@ v7.8 is the bounded-posture **expansion constitution**: operating doctrine at §
 | L1-0-CLAUSESCRIPT-PARSER-REQUEST-PARKED | AuthoringFrontEnd | ClauseScriptParserParked |
 | L1-0-CLAUSETHING-RUNTIME-REQUEST-PARKED | AuthoringFrontEnd | ClauseThingRuntimeParked |
 | L1-0-FRONTIERV2-5-REQUEST-REJECTED | ConsumerProofLadder | FrontierV2FiveRejected |
-| L1-0-ACT-EVENT-OBS-PIPE-LADDER-REOPEN-REJECTED | ConsumerProofLadder | SeadLadderReopenRejected |
+| L1-0-ACT-EVENT-OBS-PIPE-LADDER-REOPEN-REJECTED | ConsumerProofLadder | FieldPolicyLadderReopenRejected |
 
 ## Lowering target vocabulary
 
@@ -109,7 +109,7 @@ cargo test -p simthing-spec --test l1_0_designer_admission_substrate -- --nocapt
 cargo test -p simthing-driver --test phase_m_frontier_v2_4_combined_feedback_loop -- --nocapture
   test result: ok. 12 passed; 0 failed
 
-cargo test -p simthing-spec --test sead_obs0_overlay_score_admission -- --nocapture
+cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission -- --nocapture
   test result: ok. 29 passed; 0 failed
 
 cargo check --workspace
@@ -122,9 +122,9 @@ cargo check --workspace
 |---|---|---|
 | `L1-0\|DesignerAdmissionDiagnostic\|AcceptedFrontierV2FixtureArtifacts` in crates/docs | new L1-0 artifacts present | PASS — simthing-spec module + tests + docs |
 | `FrontierV2-5\|ACT-5\|EVENT-3\|OBS-5\|PIPE-1` in crates/docs | negative/guardrail only | PASS — rejection codes in designer_admission; historical stop refs elsewhere |
-| `CLAUSE-SPEC-0\|ClauseThing\|ClauseScript` in production track / sead / guidance | L2/downstream parked | PASS — L2 parked; L1-0 clarification added |
+| `CLAUSE-SPEC-0\|ClauseThing\|ClauseScript` in production track / field_policy / guidance | L2/downstream parked | PASS — L2 parked; L1-0 clarification added |
 | Guardrail terms in active docs | guardrail-only | PASS — no unauthorized widening |
-| Semantic terms in `crates/simthing-sim` | no awareness | PASS — no FrontierV2/ClauseThing/SEAD matches |
+| Semantic terms in `crates/simthing-sim` | no awareness | PASS — no FrontierV2/ClauseThing/FIELD_POLICY matches |
 | Phase closure / self-acceptance in L1-0 report/docs | design-authority refs only | PASS — no implementer closure in L1-0 code |
 | `find docs/tests … tmp/scratch/log` | none or delete | PASS — no scratch/tmp artifacts found |
 

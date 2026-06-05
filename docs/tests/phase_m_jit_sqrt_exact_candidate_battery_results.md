@@ -157,4 +157,4 @@ rg "F64RoundDown|SHADER_F64|f64\\(|sqrt_cr_c|Candidate C" crates docs
 
 ## Final verdict
 
-**PASS** — SQRT-EXACT-0 landed as a test-only shader/software deterministic sqrt candidate battery for Candidate A and Candidate B only; Candidate C/f64 was not implemented or tested, WGSL compiled, semantic scans were clean, edge rows and dense stratified sweep results were recorded, full exhaustive sweep is available as an ignored/default-off proof gate, no production exact sqrt admission or `mag2` exact authority was added, M-JIT remains closed at PROD-0, and V7.7 / Mapping ADR / SEAD guardrails remain intact.
+**PASS** — SQRT-EXACT-0 landed as a test-only shader/software deterministic sqrt candidate battery for Candidate A and Candidate B only; Candidate C/f64 was not implemented or tested, WGSL compiled, semantic scans were clean, edge rows and dense stratified sweep results were recorded, full exhaustive sweep is available as an ignored/default-off proof gate, no production exact sqrt admission or `mag2` exact authority was added, M-JIT remains closed at PROD-0, and V7.7 / Mapping ADR / FIELD_POLICY guardrails remain intact.

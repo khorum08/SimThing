@@ -1,7 +1,7 @@
 # Opus/Product Acceptance Review — Phase M Abstract Boundary Resolution + Example Economy (R2 Vocabulary)
 
 **Date:** 2026-05-29
-**Authority:** Opus 4.8, mapping/SEAD design authority under human delegation (authority to raise
+**Authority:** Opus 4.8, mapping/FIELD_POLICY design authority under human delegation (authority to raise
 guardrails up to the Designer-facing / RON / Scenario layer).
 **Decision type:** Acceptance review — **not** an implementation handoff. No code changed.
 **Reviews:** packet `docs/reviews/phase_m_boundary_resolution_and_example_economy_review_packet.md`;
@@ -153,7 +153,7 @@ Using the handoff's option lettering (A–E):
 
 **A is accepted/parked now** (this memo). The next *implementation* handoff should be **C — improve
 resource-economy authoring ergonomics** (lower risk, broadly useful, no substrate-semantic
-expansion) **or B — integrate one economy signal with the first-slice SEAD fixture, explicitly as a
+expansion) **or B — integrate one economy signal with the first-slice FIELD_POLICY fixture, explicitly as a
 product fixture** (opt-in, fixture-scoped). Either is acceptable; I lead with C.
 
 - **D (generic boundary-output packet):** admissible **only if tightly bounded** — it must stay an
@@ -164,8 +164,8 @@ product fixture** (opt-in, fixture-scoped). Either is acceptable; I lead with C.
   approved VRAM budget, and a §11-gate-passing M-4 PR.
 
 > **Note on option letters:** the review packet's §9 list assigns B/C/D differently from this
-> handoff (packet B = boundary-output packet, C = economy+SEAD, D = authoring ergonomics). The
-> substance is identical regardless of letter: authoring ergonomics or an economy+SEAD product
+> handoff (packet B = boundary-output packet, C = economy+FIELD_POLICY, D = authoring ergonomics). The
+> substance is identical regardless of letter: authoring ergonomics or an economy+FIELD_POLICY product
 > fixture next; a boundary-output packet only if tightly bounded; not atlas. I follow the handoff's
 > lettering here.
 
@@ -200,7 +200,7 @@ it has become the forbidden primitive and must be rejected.
   codifying the doctrine and the eleven guardrails (with the C-1 precision gloss).
 - **`docs/workshop/mapping_current_guidance.md`**, **`docs/workshop/workshop_current_state.md`**,
   **`docs/accumulator_op_v2_production_plan.md`**, **`docs/todo.md`** — status flipped from
-  "parked for review" to **accepted**; next step = C or B (authoring ergonomics / economy+SEAD
+  "parked for review" to **accepted**; next step = C or B (authoring ergonomics / economy+FIELD_POLICY
   fixture), not D-unless-bounded, not atlas.
 - **`docs/worklog.md`** — dated 2026-05-29 acceptance entry appended.
 

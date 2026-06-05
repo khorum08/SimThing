@@ -172,7 +172,7 @@ pub struct ProductionPath0081OwnershipAggregationSummary {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ProductionPath0081SeadCompositeGapTerms {
+pub struct ProductionPath0081FieldPolicyCompositeGapTerms {
     pub current_space_minus_inherited_setpoint: i64,
     pub supply_security_gap: i64,
     pub bilateral_relational_gap: i64,
@@ -183,7 +183,7 @@ pub struct ProductionPath0081SeadCompositeGapTerms {
     pub direct_move_request: bool,
     pub external_boundary_request: bool,
     pub cpu_planner_urgency_or_commitment: bool,
-    pub new_sead_substrate: bool,
+    pub new_field_policy_substrate: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -225,7 +225,7 @@ pub struct ProductionPath0081Report {
 
     pub owner_overlay_summary: ProductionPath0081OwnerOverlaySummary,
     pub ownership_aggregation_summary: ProductionPath0081OwnershipAggregationSummary,
-    pub sead_composite_gap_terms: ProductionPath0081SeadCompositeGapTerms,
+    pub field_policy_composite_gap_terms: ProductionPath0081FieldPolicyCompositeGapTerms,
 
     pub schedule_observation_control_demo_0080_1: bool,
     pub default_session_pass_graph_wiring: bool,
@@ -486,7 +486,7 @@ fn base_report(
         unbounded_factions: false,
         owner_overlay_summary: owner_overlay_summary(),
         ownership_aggregation_summary: ownership_aggregation_summary(input),
-        sead_composite_gap_terms: sead_terms(),
+        field_policy_composite_gap_terms: field_policy_terms(),
         schedule_observation_control_demo_0080_1: input
             .surface
             .schedule_observation_control_demo_0080_1
@@ -561,11 +561,11 @@ fn ownership_aggregation_summary(
     }
 }
 
-fn sead_terms() -> ProductionPath0081SeadCompositeGapTerms {
+fn field_policy_terms() -> ProductionPath0081FieldPolicyCompositeGapTerms {
     let current_space_minus_inherited_setpoint = 3;
     let supply_security_gap = -8;
     let bilateral_relational_gap = 5;
-    ProductionPath0081SeadCompositeGapTerms {
+    ProductionPath0081FieldPolicyCompositeGapTerms {
         current_space_minus_inherited_setpoint,
         supply_security_gap,
         bilateral_relational_gap,
@@ -578,7 +578,7 @@ fn sead_terms() -> ProductionPath0081SeadCompositeGapTerms {
         direct_move_request: false,
         external_boundary_request: false,
         cpu_planner_urgency_or_commitment: false,
-        new_sead_substrate: false,
+        new_field_policy_substrate: false,
     }
 }
 
@@ -602,7 +602,7 @@ fn checksum_report(report: &ProductionPath0081Report) -> u64 {
         report
             .ownership_aggregation_summary
             .terran_owned_starsystems_derived as u64,
-        report.sead_composite_gap_terms.composite_gap_sum as u64,
+        report.field_policy_composite_gap_terms.composite_gap_sum as u64,
     ]
     .iter()
     .fold(0xcbf2_9ce4_8422_2325, |hash, value| {

@@ -16,7 +16,7 @@ Final commit SHA: available from the landing commit containing this report.
 - `docs/design_v7_8.md`
 - `docs/design_v7_8_production_track.md`
 - `docs/workshop/mapping_current_guidance.md`
-- `docs/workshop/sead_self_ai_track.md`
+- `docs/workshop/field_policy_track.md`
 - `docs/worklog.md`
 - `docs/tests/phase_m_v7_8_met_consumer_scenarios_results.md`
 
@@ -78,7 +78,7 @@ Pre-existing warnings observed: existing `simthing-core` deprecated `EmlTreeMeta
 | `rg "FrontierV2-5\|ACT-5\|EVENT-3\|OBS-5\|PIPE-1" crates docs` | PASS - negative, parked, historical, or rejection references only; no authorization found. |
 | `rg "ClauseThing\|ClauseScript" ...` | PASS - parked/rejected only; no parser or runtime opened. |
 | `rg "default SimSession\|scheduler\|kernel cache\|semantic WGSL\|CPU planner\|CPU urgency\|CPU commitment\|production commitment\|shared-pool tick\|parallel fixture economy" ...` | PASS - guardrail and pre-existing substrate references only; no new authorization. |
-| `rg "FrontierV2\|ClauseThing\|ClauseScript\|SEAD\|RegionCell\|ArenaRegistry\|proposal\|ResourceFlow\|BoundaryRequest\|atlas\|D-2\|E-11B" crates/simthing-sim` | PASS - only pre-existing `BoundaryRequest` surface references; no new simthing-sim semantic awareness. |
+| `rg "FrontierV2\|ClauseThing\|ClauseScript\|FIELD_POLICY\|RegionCell\|ArenaRegistry\|proposal\|ResourceFlow\|BoundaryRequest\|atlas\|D-2\|E-11B" crates/simthing-sim` | PASS - only pre-existing `BoundaryRequest` surface references; no new simthing-sim semantic awareness. |
 | `Get-ChildItem docs\tests ... "*.log"/"*tmp*"/"*scratch*"` | PASS - no scratch/tmp/log artifacts found. |
 
 ## Transient cleanup result

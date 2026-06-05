@@ -127,7 +127,7 @@ fn default_schedule_0080_1_routes_boundary_request_through_mobility_substrate() 
 }
 
 #[test]
-fn default_schedule_0080_1_moves_terran_ship_by_sead_gap() {
+fn default_schedule_0080_1_moves_terran_ship_by_field_policy_gap() {
     let admitted = report();
     assert_eq!(admitted.terran_move_count, 1);
     let movement = admitted
@@ -145,7 +145,7 @@ fn default_schedule_0080_1_moves_terran_ship_by_sead_gap() {
 }
 
 #[test]
-fn default_schedule_0080_1_moves_pirate_ship_by_sead_gap() {
+fn default_schedule_0080_1_moves_pirate_ship_by_field_policy_gap() {
     let admitted = report();
     assert_eq!(admitted.pirate_move_count, 1);
     let movement = admitted

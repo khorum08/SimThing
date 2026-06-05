@@ -6,7 +6,7 @@
 
 ## Verdict
 
-**ACCEPTED — with a design-authority enrichment (SEAD decision source).**
+**ACCEPTED — with a design-authority enrichment (FIELD_POLICY decision source).**
 
 Local Patrol Economy is accepted as the first 0.0.8.0 consumer-pulled scenario. `SCENARIO-0080-0` →
 ACCEPTED; `PRODUCTION-PATH-0080-0` → OPEN, scoped only to Local Patrol Economy on the 0.0.7.9
@@ -31,23 +31,23 @@ cleanly:
   `local_security`/`disruption`), patrol upkeep consumption, and economy **reassociation** on move
   (source stops counting it; destination starts). ✓
 
-**Gap found — SEAD was not exercised.** The patrol's relocate/patrol behavior was an undefined
+**Gap found — FIELD_POLICY was not exercised.** The patrol's relocate/patrol behavior was an undefined
 `move_request` that could be externally scripted; the packet excludes the CPU planner (correct) but
 did not include the accepted GPU-resident decision path. Per design authority, the first consumer
-scenario should be **basic but rich enough to test SEAD, Ownership, and Flow together.**
+scenario should be **basic but rich enough to test FIELD_POLICY, Ownership, and Flow together.**
 
 **Design-authority enrichment (accepted into the scenario):** the patrol's relocate/patrol decision is
-**sourced from the already-accepted GPU-resident SEAD posture — a `disruption`/`local_security`
+**sourced from the already-accepted GPU-resident FIELD_POLICY posture — a `disruption`/`local_security`
 `Threshold` crossing → `EmitEvent` → `BoundaryRequest`** — not an externally-scripted `move_request`
 and not a CPU planner. The `move_request` becomes the *materialized form* of that GPU-resident
-proposal. This makes Local Patrol Economy a genuine **SEAD → mobility → Ownership+Flow** loop:
-SEAD decides (threshold→event), the mobility substrate moves the patrol (identity-preserving
+proposal. This makes Local Patrol Economy a genuine **FIELD_POLICY → mobility → Ownership+Flow** loop:
+FIELD_POLICY decides (threshold→event), the mobility substrate moves the patrol (identity-preserving
 re-enrollment), owner overlays carry over, and the local economy reassociates.
 
-**This enrichment pulls no new substrate.** SEAD Self-AI Proposal Pipeline V1 is an *accepted mechanism*
+**This enrichment pulls no new substrate.** FIELD_POLICY Field agent Proposal Pipeline V1 is an *accepted mechanism*
 (Threshold+EmitEvent→BoundaryRequest), not a parked substrate awaiting a production gate. It is the
 **decision source** for the move; the **mobility/transfer substrate remains the single substrate the
-production-path gate wires.** No separate SEAD production gate opens. The enrichment actively reinforces
+production-path gate wires.** No separate FIELD_POLICY production gate opens. The enrichment actively reinforces
 the no-CPU-planner stop condition (the decision is GPU-resident by construction).
 
 ## Bounds confirmed
@@ -66,7 +66,7 @@ the no-CPU-planner stop condition (the decision is GPU-resident by construction)
 
 No owner-entity as spatial parent; no capture-as-reparenting; no nested transfer; no hard-currency
 through Resource Flow; no market/trade/`ai_budget`; no semantic/raw WGSL; **no CPU planner / urgency /
-commitment emission** (the SEAD decision is GPU-resident, the opposite of a CPU planner); no default-on
+commitment emission** (the FIELD_POLICY decision is GPU-resident, the opposite of a CPU planner); no default-on
 without a production gate; no passive proof wrappers; no closed-ladder reopen (atlas runtime, E-11B-5,
 B-1, ClauseThing/L3, FrontierV2-5, ACT/EVENT/OBS/PIPE all stay closed/parked).
 
@@ -74,7 +74,7 @@ B-1, ClauseThing/L3, FrontierV2-5, ACT/EVENT/OBS/PIPE all stay closed/parked).
 
 `PRODUCTION-PATH-0080-0` — **OPEN.** Scope: *first non-test-support default `SimSession` path for
 Local Patrol Economy using the 0.0.7.9 mobility/transfer substrate*, with the patrol relocate decision
-sourced from the accepted GPU-resident SEAD `Threshold`+`EmitEvent`→`BoundaryRequest` path. The
+sourced from the accepted GPU-resident FIELD_POLICY `Threshold`+`EmitEvent`→`BoundaryRequest` path. The
 mobility/transfer substrate is the only substrate wired. A separate authorized PR may author the
 `PRODUCTION-PATH-0080-0` opening spec; **this PR does not implement it.**
 

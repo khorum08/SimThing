@@ -77,7 +77,7 @@ schedule, SimSession pass-graph wiring, R6 combat, R7 closeout, hard currency, o
 
 ```text
 cargo test -p simthing-driver --test dress_rehearsal_r5_movement_reenroll  → 17 passed; 0 failed
-cargo test -p simthing-driver --test dress_rehearsal_r4_sead_field_consumption  → 16 passed; 0 failed
+cargo test -p simthing-driver --test dress_rehearsal_r4_field_policy_consumption  → 16 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r3_capability_mask_down  → 13 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r2_recursive_allocation  → 13 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r1_disruption_heatmap  → 34 passed; 0 failed

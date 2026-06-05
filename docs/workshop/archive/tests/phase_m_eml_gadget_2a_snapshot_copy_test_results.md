@@ -21,7 +21,7 @@ cargo --version
 cargo test -p simthing-driver --test phase_m_eml_gadget_2a_snapshot_copy -- --nocapture
 cargo test -p simthing-spec --test eml_gadget_tier1 -- --nocapture
 cargo test -p simthing-spec --test resource_economy_authoring_preview -- --nocapture
-cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture -- --nocapture
+cargo test -p simthing-driver --test phase_m_economy_field_policy_product_fixture -- --nocapture
 cargo test -p simthing-driver --test phase_m_first_slice_runtime -- --nocapture
 cargo test -p simthing-spec --test region_field_spec_admission -- --nocapture
 cargo test -p simthing-gpu --test accumulator_op_session_gpu_bridge -- --nocapture
@@ -64,7 +64,7 @@ No changes to:
 - **Fixture-only, Layer-3 explicit-column proof.** Used direct `AccumulatorOp` authoring (existing `SourceSpec::SlotValue` on `PERSONALITY_SLOT`, `CombineFn::Identity`, `ConsumeMode::ResetTarget`, `GateSpec::OrderBand(0)` for snapshot preceding `OrderBand(1)` update).
 - **No spec/admission helpers added.** Clean authoring achieved with the primitives already exposed and exercised in first-slice / stencil-parent-EML / accumulator session tests. Stop condition for "ad-hoc per-scenario wiring" **not triggered**.
 - **CPU oracle / sequence parity.** Explicit authored ops + before/after readback traces constitute the parity (Identity+ResetTarget is semantically transparent; the multi-step trace matches the handoff specification exactly).
-- **Posture enforcement.** Tests 5+6 + source scans + re-runs of Tier-1 / first-slice / economy-SEAD suites + invariants cross-check. All binding guardrails (no new opcode, no WGSL, no simthing-sim Gadget/Personality/Memory, defaults Disabled/off, economy→mapping fixture-only, no DailyResolutionBoundary, Layer-3 only, dense per-cell separately gated, no runtime gadget consumption) asserted and green.
+- **Posture enforcement.** Tests 5+6 + source scans + re-runs of Tier-1 / first-slice / economy-FIELD_POLICY suites + invariants cross-check. All binding guardrails (no new opcode, no WGSL, no simthing-sim Gadget/Personality/Memory, defaults Disabled/off, economy→mapping fixture-only, no DailyResolutionBoundary, Layer-3 only, dense per-cell separately gated, no runtime gadget consumption) asserted and green.
 - **No scope creep.** VelocityMonitor/EMA/BoundedFeedback/Hysteresis/Acceleration, gadget runtime execution, hidden previous reads, simthing-gpu interpreter changes, production wiring — all explicitly absent and scanned for.
 
 ---
@@ -76,7 +76,7 @@ No changes to:
 | `phase_m_eml_gadget_2a_snapshot_copy` (all 6)    | PASS (6/6) | Core proof + posture + sequence parity |
 | `eml_gadget_tier1`                                | PASS   | Tier-1 baseline unchanged |
 | `resource_economy_authoring_preview`              | PASS   | Authoring ergonomics baseline |
-| `phase_m_economy_sead_product_fixture`            | PASS   | Product fixture + posture re-assert |
+| `phase_m_economy_field_policy_product_fixture`            | PASS   | Product fixture + posture re-assert |
 | `phase_m_first_slice_runtime`                     | PASS   | First-slice runtime baseline |
 | `region_field_spec_admission`                     | PASS   | Admission guardrails |
 | `accumulator_op_session_gpu_bridge`               | PASS   | Accumulator substrate |
@@ -143,11 +143,11 @@ This is stateful sequence parity (not single-step). The authored ops + GPU execu
 - **simthing-sim remains map-free, Gadget/Personality/Memory-free** — no semantics added.
 - **MappingExecutionProfile::default() == Disabled**; `Resource Flow E-11 default-off` (`use_accumulator_resource_flow == false`).
 - **No atlas/M-4A, no request_atlas_batching in production paths** (authoring shape tolerated; admission rejection posture unchanged).
-- **No production economy→mapping bridge** — SEAD/economy influence remains test-support fixture orchestration only (CPU selects authored EML weights; urgency/commitment stays GPU-resident).
+- **No production economy→mapping bridge** — FIELD_POLICY/economy influence remains test-support fixture orchestration only (CPU selects authored EML weights; urgency/commitment stays GPU-resident).
 - **No DailyResolutionBoundary, no day/calendar/pause semantics inside simthing-sim** — invariant rows and source scans green.
 - **No default SimSession mapping pass-graph wiring**; spec/scenario presence alone does not execute.
 - **EML-GADGET-1 conditions preserved** (C-1..C-5); Tier-2 oracle parity is stateful-sequence (proven here for the snapshot primitive).
-- **All prior Phase M posture (V7.7 Mapping ADR, first-slice vertical, SummaryValidity V1-R1, Queue-Write Scale, Map Residency, Boundary Resolution Doctrine, Daily Economy Fixture as example-only, Resource Economy Authoring Ergonomics V1, Economy+SEAD Product Fixture, EML-GADGET-1, EML-GADGET-2 design gate, ResourceEconomySpec vs E-11 distinction, etc.)** — re-asserted via regression runs + scans; no regressions.
+- **All prior Phase M posture (V7.7 Mapping ADR, first-slice vertical, SummaryValidity V1-R1, Queue-Write Scale, Map Residency, Boundary Resolution Doctrine, Daily Economy Fixture as example-only, Resource Economy Authoring Ergonomics V1, Economy+FIELD_POLICY Product Fixture, EML-GADGET-1, EML-GADGET-2 design gate, ResourceEconomySpec vs E-11 distinction, etc.)** — re-asserted via regression runs + scans; no regressions.
 
 **invariants.md** rows for EML Gadget Library (explicit-column, Layer-3 default, authored `Identity`+`ResetTarget` snapshot band, bounded-feedback contract, 2A as first implementation slice) remain binding and satisfied.
 

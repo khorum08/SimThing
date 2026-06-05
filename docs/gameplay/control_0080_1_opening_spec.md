@@ -21,7 +21,7 @@
 vocabulary that writes only **already-accepted `DefaultSchedule0081Input` / Nested Starmap bounded
 scenario/config values** before the existing schedule runs. It does **not** authorize direct ship
 movement, a player command bus/loop, or free-form scripting. A command never moves a Terran or Pirate
-ship, never emits a `BoundaryRequest`, and never bypasses SEAD: movement still **emerges** from the
+ship, never emits a `BoundaryRequest`, and never bypasses FIELD_POLICY: movement still **emerges** from the
 already-implemented GPU-resident `Threshold + EmitEvent → BoundaryRequest` posture in
 `DEFAULT-SCHEDULE-0080-1`. Reading "control" as license for direct movement or a gameplay loop is **out of
 scope and a stop-and-escalate.**
@@ -47,7 +47,7 @@ command bus, and not ClauseThing.
 - writes only existing `DefaultSchedule0081Input` / Nested Starmap bounded scenario/config values;
 - after admission, runs the existing **schedule → observation** path
   (`run_default_schedule_0080_1` → `observe_gameplay_0080_1`);
-- **no** direct ship movement command; **no** externally-scripted `BoundaryRequest`; **no** SEAD bypass;
+- **no** direct ship movement command; **no** externally-scripted `BoundaryRequest`; **no** FIELD_POLICY bypass;
 - **no** CPU planner / urgency / commitment; **no** player command loop; **no** UI; **no** real-time loop;
 - **no** global default schedule; **no** demo packaging.
 
@@ -79,7 +79,7 @@ or emit a `BoundaryRequest`**; **never change identity, owner overlay, membershi
 ## 4. Forbidden commands / stop conditions
 
 Reject any command that would: move a Terran ship directly; move a Pirate ship directly; create an
-externally-scripted `BoundaryRequest`; bypass threshold/event posture; bypass SEAD; emit CPU planner /
+externally-scripted `BoundaryRequest`; bypass threshold/event posture; bypass FIELD_POLICY; emit CPU planner /
 urgency / commitment; create a player command loop; add a UI framework; add a real-time loop; register a
 global default schedule; add semantic/raw WGSL; add a new shader/GPU kernel; add hard currency; add
 markets/trade/`ai_budget`; add nested Resource Flow; add unbounded factions; make owner-entity a spatial
@@ -101,7 +101,7 @@ gameplay UI; implement a real-time loop; create a general command system; create
 editor; implement ClauseThing.
 
 **Discipline.** The admission layer is pure Rust validation over the existing input struct; it touches no
-shader text and no GPU kernel (WGSL ban, invariants row 169/194), and it adds no decision logic — SEAD
+shader text and no GPU kernel (WGSL ban, invariants row 169/194), and it adds no decision logic — FIELD_POLICY
 remains the sole mover-decision source.
 
 ---
@@ -116,7 +116,7 @@ remains the sole mover-decision source.
 - `control_0080_1_rejects_direct_terran_move`
 - `control_0080_1_rejects_direct_pirate_move`
 - `control_0080_1_rejects_external_boundary_request`
-- `control_0080_1_rejects_sead_bypass`
+- `control_0080_1_rejects_field_policy_bypass`
 - `control_0080_1_rejects_cpu_planner_or_commitment`
 - `control_0080_1_rejects_player_command_loop`
 - `control_0080_1_rejects_ui_framework`
@@ -134,7 +134,7 @@ remains the sole mover-decision source.
 ## 7. Stop conditions
 
 Stop if this gate would require: direct ship movement control; externally-scripted `BoundaryRequest`;
-SEAD bypass; CPU planner / urgency / commitment; player command loop; UI framework; real-time loop; global
+FIELD_POLICY bypass; CPU planner / urgency / commitment; player command loop; UI framework; real-time loop; global
 default schedule; demo packaging; semantic/raw WGSL; new shader/GPU kernel; hard currency;
 markets/trade/`ai_budget`; nested Resource Flow; unbounded factions; owner-entity as spatial parent;
 capture-as-reparenting; ClauseThing implementation; `simthing-spec` alteration for ClauseThing; invariant

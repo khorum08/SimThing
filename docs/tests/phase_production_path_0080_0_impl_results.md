@@ -7,7 +7,7 @@
 ## Scope
 
 Implemented the narrow, default-off `PRODUCTION-PATH-0080-0` surface for Local Patrol Economy in
-`simthing-driver`. The path instantiates the scenario only through explicit opt-in, accepts a SEAD
+`simthing-driver`. The path instantiates the scenario only through explicit opt-in, accepts a FIELD_POLICY
 threshold/event boundary request, delegates relocation through the 0.0.7.9 mobility/transfer
 substrate order (`ALLOC -> REENROLL -> IDROUTE -> ECON -> OWNER`), preserves patrol identity and
 owner overlay continuity, and updates bounded local economy participation.
@@ -34,10 +34,10 @@ owner overlay continuity, and updates bounded local economy participation.
 - `cargo test -p simthing-spec --test mobility_runtime0_composition` - PASS, 23 tests.
 - `cargo test -p simthing-spec --test mobility_runtime1_production_fixture` - PASS, 28 tests.
 - `cargo test -p simthing-driver --test mobility_runtime1a_runtime_fixture` - PASS, 21 tests.
-- `cargo test -p simthing-driver --test phase_m_sead_obs4_threshold_event` - PASS, 7 tests.
-- `cargo test -p simthing-driver --test phase_m_sead_event0_compaction` - PASS, 7 tests.
-- `cargo test -p simthing-driver --test phase_m_sead_pipe0_observer_event_pipeline` - PASS, 7 tests.
-- `cargo test -p simthing-spec --test sead_obs0_overlay_score_admission` - PASS, 29 tests.
+- `cargo test -p simthing-driver --test phase_m_field_policy_obs4_threshold_event` - PASS, 7 tests.
+- `cargo test -p simthing-driver --test phase_m_field_policy_event0_compaction` - PASS, 7 tests.
+- `cargo test -p simthing-driver --test phase_m_field_policy_pipe0_observer_event_pipeline` - PASS, 7 tests.
+- `cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission` - PASS, 29 tests.
 - `cargo check --workspace` - PASS with existing warnings.
 
 ## Notes

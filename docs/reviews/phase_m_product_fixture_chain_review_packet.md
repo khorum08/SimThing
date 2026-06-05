@@ -3,12 +3,12 @@
 > **Audience:** Opus / product review; future agents  
 > **Status:** **ACCEPTED — PASS WITH CONDITIONS** (Opus 2026-05-29). Acceptance memo:
 > [`phase_m_product_fixture_chain_acceptance_opus_review.md`](phase_m_product_fixture_chain_acceptance_opus_review.md).
-> Accepted as a fixture-level product proof; the economy→SEAD link stays in `tests/support`
+> Accepted as a fixture-level product proof; the economy→FIELD_POLICY link stays in `tests/support`
 > orchestration (CPU selects authored weight profiles, never computes urgency or emits commitments);
 > production economy→mapping bridge, boundary-output packet, `DailyResolutionBoundary`, atlas,
 > default mapping wiring, CPU planner, semantic WGSL, and Resource Flow default remain unauthorized.  
 > **Date:** 2026-05-29  
-> **Master baseline at parking:** `0265303f37793bd449968d94a3e666650d79fec3` (Economy + SEAD Product Fixture V1 merge)
+> **Master baseline at parking:** `0265303f37793bd449968d94a3e666650d79fec3` (Economy + FIELD_POLICY Product Fixture V1 merge)
 
 ---
 
@@ -22,7 +22,7 @@ guardrail placement), and stop conditions.
 
 **Phase M product-fixture chain is parked for review.**
 
-It proves that an accepted discrete `ResourceEconomySpec` boundary result can influence an opt-in first-slice SEAD commitment fixture through authored EML weight profiles and the existing GPU-resident field/reduction/EML/Threshold+EmitEvent path.
+It proves that an accepted discrete `ResourceEconomySpec` boundary result can influence an opt-in first-slice FIELD_POLICY commitment fixture through authored EML weight profiles and the existing GPU-resident field/reduction/EML/Threshold+EmitEvent path.
 
 **This is fixture orchestration only.**
 
@@ -38,7 +38,7 @@ No runtime behavior changed in this parking pass. No production economy→mappin
 Abstract tick/boundary doctrine
   → Daily Economy Fixture V1
   → Resource Economy Authoring Ergonomics V1
-  → Economy + SEAD Product Fixture V1
+  → Economy + FIELD_POLICY Product Fixture V1
 ```
 
 ### Boundary doctrine
@@ -61,13 +61,13 @@ Abstract tick/boundary doctrine
 - Transfer/recipe/threshold rows, order bands, bindings, Resource Flow default-off visibility.
 - Simple static transfer-only nets (diagnostic metadata only).
 
-### Economy + SEAD Product Fixture V1
+### Economy + FIELD_POLICY Product Fixture V1
 
 - Economy boundary resolves treasury storage.
 - Fixture maps treasury stress to authored EML weight profiles `(0.2, 0.1)` / `(0.9, 0.1)`.
 - First-slice GPU path computes field → reduction → field_urgency EvalEML.
-- Threshold + EmitEvent emits or does not emit SEAD commitment (`0x53454144`).
-- Surplus (treasury 107): 0 SEAD events. Deficit (treasury 94): 1 SEAD event.
+- Threshold + EmitEvent emits or does not emit FIELD_POLICY commitment (`0x53454144`).
+- Surplus (treasury 107): 0 FIELD_POLICY events. Deficit (treasury 94): 1 FIELD_POLICY event.
 
 ---
 
@@ -79,10 +79,10 @@ Abstract tick/boundary doctrine
 | [`../tests/phase_m_boundary_resolution_doctrine_r2_terminology_test_results.md`](../tests/phase_m_boundary_resolution_doctrine_r2_terminology_test_results.md) | Legible naming restoration | `tick`/`boundary`/`day_index`/`ticks_per_day` retained; semantics guardrail preserved | PASS |
 | [`../tests/phase_m_daily_economy_fixture_test_results.md`](../tests/phase_m_daily_economy_fixture_test_results.md) | Example boundary banking fixture | Surplus +7/day net; deficit threshold emit; discrete economy not Resource Flow | PASS (7/7) |
 | [`../tests/phase_m_resource_economy_authoring_ergonomics_test_results.md`](../tests/phase_m_resource_economy_authoring_ergonomics_test_results.md) | Authoring preview/diagnostics | Structural preview, admission rejections, static nets; no runtime execution | PASS (12/12) |
-| [`../tests/phase_m_economy_sead_product_fixture_test_results.md`](../tests/phase_m_economy_sead_product_fixture_test_results.md) | Economy + SEAD product fixture | Option A orchestration; surplus no commit, deficit one commit via GPU path | PASS (6/6) |
-| [`../tests/phase_m_first_slice_vertical_proof_parking_test_results.md`](../tests/phase_m_first_slice_vertical_proof_parking_test_results.md) | First-slice vertical proof parking | GPU-resident SEAD chain accepted; opt-in only | PASS (accepted) |
+| [`../tests/phase_m_economy_field_policy_product_fixture_test_results.md`](../tests/phase_m_economy_field_policy_product_fixture_test_results.md) | Economy + FIELD_POLICY product fixture | Option A orchestration; surplus no commit, deficit one commit via GPU path | PASS (6/6) |
+| [`../tests/phase_m_first_slice_vertical_proof_parking_test_results.md`](../tests/phase_m_first_slice_vertical_proof_parking_test_results.md) | First-slice vertical proof parking | GPU-resident FIELD_POLICY chain accepted; opt-in only | PASS (accepted) |
 | [`../tests/phase_m_first_slice_summary_validity_r1_parking_test_results.md`](../tests/phase_m_first_slice_summary_validity_r1_parking_test_results.md) | SummaryValidity V1-R1 parking | Runtime status driver-owned; cached scan deferred | PASS |
-| [`../tests/phase_m_queue_write_scale_hardening_test_results.md`](../tests/phase_m_queue_write_scale_hardening_test_results.md) | Queue-write scale hardening | Bulk fill replaces O(cell) queue writes; SEAD unchanged | PASS |
+| [`../tests/phase_m_queue_write_scale_hardening_test_results.md`](../tests/phase_m_queue_write_scale_hardening_test_results.md) | Queue-write scale hardening | Bulk fill replaces O(cell) queue writes; FIELD_POLICY unchanged | PASS |
 | [`../tests/phase_m_first_slice_map_residency_test_results.md`](../tests/phase_m_first_slice_map_residency_test_results.md) | Map Residency V1 | Hot/cached/resident metadata; no CPU commitment on cached skip | PASS (7/7) |
 
 ---
@@ -102,9 +102,9 @@ Abstract tick/boundary doctrine
 |---|---|
 | `crates/simthing-driver/tests/phase_m_daily_economy_fixture.rs` | Daily economy example fixture tests |
 | `crates/simthing-driver/tests/phase_m_resource_economy_authoring_ergonomics.rs` | Authoring ergonomics driver tests |
-| `crates/simthing-driver/tests/phase_m_economy_sead_product_fixture.rs` | Economy + SEAD product fixture tests |
+| `crates/simthing-driver/tests/phase_m_economy_field_policy_product_fixture.rs` | Economy + FIELD_POLICY product fixture tests |
 | `crates/simthing-driver/tests/support/daily_economy_session.rs` | Economy session helpers |
-| `crates/simthing-driver/tests/support/economy_sead_product_fixture.rs` | Economy→SEAD orchestration helpers |
+| `crates/simthing-driver/tests/support/economy_field_policy_product_fixture.rs` | Economy→FIELD_POLICY orchestration helpers |
 | `crates/simthing-driver/tests/support/first_slice_scenario_fixture.rs` | First-slice scenario fixture session wrapper |
 | `crates/simthing-driver/tests/fixtures/daily_economy_banking_scenario.ron` | Surplus example economy RON |
 | `crates/simthing-driver/tests/fixtures/daily_economy_banking_deficit_scenario.ron` | Deficit example economy RON |
@@ -121,10 +121,10 @@ Abstract tick/boundary doctrine
 - Resource Flow E-11 remains default-off and distinct from discrete boundary banking.
 - Resource economy authoring can be previewed structurally before runtime.
 - A resolved economy boundary result can select authored EML weight profiles in fixture orchestration.
-- SEAD urgency is still computed by the existing GPU-resident first-slice path.
-- SEAD commitment event still emerges through Threshold + EmitEvent.
-- Surplus case produces no SEAD commitment.
-- Deficit case produces exactly one SEAD commitment.
+- FIELD_POLICY urgency is still computed by the existing GPU-resident first-slice path.
+- FIELD_POLICY commitment event still emerges through Threshold + EmitEvent.
+- Surplus case produces no FIELD_POLICY commitment.
+- Deficit case produces exactly one FIELD_POLICY commitment.
 - Diagnostic readback is used only for verification/reporting.
 
 ---
@@ -171,7 +171,7 @@ Authoritative binding: [`../invariants.md`](../invariants.md) — "Boundary reso
 |---|---|---|
 | **A** | Opus/product acceptance of product-fixture chain | **First** |
 | **B** | Authoring ergonomics R2 (better preview UX/diagnostics) | After A |
-| **C** | Another tiny product fixture combining a second non-map substrate with SEAD | After A |
+| **C** | Another tiny product fixture combining a second non-map substrate with FIELD_POLICY | After A |
 | **D** | Tightly bounded generic boundary-output packet | **Not yet** — only after Opus explicitly authorizes |
 | **E** | Mapping scale / M-4 atlas | **Not yet** — named multi-theater scenario + approved VRAM budget + §11-gate-passing PR |
 

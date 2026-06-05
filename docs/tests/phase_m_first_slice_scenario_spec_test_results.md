@@ -85,7 +85,7 @@ From scenario-owned `RegionFieldSpec.commitment`:
 | Field | Value |
 |---|---|
 | `threshold` | `5490.8657` |
-| `event_kind` | `0x53454144` (`SEAD`) |
+| `event_kind` | `0x53454144` (`FIELD_POLICY`) |
 | `parent_slot` | `100` |
 | `urgency_col` | `4` |
 | `source_formula_class` | `field_urgency` |
@@ -153,4 +153,4 @@ First-slice bridge uses queue writes for child resource values and parent weight
 
 ## Final Verdict
 
-PASS — Phase M FirstSliceScenarioSpec fixture landed; the first-slice mapping + CommitmentSpec path is now driven from a scenario-level RON authoring shape with explicit MappingExecutionProfile, preserving default-off behavior and GPU-resident SEAD commitment execution without atlas, semantic WGSL, source_mask, perception, map residency, default SimSession wiring, or CPU-side AI planning.
+PASS — Phase M FirstSliceScenarioSpec fixture landed; the first-slice mapping + CommitmentSpec path is now driven from a scenario-level RON authoring shape with explicit MappingExecutionProfile, preserving default-off behavior and GPU-resident FIELD_POLICY commitment execution without atlas, semantic WGSL, source_mask, perception, map residency, default SimSession wiring, or CPU-side AI planning.

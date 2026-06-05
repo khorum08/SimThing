@@ -561,7 +561,7 @@ impl ThresholdBuilder {
     /// Build with scripted event triggers. Each `ScriptedEventTriggerRegistration`
     /// produces one Pass 7 watch on its `(slot, col)` pair with the matching
     /// `ThresholdSemantic::ScriptedEventTrigger` entry on the CPU registry.
-    /// Scripted event triggers watch the `values` buffer; targeting
+    /// Scripted event triggers watch the `values` buffer; selection
     /// `output_vectors` aggregates is a future extension.
     ///
     /// Registrations whose `slot` exceeds the allocator's current capacity are
@@ -1611,7 +1611,7 @@ mod tests {
         let stid = SimThing::new(SimThingKind::Cohort, 0).id;
 
         // Velocity / Aggregate / ScriptedEvent are NOT hard triggers — must
-        // pass even when targeting OUTPUT on an unguarded soft-aggregate.
+        // pass even when selection OUTPUT on an unguarded soft-aggregate.
         for sem in [
             ThresholdSemantic::VelocityAlert {
                 sim_thing_id: stid,

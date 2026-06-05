@@ -13,7 +13,7 @@
 | `docs/tests/phase_m_frontier_v2_1_candidate_evolution_results.md` | **New** — this report |
 | `docs/accumulator_op_v2_production_plan.md` | FrontierV2-1 section |
 | `docs/workshop/mapping_current_guidance.md` | FrontierV2-1 row |
-| `docs/workshop/sead_self_ai_track.md` | FrontierV2-1 addendum |
+| `docs/workshop/field_policy_track.md` | FrontierV2-1 addendum |
 | `docs/worklog.md` | Append-only milestone |
 
 **No ClauseThing, no semantic WGSL, no default SimSession wiring, no phase closure declaration.**
@@ -24,7 +24,7 @@
 |---|---|
 | **1. What did FrontierV2-0 prove?** | First bounded two-tick closed-loop consumer: tick0 live GPU route → feedback candidate → tick1 seed delta → tick1 live route → mapping hash changed. Replay fingerprint `0238c18ce3b559da`. Movement/structural were static FixtureCandidates from tick0 feedback only. |
 | **2. What remains FixtureCandidate?** | Movement and structural outputs — derived on CPU in fixture support, not GPU-resident production routes. V2-1 extends evolution across ticks but keeps the same classification. |
-| **3. What movement/structural fields already exist in support code?** | `FrontierV2MovementCandidate` (source_unit_id, delta_row, delta_col, route_code, dispatch_count); `FrontierV2StructuralCandidate` (proposal_code, boundary_request_code, route_code, dispatch_count); V2-0 static builders; feedback fields from `FrontierV1LiveSelfAiFeedbackCandidate`. |
+| **3. What movement/structural fields already exist in support code?** | `FrontierV2MovementCandidate` (source_unit_id, delta_row, delta_col, route_code, dispatch_count); `FrontierV2StructuralCandidate` (proposal_code, boundary_request_code, route_code, dispatch_count); V2-0 static builders; feedback fields from `FrontierV1LiveFieldAgentFeedbackCandidate`. |
 | **4. What smallest feedback rule can make movement/structural candidates evolve across ticks?** | Tick-aware evolved builders: movement row/col deltas incorporate tick index, mapping hash nibble, urgency bucket; structural boundary/proposal codes incorporate tick index, mapping hash, allocator bucket. Tick1 also runs on feedback-adjusted seeds (different mapping hash). |
 | **5. What should count as observed candidate evolution?** | `M1 != M0` and/or `S1 != S0` after two live ticks with closed-loop feedback; recorded in `candidate_delta_hash`. |
 | **6. What remains fixture-only?** | Feedback seed application, evolved movement/structural candidates, entire closed-loop state, admission validators — driver test support only. |
@@ -36,7 +36,7 @@
 FrontierV2 admission (default-off, profile=FrontierV2)
   tick 0:
     GPU mapping + EML → GPU PIPE-0 → GPU ACT-2 → ResourceFlowAllocator
-    → FrontierV1LiveSelfAiFeedbackCandidate
+    → FrontierV1LiveFieldAgentFeedbackCandidate
     → evolved movement M0 / structural S0 (FixtureCandidate)
   feedback application (fixture-only seed deltas)
   tick 1:
@@ -133,7 +133,7 @@ Two identical runs produce the same tick0/tick1 candidate hashes, candidate delt
 
 | Classification | Coverage |
 |---|---|
-| GpuVerified | tick0/tick1 resource routes, mapping+EML+SEAD live pipe |
+| GpuVerified | tick0/tick1 resource routes, mapping+EML+FIELD_POLICY live pipe |
 | FixtureCandidate | movement/structural candidate evolution |
 | FixtureOnly | closed-loop feedback application |
 | ReplayAccepted | — |
@@ -149,13 +149,13 @@ cargo test -p simthing-driver --test phase_m_frontier_v2_1_candidate_evolution -
 cargo test -p simthing-driver --test phase_m_frontier_v2_0_closed_loop_consumer -- --nocapture
 → pass (regression)
 
-cargo test -p simthing-driver --test phase_m_frontier_v1_5_live_self_ai_route -- --nocapture
+cargo test -p simthing-driver --test phase_m_frontier_v1_5_live_field_agent_route -- --nocapture
 → pass (regression)
 
-cargo test -p simthing-driver --test phase_m_sead_pipe0_observer_event_pipeline -- --nocapture
+cargo test -p simthing-driver --test phase_m_field_policy_pipe0_observer_event_pipeline -- --nocapture
 → pass (regression)
 
-cargo test -p simthing-spec --test sead_obs0_overlay_score_admission -- --nocapture
+cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission -- --nocapture
 → pass (regression)
 
 cargo check --workspace
@@ -169,7 +169,7 @@ cargo check --workspace
 | `rg "FrontierV2-1\|frontier_v2_1\|phase_m_frontier_v2_1\|candidate evolution" crates docs` | fixture/report/docs present |
 | `rg "ACT-5\|EVENT-3\|OBS-5\|PIPE-1" crates docs` | guardrail-only; no next-number fixture authorization |
 | Guardrail scan (default SimSession, scheduler, semantic WGSL, etc.) | guardrail-only in V2-1 report/docs |
-| `rg "FrontierV1\|FrontierV2\|SEAD\|RegionCell\|ArenaRegistry\|proposal\|ResourceFlow" crates/simthing-sim` | no simthing-sim semantic awareness |
+| `rg "FrontierV1\|FrontierV2\|FIELD_POLICY\|RegionCell\|ArenaRegistry\|proposal\|ResourceFlow" crates/simthing-sim` | no simthing-sim semantic awareness |
 | Self-acceptance phrase scan | no implementer closure in V2-1 report/docs |
 | `rg "F64RoundDown\|SHADER_F64\|f64(\|sqrt_cr_c\|Candidate C\|native sqrt.*Exact" crates docs` | no Candidate C/f64/native exact sqrt regression |
 | `find docs/tests -maxdepth 1 -type f \( -name "*.log" -o -name "*tmp*" -o -name "*scratch*" \)` | no scratch artifacts deleted |
@@ -190,4 +190,4 @@ No scratch artifacts deleted; no E-phase evidence removed.
 
 ## Final verdict
 
-**PASS** — FrontierV2-1 extended the default-off FrontierV2 closed-loop consumer with fixture-only movement/structural candidate evolution across ticks; candidate changes were tied to closed-loop feedback; resource dispatch stayed through Resource Flow allocator; CPU oracle parity and replay reproducibility were recorded (fingerprint `2d6e78a06d19736a`); docs and production plan were updated; ClauseThing was not implemented; no phase closure was declared; no default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner, parallel fixture economy, shared-pool tick writes, simthing-sim semantic awareness, or ACT/EVENT/OBS/PIPE expansion was added; and V7.7 / Mapping ADR / Resource Flow ADR / SEAD charter posture remained intact.
+**PASS** — FrontierV2-1 extended the default-off FrontierV2 closed-loop consumer with fixture-only movement/structural candidate evolution across ticks; candidate changes were tied to closed-loop feedback; resource dispatch stayed through Resource Flow allocator; CPU oracle parity and replay reproducibility were recorded (fingerprint `2d6e78a06d19736a`); docs and production plan were updated; ClauseThing was not implemented; no phase closure was declared; no default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner, parallel fixture economy, shared-pool tick writes, simthing-sim semantic awareness, or ACT/EVENT/OBS/PIPE expansion was added; and V7.7 / Mapping ADR / Resource Flow ADR / FIELD_POLICY charter posture remained intact.

@@ -93,7 +93,7 @@ hard currency/markets/trade/`ai_budget`, no ClauseThing/L3, no UI/realtime. Cros
 
 - **No code changed** (docs/design-only PR). Manual diff review sufficient; no Rust tests required.
 - **No `docs/invariants.md` edit.**
-- No default `SimSession` wiring · no SEAD movement · no `GradientXY` consumption · no R3/R4/R5/R6 · no
+- No default `SimSession` wiring · no FIELD_POLICY movement · no `GradientXY` consumption · no R3/R4/R5/R6 · no
   REENROLL · no M-4A · no new shader/WGSL/GPU kernel · no f32 bit-exact GPU claim · no hard
   currency/markets/trade/`ai_budget` · no nested-RF *beyond* the disburse-down already named in R2 scope ·
   no ClauseThing — **all confirmed for this opening PR.**

@@ -174,7 +174,7 @@ fn l1_1_preflight_preview_rejects_frontier_v2_5() {
 }
 
 #[test]
-fn l1_1_preflight_preview_rejects_sead_ladder_reopen() {
+fn l1_1_preflight_preview_rejects_field_policy_ladder_reopen() {
     for token in ["act_5", "event_3", "obs_5", "pipe_1"] {
         let preview = preview_with_token("runtime", token);
         preview_rejects_code(

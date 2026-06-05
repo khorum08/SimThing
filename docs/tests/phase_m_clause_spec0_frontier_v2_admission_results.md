@@ -20,7 +20,7 @@ Final commit SHA: available from the landing commit containing this report; not 
 - `crates/simthing-driver/tests/phase_m_clause_spec0_frontier_v2_compile.rs`
 - `docs/design_v7_8_production_track.md`
 - `docs/workshop/mapping_current_guidance.md`
-- `docs/workshop/sead_self_ai_track.md`
+- `docs/workshop/field_policy_track.md`
 - `docs/worklog.md`
 - `docs/tests/phase_m_clause_spec0_frontier_v2_admission_results.md`
 
@@ -152,10 +152,10 @@ Pre-existing warnings observed: existing `simthing-core` deprecated `EmlTreeMeta
 |---|---|
 | `rg "CLAUSE-SPEC-0|ClauseSpecFrontierV2|clause_spec0|designer-authored FrontierV2" crates docs` | PASS - implementation/report/docs references found; archive hits are historical/reference-only |
 | `rg "FrontierV2-5|ACT-5|EVENT-3|OBS-5|PIPE-1" crates docs` | PASS - rejection/parked/historical references only; no new authorization |
-| `rg "ClauseThing|ClauseScript" docs/design_v7_8_production_track.md docs/workshop/sead_self_ai_track.md docs/workshop/mapping_current_guidance.md docs/tests/phase_m_clause_spec0_frontier_v2_admission_results.md crates/simthing-spec` | PASS - parked/rejected references only; no parser/runtime |
-| `rg "default SimSession|scheduler|kernel cache|semantic WGSL|CPU planner|CPU urgency|CPU commitment|production commitment|Resource Flow bypass|shared-pool tick|parallel fixture economy" crates docs/tests/phase_m_clause_spec0_frontier_v2_admission_results.md docs/design_v7_8_production_track.md docs/workshop/mapping_current_guidance.md docs/workshop/sead_self_ai_track.md docs/invariants.md` | PASS - guardrail/status references only; pre-existing scheduler/cache text is gated/historical |
-| `rg "FrontierV2|ClauseThing|ClauseScript|SEAD|RegionCell|ArenaRegistry|proposal|ResourceFlow|BoundaryRequest" crates/simthing-sim` | PASS - only pre-existing generic `BoundaryRequest` plumbing appears; no FrontierV2, ClauseThing, ClauseScript, SEAD, RegionCell, ResourceFlow, or semantic awareness |
-| `rg "Phase M.*closed|Phase E.*closed|M/E.*closed|FrontierV2.*accepted|ClauseThing.*unblocked|L2.*accepted" docs/tests/phase_m_clause_spec0_frontier_v2_admission_results.md docs/design_v7_8_production_track.md docs/workshop/mapping_current_guidance.md docs/workshop/sead_self_ai_track.md` | PASS - historical/design-authority status references only; CLAUSE-SPEC-0 remains implemented and pending review, not accepted |
+| `rg "ClauseThing|ClauseScript" docs/design_v7_8_production_track.md docs/workshop/field_policy_track.md docs/workshop/mapping_current_guidance.md docs/tests/phase_m_clause_spec0_frontier_v2_admission_results.md crates/simthing-spec` | PASS - parked/rejected references only; no parser/runtime |
+| `rg "default SimSession|scheduler|kernel cache|semantic WGSL|CPU planner|CPU urgency|CPU commitment|production commitment|Resource Flow bypass|shared-pool tick|parallel fixture economy" crates docs/tests/phase_m_clause_spec0_frontier_v2_admission_results.md docs/design_v7_8_production_track.md docs/workshop/mapping_current_guidance.md docs/workshop/field_policy_track.md docs/invariants.md` | PASS - guardrail/status references only; pre-existing scheduler/cache text is gated/historical |
+| `rg "FrontierV2|ClauseThing|ClauseScript|FIELD_POLICY|RegionCell|ArenaRegistry|proposal|ResourceFlow|BoundaryRequest" crates/simthing-sim` | PASS - only pre-existing generic `BoundaryRequest` plumbing appears; no FrontierV2, ClauseThing, ClauseScript, FIELD_POLICY, RegionCell, ResourceFlow, or semantic awareness |
+| `rg "Phase M.*closed|Phase E.*closed|M/E.*closed|FrontierV2.*accepted|ClauseThing.*unblocked|L2.*accepted" docs/tests/phase_m_clause_spec0_frontier_v2_admission_results.md docs/design_v7_8_production_track.md docs/workshop/mapping_current_guidance.md docs/workshop/field_policy_track.md` | PASS - historical/design-authority status references only; CLAUSE-SPEC-0 remains implemented and pending review, not accepted |
 | `Get-ChildItem -Path docs\tests -File | Where-Object { $_.Name -like "*.log" -or $_.Name -like "*tmp*" -or $_.Name -like "*scratch*" }` | PASS - no transient docs/test logs or scratch files found |
 
 ## Transient cleanup result

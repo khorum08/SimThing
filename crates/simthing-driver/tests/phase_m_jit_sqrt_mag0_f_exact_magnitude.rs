@@ -1,4 +1,4 @@
-//! SQRT-MAG-0 / SQRT-MAG-0 R1 — F-backed Euclidean magnitude SEAD hot-path probe (Tier-2, test-only).
+//! SQRT-MAG-0 / SQRT-MAG-0 R1 — F-backed Euclidean magnitude FIELD_POLICY hot-path probe (Tier-2, test-only).
 //!
 //! Raw dx/dy probe: `mag = sqrt_cr_f_bits(bitcast(dx*dx + dy*dy))` — approximate mag authority.
 //! Exact mag path: F sqrt over already exact-authoritative `mag2` bits only (R1 contract).
@@ -38,7 +38,7 @@ const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
     "supply",
     "personality",
     "drone",
-    "SEAD",
+    "FIELD_POLICY",
     "ResourceEconomySpec",
     "SimSession",
     "Gadget",
@@ -523,7 +523,7 @@ fn sqrt_mag0_edge_rows_match_cpu_oracle() {
     });
 }
 
-fn sead_gradient_samples() -> Vec<f32> {
+fn field_policy_gradient_samples() -> Vec<f32> {
     vec![
         0.0, 0.001, 0.002, -0.001, -0.002, 0.005, -0.005, 0.01, -0.01, 0.02, -0.02, 0.05, -0.05,
         0.1, -0.1, 0.25, -0.25, 0.5, -0.5, 1.0, -1.0, 2.0, -2.0, 3.0, 4.0, 5.0, 8.0, 16.0,
@@ -532,8 +532,8 @@ fn sead_gradient_samples() -> Vec<f32> {
 
 fn dense_corpus_pairs() -> Vec<(u32, u32)> {
     let mut out = Vec::new();
-    for &dx in sead_gradient_samples().iter() {
-        for &dy in sead_gradient_samples().iter() {
+    for &dx in field_policy_gradient_samples().iter() {
+        for &dy in field_policy_gradient_samples().iter() {
             out.push((dx.to_bits(), dy.to_bits()));
         }
     }
@@ -543,7 +543,7 @@ fn dense_corpus_pairs() -> Vec<(u32, u32)> {
 }
 
 fn mobile_simthing_pairs(count: usize) -> Vec<(u32, u32)> {
-    let samples = sead_gradient_samples();
+    let samples = field_policy_gradient_samples();
     let mut out = Vec::with_capacity(count);
     let mut state = 0x5345_4144u32;
     for _ in 0..count {
@@ -590,7 +590,10 @@ fn sqrt_mag0_dense_corpus_match_cpu_oracle() {
             "sqrt_mag0_dense: tested={} mag2_match={mag2_match} exact={exact} max_ulp={max_ulp}",
             rows.len()
         );
-        assert!(mag2_match > 100, "need mag2-matched SEAD corpus coverage");
+        assert!(
+            mag2_match > 100,
+            "need mag2-matched FIELD_POLICY corpus coverage"
+        );
         assert_eq!(max_ulp, 0);
         assert_eq!(exact, mag2_match);
     });

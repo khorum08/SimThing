@@ -112,4 +112,4 @@ Exhaustive sqrt sweep **not** run — belongs to future implementation/test-batt
 
 ## Final verdict
 
-**PASS** — SQRT-DOC-0 R1 landed; shader/software deterministic sqrt is integrated into active guidance as a separate follow-on track, stale references to deleted JIT intermediate reports were removed from the design note, M-JIT remains closed at PROD-0, native sqrt remains ApproximateJitOnly until exhaustive bit-exact proof, no implementation/default wiring/scheduler/cache/production bridge was added, E-phase evidence was untouched, and V7.7 / Mapping ADR / SEAD guardrails remain intact.
+**PASS** — SQRT-DOC-0 R1 landed; shader/software deterministic sqrt is integrated into active guidance as a separate follow-on track, stale references to deleted JIT intermediate reports were removed from the design note, M-JIT remains closed at PROD-0, native sqrt remains ApproximateJitOnly until exhaustive bit-exact proof, no implementation/default wiring/scheduler/cache/production bridge was added, E-phase evidence was untouched, and V7.7 / Mapping ADR / FIELD_POLICY guardrails remain intact.

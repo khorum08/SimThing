@@ -27,7 +27,7 @@ Verification:
 - `cargo test -p simthing-driver --test dress_rehearsal_r6c_integrated_run` - PASS, 22 passed.
 - `cargo test -p simthing-driver --test dress_rehearsal_r6b_ship_cohort_reinforcement` - PASS, 24 passed.
 - `cargo test -p simthing-driver --test dress_rehearsal_r6_combat_hp_damage` - PASS, 25 passed.
-- `cargo test -p simthing-driver --test dress_rehearsal_r4_sead_field_consumption` - PASS, 16 passed.
+- `cargo test -p simthing-driver --test dress_rehearsal_r4_field_policy_consumption` - PASS, 16 passed.
 - `cargo test -p simthing-driver --test dress_rehearsal_r2_recursive_allocation` - PASS, 13 passed.
 - `cargo test -p simthing-driver --test dress_rehearsal_r1_disruption_heatmap` - PASS, 34 passed.
 - `cargo test -p simthing-spec --test mobility_reenroll0_substrate` - PASS, 16 passed.

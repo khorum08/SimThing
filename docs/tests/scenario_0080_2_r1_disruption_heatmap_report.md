@@ -139,7 +139,7 @@ Optional GPU cross-check was not implemented or run. R1's opening spec authorize
 
 ## Section 0.5 Self-Check
 
-No implementation beyond R1. No SEAD movement, no GradientXY consumption, no REENROLL, no CPU planner, no shader/math/tolerance change, no R2/R3/R4/R5/R6, no blockade/divert gate, no OWNER runtime beyond R1 cell-contribution routing, no default session wiring, no global schedule, no UI/realtime/CLI, no hard currency, no nested Resource Flow, no ClauseThing, and no invariant edits.
+No implementation beyond R1. No FIELD_POLICY movement, no GradientXY consumption, no REENROLL, no CPU planner, no shader/math/tolerance change, no R2/R3/R4/R5/R6, no blockade/divert gate, no OWNER runtime beyond R1 cell-contribution routing, no default session wiring, no global schedule, no UI/realtime/CLI, no hard currency, no nested Resource Flow, no ClauseThing, and no invariant edits.
 
 ## Stop-Condition Confirmation
 

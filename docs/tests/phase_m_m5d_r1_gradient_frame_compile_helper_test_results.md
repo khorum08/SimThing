@@ -107,14 +107,14 @@ cargo check --workspace
 ```
 **Result:** **PASS**
 
-`phase_m_economy_sead_product_fixture` not run — no product-fixture commitment support touched.
+`phase_m_economy_field_policy_product_fixture` not run — no product-fixture commitment support touched.
 
 ---
 
 ## Posture Attestation
 
-No semantic WGSL, no default mapping wiring, no simthing-sim changes, no source-mask/source-identity work, no atlas/M-4A, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling; grouped RegionField admission bundles gradient strict-sink validation before per-field preview compilation; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+No semantic WGSL, no default mapping wiring, no simthing-sim changes, no source-mask/source-identity work, no atlas/M-4A, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling; grouped RegionField admission bundles gradient strict-sink validation before per-field preview compilation; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.
 
 ---
 
-**PASS** — Phase M-5D R1 evidence closure landed; `compile_region_field_frame_preview` remains the safe grouped RegionField admission helper bundling strict-sink validation before per-field preview compilation, the missing `docs/tests` report was added, active guidance and production plan now reference the grouped-helper evidence, tests and cargo check are green, no runtime/GPU/WGSL/simthing-sim behavior changed, no production economy→mapping bridge was added, and V7.7 / Mapping ADR / SEAD GPU-resident default-off posture remains intact.
+**PASS** — Phase M-5D R1 evidence closure landed; `compile_region_field_frame_preview` remains the safe grouped RegionField admission helper bundling strict-sink validation before per-field preview compilation, the missing `docs/tests` report was added, active guidance and production plan now reference the grouped-helper evidence, tests and cargo check are green, no runtime/GPU/WGSL/simthing-sim behavior changed, no production economy→mapping bridge was added, and V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture remains intact.

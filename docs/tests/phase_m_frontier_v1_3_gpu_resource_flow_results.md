@@ -22,12 +22,12 @@
 | Question | Answer |
 |---|---|
 | **1. What did FrontierV1-2 GPU-verify?** | First-slice 8×8 RegionCell mapping; reduction + EML readback; replay fingerprint `42b0455e4d0b59ac`; mapping field GPU/CPU parity |
-| **2. Resource Flow pieces CPU-oracle-only in V1-2** | Flat-star allocation summary; route classification; full SEAD PIPE-0 chain |
+| **2. Resource Flow pieces CPU-oracle-only in V1-2** | Flat-star allocation summary; route classification; full FIELD_POLICY PIPE-0 chain |
 | **3. Accepted flat-star GPU substrate** | E-11 flat-star path via `SimSession::open_from_spec` + `FlatStarOptIn` + `FlatStarResourceFlow`; `sync_resource_flow_if_enabled` + `run_resource_flow_bands`; E-11R bit-exact oracle in `e11_flat_star.rs` |
 | **4. Fixture wiring required** | FrontierV1 admission → GPU mapping (V1-2) → separate flat-star GPU session (3 hosted cohorts: 1 allocator root + 2 faction leaves) → district-derived `allocator_total` as root intrinsic flow → weights 3:2 → GPU bands → hash |
 | **5. CPU oracle parity checks** | `faction_a_allocation`, `faction_b_allocation`, `allocator_total`, overflow flags, route code = ResourceFlowAllocator (1); no shared-pool tick write; no parallel fixture economy |
 | **6. Replay fingerprint update** | Combined GPU replay fingerprint: **`7bacf7921b807bee`** (V1-2 was `42b0455e4d0b59ac`) |
-| **7. Remains deferred/rejected** | Route classification GPU execution; full SEAD PIPE-0 chain; atlas, active mask, perception, source identity, nested E-11B/E-11B-5, D-2a, ClauseThing, ACT-5/EVENT-3/OBS-5/PIPE-1, CPU planner |
+| **7. Remains deferred/rejected** | Route classification GPU execution; full FIELD_POLICY PIPE-0 chain; atlas, active mask, perception, source identity, nested E-11B/E-11B-5, D-2a, ClauseThing, ACT-5/EVENT-3/OBS-5/PIPE-1, CPU planner |
 | **8. M/E closure movement** | Closes Resource Flow GPU gap from FrontierV1-2; mapping + RF allocation GPU-verified inside default-off FrontierV1 fixture |
 
 ## GPU fixture layout
@@ -128,7 +128,7 @@ Prior FrontierV1-2 fingerprint (`42b0455e4d0b59ac`) remains valid for the V1-2 f
 | Reduction + EML (field_urgency) | **gpu_verified** |
 | Flat-star Resource Flow allocation | **gpu_verified** |
 | Route classification execution | **cpu_oracle_only** (admission + allocator route code enforced) |
-| SEAD PIPE-0 full chain | **cpu_oracle_only** (consumed, not extended) |
+| FIELD_POLICY PIPE-0 full chain | **cpu_oracle_only** (consumed, not extended) |
 
 ## Test results
 
@@ -142,7 +142,7 @@ cargo test -p simthing-driver --test phase_m_frontier_v1_2_gpu_replay_acceptance
 cargo test -p simthing-driver --test phase_m_frontier_v1_1_opt_in_fixture -- --nocapture
   → 9/9 PASS
 
-cargo test -p simthing-spec --test sead_obs0_overlay_score_admission -- --nocapture
+cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission -- --nocapture
   → 29/29 PASS
 
 cargo check --workspace
@@ -169,7 +169,7 @@ cargo check --workspace
 | `ACT-5\|EVENT-3\|OBS-5\|PIPE-1` in crates/docs | no next-number authorization (stop/negative refs only) |
 | guardrail terms in report + active docs | guardrail-only |
 | simthing-sim semantic markers | no matches |
-| Candidate C/f64 regression | forbidden-term scan refs only in existing SEAD tests |
+| Candidate C/f64 regression | forbidden-term scan refs only in existing FIELD_POLICY tests |
 | scratch/tmp cleanup | E-phase `.log` evidence retained (not scratch/tmp) |
 
 ## Transient cleanup result
@@ -181,12 +181,12 @@ No scratch/tmp artifacts removed. Existing E-phase `.log` files under `docs/test
 1. **Builds on FrontierV1-2:** Adds GPU-resident flat-star Resource Flow allocation on top of V1-2 GPU mapping/replay; updates combined replay fingerprint to include GPU RF hash.
 2. **Phase M proof:** GPU executes bounded 8×8 mapping plus flat-star OrderBand allocation through accepted substrates with explicit opt-in only.
 3. **Phase E proof:** Resource dispatch remains routed through Resource Flow allocator; GPU faction allocations match CPU oracle exactly; no parallel fixture economy or shared-pool tick writes.
-4. **Still pending before M/E close:** Full accepted substrate replay / acceptance review; route classification GPU execution (honestly cpu_oracle_only); full SEAD PIPE-0 GPU chain end-to-end; production-doc M/E closure sign-off.
+4. **Still pending before M/E close:** Full accepted substrate replay / acceptance review; route classification GPU execution (honestly cpu_oracle_only); full FIELD_POLICY PIPE-0 GPU chain end-to-end; production-doc M/E closure sign-off.
 5. **Non-blocking deferred:** Atlas, active mask, perception, source identity, nested E-11B, E-11B-5, D-2a, ClauseThing, CPU planner/urgency/commitment emission.
-6. **Not a new SEAD ladder:** Consumes SEAD V1 + accepted mapping/RF GPU substrates; no ACT-5/EVENT-3/OBS-5/PIPE-1; named FrontierV1 integration slice only.
+6. **Not a new FIELD_POLICY ladder:** Consumes FIELD_POLICY V1 + accepted mapping/RF GPU substrates; no ACT-5/EVENT-3/OBS-5/PIPE-1; named FrontierV1 integration slice only.
 
 FrontierV1-3 closes the Resource Flow GPU gap identified by FrontierV1-2 by verifying flat-star allocation through the accepted Resource Flow allocator path inside the default-off FrontierV1 fixture. This moves Phase E toward closure without adding nested E-11B, D-2a, a parallel fixture economy, CPU planner behavior, or default runtime wiring.
 
 ## Final verdict
 
-**PASS** — FrontierV1-3 GPU-verified flat-star Resource Flow allocation inside the default-off FrontierV1 fixture; matched the CPU oracle exactly; preserved Resource Flow allocator routing, FrontierV1-only/default-off coupling, and all deferred-feature boundaries; honestly classified route classification as CPU-oracle-only; added no default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner, shared-pool tick writes, parallel fixture economy, or simthing-sim semantic awareness; updated docs and production plan; saved test results in `docs/tests`; kept V7.7 / Mapping ADR / Resource Flow ADR / SEAD charter posture intact.
+**PASS** — FrontierV1-3 GPU-verified flat-star Resource Flow allocation inside the default-off FrontierV1 fixture; matched the CPU oracle exactly; preserved Resource Flow allocator routing, FrontierV1-only/default-off coupling, and all deferred-feature boundaries; honestly classified route classification as CPU-oracle-only; added no default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner, shared-pool tick writes, parallel fixture economy, or simthing-sim semantic awareness; updated docs and production plan; saved test results in `docs/tests`; kept V7.7 / Mapping ADR / Resource Flow ADR / FIELD_POLICY charter posture intact.

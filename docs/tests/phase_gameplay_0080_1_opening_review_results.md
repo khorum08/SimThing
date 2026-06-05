@@ -7,7 +7,7 @@
 
 The full `0080-1` chain is green: `SCENARIO-0080-1` accepted; `ATLAS-0080-0`, `ECON-SCALE-0080-0`,
 `PRODUCTION-PATH-0080-1`, and `DEFAULT-SCHEDULE-0080-1` all IMPLEMENTED/PASS. The schedule now produces
-live SEAD-sourced movement captured deterministically in `DefaultSchedule0081RunReport`
+live FIELD_POLICY-sourced movement captured deterministically in `DefaultSchedule0081RunReport`
 (`run_default_schedule_0080_1`). A read-only observer over that report is a **genuine product consumer** —
 the first product-facing surface of the `0080-1` stack — pulling no new substrate and mutating nothing.
 This is the exact pattern proven at `GAMEPLAY-0080-0` for Local Patrol Economy.
@@ -53,14 +53,14 @@ stop-and-escalate.
 A future PR may add a narrow `gameplay_0080_1` module that consumes `DefaultSchedule0081RunReport`
 (optionally calling `run_default_schedule_0080_1` via explicit opt-in), produces a stable Rust observation
 report + deterministic text export with a movement transcript table (atlas residency summary,
-faction-index ECON summary, owner-overlay + up-aggregation summary, SEAD movement trace, Terran/Pirate
+faction-index ECON summary, owner-overlay + up-aggregation summary, FIELD_POLICY movement trace, Terran/Pirate
 movement rows, replay checksum), and preserves all regression tests. No state mutation beyond invoking the
 existing opt-in schedule; no control/UI/realtime/demo/global-schedule.
 
 ## Future test list summary
 
 22 read-only observation tests named (opt-in only; consumes schedule report; nested-starmap transcript;
-atlas residency + faction-index ECON + owner-overlay/up-aggregation summaries; SEAD movement trace;
+atlas residency + faction-index ECON + owner-overlay/up-aggregation summaries; FIELD_POLICY movement trace;
 Terran/Pirate movement rows; deterministic replay transcript; and the full no-control/command,
 no-demo/UI/realtime, no-global-schedule, no-direct-move/external-boundary, no-CPU-planner, no-WGSL/kernel,
 no-hard-currency/nested-RF, no-ClauseThing rejections; docs-status match). **None implemented.**

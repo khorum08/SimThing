@@ -11,7 +11,7 @@
 - `docs/design_0_0_8_0_consumer_pulled_production_track.md` §12–§12.5
 - `docs/scenarios/scenario_0080_2_dress_rehearsal_spec.md`
 - `crates/simthing-core/src/accumulator_op.rs`
-- `docs/workshop/sead_self_ai_track.md`
+- `docs/workshop/field_policy_track.md`
 - `docs/handoffs/dress_rehearsal_codex_handoff_7_atlas_batch_0_store_gpu.md`
 - `crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_store.rs` (CPU `StoreOracle` authority)
 
@@ -70,7 +70,7 @@ Prior committed STORE-GPU evidence that named Intel RaptorLake-S is superseded f
 | OWNER runtime / session wiring | **parked** |
 | **R1/R2/R3/R4** | unimplemented |
 | **M-4A / REENROLL** | parked |
-| Economy / disruption / SEAD / movement / combat | not implemented |
+| Economy / disruption / FIELD_POLICY / movement / combat | not implemented |
 
 ## Deleted obsolete artifacts
 

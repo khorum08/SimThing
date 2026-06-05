@@ -18,7 +18,7 @@ Reviewer: Design authority (Opus 4.8 lane) + product. Gate-opening / production-
 - `docs/design_v7_9_mobility_transfer_allocation_production_track.md`
 - `docs/workshop/mobility_and_transfer_allocation.md` (especially §11 identity routing as D=2 masked reduction + directed disburse; §12 Gallatin/NVIDIA substrate principles; §13 IDROUTE battery)
 - `docs/workshop/mapping_current_guidance.md`
-- `docs/workshop/sead_self_ai_track.md`
+- `docs/workshop/field_policy_track.md`
 - `docs/tests/phase_mobility_scenario0_results.md`, `phase_mobility_scenario0_acceptance_review_results.md`
 - `docs/tests/phase_mobility_owner_band_budget_audit_results.md`
 - `docs/tests/phase_mobility_alloc0_opening_review_results.md`, `docs/tests/phase_mobility_alloc0_results.md`
@@ -41,10 +41,10 @@ Reviewer: Design authority (Opus 4.8 lane) + product. Gate-opening / production-
 | Identity is a column, not tree structure | PASS — Workshop §11 + scenario0 packet + REENROLL substrate all treat `faction_id` / identity as a property column on the moving SimThing; political changes are column flips, spatial moves are reparenting events on cell blocks. |
 | Owner-entity never modeled as spatial parent | PASS — Explicitly rejected in scenario0 + REENROLL forbidden paths; workshop §11.4–§11.6 reinforces session descendants only. |
 | Capture remains owner-column flip, not reparenting | PASS — Explicit rejection in all prior mobility substrates + workshop doctrine. |
-| Movement writes only the moving SimThing’s own authoritative columns | PASS — SEAD principle + REENROLL substrate (only the mover’s slot/parent changes; no side effects on siblings). |
+| Movement writes only the moving SimThing’s own authoritative columns | PASS — FIELD_POLICY principle + REENROLL substrate (only the mover’s slot/parent changes; no side effects on siblings). |
 | No global faction vector required for IDROUTE substrate | PASS — Local D=2 per-cell only (k ≤ `max_factions_per_cell`=4 in first slice); Hybrid Strata / dense N-wide is an ECON concern. |
 | No semantic/raw WGSL needed | PASS — IDROUTE is masked reduction + disburse over existing AccumulatorOp / EML / OrderBand paths (workshop §11, §12). Generic non-semantic WGSL admissible only with parity (per doctrine). |
-| No CPU planner / urgency / commitment emission | PASS — Preserved from v7.8 constitution + SEAD charter; IDROUTE is pure routing math feeding existing threshold machinery. |
+| No CPU planner / urgency / commitment emission | PASS — Preserved from v7.8 constitution + FIELD_POLICY charter; IDROUTE is pure routing math feeding existing threshold machinery. |
 | `simthing-sim` remains semantic-free | PASS — All prior mobility work + invariants enforce this; IDROUTE substrate adds no map/faction/AI awareness. |
 | Expected IDROUTE test battery sufficient before implementation | PASS — Workshop §13 + production track §8 already define the complete, minimal substrate floor + guardrail rejections + performance bars (see below). One design-authority addition for atomic directed disburse parity may be warranted at implementation time. |
 

@@ -71,7 +71,7 @@ rg "Final commit SHA: \(to be recorded by merge / post-push; placeholder until p
 ```bash
 rg "new EML opcode|new WGSL|runtime gadget execution|chained OrderBand runtime scheduling|production economy→mapping bridge|default SimSession mapping|atlas/M-4A|CPU urgency|CPU-side AI planner" docs/workshop docs/accumulator_op_v2_production_plan.md docs/tests/phase_m_eml_gadget_2d_hysteresis_test_results.md
 ```
-**Result:** All matches are explicit guardrail statements ("no new EML opcode was added", "Hysteresis remains spec/admission/compiler/oracle only", "no production economy→mapping bridge", "Acceleration remains deferred", "V7.7 / Mapping ADR / SEAD posture remains intact", etc.). No claims of forbidden work.
+**Result:** All matches are explicit guardrail statements ("no new EML opcode was added", "Hysteresis remains spec/admission/compiler/oracle only", "no production economy→mapping bridge", "Acceleration remains deferred", "V7.7 / Mapping ADR / FIELD_POLICY posture remains intact", etc.). No claims of forbidden work.
 
 ---
 
@@ -84,7 +84,7 @@ All required commands executed (full --nocapture in session logs; summaries):
 - `cargo test -p simthing-spec --test eml_gadget_tier2_temporal -- --nocapture` → PASS.
 - `cargo test -p simthing-spec --test eml_gadget_tier1 -- --nocapture` → PASS.
 - `cargo test -p simthing-spec --test resource_economy_authoring_preview -- --nocapture` → PASS.
-- `cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture -- --nocapture` → PASS.
+- `cargo test -p simthing-driver --test phase_m_economy_field_policy_product_fixture -- --nocapture` → PASS.
 - `cargo test -p simthing-driver --test phase_m_first_slice_runtime -- --nocapture` → PASS.
 - `cargo test -p simthing-spec --test region_field_spec_admission -- --nocapture` → PASS.
 - `cargo check --workspace` → Finished successfully (no new warnings from 2D).
@@ -111,13 +111,13 @@ find docs/tests -maxdepth 1 -type f \( -name "*.log" -o -name "*tmp*" -o -name "
 - Hysteresis 2D landed as minimal explicit-column Tier-2 EML gadget in `simthing-spec` only.
 - Finite separated-threshold admission + stateful CPU-oracle parity + existing EvalEML (CMP+SELECT+arithmetic) compilation only.
 - All 17 completion criteria satisfied.
-- V7.7 / Mapping ADR / SEAD GPU-resident default-off posture remains 100% intact (every prohibition from the handoff reaffirmed in docs and code comments).
+- V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture remains 100% intact (every prohibition from the handoff reaffirmed in docs and code comments).
 - No stop conditions triggered (feasibility confirmed via opcode whitelist inspection; no forcing).
 
 ---
 
 ## Final Verdict (required exact wording)
 
-PASS — Phase M EML-GADGET-2D Hysteresis landed as a conditional explicit-column Tier-2 EML gadget in `simthing-spec` only, with finite separated-threshold admission, stateful CPU-oracle parity, existing EvalEML primitive compilation only, active docs and production plan updated, no new opcode/WGSL/GPU/sim runtime behavior, no runtime gadget execution or chained scheduling, no production economy→mapping bridge, and V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+PASS — Phase M EML-GADGET-2D Hysteresis landed as a conditional explicit-column Tier-2 EML gadget in `simthing-spec` only, with finite separated-threshold admission, stateful CPU-oracle parity, existing EvalEML primitive compilation only, active docs and production plan updated, no new opcode/WGSL/GPU/sim runtime behavior, no runtime gadget execution or chained scheduling, no production economy→mapping bridge, and V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.
 
 All preflight cleanups, scans, tests, and hygiene completed with extreme care for documentation accuracy (SHA remediation pre-empted by using actual R2 SHA and clean tail removal). Ready for Opus/product review of the conditional 2D slice. Acceleration and dense per-cell remain deferred. No further implementation authorized without explicit gated direction.

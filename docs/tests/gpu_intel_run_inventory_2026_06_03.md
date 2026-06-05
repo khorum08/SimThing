@@ -40,14 +40,14 @@ These are where a different adapter could shift results; re-prove tolerances on 
 
 ## Remaining GPU-touching targets (re-run via `cargo test --workspace`)
 
-- `simthing-driver`: `phase_m_sead_obs0/obs2/obs3/obs4`, `phase_m_sead_event0/event1/event2`,
-  `phase_m_sead_act0/act1/act2/act3`, `phase_m_sead_pipe0`, `phase_m_eml_gadget_2a_snapshot_copy`,
+- `simthing-driver`: `phase_m_field_policy_obs0/obs2/obs3/obs4`, `phase_m_field_policy_event0/event1/event2`,
+  `phase_m_field_policy_act0/act1/act2/act3`, `phase_m_field_policy_pipe0`, `phase_m_eml_gadget_2a_snapshot_copy`,
   `phase_m_eml_gadget_runtime_execution_gate`, `phase_m2_field_scheduler`, `phase_m_boundary_cadence_doctrine`,
-  `phase_m_economy_sead_product_fixture`, `e11_arena_allocation`, `e11b_nested_fission_gap`,
+  `phase_m_economy_field_policy_product_fixture`, `e11_arena_allocation`, `e11b_nested_fission_gap`,
   `e11b_nested_hierarchy_gpu`, `phase_ao_wgsl0_accumulator_op_performance`,
   `phase_t_b0_d2a_hard_currency_ordering`, `resource_economy_designer_ron_session`, `session_integration`
   (+ `tests/support/*` GPU fixtures consumed by the above: `e11_flat_star`, `e11_nested`, `gpu_exec0_fixture`,
-  `mobility_gpu_kernel0/5_fixture`, `daily_economy_session`, `resource_economy_session`, `sead_v1_live_pipeline`)
+  `mobility_gpu_kernel0/5_fixture`, `daily_economy_session`, `resource_economy_session`, `field_policy_v1_live_pipeline`)
 - `simthing-sim`: `b4_world_summary_integrated`, `boundary_integration`, `c1_threshold_perf`, `c2_intent_perf`,
   `c5_legacy_weighted_mean_oracle`, `c8_full_pipeline_integration`, `c8a_eml_infrastructure`,
   `c_inf_legacy_oracle_harness`, `e1_emit_on_threshold_builder`, `e2a_resource_transfer_discrete_builder`,

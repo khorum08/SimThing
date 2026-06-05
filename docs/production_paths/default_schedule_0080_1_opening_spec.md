@@ -9,7 +9,7 @@
 > - Implementation report: [`../tests/phase_default_schedule_0080_1_impl_results.md`](../tests/phase_default_schedule_0080_1_impl_results.md).
 >
 > Verdict: **IMPLEMENTED / PASS** - deterministic, opt-in/default-off, scenario-scoped
-> SEAD-sourced movement cadence over the composed Nested Starmap report. **No new substrate; no direct
+> FIELD_POLICY-sourced movement cadence over the composed Nested Starmap report. **No new substrate; no direct
 > movement; no observation/control/demo.**
 
 ---
@@ -17,10 +17,10 @@
 ## 1. Why this gate now unlocks execution
 
 `PRODUCTION-PATH-0080-1` composes atlas sparse residency, bounded Terran/Pirate faction-indexed ECON,
-owner-overlay summaries, ownership up-aggregation, and **read-only SEAD composite-gap terms** into one
+owner-overlay summaries, ownership up-aggregation, and **read-only FIELD_POLICY composite-gap terms** into one
 deterministic scenario report. The next product step is to **execute deterministic movement decisions**
 over that composed scenario. This is not another substrate proof wrapper; it turns the already-composed
-scenario report into a bounded **SEAD-sourced movement cadence** — movement at last becomes *live*, but
+scenario report into a bounded **FIELD_POLICY-sourced movement cadence** — movement at last becomes *live*, but
 only through the accepted `Threshold + EmitEvent → BoundaryRequest` posture.
 
 ---
@@ -33,7 +33,7 @@ only through the accepted `Threshold + EmitEvent → BoundaryRequest` posture.
   subfields; one planet each with a 10×10 submap; ≈ 2,100 logical locations);
 - **consumes `PRODUCTION-PATH-0080-1`** (`run_production_path_0080_1`);
 - runs a **bounded** number of deterministic steps;
-- emits **zero or more `BoundaryRequest`s only through the SEAD threshold/event posture**;
+- emits **zero or more `BoundaryRequest`s only through the FIELD_POLICY threshold/event posture**;
 - routes accepted boundary requests through the **existing mobility/transfer substrate posture**;
 - updates only schedule-step reports and movement outcomes authorized by existing substrate behavior;
 - **no observation/control/demo yet**; **not** a global default schedule.
@@ -58,7 +58,7 @@ observation/control/demo.
 
 ---
 
-## 4. SEAD contract
+## 4. FIELD_POLICY contract
 
 Movement decisions must be derived from: the **read-only composite-gap terms** from
 `PRODUCTION-PATH-0080-1` (`current(space) − inherited_setpoint`, supply/security gap, bilateral relational
@@ -103,8 +103,8 @@ substrate.**
 - `default_schedule_0080_1_threshold_false_emits_no_boundary_request`
 - `default_schedule_0080_1_threshold_true_emits_boundary_request`
 - `default_schedule_0080_1_routes_boundary_request_through_mobility_substrate`
-- `default_schedule_0080_1_moves_terran_ship_by_sead_gap`
-- `default_schedule_0080_1_moves_pirate_ship_by_sead_gap`
+- `default_schedule_0080_1_moves_terran_ship_by_field_policy_gap`
+- `default_schedule_0080_1_moves_pirate_ship_by_field_policy_gap`
 - `default_schedule_0080_1_preserves_identity_and_owner_overlay`
 - `default_schedule_0080_1_updates_membership_without_reparenting`
 - `default_schedule_0080_1_consumes_atlas_residency_report`
@@ -145,7 +145,7 @@ ClauseThing; invariant edit; passive proof wrapper; or a general scheduler beyon
 
 - [x] Design authority chose **Option A** (open with narrowing).
 - [x] Opening spec exists; `DEFAULT-SCHEDULE-0080-1` marked IMPLEMENTED / PASS.
-- [x] Scope is `SCENARIO-0080-1` only; consumes `PRODUCTION-PATH-0080-1`; SEAD-sourced movement.
+- [x] Scope is `SCENARIO-0080-1` only; consumes `PRODUCTION-PATH-0080-1`; FIELD_POLICY-sourced movement.
 - [x] Implementation slice landed in `crates/simthing-driver/src/default_schedule_0080_1.rs`.
 - [x] Compact implementation report landed.
 - [x] `PRODUCTION-PATH-0080-1`, `ATLAS-0080-0`, `ECON-SCALE-0080-0` remain IMPLEMENTED / PASS.

@@ -21,7 +21,7 @@ The demo report includes:
 - Faction-index ECON summary presence flag
 - Owner-overlay inheritance summary presence flag
 - Ownership up-aggregation summary presence flag
-- SEAD movement trace presence flag
+- FIELD_POLICY movement trace presence flag
 - Terran and Pirate movement rows (step index, faction, start/end starsystem, threshold/event/boundary flags, identity preserved, owner overlay preserved, membership-without-reparenting)
 - Command transcript (command index, command name, accepted, target bounded field, old/new value)
 - Deterministic replay checksum (FNV-64 over applied command count, step count, movement counts, movement row flags)
@@ -29,7 +29,7 @@ The demo report includes:
 
 ## What Was NOT Added
 
-No CLI binary, no direct movement command, no external `BoundaryRequest`, no SEAD bypass, no CPU
+No CLI binary, no direct movement command, no external `BoundaryRequest`, no FIELD_POLICY bypass, no CPU
 planner, no player command loop, no UI framework, no real-time loop, no global default schedule,
 no semantic/raw WGSL, no new shader/GPU kernel, no hard currency/markets/trade/`ai_budget`, no
 nested Resource Flow, no ClauseThing dependency, no `simthing-spec` alteration, no invariant edit,
@@ -51,7 +51,7 @@ Coverage includes:
 - Terran and Pirate movement rows present;
 - atlas residency, faction-index ECON, owner-overlay/up-aggregation summary flags;
 - deterministic replay (two runs produce identical reports and checksums);
-- rejection of CLI binary, direct movement command, external boundary request, SEAD bypass, player
+- rejection of CLI binary, direct movement command, external boundary request, FIELD_POLICY bypass, player
   command loop, UI framework, real-time loop, global default schedule, semantic/raw WGSL,
   new shader/GPU kernel, hard currency/markets/trade/`ai_budget`, nested Resource Flow, and
   ClauseThing dependency;

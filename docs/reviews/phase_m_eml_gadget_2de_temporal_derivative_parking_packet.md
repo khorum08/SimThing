@@ -114,7 +114,7 @@ All binding posture from prior EML-GADGET handoffs remains intact:
 - Position-history acceleration remains separately gated.
 - MappingExecutionProfile default remains Disabled.
 - Resource Flow E-11 remains default-off.
-- SEAD remains GPU-resident: field propagation → parent reduction → `field_urgency` EvalEML → Threshold + EmitEvent.
+- FIELD_POLICY remains GPU-resident: field propagation → parent reduction → `field_urgency` EvalEML → Threshold + EmitEvent.
 
 ## Runtime Execution Gate Assessment
 

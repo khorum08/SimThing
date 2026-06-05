@@ -69,6 +69,6 @@ Queue-write scale caveat (per-slot resource/weight writes on the 10x10 bridge) r
 
 Runtime summary status has been moved from `simthing-spec` into the driver/runtime reporting layer (`FirstSliceSummaryStatus`), while designer-facing summary policy remains correctly in the spec admission layer.
 
-All SummaryValidity V1 behavior is preserved. All required prior first-slice tests continue to pass. All V7.7 / Mapping ADR / SEAD guardrails respected.
+All SummaryValidity V1 behavior is preserved. All required prior first-slice tests continue to pass. All V7.7 / Mapping ADR / FIELD_POLICY guardrails respected.
 
 No scope expansion occurred.

@@ -10,7 +10,7 @@ admission (`admit_control_0080_0`, `Control0080CommandBatch::canonical_run()`, `
 → schedule (`run_default_schedule_0080_0`) → read-only observation export (`observe_gameplay_0080_0`). A
 demo gate is **pure packaging** over these existing seams: apply a canonical bounded command batch, run
 the existing path, emit the existing deterministic transcript/export. It adds **no new simulation
-behavior, no new substrate, and no decision logic** — SEAD remains the sole mover-decision source.
+behavior, no new substrate, and no decision logic** — FIELD_POLICY remains the sole mover-decision source.
 
 This is the natural "make the finished vertical slice reproducible/usable" step at the designer-facing
 barrier — not substrate-ahead-of-need and not a passive proof wrapper. **No issues detected.**

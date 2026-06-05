@@ -30,18 +30,18 @@ This correction is recorded here (no standalone remediation report created). Pos
 - `docs/workshop/workshop_current_state.md` — minimal one-line update to the "Next action" block noting R2 landing with the no-coupling guardrail.
 - `docs/tests/phase_m_resource_economy_authoring_ergonomics_r2_test_results.md` — this report.
 
-**No other files touched.** Zero changes to runtime, GPU, simthing-sim, mapping pass-graph, first-slice, SEAD, Resource Flow, or any production bridge.
+**No other files touched.** Zero changes to runtime, GPU, simthing-sim, mapping pass-graph, first-slice, FIELD_POLICY, Resource Flow, or any production bridge.
 
 ---
 
 ## Narrow R2 Improvement Chosen (After Deep Inspection)
 
-After reading `ResourceEconomySpec` + admission/preview code, the `resource_economy_authoring_preview` test, the daily economy + economy+SEAD product fixture reports, and related RON fixtures:
+After reading `ResourceEconomySpec` + admission/preview code, the `resource_economy_authoring_preview` test, the daily economy + economy+FIELD_POLICY product fixture reports, and related RON fixtures:
 
 - The R1/V1 surface was already strong (structured `TransferPreview`/`RecipePreview` lists, `simple_static_nets`, `warnings` as `ResourceEconomyDiagnostic`, order bands, bindings, game-mode integration).
 - The smallest useful, purely spec/admission/preview, zero-runtime-coupling ergonomics win was adding a `schedule_lines: Vec<String>` helper field to `ResourceEconomyPreviewReport`.
 - This directly fulfills the handoff allowance for "spec preview helpers that expose intended economy transfers clearly" and "improve designer-facing ResourceEconomySpec authoring ergonomics."
-- Implementation: derived one-liners in the existing `build_preview_report` (e.g. `"bank_daily_income: +10.0 core::treasury/Amount @ order_band 0 (transfer)"`). No compiled/runtime paths, no new admission rules, no EML/gadget coupling, no mapping/SEAD awareness.
+- Implementation: derived one-liners in the existing `build_preview_report` (e.g. `"bank_daily_income: +10.0 core::treasury/Amount @ order_band 0 (transfer)"`). No compiled/runtime paths, no new admission rules, no EML/gadget coupling, no mapping/FIELD_POLICY awareness.
 
 This is the narrowest high-signal addition that helps designers authoring discrete banking fixtures (the exact use case of the Phase M Daily Economy Fixture V1 and product fixtures) without any forbidden changes.
 
@@ -81,8 +81,8 @@ cargo test -p simthing-spec --test resource_economy_authoring_preview -- --nocap
 ```
 
 ```bash
-cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture -- --nocapture
-# Result: 6/6 passed (economy-derived weights still produce no SEAD commitments on CPU; GPU path untouched)
+cargo test -p simthing-driver --test phase_m_economy_field_policy_product_fixture -- --nocapture
+# Result: 6/6 passed (economy-derived weights still produce no FIELD_POLICY commitments on CPU; GPU path untouched)
 ```
 
 ```bash
@@ -123,7 +123,7 @@ find docs/tests -maxdepth 1 -type f \( -name "*.log" -o -name "*tmp*" -o -name "
 # (PowerShell equivalent executed)
 ```
 
-**Result:** 11 historical `*_full.log` files present (mapping atlas sandbox, boundary cadence doctrine, daily economy fixture, economy+SEAD product fixture, 2A snapshot + R1 hygiene, 2B velocity, first-slice map residency + summary validity, queue scale, resource economy authoring ergonomics R1, and this R2 run context). 
+**Result:** 11 historical `*_full.log` files present (mapping atlas sandbox, boundary cadence doctrine, daily economy fixture, economy+FIELD_POLICY product fixture, 2A snapshot + R1 hygiene, 2B velocity, first-slice map residency + summary validity, queue scale, resource economy authoring ergonomics R1, and this R2 run context). 
 
 These are intentional historical evidence tied to their reports and fixtures. No `*.tmp`, `*scratch*`, or other obviously transient/unreferenced scratch logs at the root of `docs/tests`.
 
@@ -137,10 +137,10 @@ These are intentional historical evidence tied to their reports and fixtures. No
 - **No runtime economy→mapping bridge was added** (or even touched).
 - **No default mapping execution** or SimSession wiring added.
 - **No GPU/WGSL/simthing-gpu/simthing-sim** behavior or semantics changed.
-- **No CPU SEAD planner / urgency computation / commitment emission** added or possible via this change.
+- **No CPU FIELD_POLICY planner / urgency computation / commitment emission** added or possible via this change.
 - The preflight stale EML-GADGET-2A next-step sentence was removed from active guidance.
 - Production doc and workshop current state updated (lightly).
-- V7.7 / Mapping ADR / SEAD GPU-resident default-off posture remains fully intact (MappingExecutionProfile::Disabled default, explicit opt-in only, CPU selects authored profiles in fixtures only, SEAD stays GPU field→reduction→EvalEML→Threshold+EmitEvent path, Resource Flow default-off, no DailyResolutionBoundary or calendar semantics, etc.).
+- V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture remains fully intact (MappingExecutionProfile::Disabled default, explicit opt-in only, CPU selects authored profiles in fixtures only, FIELD_POLICY stays GPU field→reduction→EvalEML→Threshold+EmitEvent path, Resource Flow default-off, no DailyResolutionBoundary or calendar semantics, etc.).
 - All binding prohibitions from the handoff were respected (no Hysteresis/Acceleration, no runtime gadgets, no chained scheduling, no atlas/M-4A, no perception, no source_mask, no new EML opcodes, etc.).
 
 **Explicit statement:** No runtime/code behavior changed outside spec/admission/preview. The only new surface is a pure derived `Vec<String>` in the existing authoring preview report for designer ergonomics.
@@ -149,7 +149,7 @@ These are intentional historical evidence tied to their reports and fixtures. No
 
 ## Final Verdict (required exact wording)
 
-PASS — Phase M Resource Economy Authoring Ergonomics R2 landed as a narrow spec/admission/preview authoring improvement; the remaining stale EML-GADGET-2A next-step sentence was removed as preflight, active production guidance was updated, tests and cargo check are green, no runtime economy→mapping bridge or default mapping execution was added, no GPU/WGSL/simthing-sim behavior changed, and V7.7 / Mapping ADR / SEAD GPU-resident default-off posture remains intact.
+PASS — Phase M Resource Economy Authoring Ergonomics R2 landed as a narrow spec/admission/preview authoring improvement; the remaining stale EML-GADGET-2A next-step sentence was removed as preflight, active production guidance was updated, tests and cargo check are green, no runtime economy→mapping bridge or default mapping execution was added, no GPU/WGSL/simthing-sim behavior changed, and V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture remains intact.
 
 All 12 completion criteria satisfied. R2 is complete. The consolidated parking packet + this R2 slice keep the active authority surface truthful and the posture binding for future Opus/product direction.
 

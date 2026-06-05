@@ -17,12 +17,12 @@ use crate::dress_rehearsal_r3_capability_mask_down::{
     DEFENSIVE_LOGISTICS_MODIFIER, DISRUPTION_DECAY_MODIFIER, PATROL_SUPPRESSION_MODIFIER,
     PIRATE_EMISSION_MODIFIER, RAIDING_LOGISTICS_MODIFIER,
 };
-use crate::dress_rehearsal_r4_sead_field_consumption::{
+use crate::dress_rehearsal_r4_field_policy_consumption::{
     exact_mag2_bits_from_fixed, f32_to_q16, sqrt_cr_f_bits, MOVEMENT_THRESHOLD_MAG_BITS,
 };
 use crate::dress_rehearsal_r5_movement_reenroll::{cell_key, entity_id_for_mover};
 use crate::dress_rehearsal_r6_combat_hp_damage::{
-    damage_output_for_cohort, emission_band_ship_attrition, hp_to_kill_for_cohort,
+    damage_output_for_cohort, emission_band_ship_attrition, hp_to_retire_for_cohort,
     FLEET_DAMAGE_PER_SHIP_PER_TICK, FLEET_HP_PER_SHIP,
 };
 use crate::dress_rehearsal_r6b_ship_cohort_reinforcement::{
@@ -289,7 +289,7 @@ pub struct DressRehearsalR6cCombatRow {
     pub hostile_damage_received: i64,
     pub ships_destroyed: i64,
     pub num_ships_after: i64,
-    pub hp_to_kill_after: i64,
+    pub hp_to_retire_after: i64,
     pub hostile_target_ids: Vec<String>,
     pub ship_loss_event_emitted: bool,
     pub zero_cohort_event_emitted: bool,
@@ -325,7 +325,7 @@ pub struct DressRehearsalR6cReinforcementRow {
     pub num_ships_before: i64,
     pub ship_count_delta: i64,
     pub num_ships_after: i64,
-    pub hp_to_kill_after: i64,
+    pub hp_to_retire_after: i64,
     pub damage_output_after: i64,
     pub movement_boundary_request_used: bool,
 }
@@ -354,7 +354,7 @@ pub struct DressRehearsalR6cFusionRow {
     pub left_num_ships: i64,
     pub right_num_ships: i64,
     pub fused_num_ships: i64,
-    pub hp_to_kill_after: i64,
+    pub hp_to_retire_after: i64,
     pub damage_output_after: i64,
     pub identity_lineage_recorded: bool,
     pub owner_overlay_preserved: bool,
@@ -1455,7 +1455,7 @@ fn run_combat_tick(
                     damage_disbursed: damage,
                 });
             }
-            let (ships_destroyed, num_ships_after, hp_to_kill_after, zero_cohort) =
+            let (ships_destroyed, num_ships_after, hp_to_retire_after, zero_cohort) =
                 emission_band_ship_attrition(hostile_damage, fleet.num_ships, fleet.hp_per_ship);
             destroyed_total += ships_destroyed;
             attrition.push((
@@ -1463,7 +1463,7 @@ fn run_combat_tick(
                 hostile_damage,
                 ships_destroyed,
                 num_ships_after,
-                hp_to_kill_after,
+                hp_to_retire_after,
                 zero_cohort,
                 hostile_targets,
                 apply_bps_i64(
@@ -1478,7 +1478,7 @@ fn run_combat_tick(
             hostile_damage,
             ships_destroyed,
             num_ships_after,
-            hp_to_kill_after,
+            hp_to_retire_after,
             zero_cohort,
             hostile_targets,
             damage_output,
@@ -1504,7 +1504,7 @@ fn run_combat_tick(
                 hostile_damage_received: hostile_damage,
                 ships_destroyed,
                 num_ships_after,
-                hp_to_kill_after,
+                hp_to_retire_after,
                 hostile_target_ids: hostile_targets,
                 ship_loss_event_emitted: ships_destroyed > 0,
                 zero_cohort_event_emitted: zero_cohort,
@@ -1620,7 +1620,7 @@ fn apply_ship_delta(
             num_ships_before: before,
             ship_count_delta: ship_delta,
             num_ships_after: after,
-            hp_to_kill_after: hp_to_kill_for_cohort(after, FLEET_HP_PER_SHIP),
+            hp_to_retire_after: hp_to_retire_for_cohort(after, FLEET_HP_PER_SHIP),
             damage_output_after: damage_output_for_cohort(after, FLEET_DAMAGE_PER_SHIP_PER_TICK),
             movement_boundary_request_used: false,
         });
@@ -1712,7 +1712,7 @@ fn run_friendly_fusion(
                 left_num_ships: left,
                 right_num_ships: right,
                 fused_num_ships: fused,
-                hp_to_kill_after: hp_to_kill_for_cohort(fused, hp_per_ship),
+                hp_to_retire_after: hp_to_retire_for_cohort(fused, hp_per_ship),
                 damage_output_after: damage_output_for_cohort(fused, damage_per_ship_per_tick),
                 identity_lineage_recorded: true,
                 owner_overlay_preserved: true,
@@ -2375,7 +2375,7 @@ fn tick_order() -> Vec<&'static str> {
         "R1 disruption recurrence from current fleet positions",
         "R2 labor-to-production reduce-up disburse-down blockade/divert",
         "R3 capability overlays owner-mask down",
-        "R4 SEAD field read GradientXY exact-mag2 Candidate-F threshold",
+        "R4 FIELD_POLICY field read GradientXY exact-mag2 Candidate-F threshold",
         "R5 movement BoundaryRequest REENROLL fresh-read substeps",
         "R6 combat from movement-produced co-location",
         "R6B production reinforcement birth fusion",

@@ -7,9 +7,9 @@
 
 The full green chain is in place: `SCENARIO-0080-1` accepted; `ATLAS-0080-0`, `ECON-SCALE-0080-0`, and
 `PRODUCTION-PATH-0080-1` all IMPLEMENTED/PASS. The production path already composes the scenario and
-reports **read-only SEAD composite-gap terms** (`run_production_path_0080_1` →
-`sead_composite_gap_terms`). The next product step is to turn those terms into **deterministic
-SEAD-sourced movement** — the schedule gate.
+reports **read-only FIELD_POLICY composite-gap terms** (`run_production_path_0080_1` →
+`field_policy_composite_gap_terms`). The next product step is to turn those terms into **deterministic
+FIELD_POLICY-sourced movement** — the schedule gate.
 
 This is the most consequential gate of the track because it introduces **live movement**. The narrowing
 keeps movement strictly on the proven posture: decisions are `Threshold + EmitEvent → BoundaryRequest`
@@ -60,7 +60,7 @@ per-step + replay reports. No observation/control/demo, no new substrate.
 
 27 schedule/movement tests named (opt-in only; requires production path admitted; rejects disabled
 production path; bounded steps; threshold false/true → boundary request; routes through mobility substrate;
-Terran/Pirate ship movement by SEAD gap; identity + owner-overlay preservation; membership update without
+Terran/Pirate ship movement by FIELD_POLICY gap; identity + owner-overlay preservation; membership update without
 reparenting; consumes atlas + faction-index ECON reports; replay determinism; and the full
 no-observation/control/demo, no-direct-move, no-external-boundary, no-CPU-planner, no-pass-graph,
 no-global-schedule, no-realtime/UI, no-WGSL/kernel, no-hard-currency, no-nested-RF, no-ClauseThing
@@ -79,5 +79,5 @@ remains COMPLETE/PARKED.
 ## Manual diff review
 
 Docs-only diff: opening spec + this report + production-track ladder row + mapping-guidance status +
-worklog entry. No code files changed. Every gate mention is opt-in, scenario-scoped, SEAD-sourced, and
+worklog entry. No code files changed. Every gate mention is opt-in, scenario-scoped, FIELD_POLICY-sourced, and
 future-implementation-only. Observation/control/demo and all parked ladders remain closed.

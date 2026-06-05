@@ -40,7 +40,7 @@ cargo --version
 cargo test -p simthing-driver --test phase_m_eml_gadget_2a_snapshot_copy -- --nocapture
 cargo test -p simthing-spec --test eml_gadget_tier1 -- --nocapture
 cargo test -p simthing-spec --test resource_economy_authoring_preview -- --nocapture
-cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture -- --nocapture
+cargo test -p simthing-driver --test phase_m_economy_field_policy_product_fixture -- --nocapture
 cargo test -p simthing-driver --test phase_m_first_slice_runtime -- --nocapture
 cargo test -p simthing-spec --test region_field_spec_admission -- --nocapture
 cargo test -p simthing-gpu --test accumulator_op_session_gpu_bridge -- --nocapture
@@ -120,7 +120,7 @@ Test 3 (the core one-step snapshot-before-update proof) was left completely unch
 | `phase_m_eml_gadget_2a_snapshot_copy` (all 6)    | PASS   | Test 4 now clean + oracle; Test 3 untouched |
 | `eml_gadget_tier1`                                | PASS   | No regression |
 | `resource_economy_authoring_preview`              | PASS   | No regression |
-| `phase_m_economy_sead_product_fixture`            | PASS   | No regression |
+| `phase_m_economy_field_policy_product_fixture`            | PASS   | No regression |
 | `phase_m_first_slice_runtime`                     | PASS   | No regression |
 | `region_field_spec_admission`                     | PASS   | No regression |
 | `accumulator_op_session_gpu_bridge`               | PASS   | No regression |

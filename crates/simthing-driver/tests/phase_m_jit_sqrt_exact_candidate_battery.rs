@@ -36,7 +36,7 @@ const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
     "supply",
     "personality",
     "drone",
-    "SEAD",
+    "FIELD_POLICY",
 ];
 
 const FORBIDDEN_EXACT0_TERMS: &[&str] = &["f64", "F64RoundDown", "SHADER_F64", "sqrt_cr_c"];

@@ -28,7 +28,7 @@ a later ECON scaling slice — explicitly out of OWNER-0.**
 - `docs/invariants.md` (targeted scan — no owner-relation/latched/overlay term; no conflict)
 - `docs/design_v7_8.md`, `docs/design_v7_8_production_track.md`
 - `docs/design_v7_9_mobility_transfer_allocation_production_track.md`
-- `docs/workshop/mobility_and_transfer_allocation.md`, `mapping_current_guidance.md`, `sead_self_ai_track.md`
+- `docs/workshop/mobility_and_transfer_allocation.md`, `mapping_current_guidance.md`, `field_policy_track.md`
 - `docs/tests/phase_mobility_scenario0_results.md`, `phase_mobility_scenario0_acceptance_review_results.md`, `phase_mobility_owner_band_budget_audit_results.md`
 - `docs/tests/phase_mobility_alloc0_opening_review_results.md`, `phase_mobility_alloc0_results.md`
 - `docs/tests/phase_mobility_reenroll0_opening_review_results.md`, `phase_mobility_reenroll0_results.md`
@@ -153,7 +153,7 @@ production gameplay integration, no production `SimSession` wiring, no default-o
 semantic/raw WGSL, no `simthing-sim` semantic awareness, no CPU planner/urgency/commitment emission,
 no Resource Flow default-on, no hard-currency through Resource Flow, no Hybrid-Strata/faction-index
 scaling, no invariant changes. Owner-entities remain non-spatial; capture remains an owner-column
-flip; latched modifiers remain blockade-immune and distinct from per-tick blockable flows; SEAD
+flip; latched modifiers remain blockade-immune and distinct from per-tick blockable flows; FIELD_POLICY
 decisions stay GPU-resident threshold/event outputs. v7.8 M/E/T closure (A-0/B-0/C-2), AO-WGSL-0
 default-off, ClauseThing/L3 parked, FrontierV2-5 rejected, ACT/EVENT/OBS/PIPE no reopen — all
 unchanged.

@@ -26,14 +26,14 @@ spacing remedial), LOC, PACK, PACK-GPU (accept), STORE (after the compile/logic 
 ## 3. Rung-by-rung closeout
 
 ### GEN — CLOSED / PASS
-Pure deterministic fixture data; no SimThing wiring / GPU / economy / SEAD / runtime. 20×20 galaxy,
+Pure deterministic fixture data; no SimThing wiring / GPU / economy / FIELD_POLICY / runtime. 20×20 galaxy,
 13 systems with spacing/bounds/uniqueness asserts (the spacing-band defect was caught on execution and
 remediated to green).
 
 ### LOC — CLOSED / PASS
 `Location`-kind gridcell primitive as fixture layout only; dense row-major cell-slot ranges
 (`cell_index` single indexing home); occupants preserved as **contributors into cells** (not merged);
-no PACK/STORE/GPU/economy/SEAD/runtime.
+no PACK/STORE/GPU/economy/FIELD_POLICY/runtime.
 
 ### PACK / EC-A2a — CLOSED / PASS
 CPU atlas batch packing: 3 homogeneous tile classes, algebraic `G=0` tile-local mask + CPU oracle,
@@ -89,7 +89,7 @@ ClauseThing/L3; no UI/realtime loop; no nested-RF depth beyond the named future 
 **Authorized: `R1-OPEN` — Disruption-heatmap / EC1 opening spec.** Opens *only* as a design-authority
 opening-spec gate (Opus authors), **not** implementation. R1 intent (§12.5): pirate/patrol presence →
 `disruption` column on gridcell SimThings → BoundedFeedback decay → diffuse to `location_status` →
-reduce up to the starmap heatmap; CPU oracle; inspectable heatmap artifact. **No SEAD movement; no
+reduce up to the starmap heatmap; CPU oracle; inspectable heatmap artifact. **No FIELD_POLICY movement; no
 R2/R3/R4/R5; no OWNER runtime beyond what R1 explicitly consumes.** The R1 opening spec will be authored
 as the next gate.
 

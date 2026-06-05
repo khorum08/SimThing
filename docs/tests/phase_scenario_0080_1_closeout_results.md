@@ -17,7 +17,7 @@ requires a **new named product scenario or explicit product authorization.**
 | `ATLAS-0080-0` | IMPLEMENTED / PASS | `run_atlas_0080_0` (sparse-residency nested mapping) |
 | `ECON-SCALE-0080-0` | IMPLEMENTED / PASS | `run_econ_scale_0080_0` (faction-index contended ECON) |
 | `PRODUCTION-PATH-0080-1` | IMPLEMENTED / PASS | `run_production_path_0080_1` |
-| `DEFAULT-SCHEDULE-0080-1` | IMPLEMENTED / PASS | `run_default_schedule_0080_1` (SEAD-sourced movement) |
+| `DEFAULT-SCHEDULE-0080-1` | IMPLEMENTED / PASS | `run_default_schedule_0080_1` (FIELD_POLICY-sourced movement) |
 | `GAMEPLAY-0080-1` | IMPLEMENTED / PASS | `observe_gameplay_0080_1` (read-only export) |
 | `CONTROL-0080-1` | IMPLEMENTED / PASS | `admit_control_0080_1` (bounded command admission) |
 | `DEMO-0080-1` | IMPLEMENTED / PASS | `run_demo_0080_1` (headless demo/export library helper, `No CLI binary`) |
@@ -55,11 +55,11 @@ consuming layer (`replay_*` reproduces identical reports + checksums).
 The Nested Starmap vertical slice is now **structurally realized** (atlas sparse-residency nested
 `session → starmap(10×10) → 10 starsystems(10×10) → planet(10×10 submap)`), **economically contended**
 (faction-index ECON with the Pirate as a full economy faction, deterministic integer clearing under a
-CPU parity oracle), **composed** (production path), **runnable** (SEAD-sourced schedule with live Terran
+CPU parity oracle), **composed** (production path), **runnable** (FIELD_POLICY-sourced schedule with live Terran
 and Pirate movement), **controllable through bounded admission** (control — parameters only, never direct
 movement), **observable** (read-only export), and **reproducibly exportable** (headless demo).
 
-Movement throughout remains GPU-resident SEAD-sourced (`Threshold`+`EmitEvent`→`BoundaryRequest`); no CPU
+Movement throughout remains GPU-resident FIELD_POLICY-sourced (`Threshold`+`EmitEvent`→`BoundaryRequest`); no CPU
 planner ever entered the path. Identity and owner overlays are preserved across moves, membership updates
 without reparenting, owner simthings remain non-spatial session siblings, and capture-as-reparenting
 remains rejected. Owner-overlay down-broadcast and ownership up-aggregation are derived numeric summaries

@@ -2,9 +2,9 @@
 
 > **Status: ACCEPTED (SCENARIO-0080-0-ACCEPTANCE-0, design authority + product, 2026-06-02)** — with a
 > design-authority enrichment: the patrol relocate/patrol decision is sourced from the **accepted
-> GPU-resident SEAD posture** (`Threshold`+`EmitEvent`→`BoundaryRequest`), not an externally-scripted
-> `move_request` and not a CPU planner — so the scenario exercises **SEAD + Ownership + Flow** together.
-> This pulls no new substrate (SEAD V1 is an accepted decision mechanism; mobility/transfer remains the
+> GPU-resident FIELD_POLICY posture** (`Threshold`+`EmitEvent`→`BoundaryRequest`), not an externally-scripted
+> `move_request` and not a CPU planner — so the scenario exercises **FIELD_POLICY + Ownership + Flow** together.
+> This pulls no new substrate (FIELD_POLICY V1 is an accepted decision mechanism; mobility/transfer remains the
 > single substrate wired). `PRODUCTION-PATH-0080-0` is now OPEN, scoped to this scenario on the 0.0.7.9
 > mobility/transfer substrate. Acceptance review:
 > [`../tests/phase_scenario_0080_0_acceptance_review_results.md`](../tests/phase_scenario_0080_0_acceptance_review_results.md).
@@ -44,10 +44,10 @@ In product terms:
 - The patrol may provide a **local economic/security effect**, such as reducing local disruption or increasing local route safety.
 - **Decision source (design-authority enrichment, accepted 2026-06-02):** the patrol's relocate/patrol
   decision is **GPU-resident** — a `disruption`/`local_security` `Threshold` crossing → `EmitEvent` →
-  `BoundaryRequest` (the accepted SEAD Self-AI Proposal Pipeline V1 posture). The `move_request` is the
+  `BoundaryRequest` (the accepted FIELD_POLICY Field agent Proposal Pipeline V1 posture). The `move_request` is the
   materialized form of that proposal. **Not** a CPU planner; **not** an externally-scripted request.
-  This makes the scenario exercise SEAD (decision) + mobility (move) + Ownership/Flow (coherence)
-  together. It pulls no new substrate — SEAD V1 is an accepted mechanism, not a newly-pulled substrate.
+  This makes the scenario exercise FIELD_POLICY (decision) + mobility (move) + Ownership/Flow (coherence)
+  together. It pulls no new substrate — FIELD_POLICY V1 is an accepted mechanism, not a newly-pulled substrate.
 
 - When the patrol moves from **Location A** to **Location B**:
 

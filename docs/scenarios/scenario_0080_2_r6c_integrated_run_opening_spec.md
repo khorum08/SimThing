@@ -53,7 +53,7 @@ R6C closes that gap. It does **not** add a new mechanism; it **wires the proven 
    is produced by R5 movers converging — never hand-placed.**
 
 3. **A tick driver.** `for tick in 0..N { r1; r2; r3; r4; r5(multi-step by speed); r6; r6b; write_back }`
-   with `N = 100` canonical. Movement is **≤ speed greedy SEAD sub-steps per tick** (Pirate 3 / Patrol 2),
+   with `N = 100` canonical. Movement is **≤ speed greedy FIELD_POLICY sub-steps per tick** (Pirate 3 / Patrol 2),
    each sub-step a fresh local gradient read + threshold (spec §8) — re-enroll → re-evaluate → step, or
    stop early. Per-sub-step re-enrollment is what enables **interception in an intermediate cell**.
 
@@ -77,7 +77,7 @@ for tick in 0..100:
          blockade(≥100) gates + diverts owner-column at disrupted systems
   3. R3  resolve capability overlays; mask down by owner (read-side)
   4. R4  each fleet reads composite field at its cell → GradientXY → exact-sqrt magnitude → threshold
-  5. R5  for each fleet: up to `speed` greedy SEAD sub-steps (REENROLL each sub-step);
+  5. R5  for each fleet: up to `speed` greedy FIELD_POLICY sub-steps (REENROLL each sub-step);
          starport production ≥100 → fission a new Fleet at the starport cell
   6. R6  for every cell with hostile co-located cohorts: adversarial Resource-Flow combat,
          emission-band attrition, remove cohort at num_ships==0 (Departure)

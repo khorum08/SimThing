@@ -1,7 +1,7 @@
 //! `DEMO-0080-1` — Nested Starmap headless demo/export library helper. Opt-in/default-off.
 //! No CLI binary. Pure read/orchestration: applies a canonical bounded `CONTROL-0080-1`
 //! command batch and runs the existing control → schedule → observation/export path.
-//! Adds no simulation behavior and no decision logic; SEAD remains the sole mover-decision source.
+//! Adds no simulation behavior and no decision logic; FIELD_POLICY remains the sole mover-decision source.
 
 use crate::{
     admit_control_0080_1, Control0081AdmissionInput, Control0081AdmissionReport,
@@ -39,7 +39,7 @@ pub struct Demo0081Surface {
     pub player_command_loop: bool,
     pub direct_movement_command: bool,
     pub external_boundary_request: bool,
-    pub sead_bypass: bool,
+    pub field_policy_bypass: bool,
     pub global_default_schedule: bool,
 }
 
@@ -61,7 +61,7 @@ pub struct Demo0081ForbiddenRequests {
     pub cli_binary: bool,
     pub direct_movement_command: bool,
     pub external_boundary_request: bool,
-    pub sead_bypass: bool,
+    pub field_policy_bypass: bool,
     pub cpu_planner_or_commitment: bool,
     pub player_command_loop: bool,
     pub ui_framework: bool,
@@ -152,7 +152,7 @@ pub struct Demo0081Report {
     pub no_cli_binary: bool,
     pub no_direct_movement_command: bool,
     pub no_external_boundary_request: bool,
-    pub no_sead_bypass: bool,
+    pub no_field_policy_bypass: bool,
     pub no_cpu_planner_or_commitment: bool,
     pub no_player_command_loop: bool,
     pub no_ui_framework: bool,
@@ -185,7 +185,7 @@ pub struct Demo0081Report {
     pub faction_index_econ_summary_present: bool,
     pub owner_overlay_summary_present: bool,
     pub ownership_up_aggregation_summary_present: bool,
-    pub sead_movement_trace_present: bool,
+    pub field_policy_movement_trace_present: bool,
 
     pub movement_rows: Vec<Demo0081MovementRow>,
 
@@ -250,8 +250,8 @@ fn validate_surface(surface: &Demo0081Surface, diagnostics: &mut Vec<&'static st
     if surface.external_boundary_request {
         diagnostics.push("external_boundary_request");
     }
-    if surface.sead_bypass {
-        diagnostics.push("sead_bypass");
+    if surface.field_policy_bypass {
+        diagnostics.push("field_policy_bypass");
     }
     if surface.global_default_schedule {
         diagnostics.push("global_default_schedule");
@@ -268,8 +268,8 @@ fn validate_forbidden(forbidden: &Demo0081ForbiddenRequests, diagnostics: &mut V
     if forbidden.external_boundary_request {
         diagnostics.push("external_boundary_request");
     }
-    if forbidden.sead_bypass {
-        diagnostics.push("sead_bypass");
+    if forbidden.field_policy_bypass {
+        diagnostics.push("field_policy_bypass");
     }
     if forbidden.cpu_planner_or_commitment {
         diagnostics.push("cpu_planner_or_commitment");
@@ -377,8 +377,8 @@ fn base_report(
     let up_agg_present = obs
         .map(|o| !o.summary.ownership_up_aggregation_summary.is_empty())
         .unwrap_or(false);
-    let sead_trace_present = obs
-        .map(|o| o.summary.sead_movement_trace_included)
+    let field_policy_trace_present = obs
+        .map(|o| o.summary.field_policy_movement_trace_included)
         .unwrap_or(false);
 
     // Build command transcript rows.
@@ -438,7 +438,8 @@ fn base_report(
             && !input.forbidden.direct_movement_command,
         no_external_boundary_request: !input.surface.external_boundary_request
             && !input.forbidden.external_boundary_request,
-        no_sead_bypass: !input.surface.sead_bypass && !input.forbidden.sead_bypass,
+        no_field_policy_bypass: !input.surface.field_policy_bypass
+            && !input.forbidden.field_policy_bypass,
         no_cpu_planner_or_commitment: !input.forbidden.cpu_planner_or_commitment,
         no_player_command_loop: !input.surface.player_command_loop
             && !input.forbidden.player_command_loop,
@@ -469,7 +470,7 @@ fn base_report(
         faction_index_econ_summary_present: econ_present,
         owner_overlay_summary_present: owner_present,
         ownership_up_aggregation_summary_present: up_agg_present,
-        sead_movement_trace_present: sead_trace_present,
+        field_policy_movement_trace_present: field_policy_trace_present,
         movement_rows,
         demo_text_export,
         deterministic_replay_checksum: 0,
@@ -567,7 +568,7 @@ fn empty_control_report() -> Control0081AdmissionReport {
         command_writes_existing_bounded_values_only: true,
         command_moved_ship: false,
         command_emitted_boundary_request: false,
-        command_bypassed_sead: false,
+        command_bypassed_field_policy: false,
         direct_movement_control: false,
         player_command_loop: false,
         ui_framework_present: false,

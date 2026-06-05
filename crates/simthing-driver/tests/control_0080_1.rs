@@ -71,7 +71,7 @@ fn control_0080_1_accepts_bounded_schedule_value_commands() {
     assert!(admitted.command_writes_existing_bounded_values_only);
     assert!(!admitted.command_moved_ship);
     assert!(!admitted.command_emitted_boundary_request);
-    assert!(!admitted.command_bypassed_sead);
+    assert!(!admitted.command_bypassed_field_policy);
 }
 
 #[test]
@@ -162,17 +162,19 @@ fn control_0080_1_rejects_external_boundary_request() {
 }
 
 #[test]
-fn control_0080_1_rejects_sead_bypass() {
-    let rejected = with_commands(vec![Control0081Command::SeadBypass]);
+fn control_0080_1_rejects_field_policy_bypass() {
+    let rejected = with_commands(vec![Control0081Command::FieldPolicyBypass]);
     assert!(!rejected.admitted);
     assert!(rejected
         .rejected_commands
         .iter()
-        .any(|cmd| cmd.diagnostic == "sead_bypass_rejected"));
+        .any(|cmd| cmd.diagnostic == "field_policy_bypass_rejected"));
 
-    let rejected = rejected_with(|forbidden| forbidden.sead_bypass = true);
+    let rejected = rejected_with(|forbidden| forbidden.field_policy_bypass = true);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"sead_bypass_rejected"));
+    assert!(rejected
+        .diagnostics
+        .contains(&"field_policy_bypass_rejected"));
 }
 
 #[test]
@@ -276,5 +278,5 @@ fn control_0080_1_docs_status_matches_gate() {
     assert!(!admitted.player_command_loop);
     assert!(!admitted.command_emitted_boundary_request);
     assert!(!admitted.command_moved_ship);
-    assert!(!admitted.command_bypassed_sead);
+    assert!(!admitted.command_bypassed_field_policy);
 }

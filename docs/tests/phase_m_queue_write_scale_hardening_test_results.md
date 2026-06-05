@@ -99,4 +99,4 @@ V1 uses a generic GPU fill dispatch for strided column fills when count > 1 rath
 
 ## Final Verdict
 
-PASS — Phase M Queue-Write Scale Hardening V1 landed; first-slice child resource population no longer uses per-child queue writes, prior GPU-resident first-slice/SummaryValidity/SEAD behavior remains green, and no atlas, semantic WGSL, source_mask, perception, map residency expansion, default SimSession wiring, or CPU-side AI planning was introduced.
+PASS — Phase M Queue-Write Scale Hardening V1 landed; first-slice child resource population no longer uses per-child queue writes, prior GPU-resident first-slice/SummaryValidity/FIELD_POLICY behavior remains green, and no atlas, semantic WGSL, source_mask, perception, map residency expansion, default SimSession wiring, or CPU-side AI planning was introduced.

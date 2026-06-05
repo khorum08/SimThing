@@ -38,7 +38,7 @@ Stale closed/confirmed JIT reports, docs-cleanup R-series hygiene loops, parking
 
 ### Entire `docs/tests/archive/` tree (superseded sandbox logs/revert reports; workshop preserves remain under `docs/workshop/archive/`)
 
-26 files including mapping/SEAD revert logs, parked sandbox full logs, and v7_6 promotion artifacts.
+26 files including mapping/FIELD_POLICY revert logs, parked sandbox full logs, and v7_6 promotion artifacts.
 
 **No new archive was created.**
 
@@ -80,7 +80,7 @@ E-phase, E11, Resource Flow, ResourceEconomySpec, economy boundary, treasury, an
 | File / pattern | Classification |
 |---|---|
 | `docs/tests/phase_m_daily_economy_fixture_test_results.md` | **KEEP** — active/stalled evidence |
-| `docs/tests/phase_m_economy_sead_product_fixture_test_results.md` | **KEEP** — active/stalled evidence |
+| `docs/tests/phase_m_economy_field_policy_product_fixture_test_results.md` | **KEEP** — active/stalled evidence |
 | `docs/tests/phase_m_resource_economy_authoring_ergonomics*.md` | **KEEP** — active/stalled evidence |
 | `docs/tests/phase_m_boundary_resolution_doctrine_r1/r2_*` | **KEEP** — referenced by active docs |
 | `docs/tests/phase_m_boundary_cadence_doctrine_audit.md` | **KEEP** — active/stalled evidence |
@@ -88,7 +88,7 @@ E-phase, E11, Resource Flow, ResourceEconomySpec, economy boundary, treasury, an
 | `docs/workshop/e11_implementation_handoff.md` | **KEEP** — stalled E11 restart handoff (restored R1 from `eed008e`; was incorrectly absent from `master` after closeout) |
 | `docs/workshop/e11_readiness_review.md` | **KEEP** — stalled E11 readiness review (restored R1 from `eed008e`; was incorrectly absent from `master` after closeout) |
 | `docs/reviews/e11b_*`, `resource_flow_*`, `phase_m_boundary_resolution_and_example_economy_*` | **KEEP** — active/stalled evidence |
-| `docs/tests/sead_*_sandbox_test_results.md` | **KEEP** — stalled SEAD probe evidence |
+| `docs/tests/field_policy_*_sandbox_test_results.md` | **KEEP** — stalled FIELD_POLICY probe evidence |
 | `docs/adr/resource_flow_substrate.md` | **KEEP** — binding ADR |
 | E-phase files in deleted JIT/hygiene/parking targets | **DELETE** — duplicate/superseded (none matched E-phase retention criteria) |
 
@@ -179,4 +179,4 @@ The initial closeout report incorrectly classified `docs/workshop/e11_implementa
 
 ## Final verdict
 
-**PASS (R1)** — Phase M-JIT documentation closeout cleanup landed; stale docs/tests reports and stale hygiene/parking artifacts were deleted rather than archived, only Opus-needed JIT evidence remains (6 files including this report), active docs no longer reference deleted reports, guardrails remain binding at the designer/spec-admission layer, no SHA-mismatch hygiene loop was started, no production/default wiring or exact/approx authority discipline was weakened, required tests and `cargo check --workspace` are green, E-phase stalled evidence preserved on `master` (E11 handoff/readiness restored R1), and V7.7 / Mapping ADR / SEAD posture remains intact.
+**PASS (R1)** — Phase M-JIT documentation closeout cleanup landed; stale docs/tests reports and stale hygiene/parking artifacts were deleted rather than archived, only Opus-needed JIT evidence remains (6 files including this report), active docs no longer reference deleted reports, guardrails remain binding at the designer/spec-admission layer, no SHA-mismatch hygiene loop was started, no production/default wiring or exact/approx authority discipline was weakened, required tests and `cargo check --workspace` are green, E-phase stalled evidence preserved on `master` (E11 handoff/readiness restored R1), and V7.7 / Mapping ADR / FIELD_POLICY posture remains intact.

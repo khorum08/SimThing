@@ -17,11 +17,11 @@ Files touched:
 Confirmation:
 - Explicit opt-in/default-off: confirmed. Default observation is admitted as disabled/no-op; default-on is rejected.
 - Schedule report consumption: confirmed. `Gameplay0081Input::explicit_opt_in_from_report` consumes `DefaultSchedule0081RunReport`; `Gameplay0081Input::explicit_opt_in` may invoke `run_default_schedule_0080_1` through explicit opt-in.
-- Transcript/export: deterministic text export includes scenario id/name, schedule id/status, starmap shape, active/resident theaters, fixed Terran/Pirate faction set, Pirate full-economy participation, contended ECON, owner-overlay inheritance, ownership up-aggregation, SEAD movement trace, Terran/Pirate movement rows, no-mover rows, and replay checksum.
+- Transcript/export: deterministic text export includes scenario id/name, schedule id/status, starmap shape, active/resident theaters, fixed Terran/Pirate faction set, Pirate full-economy participation, contended ECON, owner-overlay inheritance, ownership up-aggregation, FIELD_POLICY movement trace, Terran/Pirate movement rows, no-mover rows, and replay checksum.
 - Atlas residency summary: included.
 - Faction-index ECON summary: included.
 - Owner-overlay and ownership up-aggregation summary: included.
-- SEAD movement trace: included.
+- FIELD_POLICY movement trace: included.
 - Terran/Pirate movement rows: included.
 - Replay determinism/checksum: confirmed by replay equality over report, transcript, export, and checksum.
 - Read-only discipline: observer emits no events and materializes no `BoundaryRequest`s; it only reads an existing schedule report or explicitly invokes the already-existing schedule path.
@@ -55,10 +55,10 @@ Tests run:
 - `cargo test -p simthing-spec --test mobility_runtime0_composition` - PASS
 - `cargo test -p simthing-spec --test mobility_runtime1_production_fixture` - PASS
 - `cargo test -p simthing-driver --test mobility_runtime1a_runtime_fixture` - PASS
-- `cargo test -p simthing-driver --test phase_m_sead_obs4_threshold_event` - PASS
-- `cargo test -p simthing-driver --test phase_m_sead_event0_compaction` - PASS
-- `cargo test -p simthing-driver --test phase_m_sead_pipe0_observer_event_pipeline` - PASS
-- `cargo test -p simthing-spec --test sead_obs0_overlay_score_admission` - PASS
+- `cargo test -p simthing-driver --test phase_m_field_policy_obs4_threshold_event` - PASS
+- `cargo test -p simthing-driver --test phase_m_field_policy_event0_compaction` - PASS
+- `cargo test -p simthing-driver --test phase_m_field_policy_pipe0_observer_event_pipeline` - PASS
+- `cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission` - PASS
 - `cargo check --workspace` - PASS
 
 Skipped tests: none. Target names matched the handoff.

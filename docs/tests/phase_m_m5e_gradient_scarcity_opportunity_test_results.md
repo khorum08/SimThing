@@ -131,7 +131,7 @@ cargo check --workspace
 
 ## Posture Attestation
 
-No semantic WGSL, no new WGSL, no atlas/M-4A, no active-mask admission, no source-mask/source-identity work, no default mapping wiring, no simthing-sim changes, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling; M-5E uses existing M-5-gradient substrate with grouped strict-sink RegionField admission; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+No semantic WGSL, no new WGSL, no atlas/M-4A, no active-mask admission, no source-mask/source-identity work, no default mapping wiring, no simthing-sim changes, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling; M-5E uses existing M-5-gradient substrate with grouped strict-sink RegionField admission; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.
 
 ---
 

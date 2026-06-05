@@ -82,7 +82,7 @@ One mechanism for resource interaction at scale:
     and arena-to-arena coupling. Built by simthing-spec at session
     open from designer-declared admission rules; refreshed at boundary
     structural mutations; consumed by simthing-driver as AccumulatorOp
-    registrations targeting the existing GPU substrate.
+    registrations selection the existing GPU substrate.
 
   Constitutional rule:
     Capability is universal — any SimThing CAN participate.
@@ -592,7 +592,7 @@ clauses:**
 +     and arena-to-arena coupling. Built by simthing-spec at session open
 +     from designer-declared admission rules; refreshed at boundary
 +     structural mutations; consumed by simthing-driver as AccumulatorOp
-+     registrations targeting the existing GPU substrate.
++     registrations selection the existing GPU substrate.
 +
 +   Constitutional rule:
 +     Capability is universal       — any SimThing CAN participate.

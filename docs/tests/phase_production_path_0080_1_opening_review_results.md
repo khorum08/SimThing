@@ -17,7 +17,7 @@ both substrates pass with full regression suites green, their reports expose exa
 composition needs, and the docs are consistent — no blockers exist.
 
 The composition is narrowed to read-side/structural composition only: owner-overlay inheritance and
-ownership up-aggregation as **numeric overlay summaries** (no new owner substrate), SEAD composite-gap
+ownership up-aggregation as **numeric overlay summaries** (no new owner substrate), FIELD_POLICY composite-gap
 terms as **read-only** reports (no CPU planner, no movement). Movement/schedule is explicitly the next
 slice, not this gate.
 
@@ -53,14 +53,14 @@ scenario, calls `run_atlas_0080_0` + `run_econ_scale_0080_0` with explicit opt-i
 admitted (rejecting if either is disabled/rejected/not admitted), and composes a deterministic
 scenario-level report (starmap/starsystem/planet structure, resident theaters, fixed faction set, pirate
 full-economy participation, contended clearing, derived ownership up-aggregation summary, inherited overlay
-weight summary, read-only SEAD composite-gap terms, replay checksum). No schedule/movement, no new
+weight summary, read-only FIELD_POLICY composite-gap terms, replay checksum). No schedule/movement, no new
 substrate.
 
 ## Future test list summary
 
 22 composition tests named (opt-in only; requires both substrates admitted; rejects disabled atlas/econ;
 instantiates nested shape; composes residency + faction-index ECON reports; reports owner-overlay
-inheritance + ownership up-aggregation; read-only SEAD composite-gap terms; replay determinism; and the
+inheritance + ownership up-aggregation; read-only FIELD_POLICY composite-gap terms; replay determinism; and the
 full no-schedule/no-movement/no-pass-graph/no-WGSL/no-hard-currency/no-nested-RF/no-ClauseThing
 rejections; docs-status match). **None implemented.**
 

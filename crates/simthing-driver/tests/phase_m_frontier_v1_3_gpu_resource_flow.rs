@@ -432,10 +432,10 @@ fn frontier_v1_3_rejects_resource_flow_bypass() {
     assert!(!validate_frontier_v1_admission(&shared_pool).accepted);
 
     let mut planner = skeleton;
-    planner.sead.cpu_planner = true;
+    planner.field_policy.cpu_planner = true;
     assert!(!validate_frontier_v1_admission(&planner).accepted);
 
-    bypass.sead.resource_dispatch_via_allocator = false;
+    bypass.field_policy.resource_dispatch_via_allocator = false;
     assert_eq!(
         classify_proposal_route(ProposalKind::ResourceDispatch, &bypass),
         ProposalRoute::Rejected
@@ -492,13 +492,16 @@ fn frontier_v1_3_deferred_features_reject() {
         ),
         (
             "act5_ladder",
-            Box::new(|s| s.sead.pipeline_version = SeadPipelineVersion::Other),
+            Box::new(|s| s.field_policy.pipeline_version = FieldPolicyPipelineVersion::Other),
         ),
         (
             "parallel_fixture",
             Box::new(|s| s.resource_flow.parallel_fixture_economy = true),
         ),
-        ("cpu_planner", Box::new(|s| s.sead.cpu_planner = true)),
+        (
+            "cpu_planner",
+            Box::new(|s| s.field_policy.cpu_planner = true),
+        ),
     ];
     for (label, mutate) in deferred {
         let mut skeleton = frontier_v1_1_smoke_skeleton();
@@ -519,7 +522,7 @@ fn frontier_v1_3_no_simthing_sim_semantic_awareness() {
     ));
     for needle in [
         "FrontierV1",
-        "SEAD",
+        "FIELD_POLICY",
         "RegionCell",
         "ArenaRegistry",
         "proposal",

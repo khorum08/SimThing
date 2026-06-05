@@ -26,9 +26,9 @@ scope and a stop-and-escalate. This gate is an *observer*, not a *controller*.
 
 ## 1. Why observation now unlocks product visibility
 
-Nested Starmap now has **live SEAD-sourced movement** (`DEFAULT-SCHEDULE-0080-1`). Its run report
+Nested Starmap now has **live FIELD_POLICY-sourced movement** (`DEFAULT-SCHEDULE-0080-1`). Its run report
 (`DefaultSchedule0081RunReport`) is not yet product-readable enough for designer/user inspection. A
-read-only observation/export surface makes the nested theater, faction ECON, ownership overlays, SEAD
+read-only observation/export surface makes the nested theater, faction ECON, ownership overlays, FIELD_POLICY
 decisions, and ship movement **legible without changing simulation state**. This is the first
 product-facing consumer of the `0080-1` stack — **not** a control gate, **not** a UI framework, and
 **not** a passive proof wrapper.
@@ -82,7 +82,7 @@ It **must not**: mutate simulation state beyond invoking the existing opt-in sch
 APIs; add UI or a real-time loop; add demo packaging; add a global schedule.
 
 **Read-side discipline.** The observer is pure Rust read/orchestration over an existing report; it touches
-no shader text and no GPU kernel (WGSL ban, invariants row 169/194) and adds no decision logic — SEAD
+no shader text and no GPU kernel (WGSL ban, invariants row 169/194) and adds no decision logic — FIELD_POLICY
 remains the sole mover-decision source. Any need for new shader/kernel here is a stop-and-escalate.
 
 ---
@@ -95,7 +95,7 @@ remains the sole mover-decision source. Any need for new shader/kernel here is a
 - `gameplay_0080_1_includes_atlas_residency_summary`
 - `gameplay_0080_1_includes_faction_index_econ_summary`
 - `gameplay_0080_1_includes_owner_overlay_and_up_aggregation_summary`
-- `gameplay_0080_1_includes_sead_movement_trace`
+- `gameplay_0080_1_includes_field_policy_movement_trace`
 - `gameplay_0080_1_includes_terran_and_pirate_movement_rows`
 - `gameplay_0080_1_replay_transcript_deterministic`
 - `gameplay_0080_1_no_control_or_command_input`

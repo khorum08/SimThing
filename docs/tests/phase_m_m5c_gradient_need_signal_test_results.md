@@ -112,14 +112,14 @@ cargo check --workspace
 ```
 **Result:** **PASS**
 
-`phase_m_economy_sead_product_fixture` not run — change does not touch product-fixture support or commitment wiring.
+`phase_m_economy_field_policy_product_fixture` not run — change does not touch product-fixture support or commitment wiring.
 
 ---
 
 ## Posture Attestation
 
-No semantic WGSL, no default mapping wiring, no simthing-sim changes, no source-mask/source-identity work, no atlas/M-4A, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+No semantic WGSL, no default mapping wiring, no simthing-sim changes, no source-mask/source-identity work, no atlas/M-4A, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.
 
 ---
 
-**PASS** — Phase M-5C-gradient landed as a Tier-1 fast-lane product-facing need/routing signal fixture over the existing M-5A/M-5B gradient substrate, using single-target Gradient X/Y, existing reductions, and EMA + WeightedAccumulator L3 composition, with one test report and compact status update only, no new substrate, no semantic WGSL, no dual-output GradientXY, no sqrt/new opcode, no L1 coupling, no source-mask/source-identity, no atlas/M-4A, no default mapping wiring, no simthing-sim changes, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling, and V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+**PASS** — Phase M-5C-gradient landed as a Tier-1 fast-lane product-facing need/routing signal fixture over the existing M-5A/M-5B gradient substrate, using single-target Gradient X/Y, existing reductions, and EMA + WeightedAccumulator L3 composition, with one test report and compact status update only, no new substrate, no semantic WGSL, no dual-output GradientXY, no sqrt/new opcode, no L1 coupling, no source-mask/source-identity, no atlas/M-4A, no default mapping wiring, no simthing-sim changes, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling, and V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.

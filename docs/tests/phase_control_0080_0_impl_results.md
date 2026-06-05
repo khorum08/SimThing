@@ -13,7 +13,7 @@ Implemented `CONTROL-0080-0` as a bounded command-admission layer in `simthing-d
 - Accepts tiny validated command vocabulary
 - Writes only existing `DefaultSchedule0080Input` bounded values/config
 - Invokes existing schedule → observation path after admitted commands
-- Explicit opt-in/default-off; no direct movement, boundary emission, or SEAD bypass
+- Explicit opt-in/default-off; no direct movement, boundary emission, or FIELD_POLICY bypass
 
 ## Files touched
 
@@ -48,7 +48,7 @@ Rejected command types: `DirectPatrolMove`, `DirectPirateMove`, `ExternalBoundar
 
 ## Schedule / observation path
 
-After admitted commands: `run_default_schedule_0080_0` → `observe_gameplay_0080_0` → `export_gameplay_0080_text`. Commands never move entities directly, never emit `BoundaryRequest`, never bypass SEAD.
+After admitted commands: `run_default_schedule_0080_0` → `observe_gameplay_0080_0` → `export_gameplay_0080_text`. Commands never move entities directly, never emit `BoundaryRequest`, never bypass FIELD_POLICY.
 
 ## Deterministic replay
 
@@ -62,7 +62,7 @@ After admitted commands: `run_default_schedule_0080_0` → `observe_gameplay_008
 | `cargo test -p simthing-driver --test gameplay_0080_0` | **PASS** |
 | `cargo test -p simthing-driver --test default_schedule_0080_0` | **PASS** |
 | `cargo test -p simthing-driver --test production_path_0080_0` | **PASS** |
-| Mobility substrate + SEAD regression suites | **PASS** |
+| Mobility substrate + FIELD_POLICY regression suites | **PASS** |
 | `cargo check --workspace` | **PASS** (pre-existing warnings only) |
 
 No tests skipped.

@@ -25,19 +25,19 @@
 
 ### 0.0 Purpose — the unitary vision (why §0 is transient)
 Maximal SimThing conformance is in the transient constitution for **one** reason: it is the mechanism
-by which **conflict, opportunity, ambition, and exploitation collapse into a single generic,
+by which **conflict, opportunity, ambition, and extraction collapse into a single generic,
 GPU-resident SimThing.** Each is the *same* mechanism wearing a different label —
 - **conflict** → combat (`HP/Damage` arena), disruption (decaying accumulator);
 - **opportunity** → desirability fields and gradients (where to go);
 - **ambition** → faction drives, expansion, fight-or-flight (threshold-gated value decisions);
-- **exploitation** → resource extraction, raiding, the production/energy economy —
+- **extraction** → resource extraction, raiding, the production/energy economy —
 
 and all of them reduce to: **accumulation/flow, reduced up and masked down the one recursive tree,
 resolved by threshold crossings on the resulting field.** There is no combat engine, no economy engine,
 no AI engine — there is one *accumulate → reduce → mask → threshold* loop that resolves all of them in
 the same GPU pass.
 
-The payoff, and the entire point, is that **resolution lives as GPU automata in a SEAD model.**
+The payoff, and the entire point, is that **resolution lives as GPU automata in a FIELD_POLICY model.**
 Decisions — engage/withdraw, move, raid, expand, allocate — are not computed by a CPU planner; they
 **emerge as GPU-resident threshold crossings over the resolved, masked field**, exactly as combat,
 movement, and engage/withdraw fall out of a single pass (§0.2, §0.3). The moment any behavior is modeled
@@ -45,7 +45,7 @@ as a privileged *structural* special-case — the rejected **D=3 ownership-node*
 example: ownership smuggled back in as a bespoke tree shape instead of a decaying owner overlay — it
 leaves the generic substrate, can no longer be resolved as uniform GPU automata, and the unitary vision
 breaks. That is why conformance is non-negotiable and carries forward across every version: it is not a
-style preference, it is the **precondition** for the whole simulation being one GPU-resident SEAD
+style preference, it is the **precondition** for the whole simulation being one GPU-resident FIELD_POLICY
 automaton rather than a federation of bespoke subsystems.
 
 ### 0.1 Maximal SimThing conformance (the founding premise)
@@ -129,11 +129,11 @@ and a discipline that keeps it from bloating back into a doc-treadmill no agent 
 **The base SimThing principles — the harness checklist, every track, every rung:**
 1. **Everything is a SimThing** (§0.1). New behavior = SimThings + properties + overlays + `AccumulatorOp`
    registrations — never a subsystem outside the tree, never a runtime `match kind`.
-2. **All conflict/opportunity/ambition/exploitation is resource flow** (§0.0, §0.3):
+2. **All conflict/opportunity/ambition/extraction is resource flow** (§0.0, §0.3):
    `accumulate → reduce → mask → threshold`. No combat / economy / AI engine.
 3. **Allocation is recursive; settling depth is emergent** (§0.2). Reduce-up / disburse-down through the
    one tree. No per-relation depth assignment, no flat-star special case.
-4. **Decisions are GPU-resident threshold crossings — SEAD, not a CPU planner** (§0.0, §2.6):
+4. **Decisions are GPU-resident threshold crossings — FIELD_POLICY, not a CPU planner** (§0.0, §2.6):
    `Threshold` + `EmitEvent` → `BoundaryRequest`.
 5. **`simthing-sim` is semantic-free; exact claims carry CPU-oracle bit-exact parity** (§2.6). Semantics
    compile away to flat `AccumulatorOp` / overlay / threshold registrations.
@@ -343,14 +343,14 @@ exit criteria are being authored in the production track §12 / §12.1; not yet 
 
 **Provisional findings from the 2026-06-03 audit (full detail + proposed exit criteria in
 [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md)
-§12.1):** prior work satisfied the two ends of the SEAD loop separately and **never the connection** —
+§12.1):** prior work satisfied the two ends of the FIELD_POLICY loop separately and **never the connection** —
 (a) 0080 modeled no spatial structure (a 1-D scalar line; "heatmap" appears nowhere in code); (b) the
 mapping track built real 2-D field machinery (parity-proven) but **hand-seeded, never demoed as a
-heatmap, never run through SimThing cells**; (c) **SEAD never consumed a heatmap for pathing/critical
-path** (it scores an entity's own overlays; FrontierV1's "SEAD route" only asserts descriptors are
-registered); (d) the loop **field → diffuse → gradient → SEAD reads local cell → action** was never
+heatmap, never run through SimThing cells**; (c) **FIELD_POLICY never consumed a heatmap for pathing/critical
+path** (it scores an entity's own overlays; FrontierV1's "FIELD_POLICY route" only asserts descriptors are
+registered); (d) the loop **field → diffuse → gradient → FIELD_POLICY reads local cell → action** was never
 wired. Two proposed hard exit criteria (EC1 heatmap reduced over real cells from gameplay; EC2 mover
-SEAD action is a function of the diffused gradient at its own cell, vs CPU oracle) are recorded there.
+FIELD_POLICY action is a function of the diffused gradient at its own cell, vs CPU oracle) are recorded there.
 **Status: PROVISIONAL — to be firmed up before the dress rehearsal opens as a gate.**
 
 **Immediate next concrete work — `ATLAS-BATCH-0` pre-Rehearsal track** (production track §12.3): a

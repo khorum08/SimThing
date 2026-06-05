@@ -26,7 +26,7 @@ Implementation summary:
 - Faction-index ECON composition: Terran/Pirate fixed faction set, Pirate full-economy participation, and contended clearing reports are carried from the econ-scale report.
 - Owner-overlay inheritance summary: faction owner simthings are session siblings; location and ship owner overlays inherit numeric faction weights; no new owner substrate.
 - Ownership up-aggregation summary: planet-to-starsystem ownership is a derived owner overlay summary, not reparenting.
-- SEAD composite-gap read-only terms: reports `current_space_minus_inherited_setpoint`, `supply_security_gap`, `bilateral_relational_gap`, and `composite_gap_sum` as read-only terms only.
+- FIELD_POLICY composite-gap read-only terms: reports `current_space_minus_inherited_setpoint`, `supply_security_gap`, `bilateral_relational_gap`, and `composite_gap_sum` as read-only terms only.
 - Deterministic replay/checksum confirmed through `replay_production_path_0080_1` and preserved substrate report checksums.
 
 Tests run:
@@ -47,10 +47,10 @@ Tests run:
 - `cargo test -p simthing-spec --test mobility_runtime0_composition` - PASS (23/23)
 - `cargo test -p simthing-spec --test mobility_runtime1_production_fixture` - PASS (28/28)
 - `cargo test -p simthing-driver --test mobility_runtime1a_runtime_fixture` - PASS (21/21)
-- `cargo test -p simthing-driver --test phase_m_sead_obs4_threshold_event` - PASS (7/7)
-- `cargo test -p simthing-driver --test phase_m_sead_event0_compaction` - PASS (7/7)
-- `cargo test -p simthing-driver --test phase_m_sead_pipe0_observer_event_pipeline` - PASS (7/7)
-- `cargo test -p simthing-spec --test sead_obs0_overlay_score_admission` - PASS (29/29)
+- `cargo test -p simthing-driver --test phase_m_field_policy_obs4_threshold_event` - PASS (7/7)
+- `cargo test -p simthing-driver --test phase_m_field_policy_event0_compaction` - PASS (7/7)
+- `cargo test -p simthing-driver --test phase_m_field_policy_pipe0_observer_event_pipeline` - PASS (7/7)
+- `cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission` - PASS (29/29)
 - `cargo check --workspace` - PASS (pre-existing warnings only)
 
 Skipped tests: none.

@@ -5,12 +5,12 @@
 
 #[path = "support/e11_flat_star.rs"]
 mod e11_flat_star;
+#[path = "support/field_policy_v1_live_pipeline.rs"]
+mod field_policy_v1_live_pipeline;
+#[path = "support/field_policy_v1_route_replay.rs"]
+mod field_policy_v1_route_replay;
 #[path = "support/frontier_v2.rs"]
 mod frontier_v2;
-#[path = "support/sead_v1_live_pipeline.rs"]
-mod sead_v1_live_pipeline;
-#[path = "support/sead_v1_route_replay.rs"]
-mod sead_v1_route_replay;
 
 use std::sync::Mutex;
 
@@ -18,14 +18,14 @@ use e11_flat_star::{
     fill_explicit_participants, flat_star_cell_inputs, flat_star_game_mode, flat_star_scenario,
     leaf_slots, root_slot, FlatStarSession,
 };
-use frontier_v2::*;
-use sead_v1_live_pipeline::{
+use field_policy_v1_live_pipeline::{
     cpu_pipe0_expected_records, cpu_threshold_state_event, default_admitted_count,
     default_admitted_table, frontier_field_observer_rows, pipe0_records_to_act2, rules_for_smoke,
     run_act2_chain_gpu, run_pipe0_gpu, smoke_admission_rules, verify_act2_chain_admission,
     ObserverRow,
 };
-use sead_v1_route_replay::validate_sead_v1_consumed;
+use field_policy_v1_route_replay::validate_field_policy_v1_consumed;
+use frontier_v2::*;
 use simthing_driver::{
     build_execution_plan, compiled_stencil_to_gpu_config, resolve_node_columns,
     run_arena_allocation_oracle, FirstSliceMappingSession, FirstSliceSeed, FirstSliceTickOptions,
@@ -42,7 +42,7 @@ static GPU_MUTEX: Mutex<()> = Mutex::new(());
 pub const FRONTIER_V2_2_MOVEMENT_FEEDBACK_FINGERPRINT: &str = "6c01851a4afdfcbf";
 
 fn with_gpu<F: FnOnce(&GpuContext)>(f: F) {
-    let Some(ctx) = sead_v1_live_pipeline::try_gpu() else {
+    let Some(ctx) = field_policy_v1_live_pipeline::try_gpu() else {
         eprintln!("skipping GPU assertions: no GPU");
         return;
     };
@@ -239,7 +239,7 @@ fn assert_observer_rows_cpu_oracle(rows: &[ObserverRow]) {
 }
 
 fn expected_evolved_candidates(
-    feedback: &FrontierV1LiveSelfAiFeedbackCandidate,
+    feedback: &FrontierV1LiveFieldAgentFeedbackCandidate,
     mapping_hash: u64,
     urgency: f32,
     tick_index: u32,
@@ -295,11 +295,12 @@ fn run_single_live_tick(
 
     let pipe_capacity = observer_rows.len() as u32;
     let pipe0 = run_pipe0_gpu(ctx, &observer_rows, pipe_capacity, 1, true);
-    let expected_records =
-        cpu_pipe0_expected_records(&sead_v1_live_pipeline::cpu_event_rows(&observer_rows));
+    let expected_records = cpu_pipe0_expected_records(
+        &field_policy_v1_live_pipeline::cpu_event_rows(&observer_rows),
+    );
     assert_eq!(pipe0.event_count(), expected_records.len() as u32);
     assert_eq!(pipe0.overflow(), 0);
-    assert!(sead_v1_live_pipeline::cpu_pipe0_membership_exact(
+    assert!(field_policy_v1_live_pipeline::cpu_pipe0_membership_exact(
         &expected_records,
         pipe0.records(),
     ));
@@ -366,7 +367,7 @@ fn run_single_live_tick(
         overflow_flags,
     );
 
-    let self_ai_hash = hash_live_self_ai_gpu_execution(
+    let field_agent_hash = hash_live_field_agent_gpu_execution(
         pipe0.event_count(),
         pipe0.overflow(),
         act2.proposal_count(),
@@ -385,7 +386,7 @@ fn run_single_live_tick(
     FrontierV2TickRun {
         tick_index,
         mapping_hash,
-        self_ai_hash,
+        field_agent_hash,
         proposal_dispatch_hash,
         feedback,
         movement,
@@ -401,9 +402,9 @@ fn run_movement_feedback_application(ctx: &GpuContext) -> FrontierV2MovementFeed
     let admission = validate_frontier_v2_admission(&skeleton);
     assert!(admission.accepted, "{:?}", admission.rejected_reasons);
 
-    let sead_consumed = validate_sead_v1_consumed();
-    assert!(sead_consumed.pipe0_registered);
-    assert!(sead_consumed.act2_registered);
+    let field_policy_consumed = validate_field_policy_v1_consumed();
+    assert!(field_policy_consumed.pipe0_registered);
+    assert!(field_policy_consumed.act2_registered);
 
     let shadow_before = initial_own_column_shadow(0);
     let tick0 = run_single_live_tick(ctx, &skeleton, &base_config, 0, 0, None);
@@ -534,7 +535,7 @@ fn frontier_v2_2_own_column_movement_changes_position() {
 fn frontier_v2_2_rejects_cross_entity_movement_write() {
     let shadow = initial_own_column_shadow(0);
     let mut cross_entity = build_evolved_movement_candidate(
-        &FrontierV1LiveSelfAiFeedbackCandidate {
+        &FrontierV1LiveFieldAgentFeedbackCandidate {
             tick_index: 1,
             source_unit_id: 1,
             route_code: FRONTIER_V1_ALLOCATOR_ROUTE_CODE,
@@ -638,7 +639,7 @@ fn frontier_v2_2_cpu_oracle_parity() {
             }
 
             let cpu = run_frontier_v1_fixture(&skeleton, &config);
-            let oracle = cpu_live_self_ai_oracle(
+            let oracle = cpu_live_field_agent_oracle(
                 &skeleton,
                 &config,
                 tick.tick_index,
@@ -732,7 +733,7 @@ fn frontier_v2_2_resource_route_stays_allocator_only() {
     let (skeleton, config) = smoke_fixture();
 
     let mut bypass = skeleton;
-    bypass.sead.resource_dispatch_via_allocator = false;
+    bypass.field_policy.resource_dispatch_via_allocator = false;
     assert_eq!(
         classify_proposal_route(ProposalKind::ResourceDispatch, &bypass),
         ProposalRoute::Rejected
@@ -747,15 +748,15 @@ fn frontier_v2_2_resource_route_stays_allocator_only() {
     assert!(!validate_frontier_v2_admission(&shared_pool).accepted);
 
     let mut planner = skeleton;
-    planner.sead.cpu_planner = true;
+    planner.field_policy.cpu_planner = true;
     assert!(!validate_frontier_v2_admission(&planner).accepted);
 
     let mut urgency = skeleton;
-    urgency.sead.cpu_urgency = true;
+    urgency.field_policy.cpu_urgency = true;
     assert!(!validate_frontier_v2_admission(&urgency).accepted);
 
     let mut commitment = skeleton;
-    commitment.sead.cpu_commitment_emission = true;
+    commitment.field_policy.cpu_commitment_emission = true;
     assert!(!validate_frontier_v2_admission(&commitment).accepted);
 
     let _ = config;
@@ -792,13 +793,16 @@ fn frontier_v2_2_deferred_features_reject() {
         ),
         (
             "act5_ladder",
-            Box::new(|s| s.sead.pipeline_version = SeadPipelineVersion::Other),
+            Box::new(|s| s.field_policy.pipeline_version = FieldPolicyPipelineVersion::Other),
         ),
         (
             "parallel_fixture",
             Box::new(|s| s.resource_flow.parallel_fixture_economy = true),
         ),
-        ("cpu_planner", Box::new(|s| s.sead.cpu_planner = true)),
+        (
+            "cpu_planner",
+            Box::new(|s| s.field_policy.cpu_planner = true),
+        ),
     ];
     for (label, mutate) in deferred {
         let mut skeleton = frontier_v2_smoke_skeleton();
@@ -820,7 +824,7 @@ fn frontier_v2_2_no_simthing_sim_semantic_awareness() {
     for needle in [
         "FrontierV1",
         "FrontierV2",
-        "SEAD",
+        "FIELD_POLICY",
         "RegionCell",
         "ArenaRegistry",
         "proposal",

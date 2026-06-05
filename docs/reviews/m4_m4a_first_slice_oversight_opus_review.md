@@ -1,7 +1,7 @@
 # Opus Oversight Memo — M-4 / M-4A Ratification + First-Slice Runtime Readiness
 
 **Date:** 2026-05-28
-**Authority:** Opus 4.8, acting as the mapping/SEAD design/oversight authority under
+**Authority:** Opus 4.8, acting as the mapping/FIELD_POLICY design/oversight authority under
 explicit human delegation ("you are the design authority… full authority to raise
 guardrails up to the designer-facing studio layer… push and merge when you're done").
 **Scope:** Decide what is ratified / amended / deferred / rejected before the next
@@ -136,7 +136,7 @@ above is the brake.
    one `field_urgency` `EvalEML` on the parent, **no atlas / no active mask / no
    perception**. `FirstSliceMappingSession` is exactly that shape and nothing more.
 
-2. **SEAD / AI-as-SimThing discipline? — YES.** The decision path is
+2. **FIELD_POLICY / AI-as-SimThing discipline? — YES.** The decision path is
    stencil → `SlotRange` Sum → `EvalEML`, producing a parent urgency *column*. There is no
    CPU map planner. The intended consumer — commitments as `Threshold` + `EmitEvent`
    crossings over that column — is not yet built, which is correct for a first slice.

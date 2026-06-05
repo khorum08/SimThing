@@ -242,7 +242,7 @@ pub struct DressRehearsalR3Report {
     pub occupant_positions_before: Vec<DressRehearsalR2OccupantPosition>,
     pub occupant_positions_after: Vec<DressRehearsalR2OccupantPosition>,
     pub boundary_request_emitted: bool,
-    pub sead_action_emitted: bool,
+    pub field_policy_action_emitted: bool,
     pub gradientxy_consumed: bool,
     pub combat_bonus_resolved_as_data: bool,
     pub combat_resolution_events: usize,
@@ -581,7 +581,7 @@ fn base_report(
         occupant_positions_before: positions.clone(),
         occupant_positions_after: positions,
         boundary_request_emitted: false,
-        sead_action_emitted: false,
+        field_policy_action_emitted: false,
         gradientxy_consumed: false,
         combat_bonus_resolved_as_data: admitted
             && opt_in

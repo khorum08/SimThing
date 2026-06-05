@@ -26,7 +26,7 @@
 3. **`mag2` blocked:** `m_jit_grad_0_observer` `mag2` remains `ApproximateDiagnostic`; exact magnitude uses F-routed `mag` output, not diagnostic `mag2`.
 4. **Magnitude candidate location:** `jit_exact_sqrt_artifact_admission.rs` + `landed_jit_kernel_descriptors()`.
 5. **Semantic-free:** Straight-line WGSL with `dx2`/`dy2`/`mag2`/`sqrt_cr_f_bits`; no map/faction semantics.
-6. **34k benchmark shape:** Deterministic mobile-simthing pairs sampled from discrete SEAD gradient table (`±0.001..±16`, 34,000 rows, one dispatch, readback included).
+6. **34k benchmark shape:** Deterministic mobile-simthing pairs sampled from discrete FIELD_POLICY gradient table (`±0.001..±16`, 34,000 rows, one dispatch, readback included).
 
 ## Descriptor/admission design
 
@@ -61,7 +61,7 @@
 
 **Edge rows (6):** `max_ulp=0` — `(0,0)`, axis-aligned, 3-4-5, unit vector, fractional.
 
-**Dense SEAD corpus (784 pairs):** `mag2_match=744`, `exact=744`, `max_ulp=0` on mag2-matched rows. CPU oracle uses the same let-sequenced `dx2 + dy2` contract as WGSL; 40 pairs differ on `mag2` sum bits (GPU/CPU f32 multiply-add boundary) and are excluded from magnitude exactness assertion.
+**Dense FIELD_POLICY corpus (784 pairs):** `mag2_match=744`, `exact=744`, `max_ulp=0` on mag2-matched rows. CPU oracle uses the same let-sequenced `dx2 + dy2` contract as WGSL; 40 pairs differ on `mag2` sum bits (GPU/CPU f32 multiply-add boundary) and are excluded from magnitude exactness assertion.
 
 ## 34,000-row benchmark
 
@@ -94,4 +94,4 @@ cargo check --workspace → green
 
 ## Final verdict
 
-**PASS — SQRT-MAG-0** landed a default-off/test-only F-backed exact Euclidean magnitude path for the SEAD hot path; exact authority routes through artifact-backed Candidate F (`sqrt_cr_f_candidate.wgsl`, hash `e2e9e27601ee2e13`), native/raw sqrt remains `ApproximateJitOnly`, diagnostic `mag2` remains blocked as exact output unless routed through exact F, correctness and 34,000-row mobile-simthing benchmark results were recorded, no scheduler/cache/default wiring/semantic WGSL/economy bridge was added, active docs and production plan were updated, tests and cargo check are green, and V7.7 / Mapping ADR / SEAD posture remains intact.
+**PASS — SQRT-MAG-0** landed a default-off/test-only F-backed exact Euclidean magnitude path for the FIELD_POLICY hot path; exact authority routes through artifact-backed Candidate F (`sqrt_cr_f_candidate.wgsl`, hash `e2e9e27601ee2e13`), native/raw sqrt remains `ApproximateJitOnly`, diagnostic `mag2` remains blocked as exact output unless routed through exact F, correctness and 34,000-row mobile-simthing benchmark results were recorded, no scheduler/cache/default wiring/semantic WGSL/economy bridge was added, active docs and production plan were updated, tests and cargo check are green, and V7.7 / Mapping ADR / FIELD_POLICY posture remains intact.

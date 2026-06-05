@@ -89,7 +89,7 @@ Deterministically seeded; the 10 starsystems are the 10 starmap cells chosen by 
 
 ## 5. Decision model (instantiates the 2026-06-02 design conversation)
 
-Faction movers' decisions are produced by the existing **GPU-resident SEAD frontier**
+Faction movers' decisions are produced by the existing **GPU-resident FIELD_POLICY frontier**
 (`Threshold`+`EmitEvent`→`BoundaryRequest`) evaluated over a **composite gap-vector** state:
 - per-channel gap = `current(space) − inherited_setpoint(space)` (setpoints arrive via the broadcast
   faction overlay);
@@ -100,7 +100,7 @@ Faction movers' decisions are produced by the existing **GPU-resident SEAD front
 - **Player orders, if later admitted, are a weighted overlay term on the action vector** — never a
   direct-move and never the hard-currency mechanism. Deferred to a later sub-slice.
 
-No CPU planner / urgency / commitment; movement remains SEAD-sourced.
+No CPU planner / urgency / commitment; movement remains FIELD_POLICY-sourced.
 
 ---
 

@@ -35,7 +35,7 @@ EC-A2b redefinition (below).**
 C-2 algebraic tile-local `G=0` mask + mandatory VRAM-multiplier; semantic-free `simthing-sim`) ·
 3) `docs/design_0_0_8_0_consumer_pulled_production_track.md` §12–§12.5 (GEN/LOC/PACK closure; EC-A2
 split; this gate) · 4) `docs/scenarios/scenario_0080_2_dress_rehearsal_spec.md` · 5)
-`crates/simthing-core/src/accumulator_op.rs` (reference only) · 6) `docs/workshop/sead_self_ai_track.md`.
+`crates/simthing-core/src/accumulator_op.rs` (reference only) · 6) `docs/workshop/field_policy_track.md`.
 
 **Rung-local (ephemeral):** `crates/simthing-gpu/src/atlas_mask.rs` (the GPU primitive + CPU oracle —
 read/call only, **do not edit**); `crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_pack.rs`
@@ -120,7 +120,7 @@ doc, return to Opus as **blocked**.
 EC-A2b (GpuVerified, full-tile L∞ ≤ 1e-4)**; list the three proven classes + adapter; link
 source/test/report/raw-log/parity; **state EC-A2b-exact (bit-exact) remains DEFERRED (needs a pinned
 fixed-point stencil)**; STORE unimplemented; M-4A sparse-residency scheduler parked; REENROLL parked; no
-economy/disruption/SEAD/owner-masked-reduction implemented. One `docs/worklog.md` entry.
+economy/disruption/FIELD_POLICY/owner-masked-reduction implemented. One `docs/worklog.md` entry.
 
 ## 8. Stale artifacts
 
@@ -130,7 +130,7 @@ delete accepted GEN/LOC/PACK artifacts. If none: "Deleted obsolete artifacts: no
 ## 9. Stop conditions — STOP and escalate if it seems to need
 
 new WGSL or any `simthing-gpu`/`-core`/`-sim` edit · STORE / child-result storage · owner masked-reduction
-runtime · economy/disruption · R1 diffusion beyond the generic stencil proof · R4 SEAD/gradient/exact-sqrt/
+runtime · economy/disruption · R1 diffusion beyond the generic stencil proof · R4 FIELD_POLICY/gradient/exact-sqrt/
 threshold/`BoundaryRequest` · REENROLL/movement · combat · capability-tree mask-down · M-4A sparse-residency
 scheduler · default session wiring · runtime `match kind` · CPU map planner · a `to_bits()` bit-exact claim.
 

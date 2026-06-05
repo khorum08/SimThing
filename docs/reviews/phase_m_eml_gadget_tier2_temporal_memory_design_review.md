@@ -214,7 +214,7 @@ No changes to simthing-gpu EvalEML interpreter behavior.
 No transcendental (exp/logistic) temporal gadgets.
 ```
 
-Preserved constitutional posture: V7.7 Mapping ADR, Phase M first-slice vertical proof, SummaryValidity V1 + V1-R1 parked, Queue-Write Scale Hardening V1, Map Residency V1, Boundary Resolution Doctrine, Daily Economy Fixture V1 (example only), Resource Economy Authoring Ergonomics V1, Economy + SEAD Product Fixture V1, EML-GADGET-1 Tier-1 library, `MappingExecutionProfile` default `Disabled`, spec/scenario presence alone does not execute mapping, `simthing-sim` map-free.
+Preserved constitutional posture: V7.7 Mapping ADR, Phase M first-slice vertical proof, SummaryValidity V1 + V1-R1 parked, Queue-Write Scale Hardening V1, Map Residency V1, Boundary Resolution Doctrine, Daily Economy Fixture V1 (example only), Resource Economy Authoring Ergonomics V1, Economy + FIELD_POLICY Product Fixture V1, EML-GADGET-1 Tier-1 library, `MappingExecutionProfile` default `Disabled`, spec/scenario presence alone does not execute mapping, `simthing-sim` map-free.
 
 ---
 

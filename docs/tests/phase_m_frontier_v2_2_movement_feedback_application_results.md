@@ -13,7 +13,7 @@
 | `docs/tests/phase_m_frontier_v2_2_movement_feedback_application_results.md` | **New** — this report |
 | `docs/accumulator_op_v2_production_plan.md` | FrontierV2-2 section |
 | `docs/workshop/mapping_current_guidance.md` | FrontierV2-2 row |
-| `docs/workshop/sead_self_ai_track.md` | FrontierV2-2 addendum |
+| `docs/workshop/field_policy_track.md` | FrontierV2-2 addendum |
 | `docs/worklog.md` | Append-only milestone |
 
 **No ClauseThing, no semantic WGSL, no default SimSession wiring, no phase closure declaration.**
@@ -132,7 +132,7 @@ Two identical runs produce the same shadow hashes, tick2 mapping hash, and combi
 
 | Classification | Coverage |
 |---|---|
-| GpuVerified | tick0/tick1/tick2 resource routes, mapping+EML+SEAD live pipe |
+| GpuVerified | tick0/tick1/tick2 resource routes, mapping+EML+FIELD_POLICY live pipe |
 | FixtureCandidate | movement candidate evolution |
 | FixtureOnly | closed-loop feedback, seed placement override |
 | OwnColumnShadowWrite | movement application to shadow position |
@@ -152,10 +152,10 @@ cargo test -p simthing-driver --test phase_m_frontier_v2_1_candidate_evolution -
 cargo test -p simthing-driver --test phase_m_frontier_v2_0_closed_loop_consumer -- --nocapture
 → pass (regression)
 
-cargo test -p simthing-driver --test phase_m_frontier_v1_5_live_self_ai_route -- --nocapture
+cargo test -p simthing-driver --test phase_m_frontier_v1_5_live_field_agent_route -- --nocapture
 → pass (regression)
 
-cargo test -p simthing-spec --test sead_obs0_overlay_score_admission -- --nocapture
+cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission -- --nocapture
 → pass (regression)
 
 cargo check --workspace
@@ -191,4 +191,4 @@ No scratch artifacts deleted; no E-phase evidence removed.
 
 ## Final verdict
 
-**PASS** — FrontierV2-2 extended the default-off FrontierV2 closed-loop consumer with fixture-only own-column movement feedback application; movement candidate output updated own-column shadow position; the changed source placement fed the next tick; cross-entity movement writes were rejected; resource dispatch stayed through Resource Flow allocator; CPU oracle parity and replay reproducibility were recorded (fingerprint `6c01851a4afdfcbf`); docs and production plan were updated; ClauseThing was not implemented; no phase closure was declared; no default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner, parallel fixture economy, shared-pool tick writes, simthing-sim semantic awareness, or ACT/EVENT/OBS/PIPE expansion was added; and V7.7 / Mapping ADR / Resource Flow ADR / SEAD charter posture remained intact.
+**PASS** — FrontierV2-2 extended the default-off FrontierV2 closed-loop consumer with fixture-only own-column movement feedback application; movement candidate output updated own-column shadow position; the changed source placement fed the next tick; cross-entity movement writes were rejected; resource dispatch stayed through Resource Flow allocator; CPU oracle parity and replay reproducibility were recorded (fingerprint `6c01851a4afdfcbf`); docs and production plan were updated; ClauseThing was not implemented; no phase closure was declared; no default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner, parallel fixture economy, shared-pool tick writes, simthing-sim semantic awareness, or ACT/EVENT/OBS/PIPE expansion was added; and V7.7 / Mapping ADR / Resource Flow ADR / FIELD_POLICY charter posture remained intact.

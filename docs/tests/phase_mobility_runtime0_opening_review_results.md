@@ -34,7 +34,7 @@ it does **not** implement it.
 - `docs/invariants.md` (targeted scan — runtime/SimSession-wiring rows govern, no conflict; no edit)
 - `docs/design_v7_8.md`, `docs/design_v7_8_production_track.md`
 - `docs/design_v7_9_mobility_transfer_allocation_production_track.md`
-- `docs/workshop/mobility_and_transfer_allocation.md`, `mapping_current_guidance.md`, `sead_self_ai_track.md`
+- `docs/workshop/mobility_and_transfer_allocation.md`, `mapping_current_guidance.md`, `field_policy_track.md`
 - All v7.9 prerequisite reports (`phase_mobility_{scenario0,scenario0_acceptance,owner_band_budget_audit,alloc0_opening,alloc0,reenroll0_opening,reenroll0,idroute0_opening,idroute0,idroute0_r1,econ0_opening,econ0,owner0_opening,owner0,owner0_r1}_results.md`)
 - `crates/simthing-spec/src/designer_admission/mobility_{scenario0,audit0,alloc0,reenroll0,idroute0,econ0,owner0}.rs`
 - `crates/simthing-spec/tests/mobility_{scenario0_admission,audit0_owner_band_budget,alloc0_substrate,reenroll0_substrate,idroute0_substrate,econ0_substrate,owner0_substrate}.rs`
@@ -153,7 +153,7 @@ no GPU kernels, no default-on flags, no semantic/raw WGSL, no `simthing-sim` sem
 CPU planner/urgency/commitment emission, no Resource Flow default-on, no hard-currency through
 Resource Flow, no Hybrid-Strata/faction-index scaling, no invariant changes. Owner-entities remain
 non-spatial; capture remains an owner-column flip; latched modifiers remain blockade-immune and
-distinct from per-tick ECON flow; SEAD decisions stay GPU-resident threshold/event outputs. v7.8
+distinct from per-tick ECON flow; FIELD_POLICY decisions stay GPU-resident threshold/event outputs. v7.8
 M/E/T closure (A-0/B-0/C-2), AO-WGSL-0 default-off, atlas production runtime parked, E-11B-5 parked,
 B-1 closed, ClauseThing/L3 parked, FrontierV2-5 rejected, ACT/EVENT/OBS/PIPE no reopen — all
 unchanged.

@@ -294,7 +294,7 @@ They set tunables and bounds for a named scenario:
 2. **Sector supply vs. cell combat** — whether the sector→cell edge is a Resource-Flow coupling or
    just tree structure (i.e. where the masked flow balances under subsidiarity, §11.4).
 3. **Endgame entity/cohort count** — sizes the kind-pool and the slab high-water budget.
-4. **Doctrine uniformity** — whether routing/targeting weights are uniform across owners or
+4. **Doctrine uniformity** — whether routing/selection weights are uniform across owners or
    per-owner (a weight-column authoring choice).
 
 ---
@@ -327,7 +327,7 @@ does:
    independent of `k`** (one band writes `k` masked scratch columns per child; one band runs the `k`
    Sums into `k` cell columns).
 2. **Directed disburse** (existing disburse band, new routing EML): each fleet computes
-   `incoming = Σ_F hostile(self.identity, F) · faction_fp[F] · targeting_weight`, an EML reading the
+   `incoming = Σ_F hostile(self.identity, F) · faction_fp[F] · selection_weight`, an EML reading the
    child's own `identity` and the cell's per-identity columns. For `k=2`: `select(self==A, fp_B,
    fp_A)·w` — a handful of nodes.
 3. **Integration (unchanged):** apply `incoming` to the fleet HP column with `IntegrateWithClamp`
@@ -569,7 +569,7 @@ named unit, individuals are fungible-within.
 - **Homogeneity invariant.** A cohort is homogeneous in every owner-relation it carries (exactly one
   `faction_owner`, one `species`). Partial change (a subset defects/assimilates) **splits a new
   cohort via gated fission** — never a mixed cohort. This is what keeps the single-SimThing
-  representation valid (no sub-aggregate targeting).
+  representation valid (no sub-aggregate selection).
 - **Aggregating relation vs. overlay relation — the test.** A relation needs Hybrid-Strata channels
   (§11.10) **only if it pools flow up to a clearinghouse**. `faction_owner` does (the economy) →
   channels. **`species`, `blueprint_owner`, tech, policy do *not* — they only broadcast a value
@@ -973,7 +973,7 @@ landed fission + gates.
 3. **Everything else is a designer/scenario admission guardrail**, enforced once at the spec layer as
    import-time rejection (the `DesignerAdmissionDiagnosticCode` pattern): subscription, blockade-
    immunity, capture-is-a-column-flip, per-relation layering, conservation-class separation,
-   `max_factions_per_cell`, block size, `max_fleet_density`, targeting/routing policy. The implementer
+   `max_factions_per_cell`, block size, `max_fleet_density`, selection/routing policy. The implementer
    inherits these as a sound substrate; they are **not** re-proven per PR. **Strong guardrails are
    most optimal at this designer/scenario-facing layer — relax them toward it.**
 4. **One standing prohibition** (it's a parity-floor consequence, not a hygiene rule): do not GPU-ify

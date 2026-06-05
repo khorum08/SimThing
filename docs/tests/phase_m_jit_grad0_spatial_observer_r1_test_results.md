@@ -125,7 +125,7 @@ rg "mag2|ExactDeterministicCandidate|ApproximateJitOnly|RejectedDeferred|exact-a
 **Result:** explicit `mag2` classification in tests and R1 report; production plan/guidance amended to state `mag2` approximate/diagnostic on batch corpus.
 
 ```
-rg "faction|ownership|owner|AI|threat|scarcity|opportunity|labor|price|logistics|routing|need|demand|supply|personality|drone|SEAD|simthing-sim|ResourceEconomySpec|SimSession" crates/simthing-driver/tests/phase_m_jit_grad0_spatial_observer.rs crates/simthing-gpu/src/shaders docs/tests/phase_m_jit_grad0_spatial_observer_r1_test_results.md
+rg "faction|ownership|owner|AI|threat|scarcity|opportunity|labor|price|logistics|routing|need|demand|supply|personality|drone|FIELD_POLICY|simthing-sim|ResourceEconomySpec|SimSession" crates/simthing-driver/tests/phase_m_jit_grad0_spatial_observer.rs crates/simthing-gpu/src/shaders docs/tests/phase_m_jit_grad0_spatial_observer_r1_test_results.md
 ```
 
 **Result:** observer WGSL semantic-free; forbidden terms only in guardrail context.
@@ -161,4 +161,4 @@ find docs/tests -maxdepth 1 -type f \( -name "*.log" -o -name "*tmp*" -o -name "
 
 ## Posture Attestation
 
-No semantic WGSL, no sqrt in the exact observer path, no production JIT wiring, no default mapping wiring, no simthing-sim Gadget/Personality/Memory semantics, no new production EML opcode, no production sqrt admission, no chained scheduling, no automatic snapshot/copy scheduling, no CPU planner/urgency/commitment emission, no production economy→mapping bridge; M-JIT-GRAD-0 R1 classifies spatial observer outputs honestly and prevents mag2 exactness overclaim; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+No semantic WGSL, no sqrt in the exact observer path, no production JIT wiring, no default mapping wiring, no simthing-sim Gadget/Personality/Memory semantics, no new production EML opcode, no production sqrt admission, no chained scheduling, no automatic snapshot/copy scheduling, no CPU planner/urgency/commitment emission, no production economy→mapping bridge; M-JIT-GRAD-0 R1 classifies spatial observer outputs honestly and prevents mag2 exactness overclaim; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.

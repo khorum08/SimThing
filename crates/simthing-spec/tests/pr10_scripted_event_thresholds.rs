@@ -423,20 +423,20 @@ fn threshold_and_predicate_definitions_compete_under_priority_ordering() {
 
     assert!(diagnostics.is_empty());
     assert_eq!(requests.len(), 2);
-    // Critical (threshold-triggered, targeting id_a) must come first.
+    // Critical (threshold-triggered, selection id_a) must come first.
     match &requests[0] {
         BoundaryRequest::Remove { target } => assert_eq!(
             *target, id_a,
             "Critical-priority threshold event should fire first"
         ),
-        other => panic!("expected Remove targeting id_a, got {other:?}"),
+        other => panic!("expected Remove selection id_a, got {other:?}"),
     }
     match &requests[1] {
         BoundaryRequest::Remove { target } => assert_eq!(
             *target, id_b,
             "Low-priority predicate event should fire second"
         ),
-        other => panic!("expected Remove targeting id_b, got {other:?}"),
+        other => panic!("expected Remove selection id_b, got {other:?}"),
     }
 }
 

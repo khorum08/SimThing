@@ -21,7 +21,7 @@ R3 only. The implementation is an opt-in/default-off fixture over the single gal
 consumes the accepted R1 disruption heatmap, the implemented/pass R2 recursive allocation report,
 and the ATLAS-BATCH-0 owner/channel layout. It resolves Terran/Pirate faction capability rows into
 bounded read-side modifier overlays and masks them down by owner column. It adds no occupant
-movement, reparenting, BoundaryRequest, SEAD action, GradientXY consumption, combat resolution, R4,
+movement, reparenting, BoundaryRequest, FIELD_POLICY action, GradientXY consumption, combat resolution, R4,
 R5, R6, R7, new op, shader/WGSL, GPU requirement, default SimSession wiring, CPU planner, hard
 currency/markets/trade/ai_budget, ClauseThing, UI, realtime loop, or invariant edit.
 
@@ -114,7 +114,7 @@ resolution in R3.
 - Occupant positions before and after R3 are equal.
 - All owner-mask rows keep `structural_parent_before == structural_parent_after`.
 - No BoundaryRequest is emitted.
-- No SEAD action is emitted.
+- No FIELD_POLICY action is emitted.
 - No GradientXY is consumed.
 - No combat event or HP delta is emitted.
 

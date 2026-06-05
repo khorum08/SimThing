@@ -42,7 +42,7 @@ Date: 2026-05-29
 | `cargo test -p simthing-spec --test eml_gadget_tier1` | PASS; 12/12 |
 | `cargo test -p simthing-spec --test resource_economy_authoring_preview` | PASS; 8/8 |
 | `cargo test -p simthing-driver --test phase_m_resource_economy_authoring_ergonomics` | PASS; 4/4 |
-| `cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture` | PASS; 6/6 |
+| `cargo test -p simthing-driver --test phase_m_economy_field_policy_product_fixture` | PASS; 6/6 |
 | `cargo test -p simthing-driver --test phase_m_first_slice_runtime` | PASS; 28/28 |
 | `cargo test -p simthing-spec --test region_field_spec_admission` | PASS |
 | `cargo test -p simthing-gpu --test accumulator_op_session_gpu_bridge` | PASS; 3/3 |

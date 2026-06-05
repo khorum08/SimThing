@@ -132,7 +132,7 @@ pub enum StructuredFieldStencilMaskMode {
 | Active mask enum provisional naming | N/A | Yes only (`structured_field_stencil_active_mask_provisional`) |
 | RegionField admission compile | `All` only | **Not admitted** |
 
-**Workshop archive only:** `sead_tensor_stencil_refinement_sandbox_code_preserve.rs` contains `test7_active_mask_pingpong` — historical sandbox, not production CI evidence.
+**Workshop archive only:** `field_policy_tensor_stencil_refinement_sandbox_code_preserve.rs` contains `test7_active_mask_pingpong` — historical sandbox, not production CI evidence.
 
 **Constitutional block:** `docs/invariants.md` — "`ActiveOnlyExperimentalNoHalo` is never production-authorized; only H-hop / per-hop halo with CPU-oracle parity is admitted."
 
@@ -237,7 +237,7 @@ cargo test -p simthing-gpu --test structured_field_stencil -- --nocapture
 
 Includes `structured_field_stencil_active_mask_provisional` (enum naming only — **not** GPU parity).
 
-**Existing ping-pong active-mask tests:** None in production CI. Archive only: `docs/workshop/archive/sead/sead_tensor_stencil_refinement_sandbox_code_preserve.rs::test7_active_mask_pingpong`.
+**Existing ping-pong active-mask tests:** None in production CI. Archive only: `docs/workshop/archive/field_policy/field_policy_tensor_stencil_refinement_sandbox_code_preserve.rs::test7_active_mask_pingpong`.
 
 ```bash
 cargo check --workspace
@@ -259,8 +259,8 @@ find docs/tests -maxdepth 1 -type f \( -name "*.log" -o -name "*tmp*" -o -name "
 
 ## Posture Attestation
 
-No semantic WGSL, no atlas/M-4A, no source-mask/source-identity, no default mapping wiring, no `simthing-sim` changes, no production economy→mapping bridge, no L1 coupling, no sqrt/new opcode, no active-mask admission implementation; M-5 gradient strict-sink validation unchanged; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+No semantic WGSL, no atlas/M-4A, no source-mask/source-identity, no default mapping wiring, no `simthing-sim` changes, no production economy→mapping bridge, no L1 coupling, no sqrt/new opcode, no active-mask admission implementation; M-5 gradient strict-sink validation unchanged; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.
 
 ---
 
-**PASS** — Phase M-6A Single-Grid Active Mask Readiness Gate completed; ActiveOnly mask admission remains deferred pending missing CPU/GPU parity and halo-contract evidence, active docs and production plan updated, no implementation performed, and V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+**PASS** — Phase M-6A Single-Grid Active Mask Readiness Gate completed; ActiveOnly mask admission remains deferred pending missing CPU/GPU parity and halo-contract evidence, active docs and production plan updated, no implementation performed, and V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.

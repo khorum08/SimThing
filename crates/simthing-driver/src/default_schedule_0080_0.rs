@@ -137,8 +137,8 @@ pub struct DefaultSchedule0080PirateStepReport {
 #[derive(Clone, Debug, PartialEq)]
 pub struct DefaultSchedule0080StepReport {
     pub step: DefaultSchedule0080Step,
-    pub sead_threshold_accepted: bool,
-    pub sead_emit_event_emitted: bool,
+    pub field_policy_threshold_accepted: bool,
+    pub field_policy_emit_event_emitted: bool,
     pub boundary_request_materialized: bool,
     pub production_path_invoked: bool,
     pub production_path_report: Option<ProductionPath0080Report>,
@@ -311,8 +311,8 @@ pub fn run_default_schedule_0080_0(
                 destination_local_security: scenario.destination.local_security,
                 threshold_crossed,
             },
-            sead_threshold_accepted: threshold_crossed,
-            sead_emit_event_emitted: threshold_crossed,
+            field_policy_threshold_accepted: threshold_crossed,
+            field_policy_emit_event_emitted: threshold_crossed,
             boundary_request_materialized: threshold_crossed,
             production_path_invoked: production_path_report.is_some(),
             production_path_report,

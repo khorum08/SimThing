@@ -1,5 +1,5 @@
 use simthing_driver::{
-    replay_dress_rehearsal_r5_movement_reenroll, run_dress_rehearsal_r4_sead_field_consumption,
+    replay_dress_rehearsal_r5_movement_reenroll, run_dress_rehearsal_r4_field_policy_consumption,
     run_dress_rehearsal_r5_movement_reenroll, DressRehearsalR4Decision, DressRehearsalR4Input,
     DressRehearsalR4Report, DressRehearsalR5Input, DressRehearsalR5Report,
     DRESS_REHEARSAL_R5_MOVEMENT_REENROLL_ID, DRESS_REHEARSAL_R5_MOVEMENT_REENROLL_STATUS_PASS,
@@ -10,7 +10,7 @@ fn report() -> DressRehearsalR5Report {
 }
 
 fn r4_report() -> DressRehearsalR4Report {
-    run_dress_rehearsal_r4_sead_field_consumption(&DressRehearsalR4Input::explicit_opt_in())
+    run_dress_rehearsal_r4_field_policy_consumption(&DressRehearsalR4Input::explicit_opt_in())
 }
 
 #[test]

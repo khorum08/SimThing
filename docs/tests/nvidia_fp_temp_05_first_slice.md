@@ -1901,16 +1901,16 @@ warning: constant `FRONTIER_V1_GPU_RF_FIXTURE_ID` is never used
 14 | pub const FRONTIER_V1_GPU_RF_FIXTURE_ID: &str = "frontier_v1_3_gpu_resource_flow_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: constant `FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID` is never used
+warning: constant `FRONTIER_V1_FIELD_POLICY_ROUTE_FIXTURE_ID` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:15:11
    |
-15 | pub const FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_sead_route_replay_v1";
+15 | pub const FRONTIER_V1_FIELD_POLICY_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_field_policy_route_replay_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: constant `FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID` is never used
+warning: constant `FRONTIER_V1_LIVE_FIELD_AGENT_FIXTURE_ID` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:16:11
    |
-16 | pub const FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID: &str = "frontier_v1_5_live_self_ai_route_v1";
+16 | pub const FRONTIER_V1_LIVE_FIELD_AGENT_FIXTURE_ID: &str = "frontier_v1_5_live_field_agent_route_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: constant `FRONTIER_V2_PROFILE_NAME` is never used
@@ -1949,10 +1949,10 @@ warning: constant `FRONTIER_V1_MOVEMENT_ROUTE_CODE` is never used
 31 | pub const FRONTIER_V1_MOVEMENT_ROUTE_CODE: u32 = 3;
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: enum `SeadPipelineVersion` is never used
+warning: enum `FieldPolicyPipelineVersion` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:34:10
    |
-34 | pub enum SeadPipelineVersion {
+34 | pub enum FieldPolicyPipelineVersion {
    |          ^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierTheaterSpec` is never constructed
@@ -1973,10 +1973,10 @@ warning: struct `FrontierFlatStarResourceFlowSpec` is never constructed
 60 | pub struct FrontierFlatStarResourceFlowSpec {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierSeadSelfAiSpec` is never constructed
+warning: struct `FrontierFieldPolicyFieldAgentSpec` is never constructed
   --> crates\simthing-driver\tests\support\frontier_v1.rs:73:12
    |
-73 | pub struct FrontierSeadSelfAiSpec {
+73 | pub struct FrontierFieldPolicyFieldAgentSpec {
    |            ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierEconomyFieldCouplingSpec` is never constructed
@@ -2051,36 +2051,36 @@ warning: enum `FrontierV2Status` is never used
 183 | pub enum FrontierV2Status {
     |          ^^^^^^^^^^^^^^^^
 
-warning: enum `FrontierV1LiveSelfAiFieldStatus` is never used
+warning: enum `FrontierV1LiveFieldAgentFieldStatus` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:189:10
     |
-189 | pub enum FrontierV1LiveSelfAiFieldStatus {
+189 | pub enum FrontierV1LiveFieldAgentFieldStatus {
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiFeedbackCandidate` is never constructed
+warning: struct `FrontierV1LiveFieldAgentFeedbackCandidate` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:201:12
     |
-201 | pub struct FrontierV1LiveSelfAiFeedbackCandidate {
+201 | pub struct FrontierV1LiveFieldAgentFeedbackCandidate {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiSummary` is never constructed
+warning: struct `FrontierV1LiveFieldAgentSummary` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:215:12
     |
-215 | pub struct FrontierV1LiveSelfAiSummary {
+215 | pub struct FrontierV1LiveFieldAgentSummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: method `combined_hex` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:233:12
     |
-232 | impl FrontierV1LiveSelfAiSummary {
+232 | impl FrontierV1LiveFieldAgentSummary {
     | -------------------------------- method in this implementation
 233 |     pub fn combined_hex(&self) -> String {
     |            ^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiOracleOutput` is never constructed
+warning: struct `FrontierV1LiveFieldAgentOracleOutput` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:245:12
     |
-245 | pub struct FrontierV1LiveSelfAiOracleOutput {
+245 | pub struct FrontierV1LiveFieldAgentOracleOutput {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierV1GpuReplaySummary` is never constructed
@@ -2103,10 +2103,10 @@ warning: struct `FrontierV1RouteReplaySummary` is never constructed
 294 | pub struct FrontierV1RouteReplaySummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1SeadReplaySummary` is never constructed
+warning: struct `FrontierV1FieldPolicyReplaySummary` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:306:12
     |
-306 | pub struct FrontierV1SeadReplaySummary {
+306 | pub struct FrontierV1FieldPolicyReplaySummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `GpuResourceFlowAllocationSummary` is never constructed
@@ -2186,10 +2186,10 @@ warning: function `build_route_replay_summary` is never used
 490 | pub fn build_route_replay_summary(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `build_sead_replay_summary` is never used
+warning: function `build_field_policy_replay_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:518:8
     |
-518 | pub fn build_sead_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1SeadReplaySummary {
+518 | pub fn build_field_policy_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1FieldPolicyReplaySummary {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `hash_route_replay_detail` is never used
@@ -2198,22 +2198,22 @@ warning: function `hash_route_replay_detail` is never used
 527 | pub fn hash_route_replay_detail(summary: FrontierV1RouteReplaySummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_gpu_execution` is never used
+warning: function `hash_live_field_agent_gpu_execution` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:540:8
     |
-540 | pub fn hash_live_self_ai_gpu_execution(
+540 | pub fn hash_live_field_agent_gpu_execution(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_feedback_candidate` is never used
+warning: function `hash_live_field_agent_feedback_candidate` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:558:8
     |
-558 | pub fn hash_live_self_ai_feedback_candidate(c: FrontierV1LiveSelfAiFeedbackCandidate) -> u64 {
+558 | pub fn hash_live_field_agent_feedback_candidate(c: FrontierV1LiveFieldAgentFeedbackCandidate) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_summary` is never used
+warning: function `hash_live_field_agent_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:573:8
     |
-573 | pub fn hash_live_self_ai_summary(summary: FrontierV1LiveSelfAiSummary) -> u64 {
+573 | pub fn hash_live_field_agent_summary(summary: FrontierV1LiveFieldAgentSummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `build_feedback_candidate` is never used
@@ -2222,16 +2222,16 @@ warning: function `build_feedback_candidate` is never used
 597 | pub fn build_feedback_candidate(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `cpu_live_self_ai_oracle` is never used
+warning: function `cpu_live_field_agent_oracle` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:621:8
     |
-621 | pub fn cpu_live_self_ai_oracle(
+621 | pub fn cpu_live_field_agent_oracle(
     |        ^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_sead_replay_summary` is never used
+warning: function `hash_field_policy_replay_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:663:8
     |
-663 | pub fn hash_sead_replay_summary(summary: FrontierV1SeadReplaySummary) -> u64 {
+663 | pub fn hash_field_policy_replay_summary(summary: FrontierV1FieldPolicyReplaySummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `build_gpu_replay_summary` is never used
@@ -2318,10 +2318,10 @@ warning: function `validate_flat_star` is never used
 1028 | fn validate_flat_star(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
      |    ^^^^^^^^^^^^^^^^^^
 
-warning: function `validate_sead_routing` is never used
+warning: function `validate_field_policy_routing` is never used
     --> crates\simthing-driver\tests\support\frontier_v1.rs:1078:4
      |
-1078 | fn validate_sead_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
+1078 | fn validate_field_policy_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
      |    ^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `validate_coupling` is never used
@@ -2372,10 +2372,10 @@ warning: function `fnv_mix` is never used
 1195 | fn fnv_mix(v: u64) -> u64 {
      |    ^^^^^^^
 
-warning: function `live_self_ai_field_status_code` is never used
+warning: function `live_field_agent_field_status_code` is never used
     --> crates\simthing-driver\tests\support\frontier_v1.rs:1199:4
      |
-1199 | fn live_self_ai_field_status_code(s: FrontierV1LiveSelfAiFieldStatus) -> u32 {
+1199 | fn live_field_agent_field_status_code(s: FrontierV1LiveFieldAgentFieldStatus) -> u32 {
      |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: field `mapping_execution_profile` is never read
@@ -3023,16 +3023,16 @@ warning: constant `FRONTIER_V1_GPU_RF_FIXTURE_ID` is never used
 14 | pub const FRONTIER_V1_GPU_RF_FIXTURE_ID: &str = "frontier_v1_3_gpu_resource_flow_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: constant `FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID` is never used
+warning: constant `FRONTIER_V1_FIELD_POLICY_ROUTE_FIXTURE_ID` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:15:11
    |
-15 | pub const FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_sead_route_replay_v1";
+15 | pub const FRONTIER_V1_FIELD_POLICY_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_field_policy_route_replay_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: constant `FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID` is never used
+warning: constant `FRONTIER_V1_LIVE_FIELD_AGENT_FIXTURE_ID` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:16:11
    |
-16 | pub const FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID: &str = "frontier_v1_5_live_self_ai_route_v1";
+16 | pub const FRONTIER_V1_LIVE_FIELD_AGENT_FIXTURE_ID: &str = "frontier_v1_5_live_field_agent_route_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: constant `FRONTIER_V2_PROFILE_NAME` is never used
@@ -3071,10 +3071,10 @@ warning: constant `FRONTIER_V1_MOVEMENT_ROUTE_CODE` is never used
 31 | pub const FRONTIER_V1_MOVEMENT_ROUTE_CODE: u32 = 3;
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: enum `SeadPipelineVersion` is never used
+warning: enum `FieldPolicyPipelineVersion` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:34:10
    |
-34 | pub enum SeadPipelineVersion {
+34 | pub enum FieldPolicyPipelineVersion {
    |          ^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierTheaterSpec` is never constructed
@@ -3095,10 +3095,10 @@ warning: struct `FrontierFlatStarResourceFlowSpec` is never constructed
 60 | pub struct FrontierFlatStarResourceFlowSpec {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierSeadSelfAiSpec` is never constructed
+warning: struct `FrontierFieldPolicyFieldAgentSpec` is never constructed
   --> crates\simthing-driver\tests\support\frontier_v1.rs:73:12
    |
-73 | pub struct FrontierSeadSelfAiSpec {
+73 | pub struct FrontierFieldPolicyFieldAgentSpec {
    |            ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierEconomyFieldCouplingSpec` is never constructed
@@ -3173,36 +3173,36 @@ warning: enum `FrontierV2Status` is never used
 183 | pub enum FrontierV2Status {
     |          ^^^^^^^^^^^^^^^^
 
-warning: enum `FrontierV1LiveSelfAiFieldStatus` is never used
+warning: enum `FrontierV1LiveFieldAgentFieldStatus` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:189:10
     |
-189 | pub enum FrontierV1LiveSelfAiFieldStatus {
+189 | pub enum FrontierV1LiveFieldAgentFieldStatus {
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiFeedbackCandidate` is never constructed
+warning: struct `FrontierV1LiveFieldAgentFeedbackCandidate` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:201:12
     |
-201 | pub struct FrontierV1LiveSelfAiFeedbackCandidate {
+201 | pub struct FrontierV1LiveFieldAgentFeedbackCandidate {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiSummary` is never constructed
+warning: struct `FrontierV1LiveFieldAgentSummary` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:215:12
     |
-215 | pub struct FrontierV1LiveSelfAiSummary {
+215 | pub struct FrontierV1LiveFieldAgentSummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: method `combined_hex` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:233:12
     |
-232 | impl FrontierV1LiveSelfAiSummary {
+232 | impl FrontierV1LiveFieldAgentSummary {
     | -------------------------------- method in this implementation
 233 |     pub fn combined_hex(&self) -> String {
     |            ^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiOracleOutput` is never constructed
+warning: struct `FrontierV1LiveFieldAgentOracleOutput` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:245:12
     |
-245 | pub struct FrontierV1LiveSelfAiOracleOutput {
+245 | pub struct FrontierV1LiveFieldAgentOracleOutput {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierV1GpuReplaySummary` is never constructed
@@ -3225,10 +3225,10 @@ warning: struct `FrontierV1RouteReplaySummary` is never constructed
 294 | pub struct FrontierV1RouteReplaySummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1SeadReplaySummary` is never constructed
+warning: struct `FrontierV1FieldPolicyReplaySummary` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:306:12
     |
-306 | pub struct FrontierV1SeadReplaySummary {
+306 | pub struct FrontierV1FieldPolicyReplaySummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `GpuResourceFlowAllocationSummary` is never constructed
@@ -3308,10 +3308,10 @@ warning: function `build_route_replay_summary` is never used
 490 | pub fn build_route_replay_summary(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `build_sead_replay_summary` is never used
+warning: function `build_field_policy_replay_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:518:8
     |
-518 | pub fn build_sead_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1SeadReplaySummary {
+518 | pub fn build_field_policy_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1FieldPolicyReplaySummary {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `hash_route_replay_detail` is never used
@@ -3320,22 +3320,22 @@ warning: function `hash_route_replay_detail` is never used
 527 | pub fn hash_route_replay_detail(summary: FrontierV1RouteReplaySummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_gpu_execution` is never used
+warning: function `hash_live_field_agent_gpu_execution` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:540:8
     |
-540 | pub fn hash_live_self_ai_gpu_execution(
+540 | pub fn hash_live_field_agent_gpu_execution(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_feedback_candidate` is never used
+warning: function `hash_live_field_agent_feedback_candidate` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:558:8
     |
-558 | pub fn hash_live_self_ai_feedback_candidate(c: FrontierV1LiveSelfAiFeedbackCandidate) -> u64 {
+558 | pub fn hash_live_field_agent_feedback_candidate(c: FrontierV1LiveFieldAgentFeedbackCandidate) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_summary` is never used
+warning: function `hash_live_field_agent_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:573:8
     |
-573 | pub fn hash_live_self_ai_summary(summary: FrontierV1LiveSelfAiSummary) -> u64 {
+573 | pub fn hash_live_field_agent_summary(summary: FrontierV1LiveFieldAgentSummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `build_feedback_candidate` is never used
@@ -3344,16 +3344,16 @@ warning: function `build_feedback_candidate` is never used
 597 | pub fn build_feedback_candidate(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `cpu_live_self_ai_oracle` is never used
+warning: function `cpu_live_field_agent_oracle` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:621:8
     |
-621 | pub fn cpu_live_self_ai_oracle(
+621 | pub fn cpu_live_field_agent_oracle(
     |        ^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_sead_replay_summary` is never used
+warning: function `hash_field_policy_replay_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:663:8
     |
-663 | pub fn hash_sead_replay_summary(summary: FrontierV1SeadReplaySummary) -> u64 {
+663 | pub fn hash_field_policy_replay_summary(summary: FrontierV1FieldPolicyReplaySummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `build_gpu_replay_summary` is never used
@@ -3440,10 +3440,10 @@ warning: function `validate_flat_star` is never used
 1028 | fn validate_flat_star(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
      |    ^^^^^^^^^^^^^^^^^^
 
-warning: function `validate_sead_routing` is never used
+warning: function `validate_field_policy_routing` is never used
     --> crates\simthing-driver\tests\support\frontier_v1.rs:1078:4
      |
-1078 | fn validate_sead_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
+1078 | fn validate_field_policy_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
      |    ^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `validate_coupling` is never used
@@ -3494,10 +3494,10 @@ warning: function `fnv_mix` is never used
 1195 | fn fnv_mix(v: u64) -> u64 {
      |    ^^^^^^^
 
-warning: function `live_self_ai_field_status_code` is never used
+warning: function `live_field_agent_field_status_code` is never used
     --> crates\simthing-driver\tests\support\frontier_v1.rs:1199:4
      |
-1199 | fn live_self_ai_field_status_code(s: FrontierV1LiveSelfAiFieldStatus) -> u32 {
+1199 | fn live_field_agent_field_status_code(s: FrontierV1LiveFieldAgentFieldStatus) -> u32 {
      |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: fields `commitment` and `mapping_execution_profile` are never read
@@ -4147,16 +4147,16 @@ warning: constant `FRONTIER_V1_GPU_RF_FIXTURE_ID` is never used
 14 | pub const FRONTIER_V1_GPU_RF_FIXTURE_ID: &str = "frontier_v1_3_gpu_resource_flow_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: constant `FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID` is never used
+warning: constant `FRONTIER_V1_FIELD_POLICY_ROUTE_FIXTURE_ID` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:15:11
    |
-15 | pub const FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_sead_route_replay_v1";
+15 | pub const FRONTIER_V1_FIELD_POLICY_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_field_policy_route_replay_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: constant `FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID` is never used
+warning: constant `FRONTIER_V1_LIVE_FIELD_AGENT_FIXTURE_ID` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:16:11
    |
-16 | pub const FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID: &str = "frontier_v1_5_live_self_ai_route_v1";
+16 | pub const FRONTIER_V1_LIVE_FIELD_AGENT_FIXTURE_ID: &str = "frontier_v1_5_live_field_agent_route_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: constant `FRONTIER_V2_PROFILE_NAME` is never used
@@ -4195,10 +4195,10 @@ warning: constant `FRONTIER_V1_MOVEMENT_ROUTE_CODE` is never used
 31 | pub const FRONTIER_V1_MOVEMENT_ROUTE_CODE: u32 = 3;
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: enum `SeadPipelineVersion` is never used
+warning: enum `FieldPolicyPipelineVersion` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:34:10
    |
-34 | pub enum SeadPipelineVersion {
+34 | pub enum FieldPolicyPipelineVersion {
    |          ^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierTheaterSpec` is never constructed
@@ -4219,10 +4219,10 @@ warning: struct `FrontierFlatStarResourceFlowSpec` is never constructed
 60 | pub struct FrontierFlatStarResourceFlowSpec {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierSeadSelfAiSpec` is never constructed
+warning: struct `FrontierFieldPolicyFieldAgentSpec` is never constructed
   --> crates\simthing-driver\tests\support\frontier_v1.rs:73:12
    |
-73 | pub struct FrontierSeadSelfAiSpec {
+73 | pub struct FrontierFieldPolicyFieldAgentSpec {
    |            ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierEconomyFieldCouplingSpec` is never constructed
@@ -4297,36 +4297,36 @@ warning: enum `FrontierV2Status` is never used
 183 | pub enum FrontierV2Status {
     |          ^^^^^^^^^^^^^^^^
 
-warning: enum `FrontierV1LiveSelfAiFieldStatus` is never used
+warning: enum `FrontierV1LiveFieldAgentFieldStatus` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:189:10
     |
-189 | pub enum FrontierV1LiveSelfAiFieldStatus {
+189 | pub enum FrontierV1LiveFieldAgentFieldStatus {
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiFeedbackCandidate` is never constructed
+warning: struct `FrontierV1LiveFieldAgentFeedbackCandidate` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:201:12
     |
-201 | pub struct FrontierV1LiveSelfAiFeedbackCandidate {
+201 | pub struct FrontierV1LiveFieldAgentFeedbackCandidate {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiSummary` is never constructed
+warning: struct `FrontierV1LiveFieldAgentSummary` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:215:12
     |
-215 | pub struct FrontierV1LiveSelfAiSummary {
+215 | pub struct FrontierV1LiveFieldAgentSummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: method `combined_hex` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:233:12
     |
-232 | impl FrontierV1LiveSelfAiSummary {
+232 | impl FrontierV1LiveFieldAgentSummary {
     | -------------------------------- method in this implementation
 233 |     pub fn combined_hex(&self) -> String {
     |            ^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiOracleOutput` is never constructed
+warning: struct `FrontierV1LiveFieldAgentOracleOutput` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:245:12
     |
-245 | pub struct FrontierV1LiveSelfAiOracleOutput {
+245 | pub struct FrontierV1LiveFieldAgentOracleOutput {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierV1GpuReplaySummary` is never constructed
@@ -4349,10 +4349,10 @@ warning: struct `FrontierV1RouteReplaySummary` is never constructed
 294 | pub struct FrontierV1RouteReplaySummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1SeadReplaySummary` is never constructed
+warning: struct `FrontierV1FieldPolicyReplaySummary` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:306:12
     |
-306 | pub struct FrontierV1SeadReplaySummary {
+306 | pub struct FrontierV1FieldPolicyReplaySummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `GpuResourceFlowAllocationSummary` is never constructed
@@ -4432,10 +4432,10 @@ warning: function `build_route_replay_summary` is never used
 490 | pub fn build_route_replay_summary(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `build_sead_replay_summary` is never used
+warning: function `build_field_policy_replay_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:518:8
     |
-518 | pub fn build_sead_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1SeadReplaySummary {
+518 | pub fn build_field_policy_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1FieldPolicyReplaySummary {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `hash_route_replay_detail` is never used
@@ -4444,22 +4444,22 @@ warning: function `hash_route_replay_detail` is never used
 527 | pub fn hash_route_replay_detail(summary: FrontierV1RouteReplaySummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_gpu_execution` is never used
+warning: function `hash_live_field_agent_gpu_execution` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:540:8
     |
-540 | pub fn hash_live_self_ai_gpu_execution(
+540 | pub fn hash_live_field_agent_gpu_execution(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_feedback_candidate` is never used
+warning: function `hash_live_field_agent_feedback_candidate` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:558:8
     |
-558 | pub fn hash_live_self_ai_feedback_candidate(c: FrontierV1LiveSelfAiFeedbackCandidate) -> u64 {
+558 | pub fn hash_live_field_agent_feedback_candidate(c: FrontierV1LiveFieldAgentFeedbackCandidate) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_summary` is never used
+warning: function `hash_live_field_agent_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:573:8
     |
-573 | pub fn hash_live_self_ai_summary(summary: FrontierV1LiveSelfAiSummary) -> u64 {
+573 | pub fn hash_live_field_agent_summary(summary: FrontierV1LiveFieldAgentSummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `build_feedback_candidate` is never used
@@ -4468,16 +4468,16 @@ warning: function `build_feedback_candidate` is never used
 597 | pub fn build_feedback_candidate(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `cpu_live_self_ai_oracle` is never used
+warning: function `cpu_live_field_agent_oracle` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:621:8
     |
-621 | pub fn cpu_live_self_ai_oracle(
+621 | pub fn cpu_live_field_agent_oracle(
     |        ^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_sead_replay_summary` is never used
+warning: function `hash_field_policy_replay_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:663:8
     |
-663 | pub fn hash_sead_replay_summary(summary: FrontierV1SeadReplaySummary) -> u64 {
+663 | pub fn hash_field_policy_replay_summary(summary: FrontierV1FieldPolicyReplaySummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `build_gpu_replay_summary` is never used
@@ -4564,10 +4564,10 @@ warning: function `validate_flat_star` is never used
 1028 | fn validate_flat_star(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
      |    ^^^^^^^^^^^^^^^^^^
 
-warning: function `validate_sead_routing` is never used
+warning: function `validate_field_policy_routing` is never used
     --> crates\simthing-driver\tests\support\frontier_v1.rs:1078:4
      |
-1078 | fn validate_sead_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
+1078 | fn validate_field_policy_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
      |    ^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `validate_coupling` is never used
@@ -4618,10 +4618,10 @@ warning: function `fnv_mix` is never used
 1195 | fn fnv_mix(v: u64) -> u64 {
      |    ^^^^^^^
 
-warning: function `live_self_ai_field_status_code` is never used
+warning: function `live_field_agent_field_status_code` is never used
     --> crates\simthing-driver\tests\support\frontier_v1.rs:1199:4
      |
-1199 | fn live_self_ai_field_status_code(s: FrontierV1LiveSelfAiFieldStatus) -> u32 {
+1199 | fn live_field_agent_field_status_code(s: FrontierV1LiveFieldAgentFieldStatus) -> u32 {
      |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: field `mapping_execution_profile` is never read
@@ -5274,16 +5274,16 @@ warning: constant `FRONTIER_V1_GPU_RF_FIXTURE_ID` is never used
 14 | pub const FRONTIER_V1_GPU_RF_FIXTURE_ID: &str = "frontier_v1_3_gpu_resource_flow_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: constant `FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID` is never used
+warning: constant `FRONTIER_V1_FIELD_POLICY_ROUTE_FIXTURE_ID` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:15:11
    |
-15 | pub const FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_sead_route_replay_v1";
+15 | pub const FRONTIER_V1_FIELD_POLICY_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_field_policy_route_replay_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: constant `FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID` is never used
+warning: constant `FRONTIER_V1_LIVE_FIELD_AGENT_FIXTURE_ID` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:16:11
    |
-16 | pub const FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID: &str = "frontier_v1_5_live_self_ai_route_v1";
+16 | pub const FRONTIER_V1_LIVE_FIELD_AGENT_FIXTURE_ID: &str = "frontier_v1_5_live_field_agent_route_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: constant `FRONTIER_V2_PROFILE_NAME` is never used
@@ -5322,10 +5322,10 @@ warning: constant `FRONTIER_V1_MOVEMENT_ROUTE_CODE` is never used
 31 | pub const FRONTIER_V1_MOVEMENT_ROUTE_CODE: u32 = 3;
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: enum `SeadPipelineVersion` is never used
+warning: enum `FieldPolicyPipelineVersion` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:34:10
    |
-34 | pub enum SeadPipelineVersion {
+34 | pub enum FieldPolicyPipelineVersion {
    |          ^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierTheaterSpec` is never constructed
@@ -5346,10 +5346,10 @@ warning: struct `FrontierFlatStarResourceFlowSpec` is never constructed
 60 | pub struct FrontierFlatStarResourceFlowSpec {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierSeadSelfAiSpec` is never constructed
+warning: struct `FrontierFieldPolicyFieldAgentSpec` is never constructed
   --> crates\simthing-driver\tests\support\frontier_v1.rs:73:12
    |
-73 | pub struct FrontierSeadSelfAiSpec {
+73 | pub struct FrontierFieldPolicyFieldAgentSpec {
    |            ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierEconomyFieldCouplingSpec` is never constructed
@@ -5424,36 +5424,36 @@ warning: enum `FrontierV2Status` is never used
 183 | pub enum FrontierV2Status {
     |          ^^^^^^^^^^^^^^^^
 
-warning: enum `FrontierV1LiveSelfAiFieldStatus` is never used
+warning: enum `FrontierV1LiveFieldAgentFieldStatus` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:189:10
     |
-189 | pub enum FrontierV1LiveSelfAiFieldStatus {
+189 | pub enum FrontierV1LiveFieldAgentFieldStatus {
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiFeedbackCandidate` is never constructed
+warning: struct `FrontierV1LiveFieldAgentFeedbackCandidate` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:201:12
     |
-201 | pub struct FrontierV1LiveSelfAiFeedbackCandidate {
+201 | pub struct FrontierV1LiveFieldAgentFeedbackCandidate {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiSummary` is never constructed
+warning: struct `FrontierV1LiveFieldAgentSummary` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:215:12
     |
-215 | pub struct FrontierV1LiveSelfAiSummary {
+215 | pub struct FrontierV1LiveFieldAgentSummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: method `combined_hex` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:233:12
     |
-232 | impl FrontierV1LiveSelfAiSummary {
+232 | impl FrontierV1LiveFieldAgentSummary {
     | -------------------------------- method in this implementation
 233 |     pub fn combined_hex(&self) -> String {
     |            ^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiOracleOutput` is never constructed
+warning: struct `FrontierV1LiveFieldAgentOracleOutput` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:245:12
     |
-245 | pub struct FrontierV1LiveSelfAiOracleOutput {
+245 | pub struct FrontierV1LiveFieldAgentOracleOutput {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierV1GpuReplaySummary` is never constructed
@@ -5476,10 +5476,10 @@ warning: struct `FrontierV1RouteReplaySummary` is never constructed
 294 | pub struct FrontierV1RouteReplaySummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1SeadReplaySummary` is never constructed
+warning: struct `FrontierV1FieldPolicyReplaySummary` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:306:12
     |
-306 | pub struct FrontierV1SeadReplaySummary {
+306 | pub struct FrontierV1FieldPolicyReplaySummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `GpuResourceFlowAllocationSummary` is never constructed
@@ -5559,10 +5559,10 @@ warning: function `build_route_replay_summary` is never used
 490 | pub fn build_route_replay_summary(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `build_sead_replay_summary` is never used
+warning: function `build_field_policy_replay_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:518:8
     |
-518 | pub fn build_sead_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1SeadReplaySummary {
+518 | pub fn build_field_policy_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1FieldPolicyReplaySummary {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `hash_route_replay_detail` is never used
@@ -5571,22 +5571,22 @@ warning: function `hash_route_replay_detail` is never used
 527 | pub fn hash_route_replay_detail(summary: FrontierV1RouteReplaySummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_gpu_execution` is never used
+warning: function `hash_live_field_agent_gpu_execution` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:540:8
     |
-540 | pub fn hash_live_self_ai_gpu_execution(
+540 | pub fn hash_live_field_agent_gpu_execution(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_feedback_candidate` is never used
+warning: function `hash_live_field_agent_feedback_candidate` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:558:8
     |
-558 | pub fn hash_live_self_ai_feedback_candidate(c: FrontierV1LiveSelfAiFeedbackCandidate) -> u64 {
+558 | pub fn hash_live_field_agent_feedback_candidate(c: FrontierV1LiveFieldAgentFeedbackCandidate) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_summary` is never used
+warning: function `hash_live_field_agent_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:573:8
     |
-573 | pub fn hash_live_self_ai_summary(summary: FrontierV1LiveSelfAiSummary) -> u64 {
+573 | pub fn hash_live_field_agent_summary(summary: FrontierV1LiveFieldAgentSummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `build_feedback_candidate` is never used
@@ -5595,16 +5595,16 @@ warning: function `build_feedback_candidate` is never used
 597 | pub fn build_feedback_candidate(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `cpu_live_self_ai_oracle` is never used
+warning: function `cpu_live_field_agent_oracle` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:621:8
     |
-621 | pub fn cpu_live_self_ai_oracle(
+621 | pub fn cpu_live_field_agent_oracle(
     |        ^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_sead_replay_summary` is never used
+warning: function `hash_field_policy_replay_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:663:8
     |
-663 | pub fn hash_sead_replay_summary(summary: FrontierV1SeadReplaySummary) -> u64 {
+663 | pub fn hash_field_policy_replay_summary(summary: FrontierV1FieldPolicyReplaySummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `build_gpu_replay_summary` is never used
@@ -5691,10 +5691,10 @@ warning: function `validate_flat_star` is never used
 1028 | fn validate_flat_star(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
      |    ^^^^^^^^^^^^^^^^^^
 
-warning: function `validate_sead_routing` is never used
+warning: function `validate_field_policy_routing` is never used
     --> crates\simthing-driver\tests\support\frontier_v1.rs:1078:4
      |
-1078 | fn validate_sead_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
+1078 | fn validate_field_policy_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
      |    ^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `validate_coupling` is never used
@@ -5745,10 +5745,10 @@ warning: function `fnv_mix` is never used
 1195 | fn fnv_mix(v: u64) -> u64 {
      |    ^^^^^^^
 
-warning: function `live_self_ai_field_status_code` is never used
+warning: function `live_field_agent_field_status_code` is never used
     --> crates\simthing-driver\tests\support\frontier_v1.rs:1199:4
      |
-1199 | fn live_self_ai_field_status_code(s: FrontierV1LiveSelfAiFieldStatus) -> u32 {
+1199 | fn live_field_agent_field_status_code(s: FrontierV1LiveFieldAgentFieldStatus) -> u32 {
      |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: field `mapping_execution_profile` is never read

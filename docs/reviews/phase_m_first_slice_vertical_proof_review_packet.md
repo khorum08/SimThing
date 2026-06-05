@@ -3,7 +3,7 @@
 > **Audience:** Opus / product review  
 > **Status:** **ACCEPTED — PASS WITH CONDITIONS** (Opus 2026-05-28). Acceptance memo:
 > [`phase_m_first_slice_vertical_proof_acceptance_opus_review.md`](phase_m_first_slice_vertical_proof_acceptance_opus_review.md).
-> Accepted as complete for the single-grid opt-in SEAD path; atlas / default wiring / perception /
+> Accepted as complete for the single-grid opt-in FIELD_POLICY path; atlas / default wiring / perception /
 > `source_mask` / map residency remain separately gated. Queue-write scale caveat must be resolved
 > before scaling.  
 > **Date:** 2026-05-28  
@@ -14,11 +14,11 @@
 ## 1. Executive verdict
 
 **ACCEPTED — PASS WITH CONDITIONS (Opus 2026-05-28).** Phase M first-slice vertical proof is
-accepted as complete for the single-grid, opt-in, GPU-resident mapping + SEAD commitment path. See
+accepted as complete for the single-grid, opt-in, GPU-resident mapping + FIELD_POLICY commitment path. See
 the acceptance memo for verdicts, conditions, and watchlist:
 [`phase_m_first_slice_vertical_proof_acceptance_opus_review.md`](phase_m_first_slice_vertical_proof_acceptance_opus_review.md).
 
-It proves a single-grid, opt-in, GPU-resident mapping + SEAD commitment path.
+It proves a single-grid, opt-in, GPU-resident mapping + FIELD_POLICY commitment path.
 
 It does **not** authorize atlas, perception, map residency, source identity, active masks, or default SimSession wiring.
 
@@ -71,7 +71,7 @@ RegionFieldSpec RON
 | [`phase_m_first_slice_runtime_r3_readiness_test_results.md`](../tests/phase_m_first_slice_runtime_r3_readiness_test_results.md) | Readiness / observability parking (R3) | `FirstSliceReadinessReport`; bridge cost counters; hot-path invariant locked | **PASS** |
 | [`phase_m_first_slice_product_fixture_test_results.md`](../tests/phase_m_first_slice_product_fixture_test_results.md) | Product-facing RegionFieldSpec/RON fixture | Explicit SparseRegionFieldV1 opt-in; finite propagation; weight-sensitive urgency; hot path no readback | **PASS** |
 | [`phase_m_first_slice_product_commitment_fixture_test_results.md`](../tests/phase_m_first_slice_product_commitment_fixture_test_results.md) | Threshold + EmitEvent over parent urgency | Low urgency no event; high urgency one event; GPU threshold crossing (not CPU planner) | **PASS** |
-| [`phase_m_first_slice_commitment_spec_test_results.md`](../tests/phase_m_first_slice_commitment_spec_test_results.md) | Designer-facing `FirstSliceCommitmentSpec` RON admission | Commitment binding admitted on RegionFieldSpec; same GPU-resident SEAD path | **PASS** |
+| [`phase_m_first_slice_commitment_spec_test_results.md`](../tests/phase_m_first_slice_commitment_spec_test_results.md) | Designer-facing `FirstSliceCommitmentSpec` RON admission | Commitment binding admitted on RegionFieldSpec; same GPU-resident FIELD_POLICY path | **PASS** |
 | [`phase_m_first_slice_scenario_spec_test_results.md`](../tests/phase_m_first_slice_scenario_spec_test_results.md) | Scenario-level RON wrapper with explicit execution profile | Disabled admits without execute; SparseRegionFieldV1 full hot path + commitment from same preview | **PASS** |
 | [`phase_m_first_slice_scenario_spec_r1_hygiene_test_results.md`](../tests/phase_m_first_slice_scenario_spec_r1_hygiene_test_results.md) | Post-landing hygiene | Test-only helper moved out of production API; budget estimate errors propagate; crash history documented | **PASS** |
 | [`phase_m_first_slice_vertical_proof_parking_test_results.md`](../tests/phase_m_first_slice_vertical_proof_parking_test_results.md) | This parking pass verification | Targeted first-slice suite + workspace check green; review packet created | **PASS** |
@@ -129,7 +129,7 @@ RegionFieldSpec RON
 
 ---
 
-## 7. SEAD commitment path
+## 7. FIELD_POLICY commitment path
 
 Measured product signals (10×10 fixture, weights `(0.2, 0.1)` vs `(0.9, 0.1)`):
 
@@ -137,7 +137,7 @@ Measured product signals (10×10 fixture, weights `(0.2, 0.1)` vs `(0.9, 0.1)`):
 |---|---:|---:|---:|
 | Parent threat (reduction) | ~9965 | ~9965 | — |
 | Parent urgency (EML) | ~2003 | ~8979 | 5490.87 |
-| Threshold events | 0 | 1 | event_kind `0x53454144` (SEAD) |
+| Threshold events | 0 | 1 | event_kind `0x53454144` (FIELD_POLICY) |
 
 The commitment decision is the GPU threshold crossing over parent urgency, not CPU-side `if urgency > threshold` planner logic.
 

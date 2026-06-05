@@ -1,6 +1,6 @@
 # CLAUSE-SPEC-0 (L2) — Design-Authority Acceptance Review
 
-**Reviewer:** Opus 4.8 (design authority — Mapping/SEAD + v7.8 track). **Date:** 2026-05-30.
+**Reviewer:** Opus 4.8 (design authority — Mapping/FIELD_POLICY + v7.8 track). **Date:** 2026-05-30.
 **Decision:** **ACCEPT (Option A).** L2 / CLAUSE-SPEC-0 satisfies the designer-authored FrontierV2
 scenario-admission gate. ClauseThing and ClauseScript remain **parked** pending separate product
 authorization. No new prooflet, hygiene ladder, or remediation is required.
@@ -14,7 +14,7 @@ Per completion criterion 2, I read the implementation, not just the test report:
 - `crates/simthing-spec/src/designer_admission/diagnostic.rs` — the new diagnostic codes.
 - `crates/simthing-spec/src/designer_admission/preview.rs` — L1 preflight reuse + nit fix.
 - `crates/simthing-driver/tests/phase_m_clause_spec0_frontier_v2_compile.rs` — the compile smoke.
-- Verified `crates/simthing-sim/src/**` carries **no** FrontierV2/ClauseThing/ClauseScript/SEAD/
+- Verified `crates/simthing-sim/src/**` carries **no** FrontierV2/ClauseThing/ClauseScript/FIELD_POLICY/
   RegionCell/ArenaRegistry/proposal/ResourceFlow awareness (only the pre-existing generic
   `BoundaryRequest` core enum appears, which is unrelated).
 

@@ -65,5 +65,5 @@ the structured-data fix is what removes the smell and is preferred.
 ## Stop conditions (unchanged from handoff 5)
 
 If the fix appears to need a live masked reduction / `AccumulatorOp` / GPU / new WGSL / runtime
-`match kind` on a real `SimThingKind` / economy / SEAD / movement / combat — STOP and escalate. The
+`match kind` on a real `SimThingKind` / economy / FIELD_POLICY / movement / combat — STOP and escalate. The
 correct fix is structured channel derivation from LOC data, which needs none of those.

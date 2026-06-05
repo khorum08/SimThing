@@ -388,7 +388,7 @@ fn no_ad_hoc_runtime_gadget_execution() {
 
 #[test]
 fn posture_preservation_2a() {
-    // Use safe, existing files for source scans (mirrors patterns in phase_m_economy_sead_product_fixture_posture_preserved and structured_field defaults tests)
+    // Use safe, existing files for source scans (mirrors patterns in phase_m_economy_field_policy_product_fixture_posture_preserved and structured_field defaults tests)
     let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
     let sim_boundary = include_str!("../../simthing-sim/src/boundary.rs");
     let gpu_lib = include_str!("../../simthing-gpu/src/lib.rs");
