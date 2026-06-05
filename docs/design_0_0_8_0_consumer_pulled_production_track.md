@@ -788,7 +788,27 @@ column-flip — each its own gate.
 > `request_atlas_batching`, no M-4A masking-at-scale, no new semantic WGSL/op/invariant, no scenario
 > reopen. Adapter: RTX 4080 Laptop GPU.
 >
-> **Next horizon:** GPU-resident next-tick authority substrate; then multi-atlas batching + M-4A masking
+> **`RUNTIME-0080-0-R1` is OPEN (`RUNTIME-0080-0-R1-DESIGN-0`, 2026-06-05, Opus design authority)**
+> (design spec: [`production_paths/runtime_0080_0_r1_next_tick_authority_spec.md`](production_paths/runtime_0080_0_r1_next_tick_authority_spec.md)).
+> Defines the substrate primitive **`GPU-NEXTTICK-0`** — GPU-resident world state as the **input
+> authority for tick N+1** (`gpu_state_feeds_next_tick == true`), the discovery R0A honestly surfaced.
+> Per **SimThing Maximality**, any transition already expressed as
+> row/mask/reduce/disburse/threshold/emission-band is promoted toward resident execution; the CPU may
+> remain oracle/inspector/save-writer but may **not** be the hidden authority for state_N+1 when the
+> track claims GPU-resident execution. The CPU shadow is **retained** as parity witness (not deleted —
+> deleting it would break semantic-GPU parity); only authority moves to the resident buffer, reconciled
+> at the **tick boundary** (the save/pause/stable-state point). First IMPL sub-rung
+> **`RUNTIME-0080-0-R1a`** promotes the already-measured **Tier-A field columns** (disruption,
+> location_status, stockpiles, construction_progress, per-cohort `num_ships` value, blockade/divert code,
+> R4 magnitude) to a resident double-buffered next-tick authority — **no new op / WGSL / atlas batching /
+> M-4A**, glue only. **Tier-B** structural changes (REENROLL membership scatter, cohort birth/removal,
+> fusion lineage) are applied by a **bounded CPU boundary-maintenance pass driven by a GPU-written event
+> journal** (the boundaryEvent dispatch), which is GPU-decided / CPU-applied — **not** a CPU planner.
+> **R0A is CLOSED as PARTIAL / informative** (correct honest outcome; no PR #531 change required).
+>
+> **Next horizon:** `R1a` (resident field-column next-tick authority) → `R1b` (`RESIDENT-EVENTLOG-0`,
+> resident event journal) → `R1c` (`RESIDENT-REENROLL-0`, resident scatter/compact for membership + cohort
+> table — behind the §11 / free-list-scatter stop-lines); then multi-atlas batching + M-4A masking
 > (§11 gate); richer emergence (`SCENARIO-0080-3`); multi-faction ECON; system→planet recursion.
 >
 > > **✓ Adapter-scope caveat RESOLVED (2026-06-04, design authority).** `GpuContext` now **always selects
