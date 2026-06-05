@@ -29,7 +29,11 @@ R6C closes that gap. It does **not** add a new mechanism; it **wires the proven 
 - No new `AccumulatorOp`, no semantic WGSL, no new invariant.
 - No nested system→planet depth (stays the named build fork); single galactic tier.
 - No real-time loop / UI / player control.
-- CPU-oracle primary. GPU residency is **shape-only**; do not claim GPU kernels.
+- Verified against the **CPU oracle** (the determinism reference the GPU path is checked against). GPU
+  residency remains the **target** (design §0); a GPU *execution* diagnostic for R6C is a follow-on
+  measurement, **not** required for R6C PASS — write the rung GPU-shaped (row/mask/threshold/emission-band,
+  no CPU-only control flow) so that measurement is later, not a rewrite. Report it as "GPU-conformant; GPU
+  execution not yet measured," never "validated on GPU."
 
 ---
 
