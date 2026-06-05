@@ -1,3 +1,11 @@
+# 2026-06-05 - RUNTIME-0080-0-R1a-HARDEN-0: removed oracle-fed replay from Tier-A GPU source-of-truth
+
+- **Hardened Outcome A:** Replaced `TierAInputTables::from_report` oracle-fed per-tick replay with `R1aBoundaryWitness::derive_tick_inputs` (algorithmic R6C tick stepping for boundary inputs only). Per-tick metadata/disruption inputs are written via `fill_slot_range_col` each tick; seed uploads only initial Tier-A state + static constants (denom, blockade default owners).
+- **Verdict:** PASS — no covered column oracle-fed; all seven Tier-A columns GPU-authoritative with measured R6C oracle parity; R6C checksum `1bba891c779190a4` holds.
+- **Exact-bit proof:** stockpiles, construction_progress, existing-slot `num_ships`, blockade/divert code — CPU oracle bits vs GPU readback bits asserted in report + tests.
+- **Disabled-transform parity check:** disabling stockpile transform fails bit-exact parity; re-enabling restores it.
+- **Test gate:** `cargo test -p simthing-driver --test runtime_0080_0_r1a` -> 35 passed; 0 failed. Report: [`docs/tests/runtime_0080_0_r1a_next_tick_authority_results.md`](tests/runtime_0080_0_r1a_next_tick_authority_results.md).
+
 # 2026-06-05 - RUNTIME-0080-0-R1a Outcome A PASS: Tier-A GPU next-tick authority
 
 - **Implemented Outcome A:** `crates/simthing-driver/src/runtime_0080_0_r1a.rs` registers Tier-A transforms on production `WorldGpuState` + `Pipelines` with a resident 100-tick double-buffer loop, seed-once per-tick metadata from the R6C report, zero inter-tick Tier-A uploads, ordered diffusion bands, staged EvalEML stockpile/construction/combat transforms, GPU-side fusion deltas, and a GPU-to-GPU Candidate-F max-magnitude write into resident Tier-A state. Boundary readbacks are parity witnesses only; CPU oracle remains comparison-only.

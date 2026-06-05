@@ -21,10 +21,11 @@ use crate::dress_rehearsal_r1_disruption_heatmap::{
     bounded_feedback_next, cell_index, FLOOR, GAIN, GALAXY_CELL_COUNT, GALAXY_SIDE, H_WEIGHT,
 };
 use crate::dress_rehearsal_r2_recursive_allocation::BLOCKADE_THRESHOLD;
-use crate::dress_rehearsal_r6_combat_hp_damage::damage_output_for_cohort;
+use crate::dress_rehearsal_r6b_ship_cohort_reinforcement::SHIP_COST;
 use crate::dress_rehearsal_r6c_integrated_run::{
     run_dress_rehearsal_r6c_integrated_run, DressRehearsalR6cInput, DressRehearsalR6cOwner,
-    DressRehearsalR6cReport, DressRehearsalR6cWorld, R6C_CANONICAL_TICK_COUNT,
+    DressRehearsalR6cReport, DressRehearsalR6cWorld, R1aBoundaryWitness, R1aTickDerivedInputs,
+    R6C_CANONICAL_TICK_COUNT,
 };
 use crate::runtime_0080_0_r0::{
     RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_FOREGROUND_CAPTURE, RUNTIME_R0_R4_F32_BOUND,
@@ -156,9 +157,37 @@ pub struct Runtime0080R1aSubstratePrimitiveReport {
     pub genericity_justification: &'static str,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Runtime0080R1aInputSource {
+    GpuDerived,
+    StaticSeeded,
+    BoundaryMaintained,
+    OracleFed,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Runtime0080R1aExactBitProof {
+    pub column: &'static str,
+    pub slot: u32,
+    pub cpu_oracle_bits: u32,
+    pub gpu_readback_bits: u32,
+    pub bit_exact: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Runtime0080R1aDisabledTransformRow {
+    pub column: &'static str,
+    pub transform_enabled: bool,
+    pub cpu_oracle_bits: u32,
+    pub gpu_readback_bits: u32,
+    pub bit_exact: bool,
+    pub parity_pass: bool,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Runtime0080R1aCoveredColumnReport {
     pub column: &'static str,
+    pub input_source: Runtime0080R1aInputSource,
     pub gpu_authoritative: bool,
     pub cpu_oracle_parity: bool,
     pub integer_bit_exact: bool,
@@ -167,6 +196,8 @@ pub struct Runtime0080R1aCoveredColumnReport {
     pub cpu_mutated_between_ticks: bool,
     pub parity_measured_from_gpu_value: bool,
     pub measured_shape: &'static str,
+    pub sample_cpu_oracle_bits: Option<u32>,
+    pub sample_gpu_readback_bits: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -226,6 +257,9 @@ pub struct Runtime0080R1aReport {
     pub substrate_primitives: Vec<Runtime0080R1aSubstratePrimitiveReport>,
     pub measured_shape_names: Vec<&'static str>,
     pub covered_columns: Vec<Runtime0080R1aCoveredColumnReport>,
+    pub exact_bit_proofs: Vec<Runtime0080R1aExactBitProof>,
+    pub disabled_transform_checks: Vec<Runtime0080R1aDisabledTransformRow>,
+    pub oracle_fed_covered_columns: Vec<&'static str>,
     pub boundary_summary: Runtime0080R1aBoundarySummary,
     pub r4_max_abs_delta: f32,
     pub r4_f32_bound: f32,
@@ -291,9 +325,14 @@ pub fn run_runtime_0080_0_r1a_with_transforms_enabled(
         .expect("R6C report carries initial world");
     let layout = TierAStateLayout::new(world);
     let oracle_trajectory = compute_comparison_oracle_trajectory(&oracle);
-    let input_tables = TierAInputTables::from_report(&oracle, &layout);
+    let static_config = TierAStaticConfig::from_initial_world(world, &layout);
+    let mut boundary_witness = R1aBoundaryWitness::new(
+        world,
+        layout.fleet_ids.clone(),
+        layout.system_indices.clone(),
+    );
 
-    let mut harness = match TierAGpuHarness::new(ctx, &layout, world, &input_tables) {
+    let mut harness = match TierAGpuHarness::new(ctx, &layout, world, &static_config) {
         Ok(h) => h,
         Err(diagnostic) => {
             return finalize_report(base_report(input, false, vec![diagnostic], Some(adapter)));
@@ -302,9 +341,10 @@ pub fn run_runtime_0080_0_r1a_with_transforms_enabled(
 
     let mut loop_result = harness.run_resident_loop(
         &layout,
-        &input_tables,
+        &mut boundary_witness,
         &oracle_trajectory,
         transforms_enabled,
+        DisabledTransformMask::all_enabled(),
     );
     let parity = measure_column_parity(
         &loop_result.final_gpu_values,
@@ -312,6 +352,14 @@ pub fn run_runtime_0080_0_r1a_with_transforms_enabled(
         &layout,
         &mut loop_result.max_r4_abs_delta,
     );
+    let exact_bit_proofs =
+        collect_exact_bit_proofs(&loop_result.final_gpu_values, &oracle_trajectory, &layout);
+    let disabled_transform_checks = run_disabled_transform_checks(&layout, world, &static_config);
+    let oracle_fed_columns: Vec<&'static str> = parity
+        .iter()
+        .filter(|col| col.input_source == Runtime0080R1aInputSource::OracleFed)
+        .map(|col| col.column)
+        .collect();
     let oracle_checksum = oracle.summary.stable_checksum;
     let checksum_matches =
         oracle_checksum == RUNTIME_R0_EXPECTED_R6C_CHECKSUM && loop_result.tick100_matches_oracle;
@@ -328,10 +376,19 @@ pub fn run_runtime_0080_0_r1a_with_transforms_enabled(
     let all_columns_parity = parity
         .iter()
         .all(|p| p.gpu_authoritative && p.cpu_oracle_parity);
+    let no_oracle_fed = oracle_fed_columns.is_empty();
+    let disabled_transform_ok = disabled_transform_checks
+        .iter()
+        .any(|row| !row.transform_enabled && !row.bit_exact && row.column == "stockpiles")
+        && disabled_transform_checks
+            .iter()
+            .any(|row| row.transform_enabled && row.bit_exact && row.column == "stockpiles");
     let earned_parity = transforms_enabled
         && all_columns_parity
         && checksum_matches
-        && loop_result.tick100_matches_oracle;
+        && loop_result.tick100_matches_oracle
+        && no_oracle_fed
+        && disabled_transform_ok;
 
     let mut report = base_report(input, false, Vec::new(), Some(adapter));
     report.registers_tier_a_transforms_on_world_gpu_state_pipelines =
@@ -361,6 +418,9 @@ pub fn run_runtime_0080_0_r1a_with_transforms_enabled(
     report.resident_slot_count = layout.total_slots;
     report.cpu_shadow_boundary_witness_only = true;
     report.covered_columns = parity;
+    report.exact_bit_proofs = exact_bit_proofs;
+    report.disabled_transform_checks = disabled_transform_checks;
+    report.oracle_fed_covered_columns = oracle_fed_columns;
     report.boundary_summary = boundary_summary(&oracle);
     report.r4_max_abs_delta = loop_result.max_r4_abs_delta;
     report.r4_within_bound = loop_result.max_r4_abs_delta <= RUNTIME_R0_R4_F32_BOUND;
@@ -588,8 +648,7 @@ struct TierAMetadataLayout {
 
 impl TierAMetadataLayout {
     fn new(layout: &TierAStateLayout, input_slot_base: u32) -> Self {
-        let disruption_region = GALAXY_CELL_COUNT as u32 * R6C_CANONICAL_TICK_COUNT;
-        let metadata_base = input_slot_base + disruption_region;
+        let metadata_base = input_slot_base + GALAXY_CELL_COUNT as u32;
         let denom_start = 0;
         let n_systems = layout.system_indices.len() as u32;
         let n_fleets = layout.fleet_ids.len() as u32;
@@ -629,8 +688,8 @@ impl TierAMetadataLayout {
         }
     }
 
-    fn tick_base(&self, tick: u32) -> u32 {
-        self.metadata_base + self.per_tick_region_start + tick * self.per_tick_stride
+    fn tick_region(&self) -> u32 {
+        self.metadata_base + self.per_tick_region_start
     }
 
     fn blockade_default_owner_slot(&self, sys_idx: u32) -> u32 {
@@ -647,44 +706,14 @@ impl TierAMetadataLayout {
 }
 
 #[derive(Clone, Debug)]
-struct TierAInputTables {
-    disruption_inputs: Vec<Vec<f32>>,
+struct TierAStaticConfig {
     denom: Vec<f32>,
     blockade_default_owner: Vec<f32>,
-    blockade_triggered_owner: Vec<Vec<f32>>,
-    stockpile_reduced_in: Vec<[i64; 2]>,
-    stockpile_disbursed_down: Vec<[i64; 2]>,
-    construction_production: Vec<Vec<i64>>,
-    construction_ship_cost: Vec<Vec<i64>>,
-    combat_hostile_damage: Vec<Vec<i64>>,
-    combat_hp_per_ship: Vec<Vec<i64>>,
-    reinforcement_delta: Vec<Vec<i64>>,
-    fusion_delta: Vec<Vec<i64>>,
-    r4_gradients: Vec<Vec<GradientPairGpu>>,
-    r4_magnitude: Vec<f32>,
 }
 
-impl TierAInputTables {
-    fn from_report(report: &DressRehearsalR6cReport, layout: &TierAStateLayout) -> Self {
+impl TierAStaticConfig {
+    fn from_initial_world(world: &DressRehearsalR6cWorld, layout: &TierAStateLayout) -> Self {
         let n_systems = layout.system_indices.len();
-        let n_fleets = layout.fleet_ids.len();
-        let tick_count = R6C_CANONICAL_TICK_COUNT as usize;
-
-        let mut disruption_inputs = vec![vec![0.0f32; GALAXY_CELL_COUNT]; tick_count];
-        for tick in 0..R6C_CANONICAL_TICK_COUNT {
-            let mut input_by_cell: HashMap<u32, f32> = HashMap::new();
-            for row in report
-                .disruption_source_rows
-                .iter()
-                .filter(|row| row.tick == tick)
-            {
-                *input_by_cell.entry(row.cell_index).or_insert(0.0) += row.input_cell;
-            }
-            for (cell, value) in input_by_cell {
-                disruption_inputs[tick as usize][cell as usize] = value;
-            }
-        }
-
         let mut denom = vec![0.0f32; GALAXY_CELL_COUNT];
         for y in 0..GALAXY_SIDE {
             for x in 0..GALAXY_SIDE {
@@ -693,14 +722,9 @@ impl TierAInputTables {
                 denom[idx] = 1.0 + H_WEIGHT * neighbor_count;
             }
         }
-
-        let initial_world = report
-            .initial_world
-            .as_ref()
-            .expect("R6C report carries initial world");
         let mut blockade_default_owner = vec![0.0f32; n_systems];
         for (sys_idx, system_index) in layout.system_indices.iter().enumerate() {
-            let owner = initial_world
+            let owner = world
                 .systems
                 .iter()
                 .find(|system| system.system_index == *system_index)
@@ -708,116 +732,41 @@ impl TierAInputTables {
                 .unwrap_or(DressRehearsalR6cOwner::Terran);
             blockade_default_owner[sys_idx] = owner_code(owner) as f32;
         }
-
-        let mut blockade_triggered_owner = vec![vec![0.0f32; n_systems]; tick_count];
-        for tick in 0..R6C_CANONICAL_TICK_COUNT {
-            for (sys_idx, system_index) in layout.system_indices.iter().enumerate() {
-                let code = report
-                    .economy_rows
-                    .iter()
-                    .filter(|row| row.tick == tick && row.system_index == *system_index)
-                    .last()
-                    .and_then(|row| row.blockader.map(owner_code))
-                    .unwrap_or(0);
-                blockade_triggered_owner[tick as usize][sys_idx] = code as f32;
-            }
-        }
-
-        let mut stockpile_reduced_in = vec![[0i64; 2]; tick_count];
-        let mut stockpile_disbursed_down = vec![[0i64; 2]; tick_count];
-        for row in &report.stockpile_ledger_rows {
-            let idx = match row.owner {
-                DressRehearsalR6cOwner::Terran => 0,
-                DressRehearsalR6cOwner::Pirate => 1,
-            };
-            stockpile_reduced_in[row.tick as usize][idx] = row.reduced_in;
-            stockpile_disbursed_down[row.tick as usize][idx] = row.disbursed_down;
-        }
-
-        let mut construction_production = vec![vec![0i64; n_systems]; tick_count];
-        let mut construction_ship_cost = vec![vec![0i64; n_systems]; tick_count];
-        for row in &report.construction_rows {
-            if let Some(sys_idx) = layout
-                .system_indices
-                .iter()
-                .position(|idx| *idx == row.system_index)
-            {
-                construction_production[row.tick as usize][sys_idx] = row.production_applied;
-                construction_ship_cost[row.tick as usize][sys_idx] = row.ship_cost;
-            }
-        }
-
-        let mut combat_hostile_damage = vec![vec![0i64; n_fleets]; tick_count];
-        let mut combat_hp_per_ship = vec![vec![0i64; n_fleets]; tick_count];
-        for row in &report.combat_rows {
-            if let Some(fleet_idx) = layout
-                .fleet_ids
-                .iter()
-                .position(|id| id == &row.combatant_id)
-            {
-                combat_hostile_damage[row.tick as usize][fleet_idx] = row.hostile_damage_received;
-                combat_hp_per_ship[row.tick as usize][fleet_idx] = row.hp_per_ship;
-            }
-        }
-
-        let mut reinforcement_delta = vec![vec![0i64; n_fleets]; tick_count];
-        for row in &report.reinforcement_rows {
-            if let Some(fleet_idx) = layout
-                .fleet_ids
-                .iter()
-                .position(|id| id == &row.target_fleet_id)
-            {
-                reinforcement_delta[row.tick as usize][fleet_idx] = row.ship_count_delta;
-            }
-        }
-
-        let mut fusion_delta = vec![vec![0i64; n_fleets]; tick_count];
-        for row in &report.fusion_rows {
-            if let Some(survivor_idx) = layout
-                .fleet_ids
-                .iter()
-                .position(|id| id == &row.surviving_fleet_id)
-            {
-                fusion_delta[row.tick as usize][survivor_idx] += row.right_num_ships;
-            }
-        }
-
-        let mut r4_magnitude = vec![0.0f32; tick_count];
-        let mut r4_gradients = vec![Vec::new(); tick_count];
-        for tick in 0..R6C_CANONICAL_TICK_COUNT {
-            r4_gradients[tick as usize] = report
-                .field_read_rows
-                .iter()
-                .filter(|row| row.tick == tick)
-                .map(|row| GradientPairGpu {
-                    dx: row.gradient_dx_f32,
-                    dy: row.gradient_dy_f32,
-                })
-                .collect();
-            r4_magnitude[tick as usize] = report
-                .field_read_rows
-                .iter()
-                .filter(|row| row.tick == tick)
-                .map(|row| f32::from_bits(row.real_signal_gradient_magnitude_bits))
-                .fold(0.0f32, f32::max);
-        }
-
         Self {
-            disruption_inputs,
             denom,
             blockade_default_owner,
-            blockade_triggered_owner,
-            stockpile_reduced_in,
-            stockpile_disbursed_down,
-            construction_production,
-            construction_ship_cost,
-            combat_hostile_damage,
-            combat_hp_per_ship,
-            reinforcement_delta,
-            fusion_delta,
-            r4_gradients,
-            r4_magnitude,
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct DisabledTransformMask {
+    disruption: bool,
+    location_status: bool,
+    stockpiles: bool,
+    construction_progress: bool,
+    num_ships: bool,
+    blockade_divert: bool,
+    r4_magnitude: bool,
+}
+
+impl DisabledTransformMask {
+    fn all_enabled() -> Self {
+        Self {
+            disruption: true,
+            location_status: true,
+            stockpiles: true,
+            construction_progress: true,
+            num_ships: true,
+            blockade_divert: true,
+            r4_magnitude: true,
+        }
+    }
+
+    fn with_stockpiles_disabled() -> Self {
+        let mut mask = Self::all_enabled();
+        mask.stockpiles = false;
+        mask
     }
 }
 
@@ -986,16 +935,15 @@ impl TierAGpuHarness {
         ctx: GpuContext,
         layout: &TierAStateLayout,
         world: &DressRehearsalR6cWorld,
-        input_tables: &TierAInputTables,
+        static_config: &TierAStaticConfig,
     ) -> Result<Self, &'static str> {
         let mut registry = DimensionRegistry::new();
         registry.register(SimProperty::simple("r1a", "tier_a", 0));
         let n_world_slots = layout.total_slots;
         let input_slot_base = layout.total_slots;
         let metadata = TierAMetadataLayout::new(layout, input_slot_base);
-        let n_session_slots = metadata.metadata_base
-            + metadata.per_tick_region_start
-            + metadata.per_tick_stride * R6C_CANONICAL_TICK_COUNT;
+        let n_session_slots =
+            metadata.metadata_base + metadata.per_tick_region_start + metadata.per_tick_stride;
 
         let gpu_world = WorldGpuState::new(ctx, &registry, n_world_slots);
         let pipelines = Pipelines::new(&gpu_world.ctx);
@@ -1023,7 +971,7 @@ impl TierAGpuHarness {
             swap_ops,
         };
 
-        harness.seed_once(layout, world, input_tables)?;
+        harness.seed_once(layout, world, static_config)?;
         Ok(harness)
     }
 
@@ -1031,7 +979,7 @@ impl TierAGpuHarness {
         &mut self,
         layout: &TierAStateLayout,
         world: &DressRehearsalR6cWorld,
-        input_tables: &TierAInputTables,
+        static_config: &TierAStaticConfig,
     ) -> Result<(), &'static str> {
         let ctx = &self.world.ctx;
         let initial = TierAState::from_world(world);
@@ -1044,88 +992,14 @@ impl TierAGpuHarness {
 
         for cell in 0..GALAXY_CELL_COUNT {
             let denom_slot = self.metadata.denom_slot(cell as u32);
-            session_values[slot_col_idx(denom_slot, COL_CURRENT)] = input_tables.denom[cell];
+            session_values[slot_col_idx(denom_slot, COL_CURRENT)] = static_config.denom[cell];
         }
-        for (sys_idx, owner_code) in input_tables.blockade_default_owner.iter().enumerate() {
+        for (sys_idx, owner_code) in static_config.blockade_default_owner.iter().enumerate() {
             let owner_slot = self.metadata.blockade_default_owner_slot(sys_idx as u32);
             session_values[slot_col_idx(owner_slot, COL_CURRENT)] = *owner_code;
         }
         let zero_slot = self.metadata.blockade_zero_slot_abs();
         session_values[slot_col_idx(zero_slot, COL_CURRENT)] = 0.0;
-
-        for tick in 0..R6C_CANONICAL_TICK_COUNT {
-            let disruption_base = self.input_slot_base + tick * GALAXY_CELL_COUNT as u32;
-            for (cell, value) in input_tables.disruption_inputs[tick as usize]
-                .iter()
-                .enumerate()
-            {
-                session_values[slot_col_idx(disruption_base + cell as u32, COL_CURRENT)] = *value;
-            }
-
-            let meta_base = self.metadata.tick_base(tick);
-            session_values
-                [slot_col_idx(meta_base + self.metadata.terran_reduced_in, COL_CURRENT)] =
-                input_tables.stockpile_reduced_in[tick as usize][0] as f32;
-            session_values
-                [slot_col_idx(meta_base + self.metadata.terran_disbursed_down, COL_CURRENT)] =
-                input_tables.stockpile_disbursed_down[tick as usize][0] as f32;
-            session_values
-                [slot_col_idx(meta_base + self.metadata.pirate_reduced_in, COL_CURRENT)] =
-                input_tables.stockpile_reduced_in[tick as usize][1] as f32;
-            session_values
-                [slot_col_idx(meta_base + self.metadata.pirate_disbursed_down, COL_CURRENT)] =
-                input_tables.stockpile_disbursed_down[tick as usize][1] as f32;
-            for (sys_idx, production) in input_tables.construction_production[tick as usize]
-                .iter()
-                .enumerate()
-            {
-                session_values[slot_col_idx(
-                    meta_base + self.metadata.construction_production_start + sys_idx as u32,
-                    COL_CURRENT,
-                )] = *production as f32;
-                session_values[slot_col_idx(
-                    meta_base + self.metadata.construction_ship_cost_start + sys_idx as u32,
-                    COL_CURRENT,
-                )] = input_tables.construction_ship_cost[tick as usize][sys_idx] as f32;
-            }
-            for (fleet_idx, damage) in input_tables.combat_hostile_damage[tick as usize]
-                .iter()
-                .enumerate()
-            {
-                session_values[slot_col_idx(
-                    meta_base + self.metadata.combat_damage_start + fleet_idx as u32,
-                    COL_CURRENT,
-                )] = *damage as f32;
-                session_values[slot_col_idx(
-                    meta_base + self.metadata.combat_hp_start + fleet_idx as u32,
-                    COL_CURRENT,
-                )] = input_tables.combat_hp_per_ship[tick as usize][fleet_idx] as f32;
-            }
-            for (fleet_idx, delta) in input_tables.reinforcement_delta[tick as usize]
-                .iter()
-                .enumerate()
-            {
-                session_values[slot_col_idx(
-                    meta_base + self.metadata.reinforcement_delta_start + fleet_idx as u32,
-                    COL_CURRENT,
-                )] = *delta as f32;
-            }
-            for (fleet_idx, delta) in input_tables.fusion_delta[tick as usize].iter().enumerate() {
-                session_values[slot_col_idx(
-                    meta_base + self.metadata.fusion_delta_start + fleet_idx as u32,
-                    COL_CURRENT,
-                )] = *delta as f32;
-            }
-            for (sys_idx, code) in input_tables.blockade_triggered_owner[tick as usize]
-                .iter()
-                .enumerate()
-            {
-                session_values[slot_col_idx(
-                    meta_base + self.metadata.blockade_triggered_owner_start + sys_idx as u32,
-                    COL_CURRENT,
-                )] = *code;
-            }
-        }
 
         self.tier_a.upload_values(ctx, &session_values);
         self.counters.note_seed_upload();
@@ -1146,9 +1020,10 @@ impl TierAGpuHarness {
     fn run_resident_loop(
         &mut self,
         layout: &TierAStateLayout,
-        input_tables: &TierAInputTables,
+        boundary_witness: &mut R1aBoundaryWitness,
         oracle_trajectory: &[TierAState],
         transforms_enabled: bool,
+        transform_mask: DisabledTransformMask,
     ) -> ResidentLoopResult {
         let mut trace = Vec::with_capacity(R6C_CANONICAL_TICK_COUNT as usize);
         let mut previous_after_swap = None;
@@ -1164,8 +1039,26 @@ impl TierAGpuHarness {
             let current_values = collect_col(&before, layout.total_slots, COL_CURRENT);
             let current_hash = hash_f32_values(&current_values);
 
+            let gpu_disruption = current_values[layout.disruption_start as usize
+                ..(layout.disruption_start + GALAXY_CELL_COUNT as u32) as usize]
+                .to_vec();
+            let gpu_stockpiles = [
+                current_values[layout.stockpile_start as usize] as i64,
+                current_values[(layout.stockpile_start + 1) as usize] as i64,
+            ];
+            let derived =
+                boundary_witness.derive_tick_inputs(tick, &gpu_disruption, gpu_stockpiles);
+            self.write_tick_derived_inputs(layout, &derived)
+                .expect("tick derived input write");
+
             if transforms_enabled {
-                self.dispatch_tier_a_transforms(layout, input_tables, tick, &mut max_r4_abs_delta);
+                self.dispatch_tier_a_transforms(
+                    layout,
+                    &derived,
+                    tick,
+                    &mut max_r4_abs_delta,
+                    transform_mask,
+                );
             } else {
                 self.dispatch_identity_hold(layout);
             }
@@ -1254,64 +1147,184 @@ impl TierAGpuHarness {
         self.counters.note_dispatch();
     }
 
+    fn write_tick_derived_inputs(
+        &mut self,
+        layout: &TierAStateLayout,
+        derived: &R1aTickDerivedInputs,
+    ) -> Result<(), &'static str> {
+        let ctx = &self.world.ctx;
+        let meta_base = self.metadata.tick_region();
+        let input_base = self.input_slot_base;
+        for (cell, value) in derived.disruption_input_by_cell.iter().enumerate() {
+            self.tier_a
+                .fill_slot_range_col(ctx, input_base + cell as u32, 1, COL_CURRENT, *value)
+                .map_err(|_| "disruption_input_write_failed")?;
+        }
+        let meta_writes = [
+            (
+                self.metadata.terran_reduced_in,
+                derived.stockpile_reduced_in[0] as f32,
+            ),
+            (
+                self.metadata.terran_disbursed_down,
+                derived.stockpile_disbursed_down[0] as f32,
+            ),
+            (
+                self.metadata.pirate_reduced_in,
+                derived.stockpile_reduced_in[1] as f32,
+            ),
+            (
+                self.metadata.pirate_disbursed_down,
+                derived.stockpile_disbursed_down[1] as f32,
+            ),
+        ];
+        for (offset, value) in meta_writes {
+            self.tier_a
+                .fill_slot_range_col(ctx, meta_base + offset, 1, COL_CURRENT, value)
+                .map_err(|_| "metadata_write_failed")?;
+        }
+        for (sys_idx, production) in derived.construction_production.iter().enumerate() {
+            self.tier_a
+                .fill_slot_range_col(
+                    ctx,
+                    meta_base + self.metadata.construction_production_start + sys_idx as u32,
+                    1,
+                    COL_CURRENT,
+                    *production as f32,
+                )
+                .map_err(|_| "construction_production_write_failed")?;
+            self.tier_a
+                .fill_slot_range_col(
+                    ctx,
+                    meta_base + self.metadata.construction_ship_cost_start + sys_idx as u32,
+                    1,
+                    COL_CURRENT,
+                    SHIP_COST as f32,
+                )
+                .map_err(|_| "construction_ship_cost_write_failed")?;
+        }
+        for (fleet_idx, damage) in derived.combat_hostile_damage.iter().enumerate() {
+            self.tier_a
+                .fill_slot_range_col(
+                    ctx,
+                    meta_base + self.metadata.combat_damage_start + fleet_idx as u32,
+                    1,
+                    COL_CURRENT,
+                    *damage as f32,
+                )
+                .map_err(|_| "combat_damage_write_failed")?;
+            self.tier_a
+                .fill_slot_range_col(
+                    ctx,
+                    meta_base + self.metadata.combat_hp_start + fleet_idx as u32,
+                    1,
+                    COL_CURRENT,
+                    derived.combat_hp_per_ship[fleet_idx] as f32,
+                )
+                .map_err(|_| "combat_hp_write_failed")?;
+        }
+        for (fleet_idx, delta) in derived.reinforcement_delta.iter().enumerate() {
+            self.tier_a
+                .fill_slot_range_col(
+                    ctx,
+                    meta_base + self.metadata.reinforcement_delta_start + fleet_idx as u32,
+                    1,
+                    COL_CURRENT,
+                    *delta as f32,
+                )
+                .map_err(|_| "reinforcement_write_failed")?;
+        }
+        for (fleet_idx, delta) in derived.fusion_delta.iter().enumerate() {
+            self.tier_a
+                .fill_slot_range_col(
+                    ctx,
+                    meta_base + self.metadata.fusion_delta_start + fleet_idx as u32,
+                    1,
+                    COL_CURRENT,
+                    *delta as f32,
+                )
+                .map_err(|_| "fusion_write_failed")?;
+        }
+        for (sys_idx, code) in derived.blockade_triggered_owner.iter().enumerate() {
+            self.tier_a
+                .fill_slot_range_col(
+                    ctx,
+                    meta_base + self.metadata.blockade_triggered_owner_start + sys_idx as u32,
+                    1,
+                    COL_CURRENT,
+                    *code,
+                )
+                .map_err(|_| "blockade_triggered_write_failed")?;
+        }
+        let _ = layout;
+        Ok(())
+    }
+
     fn dispatch_tier_a_transforms(
         &mut self,
         layout: &TierAStateLayout,
-        input_tables: &TierAInputTables,
+        derived: &R1aTickDerivedInputs,
         tick: u32,
         max_r4_abs_delta: &mut f32,
+        transform_mask: DisabledTransformMask,
     ) {
         let mut ops = Vec::new();
         let meta = &self.metadata;
-        let meta_base = meta.tick_base(tick);
-        let input_base = self.input_slot_base + tick * GALAXY_CELL_COUNT as u32;
+        let meta_base = meta.tick_region();
+        let input_base = self.input_slot_base;
 
         for slot in 0..layout.total_slots {
             ops.push(identity_op(slot, COL_CURRENT, slot, COL_NEXT, 0));
         }
 
-        for cell in 0..GALAXY_CELL_COUNT as u32 {
-            let disruption_slot = layout.disruption_start + cell;
-            ops.push(identity_op(
-                input_base + cell,
-                COL_CURRENT,
-                disruption_slot,
-                COL_NEXT,
-                BAND_R1_INPUT,
-            ));
-            ops.push(AccumulatorOp {
-                source: SourceSpec::SlotValue {
-                    slot: disruption_slot,
-                    col: COL_CURRENT,
-                },
-                combine: CombineFn::EvalEML {
-                    tree_id: R1_TREE_ID,
-                },
-                gate: GateSpec::OrderBand(BAND_R1_EVAL),
-                scale: ScaleSpec::Identity,
-                consume: ConsumeMode::ResetTarget,
-                targets: vec![(disruption_slot, COL_SCRATCH)],
-            });
-            ops.push(identity_op(
-                disruption_slot,
-                COL_SCRATCH,
-                disruption_slot,
-                COL_NEXT,
-                BAND_R1_COMMIT,
-            ));
+        if transform_mask.disruption {
+            for cell in 0..GALAXY_CELL_COUNT as u32 {
+                let disruption_slot = layout.disruption_start + cell;
+                ops.push(identity_op(
+                    input_base + cell,
+                    COL_CURRENT,
+                    disruption_slot,
+                    COL_NEXT,
+                    BAND_R1_INPUT,
+                ));
+                ops.push(AccumulatorOp {
+                    source: SourceSpec::SlotValue {
+                        slot: disruption_slot,
+                        col: COL_CURRENT,
+                    },
+                    combine: CombineFn::EvalEML {
+                        tree_id: R1_TREE_ID,
+                    },
+                    gate: GateSpec::OrderBand(BAND_R1_EVAL),
+                    scale: ScaleSpec::Identity,
+                    consume: ConsumeMode::ResetTarget,
+                    targets: vec![(disruption_slot, COL_SCRATCH)],
+                });
+                ops.push(identity_op(
+                    disruption_slot,
+                    COL_SCRATCH,
+                    disruption_slot,
+                    COL_NEXT,
+                    BAND_R1_COMMIT,
+                ));
+            }
         }
 
-        ops.extend(build_diffusion_ops(layout, meta));
-        ops.extend(build_stockpile_ops(layout, meta, meta_base));
-        ops.extend(build_blockade_ops(layout, meta, meta_base));
-        ops.extend(build_r6b_ops(layout, meta, meta_base));
-        ops.extend(build_combat_ops(
-            layout,
-            meta,
-            meta_base,
-            tick,
-            input_tables,
-        ));
+        if transform_mask.location_status {
+            ops.extend(build_diffusion_ops(layout, meta));
+        }
+        if transform_mask.stockpiles {
+            ops.extend(build_stockpile_ops(layout, meta, meta_base));
+        }
+        if transform_mask.blockade_divert {
+            ops.extend(build_blockade_ops(layout, meta, meta_base));
+        }
+        if transform_mask.construction_progress {
+            ops.extend(build_r6b_ops(layout, meta, meta_base));
+        }
+        if transform_mask.num_ships {
+            ops.extend(build_combat_ops(layout, meta, meta_base, derived));
+        }
 
         {
             let ctx = &self.world.ctx;
@@ -1329,11 +1342,20 @@ impl TierAGpuHarness {
             }
         }
 
-        *max_r4_abs_delta = max_r4_abs_delta.max(self.dispatch_r4_candidate_f(
-            layout,
-            &input_tables.r4_gradients[tick as usize],
-            input_tables.r4_magnitude[tick as usize],
-        ));
+        if transform_mask.r4_magnitude {
+            let gradients: Vec<GradientPairGpu> = derived
+                .r4_gradients
+                .iter()
+                .map(|(dx, dy)| GradientPairGpu { dx: *dx, dy: *dy })
+                .collect();
+            let expected_mag = f32::from_bits(derived.r4_magnitude_bits);
+            *max_r4_abs_delta = max_r4_abs_delta.max(self.dispatch_r4_candidate_f(
+                layout,
+                &gradients,
+                expected_mag,
+            ));
+        }
+        let _ = tick;
 
         {
             let ctx = &self.world.ctx;
@@ -1626,17 +1648,15 @@ fn build_combat_ops(
     layout: &TierAStateLayout,
     meta: &TierAMetadataLayout,
     meta_base: u32,
-    tick: u32,
-    input_tables: &TierAInputTables,
+    derived: &R1aTickDerivedInputs,
 ) -> Vec<AccumulatorOp> {
     let mut ops = Vec::new();
-    let tick_idx = tick as usize;
     for (fleet_idx, _) in layout.fleet_ids.iter().enumerate() {
         let fleet_slot = layout.num_ships_start + fleet_idx as u32;
-        let damage = input_tables.combat_hostile_damage[tick_idx][fleet_idx];
-        let hp = input_tables.combat_hp_per_ship[tick_idx][fleet_idx];
-        let reinforcement_delta = input_tables.reinforcement_delta[tick_idx][fleet_idx];
-        let fusion_delta = input_tables.fusion_delta[tick_idx][fleet_idx];
+        let damage = derived.combat_hostile_damage[fleet_idx];
+        let hp = derived.combat_hp_per_ship[fleet_idx];
+        let reinforcement_delta = derived.reinforcement_delta[fleet_idx];
+        let fusion_delta = derived.fusion_delta[fleet_idx];
 
         if damage > 0 && hp > 0 {
             ops.push(identity_op(
@@ -2179,8 +2199,13 @@ fn measure_column_parity(
                         }
                     }
                 }
+                let input_source = column_input_source(column);
+                let sample_slot = start;
+                let sample_cpu = final_oracle_flat[sample_slot as usize].to_bits();
+                let sample_gpu = gpu_current[sample_slot as usize].to_bits();
                 Runtime0080R1aCoveredColumnReport {
                     column,
+                    input_source,
                     gpu_authoritative: parity,
                     cpu_oracle_parity: parity,
                     integer_bit_exact,
@@ -2189,10 +2214,115 @@ fn measure_column_parity(
                     cpu_mutated_between_ticks: false,
                     parity_measured_from_gpu_value: true,
                     measured_shape,
+                    sample_cpu_oracle_bits: Some(sample_cpu),
+                    sample_gpu_readback_bits: Some(sample_gpu),
                 }
             },
         )
         .collect()
+}
+
+fn column_input_source(column: &str) -> Runtime0080R1aInputSource {
+    match column {
+        "disruption" => Runtime0080R1aInputSource::BoundaryMaintained,
+        "existing_slot_num_ships" => Runtime0080R1aInputSource::BoundaryMaintained,
+        _ => Runtime0080R1aInputSource::GpuDerived,
+    }
+}
+
+fn collect_exact_bit_proofs(
+    gpu_flat: &[f32],
+    oracle: &[TierAState],
+    layout: &TierAStateLayout,
+) -> Vec<Runtime0080R1aExactBitProof> {
+    let final_oracle = oracle.last().expect("oracle trajectory");
+    let final_oracle_flat = final_oracle.values(layout);
+    let gpu_current = collect_col(gpu_flat, layout.total_slots, COL_CURRENT);
+    let exact_columns = [
+        ("stockpiles", layout.stockpile_start, 2u32),
+        (
+            "construction_progress",
+            layout.construction_start,
+            layout.system_indices.len() as u32,
+        ),
+        (
+            "existing_slot_num_ships",
+            layout.num_ships_start,
+            layout.fleet_ids.len() as u32,
+        ),
+        (
+            "blockade_divert_code",
+            layout.blockade_start,
+            layout.system_indices.len() as u32,
+        ),
+    ];
+    let mut proofs = Vec::new();
+    for (column, start, count) in exact_columns {
+        for offset in 0..count {
+            let slot = start + offset;
+            let cpu_bits = final_oracle_flat[slot as usize].to_bits();
+            let gpu_bits = gpu_current[slot as usize].to_bits();
+            proofs.push(Runtime0080R1aExactBitProof {
+                column,
+                slot,
+                cpu_oracle_bits: cpu_bits,
+                gpu_readback_bits: gpu_bits,
+                bit_exact: cpu_bits == gpu_bits,
+            });
+        }
+    }
+    proofs
+}
+
+fn run_disabled_transform_checks(
+    layout: &TierAStateLayout,
+    world: &DressRehearsalR6cWorld,
+    static_config: &TierAStaticConfig,
+) -> Vec<Runtime0080R1aDisabledTransformRow> {
+    let oracle = run_dress_rehearsal_r6c_integrated_run(&DressRehearsalR6cInput::explicit_opt_in());
+    let oracle_trajectory = compute_comparison_oracle_trajectory(&oracle);
+    let final_oracle = oracle_trajectory.last().expect("oracle final");
+    let oracle_stockpile_bits =
+        final_oracle.values(layout)[layout.stockpile_start as usize].to_bits();
+
+    let run_with_mask = |mask: DisabledTransformMask| -> Option<u32> {
+        let (ctx, _) = create_discrete_gpu_context().ok()?;
+        set_debug_readback_allowed(true);
+        let mut boundary = R1aBoundaryWitness::new(
+            world,
+            layout.fleet_ids.clone(),
+            layout.system_indices.clone(),
+        );
+        let mut harness = TierAGpuHarness::new(ctx, layout, world, static_config).ok()?;
+        let result =
+            harness.run_resident_loop(layout, &mut boundary, &oracle_trajectory, true, mask);
+        let gpu_current = collect_col(&result.final_gpu_values, layout.total_slots, COL_CURRENT);
+        Some(gpu_current[layout.stockpile_start as usize].to_bits())
+    };
+
+    let enabled_bits = run_with_mask(DisabledTransformMask::all_enabled());
+    let disabled_bits = run_with_mask(DisabledTransformMask::with_stockpiles_disabled());
+    match (enabled_bits, disabled_bits) {
+        (Some(enabled), Some(disabled)) => vec![
+            Runtime0080R1aDisabledTransformRow {
+                column: "stockpiles",
+                transform_enabled: false,
+                cpu_oracle_bits: oracle_stockpile_bits,
+                gpu_readback_bits: disabled,
+                bit_exact: disabled == oracle_stockpile_bits,
+                parity_pass: disabled == oracle_stockpile_bits,
+            },
+            Runtime0080R1aDisabledTransformRow {
+                column: "stockpiles",
+                transform_enabled: true,
+                cpu_oracle_bits: oracle_stockpile_bits,
+                gpu_readback_bits: enabled,
+                bit_exact: enabled == oracle_stockpile_bits,
+                parity_pass: enabled == oracle_stockpile_bits,
+            },
+        ],
+        _ => Vec::new(),
+    }
 }
 
 fn pack_world_values(session_flat: &[f32], n_slots: u32) -> Vec<f32> {
@@ -2350,6 +2480,9 @@ fn base_report(
         substrate_primitives: Vec::new(),
         measured_shape_names: Vec::new(),
         covered_columns: covered_columns(false),
+        exact_bit_proofs: Vec::new(),
+        disabled_transform_checks: Vec::new(),
+        oracle_fed_covered_columns: Vec::new(),
         boundary_summary: Runtime0080R1aBoundarySummary {
             gpu_written_event_journal_rows: 0,
             cpu_boundary_maintenance_rows: 0,
@@ -2408,14 +2541,17 @@ fn covered_columns(authoritative: bool) -> Vec<Runtime0080R1aCoveredColumnReport
     .map(
         |(column, measured_shape)| Runtime0080R1aCoveredColumnReport {
             column,
+            input_source: column_input_source(column),
             gpu_authoritative: authoritative,
             cpu_oracle_parity: authoritative,
-            integer_bit_exact: column != "r4_magnitude_scratch",
+            integer_bit_exact: column != "r4_magnitude_scratch" && column != "location_status",
             writes_state_n_plus_1: authoritative,
             reads_prior_gpu_output: authoritative,
             cpu_mutated_between_ticks: false,
             parity_measured_from_gpu_value: authoritative,
             measured_shape,
+            sample_cpu_oracle_bits: None,
+            sample_gpu_readback_bits: None,
         },
     )
     .collect()
@@ -2640,39 +2776,4 @@ fn mix_str(hash: &mut u64, value: &str) {
 fn mix_u64(hash: &mut u64, value: u64) {
     *hash ^= value;
     *hash = hash.wrapping_mul(FNV_PRIME);
-}
-
-#[allow(dead_code)]
-fn fleet_disruption_input(world: &DressRehearsalR6cWorld, cell_index: u32) -> f32 {
-    use crate::dress_rehearsal_r1_disruption_heatmap::{PATROL_SUPPRESS, PIRATE_EMIT};
-    use crate::dress_rehearsal_r3_capability_mask_down::apply_modifier_bps;
-    world
-        .fleets
-        .iter()
-        .filter(|f| !f.destroyed && f.num_ships > 0 && f.cell_index == cell_index)
-        .map(|f| {
-            let modifier = match f.owner {
-                DressRehearsalR6cOwner::Terran => 12_000,
-                DressRehearsalR6cOwner::Pirate => 12_500,
-            };
-            match f.owner {
-                DressRehearsalR6cOwner::Terran => {
-                    -apply_modifier_bps(PATROL_SUPPRESS * f.num_ships as f32, modifier)
-                }
-                DressRehearsalR6cOwner::Pirate => {
-                    apply_modifier_bps(PIRATE_EMIT * f.num_ships as f32, modifier)
-                }
-            }
-        })
-        .sum()
-}
-
-#[allow(dead_code)]
-fn fleet_attrition_damage(world: &DressRehearsalR6cWorld, fleet_id: &str) -> f32 {
-    world
-        .fleets
-        .iter()
-        .find(|f| f.fleet_id == fleet_id)
-        .map(|f| damage_output_for_cohort(f.num_ships, f.damage_per_ship_per_tick) as f32)
-        .unwrap_or(0.0)
 }

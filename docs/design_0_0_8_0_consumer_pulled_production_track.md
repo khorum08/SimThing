@@ -788,9 +788,11 @@ column-flip — each its own gate.
 > `request_atlas_batching`, no M-4A masking-at-scale, no new semantic WGSL/op/invariant, no scenario
 > reopen. Adapter: RTX 4080 Laptop GPU.
 >
-> **`RUNTIME-0080-0-R1a` is IMPLEMENTED / PASS (Outcome A, 2026-06-05)** — Tier-A GPU-STATE-AUTH-0 resident
-> next-tick authority on `WorldGpuState` + `Pipelines`; per-column measured parity vs R6C oracle; negative
-> control earned; report checksum `f0244d3d9106900d`. See
+> **`RUNTIME-0080-0-R1a` is IMPLEMENTED / PASS (Outcome A hardened, 2026-06-05)** — Tier-A GPU-side
+> next-tick source-of-truth on `WorldGpuState` + `Pipelines` with **no covered-column oracle-fed replay**;
+> per-tick inputs are derived from `R1aBoundaryWitness` + resident GPU readback + static constants; exact-bit
+> proofs for stockpiles, construction_progress, existing-slot `num_ships`, and blockade/divert code; disabled-transform
+> parity check earned at bit level; report checksum `f0244d3d9106900d`. See
 > [`docs/tests/runtime_0080_0_r1a_next_tick_authority_results.md`](tests/runtime_0080_0_r1a_next_tick_authority_results.md).
 > (design spec: [`production_paths/runtime_0080_0_r1_next_tick_authority_spec.md`](production_paths/runtime_0080_0_r1_next_tick_authority_spec.md) §14;
 > handoff: [`handoffs/runtime_0080_0_r1a_remedial_opening.md`](handoffs/runtime_0080_0_r1a_remedial_opening.md)).
@@ -798,8 +800,9 @@ column-flip — each its own gate.
 > authority for tick N+1**. The accepted R1a implementation deletes the old CPU-injected journal producer
 > and registers the Tier-A R6C transforms as resident `AccumulatorOp` / generic GPU helper work on the
 > production substrate: the GPU computes `state_N+1`, tick-boundary swap promotes NEXT to CURRENT, and the
-> CPU oracle is comparison-only. The anti-faking protocol is earned by independence, negative control,
-> measured counters, per-column parity from GPU values, and source-shape guards.
+> CPU oracle is comparison-only (not a production input feeder). The anti-faking protocol is earned by
+> independence, disabled-transform parity check, measured counters, per-column parity from GPU readback bits,
+> and source-shape guards against oracle-fed replay.
 >
 > **Opcode/WGSL-gate clarification (Opus, 2026-06-05):** the remedial's blanket "no new WGSL/opcode"
 > stop-line was hygiene theater — stricter than `design_0_0_8_0.md` §2.3 (*"New generic WGSL is a Tier-2

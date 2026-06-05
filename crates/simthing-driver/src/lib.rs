@@ -427,12 +427,13 @@ pub use runtime_0080_0_r1a::{
     render_runtime_0080_r1a_artifact, replay_runtime_0080_0_r1a, run_runtime_0080_0_r1a,
     run_runtime_0080_0_r1a_negative_control, run_runtime_0080_0_r1a_with_transforms_enabled,
     Runtime0080R1aAdapterReport, Runtime0080R1aAntiFakeEvidence, Runtime0080R1aBoundarySummary,
-    Runtime0080R1aCoveredColumnReport, Runtime0080R1aInput, Runtime0080R1aMeasuredCounters,
-    Runtime0080R1aReport, Runtime0080R1aSubstratePrimitiveReport, Runtime0080R1aTraceRow,
-    RUNTIME_0080_0_R1A_ID, RUNTIME_0080_0_R1A_PRIMITIVE, RUNTIME_0080_0_R1A_STATUS_BLOCKED,
-    RUNTIME_0080_0_R1A_STATUS_PARTIAL, RUNTIME_0080_0_R1A_STATUS_PASS,
-    RUNTIME_R1A_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1A_REGISTERS_WORLD_GPU_STATE_PIPELINES,
-    RUNTIME_R1A_SCOPE,
+    Runtime0080R1aCoveredColumnReport, Runtime0080R1aDisabledTransformRow,
+    Runtime0080R1aExactBitProof, Runtime0080R1aInput, Runtime0080R1aInputSource,
+    Runtime0080R1aMeasuredCounters, Runtime0080R1aReport, Runtime0080R1aSubstratePrimitiveReport,
+    Runtime0080R1aTraceRow, RUNTIME_0080_0_R1A_ID, RUNTIME_0080_0_R1A_PRIMITIVE,
+    RUNTIME_0080_0_R1A_STATUS_BLOCKED, RUNTIME_0080_0_R1A_STATUS_PARTIAL,
+    RUNTIME_0080_0_R1A_STATUS_PASS, RUNTIME_R1A_EXPECTED_REPORT_CHECKSUM,
+    RUNTIME_R1A_REGISTERS_WORLD_GPU_STATE_PIPELINES, RUNTIME_R1A_SCOPE,
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};
