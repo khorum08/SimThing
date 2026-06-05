@@ -313,10 +313,13 @@ pub use runtime_0080_0_r0::{
 };
 pub use runtime_0080_0_r1a::{
     render_runtime_0080_r1a_artifact, replay_runtime_0080_0_r1a, run_runtime_0080_0_r1a,
-    Runtime0080R1aAdapterReport, Runtime0080R1aBoundarySummary, Runtime0080R1aCoveredColumnReport,
-    Runtime0080R1aInput, Runtime0080R1aReport, Runtime0080R1aTraceRow, RUNTIME_0080_0_R1A_ID,
+    Runtime0080R1aAdapterReport, Runtime0080R1aAntiFakeEvidence,
+    Runtime0080R1aBoundarySummary, Runtime0080R1aCoveredColumnReport, Runtime0080R1aInput,
+    Runtime0080R1aMeasuredCounters, Runtime0080R1aReport,
+    Runtime0080R1aSubstratePrimitiveReport, Runtime0080R1aTraceRow, RUNTIME_0080_0_R1A_ID,
     RUNTIME_0080_0_R1A_PRIMITIVE, RUNTIME_0080_0_R1A_STATUS_BLOCKED,
-    RUNTIME_0080_0_R1A_STATUS_PASS, RUNTIME_R1A_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1A_SCOPE,
+    RUNTIME_0080_0_R1A_STATUS_PARTIAL, RUNTIME_0080_0_R1A_STATUS_PASS,
+    RUNTIME_R1A_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1A_SCOPE,
 };
 pub use gradient_follow_0080_2::{
     replay_gradient_follow_0080_2, run_gradient_follow_0080_2, GradientFollow0082ForbiddenRequests,
