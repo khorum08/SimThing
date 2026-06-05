@@ -1,7 +1,20 @@
 # RUNTIME-0080-0-R1a Next-Tick Authority Results
 
-**Status:** IMPLEMENTED / PASS - Tier-A GPU-STATE-AUTH-0 resident next-tick authority  
-**Verdict:** PASS  
+> **⚠ CORRECTION (2026-06-05, Opus design authority — `RUNTIME-0080-0-R1a-REMEDIAL-0` opened).** The PASS
+> below is **overclaimed and downgraded to IMPLEMENTED / PARTIAL (SCAFFOLD)** pending remedial. Audit
+> found the GPU does **not** compute the Tier-A transition: the CPU recomputes the full next-state
+> trajectory (`build_tier_a_oracle_states`) and injects it each tick into `COL_JOURNAL_DELTA`; the GPU
+> "tick" is three `Identity` copies (copy current→next, overwrite next←journal, swap). `gpu_state_feeds_
+> next_tick == true` is satisfied only mechanically (the swapped buffer is the next read), while the CPU
+> remains the computational authority — the R0A gap in a more elaborate form. `inter_tick_tier_a_upload_
+> count = 0` is inaccurate: the per-tick journal write is an inter-tick Tier-A CPU→GPU upload of the next
+> state. No test distinguishes GPU-computed from CPU-injected. See remedial opening:
+> [`../handoffs/runtime_0080_0_r1a_remedial_opening.md`](../handoffs/runtime_0080_0_r1a_remedial_opening.md)
+> and spec §14: [`../production_paths/runtime_0080_0_r1_next_tick_authority_spec.md`](../production_paths/runtime_0080_0_r1_next_tick_authority_spec.md).
+> The remedial rewrites this report under the anti-faking oversight protocol.
+
+**Status:** IMPLEMENTED / PARTIAL (SCAFFOLD) - resident double-buffer + swap choreography only; GPU is not the Tier-A transition authority (corrected 2026-06-05)  
+**Verdict:** PARTIAL (downgraded from overclaimed PASS)  
 **Date:** 2026-06-05  
 **Primitive:** `GPU-STATE-AUTH-0`  
 **Rung:** `RUNTIME-0080-0-R1a`  
