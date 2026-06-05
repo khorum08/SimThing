@@ -500,22 +500,22 @@ pub fn replay_runtime_0080_0_r1a() -> (Runtime0080R1aReport, Runtime0080R1aRepor
 }
 
 #[derive(Clone, Debug)]
-struct TierAStateLayout {
-    disruption_start: u32,
-    location_status_start: u32,
-    stockpile_start: u32,
-    construction_start: u32,
-    num_ships_start: u32,
-    blockade_start: u32,
-    r4_scratch_start: u32,
-    total_slots: u32,
-    system_indices: Vec<usize>,
+pub(crate) struct TierAStateLayout {
+    pub(crate) disruption_start: u32,
+    pub(crate) location_status_start: u32,
+    pub(crate) stockpile_start: u32,
+    pub(crate) construction_start: u32,
+    pub(crate) num_ships_start: u32,
+    pub(crate) blockade_start: u32,
+    pub(crate) r4_scratch_start: u32,
+    pub(crate) total_slots: u32,
+    pub(crate) system_indices: Vec<usize>,
     system_cell_indices: Vec<u32>,
     fleet_ids: Vec<String>,
 }
 
 impl TierAStateLayout {
-    fn new(world: &DressRehearsalR6cWorld) -> Self {
+    pub(crate) fn new(world: &DressRehearsalR6cWorld) -> Self {
         let disruption_start = 0;
         let location_status_start = disruption_start + GALAXY_CELL_COUNT as u32;
         let stockpile_start = location_status_start + GALAXY_CELL_COUNT as u32;
@@ -562,7 +562,7 @@ impl TierAStateLayout {
 }
 
 #[derive(Clone, Debug)]
-struct TierAState {
+pub(crate) struct TierAState {
     disruption: Vec<f32>,
     location_status: Vec<f32>,
     stockpiles: BTreeMap<DressRehearsalR6cOwner, i64>,
@@ -573,7 +573,7 @@ struct TierAState {
 }
 
 impl TierAState {
-    fn from_world(world: &DressRehearsalR6cWorld) -> Self {
+    pub(crate) fn from_world(world: &DressRehearsalR6cWorld) -> Self {
         Self {
             disruption: world.disruption.clone(),
             location_status: world.location_status.clone(),
@@ -589,7 +589,7 @@ impl TierAState {
         }
     }
 
-    fn values(&self, layout: &TierAStateLayout) -> Vec<f32> {
+    pub(crate) fn values(&self, layout: &TierAStateLayout) -> Vec<f32> {
         let mut values = vec![0.0f32; layout.total_slots as usize];
         for (idx, value) in self.disruption.iter().enumerate() {
             values[(layout.disruption_start + idx as u32) as usize] = *value;
@@ -626,7 +626,7 @@ impl TierAState {
 }
 
 #[derive(Clone, Debug)]
-struct TierAMetadataLayout {
+pub(crate) struct TierAMetadataLayout {
     metadata_base: u32,
     denom_start: u32,
     blockade_default_owner_start: u32,
@@ -706,13 +706,16 @@ impl TierAMetadataLayout {
 }
 
 #[derive(Clone, Debug)]
-struct TierAStaticConfig {
+pub(crate) struct TierAStaticConfig {
     denom: Vec<f32>,
     blockade_default_owner: Vec<f32>,
 }
 
 impl TierAStaticConfig {
-    fn from_initial_world(world: &DressRehearsalR6cWorld, layout: &TierAStateLayout) -> Self {
+    pub(crate) fn from_initial_world(
+        world: &DressRehearsalR6cWorld,
+        layout: &TierAStateLayout,
+    ) -> Self {
         let n_systems = layout.system_indices.len();
         let mut denom = vec![0.0f32; GALAXY_CELL_COUNT];
         for y in 0..GALAXY_SIDE {
@@ -740,7 +743,7 @@ impl TierAStaticConfig {
 }
 
 #[derive(Clone, Copy, Debug, Default)]
-struct DisabledTransformMask {
+pub(crate) struct DisabledTransformMask {
     disruption: bool,
     location_status: bool,
     stockpiles: bool,
@@ -751,7 +754,7 @@ struct DisabledTransformMask {
 }
 
 impl DisabledTransformMask {
-    fn all_enabled() -> Self {
+    pub(crate) fn all_enabled() -> Self {
         Self {
             disruption: true,
             location_status: true,
@@ -770,7 +773,9 @@ impl DisabledTransformMask {
     }
 }
 
-fn compute_comparison_oracle_trajectory(report: &DressRehearsalR6cReport) -> Vec<TierAState> {
+pub(crate) fn compute_comparison_oracle_trajectory(
+    report: &DressRehearsalR6cReport,
+) -> Vec<TierAState> {
     let mut state = TierAState::from_world(
         report
             .initial_world
@@ -907,7 +912,7 @@ impl TierAInstrumentedCounters {
     }
 }
 
-struct ResidentLoopResult {
+pub(crate) struct ResidentLoopResult {
     trace: Vec<Runtime0080R1aTraceRow>,
     counters: Runtime0080R1aMeasuredCounters,
     buffer_swap_count: u32,
@@ -917,21 +922,26 @@ struct ResidentLoopResult {
     tick100_matches_oracle: bool,
 }
 
-struct TierAGpuHarness {
-    world: WorldGpuState,
-    pipelines: Pipelines,
-    tier_a: AccumulatorOpSession,
-    metadata: TierAMetadataLayout,
+pub(crate) struct TierAGpuHarness {
+    pub(crate) world: WorldGpuState,
+    pub(crate) pipelines: Pipelines,
+    pub(crate) tier_a: AccumulatorOpSession,
+    pub(crate) metadata: TierAMetadataLayout,
     eml_registry: EmlExpressionRegistry,
     eml_table: EmlGpuProgramTable,
-    input_slot_base: u32,
-    n_session_slots: u32,
-    counters: TierAInstrumentedCounters,
+    pub(crate) input_slot_base: u32,
+    pub(crate) n_session_slots: u32,
+    pub(crate) counters: TierAInstrumentedCounters,
     swap_ops: Vec<AccumulatorOp>,
 }
 
+pub(crate) const R1A_COL_CURRENT: u32 = COL_CURRENT;
+pub(crate) const R1A_COL_NEXT: u32 = COL_NEXT;
+pub(crate) const R1A_COL_SCRATCH: u32 = COL_SCRATCH;
+pub(crate) const R1A_N_DIMS: u32 = N_DIMS;
+
 impl TierAGpuHarness {
-    fn new(
+    pub(crate) fn new(
         ctx: GpuContext,
         layout: &TierAStateLayout,
         world: &DressRehearsalR6cWorld,
@@ -1010,14 +1020,14 @@ impl TierAGpuHarness {
         Ok(())
     }
 
-    fn sync_world_from_tier_a_current(&mut self, layout: &TierAStateLayout) {
+    pub(crate) fn sync_world_from_tier_a_current(&mut self, layout: &TierAStateLayout) {
         let ctx = &self.world.ctx;
         let gpu = self.tier_a.readback_full(ctx).expect("tier_a readback");
         let world_flat = pack_world_values(&gpu, layout.total_slots);
         self.world.write_values(&world_flat);
     }
 
-    fn run_resident_loop(
+    pub(crate) fn run_resident_loop(
         &mut self,
         layout: &TierAStateLayout,
         boundary_witness: &mut R1aBoundaryWitness,
@@ -1139,7 +1149,7 @@ impl TierAGpuHarness {
         }
     }
 
-    fn dispatch_identity_hold(&mut self, layout: &TierAStateLayout) {
+    pub(crate) fn dispatch_identity_hold(&mut self, layout: &TierAStateLayout) {
         let ctx = &self.world.ctx;
         for slot in 0..layout.total_slots {
             let _ = self.tier_a.fill_slot_range_col(ctx, slot, 1, COL_NEXT, 0.0);
@@ -1147,7 +1157,7 @@ impl TierAGpuHarness {
         self.counters.note_dispatch();
     }
 
-    fn write_tick_derived_inputs(
+    pub(crate) fn write_tick_derived_inputs(
         &mut self,
         layout: &TierAStateLayout,
         derived: &R1aTickDerivedInputs,
@@ -1260,7 +1270,7 @@ impl TierAGpuHarness {
         Ok(())
     }
 
-    fn dispatch_tier_a_transforms(
+    pub(crate) fn dispatch_tier_a_transforms(
         &mut self,
         layout: &TierAStateLayout,
         derived: &R1aTickDerivedInputs,
@@ -2112,7 +2122,7 @@ fn clamp_bounded(min: f32, max: f32) -> EmlNodeGpu {
     }
 }
 
-fn measure_column_parity(
+pub(crate) fn measure_column_parity(
     gpu_flat: &[f32],
     oracle: &[TierAState],
     layout: &TierAStateLayout,
@@ -2394,8 +2404,8 @@ fn boundary_summary(report: &DressRehearsalR6cReport) -> Runtime0080R1aBoundaryS
     }
 }
 
-fn create_discrete_gpu_context() -> Result<(GpuContext, Runtime0080R1aAdapterReport), &'static str>
-{
+pub(crate) fn create_discrete_gpu_context(
+) -> Result<(GpuContext, Runtime0080R1aAdapterReport), &'static str> {
     let ctx = GpuContext::new_blocking().map_err(|_| "gpu_context_unavailable")?;
     let info = ctx.adapter.get_info();
     let selected_discrete_gpu = format!("{:?}", info.device_type) == "DiscreteGpu"
@@ -2741,13 +2751,13 @@ pub fn render_runtime_0080_r1a_artifact(report: &Runtime0080R1aReport) -> String
     )
 }
 
-fn collect_col(values: &[f32], total_slots: u32, col: u32) -> Vec<f32> {
+pub(crate) fn collect_col(values: &[f32], total_slots: u32, col: u32) -> Vec<f32> {
     (0..total_slots)
         .map(|slot| values[slot_col_idx(slot, col)])
         .collect()
 }
 
-fn slot_col_idx(slot: u32, col: u32) -> usize {
+pub(crate) fn slot_col_idx(slot: u32, col: u32) -> usize {
     (slot * N_DIMS + col) as usize
 }
 

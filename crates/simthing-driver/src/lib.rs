@@ -51,6 +51,7 @@ pub mod resource_flow_preflight;
 pub mod resource_flow_scenario_class_burn_in;
 pub mod runtime_0080_0_r0;
 pub mod runtime_0080_0_r1a;
+pub mod runtime_0080_0_r1b;
 pub mod scenario;
 pub mod session;
 pub mod spec_replay;
@@ -434,6 +435,13 @@ pub use runtime_0080_0_r1a::{
     RUNTIME_0080_0_R1A_STATUS_BLOCKED, RUNTIME_0080_0_R1A_STATUS_PARTIAL,
     RUNTIME_0080_0_R1A_STATUS_PASS, RUNTIME_R1A_EXPECTED_REPORT_CHECKSUM,
     RUNTIME_R1A_REGISTERS_WORLD_GPU_STATE_PIPELINES, RUNTIME_R1A_SCOPE,
+};
+pub use runtime_0080_0_r1b::{
+    render_runtime_0080_r1b_artifact, replay_runtime_0080_0_r1b, run_runtime_0080_0_r1b,
+    run_runtime_0080_0_r1b_with_event_writers_enabled, Runtime0080R1bEventWriterParityCheck,
+    Runtime0080R1bInput, Runtime0080R1bKindRowCount, Runtime0080R1bReport, Runtime0080R1bTraceRow,
+    RUNTIME_0080_0_R1B_ID, RUNTIME_0080_0_R1B_PRIMITIVE, RUNTIME_0080_0_R1B_STATUS_BLOCKED,
+    RUNTIME_0080_0_R1B_STATUS_PARTIAL, RUNTIME_0080_0_R1B_STATUS_PASS, RUNTIME_R1B_SCOPE,
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};
