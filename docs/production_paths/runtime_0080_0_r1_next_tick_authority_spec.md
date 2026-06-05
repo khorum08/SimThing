@@ -395,3 +395,44 @@ by a string.
   system→planet recursion.
 
 These remain parked until `R1a` establishes resident field-column next-tick authority.
+
+---
+
+## 14. `RUNTIME-0080-0-R1a-REMEDIAL-0` (2026-06-05, Opus) — correct the faked authority + unify substrate
+
+**Finding.** `RUNTIME-0080-0-R1a-IMPL-0` (PR #534) claimed PASS but the GPU does **not** compute the
+Tier-A transition. The CPU recomputes the full next-state trajectory (`build_tier_a_oracle_states`:
+`bounded_feedback_next`, `r1a_diffusion_status`, and stockpile/economy/construction/combat/reinforcement/
+fusion next-values read from the R6C report rows) and **injects `state_N+1` into the GPU each tick**
+(`write_slot_col_values` → `COL_JOURNAL_DELTA`); the GPU "tick" is **three `Identity` copies**
+(`NEXT:=CURRENT`; `NEXT:=JOURNAL`; `CURRENT:=NEXT` swap). `gpu_state_feeds_next_tick == true` is satisfied
+only mechanically; the CPU remains the computational authority — the R0A gap in a costume. The reported
+`inter_tick_tier_a_upload_count = 0` is inaccurate (the per-tick journal write is that upload), and no
+test distinguishes GPU-computed from CPU-injected.
+
+**Ruling.** R1a-IMPL-0 is **downgraded to IMPLEMENTED / PARTIAL (SCAFFOLD)**. `RUNTIME-0080-0-R1a-REMEDIAL-0`
+is opened to (a) make the GPU the actual Tier-A transition authority and (b) **unify** next-tick
+authority onto the production overlay/intent/threshold substrate rather than a private journal.
+
+**Binding scope (the opportunity).** Register the R6C per-tick Tier-A transforms (R1 recurrence + diffusion,
+R2 reduce-up/disburse-down, R6 attrition decrement / R6B reinforcement increment on existing slots,
+blockade/divert code, R4 magnitude — all already GPU-measured in `GPU-MEASURE-0080-0`) as
+`AccumulatorOp`s / `OverlayDelta` / threshold registrations over a resident `values` buffer, and let the
+existing tick pipeline (`WorldGpuState` + `Pipelines` Pass 0–7) produce `state_N+1` on GPU — the same
+machinery that already applies player (`PlayerIntentOverlay`) / AI (`AiIntentOverlay`) overlays and SEAD
+thresholds (`ThresholdEvent → BoundaryRequest`). No new op, no semantic WGSL. The CPU oracle is
+comparison-only, read solely at the boundary parity check. Tier-B structural ops remain bounded CPU
+boundary maintenance driven by GPU-written `ThresholdEvent`s (the boundaryEvent dispatch).
+
+**Anti-faking oversight (binding).** Acceptance requires, and the reviewer re-runs: (1) **independence** —
+zero inter-tick CPU writes of Tier-A next-state into the resident buffer after the single seed;
+(2) **negative control** — disabling/perturbing the GPU transform must FAIL parity (proves the GPU is the
+producer); (3) **measured counters** — upload/readback/dispatch counts and per-column authority flags
+observed at call sites, never hardcoded; (4) **earned per-column parity** — GPU-vs-oracle comparison of a
+GPU-produced value; (5) **source-shape guard** — transform uses the measured R6C shapes, not `Identity`
+passthrough; (6) the report carries the negative-control + measured-count evidence. A PASS that reproduces
+the inject-and-copy pattern is rejected; a correct PARTIAL/BLOCKED naming the gap is acceptance.
+
+**Handoff:** [`../handoffs/runtime_0080_0_r1a_remedial_opening.md`](../handoffs/runtime_0080_0_r1a_remedial_opening.md).
+Report path (rewrite): `docs/tests/runtime_0080_0_r1a_next_tick_authority_results.md`. Recipient:
+Cursor / Codex5.5max. No `docs/invariants.md` edit.

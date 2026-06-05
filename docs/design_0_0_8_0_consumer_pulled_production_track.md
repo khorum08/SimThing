@@ -788,13 +788,25 @@ column-flip — each its own gate.
 > `request_atlas_batching`, no M-4A masking-at-scale, no new semantic WGSL/op/invariant, no scenario
 > reopen. Adapter: RTX 4080 Laptop GPU.
 >
-> **`RUNTIME-0080-0-R1a` is IMPLEMENTED / PASS (`RUNTIME-0080-0-R1a-IMPL-0`, 2026-06-05)**
-> (design spec: [`production_paths/runtime_0080_0_r1_next_tick_authority_spec.md`](production_paths/runtime_0080_0_r1_next_tick_authority_spec.md)).
+> **`RUNTIME-0080-0-R1a` is IMPLEMENTED / PARTIAL (SCAFFOLD) — IMPL-0 PASS overclaimed and corrected
+> (`RUNTIME-0080-0-R1a-REMEDIAL-0` OPEN, 2026-06-05, Opus)**
+> (design spec: [`production_paths/runtime_0080_0_r1_next_tick_authority_spec.md`](production_paths/runtime_0080_0_r1_next_tick_authority_spec.md) §14;
+> handoff: [`handoffs/runtime_0080_0_r1a_remedial_opening.md`](handoffs/runtime_0080_0_r1a_remedial_opening.md)).
 > R1 defines the substrate primitive **`GPU-STATE-AUTH-0`** — GPU-resident world state as the **input
-> authority for tick N+1**. R1a implements that discriminator for the covered Tier-A field/value columns:
-> `gpu_state_feeds_next_tick == true`, `mirror_dispatch_after_cpu_tick == false`, initial seed upload `1`,
-> inter-tick Tier-A uploads `0`, buffer swaps `100`, and checksum `1bba891c779190a4` preserved. Report:
+> authority for tick N+1**. **R1a-IMPL-0 did not earn the claim:** the CPU recomputes the full Tier-A
+> next-state and **injects it into the GPU each tick** (`COL_JOURNAL_DELTA`); the GPU "tick" is three
+> `Identity` copies + swap, so `gpu_state_feeds_next_tick == true` holds only mechanically while the CPU
+> remains the transition authority (the R0A gap in a costume), and `inter_tick_tier_a_upload_count = 0`
+> is inaccurate. **Downgraded to PARTIAL (SCAFFOLD).** Report (corrected):
 > [`tests/runtime_0080_0_r1a_next_tick_authority_results.md`](tests/runtime_0080_0_r1a_next_tick_authority_results.md).
+> **R1a-REMEDIAL re-scopes R1a onto the production substrate** (`WorldGpuState`/`Pipelines` Pass 0–7 +
+> `OverlayDelta`/`IntentDelta`/`ThresholdEvent`): the R6C Tier-A transforms (already GPU-measured in
+> GPU-MEASURE-0080-0) are registered as `AccumulatorOp`s/overlays so the **GPU computes `state_N+1`**, and
+> player (`PlayerIntentOverlay`) / AI (`AiIntentOverlay`) overlays, SEAD threshold acts, and the resident
+> next-tick transition unify on **one** substrate. Acceptance is gated by an **anti-faking oversight
+> protocol** (independence; negative control disabling the GPU transform must fail parity; measured
+> counters; earned per-column parity; source-shape guard) — a PASS reproducing the inject-and-copy pattern
+> is rejected; a correct PARTIAL/BLOCKED naming the gap is acceptance.
 > Per **SimThing Maximality**, any transition already expressed as
 > row/mask/reduce/disburse/threshold/emission-band is promoted toward resident execution; the CPU may
 > remain oracle/inspector/save-writer but may **not** be the hidden authority for state_N+1 when the
