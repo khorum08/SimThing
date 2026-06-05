@@ -1,3 +1,7 @@
+# 2026-06-05 - RUNTIME-0080-0-R0A-REMEDIAL-0: corrected R0 GPU residency claim
+
+- **R0A remedial (Outcome B):** Downgraded RUNTIME-0080-0-R0 from overclaimed whole-run `GPU-measured` to honest **PARTIAL**. CPU R6C remains tick authority; persistent GPU session + per-tick R1/R2/R4/R6/R6B shape dispatches preserved; checksum `1bba891c779190a4` parity unchanged. Corrected posture: `R6C whole-run remains GPU-conformant; per-tick shapes GPU-dispatched against CPU-authoritative R6C; GPU-resident next-tick authority not yet implemented`. Substrate gap documented for true R0 PASS (GPU-resident cross-tick world transition for full R6C loop). Foreground verification via plain `cargo test` (no stdout/stderr redirection). Report: [`docs/tests/runtime_0080_0_r0_results.md`](tests/runtime_0080_0_r0_results.md).
+
 # 2026-06-04 - GPU-MEASURE-0080-0-IMPL-0: measure rehearsal GPU shapes
 
 - **Implemented GPU-MEASURE-0080-0** as a focused discrete-GPU measurement harness over existing accepted substrates. R1 disruption input + bounded recurrence, R2 owner reduce/disburse, R6 combat damage + attrition emission, and R6B construction/fusion all report `GPU-measured (integer bit-exact)`; R4 GradientXY + Candidate-F reports `GPU-measured (verified-approximate, within accepted f32 bound)` with max abs delta `3.0994415e-6 <= 1.0e-4`. Report: [`docs/tests/gpu_measure_0080_0_results.md`](tests/gpu_measure_0080_0_results.md).
