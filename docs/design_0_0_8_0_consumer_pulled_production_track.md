@@ -789,7 +789,7 @@ column-flip — each its own gate.
 > reopen. Adapter: RTX 4080 Laptop GPU.
 >
 > **`RUNTIME-0080-0-R1a` is IMPLEMENTED / PARTIAL (SCAFFOLD) — IMPL-0 PASS overclaimed and corrected
-> (`RUNTIME-0080-0-R1a-REMEDIAL-0` OPEN, 2026-06-05, Opus)**
+> (`RUNTIME-0080-0-R1a-REMEDIAL-0` code/report corrected to honest PARTIAL, 2026-06-05)**
 > (design spec: [`production_paths/runtime_0080_0_r1_next_tick_authority_spec.md`](production_paths/runtime_0080_0_r1_next_tick_authority_spec.md) §14;
 > handoff: [`handoffs/runtime_0080_0_r1a_remedial_opening.md`](handoffs/runtime_0080_0_r1a_remedial_opening.md)).
 > R1 defines the substrate primitive **`GPU-STATE-AUTH-0`** — GPU-resident world state as the **input
@@ -797,8 +797,12 @@ column-flip — each its own gate.
 > next-state and **injects it into the GPU each tick** (`COL_JOURNAL_DELTA`); the GPU "tick" is three
 > `Identity` copies + swap, so `gpu_state_feeds_next_tick == true` holds only mechanically while the CPU
 > remains the transition authority (the R0A gap in a costume), and `inter_tick_tier_a_upload_count = 0`
-> is inaccurate. **Downgraded to PARTIAL (SCAFFOLD).** Report (corrected):
+> is inaccurate. **Downgraded to PARTIAL (SCAFFOLD), then corrected in code/report to remedial PARTIAL.** Report:
 > [`tests/runtime_0080_0_r1a_next_tick_authority_results.md`](tests/runtime_0080_0_r1a_next_tick_authority_results.md).
+> **Current remedial code posture:** the fake producer is deleted, all R1a per-column authority/parity
+> flags remain false, measured inter-tick Tier-A uploads/readbacks/dispatches/oracle writes-after-seed are
+> zero, and the report names the exact remaining gap: integrated `WorldGpuState`/`Pipelines` Tier-A
+> transition registration must compute `state_N+1` on GPU before the negative control can be earned.
 > **R1a-REMEDIAL re-scopes R1a onto the production substrate** (`WorldGpuState`/`Pipelines` Pass 0–7 +
 > `OverlayDelta`/`IntentDelta`/`ThresholdEvent`): the R6C Tier-A transforms (already GPU-measured in
 > GPU-MEASURE-0080-0) are registered as `AccumulatorOp`s/overlays so the **GPU computes `state_N+1`**, and
