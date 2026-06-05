@@ -20,6 +20,10 @@ The smaller result landed here is an R1c gate/readiness harness that preserves R
 parity, proves the complete CPU-shadow contract, documents the backpressure policy, and names the next
 smaller rung: `R1c-a resident free-list mark-only / no compaction`.
 
+**Follow-on landed:** `R1c-a` is now implemented/pass for resident free-list mark-only, with allocation,
+scatter, and compaction still deferred. See
+[`runtime_0080_0_r1c_a_free_list_mark_results.md`](runtime_0080_0_r1c_a_free_list_mark_results.md).
+
 ## Predecessor R1b
 
 | Field | Value |

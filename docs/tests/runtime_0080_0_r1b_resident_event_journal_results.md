@@ -95,6 +95,9 @@ Disabling the event writers empties the journal and fails oracle parity; re-enab
 
 R1b's task discriminator: *"If CPU still reruns movement/combat/production/blockade logic to decide what happened, R1b is PARTIAL."* The decision witness runs the R6C tick kernels to **decide** the structural events; the GPU does not yet emit them. The journal/parity/boundary-consumption axes are fully earned, but `structural_decisions_gpu_emitted = false`, so the verdict is PARTIAL by design. R1c moves the structural decision authority resident (REENROLL/scatter/compact), at which point that flag flips and PASS is earned.
 
+Follow-on projection: R1b now exposes a compact free-slot mark-source view from its GPU-read journal
+rows for `R1c-a`; this does not change R1b's authority posture or verdict.
+
 ## Exact command results
 
 | Command | Result |
