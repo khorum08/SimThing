@@ -220,26 +220,22 @@ impl DressRehearsalR6Input {
         let r3_report = run_dress_rehearsal_r3_capability_mask_down(
             &DressRehearsalR3Input::with_reports(r1_report.clone(), r2_report.clone()),
         );
-        let r4_report = run_dress_rehearsal_r4_sead_field_consumption(
-            &DressRehearsalR4Input {
-                explicit_opt_in: true,
-                enabled_by_default: false,
-                movement_threshold_mag_bits: MOVEMENT_THRESHOLD_MAG_BITS,
-                r1_report: Some(r1_report.clone()),
-                r2_report: Some(r2_report.clone()),
-                r3_report: Some(r3_report.clone()),
-            },
-        );
-        let r5_report = run_dress_rehearsal_r5_movement_reenroll(
-            &DressRehearsalR5Input {
-                explicit_opt_in: true,
-                enabled_by_default: false,
-                r1_report: Some(r1_report.clone()),
-                r2_report: Some(r2_report.clone()),
-                r3_report: Some(r3_report.clone()),
-                r4_report: Some(r4_report.clone()),
-            },
-        );
+        let r4_report = run_dress_rehearsal_r4_sead_field_consumption(&DressRehearsalR4Input {
+            explicit_opt_in: true,
+            enabled_by_default: false,
+            movement_threshold_mag_bits: MOVEMENT_THRESHOLD_MAG_BITS,
+            r1_report: Some(r1_report.clone()),
+            r2_report: Some(r2_report.clone()),
+            r3_report: Some(r3_report.clone()),
+        });
+        let r5_report = run_dress_rehearsal_r5_movement_reenroll(&DressRehearsalR5Input {
+            explicit_opt_in: true,
+            enabled_by_default: false,
+            r1_report: Some(r1_report.clone()),
+            r2_report: Some(r2_report.clone()),
+            r3_report: Some(r3_report.clone()),
+            r4_report: Some(r4_report.clone()),
+        });
         Self {
             explicit_opt_in: true,
             enabled_by_default: false,
@@ -290,7 +286,9 @@ pub struct DressRehearsalR6Report {
     pub deterministic_replay_checksum: u64,
 }
 
-pub fn run_dress_rehearsal_r6_combat_hp_damage(input: &DressRehearsalR6Input) -> DressRehearsalR6Report {
+pub fn run_dress_rehearsal_r6_combat_hp_damage(
+    input: &DressRehearsalR6Input,
+) -> DressRehearsalR6Report {
     let mut diagnostics = Vec::new();
     validate_input(input, &mut diagnostics);
 
@@ -389,8 +387,7 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
                     FLEET_HP_PER_SHIP,
                     FLEET_DAMAGE_PER_SHIP_PER_TICK,
                 ));
-            let damage_per_ship =
-                (base_damage_per_ship as i128 * bps as i128 / 10_000) as i64;
+            let damage_per_ship = (base_damage_per_ship as i128 * bps as i128 / 10_000) as i64;
             let damage_output = num_ships * damage_per_ship;
             damage_output_by_entity.insert(c.entity_id, damage_output);
             cohort_by_entity.insert(c.entity_id, (num_ships, hp_per_ship, damage_per_ship));
@@ -427,11 +424,11 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
                 if !owners_are_hostile(attacker.owner, target.owner) {
                     continue;
                 }
-                let damage = *damage_output_by_entity.get(&attacker.entity_id).unwrap_or(&0);
-                let received_before =
-                    *hostile_damage_received.get(&target.entity_id).unwrap_or(&0);
-                let received_after =
-                    disburse_down_accumulator_posture(damage, received_before);
+                let damage = *damage_output_by_entity
+                    .get(&attacker.entity_id)
+                    .unwrap_or(&0);
+                let received_before = *hostile_damage_received.get(&target.entity_id).unwrap_or(&0);
+                let received_after = disburse_down_accumulator_posture(damage, received_before);
                 hostile_damage_received.insert(target.entity_id, received_after);
                 disburse_down_rows.push(DressRehearsalR6DisburseDownRow {
                     cell_index,
@@ -446,10 +443,8 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
 
         let mut defeated_entities = BTreeSet::new();
         for c in &combatants {
-            let (num_ships_before, hp_per_ship, damage_per_ship_per_tick) = cohort_by_entity
-                .get(&c.entity_id)
-                .copied()
-                .unwrap_or((
+            let (num_ships_before, hp_per_ship, damage_per_ship_per_tick) =
+                cohort_by_entity.get(&c.entity_id).copied().unwrap_or((
                     FLEET_COHORT_NUM_SHIPS,
                     FLEET_HP_PER_SHIP,
                     FLEET_DAMAGE_PER_SHIP_PER_TICK,
@@ -467,16 +462,18 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
 
             let hostile_targets: Vec<String> = combatants
                 .iter()
-                .filter(|t| {
-                    t.entity_id != c.entity_id && owners_are_hostile(c.owner, t.owner)
-                })
+                .filter(|t| t.entity_id != c.entity_id && owners_are_hostile(c.owner, t.owner))
                 .map(|t| t.combatant_id.clone())
                 .collect();
 
             let friendly_damage_blocked = combatants.iter().any(|other| {
                 other.entity_id != c.entity_id
                     && other.owner == c.owner
-                    && damage_output_by_entity.get(&c.entity_id).copied().unwrap_or(0) > 0
+                    && damage_output_by_entity
+                        .get(&c.entity_id)
+                        .copied()
+                        .unwrap_or(0)
+                        > 0
             });
 
             combat_arena_rows.push(DressRehearsalR6CombatArenaRow {
@@ -509,8 +506,12 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
             });
         }
 
-        let _removal_applied =
-            apply_defeated_removals(cell_index, &combatants, &defeated_entities, &mut combat_arena_rows);
+        let _removal_applied = apply_defeated_removals(
+            cell_index,
+            &combatants,
+            &defeated_entities,
+            &mut combat_arena_rows,
+        );
 
         for row in &combat_arena_rows {
             if row.cell_index != cell_index {
@@ -566,7 +567,11 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
         hostile_colocation_detected,
         stable_checksum: checksum_r6(
             r1.starmap_summary.stable_checksum,
-            input.r2_report.as_ref().map(|r| r.summary.stable_checksum).unwrap_or(0),
+            input
+                .r2_report
+                .as_ref()
+                .map(|r| r.summary.stable_checksum)
+                .unwrap_or(0),
             r3.summary.stable_checksum,
             r4.summary.stable_checksum,
             r5.summary.stable_checksum,
@@ -735,8 +740,8 @@ fn apply_defeated_removals(
     for row in rows.iter_mut().filter(|r| r.cell_index == cell_index) {
         row.arena_membership_after = final_membership.clone();
         if defeated.contains(&row.entity_id) {
-            row.removed_from_arena = alloc_report.admitted
-                && !row.arena_membership_after.contains(&row.entity_id);
+            row.removed_from_arena =
+                alloc_report.admitted && !row.arena_membership_after.contains(&row.entity_id);
         }
     }
     alloc_report.admitted
@@ -799,7 +804,11 @@ fn apply_r6_colocation_fixture(
     r5: &DressRehearsalR5Report,
     post_move: &mut BTreeMap<String, u32>,
 ) {
-    let canonical_ids: BTreeSet<_> = r4.mover_rows.iter().map(|row| row.mover_id.as_str()).collect();
+    let canonical_ids: BTreeSet<_> = r4
+        .mover_rows
+        .iter()
+        .map(|row| row.mover_id.as_str())
+        .collect();
     let moved: Vec<_> = r5
         .movement_rows
         .iter()
@@ -832,7 +841,9 @@ fn apply_r6_colocation_fixture(
     }
 }
 
-fn hostile_colocation_cells(membership: &BTreeMap<u32, Vec<DressRehearsalR6CombatantState>>) -> Vec<u32> {
+fn hostile_colocation_cells(
+    membership: &BTreeMap<u32, Vec<DressRehearsalR6CombatantState>>,
+) -> Vec<u32> {
     let mut cells = Vec::new();
     for (&cell_index, occupants) in membership {
         let mut terran = false;
@@ -880,9 +891,12 @@ fn resolve_combat_cells(
         return post_cells.into_iter().collect();
     }
     for row in &r5.movement_rows {
-        if r5.movement_rows.iter().filter(|other| other.mover_id != row.mover_id).all(
-            |other| other.post_move_cell_index == row.post_move_cell_index,
-        ) {
+        if r5
+            .movement_rows
+            .iter()
+            .filter(|other| other.mover_id != row.mover_id)
+            .all(|other| other.post_move_cell_index == row.post_move_cell_index)
+        {
             return vec![row.post_move_cell_index];
         }
     }
@@ -908,8 +922,7 @@ fn resolve_combat_cells(
                 return vec![terran.post_move_cell_index];
             }
             if terran.post_move_cell_index == cell || pirate.post_move_cell_index == cell {
-                if cell_has_hostile_fleet_pair(membership.get(&cell))
-                {
+                if cell_has_hostile_fleet_pair(membership.get(&cell)) {
                     return vec![cell];
                 }
             }
@@ -919,7 +932,8 @@ fn resolve_combat_cells(
     let mut shared_dest: BTreeSet<u32> = BTreeSet::new();
     for row in &r5.movement_rows {
         let dest = row.post_move_cell_index;
-        if r5.movement_rows
+        if r5
+            .movement_rows
             .iter()
             .any(|other| other.mover_id != row.mover_id && other.post_move_cell_index == dest)
         {
@@ -983,7 +997,10 @@ fn owners_are_hostile(left: DressRehearsalR6Owner, right: DressRehearsalR6Owner)
 }
 
 fn is_hostile_fleet(owner: DressRehearsalR6Owner) -> bool {
-    matches!(owner, DressRehearsalR6Owner::Terran | DressRehearsalR6Owner::Pirate)
+    matches!(
+        owner,
+        DressRehearsalR6Owner::Terran | DressRehearsalR6Owner::Pirate
+    )
 }
 
 fn owner_id(owner: DressRehearsalR6Owner) -> u64 {

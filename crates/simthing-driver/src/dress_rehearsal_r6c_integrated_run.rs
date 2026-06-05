@@ -207,6 +207,8 @@ pub struct DressRehearsalR6cFieldReadRow {
     pub source_field_value: f32,
     pub best_neighbor_cell_index: Option<u32>,
     pub best_neighbor_field_value: f32,
+    pub gradient_dx_f32: f32,
+    pub gradient_dy_f32: f32,
     pub disruption_component: f32,
     pub economy_component: f32,
     pub capability_component_bps: i32,
@@ -752,10 +754,7 @@ fn execute_model(tick_count: u32) -> Execution {
 }
 
 /// Run the R6C model with a per-tick hook (after CPU tick + write-back).
-pub(crate) fn execute_model_with_gpu_hook<H: R6cGpuTickHook>(
-    tick_count: u32,
-    hook: &mut H,
-) -> u64 {
+pub(crate) fn execute_model_with_gpu_hook<H: R6cGpuTickHook>(tick_count: u32, hook: &mut H) -> u64 {
     execute_model_with_hook(tick_count, Some(hook)).stable_checksum()
 }
 
@@ -1294,6 +1293,8 @@ fn run_movement_tick(
                 source_field_value: decision.source_value,
                 best_neighbor_cell_index: decision.destination,
                 best_neighbor_field_value: decision.best_value,
+                gradient_dx_f32: decision.gradient_dx_f32,
+                gradient_dy_f32: decision.gradient_dy_f32,
                 disruption_component: decision.disruption_component,
                 economy_component: decision.economy_component,
                 capability_component_bps: decision.capability_component_bps,
@@ -1738,6 +1739,8 @@ struct MovementDecision {
     source_value: f32,
     best_value: f32,
     destination: Option<u32>,
+    gradient_dx_f32: f32,
+    gradient_dy_f32: f32,
     disruption_component: f32,
     economy_component: f32,
     capability_component_bps: i32,
@@ -1867,6 +1870,8 @@ fn field_decision(field: &[FieldCell], cell: u32) -> MovementDecision {
         source_value: source.value,
         best_value: best.1,
         destination: step_opportunity.then_some(best.0),
+        gradient_dx_f32: gx,
+        gradient_dy_f32: gy,
         disruption_component: source.disruption_component,
         economy_component: source.economy_component,
         capability_component_bps: source.capability_component_bps,

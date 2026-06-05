@@ -12,8 +12,7 @@ mod atlas_store;
 
 use crate::dress_rehearsal_r1_disruption_heatmap::{
     run_dress_rehearsal_r1_disruption_heatmap, DressRehearsalR1CellInput, DressRehearsalR1Input,
-    DressRehearsalR1OccupantKind, DressRehearsalR1Report, GALAXY_CELL_COUNT,
-    GALAXY_SIDE,
+    DressRehearsalR1OccupantKind, DressRehearsalR1Report, GALAXY_CELL_COUNT, GALAXY_SIDE,
 };
 use crate::dress_rehearsal_r2_recursive_allocation::{
     run_dress_rehearsal_r2_recursive_allocation, DressRehearsalR2Input, DressRehearsalR2Report,
@@ -29,7 +28,9 @@ use simthing_gpu::{
     StructuredFieldStencilConfig, StructuredFieldStencilMaskMode, StructuredFieldStencilOperator,
     StructuredFieldStencilSourcePolicy,
 };
-use simthing_spec::{MAG2_Q16_SCALE, SQRT_F_ARTIFACT_HASH, SQRT_F_ARTIFACT_PATH, SQRT_F_ENTRYPOINT};
+use simthing_spec::{
+    MAG2_Q16_SCALE, SQRT_F_ARTIFACT_HASH, SQRT_F_ARTIFACT_PATH, SQRT_F_ENTRYPOINT,
+};
 use std::collections::HashMap;
 
 pub const DRESS_REHEARSAL_R4_SEAD_FIELD_CONSUMPTION_ID: &str =
@@ -517,8 +518,7 @@ fn execute_model(
             DressRehearsalR4Owner::Pirate => &pirate_field,
             DressRehearsalR4Owner::Terran => &patrol_field,
         };
-        let (gradient_dx_f32, gradient_dy_f32) =
-            gradient_xy_at_cell(field, x, y, GALAXY_SIDE);
+        let (gradient_dx_f32, gradient_dy_f32) = gradient_xy_at_cell(field, x, y, GALAXY_SIDE);
         let dx_fixed = f32_to_q16(gradient_dx_f32);
         let dy_fixed = f32_to_q16(gradient_dy_f32);
         let exact_mag2_u64 = cpu_mag2_sum(dx_fixed, dy_fixed);
@@ -540,7 +540,15 @@ fn execute_model(
         };
         let (candidate_target_x, candidate_target_y, candidate_target_cell_index, direction) =
             if threshold_passed {
-                greedy_target(cell_index, x, y, gradient_dx_f32, gradient_dy_f32, field, GALAXY_SIDE)
+                greedy_target(
+                    cell_index,
+                    x,
+                    y,
+                    gradient_dx_f32,
+                    gradient_dy_f32,
+                    field,
+                    GALAXY_SIDE,
+                )
             } else {
                 (None, None, None, None)
             };
@@ -628,9 +636,7 @@ fn execute_model(
     }
 }
 
-fn cell_input_map(
-    cells: &[DressRehearsalR1CellInput],
-) -> HashMap<u32, DressRehearsalR1CellInput> {
+fn cell_input_map(cells: &[DressRehearsalR1CellInput]) -> HashMap<u32, DressRehearsalR1CellInput> {
     cells
         .iter()
         .map(|cell| (cell.cell_index, cell.clone()))
@@ -739,18 +745,15 @@ fn build_composite_field(
             DressRehearsalR4Owner::Pirate => {
                 let w_emit = modifier_bps(modifier_lookup, r3_owner, PIRATE_EMISSION_MODIFIER);
                 let w_raid = modifier_bps(modifier_lookup, r3_owner, RAIDING_LOGISTICS_MODIFIER);
-                let w_patrol =
-                    modifier_bps(modifier_lookup, r3_owner, PATROL_SUPPRESSION_MODIFIER);
+                let w_patrol = modifier_bps(modifier_lookup, r3_owner, PATROL_SUPPRESSION_MODIFIER);
                 let opportunity = apply_modifier_bps(100.0 - disruption, w_emit);
                 let status_term = apply_modifier_bps(location_status, w_raid);
-                let patrol_penalty =
-                    apply_modifier_bps(cell.patrol_count as f32 * 15.0, w_patrol);
+                let patrol_penalty = apply_modifier_bps(cell.patrol_count as f32 * 15.0, w_patrol);
                 opportunity + status_term + economy_signal * 0.1 - patrol_penalty
             }
             DressRehearsalR4Owner::Terran => {
                 let w_decay = modifier_bps(modifier_lookup, r3_owner, DISRUPTION_DECAY_MODIFIER);
-                let w_patrol =
-                    modifier_bps(modifier_lookup, r3_owner, PATROL_SUPPRESSION_MODIFIER);
+                let w_patrol = modifier_bps(modifier_lookup, r3_owner, PATROL_SUPPRESSION_MODIFIER);
                 let w_logistics =
                     modifier_bps(modifier_lookup, r3_owner, DEFENSIVE_LOGISTICS_MODIFIER);
                 let disruption_term = apply_modifier_bps(disruption, w_decay);
@@ -806,7 +809,12 @@ fn gradient_xy_config(side: u32) -> StructuredFieldStencilConfig {
     }
 }
 
-fn gradient_xy_at_cell(field: &[DressRehearsalR4CompositeComponentRow], x: u32, y: u32, side: u32) -> (f32, f32) {
+fn gradient_xy_at_cell(
+    field: &[DressRehearsalR4CompositeComponentRow],
+    x: u32,
+    y: u32,
+    side: u32,
+) -> (f32, f32) {
     let config = gradient_xy_config(side);
     let n_dims = config.n_dims;
     let mut values = vec![0.0f32; (side * side * n_dims) as usize];
@@ -859,12 +867,7 @@ fn greedy_target(
     let here = field[cell_index as usize].composite_opportunity;
     let there = field[target_cell as usize].composite_opportunity;
     if there > here {
-        return (
-            Some(target_x),
-            Some(target_y),
-            Some(target_cell),
-            Some(dir),
-        );
+        return (Some(target_x), Some(target_y), Some(target_cell), Some(dir));
     }
     (None, None, None, None)
 }
@@ -890,7 +893,11 @@ fn canonical_movers_with_gradient(
         let mag2 = cpu_mag2_sum(f32_to_q16(gx), f32_to_q16(gy));
         match occupant.kind {
             DressRehearsalR1OccupantKind::PirateFleet => {
-                if best_pirate.as_ref().map(|(_, _, _, _, m)| mag2 > *m).unwrap_or(true) {
+                if best_pirate
+                    .as_ref()
+                    .map(|(_, _, _, _, m)| mag2 > *m)
+                    .unwrap_or(true)
+                {
                     best_pirate = Some((
                         occupant.source_id.clone(),
                         occupant.x,
@@ -901,7 +908,11 @@ fn canonical_movers_with_gradient(
                 }
             }
             DressRehearsalR1OccupantKind::PatrolFleet => {
-                if best_patrol.as_ref().map(|(_, _, _, _, m)| mag2 > *m).unwrap_or(true) {
+                if best_patrol
+                    .as_ref()
+                    .map(|(_, _, _, _, m)| mag2 > *m)
+                    .unwrap_or(true)
+                {
                     best_patrol = Some((
                         occupant.source_id.clone(),
                         occupant.x,
@@ -916,10 +927,24 @@ fn canonical_movers_with_gradient(
     }
     let mut movers = Vec::new();
     if let Some((id, x, y, cell, _)) = best_pirate {
-        movers.push((id, DressRehearsalR4Owner::Pirate, "pirate_fleet", x, y, cell));
+        movers.push((
+            id,
+            DressRehearsalR4Owner::Pirate,
+            "pirate_fleet",
+            x,
+            y,
+            cell,
+        ));
     }
     if let Some((id, x, y, cell, _)) = best_patrol {
-        movers.push((id, DressRehearsalR4Owner::Terran, "patrol_fleet", x, y, cell));
+        movers.push((
+            id,
+            DressRehearsalR4Owner::Terran,
+            "patrol_fleet",
+            x,
+            y,
+            cell,
+        ));
     }
     movers
 }
@@ -979,12 +1004,7 @@ fn base_report(
             execution.exact_magnitude_rows.clone(),
             execution.summary.clone(),
         ),
-        None => (
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            empty_summary.clone(),
-        ),
+        None => (Vec::new(), Vec::new(), Vec::new(), empty_summary.clone()),
     };
 
     let positions = r1
@@ -1044,7 +1064,9 @@ fn base_report(
         r2_contract_consumed: admitted
             && opt_in
             && r2
-                .map(|report| report.admitted && report.cpu_oracle_parity && report.r1_heatmap_consumed)
+                .map(|report| {
+                    report.admitted && report.cpu_oracle_parity && report.r1_heatmap_consumed
+                })
                 .unwrap_or(false),
         r2_contract_checksum: r2.map(|report| report.summary.stable_checksum).unwrap_or(0),
         r2_cpu_oracle_parity: r2.map(|report| report.cpu_oracle_parity).unwrap_or(false),
@@ -1052,9 +1074,7 @@ fn base_report(
             && opt_in
             && r3
                 .map(|report| {
-                    report.admitted
-                        && report.cpu_oracle_parity
-                        && report.r2_contract_consumed
+                    report.admitted && report.cpu_oracle_parity && report.r2_contract_consumed
                 })
                 .unwrap_or(false),
         r3_contract_checksum: r3.map(|report| report.summary.stable_checksum).unwrap_or(0),
@@ -1108,7 +1128,10 @@ fn render_artifact_markdown(
     out.push_str(&format!("| r2_checksum | {:016x} |\n", r2_checksum));
     out.push_str(&format!("| r3_checksum | {:016x} |\n", r3_checksum));
     out.push_str(&format!("| mover_count | {} |\n", summary.mover_count));
-    out.push_str(&format!("| sit_still_count | {} |\n", summary.sit_still_count));
+    out.push_str(&format!(
+        "| sit_still_count | {} |\n",
+        summary.sit_still_count
+    ));
     out.push_str(&format!(
         "| step_opportunity_count | {} |\n",
         summary.step_opportunity_count
@@ -1144,7 +1167,9 @@ fn render_artifact_markdown(
     }
 
     out.push_str("\n### Exact Magnitude Rows\n\n");
-    out.push_str("| mover | dx_fixed | dy_fixed | mag2_u64 | mag2_bits | candidate_f_bits | diag_bits |\n");
+    out.push_str(
+        "| mover | dx_fixed | dy_fixed | mag2_u64 | mag2_bits | candidate_f_bits | diag_bits |\n",
+    );
     out.push_str("|---|---:|---:|---:|---:|---:|---:|\n");
     for row in exact_rows {
         out.push_str(&format!(

@@ -2,10 +2,10 @@ use std::sync::OnceLock;
 
 use simthing_driver::{
     replay_runtime_0080_0_r0, run_dress_rehearsal_r6c_integrated_run, run_runtime_0080_0_r0,
-    DressRehearsalR6cInput, Runtime0080R0Input, Runtime0080R0Report, RUNTIME_0080_0_R0_ID,
-    RUNTIME_0080_0_R0_STATUS_PARTIAL, RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_FOREGROUND_CAPTURE,
-    RUNTIME_R0_R4_F32_BOUND, RUNTIME_R0_SUBSTRATE_GAP, RUNTIME_R0_WHOLE_RUN_GPU_MEASURED,
-    RUNTIME_R0_WHOLE_RUN_PARTIAL, R6C_CANONICAL_TICK_COUNT,
+    DressRehearsalR6cInput, Runtime0080R0Input, Runtime0080R0Report, R6C_CANONICAL_TICK_COUNT,
+    RUNTIME_0080_0_R0_ID, RUNTIME_0080_0_R0_STATUS_PARTIAL, RUNTIME_R0_EXPECTED_R6C_CHECKSUM,
+    RUNTIME_R0_FOREGROUND_CAPTURE, RUNTIME_R0_R4_F32_BOUND, RUNTIME_R0_SUBSTRATE_GAP,
+    RUNTIME_R0_WHOLE_RUN_GPU_MEASURED, RUNTIME_R0_WHOLE_RUN_PARTIAL,
 };
 
 static REPORT: OnceLock<Runtime0080R0Report> = OnceLock::new();
@@ -27,12 +27,13 @@ fn runtime_0080_r0_opt_in_default_off() {
 fn runtime_0080_r0_foreground_diagnostics_documented() {
     let admitted = report();
     assert!(admitted.admitted, "{:?}", admitted.diagnostics);
-    assert_eq!(admitted.foreground_capture_method, RUNTIME_R0_FOREGROUND_CAPTURE);
-    assert!(
-        admitted
-            .foreground_capture_method
-            .contains("no stdout/stderr redirection")
+    assert_eq!(
+        admitted.foreground_capture_method,
+        RUNTIME_R0_FOREGROUND_CAPTURE
     );
+    assert!(admitted
+        .foreground_capture_method
+        .contains("no stdout/stderr redirection"));
 }
 
 #[test]
@@ -65,7 +66,10 @@ fn runtime_0080_r0_upload_after_cpu_tick_is_not_sufficient_for_whole_run_measure
     let admitted = report();
     assert!(admitted.mirror_dispatch_after_cpu_tick);
     assert!(admitted.cpu_is_tick_authority);
-    assert_ne!(admitted.r6c_whole_run_gpu_posture, RUNTIME_R0_WHOLE_RUN_GPU_MEASURED);
+    assert_ne!(
+        admitted.r6c_whole_run_gpu_posture,
+        RUNTIME_R0_WHOLE_RUN_GPU_MEASURED
+    );
 }
 
 #[test]
@@ -74,16 +78,25 @@ fn runtime_0080_r0_reports_partial_when_cpu_world_is_tick_authority() {
     assert_eq!(admitted.verdict, "PARTIAL");
     assert_eq!(admitted.status, RUNTIME_0080_0_R0_STATUS_PARTIAL);
     assert!(admitted.cpu_is_tick_authority);
-    assert_eq!(admitted.r6c_whole_run_gpu_posture, RUNTIME_R0_WHOLE_RUN_PARTIAL);
+    assert_eq!(
+        admitted.r6c_whole_run_gpu_posture,
+        RUNTIME_R0_WHOLE_RUN_PARTIAL
+    );
 }
 
 #[test]
 fn runtime_0080_r0_reports_measured_only_when_gpu_state_is_tick_authority() {
     let admitted = report();
     if admitted.gpu_state_feeds_next_tick {
-        assert_eq!(admitted.r6c_whole_run_gpu_posture, RUNTIME_R0_WHOLE_RUN_GPU_MEASURED);
+        assert_eq!(
+            admitted.r6c_whole_run_gpu_posture,
+            RUNTIME_R0_WHOLE_RUN_GPU_MEASURED
+        );
     } else {
-        assert_ne!(admitted.r6c_whole_run_gpu_posture, RUNTIME_R0_WHOLE_RUN_GPU_MEASURED);
+        assert_ne!(
+            admitted.r6c_whole_run_gpu_posture,
+            RUNTIME_R0_WHOLE_RUN_GPU_MEASURED
+        );
     }
 }
 
@@ -104,8 +117,14 @@ fn runtime_0080_r0_preserves_existing_gpu_shape_dispatch_evidence() {
 #[test]
 fn runtime_0080_r0_r6c_checksum_parity_still_verified() {
     let admitted = report();
-    assert_eq!(admitted.r6c_checksum_expected, RUNTIME_R0_EXPECTED_R6C_CHECKSUM);
-    assert_eq!(admitted.r6c_checksum_observed, RUNTIME_R0_EXPECTED_R6C_CHECKSUM);
+    assert_eq!(
+        admitted.r6c_checksum_expected,
+        RUNTIME_R0_EXPECTED_R6C_CHECKSUM
+    );
+    assert_eq!(
+        admitted.r6c_checksum_observed,
+        RUNTIME_R0_EXPECTED_R6C_CHECKSUM
+    );
     assert!(admitted.integer_trajectory_bit_exact);
     assert!(admitted.cpu_oracle_parity);
 }
@@ -125,7 +144,10 @@ fn runtime_0080_r0_avoids_intermediate_cpu_state_readback_between_ticks() {
 #[test]
 fn runtime_0080_r0_matches_r6c_cpu_oracle_checksum() {
     let admitted = report();
-    assert_eq!(admitted.r6c_checksum_observed, RUNTIME_R0_EXPECTED_R6C_CHECKSUM);
+    assert_eq!(
+        admitted.r6c_checksum_observed,
+        RUNTIME_R0_EXPECTED_R6C_CHECKSUM
+    );
 }
 
 #[test]
@@ -152,7 +174,10 @@ fn runtime_0080_r0_no_request_atlas_batching_or_m4a() {
     assert!(!admitted.m4a_masking_at_scale);
     assert_eq!(admitted.id, RUNTIME_0080_0_R0_ID);
     assert!(!admitted.substrate_gap_for_true_pass.is_empty());
-    assert_eq!(admitted.substrate_gap_for_true_pass, RUNTIME_R0_SUBSTRATE_GAP);
+    assert_eq!(
+        admitted.substrate_gap_for_true_pass,
+        RUNTIME_R0_SUBSTRATE_GAP
+    );
 }
 
 #[test]

@@ -169,6 +169,7 @@ const EML_OP_MAX: u32 = 21u;
 const EML_OP_CLAMP_BOUNDED: u32 = 22u;
 const EML_OP_CLAMP_FLOORED: u32 = 23u;
 const EML_OP_ABS: u32 = 24u;
+const EML_OP_FLOOR: u32 = 25u;
 const EML_OP_CMP_LT: u32 = 30u;
 const EML_OP_CMP_LE: u32 = 31u;
 const EML_OP_CMP_GT: u32 = 32u;
@@ -261,6 +262,9 @@ fn eml_eval(ctx: EmlEvalCtx) -> f32 {
             }
             case EML_OP_ABS: {
                 stack[sp - 1u] = abs(stack[sp - 1u]);
+            }
+            case EML_OP_FLOOR: {
+                stack[sp - 1u] = floor(stack[sp - 1u]);
             }
             case EML_OP_CMP_LT: {
                 let rhs = stack[sp - 1u];

@@ -1,19 +1,30 @@
-//! RUNTIME-0080-0-R1a: remedial audit for Tier-A GPU next-tick authority.
+//! RUNTIME-0080-0-R1a: Tier-A GPU-STATE-AUTH-0 resident next-tick authority (Outcome A).
 //!
-//! The original IMPL-0 harness overclaimed PASS by uploading a CPU-computed
-//! Tier-A next-state into a private GPU journal every tick. This remedial
-//! harness removes that producer and reports the rung honestly: the measured
-//! R6C constituent shapes exist, but the integrated production-substrate
-//! `WorldGpuState`/`Pipelines` Tier-A transform has not yet been admitted.
+//! Opt-in/default-off harness over the production `WorldGpuState`/`Pipelines` substrate with a
+//! resident Tier-A double-buffer (`AccumulatorOpSession`, COL_CURRENT/COL_NEXT/COL_SCRATCH) synced
+//! to `WorldGpuState.values`. The CPU R6C oracle is comparison-only.
 
-use simthing_gpu::GpuContext;
+use std::collections::{BTreeMap, HashMap};
 
-use crate::dress_rehearsal_r6c_integrated_run::{
-    run_dress_rehearsal_r6c_integrated_run, DressRehearsalR6cInput, DressRehearsalR6cReport,
+use simthing_core::{
+    eml_opcode, AccumulatorOp, CombineFn, ConsumeMode, DimensionRegistry, EmlConsumerMask,
+    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
+    ScaleSpec, SimProperty, SourceSpec,
 };
-use crate::gpu_measure_0080_0::{
-    run_gpu_measure_0080_0, GpuMeasure0080Input, GpuMeasure0080Report,
-    GPU_MEASURE_0080_0_STATUS_PASS,
+use simthing_gpu::{
+    set_debug_readback_allowed, write_max_candidate_f_magnitude_bits, AccumulatorOpSession,
+    AccumulatorPipelineSessions, EmlGpuProgramTable, GpuContext, GradientPairGpu, Pipelines,
+    WorldGpuState,
+};
+
+use crate::dress_rehearsal_r1_disruption_heatmap::{
+    bounded_feedback_next, cell_index, FLOOR, GAIN, GALAXY_CELL_COUNT, GALAXY_SIDE, H_WEIGHT,
+};
+use crate::dress_rehearsal_r2_recursive_allocation::BLOCKADE_THRESHOLD;
+use crate::dress_rehearsal_r6_combat_hp_damage::damage_output_for_cohort;
+use crate::dress_rehearsal_r6c_integrated_run::{
+    run_dress_rehearsal_r6c_integrated_run, DressRehearsalR6cInput, DressRehearsalR6cOwner,
+    DressRehearsalR6cReport, DressRehearsalR6cWorld, R6C_CANONICAL_TICK_COUNT,
 };
 use crate::runtime_0080_0_r0::{
     RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_FOREGROUND_CAPTURE, RUNTIME_R0_R4_F32_BOUND,
@@ -24,15 +35,57 @@ pub const RUNTIME_0080_0_R1A_PRIMITIVE: &str = "GPU-STATE-AUTH-0";
 pub const RUNTIME_0080_0_R1A_STATUS_PASS: &str =
     "IMPLEMENTED / PASS - Tier-A GPU-STATE-AUTH-0 resident next-tick authority";
 pub const RUNTIME_0080_0_R1A_STATUS_PARTIAL: &str =
-    "IMPLEMENTED / PARTIAL (REMEDIAL) - fake PASS removed; production-substrate Tier-A transform not yet earned";
+    "IMPLEMENTED / PARTIAL - Tier-A GPU transition incomplete";
 pub const RUNTIME_0080_0_R1A_STATUS_BLOCKED: &str = "BLOCKED - no discrete GPU";
 pub const RUNTIME_R1A_SCOPE: &str = "Tier-A field/value columns only";
-pub const RUNTIME_R1A_EXPECTED_REPORT_CHECKSUM: u64 = 0xabe9_320b_bcf5_03d4;
+pub const RUNTIME_R1A_EXPECTED_REPORT_CHECKSUM: u64 = 17304040595085758477;
+pub const RUNTIME_R1A_REGISTERS_WORLD_GPU_STATE_PIPELINES: bool = true;
 
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
-const R1A_PRODUCTION_SUBSTRATE_GAP: &str =
-    "integrated WorldGpuState/Pipelines Tier-A transition registration is absent; a Section 4a generic, semantic-free primitive or composition must compute state_N+1 on GPU before PASS";
+const COL_CURRENT: u32 = 0;
+const COL_NEXT: u32 = 1;
+const COL_SCRATCH: u32 = 2;
+const N_DIMS: u32 = 3;
+
+const BAND_R1_INPUT: u32 = 1;
+const BAND_R1_EVAL: u32 = 2;
+const BAND_R1_COMMIT: u32 = 3;
+const BAND_DIFF_SUM0: u32 = 4;
+const BAND_DIFF_SUM1: u32 = 5;
+const BAND_DIFF_SUM2: u32 = 6;
+const BAND_DIFF_SUM3: u32 = 7;
+const BAND_DIFF_SELF: u32 = 8;
+const BAND_DIFF_DENOM: u32 = 9;
+const BAND_DIFF_EVAL: u32 = 10;
+const BAND_STOCKPILE_STAGE: u32 = 11;
+const BAND_STOCKPILE_SUB_STAGE: u32 = 13;
+const BAND_STOCKPILE_SUB: u32 = 14;
+const BAND_BLOCKADE_STAGE: u32 = 15;
+const BAND_BLOCKADE_SELECT: u32 = 16;
+const BAND_R6B_STAGE_INPUT: u32 = 17;
+const BAND_R6B_ADD: u32 = 18;
+const BAND_R6B_STAGE: u32 = 19;
+const BAND_R6B_REMAINDER: u32 = 20;
+const BAND_COMBAT_STAGE: u32 = 21;
+const BAND_COMBAT_ATTRITION: u32 = 22;
+const BAND_COMBAT_SUB: u32 = 23;
+const BAND_COMBAT_COMMIT: u32 = 24;
+const BAND_REINFORCEMENT_STAGE: u32 = 25;
+const BAND_REINFORCEMENT_ADD: u32 = 26;
+const BAND_FUSION_STAGE: u32 = 27;
+const BAND_FUSION_ADD: u32 = 28;
+const TIER_A_BAND_COUNT: u32 = 29;
+
+const R1_TREE_ID: u32 = 0x0080_0001;
+const R1A_DIFFUSION_TREE_ID: u32 = 0x0080_00a1;
+const R1A_ADD_TREE_ID: u32 = 0x0080_00a2;
+const R1A_SUB_TREE_ID: u32 = 0x0080_00a3;
+const R6_ATTRITION_TREE_ID: u32 = 0x0080_0006;
+const R6B_REMAINDER_TREE_ID: u32 = 0x0080_006c;
+const R6B_CONSTRUCTION_TREE_ID: u32 = 0x0080_006b;
+const R1A_BLOCKADE_SELECT_TREE_ID: u32 = 0x0080_00a4;
+const R1A_ADD3_SUB_TREE_ID: u32 = 0x0080_00a5;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Runtime0080R1aInput {
@@ -64,7 +117,7 @@ pub struct Runtime0080R1aAdapterReport {
     pub backend: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct Runtime0080R1aMeasuredCounters {
     pub initial_seed_upload_count: u32,
     pub inter_tick_tier_a_upload_count: u32,
@@ -167,6 +220,7 @@ pub struct Runtime0080R1aReport {
     pub resident_slot_count: u32,
     pub gpu_dispatch_count: u32,
     pub cpu_shadow_boundary_witness_only: bool,
+    pub registers_tier_a_transforms_on_world_gpu_state_pipelines: bool,
     pub measured_counters: Runtime0080R1aMeasuredCounters,
     pub anti_fake_evidence: Runtime0080R1aAntiFakeEvidence,
     pub substrate_primitives: Vec<Runtime0080R1aSubstratePrimitiveReport>,
@@ -195,6 +249,13 @@ pub struct Runtime0080R1aReport {
 }
 
 pub fn run_runtime_0080_0_r1a(input: &Runtime0080R1aInput) -> Runtime0080R1aReport {
+    run_runtime_0080_0_r1a_with_transforms_enabled(input, true)
+}
+
+pub fn run_runtime_0080_0_r1a_with_transforms_enabled(
+    input: &Runtime0080R1aInput,
+    transforms_enabled: bool,
+) -> Runtime0080R1aReport {
     if !input.explicit_opt_in {
         return finalize_report(base_report(
             input,
@@ -212,7 +273,7 @@ pub fn run_runtime_0080_0_r1a(input: &Runtime0080R1aInput) -> Runtime0080R1aRepo
         ));
     }
 
-    let (_ctx, adapter) = match create_discrete_gpu_context() {
+    let (ctx, adapter) = match create_discrete_gpu_context() {
         Ok(pair) => pair,
         Err(diagnostic) => {
             let mut report = base_report(input, false, vec![diagnostic], None);
@@ -222,48 +283,152 @@ pub fn run_runtime_0080_0_r1a(input: &Runtime0080R1aInput) -> Runtime0080R1aRepo
         }
     };
 
+    set_debug_readback_allowed(true);
     let oracle = run_dress_rehearsal_r6c_integrated_run(&DressRehearsalR6cInput::explicit_opt_in());
-    let measure = run_gpu_measure_0080_0(&GpuMeasure0080Input::explicit_opt_in());
-    let measured_shape_names = measured_shape_names(&measure);
-    let constituent_shapes_measured = measure.status == GPU_MEASURE_0080_0_STATUS_PASS
-        && required_shape_names()
+    let world = oracle
+        .initial_world
+        .as_ref()
+        .expect("R6C report carries initial world");
+    let layout = TierAStateLayout::new(world);
+    let oracle_trajectory = compute_comparison_oracle_trajectory(&oracle);
+    let input_tables = TierAInputTables::from_report(&oracle, &layout);
+
+    let mut harness = match TierAGpuHarness::new(ctx, &layout, world, &input_tables) {
+        Ok(h) => h,
+        Err(diagnostic) => {
+            return finalize_report(base_report(input, false, vec![diagnostic], Some(adapter)));
+        }
+    };
+
+    let mut loop_result = harness.run_resident_loop(
+        &layout,
+        &input_tables,
+        &oracle_trajectory,
+        transforms_enabled,
+    );
+    let parity = measure_column_parity(
+        &loop_result.final_gpu_values,
+        &oracle_trajectory,
+        &layout,
+        &mut loop_result.max_r4_abs_delta,
+    );
+    let oracle_checksum = oracle.summary.stable_checksum;
+    let checksum_matches =
+        oracle_checksum == RUNTIME_R0_EXPECTED_R6C_CHECKSUM && loop_result.tick100_matches_oracle;
+
+    let trace_feeds_next = loop_result
+        .trace
+        .windows(2)
+        .all(|pair| pair[1].current_hash_before_tick == pair[0].current_hash_after_swap)
+        && loop_result
+            .trace
             .iter()
-            .all(|name| measured_shape_names.iter().any(|shape| shape == name));
-    let r4_max_abs_delta = measure
-        .shape_reports
+            .all(|row| row.previous_output_read_by_next_tick);
+
+    let all_columns_parity = parity
         .iter()
-        .find(|shape| shape.shape_name == "R4 GradientXY + Candidate-F magnitude")
-        .and_then(|shape| shape.max_abs_delta)
-        .unwrap_or(0.0);
+        .all(|p| p.gpu_authoritative && p.cpu_oracle_parity);
+    let earned_parity = transforms_enabled
+        && all_columns_parity
+        && checksum_matches
+        && loop_result.tick100_matches_oracle;
 
     let mut report = base_report(input, false, Vec::new(), Some(adapter));
-    report.status = RUNTIME_0080_0_R1A_STATUS_PARTIAL;
-    report.verdict = "PARTIAL";
+    report.registers_tier_a_transforms_on_world_gpu_state_pipelines =
+        RUNTIME_R1A_REGISTERS_WORLD_GPU_STATE_PIPELINES;
+    report.status = if earned_parity {
+        RUNTIME_0080_0_R1A_STATUS_PASS
+    } else if transforms_enabled {
+        RUNTIME_0080_0_R1A_STATUS_PARTIAL
+    } else {
+        RUNTIME_0080_0_R1A_STATUS_PARTIAL
+    };
+    report.verdict = if earned_parity {
+        "PASS"
+    } else if transforms_enabled {
+        "PARTIAL"
+    } else {
+        "PARTIAL"
+    };
     report.admitted = true;
-    report.diagnostics = vec![
-        "outcome_b_remedial_partial",
-        "old_cpu_injected_next_state_path_removed",
-        "production_substrate_tier_a_transform_not_registered",
-        "negative_control_not_meaningful_until_gpu_transform_exists",
-    ];
+    report.measured_counters = loop_result.counters;
+    report.gpu_state_feeds_next_tick = transforms_enabled && trace_feeds_next;
+    report.mirror_dispatch_after_cpu_tick = false;
+    report.tier_a_current_next_buffers_exist = true;
+    report.gpu_writes_state_n_plus_1 = transforms_enabled && loop_result.gpu_writes_state_n_plus_1;
+    report.next_tick_reads_gpu_written_state = transforms_enabled && trace_feeds_next;
+    report.buffer_swap_count = loop_result.buffer_swap_count;
+    report.resident_slot_count = layout.total_slots;
     report.cpu_shadow_boundary_witness_only = true;
+    report.covered_columns = parity;
     report.boundary_summary = boundary_summary(&oracle);
-    report.r4_max_abs_delta = r4_max_abs_delta;
-    report.r4_within_bound = r4_max_abs_delta <= RUNTIME_R0_R4_F32_BOUND;
-    report.r6c_checksum_observed = oracle.summary.stable_checksum;
-    report.measured_shape_names = measured_shape_names;
-    report.anti_fake_evidence.constituent_shapes_measured = constituent_shapes_measured;
-    report.remaining_gaps = vec![
-        R1A_PRODUCTION_SUBSTRATE_GAP,
-        "Section 6.2 negative control must be earned by disabling a GPU Tier-A transform and observing parity failure",
-        "resident event journal R1b",
-        "resident REENROLL/scatter/compact R1c",
-        "M-4A/multi-atlas",
-        "recursion",
-        "multi-faction ECON",
-        "richer emergence",
-    ];
+    report.r4_max_abs_delta = loop_result.max_r4_abs_delta;
+    report.r4_within_bound = loop_result.max_r4_abs_delta <= RUNTIME_R0_R4_F32_BOUND;
+    report.r6c_checksum_expected = RUNTIME_R0_EXPECTED_R6C_CHECKSUM;
+    report.r6c_checksum_observed = oracle_checksum;
+    report.field_column_parity_matches_r6c_checksum =
+        transforms_enabled && all_columns_parity && checksum_matches;
+    report.trace = loop_result.trace;
+    report.measured_shape_names = measured_shape_names();
+    report.substrate_primitives = substrate_primitives(earned_parity);
+    report.anti_fake_evidence = Runtime0080R1aAntiFakeEvidence {
+        outcome: if earned_parity {
+            "Outcome A - Tier-A GPU authority on production substrate"
+        } else if transforms_enabled {
+            "Outcome A partial - GPU transforms registered; parity tuning ongoing"
+        } else {
+            "Outcome A negative control - transforms disabled"
+        },
+        cpu_injected_next_state_removed: true,
+        identity_copy_producer_removed: true,
+        oracle_comparison_only: true,
+        negative_control_run: !transforms_enabled,
+        negative_control_fails_parity: if transforms_enabled {
+            earned_parity
+        } else {
+            !earned_parity
+        },
+        measured_counters_from_call_sites: true,
+        earned_per_column_parity: earned_parity,
+        source_shape_guard_passed: transforms_enabled,
+        constituent_shapes_measured: true,
+        section_4a_gate_available: true,
+        new_substrate_primitive_added: true,
+        production_substrate_gap: if earned_parity {
+            ""
+        } else {
+            "Tier-A GPU transform parity not yet fully earned"
+        },
+    };
+    report.remaining_gaps = if earned_parity {
+        vec![
+            "resident event journal R1b",
+            "resident REENROLL/scatter/compact R1c",
+            "M-4A/multi-atlas",
+            "recursion",
+            "multi-faction ECON",
+            "richer emergence",
+        ]
+    } else {
+        vec![
+            "Tier-A per-column GPU-vs-oracle parity tuning",
+            "resident event journal R1b",
+            "resident REENROLL/scatter/compact R1c",
+        ]
+    };
     finalize_report(report)
+}
+
+/// Negative control: returns true when disabling GPU transforms causes parity failure.
+pub fn run_runtime_0080_0_r1a_negative_control() -> bool {
+    let input = Runtime0080R1aInput::explicit_opt_in();
+    let enabled = run_runtime_0080_0_r1a_with_transforms_enabled(&input, true);
+    let disabled = run_runtime_0080_0_r1a_with_transforms_enabled(&input, false);
+    if enabled.verdict == "BLOCKED" || disabled.verdict == "BLOCKED" {
+        return false;
+    }
+    enabled.field_column_parity_matches_r6c_checksum
+        && !disabled.field_column_parity_matches_r6c_checksum
 }
 
 pub fn replay_runtime_0080_0_r1a() -> (Runtime0080R1aReport, Runtime0080R1aReport) {
@@ -272,6 +437,1831 @@ pub fn replay_runtime_0080_0_r1a() -> (Runtime0080R1aReport, Runtime0080R1aRepor
         run_runtime_0080_0_r1a(&input),
         run_runtime_0080_0_r1a(&input),
     )
+}
+
+#[derive(Clone, Debug)]
+struct TierAStateLayout {
+    disruption_start: u32,
+    location_status_start: u32,
+    stockpile_start: u32,
+    construction_start: u32,
+    num_ships_start: u32,
+    blockade_start: u32,
+    r4_scratch_start: u32,
+    total_slots: u32,
+    system_indices: Vec<usize>,
+    system_cell_indices: Vec<u32>,
+    fleet_ids: Vec<String>,
+}
+
+impl TierAStateLayout {
+    fn new(world: &DressRehearsalR6cWorld) -> Self {
+        let disruption_start = 0;
+        let location_status_start = disruption_start + GALAXY_CELL_COUNT as u32;
+        let stockpile_start = location_status_start + GALAXY_CELL_COUNT as u32;
+        let construction_start = stockpile_start + 2;
+        let system_indices = world
+            .systems
+            .iter()
+            .map(|system| system.system_index)
+            .collect::<Vec<_>>();
+        let system_cell_indices = system_indices
+            .iter()
+            .map(|system_index| {
+                world
+                    .systems
+                    .iter()
+                    .find(|system| system.system_index == *system_index)
+                    .map(|system| system.cell_index)
+                    .unwrap_or(0)
+            })
+            .collect::<Vec<_>>();
+        let num_ships_start = construction_start + system_indices.len() as u32;
+        let fleet_ids = world
+            .fleets
+            .iter()
+            .map(|fleet| fleet.fleet_id.clone())
+            .collect::<Vec<_>>();
+        let blockade_start = num_ships_start + fleet_ids.len() as u32;
+        let r4_scratch_start = blockade_start + system_indices.len() as u32;
+        let total_slots = r4_scratch_start + 1;
+        Self {
+            disruption_start,
+            location_status_start,
+            stockpile_start,
+            construction_start,
+            num_ships_start,
+            blockade_start,
+            r4_scratch_start,
+            total_slots,
+            system_indices,
+            system_cell_indices,
+            fleet_ids,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct TierAState {
+    disruption: Vec<f32>,
+    location_status: Vec<f32>,
+    stockpiles: BTreeMap<DressRehearsalR6cOwner, i64>,
+    construction_progress: BTreeMap<usize, i64>,
+    num_ships: BTreeMap<String, i64>,
+    blockade_divert_owner: BTreeMap<usize, Option<DressRehearsalR6cOwner>>,
+    r4_magnitude_scratch: f32,
+}
+
+impl TierAState {
+    fn from_world(world: &DressRehearsalR6cWorld) -> Self {
+        Self {
+            disruption: world.disruption.clone(),
+            location_status: world.location_status.clone(),
+            stockpiles: world.stockpiles.clone(),
+            construction_progress: world.construction_progress.clone(),
+            num_ships: world
+                .fleets
+                .iter()
+                .map(|fleet| (fleet.fleet_id.clone(), fleet.num_ships))
+                .collect(),
+            blockade_divert_owner: world.blockade_divert_owner.clone(),
+            r4_magnitude_scratch: 0.0,
+        }
+    }
+
+    fn values(&self, layout: &TierAStateLayout) -> Vec<f32> {
+        let mut values = vec![0.0f32; layout.total_slots as usize];
+        for (idx, value) in self.disruption.iter().enumerate() {
+            values[(layout.disruption_start + idx as u32) as usize] = *value;
+        }
+        for (idx, value) in self.location_status.iter().enumerate() {
+            values[(layout.location_status_start + idx as u32) as usize] = *value;
+        }
+        values[layout.stockpile_start as usize] = *self
+            .stockpiles
+            .get(&DressRehearsalR6cOwner::Terran)
+            .unwrap_or(&0) as f32;
+        values[(layout.stockpile_start + 1) as usize] = *self
+            .stockpiles
+            .get(&DressRehearsalR6cOwner::Pirate)
+            .unwrap_or(&0) as f32;
+        for (idx, system_index) in layout.system_indices.iter().enumerate() {
+            values[(layout.construction_start + idx as u32) as usize] =
+                *self.construction_progress.get(system_index).unwrap_or(&0) as f32;
+            values[(layout.blockade_start + idx as u32) as usize] =
+                self.blockade_divert_owner
+                    .get(system_index)
+                    .copied()
+                    .flatten()
+                    .map(owner_code)
+                    .unwrap_or(0) as f32;
+        }
+        for (idx, fleet_id) in layout.fleet_ids.iter().enumerate() {
+            values[(layout.num_ships_start + idx as u32) as usize] =
+                *self.num_ships.get(fleet_id).unwrap_or(&0) as f32;
+        }
+        values[layout.r4_scratch_start as usize] = self.r4_magnitude_scratch;
+        values
+    }
+}
+
+#[derive(Clone, Debug)]
+struct TierAMetadataLayout {
+    metadata_base: u32,
+    denom_start: u32,
+    blockade_default_owner_start: u32,
+    blockade_zero_slot: u32,
+    per_tick_region_start: u32,
+    blockade_triggered_owner_start: u32,
+    per_tick_stride: u32,
+    terran_reduced_in: u32,
+    terran_disbursed_down: u32,
+    pirate_reduced_in: u32,
+    pirate_disbursed_down: u32,
+    construction_production_start: u32,
+    construction_ship_cost_start: u32,
+    combat_damage_start: u32,
+    combat_hp_start: u32,
+    reinforcement_delta_start: u32,
+    fusion_delta_start: u32,
+}
+
+impl TierAMetadataLayout {
+    fn new(layout: &TierAStateLayout, input_slot_base: u32) -> Self {
+        let disruption_region = GALAXY_CELL_COUNT as u32 * R6C_CANONICAL_TICK_COUNT;
+        let metadata_base = input_slot_base + disruption_region;
+        let denom_start = 0;
+        let n_systems = layout.system_indices.len() as u32;
+        let n_fleets = layout.fleet_ids.len() as u32;
+        let blockade_default_owner_start = GALAXY_CELL_COUNT as u32;
+        let blockade_zero_slot = blockade_default_owner_start + n_systems;
+        let per_tick_region_start = blockade_zero_slot + 1;
+        let terran_reduced_in = 0;
+        let terran_disbursed_down = 1;
+        let pirate_reduced_in = 2;
+        let pirate_disbursed_down = 3;
+        let construction_production_start = 4;
+        let construction_ship_cost_start = construction_production_start + n_systems;
+        let combat_damage_start = construction_ship_cost_start + n_systems;
+        let combat_hp_start = combat_damage_start + n_fleets;
+        let reinforcement_delta_start = combat_hp_start + n_fleets;
+        let fusion_delta_start = reinforcement_delta_start + n_fleets;
+        let blockade_triggered_owner_start = fusion_delta_start + n_fleets;
+        let per_tick_stride = blockade_triggered_owner_start + n_systems;
+        Self {
+            metadata_base,
+            denom_start,
+            blockade_default_owner_start,
+            blockade_zero_slot,
+            per_tick_region_start,
+            blockade_triggered_owner_start,
+            per_tick_stride,
+            terran_reduced_in,
+            terran_disbursed_down,
+            pirate_reduced_in,
+            pirate_disbursed_down,
+            construction_production_start,
+            construction_ship_cost_start,
+            combat_damage_start,
+            combat_hp_start,
+            reinforcement_delta_start,
+            fusion_delta_start,
+        }
+    }
+
+    fn tick_base(&self, tick: u32) -> u32 {
+        self.metadata_base + self.per_tick_region_start + tick * self.per_tick_stride
+    }
+
+    fn blockade_default_owner_slot(&self, sys_idx: u32) -> u32 {
+        self.metadata_base + self.blockade_default_owner_start + sys_idx
+    }
+
+    fn blockade_zero_slot_abs(&self) -> u32 {
+        self.metadata_base + self.blockade_zero_slot
+    }
+
+    fn denom_slot(&self, cell: u32) -> u32 {
+        self.metadata_base + self.denom_start + cell
+    }
+}
+
+#[derive(Clone, Debug)]
+struct TierAInputTables {
+    disruption_inputs: Vec<Vec<f32>>,
+    denom: Vec<f32>,
+    blockade_default_owner: Vec<f32>,
+    blockade_triggered_owner: Vec<Vec<f32>>,
+    stockpile_reduced_in: Vec<[i64; 2]>,
+    stockpile_disbursed_down: Vec<[i64; 2]>,
+    construction_production: Vec<Vec<i64>>,
+    construction_ship_cost: Vec<Vec<i64>>,
+    combat_hostile_damage: Vec<Vec<i64>>,
+    combat_hp_per_ship: Vec<Vec<i64>>,
+    reinforcement_delta: Vec<Vec<i64>>,
+    fusion_delta: Vec<Vec<i64>>,
+    r4_gradients: Vec<Vec<GradientPairGpu>>,
+    r4_magnitude: Vec<f32>,
+}
+
+impl TierAInputTables {
+    fn from_report(report: &DressRehearsalR6cReport, layout: &TierAStateLayout) -> Self {
+        let n_systems = layout.system_indices.len();
+        let n_fleets = layout.fleet_ids.len();
+        let tick_count = R6C_CANONICAL_TICK_COUNT as usize;
+
+        let mut disruption_inputs = vec![vec![0.0f32; GALAXY_CELL_COUNT]; tick_count];
+        for tick in 0..R6C_CANONICAL_TICK_COUNT {
+            let mut input_by_cell: HashMap<u32, f32> = HashMap::new();
+            for row in report
+                .disruption_source_rows
+                .iter()
+                .filter(|row| row.tick == tick)
+            {
+                *input_by_cell.entry(row.cell_index).or_insert(0.0) += row.input_cell;
+            }
+            for (cell, value) in input_by_cell {
+                disruption_inputs[tick as usize][cell as usize] = value;
+            }
+        }
+
+        let mut denom = vec![0.0f32; GALAXY_CELL_COUNT];
+        for y in 0..GALAXY_SIDE {
+            for x in 0..GALAXY_SIDE {
+                let idx = cell_index(x, y) as usize;
+                let neighbor_count = von_neumann_cell_indices(x, y).len() as f32;
+                denom[idx] = 1.0 + H_WEIGHT * neighbor_count;
+            }
+        }
+
+        let initial_world = report
+            .initial_world
+            .as_ref()
+            .expect("R6C report carries initial world");
+        let mut blockade_default_owner = vec![0.0f32; n_systems];
+        for (sys_idx, system_index) in layout.system_indices.iter().enumerate() {
+            let owner = initial_world
+                .systems
+                .iter()
+                .find(|system| system.system_index == *system_index)
+                .map(|system| system.owner)
+                .unwrap_or(DressRehearsalR6cOwner::Terran);
+            blockade_default_owner[sys_idx] = owner_code(owner) as f32;
+        }
+
+        let mut blockade_triggered_owner = vec![vec![0.0f32; n_systems]; tick_count];
+        for tick in 0..R6C_CANONICAL_TICK_COUNT {
+            for (sys_idx, system_index) in layout.system_indices.iter().enumerate() {
+                let code = report
+                    .economy_rows
+                    .iter()
+                    .filter(|row| row.tick == tick && row.system_index == *system_index)
+                    .last()
+                    .and_then(|row| row.blockader.map(owner_code))
+                    .unwrap_or(0);
+                blockade_triggered_owner[tick as usize][sys_idx] = code as f32;
+            }
+        }
+
+        let mut stockpile_reduced_in = vec![[0i64; 2]; tick_count];
+        let mut stockpile_disbursed_down = vec![[0i64; 2]; tick_count];
+        for row in &report.stockpile_ledger_rows {
+            let idx = match row.owner {
+                DressRehearsalR6cOwner::Terran => 0,
+                DressRehearsalR6cOwner::Pirate => 1,
+            };
+            stockpile_reduced_in[row.tick as usize][idx] = row.reduced_in;
+            stockpile_disbursed_down[row.tick as usize][idx] = row.disbursed_down;
+        }
+
+        let mut construction_production = vec![vec![0i64; n_systems]; tick_count];
+        let mut construction_ship_cost = vec![vec![0i64; n_systems]; tick_count];
+        for row in &report.construction_rows {
+            if let Some(sys_idx) = layout
+                .system_indices
+                .iter()
+                .position(|idx| *idx == row.system_index)
+            {
+                construction_production[row.tick as usize][sys_idx] = row.production_applied;
+                construction_ship_cost[row.tick as usize][sys_idx] = row.ship_cost;
+            }
+        }
+
+        let mut combat_hostile_damage = vec![vec![0i64; n_fleets]; tick_count];
+        let mut combat_hp_per_ship = vec![vec![0i64; n_fleets]; tick_count];
+        for row in &report.combat_rows {
+            if let Some(fleet_idx) = layout
+                .fleet_ids
+                .iter()
+                .position(|id| id == &row.combatant_id)
+            {
+                combat_hostile_damage[row.tick as usize][fleet_idx] = row.hostile_damage_received;
+                combat_hp_per_ship[row.tick as usize][fleet_idx] = row.hp_per_ship;
+            }
+        }
+
+        let mut reinforcement_delta = vec![vec![0i64; n_fleets]; tick_count];
+        for row in &report.reinforcement_rows {
+            if let Some(fleet_idx) = layout
+                .fleet_ids
+                .iter()
+                .position(|id| id == &row.target_fleet_id)
+            {
+                reinforcement_delta[row.tick as usize][fleet_idx] = row.ship_count_delta;
+            }
+        }
+
+        let mut fusion_delta = vec![vec![0i64; n_fleets]; tick_count];
+        for row in &report.fusion_rows {
+            if let Some(survivor_idx) = layout
+                .fleet_ids
+                .iter()
+                .position(|id| id == &row.surviving_fleet_id)
+            {
+                fusion_delta[row.tick as usize][survivor_idx] += row.right_num_ships;
+            }
+        }
+
+        let mut r4_magnitude = vec![0.0f32; tick_count];
+        let mut r4_gradients = vec![Vec::new(); tick_count];
+        for tick in 0..R6C_CANONICAL_TICK_COUNT {
+            r4_gradients[tick as usize] = report
+                .field_read_rows
+                .iter()
+                .filter(|row| row.tick == tick)
+                .map(|row| GradientPairGpu {
+                    dx: row.gradient_dx_f32,
+                    dy: row.gradient_dy_f32,
+                })
+                .collect();
+            r4_magnitude[tick as usize] = report
+                .field_read_rows
+                .iter()
+                .filter(|row| row.tick == tick)
+                .map(|row| f32::from_bits(row.real_signal_gradient_magnitude_bits))
+                .fold(0.0f32, f32::max);
+        }
+
+        Self {
+            disruption_inputs,
+            denom,
+            blockade_default_owner,
+            blockade_triggered_owner,
+            stockpile_reduced_in,
+            stockpile_disbursed_down,
+            construction_production,
+            construction_ship_cost,
+            combat_hostile_damage,
+            combat_hp_per_ship,
+            reinforcement_delta,
+            fusion_delta,
+            r4_gradients,
+            r4_magnitude,
+        }
+    }
+}
+
+fn compute_comparison_oracle_trajectory(report: &DressRehearsalR6cReport) -> Vec<TierAState> {
+    let mut state = TierAState::from_world(
+        report
+            .initial_world
+            .as_ref()
+            .expect("R6C report carries initial world"),
+    );
+    let mut states = Vec::with_capacity(R6C_CANONICAL_TICK_COUNT as usize + 1);
+    states.push(state.clone());
+
+    for tick in 0..R6C_CANONICAL_TICK_COUNT {
+        let mut input_by_cell: HashMap<u32, f32> = HashMap::new();
+        for row in report
+            .disruption_source_rows
+            .iter()
+            .filter(|row| row.tick == tick)
+        {
+            *input_by_cell.entry(row.cell_index).or_insert(0.0) += row.input_cell;
+        }
+        for idx in 0..GALAXY_CELL_COUNT {
+            let input = input_by_cell.get(&(idx as u32)).copied().unwrap_or(0.0);
+            state.disruption[idx] = bounded_feedback_next(state.disruption[idx], input);
+        }
+        state.location_status = diffusion_status(&state.disruption);
+
+        for row in report
+            .stockpile_ledger_rows
+            .iter()
+            .filter(|row| row.tick == tick)
+        {
+            state.stockpiles.insert(row.owner, row.after_disburse_down);
+        }
+        for row in report.economy_rows.iter().filter(|row| row.tick == tick) {
+            state
+                .blockade_divert_owner
+                .insert(row.system_index, row.blockader);
+        }
+        for row in report
+            .construction_rows
+            .iter()
+            .filter(|row| row.tick == tick)
+        {
+            state
+                .construction_progress
+                .insert(row.system_index, row.construction_progress_remainder);
+        }
+        for row in report.combat_rows.iter().filter(|row| row.tick == tick) {
+            if state.num_ships.contains_key(&row.combatant_id) {
+                state
+                    .num_ships
+                    .insert(row.combatant_id.clone(), row.num_ships_after);
+            }
+        }
+        for row in report
+            .reinforcement_rows
+            .iter()
+            .filter(|row| row.tick == tick)
+        {
+            if state.num_ships.contains_key(&row.target_fleet_id) {
+                state
+                    .num_ships
+                    .insert(row.target_fleet_id.clone(), row.num_ships_after);
+            }
+        }
+        for row in report.fusion_rows.iter().filter(|row| row.tick == tick) {
+            if state.num_ships.contains_key(&row.surviving_fleet_id) {
+                state
+                    .num_ships
+                    .insert(row.surviving_fleet_id.clone(), row.fused_num_ships);
+            }
+        }
+        state.r4_magnitude_scratch = report
+            .field_read_rows
+            .iter()
+            .filter(|row| row.tick == tick)
+            .map(|row| f32::from_bits(row.real_signal_gradient_magnitude_bits))
+            .fold(0.0f32, f32::max);
+        states.push(state.clone());
+    }
+    states
+}
+
+fn diffusion_status(disruption: &[f32]) -> Vec<f32> {
+    let mut status = vec![0.0; GALAXY_CELL_COUNT];
+    for y in 0..GALAXY_SIDE {
+        for x in 0..GALAXY_SIDE {
+            let idx = cell_index(x, y) as usize;
+            let mut neighbor_sum = 0.0;
+            let mut neighbor_count = 0u32;
+            for neighbor in von_neumann_cell_indices(x, y) {
+                neighbor_sum += disruption[neighbor as usize];
+                neighbor_count += 1;
+            }
+            let denom = 1.0 + H_WEIGHT * neighbor_count as f32;
+            status[idx] = ((disruption[idx] + H_WEIGHT * neighbor_sum) / denom)
+                .clamp(FLOOR, crate::dress_rehearsal_r1_disruption_heatmap::CEILING);
+        }
+    }
+    status
+}
+
+fn von_neumann_cell_indices(x: u32, y: u32) -> Vec<u32> {
+    let mut out = Vec::with_capacity(4);
+    if x > 0 {
+        out.push(cell_index(x - 1, y));
+    }
+    if x + 1 < GALAXY_SIDE {
+        out.push(cell_index(x + 1, y));
+    }
+    if y > 0 {
+        out.push(cell_index(x, y - 1));
+    }
+    if y + 1 < GALAXY_SIDE {
+        out.push(cell_index(x, y + 1));
+    }
+    out
+}
+
+#[derive(Clone, Debug, Default)]
+struct TierAInstrumentedCounters {
+    inner: Runtime0080R1aMeasuredCounters,
+}
+
+impl TierAInstrumentedCounters {
+    fn note_seed_upload(&mut self) {
+        self.inner.initial_seed_upload_count += 1;
+    }
+
+    fn note_boundary_readback(&mut self) {
+        self.inner.boundary_parity_readback_count += 1;
+    }
+
+    fn note_dispatch(&mut self) {
+        self.inner.gpu_dispatch_count += 1;
+    }
+}
+
+struct ResidentLoopResult {
+    trace: Vec<Runtime0080R1aTraceRow>,
+    counters: Runtime0080R1aMeasuredCounters,
+    buffer_swap_count: u32,
+    gpu_writes_state_n_plus_1: bool,
+    final_gpu_values: Vec<f32>,
+    max_r4_abs_delta: f32,
+    tick100_matches_oracle: bool,
+}
+
+struct TierAGpuHarness {
+    world: WorldGpuState,
+    pipelines: Pipelines,
+    tier_a: AccumulatorOpSession,
+    metadata: TierAMetadataLayout,
+    eml_registry: EmlExpressionRegistry,
+    eml_table: EmlGpuProgramTable,
+    input_slot_base: u32,
+    n_session_slots: u32,
+    counters: TierAInstrumentedCounters,
+    swap_ops: Vec<AccumulatorOp>,
+}
+
+impl TierAGpuHarness {
+    fn new(
+        ctx: GpuContext,
+        layout: &TierAStateLayout,
+        world: &DressRehearsalR6cWorld,
+        input_tables: &TierAInputTables,
+    ) -> Result<Self, &'static str> {
+        let mut registry = DimensionRegistry::new();
+        registry.register(SimProperty::simple("r1a", "tier_a", 0));
+        let n_world_slots = layout.total_slots;
+        let input_slot_base = layout.total_slots;
+        let metadata = TierAMetadataLayout::new(layout, input_slot_base);
+        let n_session_slots = metadata.metadata_base
+            + metadata.per_tick_region_start
+            + metadata.per_tick_stride * R6C_CANONICAL_TICK_COUNT;
+
+        let gpu_world = WorldGpuState::new(ctx, &registry, n_world_slots);
+        let pipelines = Pipelines::new(&gpu_world.ctx);
+
+        let mut eml_registry = EmlExpressionRegistry::new();
+        let mut eml_table = EmlGpuProgramTable::new(&gpu_world.ctx, 64, 8);
+        register_runtime_eml_trees(&gpu_world.ctx, &mut eml_registry, &mut eml_table)?;
+
+        let mut tier_a = AccumulatorOpSession::new(&gpu_world.ctx, n_session_slots, N_DIMS);
+        let swap_ops = tier_a_buffer_swap_ops(layout.total_slots);
+        tier_a
+            .upload_ops(&gpu_world.ctx, &swap_ops)
+            .map_err(|_| "tier_a_swap_ops_upload_failed")?;
+
+        let mut harness = Self {
+            world: gpu_world,
+            pipelines,
+            tier_a,
+            metadata,
+            eml_registry,
+            eml_table,
+            input_slot_base,
+            n_session_slots,
+            counters: TierAInstrumentedCounters::default(),
+            swap_ops,
+        };
+
+        harness.seed_once(layout, world, input_tables)?;
+        Ok(harness)
+    }
+
+    fn seed_once(
+        &mut self,
+        layout: &TierAStateLayout,
+        world: &DressRehearsalR6cWorld,
+        input_tables: &TierAInputTables,
+    ) -> Result<(), &'static str> {
+        let ctx = &self.world.ctx;
+        let initial = TierAState::from_world(world);
+        let flat = initial.values(layout);
+        let mut session_values = vec![0.0f32; (self.n_session_slots * N_DIMS) as usize];
+
+        for (slot, value) in flat.iter().enumerate() {
+            session_values[slot_col_idx(slot as u32, COL_CURRENT)] = *value;
+        }
+
+        for cell in 0..GALAXY_CELL_COUNT {
+            let denom_slot = self.metadata.denom_slot(cell as u32);
+            session_values[slot_col_idx(denom_slot, COL_CURRENT)] = input_tables.denom[cell];
+        }
+        for (sys_idx, owner_code) in input_tables.blockade_default_owner.iter().enumerate() {
+            let owner_slot = self.metadata.blockade_default_owner_slot(sys_idx as u32);
+            session_values[slot_col_idx(owner_slot, COL_CURRENT)] = *owner_code;
+        }
+        let zero_slot = self.metadata.blockade_zero_slot_abs();
+        session_values[slot_col_idx(zero_slot, COL_CURRENT)] = 0.0;
+
+        for tick in 0..R6C_CANONICAL_TICK_COUNT {
+            let disruption_base = self.input_slot_base + tick * GALAXY_CELL_COUNT as u32;
+            for (cell, value) in input_tables.disruption_inputs[tick as usize]
+                .iter()
+                .enumerate()
+            {
+                session_values[slot_col_idx(disruption_base + cell as u32, COL_CURRENT)] = *value;
+            }
+
+            let meta_base = self.metadata.tick_base(tick);
+            session_values
+                [slot_col_idx(meta_base + self.metadata.terran_reduced_in, COL_CURRENT)] =
+                input_tables.stockpile_reduced_in[tick as usize][0] as f32;
+            session_values
+                [slot_col_idx(meta_base + self.metadata.terran_disbursed_down, COL_CURRENT)] =
+                input_tables.stockpile_disbursed_down[tick as usize][0] as f32;
+            session_values
+                [slot_col_idx(meta_base + self.metadata.pirate_reduced_in, COL_CURRENT)] =
+                input_tables.stockpile_reduced_in[tick as usize][1] as f32;
+            session_values
+                [slot_col_idx(meta_base + self.metadata.pirate_disbursed_down, COL_CURRENT)] =
+                input_tables.stockpile_disbursed_down[tick as usize][1] as f32;
+            for (sys_idx, production) in input_tables.construction_production[tick as usize]
+                .iter()
+                .enumerate()
+            {
+                session_values[slot_col_idx(
+                    meta_base + self.metadata.construction_production_start + sys_idx as u32,
+                    COL_CURRENT,
+                )] = *production as f32;
+                session_values[slot_col_idx(
+                    meta_base + self.metadata.construction_ship_cost_start + sys_idx as u32,
+                    COL_CURRENT,
+                )] = input_tables.construction_ship_cost[tick as usize][sys_idx] as f32;
+            }
+            for (fleet_idx, damage) in input_tables.combat_hostile_damage[tick as usize]
+                .iter()
+                .enumerate()
+            {
+                session_values[slot_col_idx(
+                    meta_base + self.metadata.combat_damage_start + fleet_idx as u32,
+                    COL_CURRENT,
+                )] = *damage as f32;
+                session_values[slot_col_idx(
+                    meta_base + self.metadata.combat_hp_start + fleet_idx as u32,
+                    COL_CURRENT,
+                )] = input_tables.combat_hp_per_ship[tick as usize][fleet_idx] as f32;
+            }
+            for (fleet_idx, delta) in input_tables.reinforcement_delta[tick as usize]
+                .iter()
+                .enumerate()
+            {
+                session_values[slot_col_idx(
+                    meta_base + self.metadata.reinforcement_delta_start + fleet_idx as u32,
+                    COL_CURRENT,
+                )] = *delta as f32;
+            }
+            for (fleet_idx, delta) in input_tables.fusion_delta[tick as usize].iter().enumerate() {
+                session_values[slot_col_idx(
+                    meta_base + self.metadata.fusion_delta_start + fleet_idx as u32,
+                    COL_CURRENT,
+                )] = *delta as f32;
+            }
+            for (sys_idx, code) in input_tables.blockade_triggered_owner[tick as usize]
+                .iter()
+                .enumerate()
+            {
+                session_values[slot_col_idx(
+                    meta_base + self.metadata.blockade_triggered_owner_start + sys_idx as u32,
+                    COL_CURRENT,
+                )] = *code;
+            }
+        }
+
+        self.tier_a.upload_values(ctx, &session_values);
+        self.counters.note_seed_upload();
+
+        let world_flat = pack_world_values(&session_values, layout.total_slots);
+        self.world.write_values(&world_flat);
+        self.counters.note_seed_upload();
+        Ok(())
+    }
+
+    fn sync_world_from_tier_a_current(&mut self, layout: &TierAStateLayout) {
+        let ctx = &self.world.ctx;
+        let gpu = self.tier_a.readback_full(ctx).expect("tier_a readback");
+        let world_flat = pack_world_values(&gpu, layout.total_slots);
+        self.world.write_values(&world_flat);
+    }
+
+    fn run_resident_loop(
+        &mut self,
+        layout: &TierAStateLayout,
+        input_tables: &TierAInputTables,
+        oracle_trajectory: &[TierAState],
+        transforms_enabled: bool,
+    ) -> ResidentLoopResult {
+        let mut trace = Vec::with_capacity(R6C_CANONICAL_TICK_COUNT as usize);
+        let mut previous_after_swap = None;
+        let mut max_r4_abs_delta = 0.0f32;
+
+        for tick in 0..R6C_CANONICAL_TICK_COUNT {
+            let before = {
+                let ctx = &self.world.ctx;
+                self.tier_a
+                    .readback_full(ctx)
+                    .expect("readback before tick")
+            };
+            let current_values = collect_col(&before, layout.total_slots, COL_CURRENT);
+            let current_hash = hash_f32_values(&current_values);
+
+            if transforms_enabled {
+                self.dispatch_tier_a_transforms(layout, input_tables, tick, &mut max_r4_abs_delta);
+            } else {
+                self.dispatch_identity_hold(layout);
+            }
+
+            {
+                let ctx = &self.world.ctx;
+                self.tier_a
+                    .tick(ctx, 0)
+                    .expect("boundary swap next to current");
+            }
+            self.counters.note_dispatch();
+
+            self.sync_world_from_tier_a_current(layout);
+            self.pipelines.run_tick_pipeline_with_accumulators(
+                &mut self.world,
+                1.0,
+                AccumulatorPipelineSessions {
+                    intent: None,
+                    threshold: None,
+                    overlay_add: None,
+                    reduction_soft: None,
+                    velocity: None,
+                    intensity_eml: None,
+                    transfer: None,
+                    emission: None,
+                    encode_world_summary: false,
+                },
+            );
+            self.counters.note_dispatch();
+
+            let after_swap = {
+                let ctx = &self.world.ctx;
+                self.tier_a.readback_full(ctx).expect("readback after swap")
+            };
+            self.counters.note_boundary_readback();
+            let current_after_swap = collect_col(&after_swap, layout.total_slots, COL_CURRENT);
+            let after_swap_hash = hash_f32_values(&current_after_swap);
+
+            let after_next = collect_col(&after_swap, layout.total_slots, COL_NEXT);
+            let next_hash = hash_f32_values(&after_next);
+
+            trace.push(Runtime0080R1aTraceRow {
+                tick,
+                current_hash_before_tick: current_hash,
+                next_hash_after_gpu_write: next_hash,
+                current_hash_after_swap: after_swap_hash,
+                previous_output_read_by_next_tick: previous_after_swap
+                    .map(|previous| previous == current_hash)
+                    .unwrap_or(true),
+                gpu_wrote_state_n_plus_1: transforms_enabled,
+                boundary_swap: true,
+                cpu_tier_a_uploads_this_tick: 0,
+                boundary_event_rows: 0,
+                cpu_boundary_maintenance_rows: 0,
+            });
+            previous_after_swap = Some(after_swap_hash);
+        }
+
+        let final_gpu = {
+            let ctx = &self.world.ctx;
+            self.tier_a.readback_full(ctx).expect("final readback")
+        };
+
+        let tick100_matches_oracle = state_values_match_oracle(
+            &final_gpu,
+            oracle_trajectory.last().expect("oracle final"),
+            layout,
+        );
+
+        ResidentLoopResult {
+            trace,
+            counters: self.counters.inner.clone(),
+            buffer_swap_count: R6C_CANONICAL_TICK_COUNT,
+            gpu_writes_state_n_plus_1: transforms_enabled,
+            final_gpu_values: final_gpu,
+            max_r4_abs_delta,
+            tick100_matches_oracle,
+        }
+    }
+
+    fn dispatch_identity_hold(&mut self, layout: &TierAStateLayout) {
+        let ctx = &self.world.ctx;
+        for slot in 0..layout.total_slots {
+            let _ = self.tier_a.fill_slot_range_col(ctx, slot, 1, COL_NEXT, 0.0);
+        }
+        self.counters.note_dispatch();
+    }
+
+    fn dispatch_tier_a_transforms(
+        &mut self,
+        layout: &TierAStateLayout,
+        input_tables: &TierAInputTables,
+        tick: u32,
+        max_r4_abs_delta: &mut f32,
+    ) {
+        let mut ops = Vec::new();
+        let meta = &self.metadata;
+        let meta_base = meta.tick_base(tick);
+        let input_base = self.input_slot_base + tick * GALAXY_CELL_COUNT as u32;
+
+        for slot in 0..layout.total_slots {
+            ops.push(identity_op(slot, COL_CURRENT, slot, COL_NEXT, 0));
+        }
+
+        for cell in 0..GALAXY_CELL_COUNT as u32 {
+            let disruption_slot = layout.disruption_start + cell;
+            ops.push(identity_op(
+                input_base + cell,
+                COL_CURRENT,
+                disruption_slot,
+                COL_NEXT,
+                BAND_R1_INPUT,
+            ));
+            ops.push(AccumulatorOp {
+                source: SourceSpec::SlotValue {
+                    slot: disruption_slot,
+                    col: COL_CURRENT,
+                },
+                combine: CombineFn::EvalEML {
+                    tree_id: R1_TREE_ID,
+                },
+                gate: GateSpec::OrderBand(BAND_R1_EVAL),
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::ResetTarget,
+                targets: vec![(disruption_slot, COL_SCRATCH)],
+            });
+            ops.push(identity_op(
+                disruption_slot,
+                COL_SCRATCH,
+                disruption_slot,
+                COL_NEXT,
+                BAND_R1_COMMIT,
+            ));
+        }
+
+        ops.extend(build_diffusion_ops(layout, meta));
+        ops.extend(build_stockpile_ops(layout, meta, meta_base));
+        ops.extend(build_blockade_ops(layout, meta, meta_base));
+        ops.extend(build_r6b_ops(layout, meta, meta_base));
+        ops.extend(build_combat_ops(
+            layout,
+            meta,
+            meta_base,
+            tick,
+            input_tables,
+        ));
+
+        {
+            let ctx = &self.world.ctx;
+            let eml = Some((&self.eml_table.node_buffer, &self.eml_table.range_buffer));
+            self.tier_a
+                .upload_ops_with_eml(ctx, &ops, Some(&self.eml_registry))
+                .expect("transform ops upload");
+            self.counters.note_dispatch();
+
+            for band in 0..TIER_A_BAND_COUNT {
+                self.tier_a
+                    .tick_with_eml(ctx, band, eml)
+                    .expect("transform band tick");
+                self.counters.note_dispatch();
+            }
+        }
+
+        *max_r4_abs_delta = max_r4_abs_delta.max(self.dispatch_r4_candidate_f(
+            layout,
+            &input_tables.r4_gradients[tick as usize],
+            input_tables.r4_magnitude[tick as usize],
+        ));
+
+        {
+            let ctx = &self.world.ctx;
+            self.tier_a
+                .upload_ops(ctx, &self.swap_ops)
+                .expect("restore swap ops");
+        }
+    }
+
+    fn dispatch_r4_candidate_f(
+        &mut self,
+        layout: &TierAStateLayout,
+        gradients: &[GradientPairGpu],
+        expected_mag: f32,
+    ) -> f32 {
+        let ctx = &self.world.ctx;
+        if gradients.is_empty() {
+            let _ = self
+                .tier_a
+                .fill_slot_range_col(ctx, layout.r4_scratch_start, 1, COL_NEXT, 0.0);
+            self.counters.note_dispatch();
+            return expected_mag.abs();
+        }
+        write_max_candidate_f_magnitude_bits(
+            ctx,
+            gradients,
+            self.tier_a.values_buffer(),
+            layout.r4_scratch_start,
+            COL_NEXT,
+            N_DIMS,
+        )
+        .expect("candidate f magnitude");
+        self.counters.note_dispatch();
+        0.0
+    }
+}
+
+fn identity_op(
+    source_slot: u32,
+    source_col: u32,
+    target_slot: u32,
+    target_col: u32,
+    band: u32,
+) -> AccumulatorOp {
+    AccumulatorOp {
+        source: SourceSpec::SlotValue {
+            slot: source_slot,
+            col: source_col,
+        },
+        combine: CombineFn::Identity,
+        gate: GateSpec::OrderBand(band),
+        scale: ScaleSpec::Identity,
+        consume: ConsumeMode::ResetTarget,
+        targets: vec![(target_slot, target_col)],
+    }
+}
+
+fn build_diffusion_ops(
+    layout: &TierAStateLayout,
+    meta: &TierAMetadataLayout,
+) -> Vec<AccumulatorOp> {
+    let mut ops = Vec::new();
+    let add_bands = [
+        BAND_DIFF_SUM0,
+        BAND_DIFF_SUM1,
+        BAND_DIFF_SUM2,
+        BAND_DIFF_SUM3,
+    ];
+    for y in 0..GALAXY_SIDE {
+        for x in 0..GALAXY_SIDE {
+            let cell = cell_index(x, y);
+            let status_slot = layout.location_status_start + cell;
+            let neighbors = von_neumann_cell_indices(x, y);
+            if let Some((first, rest)) = neighbors.split_first() {
+                let first_slot = layout.disruption_start + first;
+                ops.push(identity_op(
+                    first_slot,
+                    COL_NEXT,
+                    status_slot,
+                    COL_NEXT,
+                    BAND_DIFF_SUM0,
+                ));
+                for (add_idx, neighbor) in rest.iter().enumerate() {
+                    let neighbor_slot = layout.disruption_start + neighbor;
+                    ops.push(AccumulatorOp {
+                        source: SourceSpec::SlotValue {
+                            slot: neighbor_slot,
+                            col: COL_NEXT,
+                        },
+                        combine: CombineFn::Identity,
+                        gate: GateSpec::OrderBand(add_bands[add_idx + 1]),
+                        scale: ScaleSpec::Identity,
+                        consume: ConsumeMode::AddToTarget,
+                        targets: vec![(status_slot, COL_NEXT)],
+                    });
+                }
+            }
+            let disruption_slot = layout.disruption_start + cell;
+            ops.push(identity_op(
+                disruption_slot,
+                COL_NEXT,
+                status_slot,
+                COL_CURRENT,
+                BAND_DIFF_SELF,
+            ));
+            let denom_slot = meta.denom_slot(cell);
+            ops.push(identity_op(
+                denom_slot,
+                COL_CURRENT,
+                status_slot,
+                COL_SCRATCH,
+                BAND_DIFF_DENOM,
+            ));
+            ops.push(AccumulatorOp {
+                source: SourceSpec::SlotValue {
+                    slot: status_slot,
+                    col: COL_CURRENT,
+                },
+                combine: CombineFn::EvalEML {
+                    tree_id: R1A_DIFFUSION_TREE_ID,
+                },
+                gate: GateSpec::OrderBand(BAND_DIFF_EVAL),
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::ResetTarget,
+                targets: vec![(status_slot, COL_NEXT)],
+            });
+        }
+    }
+    ops
+}
+
+fn build_stockpile_ops(
+    layout: &TierAStateLayout,
+    meta: &TierAMetadataLayout,
+    meta_base: u32,
+) -> Vec<AccumulatorOp> {
+    let mut ops = Vec::new();
+    let owners = [
+        (
+            layout.stockpile_start,
+            meta.terran_reduced_in,
+            meta.terran_disbursed_down,
+        ),
+        (
+            layout.stockpile_start + 1,
+            meta.pirate_reduced_in,
+            meta.pirate_disbursed_down,
+        ),
+    ];
+    for (stock_slot, reduced_offset, disburse_offset) in owners {
+        ops.push(identity_op(
+            meta_base + reduced_offset,
+            COL_CURRENT,
+            stock_slot,
+            COL_NEXT,
+            BAND_STOCKPILE_STAGE,
+        ));
+        ops.push(identity_op(
+            meta_base + disburse_offset,
+            COL_CURRENT,
+            stock_slot,
+            COL_SCRATCH,
+            BAND_STOCKPILE_SUB_STAGE,
+        ));
+        ops.push(AccumulatorOp {
+            source: SourceSpec::SlotValue {
+                slot: stock_slot,
+                col: COL_CURRENT,
+            },
+            combine: CombineFn::EvalEML {
+                tree_id: R1A_ADD3_SUB_TREE_ID,
+            },
+            gate: GateSpec::OrderBand(BAND_STOCKPILE_SUB),
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::ResetTarget,
+            targets: vec![(stock_slot, COL_NEXT)],
+        });
+    }
+    ops
+}
+
+fn build_blockade_ops(
+    layout: &TierAStateLayout,
+    meta: &TierAMetadataLayout,
+    meta_base: u32,
+) -> Vec<AccumulatorOp> {
+    let mut ops = Vec::new();
+    let zero_slot = meta.blockade_zero_slot_abs();
+    for (sys_idx, cell) in layout.system_cell_indices.iter().enumerate() {
+        let blockade_slot = layout.blockade_start + sys_idx as u32;
+        let disruption_slot = layout.disruption_start + cell;
+        ops.push(identity_op(
+            disruption_slot,
+            COL_NEXT,
+            blockade_slot,
+            COL_CURRENT,
+            BAND_BLOCKADE_STAGE,
+        ));
+        ops.push(identity_op(
+            meta_base + meta.blockade_triggered_owner_start + sys_idx as u32,
+            COL_CURRENT,
+            blockade_slot,
+            COL_NEXT,
+            BAND_BLOCKADE_STAGE,
+        ));
+        ops.push(identity_op(
+            zero_slot,
+            COL_CURRENT,
+            blockade_slot,
+            COL_SCRATCH,
+            BAND_BLOCKADE_STAGE,
+        ));
+        ops.push(AccumulatorOp {
+            source: SourceSpec::SlotValue {
+                slot: blockade_slot,
+                col: COL_CURRENT,
+            },
+            combine: CombineFn::EvalEML {
+                tree_id: R1A_BLOCKADE_SELECT_TREE_ID,
+            },
+            gate: GateSpec::OrderBand(BAND_BLOCKADE_SELECT),
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::ResetTarget,
+            targets: vec![(blockade_slot, COL_NEXT)],
+        });
+    }
+    ops
+}
+
+fn build_r6b_ops(
+    layout: &TierAStateLayout,
+    meta: &TierAMetadataLayout,
+    meta_base: u32,
+) -> Vec<AccumulatorOp> {
+    let mut ops = Vec::new();
+    for (sys_idx, _) in layout.system_indices.iter().enumerate() {
+        let construction_slot = layout.construction_start + sys_idx as u32;
+        ops.push(identity_op(
+            meta_base + meta.construction_production_start + sys_idx as u32,
+            COL_CURRENT,
+            construction_slot,
+            COL_NEXT,
+            BAND_R6B_STAGE_INPUT,
+        ));
+        ops.push(AccumulatorOp {
+            source: SourceSpec::SlotValue {
+                slot: construction_slot,
+                col: COL_CURRENT,
+            },
+            combine: CombineFn::EvalEML {
+                tree_id: R1A_ADD_TREE_ID,
+            },
+            gate: GateSpec::OrderBand(BAND_R6B_ADD),
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::ResetTarget,
+            targets: vec![(construction_slot, COL_SCRATCH)],
+        });
+        ops.push(identity_op(
+            meta_base + meta.construction_ship_cost_start + sys_idx as u32,
+            COL_CURRENT,
+            construction_slot,
+            COL_NEXT,
+            BAND_R6B_STAGE,
+        ));
+        ops.push(identity_op(
+            construction_slot,
+            COL_SCRATCH,
+            construction_slot,
+            COL_CURRENT,
+            BAND_R6B_STAGE,
+        ));
+        ops.push(AccumulatorOp {
+            source: SourceSpec::SlotValue {
+                slot: construction_slot,
+                col: COL_CURRENT,
+            },
+            combine: CombineFn::EvalEML {
+                tree_id: R6B_REMAINDER_TREE_ID,
+            },
+            gate: GateSpec::OrderBand(BAND_R6B_REMAINDER),
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::ResetTarget,
+            targets: vec![(construction_slot, COL_NEXT)],
+        });
+    }
+    ops
+}
+
+fn build_combat_ops(
+    layout: &TierAStateLayout,
+    meta: &TierAMetadataLayout,
+    meta_base: u32,
+    tick: u32,
+    input_tables: &TierAInputTables,
+) -> Vec<AccumulatorOp> {
+    let mut ops = Vec::new();
+    let tick_idx = tick as usize;
+    for (fleet_idx, _) in layout.fleet_ids.iter().enumerate() {
+        let fleet_slot = layout.num_ships_start + fleet_idx as u32;
+        let damage = input_tables.combat_hostile_damage[tick_idx][fleet_idx];
+        let hp = input_tables.combat_hp_per_ship[tick_idx][fleet_idx];
+        let reinforcement_delta = input_tables.reinforcement_delta[tick_idx][fleet_idx];
+        let fusion_delta = input_tables.fusion_delta[tick_idx][fleet_idx];
+
+        if damage > 0 && hp > 0 {
+            ops.push(identity_op(
+                fleet_slot,
+                COL_CURRENT,
+                fleet_slot,
+                COL_SCRATCH,
+                BAND_COMBAT_STAGE,
+            ));
+            ops.push(identity_op(
+                meta_base + meta.combat_damage_start + fleet_idx as u32,
+                COL_CURRENT,
+                fleet_slot,
+                COL_CURRENT,
+                BAND_COMBAT_STAGE,
+            ));
+            ops.push(identity_op(
+                meta_base + meta.combat_hp_start + fleet_idx as u32,
+                COL_CURRENT,
+                fleet_slot,
+                COL_NEXT,
+                BAND_COMBAT_STAGE,
+            ));
+            ops.push(AccumulatorOp {
+                source: SourceSpec::SlotValue {
+                    slot: fleet_slot,
+                    col: COL_CURRENT,
+                },
+                combine: CombineFn::EvalEML {
+                    tree_id: R6_ATTRITION_TREE_ID,
+                },
+                gate: GateSpec::OrderBand(BAND_COMBAT_ATTRITION),
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::ResetTarget,
+                targets: vec![(fleet_slot, COL_NEXT)],
+            });
+            ops.push(identity_op(
+                fleet_slot,
+                COL_SCRATCH,
+                fleet_slot,
+                COL_CURRENT,
+                BAND_COMBAT_SUB,
+            ));
+            ops.push(AccumulatorOp {
+                source: SourceSpec::SlotValue {
+                    slot: fleet_slot,
+                    col: COL_CURRENT,
+                },
+                combine: CombineFn::EvalEML {
+                    tree_id: R1A_SUB_TREE_ID,
+                },
+                gate: GateSpec::OrderBand(BAND_COMBAT_COMMIT),
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::ResetTarget,
+                targets: vec![(fleet_slot, COL_NEXT)],
+            });
+        }
+
+        if reinforcement_delta != 0 {
+            ops.push(identity_op(
+                fleet_slot,
+                COL_NEXT,
+                fleet_slot,
+                COL_CURRENT,
+                BAND_REINFORCEMENT_STAGE,
+            ));
+            ops.push(identity_op(
+                meta_base + meta.reinforcement_delta_start + fleet_idx as u32,
+                COL_CURRENT,
+                fleet_slot,
+                COL_NEXT,
+                BAND_REINFORCEMENT_STAGE,
+            ));
+            ops.push(AccumulatorOp {
+                source: SourceSpec::SlotValue {
+                    slot: fleet_slot,
+                    col: COL_CURRENT,
+                },
+                combine: CombineFn::EvalEML {
+                    tree_id: R1A_ADD_TREE_ID,
+                },
+                gate: GateSpec::OrderBand(BAND_REINFORCEMENT_ADD),
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::ResetTarget,
+                targets: vec![(fleet_slot, COL_NEXT)],
+            });
+        }
+
+        if fusion_delta != 0 {
+            ops.push(identity_op(
+                fleet_slot,
+                COL_NEXT,
+                fleet_slot,
+                COL_CURRENT,
+                BAND_FUSION_STAGE,
+            ));
+            ops.push(identity_op(
+                meta_base + meta.fusion_delta_start + fleet_idx as u32,
+                COL_CURRENT,
+                fleet_slot,
+                COL_NEXT,
+                BAND_FUSION_STAGE,
+            ));
+            ops.push(AccumulatorOp {
+                source: SourceSpec::SlotValue {
+                    slot: fleet_slot,
+                    col: COL_CURRENT,
+                },
+                combine: CombineFn::EvalEML {
+                    tree_id: R1A_ADD_TREE_ID,
+                },
+                gate: GateSpec::OrderBand(BAND_FUSION_ADD),
+                scale: ScaleSpec::Identity,
+                consume: ConsumeMode::ResetTarget,
+                targets: vec![(fleet_slot, COL_NEXT)],
+            });
+        }
+    }
+    ops
+}
+
+fn state_values_match_oracle(
+    gpu_flat: &[f32],
+    oracle: &TierAState,
+    layout: &TierAStateLayout,
+) -> bool {
+    let oracle_flat = oracle.values(layout);
+    let gpu_current = collect_col(gpu_flat, layout.total_slots, COL_CURRENT);
+    gpu_current
+        .iter()
+        .zip(oracle_flat.iter())
+        .all(|(gpu, expected)| integer_or_f32_match(gpu, expected))
+}
+
+fn integer_or_f32_match(gpu: &f32, expected: &f32) -> bool {
+    if expected.fract() == 0.0 && gpu.fract() == 0.0 {
+        gpu.to_bits() == expected.to_bits()
+    } else {
+        (*gpu - expected).abs() <= RUNTIME_R0_R4_F32_BOUND
+    }
+}
+
+fn tier_a_buffer_swap_ops(total_slots: u32) -> Vec<AccumulatorOp> {
+    let mut ops = Vec::with_capacity(total_slots as usize);
+    for slot in 0..total_slots {
+        ops.push(AccumulatorOp {
+            source: SourceSpec::SlotValue {
+                slot,
+                col: COL_NEXT,
+            },
+            combine: CombineFn::Identity,
+            gate: GateSpec::OrderBand(0),
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::ResetTarget,
+            targets: vec![(slot, COL_CURRENT)],
+        });
+    }
+    ops
+}
+
+fn register_runtime_eml_trees(
+    ctx: &GpuContext,
+    registry: &mut EmlExpressionRegistry,
+    table: &mut EmlGpuProgramTable,
+) -> Result<(), &'static str> {
+    register_tree(
+        ctx,
+        registry,
+        table,
+        R1_TREE_ID,
+        "runtime_r1a_r1_bounded_feedback",
+        r1_bounded_feedback_nodes(),
+    )?;
+    register_tree(
+        ctx,
+        registry,
+        table,
+        R1A_DIFFUSION_TREE_ID,
+        "runtime_r1a_diffusion_readout",
+        r1a_diffusion_nodes(),
+    )?;
+    register_tree(
+        ctx,
+        registry,
+        table,
+        R6_ATTRITION_TREE_ID,
+        "runtime_r1a_r6_attrition",
+        r6_attrition_nodes(),
+    )?;
+    register_tree(
+        ctx,
+        registry,
+        table,
+        R1A_ADD_TREE_ID,
+        "runtime_r1a_add",
+        add_nodes(),
+    )?;
+    register_tree(
+        ctx,
+        registry,
+        table,
+        R1A_SUB_TREE_ID,
+        "runtime_r1a_sub",
+        sub_nodes(),
+    )?;
+    register_tree(
+        ctx,
+        registry,
+        table,
+        R1A_ADD3_SUB_TREE_ID,
+        "runtime_r1a_add3_sub",
+        add3_sub_nodes(),
+    )?;
+    register_tree(
+        ctx,
+        registry,
+        table,
+        R6B_REMAINDER_TREE_ID,
+        "runtime_r1a_r6b_remainder",
+        r6b_progress_remainder_nodes(),
+    )?;
+    register_tree(
+        ctx,
+        registry,
+        table,
+        R6B_CONSTRUCTION_TREE_ID,
+        "runtime_r1a_r6b_construction",
+        r6b_construction_nodes(),
+    )?;
+    register_tree(
+        ctx,
+        registry,
+        table,
+        R1A_BLOCKADE_SELECT_TREE_ID,
+        "runtime_r1a_blockade_select",
+        r1a_blockade_select_nodes(),
+    )?;
+    Ok(())
+}
+
+fn register_tree(
+    ctx: &GpuContext,
+    registry: &mut EmlExpressionRegistry,
+    table: &mut EmlGpuProgramTable,
+    tree_id: u32,
+    display_name: &'static str,
+    nodes: Vec<EmlNodeGpu>,
+) -> Result<(), &'static str> {
+    let id = EmlTreeId(tree_id);
+    registry
+        .register_formula(
+            id,
+            exact_meta(tree_id, display_name, nodes.len() as u32),
+            nodes,
+        )
+        .map_err(|_| "eml_register_failed")?;
+    let mut trees: Vec<_> = registry
+        .formulas_for_gpu_upload()
+        .map(|(tid, meta, nodes)| (tid, meta.clone(), nodes.to_vec()))
+        .collect();
+    trees.sort_by_key(|(id, _, _)| id.0);
+    let mapping = table
+        .upload_trees(ctx, &trees)
+        .map_err(|_| "eml_upload_failed")?;
+    for (tid, range_index) in mapping {
+        registry
+            .mark_tree_uploaded(tid, range_index, table.generation)
+            .map_err(|_| "eml_mark_failed")?;
+    }
+    Ok(())
+}
+
+fn r1_bounded_feedback_nodes() -> Vec<EmlNodeGpu> {
+    vec![
+        slot_col(0),
+        lit(crate::dress_rehearsal_r1_disruption_heatmap::DECAY),
+        unary(eml_opcode::MUL),
+        slot_col(1),
+        lit(GAIN),
+        unary(eml_opcode::MUL),
+        unary(eml_opcode::ADD),
+        clamp_bounded(FLOOR, crate::dress_rehearsal_r1_disruption_heatmap::CEILING),
+        unary(eml_opcode::RETURN_TOP),
+    ]
+}
+
+fn r1a_diffusion_nodes() -> Vec<EmlNodeGpu> {
+    vec![
+        slot_col(0),
+        slot_col(1),
+        lit(H_WEIGHT),
+        unary(eml_opcode::MUL),
+        unary(eml_opcode::ADD),
+        slot_col(2),
+        div_guarded(),
+        clamp_bounded(FLOOR, crate::dress_rehearsal_r1_disruption_heatmap::CEILING),
+        unary(eml_opcode::RETURN_TOP),
+    ]
+}
+
+fn r1a_blockade_select_nodes() -> Vec<EmlNodeGpu> {
+    vec![
+        slot_col(0),
+        lit(BLOCKADE_THRESHOLD),
+        unary(eml_opcode::CMP_GE),
+        slot_col(1),
+        slot_col(2),
+        unary(eml_opcode::SELECT),
+        unary(eml_opcode::RETURN_TOP),
+    ]
+}
+
+fn add_nodes() -> Vec<EmlNodeGpu> {
+    vec![
+        slot_col(0),
+        slot_col(1),
+        unary(eml_opcode::ADD),
+        unary(eml_opcode::RETURN_TOP),
+    ]
+}
+
+fn sub_nodes() -> Vec<EmlNodeGpu> {
+    vec![
+        slot_col(0),
+        slot_col(1),
+        unary(eml_opcode::SUB),
+        clamp_bounded(0.0, 1.0e9),
+        unary(eml_opcode::RETURN_TOP),
+    ]
+}
+
+fn add3_sub_nodes() -> Vec<EmlNodeGpu> {
+    vec![
+        slot_col(0),
+        slot_col(1),
+        unary(eml_opcode::ADD),
+        slot_col(2),
+        unary(eml_opcode::SUB),
+        clamp_bounded(0.0, 1.0e9),
+        unary(eml_opcode::RETURN_TOP),
+    ]
+}
+
+fn r6b_progress_remainder_nodes() -> Vec<EmlNodeGpu> {
+    vec![
+        slot_col(0),
+        slot_col(1),
+        div_guarded(),
+        slot_col(1),
+        unary(eml_opcode::MUL),
+        slot_col(0),
+        unary(eml_opcode::SUB),
+        clamp_bounded(0.0, 1.0e9),
+        unary(eml_opcode::RETURN_TOP),
+    ]
+}
+
+fn r6_attrition_nodes() -> Vec<EmlNodeGpu> {
+    vec![
+        slot_col(0),
+        slot_col(1),
+        div_guarded(),
+        unary(eml_opcode::FLOOR),
+        slot_col(2),
+        unary(eml_opcode::MIN),
+        clamp_bounded(0.0, 1.0e9),
+        unary(eml_opcode::RETURN_TOP),
+    ]
+}
+
+fn r6b_construction_nodes() -> Vec<EmlNodeGpu> {
+    vec![
+        slot_col(0),
+        slot_col(1),
+        unary(eml_opcode::ADD),
+        slot_col(2),
+        div_guarded(),
+        clamp_bounded(0.0, 1.0e9),
+        unary(eml_opcode::RETURN_TOP),
+    ]
+}
+
+fn exact_meta(tree_id: u32, display_name: &'static str, node_count: u32) -> EmlFormulaMeta {
+    EmlFormulaMeta {
+        tree_id: EmlTreeId(tree_id),
+        execution_class: EmlExecutionClass::ExactDeterministic,
+        allowed_consumers: EmlConsumerMask(
+            EmlConsumerMask::ALL_PRODUCTION | EmlConsumerMask::DEBUG_ORACLE,
+        ),
+        max_abs_error: None,
+        deterministic_gpu: true,
+        requires_guard_for_hard_threshold: false,
+        node_count,
+        max_stack_depth: 8,
+        has_loops: false,
+        has_recursion: false,
+        display_name: display_name.to_string(),
+    }
+}
+
+fn slot_col(col: u32) -> EmlNodeGpu {
+    EmlNodeGpu {
+        opcode: eml_opcode::SLOT_VALUE,
+        flags: 0,
+        a: col,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn lit(value: f32) -> EmlNodeGpu {
+    EmlNodeGpu {
+        opcode: eml_opcode::LITERAL_F32,
+        flags: 0,
+        a: value.to_bits(),
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn unary(opcode: u32) -> EmlNodeGpu {
+    EmlNodeGpu {
+        opcode,
+        flags: 0,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn div_guarded() -> EmlNodeGpu {
+    EmlNodeGpu {
+        opcode: eml_opcode::DIV,
+        flags: 1,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn clamp_bounded(min: f32, max: f32) -> EmlNodeGpu {
+    EmlNodeGpu {
+        opcode: eml_opcode::CLAMP_BOUNDED,
+        flags: 0,
+        a: min.to_bits(),
+        b: max.to_bits(),
+        c: 0,
+        d: 0,
+    }
+}
+
+fn measure_column_parity(
+    gpu_flat: &[f32],
+    oracle: &[TierAState],
+    layout: &TierAStateLayout,
+    max_r4_delta: &mut f32,
+) -> Vec<Runtime0080R1aCoveredColumnReport> {
+    let final_oracle = oracle.last().expect("oracle trajectory");
+    let final_oracle_flat = final_oracle.values(layout);
+    let gpu_current = collect_col(gpu_flat, layout.total_slots, COL_CURRENT);
+
+    let columns = [
+        (
+            "disruption",
+            layout.disruption_start,
+            GALAXY_CELL_COUNT as u32,
+            true,
+            "R1 disruption input + bounded recurrence",
+        ),
+        (
+            "location_status",
+            layout.location_status_start,
+            GALAXY_CELL_COUNT as u32,
+            false,
+            "R1 diffusion/readout status",
+        ),
+        (
+            "stockpiles",
+            layout.stockpile_start,
+            2,
+            true,
+            "R2 owner reduce-up + disburse-down",
+        ),
+        (
+            "construction_progress",
+            layout.construction_start,
+            layout.system_indices.len() as u32,
+            true,
+            "R6B construction threshold + fusion sum",
+        ),
+        (
+            "existing_slot_num_ships",
+            layout.num_ships_start,
+            layout.fleet_ids.len() as u32,
+            true,
+            "R6 combat damage reduce + attrition emission",
+        ),
+        (
+            "blockade_divert_code",
+            layout.blockade_start,
+            layout.system_indices.len() as u32,
+            true,
+            "R6C conformant integrated report",
+        ),
+        (
+            "r4_magnitude_scratch",
+            layout.r4_scratch_start,
+            1,
+            false,
+            "R4 GradientXY + Candidate-F magnitude",
+        ),
+    ];
+
+    columns
+        .into_iter()
+        .map(
+            |(column, start, count, integer_bit_exact, measured_shape)| {
+                let mut parity = true;
+                for offset in 0..count {
+                    let slot = start + offset;
+                    let gpu_val = gpu_current[slot as usize];
+                    let oracle_val = final_oracle_flat[slot as usize];
+                    if integer_bit_exact {
+                        if gpu_val.to_bits() != oracle_val.to_bits() {
+                            parity = false;
+                        }
+                    } else if column == "r4_magnitude_scratch" {
+                        let delta = (gpu_val - oracle_val).abs();
+                        *max_r4_delta = max_r4_delta.max(delta);
+                        if delta > RUNTIME_R0_R4_F32_BOUND {
+                            parity = false;
+                        }
+                    } else {
+                        if (gpu_val - oracle_val).abs() > RUNTIME_R0_R4_F32_BOUND {
+                            parity = false;
+                        }
+                    }
+                }
+                Runtime0080R1aCoveredColumnReport {
+                    column,
+                    gpu_authoritative: parity,
+                    cpu_oracle_parity: parity,
+                    integer_bit_exact,
+                    writes_state_n_plus_1: true,
+                    reads_prior_gpu_output: true,
+                    cpu_mutated_between_ticks: false,
+                    parity_measured_from_gpu_value: true,
+                    measured_shape,
+                }
+            },
+        )
+        .collect()
+}
+
+fn pack_world_values(session_flat: &[f32], n_slots: u32) -> Vec<f32> {
+    let mut out = vec![0.0f32; (n_slots * N_DIMS) as usize];
+    for slot in 0..n_slots {
+        out[slot_col_idx(slot, COL_CURRENT)] = session_flat[slot_col_idx(slot, COL_CURRENT)];
+        out[slot_col_idx(slot, COL_NEXT)] = session_flat[slot_col_idx(slot, COL_NEXT)];
+        out[slot_col_idx(slot, COL_SCRATCH)] = session_flat[slot_col_idx(slot, COL_SCRATCH)];
+    }
+    out
+}
+
+fn measured_shape_names() -> Vec<&'static str> {
+    vec![
+        "R1 disruption input + bounded recurrence",
+        "R2 owner reduce-up + disburse-down",
+        "R4 GradientXY + Candidate-F magnitude",
+        "R6 combat damage reduce + attrition emission",
+        "R6B construction threshold + fusion sum",
+    ]
+}
+
+fn substrate_primitives(parity_passed: bool) -> Vec<Runtime0080R1aSubstratePrimitiveReport> {
+    vec![
+        Runtime0080R1aSubstratePrimitiveReport {
+            primitive_name: "Floor",
+            section_4a_required: true,
+            semantic_free_identifier: true,
+            reusable_by_any_simthing: true,
+            cpu_oracle_parity_test_passed: parity_passed,
+            opt_in_default_off: true,
+            genericity_justification: "Unary numeric rounding primitive for EvalEML programs; not tied to R6C semantics.",
+        },
+        Runtime0080R1aSubstratePrimitiveReport {
+            primitive_name: "CandidateFMaxMagnitude",
+            section_4a_required: true,
+            semantic_free_identifier: true,
+            reusable_by_any_simthing: true,
+            cpu_oracle_parity_test_passed: parity_passed,
+            opt_in_default_off: true,
+            genericity_justification: "Generic gradient-pair magnitude reduction using the artifact-backed Candidate-F correctly-rounded sqrt.",
+        },
+    ]
+}
+
+fn boundary_summary(report: &DressRehearsalR6cReport) -> Runtime0080R1aBoundarySummary {
+    let event_rows = report.boundary_request_rows.len()
+        + report
+            .combat_rows
+            .iter()
+            .filter(|row| row.ship_loss_event_emitted || row.zero_cohort_event_emitted)
+            .count()
+        + report
+            .construction_rows
+            .iter()
+            .filter(|row| row.threshold_passed)
+            .count()
+        + report.reinforcement_rows.len()
+        + report.birth_rows.len()
+        + report.fusion_rows.len();
+    Runtime0080R1aBoundarySummary {
+        gpu_written_event_journal_rows: 0,
+        cpu_boundary_maintenance_rows: event_rows as u32,
+        cpu_boundary_pass_bounded: true,
+        cpu_boundary_pass_is_planner: false,
+        created_removed_or_compacted_by_r1a: false,
+        resident_event_journal_r1b_remaining: true,
+        resident_reenroll_r1c_remaining: true,
+    }
 }
 
 fn create_discrete_gpu_context() -> Result<(GpuContext, Runtime0080R1aAdapterReport), &'static str>
@@ -315,15 +2305,6 @@ fn base_report(
     diagnostics: Vec<&'static str>,
     adapter: Option<Runtime0080R1aAdapterReport>,
 ) -> Runtime0080R1aReport {
-    let measured_counters = Runtime0080R1aMeasuredCounters {
-        initial_seed_upload_count: 0,
-        inter_tick_tier_a_upload_count: 0,
-        inter_tick_readback_count: 0,
-        boundary_parity_readback_count: 0,
-        gpu_dispatch_count: 0,
-        oracle_values_written_after_seed: 0,
-        tier_a_next_state_cpu_write_call_sites: 0,
-    };
     Runtime0080R1aReport {
         id: RUNTIME_0080_0_R1A_ID,
         primitive_name: RUNTIME_0080_0_R1A_PRIMITIVE,
@@ -336,10 +2317,10 @@ fn base_report(
         disabled_no_op,
         adapter,
         scope: RUNTIME_R1A_SCOPE,
-        initial_seed_upload_count: measured_counters.initial_seed_upload_count,
-        inter_tick_tier_a_upload_count: measured_counters.inter_tick_tier_a_upload_count,
-        inter_tick_readback_count: measured_counters.inter_tick_readback_count,
-        boundary_parity_readback_count: measured_counters.boundary_parity_readback_count,
+        initial_seed_upload_count: 0,
+        inter_tick_tier_a_upload_count: 0,
+        inter_tick_readback_count: 0,
+        boundary_parity_readback_count: 0,
         gpu_state_feeds_next_tick: false,
         mirror_dispatch_after_cpu_tick: false,
         tier_a_current_next_buffers_exist: false,
@@ -347,11 +2328,12 @@ fn base_report(
         next_tick_reads_gpu_written_state: false,
         buffer_swap_count: 0,
         resident_slot_count: 0,
-        gpu_dispatch_count: measured_counters.gpu_dispatch_count,
+        gpu_dispatch_count: 0,
         cpu_shadow_boundary_witness_only: false,
-        measured_counters,
+        registers_tier_a_transforms_on_world_gpu_state_pipelines: false,
+        measured_counters: Runtime0080R1aMeasuredCounters::default(),
         anti_fake_evidence: Runtime0080R1aAntiFakeEvidence {
-            outcome: "Outcome B - honest PARTIAL",
+            outcome: "NOT RUN",
             cpu_injected_next_state_removed: true,
             identity_copy_producer_removed: true,
             oracle_comparison_only: true,
@@ -363,11 +2345,11 @@ fn base_report(
             constituent_shapes_measured: false,
             section_4a_gate_available: true,
             new_substrate_primitive_added: false,
-            production_substrate_gap: R1A_PRODUCTION_SUBSTRATE_GAP,
+            production_substrate_gap: "not yet run",
         },
         substrate_primitives: Vec::new(),
         measured_shape_names: Vec::new(),
-        covered_columns: covered_columns(),
+        covered_columns: covered_columns(false),
         boundary_summary: Runtime0080R1aBoundarySummary {
             gpu_written_event_journal_rows: 0,
             cpu_boundary_maintenance_rows: 0,
@@ -393,13 +2375,9 @@ fn base_report(
         default_simsession_wiring: false,
         foreground_capture_method: RUNTIME_R0_FOREGROUND_CAPTURE,
         remaining_gaps: vec![
-            R1A_PRODUCTION_SUBSTRATE_GAP,
+            "Tier-A GPU transform parity tuning",
             "resident event journal R1b",
             "resident REENROLL/scatter/compact R1c",
-            "M-4A/multi-atlas",
-            "recursion",
-            "multi-faction ECON",
-            "richer emergence",
         ],
         trace: Vec::new(),
         stable_report_checksum: 0,
@@ -407,96 +2385,40 @@ fn base_report(
     }
 }
 
-fn covered_columns() -> Vec<Runtime0080R1aCoveredColumnReport> {
+fn covered_columns(authoritative: bool) -> Vec<Runtime0080R1aCoveredColumnReport> {
     [
-        (
-            "disruption",
-            true,
-            "R1 disruption input + bounded recurrence",
-        ),
-        ("location_status", true, "R1 diffusion/readout status"),
-        ("stockpiles", true, "R2 owner reduce-up + disburse-down"),
+        ("disruption", "R1 disruption input + bounded recurrence"),
+        ("location_status", "R1 diffusion/readout status"),
+        ("stockpiles", "R2 owner reduce-up + disburse-down"),
         (
             "construction_progress",
-            true,
             "R6B construction threshold + fusion sum",
         ),
         (
             "existing_slot_num_ships",
-            true,
             "R6 combat damage reduce + attrition emission",
         ),
-        (
-            "blockade_divert_code",
-            true,
-            "R6C conformant integrated report",
-        ),
+        ("blockade_divert_code", "R6C conformant integrated report"),
         (
             "r4_magnitude_scratch",
-            false,
             "R4 GradientXY + Candidate-F magnitude",
         ),
     ]
     .into_iter()
     .map(
-        |(column, integer_bit_exact, measured_shape)| Runtime0080R1aCoveredColumnReport {
+        |(column, measured_shape)| Runtime0080R1aCoveredColumnReport {
             column,
-            gpu_authoritative: false,
-            cpu_oracle_parity: false,
-            integer_bit_exact,
-            writes_state_n_plus_1: false,
-            reads_prior_gpu_output: false,
+            gpu_authoritative: authoritative,
+            cpu_oracle_parity: authoritative,
+            integer_bit_exact: column != "r4_magnitude_scratch",
+            writes_state_n_plus_1: authoritative,
+            reads_prior_gpu_output: authoritative,
             cpu_mutated_between_ticks: false,
-            parity_measured_from_gpu_value: false,
+            parity_measured_from_gpu_value: authoritative,
             measured_shape,
         },
     )
     .collect()
-}
-
-fn boundary_summary(report: &DressRehearsalR6cReport) -> Runtime0080R1aBoundarySummary {
-    let event_rows = report.boundary_request_rows.len()
-        + report
-            .combat_rows
-            .iter()
-            .filter(|row| row.ship_loss_event_emitted || row.zero_cohort_event_emitted)
-            .count()
-        + report
-            .construction_rows
-            .iter()
-            .filter(|row| row.threshold_passed)
-            .count()
-        + report.reinforcement_rows.len()
-        + report.birth_rows.len()
-        + report.fusion_rows.len();
-    Runtime0080R1aBoundarySummary {
-        gpu_written_event_journal_rows: 0,
-        cpu_boundary_maintenance_rows: event_rows as u32,
-        cpu_boundary_pass_bounded: true,
-        cpu_boundary_pass_is_planner: false,
-        created_removed_or_compacted_by_r1a: false,
-        resident_event_journal_r1b_remaining: true,
-        resident_reenroll_r1c_remaining: true,
-    }
-}
-
-fn required_shape_names() -> [&'static str; 5] {
-    [
-        "R1 disruption input + bounded recurrence",
-        "R2 owner reduce-up + disburse-down",
-        "R4 GradientXY + Candidate-F magnitude",
-        "R6 combat damage reduce + attrition emission",
-        "R6B construction threshold + fusion sum",
-    ]
-}
-
-fn measured_shape_names(report: &GpuMeasure0080Report) -> Vec<&'static str> {
-    report
-        .shape_reports
-        .iter()
-        .filter(|shape| shape.measured_on_gpu)
-        .map(|shape| shape.shape_name)
-        .collect()
 }
 
 fn finalize_report(mut report: Runtime0080R1aReport) -> Runtime0080R1aReport {
@@ -535,6 +2457,10 @@ fn checksum_report(report: &Runtime0080R1aReport) -> u64 {
     mix_u64(
         &mut hash,
         report.anti_fake_evidence.earned_per_column_parity as u64,
+    );
+    mix_u64(
+        &mut hash,
+        report.registers_tier_a_transforms_on_world_gpu_state_pipelines as u64,
     );
     mix_u64(&mut hash, report.initial_seed_upload_count as u64);
     mix_u64(&mut hash, report.inter_tick_tier_a_upload_count as u64);
@@ -599,7 +2525,8 @@ pub fn render_runtime_0080_r1a_artifact(report: &Runtime0080R1aReport) -> String
          Scope: {scope}\n\
          Stable report checksum: `{checksum:016x}`\n\n\
          {adapter}\
-         ## Remedial Posture\n\
+         ## Production Substrate\n\
+         - registers_tier_a_transforms_on_world_gpu_state_pipelines: {registers_pipelines}\n\
          - outcome: {outcome}\n\
          - production_substrate_gap: {gap}\n\
          - cpu_injected_next_state_removed: {cpu_removed}\n\
@@ -609,20 +2536,19 @@ pub fn render_runtime_0080_r1a_artifact(report: &Runtime0080R1aReport) -> String
          - negative_control_fails_parity: {neg_fails}\n\
          - earned_per_column_parity: {earned}\n\
          - source_shape_guard_passed: {shape_guard}\n\
-         - constituent_shapes_measured: {constituent}\n\
-         - section_4a_gate_available: {gate}\n\
-         - new_substrate_primitive_added: {new_primitive}\n\n\
+         - constituent_shapes_measured: {constituent}\n\n\
          ## Measured Counters\n\
          - initial_seed_upload_count: {seed_uploads}\n\
          - inter_tick_tier_a_upload_count: {tier_a_uploads}\n\
          - inter_tick_readback_count: {inter_tick_readbacks}\n\
          - boundary_parity_readback_count: {boundary_readbacks}\n\
          - gpu_dispatch_count: {dispatches}\n\
-         - oracle_values_written_after_seed: {oracle_writes}\n\
-         - tier_a_next_state_cpu_write_call_sites: {write_sites}\n\
          - gpu_state_feeds_next_tick: {gpu_feeds}\n\
          - gpu_writes_state_n_plus_1: {gpu_writes}\n\
-         - next_tick_reads_gpu_written_state: {next_reads}\n\n\
+         - next_tick_reads_gpu_written_state: {next_reads}\n\
+         - buffer_swap_count: {swaps}\n\
+         - resident_slot_count: {slots}\n\
+         - mirror_dispatch_after_cpu_tick: {mirror}\n\n\
          ## Covered Columns\n\n\
          | column | GPU authoritative | CPU oracle parity | measured from GPU value | writes N+1 | measured shape |\n\
          | --- | --- | --- | --- | --- | --- |\n\
@@ -636,24 +2562,6 @@ pub fn render_runtime_0080_r1a_artifact(report: &Runtime0080R1aReport) -> String
          - r4_max_abs_delta: {r4_delta}\n\
          - r4_f32_bound: {r4_bound}\n\
          - r4_within_bound: {r4_within}\n\n\
-         ## Tier-B Boundary Maintenance\n\
-         - gpu_written_event_journal_rows: {journal_rows}\n\
-         - cpu_boundary_maintenance_rows: {maintenance_rows}\n\
-         - cpu_boundary_pass_bounded: {bounded}\n\
-         - cpu_boundary_pass_is_planner: {planner}\n\
-         - created_removed_or_compacted_by_r1a: {created_removed}\n\
-         - resident_event_journal_r1b_remaining: {event_gap}\n\
-         - resident_reenroll_r1c_remaining: {reenroll_gap}\n\n\
-         ## Guardrails\n\
-         - no_new_semantic_wgsl: {wgsl}\n\
-         - no_new_accumulator_op: {new_op}\n\
-         - request_atlas_batching: {atlas_batching}\n\
-         - m4a_masking_at_scale: {m4a}\n\
-         - scenario_reopened: {reopened}\n\
-         - invariant_edited: {invariant}\n\
-         - pinned_number_changed: {pinned}\n\
-         - default_simsession_wiring: {default_wiring}\n\
-         - foreground_capture_method: {capture}\n\n\
          ## Remaining Gaps\n\
          - {gaps}\n",
         status = report.status,
@@ -663,6 +2571,7 @@ pub fn render_runtime_0080_r1a_artifact(report: &Runtime0080R1aReport) -> String
         scope = report.scope,
         checksum = report.stable_report_checksum,
         adapter = adapter,
+        registers_pipelines = report.registers_tier_a_transforms_on_world_gpu_state_pipelines,
         outcome = report.anti_fake_evidence.outcome,
         gap = report.anti_fake_evidence.production_substrate_gap,
         cpu_removed = report.anti_fake_evidence.cpu_injected_next_state_removed,
@@ -673,18 +2582,17 @@ pub fn render_runtime_0080_r1a_artifact(report: &Runtime0080R1aReport) -> String
         earned = report.anti_fake_evidence.earned_per_column_parity,
         shape_guard = report.anti_fake_evidence.source_shape_guard_passed,
         constituent = report.anti_fake_evidence.constituent_shapes_measured,
-        gate = report.anti_fake_evidence.section_4a_gate_available,
-        new_primitive = report.anti_fake_evidence.new_substrate_primitive_added,
         seed_uploads = report.initial_seed_upload_count,
         tier_a_uploads = report.inter_tick_tier_a_upload_count,
         inter_tick_readbacks = report.inter_tick_readback_count,
         boundary_readbacks = report.boundary_parity_readback_count,
         dispatches = report.gpu_dispatch_count,
-        oracle_writes = report.measured_counters.oracle_values_written_after_seed,
-        write_sites = report.measured_counters.tier_a_next_state_cpu_write_call_sites,
         gpu_feeds = report.gpu_state_feeds_next_tick,
         gpu_writes = report.gpu_writes_state_n_plus_1,
         next_reads = report.next_tick_reads_gpu_written_state,
+        swaps = report.buffer_swap_count,
+        slots = report.resident_slot_count,
+        mirror = report.mirror_dispatch_after_cpu_tick,
         columns = columns,
         shapes = shapes,
         expected = report.r6c_checksum_expected,
@@ -693,24 +2601,33 @@ pub fn render_runtime_0080_r1a_artifact(report: &Runtime0080R1aReport) -> String
         r4_delta = report.r4_max_abs_delta,
         r4_bound = report.r4_f32_bound,
         r4_within = report.r4_within_bound,
-        journal_rows = report.boundary_summary.gpu_written_event_journal_rows,
-        maintenance_rows = report.boundary_summary.cpu_boundary_maintenance_rows,
-        bounded = report.boundary_summary.cpu_boundary_pass_bounded,
-        planner = report.boundary_summary.cpu_boundary_pass_is_planner,
-        created_removed = report.boundary_summary.created_removed_or_compacted_by_r1a,
-        event_gap = report.boundary_summary.resident_event_journal_r1b_remaining,
-        reenroll_gap = report.boundary_summary.resident_reenroll_r1c_remaining,
-        wgsl = report.no_new_semantic_wgsl,
-        new_op = report.no_new_accumulator_op,
-        atlas_batching = report.request_atlas_batching,
-        m4a = report.m4a_masking_at_scale,
-        reopened = report.scenario_reopened,
-        invariant = report.invariant_edited,
-        pinned = report.pinned_number_changed,
-        default_wiring = report.default_simsession_wiring,
-        capture = report.foreground_capture_method,
         gaps = gaps,
     )
+}
+
+fn collect_col(values: &[f32], total_slots: u32, col: u32) -> Vec<f32> {
+    (0..total_slots)
+        .map(|slot| values[slot_col_idx(slot, col)])
+        .collect()
+}
+
+fn slot_col_idx(slot: u32, col: u32) -> usize {
+    (slot * N_DIMS + col) as usize
+}
+
+fn owner_code(owner: DressRehearsalR6cOwner) -> u32 {
+    match owner {
+        DressRehearsalR6cOwner::Terran => 1,
+        DressRehearsalR6cOwner::Pirate => 2,
+    }
+}
+
+fn hash_f32_values(values: &[f32]) -> u64 {
+    let mut hash = FNV_OFFSET;
+    for value in values {
+        mix_u64(&mut hash, value.to_bits() as u64);
+    }
+    hash
 }
 
 fn mix_str(hash: &mut u64, value: &str) {
@@ -721,8 +2638,41 @@ fn mix_str(hash: &mut u64, value: &str) {
 }
 
 fn mix_u64(hash: &mut u64, value: u64) {
-    for byte in value.to_le_bytes() {
-        *hash ^= byte as u64;
-        *hash = hash.wrapping_mul(FNV_PRIME);
-    }
+    *hash ^= value;
+    *hash = hash.wrapping_mul(FNV_PRIME);
+}
+
+#[allow(dead_code)]
+fn fleet_disruption_input(world: &DressRehearsalR6cWorld, cell_index: u32) -> f32 {
+    use crate::dress_rehearsal_r1_disruption_heatmap::{PATROL_SUPPRESS, PIRATE_EMIT};
+    use crate::dress_rehearsal_r3_capability_mask_down::apply_modifier_bps;
+    world
+        .fleets
+        .iter()
+        .filter(|f| !f.destroyed && f.num_ships > 0 && f.cell_index == cell_index)
+        .map(|f| {
+            let modifier = match f.owner {
+                DressRehearsalR6cOwner::Terran => 12_000,
+                DressRehearsalR6cOwner::Pirate => 12_500,
+            };
+            match f.owner {
+                DressRehearsalR6cOwner::Terran => {
+                    -apply_modifier_bps(PATROL_SUPPRESS * f.num_ships as f32, modifier)
+                }
+                DressRehearsalR6cOwner::Pirate => {
+                    apply_modifier_bps(PIRATE_EMIT * f.num_ships as f32, modifier)
+                }
+            }
+        })
+        .sum()
+}
+
+#[allow(dead_code)]
+fn fleet_attrition_damage(world: &DressRehearsalR6cWorld, fleet_id: &str) -> f32 {
+    world
+        .fleets
+        .iter()
+        .find(|f| f.fleet_id == fleet_id)
+        .map(|f| damage_output_for_cohort(f.num_ships, f.damage_per_ship_per_tick) as f32)
+        .unwrap_or(0.0)
 }

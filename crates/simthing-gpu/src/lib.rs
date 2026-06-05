@@ -6,6 +6,7 @@
 
 pub mod accumulator_op;
 pub mod atlas_mask;
+pub mod candidate_f_magnitude;
 pub mod context;
 pub mod emission_accumulator;
 pub mod intensity_accumulator;
@@ -42,6 +43,10 @@ pub use atlas_mask::{
     max_full_tile_error, tile_origin, vram_multiplier, AtlasIsolationMode, AtlasIsolationPolicy,
     AtlasMaskGpuOp, AtlasMaskParamsGpu, AtlasNormalizeVariant, C0AtlasFixtureShape,
     C0_DEFAULT_N_DIMS,
+};
+pub use candidate_f_magnitude::{
+    max_candidate_f_magnitude_bits, write_max_candidate_f_magnitude_bits, CandidateFMagnitudeError,
+    GradientPairGpu,
 };
 pub use context::{GpuContext, GpuInitError};
 pub use emission_accumulator::{

@@ -156,7 +156,7 @@ Specifically R0 must:
 > dispatch), not a CPU planner. Spec:
 > [`runtime_0080_0_r1_next_tick_authority_spec.md`](runtime_0080_0_r1_next_tick_authority_spec.md).
 
-- **R1a:** resident field-column next-tick authority (no new op / WGSL / atlas batching / M-4A).
+- **R1a:** resident field-column next-tick authority (no semantic op / semantic WGSL / atlas batching / M-4A).
 - **R1b (`RESIDENT-EVENTLOG-0`):** fully resident event journal.
 - **R1c (`RESIDENT-REENROLL-0`):** resident scatter/compact for membership + cohort table — behind the
   §11 / free-list-scatter stop-lines; STOP and define a smaller rung if M-4A is required.

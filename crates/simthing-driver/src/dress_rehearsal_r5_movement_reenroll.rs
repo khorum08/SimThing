@@ -20,25 +20,24 @@ use crate::dress_rehearsal_r3_capability_mask_down::{
     run_dress_rehearsal_r3_capability_mask_down, DressRehearsalR3Input, DressRehearsalR3Report,
 };
 use crate::dress_rehearsal_r4_sead_field_consumption::{
-    run_dress_rehearsal_r4_sead_field_consumption, DressRehearsalR4Decision,
-    DressRehearsalR4Input, DressRehearsalR4Owner, DressRehearsalR4Report,
+    run_dress_rehearsal_r4_sead_field_consumption, DressRehearsalR4Decision, DressRehearsalR4Input,
+    DressRehearsalR4Owner, DressRehearsalR4Report,
 };
 use simthing_spec::{
     compose_mobility_runtime0, plan_mobility_alloc0, IdentityLane, MobilityAlloc0BlockSpec,
-    MobilityAlloc0BoundaryEvent, MobilityAlloc0BoundaryEventKind, MobilityAlloc0ForbiddenPathRequests,
-    MobilityAlloc0LiveSlice, MobilityAlloc0ParentKey, MobilityAlloc0PlanInput,
-    MobilityEcon0ForbiddenPathRequests, MobilityEcon0PlanInput, MobilityIdroute0ForbiddenPathRequests,
-    MobilityIdroute0LocalRecord, MobilityIdroute0PlanInput, MobilityOwner0ColumnKind,
-    MobilityOwner0ColumnValue, MobilityOwner0ForbiddenPathRequests, MobilityOwner0LocalRecord,
-    MobilityOwner0Overlay, MobilityOwner0PlanInput, MobilityReenroll0ForbiddenPathRequests,
-    MobilityReenroll0Move, MobilityReenroll0PlanInput, MobilityReenroll0RegistryState,
-    MobilityRuntime0CompositionInput, MobilityRuntime0ForbiddenPathRequests,
-    MobilityRuntime0HarnessConfig,
+    MobilityAlloc0BoundaryEvent, MobilityAlloc0BoundaryEventKind,
+    MobilityAlloc0ForbiddenPathRequests, MobilityAlloc0LiveSlice, MobilityAlloc0ParentKey,
+    MobilityAlloc0PlanInput, MobilityEcon0ForbiddenPathRequests, MobilityEcon0PlanInput,
+    MobilityIdroute0ForbiddenPathRequests, MobilityIdroute0LocalRecord, MobilityIdroute0PlanInput,
+    MobilityOwner0ColumnKind, MobilityOwner0ColumnValue, MobilityOwner0ForbiddenPathRequests,
+    MobilityOwner0LocalRecord, MobilityOwner0Overlay, MobilityOwner0PlanInput,
+    MobilityReenroll0ForbiddenPathRequests, MobilityReenroll0Move, MobilityReenroll0PlanInput,
+    MobilityReenroll0RegistryState, MobilityRuntime0CompositionInput,
+    MobilityRuntime0ForbiddenPathRequests, MobilityRuntime0HarnessConfig,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const DRESS_REHEARSAL_R5_MOVEMENT_REENROLL_ID: &str =
-    "SCENARIO-0080-2-R5-MOVEMENT-REENROLL";
+pub const DRESS_REHEARSAL_R5_MOVEMENT_REENROLL_ID: &str = "SCENARIO-0080-2-R5-MOVEMENT-REENROLL";
 pub const DRESS_REHEARSAL_R5_MOVEMENT_REENROLL_STATUS_PASS: &str =
     "IMPLEMENTED / PASS - movement via BoundaryRequest + REENROLL + mobility substrate";
 pub const DRESS_REHEARSAL_R5_SCENARIO: &str = "SCENARIO-0080-2";
@@ -170,17 +169,15 @@ impl DressRehearsalR5Input {
         let r3_report = run_dress_rehearsal_r3_capability_mask_down(
             &DressRehearsalR3Input::with_reports(r1_report.clone(), r2_report.clone()),
         );
-        let r4_report = run_dress_rehearsal_r4_sead_field_consumption(
-            &DressRehearsalR4Input {
-                explicit_opt_in: true,
-                enabled_by_default: false,
-                movement_threshold_mag_bits:
-                    crate::dress_rehearsal_r4_sead_field_consumption::MOVEMENT_THRESHOLD_MAG_BITS,
-                r1_report: Some(r1_report.clone()),
-                r2_report: Some(r2_report.clone()),
-                r3_report: Some(r3_report.clone()),
-            },
-        );
+        let r4_report = run_dress_rehearsal_r4_sead_field_consumption(&DressRehearsalR4Input {
+            explicit_opt_in: true,
+            enabled_by_default: false,
+            movement_threshold_mag_bits:
+                crate::dress_rehearsal_r4_sead_field_consumption::MOVEMENT_THRESHOLD_MAG_BITS,
+            r1_report: Some(r1_report.clone()),
+            r2_report: Some(r2_report.clone()),
+            r3_report: Some(r3_report.clone()),
+        });
         Self {
             explicit_opt_in: true,
             enabled_by_default: false,
@@ -360,8 +357,7 @@ fn execute_model(input: &DressRehearsalR5Input) -> DressRehearsalR5Oracle {
         }
     }
 
-    let (fission_rows, fission_live_updates) =
-        build_fission_rows_and_alloc(r1, r2);
+    let (fission_rows, fission_live_updates) = build_fission_rows_and_alloc(r1, r2);
 
     let mut active_entities: BTreeSet<u64> = reenroll_moves.iter().map(|mv| mv.entity_id).collect();
     for (entity_id, _) in &fission_live_updates {
@@ -390,26 +386,16 @@ fn execute_model(input: &DressRehearsalR5Input) -> DressRehearsalR5Oracle {
     let composition = compose_mobility_runtime0(&composition_input);
     reenroll_moves.sort_by_key(|mv| (mv.entity_id, mv.origin, mv.destination));
     let mut movement_rows = Vec::new();
-    for (
-        mover_id,
-        entity_id,
-        source_cell,
-        dest_cell,
-        identity_lane,
-        owner_id,
-        boundary_id,
-    ) in move_meta
+    for (mover_id, entity_id, source_cell, dest_cell, identity_lane, owner_id, boundary_id) in
+        move_meta
     {
-        let committed = composition
-            .reenroll_report
-            .as_ref()
-            .and_then(|report| {
-                report
-                    .committed_moves
-                    .iter()
-                    .find(|mv| mv.entity_id == entity_id)
-                    .cloned()
-            });
+        let committed = composition.reenroll_report.as_ref().and_then(|report| {
+            report
+                .committed_moves
+                .iter()
+                .find(|mv| mv.entity_id == entity_id)
+                .cloned()
+        });
         let final_slices = composition
             .reenroll_report
             .as_ref()
@@ -580,7 +566,11 @@ fn build_composition_input(
             .copied()
             .map(identity_lane_for_owner)
             .unwrap_or(0);
-        let faction = entity_owner.get(&slice.entity_id).copied().map(owner_from_r4).unwrap_or(1);
+        let faction = entity_owner
+            .get(&slice.entity_id)
+            .copied()
+            .map(owner_from_r4)
+            .unwrap_or(1);
         records.push(MobilityIdroute0LocalRecord {
             entity_id: slice.entity_id,
             parent_key: slice.parent_key,
@@ -616,7 +606,10 @@ fn build_composition_input(
                 soft_value: 1.0,
             });
         }
-        if !owner_records.iter().any(|rec| rec.entity_id == mv.entity_id) {
+        if !owner_records
+            .iter()
+            .any(|rec| rec.entity_id == mv.entity_id)
+        {
             let faction = entity_owner
                 .get(&mv.entity_id)
                 .copied()
@@ -715,7 +708,8 @@ fn build_initial_live_slices(
         .filter(|o| {
             matches!(
                 o.kind,
-                DressRehearsalR1OccupantKind::PirateFleet | DressRehearsalR1OccupantKind::PatrolFleet
+                DressRehearsalR1OccupantKind::PirateFleet
+                    | DressRehearsalR1OccupantKind::PatrolFleet
             )
         })
         .collect();
