@@ -790,7 +790,7 @@ column-flip — each its own gate.
 >
 > **`RUNTIME-0080-0-R1` is OPEN (`RUNTIME-0080-0-R1-DESIGN-0`, 2026-06-05, Opus design authority)**
 > (design spec: [`production_paths/runtime_0080_0_r1_next_tick_authority_spec.md`](production_paths/runtime_0080_0_r1_next_tick_authority_spec.md)).
-> Defines the substrate primitive **`GPU-NEXTTICK-0`** — GPU-resident world state as the **input
+> Defines the substrate primitive **`GPU-STATE-AUTH-0`** — GPU-resident world state as the **input
 > authority for tick N+1** (`gpu_state_feeds_next_tick == true`), the discovery R0A honestly surfaced.
 > Per **SimThing Maximality**, any transition already expressed as
 > row/mask/reduce/disburse/threshold/emission-band is promoted toward resident execution; the CPU may

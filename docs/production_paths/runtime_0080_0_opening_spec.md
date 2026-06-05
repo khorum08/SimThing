@@ -147,7 +147,7 @@ Specifically R0 must:
 > Report: [`../tests/runtime_0080_0_r0_results.md`](../tests/runtime_0080_0_r0_results.md).
 
 > **R1 OPEN (`RUNTIME-0080-0-R1-DESIGN-0`, 2026-06-05, Opus):** the substrate that makes GPU-resident
-> world state the **input authority for tick N+1** is now defined as the primitive **`GPU-NEXTTICK-0`**.
+> world state the **input authority for tick N+1** is now defined as the primitive **`GPU-STATE-AUTH-0`**.
 > First IMPL sub-rung **`RUNTIME-0080-0-R1a`** promotes the already-measured **Tier-A field columns**
 > (disruption, location_status, stockpiles, construction_progress, per-cohort `num_ships` value,
 > blockade/divert code, R4 magnitude) to a resident double-buffered next-tick authority; **Tier-B**

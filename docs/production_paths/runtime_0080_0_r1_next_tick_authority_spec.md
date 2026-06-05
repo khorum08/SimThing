@@ -1,4 +1,4 @@
-# RUNTIME-0080-0-R1 — GPU-resident next-tick authority (`GPU-NEXTTICK-0`)
+# RUNTIME-0080-0-R1 — GPU-resident next-tick authority (`GPU-STATE-AUTH-0`)
 
 **Authoring authority:** Opus / design authority (`RUNTIME-0080-0-R1-DESIGN-0`, 2026-06-05).
 **Track status:** OPEN (design opening; first implementation sub-rung scoped below).
@@ -39,12 +39,12 @@ rungs (§1.4).
 
 ---
 
-## 1. The substrate primitive — `GPU-NEXTTICK-0`
+## 1. The substrate primitive — `GPU-STATE-AUTH-0`
 
-**Canonical primitive name:** `GPU-NEXTTICK-0`.
+**Canonical primitive name:** `GPU-STATE-AUTH-0`.
 **Canonical rung id:** `RUNTIME-0080-0-R1` (umbrella). **First IMPL sub-rung:** `RUNTIME-0080-0-R1a`.
 
-`GPU-NEXTTICK-0` is the contract under which **GPU-resident world state is the authoritative input to
+`GPU-STATE-AUTH-0` is the contract under which **GPU-resident world state is the authoritative input to
 tick N+1** for the columns it covers:
 
 ```text
@@ -75,7 +75,7 @@ orchestration wearing GPU language. R0A is the reference example of the correct 
 ### 1.2 Parity-preservation directive (binding — addresses the shadow-table risk)
 
 Disconnecting the CPU game-state mirror outright would break semantic-GPU state parity (the CPU oracle
-is the determinism reference the whole track is checked against). Therefore `GPU-NEXTTICK-0` does **not**
+is the determinism reference the whole track is checked against). Therefore `GPU-STATE-AUTH-0` does **not**
 delete the CPU shadow. It changes **who is authoritative**, not **who exists**:
 
 - The GPU resident buffer is the **authority** for covered columns; the GPU tick reads it directly.
