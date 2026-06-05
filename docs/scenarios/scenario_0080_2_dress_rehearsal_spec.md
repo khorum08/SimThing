@@ -142,10 +142,18 @@ tick"** to a per-faction speed. Per-step re-enrollment means a transiting fleet 
 an intermediate cell** (so speed is also exposure). The exact-sqrt gradient magnitude (R4) gates each
 sub-step identically.
 
-### 8.1 Anticipated emergent behaviors (the R7 report verifies which actually emerged)
+### 8.1 Anticipated emergent behaviors (the R6C integrated run produces; R7 reports which emerged)
+
+> **Sequencing correction (2026-06-04, design authority).** Verifying "which behaviors emerged" requires
+> an **integrated multi-tick run** of the assembled rungs — that is rung **R6C**, not R7. The original
+> ladder (R1–R6B single-pass mechanism fixtures + R7 docs closeout) never contained a rung that ticks the
+> assembled session, so this list could not be observed at R7. **R6C** assembles R1→R6B into one ticking
+> session with feedback over a non-degenerate field and runs it (~100 ticks); **R7** then reports which of
+> the behaviors below actually appeared. See `scenario_0080_2_r6c_integrated_run_opening_spec.md`.
 
 None of these is scripted — they should **emerge** from the flow / threshold / masked-reduction dynamics
-alone (no CPU planner). The closing report (R7) records which appeared, which did not, and why:
+alone (no CPU planner). The R6C run produces the trace; the closing report (R7) records which appeared,
+which did not, and why:
 - **Pirate raiding waves** toward weakly-defended, high-value Terran systems (galactic gradient ascent, §4.1).
 - **Self-disruption migration:** a pirate raids, saturates a system's disruption, and the gradient pushes
   it onward to the next clean target — movement *as a consequence of its own effect on the field*.
@@ -191,6 +199,8 @@ failure to paper over — the report states it plainly.
 | Fleet pathing by disposition (overmatch / suppress) via exact-sqrt gradient | **R4** |
 | Fleet movement (REENROLL + mobility) **and starport→ship fission (E-2B-5)** | **R5** |
 | Combat resolution when fleets co-locate | **R6** |
+| Ship production reinforcement / friendly cohort fusion | **R6B** |
+| **Integrated multi-tick run — assemble all rungs into one ticking session with feedback; observe which §8.1 behaviors emerge** | **R6C** |
 | Close + closeout integrity + **human/layman report (what proved + which §8.1 behaviors emerged)** | **R7** |
 
 ## 11. Open parameters (confirm before opening a gate)

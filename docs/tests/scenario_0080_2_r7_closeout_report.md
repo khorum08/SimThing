@@ -1,10 +1,20 @@
 # SCENARIO-0080-2-R7 — Dress Rehearsal Closeout & Claim-Boundary Report
 
-**Verdict:** PASS (closeout authorized, docs-only)
+> **⚠ REOPENED (2026-06-04, design authority).** This docs-only closeout was **premature**. The ladder's
+> intended culmination — spec §8.1: *observe which emergent behaviors actually appear over a run* — was
+> never given an implementation rung; R1–R6B are single-pass mechanism fixtures and there was no rung that
+> ticks the assembled session. A new rung **`R6C — Integrated multi-tick run`** is inserted before R7 to
+> assemble the rungs into one ticking session with feedback and actually run it (~100 ticks). **R7 will
+> re-close only after R6C produces the integrated-run trace**, replacing the interim "not yet emerged"
+> finding (§3) with run evidence. **Everything below remains valid as the mechanism-chain claim boundary**
+> — the only correction is that "emergence not observed" was a *missing rung*, not a final verdict.
+> Opening spec: [`../scenarios/scenario_0080_2_r6c_integrated_run_opening_spec.md`](../scenarios/scenario_0080_2_r6c_integrated_run_opening_spec.md).
+
+**Verdict:** PASS *as mechanism-chain claim boundary* (closeout REOPENED pending R6C integrated run)
 **Date:** 2026-06-04
 **Gate:** R7 — CLOSE + closeout integrity + claim boundary
-**Authority:** Opus design authority (SCENARIO-0080-2-R7-REVIEW-0)
-**Scope:** Docs-only. No code behavior change, no new rung, no invariant edit.
+**Authority:** Opus design authority (SCENARIO-0080-2-R7-REVIEW-0; reopened same day)
+**Scope:** Docs-only. No code behavior change, no invariant edit.
 
 ---
 

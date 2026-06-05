@@ -1,3 +1,10 @@
+# 2026-06-04 - SCENARIO-0080-2-R7-REOPEN-0: reopen for R6C integrated multi-tick run (docs-only)
+
+- **Reopened R7.** The docs-only R7 closeout was premature: the ladder's intended culmination — spec §8.1, *observe which emergent behaviors actually appear over a run* — was never given an implementation rung. R1–R6B are single-pass mechanism fixtures; no rung ticks the assembled session.
+- **Inserted rung `R6C — Integrated multi-tick run`** before R7: assemble R1→R6B into one mutable session-state and tick it ~100 times with feedback (positions, ship counts, stockpiles, disruption carry forward); combat co-location produced by R5 movers (not hand-placed); field made non-degenerate with the R4 tie-breaker dropped or proven dominated; per-tick trace + §8.1 emergence detectors. opt-in/default-off, CPU-oracle primary, no planner/wiring/invariant change.
+- **R7 re-closes only after R6C** produces the run trace, replacing the interim "not yet emerged" finding with run evidence. Mechanism-chain proof (R1–R6B) stands.
+- **Docs:** opening spec [`docs/scenarios/scenario_0080_2_r6c_integrated_run_opening_spec.md`](scenarios/scenario_0080_2_r6c_integrated_run_opening_spec.md); track §10/§12.5 + spec §8.1/§10 updated; R7 closeout report banner-reopened. No code/invariant change.
+
 # 2026-06-04 - SCENARIO-0080-2-R7-CLOSEOUT-0: dress rehearsal closed as vertical proof (docs-only)
 
 - **Opus closeout ruling (A):** `SCENARIO-0080-2` closes as a vertical *slice/proof*. The R1→R6B mechanism chain is consumption-proven (each rung consumes the prior rung's real artifact; checksums pinned). No bespoke combat/economy/movement subsystem — all `AccumulatorOp`/overlays.
