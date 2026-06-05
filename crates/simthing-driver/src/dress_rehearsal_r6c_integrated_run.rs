@@ -2632,3 +2632,309 @@ fn mix_str(hash: &mut u64, value: &str) {
         mix_u64(hash, u64::from(*byte));
     }
 }
+
+// ---- R1a boundary witness (algorithmic tick inputs, not report replay) ----
+
+pub fn dress_rehearsal_r6c_capability_overlay_rows() -> Vec<DressRehearsalR6cCapabilityOverlayRow> {
+    capability_overlays()
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct R1aTickDerivedInputs {
+    pub disruption_input_by_cell: Vec<f32>,
+    pub stockpile_reduced_in: [i64; 2],
+    pub stockpile_disbursed_down: [i64; 2],
+    pub construction_production: Vec<i64>,
+    pub combat_hostile_damage: Vec<i64>,
+    pub combat_hp_per_ship: Vec<i64>,
+    pub reinforcement_delta: Vec<i64>,
+    pub fusion_delta: Vec<i64>,
+    pub blockade_triggered_owner: Vec<f32>,
+    pub r4_gradients: Vec<(f32, f32)>,
+    pub r4_magnitude_bits: u32,
+}
+
+pub struct R1aBoundaryWitness {
+    world: DressRehearsalR6cWorld,
+    capability: Vec<DressRehearsalR6cCapabilityOverlayRow>,
+    fleet_ids: Vec<String>,
+    system_indices: Vec<usize>,
+}
+
+impl R1aBoundaryWitness {
+    pub fn new(
+        initial: &DressRehearsalR6cWorld,
+        fleet_ids: Vec<String>,
+        system_indices: Vec<usize>,
+    ) -> Self {
+        Self {
+            world: initial.clone(),
+            capability: capability_overlays(),
+            fleet_ids,
+            system_indices,
+        }
+    }
+
+    pub fn derive_tick_inputs(
+        &mut self,
+        tick: u32,
+        gpu_disruption: &[f32],
+        gpu_stockpiles: [i64; 2],
+    ) -> R1aTickDerivedInputs {
+        let disruption_input_by_cell = self.derive_disruption_inputs();
+
+        let mut predicted_disruption = gpu_disruption.to_vec();
+        for (idx, input) in disruption_input_by_cell.iter().enumerate() {
+            predicted_disruption[idx] = bounded_feedback_next(predicted_disruption[idx], *input);
+        }
+        self.world.disruption.copy_from_slice(&predicted_disruption);
+        self.world.location_status = diffusion_status(&predicted_disruption);
+
+        let (
+            stockpile_reduced_in,
+            stockpile_disbursed_down,
+            blockade_triggered_owner,
+            economy_rows,
+        ) = self.derive_economy_inputs(gpu_stockpiles);
+
+        let mut field_read_rows = Vec::new();
+        let mut boundary_rows = Vec::new();
+        let mut movement_rows = Vec::new();
+        let moved_cells = run_movement_tick(
+            tick,
+            &mut self.world,
+            &self.capability,
+            &mut field_read_rows,
+            &mut boundary_rows,
+            &mut movement_rows,
+        );
+
+        let r4_gradients = field_read_rows
+            .iter()
+            .map(|row| (row.gradient_dx_f32, row.gradient_dy_f32))
+            .collect::<Vec<_>>();
+        let r4_magnitude_bits = field_read_rows
+            .iter()
+            .map(|row| row.real_signal_gradient_magnitude_bits)
+            .max()
+            .unwrap_or(0);
+
+        let mut combat_rows = Vec::new();
+        let mut reduce_rows = Vec::new();
+        let mut disburse_rows = Vec::new();
+        run_combat_tick(
+            tick,
+            &mut self.world,
+            &moved_cells,
+            &self.capability,
+            &mut combat_rows,
+            &mut reduce_rows,
+            &mut disburse_rows,
+        );
+
+        let mut combat_hostile_damage = vec![0i64; self.fleet_ids.len()];
+        let mut combat_hp_per_ship = vec![0i64; self.fleet_ids.len()];
+        for row in &combat_rows {
+            if let Some(idx) = self.fleet_ids.iter().position(|id| id == &row.combatant_id) {
+                combat_hostile_damage[idx] = row.hostile_damage_received;
+                combat_hp_per_ship[idx] = row.hp_per_ship;
+            }
+        }
+
+        let mut construction_rows = Vec::new();
+        let mut reinforcement_rows = Vec::new();
+        let mut birth_rows = Vec::new();
+        let mut fusion_rows = Vec::new();
+        run_production_tick(
+            tick,
+            &mut self.world,
+            &economy_rows,
+            &mut construction_rows,
+            &mut reinforcement_rows,
+            &mut birth_rows,
+            &mut fusion_rows,
+        );
+
+        let n_systems = self.system_indices.len();
+        let mut construction_production = vec![0i64; n_systems];
+        for row in &construction_rows {
+            if let Some(idx) = self
+                .system_indices
+                .iter()
+                .position(|s| *s == row.system_index)
+            {
+                construction_production[idx] = row.production_applied;
+            }
+        }
+
+        let mut reinforcement_delta = vec![0i64; self.fleet_ids.len()];
+        for row in &reinforcement_rows {
+            if let Some(idx) = self
+                .fleet_ids
+                .iter()
+                .position(|id| id == &row.target_fleet_id)
+            {
+                reinforcement_delta[idx] = row.ship_count_delta;
+            }
+        }
+
+        let mut fusion_delta = vec![0i64; self.fleet_ids.len()];
+        for row in &fusion_rows {
+            if let Some(idx) = self
+                .fleet_ids
+                .iter()
+                .position(|id| id == &row.surviving_fleet_id)
+            {
+                fusion_delta[idx] += row.right_num_ships;
+            }
+        }
+
+        R1aTickDerivedInputs {
+            disruption_input_by_cell,
+            stockpile_reduced_in,
+            stockpile_disbursed_down,
+            construction_production,
+            combat_hostile_damage,
+            combat_hp_per_ship,
+            reinforcement_delta,
+            fusion_delta,
+            blockade_triggered_owner,
+            r4_gradients,
+            r4_magnitude_bits,
+        }
+    }
+
+    fn derive_disruption_inputs(&self) -> Vec<f32> {
+        let mut input_by_cell = vec![0.0f32; GALAXY_CELL_COUNT];
+        for fleet in live_fleets(&self.world) {
+            let modifier = match fleet.owner {
+                DressRehearsalR6cOwner::Terran => {
+                    capability_bps(&self.capability, fleet.owner, PATROL_SUPPRESSION_MODIFIER)
+                }
+                DressRehearsalR6cOwner::Pirate => {
+                    capability_bps(&self.capability, fleet.owner, PIRATE_EMISSION_MODIFIER)
+                }
+            };
+            let input = match fleet.owner {
+                DressRehearsalR6cOwner::Terran => {
+                    -apply_modifier_bps(PATROL_SUPPRESS * fleet.num_ships as f32, modifier)
+                }
+                DressRehearsalR6cOwner::Pirate => {
+                    apply_modifier_bps(PIRATE_EMIT * fleet.num_ships as f32, modifier)
+                }
+            };
+            input_by_cell[fleet.cell_index as usize] += input;
+        }
+        input_by_cell
+    }
+
+    fn derive_economy_inputs(
+        &self,
+        gpu_stockpiles: [i64; 2],
+    ) -> (
+        [i64; 2],
+        [i64; 2],
+        Vec<f32>,
+        Vec<DressRehearsalR6cEconomyRow>,
+    ) {
+        let mut rows = Vec::new();
+        let mut reduced: BTreeMap<DressRehearsalR6cOwner, i64> = BTreeMap::new();
+        reduced.insert(DressRehearsalR6cOwner::Terran, 0);
+        reduced.insert(DressRehearsalR6cOwner::Pirate, 0);
+        let mut blockade_triggered_owner = vec![0.0f32; self.system_indices.len()];
+
+        for (sys_idx, system_index) in self.system_indices.iter().enumerate() {
+            let system = self
+                .world
+                .systems
+                .iter()
+                .find(|s| s.system_index == *system_index)
+                .expect("system");
+            let disruption = self.world.disruption[system.cell_index as usize];
+            let blockader = if disruption >= BLOCKADE_THRESHOLD {
+                blockader_for_system(&self.world, system)
+            } else {
+                None
+            };
+            blockade_triggered_owner[sys_idx] = blockader
+                .map(|owner| match owner {
+                    DressRehearsalR6cOwner::Terran => 1.0,
+                    DressRehearsalR6cOwner::Pirate => 2.0,
+                })
+                .unwrap_or(0.0);
+            let effective_owner = blockader.unwrap_or(system.owner);
+            let (production_generated, labor_consumed, _) =
+                factory_recipe_production(POP_LABOR_PER_TICK);
+            *reduced.entry(effective_owner).or_insert(0) += production_generated;
+            rows.push(DressRehearsalR6cEconomyRow {
+                tick: 0,
+                system_id: system.system_id.clone(),
+                system_index: system.system_index,
+                cell_index: system.cell_index,
+                original_owner: system.owner,
+                effective_outflow_owner: effective_owner,
+                blockader,
+                disruption,
+                blockaded: blockader.is_some(),
+                labor_generated: POP_LABOR_PER_TICK,
+                labor_consumed,
+                production_generated,
+                diverted_production: if blockader.is_some() {
+                    production_generated
+                } else {
+                    0
+                },
+                disbursement_received: 0,
+                owner_column_flipped: blockader.is_some(),
+            });
+        }
+
+        let stockpile_reduced_in = [
+            *reduced.get(&DressRehearsalR6cOwner::Terran).unwrap_or(&0),
+            *reduced.get(&DressRehearsalR6cOwner::Pirate).unwrap_or(&0),
+        ];
+        let mut after_reduce = [
+            gpu_stockpiles[0] + stockpile_reduced_in[0],
+            gpu_stockpiles[1] + stockpile_reduced_in[1],
+        ];
+        let mut stockpile_disbursed_down = [0i64; 2];
+        for owner_idx in 0..2usize {
+            let owner = if owner_idx == 0 {
+                DressRehearsalR6cOwner::Terran
+            } else {
+                DressRehearsalR6cOwner::Pirate
+            };
+            let mut disbursed_down = 0i64;
+            let starport_row_indices = rows
+                .iter()
+                .enumerate()
+                .filter(|(_, row)| {
+                    row.original_owner == owner
+                        && self
+                            .world
+                            .systems
+                            .iter()
+                            .find(|s| s.system_index == row.system_index)
+                            .map(|s| s.has_starport)
+                            .unwrap_or(false)
+                })
+                .map(|(idx, _)| idx)
+                .collect::<Vec<_>>();
+            for row_idx in starport_row_indices {
+                let available = after_reduce[owner_idx];
+                let disbursed = STARPORT_PRODUCTION_NEED.min(available).max(0);
+                after_reduce[owner_idx] -= disbursed;
+                disbursed_down += disbursed;
+                rows[row_idx].disbursement_received = disbursed;
+            }
+            stockpile_disbursed_down[owner_idx] = disbursed_down;
+        }
+
+        (
+            stockpile_reduced_in,
+            stockpile_disbursed_down,
+            blockade_triggered_owner,
+            rows,
+        )
+    }
+}
