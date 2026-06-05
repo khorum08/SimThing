@@ -788,10 +788,13 @@ column-flip — each its own gate.
 > `request_atlas_batching`, no M-4A masking-at-scale, no new semantic WGSL/op/invariant, no scenario
 > reopen. Adapter: RTX 4080 Laptop GPU.
 >
-> **`RUNTIME-0080-0-R1` is OPEN (`RUNTIME-0080-0-R1-DESIGN-0`, 2026-06-05, Opus design authority)**
+> **`RUNTIME-0080-0-R1a` is IMPLEMENTED / PASS (`RUNTIME-0080-0-R1a-IMPL-0`, 2026-06-05)**
 > (design spec: [`production_paths/runtime_0080_0_r1_next_tick_authority_spec.md`](production_paths/runtime_0080_0_r1_next_tick_authority_spec.md)).
-> Defines the substrate primitive **`GPU-STATE-AUTH-0`** — GPU-resident world state as the **input
-> authority for tick N+1** (`gpu_state_feeds_next_tick == true`), the discovery R0A honestly surfaced.
+> R1 defines the substrate primitive **`GPU-STATE-AUTH-0`** — GPU-resident world state as the **input
+> authority for tick N+1**. R1a implements that discriminator for the covered Tier-A field/value columns:
+> `gpu_state_feeds_next_tick == true`, `mirror_dispatch_after_cpu_tick == false`, initial seed upload `1`,
+> inter-tick Tier-A uploads `0`, buffer swaps `100`, and checksum `1bba891c779190a4` preserved. Report:
+> [`tests/runtime_0080_0_r1a_next_tick_authority_results.md`](tests/runtime_0080_0_r1a_next_tick_authority_results.md).
 > Per **SimThing Maximality**, any transition already expressed as
 > row/mask/reduce/disburse/threshold/emission-band is promoted toward resident execution; the CPU may
 > remain oracle/inspector/save-writer but may **not** be the hidden authority for state_N+1 when the
@@ -806,7 +809,7 @@ column-flip — each its own gate.
 > journal** (the boundaryEvent dispatch), which is GPU-decided / CPU-applied — **not** a CPU planner.
 > **R0A is CLOSED as PARTIAL / informative** (correct honest outcome; no PR #531 change required).
 >
-> **Next horizon:** `R1a` (resident field-column next-tick authority) → `R1b` (`RESIDENT-EVENTLOG-0`,
+> **Next horizon:** `R1b` (`RESIDENT-EVENTLOG-0`,
 > resident event journal) → `R1c` (`RESIDENT-REENROLL-0`, resident scatter/compact for membership + cohort
 > table — behind the §11 / free-list-scatter stop-lines); then multi-atlas batching + M-4A masking
 > (§11 gate); richer emergence (`SCENARIO-0080-3`); multi-faction ECON; system→planet recursion.
