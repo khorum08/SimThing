@@ -828,8 +828,9 @@ column-flip — each its own gate.
 > journal** (the boundaryEvent dispatch), which is GPU-decided / CPU-applied — **not** a CPU planner.
 > **R0A is CLOSED as PARTIAL / informative** (correct honest outcome; no PR #531 change required).
 >
-> **Next horizon:** `R1b` (`RESIDENT-EVENTLOG-0`,
-> resident event journal) → `R1c` (`RESIDENT-REENROLL-0`, resident scatter/compact for membership + cohort
+> **R1b (`RESIDENT-EVENTLOG-0`) — IMPLEMENTED / PARTIAL 2026-06-05:** [`runtime_0080_0_r1b.rs`](../crates/simthing-driver/src/runtime_0080_0_r1b.rs) adds a GPU-staged resident event journal on the R1a substrate. Movement `field_agent` extraction, blockade `OwnerCodeFlip`, and partial fusion rows are journalized and consumed by a bounded CPU boundary pass without movement/combat/production tick planners. **Combat (`DamageDelta`/`ZeroCohort`) and construction/reinforcement (`ShipCountDelta`/`LocalBirthRequest`) oracle parity remains open** — do not claim resident structural scatter/compact yet. Report: [`tests/runtime_0080_0_r1b_resident_event_journal_results.md`](tests/runtime_0080_0_r1b_resident_event_journal_results.md).
+>
+> **Next horizon:** R1b parity closeout → `R1c` (`RESIDENT-REENROLL-0`, resident scatter/compact for membership + cohort
 > table — behind the §11 / free-list-scatter stop-lines); then multi-atlas batching + M-4A masking
 > (§11 gate); richer emergence (`SCENARIO-0080-3`); multi-faction ECON; system→planet recursion.
 >

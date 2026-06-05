@@ -2633,6 +2633,208 @@ fn mix_str(hash: &mut u64, value: &str) {
     }
 }
 
+// ---- R1b structural event journal (boundary maintenance consumes GPU rows) ----
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum R1bStructuralEventKind {
+    MoveRequest = 1,
+    DamageDelta = 2,
+    ShipCountDelta = 3,
+    ZeroCohort = 4,
+    LocalBirthRequest = 5,
+    FusionRequest = 6,
+    OwnerCodeFlip = 7,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct R1bStructuralEvent {
+    pub tick: u32,
+    pub event_kind: R1bStructuralEventKind,
+    pub source_slot: u32,
+    pub target_slot: u32,
+    pub source_cell: u32,
+    pub target_cell: u32,
+    pub owner_code: u32,
+    pub amount_or_delta: i64,
+    pub threshold_code: u32,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct R1bBoundaryApplyReport {
+    pub rows_applied: u32,
+    pub movement_applied: u32,
+    pub combat_applied: u32,
+    pub production_applied: u32,
+    pub blockade_applied: u32,
+}
+
+pub fn r1b_colocation_hostile_damage(
+    world: &DressRehearsalR6cWorld,
+    fleet_ids: &[String],
+    moved_cells: &BTreeSet<u32>,
+    capability: &[DressRehearsalR6cCapabilityOverlayRow],
+) -> Vec<i64> {
+    let mut hostile_damage = vec![0i64; fleet_ids.len()];
+    for cell_index in moved_cells.iter().copied() {
+        let combatant_indices = world
+            .fleets
+            .iter()
+            .enumerate()
+            .filter(|(_, fleet)| {
+                !fleet.destroyed
+                    && fleet.num_ships > 0
+                    && fleet.cell_index == cell_index
+                    && fleet.fleet_like
+            })
+            .map(|(idx, _)| idx)
+            .collect::<Vec<_>>();
+        let mut owner_totals: BTreeMap<DressRehearsalR6cOwner, i64> = BTreeMap::new();
+        for &idx in &combatant_indices {
+            let fleet = &world.fleets[idx];
+            let modifier =
+                capability_bps(capability, fleet.owner, COMBAT_BONUS_PLACEHOLDER_MODIFIER);
+            let damage = apply_bps_i64(
+                damage_output_for_cohort(fleet.num_ships, fleet.damage_per_ship_per_tick),
+                modifier,
+            );
+            *owner_totals.entry(fleet.owner).or_insert(0) += damage;
+        }
+        for &idx in &combatant_indices {
+            let fleet = &world.fleets[idx];
+            let hostile = owner_totals
+                .iter()
+                .filter(|(owner, _)| **owner != fleet.owner)
+                .map(|(_, total)| *total)
+                .sum::<i64>();
+            if let Some(fleet_idx) = fleet_ids.iter().position(|id| id == &fleet.fleet_id) {
+                hostile_damage[fleet_idx] = hostile;
+            }
+        }
+    }
+    hostile_damage
+}
+
+pub fn r1b_apply_boundary_events(
+    world: &mut DressRehearsalR6cWorld,
+    fleet_ids: &[String],
+    system_indices: &[usize],
+    events: &[R1bStructuralEvent],
+) -> R1bBoundaryApplyReport {
+    let mut report = R1bBoundaryApplyReport::default();
+    for event in events {
+        match event.event_kind {
+            R1bStructuralEventKind::MoveRequest => {
+                let fleet_id = fleet_ids.get(event.source_slot as usize);
+                if let Some(fleet_id) = fleet_id {
+                    if let Some(fleet) = world
+                        .fleets
+                        .iter_mut()
+                        .find(|f| !f.destroyed && &f.fleet_id == fleet_id)
+                    {
+                        fleet.cell_index = event.target_cell;
+                        fleet.last_moved_tick = Some(event.tick);
+                        report.movement_applied += 1;
+                        report.rows_applied += 1;
+                    }
+                }
+            }
+            R1bStructuralEventKind::DamageDelta | R1bStructuralEventKind::ShipCountDelta => {
+                if let Some(fleet_id) = fleet_ids.get(event.source_slot as usize) {
+                    if let Some(fleet) = world
+                        .fleets
+                        .iter_mut()
+                        .find(|f| !f.destroyed && &f.fleet_id == fleet_id)
+                    {
+                        fleet.num_ships = (fleet.num_ships + event.amount_or_delta).max(0);
+                        report.combat_applied += 1;
+                        report.rows_applied += 1;
+                    }
+                }
+            }
+            R1bStructuralEventKind::ZeroCohort => {
+                if let Some(fleet_id) = fleet_ids.get(event.source_slot as usize) {
+                    if let Some(fleet) = world.fleets.iter_mut().find(|f| &f.fleet_id == fleet_id) {
+                        fleet.num_ships = 0;
+                        fleet.destroyed = true;
+                        report.combat_applied += 1;
+                        report.rows_applied += 1;
+                    }
+                }
+            }
+            R1bStructuralEventKind::OwnerCodeFlip => {
+                if let Some(system_index) = system_indices.get(event.source_slot as usize) {
+                    let blockader = match event.owner_code {
+                        1 => Some(DressRehearsalR6cOwner::Terran),
+                        2 => Some(DressRehearsalR6cOwner::Pirate),
+                        _ => None,
+                    };
+                    world.blockade_divert_owner.insert(*system_index, blockader);
+                    report.blockade_applied += 1;
+                    report.rows_applied += 1;
+                }
+            }
+            R1bStructuralEventKind::LocalBirthRequest => {
+                let Some(system) = world
+                    .systems
+                    .iter()
+                    .find(|system| system.has_starport && system.cell_index == event.source_cell)
+                else {
+                    continue;
+                };
+                let fleet_id = format!(
+                    "r6c-born-starport-{}-tick-{}",
+                    system.system_index, event.tick
+                );
+                if !world.fleets.iter().any(|fleet| fleet.fleet_id == fleet_id) {
+                    let entity_id = R6C_BIRTH_ENTITY_BASE ^ entity_id_for_mover(&fleet_id);
+                    world.fleets.push(DressRehearsalR6cFleetCohortState {
+                        fleet_id: fleet_id.clone(),
+                        entity_id,
+                        owner: system.owner,
+                        cell_index: system.cell_index,
+                        num_ships: event.amount_or_delta.max(0),
+                        hp_per_ship: FLEET_HP_PER_SHIP,
+                        damage_per_ship_per_tick: FLEET_DAMAGE_PER_SHIP_PER_TICK,
+                        destroyed: false,
+                        fleet_like: true,
+                        owner_faction_id: system.owner.stable_code(),
+                        identity_lane: identity_lane_for_owner(system.owner),
+                        lineage: vec![fleet_id],
+                        spawned_by_production: true,
+                        last_moved_tick: None,
+                    });
+                }
+                report.production_applied += 1;
+                report.rows_applied += 1;
+            }
+            R1bStructuralEventKind::FusionRequest => {
+                let survivor_id = fleet_ids.get(event.source_slot as usize);
+                let absorbed_id = fleet_ids.get(event.target_slot as usize);
+                if let (Some(survivor_id), Some(absorbed_id)) = (survivor_id, absorbed_id) {
+                    let survivor_idx = world
+                        .fleets
+                        .iter()
+                        .position(|f| !f.destroyed && &f.fleet_id == survivor_id);
+                    let absorbed_idx = world
+                        .fleets
+                        .iter()
+                        .position(|f| !f.destroyed && &f.fleet_id == absorbed_id);
+                    if let (Some(si), Some(ai)) = (survivor_idx, absorbed_idx) {
+                        let delta = event.amount_or_delta.max(0);
+                        world.fleets[si].num_ships += delta;
+                        world.fleets[ai].destroyed = true;
+                        world.fleets[ai].num_ships = 0;
+                        report.production_applied += 1;
+                        report.rows_applied += 1;
+                    }
+                }
+            }
+        }
+    }
+    refresh_membership(world);
+    report
+}
+
 // ---- R1a boundary witness (algorithmic tick inputs, not report replay) ----
 
 pub fn dress_rehearsal_r6c_capability_overlay_rows() -> Vec<DressRehearsalR6cCapabilityOverlayRow> {
@@ -2645,6 +2847,7 @@ pub struct R1aTickDerivedInputs {
     pub stockpile_reduced_in: [i64; 2],
     pub stockpile_disbursed_down: [i64; 2],
     pub construction_production: Vec<i64>,
+    pub economy_rows: Vec<DressRehearsalR6cEconomyRow>,
     pub combat_hostile_damage: Vec<i64>,
     pub combat_hp_per_ship: Vec<i64>,
     pub reinforcement_delta: Vec<i64>,
@@ -2794,6 +2997,7 @@ impl R1aBoundaryWitness {
             stockpile_reduced_in,
             stockpile_disbursed_down,
             construction_production,
+            economy_rows,
             combat_hostile_damage,
             combat_hp_per_ship,
             reinforcement_delta,
@@ -2936,5 +3140,804 @@ impl R1aBoundaryWitness {
             blockade_triggered_owner,
             rows,
         )
+    }
+
+    pub fn world(&self) -> &DressRehearsalR6cWorld {
+        &self.world
+    }
+
+    pub fn world_mut(&mut self) -> &mut DressRehearsalR6cWorld {
+        &mut self.world
+    }
+
+    pub fn fleet_ids(&self) -> &[String] {
+        &self.fleet_ids
+    }
+
+    pub fn system_indices(&self) -> &[usize] {
+        &self.system_indices
+    }
+
+    pub fn capability(&self) -> &[DressRehearsalR6cCapabilityOverlayRow] {
+        &self.capability
+    }
+
+    pub fn sync_boundary_world_from_gpu_tier_a(
+        &mut self,
+        gpu_current: &[f32],
+        construction_start: u32,
+        num_ships_start: u32,
+        blockade_start: u32,
+    ) {
+        for (idx, system_index) in self.system_indices.iter().enumerate() {
+            let progress = gpu_current[(construction_start + idx as u32) as usize].round() as i64;
+            self.world
+                .construction_progress
+                .insert(*system_index, progress);
+            let blockade_code = gpu_current[(blockade_start + idx as u32) as usize].round() as u32;
+            let blockader = match blockade_code {
+                1 => Some(DressRehearsalR6cOwner::Terran),
+                2 => Some(DressRehearsalR6cOwner::Pirate),
+                _ => None,
+            };
+            self.world
+                .blockade_divert_owner
+                .insert(*system_index, blockader);
+        }
+        for (idx, fleet_id) in self.fleet_ids.iter().enumerate() {
+            let ships = gpu_current[(num_ships_start + idx as u32) as usize].round() as i64;
+            if let Some(fleet) = self
+                .world
+                .fleets
+                .iter_mut()
+                .find(|fleet| &fleet.fleet_id == fleet_id)
+            {
+                if fleet.destroyed {
+                    fleet.num_ships = 0;
+                    continue;
+                }
+                fleet.num_ships = ships.max(0);
+                fleet.destroyed = fleet.num_ships <= 0;
+            }
+        }
+    }
+
+    pub fn sync_tier_a_field_columns(&mut self, gpu_disruption: &[f32], gpu_stockpiles: [i64; 2]) {
+        let disruption_input_by_cell = self.derive_disruption_inputs();
+        let mut predicted_disruption = gpu_disruption.to_vec();
+        for (idx, input) in disruption_input_by_cell.iter().enumerate() {
+            predicted_disruption[idx] = bounded_feedback_next(predicted_disruption[idx], *input);
+        }
+        self.world.disruption.copy_from_slice(&predicted_disruption);
+        self.world.location_status = diffusion_status(&predicted_disruption);
+        self.world
+            .stockpiles
+            .insert(DressRehearsalR6cOwner::Terran, gpu_stockpiles[0]);
+        self.world
+            .stockpiles
+            .insert(DressRehearsalR6cOwner::Pirate, gpu_stockpiles[1]);
+    }
+
+    /// Applies the R6C economy tick so `blockade_divert_owner` and stockpiles match movement field inputs.
+    pub fn prepare_movement_tick_economy(&mut self, tick: u32) -> Vec<DressRehearsalR6cEconomyRow> {
+        let mut ledger_rows = Vec::new();
+        run_economy_tick(tick, &mut self.world, &mut ledger_rows)
+    }
+
+    pub fn clone_for_event_derivation(&self) -> R1aBoundaryWitness {
+        R1aBoundaryWitness {
+            world: self.world.clone(),
+            capability: self.capability.clone(),
+            fleet_ids: self.fleet_ids.clone(),
+            system_indices: self.system_indices.clone(),
+        }
+    }
+
+    pub fn derive_tier_a_staging_inputs(
+        &self,
+        tick: u32,
+        gpu_disruption: &[f32],
+        gpu_stockpiles: [i64; 2],
+        moved_cells: &BTreeSet<u32>,
+        tick_economy_rows: &[DressRehearsalR6cEconomyRow],
+    ) -> R1aTickDerivedInputs {
+        let mut scratch_disruption = gpu_disruption.to_vec();
+        let disruption_input_by_cell = self.derive_disruption_inputs();
+        for (idx, input) in disruption_input_by_cell.iter().enumerate() {
+            scratch_disruption[idx] = bounded_feedback_next(scratch_disruption[idx], *input);
+        }
+        let predicted_location_status = diffusion_status(&scratch_disruption);
+
+        let mut scratch_world = self.world.clone();
+        scratch_world
+            .disruption
+            .copy_from_slice(&scratch_disruption);
+        scratch_world.location_status = predicted_location_status;
+
+        let (stockpile_reduced_in, stockpile_disbursed_down, blockade_triggered_owner) = {
+            let witness = R1aBoundaryWitness {
+                world: scratch_world,
+                capability: self.capability.clone(),
+                fleet_ids: self.fleet_ids.clone(),
+                system_indices: self.system_indices.clone(),
+            };
+            let (stockpile_reduced_in, stockpile_disbursed_down, blockade_triggered_owner, _) =
+                witness.derive_economy_inputs(gpu_stockpiles);
+            (
+                stockpile_reduced_in,
+                stockpile_disbursed_down,
+                blockade_triggered_owner,
+            )
+        };
+        let economy_rows = tick_economy_rows.to_vec();
+
+        let combat_hostile_damage = r1b_colocation_hostile_damage(
+            &self.world,
+            &self.fleet_ids,
+            moved_cells,
+            &self.capability,
+        );
+        let mut combat_hp_per_ship = vec![0i64; self.fleet_ids.len()];
+        for (fleet_idx, fleet_id) in self.fleet_ids.iter().enumerate() {
+            if let Some(fleet) = self
+                .world
+                .fleets
+                .iter()
+                .find(|f| !f.destroyed && &f.fleet_id == fleet_id)
+            {
+                combat_hp_per_ship[fleet_idx] = fleet.hp_per_ship;
+            }
+        }
+
+        let n_systems = self.system_indices.len();
+        let mut construction_production = vec![0i64; n_systems];
+        for row in &economy_rows {
+            if let Some(idx) = self
+                .system_indices
+                .iter()
+                .position(|s| *s == row.system_index)
+            {
+                construction_production[idx] = row.disbursement_received;
+            }
+        }
+
+        let mut post_combat_world = self.world.clone();
+        r1b_apply_combat_attrition_scratch(
+            &mut post_combat_world,
+            &self.fleet_ids,
+            &combat_hostile_damage,
+            &combat_hp_per_ship,
+        );
+
+        let mut reinforcement_delta = vec![0i64; self.fleet_ids.len()];
+        let starports = self
+            .world
+            .systems
+            .iter()
+            .filter(|system| system.has_starport)
+            .cloned()
+            .collect::<Vec<_>>();
+        for system in starports {
+            let production_applied = economy_rows
+                .iter()
+                .find(|row| row.system_index == system.system_index)
+                .map(|row| row.disbursement_received)
+                .unwrap_or(0);
+            let progress_before = *self
+                .world
+                .construction_progress
+                .get(&system.system_index)
+                .unwrap_or(&0);
+            let (_, threshold_passed, ship_delta, _) =
+                construction_threshold_emission(progress_before, production_applied, SHIP_COST);
+            if threshold_passed && ship_delta > 0 {
+                if let Some(fleet_idx) = post_combat_world
+                    .fleets
+                    .iter()
+                    .find(|fleet| {
+                        !fleet.destroyed
+                            && fleet.fleet_like
+                            && fleet.owner == system.owner
+                            && fleet.cell_index == system.cell_index
+                            && fleet.hp_per_ship == FLEET_HP_PER_SHIP
+                            && fleet.damage_per_ship_per_tick == FLEET_DAMAGE_PER_SHIP_PER_TICK
+                    })
+                    .and_then(|fleet| self.fleet_ids.iter().position(|id| id == &fleet.fleet_id))
+                {
+                    reinforcement_delta[fleet_idx] = ship_delta;
+                    if let Some(world_idx) = post_combat_world
+                        .fleets
+                        .iter()
+                        .position(|fleet| self.fleet_ids[fleet_idx] == fleet.fleet_id)
+                    {
+                        post_combat_world.fleets[world_idx].num_ships += ship_delta;
+                    }
+                }
+            }
+        }
+
+        let mut fusion_delta = vec![0i64; self.fleet_ids.len()];
+        let mut groups: BTreeMap<(DressRehearsalR6cOwner, u32, i64, i64), Vec<usize>> =
+            BTreeMap::new();
+        for (idx, fleet) in post_combat_world.fleets.iter().enumerate() {
+            if fleet.destroyed || fleet.num_ships <= 0 || !fleet.fleet_like {
+                continue;
+            }
+            groups
+                .entry((
+                    fleet.owner,
+                    fleet.cell_index,
+                    fleet.hp_per_ship,
+                    fleet.damage_per_ship_per_tick,
+                ))
+                .or_default()
+                .push(idx);
+        }
+        for indices in groups.values_mut() {
+            if indices.len() < 2 {
+                continue;
+            }
+            indices.sort_by_key(|idx| post_combat_world.fleets[*idx].fleet_id.clone());
+            let survivor = indices[0];
+            for absorbed in indices.iter().copied().skip(1) {
+                if post_combat_world.fleets[absorbed].destroyed {
+                    continue;
+                }
+                if let Some(survivor_idx) = self
+                    .fleet_ids
+                    .iter()
+                    .position(|id| id == &post_combat_world.fleets[survivor].fleet_id)
+                {
+                    fusion_delta[survivor_idx] += post_combat_world.fleets[absorbed].num_ships;
+                }
+            }
+        }
+
+        let mut r4_gradients = Vec::new();
+        let mut r4_magnitude_bits = 0u32;
+        for fleet_id in &self.fleet_ids {
+            if let Some(fleet) = self
+                .world
+                .fleets
+                .iter()
+                .find(|f| !f.destroyed && &f.fleet_id == fleet_id)
+            {
+                let field = build_field(&self.world, fleet.owner, &self.capability);
+                let decision = field_decision(&field, fleet.cell_index);
+                r4_gradients.push((decision.gradient_dx_f32, decision.gradient_dy_f32));
+                r4_magnitude_bits = r4_magnitude_bits.max(decision.candidate_f_exact_mag_bits);
+            }
+        }
+
+        let _ = tick;
+        R1aTickDerivedInputs {
+            disruption_input_by_cell,
+            stockpile_reduced_in,
+            stockpile_disbursed_down,
+            construction_production,
+            economy_rows,
+            combat_hostile_damage,
+            combat_hp_per_ship,
+            reinforcement_delta,
+            fusion_delta,
+            blockade_triggered_owner,
+            r4_gradients,
+            r4_magnitude_bits,
+        }
+    }
+}
+
+pub fn r1b_apply_combat_attrition_scratch(
+    world: &mut DressRehearsalR6cWorld,
+    fleet_ids: &[String],
+    hostile_damage: &[i64],
+    hp_per_ship: &[i64],
+) {
+    for (fleet_idx, fleet_id) in fleet_ids.iter().enumerate() {
+        let damage = hostile_damage.get(fleet_idx).copied().unwrap_or(0);
+        if damage <= 0 {
+            continue;
+        }
+        let Some(world_idx) = world
+            .fleets
+            .iter()
+            .position(|fleet| !fleet.destroyed && &fleet.fleet_id == fleet_id)
+        else {
+            continue;
+        };
+        let fleet = &world.fleets[world_idx];
+        let hp = hp_per_ship
+            .get(fleet_idx)
+            .copied()
+            .unwrap_or(fleet.hp_per_ship);
+        let (_, num_ships_after, _, zero_cohort) =
+            emission_band_ship_attrition(damage, fleet.num_ships, hp);
+        world.fleets[world_idx].num_ships = num_ships_after;
+        if zero_cohort {
+            world.fleets[world_idx].destroyed = true;
+        }
+    }
+    refresh_membership(world);
+}
+
+pub fn r1b_predict_production_events(
+    tick: u32,
+    world: &DressRehearsalR6cWorld,
+    fleet_ids: &[String],
+    economy_rows: &[DressRehearsalR6cEconomyRow],
+) -> Vec<R1bStructuralEvent> {
+    let mut rows = Vec::new();
+    let starports = world
+        .systems
+        .iter()
+        .filter(|system| system.has_starport)
+        .cloned()
+        .collect::<Vec<_>>();
+    for system in starports {
+        let production_applied = economy_rows
+            .iter()
+            .find(|row| row.system_index == system.system_index)
+            .map(|row| row.disbursement_received)
+            .unwrap_or(0);
+        let progress_before = *world
+            .construction_progress
+            .get(&system.system_index)
+            .unwrap_or(&0);
+        let (_, threshold_passed, ship_delta, _) =
+            construction_threshold_emission(progress_before, production_applied, SHIP_COST);
+        if !threshold_passed || ship_delta <= 0 {
+            continue;
+        }
+        let compatible = world
+            .fleets
+            .iter()
+            .enumerate()
+            .filter(|(_, fleet)| {
+                !fleet.destroyed
+                    && fleet.fleet_like
+                    && fleet.owner == system.owner
+                    && fleet.cell_index == system.cell_index
+                    && fleet.hp_per_ship == FLEET_HP_PER_SHIP
+                    && fleet.damage_per_ship_per_tick == FLEET_DAMAGE_PER_SHIP_PER_TICK
+            })
+            .map(|(idx, _)| idx)
+            .collect::<Vec<_>>();
+        if let Some(world_idx) = compatible.first().copied() {
+            let fleet = &world.fleets[world_idx];
+            let Some(source_slot) = fleet_ids.iter().position(|id| id == &fleet.fleet_id) else {
+                continue;
+            };
+            rows.push(R1bStructuralEvent {
+                tick,
+                event_kind: R1bStructuralEventKind::ShipCountDelta,
+                source_slot: source_slot as u32,
+                target_slot: 0,
+                source_cell: system.cell_index,
+                target_cell: 0,
+                owner_code: r1b_owner_code(system.owner),
+                amount_or_delta: ship_delta,
+                threshold_code: 0,
+            });
+        } else {
+            rows.push(R1bStructuralEvent {
+                tick,
+                event_kind: R1bStructuralEventKind::LocalBirthRequest,
+                source_slot: 0,
+                target_slot: 0,
+                source_cell: system.cell_index,
+                target_cell: 0,
+                owner_code: r1b_owner_code(system.owner),
+                amount_or_delta: ship_delta,
+                threshold_code: 0,
+            });
+        }
+    }
+    rows
+}
+
+pub fn r1b_oracle_events_by_tick(
+    report: &DressRehearsalR6cReport,
+    fleet_ids: &[String],
+    system_indices: &[usize],
+) -> BTreeMap<u32, Vec<R1bStructuralEvent>> {
+    let mut by_tick: BTreeMap<u32, Vec<R1bStructuralEvent>> = BTreeMap::new();
+    for row in &report.boundary_request_rows {
+        if !row.event_emitted {
+            continue;
+        }
+        let actor_slot = fleet_ids
+            .iter()
+            .position(|id| id == &row.mover_id)
+            .unwrap_or(0) as u32;
+        by_tick
+            .entry(row.tick)
+            .or_default()
+            .push(R1bStructuralEvent {
+                tick: row.tick,
+                event_kind: R1bStructuralEventKind::MoveRequest,
+                source_slot: actor_slot,
+                target_slot: 0,
+                source_cell: row.source_cell_index,
+                target_cell: row.destination_cell_index,
+                owner_code: 0,
+                amount_or_delta: 0,
+                threshold_code: row.threshold_input_mag_bits,
+            });
+    }
+    for row in &report.combat_rows {
+        let source_slot = fleet_ids
+            .iter()
+            .position(|id| id == &row.combatant_id)
+            .unwrap_or(0) as u32;
+        if row.ship_loss_event_emitted {
+            by_tick
+                .entry(row.tick)
+                .or_default()
+                .push(R1bStructuralEvent {
+                    tick: row.tick,
+                    event_kind: R1bStructuralEventKind::DamageDelta,
+                    source_slot,
+                    target_slot: 0,
+                    source_cell: row.cell_index,
+                    target_cell: 0,
+                    owner_code: r1b_owner_code(row.owner),
+                    amount_or_delta: -(row.ships_destroyed),
+                    threshold_code: 0,
+                });
+        }
+        if row.zero_cohort_event_emitted {
+            by_tick
+                .entry(row.tick)
+                .or_default()
+                .push(R1bStructuralEvent {
+                    tick: row.tick,
+                    event_kind: R1bStructuralEventKind::ZeroCohort,
+                    source_slot,
+                    target_slot: 0,
+                    source_cell: row.cell_index,
+                    target_cell: 0,
+                    owner_code: r1b_owner_code(row.owner),
+                    amount_or_delta: 0,
+                    threshold_code: 0,
+                });
+        }
+    }
+    for row in &report.reinforcement_rows {
+        let source_slot = fleet_ids
+            .iter()
+            .position(|id| id == &row.target_fleet_id)
+            .unwrap_or(0) as u32;
+        by_tick
+            .entry(row.tick)
+            .or_default()
+            .push(R1bStructuralEvent {
+                tick: row.tick,
+                event_kind: R1bStructuralEventKind::ShipCountDelta,
+                source_slot,
+                target_slot: 0,
+                source_cell: row.cell_index,
+                target_cell: 0,
+                owner_code: r1b_owner_code(row.owner),
+                amount_or_delta: row.ship_count_delta,
+                threshold_code: 0,
+            });
+    }
+    for row in &report.birth_rows {
+        by_tick
+            .entry(row.tick)
+            .or_default()
+            .push(R1bStructuralEvent {
+                tick: row.tick,
+                event_kind: R1bStructuralEventKind::LocalBirthRequest,
+                source_slot: 0,
+                target_slot: 0,
+                source_cell: row.cell_index,
+                target_cell: 0,
+                owner_code: r1b_owner_code(row.owner),
+                amount_or_delta: row.num_ships,
+                threshold_code: 0,
+            });
+    }
+    for row in &report.fusion_rows {
+        let source_slot = fleet_ids
+            .iter()
+            .position(|id| id == &row.surviving_fleet_id)
+            .unwrap_or(0) as u32;
+        let target_slot = fleet_ids
+            .iter()
+            .position(|id| id == &row.absorbed_fleet_id)
+            .unwrap_or(0) as u32;
+        by_tick
+            .entry(row.tick)
+            .or_default()
+            .push(R1bStructuralEvent {
+                tick: row.tick,
+                event_kind: R1bStructuralEventKind::FusionRequest,
+                source_slot,
+                target_slot,
+                source_cell: row.cell_index,
+                target_cell: row.cell_index,
+                owner_code: r1b_owner_code(row.owner),
+                amount_or_delta: row.right_num_ships,
+                threshold_code: 0,
+            });
+    }
+    for row in &report.economy_rows {
+        if !row.owner_column_flipped {
+            continue;
+        }
+        let source_slot = system_indices
+            .iter()
+            .position(|idx| *idx == row.system_index)
+            .unwrap_or(0) as u32;
+        by_tick
+            .entry(row.tick)
+            .or_default()
+            .push(R1bStructuralEvent {
+                tick: row.tick,
+                event_kind: R1bStructuralEventKind::OwnerCodeFlip,
+                source_slot,
+                target_slot: 0,
+                source_cell: row.cell_index,
+                target_cell: 0,
+                owner_code: row.blockader.map(r1b_owner_code).unwrap_or(0),
+                amount_or_delta: 0,
+                threshold_code: 0,
+            });
+    }
+    by_tick
+}
+
+/// Emits combat, production, and fusion structural rows from post-movement world state.
+/// Does not re-run movement; uses the same R6C tick kernels as the integrated oracle.
+pub fn r1b_emit_post_movement_structural_events(
+    witness: &R1aBoundaryWitness,
+    tick: u32,
+    moved_cells: &BTreeSet<u32>,
+    tick_economy_rows: &[DressRehearsalR6cEconomyRow],
+) -> Vec<R1bStructuralEvent> {
+    let mut scratch = witness.clone_for_event_derivation();
+    let fleet_ids = scratch.fleet_ids.clone();
+    let system_indices = scratch.system_indices.clone();
+    let capability = scratch.capability.clone();
+
+    let mut combat_rows = Vec::new();
+    let mut reduce_rows = Vec::new();
+    let mut disburse_rows = Vec::new();
+    run_combat_tick(
+        tick,
+        &mut scratch.world,
+        moved_cells,
+        &capability,
+        &mut combat_rows,
+        &mut reduce_rows,
+        &mut disburse_rows,
+    );
+
+    let mut construction_rows = Vec::new();
+    let mut reinforcement_rows = Vec::new();
+    let mut birth_rows = Vec::new();
+    let mut fusion_rows = Vec::new();
+    run_production_tick(
+        tick,
+        &mut scratch.world,
+        tick_economy_rows,
+        &mut construction_rows,
+        &mut reinforcement_rows,
+        &mut birth_rows,
+        &mut fusion_rows,
+    );
+
+    let mut events = Vec::new();
+    for row in &combat_rows {
+        let source_slot = fleet_ids
+            .iter()
+            .position(|id| id == &row.combatant_id)
+            .unwrap_or(0) as u32;
+        if row.ship_loss_event_emitted {
+            events.push(R1bStructuralEvent {
+                tick: row.tick,
+                event_kind: R1bStructuralEventKind::DamageDelta,
+                source_slot,
+                target_slot: 0,
+                source_cell: row.cell_index,
+                target_cell: 0,
+                owner_code: r1b_owner_code(row.owner),
+                amount_or_delta: -row.ships_destroyed,
+                threshold_code: 0,
+            });
+        }
+        if row.zero_cohort_event_emitted {
+            events.push(R1bStructuralEvent {
+                tick: row.tick,
+                event_kind: R1bStructuralEventKind::ZeroCohort,
+                source_slot,
+                target_slot: 0,
+                source_cell: row.cell_index,
+                target_cell: 0,
+                owner_code: r1b_owner_code(row.owner),
+                amount_or_delta: 0,
+                threshold_code: 0,
+            });
+        }
+    }
+    for row in &reinforcement_rows {
+        let source_slot = fleet_ids
+            .iter()
+            .position(|id| id == &row.target_fleet_id)
+            .unwrap_or(0) as u32;
+        events.push(R1bStructuralEvent {
+            tick: row.tick,
+            event_kind: R1bStructuralEventKind::ShipCountDelta,
+            source_slot,
+            target_slot: 0,
+            source_cell: row.cell_index,
+            target_cell: 0,
+            owner_code: r1b_owner_code(row.owner),
+            amount_or_delta: row.ship_count_delta,
+            threshold_code: 0,
+        });
+    }
+    for row in &birth_rows {
+        events.push(R1bStructuralEvent {
+            tick: row.tick,
+            event_kind: R1bStructuralEventKind::LocalBirthRequest,
+            source_slot: 0,
+            target_slot: 0,
+            source_cell: row.cell_index,
+            target_cell: 0,
+            owner_code: r1b_owner_code(row.owner),
+            amount_or_delta: row.num_ships,
+            threshold_code: 0,
+        });
+    }
+    for row in &fusion_rows {
+        let source_slot = fleet_ids
+            .iter()
+            .position(|id| id == &row.surviving_fleet_id)
+            .unwrap_or(0) as u32;
+        let target_slot = fleet_ids
+            .iter()
+            .position(|id| id == &row.absorbed_fleet_id)
+            .unwrap_or(0) as u32;
+        events.push(R1bStructuralEvent {
+            tick: row.tick,
+            event_kind: R1bStructuralEventKind::FusionRequest,
+            source_slot,
+            target_slot,
+            source_cell: row.cell_index,
+            target_cell: row.cell_index,
+            owner_code: r1b_owner_code(row.owner),
+            amount_or_delta: row.right_num_ships,
+            threshold_code: 0,
+        });
+    }
+    for economy_row in tick_economy_rows {
+        if !economy_row.owner_column_flipped {
+            continue;
+        }
+        let source_slot = system_indices
+            .iter()
+            .position(|idx| *idx == economy_row.system_index)
+            .unwrap_or(0) as u32;
+        events.push(R1bStructuralEvent {
+            tick,
+            event_kind: R1bStructuralEventKind::OwnerCodeFlip,
+            source_slot,
+            target_slot: 0,
+            source_cell: economy_row.cell_index,
+            target_cell: 0,
+            owner_code: economy_row.blockader.map(r1b_owner_code).unwrap_or(0),
+            amount_or_delta: 0,
+            threshold_code: 0,
+        });
+    }
+    events
+}
+
+pub fn r1b_stage_movement_extraction(
+    world: &DressRehearsalR6cWorld,
+    fleet_ids: &[String],
+    capability: &[DressRehearsalR6cCapabilityOverlayRow],
+    tick: u32,
+) -> (Vec<R1bStructuralEvent>, BTreeSet<u32>) {
+    let mut scratch = world.clone();
+    let mut field_rows = Vec::new();
+    let mut boundary_rows = Vec::new();
+    let mut movement_rows = Vec::new();
+    let moved_cells = run_movement_tick(
+        tick,
+        &mut scratch,
+        capability,
+        &mut field_rows,
+        &mut boundary_rows,
+        &mut movement_rows,
+    );
+    let events = boundary_rows
+        .into_iter()
+        .filter(|row| row.event_emitted)
+        .map(|row| {
+            let source_slot = fleet_ids
+                .iter()
+                .position(|id| id == &row.mover_id)
+                .unwrap_or(0) as u32;
+            R1bStructuralEvent {
+                tick: row.tick,
+                event_kind: R1bStructuralEventKind::MoveRequest,
+                source_slot,
+                target_slot: 0,
+                source_cell: row.source_cell_index,
+                target_cell: row.destination_cell_index,
+                owner_code: 0,
+                amount_or_delta: 0,
+                threshold_code: row.threshold_input_mag_bits,
+            }
+        })
+        .collect();
+    (events, moved_cells)
+}
+
+pub fn r1b_predict_fusion_events(
+    world: &DressRehearsalR6cWorld,
+    fleet_ids: &[String],
+    tick: u32,
+) -> Vec<R1bStructuralEvent> {
+    let mut groups: BTreeMap<(DressRehearsalR6cOwner, u32, i64, i64), Vec<usize>> = BTreeMap::new();
+    for (idx, fleet) in world.fleets.iter().enumerate() {
+        if fleet.destroyed || fleet.num_ships <= 0 || !fleet.fleet_like {
+            continue;
+        }
+        groups
+            .entry((
+                fleet.owner,
+                fleet.cell_index,
+                fleet.hp_per_ship,
+                fleet.damage_per_ship_per_tick,
+            ))
+            .or_default()
+            .push(idx);
+    }
+
+    let mut events = Vec::new();
+    for indices in groups.values() {
+        if indices.len() < 2 {
+            continue;
+        }
+        let mut ordered = indices.clone();
+        ordered.sort_by_key(|idx| world.fleets[*idx].fleet_id.clone());
+        let survivor_idx = ordered[0];
+        let survivor_id = &world.fleets[survivor_idx].fleet_id;
+        let Some(survivor_slot) = fleet_ids.iter().position(|id| id == survivor_id) else {
+            continue;
+        };
+        for absorbed_idx in ordered.iter().copied().skip(1) {
+            let absorbed = &world.fleets[absorbed_idx];
+            if absorbed.destroyed {
+                continue;
+            }
+            let Some(absorbed_slot) = fleet_ids.iter().position(|id| id == &absorbed.fleet_id)
+            else {
+                continue;
+            };
+            events.push(R1bStructuralEvent {
+                tick,
+                event_kind: R1bStructuralEventKind::FusionRequest,
+                source_slot: survivor_slot as u32,
+                target_slot: absorbed_slot as u32,
+                source_cell: absorbed.cell_index,
+                target_cell: absorbed.cell_index,
+                owner_code: r1b_owner_code(absorbed.owner),
+                amount_or_delta: absorbed.num_ships.max(0),
+                threshold_code: 0,
+            });
+        }
+    }
+    events
+}
+
+fn r1b_owner_code(owner: DressRehearsalR6cOwner) -> u32 {
+    match owner {
+        DressRehearsalR6cOwner::Terran => 1,
+        DressRehearsalR6cOwner::Pirate => 2,
     }
 }

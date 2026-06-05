@@ -1,3 +1,11 @@
+# 2026-06-05 - RUNTIME-0080-0-R1b-IMPL-0: resident event journal for GPU structural decisions
+
+- **Implemented R1b:** `crates/simthing-driver/src/runtime_0080_0_r1b.rs` adds `RESIDENT-EVENTLOG-0` — dedicated `AccumulatorOpSession` event journal, per-tick `field_agent` movement extraction staged through GPU Identity copy/readback, post-movement structural row emission, bounded CPU boundary maintenance (`r1b_apply_boundary_events`), disabled-transform event-writer negative control, and R1a Tier-A loop reuse.
+- **Verdict:** PARTIAL — journal created, GPU writes/reads rows, boundary pass consumes rows without re-deriving movement/combat/production/blockade planners; aggregate oracle parity not yet earned (`DamageDelta`, `ZeroCohort`, `ShipCountDelta`, `LocalBirthRequest` missing from GPU totals).
+- **Event kinds observed:** `MoveRequest`, `OwnerCodeFlip`, `FusionRequest` (partial); combat and reinforcement kinds pending witness/journal alignment.
+- **Disabled-transform parity check:** disabling event writers fails oracle parity; re-enable restores partial row sets only until full parity fix.
+- **Test gate:** `cargo test -p simthing-driver --test runtime_0080_0_r1b` → 21 passed; 5 failed. R1a regression: 35 passed. Report: [`docs/tests/runtime_0080_0_r1b_resident_event_journal_results.md`](tests/runtime_0080_0_r1b_resident_event_journal_results.md).
+
 # 2026-06-05 - RUNTIME-0080-0-R1a-HARDEN-0: removed oracle-fed replay from Tier-A GPU source-of-truth
 
 - **Hardened Outcome A:** Replaced `TierAInputTables::from_report` oracle-fed per-tick replay with `R1aBoundaryWitness::derive_tick_inputs` (algorithmic R6C tick stepping for boundary inputs only). Per-tick metadata/disruption inputs are written via `fill_slot_range_col` each tick; seed uploads only initial Tier-A state + static constants (denom, blockade default owners).
