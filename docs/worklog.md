@@ -1,3 +1,10 @@
+# 2026-06-05 - RUNTIME-0080-0-R1c-a-IMPL-0: resident free-list mark-only PASS
+
+- **Implemented R1c-a:** `crates/simthing-driver/src/runtime_0080_0_r1c_a.rs` adds `RESIDENT-FREELIST-MARK-ONLY-0`, the smaller rung named by R1c. R1b now exposes a compact free-slot mark-source projection from its GPU-read resident journal rows, and R1c-a copies those marks through a resident GPU slot bitmap.
+- **Evidence:** GPU-vs-oracle mark parity is measured from GPU values; disabling mark writers leaves the bitmap empty and fails parity. Stable report checksum `58d70988e436777b`.
+- **Boundary held:** this pass claims only `resident_free_list_mark_authority = true`. Allocation into marked slots, REENROLL scatter, birth/removal authority, fusion compaction, and `structural_decisions_gpu_emitted` remain false. Next horizon: `R1c-b resident allocation into marked free slots / no compaction`.
+- **Test gate:** `cargo test -p simthing-driver --test runtime_0080_0_r1c_a` → 9 passed; 0 failed. Report: [`docs/tests/runtime_0080_0_r1c_a_free_list_mark_results.md`](tests/runtime_0080_0_r1c_a_free_list_mark_results.md).
+
 # 2026-06-05 - RUNTIME-0080-0-R1c-IMPL-0: resident decision stop-line and complete-shadow gate
 
 - **Implemented the honest R1c gate:** `crates/simthing-driver/src/runtime_0080_0_r1c.rs` refuses to claim resident structural decision authority while the free-list-scatter / compaction primitive is still parked. The report keeps `structural_decisions_gpu_emitted = false`, carries R1b as the predecessor evidence (`247` GPU event rows exactly matching the oracle), and names the smaller next rung: `R1c-a resident free-list mark-only / no compaction`.

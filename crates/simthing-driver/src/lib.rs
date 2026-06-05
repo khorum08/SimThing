@@ -53,6 +53,7 @@ pub mod runtime_0080_0_r0;
 pub mod runtime_0080_0_r1a;
 pub mod runtime_0080_0_r1b;
 pub mod runtime_0080_0_r1c;
+pub mod runtime_0080_0_r1c_a;
 pub mod scenario;
 pub mod session;
 pub mod spec_replay;
@@ -451,6 +452,15 @@ pub use runtime_0080_0_r1c::{
     Runtime0080R1cStopLineReport, RUNTIME_0080_0_R1C_ID, RUNTIME_0080_0_R1C_PRIMITIVE,
     RUNTIME_0080_0_R1C_STATUS_BLOCKED, RUNTIME_0080_0_R1C_STATUS_PARTIAL,
     RUNTIME_R1C_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_SCOPE,
+};
+pub use runtime_0080_0_r1c_a::{
+    render_runtime_0080_r1c_a_artifact, replay_runtime_0080_0_r1c_a,
+    run_runtime_0080_0_r1c_a, run_runtime_0080_0_r1c_a_with_mark_writers_enabled,
+    Runtime0080R1cAInput, Runtime0080R1cAMarkerReport, Runtime0080R1cAMarkTraceRow,
+    Runtime0080R1cAPredecessorReport, Runtime0080R1cAReport, RUNTIME_0080_0_R1C_A_ID,
+    RUNTIME_0080_0_R1C_A_PRIMITIVE, RUNTIME_0080_0_R1C_A_STATUS_BLOCKED,
+    RUNTIME_0080_0_R1C_A_STATUS_PASS, RUNTIME_R1C_A_EXPECTED_REPORT_CHECKSUM,
+    RUNTIME_R1C_A_SCOPE,
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};
