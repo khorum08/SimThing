@@ -1,0 +1,31 @@
+---
+description: Never redirect stdout/stderr in shell commands (Windows-safe)
+alwaysApply: true
+---
+
+# No shell output redirection
+
+On **Windows PowerShell**, never redirect or merge stdout/stderr when running shell commands.
+
+## Forbidden (never use)
+
+- `2>&1`, `*>&1`, `1>&2`, `| Out-File`, `| Tee-Object`
+- Piping native commands to filter output: `cargo … | Select-Object`, `git … | Select-String`, `gh … | Select-Object -First N`
+- Chaining multiple native commands in one line when any leg might write to stderr: `git …; git log … 2>&1; gh … 2>&1`
+
+These patterns turn **informational stderr** from `cargo`, `git`, and `gh` into **terminating `NativeCommandError`** failures and abort the agent turn.
+
+## Required
+
+- Run **one command per shell invocation** when using `cargo`, `git`, or `gh`.
+- Use **plain commands** with raw stdout/stderr: `cargo test -p simthing-driver --test runtime_0080_0_r0`
+- For final gates: **foreground** only with `block_until_ms` long enough for compile + test (see `no-background-final-tests.mdc`).
+
+## Truncating output (token burn only)
+
+Only when output would materially burn context tokens (e.g. full-workspace `cargo test` with thousands of lines):
+
+- Prefer a **narrower command** first: `cargo test -p simthing-driver --test foo`, `cargo check -p simthing-driver`
+- Use tool parameters (`head_limit`, `offset`, `limit`) when **reading** saved files — not shell pipes
+
+Do **not** use redirection or pipes to truncate live command output unless the user explicitly asks.

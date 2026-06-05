@@ -1,8 +1,9 @@
-//! RUNTIME-0080-0-R0: single-tier GPU-resident tick scheduler for R6C.
+//! RUNTIME-0080-0-R0: single-tier GPU mirror-dispatch scheduler for R6C (R0A remedial posture).
 //!
-//! Holds world state in a persistent GPU `AccumulatorOpSession` across the canonical 100 ticks,
-//! uploads CPU tick results between ticks without intermediate world readback, and dispatches the
-//! already-measured per-tick shapes through the accepted generic GPU path.
+//! CPU R6C remains tick authority. After each CPU tick, this rung uploads the mutated world into a
+//! persistent GPU `AccumulatorOpSession` (upload-only between ticks; no intermediate world readback)
+//! and dispatches the already-measured per-tick shapes through the accepted generic GPU path for
+//! validation. GPU-resident state does **not** yet drive the next tick.
 
 use simthing_core::{
     eml_opcode, AccumulatorOp, CombineFn, ConsumeMode, EmlConsumerMask, EmlExecutionClass,
@@ -28,13 +29,19 @@ use crate::dress_rehearsal_r6c_integrated_run::{
 pub const RUNTIME_0080_0_R0_ID: &str = "RUNTIME-0080-0-R0";
 pub const RUNTIME_0080_0_R0_STATUS_PASS: &str =
     "IMPLEMENTED / PASS - single-tier GPU-resident R6C scheduler";
+pub const RUNTIME_0080_0_R0_STATUS_PARTIAL: &str =
+    "IMPLEMENTED / PARTIAL - CPU-authoritative mirror dispatch with per-tick GPU shape validation";
 pub const RUNTIME_R0_EXPECTED_R6C_CHECKSUM: u64 = 0x1bba891c779190a4;
 pub const RUNTIME_R0_R4_F32_BOUND: f32 = 1.0e-4;
 pub const RUNTIME_R0_WHOLE_RUN_GPU_MEASURED: &str =
     "R6C whole-run GPU-measured on RUNTIME-0080-0-R0";
+pub const RUNTIME_R0_WHOLE_RUN_PARTIAL: &str = "R6C whole-run remains GPU-conformant; per-tick shapes GPU-dispatched against CPU-authoritative R6C; GPU-resident next-tick authority not yet implemented";
 pub const RUNTIME_R0_WHOLE_RUN_UNMEASURED: &str = R6C_GPU_POSTURE;
 pub const RUNTIME_R0_GPU_BLOCKED: &str =
     "GPU measurement blocked: no discrete GPU available in environment";
+pub const RUNTIME_R0_SUBSTRATE_GAP: &str = "GPU-resident cross-tick world transition authority for the full R6C R1→R6B integrated loop (movement/REENROLL, combat disbursement, construction/fusion write-back) requires a new runtime substrate primitive beyond mirror upload + per-tick shape dispatch; not present in ATLAS-0080-0 / AccumulatorOp / StructuredFieldStencil alone";
+pub const RUNTIME_R0_FOREGROUND_CAPTURE: &str =
+    "plain foreground PowerShell cargo test (no stdout/stderr redirection)";
 
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
@@ -114,6 +121,11 @@ pub struct Runtime0080R0Report {
     pub r4_within_bound: bool,
     pub r6c_whole_run_gpu_posture: &'static str,
     pub cpu_oracle_parity: bool,
+    pub cpu_is_tick_authority: bool,
+    pub gpu_state_feeds_next_tick: bool,
+    pub mirror_dispatch_after_cpu_tick: bool,
+    pub substrate_gap_for_true_pass: &'static str,
+    pub foreground_capture_method: &'static str,
     pub residency_trace: Vec<Runtime0080R0ResidencyTraceRow>,
     pub stable_report_checksum: u64,
     pub artifact_markdown: String,
@@ -160,9 +172,11 @@ pub fn run_runtime_0080_0_r0(input: &Runtime0080R0Input) -> Runtime0080R0Report 
         && observed_checksum == RUNTIME_R0_EXPECTED_R6C_CHECKSUM;
     let r4_within_bound = scheduler.max_r4_abs_delta <= RUNTIME_R0_R4_F32_BOUND;
     let cpu_oracle_parity = integer_bit_exact && r4_within_bound;
-    let whole_run_measured = scheduler.gpu_resident_across_ticks
-        && scheduler.inter_tick_world_readbacks == 0
-        && cpu_oracle_parity;
+    let cpu_is_tick_authority = true;
+    let gpu_state_feeds_next_tick = false;
+    let mirror_dispatch_after_cpu_tick = true;
+    let whole_run_measured =
+        gpu_state_feeds_next_tick && scheduler.gpu_resident_across_ticks && cpu_oracle_parity;
 
     let mut report = base_report(
         input,
@@ -173,15 +187,17 @@ pub fn run_runtime_0080_0_r0(input: &Runtime0080R0Input) -> Runtime0080R0Report 
     );
     report.verdict = if whole_run_measured {
         "PASS"
-    } else if scheduler.gpu_resident_across_ticks {
+    } else if cpu_oracle_parity && scheduler.gpu_resident_across_ticks {
         "PARTIAL"
     } else {
         "BLOCKED"
     };
     report.status = if whole_run_measured {
         RUNTIME_0080_0_R0_STATUS_PASS
+    } else if report.verdict == "PARTIAL" {
+        RUNTIME_0080_0_R0_STATUS_PARTIAL
     } else {
-        "IMPLEMENTED / PARTIAL - GPU resident scheduler without full whole-run measurement"
+        "BLOCKED - GPU resident scheduler without oracle parity"
     };
     report.ticks_scheduled = R6C_CANONICAL_TICK_COUNT;
     report.gpu_resident_across_ticks = scheduler.gpu_resident_across_ticks;
@@ -197,8 +213,15 @@ pub fn run_runtime_0080_0_r0(input: &Runtime0080R0Input) -> Runtime0080R0Report 
     report.r4_max_abs_delta = scheduler.max_r4_abs_delta;
     report.r4_within_bound = r4_within_bound;
     report.cpu_oracle_parity = cpu_oracle_parity;
+    report.cpu_is_tick_authority = cpu_is_tick_authority;
+    report.gpu_state_feeds_next_tick = gpu_state_feeds_next_tick;
+    report.mirror_dispatch_after_cpu_tick = mirror_dispatch_after_cpu_tick;
+    report.substrate_gap_for_true_pass = RUNTIME_R0_SUBSTRATE_GAP;
+    report.foreground_capture_method = RUNTIME_R0_FOREGROUND_CAPTURE;
     report.r6c_whole_run_gpu_posture = if whole_run_measured {
         RUNTIME_R0_WHOLE_RUN_GPU_MEASURED
+    } else if report.verdict == "PARTIAL" {
+        RUNTIME_R0_WHOLE_RUN_PARTIAL
     } else {
         RUNTIME_R0_WHOLE_RUN_UNMEASURED
     };
@@ -223,7 +246,8 @@ struct RuntimeGpuHook<'a> {
 
 impl R6cGpuTickHook for RuntimeGpuHook<'_> {
     fn after_tick(&mut self, tick: u32, world: &DressRehearsalR6cWorld) {
-        self.scheduler.after_cpu_tick(self.ctx, tick, world);
+        self.scheduler
+            .mirror_dispatch_after_cpu_tick(self.ctx, tick, world);
     }
 }
 
@@ -277,7 +301,12 @@ impl GpuResidentScheduler {
         })
     }
 
-    fn after_cpu_tick(&mut self, ctx: &GpuContext, tick: u32, world: &DressRehearsalR6cWorld) {
+    fn mirror_dispatch_after_cpu_tick(
+        &mut self,
+        ctx: &GpuContext,
+        tick: u32,
+        world: &DressRehearsalR6cWorld,
+    ) {
         let boundary_before = self.tick_boundary_readbacks;
         self.upload_world(ctx, world);
         self.dispatch_r1(ctx, world);
@@ -828,6 +857,11 @@ fn base_report(
         r4_within_bound: false,
         r6c_whole_run_gpu_posture: RUNTIME_R0_WHOLE_RUN_UNMEASURED,
         cpu_oracle_parity: false,
+        cpu_is_tick_authority: false,
+        gpu_state_feeds_next_tick: false,
+        mirror_dispatch_after_cpu_tick: false,
+        substrate_gap_for_true_pass: "",
+        foreground_capture_method: RUNTIME_R0_FOREGROUND_CAPTURE,
         residency_trace: Vec::new(),
         stable_report_checksum: 0,
         artifact_markdown: String::new(),
@@ -849,6 +883,9 @@ fn checksum_report(report: &Runtime0080R0Report) -> u64 {
     mix_u64(&mut hash, report.inter_tick_world_readbacks as u64);
     mix_u64(&mut hash, report.dispatch_r1_ticks as u64);
     mix_u64(&mut hash, report.dispatch_r4_ticks as u64);
+    mix_u64(&mut hash, report.cpu_is_tick_authority as u64);
+    mix_u64(&mut hash, report.gpu_state_feeds_next_tick as u64);
+    mix_u64(&mut hash, report.mirror_dispatch_after_cpu_tick as u64);
     hash
 }
 
@@ -909,6 +946,12 @@ pub fn render_runtime_0080_r0_artifact(report: &Runtime0080R0Report) -> String {
          - dispatch_r4_ticks: {r4}\n\
          - dispatch_r6_ticks: {r6}\n\
          - dispatch_r6b_ticks: {r6b}\n\n\
+         ## Tick authority model\n\
+         - cpu_is_tick_authority: {cpu_authority}\n\
+         - gpu_state_feeds_next_tick: {gpu_feeds}\n\
+         - mirror_dispatch_after_cpu_tick: {mirror_dispatch}\n\
+         - substrate_gap_for_true_pass: {substrate_gap}\n\
+         - foreground_capture_method: {capture}\n\n\
          ## CPU oracle comparison\n\
          - r6c_checksum_expected: `{expected:016x}`\n\
          - r6c_checksum_observed: `{observed:016x}`\n\
@@ -940,6 +983,11 @@ pub fn render_runtime_0080_r0_artifact(report: &Runtime0080R0Report) -> String {
         r4 = report.dispatch_r4_ticks,
         r6 = report.dispatch_r6_ticks,
         r6b = report.dispatch_r6b_ticks,
+        cpu_authority = report.cpu_is_tick_authority,
+        gpu_feeds = report.gpu_state_feeds_next_tick,
+        mirror_dispatch = report.mirror_dispatch_after_cpu_tick,
+        substrate_gap = report.substrate_gap_for_true_pass,
+        capture = report.foreground_capture_method,
         expected = report.r6c_checksum_expected,
         observed = report.r6c_checksum_observed,
         integer = report.integer_trajectory_bit_exact,

@@ -119,8 +119,8 @@ Specifically R0 must:
 
 ## 6. Operating rules / scratch policy
 
-- Windows PowerShell: run the final `cargo test` in the **foreground** (no `block_until_ms: 0`); avoid
-  bare `2>&1` on `cargo` (use plain `cargo test …` or `*>&1 | Tee-Object`).
+- Windows PowerShell: run the final `cargo test` in the **foreground** (no `block_until_ms: 0`); use plain
+  `cargo test …` with **no** stdout/stderr redirection (`2>&1`, `*>&1`, `Tee-Object`, or output pipes).
 - Opt-in/default-off; no default `SimSession` schedule change.
 - No new semantic WGSL, no new op, no new invariant, no pinned-number change, no scenario reopen (§3).
 - Save only required visibility under `docs/tests`; delete scratch/tmp/log outputs no longer needed.
