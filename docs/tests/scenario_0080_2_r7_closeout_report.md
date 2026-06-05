@@ -46,12 +46,13 @@ This is a **claim-boundary closeout**, not another acceptance ritual and not a n
 
 - It is a **vertical slice / chain**, *not* a self-sustaining multi-tick **loop**. The rungs are
   single-pass fixtures wired in series; the closed strategic loop (§3 items 12–13) is **not** demonstrated.
-- **Single galactic tier**, 13 systems on the 20×20 canonical field, **opt-in / default-off**,
-  **CPU-oracle primary**. System→planet recursion remains a named build fork (not proven depth).
+- **Single galactic tier**, 13 systems on the 20×20 canonical field, **opt-in / default-off**, verified
+  against the **CPU oracle** (the determinism reference for the GPU path; GPU residency remains the target,
+  §6). System→planet recursion remains a named build fork (not proven depth).
 - "Pathfinding" is **not** solved and was never solved earlier: movement is **greedy per-step local SEAD
   gradient reads**, never route search or lookahead (`multi_step_pathfinding` stays rejected).
-- Combat is a **Resource-Flow proof**, fixture-staged co-location, CPU-oracle primary — **not**
-  production-ready, not a GPU combat kernel.
+- Combat is a **Resource-Flow proof** with fixture-staged co-location, verified via the CPU oracle — **not**
+  production-ready; its GPU-resident execution is a follow-on measurement, not yet run here (§6).
 
 The candidate claim in the review prompt is **accurate but slightly too strong on one word**: "loop" →
 "slice/chain". With that and the qualifiers above, it is authorized.
@@ -106,7 +107,7 @@ kernels; AI planner.
 
 ---
 
-## 5. R4 spatial-bias note (binding wording)
+## 5. R4 spatial-bias note (claim-boundary note)
 
 R4 uses a small deterministic spatial bias (`cell_index * 0.01 + x * 0.001`) to keep `GradientXY`
 non-degenerate in the sparse canonical field.
@@ -121,17 +122,31 @@ non-degenerate in the sparse canonical field.
 
 ---
 
-## 6. GPU / substrate residency posture (binding wording)
+## 6. GPU / substrate residency — evidence status (not a guardrail)
 
-- R1–R6B are **substrate/GPU-shaped where applicable** but **CPU-oracle primary**. Do **not** claim full
-  production GPU residency for the rehearsal rungs.
-- R4 runs `GradientXY` through the `simthing-gpu` **CPU oracle** (`cpu_horizon`); exact magnitude via
-  Candidate-F (`sqrt_cr_f_bits`, artifact `e2e9e27601ee2e13`). No GPU diagnostic was run for R4.
-- R6 / R6B are shaped as **threshold / emission-band / masked-row** logic (GPU-resident *shape*), but are
-  **not** GPU kernels.
-- The **only** actual discrete-GPU validation evidence in this vertical is **ATLAS-BATCH-0 STORE-GPU**
-  (integer bit-exact, validated cross-adapter on the RTX 4080 ladder). R7 inherits that; it does not
-  extend a GPU claim to the rehearsal rungs.
+> **This is an evidence statement, not a binding guardrail.** Guardrails live at admission/authoring
+> (`simthing-spec` / CLAUSE-SPEC) and the runtime last line per `invariants.md` — a test report does not
+> mint binding constraints. And per the founding premise (design §0/§0.1), **GPU residency is the target**:
+> the whole point is to keep as much calculation as possible resident on the GPU as uniform automata. So
+> "GPU-shaped" below is **conformance to that target — a positive result**, not a claim to be suppressed.
+> The only honest limitation is a **measurement gap**: these rungs were verified against the CPU oracle and
+> have **not yet been executed on the GPU** in this vertical.
+
+- **Conformance (positive):** R1–R6B are written as row / mask / threshold / emission-band operations —
+  exactly the shape that lowers to GPU-resident `AccumulatorOp` automata. They carry **no** bespoke
+  CPU-only control flow that would block GPU residency. This is the rehearsal doing what §0 asks.
+- **Verification method:** the **CPU oracle is the determinism reference** the GPU path is checked against
+  (it is how every accepted GPU rung in this project is validated — CPU oracle ↔ GPU bit-exact). R4 runs
+  `GradientXY` via `simthing-gpu`'s `cpu_horizon`; exact magnitude via Candidate-F (`sqrt_cr_f_bits`,
+  artifact `e2e9e27601ee2e13`). Using the oracle is **correct practice**, not a posture against GPU.
+- **Measurement gap (the only limitation):** a GPU *execution* diagnostic has **not yet been run** for
+  R4/R6/R6B in this vertical. So the accurate phrasing is **"GPU-conformant; GPU execution not yet
+  measured here"** — not "validated on GPU" and not "CPU is the target." Closing this gap is a follow-on
+  measurement, not a redesign.
+- **Already measured on discrete GPU:** **ATLAS-BATCH-0 STORE-GPU** — integer bit-exact, validated
+  cross-adapter on the RTX 4080 ladder. That is the standing proof that this substrate's masked-reduction
+  shape executes GPU-resident and bit-exact; the rehearsal rungs are the same shape awaiting the same
+  measurement.
 
 ---
 
