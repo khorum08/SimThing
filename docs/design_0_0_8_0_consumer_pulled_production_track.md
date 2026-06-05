@@ -754,6 +754,26 @@ column-flip — each its own gate.
 > "not yet emerged" finding: [`tests/scenario_0080_2_r7_closeout_report.md`](tests/scenario_0080_2_r7_closeout_report.md).
 > M-4A sparse-residency scheduler remains parked.
 >
+> **`SCENARIO-0080-2` is COMPLETE (`SCENARIO-0080-2-COMPLETE-0`, 2026-06-04, design authority).** The
+> rehearsal proves *and runs* a single-galactic-tier, opt-in/default-off integrated SimThing dress
+> rehearsal: occupant-produced disruption, economy/blockade, capability mask-down, SEAD field
+> consumption, movement/REENROLL, fleet-cohort Resource Flow combat, and ship production/fusion all
+> operate through one mutable 100-tick session with write-back. The run is **GPU-conformant and
+> CPU-oracle verified**; GPU execution for the rehearsal rungs remains an unmeasured follow-on
+> diagnostic. Closed **with caveats recorded as findings** (not defects): Terran patrols never crossed
+> the movement threshold (one-sided contest), the production/attrition race is unresolved in 100 ticks,
+> and front/standoff + self-sustaining-loop behaviors only partially emerged. Those findings feed a
+> **future** `SCENARIO-0080-3 — richer multi-hotspot emergence run`, which is **not** opened now.
+>
+> **Next named track: `GPU-MEASURE-0080-0` — GPU execution measurement pass** (opening:
+> [`handoffs/gpu_measure_0080_0_opening.md`](handoffs/gpu_measure_0080_0_opening.md); recipient
+> Cursor/Codex5.5max). One rung: measure the rehearsal's row/mask/threshold/emission-band shapes
+> (R1/R2/R6/R6B integer reductions, R4 f32 magnitude) executing on the discrete GPU via the
+> already-accepted generic AccumulatorOp / STORE-GPU / Candidate-F paths, asserting parity against the
+> CPU oracle — converting `GPU-conformant; GPU execution not yet measured` into `GPU-measured` per shape.
+> No new semantic WGSL, no new op, no new invariant, no reopen of 0080-2; report
+> `docs/tests/gpu_measure_0080_0_results.md`. This closes the central unmeasured claim without redesign.
+>
 > > **✓ Adapter-scope caveat RESOLVED (2026-06-04, design authority).** `GpuContext` now **always selects
 > > a discrete GPU when present** (`context.rs`), and the **full NVIDIA RTX 4080 validation ladder is
 > > complete** — `docs/nvidia_fp_determinism_test.md` (Batteries 01–13). **`cargo test --workspace` is
