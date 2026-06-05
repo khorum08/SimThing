@@ -205,6 +205,21 @@ Gadgets compile to a postfix subgraph over the **existing** `EvalEML` opcode set
 per-gadget kernel, no new opcode.** Formula classes and gadgets are admitted at the RON/designer/spec
 layer with mandatory CPU-oracle parity and a bounded-feedback contract for recurrent gadgets.
 
+The "no new opcode" rule binds the **gadget authoring layer** (gadgets are macros over the fixed
+interpreter vocabulary). It is **not** a blanket prohibition on extending the generic interpreter itself.
+Extending the substrate vocabulary — a new **generic, semantic-free** `EvalEML` opcode, an
+`AccumulatorOp` combine function, or a generic kernel — follows §2.3 exactly: it is a **Tier-2 gate, not
+a prohibition**, admissible when (a) it carries no map/faction/AI/scenario semantics (the interpreter
+sees only floats/indices; admission rejects semantic names), (b) it is paired with **CPU-oracle bit-exact
+parity**, (c) its meaning is pinned entirely at the spec/designer admission layer, and (d) it is
+reusable by any SimThing rather than encoding one scenario's rules. A new opcode that hard-codes a
+specific scenario's behaviour (e.g. an "R6C economy" op) is **semantic** and stays banned; behaviour must
+remain expressed as **data** (EML programs / column params / op registrations) over a generic instruction
+set. Rung/handoff stop-lines that read "no new op / no new WGSL" are **scheduling hygiene**, not
+constitutional bans, and may be narrowed by design authority to the §2.3/§2.4 gate when an honest
+result depends on a generic substrate extension. This never relaxes the *semantic*-freeness guarantee,
+the CPU-oracle parity requirement, or any anti-faking/measurement discipline a rung imposes.
+
 ### 2.5 Anti-loop discipline (the 0.0.7.9 lessons, now constitutional)
 Three rules, each a single principle covering its whole class:
 - **No opening-review treadmill** (0.0.7.9 §2.1). Once a class of work is classified Tier-1 fast-lane,

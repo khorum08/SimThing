@@ -435,4 +435,25 @@ the inject-and-copy pattern is rejected; a correct PARTIAL/BLOCKED naming the ga
 
 **Handoff:** [`../handoffs/runtime_0080_0_r1a_remedial_opening.md`](../handoffs/runtime_0080_0_r1a_remedial_opening.md).
 Report path (rewrite): `docs/tests/runtime_0080_0_r1a_next_tick_authority_results.md`. Recipient:
-Cursor / Codex5.5max. No `docs/invariants.md` edit.
+Cursor / Codex5.5max.
+
+### 14.1 Opcode/WGSL-gate clarification (Opus, 2026-06-05) — the IMPL ban was hygiene theater
+
+Codex flagged that the remedial's blanket "no new WGSL / no new opcode" stop-line is what makes a true
+Outcome A look **BLOCKED** rather than merely laborious. Audit of the constitution confirms the ban was
+**stricter than the constitution itself**: `design_0_0_8_0.md` **§2.3** states *"There is no blanket WGSL
+ban … New generic WGSL is a Tier-2 gate, not a prohibition,"* and **invariants.md** (line 112) already
+admits generic, semantic-free shader extensions paired with CPU-oracle parity. The real guardrail lives at
+the **admission/scenario tier** (semantic-freeness + parity + meaning pinned at the spec layer), not as a
+per-rung prohibition. The one genuine ambiguity — the **EML interpreter opcode set** — was resolved
+constitutionally: §2.4 now states the gadget-layer "no new opcode" rule does **not** ban extending the
+generic interpreter, and invariants.md gains the companion row *"Extending the generic substrate vocabulary
+is a Tier-2 gate, not a prohibition."*
+
+**Ruling.** The remedial handoff is amended (new **§4a admission gate**): adding a **generic, semantic-free**
+`EvalEML` opcode / `AccumulatorOp` combine function / generic WGSL kernel is **permitted** for Outcome A as a
+Tier-2 gate (semantic-free identifier; reusable by any SimThing; R6C behaviour stays data; CPU-oracle
+bit-exact parity; opt-in/default-off). **Semantic** WGSL/opcodes stay banned. The **§6 anti-faking protocol
+is unchanged** — a new opcode that only moves a CPU-injected next-state still fails the negative control;
+lifting the generic-op ban changes only *how* the GPU may truly compute the transition, never the bar for
+proving it did.
