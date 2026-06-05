@@ -61,7 +61,7 @@ E3 has now passed exhaustive finite non-negative proof. A production descriptor/
 - Native `sqrt` remains `ApproximateJitOnly` pending separate admission promotion.
 - `mag2` remains blocked from exact-authoritative inputs pending separate admission promotion.
 - M-JIT remains closed at PROD-0.
-- V7.7 / Mapping ADR / SEAD posture remains intact.
+- V7.7 / Mapping ADR / FIELD_POLICY posture remains intact.
 
 ## Tests and scans run
 
@@ -93,4 +93,4 @@ E3 has now passed exhaustive finite non-negative proof. A production descriptor/
 
 ## Final verdict
 
-**PASS — SQRT-EXACT-4E completed the exhaustive Candidate E3 finite non-negative `f32` sweep.** E3 achieved `max_ulp == 0` over `0x0000_0000..=0x7F7F_FFFF` with exact bit parity and `flush_count == 0`, and is now `ExactDeterministicCandidate` pending a separate descriptor/admission promotion slice. Candidate F was not implemented, Candidate C/f64 was not implemented, no production exact `sqrt` admission or `mag2` authority flip was added, M-JIT remains closed at PROD-0, and V7.7 / Mapping ADR / SEAD guardrails remain intact.
+**PASS — SQRT-EXACT-4E completed the exhaustive Candidate E3 finite non-negative `f32` sweep.** E3 achieved `max_ulp == 0` over `0x0000_0000..=0x7F7F_FFFF` with exact bit parity and `flush_count == 0`, and is now `ExactDeterministicCandidate` pending a separate descriptor/admission promotion slice. Candidate F was not implemented, Candidate C/f64 was not implemented, no production exact `sqrt` admission or `mag2` authority flip was added, M-JIT remains closed at PROD-0, and V7.7 / Mapping ADR / FIELD_POLICY guardrails remain intact.

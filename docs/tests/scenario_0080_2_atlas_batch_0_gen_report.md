@@ -11,7 +11,7 @@
 - `docs/design_0_0_8_0_consumer_pulled_production_track.md` §12–§12.5 — rehearsal design, ATLAS-BATCH-0, OWNER routing, rung ladder.
 - `docs/scenarios/scenario_0080_2_dress_rehearsal_spec.md` — concrete 13-system dress-rehearsal map and §8.1 anticipated emergence.
 - `crates/simthing-core/src/accumulator_op.rs` — GPU-resident Accumulator primitive vocabulary used by later arenas.
-- `docs/workshop/sead_self_ai_track.md` — SEAD field-as-policy charter and no-CPU-planner posture.
+- `docs/workshop/field_policy_track.md` — FIELD_POLICY field-as-policy charter and no-CPU-planner posture.
 
 ## Implemented artifact
 

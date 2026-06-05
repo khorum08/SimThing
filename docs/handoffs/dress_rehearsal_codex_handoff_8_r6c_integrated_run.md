@@ -40,7 +40,7 @@ Branch from latest `origin/master` (after PR #524). Open one focused implementat
 4. The existing rung sources you are composing:
    `crates/simthing-driver/src/dress_rehearsal_r1_disruption_heatmap.rs`,
    `…_r2_recursive_allocation.rs`, `…_r3_capability_mask_down.rs`,
-   `…_r4_sead_field_consumption.rs`, `…_r5_movement_reenroll.rs`,
+   `…_r4_field_policy_consumption.rs`, `…_r5_movement_reenroll.rs`,
    `…_r6_combat_hp_damage.rs`, `…_r6b_ship_cohort_reinforcement.rs`.
 5. FrontierV2 closed-loop precedent: `docs/tests/phase_m_frontier_v2_0_closed_loop_consumer_results.md`
    (and v2_1..v2_4) — the multi-tick feedback pattern, at fixture level.
@@ -56,7 +56,7 @@ functions/structs, refactoring shared logic into pure transforms over a single w
      canonical ATLAS-BATCH-0 §2/§9 layout (Pirate 10 ships, Terran 3 patrols, Terran spacing ≥2–4, Pirate
      within 1 cell of a Terran system).
    - `run_dress_rehearsal_r6c_integrated_run(input) -> DressRehearsalR6cReport` with the per-tick order in
-     spec §3, `N = 100` canonical, write-back closing the loop each tick. Movement = ≤speed greedy SEAD
+     spec §3, `N = 100` canonical, write-back closing the loop each tick. Movement = ≤speed greedy FIELD_POLICY
      sub-steps with per-sub-step REENROLL (Pirate 3 / Patrol 2). Combat runs only on co-locations produced
      by movement — **never hand-place a co-location**.
    - **Field non-degeneracy:** drop the R4 tie-breaker (`cell_index*0.01 + x*0.001`) **or** assert it is
@@ -100,7 +100,7 @@ cargo test -p simthing-driver --test dress_rehearsal_r6c_integrated_run
 cargo test -p simthing-driver --test dress_rehearsal_r6b_ship_cohort_reinforcement
 cargo test -p simthing-driver --test dress_rehearsal_r6_combat_hp_damage
 cargo test -p simthing-driver --test dress_rehearsal_r5_movement_reenroll
-cargo test -p simthing-driver --test dress_rehearsal_r4_sead_field_consumption
+cargo test -p simthing-driver --test dress_rehearsal_r4_field_policy_consumption
 cargo test -p simthing-driver --test dress_rehearsal_r3_capability_mask_down
 cargo test -p simthing-driver --test dress_rehearsal_r2_recursive_allocation
 cargo test -p simthing-driver --test dress_rehearsal_r1_disruption_heatmap

@@ -81,7 +81,7 @@ Interpretation:
 - Native sqrt remains `ApproximateJitOnly` until separate admission promotion.
 - `mag2` remains blocked as exact input until separate admission promotion.
 - M-JIT remains closed at PROD-0.
-- V7.7 / Mapping ADR / SEAD posture remains intact.
+- V7.7 / Mapping ADR / FIELD_POLICY posture remains intact.
 
 ## Tests and scans run
 
@@ -116,4 +116,4 @@ Interpretation:
 
 ## Final verdict
 
-**PASS — SQRT-EXACT-5F completed the exhaustive Candidate F finite non-negative `f32` sweep.** Candidate F achieved `max_ulp == 0` across the full domain with exact bit parity and `flush_count == 0`, is now `ExactDeterministicCandidate` pending separate descriptor/admission promotion, Candidate C/f64 was not implemented, no production exact sqrt admission or `mag2` authority flip was added in this pass, M-JIT remains closed at PROD-0, and V7.7 / Mapping ADR / SEAD guardrails remain intact.
+**PASS — SQRT-EXACT-5F completed the exhaustive Candidate F finite non-negative `f32` sweep.** Candidate F achieved `max_ulp == 0` across the full domain with exact bit parity and `flush_count == 0`, is now `ExactDeterministicCandidate` pending separate descriptor/admission promotion, Candidate C/f64 was not implemented, no production exact sqrt admission or `mag2` authority flip was added in this pass, M-JIT remains closed at PROD-0, and V7.7 / Mapping ADR / FIELD_POLICY guardrails remain intact.

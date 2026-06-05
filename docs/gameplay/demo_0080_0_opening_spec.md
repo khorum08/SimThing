@@ -61,7 +61,7 @@ real-time loop; add a global default schedule; add direct movement control; add 
 add new simulation behavior; or add ClauseThing.
 
 **Discipline.** The demo is pure Rust read/orchestration over existing seams; it touches no shader text
-and no GPU kernel (WGSL ban, invariants row 169/194) and adds no decision logic — SEAD remains the sole
+and no GPU kernel (WGSL ban, invariants row 169/194) and adds no decision logic — FIELD_POLICY remains the sole
 mover-decision source.
 
 ---

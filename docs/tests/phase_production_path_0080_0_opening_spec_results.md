@@ -18,16 +18,16 @@ Verdict: **OPENING-SPEC-AUTHORED / BLOCKED**
 - Substrate: **0.0.7.9 mobility/transfer substrate**.
 - Production-path gate: `PRODUCTION-PATH-0080-0`.
 
-## SEAD Decision-Source Contract
+## FIELD_POLICY Decision-Source Contract
 
-Patrol relocation is sourced from accepted GPU-resident SEAD `Threshold` + `EmitEvent` ->
+Patrol relocation is sourced from accepted GPU-resident FIELD_POLICY `Threshold` + `EmitEvent` ->
 `BoundaryRequest`, not from a CPU planner and not from an externally-scripted move request. The
-mobility substrate consumes the materialized boundary request. No new SEAD substrate is opened.
+mobility substrate consumes the materialized boundary request. No new FIELD_POLICY substrate is opened.
 
 ## Authorized Next Implementation Slice
 
 The next PR may implement only a default-off / opt-in Local Patrol Economy production-path fixture or
-narrow `SimSession` surface: instantiate the named scenario, route the SEAD materialized
+narrow `SimSession` surface: instantiate the named scenario, route the FIELD_POLICY materialized
 `BoundaryRequest` into the 0.0.7.9 mobility/transfer substrate, preserve identity and owner overlay
 continuity, and update bounded local economy participation after relocation.
 
@@ -37,7 +37,7 @@ runtime.
 ## Future Test List Summary
 
 The opening spec names future tests covering opt-in/default-off behavior, no global default schedule,
-scenario instantiation, SEAD threshold-to-boundary routing, no CPU planner or external move script,
+scenario instantiation, FIELD_POLICY threshold-to-boundary routing, no CPU planner or external move script,
 identity preservation, source/destination membership and economy updates, owner overlay continuity,
 bounded local economy, guardrail rejections, no gameplay/semantic WGSL/ClauseThing dependency,
 deterministic replay, and docs status alignment.

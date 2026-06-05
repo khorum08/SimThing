@@ -1,4 +1,4 @@
-# M-4A Post-Merge Evaluation — Mapping / V7.7 / SEAD Consistency
+# M-4A Post-Merge Evaluation — Mapping / V7.7 / FIELD_POLICY Consistency
 
 **Date:** 2026-05-19  
 **Evaluated HEAD:** `bf8c189` (PR #226 — M-4A algebraic tile-local atlas masking sandbox)  
@@ -8,7 +8,7 @@
 
 ## Verdict
 
-**PASS — commits consistent with V7.7, Mapping ADR discipline, SEAD principles, and production goals.** No code remedial required. M-4 remains **parked at decision gate**; no mapping runtime authorized.
+**PASS — commits consistent with V7.7, Mapping ADR discipline, FIELD_POLICY principles, and production goals.** No code remedial required. M-4 remains **parked at decision gate**; no mapping runtime authorized.
 
 ---
 
@@ -28,7 +28,7 @@
 | V7.7 constitutional core | No semantic WGSL; simthing-sim map-free; default-off | Docs-only; sandbox WGSL preserved in workshop only; no lib/pass graph changes | **PASS** |
 | Mapping ADR | Architecture approved; no production runtime; atlas provisional | M-4 remains parked; no atlas packer; no session wiring | **PASS** |
 | ADR amendment discipline | No classification change without explicit evidence + sign-off | Design note amended as proposed; ADR table unchanged until ratification | **PASS** (discipline honored; gap closed in this eval via proposed-amendment subsection) |
-| SEAD three-layer model | Dense local bounded; hierarchy for strategic; no CPU planner | Probe uses generic stencil only; no Layer-2/3 wiring; no sim semantics | **PASS** |
+| FIELD_POLICY three-layer model | Dense local bounded; hierarchy for strategic; no CPU planner | Probe uses generic stencil only; no Layer-2/3 wiring; no sim semantics | **PASS** |
 | GPU-resident / default-off | StructuredFieldStencilOp live opt-in; MappingExecutionProfile Disabled | Production op unchanged; tests confirm default-off | **PASS** |
 | Sandbox revert discipline | Preserve workshop + docs/tests; remove transient runtime | Candidate `.rs`/`.wgsl` in workshop; revert verification green | **PASS** |
 | Resource Flow defaults | Unchanged | No RF flag or default changes | **PASS** |

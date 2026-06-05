@@ -87,7 +87,7 @@ assert the product signal. `reduction_stencil_readbacks == 0`.
 ## Posture Summary
 
 Phase M product commitment fixture landed.
-It extends the product-facing first-slice fixture by using the existing threshold/event substrate over parent field_urgency, proving the SEAD commitment path: GPU-resident field propagation -> parent reduction -> EvalEML urgency -> threshold event.
+It extends the product-facing first-slice fixture by using the existing threshold/event substrate over parent field_urgency, proving the FIELD_POLICY commitment path: GPU-resident field propagation -> parent reduction -> EvalEML urgency -> threshold event.
 Low-weight profile stays below threshold; high-weight profile crosses and emits the expected event.
 No CPU-side AI planner was introduced.
 No atlas batching landed.

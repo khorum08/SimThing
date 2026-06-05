@@ -13,7 +13,7 @@
 | `docs/tests/phase_m_frontier_v2_4_combined_feedback_loop_results.md` | **New** — this report |
 | `docs/accumulator_op_v2_production_plan.md` | FrontierV2-4 section |
 | `docs/workshop/mapping_current_guidance.md` | FrontierV2-4 row |
-| `docs/workshop/sead_self_ai_track.md` | FrontierV2-4 addendum |
+| `docs/workshop/field_policy_track.md` | FrontierV2-4 addendum |
 | `docs/worklog.md` | Append-only milestone |
 
 **No ClauseThing, no production commitment emission, no semantic WGSL, no default SimSession wiring, no phase closure declaration.**
@@ -140,7 +140,7 @@ cargo test -p simthing-driver --test phase_m_frontier_v2_2_movement_feedback_app
 cargo test -p simthing-driver --test phase_m_frontier_v2_1_candidate_evolution -- --nocapture
 → pass (regression)
 
-cargo test -p simthing-spec --test sead_obs0_overlay_score_admission -- --nocapture
+cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission -- --nocapture
 → pass (regression)
 
 cargo check --workspace

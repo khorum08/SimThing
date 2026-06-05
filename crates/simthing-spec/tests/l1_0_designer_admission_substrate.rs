@@ -4,7 +4,7 @@ use simthing_spec::{
     accepted_frontier_v2_artifact_target_ids, accepted_frontier_v2_artifact_targets,
     all_designer_admission_diagnostic_codes, evaluate_designer_admission_request,
     resolve_frontier_artifact_target_id, AcceptedFrontierArtifactTarget,
-    DesignerAdmissionDiagnosticCode, DesignerAdmissionRequest, SeadLadderStage,
+    DesignerAdmissionDiagnosticCode, DesignerAdmissionRequest, FieldPolicyLadderStage,
 };
 
 #[test]
@@ -51,15 +51,14 @@ fn l1_0_rejects_frontier_v2_5_request() {
 #[test]
 fn l1_0_rejects_act_event_obs_pipe_ladder_reopen() {
     for stage in [
-        SeadLadderStage::Act5,
-        SeadLadderStage::Event3,
-        SeadLadderStage::Obs5,
-        SeadLadderStage::Pipe1,
+        FieldPolicyLadderStage::Act5,
+        FieldPolicyLadderStage::Event3,
+        FieldPolicyLadderStage::Obs5,
+        FieldPolicyLadderStage::Pipe1,
     ] {
-        let report =
-            evaluate_designer_admission_request(DesignerAdmissionRequest::SeadLadderReopen {
-                stage,
-            });
+        let report = evaluate_designer_admission_request(
+            DesignerAdmissionRequest::FieldPolicyLadderReopen { stage },
+        );
         assert!(!report.accepted, "expected rejection for {}", stage.label());
         assert_eq!(
             report.diagnostics[0].code,

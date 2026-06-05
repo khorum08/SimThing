@@ -33,7 +33,7 @@ named scenario. Movement (schedule) is explicitly a later slice.
 - uses **`ATLAS-0080-0`** for sparse residency and nested descent/ascent;
 - uses **`ECON-SCALE-0080-0`** for bounded Terran/Pirate faction-indexed contended clearing;
 - composes **owner-overlay inherited numeric weights**;
-- exposes **SEAD composite-gap inputs / read-only terms**;
+- exposes **FIELD_POLICY composite-gap inputs / read-only terms**;
 - **no schedule yet** (no movement execution).
 
 ---
@@ -51,7 +51,7 @@ The implementation:
   report is disabled / rejected / not admitted;
 - composes a scenario-level report: starmap shape; starsystem/planet structure; active/resident theaters;
   Terran/Pirate fixed faction set; pirate full-economy participation; contended clearing reports; derived
-  ownership up-aggregation summary; inherited overlay weight summary; SEAD composite-gap read-only term
+  ownership up-aggregation summary; inherited overlay weight summary; FIELD_POLICY composite-gap read-only term
   summary; deterministic replay checksum;
 - keeps all substrate reports intact and inspectable.
 
@@ -73,13 +73,13 @@ session pass-graph wiring; or anything in §10.
 
 ---
 
-## 5. SEAD composite-gap contract
+## 5. FIELD_POLICY composite-gap contract
 
-- Movement decisions remain **SEAD-sourced in later schedule slices** — not here.
+- Movement decisions remain **FIELD_POLICY-sourced in later schedule slices** — not here.
 - This production path **may compute/report read-only composite-gap inputs**: `current(space) −
   inherited_setpoint(space)`; supply/security gap; bilateral relational gap; sum/composite vector terms.
 - **No** CPU planner / urgency / commitment emission; **no** direct move requests; **no** externally
-  scripted `BoundaryRequest`; **no** new SEAD substrate; **no** schedule execution.
+  scripted `BoundaryRequest`; **no** new FIELD_POLICY substrate; **no** schedule execution.
 
 ---
 
@@ -111,7 +111,7 @@ session pass-graph wiring; or anything in §10.
 - `production_path_0080_1_composes_faction_index_econ_report`
 - `production_path_0080_1_reports_owner_overlay_inheritance`
 - `production_path_0080_1_reports_ownership_up_aggregation`
-- `production_path_0080_1_reports_sead_composite_gap_terms_readonly`
+- `production_path_0080_1_reports_field_policy_composite_gap_terms_readonly`
 - `production_path_0080_1_replay_deterministic`
 - `production_path_0080_1_no_schedule_observation_control_demo`
 - `production_path_0080_1_no_default_session_pass_graph_wiring`

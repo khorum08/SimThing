@@ -1,7 +1,7 @@
 # Opus/Product Acceptance Review — Phase M EML-GADGET-1 (Tier-1 Stateless Gadget Library)
 
 **Date:** 2026-05-29
-**Authority:** Opus 4.8, mapping/SEAD design authority under human delegation. Guardrail authority
+**Authority:** Opus 4.8, mapping/FIELD_POLICY design authority under human delegation. Guardrail authority
 extends to the designer-facing studio/importer layer and the scenario definition stage — not the sim
 or boundary layer.
 **Decision type:** Acceptance review — **not** an implementation handoff. No code changed.
@@ -113,7 +113,7 @@ No true inline multi-gadget flattening unless intermediate column wiring is sepa
 No new EML opcodes; no exp/logistic/transcendental SoftStep.
 No semantic WGSL; no per-gadget GPU kernel; simthing-gpu stays the one generic interpreter.
 No Gadget/Personality types in simthing-sim.
-No production economy→mapping bridge; economy→SEAD stays tests/support fixture-only.
+No production economy→mapping bridge; economy→FIELD_POLICY stays tests/support fixture-only.
 No default SimSession mapping wiring; MappingExecutionProfile default Disabled.
 No Resource Flow E-11 default-on.
 No atlas / M-4A.

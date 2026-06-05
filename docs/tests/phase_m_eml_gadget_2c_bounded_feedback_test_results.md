@@ -24,7 +24,7 @@ cargo test -p simthing-spec --test eml_gadget_tier2_temporal -- --nocapture
 cargo test -p simthing-driver --test phase_m_eml_gadget_2a_snapshot_copy -- --nocapture
 cargo test -p simthing-spec --test eml_gadget_tier1 -- --nocapture
 cargo test -p simthing-spec --test resource_economy_authoring_preview -- --nocapture
-cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture -- --nocapture
+cargo test -p simthing-driver --test phase_m_economy_field_policy_product_fixture -- --nocapture
 cargo test -p simthing-driver --test phase_m_first_slice_runtime -- --nocapture
 cargo test -p simthing-spec --test region_field_spec_admission -- --nocapture
 cargo test -p simthing-gpu --test accumulator_op_session_gpu_bridge -- --nocapture

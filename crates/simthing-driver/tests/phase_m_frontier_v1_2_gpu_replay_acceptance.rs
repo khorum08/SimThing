@@ -309,7 +309,7 @@ fn frontier_v1_2_resource_dispatch_routes_through_allocator() {
     assert_eq!(cpu.routes.resource_route_count, 1);
     assert!(!skeleton.resource_flow.parallel_fixture_economy);
     assert!(!skeleton.resource_flow.shared_pool_tick_writes);
-    assert!(!skeleton.sead.cpu_planner);
+    assert!(!skeleton.field_policy.cpu_planner);
 
     with_gpu(|ctx| {
         let run = run_gpu_frontier_fixture(ctx, &skeleton, &config);
@@ -364,13 +364,16 @@ fn frontier_v1_2_deferred_features_reject() {
         ),
         (
             "act5_ladder",
-            Box::new(|s| s.sead.pipeline_version = SeadPipelineVersion::Other),
+            Box::new(|s| s.field_policy.pipeline_version = FieldPolicyPipelineVersion::Other),
         ),
         (
             "parallel_fixture",
             Box::new(|s| s.resource_flow.parallel_fixture_economy = true),
         ),
-        ("cpu_planner", Box::new(|s| s.sead.cpu_planner = true)),
+        (
+            "cpu_planner",
+            Box::new(|s| s.field_policy.cpu_planner = true),
+        ),
     ];
     for (label, mutate) in deferred {
         let mut skeleton = frontier_v1_1_smoke_skeleton();
@@ -391,7 +394,7 @@ fn frontier_v1_2_no_simthing_sim_semantic_awareness() {
     ));
     for needle in [
         "FrontierV1",
-        "SEAD",
+        "FIELD_POLICY",
         "RegionCell",
         "ArenaRegistry",
         "proposal",

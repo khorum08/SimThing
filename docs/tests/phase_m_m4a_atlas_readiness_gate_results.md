@@ -226,8 +226,8 @@ cargo check --workspace
 
 ## Posture Attestation
 
-No semantic WGSL, no default mapping wiring, no simthing-sim changes, no source-mask/source-identity work, no atlas/M-4A implementation, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling; M-5 gradient strict-sink admission unchanged; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+No semantic WGSL, no default mapping wiring, no simthing-sim changes, no source-mask/source-identity work, no atlas/M-4A implementation, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling; M-5 gradient strict-sink admission unchanged; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.
 
 ---
 
-**PASS** — Phase M-4A Atlas Readiness Gate completed; M-4A remains deferred because the current M-5-gradient substrate satisfies named product needs and remaining needs belong to separate gates, active production guidance updated, no implementation performed, and V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+**PASS** — Phase M-4A Atlas Readiness Gate completed; M-4A remains deferred because the current M-5-gradient substrate satisfies named product needs and remaining needs belong to separate gates, active production guidance updated, no implementation performed, and V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.

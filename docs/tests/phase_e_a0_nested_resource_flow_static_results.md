@@ -58,7 +58,7 @@ A-0 packages existing E-11B substrate into the v7.8 Line A first-slice proof wit
 | `crates/simthing-driver/src/lib.rs` | Export materialization report |
 | `crates/simthing-driver/tests/support/e11_nested.rs` | **New** A-0 nested fixtures + GPU parity helpers |
 | `crates/simthing-driver/tests/phase_e_a0_nested_resource_flow_static.rs` | **New** A-0 proof tests (19) |
-| Docs | production track, design_v7_8 note, mapping, sead, worklog |
+| Docs | production track, design_v7_8 note, mapping, field_policy, worklog |
 
 ---
 

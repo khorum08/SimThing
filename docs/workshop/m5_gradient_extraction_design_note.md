@@ -28,7 +28,7 @@ yields a generic "flow-toward-need" signal. The substrate never knows what the f
 
 | Authored field (RON/spec layer) | Gradient gives you | Consumer |
 |---|---|---|
-| Threat / pressure | direction of greatest danger | SEAD AI steering (the original motivation) |
+| Threat / pressure | direction of greatest danger | FIELD_POLICY AI steering (the original motivation) |
 | **Unmet demand / scarcity** | direction resources should flow | **resource routing by need configuration** |
 | **Job openings − available workers** | direction of opportunity | **migrant/labor dispatch** |
 | Price differential | arbitrage direction | trade-flow routing |
@@ -284,7 +284,7 @@ A future M-5-gradient implementation PR must stop rather than implement if it:
 - requires **atlas / M-4A**
 - changes `simthing-sim` (no map/Gadget/Personality awareness)
 - wires mapping into the **default SimSession** pass-graph (mapping stays opt-in/default-off)
-- adds a **CPU-side AI planner** or CPU urgency computation (SEAD commitment stays GPU-resident:
+- adds a **CPU-side AI planner** or CPU urgency computation (FIELD_POLICY commitment stays GPU-resident:
   field propagation → parent reduction → `field_urgency` EvalEML → Threshold + EmitEvent)
 - adds a **production economy→mapping bridge**
 - changes Resource Flow defaults (stays default-off)

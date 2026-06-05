@@ -14,7 +14,7 @@ fn frontier_v1_0_happy_path_skeleton_admits() {
     assert!(report.default_off_ok);
     assert!(report.mapping_ok);
     assert!(report.flat_star_ok);
-    assert!(report.sead_v1_ok);
+    assert!(report.field_policy_v1_ok);
     assert!(report.coupling_ok);
     assert_eq!(skeleton.profile_name, FRONTIER_V1_PROFILE_NAME);
     assert!(!skeleton.enabled_by_default);
@@ -28,8 +28,8 @@ fn frontier_v1_0_happy_path_skeleton_admits() {
     assert_eq!(skeleton.resource_flow.depth, 2);
     assert!(skeleton.resource_flow.resource_flow_allocator_only);
     assert_eq!(
-        skeleton.sead.pipeline_version,
-        SeadPipelineVersion::ProposalPipelineV1
+        skeleton.field_policy.pipeline_version,
+        FieldPolicyPipelineVersion::ProposalPipelineV1
     );
     assert_eq!(
         MappingExecutionProfile::default(),
@@ -137,36 +137,50 @@ fn frontier_v1_0_rejects_non_flat_star_resource_flow() {
 }
 
 #[test]
-fn frontier_v1_0_rejects_sead_routing_bypass() {
+fn frontier_v1_0_rejects_field_policy_routing_bypass() {
     let cases: [(&str, Box<dyn Fn(&mut FrontierV1ScenarioSkeleton)>); 7] = [
         (
             "no_allocator",
-            Box::new(|s| s.sead.resource_dispatch_via_allocator = false),
+            Box::new(|s| s.field_policy.resource_dispatch_via_allocator = false),
         ),
         (
             "no_threshold_emit",
-            Box::new(|s| s.sead.structural_via_threshold_emit = false),
+            Box::new(|s| s.field_policy.structural_via_threshold_emit = false),
         ),
         (
             "foreign_movement",
-            Box::new(|s| s.sead.movement_own_columns_only = false),
+            Box::new(|s| s.field_policy.movement_own_columns_only = false),
         ),
-        ("cpu_planner", Box::new(|s| s.sead.cpu_planner = true)),
-        ("cpu_urgency", Box::new(|s| s.sead.cpu_urgency = true)),
+        (
+            "cpu_planner",
+            Box::new(|s| s.field_policy.cpu_planner = true),
+        ),
+        (
+            "cpu_urgency",
+            Box::new(|s| s.field_policy.cpu_urgency = true),
+        ),
         (
             "cpu_commitment",
-            Box::new(|s| s.sead.cpu_commitment_emission = true),
+            Box::new(|s| s.field_policy.cpu_commitment_emission = true),
         ),
-        ("semantic_wgsl", Box::new(|s| s.sead.semantic_wgsl = true)),
+        (
+            "semantic_wgsl",
+            Box::new(|s| s.field_policy.semantic_wgsl = true),
+        ),
     ];
     for (label, mutate) in cases {
         let mut skeleton = frontier_v1_happy_path_skeleton();
         mutate(&mut skeleton);
         let report = validate_frontier_v1_admission(&skeleton);
         assert!(!report.accepted, "{label} should reject");
-        assert!(!report.sead_v1_ok, "{label} sead should fail");
+        assert!(
+            !report.field_policy_v1_ok,
+            "{label} field_policy should fail"
+        );
     }
-    println!("frontier_v1_0_sead_routing: rejects=true skeleton_id={FRONTIER_V1_SKELETON_ID}");
+    println!(
+        "frontier_v1_0_field_policy_routing: rejects=true skeleton_id={FRONTIER_V1_SKELETON_ID}"
+    );
 }
 
 #[test]
@@ -203,7 +217,7 @@ fn frontier_v1_0_no_simthing_sim_semantic_awareness() {
     ));
     let forbidden = [
         "FrontierV1",
-        "SEAD",
+        "FIELD_POLICY",
         "RegionCell",
         "ArenaRegistry",
         "proposal",

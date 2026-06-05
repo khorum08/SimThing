@@ -171,9 +171,9 @@ fn production_path_0080_1_reports_ownership_up_aggregation() {
 }
 
 #[test]
-fn production_path_0080_1_reports_sead_composite_gap_terms_readonly() {
+fn production_path_0080_1_reports_field_policy_composite_gap_terms_readonly() {
     let admitted = report();
-    let terms = admitted.sead_composite_gap_terms;
+    let terms = admitted.field_policy_composite_gap_terms;
     assert_eq!(
         terms.composite_gap_sum,
         terms.current_space_minus_inherited_setpoint
@@ -186,7 +186,7 @@ fn production_path_0080_1_reports_sead_composite_gap_terms_readonly() {
     assert!(!terms.direct_move_request);
     assert!(!terms.external_boundary_request);
     assert!(!terms.cpu_planner_urgency_or_commitment);
-    assert!(!terms.new_sead_substrate);
+    assert!(!terms.new_field_policy_substrate);
 }
 
 #[test]

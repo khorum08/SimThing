@@ -23,9 +23,9 @@ use crate::dress_rehearsal_r1_disruption_heatmap::{
 use crate::dress_rehearsal_r2_recursive_allocation::{
     run_dress_rehearsal_r2_recursive_allocation, DressRehearsalR2Input,
 };
-use crate::dress_rehearsal_r4_sead_field_consumption::{
+use crate::dress_rehearsal_r4_field_policy_consumption::{
     cpu_mag2_sum, f32_to_q16, mag2_u64_q16_to_f32_bits,
-    run_dress_rehearsal_r4_sead_field_consumption, sqrt_cr_f_bits, DressRehearsalR4Input,
+    run_dress_rehearsal_r4_field_policy_consumption, sqrt_cr_f_bits, DressRehearsalR4Input,
 };
 use crate::dress_rehearsal_r6_combat_hp_damage::{
     run_dress_rehearsal_r6_combat_hp_damage, DressRehearsalR6Input,
@@ -455,7 +455,7 @@ fn measure_r2_owner_reduce(ctx: &GpuContext) -> GpuMeasure0080ShapeReport {
 
 fn measure_r4_gradient(ctx: &GpuContext) -> GpuMeasure0080ShapeReport {
     let r4 =
-        run_dress_rehearsal_r4_sead_field_consumption(&DressRehearsalR4Input::explicit_opt_in());
+        run_dress_rehearsal_r4_field_policy_consumption(&DressRehearsalR4Input::explicit_opt_in());
     let config = StructuredFieldStencilConfig {
         width: GALAXY_SIDE,
         height: GALAXY_SIDE,

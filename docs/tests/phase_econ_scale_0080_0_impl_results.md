@@ -54,10 +54,10 @@ observation, control, or demo for `0080-1` was implemented. `ATLAS-0080-0` and L
 | `cargo test -p simthing-spec --test mobility_runtime0_composition` | 23 PASS |
 | `cargo test -p simthing-spec --test mobility_runtime1_production_fixture` | 28 PASS |
 | `cargo test -p simthing-driver --test mobility_runtime1a_runtime_fixture` | 21 PASS |
-| `cargo test -p simthing-driver --test phase_m_sead_obs4_threshold_event` | 7 PASS |
-| `cargo test -p simthing-driver --test phase_m_sead_event0_compaction` | 7 PASS |
-| `cargo test -p simthing-driver --test phase_m_sead_pipe0_observer_event_pipeline` | 7 PASS |
-| `cargo test -p simthing-spec --test sead_obs0_overlay_score_admission` | 29 PASS |
+| `cargo test -p simthing-driver --test phase_m_field_policy_obs4_threshold_event` | 7 PASS |
+| `cargo test -p simthing-driver --test phase_m_field_policy_event0_compaction` | 7 PASS |
+| `cargo test -p simthing-driver --test phase_m_field_policy_pipe0_observer_event_pipeline` | 7 PASS |
+| `cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission` | 29 PASS |
 | `cargo check --workspace` | Finished; only pre-existing warnings (unchanged) |
 
 ## Skipped tests

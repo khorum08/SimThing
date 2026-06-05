@@ -9,7 +9,7 @@
 | Category | Count | Action |
 |---|---|---|
 | KEEP_ACTIVE_AUTHORITY | 10 core + 2 governing ADRs | retained |
-| KEEP_ACTIVE_REFERENCED | L0/L1 + E-phase/SEAD/M-JIT evidence | retained |
+| KEEP_ACTIVE_REFERENCED | L0/L1 + E-phase/FIELD_POLICY/M-JIT evidence | retained |
 | ARCHIVE_CLOSED_REFERENCE | 1 production plan | moved + stub |
 | ARCHIVE_SUPERSEDED_DESIGN | 4 design docs | moved |
 | ARCHIVE_SUPERSEDED_WORKSHOP | 4 workshop docs + narrative split | moved |
@@ -26,7 +26,7 @@
 | `docs/design_v7_8_production_track.md` | **PR ladder home** |
 | `docs/design_v7_7.md` | CLOSED baseline |
 | `docs/invariants.md` | binding constraints (unchanged) |
-| `docs/workshop/sead_self_ai_track.md` | SEAD/Frontier charter |
+| `docs/workshop/field_policy_track.md` | FIELD_POLICY/Frontier charter |
 | `docs/workshop/mapping_current_guidance.md` | compact status table |
 | `docs/worklog.md` | append-only history |
 | `docs/accumulator_op_v2_production_plan.md` | CLOSED stub pointer |
@@ -39,7 +39,7 @@ Also active: `docs/design_v7_6.md`, `docs/design_v7.md` (referenced by v7.7/v7.8
 
 ### L0 Frontier (accepted)
 
-- `docs/tests/phase_m_frontier_v1_5_live_self_ai_route_results.md`
+- `docs/tests/phase_m_frontier_v1_5_live_field_agent_route_results.md`
 - `docs/tests/phase_m_frontier_v2_0_closed_loop_consumer_results.md`
 - `docs/tests/phase_m_frontier_v2_1_candidate_evolution_results.md`
 - `docs/tests/phase_m_frontier_v2_2_movement_feedback_application_results.md`
@@ -52,9 +52,9 @@ Also active: `docs/design_v7_6.md`, `docs/design_v7.md` (referenced by v7.7/v7.8
 - `docs/tests/phase_m_l1_0_designer_admission_substrate_results.md`
 - `docs/tests/phase_m_l1_1_designer_preflight_manifest_results.md`
 
-### E-phase / E11 / Resource Flow / SEAD (preserved)
+### E-phase / E11 / Resource Flow / FIELD_POLICY (preserved)
 
-- SEAD V1 consolidation + OBS/EVENT/PIPE/ACT reports
+- FIELD_POLICY V1 consolidation + OBS/EVENT/PIPE/ACT reports
 - E11 workshop: `e11_implementation_handoff.md`, `e11_readiness_review.md`, `e11_hierarchical_allocation_design.md`
 - M-JIT retained evidence (PROD-0, EXEC-1, sqrt/grad R1 reports per mapping guidance)
 - M-4A/M-6A readiness gates, gradient M-5A..E reports, first-slice/product fixture chain
@@ -90,7 +90,7 @@ Also active: `docs/design_v7_6.md`, `docs/design_v7.md` (referenced by v7.7/v7.8
 | From | To | Reason |
 |---|---|---|
 | `phase_m_jit_doc_closeout_cleanup_results.md` | `docs/archive/superseded_tests/` | M-JIT closed at PROD-0; outcome in active track |
-| `phase_m_sqrt_doc0_active_guidance_integration_results.md` | `docs/archive/superseded_tests/` | superseded by SEAD-V1 consolidation |
+| `phase_m_sqrt_doc0_active_guidance_integration_results.md` | `docs/archive/superseded_tests/` | superseded by FIELD_POLICY-V1 consolidation |
 | `phase_m_frontier_v1_post_acceptance_roadmap_results.md` | `docs/archive/superseded_tests/` | superseded by v7.8 production track |
 | `revert_mapping_atlas_algebraic_mask_sandbox_to_parked_state_test_results.md` | `docs/archive/superseded_tests/` | parking outcome in active guidance |
 | `restore_m4_parked_posture_test_results.md` | `docs/archive/superseded_tests/` | parking outcome in active guidance |
@@ -108,7 +108,7 @@ Also active: `docs/design_v7_6.md`, `docs/design_v7.md` (referenced by v7.7/v7.8
 | `docs/tests/mapping_atlas_algebraic_mask_sandbox_full.log` | scratch log |
 | `docs/tests/phase_m_boundary_cadence_doctrine_full.log` | scratch log |
 | `docs/tests/phase_m_daily_economy_fixture_full.log` | scratch log |
-| `docs/tests/phase_m_economy_sead_product_fixture_full.log` | scratch log |
+| `docs/tests/phase_m_economy_field_policy_product_fixture_full.log` | scratch log |
 | `docs/tests/phase_m_eml_gadget_2a_snapshot_copy_full.log` | scratch log |
 | `docs/tests/phase_m_eml_gadget_2a_snapshot_copy_r1_hygiene_full.log` | scratch log |
 | `docs/tests/phase_m_eml_gadget_2b_velocity_decay_ema_full.log` | scratch log |
@@ -136,7 +136,7 @@ No SHA/fingerprint reconciliation performed.
 | `docs/design_v7_8.md` | accumulator companion → CLOSED stub + archive path |
 | `docs/design_v7_8_production_track.md` | accumulator companion; Cleanup / evidence hygiene section + V7.8-CLEAN-0 row |
 | `docs/workshop/mapping_current_guidance.md` | read order → production track first; V7.8-CLEAN-0 row; narrative archived |
-| `docs/workshop/sead_self_ai_track.md` | V7.8-CLEAN-0 cleanup note |
+| `docs/workshop/field_policy_track.md` | V7.8-CLEAN-0 cleanup note |
 | `docs/workshop/README.md` | points to v7.8 production track; archived superseded workshop docs |
 | `docs/worklog.md` | append-only V7.8-CLEAN-0 line |
 | `docs/accumulator_op_v2_production_plan.md` | replaced with CLOSED stub |
@@ -173,7 +173,7 @@ Confirmed. Active read order in `mapping_current_guidance.md` item 4 is `design_
 - `docs/workshop/`: active guidance + design notes
 - `docs/adr/`: 9 ADR files
 - `crates/simthing-spec/tests/`: L1-0, L1-1 tests (unchanged)
-- `crates/simthing-driver/tests/`: Frontier/SEAD acceptance tests (unchanged)
+- `crates/simthing-driver/tests/`: Frontier/FIELD_POLICY acceptance tests (unchanged)
 
 ## Required scans
 
@@ -188,7 +188,7 @@ PowerShell equivalent run (WSL unavailable). See git status for changed paths; 1
 ### Reference scan (active authority docs)
 
 ```
-rg "accumulator_op_v2_production_plan|design_v7_8_production_track|phase_m_.*results|frontier_v|l1_0|E-11|E11|resource_flow|D-2|M-4|atlas" docs/design_v7_8.md docs/design_v7_8_production_track.md docs/workshop/sead_self_ai_track.md docs/workshop/mapping_current_guidance.md docs/adr docs/invariants.md docs/worklog.md
+rg "accumulator_op_v2_production_plan|design_v7_8_production_track|phase_m_.*results|frontier_v|l1_0|E-11|E11|resource_flow|D-2|M-4|atlas" docs/design_v7_8.md docs/design_v7_8_production_track.md docs/workshop/field_policy_track.md docs/workshop/mapping_current_guidance.md docs/adr docs/invariants.md docs/worklog.md
 ```
 
 Result: active authority docs reference L0/L1 reports, E11/Resource Flow ADR, Lines A/B/C; production track is primary ladder reference.
@@ -204,7 +204,7 @@ Result: **no authorization in crates**; docs contain guardrail/negative referenc
 ### CLAUSE-SPEC / ClauseThing posture
 
 ```
-rg "CLAUSE-SPEC-0|ClauseThing|ClauseScript" docs/design_v7_8_production_track.md docs/workshop/sead_self_ai_track.md docs/workshop/mapping_current_guidance.md
+rg "CLAUSE-SPEC-0|ClauseThing|ClauseScript" docs/design_v7_8_production_track.md docs/workshop/field_policy_track.md docs/workshop/mapping_current_guidance.md
 ```
 
 Result: CLAUSE-SPEC is L2/downstream; ClauseThing/ClauseScript parked (expected PASS).

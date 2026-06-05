@@ -70,7 +70,7 @@ pub enum Control0081Command {
     DirectTerranMove,
     DirectPirateMove,
     ExternalBoundaryRequest,
-    SeadBypass,
+    FieldPolicyBypass,
     CpuPlannerOrCommitment,
     GeneralCommandSystem,
 }
@@ -99,7 +99,7 @@ pub struct Control0081ForbiddenRequests {
     pub direct_terran_move: bool,
     pub direct_pirate_move: bool,
     pub external_boundary_request: bool,
-    pub sead_bypass: bool,
+    pub field_policy_bypass: bool,
     pub cpu_planner_or_commitment: bool,
     pub player_command_loop: bool,
     pub ui_framework: bool,
@@ -205,7 +205,7 @@ pub struct Control0081AdmissionReport {
     pub command_writes_existing_bounded_values_only: bool,
     pub command_moved_ship: bool,
     pub command_emitted_boundary_request: bool,
-    pub command_bypassed_sead: bool,
+    pub command_bypassed_field_policy: bool,
     pub direct_movement_control: bool,
     pub player_command_loop: bool,
     pub ui_framework_present: bool,
@@ -526,12 +526,12 @@ fn apply_command(
             "external_boundary_request",
             "external_boundary_request_rejected",
         ),
-        Control0081Command::SeadBypass => reject_command(
+        Control0081Command::FieldPolicyBypass => reject_command(
             rejected_commands,
             command_transcript,
             command_index,
-            "sead_bypass",
-            "sead_bypass_rejected",
+            "field_policy_bypass",
+            "field_policy_bypass_rejected",
         ),
         Control0081Command::CpuPlannerOrCommitment => reject_command(
             rejected_commands,
@@ -729,8 +729,8 @@ fn validate_forbidden(
     if forbidden.external_boundary_request {
         diagnostics.push("external_boundary_request_rejected");
     }
-    if forbidden.sead_bypass {
-        diagnostics.push("sead_bypass_rejected");
+    if forbidden.field_policy_bypass {
+        diagnostics.push("field_policy_bypass_rejected");
     }
     if forbidden.cpu_planner_or_commitment {
         diagnostics.push("cpu_planner_or_commitment_rejected");
@@ -863,7 +863,7 @@ fn base_report(
         command_writes_existing_bounded_values_only: !disabled_no_op,
         command_moved_ship: false,
         command_emitted_boundary_request: false,
-        command_bypassed_sead: false,
+        command_bypassed_field_policy: false,
         direct_movement_control: input.surface.direct_movement_control,
         player_command_loop: input.surface.player_command_loop,
         ui_framework_present: input.surface.ui_framework_present,

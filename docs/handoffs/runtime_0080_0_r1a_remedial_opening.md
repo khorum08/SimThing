@@ -82,7 +82,7 @@ disjoint from that pipeline. That is drift away from SimThing Maximality's one-s
 **Binding directive:** the remedial must make the GPU the actual computational authority for the Tier-A
 columns by **registering the R6C per-tick Tier-A transforms as `AccumulatorOp`s / overlays over a
 resident `values` buffer and letting the existing tick pipeline (`WorldGpuState` + `Pipelines` Pass 0–7)
-produce `state_N+1` on GPU** — the same machinery that already applies player/AI overlays and SEAD
+produce `state_N+1` on GPU** — the same machinery that already applies player/AI overlays and FIELD_POLICY
 thresholds. The shapes are the ones already GPU-measured in `GPU-MEASURE-0080-0`.
 
 **Substrate-extension permission (Opus ruling, 2026-06-05 — supersedes the IMPL-0 blanket ban).** First
@@ -95,7 +95,7 @@ shader/opcode text, e.g. an "R6C economy" op) remain banned, and the §6 anti-fa
 a new opcode that merely moves a CPU-injected next-state still fails the negative control (§6.2).
 
 This simultaneously fixes the correctness gap **and** unifies the runtime: player direction
-(`PlayerIntentOverlay`), AI intent (`AiIntentOverlay`), SEAD threshold acts
+(`PlayerIntentOverlay`), AI intent (`AiIntentOverlay`), FIELD_POLICY threshold acts
 (`ThresholdEvent → BoundaryRequest`), and the resident next-tick transition all ride **one** substrate.
 
 ---
@@ -299,7 +299,7 @@ control.
 
 Acceptance = Outcome A with all of §6 satisfied (independence + negative control + measured counters +
 earned parity + source-shape guard + report evidence), checksum `1bba891c779190a4`, R4 within bound, the
-production-substrate unification (no private journal; player/AI overlays + SEAD threshold + next-tick
+production-substrate unification (no private journal; player/AI overlays + FIELD_POLICY threshold + next-tick
 transition on one substrate), and — if any substrate primitive was added — all of §4a (semantic-free,
 generic, parity-backed). **Or** a correct Outcome B PARTIAL/BLOCKED naming the precise gap. Anything that
 reproduces the IMPL-0 inject-and-copy pattern under a PASS label is rejected. Lifting the generic-op ban

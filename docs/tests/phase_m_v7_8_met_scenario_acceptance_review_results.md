@@ -13,7 +13,7 @@ remain unauthorized.
 - `crates/simthing-spec/src/designer_admission/v7_8_line_scenarios.rs` — the three scenario claims,
   the gate-status machinery, and admission validation.
 - `crates/simthing-spec/tests/v7_8_met_consumer_scenarios.rs` — 10/10 pass.
-- Confirmed `simthing-sim/src/**` has no FrontierV2/atlas/E-11B/D-2/SEAD/ResourceFlow awareness
+- Confirmed `simthing-sim/src/**` has no FrontierV2/atlas/E-11B/D-2/FIELD_POLICY/ResourceFlow awareness
   (only the pre-existing `BoundaryRequest` core enum).
 
 ## VRAM budget set (product direction)

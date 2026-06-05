@@ -20,9 +20,10 @@ use crate::dress_rehearsal_r3_capability_mask_down::{
     run_dress_rehearsal_r3_capability_mask_down, DressRehearsalR3Input, DressRehearsalR3Owner,
     DressRehearsalR3Report, COMBAT_BONUS_PLACEHOLDER_MODIFIER,
 };
-use crate::dress_rehearsal_r4_sead_field_consumption::{
-    run_dress_rehearsal_r4_sead_field_consumption, DressRehearsalR4Decision, DressRehearsalR4Input,
-    DressRehearsalR4Owner, DressRehearsalR4Report, MOVEMENT_THRESHOLD_MAG_BITS,
+use crate::dress_rehearsal_r4_field_policy_consumption::{
+    run_dress_rehearsal_r4_field_policy_consumption, DressRehearsalR4Decision,
+    DressRehearsalR4Input, DressRehearsalR4Owner, DressRehearsalR4Report,
+    MOVEMENT_THRESHOLD_MAG_BITS,
 };
 use crate::dress_rehearsal_r5_movement_reenroll::{
     cell_key, entity_id_for_mover, run_dress_rehearsal_r5_movement_reenroll, DressRehearsalR5Input,
@@ -96,13 +97,13 @@ pub struct DressRehearsalR6CombatArenaRow {
     pub num_ships_before: i64,
     pub hp_per_ship: i64,
     pub damage_per_ship_per_tick: i64,
-    pub hp_to_kill_before: i64,
+    pub hp_to_retire_before: i64,
     pub damage_output: i64,
     pub hostile_damage_received: i64,
     pub friendly_damage_blocked: bool,
     pub ships_destroyed: i64,
     pub num_ships_after: i64,
-    pub hp_to_kill_after: i64,
+    pub hp_to_retire_after: i64,
     pub r3_combat_modifier_bps: i32,
     pub hostile_target_ids: Vec<String>,
     pub ship_loss_event_emitted: bool,
@@ -122,7 +123,7 @@ pub struct DressRehearsalR6SurvivorRow {
     pub combatant_id: String,
     pub cell_index: u32,
     pub num_ships_after: i64,
-    pub hp_to_kill_after: i64,
+    pub hp_to_retire_after: i64,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -220,7 +221,7 @@ impl DressRehearsalR6Input {
         let r3_report = run_dress_rehearsal_r3_capability_mask_down(
             &DressRehearsalR3Input::with_reports(r1_report.clone(), r2_report.clone()),
         );
-        let r4_report = run_dress_rehearsal_r4_sead_field_consumption(&DressRehearsalR4Input {
+        let r4_report = run_dress_rehearsal_r4_field_policy_consumption(&DressRehearsalR4Input {
             explicit_opt_in: true,
             enabled_by_default: false,
             movement_threshold_mag_bits: MOVEMENT_THRESHOLD_MAG_BITS,
@@ -449,10 +450,10 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
                     FLEET_HP_PER_SHIP,
                     FLEET_DAMAGE_PER_SHIP_PER_TICK,
                 ));
-            let hp_to_kill_before = hp_to_kill_for_cohort(num_ships_before, hp_per_ship);
+            let hp_to_retire_before = hp_to_retire_for_cohort(num_ships_before, hp_per_ship);
             let damage_output = *damage_output_by_entity.get(&c.entity_id).unwrap_or(&0);
             let hostile_received = *hostile_damage_received.get(&c.entity_id).unwrap_or(&0);
-            let (ships_destroyed, num_ships_after, hp_to_kill_after, zero_cohort) =
+            let (ships_destroyed, num_ships_after, hp_to_retire_after, zero_cohort) =
                 emission_band_ship_attrition(hostile_received, num_ships_before, hp_per_ship);
             let ship_loss_event = emission_band_accumulator_posture(ships_destroyed);
             let zero_cohort_event = zero_cohort_threshold_emitted(num_ships_after);
@@ -484,13 +485,13 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
                 num_ships_before,
                 hp_per_ship,
                 damage_per_ship_per_tick,
-                hp_to_kill_before,
+                hp_to_retire_before,
                 damage_output,
                 hostile_damage_received: hostile_received,
                 friendly_damage_blocked,
                 ships_destroyed,
                 num_ships_after,
-                hp_to_kill_after,
+                hp_to_retire_after,
                 r3_combat_modifier_bps: combat_modifier_bps(c.owner, &combat_modifiers),
                 hostile_target_ids: hostile_targets,
                 ship_loss_event_emitted: ship_loss_event,
@@ -529,7 +530,7 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
                     combatant_id: row.combatant_id.clone(),
                     cell_index: row.cell_index,
                     num_ships_after: row.num_ships_after,
-                    hp_to_kill_after: row.hp_to_kill_after,
+                    hp_to_retire_after: row.hp_to_retire_after,
                 });
             }
         }
@@ -591,7 +592,7 @@ fn execute_model(input: &DressRehearsalR6Input) -> DressRehearsalR6Oracle {
     }
 }
 
-pub fn hp_to_kill_for_cohort(num_ships: i64, hp_per_ship: i64) -> i64 {
+pub fn hp_to_retire_for_cohort(num_ships: i64, hp_per_ship: i64) -> i64 {
     num_ships * hp_per_ship
 }
 
@@ -612,12 +613,12 @@ pub fn emission_band_ship_attrition(
     };
     let ships_destroyed = ships_destroyed_raw.max(0).min(num_ships_before);
     let num_ships_after = num_ships_before - ships_destroyed;
-    let hp_to_kill_after = hp_to_kill_for_cohort(num_ships_after, hp_per_ship);
+    let hp_to_retire_after = hp_to_retire_for_cohort(num_ships_after, hp_per_ship);
     let zero_cohort = num_ships_after == 0;
     (
         ships_destroyed,
         num_ships_after,
-        hp_to_kill_after,
+        hp_to_retire_after,
         zero_cohort,
     )
 }

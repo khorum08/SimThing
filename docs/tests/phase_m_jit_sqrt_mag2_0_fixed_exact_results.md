@@ -21,7 +21,7 @@
 1. **Exactness gap after SQRT-MAG-0 R1:** F sqrt and exact mag-from-mag2 admission exist, but no pinned exact `mag2` construction — raw f32 `dx²+dy²` had 40/784 GPU/CPU bit mismatches.
 2. **Why arbitrary raw f32 `dx²+dy²` is not accepted:** GPU/CPU f32 multiply-add ordering diverges; SQRT-MAG-0 proved this is pre-sqrt, not Candidate F failure.
 3. **Fixed-point scale selected:** **Q16.16** (`fraction_bits=16`, scale=65536, `scale_sq=2^32`).
-4. **Maximum safe range:** Components ±16.0 (SEAD probe table); max `dx²+dy²` integer = 2×(16×65536)² ≈ 2.2×10¹² (u32 limb-pair, no overflow in corpus).
+4. **Maximum safe range:** Components ±16.0 (FIELD_POLICY probe table); max `dx²+dy²` integer = 2×(16×65536)² ≈ 2.2×10¹² (u32 limb-pair, no overflow in corpus).
 5. **Exact-authoritative `mag2_bits`:** Integer `dx_fixed²+dy_fixed²` as u32 lo/hi limbs; conversion `mag2_f32 = hi + lo/2^32` → f32 bits.
 6. **F-backed magnitude feed:** `sqrt_cr_f_bits(mag2_bits)` in same WGSL kernel; feeds `m_jit_mag_f_from_exact_mag2` contract path.
 7. **34k benchmark shape:** Deterministic mobile-simthing pairs (28-value gradient table, LCG seed `0x5345_4144`), Q16.16 quantization, one dispatch, readback included.
@@ -32,10 +32,10 @@
 |---|---|
 | Format | Q16.16 signed fixed-point |
 | `fraction_bits` | 16 |
-| Component range | ±16.0 (bounded SEAD probe) |
+| Component range | ±16.0 (bounded FIELD_POLICY probe) |
 | Quantization | Round-to-nearest: `(f32 * 65536).round() as i32` |
 | Integer mag2 | `u64` sum via u32 limb multiply-add (portable WGSL, no int64) |
-| Overflow | None in bounded SEAD corpus; max sum fits u64 limbs |
+| Overflow | None in bounded FIELD_POLICY corpus; max sum fits u64 limbs |
 | f32 conversion | `bitcast<f32>(f32(hi) + f32(lo) / 4294967296.0)` |
 
 ## Admission matrix
@@ -87,4 +87,4 @@ No scratch/tmp artifacts deleted under `docs/tests/`.
 
 ## Final verdict
 
-**PASS** — SQRT-MAG2-0 landed an exact fixed-point pre-sqrt mag2 construction for the SEAD hot path; raw f32 dx/dy mag2 remains non-exact/probe, diagnostic mag2 remains blocked unless routed through the exact mag2 descriptor, F-backed exact sqrt consumes exact mag2 bits successfully, correctness and 34,000-row benchmark results were recorded, no scheduler/cache/default wiring/semantic WGSL/economy bridge was added, active docs and production plan were updated, tests and cargo check are green, and V7.7 / Mapping ADR / SEAD posture remains intact.
+**PASS** — SQRT-MAG2-0 landed an exact fixed-point pre-sqrt mag2 construction for the FIELD_POLICY hot path; raw f32 dx/dy mag2 remains non-exact/probe, diagnostic mag2 remains blocked unless routed through the exact mag2 descriptor, F-backed exact sqrt consumes exact mag2 bits successfully, correctness and 34,000-row benchmark results were recorded, no scheduler/cache/default wiring/semantic WGSL/economy bridge was added, active docs and production plan were updated, tests and cargo check are green, and V7.7 / Mapping ADR / FIELD_POLICY posture remains intact.

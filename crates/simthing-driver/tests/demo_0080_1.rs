@@ -151,13 +151,13 @@ fn demo_0080_1_no_external_boundary_request() {
 }
 
 #[test]
-fn demo_0080_1_no_sead_bypass() {
+fn demo_0080_1_no_field_policy_bypass() {
     let admitted = report();
-    assert!(admitted.no_sead_bypass);
+    assert!(admitted.no_field_policy_bypass);
 
-    let rejected = rejected_with(|f| f.sead_bypass = true);
+    let rejected = rejected_with(|f| f.field_policy_bypass = true);
     assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"sead_bypass"));
+    assert!(rejected.diagnostics.contains(&"field_policy_bypass"));
 }
 
 #[test]

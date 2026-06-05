@@ -20,7 +20,7 @@ No 1B-tail deferral remains: the `local_security` evasion term and deterministic
 
 `PRODUCTION-PATH-0080-0` exists and passes, but it runs a single evaluation when invoked. Local Patrol
 Economy is a **dynamic** scenario: disruption and supply change over time, and the patrol's
-GPU-resident SEAD decision (`Threshold`+`EmitEvent`→`BoundaryRequest`) only becomes meaningful when
+GPU-resident FIELD_POLICY decision (`Threshold`+`EmitEvent`→`BoundaryRequest`) only becomes meaningful when
 there is a **repeatable scenario tick/step** to re-evaluate those thresholds and route the resulting
 `BoundaryRequest`s into the production path. The schedule **unlocks execution cadence** — it is not a
 proof wrapper, soak, or accounting variant.
@@ -35,7 +35,7 @@ mobility runtime. It is a deterministic, opt-in, scenario-scoped step driver for
 - One economic **owner** (the patrol's owner); one or a very small fixed number of patrols.
 - Two or a few local **locations**.
 - Bounded economy values only: `supply`, `maintenance`, `local_output`, `local_security`, `disruption`.
-- **SEAD decision source remains GPU-resident** `Threshold`+`EmitEvent`→`BoundaryRequest` — no CPU
+- **FIELD_POLICY decision source remains GPU-resident** `Threshold`+`EmitEvent`→`BoundaryRequest` — no CPU
   planner, no externally-scripted movement.
 - Mobility / ownership / flow continue to run through `PRODUCTION-PATH-0080-0`
   (`run_production_path_0080_0`, `ALLOC → REENROLL → IDROUTE → ECON → OWNER`). The schedule **drives**
@@ -44,9 +44,9 @@ mobility runtime. It is a deterministic, opt-in, scenario-scoped step driver for
 ### 2.1 Dynamic driver — the pirate/patrol loop (design-authority enrichment, bounded)
 
 A per-tick schedule needs a dynamic to evaluate. Per design authority (2026-06-02), the scenario is
-enriched with a **bounded predator/patrol loop** that makes the schedule a genuine **SEAD + Ownership
+enriched with a **bounded predator/patrol loop** that makes the schedule a genuine **FIELD_POLICY + Ownership
 + Flow + IDROUTE** testbed — using **no new substrate** (same mobility/transfer substrate, same
-GPU-resident SEAD posture, same bounded economy values):
+GPU-resident FIELD_POLICY posture, same bounded economy values):
 
 - A **pirate** is a *hostile disruptor entity* with its own identity (a second IDROUTE identity, `k=2`
   — within `max_factions_per_cell`). It is **not** a second economic faction: it carries no treasury,
@@ -59,7 +59,7 @@ GPU-resident SEAD posture, same bounded economy values):
   *highest `supply` · lowest `disruption` · lowest `local_security`*. `local_security` is the
   patrol-influence proxy (patrol presence raises it where it sits), so this third term makes the pirate
   **prefer systems with the least patrol influence** — it evades the patrol rather than merely chasing
-  supply. No new field, no new substrate: it is an argmax over GPU-resident fields, same posture as SEAD
+  supply. No new field, no new substrate: it is an argmax over GPU-resident fields, same posture as FIELD_POLICY
   (not a CPU planner).
 - **Emergent cat-and-mouse (design intent, not scripted).** Because the patrol relocates toward
   depleted/contested supply and raises `local_security` where it sits, while the pirate scores *against*
@@ -98,7 +98,7 @@ are scenario-authored values within the bounded economy — not new architecture
 - **Bounded number of steps** for tests.
 - **Disabled / default path has no schedule registered and no path invocation.** The production path's
   `global_default_schedule_registered` must remain `false`.
-- Each step: evaluate GPU-resident SEAD thresholds on the current scenario state → emit **zero or one**
+- Each step: evaluate GPU-resident FIELD_POLICY thresholds on the current scenario state → emit **zero or one**
   `BoundaryRequest` per mover per step → route it into `run_production_path_0080_0` → record a
   deterministic per-step report.
 

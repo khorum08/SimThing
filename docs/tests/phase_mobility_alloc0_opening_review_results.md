@@ -17,7 +17,7 @@ MOBILITY-ALLOC-0 may open as the next v7.9 implementation ladder, limited to det
 - `docs/design_v7_9_mobility_transfer_allocation_production_track.md`
 - `docs/workshop/mobility_and_transfer_allocation.md`
 - `docs/workshop/mapping_current_guidance.md`
-- `docs/workshop/sead_self_ai_track.md`
+- `docs/workshop/field_policy_track.md`
 - `docs/tests/phase_mobility_scenario0_results.md`
 - `docs/tests/phase_mobility_scenario0_acceptance_review_results.md`
 - `docs/tests/phase_mobility_owner_band_budget_audit_results.md`
@@ -82,7 +82,7 @@ Performance bars:
 
 ## Posture Attestation
 
-Owner-entities remain non-spatial; capture remains an owner-column flip, not reparenting; arrival order remains non-authoritative for replay ordering; live-slot compaction stays forbidden; GPU semaphore/nondeterministic atomics stay rejected; semantic/raw WGSL stays rejected; `simthing-sim` remains semantic-free; SEAD decisions stay GPU-resident threshold/event outputs rather than CPU planning; REENROLL/IDROUTE/ECON/OWNER remain proposed/parked. No invariant changes.
+Owner-entities remain non-spatial; capture remains an owner-column flip, not reparenting; arrival order remains non-authoritative for replay ordering; live-slot compaction stays forbidden; GPU semaphore/nondeterministic atomics stay rejected; semantic/raw WGSL stays rejected; `simthing-sim` remains semantic-free; FIELD_POLICY decisions stay GPU-resident threshold/event outputs rather than CPU planning; REENROLL/IDROUTE/ECON/OWNER remain proposed/parked. No invariant changes.
 
 ## Commands
 

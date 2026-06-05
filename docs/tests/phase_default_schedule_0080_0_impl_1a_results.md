@@ -19,7 +19,7 @@
 
 Implemented only `DEFAULT-SCHEDULE-0080-0` 1A: deterministic opt-in, scenario-scoped schedule +
 patrol loop for Local Patrol Economy. The schedule runs bounded deterministic steps, evaluates
-patrol-side SEAD threshold conditions over existing local values (`supply`, `maintenance`,
+patrol-side FIELD_POLICY threshold conditions over existing local values (`supply`, `maintenance`,
 `local_output`, `local_security`, `disruption`), and routes emitted `BoundaryRequest`s through the
 existing `run_production_path_0080_0`.
 
@@ -31,7 +31,7 @@ relocation, predator loop, or cat-and-mouse assertion was added.
 - Opt-in/default-off: PASS.
 - Default path has no schedule and no production-path invocation: PASS.
 - No global default schedule: PASS.
-- SEAD threshold/event/boundary routing: PASS.
+- FIELD_POLICY threshold/event/boundary routing: PASS.
 - Production-path routing through `run_production_path_0080_0`: PASS.
 - Identity, owner overlay, source/destination membership, and bounded economy reassociation: PASS.
 - Bounded local economy only: PASS.
@@ -52,10 +52,10 @@ relocation, predator loop, or cat-and-mouse assertion was added.
 - `cargo test -p simthing-spec --test mobility_runtime0_composition` - PASS.
 - `cargo test -p simthing-spec --test mobility_runtime1_production_fixture` - PASS.
 - `cargo test -p simthing-driver --test mobility_runtime1a_runtime_fixture` - PASS.
-- `cargo test -p simthing-driver --test phase_m_sead_obs4_threshold_event` - PASS.
-- `cargo test -p simthing-driver --test phase_m_sead_event0_compaction` - PASS.
-- `cargo test -p simthing-driver --test phase_m_sead_pipe0_observer_event_pipeline` - PASS.
-- `cargo test -p simthing-spec --test sead_obs0_overlay_score_admission` - PASS.
+- `cargo test -p simthing-driver --test phase_m_field_policy_obs4_threshold_event` - PASS.
+- `cargo test -p simthing-driver --test phase_m_field_policy_event0_compaction` - PASS.
+- `cargo test -p simthing-driver --test phase_m_field_policy_pipe0_observer_event_pipeline` - PASS.
+- `cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission` - PASS.
 - `cargo check --workspace` - PASS with existing warnings.
 
 ## Skipped / Future

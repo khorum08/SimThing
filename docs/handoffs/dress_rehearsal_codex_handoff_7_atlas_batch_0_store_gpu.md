@@ -30,7 +30,7 @@ semantic-free `simthing-sim`) · 3) `docs/design_0_0_8_0_consumer_pulled_product
 (ladder; STORE closure; STORE-GPU = this gate; OWNER routing §12.4) · 4)
 `docs/scenarios/scenario_0080_2_dress_rehearsal_spec.md` · 5) `crates/simthing-core/src/accumulator_op.rs`
 (the masked-reduction vocabulary — `EvalEML`/`CMP_EQ`/`Sum`/`ScaleSpec::ByColumn`) · 6)
-`docs/workshop/sead_self_ai_track.md`.
+`docs/workshop/field_policy_track.md`.
 
 **Rung-local (ephemeral):** `crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_store.rs` (the CPU
 oracle = `StoreOracle`); `docs/tests/scenario_0080_2_atlas_batch_0_store_report.md`;
@@ -53,7 +53,7 @@ oracle = `StoreOracle`); `docs/tests/scenario_0080_2_atlas_batch_0_store_report.
   owner/channel **numeric columns** (STORE kept typed descriptors) — that materialization is in scope;
   gameplay computation is not.
 - **No R1/R2/R3/R4:** no diffusion/BoundedFeedback, no economy/stockpile, no capability mask-down, no
-  SEAD/gradient/exact-sqrt/threshold/`BoundaryRequest`, no movement/REENROLL, no combat, no session wiring.
+  FIELD_POLICY/gradient/exact-sqrt/threshold/`BoundaryRequest`, no movement/REENROLL, no combat, no session wiring.
 
 ## 3. Deliverables
 
@@ -68,7 +68,7 @@ oracle = `StoreOracle`); `docs/tests/scenario_0080_2_atlas_batch_0_store_report.
 ## 4. Tests (target `dress_rehearsal_atlas_batch_0_store_gpu`)
 
 CPU/metadata (always run): 1) `store_gpu_status_matches_gate` (id `ATLAS-BATCH-0-STORE-GPU`; EC-A3-gpu
-only; no R1/R2/R3/R4/economy/SEAD/movement/combat) · 2) `store_gpu_consumes_accepted_store_oracle`
+only; no R1/R2/R3/R4/economy/FIELD_POLICY/movement/combat) · 2) `store_gpu_consumes_accepted_store_oracle`
 (consumes `StoreOracle`; mutates STORE not at all) · 8) `no_semantic_shader_or_gameplay_inputs` (the GPU
 path receives only generic keys/values/owner/channel masks/buffers — no map/faction/gameplay) · 9)
 `no_r1_r2_r3_r4_behavior`.
@@ -119,7 +119,7 @@ accepted GEN/LOC/PACK/PACK-GPU/STORE artifacts. If none: "Deleted obsolete artif
 new WGSL · a new `CombineFn`/`AccumulatorRole` · editing `simthing-gpu`/`-core`/`-sim` · a non-whitelisted
 EML opcode (anything beyond `CMP_EQ`/`SELECT`/arithmetic/`Sum`) · runtime `match kind` on a real
 `SimThingKind` · CPU map planner · economy/stockpile/recipe · disruption heatmap/diffusion ·
-capability-tree mask-down · SEAD/exact-sqrt/threshold/`BoundaryRequest` · REENROLL/movement · combat ·
+capability-tree mask-down · FIELD_POLICY/exact-sqrt/threshold/`BoundaryRequest` · REENROLL/movement · combat ·
 session pass-graph wiring · M-4A sparse-residency. **STORE-GPU proves a generic masked storage/reduction
 parity vs the STORE oracle — nothing more.**
 

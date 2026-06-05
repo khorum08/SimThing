@@ -167,7 +167,7 @@ fn doctrine_active_guidance_avoids_canonical_day_overclaims() {
         include_str!("../../../docs/workshop/mapping_current_guidance.md"),
         include_str!("../../../docs/design_0_0_8_0.md"),
         include_str!("../../../docs/design_0_0_8_0_consumer_pulled_production_track.md"),
-        include_str!("../../../docs/workshop/sead_self_ai_track.md"),
+        include_str!("../../../docs/workshop/field_policy_track.md"),
     ];
     let forbidden = [
         "boundary == day",

@@ -28,17 +28,17 @@ scenario or explicit product authorization**.
 - Control: [`phase_control_0080_0_impl_results.md`](phase_control_0080_0_impl_results.md).
 - Demo/export + **day-to-day patrol/pirate movement record**:
   [`phase_demo_0080_0_impl_results.md`](phase_demo_0080_0_impl_results.md) (§"Day-to-day patrol and
-  pirate movement record"; movement emerges from the SEAD-sourced schedule path only — demo commands do
+  pirate movement record"; movement emerges from the FIELD_POLICY-sourced schedule path only — demo commands do
   not direct-move entities).
 - Tests as reported at demo close: `demo_0080_0` 18/18 PASS; `control_0080_0`, `gameplay_0080_0`,
-  `default_schedule_0080_0`, `production_path_0080_0` PASS; mobility substrate + SEAD regression suites
+  `default_schedule_0080_0`, `production_path_0080_0` PASS; mobility substrate + FIELD_POLICY regression suites
   PASS. Deterministic replay verified (`replay_demo_0080_0()` reproduces identical exports + checksum).
 
 ## Closeout rationale
 
 The product-facing vertical slice is now **runnable** (schedule), **controllable through bounded
 admission** (control — parameters only, never direct movement), **observable** (read-only export), and
-**reproducibly exportable** (headless demo). Movement throughout remains GPU-resident SEAD-sourced
+**reproducibly exportable** (headless demo). Movement throughout remains GPU-resident FIELD_POLICY-sourced
 (`Threshold`+`EmitEvent`→`BoundaryRequest`); no CPU planner ever entered the path. The slice has met its
 purpose; no further work should be opened on it without a new product pull.
 

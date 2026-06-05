@@ -11,7 +11,7 @@ This is a **docs-only** synchronization pass. No code changes, no new implementa
 - `docs/design_v7_8.md` — fixed stale Line C table row ("provisional/unimplemented" → C-0/C-1/C-2 ACCEPTED, map batching closed at designer surface); added explicit E-11B-5 parked-state note in Line A status; updated V7.8-MET-SCENARIO-0 note to V7.8-MET-CLOSEOUT-0 final state.
 - `docs/design_v7_8_production_track.md` — added explicit E-11B-5 parked detail to A ladder row status; added V7.8-MET-CLOSEOUT-0 closeout row in ladder index.
 - `docs/workshop/mapping_current_guidance.md` — added compact E-11B-5 parked-state note.
-- `docs/workshop/sead_self_ai_track.md` — added compact E-11B-5 parked-state note.
+- `docs/workshop/field_policy_track.md` — added compact E-11B-5 parked-state note.
 - `docs/worklog.md` — appended V7.8-MET-CLOSEOUT-0 entry.
 - `docs/tests/phase_v7_8_met_closeout_results.md` — this report (new).
 
@@ -71,7 +71,7 @@ E-11B-5 dynamic enrollment is **not a blocker** to v7.8 M/E/T closure. It remain
 - `docs/design_v7_8.md` (Line A status + new closeout note)
 - `docs/design_v7_8_production_track.md` (A ladder row)
 - `docs/workshop/mapping_current_guidance.md`
-- `docs/workshop/sead_self_ai_track.md`
+- `docs/workshop/field_policy_track.md`
 
 Exact wording added (compact, consistent):
 

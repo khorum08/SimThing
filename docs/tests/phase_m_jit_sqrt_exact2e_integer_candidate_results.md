@@ -155,4 +155,4 @@ Ignored exhaustive sweep was not run.
 
 ## Final verdict
 
-**PASS — SQRT-EXACT-2E landed as a test-only Candidate E integer/bit-pattern probe.** Candidate E is a standalone verbatim WGSL artifact using u32 bit IO; edge/subnormal/dense-normal plus E-vs-D comparison were recorded; Candidate C/f64 was not implemented; no production exact sqrt admission or `mag2` authority flip was added; native sqrt remains `ApproximateJitOnly`; M-JIT remains closed at PROD-0; V7.7 / Mapping ADR / SEAD guardrails remain intact.
+**PASS — SQRT-EXACT-2E landed as a test-only Candidate E integer/bit-pattern probe.** Candidate E is a standalone verbatim WGSL artifact using u32 bit IO; edge/subnormal/dense-normal plus E-vs-D comparison were recorded; Candidate C/f64 was not implemented; no production exact sqrt admission or `mag2` authority flip was added; native sqrt remains `ApproximateJitOnly`; M-JIT remains closed at PROD-0; V7.7 / Mapping ADR / FIELD_POLICY guardrails remain intact.

@@ -38,7 +38,7 @@ R6B only. Opt-in/default-off dress fixture. Consumes R5 post-move + R6A cohort s
 | num_ships_before | 10 |
 | ship_count_delta | 1 |
 | num_ships_after | 11 |
-| hp_to_kill_after | 1100 |
+| hp_to_retire_after | 1100 |
 | damage_output_after | 550 (before R3 bps in combat) |
 | movement BoundaryRequest | **no** |
 | shadow update | `CohortStateUpdate` |
@@ -61,7 +61,7 @@ R6B only. Opt-in/default-off dress fixture. Consumes R5 post-move + R6A cohort s
 | absorbed_fleet_id | `dress-rehearsal-r6b-fusion-right` |
 | left / right ships | 7 + 7 |
 | fused_num_ships | 14 |
-| hp_to_kill_after | 1400 |
+| hp_to_retire_after | 1400 |
 | damage_output_after | 700 |
 | shadow update | `CohortCompactionDeparture` |
 | hostile/incompatible at same cell | **not fused** |
@@ -83,7 +83,7 @@ R6B only. Opt-in/default-off dress fixture. Consumes R5 post-move + R6A cohort s
 cargo test -p simthing-driver --test dress_rehearsal_r6b_ship_cohort_reinforcement  → 24 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r6_combat_hp_damage  → 25 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r5_movement_reenroll  → 17 passed; 0 failed
-cargo test -p simthing-driver --test dress_rehearsal_r4_sead_field_consumption  → 16 passed; 0 failed
+cargo test -p simthing-driver --test dress_rehearsal_r4_field_policy_consumption  → 16 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r3_capability_mask_down  → 13 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r2_recursive_allocation  → 13 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r1_disruption_heatmap  → 34 passed; 0 failed

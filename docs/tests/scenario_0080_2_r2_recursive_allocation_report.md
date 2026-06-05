@@ -21,7 +21,7 @@
 R2 only. The implementation is an opt-in/default-off fixture over the single galactic tier. It consumes
 the accepted R1 disruption heatmap, implements M1 labor-to-production, M2 owner-masked reduce-up plus
 deterministic disburse-down, and M3 blockade/divert as a production owner-column flip. It adds no
-occupant movement, reparenting, BoundaryRequest, SEAD/GradientXY pathing, combat, new op, shader/WGSL,
+occupant movement, reparenting, BoundaryRequest, FIELD_POLICY/GradientXY pathing, combat, new op, shader/WGSL,
 GPU requirement, default SimSession wiring, CPU planner, market/currency layer, ClauseThing, UI, or
 invariant edit.
 

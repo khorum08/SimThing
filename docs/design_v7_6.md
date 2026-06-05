@@ -19,7 +19,7 @@ V7.6 preserves the V7.5 constitutional core:
 - No CPU-side AI planner or semantic sidecar may become the real game.
 - No mapping/location runtime is authorized by this amendment alone.
 
-V7.6 relaxes two **misplaced development guardrails** proven too restrictive by SEAD /
+V7.6 relaxes two **misplaced development guardrails** proven too restrictive by FIELD_POLICY /
 tensor-stencil / EML admission probes:
 
 ### 1.1 WGSL guardrail revision
@@ -57,9 +57,9 @@ wrong-layer rejection.)
 
 ---
 
-## 2. Evidence summary (2026-05 SEAD probes)
+## 2. Evidence summary (2026-05 FIELD_POLICY probes)
 
-**SEAD operator toolkit:** Per-edge AccumulatorOp propagation over dense grids is over budget.
+**FIELD_POLICY operator toolkit:** Per-edge AccumulatorOp propagation over dense grids is over budget.
 Hierarchy-first strategic awareness is much cheaper. Dirty/frontier skipping helps but does not
 solve dense long-horizon diffusion alone.
 

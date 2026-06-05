@@ -110,7 +110,7 @@ opt-in/default-off, parked** until a named scenario pulls it.
 | **Type** | Tier-2 scenario/admission gate |
 | **Deliverable** | Named product-scenario / admission packet |
 | **Packet** | [`scenarios/scenario_0080_0_admission_packet.md`](scenarios/scenario_0080_0_admission_packet.md) — **Local Patrol Economy** — **ACCEPTED 2026-06-02** ([acceptance review](tests/phase_scenario_0080_0_acceptance_review_results.md)) |
-| **Design-authority enrichment** | Patrol relocate decision sourced from the accepted GPU-resident SEAD `Threshold`+`EmitEvent`→`BoundaryRequest` posture (not a CPU planner; no new substrate pulled) — scenario exercises SEAD + Ownership + Flow |
+| **Design-authority enrichment** | Patrol relocate decision sourced from the accepted GPU-resident FIELD_POLICY `Threshold`+`EmitEvent`→`BoundaryRequest` posture (not a CPU planner; no new substrate pulled) — scenario exercises FIELD_POLICY + Ownership + Flow |
 | **Runtime implementation** | **No** |
 | **On acceptance** | Opened **only** the mobility/transfer production-path gate (`PRODUCTION-PATH-0080-0`, below) |
 
@@ -173,19 +173,19 @@ Reject the scenario if it requires any of:
 | Gate | Description | Status |
 |---|---|---|
 | `SCENARIO-0080-0` | Scenario/admission packet (Local Patrol Economy) | **ACCEPTED (2026-06-02)** |
-| `PRODUCTION-PATH-0080-0` | First substrate production-path gate | **IMPLEMENTED / PASS - Local Patrol Economy opt-in production path** — scoped to: *Local Patrol Economy using the 0.0.7.9 mobility/transfer substrate*, patrol relocate decision sourced from the accepted GPU-resident SEAD `Threshold`+`EmitEvent`→`BoundaryRequest` path (mobility/transfer is the only substrate wired; no CPU planner; no new SEAD production gate; no global default schedule) |
-| `DEFAULT-SCHEDULE-0080-0` | Scenario-scoped schedule for Local Patrol Economy | **IMPLEMENTED / PASS - 1A schedule + patrol and 1B bounded pirate loop** — deterministic opt-in step driver routes GPU-resident SEAD threshold/event/`BoundaryRequest` decisions into `PRODUCTION-PATH-0080-0`; pirate is a second IDROUTE identity, not a second economy owner; pirate disruption, supply drain, threshold relocation, `local_security` evasion scoring, and deterministic cat-and-mouse assertions are implemented; **not a global default schedule**. Spec: [`production_paths/default_schedule_0080_0_opening_spec.md`](production_paths/default_schedule_0080_0_opening_spec.md); reports: [`tests/phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md), [`tests/phase_default_schedule_0080_0_impl_1b_results.md`](tests/phase_default_schedule_0080_0_impl_1b_results.md). |
+| `PRODUCTION-PATH-0080-0` | First substrate production-path gate | **IMPLEMENTED / PASS - Local Patrol Economy opt-in production path** — scoped to: *Local Patrol Economy using the 0.0.7.9 mobility/transfer substrate*, patrol relocate decision sourced from the accepted GPU-resident FIELD_POLICY `Threshold`+`EmitEvent`→`BoundaryRequest` path (mobility/transfer is the only substrate wired; no CPU planner; no new FIELD_POLICY production gate; no global default schedule) |
+| `DEFAULT-SCHEDULE-0080-0` | Scenario-scoped schedule for Local Patrol Economy | **IMPLEMENTED / PASS - 1A schedule + patrol and 1B bounded pirate loop** — deterministic opt-in step driver routes GPU-resident FIELD_POLICY threshold/event/`BoundaryRequest` decisions into `PRODUCTION-PATH-0080-0`; pirate is a second IDROUTE identity, not a second economy owner; pirate disruption, supply drain, threshold relocation, `local_security` evasion scoring, and deterministic cat-and-mouse assertions are implemented; **not a global default schedule**. Spec: [`production_paths/default_schedule_0080_0_opening_spec.md`](production_paths/default_schedule_0080_0_opening_spec.md); reports: [`tests/phase_default_schedule_0080_0_impl_1a_results.md`](tests/phase_default_schedule_0080_0_impl_1a_results.md), [`tests/phase_default_schedule_0080_0_impl_1b_results.md`](tests/phase_default_schedule_0080_0_impl_1b_results.md). |
 | `GAMEPLAY-0080-0` | Read-only Local Patrol Economy observation surface | **IMPLEMENTED / PASS — read-only Local Patrol Economy observation export** — consumes `DefaultSchedule0080RunReport`; exports deterministic tick transcript + summary via `observe_gameplay_0080_0`; explicit opt-in/default-off. **Player control / command input / UI framework / real-time loop remain CLOSED.** Spec: [`gameplay/gameplay_0080_0_opening_spec.md`](gameplay/gameplay_0080_0_opening_spec.md); impl: [`tests/phase_gameplay_0080_0_impl_results.md`](tests/phase_gameplay_0080_0_impl_results.md). |
-| `CONTROL-0080-0` | Bounded Local Patrol Economy command admission | **IMPLEMENTED / PASS — bounded Local Patrol Economy command admission** — opt-in/default-off command vocabulary writes only existing `DefaultSchedule0080Input` bounded values/config, then runs schedule→`observe_gameplay_0080_0`; commands never move a mover, emit a `BoundaryRequest`, or bypass SEAD. **Direct movement control / player command loop / UI framework / real-time loop remain CLOSED.** Spec: [`gameplay/control_0080_0_opening_spec.md`](gameplay/control_0080_0_opening_spec.md); impl: [`tests/phase_control_0080_0_impl_results.md`](tests/phase_control_0080_0_impl_results.md). |
+| `CONTROL-0080-0` | Bounded Local Patrol Economy command admission | **IMPLEMENTED / PASS — bounded Local Patrol Economy command admission** — opt-in/default-off command vocabulary writes only existing `DefaultSchedule0080Input` bounded values/config, then runs schedule→`observe_gameplay_0080_0`; commands never move a mover, emit a `BoundaryRequest`, or bypass FIELD_POLICY. **Direct movement control / player command loop / UI framework / real-time loop remain CLOSED.** Spec: [`gameplay/control_0080_0_opening_spec.md`](gameplay/control_0080_0_opening_spec.md); impl: [`tests/phase_control_0080_0_impl_results.md`](tests/phase_control_0080_0_impl_results.md). |
 | `DEMO-0080-0` | Headless Local Patrol Economy demo/export packaging | **IMPLEMENTED / PASS — headless Local Patrol Economy demo/export library helper** — deterministic opt-in/default-off; canonical `Control0080CommandBatch::canonical_run()`; existing control→schedule→observation/export path via `run_demo_0080_0`; day-to-day patrol/pirate movement record in impl report. **No CLI binary.** Direct movement control, player command loop, UI framework, real-time loop, global default schedule remain CLOSED. Spec: [`gameplay/demo_0080_0_opening_spec.md`](gameplay/demo_0080_0_opening_spec.md); impl: [`tests/phase_demo_0080_0_impl_results.md`](tests/phase_demo_0080_0_impl_results.md). |
-| `SCENARIO-0080-1` | Second scenario — Nested Starmap (Terran/Pirate multi-theater) | **ACCEPTED (2026-06-02)** — nested `session → starmap(10×10) → 10 starsystems(10×10) → planet(10×10 submap)`; owner overlays inherit personality/policy weights broadcast from faction-owner simthings (OWNER down-broadcast); ownership up-aggregation (planet→starsystem) as a derived overlay; Terran patrol + pirate as a **full economy faction**; SEAD-sourced composite-gap decision; opt-in/default-off. Pulls two parked substrates (below). Packet: [`scenarios/scenario_0080_1_admission_packet.md`](scenarios/scenario_0080_1_admission_packet.md). |
+| `SCENARIO-0080-1` | Second scenario — Nested Starmap (Terran/Pirate multi-theater) | **ACCEPTED (2026-06-02)** — nested `session → starmap(10×10) → 10 starsystems(10×10) → planet(10×10 submap)`; owner overlays inherit personality/policy weights broadcast from faction-owner simthings (OWNER down-broadcast); ownership up-aggregation (planet→starsystem) as a derived overlay; Terran patrol + pirate as a **full economy faction**; FIELD_POLICY-sourced composite-gap decision; opt-in/default-off. Pulls two parked substrates (below). Packet: [`scenarios/scenario_0080_1_admission_packet.md`](scenarios/scenario_0080_1_admission_packet.md). |
 | `ATLAS-0080-0` | Atlas production runtime / sparse-residency nested mapping | **IMPLEMENTED / PASS — scenario-scoped sparse-residency nested mapping runtime for Nested Starmap** — opened by `SCENARIO-0080-1` as the named multi-theater consumer (the *first-slice gating* the invariant contemplates); opt-in sparse residency + nested theater descent/ascent; residency is a strict value no-op (I8 parity); **no default session pass-graph wiring**. Spec: [`production_paths/atlas_0080_0_opening_spec.md`](production_paths/atlas_0080_0_opening_spec.md); report: [`tests/phase_atlas_0080_0_impl_results.md`](tests/phase_atlas_0080_0_impl_results.md). |
 | `ECON-SCALE-0080-0` | Multi-faction (Hybrid-Strata/faction-index) ECON scaling | **IMPLEMENTED / PASS — bounded faction-indexed contended ECON scaling for Nested Starmap** — opt-in/default-off; Terran + Pirate fixed bounded faction set; pirate is a full economy faction (adversarial participant in starsystem resource flow, extracts not merely disrupts); deterministic integer contended clearing with a CPU parity oracle; subsidiarity / FlatStar posture preserved; **no hard currency / markets / trade / `ai_budget`, no nested RF, no unbounded factions**. Default single-owner ECON unchanged when disabled. Spec: [`production_paths/econ_scale_0080_0_opening_spec.md`](production_paths/econ_scale_0080_0_opening_spec.md); impl: [`tests/phase_econ_scale_0080_0_impl_results.md`](tests/phase_econ_scale_0080_0_impl_results.md). |
-| `PRODUCTION-PATH-0080-1` | `SCENARIO-0080-1` opt-in production path | **IMPLEMENTED / PASS — opt-in Nested Starmap production-path composition** — composes implemented/pass `ATLAS-0080-0` (sparse residency) + `ECON-SCALE-0080-0` (faction-index ECON) reports into one inspectable scenario report; owner-overlay inheritance + ownership up-aggregation are numeric summaries; SEAD composite-gap terms are read-only; **no schedule/movement, no new substrate**. Spec: [`production_paths/production_path_0080_1_opening_spec.md`](production_paths/production_path_0080_1_opening_spec.md); impl: [`tests/phase_production_path_0080_1_impl_results.md`](tests/phase_production_path_0080_1_impl_results.md). |
-| `DEFAULT-SCHEDULE-0080-1` | `SCENARIO-0080-1` schedule / movement | **IMPLEMENTED / PASS — scenario-scoped Nested Starmap SEAD-sourced schedule/movement** — deterministic opt-in/default-off step driver that consumes `PRODUCTION-PATH-0080-1` and turns read-only SEAD composite-gap terms into live movement via `Threshold + EmitEvent → BoundaryRequest`, routed through the existing mobility/transfer substrate posture (Terran + Pirate ships); preserves identity + owner overlays, updates membership without reparenting; **not a global default schedule; no observation/control/demo; no direct move; no new substrate**. Spec: [`production_paths/default_schedule_0080_1_opening_spec.md`](production_paths/default_schedule_0080_1_opening_spec.md); impl: [`tests/phase_default_schedule_0080_1_impl_results.md`](tests/phase_default_schedule_0080_1_impl_results.md). |
-| `GAMEPLAY-0080-1` | `SCENARIO-0080-1` read-only observation/export | **IMPLEMENTED / PASS - read-only Nested Starmap observation/export** - read-only consumer of `DEFAULT-SCHEDULE-0080-1` run reports (`DefaultSchedule0081RunReport`) via `observe_gameplay_0080_1`; exports deterministic atlas residency, faction-index ECON, owner-overlay/up-aggregation, SEAD movement trace, and Terran/Pirate movement rows; opt-in/default-off, non-interactive, mutates nothing beyond optional explicit schedule invocation. No control/command input, demo packaging, UI, or real-time loop. Control/demo for `0080-1` remain not opened; direct movement control, external boundary requests, CPU planner, global default schedule, semantic WGSL, new shader/GPU kernel, hard currency, nested RF, ClauseThing/L3, UI/realtime, and parked ladders remain closed/parked. Spec: [`gameplay/gameplay_0080_1_opening_spec.md`](gameplay/gameplay_0080_1_opening_spec.md); impl: [`tests/phase_gameplay_0080_1_impl_results.md`](tests/phase_gameplay_0080_1_impl_results.md). |
-| `CONTROL-0080-1` | `SCENARIO-0080-1` bounded command admission | **IMPLEMENTED / PASS - bounded Nested Starmap command admission** - opt-in/default-off deterministic command vocabulary that writes only existing `DefaultSchedule0081Input` bounded schedule values plus bounded Nested Starmap control config, then runs the existing `DEFAULT-SCHEDULE-0080-1` -> `GAMEPLAY-0080-1` path. Commands never move a ship, emit an external `BoundaryRequest`, or bypass SEAD (movement still emerges from the implemented `Threshold + EmitEvent -> BoundaryRequest` schedule). No direct movement control, player command loop, UI framework, real-time loop, demo packaging, or global default schedule. Spec: [`gameplay/control_0080_1_opening_spec.md`](gameplay/control_0080_1_opening_spec.md); impl: [`tests/phase_control_0080_1_impl_results.md`](tests/phase_control_0080_1_impl_results.md). |
-| `DEMO-0080-1` | `SCENARIO-0080-1` headless demo/export packaging | **IMPLEMENTED / PASS — headless Nested Starmap demo/export library helper** — deterministic opt-in/default-off; canonical `Control0081CommandBatch::canonical_run()`; existing `control → DEFAULT-SCHEDULE-0080-1 → GAMEPLAY-0080-1` path via `run_demo_0080_1`; report includes atlas residency, faction-index ECON, owner-overlay/up-aggregation, SEAD movement trace, Terran/Pirate movement rows, command transcript, and replay checksum. **No CLI binary.** Direct movement control, player command loop, UI framework, real-time loop, and global default schedule remain CLOSED. Spec: [`gameplay/demo_0080_1_opening_spec.md`](gameplay/demo_0080_1_opening_spec.md); impl: [`tests/phase_demo_0080_1_impl_results.md`](tests/phase_demo_0080_1_impl_results.md). |
+| `PRODUCTION-PATH-0080-1` | `SCENARIO-0080-1` opt-in production path | **IMPLEMENTED / PASS — opt-in Nested Starmap production-path composition** — composes implemented/pass `ATLAS-0080-0` (sparse residency) + `ECON-SCALE-0080-0` (faction-index ECON) reports into one inspectable scenario report; owner-overlay inheritance + ownership up-aggregation are numeric summaries; FIELD_POLICY composite-gap terms are read-only; **no schedule/movement, no new substrate**. Spec: [`production_paths/production_path_0080_1_opening_spec.md`](production_paths/production_path_0080_1_opening_spec.md); impl: [`tests/phase_production_path_0080_1_impl_results.md`](tests/phase_production_path_0080_1_impl_results.md). |
+| `DEFAULT-SCHEDULE-0080-1` | `SCENARIO-0080-1` schedule / movement | **IMPLEMENTED / PASS — scenario-scoped Nested Starmap FIELD_POLICY-sourced schedule/movement** — deterministic opt-in/default-off step driver that consumes `PRODUCTION-PATH-0080-1` and turns read-only FIELD_POLICY composite-gap terms into live movement via `Threshold + EmitEvent → BoundaryRequest`, routed through the existing mobility/transfer substrate posture (Terran + Pirate ships); preserves identity + owner overlays, updates membership without reparenting; **not a global default schedule; no observation/control/demo; no direct move; no new substrate**. Spec: [`production_paths/default_schedule_0080_1_opening_spec.md`](production_paths/default_schedule_0080_1_opening_spec.md); impl: [`tests/phase_default_schedule_0080_1_impl_results.md`](tests/phase_default_schedule_0080_1_impl_results.md). |
+| `GAMEPLAY-0080-1` | `SCENARIO-0080-1` read-only observation/export | **IMPLEMENTED / PASS - read-only Nested Starmap observation/export** - read-only consumer of `DEFAULT-SCHEDULE-0080-1` run reports (`DefaultSchedule0081RunReport`) via `observe_gameplay_0080_1`; exports deterministic atlas residency, faction-index ECON, owner-overlay/up-aggregation, FIELD_POLICY movement trace, and Terran/Pirate movement rows; opt-in/default-off, non-interactive, mutates nothing beyond optional explicit schedule invocation. No control/command input, demo packaging, UI, or real-time loop. Control/demo for `0080-1` remain not opened; direct movement control, external boundary requests, CPU planner, global default schedule, semantic WGSL, new shader/GPU kernel, hard currency, nested RF, ClauseThing/L3, UI/realtime, and parked ladders remain closed/parked. Spec: [`gameplay/gameplay_0080_1_opening_spec.md`](gameplay/gameplay_0080_1_opening_spec.md); impl: [`tests/phase_gameplay_0080_1_impl_results.md`](tests/phase_gameplay_0080_1_impl_results.md). |
+| `CONTROL-0080-1` | `SCENARIO-0080-1` bounded command admission | **IMPLEMENTED / PASS - bounded Nested Starmap command admission** - opt-in/default-off deterministic command vocabulary that writes only existing `DefaultSchedule0081Input` bounded schedule values plus bounded Nested Starmap control config, then runs the existing `DEFAULT-SCHEDULE-0080-1` -> `GAMEPLAY-0080-1` path. Commands never move a ship, emit an external `BoundaryRequest`, or bypass FIELD_POLICY (movement still emerges from the implemented `Threshold + EmitEvent -> BoundaryRequest` schedule). No direct movement control, player command loop, UI framework, real-time loop, demo packaging, or global default schedule. Spec: [`gameplay/control_0080_1_opening_spec.md`](gameplay/control_0080_1_opening_spec.md); impl: [`tests/phase_control_0080_1_impl_results.md`](tests/phase_control_0080_1_impl_results.md). |
+| `DEMO-0080-1` | `SCENARIO-0080-1` headless demo/export packaging | **IMPLEMENTED / PASS — headless Nested Starmap demo/export library helper** — deterministic opt-in/default-off; canonical `Control0081CommandBatch::canonical_run()`; existing `control → DEFAULT-SCHEDULE-0080-1 → GAMEPLAY-0080-1` path via `run_demo_0080_1`; report includes atlas residency, faction-index ECON, owner-overlay/up-aggregation, FIELD_POLICY movement trace, Terran/Pirate movement rows, command transcript, and replay checksum. **No CLI binary.** Direct movement control, player command loop, UI framework, real-time loop, and global default schedule remain CLOSED. Spec: [`gameplay/demo_0080_1_opening_spec.md`](gameplay/demo_0080_1_opening_spec.md); impl: [`tests/phase_demo_0080_1_impl_results.md`](tests/phase_demo_0080_1_impl_results.md). |
 | `SEMANTIC-WGSL-0080-0` | Semantic shader surface | **CLOSED** |
 | `CLAUSETHING-L3-0080-0` | Front-end / parser / product authoring surface | **PARKED** pending product authorization |
 
@@ -200,7 +200,7 @@ impl: [`tests/phase_gameplay_0080_0_impl_results.md`](tests/phase_gameplay_0080_
 `CONTROL-0080-0` is **IMPLEMENTED / PASS — bounded Local Patrol Economy command admission**
 (spec: [`gameplay/control_0080_0_opening_spec.md`](gameplay/control_0080_0_opening_spec.md);
 impl: [`tests/phase_control_0080_0_impl_results.md`](tests/phase_control_0080_0_impl_results.md)) —
-commands write only existing bounded scenario input/config and never bypass SEAD or move a mover.
+commands write only existing bounded scenario input/config and never bypass FIELD_POLICY or move a mover.
 `DEMO-0080-0` is **IMPLEMENTED / PASS — headless Local Patrol Economy demo/export library helper**
 (spec: [`gameplay/demo_0080_0_opening_spec.md`](gameplay/demo_0080_0_opening_spec.md);
 impl: [`tests/phase_demo_0080_0_impl_results.md`](tests/phase_demo_0080_0_impl_results.md);
@@ -250,7 +250,7 @@ implementations are opt-in/default-off and reversible.
 |---|---|---|---|---|
 | 1 | `ATLAS-0080-0-IMPL-0` | Opt-in sparse-residency nested-mapping runtime **+ deterministic nested structure scaffold** (`session → starmap(10×10) → 10 seeded starsystems(10×10) → one planet(10×10 submap) each`); theater descent/ascent; residency a strict value no-op with I8 parity; no default session pass-graph wiring | **ACCEPT** vs `atlas_0080_0_opening_spec.md` | ATLAS opening spec (merged) |
 | 2 | `ECON-SCALE-0080-0-IMPL-0` | Opt-in faction-indexed contended resource flow; bounded fixed faction set; subsidiarity preserved; I8 parity; no hard currency / nested RF | **ACCEPT** vs `econ_scale_0080_0_opening_spec.md` | rung 1 |
-| 3 | `PRODUCTION-PATH-0080-1-OPEN-0` | *(Opus authors)* Opening spec: initial conditions (§ scenario packet), owner overlays + personality/policy down-broadcast, ownership up-aggregation (planet→starsystem, derived overlay), ships-as-movers, pirate adversarial RF on starsystem entry, SEAD-sourced composite-gap decisions | **OPEN** (author + adjudicate) | rungs 1–2 |
+| 3 | `PRODUCTION-PATH-0080-1-OPEN-0` | *(Opus authors)* Opening spec: initial conditions (§ scenario packet), owner overlays + personality/policy down-broadcast, ownership up-aggregation (planet→starsystem, derived overlay), ships-as-movers, pirate adversarial RF on starsystem entry, FIELD_POLICY-sourced composite-gap decisions | **OPEN** (author + adjudicate) | rungs 1–2 |
 | 4 | `PRODUCTION-PATH-0080-1-IMPL-0` | Implement the scenario production path per rung-3 spec (opt-in) | **ACCEPT** vs rung-3 spec | rung 3 |
 | 5 | `DEFAULT-SCHEDULE-0080-1-OPEN-0` | *(Opus authors)* Opening spec: deterministic multi-tick schedule (ships move, pirates raid/contend, ownership + up-aggregation update per tick) | **OPEN** (author + adjudicate) | rung 4 |
 | 6 | `DEFAULT-SCHEDULE-0080-1-IMPL-0` | Implement the deterministic schedule (bounded steps, deterministic replay) | **ACCEPT** vs rung-5 spec | rung 5 |
@@ -272,13 +272,13 @@ sub-slice — keeping each parity surface clean.
 ### 12.0 Harness handoff — canonical citations (cite on every handoff)
 
 **Codex cites this high-signal set on every rung handoff (keep to these; everything else is reachable
-from them). They anchor each handoff to the three things that must not drift — SEAD principles, the
+from them). They anchor each handoff to the three things that must not drift — FIELD_POLICY principles, the
 GPU-resident Accumulator resource-flow notion, and the anticipated emergent behaviors:**
 1. **[`design_0_0_8_0.md`](design_0_0_8_0.md) §0** — transient constitution: conformance; **all conflict
-   is resource flow**; recursive allocation; **SEAD = GPU-resident threshold crossings, no CPU planner**
+   is resource flow**; recursive allocation; **FIELD_POLICY = GPU-resident threshold crossings, no CPU planner**
    (§0.0, §0.5 #4); §0.5 harness discipline.
 2. **[`invariants.md`](invariants.md)** — binding rules: **"Scenario Proof"**; **AccumulatorOp v2** +
-   **Resource Flow Substrate** sections (the GPU-resident flow contract); SEAD/JIT closure-posture.
+   **Resource Flow Substrate** sections (the GPU-resident flow contract); FIELD_POLICY/JIT closure-posture.
 3. **This file, §12–§12.5** — rehearsal + pre-rehearsal design (architecture, EC1/EC2, nested-grid,
    ATLAS-BATCH-0, retirement map + coverage). **§12.4 links the OWNER design of record + parked
    `mobility_owner0.rs`** (masked reduction — reachable here, not duplicated as a top-level link).
@@ -288,16 +288,16 @@ GPU-resident Accumulator resource-flow notion, and the anticipated emergent beha
 5. **[`../crates/simthing-core/src/accumulator_op.rs`](../crates/simthing-core/src/accumulator_op.rs)** —
    the **GPU-resident Accumulator primitive**: `SourceSpec` / `CombineFn` / `GateSpec` / `ScaleSpec` /
    `ConsumeMode` — the vocabulary every arena (labor / production / disruption / combat) compiles down to.
-6. **[`workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md)** — the **SEAD charter /
+6. **[`workshop/field_policy_track.md`](workshop/field_policy_track.md)** — the **FIELD_POLICY charter /
    principles**: field-as-policy; decisions are GPU-resident threshold crossings → `BoundaryRequest`;
    no CPU planner.
 
-**Anchors (every handoff holds all three):** **SEAD principles** → links 1, 2, 6; **GPU-resident
+**Anchors (every handoff holds all three):** **FIELD_POLICY principles** → links 1, 2, 6; **GPU-resident
 Accumulator resource flow** → links 1, 2, 5; **anticipated emergence** → link 4 (§8.1). OWNER masked
 reduction is reachable via §12.4 (link 3).
 
 **Established decisions (do not re-derive — implement within these):**
-- `Location` is the SEAD field primitive (gridcell); **non-`Location` SimThings participate in resource
+- `Location` is the FIELD_POLICY field primitive (gridcell); **non-`Location` SimThings participate in resource
   flow normally.** `StarSystem`/`Station` are **deprecated — do not use.** `kind` is an install-time
   selector only, never a runtime branch (§0.1).
 - A Location arranges its gridcell children's flow data in **dense, grid-ordered 2-D cells**
@@ -317,7 +317,7 @@ reduction is reachable via §12.4 (link 3).
 
 **Why.** Every 0080 slice so far — `0080-0` Local Patrol Economy, `0080-1` Nested Starmap, and the
 `SCENARIO-0080-2` Pirate Gradient Pathfinding rung ladder — was **proven at the math/behavioral
-layer**: the recurrences, fields, dual-output gradient, SEAD threshold-gated movement, and bit-exact
+layer**: the recurrences, fields, dual-output gradient, FIELD_POLICY threshold-gated movement, and bit-exact
 deterministic replay all hold and remain valid as **CPU oracles**. Under the constitution's
 `invariants.md` "Scenario Proof" bar, none is yet proven **through a real SimThing reduction** — they
 run on plain `Vec`/struct math with no `SimThing`/`SimProperty`/`Overlay`/`BoundaryProtocol`. This
@@ -356,13 +356,13 @@ gamesession (root simthing)
 | Decay/patrol modifiers as read-side params (0080-2 rung 1) | faction **techtree capability** → overlay weights composed onto the column (≤1, acceleration-only) |
 | Compound desirability field (0080-2 rung 2) | derived desirability column, read-only over `disruption`, per gridcell |
 | Dual-output `GradientXY` (0080-2 rung 3) | `StructuredFieldStencilOp::GradientXY` over the worldstate gridcell slot range, now wired into a session |
-| SEAD field-as-policy movement (0080-2 rung 4; 0080-0/1 patrol/ship SEAD) | pirate movement via `Threshold`+`EmitEvent`→`BoundaryRequest`, one step/boundary, no CPU planner |
+| FIELD_POLICY field-as-policy movement (0080-2 rung 4; 0080-0/1 patrol/ship FIELD_POLICY) | pirate movement via `Threshold`+`EmitEvent`→`BoundaryRequest`, one step/boundary, no CPU planner |
 | Disruption/desirability as faction-economy signals (0080-0/0080-1) | gridcell columns read by faction overlays; pirate as adversarial participant |
 | Deterministic replay / I8 bit-exact parity | same inputs → identical resolved GPU/CPU values across two runs of the assembled session |
 
 **This is the first scenario authored to satisfy the new "Scenario Proof" gate.** Tier-2 (new
 assembled session; gridcell columns wired into a session pass graph). §8 stop conditions still bind:
-it pulls the mapping/RegionCell + AccumulatorOp + SEAD substrates through one tree; it does **not**
+it pulls the mapping/RegionCell + AccumulatorOp + FIELD_POLICY substrates through one tree; it does **not**
 open atlas production runtime, nested-RF depth, hard currency, ClauseThing/L3, or a real-time/UI loop.
 
 > Dense per-cell temporal memory stays separately gated. The gridcell `disruption` column here is
@@ -372,7 +372,7 @@ open atlas production runtime, nested-RF depth, hard currency, ClauseThing/L3, o
 
 ### 12.1 Provisional findings (2026-06-03 audit — to be firmed up before the dress-rehearsal opens)
 
-> **Status: PROVISIONAL.** Captured from a design-authority audit of the prior mapping/SEAD/0080 work.
+> **Status: PROVISIONAL.** Captured from a design-authority audit of the prior mapping/FIELD_POLICY/0080 work.
 > Not yet ratified into spec; the dress rehearsal exists to resolve them. Work continues here next.
 
 **Gap findings — what prior "passing" work did and did not do:**
@@ -388,14 +388,14 @@ open atlas production runtime, nested-RF depth, hard currency, ClauseThing/L3, o
   SimThing). The acceptance bar was *numeric-pipeline correctness*, not a heatmap artifact.
 - **F3 — engine and consumer never met.** Mapping proved the machinery and closed at "primitive proven,
   unconsumed"; the consumer that should have pulled it (0080-2) **bypassed it with the 1-D toy**.
-- **F4 — SEAD never consumed a heatmap for pathing/critical-path.** SEAD-OBS scores an entity's **own
-  overlays** (`ExactQ16WeightedSum`), not a spatial field; SEAD-EVENT/PIPE/ACT are event→proposal
-  downstream; FrontierV1-4's "SEAD route" `validate_sead_v1_consumed()` only **asserts two kernel
-  descriptors are registered** (field computed in the same fixture but never read by SEAD); 0080
+- **F4 — FIELD_POLICY never consumed a heatmap for pathing/critical-path.** FIELD_POLICY-OBS scores an entity's **own
+  overlays** (`ExactQ16WeightedSum`), not a spatial field; FIELD_POLICY-EVENT/PIPE/ACT are event→proposal
+  downstream; FrontierV1-4's "FIELD_POLICY route" `validate_field_policy_v1_consumed()` only **asserts two kernel
+  descriptors are registered** (field computed in the same fixture but never read by FIELD_POLICY); 0080
   "pathing" was a scalar `supply*100 − disruption*10 − security` over 2 nodes. `field_urgency`
   critical-path existed as plumbing over hand-seeds, never a gameplay-driven agent decision.
-- **F5 — the connecting tissue was never implemented.** Both halves (*field → heatmap* and *SEAD →
-  action*) were built and "proven" separately; the loop **field → diffuse → gradient → SEAD reads local
+- **F5 — the connecting tissue was never implemented.** Both halves (*field → heatmap* and *FIELD_POLICY →
+  action*) were built and "proven" separately; the loop **field → diffuse → gradient → FIELD_POLICY reads local
   cell → action** was never wired. Every prior "pass" satisfied the two ends and never the connection.
 
 **Provisional design resolutions (from the §12 discussion — confirm tomorrow):**
@@ -406,7 +406,7 @@ open atlas production runtime, nested-RF depth, hard currency, ClauseThing/L3, o
   whole grid. Falloff is a property field, **not** an overlay (the decaying *ownership* signal is the overlay).
 - **Sparse arenas + dense diffusion**: arenas instance only on occupied cells; one stencil pass covers
   all 100 cells; they meet at the `disruption` column.
-- **Diffusion horizon = SEAD sight radius** (myopic local read sees H hops because diffusion pre-bakes
+- **Diffusion horizon = FIELD_POLICY sight radius** (myopic local read sees H hops because diffusion pre-bakes
   distant info into the local gradient); **recursion (reduce-up / broadcast-down) = multi-resolution
   escape from local optima** (coarse starmap field biases the fine cell gradient).
 - Grid-of-simthings requires **contiguous, row-major slot allocation** for the stencil's neighbor
@@ -419,9 +419,9 @@ open atlas production runtime, nested-RF depth, hard currency, ClauseThing/L3, o
 - **EC1 (heatmap):** the starmap SimThing holds a **non-trivial reduced disruption field over its 100
   child gridcell SimThings**, produced by **pirate/patrol presence (not hand-seeded)**, verified against
   a CPU oracle, and **emitted as an inspectable heatmap artifact**.
-- **EC2 (SEAD consumption):** a mover's SEAD evaluation **reads the diffused heatmap gradient at its own
+- **EC2 (FIELD_POLICY consumption):** a mover's FIELD_POLICY evaluation **reads the diffused heatmap gradient at its own
   cell**, and the **emitted action is a function of that gradient** (verified against a CPU oracle) —
-  **not** a hand-seeded field or a registration-only stand-in. The field → gradient → SEAD → action loop
+  **not** a hand-seeded field or a registration-only stand-in. The field → gradient → FIELD_POLICY → action loop
   is closed end-to-end through real SimThings.
 
 ### 12.2 Key concept — the recursive nested-grid field hierarchy (design note)
@@ -429,7 +429,7 @@ open atlas production runtime, nested-RF depth, hard currency, ClauseThing/L3, o
 > **Status: PROVISIONAL design note (2026-06-03).** The substrate concept the EC1/EC2 exit criteria
 > build on. Not yet a gate.
 
-**The idea.** `Location`-kind SimThings are the SEAD field primitives ("gridcells"). Any non-Location
+**The idea.** `Location`-kind SimThings are the FIELD_POLICY field primitives ("gridcells"). Any non-Location
 SimThing participates in resource flow like everything else. A gridcell knows its `(x, y)` within its
 parent's grid; every gridcell enrolls in the `location_val` flow arena. **Every gridcell that is a
 parent of gridcells maintains a 2-D map siloing its children's reduced values at each child's `(x, y)`.**
@@ -590,7 +590,7 @@ are distinguished and **must not be collapsed into one figure**:
 > **`ATLAS-BATCH-0-LOC` closure (2026-06-03).** `SCENARIO-0080-2` LOC is **implemented / PASS** as
 > fixture-only gridcell-primitive layout + occupant placement + typed channel descriptors (27 Locations,
 > 56 occupants, `total_cell_slots = 3000`, single `cell_index` home). Does **not** implement PACK, STORE,
-> GPU dispatch, owner masked-reduction runtime, economy, SEAD movement, or `simthing-sim` semantics.
+> GPU dispatch, owner masked-reduction runtime, economy, FIELD_POLICY movement, or `simthing-sim` semantics.
 > Evidence:
 > [`crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_loc.rs`](../crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_loc.rs);
 > [`crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_loc.rs`](../crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_loc.rs);
@@ -603,7 +603,7 @@ are distinguished and **must not be collapsed into one figure**:
 > tile-local **G=0** CPU oracle (`g_zero_sample`), and numeric **VRAM report** (multiplier **1.0**,
 > `budget_pass` vs `V78AtlasVramBudget`). **Does NOT** implement batched GPU dispatch or GPU=CPU bit-exact
 > parity — that is **EC-A2b**, deferred to **`ATLAS-BATCH-0-PACK-GPU`**. Does not implement STORE, owner
-> masked-reduction runtime, economy, or SEAD. Evidence:
+> masked-reduction runtime, economy, or FIELD_POLICY. Evidence:
 > [`crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_pack.rs`](../crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_pack.rs);
 > [`crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_pack.rs`](../crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_pack.rs);
 > [`tests/scenario_0080_2_atlas_batch_0_pack_report.md`](tests/scenario_0080_2_atlas_batch_0_pack_report.md);
@@ -617,7 +617,7 @@ are distinguished and **must not be collapsed into one figure**:
 > caller-managed CPU oracle within **`GpuVerified` tolerance (full-tile L∞ ≤ 1e-4)**; `G=0` cross-tile /
 > out-of-atlas isolation proven. Uses existing `simthing-gpu/src/atlas_mask.rs` only (no new WGSL). **Does
 > NOT** claim bit-exact / `f32::to_bits()` parity — **EC-A2b-exact remains DEFERRED** (pinned fixed-point
-> stencil track). Does not implement STORE, owner masked-reduction runtime, economy, disruption, or SEAD.
+> stencil track). Does not implement STORE, owner masked-reduction runtime, economy, disruption, or FIELD_POLICY.
 > Evidence:
 > [`crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_pack_gpu.rs`](../crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_pack_gpu.rs);
 > [`crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_pack_gpu.rs`](../crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_pack_gpu.rs);
@@ -634,7 +634,7 @@ are distinguished and **must not be collapsed into one figure**:
 > blind-summed by position. Proven: **10 canonical pirate fleets** on one galactic cell (pirate channels
 > only); **constructed planet+patrol+pirate** at one system cell (distinct channel/owner entries). **CPU-only**
 > — does **not** run live OWNER masked reduction (**STORE-GPU deferred**; runtime remains parked until
-> STORE-GPU / R3). Does not implement R1/R2/R3/R4, economy, disruption, SEAD, or combat. Evidence:
+> STORE-GPU / R3). Does not implement R1/R2/R3/R4, economy, disruption, FIELD_POLICY, or combat. Evidence:
 > [`crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_store.rs`](../crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_store.rs);
 > [`crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_store.rs`](../crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_store.rs);
 > [`tests/scenario_0080_2_atlas_batch_0_store_report.md`](tests/scenario_0080_2_atlas_batch_0_store_report.md);
@@ -648,7 +648,7 @@ are distinguished and **must not be collapsed into one figure**:
 > (**38/38** entries, `f32::to_bits()`). Proven on GPU: **10-pirate shared cell**; **constructed
 > planet+patrol+pirate**. **Fixture composition only** — OWNER masked-reduction is **not** wired into a
 > session pass graph; **R3/runtime remains parked**. Parity standard: **ExactDeterministic bit-exact** (no
-> GpuVerified fallback). Does not implement R1/R2/R3/R4, economy, disruption, SEAD, movement, combat, or
+> GpuVerified fallback). Does not implement R1/R2/R3/R4, economy, disruption, FIELD_POLICY, movement, combat, or
 > M-4A/REENROLL. Evidence:
 > [`crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_store_gpu.rs`](../crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_store_gpu.rs);
 > [`crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_store_gpu.rs`](../crates/simthing-driver/tests/dress_rehearsal_atlas_batch_0_store_gpu.rs);
@@ -740,8 +740,8 @@ column-flip — each its own gate.
 > blockade/divert over the accepted R1 heatmap: [`tests/scenario_0080_2_r2_recursive_allocation_report.md`](tests/scenario_0080_2_r2_recursive_allocation_report.md).
 > `R3` is now **IMPLEMENTED / PASS (2026-06-04)** as capability-tree modifier overlays masked down
 > by owner-column: [`tests/scenario_0080_2_r3_capability_mask_down_report.md`](tests/scenario_0080_2_r3_capability_mask_down_report.md).
-> `R4` is now **IMPLEMENTED / PASS (2026-06-04)** as SEAD field-consumption + exact sqrt EC2:
-> [`tests/scenario_0080_2_r4_sead_field_consumption_report.md`](tests/scenario_0080_2_r4_sead_field_consumption_report.md).
+> `R4` is now **IMPLEMENTED / PASS (2026-06-04)** as FIELD_POLICY field-consumption + exact sqrt EC2:
+> [`tests/scenario_0080_2_r4_field_policy_consumption_report.md`](tests/scenario_0080_2_r4_field_policy_consumption_report.md).
 > `R5` is now **IMPLEMENTED / PASS (2026-06-04)** as movement via BoundaryRequest + REENROLL + mobility substrate:
 > [`tests/scenario_0080_2_r5_movement_reenroll_report.md`](tests/scenario_0080_2_r5_movement_reenroll_report.md).
 > R1-R6B remain single-galactic-tier, opt-in/default-off, CPU-oracle primary (GPU-shaped row ops).
@@ -756,7 +756,7 @@ column-flip — each its own gate.
 >
 > **`SCENARIO-0080-2` is COMPLETE (`SCENARIO-0080-2-COMPLETE-0`, 2026-06-04, design authority).** The
 > rehearsal proves *and runs* a single-galactic-tier, opt-in/default-off integrated SimThing dress
-> rehearsal: occupant-produced disruption, economy/blockade, capability mask-down, SEAD field
+> rehearsal: occupant-produced disruption, economy/blockade, capability mask-down, FIELD_POLICY field
 > consumption, movement/REENROLL, fleet-cohort Resource Flow combat, and ship production/fusion all
 > operate through one mutable 100-tick session with write-back. The run is **GPU-conformant and
 > CPU-oracle verified**; GPU execution for the rehearsal rungs remains an unmeasured follow-on
@@ -851,14 +851,14 @@ column-flip — each its own gate.
 | **R1 — Disruption heatmap (EC1)** — *ACCEPTED / CLOSED / IMPLEMENTED-PASS 2026-06-04 ([spec](scenarios/scenario_0080_2_r1_disruption_heatmap_opening_spec.md), [report](tests/scenario_0080_2_r1_disruption_heatmap_report.md), [acceptance](tests/scenario_0080_2_r1_acceptance_review.md))* | pirate/patrol presence → `disruption` column on gridcell SimThings → BoundedFeedback decay → diffuse to `location_status` → reduce up to the starmap heatmap; vs CPU oracle; emitted deterministic artifact | **EML Tier-2 `BoundedFeedback`/`Decay`** (first real consumer); EC1 | EML temporal gadgets; stencil diffusion; SlotRange reduce |
 | **R2 — Recursive allocation + faction economy + blockade/divert** — *IMPLEMENTED / PASS 2026-06-04 ([spec](scenarios/scenario_0080_2_r2_recursive_reduce_opening_spec.md), [opening review](tests/scenario_0080_2_r2_opening_review.md), [report](tests/scenario_0080_2_r2_recursive_allocation_report.md))* | reduce-up **+ disburse-down** (one §0.2 behavior): production reduces up to per-faction stockpiles (OWNER-masked, never merged) + subsidiarity disburse-down to deficit systems; **blockade `≥100` gates outflow + divert flips the production owner-column to the blockader (column flip, not reparenting, no occupant moved)** — consuming the accepted R1 disruption field. **Single galactic tier** (system→planet recursion = named build fork); excludes R3/R5/R6. opt-in/default-off; CPU oracle | **A-0 nested Resource Flow (disburse-down)** off `FlatStarResourceFlow`; **ECON clearinghouse (subsidiarity) + faction-index contention (ECON-SCALE reuse)**; the §6 blockade/divert mechanic | A-0 nested RF; ECON Balance ledger / faction-index; OWNER masked reduction; AccumulatorOp recipe |
 | **R3 — Capability-tree mask-down** — *IMPLEMENTED / PASS 2026-06-04 ([report](tests/scenario_0080_2_r3_capability_mask_down_report.md))* | Terran/Pirate capability trees resolve → modifier overlays (decay resistance, patrol suppression, combat bonus placeholder) masked **down** by owner-column onto cells/occupants; read-side only; no reparenting or combat resolution | **Capability-tree → modifier-overlay substrate** (first real consumer); OWNER mask-down end-to-end | capability-tree substrate; OWNER latched overlays |
-| **R4 — SEAD field-consumption + exact sqrt (EC2)** — *IMPLEMENTED / PASS 2026-06-04 ([report](tests/scenario_0080_2_r4_sead_field_consumption_report.md))* | a moving child (fleet/patrol) reads the parent grid heatmap **at its own cell** — a composite intersecting **patrol-presence × disruption × its own (masked) disposition** — computes the gradient, evaluates **Euclidean magnitude via exact sqrt Candidate F**, and threshold-gates: **sit still vs step to the next opportunity** | **SEAD ladder field-consumption (EC2)** — closes the audit gap; **exact sqrt Candidate F** (named consumer for the orphaned artifact) | SEAD OBS/EVENT/PIPE/ACT; `m_jit_mag2_fixed_exact` → `m_jit_mag_f_from_exact_mag2` (Candidate F); `GradientXY` |
+| **R4 — FIELD_POLICY field-consumption + exact sqrt (EC2)** — *IMPLEMENTED / PASS 2026-06-04 ([report](tests/scenario_0080_2_r4_field_policy_consumption_report.md))* | a moving child (fleet/patrol) reads the parent grid heatmap **at its own cell** — a composite intersecting **patrol-presence × disruption × its own (masked) disposition** — computes the gradient, evaluates **Euclidean magnitude via exact sqrt Candidate F**, and threshold-gates: **sit still vs step to the next opportunity** | **FIELD_POLICY ladder field-consumption (EC2)** — closes the audit gap; **exact sqrt Candidate F** (named consumer for the orphaned artifact) | FIELD_POLICY OBS/EVENT/PIPE/ACT; `m_jit_mag2_fixed_exact` → `m_jit_mag_f_from_exact_mag2` (Candidate F); `GradientXY` |
 | **R5 — Movement: REENROLL + mobility substrate (+ ship fission)** — *IMPLEMENTED / PASS 2026-06-04 ([report](tests/scenario_0080_2_r5_movement_reenroll_report.md))* | the R4 move event (`Threshold`+`EmitEvent`→`BoundaryRequest`) relocates the mover — deregister from cell A's arenas, register into cell B's — routed through the 0.0.7.9 mobility/transfer substrate (`compose_mobility_runtime0`, opt-in harness); **starport→ship emission instantiates a new `Fleet` via gated ALLOC arrival** and enrolls it | **REENROLL**; **0.0.7.9 mobility/transfer substrate composition** (dress-rehearsal consumer); **ALLOC arrival fission** (starport ship instantiation) | REENROLL; mobility ALLOC/IDROUTE/OWNER; `plan_mobility_alloc0` arrival |
 | **R6 — Combat as fleet-cohort Resource Flow arena** — *IMPLEMENTED / PASS 2026-06-04 ([report](tests/scenario_0080_2_r6_combat_hp_damage_report.md); R6A fleet-cohort correction)* | co-located hostile **fleet cohorts** (10 ships × 100 HP/ship, 50 damage/ship/tick) in a local gridcell arena: damage **reduce-up** by owner channel, **disburse-down** to hostile cohorts, emission-band `ships_destroyed = floor(received/hp_per_ship)`, removal only at `num_ships_after == 0` via MOBILITY-ALLOC-0 `Departure`; consumes R5 post-move membership + upstream R1–R4 | **§0.3 all-conflict-is-resource-flow** — combat as adversarial Resource Flow, not a bespoke combat engine | combat arena; masked reduction / disbursement (ATLAS-BATCH-0 EC-A3 shape) |
-| **R6B — Ship production threshold emission + cohort reinforcement/fusion** — *IMPLEMENTED / PASS 2026-06-04 ([report](tests/scenario_0080_2_r6b_ship_cohort_reinforcement_report.md))* | starport/planetary production accumulates `construction_progress`; threshold emits `ship_count_delta`; owner/cell/profile masked selection reinforces compatible friendly cohort (`num_ships` increment, no movement `BoundaryRequest`) or locally births/enrolls a Fleet via ALLOC arrival; friendly co-located compatible cohorts fuse by masked reduction; `hp_to_kill` and `damage_output` recompute from `num_ships`; R6A combat consumes updated cohort sizes; CPU oracle verifies row ops only | **§0.2 reduce/disburse + emission-band** — production growth as Resource Flow, not CPU fleet manager | construction threshold; cohort compaction; MOBILITY-ALLOC-0 Arrival/Departure for enrollment coherence |
-| **R6C — Integrated multi-tick run (the ladder's culmination)** — *IMPLEMENTED / PASS 2026-06-04 ([opening spec](scenarios/scenario_0080_2_r6c_integrated_run_opening_spec.md), [report](tests/scenario_0080_2_r6c_integrated_run_report.md))* | assembled R1→R6B into **one mutable session-state** and ticked it **100 times with feedback**: disruption (R1) → economy/blockade/divert (R2) → overlays (R3) → SEAD field read (R4) → movement/REENROLL + fission (R5) → combat on **movement-produced co-location** (R6) → production/reinforcement/fusion (R6B), then wrote positions, ship counts, stockpiles, and disruption forward. Emits trace excerpts, §8.1 detector table, race curve, conservation rows, and stable checksum `1bba891c779190a4`. opt-in/default-off; CPU-oracle primary; **no** default SimSession wiring, **no** CPU planner, **no** new invariant; GPU-MEASURE-0080-0 measured constituent shapes; RUNTIME-0080-0-R0A per-tick GPU shape dispatch against CPU-authoritative run (whole-run remains `GPU-conformant; GPU execution not yet measured`, report [`tests/runtime_0080_0_r0_results.md`](tests/runtime_0080_0_r0_results.md)) | **the integrated emergence run** — closes the §8.1 observation gap; first blockade tick 2, movement-produced combat tick 44, production reinforcement tick 49 | R1–R6B rungs; mobility runtime tick composition; FrontierV2 closed-loop feedback pattern |
-| **R7 — CLOSE + closeout integrity + report** — *CLOSED / PASS 2026-06-04 ([closeout](tests/scenario_0080_2_r7_closeout_report.md), [human report](gameplay/scenario_0080_2_pirate_gradient_pathfinding_results.md))* | design-authority closeout + human/layman report reclosed after R6C. Mechanism-chain proof (R1–R6B) stands and R6C supplies integrated-run evidence for §8.1. Numeric-only reconciliations carry forward; R4 tie-breaker is not attributed as emergence; movement remains greedy local SEAD, not route search; R6C whole-run GPU posture corrected by R0A remedial (CPU tick authority; per-tick shapes GPU-dispatched) | the **closeout-integrity** meta-opportunity; the **proof+emergence narrative** | R6C run trace |
+| **R6B — Ship production threshold emission + cohort reinforcement/fusion** — *IMPLEMENTED / PASS 2026-06-04 ([report](tests/scenario_0080_2_r6b_ship_cohort_reinforcement_report.md))* | starport/planetary production accumulates `construction_progress`; threshold emits `ship_count_delta`; owner/cell/profile masked selection reinforces compatible friendly cohort (`num_ships` increment, no movement `BoundaryRequest`) or locally births/enrolls a Fleet via ALLOC arrival; friendly co-located compatible cohorts fuse by masked reduction; `hp_to_retire` and `damage_output` recompute from `num_ships`; R6A combat consumes updated cohort sizes; CPU oracle verifies row ops only | **§0.2 reduce/disburse + emission-band** — production growth as Resource Flow, not CPU fleet manager | construction threshold; cohort compaction; MOBILITY-ALLOC-0 Arrival/Departure for enrollment coherence |
+| **R6C — Integrated multi-tick run (the ladder's culmination)** — *IMPLEMENTED / PASS 2026-06-04 ([opening spec](scenarios/scenario_0080_2_r6c_integrated_run_opening_spec.md), [report](tests/scenario_0080_2_r6c_integrated_run_report.md))* | assembled R1→R6B into **one mutable session-state** and ticked it **100 times with feedback**: disruption (R1) → economy/blockade/divert (R2) → overlays (R3) → FIELD_POLICY field read (R4) → movement/REENROLL + fission (R5) → combat on **movement-produced co-location** (R6) → production/reinforcement/fusion (R6B), then wrote positions, ship counts, stockpiles, and disruption forward. Emits trace excerpts, §8.1 detector table, race curve, conservation rows, and stable checksum `1bba891c779190a4`. opt-in/default-off; CPU-oracle primary; **no** default SimSession wiring, **no** CPU planner, **no** new invariant; GPU-MEASURE-0080-0 measured constituent shapes; RUNTIME-0080-0-R0A per-tick GPU shape dispatch against CPU-authoritative run (whole-run remains `GPU-conformant; GPU execution not yet measured`, report [`tests/runtime_0080_0_r0_results.md`](tests/runtime_0080_0_r0_results.md)) | **the integrated emergence run** — closes the §8.1 observation gap; first blockade tick 2, movement-produced combat tick 44, production reinforcement tick 49 | R1–R6B rungs; mobility runtime tick composition; FrontierV2 closed-loop feedback pattern |
+| **R7 — CLOSE + closeout integrity + report** — *CLOSED / PASS 2026-06-04 ([closeout](tests/scenario_0080_2_r7_closeout_report.md), [human report](gameplay/scenario_0080_2_pirate_gradient_pathfinding_results.md))* | design-authority closeout + human/layman report reclosed after R6C. Mechanism-chain proof (R1–R6B) stands and R6C supplies integrated-run evidence for §8.1. Numeric-only reconciliations carry forward; R4 tie-breaker is not attributed as emergence; movement remains greedy local FIELD_POLICY, not route search; R6C whole-run GPU posture corrected by R0A remedial (CPU tick authority; per-tick shapes GPU-dispatched) | the **closeout-integrity** meta-opportunity; the **proof+emergence narrative** | R6C run trace |
 
-**R4 detail (exact-sqrt chain — design authority).** The SEAD gradient magnitude must be
+**R4 detail (exact-sqrt chain — design authority).** The FIELD_POLICY gradient magnitude must be
 **exact-authoritative** so move/sit decisions are deterministic across GPU adapters (I8). Chain:
 fixed-point `dx/dy` → **exact pre-sqrt mag2** (`m_jit_mag2_fixed_exact` / `ExactFixedPointDxDy`) →
 **Candidate F sqrt** (`m_jit_mag_f_from_exact_mag2`, artifact hash `e2e9e27601ee2e13`) → exact Euclidean
@@ -869,7 +869,7 @@ its masked-down disposition** (R3): a pirate weights low-patrol + high-opportuni
 systems, through disruption it can pass); a patrol weights high-disruption (move *toward* it to suppress).
 Same machinery — disposition is just the weight vector; sit-still is the below-threshold case.
 
-**R5 detail.** Movement *is* the mobility substrate exercised in a real session pass: the SEAD event
+**R5 detail.** Movement *is* the mobility substrate exercised in a real session pass: the FIELD_POLICY event
 materializes a `BoundaryRequest` that re-enrolls the mover (REENROLL) and routes it via the parked
 0.0.7.9 mobility/transfer substrate (IDROUTE identity preserved, no reparenting). This is the
 "first non-test-support default `SimSession` path" the mobility gate was mapped to — coincident with the
@@ -888,7 +888,7 @@ movement rung rather than a standalone slice.
 | EML Tier-2 temporal (`BoundedFeedback`/`Decay`, `VelocityMonitor`) | **R1** |
 | `field_urgency` / `field_pressure` | **R2** |
 | Capability-tree → modifier-overlay | **R3** |
-| SEAD ladder field-consumption (OBS/EVENT/PIPE/ACT) | **R4** |
+| FIELD_POLICY ladder field-consumption (OBS/EVENT/PIPE/ACT) | **R4** |
 | Exact sqrt Candidate F (+ `mag2_fixed_exact`) | **R4** |
 | `GradientXY` (landed) | **R1 / R4** (consumed) |
 | E-11B-5 / E-2B-5 fission-enrollment | **R5** (starport→ship) |

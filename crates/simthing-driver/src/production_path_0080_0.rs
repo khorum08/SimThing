@@ -179,8 +179,8 @@ pub struct ProductionPath0080Report {
     pub semantic_or_raw_wgsl_present: bool,
     pub clausething_dependency_present: bool,
 
-    pub sead_threshold_accepted: bool,
-    pub sead_emit_event_emitted: bool,
+    pub field_policy_threshold_accepted: bool,
+    pub field_policy_emit_event_emitted: bool,
     pub boundary_request_materialized: bool,
     pub mobility_substrate_consumed_boundary_request: bool,
     pub cpu_planner_used: bool,
@@ -321,8 +321,8 @@ fn admitted_report(
 ) -> ProductionPath0080Report {
     let mut report = base_report(input, Vec::new(), false, Some(mobility_report));
     report.local_patrol_economy_instantiated = true;
-    report.sead_threshold_accepted = true;
-    report.sead_emit_event_emitted = true;
+    report.field_policy_threshold_accepted = true;
+    report.field_policy_emit_event_emitted = true;
     report.boundary_request_materialized = true;
     report.mobility_substrate_consumed_boundary_request = true;
     report.patrol_entity_id_after = input.scenario.patrol_entity_id;
@@ -373,8 +373,8 @@ fn base_report(
         gameplay_surface_present: false,
         semantic_or_raw_wgsl_present: false,
         clausething_dependency_present: false,
-        sead_threshold_accepted: false,
-        sead_emit_event_emitted: false,
+        field_policy_threshold_accepted: false,
+        field_policy_emit_event_emitted: false,
         boundary_request_materialized: false,
         mobility_substrate_consumed_boundary_request: false,
         cpu_planner_used: false,

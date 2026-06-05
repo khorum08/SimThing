@@ -3,13 +3,13 @@
 > **Closure status revised — 2026-06-03 (design authority).** This acceptance proved the first-slice
 > **numeric pipeline** (stencil → reduction → `field_urgency` → threshold) at CPU-oracle parity on a
 > **hand-seeded** field. It did **not** prove a heatmap produced from gameplay, demoed/exported, or
-> consumed by SEAD. Under the later `invariants.md` "Scenario Proof" bar (2026-06-02) it is reclassified
+> consumed by FIELD_POLICY. Under the later `invariants.md` "Scenario Proof" bar (2026-06-02) it is reclassified
 > **numeric-proven; consumption-proof pending** the dress-rehearsal **R7** (production track
 > `design_0_0_8_0_consumer_pulled_production_track.md` §12.5, EC1/EC2). The pipeline correctness below
 > **stands and is reused**; end-to-end consumption is what R7 proves. **Dated evidence below is unaltered.**
 
 **Date:** 2026-05-28
-**Authority:** Opus 4.8, mapping/SEAD design authority under human delegation (authority to raise
+**Authority:** Opus 4.8, mapping/FIELD_POLICY design authority under human delegation (authority to raise
 guardrails up to the Designer-facing / RON / Scenario layer).
 **Decision type:** Acceptance review — **not** an implementation handoff. No code changed.
 **Reviews:** PR #240 parking (`docs/tests/phase_m_first_slice_vertical_proof_parking_test_results.md`)
@@ -21,7 +21,7 @@ and packet `docs/reviews/phase_m_first_slice_vertical_proof_review_packet.md`.
 ## 1. Executive verdict
 
 **PASS WITH CONDITIONS.** The Phase M first-slice vertical proof is **accepted as complete for the
-single-grid, opt-in SEAD path.** It demonstrates the full intended vertical slice end-to-end:
+single-grid, opt-in FIELD_POLICY path.** It demonstrates the full intended vertical slice end-to-end:
 
 ```text
 RON scenario/spec authoring (FirstSliceScenarioSpec / RegionFieldSpec / FirstSliceCommitmentSpec)
@@ -84,7 +84,7 @@ and the layered runtime/product/bridge suites (28/28, 7/7, 2/2).
    scale caveat before scaling (Q4). Diagnostic readback stays test-only; the hot path keeps
    `reduction_stencil_readbacks == 0`.
 
-2. **SEAD discipline — PASS.** There is no CPU planner. The commitment is a GPU `Threshold`
+2. **FIELD_POLICY discipline — PASS.** There is no CPU planner. The commitment is a GPU `Threshold`
    crossing over a parent SimThing column; `field_urgency` EvalEML interprets parent pressure; the
    commitment signal is an `EmitEvent` from the existing substrate. Measured: low-weight profile
    emits 0 events, high-weight profile emits 1 (event_kind `0x53454144`). The decision is the GPU
@@ -187,7 +187,7 @@ CPU-oracle parity; it must not embed mapping semantics in the fill path.
   "Parked for acceptance review" to **Accepted (PASS WITH CONDITIONS)**; recommended-next updated
   to "C or B, not E."
 - **`docs/adr/mapping_sparse_regioncell.md`** — first-slice section gains a 2026-05-28 acceptance
-  note recording the full vertical SEAD slice (RON → GPU → Threshold+EmitEvent) accepted for the
+  note recording the full vertical FIELD_POLICY slice (RON → GPU → Threshold+EmitEvent) accepted for the
   single-grid opt-in path.
 - **`docs/workshop/mapping_current_guidance.md`**, **`docs/workshop/workshop_current_state.md`**,
   **`docs/accumulator_op_v2_production_plan.md`**, **`docs/todo.md`** — next-step updated to

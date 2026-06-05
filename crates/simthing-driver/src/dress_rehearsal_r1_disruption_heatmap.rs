@@ -58,7 +58,7 @@ pub struct DressRehearsalR1Surface {
     pub galactic_gridcell_field_registered: bool,
     pub default_simsession_pass_graph_wiring: bool,
     pub global_default_schedule: bool,
-    pub sead_movement: bool,
+    pub field_policy_movement: bool,
     pub gradientxy_consumption: bool,
     pub recursive_r2_reduce_up: bool,
     pub r3_mask_down: bool,
@@ -87,7 +87,7 @@ impl DressRehearsalR1Surface {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DressRehearsalR1ForbiddenRequests {
-    pub sead_movement: bool,
+    pub field_policy_movement: bool,
     pub gradientxy_consumption: bool,
     pub recursive_r2_reduce_up: bool,
     pub r3_mask_down: bool,
@@ -420,7 +420,7 @@ pub struct DressRehearsalR1Report {
     pub cpu_oracle_parity: bool,
     pub deterministic_replay_checksum: u64,
 
-    pub no_sead_movement: bool,
+    pub no_field_policy_movement: bool,
     pub no_gradientxy_consumption: bool,
     pub no_recursive_r2_reduce_up: bool,
     pub no_r3_mask_down: bool,
@@ -861,8 +861,8 @@ fn validate_surface(surface: &DressRehearsalR1Surface, diagnostics: &mut Vec<&'s
     if surface.global_default_schedule {
         diagnostics.push("global_default_schedule");
     }
-    if surface.sead_movement {
-        diagnostics.push("sead_movement");
+    if surface.field_policy_movement {
+        diagnostics.push("field_policy_movement");
     }
     if surface.gradientxy_consumption {
         diagnostics.push("gradientxy_consumption");
@@ -900,8 +900,8 @@ fn validate_forbidden(
     forbidden: &DressRehearsalR1ForbiddenRequests,
     diagnostics: &mut Vec<&'static str>,
 ) {
-    if forbidden.sead_movement {
-        diagnostics.push("sead_movement");
+    if forbidden.field_policy_movement {
+        diagnostics.push("field_policy_movement");
     }
     if forbidden.gradientxy_consumption {
         diagnostics.push("gradientxy_consumption");
@@ -1110,7 +1110,8 @@ fn base_report(
         artifact,
         cpu_oracle_parity,
         deterministic_replay_checksum: checksum,
-        no_sead_movement: !input.surface.sead_movement && !input.forbidden.sead_movement,
+        no_field_policy_movement: !input.surface.field_policy_movement
+            && !input.forbidden.field_policy_movement,
         no_gradientxy_consumption: !input.surface.gradientxy_consumption
             && !input.forbidden.gradientxy_consumption,
         no_recursive_r2_reduce_up: !input.surface.recursive_r2_reduce_up

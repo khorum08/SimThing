@@ -23,9 +23,9 @@
 
 | Question | Answer |
 |---|---|
-| **1. FrontierV1-0 validated** | Default-off `FrontierV1` profile; mapping ≤32×32; flat-star depth-2; SEAD V1 routing; coupling scoped to FrontierV1; admission validator |
-| **2. Allowed substrates for V1-1** | First-slice RegionCell mapping (`SparseRegionFieldV1`); flat-star Resource Flow (`FlatStarOptIn` + `FlatStarResourceFlow`); SEAD Proposal Pipeline V1 (consumed, not extended); exact F magnitude path; Threshold+EmitEvent; own-column movement |
-| **3. Minimal fixture wiring** | Admit skeleton → 8×8 mapping oracle → flat-star allocation oracle → SEAD route classification → output summary/fingerprint |
+| **1. FrontierV1-0 validated** | Default-off `FrontierV1` profile; mapping ≤32×32; flat-star depth-2; FIELD_POLICY V1 routing; coupling scoped to FrontierV1; admission validator |
+| **2. Allowed substrates for V1-1** | First-slice RegionCell mapping (`SparseRegionFieldV1`); flat-star Resource Flow (`FlatStarOptIn` + `FlatStarResourceFlow`); FIELD_POLICY Proposal Pipeline V1 (consumed, not extended); exact F magnitude path; Threshold+EmitEvent; own-column movement |
+| **3. Minimal fixture wiring** | Admit skeleton → 8×8 mapping oracle → flat-star allocation oracle → FIELD_POLICY route classification → output summary/fingerprint |
 | **4. CPU oracle parity** | Mapping cell sum/overflow; resource allocation A/B; proposal/route counts; event count; fingerprint match |
 | **5. Replay reproducibility** | Two identical runs → same fingerprint `49d4c94ce1f52be5` |
 | **6. Remains deferred/rejected** | Atlas, active mask, perception, source identity, nested E-11B/E-11B-5, D-2a, ClauseThing, ACT-5/EVENT-3/OBS-5/PIPE-1, CPU planner |
@@ -69,7 +69,7 @@ Fixture ID: `frontier_v1_1_opt_in_fixture_v1`
 - Resource Flow allocator routing only
 - No nested E-11B, E-11B-5, D-2a, shared-pool writes, parallel fixture economy
 
-## SEAD proposal routing summary
+## FIELD_POLICY proposal routing summary
 
 | Proposal kind | Route | Status |
 |---|---|---|
@@ -77,7 +77,7 @@ Fixture ID: `frontier_v1_1_opt_in_fixture_v1`
 | Structural commit | `ThresholdEmitBoundaryRequest` | Classified (CPU oracle) |
 | Movement | `OwnColumnsOnly` | Classified (CPU oracle) |
 
-SEAD Proposal Pipeline V1 consumed as consolidated vertical — not extended.
+FIELD_POLICY Proposal Pipeline V1 consumed as consolidated vertical — not extended.
 
 ## CPU oracle design
 
@@ -85,7 +85,7 @@ Integer-only deterministic oracles:
 
 - **Mapping:** seeded cells + district coupling + source cap over horizon ticks
 - **Resource Flow:** district totals + coupling bonus → 3:2 faction split
-- **Routing:** `classify_proposal_route()` per SEAD guardrails
+- **Routing:** `classify_proposal_route()` per FIELD_POLICY guardrails
 - **Overflow flags:** tracked but false on smoke config
 
 ## Replay fingerprint design
@@ -110,10 +110,10 @@ cargo test -p simthing-driver --test phase_m_frontier_v1_1_opt_in_fixture -- --n
 cargo test -p simthing-driver --test phase_m_frontier_v1_0_scenario_skeleton -- --nocapture
   → 8/8 PASS
 
-cargo test -p simthing-driver --test phase_m_sead_act4_economic_fixture_validation_corpus -- --nocapture
+cargo test -p simthing-driver --test phase_m_field_policy_act4_economic_fixture_validation_corpus -- --nocapture
   → 6/6 PASS
 
-cargo test -p simthing-spec --test sead_obs0_overlay_score_admission -- --nocapture
+cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission -- --nocapture
   → 29/29 PASS
 
 cargo check --workspace
@@ -139,7 +139,7 @@ cargo check --workspace
 | `FrontierV1-1\|frontier_v1_1\|phase_m_frontier_v1_1` in crates/docs | fixture + report + active docs present |
 | `ACT-5\|EVENT-3\|OBS-5\|PIPE-1` in crates/docs | no next-number authorization |
 | guardrail terms in report + active docs | guardrail-only; no unauthorized widening |
-| `FrontierV1\|SEAD\|RegionCell\|ArenaRegistry\|proposal\|ResourceFlow` in simthing-sim | no matches |
+| `FrontierV1\|FIELD_POLICY\|RegionCell\|ArenaRegistry\|proposal\|ResourceFlow` in simthing-sim | no matches |
 | Candidate C/f64/native exact sqrt regression scan | no regression |
 | `find docs/tests … scratch/tmp` | E-phase evidence logs retained |
 
@@ -154,10 +154,10 @@ No scratch/tmp artifacts removed under `docs/tests`.
 3. **Phase E proof:** Flat-star Resource Flow allocation oracle with allocator routing; resource dispatch proposal routes through Resource Flow allocator.
 4. **Still pending:** FrontierV1-2 GPU-resident execution + replay acceptance; production-doc M/E closure sign-off.
 5. **Non-blocking deferred:** Atlas, active mask, perception, source identity, nested E-11B/E-11B-5, D-2a, ClauseThing.
-6. **Not a SEAD ladder:** Consumes SEAD V1 vertical; no ACT-5/EVENT-3/OBS-5/PIPE-1; named scenario integration only.
+6. **Not a FIELD_POLICY ladder:** Consumes FIELD_POLICY V1 vertical; no ACT-5/EVENT-3/OBS-5/PIPE-1; named scenario integration only.
 
-FrontierV1-1 proves the first opt-in end-to-end fixture wiring for the named M/E closing vertical. It consumes accepted Mapping, Resource Flow, and SEAD Self-AI substrates without extending the SEAD ladder or adding default runtime behavior. M/E closure still requires GPU-resident execution evidence, CPU oracle parity, replay reproducibility, and production-doc acceptance, but deferred features remain non-blocking.
+FrontierV1-1 proves the first opt-in end-to-end fixture wiring for the named M/E closing vertical. It consumes accepted Mapping, Resource Flow, and FIELD_POLICY Field agent substrates without extending the FIELD_POLICY ladder or adding default runtime behavior. M/E closure still requires GPU-resident execution evidence, CPU oracle parity, replay reproducibility, and production-doc acceptance, but deferred features remain non-blocking.
 
 ## Final verdict
 
-**PASS** — FrontierV1-1 wired the default-off FrontierV1 fixture through accepted first-slice Mapping, flat-star Resource Flow, and SEAD Self-AI Proposal Pipeline V1 substrates; resource dispatch routes through Resource Flow allocator; coupling remains FrontierV1-only/default-off; CPU oracle parity and replay reproducibility were recorded; deferred features stayed out of scope; no default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner, or simthing-sim semantic awareness was added; docs and production plan were updated; test results saved in `docs/tests`; and V7.7 / Mapping ADR / Resource Flow ADR / SEAD charter posture remained intact.
+**PASS** — FrontierV1-1 wired the default-off FrontierV1 fixture through accepted first-slice Mapping, flat-star Resource Flow, and FIELD_POLICY Field agent Proposal Pipeline V1 substrates; resource dispatch routes through Resource Flow allocator; coupling remains FrontierV1-only/default-off; CPU oracle parity and replay reproducibility were recorded; deferred features stayed out of scope; no default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner, or simthing-sim semantic awareness was added; docs and production plan were updated; test results saved in `docs/tests`; and V7.7 / Mapping ADR / Resource Flow ADR / FIELD_POLICY charter posture remained intact.

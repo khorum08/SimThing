@@ -56,7 +56,7 @@
 | Candidate | Result | Verdict |
 |---|---|---|
 | **A — Q12.12** | Dense 784/784 exact under Q12 contract; 551/784 mag2_bits differ vs Q16.16; 34k ~1.18 ms | **Probe only** — valid exact contract but coarser; not selected as primary |
-| **B — lo-only conversion** | 423/784 rows have hi≠0; lo-only wrong on all 423 | **REJECTED** for full ±16 SEAD range |
+| **B — lo-only conversion** | 423/784 rows have hi≠0; lo-only wrong on all 423 | **REJECTED** for full ±16 FIELD_POLICY range |
 | **C — split kernels** | 34k ~1.63 ms vs combined ~1.73 ms; max_ulp=0 | **REJECTED** — extra dispatch, no win |
 | **D — no-readback proxy** | 32× dispatch, 0.174 ms/dispatch | **Diagnostic** — shader estimate only |
 
@@ -65,7 +65,7 @@
 | Field | Selection |
 |---|---|
 | Q format | **Q16.16** (unchanged from SQRT-MAG2-0) |
-| Range | ±16.0 SEAD gradient table |
+| Range | ±16.0 FIELD_POLICY gradient table |
 | Kernel layout | Single combined mag2 + F sqrt |
 | 34k timing | ~1.7–2.5 ms (warm GPU, readback included) |
 | Correctness | max_int_error=0, max_ulp=0 |
@@ -106,4 +106,4 @@ No scratch/tmp artifacts deleted under `docs/tests/`.
 
 ## Final verdict
 
-**PASS** — SQRT-MAG2-PERF-0 decomposed and optimized the exact fixed-point mag2 + artifact-backed F sqrt SEAD hot path; exactness remains bounded to the pinned Q16.16 contract, raw f32 dx/dy remains probe-only, 34k timing and cost breakdown were recorded, four exact-preserving optimization probes were evaluated (Q12.12 probe-only, lo-only rejected, split rejected, no-readback proxy diagnostic), no scheduler/cache/default wiring/semantic WGSL/economy bridge was added, active docs and production plan were updated, tests and cargo check are green, and V7.7 / Mapping ADR / SEAD posture remains intact.
+**PASS** — SQRT-MAG2-PERF-0 decomposed and optimized the exact fixed-point mag2 + artifact-backed F sqrt FIELD_POLICY hot path; exactness remains bounded to the pinned Q16.16 contract, raw f32 dx/dy remains probe-only, 34k timing and cost breakdown were recorded, four exact-preserving optimization probes were evaluated (Q12.12 probe-only, lo-only rejected, split rejected, no-readback proxy diagnostic), no scheduler/cache/default wiring/semantic WGSL/economy bridge was added, active docs and production plan were updated, tests and cargo check are green, and V7.7 / Mapping ADR / FIELD_POLICY posture remains intact.

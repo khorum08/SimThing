@@ -34,7 +34,7 @@ This closes R7 without changing the claim boundaries below.
 multi-tick harness:
 
 occupant-produced disruption field (R1) -> recursive owner-masked economy with blockade/divert (R2) ->
-capability mask-down overlays (R3) -> SEAD composite-field consumption with exact magnitude threshold
+capability mask-down overlays (R3) -> FIELD_POLICY composite-field consumption with exact magnitude threshold
 (R4) -> movement via `Threshold`/`EmitEvent` -> `BoundaryRequest` -> REENROLL on the mobility substrate
 (R5) -> local combat as adversarial Resource Flow with emission-band ship attrition (R6/R6A) -> ship
 production as threshold emission into fleet-cohort reinforcement/fusion (R6B).
@@ -47,7 +47,7 @@ Required qualifiers:
 - Single galactic tier, 13 systems on the 20x20 canonical field.
 - Opt-in/default-off; no global default `SimSession` wiring.
 - CPU oracle is the determinism reference.
-- "Pathfinding" remains greedy local SEAD movement, not route search or lookahead.
+- "Pathfinding" remains greedy local FIELD_POLICY movement, not route search or lookahead.
 - R6C is GPU-conformant, but its GPU execution has not been measured.
 
 ---
@@ -83,9 +83,9 @@ pressure loop remain bounded claims, not hidden failures.
 | Prior claim | Status after R6C |
 |---|---|
 | First-slice runtime R1/R2/R3 heatmap "accepted (numeric)" | Consumption-proven and integrated-run consumed: R1 heatmap feeds R2/R3/R4, then is recomputed from live fleet positions each tick |
-| FrontierV1 "SEAD route" registered descriptors but did not consume a field to act | Superseded for the field-to-action loop: R4/R5/R6C consume the field and produce movement; still no route search |
+| FrontierV1 "FIELD_POLICY route" registered descriptors but did not consume a field to act | Superseded for the field-to-action loop: R4/R5/R6C consume the field and produce movement; still no route search |
 | Mapping first-slice heatmap was hand-seeded parity-only | Reconciled: R6C seeds once, then recomputes disruption from live positions for 100 ticks |
-| "pathfinding solved" | Downgraded and bounded: movement is greedy local SEAD stepping only |
+| "pathfinding solved" | Downgraded and bounded: movement is greedy local FIELD_POLICY stepping only |
 | "economy generalized" | Bounded: multi-tick galactic-tier stockpile/blockade/divert is proven; nested depth remains parked |
 | "combat production-ready" | Bounded: Resource-Flow combat proof in the rehearsal harness; production engine integration and GPU execution remain future work |
 
@@ -127,7 +127,7 @@ storage, 10/10 tests.
 | R1 | PASS | Disruption heatmap, 34/34 |
 | R2 | PASS | Recursive allocation + blockade/divert, 13/13 |
 | R3 | PASS | Capability mask-down, 13/13 |
-| R4 | PASS | SEAD field consumption + exact sqrt, 16/16 |
+| R4 | PASS | FIELD_POLICY field consumption + exact sqrt, 16/16 |
 | R5 | PASS | Movement + BoundaryRequest + REENROLL, 17/17 |
 | R6/R6A | PASS | Fleet-cohort combat Resource Flow, 25/25 |
 | R6B | PASS | Ship production, reinforcement, fusion, 24/24 |
@@ -145,7 +145,7 @@ cargo test -p simthing-driver --test dress_rehearsal_r6c_integrated_run         
 cargo test -p simthing-driver --test dress_rehearsal_r6b_ship_cohort_reinforcement   -> 24 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r6_combat_hp_damage             -> 25 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r5_movement_reenroll            -> 17 passed; 0 failed
-cargo test -p simthing-driver --test dress_rehearsal_r4_sead_field_consumption       -> 16 passed; 0 failed
+cargo test -p simthing-driver --test dress_rehearsal_r4_field_policy_consumption       -> 16 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r3_capability_mask_down         -> 13 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r2_recursive_allocation         -> 13 passed; 0 failed
 cargo test -p simthing-driver --test dress_rehearsal_r1_disruption_heatmap           -> 34 passed; 0 failed

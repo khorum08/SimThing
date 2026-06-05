@@ -17,7 +17,7 @@
 | `crates/simthing-spec/tests/l1_0_designer_admission_substrate.rs` | Fix import-only simthing-sim awareness check |
 | `docs/design_v7_8_production_track.md` | L1-1 row marked Done |
 | `docs/workshop/mapping_current_guidance.md` | L1-1 status row |
-| `docs/workshop/sead_self_ai_track.md` | L1-1 clarification |
+| `docs/workshop/field_policy_track.md` | L1-1 clarification |
 | `docs/worklog.md` | Append-only milestone |
 | `docs/tests/phase_m_l1_1_designer_preflight_manifest_results.md` | **New** — this report |
 
@@ -130,7 +130,7 @@ cargo test -p simthing-spec --test l1_0_designer_admission_substrate -- --nocapt
 cargo test -p simthing-driver --test phase_m_frontier_v2_4_combined_feedback_loop -- --nocapture
   test result: ok. 12 passed; 0 failed
 
-cargo test -p simthing-spec --test sead_obs0_overlay_score_admission -- --nocapture
+cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission -- --nocapture
   test result: ok. 29 passed; 0 failed
 
 cargo check --workspace

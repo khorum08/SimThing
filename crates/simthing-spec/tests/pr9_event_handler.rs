@@ -144,7 +144,7 @@ fn current_scope_resolves_to_current_slot() {
     assert_eq!(requests.len(), 1);
     match &requests[0] {
         BoundaryRequest::Remove { target } => assert_eq!(*target, id_slot2),
-        other => panic!("expected Remove targeting slot 2, got {other:?}"),
+        other => panic!("expected Remove selection slot 2, got {other:?}"),
     }
 }
 
@@ -176,7 +176,7 @@ fn slot_scope_resolves_to_named_slot() {
     assert_eq!(requests.len(), 1);
     match &requests[0] {
         BoundaryRequest::Remove { target } => assert_eq!(*target, id_slot7),
-        other => panic!("expected Remove targeting slot 7, got {other:?}"),
+        other => panic!("expected Remove selection slot 7, got {other:?}"),
     }
 }
 
@@ -368,7 +368,7 @@ fn priority_ordering_critical_fires_before_low() {
 
     assert!(diagnostics.is_empty());
     assert_eq!(requests.len(), 2);
-    // Critical's request (targeting id_critical / slot 1) must come first.
+    // Critical's request (selection id_critical / slot 1) must come first.
     match &requests[0] {
         BoundaryRequest::Remove { target } => assert_eq!(
             *target, id_critical,

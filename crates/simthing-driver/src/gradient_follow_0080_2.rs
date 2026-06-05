@@ -10,7 +10,7 @@
 //! 3. each node's compound desirability is recomputed by the rung-2 formula;
 //! 4. the dual-output gradient `(dx, dy)` at the pirate's node is read from neighbour
 //!    desirability (`dx = desir[E] − desir[W]`, `dy = desir[S] − desir[N]`, clamp boundary);
-//! 5. **SEAD threshold gate:** if `max(|dx|,|dy|) >= movement_threshold`, an event is emitted
+//! 5. **FIELD_POLICY threshold gate:** if `max(|dx|,|dy|) >= movement_threshold`, an event is emitted
 //!    and the pirate takes **one** step toward the higher-desirability neighbour (greedy local
 //!    ascent, dominant axis, deterministic tie-break). Otherwise it stays.
 //!
@@ -31,7 +31,7 @@ use crate::{
 pub const GRADIENT_FOLLOW_0080_2_ID: &str = "GRADIENT-FOLLOW-0080-2";
 pub const GRADIENT_FOLLOW_0080_2_SCENARIO: &str = "Pirate Gradient Pathfinding";
 pub const GRADIENT_FOLLOW_0080_2_STATUS_PASS: &str =
-    "IMPLEMENTED / PASS - scenario-scoped gradient-follow SEAD movement + 20-tick schedule";
+    "IMPLEMENTED / PASS - scenario-scoped gradient-follow FIELD_POLICY movement + 20-tick schedule";
 
 const DEFAULT_TICK_COUNT: u32 = 20;
 const MAX_DECAY_MODIFIERS: usize = 8;
@@ -108,7 +108,7 @@ pub struct GradientFollow0082Input {
     pub pirate_presence_units: i64,
     pub start_node: usize,
     pub tick_count: u32,
-    /// SEAD threshold on the gradient magnitude `max(|dx|,|dy|)`; below this the pirate stays.
+    /// FIELD_POLICY threshold on the gradient magnitude `max(|dx|,|dy|)`; below this the pirate stays.
     pub movement_threshold: i64,
     /// `patrol_schedule[tick][node]` — scripted patrol presence (patrols are not gradient-followers).
     pub patrol_schedule: Vec<Vec<i64>>,
@@ -440,7 +440,7 @@ fn run_schedule(input: &GradientFollow0082Input) -> ScheduleResult {
         let gy = sample(0, 1) - sample(0, -1); // south - north
         let magnitude = gx.abs().max(gy.abs());
 
-        // 5. SEAD threshold gate + single greedy ascent step (dominant axis, deterministic).
+        // 5. FIELD_POLICY threshold gate + single greedy ascent step (dominant axis, deterministic).
         let threshold_crossed = magnitude >= input.movement_threshold && magnitude > 0;
         let mut moved = false;
         let mut moved_to = pirate;

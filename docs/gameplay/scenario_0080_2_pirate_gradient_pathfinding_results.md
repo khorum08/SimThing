@@ -35,7 +35,7 @@ systems continued appearing over the run.
 disruption, patrol pressure, opportunity, and combat. These overlays remained owner-masked data, not
 planner decisions.
 
-**4. Fleets moved by local SEAD, not route search.** Each mover read the composite field at its own cell,
+**4. Fleets moved by local FIELD_POLICY, not route search.** Each mover read the composite field at its own cell,
 used exact magnitude thresholding, and stepped greedily to a neighboring cell when the field was strong
 enough. The run produced broad Pirate raiding dispersion: `pirate_distinct_destinations=28`.
 

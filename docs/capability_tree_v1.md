@@ -112,7 +112,7 @@ effect: PropertyTransformDelta(
 
 ### 3c. Multi-Property Bonus
 
-One capability entry can carry multiple `sub_field_deltas` targeting the
+One capability entry can carry multiple `sub_field_deltas` selection the
 same or different properties. Each pair is one transform op in Pass 3.
 
 ```ron

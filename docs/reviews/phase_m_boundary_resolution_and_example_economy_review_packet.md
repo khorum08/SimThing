@@ -125,7 +125,7 @@ exactly one low_storage_event emitted below threshold 95 (event_kind 0x4C4F5754)
 | Does not prove month/year calendar authoring | No calendar system in substrate |
 | Does not prove default economy gameplay | Fixture is opt-in; `ResourceEconomyOptInMode` required |
 | Does not prove Resource Flow E-11 as daily economy | E-11 is continuous/high-frequency; default-off |
-| Does not integrate daily economy with mapping/SEAD | Separate tracks; no combined fixture |
+| Does not integrate daily economy with mapping/FIELD_POLICY | Separate tracks; no combined fixture |
 | Does not add default SimSession mapping wiring | `MappingExecutionProfile::default()` = Disabled |
 | Does not authorize atlas | M-4 atlas remains provisional/unimplemented |
 | Does not authorize dense grid readback at boundary | CPU boundary discipline preserved |
@@ -196,7 +196,7 @@ Options listed for Opus/product decision — **not implemented in this packet**:
 |---|---|---|
 | **A** | Accept and park boundary-resolution doctrine | **Recommended first** |
 | **B** | Generic boundary-output packet for examples, still abstract and non-semantic | Acceptable if it stays abstract; **do not** let this become `DailyResolutionBoundary` by another name |
-| **C** | Integrate one economy signal with the first-slice SEAD fixture, explicitly as a product fixture | Reasonable after A; keep opt-in and fixture-scoped |
+| **C** | Integrate one economy signal with the first-slice FIELD_POLICY fixture, explicitly as a product fixture | Reasonable after A; keep opt-in and fixture-scoped |
 | **D** | Improve resource-economy authoring ergonomics | Reasonable after A; no substrate semantic expansion |
 | **E** | Return to mapping scale work (atlas/M-4) | **Do not do yet** — only after Opus/product accepts parked doctrine and names a multi-theater scenario |
 

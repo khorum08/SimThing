@@ -10,7 +10,7 @@ Closed, superseded, or historical documents live here. **Do not treat archive co
 | [`design_v7_8_production_track.md`](../design_v7_8_production_track.md) | **PR ladder home** |
 | [`design_v7_7.md`](../design_v7_7.md) | CLOSED baseline |
 | [`invariants.md`](../invariants.md) | Binding constraints |
-| [`workshop/sead_self_ai_track.md`](../workshop/sead_self_ai_track.md) | SEAD/Frontier charter |
+| [`workshop/field_policy_track.md`](../workshop/field_policy_track.md) | FIELD_POLICY/Frontier charter |
 | [`workshop/mapping_current_guidance.md`](../workshop/mapping_current_guidance.md) | Mapping status table |
 
 ## Archive layout

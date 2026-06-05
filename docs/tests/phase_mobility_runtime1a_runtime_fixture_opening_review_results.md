@@ -26,7 +26,7 @@ reverse.
 
 `phase_m_gating_and_doc_policy.md`; `invariants.md` (fixture/production-wiring rows govern; no
 conflict, no edit); `design_v7_8.md` + v7.8 track; v7.9 track; workshop
-`mobility_and_transfer_allocation.md` / `mapping_current_guidance.md` / `sead_self_ai_track.md`;
+`mobility_and_transfer_allocation.md` / `mapping_current_guidance.md` / `field_policy_track.md`;
 `phase_mobility_runtime1_opening_review_results.md` + `..._runtime1_results.md` +
 `..._runtime1a_r1_results.md` + `..._runtime0_results.md`; `mobility_runtime1a.rs` +
 `mobility_runtime0.rs`; `mobility_runtime1_production_fixture.rs` + `mobility_runtime0_composition.rs`;

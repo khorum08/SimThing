@@ -129,14 +129,14 @@ cargo check --workspace
 ```
 **Result:** **PASS**
 
-`phase_m_economy_sead_product_fixture` not run — change does not touch product-fixture commitment support.
+`phase_m_economy_field_policy_product_fixture` not run — change does not touch product-fixture commitment support.
 
 ---
 
 ## Posture Attestation
 
-No semantic WGSL, no default mapping wiring, no simthing-sim changes, no source-mask/source-identity work, no atlas/M-4A, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling; cross-field gradient strict-sink admission now rejects same-frame derivative feedback; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+No semantic WGSL, no default mapping wiring, no simthing-sim changes, no source-mask/source-identity work, no atlas/M-4A, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling; cross-field gradient strict-sink admission now rejects same-frame derivative feedback; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.
 
 ---
 
-**PASS** — Phase M-5D-gradient landed as a Tier-1 admission-hardening pass; frame/scenario-level admission now rejects same-frame derivative feedback by treating Gradient output columns as strict sinks for diffusion/stencil source_col wiring, while preserving downstream reduction/EML/threshold consumption and legitimate cross-tick coupling, with M-5B/M-5C valid-sink fixtures green, rejection cases covered, one test report and compact status update only, no new substrate, no semantic WGSL, no dual-output GradientXY, no sqrt/new opcode, no L1 coupling, no source-mask/source-identity, no atlas/M-4A, no default mapping wiring, no simthing-sim changes, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling, and V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+**PASS** — Phase M-5D-gradient landed as a Tier-1 admission-hardening pass; frame/scenario-level admission now rejects same-frame derivative feedback by treating Gradient output columns as strict sinks for diffusion/stencil source_col wiring, while preserving downstream reduction/EML/threshold consumption and legitimate cross-tick coupling, with M-5B/M-5C valid-sink fixtures green, rejection cases covered, one test report and compact status update only, no new substrate, no semantic WGSL, no dual-output GradientXY, no sqrt/new opcode, no L1 coupling, no source-mask/source-identity, no atlas/M-4A, no default mapping wiring, no simthing-sim changes, no production economy→mapping bridge, no ResourceEconomySpec→mapping coupling, and V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.

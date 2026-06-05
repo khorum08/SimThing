@@ -1,5 +1,5 @@
 use simthing_driver::{
-    construction_threshold_emission, damage_output_for_cohort, hp_to_kill_for_cohort,
+    construction_threshold_emission, damage_output_for_cohort, hp_to_retire_for_cohort,
     replay_dress_rehearsal_r6b_ship_cohort_reinforcement,
     run_dress_rehearsal_r6b_ship_cohort_reinforcement, run_r6_combat_with_r6b_cohorts,
     DressRehearsalR6bInput, DressRehearsalR6bOwner, DressRehearsalR6bReport,
@@ -79,12 +79,12 @@ fn r6b_reinforcement_increments_num_ships_without_boundary_request() {
 }
 
 #[test]
-fn r6b_reinforcement_recomputes_hp_to_kill() {
+fn r6b_reinforcement_recomputes_hp_to_retire() {
     let admitted = report();
     for row in &admitted.reinforcement_rows {
         assert_eq!(
-            row.hp_to_kill_after,
-            hp_to_kill_for_cohort(row.num_ships_after, FLEET_HP_PER_SHIP)
+            row.hp_to_retire_after,
+            hp_to_retire_for_cohort(row.num_ships_after, FLEET_HP_PER_SHIP)
         );
     }
 }
@@ -160,7 +160,7 @@ fn r6b_fusion_sums_num_ships() {
 }
 
 #[test]
-fn r6b_fusion_recomputes_hp_to_kill_and_damage_output() {
+fn r6b_fusion_recomputes_hp_to_retire_and_damage_output() {
     let admitted = report();
     let fusion = admitted
         .fusion_rows
@@ -168,8 +168,8 @@ fn r6b_fusion_recomputes_hp_to_kill_and_damage_output() {
         .find(|row| row.fused_num_ships == 14)
         .expect("canonical 7+7 fusion");
     assert_eq!(
-        fusion.hp_to_kill_after,
-        hp_to_kill_for_cohort(fusion.fused_num_ships, fusion.hp_per_ship)
+        fusion.hp_to_retire_after,
+        hp_to_retire_for_cohort(fusion.fused_num_ships, fusion.hp_per_ship)
     );
     assert_eq!(
         fusion.damage_output_after,

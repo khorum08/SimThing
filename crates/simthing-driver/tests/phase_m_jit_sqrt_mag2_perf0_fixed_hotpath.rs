@@ -1,6 +1,6 @@
 //! SQRT-MAG2-PERF-0 — Performance decomposition for exact fixed-point mag2 + F sqrt hot path.
 //!
-//! Decomposes 34k SEAD hot-path cost (readback, mag2-only, F-only, combined) and probes
+//! Decomposes 34k FIELD_POLICY hot-path cost (readback, mag2-only, F-only, combined) and probes
 //! exact-preserving optimizations. Does not weaken exactness or change Candidate F.
 
 use std::sync::Mutex;
@@ -739,7 +739,7 @@ fn sqrt_mag2_perf0_candidate_b_lo_only_conversion_rejected() {
             }
         }
         println!(
-            "sqrt_mag2_perf0_candidate_b: hi_nonzero={hi_nonzero}/784 lo_only_mismatch={lo_only_mismatch} gpu_wrong={gpu_lo_only_wrong} verdict=REJECTED_for_full_SEAD_range"
+            "sqrt_mag2_perf0_candidate_b: hi_nonzero={hi_nonzero}/784 lo_only_mismatch={lo_only_mismatch} gpu_wrong={gpu_lo_only_wrong} verdict=REJECTED_for_full_FIELD_POLICY_range"
         );
         assert!(hi_nonzero > 0, "need hi!=0 rows in dense corpus");
         assert!(lo_only_mismatch > 0);

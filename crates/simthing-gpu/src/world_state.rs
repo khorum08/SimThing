@@ -130,7 +130,7 @@ pub struct SlotDeltaRange {
 /// `(slot, col)`: `value = value * mul + add`.
 ///
 /// Folding on the CPU preserves original arrival order for any sequence of
-/// Set/Add/Multiply ops targeting the same cell, while the numeric
+/// Set/Add/Multiply ops selection the same cell, while the numeric
 /// read-modify-write stays on the GPU.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]

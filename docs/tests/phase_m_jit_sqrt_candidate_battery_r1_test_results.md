@@ -159,7 +159,7 @@ rg "production sqrt admission|new production EML opcode|default SimSession mappi
 **Result:** guardrail/deferred context only; no new production/default wiring from this pass.
 
 ```
-rg "faction|ownership|owner|AI|threat|scarcity|opportunity|labor|price|logistics|routing|need|demand|supply|personality|drone|SEAD" crates/simthing-driver/tests/phase_m_jit_sqrt_candidate_battery.rs crates/simthing-gpu/src/shaders docs/tests/phase_m_jit_sqrt_candidate_battery_r1_test_results.md
+rg "faction|ownership|owner|AI|threat|scarcity|opportunity|labor|price|logistics|routing|need|demand|supply|personality|drone|FIELD_POLICY" crates/simthing-driver/tests/phase_m_jit_sqrt_candidate_battery.rs crates/simthing-gpu/src/shaders docs/tests/phase_m_jit_sqrt_candidate_battery_r1_test_results.md
 ```
 
 **Result:** test file lists terms only in `FORBIDDEN_SEMANTIC_TERMS` guardrail; generated WGSL remains semantic-free; no matches in baseline shaders.
@@ -191,4 +191,4 @@ find docs/tests -maxdepth 1 -type f \( -name "*.log" -o -name "*tmp*" -o -name "
 
 ## Posture Attestation
 
-No production sqrt admission, no sqrt in baseline accumulator_op.wgsl, no semantic WGSL, no production JIT wiring, no default mapping wiring, no simthing-sim Gadget/Personality/Memory semantics, no new production EML opcode, no chained scheduling, no automatic snapshot/copy scheduling, no CPU planner/urgency/commitment emission, no production economy→mapping bridge; M-JIT-SQRT-0 R1 corrects vector oracle order evidence while keeping native sqrt classified explicitly; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+No production sqrt admission, no sqrt in baseline accumulator_op.wgsl, no semantic WGSL, no production JIT wiring, no default mapping wiring, no simthing-sim Gadget/Personality/Memory semantics, no new production EML opcode, no chained scheduling, no automatic snapshot/copy scheduling, no CPU planner/urgency/commitment emission, no production economy→mapping bridge; M-JIT-SQRT-0 R1 corrects vector oracle order evidence while keeping native sqrt classified explicitly; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.

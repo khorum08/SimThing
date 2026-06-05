@@ -109,7 +109,7 @@ pub use mobility_scenario0::{
 };
 pub use preflight::{
     evaluate_designer_admission_request, resolve_frontier_artifact_target_id,
-    DesignerAdmissionPreflightReport, DesignerAdmissionRequest, SeadLadderStage,
+    DesignerAdmissionPreflightReport, DesignerAdmissionRequest, FieldPolicyLadderStage,
 };
 pub use preview::{
     preview_accepted_artifact_targets, preview_designer_admission_preflight,

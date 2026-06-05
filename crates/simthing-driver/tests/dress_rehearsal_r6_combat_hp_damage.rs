@@ -1,5 +1,5 @@
 use simthing_driver::{
-    damage_output_for_cohort, emission_band_ship_attrition, hp_to_kill_for_cohort,
+    damage_output_for_cohort, emission_band_ship_attrition, hp_to_retire_for_cohort,
     replay_dress_rehearsal_r6_combat_hp_damage, run_dress_rehearsal_r6_combat_hp_damage,
     DressRehearsalR6Input, DressRehearsalR6Owner, DressRehearsalR6Report,
     DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_ID, DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_STATUS_PASS,
@@ -43,13 +43,13 @@ fn r6_fleet_is_simthing_cohort_with_ten_ships() {
 }
 
 #[test]
-fn r6_hp_to_kill_equals_num_ships_times_hp_per_ship() {
+fn r6_hp_to_retire_equals_num_ships_times_hp_per_ship() {
     let admitted = report();
     for row in &admitted.combat_arena_rows {
         assert_eq!(row.hp_per_ship, FLEET_HP_PER_SHIP);
         assert_eq!(
-            row.hp_to_kill_before,
-            hp_to_kill_for_cohort(row.num_ships_before, row.hp_per_ship)
+            row.hp_to_retire_before,
+            hp_to_retire_for_cohort(row.num_ships_before, row.hp_per_ship)
         );
     }
 }
@@ -174,7 +174,7 @@ fn r6_emission_band_converts_damage_to_ships_destroyed() {
 }
 
 #[test]
-fn r6_partial_damage_below_hp_per_ship_kills_zero_ships() {
+fn r6_partial_damage_below_hp_per_ship_retires_zero_ships() {
     let (destroyed, after, hp_after, zero) =
         emission_band_ship_attrition(75, FLEET_COHORT_NUM_SHIPS, FLEET_HP_PER_SHIP);
     assert_eq!(destroyed, 0);
@@ -184,7 +184,7 @@ fn r6_partial_damage_below_hp_per_ship_kills_zero_ships() {
 }
 
 #[test]
-fn r6_canonical_500_damage_kills_five_of_ten_ships() {
+fn r6_canonical_500_damage_retires_five_of_ten_ships() {
     let (destroyed, after, hp_after, _) =
         emission_band_ship_attrition(500, FLEET_COHORT_NUM_SHIPS, FLEET_HP_PER_SHIP);
     assert_eq!(destroyed, 5);
@@ -197,7 +197,7 @@ fn r6_canonical_500_damage_kills_five_of_ten_ships() {
 }
 
 #[test]
-fn r6_overkill_clamps_ships_destroyed_to_num_ships() {
+fn r6_overretire_clamps_ships_destroyed_to_num_ships() {
     let (destroyed, after, hp_after, zero) =
         emission_band_ship_attrition(1200, FLEET_COHORT_NUM_SHIPS, FLEET_HP_PER_SHIP);
     assert_eq!(destroyed, 10);

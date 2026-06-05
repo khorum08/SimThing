@@ -26,7 +26,7 @@ No runtime code changes.
 Summarizes for Opus/product review:
 
 1. Executive verdict — fixture orchestration only; no production bridge
-2. Landed chain — boundary doctrine → daily economy → authoring preview → economy+SEAD
+2. Landed chain — boundary doctrine → daily economy → authoring preview → economy+FIELD_POLICY
 3. Evidence table (9 prior test reports)
 4. Code/test surfaces (production vs acceptance-test support)
 5. What-is-proven / what-is-not-proven
@@ -40,7 +40,7 @@ Summarizes for Opus/product review:
 | `git rev-parse HEAD` | PASS; `0265303f37793bd449968d94a3e666650d79fec3` |
 | `rustc --version` | PASS; `rustc 1.95.0 (59807616e 2026-04-14)` |
 | `cargo --version` | PASS; `cargo 1.95.0 (f2d3ce0bd 2026-03-21)` |
-| `cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture -- --nocapture` | PASS; 6/6 |
+| `cargo test -p simthing-driver --test phase_m_economy_field_policy_product_fixture -- --nocapture` | PASS; 6/6 |
 | `cargo test -p simthing-driver --test phase_m_resource_economy_authoring_ergonomics -- --nocapture` | PASS; 4/4 |
 | `cargo test -p simthing-driver --test phase_m_daily_economy_fixture -- --nocapture` | PASS; 7/7 |
 | `cargo test -p simthing-driver --test phase_m_boundary_cadence_doctrine -- --nocapture` | PASS; 7/7 |
@@ -58,7 +58,7 @@ Full workspace test (`cargo test --workspace -j 1`) omitted — docs/review pack
 |---|---|
 | Review packet created | PASS |
 | Active docs updated | PASS |
-| Economy + SEAD fixture | PASS (6/6) |
+| Economy + FIELD_POLICY fixture | PASS (6/6) |
 | Authoring ergonomics | PASS (4/4) |
 | Daily economy fixture | PASS (7/7) |
 | Boundary cadence doctrine | PASS (7/7) |
@@ -74,11 +74,11 @@ Full workspace test (`cargo test --workspace -j 1`) omitted — docs/review pack
 Abstract tick/boundary doctrine (accepted)
   → Daily Economy Fixture V1 (discrete ResourceEconomySpec example)
   → Resource Economy Authoring Ergonomics V1 (preview/diagnostics)
-  → Economy + SEAD Product Fixture V1 (Option A orchestration)
+  → Economy + FIELD_POLICY Product Fixture V1 (Option A orchestration)
 ```
 
-Surplus path: treasury 107 → low stress weights → 0 SEAD commitments.  
-Deficit path: treasury 94 → high stress weights → 1 SEAD commitment via GPU Threshold+EmitEvent.
+Surplus path: treasury 107 → low stress weights → 0 FIELD_POLICY commitments.  
+Deficit path: treasury 94 → high stress weights → 1 FIELD_POLICY commitment via GPU Threshold+EmitEvent.
 
 ## Posture Summary
 
@@ -94,10 +94,10 @@ Deficit path: treasury 94 → high stress weights → 1 SEAD commitment via GPU 
 ## Remaining Caveats
 
 - Chain acceptance (Option A) pending Opus/product review
-- Economy→SEAD link remains test orchestration only
+- Economy→FIELD_POLICY link remains test orchestration only
 - Cached first-slice commitment scan still deferred
 - M-4 atlas remains gated (not next)
 
 ## Final Verdict
 
-**PASS — Phase M product-fixture chain parking packet landed; docs now park the accepted abstract boundary/economy/SEAD fixture chain while preserving no production economy→mapping bridge, no DailyResolutionBoundary, no simthing-sim calendar/pause semantics, no Resource Flow default, no CPU planner, no semantic WGSL, no atlas/default mapping wiring, and simthing-sim map-freedom.**
+**PASS — Phase M product-fixture chain parking packet landed; docs now park the accepted abstract boundary/economy/FIELD_POLICY fixture chain while preserving no production economy→mapping bridge, no DailyResolutionBoundary, no simthing-sim calendar/pause semantics, no Resource Flow default, no CPU planner, no semantic WGSL, no atlas/default mapping wiring, and simthing-sim map-freedom.**

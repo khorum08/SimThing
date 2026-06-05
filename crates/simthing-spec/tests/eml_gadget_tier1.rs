@@ -588,12 +588,13 @@ fn posture_preservation() {
     assert!(!core_nodes.contains("EXP"));
     assert!(!core_nodes.contains("LOGISTIC"));
 
-    // R1 posture: economy→SEAD remains fixture-only; no flatten runtime wiring.
-    let economy_sead = std::fs::read_to_string(
-        repo_root.join("crates/simthing-driver/tests/support/economy_sead_product_fixture.rs"),
+    // R1 posture: economy→FIELD_POLICY remains fixture-only; no flatten runtime wiring.
+    let economy_field_policy = std::fs::read_to_string(
+        repo_root
+            .join("crates/simthing-driver/tests/support/economy_field_policy_product_fixture.rs"),
     )
-    .expect("economy_sead_product_fixture.rs");
-    assert!(!economy_sead.contains("CompiledEmlGadgetStack"));
-    assert!(!economy_sead.contains("flattened_nodes"));
-    assert!(!economy_sead.contains("compile_eml_gadget_stack"));
+    .expect("economy_field_policy_product_fixture.rs");
+    assert!(!economy_field_policy.contains("CompiledEmlGadgetStack"));
+    assert!(!economy_field_policy.contains("flattened_nodes"));
+    assert!(!economy_field_policy.contains("compile_eml_gadget_stack"));
 }

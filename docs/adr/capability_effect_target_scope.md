@@ -359,7 +359,7 @@ without modification — `effect_target` is `#[serde(default)]`. The
 **runtime semantics** of those files change (default flips from
 clone-targeted to owner-targeted). This is acceptable because there is
 no released content. Pre-existing test fixtures that depend on clone
-targeting must opt in explicitly via `effect_target: CapabilityTree`.
+selection must opt in explicitly via `effect_target: CapabilityTree`.
 
 (h) **Modder docs gain one rule, not a system.** The
 `simthing_modder_object_guide.md` capability section adds: "Effects
@@ -389,12 +389,12 @@ no scope expressions, no resolution DSL.
   `WithinRange(of: Owner, range: 5)`. These need a target-resolution DSL
   with its own ADR. The three-variant enum is sufficient for v1 and
   forward-compatible (add new variants without breaking existing files).
-- **Dynamic re-targeting** at runtime (e.g. an effect that follows a
+- **Dynamic re-selection** at runtime (e.g. an effect that follows a
   changing flagship). Install-time resolution is the only model in v1.
 - **Multi-target effects** (one effect hits owner + all children). For v1,
   one effect = one target. Modders compose multi-target by authoring
   multiple `CapabilityEffectSpec` entries with different `effect_target`s.
-- **Cross-faction targeting** (e.g. "debuff every enemy faction"). Needs
+- **Cross-faction selection** (e.g. "debuff every enemy faction"). Needs
   a faction-relation model that does not exist yet in `simthing-core`.
 - **Validation that `targets_property` resolves on the install target's
   kind.** A `validate_capability_tree` diagnostic in `simthing-spec` is
@@ -405,7 +405,7 @@ no scope expressions, no resolution DSL.
 
 - **(Alt-1) Keep `CapabilityTree` as default (v0 behavior), require modders
   to opt into `Owner`.** Rejected: every realistic tech/ideas/talent tree
-  wants owner-targeting. Making the common case verbose punishes 95% of
+  wants owner-selection. Making the common case verbose punishes 95% of
   authoring to preserve a 5% case. The forward-compatible path is to make
   the common case implicit and require explicit opt-in for the unusual case.
 

@@ -25,7 +25,7 @@
 
 Opt-in registration only; **no global default schedule**; no workspace scheduler; no gameplay/real-time
 loop; deterministic tick/step; deterministic replay; bounded steps; disabled path registers no schedule
-and invokes no path. Each step evaluates GPU-resident SEAD thresholds → emits zero/one `BoundaryRequest`
+and invokes no path. Each step evaluates GPU-resident FIELD_POLICY thresholds → emits zero/one `BoundaryRequest`
 per mover per step → routes into `run_production_path_0080_0` → records a deterministic per-step report.
 
 ## Authorized next implementation slice

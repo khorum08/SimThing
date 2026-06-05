@@ -415,7 +415,7 @@ Under the proposition:
 - Per-tick: Recipe execution. Same-band consumed-input contention is
   rejected at plan time (`ContendedConsumedInput` in
   `transfer_accumulator.rs`). Each recipe op owns its inputs.
-- Per-boundary: Allocator runs once. N ops are uploaded each targeting
+- Per-boundary: Allocator runs once. N ops are uploaded each selection
   an independent (slot, col). The kernel's
   `atomic_add_single_writer_f32_at` (used for OrderBand-gated adds)
   bypasses the CAS loop because OrderBand guarantees a single writer per

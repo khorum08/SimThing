@@ -11,7 +11,7 @@
 ## 1. Fixed base harness (cite on handoff back)
 
 1. `docs/design_0_0_8_0.md` §0 — transient constitution (conformance; conflict-as-resource-flow;
-   recursive allocation; SEAD = GPU threshold crossings, no CPU planner; §0.5 harness incl. **two-layer**).
+   recursive allocation; FIELD_POLICY = GPU threshold crossings, no CPU planner; §0.5 harness incl. **two-layer**).
 2. `docs/invariants.md` — Scenario Proof; AccumulatorOp v2; Resource Flow Substrate; Mapping invariants
    (esp. **"Local index arithmetic has one home"**); semantic-free `simthing-sim`.
 3. `docs/design_0_0_8_0_consumer_pulled_production_track.md` §12–§12.5 — ATLAS-BATCH-0 ladder, OWNER
@@ -19,7 +19,7 @@
 4. `docs/scenarios/scenario_0080_2_dress_rehearsal_spec.md` — concrete 20×20 / 13-system topology.
 5. `crates/simthing-core/src/accumulator_op.rs` — the GPU-resident Accumulator vocabulary later rungs
    lower to (LOC produces structure that PACK/STORE/R1/R4 consume).
-6. `docs/workshop/sead_self_ai_track.md` — SEAD charter.
+6. `docs/workshop/field_policy_track.md` — FIELD_POLICY charter.
 
 **Rung-local (ephemeral, this rung only — §0.5 two-layer):** `crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_gen.rs`
 (the descriptor LOC consumes); `docs/tests/scenario_0080_2_atlas_batch_0_gen_report.md`.
@@ -145,7 +145,7 @@ not** delete the accepted GEN report/log/status artifacts.
 ## 10. Stop conditions — STOP and escalate to Opus if implementation seems to need
 
 GPU stencil dispatch · atlas batch packing · resource-flow arena execution · economy/disruption behavior
-· owner masked-reduction runtime · capability-tree mask-down · movement/REENROLL · combat · SEAD gradient
+· owner masked-reduction runtime · capability-tree mask-down · movement/REENROLL · combat · FIELD_POLICY gradient
 consumption · runtime `match kind` · new semantic WGSL · new `simthing-sim` map/faction/gameplay
 semantics · default session wiring · `SimThing`/`SlotAllocator`/numeric-column materialization. **All
 later rungs.** LOC produces *structure*; every decision stays a later GPU-resident threshold crossing.
@@ -166,5 +166,5 @@ Deviations from contract / open questions: <...>
 Holds principles 1–6: it authors structure that lowers to the Accumulator/field rungs (no CPU planner,
 no map traversal); everything-is-a-SimThing is honored by making `Location` an authored descriptor role,
 not a runtime kind-branch; no resource-flow behavior, no allocation outside the recursive tree, no
-`simthing-sim` semantics, no default wiring. LOC is the structural substrate the GPU-resident SEAD path
+`simthing-sim` semantics, no default wiring. LOC is the structural substrate the GPU-resident FIELD_POLICY path
 is built on, proven by deterministic descriptor tests — not a runtime subsystem.

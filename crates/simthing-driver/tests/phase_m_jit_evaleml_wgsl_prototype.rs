@@ -50,7 +50,7 @@ const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
     "supply",
     "personality",
     "drone",
-    "SEAD",
+    "FIELD_POLICY",
 ];
 
 // ── Test-only generic WGSL emitter ───────────────────────────────────────────────────────────

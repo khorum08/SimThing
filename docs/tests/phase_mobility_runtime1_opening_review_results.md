@@ -24,7 +24,7 @@ those rails. RUNTIME-1A is the minimal next slice; RUNTIME-1B (GPU) follows only
 `phase_m_gating_and_doc_policy.md`; `invariants.md` (production-wiring rows govern; no conflict, no
 edit); `design_v7_8.md`; `design_v7_8_production_track.md`;
 `design_v7_9_mobility_transfer_allocation_production_track.md`; workshop
-`mobility_and_transfer_allocation.md` / `mapping_current_guidance.md` / `sead_self_ai_track.md`;
+`mobility_and_transfer_allocation.md` / `mapping_current_guidance.md` / `field_policy_track.md`;
 `phase_mobility_runtime0_opening_review_results.md` + `..._runtime0_results.md`; the
 owner0_r1/econ0/idroute0_r1/reenroll0/alloc0 reports; `mobility_runtime0.rs` +
 `mobility_runtime0_composition.rs`; `worklog.md`. (`docs/simthing_repoguide.md` ignored per handoff;

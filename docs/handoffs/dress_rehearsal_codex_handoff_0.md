@@ -12,10 +12,10 @@ real SimThing reduction; AI never consumed a heatmap). The constitution now has 
 carries forward forever, and a new **"Scenario Proof"** invariant. **Before writing code, read:**
 
 1. **`docs/design_0_0_8_0.md` §0** — transient constitution: conformance; **all conflict is resource
-   flow**; recursive allocation; **SEAD = GPU-resident threshold crossings, no CPU planner** (§0.0, §0.5
+   flow**; recursive allocation; **FIELD_POLICY = GPU-resident threshold crossings, no CPU planner** (§0.0, §0.5
    #4); **§0.5 harness discipline** (how to cite, how to self-check).
 2. **`docs/invariants.md`** — **"Scenario Proof"**; **AccumulatorOp v2** + **Resource Flow Substrate**
-   sections (the GPU-resident flow contract); SEAD/JIT closure-posture.
+   sections (the GPU-resident flow contract); FIELD_POLICY/JIT closure-posture.
 3. **`docs/design_0_0_8_0_consumer_pulled_production_track.md` §12–§12.5** — rehearsal design,
    EC1/EC2, nested-grid hierarchy, ATLAS-BATCH-0, the rung ladder + parked-inventory coverage. (§12.4
    links the OWNER design + parked `mobility_owner0.rs`.)
@@ -23,7 +23,7 @@ carries forward forever, and a new **"Scenario Proof"** invariant. **Before writ
    factory/pop/starport economy, the numbers, disruption-as-blockade) and **§8.1 anticipated emergence**.
 5. **`crates/simthing-core/src/accumulator_op.rs`** — the **GPU-resident Accumulator primitive**
    (`SourceSpec`/`CombineFn`/`GateSpec`/`ScaleSpec`/`ConsumeMode`) every arena compiles to.
-6. **`docs/workshop/sead_self_ai_track.md`** — the **SEAD charter** (field-as-policy; threshold crossings
+6. **`docs/workshop/field_policy_track.md`** — the **FIELD_POLICY charter** (field-as-policy; threshold crossings
    → `BoundaryRequest`; no CPU planner).
 
 **Self-check every diff against the §0.5 base principles** and say in one line that it holds them:
@@ -50,7 +50,7 @@ emit → reduce-up → mask-down → diffuse → threshold → act
 3. **Mask down** — faction techtree dispositions/modifiers mask **down** by owner-column (OWNER §12.4).
 4. **Diffuse** — disruption + fleet_strength diffuse to heatmaps per tier; `GradientXY` extracts the
    gradient; the galactic-tier heatmap (20×20) carries strategic falloff (§4.1).
-5. **Threshold (SEAD)** — a mover reads the **local** composite gradient at its own cell (patrol-presence
+5. **Threshold (FIELD_POLICY)** — a mover reads the **local** composite gradient at its own cell (patrol-presence
    × disruption × its masked disposition), takes the **exact-sqrt** magnitude, and a threshold crossing
    decides sit / move / engage / raid. **No CPU planner; no lookahead.**
 6. **Act** — `Threshold`+`EmitEvent`→`BoundaryRequest`: movers REENROLL between cells; combat resolves at
@@ -60,7 +60,7 @@ emit → reduce-up → mask-down → diffuse → threshold → act
 **The two hard exit criteria the rehearsal must hit (EC1/EC2):**
 - **EC1:** the starmap holds a **non-trivial reduced disruption heatmap over real gridcell SimThings,
   produced by gameplay (not hand-seeded)**, vs a CPU oracle, emitted as an inspectable artifact.
-- **EC2:** a mover's **SEAD action is a function of the diffused heatmap gradient read at its own cell**,
+- **EC2:** a mover's **FIELD_POLICY action is a function of the diffused heatmap gradient read at its own cell**,
   vs a CPU oracle — not a hand-seeded field or a registration-only stand-in.
 
 **What we are watching for (emergent, not scripted — scenario §8.1):** pirate raiding waves,
@@ -75,7 +75,7 @@ out-build it? The closing report (R7) documents which behaviors actually emerged
 Sequence (production track §12.5 retirement map — one parked phase proved per rung):
 
 `Open (scenario admission)` → **`ATLAS-BATCH-0`** [GEN → LOC → PACK → STORE → CLOSE] → `R1` (disruption
-heatmap) → `R2` (recursive economy) → `R3` (capability-tree) → `R4` (SEAD + exact sqrt) → `R5` (movement
+heatmap) → `R2` (recursive economy) → `R3` (capability-tree) → `R4` (FIELD_POLICY + exact sqrt) → `R5` (movement
 + fission) → `R6` (combat) → `R7` (close + report).
 
 **Opus authors/adjudicates each gate; Codex develops the IMPL rungs.** This handoff is the first IMPL rung.

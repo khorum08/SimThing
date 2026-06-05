@@ -8,7 +8,7 @@
 | Scenario | `Local Patrol Economy` |
 | Accepted scenario gate | `SCENARIO-0080-0` |
 | Consumed substrate | `0.0.7.9 mobility/transfer substrate` |
-| Decision source | Accepted GPU-resident SEAD `Threshold` + `EmitEvent` -> `BoundaryRequest` |
+| Decision source | Accepted GPU-resident FIELD_POLICY `Threshold` + `EmitEvent` -> `BoundaryRequest` |
 | Runtime target | First non-test-support default `SimSession` path, scoped only to Local Patrol Economy |
 | Implementation status | Implemented in `PRODUCTION-PATH-0080-0` implementation PR |
 
@@ -20,7 +20,7 @@ This update does not expand the opening scope.
 ## Implementation Result
 
 The implementation adds a `simthing-driver` production-path surface for Local Patrol Economy. It
-instantiates only under explicit opt-in, accepts a SEAD `Threshold` + `EmitEvent` ->
+instantiates only under explicit opt-in, accepts a FIELD_POLICY `Threshold` + `EmitEvent` ->
 `BoundaryRequest`, delegates relocation through the 0.0.7.9 mobility/transfer substrate, preserves
 patrol identity and owner overlay continuity, and updates bounded local economy participation.
 `DEFAULT-SCHEDULE-0080-0`, gameplay, semantic WGSL, ClauseThing/L3, hard currency, markets/trade,
@@ -45,19 +45,19 @@ hard currency, nested Resource Flow, or broad economy architecture.
 
 The next PR may add a default-off / opt-in Local Patrol Economy production-path fixture or narrow
 `SimSession` surface. It may instantiate the Local Patrol Economy scenario in a non-test-support
-path. It may route accepted SEAD `Threshold` + `EmitEvent` -> `BoundaryRequest` into the
+path. It may route accepted FIELD_POLICY `Threshold` + `EmitEvent` -> `BoundaryRequest` into the
 mobility/transfer substrate, apply identity-preserving relocation, preserve owner overlay
 continuity, and update bounded local economy participation after relocation.
 
 The slice must remain reversible and scenario-scoped. It must not become a general mobility runtime.
 
-## SEAD Decision-Source Contract
+## FIELD_POLICY Decision-Source Contract
 
 Patrol relocation is not externally scripted and is not CPU-planned. The decision source is
-GPU-resident SEAD: a `disruption` / `local_security` threshold crossing emits an event, the event
+GPU-resident FIELD_POLICY: a `disruption` / `local_security` threshold crossing emits an event, the event
 materializes as a `BoundaryRequest`, and the mobility substrate consumes that request.
 
-This does not open a new SEAD substrate. It does not allow CPU planner, CPU urgency, or CPU
+This does not open a new FIELD_POLICY substrate. It does not allow CPU planner, CPU urgency, or CPU
 commitment emission.
 
 ## Mobility / Ownership / Flow Contract
@@ -103,7 +103,7 @@ closed.
 - `production_path_0080_0_explicit_opt_in_only`
 - `production_path_0080_0_no_global_default_schedule`
 - `production_path_0080_0_instantiates_local_patrol_economy`
-- `production_path_0080_0_sead_threshold_emits_boundary_request`
+- `production_path_0080_0_field_policy_threshold_emits_boundary_request`
 - `production_path_0080_0_no_cpu_planner_or_external_move_script`
 - `production_path_0080_0_identity_preserved_after_relocation`
 - `production_path_0080_0_source_membership_updates`
@@ -128,7 +128,7 @@ Do not run these in this docs-only PR. The future implementation PR is expected 
 
 - targeted new production-path tests
 - relevant existing 0.0.7.9 mobility/transfer regression tests
-- SEAD threshold/event/boundary regression tests, if present
+- FIELD_POLICY threshold/event/boundary regression tests, if present
 - `cargo check --workspace`
 
 ## Stop Conditions

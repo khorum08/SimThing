@@ -35,7 +35,7 @@ const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
     "supply",
     "personality",
     "drone",
-    "SEAD",
+    "FIELD_POLICY",
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

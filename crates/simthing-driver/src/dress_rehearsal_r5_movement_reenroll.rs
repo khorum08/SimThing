@@ -19,9 +19,9 @@ use crate::dress_rehearsal_r2_recursive_allocation::{
 use crate::dress_rehearsal_r3_capability_mask_down::{
     run_dress_rehearsal_r3_capability_mask_down, DressRehearsalR3Input, DressRehearsalR3Report,
 };
-use crate::dress_rehearsal_r4_sead_field_consumption::{
-    run_dress_rehearsal_r4_sead_field_consumption, DressRehearsalR4Decision, DressRehearsalR4Input,
-    DressRehearsalR4Owner, DressRehearsalR4Report,
+use crate::dress_rehearsal_r4_field_policy_consumption::{
+    run_dress_rehearsal_r4_field_policy_consumption, DressRehearsalR4Decision,
+    DressRehearsalR4Input, DressRehearsalR4Owner, DressRehearsalR4Report,
 };
 use simthing_spec::{
     compose_mobility_runtime0, plan_mobility_alloc0, IdentityLane, MobilityAlloc0BlockSpec,
@@ -169,11 +169,11 @@ impl DressRehearsalR5Input {
         let r3_report = run_dress_rehearsal_r3_capability_mask_down(
             &DressRehearsalR3Input::with_reports(r1_report.clone(), r2_report.clone()),
         );
-        let r4_report = run_dress_rehearsal_r4_sead_field_consumption(&DressRehearsalR4Input {
+        let r4_report = run_dress_rehearsal_r4_field_policy_consumption(&DressRehearsalR4Input {
             explicit_opt_in: true,
             enabled_by_default: false,
             movement_threshold_mag_bits:
-                crate::dress_rehearsal_r4_sead_field_consumption::MOVEMENT_THRESHOLD_MAG_BITS,
+                crate::dress_rehearsal_r4_field_policy_consumption::MOVEMENT_THRESHOLD_MAG_BITS,
             r1_report: Some(r1_report.clone()),
             r2_report: Some(r2_report.clone()),
             r3_report: Some(r3_report.clone()),

@@ -58,7 +58,7 @@ These are unchanged and binding. Touching any of them is never fast-lane:
 - semantic WGSL; map/faction/AI branching in any shader
 - `simthing-sim` map/Gadget/Personality/Memory awareness
 - atlas / M-4A implementation; `request_atlas_batching` stays rejected at admission until a §11-gate PR
-- production economy→mapping runtime bridge (economy→SEAD stays `tests/support` fixture-only)
+- production economy→mapping runtime bridge (economy→FIELD_POLICY stays `tests/support` fixture-only)
 - default-on mapping execution / default `SimSession` mapping wiring
 - Resource Flow E-11 default-on
 - new EML opcode (incl. transcendental / `sqrt`); dual-output gradient kernel; L1 cross-field coupling

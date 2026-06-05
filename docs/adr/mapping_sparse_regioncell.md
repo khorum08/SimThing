@@ -2,9 +2,9 @@
 
 **Status:** **Approved (architecture, 2026-05-28)** — Phase M natives unlocked; first scenario-level slice named (§"First slice"). Still authorizes **no production mapping runtime** (first-slice session wiring is separately gated, after Phase M natives — see §"What 'no production mapping runtime' actually means").
 **Date:** 2026-05-28
-**Authors:** Opus 4.8 (design authority synthesis), grounded in the 2026-05-19 mapping/SEAD sandbox probes and the unified Cursor/Opus mapping guidance
+**Authors:** Opus 4.8 (design authority synthesis), grounded in the 2026-05-19 mapping/FIELD_POLICY sandbox probes and the unified Cursor/Opus mapping guidance
 **Extends:** `docs/design_v7.md` (V7.5 constitution + AccumulatorOp v2), `docs/design_v7_6.md` (StructuredFieldStencilOp promotion + guardrail relaxation), `docs/adr/resource_flow_substrate.md` (the opt-in / bounded / semantic-free substrate template this ADR follows)
-**Companion (next):** `docs/design_v7_7.md` (mapping + SEAD surfacing), `docs/accumulator_op_v2_production_plan.md` (Phase M natives)
+**Companion (next):** `docs/design_v7_7.md` (mapping + FIELD_POLICY surfacing), `docs/accumulator_op_v2_production_plan.md` (Phase M natives)
 
 **Evidence cited (all `docs/tests/`):**
 - `mapping_optimization_toolkit_sandbox_test_results.md`
@@ -13,7 +13,7 @@
 - `mapping_optimization_remedial_candidate_notes.md` (`docs/workshop/archive/mapping/`)
 - `v7_6_structured_field_stencil_guardrail_hardening_test_results.md`
 - `v7_6_structured_field_stencil_parked_state_test_results.md`
-- SEAD series: `sead_field_intelligence_sandbox_test_results.md`, `sead_operator_toolkit_sandbox_test_results.md`, `sead_strategic_horizon_sandbox_test_results.md`, `sead_tensor_stencil_wgsl_sandbox_test_results.md`, `sead_tensor_stencil_refinement_sandbox_test_results.md`
+- FIELD_POLICY series: `field_policy_intelligence_sandbox_test_results.md`, `field_policy_operator_toolkit_sandbox_test_results.md`, `field_policy_strategic_horizon_sandbox_test_results.md`, `field_policy_tensor_stencil_wgsl_sandbox_test_results.md`, `field_policy_tensor_stencil_refinement_sandbox_test_results.md`
 
 ---
 
@@ -37,15 +37,15 @@ Two questions sat open after V7.6:
    constitution.
 
 2. **Which optimizations from the sandbox probes are safe to adopt, and at what
-   layer?** The toolkit and remedial probes plus the five SEAD probes produced a
+   layer?** The toolkit and remedial probes plus the five FIELD_POLICY probes produced a
    large, consistent body of evidence about atlas batching, cadence tiers, dirty
    skipping, active-mask halos, and source policy. That evidence needs to be
    converted into binding adoption/deferral decisions with the caveats attached.
 
-The SEAD probes established the load-bearing negative result that shapes the
+The FIELD_POLICY probes established the load-bearing negative result that shapes the
 whole architecture: **dense, lateral, long-horizon diffusion over the full grid
 is over budget.** Per-edge AccumulatorOp propagation projects to ~3236 ms/tick at
-30k cells (`sead_operator_toolkit_sandbox_test_results.md` Test 8). Hierarchy-first
+30k cells (`field_policy_operator_toolkit_sandbox_test_results.md` Test 8). Hierarchy-first
 strategic awareness — `SlotRange` Sum cell→faction then `EvalEML` urgency at the
 parent — is ~15× cheaper (1.45 ms vs 21.09 ms for faction awareness, same probe
 Test 5). The architecture must therefore be **local-and-bounded for dense fields,
@@ -86,7 +86,7 @@ pass graph to mapping behavior, and does **not** change any default.
 large body of hidden compute work remains. The compute already exists: the
 `StructuredFieldStencilOp` kernel, its WGSL, ping-pong buffers, CPU oracle, and
 horizon/source-cap validation are live in `simthing-gpu`, and Layers 2–3 are
-existing AccumulatorOp `SlotRange` Sum + `EvalEML` paths the SEAD probes already
+existing AccumulatorOp `SlotRange` Sum + `EvalEML` paths the FIELD_POLICY probes already
 drove on the GPU. "Runtime" here means exactly one remaining step: **wiring a
 RegionCell field into a real production session's pass graph at session open so it
 runs every tick as part of a shipping scenario** — the ADR's first slice. Every
@@ -104,10 +104,10 @@ weakens it:
 - **No semantic WGSL; generic extensions are admissible.** RegionCell fields are evolved by the
   generic `StructuredFieldStencilOp` kernel, which operates on flat buffers,
   dimensions, columns, and kernel weights only. Generality is proven:
-  every SEAD/stencil probe records `mapping_semantics_embedded = NO`,
+  every FIELD_POLICY/stencil probe records `mapping_semantics_embedded = NO`,
   `simthing_sim_awareness = NO`, `general_tensor = YES`
-  (`sead_tensor_stencil_wgsl_sandbox_test_results.md` Test 7,
-  `sead_tensor_stencil_refinement_sandbox_test_results.md` Test 9). No new
+  (`field_policy_tensor_stencil_wgsl_sandbox_test_results.md` Test 7,
+  `field_policy_tensor_stencil_refinement_sandbox_test_results.md` Test 9). No new
   semantic kernel is admitted by this ADR. **Generic kernel extensions** — new
   parameters (e.g. per-direction weights for a single-target `Gradient { axis }`
   operator variant) that carry no map/faction/AI semantics, are paired with
@@ -122,8 +122,8 @@ weakens it:
   `bounded_field_update`) are admissible at runtime through the C-8
   `register_formula` path today; the legacy whitelist rejection was a
   wrong-layer admission decision, not a runtime safety property
-  (`sead_tensor_stencil_refinement_sandbox_test_results.md` Test 6 finding A;
-  `sead_field_intelligence_sandbox_test_results.md` Test 10 finding B). Formula-
+  (`field_policy_tensor_stencil_refinement_sandbox_test_results.md` Test 6 finding A;
+  `field_policy_intelligence_sandbox_test_results.md` Test 10 finding B). Formula-
   class admission therefore lives at the designer/spec policy layer, exactly as
   V7.6 §1.2 specifies, and is enforced at import/session-build, never mid-tick.
 - **`simthing-sim` remains semantic-free.** RegionCell, atlas, gutter, cadence,
@@ -175,18 +175,18 @@ refinement probe's recommended production constraints:
 
 - Default operators `normalized_stencil` / `source_capped_normalized`. Plain
   `raw_additive` blows up (H=24 max 5.8e7,
-  `sead_operator_toolkit_sandbox_test_results.md` Test 1); `clamped_additive`
+  `field_policy_operator_toolkit_sandbox_test_results.md` Test 1); `clamped_additive`
   saturates and loses gradient; `decayed_normalized` is stable but too weak for
   tactical horizons. `source_capped_normalized` bounds late-horizon growth while
-  preserving the H≤8 gradient (`sead_tensor_stencil_refinement_sandbox_test_results.md`
+  preserving the H≤8 gradient (`field_policy_tensor_stencil_refinement_sandbox_test_results.md`
   Test 1, Test 4).
 - Default tactical horizon **H ≤ 8**; extended **H ≤ 16** only with
   `allow_extended_horizon` plus a source-cap/decay stability contract. Directional
   signal first reaches a distance-4 corridor at H=8 in every probe that measured
-  it (`sead_strategic_horizon_sandbox_test_results.md` Test 1,
-  `sead_tensor_stencil_wgsl_sandbox_test_results.md` Test 2).
+  it (`field_policy_strategic_horizon_sandbox_test_results.md` Test 1,
+  `field_policy_tensor_stencil_wgsl_sandbox_test_results.md` Test 2).
 - **Ping-pong buffers required for H > 1**, proven GPU=CPU bit-exact
-  (`sead_tensor_stencil_refinement_sandbox_test_results.md` Test 2, max_error 0.0).
+  (`field_policy_tensor_stencil_refinement_sandbox_test_results.md` Test 2, max_error 0.0).
 - Source policy is caller-managed one-shot seed then zero (see §6).
 
 ### Layer 2 — Hierarchy reductions for strategic awareness
@@ -194,11 +194,11 @@ refinement probe's recommended production constraints:
 Empire/faction-scale awareness is **not** computed by widening the stencil
 horizon. It is computed by `SlotRange` Sum reduction from cells up into parent
 threat/resource columns, which is ~15× cheaper than lateral H=8 diffusion for
-the same faction-awareness signal (`sead_operator_toolkit_sandbox_test_results.md`
+the same faction-awareness signal (`field_policy_operator_toolkit_sandbox_test_results.md`
 Test 5: hierarchy 1.45 ms vs lateral 21.09 ms). The hybrid split — local stencil
 for the tactical gradient, hierarchy reduction for strategic awareness — is the
 recommended cost shape and is non-blowing-up
-(`sead_operator_toolkit_sandbox_test_results.md` Test 6).
+(`field_policy_operator_toolkit_sandbox_test_results.md` Test 6).
 
 ### Layer 3 — `EvalEML` for parent/faction interpretation
 
@@ -207,14 +207,14 @@ personality-weighted interpretation (aggression, risk tolerance → urgency) is 
 column-aware `EvalEML` on a **later order band** than the Sum reduction. This is
 substrate-real and personality-sensitive when the parent columns are populated
 and the EML runs after the Sum band: urgency 571 at aggression 0.2 vs 2535 at
-aggression 0.9, ratio 4.44 (`sead_tensor_stencil_refinement_sandbox_test_results.md`
+aggression 0.9, ratio 4.44 (`field_policy_tensor_stencil_refinement_sandbox_test_results.md`
 Test 5). Where the parent slot lacks personality columns, urgency is correctly 0
-(`sead_tensor_stencil_wgsl_sandbox_test_results.md` Test 5) — the binding, not the
+(`field_policy_tensor_stencil_wgsl_sandbox_test_results.md` Test 5) — the binding, not the
 kernel, is the requirement.
 
 **Band ordering invariant:** reduction (Sum) precedes interpretation (EvalEML)
 within a tick. Propagation across cells advances by later-band cascade, not
-same-band chaining (`sead_field_intelligence_sandbox_test_results.md` Test 0,
+same-band chaining (`field_policy_intelligence_sandbox_test_results.md` Test 0,
 `propagation_staging = later-band-cascade`).
 
 ---
@@ -238,11 +238,11 @@ real game (`design_v7_6.md` §1). Mapping must not smuggle one in. Therefore:
   formulas. No new decision machinery is introduced.
 
 **Temporal velocity caveat.** EML has no previous-buffer read opcode
-(`sead_field_intelligence_sandbox_test_results.md` Test 0,
+(`field_policy_intelligence_sandbox_test_results.md` Test 0,
 `previous_values = NO`). Trajectory/velocity pressures must use an **explicit
 previous-value column** with a copy band scheduled before the threat-update band;
 this works on GPU via `EvalEML` SUB + `ResetTarget` copy at ~14.3% overhead
-(`sead_strategic_horizon_sandbox_test_results.md` Test 4, Test 5). Velocity-based
+(`field_policy_strategic_horizon_sandbox_test_results.md` Test 4, Test 5). Velocity-based
 commitments are admissible only through this explicit-column pattern.
 
 ---
@@ -423,7 +423,7 @@ WGSL, default session wiring, or `simthing-sim` map awareness is authorized or l
 
 **Update (2026-05-28, product commitment fixture):** The product-facing commitment fixture
 landed as an opt-in test over the same first-slice RegionFieldSpec/RON fixture. It uses the
-existing threshold/event substrate over parent `field_urgency` to prove the SEAD commitment
+existing threshold/event substrate over parent `field_urgency` to prove the FIELD_POLICY commitment
 shape: GPU-resident field propagation -> parent reduction -> EvalEML urgency -> threshold
 event. Low-weight urgency stays below threshold; high-weight urgency crosses and emits the
 expected event. This is a landing note only: no CPU-side AI planner, atlas batching,
@@ -448,7 +448,7 @@ M-4A masking, active mask, perception, map residency, source identity, semantic 
 `simthing-sim` map awareness is authorized or landed.
 
 **Acceptance (2026-05-28, Opus/product — PASS WITH CONDITIONS):** The full first-slice vertical
-SEAD slice — RON authoring (`FirstSliceScenarioSpec` / `RegionFieldSpec` / `FirstSliceCommitmentSpec`)
+FIELD_POLICY slice — RON authoring (`FirstSliceScenarioSpec` / `RegionFieldSpec` / `FirstSliceCommitmentSpec`)
 → explicit `MappingExecutionProfile` opt-in → GPU-resident field propagation → parent `SlotRange`
 Sum → `field_urgency` EvalEML → Threshold + EmitEvent commitment — is **accepted as complete for the
 single-grid, opt-in path** (`docs/reviews/phase_m_first_slice_vertical_proof_acceptance_opus_review.md`;
@@ -467,5 +467,5 @@ remains separately gated — **not** the M-4 atlas packer. Default remains `Disa
 1. `docs/invariants.md` — including the new Mapping rows.
 2. This ADR.
 3. `docs/design_v7_6.md` — `StructuredFieldStencilOp` constraints (§3.1).
-4. `docs/design_v7_7.md` — mapping + SEAD surfacing.
+4. `docs/design_v7_7.md` — mapping + FIELD_POLICY surfacing.
 5. The cited `docs/tests/` evidence before changing any classification.

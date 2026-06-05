@@ -71,7 +71,7 @@ fn r6c_tick_order_matches_spec() {
             "R1 disruption recurrence from current fleet positions",
             "R2 labor-to-production reduce-up disburse-down blockade/divert",
             "R3 capability overlays owner-mask down",
-            "R4 SEAD field read GradientXY exact-mag2 Candidate-F threshold",
+            "R4 FIELD_POLICY field read GradientXY exact-mag2 Candidate-F threshold",
             "R5 movement BoundaryRequest REENROLL fresh-read substeps",
             "R6 combat from movement-produced co-location",
             "R6B production reinforcement birth fusion",

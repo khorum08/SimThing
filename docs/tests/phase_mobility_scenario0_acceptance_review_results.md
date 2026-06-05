@@ -69,11 +69,11 @@ requires and self-narrows routing to a single adversarial first slice.
 | Keep ClauseThing/L3 parked | `ClauseThingRuntimeRequestParked` | PASS (tested) |
 | Keep A/B/C, FrontierV2-5, ACT/EVENT/OBS/PIPE closed/parked | no reopen path; closed-ladder guard | PASS |
 
-## Constitution / workshop / SEAD alignment
+## Constitution / workshop / FIELD_POLICY alignment
 
 - **v7.8 constitution:** guardrails at designer/spec admission; `simthing-sim` untouched; opt-in/default-off; no CPU planner/urgency/commitment emission (rejected); exact authority artifact-backed; no `SimSession` wiring. PASS.
 - **mobility workshop:** owner-entities session descendants not spatial parents; capture = column flip not reparenting; identity = D=2 masked reduction (column not tree); Hybrid Strata local channels (`local_identity_channels == max_factions_per_cell`); hard Band Alpha precedes soft Band Beta; cohorts are SimThings with count columns; down-broadcast overlays do not become flow-pooling arena columns. PASS.
-- **SEAD:** AI stays SimThing/GPU-resident; decisions are threshold crossings; no CPU planner/urgency/commitment emission; structural path stays Threshold+EmitEvent → BoundaryRequest; movement writes only the mover's own columns. No contradiction introduced (scenario/admission only). PASS.
+- **FIELD_POLICY:** AI stays SimThing/GPU-resident; decisions are threshold crossings; no CPU planner/urgency/commitment emission; structural path stays Threshold+EmitEvent → BoundaryRequest; movement writes only the mover's own columns. No contradiction introduced (scenario/admission only). PASS.
 - **tracked goals:** no runtime in scenario PR; no code-path widening beyond simthing-spec admission; no invariant change; no default-on; no atlas/runtime/nested/hard-currency/ClauseThing reopen. PASS.
 
 ## Commands

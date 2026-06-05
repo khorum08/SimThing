@@ -12,10 +12,10 @@
 | `docs/design_v7_8_production_track.md` | Added C-1 row (Done / Pending Opus Review) |
 | `docs/design_v7_8.md` | Compact Line C note for C-1 |
 | `docs/workshop/mapping_current_guidance.md` | C-1 status row |
-| `docs/workshop/sead_self_ai_track.md` | Minimal cross-reference note |
+| `docs/workshop/field_policy_track.md` | Minimal cross-reference note |
 | `docs/worklog.md` | Append-only C-1 entry |
 
-**No production mapping runtime, no `request_atlas_batching` admission relaxation, no default-on atlas, no active-mask/source-identity (M-6A/M-5), no A-0/B-0 implementation, no ClauseThing/L3, no FrontierV2-5, no SEAD ladder reopen, no semantic WGSL, no simthing-sim map awareness, no invariant changes.**
+**No production mapping runtime, no `request_atlas_batching` admission relaxation, no default-on atlas, no active-mask/source-identity (M-6A/M-5), no A-0/B-0 implementation, no ClauseThing/L3, no FrontierV2-5, no FIELD_POLICY ladder reopen, no semantic WGSL, no simthing-sim map awareness, no invariant changes.**
 
 ## C-0 summary (context for C-1)
 C-0 landed the first §11-gate M-4 atlas slice: homogeneous-square tile atlas dispatch, algebraic tile-local mask G=0 (preferred, 1.0×), full-tile protocol-oracle parity, and VRAM-multiplier report against the active configurable `V78AtlasVramBudget` (1.5 GiB default = 1_610_612_736 bytes, no architectural hard cap).

@@ -13,7 +13,7 @@ $env:SIMTHING_RUN_GPU_TESTS=1; $env:SIMTHING_GPU_ADAPTER_CONTAINS="RTX"; $env:SI
 cargo test -p simthing-driver --test dress_rehearsal_atlas_batch_0_store_gpu gpu_adapter_is_discrete_rtx_target -- --nocapture
 cargo test -p simthing-driver --test phase_m_eml_gadget_2a_snapshot_copy -- --nocapture
 cargo test -p simthing-driver --test phase_m_eml_gadget_runtime_execution_gate -- --nocapture
-cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture -- --nocapture
+cargo test -p simthing-driver --test phase_m_economy_field_policy_product_fixture -- --nocapture
 cargo test -p simthing-driver --test e11_arena_allocation -- --nocapture
 cargo test -p simthing-driver --test e11b_nested_fission_gap -- --nocapture
 cargo test -p simthing-driver --test e11b_nested_hierarchy_gpu -- --nocapture
@@ -46,7 +46,7 @@ gpu_tier_ran: true
 | adapter gate | 1 | 0 | 0 |
 | phase_m_eml_gadget_2a_snapshot_copy | 6 | 0 | 0 |
 | phase_m_eml_gadget_runtime_execution_gate | 6 | 0 | 0 |
-| phase_m_economy_sead_product_fixture | 6 | 0 | 0 |
+| phase_m_economy_field_policy_product_fixture | 6 | 0 | 0 |
 | e11_arena_allocation | 13 | 0 | 0 |
 | e11b_nested_fission_gap | 12 | 0 | 0 |
 | e11b_nested_hierarchy_gpu | 11 | 0 | 0 |
@@ -64,7 +64,7 @@ gpu_tier_ran: true
 | adapter gate | 0.26s | 1.00s |
 | eml_gadget_2a_snapshot_copy | 0.15s | 1.20s |
 | eml_gadget_runtime_execution_gate | 1.69s | 1.25s |
-| economy_sead_product_fixture | 0.16s | 4.81s |
+| economy_field_policy_product_fixture | 0.16s | 4.81s |
 | e11_arena_allocation | 2.00s | 1.37s |
 | e11b_nested_fission_gap | 0.16s | 1.36s |
 | e11b_nested_hierarchy_gpu | 2.10s | 2.11s |
@@ -86,7 +86,7 @@ Existing runtime/EML/economy/nested GPU-touching thresholds (`GpuVerified` / `Ex
 |---|---|---|---|
 | phase_m_eml_gadget_2a_snapshot_copy | not found in committed logs for this target | 6/0/0 | inventory only |
 | phase_m_eml_gadget_runtime_execution_gate | not found in committed logs for this target | 6/0/0 | inventory only |
-| phase_m_economy_sead_product_fixture | not found in committed logs for this target | 6/0/0 | inventory only |
+| phase_m_economy_field_policy_product_fixture | not found in committed logs for this target | 6/0/0 | inventory only |
 | e11_arena_allocation | not found in committed logs for this target | 13/0/0 | inventory only |
 | e11b_nested_fission_gap | not found in committed logs for this target | 12/0/0 | inventory only |
 | e11b_nested_hierarchy_gpu | not found in committed logs for this target | 11/0/0 | inventory only |
@@ -109,7 +109,7 @@ Existing runtime/EML/economy/nested GPU-touching thresholds (`GpuVerified` / `Ex
 
 3. Battery 08 / `phase_m_boundary_cadence_doctrine`:
    stale/missing doc-hygiene dependency; includes missing `docs/workshop/workshop_current_state.md`.
-   Not NVIDIA FP drift; not SEAD runtime failure.
+   Not NVIDIA FP drift; not FIELD_POLICY runtime failure.
 
 (See also `docs/nvidia_fp_determinism_test.md` §Open Opus triage items.)
 
@@ -1289,20 +1289,20 @@ warning: method `tick_mapping` is never used
 38 |     pub fn tick_mapping(
    |            ^^^^^^^^^^^^
 
-warning: `simthing-driver` (test "phase_m_economy_sead_product_fixture") generated 2 warnings
+warning: `simthing-driver` (test "phase_m_economy_field_policy_product_fixture") generated 2 warnings
     Finished `test` profile [optimized + debuginfo] target(s) in 0.16s
-     Running tests\phase_m_economy_sead_product_fixture.rs 
-(target\debug\deps\phase_m_economy_sead_product_fixture-8d7b509165267894.exe)
+     Running tests\phase_m_economy_field_policy_product_fixture.rs 
+(target\debug\deps\phase_m_economy_field_policy_product_fixture-8d7b509165267894.exe)
 
 running 6 tests
-test economy_sead_product_fixture_posture_preserved ... ok
-test economy_sead_fixtures_admit_and_preview ... ok
+test economy_field_policy_product_fixture_posture_preserved ... ok
+test economy_field_policy_fixtures_admit_and_preview ... ok
 test summary_validity_and_residency_not_broken_with_economy_derived_weights ... ok
-deficit treasury=94 stress=1 weights=(0.9, 0.1) urgency=8978.689 threshold=5490.8657 sead_events=1
-test deficit_economy_produces_one_sead_commitment ... ok
-surplus treasury=107 stress=0 weights=(0.2, 0.1) urgency=2003.0422 threshold=5490.8657 sead_events=0
-test surplus_economy_produces_no_sead_commitment ... ok
-test economy_sead_product_fixture_is_deterministic ... ok
+deficit treasury=94 stress=1 weights=(0.9, 0.1) urgency=8978.689 threshold=5490.8657 field_policy_events=1
+test deficit_economy_produces_one_field_policy_commitment ... ok
+surplus treasury=107 stress=0 weights=(0.2, 0.1) urgency=2003.0422 threshold=5490.8657 field_policy_events=0
+test surplus_economy_produces_no_field_policy_commitment ... ok
+test economy_field_policy_product_fixture_is_deterministic ... ok
 
 test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.81s
 

@@ -1,5 +1,5 @@
 // ── SCENARIO-0080-2 proof status (note 2026-06-02, design authority) ─────────────────
-// PROVEN at the math/behavioral layer (rung 4: SEAD field-as-policy movement — gradient
+// PROVEN at the math/behavioral layer (rung 4: FIELD_POLICY field-as-policy movement — gradient
 // read, threshold-gated single-step ascent, self-disruption-driven migration, patrol
 // repulsion, deterministic). These remain valid as CPU ORACLES. They are NOT yet proven
 // through a real SimThing reduction (no SimThing/SimProperty/Overlay/BoundaryProtocol) —

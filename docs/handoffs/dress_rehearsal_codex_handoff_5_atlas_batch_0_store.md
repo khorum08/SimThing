@@ -31,7 +31,7 @@
 home"; semantic-free `simthing-sim`) · 3) `docs/design_0_0_8_0_consumer_pulled_production_track.md`
 §12–§12.5 (ladder; GEN/LOC/PACK/PACK-GPU closure; STORE = this gate; OWNER routing §12.4) · 4)
 `docs/scenarios/scenario_0080_2_dress_rehearsal_spec.md` · 5) `crates/simthing-core/src/accumulator_op.rs`
-(reference only — STORE does **not** call it) · 6) `docs/workshop/sead_self_ai_track.md`.
+(reference only — STORE does **not** call it) · 6) `docs/workshop/field_policy_track.md`.
 
 **Rung-local (ephemeral):** `crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_loc.rs`
 (`LocationMaterialization`, `OccupantPlacement`, `ChannelSet`, `Mobility`, `cell_index`);
@@ -69,7 +69,7 @@ home"; semantic-free `simthing-sim`) · 3) `docs/design_0_0_8_0_consumer_pulled_
   live masked reduction. State plainly: *"STORE proves storage shape only; live OWNER masked-reduction
   runtime remains parked until STORE-GPU / R3."*
 - **No R1/R2/R3/R4:** no BoundedFeedback/diffusion, no economy stockpile/recipe, no capability mask-down,
-  no SEAD/gradient/exact-sqrt/threshold/`BoundaryRequest`, no movement/REENROLL, no combat.
+  no FIELD_POLICY/gradient/exact-sqrt/threshold/`BoundaryRequest`, no movement/REENROLL, no combat.
 
 ## 3. Deliverables
 
@@ -84,7 +84,7 @@ home"; semantic-free `simthing-sim`) · 3) `docs/design_0_0_8_0_consumer_pulled_
 ## 4. Tests (target `dress_rehearsal_atlas_batch_0_store`)
 
 1. `store_status_matches_gate` — id `ATLAS-BATCH-0-STORE`; claims EC-A3 CPU storage only; **not** GPU;
-   no R1/R2/R3/R4/economy/SEAD/REENROLL/combat.
+   no R1/R2/R3/R4/economy/FIELD_POLICY/REENROLL/combat.
 2. `store_consumes_accepted_loc_pack_inputs` — consumes `LocationMaterialization`/`AtlasBatchPlan`;
    mutates neither.
 3. `cell_target_uses_single_indexing_home` — every target goes through LOC `cell_index` (and PACK
@@ -100,7 +100,7 @@ home"; semantic-free `simthing-sim`) · 3) `docs/design_0_0_8_0_consumer_pulled_
 7. `channel_metadata_survives_store` — LOC `ChannelSet` descriptors intact; no invented gameplay columns.
 8. `pack_coordinate_round_trip_preserves_store_target` — LOC cell ↔ PACK atlas coord round-trips for the
    stored targets.
-9. `no_r1_r2_r3_r4_behavior` — guard: no BoundedFeedback/diffusion/economy/capability/SEAD/threshold/
+9. `no_r1_r2_r3_r4_behavior` — guard: no BoundedFeedback/diffusion/economy/capability/FIELD_POLICY/threshold/
    movement/combat path introduced.
 10. `store_cpu_oracle_is_explicitly_non_gpu` — status/report do **not** claim GPU closure; no
     `simthing-gpu` import.
@@ -142,7 +142,7 @@ GEN/LOC/PACK/PACK-GPU artifacts. If none: "Deleted obsolete artifacts: none foun
 
 new WGSL · any `simthing-gpu`/`-core`/`-sim` edit · `AccumulatorOp`/`EvalEML` calls or a live masked
 reduction · runtime `match kind` · CPU map planner · economy stockpile / production recipe ·
-disruption heatmap / BoundedFeedback / diffusion · capability-tree mask-down · SEAD / exact sqrt /
+disruption heatmap / BoundedFeedback / diffusion · capability-tree mask-down · FIELD_POLICY / exact sqrt /
 threshold / `BoundaryRequest` · REENROLL / movement · combat · M-4A sparse-residency · default session
 wiring · semantic map/faction/gameplay logic. **STORE is generic child-result storage into dense 2-D
 slots — storage shape only.**

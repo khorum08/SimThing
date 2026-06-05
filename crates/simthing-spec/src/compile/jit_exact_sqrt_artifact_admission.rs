@@ -42,11 +42,11 @@ pub const MAG_F_FROM_DXDY_PROBE_LABEL: &str = "RawDxDyMagnitudeFProbe";
 
 pub const MAG2_FIXED_DESCRIPTOR_ID: &str = "m_jit_mag2_fixed_exact";
 pub const MAG2_FIXED_LABEL: &str = "ExactFixedPointMag2";
-/// Q16.16 fixed-point fraction bits for SEAD gradient magnitude probe.
+/// Q16.16 fixed-point fraction bits for FIELD_POLICY gradient magnitude probe.
 pub const MAG2_Q16_FRAC_BITS: u32 = 16;
 pub const MAG2_Q16_SCALE: u32 = 1 << MAG2_Q16_FRAC_BITS;
 pub const MAG2_Q16_SCALE_SQ: u64 = (MAG2_Q16_SCALE as u64) * (MAG2_Q16_SCALE as u64);
-/// Bounded SEAD gradient component range (±16.0) under Q16.16.
+/// Bounded FIELD_POLICY gradient component range (±16.0) under Q16.16.
 pub const MAG2_Q16_COMPONENT_MAX: f32 = 16.0;
 
 /// Source contract for exact-authoritative pre-sqrt mag2 construction (SQRT-MAG2-0).
@@ -63,156 +63,161 @@ pub enum ExactPreSqrtInputContract {
     ExactMag2Bits,
     /// Raw `dx`/`dy` f32 multiply-add benchmark probe — not exact-authoritative `mag`.
     RawDxDyProbe,
-    /// Inline fixed-point gx/gy → exact mag2 → F sqrt (SEAD-OBS-1).
+    /// Inline fixed-point gx/gy → exact mag2 → F sqrt (FIELD_POLICY-OBS-1).
     InlineFixedPointMag2Sqrt,
 }
 
-/// Score output authority contract for observer overlay kernels (SEAD-OBS-1).
+/// Score output authority contract for observer overlay kernels (FIELD_POLICY-OBS-1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScoreAuthorityContract {
     /// `score = bias + weight * mag` via f32 multiply/add — diagnostic only.
     ApproximateDiagnosticF32,
-    /// `score_fixed = bias + Σ q16_mul(weight, mag_fixed)` — pinned Q16.16 accumulation (SEAD-OBS-3).
+    /// `score_fixed = bias + Σ q16_mul(weight, mag_fixed)` — pinned Q16.16 accumulation (FIELD_POLICY-OBS-3).
     ExactQ16WeightedSum,
 }
 
-pub const SEAD_OBS0_DESCRIPTOR_ID: &str = "m_jit_sead_obs0_overlay_score";
-pub const SEAD_OBS0_LABEL: &str = "SeadObserverOverlayScore";
+pub const FIELD_POLICY_OBS0_DESCRIPTOR_ID: &str = "m_jit_field_policy_obs0_overlay_score";
+pub const FIELD_POLICY_OBS0_LABEL: &str = "FieldPolicyObserverOverlayScore";
 
-pub const SEAD_OBS2_DESCRIPTOR_ID: &str = "m_jit_sead_obs2_multilayer_overlay_score";
-pub const SEAD_OBS2_LABEL: &str = "SeadMultilayerOverlayScore";
-pub const SEAD_OBS2_LAYER_COUNT: u32 = 4;
+pub const FIELD_POLICY_OBS2_DESCRIPTOR_ID: &str =
+    "m_jit_field_policy_obs2_multilayer_overlay_score";
+pub const FIELD_POLICY_OBS2_LABEL: &str = "FieldPolicyMultilayerOverlayScore";
+pub const FIELD_POLICY_OBS2_LAYER_COUNT: u32 = 4;
 
-pub const SEAD_OBS3_DESCRIPTOR_ID: &str = "m_jit_sead_obs3_multilayer_fixed_score";
-pub const SEAD_OBS3_LABEL: &str = "SeadMultilayerFixedScore";
-pub const SEAD_OBS3_LAYER_COUNT: u32 = SEAD_OBS2_LAYER_COUNT;
+pub const FIELD_POLICY_OBS3_DESCRIPTOR_ID: &str = "m_jit_field_policy_obs3_multilayer_fixed_score";
+pub const FIELD_POLICY_OBS3_LABEL: &str = "FieldPolicyMultilayerFixedScore";
+pub const FIELD_POLICY_OBS3_LAYER_COUNT: u32 = FIELD_POLICY_OBS2_LAYER_COUNT;
 
-pub const SEAD_OBS4_DESCRIPTOR_ID: &str = "m_jit_sead_obs4_threshold_event";
-pub const SEAD_OBS4_LABEL: &str = "SeadThresholdEvent";
-pub const SEAD_OBS4_LAYER_COUNT: u32 = SEAD_OBS3_LAYER_COUNT;
+pub const FIELD_POLICY_OBS4_DESCRIPTOR_ID: &str = "m_jit_field_policy_obs4_threshold_event";
+pub const FIELD_POLICY_OBS4_LABEL: &str = "FieldPolicyThresholdEvent";
+pub const FIELD_POLICY_OBS4_LAYER_COUNT: u32 = FIELD_POLICY_OBS3_LAYER_COUNT;
 
-/// Threshold operand contract for observer event kernels (SEAD-OBS-4).
+/// Threshold operand contract for observer event kernels (FIELD_POLICY-OBS-4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ThresholdAuthorityContract {
     /// `threshold_fixed` / `hysteresis_fixed` are Q16.16 signed integers compared to `score_fixed`.
     ExactQ16Threshold,
 }
 
-/// Event output authority contract for observer event kernels (SEAD-OBS-4).
+/// Event output authority contract for observer event kernels (FIELD_POLICY-OBS-4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventAuthorityContract {
     /// `state_u32` / `event_code_u32` are exact deterministic under fixed score + threshold operands.
     ExactDeterministicEventFlag,
 }
 
-pub const SEAD_EVENT0_DESCRIPTOR_ID: &str = "m_jit_sead_event0_compaction";
-pub const SEAD_EVENT0_LABEL: &str = "SeadEventCompaction";
+pub const FIELD_POLICY_EVENT0_DESCRIPTOR_ID: &str = "m_jit_field_policy_event0_compaction";
+pub const FIELD_POLICY_EVENT0_LABEL: &str = "FieldPolicyEventCompaction";
 
-pub const SEAD_PIPE0_DESCRIPTOR_ID: &str = "m_jit_sead_pipe0_observer_event_pipeline";
-pub const SEAD_PIPE0_LABEL: &str = "SeadObserverEventPipeline";
-pub const SEAD_PIPE0_LAYER_COUNT: u32 = SEAD_OBS4_LAYER_COUNT;
+pub const FIELD_POLICY_PIPE0_DESCRIPTOR_ID: &str =
+    "m_jit_field_policy_pipe0_observer_event_pipeline";
+pub const FIELD_POLICY_PIPE0_LABEL: &str = "FieldPolicyObserverEventPipeline";
+pub const FIELD_POLICY_PIPE0_LAYER_COUNT: u32 = FIELD_POLICY_OBS4_LAYER_COUNT;
 
-pub const SEAD_EVENT1_DESCRIPTOR_ID: &str = "m_jit_sead_event1_code_bucketing";
-pub const SEAD_EVENT1_LABEL: &str = "SeadEventCodeBucketing";
-pub const SEAD_EVENT1_CODE_COUNT: u32 = 4;
+pub const FIELD_POLICY_EVENT1_DESCRIPTOR_ID: &str = "m_jit_field_policy_event1_code_bucketing";
+pub const FIELD_POLICY_EVENT1_LABEL: &str = "FieldPolicyEventCodeBucketing";
+pub const FIELD_POLICY_EVENT1_CODE_COUNT: u32 = 4;
 
-pub const SEAD_EVENT2_DESCRIPTOR_ID: &str = "m_jit_sead_event2_bucket_reductions";
-pub const SEAD_EVENT2_LABEL: &str = "SeadBucketReductions";
-pub const SEAD_EVENT2_CODE_COUNT: u32 = SEAD_EVENT1_CODE_COUNT;
+pub const FIELD_POLICY_EVENT2_DESCRIPTOR_ID: &str = "m_jit_field_policy_event2_bucket_reductions";
+pub const FIELD_POLICY_EVENT2_LABEL: &str = "FieldPolicyBucketReductions";
+pub const FIELD_POLICY_EVENT2_CODE_COUNT: u32 = FIELD_POLICY_EVENT1_CODE_COUNT;
 
-pub const SEAD_ACT0_DESCRIPTOR_ID: &str = "m_jit_sead_act0_numeric_proposals";
-pub const SEAD_ACT0_LABEL: &str = "SeadNumericProposals";
-pub const SEAD_ACT0_CODE_COUNT: u32 = SEAD_EVENT2_CODE_COUNT;
+pub const FIELD_POLICY_ACT0_DESCRIPTOR_ID: &str = "m_jit_field_policy_act0_numeric_proposals";
+pub const FIELD_POLICY_ACT0_LABEL: &str = "FieldPolicyNumericProposals";
+pub const FIELD_POLICY_ACT0_CODE_COUNT: u32 = FIELD_POLICY_EVENT2_CODE_COUNT;
 
-pub const SEAD_ACT1_DESCRIPTOR_ID: &str = "m_jit_sead_act1_phase_e_proposal_consumer";
-pub const SEAD_ACT1_LABEL: &str = "SeadPhaseEProposalConsumer";
-pub const SEAD_ACT1_ADMITTED_TABLE_SIZE: u32 = 16;
+pub const FIELD_POLICY_ACT1_DESCRIPTOR_ID: &str =
+    "m_jit_field_policy_act1_phase_e_proposal_consumer";
+pub const FIELD_POLICY_ACT1_LABEL: &str = "FieldPolicyPhaseEProposalConsumer";
+pub const FIELD_POLICY_ACT1_ADMITTED_TABLE_SIZE: u32 = 16;
 
-pub const SEAD_ACT2_DESCRIPTOR_ID: &str = "m_jit_sead_act2_proposal_admission_records";
-pub const SEAD_ACT2_LABEL: &str = "SeadProposalAdmissionRecords";
-pub const SEAD_ACT2_ADMISSION_RECORD_STRIDE: u32 = 7;
-pub const SEAD_ACT3_DESCRIPTOR_ID: &str = "m_jit_sead_act3_economic_fixture_records";
-pub const SEAD_ACT3_LABEL: &str = "SeadEconomicFixtureRecords";
-pub const SEAD_ACT3_FIXTURE_RECORD_STRIDE: u32 = 10;
+pub const FIELD_POLICY_ACT2_DESCRIPTOR_ID: &str =
+    "m_jit_field_policy_act2_proposal_admission_records";
+pub const FIELD_POLICY_ACT2_LABEL: &str = "FieldPolicyProposalAdmissionRecords";
+pub const FIELD_POLICY_ACT2_ADMISSION_RECORD_STRIDE: u32 = 7;
+pub const FIELD_POLICY_ACT3_DESCRIPTOR_ID: &str =
+    "m_jit_field_policy_act3_economic_fixture_records";
+pub const FIELD_POLICY_ACT3_LABEL: &str = "FieldPolicyEconomicFixtureRecords";
+pub const FIELD_POLICY_ACT3_FIXTURE_RECORD_STRIDE: u32 = 10;
 
-/// Compacted event membership authority (SEAD-EVENT-0).
+/// Compacted event membership authority (FIELD_POLICY-EVENT-0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventCompactionMembershipAuthority {
     /// Event records form an exact multiset under capacity; order is not specified.
     ExactAuthoritativeUnordered,
 }
 
-/// Compacted event ordering authority (SEAD-EVENT-0).
+/// Compacted event ordering authority (FIELD_POLICY-EVENT-0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventCompactionOrderAuthority {
     /// Atomic slot assignment does not guarantee cross-workgroup order.
     UnspecifiedAtomicOrder,
 }
 
-/// Event-code bucket membership authority (SEAD-EVENT-1).
+/// Event-code bucket membership authority (FIELD_POLICY-EVENT-1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventCodeBucketMembershipAuthority {
     /// Bucket records form an exact multiset per code under capacity; order is not specified.
     ExactAuthoritativeUnordered,
 }
 
-/// Event-code bucket ordering authority (SEAD-EVENT-1).
+/// Event-code bucket ordering authority (FIELD_POLICY-EVENT-1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventCodeBucketOrderAuthority {
     /// Atomic slot assignment does not guarantee order within a bucket.
     UnspecifiedAtomicOrder,
 }
 
-/// Event-bucket reduction membership authority (SEAD-EVENT-2).
+/// Event-bucket reduction membership authority (FIELD_POLICY-EVENT-2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventBucketReductionInputAuthority {
     /// Reduction input records form an exact multiset per code under capacity.
     ExactAuthoritativeUnordered,
 }
 
-/// Event-bucket reduction ordering authority (SEAD-EVENT-2).
+/// Event-bucket reduction ordering authority (FIELD_POLICY-EVENT-2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventBucketReductionOrderAuthority {
     /// Reductions are order-invariant; bucket record order remains unspecified.
     UnspecifiedAtomicOrder,
 }
 
-/// Numeric proposal membership authority (SEAD-ACT-0).
+/// Numeric proposal membership authority (FIELD_POLICY-ACT-0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NumericProposalMembershipAuthority {
     /// Proposal records form an exact multiset under capacity; order is not specified.
     ExactAuthoritativeUnordered,
 }
 
-/// Numeric proposal ordering authority (SEAD-ACT-0).
+/// Numeric proposal ordering authority (FIELD_POLICY-ACT-0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NumericProposalOrderAuthority {
     /// Atomic slot assignment does not guarantee proposal order.
     UnspecifiedAtomicOrder,
 }
 
-/// Phase E proposal consumer input authority (SEAD-ACT-1).
+/// Phase E proposal consumer input authority (FIELD_POLICY-ACT-1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PhaseEProposalConsumerInputAuthority {
     /// Proposal records form an exact multiset under capacity; order is not specified.
     ExactAuthoritativeUnordered,
 }
 
-/// Phase E proposal summary ordering authority (SEAD-ACT-1).
+/// Phase E proposal summary ordering authority (FIELD_POLICY-ACT-1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PhaseEProposalSummaryOrderAuthority {
     /// Summary reductions are order-invariant over scanned proposal records.
     OrderInvariantExact,
 }
 
-/// Fixture-local proposal admission record authority (SEAD-ACT-2).
+/// Fixture-local proposal admission record authority (FIELD_POLICY-ACT-2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PhaseEFixtureProposalAdmissionAuthority {
     /// Admission records are exact under fixed integer threshold contracts.
     ExactAuthoritative,
 }
 
-/// Economic V1-style fixture substrate record authority (SEAD-ACT-3).
+/// Economic V1-style fixture substrate record authority (FIELD_POLICY-ACT-3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PhaseEEconomicFixtureRecordAuthority {
     /// Fixture records are exact under fixed integer mapping contracts.
@@ -367,38 +372,40 @@ pub fn is_exact_mag2_fixed_descriptor(spec: &KernelDescriptorSpec) -> bool {
             })
 }
 
-/// True when the descriptor is the landed SEAD observer overlay score kernel.
-pub fn is_sead_obs0_overlay_score_descriptor(spec: &KernelDescriptorSpec) -> bool {
-    spec.id == SEAD_OBS0_DESCRIPTOR_ID
+/// True when the descriptor is the landed FIELD_POLICY observer overlay score kernel.
+pub fn is_field_policy_obs0_overlay_score_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == FIELD_POLICY_OBS0_DESCRIPTOR_ID
         && spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt)
         && spec.score_authority_contract == Some(ScoreAuthorityContract::ApproximateDiagnosticF32)
 }
 
-/// True when the descriptor is the landed SEAD multilayer overlay score kernel.
-pub fn is_sead_obs2_multilayer_overlay_score_descriptor(spec: &KernelDescriptorSpec) -> bool {
-    spec.id == SEAD_OBS2_DESCRIPTOR_ID
+/// True when the descriptor is the landed FIELD_POLICY multilayer overlay score kernel.
+pub fn is_field_policy_obs2_multilayer_overlay_score_descriptor(
+    spec: &KernelDescriptorSpec,
+) -> bool {
+    spec.id == FIELD_POLICY_OBS2_DESCRIPTOR_ID
         && spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt)
         && spec.score_authority_contract == Some(ScoreAuthorityContract::ApproximateDiagnosticF32)
-        && multilayer_exact_mag_bits_outputs(spec) == SEAD_OBS2_LAYER_COUNT
+        && multilayer_exact_mag_bits_outputs(spec) == FIELD_POLICY_OBS2_LAYER_COUNT
 }
 
-/// True when the descriptor is the landed SEAD multilayer fixed-point score kernel.
-pub fn is_sead_obs3_multilayer_fixed_score_descriptor(spec: &KernelDescriptorSpec) -> bool {
-    spec.id == SEAD_OBS3_DESCRIPTOR_ID
+/// True when the descriptor is the landed FIELD_POLICY multilayer fixed-point score kernel.
+pub fn is_field_policy_obs3_multilayer_fixed_score_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == FIELD_POLICY_OBS3_DESCRIPTOR_ID
         && spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt)
         && spec.score_authority_contract == Some(ScoreAuthorityContract::ExactQ16WeightedSum)
-        && multilayer_exact_mag_bits_outputs(spec) == SEAD_OBS3_LAYER_COUNT
+        && multilayer_exact_mag_bits_outputs(spec) == FIELD_POLICY_OBS3_LAYER_COUNT
         && spec.writes.iter().any(|out| {
             out.name == "score_fixed" && out.authority == OutputAuthority::ExactAuthoritative
         })
 }
 
-/// True when the descriptor is the landed SEAD threshold event kernel.
-pub fn is_sead_obs4_threshold_event_descriptor(spec: &KernelDescriptorSpec) -> bool {
-    spec.id == SEAD_OBS4_DESCRIPTOR_ID
+/// True when the descriptor is the landed FIELD_POLICY threshold event kernel.
+pub fn is_field_policy_obs4_threshold_event_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == FIELD_POLICY_OBS4_DESCRIPTOR_ID
         && spec.pre_sqrt_contract == Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt)
         && spec.score_authority_contract == Some(ScoreAuthorityContract::ExactQ16WeightedSum)
-        && multilayer_exact_mag_bits_outputs(spec) == SEAD_OBS4_LAYER_COUNT
+        && multilayer_exact_mag_bits_outputs(spec) == FIELD_POLICY_OBS4_LAYER_COUNT
         && has_threshold_event_reads(spec)
         && spec.writes.iter().any(|out| {
             out.name == "state_u32" && out.authority == OutputAuthority::ExactAuthoritative
@@ -409,7 +416,9 @@ pub fn is_sead_obs4_threshold_event_descriptor(spec: &KernelDescriptorSpec) -> b
 }
 
 fn is_multilayer_overlay_descriptor_id(id: &str) -> bool {
-    id == SEAD_OBS2_DESCRIPTOR_ID || id == SEAD_OBS3_DESCRIPTOR_ID || id == SEAD_OBS4_DESCRIPTOR_ID
+    id == FIELD_POLICY_OBS2_DESCRIPTOR_ID
+        || id == FIELD_POLICY_OBS3_DESCRIPTOR_ID
+        || id == FIELD_POLICY_OBS4_DESCRIPTOR_ID
 }
 
 fn has_threshold_event_reads(spec: &KernelDescriptorSpec) -> bool {
@@ -419,7 +428,7 @@ fn has_threshold_event_reads(spec: &KernelDescriptorSpec) -> bool {
 }
 
 fn multilayer_exact_mag_bits_outputs(spec: &KernelDescriptorSpec) -> u32 {
-    (0..SEAD_OBS2_LAYER_COUNT)
+    (0..FIELD_POLICY_OBS2_LAYER_COUNT)
         .filter(|layer| {
             spec.writes.iter().any(|out| {
                 out.name == format!("layer{layer}_mag_bits")
@@ -430,7 +439,7 @@ fn multilayer_exact_mag_bits_outputs(spec: &KernelDescriptorSpec) -> u32 {
 }
 
 fn has_multilayer_fixed_reads(spec: &KernelDescriptorSpec) -> bool {
-    (0..SEAD_OBS2_LAYER_COUNT).all(|layer| {
+    (0..FIELD_POLICY_OBS2_LAYER_COUNT).all(|layer| {
         spec.reads
             .iter()
             .any(|read| read == &format!("layer{layer}_gx_fixed"))
@@ -558,7 +567,8 @@ pub fn validate_exact_pre_sqrt_contract(spec: &KernelDescriptorSpec) -> Result<(
                     "InlineFixedPointMag2Sqrt requires artifact-backed Candidate F binding",
                 ));
             }
-            let multilayer = multilayer_exact_mag_bits_outputs(spec) == SEAD_OBS2_LAYER_COUNT;
+            let multilayer =
+                multilayer_exact_mag_bits_outputs(spec) == FIELD_POLICY_OBS2_LAYER_COUNT;
             if !has_exact_mag2_bits_output(spec) && !multilayer {
                 return Err(artifact_err(
                     &spec.id,
@@ -571,7 +581,9 @@ pub fn validate_exact_pre_sqrt_contract(spec: &KernelDescriptorSpec) -> Result<(
                     "InlineFixedPointMag2Sqrt requires exact-authoritative mag_bits output",
                 ));
             }
-            if multilayer && multilayer_exact_mag_bits_outputs(spec) != SEAD_OBS2_LAYER_COUNT {
+            if multilayer
+                && multilayer_exact_mag_bits_outputs(spec) != FIELD_POLICY_OBS2_LAYER_COUNT
+            {
                 return Err(artifact_err(
                     &spec.id,
                     "multilayer InlineFixedPointMag2Sqrt requires all layer mag_bits outputs",
@@ -647,7 +659,7 @@ pub fn validate_mag2_source_contract(spec: &KernelDescriptorSpec) -> Result<(), 
         }
         (Some(Mag2SourceContract::ExactFixedPointDxDy { .. }), false) => {
             let multilayer = is_multilayer_overlay_descriptor_id(&spec.id)
-                && multilayer_exact_mag_bits_outputs(spec) == SEAD_OBS2_LAYER_COUNT;
+                && multilayer_exact_mag_bits_outputs(spec) == FIELD_POLICY_OBS2_LAYER_COUNT;
             if !multilayer {
                 return Err(artifact_err(
                     &spec.id,
@@ -674,7 +686,7 @@ pub fn validate_mag2_source_contract(spec: &KernelDescriptorSpec) -> Result<(), 
     Ok(())
 }
 
-/// Validate score output authority contract (SEAD-OBS-1).
+/// Validate score output authority contract (FIELD_POLICY-OBS-1).
 pub fn validate_score_authority_contract(spec: &KernelDescriptorSpec) -> Result<(), SpecError> {
     let score_out = spec
         .writes
@@ -786,11 +798,11 @@ pub fn validate_score_authority_contract(spec: &KernelDescriptorSpec) -> Result<
     Ok(())
 }
 
-/// Validate landed SEAD-OBS-0 overlay score descriptor pins (SEAD-OBS-1).
-pub fn validate_sead_obs0_overlay_score_contract(
+/// Validate landed FIELD_POLICY-OBS-0 overlay score descriptor pins (FIELD_POLICY-OBS-1).
+pub fn validate_field_policy_obs0_overlay_score_contract(
     spec: &KernelDescriptorSpec,
 ) -> Result<(), SpecError> {
-    if spec.id != SEAD_OBS0_DESCRIPTOR_ID {
+    if spec.id != FIELD_POLICY_OBS0_DESCRIPTOR_ID {
         return Ok(());
     }
     match spec.mag2_source_contract {
@@ -799,30 +811,30 @@ pub fn validate_sead_obs0_overlay_score_contract(
         _ => {
             return Err(artifact_err(
                 &spec.id,
-                "SEAD observer overlay score requires Q16.16 ExactFixedPointDxDy mag2 contract",
+                "FIELD_POLICY observer overlay score requires Q16.16 ExactFixedPointDxDy mag2 contract",
             ));
         }
     }
     if spec.pre_sqrt_contract != Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD observer overlay score requires InlineFixedPointMag2Sqrt pre-sqrt contract",
+            "FIELD_POLICY observer overlay score requires InlineFixedPointMag2Sqrt pre-sqrt contract",
         ));
     }
     if spec.score_authority_contract != Some(ScoreAuthorityContract::ApproximateDiagnosticF32) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD observer overlay score requires ApproximateDiagnosticF32 score contract",
+            "FIELD_POLICY observer overlay score requires ApproximateDiagnosticF32 score contract",
         ));
     }
     Ok(())
 }
 
-/// Validate landed SEAD-OBS-2 multilayer overlay score descriptor pins.
-pub fn validate_sead_obs2_multilayer_overlay_score_contract(
+/// Validate landed FIELD_POLICY-OBS-2 multilayer overlay score descriptor pins.
+pub fn validate_field_policy_obs2_multilayer_overlay_score_contract(
     spec: &KernelDescriptorSpec,
 ) -> Result<(), SpecError> {
-    if spec.id != SEAD_OBS2_DESCRIPTOR_ID {
+    if spec.id != FIELD_POLICY_OBS2_DESCRIPTOR_ID {
         return Ok(());
     }
     match spec.mag2_source_contract {
@@ -831,44 +843,44 @@ pub fn validate_sead_obs2_multilayer_overlay_score_contract(
         _ => {
             return Err(artifact_err(
                 &spec.id,
-                "SEAD multilayer overlay score requires Q16.16 ExactFixedPointDxDy mag2 contract",
+                "FIELD_POLICY multilayer overlay score requires Q16.16 ExactFixedPointDxDy mag2 contract",
             ));
         }
     }
     if spec.pre_sqrt_contract != Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD multilayer overlay score requires InlineFixedPointMag2Sqrt pre-sqrt contract",
+            "FIELD_POLICY multilayer overlay score requires InlineFixedPointMag2Sqrt pre-sqrt contract",
         ));
     }
     if spec.score_authority_contract != Some(ScoreAuthorityContract::ApproximateDiagnosticF32) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD multilayer overlay score requires ApproximateDiagnosticF32 score contract",
+            "FIELD_POLICY multilayer overlay score requires ApproximateDiagnosticF32 score contract",
         ));
     }
-    if multilayer_exact_mag_bits_outputs(spec) != SEAD_OBS2_LAYER_COUNT {
+    if multilayer_exact_mag_bits_outputs(spec) != FIELD_POLICY_OBS2_LAYER_COUNT {
         return Err(artifact_err(
             &spec.id,
             format!(
-                "SEAD multilayer overlay score requires {SEAD_OBS2_LAYER_COUNT} exact layer mag_bits outputs"
+                "FIELD_POLICY multilayer overlay score requires {FIELD_POLICY_OBS2_LAYER_COUNT} exact layer mag_bits outputs"
             ),
         ));
     }
     if !has_multilayer_fixed_reads(spec) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD multilayer overlay score requires layer gx/gy/weight reads and bias_fixed",
+            "FIELD_POLICY multilayer overlay score requires layer gx/gy/weight reads and bias_fixed",
         ));
     }
     Ok(())
 }
 
-/// Validate landed SEAD-OBS-3 multilayer fixed-point score descriptor pins.
-pub fn validate_sead_obs3_multilayer_fixed_score_contract(
+/// Validate landed FIELD_POLICY-OBS-3 multilayer fixed-point score descriptor pins.
+pub fn validate_field_policy_obs3_multilayer_fixed_score_contract(
     spec: &KernelDescriptorSpec,
 ) -> Result<(), SpecError> {
-    if spec.id != SEAD_OBS3_DESCRIPTOR_ID {
+    if spec.id != FIELD_POLICY_OBS3_DESCRIPTOR_ID {
         return Ok(());
     }
     match spec.mag2_source_contract {
@@ -877,34 +889,34 @@ pub fn validate_sead_obs3_multilayer_fixed_score_contract(
         _ => {
             return Err(artifact_err(
                 &spec.id,
-                "SEAD multilayer fixed score requires Q16.16 ExactFixedPointDxDy mag2 contract",
+                "FIELD_POLICY multilayer fixed score requires Q16.16 ExactFixedPointDxDy mag2 contract",
             ));
         }
     }
     if spec.pre_sqrt_contract != Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD multilayer fixed score requires InlineFixedPointMag2Sqrt pre-sqrt contract",
+            "FIELD_POLICY multilayer fixed score requires InlineFixedPointMag2Sqrt pre-sqrt contract",
         ));
     }
     if spec.score_authority_contract != Some(ScoreAuthorityContract::ExactQ16WeightedSum) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD multilayer fixed score requires ExactQ16WeightedSum score contract",
+            "FIELD_POLICY multilayer fixed score requires ExactQ16WeightedSum score contract",
         ));
     }
-    if multilayer_exact_mag_bits_outputs(spec) != SEAD_OBS3_LAYER_COUNT {
+    if multilayer_exact_mag_bits_outputs(spec) != FIELD_POLICY_OBS3_LAYER_COUNT {
         return Err(artifact_err(
             &spec.id,
             format!(
-                "SEAD multilayer fixed score requires {SEAD_OBS3_LAYER_COUNT} exact layer mag_bits outputs"
+                "FIELD_POLICY multilayer fixed score requires {FIELD_POLICY_OBS3_LAYER_COUNT} exact layer mag_bits outputs"
             ),
         ));
     }
     if !has_multilayer_fixed_reads(spec) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD multilayer fixed score requires layer gx/gy/weight reads and bias_fixed",
+            "FIELD_POLICY multilayer fixed score requires layer gx/gy/weight reads and bias_fixed",
         ));
     }
     let score_fixed = spec
@@ -915,17 +927,17 @@ pub fn validate_sead_obs3_multilayer_fixed_score_contract(
     if score_fixed != Some(OutputAuthority::ExactAuthoritative) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD multilayer fixed score requires exact-authoritative score_fixed output",
+            "FIELD_POLICY multilayer fixed score requires exact-authoritative score_fixed output",
         ));
     }
     Ok(())
 }
 
-/// Validate landed SEAD-OBS-4 threshold event descriptor pins.
-pub fn validate_sead_obs4_threshold_event_contract(
+/// Validate landed FIELD_POLICY-OBS-4 threshold event descriptor pins.
+pub fn validate_field_policy_obs4_threshold_event_contract(
     spec: &KernelDescriptorSpec,
 ) -> Result<(), SpecError> {
-    if spec.id != SEAD_OBS4_DESCRIPTOR_ID {
+    if spec.id != FIELD_POLICY_OBS4_DESCRIPTOR_ID {
         return Ok(());
     }
     match spec.mag2_source_contract {
@@ -934,34 +946,34 @@ pub fn validate_sead_obs4_threshold_event_contract(
         _ => {
             return Err(artifact_err(
                 &spec.id,
-                "SEAD threshold event requires Q16.16 ExactFixedPointDxDy mag2 contract",
+                "FIELD_POLICY threshold event requires Q16.16 ExactFixedPointDxDy mag2 contract",
             ));
         }
     }
     if spec.pre_sqrt_contract != Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD threshold event requires InlineFixedPointMag2Sqrt pre-sqrt contract",
+            "FIELD_POLICY threshold event requires InlineFixedPointMag2Sqrt pre-sqrt contract",
         ));
     }
     if spec.score_authority_contract != Some(ScoreAuthorityContract::ExactQ16WeightedSum) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD threshold event requires ExactQ16WeightedSum score contract",
+            "FIELD_POLICY threshold event requires ExactQ16WeightedSum score contract",
         ));
     }
-    if multilayer_exact_mag_bits_outputs(spec) != SEAD_OBS4_LAYER_COUNT {
+    if multilayer_exact_mag_bits_outputs(spec) != FIELD_POLICY_OBS4_LAYER_COUNT {
         return Err(artifact_err(
             &spec.id,
             format!(
-                "SEAD threshold event requires {SEAD_OBS4_LAYER_COUNT} exact layer mag_bits outputs"
+                "FIELD_POLICY threshold event requires {FIELD_POLICY_OBS4_LAYER_COUNT} exact layer mag_bits outputs"
             ),
         ));
     }
     if !has_multilayer_fixed_reads(spec) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD threshold event requires layer gx/gy/weight reads and bias_fixed",
+            "FIELD_POLICY threshold event requires layer gx/gy/weight reads and bias_fixed",
         ));
     }
     let score_fixed = spec
@@ -972,13 +984,13 @@ pub fn validate_sead_obs4_threshold_event_contract(
     if score_fixed != Some(OutputAuthority::ExactAuthoritative) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD threshold event requires exact-authoritative score_fixed output",
+            "FIELD_POLICY threshold event requires exact-authoritative score_fixed output",
         ));
     }
     if !has_threshold_event_reads(spec) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD threshold event requires threshold_fixed, hysteresis_fixed, and prior_state_u32 reads",
+            "FIELD_POLICY threshold event requires threshold_fixed, hysteresis_fixed, and prior_state_u32 reads",
         ));
     }
     let state = spec
@@ -994,21 +1006,21 @@ pub fn validate_sead_obs4_threshold_event_contract(
     if state != Some(OutputAuthority::ExactAuthoritative) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD threshold event requires exact-authoritative state_u32 under ExactDeterministicEventFlag",
+            "FIELD_POLICY threshold event requires exact-authoritative state_u32 under ExactDeterministicEventFlag",
         ));
     }
     if event != Some(OutputAuthority::ExactAuthoritative) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD threshold event requires exact-authoritative event_code_u32 under ExactDeterministicEventFlag",
+            "FIELD_POLICY threshold event requires exact-authoritative event_code_u32 under ExactDeterministicEventFlag",
         ));
     }
     Ok(())
 }
 
-/// True when the descriptor is the landed SEAD event compaction kernel.
-pub fn is_sead_event0_compaction_descriptor(spec: &KernelDescriptorSpec) -> bool {
-    spec.id == SEAD_EVENT0_DESCRIPTOR_ID
+/// True when the descriptor is the landed FIELD_POLICY event compaction kernel.
+pub fn is_field_policy_event0_compaction_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == FIELD_POLICY_EVENT0_DESCRIPTOR_ID
         && has_event_compaction_reads(spec)
         && spec.writes.iter().any(|out| {
             out.name == "event_count" && out.authority == OutputAuthority::ExactAuthoritative
@@ -1029,29 +1041,29 @@ fn has_event_compaction_reads(spec: &KernelDescriptorSpec) -> bool {
         && spec.reads.iter().any(|read| read == "flags_u32")
 }
 
-/// Validate landed SEAD-EVENT-0 event compaction descriptor pins.
-pub fn validate_sead_event0_compaction_contract(
+/// Validate landed FIELD_POLICY-EVENT-0 event compaction descriptor pins.
+pub fn validate_field_policy_event0_compaction_contract(
     spec: &KernelDescriptorSpec,
 ) -> Result<(), SpecError> {
-    if spec.id != SEAD_EVENT0_DESCRIPTOR_ID {
+    if spec.id != FIELD_POLICY_EVENT0_DESCRIPTOR_ID {
         return Ok(());
     }
     if !has_event_compaction_reads(spec) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD event compaction requires observer_index_u32, event_code_u32, state_u32, score_fixed, flags_u32 reads",
+            "FIELD_POLICY event compaction requires observer_index_u32, event_code_u32, state_u32, score_fixed, flags_u32 reads",
         ));
     }
     if spec.exact_sqrt_artifact.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD event compaction must not bind sqrt artifact",
+            "FIELD_POLICY event compaction must not bind sqrt artifact",
         ));
     }
     if spec.score_authority_contract.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD event compaction must not declare score authority contract",
+            "FIELD_POLICY event compaction must not declare score authority contract",
         ));
     }
     let event_count = spec
@@ -1072,27 +1084,29 @@ pub fn validate_sead_event0_compaction_contract(
     if event_count != Some(OutputAuthority::ExactAuthoritative) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD event compaction requires exact-authoritative event_count",
+            "FIELD_POLICY event compaction requires exact-authoritative event_count",
         ));
     }
     if overflow != Some(OutputAuthority::ExactAuthoritative) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD event compaction requires exact-authoritative overflow_flag",
+            "FIELD_POLICY event compaction requires exact-authoritative overflow_flag",
         ));
     }
     if record != Some(OutputAuthority::ExactAuthoritative) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD event compaction requires exact-authoritative event_record (unordered membership)",
+            "FIELD_POLICY event compaction requires exact-authoritative event_record (unordered membership)",
         ));
     }
     Ok(())
 }
 
 /// True when the descriptor is the landed integrated observer-event pipeline kernel.
-pub fn is_sead_pipe0_observer_event_pipeline_descriptor(spec: &KernelDescriptorSpec) -> bool {
-    spec.id == SEAD_PIPE0_DESCRIPTOR_ID
+pub fn is_field_policy_pipe0_observer_event_pipeline_descriptor(
+    spec: &KernelDescriptorSpec,
+) -> bool {
+    spec.id == FIELD_POLICY_PIPE0_DESCRIPTOR_ID
         && has_multilayer_fixed_reads(spec)
         && has_threshold_event_reads(spec)
         && spec.score_authority_contract == Some(ScoreAuthorityContract::ExactQ16WeightedSum)
@@ -1101,11 +1115,11 @@ pub fn is_sead_pipe0_observer_event_pipeline_descriptor(spec: &KernelDescriptorS
         && spec.writes.iter().any(|out| out.name == "event_record")
 }
 
-/// Validate landed SEAD-PIPE-0 integrated observer-event pipeline descriptor pins.
-pub fn validate_sead_pipe0_observer_event_pipeline_contract(
+/// Validate landed FIELD_POLICY-PIPE-0 integrated observer-event pipeline descriptor pins.
+pub fn validate_field_policy_pipe0_observer_event_pipeline_contract(
     spec: &KernelDescriptorSpec,
 ) -> Result<(), SpecError> {
-    if spec.id != SEAD_PIPE0_DESCRIPTOR_ID {
+    if spec.id != FIELD_POLICY_PIPE0_DESCRIPTOR_ID {
         return Ok(());
     }
     match spec.mag2_source_contract {
@@ -1114,32 +1128,32 @@ pub fn validate_sead_pipe0_observer_event_pipeline_contract(
         _ => {
             return Err(artifact_err(
                 &spec.id,
-                "SEAD observer-event pipeline requires Q16.16 ExactFixedPointDxDy mag2 contract",
+                "FIELD_POLICY observer-event pipeline requires Q16.16 ExactFixedPointDxDy mag2 contract",
             ));
         }
     }
     if spec.pre_sqrt_contract != Some(ExactPreSqrtInputContract::InlineFixedPointMag2Sqrt) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD observer-event pipeline requires InlineFixedPointMag2Sqrt pre-sqrt contract",
+            "FIELD_POLICY observer-event pipeline requires InlineFixedPointMag2Sqrt pre-sqrt contract",
         ));
     }
     if spec.score_authority_contract != Some(ScoreAuthorityContract::ExactQ16WeightedSum) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD observer-event pipeline requires ExactQ16WeightedSum score contract",
+            "FIELD_POLICY observer-event pipeline requires ExactQ16WeightedSum score contract",
         ));
     }
     if spec.exact_sqrt_artifact.is_none() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD observer-event pipeline requires artifact-backed Candidate F binding",
+            "FIELD_POLICY observer-event pipeline requires artifact-backed Candidate F binding",
         ));
     }
     if !has_multilayer_fixed_reads(spec) || !has_threshold_event_reads(spec) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD observer-event pipeline requires multilayer observer and threshold reads",
+            "FIELD_POLICY observer-event pipeline requires multilayer observer and threshold reads",
         ));
     }
     for (name, msg) in [
@@ -1157,7 +1171,7 @@ pub fn validate_sead_pipe0_observer_event_pipeline_contract(
             _ => {
                 return Err(artifact_err(
                     &spec.id,
-                    format!("SEAD observer-event pipeline requires {msg}"),
+                    format!("FIELD_POLICY observer-event pipeline requires {msg}"),
                 ));
             }
         }
@@ -1172,9 +1186,9 @@ fn has_event_bucket_reads(spec: &KernelDescriptorSpec) -> bool {
         && spec.reads.iter().any(|read| read == "score_fixed")
 }
 
-/// True when the descriptor is the landed SEAD event-code bucketing kernel.
-pub fn is_sead_event1_code_bucketing_descriptor(spec: &KernelDescriptorSpec) -> bool {
-    spec.id == SEAD_EVENT1_DESCRIPTOR_ID
+/// True when the descriptor is the landed FIELD_POLICY event-code bucketing kernel.
+pub fn is_field_policy_event1_code_bucketing_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == FIELD_POLICY_EVENT1_DESCRIPTOR_ID
         && has_event_bucket_reads(spec)
         && spec.writes.iter().any(|out| out.name == "bucket_counts")
         && spec.writes.iter().any(|out| out.name == "bucket_overflow")
@@ -1185,29 +1199,29 @@ pub fn is_sead_event1_code_bucketing_descriptor(spec: &KernelDescriptorSpec) -> 
             .any(|out| out.name == "invalid_code_count")
 }
 
-/// Validate landed SEAD-EVENT-1 event-code bucketing descriptor pins.
-pub fn validate_sead_event1_code_bucketing_contract(
+/// Validate landed FIELD_POLICY-EVENT-1 event-code bucketing descriptor pins.
+pub fn validate_field_policy_event1_code_bucketing_contract(
     spec: &KernelDescriptorSpec,
 ) -> Result<(), SpecError> {
-    if spec.id != SEAD_EVENT1_DESCRIPTOR_ID {
+    if spec.id != FIELD_POLICY_EVENT1_DESCRIPTOR_ID {
         return Ok(());
     }
     if !has_event_bucket_reads(spec) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD event-code bucketing requires source_index_u32, event_code_u32, state_u32, score_fixed reads",
+            "FIELD_POLICY event-code bucketing requires source_index_u32, event_code_u32, state_u32, score_fixed reads",
         ));
     }
     if spec.exact_sqrt_artifact.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD event-code bucketing must not bind sqrt artifact",
+            "FIELD_POLICY event-code bucketing must not bind sqrt artifact",
         ));
     }
     if spec.score_authority_contract.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD event-code bucketing must not declare score authority contract",
+            "FIELD_POLICY event-code bucketing must not declare score authority contract",
         ));
     }
     for (name, msg) in [
@@ -1229,7 +1243,7 @@ pub fn validate_sead_event1_code_bucketing_contract(
             _ => {
                 return Err(artifact_err(
                     &spec.id,
-                    format!("SEAD event-code bucketing requires {msg}"),
+                    format!("FIELD_POLICY event-code bucketing requires {msg}"),
                 ));
             }
         }
@@ -1242,9 +1256,9 @@ fn has_event_bucket_reduction_reads(spec: &KernelDescriptorSpec) -> bool {
         && spec.reads.iter().any(|read| read == "bucket_record")
 }
 
-/// True when the descriptor is the landed SEAD event-bucket reductions kernel.
-pub fn is_sead_event2_bucket_reductions_descriptor(spec: &KernelDescriptorSpec) -> bool {
-    spec.id == SEAD_EVENT2_DESCRIPTOR_ID
+/// True when the descriptor is the landed FIELD_POLICY event-bucket reductions kernel.
+pub fn is_field_policy_event2_bucket_reductions_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == FIELD_POLICY_EVENT2_DESCRIPTOR_ID
         && has_event_bucket_reduction_reads(spec)
         && spec.writes.iter().any(|out| out.name == "reduction_count")
         && spec.writes.iter().any(|out| out.name == "sum_score")
@@ -1256,29 +1270,29 @@ pub fn is_sead_event2_bucket_reductions_descriptor(spec: &KernelDescriptorSpec) 
             .any(|out| out.name == "reduction_overflow_flag")
 }
 
-/// Validate landed SEAD-EVENT-2 bucket reductions descriptor pins.
-pub fn validate_sead_event2_bucket_reductions_contract(
+/// Validate landed FIELD_POLICY-EVENT-2 bucket reductions descriptor pins.
+pub fn validate_field_policy_event2_bucket_reductions_contract(
     spec: &KernelDescriptorSpec,
 ) -> Result<(), SpecError> {
-    if spec.id != SEAD_EVENT2_DESCRIPTOR_ID {
+    if spec.id != FIELD_POLICY_EVENT2_DESCRIPTOR_ID {
         return Ok(());
     }
     if !has_event_bucket_reduction_reads(spec) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD bucket reductions requires bucket_counts and bucket_record reads",
+            "FIELD_POLICY bucket reductions requires bucket_counts and bucket_record reads",
         ));
     }
     if spec.exact_sqrt_artifact.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD bucket reductions must not bind sqrt artifact",
+            "FIELD_POLICY bucket reductions must not bind sqrt artifact",
         ));
     }
     if spec.score_authority_contract.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD bucket reductions must not declare score authority contract",
+            "FIELD_POLICY bucket reductions must not declare score authority contract",
         ));
     }
     for (name, msg) in [
@@ -1301,7 +1315,7 @@ pub fn validate_sead_event2_bucket_reductions_contract(
             _ => {
                 return Err(artifact_err(
                     &spec.id,
-                    format!("SEAD bucket reductions requires {msg}"),
+                    format!("FIELD_POLICY bucket reductions requires {msg}"),
                 ));
             }
         }
@@ -1315,9 +1329,9 @@ fn has_numeric_proposal_reads(spec: &KernelDescriptorSpec) -> bool {
         && spec.reads.iter().any(|read| read == "max_score")
 }
 
-/// True when the descriptor is the landed SEAD numeric proposals kernel.
-pub fn is_sead_act0_numeric_proposals_descriptor(spec: &KernelDescriptorSpec) -> bool {
-    spec.id == SEAD_ACT0_DESCRIPTOR_ID
+/// True when the descriptor is the landed FIELD_POLICY numeric proposals kernel.
+pub fn is_field_policy_act0_numeric_proposals_descriptor(spec: &KernelDescriptorSpec) -> bool {
+    spec.id == FIELD_POLICY_ACT0_DESCRIPTOR_ID
         && has_numeric_proposal_reads(spec)
         && spec.writes.iter().any(|out| out.name == "proposal_count")
         && spec
@@ -1327,29 +1341,29 @@ pub fn is_sead_act0_numeric_proposals_descriptor(spec: &KernelDescriptorSpec) ->
         && spec.writes.iter().any(|out| out.name == "proposal_record")
 }
 
-/// Validate landed SEAD-ACT-0 numeric proposals descriptor pins.
-pub fn validate_sead_act0_numeric_proposals_contract(
+/// Validate landed FIELD_POLICY-ACT-0 numeric proposals descriptor pins.
+pub fn validate_field_policy_act0_numeric_proposals_contract(
     spec: &KernelDescriptorSpec,
 ) -> Result<(), SpecError> {
-    if spec.id != SEAD_ACT0_DESCRIPTOR_ID {
+    if spec.id != FIELD_POLICY_ACT0_DESCRIPTOR_ID {
         return Ok(());
     }
     if !has_numeric_proposal_reads(spec) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD numeric proposals requires reduction_count, sum_score, max_score reads",
+            "FIELD_POLICY numeric proposals requires reduction_count, sum_score, max_score reads",
         ));
     }
     if spec.exact_sqrt_artifact.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD numeric proposals must not bind sqrt artifact",
+            "FIELD_POLICY numeric proposals must not bind sqrt artifact",
         ));
     }
     if spec.score_authority_contract.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD numeric proposals must not declare score authority contract",
+            "FIELD_POLICY numeric proposals must not declare score authority contract",
         ));
     }
     for (name, msg) in [
@@ -1370,7 +1384,7 @@ pub fn validate_sead_act0_numeric_proposals_contract(
             _ => {
                 return Err(artifact_err(
                     &spec.id,
-                    format!("SEAD numeric proposals requires {msg}"),
+                    format!("FIELD_POLICY numeric proposals requires {msg}"),
                 ));
             }
         }
@@ -1387,37 +1401,39 @@ fn has_phase_e_proposal_consumer_reads(spec: &KernelDescriptorSpec) -> bool {
         && spec.reads.iter().any(|read| read == "proposal_record")
 }
 
-/// True when the descriptor is the landed SEAD Phase E proposal consumer kernel.
-pub fn is_sead_act1_phase_e_proposal_consumer_descriptor(spec: &KernelDescriptorSpec) -> bool {
-    spec.id == SEAD_ACT1_DESCRIPTOR_ID
+/// True when the descriptor is the landed FIELD_POLICY Phase E proposal consumer kernel.
+pub fn is_field_policy_act1_phase_e_proposal_consumer_descriptor(
+    spec: &KernelDescriptorSpec,
+) -> bool {
+    spec.id == FIELD_POLICY_ACT1_DESCRIPTOR_ID
         && has_phase_e_proposal_consumer_reads(spec)
         && spec.writes.iter().any(|out| out.name == "accepted_count")
         && spec.writes.iter().any(|out| out.name == "proposal_summary")
 }
 
-/// Validate landed SEAD-ACT-1 Phase E proposal consumer descriptor pins.
-pub fn validate_sead_act1_phase_e_proposal_consumer_contract(
+/// Validate landed FIELD_POLICY-ACT-1 Phase E proposal consumer descriptor pins.
+pub fn validate_field_policy_act1_phase_e_proposal_consumer_contract(
     spec: &KernelDescriptorSpec,
 ) -> Result<(), SpecError> {
-    if spec.id != SEAD_ACT1_DESCRIPTOR_ID {
+    if spec.id != FIELD_POLICY_ACT1_DESCRIPTOR_ID {
         return Ok(());
     }
     if !has_phase_e_proposal_consumer_reads(spec) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD Phase E proposal consumer requires proposal_count, proposal_overflow_flag, proposal_record reads",
+            "FIELD_POLICY Phase E proposal consumer requires proposal_count, proposal_overflow_flag, proposal_record reads",
         ));
     }
     if spec.exact_sqrt_artifact.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD Phase E proposal consumer must not bind sqrt artifact",
+            "FIELD_POLICY Phase E proposal consumer must not bind sqrt artifact",
         ));
     }
     if spec.score_authority_contract.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD Phase E proposal consumer must not declare score authority contract",
+            "FIELD_POLICY Phase E proposal consumer must not declare score authority contract",
         ));
     }
     for (name, msg) in [
@@ -1438,7 +1454,7 @@ pub fn validate_sead_act1_phase_e_proposal_consumer_contract(
             _ => {
                 return Err(artifact_err(
                     &spec.id,
-                    format!("SEAD Phase E proposal consumer requires {msg}"),
+                    format!("FIELD_POLICY Phase E proposal consumer requires {msg}"),
                 ));
             }
         }
@@ -1450,37 +1466,39 @@ fn has_economic_fixture_reads(spec: &KernelDescriptorSpec) -> bool {
     spec.reads.iter().any(|read| read == "admission_record")
 }
 
-/// True when the descriptor is the landed SEAD Economic V1 fixture records kernel.
-pub fn is_sead_act3_economic_fixture_records_descriptor(spec: &KernelDescriptorSpec) -> bool {
-    spec.id == SEAD_ACT3_DESCRIPTOR_ID
+/// True when the descriptor is the landed FIELD_POLICY Economic V1 fixture records kernel.
+pub fn is_field_policy_act3_economic_fixture_records_descriptor(
+    spec: &KernelDescriptorSpec,
+) -> bool {
+    spec.id == FIELD_POLICY_ACT3_DESCRIPTOR_ID
         && has_economic_fixture_reads(spec)
         && spec.writes.iter().any(|out| out.name == "fixture_record")
         && spec.writes.iter().any(|out| out.name == "record_code")
 }
 
-/// Validate landed SEAD-ACT-3 Economic V1 fixture records descriptor pins.
-pub fn validate_sead_act3_economic_fixture_records_contract(
+/// Validate landed FIELD_POLICY-ACT-3 Economic V1 fixture records descriptor pins.
+pub fn validate_field_policy_act3_economic_fixture_records_contract(
     spec: &KernelDescriptorSpec,
 ) -> Result<(), SpecError> {
-    if spec.id != SEAD_ACT3_DESCRIPTOR_ID {
+    if spec.id != FIELD_POLICY_ACT3_DESCRIPTOR_ID {
         return Ok(());
     }
     if !has_economic_fixture_reads(spec) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD Economic V1 fixture records require admission_record read",
+            "FIELD_POLICY Economic V1 fixture records require admission_record read",
         ));
     }
     if spec.exact_sqrt_artifact.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD Economic V1 fixture records must not bind sqrt artifact",
+            "FIELD_POLICY Economic V1 fixture records must not bind sqrt artifact",
         ));
     }
     if spec.score_authority_contract.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD Economic V1 fixture records must not declare score authority contract",
+            "FIELD_POLICY Economic V1 fixture records must not declare score authority contract",
         ));
     }
     for (name, msg) in [
@@ -1497,7 +1515,7 @@ pub fn validate_sead_act3_economic_fixture_records_contract(
             _ => {
                 return Err(artifact_err(
                     &spec.id,
-                    format!("SEAD Economic V1 fixture records require {msg}"),
+                    format!("FIELD_POLICY Economic V1 fixture records require {msg}"),
                 ));
             }
         }
@@ -1509,37 +1527,39 @@ fn has_proposal_admission_reads(spec: &KernelDescriptorSpec) -> bool {
     spec.reads.iter().any(|read| read == "proposal_summary")
 }
 
-/// True when the descriptor is the landed SEAD fixture proposal admission kernel.
-pub fn is_sead_act2_proposal_admission_records_descriptor(spec: &KernelDescriptorSpec) -> bool {
-    spec.id == SEAD_ACT2_DESCRIPTOR_ID
+/// True when the descriptor is the landed FIELD_POLICY fixture proposal admission kernel.
+pub fn is_field_policy_act2_proposal_admission_records_descriptor(
+    spec: &KernelDescriptorSpec,
+) -> bool {
+    spec.id == FIELD_POLICY_ACT2_DESCRIPTOR_ID
         && has_proposal_admission_reads(spec)
         && spec.writes.iter().any(|out| out.name == "admission_record")
         && spec.writes.iter().any(|out| out.name == "admission_code")
 }
 
-/// Validate landed SEAD-ACT-2 proposal admission records descriptor pins.
-pub fn validate_sead_act2_proposal_admission_records_contract(
+/// Validate landed FIELD_POLICY-ACT-2 proposal admission records descriptor pins.
+pub fn validate_field_policy_act2_proposal_admission_records_contract(
     spec: &KernelDescriptorSpec,
 ) -> Result<(), SpecError> {
-    if spec.id != SEAD_ACT2_DESCRIPTOR_ID {
+    if spec.id != FIELD_POLICY_ACT2_DESCRIPTOR_ID {
         return Ok(());
     }
     if !has_proposal_admission_reads(spec) {
         return Err(artifact_err(
             &spec.id,
-            "SEAD proposal admission requires proposal_summary read",
+            "FIELD_POLICY proposal admission requires proposal_summary read",
         ));
     }
     if spec.exact_sqrt_artifact.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD proposal admission must not bind sqrt artifact",
+            "FIELD_POLICY proposal admission must not bind sqrt artifact",
         ));
     }
     if spec.score_authority_contract.is_some() {
         return Err(artifact_err(
             &spec.id,
-            "SEAD proposal admission must not declare score authority contract",
+            "FIELD_POLICY proposal admission must not declare score authority contract",
         ));
     }
     for (name, msg) in [
@@ -1556,7 +1576,7 @@ pub fn validate_sead_act2_proposal_admission_records_contract(
             _ => {
                 return Err(artifact_err(
                     &spec.id,
-                    format!("SEAD proposal admission requires {msg}"),
+                    format!("FIELD_POLICY proposal admission requires {msg}"),
                 ));
             }
         }
@@ -1568,35 +1588,38 @@ pub fn validate_sead_act2_proposal_admission_records_contract(
 pub fn validate_exact_sqrt_artifact_admission(
     spec: &KernelDescriptorSpec,
 ) -> Result<(), SpecError> {
-    if spec.id == SEAD_ACT3_DESCRIPTOR_ID {
-        return validate_sead_act3_economic_fixture_records_contract(spec);
+    if spec.id == FIELD_POLICY_ACT3_DESCRIPTOR_ID {
+        return validate_field_policy_act3_economic_fixture_records_contract(spec);
     }
-    if spec.id == SEAD_ACT2_DESCRIPTOR_ID {
-        return validate_sead_act2_proposal_admission_records_contract(spec);
+    if spec.id == FIELD_POLICY_ACT2_DESCRIPTOR_ID {
+        return validate_field_policy_act2_proposal_admission_records_contract(spec);
     }
-    if spec.id == SEAD_ACT1_DESCRIPTOR_ID {
-        return validate_sead_act1_phase_e_proposal_consumer_contract(spec);
+    if spec.id == FIELD_POLICY_ACT1_DESCRIPTOR_ID {
+        return validate_field_policy_act1_phase_e_proposal_consumer_contract(spec);
     }
-    if spec.id == SEAD_ACT0_DESCRIPTOR_ID {
-        return validate_sead_act0_numeric_proposals_contract(spec);
+    if spec.id == FIELD_POLICY_ACT0_DESCRIPTOR_ID {
+        return validate_field_policy_act0_numeric_proposals_contract(spec);
     }
-    if spec.id == SEAD_EVENT2_DESCRIPTOR_ID {
-        return validate_sead_event2_bucket_reductions_contract(spec);
+    if spec.id == FIELD_POLICY_EVENT2_DESCRIPTOR_ID {
+        return validate_field_policy_event2_bucket_reductions_contract(spec);
     }
-    if spec.id == SEAD_EVENT1_DESCRIPTOR_ID {
-        return validate_sead_event1_code_bucketing_contract(spec);
+    if spec.id == FIELD_POLICY_EVENT1_DESCRIPTOR_ID {
+        return validate_field_policy_event1_code_bucketing_contract(spec);
     }
-    if spec.id == SEAD_PIPE0_DESCRIPTOR_ID {
+    if spec.id == FIELD_POLICY_PIPE0_DESCRIPTOR_ID {
         validate_exact_sqrt_artifact_binding(
             &spec.id,
             spec.exact_sqrt_artifact.as_ref().ok_or_else(|| {
-                artifact_err(&spec.id, "SEAD observer-event pipeline requires F artifact")
+                artifact_err(
+                    &spec.id,
+                    "FIELD_POLICY observer-event pipeline requires F artifact",
+                )
             })?,
         )?;
-        return validate_sead_pipe0_observer_event_pipeline_contract(spec);
+        return validate_field_policy_pipe0_observer_event_pipeline_contract(spec);
     }
-    if spec.id == SEAD_EVENT0_DESCRIPTOR_ID {
-        return validate_sead_event0_compaction_contract(spec);
+    if spec.id == FIELD_POLICY_EVENT0_DESCRIPTOR_ID {
+        return validate_field_policy_event0_compaction_contract(spec);
     }
 
     let has_exact_f_out = has_exact_f_authoritative_output(spec);
@@ -1637,10 +1660,10 @@ pub fn validate_exact_sqrt_artifact_admission(
     validate_exact_pre_sqrt_contract(spec)?;
     validate_mag2_source_contract(spec)?;
     validate_score_authority_contract(spec)?;
-    validate_sead_obs0_overlay_score_contract(spec)?;
-    validate_sead_obs2_multilayer_overlay_score_contract(spec)?;
-    validate_sead_obs3_multilayer_fixed_score_contract(spec)?;
-    validate_sead_obs4_threshold_event_contract(spec)?;
+    validate_field_policy_obs0_overlay_score_contract(spec)?;
+    validate_field_policy_obs2_multilayer_overlay_score_contract(spec)?;
+    validate_field_policy_obs3_multilayer_fixed_score_contract(spec)?;
+    validate_field_policy_obs4_threshold_event_contract(spec)?;
 
     Ok(())
 }
@@ -1715,10 +1738,10 @@ pub fn mag2_fixed_exact_kernel_descriptor() -> KernelDescriptorSpec {
     }
 }
 
-/// Build the landed SEAD observer overlay score kernel descriptor (SEAD-OBS-1).
-pub fn sead_obs0_overlay_score_kernel_descriptor() -> KernelDescriptorSpec {
+/// Build the landed FIELD_POLICY observer overlay score kernel descriptor (FIELD_POLICY-OBS-1).
+pub fn field_policy_obs0_overlay_score_kernel_descriptor() -> KernelDescriptorSpec {
     KernelDescriptorSpec {
-        id: SEAD_OBS0_DESCRIPTOR_ID.to_string(),
+        id: FIELD_POLICY_OBS0_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads: vec![
             "gx_fixed".to_string(),
@@ -1745,10 +1768,10 @@ pub fn sead_obs0_overlay_score_kernel_descriptor() -> KernelDescriptorSpec {
     }
 }
 
-/// Build the landed SEAD multilayer observer overlay score kernel descriptor (SEAD-OBS-2).
-pub fn sead_obs2_multilayer_overlay_score_kernel_descriptor() -> KernelDescriptorSpec {
+/// Build the landed FIELD_POLICY multilayer observer overlay score kernel descriptor (FIELD_POLICY-OBS-2).
+pub fn field_policy_obs2_multilayer_overlay_score_kernel_descriptor() -> KernelDescriptorSpec {
     let mut reads = Vec::new();
-    for layer in 0..SEAD_OBS2_LAYER_COUNT {
+    for layer in 0..FIELD_POLICY_OBS2_LAYER_COUNT {
         reads.push(format!("layer{layer}_gx_fixed"));
         reads.push(format!("layer{layer}_gy_fixed"));
         reads.push(format!("layer{layer}_w_fixed"));
@@ -1756,14 +1779,14 @@ pub fn sead_obs2_multilayer_overlay_score_kernel_descriptor() -> KernelDescripto
     reads.push("bias_fixed".to_string());
 
     let mut writes = Vec::new();
-    for layer in 0..SEAD_OBS2_LAYER_COUNT {
+    for layer in 0..FIELD_POLICY_OBS2_LAYER_COUNT {
         writes.push(exact_out(&format!("layer{layer}_mag_bits")));
     }
     writes.push(approx_out("score_bits"));
     writes.push(approx_out("flags"));
 
     KernelDescriptorSpec {
-        id: SEAD_OBS2_DESCRIPTOR_ID.to_string(),
+        id: FIELD_POLICY_OBS2_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads,
         writes,
@@ -1780,10 +1803,10 @@ pub fn sead_obs2_multilayer_overlay_score_kernel_descriptor() -> KernelDescripto
     }
 }
 
-/// Build the landed SEAD multilayer fixed-point score kernel descriptor (SEAD-OBS-3).
-pub fn sead_obs3_multilayer_fixed_score_kernel_descriptor() -> KernelDescriptorSpec {
+/// Build the landed FIELD_POLICY multilayer fixed-point score kernel descriptor (FIELD_POLICY-OBS-3).
+pub fn field_policy_obs3_multilayer_fixed_score_kernel_descriptor() -> KernelDescriptorSpec {
     let mut reads = Vec::new();
-    for layer in 0..SEAD_OBS3_LAYER_COUNT {
+    for layer in 0..FIELD_POLICY_OBS3_LAYER_COUNT {
         reads.push(format!("layer{layer}_gx_fixed"));
         reads.push(format!("layer{layer}_gy_fixed"));
         reads.push(format!("layer{layer}_w_fixed"));
@@ -1791,14 +1814,14 @@ pub fn sead_obs3_multilayer_fixed_score_kernel_descriptor() -> KernelDescriptorS
     reads.push("bias_fixed".to_string());
 
     let mut writes = Vec::new();
-    for layer in 0..SEAD_OBS3_LAYER_COUNT {
+    for layer in 0..FIELD_POLICY_OBS3_LAYER_COUNT {
         writes.push(exact_out(&format!("layer{layer}_mag_bits")));
     }
     writes.push(exact_out("score_fixed"));
     writes.push(approx_out("flags"));
 
     KernelDescriptorSpec {
-        id: SEAD_OBS3_DESCRIPTOR_ID.to_string(),
+        id: FIELD_POLICY_OBS3_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads,
         writes,
@@ -1815,10 +1838,10 @@ pub fn sead_obs3_multilayer_fixed_score_kernel_descriptor() -> KernelDescriptorS
     }
 }
 
-/// Build the landed SEAD threshold event kernel descriptor (SEAD-OBS-4).
-pub fn sead_obs4_threshold_event_kernel_descriptor() -> KernelDescriptorSpec {
+/// Build the landed FIELD_POLICY threshold event kernel descriptor (FIELD_POLICY-OBS-4).
+pub fn field_policy_obs4_threshold_event_kernel_descriptor() -> KernelDescriptorSpec {
     let mut reads = Vec::new();
-    for layer in 0..SEAD_OBS4_LAYER_COUNT {
+    for layer in 0..FIELD_POLICY_OBS4_LAYER_COUNT {
         reads.push(format!("layer{layer}_gx_fixed"));
         reads.push(format!("layer{layer}_gy_fixed"));
         reads.push(format!("layer{layer}_w_fixed"));
@@ -1829,7 +1852,7 @@ pub fn sead_obs4_threshold_event_kernel_descriptor() -> KernelDescriptorSpec {
     reads.push("prior_state_u32".to_string());
 
     let mut writes = Vec::new();
-    for layer in 0..SEAD_OBS4_LAYER_COUNT {
+    for layer in 0..FIELD_POLICY_OBS4_LAYER_COUNT {
         writes.push(exact_out(&format!("layer{layer}_mag_bits")));
     }
     writes.push(exact_out("score_fixed"));
@@ -1838,7 +1861,7 @@ pub fn sead_obs4_threshold_event_kernel_descriptor() -> KernelDescriptorSpec {
     writes.push(approx_out("flags"));
 
     KernelDescriptorSpec {
-        id: SEAD_OBS4_DESCRIPTOR_ID.to_string(),
+        id: FIELD_POLICY_OBS4_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads,
         writes,
@@ -1855,10 +1878,10 @@ pub fn sead_obs4_threshold_event_kernel_descriptor() -> KernelDescriptorSpec {
     }
 }
 
-/// Build the landed SEAD event compaction kernel descriptor (SEAD-EVENT-0).
-pub fn sead_event0_compaction_kernel_descriptor() -> KernelDescriptorSpec {
+/// Build the landed FIELD_POLICY event compaction kernel descriptor (FIELD_POLICY-EVENT-0).
+pub fn field_policy_event0_compaction_kernel_descriptor() -> KernelDescriptorSpec {
     KernelDescriptorSpec {
-        id: SEAD_EVENT0_DESCRIPTOR_ID.to_string(),
+        id: FIELD_POLICY_EVENT0_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads: vec![
             "observer_index_u32".to_string(),
@@ -1883,10 +1906,10 @@ pub fn sead_event0_compaction_kernel_descriptor() -> KernelDescriptorSpec {
     }
 }
 
-/// Build the landed integrated observer-event pipeline descriptor (SEAD-PIPE-0).
-pub fn sead_pipe0_observer_event_pipeline_kernel_descriptor() -> KernelDescriptorSpec {
+/// Build the landed integrated observer-event pipeline descriptor (FIELD_POLICY-PIPE-0).
+pub fn field_policy_pipe0_observer_event_pipeline_kernel_descriptor() -> KernelDescriptorSpec {
     let mut reads = Vec::new();
-    for layer in 0..SEAD_PIPE0_LAYER_COUNT {
+    for layer in 0..FIELD_POLICY_PIPE0_LAYER_COUNT {
         reads.push(format!("layer{layer}_gx_fixed"));
         reads.push(format!("layer{layer}_gy_fixed"));
         reads.push(format!("layer{layer}_w_fixed"));
@@ -1897,7 +1920,7 @@ pub fn sead_pipe0_observer_event_pipeline_kernel_descriptor() -> KernelDescripto
     reads.push("prior_state_u32".to_string());
 
     KernelDescriptorSpec {
-        id: SEAD_PIPE0_DESCRIPTOR_ID.to_string(),
+        id: FIELD_POLICY_PIPE0_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads,
         writes: vec![
@@ -1918,10 +1941,10 @@ pub fn sead_pipe0_observer_event_pipeline_kernel_descriptor() -> KernelDescripto
     }
 }
 
-/// Build the landed SEAD event-code bucketing kernel descriptor (SEAD-EVENT-1).
-pub fn sead_event1_code_bucketing_kernel_descriptor() -> KernelDescriptorSpec {
+/// Build the landed FIELD_POLICY event-code bucketing kernel descriptor (FIELD_POLICY-EVENT-1).
+pub fn field_policy_event1_code_bucketing_kernel_descriptor() -> KernelDescriptorSpec {
     KernelDescriptorSpec {
-        id: SEAD_EVENT1_DESCRIPTOR_ID.to_string(),
+        id: FIELD_POLICY_EVENT1_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads: vec![
             "source_index_u32".to_string(),
@@ -1946,10 +1969,10 @@ pub fn sead_event1_code_bucketing_kernel_descriptor() -> KernelDescriptorSpec {
     }
 }
 
-/// Build the landed SEAD event-bucket reductions kernel descriptor (SEAD-EVENT-2).
-pub fn sead_event2_bucket_reductions_kernel_descriptor() -> KernelDescriptorSpec {
+/// Build the landed FIELD_POLICY event-bucket reductions kernel descriptor (FIELD_POLICY-EVENT-2).
+pub fn field_policy_event2_bucket_reductions_kernel_descriptor() -> KernelDescriptorSpec {
     KernelDescriptorSpec {
-        id: SEAD_EVENT2_DESCRIPTOR_ID.to_string(),
+        id: FIELD_POLICY_EVENT2_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads: vec!["bucket_counts".to_string(), "bucket_record".to_string()],
         writes: vec![
@@ -1970,10 +1993,10 @@ pub fn sead_event2_bucket_reductions_kernel_descriptor() -> KernelDescriptorSpec
     }
 }
 
-/// Build the landed SEAD numeric action proposals kernel descriptor (SEAD-ACT-0).
-pub fn sead_act0_numeric_proposals_kernel_descriptor() -> KernelDescriptorSpec {
+/// Build the landed FIELD_POLICY numeric action proposals kernel descriptor (FIELD_POLICY-ACT-0).
+pub fn field_policy_act0_numeric_proposals_kernel_descriptor() -> KernelDescriptorSpec {
     KernelDescriptorSpec {
-        id: SEAD_ACT0_DESCRIPTOR_ID.to_string(),
+        id: FIELD_POLICY_ACT0_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads: vec![
             "reduction_count".to_string(),
@@ -1998,10 +2021,10 @@ pub fn sead_act0_numeric_proposals_kernel_descriptor() -> KernelDescriptorSpec {
     }
 }
 
-/// Build the landed SEAD fixture proposal admission records kernel descriptor (SEAD-ACT-2).
-pub fn sead_act2_proposal_admission_records_kernel_descriptor() -> KernelDescriptorSpec {
+/// Build the landed FIELD_POLICY fixture proposal admission records kernel descriptor (FIELD_POLICY-ACT-2).
+pub fn field_policy_act2_proposal_admission_records_kernel_descriptor() -> KernelDescriptorSpec {
     KernelDescriptorSpec {
-        id: SEAD_ACT2_DESCRIPTOR_ID.to_string(),
+        id: FIELD_POLICY_ACT2_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads: vec!["proposal_summary".to_string()],
         writes: vec![exact_out("admission_record"), exact_out("admission_code")],
@@ -2016,10 +2039,10 @@ pub fn sead_act2_proposal_admission_records_kernel_descriptor() -> KernelDescrip
     }
 }
 
-/// Build the landed SEAD Economic V1 fixture records kernel descriptor (SEAD-ACT-3).
-pub fn sead_act3_economic_fixture_records_kernel_descriptor() -> KernelDescriptorSpec {
+/// Build the landed FIELD_POLICY Economic V1 fixture records kernel descriptor (FIELD_POLICY-ACT-3).
+pub fn field_policy_act3_economic_fixture_records_kernel_descriptor() -> KernelDescriptorSpec {
     KernelDescriptorSpec {
-        id: SEAD_ACT3_DESCRIPTOR_ID.to_string(),
+        id: FIELD_POLICY_ACT3_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads: vec!["admission_record".to_string()],
         writes: vec![exact_out("fixture_record"), exact_out("record_code")],
@@ -2034,10 +2057,10 @@ pub fn sead_act3_economic_fixture_records_kernel_descriptor() -> KernelDescripto
     }
 }
 
-/// Build the landed SEAD Phase E numeric proposal consumer kernel descriptor (SEAD-ACT-1).
-pub fn sead_act1_phase_e_proposal_consumer_kernel_descriptor() -> KernelDescriptorSpec {
+/// Build the landed FIELD_POLICY Phase E numeric proposal consumer kernel descriptor (FIELD_POLICY-ACT-1).
+pub fn field_policy_act1_phase_e_proposal_consumer_kernel_descriptor() -> KernelDescriptorSpec {
     KernelDescriptorSpec {
-        id: SEAD_ACT1_DESCRIPTOR_ID.to_string(),
+        id: FIELD_POLICY_ACT1_DESCRIPTOR_ID.to_string(),
         lane: KernelLane::TestOnly,
         reads: vec![
             "proposal_count".to_string(),

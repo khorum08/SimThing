@@ -35,7 +35,7 @@ Every item from the long posture lists in 2A–2C and R1–R4 handoffs, includin
 - Preview ≠ runtime; PerGadgetOnly composition only.
 - Every gadget requires CPU oracle + parity test.
 - No driver/gpu/sim consumes CompiledEmlGadgetStack or flatten preview as execution.
-- V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact (SEAD remains field → reduction → field_urgency EvalEML → Threshold + EmitEvent; no CPU planner, no production economy→mapping bridge, etc.).
+- V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact (FIELD_POLICY remains field → reduction → field_urgency EvalEML → Threshold + EmitEvent; no CPU planner, no production economy→mapping bridge, etc.).
 
 ## Scope of this packet
 
@@ -77,7 +77,7 @@ Do not proceed or claim success if:
 - Any targeted test or cargo check fails.
 - Active stale scans are not clean in the highest-authority production guidance files.
 - The packet would require or imply runtime gadget execution, chained scheduling, new opcodes, WGSL, simthing-gpu changes, simthing-sim semantics, production bridges, default wiring, or atlas/M-4A.
-- Evidence cannot be presented without contradicting V7.7 / Mapping ADR / SEAD GPU-resident default-off posture.
+- Evidence cannot be presented without contradicting V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture.
 
 ## Completion criteria (for the parking packet to be ready for Opus review)
 
@@ -91,7 +91,7 @@ Do not proceed or claim success if:
 
 ## Final expected verdict wording (adapt once review completes)
 
-PASS — Phase M EML-GADGET-2A/B/C temporal substrate parking packet landed for Opus/product review; explicit-column snapshot/copy, VelocityMonitor, Decay/EMA, and BoundedFeedback (strict clamp) are now consolidated under one review artifact with all posture and stop conditions from prior handoffs re-affirmed, highest-authority production guidance is consistent with landed state, no runtime/code changes occurred, and V7.7 / Mapping ADR / SEAD GPU-resident default-off posture remains binding. Ready for product direction on next authorized slice.
+PASS — Phase M EML-GADGET-2A/B/C temporal substrate parking packet landed for Opus/product review; explicit-column snapshot/copy, VelocityMonitor, Decay/EMA, and BoundedFeedback (strict clamp) are now consolidated under one review artifact with all posture and stop conditions from prior handoffs re-affirmed, highest-authority production guidance is consistent with landed state, no runtime/code changes occurred, and V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture remains binding. Ready for product direction on next authorized slice.
 
 ---
 

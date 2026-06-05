@@ -7,7 +7,7 @@ use super::diagnostic::{
 use super::manifest::DesignerAdmissionPreflightManifest;
 use super::preflight::{
     evaluate_designer_admission_request, resolve_frontier_artifact_target_id,
-    DesignerAdmissionRequest, SeadLadderStage,
+    DesignerAdmissionRequest, FieldPolicyLadderStage,
 };
 
 /// Preview report for a designer admission preflight manifest.
@@ -174,17 +174,17 @@ fn feature_token_to_requests(
         "d2a_boundary_scheduling" => vec![DesignerAdmissionRequest::D2aBoundaryScheduling],
         "clause_script_parser" => vec![DesignerAdmissionRequest::ClauseScriptParser],
         "clausething_runtime" => vec![DesignerAdmissionRequest::ClauseThingRuntime],
-        "act_5" => vec![DesignerAdmissionRequest::SeadLadderReopen {
-            stage: SeadLadderStage::Act5,
+        "act_5" => vec![DesignerAdmissionRequest::FieldPolicyLadderReopen {
+            stage: FieldPolicyLadderStage::Act5,
         }],
-        "event_3" => vec![DesignerAdmissionRequest::SeadLadderReopen {
-            stage: SeadLadderStage::Event3,
+        "event_3" => vec![DesignerAdmissionRequest::FieldPolicyLadderReopen {
+            stage: FieldPolicyLadderStage::Event3,
         }],
-        "obs_5" => vec![DesignerAdmissionRequest::SeadLadderReopen {
-            stage: SeadLadderStage::Obs5,
+        "obs_5" => vec![DesignerAdmissionRequest::FieldPolicyLadderReopen {
+            stage: FieldPolicyLadderStage::Obs5,
         }],
-        "pipe_1" => vec![DesignerAdmissionRequest::SeadLadderReopen {
-            stage: SeadLadderStage::Pipe1,
+        "pipe_1" => vec![DesignerAdmissionRequest::FieldPolicyLadderReopen {
+            stage: FieldPolicyLadderStage::Pipe1,
         }],
         _ => Vec::new(),
     }

@@ -101,9 +101,9 @@ pub struct FrontierV2StructuralCandidate {
 pub struct FrontierV2TickRun {
     pub tick_index: u32,
     pub mapping_hash: u64,
-    pub self_ai_hash: u64,
+    pub field_agent_hash: u64,
     pub proposal_dispatch_hash: u64,
-    pub feedback: FrontierV1LiveSelfAiFeedbackCandidate,
+    pub feedback: FrontierV1LiveFieldAgentFeedbackCandidate,
     pub movement: FrontierV2MovementCandidate,
     pub structural: FrontierV2StructuralCandidate,
     pub threat: f32,
@@ -115,8 +115,8 @@ pub struct FrontierV2TickRun {
 pub struct FrontierV2ClosedLoopSummary {
     pub tick0_mapping_hash: u64,
     pub tick1_mapping_hash: u64,
-    pub tick0_self_ai_hash: u64,
-    pub tick1_self_ai_hash: u64,
+    pub tick0_field_agent_hash: u64,
+    pub tick1_field_agent_hash: u64,
     pub feedback_candidate_hash: u64,
     pub closed_loop_delta_hash: u64,
     pub overflow_flags: u32,
@@ -134,8 +134,8 @@ impl FrontierV2ClosedLoopSummary {
     pub fn combined_hex(&self) -> String {
         let combined = fnv_mix(self.tick0_mapping_hash)
             ^ fnv_mix(self.tick1_mapping_hash)
-            ^ fnv_mix(self.tick0_self_ai_hash)
-            ^ fnv_mix(self.tick1_self_ai_hash)
+            ^ fnv_mix(self.tick0_field_agent_hash)
+            ^ fnv_mix(self.tick1_field_agent_hash)
             ^ fnv_mix(self.feedback_candidate_hash)
             ^ fnv_mix(self.closed_loop_delta_hash)
             ^ fnv_mix(u64::from(self.overflow_flags));
@@ -157,7 +157,7 @@ pub fn validate_frontier_v2_admission(
             accepted: false,
             mapping_ok: false,
             flat_star_ok: false,
-            sead_v1_ok: false,
+            field_policy_v1_ok: false,
             coupling_ok: false,
             default_off_ok: false,
             rejected_reasons: vec!["profile_name must be FrontierV2"],
@@ -169,7 +169,7 @@ pub fn validate_frontier_v2_admission(
 /// Apply tick-0 feedback as fixture-only next-tick seed deltas (no simthing-sim state).
 pub fn apply_feedback_to_config(
     base: &FrontierV1FixtureConfig,
-    feedback: &FrontierV1LiveSelfAiFeedbackCandidate,
+    feedback: &FrontierV1LiveFieldAgentFeedbackCandidate,
 ) -> FrontierV1FixtureConfig {
     let seed_delta_a = feedback.faction_a_allocation / 8;
     let seed_delta_b = feedback.faction_b_allocation / 8;
@@ -187,7 +187,7 @@ pub fn apply_feedback_to_config(
 }
 
 pub fn build_movement_candidate(
-    feedback: &FrontierV1LiveSelfAiFeedbackCandidate,
+    feedback: &FrontierV1LiveFieldAgentFeedbackCandidate,
 ) -> FrontierV2MovementCandidate {
     let imbalance = feedback.faction_a_allocation as i32 - feedback.faction_b_allocation as i32;
     let delta_row = imbalance.signum();
@@ -202,7 +202,7 @@ pub fn build_movement_candidate(
 }
 
 pub fn build_structural_candidate(
-    feedback: &FrontierV1LiveSelfAiFeedbackCandidate,
+    feedback: &FrontierV1LiveFieldAgentFeedbackCandidate,
 ) -> FrontierV2StructuralCandidate {
     FrontierV2StructuralCandidate {
         proposal_code: feedback.proposal_code,
@@ -214,7 +214,7 @@ pub fn build_structural_candidate(
 
 /// Tick-aware movement candidate evolution tied to closed-loop field/urgency feedback.
 pub fn build_evolved_movement_candidate(
-    feedback: &FrontierV1LiveSelfAiFeedbackCandidate,
+    feedback: &FrontierV1LiveFieldAgentFeedbackCandidate,
     mapping_hash: u64,
     urgency: f32,
     tick_index: u32,
@@ -238,7 +238,7 @@ pub fn build_evolved_movement_candidate(
 
 /// Tick-aware structural candidate evolution tied to closed-loop allocator/field feedback.
 pub fn build_evolved_structural_candidate(
-    feedback: &FrontierV1LiveSelfAiFeedbackCandidate,
+    feedback: &FrontierV1LiveFieldAgentFeedbackCandidate,
     mapping_hash: u64,
     tick_index: u32,
 ) -> FrontierV2StructuralCandidate {
@@ -347,10 +347,10 @@ pub fn hash_closed_loop_delta(tick0: &FrontierV2TickRun, tick1: &FrontierV2TickR
         h,
         ((tick0.proposal_dispatch_hash ^ tick1.proposal_dispatch_hash) >> 32) as u32,
     );
-    h = fnv_append_u32(h, tick0.self_ai_hash as u32);
-    h = fnv_append_u32(h, (tick0.self_ai_hash >> 32) as u32);
-    h = fnv_append_u32(h, tick1.self_ai_hash as u32);
-    h = fnv_append_u32(h, (tick1.self_ai_hash >> 32) as u32);
+    h = fnv_append_u32(h, tick0.field_agent_hash as u32);
+    h = fnv_append_u32(h, (tick0.field_agent_hash >> 32) as u32);
+    h = fnv_append_u32(h, tick1.field_agent_hash as u32);
+    h = fnv_append_u32(h, (tick1.field_agent_hash >> 32) as u32);
     h
 }
 
@@ -626,7 +626,7 @@ pub fn empty_boundary_request_shadow(source_unit_id: u32) -> FrontierV2BoundaryR
 /// Apply closed-loop feedback plus structural shadow modifier (fixture-only).
 pub fn apply_combined_feedback_to_config(
     base: &FrontierV1FixtureConfig,
-    prior_feedback: &FrontierV1LiveSelfAiFeedbackCandidate,
+    prior_feedback: &FrontierV1LiveFieldAgentFeedbackCandidate,
     boundary_shadow: &FrontierV2BoundaryRequestShadow,
 ) -> (FrontierV1FixtureConfig, u32) {
     let with_loop = apply_feedback_to_config(base, prior_feedback);

@@ -239,7 +239,7 @@ default-`Mean` reduction with `FissionThreshold` registered on the
 4. The sub-field's `soft_aggregate_guard` is `None` or `Some(Unguarded)`.
 
 This is the **precise risk profile**: only post-reduction reads of a
-soft-aggregate column targeting a hard trigger. Today no path satisfies
+soft-aggregate column selection a hard trigger. Today no path satisfies
 condition 2 + 3 simultaneously for a hard trigger. The validator is a
 forward gate.
 

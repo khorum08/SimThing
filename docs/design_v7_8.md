@@ -24,7 +24,7 @@
 > [`design_v7_7.md`](design_v7_7.md) (CLOSED constitution amendment) ·
 > [`accumulator_op_v2_production_plan.md`](accumulator_op_v2_production_plan.md) (CLOSED — archived stub; see [`archive/closed_production/accumulator_op_v2_production_plan.md`](archive/closed_production/accumulator_op_v2_production_plan.md)) · [`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md) ·
 > [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md) · [`invariants.md`](invariants.md) ·
-> [`workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md).
+> [`workshop/field_policy_track.md`](workshop/field_policy_track.md).
 >
 > **▶ Where the PR ladders live.** This file is the **constitution**: operating doctrine (§2) and the
 > *current parked state* of each capability line (§3–§5). The **sequenced PR ladders — landed, active,
@@ -244,7 +244,7 @@ its authorization: each remains Tier-2 and gated on its named scenario + accepta
 ## 7. Sequencing
 
 v7.8 runs **parallel to and mostly downstream of** the simthing-spec / ClauseThing direction
-(`sead_self_ai_track.md` §11 → simthing-spec buildout → ClauseThing-facing authoring). The
+(`field_policy_track.md` §11 → simthing-spec buildout → ClauseThing-facing authoring). The
 ClauseThing scenario corpus is the most likely source of the named scenarios that unblock Lines
 A–C. Do **not** start any v7.8 line speculatively or to escape a hygiene/closure loop; start a
 line only when its named scenario exists and its gate passes. The AccumulatorOp v2 production plan

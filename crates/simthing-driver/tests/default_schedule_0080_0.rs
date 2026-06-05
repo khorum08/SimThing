@@ -95,8 +95,8 @@ fn default_schedule_0080_0_threshold_false_emits_no_boundary_request() {
 fn default_schedule_0080_0_threshold_true_emits_boundary_request() {
     let admitted = report();
     assert!(admitted.boundary_request_count >= 1);
-    assert!(admitted.step_reports[0].sead_threshold_accepted);
-    assert!(admitted.step_reports[0].sead_emit_event_emitted);
+    assert!(admitted.step_reports[0].field_policy_threshold_accepted);
+    assert!(admitted.step_reports[0].field_policy_emit_event_emitted);
     assert!(admitted.step_reports[0].boundary_request_materialized);
 }
 

@@ -26,7 +26,7 @@ const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
     "supply",
     "personality",
     "drone",
-    "SEAD",
+    "FIELD_POLICY",
     "simthing-sim",
     "ResourceEconomySpec",
     "SimSession",
@@ -69,7 +69,7 @@ pub struct KernelDescriptorSpec {
         Option<crate::compile::jit_exact_sqrt_artifact_admission::ExactPreSqrtInputContract>,
     /// Exact mag2 construction source contract (SQRT-MAG2-0).
     pub mag2_source_contract: Option<Mag2SourceContract>,
-    /// Score output authority contract for observer overlay kernels (SEAD-OBS-1).
+    /// Score output authority contract for observer overlay kernels (FIELD_POLICY-OBS-1).
     pub score_authority_contract:
         Option<crate::compile::jit_exact_sqrt_artifact_admission::ScoreAuthorityContract>,
 }
@@ -350,17 +350,17 @@ pub fn landed_jit_kernel_descriptors() -> Vec<KernelDescriptorSpec> {
         crate::compile::jit_exact_sqrt_artifact_admission::mag_f_from_exact_mag2_kernel_descriptor(),
         crate::compile::jit_exact_sqrt_artifact_admission::mag_f_from_dxdy_probe_kernel_descriptor(),
         crate::compile::jit_exact_sqrt_artifact_admission::mag2_fixed_exact_kernel_descriptor(),
-        crate::compile::jit_exact_sqrt_artifact_admission::sead_obs0_overlay_score_kernel_descriptor(),
-        crate::compile::jit_exact_sqrt_artifact_admission::sead_obs2_multilayer_overlay_score_kernel_descriptor(),
-        crate::compile::jit_exact_sqrt_artifact_admission::sead_obs3_multilayer_fixed_score_kernel_descriptor(),
-        crate::compile::jit_exact_sqrt_artifact_admission::sead_obs4_threshold_event_kernel_descriptor(),
-        crate::compile::jit_exact_sqrt_artifact_admission::sead_event0_compaction_kernel_descriptor(),
-        crate::compile::jit_exact_sqrt_artifact_admission::sead_pipe0_observer_event_pipeline_kernel_descriptor(),
-        crate::compile::jit_exact_sqrt_artifact_admission::sead_event1_code_bucketing_kernel_descriptor(),
-        crate::compile::jit_exact_sqrt_artifact_admission::sead_event2_bucket_reductions_kernel_descriptor(),
-        crate::compile::jit_exact_sqrt_artifact_admission::sead_act0_numeric_proposals_kernel_descriptor(),
-        crate::compile::jit_exact_sqrt_artifact_admission::sead_act1_phase_e_proposal_consumer_kernel_descriptor(),
-        crate::compile::jit_exact_sqrt_artifact_admission::sead_act2_proposal_admission_records_kernel_descriptor(),
-        crate::compile::jit_exact_sqrt_artifact_admission::sead_act3_economic_fixture_records_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::field_policy_obs0_overlay_score_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::field_policy_obs2_multilayer_overlay_score_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::field_policy_obs3_multilayer_fixed_score_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::field_policy_obs4_threshold_event_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::field_policy_event0_compaction_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::field_policy_pipe0_observer_event_pipeline_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::field_policy_event1_code_bucketing_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::field_policy_event2_bucket_reductions_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::field_policy_act0_numeric_proposals_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::field_policy_act1_phase_e_proposal_consumer_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::field_policy_act2_proposal_admission_records_kernel_descriptor(),
+        crate::compile::jit_exact_sqrt_artifact_admission::field_policy_act3_economic_fixture_records_kernel_descriptor(),
     ]
 }

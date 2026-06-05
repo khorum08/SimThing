@@ -1081,7 +1081,7 @@ Cursor must stop and report (not implement around) if any of these emerges:
    contiguity correctly; design review needed.
 4. **`atomic_add_single_writer_f32_at` produces racy writes** in the
    disbursement band. Indicates a planner consistency bug (two ops
-   targeting the same (band, slot, col)); planner correctness review
+   selection the same (band, slot, col)); planner correctness review
    needed.
 5. **E-7's integration ordering API is not landed** when E-11 PR opens.
    Block E-11 PR until prerequisite lands.

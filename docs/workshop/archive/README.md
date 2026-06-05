@@ -1,7 +1,7 @@
 # Workshop archive
 
 This directory holds **superseded PR handoffs**, historical workshop Q&A, accepted
-pre-implementation audits, and **archived mapping/SEAD sandbox source preserves** that
+pre-implementation audits, and **archived mapping/FIELD_POLICY sandbox source preserves** that
 are no longer active guidance.
 
 **Active read order for agents (read these first):**
@@ -17,7 +17,7 @@ Historical artifacts live under `docs/workshop/archive/` (and `docs/tests/archiv
 | Subdirectory | Contents |
 |---|---|
 | [`mapping/`](mapping/) | Pre-ADR mapping optimization sandbox preserves and candidate notes |
-| [`sead/`](sead/) | Pre-V7.6 SEAD sandbox preserves and prototype WGSL |
+| [`field_policy/`](field_policy/) | Pre-V7.6 FIELD_POLICY sandbox preserves and prototype WGSL |
 | [`tests/`](tests/) | Superseded Phase M test reports, old parking packets, and historical full logs (primary archive for recent Phase M EML-GADGET and first-slice evidence). |
 | [`reviews/`](reviews/) | Superseded review packets and parking packets. |
 

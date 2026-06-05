@@ -11,7 +11,7 @@
 - `docs/design_0_0_8_0_consumer_pulled_production_track.md` §12–§12.5 — ATLAS-BATCH-0 ladder, GEN closure, LOC gate.
 - `docs/scenarios/scenario_0080_2_dress_rehearsal_spec.md` — 20×20 / 13-system topology.
 - `crates/simthing-core/src/accumulator_op.rs` — Accumulator vocabulary for later rungs (not edited).
-- `docs/workshop/sead_self_ai_track.md` — SEAD charter (not edited).
+- `docs/workshop/field_policy_track.md` — FIELD_POLICY charter (not edited).
 - `docs/handoffs/dress_rehearsal_codex_handoff_2_atlas_batch_0_loc.md` — Opus LOC contract.
 - `crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_gen.rs` — consumed GEN descriptor.
 - `docs/tests/scenario_0080_2_atlas_batch_0_gen_report.md` — green GEN evidence.

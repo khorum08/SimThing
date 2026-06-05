@@ -30,7 +30,7 @@ real-time loop, or any player command loop — those remain CLOSED and a stop-an
 
 ## 1. Why headless demo/export may now be product-relevant
 
-Nested Starmap can now instantiate (`PRODUCTION-PATH-0080-1`), schedule SEAD-sourced movement
+Nested Starmap can now instantiate (`PRODUCTION-PATH-0080-1`), schedule FIELD_POLICY-sourced movement
 (`DEFAULT-SCHEDULE-0080-1`), observe/export results (`GAMEPLAY-0080-1`), and accept bounded command
 admission (`CONTROL-0080-1`). The remaining product need is a **stable, reusable, non-interactive headless
 demo surface** that exercises the completed path end-to-end without requiring a reader to assemble raw
@@ -65,18 +65,18 @@ The next handoff **may**: add a narrow `demo_0080_1` module; create a canonical 
 command batch; run the existing `control → schedule → observation/export` path
 (`admit/control_0080_1` → `run_default_schedule_0080_1` → `observe_gameplay_0080_1`); emit the existing
 deterministic text transcript/export; emit a compact demo report containing scenario id/name, starmap
-shape, atlas residency summary, faction-index ECON summary, owner-overlay/up-aggregation summary, SEAD
+shape, atlas residency summary, faction-index ECON summary, owner-overlay/up-aggregation summary, FIELD_POLICY
 movement trace, Terran/Pirate movement rows, command transcript rows, and replay checksum; optionally add
 a stable golden/sample transcript; preserve all control/gameplay/schedule/production/atlas/econ
 regressions; update docs/report.
 
 It **must not**: add a CLI binary (§3); add direct movement control; add external `BoundaryRequest`s;
-bypass SEAD; add command input beyond the canonical bounded demo batch; add UI; add a real-time loop; add
+bypass FIELD_POLICY; add command input beyond the canonical bounded demo batch; add UI; add a real-time loop; add
 a global default schedule; add semantic/raw WGSL; add a new shader/GPU kernel; add hard currency; add
 nested Resource Flow; implement ClauseThing.
 
 **Discipline.** The demo is pure Rust read/orchestration over existing seams; it touches no shader text and
-no GPU kernel (WGSL ban, invariants row 169/194) and adds no decision logic — SEAD remains the sole
+no GPU kernel (WGSL ban, invariants row 169/194) and adds no decision logic — FIELD_POLICY remains the sole
 mover-decision source.
 
 ---
@@ -96,7 +96,7 @@ mover-decision source.
 - `demo_0080_1_no_cli_binary_unless_authorized`
 - `demo_0080_1_no_direct_movement_command`
 - `demo_0080_1_no_external_boundary_request`
-- `demo_0080_1_no_sead_bypass`
+- `demo_0080_1_no_field_policy_bypass`
 - `demo_0080_1_no_player_command_loop`
 - `demo_0080_1_no_ui_framework`
 - `demo_0080_1_no_realtime_loop`
@@ -112,7 +112,7 @@ mover-decision source.
 
 ## 6. Stop conditions
 
-Stop if this gate would require: direct movement command; externally-scripted `BoundaryRequest`; SEAD
+Stop if this gate would require: direct movement command; externally-scripted `BoundaryRequest`; FIELD_POLICY
 bypass; CPU planner / urgency / commitment; player command loop; UI framework; real-time loop; global
 default schedule; semantic/raw WGSL; new shader/GPU kernel; hard currency; markets/trade/`ai_budget`;
 nested Resource Flow; unbounded factions; owner-entity as spatial parent; capture-as-reparenting;

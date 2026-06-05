@@ -33,7 +33,7 @@ cargo check --workspace
 |------------------------------------------------|-----------------|-------|
 | `phase_m_first_slice_summary_validity`         | **PASS** (11/11) | Core SummaryValidity + hygiene posture tests |
 | `phase_m_first_slice_scenario_spec`            | **PASS** (9/9)   | Prior scenario authoring work unaffected |
-| `phase_m_first_slice_product_commitment_fixture` | **PASS** (7/7) | SEAD commitment path green |
+| `phase_m_first_slice_product_commitment_fixture` | **PASS** (7/7) | FIELD_POLICY commitment path green |
 | `phase_m_first_slice_product_fixture`          | **PASS** (7/7)   | First-slice runtime fixture |
 | `phase_m_first_slice_runtime`                  | **PASS** (28/28) | Core first-slice runtime |
 | `region_field_spec_admission` (spec)           | **PASS** (11/11) | RegionField admission (including summary policy) |
@@ -69,4 +69,4 @@ Queue-write scale caveat on the 10×10 first-slice bridge remains unresolved. Pe
 
 ## Final Verdict
 
-**PASS** — Phase M SummaryValidity V1-R1 parking verification completed; runtime summary status remains driver-owned (`FirstSliceSummaryStatus`), designer-facing summary policy remains in spec admission, all targeted first-slice and admission suites are green, `cargo check --workspace` passes, and all V7.7 / Mapping ADR / SEAD guardrails remain fully intact.
+**PASS** — Phase M SummaryValidity V1-R1 parking verification completed; runtime summary status remains driver-owned (`FirstSliceSummaryStatus`), designer-facing summary policy remains in spec admission, all targeted first-slice and admission suites are green, `cargo check --workspace` passes, and all V7.7 / Mapping ADR / FIELD_POLICY guardrails remain fully intact.

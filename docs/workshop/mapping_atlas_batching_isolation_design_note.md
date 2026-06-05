@@ -272,7 +272,7 @@ Meaning remains in RON/spec/admission. The GPU sees generic fields, masks, coeff
 - New WGSL can be admissible when it is generic, bounded, opt-in, and semantic-free.
 - Tile-local masking is not faction/map/AI logic; it is generic boundary math.
 
-**SEAD**
+**FIELD_POLICY**
 
 - AI/strategy can rely on field summaries and algebraic gating without CPU-side planning.
 

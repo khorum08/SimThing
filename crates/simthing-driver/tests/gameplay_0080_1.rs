@@ -141,9 +141,9 @@ fn gameplay_0080_1_includes_owner_overlay_and_up_aggregation_summary() {
 }
 
 #[test]
-fn gameplay_0080_1_includes_sead_movement_trace() {
+fn gameplay_0080_1_includes_field_policy_movement_trace() {
     let admitted = report();
-    assert!(admitted.summary.sead_movement_trace_included);
+    assert!(admitted.summary.field_policy_movement_trace_included);
     assert!(admitted
         .transcript
         .rows

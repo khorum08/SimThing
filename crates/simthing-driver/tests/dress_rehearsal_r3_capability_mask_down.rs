@@ -221,7 +221,7 @@ fn r3_tree_and_occupant_positions_unchanged() {
         admitted.occupant_positions_before,
         admitted.occupant_positions_after
     );
-    assert!(!admitted.sead_action_emitted);
+    assert!(!admitted.field_policy_action_emitted);
     assert!(!admitted.gradientxy_consumed);
 }
 

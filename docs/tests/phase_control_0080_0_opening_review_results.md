@@ -11,7 +11,7 @@ command vocabulary maps **1:1 onto existing `DefaultSchedule0080Input` bounded f
 `disruption`/`supply`/`local_security`, `step_count`, patrol disruption reduction) plus run/export. So a
 bounded command gate **admits scenario parameters**, then the **existing** GPU-resident
 `Threshold`+`EmitEvent`→`BoundaryRequest` path produces movement — commands never move a mover, never
-emit a `BoundaryRequest`, and never bypass SEAD. This keeps the decision posture intact and adds no
+emit a `BoundaryRequest`, and never bypass FIELD_POLICY. This keeps the decision posture intact and adds no
 planner/urgency/commitment.
 
 This is a genuine, sharply-bounded product consumer (designer-facing scenario setup → observe), at the

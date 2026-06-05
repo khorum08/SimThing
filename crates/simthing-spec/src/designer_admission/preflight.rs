@@ -35,21 +35,21 @@ pub enum DesignerAdmissionRequest {
     ClauseScriptParser,
     ClauseThingRuntime,
     FrontierV2Five,
-    SeadLadderReopen {
-        stage: SeadLadderStage,
+    FieldPolicyLadderReopen {
+        stage: FieldPolicyLadderStage,
     },
 }
 
-/// SEAD ladder stage identifiers guarded against unauthorized reopen.
+/// FIELD_POLICY ladder stage identifiers guarded against unauthorized reopen.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SeadLadderStage {
+pub enum FieldPolicyLadderStage {
     Act5,
     Event3,
     Obs5,
     Pipe1,
 }
 
-impl SeadLadderStage {
+impl FieldPolicyLadderStage {
     pub const fn label(self) -> &'static str {
         match self {
             Self::Act5 => "ACT-5",
@@ -160,9 +160,9 @@ pub fn evaluate_designer_admission_request(
         DesignerAdmissionRequest::FrontierV2Five => {
             reject(DesignerAdmissionRejectionKind::FrontierV2FiveRejected)
         }
-        DesignerAdmissionRequest::SeadLadderReopen { stage } => {
+        DesignerAdmissionRequest::FieldPolicyLadderReopen { stage } => {
             let mut diagnostic = designer_admission_diagnostic_for_rejection(
-                DesignerAdmissionRejectionKind::SeadLadderReopenRejected,
+                DesignerAdmissionRejectionKind::FieldPolicyLadderReopenRejected,
             );
             diagnostic.message = format!(
                 "{} ladder reopen request is rejected at designer admission",

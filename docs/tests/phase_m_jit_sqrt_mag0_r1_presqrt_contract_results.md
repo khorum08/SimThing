@@ -28,7 +28,7 @@
 2. **40 mag2 mismatch rows:** Recorded in [`phase_m_jit_sqrt_mag0_f_exact_magnitude_results.md`](phase_m_jit_sqrt_mag0_f_exact_magnitude_results.md) dense corpus — 784 total, 744 mag2-matched, 40 GPU/CPU `dx²+dy²` bit divergences; `max_ulp=0` only on mag2-matched rows.
 3. **Descriptor surface before R1:** Did not distinguish “exact sqrt over exact mag2” from “raw dx/dy magnitude”.
 4. **Narrowing without breaking F sqrt:** Yes — `m_jit_sqrt_f_exact` unchanged; magnitude split into exact-from-mag2 vs dx/dy probe.
-5. **Exact mag2 construction required for full dx,dy → mag:** Pinned exact-authoritative `mag2` bits (precomputed column, integer/fixed-point construction, constrained SEAD ranges, or future artifact-backed mag2 kernel); squared-magnitude comparisons where sqrt is unnecessary.
+5. **Exact mag2 construction required for full dx,dy → mag:** Pinned exact-authoritative `mag2` bits (precomputed column, integer/fixed-point construction, constrained FIELD_POLICY ranges, or future artifact-backed mag2 kernel); squared-magnitude comparisons where sqrt is unnecessary.
 
 ## SQRT-MAG-0 exactness gap
 
@@ -80,7 +80,7 @@ Not fully exact-authoritative until mag2 construction is pinned/proven.
 1. Exact-authoritative precomputed `mag2` column
 2. Squared-magnitude comparisons where sqrt is not needed
 3. Fixed-point/integer vector components for exact `dx²+dy²`
-4. Constrained SEAD gradient ranges where `dx²+dy²` is proven stable
+4. Constrained FIELD_POLICY gradient ranges where `dx²+dy²` is proven stable
 5. Future artifact-backed exact `mag2` kernel
 
 ## Tests/scans run
@@ -119,4 +119,4 @@ No scratch/tmp artifacts deleted under `docs/tests/` — only retained proof log
 
 ## Final verdict
 
-**PASS** — SQRT-MAG-0 R1 clarified and enforced the pre-sqrt exactness contract: artifact-backed Candidate F sqrt remains exact-authoritative, but Euclidean magnitude is exact-authoritative only when its pre-sqrt mag2 input is exact-authoritative/pinned; raw dx/dy f32 multiply-add magnitude remains a test-only/probe path until exact mag2 construction is proven; native/raw sqrt and diagnostic mag2 remain blocked as exact inputs; no scheduler/cache/default wiring/semantic WGSL/economy bridge was added; active docs and production plan were updated; tests and cargo check are green; V7.7 / Mapping ADR / SEAD posture remains intact.
+**PASS** — SQRT-MAG-0 R1 clarified and enforced the pre-sqrt exactness contract: artifact-backed Candidate F sqrt remains exact-authoritative, but Euclidean magnitude is exact-authoritative only when its pre-sqrt mag2 input is exact-authoritative/pinned; raw dx/dy f32 multiply-add magnitude remains a test-only/probe path until exact mag2 construction is proven; native/raw sqrt and diagnostic mag2 remain blocked as exact inputs; no scheduler/cache/default wiring/semantic WGSL/economy bridge was added; active docs and production plan were updated; tests and cargo check are green; V7.7 / Mapping ADR / FIELD_POLICY posture remains intact.

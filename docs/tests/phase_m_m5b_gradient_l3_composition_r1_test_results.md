@@ -87,14 +87,14 @@ cargo check --workspace
 ```
 **Result:** **PASS**
 
-`phase_m_economy_sead_product_fixture` not run — R1 change does not touch commitment or product-fixture support.
+`phase_m_economy_field_policy_product_fixture` not run — R1 change does not touch commitment or product-fixture support.
 
 ---
 
 ## Posture Attestation
 
-No semantic WGSL, no default mapping wiring, no simthing-sim changes, no source-mask/source-identity work, no atlas/M-4A, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+No semantic WGSL, no default mapping wiring, no simthing-sim changes, no source-mask/source-identity work, no atlas/M-4A, no L1 coupling, no sqrt/new opcode, no production economy→mapping bridge; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.
 
 ---
 
-**PASS** — Phase M-5B-gradient R1 landed; the fixture evidence now ties scalar + GradientX + GradientY field outputs through parent reductions into the L3 EMA + WeightedAccumulator composite in one integrated test, with finite deterministic oracle parity, no new substrate, no semantic WGSL, no dual-output GradientXY, no sqrt/new opcode, no L1 coupling, no source-mask/source-identity, no atlas/M-4A, no default mapping wiring, no simthing-sim changes, no production economy→mapping bridge, and V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+**PASS** — Phase M-5B-gradient R1 landed; the fixture evidence now ties scalar + GradientX + GradientY field outputs through parent reductions into the L3 EMA + WeightedAccumulator composite in one integrated test, with finite deterministic oracle parity, no new substrate, no semantic WGSL, no dual-output GradientXY, no sqrt/new opcode, no L1 coupling, no source-mask/source-identity, no atlas/M-4A, no default mapping wiring, no simthing-sim changes, no production economy→mapping bridge, and V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.

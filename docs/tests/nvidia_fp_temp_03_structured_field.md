@@ -1083,7 +1083,7 @@ cannot find the file specified. (os error 2)
 error: could not compile `simthing-driver` (test "phase_m_jit_desc0_kernel_descriptor") due to 20 previous errors
 warning: build failed, waiting for other jobs to finish...
 warning: field `flags` is never read
-  --> crates\simthing-driver\tests\phase_m_sead_obs0_mobile_overlay_score.rs:73:5
+  --> crates\simthing-driver\tests\phase_m_field_policy_obs0_mobile_overlay_score.rs:73:5
    |
 68 | struct ObsOutput {
    |        --------- field in this struct
@@ -1096,7 +1096,7 @@ during dead code analysis
    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: fields `dispatches` and `includes_readback` are never read
-   --> crates\simthing-driver\tests\phase_m_sead_obs0_mobile_overlay_score.rs:353:5
+   --> crates\simthing-driver\tests\phase_m_field_policy_obs0_mobile_overlay_score.rs:353:5
     |
 350 | struct WarmRunOutcome {
     |        -------------- fields in this struct
@@ -1548,16 +1548,16 @@ warning: constant `FRONTIER_V1_GPU_RF_FIXTURE_ID` is never used
 14 | pub const FRONTIER_V1_GPU_RF_FIXTURE_ID: &str = "frontier_v1_3_gpu_resource_flow_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: constant `FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID` is never used
+warning: constant `FRONTIER_V1_FIELD_POLICY_ROUTE_FIXTURE_ID` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:15:11
    |
-15 | pub const FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_sead_route_replay_v1";
+15 | pub const FRONTIER_V1_FIELD_POLICY_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_field_policy_route_replay_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: constant `FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID` is never used
+warning: constant `FRONTIER_V1_LIVE_FIELD_AGENT_FIXTURE_ID` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:16:11
    |
-16 | pub const FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID: &str = "frontier_v1_5_live_self_ai_route_v1";
+16 | pub const FRONTIER_V1_LIVE_FIELD_AGENT_FIXTURE_ID: &str = "frontier_v1_5_live_field_agent_route_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: constant `FRONTIER_V2_PROFILE_NAME` is never used
@@ -1596,10 +1596,10 @@ warning: constant `FRONTIER_V1_MOVEMENT_ROUTE_CODE` is never used
 31 | pub const FRONTIER_V1_MOVEMENT_ROUTE_CODE: u32 = 3;
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: enum `SeadPipelineVersion` is never used
+warning: enum `FieldPolicyPipelineVersion` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:34:10
    |
-34 | pub enum SeadPipelineVersion {
+34 | pub enum FieldPolicyPipelineVersion {
    |          ^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierTheaterSpec` is never constructed
@@ -1620,10 +1620,10 @@ warning: struct `FrontierFlatStarResourceFlowSpec` is never constructed
 60 | pub struct FrontierFlatStarResourceFlowSpec {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierSeadSelfAiSpec` is never constructed
+warning: struct `FrontierFieldPolicyFieldAgentSpec` is never constructed
   --> crates\simthing-driver\tests\support\frontier_v1.rs:73:12
    |
-73 | pub struct FrontierSeadSelfAiSpec {
+73 | pub struct FrontierFieldPolicyFieldAgentSpec {
    |            ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierEconomyFieldCouplingSpec` is never constructed
@@ -1698,36 +1698,36 @@ warning: enum `FrontierV2Status` is never used
 183 | pub enum FrontierV2Status {
     |          ^^^^^^^^^^^^^^^^
 
-warning: enum `FrontierV1LiveSelfAiFieldStatus` is never used
+warning: enum `FrontierV1LiveFieldAgentFieldStatus` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:189:10
     |
-189 | pub enum FrontierV1LiveSelfAiFieldStatus {
+189 | pub enum FrontierV1LiveFieldAgentFieldStatus {
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiFeedbackCandidate` is never constructed
+warning: struct `FrontierV1LiveFieldAgentFeedbackCandidate` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:201:12
     |
-201 | pub struct FrontierV1LiveSelfAiFeedbackCandidate {
+201 | pub struct FrontierV1LiveFieldAgentFeedbackCandidate {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiSummary` is never constructed
+warning: struct `FrontierV1LiveFieldAgentSummary` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:215:12
     |
-215 | pub struct FrontierV1LiveSelfAiSummary {
+215 | pub struct FrontierV1LiveFieldAgentSummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: method `combined_hex` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:233:12
     |
-232 | impl FrontierV1LiveSelfAiSummary {
+232 | impl FrontierV1LiveFieldAgentSummary {
     | -------------------------------- method in this implementation
 233 |     pub fn combined_hex(&self) -> String {
     |            ^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiOracleOutput` is never constructed
+warning: struct `FrontierV1LiveFieldAgentOracleOutput` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:245:12
     |
-245 | pub struct FrontierV1LiveSelfAiOracleOutput {
+245 | pub struct FrontierV1LiveFieldAgentOracleOutput {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierV1GpuReplaySummary` is never constructed
@@ -1750,10 +1750,10 @@ warning: struct `FrontierV1RouteReplaySummary` is never constructed
 294 | pub struct FrontierV1RouteReplaySummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1SeadReplaySummary` is never constructed
+warning: struct `FrontierV1FieldPolicyReplaySummary` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:306:12
     |
-306 | pub struct FrontierV1SeadReplaySummary {
+306 | pub struct FrontierV1FieldPolicyReplaySummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `GpuResourceFlowAllocationSummary` is never constructed
@@ -1833,10 +1833,10 @@ warning: function `build_route_replay_summary` is never used
 490 | pub fn build_route_replay_summary(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `build_sead_replay_summary` is never used
+warning: function `build_field_policy_replay_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:518:8
     |
-518 | pub fn build_sead_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1SeadReplaySummary {
+518 | pub fn build_field_policy_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1FieldPolicyReplaySummary {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `hash_route_replay_detail` is never used
@@ -1845,22 +1845,22 @@ warning: function `hash_route_replay_detail` is never used
 527 | pub fn hash_route_replay_detail(summary: FrontierV1RouteReplaySummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_gpu_execution` is never used
+warning: function `hash_live_field_agent_gpu_execution` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:540:8
     |
-540 | pub fn hash_live_self_ai_gpu_execution(
+540 | pub fn hash_live_field_agent_gpu_execution(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_feedback_candidate` is never used
+warning: function `hash_live_field_agent_feedback_candidate` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:558:8
     |
-558 | pub fn hash_live_self_ai_feedback_candidate(c: FrontierV1LiveSelfAiFeedbackCandidate) -> u64 {
+558 | pub fn hash_live_field_agent_feedback_candidate(c: FrontierV1LiveFieldAgentFeedbackCandidate) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_summary` is never used
+warning: function `hash_live_field_agent_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:573:8
     |
-573 | pub fn hash_live_self_ai_summary(summary: FrontierV1LiveSelfAiSummary) -> u64 {
+573 | pub fn hash_live_field_agent_summary(summary: FrontierV1LiveFieldAgentSummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `build_feedback_candidate` is never used
@@ -1869,16 +1869,16 @@ warning: function `build_feedback_candidate` is never used
 597 | pub fn build_feedback_candidate(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `cpu_live_self_ai_oracle` is never used
+warning: function `cpu_live_field_agent_oracle` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:621:8
     |
-621 | pub fn cpu_live_self_ai_oracle(
+621 | pub fn cpu_live_field_agent_oracle(
     |        ^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_sead_replay_summary` is never used
+warning: function `hash_field_policy_replay_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:663:8
     |
-663 | pub fn hash_sead_replay_summary(summary: FrontierV1SeadReplaySummary) -> u64 {
+663 | pub fn hash_field_policy_replay_summary(summary: FrontierV1FieldPolicyReplaySummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `build_gpu_replay_summary` is never used
@@ -1965,10 +1965,10 @@ warning: function `validate_flat_star` is never used
 1028 | fn validate_flat_star(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
      |    ^^^^^^^^^^^^^^^^^^
 
-warning: function `validate_sead_routing` is never used
+warning: function `validate_field_policy_routing` is never used
     --> crates\simthing-driver\tests\support\frontier_v1.rs:1078:4
      |
-1078 | fn validate_sead_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
+1078 | fn validate_field_policy_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
      |    ^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `validate_coupling` is never used
@@ -2019,10 +2019,10 @@ warning: function `fnv_mix` is never used
 1195 | fn fnv_mix(v: u64) -> u64 {
      |    ^^^^^^^
 
-warning: function `live_self_ai_field_status_code` is never used
+warning: function `live_field_agent_field_status_code` is never used
     --> crates\simthing-driver\tests\support\frontier_v1.rs:1199:4
      |
-1199 | fn live_self_ai_field_status_code(s: FrontierV1LiveSelfAiFieldStatus) -> u32 {
+1199 | fn live_field_agent_field_status_code(s: FrontierV1LiveFieldAgentFieldStatus) -> u32 {
      |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FirstSliceScenarioFixtureSession` is never constructed
@@ -2094,7 +2094,7 @@ warning: function `standard_flat_star_inputs` is never used
     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused variable: `prop_words`
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1715:9
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1715:9
      |
 1715 |     let prop_words = (proposal_capacity.max(1) * PROP_STRIDE) as usize;
      |         ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_prop_words`
@@ -2445,19 +2445,19 @@ warning: function `hash_boundary_request_shadow` is never used
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: static `GPU_MUTEX` is never used
-  --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:14:12
+  --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:14:12
    |
 14 | pub static GPU_MUTEX: Mutex<()> = Mutex::new(());
    |            ^^^^^^^^^
 
 warning: function `with_gpu` is never used
-  --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:21:8
+  --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:21:8
    |
 21 | pub fn with_gpu<F: FnOnce(&GpuContext)>(f: F) {
    |        ^^^^^^^^
 
 warning: constant `PIPE0_ORDERING_CLASS` is never used
-  --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:41:11
+  --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:41:11
    |
 41 | pub const PIPE0_ORDERING_CLASS: &str = "UnspecifiedAtomicOrder";
    |           ^^^^^^^^^^^^^^^^^^^^
@@ -2475,13 +2475,13 @@ warning: function `apply_combined_feedback_to_config` is never used
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: constant `FORBIDDEN_SEMANTIC_TERMS` is never used
-  --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:43:7
+  --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:43:7
    |
 43 | const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: constant `FORBIDDEN_EXACT_TERMS` is never used
-  --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:49:7
+  --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:49:7
    |
 49 | const FORBIDDEN_EXACT_TERMS: &[&str] = &["f64", "F64RoundDown", "SHADER_F64", "sqrt_cr_c"];
    |       ^^^^^^^^^^^^^^^^^^^^^
@@ -2507,7 +2507,7 @@ warning: function `hash_combined_feedback_delta` is never used
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: fields `event_rows`, `elapsed`, and `dispatch_count` are never read
-  --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:93:5
+  --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:93:5
    |
 92 | pub struct Pipe0Outcome {
    |            ------------ fields in this struct
@@ -2520,7 +2520,7 @@ warning: fields `event_rows`, `elapsed`, and `dispatch_count` are never read
    |     ^^^^^^^^^^^^^^
 
 warning: method `summary` is never used
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:761:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:761:12
     |
 748 | impl Act2ChainOutcome {
     | --------------------- method in this implementation
@@ -2529,7 +2529,7 @@ warning: method `summary` is never used
     |            ^^^^^^^
 
 warning: method `proposal_code` is never used
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:767:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:767:12
     |
 766 | impl ProposalRecord {
     | ------------------- method in this implementation
@@ -2537,7 +2537,7 @@ warning: method `proposal_code` is never used
     |            ^^^^^^^^^^^^^
 
 warning: method `accepted_count` is never used
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:773:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:773:12
     |
 772 | impl ProposalSummary {
     | -------------------- method in this implementation
@@ -2545,7 +2545,7 @@ warning: method `accepted_count` is never used
     |            ^^^^^^^^^^^^^^
 
 warning: method `admitted` is never used
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:787:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:787:12
     |
 778 | impl AdmissionRecord {
     | -------------------- method in this implementation
@@ -2554,25 +2554,25 @@ warning: method `admitted` is never used
     |            ^^^^^^^^
 
 warning: constant `ACT2_ORDERING_CLASS` is never used
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:813:11
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:813:11
     |
 813 | pub const ACT2_ORDERING_CLASS: &str = "OrderInvariantExact";
     |           ^^^^^^^^^^^^^^^^^^^
 
 warning: struct `ProposalOutcome` is never constructed
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:871:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:871:12
     |
 871 | pub struct ProposalOutcome {
     |            ^^^^^^^^^^^^^^^
 
 warning: struct `ConsumerOutcome` is never constructed
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:897:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:897:12
     |
 897 | pub struct ConsumerOutcome {
     |            ^^^^^^^^^^^^^^^
 
 warning: fields `reductions` and `elapsed` are never read
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:905:5
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:905:5
     |
 904 | pub struct Act2ChainOutcome {
     |            ---------------- fields in this struct
@@ -2583,61 +2583,61 @@ warning: fields `reductions` and `elapsed` are never read
     |     ^^^^^^^
 
 warning: struct `AdmitOutcome` is never constructed
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:934:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:934:12
     |
 934 | pub struct AdmitOutcome {
     |            ^^^^^^^^^^^^
 
 warning: function `default_admission_rules` is never used
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:999:8
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:999:8
     |
 999 | pub fn default_admission_rules() -> AdmissionRulesGpu {
     |        ^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `act2_event_rec` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1179:8
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1179:8
      |
 1179 | pub fn act2_event_rec(index: u32, code: u32, state: u32, score: i32) -> Act2EventRecord {
      |        ^^^^^^^^^^^^^^
 
 warning: function `pack_proposals` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1472:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1472:4
      |
 1472 | fn pack_proposals(proposals: &[ProposalRecord]) -> Vec<u32> {
      |    ^^^^^^^^^^^^^^
 
 warning: function `pack_summary` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1512:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1512:4
      |
 1512 | fn pack_summary(summary: ProposalSummary) -> [u32; 7] {
      |    ^^^^^^^^^^^^
 
 warning: function `pack_reductions` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1584:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1584:4
      |
 1584 | fn pack_reductions(reds: &[ReductionResult; CODE_COUNT]) -> Vec<u32> {
      |    ^^^^^^^^^^^^^^^
 
 warning: function `decode_proposals` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1677:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1677:4
      |
 1677 | fn decode_proposals(words: &[u32], count: usize) -> Vec<ProposalRecord> {
      |    ^^^^^^^^^^^^^^^^
 
 warning: function `run_consume_gpu` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1692:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1692:4
      |
 1692 | fn run_consume_gpu(
      |    ^^^^^^^^^^^^^^^
 
 warning: function `run_admit_gpu` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1814:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1814:4
      |
 1814 | fn run_admit_gpu(
      |    ^^^^^^^^^^^^^
 
 warning: function `run_proposals_gpu` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1903:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1903:4
      |
 1903 | fn run_proposals_gpu(
      |    ^^^^^^^^^^^^^^^^^
@@ -2666,7 +2666,7 @@ warning: `simthing-driver` (test "mobility_gpu_kernel3_projection_fixture") gene
 --test "mobility_gpu_kernel3_projection_fixture" -p simthing-driver` to apply 2 suggestions)
 warning: `simthing-driver` (test "resource_flow_opt_in_telemetry") generated 150 warnings (run `cargo fix --test 
 "resource_flow_opt_in_telemetry" -p simthing-driver` to apply 2 suggestions)
-warning: `simthing-driver` (test "phase_m_sead_obs0_mobile_overlay_score") generated 2 warnings
+warning: `simthing-driver` (test "phase_m_field_policy_obs0_mobile_overlay_score") generated 2 warnings
 warning: `simthing-driver` (test "phase_e_a0_nested_resource_flow_static") generated 4 warnings (run `cargo fix --test 
 "phase_e_a0_nested_resource_flow_static" -p simthing-driver` to apply 4 suggestions)
 warning: `simthing-driver` (test "e11_burn_in_scenarios") generated 125 warnings (124 duplicates)
@@ -2865,7 +2865,7 @@ warning: `simthing-driver` (lib) generated 1 warning (run `cargo fix --lib -p si
 warning: `simthing-driver` (lib test) generated 1 warning (1 duplicate)
    Compiling simthing-driver v0.1.0 (C:\Users\mvorm\SimThing\crates\simthing-driver)
 warning: unused variable: `prop_words`
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1715:9
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1715:9
      |
 1715 |     let prop_words = (proposal_capacity.max(1) * PROP_STRIDE) as usize;
      |         ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_prop_words`
@@ -3078,16 +3078,16 @@ warning: constant `FRONTIER_V1_GPU_RF_FIXTURE_ID` is never used
 14 | pub const FRONTIER_V1_GPU_RF_FIXTURE_ID: &str = "frontier_v1_3_gpu_resource_flow_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: constant `FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID` is never used
+warning: constant `FRONTIER_V1_FIELD_POLICY_ROUTE_FIXTURE_ID` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:15:11
    |
-15 | pub const FRONTIER_V1_SEAD_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_sead_route_replay_v1";
+15 | pub const FRONTIER_V1_FIELD_POLICY_ROUTE_FIXTURE_ID: &str = "frontier_v1_4_field_policy_route_replay_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: constant `FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID` is never used
+warning: constant `FRONTIER_V1_LIVE_FIELD_AGENT_FIXTURE_ID` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:16:11
    |
-16 | pub const FRONTIER_V1_LIVE_SELF_AI_FIXTURE_ID: &str = "frontier_v1_5_live_self_ai_route_v1";
+16 | pub const FRONTIER_V1_LIVE_FIELD_AGENT_FIXTURE_ID: &str = "frontier_v1_5_live_field_agent_route_v1";
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: enum `FrontierV1FieldStatus` is never used
@@ -3102,22 +3102,22 @@ warning: enum `FrontierV2Status` is never used
 183 | pub enum FrontierV2Status {
     |          ^^^^^^^^^^^^^^^^
 
-warning: enum `FrontierV1LiveSelfAiFieldStatus` is never used
+warning: enum `FrontierV1LiveFieldAgentFieldStatus` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:189:10
     |
-189 | pub enum FrontierV1LiveSelfAiFieldStatus {
+189 | pub enum FrontierV1LiveFieldAgentFieldStatus {
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiSummary` is never constructed
+warning: struct `FrontierV1LiveFieldAgentSummary` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:215:12
     |
-215 | pub struct FrontierV1LiveSelfAiSummary {
+215 | pub struct FrontierV1LiveFieldAgentSummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: method `combined_hex` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:233:12
     |
-232 | impl FrontierV1LiveSelfAiSummary {
+232 | impl FrontierV1LiveFieldAgentSummary {
     | -------------------------------- method in this implementation
 233 |     pub fn combined_hex(&self) -> String {
     |            ^^^^^^^^^^^^
@@ -3142,10 +3142,10 @@ warning: struct `FrontierV1RouteReplaySummary` is never constructed
 294 | pub struct FrontierV1RouteReplaySummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1SeadReplaySummary` is never constructed
+warning: struct `FrontierV1FieldPolicyReplaySummary` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:306:12
     |
-306 | pub struct FrontierV1SeadReplaySummary {
+306 | pub struct FrontierV1FieldPolicyReplaySummary {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: methods `combined` and `hex` are never used
@@ -3177,10 +3177,10 @@ warning: function `build_route_replay_summary` is never used
 490 | pub fn build_route_replay_summary(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `build_sead_replay_summary` is never used
+warning: function `build_field_policy_replay_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:518:8
     |
-518 | pub fn build_sead_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1SeadReplaySummary {
+518 | pub fn build_field_policy_replay_summary(cpu_output: &FrontierV1FixtureOutput) -> FrontierV1FieldPolicyReplaySummary {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `hash_route_replay_detail` is never used
@@ -3189,22 +3189,22 @@ warning: function `hash_route_replay_detail` is never used
 527 | pub fn hash_route_replay_detail(summary: FrontierV1RouteReplaySummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_feedback_candidate` is never used
+warning: function `hash_live_field_agent_feedback_candidate` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:558:8
     |
-558 | pub fn hash_live_self_ai_feedback_candidate(c: FrontierV1LiveSelfAiFeedbackCandidate) -> u64 {
+558 | pub fn hash_live_field_agent_feedback_candidate(c: FrontierV1LiveFieldAgentFeedbackCandidate) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_summary` is never used
+warning: function `hash_live_field_agent_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:573:8
     |
-573 | pub fn hash_live_self_ai_summary(summary: FrontierV1LiveSelfAiSummary) -> u64 {
+573 | pub fn hash_live_field_agent_summary(summary: FrontierV1LiveFieldAgentSummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_sead_replay_summary` is never used
+warning: function `hash_field_policy_replay_summary` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:663:8
     |
-663 | pub fn hash_sead_replay_summary(summary: FrontierV1SeadReplaySummary) -> u64 {
+663 | pub fn hash_field_policy_replay_summary(summary: FrontierV1FieldPolicyReplaySummary) -> u64 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `build_gpu_replay_summary` is never used
@@ -3231,10 +3231,10 @@ warning: function `fnv_mix` is never used
 1195 | fn fnv_mix(v: u64) -> u64 {
      |    ^^^^^^^
 
-warning: function `live_self_ai_field_status_code` is never used
+warning: function `live_field_agent_field_status_code` is never used
     --> crates\simthing-driver\tests\support\frontier_v1.rs:1199:4
      |
-1199 | fn live_self_ai_field_status_code(s: FrontierV1LiveSelfAiFieldStatus) -> u32 {
+1199 | fn live_field_agent_field_status_code(s: FrontierV1LiveFieldAgentFieldStatus) -> u32 {
      |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `try_gpu` is never used
@@ -3256,37 +3256,37 @@ warning: function `standard_flat_star_inputs` is never used
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: static `GPU_MUTEX` is never used
-  --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:14:12
+  --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:14:12
    |
 14 | pub static GPU_MUTEX: Mutex<()> = Mutex::new(());
    |            ^^^^^^^^^
 
 warning: function `with_gpu` is never used
-  --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:21:8
+  --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:21:8
    |
 21 | pub fn with_gpu<F: FnOnce(&GpuContext)>(f: F) {
    |        ^^^^^^^^
 
 warning: constant `PIPE0_ORDERING_CLASS` is never used
-  --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:41:11
+  --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:41:11
    |
 41 | pub const PIPE0_ORDERING_CLASS: &str = "UnspecifiedAtomicOrder";
    |           ^^^^^^^^^^^^^^^^^^^^
 
 warning: constant `FORBIDDEN_SEMANTIC_TERMS` is never used
-  --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:43:7
+  --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:43:7
    |
 43 | const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: constant `FORBIDDEN_EXACT_TERMS` is never used
-  --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:49:7
+  --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:49:7
    |
 49 | const FORBIDDEN_EXACT_TERMS: &[&str] = &["f64", "F64RoundDown", "SHADER_F64", "sqrt_cr_c"];
    |       ^^^^^^^^^^^^^^^^^^^^^
 
 warning: fields `event_rows`, `elapsed`, and `dispatch_count` are never read
-  --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:93:5
+  --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:93:5
    |
 92 | pub struct Pipe0Outcome {
    |            ------------ fields in this struct
@@ -3299,7 +3299,7 @@ warning: fields `event_rows`, `elapsed`, and `dispatch_count` are never read
    |     ^^^^^^^^^^^^^^
 
 warning: method `summary` is never used
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:761:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:761:12
     |
 748 | impl Act2ChainOutcome {
     | --------------------- method in this implementation
@@ -3308,7 +3308,7 @@ warning: method `summary` is never used
     |            ^^^^^^^
 
 warning: method `proposal_code` is never used
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:767:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:767:12
     |
 766 | impl ProposalRecord {
     | ------------------- method in this implementation
@@ -3316,7 +3316,7 @@ warning: method `proposal_code` is never used
     |            ^^^^^^^^^^^^^
 
 warning: method `accepted_count` is never used
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:773:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:773:12
     |
 772 | impl ProposalSummary {
     | -------------------- method in this implementation
@@ -3324,7 +3324,7 @@ warning: method `accepted_count` is never used
     |            ^^^^^^^^^^^^^^
 
 warning: method `admitted` is never used
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:787:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:787:12
     |
 778 | impl AdmissionRecord {
     | -------------------- method in this implementation
@@ -3333,25 +3333,25 @@ warning: method `admitted` is never used
     |            ^^^^^^^^
 
 warning: constant `ACT2_ORDERING_CLASS` is never used
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:813:11
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:813:11
     |
 813 | pub const ACT2_ORDERING_CLASS: &str = "OrderInvariantExact";
     |           ^^^^^^^^^^^^^^^^^^^
 
 warning: struct `ProposalOutcome` is never constructed
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:871:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:871:12
     |
 871 | pub struct ProposalOutcome {
     |            ^^^^^^^^^^^^^^^
 
 warning: struct `ConsumerOutcome` is never constructed
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:897:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:897:12
     |
 897 | pub struct ConsumerOutcome {
     |            ^^^^^^^^^^^^^^^
 
 warning: fields `reductions` and `elapsed` are never read
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:905:5
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:905:5
     |
 904 | pub struct Act2ChainOutcome {
     |            ---------------- fields in this struct
@@ -3362,61 +3362,61 @@ warning: fields `reductions` and `elapsed` are never read
     |     ^^^^^^^
 
 warning: struct `AdmitOutcome` is never constructed
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:934:12
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:934:12
     |
 934 | pub struct AdmitOutcome {
     |            ^^^^^^^^^^^^
 
 warning: function `default_admission_rules` is never used
-   --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:999:8
+   --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:999:8
     |
 999 | pub fn default_admission_rules() -> AdmissionRulesGpu {
     |        ^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `act2_event_rec` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1179:8
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1179:8
      |
 1179 | pub fn act2_event_rec(index: u32, code: u32, state: u32, score: i32) -> Act2EventRecord {
      |        ^^^^^^^^^^^^^^
 
 warning: function `pack_proposals` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1472:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1472:4
      |
 1472 | fn pack_proposals(proposals: &[ProposalRecord]) -> Vec<u32> {
      |    ^^^^^^^^^^^^^^
 
 warning: function `pack_summary` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1512:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1512:4
      |
 1512 | fn pack_summary(summary: ProposalSummary) -> [u32; 7] {
      |    ^^^^^^^^^^^^
 
 warning: function `pack_reductions` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1584:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1584:4
      |
 1584 | fn pack_reductions(reds: &[ReductionResult; CODE_COUNT]) -> Vec<u32> {
      |    ^^^^^^^^^^^^^^^
 
 warning: function `decode_proposals` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1677:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1677:4
      |
 1677 | fn decode_proposals(words: &[u32], count: usize) -> Vec<ProposalRecord> {
      |    ^^^^^^^^^^^^^^^^
 
 warning: function `run_consume_gpu` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1692:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1692:4
      |
 1692 | fn run_consume_gpu(
      |    ^^^^^^^^^^^^^^^
 
 warning: function `run_admit_gpu` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1814:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1814:4
      |
 1814 | fn run_admit_gpu(
      |    ^^^^^^^^^^^^^
 
 warning: function `run_proposals_gpu` is never used
-    --> crates\simthing-driver\tests\support\sead_v1_live_pipeline.rs:1903:4
+    --> crates\simthing-driver\tests\support\field_policy_v1_live_pipeline.rs:1903:4
      |
 1903 | fn run_proposals_gpu(
      |    ^^^^^^^^^^^^^^^^^
@@ -4171,10 +4171,10 @@ warning: constant `FRONTIER_V1_MOVEMENT_ROUTE_CODE` is never used
 31 | pub const FRONTIER_V1_MOVEMENT_ROUTE_CODE: u32 = 3;
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: enum `SeadPipelineVersion` is never used
+warning: enum `FieldPolicyPipelineVersion` is never used
   --> crates\simthing-driver\tests\support\frontier_v1.rs:34:10
    |
-34 | pub enum SeadPipelineVersion {
+34 | pub enum FieldPolicyPipelineVersion {
    |          ^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierTheaterSpec` is never constructed
@@ -4195,10 +4195,10 @@ warning: struct `FrontierFlatStarResourceFlowSpec` is never constructed
 60 | pub struct FrontierFlatStarResourceFlowSpec {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierSeadSelfAiSpec` is never constructed
+warning: struct `FrontierFieldPolicyFieldAgentSpec` is never constructed
   --> crates\simthing-driver\tests\support\frontier_v1.rs:73:12
    |
-73 | pub struct FrontierSeadSelfAiSpec {
+73 | pub struct FrontierFieldPolicyFieldAgentSpec {
    |            ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `FrontierEconomyFieldCouplingSpec` is never constructed
@@ -4261,16 +4261,16 @@ warning: struct `FrontierV1FixtureFingerprint` is never constructed
 166 | pub struct FrontierV1FixtureFingerprint {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiFeedbackCandidate` is never constructed
+warning: struct `FrontierV1LiveFieldAgentFeedbackCandidate` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:201:12
     |
-201 | pub struct FrontierV1LiveSelfAiFeedbackCandidate {
+201 | pub struct FrontierV1LiveFieldAgentFeedbackCandidate {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: struct `FrontierV1LiveSelfAiOracleOutput` is never constructed
+warning: struct `FrontierV1LiveFieldAgentOracleOutput` is never constructed
    --> crates\simthing-driver\tests\support\frontier_v1.rs:245:12
     |
-245 | pub struct FrontierV1LiveSelfAiOracleOutput {
+245 | pub struct FrontierV1LiveFieldAgentOracleOutput {
     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: struct `GpuResourceFlowAllocationSummary` is never constructed
@@ -4321,10 +4321,10 @@ warning: function `frontier_v1_flat_star_weights` is never used
 477 | pub fn frontier_v1_flat_star_weights() -> (f32, f32) {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `hash_live_self_ai_gpu_execution` is never used
+warning: function `hash_live_field_agent_gpu_execution` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:540:8
     |
-540 | pub fn hash_live_self_ai_gpu_execution(
+540 | pub fn hash_live_field_agent_gpu_execution(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `build_feedback_candidate` is never used
@@ -4333,10 +4333,10 @@ warning: function `build_feedback_candidate` is never used
 597 | pub fn build_feedback_candidate(
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: function `cpu_live_self_ai_oracle` is never used
+warning: function `cpu_live_field_agent_oracle` is never used
    --> crates\simthing-driver\tests\support\frontier_v1.rs:621:8
     |
-621 | pub fn cpu_live_self_ai_oracle(
+621 | pub fn cpu_live_field_agent_oracle(
     |        ^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `gpu_resource_flow_from_cpu_oracle` is never used
@@ -4405,10 +4405,10 @@ warning: function `validate_flat_star` is never used
 1028 | fn validate_flat_star(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
      |    ^^^^^^^^^^^^^^^^^^
 
-warning: function `validate_sead_routing` is never used
+warning: function `validate_field_policy_routing` is never used
     --> crates\simthing-driver\tests\support\frontier_v1.rs:1078:4
      |
-1078 | fn validate_sead_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
+1078 | fn validate_field_policy_routing(skeleton: &FrontierV1ScenarioSkeleton, rejected: &mut Vec<&'static str>) -> bool {
      |    ^^^^^^^^^^^^^^^^^^^^^
 
 warning: function `validate_coupling` is never used
@@ -4527,13 +4527,13 @@ warning: constant `FRONTIER_V1_FIXTURE_ID` is never used
 warning: variant `Other` is never constructed
   --> crates\simthing-driver\tests\support\frontier_v1.rs:36:5
    |
-34 | pub enum SeadPipelineVersion {
+34 | pub enum FieldPolicyPipelineVersion {
    |          ------------------- variant in this enum
 35 |     ProposalPipelineV1,
 36 |     Other,
    |     ^^^^^
    |
-   = note: `SeadPipelineVersion` has derived impls for the traits `Debug` and `Clone`, but these are intentionally 
+   = note: `FieldPolicyPipelineVersion` has derived impls for the traits `Debug` and `Clone`, but these are intentionally 
 ignored during dead code analysis
 
 warning: variant `Mag2OnlyQ12` is never constructed
@@ -4613,7 +4613,7 @@ warning: unused imports: `MOBILITY_RUNTIME1B_NAMED_GATE` and `MobilityRuntime1bF
    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused import: `install_atomic`
-  --> crates\simthing-driver\tests\phase_m_frontier_v1_4_sead_route_replay.rs:22:59
+  --> crates\simthing-driver\tests\phase_m_frontier_v1_4_field_policy_route_replay.rs:22:59
    |
 22 |     build_execution_plan, compiled_stencil_to_gpu_config, install_atomic, resolve_node_columns,
    |                                                           ^^^^^^^^^^^^^^
@@ -4714,7 +4714,7 @@ warning: constant `MOBILITY_RUNTIME1B_DISPATCH_GATE` is never used
    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused variable: `prop_words`
-   --> crates\simthing-driver\tests\phase_m_sead_act1_phase_e_proposal_consumer.rs:778:9
+   --> crates\simthing-driver\tests\phase_m_field_policy_act1_phase_e_proposal_consumer.rs:778:9
     |
 778 |     let prop_words = (proposal_capacity.max(1) * PROP_STRIDE) as usize;
     |         ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_prop_words`
@@ -4722,7 +4722,7 @@ warning: unused variable: `prop_words`
     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
 
 warning: struct `ProposalOutcome` is never constructed
-   --> crates\simthing-driver\tests\phase_m_sead_act1_phase_e_proposal_consumer.rs:100:8
+   --> crates\simthing-driver\tests\phase_m_field_policy_act1_phase_e_proposal_consumer.rs:100:8
     |
 100 | struct ProposalOutcome {
     |        ^^^^^^^^^^^^^^^
@@ -4730,7 +4730,7 @@ warning: struct `ProposalOutcome` is never constructed
     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: fields `proposal_count`, `proposal_overflow`, and `elapsed` are never read
-   --> crates\simthing-driver\tests\phase_m_sead_act1_phase_e_proposal_consumer.rs:128:5
+   --> crates\simthing-driver\tests\phase_m_field_policy_act1_phase_e_proposal_consumer.rs:128:5
     |
 126 | struct ConsumerOutcome {
     |        --------------- fields in this struct
@@ -4743,7 +4743,7 @@ warning: fields `proposal_count`, `proposal_overflow`, and `elapsed` are never r
     |     ^^^^^^^
 
 warning: field `reductions` is never read
-   --> crates\simthing-driver\tests\phase_m_sead_act1_phase_e_proposal_consumer.rs:134:5
+   --> crates\simthing-driver\tests\phase_m_field_policy_act1_phase_e_proposal_consumer.rs:134:5
     |
 133 | struct FullChainOutcome {
     |        ---------------- field in this struct
@@ -4751,19 +4751,19 @@ warning: field `reductions` is never read
     |     ^^^^^^^^^^
 
 warning: function `pack_reductions` is never used
-   --> crates\simthing-driver\tests\phase_m_sead_act1_phase_e_proposal_consumer.rs:647:4
+   --> crates\simthing-driver\tests\phase_m_field_policy_act1_phase_e_proposal_consumer.rs:647:4
     |
 647 | fn pack_reductions(reds: &[ReductionResult; CODE_COUNT]) -> Vec<u32> {
     |    ^^^^^^^^^^^^^^^
 
 warning: function `decode_proposals` is never used
-   --> crates\simthing-driver\tests\phase_m_sead_act1_phase_e_proposal_consumer.rs:740:4
+   --> crates\simthing-driver\tests\phase_m_field_policy_act1_phase_e_proposal_consumer.rs:740:4
     |
 740 | fn decode_proposals(words: &[u32], count: usize) -> Vec<ProposalRecord> {
     |    ^^^^^^^^^^^^^^^^
 
 warning: function `run_proposals_gpu` is never used
-   --> crates\simthing-driver\tests\phase_m_sead_act1_phase_e_proposal_consumer.rs:877:4
+   --> crates\simthing-driver\tests\phase_m_field_policy_act1_phase_e_proposal_consumer.rs:877:4
     |
 877 | fn run_proposals_gpu(
     |    ^^^^^^^^^^^^^^^^^
@@ -5041,7 +5041,7 @@ warning: variants `ReplayAccepted` and `PendingGpu` are never constructed
 ignored during dead code analysis
 
 warning: variable does not need to be mutable
-   --> crates\simthing-driver\tests\phase_m_frontier_v1_4_sead_route_replay.rs:124:9
+   --> crates\simthing-driver\tests\phase_m_frontier_v1_4_field_policy_route_replay.rs:124:9
     |
 124 |     let mut session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
     |         ----^^^^^^^
@@ -5051,9 +5051,9 @@ warning: variable does not need to be mutable
     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
 
 warning: field `gpu_rf` is never read
-   --> crates\simthing-driver\tests\phase_m_frontier_v1_4_sead_route_replay.rs:230:5
+   --> crates\simthing-driver\tests\phase_m_frontier_v1_4_field_policy_route_replay.rs:230:5
     |
-227 | struct FrontierV1SeadRouteRun {
+227 | struct FrontierV1FieldPolicyRouteRun {
     |        ---------------------- field in this struct
 ...
 230 |     gpu_rf: GpuResourceFlowAllocationSummary,
@@ -5089,8 +5089,8 @@ warning: `simthing-driver` (test "phase_m_frontier_v1_0_scenario_skeleton") gene
 warning: `simthing-driver` (test "phase_m_frontier_v1_1_opt_in_fixture") generated 41 warnings (40 duplicates)
 warning: `simthing-driver` (test "e11b_nested_fission_gap") generated 7 warnings (5 duplicates) (run `cargo fix --test 
 "e11b_nested_fission_gap" -p simthing-driver` to apply 1 suggestion)
-warning: `simthing-driver` (test "phase_m_sead_act1_phase_e_proposal_consumer") generated 7 warnings (run `cargo fix 
---test "phase_m_sead_act1_phase_e_proposal_consumer" -p simthing-driver` to apply 1 suggestion)
+warning: `simthing-driver` (test "phase_m_field_policy_act1_phase_e_proposal_consumer") generated 7 warnings (run `cargo fix 
+--test "phase_m_field_policy_act1_phase_e_proposal_consumer" -p simthing-driver` to apply 1 suggestion)
 warning: `simthing-driver` (test "resource_flow_opt_in_burn_in") generated 148 warnings (145 duplicates)
 warning: `simthing-driver` (test "resource_flow_scenario_class_burn_in") generated 148 warnings (148 duplicates)
 warning: `simthing-driver` (test "mobility_runtime1b_dispatch_fixture") generated 4 warnings (2 duplicates) (run 
@@ -5103,11 +5103,11 @@ warning: `simthing-driver` (test "mobility_gpu_kernel9_frame_stream_fixture") ge
 warning: `simthing-driver` (test "phase_m_first_slice_runtime") generated 2 warnings (run `cargo fix --test 
 "phase_m_first_slice_runtime" -p simthing-driver` to apply 2 suggestions)
 warning: `simthing-driver` (test "phase_m_jit_sqrt_exact_candidate_battery") generated 2 warnings
-warning: `simthing-driver` (test "phase_m_economy_sead_product_fixture") generated 2 warnings
+warning: `simthing-driver` (test "phase_m_economy_field_policy_product_fixture") generated 2 warnings
 warning: `simthing-driver` (test "phase_m_frontier_v1_3_gpu_resource_flow") generated 37 warnings (33 duplicates) (run 
 `cargo fix --test "phase_m_frontier_v1_3_gpu_resource_flow" -p simthing-driver` to apply 3 suggestions)
-warning: `simthing-driver` (test "phase_m_frontier_v1_4_sead_route_replay") generated 31 warnings (27 duplicates) (run 
-`cargo fix --test "phase_m_frontier_v1_4_sead_route_replay" -p simthing-driver` to apply 2 suggestions)
+warning: `simthing-driver` (test "phase_m_frontier_v1_4_field_policy_route_replay") generated 31 warnings (27 duplicates) (run 
+`cargo fix --test "phase_m_frontier_v1_4_field_policy_route_replay" -p simthing-driver` to apply 2 suggestions)
 cargo : warning: unused import: `EmlConsumerKind`
 At C:\Users\mvorm\AppData\Local\Temp\ps-script-1c1b60c7-327a-485e-b102-4dea378bb67d.ps1:82 char:147
 + ... ER_MATCH=1; cargo test -p simthing-driver --test structured_field_reg ...

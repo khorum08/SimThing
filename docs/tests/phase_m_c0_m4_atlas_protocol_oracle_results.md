@@ -16,7 +16,7 @@
 | `docs/design_v7_8_production_track.md` | C-0 row Done/Pending Opus Review; cleanup section corrected |
 | `docs/design_v7_8.md` | C-0 implementation evidence note (Line C) |
 | `docs/workshop/mapping_current_guidance.md` | C-0 status row |
-| `docs/workshop/sead_self_ai_track.md` | C-0 compact note |
+| `docs/workshop/field_policy_track.md` | C-0 compact note |
 | `docs/worklog.md` | Append-only C-0 line |
 | `docs/tests/phase_m_c0_m4_atlas_protocol_oracle_results.md` | **New** — this report |
 

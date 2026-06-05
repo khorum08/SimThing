@@ -28,7 +28,7 @@
 ## 2. Canonical citations (§12.0 harness — cite on the implementation handoff)
 
 1. `docs/design_0_0_8_0.md` — §0 transient constitution: all conflict is resource flow (§0.3); recursive
-   allocation (§0.2); SEAD = GPU-resident threshold crossings, **no CPU planner**; §0.1 `kind` is the
+   allocation (§0.2); FIELD_POLICY = GPU-resident threshold crossings, **no CPU planner**; §0.1 `kind` is the
    install-time selector only (never a runtime branch); §0.5 harness discipline.
 2. `docs/invariants.md` — **Scenario Proof** (a rung is proved only through a real reduction over real
    SimThings, not math in a vacuum); AccumulatorOp v2; Resource Flow Substrate; parity classes
@@ -41,7 +41,7 @@
 5. `crates/simthing-core/src/accumulator_op.rs` — `SourceSpec`, `CombineFn` (incl. whitelisted
    `EvalEML`), `GateSpec`, `ScaleSpec`, `ConsumeMode` (`SubtractFromSource`/`SubtractFromAllInputs` are
    THE transfer mechanisms).
-6. `docs/workshop/sead_self_ai_track.md` — SEAD charter: field-as-policy, GPU-resident threshold crossings
+6. `docs/workshop/field_policy_track.md` — FIELD_POLICY charter: field-as-policy, GPU-resident threshold crossings
    → `BoundaryRequest`, no CPU planner.
 7. `crates/simthing-spec/src/spec/eml_gadget.rs` — `EmlGadgetInstanceSpec::BoundedFeedback`
    (`next = clamp(previous*decay + input*gain, min, max)`; strict `min < max`) and `Decay`; the Tier-2
@@ -71,7 +71,7 @@ occupants in galactic grid cells (fleets + systems)
   → inspectable heatmap artifact
 ```
 
-**R1 does NOT include SEAD movement.** A mover *consuming* this heatmap gradient to choose sit-vs-step is
+**R1 does NOT include FIELD_POLICY movement.** A mover *consuming* this heatmap gradient to choose sit-vs-step is
 **EC2 / R4**, explicitly out of scope (§11).
 
 ## 4. Authorized scope
@@ -282,10 +282,10 @@ GPU results are `GpuVerified` (f32 tolerance) — **no bit-exact f32 claim**.
 R1 **must not** implement (if any is required, **stop and return to Opus**):
 
 ```
-SEAD movement / action selection            GradientXY consumption by a mover (EC2 / R4)
+FIELD_POLICY movement / action selection            GradientXY consumption by a mover (EC2 / R4)
 exact sqrt Candidate F                       REENROLL
 M-4A sparse-residency scheduler              R2 recursive nested reduction / faction economy
-R3 capability-tree mask-down                 R4 SEAD field-consumption
+R3 capability-tree mask-down                 R4 FIELD_POLICY field-consumption
 R5 movement / ship fission                   R6 combat
 the disruption ≥ 100 blockade gate / production diversion (scenario §6 — R1/R2 coupling)
 hard currency / markets / trade / ai_budget  OWNER masked-reduction runtime beyond R1 cell-contribution routing
@@ -336,7 +336,7 @@ Update docs only after tests pass; do not change R2–R7 status; do not delete t
 
 Opening-spec authoring only — **no implementation, no code, no shader/math/tolerance change, no
 `simthing-sim` semantic expansion, no recursive-allocation change, no CPU planner, no default session
-wiring, no SEAD movement, no REENROLL, no R2/R3/R4/R5/R6 work.** Authorizes and bounds exactly one R1
+wiring, no FIELD_POLICY movement, no REENROLL, no R2/R3/R4/R5/R6 work.** Authorizes and bounds exactly one R1
 implementation rung (EC1: occupant-produced disruption heatmap over real gridcell SimThings, CPU-oracle
 verified, inspectable artifact), and names the next recipient (Cursor / Codex5.5max). All numeric constants
 are pinned for R1 and explicitly tunable in later rungs.

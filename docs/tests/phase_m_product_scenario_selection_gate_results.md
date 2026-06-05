@@ -52,9 +52,9 @@
 
 ### Candidate E — Return to non-mapping production-plan item
 
-**Example:** EML-GADGET runtime execution gate; economy+SEAD non-mapping fixture; Resource Flow pause.
+**Example:** EML-GADGET runtime execution gate; economy+FIELD_POLICY non-mapping fixture; Resource Flow pause.
 
-**Status:** **Not selected as primary.** Valid parallel track (product fixture chain acceptance recommends another tiny non-map-substrate + SEAD fixture; EML runtime execution needs separate Opus-gated handoff). However, mapping product need for gradient composition fixtures is concrete and lower risk than resuming substrate readiness loops for A/B/C.
+**Status:** **Not selected as primary.** Valid parallel track (product fixture chain acceptance recommends another tiny non-map-substrate + FIELD_POLICY fixture; EML runtime execution needs separate Opus-gated handoff). However, mapping product need for gradient composition fixtures is concrete and lower risk than resuming substrate readiness loops for A/B/C.
 
 ---
 
@@ -77,7 +77,7 @@
 | Least GPU correctness risk? | **D** — reuses M-5A parity suite; no new kernel paths |
 | Useful product fixture without new substrate? | **D** — Tier-1 RON + integrated CPU-oracle test |
 | Semantic leakage / default-on wiring risk? | **Highest for C**; **lowest for D** |
-| Already-authorized non-mapping item to resume instead? | EML runtime execution gate; economy+SEAD fixture V2 — valid but does not address mapping product ladder |
+| Already-authorized non-mapping item to resume instead? | EML runtime execution gate; economy+FIELD_POLICY fixture V2 — valid but does not address mapping product ladder |
 
 ---
 
@@ -147,7 +147,7 @@ Selected scenario uses `CallerManagedOneShotSeedThenZero` and existing diffusion
 **Parallel non-mapping track (not authorized by this gate):**
 
 - EML-GADGET runtime execution gate — remains separately Opus-gated
-- Economy + SEAD non-mapping product fixture V2 — authorized by product fixture chain acceptance but out of scope for this mapping scenario selection
+- Economy + FIELD_POLICY non-mapping product fixture V2 — authorized by product fixture chain acceptance but out of scope for this mapping scenario selection
 
 ---
 
@@ -189,8 +189,8 @@ find docs/tests -maxdepth 1 -type f \( -name "*.log" -o -name "*tmp*" -o -name "
 
 ## Posture Attestation
 
-No implementation in this pass. No semantic WGSL, no new WGSL, no atlas/M-4A, no active-mask admission, no source-mask/source-identity, no default mapping wiring, no production economy→mapping bridge, no `simthing-sim` changes, no L1 coupling, no sqrt/new opcode; M-5D strict-sink validation unchanged; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+No implementation in this pass. No semantic WGSL, no new WGSL, no atlas/M-4A, no active-mask admission, no source-mask/source-identity, no default mapping wiring, no production economy→mapping bridge, no `simthing-sim` changes, no L1 coupling, no sqrt/new opcode; M-5D strict-sink validation unchanged; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.
 
 ---
 
-**PASS** — Phase M Product Scenario Selection Gate completed; the next mapping work is justified by the named full-grid scarcity/opportunity/logistics composite scenario (Candidate D), routing to M-5E-gradient fixture on existing substrate; M-4A, M-6A, and source-mask remain deferred; active production guidance updated; no implementation performed; V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+**PASS** — Phase M Product Scenario Selection Gate completed; the next mapping work is justified by the named full-grid scarcity/opportunity/logistics composite scenario (Candidate D), routing to M-5E-gradient fixture on existing substrate; M-4A, M-6A, and source-mask remain deferred; active production guidance updated; no implementation performed; V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.

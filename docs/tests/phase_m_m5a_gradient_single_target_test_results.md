@@ -85,7 +85,7 @@ rg "source_mask|source identity|atlas|M-4A|sqrt|L1 cross-field|production econom
 | `cargo test -p simthing-spec --test region_field_spec_admission -- --nocapture` | **18/18 PASS** (7 new M-5A admission tests) |
 | `cargo test -p simthing-gpu --test structured_field_stencil -- --nocapture` | **25/25 PASS** (8 new M-5A parity tests) |
 | `cargo test -p simthing-driver --test phase_m_first_slice_runtime -- --nocapture` | **28/28 PASS** |
-| `cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture -- --nocapture` | **6/6 PASS** |
+| `cargo test -p simthing-driver --test phase_m_economy_field_policy_product_fixture -- --nocapture` | **6/6 PASS** |
 | `cargo check --workspace` | **PASS** |
 | `structured_field_stencil_ping_pong` | **N/A** — test file not present in repo; covered by `structured_field_stencil` ping-pong tests |
 | GPU bridge (`accumulator_op_session_gpu_bridge`) | **OMITTED** — EvalEML execution assumptions unchanged |
@@ -116,10 +116,10 @@ Checked `docs/tests` for `*.log`, `*tmp*`, `*scratch*`.
 - No atlas/M-4A landed.
 - No production economy→mapping bridge was added.
 - Dual-output `GradientXY` not implemented.
-- V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+- V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.
 
 ---
 
 ## Final Verdict
 
-**PASS** — Phase M-5A-gradient landed as a single-target generic Gradient axis extension over `StructuredFieldStencilOp`, with per-direction weights, CPU/GPU parity for GradientX and GradientY, preserved Normalized and SourceCappedNormalized behavior, active docs and production plan updated, no dual-output GradientXY, no semantic WGSL, no source-mask/source-identity work, no atlas/M-4A, no L1 field coupling, no sqrt/new opcode, no simthing-sim/default mapping changes, no production economy→mapping bridge, and V7.7 / Mapping ADR / SEAD GPU-resident default-off posture intact.
+**PASS** — Phase M-5A-gradient landed as a single-target generic Gradient axis extension over `StructuredFieldStencilOp`, with per-direction weights, CPU/GPU parity for GradientX and GradientY, preserved Normalized and SourceCappedNormalized behavior, active docs and production plan updated, no dual-output GradientXY, no semantic WGSL, no source-mask/source-identity work, no atlas/M-4A, no L1 field coupling, no sqrt/new opcode, no simthing-sim/default mapping changes, no production economy→mapping bridge, and V7.7 / Mapping ADR / FIELD_POLICY GPU-resident default-off posture intact.

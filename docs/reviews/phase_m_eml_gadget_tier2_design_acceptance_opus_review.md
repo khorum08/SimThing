@@ -1,7 +1,7 @@
 # Opus/Product Acceptance Review — Phase M EML-GADGET-2 Temporal-Memory Design
 
 **Date:** 2026-05-29
-**Authority:** Opus 4.8, mapping/SEAD design authority under human delegation. Guardrail authority
+**Authority:** Opus 4.8, mapping/FIELD_POLICY design authority under human delegation. Guardrail authority
 extends to the designer-facing studio/importer layer and the scenario definition stage — not the sim
 or boundary layer.
 **Decision type:** **Design-gate acceptance — not an implementation handoff.** No code changed; no
@@ -122,7 +122,7 @@ No new EML opcode; no transcendental temporal gadget.
 No WGSL / per-gadget GPU kernel; no change to the EvalEML interpreter.
 No Gadget/Personality/Memory semantics in simthing-sim.
 No CPU-side planner.
-No production economy→mapping bridge; economy→SEAD stays tests/support.
+No production economy→mapping bridge; economy→FIELD_POLICY stays tests/support.
 No default SimSession mapping wiring; MappingExecutionProfile default Disabled.
 No Resource Flow E-11 default-on.
 No atlas / M-4A.

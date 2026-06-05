@@ -1,6 +1,6 @@
 //! FrontierV1-1 — end-to-end opt-in FrontierV1 fixture wiring (Tier-2, test-only).
 //!
-//! Wires accepted first-slice Mapping, flat-star Resource Flow, and SEAD Self-AI Proposal
+//! Wires accepted first-slice Mapping, flat-star Resource Flow, and FIELD_POLICY Field agent Proposal
 //! Pipeline V1 substrates through a bounded CPU-oracle fixture. No default SimSession wiring,
 //! no new WGSL/descriptor, no simthing-sim semantic awareness.
 
@@ -63,8 +63,8 @@ fn frontier_v1_1_happy_path_opt_in_fixture_runs() {
         ResourceFlowExecutionProfile::FlatStarResourceFlow
     );
     assert_eq!(
-        skeleton.sead.pipeline_version,
-        SeadPipelineVersion::ProposalPipelineV1
+        skeleton.field_policy.pipeline_version,
+        FieldPolicyPipelineVersion::ProposalPipelineV1
     );
     assert_eq!(skeleton.theater.grid_width, 8);
     assert_eq!(skeleton.theater.grid_height, 8);
@@ -134,7 +134,7 @@ fn frontier_v1_1_resource_dispatch_routes_through_allocator() {
     assert_eq!(output.routes.resource_route_count, 1);
     assert!(!skeleton.resource_flow.parallel_fixture_economy);
     assert!(!skeleton.resource_flow.shared_pool_tick_writes);
-    assert!(!skeleton.sead.cpu_planner);
+    assert!(!skeleton.field_policy.cpu_planner);
     assert!(skeleton.resource_flow.resource_flow_allocator_only);
 
     println!(
@@ -197,13 +197,16 @@ fn frontier_v1_1_deferred_features_reject() {
         ),
         (
             "act5_ladder",
-            Box::new(|s| s.sead.pipeline_version = SeadPipelineVersion::Other),
+            Box::new(|s| s.field_policy.pipeline_version = FieldPolicyPipelineVersion::Other),
         ),
         (
             "parallel_fixture",
             Box::new(|s| s.resource_flow.parallel_fixture_economy = true),
         ),
-        ("cpu_planner", Box::new(|s| s.sead.cpu_planner = true)),
+        (
+            "cpu_planner",
+            Box::new(|s| s.field_policy.cpu_planner = true),
+        ),
     ];
     for (label, mutate) in deferred {
         let mut skeleton = frontier_v1_1_smoke_skeleton();
@@ -262,7 +265,7 @@ fn frontier_v1_1_no_simthing_sim_semantic_awareness() {
     ));
     for needle in [
         "FrontierV1",
-        "SEAD",
+        "FIELD_POLICY",
         "RegionCell",
         "ArenaRegistry",
         "proposal",

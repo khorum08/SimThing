@@ -134,7 +134,7 @@ Existing `simthing-sim` GpuVerified / ExactDeterministic / legacy oracle standar
 3. Battery 08 / `phase_m_boundary_cadence_doctrine`:
    stale/missing doc-hygiene dependency.
    Test includes missing `docs/workshop/workshop_current_state.md`.
-   Not NVIDIA FP drift; not SEAD runtime failure.
+   Not NVIDIA FP drift; not FIELD_POLICY runtime failure.
 
 (See `docs/nvidia_fp_determinism_test.md` §Open Opus triage items.)
 

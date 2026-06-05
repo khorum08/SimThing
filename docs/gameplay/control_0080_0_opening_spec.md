@@ -18,7 +18,7 @@
 vocabulary that writes only **already-accepted scenario input/config values** (the existing
 `DefaultSchedule0080Input` fields) before the existing schedule runs. It does **not** authorize direct
 control of movers, a player command bus, or free-form scripting. A command never moves a patrol or
-pirate, never emits a `BoundaryRequest`, and never bypasses SEAD: movement still **emerges** from the
+pirate, never emits a `BoundaryRequest`, and never bypasses FIELD_POLICY: movement still **emerges** from the
 already-accepted GPU-resident `Threshold`+`EmitEvent`→`BoundaryRequest` path. Reading "control" as license
 for direct movement or a gameplay loop is **out of scope and a stop-and-escalate.**
 
@@ -29,7 +29,7 @@ for direct movement or a gameplay loop is **out of scope and a stop-and-escalate
 The scenario now runs deterministically (`DEFAULT-SCHEDULE-0080-0`) and is legible in product-readable
 form (`GAMEPLAY-0080-0`). The next product question is narrow: may a designer/user **select from a tiny
 admitted command vocabulary** to set up a scenario configuration and then observe the deterministic
-result? The vocabulary steers only **accepted scenario parameters / admitted SEAD threshold inputs** —
+result? The vocabulary steers only **accepted scenario parameters / admitted FIELD_POLICY threshold inputs** —
 never direct movement mutation. This is **not** a CPU planner, not gameplay AI, not free-form scripting,
 and not ClauseThing.
 
@@ -42,7 +42,7 @@ and not ClauseThing.
 - Local Patrol Economy only;
 - **opt-in / default-off**;
 - **deterministic**;
-- read/write **only** through admitted scenario configuration or already-accepted SEAD threshold inputs;
+- read/write **only** through admitted scenario configuration or already-accepted FIELD_POLICY threshold inputs;
 - **no direct entity relocation command**;
 - **no externally-scripted move request**;
 - **no free-form player command bus**;
@@ -98,7 +98,7 @@ It **must not**: implement direct movement control; create gameplay UI; create a
 general command system; create a general scenario editor; or implement ClauseThing.
 
 **Discipline.** The admission layer is pure Rust validation over the existing input struct; it touches no
-shader text and no GPU kernel (WGSL ban, invariants row 169/194), and it adds no decision logic — SEAD
+shader text and no GPU kernel (WGSL ban, invariants row 169/194), and it adds no decision logic — FIELD_POLICY
 remains the sole mover-decision source.
 
 ---

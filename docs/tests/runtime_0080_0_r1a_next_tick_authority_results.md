@@ -94,7 +94,7 @@ cargo test -p simthing-driver --test gpu_measure_0080_0
 cargo test -p simthing-driver --test dress_rehearsal_r1_disruption_heatmap
 cargo test -p simthing-driver --test dress_rehearsal_r2_recursive_allocation
 cargo test -p simthing-driver --test dress_rehearsal_r3_capability_mask_down
-cargo test -p simthing-driver --test dress_rehearsal_r4_sead_field_consumption
+cargo test -p simthing-driver --test dress_rehearsal_r4_field_policy_consumption
 cargo test -p simthing-driver --test dress_rehearsal_r5_movement_reenroll
 cargo test -p simthing-driver --test dress_rehearsal_r6_combat_hp_damage
 cargo test -p simthing-driver --test dress_rehearsal_r6b_ship_cohort_reinforcement

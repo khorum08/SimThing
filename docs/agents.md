@@ -272,7 +272,7 @@ reconstructs tree, registry, allocator, and fission lineage from LDJSON log.**
 - Walks the tree depth-first carrying an ancestor overlay stack.
 - For each node's slot: emits ancestor deltas first, then local deltas, in the same
   order `Evaluator::evaluate_node` step 5 applies them. Resolves `SubFieldRole → col`
-  via `col_for_role` only (I1). Skips overlays targeting properties the node
+  via `col_for_role` only (I1). Skips overlays selection properties the node
   doesn't have (mirrors `resolved` iteration in the CPU oracle).
 - Skips `OverlayLifecycle::Suspended` overlays entirely — they never enter legacy
   Pass 3 or the C-4 AccumulatorOp overlay registration buffer until activated at
@@ -282,7 +282,7 @@ reconstructs tree, registry, allocator, and fission lineage from LDJSON log.**
 - Consumes the canonical `(OverlayDelta, SlotDeltaRange)` output from
   `build_overlay_deltas` unchanged and assigns a per-cell `OrderBand` for
   Add/Multiply/Set overlay ops.
-- Multiple ops targeting the same `(slot, col)` receive increasing bands in
+- Multiple ops selection the same `(slot, col)` receive increasing bands in
   legacy operation order. Independent cells can share the same band.
 
 **`passes.rs` — `Pipelines`:**

@@ -33,7 +33,7 @@ Implemented `DEMO-0080-0` as a headless demo/export library helper in `simthing-
 - Default demo surface is disabled/no-op; `Demo0080Gate::explicit_opt_in()` required.
 - Uses `Control0080CommandBatch::canonical_run()` (`SetStepCount(3)`, `RunObservedScenario`, `ExportTranscript`).
 - Path: `run_demo_0080_0` → `admit_control_0080_0` → `run_default_schedule_0080_0` → `observe_gameplay_0080_0` → `export_gameplay_0080_text`.
-- No bypass of control, schedule, observation, or SEAD.
+- No bypass of control, schedule, observation, or FIELD_POLICY.
 
 ## Day-to-day patrol and pirate movement record
 
@@ -45,7 +45,7 @@ Canonical demo run (`Demo0080Input::explicit_opt_in()`), one row per schedule st
 | 1 | source | source | no | — | — | source | destination | yes | source | destination | 7 | 6 | 4 | 7 | 5 | 7 | no | no | no | no |
 | 2 | source | destination | yes | source | destination | destination | source | yes | destination | source | 7 | 9 | 4 | 3 | 9 | 7 | yes | yes | yes | yes |
 
-Movement emerges from the existing SEAD-sourced schedule path only; demo commands do not direct-move entities.
+Movement emerges from the existing FIELD_POLICY-sourced schedule path only; demo commands do not direct-move entities.
 
 ## Deterministic replay
 
@@ -60,7 +60,7 @@ Movement emerges from the existing SEAD-sourced schedule path only; demo command
 | `cargo test -p simthing-driver --test gameplay_0080_0` | **PASS** |
 | `cargo test -p simthing-driver --test default_schedule_0080_0` | **PASS** |
 | `cargo test -p simthing-driver --test production_path_0080_0` | **PASS** |
-| Mobility substrate + SEAD regression suites | **PASS** |
+| Mobility substrate + FIELD_POLICY regression suites | **PASS** |
 | `cargo check --workspace` | **PASS** (pre-existing warnings only) |
 
 No tests skipped.

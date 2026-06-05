@@ -179,7 +179,7 @@ supported. Threshold readback errors are no longer silently swallowed.
 ### The architectural intent — READ THIS FIRST
 
 The AccumulatorOp kernel uses `atomic_add_f32` for all writes. Multiple
-overlay `Add` deltas targeting the same `(slot, col)` dispatch in parallel and
+overlay `Add` deltas selection the same `(slot, col)` dispatch in parallel and
 the CAS loop resolves contention. **This is by design. Do not fold Add deltas
 on the CPU before upload.** The workshop transfer/emission contention tests
 validated this exact pattern — 100k factory queues each with hundreds of

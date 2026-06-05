@@ -19,7 +19,7 @@
 
 **Fixed base (cite on handoff back):**
 1. `docs/design_0_0_8_0.md` §0 — transient constitution (conformance; conflict-as-resource-flow; recursive
-   allocation; SEAD = GPU threshold crossings, not CPU planner; §0.5 two-layer harness).
+   allocation; FIELD_POLICY = GPU threshold crossings, not CPU planner; §0.5 two-layer harness).
 2. `docs/invariants.md` — Scenario Proof; AccumulatorOp v2; Resource Flow Substrate; Mapping invariants
    (G=0 algebraic tile-local mask; ping-pong/CPU-oracle parity posture; "index arithmetic has one home");
    semantic-free `simthing-sim`.
@@ -27,7 +27,7 @@
    closure; PACK = this gate; OWNER routing; retirement map.
 4. `docs/scenarios/scenario_0080_2_dress_rehearsal_spec.md` — 20×20/13-system topology; §4.1 galactic heatmap.
 5. `crates/simthing-core/src/accumulator_op.rs` — Accumulator vocabulary (reference only; do not edit).
-6. `docs/workshop/sead_self_ai_track.md` — SEAD charter.
+6. `docs/workshop/field_policy_track.md` — FIELD_POLICY charter.
 
 **Rung-local (ephemeral — this rung only):** `crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_loc.rs`;
 `crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_gen.rs`;
@@ -36,7 +36,7 @@
 ## 2. Established decisions — DO NOT re-derive (Opus-locked)
 
 - **CPU-only, fixture-only, deterministic.** No GPU, no `simthing-gpu`/`simthing-core`/`simthing-sim`
-  coupling, no live SimThings, no numeric columns, no economy, no SEAD. Mirrors GEN/LOC posture + a
+  coupling, no live SimThings, no numeric columns, no economy, no FIELD_POLICY. Mirrors GEN/LOC posture + a
   packing algebra and a CPU oracle.
 - **Input:** `pack.rs` includes LOC via `#[path = "dress_rehearsal_atlas_batch_0_loc.rs"] mod loc;` and
   consumes `loc::LocationMaterialization::canonical()`. **No `lib.rs` export.** GEN/LOC sources untouched.
@@ -57,7 +57,7 @@
 - **PACK preserves STORE metadata, implements no STORE behavior:** keep source `LocationId`, role, tile
   origin, tile-local↔atlas transforms, per-class channels, owner-indexed channel descriptors. Do **not**
   implement owner masked reduction, per-channel accumulation, child-result storage, or occupant reduction.
-- **No R1/R4:** no diffusion, gradient, exact sqrt, SEAD, threshold, or `BoundaryRequest`. PACK produces
+- **No R1/R4:** no diffusion, gradient, exact sqrt, FIELD_POLICY, threshold, or `BoundaryRequest`. PACK produces
   the packed spatial substrate those rungs consume.
 
 ## 3. Deliverables
@@ -123,7 +123,7 @@ diagnostic log, do **not** mark PASS, do **not** close the production doc, retur
 (pack plan + G=0 CPU oracle + VRAM) only**; link source/test/report/raw-log; include the **numeric VRAM
 multiplier**; **state explicitly that batched GPU dispatch + CPU parity (EC-A2b) is DEFERRED to
 `ATLAS-BATCH-0-PACK-GPU` and NOT proven**; STORE unimplemented; M-4A sparse-residency scheduler parked;
-REENROLL parked; no economy/disruption/SEAD implemented. One `docs/worklog.md` entry.
+REENROLL parked; no economy/disruption/FIELD_POLICY implemented. One `docs/worklog.md` entry.
 
 ## 9. Stale artifacts
 
@@ -135,7 +135,7 @@ report references them as historical evidence). **Never** delete accepted GEN/LO
 
 GPU dispatch / `simthing-gpu` or `simthing-core` edits · semantic WGSL · runtime `match kind` · CPU map
 planner · economy/disruption behavior · owner masked-reduction runtime · STORE / child-result storage ·
-R1 heatmap/diffusion · R4 SEAD/gradient/exact-sqrt/threshold/`BoundaryRequest` · REENROLL/movement ·
+R1 heatmap/diffusion · R4 FIELD_POLICY/gradient/exact-sqrt/threshold/`BoundaryRequest` · REENROLL/movement ·
 combat · capability-tree mask-down · sparse-residency scheduler / M-4A · default session wiring ·
 `simthing-sim` semantics. **PACK is generic atlas batch *planning* + CPU parity, not gameplay and not GPU.**
 

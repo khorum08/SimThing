@@ -63,7 +63,7 @@ All three Tier-1 gadgets: compiled postfix evaluation matches CPU oracle within 
 | `cargo test -p simthing-spec --test eml_gadget_tier1 -- --nocapture` | PASS; 10/10 |
 | `cargo test -p simthing-spec --test resource_economy_authoring_preview -- --nocapture` | PASS; 8/8 |
 | `cargo test -p simthing-driver --test phase_m_resource_economy_authoring_ergonomics -- --nocapture` | PASS; 4/4 |
-| `cargo test -p simthing-driver --test phase_m_economy_sead_product_fixture -- --nocapture` | PASS; 6/6 |
+| `cargo test -p simthing-driver --test phase_m_economy_field_policy_product_fixture -- --nocapture` | PASS; 6/6 |
 | `cargo test -p simthing-driver --test phase_m_first_slice_runtime -- --nocapture` | PASS; 28/28 |
 | `cargo test -p simthing-spec --test region_field_spec_admission -- --nocapture` | PASS |
 | `cargo test -p simthing-gpu --test accumulator_op_session_gpu_bridge -- --nocapture` | PASS; 3/3 |
@@ -96,7 +96,7 @@ All three Tier-1 gadgets: compiled postfix evaluation matches CPU oracle within 
 - `simthing-sim` has no Gadget/Personality types
 - `MappingExecutionProfile::default()` remains `Disabled`
 - Resource Flow E-11 remains default-off
-- Economy→SEAD remains fixture-only
+- Economy→FIELD_POLICY remains fixture-only
 - No production economy→mapping bridge
 - No `DailyResolutionBoundary`
 - No default SimSession mapping wiring

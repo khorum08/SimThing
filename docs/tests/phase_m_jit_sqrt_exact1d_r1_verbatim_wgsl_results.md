@@ -163,4 +163,4 @@ Transient scan executed (`docs/tests` log/tmp/scratch listing). Existing `*.log`
 
 ## Final verdict
 
-**PASS — SQRT-EXACT-1D-R1 landed.** Candidate D is now tested from a standalone verbatim WGSL artifact via `include_str!`, artifact identity hash is recorded, edge/dense/subnormal/probe behavior is reproduced, Candidate C/f64 remains unimplemented, no production exact sqrt admission or `mag2` authority flip was added, native sqrt remains `ApproximateJitOnly`, M-JIT remains closed at PROD-0, and V7.7 / Mapping ADR / SEAD guardrails remain intact.
+**PASS — SQRT-EXACT-1D-R1 landed.** Candidate D is now tested from a standalone verbatim WGSL artifact via `include_str!`, artifact identity hash is recorded, edge/dense/subnormal/probe behavior is reproduced, Candidate C/f64 remains unimplemented, no production exact sqrt admission or `mag2` authority flip was added, native sqrt remains `ApproximateJitOnly`, M-JIT remains closed at PROD-0, and V7.7 / Mapping ADR / FIELD_POLICY guardrails remain intact.

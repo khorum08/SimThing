@@ -1,11 +1,12 @@
 use crate::{
-    run_production_path_0080_1, EconScale0080Faction, ProductionPath0081Input,
-    ProductionPath0081Report, ProductionPath0081SeadCompositeGapTerms,
+    run_production_path_0080_1, EconScale0080Faction,
+    ProductionPath0081FieldPolicyCompositeGapTerms, ProductionPath0081Input,
+    ProductionPath0081Report,
 };
 
 pub const DEFAULT_SCHEDULE_0080_1_ID: &str = "DEFAULT-SCHEDULE-0080-1";
 pub const DEFAULT_SCHEDULE_0080_1_STATUS_PASS: &str =
-    "IMPLEMENTED / PASS - scenario-scoped Nested Starmap SEAD-sourced schedule/movement";
+    "IMPLEMENTED / PASS - scenario-scoped Nested Starmap FIELD_POLICY-sourced schedule/movement";
 pub const DEFAULT_SCHEDULE_0080_1_SCENARIO: &str = "Nested Starmap";
 
 const TERRAN_SHIP_ID: u64 = 80_301;
@@ -183,7 +184,7 @@ pub struct DefaultSchedule0081StepReport {
     pub movement: Option<DefaultSchedule0081MovementOutcome>,
     pub production_path_invoked: bool,
     pub production_path_report: Option<ProductionPath0081Report>,
-    pub used_sead_composite_gap_terms: bool,
+    pub used_field_policy_composite_gap_terms: bool,
     pub consumed_atlas_residency_report: bool,
     pub consumed_faction_index_econ_report: bool,
 }
@@ -421,7 +422,7 @@ fn run_steps(
 
     for step_index in 0..input.step_count {
         let decision = boundary_decision(
-            &production_path_report.sead_composite_gap_terms,
+            &production_path_report.field_policy_composite_gap_terms,
             input.movement_threshold,
         );
         let movement = if decision.threshold_accepted {
@@ -466,7 +467,7 @@ fn run_steps(
             movement,
             production_path_invoked: true,
             production_path_report: Some(production_path_report.clone()),
-            used_sead_composite_gap_terms: true,
+            used_field_policy_composite_gap_terms: true,
             consumed_atlas_residency_report: production_path_report.atlas_report_admitted_pass,
             consumed_faction_index_econ_report: production_path_report
                 .econ_scale_report_admitted_pass,
@@ -477,7 +478,7 @@ fn run_steps(
 }
 
 fn boundary_decision(
-    terms: &ProductionPath0081SeadCompositeGapTerms,
+    terms: &ProductionPath0081FieldPolicyCompositeGapTerms,
     threshold: i64,
 ) -> DefaultSchedule0081BoundaryDecision {
     let threshold_input = terms.composite_gap_sum;

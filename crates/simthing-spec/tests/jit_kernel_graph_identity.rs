@@ -23,7 +23,7 @@ const FORBIDDEN_SEMANTIC_TERMS: &[&str] = &[
     "supply",
     "personality",
     "drone",
-    "SEAD",
+    "FIELD_POLICY",
     "simthing-sim",
     "ResourceEconomySpec",
     "SimSession",

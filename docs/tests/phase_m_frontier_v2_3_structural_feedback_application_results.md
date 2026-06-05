@@ -13,7 +13,7 @@
 | `docs/tests/phase_m_frontier_v2_3_structural_feedback_application_results.md` | **New** — this report |
 | `docs/accumulator_op_v2_production_plan.md` | FrontierV2-3 section |
 | `docs/workshop/mapping_current_guidance.md` | FrontierV2-3 row |
-| `docs/workshop/sead_self_ai_track.md` | FrontierV2-3 addendum |
+| `docs/workshop/field_policy_track.md` | FrontierV2-3 addendum |
 | `docs/worklog.md` | Append-only milestone |
 
 **No ClauseThing, no production commitment emission, no semantic WGSL, no default SimSession wiring, no phase closure declaration.**
@@ -141,7 +141,7 @@ cargo test -p simthing-driver --test phase_m_frontier_v2_1_candidate_evolution -
 cargo test -p simthing-driver --test phase_m_frontier_v2_0_closed_loop_consumer -- --nocapture
 → pass (regression)
 
-cargo test -p simthing-spec --test sead_obs0_overlay_score_admission -- --nocapture
+cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission -- --nocapture
 → pass (regression)
 
 cargo check --workspace
@@ -155,7 +155,7 @@ cargo check --workspace
 | FrontierV2-3 fixture/docs | present |
 | ACT-5/EVENT-3/OBS-5/PIPE-1 | guardrail-only |
 | Guardrail scan | no unauthorized widening |
-| simthing-sim semantic scan | no FrontierV1/V2/SEAD matches |
+| simthing-sim semantic scan | no FrontierV1/V2/FIELD_POLICY matches |
 | Self-acceptance phrase scan | no implementer closure |
 | f64/Candidate C scan | no regression |
 | scratch/tmp find | no artifacts deleted |

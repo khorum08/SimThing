@@ -24,7 +24,7 @@
 | **1. FrontierV1-1 proved** | End-to-end opt-in fixture wiring; CPU oracle parity; replay fingerprint `49d4c94ce1f52be5`; route classification; no default wiring |
 | **2. CPU oracle outputs GPU must align with** | Mapping: GPU field values vs `cpu_horizon` reference (not V1-1 integer oracle); RF/routes/proposal counts: V1-1 CPU oracle |
 | **3. Reusable GPU paths** | `FirstSliceMappingSession` + `SparseRegionFieldV1`; GPU reduction+EML via `diagnostic_readback_reduction_eml`; existing stencil/AccumulatorOp substrate |
-| **4. CPU-oracle-only in V1-2** | Resource Flow allocation summary (pending GPU FrontierV1-3); SEAD full PIPE-0 chain not re-run; route classification remains CPU oracle |
+| **4. CPU-oracle-only in V1-2** | Resource Flow allocation summary (pending GPU FrontierV1-3); FIELD_POLICY full PIPE-0 chain not re-run; route classification remains CPU oracle |
 | **5. Replay fingerprint** | Combined GPU replay fingerprint: **`42b0455e4d0b59ac`** |
 | **6. Deferred/rejected** | Atlas, active mask, perception, source identity, nested E-11B/E-11B-5, D-2a, ClauseThing, ACT-N ladder, CPU planner |
 | **7. M/E closure movement** | First GPU-resident mapping execution + replay for FrontierV1; RF GPU integration explicitly pending |
@@ -72,11 +72,11 @@ Fixture ID: `frontier_v1_2_gpu_replay_acceptance_v1`
 
 Resource Flow GPU execution via SimSession flat-star path exists in repo but is not integrated into this FrontierV1 fixture slice without new wiring primitives. Not overclaimed.
 
-## SEAD proposal routing summary
+## FIELD_POLICY proposal routing summary
 
 | Component | Status |
 |---|---|
-| Reduction + EML (field_urgency path) | **gpu_verified** (partial SEAD substrate) |
+| Reduction + EML (field_urgency path) | **gpu_verified** (partial FIELD_POLICY substrate) |
 | Full PIPE-0 observer/event/proposal GPU chain | **not re-run** — V1 consumed, not extended |
 | Route classification | **cpu_oracle_only** |
 
@@ -111,7 +111,7 @@ Combined replay fingerprint: **`42b0455e4d0b59ac`**
 | First-slice RegionCell mapping | **gpu_verified** |
 | Reduction + EML (field_urgency) | **gpu_verified** |
 | Flat-star Resource Flow allocation | **cpu_oracle_only / pending_gpu (FrontierV1-3)** |
-| SEAD PIPE-0 full chain | **cpu_oracle_only** (consumed, not extended) |
+| FIELD_POLICY PIPE-0 full chain | **cpu_oracle_only** (consumed, not extended) |
 | Route classification | **cpu_oracle_only** |
 
 ## Test results
@@ -126,7 +126,7 @@ cargo test -p simthing-driver --test phase_m_frontier_v1_1_opt_in_fixture -- --n
 cargo test -p simthing-driver --test phase_m_frontier_v1_0_scenario_skeleton -- --nocapture
   → 8/8 PASS
 
-cargo test -p simthing-spec --test sead_obs0_overlay_score_admission -- --nocapture
+cargo test -p simthing-spec --test field_policy_obs0_overlay_score_admission -- --nocapture
   → 29/29 PASS
 
 cargo check --workspace
@@ -165,12 +165,12 @@ No scratch/tmp artifacts removed.
 1. **Builds on FrontierV1-1:** Adds GPU-resident first-slice mapping execution and replay on top of V1-1 CPU-oracle fixture wiring.
 2. **Phase M proof:** GPU executes bounded 8×8 RegionCell theater with explicit opt-in profile; field values match CPU stencil reference; replay reproducible.
 3. **Phase E proof:** Resource Flow routing contract preserved via CPU oracle; GPU RF allocation honestly marked pending (FrontierV1-3).
-4. **Still pending:** GPU flat-star Resource Flow integration in FrontierV1 fixture; full SEAD GPU chain end-to-end; production-doc M/E acceptance review.
+4. **Still pending:** GPU flat-star Resource Flow integration in FrontierV1 fixture; full FIELD_POLICY GPU chain end-to-end; production-doc M/E acceptance review.
 5. **Non-blocking deferred:** Atlas, active mask, perception, source identity, nested E-11B, D-2a, ClauseThing.
-6. **Not a SEAD ladder:** Consumes SEAD V1 + accepted mapping GPU substrate; no ACT-5/EVENT-3/OBS-5/PIPE-1.
+6. **Not a FIELD_POLICY ladder:** Consumes FIELD_POLICY V1 + accepted mapping GPU substrate; no ACT-5/EVENT-3/OBS-5/PIPE-1.
 
-FrontierV1-2 moves the named M/E closing vertical from CPU-oracle fixture wiring toward GPU-resident execution and replay acceptance. It consumes accepted Mapping, Resource Flow, and SEAD Self-AI substrates without extending the SEAD ladder or adding default runtime behavior. Resource Flow GPU allocation remains explicitly pending rather than overclaimed.
+FrontierV1-2 moves the named M/E closing vertical from CPU-oracle fixture wiring toward GPU-resident execution and replay acceptance. It consumes accepted Mapping, Resource Flow, and FIELD_POLICY Field agent substrates without extending the FIELD_POLICY ladder or adding default runtime behavior. Resource Flow GPU allocation remains explicitly pending rather than overclaimed.
 
 ## Final verdict
 
-**PASS** — FrontierV1-2 executed the default-off FrontierV1 fixture through GPU-resident accepted substrates where available; recorded GPU/CPU oracle parity and replay reproducibility; honestly classified Resource Flow allocation as CPU-oracle-only/pending GPU; preserved Resource Flow allocator routing, FrontierV1-only/default-off coupling, and all deferred-feature boundaries; added no default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner, or simthing-sim semantic awareness; updated docs and production plan; and kept V7.7 / Mapping ADR / Resource Flow ADR / SEAD charter posture intact.
+**PASS** — FrontierV1-2 executed the default-off FrontierV1 fixture through GPU-resident accepted substrates where available; recorded GPU/CPU oracle parity and replay reproducibility; honestly classified Resource Flow allocation as CPU-oracle-only/pending GPU; preserved Resource Flow allocator routing, FrontierV1-only/default-off coupling, and all deferred-feature boundaries; added no default SimSession behavior, scheduler/cache, semantic WGSL, CPU planner, or simthing-sim semantic awareness; updated docs and production plan; and kept V7.7 / Mapping ADR / Resource Flow ADR / FIELD_POLICY charter posture intact.

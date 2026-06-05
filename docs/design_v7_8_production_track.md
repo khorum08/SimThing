@@ -16,7 +16,7 @@
 > **Companions:** [`design_v7_8.md`](design_v7_8.md) (constitution) ·
 > [`design_v7_7.md`](design_v7_7.md) (CLOSED baseline) ·
 > [`accumulator_op_v2_production_plan.md`](accumulator_op_v2_production_plan.md) (CLOSED stub — archived full plan under [`archive/closed_production/`](archive/closed_production/)) ·
-> [`workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md) (SEAD/self-AI charter §10–§11) ·
+> [`workshop/field_policy_track.md`](workshop/field_policy_track.md) (FIELD_POLICY/field agent charter §10–§11) ·
 > [`workshop/mapping_current_guidance.md`](workshop/mapping_current_guidance.md) (status table) ·
 > [`worklog.md`](worklog.md) (append-only history).
 
@@ -45,7 +45,7 @@ Per-step narrative lives in `worklog.md`; this file keeps the compact ladder tab
 
 | Ladder | Capability | Lane | Status | Gate to advance |
 |---|---|---|---|---|
-| **L0 — Frontier consumer** | Bounded multi-tick closed-loop self-AI consumer proof | T2 | **landed + ACCEPTED** (V1-5 → V2-0..4) | none — complete at fixture/test-support level; **no FrontierV2-5** |
+| **L0 — Frontier consumer** | Bounded multi-tick closed-loop field agent consumer proof | T2 | **landed + ACCEPTED** (V1-5 → V2-0..4) | none — complete at fixture/test-support level; **no FrontierV2-5** |
 | **L1 — simthing-spec buildout** | Designer-facing spec admission substrate (prep for ClauseThing) | T2 | **landed + ACCEPTED** (L1-0, L1-1; L1-ACCEPT-0) | none — sufficient to open L2 |
 | **L2 — CLAUSE-SPEC** | Designer-authored FrontierV2 scenario admitted through `simthing-spec` → same accepted runtime artifacts | T2 | **ACCEPTED (Opus design authority, 2026-05-30; code-verified)** (`CLAUSE-SPEC-0`) — [`phase_m_clause_spec0_acceptance_review_results.md`](tests/phase_m_clause_spec0_acceptance_review_results.md) | L3 stays parked unless product separately authorizes ClauseThing |
 | **L3 — ClauseThing** | ClauseScript-facing authoring front-end | T2 | **parked (separate track) — pending separate product authorization** | explicit ClauseThing authorization (NOT opened by L2 acceptance) |
@@ -58,7 +58,7 @@ Per-step narrative lives in `worklog.md`; this file keeps the compact ladder tab
 
 ## 3. L0 — Frontier consumer ladder (landed + ACCEPTED)
 
-The first bounded vertical: a default-off, opt-in self-AI consumer that runs the live GPU route
+The first bounded vertical: a default-off, opt-in field agent consumer that runs the live GPU route
 (mapping + EML → PIPE-0 → ACT-2 → ResourceFlowAllocator) and proves multi-tick closed-loop feedback
 at **fixture/test-support level only**. Movement and structural outputs are **fixture-only shadows**,
 never production state or commitments. **Design authority (Opus, 2026-05-30) ACCEPTED V1-5 → V2-0..4
@@ -67,7 +67,7 @@ a hygiene loop). Next gate is **L1/L2 (designer/spec admission)**, not another f
 
 | Step | What it proved | Class | Replay fingerprint | PR | Report |
 |---|---|---|---|---|---|
-| FrontierV1-5 | Live GPU-resident single-tick score→threshold→proposal→dispatch route; fixture-only feedback candidate | GpuVerified (route) | `1653b84847be2dd2` | #341 | [`phase_m_frontier_v1_5_live_self_ai_route_results.md`](tests/phase_m_frontier_v1_5_live_self_ai_route_results.md) |
+| FrontierV1-5 | Live GPU-resident single-tick score→threshold→proposal→dispatch route; fixture-only feedback candidate | GpuVerified (route) | `1653b84847be2dd2` | #341 | [`phase_m_frontier_v1_5_live_field_agent_route_results.md`](tests/phase_m_frontier_v1_5_live_field_agent_route_results.md) |
 | FrontierV2-0 | First two-tick closed-loop consumer; tick-0 feedback → tick-1 field input change | GpuVerified + FixtureOnly | `0238c18ce3b559da` | #342 | [`phase_m_frontier_v2_0_closed_loop_consumer_results.md`](tests/phase_m_frontier_v2_0_closed_loop_consumer_results.md) |
 | FrontierV2-1 | Movement/structural FixtureCandidate evolution across ticks (`M1≠M0`, `S1≠S0`) | FixtureCandidate | `2d6e78a06d19736a` | #343 | [`phase_m_frontier_v2_1_candidate_evolution_results.md`](tests/phase_m_frontier_v2_1_candidate_evolution_results.md) |
 | FrontierV2-2 | Own-column movement feedback application; shadow `(0,0)→(2,4)` feeds next-tick placement | OwnColumnShadowWrite | `6c01851a4afdfcbf` | #344 | [`phase_m_frontier_v2_2_movement_feedback_application_results.md`](tests/phase_m_frontier_v2_2_movement_feedback_application_results.md) |
@@ -76,7 +76,7 @@ a hygiene loop). Next gate is **L1/L2 (designer/spec admission)**, not another f
 
 **Posture preserved across L0:** resource dispatch stayed through the Resource Flow allocator;
 `simthing-sim` stayed semantic-free; no default `SimSession` wiring; no semantic WGSL; no ClauseThing;
-no phase closure declared. Ruling: [`workshop/sead_self_ai_track.md`](workshop/sead_self_ai_track.md)
+no phase closure declared. Ruling: [`workshop/field_policy_track.md`](workshop/field_policy_track.md)
 §10–§11.
 
 ---

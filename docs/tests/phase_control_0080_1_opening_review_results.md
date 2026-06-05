@@ -12,7 +12,7 @@ maps onto existing `DefaultSchedule0081Input` / Nested Starmap bounded fields (s
 movement thresholds, source/candidate starsystem selectors, composite-gap terms) plus run/export — so a
 bounded command gate **admits scenario parameters**, then the **existing** GPU-resident
 `Threshold + EmitEvent → BoundaryRequest` schedule produces movement. Commands never move a ship, never
-emit a `BoundaryRequest`, and never bypass SEAD. This keeps the decision posture intact and adds no
+emit a `BoundaryRequest`, and never bypass FIELD_POLICY. This keeps the decision posture intact and adds no
 planner/urgency/commitment — the same proven posture as `CONTROL-0080-0`.
 
 This sits at the designer-facing barrier where guardrails belong — a sharply-bounded product consumer
@@ -44,7 +44,7 @@ are consistent — no blockers.
 ## Opened / closed status after this decision
 
 - `CONTROL-0080-1` — **OPEN WITH NARROWING** (bounded Nested Starmap command admission; no implementation).
-- Direct ship movement control, externally-scripted boundary requests, SEAD bypass, CPU planner, player
+- Direct ship movement control, externally-scripted boundary requests, FIELD_POLICY bypass, CPU planner, player
   command loop, UI framework, real-time loop, demo packaging for `0080-1`, global default schedule,
   semantic/raw WGSL, new shader/GPU kernel, hard currency/markets/trade/`ai_budget`, nested Resource Flow,
   unbounded factions, ClauseThing/L3 — remain CLOSED / not opened.
@@ -62,14 +62,14 @@ real-time loop, a general command system, a general scenario editor, or ClauseTh
 
 20 command-admission tests named (opt-in only; accepts bounded schedule-value commands; runs/export after
 admitted command; deterministic replay after command; rejects direct Terran/Pirate move, external boundary
-request, SEAD bypass, CPU planner/commitment, player-command loop, UI framework, real-time loop, global
+request, FIELD_POLICY bypass, CPU planner/commitment, player-command loop, UI framework, real-time loop, global
 default schedule, semantic/raw WGSL, new shader/GPU kernel, hard currency/markets/trade/`ai_budget`, nested
 Resource Flow, ClauseThing dependency; docs-status match). **None implemented.**
 
 ## Confirmations
 
 No control implementation, no command input, no direct movement command, no external `BoundaryRequest`, no
-SEAD bypass, no CPU planner/urgency/commitment, no player command loop, no UI, no real-time loop, no global
+FIELD_POLICY bypass, no CPU planner/urgency/commitment, no player command loop, no UI, no real-time loop, no global
 default schedule, no semantic/raw WGSL, no new shader/GPU kernel, no hard currency/markets/trade/`ai_budget`,
 no nested Resource Flow, no ClauseThing implementation, no `simthing-spec` alteration, no invariant edit, no
 passive proof wrapper, **no code change**. All `0080-1` gates remain IMPLEMENTED / PASS; `SCENARIO-0080-0`
@@ -79,4 +79,4 @@ remains COMPLETE/PARKED.
 
 Docs-only diff: opening spec + this report + production-track ladder row + mapping-guidance status +
 worklog entry. No code files changed. Every gate mention is bounded, opt-in, parameter-admission only, and
-future-implementation-only. Direct movement control and SEAD bypass remain CLOSED.
+future-implementation-only. Direct movement control and FIELD_POLICY bypass remain CLOSED.

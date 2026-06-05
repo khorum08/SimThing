@@ -227,4 +227,4 @@ find docs/tests -maxdepth 1 -type f \( -name "*.log" -o -name "*tmp*" -o -name "
 
 ## Final verdict
 
-**PASS — SQRT-EXACT-1D landed** as a test-only Candidate D bitmask-split sqrt probe. D implements residual hardening and integer subnormal input normalization; residual corrections fire on DX12 where A did not; normal edge rows are bit-exact; subnormal output FTZ remains unresolved. Candidate C/f64 not implemented; A not revived; B remains fallback; no production exact sqrt admission; native sqrt remains `ApproximateJitOnly`; M-JIT remains closed at PROD-0; active docs updated; V7.7 / Mapping ADR / SEAD guardrails intact.
+**PASS — SQRT-EXACT-1D landed** as a test-only Candidate D bitmask-split sqrt probe. D implements residual hardening and integer subnormal input normalization; residual corrections fire on DX12 where A did not; normal edge rows are bit-exact; subnormal output FTZ remains unresolved. Candidate C/f64 not implemented; A not revived; B remains fallback; no production exact sqrt admission; native sqrt remains `ApproximateJitOnly`; M-JIT remains closed at PROD-0; active docs updated; V7.7 / Mapping ADR / FIELD_POLICY guardrails intact.
