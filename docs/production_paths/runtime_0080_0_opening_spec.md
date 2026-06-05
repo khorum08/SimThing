@@ -141,9 +141,25 @@ Specifically R0 must:
 
 ## 8. Forward map (non-binding horizon)
 
-- **R1:** multi-atlas batching + M-4A algebraic tile-local masking — only behind the §11 atlas-batching
-  admission gate.
-- **R2+:** recursive system→planet tiering in the scheduler (candidate E); multi-faction ECON scaling
-  (candidate D); richer emergence run on the runtime (candidate A / `SCENARIO-0080-3`).
+> **R0 result (R0A remedial, 2026-06-05):** R0 landed as **IMPLEMENTED / PARTIAL** — a persistent
+> GPU-session **mirror-dispatch** scheduler, not GPU-resident next-tick authority. CPU R6C remains tick
+> authority; per-tick shapes GPU-dispatched (`inter_tick_world_readbacks=0`, checksum `1bba891c779190a4`).
+> Report: [`../tests/runtime_0080_0_r0_results.md`](../tests/runtime_0080_0_r0_results.md).
 
-These remain parked until R0 establishes the single-tier GPU-resident scheduler.
+> **R1 OPEN (`RUNTIME-0080-0-R1-DESIGN-0`, 2026-06-05, Opus):** the substrate that makes GPU-resident
+> world state the **input authority for tick N+1** is now defined as the primitive **`GPU-NEXTTICK-0`**.
+> First IMPL sub-rung **`RUNTIME-0080-0-R1a`** promotes the already-measured **Tier-A field columns**
+> (disruption, location_status, stockpiles, construction_progress, per-cohort `num_ships` value,
+> blockade/divert code, R4 magnitude) to a resident double-buffered next-tick authority; **Tier-B**
+> structural changes (REENROLL membership scatter, cohort birth/removal, fusion lineage) are applied by a
+> bounded CPU **boundary-maintenance** pass driven by a **GPU-written event journal** (the boundaryEvent
+> dispatch), not a CPU planner. Spec:
+> [`runtime_0080_0_r1_next_tick_authority_spec.md`](runtime_0080_0_r1_next_tick_authority_spec.md).
+
+- **R1a:** resident field-column next-tick authority (no new op / WGSL / atlas batching / M-4A).
+- **R1b (`RESIDENT-EVENTLOG-0`):** fully resident event journal.
+- **R1c (`RESIDENT-REENROLL-0`):** resident scatter/compact for membership + cohort table — behind the
+  §11 / free-list-scatter stop-lines; STOP and define a smaller rung if M-4A is required.
+- **Later:** multi-atlas batching + M-4A algebraic tile-local masking (§11 gate); recursive
+  system→planet tiering (candidate E); multi-faction ECON scaling (candidate D); richer emergence run
+  (candidate A / `SCENARIO-0080-3`).
