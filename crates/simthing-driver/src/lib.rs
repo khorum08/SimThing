@@ -29,6 +29,7 @@ pub mod first_slice_mapping_runtime;
 pub mod gameplay_0080_0;
 pub mod gameplay_0080_1;
 pub mod gpu_measure_0080_0;
+pub mod runtime_0080_0_r0;
 pub mod gradient_follow_0080_2;
 pub mod install;
 pub mod production_path_0080_0;
@@ -299,6 +300,13 @@ pub use gpu_measure_0080_0::{
     GpuMeasure0080ShapeReport, GPU_MEASURE_0080_0_ID, GPU_MEASURE_0080_0_STATUS_PASS,
     GPU_MEASURE_R4_F32_BOUND, GPU_MEASURE_VERDICT_INTEGER_BIT_EXACT,
     GPU_MEASURE_VERDICT_UNMEASURED, GPU_MEASURE_VERDICT_VERIFIED_APPROXIMATE,
+};
+pub use runtime_0080_0_r0::{
+    render_runtime_0080_r0_artifact, replay_runtime_0080_0_r0, run_runtime_0080_0_r0,
+    Runtime0080R0AdapterReport, Runtime0080R0Input, Runtime0080R0Report,
+    Runtime0080R0ResidencyTraceRow, RUNTIME_0080_0_R0_ID, RUNTIME_0080_0_R0_STATUS_PASS,
+    RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_GPU_BLOCKED, RUNTIME_R0_R4_F32_BOUND,
+    RUNTIME_R0_WHOLE_RUN_GPU_MEASURED, RUNTIME_R0_WHOLE_RUN_UNMEASURED,
 };
 pub use gradient_follow_0080_2::{
     replay_gradient_follow_0080_2, run_gradient_follow_0080_2, GradientFollow0082ForbiddenRequests,

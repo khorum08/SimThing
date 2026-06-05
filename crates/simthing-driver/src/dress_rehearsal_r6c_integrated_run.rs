@@ -499,6 +499,12 @@ struct Execution {
     summary: DressRehearsalR6cSummary,
 }
 
+impl Execution {
+    pub(crate) fn stable_checksum(&self) -> u64 {
+        self.summary.stable_checksum
+    }
+}
+
 pub fn run_dress_rehearsal_r6c_integrated_run(
     input: &DressRehearsalR6cInput,
 ) -> DressRehearsalR6cReport {
@@ -729,7 +735,34 @@ fn base_report(
     }
 }
 
+/// Per-tick hook for RUNTIME-0080-0-R0 (after CPU tick + write-back).
+pub(crate) trait R6cGpuTickHook {
+    fn after_tick(&mut self, tick: u32, world: &DressRehearsalR6cWorld);
+}
+
+struct R6cNoGpuTickHook;
+
+impl R6cGpuTickHook for R6cNoGpuTickHook {
+    fn after_tick(&mut self, _tick: u32, _world: &DressRehearsalR6cWorld) {}
+}
+
 fn execute_model(tick_count: u32) -> Execution {
+    let mut no_hook = R6cNoGpuTickHook;
+    execute_model_with_hook(tick_count, Some(&mut no_hook))
+}
+
+/// Run the R6C model with a per-tick hook (after CPU tick + write-back).
+pub(crate) fn execute_model_with_gpu_hook<H: R6cGpuTickHook>(
+    tick_count: u32,
+    hook: &mut H,
+) -> u64 {
+    execute_model_with_hook(tick_count, Some(hook)).stable_checksum()
+}
+
+fn execute_model_with_hook<H: R6cGpuTickHook>(
+    tick_count: u32,
+    mut after_tick: Option<&mut H>,
+) -> Execution {
     let mut world = seed_world();
     let initial_world = world.clone();
     let world_seed_summary = world_seed_summary(&world);
@@ -809,6 +842,9 @@ fn execute_model(tick_count: u32) -> Execution {
                 == ships_before - ships_destroyed_by_combat + ships_created_by_production,
         });
         race_curve.push(race_curve_row(tick + 1, &world));
+        if let Some(hook) = after_tick.as_deref_mut() {
+            hook.after_tick(tick, &world);
+        }
     }
 
     let detector_rows = build_detector_rows(
