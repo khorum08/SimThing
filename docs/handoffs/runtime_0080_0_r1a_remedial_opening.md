@@ -83,8 +83,16 @@ disjoint from that pipeline. That is drift away from SimThing Maximality's one-s
 columns by **registering the R6C per-tick Tier-A transforms as `AccumulatorOp`s / overlays over a
 resident `values` buffer and letting the existing tick pipeline (`WorldGpuState` + `Pipelines` Pass 0–7)
 produce `state_N+1` on GPU** — the same machinery that already applies player/AI overlays and SEAD
-thresholds. The shapes are the ones already GPU-measured in `GPU-MEASURE-0080-0`; **no new op, no new
-semantic WGSL** is needed or permitted.
+thresholds. The shapes are the ones already GPU-measured in `GPU-MEASURE-0080-0`.
+
+**Substrate-extension permission (Opus ruling, 2026-06-05 — supersedes the IMPL-0 blanket ban).** First
+compose with the existing generic op vocabulary. If a Tier-A transform genuinely cannot be expressed that
+way, you **may** add a **generic, semantic-free** `EvalEML` opcode / `AccumulatorOp` combine function /
+generic WGSL kernel under the **§4a admission gate** — this is a Tier-2 gate per `design_0_0_8_0.md` §2.3/§2.4,
+**not** a stop-line. The earlier "no new op / no new WGSL" wording was scheduling hygiene stricter than the
+constitution; it is lifted to the gate. **Semantic** WGSL/opcodes (any map/faction/AI/scenario concept in
+shader/opcode text, e.g. an "R6C economy" op) remain banned, and the §6 anti-faking protocol is unchanged —
+a new opcode that merely moves a CPU-injected next-state still fails the negative control (§6.2).
 
 This simultaneously fixes the correctness gap **and** unifies the runtime: player direction
 (`PlayerIntentOverlay`), AI intent (`AiIntentOverlay`), SEAD threshold acts
@@ -103,7 +111,8 @@ Implement Tier-A next-tick authority such that **the GPU computes `state_N+1` fr
 - Register the Tier-A transforms (R1 bounded-feedback recurrence, R1 diffusion sink, R2 reduce-up/
   disburse-down, R6 attrition decrement on existing slots, R6B reinforcement increment on existing
   slots, blockade/divert code, R4 magnitude scratch) as `AccumulatorOp`s / `OverlayDelta` / threshold
-  registrations over the resident `values` buffer.
+  registrations over the resident `values` buffer. Compose with existing generic ops first; where that is
+  genuinely impossible, add a **generic, semantic-free** opcode/combine-fn/kernel under the §4a gate.
 - Player/AI inputs (if any in this harness) enter as `OverlayDelta` / folded `IntentDelta` through the
   **same** pipeline — never as a side channel.
 - The CPU R6C oracle is **comparison-only**, computed independently, read **only** at the boundary
@@ -114,10 +123,12 @@ Implement Tier-A next-tick authority such that **the GPU computes `state_N+1` fr
 
 ### Outcome B — honest PARTIAL/BLOCKED with a named gap
 
-If a stop-line (§4) actually blocks Outcome A — e.g. a Tier-A transform cannot run through the existing
-generic ops without a new op/semantic WGSL, or the production pipeline cannot be driven opt-in without
-default `SimSession` wiring — **do not fake it.** Report PARTIAL/BLOCKED, name the precise substrate gap,
-and define the next smaller rung. A correct PARTIAL is acceptance; a faked PASS is not.
+If a stop-line (§4) actually blocks Outcome A — e.g. a Tier-A transform cannot be expressed even with a
+**generic, semantic-free** opcode/kernel (it would require *semantic* WGSL, M-4A, atlas batching,
+recursion, or a CPU planner), or the production pipeline cannot be driven opt-in without default
+`SimSession` wiring — **do not fake it.** Report PARTIAL/BLOCKED, name the precise substrate gap, and
+define the next smaller rung. A correct PARTIAL is acceptance; a faked PASS is not. Note: "a new generic
+op would be needed" is **no longer** a blocker — that is the §4a gate, not a stop-line.
 
 **Forbidden resolution:** retaining the IMPL-0 mechanism (CPU-computed next-state injected per tick +
 Identity copies) and calling it PASS. That is the defect being corrected.
@@ -126,17 +137,49 @@ Identity copies) and calling it PASS. That is the defect being corrected.
 
 ## 4. Stop conditions (escalate to Opus — do not improvise)
 
-STOP and return to Opus if the work requires any of: multi-atlas batching; M-4A masking-at-scale;
-system→planet recursion; multi-faction ECON expansion; semantic WGSL beyond the generic substrate; a new
-`AccumulatorOp`; an `docs/invariants.md` edit; a pinned-number change; a scenario reopen; a CPU planner;
-**a CPU-side state manager pretending to be GPU authority** (the IMPL-0 defect); loosening the R4 f32
-bound; default `SimSession` wiring.
+STOP and return to Opus if the work requires any of: **semantic** WGSL/opcode (any map/faction/AI/scenario
+concept in shader or opcode text); multi-atlas batching; M-4A masking-at-scale; system→planet recursion;
+multi-faction ECON expansion; a pinned-number change; a scenario reopen; a CPU planner; **a CPU-side state
+manager pretending to be GPU authority** (the IMPL-0 defect); loosening the R4 f32 bound; default
+`SimSession` wiring; a *binding-invariant* edit (the §2.4 opcode-gate clarification is already landed — you
+do **not** need to edit `docs/invariants.md`).
+
+**Explicitly NOT a stop-line (changed from IMPL-0):** adding a **generic, semantic-free** `EvalEML`
+opcode, `AccumulatorOp` combine function, or generic WGSL kernel. That is the **§4a admission gate**, a
+Tier-2 gate, not an escalation. Use it if and only if existing generic ops cannot express the transform.
 
 Tier-B remains out of scope: arena membership / REENROLL scatter, cohort birth/removal, cell-index
 movement, fusion lineage/compaction stay **bounded CPU boundary maintenance driven by GPU-written events**
 (`ThresholdEvent → BoundaryRequest`). Do not make Tier-B GPU-authoritative here (that is R1b/R1c).
 
 If no discrete GPU is present: report `BLOCKED` honestly; never claim an unrun GPU result.
+
+---
+
+## 4a. Generic substrate-extension admission gate (Tier-2)
+
+Authority: `design_0_0_8_0.md` §2.3/§2.4 and `docs/invariants.md` (EML Gadget Library → "Extending the
+generic substrate vocabulary is a Tier-2 gate, not a prohibition"). Any new opcode / combine function /
+WGSL kernel you add for Outcome A **must pass all of**:
+
+1. **Semantic-free.** No map/faction/AI/scenario name or concept in the shader/opcode text or its
+   identifier. It manipulates only floats/indices. (A "disruption" or "R6C economy" op fails this; a
+   generic `SaturatingSub`, `ClampedAffine`, `Select`, or `SegmentedScan` passes.)
+2. **Reusable by any SimThing.** The primitive is a general instruction, not a one-scenario formula. R6C
+   behaviour stays expressed as **data** (EML program / column params / op registration), never baked into
+   the kernel.
+3. **CPU-oracle bit-exact parity.** The new primitive ships with its own CPU oracle + a bit-exact parity
+   test (integer-exact for exact-authoritative columns); it does not weaken any exact-authority rule
+   (no raw `sqrt`/`mag2` as exact; pinned/fixed-point where required).
+4. **Admission-pinned + default-off.** Meaning is pinned at the spec/designer admission layer; the
+   extension is opt-in/default-off and does not touch default `SimSession` wiring.
+5. **Anti-faking still binds.** The extension must be what lets the **GPU compute** `state_N+1`. It does
+   **not** create a new path to inject CPU-computed next-state; the §6 negative control must still fail
+   parity when the transform (now possibly your new opcode) is disabled.
+
+If a needed primitive cannot satisfy 1–5 (it would have to be semantic, or it cannot reach parity), it is
+**not** admissible here → fall back to Outcome B and name the gap. Record every new primitive, its oracle,
+its parity result, and a one-line genericity justification in the report (§7/§8).
 
 ---
 
@@ -210,8 +253,12 @@ Keep the genuine guardrail tests; **replace** the metric-tautology tests with me
 8. `r1a_field_column_parity_matches_r6c_checksum` (`1bba891c779190a4`).
 9. `r1a_r4_f32_within_accepted_bound` (measured delta).
 10. `r1a_tier_b_structural_ops_boundary_maintained_via_threshold_event_not_planner`.
-11. `r1a_no_new_op_no_semantic_wgsl_no_atlas_batching_no_m4a_no_invariant_edit`.
-12. `r1a_opt_in_default_off` and `r1a_report_checksum_stable`.
+11. `r1a_no_semantic_wgsl_or_opcode_no_atlas_batching_no_m4a` (semantic ban + Tier-C stop-lines hold;
+    **note:** a *generic, semantic-free* opcode/kernel added under §4a is allowed — assert any new
+    primitive is semantic-free + has a passing CPU-oracle parity test, not that none exists).
+12. `r1a_any_new_substrate_primitive_passes_4a_gate` (if §4a is used: semantic-free identifier, generic,
+    parity-backed; otherwise trivially holds).
+13. `r1a_opt_in_default_off` and `r1a_report_checksum_stable`.
 
 A test must never pass because a report field says so; authority is proven by data-flow and the negative
 control.
@@ -229,7 +276,9 @@ control.
 - **Production track:** `docs/design_0_0_8_0_consumer_pulled_production_track.md` — flip the R1a note to
   the corrected result.
 - **Worklog + mapping:** `docs/worklog.md`, `docs/workshop/mapping_current_guidance.md`.
-- **Do not edit** `docs/invariants.md`.
+- **Any §4a primitive:** record it in the report with its oracle, parity result, and a one-line
+  genericity justification. You do **not** need to edit `docs/invariants.md` — the opcode-gate
+  clarification is already landed (EML Gadget Library section); cite it.
 
 ---
 
@@ -249,9 +298,12 @@ control.
 ## 10. Acceptance
 
 Acceptance = Outcome A with all of §6 satisfied (independence + negative control + measured counters +
-earned parity + source-shape guard + report evidence), checksum `1bba891c779190a4`, R4 within bound, and
-the production-substrate unification (no private journal; player/AI overlays + SEAD threshold + next-tick
-transition on one substrate). **Or** a correct Outcome B PARTIAL/BLOCKED naming the precise gap. Anything
-that reproduces the IMPL-0 inject-and-copy pattern under a PASS label is rejected.
+earned parity + source-shape guard + report evidence), checksum `1bba891c779190a4`, R4 within bound, the
+production-substrate unification (no private journal; player/AI overlays + SEAD threshold + next-tick
+transition on one substrate), and — if any substrate primitive was added — all of §4a (semantic-free,
+generic, parity-backed). **Or** a correct Outcome B PARTIAL/BLOCKED naming the precise gap. Anything that
+reproduces the IMPL-0 inject-and-copy pattern under a PASS label is rejected. Lifting the generic-op ban
+does **not** lift the anti-faking bar: it only changes *how* the GPU is allowed to truly compute the
+transition; the negative control (§6.2) remains the keystone.
 
 *Recipient after Opus acceptance of this opening:* Cursor / Codex5.5max.

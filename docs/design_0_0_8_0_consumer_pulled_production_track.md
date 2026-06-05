@@ -807,6 +807,15 @@ column-flip — each its own gate.
 > protocol** (independence; negative control disabling the GPU transform must fail parity; measured
 > counters; earned per-column parity; source-shape guard) — a PASS reproducing the inject-and-copy pattern
 > is rejected; a correct PARTIAL/BLOCKED naming the gap is acceptance.
+>
+> **Opcode/WGSL-gate clarification (Opus, 2026-06-05):** the remedial's blanket "no new WGSL/opcode"
+> stop-line was hygiene theater — stricter than `design_0_0_8_0.md` §2.3 (*"New generic WGSL is a Tier-2
+> gate, not a prohibition"*). The constitution now resolves the EML-interpreter-opcode ambiguity (§2.4 +
+> the invariants companion row), and the handoff gains a **§4a admission gate**: adding a **generic,
+> semantic-free** `EvalEML` opcode / `AccumulatorOp` combine fn / kernel is **permitted** for Outcome A
+> (semantic-free, reusable, CPU-oracle bit-exact parity, opt-in/default-off). **Semantic** WGSL/opcodes
+> stay banned and the anti-faking protocol is unchanged — lifting the generic-op ban only changes *how* the
+> GPU may truly compute the transition, not the bar for proving it did.
 > Per **SimThing Maximality**, any transition already expressed as
 > row/mask/reduce/disburse/threshold/emission-band is promoted toward resident execution; the CPU may
 > remain oracle/inspector/save-writer but may **not** be the hidden authority for state_N+1 when the
