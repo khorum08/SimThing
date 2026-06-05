@@ -1,3 +1,10 @@
+# 2026-06-04 - SCENARIO-0080-2-R6C-IMPL-0: integrated 100-tick mutable run implemented/pass
+
+- **Implemented R6C** as the ladder culmination: one canonical ATLAS/R1 seed, one mutable galactic-tier world, 100 ticks of R1 disruption -> R2 economy/blockade/divert -> R3 overlays -> R4 field reads -> R5 movement/REENROLL -> R6 combat -> R6B production/reinforcement/fusion, with positions, ship counts, stockpiles, and disruption written forward each tick. Report: [`docs/tests/scenario_0080_2_r6c_integrated_run_report.md`](tests/scenario_0080_2_r6c_integrated_run_report.md).
+- **Emergence evidence landed:** pirate raiding dispersion (`pirate_distinct_destinations=28`), first blockade/divert tick 2, movement-produced combat tick 44, production reinforcement tick 49, detector table, race curve, conservation rows, and deterministic replay checksum `1bba891c779190a4`. CPU oracle parity true; GPU posture: `GPU-conformant; GPU execution not yet measured`.
+- **R7 reclosed:** updated the closeout and plain-language gameplay report from reopened/premature to CLOSED / PASS with R6C evidence, while preserving the numeric-only reconciliation, greedy-local-pathfinding boundary, and no measured R6C GPU claim. No invariant edit.
+- **Verified:** R6C `22/0`; R6B `24/0`; R6 `25/0`; R5 `17/0`; R4 `16/0`; R3 `13/0`; R2 `13/0`; R1 `34/0`; ATLAS STORE CPU `11/0`; ATLAS STORE-GPU `10/0`; `mobility_reenroll0_substrate` `16/0`; `mobility_runtime0_composition` `23/0`; FrontierV2 consumer `11/0`; `cargo check --workspace` PASS with pre-existing warnings only.
+
 # 2026-06-04 - SCENARIO-0080-2-R7-REOPEN-0: reopen for R6C integrated multi-tick run (docs-only)
 
 - **Reopened R7.** The docs-only R7 closeout was premature: the ladder's intended culmination — spec §8.1, *observe which emergent behaviors actually appear over a run* — was never given an implementation rung. R1–R6B are single-pass mechanism fixtures; no rung ticks the assembled session.

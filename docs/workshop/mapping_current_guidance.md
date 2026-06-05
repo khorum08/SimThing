@@ -2,7 +2,7 @@
 
 Current scenario status:
 
-- `SCENARIO-0080-2` **R7 REOPENED (2026-06-04)** — the docs-only R7 closeout was premature; the ladder's intended culmination (spec §8.1 emergence observed over a run) was never given a rung. New rung **`R6C — Integrated multi-tick run`** (OPEN) assembles R1→R6B into one ticking session with feedback (~100 ticks) over a non-degenerate field and observes which §8.1 behaviors emerge; R7 re-closes only after R6C. Mechanism-chain proof (R1–R6B) stands. R6C opening spec: [`../scenarios/scenario_0080_2_r6c_integrated_run_opening_spec.md`](../scenarios/scenario_0080_2_r6c_integrated_run_opening_spec.md); reopened closeout: [`../tests/scenario_0080_2_r7_closeout_report.md`](../tests/scenario_0080_2_r7_closeout_report.md).
+- `SCENARIO-0080-2` **R6C IMPLEMENTED / PASS and R7 CLOSED / PASS (2026-06-04)** — R6C assembles R1→R6B into one mutable 100-tick session with feedback, detector table, race curve, and checksum `1bba891c779190a4`; R7 reclosed with that evidence. Mechanism-chain proof (R1–R6B) stands, movement remains greedy local SEAD rather than route search, and R6C GPU execution is not yet measured. R6C report: [`../tests/scenario_0080_2_r6c_integrated_run_report.md`](../tests/scenario_0080_2_r6c_integrated_run_report.md); closeout: [`../tests/scenario_0080_2_r7_closeout_report.md`](../tests/scenario_0080_2_r7_closeout_report.md).
 
 Authoritative decision:
 

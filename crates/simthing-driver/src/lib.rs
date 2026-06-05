@@ -22,6 +22,7 @@ pub mod dress_rehearsal_r4_sead_field_consumption;
 pub mod dress_rehearsal_r5_movement_reenroll;
 pub mod dress_rehearsal_r6_combat_hp_damage;
 pub mod dress_rehearsal_r6b_ship_cohort_reinforcement;
+pub mod dress_rehearsal_r6c_integrated_run;
 pub mod econ_scale_0080_0;
 pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
@@ -191,13 +192,13 @@ pub use dress_rehearsal_r3_capability_mask_down::{
     RAIDING_LOGISTICS_MODIFIER,
 };
 pub use dress_rehearsal_r4_sead_field_consumption::{
-    cpu_mag2_sum, cpu_oracle_dress_rehearsal_r4_sead_field_consumption,
-    exact_mag2_bits_from_fixed, f32_to_q16, mag2_u64_q16_to_f32_bits,
-    render_dress_rehearsal_r4_artifact, replay_dress_rehearsal_r4_sead_field_consumption,
+    cpu_mag2_sum, cpu_oracle_dress_rehearsal_r4_sead_field_consumption, exact_mag2_bits_from_fixed,
+    f32_to_q16, mag2_u64_q16_to_f32_bits, render_dress_rehearsal_r4_artifact,
+    replay_dress_rehearsal_r4_sead_field_consumption,
     run_dress_rehearsal_r4_sead_field_consumption, sqrt_cr_f_bits, DressRehearsalR4Artifact,
-    DressRehearsalR4CompositeComponentRow, DressRehearsalR4Decision, DressRehearsalR4ExactMagnitudeRow,
-    DressRehearsalR4Input, DressRehearsalR4MoverDecisionRow, DressRehearsalR4Oracle,
-    DressRehearsalR4Owner, DressRehearsalR4Report, DressRehearsalR4Summary,
+    DressRehearsalR4CompositeComponentRow, DressRehearsalR4Decision,
+    DressRehearsalR4ExactMagnitudeRow, DressRehearsalR4Input, DressRehearsalR4MoverDecisionRow,
+    DressRehearsalR4Oracle, DressRehearsalR4Owner, DressRehearsalR4Report, DressRehearsalR4Summary,
     DRESS_REHEARSAL_R4_SCENARIO, DRESS_REHEARSAL_R4_SEAD_FIELD_CONSUMPTION_ID,
     DRESS_REHEARSAL_R4_SEAD_FIELD_CONSUMPTION_STATUS_PASS, MOVEMENT_THRESHOLD_MAG_BITS,
 };
@@ -216,24 +217,41 @@ pub use dress_rehearsal_r6_combat_hp_damage::{
     emission_band_ship_attrition, hp_to_kill_for_cohort, render_dress_rehearsal_r6_artifact,
     replay_dress_rehearsal_r6_combat_hp_damage, run_dress_rehearsal_r6_combat_hp_damage,
     DressRehearsalR6Artifact, DressRehearsalR6CombatArenaRow, DressRehearsalR6DefeatedRow,
-    DressRehearsalR6DisburseDownRow, DressRehearsalR6Input, DressRehearsalR6Oracle,
-    DressRehearsalR6Owner, DressRehearsalR6ReduceUpRow, DressRehearsalR6Report,
-    DressRehearsalR6Summary, DressRehearsalR6SurvivorRow, DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_ID,
-    DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_STATUS_PASS, DRESS_REHEARSAL_R6_SCENARIO,
-    FLEET_COHORT_NUM_SHIPS, FLEET_DAMAGE_PER_SHIP_PER_TICK, FLEET_HP_PER_SHIP,
-    DressRehearsalR6FleetCohortOverride,
+    DressRehearsalR6DisburseDownRow, DressRehearsalR6FleetCohortOverride, DressRehearsalR6Input,
+    DressRehearsalR6Oracle, DressRehearsalR6Owner, DressRehearsalR6ReduceUpRow,
+    DressRehearsalR6Report, DressRehearsalR6Summary, DressRehearsalR6SurvivorRow,
+    DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_ID, DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_STATUS_PASS,
+    DRESS_REHEARSAL_R6_SCENARIO, FLEET_COHORT_NUM_SHIPS, FLEET_DAMAGE_PER_SHIP_PER_TICK,
+    FLEET_HP_PER_SHIP,
 };
 pub use dress_rehearsal_r6b_ship_cohort_reinforcement::{
     construction_threshold_emission, cpu_oracle_dress_rehearsal_r6b_ship_cohort_reinforcement,
     fleet_cohort_overrides_from_report, replay_dress_rehearsal_r6b_ship_cohort_reinforcement,
     run_dress_rehearsal_r6b_ship_cohort_reinforcement, run_r6_combat_with_r6b_cohorts,
-    DressRehearsalR6bBirthRow, DressRehearsalR6bConstructionRow, DressRehearsalR6bCohortRow,
+    DressRehearsalR6bBirthRow, DressRehearsalR6bCohortRow, DressRehearsalR6bConstructionRow,
     DressRehearsalR6bFusionRow, DressRehearsalR6bInput, DressRehearsalR6bOracle,
     DressRehearsalR6bOwner, DressRehearsalR6bReinforcementRow, DressRehearsalR6bReport,
     DressRehearsalR6bSummary, DRESS_REHEARSAL_R6B_SCENARIO,
     DRESS_REHEARSAL_R6B_SHIP_COHORT_REINFORCEMENT_ID,
     DRESS_REHEARSAL_R6B_SHIP_COHORT_REINFORCEMENT_STATUS_PASS, R6B_FUSION_FIXTURE_CELL,
     R6B_FUSION_LEFT_ID, R6B_FUSION_RIGHT_ID, SHIP_COST,
+};
+pub use dress_rehearsal_r6c_integrated_run::{
+    cpu_oracle_dress_rehearsal_r6c_integrated_run, render_dress_rehearsal_r6c_artifact,
+    replay_dress_rehearsal_r6c_integrated_run, run_dress_rehearsal_r6c_integrated_run,
+    DressRehearsalR6cBirthRow, DressRehearsalR6cBoundaryRequestRow,
+    DressRehearsalR6cCapabilityOverlayRow, DressRehearsalR6cCombatDisburseRow,
+    DressRehearsalR6cCombatReduceRow, DressRehearsalR6cCombatRow, DressRehearsalR6cConservationRow,
+    DressRehearsalR6cConstructionRow, DressRehearsalR6cDetectorRow,
+    DressRehearsalR6cDetectorStatus, DressRehearsalR6cEconomyRow, DressRehearsalR6cFieldReadRow,
+    DressRehearsalR6cFleetCohortState, DressRehearsalR6cFusionRow, DressRehearsalR6cInput,
+    DressRehearsalR6cMovementRow, DressRehearsalR6cOracle, DressRehearsalR6cOwner,
+    DressRehearsalR6cRaceCurveRow, DressRehearsalR6cReinforcementRow, DressRehearsalR6cReport,
+    DressRehearsalR6cStockpileLedgerRow, DressRehearsalR6cSummary, DressRehearsalR6cSystemState,
+    DressRehearsalR6cTraceExcerpt, DressRehearsalR6cWorld, DressRehearsalR6cWorldSeedSummary,
+    DRESS_REHEARSAL_R6C_INTEGRATED_RUN_ID, DRESS_REHEARSAL_R6C_INTEGRATED_RUN_STATUS_PASS,
+    DRESS_REHEARSAL_R6C_SCENARIO, R6C_CANONICAL_TICK_COUNT, R6C_GPU_POSTURE,
+    R6C_TIE_BREAKER_POLICY,
 };
 pub use econ_scale_0080_0::{
     replay_econ_scale_0080_0, run_econ_scale_0080_0, EconScale0080ClearingInput,
