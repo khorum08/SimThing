@@ -54,6 +54,7 @@ pub mod runtime_0080_0_r1a;
 pub mod runtime_0080_0_r1b;
 pub mod runtime_0080_0_r1c;
 pub mod runtime_0080_0_r1c_a;
+pub mod runtime_0080_0_r1c_b;
 pub mod scenario;
 pub mod session;
 pub mod spec_replay;
@@ -441,7 +442,8 @@ pub use runtime_0080_0_r1a::{
 pub use runtime_0080_0_r1b::{
     render_runtime_0080_r1b_artifact, replay_runtime_0080_0_r1b, run_runtime_0080_0_r1b,
     run_runtime_0080_0_r1b_with_event_writers_enabled, Runtime0080R1bEventWriterParityCheck,
-    Runtime0080R1bInput, Runtime0080R1bKindRowCount, Runtime0080R1bReport, Runtime0080R1bTraceRow,
+    Runtime0080R1bFreeSlotMarkSource, Runtime0080R1bInput, Runtime0080R1bKindRowCount,
+    Runtime0080R1bLocalBirthRequestSource, Runtime0080R1bReport, Runtime0080R1bTraceRow,
     RUNTIME_0080_0_R1B_ID, RUNTIME_0080_0_R1B_PRIMITIVE, RUNTIME_0080_0_R1B_STATUS_BLOCKED,
     RUNTIME_0080_0_R1B_STATUS_PARTIAL, RUNTIME_0080_0_R1B_STATUS_PASS, RUNTIME_R1B_SCOPE,
 };
@@ -454,13 +456,20 @@ pub use runtime_0080_0_r1c::{
     RUNTIME_R1C_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_SCOPE,
 };
 pub use runtime_0080_0_r1c_a::{
-    render_runtime_0080_r1c_a_artifact, replay_runtime_0080_0_r1c_a,
-    run_runtime_0080_0_r1c_a, run_runtime_0080_0_r1c_a_with_mark_writers_enabled,
-    Runtime0080R1cAInput, Runtime0080R1cAMarkerReport, Runtime0080R1cAMarkTraceRow,
-    Runtime0080R1cAPredecessorReport, Runtime0080R1cAReport, RUNTIME_0080_0_R1C_A_ID,
-    RUNTIME_0080_0_R1C_A_PRIMITIVE, RUNTIME_0080_0_R1C_A_STATUS_BLOCKED,
-    RUNTIME_0080_0_R1C_A_STATUS_PASS, RUNTIME_R1C_A_EXPECTED_REPORT_CHECKSUM,
-    RUNTIME_R1C_A_SCOPE,
+    render_runtime_0080_r1c_a_artifact, replay_runtime_0080_0_r1c_a, run_runtime_0080_0_r1c_a,
+    run_runtime_0080_0_r1c_a_with_mark_writers_enabled, Runtime0080R1cAInput,
+    Runtime0080R1cAMarkTraceRow, Runtime0080R1cAMarkerReport, Runtime0080R1cAPredecessorReport,
+    Runtime0080R1cAReport, RUNTIME_0080_0_R1C_A_ID, RUNTIME_0080_0_R1C_A_PRIMITIVE,
+    RUNTIME_0080_0_R1C_A_STATUS_BLOCKED, RUNTIME_0080_0_R1C_A_STATUS_PASS,
+    RUNTIME_R1C_A_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_A_SCOPE,
+};
+pub use runtime_0080_0_r1c_b::{
+    render_runtime_0080_r1c_b_artifact, replay_runtime_0080_0_r1c_b, run_runtime_0080_0_r1c_b,
+    run_runtime_0080_0_r1c_b_with_allocation_writers_enabled, Runtime0080R1cBAllocationRow,
+    Runtime0080R1cBBoundaryPassReport, Runtime0080R1cBDisabledAllocationWriterCheck,
+    Runtime0080R1cBInput, Runtime0080R1cBPreservationSummary, Runtime0080R1cBReport,
+    RUNTIME_0080_0_R1C_B_ID, RUNTIME_0080_0_R1C_B_PRIMITIVE, RUNTIME_0080_0_R1C_B_STATUS_BLOCKED,
+    RUNTIME_0080_0_R1C_B_STATUS_PARTIAL, RUNTIME_0080_0_R1C_B_STATUS_PASS, RUNTIME_R1C_B_SCOPE,
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};

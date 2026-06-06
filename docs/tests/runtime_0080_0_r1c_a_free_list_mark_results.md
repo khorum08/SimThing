@@ -6,7 +6,7 @@
 **Primitive:** `RESIDENT-FREELIST-MARK-ONLY-0`  
 **Rung:** `RUNTIME-0080-0-R1c-a`  
 **Scope:** resident free-list mark-only from R1b journal rows; no scatter/compact  
-**Stable report checksum:** `58d70988e436777b`
+**Stable report checksum:** `2f4cd7b82b07ca7d`
 
 ## Verdict
 
