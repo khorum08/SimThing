@@ -58,6 +58,7 @@ pub mod runtime_0080_0_r1c_b;
 pub mod runtime_0080_0_r1c_c;
 pub mod runtime_0080_0_r1c_d;
 pub mod runtime_0080_0_r1c_e;
+pub mod runtime_0080_0_r1c_f;
 pub mod scenario;
 pub mod session;
 pub mod spec_replay;
@@ -498,6 +499,13 @@ pub use runtime_0080_0_r1c_e::{
     Runtime0080R1cEMembershipRemapRow, Runtime0080R1cEReport, Runtime0080R1cESlotRemapRow,
     RUNTIME_0080_0_R1C_E_ID, RUNTIME_0080_0_R1C_E_PRIMITIVE, RUNTIME_0080_0_R1C_E_STATUS_BLOCKED,
     RUNTIME_0080_0_R1C_E_STATUS_PARTIAL, RUNTIME_0080_0_R1C_E_STATUS_PASS, RUNTIME_R1C_E_SCOPE,
+};
+pub use runtime_0080_0_r1c_f::{
+    render_runtime_0080_r1c_f_artifact, replay_runtime_0080_0_r1c_f, run_runtime_0080_0_r1c_f,
+    run_runtime_0080_0_r1c_f_with_zero_cohort_emitter_enabled, Runtime0080R1cFDisabledEmitterCheck,
+    Runtime0080R1cFInput, Runtime0080R1cFReport, Runtime0080R1cFZeroCohortRow,
+    RUNTIME_0080_0_R1C_F_ID, RUNTIME_0080_0_R1C_F_PRIMITIVE, RUNTIME_0080_0_R1C_F_STATUS_BLOCKED,
+    RUNTIME_0080_0_R1C_F_STATUS_PARTIAL, RUNTIME_0080_0_R1C_F_STATUS_PASS, RUNTIME_R1C_F_SCOPE,
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};

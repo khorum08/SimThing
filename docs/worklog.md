@@ -1,3 +1,11 @@
+# 2026-06-06 - RUNTIME-0080-0-R1c-f-IMPL-0: GPU decide ZeroCohort from resident num_ships
+
+- **Implemented R1c-f:** `crates/simthing-driver/src/runtime_0080_0_r1c_f.rs` adds `RESIDENT-ZERO-COHORT-GPU-DECIDE-0`, running a per-tick combat-attrition probe + threshold/emission-band over resident `num_ships` while the CPU witness omits `ZeroCohort`.
+- **Representation:** GPU threshold Downward @ 0.5 on post-combat-attrition `num_ships` (pre-reinforcement/fusion); journal round-trip + bounded CPU boundary apply unchanged.
+- **Evidence:** 1 resident ZeroCohort row (tick 44 / slot 11), exact oracle parity for initial resident `fleet_ids`, disabled-emitter negative control, full event-journal parity, `structural_decisions_gpu_emitted_zero_cohort = true`, umbrella flag still false. Stable report checksum `ba98dd0d89fca6aa`.
+- **Boundary held:** claims GPU decision for `ZeroCohort` on initial resident fleet slots only. Born-fleet combatants outside `fleet_ids` are excluded from slot mapping. M-4A / multi-atlas, default session wiring, invariant edits, and scenario reopen remain false.
+- **Test gate:** `cargo test -p simthing-driver --test runtime_0080_0_r1c_f` -> 20 passed; 0 failed. Report: [`docs/tests/runtime_0080_0_r1c_f_resident_zero_cohort_decision_results.md`](tests/runtime_0080_0_r1c_f_resident_zero_cohort_decision_results.md).
+
 # 2026-06-06 - RUNTIME-0080-0-R1c-e-IMPL-0: resident compacted-view apply
 
 - **Implemented R1c-e:** `crates/simthing-driver/src/runtime_0080_0_r1c_e.rs` adds `RESIDENT-COMPACTED-VIEW-APPLY-0`, consuming R1c-d resident compaction-map and lineage rows plus R1c-c membership rows.

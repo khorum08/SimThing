@@ -3240,6 +3240,20 @@ impl R1aBoundaryWitness {
     /// removals, fusion lineage) forward across ticks — it is never reconstructed from partial
     /// GPU Tier-A readback. That self-consistency is what keeps it in lockstep with the R6C oracle
     /// and prevents the structural drift that an over-eager GPU-side per-tick reconstruction caused.
+    /// Same as [`Self::step_tick_capture_events`], but omits `ZeroCohort` rows so a GPU
+    /// threshold/emission-band over resident `num_ships` can own that decision class.
+    pub fn step_tick_capture_events_excluding_zero_cohort(
+        &mut self,
+        tick: u32,
+    ) -> (R1aTickDerivedInputs, Vec<R1bStructuralEvent>) {
+        let (derived, events) = self.step_tick_capture_events(tick);
+        let filtered = events
+            .into_iter()
+            .filter(|event| event.event_kind != R1bStructuralEventKind::ZeroCohort)
+            .collect();
+        (derived, filtered)
+    }
+
     pub fn step_tick_capture_events(
         &mut self,
         tick: u32,
@@ -3402,11 +3416,11 @@ impl R1aBoundaryWitness {
             });
         }
         for row in &combat_rows {
-            let source_slot = self
-                .fleet_ids
-                .iter()
-                .position(|id| id == &row.combatant_id)
-                .unwrap_or(0) as u32;
+            let Some(source_slot) = self.fleet_ids.iter().position(|id| id == &row.combatant_id)
+            else {
+                continue;
+            };
+            let source_slot = source_slot as u32;
             if row.ship_loss_event_emitted {
                 events.push(R1bStructuralEvent {
                     tick: row.tick,
@@ -3859,10 +3873,10 @@ pub fn r1b_oracle_events_by_tick(
             });
     }
     for row in &report.combat_rows {
-        let source_slot = fleet_ids
-            .iter()
-            .position(|id| id == &row.combatant_id)
-            .unwrap_or(0) as u32;
+        let Some(source_slot) = fleet_ids.iter().position(|id| id == &row.combatant_id) else {
+            continue;
+        };
+        let source_slot = source_slot as u32;
         if row.ship_loss_event_emitted {
             by_tick
                 .entry(row.tick)
