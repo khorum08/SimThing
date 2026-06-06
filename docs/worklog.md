@@ -1,3 +1,11 @@
+# 2026-06-05 - RUNTIME-0080-0-R1c-c-IMPL-0: resident membership apply
+
+- **Implemented R1c-c:** `crates/simthing-driver/src/runtime_0080_0_r1c_c.rs` adds `RESIDENT-MEMBERSHIP-APPLY-0`, consuming R1b's GPU-read resident event journal rows and R1c-b resident allocation rows.
+- **Membership representation:** slot-to-cell table plus append-only membership delta rows (`MoveOut`, `MoveIn`, `BirthIn`, `DepartureMark`, `OwnerCodeUpdate`). The GPU writes and applies membership deltas resident-side; the CPU shadow observes after GPU apply without selecting membership effects.
+- **Evidence:** 426 membership delta rows, 188 move source removals, 188 destination additions, 4 allocated birth slots enrolled, departure marks and owner-code updates applied, disabled membership-writer parity check fails when writers are off and restores when re-enabled. Stable report checksum `9581b0838619d9c0`.
+- **Boundary held:** claims `resident_membership_apply_authority`, `resident_reenroll_scatter_authority`, and `resident_arena_membership_rewrite_authority`. Compaction, lineage rewrite, fusion compaction, M-4A / multi-atlas, `structural_decisions_gpu_emitted`, invariant edits, and scenario reopen remain false.
+- **Test gate:** `cargo test -p simthing-driver --test runtime_0080_0_r1c_c` -> 26 passed; 0 failed. Report: [`docs/tests/runtime_0080_0_r1c_c_resident_membership_apply_results.md`](tests/runtime_0080_0_r1c_c_resident_membership_apply_results.md).
+
 # 2026-06-05 - RUNTIME-0080-0-R1c-b-IMPL-0: resident allocation into marked free slots
 
 - **Implemented R1c-b:** `crates/simthing-driver/src/runtime_0080_0_r1c_b.rs` adds `RESIDENT-FREESLOT-ALLOC-0`, consuming the R1c-a resident mark table and R1b's GPU-read `LocalBirthRequest` projection.
