@@ -39,6 +39,7 @@ pub const RUNTIME_0080_0_R1C_D_STATUS_BLOCKED: &str =
     "BLOCKED - predecessor or discrete GPU unavailable";
 pub const RUNTIME_R1C_D_SCOPE: &str =
     "resident compaction-map and lineage staging from R1b/R1c-a/R1c-b/R1c-c rows; no M-4A";
+pub const RUNTIME_R1C_D_EXPECTED_REPORT_CHECKSUM: u64 = 0x4553_6a0c_01ad_ccb1;
 
 const COMPACTION_COPY_BAND: u32 = 0;
 const LINEAGE_COPY_BAND: u32 = 1;

@@ -33,6 +33,7 @@ pub const RUNTIME_0080_0_R1C_E_STATUS_BLOCKED: &str =
     "BLOCKED - predecessor or discrete GPU unavailable";
 pub const RUNTIME_R1C_E_SCOPE: &str =
     "resident compacted-view apply / resident slot-table rewrite; no M-4A";
+pub const RUNTIME_R1C_E_EXPECTED_REPORT_CHECKSUM: u64 = 0xe126_a91b_7b76_c2ba;
 
 const SLOT_REMAP_BAND: u32 = 0;
 const COMPACTED_TABLE_BAND: u32 = 1;

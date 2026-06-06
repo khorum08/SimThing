@@ -38,6 +38,7 @@ pub const RUNTIME_0080_0_R1C_C_STATUS_BLOCKED: &str =
     "BLOCKED - predecessor or discrete GPU unavailable";
 pub const RUNTIME_R1C_C_SCOPE: &str =
     "resident membership apply from R1b journal and R1c-b allocation rows; no compaction";
+pub const RUNTIME_R1C_C_EXPECTED_REPORT_CHECKSUM: u64 = 0xb3f8_fbb1_5edb_f0a8;
 
 const MEMBERSHIP_APPLY_BAND: u32 = 0;
 const DELTA_COPY_BAND: u32 = 1;

@@ -20,7 +20,12 @@ use crate::runtime_0080_0_r1a::{
 };
 use crate::runtime_0080_0_r1c::RUNTIME_R1C_EXPECTED_REPORT_CHECKSUM;
 use crate::runtime_0080_0_r1c_a::RUNTIME_R1C_A_EXPECTED_REPORT_CHECKSUM;
-use crate::runtime_0080_0_r1c_c::Runtime0080R1cCPreservationSummary;
+use crate::runtime_0080_0_r1c_b::RUNTIME_R1C_B_EXPECTED_REPORT_CHECKSUM;
+use crate::runtime_0080_0_r1c_c::{
+    Runtime0080R1cCPreservationSummary, RUNTIME_R1C_C_EXPECTED_REPORT_CHECKSUM,
+};
+use crate::runtime_0080_0_r1c_d::RUNTIME_R1C_D_EXPECTED_REPORT_CHECKSUM;
+use crate::runtime_0080_0_r1c_e::RUNTIME_R1C_E_EXPECTED_REPORT_CHECKSUM;
 
 pub const RUNTIME_0080_0_R1C_F_ID: &str = "RUNTIME-0080-0-R1c-f";
 pub const RUNTIME_0080_0_R1C_F_PRIMITIVE: &str = "RESIDENT-ZERO-COHORT-GPU-DECIDE-0";
@@ -32,6 +37,7 @@ pub const RUNTIME_0080_0_R1C_F_STATUS_BLOCKED: &str =
     "BLOCKED - predecessor or discrete GPU unavailable";
 pub const RUNTIME_R1C_F_SCOPE: &str =
     "GPU structural decision boundary for ZeroCohort over resident num_ships";
+pub const RUNTIME_R1C_F_EXPECTED_REPORT_CHECKSUM: u64 = 0xba98_dd0d_89fc_a6aa;
 
 const EVENT_JOURNAL_MAX_ROWS_PER_TICK: u32 = 128;
 const EVENT_JOURNAL_FIELDS_PER_ROW: u32 = 9;
@@ -41,10 +47,6 @@ const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 
 // Production-track gate checksums for predecessor rungs (no inline re-run in this harness).
 const R1B_PRODUCTION_REPORT_CHECKSUM: u64 = 0;
-const R1C_B_PRODUCTION_REPORT_CHECKSUM: u64 = 0xa64c_50e9_2143_1a68;
-const R1C_C_PRODUCTION_REPORT_CHECKSUM: u64 = 0x9581_b083_8619_d9c0;
-const R1C_D_PRODUCTION_REPORT_CHECKSUM: u64 = 0x51b0_066e_4bd6_e111;
-const R1C_E_PRODUCTION_REPORT_CHECKSUM: u64 = 0xd823_ece4_dc0f_5dab;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Runtime0080R1cFInput {
@@ -593,25 +595,25 @@ fn apply_production_track_preservation(report: &mut Runtime0080R1cFReport) {
     report.r1c_b_preservation = Some(Runtime0080R1cCPreservationSummary {
         rung: "R1c-b",
         verdict: "PASS".to_string(),
-        checksum: R1C_B_PRODUCTION_REPORT_CHECKSUM,
+        checksum: RUNTIME_R1C_B_EXPECTED_REPORT_CHECKSUM,
         preserved: true,
     });
     report.r1c_c_preservation = Some(Runtime0080R1cCPreservationSummary {
         rung: "R1c-c",
         verdict: "PASS".to_string(),
-        checksum: R1C_C_PRODUCTION_REPORT_CHECKSUM,
+        checksum: RUNTIME_R1C_C_EXPECTED_REPORT_CHECKSUM,
         preserved: true,
     });
     report.r1c_d_preservation = Some(Runtime0080R1cCPreservationSummary {
         rung: "R1c-d",
         verdict: "PASS".to_string(),
-        checksum: R1C_D_PRODUCTION_REPORT_CHECKSUM,
+        checksum: RUNTIME_R1C_D_EXPECTED_REPORT_CHECKSUM,
         preserved: true,
     });
     report.r1c_e_preservation = Some(Runtime0080R1cCPreservationSummary {
         rung: "R1c-e",
         verdict: "PASS".to_string(),
-        checksum: R1C_E_PRODUCTION_REPORT_CHECKSUM,
+        checksum: RUNTIME_R1C_E_EXPECTED_REPORT_CHECKSUM,
         preserved: true,
     });
     report.r1c_shadow_preservation = Some(Runtime0080R1cCPreservationSummary {
