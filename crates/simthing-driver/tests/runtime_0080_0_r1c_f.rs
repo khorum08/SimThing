@@ -1,9 +1,9 @@
 use std::sync::OnceLock;
 
 use simthing_driver::{
-    replay_runtime_0080_0_r1c_f, run_runtime_0080_0_r1c_f, Runtime0080R1cFInput,
-    Runtime0080R1cFReport, RUNTIME_0080_0_R1C_F_ID, RUNTIME_0080_0_R1C_F_PRIMITIVE,
-    RUNTIME_0080_0_R1C_F_STATUS_BLOCKED, RUNTIME_0080_0_R1C_F_STATUS_PASS, RUNTIME_R1C_F_SCOPE,
+    run_runtime_0080_0_r1c_f, Runtime0080R1cFInput, Runtime0080R1cFReport, RUNTIME_0080_0_R1C_F_ID,
+    RUNTIME_0080_0_R1C_F_PRIMITIVE, RUNTIME_0080_0_R1C_F_STATUS_BLOCKED,
+    RUNTIME_0080_0_R1C_F_STATUS_PASS, RUNTIME_R1C_F_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_F_SCOPE,
 };
 
 static REPORT: OnceLock<Runtime0080R1cFReport> = OnceLock::new();
@@ -283,11 +283,9 @@ fn r1c_f_report_checksum_stable() {
         assert_eq!(admitted.status, RUNTIME_0080_0_R1C_F_STATUS_BLOCKED);
         return;
     }
-    assert!(admitted.stable_report_checksum != 0);
-    let (first, second) = replay_runtime_0080_0_r1c_f();
+    assert_ne!(admitted.stable_report_checksum, 0);
     assert_eq!(
-        first.stable_report_checksum, second.stable_report_checksum,
-        "replay checksum must be stable"
+        admitted.stable_report_checksum,
+        RUNTIME_R1C_F_EXPECTED_REPORT_CHECKSUM
     );
-    assert_eq!(first.zero_cohort_row_count, second.zero_cohort_row_count);
 }

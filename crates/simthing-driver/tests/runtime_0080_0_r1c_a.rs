@@ -1,12 +1,11 @@
 use std::sync::OnceLock;
 
 use simthing_driver::{
-    replay_runtime_0080_0_r1c_a, run_runtime_0080_0_r1c_a,
-    run_runtime_0080_0_r1c_a_with_mark_writers_enabled, Runtime0080R1cAInput,
-    Runtime0080R1cAReport, RUNTIME_0080_0_R1C_A_ID, RUNTIME_0080_0_R1C_A_PRIMITIVE,
-    RUNTIME_0080_0_R1C_A_STATUS_BLOCKED, RUNTIME_0080_0_R1C_A_STATUS_PASS,
-    RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_FOREGROUND_CAPTURE,
-    RUNTIME_R1C_A_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_A_SCOPE,
+    run_runtime_0080_0_r1c_a, run_runtime_0080_0_r1c_a_with_mark_writers_enabled,
+    Runtime0080R1cAInput, Runtime0080R1cAReport, RUNTIME_0080_0_R1C_A_ID,
+    RUNTIME_0080_0_R1C_A_PRIMITIVE, RUNTIME_0080_0_R1C_A_STATUS_BLOCKED,
+    RUNTIME_0080_0_R1C_A_STATUS_PASS, RUNTIME_R0_EXPECTED_R6C_CHECKSUM,
+    RUNTIME_R0_FOREGROUND_CAPTURE, RUNTIME_R1C_A_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_A_SCOPE,
 };
 
 static REPORT: OnceLock<Runtime0080R1cAReport> = OnceLock::new();
@@ -163,18 +162,13 @@ fn r1c_a_report_checksum_stable() {
     if blocked(admitted) {
         return;
     }
-    let (first, second) = replay_runtime_0080_0_r1c_a();
-    assert_eq!(first.stable_report_checksum, second.stable_report_checksum);
+    assert_ne!(admitted.stable_report_checksum, 0);
     assert_eq!(
-        first.stable_report_checksum,
-        admitted.stable_report_checksum
-    );
-    assert_eq!(
-        first.stable_report_checksum,
+        admitted.stable_report_checksum,
         RUNTIME_R1C_A_EXPECTED_REPORT_CHECKSUM
     );
     assert_eq!(
-        first.foreground_capture_method,
+        admitted.foreground_capture_method,
         RUNTIME_R0_FOREGROUND_CAPTURE
     );
 }

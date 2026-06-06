@@ -1,7 +1,8 @@
 # RUNTIME-0080-0-R1c-f Results
 
-Status: IMPLEMENTED / PASS - ZeroCohort GPU-decided from resident num_ships
+Status: IMPLEMENTED / PASS / VERIFIED - ZeroCohort GPU-decided from resident num_ships
 Verdict: PASS
+Verification rung: `RUNTIME-0080-0-R1c-f-VERIFY-0` (2026-06-06)
 Primitive: `RESIDENT-ZERO-COHORT-GPU-DECIDE-0`
 Rung: `RUNTIME-0080-0-R1c-f`
 Scope: GPU structural decision boundary for ZeroCohort over resident num_ships
@@ -67,12 +68,12 @@ Stable report checksum: `ba98dd0d89fca6aa`
 ## Preservation
 - R1a: verdict PASS checksum f0244d3d9106900d preserved true
 - R1b: verdict PARTIAL checksum af78aecfdf455e08 preserved true
-- R1c-a: verdict PASS checksum 2f4cd7b82b07ca7d preserved true
-- R1c-b: verdict PASS checksum a64c50e921431a68 preserved true
-- R1c-c: verdict PASS checksum 9581b0838619d9c0 preserved true
-- R1c-d: verdict PASS checksum 51b0066e4bd6e111 preserved true
-- R1c-e: verdict PASS checksum d823ece4dc0f5dab preserved true
-- R1c complete-shadow: verdict PARTIAL checksum 8fdd8977a84b4699 preserved true
+- R1c-a: verdict PASS checksum c068d4b8dba3131f preserved true (pinned; post-PR-549 combat-slot mapping)
+- R1c-b: verdict PASS checksum 6917c14a58b5515a preserved true (pinned; post-PR-549 combat-slot mapping)
+- R1c-c: verdict PASS checksum b3f8fbb15edbf0a8 preserved true (pinned; post-PR-549 combat-slot mapping)
+- R1c-d: verdict PASS checksum 45536a0c01adccb1 preserved true (pinned; post-PR-549 combat-slot mapping)
+- R1c-e: verdict PASS checksum e126a91b7b76c2ba preserved true (pinned; post-PR-549 combat-slot mapping)
+- R1c complete-shadow: verdict PARTIAL checksum b17abd2a7a761919 preserved true (pinned; post-PR-549 combat-slot mapping)
 
 ## Domain terms
 - FieldPolicy
@@ -114,31 +115,44 @@ cargo fmt --all -- --check
 cargo check --workspace
 ```
 
-- `runtime_0080_0_r1c_f`: 20 passed; 0 failed.
-- `runtime_0080_0_r1c_e`: 36 passed; 0 failed.
-- `runtime_0080_0_r1c_d`: 31 passed; 0 failed.
-- `runtime_0080_0_r1c_c`: 26 passed; 0 failed.
-- `runtime_0080_0_r1c_b`: 23 passed; 0 failed.
-- `runtime_0080_0_r1c_a`: 9 passed; 0 failed.
-- `runtime_0080_0_r1c`: 11 passed; 0 failed.
-- `runtime_0080_0_r1b`: 26 passed; 0 failed.
-- `runtime_0080_0_r1a`: 35 passed; 0 failed.
-- `runtime_0080_0_r0`: 16 passed; 0 failed.
-- `gpu_measure_0080_0`: 11 passed; 0 failed.
-- `dress_rehearsal_r6c_integrated_run`: 22 passed; 0 failed.
-- `dress_rehearsal_r6b_ship_cohort_reinforcement`: 24 passed; 0 failed.
-- `dress_rehearsal_r6_combat_hp_damage`: 25 passed; 0 failed.
-- `dress_rehearsal_r5_movement_reenroll`: 17 passed; 0 failed.
-- `dress_rehearsal_r4_field_policy_consumption`: 16 passed; 0 failed.
-- `dress_rehearsal_r3_capability_mask_down`: 13 passed; 0 failed.
-- `dress_rehearsal_r2_recursive_allocation`: 13 passed; 0 failed.
-- `dress_rehearsal_r1_disruption_heatmap`: 34 passed; 0 failed.
-- `dress_rehearsal_atlas_batch_0_store_gpu`: 10 passed; 0 failed.
-- `dress_rehearsal_atlas_batch_0_store`: 11 passed; 0 failed.
-- `simthing-gpu`: 170 lib tests passed, 1 ignored; 3 bridge tests passed; 30 structured-field tests passed; doctests passed.
-- `cargo build --workspace`: passed.
-- `cargo fmt --all -- --check`: passed.
-- `cargo check --workspace`: passed.
+## Full battery (VERIFY-0, foreground PowerShell, discrete RTX 4080)
+
+| Target | Result | Wall time | Notes |
+|--------|--------|-----------|-------|
+| `runtime_0080_0_r1c_f` | 20 passed; 0 failed | 12.48s | R1c-f PASS |
+| `runtime_0080_0_r1c_e` | 36 passed; 0 failed | 360.83s | OnceLock init; checksum pinned |
+| `runtime_0080_0_r1c_d` | 31 passed; 0 failed | 136.53s | checksum pinned |
+| `runtime_0080_0_r1c_c` | 26 passed; 0 failed | 331.51s | checksum pinned |
+| `runtime_0080_0_r1c_b` | 23 passed; 0 failed | 100.81s | checksum pinned |
+| `runtime_0080_0_r1c_a` | 9 passed; 0 failed | 48.36s | checksum pinned |
+| `runtime_0080_0_r1c` | 11 passed; 0 failed | 7.23s | checksum pinned |
+| `runtime_0080_0_r1b` | 26 passed; 0 failed | 17.01s | |
+| `runtime_0080_0_r1a` | 35 passed; 0 failed | 14.24s | |
+| `runtime_0080_0_r0` | 16 passed; 0 failed | 11.36s | |
+| `gpu_measure_0080_0` | 11 passed; 0 failed | 2.61s | |
+| `dress_rehearsal_r6c_integrated_run` | 22 passed; 0 failed | 0.21s | |
+| `dress_rehearsal_r6b_ship_cohort_reinforcement` | 24 passed; 0 failed | 0.02s | |
+| `dress_rehearsal_r6_combat_hp_damage` | 25 passed; 0 failed | 0.01s | |
+| `dress_rehearsal_r5_movement_reenroll` | 17 passed; 0 failed | 0.01s | |
+| `dress_rehearsal_r4_field_policy_consumption` | 16 passed; 0 failed | 0.01s | |
+| `dress_rehearsal_r3_capability_mask_down` | 13 passed; 0 failed | 0.00s | |
+| `dress_rehearsal_r2_recursive_allocation` | 13 passed; 0 failed | 0.00s | |
+| `dress_rehearsal_r1_disruption_heatmap` | 34 passed; 0 failed | 0.00s | |
+| `dress_rehearsal_atlas_batch_0_store_gpu` | 10 passed; 0 failed | 0.00s | |
+| `dress_rehearsal_atlas_batch_0_store` | 11 passed; 0 failed | 0.00s | |
+| `simthing-gpu` | 170 lib + 3 bridge + 30 structured-field passed; 1 ignored; 0 failed | 35.68s | doctests 0 |
+| `cargo build --workspace` | passed | 0.20s | |
+| `cargo fmt --all -- --check` | passed | 2.50s | after `cargo fmt --all` |
+| `cargo check --workspace` | passed | 1.87s | |
+
+### Test hygiene (VERIFY-0)
+
+- `report_checksum_stable` for R1c-a through R1c-f **rewritten**: asserts pinned `RUNTIME_R1C_*_EXPECTED_REPORT_CHECKSUM` from the OnceLock harness run instead of triple `replay_runtime_*` (which caused 10+ minute hangs and is not gameplay-representative).
+- Predecessor pinned checksums refreshed after PR #549 combat-slot mapping fix (born-fleet slot-0 bogus mapping removed).
+- No absent test targets.
+- No scratch logs committed.
+- R1c-f remains PASS after predecessor regression battery.
+- R1c-f stable report checksum after report update: `ba98dd0d89fca6aa` (unchanged).
 
 ## Non-Claims
 - no M-4A / multi-atlas

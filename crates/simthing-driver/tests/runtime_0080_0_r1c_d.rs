@@ -1,9 +1,9 @@
 use std::sync::OnceLock;
 
 use simthing_driver::{
-    replay_runtime_0080_0_r1c_d, run_runtime_0080_0_r1c_d, Runtime0080R1cDInput,
-    Runtime0080R1cDReport, RUNTIME_0080_0_R1C_D_ID, RUNTIME_0080_0_R1C_D_PRIMITIVE,
-    RUNTIME_0080_0_R1C_D_STATUS_BLOCKED, RUNTIME_0080_0_R1C_D_STATUS_PASS, RUNTIME_R1C_D_SCOPE,
+    run_runtime_0080_0_r1c_d, Runtime0080R1cDInput, Runtime0080R1cDReport, RUNTIME_0080_0_R1C_D_ID,
+    RUNTIME_0080_0_R1C_D_PRIMITIVE, RUNTIME_0080_0_R1C_D_STATUS_BLOCKED,
+    RUNTIME_0080_0_R1C_D_STATUS_PASS, RUNTIME_R1C_D_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_D_SCOPE,
 };
 
 static REPORT: OnceLock<Runtime0080R1cDReport> = OnceLock::new();
@@ -395,14 +395,9 @@ fn r1c_d_report_checksum_stable() {
     if blocked(admitted) {
         return;
     }
-    let (first, second) = replay_runtime_0080_0_r1c_d();
-    assert_eq!(first.stable_report_checksum, second.stable_report_checksum);
+    assert_ne!(admitted.stable_report_checksum, 0);
     assert_eq!(
-        first.stable_report_checksum,
-        admitted.stable_report_checksum
-    );
-    eprintln!(
-        "R1c-d stable report checksum {:016x}",
-        admitted.stable_report_checksum
+        admitted.stable_report_checksum,
+        RUNTIME_R1C_D_EXPECTED_REPORT_CHECKSUM
     );
 }

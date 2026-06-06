@@ -1,8 +1,8 @@
 use std::sync::OnceLock;
 
 use simthing_driver::{
-    replay_runtime_0080_0_r1c, run_runtime_0080_0_r1c, Runtime0080R1cInput, Runtime0080R1cReport,
-    RUNTIME_0080_0_R1C_ID, RUNTIME_0080_0_R1C_PRIMITIVE, RUNTIME_0080_0_R1C_STATUS_BLOCKED,
+    run_runtime_0080_0_r1c, Runtime0080R1cInput, Runtime0080R1cReport, RUNTIME_0080_0_R1C_ID,
+    RUNTIME_0080_0_R1C_PRIMITIVE, RUNTIME_0080_0_R1C_STATUS_BLOCKED,
     RUNTIME_0080_0_R1C_STATUS_PARTIAL, RUNTIME_R0_EXPECTED_R6C_CHECKSUM,
     RUNTIME_R0_FOREGROUND_CAPTURE, RUNTIME_R1C_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_SCOPE,
 };
@@ -204,18 +204,13 @@ fn r1c_report_checksum_stable() {
     if blocked(admitted) {
         return;
     }
-    let (first, second) = replay_runtime_0080_0_r1c();
-    assert_eq!(first.stable_report_checksum, second.stable_report_checksum);
+    assert_ne!(admitted.stable_report_checksum, 0);
     assert_eq!(
-        first.stable_report_checksum,
-        admitted.stable_report_checksum
-    );
-    assert_eq!(
-        first.stable_report_checksum,
+        admitted.stable_report_checksum,
         RUNTIME_R1C_EXPECTED_REPORT_CHECKSUM
     );
     assert_eq!(
-        first.foreground_capture_method,
+        admitted.foreground_capture_method,
         RUNTIME_R0_FOREGROUND_CAPTURE
     );
 }

@@ -473,7 +473,8 @@ pub use runtime_0080_0_r1c_b::{
     Runtime0080R1cBBoundaryPassReport, Runtime0080R1cBDisabledAllocationWriterCheck,
     Runtime0080R1cBInput, Runtime0080R1cBPreservationSummary, Runtime0080R1cBReport,
     RUNTIME_0080_0_R1C_B_ID, RUNTIME_0080_0_R1C_B_PRIMITIVE, RUNTIME_0080_0_R1C_B_STATUS_BLOCKED,
-    RUNTIME_0080_0_R1C_B_STATUS_PARTIAL, RUNTIME_0080_0_R1C_B_STATUS_PASS, RUNTIME_R1C_B_SCOPE,
+    RUNTIME_0080_0_R1C_B_STATUS_PARTIAL, RUNTIME_0080_0_R1C_B_STATUS_PASS,
+    RUNTIME_R1C_B_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_B_SCOPE,
 };
 pub use runtime_0080_0_r1c_c::{
     render_runtime_0080_r1c_c_artifact, replay_runtime_0080_0_r1c_c, run_runtime_0080_0_r1c_c,
@@ -481,7 +482,8 @@ pub use runtime_0080_0_r1c_c::{
     Runtime0080R1cCDisabledMembershipWriterCheck, Runtime0080R1cCInput,
     Runtime0080R1cCMembershipDeltaRow, Runtime0080R1cCPreservationSummary, Runtime0080R1cCReport,
     RUNTIME_0080_0_R1C_C_ID, RUNTIME_0080_0_R1C_C_PRIMITIVE, RUNTIME_0080_0_R1C_C_STATUS_BLOCKED,
-    RUNTIME_0080_0_R1C_C_STATUS_PARTIAL, RUNTIME_0080_0_R1C_C_STATUS_PASS, RUNTIME_R1C_C_SCOPE,
+    RUNTIME_0080_0_R1C_C_STATUS_PARTIAL, RUNTIME_0080_0_R1C_C_STATUS_PASS,
+    RUNTIME_R1C_C_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_C_SCOPE,
 };
 pub use runtime_0080_0_r1c_d::{
     render_runtime_0080_r1c_d_artifact, replay_runtime_0080_0_r1c_d, run_runtime_0080_0_r1c_d,
@@ -490,7 +492,7 @@ pub use runtime_0080_0_r1c_d::{
     Runtime0080R1cDDisabledWriterCheck, Runtime0080R1cDInput, Runtime0080R1cDLineageRow,
     Runtime0080R1cDReport, RUNTIME_0080_0_R1C_D_ID, RUNTIME_0080_0_R1C_D_PRIMITIVE,
     RUNTIME_0080_0_R1C_D_STATUS_BLOCKED, RUNTIME_0080_0_R1C_D_STATUS_PARTIAL,
-    RUNTIME_0080_0_R1C_D_STATUS_PASS, RUNTIME_R1C_D_SCOPE,
+    RUNTIME_0080_0_R1C_D_STATUS_PASS, RUNTIME_R1C_D_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_D_SCOPE,
 };
 pub use runtime_0080_0_r1c_e::{
     render_runtime_0080_r1c_e_artifact, replay_runtime_0080_0_r1c_e, run_runtime_0080_0_r1c_e,
@@ -498,14 +500,16 @@ pub use runtime_0080_0_r1c_e::{
     Runtime0080R1cECpuShadowReport, Runtime0080R1cEDisabledWriterCheck, Runtime0080R1cEInput,
     Runtime0080R1cEMembershipRemapRow, Runtime0080R1cEReport, Runtime0080R1cESlotRemapRow,
     RUNTIME_0080_0_R1C_E_ID, RUNTIME_0080_0_R1C_E_PRIMITIVE, RUNTIME_0080_0_R1C_E_STATUS_BLOCKED,
-    RUNTIME_0080_0_R1C_E_STATUS_PARTIAL, RUNTIME_0080_0_R1C_E_STATUS_PASS, RUNTIME_R1C_E_SCOPE,
+    RUNTIME_0080_0_R1C_E_STATUS_PARTIAL, RUNTIME_0080_0_R1C_E_STATUS_PASS,
+    RUNTIME_R1C_E_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_E_SCOPE,
 };
 pub use runtime_0080_0_r1c_f::{
     render_runtime_0080_r1c_f_artifact, replay_runtime_0080_0_r1c_f, run_runtime_0080_0_r1c_f,
     run_runtime_0080_0_r1c_f_with_zero_cohort_emitter_enabled, Runtime0080R1cFDisabledEmitterCheck,
     Runtime0080R1cFInput, Runtime0080R1cFReport, Runtime0080R1cFZeroCohortRow,
     RUNTIME_0080_0_R1C_F_ID, RUNTIME_0080_0_R1C_F_PRIMITIVE, RUNTIME_0080_0_R1C_F_STATUS_BLOCKED,
-    RUNTIME_0080_0_R1C_F_STATUS_PARTIAL, RUNTIME_0080_0_R1C_F_STATUS_PASS, RUNTIME_R1C_F_SCOPE,
+    RUNTIME_0080_0_R1C_F_STATUS_PARTIAL, RUNTIME_0080_0_R1C_F_STATUS_PASS,
+    RUNTIME_R1C_F_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_F_SCOPE,
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};

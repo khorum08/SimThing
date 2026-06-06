@@ -1,3 +1,10 @@
+# 2026-06-06 - RUNTIME-0080-0-R1c-f-VERIFY-0: full battery completed for GPU-decided ZeroCohort
+
+- **Verification:** full production-track battery completed in foreground on discrete RTX 4080; R1c-f remains IMPLEMENTED / PASS after predecessor regression suite.
+- **Test hygiene:** `report_checksum_stable` for R1c-a through R1c-f rewritten to pinned checksum constants (no triple harness replay; avoids 10+ minute non-gameplay artifacts). Predecessor pinned checksums refreshed after PR #549 combat-slot mapping fix.
+- **Docs:** battery table recorded in [`docs/tests/runtime_0080_0_r1c_f_resident_zero_cohort_decision_results.md`](tests/runtime_0080_0_r1c_f_resident_zero_cohort_decision_results.md); production track, worklog, and mapping guidance tee up stable 100-tick rehearsal (`RUNTIME-0080-0-R2`). No scratch logs committed. R1c-f stable report checksum `ba98dd0d89fca6aa` unchanged.
+- **Next handoff:** [`docs/handoffs/runtime_0080_0_r2_stable_100_tick_rehearsal_opening.md`](handoffs/runtime_0080_0_r2_stable_100_tick_rehearsal_opening.md).
+
 # 2026-06-06 - RUNTIME-0080-0-R1c-f-IMPL-0: GPU decide ZeroCohort from resident num_ships
 
 - **Implemented R1c-f:** `crates/simthing-driver/src/runtime_0080_0_r1c_f.rs` adds `RESIDENT-ZERO-COHORT-GPU-DECIDE-0`, running a per-tick combat-attrition probe + threshold/emission-band over resident `num_ships` while the CPU witness omits `ZeroCohort`.

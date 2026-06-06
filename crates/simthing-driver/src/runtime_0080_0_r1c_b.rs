@@ -36,6 +36,7 @@ pub const RUNTIME_0080_0_R1C_B_STATUS_BLOCKED: &str =
     "BLOCKED - predecessor or discrete GPU unavailable";
 pub const RUNTIME_R1C_B_SCOPE: &str =
     "resident free-slot allocation from R1c-a marks and R1b LocalBirthRequest rows";
+pub const RUNTIME_R1C_B_EXPECTED_REPORT_CHECKSUM: u64 = 0x6917_c14a_58b5_515a;
 
 const ALLOCATION_SELECT_BAND: u32 = 0;
 const ALLOCATION_ROW_COPY_BAND: u32 = 1;
