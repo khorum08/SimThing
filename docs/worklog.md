@@ -1,3 +1,11 @@
+# 2026-06-06 - RUNTIME-0080-0-R1c-e-IMPL-0: resident compacted-view apply
+
+- **Implemented R1c-e:** `crates/simthing-driver/src/runtime_0080_0_r1c_e.rs` adds `RESIDENT-COMPACTED-VIEW-APPLY-0`, consuming R1c-d resident compaction-map and lineage rows plus R1c-c membership rows.
+- **Representation:** resident old-slot to new-slot-or-tombstone remap rows, compacted slot-table rows, and membership remap/link rows. The GPU writes the resident slot remap and compacted view; the CPU shadow consumes GPU rows without rewriting slot mapping first.
+- **Evidence:** 16 remap rows, 17 compacted slot rows, 426 membership remap rows, 26 lineage rows preserved after apply, disabled remap-writer / compacted-table-writer / membership-remap-writer parity checks fail when writers are off and restore when re-enabled. Stable report checksum `d823ece4dc0f5dab`.
+- **Boundary held:** claims resident compacted-view apply / resident slot-table rewrite for the single resident theater only. M-4A / multi-atlas, cross-theater migration, system-to-planet recursion, default session wiring, invariant edits, and scenario reopen remain false.
+- **Test gate:** `cargo test -p simthing-driver --test runtime_0080_0_r1c_e` -> 36 passed; 0 failed. Report: [`docs/tests/runtime_0080_0_r1c_e_resident_compacted_view_apply_results.md`](tests/runtime_0080_0_r1c_e_resident_compacted_view_apply_results.md).
+
 # 2026-06-05 - RUNTIME-0080-0-R1c-d-IMPL-0: resident compaction and lineage staging
 
 - **Implemented R1c-d:** `crates/simthing-driver/src/runtime_0080_0_r1c_d.rs` adds `RESIDENT-COMPACTION-LINEAGE-0`, consuming R1b resident event journal rows, R1c-a resident marks, R1c-b allocation rows, and the landed R1c-c membership row classes/projection.
