@@ -57,6 +57,7 @@ pub mod runtime_0080_0_r1c_a;
 pub mod runtime_0080_0_r1c_b;
 pub mod runtime_0080_0_r1c_c;
 pub mod runtime_0080_0_r1c_d;
+pub mod runtime_0080_0_r1c_e;
 pub mod scenario;
 pub mod session;
 pub mod spec_replay;
@@ -489,6 +490,14 @@ pub use runtime_0080_0_r1c_d::{
     Runtime0080R1cDReport, RUNTIME_0080_0_R1C_D_ID, RUNTIME_0080_0_R1C_D_PRIMITIVE,
     RUNTIME_0080_0_R1C_D_STATUS_BLOCKED, RUNTIME_0080_0_R1C_D_STATUS_PARTIAL,
     RUNTIME_0080_0_R1C_D_STATUS_PASS, RUNTIME_R1C_D_SCOPE,
+};
+pub use runtime_0080_0_r1c_e::{
+    render_runtime_0080_r1c_e_artifact, replay_runtime_0080_0_r1c_e, run_runtime_0080_0_r1c_e,
+    run_runtime_0080_0_r1c_e_with_writers_enabled, Runtime0080R1cECompactedSlotRow,
+    Runtime0080R1cECpuShadowReport, Runtime0080R1cEDisabledWriterCheck, Runtime0080R1cEInput,
+    Runtime0080R1cEMembershipRemapRow, Runtime0080R1cEReport, Runtime0080R1cESlotRemapRow,
+    RUNTIME_0080_0_R1C_E_ID, RUNTIME_0080_0_R1C_E_PRIMITIVE, RUNTIME_0080_0_R1C_E_STATUS_BLOCKED,
+    RUNTIME_0080_0_R1C_E_STATUS_PARTIAL, RUNTIME_0080_0_R1C_E_STATUS_PASS, RUNTIME_R1C_E_SCOPE,
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};
