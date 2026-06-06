@@ -135,6 +135,7 @@ pub struct Runtime0080R1bReport {
     pub disabled_transform_event_writer_check: Option<Runtime0080R1bEventWriterParityCheck>,
     pub free_slot_mark_sources_from_gpu_journal: Vec<Runtime0080R1bFreeSlotMarkSource>,
     pub local_birth_request_sources_from_gpu_journal: Vec<Runtime0080R1bLocalBirthRequestSource>,
+    pub structural_events_from_gpu_journal: Vec<R1bStructuralEvent>,
     pub gpu_event_row_count_total: u32,
     pub oracle_event_row_count_total: u32,
     pub journal_tick_count: u32,
@@ -460,6 +461,7 @@ fn run_runtime_0080_0_r1b_internal(
         free_slot_mark_sources_from_events(&all_committed_rows);
     report.local_birth_request_sources_from_gpu_journal =
         local_birth_request_sources_from_events(&all_committed_rows);
+    report.structural_events_from_gpu_journal = all_committed_rows.clone();
     report.gpu_event_row_count_total = gpu_event_row_count_total;
     report.oracle_event_row_count_total = oracle_event_row_count_total;
     report.journal_tick_count = R6C_CANONICAL_TICK_COUNT;
@@ -815,6 +817,7 @@ fn base_report(
         disabled_transform_event_writer_check: None,
         free_slot_mark_sources_from_gpu_journal: Vec::new(),
         local_birth_request_sources_from_gpu_journal: Vec::new(),
+        structural_events_from_gpu_journal: Vec::new(),
         gpu_event_row_count_total: 0,
         oracle_event_row_count_total: 0,
         journal_tick_count: 0,
