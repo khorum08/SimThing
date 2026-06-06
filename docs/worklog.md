@@ -1,8 +1,15 @@
+# 2026-06-05 - RUNTIME-0080-0-R1c-b-IMPL-0: resident allocation into marked free slots
+
+- **Implemented R1c-b:** `crates/simthing-driver/src/runtime_0080_0_r1c_b.rs` adds `RESIDENT-FREESLOT-ALLOC-0`, consuming the R1c-a resident mark table and R1b's GPU-read `LocalBirthRequest` projection.
+- **Evidence:** the GPU-side allocation pass uses generic AccumulatorOp `Min` selection over marked free-slot candidates, writes GPU-side allocation rows, and the CPU boundary pass consumes those rows without selecting a slot. Measured run: 11 marks, 4 LocalBirthRequest rows, allocated slots `[0, 1, 2, 3]`, disabled allocation-writer parity check fails when writers are off and restores when re-enabled. Stable report checksum `a64c50e921431a68`.
+- **Boundary held:** this pass claims only `resident_free_list_allocation_authority = true`. Resident REENROLL scatter, arena membership rewrite, compaction, fusion compaction, lineage rewrite, M-4A / multi-atlas, invariant edits, and scenario reopen remain false.
+- **Test gate:** `cargo test -p simthing-driver --test runtime_0080_0_r1c_b` -> 23 passed; 0 failed. Report: [`docs/tests/runtime_0080_0_r1c_b_resident_allocation_results.md`](tests/runtime_0080_0_r1c_b_resident_allocation_results.md).
+
 # 2026-06-05 - RUNTIME-0080-0-R1c-a-IMPL-0: resident free-list mark-only PASS
 
 - **Implemented R1c-a:** `crates/simthing-driver/src/runtime_0080_0_r1c_a.rs` adds `RESIDENT-FREELIST-MARK-ONLY-0`, the smaller rung named by R1c. R1b now exposes a compact free-slot mark-source projection from its GPU-read resident journal rows, and R1c-a copies those marks through a resident GPU slot bitmap.
-- **Evidence:** GPU-vs-oracle mark parity is measured from GPU values; disabling mark writers leaves the bitmap empty and fails parity. Stable report checksum `58d70988e436777b`.
-- **Boundary held:** this pass claims only `resident_free_list_mark_authority = true`. Allocation into marked slots, REENROLL scatter, birth/removal authority, fusion compaction, and `structural_decisions_gpu_emitted` remain false. Next horizon: `R1c-b resident allocation into marked free slots / no compaction`.
+- **Evidence:** GPU-vs-oracle mark parity is measured from GPU values; disabling mark writers leaves the bitmap empty and fails parity. Stable report checksum `2f4cd7b82b07ca7d` after R1b's report surface added the GPU-read LocalBirthRequest projection consumed by R1c-b.
+- **Boundary held:** this pass claims only `resident_free_list_mark_authority = true`. Allocation into marked slots, REENROLL scatter, birth/removal authority, fusion compaction, and `structural_decisions_gpu_emitted` remain false. R1c-b now consumes this mark table for resident allocation into marked free slots.
 - **Test gate:** `cargo test -p simthing-driver --test runtime_0080_0_r1c_a` → 9 passed; 0 failed. Report: [`docs/tests/runtime_0080_0_r1c_a_free_list_mark_results.md`](tests/runtime_0080_0_r1c_a_free_list_mark_results.md).
 
 # 2026-06-05 - RUNTIME-0080-0-R1c-IMPL-0: resident decision stop-line and complete-shadow gate

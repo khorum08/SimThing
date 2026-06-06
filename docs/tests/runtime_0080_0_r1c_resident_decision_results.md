@@ -6,7 +6,7 @@
 **Primitive:** `RESIDENT-REENROLL-0`  
 **Rung:** `RUNTIME-0080-0-R1c`  
 **Scope:** resident structural decision authority gate: REENROLL/scatter/compact  
-**Stable report checksum:** `570147cda47b5434`
+**Stable report checksum:** `8fdd8977a84b4699`
 
 ## Verdict
 

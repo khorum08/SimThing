@@ -27,7 +27,7 @@ pub const RUNTIME_0080_0_R1C_STATUS_BLOCKED: &str =
     "BLOCKED - predecessor or discrete GPU unavailable";
 pub const RUNTIME_R1C_SCOPE: &str =
     "resident structural decision authority gate: REENROLL/scatter/compact";
-pub const RUNTIME_R1C_EXPECTED_REPORT_CHECKSUM: u64 = 0x5701_47cd_a47b_5434;
+pub const RUNTIME_R1C_EXPECTED_REPORT_CHECKSUM: u64 = 0x8fdd_8977_a84b_4699;
 
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;

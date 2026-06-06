@@ -94,6 +94,16 @@ pub struct Runtime0080R1bFreeSlotMarkSource {
     pub source_event_kind: &'static str,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Runtime0080R1bLocalBirthRequestSource {
+    pub tick: u32,
+    pub request_index: u32,
+    pub owner_code: u32,
+    pub source_cell: u32,
+    pub requested_ships: i64,
+    pub source_event_kind: &'static str,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Runtime0080R1bReport {
     pub id: &'static str,
@@ -124,6 +134,7 @@ pub struct Runtime0080R1bReport {
     pub per_kind_row_counts: Vec<Runtime0080R1bKindRowCount>,
     pub disabled_transform_event_writer_check: Option<Runtime0080R1bEventWriterParityCheck>,
     pub free_slot_mark_sources_from_gpu_journal: Vec<Runtime0080R1bFreeSlotMarkSource>,
+    pub local_birth_request_sources_from_gpu_journal: Vec<Runtime0080R1bLocalBirthRequestSource>,
     pub gpu_event_row_count_total: u32,
     pub oracle_event_row_count_total: u32,
     pub journal_tick_count: u32,
@@ -447,6 +458,8 @@ fn run_runtime_0080_0_r1b_internal(
     report.per_kind_row_counts = to_per_kind_row_counts(&per_kind_counts);
     report.free_slot_mark_sources_from_gpu_journal =
         free_slot_mark_sources_from_events(&all_committed_rows);
+    report.local_birth_request_sources_from_gpu_journal =
+        local_birth_request_sources_from_events(&all_committed_rows);
     report.gpu_event_row_count_total = gpu_event_row_count_total;
     report.oracle_event_row_count_total = oracle_event_row_count_total;
     report.journal_tick_count = R6C_CANONICAL_TICK_COUNT;
@@ -739,6 +752,27 @@ fn free_slot_mark_sources_from_events(
     rows
 }
 
+fn local_birth_request_sources_from_events(
+    events: &[R1bStructuralEvent],
+) -> Vec<Runtime0080R1bLocalBirthRequestSource> {
+    let mut rows = Vec::new();
+    for event in events
+        .iter()
+        .filter(|event| event.event_kind == R1bStructuralEventKind::LocalBirthRequest)
+    {
+        rows.push(Runtime0080R1bLocalBirthRequestSource {
+            tick: event.tick,
+            request_index: rows.len() as u32,
+            owner_code: event.owner_code,
+            source_cell: event.source_cell,
+            requested_ships: event.amount_or_delta,
+            source_event_kind: event_kind_name(event.event_kind),
+        });
+    }
+    rows.sort_by_key(|row| (row.tick, row.request_index, row.source_cell));
+    rows
+}
+
 fn f32_to_u32(value: f32) -> u32 {
     if value.is_nan() || value.is_sign_negative() {
         0
@@ -780,6 +814,7 @@ fn base_report(
         per_kind_row_counts: Vec::new(),
         disabled_transform_event_writer_check: None,
         free_slot_mark_sources_from_gpu_journal: Vec::new(),
+        local_birth_request_sources_from_gpu_journal: Vec::new(),
         gpu_event_row_count_total: 0,
         oracle_event_row_count_total: 0,
         journal_tick_count: 0,
@@ -855,6 +890,13 @@ fn checksum_report(report: &Runtime0080R1bReport) -> u64 {
         mix_u64(&mut hash, check.negative_control_detected as u64);
         mix_u64(&mut hash, check.disabled_report_checksum);
     }
+    for row in &report.local_birth_request_sources_from_gpu_journal {
+        mix_u64(&mut hash, row.tick as u64);
+        mix_u64(&mut hash, row.request_index as u64);
+        mix_u64(&mut hash, row.owner_code as u64);
+        mix_u64(&mut hash, row.source_cell as u64);
+        mix_u64(&mut hash, row.requested_ships as u64);
+    }
     hash
 }
 
@@ -894,6 +936,28 @@ pub fn render_runtime_0080_r1b_artifact(report: &Runtime0080R1bReport) -> String
             )
         })
         .unwrap_or_else(|| "- not_run\n".to_string());
+    let local_birth_requests = if report
+        .local_birth_request_sources_from_gpu_journal
+        .is_empty()
+    {
+        "- none".to_string()
+    } else {
+        report
+            .local_birth_request_sources_from_gpu_journal
+            .iter()
+            .map(|row| {
+                format!(
+                    "- tick {} request {} owner {} source_cell {} requested_ships {}",
+                    row.tick,
+                    row.request_index,
+                    row.owner_code,
+                    row.source_cell,
+                    row.requested_ships
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
     let diagnostics = if report.diagnostics.is_empty() {
         "- none".to_string()
     } else {
@@ -932,6 +996,8 @@ pub fn render_runtime_0080_r1b_artifact(report: &Runtime0080R1bReport) -> String
          {per_kind}\n\n\
          ## Event Writer Disabled-Transform Check\n\
          {disabled_check}\n\
+         ## Local Birth Requests From GPU Journal\n\
+         {local_birth_requests}\n\n\
          ## R1a Preservation + R6c Checksum\n\
          - r1a_tier_a_preservation: {r1a_ok}\n\
          - r1a_tier_a_preservation_verdict: {r1a_verdict}\n\
@@ -965,6 +1031,7 @@ pub fn render_runtime_0080_r1b_artifact(report: &Runtime0080R1bReport) -> String
         oracle_rows = report.oracle_event_row_count_total,
         per_kind = per_kind,
         disabled_check = disabled_check,
+        local_birth_requests = local_birth_requests,
         r1a_ok = report.r1a_tier_a_preservation,
         r1a_verdict = report.r1a_tier_a_preservation_verdict,
         r1a_checksum = report.r1a_report_checksum,

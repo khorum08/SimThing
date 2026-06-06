@@ -34,7 +34,7 @@ pub const RUNTIME_0080_0_R1C_A_STATUS_BLOCKED: &str =
     "BLOCKED - predecessor or discrete GPU unavailable";
 pub const RUNTIME_R1C_A_SCOPE: &str =
     "resident free-list mark-only from R1b journal rows; no scatter/compact";
-pub const RUNTIME_R1C_A_EXPECTED_REPORT_CHECKSUM: u64 = 0x58d7_0988_e436_777b;
+pub const RUNTIME_R1C_A_EXPECTED_REPORT_CHECKSUM: u64 = 0x2f4c_d7b8_2b07_ca7d;
 
 const FREELIST_MARK_COPY_BAND: u32 = 0;
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
