@@ -14,7 +14,7 @@ use simthing_core::{
 use simthing_gpu::{
     set_debug_readback_allowed, write_max_candidate_f_magnitude_bits, AccumulatorOpSession,
     AccumulatorPipelineSessions, EmlGpuProgramTable, GpuContext, GradientPairGpu, Pipelines,
-    WorldGpuState,
+    ThresholdEvent, ThresholdRegistration, WorldGpuState, DIR_DOWNWARD, THRESH_BUF_VALUES,
 };
 
 use crate::dress_rehearsal_r1_disruption_heatmap::{
@@ -1375,6 +1375,65 @@ impl TierAGpuHarness {
         }
     }
 
+    /// Combat-only resident `num_ships` probe: GPU attrition/commit bands over pre-tick values,
+    /// then threshold/emission-band for downward crossing at 0.5 (zero cohort).
+    pub(crate) fn probe_zero_cohort_threshold_emissions(
+        &self,
+        ctx: &GpuContext,
+        layout: &TierAStateLayout,
+        derived: &R1aTickDerivedInputs,
+        pre_combat_values: &[f32],
+        tick_input_values: &[f32],
+        probe: &mut AccumulatorOpSession,
+    ) -> Result<Vec<ThresholdEvent>, &'static str> {
+        let mut ops = Vec::new();
+        for slot in 0..layout.total_slots {
+            ops.push(identity_op(slot, COL_CURRENT, slot, COL_NEXT, 0));
+        }
+        ops.extend(build_combat_attrition_ops(
+            layout,
+            &self.metadata,
+            self.metadata.tick_region(),
+            derived,
+        ));
+        probe.upload_values(ctx, tick_input_values);
+        probe
+            .upload_ops_with_eml(ctx, &ops, Some(&self.eml_registry))
+            .map_err(|_| "probe_upload_ops_failed")?;
+        let eml = Some((&self.eml_table.node_buffer, &self.eml_table.range_buffer));
+        for band in 0..TIER_A_BAND_COUNT {
+            probe
+                .tick_with_eml(ctx, band, eml)
+                .map_err(|_| "probe_band_tick_failed")?;
+        }
+        probe
+            .upload_ops(ctx, &self.swap_ops)
+            .map_err(|_| "probe_swap_upload_failed")?;
+        probe.tick(ctx, 0).map_err(|_| "probe_swap_tick_failed")?;
+        probe.upload_previous_values(ctx, pre_combat_values);
+        let fleet_count = layout.fleet_ids.len() as u32;
+        let regs = (0..fleet_count)
+            .map(|idx| ThresholdRegistration {
+                slot: layout.num_ships_start + idx,
+                col: COL_CURRENT,
+                threshold: 0.5,
+                direction: DIR_DOWNWARD,
+                event_kind: 4,
+                buffer: THRESH_BUF_VALUES,
+            })
+            .collect::<Vec<_>>();
+        probe.ensure_threshold_emission_capacity(ctx, fleet_count);
+        probe
+            .upload_threshold_ops(ctx, &regs)
+            .map_err(|_| "probe_threshold_upload_failed")?;
+        probe
+            .tick(ctx, 0)
+            .map_err(|_| "probe_threshold_tick_failed")?;
+        probe
+            .readback_threshold_events(ctx)
+            .map_err(|_| "probe_threshold_readback_failed")
+    }
+
     fn dispatch_r4_candidate_f(
         &mut self,
         layout: &TierAStateLayout,
@@ -1654,7 +1713,9 @@ fn build_r6b_ops(
     ops
 }
 
-fn build_combat_ops(
+/// Combat attrition only — matches the R6C oracle `ZeroCohort` decision point (before
+/// reinforcement/fusion deltas in the same tick).
+fn build_combat_attrition_ops(
     layout: &TierAStateLayout,
     meta: &TierAMetadataLayout,
     meta_base: u32,
@@ -1665,8 +1726,6 @@ fn build_combat_ops(
         let fleet_slot = layout.num_ships_start + fleet_idx as u32;
         let damage = derived.combat_hostile_damage[fleet_idx];
         let hp = derived.combat_hp_per_ship[fleet_idx];
-        let reinforcement_delta = derived.reinforcement_delta[fleet_idx];
-        let fusion_delta = derived.fusion_delta[fleet_idx];
 
         if damage > 0 && hp > 0 {
             ops.push(identity_op(
@@ -1724,6 +1783,21 @@ fn build_combat_ops(
                 targets: vec![(fleet_slot, COL_NEXT)],
             });
         }
+    }
+    ops
+}
+
+fn build_combat_ops(
+    layout: &TierAStateLayout,
+    meta: &TierAMetadataLayout,
+    meta_base: u32,
+    derived: &R1aTickDerivedInputs,
+) -> Vec<AccumulatorOp> {
+    let mut ops = build_combat_attrition_ops(layout, meta, meta_base, derived);
+    for (fleet_idx, _) in layout.fleet_ids.iter().enumerate() {
+        let fleet_slot = layout.num_ships_start + fleet_idx as u32;
+        let reinforcement_delta = derived.reinforcement_delta[fleet_idx];
+        let fusion_delta = derived.fusion_delta[fleet_idx];
 
         if reinforcement_delta != 0 {
             ops.push(identity_op(
