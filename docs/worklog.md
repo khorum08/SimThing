@@ -1,3 +1,11 @@
+# 2026-06-05 - RUNTIME-0080-0-R1c-d-IMPL-0: resident compaction and lineage staging
+
+- **Implemented R1c-d:** `crates/simthing-driver/src/runtime_0080_0_r1c_d.rs` adds `RESIDENT-COMPACTION-LINEAGE-0`, consuming R1b resident event journal rows, R1c-a resident marks, R1c-b allocation rows, and the landed R1c-c membership row classes/projection.
+- **Representation:** old-slot to new-slot-or-tombstone compaction-map rows plus append-only resident lineage-staging rows. The GPU writes and commits the staging rows; the CPU shadow consumes GPU rows without redeciding compaction or lineage.
+- **Evidence:** 16 compaction rows, 26 lineage rows, 2 tombstones, 10 fusion absorption rows, 4 birth lineage rows, disabled compaction-writer and lineage-writer parity checks fail when writers are off and restore when re-enabled. Stable report checksum `51b0066e4bd6e111`.
+- **Boundary held:** claims resident compaction-map staging and resident lineage-staging authority only. Physical compaction, lineage rewrite, M-4A / multi-atlas, system-to-planet recursion, default session wiring, invariant edits, and scenario reopen remain false.
+- **Test gate:** `cargo test -p simthing-driver --test runtime_0080_0_r1c_d` -> 31 passed; 0 failed. Report: [`docs/tests/runtime_0080_0_r1c_d_resident_compaction_lineage_results.md`](tests/runtime_0080_0_r1c_d_resident_compaction_lineage_results.md).
+
 # 2026-06-05 - RUNTIME-0080-0-R1c-c-IMPL-0: resident membership apply
 
 - **Implemented R1c-c:** `crates/simthing-driver/src/runtime_0080_0_r1c_c.rs` adds `RESIDENT-MEMBERSHIP-APPLY-0`, consuming R1b's GPU-read resident event journal rows and R1c-b resident allocation rows.
