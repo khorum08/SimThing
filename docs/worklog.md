@@ -1,3 +1,10 @@
+# 2026-06-07 - RUNTIME-0080-RR-1-IMPL-0: nested sparse residency wiring
+
+- **Implemented RR-1:** `crates/simthing-driver/src/runtime_0080_rr_1.rs` — consumes RR-0 recursive world under nested sparse residency; galaxy 20×20 always resident; system 10×10 materializes on `DescendToSystem` and deactivates on `AscendToGalaxy`; planet surface 10×10 materializes on `DescendToSurface` and deactivates on `AscendToSystem`; starport visible only when system resident; pop/factory visible only when surface resident. Opt-in/default-off.
+- **Verdict:** PASS — Scope Ledger rows 1–18 all `implemented`; rows 19–21 deferred (RR-2/RR-3/RR-4); no Deviation Record; no flat proxy; `is_flattened=false`. Active tier trace: Terran descend→surface→ascend→galaxy, then Pirate same. No-leakage proof: wrong galaxy cell, wrong system surface, inactive-surface child count all rejected/zero.
+- **Sparse accounting:** galaxy-only 400 resident / 2600 inert; deepest surface step 600 resident / 2400 inert. Mapping parity: 13 systems match RR-0 owners, parents, dims, child placements. Checksum `e6153526c1541764`.
+- **Report:** [`docs/tests/runtime_0080_rr_1_results.md`](tests/runtime_0080_rr_1_results.md). Tests: `crates/simthing-driver/tests/runtime_0080_rr_1.rs` (30 tests). **No GPU economy claim** — RR-2 is planet-surface labor economy on GPU; RR-3 recursive GPU reduce/disburse; RR-4 integrated recursive GPU rehearsal.
+
 # 2026-06-07 - RUNTIME-0080-RR-0-IMPL-0: recursive world model + CPU oracle
 
 - **Implemented RR-0:** `crates/simthing-driver/src/runtime_0080_rr_0.rs` — recursive galaxy 20×20 → 13× system 10×10 → planet → surface 10×10 with pop-cohort + factory district children; deterministic 100-tick recursive CPU oracle (labor emit → factory consume → production → reduce-up surface→planet→system→galaxy→faction → disburse-down to starports). Opt-in/default-off.
