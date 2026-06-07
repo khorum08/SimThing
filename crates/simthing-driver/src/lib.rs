@@ -63,6 +63,7 @@ pub mod runtime_0080_0_r2;
 pub(crate) mod runtime_0080_0_r2_substrate;
 pub mod runtime_0080_rr_0;
 pub mod runtime_0080_rr_1;
+pub mod runtime_0080_rr_2;
 pub mod scenario;
 pub mod session;
 pub mod spec_replay;
@@ -546,6 +547,15 @@ pub use runtime_0080_rr_1::{
     RR_1_SYSTEM_SIDE, RUNTIME_0080_RR_1_ID, RUNTIME_0080_RR_1_STATUS_BLOCKED,
     RUNTIME_0080_RR_1_STATUS_PARTIAL, RUNTIME_0080_RR_1_STATUS_PASS,
     RUNTIME_RR_1_EXPECTED_REPORT_CHECKSUM,
+};
+pub use runtime_0080_rr_2::{
+    replay_runtime_0080_rr_2, run_runtime_0080_rr_2, Runtime0080Rr2DeviationRecord,
+    Runtime0080Rr2Input, Runtime0080Rr2ParityRow, Runtime0080Rr2Report,
+    Runtime0080Rr2ScopeLedgerRow, Runtime0080Rr2SurfaceCellBinding, Runtime0080Rr2SurfaceProof,
+    RR_2_ACTIVE_SURFACE_COUNT, RR_2_COL_LABOR, RR_2_COL_PRODUCTION, RR_2_SURFACE_CELL_COUNT,
+    RR_2_SURFACE_N_DIMS, RUNTIME_0080_RR_2_ID, RUNTIME_0080_RR_2_STATUS_BLOCKED,
+    RUNTIME_0080_RR_2_STATUS_PARTIAL, RUNTIME_0080_RR_2_STATUS_PASS,
+    RUNTIME_RR_2_EXPECTED_REPORT_CHECKSUM,
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};

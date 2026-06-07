@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use bytemuck;
-use simthing_core::AccumulatorOp;
+use simthing_core::{AccumulatorOp, InputSpec, SourceSpec};
 use wgpu::util::DeviceExt;
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
@@ -16,8 +16,10 @@ use wgpu::{
 use crate::context::GpuContext;
 use crate::world_state::{IntentDelta, ThresholdEvent, ThresholdRegistration};
 
+use super::bootstrap_validate::validate_no_contention;
 use super::encode::{threshold_registrations_to_ops, EncodeError};
-use super::types::AccumulatorOpGpu;
+use super::input_list_table::InputListRange;
+use super::types::{AccumulatorInputGpu, AccumulatorOpGpu};
 use super::types::{
     AccumulatorSummaryParams, AccumulatorTickParams, EmissionRecord, EmissionRecordGpu, EmlNodeGpu,
     EmlTreeRangeGpu, SlotSummary, SlotSummaryGpu, ThresholdEmission, ThresholdEmissionGpu,
@@ -768,6 +770,72 @@ impl AccumulatorOpSession {
             });
         }
 
+        ctx.queue
+            .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(&gpu_ops));
+        self.n_ops = gpu_ops.len() as u32;
+        Ok(())
+    }
+
+    /// Upload bootstrap ops, materializing conjunctive input lists into the session buffer.
+    pub fn upload_ops_resolving_input_lists(
+        &mut self,
+        ctx: &GpuContext,
+        ops: &[AccumulatorOp],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        self.threshold_event_kinds.clear();
+        let mut flat_inputs = Vec::new();
+        let mut gpu_ops = Vec::with_capacity(ops.len());
+        for op in ops {
+            if let SourceSpec::ConjunctiveCrossing { inputs } = &op.source {
+                let offset = flat_inputs.len() as u32;
+                for InputSpec {
+                    slot,
+                    col,
+                    unit_cost,
+                } in inputs
+                {
+                    flat_inputs.push(AccumulatorInputGpu {
+                        slot: *slot,
+                        col: *col,
+                        unit_cost_bits: unit_cost.to_bits(),
+                        flags: 0,
+                    });
+                }
+                let range = InputListRange {
+                    offset,
+                    count: inputs.len() as u32,
+                };
+                gpu_ops.push(AccumulatorOpGpu::from_op_with_input_list(op, range)?);
+            } else {
+                gpu_ops.push(AccumulatorOpGpu::from_op(op)?);
+            }
+        }
+        validate_no_contention(&gpu_ops).map_err(EncodeError::from)?;
+        if !flat_inputs.is_empty() {
+            let byte_len = flat_inputs.len() * std::mem::size_of::<AccumulatorInputGpu>();
+            if self.input_list_buffer.size() < byte_len as u64 {
+                self.input_list_buffer = ctx.device.create_buffer(&BufferDescriptor {
+                    label: Some("accumulator_input_list_buffer"),
+                    size: byte_len.max(std::mem::size_of::<AccumulatorInputGpu>()) as u64,
+                    usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+            }
+            ctx.queue.write_buffer(
+                &self.input_list_buffer,
+                0,
+                bytemuck::cast_slice(&flat_inputs),
+            );
+        }
+        let byte_len = gpu_ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
+        if self.op_buffer.size() < byte_len as u64 {
+            self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("accumulator_op_buffer"),
+                size: byte_len.max(4096) as u64,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
         ctx.queue
             .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(&gpu_ops));
         self.n_ops = gpu_ops.len() as u32;
@@ -2277,7 +2345,7 @@ fn mk_dummy_input_list_buffer(device: &wgpu::Device) -> Buffer {
             unit_cost_bits: 1.0f32.to_bits(),
             flags: 0,
         }),
-        usage: BufferUsages::STORAGE,
+        usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
     })
 }
 

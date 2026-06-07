@@ -1,3 +1,9 @@
+# 2026-06-07 - RUNTIME-0080-RR-2-IMPL-0: planet-surface labor economy on GPU
+
+- **Implemented RR-2:** `crates/simthing-driver/src/runtime_0080_rr_2.rs` — consumes RR-0 recursive world and RR-1 nested residency; materializes Terran and Pirate planet surfaces; GPU surface economy via AccumulatorOp bands (labor emit, discrete transfer pop→factory, conjunctive factory recipe); bit-exact parity vs RR-0 `factory_recipe_production` oracle; inactive-surface and cross-surface leak negative controls. Opt-in/default-off.
+- **Verdict:** PASS — Scope Ledger rows 1–18 all `implemented`; rows 19–21 deferred (RR-3/RR-4/M-4A); no Deviation Record; `not_flattened_scalar=true`. GPU fix: `upload_ops_resolving_input_lists` in `simthing-gpu` for conjunctive recipe input-list materialization. Checksum `bbf8651c0e613c6f`.
+- **Report:** [`docs/tests/runtime_0080_rr_2_results.md`](tests/runtime_0080_rr_2_results.md). Tests: `crates/simthing-driver/tests/runtime_0080_rr_2.rs` (29 tests). **No RR-3 reduce/disburse claim** — RR-3 is recursive GPU reduce-up/disburse-down; RR-4 is integrated recursive GPU rehearsal.
+
 # 2026-06-07 - RUNTIME-0080-RR-1-IMPL-0: nested sparse residency wiring
 
 - **Implemented RR-1:** `crates/simthing-driver/src/runtime_0080_rr_1.rs` — consumes RR-0 recursive world under nested sparse residency; galaxy 20×20 always resident; system 10×10 materializes on `DescendToSystem` and deactivates on `AscendToGalaxy`; planet surface 10×10 materializes on `DescendToSurface` and deactivates on `AscendToSystem`; starport visible only when system resident; pop/factory visible only when surface resident. Opt-in/default-off.
