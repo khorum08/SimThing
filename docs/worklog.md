@@ -1,3 +1,9 @@
+# 2026-06-07 - RUNTIME-0080-RR-4-IMPL-0: integrated recursive 100-tick GPU rehearsal
+
+- **Implemented RR-4:** `crates/simthing-driver/src/runtime_0080_rr_4.rs` — consumes RR-0 recursive CPU oracle, RR-1 nested residency, RR-2 GPU surface economy, and RR-3 recursive GPU transfers; runs 100-tick persistent-GPU integrated loop with per-tick and final-state bit-exact parity vs RR-0 oracle; stockpile/starport carry-forward; negative controls for wrong-owner, cross-tier shortcut, inactive surfaces/systems. Opt-in/default-off.
+- **Verdict:** PASS — Scope Ledger rows 1–30 all `implemented`; rows 31–33 non-claims; no Deviation Record; `recursive_horizon_reached=true`. Integrated GPU loop **622.5 ms** total, **5.42 ms** mean/tick; GPU persistent VRAM **87,868 B**; mean RAM **~523.5 MiB**, ending **~524.6 MiB**. Final stockpiles Terran=400 Pirate=100. Checksum `8a3843dfb76c260f`.
+- **Report:** [`docs/tests/runtime_0080_rr_4_results.md`](tests/runtime_0080_rr_4_results.md). Tests: `crates/simthing-driver/tests/runtime_0080_rr_4.rs` (38 tests). **Recursive rehearsal horizon reached.**
+
 # 2026-06-07 - RUNTIME-0080-RR-3-IMPL-0: recursive GPU reduce-up/disburse-down
 
 - **Implemented RR-3:** `crates/simthing-driver/src/runtime_0080_rr_3.rs` — consumes RR-0 recursive world/oracle, RR-1 nested residency, and RR-2 GPU surface production; runs GPU reduce-up surface→planet→system→galaxy→faction stockpile and staged disburse-down stockpile→galaxy→system→starport; bit-exact tick-0 parity vs RR-0 oracle; Terran and Pirate recursive paths proven; negative controls for disabled tiers, wrong-owner routing, cross-tier shortcut, inactive surfaces/systems. Opt-in/default-off.

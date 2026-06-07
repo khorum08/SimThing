@@ -305,13 +305,13 @@ struct RecursiveExecution {
     deterministic_replay_checksum: u64,
 }
 
-struct RecursiveGpuLayout {
-    bindings: Vec<Runtime0080Rr3SystemBinding>,
-    n_slots: u32,
-    starport_count: u32,
+pub(crate) struct RecursiveGpuLayout {
+    pub(crate) bindings: Vec<Runtime0080Rr3SystemBinding>,
+    pub(crate) n_slots: u32,
+    pub(crate) starport_count: u32,
 }
 
-struct RecursiveGpuConfig {
+pub(crate) struct RecursiveGpuConfig {
     active_system_ids: Vec<u8>,
     surface_to_planet_enabled: bool,
     planet_to_system_enabled: bool,
@@ -322,9 +322,9 @@ struct RecursiveGpuConfig {
     direct_surface_to_stockpile: bool,
 }
 
-struct GpuRecursiveOutcome {
-    values: Vec<f32>,
-    n_dims: u32,
+pub(crate) struct GpuRecursiveOutcome {
+    pub(crate) values: Vec<f32>,
+    pub(crate) n_dims: u32,
     after_surface_to_planet: Vec<f32>,
     after_planet_to_system: Vec<f32>,
     after_system_to_galaxy: Vec<f32>,
@@ -666,80 +666,8 @@ fn run_gpu_recursive_tick(
     layout: &RecursiveGpuLayout,
     config: RecursiveGpuConfig,
 ) -> Result<GpuRecursiveOutcome, &'static str> {
-    let ops = build_recursive_ops(layout, &config).map_err(|_| "rr_3_ops_build_failed")?;
-    let n_dims = RR_3_N_DIMS;
-    let mut values = vec![0.0f32; (layout.n_slots * n_dims) as usize];
-    let mut session = AccumulatorOpSession::new(ctx, layout.n_slots, n_dims);
-    session.upload_values(ctx, &values);
-    session
-        .upload_ops_resolving_input_lists(ctx, &ops)
-        .map_err(|_| "rr_3_gpu_upload_ops_failed")?;
-
-    let max_band = if config.direct_surface_to_stockpile {
-        BAND_DIRECT_SURFACE_TO_STOCKPILE
-    } else if config.disburse_down_enabled {
-        max_disburse_band(layout.starport_count)
-    } else if config.galaxy_to_stockpile_enabled {
-        BAND_GALAXY_TO_STOCKPILE
-    } else if config.system_to_galaxy_enabled {
-        BAND_SYSTEM_TO_GALAXY
-    } else if config.planet_to_system_enabled {
-        BAND_PLANET_TO_SYSTEM
-    } else if config.surface_to_planet_enabled {
-        BAND_SURFACE_TO_PLANET
-    } else {
-        BAND_FACTORY_RECIPE
-    };
-
-    let mut after_surface_to_planet = values.clone();
-    let mut after_planet_to_system = values.clone();
-    let mut after_system_to_galaxy = values.clone();
-    let mut after_galaxy_to_stockpile = values.clone();
-    let mut after_disburse = values.clone();
-
-    let disburse_end = max_disburse_band(layout.starport_count);
-    for band in BAND_LABOR_EMIT..=max_band {
-        if should_skip_band(band, &config, layout.starport_count) {
-            continue;
-        }
-        session
-            .tick(ctx, band)
-            .map_err(|_| "rr_3_gpu_tick_failed")?;
-        if band == BAND_SURFACE_TO_PLANET
-            || band == BAND_PLANET_TO_SYSTEM
-            || band == BAND_SYSTEM_TO_GALAXY
-            || band == BAND_GALAXY_TO_STOCKPILE
-            || (config.disburse_down_enabled && band == disburse_end)
-        {
-            let snap = session
-                .readback_full(ctx)
-                .map_err(|_| "rr_3_gpu_readback_failed")?;
-            match band {
-                BAND_SURFACE_TO_PLANET => after_surface_to_planet = snap.clone(),
-                BAND_PLANET_TO_SYSTEM => after_planet_to_system = snap.clone(),
-                BAND_SYSTEM_TO_GALAXY => after_system_to_galaxy = snap.clone(),
-                BAND_GALAXY_TO_STOCKPILE => after_galaxy_to_stockpile = snap.clone(),
-                _ if band == disburse_end => after_disburse = snap.clone(),
-                _ => {}
-            }
-            values = snap;
-        }
-    }
-    values = session
-        .readback_full(ctx)
-        .map_err(|_| "rr_3_gpu_readback_failed")?;
-    if config.disburse_down_enabled {
-        after_disburse.clone_from(&values);
-    }
-    Ok(GpuRecursiveOutcome {
-        values,
-        n_dims,
-        after_surface_to_planet,
-        after_planet_to_system,
-        after_system_to_galaxy,
-        after_galaxy_to_stockpile,
-        after_disburse,
-    })
+    let mut session = rr_3_engine_init_session(ctx, layout, &config)?;
+    dispatch_recursive_bands(ctx, &mut session, layout, &config)
 }
 
 fn should_skip_band(band: u32, config: &RecursiveGpuConfig, starport_count: u32) -> bool {
@@ -1001,8 +929,8 @@ fn cpu_disburse_rows(
         .collect();
     starport_systems.sort_by_key(|s| s.id);
 
-    let mut terran_stockpile = oracle.reduced_galaxy_to_stockpile_terran;
-    let mut pirate_stockpile = oracle.reduced_galaxy_to_stockpile_pirate;
+    let mut terran_stockpile = oracle.terran_stockpile_after + oracle.disbursed_terran;
+    let mut pirate_stockpile = oracle.pirate_stockpile_after + oracle.disbursed_pirate;
 
     for system in starport_systems {
         let available = match system.owner {
@@ -1571,4 +1499,300 @@ fn checksum_report(verdict: &str, reduce_ok: bool, disburse_ok: bool, replay_che
 
 fn fnv_mix(hash: u64, value: u64) -> u64 {
     (hash ^ value).wrapping_mul(FNV_PRIME)
+}
+
+// ---- RR-4 integrated rehearsal engine (pub(crate)) ----
+
+pub(crate) struct Rr3EngineLayout(pub RecursiveGpuLayout);
+pub(crate) struct Rr3EngineConfig(pub RecursiveGpuConfig);
+pub(crate) struct Rr3EngineOutcome(pub GpuRecursiveOutcome);
+
+pub(crate) fn rr_3_engine_build_layout(
+    world: &Runtime0080Rr0RecursiveWorld,
+    terran_id: u8,
+    pirate_id: u8,
+) -> Result<RecursiveGpuLayout, &'static str> {
+    build_recursive_layout(world, terran_id, pirate_id)
+}
+
+pub(crate) fn rr_3_engine_pass_config(active_system_ids: Vec<u8>) -> RecursiveGpuConfig {
+    RecursiveGpuConfig {
+        active_system_ids,
+        surface_to_planet_enabled: true,
+        planet_to_system_enabled: true,
+        system_to_galaxy_enabled: true,
+        galaxy_to_stockpile_enabled: true,
+        disburse_down_enabled: true,
+        wrong_owner_routing: false,
+        direct_surface_to_stockpile: false,
+    }
+}
+
+pub(crate) fn rr_3_engine_init_session(
+    ctx: &GpuContext,
+    layout: &RecursiveGpuLayout,
+    config: &RecursiveGpuConfig,
+) -> Result<AccumulatorOpSession, &'static str> {
+    let ops = build_recursive_ops(layout, config).map_err(|_| "rr_3_ops_build_failed")?;
+    let n_dims = RR_3_N_DIMS;
+    let values = vec![0.0f32; (layout.n_slots * n_dims) as usize];
+    let mut session = AccumulatorOpSession::new(ctx, layout.n_slots, n_dims);
+    session.upload_values(ctx, &values);
+    session
+        .upload_ops_resolving_input_lists(ctx, &ops)
+        .map_err(|_| "rr_3_gpu_upload_ops_failed")?;
+    Ok(session)
+}
+
+pub(crate) fn rr_3_engine_dispatch_tick(
+    ctx: &GpuContext,
+    session: &mut AccumulatorOpSession,
+    layout: &RecursiveGpuLayout,
+    config: &RecursiveGpuConfig,
+) -> Result<GpuRecursiveOutcome, &'static str> {
+    dispatch_recursive_bands(ctx, session, layout, config)
+}
+
+pub(crate) fn rr_3_engine_run_isolated_tick(
+    ctx: &GpuContext,
+    layout: &RecursiveGpuLayout,
+    config: RecursiveGpuConfig,
+) -> Result<GpuRecursiveOutcome, &'static str> {
+    run_gpu_recursive_tick(ctx, layout, config)
+}
+
+pub(crate) fn rr_3_engine_cpu_reduce_rows(
+    layout: &RecursiveGpuLayout,
+    oracle: &Runtime0080Rr0OracleTick,
+    tick: u32,
+) -> Vec<Runtime0080Rr3TransitionRow> {
+    cpu_reduce_rows(layout, oracle, tick)
+}
+
+pub(crate) fn rr_3_engine_cpu_disburse_rows(
+    world: &Runtime0080Rr0RecursiveWorld,
+    layout: &RecursiveGpuLayout,
+    oracle: &Runtime0080Rr0OracleTick,
+    tick: u32,
+) -> Vec<Runtime0080Rr3TransitionRow> {
+    cpu_disburse_rows(world, layout, oracle, tick)
+}
+
+pub(crate) fn rr_3_engine_merge_reduce_rows(
+    cpu_rows: &[Runtime0080Rr3TransitionRow],
+    gpu: &GpuRecursiveOutcome,
+    layout: &RecursiveGpuLayout,
+) -> Vec<Runtime0080Rr3TransitionRow> {
+    merge_reduce_rows(cpu_rows, gpu, layout)
+}
+
+pub(crate) fn rr_3_engine_merge_disburse_rows(
+    cpu_rows: &[Runtime0080Rr3TransitionRow],
+    gpu: &GpuRecursiveOutcome,
+    layout: &RecursiveGpuLayout,
+) -> Vec<Runtime0080Rr3TransitionRow> {
+    merge_disburse_rows(cpu_rows, gpu, layout)
+}
+
+pub(crate) fn rr_3_engine_stockpile_parity_ok(
+    gpu: &GpuRecursiveOutcome,
+    oracle: &Runtime0080Rr0OracleTick,
+) -> bool {
+    stockpile_parity_ok(gpu, oracle)
+}
+
+pub(crate) fn rr_3_engine_starport_tick_parity_ok(
+    gpu: &GpuRecursiveOutcome,
+    layout: &RecursiveGpuLayout,
+    oracle: &Runtime0080Rr0OracleTick,
+    prev_terran_starport: i64,
+    prev_pirate_starport: i64,
+) -> bool {
+    let mut terran_gpu = 0i64;
+    let mut pirate_gpu = 0i64;
+    for binding in &layout.bindings {
+        if let Some(slot) = binding.starport_slot {
+            let received = gpu.production_at(slot) as i64;
+            match binding.owner {
+                Runtime0080Rr0Owner::Terran => terran_gpu += received,
+                Runtime0080Rr0Owner::Pirate => pirate_gpu += received,
+            }
+        }
+    }
+    terran_gpu - prev_terran_starport == oracle.disbursed_terran
+        && pirate_gpu - prev_pirate_starport == oracle.disbursed_pirate
+}
+
+pub(crate) fn rr_3_engine_sum_starport_received(
+    gpu: &GpuRecursiveOutcome,
+    layout: &RecursiveGpuLayout,
+) -> (i64, i64) {
+    let mut terran = 0i64;
+    let mut pirate = 0i64;
+    for binding in &layout.bindings {
+        if let Some(slot) = binding.starport_slot {
+            let received = gpu.production_at(slot) as i64;
+            match binding.owner {
+                Runtime0080Rr0Owner::Terran => terran += received,
+                Runtime0080Rr0Owner::Pirate => pirate += received,
+            }
+        }
+    }
+    (terran, pirate)
+}
+
+pub(crate) fn rr_3_engine_labor_production_parity(
+    gpu: &GpuRecursiveOutcome,
+    layout: &RecursiveGpuLayout,
+    config: &RecursiveGpuConfig,
+    oracle: &Runtime0080Rr0OracleTick,
+) -> (bool, bool) {
+    let mut labor_emitted = 0i64;
+    let mut production_generated = 0i64;
+    for binding in &layout.bindings {
+        if !config.active_system_ids.contains(&binding.system_id) {
+            continue;
+        }
+        labor_emitted += POP_LABOR_PER_TICK;
+        production_generated += PRODUCTION_PER_RECIPE;
+        let factory_labor =
+            gpu.values[cell_index(binding.factory_slot, RR_3_COL_LABOR, gpu.n_dims)];
+        if factory_labor.to_bits() != i64_bits(0) {
+            return (false, false);
+        }
+    }
+    let labor_ok =
+        labor_emitted == oracle.labor_emitted && oracle.labor_consumed == oracle.labor_emitted;
+    let production_ok = production_generated == oracle.production_generated;
+    (labor_ok, production_ok)
+}
+
+pub(crate) fn rr_3_engine_i64_bits(value: i64) -> u32 {
+    i64_bits(value)
+}
+
+pub(crate) fn rr_3_engine_production_bits_at(gpu: &GpuRecursiveOutcome, slot: u32) -> u32 {
+    gpu.production_bits_at(slot)
+}
+
+pub(crate) fn rr_3_engine_production_at(gpu: &GpuRecursiveOutcome, slot: u32) -> f32 {
+    gpu.production_at(slot)
+}
+
+pub(crate) fn rr_3_engine_wrong_owner_config(active_system_ids: Vec<u8>) -> RecursiveGpuConfig {
+    RecursiveGpuConfig {
+        active_system_ids,
+        surface_to_planet_enabled: true,
+        planet_to_system_enabled: true,
+        system_to_galaxy_enabled: true,
+        galaxy_to_stockpile_enabled: true,
+        disburse_down_enabled: true,
+        wrong_owner_routing: true,
+        direct_surface_to_stockpile: false,
+    }
+}
+
+pub(crate) fn rr_3_engine_shortcut_config(active_system_ids: Vec<u8>) -> RecursiveGpuConfig {
+    RecursiveGpuConfig {
+        active_system_ids,
+        surface_to_planet_enabled: false,
+        planet_to_system_enabled: false,
+        system_to_galaxy_enabled: false,
+        galaxy_to_stockpile_enabled: false,
+        disburse_down_enabled: false,
+        wrong_owner_routing: false,
+        direct_surface_to_stockpile: true,
+    }
+}
+
+pub(crate) fn rr_3_engine_inactive_surface_config(terran_id: u8) -> RecursiveGpuConfig {
+    RecursiveGpuConfig {
+        active_system_ids: vec![terran_id],
+        surface_to_planet_enabled: true,
+        planet_to_system_enabled: true,
+        system_to_galaxy_enabled: true,
+        galaxy_to_stockpile_enabled: true,
+        disburse_down_enabled: true,
+        wrong_owner_routing: false,
+        direct_surface_to_stockpile: false,
+    }
+}
+
+pub(crate) fn rr_3_engine_max_disburse_band(starport_count: u32) -> u32 {
+    max_disburse_band(starport_count)
+}
+
+fn dispatch_recursive_bands(
+    ctx: &GpuContext,
+    session: &mut AccumulatorOpSession,
+    layout: &RecursiveGpuLayout,
+    config: &RecursiveGpuConfig,
+) -> Result<GpuRecursiveOutcome, &'static str> {
+    let n_dims = RR_3_N_DIMS;
+    let mut values = vec![0.0f32; (layout.n_slots * n_dims) as usize];
+    let max_band = if config.direct_surface_to_stockpile {
+        BAND_DIRECT_SURFACE_TO_STOCKPILE
+    } else if config.disburse_down_enabled {
+        max_disburse_band(layout.starport_count)
+    } else if config.galaxy_to_stockpile_enabled {
+        BAND_GALAXY_TO_STOCKPILE
+    } else if config.system_to_galaxy_enabled {
+        BAND_SYSTEM_TO_GALAXY
+    } else if config.planet_to_system_enabled {
+        BAND_PLANET_TO_SYSTEM
+    } else if config.surface_to_planet_enabled {
+        BAND_SURFACE_TO_PLANET
+    } else {
+        BAND_FACTORY_RECIPE
+    };
+
+    let mut after_surface_to_planet = values.clone();
+    let mut after_planet_to_system = values.clone();
+    let mut after_system_to_galaxy = values.clone();
+    let mut after_galaxy_to_stockpile = values.clone();
+    let mut after_disburse = values.clone();
+    let disburse_end = max_disburse_band(layout.starport_count);
+
+    for band in BAND_LABOR_EMIT..=max_band {
+        if should_skip_band(band, config, layout.starport_count) {
+            continue;
+        }
+        session
+            .tick(ctx, band)
+            .map_err(|_| "rr_3_gpu_tick_failed")?;
+        if band == BAND_SURFACE_TO_PLANET
+            || band == BAND_PLANET_TO_SYSTEM
+            || band == BAND_SYSTEM_TO_GALAXY
+            || band == BAND_GALAXY_TO_STOCKPILE
+            || (config.disburse_down_enabled && band == disburse_end)
+        {
+            let snap = session
+                .readback_full(ctx)
+                .map_err(|_| "rr_3_gpu_readback_failed")?;
+            match band {
+                BAND_SURFACE_TO_PLANET => after_surface_to_planet = snap.clone(),
+                BAND_PLANET_TO_SYSTEM => after_planet_to_system = snap.clone(),
+                BAND_SYSTEM_TO_GALAXY => after_system_to_galaxy = snap.clone(),
+                BAND_GALAXY_TO_STOCKPILE => after_galaxy_to_stockpile = snap.clone(),
+                _ if band == disburse_end => after_disburse = snap.clone(),
+                _ => {}
+            }
+            values = snap;
+        }
+    }
+    values = session
+        .readback_full(ctx)
+        .map_err(|_| "rr_3_gpu_readback_failed")?;
+    if config.disburse_down_enabled {
+        after_disburse.clone_from(&values);
+    }
+    Ok(GpuRecursiveOutcome {
+        values,
+        n_dims,
+        after_surface_to_planet,
+        after_planet_to_system,
+        after_system_to_galaxy,
+        after_galaxy_to_stockpile,
+        after_disburse,
+    })
 }

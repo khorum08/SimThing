@@ -65,6 +65,7 @@ pub mod runtime_0080_rr_0;
 pub mod runtime_0080_rr_1;
 pub mod runtime_0080_rr_2;
 pub mod runtime_0080_rr_3;
+pub mod runtime_0080_rr_4;
 pub mod scenario;
 pub mod session;
 pub mod spec_replay;
@@ -565,6 +566,14 @@ pub use runtime_0080_rr_3::{
     RR_3_COL_LABOR, RR_3_COL_PRODUCTION, RR_3_N_DIMS, RR_3_SLOTS_PER_SYSTEM, RUNTIME_0080_RR_3_ID,
     RUNTIME_0080_RR_3_STATUS_BLOCKED, RUNTIME_0080_RR_3_STATUS_PARTIAL,
     RUNTIME_0080_RR_3_STATUS_PASS, RUNTIME_RR_3_EXPECTED_REPORT_CHECKSUM,
+};
+pub use runtime_0080_rr_4::{
+    replay_runtime_0080_rr_4, run_runtime_0080_rr_4, Runtime0080Rr4DeviationRecord,
+    Runtime0080Rr4FinalStateRow, Runtime0080Rr4Input, Runtime0080Rr4MemoryFootprint,
+    Runtime0080Rr4Profiling, Runtime0080Rr4Report, Runtime0080Rr4ScopeLedgerRow,
+    Runtime0080Rr4TickParityRow, Runtime0080Rr4TickTimingRow, RUNTIME_0080_RR_4_ID,
+    RUNTIME_0080_RR_4_STATUS_BLOCKED, RUNTIME_0080_RR_4_STATUS_PARTIAL,
+    RUNTIME_0080_RR_4_STATUS_PASS, RUNTIME_RR_4_EXPECTED_REPORT_CHECKSUM,
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};
