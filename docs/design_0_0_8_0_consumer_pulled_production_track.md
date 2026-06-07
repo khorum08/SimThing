@@ -846,7 +846,9 @@ column-flip — each its own gate.
 >
 > **R1c-f verified (2026-06-06, `RUNTIME-0080-0-R1c-f-VERIFY-0`):** full production-track battery green; `ZeroCohort` is the first GPU-decided structural event class; umbrella `structural_decisions_gpu_emitted` remains honestly partial. Report: [`tests/runtime_0080_0_r1c_f_resident_zero_cohort_decision_results.md`](tests/runtime_0080_0_r1c_f_resident_zero_cohort_decision_results.md).
 >
-> **Next horizon:** stable 100-tick GPU-forward rehearsal using R1a–R1c-f (`RUNTIME-0080-0-R2`). Do not unpark M-4A unless the 100-tick consumer proves it is required.
+> **R2 (`STABLE-100-TICK-GPU-FORWARD-REHEARSAL-0`) - IMPLEMENTED / PASS 2026-06-06:** [`runtime_0080_0_r2.rs`](../crates/simthing-driver/src/runtime_0080_0_r2.rs) runs the actual 100-tick GPU-forward rehearsal: R1a Tier-A next-tick + R1b resident journal + R1c-a/b/c/d/e structural substrates + R1c-f GPU-decided ZeroCohort in one per-tick loop (~2.2s harness). Evidence: 100 ticks, tier-A tick-100 oracle parity, full journal parity, R6C checksum `1bba891c779190a4`, ZeroCohort GPU-decided (1 row), structural substrates applied post-loop from the same journal. Remaining CPU-decided classes (`DamageDelta`, `MoveRequest`, `LocalBirthRequest`, `FusionRequest`, `ShipCountDelta`, `OwnerCodeFlip`) are recorded as findings—not blockers. M-4A not required. Report: [`tests/runtime_0080_0_r2_stable_100_tick_rehearsal_results.md`](tests/runtime_0080_0_r2_stable_100_tick_rehearsal_results.md).
+>
+> **Next horizon:** GPU decision-boundary slices for remaining CPU-decided event classes only if a concrete consumer requires them (`R2a`–`R2d`); do not unpark M-4A unless a consumer proves it is required.
 > (§11 gate); richer emergence (`SCENARIO-0080-3`); multi-faction ECON; system→planet recursion.
 >
 > > **✓ Adapter-scope caveat RESOLVED (2026-06-04, design authority).** `GpuContext` now **always selects

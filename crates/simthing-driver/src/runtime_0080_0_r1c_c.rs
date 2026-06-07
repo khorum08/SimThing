@@ -277,17 +277,33 @@ impl MembershipLayout {
 }
 
 #[derive(Clone, Debug)]
-struct MembershipSessionReport {
-    delta_rows: Vec<Runtime0080R1cCMembershipDeltaRow>,
-    final_slots: Vec<SlotState>,
-    membership_parity_measured_from_gpu_values: bool,
-    gpu_membership_apply_dispatch_count: u32,
-    membership_delta_copy_dispatch_count: u32,
-    membership_readback_count: u32,
-    membership_ops_uploaded: u32,
-    source_removals_applied: u32,
-    destination_additions_applied: u32,
-    allocated_birth_slots_added: u32,
+pub(crate) struct MembershipSessionReport {
+    pub(crate) delta_rows: Vec<Runtime0080R1cCMembershipDeltaRow>,
+    pub(crate) final_slots: Vec<SlotState>,
+    pub(crate) membership_parity_measured_from_gpu_values: bool,
+    pub(crate) gpu_membership_apply_dispatch_count: u32,
+    pub(crate) membership_delta_copy_dispatch_count: u32,
+    pub(crate) membership_readback_count: u32,
+    pub(crate) membership_ops_uploaded: u32,
+    pub(crate) source_removals_applied: u32,
+    pub(crate) destination_additions_applied: u32,
+    pub(crate) allocated_birth_slots_added: u32,
+}
+
+pub(crate) fn run_membership_for_rehearsal_journal(
+    ctx: &simthing_gpu::GpuContext,
+    world: &crate::dress_rehearsal_r6c_integrated_run::DressRehearsalR6cWorld,
+    fleet_ids: &[String],
+    system_indices: &[usize],
+    events: &[crate::dress_rehearsal_r6c_integrated_run::R1bStructuralEvent],
+    allocation_rows: &[Runtime0080R1cBAllocationRow],
+) -> Result<MembershipSessionReport, &'static str> {
+    let fleet_slot_count = fleet_ids.len() as u32;
+    let max_slots = fleet_slot_count + system_indices.len() as u32;
+    let initial_slots = initial_slot_states(world, fleet_ids, system_indices);
+    let plan = build_membership_plan(fleet_slot_count, events, allocation_rows);
+    let expected_slots = apply_plan_oracle(&initial_slots, &plan);
+    run_membership_session(ctx, max_slots, &initial_slots, &plan, &expected_slots, true)
 }
 
 pub fn run_runtime_0080_0_r1c_c(input: &Runtime0080R1cCInput) -> Runtime0080R1cCReport {
@@ -595,7 +611,7 @@ fn run_runtime_0080_0_r1c_c_internal(
     finalize_report(report)
 }
 
-fn initial_slot_states(
+pub(crate) fn initial_slot_states(
     world: &crate::dress_rehearsal_r6c_integrated_run::DressRehearsalR6cWorld,
     fleet_ids: &[String],
     system_indices: &[usize],
@@ -630,7 +646,7 @@ fn initial_slot_states(
     slots
 }
 
-fn build_membership_plan(
+pub(crate) fn build_membership_plan(
     fleet_slot_count: u32,
     events: &[R1bStructuralEvent],
     allocation_rows: &[Runtime0080R1cBAllocationRow],
@@ -743,7 +759,7 @@ fn build_membership_plan(
     plan
 }
 
-fn apply_plan_oracle(initial: &[SlotState], plan: &[PlannedDelta]) -> Vec<SlotState> {
+pub(crate) fn apply_plan_oracle(initial: &[SlotState], plan: &[PlannedDelta]) -> Vec<SlotState> {
     let mut slots = initial.to_vec();
     for delta in plan {
         apply_delta_to_slots(&mut slots, delta);
@@ -768,7 +784,7 @@ fn apply_delta_to_slots(slots: &mut [SlotState], delta: &PlannedDelta) {
     }
 }
 
-fn run_membership_session(
+pub(crate) fn run_membership_session(
     ctx: &simthing_gpu::GpuContext,
     max_slots: u32,
     initial_slots: &[SlotState],

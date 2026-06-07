@@ -399,7 +399,7 @@ fn base_report(
     }
 }
 
-fn run_mark_session(
+pub(crate) fn run_mark_session(
     ctx: &simthing_gpu::GpuContext,
     fleet_slots: u32,
     mark_sources: &[Runtime0080R1bFreeSlotMarkSource],

@@ -1862,7 +1862,7 @@ fn build_combat_ops(
     ops
 }
 
-fn state_values_match_oracle(
+pub(crate) fn state_values_match_oracle(
     gpu_flat: &[f32],
     oracle: &TierAState,
     layout: &TierAStateLayout,
