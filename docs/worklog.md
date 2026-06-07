@@ -1,3 +1,10 @@
+# 2026-06-07 - RUNTIME-0080-RR-0-IMPL-0: recursive world model + CPU oracle
+
+- **Implemented RR-0:** `crates/simthing-driver/src/runtime_0080_rr_0.rs` — recursive galaxy 20×20 → 13× system 10×10 → planet → surface 10×10 with pop-cohort + factory district children; deterministic 100-tick recursive CPU oracle (labor emit → factory consume → production → reduce-up surface→planet→system→galaxy→faction → disburse-down to starports). Opt-in/default-off.
+- **Verdict:** PASS — Scope Ledger rows 1–19 all `implemented`; no Deviation Record; no flat proxy; `is_flattened=false`. Entity counts: 400 galaxy cells, 1,300 system cells, 1,300 surface cells, 13 pop/factory each, 4 starports.
+- **Oracle:** 100 ticks; 13,000 labor emitted; 1,300 production; final stockpiles Terran=400 Pirate=100; structural identity preserved all ticks. Checksum `a8a9f20a524fa5b2`.
+- **Report:** [`docs/tests/runtime_0080_rr_0_results.md`](tests/runtime_0080_rr_0_results.md). Tests: `crates/simthing-driver/tests/runtime_0080_rr_0.rs` (30 tests). **GPU residency is RR-1**; surface economy GPU is RR-2; integrated recursive GPU rehearsal is RR-4.
+
 # 2026-06-07 - SPEC-FIDELITY-0: draconian anti-drift constitution + recursive rehearsal track
 
 - **Constitutional change (product mandate, draconian):** added **§0.6 Specification Fidelity — no silent flattening** to the carry-forward spine of `design_0_0_8_0.md`, and a binding **Specification Fidelity & Anti-Ceremony** invariant table to `docs/invariants.md`. Rules: PASS/CLOSED requires the specified structure or a recorded+approved **Deviation Record**; **no silent tier collapse**; **Scope Ledger required on every closure**; the specified consumer must actually run; **no project-management cosplay** (documents record progress, never constitute it). A PASS/CLOSED that silently substitutes a flat proxy for a specified structure is **VOID**.
