@@ -1,3 +1,9 @@
+# 2026-06-07 - RUNTIME-0080-RR-3-IMPL-0: recursive GPU reduce-up/disburse-down
+
+- **Implemented RR-3:** `crates/simthing-driver/src/runtime_0080_rr_3.rs` — consumes RR-0 recursive world/oracle, RR-1 nested residency, and RR-2 GPU surface production; runs GPU reduce-up surface→planet→system→galaxy→faction stockpile and staged disburse-down stockpile→galaxy→system→starport; bit-exact tick-0 parity vs RR-0 oracle; Terran and Pirate recursive paths proven; negative controls for disabled tiers, wrong-owner routing, cross-tier shortcut, inactive surfaces/systems. Opt-in/default-off.
+- **Verdict:** PASS — Scope Ledger rows 1–25 all `implemented`; rows 26–27 deferred (RR-4/M-4A); no Deviation Record; `not_flattened_scalar=true`. Checksum `f6adf4116656e4a8`.
+- **Report:** [`docs/tests/runtime_0080_rr_3_results.md`](tests/runtime_0080_rr_3_results.md). Tests: `crates/simthing-driver/tests/runtime_0080_rr_3.rs` (34 tests). **No RR-4 integrated 100-tick GPU rehearsal claim** — RR-4 is the horizon.
+
 # 2026-06-07 - RUNTIME-0080-RR-2-IMPL-0: planet-surface labor economy on GPU
 
 - **Implemented RR-2:** `crates/simthing-driver/src/runtime_0080_rr_2.rs` — consumes RR-0 recursive world and RR-1 nested residency; materializes Terran and Pirate planet surfaces; GPU surface economy via AccumulatorOp bands (labor emit, discrete transfer pop→factory, conjunctive factory recipe); bit-exact parity vs RR-0 `factory_recipe_production` oracle; inactive-surface and cross-surface leak negative controls. Opt-in/default-off.
