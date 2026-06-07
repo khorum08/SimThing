@@ -483,6 +483,40 @@ impl AccumulatorOpSession {
         (self.n_slots * self.n_dims) as usize
     }
 
+    /// Sum of persistent GPU buffer allocations for this session (excludes ephemeral
+    /// per-readback staging buffers). Used by runtime profiling captures.
+    pub fn values_buffer_size_bytes(&self) -> u64 {
+        self.values_buffer.size()
+    }
+
+    pub fn persistent_buffer_bytes(&self) -> u64 {
+        self.op_buffer.size()
+            + self.values_buffer.size()
+            + self.previous_values_buffer.size()
+            + self.summary_buffer.size()
+            + self.emission_buffer.size()
+            + self.emission_count.size()
+            + self.threshold_emission_buffer.size()
+            + self.threshold_emission_count.size()
+            + self.tick_uniform.size()
+            + self.summary_uniform.size()
+            + self.eml_node_buffer.size()
+            + self.eml_range_buffer.size()
+            + self.input_list_buffer.size()
+            + self.fill_uniform.size()
+            + self.orderband_fast_uniform.size()
+            + self
+                .timestamp_resolve_buffer
+                .as_ref()
+                .map(|b| b.size())
+                .unwrap_or(0)
+            + self
+                .timestamp_readback_buffer
+                .as_ref()
+                .map(|b| b.size())
+                .unwrap_or(0)
+    }
+
     pub fn emission_capacity(&self) -> u32 {
         self.emission_capacity
     }

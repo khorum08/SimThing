@@ -202,6 +202,22 @@ fn r2_domain_neutral_terms_only() {
 }
 
 #[test]
+fn r2_profiling_populated() {
+    let admitted = report();
+    if blocked(admitted) {
+        return;
+    }
+    let profiling = admitted.profiling.as_ref().expect("profiling capture");
+    assert!(profiling.gpu_loop_ms > 0.0);
+    assert_eq!(
+        profiling.per_tick_timing.len(),
+        R6C_CANONICAL_TICK_COUNT as usize
+    );
+    assert!(profiling.mean_tick_ms > 0.0);
+    assert!(profiling.memory.gpu_persistent_total_bytes > 0);
+}
+
+#[test]
 fn r2_report_checksum_stable() {
     let admitted = report();
     if blocked(admitted) {

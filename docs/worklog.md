@@ -1,3 +1,12 @@
+# 2026-06-06 - RUNTIME-0080-0-R2-REVIEW-0: ACCEPT / CLOSE stable 100-tick rehearsal
+
+- **Ruling (design authority): A — ACCEPT / CLOSED.** R2 is the stable 100-tick GPU-forward rehearsal consumer. RUNTIME-0080-0 is closed at this horizon; the R1c substrate ladder is complete and is not to be extended.
+- **Checksum claim corrected:** relabelled **checksum-equivalent** (not "observed"). The value `1bba891c779190a4` is the pinned R6C constant assigned on per-tick + endpoint parity, not an independently recomputed R2-state hash. Claim boundary recorded in the R2 report.
+- **Verify-only battery NOT ordered:** PR #550 ran the full predecessor battery immediately before R2; PR #551 changed no predecessor semantics (only `pub(crate)` visibility + new R2 files). A rerun was judged ceremony.
+- **Findings, not blockers:** DamageDelta, MoveRequest, LocalBirthRequest, FusionRequest, ShipCountDelta, OwnerCodeFlip remain CPU-decided; M-4A remains parked (single theater, ~1.23 MiB steady-state GPU footprint).
+- **Profiling capture added:** [`docs/tests/runtime_0080_0_r2_profiling_capture.md`](tests/runtime_0080_0_r2_profiling_capture.md) — per-tick ms, wall time, VRAM/RSS footprint, CPU-vs-GPU pipeline (CPU is GPU-readback-bound, not the bottleneck).
+- **Next horizon:** no new rung until a consumer is chosen (A class-by-class GPU conversion / B richer emergence / C multi-theater M-4A / D multi-faction economy / E system→planet recursion).
+
 # 2026-06-06 - RUNTIME-0080-0-R2-IMPL-0: stable 100-tick GPU-forward rehearsal
 
 - **Implemented R2:** `crates/simthing-driver/src/runtime_0080_0_r2.rs` runs the actual 100-tick GPU-forward rehearsal over R1a–R1c-f in ~2.2s (OnceLock harness; no predecessor triple-replay).

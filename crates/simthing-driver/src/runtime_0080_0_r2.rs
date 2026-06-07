@@ -1,5 +1,7 @@
 //! RUNTIME-0080-0-R2: stable GPU-forward 100-tick rehearsal over R1a–R1c-f.
 
+use std::time::Instant;
+
 use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
 use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, ThresholdEvent};
 
@@ -64,6 +66,69 @@ pub struct Runtime0080R2TickTraceRow {
     pub parity_with_oracle: bool,
 }
 
+/// Per-tick wall-clock breakdown for the resident GPU-forward loop (milliseconds).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Runtime0080R2TickTimingRow {
+    pub tick: u32,
+    pub total_ms: f64,
+    /// Full-session GPU readback before combat attrition probe (CPU blocked on GPU).
+    pub gpu_readback_pre_combat_ms: f64,
+    /// CPU witness: derive tick inputs + structural events (excl. ZeroCohort).
+    pub cpu_witness_ms: f64,
+    /// CPU-side derived-input upload into Tier-A session slots.
+    pub cpu_write_derived_ms: f64,
+    /// Full-session GPU readback for tick-input snapshot (CPU blocked on GPU).
+    pub gpu_readback_tick_input_ms: f64,
+    /// GPU combat-attrition probe + threshold emission readback (CPU blocked on GPU).
+    pub gpu_zero_cohort_probe_ms: f64,
+    /// Tier-A transform dispatches + buffer swap submit (async; completion accounted next tick).
+    pub gpu_tier_a_dispatch_ms: f64,
+    /// Resident journal stage/copy + committed-row readback (CPU blocked on GPU).
+    pub gpu_journal_stage_ms: f64,
+    /// CPU boundary apply over committed journal rows.
+    pub cpu_boundary_apply_ms: f64,
+    /// Sum of in-tick GPU readback stalls (CPU waiting on GPU).
+    pub gpu_sync_wait_ms: f64,
+    /// Sum of in-tick CPU compute phases (witness + boundary apply + derived upload).
+    pub cpu_active_ms: f64,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Runtime0080R2MemoryFootprint {
+    pub gpu_world_buffer_bytes: u64,
+    pub gpu_tier_a_session_bytes: u64,
+    pub gpu_journal_session_bytes: u64,
+    pub gpu_zero_cohort_probe_bytes: u64,
+    pub gpu_persistent_total_bytes: u64,
+    /// Largest single readback staging copy (Tier-A full values buffer).
+    pub cpu_readback_staging_peak_bytes: u64,
+    pub cpu_committed_journal_rows: u64,
+    pub process_working_set_bytes: Option<u64>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Runtime0080R2Profiling {
+    pub oracle_setup_ms: f64,
+    pub gpu_loop_ms: f64,
+    pub substrate_ms: f64,
+    pub total_wall_ms: f64,
+    pub mean_tick_ms: f64,
+    pub min_tick_ms: f64,
+    pub max_tick_ms: f64,
+    pub total_gpu_sync_wait_ms: f64,
+    pub total_cpu_active_ms: f64,
+    pub total_gpu_tier_a_dispatch_ms: f64,
+    pub mean_gpu_sync_wait_ms: f64,
+    pub mean_cpu_active_ms: f64,
+    /// Fraction of per-tick wall time spent in CPU-active phases (witness + apply + uploads).
+    pub cpu_active_fraction: f64,
+    /// Fraction of per-tick wall time spent blocked on GPU readbacks.
+    pub gpu_sync_wait_fraction: f64,
+    pub pipeline_interpretation: &'static str,
+    pub per_tick_timing: Vec<Runtime0080R2TickTimingRow>,
+    pub memory: Runtime0080R2MemoryFootprint,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Runtime0080R2Report {
     pub id: &'static str,
@@ -100,6 +165,7 @@ pub struct Runtime0080R2Report {
     pub r6c_checksum_delta_explained: &'static str,
     pub substrate: Option<R2SubstrateOutcome>,
     pub per_tick_trace: Vec<Runtime0080R2TickTraceRow>,
+    pub profiling: Option<Runtime0080R2Profiling>,
     pub foreground_capture_method: &'static str,
     pub domain_terms: Vec<&'static str>,
     pub stable_report_checksum: u64,
@@ -171,7 +237,10 @@ pub fn run_runtime_0080_0_r2(input: &Runtime0080R2Input) -> Runtime0080R2Report 
     };
 
     set_debug_readback_allowed(true);
+    let run_started = Instant::now();
+    let oracle_started = Instant::now();
     let oracle = run_dress_rehearsal_r6c_integrated_run(&DressRehearsalR6cInput::explicit_opt_in());
+    let oracle_setup_ms = oracle_started.elapsed().as_secs_f64() * 1000.0;
     let world = oracle
         .initial_world
         .as_ref()
@@ -237,15 +306,20 @@ pub fn run_runtime_0080_0_r2(input: &Runtime0080R2Input) -> Runtime0080R2Report 
     let mut diagnostics = Vec::new();
     let mut all_committed_rows = Vec::new();
     let mut per_tick_trace = Vec::with_capacity(R6C_CANONICAL_TICK_COUNT as usize);
+    let mut per_tick_timing = Vec::with_capacity(R6C_CANONICAL_TICK_COUNT as usize);
     let mut per_tick_parity_ok = true;
     let mut max_r4_abs_delta = 0.0f32;
     let mut zero_cohort_row_count = 0u32;
+    let gpu_loop_started = Instant::now();
 
     let mut boundary_shadow = boundary_witness.clone_for_event_derivation();
     let shadow_fleet_ids = boundary_witness.fleet_ids().to_vec();
     let shadow_system_indices = boundary_witness.system_indices().to_vec();
 
     for tick in 0..R6C_CANONICAL_TICK_COUNT {
+        let tick_started = Instant::now();
+
+        let t0 = Instant::now();
         let pre_combat_values = match harness.tier_a.readback_full(&harness.world.ctx) {
             Ok(values) => values,
             Err(_) => {
@@ -253,22 +327,30 @@ pub fn run_runtime_0080_0_r2(input: &Runtime0080R2Input) -> Runtime0080R2Report 
                 break;
             }
         };
+        let gpu_readback_pre_combat_ms = t0.elapsed().as_secs_f64() * 1000.0;
 
+        let t1 = Instant::now();
         let (derived, witness_events) =
             boundary_witness.step_tick_capture_events_excluding_zero_cohort(tick);
+        let cpu_witness_ms = t1.elapsed().as_secs_f64() * 1000.0;
 
+        let t2 = Instant::now();
         if harness
             .write_tick_derived_inputs(&layout, &derived)
             .is_err()
         {
             diagnostics.push("write_tick_derived_inputs_failed".to_string());
         }
+        let cpu_write_derived_ms = t2.elapsed().as_secs_f64() * 1000.0;
 
+        let t3 = Instant::now();
         let tick_input_values = harness
             .tier_a
             .readback_full(&harness.world.ctx)
             .unwrap_or(pre_combat_values.clone());
+        let gpu_readback_tick_input_ms = t3.elapsed().as_secs_f64() * 1000.0;
 
+        let t4 = Instant::now();
         let gpu_zero_cohort_events = match harness.probe_zero_cohort_threshold_emissions(
             &harness.world.ctx,
             &layout,
@@ -288,7 +370,9 @@ pub fn run_runtime_0080_0_r2(input: &Runtime0080R2Input) -> Runtime0080R2Report 
                 Vec::new()
             }
         };
+        let gpu_zero_cohort_probe_ms = t4.elapsed().as_secs_f64() * 1000.0;
 
+        let t5 = Instant::now();
         harness.dispatch_tier_a_transforms(
             &layout,
             &derived,
@@ -299,10 +383,12 @@ pub fn run_runtime_0080_0_r2(input: &Runtime0080R2Input) -> Runtime0080R2Report 
         if harness.tier_a.tick(&harness.world.ctx, 0).is_err() {
             diagnostics.push("tier_a_swap_failed".to_string());
         }
+        let gpu_tier_a_dispatch_ms = t5.elapsed().as_secs_f64() * 1000.0;
 
         let mut staged_events = witness_events;
         staged_events.extend(gpu_zero_cohort_events);
 
+        let t6 = Instant::now();
         let committed_rows = match stage_dispatch_decode_events(
             &harness.world.ctx,
             &mut journal_session,
@@ -316,7 +402,9 @@ pub fn run_runtime_0080_0_r2(input: &Runtime0080R2Input) -> Runtime0080R2Report 
                 Vec::new()
             }
         };
+        let gpu_journal_stage_ms = t6.elapsed().as_secs_f64() * 1000.0;
 
+        let t7 = Instant::now();
         let apply_report = r1b_apply_boundary_events(
             boundary_shadow.world_mut(),
             &shadow_fleet_ids,
@@ -326,6 +414,28 @@ pub fn run_runtime_0080_0_r2(input: &Runtime0080R2Input) -> Runtime0080R2Report 
         if apply_report.rows_applied > committed_rows.len() as u32 {
             diagnostics.push(format!("boundary_apply_overflow_tick_{}", tick));
         }
+        let cpu_boundary_apply_ms = t7.elapsed().as_secs_f64() * 1000.0;
+
+        let gpu_sync_wait_ms = gpu_readback_pre_combat_ms
+            + gpu_readback_tick_input_ms
+            + gpu_zero_cohort_probe_ms
+            + gpu_journal_stage_ms;
+        let cpu_active_ms = cpu_witness_ms + cpu_write_derived_ms + cpu_boundary_apply_ms;
+        let total_ms = tick_started.elapsed().as_secs_f64() * 1000.0;
+        per_tick_timing.push(Runtime0080R2TickTimingRow {
+            tick,
+            total_ms,
+            gpu_readback_pre_combat_ms,
+            cpu_witness_ms,
+            cpu_write_derived_ms,
+            gpu_readback_tick_input_ms,
+            gpu_zero_cohort_probe_ms,
+            gpu_tier_a_dispatch_ms,
+            gpu_journal_stage_ms,
+            cpu_boundary_apply_ms,
+            gpu_sync_wait_ms,
+            cpu_active_ms,
+        });
 
         let oracle_rows = oracle_events_by_tick
             .get(&tick)
@@ -352,6 +462,7 @@ pub fn run_runtime_0080_0_r2(input: &Runtime0080R2Input) -> Runtime0080R2Report 
         all_committed_rows.extend(committed_rows);
     }
 
+    let gpu_loop_ms = gpu_loop_started.elapsed().as_secs_f64() * 1000.0;
     let ticks_completed = per_tick_trace.len() as u32;
     let runs_100_ticks = ticks_completed == R6C_CANONICAL_TICK_COUNT;
 
@@ -370,6 +481,7 @@ pub fn run_runtime_0080_0_r2(input: &Runtime0080R2Input) -> Runtime0080R2Report 
         .last()
         .is_some_and(|oracle_final| state_values_match_oracle(&final_gpu, oracle_final, &layout));
 
+    let substrate_started = Instant::now();
     let substrate = run_r2_structural_substrates(
         &harness.world.ctx,
         world,
@@ -377,6 +489,7 @@ pub fn run_runtime_0080_0_r2(input: &Runtime0080R2Input) -> Runtime0080R2Report 
         &fleet_ids,
         &system_indices,
     );
+    let substrate_ms = substrate_started.elapsed().as_secs_f64() * 1000.0;
     if !substrate.diagnostics.is_empty() {
         diagnostics.extend(substrate.diagnostics.clone());
     }
@@ -432,6 +545,17 @@ pub fn run_runtime_0080_0_r2(input: &Runtime0080R2Input) -> Runtime0080R2Report 
     };
     report.substrate = Some(substrate);
     report.per_tick_trace = per_tick_trace;
+    report.profiling = Some(build_profiling(
+        &harness,
+        &journal_session,
+        &zero_cohort_probe,
+        &per_tick_timing,
+        &all_committed_rows,
+        oracle_setup_ms,
+        gpu_loop_ms,
+        substrate_ms,
+        run_started.elapsed().as_secs_f64() * 1000.0,
+    ));
 
     let pass = runs_100_ticks
         && event_journal_parity
@@ -737,6 +861,7 @@ fn base_report(
         r6c_checksum_delta_explained: "not run",
         substrate: None,
         per_tick_trace: Vec::new(),
+        profiling: None,
         foreground_capture_method: RUNTIME_R0_FOREGROUND_CAPTURE,
         domain_terms: vec![
             "resident",
@@ -748,6 +873,156 @@ fn base_report(
         ],
         stable_report_checksum: 0,
         artifact_markdown: String::new(),
+    }
+}
+
+fn build_profiling(
+    harness: &TierAGpuHarness,
+    journal_session: &AccumulatorOpSession,
+    zero_cohort_probe: &AccumulatorOpSession,
+    per_tick_timing: &[Runtime0080R2TickTimingRow],
+    committed_rows: &[R1bStructuralEvent],
+    oracle_setup_ms: f64,
+    gpu_loop_ms: f64,
+    substrate_ms: f64,
+    total_wall_ms: f64,
+) -> Runtime0080R2Profiling {
+    let gpu_world_buffer_bytes = harness.world.total_buffer_bytes();
+    let gpu_tier_a_session_bytes = harness.tier_a.persistent_buffer_bytes();
+    let gpu_journal_session_bytes = journal_session.persistent_buffer_bytes();
+    let gpu_zero_cohort_probe_bytes = zero_cohort_probe.persistent_buffer_bytes();
+    let gpu_persistent_total_bytes = gpu_world_buffer_bytes
+        + gpu_tier_a_session_bytes
+        + gpu_journal_session_bytes
+        + gpu_zero_cohort_probe_bytes;
+    let cpu_readback_staging_peak_bytes = harness.tier_a.values_buffer_size_bytes();
+
+    let total_gpu_sync_wait_ms: f64 = per_tick_timing.iter().map(|row| row.gpu_sync_wait_ms).sum();
+    let total_cpu_active_ms: f64 = per_tick_timing.iter().map(|row| row.cpu_active_ms).sum();
+    let total_gpu_tier_a_dispatch_ms: f64 = per_tick_timing
+        .iter()
+        .map(|row| row.gpu_tier_a_dispatch_ms)
+        .sum();
+    let tick_totals: Vec<f64> = per_tick_timing.iter().map(|row| row.total_ms).collect();
+    let mean_tick_ms = if tick_totals.is_empty() {
+        0.0
+    } else {
+        tick_totals.iter().sum::<f64>() / tick_totals.len() as f64
+    };
+    let min_tick_ms = tick_totals.iter().copied().fold(f64::INFINITY, f64::min);
+    let min_tick_ms = if min_tick_ms.is_finite() {
+        min_tick_ms
+    } else {
+        0.0
+    };
+    let max_tick_ms = tick_totals.iter().copied().fold(0.0_f64, f64::max);
+    let mean_gpu_sync_wait_ms = if per_tick_timing.is_empty() {
+        0.0
+    } else {
+        total_gpu_sync_wait_ms / per_tick_timing.len() as f64
+    };
+    let mean_cpu_active_ms = if per_tick_timing.is_empty() {
+        0.0
+    } else {
+        total_cpu_active_ms / per_tick_timing.len() as f64
+    };
+    let loop_phase_ms = total_gpu_sync_wait_ms + total_cpu_active_ms + total_gpu_tier_a_dispatch_ms;
+    let cpu_active_fraction = if loop_phase_ms > 0.0 {
+        total_cpu_active_ms / loop_phase_ms
+    } else {
+        0.0
+    };
+    let gpu_sync_wait_fraction = if loop_phase_ms > 0.0 {
+        total_gpu_sync_wait_ms / loop_phase_ms
+    } else {
+        0.0
+    };
+    let pipeline_interpretation = if gpu_sync_wait_fraction > cpu_active_fraction {
+        "CPU-bound on GPU completion: most tick wall time is readback stalls (map_async + poll Wait). Tier-A dispatches are async; their GPU work largely completes at the next tick's pre-combat readback."
+    } else {
+        "CPU witness + boundary apply dominate tick wall time; GPU readback stalls are secondary. The loop is still strictly sequential — CPU shadow maintenance gates the next tick's derived inputs."
+    };
+
+    Runtime0080R2Profiling {
+        oracle_setup_ms,
+        gpu_loop_ms,
+        substrate_ms,
+        total_wall_ms,
+        mean_tick_ms,
+        min_tick_ms,
+        max_tick_ms,
+        total_gpu_sync_wait_ms,
+        total_cpu_active_ms,
+        total_gpu_tier_a_dispatch_ms,
+        mean_gpu_sync_wait_ms,
+        mean_cpu_active_ms,
+        cpu_active_fraction,
+        gpu_sync_wait_fraction,
+        pipeline_interpretation,
+        per_tick_timing: per_tick_timing.to_vec(),
+        memory: Runtime0080R2MemoryFootprint {
+            gpu_world_buffer_bytes,
+            gpu_tier_a_session_bytes,
+            gpu_journal_session_bytes,
+            gpu_zero_cohort_probe_bytes,
+            gpu_persistent_total_bytes,
+            cpu_readback_staging_peak_bytes,
+            cpu_committed_journal_rows: committed_rows.len() as u64,
+            process_working_set_bytes: sample_process_working_set_bytes(),
+        },
+    }
+}
+
+fn sample_process_working_set_bytes() -> Option<u64> {
+    #[cfg(windows)]
+    {
+        #[repr(C)]
+        struct ProcessMemoryCounters {
+            cb: u32,
+            page_fault_count: u32,
+            peak_working_set_size: usize,
+            working_set_size: usize,
+            quota_peak_paged_pool_usage: usize,
+            quota_paged_pool_usage: usize,
+            quota_peak_non_paged_pool_usage: usize,
+            quota_non_paged_pool_usage: usize,
+            pagefile_usage: usize,
+            peak_pagefile_usage: usize,
+        }
+        extern "system" {
+            fn GetCurrentProcess() -> *mut std::ffi::c_void;
+        }
+        #[link(name = "psapi")]
+        extern "system" {
+            fn GetProcessMemoryInfo(
+                process: *mut std::ffi::c_void,
+                counters: *mut ProcessMemoryCounters,
+                size: u32,
+            ) -> i32;
+        }
+
+        let mut counters = ProcessMemoryCounters {
+            cb: std::mem::size_of::<ProcessMemoryCounters>() as u32,
+            page_fault_count: 0,
+            peak_working_set_size: 0,
+            working_set_size: 0,
+            quota_peak_paged_pool_usage: 0,
+            quota_paged_pool_usage: 0,
+            quota_peak_non_paged_pool_usage: 0,
+            quota_non_paged_pool_usage: 0,
+            pagefile_usage: 0,
+            peak_pagefile_usage: 0,
+        };
+        let ok = unsafe { GetProcessMemoryInfo(GetCurrentProcess(), &mut counters, counters.cb) };
+        if ok != 0 {
+            Some(counters.working_set_size as u64)
+        } else {
+            None
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        None
     }
 }
 
@@ -779,7 +1054,7 @@ fn render_artifact(report: &Runtime0080R2Report) -> String {
         .as_ref()
         .map(|a| a.adapter_name.clone())
         .unwrap_or_else(|| "none".to_string());
-    format!(
+    let mut out = format!(
         "# RUNTIME-0080-0-R2 Results\n\n\
          Status: {}\n\
          Verdict: {}\n\
@@ -797,7 +1072,117 @@ fn render_artifact(report: &Runtime0080R2Report) -> String {
         report.r6c_checksum_observed,
         report.r6c_checksum_matches,
         report.r6c_checksum_delta_explained,
-    )
+    );
+    if let Some(profiling) = &report.profiling {
+        out.push_str("\n## Wall-clock summary\n\n");
+        out.push_str(&format!(
+            "- Oracle setup (CPU R6C reference run): {:.2} ms\n\
+             - GPU-forward 100-tick loop: {:.2} ms\n\
+             - Post-loop structural substrates (R1c-a→e): {:.2} ms\n\
+             - Total wall time (this capture): {:.2} ms\n\
+             - Mean tick: {:.3} ms (min {:.3} ms, max {:.3} ms)\n",
+            profiling.oracle_setup_ms,
+            profiling.gpu_loop_ms,
+            profiling.substrate_ms,
+            profiling.total_wall_ms,
+            profiling.mean_tick_ms,
+            profiling.min_tick_ms,
+            profiling.max_tick_ms,
+        ));
+        out.push_str("\n## CPU vs GPU pipeline (100-tick loop)\n\n");
+        out.push_str(&format!(
+            "- Total CPU-active phases (witness + derived upload + boundary apply): {:.2} ms ({:.1}% of phased tick time)\n\
+             - Total GPU sync-wait (readback stalls): {:.2} ms ({:.1}% of phased tick time)\n\
+             - Total Tier-A dispatch submit (async, no in-call sync): {:.2} ms\n\
+             - Mean per tick — CPU active: {:.3} ms; GPU sync wait: {:.3} ms\n\
+             - Interpretation: {}\n",
+            profiling.total_cpu_active_ms,
+            profiling.cpu_active_fraction * 100.0,
+            profiling.total_gpu_sync_wait_ms,
+            profiling.gpu_sync_wait_fraction * 100.0,
+            profiling.total_gpu_tier_a_dispatch_ms,
+            profiling.mean_cpu_active_ms,
+            profiling.mean_gpu_sync_wait_ms,
+            profiling.pipeline_interpretation,
+        ));
+        let mem = &profiling.memory;
+        out.push_str("\n## Memory footprint (steady-state loop buffers)\n\n");
+        out.push_str(&format!(
+            "- GPU world buffers (WorldGpuState): {} bytes ({:.2} MiB)\n\
+             - GPU Tier-A session: {} bytes ({:.2} MiB)\n\
+             - GPU resident journal session: {} bytes ({:.2} MiB)\n\
+             - GPU ZeroCohort probe session: {} bytes ({:.2} MiB)\n\
+             - GPU persistent total (loop steady state): {} bytes ({:.2} MiB)\n\
+             - Peak CPU readback staging copy (one Tier-A full readback): {} bytes ({:.2} MiB)\n\
+             - CPU committed journal rows retained: {}\n",
+            mem.gpu_world_buffer_bytes,
+            bytes_to_mib(mem.gpu_world_buffer_bytes),
+            mem.gpu_tier_a_session_bytes,
+            bytes_to_mib(mem.gpu_tier_a_session_bytes),
+            mem.gpu_journal_session_bytes,
+            bytes_to_mib(mem.gpu_journal_session_bytes),
+            mem.gpu_zero_cohort_probe_bytes,
+            bytes_to_mib(mem.gpu_zero_cohort_probe_bytes),
+            mem.gpu_persistent_total_bytes,
+            bytes_to_mib(mem.gpu_persistent_total_bytes),
+            mem.cpu_readback_staging_peak_bytes,
+            bytes_to_mib(mem.cpu_readback_staging_peak_bytes),
+            mem.cpu_committed_journal_rows,
+        ));
+        if let Some(rss) = mem.process_working_set_bytes {
+            out.push_str(&format!(
+                "- Process working set (RSS snapshot at end of run): {} bytes ({:.2} MiB)\n",
+                rss,
+                bytes_to_mib(rss),
+            ));
+        } else {
+            out.push_str("- Process working set: not sampled on this platform\n");
+        }
+        out.push_str(
+            "\nNote: post-loop R1c-a→e substrate sessions allocate additional transient GPU buffers during the one-shot structural pass; they are not included in steady-state totals above.\n",
+        );
+        out.push_str("\n## Per-tick timing (ms)\n\n");
+        out.push_str(
+            "| tick | total | gpu_rb_pre | cpu_witness | cpu_write | gpu_rb_in | gpu_zero | gpu_tier_a | gpu_journal | cpu_apply | gpu_sync | cpu_active |\n",
+        );
+        out.push_str("|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n");
+        for row in &profiling.per_tick_timing {
+            out.push_str(&format!(
+                "| {} | {:.3} | {:.3} | {:.3} | {:.3} | {:.3} | {:.3} | {:.3} | {:.3} | {:.3} | {:.3} | {:.3} |\n",
+                row.tick,
+                row.total_ms,
+                row.gpu_readback_pre_combat_ms,
+                row.cpu_witness_ms,
+                row.cpu_write_derived_ms,
+                row.gpu_readback_tick_input_ms,
+                row.gpu_zero_cohort_probe_ms,
+                row.gpu_tier_a_dispatch_ms,
+                row.gpu_journal_stage_ms,
+                row.cpu_boundary_apply_ms,
+                row.gpu_sync_wait_ms,
+                row.cpu_active_ms,
+            ));
+        }
+    }
+    if !report.per_tick_trace.is_empty() {
+        out.push_str("\n## Per-tick journal parity\n\n");
+        out.push_str("| tick | journal_rows | oracle_rows | parity |\n");
+        out.push_str("|---:|---:|---:|:---:|\n");
+        for row in &report.per_tick_trace {
+            out.push_str(&format!(
+                "| {} | {} | {} | {} |\n",
+                row.tick,
+                row.journal_rows,
+                row.oracle_rows,
+                if row.parity_with_oracle { "yes" } else { "no" },
+            ));
+        }
+    }
+    out
+}
+
+fn bytes_to_mib(bytes: u64) -> f64 {
+    bytes as f64 / (1024.0 * 1024.0)
 }
 
 fn mix_u64(hash: &mut u64, value: u64) {
