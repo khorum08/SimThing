@@ -59,6 +59,8 @@ pub mod runtime_0080_0_r1c_c;
 pub mod runtime_0080_0_r1c_d;
 pub mod runtime_0080_0_r1c_e;
 pub mod runtime_0080_0_r1c_f;
+pub mod runtime_0080_0_r2;
+pub(crate) mod runtime_0080_0_r2_substrate;
 pub mod scenario;
 pub mod session;
 pub mod spec_replay;
@@ -511,6 +513,14 @@ pub use runtime_0080_0_r1c_f::{
     RUNTIME_0080_0_R1C_F_STATUS_PARTIAL, RUNTIME_0080_0_R1C_F_STATUS_PASS,
     RUNTIME_R1C_F_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_F_SCOPE,
 };
+pub use runtime_0080_0_r2::{
+    render_runtime_0080_r2_artifact, run_runtime_0080_0_r2, Runtime0080R2Input,
+    Runtime0080R2Report, Runtime0080R2TickTraceRow, RUNTIME_0080_0_R2_ID,
+    RUNTIME_0080_0_R2_PRIMITIVE, RUNTIME_0080_0_R2_STATUS_BLOCKED,
+    RUNTIME_0080_0_R2_STATUS_PARTIAL, RUNTIME_0080_0_R2_STATUS_PASS,
+    RUNTIME_R2_EXPECTED_REPORT_CHECKSUM, RUNTIME_R2_SCOPE,
+};
+pub use runtime_0080_0_r2_substrate::R2SubstrateOutcome as Runtime0080R2SubstrateOutcome;
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};
 pub use simthing_gpu::SlotAllocError;

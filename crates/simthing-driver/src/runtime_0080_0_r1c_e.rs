@@ -321,22 +321,41 @@ impl ApplyLayout {
 }
 
 #[derive(Clone, Debug)]
-struct ApplySessionReport {
-    slot_remap_rows: Vec<Runtime0080R1cESlotRemapRow>,
-    compacted_slot_rows: Vec<Runtime0080R1cECompactedSlotRow>,
-    membership_remap_rows: Vec<Runtime0080R1cEMembershipRemapRow>,
-    remap_parity: bool,
-    compacted_parity: bool,
-    membership_parity: bool,
-    remap_dispatch_count: u32,
-    compacted_dispatch_count: u32,
-    membership_dispatch_count: u32,
-    remap_readback_count: u32,
-    compacted_readback_count: u32,
-    membership_readback_count: u32,
-    remap_ops_uploaded: u32,
-    compacted_ops_uploaded: u32,
-    membership_ops_uploaded: u32,
+pub(crate) struct ApplySessionReport {
+    pub(crate) slot_remap_rows: Vec<Runtime0080R1cESlotRemapRow>,
+    pub(crate) compacted_slot_rows: Vec<Runtime0080R1cECompactedSlotRow>,
+    pub(crate) membership_remap_rows: Vec<Runtime0080R1cEMembershipRemapRow>,
+    pub(crate) remap_parity: bool,
+    pub(crate) compacted_parity: bool,
+    pub(crate) membership_parity: bool,
+    pub(crate) remap_dispatch_count: u32,
+    pub(crate) compacted_dispatch_count: u32,
+    pub(crate) membership_dispatch_count: u32,
+    pub(crate) remap_readback_count: u32,
+    pub(crate) compacted_readback_count: u32,
+    pub(crate) membership_readback_count: u32,
+    pub(crate) remap_ops_uploaded: u32,
+    pub(crate) compacted_ops_uploaded: u32,
+    pub(crate) membership_ops_uploaded: u32,
+}
+
+pub(crate) fn run_apply_for_rehearsal_staging(
+    ctx: &simthing_gpu::GpuContext,
+    compaction_rows: &[Runtime0080R1cDCompactionRow],
+    lineage_rows: &[Runtime0080R1cDLineageRow],
+    membership_rows: &[Runtime0080R1cCMembershipDeltaRow],
+) -> Result<ApplySessionReport, &'static str> {
+    let (planned_remap, planned_compacted, planned_membership) =
+        build_apply_plan(compaction_rows, lineage_rows, membership_rows);
+    run_apply_session(
+        ctx,
+        &planned_remap,
+        &planned_compacted,
+        &planned_membership,
+        true,
+        true,
+        true,
+    )
 }
 
 pub fn run_runtime_0080_0_r1c_e(input: &Runtime0080R1cEInput) -> Runtime0080R1cEReport {
@@ -753,7 +772,7 @@ fn run_runtime_0080_0_r1c_e_internal(
     finalize_report(report)
 }
 
-fn build_apply_plan(
+pub(crate) fn build_apply_plan(
     compaction_rows: &[Runtime0080R1cDCompactionRow],
     lineage_rows: &[Runtime0080R1cDLineageRow],
     membership_rows: &[Runtime0080R1cCMembershipDeltaRow],
@@ -911,7 +930,7 @@ fn build_apply_plan(
     (remap_rows, compacted_rows, membership_remap_rows)
 }
 
-fn run_apply_session(
+pub(crate) fn run_apply_session(
     ctx: &simthing_gpu::GpuContext,
     planned_remap: &[PlannedSlotRemapRow],
     planned_compacted: &[PlannedCompactedSlotRow],

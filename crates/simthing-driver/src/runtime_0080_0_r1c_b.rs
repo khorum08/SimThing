@@ -205,16 +205,16 @@ impl AllocationLayout {
 }
 
 #[derive(Clone, Debug)]
-struct AllocationSessionReport {
-    rows: Vec<Runtime0080R1cBAllocationRow>,
-    mark_table_after_allocation: Vec<u32>,
-    allocation_rows_written_from_gpu_values: bool,
-    allocated_slot_read_from_gpu_value: bool,
-    allocation_parity_measured_from_gpu_values: bool,
-    gpu_select_dispatch_count: u32,
-    allocation_row_copy_dispatch_count: u32,
-    allocation_readback_count: u32,
-    allocation_ops_uploaded: u32,
+pub(crate) struct AllocationSessionReport {
+    pub(crate) rows: Vec<Runtime0080R1cBAllocationRow>,
+    pub(crate) mark_table_after_allocation: Vec<u32>,
+    pub(crate) allocation_rows_written_from_gpu_values: bool,
+    pub(crate) allocated_slot_read_from_gpu_value: bool,
+    pub(crate) allocation_parity_measured_from_gpu_values: bool,
+    pub(crate) gpu_select_dispatch_count: u32,
+    pub(crate) allocation_row_copy_dispatch_count: u32,
+    pub(crate) allocation_readback_count: u32,
+    pub(crate) allocation_ops_uploaded: u32,
 }
 
 pub fn run_runtime_0080_0_r1c_b(input: &Runtime0080R1cBInput) -> Runtime0080R1cBReport {
@@ -502,7 +502,7 @@ fn run_runtime_0080_0_r1c_b_internal(
     finalize_report(report)
 }
 
-fn run_allocation_session(
+pub(crate) fn run_allocation_session(
     ctx: &simthing_gpu::GpuContext,
     fleet_slots: u32,
     mark_table_before: &[u32],

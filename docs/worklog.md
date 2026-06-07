@@ -1,3 +1,10 @@
+# 2026-06-06 - RUNTIME-0080-0-R2-IMPL-0: stable 100-tick GPU-forward rehearsal
+
+- **Implemented R2:** `crates/simthing-driver/src/runtime_0080_0_r2.rs` runs the actual 100-tick GPU-forward rehearsal over R1a–R1c-f in ~2.2s (OnceLock harness; no predecessor triple-replay).
+- **Verdict:** PASS — 100 ticks, tier-A tick-100 parity, full journal parity, R6C checksum `1bba891c779190a4`, ZeroCohort GPU-decided, R1c-a through R1c-e substrates consumed from rehearsal journal.
+- **Remaining CPU-decided:** DamageDelta, MoveRequest, LocalBirthRequest, FusionRequest, ShipCountDelta, OwnerCodeFlip (findings; did not block rehearsal).
+- **Report:** [`docs/tests/runtime_0080_0_r2_stable_100_tick_rehearsal_results.md`](tests/runtime_0080_0_r2_stable_100_tick_rehearsal_results.md). Stable checksum `73d818417f5b98bf`. M-4A remains parked.
+
 # 2026-06-06 - RUNTIME-0080-0-R1c-f-VERIFY-0: full battery completed for GPU-decided ZeroCohort
 
 - **Verification:** full production-track battery completed in foreground on discrete RTX 4080; R1c-f remains IMPLEMENTED / PASS after predecessor regression suite.

@@ -291,17 +291,28 @@ impl StagingLayout {
 }
 
 #[derive(Clone, Debug)]
-struct StagingSessionReport {
-    compaction_rows: Vec<Runtime0080R1cDCompactionRow>,
-    lineage_rows: Vec<Runtime0080R1cDLineageRow>,
-    compaction_parity: bool,
-    lineage_parity: bool,
-    compaction_dispatch_count: u32,
-    lineage_dispatch_count: u32,
-    compaction_readback_count: u32,
-    lineage_readback_count: u32,
-    compaction_ops_uploaded: u32,
-    lineage_ops_uploaded: u32,
+pub(crate) struct StagingSessionReport {
+    pub(crate) compaction_rows: Vec<Runtime0080R1cDCompactionRow>,
+    pub(crate) lineage_rows: Vec<Runtime0080R1cDLineageRow>,
+    pub(crate) compaction_parity: bool,
+    pub(crate) lineage_parity: bool,
+    pub(crate) compaction_dispatch_count: u32,
+    pub(crate) lineage_dispatch_count: u32,
+    pub(crate) compaction_readback_count: u32,
+    pub(crate) lineage_readback_count: u32,
+    pub(crate) compaction_ops_uploaded: u32,
+    pub(crate) lineage_ops_uploaded: u32,
+}
+
+pub(crate) fn run_staging_for_rehearsal_journal(
+    ctx: &simthing_gpu::GpuContext,
+    events: &[crate::dress_rehearsal_r6c_integrated_run::R1bStructuralEvent],
+    allocation_rows: &[Runtime0080R1cBAllocationRow],
+    membership_rows: &[Runtime0080R1cCMembershipDeltaRow],
+) -> Result<StagingSessionReport, &'static str> {
+    let (planned_compaction, planned_lineage) =
+        build_staging_plan(events, allocation_rows, membership_rows);
+    run_staging_session(ctx, &planned_compaction, &planned_lineage, true, true)
 }
 
 pub fn run_runtime_0080_0_r1c_d(input: &Runtime0080R1cDInput) -> Runtime0080R1cDReport {
@@ -702,7 +713,7 @@ fn run_runtime_0080_0_r1c_d_internal(
     finalize_report(report)
 }
 
-fn build_staging_plan(
+pub(crate) fn build_staging_plan(
     events: &[R1bStructuralEvent],
     allocation_rows: &[Runtime0080R1cBAllocationRow],
     membership_rows: &[Runtime0080R1cCMembershipDeltaRow],
@@ -838,7 +849,7 @@ fn build_staging_plan(
     (compaction, lineage)
 }
 
-fn run_staging_session(
+pub(crate) fn run_staging_session(
     ctx: &simthing_gpu::GpuContext,
     planned_compaction: &[PlannedCompactionRow],
     planned_lineage: &[PlannedLineageRow],
