@@ -6,6 +6,24 @@ working around one of these, stop and reconsider the design.
 
 ---
 
+## Specification Fidelity & Anti-Ceremony
+
+> **Binding, draconian. Added 2026-06-07 by design authority on direct product mandate**, after a
+> specified recursive structure (galaxy 20×20 → 13 star-systems each a 10×10 subgrid → planet → 10×10
+> planet surface → pop-cohort + factory building children) was silently flattened to a single
+> galactic-tier proxy and closed as a PASS rehearsal. Constitutional home: `design_0_0_8_0.md` §0.6
+> (carry-forward spine). These rules gate **closure**, not just code. A change to this section is Tier-2.
+
+| Rule | Enforced by |
+|---|---|
+| **Spec fidelity — PASS/CLOSED requires the specified structure** | A track that claims IMPLEMENTED / PASS / CLOSED against a written spec MUST either (a) implement the spec's structure as written, or (b) carry a **Deviation Record** at the top of its results doc, explicitly approved by design authority, enumerating every specified element not implemented, the proxy substituted, the reason, and the consumer impact. A PASS/CLOSED that silently substitutes a flattened/proxy structure for a specified structure is **VOID**; the track is reopened. |
+| **No silent tier collapse** | When a spec defines a containment hierarchy (parent→child tiers / gridcells / surfaces / building-children), the implementation may not collapse those tiers into a flat proxy and claim the spec met. Tier collapse is a Deviation requiring a recorded, approved Deviation Record; "not yet wired" / "parked" is itself a Deviation, never an implicit pass (constitution §0.2 note is bounded by §0.6). |
+| **Scope Ledger on every closure** | Every CLOSE / ACCEPT ruling MUST carry a *Specified vs Implemented* ledger: each spec element marked `implemented` / `proxied` / `deferred` / `parked`, each with evidence. A closure without a complete ledger is invalid. |
+| **The specified consumer must actually run** | No PASS/CLOSED via documentation churn, status-table edits, report-only aggregation of predecessor artifacts, or harness ceremony in place of the specified consumer executing. Sibling of "Scenario Proof" and gating-policy §6 (proven-capability stop rule), now binding for closure. |
+| **No project-management cosplay** | Progress is measured only by working, spec-faithful implementation under test — never by the count of memos, packets, reviews, acceptance notes, status rows, or reports. Documents *record* progress; they never *constitute* it. Producing governance artifacts in place of the specified feature is a violation. |
+
+---
+
 ## Scenario Proof
 
 | Rule | Enforced by |

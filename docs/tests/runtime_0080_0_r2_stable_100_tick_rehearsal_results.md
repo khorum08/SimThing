@@ -1,6 +1,37 @@
 # RUNTIME-0080-0-R2 Results
 
-Status: IMPLEMENTED / PASS — stable 100-tick GPU-forward rehearsal
+> ## ⚠ DEVIATION RECORD (required by `invariants.md` → Specification Fidelity & Anti-Ceremony; constitution §0.6)
+>
+> **Added 2026-06-07 to bring this closure into compliance with the Specification Fidelity invariant.**
+> The R6C/R2 rehearsal **flattened the specified recursive structure** of
+> [`scenario_0080_2_dress_rehearsal_spec.md`](../scenarios/scenario_0080_2_dress_rehearsal_spec.md)
+> into a single galactic tier. This deviation was **not** recorded at original closure; it is recorded
+> now. The 100-tick GPU-forward runtime proof (Tier-A residency, journal, structural substrate, GPU
+> ZeroCohort, R6C checksum-equivalence) **stands**; what is corrected is the honest scope claim.
+>
+> ### Specified vs Implemented ledger
+> | Specified element (dress-rehearsal spec) | Status | Note |
+> |---|---|---|
+> | Galaxy starmap, 20×20 gridcells | `implemented` | flat galactic grid; matches |
+> | Star system as a **10×10 subgrid** (×13, one per galactic cell) | **`proxied`** | systems are **flat galactic cells**; no 10×10 system subgrid is run |
+> | Planet (Location) per system | **not implemented** | no planet entity in the running world |
+> | Planet **surface 10×10** map | **not implemented** | no surface tier exists |
+> | Factory district (surface-cell building) | **not implemented** | no surface buildings |
+> | Pop cohort (surface-cell building) | **not implemented** | no population entity |
+> | Planet-surface **labor economy** (pop +10 labor/tick → factory) | **`proxied`** | economy collapsed to per-owner galactic `stockpiles` + system-level `construction_progress` (starport proxy) |
+> | Ship-cohort combat / movement / disruption / blockade at galactic tier | `implemented` | the proven flat-tier rehearsal |
+>
+> **Consumer impact:** the multi-theater nested residency (M-4A territory) and the planet-surface
+> economy were never exercised — this is precisely why M-4A and system→planet recursion remained
+> theoretical. The recursive structure is now scheduled for real implementation under
+> [`runtime_0080_recursive_rehearsal_opening.md`](../production_paths/runtime_0080_recursive_rehearsal_opening.md),
+> which **supersedes** the mis-scoped M-4A "parallel theaters" opening.
+>
+> **Closure status (amended):** RUNTIME-0080-0 remains CLOSED **only as a flat galactic-tier 100-tick
+> runtime proof** — NOT as an implementation of the recursive galaxy→system→planet-surface dress-rehearsal
+> spec. The recursive spec is OPEN and unbuilt.
+
+Status: IMPLEMENTED / PASS — stable 100-tick GPU-forward rehearsal (flat galactic tier; see Deviation Record above)
 Verdict: PASS
 Primitive: `STABLE-100-TICK-GPU-FORWARD-REHEARSAL-0`
 Rung: `RUNTIME-0080-0-R2`

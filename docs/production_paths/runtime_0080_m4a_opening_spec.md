@@ -1,6 +1,17 @@
 # RUNTIME-0080-M4A-OPEN-0 — multi-theater sparse-residency dispatch of the closed runtime
 
-> **Status: OPEN (capability track), 2026-06-06, design authority.**
+> ## ⛔ SUPERSEDED 2026-06-07 by design authority on product mandate.
+> This opening was **mis-scoped**. It defined M-4A as running **N independent parallel** copies of the
+> flat R2 loop — which is *not* what the product specified. The governing dress-rehearsal spec calls for a
+> **nested containment hierarchy** (galaxy → star-system 10×10 subgrid → planet → planet-surface 10×10 →
+> pop-cohort + factory building children), which the closed rehearsal silently flattened (see the
+> Deviation Record in [`runtime_0080_0_r2_stable_100_tick_rehearsal_results.md`](../tests/runtime_0080_0_r2_stable_100_tick_rehearsal_results.md)).
+> The correct next track is **nested residency + planet-surface economy**, defined in
+> [`runtime_0080_recursive_rehearsal_opening.md`](runtime_0080_recursive_rehearsal_opening.md). Multi-theater
+> *sparse residency* is consumed there as the residency mechanism for the nested hierarchy — not as
+> standalone parallel theaters. Do not implement against this superseded opening.
+
+> **Status: SUPERSEDED (was: OPEN capability track, 2026-06-06).**
 > Selected as the next consumer after `RUNTIME-0080-0-R2-REVIEW-0` (RUNTIME-0080-0 CLOSED).
 > **This is a capability/infrastructure track, not a gameplay consumer.** No gameplay
 > overclaim until a named gameplay consumer uses it.

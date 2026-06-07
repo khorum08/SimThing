@@ -70,6 +70,10 @@ the recursive hierarchy, not a different mechanism.
 > *Implementation note (not a weakening of the doctrine):* the **proven** production slice today is
 > D=2 (`FlatStarResourceFlow`); recursion to greater depth is the parked nested path (A-0, §3/§4) pulled
 > by a named scenario. §0.2 is the **target doctrine**, not a claim that arbitrary depth is already wired.
+> **This note is bounded by §0.6 (Specification Fidelity):** it permits *honest* parking of depth not yet
+> built — it is **not** a licence to close a track against a spec that *calls for* depth while shipping a
+> flat proxy. If a governing spec specifies a tier and the implementation collapses it, that is a
+> **Deviation** requiring a recorded, approved Deviation Record per §0.6 — never a silent pass.
 
 ### 0.3 All conflict is resource flow
 **Every adversarial interaction is expressed as resource-flow dynamics** — accumulation, reduction, and
@@ -143,6 +147,45 @@ and a discipline that keeps it from bloating back into a doc-treadmill no agent 
 If a change cannot be expressed within 1–6, that is the signal to **escalate to design authority** — not
 to add a special case. The checklist is six lines on purpose: a low-context agent will hold six lines and
 drift past sixty. (`SCENARIO-0080-2` §12.0 in the production track is the worked example of this header.)
+
+### 0.6 Specification Fidelity — no silent flattening (the anti-drift law)
+> **Added 2026-06-07 by design authority on direct product mandate (draconian), after a specified
+> recursive structure — galaxy → star-system subgrid → planet → planet-surface, with pop cohorts and
+> factory/building children on surface cells — was silently flattened into a single galactic-tier proxy
+> and then closed as a PASS rehearsal. This MUST NOT recur. Like the rest of §0, this carries forward
+> verbatim, amended only by addition.**
+
+**What gets specified gets implemented — or the deviation is recorded in the open and approved.** An
+implementation may **not** silently substitute a flattened, collapsed, or proxy structure for a
+specified recursive/structured design and then claim it IMPLEMENTED / PASS / CLOSED. The bindings:
+
+1. **No silent tier collapse.** When a spec defines a containment hierarchy (parent → child tiers /
+   gridcells / surfaces / building-children), an implementation may not collapse those tiers into a flat
+   proxy and claim the spec is met. Modelling 13 star-systems as flat galactic cells when the spec calls
+   for 13 × 10×10 system subgrids each with a 10×10 planet surface and pop/factory children is a
+   **collapse**, not an implementation.
+2. **Deviation Record or it did not pass.** Any gap between the governing spec and what was built is a
+   **Deviation** that MUST be written at the top of the track's results doc, enumerating every specified
+   element not implemented, the proxy used in its place, the reason, and the consumer impact — and MUST be
+   explicitly approved by design authority. A PASS / CLOSED that lacks a required Deviation Record for a
+   real gap is **constitutionally VOID** and the track is reopened.
+3. **Scope Ledger on every closure.** Every CLOSE / ACCEPT ruling MUST carry a *Specified vs Implemented*
+   ledger: each spec element marked `implemented` / `proxied` / `deferred` / `parked`, with evidence. A
+   closure without a complete ledger is invalid.
+4. **"Parked / not-yet-wired" is a Deviation, never a free pass.** The §0.2 implementation note ("the
+   proven slice today is D=2; deeper recursion is parked, pulled by a named scenario") is **not** a
+   licence to close a track against a richer spec while shipping a flat proxy. Parking a specified tier is
+   itself a Deviation that must be recorded and approved per (2); it may never be left implicit.
+5. **Hygiene theater is void.** Progress is **working, spec-faithful code under test** — never the count
+   of memos, packets, reviews, status rows, reports, or harness ceremony. Documents *record* progress;
+   they never *constitute* it. A PASS / CLOSED asserted via documentation churn, report-only aggregation
+   of predecessor artifacts, or harness ceremony in place of the specified consumer actually running is
+   void (sibling of `invariants.md` "Scenario Proof" and the gating policy §6 stop rule, now binding for
+   closure). "Project-management cosplay" — activity that produces governance artifacts instead of the
+   specified feature — is the failure mode this law exists to kill.
+
+Binding enforcement lives in `invariants.md` → "Specification Fidelity & Anti-Ceremony". This §0.6 is the
+doctrine; the invariant table is the gate.
 
 ---
 
