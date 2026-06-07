@@ -61,6 +61,7 @@ pub mod runtime_0080_0_r1c_e;
 pub mod runtime_0080_0_r1c_f;
 pub mod runtime_0080_0_r2;
 pub(crate) mod runtime_0080_0_r2_substrate;
+pub mod runtime_0080_rr_0;
 pub mod scenario;
 pub mod session;
 pub mod spec_replay;
@@ -522,6 +523,17 @@ pub use runtime_0080_0_r2::{
     RUNTIME_R2_EXPECTED_REPORT_CHECKSUM, RUNTIME_R2_SCOPE,
 };
 pub use runtime_0080_0_r2_substrate::R2SubstrateOutcome as Runtime0080R2SubstrateOutcome;
+pub use runtime_0080_rr_0::{
+    build_recursive_world, replay_runtime_0080_rr_0, run_runtime_0080_rr_0,
+    Runtime0080Rr0DeviationRecord, Runtime0080Rr0EntityCounts, Runtime0080Rr0FactionStockpile,
+    Runtime0080Rr0Galaxy, Runtime0080Rr0GalaxyCell, Runtime0080Rr0Input, Runtime0080Rr0OracleTick,
+    Runtime0080Rr0Owner, Runtime0080Rr0Planet, Runtime0080Rr0RecursiveWorld, Runtime0080Rr0Report,
+    Runtime0080Rr0ScopeLedgerRow, Runtime0080Rr0Starport, Runtime0080Rr0Surface,
+    Runtime0080Rr0SurfaceCell, Runtime0080Rr0SurfaceChild, Runtime0080Rr0System,
+    Runtime0080Rr0SystemGridCell, RUNTIME_0080_RR_0_ID, RUNTIME_0080_RR_0_STATUS_BLOCKED,
+    RUNTIME_0080_RR_0_STATUS_PARTIAL, RUNTIME_0080_RR_0_STATUS_PASS,
+    RUNTIME_RR_0_EXPECTED_REPORT_CHECKSUM,
+};
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use session::{RunSummary, SessionError, SimSession};
 pub use simthing_gpu::SlotAllocError;
