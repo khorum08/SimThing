@@ -1,3 +1,11 @@
+# 2026-06-06 - RUNTIME-0080-0-CLOSED-NEXT-CONSUMER-0: select C (M-4A) as next consumer
+
+- **Selection:** next consumer after RUNTIME-0080-0 closure is **C — M-4A / multi-atlas sparse residency.** Design authority recommended B (richer emergence, `SCENARIO-0080-3`); the project selected C. One track opened at a time; A/B/D/E remain available but unopened.
+- **Honest framing:** M-4A is substrate/capability, not a gameplay consumer. Opened as a **bounded capability-readiness track** with explicit "no gameplay overclaim" posture, to avoid the substrate-without-consumer pattern the closure warned against.
+- **Opened:** `RUNTIME-0080-M4A-OPEN-0` — opening spec [`docs/production_paths/runtime_0080_m4a_opening_spec.md`](production_paths/runtime_0080_m4a_opening_spec.md). First slice `RUNTIME-0080-M4A-0`: multi-theater resident dispatch of the closed R2 loop under sparse residency (N ≥ 2 theaters, per-theater parity, inactive-theater ~0 dispatch, cross-theater isolation negative control, no CPU planner, no new semantic GPU op).
+- **Prior art to consume not redo:** `ATLAS-BATCH-0` (batch allocation), `atlas_0080_0` (scenario-scoped sparse residency for SCENARIO-0080-1). Remaining parked generic gate is the multi-theater resident scheduler running the closed RUNTIME-0080-0 stack.
+- **Stays parked:** gameplay emergence, multi-faction economy, system→planet recursion, default session wiring, invariant edits, pinned-number changes, SCENARIO-0080-2 reopen, class-by-class structural conversion. RUNTIME-0080-0 remains CLOSED (not reopened).
+
 # 2026-06-06 - RUNTIME-0080-0-R2-REVIEW-0: ACCEPT / CLOSE stable 100-tick rehearsal
 
 - **Ruling (design authority): A — ACCEPT / CLOSED.** R2 is the stable 100-tick GPU-forward rehearsal consumer. RUNTIME-0080-0 is closed at this horizon; the R1c substrate ladder is complete and is not to be extended.
