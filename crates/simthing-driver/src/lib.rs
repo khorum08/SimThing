@@ -515,7 +515,8 @@ pub use runtime_0080_0_r1c_f::{
 };
 pub use runtime_0080_0_r2::{
     render_runtime_0080_r2_artifact, run_runtime_0080_0_r2, Runtime0080R2Input,
-    Runtime0080R2Report, Runtime0080R2TickTraceRow, RUNTIME_0080_0_R2_ID,
+    Runtime0080R2MemoryFootprint, Runtime0080R2Profiling, Runtime0080R2Report,
+    Runtime0080R2TickTimingRow, Runtime0080R2TickTraceRow, RUNTIME_0080_0_R2_ID,
     RUNTIME_0080_0_R2_PRIMITIVE, RUNTIME_0080_0_R2_STATUS_BLOCKED,
     RUNTIME_0080_0_R2_STATUS_PARTIAL, RUNTIME_0080_0_R2_STATUS_PASS,
     RUNTIME_R2_EXPECTED_REPORT_CHECKSUM, RUNTIME_R2_SCOPE,

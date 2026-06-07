@@ -38,11 +38,25 @@ Stable report checksum: `73d818417f5b98bf`
 
 ## R6C CPU oracle comparison
 - r6c_checksum_expected: `1bba891c779190a4`
-- r6c_checksum_observed: `1bba891c779190a4`
+- r6c_checksum_equivalent: `1bba891c779190a4`
 - r6c_checksum_matches: true
 - tier_a_tick100_matches_oracle: true
 - event_journal_parity: true
 - explanation: tier-A tick-100 + full journal parity against R6C oracle; equivalent to pinned R6C checksum
+
+### Checksum claim boundary (R2-REVIEW-0)
+The reported `1bba891c779190a4` is **checksum-equivalent**, not an independently recomputed
+hash of R2's own runtime state. The R2 runner **assigns** the pinned R6C checksum when, and
+only when, all of these equivalence conditions hold for the live run:
+- 100 ticks completed;
+- full event-journal parity against the R6C oracle;
+- per-tick journal parity against the R6C oracle;
+- Tier-A tick-100 parity against the R6C oracle trajectory;
+- R1c-f GPU-decided ZeroCohort consumed.
+If any condition fails, the runner instead reports the oracle's own `stable_checksum` and
+`r6c_checksum_matches = false`. The equivalence is therefore earned by per-tick + endpoint
+parity, but the literal 64-bit value is the pinned R6C constant, not a fresh R2-state hash.
+See `runtime_0080_0_r2.rs` (`r6c_checksum_observed` assignment).
 
 ## Remaining CPU-decided structural classes (findings, not blockers)
 - DamageDelta
@@ -71,3 +85,22 @@ Stable report checksum: `73d818417f5b98bf`
 | `cargo check --workspace` | success (exit 0) | 1.86s |
 
 No scratch logs committed.
+
+## Design-authority ruling (RUNTIME-0080-0-R2-REVIEW-0)
+
+Ruling: **A — ACCEPT / CLOSED AS STABLE 100-TICK GPU-FORWARD REHEARSAL**
+
+Findings:
+- R2 real runner: yes (live `for tick in 0..R6C_CANONICAL_TICK_COUNT` loop drives resident Tier-A readback, GPU ZeroCohort threshold/emission, Tier-A dispatch, journal commit, boundary apply; not report aggregation).
+- 100 ticks executed: yes.
+- ZeroCohort GPU-decided: yes (resident `num_ships` threshold/emission band, event kind 4; CPU witness excludes ZeroCohort).
+- R1c substrates consumed: yes (R1c-a→e run from the rehearsal journal; R1c-f boundary preserved).
+- checksum wording acceptable: corrected — relabelled **checksum-equivalent** with explicit claim boundary (see above); the value is the pinned R6C constant assigned on per-tick + endpoint parity, not a fresh R2-state hash.
+- remaining CPU-decided classes are findings: yes (DamageDelta, MoveRequest, LocalBirthRequest, FusionRequest, ShipCountDelta, OwnerCodeFlip did not block the 100-tick run).
+- M-4A remains parked: yes (single-theater, 1.23 MiB steady-state GPU footprint; no scale pressure).
+
+Predecessor battery: full production-track battery was run in PR #550 immediately before R2; PR #551 changed no predecessor semantics (only `pub(crate)` helper visibility plus new R2 files). A verify-only rerun was judged ceremony and **not** ordered.
+
+Next horizon: **no new rung until a consumer is chosen.** Do not continue R1c substrate rungs. The next consumer is selected only after the project decides among (A) class-by-class GPU decision conversion for remaining structural classes, (B) richer emergence scenario, (C) multi-theater / M-4A sparse residency, (D) multi-faction economy, (E) system→planet recursion.
+
+Profiling capture (wall-clock / memory / CPU-vs-GPU): [`runtime_0080_0_r2_profiling_capture.md`](runtime_0080_0_r2_profiling_capture.md).
