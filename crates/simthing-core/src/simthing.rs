@@ -11,7 +11,7 @@ pub enum SimThingKind {
     Faction,
     /// **DEPRECATED — DO NOT USE (design authority, 2026-06-03).** `StarSystem` was added
     /// without a consuming scenario and violates maximal SimThing conformance
-    /// (`design_0_0_8_0.md` §0.1): a star system is a `Location` SimThing carrying the relevant
+    /// (`design_0_0_8_1.md` §0.1): a star system is a `Location` SimThing carrying the relevant
     /// properties / overlays / arena enrollments, not a privileged kind. Retained only so legacy
     /// serialized data and the exhaustive `kind_matches` / `kind_tag_to_kind` arms still compile.
     /// Do not author new entities of this kind.

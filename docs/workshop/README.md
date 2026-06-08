@@ -1,6 +1,6 @@
 # Workshop docs index
 
-**Active authority:** read [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md) first (PR ladder home), then [`mapping_current_guidance.md`](mapping_current_guidance.md) (status table) and [`field_policy_track.md`](field_policy_track.md) (FIELD_POLICY/Frontier charter).
+**Active authority:** read [`../design_0_0_8_1.md`](../design_0_0_8_1.md) first (single canonical design constitution), then [`../design_0_0_8_0_consumer_pulled_production_track.md`](../design_0_0_8_0_consumer_pulled_production_track.md) (live production ledger), [`mapping_current_guidance.md`](mapping_current_guidance.md) (status table), and [`field_policy_track.md`](field_policy_track.md) (FIELD_POLICY/Frontier charter). The v7-series design docs are archived under [`../archive/superseded_design/`](../archive/superseded_design/) and folded into `design_0_0_8_1.md`.
 
 **Archive:** superseded workshop handoffs (`workshop_current_state.md`, `todo.md`, `simthing_spec_progress_log.md`, historical mapping narrative) live under [`../archive/superseded_workshop/`](../archive/superseded_workshop/). Do not treat archived files as active authority.
 
@@ -28,11 +28,10 @@
 
 | Document | Role |
 |----------|------|
-| [`../design_v7_8.md`](../design_v7_8.md) | v7.8 constitution |
-| [`../design_v7_8_production_track.md`](../design_v7_8_production_track.md) | **PR ladder home** |
-| [`../design_v7_7.md`](../design_v7_7.md) | CLOSED baseline |
+| [`../design_0_0_8_1.md`](../design_0_0_8_1.md) | **Single canonical design constitution** (folds v4→0.0.8.0) |
+| [`../design_0_0_8_0_consumer_pulled_production_track.md`](../design_0_0_8_0_consumer_pulled_production_track.md) | Live production status ledger |
 | [`../invariants.md`](../invariants.md) | Binding constraints |
-| [`../accumulator_op_v2_production_plan.md`](../accumulator_op_v2_production_plan.md) | CLOSED stub — archive pointer only |
+| [`../archive/superseded_design/`](../archive/superseded_design/) | Archived v4→0.0.8.0 design chain (historical only) |
 | [`../worklog.md`](../worklog.md) | Append-only history |
 
 ## Archive
