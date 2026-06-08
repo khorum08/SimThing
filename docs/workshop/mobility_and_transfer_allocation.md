@@ -88,7 +88,7 @@ enrollment.
 
 ### 3.2 Combat as a cell-level arena (constitutional)
 
-> **Superseded in part by `design_0_0_8_0.md` §0.2 (2026-06-03).** The combat-as-arena framing below
+> **Superseded in part by `design_0_0_8_1.md` §0.2 (carried from 0.0.8.0).** The combat-as-arena framing below
 > is carried forward and promoted (see §0.3); but the claim that cell arenas are *flat-star, not
 > nested* is **overridden** — allocation is one recursive mechanism, and a cell-local arena is the
 > leaf-most level of that hierarchy, not a separate flat-star mechanism.

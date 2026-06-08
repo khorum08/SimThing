@@ -913,7 +913,7 @@ fn jit_grad0_mag2_not_overclaimed_if_approximate() {
         let mag2_class = batch.mag2_shader_order.classification;
 
         if mag2_class != OutputClassification::ExactDeterministicCandidate {
-            let design = include_str!("../../../docs/design_0_0_8_0.md");
+            let design = include_str!("../../../docs/design_0_0_8_1.md");
             let invariants = include_str!("../../../docs/invariants.md");
             let track =
                 include_str!("../../../docs/design_0_0_8_0_consumer_pulled_production_track.md");
