@@ -1,6 +1,6 @@
 //! C-2 performance gate: AccumulatorOp intent path vs legacy intent pass.
 //!
-//! Conservative gate per `docs/workshop/c1_perf_reframe_memo.md`: no regression
+//! Conservative gate per `docs/workshop/archive/c1_perf_reframe_memo.md`: no regression
 //! on the full tick pipeline path, with a 1.5× warning threshold.
 
 use simthing_core::{

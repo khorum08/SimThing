@@ -1,3 +1,23 @@
+# 2026-06-09 - DOCS-ORPHANS-0: archive stale/orphaned docs before merge
+
+- **Link-graph orphan sweep over active docs** (zero/cluster-only inbound references + closed work). Archived to `docs/workshop/archive/`: `multichannel_accumulator_test_battery.md` (zero refs), `c1_perf_reframe_memo.md`, `c4_overlay_orderband_compiler_design.md`, `c5_weighted_mean_reduction_design.md` (C-series landed; kept alive only by intra-cluster cross-refs), `slot_summary_b4_design.md` (B-4 landed), `s2_legacy_intensity_sunset_inventory.md` (S-2 sunset complete; last action item satisfied by DOCS-TRIM-0). Archived to `docs/workshop/archive/mapping/`: `mapping_atlas_algebraic_mask_candidate_notes.md` + its paired `mapping_atlas_algebraic_mask_sandbox_code_preserve.rs` and `structured_field_stencil_atlas_mask_candidate.wgsl` (M-4A sandbox candidates; siblings already archived; only self-referenced).
+- **Kept (live consumers verified):** `c8_eml_transfer_intensity_design.md` (cited by active `adr_accumulator_op_v2.md` + `eml_registry.rs` code comment), `resource_flow_adr_shaping.md` + `resource_flow_feasibility_opus.md` (active RF ADR companions), `simthing_base_economic_system_working_doc.md`, `simthing_modder_object_guide.md`, `eml_gadget_library_design_note.md`, E-11 restart-evidence trio (intentionally retained), `accumulator_op_v2_production_plan.md` stub (link-preserving archive pointer).
+- **Links repointed:** c8 companion/related lists → archive paths; isolation design note evidence link → `archive/mapping/`; workshop README active table pruned (B-4 + C-1 rows removed; DOCS-TRIM-0 ledger row added).
+- Root-level `Cursor_Handoff_Phase_M_EML-GADGET-2ABC_Parking_Packet.md` exists on origin/master but is already absent from the local working tree; no action needed locally.
+- No active rule, gate, or evidence deleted; everything moved, nothing destroyed.
+
+
+# 2026-06-09 - DOCS-TRIM-0: trim governance scaffolding from the mandatory-read set
+
+- **Product-mandated editorial compression applied** (proposal + edit ledger: [`docs/workshop/docs_trim_0_proposal.md`](workshop/docs_trim_0_proposal.md)). All binding rules preserved; history, inline provenance, duplicate statements, and closure narratives relocated to reports/archive. Mandatory-read set cut ~46% (~25k → ~13.5k tokens).
+- **`design_0_0_8_1.md`** (D-1…D-7): §0.2 status note compressed; §0.5 harness sub-rules compressed (core design doc added to the fixed base); §0.6 preamble trimmed to one sentence; §1 lineage → table; §2.4 dedup → pointer to invariants EML gate; §2.5 retired-boilerplate bullet compressed; §4/§4A closure record → verdicts + ladder + report pointer. **§0 text compression is the openly recorded, product-approved amendment contemplated by the carry-forward rule — not a silent weakening; every §0 obligation is preserved.**
+- **`invariants.md`** (I-1…I-7): all rules retained; Spec-Fidelity rows tightened; JIT section 13 verbose rows → 6 (artifact identities/hashes/proofs live at descriptor admission + `workshop/sqrt_candidates.md`); Mapping rows stripped of inline citations; EML Gadget dates/ladder history removed; Boundary rows merged; pedagogy tail removed (now `simthing_core_design.md` §3); Proof Test compressed.
+- **`agents.md`** (A-1): the 990-line v4-era briefing (stale Week-2/3 crate states, an open "FMA decision required" prompt for a long-decided question, deleted-pass shader sketches, stale "199 tests" pin) **archived verbatim** to `archive/superseded_design/agents_v4_briefing.md` and replaced with a ~100-line router brief: read order (core design → invariants → constitution §0/§2 → ledger row + one report), current crate layout, verified test/replay commands, named guard tests, working rules, code style.
+- **`simthing_core_design.md`:** evaluated, deliberately unchanged — it is the destination for the cut pedagogy and the single always-in-context doc.
+- **Flagged, not applied:** TRIM-NEXT-1 (ledger archival-on-close for the production track + guidance forward-horizon blockquote).
+- No code touched; no invariant rule added/removed/weakened; no track opened or reopened.
+
+
 # 2026-06-09 - STATUS-LEDGER-RECONCILE-0: reconcile stale post-cleanup track statuses
 
 - **Terminology normalization already merged as PR #539** (`TERMINOLOGY-NORMALIZE-0`); not re-run. Fresh active-path grep (`SEAD|self_ai|exploitation|weaponize`) found only an intentional guard-test banned-term list in `runtime_0080_0_r1a.rs` (kept) and one residual `SEAD` codename I had reintroduced into `design_0_0_8_1.md` §5.1 — renamed mechanically to the domain-neutral `MOVEMENT-FRONT-0080-RECURSIVE`.

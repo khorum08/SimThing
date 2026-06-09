@@ -1,20 +1,20 @@
 # SimThing — Design 0.0.8.1 Constitution (Consumer-Pulled Phase, Recursive-Rehearsal Horizon Reached)
 
-> **Status: ACTIVE constitution (synthesized 2026-06-07, design authority Opus).** 0.0.8.1 is the
-> single, self-contained design doc for the consumer-pulled phase. It **synthesizes and supersedes** the
-> entire prior design lineage — `design_v4.md`, `design_v5.md`, `design_v6.md`, `design_v6.5.md`,
-> `design_v7.md` (v7/v7.6 core), `design_v7_7.md`, `design_v7_8.md`, the v7.8/v0.0.7.9 production tracks,
-> and `design_0_0_8_0.md` — which are now **archived** under `archive/superseded_design/` as historical
-> record only. Future agents should read **this doc** plus the binding homes below; the archived files
-> are not required reading and must not be cited as active authority.
+> **Status: ACTIVE constitution (synthesized 2026-06-07, design authority Opus; editorially
+> compressed 2026-06-09 under DOCS-TRIM-0, product-mandated — all binding doctrine preserved,
+> history relocated to reports/archive).** 0.0.8.1 is the single, self-contained design doc for the
+> consumer-pulled phase. It **synthesizes and supersedes** the entire prior design lineage (§1),
+> archived under `archive/superseded_design/` as historical record only. Future agents read **this
+> doc** plus the binding homes below; archived files must not be cited as active authority.
 >
-> **Binding homes are unchanged.** The *structural* invariants live in [`invariants.md`](invariants.md)
-> (binding; any change is Tier-2). The *gating* mechanics live in
-> [`workshop/phase_m_gating_and_doc_policy.md`](workshop/phase_m_gating_and_doc_policy.md) (Tier-1/
-> Tier-2 + §6 proven-capability stop rule). The live production status ledger is
-> [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md)
-> (kept under its established name to preserve consumer wiring). This doc **rules**; it does not
-> re-derive the binding rules — it points at them.
+> **Binding homes are unchanged.** Structural invariants: [`invariants.md`](invariants.md)
+> (binding; any change is Tier-2). Gating mechanics:
+> [`workshop/phase_m_gating_and_doc_policy.md`](workshop/phase_m_gating_and_doc_policy.md)
+> (Tier-1/Tier-2 + §6 proven-capability stop rule). Live production status ledger:
+> [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md).
+> The permanent paradigm reference beneath this constitution:
+> [`simthing_core_design.md`](simthing_core_design.md). This doc **rules**; it does not re-derive
+> the binding rules — it points at them.
 
 ---
 
@@ -70,15 +70,10 @@ of the one recursive hierarchy — same machinery, different settling depth. Thi
 the "combat is flat-star within the cell, nesting lives only above" carve-out in
 `docs/workshop/mobility_and_transfer_allocation.md` §3.2: a cell-local arena is the leaf-most level of
 the recursive hierarchy, not a different mechanism.
-> *Implementation note (not a weakening of the doctrine):* the flat D=2 (`FlatStarResourceFlow`) slice
-> was the original proven production posture; the **recursive galaxy → system → planet → surface ladder
-> is now proven** end-to-end on GPU (RUNTIME-0080-RR-0…RR-4, §4A) against a recursive CPU oracle.
-> §0.2 is the **target doctrine** and is now demonstrated through the RR ladder; it remains *not* a
-> claim that arbitrary depth is wired into the default `SimSession` path. **This note is bounded by §0.6
-> (Specification Fidelity):** it permits *honest* parking of depth not yet built — it is **not** a
-> licence to close a track against a spec that *calls for* depth while shipping a flat proxy. If a
-> governing spec specifies a tier and the implementation collapses it, that is a **Deviation** requiring
-> a recorded, approved Deviation Record per §0.6 — never a silent pass.
+> *Status note:* the recursive ladder is proven end-to-end on GPU against a recursive CPU oracle
+> (RUNTIME-0080-RR-0…RR-4, §4A); §0.2 is demonstrated doctrine, not yet default `SimSession`
+> wiring. Bounded by §0.6: parking specified depth is honest only as a recorded, approved
+> Deviation — never a silent flat proxy.
 
 ### 0.3 All conflict is resource flow
 **Every adversarial interaction is expressed as resource-flow dynamics** — accumulation, reduction, and
@@ -108,28 +103,16 @@ into a production path is the named-consumer gate that opens it.
 ### 0.5 Track harness discipline — the base every production PR track carries
 The §0 drift (math-in-a-vacuum, kind-as-behavior, structural special-cases like the rejected D=3
 ownership-node) was a **context-harness failure, not a doctrine failure**: low-context implementation
-agents (Codex/Cursor/Grok) had no tight harness, so they re-derived architecture from conventional
-priors and drifted. The fix is a **fixed, small, citable base harness on every production PR track** —
-and a discipline that keeps it from bloating back into a doc-treadmill no agent reads.
+agents had no tight harness, so they re-derived architecture from conventional priors and drifted. The
+fix is a **fixed, small, citable base harness on every production PR track**:
 
-- **Rule 1 — every track opens with a fixed-size harness header citing the high-signal set.** Cite the
-  **4–5 most relevant links** (up to **5–6** when an extra genuinely improves outcomes), never more. The
-  header always includes (a) this constitution **§0** and (b) the track's **one canonical design file**;
-  the rest are the highest-signal design/code surfaces (e.g. the binding invariants, the
-  design-of-record for the mechanism, the parked code being pulled). **Every link must be load-bearing** —
-  if a reader wouldn't open it on a typical rung, it does not belong in the header; demote it into the
-  canonical design file. Plus a **one-screen** "established decisions / do-not-re-derive" checklist. The
-  discipline is **high-signal density, not link count**: keep the header to one screen and prune anything
-  a low-context agent wouldn't actually use.
-  - **Two layers — fixed base + rung-local.** The 4–6 links above are the **fixed base harness**: the
-    same set on *every* handoff — capped, durable, the anchor against drift. A handoff MAY add a short
-    **rung-local** citation list — the artifacts *that* rung directly consumes (the immediately-upstream
-    rung's test report / status row, a bespoke note, the prior result it builds on). Rung-local rules:
-    (a) only what this rung directly consumes (a reader opens it *for this task*, not generally);
-    (b) keep it to **≤ 3**; (c) it is **ephemeral** — it does not carry to the next handoff and **never
-    accretes into the fixed base**. The base controls drift; the rung-local layer carries task detail.
-    If a rung-local link proves durable across rungs, **promote it into the canonical design file** —
-    do not grow the base.
+- **Rule 1 — every track opens with a fixed-size harness header citing the high-signal set.**
+  Fixed base = 4–6 durable, load-bearing links (always: this constitution **§0**, the track's
+  **one canonical design file**, and [`simthing_core_design.md`](simthing_core_design.md)). A
+  handoff may add ≤3 rung-local links it directly consumes; rung-local links are ephemeral and
+  never accrete into the base — promote durable ones into the canonical design file. Plus a
+  **one-screen** "established decisions / do-not-re-derive" checklist. High-signal density, not
+  link count.
 - **Rule 2 — every rung handoff cites the harness and self-checks the diff against the base principles
   below**, stating in one line that the change holds them. A handoff that cannot cite the harness is rejected.
 - **Rule 3 — link out, never inline.** Detail lives in the canonical design file and the linked code;
@@ -155,10 +138,8 @@ drift past sixty.
 
 ### 0.6 Specification Fidelity — no silent flattening (the anti-drift law)
 > **Added 2026-06-07 by design authority on direct product mandate (draconian), after a specified
-> recursive structure — galaxy → star-system subgrid → planet → planet-surface, with pop cohorts and
-> factory/building children on surface cells — was silently flattened into a single galactic-tier proxy
-> and then closed as a PASS rehearsal. This MUST NOT recur. Like the rest of §0, this carries forward
-> verbatim, amended only by addition.**
+> recursive structure was silently flattened to a flat galactic-tier proxy and closed as a PASS
+> rehearsal. Like the rest of §0, this carries forward verbatim, amended only by addition.**
 
 **What gets specified gets implemented — or the deviation is recorded in the open and approved.** An
 implementation may **not** silently substitute a flattened, collapsed, or proxy structure for a
@@ -177,8 +158,7 @@ specified recursive/structured design and then claim it IMPLEMENTED / PASS / CLO
 3. **Scope Ledger on every closure.** Every CLOSE / ACCEPT ruling MUST carry a *Specified vs Implemented*
    ledger: each spec element marked `implemented` / `proxied` / `deferred` / `parked`, with evidence. A
    closure without a complete ledger is invalid.
-4. **"Parked / not-yet-wired" is a Deviation, never a free pass.** The §0.2 implementation note ("the
-   proven slice today is D=2; deeper recursion is parked, pulled by a named scenario") is **not** a
+4. **"Parked / not-yet-wired" is a Deviation, never a free pass.** The §0.2 status note is **not** a
    licence to close a track against a richer spec while shipping a flat proxy. Parking a specified tier is
    itself a Deviation that must be recorded and approved per (2); it may never be left implicit.
 5. **Hygiene theater is void.** Progress is **working, spec-faithful code under test** — never the count
@@ -194,38 +174,24 @@ doctrine; the invariant table is the gate.
 
 ---
 
-## 1. Design lineage v4 → 0.0.8.1 (consolidated; archived sources)
+## 1. Design lineage v4 → 0.0.8.1 (non-binding archaeology; sources archived)
 
-This doc folds the whole versioned design history into one place. The predecessors are archived under
-`archive/superseded_design/` and are **historical record only**:
+| Version | Archived file (`archive/superseded_design/`) | One-line contribution |
+|---|---|---|
+| v4–v6.5 | `design_v4.md` … `design_v6.5.md` | early SimThing tree, GPU pipeline, economy-substrate formation |
+| v7 / v7.6 | `design_v7.md` | the architectural floor: recursive `{properties, overlays, children}` + AccumulatorOp pipeline + EML |
+| v7.7 | `design_v7_7.md` | closed constitutional baseline amendment |
+| v7.8 | `design_v7_8.md` + production track | bounded-posture expansion; origin of the §2.6 non-negotiables |
+| 0.0.7.9 | `design_v7_9_mobility_transfer_allocation_production_track.md` | mobility/transfer substrate, all proven + parked; origin of anti-loop (§2.5) |
+| 0.0.8.0 | `design_0_0_8_0.md` | consumer-pulled redirection; author of §0.6 after the silent-flattening incident |
 
-- **v4 / v5 / v6 / v6.5** (`archive/superseded_design/design_v4.md` … `design_v6.5.md`) — the early
-  SimThing tree, GPU pipeline, and economy-substrate formation. Superseded wholesale by v7.
-- **v7 / v7.6** (`design_v7.md`) — the v7 constitution: the recursive `{properties, overlays, children}`
-  SimThing type, the GPU pipeline that replaced v6 §10, the economic substrate, EML integration, and the
-  performance model. This is the architectural floor every later version inherits.
-- **v7.7** (`design_v7_7.md`) — the closed constitutional baseline amendment.
-- **v7.8** (`design_v7_8.md`) + its production track (`design_v7_8_production_track.md`) — bounded-posture
-  expansion; origin of the §2.6 non-negotiable rigor list (CPU-oracle parity, semantic-free sim,
-  opt-in/default-off, artifact-backed exact authority, no CPU planner).
-- **0.0.7.9** (`design_v7_9_mobility_transfer_allocation_production_track.md`) — the mobility/transfer
-  allocation ladder (ALLOC, REENROLL, IDROUTE, ECON, OWNER + RUNTIME-0/1A/1B + semantic-free GPU kernel
-  substrate), all proven, opt-in, default-off, and **parked**. Origin of the anti-loop discipline (§2.5).
-- **0.0.8.0** (`design_0_0_8_0.md`) — the consumer-pulled redirection: stop building substrate ahead of
-  consumers; build the named scenario that pulls one parked substrate into production. Author of §0.6
-  Specification Fidelity after the silent-flattening incident. Its §0 and operating doctrine are carried
-  forward here verbatim (§0, §2).
+**Nothing in this section is binding.**
 
-**Nothing in this section is binding** beyond pointing at where each idea came from; the binding doctrine
-is §0, the operating mechanics are §2, and the structural invariants live in `invariants.md`.
-
-### 1.1 What the consumer-pulled phase is — and the lesson it encodes
-By the end of 0.0.7.9 the project had built a **large, correct, proven, and entirely parked** substrate,
-consumed by nothing in production, and building it generated repeated **hygiene loops**. The governing
-stance since 0.0.8.0: **stop building substrate ahead of consumers; build the consumer that names what to
-wire.** Every parked substrate is gated on a *named product scenario*. This is not a new architecture; it
-is a **redirection of effort** from substrate-ahead-of-need to consumer-pulled integration, under the
-same two-track fastlane and the same non-negotiables.
+### 1.1 The consumer-pulled lesson
+By the end of 0.0.7.9 the project had built a large, correct, proven, **entirely parked** substrate
+consumed by nothing in production, and building it generated repeated hygiene loops. Governing stance
+since 0.0.8.0: **stop building substrate ahead of consumers; build the named scenario that pulls one
+parked substrate into production** — same two-track fastlane, same non-negotiables.
 
 ---
 
@@ -236,14 +202,13 @@ Two-layered (`invariants.md` "Guardrail placement is two-layered"): the **RON/de
 expressive policy and rejects unsafe *authoring* at import**; the **runtime enforces hard safety
 unconditionally** as the last line. As work moves toward the designer surface, guardrails **relocate to
 spec admission** — they do not disappear and they do not stay as hard-coded runtime/fixture
-special-cases. This is the optimal home: reject early with good diagnostics; the runtime catches
-anything that slips.
+special-cases. Reject early with good diagnostics; the runtime catches anything that slips.
 
-**Demotion (2026-06-02, design authority): admission rejection is a guardrail, not a proof.** A scenario
-demonstrates correctness by running its behavior through a **real SimThing reduction** (`invariants.md`
-"Scenario Proof"), never by accumulating rejection assertions. Reject-bad-authoring tests are a thin net
-around a scenario that is *already* proven through the engine — they are not its primary evidence, and a
-scenario must never re-litigate the standing prohibition list as a matrix of per-module local flags.
+**Demotion (2026-06-02): admission rejection is a guardrail, not a proof.** A scenario demonstrates
+correctness by running its behavior through a **real SimThing reduction** (`invariants.md` "Scenario
+Proof"), never by accumulating rejection assertions. Reject-bad-authoring tests are a thin net around a
+scenario already proven through the engine — never its primary evidence — and a scenario must never
+re-litigate the standing prohibition list as a matrix of per-module local flags.
 
 ### 2.2 Two-track fastlane (Tier-1 / Tier-2)
 Classify every change first (`phase_m_gating_and_doc_policy.md` §1).
@@ -268,43 +233,28 @@ Gadgets compile to a postfix subgraph over the **existing** `EvalEML` opcode set
 per-gadget kernel, no new opcode.** Formula classes and gadgets are admitted at the RON/designer/spec
 layer with mandatory CPU-oracle parity and a bounded-feedback contract for recurrent gadgets.
 
-The "no new opcode" rule binds the **gadget authoring layer** (gadgets are macros over the fixed
-interpreter vocabulary). It is **not** a blanket prohibition on extending the generic interpreter itself.
-Extending the substrate vocabulary — a new **generic, semantic-free** `EvalEML` opcode, an
-`AccumulatorOp` combine function, or a generic kernel — follows §2.3 exactly: it is a **Tier-2 gate, not
-a prohibition**, admissible when (a) it carries no map/faction/AI/scenario semantics (the interpreter
-sees only floats/indices; admission rejects semantic names), (b) it is paired with **CPU-oracle bit-exact
-parity**, (c) its meaning is pinned entirely at the spec/designer admission layer, and (d) it is
-reusable by any SimThing rather than encoding one scenario's rules. A new opcode that hard-codes a
-specific scenario's behaviour (e.g. an "R6C economy" op) is **semantic** and stays banned; behaviour must
-remain expressed as **data** (EML programs / column params / op registrations) over a generic instruction
-set. Rung/handoff stop-lines that read "no new op / no new WGSL" are **scheduling hygiene**, not
-constitutional bans, and may be narrowed by design authority to the §2.3/§2.4 gate when an honest
-result depends on a generic substrate extension. This never relaxes the *semantic*-freeness guarantee,
-the CPU-oracle parity requirement, or any anti-faking/measurement discipline a rung imposes.
+The "no new opcode" rule binds the **gadget authoring layer** only. Extending the generic interpreter
+itself (a new semantic-free `EvalEML` opcode / `AccumulatorOp` combine function / generic kernel) is a
+**Tier-2 gate, not a prohibition**, under the §2.3 conditions; the binding text lives in
+`invariants.md` → EML Gadget Library. Rung/handoff "no new op / no new WGSL" stop-lines are scheduling
+hygiene, narrowable by design authority to that gate — never relaxing semantic-freeness, parity, or
+any anti-faking discipline a rung imposes.
 
 ### 2.5 Anti-loop discipline (the 0.0.7.9 lessons, now constitutional)
-Three rules, each a single principle covering its whole class:
-- **No opening-review treadmill** (0.0.7.9 §2.1). Once a class of work is classified Tier-1 fast-lane,
-  it ships directly. Do not spawn a per-slice opening-review PR for CPU/default-off/test-fixture work
-  that re-asks an already-settled principle.
+- **No opening-review treadmill.** Once a class of work is classified Tier-1 fast-lane, it ships
+  directly. Do not spawn a per-slice opening-review PR for CPU/default-off/test-fixture work that
+  re-asks an already-settled principle.
 - **Proven-capability stop rule** (`phase_m_gating_and_doc_policy.md` §6). Once a capability is
   reasonably proven (substrate floor green + one representative scale/parity run), **further variants
-  that only recombine the proven primitive are not authorized** (more soaks/replays/permutations,
-  Nth scale runs, accounting-over-accounting). The only authorized next moves are: **(1) close the
-  dangling path**, or **(2) escalate one paragraph toward the next distinct gate** (and stop if it is
-  Tier-2). *Proven once, not proven N times.*
-- **One principle per class — no per-slice accretion.** A constraint is stated once; a change that adds
-  an Nth restatement of an existing principle is rejected as redundant. Active docs carry a **compact
-  status table**; per-slice narrative is a one-line worklog entry, never an accreting litany.
-- **No per-scenario `Gate`/`Surface`/`ForbiddenRequests` boilerplate (retired 2026-06-02, design
-  authority).** The convention of cloning a `Gate`/`Surface`/`ForbiddenRequests` triple per scenario —
-  re-declaring the standing prohibition list as struct fields and asserting each rejection per module —
-  is **retired**. The standing prohibitions live once (gating policy §2 + `invariants.md`); a scenario
-  does not re-encode them as local flags. Opt-in/default-off is expressed at the accepted
-  spec-admission layer, and a scenario's evidence is its **reduction** (`invariants.md` "Scenario
-  Proof"), not a forbidden-flag matrix. This was the literal self-feeding boilerplate that let scenario
-  tracks ship as math-in-a-vacuum.
+  that only recombine the proven primitive are not authorized**. The only authorized next moves:
+  **(1) close the dangling path**, or **(2) escalate one paragraph toward the next distinct gate**
+  (and stop if it is Tier-2). *Proven once, not proven N times.*
+- **One principle per class — no per-slice accretion.** A constraint is stated once; an Nth restatement
+  is rejected as redundant. Active docs carry a **compact status table**; per-slice narrative is a
+  one-line worklog entry, never an accreting litany.
+- **No per-scenario `Gate`/`Surface`/`ForbiddenRequests` boilerplate (retired 2026-06-02).** Standing
+  prohibitions live once (gating policy §2 + `invariants.md`); a scenario's evidence is its
+  **reduction**, never a forbidden-flag matrix.
 
 ### 2.6 Non-negotiable rigor (relaxation never touches these)
 Verbatim from v7.8 §2.5 — binding regardless of any relaxation above:
@@ -341,24 +291,18 @@ parked.** None is "in progress." Each is ready to be pulled into production by a
 ## 4. Closed questions (no dangling open design questions remain)
 
 **E-11B / E-11B-5 (nested Resource Flow dynamic enrollment) — CLOSED.** A-0 proved static nested
-materialization; dynamic enrollment is folded into the proven-and-parked 0.0.7.9 REENROLL bilateral
-arena re-enrollment substrate (deregister-from-origin + register-into-destination, atomic-or-reject, no
-compaction, deterministic). Nested dynamic enrollment, if ever named, is a scenario that pulls the parked
-re-enrollment + nested-RF substrate, not new architecture.
+materialization; dynamic enrollment folds into the proven-and-parked 0.0.7.9 REENROLL bilateral arena
+re-enrollment substrate. If ever named, it is a scenario pulling parked substrate, not new architecture.
 
-**M-4 / atlas (multi-theater mapping) — designer surface CLOSED; production runtime is a parked gate.**
-C-0/C-1/C-2 closed map batching at the designer surface (`request_atlas_batching` admits bounded
-algebraic-G=0, homogeneous-square, protocol-oracle-backed specs within the active `V78AtlasVramBudget`).
-The atlas production runtime / sparse-residency scheduler (M-4A territory) is a parked gate behind a named
-multi-theater scenario. There is no open M-4 *question*; there is a parked gate awaiting a consumer.
+**M-4 / atlas — designer surface CLOSED; production runtime is a parked gate.** C-0/C-1/C-2 closed map
+batching at the designer surface (bounded algebraic-G=0, homogeneous-square, protocol-oracle-backed,
+within the active `V78AtlasVramBudget`). The atlas production runtime / sparse-residency scheduler
+(M-4A) is a parked gate behind a named multi-theater scenario — a gate awaiting a consumer, not an open
+question.
 
-**Net: no dangling open questions remain on the M/E/T or mobility tracks.** All are accepted at a first
-slice, closed at the designer surface, or parked behind a named scenario.
+**Net: no dangling open questions remain** on the M/E/T or mobility tracks.
 
 ### 4A. Recursive rehearsal horizon — REACHED (RUNTIME-0080-RR ladder CLOSED)
-
-The recursive rehearsal track opened to discharge §0.6 after the flat-proxy incident. It is **closed**;
-the recursive rehearsal horizon is **reached**.
 
 ```text
 RR-0 recursive world + 100-tick recursive CPU oracle
@@ -369,26 +313,12 @@ RR-0 recursive world + 100-tick recursive CPU oracle
         parity vs RR-0 recursive CPU oracle; horizon reached)
 ```
 
-**RUNTIME-0080-RR-4 — ACCEPTED / CLOSED (design authority, 2026-06-07).** RR-4 runs the integrated
-recursive consumer for 100 ticks on one persistent `AccumulatorOpSession`, carries stockpile/starport
-state forward on the GPU between ticks, and proves per-tick and final-state bit-exact parity against the
-RR-0 recursive CPU oracle (Terran stockpile 400, Pirate 100; 200 tick-parity rows). It consumes RR-0
-world/oracle, RR-1 nested residency, RR-2 GPU surface economy, and RR-3 recursive transfers as
-mechanisms — no flat surface→faction shortcut in the PASS path, no tier collapse, no report-only close.
-Closure carries a complete Scope Ledger (rows 1–30 implemented; 31–33 non-claims) with no Deviation
-Record required. Evidence: [`tests/runtime_0080_rr_4_results.md`](tests/runtime_0080_rr_4_results.md);
-status ledger in the production track.
-
-**Non-claims at closure (carried from the RR-4 ruling):** no generalized multi-faction economy beyond
-the Terran/Pirate fixture; no default `SimSession` / session wiring; no standalone M-4A parallel-theater
-track; no `invariants.md` edit; no RUNTIME-0080-0 reopen; no pinned-number change. These are the
-**future-consumer surface**, not blockers.
-
-**Open findings (non-blocking, recorded for the next consumer):** RR-4's inline cross-owner / cross-tier
-negative controls are weaker than RR-3's (an isolated single tick compared to a mid-run accumulated
-oracle value); the substantive cross-owner/cross-tier proofs live in the consumed RR-3 ladder. Most RR-4
-tests assert report flags that are themselves computed from genuine per-tick GPU-vs-oracle bit
-comparisons; a future hardening pass could assert directly over the tick-parity rows.
+**RUNTIME-0080-RR-4 — ACCEPTED / CLOSED (design authority, 2026-06-07):** integrated recursive
+100-tick GPU rehearsal on one persistent `AccumulatorOpSession`, per-tick and final-state bit-exact
+against the RR-0 recursive CPU oracle; no flat shortcut in the PASS path, no tier collapse, complete
+Scope Ledger, no Deviation Record required. Non-claims at closure and open findings (negative-control
+hardening candidates) live in the closure report:
+[`tests/runtime_0080_rr_4_results.md`](tests/runtime_0080_rr_4_results.md).
 
 ---
 
@@ -411,7 +341,7 @@ hard-currency through Resource Flow; a CPU planner/urgency/commitment; or reopen
 (atlas runtime, E-11B-5, B-1, ClauseThing/L3 front-end, FrontierV2-5, ACT/EVENT/OBS/PIPE) without its
 own product authorization.
 
-**Live status ledger:** the per-rung status, exit criteria, and worked harness examples live in
+**Live status ledger:**
 [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md)
 (kept under its established name to preserve consumer wiring). This §5 is the doctrine; that doc is the ledger.
 
@@ -430,10 +360,10 @@ parser/front-end and any production `SimSession` wiring stay Tier-2 and product-
 ---
 
 ## 6. Pointers
+- Permanent paradigm reference: [`simthing_core_design.md`](simthing_core_design.md)
 - Binding structural rules: [`invariants.md`](invariants.md)
 - Gating mechanics + anti-loop + proven-capability stop rule: [`workshop/phase_m_gating_and_doc_policy.md`](workshop/phase_m_gating_and_doc_policy.md)
 - Live production status ledger: [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md)
 - Active status table + read order: [`workshop/mapping_current_guidance.md`](workshop/mapping_current_guidance.md)
-- Workshop architecture record: [`workshop/mobility_and_transfer_allocation.md`](workshop/mobility_and_transfer_allocation.md)
 - Recursive rehearsal closure evidence: [`tests/runtime_0080_rr_4_results.md`](tests/runtime_0080_rr_4_results.md)
 - Archived design lineage (historical only): `archive/superseded_design/`

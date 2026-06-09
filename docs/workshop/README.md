@@ -20,9 +20,8 @@
 | [`e11_implementation_handoff.md`](e11_implementation_handoff.md) | E-11 implementation handoff |
 | [`resource_flow_adr_shaping.md`](resource_flow_adr_shaping.md) | Resource Flow ADR-shaping draft |
 | [`mapping_atlas_batching_isolation_design_note.md`](mapping_atlas_batching_isolation_design_note.md) | M-4/M-4A isolation design |
-| [`slot_summary_b4_design.md`](slot_summary_b4_design.md) | B-4 summary tier design |
-| [`c1_perf_reframe_memo.md`](c1_perf_reframe_memo.md) | C-1 perf gate reframe |
 | [`sqrt_candidates.md`](sqrt_candidates.md) | SQRT candidate reference |
+| [`docs_trim_0_proposal.md`](docs_trim_0_proposal.md) | DOCS-TRIM-0 edit ledger (applied) |
 
 ## Top-level companions
 
