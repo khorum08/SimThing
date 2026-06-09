@@ -3,7 +3,7 @@
 Testable invariants for where numeric truth lives during ticks vs boundaries.
 Prevents shadow/GPU/`SimThing.properties` drift as new features land.
 
-See also: `docs/agents.md` (implementation map), `crates/simthing-feeder/src/patcher.rs`
+See also: `docs/agents.md` (agent router brief), `docs/simthing_core_design.md` (paradigm), `crates/simthing-feeder/src/patcher.rs`
 (within-day patches), `crates/simthing-sim/src/boundary.rs` (boundary sync).
 
 ---

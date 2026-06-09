@@ -932,7 +932,8 @@ fn jit_grad0_mag2_not_overclaimed_if_approximate() {
             assert!(
                 invariants.contains("ApproximateJitOnly")
                     && invariants.contains("mag2")
-                    && invariants.contains("Exact pre-sqrt mag2 requires pinned construction"),
+                    && invariants.contains("exact pre-sqrt mag2")
+                    && invariants.contains("Candidate F"),
                 "active invariants must keep unpinned mag2 out of exact-authoritative claims"
             );
             assert!(

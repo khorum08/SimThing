@@ -18,7 +18,7 @@
 **Evidence (M-4A sandbox):**
 
 - [`../tests/mapping_atlas_algebraic_mask_sandbox_test_results.md`](../tests/mapping_atlas_algebraic_mask_sandbox_test_results.md)
-- [`mapping_atlas_algebraic_mask_candidate_notes.md`](mapping_atlas_algebraic_mask_candidate_notes.md)
+- [`archive/mapping/mapping_atlas_algebraic_mask_candidate_notes.md`](archive/mapping/mapping_atlas_algebraic_mask_candidate_notes.md)
 
 **Evidence (archived sandbox):**
 

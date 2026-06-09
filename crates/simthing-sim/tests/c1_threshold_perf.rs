@@ -41,7 +41,7 @@
 //! The full 5× projection is intentionally NOT enforced; it would require
 //! a workshop-style measurement that doesn't reflect production reality.
 //!
-//! See `docs/workshop/c1_perf_reframe_memo.md` for the design memo that
+//! See `docs/workshop/archive/c1_perf_reframe_memo.md` for the design memo that
 //! reframes the production-plan §C-1 performance expectation.
 
 use simthing_core::{DimensionRegistry, SimProperty};

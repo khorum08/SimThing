@@ -5,7 +5,7 @@
 **Gate for:** Codex 5.5 / Composer 2.5 implementation PR series — `feat(gpu): C-8a/b/c/d EML + intensity + transfer + emission`
 **Status:** Accepted (design); implementation PRs follow separately
 **Implementer:** Mixed — **Codex 5.5** for mechanical parts (registry, type tables, doc-replacements); **Composer 2.5** for the WGSL interpreter, transfer substrate, and integration
-**Companion:** `docs/adr_accumulator_op_v2.md`, `docs/design_v7.md` §2 + §4 + §6 + §7, `docs/accumulator_op_v2_production_plan.md` PR C-8, `docs/workshop/pivot_forward_implementation_policy.md`, `docs/workshop/c4_overlay_orderband_compiler_design.md` (C-4), `docs/workshop/c5_weighted_mean_reduction_design.md` (C-5)
+**Companion:** `docs/adr_accumulator_op_v2.md`, `docs/design_v7.md` §2 + §4 + §6 + §7, `docs/accumulator_op_v2_production_plan.md` PR C-8, `docs/workshop/pivot_forward_implementation_policy.md`, `docs/workshop/archive/c4_overlay_orderband_compiler_design.md` (C-4), `docs/workshop/archive/c5_weighted_mean_reduction_design.md` (C-5)
 
 ---
 
@@ -1341,9 +1341,9 @@ C-8 design does NOT:
   posture authority
 - `docs/workshop/workshop_current_state.md` — routing
 - `docs/workshop/soft_aggregate_tolerance_audit.md` (A-4) — guard policy
-- `docs/workshop/c4_overlay_orderband_compiler_design.md` (C-4) —
+- `docs/workshop/archive/c4_overlay_orderband_compiler_design.md` (C-4) —
   OrderBand single-writer pattern reused here
-- `docs/workshop/c5_weighted_mean_reduction_design.md` (C-5) — soft
+- `docs/workshop/archive/c5_weighted_mean_reduction_design.md` (C-5) — soft
   aggregate tolerance pattern
 - `crates/simthing-core/src/eml_registry.rs` — current `EmlTreeMeta` /
   `EmlExpressionRegistry` (refactored in C-8a)

@@ -2,25 +2,23 @@
 
 These rules are enforced by the type system and code structure, not by convention.
 A violation is either a compile error or a test failure. If you find yourself
-working around one of these, stop and reconsider the design.
+working around one of these, stop and reconsider the design. The *why* behind these
+rules lives in [`simthing_core_design.md`](simthing_core_design.md); this file is the gate.
 
 ---
 
 ## Specification Fidelity & Anti-Ceremony
 
-> **Binding, draconian. Added 2026-06-07 by design authority on direct product mandate**, after a
-> specified recursive structure (galaxy 20×20 → 13 star-systems each a 10×10 subgrid → planet → 10×10
-> planet surface → pop-cohort + factory building children) was silently flattened to a single
-> galactic-tier proxy and closed as a PASS rehearsal. Constitutional home: `design_0_0_8_0.md` §0.6
-> (carry-forward spine). These rules gate **closure**, not just code. A change to this section is Tier-2.
+> Binding, draconian. Constitutional home: constitution §0.6 (carry-forward spine). These rules
+> gate **closure**, not just code. A change to this section is Tier-2.
 
 | Rule | Enforced by |
 |---|---|
-| **Spec fidelity — PASS/CLOSED requires the specified structure** | A track that claims IMPLEMENTED / PASS / CLOSED against a written spec MUST either (a) implement the spec's structure as written, or (b) carry a **Deviation Record** at the top of its results doc, explicitly approved by design authority, enumerating every specified element not implemented, the proxy substituted, the reason, and the consumer impact. A PASS/CLOSED that silently substitutes a flattened/proxy structure for a specified structure is **VOID**; the track is reopened. |
-| **No silent tier collapse** | When a spec defines a containment hierarchy (parent→child tiers / gridcells / surfaces / building-children), the implementation may not collapse those tiers into a flat proxy and claim the spec met. Tier collapse is a Deviation requiring a recorded, approved Deviation Record; "not yet wired" / "parked" is itself a Deviation, never an implicit pass (constitution §0.2 note is bounded by §0.6). |
-| **Scope Ledger on every closure** | Every CLOSE / ACCEPT ruling MUST carry a *Specified vs Implemented* ledger: each spec element marked `implemented` / `proxied` / `deferred` / `parked`, each with evidence. A closure without a complete ledger is invalid. |
-| **The specified consumer must actually run** | No PASS/CLOSED via documentation churn, status-table edits, report-only aggregation of predecessor artifacts, or harness ceremony in place of the specified consumer executing. Sibling of "Scenario Proof" and gating-policy §6 (proven-capability stop rule), now binding for closure. |
-| **No project-management cosplay** | Progress is measured only by working, spec-faithful implementation under test — never by the count of memos, packets, reviews, acceptance notes, status rows, or reports. Documents *record* progress; they never *constitute* it. Producing governance artifacts in place of the specified feature is a violation. |
+| **Spec fidelity — PASS/CLOSED requires the specified structure** | A track claiming IMPLEMENTED/PASS/CLOSED against a written spec must either implement the spec's structure as written, or carry a **Deviation Record** at the top of its results doc — approved by design authority, enumerating each unimplemented element, the proxy, the reason, the consumer impact. Silent substitution is **VOID**; the track reopens. |
+| **No silent tier collapse** | Collapsing a specified containment hierarchy (tiers / gridcells / surfaces / building-children) into a flat proxy never satisfies the spec. Tier collapse — including "parked / not yet wired" — is a Deviation requiring a recorded, approved Deviation Record, never an implicit pass. |
+| **Scope Ledger on every closure** | Every CLOSE/ACCEPT carries a *Specified vs Implemented* ledger: each element marked `implemented` / `proxied` / `deferred` / `parked`, with evidence. No ledger, invalid closure. |
+| **The specified consumer must actually run** | No PASS/CLOSED via documentation churn, status-table edits, report-only aggregation, or harness ceremony; the specified consumer must execute. Sibling of "Scenario Proof" and gating-policy §6, binding for closure. |
+| **No project-management cosplay** | Progress is working, spec-faithful implementation under test — never the count of memos, packets, reviews, status rows, or reports. Documents *record* progress; they never *constitute* it. |
 
 ---
 
@@ -117,19 +115,19 @@ continuous-flow arena substrate that builds on AccumulatorOp v2.
 
 ## Mapping (Sparse RegionCell)
 
-Added by `docs/adr/mapping_sparse_regioncell.md`. These rules govern dense local
-spatial fields. They are designer-facing guardrails first: they reject dangerous
-scenarios at import/session-build so blowout never reaches the simulation.
+Added by `docs/adr/mapping_sparse_regioncell.md`. These rules govern dense local spatial fields;
+they are designer-facing guardrails first, runtime-enforced last. Design notes and evidence:
+the ADR and `docs/workshop/m5_gradient_extraction_design_note.md`.
 
 | Rule | Enforced by |
 |---|---|
-| No production mapping runtime without first-slice gating | The compute exists (StructuredFieldStencilOp kernel/WGSL/ping-pong/oracle live; Layers 2–3 are existing AccumulatorOp paths); "runtime" = wiring a RegionCell field into a production session pass graph at session open. That step is gated to the named first slice, after Phase M natives; until then fields are test/opt-in-driven only |
-| RegionCell is an authored mapping-role, not a core kind | RegionCell is a spec/RON-authored mapping-role/profile on a SimThing backed by a slot range + field columns; `simthing-core` gains no new `SimThingKind` variant |
-| Guardrail placement is two-layered | RON/Designer/spec owns expressive policy + rejects unsafe authoring at import; runtime enforces hard safety unconditionally (horizon execution caps, source-cap clamp, finite/column validation, ping-pong correctness, bounded field/perception clamps). Authoring is never trusted to have been safe. **Admission rejection is a guardrail, not a scenario proof** (see "Scenario Proof"): it is a thin net around behavior already proven through a real reduction — never a scenario's primary evidence, and never re-litigated as per-module rejection flags |
-| `simthing-sim` is map-free | No RegionCell, atlas, gutter, cadence, halo, or field-formula concept appears in `simthing-sim`; it sees only flat columns and opaque `AccumulatorOp` registrations |
-| Dense local fields use the generic primitive only | RegionCell fields are evolved by `StructuredFieldStencilOp` over flat buffers/dimensions/columns/kernel weights; **no *semantic* WGSL** is admitted. Generic shader extensions — new parameters (per-direction weights, new operator variants) that carry no map/faction/AI semantics and are paired with CPU-oracle parity — are admissible when meaning is pinned entirely at the designer/spec admission layer. The shader sees only floats/indices; gameplay concepts never enter WGSL. See `docs/workshop/m5_gradient_extraction_design_note.md` §1 |
-| No within-frame field self-feedback; gradient fields are strict sinks | A field may not read its own immediate output column as a diffusion source within the same frame (`source_col != output_col`/`target_col`) — enforced at single-spec admission. A gradient/derivative field's `output_col` is a **strict sink**: it may not be the `source_col` of any diffusion/stencil field in the same frame; the derivative is consumed only downstream (reduction/EML/threshold), preserving the base field's within-frame immutability. Feedback closes **across ticks, not within a tick's algebraic cycle**. The cross-field clause is enforced at frame/scenario-level admission (`validate_region_field_frame_gradient_sinks`; M-5D-gradient). See `docs/workshop/m5_gradient_extraction_design_note.md` §3 |
-| Strategic awareness is hierarchy + parent EML, never dense global diffusion | Cell→parent `SlotRange` Sum reduction then `EvalEML` on a later order band; widening the stencil horizon for empire-scale awareness is rejected (over budget by evidence) |
+| No production mapping runtime without first-slice gating | The compute exists (stencil kernel/WGSL/ping-pong/oracle live; Layers 2–3 are existing AccumulatorOp paths); "runtime" = wiring a RegionCell field into a production session pass graph at session open. Gated to the named first slice; until then fields are test/opt-in-driven only |
+| RegionCell is an authored mapping-role, not a core kind | A spec/RON-authored mapping-role on a SimThing backed by a slot range + field columns; `simthing-core` gains no new `SimThingKind` variant |
+| Guardrail placement is two-layered | RON/Designer/spec rejects unsafe authoring at import; runtime enforces hard safety unconditionally (horizon execution caps, source-cap clamp, finite/column validation, ping-pong correctness, bounded field/perception clamps). Admission rejection is a guardrail, never a scenario's primary evidence (see "Scenario Proof") |
+| `simthing-sim` is map-free | No RegionCell, atlas, gutter, cadence, halo, or field-formula concept in `simthing-sim`; it sees only flat columns and opaque `AccumulatorOp` registrations |
+| Dense local fields use the generic primitive only | RegionCell fields are evolved by `StructuredFieldStencilOp` over flat buffers/dimensions/columns/kernel weights; no *semantic* WGSL. Generic, semantic-free shader extensions with CPU-oracle parity and meaning pinned at admission are admissible; gameplay concepts never enter WGSL |
+| No within-frame field self-feedback; gradient fields are strict sinks | `source_col != output_col`/`target_col` at single-spec admission. A gradient/derivative `output_col` may not be the `source_col` of any same-frame diffusion/stencil field; derivatives are consumed only downstream (reduction/EML/threshold). Feedback closes across ticks, never within a tick's algebraic cycle. Frame-level: `validate_region_field_frame_gradient_sinks` |
+| Strategic awareness is hierarchy + parent EML, never dense global diffusion | Cell→parent `SlotRange` Sum then parent `EvalEML` on a later band; widening the stencil horizon for empire-scale awareness is rejected (over budget by evidence) |
 | Band ordering: reduce before interpret | Sum reduction band precedes parent `EvalEML` band within a tick; cross-cell propagation advances by later-band cascade, not same-band chaining |
 | Default stencil operators are stability-bounded | `normalized_stencil` / `source_capped_normalized` only; `raw_additive` (blows up) and `clamped_additive` (saturates, loses gradient) are not production operators |
 | Horizon is capped | Default tactical H ≤ 8; extended H ≤ 16 only with `allow_extended_horizon` plus a source-cap/decay stability contract; `run_ping_pong`/`dispatch_ping_pong` reject steps above `config.horizon` |
@@ -137,115 +135,66 @@ scenarios at import/session-build so blowout never reaches the simulation.
 | Source policy is caller-managed (v1) | `CallerManagedOneShotSeedThenZero`; the primitive never auto-identifies or auto-clears sources; column-wide `source_col` zeroing is **banned** (corrupts propagated state) |
 | Active masks require a halo | `ActiveOnlyExperimentalNoHalo` is never production-authorized; only H-hop / per-hop halo with CPU-oracle parity is admitted |
 | Behavioral source policy needs source identity | No shader-step source masking until a generic `source_mask` or separate seed buffer lands; deferred by ADR |
-| Velocity needs an explicit previous-value column | EML has no previous-buffer read opcode; trajectory pressures use an explicit previous column with a copy band scheduled before the threat-update band |
+| Velocity needs an explicit previous-value column | EML has no previous-buffer read opcode; trajectory pressures use an explicit previous column with a copy band scheduled before the update band |
 | No CPU AI map planner | Strategic commitments emerge as `Threshold` + `EmitEvent` crossings over parent EML pressure columns; no CPU-side map traversal decides anything |
-| Perception write-boundary: perceived/deception never write back to true fields | Data flows true → perceived only; perceived/last-known/confidence/deception are bounded (`bounded_field_update`/`field_decay`) per-observer columns; the **only** path that updates authoritative state is an explicit gameplay event via the event/`BoundaryRequest` path; any op writing a perceived/deception column into a true column is rejected at spec admission |
-| Field formula-class admission is a designer-layer policy | `field_pressure`/`field_urgency`/`field_decay`/`bounded_field_update` are admitted at the RON/Designer/spec layer (C-8 `register_formula` is runtime-sufficient); legacy whitelist rejection was wrong-layer, not runtime safety |
-| Mapping is opt-in, bounded, default-off | Map-spec presence is structure; execution requires explicit scenario-class/profile opt-in (Resource Flow precedent); every field declares hard caps (grid bounds, horizon cap, source cap) |
+| Perception write-boundary: perceived/deception never write back to true fields | Data flows true → perceived only; perceived/last-known/confidence/deception are bounded per-observer columns. The **only** path updating authoritative state is an explicit gameplay event via the event/`BoundaryRequest` path; any op writing a perceived/deception column into a true column is rejected at spec admission |
+| Field formula-class admission is a designer-layer policy | `field_pressure`/`field_urgency`/`field_decay`/`bounded_field_update` are admitted at the RON/Designer/spec layer (`register_formula` is runtime-sufficient) |
+| Mapping is opt-in, bounded, default-off | Map-spec presence is structure; execution requires explicit scenario-class/profile opt-in; every field declares hard caps (grid bounds, horizon cap, source cap) |
 
 ---
 
 ## Boundary resolution (tick / boundary / day)
 
-Accepted as binding doctrine 2026-05-29, **naming preference set by product 2026-05-29** — see
-`docs/reviews/phase_m_boundary_resolution_and_example_economy_acceptance_opus_review.md`. SimThing
-exposes deterministic **tick / boundary / day** resolution. The line we hold is on *semantics*, not
-on vocabulary: a `day` is one host/spec interpretation of the boundary counter, but `tick`,
-`boundary`, `day`, `day_index`, and `ticks_per_day` are the **preferred, endorsed names** because
-they are legible.
+Binding doctrine; naming preference set by product. The line is on *semantics*, not vocabulary.
 
 | Rule | Enforced by / meaning |
 |---|---|
-| **Prefer legible tick / boundary / day naming** | `tick` = deterministic substrate advancement; `boundary` = synchronization point for resolved summaries/events/metadata; `day_index` = monotonic boundary counter (one host/spec interpretation is a calendar day); `ticks_per_day` = ticks-per-boundary cadence (`DispatchCoordinator`, `boundary_reached = tick_in_day >= ticks_per_day`). These names are **preferred for legibility**. Do **not** churn them toward abstract/illegible alternatives (e.g. "boundary-index", "ticks-per-boundary-unit"); product set this preference 2026-05-29 |
-| Avoid Clausewitz/calendar **semantics** (not the names) | The guardrail is on *semantics*: no calendar arithmetic, no `Calendar`/month/year/season type, no leap/date math, no sim-side pause flag. The legible `tick`/`boundary`/`day`/`day_index`/`ticks_per_day`/"day boundary" naming is **endorsed** — `day_index` is a monotonic boundary counter, not a calendar. Calendar/turn/frame/season meaning lives at the host/spec/boundary-handler layer |
-| No `DailyResolutionBoundary` | No runtime primitive that bakes calendar semantics into the boundary; absence is regression-guarded by source-scan tests. A future generic boundary-output packet is admissible only if it stays an abstract, read-only carrier of already-resolved values and never grows calendar fields / CPU recomputation / date arithmetic |
-| Pause/speed are host-layer | The sim never advances autonomously (no internal wall-clock scheduler); it advances only when the host requests a tick. Pausing at a boundary is a coherent save/snapshot point. No sim pause flag |
-| CPU boundary consumes, never recomputes | At the boundary the CPU consumes resolved summaries/events/metadata only; it must not recompute economy/threat/urgency, must not emit commitments via CPU planner logic (commitments are GPU `Threshold` + `EmitEvent` crossings), and must not scan dense RegionCell grids by default |
-| Discrete banking ≠ continuous flow | Discrete boundary banking uses the opt-in `ResourceEconomySpec` substrate (conservation-exact transfers/recipes, threshold emit; storage persists in GPU values across boundaries). Resource Flow E-11 is the continuous/high-frequency substrate, separately opt-in and **default-off** (`use_accumulator_resource_flow` false) — not the default discrete-banking answer |
-| Daily fixture stays an example | Daily Economy Fixture V1 is an example/product fixture only and does not make daily cadence canonical; other hosts may read the same boundary as a turn, frame, season, orbital step, market close, or learning epoch |
+| Prefer legible tick / boundary / day naming; guard the semantics | `tick` = deterministic substrate advancement; `boundary` = synchronization point for resolved summaries/events/metadata; `day_index` = monotonic boundary counter; `ticks_per_day` = ticks-per-boundary cadence (`boundary_reached = tick_in_day >= ticks_per_day`). These names are product-endorsed — do not churn them toward abstract alternatives. The guardrail is semantic: no calendar arithmetic, no `Calendar`/month/year/season type, no leap/date math, no sim-side pause flag. Calendar/turn/frame/season meaning lives at the host/spec/boundary-handler layer; the Daily Economy Fixture is an example, not a canonical cadence |
+| No `DailyResolutionBoundary` | No runtime primitive that bakes calendar semantics into the boundary; absence is regression-guarded by source-scan tests. A generic boundary-output packet is admissible only as an abstract, read-only carrier of already-resolved values — never calendar fields / CPU recomputation / date arithmetic |
+| Pause/speed are host-layer | The sim never advances autonomously; it advances only when the host requests a tick. Pausing at a boundary is a coherent save/snapshot point. No sim pause flag |
+| CPU boundary consumes, never recomputes | At the boundary the CPU consumes resolved summaries/events/metadata only; it must not recompute economy/threat/urgency, must not emit commitments via CPU planner logic, and must not scan dense RegionCell grids by default. Discrete boundary banking uses the opt-in `ResourceEconomySpec` substrate; Resource Flow is the continuous substrate, separately opt-in and default-off — not the default discrete-banking answer |
 
 ---
 
 ## JIT Kernel Registry (Phase M-JIT, closed at PROD-0)
 
 Designer/spec-admission guardrails for the default-off production kernel registry shell.
-Runtime comments do not substitute for these rules.
+Artifact identities, hashes, domains, candidate genealogy, and exhaustive proofs are pinned at
+descriptor admission; see `workshop/sqrt_candidates.md` and the descriptor surface — they are
+deliberately not restated here.
 
-| Rule | Enforced by / meaning |
+| Rule | Meaning |
 |---|---|
-| No semantic WGSL | JIT kernels are semantic-free straight-line WGSL; gameplay/map/faction concepts never enter shader text — admission rejects semantic names |
-| `ProductionCandidatePreview` is default-off | `production_wiring=false`; no default SimSession mapping wiring; shell invoked only from explicit test/fixture paths until a separate gate authorizes production wiring |
-| Production registry admits validated candidates only | `ProductionKernelRegistryShell` registers `ProductionCandidatePreview` entries that pass `validate_production_candidate_preview_entry`; duplicate stable key idempotent when byte-identical, else reject |
-| Approximate outputs cannot feed exact inputs | `mag2` and other `ApproximateJitOnly` outputs reject as exact-authoritative score/state inputs at admission and execution gates |
-| Native sqrt is not exact-authoritative | Native/raw WGSL `sqrt` remains `ApproximateJitOnly`; baseline runtime shader stays `sqrt`-free. The separately-accepted exact path is the artifact-backed Candidate F (next row); raw `sqrt(...)` is never exact-authoritative even after F lands |
-| Exact sqrt authority requires exhaustive proof | A specific shader/software `sqrt` kernel may flip to `ExactDeterministic` output authority only after an exhaustive bit-exact proof (`max_ulp == 0` vs CPU `f32::sqrt`); until then admission rejects unproven `sqrt`/`mag2` as exact inputs via `validate_exact_inputs` / `validate_exact_kernel_inputs` |
-| Exact sqrt authority is artifact-backed (Candidate F) | **Released by design authority (Opus, 2026-05-29) on the SQRT-EXACT-5F exhaustive proof.** The exact hot-path `sqrt` authority is the artifact-backed Candidate F (`crates/.../wgsl/sqrt_cr_f_candidate.wgsl`, FNV-1a64 hash `e2e9e27601ee2e13`, entry `sqrt_cr_f_bits`, `u32` bit-IO, domain `0x0000_0000..=0x7F7F_FFFF`, proof `phase_m_jit_sqrt_exact5f_exhaustive_sweep_results.md`) **only when admitted through the descriptor/admission surface**. Authority binds to the artifact identity: any artifact change requires renewed exhaustive proof, and a hash mismatch or arbitrary/recomposed `sqrt_cr_f` text is rejected. Candidate E3 (also exhaustively proven, pure-integer) is the exact cross-adapter fallback/reference; native `sqrt`, Candidate D, `mag2`, and Candidate C/f64 stay non-exact. This releases **only** the exact-authority classification for the proven F artifact (the non-authorization list is the closure-posture row) |
-| Exact Euclidean magnitude requires exact pre-sqrt mag2 | Exact Euclidean magnitude authority requires both artifact-backed F sqrt **and** an exact-authoritative pre-sqrt magnitude-squared input. Raw dx/dy f32 multiply/add does not inherit exact authority merely because the sqrt stage is exact. Exact mag is admitted via `m_jit_mag_f_from_exact_mag2`; raw dx/dy probe is `m_jit_mag_f_from_dxdy_probe` (approximate mag authority); diagnostic `mag2` and raw/native `sqrt` remain non-exact |
-| Exact pre-sqrt mag2 requires pinned construction | Exact pre-sqrt mag2 authority requires a pinned exact construction, such as the accepted fixed-point dx/dy mag2 descriptor (`m_jit_mag2_fixed_exact` / `ExactFixedPointDxDy`). Raw f32 dx/dy multiply/add remains non-exact-authoritative |
-| **Exact authority requires pinned/fixed-point arithmetic (one rule, all FIELD_POLICY/observer descriptors)** | A value is exact-authoritative **only** when its whole arithmetic chain is pinned fixed-point (Q16.16 / `ExactQ16WeightedSum`) and any sqrt/mag stage is the artifact-backed F (sqrt-chain rows above). f32 magnitude, weighting, scoring, accumulation, or threshold operands are `ApproximateDiagnostic` and may not feed exact-authoritative state. This covers all observer/overlay/multi-layer/aggregate/threshold descriptors (`m_jit_field_policy_obs*`, `ExactQ16WeightedSum`, threshold-event); none of them authorizes a CPU planner, urgency traversal, or production bridge (see the FIELD_POLICY/JIT closure-posture row) |
-| **GPU atomic event compaction = exact count + unordered membership, never ordering (one rule, all event buffers/pipelines/buckets/reductions)** | Compacted/bucketed/reduced GPU event outputs may claim exact count, per-code count, unordered membership, and order-invariant numeric summaries **only** under declared capacity/overflow (and empty-bucket) contracts. Atomic compaction never implies deterministic event/record **ordering** unless ordering is separately proven. None of these authorizes a CPU planner, urgency traversal, commitment emission, scheduler/cache, or production bridge (see the closure-posture row) |
-| **FIELD_POLICY numeric records are rule-bound substrate (one rule, all proposal/consumer/admission/economic/ACT-3 records)** | FIELD_POLICY numeric records (proposals, Phase-E consumers, fixture-local admission, economic-V1 fixtures, ACT-3 validation corpora) may be exact-authoritative **only** under declared fixed-integer rule + capacity/overflow contracts. They are semantic-free substrate: they authorize no semantic action interpretation. The non-authorization list is the closure-posture row below |
-| FIELD_POLICY field agent proposals route through accepted substrates only | FIELD_POLICY field agent proposals route only through accepted substrates: Resource Flow allocator for resource dispatch, `Threshold`+`EmitEvent`→`BoundaryRequest` for structural commitments, or the SimThing's own columns for movement. The FIELD_POLICY ladder is closed at Proposal Pipeline V1; further stages require a separately named scenario |
-| **FIELD_POLICY/JIT closure posture (one rule — the non-authorization list referenced above)** | No CPU-side AI planner, urgency traversal, or commitment emission (strategic commitments are GPU `Threshold`+`EmitEvent` crossings). No scheduler/cache/default `SimSession` wiring (PROD-0 is explicit registered exact cohort execution only). No production economy→mapping bridge (resolved treasury selects authored EML profiles in fixture orchestration only). `simthing-sim` stays map/Gadget/Personality/Memory-semantic-free. ClauseThing stays proposal-only (no implementation without a separately accepted gate) |
+| No semantic WGSL | JIT kernels are semantic-free straight-line shaders; gameplay/map/faction concepts never enter shader text — admission rejects semantic names |
+| `ProductionCandidatePreview` is default-off | `production_wiring=false`; no default SimSession wiring; shell invoked only from explicit test/fixture paths until a separate gate authorizes production wiring; registry admits validated entries only (`validate_production_candidate_preview_entry`) |
+| Exact authority requires a pinned fixed-point chain + the artifact-backed proven sqrt | A value is exact-authoritative **only** when its whole arithmetic chain is pinned fixed-point (Q16.16 / `ExactQ16WeightedSum` class) and any sqrt/mag stage is the exhaustively-proven, hash-pinned Candidate F artifact admitted through descriptor admission (exact mag additionally requires an exact pre-sqrt mag2, e.g. `ExactFixedPointDxDy`). Native/raw `sqrt`, raw f32 dx/dy, `mag2`, and any f32 weighting/scoring/threshold operand stay `ApproximateJitOnly`/`ApproximateDiagnostic`. Authority binds to artifact identity: any artifact change requires renewed exhaustive proof; hash mismatch is rejected |
+| Approximate outputs cannot feed exact inputs | Rejected at admission and execution gates (`validate_exact_inputs` / `validate_exact_kernel_inputs`) |
+| GPU atomic event compaction = exact count + unordered membership, never ordering | Compacted/bucketed/reduced GPU event outputs may claim exact count, per-code count, unordered membership, and order-invariant summaries **only** under declared capacity/overflow (and empty-bucket) contracts; ordering requires separate proof. FIELD_POLICY numeric records (proposals/consumers/admission/economic fixtures) are exact-authoritative only under declared fixed-integer rule + capacity contracts and authorize no semantic action interpretation |
+| FIELD_POLICY/JIT closure posture | No CPU-side AI planner, urgency traversal, or commitment emission (strategic commitments are GPU `Threshold`+`EmitEvent` crossings). No scheduler/cache/default `SimSession` wiring. No production economy→mapping bridge. `simthing-sim` stays map/Gadget/Personality/Memory-semantic-free. FIELD_POLICY field-agent proposals route only through accepted substrates (Resource Flow allocator; `Threshold`+`EmitEvent`→`BoundaryRequest`; the SimThing's own columns); the ladder is closed at Proposal Pipeline V1. ClauseThing stays proposal-only |
 
 ---
 
 ## EML Gadget Library
 
-Added by `docs/workshop/eml_gadget_library_design_note.md`; EML-GADGET-1 (Tier-1) accepted
-2026-05-29 — see `docs/reviews/phase_m_eml_gadget_tier1_acceptance_opus_review.md`. Gadgets are a
-**designer-facing authoring layer**, not a new runtime.
+Gadgets are a **designer-facing authoring layer**, not a new runtime
+(`docs/workshop/eml_gadget_library_design_note.md`).
 
-| Rule | Enforced by / meaning |
+| Rule | Meaning |
 |---|---|
-| Gadgets are spec-layer node-template macros | A gadget compiles to a postfix subgraph over the **existing** `EvalEML` opcode set — **no new WGSL, no per-gadget GPU kernel, no new opcode** *for the gadget layer*. Registry/compiler live in `simthing-spec`; `simthing-gpu` stays the one generic interpreter; `simthing-sim` has no `Gadget`/`Personality` type |
-| Extending the generic substrate vocabulary is a Tier-2 gate, not a prohibition | The gadget-layer "no new opcode" rule does **not** ban extending the generic interpreter itself. A new **generic, semantic-free** `EvalEML` opcode / `AccumulatorOp` combine function / generic kernel follows §2.3 (design_0_0_8_0.md): admissible as a **Tier-2 gate** when (a) it carries no map/faction/AI/scenario semantics (admission rejects semantic names; the kernel sees only floats/indices), (b) it is paired with **CPU-oracle bit-exact parity**, (c) meaning is pinned at the spec/designer admission layer, and (d) it is reusable by any SimThing — behaviour stays **data** (EML programs / params / registrations), never baked into the kernel. A scenario-specific op (e.g. an "R6C economy" op) is **semantic** and stays banned. Rung/handoff "no new op/WGSL" lines are scheduling hygiene, narrowable by design authority to this gate; the *semantic*-freeness + parity + anti-faking discipline is never relaxed |
-| Mandatory CPU-oracle parity per gadget | No gadget (any tier) is admitted without a CPU oracle + parity test; compiled postfix evaluation must match within tolerance (bit-exact for `ExactDeterministic`). SoftStep is `ExactDeterministic` because it is the **algebraic** sigmoid `0.5+0.5·u/(1+\|u\|)` — never `exp`/logistic/transcendental |
-| Composition is PerGadgetOnly; preview ≠ runtime | Per-gadget templates and a single-gadget `InlineFlattenPreview` may be executable previews; multi-gadget stacks are `PerGadgetOnly` (chained OrderBand runtime scheduling deferred). The flatten preview is **not** a runtime execution path — no driver/gpu/sim code consumes it. True inline multi-gadget flattening requires separately-proven intermediate column wiring |
-| Node cap is per executable tree | `MAX_EML_TREE_NODES` applies to each executable gadget/single-tree; a `PerGadgetOnly` multi-gadget stack may exceed that informational total (diagnostic only), since each gadget is its own tree |
-| Admission validates at the designer layer | Unknown/deferred kinds rejected; column bounds; finite/`>0` params; non-empty + matched input/weight counts. Tier-2 temporal gadgets (velocity/EMA/acceleration/hysteresis/decay) are admitted per landed EML-GADGET-2 implementation slices — the **design is accepted as a gate** (Opus/product 2026-05-29, [`reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md`](reviews/phase_m_eml_gadget_tier2_design_acceptance_opus_review.md)); the ladder is 2A (snapshot/copy fixture proof) → 2B (VelocityMonitor + Decay/EMA) → 2C (BoundedFeedback) → 2D (Hysteresis) → 2E (explicit velocity-column Acceleration); position-history acceleration and dense per-cell temporal memory remain separately gated |
-| Temporal memory is explicit-column state | No implicit previous-value read in EML; temporal gadgets require authored `current_col`/`previous_col`/`state_col`/`output_col` and a snapshot/copy band (`Identity`+`ResetTarget` at an earlier `OrderBand`) before the update band; no hidden runtime allocation; defaults to Layer-3 parent/personality scope — dense per-cell temporal memory separately gated (VRAM budget + named scenario + product gate) |
-| Bounded-feedback admission contract | Any self-referential/recurrent temporal gadget must declare, at import/admission: finite decay with **V1 default `0 ≤ decay < 1`** (negative-but-`<1` decay needs explicit opt-in), an **explicit output clamp** (required when the output feeds a hard threshold/`EmitEvent`) **or** an *admission-checkable* analytically-bounded formula, finite gain, and no positive unbounded recurrence — otherwise admission rejects. Tier-2 analog of source-cap / `bounded_field_update`. Plus stateful-sequence (not single-step) CPU-oracle parity |
+| Gadgets are spec-layer node-template macros | A gadget compiles to a postfix subgraph over the **existing** `EvalEML` opcode set — no new WGSL, no per-gadget GPU kernel, no new opcode *for the gadget layer*. Registry/compiler live in `simthing-spec`; `simthing-gpu` stays the one generic interpreter; `simthing-sim` has no `Gadget`/`Personality` type |
+| Extending the generic substrate vocabulary is a Tier-2 gate, not a prohibition | A new **generic, semantic-free** `EvalEML` opcode / `AccumulatorOp` combine function / generic kernel is admissible as a Tier-2 gate when (a) it carries no map/faction/AI/scenario semantics (admission rejects semantic names; the kernel sees only floats/indices), (b) it carries CPU-oracle bit-exact parity, (c) meaning is pinned at spec/designer admission, and (d) it is reusable by any SimThing — behavior stays **data**, never baked into the kernel. A scenario-specific op is semantic and stays banned. Rung "no new op/WGSL" lines are scheduling hygiene, narrowable by design authority to this gate; semantic-freeness + parity + anti-faking discipline is never relaxed |
+| Mandatory CPU-oracle parity per gadget | No gadget (any tier) is admitted without a CPU oracle + parity test; bit-exact for `ExactDeterministic`. SoftStep is `ExactDeterministic` because it is the algebraic sigmoid `0.5+0.5·u/(1+\|u\|)` — never `exp`/logistic/transcendental |
+| Composition is PerGadgetOnly; preview ≠ runtime | Per-gadget templates and a single-gadget `InlineFlattenPreview` may be executable previews; multi-gadget stacks are `PerGadgetOnly`. The flatten preview is not a runtime execution path; true inline multi-gadget flattening requires separately-proven intermediate column wiring |
+| Node cap is per executable tree | `MAX_EML_TREE_NODES` applies to each executable gadget/single-tree; a `PerGadgetOnly` stack total is diagnostic only |
+| Admission validates at the designer layer; temporal memory is explicit-column state | Unknown/deferred kinds rejected; column bounds; finite/`>0` params; matched input/weight counts. Temporal gadgets (velocity / EMA / decay / bounded-feedback / hysteresis / acceleration) are admitted per the landed EML-GADGET-2 slices: no implicit previous-value read in EML — authored `current_col`/`previous_col`/`state_col`/`output_col` plus a snapshot/copy band at an earlier `OrderBand`; no hidden runtime allocation; defaults to parent/personality scope. Dense per-cell temporal memory and position-history acceleration are separately gated |
+| Bounded-feedback admission contract | Any self-referential/recurrent temporal gadget declares at import: finite decay with default `0 ≤ decay < 1` (negative-but-`<1` needs explicit opt-in), an **explicit output clamp** (required when feeding a hard threshold/`EmitEvent`) **or** an admission-checkable analytically-bounded formula, finite gain, and no positive unbounded recurrence — otherwise admission rejects. Plus stateful-sequence (not single-step) CPU-oracle parity |
 
 ---
 
 ## The Proof Test
 
-`custom_layout_ethics_axis` in `property.rs` is the invariant proof for the
-generalization. It constructs a non-standard layout — signed ethics axis with a
-drift governor and a width-3 bonus vector — and verifies:
-
-1. `stride()` = sum of sub-field widths (1 + 1 + 3 = 5)
-2. `offset_of` returns correct local indices for each role
-3. `width_of` returns 3 for the Named("ethics_bonus") vector sub-field
-4. `default_data()` produces correct defaults including the 1.0 neutral bonus values
-5. Integration advances the governed sub-field using the governing sub-field's value
-6. Non-governed sub-fields are untouched by integration
-
-If this test passes, the full generalization works. If a future change breaks it,
-something about the sub-field layout invariants has been violated.
-
----
-
-## What These Invariants Buy
-
-**Correctness by construction.** A designer editing a `SubFieldSpec` cannot accidentally
-produce inconsistent column arithmetic — there is only one place column arithmetic
-lives, and it reads the layout at runtime.
-
-**Refactoring safety.** Renaming a sub-field from `Named("vec_0")` to `Named("grievance_inertia")`
-requires updating the `SubFieldSpec` role and any overlay `sub_field_deltas` that
-reference it by name. The compiler will catch the latter via exhaustive match if
-`SubFieldRole` is a closed enum for your game's named fields — or the test suite
-will catch it via the observability query tests if `Named` remains open.
-
-**GPU/CPU parity.** The CPU preparation pass and the CPU reference evaluator both go
-through `offset_of` and `col_for_role`. If the GPU output diverges from the CPU
-oracle in Week 2 tests, the bug is in shader arithmetic or buffer layout — not in
-a disagreement about what column a sub-field occupies, because both sides read the
-same registry.
-
-**Designer safety.** The one-edit guarantee holds as long as all callers use
-`offset_of` and `col_for_role`. Any direct `data[N]` access outside of
-`PropertyLayout` methods is a violation of the invariants above and should be
-treated as a bug regardless of whether it produces correct output today.
+`custom_layout_ethics_axis` in `property.rs` is the invariant proof for the layout
+generalization: it constructs a non-standard layout (signed ethics axis, drift governor,
+width-3 bonus vector) and verifies stride, `offset_of`/`width_of`, defaults, governed
+integration, and non-governed isolation. If it passes, the full generalization works; if a
+change breaks it, a sub-field layout invariant above has been violated.
