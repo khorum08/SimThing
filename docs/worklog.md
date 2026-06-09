@@ -1,3 +1,11 @@
+# 2026-06-09 - STATUS-LEDGER-RECONCILE-0: reconcile stale post-cleanup track statuses
+
+- **Terminology normalization already merged as PR #539** (`TERMINOLOGY-NORMALIZE-0`); not re-run. Fresh active-path grep (`SEAD|self_ai|exploitation|weaponize`) found only an intentional guard-test banned-term list in `runtime_0080_0_r1a.rs` (kept) and one residual `SEAD` codename I had reintroduced into `design_0_0_8_1.md` §5.1 — renamed mechanically to the domain-neutral `MOVEMENT-FRONT-0080-RECURSIVE`.
+- **RR ladder complete:** `RUNTIME-0080-RR` RR-0→RR-4 complete; recursive rehearsal horizon reached.
+- **Stale open admission rows corrected/bounded:** in `design_0_0_8_0_consumer_pulled_production_track.md`, added a CURRENT-STATE banner; bounded the historical "Status: OPEN" header; rebranded `RUNTIME-0080-RR` "Active consumer" → COMPLETE/CLOSED; rebranded the two `simthing-spec`/CLAUSE-SPEC **Open** rows → **PARKED / FUTURE ENTRY GATE**; repointed broken links to the archived `design_0_0_8_0.md` → active `design_0_0_8_1.md` and to the archived v7.9 track. In `mapping_current_guidance.md`, added the explicit current-state line (no active track; `SCENARIO-0080-3` candidate not open; CLAUSE-SPEC future-gate only) and fixed the archived recursive-rehearsal opening link.
+- **No active implementation track opened; `SCENARIO-0080-3` remains unopened; `RUNTIME-0080-RR` / `RUNTIME-0080-0` not reopened; `invariants.md` untouched.** Next work requires product/design authorization.
+- **Verified:** `cargo fmt --all -- --check` clean; `cargo check --workspace` green. Report: [`docs/tests/status_ledger_reconcile_0_results.md`](tests/status_ledger_reconcile_0_results.md).
+
 # 2026-06-07 - DOCS-CLEANUP-0: design synthesis + draconian archive pass
 
 - **Synthesized design constitution:** new single canonical [`docs/design_0_0_8_1.md`](design_0_0_8_1.md) folds the entire v4→v0.0.8.0 lineage (v4/v5/v6/v6.5, v7/v7.6, v7.7, v7.8 + track, 0.0.7.9 mobility track, 0.0.8.0) into one doc. §0 carry-forward doctrine and §2 operating doctrine carried verbatim; adds lineage (§1), updated parked inventory (§3), closed-questions incl. the RR recursive-rehearsal horizon CLOSED (§4A), and next-consumer candidates (§5.1).

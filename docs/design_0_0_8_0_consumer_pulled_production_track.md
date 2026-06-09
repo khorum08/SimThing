@@ -1,5 +1,15 @@
 # SimThing — Design 0.0.8.0 Consumer-Pulled Production Track
 
+> **CURRENT STATE (`STATUS-LEDGER-RECONCILE-0`, 2026-06-09).** `RUNTIME-0080-RR` ladder (RR-0→RR-4) is
+> **complete; the recursive rehearsal horizon is reached.** `DOCS-CLEANUP-0` merged and
+> [`design_0_0_8_1.md`](design_0_0_8_1.md) is the active single canonical constitution.
+> **No active implementation track is open after `RUNTIME-0080-RR` closure and `DOCS-CLEANUP-0`. Next
+> work requires product/design authorization of a new consumer.** `SCENARIO-0080-3` (richer emergence)
+> is a **candidate next consumer, not open**. `simthing-spec` / CLAUSE-SPEC (L0/L1/L2) admission is a
+> **future entry gate** exercised only when a new scenario is authorized — **not** an in-flight or
+> blocking track. Terminology normalization is **closed** (landed as PR #539). The "OPEN"/"Active
+> consumer" wording below is **historical** opening context, superseded by this banner.
+
 > **Local Patrol Economy 0.0.8.0 vertical slice COMPLETE / PARKED after `DEMO-0080-0`** (2026-06-02).
 > Scenario → production path → schedule → observation → control → demo/export are all IMPLEMENTED / PASS.
 > **No further work opens on this slice without a new named product scenario or explicit product
@@ -16,7 +26,7 @@
 > Packet: [`scenarios/scenario_0080_1_admission_packet.md`](scenarios/scenario_0080_1_admission_packet.md);
 > review: [`tests/phase_scenario_0080_1_opening_review_results.md`](tests/phase_scenario_0080_1_opening_review_results.md).
 >
-> **Status:** OPEN. `SCENARIO-0080-0` (Local Patrol Economy) **ACCEPTED** (2026-06-02);
+> **Status (historical opening — superseded by the CURRENT STATE banner above):** `SCENARIO-0080-0` (Local Patrol Economy) **ACCEPTED** (2026-06-02);
 > `PRODUCTION-PATH-0080-0` **IMPLEMENTED / PASS** as a Local Patrol Economy opt-in production path
 > scoped to Local Patrol Economy on the 0.0.7.9 mobility/transfer substrate; opening spec:
 > [`production_paths/production_path_0080_0_opening_spec.md`](production_paths/production_path_0080_0_opening_spec.md).
@@ -27,10 +37,10 @@
 > [`tests/phase_default_schedule_0080_0_impl_1b_results.md`](tests/phase_default_schedule_0080_0_impl_1b_results.md));
 > **not** a global default schedule.
 >
-> **Active constitution:** [`design_0_0_8_0.md`](design_0_0_8_0.md).
+> **Active constitution:** [`design_0_0_8_1.md`](design_0_0_8_1.md).
 >
 > **0.0.7.9 mobility/transfer substrate:** COMPLETE and PARKED
-> ([`design_v7_9_mobility_transfer_allocation_production_track.md`](design_v7_9_mobility_transfer_allocation_production_track.md)).
+> ([`archive/superseded_design/design_v7_9_mobility_transfer_allocation_production_track.md`](archive/superseded_design/design_v7_9_mobility_transfer_allocation_production_track.md)).
 > No parked substrate moves to production until a **named product scenario** pulls it.
 
 ---
@@ -38,7 +48,7 @@
 ## 1. Purpose
 
 0.0.8.0 redirects effort from **substrate-ahead-of-need** to **consumer-pulled integration**
-(`design_0_0_8_0.md` §1, §5). The 0.0.7.9 track proved large, correct, opt-in/default-off substrate
+(`design_0_0_8_1.md` §1, §5). The 0.0.7.9 track proved large, correct, opt-in/default-off substrate
 that nothing in production consumed — and generated hygiene loops (recombination soaks, accounting-over-
 accounting, passive proof wrappers) while waiting for a consumer.
 
@@ -57,7 +67,7 @@ front-end impossible.
 
 ## 2. Operating doctrine summary
 
-- **Guardrails at designer/spec admission; runtime enforces hard safety** (`design_0_0_8_0.md` §2.1;
+- **Guardrails at designer/spec admission; runtime enforces hard safety** (`design_0_0_8_1.md` §2.1;
   `invariants.md` two-layer guardrail placement).
 - **Tier-1 fast-lane** — accepted, generic/semantic-free, opt-in/default-off, parity-backed,
   reversible work ships as one implementation PR + one test report + one status-row update
@@ -66,7 +76,7 @@ front-end impossible.
   semantic WGSL, invariant edits, new architecture, or closed-ladder reopen.
 - **Proven-capability stop rule** — no passive proof wrappers unless they unlock execution
   (`phase_m_gating_and_doc_policy.md` §6; 0.0.7.9 track §2.2).
-- **One principle per class; no per-slice accretion** (`design_0_0_8_0.md` §2.5).
+- **One principle per class; no per-slice accretion** (`design_0_0_8_1.md` §2.5).
 
 ---
 
@@ -274,7 +284,7 @@ sub-slice — keeping each parity surface clean.
 **Codex cites this high-signal set on every rung handoff (keep to these; everything else is reachable
 from them). They anchor each handoff to the three things that must not drift — FIELD_POLICY principles, the
 GPU-resident Accumulator resource-flow notion, and the anticipated emergent behaviors:**
-1. **[`design_0_0_8_0.md`](design_0_0_8_0.md) §0** — transient constitution: conformance; **all conflict
+1. **[`design_0_0_8_1.md`](design_0_0_8_1.md) §0** — transient constitution: conformance; **all conflict
    is resource flow**; recursive allocation; **FIELD_POLICY = GPU-resident threshold crossings, no CPU planner**
    (§0.0, §0.5 #4); §0.5 harness discipline.
 2. **[`invariants.md`](invariants.md)** — binding rules: **"Scenario Proof"**; **AccumulatorOp v2** +
@@ -805,7 +815,7 @@ column-flip — each its own gate.
 > and source-shape guards against oracle-fed replay.
 >
 > **Opcode/WGSL-gate clarification (Opus, 2026-06-05):** the remedial's blanket "no new WGSL/opcode"
-> stop-line was hygiene theater — stricter than `design_0_0_8_0.md` §2.3 (*"New generic WGSL is a Tier-2
+> stop-line was hygiene theater — stricter than `design_0_0_8_1.md` §2.3 (*"New generic WGSL is a Tier-2
 > gate, not a prohibition"*). The constitution now resolves the EML-interpreter-opcode ambiguity (§2.4 +
 > the invariants companion row), and the handoff gains a **§4a admission gate**: adding a **generic,
 > semantic-free** `EvalEML` opcode / `AccumulatorOp` combine fn / kernel is **permitted** for Outcome A
@@ -854,7 +864,7 @@ column-flip — each its own gate.
 >
 > **`RUNTIME-0080-M4A-OPEN-0` — SUPERSEDED (2026-06-07).** It was mis-scoped as N independent *parallel* theaters; the spec calls for a *nested containment hierarchy*. Replaced by the recursive track below; M-4A sparse residency is consumed there as the nested residency mechanism (its named consumer).
 >
-> **Active consumer (`RUNTIME-0080-RR-OPEN-0`): recursive galaxy→system→planet-surface rehearsal.** Build what the dress-rehearsal spec actually specifies, with **no tier collapse**. Opening spec: [`production_paths/runtime_0080_recursive_rehearsal_opening.md`](production_paths/runtime_0080_recursive_rehearsal_opening.md).
+> **Consumer (`RUNTIME-0080-RR-OPEN-0`) — COMPLETE / CLOSED: recursive galaxy→system→planet-surface rehearsal.** Built what the dress-rehearsal spec specifies, with **no tier collapse**; RR-0→RR-4 complete and the recursive rehearsal horizon is reached (see below). Opening spec archived: [`archive/production_paths/runtime_0080_recursive_rehearsal_opening.md`](archive/production_paths/runtime_0080_recursive_rehearsal_opening.md).
 >
 > **RR-0 — IMPLEMENTED / PASS (2026-06-07):** recursive world model + recursive CPU oracle. `crates/simthing-driver/src/runtime_0080_rr_0.rs` instantiates galaxy 20×20 → 13× system 10×10 → planet → surface 10×10 with pop-cohort + factory children; 100-tick recursive CPU oracle ticks pop→factory labor/production and reduce-up/disburse-down surface→planet→system→galaxy→faction. Scope Ledger: all 19 required rows `implemented`; no Deviation Record. Report: [`tests/runtime_0080_rr_0_results.md`](tests/runtime_0080_rr_0_results.md); checksum `a8a9f20a524fa5b2`.
 >
@@ -885,7 +895,7 @@ column-flip — each its own gate.
 
 | Rung | Deliverable | Parked phase proved / closed | Pulls |
 |---|---|---|---|
-| **Open — scenario admission** | admit the rehearsal scenario through the accepted simthing-spec / CLAUSE-SPEC **L0/L1/L2** designer-admission layer (scenario spec, bounds, rejection vocabulary) — the Tier-2 gate that opens the rehearsal | **simthing-spec / CLAUSE-SPEC (L0/L1/L2)** consumed as the authoring engine | CLAUSE-SPEC admission |
+| **PARKED / FUTURE ENTRY GATE — scenario admission** (exercised only when a new scenario such as `SCENARIO-0080-3` is authorized; not in-flight, not a blocker) | admit a future scenario through the accepted simthing-spec / CLAUSE-SPEC **L0/L1/L2** designer-admission layer (scenario spec, bounds, rejection vocabulary) | **simthing-spec / CLAUSE-SPEC (L0/L1/L2)** available as the authoring engine | CLAUSE-SPEC admission |
 | **Pre — `ATLAS-BATCH-0`** (§12.3) | static map gen + Location gridcell primitive + atlas batch allocation + 2-D-map storage | **Atlas batch allocation (C / M-4)**; OWNER masked-reduction storage | atlas runtime; `mobility_owner0` masked reduction |
 | **R1 — Disruption heatmap (EC1)** — *ACCEPTED / CLOSED / IMPLEMENTED-PASS 2026-06-04 ([spec](scenarios/scenario_0080_2_r1_disruption_heatmap_opening_spec.md), [report](tests/scenario_0080_2_r1_disruption_heatmap_report.md), [acceptance](tests/scenario_0080_2_r1_acceptance_review.md))* | pirate/patrol presence → `disruption` column on gridcell SimThings → BoundedFeedback decay → diffuse to `location_status` → reduce up to the starmap heatmap; vs CPU oracle; emitted deterministic artifact | **EML Tier-2 `BoundedFeedback`/`Decay`** (first real consumer); EC1 | EML temporal gadgets; stencil diffusion; SlotRange reduce |
 | **R2 — Recursive allocation + faction economy + blockade/divert** — *IMPLEMENTED / PASS 2026-06-04 ([spec](scenarios/scenario_0080_2_r2_recursive_reduce_opening_spec.md), [opening review](tests/scenario_0080_2_r2_opening_review.md), [report](tests/scenario_0080_2_r2_recursive_allocation_report.md))* | reduce-up **+ disburse-down** (one §0.2 behavior): production reduces up to per-faction stockpiles (OWNER-masked, never merged) + subsidiarity disburse-down to deficit systems; **blockade `≥100` gates outflow + divert flips the production owner-column to the blockader (column flip, not reparenting, no occupant moved)** — consuming the accepted R1 disruption field. **Single galactic tier** (system→planet recursion = named build fork); excludes R3/R5/R6. opt-in/default-off; CPU oracle | **A-0 nested Resource Flow (disburse-down)** off `FlatStarResourceFlow`; **ECON clearinghouse (subsidiarity) + faction-index contention (ECON-SCALE reuse)**; the §6 blockade/divert mechanic | A-0 nested RF; ECON Balance ledger / faction-index; OWNER masked reduction; AccumulatorOp recipe |
@@ -923,7 +933,7 @@ movement rung rather than a standalone slice.
 | 0.0.7.9 mobility/transfer: ECON (clearinghouse + faction-index contention) | **R2** |
 | Line A — nested Resource Flow (A-0, depth>2) | **R2** |
 | Line C — atlas / multi-theater (batch allocation) | **ATLAS-BATCH-0** |
-| simthing-spec / CLAUSE-SPEC (L0/L1/L2) | **Open** (scenario admission) |
+| simthing-spec / CLAUSE-SPEC (L0/L1/L2) | **PARKED / FUTURE ENTRY GATE** — exercised only when a new scenario (e.g. `SCENARIO-0080-3`) is authorized; not in-flight |
 | EML Tier-2 temporal (`BoundedFeedback`/`Decay`, `VelocityMonitor`) | **R1** |
 | `field_urgency` / `field_pressure` | **R2** |
 | Capability-tree → modifier-overlay | **R3** |
@@ -944,8 +954,8 @@ Hybrid-Strata ECON scaling beyond the 2-faction set (Terran/Pirate ECON-SCALE is
 
 ## 13. Pointers
 
-- Active constitution: [`design_0_0_8_0.md`](design_0_0_8_0.md)
-- Parked 0.0.7.9 mobility/transfer track: [`design_v7_9_mobility_transfer_allocation_production_track.md`](design_v7_9_mobility_transfer_allocation_production_track.md)
+- Active constitution: [`design_0_0_8_1.md`](design_0_0_8_1.md)
+- Parked 0.0.7.9 mobility/transfer track: [`archive/superseded_design/design_v7_9_mobility_transfer_allocation_production_track.md`](archive/superseded_design/design_v7_9_mobility_transfer_allocation_production_track.md)
 - Gating mechanics + proven-capability stop rule: [`workshop/phase_m_gating_and_doc_policy.md`](workshop/phase_m_gating_and_doc_policy.md)
 - Binding structural rules: [`invariants.md`](invariants.md)
 - Active status table + read order: [`workshop/mapping_current_guidance.md`](workshop/mapping_current_guidance.md)

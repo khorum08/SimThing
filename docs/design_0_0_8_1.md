@@ -422,7 +422,7 @@ choice. Candidates (open exactly one):
 - **`ECON-0080-MULTIFACTION`** — multi-faction economy generality beyond the Terran/Pirate fixture.
 - **`SESSION-0080-RUNTIME`** — default/session integration if the project wants runtime packaging.
 - **`M4A-NESTED-SCALE`** — multi-atlas / nested sparse-residency scale, only if a specific consumer needs it.
-- **`SEAD-0080-RECURSIVE`** — recursive SEAD movement/front behavior over the nested runtime.
+- **`MOVEMENT-FRONT-0080-RECURSIVE`** — recursive movement / disruption-front (suppression) behavior over the nested runtime.
 
 **L3 ClauseThing/ClauseScript** remains the long-horizon aspiration this track advances toward; its
 parser/front-end and any production `SimSession` wiring stay Tier-2 and product-authorized.
