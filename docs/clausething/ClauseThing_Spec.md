@@ -4,8 +4,10 @@
 > strategy and correspondence reference for the track; the **live ladder, gates, and status ledger**
 > are in [`../design_0_0_8_1_clausething_production_track.md`](../design_0_0_8_1_clausething_production_track.md).
 > This repo copy is **canonical**. The original in `C:\Users\mvorm\Clauser\` is the lab copy, kept
-> beside the materials that intentionally stay out of the repo: the `jomini` reference clone, the
-> Paradox `script_documentation/` dumps, and the ClauseScript textbook (`ClauseThing.md`).
+> beside the materials that intentionally stay out of the repo: the `jomini` reference clone and
+> the Paradox `script_documentation/` dumps. The ClauseScript textbook now lives beside this file
+> at [`ClauseThing.md`](ClauseThing.md) (moved into the repo 2026-06-10 for implementation-agent
+> access; subject to the track §6.1 secondary-source provenance caveat).
 >
 > *Provenance:* written 2026-05-29 against the v7.7 governance era. Governance citations in the body
 > (`design_v7_7.md` §5 etc.) are **historical** — current governance is `design_0_0_8_1.md` §5 plus

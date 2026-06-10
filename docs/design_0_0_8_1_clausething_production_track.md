@@ -95,19 +95,26 @@ take; (c) supply-chain determinism for a repo whose runtime contract is bit-exac
 One rung in flight at a time. First slice of each tier is **Tier-2**; subsequent fidelity rungs
 are Tier-1 fast-lane (generic, opt-in, parity-backed, reversible).
 
+**Agent gating:** rungs marked **[FRONTIER]** are implemented only by frontier-tier agents —
+**Claude Opus (max effort) or Claude Fable 5 (high effort)** — because they carry the
+conditional-compilation semantics (expansion ordering, threshold/overlay lifecycle, gated effect
+groups, `SELECT` formula lowering) where silent fidelity loss is likeliest and bit-identity is the
+only detector. Unmarked mechanical rungs may go to Codex/Cursor-class agents. A frontier flag
+never downgrades.
+
 | Rung | Gate | Scope | Exit criteria |
 |---|---|---|---|
 | **CT-0a** | T2 (track entry) | Crate skeleton + vendored jomini text path + license accounting (§4 items 1–3) | Workspace builds; vendored tests green; `THIRD_PARTY_LICENSES.md` present |
 | **CT-0b** | T2 | **Lossless raw model**: tape → typed raw structs preserving ordered duplication, quoting, headers, operators, mixed containers (textbook §2.7 weeds) | Round-trip corpus → JSON golden files → re-emit; byte-faithful where jomini's writer is; §2.7 weed suite green |
-| **CT-0c** | T1 | Macro/expansion passes in textbook §3.7 order: `@vars` → `inline_script` + `[[param]]`/`$PARAM$` → `@[ ]` inline math; `value:` left symbolic | Worked plague example (textbook §3.8) expands to golden output; expansion-order pitfall tests |
+| **CT-0c** | T1 **[FRONTIER]** | Macro/expansion passes in textbook §3.7 order: `@vars` → `inline_script` + `[[param]]`/`$PARAM$` → `@[ ]` inline math; `value:` left symbolic | Worked plague example (textbook §3.8) expands to golden output; expansion-order pitfall tests |
 | **CT-0d** | T1 | Scope-chain extraction + validation against `scopes.log` (lab fixture, §7); **corpus frequency report** (scope usage histogram — SCOPE-MEMO's evidence) | Malformed chains rejected with spanned diagnostics; frequency report artifact produced |
 | **CT-1a** | T2 (entity-hydration contract) | Literal `modifier` blocks + flat properties on one template → overlays through the existing install path | **Bit-identity**: ClauseScript-authored entity ≡ hand-authored RON (RON-diff clean; installed tree bit-exact; CPU-oracle parity on overlay application) |
-| **SCOPE-MEMO** | T2 design gate | Symbolic scope model design memo from CT-0d evidence: `ScopeRef` successor, `EmitEvent` payload context, rejection classes. **No code until accepted.** | Memo accepted by design authority; widening tickets cut |
-| **CT-1b** | T1 (measurement) | Recalc stress test: large `triggered_modifier` corpus → `Suspended`/`Threshold`/column counts + tick cost vs RON baseline | Measured report; "every-tick is a net simplification" confirmed or the assumption retired |
-| **CT-1c** | T1 | One capability tree (small tradition set) → `capability_tree_v1` pattern: prereq DAG → threshold ordering, payload activation | First "designer writes Clausewitz, SimThing runs it" proof; parity green |
+| **SCOPE-MEMO** | T2 design gate (design authority — Opus) | Symbolic scope model design memo from CT-0d evidence: `ScopeRef` successor, `EmitEvent` payload context, transitive forms (`fromfrom`, `prev` stacks, dot-paths), `event_target:` references, rejection classes. **No code until accepted.** | Memo accepted by design authority; widening tickets cut |
+| **CT-1b** | T1 (measurement) **[FRONTIER]** | Recalc stress test: large `triggered_modifier` corpus → `Suspended`/`Threshold`/column counts + tick cost vs RON baseline | Measured report; "every-tick is a net simplification" confirmed or the assumption retired |
+| **CT-1c** | T1 **[FRONTIER]** | One capability tree (small tradition set) → `capability_tree_v1` pattern: prereq DAG → threshold ordering, payload activation | First "designer writes Clausewitz, SimThing runs it" proof; parity green |
 | **CT-2a** | T1 | Literal `produces`/`upkeep` → `IntrinsicFlow` registrations (opt-in, default-off) | Micro-economy fixture green |
-| **CT-2c** | T1 | `value:` amounts + `economic_category` inheritance → reduction OrderBands; `category_map` defaults + hard-error diagnostics | The Daily Economy Fixture, authored in ClauseScript, matches the RON original |
-| **CT-3b + CT-4a** | T1 over accepted substrate | **Headline vertical:** ClauseScript-authored `RegionFieldSpec` + `ai_will_do` → the accepted field → reduction → `field_urgency` EML → threshold commitment path, default-off | The entire accepted Phase-M vertical, authored in Clausewitz, `simthing-sim` map-free and ClauseScript-blind |
+| **CT-2c** | T1 **[FRONTIER]** | `value:` amounts + `economic_category` inheritance → reduction OrderBands; `category_map` defaults + hard-error diagnostics; generated-key grammar + inheritance asymmetry per §6 | The Daily Economy Fixture, authored in ClauseScript, matches the RON original |
+| **CT-3b + CT-4a** | T1 over accepted substrate **[FRONTIER]** | **Headline vertical:** ClauseScript-authored `RegionFieldSpec` + `ai_will_do` → the accepted field → reduction → `field_urgency` EML → threshold commitment path, default-off | The entire accepted Phase-M vertical, authored in Clausewitz, `simthing-sim` map-free and ClauseScript-blind |
 
 **Stays Tier-2 / not opened by this track:** 2d coupling edges, 3c perception fields, 3d atlas,
 4c velocity columns, cross-unit mod merging, and every item in §6 until a rung names it.
@@ -128,10 +135,146 @@ Recorded so gaps are tickets, not surprises. Each is a `simthing-spec` change wi
 - **Iterator/selector machinery** (T2): `every_`/`any_`/`random_` lists → enrollment-selector
   specs; `random_*` compiles to a seeded deterministic stream or is rejected (guardrail 5).
 - **Named runtime variables** (T1): `set_variable`/`check_variable` → `Named` sub-field column
-  surface in EffectSpec/TriggerSpec.
+  surface in EffectSpec/TriggerSpec, including the **read-modify-write family**
+  (`change_variable`, `subtract_variable`, §8.2), which binds to the effect-ordering contract.
+- **Dynamic identifiers** (T2, likely reject-with-bounds): `set_flag = @root`-style
+  runtime-constructed flag/variable *names* (§3.6) collide with admission-time column
+  registration — names must be statically enumerable; dynamic construction is rejected at
+  admission or bounded to a pre-declared per-scope name family.
 - **`EmitEvent` payload context** (T2, via SCOPE-MEMO): `from`/`root` chain support.
 - **List-registry + `category_map` tables** (T1): the duplication policy's list registry and the
   category default table as first-class, documented spec inputs.
+- **Modifier-key grammar — the classifier engine** (T1, **frontier-gated**, lands with CT-2c):
+  generated keys decompose compositionally — **a family of grammars, not a dictionary** —
+  **verified against `modifiers.log` (41,016 keys, 2026-06-10):** the `shipsize_*` grammar covers
+  ~69% (28,179 keys), the economic grammar (`(category)_(resource)_(produces|upkeep|cost)_(add|mult)`)
+  ~16% (6,426), hand-defined residue ~15%. **CT-2c implements the economic decoder**; ship grammars
+  wait for a consumer that names ships. Implementation note: category segments are
+  underscore-ambiguous (`pop_category_bio_trophy_unity_upkeep_add`) → **longest-match resolution
+  against the registered category and resource sets**, never naive splitting.
+  `triggered_produces_modifier` compiles as gated family generation. Two binding semantics ride
+  with it: the **inheritance asymmetry** (`_mult` sweeps the category subtree via reduction
+  OrderBands; `_add` applies leaf-only — Paradox's own anti-cascade rule, natively matching
+  sweep-vs-leaf reduction semantics) and the **granularity rule — CORRECTED against the primary
+  source (errata #1)**: the `modifiers.log` header states categories are a *soft tag* suggesting
+  intended level, and lower-granularity modifiers legally apply at higher levels with
+  **broadcast-down** (a country-applied pop modifier hits all the country's pops). Lowering:
+  category = default application level + legal cascade-down via ancestor-stack overlay sweep
+  (native); admission validates **direction only** (no cascade-up), not strict level equality.
+- **Timed modifiers & `has_modifier` reads** (T1/T2): `add_modifier = { days = N }` → overlay
+  expiry in ticks via the time-model mapping (small `simthing-spec` widening if overlay lifecycles
+  lack tick expiry); `remove_modifier` → `SuspendOverlay`; `has_modifier = X` **as a trigger**
+  needs overlay-active state readable — recompile the gating predicate inline, or expose Named
+  active-flag columns (design choice taken at this gate **by design authority**; implementation
+  thereafter is mechanical and Codex-eligible).
+- **Control-flow lowering** (T1/T2 split, **frontier-gated**): `if`/`else_if`/`else` and `switch` → `SELECT` chains /
+  gated effect groups (T1 once the entity contract exists); **`break`** (sequential short-circuit
+  inside an effect block, `effects.log`-verified) → a taken-flag gating all subsequent groups —
+  binds to the effect-ordering contract. **`while` — verified faithful:** the source engine's own
+  semantics are already bounded (`while = { limit = {...} }` *"until set iteration count is
+  reached"*, plus `while = { count = [N|Variable] }`), so bounded-compile-with-declared-cap is
+  fidelity, not restriction; `count = Variable` compiles to runtime-gated iterations under a
+  static max.
+- **Effect-ordering contract** (T2, **frontier-gated**): the textbook §6.3 makes statement order significant inside an
+  effect block (later statements observe earlier side effects) — vs SimThing's batch boundary
+  application. Ordered or staged `BoundaryRequest` application semantics, designed once, before
+  any effect-chain rung.
+- **Multi-polity higher-order structures** (deferred, no rung): federations, galactic-community
+  resolutions, agreement terms (§11.4) compile to owner-entities + arenas + coupling edges when a
+  consumer names them — deferred, not rejected.
+
+### 6.1 Transpilation hardness register (the textbook's difficulty analysis, dispositioned)
+
+The ClauseScript textbook grades constructs by transpilation difficulty in its per-section
+"Transpiler Implications." This register compiles every graded item and pins each to a track
+disposition so no hardness verdict stays buried in body text. **Maintenance rule: a rung that
+discovers an ungraded construct updates this register in the same PR.**
+
+**Key caveat — secondary-source provenance (binding on every rung that uses this register or the
+§6 modifier items).** The ClauseScript textbook is an AI-authored synthesis of community
+reverse-engineering of a **closed-source engine**. Its semantic claims — the generated-key
+grammar, the `_mult`-propagates / `_add`-does-not inheritance asymmetry, mult-additive-in-effect
+stacking, `modifier_category` granularity rules, expansion ordering — are **provisional until
+verified against the lab primary sources** (`script_documentation/*.log`,
+`99_README_ECONOMIC_CATEGORIES.txt`, real `common/` files). The house rule applies: *source is
+ground truth; documentation drifts* — and a synthesized textbook can also confabulate.
+Concretely: CT-2c's key-grammar decoder is accepted only after it **round-trips `modifiers.log`
+itself** (every generated key in the log must parse; unparseable keys are either hand-defined or
+evidence the grammar is wrong); the inheritance asymmetry and granularity rules are checked
+against the README before being hard-coded; any textbook claim that fails verification is
+corrected in this register **and** noted as errata in the textbook copy. Where verification is
+impossible (closed-engine corners), model-exactly-or-reject (guardrail 4) governs. And where the
+textbook itself reports source semantics as **implementation-defined** (script-value evaluation
+order and caching, §3.5/§8.3), fidelity-in-principle is unachievable and is **not chased**:
+ClauseThing defines its own deterministic order at admission and documents the divergence.
+
+**Measured vocabulary (primary-source scan of the lab logs, 2026-06-10):** 90 scopes (the
+textbook implied roughly a dozen domain scopes — errata #3); 1,015 effects and 1,041 triggers,
+of which **~28% of effects and ~20% of triggers are iterator forms**
+(`every_/any_/count_/ordered_/random_*`) — the iterator/selector mechanism plus the scope model
+covers a quarter of the vocabulary in one stroke, leaving a non-iterator effect residue of ~700
+for the diagnostic queue; 41,016 modifier keys split per the grammar-family fractions in §6.
+**Textbook-omitted construct classes found in the logs:** the DLC-era staged-progress systems —
+*situations, archaeology sites, first contact, astral rifts* — are structurally a progress
+sub-field + stage thresholds + approach overlays, i.e. the capability/event pattern with no new
+substrate; their effect/trigger vocabulary lands in the standard-library queue like everything
+else.
+
+**Class A — mechanical (lowers cleanly from the parsed tree; the "fairly easy" majority).**
+Blocks/properties/templates; static `modifier` → overlays; capability trees — including the
+one-time-vs-ongoing distinction (adoption `BoundaryRequest` vs `Permanent` overlay) and prereq
+DAGs; literal `resources`; static topology; `@vars` constant folding; `ai_weight` formulas;
+same-scope triggers; **modifier source tracking** (§7.7's "where did this bonus come from" is
+native — overlays are first-class with identity); **decisions** (§13.4 — events with
+actor-initiated triggers, no new substrate); **leaders/governors** (§13.3/§10.6 — SimThings with
+subtree-scoped trait overlays; ancestor-stack propagation is native); the §10.9 feedback-cycle
+requirement ("previous-tick snapshots") — which is the engine's native ping-pong discipline,
+independently derived by the textbook. *Disposition: the existing rungs, CT-1a → CT-3b+4a.*
+
+**Class B — complicated (real engineering, clear compilation target).**
+`triggered_modifier` lifecycles (CT-1b measures the cost assumption); category → tree-level table
+(CT-2c); macro expansion ordering incl. recursive `inline_script` (CT-0c, textbook §3.7);
+duplication/override policy (adopted); economic-category inheritance sweeps (CT-2c);
+`if`/`else_if`/`else` and `switch` (control-flow backlog item); `limit`-filtered iterators (folds
+into the iterator/selector backlog item); dot-notation scope paths + Supported/Output validation
+against `scopes.log` (CT-0d); `prev` resolution via a compile-time scope stack (CT-0d);
+content-unlock cascades from capabilities (registration fan-out, CT-1c onward); **modifier-key
+grammar decomposition + inheritance asymmetry + granularity guard** (CT-2c via the §6 classifier-
+engine item); timed-modifier expiry mapping (§6); controller-vs-owner dual relation columns
+(§10.6 — occupation redirects compile as a second relation column, never a flag);
+stockpile-banded `ai_budget` entries → threshold-gated `Suspended` weight overlays with native
+allocator normalization (§10.8, CT-4b); `value:` recursion → compile-time expansion under a
+declared depth cap against the 32-node class, reject beyond (§8.3); on_action multi-registration
+→ list-registry collect in deterministic source order (§9.3).
+
+**Class C — difficult (substrate extension or design gate required).**
+- `root`/`from`/`fromfrom` event-context chains and **`event_target:` named runtime references** →
+  SCOPE-MEMO + the `EmitEvent`-payload backlog item. The textbook calls these "the primary
+  mechanism for context passing"; they are the single largest fidelity risk and are deliberately
+  quarantined off the T1 path.
+- **Sequential effect observability** (textbook §6.3) vs batch boundary application → the
+  effect-ordering-contract backlog item (T2).
+- Multi-claimant producer attribution / transfer slicing (`overlord_resources`, textbook §10.10)
+  → 2d coupling (T2).
+- Modifier stacking-rule exactness ("not always simple addition or multiplication," §7.7) →
+  model-exactly-or-reject under I8 parity (guardrail 4).
+- `random`/`random_list` → seeded deterministic stream or reject (guardrail 5).
+- **`while`** → bounded-iteration compile with a declared cap, or reject; unbounded-as-authored is
+  Class D. Decided at the control-flow gate.
+- Runtime hyperlane mutation + hyperlane-distance/pathfinding queries (§14.3) → boundary topology
+  edits + the CPU-side min-plus distance machinery; mappable, gated with T3.
+- Velocity/trajectory pressures → explicit previous-value columns (4c, known constraint).
+- Cross-faction comparative reads (`relative_power`, `is_threatened_by`, opinion modifiers,
+  §17.4) → post-reduction faction aggregates + **pairwise relation columns**; perceived variants
+  ride 3c perception filters. Columnar and cheap, but unscoped until a rung names it.
+
+**Class D — architecturally rejected or deferred-by-design (and correctly so).**
+Unbounded `while`; engine-call effects with no state equivalent (rendering, UI, save/load hooks);
+save-game ingestion; presentation-only constructs; unseeded RNG; CPU-planner AI hooks; and the
+deferred multi-polity governance layer (§11.4 — deferred without a rung, not rejected: it has a
+clean compilation story when a consumer names it). Every Class-D rejection is a **hard admission
+error with a spanned diagnostic** and, where one exists, a suggested path — the diagnostic stream
+is the backlog's priority queue (§6 doctrine).
 
 ## 7. Fixture & licensing boundary (binding)
 
@@ -158,7 +301,13 @@ Per-PR shape: one crate change + one test report + one status row here. CPU-orac
 parity on everything that computes. Opt-in, default-off, reversible. Determinism: no RNG construct
 survives admission unseeded. The repo guard's banned legacy acronym applies — **Movement-Front /
 FIELD_POLICY** naming only. Worklog entry per landed rung. Stop-and-escalate on any conflict with
-`simthing_core_design.md` §9 litmus tests.
+`simthing_core_design.md` §9 litmus tests. Agent gating per §5: frontier-flagged rungs and frontier-gated backlog items go to
+Claude Opus (max effort) or Claude Fable 5 (high effort) only; the flag never downgrades. The
+ClauseScript textbook ([`clausething/ClauseThing.md`](clausething/ClauseThing.md)) is **reference,
+not specification**: it describes a foreign engine, and implementing its engine model (lazy
+invalidation, sequential imperative effects, CPU-side evaluation) instead of compiling onto
+SimThing's substrate is the documented drift pattern — its preamble and the §6.1 provenance
+caveat are binding; scope comes from the §5 ladder only, never from the book.
 
 ## 10. Read order (low-context agents start here)
 
@@ -168,8 +317,10 @@ FIELD_POLICY** naming only. Worklog entry per landed rung. Stop-and-escalate on 
 4. `capability_tree_v1.md` (T1 rungs), `adr/resource_flow_substrate.md` (T2 rungs),
    `adr/mapping_sparse_regioncell.md` (T3/T4 rungs).
 5. `crates/simthing-spec/src/spec/` — the actual structs you emit (read before mapping anything).
-6. Lab-only (never committed): `C:\Users\mvorm\Clauser\ClauseThing.md` (language ground truth),
-   `Clauser/Paradox/script_documentation/*.log`, `Clauser/jomini/` (vendor source).
+6. [`clausething/ClauseThing.md`](clausething/ClauseThing.md) — the ClauseScript textbook
+   (language ground truth, **subject to the §6.1 provenance caveat**; moved into the repo
+   2026-06-10 for implementation-agent access). Lab-only (never committed):
+   `C:\Users\mvorm\Clauser\Paradox\script_documentation\*.log`, `Clauser/jomini/` (vendor source).
 
 ## 11. Status ledger
 
