@@ -123,6 +123,52 @@ runtime** — no `match kind` in any simulation path. New entity types are `Loca
 `Custom(String)` carrying the right properties and overlays; new `SimThingKind` variants are not the
 answer (the deprecated `StarSystem` / `Station` variants are the cautionary record).
 
+### 2.1 Owner-entity fission — policy capture, succession, and civil war
+
+Law 2 covers the capture of *assets*; this section covers the capture of the **owner itself**. When
+the contested object is a polity's policy, cohesion, or existence — under **stress** (unrest,
+defeat, fiscal exhaustion) or **inducement** (foreign sponsorship, ideological conversion, bribery)
+— the generic mechanism is **owner-entity fission**, and it is how the engine models civil war,
+secession, coups, and policy capture with zero special cases:
+
+1. **Influence is an ordinary flowing quantity.** Any participant granted the property — domestic
+   cohorts, foreign agents, anything — emits alignment/influence into the assets it touches. It
+   reduces leaf → root like any resource and disburses back down onto the owning faction SimThing.
+   The root round-trip makes the Session the adjudicator and makes **foreign-sponsored capture
+   native**: a rival's influence seeded into your territory aggregates through the shared spatial
+   reduction and lands on you through ordinary disbursement. Lobbying, regulatory capture,
+   ideological conversion, and fifth columns are one flow with different sources.
+2. **The trigger is an ordinary threshold.** Aggregate influence on the owner crosses a registered
+   watch on the owner's post-reduction field (`AggregateAlertRegistration`-class) → `EmitEvent` →
+   `BoundaryRequest`. Rebellion, revolution, separatism, and civil war are **property values
+   crossing thresholds — never discrete flags, never special entity types.**
+3. **The fission is of the owner entity — never the map.** At the boundary, the faction SimThing
+   fissions through the existing `FissionTemplate` machinery (`clone_capability_children` hands the
+   successor its inherited capability subtrees — tech tree, national ideas). The owned assets
+   partition by their **per-asset alignment-intensity vector as a mass owner-column flip**: one new
+   sibling node under the Session root plus N column flips. Per Law 2, no spatial reparenting
+   occurs — the most violent political event in the simulation is structurally one of its cheapest.
+4. **The burst announces itself.** A polity-scale fission re-resolves many memberships in one
+   boundary. The influence **velocity** columns, computed every tick, predict the crossing before
+   it arrives — slot pre-allocation and cascade preparation run on measured growth rates, never
+   heuristics. Each resource-flow arena's declared `FissionPolicy` (`{Inherit, Reevaluate,
+   Reject}`, §5) governs how the split polity's participants re-resolve.
+
+**Provenance (recorded so this is never re-excavated from archives):** assembled across three
+hard-earned workshops — capability-tree v1 (differentiation by intensity threshold; the
+faction-fission inheritance hook), the E-11B reparenting analysis (empire collapse as fission
+cascade; the arena-re-enrollment gap this design *avoids by construction* by keeping capture in
+columns; velocity-driven predictive pre-allocation), and the policy-capture trigger pathway
+(2026-06-10).
+
+**The strategic toolkit this opens:** every participant — and every faction AI reading the fields —
+gains a fourth vector beside fighting, trading, and allying: **subversion**. Emit influence to
+capture a rival's policy weights or split its polity; defend with suppression and counter-influence
+over your own assets; read the influence-velocity field as early warning of your own fracture.
+Because allocation weights and threshold parameters are themselves reachable through this flow,
+**the rules of the simulation are a contested object inside the simulation** — reflexivity is
+endogenous to the substrate, not a bolted-on system.
+
 ---
 
 ## 3. SimProperty → Value: the load-bearing data model
@@ -433,6 +479,9 @@ do not rationalize.
     without a gate**, or allocating GPU resources **per tick**?
 11. Am I about to ship a **flattened proxy** for a specified recursive structure without an approved
     Deviation Record — or claim progress through documents instead of a real reduction under test?
+12. Am I adding a **rebellion / civil-war / coup system, flag, or special entity type** — instead of
+    an influence flow + aggregate threshold + owner-entity fission with an intensity-vector column
+    partition (§2.1)?
 
 **The six-line harness** (cite on every track, hold in context on every rung):
 

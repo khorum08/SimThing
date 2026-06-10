@@ -126,6 +126,13 @@ unreproducible"; no exactness claim ever attaches to rendered pixels.
   symmetry / stability by construction (`simthing_core_design.md` §1.1, §7) — the structure causal
   world models must discover. Training a JEPA on these field movies is learning a system that
   provably has learnable causal structure, with the visual layer as the only noise source.
+- **Endogenous reflexivity (added 2026-06-10).** The rules of the simulation are themselves
+  contested objects *inside* it: influence flows leaf→root→owner, crosses an aggregate threshold,
+  and fissions the owner entity with an intensity-vector column partition (core design §2.1 —
+  policy capture, secession, civil war; **subversion** as the fourth strategic vector). The corpus
+  therefore contains **regime-shift episodes in which the policy layer is state, not constant** —
+  the meta-dynamic a world model must master before any commercial (market/advertising) skin is
+  credible, and prime material for surprise/OOD benchmarks.
 
 ### 1.4 Pareto-knee events and nonlinear decision cascades (added 2026-06-09)
 
@@ -166,7 +173,9 @@ large trade-offs") is the faction visor. **Risk tolerance = distance-from-knee p
 cautious faction responds to anticipated surprise by hedging toward the knee (the
 worst-case-protected operating point); an opportunistic one deliberately operates on the steep face
 of the front. Personality becomes a geometrically meaningful position on a measured trade-off
-surface.
+surface. The same geometry runs *inside* a polity: **owner-entity fission (core design §2.1) is
+the intra-faction knee event** — the internal cooperation–defection front sharpening until the
+polity kinks and splits — with the influence-velocity columns as its Tier-1 leading indicator.
 
 Knee/cascade detection opens no consumer of its own: Tier-1 labels ride the dataset/intervention
 rungs; Tier-2 probes join `LEWM-PROBE-0`; visor-conditioned knee response belongs to
@@ -215,7 +224,10 @@ n-player payoff structures given a small **discrete diplomatic action vocabulary
 overlays, tribute transfers, joint-defense weight-sharing — all already SimThing-expressible).
 Betrayal is the tick where predicted defection value crosses predicted cooperation value — a §1.4
 knee event in the cooperation–defection trade-off. Linguistic negotiation (Cicero-class) is out of
-scope for 15M-class models and is not promised.
+scope for 15M-class models and is not promised. **Subversion joins the league's action vocabulary
+as a fourth verb** (influence emission per core design §2.1): visors gain a subversion-preference
+axis, and the league's two knee events pair — betrayal (external, §1.4) and civil war (internal,
+core design §2.1) — both predictable from the same sensitivity machinery.
 
 **Why it is doubly useful:** (a) the agent path; (b) **the league is the corpus's diversity
 engine** — an auto-curriculum generating an open-ended strategy ecology no authored scenario list

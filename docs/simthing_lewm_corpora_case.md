@@ -175,6 +175,22 @@ scoping rather than by historical calibration.
 (external formal source → parse → validate → lower through CLAUSE-SPEC admission), so the
 ClauseThing build lays most of the road a later cliodynamic importer would drive.
 
+**Generalization (2026-06-10): the importer slot is a semantic port.** The cliodynamics appeal was
+largely semantic — the prestige of the historical domain, not a property of the dynamics. From the
+substrate's view, history, market intelligence, and advertising performance are interchangeable
+plugs into one calibration interface (fit flow/decay/threshold parameters to any external series at
+the spec layer), and the commercial domains offer calibration data *denser by orders of magnitude*
+than century-coded polities. A Clausewitz-class game is no less complex than any of them at the
+only level the substrate recognizes — adversarial accumulation over a topology with threshold
+events. One hazard the commercial skins import that the game does not: market adversaries adapt to
+whatever observes them, so the rules themselves are the contested object — and SimThing
+**endogenizes** exactly that contest (core design §2.1: policy capture → owner-entity fission).
+The game corpus therefore contains ground-truthed **rule-capture and regime-shift trajectories** —
+the pretraining a capture-detection model needs in domains that will never expose their influence
+columns. If a market/advertising skin is ever pursued, the aggregate-not-pixel boundary above binds
+**doubly**: pixel-level market-prediction claims are commercially irresistible and epistemically
+fatal.
+
 > **Footnote — the back-burnered cliodynamics case (evaluated 2026-06-09; BACK-BURNERED
 > 2026-06-10 by product; revivable).** A transpiler for Turchin-class structural-demographic
 > models was adjudicated, prior to the consumer decision, as an epistemically superior importer
