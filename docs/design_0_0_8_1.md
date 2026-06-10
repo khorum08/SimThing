@@ -283,7 +283,7 @@ parked.** None is "in progress." Each is ready to be pulled into production by a
 | **Line B — discrete hard-currency ordering (B-0)** | ACCEPTED, narrow smoke; no B-1. | a named multi-transaction hard-currency workload |
 | **Line C — atlas / multi-theater mapping (C-0/C-1/C-2)** | ACCEPTED, **map batching CLOSED at the designer surface.** | a named multi-theater scenario opens the atlas production runtime gate (M-4A; §4) |
 | **simthing-spec → CLAUSE-SPEC (L0/L1/L2)** | ACCEPTED designer-admission substrate. | it is the *engine* of the next track (§5) |
-| **ClauseThing / ClauseScript (L3)** | PARKED pending product authorization. | product authorizes the front-end (§5) |
+| **ClauseThing / ClauseScript (L3)** | **AUTHORIZED 2026-06-10 — the `CT-` track is OPEN** ([`design_0_0_8_1_clausething_production_track.md`](design_0_0_8_1_clausething_production_track.md)). | the open front-end track (§5) |
 | **Deferred-by-design** | E-11B-5, atlas production runtime (M-4A), B-1, Hybrid-Strata/faction-index ECON scaling, FrontierV2-5, ACT/EVENT/OBS/PIPE | each behind its own named scenario; none is an open question (§4) |
 
 ---
@@ -338,8 +338,9 @@ resolved GPU/CPU values. A standalone CPU math module is an **oracle** for the p
 substitute for the reduction. Standing stop conditions (reject the scenario if it requires any):
 owner-entity as spatial parent; capture-as-reparenting; semantic/raw WGSL; default-on without a gate;
 hard-currency through Resource Flow; a CPU planner/urgency/commitment; or reopening a closed ladder
-(atlas runtime, E-11B-5, B-1, ClauseThing/L3 front-end, FrontierV2-5, ACT/EVENT/OBS/PIPE) without its
-own product authorization.
+(atlas runtime, E-11B-5, B-1, FrontierV2-5, ACT/EVENT/OBS/PIPE) without its
+own product authorization. (ClauseThing/L3 left this list on 2026-06-10 — it now holds product
+authorization via the open `CT-` track.)
 
 **Live status ledger:**
 [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md)
@@ -354,8 +355,12 @@ choice. Candidates (open exactly one):
 - **`M4A-NESTED-SCALE`** — multi-atlas / nested sparse-residency scale, only if a specific consumer needs it.
 - **`MOVEMENT-FRONT-0080-RECURSIVE`** — recursive movement / disruption-front (suppression) behavior over the nested runtime.
 
-**L3 ClauseThing/ClauseScript** remains the long-horizon aspiration this track advances toward; its
-parser/front-end and any production `SimSession` wiring stay Tier-2 and product-authorized.
+**L3 ClauseThing/ClauseScript** received product authorization on 2026-06-10: the **`CT-`
+production track is OPEN** at
+[`design_0_0_8_1_clausething_production_track.md`](design_0_0_8_1_clausething_production_track.md)
+(parser-first determination; crate `simthing-clausething`; consumer: the Stellaris/Clausewitz-engine
+grand-strategy audience). Production `SimSession` wiring remains Tier-2 and separately
+product-authorized.
 
 ---
 

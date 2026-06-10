@@ -9,6 +9,12 @@
 > **future entry gate** exercised only when a new scenario is authorized — **not** an in-flight or
 > blocking track. Terminology normalization is **closed** (landed as PR #539). The "OPEN"/"Active
 > consumer" wording below is **historical** opening context, superseded by this banner.
+>
+> **UPDATE 2026-06-10: product authorized the ClauseThing front-end.** The **`CT-` production
+> track is OPEN** at [`design_0_0_8_1_clausething_production_track.md`](design_0_0_8_1_clausething_production_track.md)
+> (parser-first; crate `simthing-clausething`; consumer: the Stellaris/Clausewitz-engine
+> grand-strategy audience). The "no active implementation track" statement above is superseded by
+> that track's opening; this 0.0.8.0 ledger remains the closed record of the scenario era.
 
 > **Local Patrol Economy 0.0.8.0 vertical slice COMPLETE / PARKED after `DEMO-0080-0`** (2026-06-02).
 > Scenario → production path → schedule → observation → control → demo/export are all IMPLEMENTED / PASS.
