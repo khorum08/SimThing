@@ -94,6 +94,27 @@ term [verified; contested]. **The unoccupied slot is narrower than "first to mea
 it is the externally-anchored, same-substrate, cross-paradigm exponent comparison with controlled
 data complexity** — the one configuration that requires a deterministic ground-truth generator.
 
+**Addendum (2026-06-10) — DeepMind buys into the asset class [verified].** On 2026-05-01 CCP Games
+bought itself back from Pearl Abyss for $120M (cash + crypto), rebranded as **Fenris Creations**,
+and **Google DeepMind took a minority stake ("millions") plus a research partnership**:
+experiments on an *offline EVE Online running on a local server* to "test and evaluate models in a
+controlled setting," with stated focus on long-horizon planning, memory, and continual learning;
+Hassabis on record calling games the "perfect training ground," a DeepMind senior director saying
+EVE demands skills AI "has not yet fully mastered." **Adjudication:** a frontier lab just put a
+price on exactly this asset class — a player-driven adversarial macro-simulation as AI research
+substrate — the strongest third-party validation of the dual-mission thesis to date. **What they
+bought is an interactive evaluation arena, not a metrology lab:** an offline EVE offers full state
+observability and agent testing, but no bit-exact replay, no do-operator counterfactual pairs, no
+complexity dialing, and no causal ground truth (EVE's causal layer is famously out-of-band — the
+server logs the kill, never the con). The unoccupied slot above survives, narrowed once more, now
+with a market price on the adjacent asset. Two consequences: (a) the window estimate below
+**tightens** — DeepMind now holds motive, an adjacent asset, and *both* world-model lineages
+(Genie-class generative and the MuZero latent tradition); treat ~12 months as the planning
+horizon, not 24. (b) EVE's two-decade **aggregate** series (publicly published Monthly Economic
+Reports; alliance rise/collapse cycles) is a denser, genre-native candidate plug for the
+back-burnered second-anchor program (§4 footnote) — empirical calibration without leaving the
+Clausewitz consumer domain.
+
 **Window estimate:** 12–24 months before AMI (which will eventually need exactly this budgeting
 instrument for its own board) or Apple (extending Pareto work) publishes adjacent results.
 

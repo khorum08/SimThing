@@ -432,6 +432,47 @@ back into true columns; only explicit gameplay events through the `BoundaryReque
 ground truth. Mapping is opt-in, bounded, default-off, and `simthing-sim` remains map-free: it sees
 flat columns and opaque registrations.
 
+### 7.3 Trade-off geometry over the front — the Pareto-knee toolkit (deferred; guidance only)
+
+**Status: not an opcode, not a gadget, not implemented anywhere — deferred under the consumer-pulled
+discipline** (product deferral pre-dating this document; re-adjudicated 2026-06-09, horizon charter
+§1.4: opens no consumer of its own). This section exists so the path is *known*, never re-derived
+or re-excavated, when a consumer names it.
+
+**The concept.** A faction's policy weights (allocation weight columns + threshold biases, §6) span
+a trade-off front over its Layer-3 objectives — the personality-weighted pressure columns (§7.2).
+The **knee** is the operating point of *least maximal change*: where a small reallocation toward
+any objective forces a disproportionate deterioration in another, formalized as the **MCF** — the
+max over objective pairs of sensitivity-norm ratios (Giovannelli/Raimundo/Vicente,
+arXiv:2501.16993). A **knee event** is the front *kinking* — trade-off geometry sharpening past
+threshold — and threshold cascades nucleate exactly at kinks. The internal case is already
+doctrine: owner-entity fission (§2.1) is the intra-faction knee.
+
+**Why it costs no new substrate (expressiveness, not a planted feature):** the objectives already
+exist (Layer-3 reduced columns); the actions already exist (the weight columns overlays modify);
+sensitivities are **measured, never derived analytically** — difference paired counterfactual runs
+(bit-exact replay + one admitted overlay changed) or within-run policy dither; analytic derivatives
+are unavailable regardless, because the dynamics are clamped/gated/nonsmooth, and the interesting
+knees are precisely the nonsmooth ones. Over measured sensitivity columns the **MCF is plain
+ratio/max algebra — an ordinary EML gadget tree** under the existing admission contract
+(CPU-oracle parity, node cap, bounded feedback), and a knee event is an ordinary
+`Threshold` + `EmitEvent` crossing on the MCF column. No new opcode, no new WGSL, no CPU planner.
+
+**How Movement-Front consumers use it (when opened):**
+- **Operating-point preference** — risk tolerance compiles to *distance-from-knee*: a cautious
+  personality hedges toward the knee (the worst-case-protected point); an opportunist deliberately
+  rides the steep face of the front.
+- **Cascade early warning** — a diverging MCF marks where threshold chains will nucleate, pairing
+  with the velocity columns as leading indicators (external betrayal knee / internal fission knee,
+  §2.1).
+- **Label generation** — measured knees are certification-grade labels; any learned estimator over
+  them is `ApproximateDiagnostic` forever.
+
+**What is actually missing (the gate):** the MCF gadget is one spec-layer admission away; the
+**sensitivity-production harness** (paired-run differencing / dither) is the unbuilt part and stays
+gated on a named consumer (intervention/dataset rungs, or a scenario that needs knee-aware policy).
+Full adjudication lives in `workshop/field_world_model_horizon.md` §1.4 — link out, don't restate.
+
 ---
 
 ## 8. Time, decisions, and the CPU's only job
@@ -509,3 +550,6 @@ masking, crossing thresholds, and propagating Movement-Fronts. Build toward that
 - Andrzej Odrzywołek, *All elementary functions from a single operator* (arXiv:2603.21852) — the
   single-operator (`eml(x,y) = exp(x) − ln(y)`) universality result underlying the `EvalEML`
   interpreter, the gadget library, and the JIT compiler discipline (§1.1, §4.1).
+- Giovannelli, Raimundo, Vicente, *Pareto sensitivity, most-changing sub-fronts, and knee solutions*
+  (arXiv:2501.16993) — the least-maximal-change knee / MCF formalization behind the deferred §7.3
+  toolkit.
