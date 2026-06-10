@@ -112,8 +112,8 @@ unreproducible"; no exactness claim ever attaches to rendered pixels.
   probe labels.
 - **Corpus beyond training.** The same episodes are **evaluation suites**: world-model benchmarks,
   causal-probe batteries, surprise/OOD tests against engine-generated impossible transitions
-  (perturbed replays). The interactive/env form (observe → propose → admit → simulate → observe)
-  is `FIELD-OPTIMIZER-0`'s loop generalized — the manifest schema therefore carries per-tick
+  (perturbed replays). The interactive/env form (observe, propose, admit, simulate, observe) is
+  `FIELD-OPTIMIZER-0`'s loop generalized — the manifest schema therefore carries per-tick
   **action/policy records** (an `actions/` stream beside `events/`), which the handoff's layout
   lacked and which an action-conditioned model requires anyway.
 - **Provenance purity.** Fully synthetic, no third-party IP or personal data, complete causal
@@ -126,6 +126,106 @@ unreproducible"; no exactness claim ever attaches to rendered pixels.
   symmetry / stability by construction (`simthing_core_design.md` §1.1, §7) — the structure causal
   world models must discover. Training a JEPA on these field movies is learning a system that
   provably has learnable causal structure, with the visual layer as the only noise source.
+
+### 1.4 Pareto-knee events and nonlinear decision cascades (added 2026-06-09)
+
+Giovannelli, Raimundo & Vicente's *snee* approach (arXiv:2501.16993) formalizes the Pareto knee —
+the point of **least maximal change**, where a small improvement in any objective forces a large
+deterioration in another — via the maximal-change function MCF = max over objective pairs of the
+sensitivity-norm ratio, minimized over the weight simplex, plus ellipsoidal most-changing
+sub-fronts from the Jacobian pseudo-inverse. The mapping onto SimThing is exact: **their weight
+simplex is the engine's policy-action space** (allocation weight columns + threshold biases,
+§1.2(d)); their objectives are the Layer-3 personality-weighted pressure columns. A *knee event* is
+the strategic state evolving into a sharpened trade-off geometry; a *nonlinear decision cascade* is
+a threshold chain — i.e., the Pareto front developing a kink, where the MCF diverges.
+
+**Two-tier detection architecture (both tiers inside existing doctrine):**
+
+- **Tier 1 — engine-native, label-grade.** The paper's analytic machinery (implicit function
+  theorem, Hessian inverses, an inner argmin per probe) exists because they cannot run the system;
+  SimThing can. A counterfactual episode pair (§1.3) differenced on reduced objective columns **is
+  a measured Jacobian column** — no smoothness or convexity assumptions. Over measured sensitivity
+  columns the MCF is plain ratio/max algebra — **an EML gadget tree** — and a knee event is a
+  `Threshold` + `EmitEvent` crossing: GPU-resident, FIELD_POLICY-compliant, no CPU planner. This
+  tier is the certification authority and the **label generator** for Tier 2.
+- **Tier 2 — LeWM-amortized, runtime-grade, `ApproximateDiagnostic` forever.** The differentiable
+  JEPA predictor yields action-to-future-embedding sensitivity by one autograd call — a cheap
+  surrogate for the MCF's derivative stack. Knee proximity has a learnable signature: local
+  action-sensitivity blow-up plus rising disagreement across nearby latent rollouts; realized
+  surprise spikes when the cascade fires. The sub-front machinery sharpens the planner: sample
+  candidate policy vectors along measured max-change directions rather than isotropically.
+
+**Caveat that cuts in the engine's favor:** the snee analytic guarantees require smoothness the
+clamped/gated/thresholded dynamics do not have — but the verbal knee definition survives
+nonsmoothness, and SimThing's interesting knees are precisely the nonsmooth ones (cascade
+nucleation = front kink = diverging MCF), where the measured/learned route keeps working as the
+analytic route stops.
+
+**Visor closure:** the paper's decision-theoretic slot ("select the knee to be protected against
+large trade-offs") is the faction visor. **Risk tolerance = distance-from-knee preference**: a
+cautious faction responds to anticipated surprise by hedging toward the knee (the
+worst-case-protected operating point); an opportunistic one deliberately operates on the steep face
+of the front. Personality becomes a geometrically meaningful position on a measured trade-off
+surface.
+
+Knee/cascade detection opens no consumer of its own: Tier-1 labels ride the dataset/intervention
+rungs; Tier-2 probes join `LEWM-PROBE-0`; visor-conditioned knee response belongs to
+`FIELD-OPTIMIZER-0`.
+
+---
+
+### 1.5 Interactive training and the self-play league (added 2026-06-09)
+
+Product's proposed training paradigm, adjudicated: train LeWM/SIGReg on field movies with a mixed
+diet — offline annotated episodes plus fully interactive episodes with the model "in the seat"
+applying interventions as overlay pressure actions — culminating in a generational league of
+lightweight models playing against each other with coalitions and betrayal, winners propagating up
+a ladder. **Ruling: feasible and doubly useful, with three corrections and one architectural
+split.**
+
+**Corrections:**
+1. **The offline half is never action-free.** LeWM is action-conditioned; the offline corpus
+   carries logged behavior-policy actions in the `actions/` stream — FIELD_POLICY v1 and scripted
+   doctrines ARE the behavior policy (the two-AIs ruling §1.2(c) paying off). The real offline/
+   interactive distinction is whose actions: automaton's vs the model's own.
+2. **50/50 is a curriculum endpoint, not a starting recipe.** Begin near-100% offline (breadth
+   across ClauseThing-authored regimes); ramp interactive share as planning competence appears
+   (the DAgger-style cure for offline distribution shift / compounding rollout delusion); hold a
+   replay mixture against forgetting. The interactive half structurally requires
+   `FIELD-OPTIMIZER-0`-class machinery — this paradigm is stages 3–5 of §3 matured, never a
+   reordering of the ladder.
+3. **Action-space dimensionality discipline.** Freeform full-resolution heatmap actions defeat
+   short-horizon latent planning (CEM dies above tens of dimensions) and exceed admissible
+   authority. Actions are **parameterized pressure primitives** (channel, center, radius,
+   magnitude, falloff) or a coarse sparse grid — each compiling to an admissible overlay.
+
+**The league split — visors propagate, gradients learn physics.** Agents = shared world model +
+visor + planning budget. Per generation: **one shared world model trained by SGD on pooled league
+data; a population of visors evolved by tournament selection** (PBT). Selection does preferences;
+gradients do dynamics. A 12-faction match is one network with twelve conditioning vectors —
+VRAM-trivial; "generations" are retained checkpoints (AlphaStar-league structure: past checkpoints
++ exploiter agents prevent strategy collapse and meta-cycling). Known hard problem, stated
+honestly: self-play makes the environment non-stationary (physics + current meta); the fields
+partially rescue this because opponents are observed *through* the heatmaps, and short horizons
+are meta-robust — but continual retraining is expected, and league diversity is a data
+requirement.
+
+**Diplomacy: behavioral, not linguistic.** Coalitions and betrayal emerge from selfish planners in
+n-player payoff structures given a small **discrete diplomatic action vocabulary** (alliance
+overlays, tribute transfers, joint-defense weight-sharing — all already SimThing-expressible).
+Betrayal is the tick where predicted defection value crosses predicted cooperation value — a §1.4
+knee event in the cooperation–defection trade-off. Linguistic negotiation (Cicero-class) is out of
+scope for 15M-class models and is not promised.
+
+**Why it is doubly useful:** (a) the agent path; (b) **the league is the corpus's diversity
+engine** — an auto-curriculum generating an open-ended strategy ecology no authored scenario list
+can match, with every episode Elo-stamped (skill-stratified strategic trajectories + causal
+sidecars). Free bonus with teeth: a population selected for winning is an **adversarial fuzzer for
+the simulator** — exploits become bug reports or OOD surprise benchmarks, made safe by the
+admission-only authority discipline.
+
+Eventual consumer name reserved (not opened, not authorized): `FIELD-LEAGUE-0`, downstream of
+`FIELD-OPTIMIZER-0`.
 
 ---
 
@@ -148,11 +248,16 @@ admission; no runtime semantic change; no ML), **plus** carrying the schema fiel
 FIELD-MOVIE-DATASET-0: `export_layer_id`, `export_semantic_group`, `annotation_fields`,
 `visual_default`, `tier_projection`, `training_visibility`, `policy_action_tags`. Curriculum
 framing: the importer is how corpus diversity (seeds × regimes × doctrines × shocks) gets authored
-at scale.
+at scale. **Product note (2026-06-10):** this slot now has a **named potential consumer** — the
+Stellaris / Clausewitz-engine grand-strategy audience (players and modders) — giving the importer
+genuine consumer-pulled standing; the cliodynamic instantiation evaluated 2026-06-09 is
+back-burnered (see `../simthing_lewm_corpora_case.md` §4 footnote) and revivable on the same
+lowering pipeline.
 
 **`LEWM-PROBE-0`** — external Python harness, tiny model, small corpus; probes against
-Movement-Front ground-truth columns; surprise evaluation against perturbed replays. No SimThing
-runtime dependency, no gameplay role.
+Movement-Front ground-truth columns **and Tier-1 measured Pareto-sensitivity / knee-event labels
+(§1.4)**; surprise evaluation against perturbed replays. No SimThing runtime dependency, no
+gameplay role.
 
 **`FIELD-OPTIMIZER-0`** — candidate policy-pressure vectors → latent rollouts → visor-conditioned
 scoring → proposal → **existing admission** → authoritative validation run. No direct mutation, no
@@ -193,5 +298,8 @@ this unblock*.
   Claims verified against the v2 abstract 2026-06-09.
 - Wei — *On the Spatiotemporal Dynamics of Generalization in Neural Networks* (arXiv:2602.01651) —
   why the Movement-Front substrate yields a physics-clean corpus (`simthing_core_design.md` §1.1).
-- Odrzywołek — *All elementary functions from a single operator* (arXiv:2603.21852) — the EML
+- Odrzywolek — *All elementary functions from a single operator* (arXiv:2603.21852) — the EML
   discipline through which model proposals compile back to legal overlay/threshold data.
+- Giovannelli, Raimundo, Vicente — *Pareto sensitivity, most-changing sub-fronts, and knee
+  solutions* (arXiv:2501.16993) — the snee/MCF formalization underlying §1.4's knee-event and
+  cascade-detection architecture; read 2026-06-09.
