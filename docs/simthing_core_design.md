@@ -40,6 +40,22 @@ being one GPU automaton instead of a federation of bespoke subsystems.
 When a design seems to need special-case logic, the correct move is almost always **more SimThing**:
 more properties, more overlays, more `AccumulatorOp` registrations — never a new subsystem.
 
+**The substrate, not the game, is the product.** This genericity is foundational, not retrofitted:
+from the earliest design (v4: *"semantic labels are read by the CPU semantic layer for display
+only; the simulation never sees them"*) the kernel layer has been guarded against game semantics —
+even the boundary layer is ticks and a monotonic counter, with "day" admitted only as legible
+naming. The grand-strategy game is the engine's **first consumer, not its definition**: SimThing is
+a general-purpose, GPU-resident simulation ontology engine. The same properties the game demanded —
+semantic-free residency, bit-exact determinism, replay-pinned reproducibility, spec-layer ontology
+that compiles away, and dynamics satisfying Anchor A's postulates — make every run a natively
+annotated scientific artifact: **long-horizon field movies** (gradient heatmaps with full causal
+sidecars and legal interventions) that constitute training and evaluation corpora for machine-
+learned world models. This second mission is recorded here as *identity, not authorization* — its
+consumers and current candidate technologies live in `workshop/field_world_model_horizon.md` and
+open only by the normal consumer-pulled gate. Its operational force in this document is simple:
+every binding constraint below now has **two products** depending on it. A semantic leak or a
+determinism break poisons the corpus as surely as it breaks the game.
+
 ### 1.1 The two theoretical anchors
 
 The paradigm is not folklore; it rests on two published results that every agent should internalize,
