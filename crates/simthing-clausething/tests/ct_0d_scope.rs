@@ -220,4 +220,11 @@ fn lab_scopes_log_frequency_scan() {
         "lab supported relations: {}",
         report.supported_relation_count
     );
+    eprintln!("lab malformed lines: {}", report.malformed_line_count);
+    eprintln!("lab unhandled lines: {}", report.unhandled_line_count);
+    let mut outputs: Vec<_> = report.output_scope_counts.iter().collect();
+    outputs.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+    for (name, count) in outputs.iter().take(10) {
+        eprintln!("lab output aggregate {name}={count}");
+    }
 }

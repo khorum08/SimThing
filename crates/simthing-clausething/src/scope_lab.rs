@@ -36,22 +36,34 @@ pub fn scan_lab_scopes(lab_dir: &Path) -> LabFrequencyReport {
         }
     };
 
+    scan_scopes_log_content(&content, &mut report);
+    report
+}
+
+fn scan_scopes_log_content(content: &str, report: &mut LabFrequencyReport) {
     let mut current_name: Option<String> = None;
     let mut name_counts: BTreeMap<String, usize> = BTreeMap::new();
 
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.is_empty() {
+        if trimmed.is_empty() || is_header_or_separator(trimmed) {
             continue;
         }
 
-        if let Some(name) = trimmed.strip_suffix(':') {
-            if is_scope_name(name) {
-                current_name = Some(name.to_string());
-                *name_counts.entry(name.to_string()).or_insert(0) += 1;
-                report.total_scope_names += 1;
+        if let Some(rest) = trimmed.strip_prefix("Supported Scopes:") {
+            let supported = rest.trim();
+            if supported.is_empty() {
+                report.malformed_line_count += 1;
                 continue;
             }
+            report.supported_relation_count += supported
+                .split_whitespace()
+                .filter(|token| !token.is_empty())
+                .count();
+            if current_name.is_none() {
+                report.malformed_line_count += 1;
+            }
+            continue;
         }
 
         if let Some(rest) = trimmed.strip_prefix("Output Scope:") {
@@ -67,26 +79,14 @@ pub fn scan_lab_scopes(lab_dir: &Path) -> LabFrequencyReport {
             if current_name.is_none() {
                 report.malformed_line_count += 1;
             }
+            current_name = None;
             continue;
         }
 
-        if let Some(rest) = trimmed.strip_prefix("Supported Scopes:") {
-            let supported = rest.trim();
-            if supported.is_empty() {
-                report.malformed_line_count += 1;
-                continue;
-            }
-            report.supported_relation_count += supported
-                .split(',')
-                .filter(|s| !s.trim().is_empty())
-                .count();
-            if current_name.is_none() {
-                report.malformed_line_count += 1;
-            }
-            continue;
-        }
-
-        if trimmed.starts_with('#') || trimmed.starts_with("//") {
+        if let Some(name) = parse_scope_name_line(trimmed) {
+            current_name = Some(name.to_string());
+            *name_counts.entry(name.to_string()).or_insert(0) += 1;
+            report.total_scope_names += 1;
             continue;
         }
 
@@ -94,7 +94,23 @@ pub fn scan_lab_scopes(lab_dir: &Path) -> LabFrequencyReport {
     }
 
     report.top_scope_names = top_n(&name_counts, 10);
-    report
+}
+
+fn is_header_or_separator(line: &str) -> bool {
+    line.starts_with('[')
+        || line.starts_with("==")
+        || line.starts_with('=')
+        || line.starts_with("These work")
+        || line.starts_with("Complete list")
+}
+
+fn parse_scope_name_line(line: &str) -> Option<&str> {
+    let name = line.split(" - ").next()?.trim();
+    if is_scope_name(name) {
+        Some(name)
+    } else {
+        None
+    }
 }
 
 fn locate_scopes_log(lab_dir: &Path) -> Option<PathBuf> {
@@ -121,4 +137,35 @@ fn is_scope_name(name: &str) -> bool {
         && name
             .chars()
             .all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SYNTHETIC_SCOPES_LOG: &str = r#"
+== SCOPE DOCUMENTATION ==
+Complete list of scope changes:
+
+owner - Scopes to the owner country.
+Supported Scopes: planet ship
+Output Scope: country
+
+prevprev - Scopes back two changes.
+Supported Scopes: all
+Output Scope: various
+
+"#;
+
+    #[test]
+    fn synthetic_scopes_log_aggregate_counts() {
+        let mut report = LabFrequencyReport::default();
+        scan_scopes_log_content(SYNTHETIC_SCOPES_LOG, &mut report);
+        assert_eq!(report.total_scope_names, 2);
+        assert_eq!(report.supported_relation_count, 3);
+        assert_eq!(report.output_scope_counts.get("country"), Some(&1));
+        assert_eq!(report.output_scope_counts.get("various"), Some(&1));
+        assert_eq!(report.malformed_line_count, 0);
+        assert_eq!(report.unhandled_line_count, 0);
+    }
 }
