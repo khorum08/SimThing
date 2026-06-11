@@ -9,6 +9,8 @@ description = "ClauseScript front-end parser for SimThing (default-off; CT track
 doctest = false
 
 [dependencies]
+serde      = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 

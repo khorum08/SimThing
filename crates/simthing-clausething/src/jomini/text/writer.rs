@@ -665,6 +665,15 @@ where
         self.mixed_mode = MixedMode::Started;
     }
 
+    /// Begin the array tail of a mixed object after keyed properties (CT-0b emit).
+    #[inline]
+    pub fn begin_mixed_tail(&mut self) -> Result<(), Error> {
+        self.start_mixed_mode();
+        self.state = WriteState::ArrayValue;
+        self.needs_line_terminator = true;
+        Ok(())
+    }
+
     /// Writes a text tape
     ///
     /// Formatting is not preserved.

@@ -1,0 +1,6 @@
+simthing_operator_demo = {
+    potency = 42
+    floor > 10
+    ceiling <= 99
+    exact == 42
+}

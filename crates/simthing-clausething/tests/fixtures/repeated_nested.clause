@@ -1,0 +1,5 @@
+simthing_repeat_demo = {
+    child = { id = a }
+    child = { id = b }
+    child = { id = c }
+}

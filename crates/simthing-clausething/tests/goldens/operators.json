@@ -1,0 +1,96 @@
+{
+  "root": {
+    "kind": "block",
+    "properties": [
+      {
+        "key": {
+          "form": "unquoted",
+          "text": "simthing_operator_demo",
+          "span": {
+            "token_index": 0
+          }
+        },
+        "operator": null,
+        "value": {
+          "kind": "block",
+          "properties": [
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "potency",
+                "span": {
+                  "token_index": 2
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "scalar",
+                "form": "unquoted",
+                "text": "42",
+                "span": {
+                  "token_index": 3
+                }
+              }
+            },
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "floor",
+                "span": {
+                  "token_index": 4
+                }
+              },
+              "operator": "GREATER_THAN",
+              "value": {
+                "kind": "scalar",
+                "form": "unquoted",
+                "text": "10",
+                "span": {
+                  "token_index": 6
+                }
+              }
+            },
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "ceiling",
+                "span": {
+                  "token_index": 7
+                }
+              },
+              "operator": "LESS_THAN_EQUAL",
+              "value": {
+                "kind": "scalar",
+                "form": "unquoted",
+                "text": "99",
+                "span": {
+                  "token_index": 9
+                }
+              }
+            },
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "exact",
+                "span": {
+                  "token_index": 10
+                }
+              },
+              "operator": "EXACT",
+              "value": {
+                "kind": "scalar",
+                "form": "unquoted",
+                "text": "42",
+                "span": {
+                  "token_index": 12
+                }
+              }
+            }
+          ],
+          "mixed": false
+        }
+      }
+    ],
+    "mixed": false
+  }
+}

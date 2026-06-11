@@ -1,0 +1,3 @@
+simthing_header_demo = {
+    tint = rgb { 10 20 30 }
+}

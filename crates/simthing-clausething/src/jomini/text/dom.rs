@@ -677,6 +677,12 @@ pub struct ValueReader<'data, 'tokens, E> {
 }
 
 impl<'data, E> ValueReader<'data, '_, E> {
+    /// Index of this value's token in the parent tape (CT-0b span metadata).
+    #[inline]
+    pub fn value_index(&self) -> usize {
+        self.value_ind
+    }
+
     /// Return the token that the reader is abstracting
     #[inline]
     pub fn token(&self) -> &TextToken<'data> {
