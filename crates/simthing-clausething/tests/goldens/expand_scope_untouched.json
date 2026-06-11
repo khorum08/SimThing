@@ -1,0 +1,94 @@
+{
+  "root": {
+    "kind": "block",
+    "properties": [
+      {
+        "key": {
+          "form": "unquoted",
+          "text": "station_watch",
+          "span": {
+            "token_index": 0
+          }
+        },
+        "operator": null,
+        "value": {
+          "kind": "block",
+          "properties": [
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "owner",
+                "span": {
+                  "token_index": 2
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "block",
+                "properties": [
+                  {
+                    "key": {
+                      "form": "unquoted",
+                      "text": "is_alerted",
+                      "span": {
+                        "token_index": 4
+                      }
+                    },
+                    "operator": null,
+                    "value": {
+                      "kind": "scalar",
+                      "form": "unquoted",
+                      "text": "yes",
+                      "span": {
+                        "token_index": 5
+                      }
+                    }
+                  }
+                ],
+                "mixed": false
+              }
+            },
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "path",
+                "span": {
+                  "token_index": 7
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "scalar",
+                "form": "unquoted",
+                "text": "root.owner.capital_relay",
+                "span": {
+                  "token_index": 8
+                }
+              }
+            },
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "reading",
+                "span": {
+                  "token_index": 9
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "scalar",
+                "form": "unquoted",
+                "text": "value:ambient_pressure",
+                "span": {
+                  "token_index": 10
+                }
+              }
+            }
+          ],
+          "mixed": false
+        }
+      }
+    ],
+    "mixed": false
+  }
+}

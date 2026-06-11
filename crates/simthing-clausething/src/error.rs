@@ -63,3 +63,34 @@ impl From<crate::jomini::Error> for EmitError {
         Self::new(err.to_string())
     }
 }
+
+/// Failure while running CT-0c expansion passes over the raw model.
+#[derive(Debug)]
+pub struct ExpandError {
+    pub message: String,
+    pub span: Option<crate::raw::RawSpan>,
+}
+
+impl ExpandError {
+    pub fn new(message: impl Into<String>, span: Option<crate::raw::RawSpan>) -> Self {
+        Self {
+            message: message.into(),
+            span,
+        }
+    }
+}
+
+impl fmt::Display for ExpandError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.span {
+            Some(span) => write!(
+                f,
+                "ClauseThing expansion error at token {}: {}",
+                span.token_index, self.message
+            ),
+            None => write!(f, "ClauseThing expansion error: {}", self.message),
+        }
+    }
+}
+
+impl std::error::Error for ExpandError {}

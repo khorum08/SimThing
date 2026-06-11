@@ -1,0 +1,7 @@
+station_watch = {
+    owner = {
+        is_alerted = yes
+    }
+    path = root.owner.capital_relay
+    reading = value:ambient_pressure
+}

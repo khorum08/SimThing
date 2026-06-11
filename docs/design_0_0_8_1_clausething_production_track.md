@@ -328,7 +328,7 @@ caveat are binding; scope comes from the §5 ladder only, never from the book.
 |---|---|---|
 | CT-0a vendor + skeleton + licenses | **IMPLEMENTED / PASS** (remedial verify closed 2026-06-10; unrelated pre-existing GPU fingerprint failure on this host documented in report) | [`docs/tests/ct_0a_impl_results.md`](tests/ct_0a_impl_results.md) |
 | CT-0b lossless raw model | **IMPLEMENTED / PASS** | [`docs/tests/ct_0b_impl_results.md`](tests/ct_0b_impl_results.md) |
-| CT-0c expansion passes | NOT STARTED | — |
+| CT-0c expansion passes | **IMPLEMENTED / PASS** | [`docs/tests/ct_0c_impl_results.md`](tests/ct_0c_impl_results.md) |
 | CT-0d scope extraction + frequency report | NOT STARTED | — |
 | CT-1a bit-identical entity | NOT STARTED | — |
 | SCOPE-MEMO design gate | NOT STARTED (blocked on CT-0d/CT-1a) | — |

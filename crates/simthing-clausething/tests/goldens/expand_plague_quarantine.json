@@ -1,0 +1,236 @@
+{
+  "root": {
+    "kind": "block",
+    "properties": [
+      {
+        "key": {
+          "form": "unquoted",
+          "text": "relay_blight_outbreak",
+          "span": {
+            "token_index": 2
+          }
+        },
+        "operator": null,
+        "value": {
+          "kind": "block",
+          "properties": [
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "wave_strength",
+                "span": {
+                  "token_index": 0
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "scalar",
+                "form": "unquoted",
+                "text": "3",
+                "span": {
+                  "token_index": 1
+                }
+              }
+            },
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "lockdown",
+                "span": {
+                  "token_index": 4
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "block",
+                "properties": [
+                  {
+                    "key": {
+                      "form": "unquoted",
+                      "text": "tier",
+                      "span": {
+                        "token_index": 6
+                      }
+                    },
+                    "operator": null,
+                    "value": {
+                      "kind": "scalar",
+                      "form": "unquoted",
+                      "text": "3",
+                      "span": {
+                        "token_index": 7
+                      }
+                    }
+                  },
+                  {
+                    "key": {
+                      "form": "unquoted",
+                      "text": "tier",
+                      "span": {
+                        "token_index": 8
+                      }
+                    },
+                    "operator": null,
+                    "value": {
+                      "kind": "scalar",
+                      "form": "unquoted",
+                      "text": "fallback",
+                      "span": {
+                        "token_index": 9
+                      }
+                    }
+                  }
+                ],
+                "mixed": false
+              }
+            },
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "throughput_mult",
+                "span": {
+                  "token_index": 11
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "scalar",
+                "form": "unquoted",
+                "text": "0.5",
+                "span": {
+                  "token_index": 12
+                }
+              }
+            },
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "casualty_estimate",
+                "span": {
+                  "token_index": 19
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "scalar",
+                "form": "unquoted",
+                "text": "@[ 3 * 12 ]",
+                "span": {
+                  "token_index": 20
+                }
+              }
+            },
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "echo_rate",
+                "span": {
+                  "token_index": 21
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "scalar",
+                "form": "unquoted",
+                "text": "0.04",
+                "span": {
+                  "token_index": 22
+                }
+              }
+            },
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "decay",
+                "span": {
+                  "token_index": 13
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "block",
+                "properties": [
+                  {
+                    "key": {
+                      "form": "unquoted",
+                      "text": "rate",
+                      "span": {
+                        "token_index": 15
+                      }
+                    },
+                    "operator": null,
+                    "value": {
+                      "kind": "scalar",
+                      "form": "unquoted",
+                      "text": "0.04",
+                      "span": {
+                        "token_index": 16
+                      }
+                    }
+                  },
+                  {
+                    "key": {
+                      "form": "unquoted",
+                      "text": "rate",
+                      "span": {
+                        "token_index": 17
+                      }
+                    },
+                    "operator": null,
+                    "value": {
+                      "kind": "scalar",
+                      "form": "unquoted",
+                      "text": "0.01",
+                      "span": {
+                        "token_index": 18
+                      }
+                    }
+                  }
+                ],
+                "mixed": false
+              }
+            },
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "mortality",
+                "span": {
+                  "token_index": 20
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "scalar",
+                "form": "unquoted",
+                "text": "value:blight_mortality",
+                "span": {
+                  "token_index": 21
+                }
+              }
+            },
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "surge",
+                "span": {
+                  "token_index": 22
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "scalar",
+                "form": "unquoted",
+                "text": "@[100*2]",
+                "span": {
+                  "token_index": 23
+                }
+              }
+            }
+          ],
+          "mixed": false
+        }
+      }
+    ],
+    "mixed": false
+  }
+}

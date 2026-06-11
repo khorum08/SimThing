@@ -1,0 +1,13 @@
+wave_strength = $SEVERITY$
+[[QUARANTINE]
+    lockdown = {
+        tier = $SEVERITY$
+        tier = fallback
+    }
+    throughput_mult = 0.5
+]
+[[!QUARANTINE]
+    spread_mult = 1.5
+]
+casualty_estimate = @[ $SEVERITY$ * 12 ]
+echo_rate = @blight_base_rate
