@@ -331,7 +331,7 @@ caveat are binding; scope comes from the §5 ladder only, never from the book.
 | CT-0c expansion passes | **IMPLEMENTED / PASS** | [`docs/tests/ct_0c_impl_results.md`](tests/ct_0c_impl_results.md) |
 | CT-0d scope extraction + frequency report | **IMPLEMENTED / PASS** (lab aggregate scan closed 2026-06-10 via CT-0d-LAB-CLOSURE-0) | [`docs/tests/ct_0d_impl_results.md`](tests/ct_0d_impl_results.md) |
 | CT-1a bit-identical entity | **IMPLEMENTED / PASS** (installed-tree parity closed by CT-1a-INSTALL-PARITY-CLOSURE-1: domain-pack standalone overlays wired through `preview_install` / `install_atomic`) | [`docs/tests/ct_1a_impl_results.md`](tests/ct_1a_impl_results.md) |
-| SCOPE-MEMO design gate | NOT STARTED (CT-0d/CT-1a accepted; design rung not opened in this PR) | — |
+| SCOPE-MEMO design gate | **DESIGN MEMO / READY FOR REVIEW** (memo authored 2026-06-11 by frontier design agent; widening tickets SPEC-SCOPE-1/2/3 proposed in the memo, cut into §6 on design-authority acceptance; no code) | [`docs/clausething/scope_memo.md`](clausething/scope_memo.md) |
 | CT-1b recalc stress measurement | NOT STARTED | — |
 | CT-1c capability tree | NOT STARTED | — |
 | CT-2a intrinsic flows | NOT STARTED | — |
