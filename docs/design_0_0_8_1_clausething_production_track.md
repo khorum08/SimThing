@@ -66,6 +66,83 @@ consumes the accepted CLAUSE-SPEC (L0/L1/L2) admission substrate as its named co
   (`produces`, `modifier`, `prerequisites`, …) collect in source order; explicit
   `@override`/`@append` author opt-in; cross-unit mod load-order merging out of scope for v1.
 
+### 3.1 ClauseScript semantic concept mapping: movable concepts are SimThings
+
+**Binding doctrine (2026-06-10, CLAUSETHING-MOVABLE-SEMMAP-0).** All ClauseScript semantic
+concepts imported by `simthing-clausething` must be explicitly mapped to recursive SimThing
+structures in this production doc **before** implementation rungs proceed. ClauseThing is a
+**front-end translator**, not a semantic runtime. ClauseScript nouns hydrate into existing
+SimThing primitives only:
+
+- properties (including intrinsic-flow / upkeep obligations on Resource Flow arenas)
+- overlays (bonuses, penalties, gated payloads)
+- children (recursive subtree composition)
+- parentage / reparenting (assignment and relocation)
+- bounded assignment slots (admission constraints on valid parent targets)
+- Resource Flow arenas (explicit participation when admitted)
+- masks / modifiers (reduce-up, mask-down, disburse-down)
+- threshold / event / boundary requests (activation and staged effects)
+
+**Mobile/movable concepts are not special engines.** Pop cohorts, fleets, leaders, characters,
+monsters, armies, ships, agents, and any future ClauseScript object that can move, be assigned,
+relocate, or participate in local arenas are **ordinary mobile SimThings** — recursive templates or
+instances with properties, overlays, children, and allowed parent/assignment constraints.
+
+**Leaders and characters** are mobile SimThings:
+
+- upkeep costs are **properties** and **intrinsic-flow obligations** on the current parent's
+  explicit Resource Flow arena when admitted;
+- bonuses and penalties are **overlays**;
+- assignment is **reparenting** or **bounded assignment-slot parentage**;
+- effects **reduce to the parent** and **disburse down** through existing mask/modifier mechanics;
+- they participate in the current parent's explicit Resource Flow arena when admitted — not via a
+  separate leader economy or global registry lookup.
+
+**Fleets, monsters, armies, ships, agents,** and similar movable entities follow the same rule.
+A fleet table does not become a fleet engine; a monster table does not become a combat-entity
+engine; a character table does not become a character engine.
+
+**Pop cohorts** are recursive SimThings or cohort SimThing groups under a location/container node —
+not a separate pop engine. A pop table does not become a pop subsystem.
+
+**Movement between gridcells, locations, fleets, armies, courts, planets, sectors, systems, or other
+container nodes** is **reparenting** or an **admitted movement-front transfer** of SimThing nodes —
+not a separate movement engine for imported ClauseScript concepts.
+
+**Valid assignment targets** are **admission constraints** (authored templates, enrollment
+selectors, bounded parent/assignment rules) — not runtime subsystems, CPU assignment planners, or
+out-of-band bonus appliers.
+
+Imported semantic categories may guide hydration and admission. **After admission, the runtime sees
+ordinary SimThings** — properties, overlays, resource-flow registrations, masks, and
+threshold/event/boundary mechanics. `simthing-sim` remains semantic-free and ClauseThing-blind; no
+runtime ClauseScript evaluator.
+
+**Forbidden interpretations (hard reject at design review):**
+
+- leader table → global leader registry → CPU assignment engine → out-of-band bonus lookup
+- fleet table → fleet engine
+- pop table → pop engine
+- monster table → combat entity engine
+- character table → character engine
+- separate movement engine for movable imported concepts
+- separate economy engine for leader/army/fleet upkeep
+
+**Allowed interpretation:** ClauseScript concepts may have authoring templates and admission rules.
+Those templates and rules hydrate into normal SimThing structures. Runtime behavior remains generic.
+
+> Leaders/characters/movable agents are ordinary mobile SimThings. They must be imported as
+> recursive SimThing templates/instances with properties, overlays, children, and allowed
+> parent/assignment constraints. Assignment is represented by reparenting or bounded
+> assignment-slot parentage. Upkeep participates through the current parent's explicit Resource
+> Flow arena when admitted. Bonuses/penalties are overlays reduced to the parent and disbursed
+> down by existing mask/modifier mechanics. Do not create a separate leader engine, global
+> character registry, CPU assignment planner, or out-of-band bonus applier.
+
+> Anything that can move between gridcell, location, fleet, army, court, planet, sector, system,
+> or other container nodes must be modeled as a SimThing whose parentage can change through
+> admitted movement/assignment mechanics.
+
 ## 4. Jomini internalization & license accounting
 
 **Decision: vendor the text path; exclude the rest.** Vendored into
@@ -324,7 +401,7 @@ caveat are binding; scope comes from the §5 ladder only, never from the book.
 
 ## 10. Read order (low-context agents start here)
 
-1. This document (§2 ruling, §5 your rung, §11 status).
+1. This document (§2 ruling, §3.1 semantic mapping, §5 your rung, §11 status).
 2. [`clausething/ClauseThing_Spec.md`](clausething/ClauseThing_Spec.md) §4 (correspondence) + §5 (tiers) + §8 (limits).
 3. `simthing_core_design.md` (always in full) + `invariants.md`.
 4. `capability_tree_v1.md` (T1 rungs), `adr/resource_flow_substrate.md` (T2 rungs),
@@ -350,6 +427,7 @@ caveat are binding; scope comes from the §5 ladder only, never from the book.
 | CT-2a intrinsic flows | **IMPLEMENTED / PASS** (2026-06-10; literal `produces`/`upkeep` → `GameModeSpec` flow property + `ResourceFlowSpec`; canonical RON parity; explicit opt-in flat-star GPU micro-economy vs `run_arena_allocation_oracle`; no spec widening) | [`docs/tests/ct_2a_impl_results.md`](tests/ct_2a_impl_results.md) |
 | CT-2c category economy | NOT STARTED | — |
 | CT-3b+4a headline vertical | NOT STARTED | — |
+| CLAUSETHING-MOVABLE-SEMMAP-0 | **IMPLEMENTED / PASS** (2026-06-10; §3.1 semantic mapping doctrine added — movable ClauseScript concepts are recursive SimThings; no code) | — |
 
 *Opened 2026-06-10 by product decision (Mike) on the design authority's parser-first
 determination. The parser is the consumer that pulls the spec.*
